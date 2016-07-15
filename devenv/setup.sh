@@ -34,6 +34,53 @@ set -e
 BASEIMAGE_RELEASE=`cat /etc/hyperledger-baseimage-release`
 DEVENV_REVISION=`(cd /hyperledger/devenv; git rev-parse --short HEAD)`
 
+# Install WARNING before we start provisioning so that it
+# will remain active.  We will remove the warning after
+# success
+cat <<EOF >/etc/motd
+##########################################################
+                       ,.-""``""-.,
+                      /  ,:,;;,;,  \  DANGER DANGER
+                      \  ';';;';'  /   WILL ROBINSON...
+                       `'---;;---'`
+                       <>_==""==_<>
+                       _<<<<<>>>>>_
+                     .'____\==/____'.
+                _____|__   |__|   __|______
+              /C \\\\\\\\  |..|  //////// C\
+              \_C////////  |;;|  \\\\\\\\C_/
+                     |____o|##|o____|
+                      \ ___|~~|___ /
+                       '>--------<'
+                       {==_==_==_=}
+                       {= -=_=-_==}
+                       {=_=-}{=-=_}
+                       {=_==}{-=_=}
+                       }~~~~""~~~~{
+                  jgs  }____::____{
+                      /`    ||    `\
+                      |     ||     |
+                      |     ||     |
+                      |     ||     |
+                      '-----''-----'
+##########################################################
+
+If you see this notice, it means that something is wrong
+with your hyperledger/fabric development environment.
+
+Typically this indicates that something failed during
+provisioning and your environment is incomplete.  Builds,
+execution, etc., may not operate as they were intended.
+Please review the provisioning log and visit:
+
+                https://goo.gl/yqjRC7
+
+for more information on troubleshooting and solutions.
+
+##########################################################
+EOF
+
+
 # Update system
 apt-get update -qq
 
@@ -101,9 +148,6 @@ sudo chown -R vagrant:vagrant $GOPATH
 # Update limits.conf to increase nofiles for RocksDB
 sudo cp /hyperledger/devenv/limits.conf /etc/security/limits.conf
 
-# Set our shell prompt to something less ugly than the default from packer
-echo "PS1=\"\u@hyperledger-devenv:v$BASEIMAGE_RELEASE-$DEVENV_REVISION:\w$ \"" >> /home/vagrant/.bashrc
-
 # configure vagrant specific environment
 cat <<EOF >/etc/profile.d/vagrant-devenv.sh
 # Expose the devenv/tools in the $PATH
@@ -112,3 +156,9 @@ export VAGRANT=1
 export CGO_CFLAGS=" "
 export CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 EOF
+
+# Set our shell prompt to something less ugly than the default from packer
+echo "PS1=\"\u@hyperledger-devenv:v$BASEIMAGE_RELEASE-$DEVENV_REVISION:\w$ \"" >> /home/vagrant/.bashrc
+
+# finally, remove our warning so the user knows this was successful
+rm /etc/motd
