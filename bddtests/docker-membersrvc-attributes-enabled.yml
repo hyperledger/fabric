@@ -1,0 +1,3 @@
+membersrvc0:
+    environment:
+        - MEMBERSRVC_CA_ACA_ENABLED=true

@@ -1,0 +1,66 @@
+language: go
+go:
+ - 1.6
+sudo: required
+services:
+ - docker
+env:
+    - TEST_TARGET=unit-test
+    - TEST_TARGET=behave
+
+before_install:
+
+ - echo "Starting Docker Daemon "
+ - |
+   export TR_PULL_REQUEST="$TRAVIS_PULL_REQUEST" && export GIT_USER="$TRAVIS_REPO_SLUG"
+   USER_NAME="$(echo $GIT_USER | cut -d '/' -f 1)" && REPO_NAME="$(echo $GIT_USER | cut -d '/' -f 2)"
+   ip="$(ifconfig docker0 | grep "inet addr:" | awk '{print $2}' | cut -d ':' -f 2)"
+   port="$(ps -ef | grep docker | awk '{print $11}' | cut -d ':' -f 3)"
+   sudo stop docker
+   sudo docker daemon -H tcp://0.0.0.0:$port -H unix:///var/run/docker.sock >> dockerlogfile.log 2>&1 &
+
+install:
+
+ - echo " INSTALLING DEPENDENCIES "
+ - |
+   cd $HOME/gopath/src/github.com/$USER_NAME/$REPO_NAME/scripts/provision/ && chmod +x host.sh && sudo ./host.sh
+   echo " Installing Rocks DB, g++ compilers & Dependencies "
+   sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && sudo apt-get -qq update && sudo apt-get -qq install g++-4.8 && sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
+   sudo apt-get install build-essential -y
+   sudo apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev
+   cd /tmp
+   git clone --branch v4.1 --single-branch --depth 1 https://github.com/facebook/rocksdb.git
+   cd rocksdb
+   make shared_lib
+   sudo INSTALL_PATH=/usr/local make install-shared
+   sudo ldconfig
+
+before_script:
+
+ - echo " CREATING BASE IMAGE "
+ - cd $HOME/gopath/src/github.com/$USER_NAME/$REPO_NAME/scripts && chmod +x foldercopy.sh && ./foldercopy.sh $TR_PULL_REQUEST $USER_NAME $REPO_NAME
+ - sudo rm -rf /var/hyperledger/ && sudo mkdir /var/hyperledger/ && sudo chown $USER:$USER /var/hyperledger
+ - cd /$HOME/gopath/src/github.com/hyperledger/fabric
+ - make linter
+
+script:
+
+ - echo "Executing Tests"
+ - cd $HOME/gopath/src/github.com/hyperledger/fabric
+ - sed -i -e 's/172.17.0.1:2375\b/'"$ip:$port"'/g' $HOME/gopath/src/github.com/hyperledger/fabric/bddtests/compose-defaults.yml
+ - export BEHAVE_OPTS="-D logs=Y -o testsummary.log" #Defined to both jobs.
+ - make $TEST_TARGET
+
+after_failure:
+
+ - |
+   echo "Click below links to view behave container log files"
+   cd $HOME/gopath/src/github.com/hyperledger/fabric
+   chmod +x scripts/containerlogs.sh
+   sudo ./scripts/containerlogs.sh
+
+notifications:
+
+  slack: 'hyperledgerproject:azMP8Mw3cfGigXkqi5RujZXr'
+  on_success: always
+  on_failure: always

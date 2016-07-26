@@ -1,0 +1,17 @@
+vp:
+  image: hyperledger/fabric-peer
+  environment:
+    - CORE_PEER_ADDRESSAUTODETECT=true
+    - CORE_VM_ENDPOINT=http://172.17.0.1:2375
+    # TODO:  This is currently required due to BUG in variant logic based upon log level.
+    - CORE_LOGGING_LEVEL=DEBUG
+  # Startup of peer must be delayed to allow membersrvc to come up first
+  command: sh -c "sleep 5; peer node start"
+  #command: peer node start
+  
+  # Use these options if coverage desired for peers
+  #image: hyperledger/fabric-peer-coverage
+  #command: ./peer.test --test.coverprofile=coverage.cov node start
+membersrvc:
+   image: hyperledger/fabric-membersrvc
+   command: membersrvc

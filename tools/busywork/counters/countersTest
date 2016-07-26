@@ -1,0 +1,73 @@
+#!/usr/bin/tclsh
+
+# This is a simple, in-vivo sniff-test of the counters chaincode
+
+lappend auto_path [file dirname [info script]]/../tcl
+
+package require busywork
+
+setLoggingPrefix test
+setLoggingLevel {} note
+
+# Calls 'busy', returns contents of stdout
+proc busy {args} {
+    eval exec -ignorestderr [busywork::bin]/busy $args
+}
+
+# Calls 'busy' and prints contents of stdout
+proc busyOut {args} {
+    eval execout -ignorestderr [busywork::bin]/busy $args
+}
+
+
+note {} "Creating a 4-peer network"
+execout -ignorestderr [busywork::bin]/userModeNetwork -peerLogging debug 4
+
+note {} "Deploying 2 chaincodes with interlock"
+busyOut -waitFor 2m \
+    deploy vp0 cc0 github.com/hyperledger/fabric/tools/busywork/counters parms -id cc0
+busyOut -waitFor 2m \
+    deploy vp1 cc1 github.com/hyperledger/fabric/tools/busywork/counters parms -id cc1
+
+note {} "Creating arrays with interlock"
+busyOut -waitFor 1m invoke vp2 cc0 create a1 1 a2 2
+busyOut -waitFor 1m invoke vp3 cc1 create a1 1 a2 2
+
+note {} "Issuing increments and decrements with interlock"
+busyOut -waitFor 1m invoke vp0 cc0 increment a1 a2 a2
+busyOut -waitFor 1m invoke vp1 cc1 increment a1 a2 a2
+busyOut -waitFor 1m invoke vp2 cc0 decrement a2
+busyOut -waitFor 1m invoke vp3 cc1 decrement a2
+
+note {} "Checking status"
+set s0 [busy query vp0 cc0 status a1 a2]
+set s1 [busy query vp1 cc1 status a1 a2]
+
+if {$s0 ne "1 1 1 1 2 2 1 1"} {
+    error "Mismatch for s0: $s0"
+}
+
+if {$s1 ne "1 1 1 1 2 2 1 1"} {
+    error "Mismatch for s1: $s1"
+}
+
+note {} "Forcing underflow with interlock"
+busyOut -waitFor 1m invoke vp2 cc0 decrement a2
+busyOut -waitFor 1m invoke vp3 cc0 decrement a2
+
+# It's difficult to observe the errors. We can only observe that the value is
+# stuck at 0. Note we only underflowed cc0.
+
+note {} "Checking that underflow was disallowed"
+set s0 [busy query vp0 cc0 status a1 a2]
+set s1 [busy query vp1 cc1 status a1 a2]
+
+if {$s0 ne "1 1 1 1 2 2 0 0"} {
+    error "Mismatch for s0: $s0"
+}
+
+if {$s1 ne "1 1 1 1 2 2 1 1"} {
+    error "Mismatch for s1: $s1"
+}
+
+note {} A-OK

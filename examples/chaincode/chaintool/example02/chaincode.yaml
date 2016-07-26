@@ -1,0 +1,29 @@
+
+# ----------------------------------
+# chaincode example02
+# ----------------------------------
+#
+# Copyright (C) 2016 - Hyperledger
+# All rights reserved
+#
+
+Schema:  1
+Name:    org.hyperledger.chaincode.example02
+Version: 0.1-SNAPSHOT
+
+Platform:
+        Name: org.hyperledger.chaincode.golang
+        Version: 1
+
+Provides: [self] # 'self' is a keyword that means there should be $name.cci (e.g. org.hyperledger.chaincode.example02.cci)
+
+
+
+
+
+
+
+
+
+
+

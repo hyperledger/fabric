@@ -1,0 +1,8 @@
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+    # Path on the file system where peer will store data
+    fileSystemPath: /var/hyperledger/test/ledger/statemgmt/trie/testdb

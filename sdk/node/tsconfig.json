@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "target": "es5",
+    "declaration": true,
+    "outDir": "./lib"
+  },
+  "files": [
+    "typings/globals/node/index.d.ts",
+    "typings/globals/debug/index.d.ts",
+    "./src/hfc.ts",
+    "./src/crypto.ts",
+    "./src/stats.ts",
+    "./src/sdk_util.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

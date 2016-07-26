@@ -1,0 +1,11 @@
+*.sh text eol=lf
+*.go text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.proto text eol=lf
+*.py text eol=lf
+*.js text eol=lf
+*.txt text eol=lf
+LICENSE text eol=lf

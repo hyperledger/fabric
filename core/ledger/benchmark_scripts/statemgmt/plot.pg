@@ -1,0 +1,18 @@
+#!/usr/local/bin/gnuplot
+reset
+
+# Chart specific settings
+set ylabel "nano second"
+set xlabel "Number of bytes"
+set title "CryptoHash performance"
+set logscale xy 10
+
+# General settings
+set key reverse Left outside
+set grid
+set terminal postscript dashed color
+set style data linespoints
+
+# plot command
+plot dataFile using 1:2 title "time taken", \
+"" using 1:($2/$1) title "time taken per byte"

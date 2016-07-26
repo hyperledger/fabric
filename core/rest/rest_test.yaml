@@ -1,0 +1,472 @@
+###############################################################################
+#
+#    CLI section
+#
+###############################################################################
+cli:
+
+    # The address that the cli process will use for callbacks from chaincodes
+    address: 0.0.0.0:30304
+
+
+
+###############################################################################
+#
+#    REST section
+#
+###############################################################################
+rest:
+
+    # Enable/disable setting for the REST service. It is recommended to disable
+    # REST service on validators in production deployment and use non-validating
+    # nodes to host REST service
+    enabled: true
+
+    # The address that the REST service will listen on for incoming requests.
+    address: 0.0.0.0:5000
+
+    validPatterns:
+
+        # Valid enrollment ID pattern in URLs: At least one character long, and
+        # all characters are A-Z, a-z, 0-9 or _.
+        enrollmentID: '^\w+$'
+
+###############################################################################
+#
+#    LOGGING section
+#
+###############################################################################
+logging:
+
+    # Valid logging levels are case-insensitive strings chosen from
+
+    #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
+
+    # Logging 'module' names are also strings, however valid module names are
+    # defined at runtime and are not checked for validity during option
+    # processing.
+
+    # Default logging levels are specified here for each of the peer
+    # commands. For commands that have subcommands, the defaults also apply to
+    # all subcommands of the command. These logging levels can be overridden
+    # on the command line using the --logging-level command-line option, or by
+    # setting the CORE_LOGGING_LEVEL environment variable.
+
+    # The logging level specification is of the form
+
+    #     [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
+
+    # A logging level by itself is taken as the overall default. Otherwise,
+    # overrides for individual or groups of modules can be specified using the
+    # <module>[,<module>...]=<level> syntax.
+
+    # Examples:
+    #   info                                       - Set default to INFO
+    #   warning:main,db=debug:chaincode=info       - Override default WARNING in main,db,chaincode
+    #   chaincode=info:main=debug:db=debug:warning - Same as above
+    peer:      debug
+    crypto:    info
+    status:    warning
+    stop:      warning
+    login:     warning
+    vm:        warning
+    chaincode: warning
+
+
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+
+    # Peer Version following version semantics as described here http://semver.org/
+    # The Peer supplies this version in communications with other Peers
+    version:  0.1.0
+
+    # The Peer id is used for identifying this Peer instance.
+    id: jdoe
+
+    # The privateKey to be used by this peer
+    # privateKey: 794ef087680e2494fa4918fd8fb80fb284b50b57d321a31423fe42b9ccf6216047cea0b66fe8365a8e3f2a8140c6866cc45852e63124668bee1daa9c97da0c2a
+
+    # The networkId allows for logical seperation of networks
+    # networkId: dev
+    # networkId: test
+    networkId: dev
+
+    # The Address this Peer will listen on
+    listenAddress: 0.0.0.0:30303
+    # The Address this Peer will bind to for providing services
+    address: 0.0.0.0:30303
+    # Whether the Peer should programmatically determine the address to bind to.
+    # This case is useful for docker containers.
+    addressAutoDetect: false
+
+    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
+    gomaxprocs: -1
+    workers: 2
+
+    # Sync related configuration
+    sync:
+        blocks:
+            # Channel size for readonly SyncBlocks messages channel for receiving
+            # blocks from oppositie Peer Endpoints.
+            # NOTE: currently messages are not stored and forwarded, but rather
+            # lost if the channel write blocks.
+            channelSize: 10
+        state:
+            snapshot:
+                # Channel size for readonly syncStateSnapshot messages channel
+                # for receiving state deltas for snapshot from oppositie Peer Endpoints.
+                # NOTE: currently messages are not stored and forwarded, but
+                # rather lost if the channel write blocks.
+                channelSize: 50
+            deltas:
+                # Channel size for readonly syncStateDeltas messages channel for
+                # receiving state deltas for a syncBlockRange from oppositie
+                # Peer Endpoints.
+                # NOTE: currently messages are not stored and forwarded,
+                # but rather lost if the channel write blocks.
+                channelSize: 20
+
+    # Validator defines whether this peer is a validating peer or not, and if
+    # it is enabled, what consensus plugin to load
+    validator:
+        enabled: true
+
+        consensus:
+            # Consensus plugin to use. The value is the name of the plugin, e.g. pbft, noops ( this value is case-insensitive)
+            # if the given value is not recognized, we will default to noops
+            plugin: noops
+
+            # total number of consensus messages which will be buffered per connection before delivery is rejected
+            buffersize: 1000
+
+        events:
+            # The address that the Event service will be enabled on the validator
+            address: 0.0.0.0:31315
+
+            # total number of events that could be buffered without blocking the
+            # validator sends
+            buffersize: 100
+
+            # milliseconds timeout for producer to send an event.
+            # if < 0, if buffer full, unblocks immediately and not send
+            # if 0, if buffer full, will block and guarantee the event will be sent out
+            # if > 0, if buffer full, blocks till timeout
+            timeout: 10
+        
+    # TLS Settings for p2p communications
+    tls:
+        enabled:  false
+        cert:
+            file: testdata/server1.pem
+        key:
+            file: testdata/server1.key
+        # The server name use to verify the hostname returned by TLS handshake
+        serverhostoverride:
+
+    # PKI member services properties
+    pki:
+        eca:
+            paddr: localhost:50051
+        tca:
+            paddr: localhost:50051
+        tlsca:
+            paddr: localhost:50051
+        tls:
+            enabled: false
+            rootcert:
+                file: tlsca.cert
+            # The server name use to verify the hostname returned by TLS handshake
+            serverhostoverride:
+
+    # Peer discovery settings.  Controls how this peer discovers other peers
+    discovery:
+
+        # The root nodes are used for bootstrapping purposes, and generally
+        # supplied through ENV variables
+        # It can be either a single host or a comma separated list of hosts.
+        rootnode:
+
+        # The duration of time between attempts to asks peers for their connected peers
+        period:  5s
+
+        ## leaving this in for example of sub map entry
+        # testNodes:
+        #    - node   : 1
+        #      ip     : 127.0.0.1
+        #      port   : 30303
+        #    - node   : 2
+        #      ip     : 127.0.0.1
+        #      port   : 30303
+
+        # Should the discovered nodes and their reputations
+        # be stored in DB and persisted between restarts
+        persist:    true
+
+        # if peer discovery is off
+        # the peer window will show
+        # only what retrieved by active
+        # peer [true/false]
+        enabled:    true
+
+        # number of workers that
+        # tast the peers for being
+        # online [1..10]
+        workers: 8
+
+        # the period in seconds with which the discovery
+        # tries to reconnect to successful nodes
+        # 0 means the nodes are not reconnected
+        touchPeriod: 6s
+
+        # the maximum nuber of nodes to reconnect to
+        # -1 for unlimited
+        touchMaxNodes: 100
+
+    # Path on the file system where peer will store data
+    fileSystemPath: /var/hyperledger/test/rest_test
+
+
+    profile:
+        enabled:     false
+        listenAddress: 0.0.0.0:6060
+
+###############################################################################
+#
+#    VM section
+#
+###############################################################################
+vm:
+
+    # Endpoint of the vm management system.  For docker can be one of the following in general
+    # unix:///var/run/docker.sock
+    # http://localhost:2375
+    # https://localhost:2376
+    endpoint: unix:///var/run/docker.sock
+
+    # settings for docker vms
+    docker:
+        tls:
+            enabled: false
+            cert:
+                file: /path/to/server.pem
+            ca:
+                file: /path/to/ca.pem
+            key:
+                file: /path/to/server-key.pem
+        # Parameters of docker container creating. For docker can created by custom parameters
+        # If you have your own ipam & dns-server for cluster you can use them to create container efficient.
+        # NetworkMode Sets the networking mode for the container. Supported standard values are: `host`(default),`bridge`,`ipvlan`,`none`
+        # dns A list of DNS servers for the container to use.
+        # note: not support customize for `Privileged` 
+        # LogConfig sets the logging driver (Type) and related options (Config) for Docker
+        # you can refer https://docs.docker.com/engine/admin/logging/overview/ for more detail configruation.
+        hostConfig:
+            NetworkMode: host
+            Dns:
+               # - 192.168.0.1
+            LogConfig:
+                Type: json-file
+                Config:
+                    max-size: "50m"
+                    max-file: "5"
+            
+###############################################################################
+#
+#    Chaincode section
+#
+###############################################################################
+chaincode:
+
+    # The id is used by the Chaincode stub to register the executing Chaincode
+    # ID with the Peerand is generally supplied through ENV variables
+    # the Path form of ID is provided when deploying the chaincode. The name is
+    # used for all other requests. The name is really a hashcode
+    # returned by the system in response to the deploy transaction. In
+    # development mode where user runs the chaincode, the name can be any string
+    id:
+        path:
+        name:
+
+    golang:
+
+        # This is the basis for the Golang Dockerfile.  Additional commands will
+        # be appended depedendent upon the chaincode specification.
+        Dockerfile:  |
+            from hyperledger/fabric-baseimage
+            #from utxo:0.1.0
+            COPY src $GOPATH/src
+            WORKDIR $GOPATH
+
+    car:
+
+        # This is the basis for the CAR Dockerfile.  Additional commands will
+        # be appended depedendent upon the chaincode specification.
+        Dockerfile:  |
+            FROM hyperledger/fabric-ccenv
+
+    # timeout in millisecs for starting up a container and waiting for Register
+    # to come through. 1sec should be plenty for chaincode unit tests
+    startuptimeout: 1000
+
+    #timeout in millisecs for deploying chaincode from a remote repository.
+    deploytimeout: 30000
+
+    #mode - options are "dev", "net"
+    #dev - in dev mode, user runs the chaincode after starting validator from
+    # command line on local machine
+    #net - in net mode validator will run chaincode in a docker container
+
+    mode: net
+    # typically installpath should not be modified. Otherwise, user must ensure
+    # the chaincode executable is placed in the path specifed by installpath in
+    # the image
+    installpath: /opt/gopath/bin/
+
+    # keepalive in seconds. In situations where the communiction goes through a 
+    # proxy that does not support keep-alive, this parameter will maintain connection
+    # between peer and chaincode.
+    # A value <= 0 turns keepalive off
+    keepalive: 0
+
+###############################################################################
+#
+###############################################################################
+#
+#    Ledger section - ledger configuration encompases both the blockchain
+#    and the state
+#
+###############################################################################
+ledger:
+
+  blockchain:
+
+    # Define the genesis block
+    genesisBlock:
+
+  state:
+
+    # Control the number state deltas that are maintained. This takes additional
+    # disk space, but allow the state to be rolled backwards and forwards
+    # without the need to replay transactions.
+    deltaHistorySize: 500
+
+    # The data structure in which the state will be stored. Different data
+    # structures may offer different performance characteristics.
+    # Options are 'buckettree', 'trie' and 'raw'.
+    # ( Note:'raw' is experimental and incomplete. )
+    # If not set, the default data structure is the 'buckettree'.
+    # This CANNOT be changed after the DB has been created.
+    dataStructure:
+      # The name of the data structure is for storing the state
+      name: buckettree
+      # The data structure specific configurations
+      configs:
+        # configurations for 'bucketree'. These CANNOT be changed after the DB
+        # has been created. 'numBuckets' defines the number of bins that the
+        # state key-values are to be divided
+        numBuckets: 1000003
+        # 'maxGroupingAtEachLevel' defines the number of bins that are grouped
+        #together to construct next level of the merkle-tree (this is applied
+        # repeatedly for constructing the entire tree).
+        maxGroupingAtEachLevel: 5
+        # 'bucketCacheSize' defines the size (in MBs) of the cache that is used to keep
+        # the buckets (from root upto secondlast level) in memory. This cache helps
+        # in making state hash computation faster. A value less than or equals to zero
+        # leads to disabling this caching. This caching helps more if transactions
+        # perform significant writes.
+        bucketCacheSize: 100
+
+        # configurations for 'trie'
+        # 'tire' has no additional configurations exposed as yet
+
+
+###############################################################################
+#
+#    Security section - Applied to all entities (client, NVP, VP)
+#
+###############################################################################
+security:
+    # Enable security will force every entity on the network to enroll with obc-ca
+    # and maintain a valid set of certificates in order to communicate with
+    # other peers
+    enabled: true
+    # To enroll NVP or VP with membersrvc. These parameters are for 1 time use.
+    # They will not be valid on subsequent times without un-enroll first.
+    # The values come from off-line registration with obc-ca. For testing, make
+    # sure the values are in membersrvc/membersrvc.yaml file eca.users
+    enrollID: vp
+    enrollSecret: f3489fy98ghf
+    # To enable privacy of transactions (requires security to be enabled). This
+    # encrypts the transaction content during transit and at rest. The state
+    # data is also encrypted
+    privacy: false
+
+    # Can be 256 or 384. If you change here, you have to change also
+    # the same property in membersrvc.yaml to the same value
+    level: 256
+
+    # Can be SHA2 or SHA3. If you change here, you have to change also
+    # the same property in membersrvc.yaml to the same value
+    hashAlgorithm: SHA3
+
+    # TCerts related configuration
+    tcert:
+      batch:
+        # The size of the batch of TCerts
+        size:  200
+    # Enable the release of keys needed to decrypt attributes from TCerts in
+    # the chaincode using the metadata field of the transaction (requires
+    # security to be enabled).
+    attributes:
+      enabled: false
+    multithreading:
+      enabled: false
+
+    # Confidentiality protocol versions supported: 1.2
+    confidentialityProtocolVersion: 1.2
+
+################################################################################
+#
+#   SECTION: STATETRANSFER
+#
+#   - This applies to recovery behavior when the replica has detected
+#     a state transfer is required
+#
+#   - This might happen:
+#     - During a view change in response to a faulty primary
+#     - After a network outage which has isolated the replica
+#     - If the current blockchain/state is determined to be corrupt
+#
+################################################################################
+statetransfer:
+
+    # Should a replica attempt to fix damaged blocks?
+    # In general, this should be set to true, setting to false will cause
+    # the replica to panic, and require a human's intervention to intervene
+    # and fix the corruption
+    recoverdamage: true
+
+    # The number of blocks to retrieve per sync request
+    blocksperrequest: 20
+
+    # The maximum number of state deltas to attempt to retrieve
+    # If more than this number of deltas is required to play the state up to date
+    # then instead the state will be flagged as invalid, and a full copy of the state
+    # will be retrieved instead
+    maxdeltas: 200
+
+    # Timeouts
+    timeout:
+
+        # How long may returning a single block take
+        singleblock: 2s
+
+        # How long may returning a single state delta take
+        singlestatedelta: 2s
+
+        # How long may transferring the complete state take
+        fullstate: 60s

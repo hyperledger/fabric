@@ -1,0 +1,329 @@
+#!/usr/bin/tclsh
+
+# Copyright IBM Corp. 2016. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# 		 http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set usage {
+Usage: pprofClient ?... args ...? [<peers>] <service>
+
+This script creates and manages connections to the Go 'pprof' profiling
+service that is embedded in the Hyperledger fabric peer. This server provides
+several profiling services that are documented in
+
+    http://golang.org/pkg/net/http/pprof
+
+Once generated the profiles are analyzed with "go tool pprof". Documentation
+for this tool is either incomplete or impossible to find - for a start you can
+try
+
+    go tool pprof --help
+
+or look at
+
+   https://blog.golang.org/profiling-go-programs
+
+The <service> argument of the script is the last portion of the "route" for
+the profiling service. Examples:
+
+   pprofClient profile             # Collect default 30-second profile
+   pprofClient profile?seconds=120 # Collect 120-second profile
+
+NOTE: THE 'PROFILE' ROUTE IS THE ONLY PROFILING FACILITY THAT APPEARS TO WORK
+AS DOCUMENTED WHEN CALLED FROM THIS SCRIPT. SOME CHANGES TO THE PEER WILL OR
+MAY BE REQUIRED TO ENABLE OTHER TYPES OF PROFILES.
+
+By default the script invokes the profiling <service> on every peer defined in
+the $BUSYWORK_HOME/network description, and writes the profile files to
+$BUSYWORK_HOME. To profile a subset of the default peers, provide the optional
+<peers> argument.  In this argument peers are addressed by number, using any
+form acceptable to the Tcl procedure enumerate{} (defined in
+busywork/tcl/lists.tcl).  Examples:
+
+    0            -> Peer 0
+    1,3,5        -> Peers 1, 3 and 5
+    1..3         -> Peers 1, 2 and 3
+    3..4,10,1..2 -> Peers 1, 2, 3, 4, and 10
+
+You can also use this script with any peer network by naming peer profiling
+ports with the -peers option, in which case the <peers> specification is not
+used (or allowed) and all of the peers named with -peers are targeted. The
+default profiling port is assumed to be 6060 for explicit peers that do not
+explicitly name a port, unless overidden with the -port option.
+
+Note that the Go 'pprof' tool does not allow the caller to specify the names
+of the profile files - they are named by the host:port of the profiling port,
+and given sequence numbers to make them unique. When this script is run
+against busywork networks, the final act of the script is to create symbolic
+links that substitute the host:port portion of the file names with the peer
+names (vp[0,...N]).  
+
+Optional arguments, with defaults after the colon:
+
+-h | -help | --help : N/A
+
+    If one of these argument forms is present then this usage message is
+    printed and the script exits normally.
+
+-home <busywork_home> : See below
+
+    This argument can be used to name a BUSYWORK_HOME directory where the
+    'network' file is located.  If not defined here then BUSYWORK_HOME is
+    taken from the environment, or if not present there, defaults to
+    ~/.busywork.
+
+-dir <profile_dir> : $BUSYWORK_HOME
+
+    This argument can be used to name a directory to store the profile files
+    other than the default $BUSYWORK_HOME. However, please read the
+    file-naming caveats above that relate to storing multiple profile files in
+    the same directory.
+
+-wait <duration> : 0s
+
+   If specified, wait this amount of time before executing the actual profiing
+   commands.
+
+-quiet | -verbose : -verbose
+
+   If -quiet is selected, then all output other than error messages is
+   suppressed. The default is -verbose which prints only a few message to
+   describe the action as it progresses.
+
+-tag <tag> : N/A
+
+   When multiple CPU profiles are stored into the same directory, the Go pprof
+   tool tags them with sequence numbers to make them unique. If -tag is
+   specified, these sequence numbers are replaced by the <tag> - Both in the
+   original file and the symbolic link. This can be useful for example if
+   profiles are created by parameter-sweeping runs: The <tag> can be used to
+   identify the parameter set of the run.
+
+-peers : N/A
+
+    Described above.
+
+-port : 6060
+
+    The default profile server port to use for explicitly defined peers
+    (-peers option) that do not name an explicit port.
+}
+
+
+############################################################################
+# The script
+############################################################################
+
+lappend auto_path [file dirname [info script]]/../tcl
+
+package require busywork
+
+setLoggingPrefix pprof
+
+set options {
+    {enum {-h -help --help} parms(help)      0 p_help}
+    {key  -home             parms(home)    {}}
+    {key  -dir              parms(dir)      {} p_dir}
+    {key  -wait             parms(wait)    0s}
+    {bool {-quiet -verbose} parms(quiet)    0}
+    {key  -tag              parms(tag)      {} p_tag}
+    {key  -peers            parms(peers)    {} p_peers}
+    {key  -port             parms(port)  6060}
+}
+        
+mapKeywordArgs $argv $options parms(other)
+
+if {$p_help} {
+    puts $usage
+    exit 0
+}
+
+if {[parms quiet]} {
+    setLoggingLevel {} error
+} else {
+    setLoggingLevel {} note
+}
+    
+parms home [busywork::home [parms home]]
+
+# Handle implicit vs. explict peers. With implicit peers we can give the files
+# recognizable names. With explicit peers we can only use the host:port as the
+# names. 
+
+if {$p_peers} {
+
+    # Explicit peers
+
+   if {[llength [parms other]] != 1} {
+       puts $usage
+       errorExit \
+           "With -peers there must be exactly 1 non-optional argument, " \
+           "the profiling service"
+   }
+   parms service [parms other]
+   parms ids [addPortToHosts [parms peers] [parms port]]
+   parms profileAddresses [parms ids]
+
+} else {
+    
+    # Implicit peers
+    
+    if {[catch {busywork::networkToArray ::parms network.} msg]} {
+        errorExit $msg
+    }
+    
+    switch [llength [parms other]] {
+        
+        1 {
+            # All peers
+            
+            parms service [parms other]
+            parms ids [parms network.peer.ids]
+            parms profileAddresses [parms network.peer.profileAddresses]
+        }
+        2 {
+            # Subset of peers
+            
+            set spec [first [parms other]]
+            parms service [second [parms other]]
+                      
+            if {[catch {enumerate $spec} result]} {
+                errorExit \
+                    "Error parsing peer specification : $result"
+            }
+            set nPeers [llength [parms network.peer.ids]]
+            
+            parms ids \
+                [mapeach n $result {
+                    if {$n > $nPeers} {
+                        errorExit "There is no $n\-th peer"
+                    }
+                    return [lindex [parms network.peer.ids] $n]
+                }]
+            parms profileAddresses \
+                [mapeach n $result {
+                    return [lindex [parms network.peer.profileAddresses] $n]
+                }]
+            
+        }
+        default {
+            puts $usage
+            errorExit "Invalid parameters"
+        }
+    }
+}
+
+
+# We 'fork' the children rather than simply executing the 'go tool pprof'
+# commands in the background to better report on any errors that may occur.
+# Following the examples in the web-docs, we use 'go tool pprof' to collect
+# the data; The tool writes the profiles into the directory named by
+# PPROF_TMPDIR.
+
+if {$p_dir} {
+    if {[catch {exec mkdir -p [parms dir]} why]} {
+        errorExit "Attempt to create [parms dir] failed : $why"
+    }
+    set ::env(PPROF_TMPDIR) [parms dir]
+} else {
+    parms dir [set ::env(PPROF_TMPDIR) [parms home]]
+}
+
+set wait [durationToMs [parms wait]]
+if {$wait != 0} {
+    note {} "Waiting [parms wait] to start profiling"
+    after $wait
+}
+
+if {[parms quiet]} {
+    set stdoe >&/dev/null
+} else {
+    set stdoe {}
+}
+
+foreach id [parms ids] target [parms profileAddresses] {
+    flush stdout
+    flush stderr
+    set pid [fork]
+    switch $pid {
+        -1 {
+            errorExit "Fork failed"
+        }
+        0 {
+            set url http://$target/debug/pprof/[parms service]
+            if {[catch \
+                     {eval exec -ignorestderr go tool pprof $url $stdoe </dev/null} \
+                     reason]} {
+                errorExit "'go tool pprof $url' failed : $reason"
+            }
+            exit 0
+        }
+        default {
+            lappend pids $pid
+        }
+    }
+}
+
+if {[waitPIDs $pids]} {
+    errorExit "One or more profiling processes failed"
+}
+
+
+# If the user named peers explicitly, then we're done. Otherwise, we try to
+# find the profile files that the tool just created and link the names given
+# by the tool with names based on the peer IDs. The Go pprof tool does not
+# support providing names for the profile files - it names them based on their
+# http addresses using the form 'pprof.<host+port>.<other junk>'.
+
+# The renaming-via-links being done here is not perfect in every case, and can
+# cause confusion (but NOT lost files) if profiles from multiple runs are
+# stored in the same directory.
+
+# This code is easier if we first switch to the profiling directory.
+
+if {!$p_peers} {
+    cd [parms dir]
+    foreach id [parms ids] target [parms profileAddresses] {
+        set idMap($target) $id
+    }
+    foreach file [glob pprof.*] {
+        if {[regexp {^pprof.([^:]+:\d+)(.*)(\d\d\d)(.*)} \
+                 $file match host a b c]} {
+            if {[info exists idMap($host)]} {
+                if {$p_tag} {
+                    set b [parms tag]
+                }
+                set reName pprof.$host$a$b$c
+                set newName pprof.$idMap($host)$a$b$c
+                if {![file exists $newName]} {
+                    if {$p_tag} {
+                        if {[catch {exec mv $file $reName} why]} {
+                            errorExit "Can't rename $file to $reName : $why"
+                        }
+                        if {[catch {exec ln -sf $reName $newName} code]} {
+                            errorExit \
+                                "Error linking $file to $newName : $code"
+                        }
+                        note {} "$newName -> $reName (from $file)"
+                    } else {
+                        if {[catch {exec ln -sf $file $newName} code]} {
+                            errorExit \
+                                "Error linking $file to $newName : $code"
+                        }
+                        note {} "$newName -> $file"
+                    }                        
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,22 @@
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+    # Path on the file system where peer will store data
+    fileSystemPath: /var/hyperledger/test/ledge/statemgmt/state/testdb
+
+ledger:
+
+  state:
+
+    # Control the number state deltas that are maintained. This takes additional
+    # disk space, but allow the state to be rolled backwards and forwards
+    # without the need to replay transactions.
+    deltaHistorySize: 500
+    dataStructure:
+      name: buckettree
+      configs:
+        numBuckets: 10009
+        maxGroupingAtEachLevel: 10

@@ -1,0 +1,196 @@
+###############################################################################
+#
+#    CAs section
+#
+###############################################################################
+server:
+        version: "0.1"
+        port: ":50541"
+
+
+security:
+    # Can be 256 or 384
+    # Must be the same as in core.yaml
+    level: 256
+
+    # Enable/Disable multithread
+    multithreading:
+      enabled: false
+
+    # TCerts related configuration
+    tcert:
+      batch:
+        # The size of the batch of TCerts
+        size:  200
+    level: 256
+    hashAlgorithm: SHA3
+
+eca:
+    affiliations:
+        banks_and_institutions:
+            banks:
+                - bank_a
+                - bank_b
+                - bank_c
+            institutions:
+                - institution_a
+
+    users:
+        # clients
+        userthread: 1 9gvZQRwhUq9q bank_a
+        user1: 1 9gvZQRwhUq9q bank_a
+        user2: 1 9gvZQRwhUq9q bank_a
+        TestRegistrationSameEnrollIDDifferentRole: 1 9gvZQRwhUq9q bank_a
+
+        # peers
+        peer: 2 9gvZQRwhUq9q bank_a
+        peerthread: 2 9gvZQRwhUq9q bank_a
+
+        # validators
+        validator: 4 9gvZQRwhUq9q bank_a
+        validatorthread: 4 9gvZQRwhUq9q bank_a
+
+tca:
+    attribute-encryption:
+       enabled: true
+
+aca:
+    attributes:
+        attribute-entry-0: user1;bank_a;company;ACompany;2015-01-01T00:00:00-03:00;;
+        attribute-entry-1: user1;bank_a;position;Software Staff;2015-01-01T00:00:00-03:00;2015-07-12T23:59:59-03:00;
+        attribute-entry-2: user1;bank_a;position;Software Engineer;2015-07-13T00:00:00-03:00;;
+        attribute-entry-3: user2;bank_a;company;ACompany;2001-02-02T00:00:00-03:00;;
+        attribute-entry-4: user2;bank_a;position;Project Manager;2001-02-02T00:00:00-03:00;;
+    address: localhost:50541
+    server-name: acap
+    enabled: true
+
+
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+
+
+peer:
+    pki:
+        eca:
+            paddr: localhost:50541
+
+        tca:
+            paddr: localhost:50541
+
+        tlsca:
+            paddr: localhost:50541
+
+        tls:
+            enabled: false
+            rootcert:
+
+            # The server name use to verify the hostname returned by TLS handshake
+            serverhostoverride:
+
+    validator:
+        enabled: false
+
+###############################################################################
+#
+#    Security section - Applied to all entities (client, NVP, VP)
+#
+###############################################################################
+security:
+    # TCerts related configuration
+    tcert:
+      batch:
+        # The size of the batch of TCerts
+        size:  10
+      attributes:
+        company: ACompany
+        position: "Software Engineer"
+      abac:
+        enabled: true
+    level: 256
+    hashAlgorithm: SHA3
+
+###############################################################################
+#
+#    Test parameters section
+#
+###############################################################################
+
+logging:
+
+    # Valid logging levels are case-insensitive strings chosen from
+
+    #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
+
+    # Logging 'module' names are also strings, however valid module names are
+    # defined at runtime and are not checked for validity during option
+    # processing.
+
+    # Default logging levels are specified here for each of the obc-peer
+    # commands. For commands that have subcommands, the defaults also apply to
+    # all subcommands of the command. These logging levels can be overridden
+    # on the command line using the --logging-level command-line option, or by
+    # setting the CORE_LOGGING_LEVEL environment variable.
+
+    # The logging level specification is of the form
+
+    #     [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
+
+    # A logging level by itself is taken as the overall default. Otherwise,
+    # overrides for individual or groups of modules can be specified using the
+    # <module>[,<module>...]=<level> syntax.
+
+    # Examples:
+    #   info                                       - Set default to INFO
+    #   warning:main,db=debug:chaincode=info       - Override default WARNING in main,db,chaincode
+    #   chaincode=info:main=debug:db=debug:warning - Same as above
+    peer:      info
+    crypto:    info
+    status:    warning
+    stop:      warning
+    login:     warning
+    vm:        warning
+    chaincode: warning
+
+
+
+tests:
+
+    crypto:
+
+        users:
+
+            user1:
+                enrollid: user1
+                enrollpw: 9gvZQRwhUq9q
+
+            user2:
+                enrollid: user2
+                enrollpw: 9gvZQRwhUq9q
+
+            validator:
+                enrollid: validator
+                enrollpw: 9gvZQRwhUq9q
+
+            validatorthread:
+                enrollid: validatorthread
+                enrollpw: 9gvZQRwhUq9q
+
+            peer:
+                enrollid: peer
+                enrollpw: 9gvZQRwhUq9q
+
+            peerthread:
+                enrollid: peerthread
+                enrollpw: 9gvZQRwhUq9q
+
+            TestRegistrationSameEnrollIDDifferentRole:
+                enrollid: TestRegistrationSameEnrollIDDifferentRole
+                enrollpw: 9gvZQRwhUq9q
+
+            userthread:
+                enrollid: userthread
+                enrollpw: 9gvZQRwhUq9q

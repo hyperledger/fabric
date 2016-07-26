@@ -1,0 +1,4 @@
+.project
+node_modules/*
+/.idea/
+/node.iml

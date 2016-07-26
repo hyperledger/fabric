@@ -1,0 +1,56 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package protos;
+
+import "fabric.proto";
+import "google/protobuf/empty.proto";
+
+// Interface exported by the server.
+service Openchain {
+
+    // GetBlockchainInfo returns information about the blockchain ledger such as
+    // height, current block hash, and previous block hash.
+    rpc GetBlockchainInfo(google.protobuf.Empty) returns (BlockchainInfo) {}
+
+    // GetBlockByNumber returns the data contained within a specific block in the
+    // blockchain. The genesis block is block zero.
+    rpc GetBlockByNumber(BlockNumber) returns (Block) {}
+
+    // GetBlockCount returns the current number of blocks in the blockchain data
+    // structure.
+    rpc GetBlockCount(google.protobuf.Empty) returns (BlockCount) {}
+
+    // GetPeers returns a list of all peer nodes currently connected to the target
+    // peer.
+    rpc GetPeers(google.protobuf.Empty) returns (PeersMessage) {}
+}
+
+// Specifies the block number to be returned from the blockchain.
+message BlockNumber {
+
+    uint64 number = 1;
+
+}
+
+// Specifies the current number of blocks in the blockchain.
+message BlockCount {
+
+    uint64 count = 1;
+
+}

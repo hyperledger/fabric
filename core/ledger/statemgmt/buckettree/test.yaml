@@ -1,0 +1,15 @@
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+    # Path on the file system where peer will store data
+    fileSystemPath: /var/hyperledger/test/ledger/statemgmt/buckettree/testdb
+ledger:
+  state:
+    dataStructure:
+      name: buckettree
+      configs:
+        numBuckets: 19
+        maxGroupingAtEachLevel: 3

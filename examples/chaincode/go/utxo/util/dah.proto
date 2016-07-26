@@ -1,0 +1,41 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package utxo;
+
+message TX {
+	uint32 version = 1;
+	uint32 lockTime = 2;
+	message TXIN {
+		uint32 ix = 1;
+		bytes sourceHash = 2;
+		bytes script = 3;
+		uint32 sequence = 4;
+	}
+	repeated TXIN txin = 3;
+
+	message TXOUT {
+		uint64 value = 1;
+		bytes script = 2;
+		bytes color = 3;
+        uint64 quantity = 4;
+	}
+	repeated TXOUT txout = 4;
+	repeated bytes blocks = 5;
+	uint64 fee = 6;
+}

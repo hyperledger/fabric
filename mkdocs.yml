@@ -1,0 +1,51 @@
+site_name: Hyperledger Fabric
+site_url: http://hyperledger-fabric.readthedocs.io
+theme: readthedocs
+repo_url: https://github.com/hyperledger/fabric
+site_description: 'Welcome to the Hyperledger fabric documentation'
+
+pages:
+- Home: index.md
+- Glossary: glossary.md
+- Protocol Spec: protocol-spec.md
+- Usecases: biz/usecases.md
+
+- Setup:
+  - Fabric Developer Setup: dev-setup/devenv.md
+  - Building Fabric: dev-setup/build.md
+  - Chaincode or Application Developer Setup: Setup/Chaincode-setup.md
+  - Java Chaincode Setup: Setup/JAVAChaincode.md
+  - Fabric Network Setup: Setup/Network-setup.md
+  - NodeSDK Setup: Setup/NodeSDK-setup.md
+  - CA Setup: Setup/ca-setup.md
+  - Logging: Setup/logging-control.md
+
+- API:
+  - Chaincode APIs: API/ChaincodeAPI.md
+  - Core API: API/CoreAPI.md
+  - CA API: API/MemberServicesAPI.md
+  - System Chaincode: SystemChaincodes/noop.md
+
+- FAQ:
+  - ChainCodeFAQ: FAQ/chaincode_FAQ.md
+  - ConfidentialityFAQ: FAQ/confidentiality_FAQ.md
+  - ConsensusFAQ: FAQ/consensus_FAQ.md
+  - Identity ManagementFAQ: FAQ/identity_management_FAQ.md
+  - UsageFAQ: FAQ/usage_FAQ.md
+
+- Tech:
+  - Application ACL: tech/application-ACL.md
+  - Attributes: tech/attributes.md
+  - Best Practices: tech/best-practices.md
+
+markdown_extensions:
+  - extra
+  - tables
+  - toc
+  - fenced_code
+  - smarty
+  - mdx_math:
+      enable_dollar_delimiter: True #for use of inline $..$
+  - footnotes
+
+copyright: Copyright &copy; 2016 IBM Corp. <br></br>Contributed to the Hyperledger Project under the <a href="https://github.com/hyperledger/fabric/blob/master/LICENSE" target="_blank">Apache Software License 2.0</a>

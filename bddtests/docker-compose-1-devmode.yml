@@ -1,0 +1,16 @@
+vp0:
+  extends:
+    file: compose-defaults.yml
+    service: vp
+  environment:
+    - CORE_PEER_ID=vp0
+  command: sh -c "peer node start --peer-chaincodedev"
+
+ccenv:
+  image: hyperledger/fabric-ccenv
+  environment:
+    - CORE_CHAINCODE_ID_NAME=testCC
+    - CORE_PEER_ADDRESS=vp0:30303
+  command: bash -c "GOBIN=/opt/gopath/bin go install github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 && /opt/gopath/bin/chaincode_example02"
+  links:
+    - vp0

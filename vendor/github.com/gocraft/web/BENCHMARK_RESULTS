@@ -1,0 +1,87 @@
+Result of running `go test speed_test.go -test.bench=.* -test.benchmem=true` on my 2.3 GHz Macbook Pro.
+
+2014/08/30 commit 056ab3d12ad9e8120f7818454ee5c27c478e2b3d (minor tweaks)
+BenchmarkGocraftWeb_Simple	 2000000	       788 ns/op	     347 B/op	       7 allocs/op
+BenchmarkGocraftWeb_Route15	 1000000	      2329 ns/op	     736 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route75	 1000000	      2339 ns/op	     735 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route150	 1000000	      2331 ns/op	     737 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route300	 1000000	      2329 ns/op	     736 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route3000	 1000000	      2392 ns/op	     738 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Middleware	  200000	      6533 ns/op	    1690 B/op	      23 allocs/op
+BenchmarkGocraftWeb_Generic	 1000000	      1428 ns/op	     486 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Composite	  200000	      8018 ns/op	    1851 B/op	      23 allocs/op
+
+//
+// Everything below is via a slower Macbook Air (1.8 GHz):
+//
+
+2013/12/15 commit a32b88c2a5e1df88a16cd909f800460ff79edbaf (playing with how dynamic handlers are invoked. middleware/composite seem to be mutually exclusive for 5k ns/op)
+BenchmarkGocraftWeb_Simple	 1000000	      1216 ns/op	     333 B/op	       7 allocs/op
+BenchmarkGocraftWeb_Route15	  500000	      3337 ns/op	     612 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Route75	  500000	      3234 ns/op	     612 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Route150	  500000	      3298 ns/op	     612 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Route300	  500000	      3217 ns/op	     612 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Route3000	  500000	      3478 ns/op	     615 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Middleware	  200000	     14566 ns/op	     779 B/op	      16 allocs/op
+BenchmarkGocraftWeb_Generic	 1000000	      1885 ns/op	     457 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Composite	  200000	      9750 ns/op	     917 B/op	      16 allocs/op
+
+2013/12/15 commit 51a79f5dae0bc4847a5eb7cc8b44b6eeb70c13fc (fast generic action handlers. Don't call generic action handlers via reflection)
+BenchmarkGocraftWeb_Simple	 1000000	      1271 ns/op	     333 B/op	       7 allocs/op
+BenchmarkGocraftWeb_Route15	  500000	      2955 ns/op	     633 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Route75	  500000	      2959 ns/op	     633 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Route150	  500000	      2982 ns/op	     633 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Route300	  500000	      3046 ns/op	     633 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Route3000	  500000	      3459 ns/op	     633 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Middleware	  200000	      9438 ns/op	     779 B/op	      16 allocs/op
+BenchmarkGocraftWeb_Generic	 1000000	      1933 ns/op	     457 B/op	       9 allocs/op
+BenchmarkGocraftWeb_Composite	  100000	     15030 ns/op	    1072 B/op	      17 allocs/op
+
+2013/12/15 commit 0e41f71c706db24fd56979361bb5cfa19b4828e2 (fast generic middleware. Don't call generic middleware via reflection)
+BenchmarkGocraftWeb_Simple	 1000000	      2036 ns/op	     366 B/op	       8 allocs/op
+BenchmarkGocraftWeb_Route15	  500000	      3080 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route75	  500000	      3452 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route150	  500000	      3199 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route300	  500000	      3212 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route3000	  500000	      3667 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Middleware	  200000	      8888 ns/op	     862 B/op	      17 allocs/op
+BenchmarkGocraftWeb_Generic	 1000000	      2853 ns/op	     490 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Composite	  200000	     12352 ns/op	    1152 B/op	      18 allocs/op
+
+2013/12/15 commit e75a372bb80dc50627730b52adfcbdc4a6a723f5 (optimization pass. reduce allocations. manual closure.)
+BenchmarkGocraftWeb_Simple	 1000000	      2042 ns/op	     366 B/op	       8 allocs/op
+BenchmarkGocraftWeb_Route15	  500000	      3203 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route75	  500000	      3237 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route150	  500000	      3231 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route300	  500000	      3263 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Route3000	  500000	      3719 ns/op	     713 B/op	      10 allocs/op
+BenchmarkGocraftWeb_Middleware	  200000	      9148 ns/op	     862 B/op	      17 allocs/op
+BenchmarkGocraftWeb_Generic	  200000	      8229 ns/op	     680 B/op	      16 allocs/op
+BenchmarkGocraftWeb_Composite	  200000	     10038 ns/op	    1152 B/op	      18 allocs/op
+
+2013/12/14 commit fb4b15ee25ce11e3ea583f38cecebec8979ebb12 (no functional changes; just revamping benches)
+BenchmarkGocraftWeb_Simple	 1000000	      2517 ns/op	     472 B/op	      16 allocs/op
+BenchmarkGocraftWeb_Route15	  500000	      3829 ns/op	     859 B/op	      20 allocs/op
+BenchmarkGocraftWeb_Route75	  500000	      3944 ns/op	     859 B/op	      20 allocs/op
+BenchmarkGocraftWeb_Route150	  500000	      3977 ns/op	     859 B/op	      20 allocs/op
+BenchmarkGocraftWeb_Route300	  500000	      3948 ns/op	     859 B/op	      20 allocs/op
+BenchmarkGocraftWeb_Route3000	  500000	      4492 ns/op	     860 B/op	      20 allocs/op
+BenchmarkGocraftWeb_Middleware	  200000	     11068 ns/op	    1683 B/op	      35 allocs/op
+BenchmarkGocraftWeb_Generic	  200000	      9336 ns/op	     913 B/op	      28 allocs/op
+BenchmarkGocraftWeb_Composite	  200000	     11572 ns/op	    1890 B/op	      34 allocs/op
+
+2013/11/27 commit 0991ee88750eb6b054c715ef03cf8f9fba47c6e5 (after implementing regexp segment conditions)
+BenchmarkSimple	  500000	      2749 ns/op	     537 B/op	      16 allocs/op
+BenchmarkRouting	  500000	      3915 ns/op	     843 B/op	      19 allocs/op
+BenchmarkMiddleware	  200000	      9281 ns/op	     897 B/op	      27 allocs/op
+
+2013/11/25 commit 49658cd6cd345d4e779a7033c6b5d1e3077f56f3 (baseline)
+BenchmarkSimple	  500000	      2760 ns/op	     537 B/op	      16 allocs/op
+BenchmarkRouting	  500000	      3896 ns/op	     843 B/op	      19 allocs/op
+BenchmarkMiddleware	  200000	      9177 ns/op	     897 B/op	      27 allocs/op
+
+
+NOTES ON PROFILING:
+go test -bench=BenchmarkGocraftWeb_Composite -benchmem -memprofile mem.out
+go tool pprof web.test mem.out
+rm myprof* && go build -o myprof examples/prof/main.go && ./myprof && go tool pprof myprof myprof.out

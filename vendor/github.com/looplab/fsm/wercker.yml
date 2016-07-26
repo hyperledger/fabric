@@ -1,0 +1,31 @@
+box: wercker/golang
+
+build:
+  steps:
+    # Sets the go workspace and places you package
+    # at the right place in the workspace tree
+    - setup-go-workspace
+
+    # Gets the dependencies
+    - script:
+        name: go get
+        code: |
+          cd $WERCKER_SOURCE_DIR
+          go version
+          go get -t ./...
+
+    # Build the project
+    - script:
+        name: go build
+        code: |
+          go build ./...
+
+    # Test the project
+    - script:
+        name: go test
+        code: |
+          go get golang.org/x/tools/cmd/cover
+          go get github.com/axw/gocov/gocov
+          go get github.com/mattn/goveralls
+          git checkout master
+          goveralls -service wercker.com -repotoken $COVERALLS_TOKEN

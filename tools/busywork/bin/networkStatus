@@ -1,0 +1,188 @@
+#!/usr/bin/tclsh
+
+# Copyright IBM Corp. 2016. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# 		 http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set usage {
+Usage: networkStatus ?... args ...?
+
+This script reads the $BUSYWORK_HOME/network file (if it exists) and reports
+on the status of Hyperledger fabric network processes. The script normally
+prints human-oriented reports on stderr; Use the -quiet option to suppress all
+but actual error messages.
+
+In the default mode the script exits normally if the network seems to be alive
+and well, otherwise with a non-0 return code. A polling mode is also provided
+that allows the script to serve as a watchdog process, with an optional
+callback in the event an error is detected.
+
+Optional arguments, with defaults after the colon:
+
+-h | -help | --help : N/A
+
+    If one of these argument forms is present then this usage message is
+    printed and the script exits normally.
+
+-home <busywork_home> : See below
+
+    This argument can be used to name a BUSYWORK_HOME directory to use for the
+    network on the command line. If not defined here then BUSYWORK_HOME is
+    taken from the environment, or if not present there, defaults to
+    ~/.busywork.
+
+-quiet | -verbose : -verbose
+
+    Select -quiet to suppress informative output, and simply return a 0 or
+    non-0 exit code to indicate success or failure.
+
+-poll <duration> : -1
+
+    Specify a non-negative polling interval for -poll to create a polling
+    network watchdog process.
+
+-onError : {}
+
+    The -onError parameter is a Tcl script that will be evaluted in the event
+    that an error in the network is detected. For example, test drivers may
+    specifiy a callback that signals the process that started the
+    networkStatus process:
+
+        exec networkStatus -poll 5s -onError "kill SIGINT [pid]"
+}
+
+############################################################################
+# Status reports by network mode
+############################################################################
+
+# User-mode networks are easy. We simply use 'ps' to query the PID of each
+# process and report based on the 'stat' of the process (if it exists).
+
+proc userModeNetwork {} {
+
+    while {1} {
+
+        set errors 0
+
+        note {} " User-mode Network Status"
+        note {} "Peer  PID   STAT : Status"
+        note {} "__________________________"
+
+        proc report {id pid stat status {level note}} {
+            $level {} [format "%5s %5s %3s : %s" $id $pid $stat $status]
+        }
+
+        set ids [parms network.peer.ids]
+        set pids [parms network.peer.pids]
+        if {[parms network.security]  eq "true"} {
+            set ids [concat CA $ids]
+            set pids [concat [parms network.membersrvc.pid] $pids]
+        }
+        
+        foreach id $ids pid $pids {
+
+            if {[catch {exec ps -p $pid -o stat h} stat]} {
+
+                report $id $pid {} "Process not found, assumed dead" err
+                incr errors
+
+            } else {
+
+                set error 0
+                switch [string range $stat 0 0] {
+                    D -
+                    R -
+                    S {
+                        set status OK
+                    }
+                    T {
+                        set status "Stopped - Considered an error"
+                        incr error
+                    }
+                    X {
+                        set status Dead
+                        inr error
+                    }
+                    Z {
+                        set status Zombie
+                        incr error
+                    }
+                    default {
+                        error "Unexpected process status $stat"
+                    }
+                }
+
+                incr errors $error
+                report $id $pid $stat $status [? $error err note]
+            }
+        }
+
+        if {$errors} {
+            errorExit "Aborting due to errors"
+        }
+
+        if {[parms poll] < 0} {
+            break
+        }
+        after [parms poll]
+    }
+}
+
+
+############################################################################
+# The script
+############################################################################
+
+lappend auto_path [file dirname [info script]]/../tcl
+
+package require busywork
+
+setLoggingPrefix status
+
+set options {
+    {enum {-h -help --help} parms(help)     0  p_help}
+    {key  -home             parms(home)    {}}
+    {bool {-quiet -verbose} parms(quiet)    0}
+    {key  -poll             parms(poll)    -1}
+    {key  -onError          parms(onError)  {} p_onError}
+}
+        
+mapKeywordArgs $argv $options
+
+if {$p_help} {
+    puts $usage
+    exit 0
+}
+
+setLoggingLevel {} [? [parms quiet] error note]
+
+parms home [busywork::home [parms home]]
+
+if {[catch {busywork::networkToArray ::parms network.} msg]} {
+    errorExit $msg
+}
+
+parms poll [durationToMs [parms poll]]
+
+if {$p_onError} {
+    atErrorExit [parms onError]
+}
+
+switch [parms network.networkMode] {
+    user {
+        userModeNetwork
+    }
+    default {
+        errorExit "Unsupported network mode : [parms network.networkMode]"
+    }
+}

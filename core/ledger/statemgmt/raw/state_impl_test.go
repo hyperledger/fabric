@@ -1,0 +1,25 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package raw
+
+import "testing"
+
+func TestSkipAll(t *testing.T) {
+	t.Skip(`No tests in this package for now - This package is only experimental as yet.
+		The primary use of this package as yet is to measure what maximum performance we can get from a very basic state implementation
+    that doe not implement any hash computation function`)
+}

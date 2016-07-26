@@ -1,0 +1,234 @@
+---
+###############################################################################
+#
+#    CLI section
+#
+###############################################################################
+cli:
+
+    # The address that the cli process will use for callbacks from chaincodes
+    address: 0.0.0.0:30304
+
+
+
+###############################################################################
+#
+#    REST section
+#
+###############################################################################
+rest:
+
+    # The address that the REST service will listen on for incoming requests.
+    address: 0.0.0.0:5000
+
+
+
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+
+    # Peeer Version following version semantics as described here http://semver.org/
+    # The Peer supplies this version in communications with other Peers
+    version:  0.1.0
+
+    # The Peer id is used for identifying this Peer instance.
+    id: jdoe
+
+    # The privateKey to be used by this peer
+    privateKey: 794ef087680e2494fa4918fd8fb80fb284b50b57d321a31423fe42b9ccf6216047cea0b66fe8365a8e3f2a8140c6866cc45852e63124668bee1daa9c97da0c2a
+
+    # The networkId allows for logical seperation of networks
+    # networkId: dev
+    # networkId: test
+    networkId: dev
+
+    Dockerfile:  |
+        from hyperledger/fabric-baseimage
+        # Copy GOPATH src and install Peer
+        COPY src $GOPATH/src
+        RUN mkdir -p /var/hyperledger/db
+        WORKDIR $GOPATH/src/github.com/hyperledger/fabric/peer/
+        RUN CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy" go install && cp $GOPATH/src/github.com/hyperledger/fabric/peer/core.yaml $GOPATH/bin
+
+    # The Address this Peer will bind to for providing services
+    address: 0.0.0.0:30303
+    # Whether the Peer should programmatically determine the address to bind to. This case is useful for docker containers.
+    addressAutoDetect: false
+
+
+    # Logging settings
+    logging:
+        # Logging level, can be one of [error|warning|info|debug]
+        # One of: CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
+        level: DEBUG
+
+    # Peer port to accept connections on
+    port:    30303
+    # Peer's setting for GOMAXPROCS
+    gomaxprocs: 2
+    workers: 2
+
+    # Validator defines whether this peer is a validating peer or not, and if
+    # it is enabled, what consensus plugin to load
+    validator:
+        enabled: true
+        # Consensus plugin to use. The value is the name of the plugin; ie bpft, noops
+        consensus: noops
+
+    # TLS Settings for p2p communications
+    tls:
+        enabled:  false
+        cert:
+            file: testdata/server1.pem
+        key:
+            file: testdata/server1.key
+        # The server name use to verify the hostname returned by TLS handshake
+        serverhostoverride:
+
+    # Peer discovery settings.  Controls how this peer discovers other peers
+    discovery:
+
+        # The root nodes are used for bootstrapping purposes, and generally supplied through ENV variables
+        rootnode:
+
+        # The duration of time between attempts to asks peers for their connected peers
+        period:  5s
+
+        ## leaving this in for example of sub map entry
+        # testNodes:
+        #    - node   : 1
+        #      ip     : 127.0.0.1
+        #      port   : 30303
+        #    - node   : 2
+        #      ip     : 127.0.0.1
+        #      port   : 30303
+
+        # Should the discovered nodes and their reputations
+        # be stored in DB and persisted between restarts
+        persist:    true
+
+        # if peer discovery is off
+        # the peer window will show
+        # only what retrieved by active
+        # peer [true/false]
+        enabled:    true
+
+        # number of workers that
+        # tastes the peers for being
+        # online [1..10]
+        workers: 8
+
+        # the period in seconds with which the discovery
+        # tries to reconnect to successful nodes
+        # 0 means the nodes are not reconnected
+        touchPeriod: 600
+
+        # the maximum nuber of nodes to reconnect to
+        # -1 for unlimited
+        touchMaxNodes: 100
+
+    # Path on the file system where peer will store data
+    fileSystemPath: /var/hyperledger/test/genesis_test
+
+### NOTE: The validator section below is not needed and will be removed - BN
+###############################################################################
+#
+#    Validator section
+#
+###############################################################################
+validator:
+    enabled: false
+    address: 0.0.0.0:30304
+    # TLS Settings for p2p communications
+    tls:
+        enabled:  false
+        cert:
+            file: testdata/server1.pem
+        key:
+            file: testdata/server1.key
+        # The server name use to verify the hostname returned by TLS handshake
+        serverhostoverride:
+    # Peer discovery settings.  Controls how this peer discovers other peers
+    discovery:
+
+        # The root nodes are used for bootstrapping purposes, and generally supplied through ENV variables
+        rootnode:
+
+###############################################################################
+#
+#    VM section
+#
+###############################################################################
+vm:
+
+    # Endpoint of the vm management system.  For docker can be one of the following in general
+    # unix:///var/run/docker.sock
+    # http://localhost:2375
+    endpoint: unix:///var/run/docker.sock
+
+
+###############################################################################
+#
+#    Chaincode section
+#
+###############################################################################
+chaincode:
+
+    # The id is used by the Chaincode stub to register the executing ChaincodeID with the Peerand is generally supplied through ENV variables
+    id:
+        url:
+        version:
+
+    golang:
+
+        # This is the basis for the Golang Dockerfile.  Additional commands will be appended depedendent upon the chaincode specification.
+        Dockerfile:  |
+            from hyperledger/fabric-baseimage
+            COPY src $GOPATH/src
+            WORKDIR $GOPATH
+
+    #timeout for starting up a container and waiting for Register to come through
+    startuptimeout: 20000
+
+    #mode - options are "dev", "net"
+    #dev - in dev mode, user runs the chaincode after starting validator from command line on local machine
+    #net - in net mode validator will run chaincode in a docker container
+
+    mode: net
+
+    installpath: /opt/gopath/bin/
+
+###############################################################################
+#
+#    Ledger section - ledger configuration encompases both the blockchain
+#    and the state
+#
+###############################################################################
+ledger:
+
+  blockchain:
+
+    # Define the genesis block
+    genesisBlock:
+
+      # Deploy chaincodes into the genesis block
+      chaincode:
+          path: github.com/hyperledger/fabric/core/example/chaincode/chaincode_example01
+          type: GOLANG
+          constructor:
+            func: init
+            args:
+              - alice
+              - "4"
+              - bob
+              - "10"
+
+  state:
+
+    # Control the number state deltas that are maintained. This takes additional
+    # disk space, but allow the state to be rolled backwards and forwards
+    # without the need to replay transactions.
+    deltaHistorySize: 500

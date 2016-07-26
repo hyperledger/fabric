@@ -1,0 +1,14 @@
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+
+ledger:
+  state:
+    dataStructure:
+      configs:
+        numBuckets: 1000003
+        maxGroupingAtEachLevel: 5
+        bucketCacheSize: 100

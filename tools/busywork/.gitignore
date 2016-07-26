@@ -1,0 +1,9 @@
+# Emacs backups and temporaries
+*~
+*#
+# Private make files
+private.mk
+# Executables
+counters/counters
+benchmarks/benchmarks
+

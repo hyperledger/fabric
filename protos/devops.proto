@@ -1,0 +1,97 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package protos;
+
+import "chaincode.proto";
+import "fabric.proto";
+
+// Interface exported by the server.
+service Devops {
+    // Log in - passed Secret object and returns Response object, where
+    // msg is the security context to be used in subsequent invocations
+    rpc Login(Secret) returns (Response) {}
+
+    // Build the chaincode package.
+    rpc Build(ChaincodeSpec) returns (ChaincodeDeploymentSpec) {}
+
+    // Deploy the chaincode package to the chain.
+    rpc Deploy(ChaincodeSpec) returns (ChaincodeDeploymentSpec) {}
+
+    // Invoke chaincode.
+    rpc Invoke(ChaincodeInvocationSpec) returns (Response) {}
+
+    // Invoke chaincode.
+    rpc Query(ChaincodeInvocationSpec) returns (Response) {}
+
+    // Retrieve a TCert.
+    rpc EXP_GetApplicationTCert(Secret) returns (Response) {}
+
+    // Prepare for performing a TX, which will return a binding that can later be used to sign and then execute a transaction.
+    rpc EXP_PrepareForTx(Secret) returns (Response) {}
+
+    // Prepare for performing a TX, which will return a binding that can later be used to sign and then execute a transaction.
+    rpc EXP_ProduceSigma(SigmaInput) returns (Response) {}
+
+    // Execute a transaction with a specific binding
+    rpc EXP_ExecuteWithBinding(ExecuteWithBinding) returns (Response) {}
+
+}
+
+
+// Secret is a temporary object to establish security with the Devops.
+// A better solution using certificate will be introduced later
+message Secret {
+    string enrollId = 1;
+    string enrollSecret = 2;
+}
+
+message SigmaInput {
+    Secret secret = 1;
+    bytes appTCert = 2;
+    bytes data = 3;
+}
+
+message ExecuteWithBinding {
+    ChaincodeInvocationSpec chaincodeInvocationSpec = 1;
+    bytes binding = 2;    
+}
+
+message SigmaOutput {
+    bytes tcert = 1;
+    bytes sigma = 2;
+    bytes asn1Encoding = 3;
+}
+
+
+message BuildResult {
+
+    enum StatusCode {
+        UNDEFINED = 0;
+        SUCCESS = 1;
+        FAILURE = 2;
+    }
+
+    StatusCode status = 1;
+    string msg = 2;
+    ChaincodeDeploymentSpec deploymentSpec = 3;
+}
+
+message TransactionRequest {
+    string transactionUuid = 1;
+}

@@ -1,0 +1,505 @@
+# CA server parameters
+#
+server:
+        # current version of the CA
+        version: "0.1"
+
+        # limits the number of operating system threads used by the CA
+        gomaxprocs: 2
+
+        # path to the OBC state directory and CA state subdirectory
+        rootpath: "/tmp/hyperledger/production"
+        cadir: ".membersrvc"
+
+        # port the CA services are listening on
+        port: ":50051"
+
+        # TLS certificate and key file paths
+        tls:
+#              certfile: "/var/hyperledger/production/.ca/tlsca.cert"
+#              keyfile: "/var/hyperledger/production/.ca/tlsca.priv"
+
+security:
+    # Can be 256 or 384
+    # Must be the same as in core.yaml
+    level: 256
+
+# Enabling/disabling different logging levels of the CA.
+#
+logging:
+        trace: 0
+        info: 1
+        warning: 1
+        error: 1
+        panic: 1
+
+# TCA configuration for attribute encryption
+tca:
+    # Enabling/disabling attributes encryption, if is enabled attributes within the certificate will be encrypted using a specific key for each attribute,
+    # in otherwise cleartext attribute value will be added into the certificate.
+    attribute-encryption:
+        enabled: false
+
+# Default attributes for Attribute Certificate Authority
+aca:
+    attributes:
+        attribute-entry-0: admin;bank_a;role;issuer;2015-01-01T00:00:00-03:00;;
+        attribute-entry-1: alice;bank_a;role;client;2016-01-01T00:00:00-03:00;;
+        attribute-entry-2: alice;bank_a;account1;22222-00001;2016-01-01T00:00:00-03:00;;
+        attribute-entry-3: alice;bank_a;account2;22222-00002;2016-01-01T00:00:00-03:00;;
+        attribute-entry-4: alice;bank_a;account3;22222-00003;2016-01-01T00:00:00-03:00;;
+        attribute-entry-5: alice;bank_a;account4;22222-00004;2016-01-01T00:00:00-03:00;;
+        attribute-entry-6: alice;bank_a;contactInfo;alice@gmail.com;2016-01-01T00:00:00-03:00;;
+        attribute-entry-7: bob;bank_a;role;client;2015-02-02T00:00:00-03:00;;
+        attribute-entry-8: bob;bank_a;account1;11111-00001;2016-01-01T00:00:00-03:00;;
+        attribute-entry-9: bob;bank_a;account2;11111-00002;2015-02-02T00:00:00-03:00;;
+        attribute-entry-10: bob;bank_a;account3;11111-00003;2015-02-02T00:00:00-03:00;;
+        attribute-entry-11: bob;bank_a;contactInfo;bob@yahoo.com;2015-02-02T00:00:00-03:00;;
+
+    address: localhost:50051
+    server-name: acap
+    enabled: true
+
+# Default users to be registered with the CA on first launch.  The role is a binary OR
+# of the different roles a user can have:
+#
+# - simple client such as a wallet: CLIENT
+# - non-validating peer: PEER
+# - validating client: VALIDATOR
+# - auditing client: AUDITOR
+#
+eca:
+        affiliations:
+           banks_and_institutions:
+              banks:
+                  - bank_a
+                  - bank_b
+                  - bank_c
+              institutions:
+                  - institution_a
+        users:
+                # <EnrollmentID>: <role (1:client, 2: peer, 4: validator, 8: auditor)> <EnrollmentPWD> <Affiliation> <Affiliation_Role>
+                alice: 1 NPKYL39uKbkj bank_a
+                bob: 1 DRJ23pEQl16a bank_a
+                admin: 1 6avZQLwcUe9b bank_a
+
+                vp: 4 f3489fy98ghf
+
+pki:
+          validity-period:
+                 # Setting the update property will prevent the invocation of the update_validity_period system chaincode to update the validity period.
+                 update: false
+                 chaincodeHash: 6091c3abd07c18edd6ef48ae24cfe409522f7defb51e4103dfa61ca3012386380c1b179f904375e253f20f4b2c5c848299988e65d8b80cb3f6b3d848b6fb2230
+                 # TLS Settings for communications to update the validity period
+                 tls:
+                         enabled: false
+                         cert:
+                                file: testdata/server1.pem
+                         key:
+                                file: testdata/server1.key
+                         # The server name use to verify the hostname returned by TLS handshake
+                         server-host-override:
+                 devops-address: 0.0.0.0:40404
+
+
+###############################################################################
+#
+#    CLI section
+#
+###############################################################################
+cli:
+
+    # The address that the cli process will use for callbacks from chaincodes
+    address: 0.0.0.0:30304
+
+
+
+###############################################################################
+#
+#    REST section
+#
+###############################################################################
+rest:
+
+    # Enable/disable setting for the REST service. It is recommended to disable
+    # REST service on validators in production deployment and use non-validating
+    # nodes to host REST service
+    enabled: true
+
+    # The address that the REST service will listen on for incoming requests.
+    address: 0.0.0.0:5000
+
+
+###############################################################################
+#
+#    LOGGING section
+#
+###############################################################################
+logging:
+
+    # Valid logging levels are case-insensitive strings chosen from
+
+    #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
+
+    # Logging 'module' names are also strings, however valid module names are
+    # defined at runtime and are not checked for validity during option
+    # processing.
+
+    # Default logging levels are specified here for each of the obc-peer
+    # commands. For commands that have subcommands, the defaults also apply to
+    # all subcommands of the command. These logging levels can be overridden
+    # on the command line using the --logging-level command-line option, or by
+    # setting the CORE_LOGGING_LEVEL environment variable.
+
+    # The logging level specification is of the form
+
+    #     [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
+
+    # A logging level by itself is taken as the overall default. Otherwise,
+    # overrides for individual or groups of modules can be specified using the
+    # <module>[,<module>...]=<level> syntax.
+
+    # Examples:
+    #   info                                       - Set default to INFO
+    #   warning:main,db=debug:chaincode=info       - Override default WARNING in main,db,chaincode
+    #   chaincode=info:main=debug:db=debug:warning - Same as above
+    peer:      debug
+    crypto:    debug
+    status:    warning
+    stop:      warning
+    login:     warning
+    vm:        warning
+    chaincode: warning
+
+
+###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+
+    # Peer Version following version semantics as described here http://semver.org/
+    # The Peer supplies this version in communications with other Peers
+    version:  0.1.0
+
+    # The Peer id is used for identifying this Peer instance.
+    id: jdoe
+
+    # The privateKey to be used by this peer
+    # privateKey: 794ef087680e2494fa4918fd8fb80fb284b50b57d321a31423fe42b9ccf6216047cea0b66fe8365a8e3f2a8140c6866cc45852e63124668bee1daa9c97da0c2a
+
+    # The networkId allows for logical seperation of networks
+    # networkId: dev
+    # networkId: test
+    networkId: dev
+
+    Dockerfile:  |
+        from golang:1.6
+        # Install RocksDB
+        RUN cd /opt  && git clone --branch v4.1 --single-branch --depth 1 https://github.com/facebook/rocksdb.git && cd rocksdb
+        WORKDIR /opt/rocksdb
+        RUN make shared_lib
+        ENV LD_LIBRARY_PATH=/opt/rocksdb:$LD_LIBRARY_PATH
+        RUN apt-get update && apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev
+        # Copy GOPATH src and install Peer
+        COPY src $GOPATH/src
+        RUN mkdir -p /var/hyperledger/db
+        WORKDIR $GOPATH/src/github.com/hyperledger/fabric/
+        RUN CGO_CFLAGS="-I/opt/rocksdb/include" CGO_LDFLAGS="-L/opt/rocksdb -lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy" go install && cp $GOPATH/src/github.com/hyperledger/fabric/core.yaml $GOPATH/bin
+
+    # The Address this Peer will listen on
+    listenAddress: 0.0.0.0:40404
+    # The Address this Peer will bind to for providing services
+    address: 0.0.0.0:40404
+    # Whether the Peer should programmatically determine the address to bind to.
+    # This case is useful for docker containers.
+    addressAutoDetect: false
+
+    # Peer port to accept connections on
+    port:    40404
+    # Peer's setting for GOMAXPROCS
+    gomaxprocs: 2
+    workers: 2
+
+    # Sync related configuration
+    sync:
+        blocks:
+            # Channel size for readonly SyncBlocks messages channel for receiving
+            # blocks from oppositie Peer Endpoints.
+            # NOTE: currently messages are not stored and forwarded, but rather
+            # lost if the channel write blocks.
+            channelSize: 10
+        state:
+            snapshot:
+                # Channel size for readonly syncStateSnapshot messages channel
+                # for receiving state deltas for snapshot from oppositie Peer Endpoints.
+                # NOTE: currently messages are not stored and forwarded, but
+                # rather lost if the channel write blocks.
+                channelSize: 50
+            deltas:
+                # Channel size for readonly syncStateDeltas messages channel for
+                # receiving state deltas for a syncBlockRange from oppositie
+                # Peer Endpoints.
+                # NOTE: currently messages are not stored and forwarded,
+                # but rather lost if the channel write blocks.
+                channelSize: 20
+
+    # Validator defines whether this peer is a validating peer or not, and if
+    # it is enabled, what consensus plugin to load
+    validator:
+        enabled: true
+
+        # Consensus plugin to use. The value is the name of the plugin, e.g. pbft, noops
+        # if the given value is not recognized, we will default to noops
+        consensus: noops
+
+        events:
+            # The address that the Event service will be enabled on the validator
+            address: 0.0.0.0:31315
+
+            # total number of events that could be buffered without blocking the
+            # validator sends
+            buffersize: 100
+
+            # milliseconds timeout for producer to send an event.
+            # if < 0, if buffer full, unblocks immediately and not send
+            # if 0, if buffer full, will block and guarantee the event will be sent out
+            # if > 0, if buffer full, blocks till timeout
+            timeout: 10
+        # Setting the validity-period.verification to false will disable the verification
+        # of the validity period in the validator
+        validity-period:
+            verification: false
+
+    # TLS Settings for p2p communications
+    tls:
+        enabled:  false
+        cert:
+            file: testdata/server1.pem
+        key:
+            file: testdata/server1.key
+        # The server name use to verify the hostname returned by TLS handshake
+        server-host-override:
+
+    # PKI member services properties
+    pki:
+        eca:
+            paddr: localhost:50051
+        tca:
+            paddr: localhost:50051
+        tlsca:
+            paddr: localhost:50051
+        tls:
+            enabled: false
+            rootcert:
+                file: tlsca.cert
+            # The server name use to verify the hostname returned by TLS handshake
+            server-host-override:
+
+    # Peer discovery settings.  Controls how this peer discovers other peers
+    discovery:
+
+        # The root nodes are used for bootstrapping purposes, and generally
+        # supplied through ENV variables
+        rootnode:
+
+        # The duration of time between attempts to asks peers for their connected peers
+        period:  5s
+
+        ## leaving this in for example of sub map entry
+        # testNodes:
+        #    - node   : 1
+        #      ip     : 127.0.0.1
+        #      port   : 40404
+        #    - node   : 2
+        #      ip     : 127.0.0.1
+        #      port   : 40404
+
+        # Should the discovered nodes and their reputations
+        # be stored in DB and persisted between restarts
+        persist:    true
+
+        # if peer discovery is off
+        # the peer window will show
+        # only what retrieved by active
+        # peer [true/false]
+        enabled:    true
+
+        # number of workers that
+        # tastes the peers for being
+        # online [1..10]
+        workers: 8
+
+        # the period in seconds with which the discovery
+        # tries to reconnect to successful nodes
+        # 0 means the nodes are not reconnected
+        touchPeriod: 600
+
+        # the maximum nuber of nodes to reconnect to
+        # -1 for unlimited
+        touchMaxNodes: 100
+
+    # Path on the file system where peer will store data
+    # fileSystemPath: .hyperledger/production
+
+    # Path on the file system where peer will store data
+    fileSystemPath: /tmp/hyperledger/production
+
+###############################################################################
+#
+#    VM section
+#
+###############################################################################
+vm:
+
+    # Endpoint of the vm management system.  For docker can be one of the following in general
+    # unix:///var/run/docker.sock
+    # http://localhost:2375
+    # https://localhost:2376
+    endpoint: unix:///var/run/docker.sock
+
+    # settings for docker vms
+    docker:
+        tls:
+            enabled: false
+            cert:
+                file: /path/to/server.pem
+            ca:
+                file: /path/to/ca.pem
+            key:
+                file: /path/to/server-key.pem
+
+###############################################################################
+#
+#    Chaincode section
+#
+###############################################################################
+chaincode:
+
+    # The id is used by the Chaincode stub to register the executing Chaincode
+    # ID with the Peerand is generally supplied through ENV variables
+    # the Path form of ID is provided when deploying the chaincode. The name is
+    # used for all other requests. The name is really a hashcode
+    # returned by the system in response to the deploy transaction. In
+    # development mode where user runs the chaincode, the name can be any string
+    id:
+        path:
+        name: mycc
+
+    golang:
+
+        # This is the basis for the Golang Dockerfile.  Additional commands will
+        # be appended depedendent upon the chaincode specification.
+        Dockerfile:  |
+            from golang:1.6
+            COPY src $GOPATH/src
+            WORKDIR $GOPATH
+
+    # timeout in millisecs for starting up a container and waiting for Register
+    # to come through. 1sec should be plenty for chaincode unit tests
+    startuptimeout: 1000
+
+    #timeout in millisecs for deploying chaincode from a remote repository.
+    deploytimeout: 30000
+
+    #mode - options are "dev", "net"
+    #dev - in dev mode, user runs the chaincode after starting validator from
+    # command line on local machine
+    #net - in net mode validator will run chaincode in a docker container
+
+    mode: net
+
+    installpath: /go/bin/
+
+###############################################################################
+#
+#    Ledger section - ledger configuration encompases both the blockchain
+#    and the state
+#
+###############################################################################
+ledger:
+
+  blockchain:
+
+    # Define the genesis block
+    genesisBlock:
+
+      # Deploy chaincodes into the genesis block
+      # chaincode:
+      #     path: github.com/hyperledger/fabric/core/example/chaincode/chaincode_example01
+      #     type: GOLANG
+      #     constructor:
+      #       func: init
+      #       args:
+      #         - alice
+      #         - "4"
+      #         - bob
+      #         - "10"
+
+    # Setting the deploy-system-chaincode property to false will prevent the
+    # deploying of system chaincode at genesis time.
+    deploy-system-chaincode: false
+
+  state:
+
+    # Control the number state deltas that are maintained. This takes additional
+    # disk space, but allow the state to be rolled backwards and forwards
+    # without the need to replay transactions.
+    deltaHistorySize: 500
+
+    # The data structure in which the state will be stored. Different data
+    # structures may offer different performance characteristics. Options are
+    # 'buckettree' and 'trie'. If not set, the default data structure is the
+    # 'buckettree'. This CANNOT be changed after the DB has been created.
+    dataStructure:
+      # The name of the data structure is for storing the state
+      name: buckettree
+      # The data structure specific configurations
+      configs:
+        # configurations for 'bucketree'. These CANNOT be changed after the DB
+        # has been created. 'numBuckets' defines the number of bins that the
+        # state key-values are to be divided
+        numBuckets: 10009
+        # 'maxGroupingAtEachLevel' defines the number of bins that are grouped
+        #together to construct next level of the merkle-tree (this is applied
+        # repeatedly for constructing the entire tree).
+        maxGroupingAtEachLevel: 10
+
+        # configurations for 'trie'
+        # 'tire' has no additional configurations exposed as yet
+
+
+###############################################################################
+#
+#    Security section - Applied to all entities (client, NVP, VP)
+#
+###############################################################################
+security:
+    # Enable security will force every entity on the network to enroll with obc-ca
+    # and maintain a valid set of certificates in order to communicate with
+    # other peers
+    enabled: true
+    # To enroll NVP or VP with membersrvc. These parameters are for 1 time use.
+    # They will not be valid on subsequent times without un-enroll first.
+    # The values come from off-line registration with obc-ca. For testing, make
+    # sure the values are in membersrvc/membersrvc.yaml file eca.users
+    enrollID: vp
+    enrollSecret: f3489fy98ghf
+    # To enable privacy of transactions (requires security to be enabled). This
+    # encrypts the transaction content during transit and at rest. The state
+    # data is also encrypted
+    privacy: true
+
+    # Can be 256 or 384. If you change here, you have to change also
+    # the same property in membersrvc.yaml to the same value
+    level: 256
+
+    # TCerts related configuration
+    tcert:
+      batch:
+        # The size of the batch of TCerts
+        size:  2
+
+    attributes:
+      enabled: true

@@ -1,0 +1,497 @@
+#!/usr/bin/tclsh
+
+# Copyright IBM Corp. 2016. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# 		 http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set usage {
+    Usage: busy ?... args ...? <command> [<peers> [... <args> ...]]
+
+The 'busy' script runs commands on one or more peers in a busywork network,
+printing the salient portion of the response on stdout. 'busy' can be seen as
+an easier-to-use version of the Hyperledger fabric command-line-interface
+(CLI) in that 'busy' takes care of various kinds of bookkeeping and
+boilerplate code behind the scenes. 'busy' is probably best used as a tool for
+small scipts, or for issuing a few interactive commands to a peer
+network. Alhough complex test scripts could be implemented entirely as 'busy'
+calls, the performance of a test implemented this way would likely suffer from
+the process-creation overhead of each 'busy' invocation.
+
+If the 'busy' command targets a single peer (see below) then the response from
+that peer is printed. If multiple peers are targeted, then the results are
+collected and printed as a JSON object, where each result is keyed by the peer
+name, e.g.,
+
+    {
+     "vp0"   : <VP0 response>,
+     "vp1"   : <VP1 response>,
+     ...
+     "vp<N>" : <VP<N> response>
+     }
+
+Use -json to force results from operations on a single peer to print as a JSON
+object.
+
+'busy' is only supported for peer networks described by a 'network' file in
+the BUSYWORK_HOME directory.  The <peers> to target are named by the peer IDs
+as they appear in the busywork 'network' file. Peers names can be given as a
+whitespace separated list or a single comma-separated token. "Globbing-style"
+wildcards can also be used (implmented by the Tcl 'string match' command), but
+be aware that wildcards must be entered in quotes to avoid globbing by the
+shell.  Examples of peer specifications:
+
+   "*"           # Apply command to all peers
+   "vp*"         # Apply command to all peers with names starting with "vp"
+   vp0           # Target vp0 only
+   vp0,vp1       # Target vp0 and vp1 only
+   "vp0 vp1"     # Same as above
+   "vp[01]"      # Also same as above
+   "vp[0-1]"     # Ditto
+   "vp0 vp1,vp2" # If you insist, this works too!
+
+Note that to help gaurd against typos, the script will fail if there are any
+duplicate peer names in the peer specification, or if any peer specification
+does not match at least one peer, or if the peer specification is empty.
+
+The following command and argument forms are supported:
+
+   chaincodes
+   network
+
+   get    <peers> <route>
+
+   deploy <peers> <user-chaincode-id> <path> <function> [... args ...]
+   invoke <peers> <user-chaincode-id> <function> [... args ...]
+   query  <peers> <user-chaincode-id> <function> [... args ...]
+
+   ping   <peers> <user-chaincode-id>
+
+The 'network' and 'chaincodes' commands simply print the current 'network' and
+'chaincodes' files respectively from the implied $BUSYWORK_HOME.
+
+The 'get' command does an HTTP GET of the <route> on the named peers and
+returns the response. Note that <route> both with and without an initial '/'
+are accepted. The results from 'get' are assumed to be JSON objects, and will
+be treated as such in script output.
+
+The chaincode-based commands use a user-defined <user-chaincode-id> that
+appears as the tag in the $BUSYWORK_HOME/chaincodes file used by or created by
+'busy' or other busywork applications.
+
+The 'deploy' command can be used to deploy chaincodes to the network. The
+arguments include the function name and arguments for the deploy transaction.
+Currently only Go-language chaincode deploymemts are supported. If successful,
+an entry for the chaincode will be made in the $BUSYWORK_HOME/chaincodes file.
+The 'deploy' command is restricted to only operating on a single peer. The
+return value is the chaincode name (hash).
+
+The 'invoke' command invokes a function on the chaincode. The arguments
+include the function name and arguments for the invoke. Normally 'invoke'
+would also only be used with a single peer, however if N peers are specified
+this will produce N identical invoke transactions, each invoke targeting a
+different peer. The return value is the transaction ID (uuid).
+
+The 'query' command runs a query on one of more peers, returning the query
+responses of the given query command and arguments.
+
+The 'ping' command runs a 'ping' query on the chaincode, on one or more
+peers. This command will fail, with no other output, if any of the ping
+queries fail. If the ping query succeeds then the output of the ping queries
+is returned. This function currently assumes that the chaincode implments a
+'ping' query function with no parameters.
+
+Examples:
+
+    busy chaincodes
+    busy network
+
+    busy get "*" chain/blocks/10  # The initial / on the <route>
+    busy get "*" /chain           # is optional
+
+    busy deploy vp0 cc0 github.com/mystuff/chaincode.go init -id cc0
+    busy invoke vp1 cc0 increment a1
+    busy query vp0,vp1 cc1 status a1
+
+    busy ping "*" cc2
+
+Optional arguments, with defaults after the colon:
+
+-h | -help | --help : N/A
+
+    If one of these argument forms is present then this usage message is
+    printed and the script exits normally.
+
+-home <busywork_home> : See below
+
+    This argument can be used to name a BUSYWORK_HOME directory where the
+    'network' and 'chincodes' files are located.  If not defined here then
+    BUSYWORK_HOME is taken from the environmnent, or if not present there,
+    defaults to ~/.busywork.
+
+-user <user> : N/A
+
+    User name for secure-mode networks. This is required if the network is set
+    up with security. Note that due to current limitations in the fabric
+    implementation, a user can only be logged in to a single peer, so 'busy'
+    is currently restricted to operating on a single peer in secure mode.
+
+-waitFor <duration> : 0
+
+    The -waitFor option is supported for the 'deploy', 'invoke' and 'ping'
+    commands only. The semantics are explained below in the section headed
+    "Semantics of -waitFor" 
+
+-json : See below
+
+    Select -json to force even single-peer operations to print as a JSON
+    object, rather than simply as a value. This opiton is ignored for the
+    'chaincodes' and 'network' commands.
+
+
+Semantics of -waitFor
+
+The -waitFor option is used to specify a timeout for an interlock specific to
+each command. The waitFor option is a duration specification. Negative
+durations are interpreted as "wait forever".
+
+When specified with a 'deploy' command, the timeout applies to the time from
+from when the 'deploy' transaction returns until the newly-deployed chaincode
+responds to a 'ping' request.
+
+When specified with an 'invoke'command, the timeout applies to the time from
+the acknowledegment of the invoke transaction(s) until the transaction(s) is
+(are) registered in the blockchain of the peer(s) targeted by the invoke. Note
+that this is an especially high-overhead interlock as currently implemented.
+
+When specified with a 'ping' command, then the 'ping' fails unless all target
+peers/chaincodes respond successfully to the ping within the timeout window.
+
+}
+
+
+############################################################################
+# Commands
+############################################################################
+
+proc singletonCommand {cmd} {
+
+    if {[llength [parms other]] != 1} {
+        errorExit "The '$cmd' command takes no arguments"
+    }
+}
+
+
+proc chaincodes {} {
+
+    singletonCommand chaincodes
+
+    execout cat [parms home]/chaincodes
+    exit 0
+}
+
+
+proc network {} {
+
+    singletonCommand network
+
+    execout cat [parms home]/network
+    exit 0
+}
+
+
+proc waitForNotOK {cmd} {
+    if {![null [parms waitFor]]} {
+        errorExit "The -waitFor option is not supported for '$cmd'"
+    }
+}
+
+
+proc get {} {
+
+    waitForNotOK get
+
+    if {[llength [parms args]] != 1} {
+        errorExit "Exactly 1 route must be specified for the 'get' command"
+    }
+    if {[string index [parms args] 0] eq "/"} {
+        set slash ""
+    } else {
+        set slash /
+    }
+    parms results \
+        [mapeach address [parms restAddresses] {
+            set url http://$address$slash[parms args]
+            if {[catch {exec curl -s $url} result]} {
+                errorExit \
+                    "curl failed for URL $url : $result"
+            }
+            return $result
+        }]
+}
+
+
+proc deploy {} {
+
+    set ccId     [first [parms args]]
+    set path     [second [parms args]]
+    set function [third [parms args]]
+    set args     [restn [parms args] 3]
+
+    if {[null $ccId] || [null $path] || [null $function]} {
+        errorExit "Improper arguments for deploy: [parms args]"
+    }
+
+    if {[llength [parms peers]] != 1} {
+        errorExit \
+            "The deploy command is restricted to operating on a single peer."
+    }
+
+    set address [parms restAddresses]
+    set ccName [fabric::deploy $address [parms user] $path $function $args]
+    parms results $ccName
+
+    busywork::addChaincode $ccId $ccName $path $function $args
+
+    # If waiting, all the arguments are already set up so that we can simply
+    # pass control to 'ping'.
+    if {![null [parms waitFor]]} {
+        ping
+    }
+}
+
+
+# In the 'invoke' case, to save time in establishing interlock, we first get
+# the block height of each peer, and create a logger for each peer starting
+# from that height - 1. We use height - 1 because the fabricLogger currently
+# being used will time out if the logging file is not created quickly after
+# startup, so this way we're guaranteed to always start logging from the last
+# complete block.
+
+proc invoke {} {
+
+    set ccId     [first [parms args]]
+    set function [second [parms args]]
+    set args     [restn [parms args] 2]
+
+    if {[null $ccId] || [null $function]} {
+        errorExit "Improper arguments for invoke: [parms args]"
+    }
+
+    busywork::chaincodesToArray a ""
+    if {![member $ccId $a(ids)]} {
+        errorExit \
+            "No chaincode deployed with ID '$ccId'. " \
+            "Deployed IDs are $a(ids)"
+    }
+    set name $a($ccId.name)
+    
+    if {![null [parms waitFor]]} {
+        set heights \
+            [mapeach address [parms restAddresses] {
+                return [expr {[fabric::height $address] - 1}]
+            }]
+    }
+
+    parms results \
+        [mapeach address [parms restAddresses] {
+            return \
+                [fabric::invoke $address [parms user] $name $function $args]
+        }]
+
+    if {![null [parms waitFor]]} {
+        foreach height $heights uuid [parms results] {
+            set logger [busywork::Logger new \
+                            -file /tmp/ \
+                            -peers $address \
+                            -from $height \
+                            -verbose 0]
+            if {![null [$logger waitUUIDs invoke $uuid [parms waitFor]]]} {
+                errorExit "Wait for invoke interlock timed out"
+            }
+        }
+    }
+}
+
+        
+proc query {} {
+
+    waitForNotOK query
+
+    set ccId     [first [parms args]]
+    set function [second [parms args]]
+    set args     [restn [parms args] 2]
+
+    if {[null $ccId] || [null $function]} {
+        errorExit "Improper arguments for query: [parms args]"
+    }
+
+    busywork::chaincodesToArray a ""
+    if {![member $ccId $a(ids)]} {
+        err {} \
+            "No chaincode deployed with ID '$ccId'. " \
+            "Deployed IDs are listed below:"
+        err {} "    $a(ids)"
+        errorExit
+    }
+    set name $a($ccId.name)
+    
+    parms results \
+        [mapeach address [parms restAddresses] {
+            return [fabric::query $address [parms user] $name $function $args]
+        }]
+}
+
+
+proc ping {} {
+
+    set ccId [first [parms args]]
+
+    if {[null $ccId]} {
+        errorExit "Improper arguments for ping: [parms args]"
+    }
+
+    busywork::chaincodesToArray a ""
+    if {![member $ccId $a(ids)]} {
+        err {} \
+            "No chaincode deployed with ID '$ccId'. " \
+            "Deployed IDs are listed below:"
+        err {} "    $a(ids)"
+        errorExit
+    }
+    set name $a($ccId.name)
+    
+    proc _ping {name} {
+        set results {}
+        foreach address [parms restAddresses] {
+            if {[catch \
+                     {fabric::query $address [parms user] $name ping {} -1} \
+                     val]} {
+                return 0
+            }
+            lappend results $val
+        }
+        parms results $results
+        return 1
+    }
+
+    if {[null [parms waitFor]]} {
+        if {![_ping $name]} {
+            exit 1
+        }
+    } else {
+        if {[waitFor [parms waitFor] {_ping $name} 1s]} {
+            errorExit "Wait for ping of chaincode '$name' timed out"
+        }
+    }
+}
+
+        
+############################################################################
+# The script
+############################################################################
+
+lappend auto_path [file dirname [info script]]/../tcl
+
+package require busywork
+
+setLoggingPrefix busy
+setLoggingLevel {} warn
+
+set options {
+    {enum {-h -help --help} parms(help)    0   p_help}
+    {key  -home             parms(home)    {}}
+    {bool -user             parms(user)    {}  p_user}
+    {key  -waitFor          parms(waitFor) {}}
+    {bool -json             parms(json)    0}
+}
+        
+mapKeywordArgs $argv $options parms(other)
+
+if {$p_help} {
+    puts $usage
+    exit 0
+}
+
+parms home [busywork::home [parms home]]
+
+# Get and check the parameters. 'chaincodes' and 'network' are short-circuited.
+
+parms command [first [parms other]]
+switch [parms command] {
+    chaincodes {chaincodes}
+    network    {network}
+}    
+
+parms peers [busywork::peersFromSpec [second [parms other]]]
+parms args [restn [parms other] 2]
+
+busywork::networkToArray ::parms network.
+if {$p_user} {
+    if {[parms network.security] eq "false"} {
+        warn {} "The -user option is ignored for non-secure networks"
+    }
+} else {
+    if {[parms network.security] eq "true"} {
+        errorExit "The -user option must be supplied for secure networks"
+    }
+}
+
+parms restAddresses \
+    [mapeach peer [parms peers] {
+        return [parms network.peer.$peer.rest]
+    }]
+
+# Execute the commands.
+
+switch [parms command] {
+    get        {get}
+    deploy     {deploy}
+    invoke     {invoke}
+    query      {query}
+    ping       {ping}
+    default    {errorExit "Unrecognized command: [parms command]"}
+}
+
+# The 'chaincode' and 'network' commands have already short-circuit
+# exited. Otherwise output the results. Results from "get" are assumed to
+# already be JSON objects - this may be a bug in general. Other results are
+# strings.
+
+if {[parms json] || [expr {[llength [parms results]] > 1}]} {
+
+    ::json::write indented 1
+    ::json::write aligned 1
+
+    if {[parms command] eq "get"} {
+        set f {{result} {return $result}}
+    } else {
+        set f {{result} {::json::write string $result}}
+    }
+
+    set map {}
+    foreach peer [parms peers] result [parms results] {
+        lappend map $peer [apply $f $result]
+    }
+
+    puts [eval ::json::write object $map]
+
+} else {
+
+    puts [first [parms results]]
+}
+
+
+            
+
+    
+    

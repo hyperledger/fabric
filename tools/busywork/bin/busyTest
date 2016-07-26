@@ -1,0 +1,144 @@
+#!/usr/bin/tclsh
+
+# This is a simple test for the 'busy' script. We create a network then run a
+# few simple examples of each of the supported operations and check the
+# results. To simplify debug we use Tcl 'error{}' here because it will print
+# the line number in case of fails.
+
+lappend auto_path [file dirname [info script]]/../tcl
+
+package require busywork
+
+setLoggingPrefix busyTest
+setLoggingLevel {} note
+
+set bin [busywork::bin]
+set busy $bin/busy
+
+proc ex {args} {
+    eval exec -ignorestderr $::busy $args
+}
+
+proc exout {args} {
+    eval execout -ignorestderr $::busy $args
+}
+
+note {} "Creating a 4-peer network"
+exec -ignorestderr $bin/userModeNetwork -noops 4
+
+note {} "Here comes the network:"
+exout network
+
+note {} \
+    "Validating that the block height is 1 on all nodes, several ways"
+
+# Check that leading '/' is optional
+set response0 [ex get * /chain]
+set response1 [ex get * chain]
+if {$response0 ne $response1} {
+    error "Different resoponses for 'chain' and '/chain'"
+}
+
+# Make sure that we can parse the JSON. 'dict get' bombs if the key is missing.
+set dict [json::json2dict $response0]
+foreach peer [range 4] {
+    set block [dict get $dict vp$peer]
+    if {[dict get $block height] != 1} {
+        error "Peer $peer has initial block height != 1"
+    }
+}
+
+# Now repeat for a single node, both with and without -json
+
+set dict [json::json2dict [ex get vp0 chain]]
+if {[dict get $dict height] != 1} {
+    error "Peer $peer has initial block height != 1"
+}
+
+set dict [json::json2dict [ex -json get vp0 chain]]
+if {[dict get [dict get $dict vp0] height] != 1} {
+    error "Peer $peer has initial block height != 1"
+}
+
+# Deploy some counters chaincodes. Initialize them and send a few TX. Then
+# query their status and check it. We test built-in ping on deploy as well as
+# ping afterwords.
+
+note {} "Deploying chaincode 0"
+ex deploy vp0 cc0 \
+    github.com/hyperledger/fabric/tools/busywork/counters \
+    parms -id cc0
+
+note {} "Waiting up to 2m for chaincode 0 to 'ping'"
+ex -waitFor 2m ping vp1 cc0 
+
+note {} "Deploying chaincode 1 with built-in 2m ping-wait"
+ex -waitFor 2m deploy vp2 cc1 \
+    github.com/hyperledger/fabric/tools/busywork/counters \
+    parms -id cc1
+
+if {[catch {ex ping vp2 cc1}]} {
+    error "Ping failed on cc1, which should not have happened"
+}
+
+note {} "Here come the chaincodes:"
+exout chaincodes
+
+note {} "Initializing chaincodes"
+ex invoke vp2 cc0 create a1 1
+ex -waitFor 60s invoke vp3 cc1 create a10 10
+
+note {} "Invoking chaincodes"
+foreach peer [range 4] {
+    ex invoke vp$peer cc0 increment a1
+    ex invoke vp$peer cc1 increment \
+        a10 a10 a10 a10 a10 a10 a10 a10 a10 a10; # Increment +10
+}
+
+# This is a hack: We hope that these last TX will be ordered after the
+# previous TX, so that we know they are all committed. Since its a NOOPS
+# network it's probably a safe bet.
+
+ex -waitFor 60s invoke vp1,vp2 cc0 increment a1
+ex -waitFor 60s invoke vp2,vp3 cc1 increment \
+    a10 a10 a10 a10 a10 a10 a10 a10 a10 a10; # Increment +10
+
+note {} "Querying chaincodes"
+set q0 [ex query vp3 cc0 status a1]
+set q1 [ex query vp2 cc1 status a10]
+set q2 [ex query   * cc0 status a1]
+set q3 [ex query   * cc1 status a10]
+
+if {$q0 ne "1 1 6 6"} {
+    error "q0 mismatch: $q0"
+}
+
+if {$q1 ne "10 10 60 60"} {
+    error "q1 mismatch: $q1"
+}
+
+set dict [json::json2dict $q2]
+if {[llength $dict] != 8} {
+    error "q2 result mal-formed: $dict"
+}
+foreach peer [range 4] {
+    if {[dict get $dict vp$peer] ne "1 1 6 6"} {
+        error "q2 mismatch"
+    }
+}
+    
+set dict [json::json2dict $q3]
+if {[llength $dict] != 8} {
+    error "q3 result mal-formed: $dict"
+}
+foreach peer [range 4] {
+    if {[dict get $dict vp$peer] ne "10 10 60 60"} {
+        error "q3 mismatch"
+    }
+}
+    
+note {} AOK
+
+
+
+

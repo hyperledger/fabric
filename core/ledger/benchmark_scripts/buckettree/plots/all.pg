@@ -1,0 +1,24 @@
+#!/usr/local/bin/gnuplot
+reset
+
+# Chart specific settings
+set ylabel "milli second"
+set xlabel "Approx number of existing keys"
+set title "Buckettree performance"
+
+# General settings
+#set key bottom center outside reverse box
+set key left top reverse box Left
+set key spacing 1 font ",9"
+set grid
+set terminal postscript enhanced color
+#set style data linespoints
+set style data lines
+
+# plot command
+plot '../output1/chart.dat' using 1:($2/1000000) title "NumBuckets=10009,   MaxGroupingAtEachLevel=5, ValueSize=1000", \
+'../output2/chart.dat' using 1:($2/1000000) title "NumBuckets=10009,   MaxGroupingAtEachLevel=5, ValueSize=100", \
+'../output3/chart.dat' using 1:($2/1000000) title "NumBuckets=10009,   MaxGroupingAtEachLevel=5, ValueSize=10", \
+'../output5/chart.dat' using 1:($2/1000000) title "NumBuckets=100003,  MaxGroupingAtEachLevel=5, ValueSize=1000", \
+'../output4/chart.dat' using 1:($2/1000000) title "NumBuckets=1000003,MaxGroupingAtEachLevel=5, ValueSize=1000", \
+'../output8/chart.dat' using 1:($2/1000000) title "NumBuckets=1000003,MaxGroupingAtEachLevel=5, ValueSize=10"

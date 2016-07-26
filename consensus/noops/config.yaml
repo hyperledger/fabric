@@ -1,0 +1,22 @@
+---
+###############################################################################
+#
+#   NOOPS PROPERTIES
+#
+# These properties may be passed as environment variables when starting up
+# a validating peer with prefix CORE_NOOPS. For example:
+#    CORE_NOOPS_BLOCK_SIZE=1000
+#    CORE_NOOPS_BLOCK_WAIT=2
+#
+###############################################################################
+
+# Define properties for a block: A block is created whenever "size" or "wait"
+# occurs. When we process a block, we grab all transactions in the queue, so
+# the number of transactions in a block may be greater than the "size".
+block:
+    # Number of transactions per block. Must be > 0. Set to 1 for testing
+    size: 500
+
+    # Time to wait for a block.
+    # The default unit of measure is seconds. Otherwise, specify ms (milliseconds), us (microseconds), ns (nanoseconds), m (minutes) or h (hours)
+    wait: 1s

@@ -1,0 +1,15 @@
+{
+  "memberServicesUrl": "grpc://localhost:50051",
+  "peers": [ "grpc://localhost:30303" ],
+  "registrar": { "name": "WebAppAdmin", "secret": "DJY27pEnl16d" }, 
+  "numUsers": 5,
+  "iterations": 10,
+  "tests": [
+     {
+       "type": "invoke",
+       "chaincodeID": "mycc",
+       "fcn": "invoke",
+       "args": ["a", "b", "1"]
+     }
+  ]
+}

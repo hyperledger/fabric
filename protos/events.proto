@@ -1,0 +1,88 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+import "chaincodeevent.proto";
+import "fabric.proto";
+
+package protos;
+
+
+//----Event objects----
+
+enum EventType {
+        REGISTER = 0;
+        BLOCK = 1;
+	CHAINCODE = 2;
+	REJECTION = 3;
+}
+
+//ChaincodeReg is used for registering chaincode Interests
+//when EventType is CHAINCODE
+message ChaincodeReg {
+    string chaincodeID = 1;
+    string eventName = 2;
+}
+
+message Interest {
+    EventType eventType = 1;
+    //Ideally we should just have the following oneof for different
+    //Reg types and get rid of EventType. But this is an API change
+    //Additional Reg types may add messages specific to their type
+    //to the oneof.
+    oneof RegInfo {
+        ChaincodeReg chaincodeRegInfo = 2;
+    }
+}
+
+//---------- consumer events ---------
+//Register is sent by consumers for registering events
+//string type - "register"
+message Register {
+    repeated Interest events = 1;
+}
+
+//Rejection is sent by consumers for erroneous transaction rejection events
+//string type - "rejection"
+message Rejection {
+    Transaction tx = 1;
+    string errorMsg = 2;
+}
+
+//---------- producer events ---------
+//Event is used by
+//  - consumers (adapters) to send Register
+//  - producer to advertise supported types and events
+message Event {
+    //TODO need timestamp
+
+    oneof Event {
+        //consumer events
+        Register register = 1;
+
+        //producer events
+        Block block = 2;
+        ChaincodeEvent chaincodeEvent = 3;
+        Rejection rejection = 4;
+    }
+}
+
+// Interface exported by the events server
+service Events {
+    // event chatting using Event
+    rpc Chat(stream Event) returns (stream Event) {}
+}

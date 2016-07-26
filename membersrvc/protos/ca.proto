@@ -1,0 +1,401 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package protos;
+
+import "google/protobuf/timestamp.proto";
+
+
+// Enrollment Certificate Authority (ECA).
+//
+service ECAP { // public service
+	rpc ReadCACertificate(Empty) returns (Cert);
+	rpc CreateCertificatePair(ECertCreateReq) returns (ECertCreateResp);
+	rpc ReadCertificatePair(ECertReadReq) returns (CertPair);
+	rpc ReadCertificateByHash(Hash) returns (Cert);
+	rpc RevokeCertificatePair(ECertRevokeReq) returns (CAStatus); // a user can revoke only his/her own cert
+}
+
+service ECAA { // admin service
+	rpc RegisterUser(RegisterUserReq) returns (Token);
+	rpc ReadUserSet(ReadUserSetReq) returns (UserSet);
+	rpc RevokeCertificate(ECertRevokeReq) returns (CAStatus); // an admin can revoke any cert
+	rpc PublishCRL(ECertCRLReq) returns (CAStatus); // publishes CRL in the blockchain
+}
+
+// Transaction Certificate Authority (TCA).
+//
+service TCAP { // public service
+	rpc ReadCACertificate(Empty) returns (Cert);
+	rpc CreateCertificateSet(TCertCreateSetReq) returns (TCertCreateSetResp);
+	rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus); // a user can revoke only his/her cert
+	rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus); // a user can revoke only his/her certs
+}
+
+service TCAA { // admin service
+	rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus); // an admin can revoke any cert
+	rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus); // an admin can revoke any cert
+	rpc PublishCRL(TCertCRLReq) returns (CAStatus); // publishes CRL in the blockchain
+}
+
+// TLS Certificate Authority (TLSCA)
+//
+service TLSCAP { // public service
+	rpc ReadCACertificate(Empty) returns (Cert);
+	rpc CreateCertificate(TLSCertCreateReq) returns (TLSCertCreateResp);
+	rpc ReadCertificate(TLSCertReadReq) returns (Cert);
+	rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus); // a user can revoke only his/her cert
+}
+
+service TLSCAA { // admin service
+	rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus); // an admin can revoke any cert
+}
+
+// Attribute Certificate Authority (ACA).
+//
+service ACAP { // public service
+	rpc ReadCACertificate(Empty) returns (Cert);
+	rpc RequestAttributes(ACAAttrReq) returns (ACAAttrResp);
+	rpc FetchAttributes(ACAFetchAttrReq) returns (ACAFetchAttrResp);
+}
+
+// Status codes shared by both CAs.
+//
+message CAStatus {
+	enum StatusCode {
+		OK = 0;
+		UNKNOWN_ERROR = 1;
+	}
+	StatusCode status = 1;
+}
+
+
+// Empty message.
+message Empty {
+}
+
+// Uniquely identifies a user towards either CA.
+message Identity {
+	string id = 1;
+}
+
+message Token {
+	bytes tok = 1;
+}
+
+message Hash {
+	bytes hash = 1;
+}
+
+// Public/private keys.
+enum CryptoType {
+	ECDSA = 0;
+	RSA = 1;
+	DSA = 2;
+}
+
+message PublicKey {
+	CryptoType type = 1;
+	bytes key = 2; // DER / ASN.1
+}
+
+message PrivateKey {
+	CryptoType type = 1;
+	bytes key = 2; // DER / ASN.1
+}
+
+// Signature.
+//
+message Signature {
+	CryptoType type = 1;
+	bytes r = 2;
+	bytes s = 3;
+}
+
+// User registration.
+//
+enum Role {
+	NONE = 0;
+	CLIENT = 1; // powers of 2 to | different roles
+	PEER = 2;
+	VALIDATOR = 4;
+	AUDITOR = 8;
+	ALL = 0xFFFF;
+}
+
+message Registrar {
+    Identity id = 1;                     // The identity of the registrar
+    repeated string roles = 2;           // Roles that the registrar can register
+    repeated string delegateRoles = 3;   // Roles that the registrar can give to another to register
+}
+
+message RegisterUserReq {
+    Identity id = 1;
+    Role role = 2;
+    string affiliation = 4; // Skipping field number 3 to maintain backward compatibility. It was used before for the primary account.
+    Registrar registrar = 5;
+    Signature sig = 6;
+}
+
+message ReadUserSetReq {
+	Identity req = 1;
+	Role role = 2; // bitmask
+	Signature sig = 3; // sign(priv, req | id | role)
+}
+
+message User {
+	Identity id = 1;
+	Role role = 2;
+}
+
+message UserSet {
+	repeated User users = 1;
+}
+
+// Certificate requests.
+//
+message ECertCreateReq {
+	google.protobuf.Timestamp ts = 1;
+	Identity id = 2;
+	Token tok = 3;
+	PublicKey sign = 4;
+	PublicKey enc = 5;
+	Signature sig = 6; // sign(priv, ts | id | tok | sign | enc)
+}
+
+message ECertCreateResp {
+	CertPair certs = 1;
+	Token chain = 2;
+	bytes pkchain = 5;
+	Token tok = 3;
+	FetchAttrsResult fetchResult = 4;
+}
+
+message ECertReadReq {
+	Identity id = 1;
+}
+
+message ECertRevokeReq {
+	Identity id = 1; // user or admin whereby users can only revoke their own cert
+	Cert cert = 2; // cert to revoke
+	Signature sig = 3; // sign(priv, id | cert)
+}
+
+message ECertCRLReq {
+	Identity id = 1; // admin
+	Signature sig = 2; // sign(priv, id)
+}
+
+message TCertCreateReq {
+	google.protobuf.Timestamp ts = 1;
+	Identity id = 2; // corresponding ECert retrieved from ECA
+	PublicKey pub = 3;
+	Signature sig = 4; // sign(priv, ts | id | pub)
+}
+
+message TCertCreateResp {
+	Cert cert = 1;
+}
+
+message TCertCreateSetReq {
+	google.protobuf.Timestamp ts = 1;
+	Identity id = 2; // corresponding ECert retrieved from ECA
+	uint32 num = 3; // number of certs to create
+	repeated TCertAttribute attributes = 4; // array with the attributes to add to each TCert.
+	Signature sig = 5; // sign(priv, ts | id | attributes | num)
+}
+
+message TCertAttribute {
+	string attributeName = 1;
+}
+
+message TCertCreateSetResp {
+	CertSet certs = 1;
+}
+
+message TCertReadSetsReq {
+	google.protobuf.Timestamp begin = 1;
+	google.protobuf.Timestamp end = 2;
+	Identity req = 3; // corresponding ECert retrieved from ECA
+	Role role = 4; // bitmask
+	Signature sig = 5; // sign(priv, begin | end | req | id | role)
+}
+
+message TCertRevokeReq {
+	Identity id = 1; // user or admin whereby users can only revoke their own certs
+	Cert cert = 2; // cert to revoke
+	Signature sig = 3; // sign(priv, id | cert)
+}
+
+message TCertRevokeSetReq {
+	Identity id = 1; // user or admin whereby users can only revoke their own certs
+	google.protobuf.Timestamp ts = 2; // timestamp of cert set to revoke (0 == latest set)
+	Signature sig = 3; // sign(priv, id | cert)
+}
+
+message TCertCRLReq {
+	Identity id = 1; // admin
+	Signature sig = 2; // sign(priv, id)
+}
+
+message TLSCertCreateReq {
+	google.protobuf.Timestamp ts = 1;
+	Identity id = 2;
+	PublicKey pub = 3;
+	Signature sig = 4; // sign(priv, ts | id | pub)
+}
+
+message TLSCertCreateResp {
+	Cert cert = 1;
+	Cert rootCert = 2;
+}
+
+message TLSCertReadReq {
+	Identity id = 1;
+}
+
+message TLSCertRevokeReq {
+	Identity id = 1; // user or admin whereby users can only revoke their own cert
+	Cert cert = 2; // cert to revoke
+	Signature sig = 3; // sign(priv, id | cert)
+}
+
+// Certificate issued by either the ECA or TCA.
+//
+message Cert {
+	bytes cert = 1; // DER / ASN.1 encoded
+}
+
+// TCert
+//
+message TCert {
+	bytes cert = 1; // DER / ASN.1 encoded
+	bytes prek0 = 2; // PreK0 used to derive the keys to encrypt the TCert extensions (EnrollmentID, TCertIndex and attributes)
+}
+
+message CertSet {
+	google.protobuf.Timestamp ts = 1;
+	Identity id = 2;
+	bytes key = 3;
+	repeated TCert certs = 4;
+}
+
+message CertSets {
+	repeated CertSet sets = 1;
+}
+
+message CertPair {
+	bytes sign = 1; // signature certificate, DER / ASN.1 encoded
+	bytes enc = 2; // encryption certificate, DER / ASN.1 encoded
+}
+
+//ACAAttrReq is sent to request an ACert (attributes certificate) to the Attribute Certificate Authority (ACA).
+message ACAAttrReq {
+	// Request time
+	google.protobuf.Timestamp ts = 1;
+	// User identity
+	Identity id = 2;
+	// Enrollment certificate
+	Cert eCert = 3;
+	// Collection of requested attributes including the attribute name and its respective value hash.
+	repeated TCertAttribute attributes = 4; // array with the pairs key/value-hash of each attribute.
+	// The request is signed by the TCA.
+	Signature signature = 5;
+}
+
+//ACAAttrResp is the response of Attribute Certificate Authority (ACA) to the attribute request. Is composed by the following fields:
+message ACAAttrResp {
+	enum StatusCode {
+	// Processed OK and all attributes included.
+ 	FULL_SUCCESSFUL     = 000;
+	// Processed OK  but some attributes included.
+ 	PARTIAL_SUCCESSFUL  = 001;
+	// Processed OK  but no attributes included.
+	NO_ATTRIBUTES_FOUND = 010;
+
+	// Processed with errors.
+	option allow_alias = true;
+	FAILURE_MINVAL = 100;
+	FAILURE = 100;
+	BAD_REQUEST = 200;
+	// Missing parameters
+	FAIL_NIL_TS = 201;
+	FAIL_NIL_ID = 202;
+	FAIL_NIL_ECERT = 203;
+	FAIL_NIL_SIGNATURE = 204;
+	FAIL_NIL_ATTRIBUTES = 205;
+
+	FAILURE_MAXVAL = 205;
+	}
+	// Indicates the request process status.
+	StatusCode status = 1;
+	// Attribute certificate. Include all the attributes certificated.
+	Cert cert = 2;
+	// The response is signed by the ACA.
+	Signature signature = 3;
+}
+
+//ACAFetchAttrReq is a request to the Attribute Certificate Authority (ACA) to refresh attributes values from the sources.
+message ACAFetchAttrReq {
+	// Request timestamp
+	google.protobuf.Timestamp ts = 1;
+	// Enrollment certificate.
+	Cert eCert = 2;
+	// The request is signed by the ECA.
+	Signature signature = 3;
+}
+
+//ACAFetchAttrReq is the answer of the Attribute Certificate Authority (ACA) to the refresh request.
+message ACAFetchAttrResp {
+	enum StatusCode {
+	   // Processed OK
+       SUCCESS = 000;
+       // Processed with errors.
+       FAILURE = 100;
+	}
+	// Status of the fetch process.
+	StatusCode status = 1;
+	// Error message.
+	string Msg = 2;
+}
+
+//FetchAttrsResult is returned within the ECertCreateResp indicating the results of the fetch attributes invoked during enroll.
+message FetchAttrsResult {
+	enum StatusCode {
+	// Processed OK
+	SUCCESS = 000;
+	// Processed with errors
+	FAILURE = 100;
+	}
+	// Status of the fetch process.
+	StatusCode status = 1;
+	// Error message.
+	string Msg = 2;
+}
+
+//ACAAttribute is an instance of an attribute with the time constraints. Is used to marshal attributes to be stored within the certificate extensions.
+message ACAAttribute {
+	// Name of the attribute.
+	string attributeName = 1;
+	// Value of the attribute.
+	bytes attributeValue = 2;
+	// The timestamp which attribute is valid from.
+	google.protobuf.Timestamp validFrom = 3;
+	// The timestamp which attribute is valid to.
+	google.protobuf.Timestamp validTo = 4;
+}

@@ -1,0 +1,6 @@
+{
+  "globalDependencies": {
+    "debug": "registry:dt/debug#0.0.0+20160317120654",
+    "node": "registry:dt/node#6.0.0+20160523035754"
+  }
+}

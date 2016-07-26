@@ -1,0 +1,14 @@
+nvp0:
+  extends:
+    file: docker-compose-4-consensus-base.yml
+    service: vpBase
+  environment:
+    - CORE_PEER_VALIDATOR_ENABLED=false
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:30303
+    - CORE_PEER_ID=nvp0
+    - CORE_SECURITY_ENROLLID=test_nvp0
+    - CORE_SECURITY_ENROLLSECRET=iywrPBDEPl0K
+  links:
+    - membersrvc0
+    - vp0
+

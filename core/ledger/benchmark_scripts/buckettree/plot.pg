@@ -1,0 +1,16 @@
+#!/usr/local/bin/gnuplot
+reset
+
+# Chart specific settings
+set ylabel "milli second"
+set xlabel "Existing Data"
+set title "Buckettree performance"
+
+# General settings
+set key reverse Left outside
+set grid
+set terminal postscript dashed color
+set style data linespoints
+
+# plot command
+plot dataFile using 1:($2/1000000) title "time taken"
