@@ -19,7 +19,6 @@ package node
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/flogging"
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 )
@@ -44,7 +43,4 @@ var nodeCmd = &cobra.Command{
 	Use:   nodeFuncName,
 	Short: fmt.Sprintf("%s specific commands.", nodeFuncName),
 	Long:  fmt.Sprintf("%s specific commands.", nodeFuncName),
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		flogging.LoggingInit(nodeFuncName)
-	},
 }

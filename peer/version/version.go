@@ -19,7 +19,6 @@ package version
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/flogging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,9 +32,6 @@ var cobraCommand = &cobra.Command{
 	Use:   "version",
 	Short: "Print fabric peer version.",
 	Long:  `Print current version of fabric peer server.`,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		flogging.LoggingInit("version")
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		Print()
 	},

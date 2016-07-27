@@ -19,7 +19,6 @@ package chaincode
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/flogging"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
@@ -74,7 +73,4 @@ var chaincodeCmd = &cobra.Command{
 	Use:   chainFuncName,
 	Short: fmt.Sprintf("%s specific commands.", chainFuncName),
 	Long:  fmt.Sprintf("%s specific commands.", chainFuncName),
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		flogging.LoggingInit(chainFuncName)
-	},
 }

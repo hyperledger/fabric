@@ -49,10 +49,10 @@ const cmdRoot = "core"
 var mainCmd = &cobra.Command{
 	Use: "peer",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		peerCommand := getPeerCommandFromCobraCommand(cmd)
+		flogging.LoggingInit(peerCommand)
+
 		return core.CacheConfiguration()
-	},
-	PreRun: func(cmd *cobra.Command, args []string) {
-		flogging.LoggingInit("peer")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionFlag {
@@ -60,9 +60,6 @@ var mainCmd = &cobra.Command{
 		} else {
 			cmd.HelpFunc()(cmd, args)
 		}
-	},
-	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		return nil
 	},
 }
 
@@ -126,4 +123,36 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Info("Exiting.....")
+}
+
+// getPeerCommandFromCobraCommand retreives the peer command from the cobra command struct.
+// i.e. for a command of `peer node start`, this should return "node"
+// For the main/root command this will return the root name (i.e. peer)
+// For invalid commands (i.e. nil commands) this will return an empty string
+func getPeerCommandFromCobraCommand(command *cobra.Command) string {
+	var commandName string
+
+	if command == nil {
+		return commandName
+	}
+
+	if peerCommand, ok := findChildOfRootCommand(command); ok {
+		commandName = peerCommand.Name()
+	} else {
+		commandName = command.Name()
+	}
+
+	return commandName
+}
+
+func findChildOfRootCommand(command *cobra.Command) (*cobra.Command, bool) {
+	for command.HasParent() {
+		if !command.Parent().HasParent() {
+			return command, true
+		}
+
+		command = command.Parent()
+	}
+
+	return nil, false
 }

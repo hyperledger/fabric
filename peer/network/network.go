@@ -19,7 +19,6 @@ package network
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/flogging"
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 )
@@ -40,7 +39,4 @@ var networkCmd = &cobra.Command{
 	Use:   networkFuncName,
 	Short: fmt.Sprintf("%s specific commands.", networkFuncName),
 	Long:  fmt.Sprintf("%s specific commands.", networkFuncName),
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		flogging.LoggingInit(networkFuncName)
-	},
 }
