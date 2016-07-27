@@ -22,7 +22,6 @@ import (
 
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -436,7 +435,7 @@ func TestClientGetNextTCerts(t *testing.T) {
 	var nCerts int = 1
 	for i := 1; i < 3; i++ {
 		nCerts *= 10
-		fmt.Println(fmt.Sprintf("Calling GetNextTCerts(%d)", nCerts))
+		t.Logf("Calling GetNextTCerts(%d)", nCerts)
 		rvCerts, err := deployer.GetNextTCerts(nCerts)
 		if err != nil {
 			t.Fatalf("Could not receive %d TCerts", nCerts)
@@ -1524,7 +1523,6 @@ func setup() {
 }
 
 func initPKI() {
-	ca.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr, os.Stdout)
 	ca.CacheConfiguration() // Need cache the configuration first
 	aca = ca.NewACA()
 	eca = ca.NewECA()
@@ -1567,21 +1565,18 @@ func initNodes() {
 	// Init clients
 	err := initClients()
 	if err != nil {
-		fmt.Printf("Failed initializing clients [%s]\n", err)
 		panic(fmt.Errorf("Failed initializing clients [%s].", err))
 	}
 
 	// Init peer
 	err = initPeers()
 	if err != nil {
-		fmt.Printf("Failed initializing peers [%s]\n", err)
 		panic(fmt.Errorf("Failed initializing peers [%s].", err))
 	}
 
 	// Init validators
 	err = initValidators()
 	if err != nil {
-		fmt.Printf("Failed initializing validators [%s]\n", err)
 		panic(fmt.Errorf("Failed initializing validators [%s].", err))
 	}
 

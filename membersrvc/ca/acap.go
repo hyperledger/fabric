@@ -26,11 +26,14 @@ import (
 	"crypto/x509/pkix"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
 )
+
+var acapLogger = logging.MustGetLogger("acap")
 
 // ACAP serves the public GRPC interface of the ACA.
 //
@@ -40,7 +43,7 @@ type ACAP struct {
 
 // FetchAttributes fetchs the attributes from the outside world and populate them into the database.
 func (acap *ACAP) FetchAttributes(ctx context.Context, in *pb.ACAFetchAttrReq) (*pb.ACAFetchAttrResp, error) {
-	Trace.Println("grpc ACAP:FetchAttributes")
+	acapLogger.Debug("grpc ACAP:FetchAttributes")
 
 	if in.Ts == nil || in.ECert == nil || in.Signature == nil {
 		return &pb.ACAFetchAttrResp{Status: pb.ACAFetchAttrResp_FAILURE, Msg: "Bad request"}, nil
@@ -107,7 +110,7 @@ func (acap *ACAP) createRequestAttributeResponse(status pb.ACAAttrResp_StatusCod
 
 // RequestAttributes lookups the atributes in the database and return a certificate with attributes included in the request and found in the database.
 func (acap *ACAP) RequestAttributes(ctx context.Context, in *pb.ACAAttrReq) (*pb.ACAAttrResp, error) {
-	Trace.Println("grpc ACAP:RequestAttributes")
+	acapLogger.Debug("grpc ACAP:RequestAttributes")
 
 	fail := pb.ACAAttrResp_FULL_SUCCESSFUL // else explicit which-param-failed error
 	if nil == in.Ts {
@@ -225,7 +228,7 @@ func (acap *ACAP) addAttributesToExtensions(attributes *[]AttributePair, extensi
 // ReadCACertificate reads the certificate of the ACA.
 //
 func (acap *ACAP) ReadCACertificate(ctx context.Context, in *pb.Empty) (*pb.Cert, error) {
-	Trace.Println("grpc ACAP:ReadCACertificate")
+	acapLogger.Debug("grpc ACAP:ReadCACertificate")
 
 	return &pb.Cert{Cert: acap.aca.raw}, nil
 }

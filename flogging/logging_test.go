@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package core
+package flogging_test
 
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/flogging"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -26,16 +27,16 @@ import (
 func TestLoggingLevelDefault(t *testing.T) {
 	viper.Reset()
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
-	assertDefaultLoggingLevel(t, DefaultLoggingLevel())
+	assertDefaultLoggingLevel(t, flogging.DefaultLoggingLevel())
 }
 
 func TestLoggingLevelOtherThanDefault(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "warning")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
 	assertDefaultLoggingLevel(t, logging.WARNING)
 }
@@ -44,7 +45,7 @@ func TestLoggingLevelForSpecificModule(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "core=info")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
 	assertModuleLoggingLevel(t, "core", logging.INFO)
 }
@@ -53,7 +54,7 @@ func TestLoggingLeveltForMultipleModules(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "core=warning:test=debug")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
 	assertModuleLoggingLevel(t, "core", logging.WARNING)
 	assertModuleLoggingLevel(t, "test", logging.DEBUG)
@@ -63,7 +64,7 @@ func TestLoggingLevelForMultipleModulesAtSameLevel(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "core,test=warning")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
 	assertModuleLoggingLevel(t, "core", logging.WARNING)
 	assertModuleLoggingLevel(t, "test", logging.WARNING)
@@ -73,7 +74,7 @@ func TestLoggingLevelForModuleWithDefault(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "info:test=warning")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
 	assertDefaultLoggingLevel(t, logging.INFO)
 	assertModuleLoggingLevel(t, "test", logging.WARNING)
@@ -83,7 +84,7 @@ func TestLoggingLevelForModuleWithDefaultAtEnd(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "test=warning:info")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
 	assertDefaultLoggingLevel(t, logging.INFO)
 	assertModuleLoggingLevel(t, "test", logging.WARNING)
@@ -93,7 +94,7 @@ func TestLoggingLevelForSpecificCommand(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging.node", "error")
 
-	LoggingInit("node")
+	flogging.LoggingInit("node")
 
 	assertDefaultLoggingLevel(t, logging.ERROR)
 }
@@ -101,45 +102,45 @@ func TestLoggingLevelForSpecificCommand(t *testing.T) {
 func TestLoggingLevelForUnknownCommandGoesToDefault(t *testing.T) {
 	viper.Reset()
 
-	LoggingInit("unknown command")
+	flogging.LoggingInit("unknown command")
 
-	assertDefaultLoggingLevel(t, DefaultLoggingLevel())
+	assertDefaultLoggingLevel(t, flogging.DefaultLoggingLevel())
 }
 
 func TestLoggingLevelInvalid(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "invalidlevel")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
-	assertDefaultLoggingLevel(t, DefaultLoggingLevel())
+	assertDefaultLoggingLevel(t, flogging.DefaultLoggingLevel())
 }
 
 func TestLoggingLevelInvalidModules(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "core=invalid")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
-	assertDefaultLoggingLevel(t, DefaultLoggingLevel())
+	assertDefaultLoggingLevel(t, flogging.DefaultLoggingLevel())
 }
 
 func TestLoggingLevelInvalidEmptyModule(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "=warning")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
-	assertDefaultLoggingLevel(t, DefaultLoggingLevel())
+	assertDefaultLoggingLevel(t, flogging.DefaultLoggingLevel())
 }
 
 func TestLoggingLevelInvalidModuleSyntax(t *testing.T) {
 	viper.Reset()
 	viper.Set("logging_level", "type=warn=again")
 
-	LoggingInit("")
+	flogging.LoggingInit("")
 
-	assertDefaultLoggingLevel(t, DefaultLoggingLevel())
+	assertDefaultLoggingLevel(t, flogging.DefaultLoggingLevel())
 }
 
 func assertDefaultLoggingLevel(t *testing.T, expectedLevel logging.Level) {

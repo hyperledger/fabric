@@ -18,7 +18,6 @@ package chaincode
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"strconv"
@@ -56,7 +55,6 @@ func initMemSrvc() (net.Listener, error) {
 	//start clean
 	finitMemSrvc(nil)
 
-	ca.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr, os.Stdout)
 	ca.CacheConfiguration() // Cache configuration
 
 	aca := ca.NewACA()

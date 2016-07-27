@@ -35,11 +35,14 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 
 	"google/protobuf"
 )
+
+var tcapLogger = logging.MustGetLogger("tcap")
 
 // TCAP serves the public GRPC interface of the TCA.
 type TCAP struct {
@@ -48,7 +51,7 @@ type TCAP struct {
 
 // ReadCACertificate reads the certificate of the TCA.
 func (tcap *TCAP) ReadCACertificate(ctx context.Context, in *pb.Empty) (*pb.Cert, error) {
-	Trace.Println("grpc TCAP:ReadCACertificate")
+	tcapLogger.Debugf("grpc TCAP:ReadCACertificate")
 
 	return &pb.Cert{Cert: tcap.tca.raw}, nil
 }
@@ -139,7 +142,7 @@ func (tcap *TCAP) requestAttributes(id string, ecert []byte, attrs []*pb.TCertAt
 	}
 
 	if resp.Status >= pb.ACAAttrResp_FAILURE_MINVAL && resp.Status <= pb.ACAAttrResp_FAILURE_MAXVAL {
-		return nil, errors.New(fmt.Sprint("Error fetching attributes = ", resp.Status))
+		return nil, fmt.Errorf("Error fetching attributes = %s", resp.Status)
 	}
 
 	return tcap.selectValidAttributes(resp.Cert.Cert)
@@ -147,7 +150,7 @@ func (tcap *TCAP) requestAttributes(id string, ecert []byte, attrs []*pb.TCertAt
 
 // CreateCertificateSet requests the creation of a new transaction certificate set by the TCA.
 func (tcap *TCAP) CreateCertificateSet(ctx context.Context, in *pb.TCertCreateSetReq) (*pb.TCertCreateSetResp, error) {
-	Trace.Println("grpc TCAP:CreateCertificateSet")
+	tcapLogger.Debugf("grpc TCAP:CreateCertificateSet")
 
 	id := in.Id.Id
 	raw, err := tcap.tca.eca.readCertificateByKeyUsage(id, x509.KeyUsageDigitalSignature)
@@ -163,7 +166,7 @@ func (tcap *TCAP) createCertificateSet(ctx context.Context, raw []byte, in *pb.T
 	var err error
 	var id = in.Id.Id
 	var timestamp = in.Ts.Seconds
-	const TCERT_SUBJECT_COMMON_NAME_VALUE string = "Transaction Certificate"
+	const tcertSubjectCommonNameValue string = "Transaction Certificate"
 
 	if in.Attributes != nil && viper.GetBool("aca.enabled") {
 		attrs, err = tcap.requestAttributes(id, raw, in.Attributes)
@@ -249,9 +252,9 @@ func (tcap *TCAP) createCertificateSet(ctx context.Context, raw []byte, in *pb.T
 			return nil, err
 		}
 
-		spec := NewDefaultPeriodCertificateSpecWithCommonName(id, TCERT_SUBJECT_COMMON_NAME_VALUE, tcertid, &txPub, x509.KeyUsageDigitalSignature, extensions...)
+		spec := NewDefaultPeriodCertificateSpecWithCommonName(id, tcertSubjectCommonNameValue, tcertid, &txPub, x509.KeyUsageDigitalSignature, extensions...)
 		if raw, err = tcap.tca.createCertificateFromSpec(spec, timestamp, kdfKey, false); err != nil {
-			Error.Println(err)
+			tcapLogger.Error(err)
 			return nil, err
 		}
 
@@ -343,14 +346,14 @@ func (tcap *TCAP) generateExtensions(tcertid *big.Int, tidx []byte, enrollmentCe
 
 // RevokeCertificate revokes a certificate from the TCA.  Not yet implemented.
 func (tcap *TCAP) RevokeCertificate(context.Context, *pb.TCertRevokeReq) (*pb.CAStatus, error) {
-	Trace.Println("grpc TCAP:RevokeCertificate")
+	tcapLogger.Debugf("grpc TCAP:RevokeCertificate")
 
 	return nil, errors.New("not yet implemented")
 }
 
 // RevokeCertificateSet revokes a certificate set from the TCA.  Not yet implemented.
 func (tcap *TCAP) RevokeCertificateSet(context.Context, *pb.TCertRevokeSetReq) (*pb.CAStatus, error) {
-	Trace.Println("grpc TCAP:RevokeCertificateSet")
+	tcapLogger.Debugf("grpc TCAP:RevokeCertificateSet")
 
 	return nil, errors.New("not yet implemented")
 }

@@ -57,6 +57,7 @@ import (
 	"github.com/hyperledger/fabric/core/rest"
 	"github.com/hyperledger/fabric/core/system_chaincode"
 	"github.com/hyperledger/fabric/events/producer"
+	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/protos"
 )
 
@@ -78,7 +79,7 @@ var mainCmd = &cobra.Command{
 		return core.CacheConfiguration()
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
-		core.LoggingInit("peer")
+		flogging.LoggingInit("peer")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionFlag {
@@ -97,7 +98,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print fabric peer version.",
 	Long:  `Print current version of fabric peer server.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		core.LoggingInit("version")
+		flogging.LoggingInit("version")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		showVersion()
@@ -109,7 +110,7 @@ var nodeCmd = &cobra.Command{
 	Short: fmt.Sprintf("%s specific commands.", nodeFuncName),
 	Long:  fmt.Sprintf("%s specific commands.", nodeFuncName),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		core.LoggingInit(nodeFuncName)
+		flogging.LoggingInit(nodeFuncName)
 	},
 }
 
@@ -149,7 +150,7 @@ var networkCmd = &cobra.Command{
 	Short: fmt.Sprintf("%s specific commands.", networkFuncName),
 	Long:  fmt.Sprintf("%s specific commands.", networkFuncName),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		core.LoggingInit(networkFuncName)
+		flogging.LoggingInit(networkFuncName)
 	},
 }
 
@@ -167,7 +168,7 @@ var networkLoginCmd = &cobra.Command{
 // 	Short: "Accesses VM specific functionality.",
 // 	Long:  `Accesses VM specific functionality.`,
 // 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-// 		core.LoggingInit("vm")
+// 		flogging.LoggingInit("vm")
 // 	},
 // }
 //
@@ -217,7 +218,7 @@ var chaincodeCmd = &cobra.Command{
 	Short: fmt.Sprintf("%s specific commands.", chainFuncName),
 	Long:  fmt.Sprintf("%s specific commands.", chainFuncName),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		core.LoggingInit(chainFuncName)
+		flogging.LoggingInit(chainFuncName)
 	},
 }
 

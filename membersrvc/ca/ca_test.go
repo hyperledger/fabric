@@ -45,8 +45,8 @@ func TestNewCA(t *testing.T) {
 	}
 
 	//initialize logging to avoid panics in the current code
-	LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr, os.Stdout)
 	CacheConfiguration() // Cache configuration
+
 	//Create new CA
 	ca := NewCA(name, initializeTables)
 	if ca == nil {

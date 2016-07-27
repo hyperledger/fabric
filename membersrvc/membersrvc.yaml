@@ -34,11 +34,20 @@ security:
 # Enabling/disabling different logging levels of the CA.
 #
 logging:
-        trace: 0
-        info: 1
-        warning: 1
-        error: 1
-        panic: 1
+
+# Please see fabric/docs/Setup/logging-control.md for more
+# options.
+    server: warning
+    ca: warning
+    eca: warning
+    ecap: warning
+    ecaa: warning
+    aca: warning
+    acap: warning
+    tca: warning
+    tcap: warning
+    tcaa: warning
+    tlsca: warning
 
 # Default users to be registered with the CA on first launch.  The role is a binary OR
 # of the different roles a user can have:

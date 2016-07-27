@@ -29,10 +29,14 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
+
+var ecaLogger = logging.MustGetLogger("eca")
 
 var (
 	// ECertSubjectRole is the ASN1 object identifier of the subject's role.
@@ -57,10 +61,12 @@ func initializeECATables(db *sql.DB) error {
 //
 func NewECA() *ECA {
 	eca := &ECA{CA: NewCA("eca", initializeECATables)}
+	flogging.LoggingInit("eca")
 
 	{
 		// read or create global symmetric encryption key
 		var cooked string
+		var l = logging.MustGetLogger("ECA")
 
 		raw, err := ioutil.ReadFile(eca.path + "/obc.aes")
 		if err != nil {
@@ -71,7 +77,7 @@ func NewECA() *ECA {
 
 			err = ioutil.WriteFile(eca.path+"/obc.aes", []byte(cooked), 0644)
 			if err != nil {
-				Panic.Panicln(err)
+				l.Panic(err)
 			}
 		} else {
 			cooked = string(raw)
@@ -79,7 +85,7 @@ func NewECA() *ECA {
 
 		eca.obcKey, err = base64.StdEncoding.DecodeString(cooked)
 		if err != nil {
-			Panic.Panicln(err)
+			l.Panic(err)
 		}
 	}
 
@@ -91,12 +97,12 @@ func NewECA() *ECA {
 			block, _ := pem.Decode(cooked)
 			priv, err = x509.ParseECPrivateKey(block.Bytes)
 			if err != nil {
-				Panic.Panicln(err)
+				ecaLogger.Panic(err)
 			}
 		} else {
 			priv, err = ecdsa.GenerateKey(primitives.GetDefaultCurve(), rand.Reader)
 			if err != nil {
-				Panic.Panicln(err)
+				ecaLogger.Panic(err)
 			}
 
 			raw, _ := x509.MarshalECPrivateKey(priv)
@@ -107,7 +113,7 @@ func NewECA() *ECA {
 				})
 			err := ioutil.WriteFile(eca.path+"/obc.ecies", cooked, 0644)
 			if err != nil {
-				Panic.Panicln(err)
+				ecaLogger.Panic(err)
 			}
 		}
 
@@ -134,7 +140,7 @@ func (eca *ECA) populateUsersTable() {
 		vals := strings.Fields(flds)
 		role, err := strconv.Atoi(vals[0])
 		if err != nil {
-			Panic.Panicln(err)
+			ecaLogger.Panic(err)
 		}
 		var affiliation, memberMetadata, registrar string
 		if len(vals) >= 3 {
@@ -182,35 +188,35 @@ func (eca *ECA) populateAffiliationGroupsTable() {
 // Start starts the ECA.
 //
 func (eca *ECA) Start(srv *grpc.Server) {
-	Info.Println("Starting ECA...")
+	ecaLogger.Info("Starting ECA...")
 
 	eca.startECAP(srv)
 	eca.startECAA(srv)
 	eca.gRPCServer = srv
 
-	Info.Println("ECA started.")
+	ecaLogger.Info("ECA started.")
 }
 
 // Stop stops the ECA services.
 func (eca *ECA) Stop() {
-	Info.Println("Stopping ECA services...")
+	ecaLogger.Info("Stopping ECA services...")
 	if eca.gRPCServer != nil {
 		eca.gRPCServer.Stop()
 	}
 	err := eca.CA.Stop()
 	if err != nil {
-		Error.Println("ECA Error stopping services ", err)
+		ecaLogger.Errorf("ECA Error stopping services: %s", err)
 	} else {
-		Info.Println("ECA stopped")
+		ecaLogger.Info("ECA stopped")
 	}
 }
 
 func (eca *ECA) startECAP(srv *grpc.Server) {
 	pb.RegisterECAPServer(srv, &ECAP{eca})
-	Info.Println("ECA PUBLIC gRPC API server started")
+	ecaLogger.Info("ECA PUBLIC gRPC API server started")
 }
 
 func (eca *ECA) startECAA(srv *grpc.Server) {
 	pb.RegisterECAAServer(srv, &ECAA{eca})
-	Info.Println("ECA ADMIN gRPC API server started")
+	ecaLogger.Info("ECA ADMIN gRPC API server started")
 }
