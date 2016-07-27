@@ -1,7 +1,7 @@
 site_name: Hyperledger Fabric
 site_url: http://hyperledger-fabric.readthedocs.io
 theme: readthedocs
-repo_url: https://github.com/hyperledger/fabric
+repo_url: http://gerrit.hyperledger.org/r/fabric
 site_description: 'Welcome to the Hyperledger fabric documentation'
 
 pages:
@@ -10,9 +10,7 @@ pages:
 - Protocol Spec: protocol-spec.md
 - Usecases: biz/usecases.md
 
-- Setup:
-  - Fabric Developer Setup: dev-setup/devenv.md
-  - Building Fabric: dev-setup/build.md
+- Installation and setup:
   - Chaincode or Application Developer Setup: Setup/Chaincode-setup.md
   - Java Chaincode Setup: Setup/JAVAChaincode.md
   - Fabric Network Setup: Setup/Network-setup.md
@@ -20,11 +18,24 @@ pages:
   - CA Setup: Setup/ca-setup.md
   - Logging: Setup/logging-control.md
 
-- API:
+- APIs:
   - Chaincode APIs: API/ChaincodeAPI.md
   - Core API: API/CoreAPI.md
   - CA API: API/MemberServicesAPI.md
   - System Chaincode: SystemChaincodes/noop.md
+
+- Fabric Developer:
+  - Contributing: CONTRIBUTING.md
+  - Getting an Account: Gerrit/lf-account.md
+  - Gerrit: Gerrit/gerrit.md
+  - Fabric Developer Setup: dev-setup/devenv.md
+  - Building Fabric: dev-setup/build.md
+  - Best Practices: Gerrit/best-practices.md
+  - Maintainers: MAINTAINERS.md
+  - Reviewing: Gerrit/reviewing.md
+  - Changes: Gerrit/changes.md
+  - Style guides:
+    - Golang: Style-guides/go-style.md
 
 - FAQ:
   - ChainCodeFAQ: FAQ/chaincode_FAQ.md

@@ -35,17 +35,21 @@ git config --global core.autocrlf false
 ```
 If you continue with `core.autocrlf` set to `true`, the `vagrant up` command will fail with the error `./setup.sh: /bin/bash^M: bad interpreter: No such file or directory`
 
-#### Cloning the Peer project
+#### Cloning the Fabric project
 
-Create a fork of the [fabric](https://github.com/hyperledger/fabric) repository using the GitHub web interface. Next, clone your fork in the appropriate location.
+Since the Fabric project is a `Go` project, you'll need to clone the Fabric repo to your $GOPATH/src directory. If your $GOPATH has multiple path components, then you will want to use the first one. There's a little bit of setup needed:
 
 ```
 cd $GOPATH/src
 mkdir -p github.com/hyperledger
 cd github.com/hyperledger
-git clone https://github.com/<username>/fabric.git
 ```
 
+Recall that we are using `Gerrit` for source control, which has its own internal git repositories. Hence, we will need to [clone from Gerrit](../Gerrit/gerrit.md#Working-with-a-local-clone-of-the-repository). For brevity, the command is as follows:
+```
+git clone ssh://LFID@gerrit.hyperledger.org:29418/fabric && scp -p -P 29418 LFID@gerrit.hyperledger.org:hooks/commit-msg fabric/.git/hooks/
+```
+**Note:** of course, you would want to replace `LFID` with your [Linux Foundation ID](../Gerrit/lf-account.md).
 
 #### Boostrapping the VM using Vagrant
 
@@ -67,7 +71,7 @@ Once you have your vagrant development environment established, you can proceed 
 
 ### Notes
 
-**NOTE:** any time you `git clone` any of the projects in your Host's fabric directory (under $GOPATH/src/github.com/hyperledger/fabric), the update will be instantly available within the VM fabric directory.
+**NOTE:** any time you change any of the files in your local fabric directory (under `$GOPATH/src/github.com/hyperledger/fabric`), the update will be instantly available within the VM fabric directory.
 
 **NOTE:** If you intend to run the development environment behind an HTTP Proxy, you need to configure the guest so that the provisioning process may complete. You can achieve this via the *vagrant-proxyconf* plugin. Install with `vagrant plugin install vagrant-proxyconf` and then set the VAGRANT_HTTP_PROXY and VAGRANT_HTTPS_PROXY environment variables *before* you execute `vagrant up`. More details are available here: https://github.com/tmatilai/vagrant-proxyconf/
 
