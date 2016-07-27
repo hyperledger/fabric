@@ -104,7 +104,7 @@ and will not accept any deviations. You must run the following tools against you
   ```
 
 ### Becoming a maintainer
-This project is managed under open governance model as described in our  [charter](https://www.hyperledger.org/about/charter). Projects or sub-projects will be lead by a set of maintainers. New projects can designate an initial set of maintainers that will be approved by the Technical Steering Committee when the project is first approved. The project's maintainers will, from time-to-time, consider adding a new maintainer. An existing maintainer will post a pull request to the [MAINTAINERS.txt](MAINTAINERS.txt) file. If a majority of the maintainers concur in the comments, the pull request is then merged and the individual becomes a maintainer.
+This project is managed under open governance model as described in our  [charter](https://www.hyperledger.org/about/charter). Projects or sub-projects will be lead by a set of maintainers. New projects can designate an initial set of maintainers that will be approved by the Technical Steering Committee when the project is first approved. The project's maintainers will, from time-to-time, consider adding or removing a maintainer. An existing maintainer will post a pull request to the [MAINTAINERS.txt](MAINTAINERS.txt) file. If a majority of the maintainers concur in the comments, the pull request is then merged and the individual becomes a (or is removed as a) maintainer. Note that removing a maintainer should not be taken lightly, but occasionally, people do move on - hence the bar should be some period of inactivity, an explicit resignation, some infraction of the code of conduct or consistently demonstrating poor judgement.
 
 ### Legal stuff
 
