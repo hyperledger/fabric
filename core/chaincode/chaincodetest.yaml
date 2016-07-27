@@ -81,7 +81,7 @@ eca:
 cli:
 
     # The address that the cli process will use for callbacks from chaincodes
-    address: 0.0.0.0:30304
+    address: 0.0.0.0:7052
 
 
 
@@ -98,7 +98,7 @@ rest:
     enabled: true
 
     # The address that the REST service will listen on for incoming requests.
-    address: 0.0.0.0:5000
+    address: 0.0.0.0:7050
 
 
 ###############################################################################
@@ -226,7 +226,7 @@ peer:
 
         events:
             # The address that the Event service will be enabled on the validator
-            address: 0.0.0.0:31315
+            address: 0.0.0.0:7053
 
             # total number of events that could be buffered without blocking the
             # validator sends

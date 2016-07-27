@@ -82,7 +82,7 @@ The corresponding docker-compose.yml for running Docker on Mac or Windows native
 membersrvc:
   image: hyperledger/fabric-membersrvc
   ports:
-    - "50051:50051"
+    - "7054:7054"
   command: membersrvc
 ```
 
@@ -112,14 +112,14 @@ The corresponding docker-compose.yml for running Docker on Mac or Windows native
 membersrvc:
   image: hyperledger/fabric-membersrvc
   ports:
-    - "50051:50051"
+    - "7054:7054"
   command: membersrvc
 vp0:
   image: hyperledger/fabric-peer
   ports:
-    - "5000:5000"
-    - "30303:30303"
-    - "30304:30304"
+    - "7050:7050"
+    - "7051:7051"
+    - "7052:7052"
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
     - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
@@ -175,7 +175,7 @@ membersrvc:
 ```
 
 ```
-docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp0 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_SECURITY_ENABLED=true -e CORE_SECURITY_PRIVACY=true -e CORE_PEER_PKI_ECA_PADDR=172.17.0.1:50051 -e CORE_PEER_PKI_TCA_PADDR=172.17.0.1:50051 -e CORE_PEER_PKI_TLSCA_PADDR=172.17.0.1:50051 -e CORE_SECURITY_ENROLLID=vp0 -e CORE_SECURITY_ENROLLSECRET=vp0_secret  hyperledger/fabric-peer peer node start
+docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp0 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_SECURITY_ENABLED=true -e CORE_SECURITY_PRIVACY=true -e CORE_PEER_PKI_ECA_PADDR=172.17.0.1:7054 -e CORE_PEER_PKI_TCA_PADDR=172.17.0.1:7054 -e CORE_PEER_PKI_TLSCA_PADDR=172.17.0.1:7054 -e CORE_SECURITY_ENROLLID=vp0 -e CORE_SECURITY_ENROLLSECRET=vp0_secret  hyperledger/fabric-peer peer node start
 ```
 
 Additionally, the validating peer `enrollID` and `enrollSecret` (`vp0` and `vp0_secret`) has to be added to [membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml).

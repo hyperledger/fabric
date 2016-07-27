@@ -153,7 +153,7 @@ startExampleInDevMode() {
       go build
    fi
    export CORE_CHAINCODE_ID_NAME=$2
-   export CORE_PEER_ADDRESS=0.0.0.0:30303
+   export CORE_PEER_ADDRESS=0.0.0.0:7051
    startProcess "$EXE" "${EXE}.log" "$1"
 }
 

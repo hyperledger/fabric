@@ -12,6 +12,6 @@ vp1:
     service: vp0
   environment:
     - CORE_PEER_ID=vp1
-    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:30303
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
   links:
     - vp0

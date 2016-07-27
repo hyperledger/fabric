@@ -39,8 +39,8 @@ function setup(cb) {
    console.log("initializing ...");
    var chain = hfc.newChain("testChain");
    chain.setKeyValStore(hfc.newFileKeyValStore("/tmp/keyValStore"));
-   chain.setMemberServicesUrl("grpc://localhost:50051");
-   chain.addPeer("grpc://localhost:30303");
+   chain.setMemberServicesUrl("grpc://localhost:7054");
+   chain.addPeer("grpc://localhost:7051");
    if (devMode) chain.setDevMode(true);
    console.log("enrolling deployer ...");
    chain.enroll("WebAppAdmin", "DJY27pEnl16d", function (err, user) {

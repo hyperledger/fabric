@@ -1,13 +1,13 @@
 #!/usr/bin/tclsh
 
 # Copyright IBM Corp. 2016. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # 		 http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -66,7 +66,7 @@ Options:
     In -follow mode, once the end of the current blockchain is reached
     fabricLogger will keep polling (alternate peers) at this frequency. If this
     is specified as 0 then fabricLogger will aggressively poll the set of peers
-    as fast as possible. 
+    as fast as possible.
 
 -from <first>[:<last>] : Log all (currently existing) blocks
 
@@ -112,7 +112,7 @@ Options:
     this list of PIDS. This flag is used to make drivers terminate more
     quickly if the logger fails..
 
--port <port> : 5000
+-port <port> : 7050
 
     The default REST API port.
 }
@@ -139,7 +139,7 @@ set options {
     {bool    {-timestamp -noTimestamp} parms(timestamp)  0}
     {bool    {-force -noForce}         parms(force)      0}
     {key     -killOnError              parms(killPIDs)  {}}
-    {key     -port                     parms(port)       5000}
+    {key     -port                     parms(port)       7050}
 }
 
 mapKeywordArgs $argv $options parms(explicitPeers)
@@ -286,22 +286,22 @@ while {1} {
                 "$peer @ block $block: ::http::geturl failed " \
                 "with [parms retry] retries : $token"
         }
-    
+
         if {[http::ncode $token] == 404} {
 
             # End of blockchain
-            
+
             http::cleanup $token
             if {![parms follow]} {exit 0}
             if {[parms followPoll] == 0} break
             after [parms followPoll]
             break
         }
-        
+
         if {[http::ncode $token] != 200} {
-            
+
             # Failure
-            
+
             if {$retry > 0} {
                 if {$retry == [parms retry]} {
                     warn {} \
@@ -311,20 +311,20 @@ while {1} {
                 http::cleanup $token
                 continue
             }
-            
+
             err {} \
                 "REST API call to $peer for block $block failed " \
                 "with [parms retry] retries"
             httpErrorExit $token
         }
-        
+
         if {[catch {json::json2dict [http::data $token]} parse]} {
             err {} "$peer @ block $block: JSON response does not parse: $parse"
             forceBreakOrErrorExit $token
         }
-            
+
         if {$block != 0} {
-            
+
             if {[catch {dict get $parse transactions} transactions]} {
                 err {} \
                     "$peer @ block $block: " \
@@ -333,12 +333,12 @@ while {1} {
             }
 
             foreach tx $transactions {
-                
+
                 # The chaincodeID comes back as bytes so that it can be
                 # encrypted. We don't log it or the timestamp now. The
                 # "UUID" for type 1 (deploy) transactions is actually the
                 # chaincode name.
-                
+
                 if {[catch {dict get $tx type} type]} {
                     err {} \
                         "$peer @ block $block: " \

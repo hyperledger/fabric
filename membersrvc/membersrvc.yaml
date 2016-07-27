@@ -13,7 +13,7 @@ server:
         cadir: ".membersrvc"
 
         # port the CA services are listening on
-        port: ":50051"
+        port: ":7054"
 
         # TLS certificate and key file paths
         tls:
@@ -165,7 +165,7 @@ aca:
               attribute-entry-10: bob;bank_a;account;23456-67890;2015-02-02T00:00:00-03:00;;
               attribute-entry-11: assigner;bank_a;role;assigner;2015-01-01T00:00:00-03:00;;
 
-          address: localhost:50051
+          address: localhost:7054
           server-name: acap
           # Enabling/disabling Attribute Certificate Authority, if ACA is enabled attributes will be added into the TCert.
           enabled: false

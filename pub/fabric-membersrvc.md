@@ -30,7 +30,7 @@ The corresponding docker-compose.yml for running Docker on Mac or Windows native
 membersrvc:
   image: hyperledger/fabric-membersrvc
   ports:
-    - "50051:50051"
+    - "7054:7054"
   command: membersrvc
 ```
 
@@ -60,14 +60,14 @@ The corresponding docker-compose.yml for running Docker on Mac or Windows native
 membersrvc:
   image: hyperledger/fabric-membersrvc
   ports:
-    - "50051:50051"
+    - "7054:7054"
   command: membersrvc
 vp0:
   image: hyperledger/fabric-peer
   ports:
     - "5000:5000"
-    - "30303:30303"
-    - "30304:30304"
+    - "7051:7051"
+    - "7052:7052"
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
     - CORE_VM_ENDPOINT=unix:///var/run/docker.sock

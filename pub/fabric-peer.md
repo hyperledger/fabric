@@ -54,9 +54,9 @@ The following docker-compose.yml could be used for running Docker for Mac or Win
 vp0:
   image: hyperledger/fabric-peer
   ports:
-    - "5000:5000"
-    - "30303:30303"
-    - "30304:30304"
+    - "7050:7050"
+    - "7051:7051"
+    - "7052:7052"
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
     - CORE_VM_ENDPOINT=unix:///var/run/docker.sock

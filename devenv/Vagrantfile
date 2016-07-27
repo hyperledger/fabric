@@ -34,10 +34,10 @@ Vagrant.configure('2') do |config|
   config.vm.box = "hyperledger/fabric-baseimage"
   config.vm.box_version = ENV['USE_LOCAL_BASEIMAGE'] ? "0": baseimage_release # Vagrant does not support versioning local images, the local version is always implicitly version 0
 
-  config.vm.network :forwarded_port, guest: 5000, host: 5000 # Openchain REST services
-  config.vm.network :forwarded_port, guest: 30303, host: 30303 # Openchain gRPC services
-  config.vm.network :forwarded_port, guest: 50051, host: 50051 # Membership service
-  config.vm.network :forwarded_port, guest: 31315, host: 31315 # GRPCCient gRPC services
+  config.vm.network :forwarded_port, guest: 7050, host: 7050 # Openchain REST services
+  config.vm.network :forwarded_port, guest: 7051, host: 7051 # Openchain gRPC services
+  config.vm.network :forwarded_port, guest: 7054, host: 7054 # Membership service
+  config.vm.network :forwarded_port, guest: 7053, host: 7053 # GRPCCient gRPC services
 
   config.vm.synced_folder "..", "#{SRCMOUNT}"
   config.vm.synced_folder "..", "/opt/gopath/src/github.com/hyperledger/fabric"

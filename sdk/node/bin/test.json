@@ -1,7 +1,7 @@
 {
-  "memberServicesUrl": "grpc://localhost:50051",
-  "peers": [ "grpc://localhost:30303" ],
-  "registrar": { "name": "WebAppAdmin", "secret": "DJY27pEnl16d" }, 
+  "memberServicesUrl": "grpc://localhost:7054",
+  "peers": [ "grpc://localhost:7051" ],
+  "registrar": { "name": "WebAppAdmin", "secret": "DJY27pEnl16d" },
   "numUsers": 5,
   "iterations": 10,
   "tests": [

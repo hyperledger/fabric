@@ -12,7 +12,7 @@ server:
         cadir: ".membersrvc"
 
         # port the CA services are listening on
-        port: ":50051"
+        port: ":7054"
 
         # TLS certificate and key file paths
         tls:
@@ -50,7 +50,7 @@ aca:
         attribute-entry-2: admin;bank_a;role;assigner;2015-01-01T00:00:00-03:00;;
         attribute-entry-3: alice;bank_a;account;12345-56789;2016-01-01T00:00:00-03:00;;
         attribute-entry-4: bob;bank_a;account;23456-67890;2015-02-02T00:00:00-03:00;;
-    address: localhost:50051
+    address: localhost:7054
     server-name: acap
     enabled: true
 
@@ -88,7 +88,7 @@ eca:
 cli:
 
     # The address that the cli process will use for callbacks from chaincodes
-    address: 0.0.0.0:30304
+    address: 0.0.0.0:7052
 
 
 
@@ -105,7 +105,7 @@ rest:
     enabled: true
 
     # The address that the REST service will listen on for incoming requests.
-    address: 0.0.0.0:5000
+    address: 0.0.0.0:7050
 
 
 ###############################################################################
@@ -234,7 +234,7 @@ peer:
 
         events:
             # The address that the Event service will be enabled on the validator
-            address: 0.0.0.0:31315
+            address: 0.0.0.0:7053
 
             # total number of events that could be buffered without blocking the
             # validator sends
@@ -260,11 +260,11 @@ peer:
     # PKI member services properties
     pki:
         eca:
-            paddr: localhost:50051
+            paddr: localhost:7054
         tca:
-            paddr: localhost:50051
+            paddr: localhost:7054
         tlsca:
-            paddr: localhost:50051
+            paddr: localhost:7054
         tls:
             enabled: false
             rootcert:

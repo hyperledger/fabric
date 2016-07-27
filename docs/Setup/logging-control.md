@@ -12,9 +12,9 @@ All logs are currently directed to `stderr`, and the pretty-printing is currentl
 
 In pretty-printed logs the logging level is indicated both by color and by a 4-character code, e.g, "ERRO" for ERROR, "DEBU" for DEBUG, etc. In the logging context a _module_ is an arbitrary name (string) given by developers to groups of related messages. In the pretty-printed example below, the logging modules "peer", "rest" and "main" are generating logs.
 
-    16:47:09.634 [peer] GetLocalAddress -> INFO 033 Auto detected peer address: 9.3.158.178:30303
+    16:47:09.634 [peer] GetLocalAddress -> INFO 033 Auto detected peer address: 9.3.158.178:7051
     16:47:09.635 [rest] StartOpenchainRESTServer -> INFO 035 Initializing the REST service...
-    16:47:09.635 [main] serve -> INFO 036 Starting peer with id=name:"vp1" , network id=dev, address=9.3.158.178:30303, discovery.rootnode=, validator=true
+    16:47:09.635 [main] serve -> INFO 036 Starting peer with id=name:"vp1" , network id=dev, address=9.3.158.178:7051, discovery.rootnode=, validator=true
 
 An arbitrary number of logging modules can be created at runtime, therefore
 there is no "master list" of modules, and logging control constructs can not

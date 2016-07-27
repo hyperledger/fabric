@@ -47,7 +47,7 @@ const (
 	DevModeUserRunsChaincode       string = "dev"
 	chaincodeStartupTimeoutDefault int    = 5000
 	chaincodeInstallPathDefault    string = "/opt/gopath/bin/"
-	peerAddressDefault             string = "0.0.0.0:30303"
+	peerAddressDefault             string = "0.0.0.0:7051"
 )
 
 // chains is a map between different blockchains and their ChaincodeSupport.

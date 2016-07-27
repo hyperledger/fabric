@@ -49,7 +49,7 @@ type peerInfo struct {
 
 func (p *peerInfo) GetPeers() (*protos.PeersMessage, error) {
 	peers := []*protos.PeerEndpoint{}
-	pe1 := &protos.PeerEndpoint{ID: &protos.PeerID{Name: viper.GetString("peer.id")}, Address: "localhost:30303", Type: protos.PeerEndpoint_VALIDATOR}
+	pe1 := &protos.PeerEndpoint{ID: &protos.PeerID{Name: viper.GetString("peer.id")}, Address: "localhost:7051", Type: protos.PeerEndpoint_VALIDATOR}
 	peers = append(peers, pe1)
 
 	/*
@@ -66,7 +66,7 @@ func (p *peerInfo) GetPeers() (*protos.PeersMessage, error) {
 }
 
 func (p *peerInfo) GetPeerEndpoint() (*protos.PeerEndpoint, error) {
-	pe := &protos.PeerEndpoint{ID: &protos.PeerID{Name: viper.GetString("peer.id")}, Address: "localhost:30303", Type: protos.PeerEndpoint_VALIDATOR}
+	pe := &protos.PeerEndpoint{ID: &protos.PeerID{Name: viper.GetString("peer.id")}, Address: "localhost:7051", Type: protos.PeerEndpoint_VALIDATOR}
 	return pe, nil
 }
 

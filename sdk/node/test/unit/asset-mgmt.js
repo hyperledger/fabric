@@ -51,8 +51,8 @@ var testChaincodeID;
 //
 var chain = hfc.newChain("testChain");
 chain.setKeyValStore(hfc.newFileKeyValStore('/tmp/keyValStore'));
-chain.setMemberServicesUrl("grpc://localhost:50051");
-chain.addPeer("grpc://localhost:30303");
+chain.setMemberServicesUrl("grpc://localhost:7054");
+chain.addPeer("grpc://localhost:7051");
 
 //
 // Set the chaincode deployment mode to either developent mode (user runs chaincode)
