@@ -531,8 +531,8 @@ func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapsh
 	for i := 0; snapshot.Next(); i++ {
 		delta := statemgmt.NewStateDelta()
 		k, v := snapshot.GetRawKeyValue()
-		cID, kID := statemgmt.DecodeCompositeKey(k)
-		delta.Set(cID, kID, v, nil)
+		cID, keyID := statemgmt.DecodeCompositeKey(k)
+		delta.Set(cID, keyID, v, nil)
 
 		deltaAsBytes := delta.Marshal()
 		// Encode a SyncStateSnapsot into the payload

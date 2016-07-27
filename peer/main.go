@@ -492,7 +492,7 @@ func serve(args []string) error {
 
 	registerChaincodeSupport(chaincode.DefaultChain, grpcServer, secHelper)
 
-	var peerServer *peer.PeerImpl
+	var peerServer *peer.Impl
 
 	// Create the peerServer
 	if peer.ValidatorEnabled() {
