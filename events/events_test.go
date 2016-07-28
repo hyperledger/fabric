@@ -47,30 +47,30 @@ func (a *Adapter) GetInterestedEvents() ([]*ehpb.Interest, error) {
 	return []*ehpb.Interest{
 		&ehpb.Interest{EventType: ehpb.EventType_BLOCK},
 		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: "event1"}}},
-		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: ""}}},
+		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: "event2"}}},
 	}, nil
 	//return []*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_BLOCK}}, nil
 }
 
-func (a *Adapter) Recv(msg *ehpb.Event) (bool, error) {
-	//fmt.Printf("Adapter received %+v\n", msg.Event)
-	switch x := msg.Event.(type) {
-	case *ehpb.Event_Block:
-	case *ehpb.Event_ChaincodeEvent:
-	case nil:
-		// The field is not set.
-		fmt.Printf("event not set\n")
-		return false, fmt.Errorf("event not set")
-	default:
-		fmt.Printf("unexpected type %T\n", x)
-		return false, fmt.Errorf("unexpected type %T", x)
-	}
+func (a *Adapter) updateCountNotify() {
 	a.Lock()
 	a.count--
 	if a.count <= 0 {
 		a.notfy <- struct{}{}
 	}
 	a.Unlock()
+}
+
+func (a *Adapter) Recv(msg *ehpb.Event) (bool, error) {
+	switch x := msg.Event.(type) {
+	case *ehpb.Event_Block, *ehpb.Event_ChaincodeEvent, *ehpb.Event_Register, *ehpb.Event_Unregister:
+		a.updateCountNotify()
+	case nil:
+		// The field is not set.
+		return false, fmt.Errorf("event not set")
+	default:
+		return false, fmt.Errorf("unexpected type %T", x)
+	}
 	return true, nil
 }
 
@@ -107,17 +107,13 @@ func TestReceiveMessage(t *testing.T) {
 		t.Logf("Error sending message %s", err)
 	}
 
-	//receive 2 messages
-	for i := 0; i < 2; i++ {
-		select {
-		case <-adapter.notfy:
-		case <-time.After(5 * time.Second):
-			t.Fail()
-			t.Logf("timed out on messge")
-		}
+	select {
+	case <-adapter.notfy:
+	case <-time.After(2 * time.Second):
+		t.Fail()
+		t.Logf("timed out on messge")
 	}
 }
-
 func TestReceiveAnyMessage(t *testing.T) {
 	var err error
 
@@ -144,6 +140,42 @@ func TestReceiveAnyMessage(t *testing.T) {
 		}
 	}
 }
+func TestReceiveCCWildcard(t *testing.T) {
+	var err error
+
+	adapter.count = 1
+	obcEHClient.RegisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: ""}}}})
+
+	select {
+	case <-adapter.notfy:
+	case <-time.After(2 * time.Second):
+		t.Fail()
+		t.Logf("timed out on messge")
+	}
+
+	adapter.count = 1
+	emsg := createTestChaincodeEvent("0xffffffff", "wildcardevent")
+	if err = producer.Send(emsg); err != nil {
+		t.Fail()
+		t.Logf("Error sending message %s", err)
+	}
+
+	select {
+	case <-adapter.notfy:
+	case <-time.After(2 * time.Second):
+		t.Fail()
+		t.Logf("timed out on messge")
+	}
+	adapter.count = 1
+	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: ""}}}})
+
+	select {
+	case <-adapter.notfy:
+	case <-time.After(2 * time.Second):
+		t.Fail()
+		t.Logf("timed out on messge")
+	}
+}
 
 func TestFailReceive(t *testing.T) {
 	var err error
@@ -161,6 +193,56 @@ func TestFailReceive(t *testing.T) {
 		t.Logf("should NOT have received event1")
 	case <-time.After(2 * time.Second):
 	}
+}
+
+func TestUnregister(t *testing.T) {
+	var err error
+	obcEHClient.RegisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: "event10"}}}})
+
+	adapter.count = 1
+	select {
+	case <-adapter.notfy:
+	case <-time.After(2 * time.Second):
+		t.Fail()
+		t.Logf("timed out on messge")
+	}
+
+	emsg := createTestChaincodeEvent("0xffffffff", "event10")
+	if err = producer.Send(emsg); err != nil {
+		t.Fail()
+		t.Logf("Error sending message %s", err)
+	}
+
+	adapter.count = 1
+	select {
+	case <-adapter.notfy:
+	case <-time.After(2 * time.Second):
+		t.Fail()
+		t.Logf("timed out on messge")
+	}
+	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: "event10"}}}})
+	adapter.count = 1
+	select {
+	case <-adapter.notfy:
+	case <-time.After(2 * time.Second):
+		t.Fail()
+		t.Logf("should have received unreg")
+	}
+
+	adapter.count = 1
+	emsg = createTestChaincodeEvent("0xffffffff", "event10")
+	if err = producer.Send(emsg); err != nil {
+		t.Fail()
+		t.Logf("Error sending message %s", err)
+	}
+
+	select {
+	case <-adapter.notfy:
+		t.Fail()
+		t.Logf("should NOT have received event1")
+	case <-time.After(5 * time.Second):
+	}
+
 }
 
 func BenchmarkMessages(b *testing.B) {
@@ -220,9 +302,10 @@ func TestMain(m *testing.M) {
 	fmt.Printf("Starting events server\n")
 	go grpcServer.Serve(lis)
 
+	var regTimeout = 5 * time.Second
 	done := make(chan struct{})
 	adapter = &Adapter{notfy: done}
-	obcEHClient = consumer.NewEventsClient(peerAddress, adapter)
+	obcEHClient, _ = consumer.NewEventsClient(peerAddress, regTimeout, adapter)
 	if err = obcEHClient.Start(); err != nil {
 		fmt.Printf("could not start chat %s\n", err)
 		obcEHClient.Stop()

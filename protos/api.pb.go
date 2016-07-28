@@ -41,6 +41,7 @@ It has these top-level messages:
 	Interest
 	Register
 	Rejection
+	Unregister
 	Event
 	Transaction
 	TransactionBlock

@@ -18,91 +18,106 @@ package producer
 
 import (
 	"fmt"
+	"strconv"
 
 	pb "github.com/hyperledger/fabric/protos"
 )
 
 type handler struct {
-	ChatStream pb.Events_ChatServer
-	doneChan   chan bool
-	registered bool
-	// PM: this should be a list, add/del, iterate
-	interestedEvents []*pb.Interest
+	ChatStream       pb.Events_ChatServer
+	doneChan         chan bool
+	interestedEvents map[string]*pb.Interest
 }
 
 func newEventHandler(stream pb.Events_ChatServer) (*handler, error) {
 	d := &handler{
 		ChatStream: stream,
 	}
+	d.interestedEvents = make(map[string]*pb.Interest)
 	d.doneChan = make(chan bool)
 	return d, nil
 }
 
-func (d *handler) addInterest(interest *pb.Interest) {
-	n := len(d.interestedEvents)
-	if n == cap(d.interestedEvents) {
-		// Slice is full; must grow.
-		// We double its size and add 1, so if the size is zero we still grow.
-		newSlice := make([]*pb.Interest, len(d.interestedEvents), 2*len(d.interestedEvents)+1)
-		copy(newSlice, d.interestedEvents)
-		d.interestedEvents = newSlice
-	}
-	d.interestedEvents = d.interestedEvents[0 : n+1]
-	d.interestedEvents[n] = interest
-}
-
 // Stop stops this handler
 func (d *handler) Stop() error {
-	d.deregister()
+	d.deregisterAll()
+	d.interestedEvents = nil
 	d.doneChan <- true
-	d.registered = false
 	return nil
 }
 
+func getInterestKey(interest pb.Interest) string {
+	var key string
+	switch interest.EventType {
+	case pb.EventType_BLOCK:
+		key = "/" + strconv.Itoa(int(pb.EventType_BLOCK))
+	case pb.EventType_REJECTION:
+		key = "/" + strconv.Itoa(int(pb.EventType_REJECTION))
+	case pb.EventType_CHAINCODE:
+		key = "/" + strconv.Itoa(int(pb.EventType_CHAINCODE)) + "/" + interest.GetChaincodeRegInfo().ChaincodeID + "/" + interest.GetChaincodeRegInfo().EventName
+	default:
+		producerLogger.Errorf("unknown interest type %s", interest.EventType)
+	}
+	return key
+}
+
 func (d *handler) register(iMsg []*pb.Interest) error {
-	//TODO add the handler to the map for the interested events
-	//if successfully done, continue....
+	// Could consider passing interest array to registerHandler
+	// and only lock once for entire array here
 	for _, v := range iMsg {
 		if err := registerHandler(v, d); err != nil {
 			producerLogger.Errorf("could not register %s: %s", v, err)
 			continue
 		}
-		d.addInterest(v)
+		d.interestedEvents[getInterestKey(*v)] = v
 	}
 
 	return nil
 }
 
-func (d *handler) deregister() {
-	for _, v := range d.interestedEvents {
+func (d *handler) deregister(iMsg []*pb.Interest) error {
+	for _, v := range iMsg {
 		if err := deRegisterHandler(v, d); err != nil {
 			producerLogger.Errorf("could not deregister %s", v)
 			continue
 		}
-		v = nil
+		delete(d.interestedEvents, getInterestKey(*v))
 	}
-	// PM the following should release slice and its elements for GC?
-	d.interestedEvents = nil
+	return nil
+}
+
+func (d *handler) deregisterAll() {
+	for k, v := range d.interestedEvents {
+		if err := deRegisterHandler(v, d); err != nil {
+			producerLogger.Errorf("could not deregister %s", v)
+			continue
+		}
+		delete(d.interestedEvents, k)
+	}
 }
 
 // HandleMessage handles the Openchain messages for the Peer.
 func (d *handler) HandleMessage(msg *pb.Event) error {
-	producerLogger.Debug("Handling Event")
-	eventsObj := msg.GetRegister()
-	if eventsObj == nil {
-		return fmt.Errorf("Invalid object from consumer %v", msg.GetEvent())
+	//producerLogger.Debug("Handling Event")
+	switch msg.Event.(type) {
+	case *pb.Event_Register:
+		eventsObj := msg.GetRegister()
+		if err := d.register(eventsObj.Events); err != nil {
+			return fmt.Errorf("Could not register events %s", err)
+		}
+	case *pb.Event_Unregister:
+		eventsObj := msg.GetUnregister()
+		if err := d.deregister(eventsObj.Events); err != nil {
+			return fmt.Errorf("Could not unregister events %s", err)
+		}
+	case nil:
+	default:
+		return fmt.Errorf("Invalide type from client %T", msg.Event)
 	}
-
-	if err := d.register(eventsObj.Events); err != nil {
-		return fmt.Errorf("Could not register events %s", err)
-	}
-
 	//TODO return supported events.. for now just return the received msg
 	if err := d.ChatStream.Send(msg); err != nil {
 		return fmt.Errorf("Error sending response to %v:  %s", msg, err)
 	}
-
-	d.registered = true
 
 	return nil
 }

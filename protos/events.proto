@@ -64,6 +64,10 @@ message Rejection {
 }
 
 //---------- producer events ---------
+message Unregister {
+    repeated Interest events = 1;
+}
+
 //Event is used by
 //  - consumers (adapters) to send Register
 //  - producer to advertise supported types and events
@@ -71,13 +75,16 @@ message Event {
     //TODO need timestamp
 
     oneof Event {
-        //consumer events
+        //Register consumer sent event
         Register register = 1;
 
         //producer events
         Block block = 2;
         ChaincodeEvent chaincodeEvent = 3;
         Rejection rejection = 4;
+
+        //Unregister consumer sent events
+        Unregister unregister = 5;
     }
 }
 
