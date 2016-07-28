@@ -78,7 +78,7 @@ func (client *clientImpl) loadTCertOwnerKDFKey() error {
 	client.Debug("Loading TCertOwnerKDFKey...")
 
 	if !client.ks.isAliasSet(client.conf.getTCertOwnerKDFKeyFilename()) {
-		client.Error("Failed loading TCertOwnerKDFKey. Key is missing.")
+		client.Debug("TCertOwnerKDFKey is missing, maybe the client has not requested any TCerts from TCA yet")
 
 		return nil
 	}
