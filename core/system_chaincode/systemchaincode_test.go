@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/system_chaincode/api"
 	"github.com/hyperledger/fabric/core/system_chaincode/samplesyscc"
@@ -33,6 +34,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+var testDBWrapper = db.NewTestDBWrapper()
 
 // Invoke or query a chaincode.
 func invoke(ctx context.Context, spec *pb.ChaincodeSpec, typ pb.Transaction_Type) (*pb.ChaincodeEvent, string, []byte, error) {
@@ -75,6 +78,7 @@ func closeListenerAndSleep(l net.Listener) {
 
 // Test deploy of a transaction.
 func TestExecuteDeploySysChaincode(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/tmpdb")

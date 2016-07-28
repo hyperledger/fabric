@@ -46,6 +46,7 @@ func (testDB *TestDBWrapper) CleanDB(t testing.TB) {
 	testDB.removeDBPath()
 	t.Logf("Creating testDB")
 
+	Start()
 	testDB.performCleanup = true
 }
 
@@ -55,12 +56,13 @@ func (testDB *TestDBWrapper) CreateFreshDBGinkgo() {
 	// at the end of the test
 	testDB.cleanup()
 	testDB.removeDBPath()
+	Start()
 	testDB.performCleanup = true
 }
 
 func (testDB *TestDBWrapper) cleanup() {
 	if testDB.performCleanup {
-		GetDBHandle().Close()
+		Stop()
 		testDB.performCleanup = false
 	}
 }
@@ -116,8 +118,12 @@ func (testDB *TestDBWrapper) GetFromStateDeltaCF(t testing.TB, key []byte) []byt
 
 // CloseDB closes the db
 func (testDB *TestDBWrapper) CloseDB(t testing.TB) {
-	openchainDB := GetDBHandle()
-	openchainDB.Close()
+	Stop()
+}
+
+// OpenDB opens the db
+func (testDB *TestDBWrapper) OpenDB(t testing.TB) {
+	Start()
 }
 
 // GetEstimatedNumKeys returns estimated number of key-values in db. This is not accurate in all the cases

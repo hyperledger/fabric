@@ -41,72 +41,64 @@ func TestGetDBPathEmptyPath(t *testing.T) {
 		}
 	}()
 	defer viper.Set("peer.fileSystemPath", originalSetting)
+	Start()
 	GetDBHandle()
 }
 
-func TestCreateDB(t *testing.T) {
-	openchainDB := Create()
-	openchainDB.Open()
-	defer deleteTestDBPath()
-	defer openchainDB.Close()
-}
-
-func TestOpenDB_DirDoesNotExist(t *testing.T) {
-	openchainDB := Create()
+func TestStartDB_DirDoesNotExist(t *testing.T) {
 	deleteTestDBPath()
 
 	defer deleteTestDBPath()
-	defer openchainDB.Close()
+	defer Stop()
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatalf("Failed to open DB: %s", r)
 		}
 	}()
-	openchainDB.Open()
+	Start()
 }
 
-func TestOpenDB_NonEmptyDirExists(t *testing.T) {
-	openchainDB := Create()
+func TestStartDB_NonEmptyDirExists(t *testing.T) {
 	deleteTestDBPath()
 	createNonEmptyTestDBPath()
 
-	defer deleteTestDBPath()
-	defer openchainDB.Close()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Fatalf("dbPath is already exists. DB open should throw error")
 		}
 	}()
-	openchainDB.Open()
+	Start()
 }
 
 func TestWriteAndRead(t *testing.T) {
-	openchainDB := GetDBHandle()
+	deleteTestDBPath()
+	Start()
 	defer deleteTestDBPath()
-	defer openchainDB.Close()
+	defer Stop()
 	performBasicReadWrite(openchainDB, t)
 }
 
 // This test verifies that when a new column family is added to the DB
 // users at an older level of the DB will still be able to open it with new code
 func TestDBColumnUpgrade(t *testing.T) {
-	openchainDB := GetDBHandle()
-	openchainDB.Close()
+	deleteTestDBPath()
+	Start()
+	Stop()
 
 	oldcfs := columnfamilies
 	columnfamilies = append([]string{"Testing"}, columnfamilies...)
 	defer func() {
 		columnfamilies = oldcfs
 	}()
-	openchainDB = GetDBHandle()
 
 	defer deleteTestDBPath()
-	defer openchainDB.Close()
+	defer Stop()
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatalf("Error re-opening DB with upgraded columnFamilies")
 		}
 	}()
+	Start()
 }
 
 func TestDeleteState(t *testing.T) {
