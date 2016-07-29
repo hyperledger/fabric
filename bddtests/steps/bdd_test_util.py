@@ -26,8 +26,6 @@ def cli_call(context, arg_list, expect_success=True):
     @param expect_success: use False to return even if an error occurred when executing the command
     @return: (string, string, int) output message, error message, return code
     """
-    #arg_list[0] = "update-" + arg_list[0]
-
     # We need to run the cli command by actually calling the python command
     # the update-cli.py script has a #!/bin/python as the first line
     # which calls the system python, not the virtual env python we
