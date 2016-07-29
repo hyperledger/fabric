@@ -259,7 +259,7 @@ type ChaincodeInvocationSpec struct {
 	ChaincodeSpec *ChaincodeSpec `protobuf:"bytes,1,opt,name=chaincodeSpec" json:"chaincodeSpec,omitempty"`
 	// This field can contain a user-specified ID generation algorithm
 	// If supplied, this will be used to generate a ID
-	// If not supplied (left empty), a random UUID will be generated
+	// If not supplied (left empty), sha256base64 will be used
 	// The algorithm consists of two parts:
 	//  1, a hash function
 	//  2, a decoding used to decode user (string) input to bytes
@@ -307,7 +307,7 @@ type ChaincodeMessage struct {
 	Type            ChaincodeMessage_Type      `protobuf:"varint,1,opt,name=type,enum=protos.ChaincodeMessage_Type" json:"type,omitempty"`
 	Timestamp       *google_protobuf.Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
 	Payload         []byte                     `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
-	Uuid            string                     `protobuf:"bytes,4,opt,name=uuid" json:"uuid,omitempty"`
+	Txid            string                     `protobuf:"bytes,4,opt,name=txid" json:"txid,omitempty"`
 	SecurityContext *ChaincodeSecurityContext  `protobuf:"bytes,5,opt,name=securityContext" json:"securityContext,omitempty"`
 	// event emmited by chaincode. Used only with Init or Invoke.
 	// This event is then stored (currently)

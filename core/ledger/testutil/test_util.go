@@ -179,9 +179,8 @@ func AppendAll(content ...[]byte) []byte {
 	return combinedContent
 }
 
-func GenerateUUID(t *testing.T) string {
-	uuid := util.GenerateUUID()
-	return uuid
+func GenerateID(t *testing.T) string {
+	return util.GenerateUUID()
 }
 
 func ConstructRandomBytes(t testing.TB, size int) []byte {

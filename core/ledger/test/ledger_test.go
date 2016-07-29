@@ -123,14 +123,14 @@ var _ = Describe("Ledger", func() {
 			Expect(err).To(BeNil())
 			Expect(previewBlockInfo).To(Equal(commitedBlockInfo))
 		})
-		It("can get a transaction by it's UUID", func() {
+		It("can get a transaction by it's ID", func() {
 			uuid := util.GenerateUUID()
 			tx, err := protos.NewTransaction(protos.ChaincodeID{Path: "testUrl"}, uuid, "anyfunction", []string{"param1, param2"})
 			Expect(err).To(BeNil())
 			err = ledgerPtr.CommitTxBatch(1, []*protos.Transaction{tx}, nil, []byte("proof"))
 			Expect(err).To(BeNil())
 
-			ledgerTransaction, err := ledgerPtr.GetTransactionByUUID(uuid)
+			ledgerTransaction, err := ledgerPtr.GetTransactionByID(uuid)
 			Expect(err).To(BeNil())
 			Expect(tx).To(Equal(ledgerTransaction))
 			state, _ := ledgerPtr.GetState("chaincode1", "key1", true)
@@ -162,7 +162,7 @@ var _ = Describe("Ledger", func() {
 		})
 		It("commits and validates a batch with a bad transaction result", func() {
 			uuid := util.GenerateUUID()
-			transactionResult := &protos.TransactionResult{Uuid: uuid, ErrorCode: 500, Error: "bad"}
+			transactionResult := &protos.TransactionResult{Txid: uuid, ErrorCode: 500, Error: "bad"}
 			tx, err := protos.NewTransaction(protos.ChaincodeID{Path: "testUrl"}, uuid, "anyfunction", []string{"param1, param2"})
 			ledgerPtr.CommitTxBatch(1, []*protos.Transaction{tx}, []*protos.TransactionResult{transactionResult}, []byte("proof"))
 

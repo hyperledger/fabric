@@ -171,7 +171,7 @@ type Transaction struct {
 	ChaincodeID                    []byte                     `protobuf:"bytes,2,opt,name=chaincodeID,proto3" json:"chaincodeID,omitempty"`
 	Payload                        []byte                     `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 	Metadata                       []byte                     `protobuf:"bytes,4,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	Uuid                           string                     `protobuf:"bytes,5,opt,name=uuid" json:"uuid,omitempty"`
+	Txid                           string                     `protobuf:"bytes,5,opt,name=txid" json:"txid,omitempty"`
 	Timestamp                      *google_protobuf.Timestamp `protobuf:"bytes,6,opt,name=timestamp" json:"timestamp,omitempty"`
 	ConfidentialityLevel           ConfidentialityLevel       `protobuf:"varint,7,opt,name=confidentialityLevel,enum=protos.ConfidentialityLevel" json:"confidentialityLevel,omitempty"`
 	ConfidentialityProtocolVersion string                     `protobuf:"bytes,8,opt,name=confidentialityProtocolVersion" json:"confidentialityProtocolVersion,omitempty"`
@@ -210,13 +210,13 @@ func (m *TransactionBlock) GetTransactions() []*Transaction {
 
 // TransactionResult contains the return value of a transaction. It does
 // not track potential state changes that were a result of the transaction.
-// uuid - The unique identifier of this transaction.
+// txid - The unique identifier of this transaction.
 // result - The return value of the transaction.
 // errorCode - An error code. 5xx will be logged as a failure in the dashboard.
 // error - An error string for logging an issue.
 // chaincodeEvent - any event emitted by a transaction
 type TransactionResult struct {
-	Uuid           string          `protobuf:"bytes,1,opt,name=uuid" json:"uuid,omitempty"`
+	Txid           string          `protobuf:"bytes,1,opt,name=txid" json:"txid,omitempty"`
 	Result         []byte          `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	ErrorCode      uint32          `protobuf:"varint,3,opt,name=errorCode" json:"errorCode,omitempty"`
 	Error          string          `protobuf:"bytes,4,opt,name=error" json:"error,omitempty"`

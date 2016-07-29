@@ -148,9 +148,9 @@ func (s *ServerOpenchain) GetState(ctx context.Context, chaincodeID, key string)
 	return s.ledger.GetState(chaincodeID, key, true)
 }
 
-// GetTransactionByUUID returns a transaction matching the specified UUID
-func (s *ServerOpenchain) GetTransactionByUUID(ctx context.Context, txUUID string) (*pb.Transaction, error) {
-	transaction, err := s.ledger.GetTransactionByUUID(txUUID)
+// GetTransactionByID returns a transaction matching the specified ID
+func (s *ServerOpenchain) GetTransactionByID(ctx context.Context, txID string) (*pb.Transaction, error) {
+	transaction, err := s.ledger.GetTransactionByID(txID)
 	if err != nil {
 		switch err {
 		case ledger.ErrResourceNotFound:

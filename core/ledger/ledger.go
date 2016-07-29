@@ -227,14 +227,14 @@ func (ledger *Ledger) RollbackTxBatch(id interface{}) error {
 }
 
 // TxBegin - Marks the begin of a new transaction in the ongoing batch
-func (ledger *Ledger) TxBegin(txUUID string) {
-	ledger.state.TxBegin(txUUID)
+func (ledger *Ledger) TxBegin(txID string) {
+	ledger.state.TxBegin(txID)
 }
 
 // TxFinished - Marks the finish of the on-going transaction.
 // If txSuccessful is false, the state changes made by the transaction are discarded
-func (ledger *Ledger) TxFinished(txUUID string, txSuccessful bool) {
-	ledger.state.TxFinish(txUUID, txSuccessful)
+func (ledger *Ledger) TxFinished(txID string, txSuccessful bool) {
+	ledger.state.TxFinish(txID, txSuccessful)
 }
 
 /////////////////// world-state related methods /////////////////////////////////////
@@ -406,9 +406,9 @@ func (ledger *Ledger) GetBlockchainSize() uint64 {
 	return ledger.blockchain.getSize()
 }
 
-// GetTransactionByUUID return transaction by it's uuid
-func (ledger *Ledger) GetTransactionByUUID(txUUID string) (*protos.Transaction, error) {
-	return ledger.blockchain.getTransactionByUUID(txUUID)
+// GetTransactionByID return transaction by it's txId
+func (ledger *Ledger) GetTransactionByID(txID string) (*protos.Transaction, error) {
+	return ledger.blockchain.getTransactionByID(txID)
 }
 
 // PutRawBlock puts a raw block on the chain. This function should only be

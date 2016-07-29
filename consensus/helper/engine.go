@@ -67,7 +67,7 @@ func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, tx *pb.Transaction
 		}
 	} else {
 		// Chaincode Transaction
-		response = &pb.Response{Status: pb.Response_SUCCESS, Msg: []byte(tx.Uuid)}
+		response = &pb.Response{Status: pb.Response_SUCCESS, Msg: []byte(tx.Txid)}
 
 		//TODO: Do we need to verify security, or can we supply a flag on the invoke ot this functions
 		// If we fail to marshal or verify the tx, don't send it to consensus plugin

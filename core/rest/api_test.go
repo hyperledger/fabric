@@ -278,9 +278,9 @@ func buildTestLedger1(ledger1 *ledger.Ledger, t *testing.T) {
 	}
 	// VM runs transaction1a and updates the global state with the result
 	// In this case, the 'Contracts' contract stores 'MyContract1' in its state
-	ledger1.TxBegin(transaction1a.Uuid)
+	ledger1.TxBegin(transaction1a.Txid)
 	ledger1.SetState("MyContract1", "code", []byte("code example"))
-	ledger1.TxFinished(transaction1a.Uuid, true)
+	ledger1.TxFinished(transaction1a.Txid, true)
 	ledger1.CommitTxBatch(1, []*protos.Transaction{transaction1a}, nil, []byte("dummy-proof"))
 	// -----------------------------</Block #1>-----------------------------------
 
@@ -299,10 +299,10 @@ func buildTestLedger1(ledger1 *ledger.Ledger, t *testing.T) {
 	}
 
 	// Run this transction in the VM. The VM updates the state
-	ledger1.TxBegin(transaction2a.Uuid)
+	ledger1.TxBegin(transaction2a.Txid)
 	ledger1.SetState("MyContract", "x", []byte("hello"))
 	ledger1.SetState("MyOtherContract", "y", []byte("goodbuy"))
-	ledger1.TxFinished(transaction2a.Uuid, true)
+	ledger1.TxFinished(transaction2a.Txid, true)
 
 	// Commit txbatch that creates the 2nd block on blockchain
 	ledger1.CommitTxBatch(2, []*protos.Transaction{transaction2a, transaction2b}, nil, []byte("dummy-proof"))
@@ -335,9 +335,9 @@ func buildTestLedger2(ledger *ledger.Ledger, t *testing.T) {
 	}
 	// VM runs transaction1a and updates the global state with the result
 	// In this case, the 'Contracts' contract stores 'MyContract1' in its state
-	ledger.TxBegin(transaction1a.Uuid)
+	ledger.TxBegin(transaction1a.Txid)
 	ledger.SetState("MyContract1", "code", []byte("code example"))
-	ledger.TxFinished(transaction1a.Uuid, true)
+	ledger.TxFinished(transaction1a.Txid, true)
 	ledger.CommitTxBatch(1, []*protos.Transaction{transaction1a}, nil, []byte("dummy-proof"))
 
 	// -----------------------------</Block #1>-----------------------------------
@@ -357,10 +357,10 @@ func buildTestLedger2(ledger *ledger.Ledger, t *testing.T) {
 	}
 
 	// Run this transction in the VM. The VM updates the state
-	ledger.TxBegin(transaction2a.Uuid)
+	ledger.TxBegin(transaction2a.Txid)
 	ledger.SetState("MyContract", "x", []byte("hello"))
 	ledger.SetState("MyOtherContract", "y", []byte("goodbuy"))
-	ledger.TxFinished(transaction2a.Uuid, true)
+	ledger.TxFinished(transaction2a.Txid, true)
 
 	// Commit txbatch that creates the 2nd block on blockchain
 	ledger.CommitTxBatch(2, []*protos.Transaction{transaction2a, transaction2b}, nil, []byte("dummy-proof"))
@@ -384,11 +384,11 @@ func buildTestLedger2(ledger *ledger.Ledger, t *testing.T) {
 		t.Logf("Error creating NewTransaction: %s", err)
 		t.Fail()
 	}
-	ledger.TxBegin(transaction3a.Uuid)
+	ledger.TxBegin(transaction3a.Txid)
 	ledger.SetState("MyContract", "x", []byte("hello"))
 	ledger.SetState("MyOtherContract", "y", []byte("goodbuy"))
 	ledger.SetState("MyImportantContract", "z", []byte("super"))
-	ledger.TxFinished(transaction3a.Uuid, true)
+	ledger.TxFinished(transaction3a.Txid, true)
 	ledger.CommitTxBatch(3, []*protos.Transaction{transaction3a, transaction3b, transaction3c}, nil, []byte("dummy-proof"))
 
 	// -----------------------------</Block #3>-----------------------------------
@@ -421,12 +421,12 @@ func buildTestLedger2(ledger *ledger.Ledger, t *testing.T) {
 	}
 
 	// Run this transction in the VM. The VM updates the state
-	ledger.TxBegin(transaction4a.Uuid)
+	ledger.TxBegin(transaction4a.Txid)
 	ledger.SetState("MyContract", "x", []byte("hello"))
 	ledger.SetState("MyOtherContract", "y", []byte("goodbuy"))
 	ledger.SetState("MyImportantContract", "z", []byte("super"))
 	ledger.SetState("MyMEGAContract", "mega", []byte("MEGA"))
-	ledger.TxFinished(transaction4a.Uuid, true)
+	ledger.TxFinished(transaction4a.Txid, true)
 
 	// Create the 4th block and add it to the chain
 	ledger.CommitTxBatch(4, []*protos.Transaction{transaction4a, transaction4b, transaction4c, transaction4d}, nil, []byte("dummy-proof"))

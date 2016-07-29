@@ -311,6 +311,12 @@ def step_impl(context, chaincodeName, functionName, containerName, idGenAlg):
 @when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" on "{containerName}" "{times}" times')
 def step_impl(context, chaincodeName, functionName, containerName, times):
     assert 'chaincodeSpec' in context, "chaincodeSpec not found in context"
+    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    request_url = buildUrl(context, ipAddress, "/chain")
+    resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
+    assert resp.status_code == 200, "Failed to get chain height %s:  %s" % (request_url,resp.text)
+    context.chainheight = getAttributeFromJSON("height", resp.json(), "Height not found in response.")
+    context.txcount = times
     for i in range(int(times)):
         invokeChaincode(context, "invoke", functionName, containerName)
 
@@ -570,6 +576,49 @@ def step_impl(context, seconds):
                 # Success, continue
                 respMap[container.containerName] = 200
                 break
+            else:
+                raise Exception("Error requesting {0}, returned result code = {1}".format(request_url, resp.status_code))
+        else:
+            raise Exception("Max time exceeded waiting for transactions with current response map = {0}".format(respMap))
+    print("Result of request to all peers = {0}".format(respMap))
+    print("")
+
+@then(u'I wait up to "{seconds}" seconds for transactions to be committed to peers')
+def step_impl(context, seconds):
+    assert 'chainheight' in context, "chainheight not found in context"
+    assert 'txcount' in context, "txcount not found in context"
+    assert 'compose_containers' in context, "compose_containers not found in context"
+    assert 'table' in context, "table (of peers) not found in context"
+
+    aliases =  context.table.headings
+    containerDataList = bdd_test_util.getContainerDataValuesFromContext(context, aliases, lambda containerData: containerData)
+
+    # Build map of "containerName" : resp.statusCode
+    respMap = {container.containerName:0 for container in containerDataList}
+
+    # Set the max time before stopping attempts
+    maxTime = datetime.now() + timedelta(seconds = int(seconds))
+    for container in containerDataList:
+        ipAddress = container.ipAddress
+        request_url = buildUrl(context, ipAddress, "/chain")
+
+        # Loop unless failure or time exceeded
+        while (datetime.now() < maxTime):
+            print("{0} GETing path = {1}".format(currentTime(), request_url))
+            resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
+            if resp.status_code == 404:
+                # Pause then try again
+                respMap[container.containerName] = 404
+                time.sleep(1)
+                continue
+            elif resp.status_code == 200:
+                height = getAttributeFromJSON("height", resp.json(), "Height not found in response.")
+		if height >= int(context.chainheight) + int(context.txcount):
+                        # Success, continue
+                        respMap[container.containerName] = 200
+                        break
+		else:
+		        continue
             else:
                 raise Exception("Error requesting {0}, returned result code = {1}".format(request_url, resp.status_code))
         else:

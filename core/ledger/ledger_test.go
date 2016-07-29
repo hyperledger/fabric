@@ -683,7 +683,7 @@ func TestPreviewTXBatchBlock(t *testing.T) {
 	testutil.AssertEquals(t, previewBlockInfo, committedBlockInfo)
 }
 
-func TestGetTransactionByUUID(t *testing.T) {
+func TestGetTransactionByID(t *testing.T) {
 	ledgerTestWrapper := createFreshDBAndTestLedgerWrapper(t)
 	ledger := ledgerTestWrapper.ledger
 
@@ -697,11 +697,11 @@ func TestGetTransactionByUUID(t *testing.T) {
 	transaction, uuid := buildTestTx(t)
 	ledger.CommitTxBatch(0, []*protos.Transaction{transaction}, nil, []byte("proof"))
 
-	ledgerTransaction, err := ledger.GetTransactionByUUID(uuid)
-	testutil.AssertNoError(t, err, "Error fetching transaction by UUID.")
+	ledgerTransaction, err := ledger.GetTransactionByID(uuid)
+	testutil.AssertNoError(t, err, "Error fetching transaction by ID.")
 	testutil.AssertEquals(t, transaction, ledgerTransaction)
 
-	ledgerTransaction, err = ledger.GetTransactionByUUID("InvalidUUID")
+	ledgerTransaction, err = ledger.GetTransactionByID("InvalidID")
 	testutil.AssertEquals(t, err, ErrResourceNotFound)
 	testutil.AssertNil(t, ledgerTransaction)
 }
@@ -834,9 +834,9 @@ func TestGetSetMultipleKeys(t *testing.T) {
 	ledgerTestWrapper := createFreshDBAndTestLedgerWrapper(t)
 	l := ledgerTestWrapper.ledger
 	l.BeginTxBatch(1)
-	l.TxBegin("txUUID")
+	l.TxBegin("txID")
 	l.SetStateMultipleKeys("chaincodeID", map[string][]byte{"key1": []byte("value1"), "key2": []byte("value2")})
-	l.TxFinished("txUUID", true)
+	l.TxFinished("txID", true)
 	tx, _ := buildTestTx(t)
 	l.CommitTxBatch(1, []*protos.Transaction{tx}, nil, nil)
 
@@ -848,17 +848,17 @@ func TestCopyState(t *testing.T) {
 	ledgerTestWrapper := createFreshDBAndTestLedgerWrapper(t)
 	l := ledgerTestWrapper.ledger
 	l.BeginTxBatch(1)
-	l.TxBegin("txUUID")
+	l.TxBegin("txID")
 	l.SetStateMultipleKeys("chaincodeID1", map[string][]byte{"key1": []byte("value1"), "key2": []byte("value2")})
 	l.SetState("chaincodeID1", "key3", []byte("value3"))
-	l.TxFinished("txUUID", true)
+	l.TxFinished("txID", true)
 	tx, _ := buildTestTx(t)
 	l.CommitTxBatch(1, []*protos.Transaction{tx}, nil, nil)
 
 	l.BeginTxBatch(2)
-	l.TxBegin("txUUID")
+	l.TxBegin("txID")
 	l.CopyState("chaincodeID1", "chaincodeID2")
-	l.TxFinished("txUUID", true)
+	l.TxFinished("txID", true)
 	tx, _ = buildTestTx(t)
 	l.CommitTxBatch(2, []*protos.Transaction{tx}, nil, nil)
 
@@ -870,9 +870,9 @@ func TestLedgerEmptyArrayValue(t *testing.T) {
 	ledgerTestWrapper := createFreshDBAndTestLedgerWrapper(t)
 	l := ledgerTestWrapper.ledger
 	l.BeginTxBatch(1)
-	l.TxBegin("txUUID")
+	l.TxBegin("txID")
 	l.SetState("chaincodeID1", "key1", []byte{})
-	l.TxFinished("txUUID", true)
+	l.TxFinished("txID", true)
 	tx, _ := buildTestTx(t)
 	l.CommitTxBatch(1, []*protos.Transaction{tx}, nil, nil)
 
@@ -891,7 +891,7 @@ func TestLedgerInvalidInput(t *testing.T) {
 	ledgerTestWrapper := createFreshDBAndTestLedgerWrapper(t)
 	l := ledgerTestWrapper.ledger
 	l.BeginTxBatch(1)
-	l.TxBegin("txUUID")
+	l.TxBegin("txID")
 
 	// nil value input
 	err := l.SetState("chaincodeID1", "key1", nil)
@@ -910,7 +910,7 @@ func TestLedgerInvalidInput(t *testing.T) {
 	}
 
 	l.SetState("chaincodeID1", "key1", []byte("value1"))
-	l.TxFinished("txUUID", true)
+	l.TxFinished("txID", true)
 	tx, _ := buildTestTx(t)
 	l.CommitTxBatch(1, []*protos.Transaction{tx}, nil, nil)
 	value, _ := l.GetState("chaincodeID1", "key1", true)

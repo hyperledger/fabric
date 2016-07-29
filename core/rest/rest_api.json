@@ -69,16 +69,16 @@
                 }
             }
         },
-        "/transactions/{UUID}": {
+        "/transactions/{ID}": {
             "get": {
                 "summary": "Individual transaction contents",
-                "description": "The /transactions/{UUID} endpoint returns the transaction matching the specified UUID.",
+                "description": "The /transactions/{ID} endpoint returns the transaction matching the specified TXID.",
                 "tags": [
                     "Transactions"
                 ],
                 "operationId": "getTransaction",
                 "parameters": [{
-                    "name": "UUID",
+                    "name": "ID",
                     "in": "path",
                     "description": "Transaction to retrieve from the blockchain.",
                     "type": "string",
@@ -103,7 +103,7 @@
         "/devops/deploy": {
            "post": {
               "summary": "[DEPRECATED] Service endpoint for deploying Chaincode [DEPRECATED]",
-              "description": "The /devops/deploy endpoint receives Chaincode deployment requests. The Chaincode and the required entities are first packaged into a container and subsequently deployed to the blockchain. If the Chaincode build and deployment are successful, a confirmation message is returned. Otherwise, an error is displayed alongside with a reason for the failure. This service endpoint is being deprecated, please use the /chaincode endpoint instead.",
+              "description": "The /devops/deploy endpoint receives Chaincode deployment requests. The ChaincodTXand the required entities are first packaged into a container and subsequently deployed to the blockchain. If the Chaincode build and deployment are successful, a confirmation message is returned. Otherwise, an error is displayed alongside with a reason for the failure. This service endpoint is being deprecated, please use the /chaincode endpoint instead.",
               "tags": [
                   "Chaincode"
               ],
@@ -504,7 +504,7 @@
                     "format": "bytes",
                     "description": "Payload supplied for Chaincode function execution."
                 },
-                "uuid": {
+                "id": {
                    "type": "string",
                    "description": "Unique transaction identifier."
                 },

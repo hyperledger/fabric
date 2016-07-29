@@ -111,8 +111,8 @@ func TestQueryGetTranExisting(t *testing.T) {
 type mockLedger struct {
 }
 
-func (ml mockLedger) GetTransactionByUUID(txUUID string) (*protos.Transaction, error) {
-	if txUUID == "noSuchTX" {
+func (ml mockLedger) GetTransactionByID(txID string) (*protos.Transaction, error) {
+	if txID == "noSuchTX" {
 		return nil, fmt.Errorf("Some error")
 	}
 	newCCIS := &protos.ChaincodeInvocationSpec{ChaincodeSpec: &protos.ChaincodeSpec{CtorMsg: &protos.ChaincodeInput{Function: "execute", Args: []string{something}}}}

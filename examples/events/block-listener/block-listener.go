@@ -123,7 +123,7 @@ func main() {
 			fmt.Printf("\n")
 			fmt.Printf("Received rejected transaction\n")
 			fmt.Printf("--------------\n")
-			fmt.Printf("Transaction error:\n%s\t%s\n", r.Rejection.Tx.Uuid, r.Rejection.ErrorMsg)
+			fmt.Printf("Transaction error:\n%s\t%s\n", r.Rejection.Tx.Txid, r.Rejection.ErrorMsg)
 		case ce := <-a.cEvent:
 			fmt.Printf("\n")
 			fmt.Printf("\n")

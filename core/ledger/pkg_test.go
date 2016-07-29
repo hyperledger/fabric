@@ -93,8 +93,8 @@ func (testWrapper *blockchainTestWrapper) getTransactionByBlockHash(blockHash []
 	return tx
 }
 
-func (testWrapper *blockchainTestWrapper) getTransactionByUUID(txUUID string) *protos.Transaction {
-	tx, err := testWrapper.blockchain.getTransactionByUUID(txUUID)
+func (testWrapper *blockchainTestWrapper) getTransactionByID(txID string) *protos.Transaction {
+	tx, err := testWrapper.blockchain.getTransactionByID(txID)
 	testutil.AssertNoError(testWrapper.t, err, "Error while getting tx from blockchain")
 	return tx
 }
@@ -104,7 +104,7 @@ func (testWrapper *blockchainTestWrapper) populateBlockChainWithSampleData() (bl
 
 	// -----------------------------<Genesis block>-------------------------------
 	// Add the first (genesis block)
-	block1 := protos.NewBlock(nil, []byte(testutil.GenerateUUID(testWrapper.t)))
+	block1 := protos.NewBlock(nil, []byte(testutil.GenerateID(testWrapper.t)))
 	allBlocks = append(allBlocks, block1)
 	allHashes = append(allHashes, []byte("stateHash1"))
 	testWrapper.addNewBlock(block1, []byte("stateHash1"))
@@ -113,7 +113,7 @@ func (testWrapper *blockchainTestWrapper) populateBlockChainWithSampleData() (bl
 
 	// -----------------------------<Block 2>-------------------------------------
 	// Deploy a chaincode
-	transaction2a, err := protos.NewTransaction(protos.ChaincodeID{Path: "Contracts"}, testutil.GenerateUUID(testWrapper.t), "NewContract", []string{"name: MyContract1, code: var x; function setX(json) {x = json.x}}"})
+	transaction2a, err := protos.NewTransaction(protos.ChaincodeID{Path: "Contracts"}, testutil.GenerateID(testWrapper.t), "NewContract", []string{"name: MyContract1, code: var x; function setX(json) {x = json.x}}"})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,7 +128,7 @@ func (testWrapper *blockchainTestWrapper) populateBlockChainWithSampleData() (bl
 
 	// -----------------------------<Block 3>-------------------------------------
 	// Create a transaction
-	transaction3a, err := protos.NewTransaction(protos.ChaincodeID{Path: "MyContract"}, testutil.GenerateUUID(testWrapper.t), "setX", []string{"{x: \"hello\"}"})
+	transaction3a, err := protos.NewTransaction(protos.ChaincodeID{Path: "MyContract"}, testutil.GenerateID(testWrapper.t), "setX", []string{"{x: \"hello\"}"})
 	if err != nil {
 		return nil, nil, err
 	}

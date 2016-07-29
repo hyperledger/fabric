@@ -19,7 +19,6 @@ package util
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"math/big"
@@ -32,12 +31,13 @@ import (
 )
 
 type alg struct {
-	hashFun func([]byte) string
-	decoder func(string) ([]byte, error)
+	hashFun func([]string) string
 }
 
+const defaultAlg = "sha256"
+
 var availableIDgenAlgs = map[string]alg{
-	"sha256base64": alg{GenerateUUIDfromTxSHAHash, base64.StdEncoding.DecodeString},
+	defaultAlg: alg{GenerateIDfromTxSHAHash},
 }
 
 // ComputeCryptoHash should be used in openchain code so that we can change the actual algo used for crypto-hash at one place
@@ -74,7 +74,7 @@ func GenerateIntUUID() *big.Int {
 // GenerateUUID returns a UUID based on RFC 4122
 func GenerateUUID() string {
 	uuid := GenerateBytesUUID()
-	return uuidBytesToStr(uuid)
+	return idBytesToStr(uuid)
 }
 
 // CreateUtcTimestamp returns a google/protobuf/Timestamp in UTC
@@ -101,28 +101,30 @@ func GenerateHashFromSignature(path string, ctor string, args []string) []byte {
 	return hash
 }
 
-// GenerateUUIDfromTxSHAHash generates SHA256 hash using Tx payload, and uses its first
-// 128 bits as a UUID
-func GenerateUUIDfromTxSHAHash(txData []byte) string {
-	txHash := sha256.Sum256(txData)
-	return uuidBytesToStr(txHash[0:16])
+// GenerateIDfromTxSHAHash generates SHA256 hash using Tx payload
+func GenerateIDfromTxSHAHash(payload []string) string {
+	h := sha256.New()
+	for _, part := range payload {
+		utf8bytes := []byte(part)
+		h.Write(utf8bytes)
+	}
+	return fmt.Sprintf("%x", h.Sum([]byte{}))
 }
 
 // GenerateIDWithAlg generates an ID using a custom algorithm
-func GenerateIDWithAlg(customIDgenAlg string, encodedPayload string) (string, error) {
-	var alg = availableIDgenAlgs[customIDgenAlg]
-	if alg.hashFun != nil && alg.decoder != nil {
-		var payload, err = alg.decoder(encodedPayload)
-		if err != nil {
-			return "", err
-		}
-		return alg.hashFun(payload), nil
+func GenerateIDWithAlg(customIDgenAlg string, strPayload []string) (string, error) {
+	if customIDgenAlg == "" {
+		customIDgenAlg = defaultAlg
 	}
-	return "", fmt.Errorf("Wrong UUID generation algorithm was given.")
+	var alg = availableIDgenAlgs[customIDgenAlg]
+	if alg.hashFun != nil {
+		return alg.hashFun(strPayload), nil
+	}
+	return "", fmt.Errorf("Wrong ID generation algorithm was given: %s", customIDgenAlg)
 }
 
-func uuidBytesToStr(uuid []byte) string {
-	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
+func idBytesToStr(id []byte) string {
+	return fmt.Sprintf("%x-%x-%x-%x-%x", id[0:4], id[4:6], id[6:8], id[8:10], id[10:])
 }
 
 // FindMissingElements identifies the elements of the first slice that are not present in the second

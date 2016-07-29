@@ -127,7 +127,7 @@ public abstract class ChaincodeBase {
 						public void onNext(ChaincodeMessage message) {
 							try {
 								logger.debug(String.format("[%s]Received message %s from org.hyperledger.java.shim",
-										Handler.shortUUID(message.getUuid()), message.getType()));
+										Handler.shortID(message.getTxid()), message.getType()));
 								handler.handleMessage(message);
 							} catch (Exception e) {
 								e.printStackTrace();
@@ -187,7 +187,7 @@ public abstract class ChaincodeBase {
 					if (message.getType() == Type.KEEPALIVE){
 						logger.debug("Sending KEEPALIVE response");
 					}else {
-						logger.debug("[" + Handler.shortUUID(message.getUuid()) + "]Send state message " + message.getType());
+						logger.debug("[" + Handler.shortID(message.getTxid()) + "]Send state message " + message.getType());
 					}
 					handler.serialSend(message);
 				}

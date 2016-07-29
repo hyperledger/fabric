@@ -208,14 +208,14 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 					chaincodeLogger.Debug("Received nil message, ending chaincode stream")
 					return
 				}
-				chaincodeLogger.Debugf("[%s]Received message %s from shim", shortuuid(in.Uuid), in.Type.String())
+				chaincodeLogger.Debugf("[%s]Received message %s from shim", shorttxid(in.Txid), in.Type.String())
 				recv = true
 			case nsInfo = <-handler.nextState:
 				in = nsInfo.msg
 				if in == nil {
 					panic("nil msg")
 				}
-				chaincodeLogger.Debugf("[%s]Move state message %s", shortuuid(in.Uuid), in.Type.String())
+				chaincodeLogger.Debugf("[%s]Move state message %s", shorttxid(in.Txid), in.Type.String())
 			}
 
 			// Call FSM.handleMessage()
@@ -230,7 +230,7 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 				if in.Type == pb.ChaincodeMessage_KEEPALIVE {
 					chaincodeLogger.Debug("Sending KEEPALIVE response")
 				} else {
-					chaincodeLogger.Debugf("[%s]send state message %s", shortuuid(in.Uuid), in.Type.String())
+					chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
 				}
 				if err = handler.serialSend(in); err != nil {
 					err = fmt.Errorf("Error sending %s: %s", in.Type.String(), err)

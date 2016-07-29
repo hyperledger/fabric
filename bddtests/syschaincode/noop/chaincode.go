@@ -30,7 +30,7 @@ import (
 var logger = shim.NewLogger("noop")
 
 type ledgerHandler interface {
-	GetTransactionByUUID(txUUID string) (*protos.Transaction, error)
+	GetTransactionByID(txID string) (*protos.Transaction, error)
 }
 
 // SystemChaincode is type representing the chaincode
@@ -86,7 +86,7 @@ func (t *SystemChaincode) Query(stub *shim.ChaincodeStub, function string, args 
 		logger.Infof("--> %x", args[0])
 
 		var txHashHex = args[0]
-		var tx, txerr = t.getLedger().GetTransactionByUUID(txHashHex)
+		var tx, txerr = t.getLedger().GetTransactionByID(txHashHex)
 		if nil != txerr || nil == tx {
 			return nil, txerr
 		}

@@ -350,7 +350,8 @@ Feature: Network of Peers
 #    @doNotDecompose
 #    @wip
 #    Arg[0] = a, base64 = 'YQ=='
-#    sha256 = 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb'
+#    sha256 = 'acfb280369a87a57b1954210081d78943f1a0adb5368184984e8852a42c14df8'
+#             calculated using all the args
 	Scenario: chaincode map single peer content generated ID
 	    Given we compose "docker-compose-1.yml"
 	    When requesting "/chain" from "vp0"
@@ -361,12 +362,12 @@ Feature: Network of Peers
 	    Then I should have received a chaincode name
 	    Then I wait up to "60" seconds for transaction to be committed to all peers
 
-        When I invoke chaincode "map" function name "put" on "vp0" with "sha256base64"
+        When I invoke chaincode "map" function name "put" on "vp0" with "sha256"
 	    | arg1  |arg2|
             | YQ==  | 10 |
 	    Then I should have received a transactionID
 	    Then I wait up to "25" seconds for transaction to be committed to all peers
-	    Then I check the transaction ID if it is "ca978112-ca1b-bdca-fac2-31b39a23dc4d"
+	    Then I check the transaction ID if it is "acfb280369a87a57b1954210081d78943f1a0adb5368184984e8852a42c14df8"
 
     Scenario: chaincode example 01 single peer rejection message
 	    Given we compose "docker-compose-1-exp.yml"
@@ -1106,7 +1107,7 @@ Feature: Network of Peers
 
 
 @issue_1942
-#@doNotDecompose
+# @doNotDecompose
 Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
     Given we compose "docker-compose-4-consensus-batch.yml"
     And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
@@ -1152,15 +1153,14 @@ Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
 
     Given I start peers:
                           | vp2  |
-    And I wait "30" seconds
 
+    And I wait "30" seconds
     Given I stop peers:
                           | vp1  |
     When I invoke chaincode "example2" function name "invoke" on "vp3" "20" times
                           |arg1|arg2|arg3|
                           | a  | b  | 1  |
-    Then I should have received a transactionID
-    Then I wait up to "300" seconds for transaction to be committed to peers:
+    Then I wait up to "300" seconds for transactions to be committed to peers:
                           | vp0  | vp2 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:

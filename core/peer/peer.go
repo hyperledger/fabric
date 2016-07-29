@@ -283,13 +283,13 @@ func (p *Impl) Chat(stream pb.Peer_ChatServer) error {
 
 // ProcessTransaction implementation of the ProcessTransaction RPC function
 func (p *Impl) ProcessTransaction(ctx context.Context, tx *pb.Transaction) (response *pb.Response, err error) {
-	peerLogger.Debugf("ProcessTransaction processing transaction uuid = %s", tx.Uuid)
+	peerLogger.Debugf("ProcessTransaction processing transaction txid = %s", tx.Txid)
 	// Need to validate the Tx's signature if we are a validator.
 	if p.isValidator {
 		// Verify transaction signature if security is enabled
 		secHelper := p.secHelper
 		if nil != secHelper {
-			peerLogger.Debugf("Verifying transaction signature %s", tx.Uuid)
+			peerLogger.Debugf("Verifying transaction signature %s", tx.Txid)
 			if tx, err = secHelper.TransactionPreValidation(tx); err != nil {
 				peerLogger.Errorf("ProcessTransaction failed to verify transaction %v", err)
 				return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}, nil

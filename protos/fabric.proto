@@ -42,7 +42,7 @@ message Transaction {
     bytes chaincodeID = 2;
     bytes payload = 3;
     bytes metadata = 4;
-    string uuid = 5;
+    string txid = 5;
     google.protobuf.Timestamp timestamp = 6;
 
     ConfidentialityLevel confidentialityLevel = 7;
@@ -61,13 +61,13 @@ message TransactionBlock {
 
 // TransactionResult contains the return value of a transaction. It does
 // not track potential state changes that were a result of the transaction.
-// uuid - The unique identifier of this transaction.
+// txid - The unique identifier of this transaction.
 // result - The return value of the transaction.
 // errorCode - An error code. 5xx will be logged as a failure in the dashboard.
 // error - An error string for logging an issue.
 // chaincodeEvent - any event emitted by a transaction
 message TransactionResult {
-  string uuid = 1;
+  string txid = 1;
   bytes result = 2;
   uint32 errorCode = 3;
   string error = 4;

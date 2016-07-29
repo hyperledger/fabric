@@ -136,13 +136,13 @@ func (indexer *blockchainIndexerAsync) fetchBlockNumberByBlockHash(blockHash []b
 	return fetchBlockNumberByBlockHashFromDB(blockHash)
 }
 
-func (indexer *blockchainIndexerAsync) fetchTransactionIndexByUUID(txUUID string) (uint64, uint64, error) {
+func (indexer *blockchainIndexerAsync) fetchTransactionIndexByID(txID string) (uint64, uint64, error) {
 	err := indexer.indexerState.checkError()
 	if err != nil {
 		return 0, 0, err
 	}
 	indexer.indexerState.waitForLastCommittedBlock()
-	return fetchTransactionIndexByUUIDFromDB(txUUID)
+	return fetchTransactionIndexByIDFromDB(txID)
 }
 
 func (indexer *blockchainIndexerAsync) indexPendingBlocks() error {

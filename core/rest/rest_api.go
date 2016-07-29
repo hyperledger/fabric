@@ -689,13 +689,13 @@ func (s *ServerOpenchainREST) GetBlockByNumber(rw web.ResponseWriter, req *web.R
 	encoder.Encode(block)
 }
 
-// GetTransactionByUUID returns a transaction matching the specified UUID
-func (s *ServerOpenchainREST) GetTransactionByUUID(rw web.ResponseWriter, req *web.Request) {
-	// Parse out the transaction UUID
-	txUUID := req.PathParams["uuid"]
+// GetTransactionByID returns a transaction matching the specified ID
+func (s *ServerOpenchainREST) GetTransactionByID(rw web.ResponseWriter, req *web.Request) {
+	// Parse out the transaction ID
+	txID := req.PathParams["id"]
 
-	// Retrieve the transaction matching the UUID
-	tx, err := s.server.GetTransactionByUUID(context.Background(), txUUID)
+	// Retrieve the transaction matching the ID
+	tx, err := s.server.GetTransactionByID(context.Background(), txID)
 
 	encoder := json.NewEncoder(rw)
 
@@ -704,17 +704,17 @@ func (s *ServerOpenchainREST) GetTransactionByUUID(rw web.ResponseWriter, req *w
 		switch err {
 		case ErrNotFound:
 			rw.WriteHeader(http.StatusNotFound)
-			encoder.Encode(restResult{Error: fmt.Sprintf("Transaction %s is not found.", txUUID)})
+			encoder.Encode(restResult{Error: fmt.Sprintf("Transaction %s is not found.", txID)})
 		default:
 			rw.WriteHeader(http.StatusInternalServerError)
-			encoder.Encode(restResult{Error: fmt.Sprintf("Error retrieving transaction %s: %s.", txUUID, err)})
-			restLogger.Errorf("Error retrieving transaction %s: %s", txUUID, err)
+			encoder.Encode(restResult{Error: fmt.Sprintf("Error retrieving transaction %s: %s.", txID, err)})
+			restLogger.Errorf("Error retrieving transaction %s: %s", txID, err)
 		}
 	} else {
 		// Return existing transaction
 		rw.WriteHeader(http.StatusOK)
 		encoder.Encode(tx)
-		restLogger.Infof("Successfully retrieved transaction: %s", txUUID)
+		restLogger.Infof("Successfully retrieved transaction: %s", txID)
 	}
 }
 
@@ -1000,13 +1000,13 @@ func (s *ServerOpenchainREST) Invoke(rw web.ResponseWriter, req *web.Request) {
 		return
 	}
 
-	// Clients will need the txuuid in order to track it after invocation
-	txuuid := resp.Msg
+	// Clients will need the txid in order to track it after invocation
+	txid := resp.Msg
 
 	rw.WriteHeader(http.StatusOK)
 	// Make a clarification in the invoke response message, that the transaction has been successfully submitted but not completed
-	fmt.Fprintf(rw, "{\"OK\": \"Successfully submitted invoke transaction.\",\"message\": \"%s\"}", string(txuuid))
-	restLogger.Infof("Successfully submitted invoke transaction (%s).\n", string(txuuid))
+	fmt.Fprintf(rw, "{\"OK\": \"Successfully submitted invoke transaction.\",\"message\": \"%s\"}", string(txid))
+	restLogger.Infof("Successfully submitted invoke transaction (%s).\n", string(txid))
 }
 
 // Query performs the requested query on the target Chaincode.
@@ -1621,16 +1621,16 @@ func (s *ServerOpenchainREST) processChaincodeInvokeOrQuery(method string, spec 
 		// Invocation succeeded
 		//
 
-		// Clients will need the txuuid in order to track it after invocation, record it
-		txuuid := string(resp.Msg)
+		// Clients will need the txid in order to track it after invocation, record it
+		txid := string(resp.Msg)
 
 		//
 		// Output correctly formatted response
 		//
 
-		result = formatRPCOK(txuuid)
+		result = formatRPCOK(txid)
 		// Make a clarification in the invoke response message, that the transaction has been successfully submitted but not completed
-		restLogger.Infof("Successfully submitted invoke transaction with txuuid (%s)", txuuid)
+		restLogger.Infof("Successfully submitted invoke transaction with txid (%s)", txid)
 	}
 
 	if method == "query" {
@@ -1741,7 +1741,7 @@ func buildOpenchainRESTRouter() *web.Router {
 	// The /chaincode endpoint which superceedes the /devops endpoint from above
 	router.Post("/chaincode", (*ServerOpenchainREST).ProcessChaincode)
 
-	router.Get("/transactions/:uuid", (*ServerOpenchainREST).GetTransactionByUUID)
+	router.Get("/transactions/:id", (*ServerOpenchainREST).GetTransactionByID)
 
 	router.Get("/network/peers", (*ServerOpenchainREST).GetPeers)
 

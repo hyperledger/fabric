@@ -105,7 +105,7 @@ func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 			return err
 		}
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Sending to channel tx uuid: %s", tx.Uuid)
+			logger.Debugf("Sending to channel tx uuid: %s", tx.Txid)
 		}
 		i.channel <- tx
 	}

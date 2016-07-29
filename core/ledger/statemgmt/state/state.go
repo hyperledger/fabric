@@ -42,7 +42,7 @@ type State struct {
 	stateImpl             statemgmt.HashableState
 	stateDelta            *statemgmt.StateDelta
 	currentTxStateDelta   *statemgmt.StateDelta
-	currentTxUUID         string
+	currentTxID           string
 	txStateDeltaHash      map[string][]byte
 	updateStateImpl       bool
 	historyStateDeltaSize uint64
@@ -71,36 +71,36 @@ func NewState() *State {
 }
 
 // TxBegin marks begin of a new tx. If a tx is already in progress, this call panics
-func (state *State) TxBegin(txUUID string) {
-	logger.Debugf("txBegin() for txUuid [%s]", txUUID)
+func (state *State) TxBegin(txID string) {
+	logger.Debugf("txBegin() for txId [%s]", txID)
 	if state.txInProgress() {
-		panic(fmt.Errorf("A tx [%s] is already in progress. Received call for begin of another tx [%s]", state.currentTxUUID, txUUID))
+		panic(fmt.Errorf("A tx [%s] is already in progress. Received call for begin of another tx [%s]", state.currentTxID, txID))
 	}
-	state.currentTxUUID = txUUID
+	state.currentTxID = txID
 }
 
-// TxFinish marks the completion of on-going tx. If txUUID is not same as of the on-going tx, this call panics
-func (state *State) TxFinish(txUUID string, txSuccessful bool) {
-	logger.Debugf("txFinish() for txUuid [%s], txSuccessful=[%t]", txUUID, txSuccessful)
-	if state.currentTxUUID != txUUID {
-		panic(fmt.Errorf("Different Uuid in tx-begin [%s] and tx-finish [%s]", state.currentTxUUID, txUUID))
+// TxFinish marks the completion of on-going tx. If txID is not same as of the on-going tx, this call panics
+func (state *State) TxFinish(txID string, txSuccessful bool) {
+	logger.Debugf("txFinish() for txUuid [%s], txSuccessful=[%t]", txID, txSuccessful)
+	if state.currentTxID != txID {
+		panic(fmt.Errorf("Different Uuid in tx-begin [%s] and tx-finish [%s]", state.currentTxID, txID))
 	}
 	if txSuccessful {
 		if !state.currentTxStateDelta.IsEmpty() {
-			logger.Debugf("txFinish() for txUuid [%s] merging state changes", txUUID)
+			logger.Debugf("txFinish() for txUuid [%s] merging state changes", txID)
 			state.stateDelta.ApplyChanges(state.currentTxStateDelta)
-			state.txStateDeltaHash[txUUID] = state.currentTxStateDelta.ComputeCryptoHash()
+			state.txStateDeltaHash[txID] = state.currentTxStateDelta.ComputeCryptoHash()
 			state.updateStateImpl = true
 		} else {
-			state.txStateDeltaHash[txUUID] = nil
+			state.txStateDeltaHash[txID] = nil
 		}
 	}
 	state.currentTxStateDelta = statemgmt.NewStateDelta()
-	state.currentTxUUID = ""
+	state.currentTxID = ""
 }
 
 func (state *State) txInProgress() bool {
-	return state.currentTxUUID != ""
+	return state.currentTxID != ""
 }
 
 // Get returns state for chaincodeID and key. If committed is false, this first looks in memory and if missing,

@@ -98,7 +98,7 @@ message ChaincodeInvocationSpec {
     ChaincodeSpec chaincodeSpec = 1;
     // This field can contain a user-specified ID generation algorithm
     // If supplied, this will be used to generate a ID
-    // If not supplied (left empty), a random UUID will be generated
+    // If not supplied (left empty), sha256base64 will be used
     // The algorithm consists of two parts:
     //  1, a hash function
     //  2, a decoding used to decode user (string) input to bytes
@@ -149,7 +149,7 @@ message ChaincodeMessage {
     Type type = 1;
     google.protobuf.Timestamp timestamp = 2;
     bytes payload = 3;
-    string uuid = 4;
+    string txid = 4;
     ChaincodeSecurityContext securityContext = 5;
 
     //event emmited by chaincode. Used only with Init or Invoke.

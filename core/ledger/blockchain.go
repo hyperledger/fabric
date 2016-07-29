@@ -108,8 +108,8 @@ func (blockchain *blockchain) getBlockByHash(blockHash []byte) (*protos.Block, e
 	return blockchain.getBlock(blockNumber)
 }
 
-func (blockchain *blockchain) getTransactionByUUID(txUUID string) (*protos.Transaction, error) {
-	blockNumber, txIndex, err := blockchain.indexer.fetchTransactionIndexByUUID(txUUID)
+func (blockchain *blockchain) getTransactionByID(txID string) (*protos.Transaction, error) {
+	blockNumber, txIndex, err := blockchain.indexer.fetchTransactionIndexByID(txID)
 	if err != nil {
 		return nil, err
 	}

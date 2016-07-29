@@ -291,14 +291,14 @@ func TestServerOpenchainREST_API_GetTransactionByUUID(t *testing.T) {
 	}
 	firstTx := block1.Transactions[0]
 
-	body1 := performHTTPGet(t, httpServer.URL+"/transactions/"+firstTx.Uuid)
+	body1 := performHTTPGet(t, httpServer.URL+"/transactions/"+firstTx.Txid)
 	var tx1 protos.Transaction
 	err = json.Unmarshal(body1, &tx1)
 	if err != nil {
 		t.Fatalf("Invalid JSON response: %v", err)
 	}
-	if tx1.Uuid != firstTx.Uuid {
-		t.Errorf("Expected transaction uuid to be '%v' but got '%v'", firstTx.Uuid, tx1.Uuid)
+	if tx1.Txid != firstTx.Txid {
+		t.Errorf("Expected transaction uuid to be '%v' but got '%v'", firstTx.Txid, tx1.Txid)
 	}
 	if tx1.Timestamp.Seconds < startTime {
 		t.Errorf("Expected transaction timestamp (%v) to be after the start time (%v)", tx1.Timestamp.Seconds, startTime)

@@ -60,7 +60,7 @@ func TestBlockChain_SingleBlock(t *testing.T) {
 		ChaincodeID: &protos.ChaincodeID{Path: "Contracts"},
 		CtorMsg:     &protos.ChaincodeInput{Function: "Initialize", Args: []string{"param1"}}}
 	chaincodeDeploymentSepc := &protos.ChaincodeDeploymentSpec{ChaincodeSpec: chaincodeSpec}
-	uuid := testutil.GenerateUUID(t)
+	uuid := testutil.GenerateID(t)
 	newChaincodeTx, err := protos.NewChaincodeDeployTransaction(chaincodeDeploymentSepc, uuid)
 	testutil.AssertNoError(t, err, "Failed to create new chaincode Deployment Transaction")
 	t.Logf("New chaincode tx: %v", newChaincodeTx)

@@ -193,7 +193,7 @@ func (d *Devops) Deploy(ctx context.Context, spec *pb.ChaincodeSpec) (*pb.Chainc
 	}
 
 	if devopsLogger.IsEnabledFor(logging.DEBUG) {
-		devopsLogger.Debugf("Sending deploy transaction (%s) to validator", tx.Uuid)
+		devopsLogger.Debugf("Sending deploy transaction (%s) to validator", tx.Txid)
 	}
 	resp := d.coord.ExecuteTransaction(tx)
 	if resp.Status == pb.Response_FAILURE {
@@ -213,13 +213,9 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 	var customIDgenAlg = strings.ToLower(chaincodeInvocationSpec.IdGenerationAlg)
 	var id string
 	var generr error
-	if customIDgenAlg != "" {
-		id, generr = util.GenerateIDWithAlg(customIDgenAlg, chaincodeInvocationSpec.ChaincodeSpec.CtorMsg.Args[0])
-		if generr != nil {
-			return nil, generr
-		}
-	} else {
-		id = util.GenerateUUID()
+	id, generr = util.GenerateIDWithAlg(customIDgenAlg, chaincodeInvocationSpec.ChaincodeSpec.CtorMsg.Args)
+	if generr != nil {
+		return nil, generr
 	}
 	devopsLogger.Infof("Transaction ID: %v", id)
 	var transaction *pb.Transaction
@@ -243,7 +239,7 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 		return nil, err
 	}
 	if devopsLogger.IsEnabledFor(logging.DEBUG) {
-		devopsLogger.Debugf("Sending invocation transaction (%s) to validator", transaction.Uuid)
+		devopsLogger.Debugf("Sending invocation transaction (%s) to validator", transaction.Txid)
 	}
 	resp := d.coord.ExecuteTransaction(transaction)
 	if resp.Status == pb.Response_FAILURE {
@@ -448,7 +444,10 @@ func (d *Devops) EXP_ExecuteWithBinding(ctx context.Context, executeWithBinding 
 			return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}, nil
 		}
 
-		tid := util.GenerateUUID()
+		tid, generr := util.GenerateIDWithAlg("", executeWithBinding.ChaincodeInvocationSpec.ChaincodeSpec.CtorMsg.Args)
+		if generr != nil {
+			return nil, fmt.Errorf("Error: cannot generate TX ID (executing with binding)")
+		}
 
 		tx, err := txHandler.NewChaincodeExecute(executeWithBinding.ChaincodeInvocationSpec, tid)
 		if err != nil {

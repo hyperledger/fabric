@@ -62,11 +62,11 @@ func TestIndexesAsync_GetTransactionByBlockHashAndTxIndex(t *testing.T) {
 	testIndexesGetTransactionByBlockHashAndTxIndex(t)
 }
 
-func TestIndexesAsync_GetTransactionByUUID(t *testing.T) {
+func TestIndexesAsync_GetTransactionByID(t *testing.T) {
 	defaultSetting := indexBlockDataSynchronously
 	indexBlockDataSynchronously = false
 	defer func() { indexBlockDataSynchronously = defaultSetting }()
-	testIndexesGetTransactionByUUID(t)
+	testIndexesGetTransactionByID(t)
 }
 
 func TestIndexesAsync_IndexingErrorScenario(t *testing.T) {
@@ -164,7 +164,7 @@ func (noop *NoopIndexer) createIndexesAsync(block *protos.Block, blockNumber uin
 func (noop *NoopIndexer) fetchBlockNumberByBlockHash(blockHash []byte) (uint64, error) {
 	return 0, nil
 }
-func (noop *NoopIndexer) fetchTransactionIndexByUUID(txUUID string) (uint64, uint64, error) {
+func (noop *NoopIndexer) fetchTransactionIndexByID(txID string) (uint64, uint64, error) {
 	return 0, 0, nil
 }
 func (noop *NoopIndexer) stop() {

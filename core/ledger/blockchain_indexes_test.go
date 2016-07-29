@@ -58,11 +58,11 @@ func TestIndexes_GetTransactionByBlockHashAndTxIndex(t *testing.T) {
 	testIndexesGetTransactionByBlockHashAndTxIndex(t)
 }
 
-func TestIndexes_GetTransactionByUUID(t *testing.T) {
+func TestIndexes_GetTransactionByID(t *testing.T) {
 	defaultSetting := indexBlockDataSynchronously
 	indexBlockDataSynchronously = true
 	defer func() { indexBlockDataSynchronously = defaultSetting }()
-	testIndexesGetTransactionByUUID(t)
+	testIndexesGetTransactionByID(t)
 }
 
 func testIndexesGetBlockByBlockNumber(t *testing.T) {
@@ -140,7 +140,7 @@ func testIndexesGetTransactionByBlockHashAndTxIndex(t *testing.T) {
 	}
 }
 
-func testIndexesGetTransactionByUUID(t *testing.T) {
+func testIndexesGetTransactionByID(t *testing.T) {
 	testDBWrapper.CleanDB(t)
 	testBlockchainWrapper := newTestBlockchainWrapper(t)
 	defer func() { testBlockchainWrapper.blockchain.indexer.stop() }()
@@ -154,8 +154,8 @@ func testIndexesGetTransactionByUUID(t *testing.T) {
 	block2 := protos.NewBlock([]*protos.Transaction{tx3, tx4}, nil)
 	testBlockchainWrapper.addNewBlock(block2, []byte("stateHash2"))
 
-	testutil.AssertEquals(t, testBlockchainWrapper.getTransactionByUUID(uuid1), tx1)
-	testutil.AssertEquals(t, testBlockchainWrapper.getTransactionByUUID(uuid2), tx2)
-	testutil.AssertEquals(t, testBlockchainWrapper.getTransactionByUUID(uuid3), tx3)
-	testutil.AssertEquals(t, testBlockchainWrapper.getTransactionByUUID(uuid4), tx4)
+	testutil.AssertEquals(t, testBlockchainWrapper.getTransactionByID(uuid1), tx1)
+	testutil.AssertEquals(t, testBlockchainWrapper.getTransactionByID(uuid2), tx2)
+	testutil.AssertEquals(t, testBlockchainWrapper.getTransactionByID(uuid3), tx3)
+	testutil.AssertEquals(t, testBlockchainWrapper.getTransactionByID(uuid4), tx4)
 }

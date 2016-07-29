@@ -43,7 +43,7 @@ func Test_Block_CreateNew(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not marshal chaincode: %s", err)
 	}
-	transaction := &Transaction{Type: 2, ChaincodeID: cidBytes, Payload: data, Uuid: "001"}
+	transaction := &Transaction{Type: 2, ChaincodeID: cidBytes, Payload: data, Txid: "001"}
 	t.Logf("Transaction: %v", transaction)
 
 	block := NewBlock([]*Transaction{transaction}, nil)

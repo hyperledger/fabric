@@ -44,7 +44,7 @@ func NewTransaction(chaincodeID ChaincodeID, uuid string, function string, argum
 	}
 	transaction := new(Transaction)
 	transaction.ChaincodeID = data
-	transaction.Uuid = uuid
+	transaction.Txid = uuid
 	transaction.Timestamp = util.CreateUtcTimestamp()
 	/*
 		// Build the spec
@@ -67,7 +67,7 @@ func NewTransaction(chaincodeID ChaincodeID, uuid string, function string, argum
 func NewChaincodeDeployTransaction(chaincodeDeploymentSpec *ChaincodeDeploymentSpec, uuid string) (*Transaction, error) {
 	transaction := new(Transaction)
 	transaction.Type = Transaction_CHAINCODE_DEPLOY
-	transaction.Uuid = uuid
+	transaction.Txid = uuid
 	transaction.Timestamp = util.CreateUtcTimestamp()
 	cID := chaincodeDeploymentSpec.ChaincodeSpec.GetChaincodeID()
 	if cID != nil {
@@ -94,7 +94,7 @@ func NewChaincodeDeployTransaction(chaincodeDeploymentSpec *ChaincodeDeploymentS
 func NewChaincodeExecute(chaincodeInvocationSpec *ChaincodeInvocationSpec, uuid string, typ Transaction_Type) (*Transaction, error) {
 	transaction := new(Transaction)
 	transaction.Type = typ
-	transaction.Uuid = uuid
+	transaction.Txid = uuid
 	transaction.Timestamp = util.CreateUtcTimestamp()
 	cID := chaincodeInvocationSpec.ChaincodeSpec.GetChaincodeID()
 	if cID != nil {

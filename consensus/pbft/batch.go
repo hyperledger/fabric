@@ -192,9 +192,9 @@ func (op *obcBatch) execute(seqNo uint64, reqBatch *RequestBatch) {
 			logger.Warningf("Batch replica %d could not unmarshal transaction %s", op.pbft.id, err)
 			continue
 		}
-		logger.Debugf("Batch replica %d executing request with transaction %s from outstandingReqs, seqNo=%d", op.pbft.id, tx.Uuid, seqNo)
+		logger.Debugf("Batch replica %d executing request with transaction %s from outstandingReqs, seqNo=%d", op.pbft.id, tx.Txid, seqNo)
 		if outstanding, pending := op.reqStore.remove(req); !outstanding || !pending {
-			logger.Debugf("Batch replica %d missing transaction %s outstanding=%v, pending=%v", op.pbft.id, tx.Uuid, outstanding, pending)
+			logger.Debugf("Batch replica %d missing transaction %s outstanding=%v, pending=%v", op.pbft.id, tx.Txid, outstanding, pending)
 		}
 		txs = append(txs, tx)
 		op.deduplicator.Execute(req)
@@ -314,7 +314,7 @@ func (op *obcBatch) logAddTxFromRequest(req *Request) {
 		if err != nil {
 			logger.Errorf("Replica %d was sent a transaction which did not unmarshal: %s", op.pbft.id, err)
 		} else {
-			logger.Debugf("Replica %d adding request from %d with transaction %s into outstandingReqs", op.pbft.id, req.ReplicaId, tx.Uuid)
+			logger.Debugf("Replica %d adding request from %d with transaction %s into outstandingReqs", op.pbft.id, req.ReplicaId, tx.Txid)
 		}
 	}
 }
