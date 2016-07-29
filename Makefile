@@ -40,8 +40,9 @@ PROJECT_NAME=hyperledger/fabric
 PKGNAME = github.com/$(PROJECT_NAME)
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
+CHAINTOOL_RELEASE=v0.8.1
 
-EXECUTABLES = go docker git
+EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
@@ -109,9 +110,15 @@ linter: gotools
 		-v $(abspath $(@D)):/opt/gopath/bin \
 		hyperledger/fabric-baseimage go install github.com/golang/protobuf/protoc-gen-go
 
-%/bin/chaintool:
+build/bin/chaintool: Makefile
 	@echo "Installing chaintool"
-	@cp devenv/tools/chaintool $@
+	@mkdir -p $(@D)
+	curl -L https://github.com/hyperledger/fabric-chaintool/releases/download/$(CHAINTOOL_RELEASE)/chaintool > $@
+	chmod +x $@
+
+%/bin/chaintool: build/bin/chaintool
+	@mkdir -p $(@D)
+	@cp $^ $@
 
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
