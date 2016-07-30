@@ -37,16 +37,15 @@ init() {
    UNITTEST=$FABRIC/sdk/node/test/unit
    EXAMPLES=$FABRIC/examples/chaincode/go
 
-   # If the executables don't exist where they belong, build them now in place
+   # Exit if the executables don't exist where they belong
    if [ ! -f $MSEXE ]; then
-      cd $FABRIC/membersrvc
-      go build
-      MSEXE=`pwd`/membersrvc
+   echo "ERROR: $MSEXE does not exist"
+   exit 1
    fi
+
    if [ ! -f $PEEREXE ]; then
-      cd $FABRIC/peer
-      go build
-      PEEREXE=`pwd`/peer
+   echo "ERROR: $PEEREXE does not exist"
+   exit 1
    fi
 
    # Always run peer with security and privacy enabled
