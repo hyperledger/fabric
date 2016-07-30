@@ -1,0 +1,13 @@
+## Maintainers
+
+| Name | GitHub | Gerrit | email |
+|---|---|---|---|
+| Binh Nguyen | binhn | | binhn@us.ibm.com |
+| Sheehan Anderson | srderson || sheehan@us.ibm.com
+| Tamas Blummer | tamasblummer ||  tamas@digitalasset.com
+| Robert Fajta | rfajta || robert@digitalasset.com
+| Greg Haskins | ghaskins || ghaskins@lseg.com
+| Jonathan Levi | JonathanLevi || jonathan@levi.name
+| Gabor Hosszu | gabre || gabor@digitalasset.com
+| Simon Schubert | corecode || sis@zurich.ibm.com
+| Chris Ferris | christo4ferris | ChristopherFerris | chrisfer@us.ibm.com
