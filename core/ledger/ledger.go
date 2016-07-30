@@ -159,7 +159,31 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.Trans
 	writeBatch := gorocksdb.NewWriteBatch()
 	defer writeBatch.Destroy()
 	block := protos.NewBlock(transactions, metadata)
-	block.NonHashData = &protos.NonHashData{}
+
+	ccEvents := []*protos.ChaincodeEvent{}
+
+	if transactionResults != nil {
+		ccEvents = make([]*protos.ChaincodeEvent, len(transactionResults))
+		for i := 0; i < len(transactionResults); i++ {
+			if transactionResults[i].ChaincodeEvent != nil {
+				ccEvents[i] = transactionResults[i].ChaincodeEvent
+			} else {
+				//We need the index so we can map the chaincode
+				//event to the transaction that generated it.
+				//Hence need an entry for cc event even if one
+				//wasn't generated for the transaction. We cannot
+				//use a nil cc event as protobuf does not like
+				//elements of a repeated array to be nil.
+				//
+				//We should discard empty events without chaincode
+				//ID when sending out events.
+				ccEvents[i] = &protos.ChaincodeEvent{}
+			}
+		}
+	}
+
+	//store chaincode events directly in NonHashData. This will likely change in New Consensus where we can move them to Transaction
+	block.NonHashData = &protos.NonHashData{ChaincodeEvents: ccEvents}
 	newBlockNumber, err := ledger.blockchain.addPersistenceChangesForNewBlock(context.TODO(), block, stateHash, writeBatch)
 	if err != nil {
 		ledger.resetForNextTxGroup(false)
@@ -180,6 +204,10 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.Trans
 	ledger.blockchain.blockPersistenceStatus(true)
 
 	sendProducerBlockEvent(block)
+
+	//send chaincode events from transaction results
+	sendChaincodeEvents(transactionResults)
+
 	if len(transactionResults) != 0 {
 		ledgerLogger.Debug("There were some erroneous transactions. We need to send a 'TX rejected' message here.")
 	}
@@ -490,4 +518,17 @@ func sendProducerBlockEvent(block *protos.Block) {
 	}
 
 	producer.Send(producer.CreateBlockEvent(block))
+}
+
+//send chaincode events created by transactions
+func sendChaincodeEvents(trs []*protos.TransactionResult) {
+	if trs != nil {
+		for _, tr := range trs {
+			//we store empty chaincode events in the protobuf repeated array to make protobuf happy.
+			//when we replay off a block ignore empty events
+			if tr.ChaincodeEvent != nil && tr.ChaincodeEvent.ChaincodeID != "" {
+				producer.Send(producer.CreateChaincodeEvent(tr.ChaincodeEvent))
+			}
+		}
+	}
 }

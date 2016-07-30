@@ -297,8 +297,11 @@ func (*BlockchainInfo) ProtoMessage()    {}
 // the block hash when verifying the blockchain.
 // localLedgerCommitTimestamp - The time at which the block was added
 // to the ledger on the local peer.
+// chaincodeEvent - is an array ChaincodeEvents, one per transaction in the
+// block
 type NonHashData struct {
 	LocalLedgerCommitTimestamp *google_protobuf.Timestamp `protobuf:"bytes,1,opt,name=localLedgerCommitTimestamp" json:"localLedgerCommitTimestamp,omitempty"`
+	ChaincodeEvents            []*ChaincodeEvent          `protobuf:"bytes,2,rep,name=chaincodeEvents" json:"chaincodeEvents,omitempty"`
 }
 
 func (m *NonHashData) Reset()         { *m = NonHashData{} }
@@ -308,6 +311,13 @@ func (*NonHashData) ProtoMessage()    {}
 func (m *NonHashData) GetLocalLedgerCommitTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.LocalLedgerCommitTimestamp
+	}
+	return nil
+}
+
+func (m *NonHashData) GetChaincodeEvents() []*ChaincodeEvent {
+	if m != nil {
+		return m.ChaincodeEvents
 	}
 	return nil
 }
