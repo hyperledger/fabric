@@ -16,7 +16,7 @@ limitations under the License.
 syntax = "proto3";
 package protos;
 
-//Chaincode is used for events and registrations that are specific to chaincode
+//ChaincodeEvent is used for events and registrations that are specific to chaincode
 //string type - "chaincode"
 message ChaincodeEvent {
       string chaincodeID = 1;
