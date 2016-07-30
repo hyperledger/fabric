@@ -90,7 +90,7 @@ func NewChaincodeDeployTransaction(chaincodeDeploymentSpec *ChaincodeDeploymentS
 	return transaction, nil
 }
 
-// NewChaincodeExecute is used to deploy chaincode.
+// NewChaincodeExecute is used to invoke chaincode.
 func NewChaincodeExecute(chaincodeInvocationSpec *ChaincodeInvocationSpec, uuid string, typ Transaction_Type) (*Transaction, error) {
 	transaction := new(Transaction)
 	transaction.Type = typ

@@ -36,7 +36,7 @@ service Devops {
     // Invoke chaincode.
     rpc Invoke(ChaincodeInvocationSpec) returns (Response) {}
 
-    // Invoke chaincode.
+    // Query chaincode.
     rpc Query(ChaincodeInvocationSpec) returns (Response) {}
 
     // Retrieve a TCert.
