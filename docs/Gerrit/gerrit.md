@@ -88,13 +88,31 @@ be reversed as well.
 Currently, Gerrit is the only method to submit a change for review. **Please review
 the [guidelines](changes.md) for making and submitting a change**.
 
+### Use git review
+
 **Note:** if you prefer, you can use the [git-review](#git-review) tool instead
 of the following. e.g.
 
+Add the following section to `.git/config`, and replace `<USERNAME>` with your 
+gerrit id.
+
 ```
-cd <your clone dir>
-git review -R
+[remote "gerrit"]
+    url = ssh://<USERNAME>@gerrit.hyperledger.org:29418/fabric.git
+    fetch = +refs/heads/*:refs/remotes/gerrit/*
 ```
+
+Then submit your change with `git review`.
+
+```
+$ cd <your code dir>
+$ git review
+```
+
+When you update your patch, you can commit with `git commit --amend`, and then 
+repeat the `git review` command.
+
+### Not Use git review
 
 Directions for building the source code can be found [here](../dev-setup/build.md).
 
