@@ -10,13 +10,13 @@
 - 想扩展 fabric 功能的工具开发者
 - 想利用区块链技术来丰富他们应用的应用开发者
 
-### 作者     
+### 作者
 下面这些作者编写了这份分档： Binh Q Nguyen, Elli Androulaki, Angelo De Caro, Sheehan Anderson, Manish Sethi, Thorsten Kramp, Alessandro Sorniotti, Marko Vukolic, Florian Simon Schubert, Jason K Yellick, Konstantinos Christidis, Srinivasan Muralidharan, Anna D Derbakova, Dulce Ponceleon, David Kravitz, Diego Masini.
 
-### 评审     
+### 评审
 下面这些评审人评审了这份文档： Frank Lu, John Wolpert, Bishop Brock, Nitin Gaur, Sharon Weed, Konrad Pabjan.
 
-### 致谢     
+### 致谢
 下面这些贡献者对这份规范提供了技术支持:
 Gennaro Cuomo, Joseph A Latone, Christian Cachin
 ________________________________________________________
@@ -64,7 +64,7 @@ ________________________________________________________
    - 3.2.2.1 世界状态的 Hashing
    - 3.2.2.1.1 Bucket-tree
    - 3.3 Chaincode
-   - 3.3.1 Virtual Machine 实例化 
+   - 3.3.1 Virtual Machine 实例化
    - 3.3.2 Chaincode 协议
    - 3.3.2.1 Chaincode 部署
    - 3.3.2.2 Chaincode 调用
@@ -80,7 +80,7 @@ ________________________________________________________
    - 3.4.7 Executor 接口
    - 3.4.7.1 开始批量交易
    - 3.4.7.2 执行交易
-   - 3.4.7.3 提交与回滚交易    
+   - 3.4.7.3 提交与回滚交易
    - 3.4.8 Ledger 接口
    - 3.4.8.1 ReadOnlyLedger 接口
    - 3.4.8.2 UtilLedger 接口
@@ -89,9 +89,9 @@ ________________________________________________________
    - 3.4.10 Controller 包
    - 3.4.11 Helper 包
    - 3.5 事件
-   - 3.5.1 事件流 
+   - 3.5.1 事件流
    - 3.5.2 事件结构
-   - 3.5.3 事件适配器    
+   - 3.5.3 事件适配器
 
 #### 4. 安全
    - 4. 安全
@@ -127,17 +127,17 @@ ________________________________________________________
    - 7.1 应用组成
    - 7.2 应用样例
 
-#### 8. 未来发展方向    
+#### 8. 未来发展方向
    - 8.1 企业集成
    - 8.2 性能与可扩展性
    - 8.3 附加的共识插件
-   - 8.4 附加的语言    
+   - 8.4 附加的语言
 
 #### 9. References
 
 ________________________________________________________
 
-## 1. 介绍    
+## 1. 介绍
 这份文档规范了适用于工业界的区块链的概念，架构和协议。
 
 ### 1.1 什么是 fabric?
@@ -153,7 +153,7 @@ fabric 是区块链技术的一种实现，比特币是可以在fabric上构建�
 
 早期的区块链技术提供一个目的集合，但是通常对具体的工业应用支持的不是很好。为了满足现代市场的需求，fabric 是基于工业关注点针对特定行业的多种多样的需求来设计的，并引入了这个领域内的开拓者的经验，如扩展性。fabric 为权限网络，隐私，和多个区块链网络的私密信息提供一种新的方法。
 
-### 1.3 术语    
+### 1.3 术语
 以下术语在此规范的有限范围内定义，以帮助读者清楚准确的了解这里所描述的概念。
 
 **交易(Transaction)** 是区块链上执行功能的一个请求。功能是使用**链节点(chainnode)**来实现的。
@@ -183,24 +183,24 @@ fabric 是区块链技术的一种实现，比特币是可以在fabric上构建�
 
 fabric是由下面这个小节所描述的核心组件所组成的。
 
-### 2.1 架构     
+### 2.1 架构
 这个架构参考关注在三个类别中：会员(Membership)，区块链(Blockchan)和链码(chaincode)。这些类别是逻辑结构，而不是物理上的把不同的组件分割到独立的进程，地址空间，（虚拟）机器中。
 
 ![Reference architecture](images/refarch.png)
 
-### 2.1.1 成员服务  
+### 2.1.1 成员服务
 成员服务为网络提供身份管理，隐私，保密和可审计性的服务。在一个不带权限的区块链中，参与者是不需要被授权的，且所有的节点都可以同样的提交交易并把它们汇集到可接受的块中，如：它们没有角色的区分。成员服务通过公钥基础设施(Public Key Infrastructure
 (PKI))和去中心化的/共识技术使得不带权限的区块链变成带权限的区块链。在后者中，通过实体注册来获得长时间的，可能根据实体类型生成的身份凭证（登记证书enrollment certificates）。在用户使用过程中，这样的证书允许交易证书颁发机构（Transaction Certificate Authority
 (TCA)）颁发匿名证书。这样的证书，如交易证书，被用来对提交交易授权。交易证书存储在区块链中，并对审计集群授权，否则交易是不可链接的。
 
-### 2.1.2 区块链服务     
+### 2.1.2 区块链服务
 区块链服务通过 HTTP/2 上的点对点（peer-to-peer）协议来管理分布式总账。为了提供最高效的哈希算法来维护世界状态的复制，数据结构进行了高度的优化。每个部署中可以插入和配置不同的共识算法（PBFT, Raft, PoW, PoS）。
 
-### 2.1.3 链码服务    
-链码服务提供一个安全的，轻量的沙箱在验证节点上执行链码。环境是一个“锁定的”且安全的包含签过名的安全操作系统镜像和链码语言，Go，Java 和 Node.js 的运行时和 SDK 层。可以根据需要来启用其他语言。    
+### 2.1.3 链码服务
+链码服务提供一个安全的，轻量的沙箱在验证节点上执行链码。环境是一个“锁定的”且安全的包含签过名的安全操作系统镜像和链码语言，Go，Java 和 Node.js 的运行时和 SDK 层。可以根据需要来启用其他语言。
 
-### 2.1.4 事件    
-验证 peers 和链码可以向在网络上监听并采取行动的应用发送事件。这是一些预定义好的事件集合，链码可以生成客户化的事件。事件会被一个或多个事件适配器消费。之后适配器可能会把事件投递到其他设备，如 Web hooks 或 Kafka。    
+### 2.1.4 事件
+验证 peers 和链码可以向在网络上监听并采取行动的应用发送事件。这是一些预定义好的事件集合，链码可以生成客户化的事件。事件会被一个或多个事件适配器消费。之后适配器可能会把事件投递到其他设备，如 Web hooks 或 Kafka。
 
 ### 2.1.5 应用编程接口(API)
 fabric的主要接口是 REST API，并通过 Swagger 2.0 来改变。API 允许注册用户，区块链查询和发布交易。链码与执行交易的堆间的交互和交易的结果查询会由 API 集合来规范。
@@ -211,21 +211,21 @@ CLI包含REST API的一个子集使得开发者能更快的测试链码或查询
 ### 2.2 拓扑
 fabric 的一个部署是由成员服务，多个验证 peers、非验证 peers 和一个或多个应用所组成一个链。也可以有多个链，各个链具有不同的操作参数和安全要求。
 
-### 2.2.1 单验证Peer    
+### 2.2.1 单验证Peer
 功能上讲，一个非验证 peer 是验证 peer 的子集；非验证 peer 上的功能都可以在验证 peer 上启用，所以在最简单的网络上只有一个验证peer组成。这个配置通常使用在开发环境：单个验证 peer 在编辑-编译-调试周期中被启动。
 
 ![Single Validating Peer](images/top-single-peer.png)
 
 单个验证 peer 不需要共识，默认情况下使用`noops`插件来处理接收到的交易。这使得在开发中，开发人员能立即收到返回。
 
-### 2.2.2 多验证 Peer    
+### 2.2.2 多验证 Peer
 生产或测试网络需要有多个验证和非验证 peers 组成。非验证 peer 可以为验证 peer 分担像 API 请求处理或事件处理这样的压力。
 
 ![Multiple Validating Peers](images/top-multi-peer.png)
 
 网状网络（每个验证peer需要和其它验证peer都相连）中的验证 peer 来传播信息。一个非验证 peer 连接到附近的，允许它连接的验证 peer。当应用可能直接连接到验证 peer 时，非验证 peer 是可选的。
 
-### 2.2.3 多链 
+### 2.2.3 多链
 验证和非验证 peer 的各个网络组成一个链。可以根据不同的需求创建不同的链，就像根据不同的目的创建不同的 Web 站点。
 
 
@@ -233,7 +233,7 @@ fabric 的一个部署是由成员服务，多个验证 peers、非验证 peers 
 fabric的点对点（peer-to-peer）通信是建立在允许双向的基于流的消息[gRPC](http://www.grpc.io/docs/)上的。它使用[Protocol Buffers](https://developers.google.com/protocol-buffers)来序列化peer之间传输的数据结构。Protocol buffers 是语言无关，平台无关并具有可扩展机制来序列化结构化的数据的技术。数据结构，消息和服务是使用 [proto3 language](https://developers.google.com/protocol-buffers/docs/proto3)注释来描述的。
 
 ### 3.1 消息
-消息在节点之间通过`Message`proto 结构封装来传递的，可以分为 4 种类型：发现（Discovery）, 交易（Transaction）, 同步(Synchronization)和共识(Consensus)。每种类型在`payload`中定义了多种子类型。    
+消息在节点之间通过`Message`proto 结构封装来传递的，可以分为 4 种类型：发现（Discovery）, 交易（Transaction）, 同步(Synchronization)和共识(Consensus)。每种类型在`payload`中定义了多种子类型。
 
 ```
 message Message {
@@ -270,7 +270,7 @@ message Message {
 ```
 `payload`是由不同的消息类型所包含的不同的像`Transaction`或`Response`这样的对象的不透明的字节数组。例如：`type`为`CHAIN_TRANSACTION`那么`payload`就是一个`Transaction`对象。
 
-### 3.1.1 发现消息    
+### 3.1.1 发现消息
 在启动时，如果`CORE_PEER_DISCOVERY_ROOTNODE`被指定，那么 peer 就会运行发现协议。`CORE_PEER_DISCOVERY_ROOTNODE`是网络（任意peer）中扮演用来发现所有 peer 的起点角色的另一个 peer 的 IP 地址。协议序列以`payload`是一个包含：
 
 ```
@@ -306,16 +306,16 @@ message PeerID {
 - `address` 以`ip:port`这样的格式表示的 peer 的主机名或IP和端口
 - `blockNumber` 是 peer 的区块链的当前的高度
 
-如果收到的`DISC_HELLO` 消息的块的高度比当前 peer 的块的高度高，那么它马上初始化同步协议来追上当前的网络。    
+如果收到的`DISC_HELLO` 消息的块的高度比当前 peer 的块的高度高，那么它马上初始化同步协议来追上当前的网络。
 
 `DISC_HELLO`之后，peer 会周期性的发送`DISC_GET_PEERS`来发现任意想要加入网络的 peer。收到`DISC_GET_PEERS`后，peer 会发送`payload`
 包含`PeerEndpoint`的数组的`DISC_PEERS`作为响应。这是不会使用其它的发现消息类型。
 
-### 3.1.2 交易消息    
-有三种不同的交易类型：部署（Deploy），调用（Invoke）和查询（Query）。部署交易向链上安装指定的链码，调用和查询交易会调用部署号的链码。另一种需要考虑的类型是创建（Create）交易，其中部署好的链码是可以在链上实例化并寻址的。这种类型在写这份文档时还没有被实现。     
+### 3.1.2 交易消息
+有三种不同的交易类型：部署（Deploy），调用（Invoke）和查询（Query）。部署交易向链上安装指定的链码，调用和查询交易会调用部署号的链码。另一种需要考虑的类型是创建（Create）交易，其中部署好的链码是可以在链上实例化并寻址的。这种类型在写这份文档时还没有被实现。
 
 
-### 3.1.2.1 交易的数据结构    
+### 3.1.2.1 交易的数据结构
 
 `CHAIN_TRANSACTION`和`CHAIN_QUERY`类型的消息会在`payload`带有`Transaction`对象：
 
@@ -413,7 +413,7 @@ message ChaincodeInput {
 
 当 peer 收到`chaincodeSpec`后以合适的交易消息包装它并广播到网络
 
-### 3.1.2.3 部署交易    
+### 3.1.2.3 部署交易
 部署交易的类型是`CHAINCODE_DEPLOY`，且它的payload包含`ChaincodeDeploymentSpec`对象。
 
 ```
@@ -440,20 +440,20 @@ message ChaincodeInvocationSpec {
 }
 ```
 
-### 3.1.2.5 查询交易 
+### 3.1.2.5 查询交易
 查询交易除了消息类型是`CHAINCODE_QUERY`其它和调用交易一样
 
-### 3.1.3 同步消息    
+### 3.1.3 同步消息
 同步协议以3.1.1节描述的，当 peer 知道它自己的区块落后于其它 peer 或和它们不一样后所发起的。peer 广播`SYNC_GET_BLOCKS`，`SYNC_STATE_GET_SNAPSHOT`或`SYNC_STATE_GET_DELTAS`并分别接收`SYNC_BLOCKS`, `SYNC_STATE_SNAPSHOT`或 `SYNC_STATE_DELTAS`。
 
-安装的共识插件（如：pbft）决定同步协议是如何被应用的。每个小时是针对具体的状态来设计的：
+安装的共识插件（如：pbft）决定同步协议是如何被应用的。每个消息是针对具体的状态来设计的：
 
 **SYNC_GET_BLOCKS** 是一个`SyncBlockRange`对象，包含一个连续区块的范围的`payload`的请求。
 
 ```
 message SyncBlockRange {
-    uint64 start = 1;
-    uint64 end = 2;
+    uint64 correlationId = 1;
+    uint64 start = 2;
     uint64 end = 3;
 }
 ```
@@ -507,7 +507,7 @@ message SyncStateDeltas {
 ```
 delta可能以顺序（从i到j）或倒序（从j到i）来表示状态转变
 
-### 3.1.4 共识消息    
+### 3.1.4 共识消息
 共识处理交易，一个`CONSENSUS`消息是由共识框架接收到`CHAIN_TRANSACTION`消息时在内部初始化的。框架把`CHAIN_TRANSACTION`转换为 `CONSENSUS`然后以相同的`payload`广播到验证 peer。共识插件接收这条消息并根据内部算法来处理。插件可能创建自定义的子类型来管理共识有穷状态机。3.4节会介绍详细信息。
 
 
@@ -516,7 +516,7 @@ delta可能以顺序（从i到j）或倒序（从j到i）来表示状态转变
 总账由两个主要的部分组成，一个是区块链，一个是世界状态。区块链是在总账中的一系列连接好的用来记录交易的区块。世界状态是一个用来存储交易执行状态的键-值(key-value)数据库
 
 
-### 3.2.1 区块链    
+### 3.2.1 区块链
 
 #### 3.2.1.1 区块
 
@@ -541,25 +541,25 @@ message BlockTransactions {
 **域的定义:**
 * `version` - 用来追踪协议变化的版本号
 * `timestamp` - 由区块提议者填充的时间戳
-* `transactionsHash` - 区块中交易的merkle root hash 
-* `stateHash` - 世界状态的merkle root hash 
-* `previousBlockHash` - 前一个区块的hash 
+* `transactionsHash` - 区块中交易的merkle root hash
+* `stateHash` - 世界状态的merkle root hash
+* `previousBlockHash` - 前一个区块的hash
 * `consensusMetadata` - 共识可能会引入的一些可选的元数据
 * `nonHashData` - `NonHashData`消息会在计算区块的哈希前设置为nil，但是在数据库中存储为区块的一部分
 * `BlockTransactions.transactions` - 交易消息的数组，由于交易的大小，它们不会被直接包含在区块中
 
-#### 3.2.1.2 区块哈希    
+#### 3.2.1.2 区块哈希
 
-* `previousBlockHash`哈希是通过下面算法计算的     
-  1. 使用protocol buffer库把区块消息序列化为字节码     
+* `previousBlockHash`哈希是通过下面算法计算的
+  1. 使用protocol buffer库把区块消息序列化为字节码
 
-  2. 使用[FIPS 202](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf)描述的SHA3 SHAKE256算法来对序列化后的区块消息计算大小为512位的哈希值     
+  2. 使用[FIPS 202](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf)描述的SHA3 SHAKE256算法来对序列化后的区块消息计算大小为512位的哈希值
 
-* `transactionHash`是交易merkle树的根。定义merkle tree实现是一个代办     
+* `transactionHash`是交易merkle树的根。定义merkle tree实现是一个代办
 
-* `stateHash`在3.2.2.1节中定义.     
+* `stateHash`在3.2.2.1节中定义.
 
-#### 3.2.1.3 非散列数据(NonHashData)    
+#### 3.2.1.3 非散列数据(NonHashData)
 
 NonHashData消息是用来存储不需要所有 peer 都具有相同值的块元数据。他们是建议值。
 
@@ -590,14 +590,14 @@ message TransactionResult {
 * `TransactionResult.error` - 用来记录关联交易的错误信息的字符串
 
 
-#### 3.2.1.4 交易执行     
+#### 3.2.1.4 交易执行
 
 一个交易定义了它们部署或执行的链码。区块中的所有交易都可以在记录到总账中的区块之前运行。当链码执行时，他们可能会改变世界状态。之后世界状态的哈希会被记录在区块中。
 
 
-### 3.2.2 世界状态    
+### 3.2.2 世界状态
 
-peer 的*世界状态*涉及到所有被部署的链码的*状态*集合。进一步说，链码的状态由键值对集合来表示。所以，逻辑上说，peer 的世界状态也是键值对的集合，其中键有元组`{chaincodeID, ckey}`组成。这里我们使用术语`key`来标识世界状态的键，如：元组`{chaincodeID, ckey}` ，而且我们使用`cKey`来标识链码中的唯一键。
+peer 的*世界状态*涉及到所有被部署的链码的*状态*集合。进一步说，链码的状态由键值对集合来表示。所以，逻辑上说，peer 的世界状态也是键值对的集合，其中键由元组`{chaincodeID, ckey}`组成。这里我们使用术语`key`来标识世界状态的键，如：元组`{chaincodeID, ckey}` ，而且我们使用`cKey`来标识链码中的唯一键。
 
 为了下面描述的目的，假定`chaincodeID`是有效的utf8字符串，且`ckey`和`value`是一个或多个任意的字节的序列
 
@@ -631,7 +631,7 @@ peer 的*世界状态*涉及到所有被部署的链码的*状态*集合。进�
 | 4             | 1001            |
 | 5             | 10009           |
 
-为了计算世界状态的加密-哈希，需要计算每个桶的加密-哈希，并假设它们是merkle-tree的叶子节点的加密-哈希。为了计算桶的加密-哈希，存储在桶中的键值对首先被序列化为字节码并在其上应用加密-哈希函数。为了序列化桶的键值对，所有具有公共chaincodeID前缀的键值对分别序列化并以chaincodeID的升序的方式追加在一起。为了序列化一个chaincodeID的键值对，会涉及到下面的信息：    
+为了计算世界状态的加密-哈希，需要计算每个桶的加密-哈希，并假设它们是merkle-tree的叶子节点的加密-哈希。为了计算桶的加密-哈希，存储在桶中的键值对首先被序列化为字节码并在其上应用加密-哈希函数。为了序列化桶的键值对，所有具有公共chaincodeID前缀的键值对分别序列化并以chaincodeID的升序的方式追加在一起。为了序列化一个chaincodeID的键值对，会涉及到下面的信息：
 
    1. chaincodeID的长度(chaincodeID的字节数)
    - chaincodeID的utf8字节码
@@ -658,12 +658,12 @@ peer 的*世界状态*涉及到所有被部署的链码的*状态*集合。进�
 在一个具体的部署中，所有的 peer 都期望使用相同的`numBuckets, maxGroupingAtEachLevel, 和 hashFunction`的配置。进一步说，如果任何一个配置在之后的阶段被改变，那么这些改变需要应用到所有的 peer 中，来保证 peer 节点之间的加密-哈希的比较是有意义的。即使，这可能会导致基于实现的已有数据的迁移。例如：一种实现希望存储树中所有节点最后计算的加密-哈希，那么它就需要被重新计算。
 
 
-### 3.3 链码（Chaincode）    
-链码是在交易（参看3.1.2节）被部署是分发到网络上，并被所有验证 peer 通过隔离的沙箱来管理的应用级代码。尽管任意的虚拟技术都可以支持沙箱，现在是通过Docker容器来运行链码的。这节中描述的协议可以启用不同虚拟实现的插入与运行。
+### 3.3 链码（Chaincode）
+链码是在交易（参看3.1.2节）被部署时分发到网络上，并被所有验证 peer 通过隔离的沙箱来管理的应用级代码。尽管任意的虚拟技术都可以支持沙箱，现在是通过Docker容器来运行链码的。这节中描述的协议可以启用不同虚拟实现的插入与运行。
 
 
-### 3.3.1 虚拟机实例化    
-一个实现VM接口的虚拟机    
+### 3.3.1 虚拟机实例化
+一个实现VM接口的虚拟机
 
 ```
 type VM interface {
@@ -677,7 +677,7 @@ fabric在处理链码上的部署交易或其他交易时，如果这个链码�
 
 一旦链码容器被启动，它使用gRPC来连接到启动这个链码的验证 peer，并为链码上的调用和查询交易建立通道。
 
-### 3.3.2 链码协议     
+### 3.3.2 链码协议
 验证 peer 和它的链码之间是通过gRPC流来通信的。链码容器上有shim层来处理链码与验证 peer 之间的protobuf消息协议。
 
 ```
@@ -722,27 +722,28 @@ message ChaincodeMessage {
 
 ```
 type Chaincode interface {
+    Init(stub *ChaincodeStub, function string, args []string) ([]byte, error)
 	Invoke(stub *ChaincodeStub, function string, args []string) (error)
 	Query(stub *ChaincodeStub, function string, args []string) ([]byte, error)
 }
 ```
 
-`Init`, `Invoke` 和 `Query`函数使用`function` and `args`参数来支持多种交易。`Init`是构造函数，它只在部署交易是被执行。`Query`函数是不允许修改链码的状态的；它只能读取和计算并以byte数组的形式返回。    
+`Init`, `Invoke` 和 `Query`函数使用`function` and `args`参数来支持多种交易。`Init`是构造函数，它只在部署交易时被执行。`Query`函数是不允许修改链码的状态的；它只能读取和计算并以byte数组的形式返回。
 
-### 3.3.2.1 链码部署    
-当部署时（链码容器已经启动），shim层发送一次性的具有包含`ChaincodeID`的`payload`的`REGISTER`消息给验证 peer。然后 peer 以`REGISTERED`或`ERROR`来响应成功或失败。当收到`ERROR`后shim关闭连接并退出。     
+### 3.3.2.1 链码部署
+当部署时（链码容器已经启动），shim层发送一次性的具有包含`ChaincodeID`的`payload`的`REGISTER`消息给验证 peer。然后 peer 以`REGISTERED`或`ERROR`来响应成功或失败。当收到`ERROR`后shim关闭连接并退出。
 
 注册之后，验证 peer 发送具有包含`ChaincodeInput`对象的`INIT`消息。shim使用从`ChaincodeInput`获得的参数来调用`Init`函数，通过像设置持久化状态这样操作来初始化链码。
 
 shim根据`Init`函数的返回值，响应`RESPONSE`或`ERROR`消息。如果没有错误，那么链码初始化完成，并准备好接收调用和查询交易。
 
-### 3.3.2.2 链码调用    
+### 3.3.2.2 链码调用
 当处理调用交易时，验证 peer 发送`TRANSACTION`消息给链码容器的shim，由它来调用链码的`Invoke`函数，并传递从`ChaincodeInput`得到的参数。shim响应`RESPONSE`或`ERROR`消息来表示函数完成。如果接收到`ERROR`函数，`payload`包含链码所产生的错误信息。
 
-### 3.3.2.3 来代码查询    
+### 3.3.2.3 链码查询
 与调用交易一样，验证 peer 发送`QUERY`消息给链码容器的shim，由它来调用链码的`Query`函数，并传递从`ChaincodeInput`得到的参数。`Query`函数可能会返回状态值或错误，它会把它通过`RESPONSE`或`ERROR`消息来传递给验证 peer。
 
-### 3.3.2.4 链码状态    
+### 3.3.2.4 链码状态
 每个链码可能都定义了它自己的持久化状态变量。例如，一个链码可能创建电视，汽车或股票这样的资产来保存资产属性。当`Invoke`函数处理时，链码可能会更新状态变量，例如改变资产所有者。链码会根据下面这些消息类型类操作状态变量：
 
 #### PUT_STATE
@@ -841,7 +842,7 @@ type Consenter interface {
 
 阅读下面的`helper.HandleMessage`来理解 peer 是如何和这个接口来交互的。
 
-### 3.4.2 `CPI`接口    
+### 3.4.2 `CPI`接口
 
 定义:
 ```
@@ -867,9 +868,9 @@ type Inquirer interface {
         GetNetworkHandles() (self *pb.PeerID, network []*pb.PeerID, err error)
 }
 ```
-这个接口是`consensus.CPI`接口的一部分。它是用来获取网络中验证 peer 的（`GetNetworkHandles`）处理，以及那些验证 peer 的明细(`GetNetworkInfo`)：
+这个接口是`consensus.CPI`接口的一部分。它是用来获取网络中验证 peer 的（`GetNetworkHandles`）句柄，以及那些验证 peer 的明细(`GetNetworkInfo`)：
 
-注意pees由`pb.PeerID`对象确定。这是一个protobuf消息，当前定义为（注意这个定义很可能会被修改）：
+注意peers由`pb.PeerID`对象确定。这是一个protobuf消息，当前定义为（注意这个定义很可能会被修改）：
 
 ```
 message PeerID {
@@ -889,7 +890,7 @@ type Communicator interface {
 ```
 这个接口是`consensus.CPI`接口的一部分。它是用来与网络上其它 peer 通信的（`helper.Broadcast`, `helper.Unicast`）：
 
-### 3.4.5 `SecurityUtils`接口 
+### 3.4.5 `SecurityUtils`接口
 
 定义:
 
@@ -914,7 +915,7 @@ type LedgerStack interface {
 	RemoteLedgers
 }
 ```
-`CPI`接口的主要成员，`LedgerStack` 组与fabric的其它部分与共识相互作用，如执行交易，查询和更新总账。这个接口支持对本地区块链和状体的查询，更新本地区块链和状态，查询共识网络上其它节点的区块链和状态。它是有`Executor`, `Ledger`和`RemoteLedgers`这三个接口组成的。下面会描述它们。
+`CPI`接口的主要成员，`LedgerStack` 组与fabric的其它部分与共识相互作用，如执行交易，查询和更新总账。这个接口支持对本地区块链和状体的查询，更新本地区块链和状态，查询共识网络上其它节点的区块链和状态。它是由`Executor`, `Ledger`和`RemoteLedgers`这三个接口组成的。下面会描述它们。
 
 ### 3.4.7 `Executor` 接口
 
@@ -923,10 +924,10 @@ type LedgerStack interface {
 ```
 type Executor interface {
 	BeginTxBatch(id interface{}) error
-	ExecTXs(id interface{}, txs []*pb.Transaction) ([]byte, []error)  
-	CommitTxBatch(id interface{}, transactions []*pb.Transaction, transactionsResults []*pb.TransactionResult, metadata []byte) error  
-	RollbackTxBatch(id interface{}) error  
-	PreviewCommitTxBatchBlock(id interface{}, transactions []*pb.Transaction, metadata []byte) (*pb.Block, error)  
+	ExecTXs(id interface{}, txs []*pb.Transaction) ([]byte, []error)
+	CommitTxBatch(id interface{}, transactions []*pb.Transaction, transactionsResults []*pb.TransactionResult, metadata []byte) error
+	RollbackTxBatch(id interface{}) error
+	PreviewCommitTxBatchBlock(id interface{}, transactions []*pb.Transaction, metadata []byte) (*pb.Block, error)
 }
 ```
 executor接口是`LedgerStack`接口最常使用的部分，且是共识网络工作的必要部分。接口允许交易启动，执行，根据需要回滚，预览和提交。这个接口由下面这些方法组成。
@@ -938,7 +939,7 @@ BeginTxBatch(id interface{}) error
 ```
 这个调用接受任意的，故意含糊的`id`，来使得共识插件可以保证与这个具体的批量相关的交易才会被执行。例如：在pbft实现中，这个`id`是被执行交易的编码过的哈希。
 
-#### 3.4.7.2 执行交易    
+#### 3.4.7.2 执行交易
 
 ```
 ExecTXs(id interface{}, txs []*pb.Transaction) ([]byte, []error)
@@ -952,7 +953,7 @@ ExecTXs(id interface{}, txs []*pb.Transaction) ([]byte, []error)
 RollbackTxBatch(id interface{}) error
 ```
 
-这个调用忽略了批量执行。这会废弃掉对当前状态的操作，并把总账状态回归到之前的状态。批量是从`BeginBatchTx`开始的，如果需要开始一个新的就需要在执行任意交易之前重新创建一个。
+这个调用中止了批量执行。这会废弃掉对当前状态的操作，并把总账状态回归到之前的状态。批量是从`BeginBatchTx`开始的，如果需要开始一个新的就需要在执行任意交易之前重新创建一个。
 
 ```
 PreviewCommitTxBatchBlock(id interface{}, transactions []*pb.Transaction, metadata []byte) (*pb.Block, error)
@@ -1014,7 +1015,7 @@ GetBlock(id uint64) (block *pb.Block, err error)
 GetCurrentStateHash() (stateHash []byte, err error)
 ```
 
-这个盗用返回总账的当前状态的哈希。一般来说，这个函数永远不会失败，在这种不太可能发生情况下，错误被传递给调用者，由它确定是否需要恢复。
+这个调用返回总账的当前状态的哈希。一般来说，这个函数永远不会失败，在这种不太可能发生情况下，错误被传递给调用者，由它确定是否需要恢复。
 
 
 #### 3.4.8.2 `UtilLedger` 接口
@@ -1063,7 +1064,7 @@ type WritableLedger interface {
   	```
 	PutBlock(blockNumber uint64, block *pb.Block) error
 	```
-     这个函数根据给定的区块编号把底层区块插入到区块链中。注意这是一个不安全的接口，所以它不会有错误返回或返回。插入一个比当前区块高度更高的区块是被允许的，通用，重写一个已经提交的区块也是被允许的。记住，由于哈希技术使得创建一个链上的更早的块是不可行的，所以这并不影响链的可审计性和不可变性。任何尝试重写区块链的历史的操作都能很容易的被侦测到。这个函数一般只用于状态转移API。
+     这个函数根据给定的区块编号把底层区块插入到区块链中。注意这是一个不安全的接口，所以它不会有错误返回或返回。插入一个比当前区块高度更高的区块是被允许的，同样，重写一个已经提交的区块也是被允许的。记住，由于哈希技术使得创建一个链上的更早的块是不可行的，所以这并不影响链的可审计性和不可变性。任何尝试重写区块链的历史的操作都能很容易的被侦测到。这个函数一般只用于状态转移API。
 
   -
   	```
@@ -1092,7 +1093,7 @@ type WritableLedger interface {
    	EmptyState() error
    	```
 
-    这个函数将会删除整个当前状态，得到原始的空状态。这通常是通过变化量加载整个新的状态时调用的。这一样只对状态转移API有用。
+    这个函数将会删除整个当前状态，得到原始的空状态。这通常是通过变化量加载整个新的状态时调用的。这一般只对状态转移API有用。
 
 ### 3.4.9 `RemoteLedgers` 接口
 
@@ -1108,7 +1109,7 @@ type RemoteLedgers interface {
 
 `RemoteLedgers` 接口的存在主要是为了启用状态转移，和向其它副本询问区块链的状态。和`WritableLedger`接口一样，这不是给正常的操作使用，而是为追赶，错误恢复等操作而设计的。这个接口中的所有函数调用这都有责任来处理超时。这个接口包含下面这些函数：
 
-  -  
+  -
   	```
   	GetRemoteBlocks(peerID uint64, start, finish uint64) (<-chan *pb.SyncBlocks, error)
   	```
@@ -1116,7 +1117,7 @@ type RemoteLedgers interface {
     这个函数尝试从由`peerID`指定的 peer 中取出由`start`和`finish`标识的范围中的`*pb.SyncBlocks`流。一般情况下，由于区块链必须是从结束到开始这样的顺序来验证的，所以`start`是比`finish`更高的块编号。由于慢速的结构，其它请求的返回可能出现在这个通道中，所以调用者必须验证返回的是期望的块。第二次以同样的`peerID`来调用这个方法会导致第一次的通道关闭。
 
 
-  -  
+  -
   	```
    	GetRemoteStateSnapshot(peerID uint64) (<-chan *pb.SyncStateSnapshot, error)
    	```
@@ -1131,7 +1132,7 @@ type RemoteLedgers interface {
     这个函数尝试从由`peerID`指定的 peer 中取出由`start`和`finish`标识的范围中的`*pb.SyncStateDeltas`流。由于慢速的结构，其它请求的返回可能出现在这个通道中，所以调用者必须验证返回的是期望的块变化量。第二次以同样的`peerID`来调用这个方法会导致第一次的通道关闭。
 
 
-### 3.4.10 `controller`包    
+### 3.4.10 `controller`包
 
 #### 3.4.10.1 controller.NewConsenter
 
@@ -1140,15 +1141,15 @@ type RemoteLedgers interface {
 ```
 func NewConsenter(cpi consensus.CPI) (consenter consensus.Consenter)
 ```
-这个函数读取为`peer`过程指定的`core.yaml`配置文件中的`peer.validator.consensus`的值。键`peer.validator.consensus`的有效值指定运行`noops`还是`obcpbft`共识。（注意，它最终被改变为`noops`或`custom`。在`custom`情况下，验证 peer 将会运行由`consensus/config.yaml`中定义的共识插件）
+这个函数读取为`peer`过程指定的`core.yaml`配置文件中的`peer.validator.consensus`的值。键`peer.validator.consensus`的有效值指定运行`noops`还是`pbft`共识插件。（注意，它最终被改变为`noops`或`custom`。在`custom`情况下，验证 peer 将会运行由`consensus/config.yaml`中定义的共识插件）
 
-插件的作者需要编辑函数体，来保证路由到它们包中正确的构造函数。例如，对于`obcpbft` 我们指向`obcpft.GetPlugin`构造器。
+插件的作者需要编辑函数体，来保证路由到它们包中正确的构造函数。例如，对于`pbft` 我们指向`pbft.GetPlugin`构造器。
 
 这个函数是当设置返回信息处理器的`consenter`域时，被`helper.NewConsensusHandler`调用的。输入参数`cpi`是由`helper.NewHelper`构造器输出的，并实现了`consensus.CPI`接口
 
-### 3.4.11 `helper`包  
+### 3.4.11 `helper`包
 
-#### 3.4.11.1 高层次概述    
+#### 3.4.11.1 高层次概述
 
 验证 peer 通过`helper.NewConsesusHandler`函数(一个处理器工厂)，为每个连接的 peer 建立消息处理器(`helper.ConsensusHandler`)。每个进来的消息都会检查它的类型(`helper.HandleMessage`)；如果这是为了共识必须到达的消息，它会传递到 peer 的共识对象(`consensus.Consenter`)。其它的信息会传递到栈中的下一个信息处理器。
 
@@ -1232,8 +1233,8 @@ func (handler *ConsensusHandler) HandleMessage(msg *pb.Message) error
   4. 其它: 传递给栈中下一个处理器的`HandleMessage`方法
 
 
-### 3.5 事件    
-事件框架提供了生产和消费预定义或自定义的事件的能力。它有3个基础组件：    
+### 3.5 事件
+事件框架提供了生产和消费预定义或自定义的事件的能力。它有3个基础组件：
   - 事件流
   - 事件适配器
   - 事件结构
@@ -1248,7 +1249,7 @@ func (handler *ConsensusHandler) HandleMessage(msg *pb.Message) error
 - 如果超时大于0，等待指定的超时时间，如果缓冲还是满的话就丢弃事件
 
 
-#### 3.5.1.1 事件生产者     
+#### 3.5.1.1 事件生产者
 事件生产者暴露函数`Send(e *pb.Event)`来发送事件，其中`Event`可以是预定义的`Block`或`Generic`事件。将来会定义更多的事件来包括其它的fabric元素。
 
 ```
@@ -1272,8 +1273,8 @@ consumerClient.Start()
 consumerClient.Stop()
 ```
 
-#### 3.5.2 事件适配器    
-事件适配器封装了三种流交互的切面：    
+#### 3.5.2 事件适配器
+事件适配器封装了三种流交互的切面：
   - 返回所有感兴趣的事件列表的接口
   - 当事件消费者框架接受到事件后调用的接口
   - 当事件总线终止时，事件消费者框架会调用的接口
@@ -1330,7 +1331,7 @@ consumerClient.Stop()
 当前，生产者框架可以生成`Block`和`Generic`事件。`Block`是用来封装区块链中区块属性的消息。
 
 
-## 4. 安全    
+## 4. 安全
 
 这一节将讨论下面的图所展示的设置描述。特别的，系统是由下面这些实体构成的：成员管理基础架构，如从一个实体集合中区分出不同用户身份的职责（使用系统中任意形式的标识，如：信用卡，身份证），为这个用户注册开户，并生成必要的证书以便通过fabric成功的创建交易，部署或调用链码。
 
@@ -1345,7 +1346,7 @@ consumerClient.Stop()
 
 下一节提供了由商业目标所驱动的安全性需求的摘要。然后我们游览一下安全组件和它们的操作，以及如何设计来满足安全需求。
 
-### 4.1 商业安全需求    
+### 4.1 商业安全需求
 这一节表述的与fabric相关的商业安全需求。
 **身份和角色管理相结合**
 
@@ -1397,7 +1398,7 @@ B2B系统对交易的隐私有着强烈的需求，如：允许系统的终端�
 
 *登记机构(RA):* 它是一个可以确定想要加入到带权限区块链的用户的有效性和身份的可信实体。它是负责与用户外的带外通信来验证他/她的身份和作用。它是负责与用户进行频外通信来验证他/她的身份和角色。它创建登记时所需要的注册证书和根信任上的信息。
 
-*注册证书颁发机构(ECA):* 负责给通过提供的注册凭证验证的用户颁发注册证书(ECerts) 
+*注册证书颁发机构(ECA):* 负责给通过提供的注册凭证验证的用户颁发注册证书(ECerts)
 
 *交易认证中心(TCA):* 负责给提供了有效注册证书的用户颁发交易证书(TCerts)
 
@@ -1406,10 +1407,10 @@ B2B系统对交易的隐私有着强烈的需求，如：允许系统的终端�
 *注册证书(ECerts)*
 ECerts是长期证书。它们是颁发给所有角色的，如用户，非验证 peer，验证 peer。在给用户颁发的情况下，谁向区块链提交候选人申请谁就拥有TCerts（在下面讨论），ECerts有两种可能的结构和使用模式：
 
- * Model A: ECerts 包含所有者的身份/注册ID，并可以在交易中为TCert请求提供只用来对名义实体身份做验证。它们包含两个密钥对的公共部分：签名密钥对和加密/密钥协商密钥对。 ECerts是每个人都可以访问。 
+ * Model A: ECerts 包含所有者的身份/注册ID，并可以在交易中为TCert请求提供只用来对名义实体身份做验证。它们包含两个密钥对的公共部分：签名密钥对和加密/密钥协商密钥对。 ECerts是每个人都可以访问。
 
  * Model B: ECerts 包含所有者的身份/注册ID，并只为TCert请求提供名义实体的身份验证。它们包含一个签名密钥对的公共部分，即，签名验证公钥的公共部分。作为依赖方，ECerts最好只由TCA和审计人员访问。他们对交易是不可见的，因此（不像TCerts）签名密钥对不在这一层级发挥不可抵赖的作用。
- 
+
 *交易证书(TCerts)*
 TCerts是每个交易的短期证书。它们是由TCA根据授权的用户请求颁发的。它们安全的给一个交易授权，并可以被配置为隐藏谁参与了交易或选择性地暴露这样身份注册ID这样的信息。他们包含签名密钥对的公共部分，并可以被配置为包含一个密钥协议的密钥对的公共部分。他们仅颁发给用户。它们唯一的关联到所有者，它们可以被配置为这个关联只有TCA知道知道（和授权审核员）。TCert可以配置成不携带用户的身份信息。它们使得用户不仅以匿名方式参与到系统中，而且阻止了交易之间的关联性。
 
@@ -1522,21 +1523,21 @@ the same chaincode by the same user. Subection 5.2.2 elaborates on this.-->
 
 本节的其余部分介绍了基础设施中的安全机制是如何纳入到交易的生命周期中，并分别详细介绍每一个安全机制。
 
-#### 4.3.1 交易安全的生命周期    
+#### 4.3.1 交易安全的生命周期
 交易在客户端创建。客户端可以是普通的客户端，或更专用的应用，即，通过区块链处理（服务器）或调用（客户端）具体链码的软件部分。这样的应用是建立在平台（客户端）上的，并在4.4节中详细介绍。
 
 新链码的开发者可以通过这些fabric的基础设施来新部署交易：
-* 希望交易符合保密/安全的版本和类型    
-* 希望访问部分链码的用户有适当的（读）访问权限     
+* 希望交易符合保密/安全的版本和类型
+* 希望访问部分链码的用户有适当的（读）访问权限
 <!-- (read-access code/state/activity, invocation-access) -->
-* 链码规范    
-* 代码元数据，包含的信息需要在链码执行时传递给它（即，配置参数），和     
+* 链码规范
+* 代码元数据，包含的信息需要在链码执行时传递给它（即，配置参数），和
 * 附加在交易结构上的并只在应用部署链码时使用的交易元数据
 
 具有保密限制的链码的调用和查询交易都是用类似的方式创建。交易者提供需要执行的链码的标识，要调用的函数的名称及其参数。可选的，调用者可以传递在链码执行的时候所需要提供的代码调用元数据给交易创建函数。交易元数据是调用者的应用程序或调用者本身为了它自己的目的所使用的另外一个域。
 
 最后，交易在客户端，通过它们的创建者的证书签名，并发送给验证器网络。
-验证器接受私密交易，并通过下列阶段传递它们：    
+验证器接受私密交易，并通过下列阶段传递它们：
 * *预验证*阶段，验证器根据根证书颁发机构来验证交易证书，验证交易（静态的）中包含交易证书签名，并验证交易是否为重放（参见，下面关于重放攻击的详细信息）
 Validators receive the confidential transactions, and pass them through the following phases:
 * *共识*阶段， 验证器把这笔交易加入到交易的全序列表中（最终包含在总账中）
@@ -1567,7 +1568,7 @@ Validators receive the confidential transactions, and pass them through the foll
 
 注意，这样的设计为应用提供利用fabric的成员管理基础设施和公钥基础设施来建立自己的访问控制策略和执法机制的能力。
 
-##### 4.3.2.1 针对用户的保密     
+##### 4.3.2.1 针对用户的保密
 
 为了支持细粒度的保密控制，即，为链码创建者定义的用户的子集，限制链码的明文读权限，一条绑定到单个长周期的加密密钥对的链（PK<sub>chain</sub>, SK<sub>chain</sub>）。
 
@@ -1576,7 +1577,7 @@ Validators receive the confidential transactions, and pass them through the foll
 **搭建**. 在注册阶段， 用户获取（像之前一样）一张注册证书，为用户u<sub>i</sub>标记为Cert<sub>u<sub>i</sub></sub>，其中每个验证器v<sub>j</sub>获取的注册证书标记为Cert<sub>v<sub>j</sub></sub>。注册会给用户或验证器发放下面这些证书：
 
 1. 用户：
-    
+
    a. 声明并授予自己签名密钥对(spk<sub>u</sub>, ssk<sub>u</sub>)
 
    b. 申明并授予他们加密密钥对(epk<sub>u</sub>, esk<sub>u</sub>)，
@@ -1635,7 +1636,7 @@ where appropriate key material is passed to the
 两个值得注意的要点：
 * 交易中的信息是以加密的方式存储的，即，code-functions，
 * code-hdrs在使用TCert加密整个交易之前会用想用的TCert签名，或使用不同的TCert或ECert（如果交易的部署需要带上用户的身份。一个绑定到底层交易的载体需要包含在签名信息中，即，交易的TCert的哈希是签名的，因此mix\&match攻击是不可能的。我们在4.4节中详细讨论这样的攻击，在这种情况下，攻击者不能从他看到的交易中分离出对应的密文，即，代码信息，并在另一个交易中使用它。很明显，这样会打乱整个系统的操作，链码首先有用户A创建，现在还属于恶意用户B（可能没有权限读取它）
-* 为了给用户提供交叉验证的能力，会给他们访问正确密钥的权限，即给其他用户相同的密钥，使用密钥K对交易加密成密文，伴随着对K的承诺，而这一承诺值开放给所有在合同中有权访问K的用户，和链验证器。 
+* 为了给用户提供交叉验证的能力，会给他们访问正确密钥的权限，即给其他用户相同的密钥，使用密钥K对交易加密成密文，伴随着对K的承诺，而这一承诺值开放给所有在合同中有权访问K的用户，和链验证器。
   <!-- @adecaro: please REVIEW this! -->
   在这种情况下，谁有权访问该密钥，谁就可以验证密钥是否正确传递给它。为了避免混乱，这部分在上图中省略了。
 
@@ -1659,20 +1660,20 @@ where appropriate key material is passed to the
 **查询交易的结构.**
 查询交易和调用交易具有同样的格式。唯一的区别是查询交易对链码的状态没有影响，且不需要在执行完成之后获取（解密的）并/或更新（加密的）状态。
 
-##### 4.3.2.2 针对验证器的保密     
+##### 4.3.2.2 针对验证器的保密
 这节阐述了如何处理当前链中的不同（或子集）集合的验证器下的一些交易的执行。本节中抑制IP限制，将在接下的几个星期中进行扩展。
 
 
 #### 4.3.3 防重放攻击
-在重放攻击中，攻击者“重放”他在网络上“窃听”或在区块链''看到''的消息    
-由于这样会导致整个验证实体重做计算密集型的动作（链码调用）和/或影响对应的链码的状态，同时它在攻击侧又只需要很少或没有资源，所以重放攻击在这里是一个比较大的问题。如果交易是一个支付交易，那么问题就更大了，重放可能会导致在不需要付款人的参与下，多于一次的支付。    
+在重放攻击中，攻击者“重放”他在网络上“窃听”或在区块链''看到''的消息
+由于这样会导致整个验证实体重做计算密集型的动作（链码调用）和/或影响对应的链码的状态，同时它在攻击侧又只需要很少或没有资源，所以重放攻击在这里是一个比较大的问题。如果交易是一个支付交易，那么问题就更大了，重放可能会导致在不需要付款人的参与下，多于一次的支付。
 当前系统使用以下方式来防止重放攻击：
 * 在系统中记录交易的哈希。这个方法要求验证器为每个交易维护一个哈希日志，发布到网络上，并把每个新来的交易与本地存储的交易记录做对比。很明显这样的方法是不能扩展到大网络的，也很容易导致验证器花了比真正做交易还多的时间在检查交易是不是重放上。
 * 利用每个用户身份维护的状态（Ethereum）.Ethereum保存一些状态，即，对每个身份/伪匿名维护他们自己的计数器（初始化为1）。每次用户使用他的身份/伪匿名发送交易是，他都把他的本地计数器加一，并把结果加入到交易中。交易随后使用用户的身份签名，并发送到网络上。当收到交易时，验证器检查计数器并与本地存储的做比较；如果值是一样的，那就增加这个身份在本地的计数器，并接受交易。否则把交易当作无效或重放的而拒绝掉。尽管这样的方法在有限个用户身份/伪匿名(即，不太多)下工作良好。它最终在用户每次交易都使用不同的标识（交易证书），用户的伪匿名与交易数量成正比时无法扩展。
 
 其他资产管理系统，即比特币，虽然没有直接处理重放攻击，但它防止了重放。在管理（数字）资产的系统中，状态是基于每个资产来维护的，即，验证器只保存谁拥有什么的记录。因为交易的重放根据协议（因为只能由资产/硬币旧的所有者衍生出来）可以直接认为无效的，所以防重放攻击是这种方式的直接结果。尽管这合适资产管理系统，但是这并不表示在更一般的资产管理中需要比特币系统。
 
-在fabric中，防重放攻击使用混合方法。    
+在fabric中，防重放攻击使用混合方法。
 这就是，用户在交易中添加一个依赖于交易是匿名（通过交易证书签名）或不匿名（通过长期的注册证书签名）来生成的nonce。更具体的：
 * 用户通过注册证书来提交的交易需要包含nonce。其中nonce是在之前使用同一证书的交易中的nonce函数（即计数器或哈希）。包含在每张注册证书的第一次交易中的nonce可以是系统预定义的（即，包含在创始块中）或由用户指定。在第一种情况中，创世区块需要包含nonceall，即，一个固定的数字和nonce被用户与身份IDA一起用来为他的第一笔注册证书签名的交易将会
 <center>nonce<sub>round<sub>0</sub>IDA</sub> <- hash(IDA, nonce<sub>all</sub>),</center>
@@ -1698,11 +1699,11 @@ where appropriate key material is passed to the
 这个报告可以根据应用分为调用访问控制，和读取访问控制。
 
 
-#### 4.4.1 调用访问控制    
+#### 4.4.1 调用访问控制
 为了允许应用在应用层安全的实现自己的访问问控制，fabric需要提供特定的支持。在下面的章节中，我们详细的说明的fabric为了达到这个目的而给应用提供的工具，并为应用如何来使用它们使得后者能安全的执行访问控制提供方针。
 
 **来自基础设施的支持.**
-把链码的创建者标记为 *u<sub>c</sub>*，为了安全的实现应用层自己的调用访问控制，fabric必须需要提供特定的支持。    
+把链码的创建者标记为 *u<sub>c</sub>*，为了安全的实现应用层自己的调用访问控制，fabric必须需要提供特定的支持。
 更具体的，fabric层提供下面的访问能力：
 
 1. 客户端-应用可以请求fabric使用指定的客户端拥有的交易证书或注册证书来签名和验证任何消息； 这是由Certificate Handler interface来处理的。
@@ -1849,10 +1850,10 @@ message Transaction {
 3. 部署交易的*元数据*(对应部署交易的代码元数据组建).
 
 注意*sigma*是被调用函数参数的一部分，或者是存储在调用交易的代码元数据内部的（被客户端应用合理的格式化）。
-应用ACL包含在代码元数据段中，在执行时同样被传递给链码。    
+应用ACL包含在代码元数据段中，在执行时同样被传递给链码。
 函数*hello*负责检查*sigma*的确是通过TCert<sub>u<sub>i</sub></sub>在'*M* || *txBinding'*上的有效签名。
 
-#### 4.4.2 读访问控制    
+#### 4.4.2 读访问控制
 这节描述fabric基础设施如何支持应用在用户层面执行它自己的读访问控制策略。和调用访问控制的情况一样，第一部分描述了可以被应用程序为实现此目的利用的基础设施的功能，接下来介绍应用使用这些工具的方法。
 
 为了说明这个问题，我们使用和指点一样的例子，即：
@@ -1889,17 +1890,17 @@ message Transaction {
 
 3. 保密交易被构造为''Tx-metadata''来传递
 
-在调用的时候，在 u<sub>r</sub>节点上的客户端-应用可以获取部署交易来得到**C**的内容。    
-这只需要得到相关联的部署交易的 **tx-metadata**域，并触发区块链基础设施客户端为C<sub>u<sub>r</sub></sub>提供的解密函数。注意，为u<sub>r</sub>正确加密**C**是应用的责任。    
+在调用的时候，在 u<sub>r</sub>节点上的客户端-应用可以获取部署交易来得到**C**的内容。
+这只需要得到相关联的部署交易的 **tx-metadata**域，并触发区块链基础设施客户端为C<sub>u<sub>r</sub></sub>提供的解密函数。注意，为u<sub>r</sub>正确加密**C**是应用的责任。
 此外，使用**tx-metadata**域可以一般性的满足应用需求。即，调用者可以利用调用交易的同一域来传递信息给应用的开发者。
 
-<font color="red">**Important Note:** </font> 
+<font color="red">**Important Note:** </font>
 要注意的是验证器在整个执行链码过程中**不提供**任何解密预测。
 对payload解密由基础设施自己负责（以及它附近的代码元数据域）。并提供他们给部署/执行的容器。
 
-### 4.5 在线钱包服务     
-这一节描述了钱包服务的安全设计，这是一个用户可以注册，移动他们的秘密材料到，办理交易的节点。    
-由于钱包服务是一个用户秘密材料所有权的服务，所以要杜绝没有安全授权机制的恶意钱包服务可以成功模拟客户。    
+### 4.5 在线钱包服务
+这一节描述了钱包服务的安全设计，这是一个用户可以注册，移动他们的秘密材料到，办理交易的节点。
+由于钱包服务是一个用户秘密材料所有权的服务，所以要杜绝没有安全授权机制的恶意钱包服务可以成功模拟客户。
 因此，我们强调的是，设计一种**值得信赖**的，只有在代表用户的客户端同意的情况下，钱包服务才能执行交易。
 这里有两种终端用户注册到在线钱包服务的情况：
 
@@ -1919,7 +1920,7 @@ message Transaction {
         AccSecProof<sub>u</sub>  /* proof of AccSec<sub>u</sub>\*/
      }
 
-OBCSecCtx指向用户证书，它依赖于注册过程中的阶段。可以是用户的注册ID和密码，`<enrollID, enrollPWD>` 或他的注册证书和关联的密钥(ECert<sub>u</sub>, sk<sub>u</sub>),  其中 sk<sub>u</sub>是用户签名和解密密钥的简化标记。    
+OBCSecCtx指向用户证书，它依赖于注册过程中的阶段。可以是用户的注册ID和密码，`<enrollID, enrollPWD>` 或他的注册证书和关联的密钥(ECert<sub>u</sub>, sk<sub>u</sub>),  其中 sk<sub>u</sub>是用户签名和解密密钥的简化标记。
 OBCSecCtx需要给在线钱包服务必要的信息来注册用户和发布需要的TCerts。
 
 对于后续的请求，用户u需要提供给钱包服务的请求与虾子面这个格式类似。
@@ -1931,16 +1932,16 @@ OBCSecCtx需要给在线钱包服务必要的信息来注册用户和发布需�
           AccSecProof<sub>u</sub>	/* proof of AccSec<sub>u</sub> \*/
      }
 
-这里，TxDetails指向在线服务代表用户构造交易所需要的信息，如类型，和用户指定的交易的内容。    
+这里，TxDetails指向在线服务代表用户构造交易所需要的信息，如类型，和用户指定的交易的内容。
 
-AccSecProof<sub>u</sub>是对应请求中剩下的域的使用共享密钥的HMAC。   
-Nonce-based方法与我们在fabric中一样可以防止重放攻击。    
+AccSecProof<sub>u</sub>是对应请求中剩下的域的使用共享密钥的HMAC。
+Nonce-based方法与我们在fabric中一样可以防止重放攻击。
 
 TLS连接可以用在每种服务器端认证的情况，在网络层对请求加密（保密，防止重放攻击，等）
 
 
 ### 4.6 网络安全(TLS)
-TLS CA需要给（非验证）peer，验证器，和单独的客户端（或具有存储私钥的游览器）发放TLS证书的能力。最好，这些证书可以使用之前的类型来区分。    
+TLS CA需要给（非验证）peer，验证器，和单独的客户端（或具有存储私钥的游览器）发放TLS证书的能力。最好，这些证书可以使用之前的类型来区分。
 各个类型的CA（如TLS CA， ECA， TCA）的TLS证书有可以通过中间CA（如，一个根CA的下属CA）发放。这里没有特定流量分析的问题，任意给定的TLS连接都可以相互验证，除了请求TLS CA的TLS证书的时候。
 
 在当前的实现中，唯一的信任锚点是TLS CA的自签名证书来适应与所有三个（共址）服务器（即TLS CA，TCA和ECA）进行通信的单个端口限制。因此，与TLS CA的TLS握手来与TLS CA建立连接，所得到的会话密钥会传递给共址的TCA和ECA。因此，TCA和ECA的自签名证书的有效性的信任继承自对TLS CA的信任。在不提高TLS CA在其他CA之上的实现中，信任锚点需要由TLS CA和其他CA都认证的根CA替代。
@@ -1971,7 +1972,7 @@ TLS CA需要给（非验证）peer，验证器，和单独的客户端（或具�
 
 在当前的格式，交易的保密仅仅在链层面提供，即，保存在总账中的交易内容对链的所有成员，如，验证器和用户，都是可读的。于此同时，不是系统的成员的应用审计人员，可以给予被动的观察区块链数据的手段。同时保证给予他们只是为了与被审计应用程序相关的交易。状态通过一种加密，同时不破坏底层共识网络的正常运行的方式来满足这样的审计要求
 
-更具体的，当前使用对称密钥加密来提供交易保密性。    
+更具体的，当前使用对称密钥加密来提供交易保密性。
 在这种背景下，一个最主要的挑战是特定于区块链的设置，验证器需要在区块链的状态上打成共识，即，除了交易本身，还包括个人合同或链码的状态更新。
 虽然对于非机密链码这是微不足道的，对于机密链码，需要设计状态的加密机制，使得所得的密文语义安全，然而，如果明文状态是相同的那么他们就相等。
 
@@ -1982,7 +1983,7 @@ TLS CA需要给（非验证）peer，验证器，和单独的客户端（或具�
 在注册阶段，用户获取（像之前一样）一张注册证书，为用户u<sub>i</sub>记作Cert<sub>u<sub>i</sub></sub>，每个验证器v<sub>j</sub>获取它的被记作Cert<sub>v<sub>j</sub></sub>的证书。
 
 实体注册将得到提高，如下所示。除了注册证书，用户希望以匿名方式参与交易发放交易证书。
-为了简化我们把用户 u<sub>i</sub> 的交易证书记作 TCert<sub>u<sub>i</sub></sub>。    
+为了简化我们把用户 u<sub>i</sub> 的交易证书记作 TCert<sub>u<sub>i</sub></sub>。
 交易证书包含签名密钥对的公共部分记作 (tpk<sub>u<sub>i</sub></sub>,tsk<sub>u<sub>i</sub></sub>)。
 
 为了防止密码分析和执行保密，下面的密钥层级被用来生成和验证保密的交易：
@@ -2028,14 +2029,14 @@ iTx)保存计数器crt<sub>state</sub>初始设置为0。然后，每次必须�
 
 * *代码信息*部分: 包含在链码的源代码的信息。本质上是链码标识符/名称和源代码的部署交易，而对调用链码是是被调用函数名称和它的参数。就像在两张图中展示的代码信息那样他们最终是使用链指定的对称密钥K<sub>chain</sub>加密的。
 
-## 5. 拜占庭共识    
+## 5. 拜占庭共识
 ``obcpbft``包是[PBFT](http://dl.acm.org/citation.cfm?id=571640 "PBFT")共识协议[1]的实现，其中提供了验证器之间的共识，虽然验证器的阈作为_Byzantine_，即，恶意的或不可预测的方式失败。在默认的配置中，PBFT容忍t<n/3的拜占庭验证器。
 
 处理提供PBFT共识协议的参考实现，``obcpbft`` 插件还包含了新颖的_Sieve_共识协议的实现。基本上Sieve背后的思想为_non-deterministic_交易提供了fabric层次的保护，这是PBFT和相似的协议没有提供的，``obcpbft``可以很容易配置为使用经典的PBFT或Sieve。
 
 在默认配置中，PBFT和Sieve设计运行在至少*3t +1 *验证器（副本），最多容忍*T*个出现故障（包括恶意或*拜占庭*）副本。
 
-### 5.1 概览   
+### 5.1 概览
 `obcpbft`插件提供实现了`CPI`接口的模块，他可以配置运行PBFT还是Sieve共识协议。模块化来自于，在内部，`obcpbft`定义了`innerCPI` 接口（即， _inner consensus programming interface_），现在包含在 `pbft-core.go`中。
 
 该`innerCPI`接口定义的所有PBFT内部共识（这里称为*core PBFT*并在`pbft-core.go`实现）和使用core PBFT的外部共识之间的相互作用。`obcpbft`包包含几个core PBFT消费者实现
@@ -2225,7 +2226,7 @@ POST host:port/chaincode
         "args":["a", "1000", "b", "2000"]
     }
   },
-  "id": "1"  
+  "id": "1"
 }
 ```
 
@@ -2261,7 +2262,7 @@ POST host:port/chaincode
     },
     "secureContext": "lukas"
   },
-  "id": "1"  
+  "id": "1"
 }
 ```
 
@@ -2286,7 +2287,7 @@ POST host:port/chaincode
       	"args":["a", "b", "100"]
   	}
   },
-  "id": "3"  
+  "id": "3"
 }
 ```
 
@@ -2321,7 +2322,7 @@ POST host:port/chaincode
   	},
   	"secureContext": "lukas"
   },
-  "id": "3"  
+  "id": "3"
 }
 ```
 
@@ -2346,7 +2347,7 @@ POST host:port/chaincode/
       	"args":["a"]
   	}
   },
-  "id": "5"  
+  "id": "5"
 }
 ```
 
@@ -2383,7 +2384,7 @@ POST host:port/chaincode/
   	},
   	"secureContext": "lukas"
   },
-  "id": "5"  
+  "id": "5"
 }
 ```
 
@@ -2516,7 +2517,7 @@ DELETE host:port/registrar/lukas
 }
 ```
 
-`GET /registrar/{enrollmentID}/ecert` 
+`GET /registrar/{enrollmentID}/ecert`
 端点用于检索从本地存储给定用户的登记证书。如果目标用户已与CA注册，响应将包括注册证书的URL-encoded版本。如果目标用户尚未注册，将返回一个错误。如果客户希望使用检索后返回的注册证书，请记住，它必须是URL-decoded。
 
 注册证书检索请求:
@@ -2596,7 +2597,7 @@ GET host:port/transactions/f5978e82-6d8c-47d1-adec-f18b794f570e
 
 CLI包括可用的API的一个子集，使开发人员能够快速测试和调试链码或查询交易状态。CLI由Golang实现和可在多个操作系统上操作。当前可用的CLI命令归纳在下面的部分：
 
-### 6.3.1 CLI命令 
+### 6.3.1 CLI命令
 
 To see what CLI commands are currently available in the implementation, execute the following:
 
@@ -2637,7 +2638,7 @@ Some of the available command line arguments for the `peer` command are listed b
 
 * `-p` - 路径: 链码在本地文件系统中的标识。在部署交易时必须提供。
 
-* `-u` - 用户名: 调用交易的登入的用户的注册ID 
+* `-u` - 用户名: 调用交易的登入的用户的注册ID
 
 上述所有命令并非完全在当前版本中实现。如下所述全面支持的命令是有助于链码的开发和调试的。
 
@@ -2730,7 +2731,7 @@ Enter password for user 'jim': ************
 ```
 
 
-## 7. 应用模型 
+## 7. 应用模型
 
 ### 7.1 应用的组成
 <table>
@@ -2759,11 +2760,11 @@ Enter password for user 'jim': ************
 ### 7.2 应用样例
 
 
-## 8. 未来发展方向    
-### 8.1 企业集成    
-### 8.2 性能与可扩展性    
-### 8.3 附加的共识插件    
-### 8.4 附加的语言     
+## 8. 未来发展方向
+### 8.1 企业集成
+### 8.2 性能与可扩展性
+### 8.3 附加的共识插件
+### 8.4 附加的语言
 
 
 ## 9. References
