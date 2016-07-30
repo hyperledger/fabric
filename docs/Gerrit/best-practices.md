@@ -31,9 +31,9 @@ shows the format and content expected in a commit message:
 changed and how it was tested. Note also any changes to documentation made to
 remain consistent with the code changes, wrapping text at 72 chars/line.
 
-   Jira: FAB-100
-   Change-Id: LONGHEXHASH
-   Signed-off-by: Your Name your.email@example.org
+   Jira: FAB-100  
+   Change-Id: LONGHEXHASH  
+   Signed-off-by: Your Name your.email@example.org  
    AnotherExampleHeader: An Example of another Value
 
 The Gerrit server provides a precommit hook to autogenerate the Change-Id which
