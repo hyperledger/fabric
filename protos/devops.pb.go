@@ -140,7 +140,7 @@ type DevopsClient interface {
 	Deploy(ctx context.Context, in *ChaincodeSpec, opts ...grpc.CallOption) (*ChaincodeDeploymentSpec, error)
 	// Invoke chaincode.
 	Invoke(ctx context.Context, in *ChaincodeInvocationSpec, opts ...grpc.CallOption) (*Response, error)
-	// Invoke chaincode.
+	// Query chaincode.
 	Query(ctx context.Context, in *ChaincodeInvocationSpec, opts ...grpc.CallOption) (*Response, error)
 	// Retrieve a TCert.
 	EXP_GetApplicationTCert(ctx context.Context, in *Secret, opts ...grpc.CallOption) (*Response, error)
@@ -253,7 +253,7 @@ type DevopsServer interface {
 	Deploy(context.Context, *ChaincodeSpec) (*ChaincodeDeploymentSpec, error)
 	// Invoke chaincode.
 	Invoke(context.Context, *ChaincodeInvocationSpec) (*Response, error)
-	// Invoke chaincode.
+	// Query chaincode.
 	Query(context.Context, *ChaincodeInvocationSpec) (*Response, error)
 	// Retrieve a TCert.
 	EXP_GetApplicationTCert(context.Context, *Secret) (*Response, error)

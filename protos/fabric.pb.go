@@ -490,7 +490,7 @@ func (m *SyncStateSnapshotRequest) Reset()         { *m = SyncStateSnapshotReque
 func (m *SyncStateSnapshotRequest) String() string { return proto.CompactTextString(m) }
 func (*SyncStateSnapshotRequest) ProtoMessage()    {}
 
-// SyncState is the payload of Message.SYNC_SNAPSHOT, which is a response
+// SyncStateSnapshot is the payload of Message.SYNC_SNAPSHOT, which is a response
 // to penchainMessage.SYNC_GET_SNAPSHOT. It contains the snapshot or a chunk of the
 // snapshot on stream, and in which case, the sequence indicate the order
 // starting at 0.  The terminating message will have len(delta) == 0.
@@ -512,7 +512,7 @@ func (m *SyncStateSnapshot) GetRequest() *SyncStateSnapshotRequest {
 	return nil
 }
 
-// SyncStateRequest is the payload of Message.SYNC_GET_STATE.
+// SyncStateDeltasRequest is the payload of Message.SYNC_GET_STATE.
 // blockNumber indicates the block number for the delta which is being
 // requested. If no payload is included with SYNC_GET_STATE, it represents
 // a request for a snapshot of the current state.

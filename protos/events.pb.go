@@ -156,7 +156,7 @@ func (m *Register) GetEvents() []*Interest {
 // string type - "rejection"
 type Rejection struct {
 	Tx       *Transaction `protobuf:"bytes,1,opt,name=tx" json:"tx,omitempty"`
-	ErrorMsg string       `protobuf:"bytes,2,opt,name=ErrorMsg" json:"ErrorMsg,omitempty"`
+	ErrorMsg string       `protobuf:"bytes,2,opt,name=errorMsg" json:"errorMsg,omitempty"`
 }
 
 func (m *Rejection) Reset()         { *m = Rejection{} }

@@ -3,7 +3,7 @@
 // DO NOT EDIT!
 
 /*
-Package utxo is a generated protocol buffer package.
+Package util is a generated protocol buffer package.
 
 It is generated from these files:
 	dah.proto
