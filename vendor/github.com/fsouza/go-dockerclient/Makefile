@@ -1,47 +1,43 @@
 .PHONY: \
 	all \
-	vendor \
 	lint \
 	vet \
 	fmt \
 	fmtcheck \
 	pretest \
 	test \
-	cov \
+	integration \
 	clean
-
-SRCS = $(shell git ls-files '*.go' | grep -v '^external/')
-PKGS = ./. ./testing
 
 all: test
 
-vendor:
-	@ go get -v github.com/mjibson/party
-	party -d external -c -u
-
 lint:
 	@ go get -v github.com/golang/lint/golint
-	$(foreach file,$(SRCS),golint $(file) || exit;)
+	@ export output="$$(golint . | grep -v 'type name will be used as docker.DockerInfo')"; \
+		[ -n "$${output}" ] && echo "$${output}" && export status=1; \
+		exit $${status:-0}
 
 vet:
-	@-go get -v golang.org/x/tools/cmd/vet
-	$(foreach pkg,$(PKGS),go vet $(pkg);)
+	go vet ./...
 
 fmt:
-	gofmt -w $(SRCS)
+	gofmt -s -w .
 
 fmtcheck:
-	$(foreach file,$(SRCS),gofmt $(file) | diff -u $(file) - || exit;)
+	[ -z "$$(gofmt -s -d . | tee /dev/stderr)" ]
 
-pretest: lint vet fmtcheck
+testdeps:
+	go get -d -t ./...
 
-test: pretest
-	$(foreach pkg,$(PKGS),go test $(pkg) || exit;)
+pretest: testdeps lint vet fmtcheck
 
-cov:
-	@ go get -v github.com/axw/gocov/gocov
-	@ go get golang.org/x/tools/cmd/cover
-	gocov test | gocov report
+gotest:
+	go test $(GO_TEST_FLAGS) ./...
+
+test: pretest gotest
+
+integration:
+	go test -tags docker_integration -run TestIntegration -v
 
 clean:
-	$(foreach pkg,$(PKGS),go clean $(pkg) || exit;)
+	go clean ./...
