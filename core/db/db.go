@@ -22,7 +22,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"sync"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -45,13 +44,6 @@ var columnfamilies = []string{
 	persistCF,    // persistent per-peer state (consensus)
 }
 
-type dbState int32
-
-const (
-	closed dbState = iota
-	opened
-)
-
 // OpenchainDB encapsulates rocksdb's structures
 type OpenchainDB struct {
 	DB           *gorocksdb.DB
@@ -60,21 +52,28 @@ type OpenchainDB struct {
 	StateDeltaCF *gorocksdb.ColumnFamilyHandle
 	IndexesCF    *gorocksdb.ColumnFamilyHandle
 	PersistCF    *gorocksdb.ColumnFamilyHandle
-	dbState      dbState
-	mux          sync.Mutex
 }
 
-var openchainDB = Create()
+var openchainDB = create()
 
 // Create create an openchainDB instance
-func Create() *OpenchainDB {
-	return &OpenchainDB{dbState: closed}
+func create() *OpenchainDB {
+	return &OpenchainDB{}
 }
 
-// GetDBHandle get an opened openchainDB singleton
+// GetDBHandle gets an opened openchainDB singleton. Note that method Start must always be invoked before this method.
 func GetDBHandle() *OpenchainDB {
-	openchainDB.Open()
 	return openchainDB
+}
+
+// Start the db, init the openchainDB instance and open the db. Note this method has no guarantee correct behavior concurrent invocation.
+func Start() {
+	openchainDB.open()
+}
+
+// Stop the db. Note this method has no guarantee correct behavior concurrent invocation.
+func Stop() {
+	openchainDB.close()
 }
 
 // GetFromBlockchainCF get value for given key from column family - blockchainCF
@@ -142,15 +141,7 @@ func getDBPath() string {
 }
 
 // Open open underlying rocksdb
-func (openchainDB *OpenchainDB) Open() {
-	openchainDB.mux.Lock()
-	if openchainDB.dbState == opened {
-		openchainDB.mux.Unlock()
-		return
-	}
-
-	defer openchainDB.mux.Unlock()
-
+func (openchainDB *OpenchainDB) open() {
 	dbPath := getDBPath()
 	missing, err := dirMissingOrEmpty(dbPath)
 	if err != nil {
@@ -190,25 +181,16 @@ func (openchainDB *OpenchainDB) Open() {
 	openchainDB.StateDeltaCF = cfHandlers[3]
 	openchainDB.IndexesCF = cfHandlers[4]
 	openchainDB.PersistCF = cfHandlers[5]
-	openchainDB.dbState = opened
 }
 
 // Close releases all column family handles and closes rocksdb
-func (openchainDB *OpenchainDB) Close() {
-	openchainDB.mux.Lock()
-	if openchainDB.dbState == closed {
-		openchainDB.mux.Unlock()
-		return
-	}
-
-	defer openchainDB.mux.Unlock()
+func (openchainDB *OpenchainDB) close() {
 	openchainDB.BlockchainCF.Destroy()
 	openchainDB.StateCF.Destroy()
 	openchainDB.StateDeltaCF.Destroy()
 	openchainDB.IndexesCF.Destroy()
 	openchainDB.PersistCF.Destroy()
 	openchainDB.DB.Close()
-	openchainDB.dbState = closed
 }
 
 // DeleteState delets ALL state keys/values from the DB. This is generally

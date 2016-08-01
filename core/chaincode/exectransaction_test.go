@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
+	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/membersrvc/ca"
@@ -45,6 +46,8 @@ import (
 
 // attributes to request in the batch of tcerts while deploying, invoking or querying
 var attributes = []string{"company", "position"}
+
+var testDBWrapper = db.NewTestDBWrapper()
 
 func getNowMillis() int64 {
 	nanos := time.Now().UnixNano()
@@ -355,6 +358,7 @@ func executeDeployTransaction(t *testing.T, url string) {
 
 // Test deploy of a transaction
 func TestExecuteDeployTransaction(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	executeDeployTransaction(t, "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
 }
 
@@ -364,6 +368,7 @@ func TestGopathExecuteDeployTransaction(t *testing.T) {
 	// and a couple of elements - it doesn't matter what they are
 	os.Setenv("GOPATH", os.Getenv("GOPATH")+string(os.PathSeparator)+string(os.PathListSeparator)+"/tmp/foo"+string(os.PathListSeparator)+"/tmp/bar")
 	fmt.Printf("set GOPATH to: \"%s\"\n", os.Getenv("GOPATH"))
+	testDBWrapper.CleanDB(t)
 	executeDeployTransaction(t, "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
 }
 
@@ -372,6 +377,7 @@ func TestHTTPExecuteDeployTransaction(t *testing.T) {
 	// The chaincode used here cannot be from the fabric repo
 	// itself or it won't be downloaded because it will be found
 	// in GOPATH, which would defeat the test
+	testDBWrapper.CleanDB(t)
 	executeDeployTransaction(t, "http://github.com/hyperledger/fabric-test-resources/examples/chaincode/go/chaincode_example01")
 }
 
@@ -465,6 +471,7 @@ func invokeExample02Transaction(ctxt context.Context, cID *pb.ChaincodeID, args 
 }
 
 func TestExecuteInvokeTransaction(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 
 	//TLS is on by default. This is the ONLY test that does NOT use TLS
@@ -570,6 +577,7 @@ func exec(ctxt context.Context, chaincodeID string, numTrans int, numQueries int
 
 // Test the execution of a query.
 func TestExecuteQuery(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -653,6 +661,7 @@ func TestExecuteQuery(t *testing.T) {
 
 // Test the execution of an invalid transaction.
 func TestExecuteInvokeInvalidTransaction(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -714,6 +723,7 @@ func TestExecuteInvokeInvalidTransaction(t *testing.T) {
 
 // Test the execution of an invalid query.
 func TestExecuteInvalidQuery(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -785,6 +795,7 @@ func TestExecuteInvalidQuery(t *testing.T) {
 
 // Test the execution of a chaincode that invokes another chaincode.
 func TestChaincodeInvokeChaincode(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -898,6 +909,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 // Test the execution of a chaincode that invokes another chaincode with wrong parameters. Should receive error from
 // from the called chaincode
 func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -1098,6 +1110,7 @@ func chaincodeQueryChaincode(user string) error {
 
 // Test the execution of a chaincode query that queries another chaincode without security enabled
 func TestChaincodeQueryChaincode(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var peerLis net.Listener
 	var err error
 	if peerLis, err = initPeer(); err != nil {
@@ -1119,6 +1132,7 @@ func TestChaincodeQueryChaincode(t *testing.T) {
 // Test the execution of a chaincode that queries another chaincode with invalid parameter. Should receive error from
 // from the called chaincode
 func TestChaincodeQueryChaincodeErrorCase(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -1229,6 +1243,7 @@ func TestChaincodeQueryChaincodeErrorCase(t *testing.T) {
 // Test the execution of a chaincode query that queries another chaincode with security enabled
 // NOTE: this really needs to be a behave test. Remove when we have support in behave for multiple chaincodes
 func TestChaincodeQueryChaincodeWithSec(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	viper.Set("security.enabled", "true")
 
 	//Initialize crypto
@@ -1282,6 +1297,7 @@ func TestChaincodeQueryChaincodeWithSec(t *testing.T) {
 
 // Test the invocation of a transaction.
 func TestRangeQuery(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -1352,6 +1368,7 @@ func TestRangeQuery(t *testing.T) {
 }
 
 func TestGetEvent(t *testing.T) {
+	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))

@@ -52,6 +52,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/crypto"
+	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/genesis"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/rest"
@@ -470,6 +471,8 @@ func serve(args []string) error {
 		logger.Infof("Privacy enabled status: false")
 	}
 
+	db.Start()
+
 	var opts []grpc.ServerOption
 	if comm.TLSEnabled() {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -632,6 +635,7 @@ func stop() (err error) {
 	serverClient := pb.NewAdminClient(clientConn)
 
 	status, err := serverClient.StopServer(context.Background(), &google_protobuf.Empty{})
+	db.Stop()
 	if err != nil {
 		fmt.Println(&pb.ServerStatus{Status: pb.ServerStatus_STOPPED})
 		return nil

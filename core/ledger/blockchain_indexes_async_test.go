@@ -187,8 +187,11 @@ func TestIndexesAsync_IndexPendingBlocks(t *testing.T) {
 		t.Fatalf("Error populating block chain with sample data: %s", err)
 	}
 
-	// close the db and create new instance of blockchain (and the associated async indexer) - the indexer should index the pending blocks
+	// close the db
 	testDBWrapper.CloseDB(t)
+	// open the db again and create new instance of blockchain (and the associated async indexer)
+	// the indexer should index the pending blocks
+	testDBWrapper.OpenDB(t)
 	testBlockchainWrapper = newTestBlockchainWrapper(t)
 	defer chain.indexer.stop()
 
