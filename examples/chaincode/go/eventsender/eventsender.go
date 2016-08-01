@@ -35,7 +35,7 @@ type EventSender struct {
 }
 
 // Init function
-func (t *EventSender) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *EventSender) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	err := stub.PutState("noevents", []byte("0"))
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (t *EventSender) Init(stub *shim.ChaincodeStub, function string, args []str
 }
 
 // Invoke function
-func (t *EventSender) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *EventSender) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	b, err := stub.GetState("noevents")
 	if err != nil {
 		return nil, errors.New("Failed to get state")
@@ -70,7 +70,7 @@ func (t *EventSender) Invoke(stub *shim.ChaincodeStub, function string, args []s
 }
 
 // Query function
-func (t *EventSender) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *EventSender) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	b, err := stub.GetState("noevents")
 	if err != nil {
 		return nil, errors.New("Failed to get state")

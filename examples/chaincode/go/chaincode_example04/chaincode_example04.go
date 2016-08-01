@@ -30,15 +30,16 @@ import (
 type SimpleChaincode struct {
 }
 
-func (t *SimpleChaincode) getChaincodeToCall(stub *shim.ChaincodeStub) (string, error) {
+func (t *SimpleChaincode) GetChaincodeToCall() string {
 	//This is the hashcode for github.com/hyperledger/fabric/core/example/chaincode/chaincode_example02
 	//if the example is modifed this hashcode will change!!
-	chainCodeToCall := "9578ffde22fede358d6390d6a3f81bee6e690e210ad7c544e93d567f55e9290369df30822cd771acc0ca233fb32c7948c257599e0412b9b4f2d1eae5721486ce"
-	return chainCodeToCall, nil
+	chainCodeToCall := "5cbb88224e34d5c366603a5a9f7989f5a3eb02729fff85c19ce43db249ada678d5189e587d3ca88cf8b46b31b89cc9000aec9b9511877478ef70166dc6eaa7c0" //with SHA3
+
+	return chainCodeToCall
 }
 
 // Init takes two arguements, a string and int. These are stored in the key/value pair in the state
-func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var event string // Indicates whether event has happened. Initially 0
 	var eventVal int // State of event
 	var err error
@@ -64,7 +65,7 @@ func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args [
 }
 
 // Invoke invokes another chaincode - chaincode_example02, upon receipt of an event and changes event state
-func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var event string // Event entity
 	var eventVal int // State of event
 	var err error
@@ -85,10 +86,7 @@ func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args
 	}
 
 	// Get the chaincode to call from the ledger
-	chainCodeToCall, err := t.getChaincodeToCall(stub)
-	if err != nil {
-		return nil, err
-	}
+	chainCodeToCall := t.GetChaincodeToCall()
 
 	f := "invoke"
 	invokeArgs := shim.ToChaincodeArgs(f, "a", "b", "10")
@@ -111,7 +109,7 @@ func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args
 }
 
 // Query callback representing the query of a chaincode
-func (t *SimpleChaincode) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "query" {
 		return nil, errors.New("Invalid query function name. Expecting \"query\"")
 	}

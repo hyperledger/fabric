@@ -57,7 +57,7 @@ type AssetManagementChaincode struct {
 }
 
 // Init initialization
-func (t *AssetManagementChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	myLogger.Info("[AssetManagementChaincode] Init")
 	if len(args) != 0 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 0")
@@ -90,7 +90,7 @@ func (t *AssetManagementChaincode) Init(stub *shim.ChaincodeStub, function strin
 	return nil, nil
 }
 
-func (t *AssetManagementChaincode) assign(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) assign(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	fmt.Println("Assigning Asset...")
 
 	if len(args) != 2 {
@@ -148,7 +148,7 @@ func (t *AssetManagementChaincode) assign(stub *shim.ChaincodeStub, args []strin
 	return nil, err
 }
 
-func (t *AssetManagementChaincode) transfer(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
@@ -218,7 +218,7 @@ func (t *AssetManagementChaincode) transfer(stub *shim.ChaincodeStub, args []str
 }
 
 // Invoke runs callback representing the invocation of a chaincode
-func (t *AssetManagementChaincode) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 
 	// Handle different functions
 	if function == "assign" {
@@ -233,7 +233,7 @@ func (t *AssetManagementChaincode) Invoke(stub *shim.ChaincodeStub, function str
 }
 
 // Query callback representing the query of a chaincode
-func (t *AssetManagementChaincode) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "query" {
 		return nil, errors.New("Invalid query function name. Expecting \"query\"")
 	}

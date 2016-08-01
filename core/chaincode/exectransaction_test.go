@@ -377,7 +377,9 @@ func TestHTTPExecuteDeployTransaction(t *testing.T) {
 	// itself or it won't be downloaded because it will be found
 	// in GOPATH, which would defeat the test
 	testDBWrapper.CleanDB(t)
-	executeDeployTransaction(t, "http://github.com/hyperledger/fabric-test-resources/examples/chaincode/go/chaincode_example01")
+	//executeDeployTransaction(t, "http://github.com/hyperledger/fabric-test-resources/examples/chaincode/go/chaincode_example01")
+	// forked the above until the ChaincodeStubInterface change is accepted into the fabric-test-resources project
+	executeDeployTransaction(t, "http://github.com/brad-gorman/fabric-test-resources/examples/chaincode/go/chaincode_example01")
 }
 
 // Check the correctness of the final state after transaction execution.
@@ -795,6 +797,7 @@ func TestExecuteInvalidQuery(t *testing.T) {
 
 // Test the execution of a chaincode that invokes another chaincode.
 func TestChaincodeInvokeChaincode(t *testing.T) {
+	t.Logf("TestChaincodeInvokeChaincode starting")
 	testDBWrapper.CleanDB(t)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
@@ -847,6 +850,8 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 		closeListenerAndSleep(lis)
 		return
 	}
+
+	t.Logf("deployed chaincode_example02 got cID1:% s,\n chaincodeID1:% s", cID1, chaincodeID1)
 
 	time.Sleep(time.Second)
 

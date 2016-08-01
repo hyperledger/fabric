@@ -41,7 +41,7 @@ func NewDepositoryHandler() *depositoryHandler {
 
 // createTable initiates a new asset depository table in the chaincode state
 // stub: chaincodestub
-func (t *depositoryHandler) createTable(stub *shim.ChaincodeStub) error {
+func (t *depositoryHandler) createTable(stub shim.ChaincodeStubInterface) error {
 
 	// Create asset depository table
 	return stub.CreateTable(tableColumn, []*shim.ColumnDefinition{
@@ -57,7 +57,7 @@ func (t *depositoryHandler) createTable(stub *shim.ChaincodeStub) error {
 // accountID: account ID to be allocated with requested amount
 // contactInfo: contact information of the owner of the account ID passed in
 // amount: amount to be allocated to this account ID
-func (t *depositoryHandler) assign(stub *shim.ChaincodeStub,
+func (t *depositoryHandler) assign(stub shim.ChaincodeStubInterface,
 	accountID string,
 	contactInfo string,
 	amount uint64) error {
@@ -86,7 +86,7 @@ func (t *depositoryHandler) assign(stub *shim.ChaincodeStub,
 // accountID: account will be updated with the new balance
 // contactInfo: contact information associated with the account owner (chaincode table does not allow me to perform updates on specific columns)
 // amount: new amount to be udpated with
-func (t *depositoryHandler) updateAccountBalance(stub *shim.ChaincodeStub,
+func (t *depositoryHandler) updateAccountBalance(stub shim.ChaincodeStubInterface,
 	accountID string,
 	contactInfo string,
 	amount uint64) error {
@@ -111,7 +111,7 @@ func (t *depositoryHandler) updateAccountBalance(stub *shim.ChaincodeStub,
 // deleteAccountRecord deletes the record row associated with an account ID on the chaincode state table
 // stub: chaincodestub
 // accountID: account ID (record matching this account ID will be deleted after calling this method)
-func (t *depositoryHandler) deleteAccountRecord(stub *shim.ChaincodeStub, accountID string) error {
+func (t *depositoryHandler) deleteAccountRecord(stub shim.ChaincodeStubInterface, accountID string) error {
 
 	myLogger.Debugf("insert accountID= %v", accountID)
 
@@ -133,7 +133,7 @@ func (t *depositoryHandler) deleteAccountRecord(stub *shim.ChaincodeStub, accoun
 // fromAccounts: from account IDs with assets to be transferred
 // toAccount: a new account ID on the table that will get assets transfered to
 // toContact: contact information of the owner of "to account ID"
-func (t *depositoryHandler) transfer(stub *shim.ChaincodeStub, fromAccounts []string, toAccount string, toContact string, amount uint64) error {
+func (t *depositoryHandler) transfer(stub shim.ChaincodeStubInterface, fromAccounts []string, toAccount string, toContact string, amount uint64) error {
 
 	myLogger.Debugf("insert params= %v , %v , %v , %v ", fromAccounts, toAccount, toContact, amount)
 
@@ -178,7 +178,7 @@ func (t *depositoryHandler) transfer(stub *shim.ChaincodeStub, fromAccounts []st
 // queryContactInfo queries the contact information matching a correponding account ID on the chaincode state table
 // stub: chaincodestub
 // accountID: account ID
-func (t *depositoryHandler) queryContactInfo(stub *shim.ChaincodeStub, accountID string) (string, error) {
+func (t *depositoryHandler) queryContactInfo(stub shim.ChaincodeStubInterface, accountID string) (string, error) {
 	row, err := t.queryTable(stub, accountID)
 	if err != nil {
 		return "", err
@@ -190,7 +190,7 @@ func (t *depositoryHandler) queryContactInfo(stub *shim.ChaincodeStub, accountID
 // queryBalance queries the balance information matching a correponding account ID on the chaincode state table
 // stub: chaincodestub
 // accountID: account ID
-func (t *depositoryHandler) queryBalance(stub *shim.ChaincodeStub, accountID string) (uint64, error) {
+func (t *depositoryHandler) queryBalance(stub shim.ChaincodeStubInterface, accountID string) (uint64, error) {
 
 	myLogger.Debugf("insert accountID= %v", accountID)
 
@@ -208,7 +208,7 @@ func (t *depositoryHandler) queryBalance(stub *shim.ChaincodeStub, accountID str
 // queryAccount queries the balance and contact information matching a correponding account ID on the chaincode state table
 // stub: chaincodestub
 // accountID: account ID
-func (t *depositoryHandler) queryAccount(stub *shim.ChaincodeStub, accountID string) (string, uint64, error) {
+func (t *depositoryHandler) queryAccount(stub shim.ChaincodeStubInterface, accountID string) (string, uint64, error) {
 	row, err := t.queryTable(stub, accountID)
 	if err != nil {
 		return "", 0, err
@@ -223,7 +223,7 @@ func (t *depositoryHandler) queryAccount(stub *shim.ChaincodeStub, accountID str
 // queryTable returns the record row matching a correponding account ID on the chaincode state table
 // stub: chaincodestub
 // accountID: account ID
-func (t *depositoryHandler) queryTable(stub *shim.ChaincodeStub, accountID string) (shim.Row, error) {
+func (t *depositoryHandler) queryTable(stub shim.ChaincodeStubInterface, accountID string) (shim.Row, error) {
 
 	var columns []shim.Column
 	col1 := shim.Column{Value: &shim.Column_String_{String_: accountID}}
