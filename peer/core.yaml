@@ -6,7 +6,7 @@
 cli:
 
     # The address that the cli process will use for callbacks from chaincodes
-    address: 0.0.0.0:30304
+    address: 0.0.0.0:7052
 
 
 
@@ -23,7 +23,7 @@ rest:
     enabled: true
 
     # The address that the REST service will listen on for incoming requests.
-    address: 0.0.0.0:5000
+    address: 0.0.0.0:7050
 
     validPatterns:
 
@@ -92,9 +92,9 @@ peer:
     networkId: dev
 
     # The Address this Peer will listen on
-    listenAddress: 0.0.0.0:30303
+    listenAddress: 0.0.0.0:7051
     # The Address this Peer will bind to for providing services
-    address: 0.0.0.0:30303
+    address: 0.0.0.0:7051
     # Whether the Peer should programmatically determine the address to bind to.
     # This case is useful for docker containers.
     addressAutoDetect: false
@@ -141,7 +141,7 @@ peer:
 
         events:
             # The address that the Event service will be enabled on the validator
-            address: 0.0.0.0:31315
+            address: 0.0.0.0:7053
 
             # total number of events that could be buffered without blocking the
             # validator sends
@@ -166,11 +166,11 @@ peer:
     # PKI member services properties
     pki:
         eca:
-            paddr: localhost:50051
+            paddr: localhost:7054
         tca:
-            paddr: localhost:50051
+            paddr: localhost:7054
         tlsca:
-            paddr: localhost:50051
+            paddr: localhost:7054
         tls:
             enabled: false
             rootcert:
@@ -193,10 +193,10 @@ peer:
         # testNodes:
         #    - node   : 1
         #      ip     : 127.0.0.1
-        #      port   : 30303
+        #      port   : 7051
         #    - node   : 2
         #      ip     : 127.0.0.1
-        #      port   : 30303
+        #      port   : 7051
 
         # Should the discovered nodes and their reputations
         # be stored in DB and persisted between restarts

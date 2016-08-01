@@ -7,7 +7,7 @@
 cli:
 
     # The address that the cli process will use for callbacks from chaincodes
-    address: 0.0.0.0:30304
+    address: 0.0.0.0:7052
 
 
 
@@ -19,7 +19,7 @@ cli:
 rest:
 
     # The address that the REST service will listen on for incoming requests.
-    address: 0.0.0.0:5000
+    address: 0.0.0.0:7050
 
 
 
@@ -54,7 +54,7 @@ peer:
         RUN CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy" go install && cp $GOPATH/src/github.com/hyperledger/fabric/peer/core.yaml $GOPATH/bin
 
     # The Address this Peer will bind to for providing services
-    address: 0.0.0.0:30303
+    address: 0.0.0.0:7051
     # Whether the Peer should programmatically determine the address to bind to. This case is useful for docker containers.
     addressAutoDetect: false
 
@@ -66,7 +66,7 @@ peer:
         level: DEBUG
 
     # Peer port to accept connections on
-    port:    30303
+    port:    7051
     # Peer's setting for GOMAXPROCS
     gomaxprocs: 2
     workers: 2
@@ -101,10 +101,10 @@ peer:
         # testNodes:
         #    - node   : 1
         #      ip     : 127.0.0.1
-        #      port   : 30303
+        #      port   : 7051
         #    - node   : 2
         #      ip     : 127.0.0.1
-        #      port   : 30303
+        #      port   : 7051
 
         # Should the discovered nodes and their reputations
         # be stored in DB and persisted between restarts
@@ -141,7 +141,7 @@ peer:
 ###############################################################################
 validator:
     enabled: false
-    address: 0.0.0.0:30304
+    address: 0.0.0.0:7052
     # TLS Settings for p2p communications
     tls:
         enabled:  false

@@ -5,4 +5,4 @@ vp0:
   environment:
     - CORE_PEER_ID=vp0
   ports:
-    - 31315:31315
+    - 7053:7053

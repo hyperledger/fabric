@@ -25,7 +25,7 @@ import sys, requests, json
 
 import bdd_test_util
 
-CORE_REST_PORT = 5000
+CORE_REST_PORT = 7050
 JSONRPC_VERSION = "2.0"
 
 class ContainerData:

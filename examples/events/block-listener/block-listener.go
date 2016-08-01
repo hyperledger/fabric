@@ -78,7 +78,7 @@ func createEventClient(eventAddress string, listenToRejections bool) *adapter {
 func main() {
 	var eventAddress string
 	var listenToRejections bool
-	flag.StringVar(&eventAddress, "events-address", "0.0.0.0:31315", "address of events server")
+	flag.StringVar(&eventAddress, "events-address", "0.0.0.0:7053", "address of events server")
 	flag.BoolVar(&listenToRejections, "listen-to-rejections", false, "whether to listen to rejection events")
 	flag.Parse()
 

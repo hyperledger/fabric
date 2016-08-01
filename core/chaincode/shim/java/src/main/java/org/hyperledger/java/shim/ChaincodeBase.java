@@ -50,7 +50,7 @@ public abstract class ChaincodeBase {
 	public abstract String getChaincodeID();
 
 	public static final String DEFAULT_HOST = "127.0.0.1";
-	public static final int DEFAULT_PORT = 30303;
+	public static final int DEFAULT_PORT = 7051;
 
 	private String host = DEFAULT_HOST;
 	private int port = DEFAULT_PORT;
@@ -64,7 +64,7 @@ public abstract class ChaincodeBase {
 		options.addOption("a", "peerAddress", true, "Address of peer to connect to");
 		options.addOption("s", "securityEnabled", false, "Present if security is enabled");
 		options.addOption("i", "id", true, "Identity of chaincode");
-		
+
 		try {
 			CommandLine cl = new DefaultParser().parse(options, args);
 			if (cl.hasOption('a')) {
@@ -81,9 +81,9 @@ public abstract class ChaincodeBase {
 			}
 		} catch (Exception e) {
 			logger.warn("cli parsing failed with exception",e);
-			
+
 		}
-			
+
 		Runnable chaincode = () -> {
 			logger.trace("chaincode started");
 			ManagedChannel connection = newPeerClientConnection();
@@ -91,7 +91,7 @@ public abstract class ChaincodeBase {
 			chatWithPeer(connection);
 			logger.trace("chatWithPeer DONE");
 		};
-		new Thread(chaincode).start(); 
+		new Thread(chaincode).start();
 	}
 
 	public ManagedChannel newPeerClientConnection() {
@@ -110,11 +110,11 @@ public abstract class ChaincodeBase {
 		} else {
 			builder.usePlaintext(true);
 		}
-		
+
 		return builder.build();
 	}
 
-	public void chatWithPeer(ManagedChannel connection) {		
+	public void chatWithPeer(ManagedChannel connection) {
 		// Establish stream with validating peer
 		ChaincodeSupportStub stub = ChaincodeSupportGrpc.newStub(connection);
 
@@ -196,15 +196,15 @@ public abstract class ChaincodeBase {
 			}
 		}
 	}
-	
+
 	public ByteString runRaw(ChaincodeStub stub, String function, String[] args) {
 		return null;
 	}
-	
+
 	public ByteString queryRaw(ChaincodeStub stub, String function, String[] args) {
 		return null;
 	}
-	
+
 	protected ByteString runHelper(ChaincodeStub stub, String function, String[] args) {
 		ByteString ret = runRaw(stub, function, args);
 		if (ret == null) {
@@ -213,7 +213,7 @@ public abstract class ChaincodeBase {
 		}
 		return ret;
 	}
-	
+
 	protected ByteString queryHelper(ChaincodeStub stub, String function, String[] args) {
 		ByteString ret = queryRaw(stub, function, args);
 		if (ret == null) {

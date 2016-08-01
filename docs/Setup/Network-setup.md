@@ -123,9 +123,9 @@ Here's the docker-compose.yml for Docker on Mac or Windows:
 vp0:
   image: hyperledger/fabric-peer
   ports:
-    - "5000:5000"
-    - "30303:30303"
-    - "30304:30304"
+    - "7050:7050"
+    - "7051:7051"
+    - "7052:7052"
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
     - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
@@ -156,7 +156,7 @@ vp1:
     service: vp0
   environment:
     - CORE_PEER_ID=vp1
-    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:30303
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
   links:
     - vp0
 ```
@@ -164,7 +164,7 @@ vp1:
 If we wanted to use the docker command line to launch another peer, we need to get the IP address of the first validating peer, which will act as the root node to which the new peer(s) will connect. The address is printed out on the terminal window of the first peer (e.g. 172.17.0.2) and should be passed in with the `CORE_PEER_DISCOVERY_ROOTNODE` environment variable.
 
 ```
-docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp1 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_PEER_DISCOVERY_ROOTNODE=172.17.0.2:30303 hyperledger/fabric-peer peer node start
+docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp1 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_PEER_DISCOVERY_ROOTNODE=172.17.0.2:7051 hyperledger/fabric-peer peer node start
 ```
 <!-- This needs to be sorted out with a revamped security section
 
@@ -176,7 +176,7 @@ You can start up a few more validating peers in a similar manner if you wish. Re
 If security is enabled, you must enroll a user with the certificate authority before sending requests. Choose a user that is already registered, i.e. added to the [membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml). Then, execute the command below to log in the user on the target validating peer. `CORE_PEER_ADDRESS` specifies the target validating peer for which the user is to be logged in.
 
 ```
-CORE_PEER_ADDRESS=172.17.0.2:30303 peer network login jim
+CORE_PEER_ADDRESS=172.17.0.2:7051 peer network login jim
 ```
 
 **Note:** The certificate authority allows the enrollID and enrollSecret credentials to be used only *once*. Therefore, login by the same user from any other validating peer will result in an error. Currently, the application layer is responsible for duplicating the crypto material returned from the CA to other peer nodes. If you want to test secure transactions from more than one peer node without replicating the returned key and certificate, you can log in with a different user on other peer nodes.
@@ -191,13 +191,13 @@ We can use the sample chaincode to test the network. You may find the chaincode 
 Deploy the chaincode to the network. We can deploy to any validating peer by specifying `CORE_PEER_ADDRESS`:
 
 ```
-CORE_PEER_ADDRESS=172.17.0.2:30303 peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
 ```
 
 With security enabled, modify the command as follows:
 
 ```
-CORE_PEER_ADDRESS=172.17.0.2:30303 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+CORE_PEER_ADDRESS=172.17.0.2:7051 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
 ```
 
 You can watch for the message "Received build request for chaincode spec" on the output screen of all validating peers.
@@ -210,32 +210,32 @@ On successful completion, the above command will print the "name" assigned to th
 
 In a script the name can be captured for subsequent use. For example, run
 
-    NAME=`CORE_PEER_ADDRESS=172.17.0.2:30303 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode deploy ...`
+    NAME=`CORE_PEER_ADDRESS=172.17.0.2:7051 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode deploy ...`
 
 and then replace `<name_value_returned_from_deploy_command>` in the examples below with `$NAME`.
 
 We can run an invoke transaction to move 10 units from the value of `a` to the value of `b`:
 
 ```
-CORE_PEER_ADDRESS=172.17.0.2:30303 peer chaincode invoke -n <name_value_returned_from_deploy_command> -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
+CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode invoke -n <name_value_returned_from_deploy_command> -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
 ```
 
 With security enabled, modify the command as follows:
 
 ```
-CORE_PEER_ADDRESS=172.17.0.2:30303 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode invoke -u jim -n <name_value_returned_from_deploy_command> -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
+CORE_PEER_ADDRESS=172.17.0.2:7051 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode invoke -u jim -n <name_value_returned_from_deploy_command> -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
 ```
 
 We can also run a query to see the current value `a` has:
 
 ```
-CORE_PEER_ADDRESS=172.17.0.2:30303 peer chaincode query -l golang -n <name_value_returned_from_deploy_command> -c '{"Function": "query", "Args": ["a"]}'
+CORE_PEER_ADDRESS=172.17.0.2:7051 peer chaincode query -l golang -n <name_value_returned_from_deploy_command> -c '{"Function": "query", "Args": ["a"]}'
 ```
 
 With security enabled, modify the command as follows:
 
 ```
-CORE_PEER_ADDRESS=172.17.0.2:30303 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode query -u jim -l golang -n <name_value_returned_from_deploy_command> -c '{"Function": "query", "Args": ["a"]}'
+CORE_PEER_ADDRESS=172.17.0.2:7051 CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode query -u jim -l golang -n <name_value_returned_from_deploy_command> -c '{"Function": "query", "Args": ["a"]}'
 ```
 -->
 

@@ -23,11 +23,11 @@ To view the currently available CLI commands, execute the following:
 You will see output similar to the example below (**NOTE:** rootcommand below is hardcoded in [main.go](https://github.com/hyperledger/fabric/blob/master/main.go). Currently, the build will create a *peer* executable file).
 
 ```
-    Usage: 
+    Usage:
       peer [flags]
       peer [command]
-    
-    Available Commands: 
+
+    Available Commands:
       version     Print fabric peer version.
       node        node specific commands.
       network     network specific commands.
@@ -80,9 +80,9 @@ With security enabled, modify the command to include the -u parameter passing th
 
 ### Verify Results
 
-To verify that the block containing the latest transaction has been added to the blockchain, use the `/chain` REST endpoint from the command line. Target the IP address of either a validating or a non-validating node. In the example below, 172.17.0.2 is the IP address of a validating or a non-validating node and 5000 is the REST interface port defined in [core.yaml](https://github.com/hyperledger/fabric/blob/master/peer/core.yaml).
+To verify that the block containing the latest transaction has been added to the blockchain, use the `/chain` REST endpoint from the command line. Target the IP address of either a validating or a non-validating node. In the example below, 172.17.0.2 is the IP address of a validating or a non-validating node and 7050 is the REST interface port defined in [core.yaml](https://github.com/hyperledger/fabric/blob/master/peer/core.yaml).
 
-`curl 172.17.0.2:5000/chain`
+`curl 172.17.0.2:7050/chain`
 
 An example of the response is below.
 
@@ -103,9 +103,9 @@ message BlockchainInfo {
 }
 ```
 
-To verify that a specific block is inside the blockchain, use the `/chain/blocks/{Block}` REST endpoint. Likewise, target the IP address of either a validating or a non-validating node on port 5000.
+To verify that a specific block is inside the blockchain, use the `/chain/blocks/{Block}` REST endpoint. Likewise, target the IP address of either a validating or a non-validating node on port 7050.
 
-`curl 172.17.0.2:5000/chain/blocks/0`
+`curl 172.17.0.2:7050/chain/blocks/0`
 
 The returned Block message structure is defined inside [fabric.proto](https://github.com/hyperledger/fabric/blob/master/protos/fabric.proto#L84).
 
@@ -143,7 +143,7 @@ For additional information on the available CLI commands, please see the [protoc
 
 You can work with the REST API through any tool of your choice. For example, the curl command line utility or a browser based client such as the Firefox Rest Client or Chrome Postman. You can likewise trigger REST requests directly through [Swagger](http://swagger.io/). You can utilize the Swagger service directly or, if you prefer, you can set up Swagger locally by following the instructions [here](#to-set-up-swagger-ui).
 
-**Note:** The default REST interface port is 5000. It can be configured in [core.yaml](https://github.com/hyperledger/fabric/blob/master/peer/core.yaml) using the `rest.address` property. If using Vagrant, the REST port mapping is defined in [Vagrantfile](https://github.com/hyperledger/fabric/blob/master/devenv/Vagrantfile).
+**Note:** The default REST interface port is `7050`. It can be configured in [core.yaml](https://github.com/hyperledger/fabric/blob/master/peer/core.yaml) using the `rest.address` property. If using Vagrant, the REST port mapping is defined in [Vagrantfile](https://github.com/hyperledger/fabric/blob/master/devenv/Vagrantfile).
 
 **Note on constructing a test blockchain** If you want to test the REST API locally, construct a test blockchain by running the TestServerOpenchain_API_GetBlockCount test implemented inside [api_test.go](https://github.com/hyperledger/fabric/blob/master/core/rest/api_test.go). This test will create a test blockchain with 5 blocks. Subsequently restart the peer process.
 

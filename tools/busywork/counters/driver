@@ -1,13 +1,13 @@
 #!/usr/bin/tclsh
 
 # Copyright IBM Corp. 2016. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # 		 http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,11 +35,11 @@ Note that the list of explict peers *must* contain all peers in the
 network. This is required for certain important consistency and correctness
 checks. Use -targetPeers to limit the peers that are actually targeted by the
 driver if reducing the number of targeted peers is important to the test.
-    
+
 Optional parameters. Default values are given after the colon:
 
 -h | -help | --help : None
-    
+
     Print this usage message and exit normally.
 
 -home <busywork_home> : See below
@@ -55,9 +55,9 @@ Optional parameters. Default values are given after the colon:
     not on the same machine as the client driver.
 
 -targetPeers <n> : All
-    
+
     Limit the run to targeting at most the first <n> peers.
-    
+
 -security | -noSecurity : -noSecurity
 
     If -security is selected then the network is assumed to be a secure
@@ -73,7 +73,7 @@ Optional parameters. Default values are given after the colon:
     this many of the test users will be logged in and used randomly to send
     transactions. By default all test users are used.
 
--port <n> : 5000
+-port <n> : 7050
 
     The default REST API port. Only used if the peer specification does not
     include a port specifiaction.
@@ -216,7 +216,7 @@ Optional parameters. Default values are given after the colon:
     In -interlockAbsolute mode the script fails if any interlock is not
     achieved within the -interlockTimeout. In -interlockProgress mode, the
     driver continues to attempt interlock as long as at least 1 transaction
-    completes within each timeout period. 
+    completes within each timeout period.
 
 -convergeWait <duration> : 10s
 -convergePoll <duration> : 1s
@@ -228,9 +228,9 @@ Optional parameters. Default values are given after the colon:
     not start checking until there is 100% consensus on the block
     height. These checks must converge within the -convergeWait time. The
     network is polled (and the current status printed) every -convergePoll
-    interval. 
+    interval.
 
--finalWait <duration> : 10s    
+-finalWait <duration> : 10s
 
     Always wait this duration at the end of the run before checking the final
     status for correctness. Wired things can still happen even if the
@@ -343,7 +343,7 @@ set options {
     {key     -targetPeers          parms(targetPeers)       0 p_targetPeers}
     {bool    {-security -noSecurity} parms(security)        0 p_security}
     {key     -targetUsers          parms(targetUsers)       0 p_targetUsers}
-    {key     -port                 parms(port)              5000}
+    {key     -port                 parms(port)              7050}
     {key     -chaincodes           parms(nChaincodes)       1}
     {key     -ccPrefix             parms(ccPrefix)         cc}
     {bool    {-deploy -noDeploy}   parms(deploy)            1}
@@ -422,7 +422,7 @@ if {[null [parms explicitPeers]]} {
             "The -security/-noSecurity flags are not allowed."
     } else {
         parms security [? {[parms network.security] eq "true"} 1 0]
-    }        
+    }
 } else {
     parms originalPeers [addPortToHosts [parms explicitPeers] [parms port]]
 }
@@ -609,7 +609,7 @@ if {[parms security]} {
 } else {
 
     note {} "Security is disabled"
-    
+
     foreach peer [parms peers] {
         parms $peer,userBag [RandomBag new {{}}]
     }
@@ -638,12 +638,12 @@ proc txSummary {} {
     note {} "[parms clients] clients will be activated"
     note {} "[parms countPerArray] transaction(s) will be issued to each array"
     note {} "[parms totalTransactions] total transaction(s) will be issued"
-}    
+}
 
 set chaincodePath "github.com/hyperledger/fabric/tools/busywork/counters"
 
 if {[parms deploy]} {
-    
+
     set chaincodeIDs {}
     for {set i 0} {$i < [parms nChaincodes]} {incr i} {
         lappend chaincodeIDs [parms ccPrefix]$i
@@ -697,7 +697,7 @@ if {[parms deploy]} {
     if {[waitFor [parms chaincodeWait] {ping} 1s]} {
         errorExit "Wait for chaincode startup timed out"
     }
-        
+
 } else {
 
     note {} "-noDeploy mode: Getting chaincode deployments from:"
@@ -931,7 +931,7 @@ for {set i 0} {$i < [parms clients]} {incr i} {
     }
 }
 
-# Start a 'pprofClient' if requested. 
+# Start a 'pprofClient' if requested.
 
 if {$p_pprofClient} {
     if {[catch \
@@ -990,7 +990,7 @@ if {[parms interlock] && ![parms noops]} {
         }
         return [expr {[llength $heights] == 1}]
     }
-    
+
     note {} \
         "Waiting up to [parms convergeWait] for block-height consensus, " \
         "polling every [parms convergePoll]"
@@ -1001,12 +1001,12 @@ if {[parms interlock] && ![parms noops]} {
             errorExit "Aborting due to block-height consensus timeout"
         }
     }
-        
+
 }
 
 # We always wait -finalWait before continuing with the checks. Wierd things
 # can happen even after all TX have putatively been processed.
-    
+
 note {} "Waiting [parms finalWait] before collecting the final status"
 after [durationToMs [parms finalWait]]
 

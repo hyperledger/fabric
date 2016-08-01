@@ -23,7 +23,7 @@ import (
 )
 
 func simulateConn(tb testing.TB) {
-	peerConn := NewPeerConnectionFSM("10.10.10.10:30303")
+	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
 
 	err := peerConn.FSM.Event("HELLO")
 	if err != nil {
@@ -38,7 +38,7 @@ func simulateConn(tb testing.TB) {
 }
 
 func TestFSM_PeerConnection(t *testing.T) {
-	peerConn := NewPeerConnectionFSM("10.10.10.10:30303")
+	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
 
 	err := peerConn.FSM.Event("HELLO")
 	if err != nil {
@@ -55,7 +55,7 @@ func TestFSM_PeerConnection(t *testing.T) {
 }
 
 func TestFSM_PeerConnection2(t *testing.T) {
-	peerConn := NewPeerConnectionFSM("10.10.10.10:30303")
+	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
 
 	err := peerConn.FSM.Event("HELLO")
 	if err != nil {
@@ -72,7 +72,7 @@ func TestFSM_PeerConnection2(t *testing.T) {
 }
 
 func TestFSM_PeerConnection_BadState_1(t *testing.T) {
-	peerConn := NewPeerConnectionFSM("10.10.10.10:30303")
+	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
 
 	// Try to move from created state
 	err := peerConn.FSM.Event("GET_PEERS")
@@ -93,7 +93,7 @@ func TestFSM_PeerConnection_BadState_1(t *testing.T) {
 }
 
 func TestFSM_PeerConnection_BadState_2(t *testing.T) {
-	peerConn := NewPeerConnectionFSM("10.10.10.10:30303")
+	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
 
 	// Try to move from created state
 	err := peerConn.FSM.Event("GET_PEERS")
@@ -108,7 +108,7 @@ func TestFSM_PeerConnection_BadState_2(t *testing.T) {
 }
 
 func TestFSM_PeerConnection_BadEvent(t *testing.T) {
-	peerConn := NewPeerConnectionFSM("10.10.10.10:30303")
+	peerConn := NewPeerConnectionFSM("10.10.10.10:7051")
 
 	// Try to move from created state
 	err := peerConn.FSM.Event("UNDEFINED_EVENT")

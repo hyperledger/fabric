@@ -43,11 +43,11 @@ var chain = hfc.newChain("testChain");
 
 chain.setKeyValStore(hfc.newFileKeyValStore('/tmp/keyValStore'));
 if (fs.existsSync("tlsca.cert")) {
-    chain.setMemberServicesUrl("grpcs://localhost:50051", fs.readFileSync('tlsca.cert'));
+    chain.setMemberServicesUrl("grpcs://localhost:7054", fs.readFileSync('tlsca.cert'));
 } else {
-    chain.setMemberServicesUrl("grpc://localhost:50051");
+    chain.setMemberServicesUrl("grpc://localhost:7054");
 }
-chain.addPeer("grpc://localhost:30303");
+chain.addPeer("grpc://localhost:7051");
 
 //
 // Set the chaincode deployment mode to either developent mode (user runs chaincode)

@@ -86,14 +86,14 @@ To run the fabric-peer and fabric-membersrvc images, we'll use [Docker Compose](
 membersrvc:
   image: hyperledger/fabric-membersrvc
   ports:
-    - "50051:50051"
+    - "7054:7054"
   command: membersrvc
 vp0:
   image: hyperledger/fabric-peer
   ports:
-    - "5000:5000"
-    - "30303:30303"
-    - "30304:30304"
+    - "7050:7050"
+    - "7051:7051"
+    - "7052:7052"
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
     - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
@@ -198,7 +198,7 @@ When you are ready to start creating your own Go chaincode, create a new subdire
 Run the following chaincode command to start and register the chaincode with the validating peer:
 
 ```
-CORE_CHAINCODE_ID_NAME=mycc CORE_PEER_ADDRESS=0.0.0.0:30303 ./chaincode_example02
+CORE_CHAINCODE_ID_NAME=mycc CORE_PEER_ADDRESS=0.0.0.0:7051 ./chaincode_example02
 ```
 
 The chaincode console will display the message "Received REGISTERED, ready for invocations", which indicates that the chaincode is ready to receive requests. Follow the steps below to send a chaincode deploy, invoke or query transaction. If the "Received REGISTERED" message is not displayed, then an error has occurred during the deployment; revisit the previous steps to resolve the issue.
@@ -218,7 +218,7 @@ logging output from the `peer` and chaincodes.
 
 #### **Note on REST API port**
 
-The default REST interface port is 5000. It can be configured in [core.yaml](https://github.com/hyperledger/fabric/blob/master/peer/core.yaml) using the `rest.address` property. If using Vagrant, the REST port mapping is defined in [Vagrantfile](https://github.com/hyperledger/fabric/blob/master/devenv/Vagrantfile).
+The default REST interface port is `7050`. It can be configured in [core.yaml](https://github.com/hyperledger/fabric/blob/master/peer/core.yaml) using the `rest.address` property. If using Vagrant, the REST port mapping is defined in [Vagrantfile](https://github.com/hyperledger/fabric/blob/master/devenv/Vagrantfile).
 
 #### **Note on security functionality**
 
@@ -246,7 +246,7 @@ To log in through the REST API, send a POST request to the `/registrar` endpoint
 **REST Request:**
 
 ```
-POST localhost:5000/registrar
+POST localhost:7050/registrar
 
 {
   "enrollId": "jim",

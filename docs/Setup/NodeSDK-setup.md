@@ -62,10 +62,10 @@ var chain = hfc.newChain("targetChain");
 chain.setKeyValStore( hfc.newFileKeyValStore('/tmp/keyValStore') );
 
 // Set the URL for member services
-chain.setMemberServicesUrl("grpc://localhost:50051");
+chain.setMemberServicesUrl("grpc://localhost:7054");
 
 // Add a peer's URL
-chain.addPeer("grpc://localhost:30303");
+chain.addPeer("grpc://localhost:7051");
 
 // Enroll "WebAppAdmin" which is already registered because it is
 // listed in fabric/membersrvc/membersrvc.yaml with its one time password.

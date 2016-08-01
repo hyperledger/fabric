@@ -14,7 +14,7 @@ vp0:
   links:
     - membersrvc0
   ports:
-    - 5000:5000
+    - 7050:7050
 
 vp1:
   extends:
@@ -22,7 +22,7 @@ vp1:
     service: vpBase
   environment:
     - CORE_PEER_ID=vp1
-    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:30303
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
     - CORE_SECURITY_ENROLLID=test_vp1
     - CORE_SECURITY_ENROLLSECRET=5wgHK9qqYaPy
   links:
@@ -35,7 +35,7 @@ vp2:
     service: vpBase
   environment:
     - CORE_PEER_ID=vp2
-    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:30303
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
     - CORE_SECURITY_ENROLLID=test_vp2
     - CORE_SECURITY_ENROLLSECRET=vQelbRvja7cJ
   links:
@@ -48,7 +48,7 @@ vp3:
     service: vpBase
   environment:
     - CORE_PEER_ID=vp3
-    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:30303
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
     - CORE_SECURITY_ENROLLID=test_vp3
     - CORE_SECURITY_ENROLLSECRET=9LKqKH5peurL
   links:
