@@ -27,9 +27,13 @@ import (
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
+	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
+
+var tcaLogger = logging.MustGetLogger("tca")
 
 var (
 	// TCertEncTCertIndex is the ASN1 object identifier of the TCert index.
@@ -84,20 +88,21 @@ func initializeTCATables(db *sql.DB) error {
 // NewTCA sets up a new TCA.
 func NewTCA(eca *ECA) *TCA {
 	tca := &TCA{NewCA("tca", initializeTCATables), eca, nil, nil, nil, nil}
+	flogging.LoggingInit("tca")
 
 	err := tca.readHmacKey()
 	if err != nil {
-		Panic.Panicln(err)
+		tcaLogger.Panic(err)
 	}
 
 	err = tca.readRootPreKey()
 	if err != nil {
-		Panic.Panicln(err)
+		tcaLogger.Panic(err)
 	}
 
 	err = tca.initializePreKeyTree()
 	if err != nil {
-		Panic.Panicln(err)
+		tcaLogger.Panic(err)
 	}
 	return tca
 }
@@ -113,7 +118,7 @@ func (tca *TCA) readHmacKey() error {
 
 		err = ioutil.WriteFile(tca.path+"/tca.hmac", []byte(cooked), 0644)
 		if err != nil {
-			Panic.Panicln(err)
+			tcaLogger.Panic(err)
 		}
 	} else {
 		cooked = string(raw)
@@ -134,7 +139,7 @@ func (tca *TCA) readRootPreKey() error {
 
 		err = ioutil.WriteFile(tca.path+"/root_pk.hmac", []byte(cooked), 0644)
 		if err != nil {
-			Panic.Panicln(err)
+			tcaLogger.Panic(err)
 		}
 	} else {
 		cooked = string(raw)
@@ -173,7 +178,7 @@ func (tca *TCA) initializePreKeyGroup(group *AffiliationGroup) error {
 }
 
 func (tca *TCA) initializePreKeyTree() error {
-	Trace.Println("Initializing PreKeys.")
+	tcaLogger.Debug("Initializing PreKeys.")
 	groups, err := tca.eca.readAffiliationGroups()
 	if err != nil {
 		return err
@@ -186,7 +191,7 @@ func (tca *TCA) initializePreKeyTree() error {
 				return err
 			}
 		}
-		Trace.Println("Initializing PK group ", group.name)
+		tcaLogger.Debug("Initializing PK group ", group.name)
 		tca.preKeys[group.name] = group.preKey
 	}
 
@@ -207,36 +212,36 @@ func (tca *TCA) getPreKFrom(enrollmentCertificate *x509.Certificate) ([]byte, er
 
 // Start starts the TCA.
 func (tca *TCA) Start(srv *grpc.Server) {
-	Info.Println("Staring TCA services...")
+	tcaLogger.Info("Staring TCA services...")
 	tca.startTCAP(srv)
 	tca.startTCAA(srv)
 	tca.gRPCServer = srv
-	Info.Println("TCA started.")
+	tcaLogger.Info("TCA started.")
 }
 
 // Stop stops the TCA services.
 func (tca *TCA) Stop() error {
-	Info.Println("Stopping the TCA services...")
+	tcaLogger.Info("Stopping the TCA services...")
 	if tca.gRPCServer != nil {
 		tca.gRPCServer.Stop()
 	}
 	err := tca.CA.Stop()
 	if err != nil {
-		Error.Println("Error stopping TCA services", err)
+		tcaLogger.Errorf("Error stopping TCA services: %s", err)
 	} else {
-		Info.Println("TCA services stopped")
+		tcaLogger.Info("TCA services stopped")
 	}
 	return err
 }
 
 func (tca *TCA) startTCAP(srv *grpc.Server) {
 	pb.RegisterTCAPServer(srv, &TCAP{tca})
-	Info.Println("TCA PUBLIC gRPC API server started")
+	tcaLogger.Info("TCA PUBLIC gRPC API server started")
 }
 
 func (tca *TCA) startTCAA(srv *grpc.Server) {
 	pb.RegisterTCAAServer(srv, &TCAA{tca})
-	Info.Println("TCA ADMIN gRPC API server started")
+	tcaLogger.Info("TCA ADMIN gRPC API server started")
 }
 
 func (tca *TCA) getCertificateSets(enrollmentID string) ([]*TCertSet, error) {
@@ -278,7 +283,7 @@ func (tca *TCA) persistCertificateSet(enrollmentID string, timestamp int64, nonc
 	var err error
 
 	if _, err = tca.db.Exec("INSERT INTO TCertificateSets (enrollmentID, timestamp, nonce, kdfkey) VALUES (?, ?, ?, ?)", enrollmentID, timestamp, nonce, kdfKey); err != nil {
-		Error.Println(err)
+		tcaLogger.Error(err)
 	}
 	return err
 }

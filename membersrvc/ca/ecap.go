@@ -34,9 +34,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
+
+var ecapLogger = logging.MustGetLogger("ecap")
 
 // ECAP serves the public GRPC interface of the ECA.
 //
@@ -47,7 +50,7 @@ type ECAP struct {
 // ReadCACertificate reads the certificate of the ECA.
 //
 func (ecap *ECAP) ReadCACertificate(ctx context.Context, in *pb.Empty) (*pb.Cert, error) {
-	Trace.Println("gRPC ECAP:ReadCACertificate")
+	ecapLogger.Debug("gRPC ECAP:ReadCACertificate")
 
 	return &pb.Cert{Cert: ecap.eca.raw}, nil
 }
@@ -98,7 +101,7 @@ func (ecap *ECAP) fetchAttributes(cert *pb.Cert) error {
 // CreateCertificatePair requests the creation of a new enrollment certificate pair by the ECA.
 //
 func (ecap *ECAP) CreateCertificatePair(ctx context.Context, in *pb.ECertCreateReq) (*pb.ECertCreateResp, error) {
-	Trace.Println("gRPC ECAP:CreateCertificate")
+	ecapLogger.Debug("gRPC ECAP:CreateCertificate")
 
 	// validate token
 	var tok, prev []byte
@@ -110,11 +113,11 @@ func (ecap *ECAP) CreateCertificatePair(ctx context.Context, in *pb.ECertCreateR
 
 	if err != nil {
 		errMsg := "Identity lookup error: " + err.Error()
-		Trace.Println(errMsg)
+		ecapLogger.Debug(errMsg)
 		return nil, errors.New(errMsg)
 	}
 	if !bytes.Equal(tok, in.Tok.Tok) {
-		Trace.Printf("id or token mismatch: id=%s\n", id)
+		ecapLogger.Debugf("id or token mismatch: id=%s", id)
 		return nil, errors.New("Identity or token does not match.")
 	}
 
@@ -134,7 +137,7 @@ func (ecap *ECAP) CreateCertificatePair(ctx context.Context, in *pb.ECertCreateR
 		mutex.Unlock()
 
 		if err != nil {
-			Error.Println(err)
+			ecapLogger.Error(err)
 			return nil, err
 		}
 
@@ -188,7 +191,7 @@ func (ecap *ECAP) CreateCertificatePair(ctx context.Context, in *pb.ECertCreateR
 		spec := NewDefaultCertificateSpecWithCommonName(id, enrollID, skey.(*ecdsa.PublicKey), x509.KeyUsageDigitalSignature, pkix.Extension{Id: ECertSubjectRole, Critical: true, Value: []byte(strconv.Itoa(ecap.eca.readRole(id)))})
 		sraw, err := ecap.eca.createCertificateFromSpec(spec, ts, nil, true)
 		if err != nil {
-			Error.Println(err)
+			ecapLogger.Error(err)
 			return nil, err
 		}
 
@@ -200,7 +203,7 @@ func (ecap *ECAP) CreateCertificatePair(ctx context.Context, in *pb.ECertCreateR
 			mutex.Lock()
 			ecap.eca.db.Exec("DELETE FROM Certificates Where id=?", id)
 			mutex.Unlock()
-			Error.Println(err)
+			ecapLogger.Error(err)
 			return nil, err
 		}
 
@@ -211,7 +214,7 @@ func (ecap *ECAP) CreateCertificatePair(ctx context.Context, in *pb.ECertCreateR
 			mutex.Lock()
 			ecap.eca.db.Exec("DELETE FROM Certificates Where id=?", id)
 			mutex.Unlock()
-			Error.Println(err)
+			ecapLogger.Error(err)
 			return nil, err
 		}
 
@@ -241,7 +244,7 @@ func (ecap *ECAP) CreateCertificatePair(ctx context.Context, in *pb.ECertCreateR
 // ReadCertificatePair reads an enrollment certificate pair from the ECA.
 //
 func (ecap *ECAP) ReadCertificatePair(ctx context.Context, in *pb.ECertReadReq) (*pb.CertPair, error) {
-	Trace.Println("gRPC ECAP:ReadCertificate")
+	ecapLogger.Debug("gRPC ECAP:ReadCertificate")
 
 	rows, err := ecap.eca.readCertificates(in.Id.Id)
 	defer rows.Close()
@@ -267,7 +270,7 @@ func (ecap *ECAP) ReadCertificatePair(ctx context.Context, in *pb.ECertReadReq) 
 // ReadCertificateByHash reads a single enrollment certificate by hash from the ECA.
 //
 func (ecap *ECAP) ReadCertificateByHash(ctx context.Context, hash *pb.Hash) (*pb.Cert, error) {
-	Trace.Println("gRPC ECAP:ReadCertificateByHash")
+	ecapLogger.Debug("gRPC ECAP:ReadCertificateByHash")
 
 	raw, err := ecap.eca.readCertificateByHash(hash.Hash)
 	return &pb.Cert{Cert: raw}, err
@@ -276,7 +279,7 @@ func (ecap *ECAP) ReadCertificateByHash(ctx context.Context, hash *pb.Hash) (*pb
 // RevokeCertificatePair revokes a certificate pair from the ECA.  Not yet implemented.
 //
 func (ecap *ECAP) RevokeCertificatePair(context.Context, *pb.ECertRevokeReq) (*pb.CAStatus, error) {
-	Trace.Println("gRPC ECAP:RevokeCertificate")
+	ecapLogger.Debug("gRPC ECAP:RevokeCertificate")
 
 	return nil, errors.New("ECAP:RevokeCertificate method not (yet) implemented")
 }

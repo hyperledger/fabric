@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"google/protobuf"
 	"io/ioutil"
-	"os"
 	"testing"
 	"time"
 
@@ -68,7 +67,7 @@ func TestCreateCertificateSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const EXPECTED_TCERT_SUBJECT_COMMON_NAME_VALUE string = "Transaction Certificate"
+	const expectedTcertSubjectCommonNameValue string = "Transaction Certificate"
 	ncerts := 1
 	for nattributes := -1; nattributes < 1; nattributes++ {
 		certificateSetRequest, err := buildCertificateSetRequest(enrollmentID, priv, ncerts, nattributes)
@@ -112,8 +111,8 @@ func TestCreateCertificateSet(t *testing.T) {
 			}
 
 			t.Logf("Examining TCert[%d]'s Subject: %v", pos, tcert.Subject)
-			if tcert.Subject.CommonName != EXPECTED_TCERT_SUBJECT_COMMON_NAME_VALUE {
-				t.Fatalf("The TCert's Subject.CommonName is '%s' which is different than '%s'", tcert.Subject.CommonName, EXPECTED_TCERT_SUBJECT_COMMON_NAME_VALUE)
+			if tcert.Subject.CommonName != expectedTcertSubjectCommonNameValue {
+				t.Fatalf("The TCert's Subject.CommonName is '%s' which is different than '%s'", tcert.Subject.CommonName, expectedTcertSubjectCommonNameValue)
 			}
 			t.Logf("Successfully verified that TCert[%d].Subject.CommonName == '%s'", pos, tcert.Subject.CommonName)
 		}
@@ -155,8 +154,6 @@ func initTCA() (*TCA, error) {
 		return nil, fmt.Errorf("Failed initializing the crypto layer [%v]", err)
 	}
 
-	//initialize logging to avoid panics in the current code
-	LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr, os.Stdout)
 	CacheConfiguration() // Cache configuration
 	eca := NewECA()
 	if eca == nil {

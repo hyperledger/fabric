@@ -19,7 +19,6 @@ package ca
 import (
 	"io/ioutil"
 	"net"
-	"os"
 	"testing"
 	"time"
 
@@ -63,7 +62,6 @@ func TestTLS(t *testing.T) {
 }
 
 func startTLSCA(t *testing.T) {
-	LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr, os.Stdout)
 	CacheConfiguration() // Cache configuration
 	ecaS = NewECA()
 	tlscaS = NewTLSCA(ecaS)

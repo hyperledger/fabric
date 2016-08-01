@@ -26,8 +26,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
+	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 )
+
+var ecaaLogger = logging.MustGetLogger("ecaa")
 
 // ECAA serves the administrator GRPC interface of the ECA.
 //
@@ -39,7 +42,7 @@ type ECAA struct {
 // an error is returned.
 //
 func (ecaa *ECAA) RegisterUser(ctx context.Context, in *pb.RegisterUserReq) (*pb.Token, error) {
-	Trace.Println("gRPC ECAA:RegisterUser")
+	ecaaLogger.Debug("gRPC ECAA:RegisterUser")
 
 	// Check the signature
 	err := ecaa.checkRegistrarSignature(in)
@@ -56,7 +59,7 @@ func (ecaa *ECAA) RegisterUser(ctx context.Context, in *pb.RegisterUserReq) (*pb
 		return nil, err
 	}
 	jsonStr := string(json)
-	Trace.Println("gRPC ECAA:RegisterUser: json=" + jsonStr)
+	ecaaLogger.Debugf("gRPC ECAA:RegisterUser: json=%s", jsonStr)
 	tok, err := ecaa.eca.registerUser(in.Id.Id, in.Affiliation, in.Role, registrarID, jsonStr)
 
 	// Return the one-time password
@@ -65,11 +68,11 @@ func (ecaa *ECAA) RegisterUser(ctx context.Context, in *pb.RegisterUserReq) (*pb
 }
 
 func (ecaa *ECAA) checkRegistrarSignature(in *pb.RegisterUserReq) error {
-	Trace.Println("ECAA.checkRegistrarSignature")
+	ecaaLogger.Debug("ECAA.checkRegistrarSignature")
 
 	// If no registrar was specified
 	if in.Registrar == nil || in.Registrar.Id == nil || in.Registrar.Id.Id == "" {
-		Trace.Println("gRPC ECAA:checkRegistrarSignature: no registrar was specified")
+		ecaaLogger.Debug("gRPC ECAA:checkRegistrarSignature: no registrar was specified")
 		return errors.New("no registrar was specified")
 	}
 
@@ -102,19 +105,19 @@ func (ecaa *ECAA) checkRegistrarSignature(in *pb.RegisterUserReq) error {
 	// Check the signature
 	if ecdsa.Verify(cert.PublicKey.(*ecdsa.PublicKey), hash.Sum(nil), r, s) == false {
 		// Signature verification failure
-		Trace.Printf("ECAA.checkRegistrarSignature: failure for %s\n", registrar)
+		ecaaLogger.Debugf("ECAA.checkRegistrarSignature: failure for %s", registrar)
 		return errors.New("Signature verification failed.")
 	}
 
 	// Signature verification was successful
-	Trace.Printf("ECAA.checkRegistrarSignature: success for %s\n", registrar)
+	ecaaLogger.Debugf("ECAA.checkRegistrarSignature: success for %s", registrar)
 	return nil
 }
 
 // ReadUserSet returns a list of users matching the parameters set in the read request.
 //
 func (ecaa *ECAA) ReadUserSet(ctx context.Context, in *pb.ReadUserSetReq) (*pb.UserSet, error) {
-	Trace.Println("gRPC ECAA:ReadUserSet")
+	ecaaLogger.Debug("gRPC ECAA:ReadUserSet")
 
 	req := in.Req.Id
 	if ecaa.eca.readRole(req)&int(pb.Role_AUDITOR) == 0 {
@@ -168,7 +171,7 @@ func (ecaa *ECAA) ReadUserSet(ctx context.Context, in *pb.ReadUserSetReq) (*pb.U
 // RevokeCertificate revokes a certificate from the ECA.  Not yet implemented.
 //
 func (ecaa *ECAA) RevokeCertificate(context.Context, *pb.ECertRevokeReq) (*pb.CAStatus, error) {
-	Trace.Println("gRPC ECAA:RevokeCertificate")
+	ecaaLogger.Debug("gRPC ECAA:RevokeCertificate")
 
 	return nil, errors.New("ECAA:RevokeCertificate method not (yet) implemented")
 }
@@ -176,7 +179,7 @@ func (ecaa *ECAA) RevokeCertificate(context.Context, *pb.ECertRevokeReq) (*pb.CA
 // PublishCRL requests the creation of a certificate revocation list from the ECA.  Not yet implemented.
 //
 func (ecaa *ECAA) PublishCRL(context.Context, *pb.ECertCRLReq) (*pb.CAStatus, error) {
-	Trace.Println("gRPC ECAA:CreateCRL")
+	ecaaLogger.Debug("gRPC ECAA:CreateCRL")
 
 	return nil, errors.New("ECAA:PublishCRL method not (yet) implemented")
 }

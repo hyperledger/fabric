@@ -19,7 +19,6 @@ package ca
 import (
 	"encoding/asn1"
 	"errors"
-	"fmt"
 	"google/protobuf"
 	"strings"
 	"time"
@@ -28,11 +27,15 @@ import (
 
 	"database/sql"
 
+	"github.com/hyperledger/fabric/flogging"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
 )
+
+var acaLogger = logging.MustGetLogger("aca")
 
 var (
 	//ACAAttribute is the base OID to the attributes extensions.
@@ -220,7 +223,7 @@ func (attrPair *AttributePair) ToACAAttribute() *pb.ACAAttribute {
 // NewACA sets up a new ACA.
 func NewACA() *ACA {
 	aca := &ACA{CA: NewCA("aca", initializeACATables)}
-
+	flogging.LoggingInit("aca")
 	return aca
 }
 
@@ -263,12 +266,12 @@ func (aca *ACA) fetchAttributes(id, affiliation string) ([]*AttributePair, error
 				}
 				attributes = append(attributes, attrPair)
 			} else {
-				Error.Printf("Invalid attribute entry '%v'", vals[0])
+				acaLogger.Errorf("Invalid attribute entry '%v'", vals[0])
 			}
 		}
 	}
 
-	fmt.Printf("%v %v", id, attributes)
+	acaLogger.Debugf("%v %v", id, attributes)
 
 	return attributes, nil
 }
@@ -365,28 +368,28 @@ func (aca *ACA) findAttribute(owner *AttributeOwner, attributeName string) (*Att
 
 func (aca *ACA) startACAP(srv *grpc.Server) {
 	pb.RegisterACAPServer(srv, &ACAP{aca})
-	Info.Println("ACA PUBLIC gRPC API server started")
+	acaLogger.Info("ACA PUBLIC gRPC API server started")
 }
 
 // Start starts the ACA.
 func (aca *ACA) Start(srv *grpc.Server) {
-	Info.Println("Staring ACA services...")
+	acaLogger.Info("Staring ACA services...")
 	aca.startACAP(srv)
 	aca.gRPCServer = srv
-	Info.Println("ACA services started")
+	acaLogger.Info("ACA services started")
 }
 
 // Stop stops the ACA
 func (aca *ACA) Stop() error {
-	Info.Println("Stopping the ACA services...")
+	acaLogger.Info("Stopping the ACA services...")
 	if aca.gRPCServer != nil {
 		aca.gRPCServer.Stop()
 	}
 	err := aca.CA.Stop()
 	if err != nil {
-		Error.Println("Error stopping the ACA services ", err)
+		acaLogger.Errorf("Error stopping the ACA services: %s ", err)
 	} else {
-		Info.Println("ACA services stopped")
+		acaLogger.Info("ACA services stopped")
 	}
 	return err
 }
