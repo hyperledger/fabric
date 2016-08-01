@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 
 func TestMissingMessageHandlerUnicast(t *testing.T) {
 	emptyHandlerMap := handlerMap{m: make(map[pb.PeerID]MessageHandler)}
-	peerImpl := PeerImpl{handlerMap: &emptyHandlerMap}
+	peerImpl := Impl{handlerMap: &emptyHandlerMap}
 	err := peerImpl.Unicast(nil, &pb.PeerID{})
 	if err == nil {
 		t.Error("Expected error with bad receiver handle, but there was none")

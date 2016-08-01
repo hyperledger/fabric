@@ -135,6 +135,7 @@ func GetLocalAddress() (string, error) {
 	return localAddress, localAddressError
 }
 
+// GetPeerEndpoint returns peerEndpoint from cached configuration
 func GetPeerEndpoint() (*pb.PeerEndpoint, error) {
 	if !configurationCached {
 		cacheConfiguration()
@@ -174,6 +175,7 @@ func ValidatorEnabled() bool {
 	return validatorEnabled
 }
 
+// SecurityEnabled returns the securityEnabled property from cached configuration
 func SecurityEnabled() bool {
 	if !configurationCached {
 		cacheConfiguration()
