@@ -52,6 +52,7 @@ It has these top-level messages:
 	PeerID
 	PeerEndpoint
 	PeersMessage
+	PeersAddresses
 	HelloMessage
 	Message
 	Response

@@ -13,7 +13,7 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// Chaincode is used for events and registrations that are specific to chaincode
+// ChaincodeEvent is used for events and registrations that are specific to chaincode
 // string type - "chaincode"
 type ChaincodeEvent struct {
 	ChaincodeID string `protobuf:"bytes,1,opt,name=chaincodeID" json:"chaincodeID,omitempty"`

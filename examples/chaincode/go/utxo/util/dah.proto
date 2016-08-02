@@ -16,7 +16,7 @@ limitations under the License.
 
 syntax = "proto3";
 
-package utxo;
+package util;
 
 message TX {
 	uint32 version = 1;
