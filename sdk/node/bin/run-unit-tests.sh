@@ -133,7 +133,7 @@ prepareExampleForDeployInNetworkMode() {
    mkdir -p vendor/github.com/hyperledger
    cd vendor/github.com/hyperledger
    echo "cloning github.com/hyperledger/fabric; please wait ..."
-   git clone https://github.com/hyperledger/fabric > /dev/null
+   git clone http://gerrit.hyperledger.org/r/fabric > /dev/null
    cp -r fabric/vendor/github.com/op ..
    cd ../../..
    go build

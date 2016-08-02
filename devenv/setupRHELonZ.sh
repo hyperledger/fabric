@@ -10,7 +10,7 @@
 #       yum install git
 #       mkdir -p $HOME/git/src/github.com/hyperledger
 #       cd $HOME/git/src/github.com/hyperledger
-#       git clone https://github.com/hyperledger/fabric.git
+#       git clone http://gerrit.hyperledger.org/r/fabric
 #       source fabric/devenv/setupRHELonZ.sh
 #       make peer unit-test behave
 

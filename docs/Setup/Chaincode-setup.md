@@ -181,7 +181,7 @@ Next, you'll need to clone the Hyperledger fabric to your local $GOPATH, so that
 ```
 mkdir -p $GOPATH/src/github.com/hyperledger
 cd $GOPATH/src/github.com/hyperledger
-git clone https://github.com/hyperledger/fabric.git
+git clone http://gerrit.hyperledger.org/r/fabric
 ```
 
 Now, you should be able to build your chaincode.
