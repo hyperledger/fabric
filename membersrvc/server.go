@@ -93,7 +93,9 @@ func main() {
 	}
 	srv := grpc.NewServer(opts...)
 
-	aca.Start(srv)
+	if viper.GetBool("aca.enabled") {
+		aca.Start(srv)
+	}
 	eca.Start(srv)
 	tca.Start(srv)
 	tlsca.Start(srv)
