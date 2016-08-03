@@ -30,18 +30,6 @@
 			"revisionTime": "2016-07-26T09:12:10Z"
 		},
 		{
-			"checksumSHA1": "Ufrex/PpclfqVToYNvjB1y4dg0A=",
-			"path": "github.com/docker/go-units",
-			"revision": "f2d77a61e3c169b43402a0a1e84f06daf29b8190",
-			"revisionTime": "2016-06-13T21:20:13Z"
-		},
-		{
-			"checksumSHA1": "uhWARwDA6NE60a3/snaz9QBM7Ow=",
-			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "d433254bb83b41d7072ce470e312ea3cee257882",
-			"revisionTime": "2016-07-25T13:44:23Z"
-		},
-		{
 			"checksumSHA1": "/Q1GjTd4UDnPMJxI10PTazyN37k=",
 			"path": "github.com/docker/docker/pkg/archive",
 			"revision": "bad654b00c954e31007c5004629e236c06ca4046",
@@ -126,6 +114,18 @@
 			"revisionTime": "2016-06-13T21:20:13Z"
 		},
 		{
+			"checksumSHA1": "Ufrex/PpclfqVToYNvjB1y4dg0A=",
+			"path": "github.com/docker/go-units",
+			"revision": "f2d77a61e3c169b43402a0a1e84f06daf29b8190",
+			"revisionTime": "2016-06-13T21:20:13Z"
+		},
+		{
+			"checksumSHA1": "uhWARwDA6NE60a3/snaz9QBM7Ow=",
+			"path": "github.com/fsouza/go-dockerclient",
+			"revision": "d433254bb83b41d7072ce470e312ea3cee257882",
+			"revisionTime": "2016-07-25T13:44:23Z"
+		},
+		{
 			"checksumSHA1": "uhWARwDA6NE60a3/snaz9QBM7Ow=",
 			"path": "github.com/fsouza/go-dockerclient",
 			"revision": "d433254bb83b41d7072ce470e312ea3cee257882",
@@ -184,7 +184,6 @@
 		},
 		{
 			"checksumSHA1": "WI+JevQX15p9zqngb1BMHvrPAgU=",
-			"origin": "github.com/hyperledger/fabric/vendor/github.com/howeyc/gopass",
 			"path": "github.com/howeyc/gopass",
 			"revision": "66487b23f2880ba32e185121d2cd51a338ea069a",
 			"revisionTime": "2016-03-03T20:01:16Z"
@@ -251,9 +250,10 @@
 			"revisionTime": "2015-08-01T19:34:06-07:00"
 		},
 		{
+			"checksumSHA1": "hvkXE4HQ2zgWaCkt3CQTki5hvqc=",
 			"path": "github.com/spf13/cobra",
-			"revision": "4b86c66ef25470e678a4d6a372711d7050344ccc",
-			"revisionTime": "2015-09-09T14:20:07-05:00"
+			"revision": "7c674d9e72017ed25f6d2b5e497a1368086b6a6f",
+			"revisionTime": "2016-08-02T22:37:37Z"
 		},
 		{
 			"path": "github.com/spf13/jwalterweatherman",
@@ -261,9 +261,10 @@
 			"revisionTime": "2014-09-11T15:55:44-05:00"
 		},
 		{
+			"checksumSHA1": "45OZzM/Hyc8mwjG2zn38n6bKZws=",
 			"path": "github.com/spf13/pflag",
-			"revision": "f735fdff4ffb34299727eb2e3c9abab588742d41",
-			"revisionTime": "2015-09-08T08:49:52-05:00"
+			"revision": "1560c1005499d61b80f865c04d39ca7505bf7f0b",
+			"revisionTime": "2016-07-18T21:50:57Z"
 		},
 		{
 			"path": "github.com/spf13/viper",
