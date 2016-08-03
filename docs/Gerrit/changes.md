@@ -46,13 +46,13 @@ width less than 80 characters. A bug fix should include the issue number.
 Fix Issue # 7050.
 
 Change-Id: IF7b6ac513b2eca5f2bab9728ebd8b7e504d3cebe1
-Signed-off-by: Your Name commit-sender@email.address
+Signed-off-by: Your Name <commit-sender@email.address>
 ```
 Each commit must contain the following line at the bottom of the commit
 message:
 
 ```
-Signed-off-by: Your Name your@email.address
+Signed-off-by: Your Name <your@email.address>
 ```
 
 The name in the Signed-off-by line and your email must match the change
