@@ -1113,7 +1113,7 @@ func NewConsenter(cpi consensus.CPI) (consenter consensus.Consenter)
 
 This function reads the `peer.validator.consensus` value in `core.yaml` configuration file, which is the  configuration file for the `peer` process. The value of the `peer.validator.consensus` key defines whether the validating peer will run with the `noops` consensus plugin or the `pbft` one. (Notice that this should eventually be changed to either `noops` or `custom`. In case of `custom`, the validating peer will run with the consensus plugin defined in `consensus/config.yaml`.)
 
-The plugin author needs to edit the function's body so that it routes to the right constructor for their package. For example, for `pbft` we point to the `obcpft.GetPlugin` constructor.
+The plugin author needs to edit the function's body so that it routes to the right constructor for their package. For example, for `pbft` we point to the `pbft.GetPlugin` constructor.
 
 This function is called by `helper.NewConsensusHandler` when setting the `consenter` field of the returned message handler. The input argument `cpi` is the output of the `helper.NewHelper` constructor and implements the `consensus.CPI` interface.
 
