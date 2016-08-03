@@ -38,9 +38,12 @@ function and a third one changes the code's functionality.  An example commit
 file is illustrated below in detail:
 
 ```
-Updating tables presentation.
+A short description of your change with no period at the end
 
-Tables were misaligned; fixed spacing.
+You can add more details here in several paragraphs, but please keep each line
+width less than 80 characters. A bug fix should include the issue number.
+
+Fix Issue # 7050.
 
 Change-Id: IF7b6ac513b2eca5f2bab9728ebd8b7e504d3cebe1
 Signed-off-by: Your Name commit-sender@email.address
