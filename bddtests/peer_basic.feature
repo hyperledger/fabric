@@ -898,7 +898,7 @@ Feature: Network of Peers
 			|arg1|arg2|arg3|
 			| a  | b  | 10 |
 	    Then I should have received a transactionID
-	    Then I wait up to "60" seconds for transaction to be committed to peers:
+	    Then I wait up to "65" seconds for transaction to be committed to peers:
             | vp0  | vp1 | vp2 |
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 |
