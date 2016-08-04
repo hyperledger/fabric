@@ -64,7 +64,7 @@ func (d *handler) register(iMsg []*pb.Interest) error {
 	//if successfully done, continue....
 	for _, v := range iMsg {
 		if err := registerHandler(v, d); err != nil {
-			producerLogger.Errorf("could not register %s", v)
+			producerLogger.Errorf("could not register %s: %s", v, err)
 			continue
 		}
 		d.addInterest(v)
