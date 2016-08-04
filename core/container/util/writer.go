@@ -39,14 +39,14 @@ var fileTypes = map[string]bool{
 	".yaml": true,
 	".json": true,
 }
+var javaFileTypes = map[string]bool{
+	".java":       true,
+	".properties": true,
+	".gradle":     true,
+}
 
-//WriteGopathSrc tars up files under gopath src
-func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
-	gopath := os.Getenv("GOPATH")
-	// Only take the first element of GOPATH
-	gopath = filepath.SplitList(gopath)[0]
-
-	rootDirectory := filepath.Join(gopath, "src")
+func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, includeFileTypeMap map[string]bool) error {
+	rootDirectory := srcPath
 	vmLogger.Infof("rootDirectory = %s", rootDirectory)
 
 	//append "/" if necessary
@@ -78,7 +78,7 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 
 		// we only want 'fileTypes' source files at this point
 		ext := filepath.Ext(path)
-		if _, ok := fileTypes[ext]; ok != true {
+		if _, ok := includeFileTypeMap[ext]; ok != true {
 			return nil
 		}
 
@@ -97,6 +97,22 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 		vmLogger.Infof("Error walking rootDirectory: %s", err)
 		return err
 	}
+	return nil
+}
+
+//WriteGopathSrc tars up files under gopath src
+func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
+	gopath := os.Getenv("GOPATH")
+	// Only take the first element of GOPATH
+	gopath = filepath.SplitList(gopath)[0]
+
+	rootDirectory := filepath.Join(gopath, "src")
+	vmLogger.Infof("rootDirectory = %s", rootDirectory)
+
+	if err := WriteFolderToTarPackage(tw, rootDirectory, excludeDir, fileTypes); err != nil {
+		vmLogger.Errorf("Error writing folder to tar package %s", err)
+		return err
+	}
 
 	// Add the certificates to tar
 	if viper.GetBool("peer.tls.enabled") {
@@ -112,6 +128,21 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	}
 	//ioutil.WriteFile("/tmp/chaincode_deployment.tar", inputbuf.Bytes(), 0644)
 	return nil
+}
+
+func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
+
+	if err := WriteFolderToTarPackage(tw, srcPath, "", javaFileTypes); err != nil {
+
+		vmLogger.Errorf("Error writing folder to tar package %s", err)
+		return err
+	}
+	// Write the tar file out
+	if err := tw.Close(); err != nil {
+		return err
+	}
+	return nil
+
 }
 
 //WriteFileToPackage writes a file to the tarball

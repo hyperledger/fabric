@@ -298,10 +298,13 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cID *pb.ChaincodeID, cLa
 	case pb.ChaincodeSpec_JAVA:
 		//TODO add security args
 		args = strings.Split(
-			fmt.Sprintf("/usr/bin/gradle run -p /root -PappArgs=[\"-a\",\"%s\",\"-i\",\"%s\"]"+
-				" -x processResources -x classes", chaincodeSupport.peerAddress, cID.Name),
+			fmt.Sprintf("/root/Chaincode/bin/runChaincode -a %s -i %s",
+				chaincodeSupport.peerAddress, cID.Name),
 			" ")
-		chaincodeLogger.Debugf("Executable is gradle run on chaincode ID %s", cID.Name)
+		if chaincodeSupport.peerTLS {
+			args = append(args, " -s")
+		}
+		chaincodeLogger.Debugf("Executable is %s", args[0])
 	default:
 		return nil, nil, fmt.Errorf("Unknown chaincodeType: %s", cLang)
 	}

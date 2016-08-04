@@ -24,21 +24,15 @@ buildscript {
 		classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.6'
 	}
 }
-	
+
 plugins {
 	id "java"
 	id "com.google.protobuf" version "0.7.6"
 	id "eclipse"
-	id "application"
 }
+archivesBaseName = 'chaincode'
+version = '1.0'
 
-mainClassName = "example.SimpleSample"
-
-run {
-	if (project.hasProperty("appArgs")) {
-		args = Eval.me(appArgs)
-	}
-}
 
 sourceSets {
 	main {
@@ -82,8 +76,25 @@ protobuf {
 	}
 }
 
+task copyToLib(type: Copy) {
+    into "$buildDir/libs"
+    from configurations.runtime
+}
+
+
+task copyProtos(type:Copy){
+ into "${projectDir}/src/main/proto"
+ from "${rootDir}/protos"
+ include '**/chaincodeevent.proto'
+ include '**/chaincode.proto'
+}
+
+tasks['build'].mustRunAfter tasks['copyProtos']
+build.dependsOn(copyProtos)
+build.finalizedBy(copyToLib)
+
 dependencies {
-	compile 'com.google.protobuf:protobuf-java:3.0.0-beta-2'
+	compile 'com.google.protobuf:protobuf-java:3.0.0-beta-2' 
 	compile 'io.grpc:grpc-all:0.13.2'
 	compile 'commons-cli:commons-cli:1.3.1'
 }

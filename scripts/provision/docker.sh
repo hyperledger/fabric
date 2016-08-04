@@ -104,13 +104,6 @@ done`
 COPY scripts $REMOTESCRIPTS
 RUN $REMOTESCRIPTS/common.sh
 RUN chmod a+rw -R /opt/gopath
-RUN add-apt-repository ppa:openjdk-r/ppa -y
-RUN apt-get update && apt-get install openjdk-8-jdk -y
-RUN wget https://services.gradle.org/distributions/gradle-2.12-bin.zip -P /tmp --quiet
-RUN unzip -q /tmp/gradle-2.12-bin.zip -d /opt && rm /tmp/gradle-2.12-bin.zip
-RUN ln -s /opt/gradle-2.12/bin/gradle /usr/bin
-# TODO JAVA_HOME set here, consider using update-java-alternatives
-ENV JAVA_HOME /usr/lib/jvm/java-1.8.0-openjdk-amd64
 
 EOF
 

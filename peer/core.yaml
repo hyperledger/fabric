@@ -294,10 +294,12 @@ chaincode:
         Dockerfile:  |
             FROM hyperledger/fabric-ccenv
     java:
-        # This is the same bases image used for golang implementation
-        # TODO Consider moving java installation from common provision shell script to here
+        # This is an image based on java:openjdk-8 with addition compiler
+        # tools added for java shim layer packaging.
+        # This image is packed with shim layer libraries that are necessary
+        # for Java chaincode runtime.
         Dockerfile:  |
-            from hyperledger/fabric-baseimage
+            from hyperledger/fabric-javaenv
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests

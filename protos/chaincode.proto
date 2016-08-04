@@ -17,7 +17,7 @@ limitations under the License.
 syntax = "proto3";
 
 package protos;
-
+option java_package = "org.hyperledger.protos";
 import "chaincodeevent.proto";
 import "google/protobuf/timestamp.proto";
 
