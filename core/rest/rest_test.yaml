@@ -344,9 +344,6 @@ ledger:
 
   blockchain:
 
-    # Define the genesis block
-    genesisBlock:
-
   state:
 
     # Control the number state deltas that are maintained. This takes additional

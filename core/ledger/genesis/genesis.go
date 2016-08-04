@@ -28,8 +28,7 @@ var genesisLogger = logging.MustGetLogger("genesis")
 var makeGenesisError error
 var once sync.Once
 
-// MakeGenesis creates the genesis block based on configuration in core.yaml
-// and adds it to the blockchain.
+// MakeGenesis creates the genesis block and adds it to the blockchain.
 func MakeGenesis() error {
 	once.Do(func() {
 		ledger, err := ledger.GetLedger()
