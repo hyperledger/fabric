@@ -23,28 +23,27 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"unicode"
 )
 
-var templateFuncs template.FuncMap = template.FuncMap{
-	"trim": strings.TrimSpace,
-	"rpad": rpad,
-	"gt":   Gt,
-	"eq":   Eq,
+var templateFuncs = template.FuncMap{
+	"trim":               strings.TrimSpace,
+	"trimRightSpace":     trimRightSpace,
+	"appendIfNotPresent": appendIfNotPresent,
+	"rpad":               rpad,
+	"gt":                 Gt,
+	"eq":                 Eq,
 }
 
 var initializers []func()
 
 // automatic prefix matching can be a dangerous thing to automatically enable in CLI tools.
 // Set this to true to enable it
-var EnablePrefixMatching bool = false
+var EnablePrefixMatching = false
 
-// enables an information splash screen on Windows if the CLI is started from explorer.exe.
-var EnableWindowsMouseTrap bool = true
-
-var MousetrapHelpText string = `This is a command line tool
-
-You need to open cmd.exe and run it from there.
-`
+//EnableCommandSorting controls sorting of the slice of commands, which is turned on by default.
+//To disable sorting, set it to false.
+var EnableCommandSorting = true
 
 //AddTemplateFunc adds a template function that's available to Usage and Help
 //template generation.
@@ -113,6 +112,18 @@ func Eq(a interface{}, b interface{}) bool {
 	return false
 }
 
+func trimRightSpace(s string) string {
+	return strings.TrimRightFunc(s, unicode.IsSpace)
+}
+
+// appendIfNotPresent will append stringToAppend to the end of s, but only if it's not yet present in s
+func appendIfNotPresent(s, stringToAppend string) string {
+	if strings.Contains(s, stringToAppend) {
+		return s
+	}
+	return s + " " + stringToAppend
+}
+
 //rpad adds padding to the right of a string
 func rpad(s string, padding int) string {
 	template := fmt.Sprintf("%%-%ds", padding)
@@ -125,4 +136,40 @@ func tmpl(w io.Writer, text string, data interface{}) error {
 	t.Funcs(templateFuncs)
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
+}
+
+// ld compares two strings and returns the levenshtein distance between them
+func ld(s, t string, ignoreCase bool) int {
+	if ignoreCase {
+		s = strings.ToLower(s)
+		t = strings.ToLower(t)
+	}
+	d := make([][]int, len(s)+1)
+	for i := range d {
+		d[i] = make([]int, len(t)+1)
+	}
+	for i := range d {
+		d[i][0] = i
+	}
+	for j := range d[0] {
+		d[0][j] = j
+	}
+	for j := 1; j <= len(t); j++ {
+		for i := 1; i <= len(s); i++ {
+			if s[i-1] == t[j-1] {
+				d[i][j] = d[i-1][j-1]
+			} else {
+				min := d[i-1][j]
+				if d[i][j-1] < min {
+					min = d[i][j-1]
+				}
+				if d[i-1][j-1] < min {
+					min = d[i-1][j-1]
+				}
+				d[i][j] = min + 1
+			}
+		}
+
+	}
+	return d[len(s)][len(t)]
 }
