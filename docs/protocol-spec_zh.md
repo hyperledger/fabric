@@ -2414,7 +2414,7 @@ GET host:port/network/peers
             "ID": {
                 "name": "vp1"
             },
-            "address": "172.17.0.4:30303",
+            "address": "172.17.0.4:7051",
             "type": 1,
             "pkiID": "rUA+vX2jVCXev6JsXDNgNBMX03IV9mHRPWo6h6SI0KLMypBJLd+JoGGlqFgi+eq/"
         },
@@ -2422,7 +2422,7 @@ GET host:port/network/peers
             "ID": {
                 "name": "vp3"
             },
-            "address": "172.17.0.5:30303",
+            "address": "172.17.0.5:7051",
             "type": 1,
             "pkiID": "OBduaZJ72gmM+B9wp3aErQlofE0ulQfXfTHh377ruJjOpsUn0MyvsJELUTHpAbHI"
         },
@@ -2430,7 +2430,7 @@ GET host:port/network/peers
             "ID": {
                 "name": "vp2"
             },
-            "address": "172.17.0.6:30303",
+            "address": "172.17.0.6:7051",
             "type": 1,
             "pkiID": "GhtP0Y+o/XVmRNXGF6pcm9KLNTfCZp+XahTBqVRmaIumJZnBpom4ACayVbg4Q/Eb"
         }

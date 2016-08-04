@@ -65,7 +65,7 @@ membersrvc:
 vp0:
   image: hyperledger/fabric-peer
   ports:
-    - "5000:5000"
+    - "7050:7050"
     - "7051:7051"
     - "7052:7052"
   environment:
