@@ -397,21 +397,6 @@ ledger:
 
   blockchain:
 
-    # Define the genesis block
-    genesisBlock:
-
-      # Deploy chaincodes into the genesis block
-      # chaincode:
-      #     path: github.com/hyperledger/fabric/core/example/chaincode/chaincode_example01
-      #     type: GOLANG
-      #     constructor:
-      #       func: init
-      #       args:
-      #         - alice
-      #         - "4"
-      #         - bob
-      #         - "10"
-
     # Setting the deploy-system-chaincode property to false will prevent the
     # deploying of system chaincode at genesis time.
     deploy-system-chaincode: false
