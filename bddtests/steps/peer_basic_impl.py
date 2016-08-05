@@ -25,101 +25,27 @@ import base64
 
 import sys, requests, json
 
+import bdd_compose_util
 import bdd_test_util
+from bdd_test_util import currentTime
+from bdd_rest_util import buildUrl
+from bdd_json_util import getAttributeFromJSON
 
-CORE_REST_PORT = 7050
 JSONRPC_VERSION = "2.0"
-
-class ContainerData:
-    def __init__(self, containerName, ipAddress, envFromInspect, composeService):
-        self.containerName = containerName
-        self.ipAddress = ipAddress
-        self.envFromInspect = envFromInspect
-        self.composeService = composeService
-
-    def getEnv(self, key):
-        envValue = None
-        for val in self.envFromInspect:
-            if val.startswith(key):
-                envValue = val[len(key):]
-                break
-        if envValue == None:
-            raise Exception("ENV key not found ({0}) for container ({1})".format(key, self.containerName))
-        return envValue
-
-def parseComposeOutput(context):
-    """Parses the compose output results and set appropriate values into context.  Merges existing with newly composed."""
-    # Use the prefix to get the container name
-    containerNamePrefix = os.path.basename(os.getcwd()) + "_"
-    containerNames = []
-    for l in context.compose_error.splitlines():
-        tokens = l.split()
-        print(tokens)
-        if 1 < len(tokens):
-            thisContainer = tokens[1]
-            if containerNamePrefix not in thisContainer:
-               thisContainer = containerNamePrefix + thisContainer + "_1"
-            if thisContainer not in containerNames:
-               containerNames.append(thisContainer)
-
-    print("Containers started: ")
-    print(containerNames)
-    # Now get the Network Address for each name, and set the ContainerData onto the context.
-    containerDataList = []
-    for containerName in containerNames:
-    	output, error, returncode = \
-        	bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .NetworkSettings.IPAddress }}", containerName], expect_success=True)
-        print("container {0} has address = {1}".format(containerName, output.splitlines()[0]))
-        ipAddress = output.splitlines()[0]
-
-        # Get the environment array
-        output, error, returncode = \
-            bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .Config.Env }}", containerName], expect_success=True)
-        env = output.splitlines()[0][1:-1].split()
-
-        # Get the Labels to access the com.docker.compose.service value
-        output, error, returncode = \
-            bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .Config.Labels }}", containerName], expect_success=True)
-        labels = output.splitlines()[0][4:-1].split()
-        dockerComposeService = [composeService[27:] for composeService in labels if composeService.startswith("com.docker.compose.service:")][0]
-        print("dockerComposeService = {0}".format(dockerComposeService))
-        print("container {0} has env = {1}".format(containerName, env))
-        containerDataList.append(ContainerData(containerName, ipAddress, env, dockerComposeService))
-    # Now merge the new containerData info with existing
-    newContainerDataList = []
-    if "compose_containers" in context:
-        # Need to merge I new list
-        newContainerDataList = context.compose_containers
-    newContainerDataList = newContainerDataList + containerDataList
-
-    setattr(context, "compose_containers", newContainerDataList)
-    print("")
-
-def buildUrl(context, ipAddress, path):
-    schema = "http"
-    if 'TLS' in context.tags:
-        schema = "https"
-    return "{0}://{1}:{2}{3}".format(schema, ipAddress, CORE_REST_PORT, path)
-
-def currentTime():
-    return time.strftime("%H:%M:%S")
-
-def getDockerComposeFileArgsFromYamlFile(compose_yaml):
-    parts = compose_yaml.split()
-    args = []
-    for part in parts:
-        args = args + ["-f"] + [part]
-    return args
 
 @given(u'we compose "{composeYamlFile}"')
 def step_impl(context, composeYamlFile):
     context.compose_yaml = composeYamlFile
-    fileArgsToDockerCompose = getDockerComposeFileArgsFromYamlFile(context.compose_yaml)
+    fileArgsToDockerCompose = bdd_compose_util.getDockerComposeFileArgsFromYamlFile(context.compose_yaml)
     context.compose_output, context.compose_error, context.compose_returncode = \
         bdd_test_util.cli_call(["docker-compose"] + fileArgsToDockerCompose + ["up","--force-recreate", "-d"], expect_success=True)
     assert context.compose_returncode == 0, "docker-compose failed to bring up {0}".format(composeYamlFile)
-    parseComposeOutput(context)
-    time.sleep(10)              # Should be replaced with a definitive interlock guaranteeing that all peers/membersrvc are ready
+
+    bdd_compose_util.parseComposeOutput(context)
+
+    timeoutSeconds = 15
+    assert bdd_compose_util.allContainersAreReadyWithinTimeout(context, timeoutSeconds), \
+        "Containers did not come up within {} seconds, aborting".format(timeoutSeconds)
 
 @when(u'requesting "{path}" from "{containerName}"')
 def step_impl(context, path, containerName):
@@ -142,15 +68,6 @@ def step_impl(context, attribute):
         assert None, "Attribute found in response (%s)" %(attribute)
     except AssertionError:
         print("Attribute not found as was expected.")
-
-def getAttributeFromJSON(attribute, jsonObject, msg):
-    return getHierarchyAttributesFromJSON(attribute.split("."), jsonObject, msg)
-
-def getHierarchyAttributesFromJSON(attributes, jsonObject, msg):
-    if len(attributes) > 0:
-        assert attributes[0] in jsonObject, msg
-        return getHierarchyAttributesFromJSON(attributes[1:], jsonObject[attributes[0]], msg)
-    return jsonObject
 
 def formatStringToCompare(value):
     # double quotes are replaced by simple quotes because is not possible escape double quotes in the attribute parameters.
@@ -807,7 +724,7 @@ def compose_op(context, op):
     assert 'table' in context, "table (of peers) not found in context"
     assert 'compose_yaml' in context, "compose_yaml not found in context"
 
-    fileArgsToDockerCompose = getDockerComposeFileArgsFromYamlFile(context.compose_yaml)
+    fileArgsToDockerCompose = bdd_compose_util.getDockerComposeFileArgsFromYamlFile(context.compose_yaml)
     services =  context.table.headings
     # Loop through services and start/stop them, and modify the container data list if successful.
     for service in services:
@@ -817,7 +734,7 @@ def compose_op(context, op):
        if op == "stop" or op == "pause":
            context.compose_containers = [containerData for containerData in context.compose_containers if containerData.composeService != service]
        else:
-           parseComposeOutput(context)
+           bdd_compose_util.parseComposeOutput(context)
        print("After {0}ing, the container service list is = {1}".format(op, [containerData.composeService for  containerData in context.compose_containers]))
 
 def to_bytes(strlist):

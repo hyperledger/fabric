@@ -16,6 +16,7 @@
 
 import os
 import re
+import time
 import subprocess
 
 def cli_call(arg_list, expect_success=True):
@@ -117,3 +118,9 @@ def getContainerDataValuesFromContext(context, aliases, callback):
 def start_background_process(context, program_name, arg_list):
     p = subprocess.Popen(arg_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     setattr(context, program_name, p)
+
+def bdd_log(msg):
+    print("{} - {}".format(currentTime(), msg))
+
+def currentTime():
+    return time.strftime("%H:%M:%S")
