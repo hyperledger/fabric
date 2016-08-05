@@ -11,6 +11,8 @@ ccenv:
   environment:
     - CORE_CHAINCODE_ID_NAME=testCC
     - CORE_PEER_ADDRESS=vp0:7051
-  command: bash -c "GOBIN=/opt/gopath/bin go install github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 && /opt/gopath/bin/chaincode_example02"
+  # $$GOPATH (double dollar) required to prevent docker-compose doing its own
+  # substitution before the value gets to the container
+  command: bash -c 'go install github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 && $$GOPATH/bin/chaincode_example02'
   links:
     - vp0
