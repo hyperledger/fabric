@@ -1161,15 +1161,15 @@ Scenario: chaincode example02 with 4 peers, two stopped
         |  a   |  100  |  b   |  200 |
     Then I should have received a chaincode name
     Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0  | vp1 | vp2 |
+        | vp0 | vp1 | vp2 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
-        | vp0  | vp1 | vp2 | vp3 |
+        | vp0 | vp1 | vp2 | vp3 |
     Then I should get a JSON response from peers with "result.message" = "100"
-        | vp0  | vp1 | vp2 | vp3 |
+        | vp0 | vp1 | vp2 | vp3 |
 
     Given I stop peers:
-        | vp2 | vp3  |
+        | vp2 | vp3 |
 
     When I invoke chaincode "example2" function name "invoke" on "vp0"
         |arg1|arg2|arg3|
@@ -1177,20 +1177,27 @@ Scenario: chaincode example02 with 4 peers, two stopped
     Then I should have received a transactionID
 
     Given I start peers:
-          | vp3  |
-    And I wait "15" seconds
+        | vp3 |
+
+    # Make sure vp3 catches up first
+    Then I wait up to "60" seconds for transaction to be committed to peers:
+        | vp0 | vp1 | vp3 |
+    When I query chaincode "example2" function name "query" with value "a" on peers:
+        | vp0 | vp1 | vp3 |
+    Then I should get a JSON response from peers with "result.message" = "90"
+        | vp0 | vp1 | vp3 |
 
     When I invoke chaincode "example2" function name "invoke" on "vp0" "9" times
         |arg1|arg2|arg3|
         | a  | b  | 10 |
     Then I should have received a transactionID
     Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0  | vp1 | vp3 |
+        | vp0 | vp1 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
-        | vp0  | vp1 | vp3 |
+        | vp0 | vp1 | vp3 |
     Then I should get a JSON response from peers with "result.message" = "0"
-        | vp0  | vp1 | vp3 |
+        | vp0 | vp1 | vp3 |
 
 @issue_1874b
 #@doNotDecompose
