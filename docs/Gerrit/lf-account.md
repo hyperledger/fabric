@@ -7,21 +7,21 @@ Follow the steps below to create a Linux Foundation account.
 
 1. Go to the [Linux Foundation ID website](https://identity.linuxfoundation.org/).
 
-1. Select the option `I need to create a Linux Foundation ID`.
+2. Select the option `I need to create a Linux Foundation ID`.
 
-1. Fill out the form that appears:
+3. Fill out the form that appears:
 
-1. Open your email account and look for a message with the subject line:
+4. Open your email account and look for a message with the subject line:
    "Validate your Linux Foundation ID email".
 
-1. Open the received URL to validate your email address.
+5. Open the received URL to validate your email address.
 
-1. Verify the browser displays the message `You have successfully
+6. Verify the browser displays the message `You have successfully
    validated your e-mail address`.
 
-1. Access `Gerrit` by selecting `Sign In`:
+7. Access `Gerrit` by selecting `Sign In`:
 
-1. Use your Linux Foundation ID to Sign In:
+8. Use your Linux Foundation ID to Sign In:
 
 ## Configuring Gerrit to Use SSH
 
@@ -59,13 +59,13 @@ account:
 
 1. Go to [Gerrit](https://gerrit.hyperledger.org/r/#/admin/projects/fabric).
 
-1. Click on your account name in the upper right corner.
+2. Click on your account name in the upper right corner.
 
-1. From the pop-up menu, select `Settings`.
+3. From the pop-up menu, select `Settings`.
 
-1. On the left side menu, click on `SSH Public Keys`.
+4. On the left side menu, click on `SSH Public Keys`.
 
-1. Paste the contents of your public key `~/.ssh/id_rsa.pub` and click
+5. Paste the contents of your public key `~/.ssh/id_rsa.pub` and click
    `Add key`.
 
 **Note:** The `id_rsa.pub` file can be opened with any text editor. Ensure
@@ -96,7 +96,7 @@ name of the public key file you generated.
 1. Ensure that SSH has been set up properly. See
    `Configuring Gerrit to Use SSH` for details.
 
-1. Clone the repository with your Linux Foundation ID (<LFID>):
+2. Clone the repository with your Linux Foundation ID (<LFID>):
 
 ```
 git clone ssh://<LFID>@gerrit.hyperledger.org:29418/fabric fabric
