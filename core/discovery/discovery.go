@@ -72,8 +72,8 @@ func (di *DiscoveryImpl) RemoveNode(address string) bool {
 
 // GetAllNodes returns an array of all addresses saved in the discovery list
 func (di *DiscoveryImpl) GetAllNodes() []string {
-	di.Lock()
-	defer di.Unlock()
+	di.RLock()
+	defer di.RUnlock()
 	var addresses []string
 	for address, valid := range di.nodes {
 		if valid {
@@ -87,8 +87,8 @@ func (di *DiscoveryImpl) GetAllNodes() []string {
 func (di *DiscoveryImpl) GetRandomNodes(n int) []string {
 	var pick string
 	randomNodes := make([]string, n)
-	di.Lock()
-	defer di.Unlock()
+	di.RLock()
+	defer di.RUnlock()
 	for i := 0; i < n; i++ {
 		for {
 			pick = di.seq[di.random.Intn(len(di.nodes))]
@@ -103,8 +103,8 @@ func (di *DiscoveryImpl) GetRandomNodes(n int) []string {
 
 // FindNode returns true if its address is stored in the discovery list
 func (di *DiscoveryImpl) FindNode(address string) bool {
-	di.Lock()
-	defer di.Unlock()
+	di.RLock()
+	defer di.RUnlock()
 	_, ok := di.nodes[address]
 	return ok
 }
