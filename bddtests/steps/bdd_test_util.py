@@ -18,10 +18,9 @@ import os
 import re
 import subprocess
 
-def cli_call(context, arg_list, expect_success=True):
+def cli_call(arg_list, expect_success=True):
     """Executes a CLI command in a subprocess and return the results.
 
-    @param context: the behave context
     @param arg_list: a list command arguments
     @param expect_success: use False to return even if an error occurred when executing the command
     @return: (string, string, int) output message, error message, return code
@@ -114,7 +113,6 @@ def getContainerDataValuesFromContext(context, aliases, callback):
                 values.append(callback(containerData))
                 break
     return values
-
 
 def start_background_process(context, program_name, arg_list):
     p = subprocess.Popen(arg_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

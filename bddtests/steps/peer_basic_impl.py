@@ -68,18 +68,18 @@ def parseComposeOutput(context):
     containerDataList = []
     for containerName in containerNames:
     	output, error, returncode = \
-        	bdd_test_util.cli_call(context, ["docker", "inspect", "--format",  "{{ .NetworkSettings.IPAddress }}", containerName], expect_success=True)
+        	bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .NetworkSettings.IPAddress }}", containerName], expect_success=True)
         print("container {0} has address = {1}".format(containerName, output.splitlines()[0]))
         ipAddress = output.splitlines()[0]
 
         # Get the environment array
         output, error, returncode = \
-            bdd_test_util.cli_call(context, ["docker", "inspect", "--format",  "{{ .Config.Env }}", containerName], expect_success=True)
+            bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .Config.Env }}", containerName], expect_success=True)
         env = output.splitlines()[0][1:-1].split()
 
         # Get the Labels to access the com.docker.compose.service value
         output, error, returncode = \
-            bdd_test_util.cli_call(context, ["docker", "inspect", "--format",  "{{ .Config.Labels }}", containerName], expect_success=True)
+            bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .Config.Labels }}", containerName], expect_success=True)
         labels = output.splitlines()[0][4:-1].split()
         dockerComposeService = [composeService[27:] for composeService in labels if composeService.startswith("com.docker.compose.service:")][0]
         print("dockerComposeService = {0}".format(dockerComposeService))
@@ -116,7 +116,7 @@ def step_impl(context, composeYamlFile):
     context.compose_yaml = composeYamlFile
     fileArgsToDockerCompose = getDockerComposeFileArgsFromYamlFile(context.compose_yaml)
     context.compose_output, context.compose_error, context.compose_returncode = \
-        bdd_test_util.cli_call(context, ["docker-compose"] + fileArgsToDockerCompose + ["up","--force-recreate", "-d"], expect_success=True)
+        bdd_test_util.cli_call(["docker-compose"] + fileArgsToDockerCompose + ["up","--force-recreate", "-d"], expect_success=True)
     assert context.compose_returncode == 0, "docker-compose failed to bring up {0}".format(composeYamlFile)
     parseComposeOutput(context)
     time.sleep(10)              # Should be replaced with a definitive interlock guaranteeing that all peers/membersrvc are ready
@@ -811,7 +811,7 @@ def compose_op(context, op):
     # Loop through services and start/stop them, and modify the container data list if successful.
     for service in services:
        context.compose_output, context.compose_error, context.compose_returncode = \
-           bdd_test_util.cli_call(context, ["docker-compose"] + fileArgsToDockerCompose + [op, service], expect_success=True)
+           bdd_test_util.cli_call(["docker-compose"] + fileArgsToDockerCompose + [op, service], expect_success=True)
        assert context.compose_returncode == 0, "docker-compose failed to {0} {0}".format(op, service)
        if op == "stop" or op == "pause":
            context.compose_containers = [containerData for containerData in context.compose_containers if containerData.composeService != service]

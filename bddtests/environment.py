@@ -4,7 +4,7 @@ import glob
 
 from steps.bdd_test_util import cli_call
 
-from steps.coverage import saveCoverageFiles, createCoverageAggregate 
+from steps.coverage import saveCoverageFiles, createCoverageAggregate
 
 def coverageEnabled(context):
     return context.config.userdata.get("coverage", "false") == "true"
@@ -30,7 +30,7 @@ def after_scenario(context, scenario):
                     print("Cannot get logs for {0}. Docker rc = {1}".format(containerData.containerName,sys_rc))
         # get logs from the chaincode containers
         cc_output, cc_error, cc_returncode = \
-            cli_call(context, ["docker",  "ps", "-f",  "name=dev-", "--format", "{{.Names}}"], expect_success=True)
+            cli_call(["docker",  "ps", "-f",  "name=dev-", "--format", "{{.Names}}"], expect_success=True)
         for containerName in cc_output.splitlines():
             namePart,sep,junk = containerName.rpartition("-")
             with open(namePart + file_suffix, "w+") as logfile:
@@ -46,34 +46,34 @@ def after_scenario(context, scenario):
 
             print("Decomposing with yaml '{0}' after scenario {1}, ".format(context.compose_yaml, scenario.name))
             context.compose_output, context.compose_error, context.compose_returncode = \
-                cli_call(context, ["docker-compose"] + fileArgsToDockerCompose + ["unpause"], expect_success=True)
+                cli_call(["docker-compose"] + fileArgsToDockerCompose + ["unpause"], expect_success=True)
             context.compose_output, context.compose_error, context.compose_returncode = \
-                cli_call(context, ["docker-compose"] + fileArgsToDockerCompose + ["stop"], expect_success=True)
+                cli_call(["docker-compose"] + fileArgsToDockerCompose + ["stop"], expect_success=True)
 
             if coverageEnabled(context):
                 #Save the coverage files for this scenario before removing containers
                 containerNames = [containerData.containerName for  containerData in context.compose_containers]
-                saveCoverageFiles("coverage", scenario.name.replace(" ", "_"), containerNames, "cov")            
+                saveCoverageFiles("coverage", scenario.name.replace(" ", "_"), containerNames, "cov")
 
             context.compose_output, context.compose_error, context.compose_returncode = \
-                cli_call(context, ["docker-compose"] + fileArgsToDockerCompose + ["rm","-f"], expect_success=True)
+                cli_call(["docker-compose"] + fileArgsToDockerCompose + ["rm","-f"], expect_success=True)
             # now remove any other containers (chaincodes)
             context.compose_output, context.compose_error, context.compose_returncode = \
-                cli_call(context, ["docker",  "ps",  "-qa"], expect_success=True)
+                cli_call(["docker",  "ps",  "-qa"], expect_success=True)
             if context.compose_returncode == 0:
                 # Remove each container
                 for containerId in context.compose_output.splitlines():
                     #print("docker rm {0}".format(containerId))
                     context.compose_output, context.compose_error, context.compose_returncode = \
-                        cli_call(context, ["docker",  "rm", "-f", containerId], expect_success=True)
+                        cli_call(["docker",  "rm", "-f", containerId], expect_success=True)
 
 # stop any running peer that could get in the way before starting the tests
 def before_all(context):
-        cli_call(context, ["../build/bin/peer", "node", "stop"], expect_success=False)
+        cli_call(["../build/bin/peer", "node", "stop"], expect_success=False)
 
 # stop any running peer that could get in the way before starting the tests
 def after_all(context):
     print("context.failed = {0}".format(context.failed))
-    
+
     if coverageEnabled(context):
         createCoverageAggregate()
