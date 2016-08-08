@@ -82,6 +82,14 @@ func TestMain(m *testing.M) {
 		os.Exit(ret)
 	}
 
+	//Second scenario with multithread
+	properties["security.multithreading.enabled"] = "true"
+	ret = runTestsOnScenario(m, properties, "Using multithread enabled")
+	if ret != 0 {
+		os.Exit(ret)
+	}
+	properties["security.multithreading.enabled"] = "false"
+
 	//Fourth scenario with security level = 384
 	properties["security.hashAlgorithm"] = "SHA3"
 	properties["security.level"] = "384"
@@ -431,6 +439,9 @@ func TestClientMultiExecuteTransaction(t *testing.T) {
 
 func TestClientGetNextTCerts(t *testing.T) {
 
+	initNodes()
+	defer closeNodes()
+
 	// Some positive flow tests here
 	var nCerts int = 1
 	for i := 1; i < 3; i++ {
@@ -508,8 +519,8 @@ func TestClientGetAttributesFromTCertWithUnusedTCerts(t *testing.T) {
 
 	_, _ = deployer.GetNextTCerts(1, attrs...)
 
-	after()  //Tear down the server.
-	before() //Start up again to use unsed TCerts
+	CloseAllClients() // Remove client and store unused TCerts.
+	initClients()     // Restart fresh client.
 
 	tcerts, err := deployer.GetNextTCerts(1, attrs...)
 
