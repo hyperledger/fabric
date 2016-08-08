@@ -24,6 +24,7 @@ all: hfc
 
 .PHONY: hfc
 hfc:
+	mkdir -p ./lib/protos
 	cp ../../protos/*.proto ./lib/protos
 	cp ../../membersrvc/protos/*.proto ./lib/protos
 	npm install && sudo npm install -g typescript && sudo npm install typings --global && typings install
