@@ -10,9 +10,9 @@ The following instructions apply to _developing_ chaincode in Go or Java. They d
 
 Once again, you have the choice of using one of the following approaches:
 
-- [Option 1](#Option-1-Vagrant-development-environment) using the **Vagrant** [development environment](https://github.com/hyperledger/fabric/blob/master/docs/dev-setup/devenv.md) that is used for developing the fabric itself
-- [Option 2](#Option-2-Docker-for-Mac-or-Windows) using Docker for Mac or Windows
-- [Option 3](#Option-3-Docker-Toolbox) using Docker toolbox
+- [Option 1](#option-1-vagrant-development-environment) using the **Vagrant** [development environment](https://github.com/hyperledger/fabric/blob/master/docs/dev-setup/devenv.md) that is used for developing the fabric itself
+- [Option 2](#option-2-docker-for-mac-or-windows) using Docker for Mac or Windows
+- [Option 3](#option-3-docker-toolbox) using Docker toolbox
 
 By using options *2* or *3*, above, you avoid having to build everything from scratch, and there's no need to keep a clone of the fabric GitHub repos current/up-to-date. Instead, you can simply pull and run the `fabric-peer` and `fabric-membersrvc` images directly from DockerHub.
 
@@ -67,7 +67,7 @@ Now, you are ready to start [running the chaincode](#running-the-chaincode).
 
 ## Option 2 Docker for Mac or Windows
 
-If you would prefer to simply run the fabric components as built and published by the Hyperledger project on your Mac or Windows laptop/server using the Docker for [Mac](https://docs.docker.com/engine/installation/mac/) or [Windows](https://docs.docker.com/engine/installation/windows/) platform, following these steps. If using [Docker Toolbox](https://docs.docker.com/toolbox/overview/), please skip to [Option 3](#Option-3-Docker-Toolbox), below.
+If you would prefer to simply run the fabric components as built and published by the Hyperledger project on your Mac or Windows laptop/server using the Docker for [Mac](https://docs.docker.com/engine/installation/mac/) or [Windows](https://docs.docker.com/engine/installation/windows/) platform, following these steps. If using [Docker Toolbox](https://docs.docker.com/toolbox/overview/), please skip to [Option 3](#option-3-docker-toolbox), below.
 
 ### Pull images from DockerHub
 
@@ -152,14 +152,14 @@ Start a **new** terminal window.
 
 ### Vagrant
 
-If you are using [Option 1](#Option-1-Vagrant-development-environment), you'll need to `ssh` to Vagrant. Otherwise, [skip](#Not-Vagrant) this step.
+If you are using [Option 1](#option-1-vagrant-development-environment), you'll need to `ssh` to Vagrant. Otherwise, [skip](#not-vagrant) this step.
 
 ```
 cd $GOPATH/src/github.com/hyperledger/fabric/devenv
 vagrant ssh
 ```
 
-Next, we'll build the **chaincode_example02** code, which is provided in the Hyperledger fabric source code repository. If you are using [Option 1](#Option-1-Vagrant-development-environment), then you can do this from your clone of the fabric repository.
+Next, we'll build the **chaincode_example02** code, which is provided in the Hyperledger fabric source code repository. If you are using [Option 1](#option-1-vagrant-development-environment), then you can do this from your clone of the fabric repository.
 
 ```
 cd $GOPATH/src/github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
@@ -168,7 +168,7 @@ go build
 
 ### Not Vagrant
 
-If you are using either [Option 2](#Option-2-Docker-for-Mac-or-Windows) or [Option 3](#Option-3-Docker-Toolbox), you'll need to  download the sample chaincode. The chaincode project must be placed somewhere under the `src` directory in your local `$GOPATH` as shown below.
+If you are using either [Option 2](#option-2-docker-for-mac-or-windows) or [Option 3](#option-3-docker-toolbox), you'll need to  download the sample chaincode. The chaincode project must be placed somewhere under the `src` directory in your local `$GOPATH` as shown below.
 
 ```
 mkdir -p $GOPATH/src/github.com/chaincode_example02/
