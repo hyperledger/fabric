@@ -213,13 +213,21 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 	var customIDgenAlg = strings.ToLower(chaincodeInvocationSpec.IdGenerationAlg)
 	var id string
 	var generr error
-	ctorbytes, merr := proto.Marshal(chaincodeInvocationSpec.ChaincodeSpec.CtorMsg)
-	if merr != nil {
-		return nil, fmt.Errorf("Error marshalling constructor: %s", merr)
-	}
-	id, generr = util.GenerateIDWithAlg(customIDgenAlg, ctorbytes)
-	if generr != nil {
-		return nil, generr
+	if invoke {
+		if customIDgenAlg != "" {
+			ctorbytes, merr := proto.Marshal(chaincodeInvocationSpec.ChaincodeSpec.CtorMsg)
+			if merr != nil {
+				return nil, fmt.Errorf("Error marshalling constructor: %s", merr)
+			}
+			id, generr = util.GenerateIDWithAlg(customIDgenAlg, ctorbytes)
+			if generr != nil {
+				return nil, generr
+			}
+		} else {
+			id = util.GenerateUUID()
+		}
+	} else {
+		id = util.GenerateUUID()
 	}
 	devopsLogger.Infof("Transaction ID: %v", id)
 	var transaction *pb.Transaction
