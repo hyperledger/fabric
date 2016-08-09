@@ -1551,8 +1551,7 @@ export class TransactionContext extends events.EventEmitter {
         chaincodeSpec.setChaincodeID(chaincodeID);
         // Set ctorMsg
         let chaincodeInput = new _chaincodeProto.ChaincodeInput();
-        chaincodeInput.setFunction(request.fcn);
-        chaincodeInput.setArgs(request.args);
+        chaincodeInput.setArgs(prepend(request.fcn, request.args));
         chaincodeSpec.setCtorMsg(chaincodeInput);
 
         // Construct the ChaincodeDeploymentSpec (i.e. the payload)
@@ -1561,7 +1560,7 @@ export class TransactionContext extends events.EventEmitter {
         tx.setPayload(chaincodeDeploymentSpec.toBuffer());
 
         // Set the transaction UUID
-        tx.setUuid(request.chaincodeName);
+        tx.setTxid(request.chaincodeName);
 
         // Set the transaction timestamp
         tx.setTimestamp(sdk_util.GenerateTimestamp());
@@ -1703,8 +1702,7 @@ export class TransactionContext extends events.EventEmitter {
                 chaincodeSpec.setChaincodeID(chaincodeID);
                 // Set ctorMsg
                 let chaincodeInput = new _chaincodeProto.ChaincodeInput();
-                chaincodeInput.setFunction(request.fcn);
-                chaincodeInput.setArgs(request.args);
+                chaincodeInput.setArgs(prepend(request.fcn, request.args));
                 chaincodeSpec.setCtorMsg(chaincodeInput);
                 debug("chaincodeSpec: " + JSON.stringify(chaincodeSpec));
 
@@ -1728,7 +1726,7 @@ export class TransactionContext extends events.EventEmitter {
                     // Set the transaction UUID
                     //
 
-                    tx.setUuid(sdk_util.GenerateUUID());
+                    tx.setTxid(sdk_util.GenerateUUID());
 
                     //
                     // Set the transaction timestamp
@@ -1848,8 +1846,7 @@ export class TransactionContext extends events.EventEmitter {
         chaincodeSpec.setChaincodeID(chaincodeID);
         // Set ctorMsg
         let chaincodeInput = new _chaincodeProto.ChaincodeInput();
-        chaincodeInput.setFunction(request.fcn);
-        chaincodeInput.setArgs(request.args);
+        chaincodeInput.setArgs(prepend(request.fcn, request.args));
         chaincodeSpec.setCtorMsg(chaincodeInput);
         // Construct the ChaincodeInvocationSpec (i.e. the payload)
         let chaincodeInvocationSpec = new _chaincodeProto.ChaincodeInvocationSpec();
@@ -1857,7 +1854,7 @@ export class TransactionContext extends events.EventEmitter {
         tx.setPayload(chaincodeInvocationSpec.toBuffer());
 
         // Set the transaction UUID
-        tx.setUuid(sdk_util.GenerateUUID());
+        tx.setTxid(sdk_util.GenerateUUID());
 
         // Set the transaction timestamp
         tx.setTimestamp(sdk_util.GenerateTimestamp());
@@ -2656,6 +2653,12 @@ function rolesToMask(roles?:string[]):number {
 
 function endsWith(str:string, suffix:string) {
     return str.length >= suffix.length && str.substr(str.length - suffix.length) === suffix;
+};
+
+function prepend(item:string, list:string[]) {
+    var l = list.slice();
+    l.unshift(item);
+    return l.map(function(x) { return new Buffer(x) });
 };
 
 /**
