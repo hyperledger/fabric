@@ -47,7 +47,7 @@ type SystemChaincode struct {
 	Path string
 
 	//InitArgs initialization arguments to startup the system chaincode
-	InitArgs []string
+	InitArgs [][]byte
 
 	// Chaincode is the actual chaincode object
 	Chaincode shim.Chaincode

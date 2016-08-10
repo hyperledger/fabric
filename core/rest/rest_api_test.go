@@ -18,6 +18,7 @@ package rest
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -32,6 +33,11 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos"
 )
+
+var failb64 string = base64.StdEncoding.EncodeToString([]byte("fail"))
+var initb64 string = base64.StdEncoding.EncodeToString([]byte("Init"))
+var change_ownerb64 string = base64.StdEncoding.EncodeToString([]byte("change_owner"))
+var get_ownerb64 string = base64.StdEncoding.EncodeToString([]byte("get_owner"))
 
 func performHTTPGet(t *testing.T, url string) []byte {
 	response, err := http.Get(url)
@@ -117,7 +123,10 @@ func (d *mockDevops) Deploy(c context.Context, spec *protos.ChaincodeSpec) (*pro
 }
 
 func (d *mockDevops) Invoke(c context.Context, cis *protos.ChaincodeInvocationSpec) (*protos.Response, error) {
-	switch cis.ChaincodeSpec.CtorMsg.Function {
+	if len(cis.ChaincodeSpec.CtorMsg.Args) == 0 {
+		return nil, fmt.Errorf("No function invoked")
+	}
+	switch string(cis.ChaincodeSpec.CtorMsg.Args[0]) {
 	case "fail":
 		return nil, fmt.Errorf("Invoke failure")
 	case "change_owner":
@@ -127,7 +136,10 @@ func (d *mockDevops) Invoke(c context.Context, cis *protos.ChaincodeInvocationSp
 }
 
 func (d *mockDevops) Query(c context.Context, cis *protos.ChaincodeInvocationSpec) (*protos.Response, error) {
-	switch cis.ChaincodeSpec.CtorMsg.Function {
+	if len(cis.ChaincodeSpec.CtorMsg.Args) == 0 {
+		return nil, fmt.Errorf("No function invoked")
+	}
+	switch string(cis.ChaincodeSpec.CtorMsg.Args[0]) {
 	case "fail":
 		return nil, fmt.Errorf("Query failure with special-\" chars")
 	case "get_owner":
@@ -581,8 +593,9 @@ func TestServerOpenchainREST_API_Chaincode_Deploy(t *testing.T) {
 				"path": "non-existing"
 			},
 			"ctorMsg": {
-				"function": "Init",
-				"args": []
+				"args": ["` +
+		initb64 +
+		`"]
 			},
 			"secureContext": "myuser"
 		}
@@ -607,8 +620,9 @@ func TestServerOpenchainREST_API_Chaincode_Deploy(t *testing.T) {
 				"path": "github.com/hyperledger/fabric/core/rest/test_chaincode"
 			},
 			"ctorMsg": {
-				"function": "Init",
-				"args": []
+				"args": ["` +
+		initb64 +
+		`"]
 			}
 		}
 	}`
@@ -629,8 +643,9 @@ func TestServerOpenchainREST_API_Chaincode_Deploy(t *testing.T) {
 				"path": "github.com/hyperledger/fabric/core/rest/test_chaincode"
 			},
 			"ctorMsg": {
-				"function": "Init",
-				"args": []
+				"args": ["` +
+		initb64 +
+		`"]
 			},
 			"secureContext": "myuser"
 		}
@@ -676,7 +691,7 @@ func TestServerOpenchainREST_API_Chaincode_Invoke(t *testing.T) {
 	performHTTPPost(t, httpServer.URL+"/registrar", []byte(`{"enrollId":"myuser","enrollSecret":"password"}`))
 
 	// Test invoke with "fail" function
-	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"invoke","params":{"type":1,"chaincodeID":{"name":"dummy"},"ctorMsg":{"function":"fail","args":[]},"secureContext":"myuser"}}`))
+	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"invoke","params":{"type":1,"chaincodeID":{"name":"dummy"},"ctorMsg":{"args":["`+failb64+`"]},"secureContext":"myuser"}}`))
 	if httpResponse.StatusCode != http.StatusOK {
 		t.Errorf("Expected an HTTP status code %#v but got %#v", http.StatusOK, httpResponse.StatusCode)
 	}
@@ -686,7 +701,7 @@ func TestServerOpenchainREST_API_Chaincode_Invoke(t *testing.T) {
 	}
 
 	// Test invoke with "change_owner" function
-	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"invoke","params":{"type":1,"chaincodeID":{"name":"dummy"},"ctorMsg":{"function":"change_owner","args":[]},"secureContext":"myuser"}}`))
+	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"invoke","params":{"type":1,"chaincodeID":{"name":"dummy"},"ctorMsg":{"args":["`+change_ownerb64+`"]},"secureContext":"myuser"}}`))
 	if httpResponse.StatusCode != http.StatusOK {
 		t.Errorf("Expected an HTTP status code %#v but got %#v", http.StatusOK, httpResponse.StatusCode)
 	}
@@ -727,7 +742,7 @@ func TestServerOpenchainREST_API_Chaincode_Query(t *testing.T) {
 	performHTTPPost(t, httpServer.URL+"/registrar", []byte(`{"enrollId":"myuser","enrollSecret":"password"}`))
 
 	// Test query with non-existing chaincode name
-	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"query","params":{"type":1,"chaincodeID":{"name":"non-existing"},"ctorMsg":{"function":"Init","args":[]},"secureContext":"myuser"}}`))
+	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"query","params":{"type":1,"chaincodeID":{"name":"non-existing"},"ctorMsg":{"args":["`+initb64+`"]},"secureContext":"myuser"}}`))
 	if httpResponse.StatusCode != http.StatusOK {
 		t.Errorf("Expected an HTTP status code %#v but got %#v", http.StatusOK, httpResponse.StatusCode)
 	}
@@ -737,7 +752,7 @@ func TestServerOpenchainREST_API_Chaincode_Query(t *testing.T) {
 	}
 
 	// Test query with fail function
-	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"query","params":{"type":1,"chaincodeID":{"name":"dummy"},"ctorMsg":{"function":"fail","args":[]},"secureContext":"myuser"}}`))
+	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"query","params":{"type":1,"chaincodeID":{"name":"dummy"},"ctorMsg":{"args":["`+failb64+`"]},"secureContext":"myuser"}}`))
 	if httpResponse.StatusCode != http.StatusOK {
 		t.Errorf("Expected an HTTP status code %#v but got %#v", http.StatusOK, httpResponse.StatusCode)
 	}
@@ -750,7 +765,7 @@ func TestServerOpenchainREST_API_Chaincode_Query(t *testing.T) {
 	}
 
 	// Test query with get_owner function
-	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"query","params":{"type":1,"chaincodeID":{"name":"dummy"},"ctorMsg":{"function":"get_owner","args":[]},"secureContext":"myuser"}}`))
+	httpResponse, body = performHTTPPost(t, httpServer.URL+"/chaincode", []byte(`{"jsonrpc":"2.0","ID":123,"method":"query","params":{"type":1,"chaincodeID":{"name":"dummy"},"ctorMsg":{"args":["`+get_ownerb64+`"]},"secureContext":"myuser"}}`))
 	if httpResponse.StatusCode != http.StatusOK {
 		t.Errorf("Expected an HTTP status code %#v but got %#v", http.StatusOK, httpResponse.StatusCode)
 	}

@@ -18,6 +18,8 @@ package org.hyperledger.java.shim;
 
 import com.google.protobuf.ByteString;
 
+import java.util.List;
+
 public class ChaincodeStub {
 
 	private final String uuid;
@@ -85,7 +87,7 @@ public class ChaincodeStub {
 	 * @param args
 	 * @return
 	 */
-	public String invokeChaincode(String chaincodeName, String function, String[] args) {
+	public String invokeChaincode(String chaincodeName, String function, List<ByteString> args) {
 		return handler.handleInvokeChaincode(chaincodeName, function, args, uuid).toStringUtf8();
 	}
 	
@@ -96,7 +98,7 @@ public class ChaincodeStub {
 	 * @param args
 	 * @return
 	 */
-	public String queryChaincode(String chaincodeName, String function, String[] args) {
+	public String queryChaincode(String chaincodeName, String function, List<ByteString> args) {
 		return handler.handleQueryChaincode(chaincodeName, function, args, uuid).toStringUtf8();
 	}
 
@@ -138,7 +140,7 @@ public class ChaincodeStub {
 	 * @param args
 	 * @return
 	 */
-	public ByteString queryRawChaincode(String chaincodeName, String function, String[] args) {
+	public ByteString queryRawChaincode(String chaincodeName, String function, List<ByteString> args) {
 		return handler.handleQueryChaincode(chaincodeName, function, args, uuid);
 	}
 	
@@ -150,7 +152,7 @@ public class ChaincodeStub {
 	 * @param args the arguments to be provided in the chaincode call
 	 * @return the value returned by the chaincode call
 	 */
-	public ByteString invokeRawChaincode(String chaincodeName, String function, String[] args) {
+	public ByteString invokeRawChaincode(String chaincodeName, String function, List<ByteString> args) {
 		return handler.handleInvokeChaincode(chaincodeName, function, args, uuid);
 	}
 	
@@ -572,6 +574,4 @@ public class ChaincodeStub {
 //		}
 //
 //		return true, nil
-	
-	
 }

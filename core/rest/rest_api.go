@@ -788,7 +788,7 @@ func (s *ServerOpenchainREST) Deploy(rw web.ResponseWriter, req *web.Request) {
 	}
 
 	// Check that the CtorMsg is not left blank.
-	if (spec.CtorMsg == nil) || (spec.CtorMsg.Function == "") {
+	if (spec.CtorMsg == nil) || (len(spec.CtorMsg.Args) == 0) {
 		rw.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(rw, "{\"Error\": \"Payload must contain a CtorMsg with a Chaincode function name.\"}")
 		restLogger.Error("{\"Error\": \"Payload must contain a CtorMsg with a Chaincode function name.\"}")
@@ -929,7 +929,7 @@ func (s *ServerOpenchainREST) Invoke(rw web.ResponseWriter, req *web.Request) {
 	}
 
 	// Check that the CtorMsg is not left blank.
-	if (spec.ChaincodeSpec.CtorMsg == nil) || (spec.ChaincodeSpec.CtorMsg.Function == "") {
+	if (spec.ChaincodeSpec.CtorMsg == nil) || (len(spec.ChaincodeSpec.CtorMsg.Args) == 0) {
 		rw.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(rw, "{\"Error\": \"Payload must contain a CtorMsg with a Chaincode function name.\"}")
 		restLogger.Error("{\"Error\": \"Payload must contain a CtorMsg with a Chaincode function name.\"}")
@@ -1071,7 +1071,7 @@ func (s *ServerOpenchainREST) Query(rw web.ResponseWriter, req *web.Request) {
 	}
 
 	// Check that the CtorMsg is not left blank.
-	if (spec.ChaincodeSpec.CtorMsg == nil) || (spec.ChaincodeSpec.CtorMsg.Function == "") {
+	if (spec.ChaincodeSpec.CtorMsg == nil) || (len(spec.ChaincodeSpec.CtorMsg.Args) == 0) {
 		rw.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(rw, "{\"Error\": \"Payload must contain a CtorMsg with a Chaincode function name.\"}")
 		restLogger.Error("{\"Error\": \"Payload must contain a CtorMsg with a Chaincode function name.\"}")
@@ -1400,7 +1400,7 @@ func (s *ServerOpenchainREST) processChaincodeDeploy(spec *pb.ChaincodeSpec) rpc
 	}
 
 	// Check that the CtorMsg is not left blank.
-	if (spec.CtorMsg == nil) || (spec.CtorMsg.Function == "") {
+	if (spec.CtorMsg == nil) || (len(spec.CtorMsg.Args) == 0) {
 		// Format the error appropriately for further processing
 		error := formatRPCError(InvalidParams.Code, InvalidParams.Message, "Payload must contain a CtorMsg with a Chaincode function name.")
 		restLogger.Error("Payload must contain a CtorMsg with a Chaincode function name.")
@@ -1524,7 +1524,7 @@ func (s *ServerOpenchainREST) processChaincodeInvokeOrQuery(method string, spec 
 	}
 
 	// Check that the CtorMsg is not left blank.
-	if (spec.ChaincodeSpec.CtorMsg == nil) || (spec.ChaincodeSpec.CtorMsg.Function == "") {
+	if (spec.ChaincodeSpec.CtorMsg == nil) || (len(spec.ChaincodeSpec.CtorMsg.Args) == 0) {
 		// Format the error appropriately for further processing
 		error := formatRPCError(InvalidParams.Code, InvalidParams.Message, "Payload must contain a CtorMsg with a Chaincode function name.")
 		restLogger.Error("Payload must contain a CtorMsg with a Chaincode function name.")

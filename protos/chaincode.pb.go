@@ -187,8 +187,7 @@ func (*ChaincodeID) ProtoMessage()    {}
 
 // Carries the chaincode function and its arguments.
 type ChaincodeInput struct {
-	Function string   `protobuf:"bytes,1,opt,name=function" json:"function,omitempty"`
-	Args     []string `protobuf:"bytes,2,rep,name=args" json:"args,omitempty"`
+	Args [][]byte `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
 }
 
 func (m *ChaincodeInput) Reset()         { *m = ChaincodeInput{} }

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -34,11 +35,14 @@ import (
 func generateHashcode(spec *pb.ChaincodeSpec, path string) (string, error) {
 
 	ctor := spec.CtorMsg
-	if ctor == nil || ctor.Function == "" {
+	if ctor == nil || len(ctor.Args) == 0 {
 		return "", fmt.Errorf("Cannot generate hashcode from empty ctor")
 	}
-
-	hash := util.GenerateHashFromSignature(spec.ChaincodeID.Path, ctor.Function, ctor.Args)
+	ctorbytes, err := proto.Marshal(ctor)
+	if err != nil {
+		return "", fmt.Errorf("Error marshalling constructor: %s", err)
+	}
+	hash := util.GenerateHashFromSignature(spec.ChaincodeID.Path, ctorbytes)
 
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {

@@ -31,7 +31,7 @@ import (
 )
 
 type alg struct {
-	hashFun func([]string) string
+	hashFun func([]byte) string
 }
 
 const defaultAlg = "sha256"
@@ -86,39 +86,23 @@ func CreateUtcTimestamp() *gp.Timestamp {
 }
 
 //GenerateHashFromSignature returns a hash of the combined parameters
-func GenerateHashFromSignature(path string, ctor string, args []string) []byte {
-	fargs := ctor
-	if args != nil {
-		for _, str := range args {
-			fargs = fargs + str
-		}
-	}
-	cbytes := []byte(path + fargs)
-
-	b := make([]byte, len(cbytes))
-	copy(b, cbytes)
-	hash := ComputeCryptoHash(b)
-	return hash
+func GenerateHashFromSignature(path string, args []byte) []byte {
+	return ComputeCryptoHash(args)
 }
 
 // GenerateIDfromTxSHAHash generates SHA256 hash using Tx payload
-func GenerateIDfromTxSHAHash(payload []string) string {
-	h := sha256.New()
-	for _, part := range payload {
-		utf8bytes := []byte(part)
-		h.Write(utf8bytes)
-	}
-	return fmt.Sprintf("%x", h.Sum([]byte{}))
+func GenerateIDfromTxSHAHash(payload []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(payload))
 }
 
 // GenerateIDWithAlg generates an ID using a custom algorithm
-func GenerateIDWithAlg(customIDgenAlg string, strPayload []string) (string, error) {
+func GenerateIDWithAlg(customIDgenAlg string, payload []byte) (string, error) {
 	if customIDgenAlg == "" {
 		customIDgenAlg = defaultAlg
 	}
 	var alg = availableIDgenAlgs[customIDgenAlg]
 	if alg.hashFun != nil {
-		return alg.hashFun(strPayload), nil
+		return alg.hashFun(payload), nil
 	}
 	return "", fmt.Errorf("Wrong ID generation algorithm was given: %s", customIDgenAlg)
 }

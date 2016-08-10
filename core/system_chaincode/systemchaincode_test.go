@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/system_chaincode/api"
@@ -110,7 +111,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 			Enabled:   true,
 			Name:      "sample_syscc",
 			Path:      "github.com/hyperledger/fabric/core/system_chaincode/samplesyscc",
-			InitArgs:  []string{},
+			InitArgs:  [][]byte{},
 			Chaincode: &samplesyscc.SampleSysCC{},
 		},
 	}
@@ -121,9 +122,9 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 	url := "github.com/hyperledger/fabric/core/system_chaincode/sample_syscc"
 	f := "putval"
-	args := []string{"greeting", "hey there"}
+	args := shim.ToChaincodeArgs(f, "greeting", "hey there")
 
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Function: f, Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	_, _, _, err = invoke(ctxt, spec, pb.Transaction_CHAINCODE_INVOKE)
 	if err != nil {
 		closeListenerAndSleep(lis)
@@ -133,8 +134,8 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 	}
 
 	f = "getval"
-	args = []string{"greeting"}
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Function: f, Args: args}}
+	args = shim.ToChaincodeArgs(f, "greeting")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	_, _, _, err = invoke(ctxt, spec, pb.Transaction_CHAINCODE_QUERY)
 	if err != nil {
 		closeListenerAndSleep(lis)

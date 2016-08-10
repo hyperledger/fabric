@@ -223,7 +223,8 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
 		stub.init(msg.Txid, msg.SecurityContext)
-		res, err := handler.cc.Init(stub, input.Function, input.Args)
+		function, params := getFunctionAndParams(stub)
+		res, err := handler.cc.Init(stub, function, params)
 
 		// delete isTransaction entry
 		handler.deleteIsTransaction(msg.Txid)
@@ -290,7 +291,8 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
 		stub.init(msg.Txid, msg.SecurityContext)
-		res, err := handler.cc.Invoke(stub, input.Function, input.Args)
+		function, params := getFunctionAndParams(stub)
+		res, err := handler.cc.Invoke(stub, function, params)
 
 		// delete isTransaction entry
 		handler.deleteIsTransaction(msg.Txid)
@@ -337,7 +339,8 @@ func (handler *Handler) handleQuery(msg *pb.ChaincodeMessage) {
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
 		stub.init(msg.Txid, msg.SecurityContext)
-		res, err := handler.cc.Query(stub, input.Function, input.Args)
+		function, params := getFunctionAndParams(stub)
+		res, err := handler.cc.Query(stub, function, params)
 
 		// delete isTransaction entry
 		handler.deleteIsTransaction(msg.Txid)
@@ -740,14 +743,14 @@ func (handler *Handler) handleRangeQueryStateClose(id, txid string) (*pb.RangeQu
 }
 
 // handleInvokeChaincode communicates with the validator to invoke another chaincode.
-func (handler *Handler) handleInvokeChaincode(chaincodeName string, function string, args []string, txid string) ([]byte, error) {
+func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, txid string) ([]byte, error) {
 	// Check if this is a transaction
 	if !handler.isTransaction[txid] {
 		return nil, errors.New("Cannot invoke chaincode in query context")
 	}
 
 	chaincodeID := &pb.ChaincodeID{Name: chaincodeName}
-	input := &pb.ChaincodeInput{Function: function, Args: args}
+	input := &pb.ChaincodeInput{Args: args}
 	payload := &pb.ChaincodeSpec{ChaincodeID: chaincodeID, CtorMsg: input}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
@@ -806,9 +809,9 @@ func (handler *Handler) handleInvokeChaincode(chaincodeName string, function str
 }
 
 // handleQueryChaincode communicates with the validator to query another chaincode.
-func (handler *Handler) handleQueryChaincode(chaincodeName string, function string, args []string, txid string) ([]byte, error) {
+func (handler *Handler) handleQueryChaincode(chaincodeName string, args [][]byte, txid string) ([]byte, error) {
 	chaincodeID := &pb.ChaincodeID{Name: chaincodeName}
-	input := &pb.ChaincodeInput{Function: function, Args: args}
+	input := &pb.ChaincodeInput{Args: args}
 	payload := &pb.ChaincodeSpec{ChaincodeID: chaincodeID, CtorMsg: input}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
@@ -903,4 +906,15 @@ func filterError(errFromFSMEvent error) error {
 		}
 	}
 	return nil
+}
+
+func getFunctionAndParams(stub *ChaincodeStub) (function string, params []string) {
+	allargs := stub.GetStringArgs()
+	function = ""
+	params = []string{}
+	if len(allargs) >= 1 {
+		function = allargs[0]
+		params = allargs[1:]
+	}
+	return
 }

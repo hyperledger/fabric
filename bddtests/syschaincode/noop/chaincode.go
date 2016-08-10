@@ -17,9 +17,8 @@
 package noop
 
 import (
-	"encoding/base64"
+	"bytes"
 	"errors"
-	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -95,12 +94,8 @@ func (t *SystemChaincode) Query(stub *shim.ChaincodeStub, function string, args 
 		if nil != merr {
 			return nil, merr
 		}
-		var data = newCCIS.ChaincodeSpec.CtorMsg.Args[0]
-		var dataInByteForm, b64err = base64.StdEncoding.DecodeString(data)
-		if b64err != nil {
-			return nil, fmt.Errorf("Error in decoding from Base64:  %s", b64err)
-		}
-		return dataInByteForm, nil
+		var dataInByteForm = newCCIS.ChaincodeSpec.CtorMsg.Args
+		return bytes.Join(dataInByteForm, []byte{}), nil
 	default:
 		return nil, errors.New("Unsupported operation")
 	}

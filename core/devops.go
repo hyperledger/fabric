@@ -213,7 +213,11 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 	var customIDgenAlg = strings.ToLower(chaincodeInvocationSpec.IdGenerationAlg)
 	var id string
 	var generr error
-	id, generr = util.GenerateIDWithAlg(customIDgenAlg, chaincodeInvocationSpec.ChaincodeSpec.CtorMsg.Args)
+	ctorbytes, merr := proto.Marshal(chaincodeInvocationSpec.ChaincodeSpec.CtorMsg)
+	if merr != nil {
+		return nil, fmt.Errorf("Error marshalling constructor: %s", merr)
+	}
+	id, generr = util.GenerateIDWithAlg(customIDgenAlg, ctorbytes)
 	if generr != nil {
 		return nil, generr
 	}
@@ -444,7 +448,11 @@ func (d *Devops) EXP_ExecuteWithBinding(ctx context.Context, executeWithBinding 
 			return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}, nil
 		}
 
-		tid, generr := util.GenerateIDWithAlg("", executeWithBinding.ChaincodeInvocationSpec.ChaincodeSpec.CtorMsg.Args)
+		ctorbytes, merr := proto.Marshal(executeWithBinding.ChaincodeInvocationSpec.ChaincodeSpec.CtorMsg)
+		if merr != nil {
+			return nil, fmt.Errorf("Error marshalling constructor: %s", err)
+		}
+		tid, generr := util.GenerateIDWithAlg("", ctorbytes)
 		if generr != nil {
 			return nil, fmt.Errorf("Error: cannot generate TX ID (executing with binding)")
 		}

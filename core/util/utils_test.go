@@ -59,12 +59,12 @@ func TestTimestamp(t *testing.T) {
 }
 
 func TestGenerateHashFromSignature(t *testing.T) {
-	if bytes.Compare(GenerateHashFromSignature("aPath", "aCtor", []string{"1", "2"}),
-		GenerateHashFromSignature("aPath", "aCtor", []string{"1", "2"})) != 0 {
+	if bytes.Compare(GenerateHashFromSignature("aPath", []byte("aCtor12")),
+		GenerateHashFromSignature("aPath", []byte("aCtor12"))) != 0 {
 		t.Fatalf("Expected hashes to match, but they did not match")
 	}
-	if bytes.Compare(GenerateHashFromSignature("aPath", "aCtor", []string{"1", "2"}),
-		GenerateHashFromSignature("bPath", "bCtor", []string{"3", "4"})) == 0 {
+	if bytes.Compare(GenerateHashFromSignature("aPath", []byte("aCtor12")),
+		GenerateHashFromSignature("bPath", []byte("bCtor34"))) == 0 {
 		t.Fatalf("Expected hashes to be different, but they match")
 	}
 }

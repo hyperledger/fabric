@@ -28,7 +28,7 @@ var systemChaincodes = []*api.SystemChaincode{
 		Enabled:   true,
 		Name:      "noop",
 		Path:      "github.com/hyperledger/fabric/bddtests/syschaincode/noop",
-		InitArgs:  []string{},
+		InitArgs:  [][]byte{},
 		Chaincode: &noop.SystemChaincode{},
 	}}
 

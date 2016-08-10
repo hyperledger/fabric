@@ -38,11 +38,10 @@ import static protos.Chaincode.ChaincodeMessage.Type.REGISTERED;
 import static protos.Chaincode.ChaincodeMessage.Type.RESPONSE;
 import static protos.Chaincode.ChaincodeMessage.Type.TRANSACTION;
 
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.ProtocolStringList;
 
 import org.hyperledger.java.fsm.CBDesc;
 import org.hyperledger.java.fsm.Event;
@@ -233,7 +232,7 @@ public class Handler {
 				// Call chaincode's Run
 				ByteString result;
 				try {
-					result = chaincode.runHelper(stub, input.getFunction(), arrayHelper(input.getArgsList()));
+					result = chaincode.runHelper(stub, getFunction(input.getArgsList()), getParameters(input.getArgsList()));
 				} catch (Exception e) {
 					// Send ERROR message to chaincode support and change state
 					logger.debug(String.format("[%s]Init failed. Sending %s", shortID(message), ERROR));
@@ -270,11 +269,17 @@ public class Handler {
 		new Thread(task).start();
 	}
 
+	private String getFunction(List<ByteString> args) {
+		return (args.size() > 0) ? args.get(0).toStringUtf8() : "";
+	}
 
-	private String[] arrayHelper(ProtocolStringList argsList) {
-		String[] array = new String[argsList.size()];
-		argsList.toArray(array);
-		return array;
+	private String[] getParameters(List<ByteString> args) {
+		int size = (args.size() == 0) ? 0 : args.size() - 1;
+		String[] strArgs = new String[size];
+		for(int i = 1; i < args.size(); ++i) {
+			strArgs[i-1] = args.get(i).toStringUtf8();
+		}
+		return strArgs;
 	}
 
 	// enterInitState will initialize the chaincode if entering init from established.
@@ -326,7 +331,7 @@ public class Handler {
 				// Call chaincode's Run
 				ByteString response;
 				try {
-					response = chaincode.runHelper(stub, input.getFunction(), arrayHelper(input.getArgsList()));
+					response = chaincode.runHelper(stub, getFunction(input.getArgsList()), getParameters(input.getArgsList()));
 				} catch (Exception e) {
 					e.printStackTrace();
 					System.err.flush();
@@ -392,7 +397,7 @@ public class Handler {
 
 				ByteString response;
 				try {
-					response = chaincode.queryHelper(stub, input.getFunction(), arrayHelper(input.getArgsList()));
+					response = chaincode.queryHelper(stub, getFunction(input.getArgsList()), getParameters(input.getArgsList()));
 				} catch (Exception e) {
 					// Send ERROR message to chaincode support and change state
 					logger.debug(String.format("[%s]Query execution failed. Sending %s",
@@ -762,7 +767,7 @@ public class Handler {
 //		}
 //	}
 
-	public ByteString handleInvokeChaincode(String chaincodeName, String function, String[] args, String uuid) {
+	public ByteString handleInvokeChaincode(String chaincodeName, String function, List<ByteString> args, String uuid) {
 		// Check if this is a transaction
 		if (!isTransaction.containsKey(uuid)) {
 			throw new RuntimeException("Cannot invoke chaincode in query context");
@@ -771,8 +776,8 @@ public class Handler {
 		ChaincodeID id = ChaincodeID.newBuilder()
 				.setName(chaincodeName).build();
 		ChaincodeInput input = ChaincodeInput.newBuilder()
-				.setFunction(function)
-				.addAllArgs(Arrays.asList(args))
+				.addArgs(ByteString.copyFromUtf8(function))
+				.addAllArgs(args)
 				.build();
 		ChaincodeSpec payload = ChaincodeSpec.newBuilder()
 				.setChaincodeID(id)
@@ -837,11 +842,11 @@ public class Handler {
 		}
 	}
 
-	public ByteString handleQueryChaincode(String chaincodeName, String function, String[] args, String uuid) {
+	public ByteString handleQueryChaincode(String chaincodeName, String function, List<ByteString> args, String uuid) {
 		ChaincodeID id = ChaincodeID.newBuilder().setName(chaincodeName).build();
 		ChaincodeInput input = ChaincodeInput.newBuilder()
-				.setFunction(function)
-				.addAllArgs(Arrays.asList(args))
+				.addArgs(ByteString.copyFromUtf8(function))
+				.addAllArgs(args)
 				.build();
 		ChaincodeSpec payload = ChaincodeSpec.newBuilder()
 				.setChaincodeID(id)
