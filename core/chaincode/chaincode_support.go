@@ -243,7 +243,7 @@ func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Ha
 }
 
 // Based on state of chaincode send either init or ready to move to ready state
-func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Context, txid string, chaincode string, f *string, initArgs []string, timeout time.Duration, tx *pb.Transaction, depTx *pb.Transaction) error {
+func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Context, txid string, chaincode string, initArgs [][]byte, timeout time.Duration, tx *pb.Transaction, depTx *pb.Transaction) error {
 	chaincodeSupport.runningChaincodes.Lock()
 	//if its in the map, there must be a connected stream...nothing to do
 	var chrte *chaincodeRTEnv
@@ -257,7 +257,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 
 	var notfy chan *pb.ChaincodeMessage
 	var err error
-	if notfy, err = chrte.handler.initOrReady(txid, f, initArgs, tx, depTx); err != nil {
+	if notfy, err = chrte.handler.initOrReady(txid, initArgs, tx, depTx); err != nil {
 		return fmt.Errorf("Error sending %s: %s", pb.ChaincodeMessage_INIT, err)
 	}
 	if notfy != nil {
@@ -411,9 +411,8 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	//build the chaincode
 	var cID *pb.ChaincodeID
 	var cMsg *pb.ChaincodeInput
-	var f *string
 	var cLang pb.ChaincodeSpec_Type
-	var initargs []string
+	var initargs [][]byte
 
 	cds := &pb.ChaincodeDeploymentSpec{}
 	if t.Type == pb.Transaction_CHAINCODE_DEPLOY {
@@ -424,7 +423,6 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		cID = cds.ChaincodeSpec.ChaincodeID
 		cMsg = cds.ChaincodeSpec.CtorMsg
 		cLang = cds.ChaincodeSpec.Type
-		f = &cMsg.Function
 		initargs = cMsg.Args
 	} else if t.Type == pb.Transaction_CHAINCODE_INVOKE || t.Type == pb.Transaction_CHAINCODE_QUERY {
 		ci := &pb.ChaincodeInvocationSpec{}
@@ -522,8 +520,8 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	}
 
 	if err == nil {
-		//send init (if (f,args)) and wait for ready state
-		err = chaincodeSupport.sendInitOrReady(context, t.Txid, chaincode, f, initargs, chaincodeSupport.ccStartupTimeout, t, depTx)
+		//send init (if (args)) and wait for ready state
+		err = chaincodeSupport.sendInitOrReady(context, t.Txid, chaincode, initargs, chaincodeSupport.ccStartupTimeout, t, depTx)
 		if err != nil {
 			chaincodeLogger.Errorf("sending init failed(%s)", err)
 			err = fmt.Errorf("Failed to init chaincode(%s)", err)

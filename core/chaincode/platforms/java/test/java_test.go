@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	pb "github.com/hyperledger/fabric/protos"
@@ -41,7 +42,7 @@ func TestJava_BuildImage(t *testing.T) {
 
 	chaincodePath := "../../../shim/java"
 	//TODO find a better way to launch example java chaincode
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_JAVA, ChaincodeID: &pb.ChaincodeID{Path: chaincodePath}, CtorMsg: &pb.ChaincodeInput{Function: "f"}}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_JAVA, ChaincodeID: &pb.ChaincodeID{Path: chaincodePath}, CtorMsg: &pb.ChaincodeInput{Args: shim.ToChaincodeArgs("f")}}
 	if _, err := vm.BuildChaincodeContainer(spec); err != nil {
 		t.Fail()
 		t.Log(err)

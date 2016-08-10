@@ -69,6 +69,7 @@ type ChaincodeStub struct {
 	UUID            string
 	securityContext *pb.ChaincodeSecurityContext
 	chaincodeEvent  *pb.ChaincodeEvent
+	args            [][]byte
 }
 
 // Peer address derived from command line or env var
@@ -244,9 +245,19 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 }
 
 // -- init stub ---
+// ChaincodeInvocation functionality
+
 func (stub *ChaincodeStub) init(uuid string, secContext *pb.ChaincodeSecurityContext) {
 	stub.UUID = uuid
 	stub.securityContext = secContext
+	stub.args = [][]byte{}
+	newCI := pb.ChaincodeInput{}
+	err := proto.Unmarshal(secContext.Payload, &newCI)
+	if err == nil {
+		stub.args = newCI.Args
+	} else {
+		panic("Arguments cannot be unmarshalled.")
+	}
 }
 
 // --------- Security functions ----------
@@ -257,15 +268,15 @@ func (stub *ChaincodeStub) init(uuid string, secContext *pb.ChaincodeSecurityCon
 // InvokeChaincode locally calls the specified chaincode `Invoke` using the
 // same transaction context; that is, chaincode calling chaincode doesn't
 // create a new transaction message.
-func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, function string, args []string) ([]byte, error) {
-	return handler.handleInvokeChaincode(chaincodeName, function, args, stub.UUID)
+func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
+	return handler.handleInvokeChaincode(chaincodeName, args, stub.UUID)
 }
 
 // QueryChaincode locally calls the specified chaincode `Query` using the
 // same transaction context; that is, chaincode calling chaincode doesn't
 // create a new transaction message.
-func (stub *ChaincodeStub) QueryChaincode(chaincodeName string, function string, args []string) ([]byte, error) {
-	return handler.handleQueryChaincode(chaincodeName, function, args, stub.UUID)
+func (stub *ChaincodeStub) QueryChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
+	return handler.handleQueryChaincode(chaincodeName, args, stub.UUID)
 }
 
 // --------- State functions ----------
@@ -378,6 +389,19 @@ func (iter *StateRangeQueryIterator) Next() (string, []byte, error) {
 func (iter *StateRangeQueryIterator) Close() error {
 	_, err := iter.handler.handleRangeQueryStateClose(iter.response.ID, iter.uuid)
 	return err
+}
+
+func (stub *ChaincodeStub) GetArgs() [][]byte {
+	return stub.args
+}
+
+func (stub *ChaincodeStub) GetStringArgs() []string {
+	args := stub.GetArgs()
+	strargs := make([]string, 0, len(args))
+	for _, barg := range args {
+		strargs = append(strargs, string(barg))
+	}
+	return strargs
 }
 
 // TABLE FUNCTIONALITY
@@ -1008,4 +1032,12 @@ func (c *ChaincodeLogger) Errorf(format string, args ...interface{}) {
 // Criticalf logs always appear; They can not be disabled.
 func (c *ChaincodeLogger) Criticalf(format string, args ...interface{}) {
 	c.logger.Criticalf(format, args...)
+}
+
+func ToChaincodeArgs(args ...string) [][]byte {
+	bargs := make([][]byte, len(args))
+	for i, arg := range args {
+		bargs[i] = []byte(arg)
+	}
+	return bargs
 }

@@ -47,17 +47,10 @@ func (p *PassthruChaincode) iq(invoke bool, stub *shim.ChaincodeStub, function s
 	}
 	chaincodeID := function
 
-	var f string
-	var cargs []string
-	if len(args) > 0 {
-		f = args[0]
-		cargs = args[1:]
-	}
-
 	if invoke {
-		return stub.InvokeChaincode(chaincodeID, f, cargs)
+		return stub.InvokeChaincode(chaincodeID, shim.ToChaincodeArgs(args...))
 	}
-	return stub.QueryChaincode(chaincodeID, f, cargs)
+	return stub.QueryChaincode(chaincodeID, shim.ToChaincodeArgs(args...))
 }
 
 // Invoke passes through the invoke call

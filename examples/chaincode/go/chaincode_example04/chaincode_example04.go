@@ -33,8 +33,7 @@ type SimpleChaincode struct {
 func (t *SimpleChaincode) getChaincodeToCall(stub *shim.ChaincodeStub) (string, error) {
 	//This is the hashcode for github.com/hyperledger/fabric/core/example/chaincode/chaincode_example02
 	//if the example is modifed this hashcode will change!!
-	chainCodeToCall := "a5389f7dfb9efae379900a41db1503fea2199fe400272b61ac5fe7bd0c6b97cf10ce3aa8dd00cd7626ce02f18accc7e5f2059dae6eb0786838042958352b89fb" //with SHA3
-
+	chainCodeToCall := "9578ffde22fede358d6390d6a3f81bee6e690e210ad7c544e93d567f55e9290369df30822cd771acc0ca233fb32c7948c257599e0412b9b4f2d1eae5721486ce"
 	return chainCodeToCall, nil
 }
 
@@ -92,8 +91,8 @@ func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args
 	}
 
 	f := "invoke"
-	invokeArgs := []string{"a", "b", "10"}
-	response, err := stub.InvokeChaincode(chainCodeToCall, f, invokeArgs)
+	invokeArgs := shim.ToChaincodeArgs(f, "a", "b", "10")
+	response, err := stub.InvokeChaincode(chainCodeToCall, invokeArgs)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())
 		fmt.Printf(errStr)

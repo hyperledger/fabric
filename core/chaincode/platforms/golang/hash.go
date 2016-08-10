@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
@@ -226,7 +227,7 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	}
 
 	ctor := spec.CtorMsg
-	if ctor == nil || ctor.Function == "" {
+	if ctor == nil || len(ctor.Args) == 0 {
 		return "", fmt.Errorf("Cannot generate hashcode from empty ctor")
 	}
 
@@ -267,8 +268,11 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if err = isCodeExist(tmppath); err != nil {
 		return "", fmt.Errorf("code does not exist %s", err)
 	}
-
-	hash := util.GenerateHashFromSignature(actualcodepath, ctor.Function, ctor.Args)
+	ctorbytes, err := proto.Marshal(ctor)
+	if err != nil {
+		return "", fmt.Errorf("Error marshalling constructor: %s", err)
+	}
+	hash := util.GenerateHashFromSignature(actualcodepath, ctorbytes)
 
 	hash, err = hashFilesInDir(filepath.Join(codegopath, "src"), actualcodepath, hash, tw)
 	if err != nil {

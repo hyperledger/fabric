@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
@@ -91,7 +92,7 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	}
 
 	ctor := spec.CtorMsg
-	if ctor == nil || ctor.Function == "" {
+	if ctor == nil || len(ctor.Args) == 0 {
 		return "", fmt.Errorf("Cannot generate hashcode from empty ctor")
 	}
 
@@ -132,8 +133,11 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 		root = root[:len(root)-1]
 	}
 	root = root[:strings.LastIndex(root, "/")+1]
-
-	hash := util.GenerateHashFromSignature(codepath, ctor.Function, ctor.Args)
+	ctorbytes, err := proto.Marshal(ctor)
+	if err != nil {
+		return "", fmt.Errorf("Error marshalling constructor: %s", err)
+	}
+	hash := util.GenerateHashFromSignature(codepath, ctorbytes)
 
 	hash, err = hashFilesInDir(root, codepath, hash, tw)
 	if err != nil {

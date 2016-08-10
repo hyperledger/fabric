@@ -47,10 +47,7 @@ message ChaincodeID {
 
 // Carries the chaincode function and its arguments.
 message ChaincodeInput {
-
-    string function = 1;
-    repeated string args  = 2;
-
+    repeated bytes args  = 1;
 }
 
 // Carries the chaincode specification. This is the actual metadata required for

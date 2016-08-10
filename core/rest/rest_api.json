@@ -630,10 +630,6 @@
         "ChaincodeInput": {
             "type": "object",
             "properties": {
-                "function": {
-                    "type": "string",
-                    "description": "Function to execute within the Chaincode."
-                },
                 "args": {
                     "type": "array",
                     "items": {

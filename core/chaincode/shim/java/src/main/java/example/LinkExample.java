@@ -16,8 +16,13 @@ limitations under the License.
 
 package example;
 
+import com.google.protobuf.ByteString;
 import org.hyperledger.java.shim.ChaincodeBase;
 import org.hyperledger.java.shim.ChaincodeStub;
+
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedList;
+import java.util.List;
 
 public class LinkExample extends ChaincodeBase {
 
@@ -33,7 +38,7 @@ public class LinkExample extends ChaincodeBase {
 			mapChaincode = args[0];
 			break;
 		case "put":
-			stub.invokeChaincode(mapChaincode, function, args);			
+			stub.invokeChaincode(mapChaincode, function, toByteStringList(args));
 		default:
 			break;
 		}
@@ -42,7 +47,7 @@ public class LinkExample extends ChaincodeBase {
 
 	@Override
 	public String query(ChaincodeStub stub, String function, String[] args) {
-		String tmp = stub.queryChaincode("map", function, args);
+		String tmp = stub.queryChaincode("map", function, toByteStringList(args));
 		if (tmp.isEmpty()) tmp = "NULL";
 		else tmp = "\"" + tmp + "\"";
 		tmp += " (queried from map chaincode)";
@@ -58,5 +63,12 @@ public class LinkExample extends ChaincodeBase {
 	public String getChaincodeID() {
 		return "link";
 	}
-	
+
+	private List<ByteString> toByteStringList(String[] args) {
+		LinkedList<ByteString> result = new LinkedList();
+		for (int i=0; i<args.length; ++i) {
+			result.add(ByteString.copyFrom(args[i].getBytes(StandardCharsets.UTF_8)));
+		}
+		return result;
+	}
 }
