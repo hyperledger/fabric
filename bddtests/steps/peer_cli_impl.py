@@ -66,6 +66,10 @@ def step_impl(context, stream, attribute, length):
     array = getAttribute(attribute, json)
     assertLength(array, int(length))
 
+@then(u'I should get result with "{expectResult}"')
+def step_impl(context, expectResult):
+    assert context.command["stdout"].strip('\n') == expectResult
+
 def assertIsJson(data):
     assert isJson(data), "Data is not in JSON format"
 

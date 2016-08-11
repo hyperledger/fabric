@@ -16,9 +16,10 @@ Feature: Peer Command Line Interface
     When I execute "peer network list" in container vp0
     Then the command should complete successfully
     And stdout should contain JSON
+    And I should get result with "{"Peers":[]}"
 
     Scenario: List Peers when two are up
     Given we compose "docker-compose-2.yml"
     When I execute "peer network list" in container vp0
     Then the command should complete successfully
-    And stdout should contain JSON with "peers" array of length 1
+    And stdout should contain JSON with "Peers" array of length 1

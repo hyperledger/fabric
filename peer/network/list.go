@@ -58,7 +58,9 @@ func networkList() (err error) {
 		return
 	}
 
-	jsonOutput, _ := json.Marshal(peers)
+	// The generated pb.PeersMessage struct will be added "omitempty" tag automatically.
+	// But we still want to print it when pb.PeersMessage is empty.
+	jsonOutput, _ := json.Marshal(struct{ Peers []*pb.PeerEndpoint }{append([]*pb.PeerEndpoint{}, peers.GetPeers()...)})
 	fmt.Println(string(jsonOutput))
 	return nil
 }
