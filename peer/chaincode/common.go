@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
 	pb "github.com/hyperledger/fabric/protos"
@@ -32,6 +33,10 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
+
+type container struct {
+	Args []string
+}
 
 // chaincodeInvokeOrQuery invokes or queries the chaincode. If successful, the
 // INVOKE form prints the transaction ID on STDOUT, and the QUERY form prints
@@ -57,11 +62,12 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 	}
 	// Build the spec
 	input := &pb.ChaincodeInput{}
-	if err = json.Unmarshal([]byte(chaincodeCtorJSON), &input); err != nil {
+	inputc := container{}
+	if err = json.Unmarshal([]byte(chaincodeCtorJSON), &inputc); err != nil {
 		err = fmt.Errorf("Chaincode argument error: %s", err)
 		return
 	}
-
+	input = &pb.ChaincodeInput{Args: shim.ToChaincodeArgs(inputc.Args...)}
 	var attributes []string
 	if err = json.Unmarshal([]byte(chaincodeAttributesJSON), &attributes); err != nil {
 		err = fmt.Errorf("Chaincode argument error: %s", err)
@@ -172,9 +178,9 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		}
 	}
 
-	// Check that non-empty chaincode parameters contain only Function and
-	// Args keys. Type checking is done later when the JSON is actually
-	// unmarshaled into a pb.ChaincodeInput. To better understand what's going
+	// Check that non-empty chaincode parameters contain only Args as a key.
+	// Type checking is done later when the JSON is actually unmarshaled
+	// into a pb.ChaincodeInput. To better understand what's going
 	// on here with JSON parsing see http://blog.golang.org/json-and-go -
 	// Generic JSON with interface{}
 	if chaincodeCtorJSON != "{}" {
@@ -184,19 +190,18 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			return fmt.Errorf("Chaincode argument error: %s", err)
 		}
 		m := f.(map[string]interface{})
-		if len(m) != 2 {
-			return fmt.Errorf("Non-empty JSON chaincode parameters must contain exactly 2 keys - 'Function' and 'Args'")
+		if len(m) != 1 {
+			return fmt.Errorf("Non-empty JSON chaincode parameters must contain exactly 1 key: 'Args'")
 		}
 		for k := range m {
 			switch strings.ToLower(k) {
-			case "function":
 			case "args":
 			default:
-				return fmt.Errorf("Illegal chaincode key '%s' - must be either 'Function' or 'Args'", k)
+				return fmt.Errorf("Illegal chaincode key '%s' - must be only 'Args'", k)
 			}
 		}
 	} else {
-		return errors.New("Empty JSON chaincode parameters must contain exactly 2 keys - 'Function' and 'Args'")
+		return errors.New("Empty JSON chaincode parameters must contain exactly 1 key: 'Args'")
 	}
 
 	if chaincodeAttributesJSON != "[]" {
