@@ -38,51 +38,35 @@ type container struct {
 	Args []string
 }
 
-// chaincodeInvokeOrQuery invokes or queries the chaincode. If successful, the
-// INVOKE form prints the transaction ID on STDOUT, and the QUERY form prints
-// the query result on STDOUT. A command-line flag (-r, --raw) determines
-// whether the query result is output as raw bytes, or as a printable string.
-// The printable form is optionally (-x, --hex) a hexadecimal representation
-// of the query response. If the query response is NIL, nothing is output.
-func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err error) {
-
-	if err = checkChaincodeCmdParams(cmd); err != nil {
-		return
+func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
+	spec := &pb.ChaincodeSpec{}
+	if err := checkChaincodeCmdParams(cmd); err != nil {
+		return spec, err
 	}
 
-	if chaincodeName == "" {
-		err = errors.New("Name not given for invoke/query")
-		return
-	}
-
-	devopsClient, err := common.GetDevopsClient(cmd)
-	if err != nil {
-		err = fmt.Errorf("Error building %s: %s", chainFuncName, err)
-		return
-	}
 	// Build the spec
-	input := &pb.ChaincodeInput{}
 	inputc := container{}
-	if err = json.Unmarshal([]byte(chaincodeCtorJSON), &inputc); err != nil {
-		err = fmt.Errorf("Chaincode argument error: %s", err)
-		return
+	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &inputc); err != nil {
+		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
-	input = &pb.ChaincodeInput{Args: shim.ToChaincodeArgs(inputc.Args...)}
+	input := &pb.ChaincodeInput{Args: shim.ToChaincodeArgs(inputc.Args...)}
+
 	var attributes []string
-	if err = json.Unmarshal([]byte(chaincodeAttributesJSON), &attributes); err != nil {
-		err = fmt.Errorf("Chaincode argument error: %s", err)
-		return
+	if err := json.Unmarshal([]byte(chaincodeAttributesJSON), &attributes); err != nil {
+		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
 
 	chaincodeLang = strings.ToUpper(chaincodeLang)
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[chaincodeLang]),
-		ChaincodeID: &pb.ChaincodeID{Name: chaincodeName}, CtorMsg: input, Attributes: attributes}
-
+	spec = &pb.ChaincodeSpec{
+		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[chaincodeLang]),
+		ChaincodeID: &pb.ChaincodeID{Path: chaincodePath, Name: chaincodeName},
+		CtorMsg:     input,
+		Attributes:  attributes,
+	}
 	// If security is enabled, add client login token
 	if core.SecurityEnabled() {
 		if chaincodeUsr == common.UndefinedParamValue {
-			err = errors.New("Must supply username for chaincode when security is enabled")
-			return
+			return spec, errors.New("Must supply username for chaincode when security is enabled")
 		}
 
 		// Retrieve the CLI data storage path
@@ -90,7 +74,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		localStore := util.GetCliFilePath()
 
 		// Check if the user is logged in before sending transaction
-		if _, err = os.Stat(localStore + "loginToken_" + chaincodeUsr); err == nil {
+		if _, err := os.Stat(localStore + "loginToken_" + chaincodeUsr); err == nil {
 			logger.Infof("Local user '%s' is already logged in. Retrieving login token.\n", chaincodeUsr)
 
 			// Read in the login token
@@ -110,8 +94,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		} else {
 			// Check if the token is not there and fail
 			if os.IsNotExist(err) {
-				err = fmt.Errorf("User '%s' not logged in. Use the 'login' command to obtain a security token.", chaincodeUsr)
-				return
+				return spec, fmt.Errorf("User '%s' not logged in. Use the 'login' command to obtain a security token.", chaincodeUsr)
 			}
 			// Unexpected error
 			panic(fmt.Errorf("Fatal error when checking for client login token: %s\n", err))
@@ -123,6 +106,25 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		if viper.GetBool("security.privacy") {
 			panic(errors.New("Privacy cannot be enabled as requested because security is disabled"))
 		}
+	}
+	return spec, nil
+}
+
+// chaincodeInvokeOrQuery invokes or queries the chaincode. If successful, the
+// INVOKE form prints the transaction ID on STDOUT, and the QUERY form prints
+// the query result on STDOUT. A command-line flag (-r, --raw) determines
+// whether the query result is output as raw bytes, or as a printable string.
+// The printable form is optionally (-x, --hex) a hexadecimal representation
+// of the query response. If the query response is NIL, nothing is output.
+func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err error) {
+	spec, err := getChaincodeSpecification(cmd)
+	if err != nil {
+		return err
+	}
+
+	devopsClient, err := common.GetDevopsClient(cmd)
+	if err != nil {
+		return fmt.Errorf("Error building %s: %s", chainFuncName, err)
 	}
 
 	// Build the ChaincodeInvocationSpec message
