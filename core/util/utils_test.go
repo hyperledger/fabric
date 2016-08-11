@@ -69,6 +69,24 @@ func TestGenerateHashFromSignature(t *testing.T) {
 	}
 }
 
+func TestGenerateUUIDfromTxSHAHash(t *testing.T) {
+	uuid := GenerateUUIDfromTxSHAHash([]byte("foobar"))
+	if len(uuid) != 36 {
+		t.Fatalf("UUID length is not correct. Expected = 36, Got = %d", len(uuid))
+	}
+	uuid2 := GenerateUUIDfromTxSHAHash([]byte("foobar1"))
+	if uuid == uuid2 {
+		t.Fatalf("Two UUIDs are equal. This should never occur")
+	}
+}
+
+func TestGenerateIDWithAlg(t *testing.T) {
+	_, err := GenerateIDWithAlg("sha256base64", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	if err != nil {
+		t.Fatalf("Decoder failure: %v", err)
+	}
+}
+
 func TestFindMissingElements(t *testing.T) {
 	all := []string{"a", "b", "c", "d"}
 	some := []string{"b", "c"}
