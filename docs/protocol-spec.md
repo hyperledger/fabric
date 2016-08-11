@@ -12,124 +12,141 @@ The intended audience for this specification includes the following groups:
 ________________________________________________________
 
 ## Table of Contents
-#### 1. Introduction
+#### [1. Introduction](#1-introduction_1)
+   - [1.1 What is the fabric?](#11-what-is-the-fabric)
+   - [1.2 Why the fabric?](#12-why-the-fabric)
+   - [1.3 Terminology](#13-terminology)
 
-   - [1.1 What is the fabric?](#1.1-What-is-the-fabric?)
-   - [1.2 Why the fabric?](#1.2-Why-the-fabric?)
-   - [1.3 Terminology](#1.3-Terminology)
+#### [2. Fabric](#2-fabric_1)
+   - [2.1 Architecture](#21-architecture)
+   - [2.1.1 Membership Services](#211-membership-services)
+   - [2.1.2 Blockchain Services](#212-blockchain-services)
+   - [2.1.3 Chaincode Services](#213-chaincode-services)
+   - [2.1.4 Events](#214-events)
+   - [2.1.5 Application Programming Interface (API)](#215-application-programming-interface-api)
+   - [2.1.6 Command Line Interface (CLI)](#216-command-line-interface-cli)
+   - [2.2 Topology](#22-topology)
+   - [2.2.1 Single Validating Peer](#221-single-validating-peer)
+   - [2.2.2 Multiple Validating Peers](#222-multiple-validating-peers)
+   - [2.2.3 Multichain](#223-multichain)
 
-#### 2. Fabric
+#### [3. Protocol](#3-protocol_1)
+   - [3.1 Message](#31-message)
+   - [3.1.1 Discovery Messages](#311-discovery-messages)
+   - [3.1.2 Transaction Messages](#312-transaction-messages)
+   - [3.1.2.1 Transaction Data Structure](#3121-transaction-data-structure)
+   - [3.1.2.2 Transaction Specification](#3122-transaction-specification)
+   - [3.1.2.3 Deploy Transaction](#3123-deploy-transaction)
+   - [3.1.2.4 Invoke Transaction](#3124-invoke-transaction)
+   - [3.1.2.5 Query Transaction](#3125-query-transaction)
+   - [3.1.3 Synchronization Messages](#313-synchronization-messages)
+   - [3.1.4 Consensus Messages](#314-consensus-messages)
+   - [3.2 Ledger](#32-ledger)
+   - [3.2.1 Blockchain](#321-blockchain)
+   - [3.2.1.1 Block](#3211-block)
+   - [3.2.1.2 Block Hashing](#3212-block-hashing)
+   - [3.2.1.3 NonHashData](#3213-nonhashdata)
+   - [3.2.1.4 Transaction Execution](#3214-transaction-execution)
+   - [3.2.2 World State](#322-world-state)
+   - [3.2.2.1 Hashing the world state](#3221-hashing-the-world-state)
+   - [3.2.2.1.1 Bucket-tree](#32211-buckettree)
+   - [3.3 Chaincode](#33-chaincode)
+   - [3.3.1 Virtual Machine Instantiation](#331-virtual-machine-instantiation)
+   - [3.3.2 Chaincode Protocol](#332-chaincode-protocol)
+   - [3.3.2.1 Chaincode Deploy](#3321-chaincode-deploy)
+   - [3.3.2.2 Chaincode Invoke](#3322-chaincode-invoke)
+   - [3.3.2.3 Chaincode Query](#3323-chaincode-query)
+   - [3.3.2.4 Chaincode State](#3324-chaincode-state)
+   - [3.4 Pluggable Consensus Framework](#34-pluggable-consensus-framework)
+   - [3.4.1 Consenter interface](#341-consenter-interface)
+   - [3.4.2 CPI interface](#342-cpi-interface)
+   - [3.4.3 Inquirer interface](#343-inquirer-interface)
+   - [3.4.4 Communicator interface](#344-communicator-interface)
+   - [3.4.5 SecurityUtils interface](#345-securityutils-interface)
+   - [3.4.6 LedgerStack interface](#346-ledgerstack-interface)
+   - [3.4.7 Executor interface](#347-executor-interface)
+   - [3.4.7.1 Beginning a transaction batch](#3471-beginning-a-transaction-batch)
+   - [3.4.7.2 Executing transactions](#3472-executing-transactions)
+   - [3.4.7.3 Committing and rolling-back transactions](#3473-committing-and-rollingback-transactions)
+   - [3.4.8 Ledger interface](#348-ledger-interface)
+   - [3.4.8.1 ReadOnlyLedger interface](#3481-readonlyledger-interface)
+   - [3.4.8.2 UtilLedger interface](#3482-utilledger-interface)
+   - [3.4.8.3 WritableLedger interface](#3483-writableledger-interface)
+   - [3.4.9 RemoteLedgers interface](#349-remoteledgers-interface)
+   - [3.4.10 controller package](#3410-controller-package)
+   - [3.4.10.1 controller.NewConsenter](#34101-controllernewconsenter)
+   - [3.4.11 helper package](#3411-helper-package)
+   - [3.4.11.1 High-level overview](#34111-highlevel-overview)
+   - [3.4.11.2 helper.ConsensusHandler](#34112-helperconsensushandler)
+   - [3.4.11.3 helper.NewConsensusHandler](#34113-helpernewconsensushandler)
+   - [3.4.11.4 helper.Helper](#34114-helperhelper)
+   - [3.4.11.5 helper.NewHelper](#34115-helpernewhelper)
+   - [3.4.11.6 helper.HandleMessage](#34116-helperhandlemessage)
+   - [3.5 Events](#35-events)
+   - [3.5.1 Event Stream](#351-event-stream)
+   - [3.5.1.1 Event Producer](#3511-event-producer)
+   - [3.5.1.2 Event Consumer](#3512-event-consumer)
+   - [3.5.2 Event Adapters](#352-event-adapters)
+   - [3.5.3 Event Structure](#353-event-structure)
 
-   - [2.1 Architecture](#2.1-Architecture)
-   - [2.1.1 Membership Services](#2.1.1-Membership-Services)
-   - [2.1.2 Blockchain Services](#2.1.2-Blockchain-Services)
-   - [2.1.3 Chaincode Services](#2.1.3-Chaincode-Services)
-   - [2.1.4 Events](#2.1.4-Events)
-   - [2.1.5 Application Programming Interface](#2.1.5-Application-Programming-Interface)
-   - [2.1.6 Command Line Interface](#2.1.6-Command-Line-Interface)
-   - [2.2 Topology](#2.2-Topology)
-   - [2.2.1 Single Validating Peer](#2.2.1-Single-Validating-Peer)
-   - [2.2.2 Multiple Validating Peers](#2.2.2-Multiple-Validating-Peers)
-   - [2.2.3 Multichain](#2.2.3-Multichain)
+#### [4. Security](#4-security_1)
+   - [4.1 Business security requirements](#41-business-security-requirements)
+   - [4.2 User Privacy through Membership Services](#42-user-privacy-through-membership-services)
+   - [4.2.1 User/Client Enrollment Process](#421-userclient-enrollment-process)
+   - [4.2.2 Expiration and revocation of certificates](#422-expiration-and-revocation-of-certificates)
+   - [4.3 Transaction security offerings at the infrastructure level](#43-transaction-security-offerings-at-the-infrastructure-level)
+   - [4.3.1 Security Lifecycle of Transactions](#431-security-lifecycle-of-transactions)
+   - [4.3.2 Transaction confidentiality](#432-transaction-confidentiality)
+   - [4.3.2.1 Confidentiality against users](#4321-confidentiality-against-users)
+   - [4.3.2.2 Confidentiality against validators](#4322-confidentiality-against-validators)
+   - [4.3.3 Replay attack resistance](#433-replay-attack-resistance)
+   - [4.4 Access control features on the application](#44-access-control-features-on-the-application)
+   - [4.4.1 Invocation access control](#441-invocation-access-control)
+   - [4.4.2 Read access control](#442-read-access-control)
+   - [4.5 Online wallet service](#45-online-wallet-service)
+   - [4.6 Network security (TLS)](#46-network-security-tls)
+   - [4.7 Restrictions in the current release](#47-restrictions-in-the-current-release)
+   - [4.7.1 Simplified client](#471-simplified-client)
+   - [4.7.2 Simplified transaction confidentiality](#472-simplified-transaction-confidentiality)
 
-#### 3. Protocol
+#### [5. Byzantine Consensus](#5-byzantine-consensus_1)
+   - [5.1 Overview](#51-overview)
+   - [5.2 Core PBFT Functions](#52-core-pbft-functions)
+   - [5.2.1 newPbftCore](#521-newpbftcore)
 
-   - [3.1 Message](#3.1-Message)
-   - 3.1.1 Discovery Messages
-   - 3.1.2 Transaction Messages
-   - 3.1.2.1 Transaction Data Structure
-   - 3.1.2.2 Transaction Specification
-   - 3.1.2.3 Deploy Transaction
-   - 3.1.2.4 Invoke Transaction
-   - 3.1.2.5 Query Transaction
-   - 3.1.3 Synchronization Messages
-   - 3.1.4 Consensus Messages
-   - [3.2 Ledger](#3.2-Ledger)
-   - 3.2.1 Blockchain
-   - 3.2.1.1 Block
-   - 3.2.1.2 Block Hashing
-   - 3.2.1.3 NonHashData
-   - 3.2.1.4 Transaction
-   - 3.2.2 World State
-   - 3.2.2.1 Hashing the world state
-   - 3.2.2.1.1 Bucket-tree
-   - [3.3 Chaincode](#3.3-Chaincode)
-   - 3.3.1 Virtual Machine Instantiation
-   - 3.3.2 Chaincode Protocol
-   - 3.3.2.1 Chaincode Deploy
-   - 3.3.2.2 Chaincode Invoke
-   - 3.3.2.3 Chaincode Query
-   - 3.3.2.4 Chaincode State
-   - [3.4 Pluggable Consensus Framework](#3.4-Pluggable-Consensus-Framework)
-   - 3.4.1 Consenter interface
-   - 3.4.2 Consensus Programming Interface
-   - 3.4.3 Inquirer interface
-   - 3.4.4 Communicator interface
-   - 3.4.5 SecurityUtils interface
-   - 3.4.6 LedgerStack interface
-   - 3.4.7 Executor interface
-   - 3.4.7.1 Beginning a transaction batch
-   - 3.4.7.2 Executing transactions
-   - 3.4.7.3 Committing and rolling-back transactions
-   - 3.4.8 Ledger interface
-   - 3.4.8.1 ReadOnlyLedger interface
-   - 3.4.8.2 UtilLedger interface
-   - 3.4.8.3 WritableLedger interface
-   - 3.4.9 RemoteLedgers interface
-   - 3.4.10 Controller package
-   - 3.4.11 Helper package
-   - [3.5 Events](#3.5-Events)
-   - 3.4.1 Event Stream
-   - 3.4.2 Event Structure
-   - 3.4.3 Event Adapters
+#### [6. Application Programming Interface](#6-application-programming-interface_1)
+   - [6.1 REST Service](#61-rest-service)
+   - [6.2 REST API](#62-rest-api)
+   - [6.2.1 REST Endpoints](#621-rest-endpoints)
+   - [6.2.1.1 Block API](#6211-block-api)
+   - [6.2.1.2 Blockchain API](#6212-blockchain-api)
+   - [6.2.1.3 Chaincode API](#6213-chaincode-api)
+   - [6.2.1.4 Network API](#6214-network-api)
+   - [6.2.1.5 Registrar API (member services)](#6215-registrar-api-member-services)
+   - [6.2.1.6 Transactions API](#6216-transactions-api)
+   - [6.3 CLI](#63-cli)
+   - [6.3.1 CLI Commands](#631-cli-commands)
+   - [6.3.1.1 node start](#6311-node-start)
+   - [6.3.1.2 network login](#6312-network-login)
+   - [6.3.1.3 chaincode deploy](#6313-chaincode-deploy)
+   - [6.3.1.4 chaincode invoke](#6314-chaincode-invoke)
+   - [6.3.1.5 chaincode query](#6315-chaincode-query)
 
-#### 4. Security
-   - [4. Security](#4.-Security)
-   - 4.1 Business security requirements
-   - 4.2 User Privacy through Membership Services
-   - 4.2.1 User/Client Enrollment Process
-   - 4.2.2 Expiration and revocation of certificates
-   - 4.2.3 Online wallet service
-   - 4.3 Transaction security offerings at the infrastructure level
-   - 4.3.1 Security lifecycle of transactions
-   - 4.3.2 Transaction confidentiality
-   - 4.3.2.1 Confidentiality against users
-   - 4.3.2.2 Confidentiality against validators
-   - 4.3.3 Invocation access control
-   - 4.3.4 Replay attack resistance
-   - 4.4 Access control features on the application
-   - 4.4.1 Invocation access control
-   - 4.4.2 Read access control
-   - 4.5 Online wallet service
-   - 4.6 Network security (TLS)
-   - 4.7 Restrictions in the current release
-   - 4.7.1 Simplified client
-   - 4.7.1 Simplified transaction confidentiality
+#### [7. Application Model](#7-application-model_1)
+   - [7.1 Composition of an Application](#71-composition-of-an-application)
+   - [7.2 Sample Application](#72-sample-application)
 
-#### [5. Byzantine Consensus](#5.-Byzantine-Consensus)
-   - 5.1 Overview
-   - 5.2 Core PBFT
+#### [8. Future Directions](#8-future-directions_1)
+   - [8.1 Enterprise Integration](#81-enterprise-integration)
+   - [8.2 Performance and Scalability](#82-performance-and-scalability)
+   - [8.3 Additional Consensus Plugins](#83-additional-consensus-plugins)
+   - [8.4 Additional Languages](#84-additional-languages)
 
-#### [6. Application Programming Interface](#6.-Application-Programming-Interface)
-   - 6.1 REST Service
-   - 6.2 REST API
-   - 6.3 CLI
+#### [9.1 Authors](#91-authors)
+#### [9.2 Reviewers](#92-reviewers)
+#### [9.3 Acknowledgements](#93-acknowledgements)
 
-#### [7. Application Model](#7.-Application-Model)
-   - 7.1 Composition of an Application
-   - 7.2 Sample Application
-
-#### [8. Future Directions](#8.-Future-Directions)
-   - 8.1 Enterprise Integration
-   - 8.2 Performance and Scalability
-   - 8.3 Additional Consensus Plugins
-   - 8.4 Additional Languages
-
-#### [9.1 Authors](#9.1-Authors)
-#### [9.2 Reviewers](#9.2-Reviewers)
-#### [9.3 Acknowledgements](#9.3-Acknowledgements)
-
-#### [10. References](#10.-References)
+#### [10. References](#10-references_1)
 
 ________________________________________________________
 
@@ -185,42 +202,42 @@ The reference architecture is aligned in 3 categories: Membership, Blockchain, a
 
 ![Reference architecture](images/refarch.png)
 
-### 2.1.1 Membership Services
+#### 2.1.1 Membership Services
 Membership provides services for managing identity, privacy, confidentiality and auditability on the network. In a non-permissioned blockchain, participation does not require authorization and all nodes can equally submit transactions and/or attempt to accumulate them into acceptable blocks, i.e. there are no distinctions of roles. Membership services combine elements of Public Key Infrastructure (PKI) and decentralization/consensus to transform a non-permissioned blockchain into a permissioned blockchain. In the latter, entities register in order to acquire long-term identity credentials (enrollment certificates), and may be distinguished according to entity type. In the case of users, such credentials enable the Transaction Certificate Authority (TCA) to issue pseudonymous credentials. Such credentials, i.e., transaction certificates, are used to authorize submitted transactions. Transaction certificates persist on the blockchain, and enable authorized auditors to cluster otherwise unlinkable transactions.
 
-### 2.1.2 Blockchain Services
+#### 2.1.2 Blockchain Services
 Blockchain services manage the distributed ledger through a peer-to-peer protocol, built on HTTP/2. The data structures are highly optimized to provide the most efficient hash algorithm for maintaining the world state replication. Different consensus (PBFT, Raft, PoW, PoS) may be plugged in and configured per deployment.
 
-### 2.1.3 Chaincode Services
+#### 2.1.3 Chaincode Services
 Chaincode services provides a secured and lightweight way to sandbox the chaincode execution on the validating nodes. The environment is a “locked down” and secured container along with a set of signed base images containing secure OS and chaincode language, runtime and SDK layers for Go, Java, and Node.js. Other languages can be enabled if required.
 
-### 2.1.4 Events
+#### 2.1.4 Events
 Validating peers and chaincodes can emit events on the network that applications may listen for and take actions on. There is a set of pre-defined events, and chaincodes can generate custom events. Events are consumed by 1 or more event adapters. Adapters may further deliver events using other vehicles such as Web hooks or Kafka.
 
-### 2.1.5 Application Programming Interface (API)
+#### 2.1.5 Application Programming Interface (API)
 The primary interface to the fabric is a REST API and its variations over Swagger 2.0. The API allows applications to register users, query the blockchain, and to issue transactions. There is a set of APIs specifically for chaincode to interact with the stack to execute transactions and query transaction results.
 
-### 2.1.6 Command Line Interface (CLI)
+#### 2.1.6 Command Line Interface (CLI)
 CLI includes a subset of the REST API to enable developers to quickly test chaincodes or query for status of transactions. CLI is implemented in Golang and operable on multiple OS platforms.
 
 ### 2.2 Topology
 A deployment of the fabric can consist of a membership service, many validating peers, non-validating peers, and 1 or more applications. All of these components make up a chain. There can be multiple chains; each one having its own operating parameters and security requirements.
 
-### 2.2.1 Single Validating Peer
+#### 2.2.1 Single Validating Peer
 Functionally, a non-validating peer is a subset of a validating peer; that is, every capability on a non-validating peer may be enabled on a validating peer, so the simplest network may consist of a single validating peer node. This configuration is most appropriate for a development environment, where a single validating peer may be started up during the edit-compile-debug cycle.
 
 ![Single Validating Peer](images/top-single-peer.png)
 
 A single validating peer doesn't require consensus, and by default uses the `noops` plugin, which executes transactions as they arrive. This gives the developer an immediate feedback during development.
 
-### 2.2.2 Multiple Validating Peers
+#### 2.2.2 Multiple Validating Peers
 Production or test networks should be made up of multiple validating and non-validating peers as necessary. Non-validating peers can take workload off the validating peers, such as handling API requests and processing events.
 
 ![Multiple Validating Peers](images/top-multi-peer.png)
 
 The validating peers form a mesh-network (every validating peer connects to every other validating peer) to disseminate information. A non-validating peer connects to a neighboring validating peer that it is allowed to connect to. Non-validating peers are optional since applications may communicate directly with validating peers.
 
-### 2.2.3 Multichain
+#### 2.2.3 Multichain
 Each network of validating and non-validating peers makes up a chain. Many chains may be created to address different needs, similar to having multiple Web sites, each serving a different purpose.
 
 
@@ -265,7 +282,7 @@ message Message {
 ```
 The `payload` is an opaque byte array containing other objects such as `Transaction` or `Response` depending on the type of the message. For example, if the `type` is `CHAIN_TRANSACTION`, the `payload` is a `Transaction` object.
 
-### 3.1.1 Discovery Messages
+#### 3.1.1 Discovery Messages
 Upon start up, a peer runs discovery protocol if `CORE_PEER_DISCOVERY_ROOTNODE` is specified. `CORE_PEER_DISCOVERY_ROOTNODE` is the IP address of another peer on the network (any peer) that serves as the starting point for discovering all the peers on the network. The protocol sequence begins with `DISC_HELLO`, whose `payload` is a `HelloMessage` object, containing its endpoint:
 
 ```
@@ -302,10 +319,10 @@ If the block height received upon `DISC_HELLO` is higher than the current block 
 
 After `DISC_HELLO`, peer sends `DISC_GET_PEERS` periodically to discover any additional peers joining the network. In response to `DISC_GET_PEERS`, a peer sends `DISC_PEERS` with `payload` containing an array of `PeerEndpoint`. Other discovery message types are not used at this point.
 
-### 3.1.2 Transaction Messages
+#### 3.1.2 Transaction Messages
 There are 3 types of transactions: Deploy, Invoke and Query. A deploy transaction installs the specified chaincode on the chain, while invoke and query transactions call a function of a deployed chaincode. Another type in consideration is Create transaction, where a deployed chaincode may be instantiated on the chain and is addressable. This type has not been implemented as of this writing.
 
-### 3.1.2.1 Transaction Data Structure
+##### 3.1.2.1 Transaction Data Structure
 
 Messages with type `CHAIN_TRANSACTION` or `CHAIN_QUERY` carry a `Transaction` object in the `payload`:
 
@@ -362,7 +379,7 @@ enum ConfidentialityLevel {
 
 More detail on transaction security can be found in section 4.
 
-### 3.1.2.2 Transaction Specification
+##### 3.1.2.2 Transaction Specification
 A transaction is always associated with a chaincode specification which defines the chaincode and the execution environment such as language and security context. Currently there is an implementation that uses Golang for writing chaincode. Other languages may be added in the future.
 
 ```
@@ -402,7 +419,7 @@ message ChaincodeInput {
 
 The peer, receiving the `chaincodeSpec`, wraps it in an appropriate transaction message and broadcasts to the network.
 
-### 3.1.2.3 Deploy Transaction
+##### 3.1.2.3 Deploy Transaction
 Transaction `type` of a deploy transaction is `CHAINCODE_DEPLOY` and the payload contains an object of `ChaincodeDeploymentSpec`.
 
 ```
@@ -419,7 +436,7 @@ message ChaincodeDeploymentSpec {
 
 The validating peers always verify the hash of the `codePackage` when they deploy the chaincode to make sure the package has not been tampered with since the deploy transaction entered the network.
 
-### 3.1.2.4 Invoke Transaction
+##### 3.1.2.4 Invoke Transaction
 Transaction `type` of an invoke transaction is `CHAINCODE_INVOKE` and the `payload` contains an object of `ChaincodeInvocationSpec`.
 
 ```
@@ -428,10 +445,10 @@ message ChaincodeInvocationSpec {
 }
 ```
 
-### 3.1.2.5 Query Transaction
+##### 3.1.2.5 Query Transaction
 A query transaction is similar to an invoke transaction, but the message `type` is `CHAINCODE_QUERY`.
 
-### 3.1.3 Synchronization Messages
+#### 3.1.3 Synchronization Messages
 Synchronization protocol starts with discovery, described above in section 3.1.1, when a peer realizes that it's behind or its current block is not the same with others. A peer broadcasts either `SYNC_GET_BLOCKS`, `SYNC_STATE_GET_SNAPSHOT`, or `SYNC_STATE_GET_DELTAS` and receives `SYNC_BLOCKS`, `SYNC_STATE_SNAPSHOT`, or `SYNC_STATE_DELTAS` respectively.
 
 The installed consensus plugin (e.g. pbft) dictates how synchronization protocol is being applied. Each message is designed for a specific situation:
@@ -485,7 +502,7 @@ message SyncStateDeltas {
 ```
 A delta may be applied forward (from i to j) or backward (from j to i) in the state transition.
 
-### 3.1.4 Consensus Messages
+#### 3.1.4 Consensus Messages
 Consensus deals with transactions, so a `CONSENSUS` message is initiated internally by the consensus framework when it receives a `CHAIN_TRANSACTION` message. The framework converts `CHAIN_TRANSACTION` into `CONSENSUS` then broadcasts to the validating nodes with the same `payload`. The consensus plugin receives this message and process according to its internal algorithm. The plugin may create custom subtypes to manage consensus finite state machine. See section 3.4 for more details.
 
 
@@ -493,9 +510,9 @@ Consensus deals with transactions, so a `CONSENSUS` message is initiated interna
 
 The ledger consists of two primary pieces, the blockchain and the world state. The blockchain is a series of linked blocks that is used to record transactions within the ledger. The world state is a key-value database that chaincodes may use to store state when executed by a transaction.
 
-### 3.2.1 Blockchain
+#### 3.2.1 Blockchain
 
-#### 3.2.1.1 Block
+##### 3.2.1.1 Block
 
 The blockchain is defined as a linked list of blocks as each block contains the hash of the previous block in the chain. The two other important pieces of information that a block contains are the list of transactions contained within the block and the hash of the world state after executing all transactions in the block.
 
@@ -523,7 +540,7 @@ message BlockTransactions {
 * `nonHashData` - A `NonHashData` message that is set to nil before computing the hash of the block, but stored as part of the block in the database.
 * `BlockTransactions.transactions` - An array of Transaction messages. Transactions are not included in the block directly due to their size.
 
-#### 3.2.1.2 Block Hashing
+##### 3.2.1.2 Block Hashing
 
 * The `previousBlockHash` hash is calculated using the following algorithm.
   1. Serialize the Block message to bytes using the protocol buffer library.
@@ -534,7 +551,7 @@ message BlockTransactions {
 
 * The `stateHash` is defined in section 3.2.2.1.
 
-#### 3.2.1.3 NonHashData
+##### 3.2.1.3 NonHashData
 
 The NonHashData message is used to store block metadata that is not required to be the same value on all peers. These are suggested values.
 
@@ -565,24 +582,24 @@ message TransactionResult {
 * `TransactionResult.error` - A string that can be used to log errors associated with the transaction.
 
 
-#### 3.2.1.4 Transaction Execution
+##### 3.2.1.4 Transaction Execution
 
 A transaction defines either the deployment of a chaincode or the execution of a chaincode. All transactions within a block are run before recording a block in the ledger. When chaincodes execute, they may modify the world state. The hash of the world state is then recorded in the block.
 
 
-### 3.2.2 World State
+#### 3.2.2 World State
 The *world state* of a peer refers to the collection of the *states* of all the deployed chaincodes. Further, the state of a chaincode is represented as a collection of key-value pairs. Thus, logically, the world state of a peer is also a collection of key-value pairs where key consists of a tuple `{chaincodeID, ckey}`. Here, we use the term `key` to represent a key in the world state i.e., a tuple `{chaincodeID, ckey}` and we use the term `cKey` to represent a unique key within a chaincode.
 
 For the purpose of the description below, `chaincodeID` is assumed to be a valid utf8 string and `ckey` and the `value` can be a sequence of one or more arbitrary bytes.
 
-#### 3.2.2.1 Hashing the world state
+##### 3.2.2.1 Hashing the world state
 During the functioning of a network, many occasions such as committing transactions and synchronizing peers may require computing a crypto-hash of the world state observed by a peer. For instance, the consensus protocol may require to ensure that a *minimum* number of peers in the network observe the same world state.
 
 Since, computing the crypto-hash of the world state could be an expensive operation, this is highly desirable to organize the world state such that it enables an efficient crypto-hash computation of the world state when a change occurs in the world state. Further, different organization designs may be suitable under different workloads conditions.
 
 Because the fabric is expected to function under a variety of scenarios leading to different workloads conditions, a pluggable mechanism is supported for organizing the world state.
 
-#### 3.2.2.1.1 Bucket-tree
+###### 3.2.2.1.1 Bucket-tree
 
 *Bucket-tree* is one of the implementations for organizing the world state. For the purpose of the description below, a key in the world state is represented as a concatenation of the two components (`chaincodeID` and `ckey`)  separated by a `nil` byte i.e., `key` = `chaincodeID`+`nil`+`cKey`.
 
@@ -631,7 +648,7 @@ In a particular deployment, all the peer nodes are expected to use same values f
 ### 3.3 Chaincode
 Chaincode is an application-level code deployed as a transaction (see section 3.1.2) to be distributed to the network and managed by each validating peer as isolated sandbox. Though any virtualization technology can support the sandbox, currently Docker container is utilized to run the chaincode. The protocol described in this section enables different virtualization support implementation to plug and play.
 
-### 3.3.1 Virtual Machine Instantiation
+#### 3.3.1 Virtual Machine Instantiation
 A virtual machine implements the VM interface:  
 ```
 type VM interface {
@@ -644,7 +661,7 @@ The fabric instantiates the VM when it processes a Deploy transaction or other t
 
 Once the chaincode container is up, it makes a gRPC connection back to the validating peer that started the chaincode, and that establishes the channel for Invoke and Query transactions on the chaincode.
 
-### 3.3.2 Chaincode Protocol
+#### 3.3.2 Chaincode Protocol
 Communication between a validating peer and its chaincodes is based on a bidirectional gRPC stream. There is a shim layer on the chaincode container to handle the message protocol between the chaincode and the validating peer using protobuf message.
 ```
 message ChaincodeMessage {
@@ -696,23 +713,23 @@ i	Init(stub *ChaincodeStub, function string, args []string) ([]byte, error)
 
 `Init`, `Invoke` and `Query` functions take `function` and `args` as parameters to be used by those methods to support a variety of transactions. `Init` is a constructor function, which will only be invoked by the Deploy transaction. The `Query` function is not allowed to modify the state of the chaincode; it can only read and calculate the return value as a byte array.
 
-### 3.3.2.1 Chaincode Deploy
+##### 3.3.2.1 Chaincode Deploy
 Upon deploy (chaincode container is started), the shim layer sends a one time `REGISTER` message to the validating peer with the `payload` containing the `ChaincodeID`. The validating peer responds with `REGISTERED` or `ERROR` on success or failure respectively. The shim closes the connection and exits if it receives an `ERROR`.
 
 After registration, the validating peer sends `INIT` with the `payload` containing a `ChaincodeInput` object. The shim calls the `Init` function with the parameters from the `ChaincodeInput`, enabling the chaincode to perform any initialization, such as setting up the persistent state.
 
 The shim responds with `RESPONSE` or `ERROR` message depending on the returned value from the chaincode `Init` function. If there are no errors, the chaincode initialization is complete and is ready to receive Invoke and Query transactions.
 
-### 3.3.2.2 Chaincode Invoke
+##### 3.3.2.2 Chaincode Invoke
 When processing an invoke transaction, the validating peer sends a `TRANSACTION` message to the chaincode container shim, which in turn calls the chaincode `Invoke` function, passing the parameters from the `ChaincodeInput` object. The shim responds to the validating peer with `RESPONSE` or `ERROR` message, indicating the completion of the function. If `ERROR` is received, the `payload` contains the error message generated by the chaincode.
 
-### 3.3.2.3 Chaincode Query
+##### 3.3.2.3 Chaincode Query
 Similar to an invoke transaction, when processing a query, the validating peer sends a `QUERY` message to the chaincode container shim, which in turn calls the chaincode `Query` function, passing the parameters from the `ChaincodeInput` object. The `Query` function may return a state value or an error, which the shim forwards to the validating peer using `RESPONSE` or `ERROR` messages respectively.
 
-### 3.3.2.4 Chaincode State
+##### 3.3.2.4 Chaincode State
 Each chaincode may define its own persistent state variables. For example, a chaincode may create assets such as TVs, cars, or stocks using state variables to hold the assets attributes. During `Invoke` function processing, the chaincode may update the state variables, for example, changing an asset owner. A chaincode manipulates the state variables by using the following message types:
 
-#### PUT_STATE
+###### PUT_STATE
 Chaincode sends a `PUT_STATE` message to persist a key-value pair, with the `payload` containing `PutStateInfo` object.
 
 ```
@@ -722,13 +739,13 @@ message PutStateInfo {
 }
 ```
 
-#### GET_STATE
+###### GET_STATE
 Chaincode sends a `GET_STATE` message to retrieve the value whose key is specified in the `payload`.
 
-#### DEL_STATE
+###### DEL_STATE
 Chaincode sends a `DEL_STATE` message to delete the value whose key is specified in the `payload`.
 
-#### RANGE_QUERY_STATE
+###### RANGE_QUERY_STATE
 Chaincode sends a `RANGE_QUERY_STATE` message to get a range of values. The message `payload` contains a `RangeQueryStateInfo` object.
 
 ```
@@ -768,10 +785,10 @@ message RangeQueryStateClose {
 }
 ```
 
-#### INVOKE_CHAINCODE
+###### INVOKE_CHAINCODE
 Chaincode may call another chaincode in the same transaction context by sending an `INVOKE_CHAINCODE` message to the validating peer with the `payload` containing a `ChaincodeSpec` object.
 
-#### QUERY_CHAINCODE
+###### QUERY_CHAINCODE
 Chaincode may query another chaincode in the same transaction context by sending a `QUERY_CHAINCODE` message with the `payload` containing a `ChaincodeSpec` object.
 
 
@@ -797,7 +814,7 @@ There are 2 consensus plugins provided: `pbft` and `noops`:
 -  `noops` is a ''dummy'' consensus plugin for development and test purposes. It doesn't perform consensus but processes all consensus messages. It also serves as a good simple sample to start learning how to code a consensus plugin.
 
 
-### 3.4.1 `Consenter` interface
+#### 3.4.1 `Consenter` interface
 
 Definition:
 ```
@@ -809,7 +826,7 @@ The plugin's entry point for (external) client requests, and consensus messages 
 
 See `helper.HandleMessage` below to understand how the peer interacts with this interface.
 
-### 3.4.2 `CPI` interface
+#### 3.4.2 `CPI` interface
 
 Definition:
 ```
@@ -825,7 +842,7 @@ type CPI interface {
   1. Is instantiated when the `helper.NewConsensusHandler` is called.
   2. Is accessible to the plugin author when they construct their plugin's `consensus.Consenter` object.
 
-### 3.4.3 `Inquirer` interface
+#### 3.4.3 `Inquirer` interface
 
 Definition:
 ```
@@ -844,7 +861,7 @@ message PeerID {
 }
 ```
 
-### 3.4.4 `Communicator` interface
+#### 3.4.4 `Communicator` interface
 
 Definition:
 
@@ -857,7 +874,7 @@ type Communicator interface {
 
 This interface is a part of the `consensus.CPI` interface. It is used to communicate with other peers on the network (`helper.Broadcast`, `helper.Unicast`):
 
-### 3.4.5 `SecurityUtils` interface
+#### 3.4.5 `SecurityUtils` interface
 
 Definition:
 
@@ -870,7 +887,7 @@ type SecurityUtils interface {
 
 This interface is a part of the `consensus.CPI` interface. It is used to handle the cryptographic operations of message signing (`Sign`) and verifying signatures (`Verify`)
 
-### 3.4.6 `LedgerStack` interface
+#### 3.4.6 `LedgerStack` interface
 
 Definition:
 
@@ -884,7 +901,7 @@ type LedgerStack interface {
 
 A key member of the `CPI` interface, `LedgerStack` groups interaction of consensus with the rest of the fabric, such as the execution of transactions, querying, and updating the ledger. This interface supports querying the local blockchain and state, updating the local blockchain and state, and querying the blockchain and state of other nodes in the consensus network. It consists of three parts: `Executor`, `Ledger` and `RemoteLedgers` interfaces. These are described in the following.
 
-### 3.4.7 `Executor` interface
+#### 3.4.7 `Executor` interface
 
 Definition:
 
@@ -900,7 +917,7 @@ type Executor interface {
 
 The executor interface is the most frequently utilized portion of the `LedgerStack` interface, and is the only piece which is strictly necessary for a consensus network to make progress. The interface allows for a transaction to be started, executed, rolled back if necessary, previewed, and potentially committed. This interface is comprised of the following methods.
 
-#### 3.4.7.1 Beginning a transaction batch
+##### 3.4.7.1 Beginning a transaction batch
 
 ```
 BeginTxBatch(id interface{}) error
@@ -908,7 +925,7 @@ BeginTxBatch(id interface{}) error
 
 This call accepts an arbitrary `id`, deliberately opaque, as a way for the consensus plugin to ensure only the transactions associated with this particular batch are executed. For instance, in the pbft implementation, this `id` is the an encoded hash of the transactions to be executed.
 
-#### 3.4.7.2 Executing transactions
+##### 3.4.7.2 Executing transactions
 
 ```
 ExecTXs(id interface{}, txs []*pb.Transaction) ([]byte, []error)
@@ -916,7 +933,7 @@ ExecTXs(id interface{}, txs []*pb.Transaction) ([]byte, []error)
 
 This call accepts an array of transactions to execute against the current state of the ledger and returns the current state hash in addition to an array of errors corresponding to the array of transactions. Note that a transaction resulting in an error has no effect on whether a transaction batch is safe to commit. It is up to the consensus plugin to determine the behavior which should occur when failing transactions are encountered. This call is safe to invoke multiple times.
 
-#### 3.4.7.3 Committing and rolling-back transactions
+##### 3.4.7.3 Committing and rolling-back transactions
 
 ```
 RollbackTxBatch(id interface{}) error
@@ -937,7 +954,7 @@ CommitTxBatch(id interface{}, transactions []*pb.Transaction, transactionsResult
 This call commits a block to the blockchain. Blocks must be committed to a blockchain in total order. ``CommitTxBatch`` concludes the transaction batch, and a new call to `BeginTxBatch` must be made before any new transactions are executed and committed.
 
 
-### 3.4.8 `Ledger` interface
+#### 3.4.8 `Ledger` interface
 
 Definition:
 
@@ -951,7 +968,7 @@ type Ledger interface {
 
 ``Ledger`` interface is intended to allow the consensus plugin to interrogate and possibly update the current state and blockchain. It is comprised of the three interfaces described below.
 
-#### 3.4.8.1 `ReadOnlyLedger` interface
+##### 3.4.8.1 `ReadOnlyLedger` interface
 
 Definition:
 
@@ -987,7 +1004,7 @@ GetCurrentStateHash() (stateHash []byte, err error)
 This call returns the current state hash for the ledger. In general, this function should never fail, though in the unlikely event that this occurs, the error is passed to the caller to decide what if any recovery is necessary.
 
 
-#### 3.4.8.2 `UtilLedger` interface
+##### 3.4.8.2 `UtilLedger` interface
 
 Definition:
 
@@ -1014,7 +1031,7 @@ This utility method is intended for verifying large sections of the blockchain. 
 
 
 
-#### 3.4.8.3 `WritableLedger` interface
+##### 3.4.8.3 `WritableLedger` interface
 
 Definition:
 
@@ -1066,7 +1083,7 @@ type WritableLedger interface {
 
 	This function will delete the entire current state, resulting in a pristine empty state. It is intended to be called before loading an entirely new state via deltas. This is generally only useful to the state transfer API.
 
-### 3.4.9 `RemoteLedgers` interface
+#### 3.4.9 `RemoteLedgers` interface
 
 Definition:
 
@@ -1101,9 +1118,9 @@ The `RemoteLedgers` interface exists primarily to enable state transfer and to i
 
 	This function attempts to retrieve a stream of `*pb.SyncStateDeltas` from the peer designated by `peerID` for the range from `start` to `finish`. The caller must validated that the desired block delta is being returned, as it is possible that slow results from another request could appear on this channel. Invoking this call for the same `peerID` a second time will cause the first channel to close.
 
-### 3.4.10 `controller` package
+#### 3.4.10 `controller` package
 
-#### 3.4.10.1 controller.NewConsenter
+##### 3.4.10.1 controller.NewConsenter
 
 Signature:
 
@@ -1117,13 +1134,13 @@ The plugin author needs to edit the function's body so that it routes to the rig
 
 This function is called by `helper.NewConsensusHandler` when setting the `consenter` field of the returned message handler. The input argument `cpi` is the output of the `helper.NewHelper` constructor and implements the `consensus.CPI` interface.
 
-### 3.4.11 `helper` package
+#### 3.4.11 `helper` package
 
-#### 3.4.11.1 High-level overview
+##### 3.4.11.1 High-level overview
 
 A validating peer establishes a message handler (`helper.ConsensusHandler`) for every connected peer, via the `helper.NewConsesusHandler` function (a handler factory). Every incoming message is inspected on its type (`helper.HandleMessage`); if it's a message for which consensus needs to be reached, it's passed on to the peer's consenter object (`consensus.Consenter`). Otherwise it's passed on to the next message handler in the stack.
 
-#### 3.4.11.2 helper.ConsensusHandler
+##### 3.4.11.2 helper.ConsensusHandler
 
 Definition:
 
@@ -1141,7 +1158,7 @@ Within the context of consensus, we focus only on the `coordinator` and `consent
 
 Notice that `fabric/peer/peer.go` defines the `peer.MessageHandler` (interface), and `peer.MessageHandlerCoordinator` (interface) types.
 
-#### 3.4.11.3 helper.NewConsensusHandler
+##### 3.4.11.3 helper.NewConsensusHandler
 
 Signature:
 
@@ -1151,7 +1168,7 @@ func NewConsensusHandler(coord peer.MessageHandlerCoordinator, stream peer.ChatS
 
 Creates a `helper.ConsensusHandler` object. Sets the same `coordinator` for every message handler. Also sets the `consenter` equal to: `controller.NewConsenter(NewHelper(coord))`
 
-### 3.4.11.4 helper.Helper
+##### 3.4.11.4 helper.Helper
 
 Definition:
 
@@ -1163,7 +1180,7 @@ type Helper struct {
 
 Contains the reference to the validating peer's `coordinator`. Is the object that implements the `consensus.CPI` interface for the peer.
 
-#### 3.4.11.5 helper.NewHelper
+##### 3.4.11.5 helper.NewHelper
 
 Signature:
 
@@ -1174,7 +1191,7 @@ func NewHelper(mhc peer.MessageHandlerCoordinator) consensus.CPI
 Returns a `helper.Helper` object whose `coordinator` is set to the input argument `mhc` (the `coordinator` field of the `helper.ConsensusHandler` message handler). This object implements the `consensus.CPI` interface, thus allowing the plugin to interact with the stack.
 
 
-#### 3.4.11.6 helper.HandleMessage
+##### 3.4.11.6 helper.HandleMessage
 
 Recall that the `helper.ConsesusHandler` object returned by `helper.NewConsensusHandler` implements the `peer.MessageHandler` interface:
 
@@ -1218,7 +1235,7 @@ The event stream initializes the buffer and timeout parameters. The buffer holds
 - If timeout is greater than 0, wait for the specified timeout and drop the event if the buffer remains full after the timeout
 
 
-#### 3.5.1.1 Event Producer
+##### 3.5.1.1 Event Producer
 The event producer exposes a function to send an event, `Send(e *pb.Event)`, where `Event` is either a pre-defined `Block` or a `Generic` event. More events will be defined in the future to include other elements of the fabric.
 
 ```
@@ -1230,7 +1247,7 @@ message Generic {
 
 The `eventType` and `payload` are freely defined by the event producer. For example, JSON data may be used in the `payload`. The `Generic` event may also be emitted by the chaincode or plugins to communicate with consumers.
 
-#### 3.5.1.2 Event Consumer
+##### 3.5.1.2 Event Consumer
 The event consumer enables external applications to listen to events. Each event consumer registers an event adapter with the event stream. The consumer framework can be viewed as a bridge between the event stream and the adapter. A typical use of the event consumer framework is:
 
 ```
@@ -2378,7 +2395,7 @@ The fabric API design covers the categories below, though the implementation is 
 *  Storage - External store for files or documents
 *  Event Stream - Sub/pub events on the blockchain
 
-## 6.1 REST Service
+### 6.1 REST Service
 The REST service can be enabled (via configuration) on either validating or non-validating peers, but it is recommended to only enable the REST service on non-validating peers on production networks.
 
 ```
@@ -2389,11 +2406,11 @@ This function reads the `rest.address` value in the `core.yaml` configuration fi
 
 It is assumed that the REST service receives requests from applications which have already authenticated the end user.
 
-## 6.2 REST API
+### 6.2 REST API
 
 You can work with the REST API through any tool of your choice. For example, the curl command line utility or a browser based client such as the Firefox Rest Client or Chrome Postman. You can likewise trigger REST requests directly through [Swagger](http://swagger.io/). To obtain the REST API Swagger description, click [here](https://github.com/hyperledger/fabric/blob/master/core/rest/rest_api.json). The currently available APIs are summarized in the following section.
 
-### 6.2.1 REST Endpoints
+#### 6.2.1 REST Endpoints
 
 * [Block](#6211-block-api)
   * GET /chain/blocks/{block-id}
@@ -2412,7 +2429,7 @@ You can work with the REST API through any tool of your choice. For example, the
 * [Transactions](#6216-transactions-api)
   * GET /transactions/{UUID}
 
-#### 6.2.1.1 Block API
+##### 6.2.1.1 Block API
 
 * **GET /chain/blocks/{block-id}**
 
@@ -2451,7 +2468,7 @@ Block Retrieval Response:
 }
 ```
 
-#### 6.2.1.2 Blockchain API
+##### 6.2.1.2 Blockchain API
 
 * **GET /chain**
 
@@ -2485,7 +2502,7 @@ Blockchain Retrieval Response:
 }
 ```
 
-#### 6.2.1.3 Chaincode API
+##### 6.2.1.3 Chaincode API
 
 * **POST /chaincode**
 
@@ -2668,7 +2685,7 @@ Query Request with security enabled:
 }
 ```
 
-#### 6.2.1.4 Network API
+##### 6.2.1.4 Network API
 
 Use the Network API to retrieve information about the network of peer nodes comprising the blockchain fabric.
 
@@ -2717,7 +2734,7 @@ Network Response:
 }
 ```
 
-#### 6.2.1.5 Registrar API (member services)
+##### 6.2.1.5 Registrar API (member services)
 
 * **POST /registrar**
 * **GET /registrar/{enrollmentID}**
@@ -2844,7 +2861,7 @@ Transaction Certificate Retrieval Response:
 }
 ```
 
-#### 6.2.1.6 Transactions API
+##### 6.2.1.6 Transactions API
 
 * **GET /transactions/{UUID}**
 
@@ -2871,11 +2888,11 @@ Transaction Retrieval Response:
 }
 ```
 
-## 6.3 CLI
+### 6.3 CLI
 
 The CLI includes a subset of the available APIs to enable developers to quickly test and debug chaincodes or query for status of transactions. CLI is implemented in Golang and operable on multiple OS platforms. The currently available CLI commands are summarized in the following section.
 
-### 6.3.1 CLI Commands
+#### 6.3.1 CLI Commands
 
 To see what CLI commands are currently available in the implementation, execute the following:
 
@@ -2916,7 +2933,7 @@ Not all of the above commands are fully implemented in the current release. The 
 
 Note, that any configuration settings for the peer node listed in the `core.yaml` configuration file, which is the  configuration file for the `peer` process, may be modified on the command line with an environment variable. For example, to set the `peer.id` or the `peer.addressAutoDetect` settings, one may pass the `CORE_PEER_ID=vp1` and `CORE_PEER_ADDRESSAUTODETECT=true` on the command line.
 
-#### 6.3.1.1 node start
+##### 6.3.1.1 node start
 
 The CLI `node start` command will execute the peer process in either the development or production mode. The development mode is meant for running a single peer node locally, together with a local chaincode deployment. This allows a chaincode developer to modify and debug their code without standing up a complete network. An example for starting the peer in development mode follows:
 
@@ -2930,7 +2947,7 @@ To start the peer process in production mode, modify the above command as follow
 peer node start
 ```
 
-#### 6.3.1.2 network login
+##### 6.3.1.2 network login
 
 The CLI `network login` command will login a user, that is already registered with the CA, through the CLI. To login through the CLI, issue the following command, where `username` is the enrollment ID of a registered user.
 
@@ -2961,7 +2978,7 @@ You can also pass a password for the user with `-p` parameter. An example is bel
 peer network login jim -p 123456
 ```
 
-#### 6.3.1.3 chaincode deploy
+##### 6.3.1.3 chaincode deploy
 
 The CLI `deploy` command creates the docker image for the chaincode and subsequently deploys the package to the validating peer. An example is below.
 
@@ -2977,7 +2994,7 @@ peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode
 
 **Note:** If your GOPATH environment variable contains more than one element, the chaincode must be found in the first one or deployment will fail.
 
-#### 6.3.1.4 chaincode invoke
+##### 6.3.1.4 chaincode invoke
 
 The CLI `invoke` command executes a specified function within the target chaincode. An example is below.
 
@@ -2991,7 +3008,7 @@ With security enabled, the command must be modified to pass an enrollment id of 
 peer chaincode invoke -u jim -n <name_value_returned_from_deploy_command> -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
 ```
 
-#### 6.3.1.5 chaincode query
+##### 6.3.1.5 chaincode query
 
 The CLI `query` command triggers a specified query method within the target chaincode. The response that is returned depends on the chaincode implementation. An example is below.
 

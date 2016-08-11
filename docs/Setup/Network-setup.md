@@ -1,6 +1,6 @@
 ## Setting Up a Network
 
-This document covers setting up a network on your local machine for various development and testing activities. Unless you are intending to contribute to the development of the Hyperledger Fabric project, you'll probably want to follow the more commonly used approach below - [leveraging published Docker images](#leveraging-published Docker-images) for the various Hyperledger Fabric components, directly. Otherwise, skip down to the [secondary approach](#building-your-own-images) below.
+This document covers setting up a network on your local machine for various development and testing activities. Unless you are intending to contribute to the development of the Hyperledger Fabric project, you'll probably want to follow the more commonly used approach below - [leveraging published Docker images](#leveraging-published-docker-images) for the various Hyperledger Fabric components, directly. Otherwise, skip down to the [secondary approach](#building-your-own-images) below.
 
 ### Leveraging published Docker images
 
@@ -24,7 +24,7 @@ prior to starting any of the fabric components, you will need to first pull the 
 
 ### Building your own images
 
-**Note:** _This approach is not necessarily recommended for most users_. If you have pulled images from DockerHub as described in the previous section, you may proceed to the [next step](#Starting-up-validating-peers).
+**Note:** _This approach is not necessarily recommended for most users_. If you have pulled images from DockerHub as described in the previous section, you may proceed to the [next step](#starting-up-validating-peers).
 
 The second approach would be to leverage the [development environment](../dev-setup/devenv.md) setup (which we will assume you have already established) to build and deploy your own binaries and/or Docker images from a clone of the [hyperledger/fabric](https://github.com/hyperledger/fabric) GitHub repository. This approach is suitable for developers that might wish to contribute directly to the Hyperledger Fabric project, or that wish to deploy from a fork of the Hyperledger code base.
 
@@ -137,11 +137,11 @@ This single peer configuration, running the `NOOPS` 'consensus' plugin, should s
 
 #### Running with the CA
 
-If you want to take advantage of security (authentication and authorization), privacy and confidentiality, then you'll need to run the Fabric's certificate authority (CA). Please refer to the [CA Setup](#Setup/ca-setup.md) instructions.
+If you want to take advantage of security (authentication and authorization), privacy and confidentiality, then you'll need to run the Fabric's certificate authority (CA). Please refer to the [CA Setup](ca-setup.md) instructions.
 
 #### Start up additional validating peers:
 
-Following the pattern we established [above](#Assigning-a-value-for-CORE_PEER_ID) we'll use `vp1` as the ID for the second validating peer. If using Docker Compose, we can simply link the two peer nodes.
+Following the pattern we established [above](#assigning-a-value-for-core_peer_id) we'll use `vp1` as the ID for the second validating peer. If using Docker Compose, we can simply link the two peer nodes.
 Here's the docker-compse.yml for a **Vagrant** environment with two peer nodes - vp0 and vp1:
 ```
 vp0:
