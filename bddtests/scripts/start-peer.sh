@@ -16,5 +16,5 @@ else
     echo "No membersrvc to wait for, starting immediately"
 fi
 
-peer node start
+exec peer node start
 
