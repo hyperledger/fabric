@@ -35,7 +35,6 @@ const commonPrefix = "github.com/hyperledger/fabric/core/ledger"
 const commonPrefixLen = len(commonPrefix)
 
 var holder *statsHolder
-var once sync.Once
 var logger = logging.MustGetLogger("ledger.perfstat")
 
 type statsHolder struct {
@@ -55,24 +54,12 @@ func init() {
 
 // UpdateTimeStat updates the stats for time spent at a particular point in the code
 func UpdateTimeStat(id string, startTime time.Time) {
-	if !enableStats {
-		return
-	}
-	path := getCallerInfo()
-	statName := fmt.Sprintf("%s:%s", path, id)
-	stat := getOrCreateStat(statName, "", 0)
-	stat.updateDataStat(time.Since(startTime).Nanoseconds())
+	updateStat(id, time.Since(startTime).Nanoseconds())
 }
 
 // UpdateDataStat updates the stats for data at a particular point in the code
 func UpdateDataStat(id string, value int64) {
-	if !enableStats {
-		return
-	}
-	path := getCallerInfo()
-	statName := fmt.Sprintf("%s:%s", path, id)
-	stat := getOrCreateStat(statName, "", 0)
-	stat.updateDataStat(value)
+	updateStat(id, value)
 }
 
 // ResetStats resets all the stats data
@@ -85,6 +72,37 @@ func ResetStats() {
 	for _, v := range holder.m {
 		v.reset()
 	}
+}
+
+// PrintStats prints the stats in the log file.
+func PrintStats() {
+	if !enableStats {
+		return
+	}
+	holder.rwLock.RLock()
+	defer holder.rwLock.RUnlock()
+	logger.Info("Stats.......Start")
+	var paths []string
+	for k := range holder.m {
+		paths = append(paths, k)
+	}
+	sort.Strings(paths)
+	for _, k := range paths {
+		v := holder.m[k]
+		logger.Info(v.String())
+	}
+	logger.Info("Stats.......Finish")
+}
+
+func updateStat(id string, value int64) {
+	if !enableStats {
+		return
+	}
+	path := getCallerInfo()
+	statName := fmt.Sprintf("%s:%s", path, id)
+	fmt.Println(statName)
+	stat := getOrCreateStat(statName, "", 0)
+	stat.updateDataStat(value)
 }
 
 func getOrCreateStat(name string, file string, line int) *stat {
@@ -113,29 +131,12 @@ func printStatsPeriodically() {
 	}
 }
 
-// PrintStats prints the stats in the log file.
-func PrintStats() {
-	if !enableStats {
-		return
-	}
-	holder.rwLock.RLock()
-	defer holder.rwLock.RUnlock()
-	logger.Info("Stats.......Start")
-	var paths []string
-	for k := range holder.m {
-		paths = append(paths, k)
-	}
-	sort.Strings(paths)
-	for _, k := range paths {
-		v := holder.m[k]
-		logger.Info(v.String())
-	}
-	logger.Info("Stats.......Finish")
-}
-
 func getCallerInfo() string {
 	pc := make([]uintptr, 10)
-	runtime.Callers(3, pc)
+	// Note: the default value 4 will ensure stat name exclude the path
+	// "/perfstat.UpdateTimeStat -> /perfstat.updateStat -> /perfstat.getCallerInfo"
+	// "/perfstat.UpdateDataStat -> /perfstat.updateStat -> /perfstat.getCallerInfo"
+	runtime.Callers(4, pc)
 	var path bytes.Buffer
 	j := 0
 	for i := range pc {
