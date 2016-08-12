@@ -99,12 +99,7 @@ func (indexer *blockchainIndexerAsync) start(blockchain *blockchain) error {
 	return nil
 }
 
-func (indexer *blockchainIndexerAsync) createIndexesSync(
-	block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error {
-	return fmt.Errorf("Method not applicable")
-}
-
-func (indexer *blockchainIndexerAsync) createIndexesAsync(block *protos.Block, blockNumber uint64, blockHash []byte) error {
+func (indexer *blockchainIndexerAsync) createIndexes(block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error {
 	indexer.blockChan <- blockWrapper{block, blockNumber, blockHash, false}
 	return nil
 }

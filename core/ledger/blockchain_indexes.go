@@ -34,8 +34,7 @@ var prefixAddressBlockNumCompositeKey = byte(3)
 type blockchainIndexer interface {
 	isSynchronous() bool
 	start(blockchain *blockchain) error
-	createIndexesSync(block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error
-	createIndexesAsync(block *protos.Block, blockNumber uint64, blockHash []byte) error
+	createIndexes(block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error
 	fetchBlockNumberByBlockHash(blockHash []byte) (uint64, error)
 	fetchTransactionIndexByID(txID string) (uint64, uint64, error)
 	stop()
@@ -57,13 +56,9 @@ func (indexer *blockchainIndexerSync) start(blockchain *blockchain) error {
 	return nil
 }
 
-func (indexer *blockchainIndexerSync) createIndexesSync(
+func (indexer *blockchainIndexerSync) createIndexes(
 	block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error {
 	return addIndexDataForPersistence(block, blockNumber, blockHash, writeBatch)
-}
-
-func (indexer *blockchainIndexerSync) createIndexesAsync(block *protos.Block, blockNumber uint64, blockHash []byte) error {
-	return fmt.Errorf("Method not applicable")
 }
 
 func (indexer *blockchainIndexerSync) fetchBlockNumberByBlockHash(blockHash []byte) (uint64, error) {
