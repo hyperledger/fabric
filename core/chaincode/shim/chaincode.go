@@ -803,7 +803,7 @@ func getKeyAndVerifyRow(table Table, row Row) ([]Column, error) {
 	return keys, nil
 }
 
-func (stub *ChaincodeStub) isRowPrsent(tableName string, key []Column) (bool, error) {
+func (stub *ChaincodeStub) isRowPresent(tableName string, key []Column) (bool, error) {
 	keyString, err := buildKeyString(tableName, key)
 	if err != nil {
 		return false, err
@@ -822,7 +822,7 @@ func (stub *ChaincodeStub) isRowPrsent(tableName string, key []Column) (bool, er
 // Returns -
 // true and no error if the row is successfully inserted.
 // false and no error if a row already exists for the given key.
-// flase and a TableNotFoundError if the specified table name does not exist.
+// false and a TableNotFoundError if the specified table name does not exist.
 // false and an error if there is an unexpected error condition.
 func (stub *ChaincodeStub) insertRowInternal(tableName string, row Row, update bool) (bool, error) {
 
@@ -836,7 +836,7 @@ func (stub *ChaincodeStub) insertRowInternal(tableName string, row Row, update b
 		return false, err
 	}
 
-	present, err := stub.isRowPrsent(tableName, key)
+	present, err := stub.isRowPresent(tableName, key)
 	if err != nil {
 		return false, err
 	}
