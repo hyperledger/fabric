@@ -173,3 +173,40 @@ Scenario: java RangeExample chaincode single peer
                   |arg1|
                   |  2 |
                 Then I should get a JSON response with "result.message" = "No record found !"
+  Scenario: Java chaincode example from remote git repository
+      Given we compose "docker-compose-1.yml"
+      When requesting "/chain" from "vp0"
+      Then I should get a JSON response with "height" = "1"
+      # TODO Needs to be replaced with an official test repo in the future.
+            When I deploy lang chaincode "http://github.com/hyperledger/fabric-test-resources/javachaincode" of "JAVA" with ctor "init" to "vp0"
+               | arg1 |  arg2 | arg3 | arg4 |
+               |  a   |  100  |  b   |  200 |
+            Then I should have received a chaincode name
+            Then I wait up to "300" seconds for transaction to be committed to all peers
+
+            When requesting "/chain" from "vp0"
+            Then I should get a JSON response with "height" = "2"
+
+              When I query chaincode "SimpleSample" function name "query" on "vp0":
+                  |arg1|
+                  |  a |
+            Then I should get a JSON response with "result.message" = "{'Name':'a','Amount':'100'}"
+
+            When I invoke chaincode "SimpleSample" function name "transfer" on "vp0"
+            |arg1|arg2|arg3|
+            | a  | b  | 10 |
+            Then I should have received a transactionID
+            Then I wait up to "25" seconds for transaction to be committed to all peers
+
+            When requesting "/chain" from "vp0"
+            Then I should get a JSON response with "height" = "3"
+
+              When I query chaincode "SimpleSample" function name "query" on "vp0":
+                  |arg1|
+                  |  a |
+            Then I should get a JSON response with "result.message" = "{'Name':'a','Amount':'90'}"
+
+              When I query chaincode "SimpleSample" function name "query" on "vp0":
+                  |arg1|
+                  |  b |
+            Then I should get a JSON response with "result.message" = "{'Name':'b','Amount':'210'}"
