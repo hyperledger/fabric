@@ -366,7 +366,7 @@ Feature: Network of Peers
             |   a   | 10 |
 	    Then I should have received a transactionID
 	    Then I wait up to "25" seconds for transaction to be committed to all peers
-	    Then I check the transaction ID if it is "cbe63379a50f0c9d798951e5ccdf70a5c341acda508d7fa1345841d977825f71"
+	    Then I check the transaction ID if it is "a97267efe0391a5c0be28f79e8cb7f841aca1b952f028ec796b61c92aef6936c"
 
     Scenario: chaincode example 01 single peer rejection message
 	    Given we compose "docker-compose-1-exp.yml"
