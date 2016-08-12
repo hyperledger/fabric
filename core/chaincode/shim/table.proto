@@ -17,7 +17,8 @@ limitations under the License.
 syntax = "proto3";
 
 package shim;
-
+option java_package = "org.hyperledger.protos";
+option java_outer_classname = "TableProto";
 message ColumnDefinition {
 	string name = 1;
 	enum Type {

@@ -83,11 +83,20 @@ task copyToLib(type: Copy) {
 
 
 task copyProtos(type:Copy){
- into "${projectDir}/src/main/proto"
- from "${rootDir}/protos"
- include '**/chaincodeevent.proto'
- include '**/chaincode.proto'
+
+ from ("${rootDir}/protos"){
+	 include '**/chaincodeevent.proto'
+	 include '**/chaincode.proto'
+ }
+	from ("../") {
+		duplicatesStrategy.EXCLUDE
+		include '**/table.proto'
+		exclude 'java'
+	}
+	into "${projectDir}/src/main/proto"
+
 }
+
 
 tasks['build'].mustRunAfter tasks['copyProtos']
 build.dependsOn(copyProtos)

@@ -202,6 +202,10 @@ build/image/ccenv/.dummy: build/image/ccenv/bin/protoc-gen-go build/image/ccenv/
 	@touch $@
 
 # Special override for java-image
+# Following items are packed and sent to docker context while building image
+# 1. Java shim layer source code
+# 2. Proto files used to generate java classes
+# 3. Gradle settings file
 build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 	@echo "Building docker javaenv-image"
 	@mkdir -p $(@D)
@@ -214,7 +218,7 @@ build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 	# 2. Proto files used to generate java classes
 	# 3. Gradle settings file
 	@git ls-files core/chaincode/shim/java | tar -jcT - > $(@D)/javashimsrc.tar.bz2
-	@git ls-files protos settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
+	@git ls-files protos core/chaincode/shim/table.proto settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
 	docker build -t $(PROJECT_NAME)-javaenv $(@D)
 	docker tag $(PROJECT_NAME)-javaenv $(PROJECT_NAME)-javaenv:$(DOCKER_TAG)
 	@touch $@
