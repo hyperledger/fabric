@@ -151,12 +151,13 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 					err = errors.New("Options --raw (-r) and --hex (-x) are not compatible\n")
 					return
 				}
+				fmt.Print("Query Result (Raw): ")
 				os.Stdout.Write(resp.Msg)
 			} else {
 				if chaincodeQueryHex {
-					logger.Debugf("%x\n", resp.Msg)
+					fmt.Printf("Query Result: %x\n", resp.Msg)
 				} else {
-					logger.Debug(string(resp.Msg))
+					fmt.Printf("Query Result: %s\n", string(resp.Msg))
 				}
 			}
 		}
