@@ -159,14 +159,13 @@ proc ::fabric::deploy {i_peer i_user i_chaincode i_fn i_args {i_retry 0}} {
                 "path" : "$i_chaincode"
             },
             "ctorMsg" : {
-                "function" : "$i_fn",
                 "args" : [$args]
             },
             "secureContext": "$i_user"
         }
     }
 
-    set args [argify $i_args]
+    set args [argify $i_fn $i_args]
     set query [subst -nocommand $template]
 
     return [devops $i_peer deploy $query $i_retry]
@@ -191,14 +190,13 @@ proc ::fabric::devModeDeploy {i_peer i_user i_chaincode i_fn i_args {i_retry 0}}
                 "name" : "$i_chaincode"
             },
             "ctorMsg" : {
-                "function" : "$i_fn",
                 "args" : [$args]
             },
             "secureContext": "$i_user"
         }
     }
 
-    set args [argify $i_args]
+    set args [argify $i_fn $i_args]
     set query [subst -nocommand $template]
 
     return [devops $i_peer deploy $query $i_retry]
@@ -227,7 +225,6 @@ proc ::fabric::invoke {i_peer i_user i_chaincodeName i_fn i_args {i_retry 0}} {
                     "name" : "$i_chaincodeName"
                 },
                 "ctorMsg" : {
-                    "function" : "$i_fn",
                     "args" : [$args]
                 },
                 "secureContext": "$i_user"
@@ -235,7 +232,7 @@ proc ::fabric::invoke {i_peer i_user i_chaincodeName i_fn i_args {i_retry 0}} {
         }
     }
 
-    set args [argify $i_args]
+    set args [argify $i_fn $i_args]
     set query [subst -nocommand $template]
 
     return [devops $i_peer invoke $query $i_retry]
@@ -265,7 +262,6 @@ proc ::fabric::query {i_peer i_user i_chaincodeName i_fn i_args {i_retry 0}} {
                     "name" : "$i_chaincodeName"
                 },
                 "ctorMsg" : {
-                    "function" : "$i_fn",
                     "args" : [$args]
                 },
                 "secureContext": "$i_user"
@@ -273,7 +269,7 @@ proc ::fabric::query {i_peer i_user i_chaincodeName i_fn i_args {i_retry 0}} {
         }
     }
 
-    set args [argify $i_args]
+    set args [argify $i_fn $i_args]
     set query [subst -nocommand $template]
 
     return [devops $i_peer query $query $i_retry]
@@ -432,19 +428,21 @@ proc ::fabric::caLogin {i_peer i_user i_secret} {
 
 
 ############################################################################
-# argify i_args
+# argify i_fn i_args
 
-# Convert a Tcl list to a list of quoted arguments with commas to satisfy the
-# JSON format. This needs to be done as a string (rather than as a list),
-# otherwise it will be {} quoted when substituted.
+# Convert old-style fn + args pair into a list of quoted base64 arguments with
+# commas to satisfy the most recent JSON format of the REST API. This needs to
+# be done as a string (rather than as a list), otherwise it will be {} quoted
+# when substituted.
 
-proc ::fabric::argify {i_args} {
+proc ::fabric::argify {i_fn i_args} {
 
-    set args ""
+    set args [concat $i_fn $i_args]
+    set args64 ""
     set comma ""
-    foreach arg $i_args {
-        set args "$args$comma\"$arg\""
+    foreach arg $args {
+        set args64 "$args64$comma\"[binary encode base64 $arg]\""
         set comma ,
     }
-    return $args
+    return $args64
 }
