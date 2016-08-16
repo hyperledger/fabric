@@ -27,6 +27,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
 	pb "github.com/hyperledger/fabric/protos"
@@ -62,9 +63,11 @@ func chaincodeDeploy(cmd *cobra.Command, args []string) error {
 	}
 	// Build the spec
 	input := &pb.ChaincodeInput{}
-	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &input); err != nil {
+	inputc := container{}
+	if err = json.Unmarshal([]byte(chaincodeCtorJSON), &inputc); err != nil {
 		return fmt.Errorf("Chaincode argument error: %s", err)
 	}
+	input = &pb.ChaincodeInput{Args: shim.ToChaincodeArgs(inputc.Args...)}
 
 	var attributes []string
 	if err := json.Unmarshal([]byte(chaincodeAttributesJSON), &attributes); err != nil {
