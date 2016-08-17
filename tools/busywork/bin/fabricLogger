@@ -28,7 +28,7 @@ piece of information:
 
 b <n>    : Block number <n>
 d <ccid> : A chaincode deployment. The <ccid> is the chaincode ID.
-i <uuid> : A chaincode invocation. The <uuid> is the transaction UUID.
+i <txid> : A chaincode invocation. The <txid> is the transaction ID.
 
 Note that the block number is printed _after_ all of the block transactions,
 to validate to a 'following' client that all transactions of a block have been
@@ -335,9 +335,7 @@ while {1} {
             foreach tx $transactions {
 
                 # The chaincodeID comes back as bytes so that it can be
-                # encrypted. We don't log it or the timestamp now. The
-                # "UUID" for type 1 (deploy) transactions is actually the
-                # chaincode name.
+                # encrypted. We don't log it or the timestamp now.
 
                 if {[catch {dict get $tx type} type]} {
                     err {} \
@@ -345,17 +343,17 @@ while {1} {
                         "Error parsing type field: $type"
                     forceBreakOrErrorExit $token
                 }
-                if {[catch {dict get $tx uuid} uuid]} {
+                if {[catch {dict get $tx txid} txid]} {
                     err {} "$peer @ block $block: " \
-                        "Error parsing uuid field: $uuid"
+                        "Error parsing txid field: $txid"
                     forceBreakOrErrorExit $token
                 }
                 switch $type {
                     1 {
-                        puts $log "d $uuid"
+                        puts $log "d $txid"
                     }
                     2 {
-                        puts $log "i $uuid"
+                        puts $log "i $txid"
                     }
                     default {
                         err {} "$peer @ block $block: " \
