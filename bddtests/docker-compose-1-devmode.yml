@@ -4,7 +4,7 @@ vp0:
     service: vp
   environment:
     - CORE_PEER_ID=vp0
-  command: sh -c "peer node start --peer-chaincodedev"
+  command: peer node start --peer-chaincodedev
 
 ccenv:
   image: hyperledger/fabric-ccenv
@@ -13,6 +13,10 @@ ccenv:
     - CORE_PEER_ADDRESS=vp0:7051
   # $$GOPATH (double dollar) required to prevent docker-compose doing its own
   # substitution before the value gets to the container
-  command: bash -c 'go install github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 && $$GOPATH/bin/chaincode_example02'
+  command: |
+    sh -c "
+      go install github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+      exec $$GOPATH/bin/chaincode_example02
+    "
   links:
     - vp0
