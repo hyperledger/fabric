@@ -1,6 +1,6 @@
 import subprocess
 
-def cli_call(context, arg_list, expect_success=True):
+def cli_call(arg_list, expect_success=True):
     p = subprocess.Popen(arg_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = p.communicate()
     if p.returncode != 0:
