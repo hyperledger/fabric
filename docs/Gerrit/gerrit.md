@@ -204,7 +204,7 @@ the review.
 ## Viewing Pending Changes
 
 Find all pending changes by clicking on the `All --> Changes` link in the
-upper-left corner, or [open this link](https://gerrit.1.org/r/#/q/project:fabric).
+upper-left corner, or [open this link](https://gerrit.hyperledger.org/r/#/q/project:fabric).
 
 If you collaborate in multiple projects, you may wish to limit searching to
 the specific branch through the search bar in the upper-right side.
