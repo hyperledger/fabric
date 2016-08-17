@@ -19,6 +19,12 @@
 			"revisionTime": "2015-08-03T11:35:22-04:00"
 		},
 		{
+			"checksumSHA1": "5rPfda8jFccr3A6heL+JAmi9K9g=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d",
+			"revisionTime": "2015-11-05T21:09:06Z"
+		},
+		{
 			"checksumSHA1": "fXAinpJ5bOcborK7AiO1rnW60BI=",
 			"path": "github.com/docker/docker/opts",
 			"revision": "bad654b00c954e31007c5004629e236c06ca4046",
@@ -235,6 +241,12 @@
 			"revisionTime": "2016-07-26T03:30:17Z"
 		},
 		{
+			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
+			"path": "github.com/pmezard/go-difflib/difflib",
+			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
+			"revisionTime": "2016-01-10T10:55:54Z"
+		},
+		{
 			"path": "github.com/russross/blackfriday",
 			"revision": "8cec3a854e68dba10faabbe31c089abf4a3e57a6",
 			"revisionTime": "2015-07-20T13:48:36-06:00"
@@ -270,6 +282,42 @@
 			"path": "github.com/spf13/viper",
 			"revision": "1967d93db724f4a5c0e101307e96d82ff520a067",
 			"revisionTime": "2015-08-23T23:40:56-04:00"
+		},
+		{
+			"checksumSHA1": "K0crHygPTP42i1nLKWphSlvOQJw=",
+			"path": "github.com/stretchr/objx",
+			"revision": "1a9d0bb9f541897e62256577b352fdbc1fb4fd94",
+			"revisionTime": "2015-09-28T12:21:52Z"
+		},
+		{
+			"checksumSHA1": "/kKwYqD04AkkDZFQhGwklKw3RFA=",
+			"path": "github.com/stretchr/testify",
+			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
+			"revisionTime": "2016-06-15T09:26:46Z"
+		},
+		{
+			"checksumSHA1": "iydUphwYqZRq3WhstEdGsbvBAKs=",
+			"path": "github.com/stretchr/testify/assert",
+			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
+			"revisionTime": "2016-06-15T09:26:46Z"
+		},
+		{
+			"checksumSHA1": "fg3TzS9/QK3wZbzei3Z6O8XPLHg=",
+			"path": "github.com/stretchr/testify/http",
+			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
+			"revisionTime": "2016-06-15T09:26:46Z"
+		},
+		{
+			"checksumSHA1": "pkygjJdYo4lYnh5HO2HYXZWcjXw=",
+			"path": "github.com/stretchr/testify/mock",
+			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
+			"revisionTime": "2016-06-15T09:26:46Z"
+		},
+		{
+			"checksumSHA1": "P9FJpir2c4G5PA46qEkaWy3l60U=",
+			"path": "github.com/stretchr/testify/require",
+			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
+			"revisionTime": "2016-06-15T09:26:46Z"
 		},
 		{
 			"path": "github.com/tecbot/gorocksdb",

@@ -372,6 +372,7 @@ def invokeChaincode(context, devopsFunc, functionName, containerName, idGenAlg=N
 
     context.chaincodeSpec['ctorMsg']['args'] = args
     context.chaincodeSpec['attributes'] = attributes
+
     #If idGenAlg is passed then, we still using the deprecated devops API because this parameter can't be passed in the new API.
     if idGenAlg != None:
         invokeUsingDevopsService(context, devopsFunc, functionName, containerName, idGenAlg)
@@ -825,3 +826,7 @@ def prepend(elem, l):
     if l is None or l == "":
         return [elem]
     return [elem] + l
+
+@given(u'I do nothing')
+def step_impl(context):
+    pass
