@@ -81,7 +81,7 @@ func createEventClient(eventAddress string, listenToRejections bool, cid string)
 	done := make(chan *pb.Event_Block)
 	reject := make(chan *pb.Event_Rejection)
 	adapter := &adapter{notfy: done, rejected: reject, listenToRejections: listenToRejections, chaincodeID: cid, cEvent: make(chan *pb.Event_ChaincodeEvent)}
-	obcEHClient = consumer.NewEventsClient(eventAddress, adapter)
+	obcEHClient, _ = consumer.NewEventsClient(eventAddress, 5, adapter)
 	if err := obcEHClient.Start(); err != nil {
 		fmt.Printf("could not start chat %s\n", err)
 		obcEHClient.Stop()

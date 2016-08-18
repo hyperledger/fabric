@@ -171,6 +171,21 @@ func (m *Rejection) GetTx() *Transaction {
 }
 
 // ---------- producer events ---------
+type Unregister struct {
+	Events []*Interest `protobuf:"bytes,1,rep,name=events" json:"events,omitempty"`
+}
+
+func (m *Unregister) Reset()         { *m = Unregister{} }
+func (m *Unregister) String() string { return proto.CompactTextString(m) }
+func (*Unregister) ProtoMessage()    {}
+
+func (m *Unregister) GetEvents() []*Interest {
+	if m != nil {
+		return m.Events
+	}
+	return nil
+}
+
 // Event is used by
 //  - consumers (adapters) to send Register
 //  - producer to advertise supported types and events
@@ -180,6 +195,7 @@ type Event struct {
 	//	*Event_Block
 	//	*Event_ChaincodeEvent
 	//	*Event_Rejection
+	//	*Event_Unregister
 	Event isEvent_Event `protobuf_oneof:"Event"`
 }
 
@@ -203,11 +219,15 @@ type Event_ChaincodeEvent struct {
 type Event_Rejection struct {
 	Rejection *Rejection `protobuf:"bytes,4,opt,name=rejection,oneof"`
 }
+type Event_Unregister struct {
+	Unregister *Unregister `protobuf:"bytes,5,opt,name=unregister,oneof"`
+}
 
 func (*Event_Register) isEvent_Event()       {}
 func (*Event_Block) isEvent_Event()          {}
 func (*Event_ChaincodeEvent) isEvent_Event() {}
 func (*Event_Rejection) isEvent_Event()      {}
+func (*Event_Unregister) isEvent_Event()     {}
 
 func (m *Event) GetEvent() isEvent_Event {
 	if m != nil {
@@ -244,6 +264,13 @@ func (m *Event) GetRejection() *Rejection {
 	return nil
 }
 
+func (m *Event) GetUnregister() *Unregister {
+	if x, ok := m.GetEvent().(*Event_Unregister); ok {
+		return x.Unregister
+	}
+	return nil
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*Event) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
 	return _Event_OneofMarshaler, _Event_OneofUnmarshaler, []interface{}{
@@ -251,6 +278,7 @@ func (*Event) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, 
 		(*Event_Block)(nil),
 		(*Event_ChaincodeEvent)(nil),
 		(*Event_Rejection)(nil),
+		(*Event_Unregister)(nil),
 	}
 }
 
@@ -276,6 +304,11 @@ func _Event_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	case *Event_Rejection:
 		b.EncodeVarint(4<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Rejection); err != nil {
+			return err
+		}
+	case *Event_Unregister:
+		b.EncodeVarint(5<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Unregister); err != nil {
 			return err
 		}
 	case nil:
@@ -319,6 +352,14 @@ func _Event_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) 
 		msg := new(Rejection)
 		err := b.DecodeMessage(msg)
 		m.Event = &Event_Rejection{msg}
+		return true, err
+	case 5: // Event.unregister
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Unregister)
+		err := b.DecodeMessage(msg)
+		m.Event = &Event_Unregister{msg}
 		return true, err
 	default:
 		return false, nil

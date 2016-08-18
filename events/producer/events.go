@@ -34,7 +34,6 @@ import (
 //and the big lock should have no performance impact
 //
 type handlerList interface {
-	//find() *handler
 	add(ie *pb.Interest, h *handler) (bool, error)
 	del(ie *pb.Interest, h *handler) (bool, error)
 	foreach(ie *pb.Event, action func(h *handler))
@@ -42,13 +41,11 @@ type handlerList interface {
 
 type genericHandlerList struct {
 	sync.RWMutex
-	// this map used as a list - add/del/iterate
 	handlers map[*handler]bool
 }
 
 type chaincodeHandlerList struct {
 	sync.RWMutex
-	// this map used as a list - add/del/iterate
 	handlers map[string]map[string]map[*handler]bool
 }
 
@@ -113,7 +110,6 @@ func (hl *chaincodeHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 		//the handler is not registered for the event type
 		return false, fmt.Errorf("handler not registered for event name %s for chaincode ID %s", ie.GetChaincodeRegInfo().EventName, ie.GetChaincodeRegInfo().ChaincodeID)
 	}
-
 	//remove the handler from the map
 	delete(handlerMap, h)
 
