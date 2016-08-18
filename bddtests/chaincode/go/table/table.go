@@ -30,7 +30,7 @@ type SimpleChaincode struct {
 }
 
 // Init create tables for tests
-func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	// Create table one
 	err := createTableOne(stub)
 	if err != nil {
@@ -60,7 +60,7 @@ func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args [
 
 // Invoke callback representing the invocation of a chaincode
 // This chaincode will manage two accounts A and B and will transfer X units from A to B upon invoke
-func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 
 	switch function {
 
@@ -286,7 +286,7 @@ func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args
 }
 
 // Query callback representing the query of a chaincode
-func (t *SimpleChaincode) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	switch function {
 
 	case "getRowTableOne":
@@ -470,7 +470,7 @@ func main() {
 	}
 }
 
-func createTableOne(stub *shim.ChaincodeStub) error {
+func createTableOne(stub shim.ChaincodeStubInterface) error {
 	// Create table one
 	var columnDefsTableOne []*shim.ColumnDefinition
 	columnOneTableOneDef := shim.ColumnDefinition{Name: "colOneTableOne",
@@ -485,7 +485,7 @@ func createTableOne(stub *shim.ChaincodeStub) error {
 	return stub.CreateTable("tableOne", columnDefsTableOne)
 }
 
-func createTableTwo(stub *shim.ChaincodeStub) error {
+func createTableTwo(stub shim.ChaincodeStubInterface) error {
 	var columnDefsTableTwo []*shim.ColumnDefinition
 	columnOneTableTwoDef := shim.ColumnDefinition{Name: "colOneTableTwo",
 		Type: shim.ColumnDefinition_STRING, Key: true}
@@ -502,7 +502,7 @@ func createTableTwo(stub *shim.ChaincodeStub) error {
 	return stub.CreateTable("tableTwo", columnDefsTableTwo)
 }
 
-func createTableThree(stub *shim.ChaincodeStub) error {
+func createTableThree(stub shim.ChaincodeStubInterface) error {
 	var columnDefsTableThree []*shim.ColumnDefinition
 	columnOneTableThreeDef := shim.ColumnDefinition{Name: "colOneTableThree",
 		Type: shim.ColumnDefinition_STRING, Key: true}
@@ -528,7 +528,7 @@ func createTableThree(stub *shim.ChaincodeStub) error {
 	return stub.CreateTable("tableThree", columnDefsTableThree)
 }
 
-func createTableFour(stub *shim.ChaincodeStub) error {
+func createTableFour(stub shim.ChaincodeStubInterface) error {
 	var columnDefsTableFour []*shim.ColumnDefinition
 	columnOneTableFourDef := shim.ColumnDefinition{Name: "colOneTableFour",
 		Type: shim.ColumnDefinition_STRING, Key: true}

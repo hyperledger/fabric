@@ -45,7 +45,7 @@ type RBACChaincode struct {
 }
 
 // Init method will be called during deployment
-func (t *RBACChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *RBACChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 
 	// Init the crypto layer
 	if err := crypto.Init(); err != nil {
@@ -99,7 +99,7 @@ func (t *RBACChaincode) Init(stub *shim.ChaincodeStub, function string, args []s
 }
 
 // Invoke Run callback representing the invocation of a chaincode
-func (t *RBACChaincode) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *RBACChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	// Handle different functions
 	switch function {
 	case "addRole":
@@ -112,7 +112,7 @@ func (t *RBACChaincode) Invoke(stub *shim.ChaincodeStub, function string, args [
 }
 
 // Query callback representing the query of a chaincode
-func (t *RBACChaincode) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *RBACChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	// Handle different functions
 	switch function {
 	case "read":
@@ -122,7 +122,7 @@ func (t *RBACChaincode) Query(stub *shim.ChaincodeStub, function string, args []
 	return nil, fmt.Errorf("Received unknown function invocation [%s]", function)
 }
 
-func (t *RBACChaincode) addRole(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *RBACChaincode) addRole(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
@@ -189,7 +189,7 @@ func (t *RBACChaincode) addRole(stub *shim.ChaincodeStub, args []string) ([]byte
 	return nil, err
 }
 
-func (t *RBACChaincode) read(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *RBACChaincode) read(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 0 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 0")
 	}
@@ -214,7 +214,7 @@ func (t *RBACChaincode) read(stub *shim.ChaincodeStub, args []string) ([]byte, e
 	return res, nil
 }
 
-func (t *RBACChaincode) write(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *RBACChaincode) write(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 1 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 1")
 	}
@@ -235,7 +235,7 @@ func (t *RBACChaincode) write(stub *shim.ChaincodeStub, args []string) ([]byte, 
 	return nil, stub.PutState("state", []byte(value))
 }
 
-func (t *RBACChaincode) hasInvokerRole(stub *shim.ChaincodeStub, role string) (bool, []byte, error) {
+func (t *RBACChaincode) hasInvokerRole(stub shim.ChaincodeStubInterface, role string) (bool, []byte, error) {
 	// In order to enforce access control, we require that the
 	// metadata contains the following items:
 	// 1. a certificate Cert

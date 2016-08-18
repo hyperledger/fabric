@@ -28,7 +28,7 @@ type SampleSysCC struct {
 
 // Init initializes the sample system chaincode by storing the key and value
 // arguments passed in as parameters
-func (t *SampleSysCC) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SampleSysCC) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	//as system chaincodes do not take part in consensus and are part of the system,
 	//best practice to do nothing (or very little) in Init.
 
@@ -37,7 +37,7 @@ func (t *SampleSysCC) Init(stub *shim.ChaincodeStub, function string, args []str
 
 // Invoke gets the supplied key and if it exists, updates the key with the newly
 // supplied value.
-func (t *SampleSysCC) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var key, val string // Entities
 
 	if len(args) != 2 {
@@ -64,7 +64,7 @@ func (t *SampleSysCC) Invoke(stub *shim.ChaincodeStub, function string, args []s
 }
 
 // Query callback representing the query of a chaincode
-func (t *SampleSysCC) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *SampleSysCC) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "getval" {
 		return nil, errors.New("Invalid query function name. Expecting \"getval\"")
 	}

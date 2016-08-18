@@ -33,7 +33,7 @@ type ChaincodeExample struct {
 }
 
 // Called to initialize the chaincode
-func (t *ChaincodeExample) Init(stub *shim.ChaincodeStub, param *appinit.Init) error {
+func (t *ChaincodeExample) Init(stub shim.ChaincodeStubInterface, param *appinit.Init) error {
 
 	var err error
 
@@ -54,7 +54,7 @@ func (t *ChaincodeExample) Init(stub *shim.ChaincodeStub, param *appinit.Init) e
 }
 
 // Transaction makes payment of X units from A to B
-func (t *ChaincodeExample) MakePayment(stub *shim.ChaincodeStub, param *example02.PaymentParams) error {
+func (t *ChaincodeExample) MakePayment(stub shim.ChaincodeStubInterface, param *example02.PaymentParams) error {
 
 	var err error
 
@@ -90,7 +90,7 @@ func (t *ChaincodeExample) MakePayment(stub *shim.ChaincodeStub, param *example0
 }
 
 // Deletes an entity from state
-func (t *ChaincodeExample) DeleteAccount(stub *shim.ChaincodeStub, param *example02.Entity) error {
+func (t *ChaincodeExample) DeleteAccount(stub shim.ChaincodeStubInterface, param *example02.Entity) error {
 
 	// Delete the key from the state in ledger
 	err := stub.DelState(param.Id)
@@ -102,7 +102,7 @@ func (t *ChaincodeExample) DeleteAccount(stub *shim.ChaincodeStub, param *exampl
 }
 
 // Query callback representing the query of a chaincode
-func (t *ChaincodeExample) CheckBalance(stub *shim.ChaincodeStub, param *example02.Entity) (*example02.BalanceResult, error) {
+func (t *ChaincodeExample) CheckBalance(stub shim.ChaincodeStubInterface, param *example02.Entity) (*example02.BalanceResult, error) {
 	var err error
 
 	// Get the state from the ledger
@@ -131,11 +131,11 @@ func main() {
 //-------------------------------------------------
 // Helpers
 //-------------------------------------------------
-func (t *ChaincodeExample) PutState(stub *shim.ChaincodeStub, party *appinit.Party) error {
+func (t *ChaincodeExample) PutState(stub shim.ChaincodeStubInterface, party *appinit.Party) error {
 	return stub.PutState(party.Entity, []byte(strconv.Itoa(int(party.Value))))
 }
 
-func (t *ChaincodeExample) GetState(stub *shim.ChaincodeStub, entity string) (int, error) {
+func (t *ChaincodeExample) GetState(stub shim.ChaincodeStubInterface, entity string) (int, error) {
 	bytes, err := stub.GetState(entity)
 	if err != nil {
 		return 0, errors.New("Failed to get state")

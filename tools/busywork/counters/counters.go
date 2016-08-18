@@ -41,7 +41,7 @@ import (
 type counters struct {
 	logger *shim.ChaincodeLogger // Our logger
 	id     string                // Chaincode ID
-	stub   *shim.ChaincodeStub   // The stub
+	stub   shim.ChaincodeStubInterface // The stub
 }
 
 // newCounters is a "constructor" for counters objects
@@ -336,7 +336,7 @@ func (c *counters) status(args []string) (val []byte, err error) {
 
 // Init handles chaincode initialization. Only the 'parms' function is
 // recognized here.
-func (c *counters) Init(stub *shim.ChaincodeStub, function string, args []string) (val []byte, err error) {
+func (c *counters) Init(stub shim.ChaincodeStubInterface, function string, args []string) (val []byte, err error) {
 	c.stub = stub
 	defer busy.Catch(&err)
 	switch function {
@@ -349,7 +349,7 @@ func (c *counters) Init(stub *shim.ChaincodeStub, function string, args []string
 }
 
 // Invoke handles the `invoke` methods.
-func (c *counters) Invoke(stub *shim.ChaincodeStub, function string, args []string) (val []byte, err error) {
+func (c *counters) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) (val []byte, err error) {
 	c.stub = stub
 	defer busy.Catch(&err)
 	switch function {
@@ -366,7 +366,7 @@ func (c *counters) Invoke(stub *shim.ChaincodeStub, function string, args []stri
 }
 
 // Query handles the `query` methods.
-func (c *counters) Query(stub *shim.ChaincodeStub, function string, args []string) (val []byte, err error) {
+func (c *counters) Query(stub shim.ChaincodeStubInterface, function string, args []string) (val []byte, err error) {
 	c.stub = stub
 	defer busy.Catch(&err)
 	switch function {

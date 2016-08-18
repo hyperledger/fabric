@@ -28,7 +28,7 @@ import (
 type Attributes2State struct {
 }
 
-func (t *Attributes2State) setStateToAttributes(stub *shim.ChaincodeStub, args []string) error {
+func (t *Attributes2State) setStateToAttributes(stub shim.ChaincodeStubInterface, args []string) error {
 	attrHandler, err := attr.NewAttributesHandlerImpl(stub)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func (t *Attributes2State) setStateToAttributes(stub *shim.ChaincodeStub, args [
 
 // Init intializes the chaincode by reading the transaction attributes and storing
 // the attrbute values in the state
-func (t *Attributes2State) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *Attributes2State) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	err := t.setStateToAttributes(stub, args)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (t *Attributes2State) Init(stub *shim.ChaincodeStub, function string, args 
 }
 
 // Invoke takes two arguements, a key and value, and stores these in the state
-func (t *Attributes2State) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *Attributes2State) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function == "delete" {
 		return nil, t.delete(stub, args)
 	}
@@ -74,7 +74,7 @@ func (t *Attributes2State) Invoke(stub *shim.ChaincodeStub, function string, arg
 }
 
 // delete Deletes an entity from the state, returning error if the entity was not found in the state.
-func (t *Attributes2State) delete(stub *shim.ChaincodeStub, args []string) error {
+func (t *Attributes2State) delete(stub shim.ChaincodeStubInterface, args []string) error {
 	if len(args) != 1 {
 		return errors.New("Incorrect number of arguments. Expecting only 1 (attributeName)")
 	}
@@ -105,7 +105,7 @@ func (t *Attributes2State) delete(stub *shim.ChaincodeStub, args []string) error
 }
 
 // Query callback representing the query of a chaincode
-func (t *Attributes2State) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *Attributes2State) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "read" {
 		return nil, errors.New("Invalid query function name. Expecting \"read\"")
 	}

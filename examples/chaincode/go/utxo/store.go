@@ -26,11 +26,11 @@ import (
 
 // Store struct uses a chaincode stub for state access
 type Store struct {
-	stub *shim.ChaincodeStub
+	stub shim.ChaincodeStubInterface
 }
 
 // MakeChaincodeStore returns a store for storing keys in the state
-func MakeChaincodeStore(stub *shim.ChaincodeStub) util.Store {
+func MakeChaincodeStore(stub shim.ChaincodeStubInterface) util.Store {
 	store := &Store{}
 	store.stub = stub
 	return store

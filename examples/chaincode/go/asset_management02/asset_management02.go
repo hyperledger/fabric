@@ -41,7 +41,7 @@ type AssetManagementChaincode struct {
 // args[0]: investor's TCert
 // args[1]: attribute name inside the investor's TCert that contains investor's account ID
 // args[2]: amount to be assigned to this investor's account ID
-func (t *AssetManagementChaincode) assignOwnership(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) assignOwnership(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	myLogger.Debugf("+++++++++++++++++++++++++++++++++++assignOwnership+++++++++++++++++++++++++++++++++")
 
 	if len(args) != 3 {
@@ -93,7 +93,7 @@ func (t *AssetManagementChaincode) assignOwnership(stub *shim.ChaincodeStub, arg
 // args[1]: attribute names inside TCert (arg[0]) that countain the account IDs
 // args[2]: Investor TCert that has account IDs which will have their balances increased
 // args[3]: attribute names inside TCert (arg[2]) that countain the account IDs
-func (t *AssetManagementChaincode) transferOwnership(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) transferOwnership(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	myLogger.Debugf("+++++++++++++++++++++++++++++++++++transferOwnership+++++++++++++++++++++++++++++++++")
 
 	if len(args) != 5 {
@@ -149,7 +149,7 @@ func (t *AssetManagementChaincode) transferOwnership(stub *shim.ChaincodeStub, a
 // Note: user contact information shall be encrypted with issuer's pub key or KA key
 // between investor and issuer, so that only issuer can decrypt such information
 // args[0]: one of the many account IDs owned by "some" investor
-func (t *AssetManagementChaincode) getOwnerContactInformation(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) getOwnerContactInformation(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	myLogger.Debugf("+++++++++++++++++++++++++++++++++++getOwnerContactInformation+++++++++++++++++++++++++++++++++")
 
 	if len(args) != 1 {
@@ -168,7 +168,7 @@ func (t *AssetManagementChaincode) getOwnerContactInformation(stub *shim.Chainco
 
 // getBalance retrieves the account balance information of the investor that owns a particular account ID
 // args[0]: one of the many account IDs owned by "some" investor
-func (t *AssetManagementChaincode) getBalance(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) getBalance(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	myLogger.Debugf("+++++++++++++++++++++++++++++++++++getBalance+++++++++++++++++++++++++++++++++")
 
 	if len(args) != 1 {
@@ -190,7 +190,7 @@ func (t *AssetManagementChaincode) getBalance(stub *shim.ChaincodeStub, args []s
 }
 
 // Init initialization, this method will create asset despository in the chaincode state
-func (t *AssetManagementChaincode) Init(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	myLogger.Debugf("********************************Init****************************************")
 
 	myLogger.Info("[AssetManagementChaincode] Init")
@@ -203,7 +203,7 @@ func (t *AssetManagementChaincode) Init(stub *shim.ChaincodeStub, function strin
 
 // Invoke  method is the interceptor of all invocation transactions, its job is to direct
 // invocation transactions to intended APIs
-func (t *AssetManagementChaincode) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	myLogger.Debugf("********************************Invoke****************************************")
 
 	//	 Handle different functions
@@ -220,7 +220,7 @@ func (t *AssetManagementChaincode) Invoke(stub *shim.ChaincodeStub, function str
 
 // Query method is the interceptor of all invocation transactions, its job is to direct
 // query transactions to intended APIs, and return the result back to callers
-func (t *AssetManagementChaincode) Query(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	myLogger.Debugf("********************************Query****************************************")
 
 	// Handle different functions

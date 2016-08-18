@@ -908,7 +908,7 @@ func filterError(errFromFSMEvent error) error {
 	return nil
 }
 
-func getFunctionAndParams(stub *ChaincodeStub) (function string, params []string) {
+func getFunctionAndParams(stub ChaincodeStubInterface) (function string, params []string) {
 	allargs := stub.GetStringArgs()
 	function = ""
 	params = []string{}
