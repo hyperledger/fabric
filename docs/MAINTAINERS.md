@@ -3,7 +3,7 @@
 | Name | GitHub | Gerrit | email |
 |---|---|---|---|
 | Binh Nguyen | binhn | | binhn@us.ibm.com |
-| Sheehan Anderson | srderson || sheehan@us.ibm.com
+| Sheehan Anderson | srderson | sheehan | sranderson@gmail.com
 | Tamas Blummer | tamasblummer ||  tamas@digitalasset.com
 | Robert Fajta | rfajta || robert@digitalasset.com
 | Greg Haskins | ghaskins || ghaskins@lseg.com
