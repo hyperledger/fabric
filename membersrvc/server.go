@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/flogging"
 	"github.com/hyperledger/fabric/membersrvc/ca"
+	"github.com/hyperledger/fabric/metadata"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -67,7 +68,7 @@ func main() {
 	// cache configure
 	ca.CacheConfiguration()
 
-	logger.Infof("CA Server (" + viper.GetString("server.version") + ")")
+	logger.Infof("CA Server (" + metadata.Version + ")")
 
 	aca := ca.NewACA()
 	defer aca.Stop()

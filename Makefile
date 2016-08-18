@@ -36,8 +36,21 @@
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
 
-PROJECT_NAME=hyperledger/fabric
+PROJECT_NAME   = hyperledger/fabric
+BASE_VERSION   = 0.6.0
+IS_RELEASE     = false # commit as 'true' only once for a given $(BASE_VERSION)
+
+ifneq ($(IS_RELEASE),true)
+EXTRA_VERSION ?= SNAPSHOT-$(shell git rev-parse --short HEAD)
+PROJECT_VERSION=$(BASE_VERSION)-$(EXTRA_VERSION)
+else
+PROJECT_VERSION=$(BASE_VERSION)
+endif
+
+DOCKER_TAG=$(shell uname -m)-$(PROJECT_VERSION)
+
 PKGNAME = github.com/$(PROJECT_NAME)
+GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
 CHAINTOOL_RELEASE=v0.8.1
@@ -76,7 +89,7 @@ membersrvc: build/bin/membersrvc
 membersrvc-image: build/image/membersrvc/.dummy
 
 unit-test: peer-image gotools
-	@./scripts/goUnitTests.sh
+	@./scripts/goUnitTests.sh $(DOCKER_TAG) "$(GO_LDFLAGS)"
 
 .PHONY: images
 images: $(patsubst %,build/image/%/.dummy, $(IMAGES))
@@ -137,7 +150,7 @@ build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
 		--user=$(UID) \
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/pkg):/opt/gopath/pkg \
-		hyperledger/fabric-src go install github.com/hyperledger/fabric/$(TARGET)
+		hyperledger/fabric-src:$(DOCKER_TAG) go install -ldflags "$(GO_LDFLAGS)" github.com/hyperledger/fabric/$(TARGET)
 	@touch $@
 
 build/bin:
@@ -156,7 +169,7 @@ build/bin/block-listener:
 build/bin/%: build/image/base/.dummy $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
-	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install $(PKGNAME)/$(@F)
+	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -ldflags "$(GO_LDFLAGS)" $(PKGNAME)/$(@F)
 	@echo "Binary available as $@"
 	@touch $@
 
@@ -171,16 +184,22 @@ build/image/base/.dummy: $(BASEIMAGE_DEPS)
 build/image/src/.dummy: build/image/base/.dummy $(PROJECT_FILES)
 	@echo "Building docker src-image"
 	@mkdir -p $(@D)
-	@cat images/src/Dockerfile.in > $(@D)/Dockerfile
+	@cat images/src/Dockerfile.in \
+		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		> $(@D)/Dockerfile
 	@git ls-files | tar -jcT - > $(@D)/gopath.tar.bz2
-	docker build -t $(PROJECT_NAME)-src:latest $(@D)
+	docker build -t $(PROJECT_NAME)-src $(@D)
+	docker tag $(PROJECT_NAME)-src $(PROJECT_NAME)-src:$(DOCKER_TAG)
 	@touch $@
 
 # Special override for ccenv-image (chaincode-environment)
 build/image/ccenv/.dummy: build/image/src/.dummy build/image/ccenv/bin/protoc-gen-go build/image/ccenv/bin/chaintool Makefile
 	@echo "Building docker ccenv-image"
-	@cat images/ccenv/Dockerfile.in > $(@D)/Dockerfile
-	docker build -t $(PROJECT_NAME)-ccenv:latest $(@D)
+	@cat images/ccenv/Dockerfile.in \
+		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		> $(@D)/Dockerfile
+	docker build -t $(PROJECT_NAME)-ccenv $(@D)
+	docker tag $(PROJECT_NAME)-ccenv $(PROJECT_NAME)-ccenv:$(DOCKER_TAG)
 	@touch $@
 
 # Special override for java-image
@@ -194,7 +213,8 @@ build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 	# 3. Gradle settings file
 	@git ls-files core/chaincode/shim/java | tar -jcT - > $(@D)/javashimsrc.tar.bz2
 	@git ls-files protos settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
-	docker build -t $(PROJECT_NAME)-javaenv:latest $(@D)
+	docker build -t $(PROJECT_NAME)-javaenv $(@D)
+	docker tag $(PROJECT_NAME)-javaenv $(PROJECT_NAME)-javaenv:$(DOCKER_TAG)
 	@touch $@
 
 # Default rule for image creation
@@ -202,9 +222,12 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 	$(eval TARGET = ${patsubst build/image/%/.dummy,%,${@}})
 	@echo "Building docker $(TARGET)-image"
 	@mkdir -p $(@D)/bin
-	@cat images/app/Dockerfile.in | sed -e 's/_TARGET_/$(TARGET)/g' > $(@D)/Dockerfile
+	@cat images/app/Dockerfile.in \
+		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		> $(@D)/Dockerfile
 	cp build/docker/bin/$(TARGET) $(@D)/bin
-	docker build -t $(PROJECT_NAME)-$(TARGET):latest $(@D)
+	docker build -t $(PROJECT_NAME)-$(TARGET) $(@D)
+	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
 .PHONY: protos
@@ -215,9 +238,11 @@ base-image-clean:
 	-docker rmi -f $(PROJECT_NAME)-baseimage
 	-@rm -rf build/image/base ||:
 
+src-image-clean: ccenv-image-clean peer-image-clean membersrvc-image-clean
+
 %-image-clean:
 	$(eval TARGET = ${patsubst %-image-clean,%,${@}})
-	-docker rmi -f $(PROJECT_NAME)-$(TARGET)
+	-docker images -q $(PROJECT_NAME)-$(TARGET) | xargs -r docker rmi -f
 	-@rm -rf build/image/$(TARGET) ||:
 
 images-clean: $(patsubst %,%-image-clean, $(IMAGES))
