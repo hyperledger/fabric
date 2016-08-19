@@ -228,7 +228,7 @@ func (openchainDB *OpenchainDB) Get(cfHandler *gorocksdb.ColumnFamilyHandle, key
 	defer opt.Destroy()
 	slice, err := openchainDB.DB.GetCF(opt, cfHandler, key)
 	if err != nil {
-		fmt.Println("Error while trying to retrieve key:", key)
+		dbLogger.Errorf("Error while trying to retrieve key: %s", key)
 		return nil, err
 	}
 	defer slice.Free()
@@ -245,7 +245,7 @@ func (openchainDB *OpenchainDB) Put(cfHandler *gorocksdb.ColumnFamilyHandle, key
 	defer opt.Destroy()
 	err := openchainDB.DB.PutCF(opt, cfHandler, key, value)
 	if err != nil {
-		fmt.Println("Error while trying to write key:", key)
+		dbLogger.Errorf("Error while trying to write key: %s", key)
 		return err
 	}
 	return nil
@@ -257,7 +257,7 @@ func (openchainDB *OpenchainDB) Delete(cfHandler *gorocksdb.ColumnFamilyHandle, 
 	defer opt.Destroy()
 	err := openchainDB.DB.DeleteCF(opt, cfHandler, key)
 	if err != nil {
-		fmt.Println("Error while trying to delete key:", key)
+		dbLogger.Errorf("Error while trying to delete key: %s", key)
 		return err
 	}
 	return nil
@@ -269,7 +269,7 @@ func (openchainDB *OpenchainDB) getFromSnapshot(snapshot *gorocksdb.Snapshot, cf
 	opt.SetSnapshot(snapshot)
 	slice, err := openchainDB.DB.GetCF(opt, cfHandler, key)
 	if err != nil {
-		fmt.Println("Error while trying to retrieve key:", key)
+		dbLogger.Errorf("Error while trying to retrieve key: %s", key)
 		return nil, err
 	}
 	defer slice.Free()
