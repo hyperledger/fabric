@@ -17,7 +17,6 @@
 package noop
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/golang/protobuf/proto"
@@ -60,18 +59,11 @@ func (t *SystemChaincode) Init(stub shim.ChaincodeStubInterface, function string
 
 // Invoke runs an invocation on the system chaincode
 func (t *SystemChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	switch function {
-	case "execute":
-
-		if len(args) < 1 {
-			return nil, errors.New("execute operation must include single argument, the base64 encoded form of a byte sequence")
-		}
-		logger.Infof("Executing NOOP INVOKE")
-		return nil, nil
-
-	default:
-		return nil, errors.New("Unsupported operation")
+	if len(args) != 1 {
+		return nil, errors.New("Noop execute operation must have one single argument.")
 	}
+	logger.Infof("Executing noop invoke.")
+	return nil, nil
 }
 
 // Query callback representing the query of a chaincode
@@ -94,8 +86,11 @@ func (t *SystemChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 		if nil != merr {
 			return nil, merr
 		}
-		var dataInByteForm = newCCIS.ChaincodeSpec.CtorMsg.Args
-		return bytes.Join(dataInByteForm, []byte{}), nil
+		if len(newCCIS.ChaincodeSpec.CtorMsg.Args) < 1 {
+			return nil, errors.New("The requested transaction is malformed.")
+		}
+		var dataInByteForm = newCCIS.ChaincodeSpec.CtorMsg.Args[0]
+		return dataInByteForm, nil
 	default:
 		return nil, errors.New("Unsupported operation")
 	}

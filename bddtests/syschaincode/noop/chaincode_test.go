@@ -61,11 +61,11 @@ func TestInvokeExecuteOneArgReturnsNothing(t *testing.T) {
 	}
 }
 
-func TestInvokeExecuteMoreArgsReturnsNothing(t *testing.T) {
+func TestInvokeExecuteMoreArgsReturnsError(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
 	var res, err = noop.Invoke(nil, "execute", []string{"arg1", "arg2"})
-	if res != nil || err != nil {
-		t.Errorf("Invoke.execute has to return nil with no error.")
+	if res != nil || err == nil {
+		t.Errorf("Invoke.execute has to return error when called with more than one arguments.")
 	}
 }
 
