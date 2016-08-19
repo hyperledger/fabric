@@ -46,10 +46,13 @@ func (instance *pbftCore) persistPSet() {
 func (instance *pbftCore) persistPQSet(key string, set []*ViewChange_PQ) {
 	raw, err := proto.Marshal(&PQset{set})
 	if err != nil {
-		logger.Warningf("Replica %d could not persist pqset: %s", instance.id, err)
+		logger.Warningf("Replica %d could not persist pqset: %s: error: %s", instance.id, key, err)
 		return
 	}
-	instance.consumer.StoreState(key, raw)
+	err = instance.consumer.StoreState(key, raw)
+	if err != nil {
+		logger.Warningf("Replica %d could not persist pqset: %s: error: %s", instance.id, key, err)
+	}
 }
 
 func (instance *pbftCore) restorePQSet(key string) []*ViewChange_PQ {
@@ -74,7 +77,10 @@ func (instance *pbftCore) persistRequestBatch(digest string) {
 		logger.Warningf("Replica %d could not persist request batch %s: %s", instance.id, digest, err)
 		return
 	}
-	instance.consumer.StoreState("reqBatch."+digest, reqBatchPacked)
+	err = instance.consumer.StoreState("reqBatch."+digest, reqBatchPacked)
+	if err != nil {
+		logger.Warningf("Replica %d could not persist request batch %s: %s", instance.id, digest, err)
+	}
 }
 
 func (instance *pbftCore) persistDelRequestBatch(digest string) {
@@ -92,7 +98,10 @@ func (instance *pbftCore) persistDelAllRequestBatches() {
 
 func (instance *pbftCore) persistCheckpoint(seqNo uint64, id []byte) {
 	key := fmt.Sprintf("chkpt.%d", seqNo)
-	instance.consumer.StoreState(key, id)
+	err := instance.consumer.StoreState(key, id)
+	if err != nil {
+		logger.Warningf("Could not persist Checkpoint %s: %s", key, err)
+	}
 }
 
 func (instance *pbftCore) persistDelCheckpoint(seqNo uint64) {
