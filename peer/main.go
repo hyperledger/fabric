@@ -85,7 +85,7 @@ func main() {
 
 	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
 	if alternativeCfgPath != "" {
-		logger.Info("User defined config file path: %s", alternativeCfgPath)
+		logger.Infof("User defined config file path: %s", alternativeCfgPath)
 		viper.AddConfigPath(alternativeCfgPath) // Path to look for the config file in
 	} else {
 		viper.AddConfigPath("./") // Path to look for the config file in
