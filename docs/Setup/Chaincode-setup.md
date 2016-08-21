@@ -93,12 +93,16 @@ vp0:
   ports:
     - "7050:7050"
     - "7051:7051"
-    - "7052:7052"
+    - "7053:7053"
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
     - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
     - CORE_LOGGING_LEVEL=DEBUG
     - CORE_PEER_ID=vp0
+    - CORE_PEER_PKI_ECA_PADDR=membersrvc:7054
+    - CORE_PEER_PKI_TCA_PADDR=membersrvc:7054
+    - CORE_PEER_PKI_TLSCA_PADDR=membersrvc:7054
+    - CORE_SECURITY_ENABLED=true
     - CORE_SECURITY_ENROLLID=test_vp0
     - CORE_SECURITY_ENROLLSECRET=MwYpmSRjupbT
   links:
@@ -138,6 +142,10 @@ vp0:
     - CORE_VM_ENDPOINT=http://172.17.0.1:2375
     - CORE_LOGGING_LEVEL=DEBUG
     - CORE_PEER_ID=vp0
+	- CORE_PEER_PKI_ECA_PADDR=membersrvc:7054
+    - CORE_PEER_PKI_TCA_PADDR=membersrvc:7054
+    - CORE_PEER_PKI_TLSCA_PADDR=membersrvc:7054
+    - CORE_SECURITY_ENABLED=true
     - CORE_SECURITY_ENROLLID=test_vp0
     - CORE_SECURITY_ENROLLSECRET=MwYpmSRjupbT
   links:
