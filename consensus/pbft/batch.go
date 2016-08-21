@@ -84,7 +84,7 @@ func newObcBatch(id uint64, config *viper.Viper, stack consensus.Stack) *obcBatc
 	op.pbft = newPbftCore(id, config, op, etf)
 	op.manager.Start()
 	op.externalEventReceiver.manager = op.manager
-	op.broadcaster = newBroadcaster(id, op.pbft.N, op.pbft.f, stack)
+	op.broadcaster = newBroadcaster(id, op.pbft.N, op.pbft.f, op.pbft.broadcastTimeout, stack)
 
 	op.batchSize = config.GetInt("general.batchsize")
 	op.batchStore = nil

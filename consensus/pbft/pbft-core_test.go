@@ -36,17 +36,40 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
+func TestConfigSet(t *testing.T) {
+	config := loadConfig()
+
+	testKeys := []string{
+		"general.mode",
+		"general.N",
+		"general.f",
+		"general.K",
+		"general.logmultiplier",
+		"general.batchsize",
+		"general.byzantine",
+		"general.viewchangeperiod",
+		"general.timeout.batch",
+		"general.timeout.request",
+		"general.timeout.viewchange",
+		"general.timeout.resendviewchange",
+		"general.timeout.nullrequest",
+		"general.timeout.broadcast",
+		"executor.queuesize",
+	}
+
+	for _, key := range testKeys {
+		if ok := config.IsSet(key); !ok {
+			t.Errorf("Cannot test env override because \"%s\" does not seem to be set", key)
+		}
+	}
+}
+
 func TestEnvOverride(t *testing.T) {
 	config := loadConfig()
 
 	key := "general.mode"               // for a key that exists
 	envName := "CORE_PBFT_GENERAL_MODE" // env override name
 	overrideValue := "overide_test"     // value to override default value with
-
-	// test key
-	if ok := config.IsSet("general.mode"); !ok {
-		t.Fatalf("Cannot test env override because \"%s\" does not seem to be set", key)
-	}
 
 	os.Setenv(envName, overrideValue)
 	// The override config value will cause other calls to fail unless unset.
@@ -64,6 +87,104 @@ func TestEnvOverride(t *testing.T) {
 		t.Fatalf("Env override in place, expected key \"%s\" to be \"%s\" but instead got \"%s\"", key, overrideValue, configVal)
 	}
 
+}
+
+func TestIntEnvOverride(t *testing.T) {
+	config := loadConfig()
+
+	tests := []struct {
+		key           string
+		envName       string
+		overrideValue string
+		expectValue   int
+	}{
+		{"general.N", "CORE_PBFT_GENERAL_N", "8", 8},
+		{"general.f", "CORE_PBFT_GENERAL_F", "2", 2},
+		{"general.K", "CORE_PBFT_GENERAL_K", "20", 20},
+		{"general.logmultiplier", "CORE_PBFT_GENERAL_LOGMULTIPLIER", "6", 6},
+		{"general.batchsize", "CORE_PBFT_GENERAL_BATCHSIZE", "200", 200},
+		{"general.viewchangeperiod", "CORE_PBFT_GENERAL_VIEWCHANGEPERIOD", "5", 5},
+		{"executor.queuesize", "CORE_PBFT_EXECUTOR_QUEUESIZE", "50", 50},
+	}
+
+	for _, test := range tests {
+		os.Setenv(test.envName, test.overrideValue)
+
+		if ok := config.IsSet(test.key); !ok {
+			t.Errorf("Env override in place, and key \"%s\" is not set", test.key)
+		}
+
+		configVal := config.GetInt(test.key)
+		if configVal != test.expectValue {
+			t.Errorf("Env override in place, expected key \"%s\" to be \"%v\" but instead got \"%d\"", test.key, test.expectValue, configVal)
+		}
+
+		os.Unsetenv(test.envName)
+	}
+}
+
+func TestDurationEnvOverride(t *testing.T) {
+	config := loadConfig()
+
+	tests := []struct {
+		key           string
+		envName       string
+		overrideValue string
+		expectValue   time.Duration
+	}{
+		{"general.timeout.batch", "CORE_PBFT_GENERAL_TIMEOUT_BATCH", "2s", 2 * time.Second},
+		{"general.timeout.request", "CORE_PBFT_GENERAL_TIMEOUT_REQUEST", "4s", 4 * time.Second},
+		{"general.timeout.viewchange", "CORE_PBFT_GENERAL_TIMEOUT_VIEWCHANGE", "5s", 5 * time.Second},
+		{"general.timeout.resendviewchange", "CORE_PBFT_GENERAL_TIMEOUT_RESENDVIEWCHANGE", "200ms", 200 * time.Millisecond},
+		{"general.timeout.nullrequest", "CORE_PBFT_GENERAL_TIMEOUT_NULLREQUEST", "1s", time.Second},
+		{"general.timeout.broadcast", "CORE_PBFT_GENERAL_TIMEOUT_BROADCAST", "1m", time.Minute},
+	}
+
+	for _, test := range tests {
+		os.Setenv(test.envName, test.overrideValue)
+
+		if ok := config.IsSet(test.key); !ok {
+			t.Errorf("Env override in place, and key \"%s\" is not set", test.key)
+		}
+
+		configVal := config.GetDuration(test.key)
+		if configVal != test.expectValue {
+			t.Errorf("Env override in place, expected key \"%s\" to be \"%v\" but instead got \"%v\"", test.key, test.expectValue, configVal)
+		}
+
+		os.Unsetenv(test.envName)
+	}
+}
+
+func TestBoolEnvOverride(t *testing.T) {
+	config := loadConfig()
+
+	tests := []struct {
+		key           string
+		envName       string
+		overrideValue string
+		expectValue   bool
+	}{
+		{"general.byzantine", "CORE_PBFT_GENERAL_BYZANTINE", "false", false},
+		{"general.byzantine", "CORE_PBFT_GENERAL_BYZANTINE", "0", false},
+		{"general.byzantine", "CORE_PBFT_GENERAL_BYZANTINE", "true", true},
+		{"general.byzantine", "CORE_PBFT_GENERAL_BYZANTINE", "1", true},
+	}
+
+	for i, test := range tests {
+		os.Setenv(test.envName, test.overrideValue)
+
+		if ok := config.IsSet(test.key); !ok {
+			t.Errorf("Env override in place, and key \"%s\" is not set", test.key)
+		}
+
+		configVal := config.GetBool(test.key)
+		if configVal != test.expectValue {
+			t.Errorf("Test %d Env override in place, expected key \"%s\" to be \"%v\" but instead got \"%v\"", i, test.key, test.expectValue, configVal)
+		}
+
+		os.Unsetenv(test.envName)
+	}
 }
 
 func TestMaliciousPrePrepare(t *testing.T) {

@@ -155,6 +155,7 @@ type pbftCore struct {
 	newViewTimeout        time.Duration            // progress timeout for new views
 	newViewTimerReason    string                   // what triggered the timer
 	lastNewViewTimeout    time.Duration            // last timeout we used during this view change
+	broadcastTimeout      time.Duration            // progress timeout for broadcast
 	outstandingReqBatches map[string]*RequestBatch // track whether we are waiting for request batches to execute
 
 	nullRequestTimer   events.Timer  // timeout triggering a null request
@@ -255,6 +256,10 @@ func newPbftCore(id uint64, config *viper.Viper, consumer innerStack, etf events
 	if err != nil {
 		instance.nullRequestTimeout = 0
 	}
+	instance.broadcastTimeout, err = time.ParseDuration(config.GetString("general.timeout.broadcast"))
+	if err != nil {
+		panic(fmt.Errorf("Cannot parse new broadcast timeout: %s", err))
+	}
 
 	instance.activeView = true
 	instance.replicaCount = instance.N
@@ -266,6 +271,7 @@ func newPbftCore(id uint64, config *viper.Viper, consumer innerStack, etf events
 	logger.Infof("PBFT request timeout = %v", instance.requestTimeout)
 	logger.Infof("PBFT view change timeout = %v", instance.newViewTimeout)
 	logger.Infof("PBFT Checkpoint period (K) = %v", instance.K)
+	logger.Infof("PBFT broadcast timeout = %v", instance.broadcastTimeout)
 	logger.Infof("PBFT Log multiplier = %v", instance.logMultiplier)
 	logger.Infof("PBFT log size (L) = %v", instance.L)
 	if instance.nullRequestTimeout > 0 {

@@ -69,7 +69,7 @@ func TestBroadcast(t *testing.T) {
 		}
 	}()
 
-	b := newBroadcaster(1, 4, 1, m)
+	b := newBroadcaster(1, 4, 1, time.Second, m)
 
 	msg := &pb.Message{Payload: []byte("hi")}
 	b.Broadcast(msg)
@@ -123,7 +123,7 @@ func TestBroadcastStuck(t *testing.T) {
 		}
 	}()
 
-	b := newBroadcaster(1, 4, 1, m)
+	b := newBroadcaster(1, 4, 1, time.Second, m)
 
 	maxc := 20
 	for c := 0; c < maxc; c++ {
@@ -168,7 +168,7 @@ func TestBroadcastUnicast(t *testing.T) {
 		}
 	}()
 
-	b := newBroadcaster(1, 4, 1, m)
+	b := newBroadcaster(1, 4, 1, time.Second, m)
 
 	msg := &pb.Message{Payload: []byte("hi")}
 	b.Unicast(msg, 0)
@@ -206,7 +206,7 @@ func TestBroadcastAllFail(t *testing.T) {
 		done: make(chan struct{}),
 	}
 
-	b := newBroadcaster(1, 4, 1, m)
+	b := newBroadcaster(1, 4, 1, time.Second, m)
 
 	maxc := 20
 	for c := 0; c < maxc; c++ {
@@ -225,6 +225,41 @@ func TestBroadcastAllFail(t *testing.T) {
 		return
 	case <-time.After(time.Second):
 		t.Fatal("Could not successfully close broadcaster, after 1 second")
+	}
+}
+
+func TestBroadcastTimeout(t *testing.T) {
+	expectTime := 10 * time.Second
+	deltaTime := 50 * time.Millisecond
+	m := &mockIndefinitelyStuckComm{
+		mockComm: mockComm{
+			self:  1,
+			n:     4,
+			msgCh: make(chan mockMsg),
+		},
+		done: make(chan struct{}),
+	}
+
+	b := newBroadcaster(1, 4, 1, expectTime, m)
+	broadcastDone := make(chan time.Time)
+
+	beginTime := time.Now()
+	go func() {
+		b.Broadcast(&pb.Message{Payload: []byte(fmt.Sprintf("%d", 1))})
+		broadcastDone <- time.Now()
+	}()
+
+	checkTime := expectTime + deltaTime
+	select {
+	case endTime := <-broadcastDone:
+		t.Log("Broadcast consume time: ", endTime.Sub(beginTime))
+		close(broadcastDone)
+		close(m.done)
+		return
+	case <-time.After(checkTime):
+		close(broadcastDone)
+		close(m.done)
+		t.Fatalf("Broadcast timeout after %v, expected %v", checkTime, expectTime)
 	}
 }
 
@@ -250,7 +285,7 @@ func TestBroadcastIndefinitelyStuck(t *testing.T) {
 		done: make(chan struct{}),
 	}
 
-	b := newBroadcaster(1, 4, 1, m)
+	b := newBroadcaster(1, 4, 1, time.Second, m)
 
 	broadcastDone := make(chan struct{})
 
