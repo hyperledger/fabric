@@ -19,7 +19,6 @@ package ca
 import (
 	"bytes"
 	"errors"
-	"google/protobuf"
 	"io/ioutil"
 	"math/big"
 	"strings"
@@ -29,6 +28,7 @@ import (
 	"crypto/x509"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
 	"golang.org/x/net/context"
@@ -168,7 +168,7 @@ func fetchAttributes() (*pb.ACAFetchAttrResp, error) {
 	defer sock.Close()
 
 	req := &pb.ACAFetchAttrReq{
-		Ts:        &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:        &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		ECert:     &pb.Cert{Cert: cert.Raw},
 		Signature: nil}
 
@@ -210,7 +210,7 @@ func TestFetchAttributes_MissingSignature(t *testing.T) {
 	defer sock.Close()
 
 	req := &pb.ACAFetchAttrReq{
-		Ts:        &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:        &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		ECert:     &pb.Cert{Cert: cert.Raw},
 		Signature: nil}
 
@@ -245,7 +245,7 @@ func TestRequestAttributes(t *testing.T) {
 	attributes = append(attributes, &pb.TCertAttribute{AttributeName: "identity-number"})
 
 	req := &pb.ACAAttrReq{
-		Ts:         &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:         &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:         &pb.Identity{Id: identity},
 		ECert:      &pb.Cert{Cert: ecert},
 		Attributes: attributes,
@@ -320,7 +320,7 @@ func TestRequestAttributes_AttributesMismatch(t *testing.T) {
 	attributes = append(attributes, &pb.TCertAttribute{AttributeName: "account"})
 
 	req := &pb.ACAAttrReq{
-		Ts:         &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:         &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:         &pb.Identity{Id: identity},
 		ECert:      &pb.Cert{Cert: ecert},
 		Attributes: attributes,
@@ -380,7 +380,7 @@ func TestRequestAttributes_MissingSignature(t *testing.T) {
 	attributes = append(attributes, &pb.TCertAttribute{AttributeName: "identity-number"})
 
 	req := &pb.ACAAttrReq{
-		Ts:         &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:         &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:         &pb.Identity{Id: identity},
 		ECert:      &pb.Cert{Cert: ecert},
 		Attributes: attributes,
@@ -415,7 +415,7 @@ func TestRequestAttributes_DuplicatedAttributes(t *testing.T) {
 	attributes = append(attributes, &pb.TCertAttribute{AttributeName: "company"})
 
 	req := &pb.ACAAttrReq{
-		Ts:         &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:         &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:         &pb.Identity{Id: identity},
 		ECert:      &pb.Cert{Cert: ecert},
 		Attributes: attributes,
@@ -469,7 +469,7 @@ func TestRequestAttributes_FullAttributes(t *testing.T) {
 	attributes = append(attributes, &pb.TCertAttribute{AttributeName: "business_unit"})
 
 	req := &pb.ACAAttrReq{
-		Ts:         &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:         &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:         &pb.Identity{Id: identity},
 		ECert:      &pb.Cert{Cert: ecert},
 		Attributes: attributes,
@@ -549,7 +549,7 @@ func TestRequestAttributes_PartialAttributes(t *testing.T) {
 	attributes = append(attributes, &pb.TCertAttribute{AttributeName: "credit_card"})
 
 	req := &pb.ACAAttrReq{
-		Ts:         &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:         &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:         &pb.Identity{Id: identity},
 		ECert:      &pb.Cert{Cert: ecert},
 		Attributes: attributes,

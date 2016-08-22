@@ -21,12 +21,12 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"errors"
-	"google/protobuf"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/primitives/ecies"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
@@ -85,7 +85,7 @@ func enrollUser(user *User) error {
 	}
 
 	req := &pb.ECertCreateReq{
-		Ts:   &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:   &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:   &pb.Identity{Id: user.enrollID},
 		Tok:  &pb.Token{Tok: user.enrollPwd},
 		Sign: &pb.PublicKey{Type: pb.CryptoType_ECDSA, Key: signPub},
@@ -509,7 +509,7 @@ func TestCreateCertificatePairBadIdentity(t *testing.T) {
 	ecap := &ECAP{eca}
 
 	req := &pb.ECertCreateReq{
-		Ts:   &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:   &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:   &pb.Identity{Id: "badIdentity"},
 		Tok:  &pb.Token{Tok: testUser.enrollPwd},
 		Sign: &pb.PublicKey{Type: pb.CryptoType_ECDSA, Key: []byte{0}},
@@ -528,7 +528,7 @@ func TestCreateCertificatePairBadToken(t *testing.T) {
 	ecap := &ECAP{eca}
 
 	req := &pb.ECertCreateReq{
-		Ts:   &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:   &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:   &pb.Identity{Id: testUser.enrollID},
 		Tok:  &pb.Token{Tok: []byte("badPassword")},
 		Sign: &pb.PublicKey{Type: pb.CryptoType_ECDSA, Key: []byte{0}},

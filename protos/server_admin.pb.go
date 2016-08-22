@@ -7,7 +7,7 @@ package protos
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf1 "google/protobuf"
+import google_protobuf1 "github.com/golang/protobuf/ptypes/empty"
 
 import (
 	context "golang.org/x/net/context"
@@ -50,22 +50,29 @@ var ServerStatus_StatusCode_value = map[string]int32{
 func (x ServerStatus_StatusCode) String() string {
 	return proto.EnumName(ServerStatus_StatusCode_name, int32(x))
 }
+func (ServerStatus_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor6, []int{0, 0} }
 
 type ServerStatus struct {
 	Status ServerStatus_StatusCode `protobuf:"varint,1,opt,name=status,enum=protos.ServerStatus_StatusCode" json:"status,omitempty"`
 }
 
-func (m *ServerStatus) Reset()         { *m = ServerStatus{} }
-func (m *ServerStatus) String() string { return proto.CompactTextString(m) }
-func (*ServerStatus) ProtoMessage()    {}
+func (m *ServerStatus) Reset()                    { *m = ServerStatus{} }
+func (m *ServerStatus) String() string            { return proto.CompactTextString(m) }
+func (*ServerStatus) ProtoMessage()               {}
+func (*ServerStatus) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 func init() {
+	proto.RegisterType((*ServerStatus)(nil), "protos.ServerStatus")
 	proto.RegisterEnum("protos.ServerStatus_StatusCode", ServerStatus_StatusCode_name, ServerStatus_StatusCode_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for Admin service
 
@@ -124,40 +131,58 @@ func RegisterAdminServer(s *grpc.Server, srv AdminServer) {
 	s.RegisterService(&_Admin_serviceDesc, srv)
 }
 
-func _Admin_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Admin_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(google_protobuf1.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AdminServer).GetStatus(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AdminServer).GetStatus(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.Admin/GetStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).GetStatus(ctx, req.(*google_protobuf1.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Admin_StartServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Admin_StartServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(google_protobuf1.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AdminServer).StartServer(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AdminServer).StartServer(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.Admin/StartServer",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).StartServer(ctx, req.(*google_protobuf1.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Admin_StopServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Admin_StopServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(google_protobuf1.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AdminServer).StopServer(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AdminServer).StopServer(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.Admin/StopServer",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).StopServer(ctx, req.(*google_protobuf1.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _Admin_serviceDesc = grpc.ServiceDesc{
@@ -177,5 +202,28 @@ var _Admin_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Admin_StopServer_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptor6,
+}
+
+func init() { proto.RegisterFile("server_admin.proto", fileDescriptor6) }
+
+var fileDescriptor6 = []byte{
+	// 248 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x12, 0x2a, 0x4e, 0x2d, 0x2a,
+	0x4b, 0x2d, 0x8a, 0x4f, 0x4c, 0xc9, 0xcd, 0xcc, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62,
+	0x03, 0x53, 0xc5, 0x52, 0xd2, 0xe9, 0xf9, 0xf9, 0xe9, 0x39, 0xa9, 0xfa, 0x60, 0x6e, 0x52, 0x69,
+	0x9a, 0x7e, 0x6a, 0x6e, 0x41, 0x49, 0x25, 0x44, 0x91, 0xd2, 0x22, 0x46, 0x2e, 0x9e, 0x60, 0xb0,
+	0xde, 0xe0, 0x92, 0xc4, 0x92, 0xd2, 0x62, 0x21, 0x73, 0x2e, 0xb6, 0x62, 0x30, 0x4b, 0x82, 0x51,
+	0x81, 0x51, 0x83, 0xcf, 0x48, 0x1e, 0xa2, 0xb0, 0x58, 0x0f, 0x59, 0x95, 0x1e, 0x84, 0x72, 0xce,
+	0x4f, 0x49, 0x0d, 0x82, 0x2a, 0x57, 0x8a, 0xe4, 0xe2, 0x42, 0x88, 0x0a, 0xf1, 0x72, 0x71, 0x86,
+	0xfa, 0xb9, 0xb8, 0xba, 0x79, 0xfa, 0xb9, 0xba, 0x08, 0x30, 0x08, 0x71, 0x73, 0xb1, 0x07, 0x87,
+	0x38, 0x06, 0x85, 0x00, 0x39, 0x8c, 0x10, 0x8e, 0x7f, 0x40, 0x00, 0x90, 0xc3, 0x24, 0xc4, 0xc5,
+	0xc5, 0x16, 0xe0, 0x18, 0x1a, 0x0c, 0x64, 0x33, 0x0b, 0x71, 0x72, 0xb1, 0xba, 0x06, 0x05, 0xf9,
+	0x07, 0x09, 0xb0, 0x80, 0xd4, 0x84, 0xfa, 0x79, 0xfb, 0xf9, 0x87, 0xfb, 0x09, 0xb0, 0x1a, 0x1d,
+	0x64, 0xe4, 0x62, 0x75, 0x04, 0xf9, 0x4c, 0xc8, 0x9a, 0x8b, 0xd3, 0x3d, 0xb5, 0x04, 0xea, 0x54,
+	0x31, 0x3d, 0x88, 0xcf, 0xf4, 0x60, 0x3e, 0xd3, 0x73, 0x05, 0xf9, 0x4c, 0x4a, 0x04, 0x9b, 0x93,
+	0x95, 0x18, 0x84, 0x6c, 0xb9, 0xb8, 0x81, 0xec, 0xa2, 0x12, 0x88, 0x30, 0xc9, 0xda, 0x6d, 0x40,
+	0x1e, 0xcc, 0x2f, 0x20, 0x4f, 0x77, 0x12, 0x24, 0x36, 0x8c, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff,
+	0x5b, 0x2d, 0xff, 0xc2, 0xaa, 0x01, 0x00, 0x00,
 }
