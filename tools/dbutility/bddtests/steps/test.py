@@ -14,14 +14,14 @@ def step_impl(contxt, dirPath):
 @when(u'I execute utility with no flag')
 def step_impl(context):
     cmd = ["./dump_db_stats"]
-    context.output, context.error, context.returncode = test_util.cli_call(context, cmd, expect_success=False)
+    context.output, context.error, context.returncode = test_util.cli_call(cmd, expect_success=False)
 
 @when(u'I execute utility with flag "{flag}" and path "{path}"')
 def step_impl(context, flag, path):
     cmd = ["./dump_db_stats"]
     cmd.append(flag)
     cmd.append(path)
-    context.output, context.error, context.returncode = test_util.cli_call(context, cmd, expect_success=False)
+    context.output, context.error, context.returncode = test_util.cli_call(cmd, expect_success=False)
 
 @then(u'I should get a process exit code "{expectedReturncode}"')
 def step_impl(context, expectedReturncode):

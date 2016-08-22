@@ -31,7 +31,7 @@ def executeCommandInContainer(context, command, container):
 def executeCommand(context, command):
     # cli_call expects an array of arguments, hence splitting here.
     commandArgs = command.split()
-    stdout, stderr, retcode = cli_call(context, commandArgs, expect_success=False)
+    stdout, stderr, retcode = cli_call(commandArgs, expect_success=False)
 
     context.command = {
         "stdout": stdout,

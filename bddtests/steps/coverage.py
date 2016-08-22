@@ -13,10 +13,10 @@ def testCoverage():
 
     # Now collect the filenames for coverage files.
 	files = glob.glob(os.path.join('coverage','*.cov'))
-	
+
     #Create the aggregate coverage file
-	coverageContents = createCoverageFile(files)	
-	
+	coverageContents = createCoverageFile(files)
+
     #Ouput the aggregate coverage file
 	with open('coverage.total', 'w') as outfile:
 		outfile.write(coverageContents)
@@ -25,15 +25,15 @@ def testCoverage():
 def createCoverageAggregate():
     # Now collect the filenames for coverage files.
     files = glob.glob(os.path.join('coverage','*.cov'))
-    
+
     #Create the aggregate coverage file
-    coverageContents = createCoverageFile(files)    
-    
+    coverageContents = createCoverageFile(files)
+
     #Ouput the aggregate coverage file
     with open('coverage-behave.cov', 'w') as outfile:
         outfile.write(coverageContents)
         outfile.close()
-	
+
 
 def saveCoverageFiles(folderName, rootName, containerNames, extension):
     'Will save the converage files to folderName'
@@ -48,7 +48,7 @@ def saveCoverageFiles(folderName, rootName, containerNames, extension):
         print("sourcepath = {0}".format(srcPath))
         destPath = os.path.join(folderName, "{0}-{1}.{2}".format(rootName, containerName, extension))
         output, error, returncode = \
-            bdd_test_util.cli_call(None, ["docker"] + ["cp", srcPath, destPath], expect_success=False)
+            bdd_test_util.cli_call(["docker", "cp", srcPath, destPath], expect_success=False)
 
 def testCreateSystemCoverageFile(folderName, rootName, containerNames, extension):
     'Will create a single aggregate coverage file fromsave the converage files to folderName'
@@ -57,7 +57,7 @@ def testCreateSystemCoverageFile(folderName, rootName, containerNames, extension
         srcPath = "{0}:/opt/gopath/src/github.com/hyperledger/fabric/peer/coverage.cov".format(containerName)
         destPath = os.path.join(folderName, "{0}-{1}.{2}".format(rootName, containerName, extension))
         output, error, returncode = \
-            bdd_test_util.cli_call(None, ["docker"] + ["cp", srcPath, destPath], expect_success=False)
+            bdd_test_util.cli_call(["docker", "cp", srcPath, destPath], expect_success=False)
 
 
 def createCoverageFile(filenames):

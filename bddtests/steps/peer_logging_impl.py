@@ -44,7 +44,7 @@ def step_impl(context, waitTime, peerName):
 
 def getPeerLogs(context, peerName):
     fullContainerName = bdd_test_util.fullNameFromContainerNamePart(peerName, context.compose_containers)
-    stdout, stderr, retcode = bdd_test_util.cli_call(context, ["docker", "logs", fullContainerName], expect_success=True)
+    stdout, stderr, retcode = bdd_test_util.cli_call(["docker", "logs", fullContainerName], expect_success=True)
 
     return stdout, stderr
 
