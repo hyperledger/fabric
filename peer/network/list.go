@@ -19,8 +19,8 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-	"google/protobuf"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/cobra"
@@ -51,7 +51,7 @@ func networkList() (err error) {
 		return
 	}
 	openchainClient := pb.NewOpenchainClient(clientConn)
-	peers, err := openchainClient.GetPeers(context.Background(), &google_protobuf.Empty{})
+	peers, err := openchainClient.GetPeers(context.Background(), &empty.Empty{})
 
 	if err != nil {
 		err = fmt.Errorf("Error trying to get peers: %s", err)

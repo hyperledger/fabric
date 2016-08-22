@@ -37,9 +37,3 @@ regenerate:
 		sed 's,^package google_protobuf,package descriptor,' google/protobuf/descriptor.pb.go > \
 		$(GOPATH)/src/github.com/golang/protobuf/protoc-gen-go/descriptor/descriptor.pb.go && \
 		rm -f google/protobuf/descriptor.pb.go
-
-restore:
-	cp descriptor.pb.golden descriptor.pb.go
-
-preserve:
-	cp descriptor.pb.go descriptor.pb.golden

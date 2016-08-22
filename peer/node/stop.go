@@ -19,12 +19,12 @@ package node
 import (
 	"bytes"
 	"fmt"
-	"google/protobuf"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"syscall"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
@@ -72,7 +72,7 @@ func stop() (err error) {
 	logger.Info("Stopping peer using grpc")
 	serverClient := pb.NewAdminClient(clientConn)
 
-	status, err := serverClient.StopServer(context.Background(), &google_protobuf.Empty{})
+	status, err := serverClient.StopServer(context.Background(), &empty.Empty{})
 	db.Stop()
 	if err != nil {
 		fmt.Println(&pb.ServerStatus{Status: pb.ServerStatus_STOPPED})

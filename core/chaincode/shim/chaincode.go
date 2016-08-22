@@ -28,9 +28,8 @@ import (
 	"strconv"
 	"strings"
 
-	gp "google/protobuf"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/ecdsa"
 	"github.com/hyperledger/fabric/core/comm"
@@ -657,7 +656,7 @@ func (stub *ChaincodeStub) GetPayload() ([]byte, error) {
 // GetTxTimestamp returns transaction created timestamp, which is currently
 // taken from the peer receiving the transaction. Note that this timestamp
 // may not be the same with the other peers' time.
-func (stub *ChaincodeStub) GetTxTimestamp() (*gp.Timestamp, error) {
+func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 	return stub.securityContext.TxTimestamp, nil
 }
 
