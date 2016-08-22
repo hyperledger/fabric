@@ -4,4 +4,6 @@ node_modules/*
 /node.iml
 /typings/
 /doc/
-/lib/
+/lib/*
+!/lib/protos/google
+!/lib/hash.js
