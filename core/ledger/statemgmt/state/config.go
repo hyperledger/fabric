@@ -42,7 +42,7 @@ func loadConfig() {
 		stateImplName, stateImplConfigs, deltaHistorySize)
 
 	if len(stateImplName) == 0 {
-		stateImplName = detaultStateImpl
+		stateImplName = defaultStateImpl
 		stateImplConfigs = nil
 	} else if stateImplName != "buckettree" && stateImplName != "trie" && stateImplName != "raw" {
 		panic(fmt.Errorf("Error during initialization of state implementation. State data structure '%s' is not valid.", stateImplName))

@@ -31,7 +31,7 @@ import (
 
 var logger = logging.MustGetLogger("state")
 
-const detaultStateImpl = "buckettree"
+const defaultStateImpl = "buckettree"
 
 var stateImpl statemgmt.HashableState
 
