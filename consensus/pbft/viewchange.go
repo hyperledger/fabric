@@ -245,13 +245,10 @@ func (instance *pbftCore) recvViewChange(vc *ViewChange) events.Event {
 	logger.Debugf("Replica %d now has %d view change requests for view %d", instance.id, quorum, instance.view)
 
 	if !instance.activeView && vc.View == instance.view && quorum >= instance.allCorrectReplicasQuorum() {
-		if quorum >= instance.allCorrectReplicasQuorum() {
-			instance.vcResendTimer.Stop()
-			instance.startTimer(instance.lastNewViewTimeout, "new view change")
-			instance.lastNewViewTimeout = 2 * instance.lastNewViewTimeout
-			return viewChangeQuorumEvent{}
-		}
-
+		instance.vcResendTimer.Stop()
+		instance.startTimer(instance.lastNewViewTimeout, "new view change")
+		instance.lastNewViewTimeout = 2 * instance.lastNewViewTimeout
+		return viewChangeQuorumEvent{}
 	}
 
 	return nil
