@@ -37,7 +37,7 @@ func newTrieDelta(stateDelta *statemgmt.StateDelta) *trieDelta {
 	for _, chaincodeID := range chaincodes {
 		updates := stateDelta.GetUpdates(chaincodeID)
 		for key, updatedvalue := range updates {
-			if updatedvalue.IsDelete() {
+			if updatedvalue.IsDeleted() {
 				trieDelta.delete(chaincodeID, key)
 			} else {
 				if stateDelta.RollBackwards {

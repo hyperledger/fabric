@@ -96,7 +96,7 @@ func (stateDelta *StateDelta) ApplyChanges(anotherStateDelta *StateDelta) {
 				previousValue = valueHolder.PreviousValue
 			}
 
-			if valueHolder.IsDelete() {
+			if valueHolder.IsDeleted() {
 				stateDelta.Delete(chaincodeID, key, previousValue)
 			} else {
 				stateDelta.Set(chaincodeID, key, valueHolder.Value, previousValue)
@@ -158,7 +158,7 @@ func (stateDelta *StateDelta) ComputeCryptoHash() []byte {
 		for _, key := range sortedKeys {
 			buffer.WriteString(key)
 			updatedValue := chaincodeStateDelta.get(key)
-			if !updatedValue.IsDelete() {
+			if !updatedValue.IsDeleted() {
 				buffer.Write(updatedValue.Value)
 			}
 		}
@@ -225,8 +225,8 @@ type UpdatedValue struct {
 	PreviousValue []byte
 }
 
-// IsDelete checks whether the key was deleted
-func (updatedValue *UpdatedValue) IsDelete() bool {
+// IsDeleted checks whether the key was deleted
+func (updatedValue *UpdatedValue) IsDeleted() bool {
 	return updatedValue.Value == nil
 }
 

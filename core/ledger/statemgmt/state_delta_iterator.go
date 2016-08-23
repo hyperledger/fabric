@@ -36,7 +36,7 @@ func retrieveRelevantKeys(updates map[string]*UpdatedValue, startKey string, end
 		return relevantKeys
 	}
 	for k, v := range updates {
-		if k >= startKey && (endKey == "" || k <= endKey) && !v.IsDelete() {
+		if k >= startKey && (endKey == "" || k <= endKey) && !v.IsDeleted() {
 			relevantKeys = append(relevantKeys, k)
 		}
 	}
