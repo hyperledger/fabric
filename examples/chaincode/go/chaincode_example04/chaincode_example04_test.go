@@ -21,7 +21,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	ex02 "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	main "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example04"
 )
 
 // this is the response to any successful Invoke() on chaincode_example04
@@ -72,7 +71,7 @@ func checkInvoke(t *testing.T, stub *shim.MockStub, args []string) {
 }
 
 func TestExample04_Init(t *testing.T) {
-	scc := new(main.SimpleChaincode)
+	scc := new(SimpleChaincode)
 	stub := shim.NewMockStub("ex04", scc)
 
 	// Init A=123 B=234
@@ -82,7 +81,7 @@ func TestExample04_Init(t *testing.T) {
 }
 
 func TestExample04_Query(t *testing.T) {
-	scc := new(main.SimpleChaincode)
+	scc := new(SimpleChaincode)
 	stub := shim.NewMockStub("ex04", scc)
 
 	// Init A=345 B=456
@@ -93,7 +92,7 @@ func TestExample04_Query(t *testing.T) {
 }
 
 func TestExample04_Invoke(t *testing.T) {
-	scc := new(main.SimpleChaincode)
+	scc := new(SimpleChaincode)
 	stub := shim.NewMockStub("ex04", scc)
 
 	ccEx2 := new(ex02.SimpleChaincode)

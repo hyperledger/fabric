@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/system_chaincode/api"
@@ -122,7 +121,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 	url := "github.com/hyperledger/fabric/core/system_chaincode/sample_syscc"
 	f := "putval"
-	args := shim.ToChaincodeArgs(f, "greeting", "hey there")
+	args := util.ToChaincodeArgs(f, "greeting", "hey there")
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	_, _, _, err = invoke(ctxt, spec, pb.Transaction_CHAINCODE_INVOKE)
@@ -134,7 +133,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 	}
 
 	f = "getval"
-	args = shim.ToChaincodeArgs(f, "greeting")
+	args = util.ToChaincodeArgs(f, "greeting")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	_, _, _, err = invoke(ctxt, spec, pb.Transaction_CHAINCODE_QUERY)
 	if err != nil {

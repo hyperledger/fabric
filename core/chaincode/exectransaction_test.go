@@ -28,7 +28,6 @@ import (
 
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
@@ -339,7 +338,7 @@ func executeDeployTransaction(t *testing.T, url string) {
 	var ctxt = context.Background()
 
 	f := "init"
-	args := shim.ToChaincodeArgs(f, "a", "100", "b", "200")
+	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	_, err = deploy(ctxt, spec)
 	chaincodeID := spec.ChaincodeID.Name
@@ -426,7 +425,7 @@ func checkFinalState(uuid string, chaincodeID string) error {
 func invokeExample02Transaction(ctxt context.Context, cID *pb.ChaincodeID, args []string, destroyImage bool) error {
 
 	f := "init"
-	argsDeploy := shim.ToChaincodeArgs(f, "a", "100", "b", "200")
+	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
 	_, err := deploy(ctxt, spec)
 	chaincodeID := spec.ChaincodeID.Name
@@ -449,7 +448,7 @@ func invokeExample02Transaction(ctxt context.Context, cID *pb.ChaincodeID, args 
 
 	f = "invoke"
 	invokeArgs := append([]string{f}, args...)
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: shim.ToChaincodeArgs(invokeArgs...)}}
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
 	_, uuid, _, err := invoke(ctxt, spec, pb.Transaction_CHAINCODE_INVOKE)
 	if err != nil {
 		return fmt.Errorf("Error invoking <%s>: %s", chaincodeID, err)
@@ -462,7 +461,7 @@ func invokeExample02Transaction(ctxt context.Context, cID *pb.ChaincodeID, args 
 
 	// Test for delete state
 	f = "delete"
-	delArgs := shim.ToChaincodeArgs(f, "a")
+	delArgs := util.ToChaincodeArgs(f, "a")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: delArgs}}
 	_, uuid, _, err = invoke(ctxt, spec, pb.Transaction_CHAINCODE_INVOKE)
 	if err != nil {
@@ -542,12 +541,12 @@ func exec(ctxt context.Context, chaincodeID string, numTrans int, numQueries int
 		var spec *pb.ChaincodeSpec
 		if typ == pb.Transaction_CHAINCODE_INVOKE {
 			f := "invoke"
-			args := shim.ToChaincodeArgs(f, "a", "b", "10")
+			args := util.ToChaincodeArgs(f, "a", "b", "10")
 
 			spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: chaincodeID}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 		} else {
 			f := "query"
-			args := shim.ToChaincodeArgs(f, "a")
+			args := util.ToChaincodeArgs(f, "a")
 
 			spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: chaincodeID}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 		}
@@ -617,7 +616,7 @@ func TestExecuteQuery(t *testing.T) {
 
 	cID := &pb.ChaincodeID{Path: url}
 	f := "init"
-	args := shim.ToChaincodeArgs(f, "a", "100", "b", "200")
+	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -763,7 +762,7 @@ func TestExecuteInvalidQuery(t *testing.T) {
 
 	cID := &pb.ChaincodeID{Path: url}
 	f := "init"
-	args := shim.ToChaincodeArgs(f, "a", "100")
+	args := util.ToChaincodeArgs(f, "a", "100")
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -780,7 +779,7 @@ func TestExecuteInvalidQuery(t *testing.T) {
 	time.Sleep(time.Second)
 
 	f = "query"
-	args = shim.ToChaincodeArgs(f, "b", "200")
+	args = util.ToChaincodeArgs(f, "b", "200")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	// This query should fail as it attempts to put state
@@ -837,7 +836,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 	cID1 := &pb.ChaincodeID{Path: url1}
 	f := "init"
-	args := shim.ToChaincodeArgs(f, "a", "100", "b", "200")
+	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -860,7 +859,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 	cID2 := &pb.ChaincodeID{Path: url2}
 	f = "init"
-	args = shim.ToChaincodeArgs(f, "e", "0")
+	args = util.ToChaincodeArgs(f, "e", "0")
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -879,7 +878,7 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 	// Invoke second chaincode, which will inturn invoke the first chaincode
 	f = "invoke"
-	args = shim.ToChaincodeArgs(f, "e", "1")
+	args = util.ToChaincodeArgs(f, "e", "1")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
@@ -953,7 +952,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	cID1 := &pb.ChaincodeID{Path: url1}
 	f := "init"
-	args := shim.ToChaincodeArgs(f, "a", "100", "b", "200")
+	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -974,7 +973,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	cID2 := &pb.ChaincodeID{Path: url2}
 	f = "init"
-	args = shim.ToChaincodeArgs(f)
+	args = util.ToChaincodeArgs(f)
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -993,7 +992,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	// Invoke second chaincode, which will inturn invoke the first chaincode but pass bad params
 	f = chaincodeID1
-	args = shim.ToChaincodeArgs(f, "invoke", "a")
+	args = util.ToChaincodeArgs(f, "invoke", "a")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
@@ -1030,7 +1029,7 @@ func chaincodeQueryChaincode(user string) error {
 
 	cID1 := &pb.ChaincodeID{Path: url1}
 	f := "init"
-	args := shim.ToChaincodeArgs(f, "a", "100", "b", "200")
+	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 
@@ -1048,7 +1047,7 @@ func chaincodeQueryChaincode(user string) error {
 
 	cID2 := &pb.ChaincodeID{Path: url2}
 	f = "init"
-	args = shim.ToChaincodeArgs(f, "sum", "0")
+	args = util.ToChaincodeArgs(f, "sum", "0")
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 
@@ -1064,7 +1063,7 @@ func chaincodeQueryChaincode(user string) error {
 
 	// Invoke second chaincode, which will inturn query the first chaincode
 	f = "invoke"
-	args = shim.ToChaincodeArgs(f, chaincodeID1, "sum")
+	args = util.ToChaincodeArgs(f, chaincodeID1, "sum")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 	// Invoke chaincode
@@ -1087,7 +1086,7 @@ func chaincodeQueryChaincode(user string) error {
 
 	// Query second chaincode, which will inturn query the first chaincode
 	f = "query"
-	args = shim.ToChaincodeArgs(f, chaincodeID1, "sum")
+	args = util.ToChaincodeArgs(f, chaincodeID1, "sum")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 	// Invoke chaincode
@@ -1176,7 +1175,7 @@ func TestChaincodeQueryChaincodeErrorCase(t *testing.T) {
 
 	cID1 := &pb.ChaincodeID{Path: url1}
 	f := "init"
-	args := shim.ToChaincodeArgs(f, "a", "100", "b", "200")
+	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -1197,7 +1196,7 @@ func TestChaincodeQueryChaincodeErrorCase(t *testing.T) {
 
 	cID2 := &pb.ChaincodeID{Path: url2}
 	f = "init"
-	args = shim.ToChaincodeArgs(f)
+	args = util.ToChaincodeArgs(f)
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -1216,7 +1215,7 @@ func TestChaincodeQueryChaincodeErrorCase(t *testing.T) {
 
 	// Invoke second chaincode, which will inturn invoke the first chaincode but pass bad params
 	f = chaincodeID1
-	args = shim.ToChaincodeArgs(f, "query", "c")
+	args = util.ToChaincodeArgs(f, "query", "c")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
@@ -1340,7 +1339,7 @@ func TestRangeQuery(t *testing.T) {
 	cID := &pb.ChaincodeID{Path: url}
 
 	f := "init"
-	args := shim.ToChaincodeArgs(f)
+	args := util.ToChaincodeArgs(f)
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
@@ -1356,7 +1355,7 @@ func TestRangeQuery(t *testing.T) {
 
 	// Invoke second chaincode, which will inturn invoke the first chaincode
 	f = "keys"
-	args = shim.ToChaincodeArgs(f)
+	args = util.ToChaincodeArgs(f)
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	_, _, _, err = invoke(ctxt, spec, pb.Transaction_CHAINCODE_QUERY)
@@ -1411,7 +1410,7 @@ func TestGetEvent(t *testing.T) {
 
 	cID := &pb.ChaincodeID{Path: url}
 	f := "init"
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: shim.ToChaincodeArgs(f)}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(f)}}
 
 	_, err = deploy(ctxt, spec)
 	chaincodeID := spec.ChaincodeID.Name
@@ -1425,7 +1424,7 @@ func TestGetEvent(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	args := shim.ToChaincodeArgs("", "i", "am", "satoshi")
+	args := util.ToChaincodeArgs("", "i", "am", "satoshi")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
