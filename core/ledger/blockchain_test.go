@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos"
@@ -59,7 +58,7 @@ func TestBlockChain_SingleBlock(t *testing.T) {
 	// Create the Chaincode specification
 	chaincodeSpec := &protos.ChaincodeSpec{Type: protos.ChaincodeSpec_GOLANG,
 		ChaincodeID: &protos.ChaincodeID{Path: "Contracts"},
-		CtorMsg:     &protos.ChaincodeInput{Args: shim.ToChaincodeArgs("Initialize", "param1")}}
+		CtorMsg:     &protos.ChaincodeInput{Args: util.ToChaincodeArgs("Initialize", "param1")}}
 	chaincodeDeploymentSepc := &protos.ChaincodeDeploymentSpec{ChaincodeSpec: chaincodeSpec}
 	uuid := testutil.GenerateID(t)
 	newChaincodeTx, err := protos.NewChaincodeDeployTransaction(chaincodeDeploymentSepc, uuid)

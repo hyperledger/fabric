@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/util"
 )
 
 // This chaincode is a test for chaincode querying another chaincode - invokes chaincode_example02 and computes the sum of a and b and stores it as state
@@ -73,7 +74,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 
 	// Query chaincode_example02
 	f := "query"
-	queryArgs := shim.ToChaincodeArgs(f, "a")
+	queryArgs := util.ToChaincodeArgs(f, "a")
 	response, err := stub.QueryChaincode(chaincodeURL, queryArgs)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", err.Error())
@@ -87,7 +88,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return nil, errors.New(errStr)
 	}
 
-	queryArgs = shim.ToChaincodeArgs(f, "b")
+	queryArgs = util.ToChaincodeArgs(f, "b")
 	response, err = stub.QueryChaincode(chaincodeURL, queryArgs)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", err.Error())
@@ -133,7 +134,7 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 
 	// Query chaincode_example02
 	f := "query"
-	queryArgs := shim.ToChaincodeArgs(f, "a")
+	queryArgs := util.ToChaincodeArgs(f, "a")
 	response, err := stub.QueryChaincode(chaincodeURL, queryArgs)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", err.Error())
@@ -147,7 +148,7 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 		return nil, errors.New(errStr)
 	}
 
-	queryArgs = shim.ToChaincodeArgs(f, "b")
+	queryArgs = util.ToChaincodeArgs(f, "b")
 	response, err = stub.QueryChaincode(chaincodeURL, queryArgs)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", err.Error())

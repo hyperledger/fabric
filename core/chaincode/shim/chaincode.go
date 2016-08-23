@@ -1017,19 +1017,3 @@ func (c *ChaincodeLogger) Errorf(format string, args ...interface{}) {
 func (c *ChaincodeLogger) Criticalf(format string, args ...interface{}) {
 	c.logger.Criticalf(format, args...)
 }
-
-func ToChaincodeArgs(args ...string) [][]byte {
-	bargs := make([][]byte, len(args))
-	for i, arg := range args {
-		bargs[i] = []byte(arg)
-	}
-	return bargs
-}
-
-func ArrayToChaincodeArgs(args []string) [][]byte {
-	bargs := make([][]byte, len(args))
-	for i, arg := range args {
-		bargs[i] = []byte(arg)
-	}
-	return bargs
-}

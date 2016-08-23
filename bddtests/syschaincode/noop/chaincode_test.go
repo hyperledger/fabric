@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos"
 )
 
@@ -116,7 +116,7 @@ func (ml mockLedger) GetTransactionByID(txID string) (*protos.Transaction, error
 	if txID == "noSuchTX" {
 		return nil, fmt.Errorf("Some error")
 	}
-	newCCIS := &protos.ChaincodeInvocationSpec{ChaincodeSpec: &protos.ChaincodeSpec{CtorMsg: &protos.ChaincodeInput{Args: shim.ToChaincodeArgs("execute", something)}}}
+	newCCIS := &protos.ChaincodeInvocationSpec{ChaincodeSpec: &protos.ChaincodeSpec{CtorMsg: &protos.ChaincodeInput{Args: util.ToChaincodeArgs("execute", something)}}}
 	pl, _ := proto.Marshal(newCCIS)
 	return &protos.Transaction{Payload: pl}, nil
 }

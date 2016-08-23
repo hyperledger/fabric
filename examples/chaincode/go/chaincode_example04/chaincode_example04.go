@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/util"
 )
 
 // This chaincode is a test for chaincode invoking another chaincode - invokes chaincode_example02
@@ -88,7 +89,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	chainCodeToCall := t.GetChaincodeToCall()
 
 	f := "invoke"
-	invokeArgs := shim.ToChaincodeArgs(f, "a", "b", "10")
+	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")
 	response, err := stub.InvokeChaincode(chainCodeToCall, invokeArgs)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())

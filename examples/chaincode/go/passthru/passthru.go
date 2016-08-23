@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/util"
 )
 
 // PassthruChaincode passes thru invoke and query to another chaincode where
@@ -48,9 +49,9 @@ func (p *PassthruChaincode) iq(invoke bool, stub shim.ChaincodeStubInterface, fu
 	chaincodeID := function
 
 	if invoke {
-		return stub.InvokeChaincode(chaincodeID, shim.ToChaincodeArgs(args...))
+		return stub.InvokeChaincode(chaincodeID, util.ToChaincodeArgs(args...))
 	}
-	return stub.QueryChaincode(chaincodeID, shim.ToChaincodeArgs(args...))
+	return stub.QueryChaincode(chaincodeID, util.ToChaincodeArgs(args...))
 }
 
 // Invoke passes through the invoke call

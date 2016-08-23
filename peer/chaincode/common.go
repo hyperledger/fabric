@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	u "github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
 	pb "github.com/hyperledger/fabric/protos"
@@ -49,7 +49,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &inputc); err != nil {
 		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
-	input := &pb.ChaincodeInput{Args: shim.ToChaincodeArgs(inputc.Args...)}
+	input := &pb.ChaincodeInput{Args: u.ToChaincodeArgs(inputc.Args...)}
 
 	var attributes []string
 	if err := json.Unmarshal([]byte(chaincodeAttributesJSON), &attributes); err != nil {
