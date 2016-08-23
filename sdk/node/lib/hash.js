@@ -25,6 +25,7 @@
  * NOTE: This is in pure java script to be compatible with the sjcl.hmac function.
  */
 var sjcl = require('sjcl');
+var sjcl_codec = require('sjcl-codec');
 var jssha = require('jssha');
 var sha3_256 = require('js-sha3').sha3_256;
 var sha3_384 = require('js-sha3').sha3_384;
@@ -148,7 +149,7 @@ hash_sha3_384.prototype = {
  * @return {bytes} the bytes converted from the bitArray
  */
 bitsToBytes = function (bits) {
-   return sjcl.codec.bytes.fromBits(bits);
+   return sjcl_codec.bytes.fromBits(bits);
 }
 
 /**
@@ -157,7 +158,7 @@ bitsToBytes = function (bits) {
  * @return {bitArray} the bitArray converted from bytes
  */
 bytesToBits = function (bytes) {
-    return sjcl.codec.bytes.toBits(bytes);
+    return sjcl_codec.bytes.toBits(bytes);
 }
 
 exports.hash_sha3_256 = hash_sha3_256;
