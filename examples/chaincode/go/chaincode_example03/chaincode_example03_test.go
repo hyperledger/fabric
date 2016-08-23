@@ -20,10 +20,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	main "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example03"
 )
 
-func checkInit(t *testing.T, scc *main.SimpleChaincode, stub *shim.MockStub, args []string) {
+func checkInit(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args []string) {
 	_, err := stub.MockInit("1", "init", args)
 	if err != nil {
 		fmt.Println("Init failed", err)
@@ -43,7 +42,7 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 	}
 }
 
-func checkQuery(t *testing.T, scc *main.SimpleChaincode, stub *shim.MockStub, args []string, value string) {
+func checkQuery(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args []string, value string) {
 	bytes, err := scc.Query(stub, "query", args)
 	if err != nil {
 		// expected failure
@@ -62,7 +61,7 @@ func checkQuery(t *testing.T, scc *main.SimpleChaincode, stub *shim.MockStub, ar
 	}
 }
 
-func checkInvoke(t *testing.T, scc *main.SimpleChaincode, stub *shim.MockStub, args []string) {
+func checkInvoke(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args []string) {
 	_, err := stub.MockInvoke("1", "query", args)
 	if err != nil {
 		fmt.Println("Invoke", args, "failed", err)
@@ -71,7 +70,7 @@ func checkInvoke(t *testing.T, scc *main.SimpleChaincode, stub *shim.MockStub, a
 }
 
 func TestExample03_Init(t *testing.T) {
-	scc := new(main.SimpleChaincode)
+	scc := new(SimpleChaincode)
 	stub := shim.NewMockStub("ex03", scc)
 
 	// Init A=123 B=234
@@ -81,7 +80,7 @@ func TestExample03_Init(t *testing.T) {
 }
 
 func TestExample03_Query(t *testing.T) {
-	scc := new(main.SimpleChaincode)
+	scc := new(SimpleChaincode)
 	stub := shim.NewMockStub("ex03", scc)
 
 	// Init A=345 B=456
