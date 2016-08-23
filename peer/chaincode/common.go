@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/core"
-	u "github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
 	pb "github.com/hyperledger/fabric/protos"
@@ -34,10 +33,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-type container struct {
-	Args []string
-}
-
 func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
 	if err := checkChaincodeCmdParams(cmd); err != nil {
@@ -45,11 +40,10 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	}
 
 	// Build the spec
-	inputc := container{}
-	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &inputc); err != nil {
+	input := &pb.ChaincodeInput{}
+	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &input); err != nil {
 		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
-	input := &pb.ChaincodeInput{Args: u.ToChaincodeArgs(inputc.Args...)}
 
 	var attributes []string
 	if err := json.Unmarshal([]byte(chaincodeAttributesJSON), &attributes); err != nil {
@@ -193,18 +187,19 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			return fmt.Errorf("Chaincode argument error: %s", err)
 		}
 		m := f.(map[string]interface{})
-		if len(m) != 1 {
-			return fmt.Errorf("Non-empty JSON chaincode parameters must contain exactly 1 key: 'Args'")
+		if len(m) != 2 {
+			return fmt.Errorf("Non-empty JSON chaincode parameters must contain exactly 2 keys: 'Function' and 'Args'")
 		}
 		for k := range m {
 			switch strings.ToLower(k) {
 			case "args":
+			case "function":
 			default:
-				return fmt.Errorf("Illegal chaincode key '%s' - must be only 'Args'", k)
+				return fmt.Errorf("Illegal chaincode key '%s' - must be 'Function' or 'Args'", k)
 			}
 		}
 	} else {
-		return errors.New("Empty JSON chaincode parameters must contain exactly 1 key: 'Args'")
+		return errors.New("Empty JSON chaincode parameters must contain exactly 2 keys: 'Function' and 'Args'")
 	}
 
 	if chaincodeAttributesJSON != "[]" {

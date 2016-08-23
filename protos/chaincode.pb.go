@@ -186,6 +186,8 @@ func (m *ChaincodeID) String() string { return proto.CompactTextString(m) }
 func (*ChaincodeID) ProtoMessage()    {}
 
 // Carries the chaincode function and its arguments.
+// UnmarshalJSON in transaction.go converts the string-based REST/JSON input to
+// the []byte-based current ChaincodeInput structure.
 type ChaincodeInput struct {
 	Args [][]byte `protobuf:"bytes,1,rep,name=args,proto3" json:"args,omitempty"`
 }
