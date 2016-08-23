@@ -63,6 +63,9 @@ func newBroadcaster(self uint64, N int, f int, c communicator) *broadcaster {
 
 	// We do not start the go routines in the above loop to avoid concurrent map read/writes
 	for i := 0; i < N; i++ {
+		if uint64(i) == self {
+			continue
+		}
 		go b.drainer(uint64(i))
 	}
 
@@ -108,7 +111,11 @@ func (b *broadcaster) drainerSend(dest uint64, send *sendRequest, successLastTim
 
 func (b *broadcaster) drainer(dest uint64) {
 	successLastTime := false
-	destChan := b.msgChans[dest] // Avoid doing the map lookup every send
+	destChan, exsit := b.msgChans[dest] // Avoid doing the map lookup every send
+	if !exsit {
+		logger.Warningf("could not get message channel for replica %d", dest)
+		return
+	}
 
 	for {
 		select {
