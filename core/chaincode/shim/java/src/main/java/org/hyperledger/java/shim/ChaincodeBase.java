@@ -35,11 +35,11 @@ import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import io.netty.handler.ssl.SslContext;
-import protos.Chaincode.ChaincodeID;
-import protos.Chaincode.ChaincodeMessage;
-import protos.Chaincode.ChaincodeMessage.Type;
-import protos.ChaincodeSupportGrpc;
-import protos.ChaincodeSupportGrpc.ChaincodeSupportStub;
+import org.hyperledger.protos.Chaincode.ChaincodeID;
+import org.hyperledger.protos.Chaincode.ChaincodeMessage;
+import org.hyperledger.protos.Chaincode.ChaincodeMessage.Type;
+import org.hyperledger.protos.ChaincodeSupportGrpc;
+import org.hyperledger.protos.ChaincodeSupportGrpc.ChaincodeSupportStub;
 
 public abstract class ChaincodeBase {
 

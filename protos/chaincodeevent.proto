@@ -15,6 +15,7 @@ limitations under the License.
 */
 syntax = "proto3";
 package protos;
+option java_package = "org.hyperledger.protos";
 
 //ChaincodeEvent is used for events and registrations that are specific to chaincode
 //string type - "chaincode"

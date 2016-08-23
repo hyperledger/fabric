@@ -17,6 +17,10 @@ limitations under the License.
 package org.hyperledger.java.shim;
 
 import com.google.protobuf.ByteString;
+import org.hyperledger.protos.Chaincode;
+import java.util.HashMap;
+import java.util.Map;
+
 
 import java.util.List;
 
@@ -65,20 +69,34 @@ public class ChaincodeStub {
 	}
 
 	/**
-	 * 
+	 * Given a start key and end key, this method returns a map of items with value converted to UTF-8 string.
 	 * @param startKey
 	 * @param endKey
-	 * @param limit
 	 * @return
 	 */
-//	public HashMap<String, String> rangeQueryState(String startKey, String endKey, int limit) {
-//		HashMap<String, String> map = new HashMap<>();
-//		for (RangeQueryStateKeyValue mapping : handler.handleRangeQueryState(
-//				startKey, endKey, limit, uuid).getKeysAndValuesList()) {
-//			map.put(mapping.getKey(), mapping.getValue().toStringUtf8());
-//		}
-//		return map;
-//	}
+	public Map<String, String> rangeQueryState(String startKey, String endKey) {
+		Map<String, String> retMap = new HashMap<>();
+		for (Map.Entry<String, ByteString> item: rangeQueryRawState(startKey, endKey).entrySet()) {
+			retMap.put(item.getKey(), item.getValue().toStringUtf8());
+		}
+		return retMap;
+	}
+
+	/**
+	 * This method is same as rangeQueryState, except it returns value in ByteString, useful in cases where
+	 * serialized object can be retrieved.
+	 * @param startKey
+	 * @param endKey
+     * @return
+     */
+	public Map<String, ByteString> rangeQueryRawState(String startKey, String endKey) {
+		Map<String, ByteString> map = new HashMap<>();
+		for (Chaincode.RangeQueryStateKeyValue mapping : handler.handleRangeQueryState(
+				startKey, endKey, uuid).getKeysAndValuesList()) {
+			map.put(mapping.getKey(), mapping.getValue());
+		}
+		return map;
+	}
 
 	/**
 	 * 

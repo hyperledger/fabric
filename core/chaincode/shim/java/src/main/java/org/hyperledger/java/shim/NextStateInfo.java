@@ -16,7 +16,7 @@ limitations under the License.
 
 package org.hyperledger.java.shim;
 
-import protos.Chaincode.ChaincodeMessage;
+import org.hyperledger.protos.Chaincode.ChaincodeMessage;
 
 public class NextStateInfo {
 

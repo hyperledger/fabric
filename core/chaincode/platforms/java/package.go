@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
-
+	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/spf13/viper"
 )
 
 //tw is expected to have the chaincode in it from GenerateHashcode.
@@ -38,20 +38,30 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 	}
 	urlLocation = urlLocation[strings.LastIndex(urlLocation, "/")+1:]
 
-	var newRunLine string
+	var dockerFileContents string
+	var buf []string
+
 	if viper.GetBool("security.enabled") {
 		//todo
 	} else {
-		newRunLine = fmt.Sprintf("COPY %s /root/\n"+
-			"RUN cd /root/ && gradle build", urlLocation)
-	}
+		buf = append(buf, viper.GetString("chaincode.java.Dockerfile"))
+		buf = append(buf, "COPY src /root")
+		buf = append(buf, "RUN gradle -b build.gradle build")
+		buf = append(buf, "RUN unzip -od /root build/distributions/Chaincode.zip")
 
-	dockerFileContents := fmt.Sprintf("%s\n%s", viper.GetString("chaincode.java.Dockerfile"), newRunLine)
+	}
+	dockerFileContents = strings.Join(buf, "\n")
+
 	dockerFileSize := int64(len([]byte(dockerFileContents)))
 
 	//Make headers identical by using zero time
 	var zeroTime time.Time
 	tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: dockerFileSize, ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime})
 	tw.Write([]byte(dockerFileContents))
+	err := cutil.WriteJavaProjectToPackage(tw, spec.ChaincodeID.Path)
+	if err != nil {
+		return fmt.Errorf("Error writing Chaincode package contents: %s", err)
+	}
+
 	return nil
 }
