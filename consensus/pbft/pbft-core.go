@@ -635,7 +635,8 @@ func (instance *pbftCore) sendPrePrepare(reqBatch *RequestBatch, digest string) 
 	}
 
 	if !instance.inWV(instance.view, n) || n > instance.h+instance.L/2 {
-		logger.Debugf("Replica %d is primary, not sending pre-prepare for request batch %s because it is out of sequence numbers", instance.id, digest)
+		// We don't have the necessary stable certificates to advance our watermarks
+		logger.Warningf("Primary %d not sending pre-prepare for batch %s - out of sequence numbers", instance.id, digest)
 		return
 	}
 
