@@ -122,6 +122,11 @@ build/bin/chaintool: Makefile
 	@mkdir -p $(@D)
 	@cp $^ $@
 
+# JIRA FAB-243 - Mark build/docker/bin artifacts explicitly as secondary
+#                since they are never referred to directly. This prevents
+#                the makefile from deleting them inadvertently.
+.SECONDARY: build/docker/bin/peer build/docker/bin/membersrvc
+
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
 build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
@@ -133,6 +138,7 @@ build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/pkg):/opt/gopath/pkg \
 		hyperledger/fabric-src go install github.com/hyperledger/fabric/$(TARGET)
+	@touch $@
 
 build/bin:
 	mkdir -p $@
