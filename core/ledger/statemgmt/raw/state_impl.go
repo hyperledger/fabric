@@ -28,8 +28,8 @@ type StateImpl struct {
 	stateDelta *statemgmt.StateDelta
 }
 
-// NewRawState constructs new instance of raw state
-func NewRawState() *StateImpl {
+// NewStateImpl constructs new instance of raw state
+func NewStateImpl() *StateImpl {
 	return &StateImpl{}
 }
 

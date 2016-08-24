@@ -37,8 +37,8 @@ type StateTrie struct {
 	recomputeCryptoHash    bool
 }
 
-// NewStateTrie contructs a new empty StateTrie
-func NewStateTrie() *StateTrie {
+// NewStateImpl contructs a new empty StateTrie
+func NewStateImpl() *StateTrie {
 	return &StateTrie{}
 }
 
