@@ -155,10 +155,7 @@ func (noop *NoopIndexer) isSynchronous() bool {
 func (noop *NoopIndexer) start(blockchain *blockchain) error {
 	return nil
 }
-func (noop *NoopIndexer) createIndexesSync(block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error {
-	return nil
-}
-func (noop *NoopIndexer) createIndexesAsync(block *protos.Block, blockNumber uint64, blockHash []byte) error {
+func (noop *NoopIndexer) createIndexes(block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error {
 	return nil
 }
 func (noop *NoopIndexer) fetchBlockNumberByBlockHash(blockHash []byte) (uint64, error) {
