@@ -47,5 +47,12 @@ wget https://services.gradle.org/distributions/gradle-2.12-bin.zip -P /tmp --qui
 unzip -q /tmp/gradle-2.12-bin.zip -d /opt && rm /tmp/gradle-2.12-bin.zip
 ln -s /opt/gradle-2.12/bin/gradle /usr/bin
 
+# Download maven for supporting maven build in java chaincode
+MAVEN_VERSION=3.3.9
+mkdir -p /usr/share/maven /usr/share/maven/ref
+curl -fsSL http://apache.osuosl.org/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz \
+    | tar -xzC /usr/share/maven --strip-components=1 \
+  && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+
 # Set the default JDK to 1.8
 update-java-alternatives -s java-1.8.0-openjdk-amd64
