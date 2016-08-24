@@ -93,6 +93,13 @@ membersrvc-image: build/image/membersrvc/.dummy
 unit-test: peer-image gotools
 	@./scripts/goUnitTests.sh $(DOCKER_TAG) "$(GO_LDFLAGS)"
 
+node-sdk: sdk/node
+
+node-sdk-unit-tests: peer membersrvc
+	cd sdk/node && $(MAKE) unit-tests
+
+unit-tests: unit-test node-sdk-unit-tests
+
 .PHONY: images
 images: $(patsubst %,build/image/%/.dummy, $(IMAGES))
 
@@ -250,11 +257,6 @@ src-image-clean: ccenv-image-clean peer-image-clean membersrvc-image-clean
 images-clean: $(patsubst %,%-image-clean, $(SUBIMAGES))
 
 images-scrub: $(patsubst %,%-image-clean, $(IMAGES))
-
-node-sdk: sdk/node
-
-node-sdk-unit-tests: peer membersrvc
-	cd sdk/node && $(MAKE) unit-tests
 
 .PHONY: $(SUBDIRS:=-clean)
 $(SUBDIRS:=-clean):
