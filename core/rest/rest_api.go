@@ -1297,10 +1297,10 @@ func (s *ServerOpenchainREST) ProcessChaincode(rw web.ResponseWriter, req *web.R
 		}
 
 		// Extract the ChaincodeSpec from the params field
-		deploySpec := requestPayload.Params
+		ccSpec := requestPayload.Params
 
 		// Process the chaincode deployment request and record the result
-		result = s.processChaincodeDeploy(deploySpec)
+		result = s.processChaincodeDeploy(ccSpec)
 	} else {
 
 		//
@@ -1310,7 +1310,8 @@ func (s *ServerOpenchainREST) ProcessChaincode(rw web.ResponseWriter, req *web.R
 		// Because chaincode invocation/query requests require a ChaincodeInvocationSpec
 		// message instead of a ChaincodeSpec message, we must initialize it here
 		// before  proceeding.
-		invokequeryPayload := &pb.ChaincodeInvocationSpec{ChaincodeSpec: requestPayload.Params}
+		ccSpec := requestPayload.Params
+		invokequeryPayload := &pb.ChaincodeInvocationSpec{ChaincodeSpec: ccSpec}
 
 		// Payload params field must contain a ChaincodeSpec message
 		if invokequeryPayload.ChaincodeSpec == nil {

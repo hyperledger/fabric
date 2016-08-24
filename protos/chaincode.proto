@@ -46,6 +46,8 @@ message ChaincodeID {
 }
 
 // Carries the chaincode function and its arguments.
+// UnmarshalJSON in transaction.go converts the string-based REST/JSON input to
+// the []byte-based current ChaincodeInput structure.
 message ChaincodeInput {
     repeated bytes args  = 1;
 }
