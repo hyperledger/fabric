@@ -81,7 +81,7 @@ unit-test: peer-image gotools
 .PHONY: images
 images: $(patsubst %,build/image/%/.dummy, $(IMAGES))
 
-behave-deps: images peer
+behave-deps: images peer build/bin/block-listener
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
@@ -140,7 +140,12 @@ build/bin:
 # Both peer and peer-image depend on ccenv-image and javaenv-image (all docker env images it supports)
 build/bin/peer: build/image/ccenv/.dummy build/image/javaenv/.dummy
 build/image/peer/.dummy: build/image/ccenv/.dummy build/image/javaenv/.dummy
-build/image/peer/.dummy: build/docker/bin/examples/events/block-listener/
+
+build/bin/block-listener:
+	@mkdir -p $(@D)
+	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install $(PKGNAME)/examples/events/block-listener
+	@echo "Binary available as $@"
+	@touch $@
 
 build/bin/%: build/image/base/.dummy $(PROJECT_FILES)
 	@mkdir -p $(@D)
@@ -172,7 +177,7 @@ build/image/ccenv/.dummy: build/image/src/.dummy build/image/ccenv/bin/protoc-ge
 	docker build -t $(PROJECT_NAME)-ccenv:latest $(@D)
 	@touch $@
 
-# Special override for java-image 
+# Special override for java-image
 build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 	@echo "Building docker javaenv-image"
 	@mkdir -p $(@D)

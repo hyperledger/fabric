@@ -785,7 +785,7 @@ def step_impl(context):
 def step_impl(context):
     gopath = os.environ.get('GOPATH')
     assert gopath is not None, "Please set GOPATH properly!"
-    listener = os.path.join(gopath, "src/github.com/hyperledger/fabric/build/docker/bin/block-listener")
+    listener = os.path.join(gopath, "src/github.com/hyperledger/fabric/build/bin/block-listener")
     assert os.path.isfile(listener), "Please build the block-listener binary!"
     bdd_test_util.start_background_process(context, "eventlistener", [listener, "-listen-to-rejections"] )
 
