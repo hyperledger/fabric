@@ -1,0 +1,11 @@
+orderer0:
+  image: hyperledger/fabric-orderer-solo
+  environment:
+    - ORDERER_WINDOW_SIZE_MAX=1000
+    - ORDERER_BATCH_TIMEOUT=10s
+    - ORDERER_BATCH_SIZE=10
+    - ORDERER_BLOCK_HISTORY_SIZE=100
+  # Startup of peer must be delayed to allow membersrvc to come up first
+  #command: sh -c "sleep 5; peer node start"
+  working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+  command: ./orderer
