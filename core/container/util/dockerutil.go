@@ -17,7 +17,11 @@ limitations under the License.
 package util
 
 import (
+	"runtime"
+	"strings"
+
 	"github.com/fsouza/go-dockerclient"
+	"github.com/hyperledger/fabric/metadata"
 	"github.com/spf13/viper"
 )
 
@@ -34,4 +38,31 @@ func NewDockerClient() (client *docker.Client, err error) {
 		client, err = docker.NewClient(endpoint)
 	}
 	return
+}
+
+// Our docker images retrieve $ARCH via "uname -m", which is typically "x86_64" for, well, x86_64.
+// However, GOARCH uses "amd64".  We therefore need to normalize any discrepancies between "uname -m"
+// and GOARCH here.
+var archRemap = map[string]string{
+	"amd64": "x86_64",
+}
+
+func getArch() string {
+	if remap, ok := archRemap[runtime.GOARCH]; ok {
+		return remap
+	} else {
+		return runtime.GOARCH
+	}
+}
+
+func parseDockerfileTemplate(template string) string {
+	r := strings.NewReplacer(
+		"$(ARCH)", getArch(),
+		"$(PROJECT_VERSION)", metadata.Version)
+
+	return r.Replace(template)
+}
+
+func GetDockerfileFromConfig(path string) string {
+	return parseDockerfileTemplate(viper.GetString(path))
 }

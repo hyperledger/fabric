@@ -44,7 +44,7 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 	if viper.GetBool("security.enabled") {
 		//todo
 	} else {
-		buf = append(buf, viper.GetString("chaincode.java.Dockerfile"))
+		buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.java.Dockerfile"))
 		buf = append(buf, "COPY src /root")
 		buf = append(buf, "RUN gradle -b build.gradle build")
 		buf = append(buf, "RUN unzip -od /root build/distributions/Chaincode.zip")

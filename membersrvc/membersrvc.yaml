@@ -1,8 +1,6 @@
 # CA server parameters
 #
 server:
-        # current version of the CA
-        version: "0.1"
 
         # limits the number of operating system threads used by the CA
         # set to negative to use the system default setting
