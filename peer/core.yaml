@@ -410,8 +410,12 @@ security:
     # security to be enabled).
     attributes:
       enabled: false
+
+    # TCerts pool configuration.  Multi-thread pool can also be configured
+    # by multichannel option switching concurrency in communication with TCA. 
     multithreading:
       enabled: false
+      multichannel: false
 
     # Confidentiality protocol versions supported: 1.2
     confidentialityProtocolVersion: 1.2

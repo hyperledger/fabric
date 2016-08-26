@@ -32,10 +32,20 @@ type tCertPoolEntry struct {
 	client               *clientImpl
 }
 
+const maxFillerThreads = 5
+
 //NewTCertPoolEntry creates a new tcert pool entry
 func newTCertPoolEntry(client *clientImpl, attributes []string) *tCertPoolEntry {
-	tCertChannel := make(chan *TCertBlock, client.conf.getTCertBatchSize()*2)
-	tCertChannelFeedback := make(chan struct{}, client.conf.getTCertBatchSize()*2)
+	var tCertChannel chan *TCertBlock
+	var tCertChannelFeedback chan struct{}
+
+	if client.conf.IsMultiChannelEnabled() {
+		tCertChannel = make(chan *TCertBlock, client.conf.getTCertBatchSize()*maxFillerThreads)
+		tCertChannelFeedback = make(chan struct{}, maxFillerThreads)
+	} else {
+		tCertChannel = make(chan *TCertBlock, client.conf.getTCertBatchSize()*2)
+		tCertChannelFeedback = make(chan struct{}, client.conf.getTCertBatchSize()*2)
+	}
 	done := make(chan struct{}, 1)
 	return &tCertPoolEntry{attributes, tCertChannel, tCertChannelFeedback, done, client}
 }
@@ -90,9 +100,11 @@ func (tCertPoolEntry *tCertPoolEntry) GetNextTCert(attributes ...string) (tCertB
 			tCertPoolEntry.client.Error("Failed getting a new TCert. Buffer is empty!")
 		}
 		if tCertBlock != nil {
-			// Send feedback to the filler
-			tCertPoolEntry.client.Debug("Send feedback")
-			tCertPoolEntry.tCertChannelFeedback <- struct{}{}
+			if !tCertPoolEntry.client.conf.IsMultiChannelEnabled() {
+				// Send feedback to the filler
+				tCertPoolEntry.client.Debug("Send feedback")
+				tCertPoolEntry.tCertChannelFeedback <- struct{}{}
+			}
 			break
 		}
 	}
@@ -175,14 +187,24 @@ func (tCertPoolEntry *tCertPoolEntry) filler() {
 	tCertPoolEntry.client.Debug("Load unused TCerts...done!")
 
 	if !stop {
-		ticker := time.NewTicker(1 * time.Second)
+		fillerThreads := 0
+		var ticker *time.Ticker
+		if tCertPoolEntry.client.conf.IsMultiChannelEnabled() {
+			ticker = time.NewTicker(200 * time.Millisecond)
+		} else {
+			ticker = time.NewTicker(1 * time.Second)
+		}
 		for {
 			select {
 			case <-tCertPoolEntry.done:
 				stop = true
 				tCertPoolEntry.client.Debug("Done signal.")
 			case <-tCertPoolEntry.tCertChannelFeedback:
-				tCertPoolEntry.client.Debug("Feedback received. Time to check for tcerts")
+				if tCertPoolEntry.client.conf.IsMultiChannelEnabled() {
+					fillerThreads--
+				} else {
+					tCertPoolEntry.client.Debug("Feedback received. Time to check for tcerts")
+				}
 			case <-ticker.C:
 				tCertPoolEntry.client.Debug("Time elapsed. Time to check for tcerts")
 			}
@@ -192,25 +214,39 @@ func (tCertPoolEntry *tCertPoolEntry) filler() {
 				break
 			}
 
-			if len(tCertPoolEntry.tCertChannel) < tCertPoolEntry.client.conf.getTCertBatchSize() {
-				tCertPoolEntry.client.Debugf("Refill TCert Pool. Current size [%d].",
-					len(tCertPoolEntry.tCertChannel),
-				)
+			if tCertPoolEntry.client.conf.IsMultiChannelEnabled() {
 
-				var numTCerts = cap(tCertPoolEntry.tCertChannel) - len(tCertPoolEntry.tCertChannel)
-				if len(tCertPoolEntry.tCertChannel) == 0 {
-					numTCerts = cap(tCertPoolEntry.tCertChannel) / 10
-					if numTCerts < 1 {
-						numTCerts = 1
-					}
+				for len(tCertPoolEntry.tCertChannel) <= tCertPoolEntry.client.conf.getTCertBatchSize()*(maxFillerThreads-fillerThreads-1) {
+					tCertPoolEntry.client.Debugf("Refill TCert Pool. Current size [%d].", len(tCertPoolEntry.tCertChannel))
+					numTCerts := tCertPoolEntry.client.conf.getTCertBatchSize()
+
+					tCertPoolEntry.client.Infof("Refilling [%d] TCerts.", numTCerts)
+					fillerThreads++
+
+					go func() {
+						err := tCertPoolEntry.client.getTCertsFromTCA(calculateAttributesHash(tCertPoolEntry.attributes), tCertPoolEntry.attributes, numTCerts)
+						if err != nil {
+							tCertPoolEntry.client.Errorf("Failed getting TCerts from the TCA: [%s]", err)
+						}
+						tCertPoolEntry.tCertChannelFeedback <- struct{}{}
+					}()
 				}
+			} else {
+				if len(tCertPoolEntry.tCertChannel) < tCertPoolEntry.client.conf.getTCertBatchSize() {
+					tCertPoolEntry.client.Debugf("Refill TCert Pool. Current size [%d].", len(tCertPoolEntry.tCertChannel))
+					var numTCerts = cap(tCertPoolEntry.tCertChannel) - len(tCertPoolEntry.tCertChannel)
+					if len(tCertPoolEntry.tCertChannel) == 0 {
+						numTCerts = cap(tCertPoolEntry.tCertChannel) / 10
+						if numTCerts < 1 {
+							numTCerts = 1
+						}
+					}
+					tCertPoolEntry.client.Infof("Refilling [%d] TCerts.", numTCerts)
 
-				tCertPoolEntry.client.Infof("Refilling [%d] TCerts.", numTCerts)
-
-				err := tCertPoolEntry.client.getTCertsFromTCA(calculateAttributesHash(tCertPoolEntry.attributes), tCertPoolEntry.attributes, numTCerts)
-				if err != nil {
-					tCertPoolEntry.client.Errorf("Failed getting TCerts from the TCA: [%s]", err)
-					break
+					err := tCertPoolEntry.client.getTCertsFromTCA(calculateAttributesHash(tCertPoolEntry.attributes), tCertPoolEntry.attributes, numTCerts)
+					if err != nil {
+						tCertPoolEntry.client.Errorf("Failed getting TCerts from the TCA: [%s]", err)
+					}
 				}
 			}
 		}
