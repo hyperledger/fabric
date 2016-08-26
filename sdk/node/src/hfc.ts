@@ -2039,9 +2039,13 @@ export class Peer {
     private peerClient:any;
 
     /**
-     * Constructor for a peer given the endpoint config for the peer.
-     * @param {string} url The URL of
-     * @param {Chain} The chain of which this peer is a member.
+     * Constructs a Peer given its endpoint configuration settings
+     * and returns the new Peer.
+     * @param {string} url The URL with format of "grpcs://host:port".
+     * @param {Chain} chain The chain of which this peer is a member.
+     * @param {string} pem The certificate file, in PEM format,
+     * to use with the gRPC protocol (that is, with TransportCredentials).
+     * Required when using the grpcs protocol.
      * @returns {Peer} The new peer.
      */
     constructor(url:string, chain:Chain, pem:string) {
