@@ -19,10 +19,10 @@ package rest
 import (
 	"bytes"
 	"fmt"
-	"google/protobuf"
 	"os"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos"
@@ -81,7 +81,7 @@ func TestServerOpenchain_API_GetBlockchainInfo(t *testing.T) {
 	}
 	// Attempt to retrieve the blockchain info. There are no blocks
 	// in this blockchain, therefore this test should intentionally fail.
-	info, err := server.GetBlockchainInfo(context.Background(), &google_protobuf.Empty{})
+	info, err := server.GetBlockchainInfo(context.Background(), &empty.Empty{})
 	if err != nil {
 		// Success
 		t.Logf("Error retrieving blockchain info: %s", err)
@@ -94,7 +94,7 @@ func TestServerOpenchain_API_GetBlockchainInfo(t *testing.T) {
 	// add 3 blocks to ledger.
 	buildTestLedger1(ledger, t)
 	// Attempt to retrieve the blockchain info.
-	info, err = server.GetBlockchainInfo(context.Background(), &google_protobuf.Empty{})
+	info, err = server.GetBlockchainInfo(context.Background(), &empty.Empty{})
 	if err != nil {
 		t.Logf("Error retrieving blockchain info: %s", err)
 		t.Fail()
@@ -105,7 +105,7 @@ func TestServerOpenchain_API_GetBlockchainInfo(t *testing.T) {
 	// add 5 blocks more.
 	buildTestLedger2(ledger, t)
 	// Attempt to retrieve the blockchain info.
-	info, err = server.GetBlockchainInfo(context.Background(), &google_protobuf.Empty{})
+	info, err = server.GetBlockchainInfo(context.Background(), &empty.Empty{})
 	if err != nil {
 		t.Logf("Error retrieving blockchain info: %s", err)
 		t.Fail()
@@ -191,7 +191,7 @@ func TestServerOpenchain_API_GetBlockCount(t *testing.T) {
 
 	// Retrieve the current number of blocks in the blockchain. There are no blocks
 	// in this blockchain, therefore this test should intentionally fail.
-	count, err := server.GetBlockCount(context.Background(), &google_protobuf.Empty{})
+	count, err := server.GetBlockCount(context.Background(), &empty.Empty{})
 	if err != nil {
 		// Success
 		t.Logf("Error retrieving BlockCount from blockchain: %s", err)
@@ -204,7 +204,7 @@ func TestServerOpenchain_API_GetBlockCount(t *testing.T) {
 	// Add three 3 blocks to ledger.
 	buildTestLedger1(ledger, t)
 	// Retrieve the current number of blocks in the blockchain. Must be 3.
-	count, err = server.GetBlockCount(context.Background(), &google_protobuf.Empty{})
+	count, err = server.GetBlockCount(context.Background(), &empty.Empty{})
 	if err != nil {
 		t.Logf("Error retrieving BlockCount from blockchain: %s", err)
 		t.Fail()
@@ -218,7 +218,7 @@ func TestServerOpenchain_API_GetBlockCount(t *testing.T) {
 	// Add 5 more blocks to ledger.
 	buildTestLedger2(ledger, t)
 	// Retrieve the current number of blocks in the blockchain. Must be 5.
-	count, err = server.GetBlockCount(context.Background(), &google_protobuf.Empty{})
+	count, err = server.GetBlockCount(context.Background(), &empty.Empty{})
 	if err != nil {
 		t.Logf("Error retrieving BlockCount from blockchain: %s", err)
 		t.Fail()

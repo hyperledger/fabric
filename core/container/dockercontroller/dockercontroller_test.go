@@ -21,9 +21,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/spf13/viper"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
