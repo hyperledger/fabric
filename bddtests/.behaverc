@@ -7,3 +7,4 @@ tags=~@issue_767
 			~@issue_RBAC_TCERT_With_Attributes
 			~@sdk
 			~@TLS
+			~@devops

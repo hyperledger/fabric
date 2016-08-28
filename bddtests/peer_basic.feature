@@ -349,6 +349,7 @@ Feature: Network of Peers
 
 #    @doNotDecompose
 #    @wip
+  @devops
 	Scenario: chaincode map single peer content generated ID
 	    Given we compose "docker-compose-1.yml"
 	    When requesting "/chain" from "vp0"
