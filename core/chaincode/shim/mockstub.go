@@ -72,6 +72,17 @@ func (stub *MockStub) GetStringArgs() []string {
 	return strargs
 }
 
+func (stub *MockStub) GetFunctionAndParameters() (function string, params []string) {
+	allargs := stub.GetStringArgs()
+	function = ""
+	params = []string{}
+	if len(allargs) >= 1 {
+		function = allargs[0]
+		params = allargs[1:]
+	}
+	return
+}
+
 // Used to indicate to a chaincode that it is part of a transaction.
 // This is important when chaincodes invoke each other.
 // MockStub doesn't support concurrent transactions at present.
@@ -95,7 +106,7 @@ func (stub *MockStub) MockPeerChaincode(invokableChaincodeName string, otherStub
 func (stub *MockStub) MockInit(uuid string, function string, args []string) ([]byte, error) {
 	stub.args = getBytes(function, args)
 	stub.MockTransactionStart(uuid)
-	bytes, err := stub.cc.Init(stub, function, args)
+	bytes, err := stub.cc.Init(stub)
 	stub.MockTransactionEnd(uuid)
 	return bytes, err
 }
@@ -104,7 +115,7 @@ func (stub *MockStub) MockInit(uuid string, function string, args []string) ([]b
 func (stub *MockStub) MockInvoke(uuid string, function string, args []string) ([]byte, error) {
 	stub.args = getBytes(function, args)
 	stub.MockTransactionStart(uuid)
-	bytes, err := stub.cc.Invoke(stub, function, args)
+	bytes, err := stub.cc.Invoke(stub)
 	stub.MockTransactionEnd(uuid)
 	return bytes, err
 }
@@ -113,7 +124,7 @@ func (stub *MockStub) MockInvoke(uuid string, function string, args []string) ([
 func (stub *MockStub) MockQuery(function string, args []string) ([]byte, error) {
 	stub.args = getBytes(function, args)
 	// no transaction needed for queries
-	bytes, err := stub.cc.Query(stub, function, args)
+	bytes, err := stub.cc.Query(stub)
 	return bytes, err
 }
 
