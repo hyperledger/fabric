@@ -603,7 +603,8 @@ export class Chain {
     }
 
     /**
-     * Get the user member named 'name'.
+     * Get the user member named 'name' or create
+     * a new member if the member does not exist.
      * @param cb Callback of form "function(err,Member)"
      */
     getMember(name:string, cb:GetMemberCallback):void {
@@ -627,7 +628,11 @@ export class Chain {
     }
 
     // Try to get the member from cache.
-    // If not found, create a new one, restore the state if found, and then store in cache.
+    // If not found, create a new one.
+    // If member is found in the key value store,
+    //    restore the state to the new member, store in cache and return the member.
+    // If there are no errors and member is not found in the key value store,
+    //    return the new member.
     private getMemberHelper(name:string, cb:GetMemberCallback) {
         let self = this;
         // Try to get the member state from the cache
