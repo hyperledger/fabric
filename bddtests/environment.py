@@ -3,19 +3,12 @@ import os
 import glob
 
 from steps.bdd_test_util import cli_call, bdd_log
+from steps.bdd_compose_util import getDockerComposeFileArgsFromYamlFile
 
 from steps.coverage import saveCoverageFiles, createCoverageAggregate
 
 def coverageEnabled(context):
     return context.config.userdata.get("coverage", "false") == "true"
-
-
-def getDockerComposeFileArgsFromYamlFile(compose_yaml):
-    parts = compose_yaml.split()
-    args = []
-    for part in parts:
-        args = args + ["-f"] + [part]
-    return args
 
 def after_scenario(context, scenario):
     get_logs = context.config.userdata.get("logs", "N")

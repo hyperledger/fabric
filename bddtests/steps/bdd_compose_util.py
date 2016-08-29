@@ -43,50 +43,29 @@ class Container:
     def __repr__(self):
         return self.__str__()
 
+DOCKER_COMPOSE_FOLDER = "bdd-docker"
+
 def getDockerComposeFileArgsFromYamlFile(compose_yaml):
     parts = compose_yaml.split()
     args = []
     for part in parts:
+        part = "{}/{}".format(DOCKER_COMPOSE_FOLDER, part)
         args = args + ["-f"] + [part]
     return args
 
 def parseComposeOutput(context):
     """Parses the compose output results and set appropriate values into context.  Merges existing with newly composed."""
-    # Use the prefix to get the container name
-    containerNamePrefix = os.path.basename(os.getcwd()) + "_"
-    containerNames = []
-    for l in context.compose_error.splitlines():
-        tokens = l.split()
-        bdd_log(tokens)
-        if 1 < len(tokens):
-            thisContainer = tokens[1]
-            if containerNamePrefix not in thisContainer:
-               thisContainer = containerNamePrefix + thisContainer + "_1"
-            if thisContainer not in containerNames:
-               containerNames.append(thisContainer)
+    containerNames = getContainerNamesFromContext(context)
 
     bdd_log("Containers started: ")
     bdd_log(containerNames)
     # Now get the Network Address for each name, and set the ContainerData onto the context.
     containerDataList = []
     for containerName in containerNames:
-        output, error, returncode = \
-            cli_call(["docker", "inspect", "--format",  "{{ .NetworkSettings.IPAddress }}", containerName], expect_success=True)
-        bdd_log("container {0} has address = {1}".format(containerName, output.splitlines()[0]))
-        ipAddress = output.splitlines()[0]
+        ipAddress = getIpFromContainerName(containerName)
+        env = getEnvironmentVariablesFromContainerName(containerName)
+        dockerComposeService = getDockerComposeServiceForContainer(containerName)
 
-        # Get the environment array
-        output, error, returncode = \
-            cli_call(["docker", "inspect", "--format",  "{{ .Config.Env }}", containerName], expect_success=True)
-        env = output.splitlines()[0][1:-1].split()
-
-        # Get the Labels to access the com.docker.compose.service value
-        output, error, returncode = \
-            cli_call(["docker", "inspect", "--format",  "{{ .Config.Labels }}", containerName], expect_success=True)
-        labels = output.splitlines()[0][4:-1].split()
-        dockerComposeService = [composeService[27:] for composeService in labels if composeService.startswith("com.docker.compose.service:")][0]
-        bdd_log("dockerComposeService = {0}".format(dockerComposeService))
-        bdd_log("container {0} has env = {1}".format(containerName, env))
         containerDataList.append(Container(containerName, ipAddress, env, dockerComposeService))
     # Now merge the new containerData info with existing
     newContainerDataList = []
@@ -97,6 +76,44 @@ def parseComposeOutput(context):
 
     setattr(context, "compose_containers", newContainerDataList)
     bdd_log("")
+
+def getContainerNamesFromContext(context):
+    containerNames = []
+    for l in context.compose_error.splitlines():
+        tokens = l.split()
+
+        if len(tokens) > 1:
+            thisContainer = tokens[1]
+
+            if thisContainer not in containerNames:
+               containerNames.append(thisContainer)
+
+    return containerNames
+
+def getIpFromContainerName(containerName):
+    output, error, returncode = \
+            cli_call(["docker", "inspect", "--format",  "{{ .NetworkSettings.IPAddress }}", containerName], expect_success=True)
+    bdd_log("container {0} has address = {1}".format(containerName, output.splitlines()[0]))
+
+    return output.splitlines()[0]
+
+def getEnvironmentVariablesFromContainerName(containerName):
+    output, error, returncode = \
+            cli_call(["docker", "inspect", "--format",  "{{ .Config.Env }}", containerName], expect_success=True)
+    env = output.splitlines()[0][1:-1].split()
+    bdd_log("container {0} has env = {1}".format(containerName, env))
+
+    return env
+
+def getDockerComposeServiceForContainer(containerName):
+    # Get the Labels to access the com.docker.compose.service value
+    output, error, returncode = \
+        cli_call(["docker", "inspect", "--format",  "{{ .Config.Labels }}", containerName], expect_success=True)
+    labels = output.splitlines()[0][4:-1].split()
+    dockerComposeService = [composeService[27:] for composeService in labels if composeService.startswith("com.docker.compose.service:")][0]
+    bdd_log("dockerComposeService = {0}".format(dockerComposeService))
+
+    return dockerComposeService
 
 def allContainersAreReadyWithinTimeout(context, timeout):
     timeoutTimestamp = time.time() + timeout
