@@ -30,7 +30,102 @@ import bdd_grpc_util
 
 from grpc.beta import implementations
 from grpc.framework.interfaces.face.face import NetworkError
+from grpc.framework.interfaces.face.face import AbortionError
 from grpc.beta.interfaces import StatusCode
+
+
+class StreamHelper:
+
+    def __init__(self, ordererStub):
+        self.streamClosed = False
+        self.ordererStub = ordererStub
+        self.sendQueue = Queue.Queue()
+        self.receivedMessages = []
+        self.replyGenerator = None
+
+    def setReplyGenerator(self, replyGenerator):
+        assert self.replyGenerator == None, "reply generator already set!!"
+        self.replyGenerator = replyGenerator
+
+    def createSendGenerator(self, firstMsg, timeout = 2):
+      yield firstMsg
+      while True:
+        try:
+            nextMsg = self.sendQueue.get(True, timeout)
+            if nextMsg:
+              yield nextMsg
+            else:
+              #None indicates desire to close send
+              return
+        except Queue.Empty:
+            return
+
+    def readMessages(self, expectedCount):
+        msgsReceived = []
+        counter = 0
+        try:
+            for reply in self.replyGenerator:
+                counter += 1
+                print("{0} received reply: {1}, counter = {2}".format("DeliverStreamHelper", reply, counter))
+                msgsReceived.append(reply)
+                if counter == int(expectedCount):
+                    break
+        except AbortionError as networkError:
+            self.handleNetworkError(networkError)
+        return msgsReceived
+
+    def handleNetworkError(self, networkError):
+        if networkError.code == StatusCode.OUT_OF_RANGE and networkError.details == "EOF":
+            print("Error received and ignored: {0}".format(networkError))
+            print()
+            self.streamClosed = True
+        else:
+            raise Exception("Unexpected NetworkError: {0}".format(networkError))
+
+
+class DeliverStreamHelper(StreamHelper):
+
+    def __init__(self, ordererStub, sendAck, Start, SpecifiedNumber, WindowSize, timeout = 1):
+        StreamHelper.__init__(self, ordererStub)
+        #Set the ack flag
+        trueOptions = ['true', 'True','yes','Yes']
+        falseOptions = ['false', 'False', 'no', 'No']
+        assert sendAck in trueOptions + falseOptions, "sendAck of '{0}' not recognized, expected one of '{1}'".format(sendAck, trueOptions + falseOptions) 
+        self.sendAck = sendAck in trueOptions
+        # Set the UpdateMessage and start the stream
+        self.deliverUpdateMsg = createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize)
+        sendGenerator = self.createSendGenerator(self.deliverUpdateMsg, timeout)
+        replyGenerator = ordererStub.Deliver(sendGenerator, timeout + 1)
+        self.replyGenerator = replyGenerator
+
+    def seekToBlock(self, blockNum):
+        deliverUpdateMsg = ab_pb2.DeliverUpdate()
+        deliverUpdateMsg.CopyFrom(self.deliverUpdateMsg)
+        deliverUpdateMsg.Seek.SpecifiedNumber = blockNum 
+        self.sendQueue.put(deliverUpdateMsg)
+
+    def sendAcknowledgment(self, blockNum):
+        deliverUpdateMsg = ab_pb2.DeliverUpdate(Acknowledgement = ab_pb2.Acknowledgement(Number = blockNum))
+        self.sendQueue.put(deliverUpdateMsg)
+
+    def getWindowSize(self):
+        return self.deliverUpdateMsg.Seek.WindowSize
+
+    def readDeliveredMessages(self, expectedCount):
+        'Read the expected number of messages, being sure to supply the ACK if sendAck is True'
+        if not self.sendAck:
+            return self.readMessages(expectedCount)
+        else:
+            # This block assumes the expectedCount is a multiple of the windowSize
+            msgsRead = []
+            while len(msgsRead) < expectedCount and self.streamClosed == False:
+                numToRead = self.getWindowSize() if self.getWindowSize() < expectedCount else expectedCount
+                msgsRead.extend(self.readMessages(numToRead))
+                # send the ack
+                self.sendAcknowledgment(msgsRead[-1].Block.Number)
+                print('SentACK!!')
+                print('')
+            return msgsRead
 
 
 
@@ -42,45 +137,31 @@ class UserRegistration:
         self.secretMsg = secretMsg
         self.composeService = composeService
         self.tags = {}
-        self.lastResult = None
-        self.abStub = None
-        self.abBroadcastersDict = {}
-        # composeService->Queue of messages received
-        self.abDeliversQueueDict = {}
         # Dictionary of composeService->atomic broadcast grpc Stub
         self.atomicBroadcastStubsDict = {}
+        # composeService->StreamHelper
+        self.abDeliversStreamHelperDict = {}
 
     def getUserName(self):
         return self.secretMsg['enrollId']
 
-    def connectToDeliverFunction(self, context, composeService):
-    	'Connect to the deliver function and drain messages to associated orderer queue'
-    	replyGenerator = self.getABStubForComposeService(context, composeService).deliver(generateDeliverMessages(context, timeToHoldOpen = .25),2)
-        delivererQueue = self.getDelivererQueue(context, composeService)
-        counter = 0
-        try:
-			for reply in replyGenerator:
-				counter += 1
-				# Parse the msg bytes as a deliver_reply message
-				print("{0} received reply: {1}, counter = {2}".format(self.enrollId, reply, counter))
-				delivererQueue.append(reply)
-        except NetworkError as networkError:
-			if networkError.code == StatusCode.OUT_OF_RANGE and networkError.details == "EOF":
-				print("Error received and ignored: {0}", networkError)
-				print()
-			else:
-				raise Exception("Unexpected NetworkError: {0}", networkError)
-    
-    def getDelivererQueue(self, context, composeService):
-    	if not composeService in self.abDeliversQueueDict:
-    		#self.abDeliversQueueDict[composeService] = Queue.Queue()
-    		self.abDeliversQueueDict[composeService] = []
-    	return self.abDeliversQueueDict[composeService]
-    		
+
+    def connectToDeliverFunction(self, context, sendAck, start, SpecifiedNumber, WindowSize, composeService):
+        'Connect to the deliver function and drain messages to associated orderer queue'
+        assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
+        streamHelper = DeliverStreamHelper(self.getABStubForComposeService(context, composeService), sendAck, start, SpecifiedNumber, WindowSize)
+        self.abDeliversStreamHelperDict[composeService] = streamHelper
+        return streamHelper
+
+
+    def getDelivererStreamHelper(self, context, composeService):
+        assert composeService in self.abDeliversStreamHelperDict, "NOT connected to deliver stream on {0}".format(composeService)
+        return self.abDeliversStreamHelperDict[composeService]
+
 
     def broadcastMessages(self, context, numMsgsToBroadcast, composeService):
 		abStub = self.getABStubForComposeService(context, composeService)
-		replyGenerator = abStub.broadcast(generateBroadcastMessages(int(numMsgsToBroadcast)),2)
+		replyGenerator = abStub.Broadcast(generateBroadcastMessages(int(numMsgsToBroadcast)),2)
 		counter = 0
 		try:
 			for reply in replyGenerator:
@@ -101,9 +182,10 @@ class UserRegistration:
 		# Get the IP address of the server that the user registered on
 		ipAddress = bdd_test_util.ipFromContainerNamePart(composeService, context.compose_containers)
 		channel = getGRPCChannel(ipAddress)
-		newABStub = ab_pb2.beta_create_atomic_broadcast_stub(channel)
+		newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
 		self.atomicBroadcastStubsDict[composeService] = newABStub
 		return newABStub
+
 
 # Registerses a user on a specific composeService
 def registerUser(context, secretMsg, composeService):
@@ -130,23 +212,18 @@ def getUserRegistration(context, enrollId):
         raise Exception("User has not been registered: {0}".format(enrollId))
     return userRegistration
 
-def generateDeliverMessages(context, timeToHoldOpen = 1):
-	'Generator for Deliver message'
-	assert 'table' in context, "table (Start | specified_number| window_size) not found in context"
-	row = context.table.rows[0]
-	start, specified_number, window_size = row['Start'], int(row['specified_number']), int(row['window_size'])
-	# if start != str(ab_pb2.seek_info.SPECIFIED):
-	# 	raise Exception("Currently only support Specified seek_info type")
-	seekInfo = ab_pb2.seek_info(start = ab_pb2.seek_info.SPECIFIED, specified_number = specified_number, window_size = window_size)
-	deliverUpdateMsg = ab_pb2.deliver_update(seek = seekInfo)
-	yield deliverUpdateMsg
-	print("sent msg {0}".format(deliverUpdateMsg))
-	time.sleep(timeToHoldOpen)	
+def createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize):
+    seek = ab_pb2.SeekInfo()
+    startVal = seek.__getattribute__(Start)
+    seekInfo = ab_pb2.SeekInfo(Start = startVal, SpecifiedNumber = SpecifiedNumber, WindowSize = WindowSize)
+    deliverUpdateMsg = ab_pb2.DeliverUpdate(Seek = seekInfo)
+    return deliverUpdateMsg
+
 
 def generateBroadcastMessages(numToGenerate = 1, timeToHoldOpen = 1):
 	messages = []
 	for i in range(0, numToGenerate):
-		messages.append(ab_pb2.broadcast_message(data = str("BDD test: {0}".format(datetime.datetime.utcnow()))))		
+		messages.append(ab_pb2.BroadcastMessage(Data = str("BDD test: {0}".format(datetime.datetime.utcnow()))))		
 	for msg in messages:
 		yield msg
 	time.sleep(timeToHoldOpen)	

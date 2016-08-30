@@ -44,22 +44,27 @@ def step_impl(context, enrollId, numMsgsToBroadcast, composeService):
 
 @when(u'user "{enrollId}" connects to deliver function on "{composeService}" with Ack of "{sendAck}" and properties')
 def step_impl(context, enrollId, composeService, sendAck):
+	# First get the properties
+	assert 'table' in context, "table (Start | SpecifiedNumber| WindowSize) not found in context"
+	row = context.table.rows[0]
+	start, SpecifiedNumber, WindowSize = row['Start'], int(row['SpecifiedNumber']), int(row['WindowSize'])
+
 	userRegistration = orderer_util.getUserRegistration(context, enrollId)
-	userRegistration.connectToDeliverFunction(context, composeService)	
+	userRegistration.connectToDeliverFunction(context, sendAck, start, SpecifiedNumber, WindowSize, composeService)	
 
 
 @then(u'user "{enrollId}" should get a delivery from "{composeService}" of "{expectedBlocks}" blocks with "{numMsgsToBroadcast}" messages within "{batchTimeout}" seconds')
 def step_impl(context, enrollId, expectedBlocks, numMsgsToBroadcast, batchTimeout, composeService):
 	userRegistration = orderer_util.getUserRegistration(context, enrollId)
-	delivererQueue = userRegistration.getDelivererQueue(context, composeService)
+	streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
+	delivererQueue = streamHelper.readDeliveredMessages(long(expectedBlocks))
 	# Verify block count
-	blocks = [msg.block for msg in delivererQueue if msg.block]	
-	assert len(blocks) == int(expectedBlocks), "Expected {0} blocks, receieved {1}".format(expectedBlocks, len(blocks))
-	# Verify total messages count
-	totalMsgCount = sum([len(b.messages) for b in blocks])
-	assert totalMsgCount == int(numMsgsToBroadcast), "Expected {0} total messages, receieved {1}".format(numMsgsToBroadcast, totalMsgCount)
+	blocks = [msg.Block for msg in delivererQueue if msg.Block]	
+	assert len(blocks) == int(expectedBlocks), "Expected {0} blocks, received {1}".format(expectedBlocks, len(blocks))
+
 
 @when(u'user "{enrollId}" seeks to block "{blockToSeekTo}" on deliver function on "{composeService}"')
 def step_impl(context, enrollId, blockToSeekTo, composeService):
-    pass
-    #raise NotImplementedError(u'STEP: When user "binhn" seeks to block "1" on deliver function on "orderer0"')
+	userRegistration = orderer_util.getUserRegistration(context, enrollId)
+	streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
+	streamHelper.seekToBlock(long(blockToSeekTo))

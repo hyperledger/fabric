@@ -18,18 +18,19 @@ Feature: Orderer
 	Scenario Outline: Basic orderer function
 
 	    Given we compose "<ComposeFile>"
+	    And I wait ".5" seconds
 	    And user "binhn" is an authorized user of the ordering service
 	    When user "binhn" broadcasts "<NumMsgsToBroadcast>" unique messages on "orderer0"
 	    And user "binhn" connects to deliver function on "orderer0" with Ack of "<SendAck>" and properties:
-            |  Start    | specified_number |  window_size    |
+            |  Start    | SpecifiedNumber |  WindowSize    |
             | SPECIFIED |        1         |       10        |
 	    Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "<BatchTimeout>" seconds
 
     Examples: Orderer Options
         |          ComposeFile                |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |
         |   docker-compose-orderer-solo.yml   |     true     |        20              |         2          |       10       |
-        |   docker-compose-orderer-solo.yml   |     true     |        40             |         4          |       10       |
-        |   docker-compose-orderer-solo.yml   |     true     |        60             |         6          |       10       |
+        |   docker-compose-orderer-solo.yml   |     true     |        40              |         4          |       10       |
+        |   docker-compose-orderer-solo.yml   |     true     |        60              |         6          |       10       |
 
 
 
@@ -37,10 +38,11 @@ Feature: Orderer
 	Scenario Outline: Basic seek orderer function (Utilizing properties for atomic broadcast)
 
 	    Given we compose "<ComposeFile>"
+	    And I wait ".5" seconds
 	    And user "binhn" is an authorized user of the ordering service
 	    When user "binhn" broadcasts "<NumMsgsToBroadcast>" unique messages on "orderer0"
 	    And user "binhn" connects to deliver function on "orderer0" with Ack of "<SendAck>" and properties:
-            |  Start    | specified_number |  window_size    |
+            |  Start    | SpecifiedNumber |  WindowSize    |
             | SPECIFIED |        1         |       10        |
 	    Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "<BatchTimeout>" seconds
 	    When user "binhn" seeks to block "1" on deliver function on "orderer0" 
@@ -55,22 +57,19 @@ Feature: Orderer
 
 
 #    @doNotDecompose
-#    @wip
 	Scenario Outline: Basic orderer function varying ACK
 
 	    Given we compose "<ComposeFile>"
-	    And we connect to broadcast function on "orderer0"
-	    And we connect to deliver function on "orderer0" with Ack of "<SendAck>" and properties:
-            |  Start    | specified_number |  window_size   |
-            | SPECIFIED |        1         |       1        |
-
-	    When broadcasting "<MessagesSent>" unique messages
-	    Then I should get a delivery of "<ExpectedBlocks>" blocks within "<BatchTimeout>" seconds
-	    And I wait "1" second
-	    Then total blocks delivered must equal "<ExpectedBlocks>"
+	    And I wait ".5" seconds
+	    And user "binhn" is an authorized user of the ordering service
+	    When user "binhn" broadcasts "<NumMsgsToBroadcast>" unique messages on "orderer0"
+	    And user "binhn" connects to deliver function on "orderer0" with Ack of "<SendAck>" and properties:
+            |  Start    | SpecifiedNumber |  WindowSize    |
+            | SPECIFIED |        1         |       1         |
+	    Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "<BatchTimeout>" seconds
 
 
     Examples: Orderer Options
-        |          ComposeFile                |    SendAck   |    MessagesSent  |  ExpectedBlocks    |  BatchTimeout  |
-        |   docker-compose-orderer-solo.yml   |     false    |        20        |         1          |       10       |
-        |   docker-compose-orderer-solo.yml   |     true     |        20        |         2          |       10       |
+        |          ComposeFile                |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |
+        |   docker-compose-orderer-solo.yml   |     false    |        20              |         1          |       10       |
+        |   docker-compose-orderer-solo.yml   |     true     |        20              |         2          |       10       |

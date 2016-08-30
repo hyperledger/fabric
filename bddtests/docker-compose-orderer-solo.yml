@@ -5,6 +5,7 @@ orderer0:
     - ORDERER_BATCH_TIMEOUT=10s
     - ORDERER_BATCH_SIZE=10
     - ORDERER_BLOCK_HISTORY_SIZE=100
+    - ORDERER_LISTEN_ADDRESS=0.0.0.0
   # Startup of peer must be delayed to allow membersrvc to come up first
   #command: sh -c "sleep 5; peer node start"
   working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer

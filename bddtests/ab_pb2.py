@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='ab.proto',
   package='atomicbroadcast',
   syntax='proto3',
-  serialized_pb=_b('\n\x08\x61\x62.proto\x12\x0f\x61tomicbroadcast\":\n\x0f\x62roadcast_reply\x12\'\n\x06status\x18\x01 \x01(\x0e\x32\x17.atomicbroadcast.Status\"!\n\x11\x62roadcast_message\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\"\x9b\x01\n\tseek_info\x12/\n\x05start\x18\x01 \x01(\x0e\x32 .atomicbroadcast.seek_info.Start\x12\x18\n\x10specified_number\x18\x02 \x01(\x04\x12\x13\n\x0bwindow_size\x18\x03 \x01(\x04\".\n\x05Start\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x61\x63knowledgement\x12\x0e\n\x06number\x18\x01 \x01(\x04\"\x81\x01\n\x0e\x64\x65liver_update\x12;\n\x0f\x61\x63knowledgement\x18\x01 \x01(\x0b\x32 .atomicbroadcast.acknowledgementH\x00\x12*\n\x04seek\x18\x02 \x01(\x0b\x32\x1a.atomicbroadcast.seek_infoH\x00\x42\x06\n\x04type\"o\n\x05\x62lock\x12\x0e\n\x06number\x18\x02 \x01(\x04\x12\x11\n\tprev_hash\x18\x03 \x01(\x0c\x12\r\n\x05proof\x18\x04 \x01(\x0c\x12\x34\n\x08messages\x18\x05 \x03(\x0b\x32\".atomicbroadcast.broadcast_message\"j\n\rdeliver_reply\x12(\n\x05\x65rror\x18\x01 \x01(\x0e\x32\x17.atomicbroadcast.StatusH\x00\x12\'\n\x05\x62lock\x18\x02 \x01(\x0b\x32\x16.atomicbroadcast.blockH\x00\x42\x06\n\x04type*a\n\x06Status\x12\x0b\n\x07SUCCESS\x10\x00\x12\x10\n\x0b\x42\x41\x44_REQUEST\x10\x90\x03\x12\x0e\n\tFORBIDDEN\x10\x93\x03\x12\x0e\n\tNOT_FOUND\x10\x94\x03\x12\x18\n\x13SERVICE_UNAVAILABLE\x10\xf7\x03\x32\xbd\x01\n\x10\x61tomic_broadcast\x12W\n\tbroadcast\x12\".atomicbroadcast.broadcast_message\x1a .atomicbroadcast.broadcast_reply\"\x00(\x01\x30\x01\x12P\n\x07\x64\x65liver\x12\x1f.atomicbroadcast.deliver_update\x1a\x1e.atomicbroadcast.deliver_reply\"\x00(\x01\x30\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x08\x61\x62.proto\x12\x0f\x61tomicbroadcast\"<\n\x11\x42roadcastResponse\x12\'\n\x06Status\x18\x01 \x01(\x0e\x32\x17.atomicbroadcast.Status\" \n\x10\x42roadcastMessage\x12\x0c\n\x04\x44\x61ta\x18\x01 \x01(\x0c\"\x9f\x01\n\x08SeekInfo\x12\x32\n\x05Start\x18\x01 \x01(\x0e\x32#.atomicbroadcast.SeekInfo.StartType\x12\x17\n\x0fSpecifiedNumber\x18\x02 \x01(\x04\x12\x12\n\nWindowSize\x18\x03 \x01(\x04\"2\n\tStartType\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x41\x63knowledgement\x12\x0e\n\x06Number\x18\x01 \x01(\x04\"\x7f\n\rDeliverUpdate\x12;\n\x0f\x41\x63knowledgement\x18\x01 \x01(\x0b\x32 .atomicbroadcast.AcknowledgementH\x00\x12)\n\x04Seek\x18\x02 \x01(\x0b\x32\x19.atomicbroadcast.SeekInfoH\x00\x42\x06\n\x04Type\"m\n\x05\x42lock\x12\x0e\n\x06Number\x18\x02 \x01(\x04\x12\x10\n\x08PrevHash\x18\x03 \x01(\x0c\x12\r\n\x05Proof\x18\x04 \x01(\x0c\x12\x33\n\x08Messages\x18\x05 \x03(\x0b\x32!.atomicbroadcast.BroadcastMessage\"l\n\x0f\x44\x65liverResponse\x12(\n\x05\x45rror\x18\x01 \x01(\x0e\x32\x17.atomicbroadcast.StatusH\x00\x12\'\n\x05\x42lock\x18\x02 \x01(\x0b\x32\x16.atomicbroadcast.BlockH\x00\x42\x06\n\x04Type*a\n\x06Status\x12\x0b\n\x07SUCCESS\x10\x00\x12\x10\n\x0b\x42\x41\x44_REQUEST\x10\x90\x03\x12\x0e\n\tFORBIDDEN\x10\x93\x03\x12\x0e\n\tNOT_FOUND\x10\x94\x03\x12\x18\n\x13SERVICE_UNAVAILABLE\x10\xf7\x03\x32\xbe\x01\n\x0f\x41tomicBroadcast\x12X\n\tBroadcast\x12!.atomicbroadcast.BroadcastMessage\x1a\".atomicbroadcast.BroadcastResponse\"\x00(\x01\x30\x01\x12Q\n\x07\x44\x65liver\x12\x1e.atomicbroadcast.DeliverUpdate\x1a .atomicbroadcast.DeliverResponse\"\x00(\x01\x30\x01\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -53,8 +53,8 @@ _STATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=670,
-  serialized_end=767,
+  serialized_start=672,
+  serialized_end=769,
 )
 _sym_db.RegisterEnumDescriptor(_STATUS)
 
@@ -66,9 +66,9 @@ NOT_FOUND = 404
 SERVICE_UNAVAILABLE = 503
 
 
-_SEEK_INFO_START = _descriptor.EnumDescriptor(
-  name='Start',
-  full_name='atomicbroadcast.seek_info.Start',
+_SEEKINFO_STARTTYPE = _descriptor.EnumDescriptor(
+  name='StartType',
+  full_name='atomicbroadcast.SeekInfo.StartType',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -87,21 +87,21 @@ _SEEK_INFO_START = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=234,
-  serialized_end=280,
+  serialized_start=235,
+  serialized_end=285,
 )
-_sym_db.RegisterEnumDescriptor(_SEEK_INFO_START)
+_sym_db.RegisterEnumDescriptor(_SEEKINFO_STARTTYPE)
 
 
-_BROADCAST_REPLY = _descriptor.Descriptor(
-  name='broadcast_reply',
-  full_name='atomicbroadcast.broadcast_reply',
+_BROADCASTRESPONSE = _descriptor.Descriptor(
+  name='BroadcastResponse',
+  full_name='atomicbroadcast.BroadcastResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='status', full_name='atomicbroadcast.broadcast_reply.status', index=0,
+      name='Status', full_name='atomicbroadcast.BroadcastResponse.Status', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -120,19 +120,19 @@ _BROADCAST_REPLY = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=29,
-  serialized_end=87,
+  serialized_end=89,
 )
 
 
-_BROADCAST_MESSAGE = _descriptor.Descriptor(
-  name='broadcast_message',
-  full_name='atomicbroadcast.broadcast_message',
+_BROADCASTMESSAGE = _descriptor.Descriptor(
+  name='BroadcastMessage',
+  full_name='atomicbroadcast.BroadcastMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='data', full_name='atomicbroadcast.broadcast_message.data', index=0,
+      name='Data', full_name='atomicbroadcast.BroadcastMessage.Data', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -150,34 +150,34 @@ _BROADCAST_MESSAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=89,
-  serialized_end=122,
+  serialized_start=91,
+  serialized_end=123,
 )
 
 
-_SEEK_INFO = _descriptor.Descriptor(
-  name='seek_info',
-  full_name='atomicbroadcast.seek_info',
+_SEEKINFO = _descriptor.Descriptor(
+  name='SeekInfo',
+  full_name='atomicbroadcast.SeekInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='start', full_name='atomicbroadcast.seek_info.start', index=0,
+      name='Start', full_name='atomicbroadcast.SeekInfo.Start', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='specified_number', full_name='atomicbroadcast.seek_info.specified_number', index=1,
+      name='SpecifiedNumber', full_name='atomicbroadcast.SeekInfo.SpecifiedNumber', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='window_size', full_name='atomicbroadcast.seek_info.window_size', index=2,
+      name='WindowSize', full_name='atomicbroadcast.SeekInfo.WindowSize', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -188,7 +188,7 @@ _SEEK_INFO = _descriptor.Descriptor(
   ],
   nested_types=[],
   enum_types=[
-    _SEEK_INFO_START,
+    _SEEKINFO_STARTTYPE,
   ],
   options=None,
   is_extendable=False,
@@ -196,20 +196,20 @@ _SEEK_INFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=125,
-  serialized_end=280,
+  serialized_start=126,
+  serialized_end=285,
 )
 
 
 _ACKNOWLEDGEMENT = _descriptor.Descriptor(
-  name='acknowledgement',
-  full_name='atomicbroadcast.acknowledgement',
+  name='Acknowledgement',
+  full_name='atomicbroadcast.Acknowledgement',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='number', full_name='atomicbroadcast.acknowledgement.number', index=0,
+      name='Number', full_name='atomicbroadcast.Acknowledgement.Number', index=0,
       number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -227,27 +227,27 @@ _ACKNOWLEDGEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=282,
-  serialized_end=315,
+  serialized_start=287,
+  serialized_end=320,
 )
 
 
-_DELIVER_UPDATE = _descriptor.Descriptor(
-  name='deliver_update',
-  full_name='atomicbroadcast.deliver_update',
+_DELIVERUPDATE = _descriptor.Descriptor(
+  name='DeliverUpdate',
+  full_name='atomicbroadcast.DeliverUpdate',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='acknowledgement', full_name='atomicbroadcast.deliver_update.acknowledgement', index=0,
+      name='Acknowledgement', full_name='atomicbroadcast.DeliverUpdate.Acknowledgement', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='seek', full_name='atomicbroadcast.deliver_update.seek', index=1,
+      name='Seek', full_name='atomicbroadcast.DeliverUpdate.Seek', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -265,44 +265,44 @@ _DELIVER_UPDATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='type', full_name='atomicbroadcast.deliver_update.type',
+      name='Type', full_name='atomicbroadcast.DeliverUpdate.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=318,
-  serialized_end=447,
+  serialized_start=322,
+  serialized_end=449,
 )
 
 
 _BLOCK = _descriptor.Descriptor(
-  name='block',
-  full_name='atomicbroadcast.block',
+  name='Block',
+  full_name='atomicbroadcast.Block',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='number', full_name='atomicbroadcast.block.number', index=0,
+      name='Number', full_name='atomicbroadcast.Block.Number', index=0,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='prev_hash', full_name='atomicbroadcast.block.prev_hash', index=1,
+      name='PrevHash', full_name='atomicbroadcast.Block.PrevHash', index=1,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='proof', full_name='atomicbroadcast.block.proof', index=2,
+      name='Proof', full_name='atomicbroadcast.Block.Proof', index=2,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='messages', full_name='atomicbroadcast.block.messages', index=3,
+      name='Messages', full_name='atomicbroadcast.Block.Messages', index=3,
       number=5, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -320,27 +320,27 @@ _BLOCK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=449,
+  serialized_start=451,
   serialized_end=560,
 )
 
 
-_DELIVER_REPLY = _descriptor.Descriptor(
-  name='deliver_reply',
-  full_name='atomicbroadcast.deliver_reply',
+_DELIVERRESPONSE = _descriptor.Descriptor(
+  name='DeliverResponse',
+  full_name='atomicbroadcast.DeliverResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='error', full_name='atomicbroadcast.deliver_reply.error', index=0,
+      name='Error', full_name='atomicbroadcast.DeliverResponse.Error', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='block', full_name='atomicbroadcast.deliver_reply.block', index=1,
+      name='Block', full_name='atomicbroadcast.DeliverResponse.Block', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -358,90 +358,90 @@ _DELIVER_REPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='type', full_name='atomicbroadcast.deliver_reply.type',
+      name='Type', full_name='atomicbroadcast.DeliverResponse.Type',
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=562,
-  serialized_end=668,
+  serialized_end=670,
 )
 
-_BROADCAST_REPLY.fields_by_name['status'].enum_type = _STATUS
-_SEEK_INFO.fields_by_name['start'].enum_type = _SEEK_INFO_START
-_SEEK_INFO_START.containing_type = _SEEK_INFO
-_DELIVER_UPDATE.fields_by_name['acknowledgement'].message_type = _ACKNOWLEDGEMENT
-_DELIVER_UPDATE.fields_by_name['seek'].message_type = _SEEK_INFO
-_DELIVER_UPDATE.oneofs_by_name['type'].fields.append(
-  _DELIVER_UPDATE.fields_by_name['acknowledgement'])
-_DELIVER_UPDATE.fields_by_name['acknowledgement'].containing_oneof = _DELIVER_UPDATE.oneofs_by_name['type']
-_DELIVER_UPDATE.oneofs_by_name['type'].fields.append(
-  _DELIVER_UPDATE.fields_by_name['seek'])
-_DELIVER_UPDATE.fields_by_name['seek'].containing_oneof = _DELIVER_UPDATE.oneofs_by_name['type']
-_BLOCK.fields_by_name['messages'].message_type = _BROADCAST_MESSAGE
-_DELIVER_REPLY.fields_by_name['error'].enum_type = _STATUS
-_DELIVER_REPLY.fields_by_name['block'].message_type = _BLOCK
-_DELIVER_REPLY.oneofs_by_name['type'].fields.append(
-  _DELIVER_REPLY.fields_by_name['error'])
-_DELIVER_REPLY.fields_by_name['error'].containing_oneof = _DELIVER_REPLY.oneofs_by_name['type']
-_DELIVER_REPLY.oneofs_by_name['type'].fields.append(
-  _DELIVER_REPLY.fields_by_name['block'])
-_DELIVER_REPLY.fields_by_name['block'].containing_oneof = _DELIVER_REPLY.oneofs_by_name['type']
-DESCRIPTOR.message_types_by_name['broadcast_reply'] = _BROADCAST_REPLY
-DESCRIPTOR.message_types_by_name['broadcast_message'] = _BROADCAST_MESSAGE
-DESCRIPTOR.message_types_by_name['seek_info'] = _SEEK_INFO
-DESCRIPTOR.message_types_by_name['acknowledgement'] = _ACKNOWLEDGEMENT
-DESCRIPTOR.message_types_by_name['deliver_update'] = _DELIVER_UPDATE
-DESCRIPTOR.message_types_by_name['block'] = _BLOCK
-DESCRIPTOR.message_types_by_name['deliver_reply'] = _DELIVER_REPLY
+_BROADCASTRESPONSE.fields_by_name['Status'].enum_type = _STATUS
+_SEEKINFO.fields_by_name['Start'].enum_type = _SEEKINFO_STARTTYPE
+_SEEKINFO_STARTTYPE.containing_type = _SEEKINFO
+_DELIVERUPDATE.fields_by_name['Acknowledgement'].message_type = _ACKNOWLEDGEMENT
+_DELIVERUPDATE.fields_by_name['Seek'].message_type = _SEEKINFO
+_DELIVERUPDATE.oneofs_by_name['Type'].fields.append(
+  _DELIVERUPDATE.fields_by_name['Acknowledgement'])
+_DELIVERUPDATE.fields_by_name['Acknowledgement'].containing_oneof = _DELIVERUPDATE.oneofs_by_name['Type']
+_DELIVERUPDATE.oneofs_by_name['Type'].fields.append(
+  _DELIVERUPDATE.fields_by_name['Seek'])
+_DELIVERUPDATE.fields_by_name['Seek'].containing_oneof = _DELIVERUPDATE.oneofs_by_name['Type']
+_BLOCK.fields_by_name['Messages'].message_type = _BROADCASTMESSAGE
+_DELIVERRESPONSE.fields_by_name['Error'].enum_type = _STATUS
+_DELIVERRESPONSE.fields_by_name['Block'].message_type = _BLOCK
+_DELIVERRESPONSE.oneofs_by_name['Type'].fields.append(
+  _DELIVERRESPONSE.fields_by_name['Error'])
+_DELIVERRESPONSE.fields_by_name['Error'].containing_oneof = _DELIVERRESPONSE.oneofs_by_name['Type']
+_DELIVERRESPONSE.oneofs_by_name['Type'].fields.append(
+  _DELIVERRESPONSE.fields_by_name['Block'])
+_DELIVERRESPONSE.fields_by_name['Block'].containing_oneof = _DELIVERRESPONSE.oneofs_by_name['Type']
+DESCRIPTOR.message_types_by_name['BroadcastResponse'] = _BROADCASTRESPONSE
+DESCRIPTOR.message_types_by_name['BroadcastMessage'] = _BROADCASTMESSAGE
+DESCRIPTOR.message_types_by_name['SeekInfo'] = _SEEKINFO
+DESCRIPTOR.message_types_by_name['Acknowledgement'] = _ACKNOWLEDGEMENT
+DESCRIPTOR.message_types_by_name['DeliverUpdate'] = _DELIVERUPDATE
+DESCRIPTOR.message_types_by_name['Block'] = _BLOCK
+DESCRIPTOR.message_types_by_name['DeliverResponse'] = _DELIVERRESPONSE
 DESCRIPTOR.enum_types_by_name['Status'] = _STATUS
 
-broadcast_reply = _reflection.GeneratedProtocolMessageType('broadcast_reply', (_message.Message,), dict(
-  DESCRIPTOR = _BROADCAST_REPLY,
+BroadcastResponse = _reflection.GeneratedProtocolMessageType('BroadcastResponse', (_message.Message,), dict(
+  DESCRIPTOR = _BROADCASTRESPONSE,
   __module__ = 'ab_pb2'
-  # @@protoc_insertion_point(class_scope:atomicbroadcast.broadcast_reply)
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.BroadcastResponse)
   ))
-_sym_db.RegisterMessage(broadcast_reply)
+_sym_db.RegisterMessage(BroadcastResponse)
 
-broadcast_message = _reflection.GeneratedProtocolMessageType('broadcast_message', (_message.Message,), dict(
-  DESCRIPTOR = _BROADCAST_MESSAGE,
+BroadcastMessage = _reflection.GeneratedProtocolMessageType('BroadcastMessage', (_message.Message,), dict(
+  DESCRIPTOR = _BROADCASTMESSAGE,
   __module__ = 'ab_pb2'
-  # @@protoc_insertion_point(class_scope:atomicbroadcast.broadcast_message)
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.BroadcastMessage)
   ))
-_sym_db.RegisterMessage(broadcast_message)
+_sym_db.RegisterMessage(BroadcastMessage)
 
-seek_info = _reflection.GeneratedProtocolMessageType('seek_info', (_message.Message,), dict(
-  DESCRIPTOR = _SEEK_INFO,
+SeekInfo = _reflection.GeneratedProtocolMessageType('SeekInfo', (_message.Message,), dict(
+  DESCRIPTOR = _SEEKINFO,
   __module__ = 'ab_pb2'
-  # @@protoc_insertion_point(class_scope:atomicbroadcast.seek_info)
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.SeekInfo)
   ))
-_sym_db.RegisterMessage(seek_info)
+_sym_db.RegisterMessage(SeekInfo)
 
-acknowledgement = _reflection.GeneratedProtocolMessageType('acknowledgement', (_message.Message,), dict(
+Acknowledgement = _reflection.GeneratedProtocolMessageType('Acknowledgement', (_message.Message,), dict(
   DESCRIPTOR = _ACKNOWLEDGEMENT,
   __module__ = 'ab_pb2'
-  # @@protoc_insertion_point(class_scope:atomicbroadcast.acknowledgement)
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.Acknowledgement)
   ))
-_sym_db.RegisterMessage(acknowledgement)
+_sym_db.RegisterMessage(Acknowledgement)
 
-deliver_update = _reflection.GeneratedProtocolMessageType('deliver_update', (_message.Message,), dict(
-  DESCRIPTOR = _DELIVER_UPDATE,
+DeliverUpdate = _reflection.GeneratedProtocolMessageType('DeliverUpdate', (_message.Message,), dict(
+  DESCRIPTOR = _DELIVERUPDATE,
   __module__ = 'ab_pb2'
-  # @@protoc_insertion_point(class_scope:atomicbroadcast.deliver_update)
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.DeliverUpdate)
   ))
-_sym_db.RegisterMessage(deliver_update)
+_sym_db.RegisterMessage(DeliverUpdate)
 
-block = _reflection.GeneratedProtocolMessageType('block', (_message.Message,), dict(
+Block = _reflection.GeneratedProtocolMessageType('Block', (_message.Message,), dict(
   DESCRIPTOR = _BLOCK,
   __module__ = 'ab_pb2'
-  # @@protoc_insertion_point(class_scope:atomicbroadcast.block)
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.Block)
   ))
-_sym_db.RegisterMessage(block)
+_sym_db.RegisterMessage(Block)
 
-deliver_reply = _reflection.GeneratedProtocolMessageType('deliver_reply', (_message.Message,), dict(
-  DESCRIPTOR = _DELIVER_REPLY,
+DeliverResponse = _reflection.GeneratedProtocolMessageType('DeliverResponse', (_message.Message,), dict(
+  DESCRIPTOR = _DELIVERRESPONSE,
   __module__ = 'ab_pb2'
-  # @@protoc_insertion_point(class_scope:atomicbroadcast.deliver_reply)
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.DeliverResponse)
   ))
-_sym_db.RegisterMessage(deliver_reply)
+_sym_db.RegisterMessage(DeliverResponse)
 
 
 import grpc
@@ -451,7 +451,7 @@ from grpc.framework.common import cardinality
 from grpc.framework.interfaces.face import utilities as face_utilities
 
 
-class atomic_broadcastStub(object):
+class AtomicBroadcastStub(object):
 
   def __init__(self, channel):
     """Constructor.
@@ -459,111 +459,111 @@ class atomic_broadcastStub(object):
     Args:
       channel: A grpc.Channel.
     """
-    self.broadcast = channel.stream_stream(
-        '/atomicbroadcast.atomic_broadcast/broadcast',
-        request_serializer=broadcast_message.SerializeToString,
-        response_deserializer=broadcast_reply.FromString,
+    self.Broadcast = channel.stream_stream(
+        '/atomicbroadcast.AtomicBroadcast/Broadcast',
+        request_serializer=BroadcastMessage.SerializeToString,
+        response_deserializer=BroadcastResponse.FromString,
         )
-    self.deliver = channel.stream_stream(
-        '/atomicbroadcast.atomic_broadcast/deliver',
-        request_serializer=deliver_update.SerializeToString,
-        response_deserializer=deliver_reply.FromString,
+    self.Deliver = channel.stream_stream(
+        '/atomicbroadcast.AtomicBroadcast/Deliver',
+        request_serializer=DeliverUpdate.SerializeToString,
+        response_deserializer=DeliverResponse.FromString,
         )
 
 
-class atomic_broadcastServicer(object):
+class AtomicBroadcastServicer(object):
 
-  def broadcast(self, request_iterator, context):
-    """broadcast receives a reply of acknowledgement for each broadcast_message in order, indicating success or type of failure
+  def Broadcast(self, request_iterator, context):
+    """broadcast receives a reply of Acknowledgement for each BroadcastMessage in order, indicating success or type of failure
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
-  def deliver(self, request_iterator, context):
+  def Deliver(self, request_iterator, context):
     """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    The receiver may choose to send an acknowledgement for any block number it receives, however acknowledgements must never be more than window_size apart
-    To avoid latency, clients will likely acknowledge before the window_size has been exhausted, preventing the server from stopping and waiting for an acknowledgement
+    The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
+    To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
 
-def add_atomic_broadcastServicer_to_server(servicer, server):
+def add_AtomicBroadcastServicer_to_server(servicer, server):
   rpc_method_handlers = {
-      'broadcast': grpc.stream_stream_rpc_method_handler(
-          servicer.broadcast,
-          request_deserializer=broadcast_message.FromString,
-          response_serializer=broadcast_reply.SerializeToString,
+      'Broadcast': grpc.stream_stream_rpc_method_handler(
+          servicer.Broadcast,
+          request_deserializer=BroadcastMessage.FromString,
+          response_serializer=BroadcastResponse.SerializeToString,
       ),
-      'deliver': grpc.stream_stream_rpc_method_handler(
-          servicer.deliver,
-          request_deserializer=deliver_update.FromString,
-          response_serializer=deliver_reply.SerializeToString,
+      'Deliver': grpc.stream_stream_rpc_method_handler(
+          servicer.Deliver,
+          request_deserializer=DeliverUpdate.FromString,
+          response_serializer=DeliverResponse.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
-      'atomicbroadcast.atomic_broadcast', rpc_method_handlers)
+      'atomicbroadcast.AtomicBroadcast', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
 
 
-class Betaatomic_broadcastServicer(object):
-  def broadcast(self, request_iterator, context):
-    """broadcast receives a reply of acknowledgement for each broadcast_message in order, indicating success or type of failure
+class BetaAtomicBroadcastServicer(object):
+  def Broadcast(self, request_iterator, context):
+    """broadcast receives a reply of Acknowledgement for each BroadcastMessage in order, indicating success or type of failure
     """
     context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-  def deliver(self, request_iterator, context):
+  def Deliver(self, request_iterator, context):
     """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    The receiver may choose to send an acknowledgement for any block number it receives, however acknowledgements must never be more than window_size apart
-    To avoid latency, clients will likely acknowledge before the window_size has been exhausted, preventing the server from stopping and waiting for an acknowledgement
+    The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
+    To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
     """
     context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
 
 
-class Betaatomic_broadcastStub(object):
-  def broadcast(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
-    """broadcast receives a reply of acknowledgement for each broadcast_message in order, indicating success or type of failure
+class BetaAtomicBroadcastStub(object):
+  def Broadcast(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
+    """broadcast receives a reply of Acknowledgement for each BroadcastMessage in order, indicating success or type of failure
     """
     raise NotImplementedError()
-  def deliver(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
+  def Deliver(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
     """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    The receiver may choose to send an acknowledgement for any block number it receives, however acknowledgements must never be more than window_size apart
-    To avoid latency, clients will likely acknowledge before the window_size has been exhausted, preventing the server from stopping and waiting for an acknowledgement
+    The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
+    To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
     """
     raise NotImplementedError()
 
 
-def beta_create_atomic_broadcast_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
+def beta_create_AtomicBroadcast_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
   request_deserializers = {
-    ('atomicbroadcast.atomic_broadcast', 'broadcast'): broadcast_message.FromString,
-    ('atomicbroadcast.atomic_broadcast', 'deliver'): deliver_update.FromString,
+    ('atomicbroadcast.AtomicBroadcast', 'Broadcast'): BroadcastMessage.FromString,
+    ('atomicbroadcast.AtomicBroadcast', 'Deliver'): DeliverUpdate.FromString,
   }
   response_serializers = {
-    ('atomicbroadcast.atomic_broadcast', 'broadcast'): broadcast_reply.SerializeToString,
-    ('atomicbroadcast.atomic_broadcast', 'deliver'): deliver_reply.SerializeToString,
+    ('atomicbroadcast.AtomicBroadcast', 'Broadcast'): BroadcastResponse.SerializeToString,
+    ('atomicbroadcast.AtomicBroadcast', 'Deliver'): DeliverResponse.SerializeToString,
   }
   method_implementations = {
-    ('atomicbroadcast.atomic_broadcast', 'broadcast'): face_utilities.stream_stream_inline(servicer.broadcast),
-    ('atomicbroadcast.atomic_broadcast', 'deliver'): face_utilities.stream_stream_inline(servicer.deliver),
+    ('atomicbroadcast.AtomicBroadcast', 'Broadcast'): face_utilities.stream_stream_inline(servicer.Broadcast),
+    ('atomicbroadcast.AtomicBroadcast', 'Deliver'): face_utilities.stream_stream_inline(servicer.Deliver),
   }
   server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
   return beta_implementations.server(method_implementations, options=server_options)
 
 
-def beta_create_atomic_broadcast_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
+def beta_create_AtomicBroadcast_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
   request_serializers = {
-    ('atomicbroadcast.atomic_broadcast', 'broadcast'): broadcast_message.SerializeToString,
-    ('atomicbroadcast.atomic_broadcast', 'deliver'): deliver_update.SerializeToString,
+    ('atomicbroadcast.AtomicBroadcast', 'Broadcast'): BroadcastMessage.SerializeToString,
+    ('atomicbroadcast.AtomicBroadcast', 'Deliver'): DeliverUpdate.SerializeToString,
   }
   response_deserializers = {
-    ('atomicbroadcast.atomic_broadcast', 'broadcast'): broadcast_reply.FromString,
-    ('atomicbroadcast.atomic_broadcast', 'deliver'): deliver_reply.FromString,
+    ('atomicbroadcast.AtomicBroadcast', 'Broadcast'): BroadcastResponse.FromString,
+    ('atomicbroadcast.AtomicBroadcast', 'Deliver'): DeliverResponse.FromString,
   }
   cardinalities = {
-    'broadcast': cardinality.Cardinality.STREAM_STREAM,
-    'deliver': cardinality.Cardinality.STREAM_STREAM,
+    'Broadcast': cardinality.Cardinality.STREAM_STREAM,
+    'Deliver': cardinality.Cardinality.STREAM_STREAM,
   }
   stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
-  return beta_implementations.dynamic_stub(channel, 'atomicbroadcast.atomic_broadcast', cardinalities, options=stub_options)
+  return beta_implementations.dynamic_stub(channel, 'atomicbroadcast.AtomicBroadcast', cardinalities, options=stub_options)
 # @@protoc_insertion_point(module_scope)
