@@ -113,7 +113,6 @@ func (*Devops) Build(context context.Context, spec *pb.ChaincodeSpec) (*pb.Chain
 
 		codePackageBytes, err = vm.BuildChaincodeContainer(spec)
 		if err != nil {
-			err = fmt.Errorf("Error getting chaincode package bytes: %s", err)
 			devopsLogger.Error(fmt.Sprintf("%s", err))
 			return nil, err
 		}
