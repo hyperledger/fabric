@@ -24,7 +24,8 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 
-	"github.com/golang/protobuf/ptypes/empty"
+	"google/protobuf"
+
 	pb "github.com/hyperledger/fabric/protos"
 )
 
@@ -54,21 +55,21 @@ func worker(id int, die chan struct{}) {
 }
 
 // GetStatus reports the status of the server
-func (*ServerAdmin) GetStatus(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
+func (*ServerAdmin) GetStatus(context.Context, *google_protobuf.Empty) (*pb.ServerStatus, error) {
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
 	log.Debugf("returning status: %s", status)
 	return status, nil
 }
 
 // StartServer starts the server
-func (*ServerAdmin) StartServer(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
+func (*ServerAdmin) StartServer(context.Context, *google_protobuf.Empty) (*pb.ServerStatus, error) {
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STARTED}
 	log.Debugf("returning status: %s", status)
 	return status, nil
 }
 
 // StopServer stops the server
-func (*ServerAdmin) StopServer(context.Context, *empty.Empty) (*pb.ServerStatus, error) {
+func (*ServerAdmin) StopServer(context.Context, *google_protobuf.Empty) (*pb.ServerStatus, error) {
 	status := &pb.ServerStatus{Status: pb.ServerStatus_STOPPED}
 	log.Debugf("returning status: %s", status)
 

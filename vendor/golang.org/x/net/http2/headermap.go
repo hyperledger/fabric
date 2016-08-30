@@ -57,7 +57,6 @@ func init() {
 		"server",
 		"set-cookie",
 		"strict-transport-security",
-		"trailer",
 		"transfer-encoding",
 		"user-agent",
 		"vary",

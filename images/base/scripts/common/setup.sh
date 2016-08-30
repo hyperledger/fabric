@@ -83,11 +83,13 @@ fi
 
 # First install protoc
 cd /tmp
-wget --quiet https://github.com/google/protobuf/archive/v3.0.0.tar.gz
-tar xpzf v3.0.0.tar.gz
-cd protobuf-3.0.0
-apt-get install -y autoconf automake libtool curl make g++ unzip
-apt-get install -y build-essential
+git clone https://github.com/google/protobuf.git
+cd protobuf
+git checkout v3.0.0-beta-3
+#unzip needed for ./autogen.sh
+apt-get install -y unzip
+apt-get install -y autoconf
+apt-get install -y build-essential libtool
 ./autogen.sh
 # NOTE: By default, the package will be installed to /usr/local. However, on many platforms, /usr/local/lib is not part of LD_LIBRARY_PATH.
 # You can add it, but it may be easier to just install to /usr instead.

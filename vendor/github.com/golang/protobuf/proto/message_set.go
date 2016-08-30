@@ -44,11 +44,11 @@ import (
 	"sort"
 )
 
-// errNoMessageTypeID occurs when a protocol buffer does not have a message type ID.
+// ErrNoMessageTypeId occurs when a protocol buffer does not have a message type ID.
 // A message type ID is required for storing a protocol buffer in a message set.
-var errNoMessageTypeID = errors.New("proto does not have a message type ID")
+var ErrNoMessageTypeId = errors.New("proto does not have a message type ID")
 
-// The first two types (_MessageSet_Item and messageSet)
+// The first two types (_MessageSet_Item and MessageSet)
 // model what the protocol compiler produces for the following protocol message:
 //   message MessageSet {
 //     repeated group Item = 1 {
@@ -58,20 +58,27 @@ var errNoMessageTypeID = errors.New("proto does not have a message type ID")
 //   }
 // That is the MessageSet wire format. We can't use a proto to generate these
 // because that would introduce a circular dependency between it and this package.
+//
+// When a proto1 proto has a field that looks like:
+//   optional message<MessageSet> info = 3;
+// the protocol compiler produces a field in the generated struct that looks like:
+//   Info *_proto_.MessageSet  `protobuf:"bytes,3,opt,name=info"`
+// The package is automatically inserted so there is no need for that proto file to
+// import this package.
 
 type _MessageSet_Item struct {
 	TypeId  *int32 `protobuf:"varint,2,req,name=type_id"`
 	Message []byte `protobuf:"bytes,3,req,name=message"`
 }
 
-type messageSet struct {
+type MessageSet struct {
 	Item             []*_MessageSet_Item `protobuf:"group,1,rep"`
 	XXX_unrecognized []byte
 	// TODO: caching?
 }
 
-// Make sure messageSet is a Message.
-var _ Message = (*messageSet)(nil)
+// Make sure MessageSet is a Message.
+var _ Message = (*MessageSet)(nil)
 
 // messageTypeIder is an interface satisfied by a protocol buffer type
 // that may be stored in a MessageSet.
@@ -79,7 +86,7 @@ type messageTypeIder interface {
 	MessageTypeId() int32
 }
 
-func (ms *messageSet) find(pb Message) *_MessageSet_Item {
+func (ms *MessageSet) find(pb Message) *_MessageSet_Item {
 	mti, ok := pb.(messageTypeIder)
 	if !ok {
 		return nil
@@ -93,24 +100,24 @@ func (ms *messageSet) find(pb Message) *_MessageSet_Item {
 	return nil
 }
 
-func (ms *messageSet) Has(pb Message) bool {
+func (ms *MessageSet) Has(pb Message) bool {
 	if ms.find(pb) != nil {
 		return true
 	}
 	return false
 }
 
-func (ms *messageSet) Unmarshal(pb Message) error {
+func (ms *MessageSet) Unmarshal(pb Message) error {
 	if item := ms.find(pb); item != nil {
 		return Unmarshal(item.Message, pb)
 	}
 	if _, ok := pb.(messageTypeIder); !ok {
-		return errNoMessageTypeID
+		return ErrNoMessageTypeId
 	}
 	return nil // TODO: return error instead?
 }
 
-func (ms *messageSet) Marshal(pb Message) error {
+func (ms *MessageSet) Marshal(pb Message) error {
 	msg, err := Marshal(pb)
 	if err != nil {
 		return err
@@ -123,7 +130,7 @@ func (ms *messageSet) Marshal(pb Message) error {
 
 	mti, ok := pb.(messageTypeIder)
 	if !ok {
-		return errNoMessageTypeID
+		return ErrNoMessageTypeId
 	}
 
 	mtid := mti.MessageTypeId()
@@ -134,9 +141,9 @@ func (ms *messageSet) Marshal(pb Message) error {
 	return nil
 }
 
-func (ms *messageSet) Reset()         { *ms = messageSet{} }
-func (ms *messageSet) String() string { return CompactTextString(ms) }
-func (*messageSet) ProtoMessage()     {}
+func (ms *MessageSet) Reset()         { *ms = MessageSet{} }
+func (ms *MessageSet) String() string { return CompactTextString(ms) }
+func (*MessageSet) ProtoMessage()     {}
 
 // Support for the message_set_wire_format message option.
 
@@ -149,21 +156,9 @@ func skipVarint(buf []byte) []byte {
 
 // MarshalMessageSet encodes the extension map represented by m in the message set wire format.
 // It is called by generated Marshal methods on protocol buffer messages with the message_set_wire_format option.
-func MarshalMessageSet(exts interface{}) ([]byte, error) {
-	var m map[int32]Extension
-	switch exts := exts.(type) {
-	case *XXX_InternalExtensions:
-		if err := encodeExtensions(exts); err != nil {
-			return nil, err
-		}
-		m, _ = exts.extensionsRead()
-	case map[int32]Extension:
-		if err := encodeExtensionsMap(exts); err != nil {
-			return nil, err
-		}
-		m = exts
-	default:
-		return nil, errors.New("proto: not an extension map")
+func MarshalMessageSet(m map[int32]Extension) ([]byte, error) {
+	if err := encodeExtensionMap(m); err != nil {
+		return nil, err
 	}
 
 	// Sort extension IDs to provide a deterministic encoding.
@@ -174,7 +169,7 @@ func MarshalMessageSet(exts interface{}) ([]byte, error) {
 	}
 	sort.Ints(ids)
 
-	ms := &messageSet{Item: make([]*_MessageSet_Item, 0, len(m))}
+	ms := &MessageSet{Item: make([]*_MessageSet_Item, 0, len(m))}
 	for _, id := range ids {
 		e := m[int32(id)]
 		// Remove the wire type and field number varint, as well as the length varint.
@@ -190,18 +185,8 @@ func MarshalMessageSet(exts interface{}) ([]byte, error) {
 
 // UnmarshalMessageSet decodes the extension map encoded in buf in the message set wire format.
 // It is called by generated Unmarshal methods on protocol buffer messages with the message_set_wire_format option.
-func UnmarshalMessageSet(buf []byte, exts interface{}) error {
-	var m map[int32]Extension
-	switch exts := exts.(type) {
-	case *XXX_InternalExtensions:
-		m = exts.extensionsWrite()
-	case map[int32]Extension:
-		m = exts
-	default:
-		return errors.New("proto: not an extension map")
-	}
-
-	ms := new(messageSet)
+func UnmarshalMessageSet(buf []byte, m map[int32]Extension) error {
+	ms := new(MessageSet)
 	if err := Unmarshal(buf, ms); err != nil {
 		return err
 	}
@@ -231,16 +216,7 @@ func UnmarshalMessageSet(buf []byte, exts interface{}) error {
 
 // MarshalMessageSetJSON encodes the extension map represented by m in JSON format.
 // It is called by generated MarshalJSON methods on protocol buffer messages with the message_set_wire_format option.
-func MarshalMessageSetJSON(exts interface{}) ([]byte, error) {
-	var m map[int32]Extension
-	switch exts := exts.(type) {
-	case *XXX_InternalExtensions:
-		m, _ = exts.extensionsRead()
-	case map[int32]Extension:
-		m = exts
-	default:
-		return nil, errors.New("proto: not an extension map")
-	}
+func MarshalMessageSetJSON(m map[int32]Extension) ([]byte, error) {
 	var b bytes.Buffer
 	b.WriteByte('{')
 
@@ -283,7 +259,7 @@ func MarshalMessageSetJSON(exts interface{}) ([]byte, error) {
 
 // UnmarshalMessageSetJSON decodes the extension map encoded in buf in JSON format.
 // It is called by generated UnmarshalJSON methods on protocol buffer messages with the message_set_wire_format option.
-func UnmarshalMessageSetJSON(buf []byte, exts interface{}) error {
+func UnmarshalMessageSetJSON(buf []byte, m map[int32]Extension) error {
 	// Common-case fast path.
 	if len(buf) == 0 || bytes.Equal(buf, []byte("{}")) {
 		return nil

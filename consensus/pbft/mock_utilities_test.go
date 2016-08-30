@@ -25,7 +25,8 @@ import (
 	"github.com/hyperledger/fabric/consensus/util/events"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
+	gp "google/protobuf"
+
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/viper"
 )
@@ -104,7 +105,7 @@ func createRunningPbftWithManager(id uint64, config *viper.Viper, stack innerSta
 }
 
 func createTx(tag int64) (tx *pb.Transaction) {
-	txTime := &timestamp.Timestamp{Seconds: tag, Nanos: 0}
+	txTime := &gp.Timestamp{Seconds: tag, Nanos: 0}
 	tx = &pb.Transaction{Type: pb.Transaction_CHAINCODE_DEPLOY,
 		Timestamp: txTime,
 		Payload:   []byte(fmt.Sprint(tag)),

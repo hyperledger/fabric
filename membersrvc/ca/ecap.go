@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
+	"google/protobuf"
 	"io/ioutil"
 	"math/big"
 	"strconv"
@@ -31,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives/ecies"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
 	"github.com/op/go-logging"
@@ -64,7 +64,7 @@ func (ecap *ECAP) fetchAttributes(cert *pb.Cert) error {
 	defer sock.Close()
 
 	req := &pb.ACAFetchAttrReq{
-		Ts:        &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:        &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		ECert:     cert,
 		Signature: nil}
 

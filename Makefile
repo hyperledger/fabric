@@ -71,9 +71,6 @@ JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = base src ccenv peer membersrvc javaenv
 
-PROTOS=$(shell find . -name "*.proto" | grep -v "vendor" | grep -v "shim/java" | grep -v "/sdk")
-
-PB_GOS=$(patsubst %.proto,%.pb.go,${PROTOS})
 
 all: peer membersrvc checks
 
@@ -184,15 +181,13 @@ build/image/base/.dummy: $(BASEIMAGE_DEPS)
 	@touch $@
 
 # Special override for src-image
-build/image/src/.dummy: $(PB_GOS) build/image/base/.dummy $(PROJECT_FILES)
+build/image/src/.dummy: build/image/base/.dummy $(PROJECT_FILES)
 	@echo "Building docker src-image"
 	@mkdir -p $(@D)
 	@cat images/src/Dockerfile.in \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
-	@git ls-files > $(@D)/file_list.txt
-	@find . -name "*.pb.go" | grep -v vendor >> $(@D)/file_list.txt 
-	@cat $(@D)/file_list.txt | tar -jcT - > $(@D)/gopath.tar.bz2
+	@git ls-files | tar -jcT - > $(@D)/gopath.tar.bz2
 	docker build -t $(PROJECT_NAME)-src $(@D)
 	docker tag $(PROJECT_NAME)-src $(PROJECT_NAME)-src:$(DOCKER_TAG)
 	@touch $@
@@ -236,13 +231,8 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 	@touch $@
 
 .PHONY: protos
-protos: gotools ${PB_GOS}
-
-
-%.pb.go: %.proto
-	protoc --proto_path=$(abspath $(@D)) --go_out=plugins=grpc:$(abspath $(@D)) $(abspath $(@D)/*.proto)
-
-
+protos: gotools
+	./devenv/compile_protos.sh
 
 base-image-clean:
 	-docker rmi -f $(PROJECT_NAME)-baseimage

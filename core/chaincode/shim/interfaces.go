@@ -18,7 +18,8 @@ limitations under the License.
 package shim
 
 import (
-	"github.com/golang/protobuf/ptypes/timestamp"
+	gp "google/protobuf"
+
 	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 )
 
@@ -151,7 +152,7 @@ type ChaincodeStubInterface interface {
 	// GetTxTimestamp returns transaction created timestamp, which is currently
 	// taken from the peer receiving the transaction. Note that this timestamp
 	// may not be the same with the other peers' time.
-	GetTxTimestamp() (*timestamp.Timestamp, error)
+	GetTxTimestamp() (*gp.Timestamp, error)
 
 	// SetEvent saves the event to be sent when a transaction is made part of a block
 	SetEvent(name string, payload []byte) error

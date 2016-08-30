@@ -18,6 +18,7 @@ package pbft
 
 import (
 	"fmt"
+	"google/protobuf"
 	"time"
 
 	"github.com/hyperledger/fabric/consensus"
@@ -25,7 +26,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -242,7 +242,7 @@ func (op *obcBatch) sendBatch() events.Event {
 func (op *obcBatch) txToReq(tx []byte) *Request {
 	now := time.Now()
 	req := &Request{
-		Timestamp: &timestamp.Timestamp{
+		Timestamp: &google_protobuf.Timestamp{
 			Seconds: now.Unix(),
 			Nanos:   int32(now.UnixNano() % 1000000000),
 		},
