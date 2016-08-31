@@ -183,6 +183,12 @@ peer:
             file: testdata/server1.pem
         key:
             file: testdata/server1.key
+    # Root cert file for selfsigned certificates
+    # This represents a self-signed x509 cert that was used to sign the cert.file,
+    # this is sent to client to validate the recived certificate from server when
+    # establishing TLS connection
+        rootcert:
+            file:
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:
 

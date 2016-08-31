@@ -149,6 +149,13 @@ func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 		vmLogger.Errorf("Error writing folder to tar package %s", err)
 		return err
 	}
+	// Add the ca for self signed cert to tar
+	if viper.GetBool("peer.tls.enabled") && viper.GetString("peer.tls.rootcert.file") != "" {
+		err := WriteFileToPackage(viper.GetString("peer.tls.rootcert.file"), "src/certs/rootcert.pem", tw)
+		if err != nil {
+			return fmt.Errorf("Error writing cert file to package: %s", err)
+		}
+	}
 	// Write the tar file out
 	if err := tw.Close(); err != nil {
 		return err
