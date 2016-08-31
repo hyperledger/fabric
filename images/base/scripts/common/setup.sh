@@ -16,21 +16,33 @@ apt-get dist-upgrade -qqy
 # install git
 apt-get install --yes git
 
+MACHINE=`uname -m`
+if [ x$MACHINE = xppc64le ]
+then
+   # install sudo
+   apt-get install --yes sudo
+fi
+
 # Set Go environment variables needed by other scripts
 export GOPATH="/opt/gopath"
 
 #install golang
 #apt-get install --yes golang
 mkdir -p $GOPATH
-MACHINE=`uname -m`
 if [ x$MACHINE = xs390x ]
 then
    apt-get install --yes golang
    export GOROOT="/usr/lib/go-1.6"
-elif [ x$MACHINE = xppc64 ]
+elif [ x$MACHINE = xppc64le ]
 then
-   echo "TODO: Add PPC support"
-   exit
+   wget ftp://ftp.unicamp.br/pub/linuxpatch/toolchain/at/ubuntu/dists/trusty/at9.0/binary-ppc64el/advance-toolchain-at9.0-golang_9.0-3_ppc64el.deb
+   dpkg -i advance-toolchain-at9.0-golang_9.0-3_ppc64el.deb
+   rm advance-toolchain-at9.0-golang_9.0-3_ppc64el.deb
+
+   update-alternatives --install /usr/bin/go go /usr/local/go/bin/go 9
+   update-alternatives --install /usr/bin/gofmt gofmt /usr/local/go/bin/gofmt 9
+
+   export GOROOT="/usr/local/go"
 elif [ x$MACHINE = xx86_64 ]
 then
    export GOROOT="/opt/go"
@@ -45,6 +57,9 @@ then
    mv go $GOROOT
    chmod 775 $GOROOT
    rm go$GO_VER.linux-${ARCH}.tar.gz
+else
+  echo "TODO: Add $MACHINE support"
+  exit
 fi
 
 PATH=$GOROOT/bin:$GOPATH/bin:$PATH
@@ -59,6 +74,9 @@ EOF
 # Install NodeJS
 
 if [ x$MACHINE = xs390x ]
+then
+    apt-get install --yes nodejs
+elif [ x$MACHINE = xppc64le ]
 then
     apt-get install --yes nodejs
 else
@@ -120,9 +138,14 @@ cd rocksdb
 git checkout tags/v4.1
 if [ x$MACHINE = xs390x ]
 then
-    echo There were some bugs in 4.1 for x/p, dev stream has the fix, living dangereously, fixing in place
+    echo There were some bugs in 4.1 for z/p, dev stream has the fix, living dangereously, fixing in place
     sed -i -e "s/-march=native/-march=z196/" build_tools/build_detect_platform
     sed -i -e "s/-momit-leaf-frame-pointer/-DDUMBDUMMY/" Makefile
+elif [ x$MACHINE = xppc64le ]
+then
+    echo There were some bugs in 4.1 for z/p, dev stream has the fix, living dangereously, fixing in place.
+    echo Below changes are not required for newer releases of rocksdb.
+    sed -ibak 's/ifneq ($(MACHINE),ppc64)/ifeq (,$(findstring ppc64,$(MACHINE)))/g' Makefile
 fi
 
 PORTABLE=1 make shared_lib
