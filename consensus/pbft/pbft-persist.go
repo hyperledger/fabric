@@ -148,9 +148,11 @@ func (instance *pbftCore) restoreState() {
 		logger.Warningf("Replica %d could not restore reqBatchStore: %s", instance.id, err)
 	}
 
+	instance.restoreLastSeqNo()
+
 	chkpts, err := instance.consumer.ReadStateSet("chkpt.")
 	if err == nil {
-		highSeq := uint64(0)
+		lowWatermark := instance.lastExec // This is safe because we will round down in moveWatermarks
 		for key, id := range chkpts {
 			var seqNo uint64
 			if _, err = fmt.Sscanf(key, "chkpt.%d", &seqNo); err != nil {
@@ -159,20 +161,18 @@ func (instance *pbftCore) restoreState() {
 				idAsString := base64.StdEncoding.EncodeToString(id)
 				logger.Debugf("Replica %d found checkpoint %s for seqNo %d", instance.id, idAsString, seqNo)
 				instance.chkpts[seqNo] = idAsString
-				if seqNo > highSeq {
-					highSeq = seqNo
+				if seqNo < lowWatermark {
+					lowWatermark = seqNo
 				}
 			}
 		}
-		instance.moveWatermarks(highSeq)
+		instance.moveWatermarks(lowWatermark)
 	} else {
 		logger.Warningf("Replica %d could not restore checkpoints: %s", instance.id, err)
 	}
 
-	instance.restoreLastSeqNo()
-
-	logger.Infof("Replica %d restored state: view: %d, seqNo: %d, pset: %d, qset: %d, reqBatches: %d, chkpts: %d",
-		instance.id, instance.view, instance.seqNo, len(instance.pset), len(instance.qset), len(instance.reqBatchStore), len(instance.chkpts))
+	logger.Infof("Replica %d restored state: view: %d, seqNo: %d, pset: %d, qset: %d, reqBatches: %d, chkpts: %d h: %d",
+		instance.id, instance.view, instance.seqNo, len(instance.pset), len(instance.qset), len(instance.reqBatchStore), len(instance.chkpts), instance.h)
 }
 
 func (instance *pbftCore) restoreLastSeqNo() {
