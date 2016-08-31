@@ -56,7 +56,7 @@ BASEIMAGE_DEPS    = $(shell git ls-files images/base scripts/provision)
 
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = base src ccenv peer membersrvc javaenv
+IMAGES = base src ccenv peer membersrvc javaenv orderer
 
 
 all: peer membersrvc checks
@@ -70,6 +70,10 @@ $(SUBDIRS):
 .PHONY: peer
 peer: build/bin/peer
 peer-image: build/image/peer/.dummy
+
+.PHONY: orderer
+orderer: build/bin/orderer
+orderer-image: build/image/orderer/.dummy
 
 .PHONY: membersrvc
 membersrvc: build/bin/membersrvc
@@ -96,6 +100,7 @@ linter: gotools
 	go vet ./membersrvc/...
 	go vet ./peer/...
 	go vet ./protos/...
+	go vet ./orderer/...
 	@echo "Running goimports"
 	@./scripts/goimports.sh
 
