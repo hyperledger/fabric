@@ -32,8 +32,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestCar_BuildImage(t *testing.T) {
-	// skipped until chaintool accepts ChaincodeStubInterface updates
-	t.SkipNow()
 	vm, err := container.NewVM()
 	if err != nil {
 		t.Fail()

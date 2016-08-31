@@ -53,7 +53,7 @@ PKGNAME = github.com/$(PROJECT_NAME)
 GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
-CHAINTOOL_RELEASE=v0.8.1
+CHAINTOOL_RELEASE=v0.9.0
 
 EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
