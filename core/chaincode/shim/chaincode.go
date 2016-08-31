@@ -97,6 +97,9 @@ func Start(cc Chaincode) error {
 	}
 
 	chaincodename := viper.GetString("chaincode.id.name")
+	if chaincodename == "" {
+		return fmt.Errorf("Error chaincode id not provided")
+	}
 	err = chatWithPeer(chaincodename, stream, cc)
 
 	return err
