@@ -30,13 +30,14 @@ type AuthorizableCounterChaincode struct {
 }
 
 //Init the chaincode asigned the value "0" to the counter in the state.
-func (t *AuthorizableCounterChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *AuthorizableCounterChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	err := stub.PutState("counter", []byte("0"))
 	return nil, err
 }
 
 //Invoke Transaction makes increment counter
-func (t *AuthorizableCounterChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *AuthorizableCounterChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, _ := stub.GetFunctionAndParameters()
 	if function != "increment" {
 		return nil, errors.New("Invalid invoke function name. Expecting \"increment\"")
 	}
@@ -62,7 +63,8 @@ func (t *AuthorizableCounterChaincode) Invoke(stub shim.ChaincodeStubInterface, 
 }
 
 // Query callback representing the query of a chaincode
-func (t *AuthorizableCounterChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *AuthorizableCounterChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, _ := stub.GetFunctionAndParameters()
 	if function != "read" {
 		return nil, errors.New("Invalid query function name. Expecting \"read\"")
 	}

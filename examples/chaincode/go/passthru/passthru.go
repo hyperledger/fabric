@@ -33,8 +33,8 @@ type PassthruChaincode struct {
 }
 
 //Init func will return error if function has string "error" anywhere
-func (p *PassthruChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-
+func (p *PassthruChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, _ := stub.GetFunctionAndParameters()
 	if strings.Index(function, "error") >= 0 {
 		return nil, errors.New(function)
 	}
@@ -55,12 +55,14 @@ func (p *PassthruChaincode) iq(invoke bool, stub shim.ChaincodeStubInterface, fu
 }
 
 // Invoke passes through the invoke call
-func (p *PassthruChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (p *PassthruChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
 	return p.iq(true, stub, function, args)
 }
 
 // Query passes through the query call
-func (p *PassthruChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (p *PassthruChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
 	return p.iq(false, stub, function, args)
 }
 

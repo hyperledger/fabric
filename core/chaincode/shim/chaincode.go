@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/ecdsa"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -244,6 +245,15 @@ func (stub *ChaincodeStub) init(uuid string, secContext *pb.ChaincodeSecurityCon
 	}
 }
 
+func InitTestStub(funargs ...string) *ChaincodeStub {
+	stub := ChaincodeStub{}
+	allargs := util.ToChaincodeArgs(funargs...)
+	newCI := pb.ChaincodeInput{Args: allargs}
+	pl, _ := proto.Marshal(&newCI)
+	stub.init("TEST-uuid", &pb.ChaincodeSecurityContext{Payload: pl})
+	return &stub
+}
+
 // --------- Security functions ----------
 //CHAINCODE SEC INTERFACE FUNCS TOBE IMPLEMENTED BY ANGELO
 
@@ -386,6 +396,17 @@ func (stub *ChaincodeStub) GetStringArgs() []string {
 		strargs = append(strargs, string(barg))
 	}
 	return strargs
+}
+
+func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params []string) {
+	allargs := stub.GetStringArgs()
+	function = ""
+	params = []string{}
+	if len(allargs) >= 1 {
+		function = allargs[0]
+		params = allargs[1:]
+	}
+	return
 }
 
 // TABLE FUNCTIONALITY

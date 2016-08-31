@@ -43,7 +43,8 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 }
 
 func checkQuery(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args []string, value string) {
-	bytes, err := scc.Query(stub, "query", args)
+	_, err := stub.MockInit("1", "query", args)
+	bytes, err := scc.Query(stub)
 	if err != nil {
 		// expected failure
 		fmt.Println("Query below is expected to fail")
