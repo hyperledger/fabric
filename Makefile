@@ -28,6 +28,7 @@
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
 #   - images[-clean] - ensures all docker images are available[/cleaned]
+#   - images-scrub - ensures all docker images are cleaned including fabric-baseimage
 #   - peer-image[-clean] - ensures the peer-image is available[/cleaned] (for behave, etc)
 #   - membersrvc-image[-clean] - ensures the membersrvc-image is available[/cleaned] (for behave, etc)
 #   - protos - generate all protobuf artifacts based on .proto files
@@ -35,6 +36,7 @@
 #   - node-sdk-unit-tests - runs the node.js client sdk unit tests
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
+#   - dist-scrub - superset of 'clean' that also removes fabric-baseimage
 
 PROJECT_NAME   = hyperledger/fabric
 BASE_VERSION   = 0.6.0
@@ -69,8 +71,8 @@ BASEIMAGE_DEPS    = $(shell git ls-files images/base scripts/provision)
 
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = base src ccenv peer membersrvc javaenv
-
+SUBIMAGES = src ccenv peer membersrvc javaenv
+IMAGES = base $(SUBIMAGES)
 
 all: peer membersrvc checks
 
@@ -245,7 +247,9 @@ src-image-clean: ccenv-image-clean peer-image-clean membersrvc-image-clean
 	-docker images -q $(PROJECT_NAME)-$(TARGET) | xargs -r docker rmi -f
 	-@rm -rf build/image/$(TARGET) ||:
 
-images-clean: $(patsubst %,%-image-clean, $(IMAGES))
+images-clean: $(patsubst %,%-image-clean, $(SUBIMAGES))
+
+images-scrub: $(patsubst %,%-image-clean, $(IMAGES))
 
 node-sdk: sdk/node
 
@@ -258,6 +262,9 @@ $(SUBDIRS:=-clean):
 
 .PHONY: clean
 clean: images-clean $(filter-out gotools-clean, $(SUBDIRS:=-clean))
+
+.PHONY: scrub
+scrub: images-scrub $(filter-out gotools-clean, $(SUBDIRS:=-clean))
 	-@rm -rf build ||:
 
 .PHONY: dist-clean
