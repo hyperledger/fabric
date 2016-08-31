@@ -2692,7 +2692,7 @@ export function newChain(name) {
 export function getChain(chainName, create) {
     let chain = _chains[chainName];
     if (!chain && create) {
-        chain = newChain(name);
+        chain = newChain(chainName);
     }
     return chain;
 }
