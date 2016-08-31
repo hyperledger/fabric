@@ -25,7 +25,6 @@ import (
 
 type handler struct {
 	ChatStream       pb.Events_ChatServer
-	doneChan         chan bool
 	interestedEvents map[string]*pb.Interest
 }
 
@@ -34,7 +33,6 @@ func newEventHandler(stream pb.Events_ChatServer) (*handler, error) {
 		ChatStream: stream,
 	}
 	d.interestedEvents = make(map[string]*pb.Interest)
-	d.doneChan = make(chan bool)
 	return d, nil
 }
 
@@ -42,7 +40,6 @@ func newEventHandler(stream pb.Events_ChatServer) (*handler, error) {
 func (d *handler) Stop() error {
 	d.deregisterAll()
 	d.interestedEvents = nil
-	d.doneChan <- true
 	return nil
 }
 
