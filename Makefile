@@ -39,7 +39,7 @@
 #   - dist-scrub - superset of 'clean' that also removes fabric-baseimage
 
 PROJECT_NAME   = hyperledger/fabric
-BASE_VERSION   = 0.6.0
+BASE_VERSION   = 0.7.0
 IS_RELEASE     = false # commit as 'true' only once for a given $(BASE_VERSION)
 
 ifneq ($(IS_RELEASE),true)
