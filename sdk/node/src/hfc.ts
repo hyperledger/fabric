@@ -642,6 +642,7 @@ export class Chain {
         member = new Member(name, self);
         member.restoreState(function (err) {
             if (err) return cb(err);
+            self.members[name]=member;
             cb(null, member);
         });
     }
