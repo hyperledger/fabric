@@ -58,7 +58,7 @@ type AssetManagementChaincode struct {
 
 // Init initialization
 func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
+	_, args := stub.GetFunctionAndParameters()
 	myLogger.Info("[AssetManagementChaincode] Init")
 	if len(args) != 0 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 0")
