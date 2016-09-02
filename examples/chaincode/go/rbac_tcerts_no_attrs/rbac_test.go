@@ -25,7 +25,6 @@ import (
 	"testing"
 	"time"
 
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -35,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/membersrvc/ca"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
@@ -175,7 +175,7 @@ func deploy(admCert crypto.CertificateHandler) error {
 	spec := &pb.ChaincodeSpec{
 		Type:                 1,
 		ChaincodeID:          &pb.ChaincodeID{Name: "mycc"},
-		CtorMsg:              &pb.ChaincodeInput{Function: "init", Args: []string{}},
+		CtorMsg:              &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
 		Metadata:             admCert.GetCertificate(),
 		ConfidentialityLevel: pb.ConfidentialityLevel_PUBLIC,
 	}
@@ -197,7 +197,7 @@ func deploy(admCert crypto.CertificateHandler) error {
 
 	ledger, err := ledger.GetLedger()
 	ledger.BeginTxBatch("1")
-	_, err = chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
+	_, _, err = chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
 	if err != nil {
 		return fmt.Errorf("Error deploying chaincode: %s", err)
 	}
@@ -222,7 +222,7 @@ func addRole(admCert crypto.CertificateHandler, idCert crypto.CertificateHandler
 		return err
 	}
 
-	chaincodeInput := &pb.ChaincodeInput{Function: "addRole", Args: []string{string(idCert.GetCertificate()), role}}
+	chaincodeInput := &pb.ChaincodeInput{Args: util.ToChaincodeArgs("addRole", string(idCert.GetCertificate()), role)}
 	chaincodeInputRaw, err := proto.Marshal(chaincodeInput)
 	if err != nil {
 		return err
@@ -263,7 +263,7 @@ func addRole(admCert crypto.CertificateHandler, idCert crypto.CertificateHandler
 
 	ledger, err := ledger.GetLedger()
 	ledger.BeginTxBatch("1")
-	_, err = chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
+	_, _, err = chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
 	if err != nil {
 		return fmt.Errorf("Error deploying chaincode: %s", err)
 	}
@@ -289,7 +289,7 @@ func write(invoker crypto.Client, invokerCert crypto.CertificateHandler, value [
 		return err
 	}
 
-	chaincodeInput := &pb.ChaincodeInput{Function: "write", Args: []string{string(value)}}
+	chaincodeInput := &pb.ChaincodeInput{Args: util.ToChaincodeArgs("write", string(value))}
 	chaincodeInputRaw, err := proto.Marshal(chaincodeInput)
 	if err != nil {
 		return err
@@ -330,7 +330,7 @@ func write(invoker crypto.Client, invokerCert crypto.CertificateHandler, value [
 
 	ledger, err := ledger.GetLedger()
 	ledger.BeginTxBatch("1")
-	_, err = chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
+	_, _, err = chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
 	if err != nil {
 		return fmt.Errorf("Error deploying chaincode: %s", err)
 	}
@@ -357,7 +357,7 @@ func read(invoker crypto.Client, invokerCert crypto.CertificateHandler) ([]byte,
 		return nil, err
 	}
 
-	chaincodeInput := &pb.ChaincodeInput{Function: "read", Args: []string{}}
+	chaincodeInput := &pb.ChaincodeInput{Args: util.ToChaincodeArgs("read")}
 	chaincodeInputRaw, err := proto.Marshal(chaincodeInput)
 	if err != nil {
 		return nil, err
@@ -398,7 +398,7 @@ func read(invoker crypto.Client, invokerCert crypto.CertificateHandler) ([]byte,
 
 	ledger, err := ledger.GetLedger()
 	ledger.BeginTxBatch("1")
-	result, err := chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
+	result, _, err := chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
 	if err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode: %s", err)
 	}
@@ -440,7 +440,6 @@ func setup() {
 }
 
 func initMemershipServices() {
-	ca.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr, os.Stdout)
 	ca.CacheConfiguration() // Cache configuration
 	eca = ca.NewECA()
 	tca = ca.NewTCA(eca)

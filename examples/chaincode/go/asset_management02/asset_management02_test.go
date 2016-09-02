@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -34,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/membersrvc/ca"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
@@ -330,7 +330,7 @@ func deploy(admCert crypto.CertificateHandler) error {
 	spec := &pb.ChaincodeSpec{
 		Type:                 1,
 		ChaincodeID:          &pb.ChaincodeID{Name: "mycc"},
-		CtorMsg:              &pb.ChaincodeInput{Function: "init", Args: []string{}},
+		CtorMsg:              &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
 		Metadata:             []byte("issuer"),
 		ConfidentialityLevel: pb.ConfidentialityLevel_PUBLIC,
 	}
@@ -373,7 +373,7 @@ func assignOwnership(assigner crypto.Client, newOwnerCert crypto.CertificateHand
 		return err
 	}
 
-	chaincodeInput := &pb.ChaincodeInput{Function: "assignOwnership", Args: []string{base64.StdEncoding.EncodeToString(newOwnerCert.GetCertificate()), attributeName, amount}}
+	chaincodeInput := &pb.ChaincodeInput{Args: util.ToChaincodeArgs("assignOwnership", base64.StdEncoding.EncodeToString(newOwnerCert.GetCertificate()), attributeName, amount)}
 
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
@@ -419,12 +419,13 @@ func transferOwnership(owner crypto.Client, ownerCert crypto.CertificateHandler,
 		return err
 	}
 
-	args := []string{base64.StdEncoding.EncodeToString(ownerCert.GetCertificate()),
+	chaincodeInput := &pb.ChaincodeInput{Args: util.ToChaincodeArgs(
+		"transferOwnership",
+		base64.StdEncoding.EncodeToString(ownerCert.GetCertificate()),
 		fromAttributes,
 		base64.StdEncoding.EncodeToString(newOwnerCert.GetCertificate()),
 		toAttributes,
-		amount}
-	chaincodeInput := &pb.ChaincodeInput{Function: "transferOwnership", Args: args}
+		amount)}
 
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
@@ -466,7 +467,7 @@ func getBalance(accountID string) ([]byte, error) {
 }
 
 func Query(function, accountID string) ([]byte, error) {
-	chaincodeInput := &pb.ChaincodeInput{Function: function, Args: []string{accountID}}
+	chaincodeInput := &pb.ChaincodeInput{Args: util.ToChaincodeArgs(function, accountID)}
 
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
@@ -526,7 +527,8 @@ func setup() {
 }
 
 func initMembershipSrvc() {
-	ca.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr, os.Stdout)
+	// ca.LogInit seems to have been removed
+	//ca.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr, os.Stdout)
 	ca.CacheConfiguration() // Cache configuration
 	aca = ca.NewACA()
 	eca = ca.NewECA()
