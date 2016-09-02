@@ -441,7 +441,7 @@ func setup() {
 
 func initMemershipServices() {
 	ca.CacheConfiguration() // Cache configuration
-	eca = ca.NewECA()
+	eca = ca.NewECA(nil)
 	tca = ca.NewTCA(eca)
 	tlsca = ca.NewTLSCA(eca)
 

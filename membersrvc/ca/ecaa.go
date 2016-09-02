@@ -60,7 +60,7 @@ func (ecaa *ECAA) RegisterUser(ctx context.Context, in *pb.RegisterUserReq) (*pb
 	}
 	jsonStr := string(json)
 	ecaaLogger.Debugf("gRPC ECAA:RegisterUser: json=%s", jsonStr)
-	tok, err := ecaa.eca.registerUser(in.Id.Id, in.Affiliation, in.Role, registrarID, jsonStr)
+	tok, err := ecaa.eca.registerUser(in.Id.Id, in.Affiliation, in.Role, in.Attributes, ecaa.eca.aca, registrarID, jsonStr)
 
 	// Return the one-time password
 	return &pb.Token{Tok: []byte(tok)}, err
@@ -105,7 +105,7 @@ func (ecaa *ECAA) checkRegistrarSignature(in *pb.RegisterUserReq) error {
 	// Check the signature
 	if ecdsa.Verify(cert.PublicKey.(*ecdsa.PublicKey), hash.Sum(nil), r, s) == false {
 		// Signature verification failure
-		ecaaLogger.Debugf("ECAA.checkRegistrarSignature: failure for %s", registrar)
+		ecaaLogger.Debugf("ECAA.checkRegistrarSignature: failure for %s (len=%d): %+v", registrar, len(raw), in)
 		return errors.New("Signature verification failed.")
 	}
 

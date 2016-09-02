@@ -122,11 +122,16 @@ function handleUserRequest(userName, chaincodeID, fcn, args) {
    // If this user has already been registered and/or enrolled, this will
    // still succeed because the state is kept in the KeyValStore
    // (i.e. in '/tmp/keyValStore' in this sample).
+   // The attributes field is optional but can be used for role-based access control.
+   // See fabric/sdk/node/test/unit/asset-mgmt-with-dynamic-roles.js as an example.
    var registrationRequest = {
         enrollmentID: userName,
         // Customize account & affiliation
         account: "bank_a",
-        affiliation: "00001"
+        affiliation: "00001",
+        attributes: [
+           { name: "bankAccountId", value: "12345-67890" }
+        ]
    };
    chain.registerAndEnroll( registrationRequest, function(err, user) {
       if (err) return console.log("ERROR: %s",err);

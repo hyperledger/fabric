@@ -63,7 +63,7 @@ func TestTLS(t *testing.T) {
 
 func startTLSCA(t *testing.T) {
 	CacheConfiguration() // Cache configuration
-	ecaS = NewECA()
+	ecaS = NewECA(nil)
 	tlscaS = NewTLSCA(ecaS)
 
 	var opts []grpc.ServerOption

@@ -155,14 +155,15 @@ func initTCA() (*TCA, error) {
 	}
 
 	CacheConfiguration() // Cache configuration
-	eca := NewECA()
-	if eca == nil {
-		return nil, fmt.Errorf("Could not create a new ECA")
-	}
 
 	aca := NewACA()
 	if aca == nil {
 		return nil, fmt.Errorf("Could not create a new ACA")
+	}
+
+	eca := NewECA(aca)
+	if eca == nil {
+		return nil, fmt.Errorf("Could not create a new ECA")
 	}
 
 	tca := NewTCA(eca)

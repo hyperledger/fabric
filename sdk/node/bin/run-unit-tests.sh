@@ -31,8 +31,16 @@ init() {
    FABRIC=$GOPATH/src/github.com/hyperledger/fabric
    LOGDIR=/tmp/node-sdk-unit-test
    MSEXE=$FABRIC/build/bin/membersrvc
-   MSLOGFILE=$LOGDIR/membersrvc.log
+   MSEXE2=$FABRIC/build/image/membersrvc/bin/membersrvc
+   if [ ! -f $MSEXE -a -f $MSEXE2 ]; then
+      MSEXE=$MSEXE2
+   fi
    PEEREXE=$FABRIC/build/bin/peer
+   PEEREXE2=$FABRIC/build/image/peer/bin/peer
+   if [ ! -f $PEEREXE -a -f $PEEREXE2 ]; then
+      PEEREXE=$PEEREXE2
+   fi
+   MSLOGFILE=$LOGDIR/membersrvc.log
    PEERLOGFILE=$LOGDIR/peer.log
    UNITTEST=$FABRIC/sdk/node/test/unit
    EXAMPLES=$FABRIC/examples/chaincode/go
@@ -73,6 +81,7 @@ runTests() {
    runChainTests
    runAssetMgmtTests
    runAssetMgmtWithRolesTests
+   runAssetMgmtWithDynamicRolesTests
    echo "End running tests in network mode"
 }
 
@@ -148,10 +157,8 @@ startExampleInDevMode() {
       exit 1;
    fi
    EXE=$SRCDIR/$1
-   if [ ! -f $EXE ]; then
-      cd $SRCDIR
-      go build
-   fi
+   cd $SRCDIR
+   go build
    export CORE_CHAINCODE_ID_NAME=$2
    export CORE_PEER_ADDRESS=0.0.0.0:7051
    startProcess "$EXE" "${EXE}.log" "$1"
@@ -206,6 +213,18 @@ runAssetMgmtWithRolesTests() {
    fi
    postExample asset_management_with_roles
    echo "END running asset management with roles tests"
+}
+
+runAssetMgmtWithDynamicRolesTests() {
+   echo "BEGIN running asset management with dynamic roles tests ..."
+   preExample asset_management_with_roles mycc3
+   node $UNITTEST/asset-mgmt-with-dynamic-roles.js
+   if [ $? -ne 0 ]; then
+      echo "ERROR running asset management with dynamic roles tests!"
+      NODE_ERR_CODE=1
+   fi
+   postExample asset_management_with_roles
+   echo "END running asset management with dynamic roles tests"
 }
 
 # start process

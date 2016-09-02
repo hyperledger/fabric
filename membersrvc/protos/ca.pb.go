@@ -19,6 +19,7 @@ It has these top-level messages:
 	Signature
 	Registrar
 	RegisterUserReq
+	Attribute
 	ReadUserSetReq
 	User
 	UserSet
@@ -336,11 +337,12 @@ func (m *Registrar) GetId() *Identity {
 }
 
 type RegisterUserReq struct {
-	Id          *Identity  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Role        Role       `protobuf:"varint,2,opt,name=role,enum=protos.Role" json:"role,omitempty"`
-	Affiliation string     `protobuf:"bytes,4,opt,name=affiliation" json:"affiliation,omitempty"`
-	Registrar   *Registrar `protobuf:"bytes,5,opt,name=registrar" json:"registrar,omitempty"`
-	Sig         *Signature `protobuf:"bytes,6,opt,name=sig" json:"sig,omitempty"`
+	Id          *Identity    `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Role        Role         `protobuf:"varint,2,opt,name=role,enum=protos.Role" json:"role,omitempty"`
+	Attributes  []*Attribute `protobuf:"bytes,3,rep,name=attributes" json:"attributes,omitempty"`
+	Affiliation string       `protobuf:"bytes,4,opt,name=affiliation" json:"affiliation,omitempty"`
+	Registrar   *Registrar   `protobuf:"bytes,5,opt,name=registrar" json:"registrar,omitempty"`
+	Sig         *Signature   `protobuf:"bytes,6,opt,name=sig" json:"sig,omitempty"`
 }
 
 func (m *RegisterUserReq) Reset()         { *m = RegisterUserReq{} }
@@ -350,6 +352,13 @@ func (*RegisterUserReq) ProtoMessage()    {}
 func (m *RegisterUserReq) GetId() *Identity {
 	if m != nil {
 		return m.Id
+	}
+	return nil
+}
+
+func (m *RegisterUserReq) GetAttributes() []*Attribute {
+	if m != nil {
+		return m.Attributes
 	}
 	return nil
 }
@@ -367,6 +376,17 @@ func (m *RegisterUserReq) GetSig() *Signature {
 	}
 	return nil
 }
+
+type Attribute struct {
+	Name      string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Value     string `protobuf:"bytes,2,opt,name=value" json:"value,omitempty"`
+	NotBefore string `protobuf:"bytes,3,opt,name=notBefore" json:"notBefore,omitempty"`
+	NotAfter  string `protobuf:"bytes,4,opt,name=notAfter" json:"notAfter,omitempty"`
+}
+
+func (m *Attribute) Reset()         { *m = Attribute{} }
+func (m *Attribute) String() string { return proto.CompactTextString(m) }
+func (*Attribute) ProtoMessage()    {}
 
 type ReadUserSetReq struct {
 	Req  *Identity  `protobuf:"bytes,1,opt,name=req" json:"req,omitempty"`
