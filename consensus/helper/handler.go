@@ -50,10 +50,9 @@ type ConsensusHandler struct {
 // NewConsensusHandler constructs a new MessageHandler for the plugin.
 // Is instance of peer.HandlerFactory
 func NewConsensusHandler(coord peer.MessageHandlerCoordinator,
-	stream peer.ChatStream, initiatedStream bool,
-	next peer.MessageHandler) (peer.MessageHandler, error) {
+	stream peer.ChatStream, initiatedStream bool) (peer.MessageHandler, error) {
 
-	peerHandler, err := peer.NewPeerHandler(coord, stream, initiatedStream, nil)
+	peerHandler, err := peer.NewPeerHandler(coord, stream, initiatedStream)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating PeerHandler: %s", err)
 	}

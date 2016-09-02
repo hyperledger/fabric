@@ -47,7 +47,7 @@ type Handler struct {
 
 // NewPeerHandler returns a new Peer handler
 // Is instance of HandlerFactory
-func NewPeerHandler(coord MessageHandlerCoordinator, stream ChatStream, initiatedStream bool, nextHandler MessageHandler) (MessageHandler, error) {
+func NewPeerHandler(coord MessageHandlerCoordinator, stream ChatStream, initiatedStream bool) (MessageHandler, error) {
 
 	d := &Handler{
 		ChatStream:      stream,
