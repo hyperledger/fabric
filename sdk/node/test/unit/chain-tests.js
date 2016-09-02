@@ -129,6 +129,79 @@ function fail(t, msg, err) {
 }
 
 //
+// Test adding an invalid peer (omit protocol or use invalid protocol in URL)
+//
+test('Add invalid peer URLs to the chain', function (t) {
+
+    //list of valid protocol prefixes to test
+    var prefixes = [
+        "",
+        "grpcio://",
+        "http://",
+        " "
+    ];
+
+    t.plan(prefixes.length);
+
+    var chain_test;
+
+    //loop through the prefixes
+    prefixes.forEach(function (prefix, index) {
+
+        chain_test = hfc.newChain("chain_test" + index);
+
+        try {
+            chain_test.addPeer(prefix + "://localhost:7051", new Buffer(32));
+            t.fail("Should not be able to add peer with URL starting with " + prefix);
+        }
+        catch (err) {
+            if (err.name === 'InvalidProtocol') {
+                t.pass("Returned 'InvalidProtocol' error for URL starting with " + prefix);
+            }
+            else {
+                t.fail("Failed to return 'InvalidProtocol' error  for URL starting with " + prefix);
+            }
+        }
+    })
+
+});
+
+
+//
+// Test adding a valid peer (URL must start with grpc or grpcs) 
+//
+test('Add valid peer URLs to the chain', function (t) {
+
+    //list of valid protocol prefixes to test
+    var prefixes = [
+        "grpc",
+        "GRPC",
+        "grpcs",
+        "GRPCS"
+    ];
+
+    t.plan(prefixes.length);
+
+    var chain_test2;
+
+    //loop through the prefixes
+    prefixes.forEach(function (prefix, index) {
+
+        chain_test2 = hfc.newChain("chain_test2" + index);
+
+        try {
+            chain_test2.addPeer(prefix + "://localhost:7051",
+                fs.readFileSync(__dirname + "/../fixtures/tlsca.cert"));
+            t.pass("Successfully added peer with URL starting with " + prefix + "://");
+        }
+        catch (err) {
+            t.fail("Could not add peer to the chain with URL starting with " + prefix + "://");
+        }
+    })
+
+});
+
+//
 // Set Invalid security level and hash algorithm.
 //
 

@@ -2205,15 +2205,24 @@ class Endpoint {
 
     constructor(url:string, pem?:string) {
         let purl = parseUrl(url);
-        let protocol = purl.protocol.toLowerCase();
+        var protocol;
+        if (purl.protocol) {
+            protocol = purl.protocol.toLowerCase().slice(0,-1);
+        }
         if (protocol === 'grpc') {
             this.addr = purl.host;
             this.creds = grpc.credentials.createInsecure();
-        } else if (protocol === 'grpcs') {
+        }
+        else if (protocol === 'grpcs') {
             this.addr = purl.host;
             this.creds = grpc.credentials.createSsl(new Buffer(pem));
-        } else {
-            throw Error("invalid protocol: " + protocol);
+        }
+        else {
+            var error = new Error();
+            error.name = "InvalidProtocol";
+            error.message = "Invalid protocol: " + protocol +
+                ".  URLs must begin with grpc:// or grpcs://"
+            throw error;
         }
     }
 }
@@ -2628,10 +2637,6 @@ function isFunction(fcn:any):boolean {
 function parseUrl(url:string):any {
     // TODO: find ambient definition for url
     var purl = urlParser.parse(url, true);
-    var protocol = purl.protocol;
-    if (endsWith(protocol, ":")) {
-        purl.protocol = protocol.slice(0, -1);
-    }
     return purl;
 }
 
