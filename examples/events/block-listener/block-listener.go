@@ -57,16 +57,17 @@ func (a *adapter) Recv(msg *pb.Event) (bool, error) {
 		a.notfy <- o
 		return true, nil
 	}
-	if o, e := msg.Event.(*pb.Event_Rejection); e && a.listenToRejections {
-		a.rejected <- o
+	if o, e := msg.Event.(*pb.Event_Rejection); e {
+		if a.listenToRejections {
+			a.rejected <- o
+		}
 		return true, nil
 	}
 	if o, e := msg.Event.(*pb.Event_ChaincodeEvent); e {
 		a.cEvent <- o
 		return true, nil
 	}
-	a.notfy <- nil
-	return false, nil
+	return false, fmt.Errorf("Receive unkown type event: %v", msg)
 }
 
 //Disconnected implements consumer.EventAdapter interface for disconnecting
