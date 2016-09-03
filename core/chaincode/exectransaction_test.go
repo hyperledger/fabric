@@ -372,7 +372,6 @@ func TestGopathExecuteDeployTransaction(t *testing.T) {
 
 // Test deploy of a transaction with a chaincode over HTTP.
 func TestHTTPExecuteDeployTransaction(t *testing.T) {
-	t.Skip("Skipping test temporarily.")
 	// The chaincode used here cannot be from the fabric repo
 	// itself or it won't be downloaded because it will be found
 	// in GOPATH, which would defeat the test
