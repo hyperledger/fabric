@@ -552,6 +552,11 @@ export class Chain {
 
     /**
      * Set the deploy wait time in seconds.
+     * Node.js will automatically enforce a
+     * minimum and maximum wait time.  If the
+     * number of seconds is larger than 2147483,
+     * less than 1, or not a number,
+     * the actual wait time used will be 1 ms.
      * @param secs
      */
     setDeployWaitTime(secs:number):void {
