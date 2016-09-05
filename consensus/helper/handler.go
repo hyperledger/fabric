@@ -69,10 +69,8 @@ func NewConsensusHandler(coord peer.MessageHandlerCoordinator,
 		consensusQueueSize = DefaultConsensusQueueSize
 	}
 
-	pe, _ := handler.To()
-
 	handler.consenterChan = make(chan *util.Message, consensusQueueSize)
-	getEngineImpl().consensusFan.RegisterChannel(pe.ID, handler.consenterChan)
+	getEngineImpl().consensusFan.AddFaninChannel(handler.consenterChan)
 
 	return handler, nil
 }
