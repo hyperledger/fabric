@@ -54,6 +54,8 @@ It has these top-level messages:
 	ProposalResponse
 	EndorsedAction
 	Transaction2
+	InvalidTransaction
+	Block2
 	Transaction
 	TransactionBlock
 	TransactionResult

@@ -88,6 +88,26 @@ func (x Proposal_Type) String() string {
 	return proto.EnumName(Proposal_Type_name, int32(x))
 }
 
+type InvalidTransaction_Cause int32
+
+const (
+	InvalidTransaction_TxIdAlreadyExists      InvalidTransaction_Cause = 0
+	InvalidTransaction_RWConflictDuringCommit InvalidTransaction_Cause = 1
+)
+
+var InvalidTransaction_Cause_name = map[int32]string{
+	0: "TxIdAlreadyExists",
+	1: "RWConflictDuringCommit",
+}
+var InvalidTransaction_Cause_value = map[string]int32{
+	"TxIdAlreadyExists":      0,
+	"RWConflictDuringCommit": 1,
+}
+
+func (x InvalidTransaction_Cause) String() string {
+	return proto.EnumName(InvalidTransaction_Cause_name, int32(x))
+}
+
 // Envelope is used to deliver a message
 type Envelope struct {
 	// Signature of the message.
@@ -306,9 +326,38 @@ func (m *Transaction2) GetEndorsedActions() []*EndorsedAction {
 	return nil
 }
 
+// This is used to wrap an invalid Transaction with the cause
+type InvalidTransaction struct {
+	Transaction *Transaction2            `protobuf:"bytes,1,opt,name=transaction" json:"transaction,omitempty"`
+	Cause       InvalidTransaction_Cause `protobuf:"varint,2,opt,name=cause,enum=protos.InvalidTransaction_Cause" json:"cause,omitempty"`
+}
+
+func (m *InvalidTransaction) Reset()         { *m = InvalidTransaction{} }
+func (m *InvalidTransaction) String() string { return proto.CompactTextString(m) }
+func (*InvalidTransaction) ProtoMessage()    {}
+
+func (m *InvalidTransaction) GetTransaction() *Transaction2 {
+	if m != nil {
+		return m.Transaction
+	}
+	return nil
+}
+
+// Block contains a list of transactions and the crypto hash of previous block
+type Block2 struct {
+	PreviousBlockHash []byte `protobuf:"bytes,1,opt,name=PreviousBlockHash,proto3" json:"PreviousBlockHash,omitempty"`
+	// transactions are stored in serialized form so that the concenters can avoid marshaling of transactions
+	Transactions [][]byte `protobuf:"bytes,2,rep,name=Transactions,proto3" json:"Transactions,omitempty"`
+}
+
+func (m *Block2) Reset()         { *m = Block2{} }
+func (m *Block2) String() string { return proto.CompactTextString(m) }
+func (*Block2) ProtoMessage()    {}
+
 func init() {
 	proto.RegisterEnum("protos.Message2_Type", Message2_Type_name, Message2_Type_value)
 	proto.RegisterEnum("protos.Proposal_Type", Proposal_Type_name, Proposal_Type_value)
+	proto.RegisterEnum("protos.InvalidTransaction_Cause", InvalidTransaction_Cause_name, InvalidTransaction_Cause_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
