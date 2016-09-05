@@ -143,7 +143,7 @@ func deployInternal(deployer crypto.Client, adminCert crypto.CertificateHandler)
 		Type:        1,
 		ChaincodeID: &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/examples/chaincode/go/asset_management"},
 		//ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		CtorMsg:              &pb.ChaincodeInput{Function: "init", Args: []string{}},
+		CtorMsg:              &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
 		Metadata:             adminCert.GetCertificate(),
 		ConfidentialityLevel: confidentialityLevel,
 	}
@@ -187,8 +187,7 @@ func assignOwnershipInternal(invoker crypto.Client, invokerCert crypto.Certifica
 	}
 
 	chaincodeInput := &pb.ChaincodeInput{
-		Function: "assign",
-		Args:     []string{asset, base64.StdEncoding.EncodeToString(newOwnerCert.GetCertificate())},
+		Args: util.ToChaincodeArgs("assign", asset, base64.StdEncoding.EncodeToString(newOwnerCert.GetCertificate())),
 	}
 	chaincodeInputRaw, err := proto.Marshal(chaincodeInput)
 	if err != nil {
@@ -239,8 +238,7 @@ func transferOwnershipInternal(owner crypto.Client, ownerCert crypto.Certificate
 	}
 
 	chaincodeInput := &pb.ChaincodeInput{
-		Function: "transfer",
-		Args:     []string{asset, base64.StdEncoding.EncodeToString(newOwnerCert.GetCertificate())},
+		Args: util.ToChaincodeArgs("transfer", asset, base64.StdEncoding.EncodeToString(newOwnerCert.GetCertificate())),
 	}
 	chaincodeInputRaw, err := proto.Marshal(chaincodeInput)
 	if err != nil {
@@ -275,7 +273,7 @@ func transferOwnershipInternal(owner crypto.Client, ownerCert crypto.Certificate
 }
 
 func whoIsTheOwner(invoker crypto.Client, asset string) (transaction *pb.Transaction, resp *pb.Response, err error) {
-	chaincodeInput := &pb.ChaincodeInput{Function: "query", Args: []string{asset}}
+	chaincodeInput := &pb.ChaincodeInput{Args: util.ToChaincodeArgs("query", asset)}
 
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
