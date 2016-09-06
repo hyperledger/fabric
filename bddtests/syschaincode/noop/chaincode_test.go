@@ -47,7 +47,7 @@ func TestInvokeUnsupported(t *testing.T) {
 
 func TestInvokeExecuteNotEnoughArgs(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Invoke(nil, "execute", []string{})
+	var res, err = noop.Invoke(nil, "", []string{})
 	if res != nil || err == nil {
 		t.Errorf("Invoke.execute has to indicate error if called with less than one arguments!")
 	}
@@ -55,7 +55,7 @@ func TestInvokeExecuteNotEnoughArgs(t *testing.T) {
 
 func TestInvokeExecuteOneArgReturnsNothing(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Invoke(nil, "execute", []string{"arg1"})
+	var res, err = noop.Invoke(nil, "transaction", []string{})
 	if res != nil || err != nil {
 		t.Errorf("Invoke.execute has to return nil with no error.")
 	}
@@ -63,7 +63,7 @@ func TestInvokeExecuteOneArgReturnsNothing(t *testing.T) {
 
 func TestInvokeExecuteMoreArgsReturnsError(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Invoke(nil, "execute", []string{"arg1", "arg2"})
+	var res, err = noop.Invoke(nil, "transaction", []string{"arg1"})
 	if res != nil || err == nil {
 		t.Errorf("Invoke.execute has to return error when called with more than one arguments.")
 	}
