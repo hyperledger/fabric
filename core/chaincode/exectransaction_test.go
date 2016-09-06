@@ -286,8 +286,8 @@ func invoke(ctx context.Context, spec *pb.ChaincodeSpec, typ pb.Transaction_Type
 		ledger, _ := ledger.GetLedger()
 		ledger.BeginTxBatch("1")
 		retval, ccevt, execErr = Execute(ctx, GetChain(DefaultChain), transaction)
-		if err != nil {
-			return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s ", err)
+		if execErr != nil {
+			return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s ", execErr)
 		}
 		ledger.CommitTxBatch("1", []*pb.Transaction{transaction}, nil, nil)
 	}
