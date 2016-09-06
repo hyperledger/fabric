@@ -90,7 +90,7 @@ class DeliverStreamHelper(StreamHelper):
         #Set the ack flag
         trueOptions = ['true', 'True','yes','Yes']
         falseOptions = ['false', 'False', 'no', 'No']
-        assert sendAck in trueOptions + falseOptions, "sendAck of '{0}' not recognized, expected one of '{1}'".format(sendAck, trueOptions + falseOptions) 
+        assert sendAck in trueOptions + falseOptions, "sendAck of '{0}' not recognized, expected one of '{1}'".format(sendAck, trueOptions + falseOptions)
         self.sendAck = sendAck in trueOptions
         # Set the UpdateMessage and start the stream
         self.deliverUpdateMsg = createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize)
@@ -101,7 +101,7 @@ class DeliverStreamHelper(StreamHelper):
     def seekToBlock(self, blockNum):
         deliverUpdateMsg = ab_pb2.DeliverUpdate()
         deliverUpdateMsg.CopyFrom(self.deliverUpdateMsg)
-        deliverUpdateMsg.Seek.SpecifiedNumber = blockNum 
+        deliverUpdateMsg.Seek.SpecifiedNumber = blockNum
         self.sendQueue.put(deliverUpdateMsg)
 
     def sendAcknowledgment(self, blockNum):
@@ -130,8 +130,8 @@ class DeliverStreamHelper(StreamHelper):
 
 
 class UserRegistration:
-	
-    
+
+
     def __init__(self, secretMsg, composeService):
         self.enrollId = secretMsg['enrollId']
         self.secretMsg = secretMsg
@@ -174,7 +174,7 @@ class UserRegistration:
 			print("Got error")
 		print("Done")
 		assert counter == int(numMsgsToBroadcast), "counter = {0}, expected {1}".format(counter, numMsgsToBroadcast)
-    
+
     def getABStubForComposeService(self, context, composeService):
 		'Return a Stub for the supplied composeService, will cache'
 		if composeService in self.atomicBroadcastStubsDict:
@@ -190,26 +190,26 @@ class UserRegistration:
 # Registerses a user on a specific composeService
 def registerUser(context, secretMsg, composeService):
     userName = secretMsg['enrollId']
-    if 'users' in context:
+    if 'ordererUsers' in context:
         pass
     else:
-        context.users = {}
-    if userName in context.users:
-        raise Exception("User already registered: {0}".format(userName))
+        context.ordererUsers = {}
+    if userName in context.ordererUsers:
+        raise Exception("Orderer user already registered: {0}".format(userName))
     userRegistration = UserRegistration(secretMsg, composeService)
-    context.users[userName] = userRegistration
+    context.ordererUsers[userName] = userRegistration
     return userRegistration
 
 def getUserRegistration(context, enrollId):
     userRegistration = None
-    if 'users' in context:
+    if 'ordererUsers' in context:
         pass
     else:
-        context.users = {}
-    if enrollId in context.users:
-        userRegistration = context.users[enrollId]
+        ordererContext.ordererUsers = {}
+    if enrollId in context.ordererUsers:
+        userRegistration = context.ordererUsers[enrollId]
     else:
-        raise Exception("User has not been registered: {0}".format(enrollId))
+        raise Exception("Orderer user has not been registered: {0}".format(enrollId))
     return userRegistration
 
 def createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize):
@@ -223,10 +223,10 @@ def createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize):
 def generateBroadcastMessages(numToGenerate = 1, timeToHoldOpen = 1):
 	messages = []
 	for i in range(0, numToGenerate):
-		messages.append(ab_pb2.BroadcastMessage(Data = str("BDD test: {0}".format(datetime.datetime.utcnow()))))		
+		messages.append(ab_pb2.BroadcastMessage(Data = str("BDD test: {0}".format(datetime.datetime.utcnow()))))
 	for msg in messages:
 		yield msg
-	time.sleep(timeToHoldOpen)	
+	time.sleep(timeToHoldOpen)
 
 
 def getGRPCChannel(ipAddress):

@@ -125,19 +125,33 @@ def getArgsFromContextForUser(context, enrollId):
     # Update the chaincodeSpec ctorMsg for invoke
     args = []
     if 'table' in context:
-       # There are function arguments
-       userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
-       # Allow the user to specify expressions referencing tags in the args list
-       pattern = re.compile('\{(.*)\}$')
-       for arg in context.table[0].cells:
-          m = pattern.match(arg)
-          if m:
-              # tagName reference found in args list
-              tagName = m.groups()[0]
-              # make sure the tagName is found in the users tags
-              assert tagName in userRegistration.tags, "TagName '{0}' not found for user '{1}'".format(tagName, userRegistration.getUserName())
-              args.append(userRegistration.tags[tagName])
-          else:
-              #No tag referenced, pass the arg
-              args.append(arg)
+        if context.table:
+            # There are function arguments
+            userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
+            # Allow the user to specify expressions referencing tags in the args list
+            pattern = re.compile('\{(.*)\}$')
+            for arg in context.table[0].cells:
+                m = pattern.match(arg)
+                if m:
+                    # tagName reference found in args list
+                    tagName = m.groups()[0]
+                    # make sure the tagName is found in the users tags
+                    assert tagName in userRegistration.tags, "TagName '{0}' not found for user '{1}'".format(tagName, userRegistration.getUserName())
+                    args.append(userRegistration.tags[tagName])
+                else:
+                    #No tag referenced, pass the arg
+                    args.append(arg)
     return args
+
+def toStringArray(items):
+    itemsAsStr = []
+    for item in items:
+        if type(item) == str:
+            itemsAsStr.append(item)
+        elif type(item) == unicode:
+            itemsAsStr.append(str(item))
+        else:
+            raise Exception("Error tring to convert to string: unexpected type '{0}'".format(type(item)))
+    return itemsAsStr
+
+

@@ -261,3 +261,7 @@ message Transaction2 {
 	repeated EndorsedAction endorsedActions = 1;
 
 }
+
+service Endorser {
+	rpc ProcessProposal(Proposal) returns (ProposalResponse) {}
+}

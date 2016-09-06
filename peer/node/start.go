@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/db"
+	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/genesis"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/rest"
@@ -193,6 +194,10 @@ func serve(args []string) error {
 	if viper.GetBool("rest.enabled") {
 		go rest.StartOpenchainRESTServer(serverOpenchain, serverDevops)
 	}
+
+	// Register the Endorser server
+	serverEndorser := endorser.NewEndorserServer(peerServer)
+	pb.RegisterEndorserServer(grpcServer, serverEndorser)
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s, rootnodes=%v, validator=%v",
 		peerEndpoint.ID, viper.GetString("peer.networkId"), peerEndpoint.Address,

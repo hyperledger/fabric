@@ -11,7 +11,7 @@ It is generated from these files:
 	chaincode.proto
 	devops.proto
 	events.proto
-	fabric-next.proto
+	fabric_next.proto
 	fabric.proto
 	server_admin.proto
 
