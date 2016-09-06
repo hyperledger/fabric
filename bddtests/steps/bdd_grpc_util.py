@@ -22,6 +22,7 @@ import fabric_pb2
 import chaincode_pb2
 
 import bdd_test_util
+from bdd_test_util import bdd_log
 
 from grpc.beta import implementations
 
@@ -46,7 +47,7 @@ def getTxResult(context, enrollId):
 
 def getGRPCChannel(ipAddress):
     channel = implementations.insecure_channel(ipAddress, 7051)
-    print("Returning GRPC for address: {0}".format(ipAddress))
+    bdd_log("Returning GRPC for address: {0}".format(ipAddress))
     return channel
 
 def getGRPCChannelAndUser(context, enrollId):
