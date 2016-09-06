@@ -24,6 +24,8 @@ import (
 	"google.golang.org/grpc"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/rawledger"
+	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 )
 
 type mockB struct {
@@ -88,23 +90,23 @@ func TestEmptyBroadcastMessage(t *testing.T) {
 }
 
 func TestEmptyBatch(t *testing.T) {
-	bs := newPlainBroadcastServer(2, 1, time.Millisecond, newRAMLedger(10))
+	bs := newPlainBroadcastServer(2, 1, time.Millisecond, ramledger.New(10))
 	time.Sleep(100 * time.Millisecond) // Note, this is not a race, as worst case, the timer does not expire, and the test still passes
-	if bs.rl.size != 1 {
+	if bs.rl.(rawledger.Reader).Height() != 1 {
 		t.Fatalf("Expected no new blocks created")
 	}
 }
 
 func TestFilledBatch(t *testing.T) {
 	batchSize := 2
-	bs := newBroadcastServer(0, batchSize, time.Hour, newRAMLedger(10))
+	bs := newBroadcastServer(0, batchSize, time.Hour, ramledger.New(10))
 	defer bs.halt()
 	messages := 11 // Sending 11 messages, with a batch size of 2, ensures the 10th message is processed before we proceed for 5 blocks
 	for i := 0; i < messages; i++ {
 		bs.queue <- &ab.BroadcastMessage{[]byte("Some bytes")}
 	}
-	expected := 1 + messages/batchSize
-	if bs.rl.size != expected {
-		t.Fatalf("Expected %d blocks but got %d", expected, bs.rl.size)
+	expected := uint64(1 + messages/batchSize)
+	if bs.rl.(rawledger.Reader).Height() != expected {
+		t.Fatalf("Expected %d blocks but got %d", expected, bs.rl.(rawledger.Reader).Height())
 	}
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package solo
+package ramledger
 
 import (
 	"testing"
@@ -23,9 +23,10 @@ import (
 )
 
 // TestAppend ensures that appending blocks stores only the maxSize most recent blocks
+// Note that 'only' is applicable because the genesis block will be discarded
 func TestAppend(t *testing.T) {
 	maxSize := 3
-	rl := newRAMLedger(maxSize)
+	rl := New(maxSize).(*ramLedger)
 	var blocks []*ab.Block
 	for i := 0; i < 3; i++ {
 		blocks = append(blocks, &ab.Block{Number: uint64(i + 1)})
@@ -50,7 +51,7 @@ func TestAppend(t *testing.T) {
 // TestSignal checks if the signal channel closes when an item is appended
 func TestSignal(t *testing.T) {
 	maxSize := 3
-	rl := newRAMLedger(maxSize)
+	rl := New(maxSize).(*ramLedger)
 	item := rl.newest
 	select {
 	case <-item.signal:
@@ -66,12 +67,12 @@ func TestSignal(t *testing.T) {
 }
 
 // TestTruncatingSafety is intended to simulate a reader who fetches a reference to the oldest list item
-// which is then pushed off the history by appending greater than the history size (here, 10 appeneds with
+// which is then pushed off the history by appending greater than the history size (here, 10 appends with
 // a maxSize of 3).  We let the go garbage collector ensure the references still exist
 func TestTruncationSafety(t *testing.T) {
 	maxSize := 3
 	newBlocks := 10
-	rl := newRAMLedger(maxSize)
+	rl := New(maxSize).(*ramLedger)
 	item := rl.oldest
 	for i := 0; i < newBlocks; i++ {
 		rl.appendBlock(&ab.Block{Number: uint64(i + 1)})
@@ -83,6 +84,6 @@ func TestTruncationSafety(t *testing.T) {
 	}
 
 	if count != newBlocks {
-		t.Fatalf("The iterator should have found 10 new blocks")
+		t.Fatalf("The iterator should have found %d new blocks but found %d", newBlocks, count)
 	}
 }
