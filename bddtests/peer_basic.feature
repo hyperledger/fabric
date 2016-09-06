@@ -1077,7 +1077,6 @@ Feature: Network of Peers
 
 
 @issue_1942
-# @doNotDecompose
 Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
     Given we compose "docker-compose-4-consensus-batch.yml"
     And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
@@ -1113,7 +1112,7 @@ Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
                           |arg1|arg2|arg3|
                           | a  | b  | 1  |
     Then I should have received a transactionID
-    Then I wait up to "180" seconds for transaction to be committed to peers:
+    Then I wait up to "60" seconds for transaction to be committed to peers:
                           | vp0 | vp1 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
@@ -1130,7 +1129,7 @@ Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
     When I invoke chaincode "example2" function name "invoke" on "vp3" "20" times
                           |arg1|arg2|arg3|
                           | a  | b  | 1  |
-    Then I wait up to "300" seconds for transactions to be committed to peers:
+    Then I wait up to "60" seconds for transactions to be committed to peers:
                           | vp0  | vp2 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:

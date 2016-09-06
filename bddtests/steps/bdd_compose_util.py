@@ -16,7 +16,7 @@
 
 import os, time, re, requests
 
-from bdd_rest_util import buildUrl, CORE_REST_PORT
+from bdd_request_util import httpGetToContainer, CORE_REST_PORT
 from bdd_json_util import getAttributeFromJSON
 from bdd_test_util import cli_call, bdd_log
 
@@ -229,13 +229,12 @@ def peerIsReady(context, thisPeer, allPeers):
     return numPeers == numConnectedPeers
 
 def getConnectedPeersFromPeer(context, thisPeer):
-    url = buildUrl(context, thisPeer.ipAddress, "/network/peers")
-    response = requests.get(url, headers={'Accept': 'application/json'}, verify=False)
+    response = httpGetToContainer(context, thisPeer, "/network/peers")
 
     if response.status_code != 200:
         return None
 
-    return getAttributeFromJSON("peers", response.json(), "There should be a peer json attribute")
+    return getAttributeFromJSON("peers", response.json())
 
 def mapAliasesToContainers(context):
     aliasToContainerMap = {}
