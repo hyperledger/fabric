@@ -42,7 +42,7 @@ func loginCmd() *cobra.Command {
 }
 
 var networkLoginCmd = &cobra.Command{
-	Use:   "login",
+	Use:   "login <username>",
 	Short: "Logs in user to CLI.",
 	Long:  `Logs in the local user to CLI. Must supply username as a parameter.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
