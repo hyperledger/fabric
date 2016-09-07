@@ -37,49 +37,8 @@ DEVENV_REVISION=`(cd /hyperledger/devenv; git rev-parse --short HEAD)`
 # Install WARNING before we start provisioning so that it
 # will remain active.  We will remove the warning after
 # success
-cat <<EOF >/etc/motd
-##########################################################
-                       ,.-""``""-.,
-                      /  ,:,;;,;,  \  DANGER DANGER
-                      \  ';';;';'  /   WILL ROBINSON...
-                       `'---;;---'`
-                       <>_==""==_<>
-                       _<<<<<>>>>>_
-                     .'____\==/____'.
-                _____|__   |__|   __|______
-              /C \\\\\\\\  |..|  //////// C\
-              \_C////////  |;;|  \\\\\\\\C_/
-                     |____o|##|o____|
-                      \ ___|~~|___ /
-                       '>--------<'
-                       {==_==_==_=}
-                       {= -=_=-_==}
-                       {=_=-}{=-=_}
-                       {=_==}{-=_=}
-                       }~~~~""~~~~{
-                  jgs  }____::____{
-                      /`    ||    `\
-                      |     ||     |
-                      |     ||     |
-                      |     ||     |
-                      '-----''-----'
-##########################################################
-
-If you see this notice, it means that something is wrong
-with your hyperledger/fabric development environment.
-
-Typically this indicates that something failed during
-provisioning and your environment is incomplete.  Builds,
-execution, etc., may not operate as they were intended.
-Please review the provisioning log and visit:
-
-                https://goo.gl/yqjRC7
-
-for more information on troubleshooting and solutions.
-
-##########################################################
-EOF
-
+SCRIPT_DIR="$(readlink -f "$(dirname "$0")")"
+cat "$SCRIPT_DIR/failure-motd.in" >> /etc/motd
 
 # Update system
 apt-get update -qq
