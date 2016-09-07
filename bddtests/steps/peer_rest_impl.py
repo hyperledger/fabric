@@ -17,18 +17,16 @@
 import requests
 from behave import *
 from peer_basic_impl import buildUrl, getAttributeFromJSON
-
-import bdd_test_util
 from bdd_test_util import bdd_log
 
 
-@when(u'I request transaction certs with query parameters on "{containerName}"')
-def step_impl(context, containerName):
+@when(u'I request transaction certs with query parameters on "{containerAlias}"')
+def step_impl(context, containerAlias):
     assert 'table' in context, "table (of query parameters) not found in context"
     assert 'userName' in context, "userName not found in context"
     assert 'compose_containers' in context, "compose_containers not found in context"
 
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
     request_url = buildUrl(context, ipAddress, "/registrar/{0}/tcert".format(context.userName))
     bdd_log("Requesting path = {0}".format(request_url))
     queryParams = {}

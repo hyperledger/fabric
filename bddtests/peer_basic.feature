@@ -583,7 +583,6 @@ Feature: Network of Peers
         |   docker-compose-4-consensus-batch.yml     |      60      |
 
 
-#    @doNotDecompose
     @issue_724
     Scenario Outline: chaincode example02 with 4 peers and 1 membersrvc, issue #724
 

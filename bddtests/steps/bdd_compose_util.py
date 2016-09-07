@@ -20,9 +20,9 @@ from bdd_rest_util import buildUrl, CORE_REST_PORT
 from bdd_json_util import getAttributeFromJSON
 from bdd_test_util import cli_call, bdd_log
 
-class ContainerData:
-    def __init__(self, containerName, ipAddress, envFromInspect, composeService):
-        self.containerName = containerName
+class Container:
+    def __init__(self, name, ipAddress, envFromInspect, composeService):
+        self.name = name
         self.ipAddress = ipAddress
         self.envFromInspect = envFromInspect
         self.composeService = composeService
@@ -34,11 +34,11 @@ class ContainerData:
                 envValue = val[len(key):]
                 break
         if envValue == None:
-            raise Exception("ENV key not found ({0}) for container ({1})".format(key, self.containerName))
+            raise Exception("ENV key not found ({0}) for container ({1})".format(key, self.name))
         return envValue
 
     def __str__(self):
-        return "{} - {}".format(self.containerName, self.ipAddress)
+        return "{} - {}".format(self.name, self.ipAddress)
 
     def __repr__(self):
         return self.__str__()
@@ -87,7 +87,7 @@ def parseComposeOutput(context):
         dockerComposeService = [composeService[27:] for composeService in labels if composeService.startswith("com.docker.compose.service:")][0]
         bdd_log("dockerComposeService = {0}".format(dockerComposeService))
         bdd_log("container {0} has env = {1}".format(containerName, env))
-        containerDataList.append(ContainerData(containerName, ipAddress, env, dockerComposeService))
+        containerDataList.append(Container(containerName, ipAddress, env, dockerComposeService))
     # Now merge the new containerData info with existing
     newContainerDataList = []
     if "compose_containers" in context:
@@ -119,13 +119,13 @@ def allContainersAreReadyWithinTimeout(context, timeout):
 def containerIsInitializedByTimestamp(container, timeoutTimestamp):
     while containerIsNotInitialized(container):
         if timestampExceeded(timeoutTimestamp):
-            bdd_log("Timed out waiting for {} to initialize".format(container.containerName))
+            bdd_log("Timed out waiting for {} to initialize".format(container.name))
             return False
 
-        bdd_log("{} not initialized, waiting...".format(container.containerName))
+        bdd_log("{} not initialized, waiting...".format(container.name))
         time.sleep(1)
 
-    bdd_log("{} now available".format(container.containerName))
+    bdd_log("{} now available".format(container.name))
     return True
 
 def timestampExceeded(timeoutTimestamp):
@@ -141,13 +141,13 @@ def containerIsInitialized(container):
     return isReady
 
 def tcpPortsAreReady(container):
-    netstatOutput = getContainerNetstatOutput(container.containerName)
+    netstatOutput = getContainerNetstatOutput(container.name)
 
     for line in netstatOutput.splitlines():
         if re.search("ESTABLISHED|LISTEN", line):
             return True
 
-    bdd_log("No TCP connections are ready in container {}".format(container.containerName))
+    bdd_log("No TCP connections are ready in container {}".format(container.name))
     return False
 
 def getContainerNetstatOutput(containerName):
@@ -157,7 +157,7 @@ def getContainerNetstatOutput(containerName):
     return stdout
 
 def restPortRespondsIfContainerIsPeer(container):
-    containerName = container.containerName
+    containerName = container.name
     command = ["docker", "exec", containerName, "curl", "localhost:{}".format(CORE_REST_PORT)]
 
     if containerIsPeer(container):
@@ -195,18 +195,18 @@ def containerIsPeer(container):
     # is to determine if the container is listening on the REST port. However, this method
     # may run before the listening port is ready. Hence, as along as the current
     # convention of vp[0-9] is adhered to this function will be good enough.
-    return re.search("vp[0-9]+", container.containerName, re.IGNORECASE)
+    return re.search("vp[0-9]+", container.name, re.IGNORECASE)
 
 def peerIsReadyByTimestamp(context, peerContainer, allPeerContainers, timeoutTimestamp):
     while peerIsNotReady(context, peerContainer, allPeerContainers):
         if timestampExceeded(timeoutTimestamp):
-            bdd_log("Timed out waiting for peer {}".format(peerContainer.containerName))
+            bdd_log("Timed out waiting for peer {}".format(peerContainer.name))
             return False
 
-        bdd_log("Peer {} not ready, waiting...".format(peerContainer.containerName))
+        bdd_log("Peer {} not ready, waiting...".format(peerContainer.name))
         time.sleep(1)
 
-    bdd_log("Peer {} now available".format(peerContainer.containerName))
+    bdd_log("Peer {} now available".format(peerContainer.name))
     return True
 
 def peerIsNotReady(context, thisPeer, allPeers):
@@ -236,3 +236,26 @@ def getConnectedPeersFromPeer(context, thisPeer):
         return None
 
     return getAttributeFromJSON("peers", response.json(), "There should be a peer json attribute")
+
+def mapAliasesToContainers(context):
+    aliasToContainerMap = {}
+
+    for container in context.compose_containers:
+        alias = extractAliasFromContainerName(container.name)
+        aliasToContainerMap[alias] = container
+
+    return aliasToContainerMap
+
+def extractAliasFromContainerName(containerName):
+    """ Take a compose created container name and extract the alias to which it
+        will be refered. For example bddtests_vp1_0 will return vp0 """
+    return containerName.split("_")[1]
+
+def mapContainerNamesToContainers(context):
+    nameToContainerMap = {}
+
+    for container in context.compose_containers:
+        name = container.name
+        nameToContainerMap[name] = container
+
+    return nameToContainerMap
