@@ -55,8 +55,12 @@ type MockStub struct {
 	Invokables map[string]*MockStub
 
 	// stores a transaction uuid while being Invoked / Deployed
-	// TODO if a chaincode uses recursion this may need to be a stack of UUIDs or possibly a reference counting map
-	Uuid string
+	// TODO if a chaincode uses recursion this may need to be a stack of TxIDs or possibly a reference counting map
+	TxID string
+}
+
+func (stub *MockStub) GetTxID() string {
+	return stub.TxID
 }
 
 func (stub *MockStub) GetArgs() [][]byte {
@@ -75,13 +79,13 @@ func (stub *MockStub) GetStringArgs() []string {
 // Used to indicate to a chaincode that it is part of a transaction.
 // This is important when chaincodes invoke each other.
 // MockStub doesn't support concurrent transactions at present.
-func (stub *MockStub) MockTransactionStart(uuid string) {
-	stub.Uuid = uuid
+func (stub *MockStub) MockTransactionStart(txid string) {
+	stub.TxID = txid
 }
 
 // End a mocked transaction, clearing the UUID.
 func (stub *MockStub) MockTransactionEnd(uuid string) {
-	stub.Uuid = ""
+	stub.TxID = ""
 }
 
 // Register a peer chaincode with this MockStub
@@ -126,7 +130,7 @@ func (stub *MockStub) GetState(key string) ([]byte, error) {
 
 // PutState writes the specified `value` and `key` into the ledger.
 func (stub *MockStub) PutState(key string, value []byte) error {
-	if stub.Uuid == "" {
+	if stub.TxID == "" {
 		mockLogger.Error("Cannot PutState without a transactions - call stub.MockTransactionStart()?")
 		return errors.New("Cannot PutState without a transactions - call stub.MockTransactionStart()?")
 	}
@@ -236,7 +240,7 @@ func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]by
 	otherStub := stub.Invokables[chaincodeName]
 	mockLogger.Debug("MockStub", stub.Name, "Invoking peer chaincode", otherStub.Name, args)
 	//	function, strings := getFuncArgs(args)
-	bytes, err := otherStub.MockInvoke(stub.Uuid, function, params)
+	bytes, err := otherStub.MockInvoke(stub.TxID, function, params)
 	mockLogger.Debug("MockStub", stub.Name, "Invoked peer chaincode", otherStub.Name, "got", bytes, err)
 	return bytes, err
 }
