@@ -16,24 +16,67 @@
 # under the License.
 #
 
+BINDIR  := node_modules/.bin
+TYPINGS := $(BINDIR)/typings
+TSC     := $(BINDIR)/tsc
+TYPEDOC := $(BINDIR)/typedoc
+
+DOCURI := "https://github.com/hyperledger/fabric/tree/master/sdk/node/"
+
+SRC := $(shell find src -type f)
+CONFIG := $(shell ls *.json)
+
 EXECUTABLES = npm
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
-all: hfc
+# npm tool->pkg mapping
+npm.pkg.typings   := typings
+npm.pkg.tsc       := typescript
+npm.pkg.typedoc   := typedoc
 
-.PHONY: hfc
-hfc:
-	mkdir -p ./lib/protos
-	cp ../../protos/*.proto ./lib/protos
-	cp ../../membersrvc/protos/*.proto ./lib/protos
-	npm ls -g | grep 'typings' || sudo npm install -g typings
-	npm ls -g | grep 'typescript' || sudo npm install -g typescript
-	npm install && typings install
-	tsc
-	./makedoc.sh
+all: lib doc
 
-unit-tests: hfc
+.PHONY: lib doc
+lib: lib/hfc.js
+doc: doc/index.html
+
+.SECONDARY: $(TYPINGS) $(TSC) $(TYPEDOC)
+$(BINDIR)/%: $(CONFIG)
+	@echo "[INSTALL] $@"
+	npm install $(npm.pkg.$(@F))
+	@touch $@
+
+doc/index.html: $(TYPEDOC) $(SRC) $(CONFIG) typedoc-special.d.ts Makefile
+	@echo "[BUILD] SDK documentation"
+	@-rm -rf $(@D)
+	@mkdir -p $(@D)
+	$(TYPEDOC) -m amd \
+		--name 'Node.js Hyperledger Fabric SDK' \
+		--includeDeclarations \
+		--excludeExternals \
+		--excludeNotExported \
+		--out $(@D) \
+		src/hfc.ts typedoc-special.d.ts
+	# Typedoc generates links to working GIT repo which is fixed
+	# below to use an official release URI.
+	find $(@D) -name '*.html' -exec sed -i 's!href="http.*sdk/node/!href="'$(DOCURI)'!' {} \;
+
+lib/hfc.js: $(TYPINGS) $(TSC) $(SRC) $(CONFIG) Makefile
+	@echo "[BUILD] SDK"
+	@mkdir -p ./lib/protos
+	@cp ../../protos/*.proto ./lib/protos
+	@cp ../../membersrvc/protos/*.proto ./lib/protos
+	npm install
+	$(TYPINGS) install
+	$(TSC)
+
+unit-tests: lib
+	@echo "[RUN] unit tests..."
 	@./bin/run-unit-tests.sh
 
 clean:
+	@echo "[CLEAN]"
+	-rm -rf node_modules
+	-rm -rf doc
+	-find lib | grep -v "protos/google" | grep -v "hash.js" | xargs rm
