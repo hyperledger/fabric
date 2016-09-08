@@ -147,7 +147,7 @@ function handleUserRequest(userName, chaincodeID, fcn, args) {
      });
      // Listen for the 'complete' event.
      tx.on('complete', function(results) {
-        console.log("completed invoke: %j",results;
+        console.log("completed invoke: %j",results);
      });
      // Listen for the 'error' event.
      tx.on('error', function(err) {
