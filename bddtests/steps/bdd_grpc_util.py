@@ -55,7 +55,7 @@ def getGRPCChannelAndUser(context, enrollId):
     userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
 
     # Get the IP address of the server that the user registered on
-    ipAddress = bdd_test_util.ipFromContainerNamePart(userRegistration.composeService, context.compose_containers)
+    ipAddress = context.containerAliasMap[userRegistration.composeService].ipAddress
 
     channel = getGRPCChannel(ipAddress)
 

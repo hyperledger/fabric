@@ -75,46 +75,6 @@ def getUserRegistration(context, enrollId):
         raise Exception("User has not been registered: {0}".format(enrollId))
     return userRegistration
 
-
-def ipFromContainerNamePart(namePart, containerDataList):
-    """Returns the IPAddress based upon a name part of the full container name"""
-    containerData = containerDataFromNamePart(namePart, containerDataList)
-
-    if containerData == None:
-        raise Exception("Could not find container with namePart = {0}".format(namePart))
-
-    return containerData.ipAddress
-
-def fullNameFromContainerNamePart(namePart, containerDataList):
-    containerData = containerDataFromNamePart(namePart, containerDataList)
-
-    if containerData == None:
-        raise Exception("Could not find container with namePart = {0}".format(namePart))
-
-    return containerData.containerName
-
-def containerDataFromNamePart(namePart, containerDataList):
-    containerNamePrefix = os.path.basename(os.getcwd()) + "_"
-    fullContainerName = containerNamePrefix + namePart
-
-    for containerData in containerDataList:
-        if containerData.containerName.startswith(fullContainerName):
-            return containerData
-
-    return None
-
-def getContainerDataValuesFromContext(context, aliases, callback):
-    """Returns the IPAddress based upon a name part of the full container name"""
-    assert 'compose_containers' in context, "compose_containers not found in context"
-    values = []
-    containerNamePrefix = os.path.basename(os.getcwd()) + "_"
-    for namePart in aliases:
-        for containerData in context.compose_containers:
-            if containerData.containerName.startswith(containerNamePrefix + namePart):
-                values.append(callback(containerData))
-                break
-    return values
-
 def start_background_process(context, program_name, arg_list):
     p = subprocess.Popen(arg_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     setattr(context, program_name, p)

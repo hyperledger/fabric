@@ -24,10 +24,10 @@ def after_scenario(context, scenario):
         file_suffix = "_" + scenario.name.replace(" ", "_") + ".log"
         # get logs from the peer containers
         for containerData in context.compose_containers:
-            with open(containerData.containerName + file_suffix, "w+") as logfile:
-                sys_rc = subprocess.call(["docker", "logs", containerData.containerName], stdout=logfile, stderr=logfile)
+            with open(containerData.name + file_suffix, "w+") as logfile:
+                sys_rc = subprocess.call(["docker", "logs", containerData.name], stdout=logfile, stderr=logfile)
                 if sys_rc !=0 :
-                    bdd_log("Cannot get logs for {0}. Docker rc = {1}".format(containerData.containerName,sys_rc))
+                    bdd_log("Cannot get logs for {0}. Docker rc = {1}".format(containerData.name,sys_rc))
         # get logs from the chaincode containers
         cc_output, cc_error, cc_returncode = \
             cli_call(["docker",  "ps", "-f",  "name=dev-", "--format", "{{.Names}}"], expect_success=True)
@@ -52,7 +52,7 @@ def after_scenario(context, scenario):
 
             if coverageEnabled(context):
                 #Save the coverage files for this scenario before removing containers
-                containerNames = [containerData.containerName for  containerData in context.compose_containers]
+                containerNames = [containerData.name for  containerData in context.compose_containers]
                 saveCoverageFiles("coverage", scenario.name.replace(" ", "_"), containerNames, "cov")
 
             context.compose_output, context.compose_error, context.compose_returncode = \

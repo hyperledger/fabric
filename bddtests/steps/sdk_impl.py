@@ -32,8 +32,7 @@ def step_impl(context, enrollId, enrollSecret, composeService):
     assert 'compose_containers' in context, "compose_containers not found in context"
 
     # Get the sampleApp IP Address
-    containerDataList = bdd_test_util.getContainerDataValuesFromContext(context, [composeService], lambda containerData: containerData)
-    sampleAppIpAddress = containerDataList[0].ipAddress
+    sampleAppIpAddress = context.containerAliasMap[composeService].ipAddress
     secretMsg = {
         "enrollId": enrollId,
         "enrollSecret" : enrollSecret

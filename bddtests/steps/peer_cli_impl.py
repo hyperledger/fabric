@@ -16,19 +16,19 @@
 
 import json
 from behave import *
-from bdd_test_util import cli_call, fullNameFromContainerNamePart, bdd_log
+from bdd_test_util import cli_call, bdd_log
 from peer_basic_impl import getAttributeFromJSON
 
-@when(u'I execute "{command}" in container {containerName}')
-def step_impl(context, command, containerName):
-    bdd_log("Run command: \"{0}\" in container {1}".format(command, containerName))
-    executeCommandInContainer(context, command, containerName)
+@when(u'I execute "{command}" in container {containerAlias}')
+def step_impl(context, command, containerAlias):
+    bdd_log("Run command: \"{0}\" in container {1}".format(command, containerAlias))
+    executeCommandInContainer(context, command, containerAlias)
     bdd_log("stdout: {0}".format(context.command["stdout"]))
     bdd_log("stderr: {0}".format(context.command["stderr"]))
     bdd_log("returnCode: {0}".format(context.command["returnCode"]))
 
-def executeCommandInContainer(context, command, container):
-    fullContainerName = fullNameFromContainerNamePart(container, context.compose_containers)
+def executeCommandInContainer(context, command, containerAlias):
+    fullContainerName = context.containerAliasMap[containerAlias].name
     command = "docker exec {} {}".format(fullContainerName, command)
     executeCommand(context, command)
 
