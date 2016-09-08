@@ -101,9 +101,9 @@ fi
 
 # First install protoc
 cd /tmp
-wget --quiet https://github.com/google/protobuf/archive/v3.0.0.tar.gz
-tar xpzf v3.0.0.tar.gz
-cd protobuf-3.0.0
+wget --quiet https://github.com/google/protobuf/archive/v3.0.2.tar.gz
+tar xpzf v3.0.2.tar.gz
+cd protobuf-3.0.2
 apt-get install -y autoconf automake libtool curl make g++ unzip
 apt-get install -y build-essential
 ./autogen.sh
