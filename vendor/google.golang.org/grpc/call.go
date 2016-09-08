@@ -34,13 +34,13 @@
 package grpc
 
 import (
+	"bytes"
 	"io"
 	"time"
 
 	"golang.org/x/net/context"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/transport"
 )
 
@@ -48,16 +48,16 @@ import (
 // On error, it returns the error and indicates whether the call should be retried.
 //
 // TODO(zhaoq): Check whether the received message sequence is valid.
-func recvResponse(codec Codec, t transport.ClientTransport, c *callInfo, stream *transport.Stream, reply interface{}) error {
+func recvResponse(dopts dialOptions, t transport.ClientTransport, c *callInfo, stream *transport.Stream, reply interface{}) error {
 	// Try to acquire header metadata from the server if there is any.
 	var err error
 	c.headerMD, err = stream.Header()
 	if err != nil {
 		return err
 	}
-	p := &parser{s: stream}
+	p := &parser{r: stream}
 	for {
-		if err = recv(p, codec, reply); err != nil {
+		if err = recv(p, dopts.codec, stream, dopts.dc, reply); err != nil {
 			if err == io.EOF {
 				break
 			}
@@ -69,7 +69,7 @@ func recvResponse(codec Codec, t transport.ClientTransport, c *callInfo, stream 
 }
 
 // sendRequest writes out various information of an RPC such as Context and Message.
-func sendRequest(ctx context.Context, codec Codec, callHdr *transport.CallHdr, t transport.ClientTransport, args interface{}, opts *transport.Options) (_ *transport.Stream, err error) {
+func sendRequest(ctx context.Context, codec Codec, compressor Compressor, callHdr *transport.CallHdr, t transport.ClientTransport, args interface{}, opts *transport.Options) (_ *transport.Stream, err error) {
 	stream, err := t.NewStream(ctx, callHdr)
 	if err != nil {
 		return nil, err
@@ -81,31 +81,30 @@ func sendRequest(ctx context.Context, codec Codec, callHdr *transport.CallHdr, t
 			}
 		}
 	}()
-	// TODO(zhaoq): Support compression.
-	outBuf, err := encode(codec, args, compressionNone)
+	var cbuf *bytes.Buffer
+	if compressor != nil {
+		cbuf = new(bytes.Buffer)
+	}
+	outBuf, err := encode(codec, args, compressor, cbuf)
 	if err != nil {
 		return nil, transport.StreamErrorf(codes.Internal, "grpc: %v", err)
 	}
 	err = t.Write(stream, outBuf, opts)
-	if err != nil {
+	// t.NewStream(...) could lead to an early rejection of the RPC (e.g., the service/method
+	// does not exist.) so that t.Write could get io.EOF from wait(...). Leave the following
+	// recvResponse to get the final status.
+	if err != nil && err != io.EOF {
 		return nil, err
 	}
 	// Sent successfully.
 	return stream, nil
 }
 
-// callInfo contains all related configuration and information about an RPC.
-type callInfo struct {
-	failFast  bool
-	headerMD  metadata.MD
-	trailerMD metadata.MD
-	traceInfo traceInfo // in trace.go
-}
-
-// Invoke is called by the generated code. It sends the RPC request on the
-// wire and returns after response is received.
+// Invoke sends the RPC request on the wire and returns after response is received.
+// Invoke is called by generated code. Also users can call Invoke directly when it
+// is really needed in their use cases.
 func Invoke(ctx context.Context, method string, args, reply interface{}, cc *ClientConn, opts ...CallOption) (err error) {
-	var c callInfo
+	c := defaultCallInfo
 	for _, o := range opts {
 		if err := o.before(&c); err != nil {
 			return toRPCErr(err)
@@ -136,57 +135,82 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 		Last:  true,
 		Delay: false,
 	}
-	var (
-		lastErr error // record the error that happened
-	)
 	for {
 		var (
 			err    error
 			t      transport.ClientTransport
 			stream *transport.Stream
+			// Record the put handler from Balancer.Get(...). It is called once the
+			// RPC has completed or failed.
+			put func()
 		)
-		// TODO(zhaoq): Need a formal spec of retry strategy for non-failfast rpcs.
-		if lastErr != nil && c.failFast {
-			return toRPCErr(lastErr)
-		}
+		// TODO(zhaoq): Need a formal spec of fail-fast.
 		callHdr := &transport.CallHdr{
 			Host:   cc.authority,
 			Method: method,
 		}
-		t, err = cc.dopts.picker.Pick(ctx)
+		if cc.dopts.cp != nil {
+			callHdr.SendCompress = cc.dopts.cp.Type()
+		}
+		gopts := BalancerGetOptions{
+			BlockingWait: !c.failFast,
+		}
+		t, put, err = cc.getTransport(ctx, gopts)
 		if err != nil {
-			if lastErr != nil {
-				// This was a retry; return the error from the last attempt.
-				return toRPCErr(lastErr)
+			// TODO(zhaoq): Probably revisit the error handling.
+			if _, ok := err.(*rpcError); ok {
+				return err
 			}
-			return toRPCErr(err)
+			if err == errConnClosing {
+				if c.failFast {
+					return Errorf(codes.Unavailable, "%v", errConnClosing)
+				}
+				continue
+			}
+			// All the other errors are treated as Internal errors.
+			return Errorf(codes.Internal, "%v", err)
 		}
 		if c.traceInfo.tr != nil {
 			c.traceInfo.tr.LazyLog(&payload{sent: true, msg: args}, true)
 		}
-		stream, err = sendRequest(ctx, cc.dopts.codec, callHdr, t, args, topts)
+		stream, err = sendRequest(ctx, cc.dopts.codec, cc.dopts.cp, callHdr, t, args, topts)
 		if err != nil {
-			if _, ok := err.(transport.ConnectionError); ok {
-				lastErr = err
-				continue
+			if put != nil {
+				put()
+				put = nil
 			}
-			if lastErr != nil {
-				return toRPCErr(lastErr)
+			if _, ok := err.(transport.ConnectionError); ok {
+				if c.failFast {
+					return toRPCErr(err)
+				}
+				continue
 			}
 			return toRPCErr(err)
 		}
 		// Receive the response
-		lastErr = recvResponse(cc.dopts.codec, t, &c, stream, reply)
-		if _, ok := lastErr.(transport.ConnectionError); ok {
-			continue
+		err = recvResponse(cc.dopts, t, &c, stream, reply)
+		if err != nil {
+			if put != nil {
+				put()
+				put = nil
+			}
+			if _, ok := err.(transport.ConnectionError); ok {
+				if c.failFast {
+					return toRPCErr(err)
+				}
+				continue
+			}
+			t.CloseStream(stream, err)
+			return toRPCErr(err)
 		}
 		if c.traceInfo.tr != nil {
 			c.traceInfo.tr.LazyLog(&payload{sent: false, msg: reply}, true)
 		}
-		t.CloseStream(stream, lastErr)
-		if lastErr != nil {
-			return toRPCErr(lastErr)
+		t.CloseStream(stream, nil)
+		if put != nil {
+			put()
+			put = nil
 		}
-		return Errorf(stream.StatusCode(), stream.StatusDesc())
+		return Errorf(stream.StatusCode(), "%s", stream.StatusDesc())
 	}
 }

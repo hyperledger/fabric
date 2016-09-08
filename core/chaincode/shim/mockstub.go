@@ -23,8 +23,7 @@ import (
 	"errors"
 	"strings"
 
-	gp "google/protobuf"
-
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 	"github.com/op/go-logging"
 )
@@ -301,7 +300,7 @@ func (stub *MockStub) GetPayload() ([]byte, error) {
 }
 
 // Not implemented
-func (stub *MockStub) GetTxTimestamp() (*gp.Timestamp, error) {
+func (stub *MockStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 	return nil, nil
 }
 
