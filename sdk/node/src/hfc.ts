@@ -454,6 +454,18 @@ export class Chain {
      * @returns {Peer} Returns a new peer.
      */
     addPeer(url:string, pem?:string):Peer {
+
+        //check to see if the peer is already part of the chain
+        this.peers.forEach(function(peer){
+            if (peer.getUrl()===url)
+            {
+                var error = new Error();
+                error.name = "DuplicatePeer";
+                error.message = "Peer with URL " + url + " is already a member of the chain";
+                throw error;
+            }
+        })
+
         let peer = new Peer(url, this, pem);
         this.peers.push(peer);
         return peer;
