@@ -48,6 +48,11 @@ if (fs.existsSync("tlsca.cert")) {
     chain.setMemberServicesUrl("grpc://localhost:7054");
 }
 chain.addPeer("grpc://localhost:7051");
+chain.eventHubConnect("localhost:7053");
+
+process.on('exit', function (){
+  chain.eventHubDisconnect();
+});
 
 //
 // Set the chaincode deployment mode to either developent mode (user runs chaincode)
@@ -759,6 +764,7 @@ test('Invoke a chaincode by enrolled user', function (t) {
     invokeTx.on('submitted', function (results) {
         // Invoke transaction submitted successfully
         t.pass(util.format("Successfully submitted chaincode invoke transaction: request=%j, response=%j", invokeRequest, results));
+        chain.eventHubDisconnect();
     });
     invokeTx.on('error', function (err) {
         // Invoke transaction submission failed
