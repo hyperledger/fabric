@@ -59,6 +59,7 @@ func chaincodeDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Error building %s: %s\n", chainFuncName, err)
 	}
 	logger.Infof("Deploy result: %s", chaincodeDeploymentSpec.ChaincodeSpec)
+	fmt.Printf("Deploy chaincode: %s\n", chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name)
 
 	return nil
 }
