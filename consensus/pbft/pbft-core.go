@@ -1170,7 +1170,14 @@ func (instance *pbftCore) recvCheckpoint(chkpt *Checkpoint) events.Event {
 		instance.id, matching, chkpt.SequenceNumber, chkpt.Id)
 
 	if matching == instance.f+1 {
-		// We do have a weak cert
+		// We have a weak cert
+		// If we have generated a checkpoint for this seqNo, make sure we have a match
+		if ownChkptID, ok := instance.chkpts[chkpt.SequenceNumber]; ok {
+			if ownChkptID != chkpt.Id {
+				logger.Panicf("Own checkpoint for seqNo %d (%s) different from weak checkpoint certificate (%s)",
+					chkpt.SequenceNumber, ownChkptID, chkpt.Id)
+			}
+		}
 		instance.witnessCheckpointWeakCert(chkpt)
 	}
 
@@ -1187,8 +1194,7 @@ func (instance *pbftCore) recvCheckpoint(chkpt *Checkpoint) events.Event {
 	// we have reached this checkpoint
 	// Note, this is not divergent from the paper, as the paper requires that
 	// the quorum certificate must contain 2f+1 messages, including its own
-	chkptID, ok := instance.chkpts[chkpt.SequenceNumber]
-	if !ok {
+	if _, ok := instance.chkpts[chkpt.SequenceNumber]; !ok {
 		logger.Debugf("Replica %d found checkpoint quorum for seqNo %d, digest %s, but it has not reached this checkpoint itself yet",
 			instance.id, chkpt.SequenceNumber, chkpt.Id)
 		if instance.skipInProgress {
@@ -1205,12 +1211,6 @@ func (instance *pbftCore) recvCheckpoint(chkpt *Checkpoint) events.Event {
 
 	logger.Debugf("Replica %d found checkpoint quorum for seqNo %d, digest %s",
 		instance.id, chkpt.SequenceNumber, chkpt.Id)
-
-	if chkptID != chkpt.Id {
-		logger.Criticalf("Replica %d generated a checkpoint of %s, but a quorum of the network agrees on %s. This is almost definitely non-deterministic chaincode.",
-			instance.id, chkptID, chkpt.Id)
-		instance.stateTransfer(nil)
-	}
 
 	instance.moveWatermarks(chkpt.SequenceNumber)
 

@@ -1751,26 +1751,25 @@ func TestStateNetworkMovesOnDuringSlowStateTransfer(t *testing.T) {
 	}
 }
 
-// This test is designed to ensure state transfer occurs if our checkpoint does not match a quorum cert
-func TestCheckpointDiffersFromQuorum(t *testing.T) {
-	invalidated := false
-	skipped := false
-	instance := newPbftCore(3, loadConfig(), &omniProto{
-		invalidateStateImpl: func() { invalidated = true },
-		skipToImpl:          func(s uint64, id []byte, replicas []uint64) { skipped = true },
-	}, &inertTimerFactory{})
+// This test is designed to ensure the peer panics if the value of the weak cert is different from its own checkpoint
+func TestCheckpointDiffersFromWeakCert(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Weak checkpoint certificate different from own, should have panicked.")
+		}
+	}()
 
-	seqNo := uint64(10)
+	instance := newPbftCore(3, loadConfig(), &omniProto{}, &inertTimerFactory{})
 
 	badChkpt := &Checkpoint{
 		SequenceNumber: 10,
 		Id:             base64.StdEncoding.EncodeToString([]byte("WRONG")),
-		ReplicaId:      0,
+		ReplicaId:      3,
 	}
-	instance.chkpts[seqNo] = badChkpt.Id // This is done via the exec path, shortcut it here
+	instance.chkpts[10] = badChkpt.Id // This is done via the exec path, shortcut it here
 	events.SendEvent(instance, badChkpt)
 
-	for i := uint64(1); i <= 3; i++ {
+	for i := uint64(0); i < 2; i++ {
 		events.SendEvent(instance, &Checkpoint{
 			SequenceNumber: 10,
 			Id:             base64.StdEncoding.EncodeToString([]byte("CORRECT")),
@@ -1778,15 +1777,7 @@ func TestCheckpointDiffersFromQuorum(t *testing.T) {
 		})
 	}
 
-	if instance.h != 10 {
-		t.Fatalf("Replica should have moved its watermarks but did not")
-	}
-
-	if !instance.skipInProgress {
-		t.Fatalf("Replica should be attempting state transfer")
-	}
-
-	if !invalidated || !skipped {
-		t.Fatalf("Replica should have invalidated its state and skipped")
+	if instance.highStateTarget != nil {
+		t.Fatalf("State target should not have been updated")
 	}
 }
