@@ -31,6 +31,7 @@ import (
 	"github.com/op/go-logging"
 
 	"github.com/hyperledger/fabric/consensus/util/events"
+	pb "github.com/hyperledger/fabric/protos"
 )
 
 func init() {
@@ -1701,6 +1702,30 @@ func TestViewChangeDuringExecution(t *testing.T) {
 	if !skipped {
 		t.Fatalf("Expected state transfer to be kicked off once execution completed")
 	}
+}
+
+func TestStateTransferCheckpoint(t *testing.T) {
+	broadcasts := 0
+	instance := newPbftCore(3, loadConfig(), &omniProto{
+		broadcastImpl: func(msg []byte) {
+			broadcasts++
+		},
+		validateStateImpl: func() {},
+	}, &inertTimerFactory{})
+
+	id := []byte("My ID")
+	events.SendEvent(instance, stateUpdatedEvent{
+		chkpt: &checkpointMessage{
+			seqNo: 10,
+			id:    id,
+		},
+		target: &pb.BlockchainInfo{},
+	})
+
+	if broadcasts != 1 {
+		t.Fatalf("Should have broadcast a checkpoint after the state transfer finished")
+	}
+
 }
 
 func TestStateTransferredToOldPoint(t *testing.T) {

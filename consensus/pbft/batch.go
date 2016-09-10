@@ -83,8 +83,17 @@ func newObcBatch(id uint64, config *viper.Viper, stack consensus.Stack) *obcBatc
 	etf := events.NewTimerFactoryImpl(op.manager)
 	op.pbft = newPbftCore(id, config, op, etf)
 	op.manager.Start()
+	blockchainInfoBlob := stack.GetBlockchainInfoBlob()
 	op.externalEventReceiver.manager = op.manager
 	op.broadcaster = newBroadcaster(id, op.pbft.N, op.pbft.f, op.pbft.broadcastTimeout, stack)
+	op.manager.Queue() <- workEvent(func() {
+		op.pbft.stateTransfer(&stateUpdateTarget{
+			checkpointMessage: checkpointMessage{
+				seqNo: op.pbft.lastExec,
+				id:    blockchainInfoBlob,
+			},
+		})
+	})
 
 	op.batchSize = config.GetInt("general.batchsize")
 	op.batchStore = nil

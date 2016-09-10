@@ -376,11 +376,11 @@ func (instance *pbftCore) ProcessEvent(e events.Event) events.Event {
 			return nil
 		}
 		logger.Infof("Replica %d application caught up via state transfer, lastExec now %d", instance.id, update.seqNo)
-		// XXX create checkpoint
 		instance.lastExec = update.seqNo
 		instance.moveWatermarks(instance.lastExec) // The watermark movement handles moving this to a checkpoint boundary
 		instance.skipInProgress = false
 		instance.consumer.validateState()
+		instance.Checkpoint(update.seqNo, update.id)
 		instance.executeOutstanding()
 	case execDoneEvent:
 		instance.execDoneSync()

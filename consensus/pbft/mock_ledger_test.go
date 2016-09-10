@@ -17,6 +17,7 @@ limitations under the License.
 package pbft
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"sync"
@@ -297,6 +298,27 @@ func (mock *MockLedger) GetBlockHeadMetadata() ([]byte, error) {
 }
 
 func (mock *MockLedger) simulateStateTransfer(info *protos.BlockchainInfo, peers []*protos.PeerID) {
+	if mock.blockHeight >= info.Height {
+		blockCursor := info.Height - 1
+		validHash := info.CurrentBlockHash
+		for {
+			block, ok := mock.blocks[blockCursor]
+			if !ok {
+				break
+			}
+			hash, _ := mock.HashBlock(block)
+			if !bytes.Equal(hash, validHash) {
+				break
+			}
+			blockCursor--
+			validHash = block.PreviousBlockHash
+			if blockCursor == ^uint64(0) {
+				return
+			}
+		}
+		panic(fmt.Sprintf("Asked to skip to a block (%d) which is lower than our current height of %d.  (Corrupt block at %d with hash %x)", info.Height, mock.blockHeight, blockCursor, validHash))
+	}
+
 	var remoteLedger consensus.ReadOnlyLedger
 	if len(peers) > 0 {
 		var ok bool
@@ -309,9 +331,6 @@ func (mock *MockLedger) simulateStateTransfer(info *protos.BlockchainInfo, peers
 	}
 	fmt.Printf("TEST LEDGER skipping to %+v", info)
 	p := 0
-	if mock.blockHeight >= info.Height {
-		panic(fmt.Sprintf("Asked to skip to a block (%d) which is lower than our current height of %d", info.Height, mock.blockHeight))
-	}
 	for n := mock.blockHeight; n < info.Height; n++ {
 		block, err := remoteLedger.GetBlock(n)
 

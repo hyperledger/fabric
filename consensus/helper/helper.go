@@ -53,16 +53,16 @@ func NewHelper(mhc peer.MessageHandlerCoordinator) *Helper {
 		coordinator: mhc,
 		secOn:       viper.GetBool("security.enabled"),
 		secHelper:   mhc.GetSecHelper(),
-		valid:       true, // Assume our state is consistent until we are told otherwise, TODO: revisit
+		valid:       true, // Assume our state is consistent until we are told otherwise, actual consensus (pbft) will invalidate this immediately, but noops will not
 	}
 
 	h.executor = executor.NewImpl(h, h, mhc)
-	h.executor.Start()
 	return h
 }
 
 func (h *Helper) setConsenter(c consensus.Consenter) {
 	h.consenter = c
+	h.executor.Start() // The consenter may be expecting a callback from the executor because of state transfer completing, it will miss this if we start the executor too early
 }
 
 // GetNetworkInfo returns the PeerEndpoints of the current validator and the entire validating network
