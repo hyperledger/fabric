@@ -73,7 +73,7 @@ func main() {
 	aca := ca.NewACA()
 	defer aca.Stop()
 
-	eca := ca.NewECA()
+	eca := ca.NewECA(aca)
 	defer eca.Stop()
 
 	tca := ca.NewTCA(eca)

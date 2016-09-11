@@ -276,7 +276,10 @@ func (aca *ACA) fetchAttributes(id, affiliation string) ([]*AttributePair, error
 	return attributes, nil
 }
 
-func (aca *ACA) populateAttributes(attrs []*AttributePair) error {
+func (aca *ACA) PopulateAttributes(attrs []*AttributePair) error {
+
+	acaLogger.Debugf("PopulateAttributes: %+v", attrs)
+
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -285,6 +288,7 @@ func (aca *ACA) populateAttributes(attrs []*AttributePair) error {
 		return dberr
 	}
 	for _, attr := range attrs {
+		acaLogger.Debugf("attr: %+v", attr)
 		if err := aca.populateAttribute(tx, attr); err != nil {
 			dberr = tx.Rollback()
 			if dberr != nil {
@@ -331,7 +335,7 @@ func (aca *ACA) fetchAndPopulateAttributes(id, affiliation string) error {
 	if err != nil {
 		return err
 	}
-	err = aca.populateAttributes(attrs)
+	err = aca.PopulateAttributes(attrs)
 	if err != nil {
 		return err
 	}

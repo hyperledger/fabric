@@ -159,6 +159,8 @@ export interface RegistrationRequest {
     roles?:string[];
     // Affiliation for a user
     affiliation:string;
+    // The attribute names and values to grant to this member
+    attributes?:Attribute[];
     // 'registrar' enables this identity to register other members with types
     // and can delegate the 'delegationRoles' roles
     registrar?:{
@@ -169,6 +171,15 @@ export interface RegistrationRequest {
     };
 }
 
+// An attribute consisting of a name and value
+export interface Attribute {
+   // The attribute name
+   name:string;
+   // The attribute value
+   value:string;
+}
+
+// An enrollment request
 export interface EnrollmentRequest {
     // The enrollment ID
     enrollmentID:string;
@@ -290,7 +301,7 @@ export class Certificate {
 /**
  * Enrollment certificate.
  */
-export class ECert extends Certificate {
+class ECert extends Certificate {
 
     constructor(public cert:Buffer,
                 public privateKey:any) {
@@ -2321,10 +2332,25 @@ class MemberServicesImpl implements MemberServices {
         debug("MemberServicesImpl.register: req=%j", req);
         if (!req.enrollmentID) return cb(new Error("missing req.enrollmentID"));
         if (!registrar) return cb(new Error("chain registrar is not set"));
+        // Create proto request
         let protoReq = new _caProto.RegisterUserReq();
         protoReq.setId({id:req.enrollmentID});
         protoReq.setRole(rolesToMask(req.roles));
         protoReq.setAffiliation(req.affiliation);
+        let attrs = req.attributes;
+        if (Array.isArray(attrs)) {
+           let pattrs = [];
+           for (var i = 0; i < attrs.length; i++) {
+              var attr = attrs[i];
+              var pattr = new _caProto.Attribute();
+              if (attr.name) pattr.setName(attr.name);
+              if (attr.value) pattr.setValue(attr.value);
+              if (attr.notBefore) pattr.setNotBefore(attr.notBefore);
+              if (attr.notAfter) pattr.setNotAfter(attr.notAfter);
+              pattrs.push(pattr);
+           }
+           protoReq.setAttributes(pattrs);
+        }
         // Create registrar info
         let protoRegistrar = new _caProto.Registrar();
         protoRegistrar.setId({id:registrar.getName()});

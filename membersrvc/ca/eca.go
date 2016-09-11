@@ -48,6 +48,7 @@ var (
 //
 type ECA struct {
 	*CA
+	aca             *ACA
 	obcKey          []byte
 	obcPriv, obcPub []byte
 	gRPCServer      *grpc.Server
@@ -59,8 +60,8 @@ func initializeECATables(db *sql.DB) error {
 
 // NewECA sets up a new ECA.
 //
-func NewECA() *ECA {
-	eca := &ECA{CA: NewCA("eca", initializeECATables)}
+func NewECA(aca *ACA) *ECA {
+	eca := &ECA{CA: NewCA("eca", initializeECATables), aca: aca}
 	flogging.LoggingInit("eca")
 
 	{
@@ -152,7 +153,7 @@ func (eca *ECA) populateUsersTable() {
 				}
 			}
 		}
-		eca.registerUser(id, affiliation, pb.Role(role), registrar, memberMetadata, vals[1])
+		eca.registerUser(id, affiliation, pb.Role(role), nil, eca.aca, registrar, memberMetadata, vals[1])
 	}
 }
 

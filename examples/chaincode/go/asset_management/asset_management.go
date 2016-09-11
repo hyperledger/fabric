@@ -264,7 +264,7 @@ func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface, funct
 	myLogger.Debugf("Query [%s]", function)
 
 	if function != "query" {
-		return nil, errors.New("Invalid query function name. Expecting \"query\"")
+		return nil, errors.New("Invalid query function name. Expecting 'query' but found '" + function + "'")
 	}
 
 	var err error
