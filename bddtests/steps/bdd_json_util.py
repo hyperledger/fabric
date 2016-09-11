@@ -14,11 +14,21 @@
 # limitations under the License.
 #
 
-def getAttributeFromJSON(attribute, jsonObject, msg):
-    return getHierarchyAttributesFromJSON(attribute.split("."), jsonObject, msg)
+def getAttributeFromJSON(attribute, json):
+    foundJson = getHierarchyAttributesFromJSON(attribute.split("."), json)
+    assert foundJson is not None, "Unable to locate {} in JSON".format(attribute)
 
-def getHierarchyAttributesFromJSON(attributes, jsonObject, msg):
-    if len(attributes) > 0:
-        assert attributes[0] in jsonObject, msg
-        return getHierarchyAttributesFromJSON(attributes[1:], jsonObject[attributes[0]], msg)
-    return jsonObject
+    return foundJson
+
+def getHierarchyAttributesFromJSON(attributes, json):
+    foundJson = None
+
+    currentAttribute = attributes[0]
+    if currentAttribute in json:
+        foundJson = json[currentAttribute]
+
+        attributesToGo = attributes[1:]
+        if len(attributesToGo) > 0:
+            foundJson = getHierarchyAttributesFromJSON(attributesToGo, foundJson)
+
+    return foundJson

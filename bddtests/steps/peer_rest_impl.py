@@ -16,7 +16,8 @@
 
 import requests
 from behave import *
-from peer_basic_impl import buildUrl, getAttributeFromJSON
+from peer_basic_impl import getAttributeFromJSON
+from bdd_request_util import httpGetToContainerAlias
 from bdd_test_util import bdd_log
 
 
@@ -26,24 +27,17 @@ def step_impl(context, containerAlias):
     assert 'userName' in context, "userName not found in context"
     assert 'compose_containers' in context, "compose_containers not found in context"
 
-    ipAddress = context.containerAliasMap[containerAlias].ipAddress
-    request_url = buildUrl(context, ipAddress, "/registrar/{0}/tcert".format(context.userName))
-    bdd_log("Requesting path = {0}".format(request_url))
     queryParams = {}
     for row in context.table.rows:
         key, value = row['key'], row['value']
         queryParams[key] = value
 
-    bdd_log("Query parameters = {0}".format(queryParams))
-    resp = requests.get(request_url, params=queryParams, headers={'Accept': 'application/json'}, verify=False)
-
-    assert resp.status_code == 200, "Failed to GET to %s:  %s" % (request_url, resp.text)
-    context.response = resp
-    bdd_log("")
+    endpoint = "/registrar/{0}/tcert".format(context.userName)
+    context.response = httpGetToContainerAlias(context, containerAlias, endpoint)
 
 @then(u'I should get a JSON response with "{expectedValue}" different transaction certs')
 def step_impl(context, expectedValue):
     bdd_log(context.response.json())
-    foundValue = getAttributeFromJSON("OK", context.response.json(), "Attribute not found in response (OK)")
+    foundValue = getAttributeFromJSON("OK", context.response.json())
     bdd_log(len(set(foundValue)))
     assert (len(set(foundValue)) == int(expectedValue)), "For attribute OK, expected different transaction cert of size (%s), instead found (%s)" % (expectedValue, len(set(foundValue)))

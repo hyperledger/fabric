@@ -67,7 +67,7 @@ def step_impl(context, stream, attribute, length):
     assertIsJson(data)
 
     json = decodeJson(data)
-    array = getAttribute(attribute, json)
+    array = getAttributeFromJSON(attribute, json)
     assertLength(array, int(length))
 
 @then(u'I should get result with "{expectResult}"')
@@ -87,10 +87,6 @@ def isJson(data):
 
 def decodeJson(data):
     return json.loads(data)
-
-def getAttribute(attribute, json):
-    return getAttributeFromJSON(attribute, json,
-        "Attribute '{}' missing from JSON".format(attribute))
 
 def assertLength(array, length):
     arrayLength = len(array)
