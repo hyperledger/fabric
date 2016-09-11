@@ -1160,14 +1160,30 @@ func (instance *pbftCore) recvCheckpoint(chkpt *Checkpoint) events.Event {
 
 	instance.checkpointStore[*chkpt] = true
 
+	// Track how many different checkpoint values we have for the seqNo in question
+	diffValues := make(map[string]struct{})
+	diffValues[chkpt.Id] = struct{}{}
+
 	matching := 0
 	for testChkpt := range instance.checkpointStore {
-		if testChkpt.SequenceNumber == chkpt.SequenceNumber && testChkpt.Id == chkpt.Id {
-			matching++
+		if testChkpt.SequenceNumber == chkpt.SequenceNumber {
+			if testChkpt.Id == chkpt.Id {
+				matching++
+			} else {
+				if _, ok := diffValues[testChkpt.Id]; !ok {
+					diffValues[testChkpt.Id] = struct{}{}
+				}
+			}
 		}
 	}
 	logger.Debugf("Replica %d found %d matching checkpoints for seqNo %d, digest %s",
 		instance.id, matching, chkpt.SequenceNumber, chkpt.Id)
+
+	// If f+2 different values have been observed, we'll never be able to get a stable cert for this seqNo
+	if count := len(diffValues); count > instance.f+1 {
+		logger.Panicf("Network unable to find stable certificate for seqNo %d (%d different values observed already)",
+			chkpt.SequenceNumber, count)
+	}
 
 	if matching == instance.f+1 {
 		// We have a weak cert

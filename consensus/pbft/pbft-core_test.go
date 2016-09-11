@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -1763,7 +1764,7 @@ func TestCheckpointDiffersFromWeakCert(t *testing.T) {
 
 	badChkpt := &Checkpoint{
 		SequenceNumber: 10,
-		Id:             base64.StdEncoding.EncodeToString([]byte("WRONG")),
+		Id:             "WRONG",
 		ReplicaId:      3,
 	}
 	instance.chkpts[10] = badChkpt.Id // This is done via the exec path, shortcut it here
@@ -1772,12 +1773,32 @@ func TestCheckpointDiffersFromWeakCert(t *testing.T) {
 	for i := uint64(0); i < 2; i++ {
 		events.SendEvent(instance, &Checkpoint{
 			SequenceNumber: 10,
-			Id:             base64.StdEncoding.EncodeToString([]byte("CORRECT")),
+			Id:             "CORRECT",
 			ReplicaId:      i,
 		})
 	}
 
 	if instance.highStateTarget != nil {
 		t.Fatalf("State target should not have been updated")
+	}
+}
+
+// This test is designed to ensure the peer panics if it observes > f+1 different checkpoint values for the same seqNo
+// This indicates a network that will be unable to move its watermarks and thus progress
+func TestNoCheckpointQuorum(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("More than f+1 different checkpoint values found, should have panicked.")
+		}
+	}()
+
+	instance := newPbftCore(3, loadConfig(), &omniProto{}, &inertTimerFactory{})
+
+	for i := uint64(0); i < 3; i++ {
+		events.SendEvent(instance, &Checkpoint{
+			SequenceNumber: 10,
+			Id:             strconv.FormatUint(i, 10),
+			ReplicaId:      i,
+		})
 	}
 }
