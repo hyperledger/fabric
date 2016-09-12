@@ -56,24 +56,7 @@ func (index *blockIndex) indexBlock(blockNum uint64, blockHash []byte, flp *file
 		}
 		batch.PutCF(index.blockIndexCF, index.constructTxIDKey(txID), txFLPBytes)
 	}
-	// for txNum, txOffset := range txOffsets {
-	// 	txID := constructTxID(blockNum, txNum)
-	// 	txBytesLength := 0
-	// 	if txNum < len(txOffsets)-1 {
-	// 		txBytesLength = txOffsets[txNum+1] - txOffsets[txNum]
-	// 	} else {
-	// 		txBytesLength = blockLen - txOffsets[txNum]
-	// 	}
-	// 	txFLP := newFileLocationPointer(flp.fileSuffixNum, flp.offset+skip, &locPointer{txOffset, txBytesLength})
-	// 	logger.Debugf("Adding txLoc [%s] for tx [%s] to index", txFLP, txID)
-	// 	txFLPBytes, marshalErr := txFLP.marshal()
-	// 	if marshalErr != nil {
-	// 		return marshalErr
-	// 	}
-	// 	batch.PutCF(index.blockIndexCF, index.constructTxIDKey(txID), txFLPBytes)
-	// }
-	err = index.db.WriteBatch(batch)
-	if err != nil {
+	if err := index.db.WriteBatch(batch); err != nil {
 		return err
 	}
 	return nil
@@ -136,7 +119,7 @@ func (lp *locPointer) String() string {
 		lp.offset, lp.bytesLength)
 }
 
-// locPointer
+// fileLocPointer
 type fileLocPointer struct {
 	fileSuffixNum int
 	locPointer

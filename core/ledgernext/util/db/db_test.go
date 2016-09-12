@@ -23,7 +23,7 @@ import (
 )
 
 func TestDBBasicWriteAndReads(t *testing.T) {
-	dbConf := &Conf{"/tmp/v2/test/db", []string{"cf1", "cf2"}}
+	dbConf := &Conf{"/tmp/v2/test/db", []string{"cf1", "cf2"}, false}
 	db := CreateDB(dbConf)
 	db.Open()
 	defer db.Close()

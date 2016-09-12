@@ -37,8 +37,9 @@ const (
 
 // Conf configuration for `DB`
 type Conf struct {
-	DBPath  string
-	CFNames []string
+	DBPath     string
+	CFNames    []string
+	DisableWAL bool
 }
 
 // DB - a rocksDB instance
@@ -48,12 +49,23 @@ type DB struct {
 	cfHandlesMap map[string]*gorocksdb.ColumnFamilyHandle
 	dbState      dbState
 	mux          sync.Mutex
+
+	readOpts  *gorocksdb.ReadOptions
+	writeOpts *gorocksdb.WriteOptions
 }
 
 // CreateDB constructs a `DB`
 func CreateDB(conf *Conf) *DB {
 	conf.CFNames = append(conf.CFNames, defaultCFName)
-	return &DB{conf: conf, cfHandlesMap: make(map[string]*gorocksdb.ColumnFamilyHandle), dbState: closed}
+	readOpts := gorocksdb.NewDefaultReadOptions()
+	writeOpts := gorocksdb.NewDefaultWriteOptions()
+	writeOpts.DisableWAL(conf.DisableWAL)
+	return &DB{
+		conf:         conf,
+		cfHandlesMap: make(map[string]*gorocksdb.ColumnFamilyHandle),
+		dbState:      closed,
+		readOpts:     readOpts,
+		writeOpts:    writeOpts}
 }
 
 // Open open underlying rocksdb
@@ -73,7 +85,6 @@ func (dbInst *DB) Open() {
 	}
 	opts := gorocksdb.NewDefaultOptions()
 	defer opts.Destroy()
-
 	opts.SetCreateIfMissing(dirEmpty)
 	opts.SetCreateIfMissingColumnFamilies(true)
 
@@ -116,9 +127,7 @@ func (dbInst *DB) isOpen() bool {
 
 // Get returns the value for the given column family and key
 func (dbInst *DB) Get(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
-	opt := gorocksdb.NewDefaultReadOptions()
-	defer opt.Destroy()
-	slice, err := dbInst.rocksDB.GetCF(opt, cfHandle, key)
+	slice, err := dbInst.rocksDB.GetCF(dbInst.readOpts, cfHandle, key)
 	if err != nil {
 		fmt.Println("Error while trying to retrieve key:", key)
 		return nil, err
@@ -133,9 +142,7 @@ func (dbInst *DB) Get(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte) ([]byt
 
 // Put saves the key/value in the given column family
 func (dbInst *DB) Put(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte, value []byte) error {
-	opt := gorocksdb.NewDefaultWriteOptions()
-	defer opt.Destroy()
-	err := dbInst.rocksDB.PutCF(opt, cfHandle, key, value)
+	err := dbInst.rocksDB.PutCF(dbInst.writeOpts, cfHandle, key, value)
 	if err != nil {
 		fmt.Println("Error while trying to write key:", key)
 		return err
@@ -145,9 +152,7 @@ func (dbInst *DB) Put(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte, value 
 
 // Delete delets the given key in the specified column family
 func (dbInst *DB) Delete(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte) error {
-	opt := gorocksdb.NewDefaultWriteOptions()
-	defer opt.Destroy()
-	err := dbInst.rocksDB.DeleteCF(opt, cfHandle, key)
+	err := dbInst.rocksDB.DeleteCF(dbInst.writeOpts, cfHandle, key)
 	if err != nil {
 		fmt.Println("Error while trying to delete key:", key)
 		return err
@@ -157,9 +162,7 @@ func (dbInst *DB) Delete(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte) err
 
 // WriteBatch writes a batch
 func (dbInst *DB) WriteBatch(batch *gorocksdb.WriteBatch) error {
-	opts := gorocksdb.NewDefaultWriteOptions()
-	defer opts.Destroy()
-	if err := dbInst.rocksDB.Write(opts, batch); err != nil {
+	if err := dbInst.rocksDB.Write(dbInst.writeOpts, batch); err != nil {
 		return err
 	}
 	return nil
@@ -167,10 +170,7 @@ func (dbInst *DB) WriteBatch(batch *gorocksdb.WriteBatch) error {
 
 // GetIterator returns an iterator for the given column family
 func (dbInst *DB) GetIterator(cfName string) *gorocksdb.Iterator {
-	opt := gorocksdb.NewDefaultReadOptions()
-	opt.SetFillCache(true)
-	defer opt.Destroy()
-	return dbInst.rocksDB.NewIteratorCF(opt, dbInst.GetCFHandle(cfName))
+	return dbInst.rocksDB.NewIteratorCF(dbInst.readOpts, dbInst.GetCFHandle(cfName))
 }
 
 // GetCFHandle returns handle to a named column family
@@ -181,6 +181,14 @@ func (dbInst *DB) GetCFHandle(cfName string) *gorocksdb.ColumnFamilyHandle {
 // GetDefaultCFHandle returns handle to default column family
 func (dbInst *DB) GetDefaultCFHandle() *gorocksdb.ColumnFamilyHandle {
 	return dbInst.GetCFHandle(defaultCFName)
+}
+
+// Flush flushes rocksDB memory to sst files
+func (dbInst *DB) Flush(wait bool) error {
+	flushOpts := gorocksdb.NewDefaultFlushOptions()
+	defer flushOpts.Destroy()
+	flushOpts.SetWait(wait)
+	return dbInst.rocksDB.Flush(flushOpts)
 }
 
 func makeCopy(src []byte) []byte {

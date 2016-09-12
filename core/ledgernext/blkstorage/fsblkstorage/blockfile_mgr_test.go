@@ -36,6 +36,61 @@ func TestBlockfileMgrBlockReadWrite(t *testing.T) {
 	blkfileMgrWrapper.testGetBlockByNumber(blocks, 1)
 }
 
+func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 10)
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 1)
+	testBlockfileMgrCrashDuringWriting(t, 10, 2, 1000, 0)
+	testBlockfileMgrCrashDuringWriting(t, 0, 0, 1000, 10)
+}
+
+func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint int,
+	numBlocksAfterCheckpoint int, numLastBlockBytes int, numPartialBytesToWrite int) {
+	env := newTestEnv(t)
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(t, env)
+	blocksBeforeCP := testutil.ConstructTestBlocks(t, numBlocksBeforeCheckpoint)
+	blkfileMgrWrapper.addBlocks(blocksBeforeCP)
+	currentCPInfo := blkfileMgrWrapper.blockfileMgr.cpInfo
+	cpInfo1 := &checkpointInfo{
+		currentCPInfo.latestFileChunkSuffixNum,
+		currentCPInfo.latestFileChunksize,
+		currentCPInfo.lastBlockNumber}
+
+	blocksAfterCP := testutil.ConstructTestBlocks(t, numBlocksAfterCheckpoint)
+	blkfileMgrWrapper.addBlocks(blocksAfterCP)
+	cpInfo2 := blkfileMgrWrapper.blockfileMgr.cpInfo
+
+	// simulate a crash scenario
+	lastBlockBytes := []byte{}
+	encodedLen := proto.EncodeVarint(uint64(numLastBlockBytes))
+	randomBytes := testutil.ConstructRandomBytes(t, numLastBlockBytes)
+	lastBlockBytes = append(lastBlockBytes, encodedLen...)
+	lastBlockBytes = append(lastBlockBytes, randomBytes...)
+	partialBytes := lastBlockBytes[:numPartialBytesToWrite]
+	blkfileMgrWrapper.blockfileMgr.currentFileWriter.append(partialBytes, true)
+	blkfileMgrWrapper.blockfileMgr.saveCurrentInfo(cpInfo1, true)
+	blkfileMgrWrapper.close()
+
+	// simulate a start after a crash
+	blkfileMgrWrapper = newTestBlockfileWrapper(t, env)
+	defer blkfileMgrWrapper.close()
+	cpInfo3 := blkfileMgrWrapper.blockfileMgr.cpInfo
+	testutil.AssertEquals(t, cpInfo3, cpInfo2)
+
+	// add fresh blocks after restart
+	numBlocksAfterRestart := 2
+	blocksAfterRestart := testutil.ConstructTestBlocks(t, numBlocksAfterRestart)
+	blkfileMgrWrapper.addBlocks(blocksAfterRestart)
+
+	// itrerate for all blocks
+	allBlocks := []*protos.Block2{}
+	allBlocks = append(allBlocks, blocksBeforeCP...)
+	allBlocks = append(allBlocks, blocksAfterCP...)
+	allBlocks = append(allBlocks, blocksAfterRestart...)
+	numTotalBlocks := len(allBlocks)
+	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 1, numTotalBlocks, allBlocks)
+}
+
 func TestBlockfileMgrBlockIterator(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.Cleanup()
@@ -43,16 +98,21 @@ func TestBlockfileMgrBlockIterator(t *testing.T) {
 	defer blkfileMgrWrapper.close()
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
-	itr, err := blkfileMgrWrapper.blockfileMgr.retrieveBlocks(1, 8)
+	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 1, 8, blocks[0:8])
+}
+
+func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
+	firstBlockNum int, lastBlockNum int, expectedBlocks []*protos.Block2) {
+	itr, err := blockfileMgr.retrieveBlocks(uint64(firstBlockNum), uint64(lastBlockNum))
 	defer itr.Close()
 	testutil.AssertNoError(t, err, "Error while getting blocks iterator")
 	numBlocksItrated := 0
 	for ; itr.Next(); numBlocksItrated++ {
 		block, err := itr.Get()
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error while getting block number [%d] from iterator", numBlocksItrated))
-		testutil.AssertEquals(t, block.(*BlockHolder).GetBlock(), blocks[numBlocksItrated])
+		testutil.AssertEquals(t, block.(*BlockHolder).GetBlock(), expectedBlocks[numBlocksItrated])
 	}
-	testutil.AssertEquals(t, numBlocksItrated, 8)
+	testutil.AssertEquals(t, numBlocksItrated, lastBlockNum-firstBlockNum+1)
 }
 
 func TestBlockfileMgrBlockchainInfo(t *testing.T) {

@@ -47,12 +47,14 @@ func (w *blockfileWriter) truncateFile(targetSize int) error {
 	return nil
 }
 
-func (w *blockfileWriter) append(b []byte) error {
+func (w *blockfileWriter) append(b []byte, sync bool) error {
 	_, err := w.file.Write(b)
 	if err != nil {
 		return err
 	}
-	w.file.Sync()
+	if sync {
+		return w.file.Sync()
+	}
 	return nil
 }
 
@@ -97,8 +99,9 @@ func (r *blockfileReader) close() error {
 }
 
 type blockStream struct {
-	file   *os.File
-	reader *bufio.Reader
+	file              *os.File
+	reader            *bufio.Reader
+	currentFileOffset int64
 }
 
 func newBlockStream(filePath string, offset int64) (*blockStream, error) {
@@ -115,7 +118,7 @@ func newBlockStream(filePath string, offset int64) (*blockStream, error) {
 	if newPosition != offset {
 		panic(fmt.Sprintf("Could not seek file [%s] to given offset [%d]. New position = [%d]", filePath, offset, newPosition))
 	}
-	s := &blockStream{file, bufio.NewReader(file)}
+	s := &blockStream{file, bufio.NewReader(file), offset}
 	return s, nil
 }
 
@@ -133,6 +136,7 @@ func (s *blockStream) nextBlockBytes() ([]byte, error) {
 	if _, err = io.ReadAtLeast(s.reader, blockBytes, int(len)); err != nil {
 		return nil, err
 	}
+	s.currentFileOffset += int64(n) + int64(len)
 	return blockBytes, nil
 }
 

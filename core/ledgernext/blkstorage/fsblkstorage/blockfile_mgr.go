@@ -64,11 +64,12 @@ func newBlockfileMgr(conf *Conf) *blockfileMgr {
 	}
 	if cpInfo == nil {
 		cpInfo = &checkpointInfo{latestFileChunkSuffixNum: 0, latestFileChunksize: 0}
-		err = mgr.saveCurrentInfo(cpInfo)
+		err = mgr.saveCurrentInfo(cpInfo, true)
 		if err != nil {
 			panic(fmt.Sprintf("Could not save next block file info to db: %s", err))
 		}
 	}
+	updateCPInfo(conf, cpInfo)
 	currentFileWriter, err := newBlockfileWriter(deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum))
 	if err != nil {
 		panic(fmt.Sprintf("Could not open writer to current file: %s", err))
@@ -81,9 +82,12 @@ func newBlockfileMgr(conf *Conf) *blockfileMgr {
 	mgr.index = newBlockIndex(db)
 	mgr.cpInfo = cpInfo
 	mgr.currentFileWriter = currentFileWriter
-
 	// init BlockchainInfo
-	bcInfo := &protos.BlockchainInfo{Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil}
+	bcInfo := &protos.BlockchainInfo{
+		Height:            0,
+		CurrentBlockHash:  nil,
+		PreviousBlockHash: nil}
+
 	if cpInfo.lastBlockNumber > 0 {
 		lastBlock, err := mgr.retrieveSerBlockByNumber(cpInfo.lastBlockNumber)
 		if err != nil {
@@ -104,9 +108,35 @@ func newBlockfileMgr(conf *Conf) *blockfileMgr {
 }
 
 func initDB(conf *Conf) *db.DB {
-	dbInst := db.CreateDB(&db.Conf{DBPath: conf.dbPath, CFNames: []string{blockIndexCF}})
+	dbInst := db.CreateDB(&db.Conf{
+		DBPath:     conf.dbPath,
+		CFNames:    []string{blockIndexCF},
+		DisableWAL: true})
+
 	dbInst.Open()
 	return dbInst
+}
+
+func updateCPInfo(conf *Conf, cpInfo *checkpointInfo) {
+	logger.Debugf("Starting checkpoint=%s", cpInfo)
+	rootDir := conf.blockfilesDir
+	filePath := deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum)
+	exists, size, err := util.FileExists(filePath)
+	if err != nil {
+		panic(fmt.Sprintf("Error in checking whether file [%s] exists: %s", filePath, err))
+	}
+	logger.Debugf("status of file [%s]: exists=[%t], size=[%d]", filePath, exists, size)
+	if !exists || int(size) == cpInfo.latestFileChunksize {
+		// check point info is in sync with the file on disk
+		return
+	}
+	endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(filePath, int64(cpInfo.latestFileChunksize))
+	if err != nil {
+		panic(fmt.Sprintf("Could not open current file for detecting last block in the file: %s", err))
+	}
+	cpInfo.lastBlockNumber += uint64(numBlocks)
+	cpInfo.latestFileChunksize = int(endOffsetLastBlock)
+	logger.Debugf("Checkpoint after updates by scanning the last file segment:%s", cpInfo)
 }
 
 func deriveBlockfilePath(rootDir string, suffixNum int) string {
@@ -123,13 +153,18 @@ func (mgr *blockfileMgr) close() {
 }
 
 func (mgr *blockfileMgr) moveToNextFile() {
-	nextFileInfo := &checkpointInfo{latestFileChunkSuffixNum: mgr.cpInfo.latestFileChunkSuffixNum + 1, latestFileChunksize: 0}
-	nextFileWriter, err := newBlockfileWriter(deriveBlockfilePath(mgr.rootDir, nextFileInfo.latestFileChunkSuffixNum))
+	nextFileInfo := &checkpointInfo{
+		latestFileChunkSuffixNum: mgr.cpInfo.latestFileChunkSuffixNum + 1,
+		latestFileChunksize:      0}
+
+	nextFileWriter, err := newBlockfileWriter(
+		deriveBlockfilePath(mgr.rootDir, nextFileInfo.latestFileChunkSuffixNum))
+
 	if err != nil {
 		panic(fmt.Sprintf("Could not open writer to next file: %s", err))
 	}
 	mgr.currentFileWriter.close()
-	err = mgr.saveCurrentInfo(nextFileInfo)
+	err = mgr.saveCurrentInfo(nextFileInfo, true)
 	if err != nil {
 		panic(fmt.Sprintf("Could not save next block file info to db: %s", err))
 	}
@@ -145,49 +180,44 @@ func (mgr *blockfileMgr) addBlock(block *protos.Block2) error {
 	blockBytes := serBlock.GetBytes()
 	blockHash := serBlock.ComputeHash()
 	txOffsets, err := serBlock.GetTxOffsets()
+	currentOffset := mgr.cpInfo.latestFileChunksize
 	if err != nil {
 		return fmt.Errorf("Error while serializing block: %s", err)
 	}
-	currentOffset := mgr.cpInfo.latestFileChunksize
-	length := len(blockBytes)
-	encodedLen := proto.EncodeVarint(uint64(length))
-	totalLen := length + len(encodedLen)
-	if currentOffset+totalLen > mgr.conf.maxBlockfileSize {
+	blockBytesLen := len(blockBytes)
+	blockBytesEncodedLen := proto.EncodeVarint(uint64(blockBytesLen))
+	totalBytesToAppend := blockBytesLen + len(blockBytesEncodedLen)
+
+	if currentOffset+totalBytesToAppend > mgr.conf.maxBlockfileSize {
 		mgr.moveToNextFile()
 		currentOffset = 0
 	}
-	err = mgr.currentFileWriter.append(encodedLen)
+	err = mgr.currentFileWriter.append(blockBytesEncodedLen, false)
+	if err == nil {
+		err = mgr.currentFileWriter.append(blockBytes, true)
+	}
 	if err != nil {
-		err1 := mgr.currentFileWriter.truncateFile(mgr.cpInfo.latestFileChunksize)
-		if err1 != nil {
-			panic(fmt.Sprintf("Could not truncate current file to known size after an error while appending a block: %s", err))
+		truncateErr := mgr.currentFileWriter.truncateFile(mgr.cpInfo.latestFileChunksize)
+		if truncateErr != nil {
+			panic(fmt.Sprintf("Could not truncate current file to known size after an error during block append: %s", err))
 		}
 		return fmt.Errorf("Error while appending block to file: %s", err)
 	}
 
-	err = mgr.currentFileWriter.append(blockBytes)
-	if err != nil {
-		err1 := mgr.currentFileWriter.truncateFile(mgr.cpInfo.latestFileChunksize)
-		if err1 != nil {
-			panic(fmt.Sprintf("Could not truncate current file to known size after an error while appending a block: %s", err))
-		}
-		return fmt.Errorf("Error while appending block to file: %s", err)
-	}
-
-	mgr.cpInfo.latestFileChunksize += totalLen
+	mgr.cpInfo.latestFileChunksize += totalBytesToAppend
 	mgr.cpInfo.lastBlockNumber++
-	err = mgr.saveCurrentInfo(mgr.cpInfo)
+	err = mgr.saveCurrentInfo(mgr.cpInfo, false)
 	if err != nil {
-		mgr.cpInfo.latestFileChunksize -= totalLen
-		err1 := mgr.currentFileWriter.truncateFile(mgr.cpInfo.latestFileChunksize)
-		if err1 != nil {
-			panic(fmt.Sprintf("Could not truncate current file to known size after an error while appending a block: %s", err))
+		mgr.cpInfo.latestFileChunksize -= totalBytesToAppend
+		truncateErr := mgr.currentFileWriter.truncateFile(mgr.cpInfo.latestFileChunksize)
+		if truncateErr != nil {
+			panic(fmt.Sprintf("Error in truncating current file to known size after an error in saving checkpoint info: %s", err))
 		}
 		return fmt.Errorf("Error while saving current file info to db: %s", err)
 	}
 	blockFLP := &fileLocPointer{fileSuffixNum: mgr.cpInfo.latestFileChunkSuffixNum}
 	blockFLP.offset = currentOffset
-	mgr.index.indexBlock(mgr.cpInfo.lastBlockNumber, blockHash, blockFLP, length, len(encodedLen), txOffsets)
+	mgr.index.indexBlock(mgr.cpInfo.lastBlockNumber, blockHash, blockFLP, blockBytesLen, len(blockBytesEncodedLen), txOffsets)
 	mgr.updateBlockchainInfo(blockHash, block)
 	return nil
 }
@@ -198,7 +228,11 @@ func (mgr *blockfileMgr) getBlockchainInfo() *protos.BlockchainInfo {
 
 func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *protos.Block2) {
 	currentBCInfo := mgr.getBlockchainInfo()
-	newBCInfo := &protos.BlockchainInfo{Height: currentBCInfo.Height + 1, CurrentBlockHash: latestBlockHash, PreviousBlockHash: latestBlock.PreviousBlockHash}
+	newBCInfo := &protos.BlockchainInfo{
+		Height:            currentBCInfo.Height + 1,
+		CurrentBlockHash:  latestBlockHash,
+		PreviousBlockHash: latestBlock.PreviousBlockHash}
+
 	mgr.bcInfo.Store(newBCInfo)
 }
 
@@ -315,33 +349,59 @@ func (mgr *blockfileMgr) fetchRawBytes(lp *fileLocPointer) ([]byte, error) {
 }
 
 func (mgr *blockfileMgr) loadCurrentInfo() (*checkpointInfo, error) {
-	b, err := mgr.db.Get(mgr.defaultCF, blkMgrInfoKey)
-	if err != nil {
-		return nil, err
-	}
-	if b == nil {
+	var b []byte
+	var err error
+	if b, err = mgr.db.Get(mgr.defaultCF, blkMgrInfoKey); b == nil || err != nil {
 		return nil, err
 	}
 	i := &checkpointInfo{}
 	if err = i.unmarshal(b); err != nil {
 		return nil, err
 	}
+	logger.Debugf("loaded checkpointInfo:%s", i)
 	return i, nil
 }
 
-func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo) error {
+func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, flush bool) error {
 	b, err := i.marshal()
 	if err != nil {
 		return err
 	}
-	err = mgr.db.Put(mgr.defaultCF, blkMgrInfoKey, b)
-	if err != nil {
+	if err = mgr.db.Put(mgr.defaultCF, blkMgrInfoKey, b); err != nil {
 		return err
+	}
+	if flush {
+		if err = mgr.db.Flush(true); err != nil {
+			return err
+		}
+		logger.Debugf("saved checkpointInfo:%s", i)
 	}
 	return nil
 }
 
-// blkMgrInfo
+func scanForLastCompleteBlock(filePath string, startingOffset int64) (int64, int, error) {
+	logger.Debugf("scanForLastCompleteBlock(): filePath=[%s], startingOffset=[%d]", filePath, startingOffset)
+	numBlocks := 0
+	blockStream, err := newBlockStream(filePath, startingOffset)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer blockStream.close()
+	for {
+		blockBytes, err := blockStream.nextBlockBytes()
+		if blockBytes == nil || err != nil {
+			logger.Debugf(`scanForLastCompleteBlock(): error=[%s].
+			This may happen if a crash has happened during block appending.
+			Returning current offset as a last complete block's end offset`, err)
+			break
+		}
+		numBlocks++
+	}
+	logger.Debugf("scanForLastCompleteBlock(): last complete block ends at offset=[%d]", blockStream.currentFileOffset)
+	return blockStream.currentFileOffset, numBlocks, err
+}
+
+// checkpointInfo
 type checkpointInfo struct {
 	latestFileChunkSuffixNum int
 	latestFileChunksize      int
@@ -384,4 +444,9 @@ func (i *checkpointInfo) unmarshal(b []byte) error {
 	i.lastBlockNumber = val
 
 	return nil
+}
+
+func (i *checkpointInfo) String() string {
+	return fmt.Sprintf("latestFileChunkSuffixNum=[%d], latestFileChunksize=[%d], lastBlockNumber=[%d]",
+		i.latestFileChunkSuffixNum, i.latestFileChunksize, i.lastBlockNumber)
 }

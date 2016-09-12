@@ -57,3 +57,13 @@ func DirEmpty(dirPath string) (bool, error) {
 	}
 	return false, err
 }
+
+// FileExists checks whether the given file exists.
+// If the file exists, this method also returns the size of the file.
+func FileExists(filePath string) (bool, int64, error) {
+	fileInfo, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return false, 0, nil
+	}
+	return true, fileInfo.Size(), err
+}
