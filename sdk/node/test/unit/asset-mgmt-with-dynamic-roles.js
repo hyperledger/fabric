@@ -28,7 +28,7 @@ var util = require('util');
 var crypto = require('../../lib/crypto');
 
 var chain, chaincodeID;
-var chaincodeName = "mycc3";
+var chaincodeName = "mycc4";
 var deployer, alice, bob, assigner;
 var aliceAccount = "12345-56789";
 var bobAccount = "23456-67890";

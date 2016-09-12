@@ -217,7 +217,7 @@ runAssetMgmtWithRolesTests() {
 
 runAssetMgmtWithDynamicRolesTests() {
    echo "BEGIN running asset management with dynamic roles tests ..."
-   preExample asset_management_with_roles mycc3
+   preExample asset_management_with_roles mycc4
    node $UNITTEST/asset-mgmt-with-dynamic-roles.js
    if [ $? -ne 0 ]; then
       echo "ERROR running asset management with dynamic roles tests!"
