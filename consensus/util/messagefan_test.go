@@ -17,11 +17,8 @@ limitations under the License.
 package util
 
 import (
-	"fmt"
 	"testing"
 	"time"
-
-	pb "github.com/hyperledger/fabric/protos"
 )
 
 func TestFanIn(t *testing.T) {
@@ -32,8 +29,7 @@ func TestFanIn(t *testing.T) {
 
 	for i := 0; i < Channels; i++ {
 		c := make(chan *Message, Messages/2)
-		pid := &pb.PeerID{Name: fmt.Sprintf("%d", i)}
-		fh.RegisterChannel(pid, c)
+		fh.AddFaninChannel(c)
 		go func() {
 			for j := 0; j < Messages; j++ {
 				c <- &Message{}
@@ -67,8 +63,7 @@ func TestFanIn(t *testing.T) {
 func TestFanChannelClose(t *testing.T) {
 	fh := NewMessageFan()
 	c := make(chan *Message)
-	pid := &pb.PeerID{Name: "1"}
-	fh.RegisterChannel(pid, c)
+	fh.AddFaninChannel(c)
 	close(c)
 
 	for i := 0; i < 100; i++ {
