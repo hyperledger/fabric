@@ -393,7 +393,7 @@ def transactionCommittedToContainersWithinTimeout(context, containers, timeout):
             .format(container.name)
 
 def responseIsOk(response):
-    isResponseOk = False;
+    isResponseOk = False
 
     status_code = response.status_code
     assert status_code == 200 or status_code == 404, \
@@ -578,12 +578,6 @@ def step_impl(context):
 
     context.peerToSecretMessage = peerToSecretMessage
 
-
-@given(u'I stop peers')
-def step_impl(context):
-    compose_op(context, "stop")
-
-
 @given(u'I start a listener')
 def step_impl(context):
     gopath = os.environ.get('GOPATH')
@@ -596,6 +590,10 @@ def step_impl(context):
 @given(u'I start peers')
 def step_impl(context):
     compose_op(context, "start")
+
+@given(u'I stop peers')
+def step_impl(context):
+    compose_op(context, "stop")
 
 @given(u'I pause peers')
 def step_impl(context):

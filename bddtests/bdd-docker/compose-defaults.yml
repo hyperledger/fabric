@@ -1,0 +1,25 @@
+vp:
+  image: hyperledger/fabric-peer
+  environment:
+    - CORE_PEER_ADDRESSAUTODETECT=true
+    - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+    # TODO:  This is currently required due to BUG in variant logic based upon log level.
+    - CORE_LOGGING_LEVEL=DEBUG
+  # Script will wait until membersrvc is up (if it exists) before starting
+  # $$GOPATH (double dollar) required to prevent docker-compose doing its own
+  # substitution before the value gets to the container
+  command: sh -c "exec $$GOPATH/src/github.com/hyperledger/fabric/bddtests/scripts/start-peer.sh"
+  # Ideally we'd only mount /var/run/docker.sock but v1.5.2 of docker-compose
+  # does not have to capability to mount individual files. Hence we mount the
+  # entire folder in specific folder and specify it explicitly above.
+  # This issue seems to be sorted in docker-compose 1.8.0 however that requires
+  # Docker 1.10 and CI isn't at that version yet.
+  volumes:
+    - /var/run/:/host/var/run/
+
+  # Use these options if coverage desired for peers
+  #image: hyperledger/fabric-peer-coverage
+  #command: ./peer.test --test.coverprofile=coverage.cov node start
+membersrvc:
+   image: hyperledger/fabric-membersrvc
+   command: membersrvc
