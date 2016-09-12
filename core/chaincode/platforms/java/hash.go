@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -71,8 +72,24 @@ func isCodeExist(tmppath string) error {
 }
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
-	//TODO
-	return "", nil
+
+	var tmp string
+	tmp, err = ioutil.TempDir("", "javachaincode")
+
+	if err != nil {
+		return "", fmt.Errorf("Error creating temporary file: %s", err)
+	}
+	var out bytes.Buffer
+
+	cmd := exec.Command("git", "clone", path, tmp)
+	cmd.Stderr = &out
+	cmderr := cmd.Run()
+	if cmderr != nil {
+		return "", fmt.Errorf("Error cloning git repository %s", cmderr)
+	}
+
+	return tmp, nil
+
 }
 
 //generateHashcode gets hashcode of the code under path. If path is a HTTP(s) url
@@ -106,13 +123,9 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	}()
 
 	var err error
-	if strings.HasPrefix(codepath, "http://") {
+	if strings.HasPrefix(codepath, "http://") ||
+		strings.HasPrefix(codepath, "https://") {
 		ishttp = true
-		codepath = codepath[7:]
-		codepath, err = getCodeFromHTTP(codepath)
-	} else if strings.HasPrefix(codepath, "https://") {
-		ishttp = true
-		codepath = codepath[8:]
 		codepath, err = getCodeFromHTTP(codepath)
 	} else if !strings.HasPrefix(codepath, "/") {
 		wd := ""
