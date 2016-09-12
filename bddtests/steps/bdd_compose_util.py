@@ -116,20 +116,22 @@ def getDockerComposeServiceForContainer(containerName):
     return dockerComposeService
 
 def allContainersAreReadyWithinTimeout(context, timeout):
+    allContainers = context.compose_containers
+    return containersAreReadyWithinTimeout(context, allContainers, timeout)
+
+def containersAreReadyWithinTimeout(context, containers, timeout):
     timeoutTimestamp = time.time() + timeout
     formattedTime = time.strftime("%X", time.localtime(timeoutTimestamp))
     bdd_log("All containers should be up by {}".format(formattedTime))
 
-    allContainers = context.compose_containers
-
-    for container in allContainers:
+    for container in containers:
         if not containerIsInitializedByTimestamp(container, timeoutTimestamp):
             return False
 
-    peersAreReady = peersAreReadyByTimestamp(context, allContainers, timeoutTimestamp)
+    peersAreReady = peersAreReadyByTimestamp(context, containers, timeoutTimestamp)
 
     if peersAreReady:
-        bdd_log("All containers in ready state, ready to proceed")
+        bdd_log("Containers in ready state, ready to proceed")
 
     return peersAreReady
 
