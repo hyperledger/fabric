@@ -1010,7 +1010,7 @@ export class Member {
             if (err) return cb(err);
             self.enrollment = enrollment;
             // Generate queryStateKey
-            self.enrollment.queryStateKey = self.chain.cryptoPrimitives.generateNonce();
+            self.enrollment.queryStateKey = crypto.Crypto.generateNonce()
 
             // Save state
             self.saveState(function (err) {
@@ -1208,7 +1208,7 @@ export class TransactionContext extends events.EventEmitter {
         this.chain = member.getChain();
         this.memberServices = this.chain.getMemberServices();
         this.tcert = tcert;
-        this.nonce = this.chain.cryptoPrimitives.generateNonce();
+        this.nonce = crypto.Crypto.generateNonce();
         this.complete = false;
         this.timeoutId = null;
     }
@@ -1526,7 +1526,7 @@ export class TransactionContext extends events.EventEmitter {
         var stateKey;
         if (transaction.pb.getType() == _fabricProto.Transaction.Type.CHAINCODE_DEPLOY) {
             // The request is for a deploy
-            stateKey = new Buffer(self.chain.cryptoPrimitives.aesKeyGen());
+            stateKey = new Buffer(crypto.Crypto.aesKeyGen());
         } else if (transaction.pb.getType() == _fabricProto.Transaction.Type.CHAINCODE_INVOKE ) {
             // The request is for an execute
             // Empty state key
@@ -1603,7 +1603,7 @@ export class TransactionContext extends events.EventEmitter {
         );
 
         debug('Decrypt Result [%s]', ct.toString('hex'));
-        return this.chain.cryptoPrimitives.aes256GCMDecrypt(key, ct);
+        return crypto.Crypto.aes256GCMDecrypt(key, ct);
     }
 
     /**
