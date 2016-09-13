@@ -68,10 +68,7 @@ func Start(cc Chaincode) error {
 	backendFormatter := logging.NewBackendFormatter(backend, format)
 	logging.SetBackend(backendFormatter).SetLevel(logging.Level(shimLoggingLevel), "shim")
 
-	viper.SetEnvPrefix("CORE")
-	viper.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
+	SetChaincodeLoggingLevel()
 
 	flag.StringVar(&peerAddress, "peer.address", "", "peer address")
 
@@ -103,6 +100,31 @@ func Start(cc Chaincode) error {
 	err = chatWithPeer(chaincodename, stream, cc)
 
 	return err
+}
+
+// IsEnabledForLogLevel checks to see if the chaincodeLogger is enabled for a specific logging level
+// used primarily for testing
+func IsEnabledForLogLevel(logLevel string) bool {
+	lvl, _ := logging.LogLevel(logLevel)
+	return chaincodeLogger.IsEnabledFor(lvl)
+}
+
+// SetChaincodeLoggingLevel sets the chaincode logging level to the value
+// of CORE_LOGGING_CHAINCODE set from core.yaml by chaincode_support.go
+func SetChaincodeLoggingLevel() {
+	viper.SetEnvPrefix("CORE")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+
+	chaincodeLogLevelString := viper.GetString("logging.chaincode")
+	chaincodeLogLevel, err := LogLevel(chaincodeLogLevelString)
+
+	if err == nil {
+		SetLoggingLevel(chaincodeLogLevel)
+	} else {
+		chaincodeLogger.Infof("error with chaincode log level: %s level= %s\n", err, chaincodeLogLevelString)
+	}
 }
 
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an
