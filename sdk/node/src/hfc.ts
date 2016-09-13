@@ -1737,10 +1737,10 @@ export class TransactionContext extends events.EventEmitter {
                     tx.setPayload(chaincodeDeploymentSpec.toBuffer());
 
                     //
-                    // Set the transaction UUID
+                    // Set the transaction ID
                     //
 
-                    tx.setTxid(sdk_util.GenerateUUID());
+                    tx.setTxid(hash);
 
                     //
                     // Set the transaction timestamp
