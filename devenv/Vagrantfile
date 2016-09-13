@@ -27,7 +27,7 @@ cd #{SRCMOUNT}/devenv
 
 SCRIPT
 
-baseimage_release = File.read '../images/base/release'
+baseimage_release = File.read '../.baseimage-release'
 
 Vagrant.require_version ">= 1.7.4"
 Vagrant.configure('2') do |config|

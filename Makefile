@@ -47,13 +47,16 @@ else
 PROJECT_VERSION=$(BASE_VERSION)
 endif
 
-DOCKER_TAG=$(shell uname -m)-$(PROJECT_VERSION)
-
 PKGNAME = github.com/$(PROJECT_NAME)
 GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
+ARCH=$(shell uname -m)
 CHAINTOOL_RELEASE=v0.9.0
+BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
+
+DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
+BASE_DOCKER_TAG=$(ARCH)-$(BASEIMAGE_RELEASE)
 
 EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
@@ -63,13 +66,9 @@ K := $(foreach exec,$(EXECUTABLES),\
 SUBDIRS = gotools sdk/node
 SUBDIRS:=$(strip $(SUBDIRS))
 
-# Make our baseimage depend on any changes to images/base or scripts/provision
-BASEIMAGE_RELEASE = $(shell cat ./images/base/release)
-BASEIMAGE_DEPS    = $(shell git ls-files images/base scripts/provision)
-
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = base src ccenv peer membersrvc javaenv
+IMAGES = src ccenv peer membersrvc javaenv
 
 all: peer membersrvc checks
 
@@ -122,14 +121,14 @@ linter: gotools
 # we may later inject the binary into a different docker environment
 # This is necessary since we cannot guarantee that binaries built
 # on the host natively will be compatible with the docker env.
-%/bin/protoc-gen-go: build/image/base/.dummy Makefile
+%/bin/protoc-gen-go: Makefile
 	@echo "Building $@"
 	@mkdir -p $(@D)
 	@docker run -i \
 		--user=$(UID) \
 		-v $(abspath vendor/github.com/golang/protobuf):/opt/gopath/src/github.com/golang/protobuf \
 		-v $(abspath $(@D)):/opt/gopath/bin \
-		hyperledger/fabric-baseimage go install github.com/golang/protobuf/protoc-gen-go
+		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) go install github.com/golang/protobuf/protoc-gen-go
 
 build/bin/chaintool: Makefile
 	@echo "Installing chaintool"
@@ -172,25 +171,19 @@ build/bin/block-listener:
 	@echo "Binary available as $@"
 	@touch $@
 
-build/bin/%: build/image/base/.dummy $(PROJECT_FILES)
+build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
 	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -ldflags "$(GO_LDFLAGS)" $(PKGNAME)/$(@F)
 	@echo "Binary available as $@"
 	@touch $@
 
-# Special override for base-image.
-build/image/base/.dummy: $(BASEIMAGE_DEPS)
-	@echo "Building docker base-image"
-	@mkdir -p $(@D)
-	@./scripts/provision/docker.sh $(BASEIMAGE_RELEASE)
-	@touch $@
-
 # Special override for src-image
-build/image/src/.dummy: build/image/base/.dummy $(PROJECT_FILES)
+build/image/src/.dummy: $(PROJECT_FILES)
 	@echo "Building docker src-image"
 	@mkdir -p $(@D)
 	@cat images/src/Dockerfile.in \
+		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
 	@git ls-files | tar -jcT - > $(@D)/gopath.tar.bz2
@@ -202,6 +195,7 @@ build/image/src/.dummy: build/image/base/.dummy $(PROJECT_FILES)
 build/image/ccenv/.dummy: build/image/src/.dummy build/image/ccenv/bin/protoc-gen-go build/image/ccenv/bin/chaintool Makefile
 	@echo "Building docker ccenv-image"
 	@cat images/ccenv/Dockerfile.in \
+		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
 	docker build -t $(PROJECT_NAME)-ccenv $(@D)
@@ -216,7 +210,10 @@ build/image/ccenv/.dummy: build/image/src/.dummy build/image/ccenv/bin/protoc-ge
 build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 	@echo "Building docker javaenv-image"
 	@mkdir -p $(@D)
-	@cat images/javaenv/Dockerfile.in > $(@D)/Dockerfile
+	@cat images/javaenv/Dockerfile.in \
+		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
+		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		> $(@D)/Dockerfile
 	@git ls-files core/chaincode/shim/java | tar -jcT - > $(@D)/javashimsrc.tar.bz2
 	@git ls-files protos core/chaincode/shim/table.proto settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
 	docker build -t $(PROJECT_NAME)-javaenv $(@D)
@@ -229,6 +226,7 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 	@echo "Building docker $(TARGET)-image"
 	@mkdir -p $(@D)/bin
 	@cat images/app/Dockerfile.in \
+		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
 	cp build/docker/bin/$(TARGET) $(@D)/bin
@@ -239,10 +237,6 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 .PHONY: protos
 protos: gotools
 	./devenv/compile_protos.sh
-
-base-image-clean:
-	-docker rmi -f $(PROJECT_NAME)-baseimage
-	-@rm -rf build/image/base ||:
 
 src-image-clean: ccenv-image-clean peer-image-clean membersrvc-image-clean
 
