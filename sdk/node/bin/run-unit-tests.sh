@@ -141,8 +141,8 @@ prepareExampleForDeployInNetworkMode() {
    cp $SRCDIR/${1}.go .
    mkdir -p vendor/github.com/hyperledger
    cd vendor/github.com/hyperledger
-   echo "cloning github.com/hyperledger/fabric; please wait ..."
-   git clone http://gerrit.hyperledger.org/r/fabric > /dev/null
+   echo "copying Hyperledger fabric project dependency..."
+   cp -r $FABRIC .
    cp -r fabric/vendor/github.com/op ..
    cd ../../..
    go build
