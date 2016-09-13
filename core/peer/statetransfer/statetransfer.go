@@ -97,7 +97,7 @@ type coordinatorImpl struct {
 // If the peerIDs are nil, then all peers are assumed to have the given block.
 // If the call returns an error, a boolean is included which indicates if the error may be transient and the caller should retry
 func (sts *coordinatorImpl) SyncToTarget(blockNumber uint64, blockHash []byte, peerIDs []*pb.PeerID) (error, bool) {
-	logger.Debugf("Syncing to target %x for block number %d with peers %v", blockHash, blockNumber, peerIDs)
+	logger.Infof("Syncing to target %x for block number %d with peers %v", blockHash, blockNumber, peerIDs)
 
 	if !sts.inProgress {
 		sts.currentStateBlockNumber = sts.stack.GetBlockchainSize() - 1 // The block height is one more than the latest block number
@@ -422,8 +422,42 @@ func (sts *coordinatorImpl) syncBlockchainToTarget(blockSyncReq *blockSyncReq) {
 			panic("Our blockchain is already higher than a sync target, this is unlikely, but unimplemented")
 		}
 	} else {
+		blockCursor := blockSyncReq.blockNumber
+		validHash := blockSyncReq.firstBlockHash
 
-		_, _, err := sts.syncBlocks(blockSyncReq.blockNumber, blockSyncReq.reportOnBlock, blockSyncReq.firstBlockHash, blockSyncReq.peerIDs)
+		// Don't bother fetching blocks which are already here and valid
+		// This is especially useful at startup
+		for {
+			block, err := sts.stack.GetBlockByNumber(blockCursor)
+			if err != nil || block == nil {
+				// Need to fetch this block
+				break
+			}
+			bh, err := sts.stack.HashBlock(block)
+			if err != nil {
+				// Something wrong with this block
+				break
+			}
+			if !bytes.Equal(bh, validHash) {
+				// Block is corrupt
+				break
+			}
+			blockCursor--
+			validHash = block.PreviousBlockHash
+			if blockCursor+1 == blockSyncReq.reportOnBlock {
+				break
+			}
+		}
+
+		if blockCursor+1 <= blockSyncReq.blockNumber {
+			logger.Debugf("Skipped remote syncing of block %d through %d because they were already present and valid", blockSyncReq.blockNumber, blockCursor+1)
+		}
+
+		var err error
+		// Note, this must accomodate blockCursor underflowing
+		if blockCursor+1 > blockSyncReq.reportOnBlock {
+			_, _, err = sts.syncBlocks(blockCursor, blockSyncReq.reportOnBlock, validHash, blockSyncReq.peerIDs)
+		}
 
 		if nil != blockSyncReq.replyChan {
 			logger.Debugf("Replying to blockSyncReq on reply channel with : %s", err)
