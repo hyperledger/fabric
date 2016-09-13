@@ -771,7 +771,6 @@ export class Member {
     private chain:Chain;
     private name:string;
     private roles:string[];
-    private account:string;
     private affiliation:string;
     private enrollmentSecret:string;
     private enrollment:any;
@@ -793,7 +792,6 @@ export class Member {
             let req = cfg;
             this.name = req.enrollmentID || req.name;
             this.roles = req.roles || ['fabric.user'];
-            this.account = req.account;
             this.affiliation = req.affiliation;
         }
         this.chain = chain;
@@ -841,22 +839,6 @@ export class Member {
      */
     setRoles(roles:string[]):void {
         this.roles = roles;
-    };
-
-    /**
-     * Get the account.
-     * @returns {string} The account.
-     */
-    getAccount():string {
-        return this.account;
-    };
-
-    /**
-     * Set the account.
-     * @param account The account.
-     */
-    setAccount(account:string):void {
-        this.account = account;
     };
 
     /**
@@ -1117,7 +1099,6 @@ export class Member {
         if (state.name !== this.getName()) throw Error("name mismatch: '" + state.name + "' does not equal '" + this.getName() + "'");
         this.name = state.name;
         this.roles = state.roles;
-        this.account = state.account;
         this.affiliation = state.affiliation;
         this.enrollmentSecret = state.enrollmentSecret;
         this.enrollment = state.enrollment;
@@ -1132,7 +1113,6 @@ export class Member {
         let state = {
             name: self.name,
             roles: self.roles,
-            account: self.account,
             affiliation: self.affiliation,
             enrollmentSecret: self.enrollmentSecret,
             enrollment: self.enrollment
