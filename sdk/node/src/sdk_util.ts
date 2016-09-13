@@ -149,7 +149,8 @@ export function GenerateTarGz(src, dest, cb) {
     ".yaml",
     ".json",
     ".c",
-    ".h"
+    ".h",
+    ".pem"
   ];
 
   // Create the pack stream specifying the ignore/filtering function
