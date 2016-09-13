@@ -103,8 +103,8 @@ func (stub *MockStub) MockPeerChaincode(invokableChaincodeName string, otherStub
 }
 
 // Initialise this chaincode,  also starts and ends a transaction.
-func (stub *MockStub) MockInit(uuid string, function string, args []string) ([]byte, error) {
-	stub.args = getBytes(function, args)
+func (stub *MockStub) MockInit(uuid string, args [][]byte) ([]byte, error) {
+	stub.args = args
 	stub.MockTransactionStart(uuid)
 	bytes, err := stub.cc.Init(stub)
 	stub.MockTransactionEnd(uuid)
@@ -112,8 +112,8 @@ func (stub *MockStub) MockInit(uuid string, function string, args []string) ([]b
 }
 
 // Invoke this chaincode, also starts and ends a transaction.
-func (stub *MockStub) MockInvoke(uuid string, function string, args []string) ([]byte, error) {
-	stub.args = getBytes(function, args)
+func (stub *MockStub) MockInvoke(uuid string, args [][]byte) ([]byte, error) {
+	stub.args = args
 	stub.MockTransactionStart(uuid)
 	bytes, err := stub.cc.Invoke(stub)
 	stub.MockTransactionEnd(uuid)
@@ -121,8 +121,8 @@ func (stub *MockStub) MockInvoke(uuid string, function string, args []string) ([
 }
 
 // Query this chaincode
-func (stub *MockStub) MockQuery(function string, args []string) ([]byte, error) {
-	stub.args = getBytes(function, args)
+func (stub *MockStub) MockQuery(args [][]byte) ([]byte, error) {
+	stub.args = args
 	// no transaction needed for queries
 	bytes, err := stub.cc.Query(stub)
 	return bytes, err
@@ -258,11 +258,10 @@ func (stub *MockStub) DeleteRow(tableName string, key []Column) error {
 // and register it with stub1 by calling stub1.MockPeerChaincode("stub2Hash", stub2)
 func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
 	// TODO "args" here should possibly be a serialized pb.ChaincodeInput
-	function, params := getFuncArgs(args)
 	otherStub := stub.Invokables[chaincodeName]
 	mockLogger.Debug("MockStub", stub.Name, "Invoking peer chaincode", otherStub.Name, args)
 	//	function, strings := getFuncArgs(args)
-	bytes, err := otherStub.MockInvoke(stub.Uuid, function, params)
+	bytes, err := otherStub.MockInvoke(stub.Uuid, args)
 	mockLogger.Debug("MockStub", stub.Name, "Invoked peer chaincode", otherStub.Name, "got", bytes, err)
 	return bytes, err
 }
@@ -276,8 +275,7 @@ func (stub *MockStub) QueryChaincode(chaincodeName string, args [][]byte) ([]byt
 		return nil, errors.New("Could not find peer chaincode to query")
 	}
 	mockLogger.Debug("MockStub", stub.Name, "Querying peer chaincode", otherStub.Name, args)
-	function, params := getFuncArgs(args)
-	bytes, err := otherStub.MockQuery(function, params)
+	bytes, err := otherStub.MockQuery(args)
 	mockLogger.Debug("MockStub", stub.Name, "Queried peer chaincode", otherStub.Name, "got", bytes, err)
 	return bytes, err
 }
