@@ -43,8 +43,16 @@
  *          the server side transaction processing path.
  */
 
-// Instruct boringssl to use ECC for tls.
-process.env['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA';
+process.env.GRPC_SSL_CIPHER_SUITES = process.env.GRPC_SSL_CIPHER_SUITES
+   ? process.env.GRPC_SSL_CIPHER_SUITES
+   : 'ECDHE-RSA-AES128-GCM-SHA256:' +
+     'ECDHE-RSA-AES128-SHA256:' +
+     'ECDHE-RSA-AES256-SHA384:' +
+     'ECDHE-RSA-AES256-GCM-SHA384:' +
+     'ECDHE-ECDSA-AES128-GCM-SHA256:' +
+     'ECDHE-ECDSA-AES128-SHA256:' +
+     'ECDHE-ECDSA-AES256-SHA384:' +
+     'ECDHE-ECDSA-AES256-GCM-SHA384' ;
 
 var debugModule = require('debug');
 var fs = require('fs');
@@ -211,6 +219,12 @@ export interface Enrollment {
     chainKey:string;
 }
 
+// GRPCOptions
+export interface GRPCOptions {
+   pem: string;
+   hostnameOverride: string;
+}
+
 // A request to get a batch of TCerts
 export class GetTCertBatchRequest {
    constructor( public name: string,
@@ -348,6 +362,8 @@ export interface DeployRequest extends TransactionRequest {
     chaincodePath:string;
     // The name identifier for the chaincode to deploy in development mode.
     chaincodeName:string;
+    // The directory on the server side, where the certificate.pem will be copied
+    certificatePath:string;
 }
 
 /**
@@ -468,10 +484,11 @@ export class Chain {
 
     /**
      * Add a peer given an endpoint specification.
-     * @param endpoint The endpoint of the form: { url: "grpcs://host:port", tls: { .... } }
+     * @param url The URL of the peer.
+     * @param opts Optional GRPC options.
      * @returns {Peer} Returns a new peer.
      */
-    addPeer(url:string, pem?:string):Peer {
+    addPeer(url:string, opts?:GRPCOptions):Peer {
 
         //check to see if the peer is already part of the chain
         this.peers.forEach(function(peer){
@@ -484,7 +501,7 @@ export class Chain {
             }
         })
 
-        let peer = new Peer(url, this, pem);
+        let peer = new Peer(url, this, opts);
         this.peers.push(peer);
         return peer;
     };
@@ -515,9 +532,10 @@ export class Chain {
     /**
      * Set the member services URL
      * @param {string} url Member services URL of the form: "grpc://host:port" or "grpcs://host:port"
+     * @param {GRPCOptions} opts optional GRPC options
      */
-    setMemberServicesUrl(url:string, pem?:string):void {
-        this.setMemberServices(newMemberServices(url,pem));
+    setMemberServicesUrl(url:string, opts?:GRPCOptions):void {
+        this.setMemberServices(newMemberServices(url,opts));
     }
 
     /**
@@ -580,6 +598,20 @@ export class Chain {
      */
     setPreFetchMode(preFetchMode:boolean):void {
         this.preFetchMode = preFetchMode;
+    }
+
+    /**
+     * Enable or disable ECDSA mode for GRPC.
+     */
+    setECDSAModeForGRPC(enabled:boolean):void {
+       // TODO: Handle multiple chains in different modes appropriately; this will not currently work
+       // since it is based env variables.
+       if (enabled) {
+          // Instruct boringssl to use ECC for tls.
+          process.env.GRPC_SSL_CIPHER_SUITES = 'HIGH+ECDSA';
+       } else {
+          delete process.env.GRPC_SSL_CIPHER_SUITES;
+       }
     }
 
     /**
@@ -1733,6 +1765,16 @@ export class TransactionContext extends events.EventEmitter {
      	  // Substitute the hashStrHash for the image name
      	  dockerFileContents = util.format(dockerFileContents, hash);
 
+        // Add the certificate path on the server, if it is being passed in
+        debug("type of request.certificatePath: " + typeof(request.certificatePath));
+        debug("request.certificatePath: " + request.certificatePath);
+        if (request.certificatePath !== "" && request.certificatePath !== undefined) {
+            debug("Adding COPY certificate.pem command");
+
+            dockerFileContents = dockerFileContents + "\n" + "COPY certificate.pem %s";
+            dockerFileContents = util.format(dockerFileContents, request.certificatePath);
+        }
+
      	  // Create a Docker file with dockerFileContents
      	  let dockerFilePath = projDir + "/Dockerfile";
      	  fs.writeFile(dockerFilePath, dockerFileContents, function(err) {
@@ -2133,16 +2175,19 @@ export class Peer {
      * and returns the new Peer.
      * @param {string} url The URL with format of "grpcs://host:port".
      * @param {Chain} chain The chain of which this peer is a member.
-     * @param {string} pem The certificate file, in PEM format,
-     * to use with the gRPC protocol (that is, with TransportCredentials).
-     * Required when using the grpcs protocol.
+     * @param {GRPCOptions} optional GRPC options to use with the gRPC,
+     * protocol (that is, with TransportCredentials) including a root
+     * certificate file, in PEM format, and hostnameOverride. A certificate
+     * is required when using the grpcs (TLS) protocol.
      * @returns {Peer} The new peer.
      */
-    constructor(url:string, chain:Chain, pem:string) {
+    constructor(url:string, chain:Chain, opts:GRPCOptions) {
         this.url = url;
         this.chain = chain;
+        let pem = getPemFromOpts(opts);
+        opts = getOptsFromOpts(opts);
         this.ep = new Endpoint(url,pem);
-        this.peerClient = new _fabricProto.Peer(this.ep.addr, this.ep.creds);
+        this.peerClient = new _fabricProto.Peer(this.ep.addr, this.ep.creds, opts);
     }
 
     /**
@@ -2289,16 +2334,14 @@ class MemberServicesImpl implements MemberServices {
      * @param config The config information required by this member services implementation.
      * @returns {MemberServices} A MemberServices object.
      */
-    constructor(url:string,pem:string) {
+    constructor(url:string,opts:GRPCOptions) {
+        var pem = getPemFromOpts(opts);
+        opts = getOptsFromOpts(opts);
         let ep = new Endpoint(url,pem);
-        var options = {
-              'grpc.ssl_target_name_override' : 'tlsca',
-              'grpc.default_authority': 'tlsca'
-        };
-        this.ecaaClient = new _caProto.ECAA(ep.addr, ep.creds, options);
-        this.ecapClient = new _caProto.ECAP(ep.addr, ep.creds, options);
-        this.tcapClient = new _caProto.TCAP(ep.addr, ep.creds, options);
-        this.tlscapClient = new _caProto.TLSCAP(ep.addr, ep.creds, options);
+        this.ecaaClient = new _caProto.ECAA(ep.addr, ep.creds, opts);
+        this.ecapClient = new _caProto.ECAP(ep.addr, ep.creds, opts);
+        this.tcapClient = new _caProto.TCAP(ep.addr, ep.creds, opts);
+        this.tlscapClient = new _caProto.TLSCAP(ep.addr, ep.creds, opts);
         this.cryptoPrimitives = new crypto.Crypto(DEFAULT_HASH_ALGORITHM, DEFAULT_SECURITY_LEVEL);
     }
 
@@ -2334,6 +2377,9 @@ class MemberServicesImpl implements MemberServices {
         this.cryptoPrimitives.setHashAlgorithm(hashAlgorithm);
     }
 
+    /**
+     * Get the crypto object.
+     */
     getCrypto():crypto.Crypto {
         return this.cryptoPrimitives;
     }
@@ -2616,8 +2662,8 @@ class MemberServicesImpl implements MemberServices {
 
 } // end MemberServicesImpl
 
-function newMemberServices(url,pem) {
-    return new MemberServicesImpl(url,pem);
+function newMemberServices(url:string,opts:GRPCOptions) {
+    return new MemberServicesImpl(url,opts);
 }
 
 /**
@@ -2724,6 +2770,29 @@ function rolesToMask(roles?:string[]):number {
     }
     if (mask === 0) mask = 1;  // Client
     return mask;
+}
+
+// Get the PEM from the options
+function getPemFromOpts(opts:any):string {
+   if (isObject(opts)) return opts.pem;
+   return opts;
+}
+
+// Normalize opts
+function getOptsFromOpts(opts:any):GRPCOptions {
+   if (isObject(opts)) {
+      delete opts.pem;
+      if (opts.hostnameOverride) {
+         opts['grpc.ssl_target_name_override'] = opts.hostnameOverride;
+         opts['grpc.default_authority'] = opts.hostnameOverride;
+         delete opts.hostnameOverride;
+      }
+      return <GRPCOptions>opts;
+   }
+   if (isString(opts)) {
+      // backwards compatible to handle pem as opts
+      return <GRPCOptions>{ pem: opts };
+   }
 }
 
 function endsWith(str:string, suffix:string) {
