@@ -1,0 +1,18 @@
+vp0:
+  environment:
+    # The combination of the following two environment variables ensures that a state snapshot will be pulled
+    # and that the state snapshot buffer will be exhausted
+    - CORE_PEER_SYNC_STATE_SNAPSHOT_CHANNELSIZE=0
+    - CORE_STATETRANSFER_MAXDELTAS=1
+vp1:
+  environment:
+    - CORE_PEER_SYNC_STATE_SNAPSHOT_CHANNELSIZE=0
+    - CORE_STATETRANSFER_MAXDELTAS=1
+vp2:
+  environment:
+    - CORE_PEER_SYNC_STATE_SNAPSHOT_CHANNELSIZE=0
+    - CORE_STATETRANSFER_MAXDELTAS=1
+vp3:
+  environment:
+    - CORE_PEER_SYNC_STATE_SNAPSHOT_CHANNELSIZE=0
+    - CORE_STATETRANSFER_MAXDELTAS=1

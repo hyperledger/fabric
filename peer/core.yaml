@@ -111,9 +111,13 @@ peer:
             snapshot:
                 # Channel size for readonly syncStateSnapshot messages channel
                 # for receiving state deltas for snapshot from oppositie Peer Endpoints.
-                # NOTE: currently messages are not stored and forwarded, but
-                # rather lost if the channel write blocks.
+                # NOTE: when the channel is exhausted, the writes block for up to the
+                # writeTimeout specified below
                 channelSize: 50
+                # Write timeout for the syncStateSnapshot messages
+                # When the channel above is exhausted, messages block before being
+                # discarded for this amount of time
+                writeTimeout: 60s
             deltas:
                 # Channel size for readonly syncStateDeltas messages channel for
                 # receiving state deltas for a syncBlockRange from oppositie

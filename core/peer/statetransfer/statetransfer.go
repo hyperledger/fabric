@@ -410,7 +410,7 @@ func (sts *coordinatorImpl) syncBlocks(highBlock, lowBlock uint64, highHash []by
 
 func (sts *coordinatorImpl) syncBlockchainToTarget(blockSyncReq *blockSyncReq) {
 
-	logger.Debugf("Processing a blockSyncReq to block %d", blockSyncReq.blockNumber)
+	logger.Debugf("Processing a blockSyncReq to block %d through %d", blockSyncReq.blockNumber, blockSyncReq.reportOnBlock)
 
 	blockchainSize := sts.stack.GetBlockchainSize()
 
