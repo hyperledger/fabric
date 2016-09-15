@@ -37,11 +37,11 @@
 #   - dist-clean - superset of 'clean' that also removes persistent state
 
 PROJECT_NAME   = hyperledger/fabric
-BASE_VERSION   = 0.7.0
-IS_RELEASE     = false # commit as 'true' only once for a given $(BASE_VERSION)
+BASE_VERSION   = 0.6.0-developer-preview
+IS_RELEASE     = true # commit as 'true' only once for a given $(BASE_VERSION)
 
 ifneq ($(IS_RELEASE),true)
-EXTRA_VERSION ?= SNAPSHOT-$(shell git rev-parse --short HEAD)
+EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
 PROJECT_VERSION=$(BASE_VERSION)-$(EXTRA_VERSION)
 else
 PROJECT_VERSION=$(BASE_VERSION)
