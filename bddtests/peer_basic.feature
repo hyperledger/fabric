@@ -563,9 +563,8 @@ Feature: Network of Peers
             | vp0 | vp1 | vp2 |
 
         # Now start vp3 again
-        Given I start peers:
+        Given I start peers, waiting up to "15" seconds for them to be ready:
             | vp3 |
-        And I wait "15" seconds
 
         # Invoke 10 more txs, this will trigger a state transfer, set a target, and execute new outstanding transactions
         When I invoke chaincode "example2" function name "invoke" on "vp0" "10" times
@@ -617,9 +616,8 @@ Feature: Network of Peers
         Given I stop peers:
             | vp0  |  vp1   | vp2  | vp3  |
 
-        Given I start peers:
+        Given I start peers, waiting up to "15" seconds for them to be ready:
             | vp0  |  vp1   | vp2  | vp3  |
-        And I wait "15" seconds
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp3  |
@@ -871,9 +869,8 @@ Feature: Network of Peers
             | vp1 | vp2 | vp3 |
 
         # Now start vp1, vp2 again, hopefully retaining pbft state
-        Given I start peers:
+        Given I start peers, waiting up to "15" seconds for them to be ready:
             | vp1 | vp2 |
-        And I wait "15" seconds
 
         # Invoke 1 more tx, if the crash recovery worked, it will commit, otherwise, it will not
         When I invoke chaincode "example2" function name "invoke" on "vp0"
@@ -937,7 +934,7 @@ Feature: Network of Peers
             | vp0  | vp1 | vp2 |
 
         # Now start vp3 again
-        Given I start peers:
+        Given I start peers, waiting up to "15" seconds for them to be ready:
             | vp3  |
 
         # Invoke some more txs, this will trigger a state transfer, but it cannot complete
@@ -1067,9 +1064,8 @@ Feature: Network of Peers
         When requesting "/network/peers" from "vp1"
         Then I should get a JSON response with array "peers" contains "1" elements
 
-        Given I start peers:
+        Given I start peers, waiting up to "15" seconds for them to be ready:
             | vp0  |
-        And I wait "10" seconds
 
         When requesting "/network/peers" from "vp1"
         Then I should get a JSON response with array "peers" contains "2" elements
@@ -1123,10 +1119,9 @@ Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
     Then I should get a JSON response from peers with "result.message" = "997"
                           | vp0  | vp1 | vp3 |
 
-    Given I start peers:
+    Given I start peers, waiting up to "15" seconds for them to be ready:
                           | vp2  |
 
-    And I wait "15" seconds
     Given I stop peers:
                           | vp1  |
     When I invoke chaincode "example2" function name "invoke" on "vp3" "20" times
@@ -1176,7 +1171,7 @@ Scenario: chaincode example02 with 4 peers, two stopped
         | a  | b  | 10 |
     Then I should have received a transactionID
 
-    Given I start peers:
+    Given I start peers, waiting up to "15" seconds for them to be ready:
         | vp3 |
 
     # Make sure vp3 catches up first
@@ -1200,7 +1195,6 @@ Scenario: chaincode example02 with 4 peers, two stopped
         | vp0 | vp1 | vp3 |
 
 @issue_1874b
-#@doNotDecompose
 Scenario: chaincode example02 with 4 peers, two stopped, bring back vp0
     Given we compose "docker-compose-4-consensus-batch.yml"
     And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
@@ -1246,15 +1240,18 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back vp0
         | a  | b  | 10 |
     Then I should have received a transactionID
 
-    Given I start peers:
+    Given I start peers, waiting up to "15" seconds for them to be ready:
         | vp0  |
-    And I wait "15" seconds
+
+    # Ensure transaction committed while vp0 was down is part of the ledger
+    Then I wait up to "60" seconds for transaction to be committed to peers:
+        | vp0  | vp1 | vp2 |
 
     When I invoke chaincode "example2" function name "invoke" on "vp1" "8" times
         |arg1|arg2|arg3|
         | a  | b  | 10 |
     Then I should have received a transactionID
-    Then I wait up to "60" seconds for transaction to be committed to peers:
+    Then I wait up to "60" seconds for transactions to be committed to peers:
         | vp0  | vp1 | vp2 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
@@ -1297,9 +1294,8 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back both
         | a  | b  | 10 |
     Then I should have received a transactionID
 
-    Given I start peers:
+    Given I start peers, waiting up to "15" seconds for them to be ready:
         | vp1 | vp2 |
-    And I wait "15" seconds
 
     When I invoke chaincode "example2" function name "invoke" on "vp0" "8" times
         |arg1|arg2|arg3|

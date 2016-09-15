@@ -586,10 +586,13 @@ def step_impl(context):
     assert os.path.isfile(listener), "Please build the block-listener binary!"
     bdd_test_util.start_background_process(context, "eventlistener", [listener, "-listen-to-rejections"] )
 
-
-@given(u'I start peers')
-def step_impl(context):
+@given(u'I start peers, waiting up to "{seconds}" seconds for them to be ready')
+def step_impl(context, seconds):
     compose_op(context, "start")
+
+    timeout = int(seconds)
+    assert bdd_compose_util.allContainersAreReadyWithinTimeout(context, timeout), \
+        "Peers did not come up within {} seconds, aborting.".format(timeout)
 
 @given(u'I stop peers')
 def step_impl(context):
