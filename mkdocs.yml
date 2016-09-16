@@ -3,6 +3,8 @@ site_url: http://hyperledger-fabric.readthedocs.io
 theme: readthedocs
 repo_url: http://gerrit.hyperledger.org/r/fabric
 site_description: 'Welcome to the Hyperledger fabric documentation'
+strict: true
+theme_dir: 'docs/custom_theme'
 
 pages:
 - Home: index.md
