@@ -1,9 +1,19 @@
 {
   "name": "hfc",
-  "version": "0.0.2",
+  "version": "0.6.2",
+  "description": "The Hyperledger Fabric Client SDK (HFC) provides a powerful and easy to use API to interact with a Hyperledger Fabric blockchain.",
+  "keywords": [
+    "hfc",
+    "hyperledger",
+    "blockchain"
+  ],
   "bin": "./bin/main.js",
   "typings": "hfc.d.ts",
   "main": "index.js",
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/hyperledger/fabric"
+  },
   "dependencies": {
     "aes-js": "^1.0.0",
     "asn1": "https://github.com/mcavage/node-asn1",
@@ -36,5 +46,6 @@
   "devDependencies": {
     "tape": "^4.5.1",
     "x509": "^0.2.6"
-  }
+  },
+  "license": "Apache License v2.0"
 }
