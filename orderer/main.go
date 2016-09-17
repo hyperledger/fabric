@@ -18,10 +18,14 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"time"
 
+	"github.com/hyperledger/fabric/orderer/rawledger"
+	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
+	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/solo"
 
 	"google.golang.org/grpc"
@@ -47,6 +51,27 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	solo.New(100, 10, 10, 10*time.Second, grpcServer)
+	// Stand in until real config
+	ledgerType := os.Getenv("ORDERER_LEDGER_TYPE")
+	var rawledger rawledger.ReadWriter
+	switch ledgerType {
+	case "file":
+		name, err := ioutil.TempDir("", "hyperledger") // TODO, config
+		if err != nil {
+			panic(fmt.Errorf("Error creating temp dir: %s", err))
+		}
+
+		rawledger = fileledger.New(name)
+	case "ram":
+		fallthrough
+	default:
+		historySize := 10 // TODO, config
+		rawledger = ramledger.New(historySize)
+	}
+
+	queueSize := 100 // TODO configure
+	batchSize := 10
+	batchTimeout := 10 * time.Second
+	solo.New(queueSize, batchSize, batchTimeout, rawledger, grpcServer)
 	grpcServer.Serve(lis)
 }
