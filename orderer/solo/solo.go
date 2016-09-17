@@ -20,6 +20,9 @@ import (
 	"time"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/rawledger"
+	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
+
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
@@ -36,13 +39,13 @@ const MagicLargestWindow = 1000
 type server struct {
 	bs *broadcastServer
 	ds *deliverServer
-	rl *ramLedger
+	rl rawledger.ReadWriter
 }
 
 // New creates a ab.AtomicBroadcastServer based on the solo orderer implementation
 func New(queueSize, batchSize, historySize int, batchTimeout time.Duration, grpcServer *grpc.Server) ab.AtomicBroadcastServer {
 	logger.Infof("Starting solo with queueSize=%d batchSize=%d historySize=%d batchTimeout=%v", queueSize, batchSize, historySize, batchTimeout)
-	rl := newRAMLedger(historySize)
+	rl := ramledger.New(historySize)
 	s := &server{
 		bs: newBroadcastServer(queueSize, batchSize, batchTimeout, rl),
 		ds: newDeliverServer(rl, MagicLargestWindow),

@@ -18,14 +18,15 @@ package solo
 
 import (
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/rawledger"
 )
 
 type deliverServer struct {
-	rl        *ramLedger
+	rl        rawledger.Reader
 	maxWindow int
 }
 
-func newDeliverServer(rl *ramLedger, maxWindow int) *deliverServer {
+func newDeliverServer(rl rawledger.Reader, maxWindow int) *deliverServer {
 	return &deliverServer{
 		rl:        rl,
 		maxWindow: maxWindow,
@@ -40,13 +41,14 @@ func (ds *deliverServer) handleDeliver(srv ab.AtomicBroadcast_DeliverServer) err
 }
 
 type deliverer struct {
-	ds         *deliverServer
-	srv        ab.AtomicBroadcast_DeliverServer
-	cursor     *simpleList
-	windowSize uint64
-	lastAck    uint64
-	recvChan   chan *ab.DeliverUpdate
-	exitChan   chan struct{}
+	ds              *deliverServer
+	srv             ab.AtomicBroadcast_DeliverServer
+	cursor          rawledger.Iterator
+	nextBlockNumber uint64
+	windowSize      uint64
+	lastAck         uint64
+	recvChan        chan *ab.DeliverUpdate
+	exitChan        chan struct{}
 }
 
 func newDeliverer(ds *deliverServer, srv ab.AtomicBroadcast_DeliverServer) *deliverer {
@@ -65,7 +67,7 @@ func (d *deliverer) halt() {
 }
 
 func (d *deliverer) main() {
-	var signal chan struct{}
+	var signal <-chan struct{}
 	for {
 		select {
 		case update := <-d.recvChan:
@@ -83,12 +85,24 @@ func (d *deliverer) main() {
 				close(d.exitChan)
 				return
 			default:
-				logger.Errorf("Unknown type: %v", t)
+				logger.Errorf("Unknown type: %T:%v", t, t)
 				close(d.exitChan)
 				return
 			}
 		case <-signal:
-			logger.Debugf("Signal triggered wakeup")
+			block, status := d.cursor.Next()
+			if status != ab.Status_SUCCESS {
+				logger.Errorf("Error reading from channel, cause was: %v", status)
+				if !d.sendErrorReply(status) {
+					return
+				}
+				d.cursor = nil
+			} else {
+				d.nextBlockNumber = block.Number + 1
+				if !d.sendBlockReply(block) {
+					return
+				}
+			}
 		case <-d.exitChan:
 			return
 		}
@@ -98,24 +112,13 @@ func (d *deliverer) main() {
 			continue
 		}
 
-		for {
-			if d.cursor.next == nil {
-				logger.Debugf("Ran out of blocks, blocking for signal")
-				signal = d.cursor.signal
-				break
-			}
-
-			if d.lastAck+d.windowSize < d.cursor.next.block.Number {
-				signal = nil
-				break
-			}
-
-			logger.Debugf("Sending block to client")
-			d.cursor = d.cursor.next
-			if !d.sendBlockReply(d.cursor.block) {
-				return
-			}
+		if d.lastAck+d.windowSize < d.nextBlockNumber {
+			signal = nil
+			continue
 		}
+
+		logger.Debugf("Room for more blocks, activating channel")
+		signal = d.cursor.ReadyChan()
 	}
 }
 
@@ -164,7 +167,9 @@ func (d *deliverer) sendBlockReply(block *ab.Block) bool {
 }
 
 func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
-	d.cursor = nil
+	if d.cursor != nil {
+		d.cursor = nil
+	}
 	logger.Debugf("Updating properties for client")
 
 	if update == nil || update.WindowSize == 0 || update.WindowSize > MagicLargestWindow {
@@ -174,39 +179,8 @@ func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
 
 	d.windowSize = update.WindowSize
 
-	switch update.Start {
-	case ab.SeekInfo_OLDEST:
-		oldest := d.ds.rl.oldest
-		d.cursor = &simpleList{
-			block:  &ab.Block{Number: oldest.block.Number - 1}, // Potential underflow, so do not use > or <, use == +1
-			next:   oldest,
-			signal: make(chan struct{}),
-		}
-		close(d.cursor.signal)
-	case ab.SeekInfo_NEWEST:
-		newest := d.ds.rl.newest
-		d.cursor = &simpleList{
-			block:  &ab.Block{Number: newest.block.Number - 1}, // Potential underflow, so do not use > or <, use == +1
-			next:   newest,
-			signal: make(chan struct{}),
-		}
-		close(d.cursor.signal)
-	case ab.SeekInfo_SPECIFIED:
-		d.cursor = d.ds.rl.oldest
-		target := update.SpecifiedNumber
-		if target < d.cursor.block.Number || target > d.ds.rl.newest.block.Number+1 {
-			d.cursor = nil
-			return d.sendErrorReply(ab.Status_NOT_FOUND)
-		}
+	d.cursor, d.nextBlockNumber = d.ds.rl.Iterator(update.Start, update.SpecifiedNumber)
+	d.lastAck = d.nextBlockNumber - 1
 
-		for {
-			if d.cursor.block.Number == target-1 {
-				break
-			}
-			d.cursor = d.cursor.next // No need for nil check, because of range check above
-		}
-	}
-
-	d.lastAck = d.cursor.block.Number
 	return true
 }

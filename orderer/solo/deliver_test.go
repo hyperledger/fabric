@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 )
 
 type mockD struct {
@@ -54,9 +55,9 @@ func (m *mockD) Recv() (*ab.DeliverUpdate, error) {
 
 func TestOldestSeek(t *testing.T) {
 	ledgerSize := 5
-	rl := newRAMLedger(ledgerSize)
+	rl := ramledger.New(ledgerSize)
 	for i := 1; i < ledgerSize; i++ {
-		rl.appendBlock(&ab.Block{Number: uint64(i)})
+		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -86,9 +87,9 @@ func TestOldestSeek(t *testing.T) {
 
 func TestNewestSeek(t *testing.T) {
 	ledgerSize := 5
-	rl := newRAMLedger(ledgerSize)
+	rl := ramledger.New(ledgerSize)
 	for i := 1; i < ledgerSize; i++ {
-		rl.appendBlock(&ab.Block{Number: uint64(i)})
+		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -115,9 +116,9 @@ func TestNewestSeek(t *testing.T) {
 
 func TestSpecificSeek(t *testing.T) {
 	ledgerSize := 5
-	rl := newRAMLedger(ledgerSize)
+	rl := ramledger.New(ledgerSize)
 	for i := 1; i < ledgerSize; i++ {
-		rl.appendBlock(&ab.Block{Number: uint64(i)})
+		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -143,9 +144,9 @@ func TestSpecificSeek(t *testing.T) {
 
 func TestBadSeek(t *testing.T) {
 	ledgerSize := 5
-	rl := newRAMLedger(ledgerSize)
+	rl := ramledger.New(ledgerSize)
 	for i := 1; i < 2*ledgerSize; i++ {
-		rl.appendBlock(&ab.Block{Number: uint64(i)})
+		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -179,7 +180,7 @@ func TestBadSeek(t *testing.T) {
 
 func TestBadWindow(t *testing.T) {
 	ledgerSize := 5
-	rl := newRAMLedger(ledgerSize)
+	rl := ramledger.New(ledgerSize)
 
 	m := newMockD()
 	defer close(m.recvChan)
@@ -202,9 +203,9 @@ func TestBadWindow(t *testing.T) {
 func TestAck(t *testing.T) {
 	ledgerSize := 10
 	windowSize := uint64(2)
-	rl := newRAMLedger(ledgerSize)
+	rl := ramledger.New(ledgerSize)
 	for i := 1; i < ledgerSize; i++ {
-		rl.appendBlock(&ab.Block{Number: uint64(i)})
+		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()

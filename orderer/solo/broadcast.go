@@ -20,29 +20,30 @@ import (
 	"time"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/rawledger"
 )
 
 type broadcastServer struct {
 	queue        chan *ab.BroadcastMessage
 	batchSize    int
 	batchTimeout time.Duration
-	rl           *ramLedger
+	rl           rawledger.Writer
 	exitChan     chan struct{}
 }
 
-func newBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rs *ramLedger) *broadcastServer {
-	bs := newPlainBroadcastServer(queueSize, batchSize, batchTimeout, rs)
-	bs.exitChan = make(chan struct{})
+func newBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer) *broadcastServer {
+	bs := newPlainBroadcastServer(queueSize, batchSize, batchTimeout, rl)
 	go bs.main()
 	return bs
 }
 
-func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl *ramLedger) *broadcastServer {
+func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer) *broadcastServer {
 	bs := &broadcastServer{
 		queue:        make(chan *ab.BroadcastMessage, queueSize),
 		batchSize:    batchSize,
 		batchTimeout: batchTimeout,
 		rl:           rl,
+		exitChan:     make(chan struct{}),
 	}
 	return bs
 }
@@ -56,31 +57,28 @@ func (bs *broadcastServer) main() {
 outer:
 	for {
 		timer := time.After(bs.batchTimeout)
-		select {
-		case msg := <-bs.queue:
-			curBatch = append(curBatch, msg)
-			if len(curBatch) < bs.batchSize {
-				continue
+		for {
+			select {
+			case msg := <-bs.queue:
+				curBatch = append(curBatch, msg)
+				if len(curBatch) < bs.batchSize {
+					continue
+				}
+				logger.Debugf("Batch size met, creating block")
+			case <-timer:
+				if len(curBatch) == 0 {
+					continue outer
+				}
+				logger.Debugf("Batch timer expired, creating block")
+			case <-bs.exitChan:
+				logger.Debugf("Exiting")
+				return
 			}
-			logger.Debugf("Batch size met, creating block")
-		case <-timer:
-			if len(curBatch) == 0 {
-				continue outer
-			}
-			logger.Debugf("Batch timer expired, creating block")
-		case <-bs.exitChan:
-			logger.Debugf("Exiting")
-			return
+			break
 		}
 
-		block := &ab.Block{
-			Number:   bs.rl.newest.block.Number + 1,
-			PrevHash: bs.rl.newest.block.Hash(),
-			Messages: curBatch,
-		}
+		bs.rl.Append(curBatch, nil)
 		curBatch = nil
-
-		bs.rl.appendBlock(block)
 	}
 }
 
