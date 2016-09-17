@@ -45,9 +45,6 @@ import (
 // Logger for the shim package.
 var chaincodeLogger = logging.MustGetLogger("shim")
 
-// Handler to shim that handles all control logic.
-var handler *Handler
-
 // ChaincodeStub is an object passed to chaincode for shim side handling of
 // APIs.
 type ChaincodeStub struct {
@@ -55,6 +52,7 @@ type ChaincodeStub struct {
 	securityContext *pb.ChaincodeSecurityContext
 	chaincodeEvent  *pb.ChaincodeEvent
 	args            [][]byte
+	handler         *Handler
 }
 
 // Peer address derived from command line or env var
@@ -150,7 +148,7 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
 
 	// Create the shim handler responsible for all control logic
-	handler = newChaincodeHandler(stream, cc)
+	handler := newChaincodeHandler(stream, cc)
 
 	defer stream.CloseSend()
 	// Send the ChaincodeID during register.
@@ -232,7 +230,7 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 // -- init stub ---
 // ChaincodeInvocation functionality
 
-func (stub *ChaincodeStub) init(uuid string, secContext *pb.ChaincodeSecurityContext) {
+func (stub *ChaincodeStub) init(handler *Handler, uuid string, secContext *pb.ChaincodeSecurityContext) {
 	stub.UUID = uuid
 	stub.securityContext = secContext
 	stub.args = [][]byte{}
@@ -243,6 +241,7 @@ func (stub *ChaincodeStub) init(uuid string, secContext *pb.ChaincodeSecurityCon
 	} else {
 		panic("Arguments cannot be unmarshalled.")
 	}
+	stub.handler = handler
 }
 
 func InitTestStub(funargs ...string) *ChaincodeStub {
@@ -250,7 +249,7 @@ func InitTestStub(funargs ...string) *ChaincodeStub {
 	allargs := util.ToChaincodeArgs(funargs...)
 	newCI := pb.ChaincodeInput{Args: allargs}
 	pl, _ := proto.Marshal(&newCI)
-	stub.init("TEST-uuid", &pb.ChaincodeSecurityContext{Payload: pl})
+	stub.init(&Handler{}, "TEST-uuid", &pb.ChaincodeSecurityContext{Payload: pl})
 	return &stub
 }
 
@@ -263,31 +262,31 @@ func InitTestStub(funargs ...string) *ChaincodeStub {
 // same transaction context; that is, chaincode calling chaincode doesn't
 // create a new transaction message.
 func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
-	return handler.handleInvokeChaincode(chaincodeName, args, stub.UUID)
+	return stub.handler.handleInvokeChaincode(chaincodeName, args, stub.UUID)
 }
 
 // QueryChaincode locally calls the specified chaincode `Query` using the
 // same transaction context; that is, chaincode calling chaincode doesn't
 // create a new transaction message.
 func (stub *ChaincodeStub) QueryChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
-	return handler.handleQueryChaincode(chaincodeName, args, stub.UUID)
+	return stub.handler.handleQueryChaincode(chaincodeName, args, stub.UUID)
 }
 
 // --------- State functions ----------
 
 // GetState returns the byte array value specified by the `key`.
 func (stub *ChaincodeStub) GetState(key string) ([]byte, error) {
-	return handler.handleGetState(key, stub.UUID)
+	return stub.handler.handleGetState(key, stub.UUID)
 }
 
 // PutState writes the specified `value` and `key` into the ledger.
 func (stub *ChaincodeStub) PutState(key string, value []byte) error {
-	return handler.handlePutState(key, value, stub.UUID)
+	return stub.handler.handlePutState(key, value, stub.UUID)
 }
 
 // DelState removes the specified `key` and its value from the ledger.
 func (stub *ChaincodeStub) DelState(key string) error {
-	return handler.handleDelState(key, stub.UUID)
+	return stub.handler.handleDelState(key, stub.UUID)
 }
 
 //ReadCertAttribute is used to read an specific attribute from the transaction certificate, *attributeName* is passed as input parameter to this function.
@@ -338,11 +337,11 @@ type StateRangeQueryIterator struct {
 // between the startKey and endKey, inclusive. The order in which keys are
 // returned by the iterator is random.
 func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateRangeQueryIteratorInterface, error) {
-	response, err := handler.handleRangeQueryState(startKey, endKey, stub.UUID)
+	response, err := stub.handler.handleRangeQueryState(startKey, endKey, stub.UUID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateRangeQueryIterator{handler, stub.UUID, response, 0}, nil
+	return &StateRangeQueryIterator{stub.handler, stub.UUID, response, 0}, nil
 }
 
 // HasNext returns true if the range query iterator contains additional keys

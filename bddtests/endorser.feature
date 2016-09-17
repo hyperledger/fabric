@@ -21,7 +21,7 @@ Feature: Endorser
 	Scenario Outline: Basic deploy endorsement for chaincode through GRPC to multiple endorsers
 
 	    Given we compose "<ComposeFile>"
-        And I wait "1" seconds
+        And I wait "5" seconds
         And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
           | vp0  |
 
@@ -29,7 +29,7 @@ Feature: Endorser
              | funcName | arg1 |  arg2 | arg3 | arg4 |
              |   init   |  a   |  100  |  b   |  200 |
         And user "binhn" creates a deployment proposal "proposal1" using chaincode spec "cc_spec"
-        And user "binhn" sends proposal "proposal1" to endorsers with timeout of "2" seconds:
+        And user "binhn" sends proposal "proposal1" to endorsers with timeout of "20" seconds:
           | vp0  | vp1 | vp2 |  vp3  |
         And user "binhn" stores their last result as "proposal1Responses"
         Then user "binhn" expects proposal responses "proposal1Responses" with status "200" from endorsers:
@@ -54,7 +54,7 @@ Feature: Endorser
              |   init   |  a   |  100  |  b   |  200 |
         And user "binhn" sets ESCC to "my_escc" for chaincode spec "cc_spec"
         And user "binhn" creates a deployment proposal "proposal1" using chaincode spec "cc_spec"
-        And user "binhn" sends proposal "proposal1" to endorsers with timeout of "2" seconds:
+        And user "binhn" sends proposal "proposal1" to endorsers with timeout of "20" seconds:
           | vp0  | vp1 | vp2 |  vp3  |
         And user "binhn" stores their last result as "proposal1Responses"
         Then user "binhn" expects proposal responses "proposal1Responses" with status "200" from endorsers:
@@ -77,7 +77,7 @@ Feature: Endorser
              |   init   |  a   |  100  |  b   |  200 |
         And user "binhn" sets VSCC to "my_vscc" for chaincode spec "cc_spec"
         And user "binhn" creates a deployment proposal "proposal1" using chaincode spec "cc_spec"
-        And user "binhn" sends proposal "proposal1" to endorsers with timeout of "2" seconds:
+        And user "binhn" sends proposal "proposal1" to endorsers with timeout of "20" seconds:
           | vp0  | vp1 | vp2 |  vp3  |
         And user "binhn" stores their last result as "proposal1Responses"
         Then user "binhn" expects proposal responses "proposal1Responses" with status "200" from endorsers:
