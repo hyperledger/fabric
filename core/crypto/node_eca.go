@@ -32,6 +32,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/primitives/ecies"
+	"github.com/hyperledger/fabric/core/crypto/trust"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -54,6 +55,8 @@ func (node *nodeImpl) retrieveECACertsChain(userID string) error {
 		return err
 	}
 	node.Debugf("ECA certificate [% x].", ecaCertRaw)
+
+	trust.SetMyECACert(ecaCertRaw)
 
 	// TODO: Test ECA cert againt root CA
 	// TODO: check response.Cert against rootCA
@@ -248,6 +251,8 @@ func (node *nodeImpl) loadECACertsChain() error {
 
 		return err
 	}
+
+	trust.SetMyPeerCert(pem)
 
 	ok := node.ecaCertPool.AppendCertsFromPEM(pem)
 	if !ok {
@@ -469,6 +474,8 @@ func (node *nodeImpl) getEnrollmentCertificateFromECA(id, pw string) (interface{
 
 		return nil, nil, nil, err
 	}
+
+	trust.SetMyPeerCert(resp.Certs.Sign)
 
 	return signPriv, resp.Certs.Sign, resp.Pkchain, nil
 }

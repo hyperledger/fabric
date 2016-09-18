@@ -18,9 +18,8 @@ package crypto
 
 import (
 	"crypto/tls"
-	"crypto/x509"
-	"errors"
 
+	"github.com/hyperledger/fabric/core/crypto/trust"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -38,13 +37,10 @@ func (node *nodeImpl) initTLS() error {
 			return err
 		}
 
-		node.tlsCertPool = x509.NewCertPool()
-		ok := node.tlsCertPool.AppendCertsFromPEM(pem)
-		if !ok {
-			node.Error("Failed appending TLSCA certificates chain.")
+		trust.SetMyTLSCert(pem)
 
-			return errors.New("Failed appending TLSCA certificates chain.")
-		}
+		node.tlsCertPool = trust.GetTLSCertPool()
+
 		node.Debug("Initiliazing TLS...Done")
 	} else {
 		node.Debug("Initiliazing TLS...Disabled!!!")

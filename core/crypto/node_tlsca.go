@@ -28,6 +28,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/trust"
 	"github.com/hyperledger/fabric/core/util"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -47,6 +48,8 @@ func (node *nodeImpl) retrieveTLSCertificate(id, affiliation string) error {
 	node.Debugf("TLS Cert [% x]", tlsCertRaw)
 
 	node.Debugf("Storing TLS key and certificate for user [%s]...", id)
+
+	trust.SetMyTLSCert(tlsCertRaw)
 
 	// Store tls key.
 	if err := node.ks.storePrivateKeyInClear(node.conf.getTLSKeyFilename(), key); err != nil {
@@ -84,7 +87,6 @@ func (node *nodeImpl) loadTLSCertificate() error {
 	cert, _, err := node.ks.loadCertX509AndDer(node.conf.getTLSCertFilename())
 	if err != nil {
 		node.Errorf("Failed parsing tls certificate [%s].", err.Error())
-
 		return err
 	}
 	node.tlsCert = cert

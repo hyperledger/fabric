@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/hyperledger/fabric/core/crypto/trust"
 	"github.com/hyperledger/fabric/core/crypto/utils"
 
 	// Required to successfully initialized the driver
@@ -303,6 +304,8 @@ func (ks *keyStore) loadCertX509AndDer(alias string) (*x509.Certificate, []byte,
 
 		return nil, nil, err
 	}
+
+	trust.SetMyTLSCert(pem)
 
 	cert, der, err := primitives.PEMtoCertificateAndDER(pem)
 	if err != nil {

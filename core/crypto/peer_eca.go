@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/trust"
 	"github.com/hyperledger/fabric/core/crypto/utils"
 	membersrvc "github.com/hyperledger/fabric/membersrvc/protos"
 	"golang.org/x/net/context"
@@ -33,6 +34,13 @@ func (peer *peerImpl) getEnrollmentCert(id []byte) (*x509.Certificate, error) {
 	}
 
 	sid := utils.EncodeBase64(id)
+
+	peer.Debugf("Getting peer certificate for [%s]", sid)
+
+	if pcert := trust.GetPeerCertByID(sid); pcert != nil {
+		peer.Debugf("peer certificate for %s", sid)
+		return pcert, nil
+	}
 
 	peer.Debugf("Getting enrollment certificate for [%s]", sid)
 

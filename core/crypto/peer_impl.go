@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/trust"
 	"github.com/hyperledger/fabric/core/crypto/utils"
 	obc "github.com/hyperledger/fabric/protos"
 )
@@ -79,14 +80,9 @@ func (peer *peerImpl) TransactionPreValidation(tx *obc.Transaction) (*obc.Transa
 		// 1. Get rid of the extensions that cannot be checked now
 		x509Cert.UnhandledCriticalExtensions = nil
 		// 2. Check against TCA certPool
-		if _, err = primitives.CheckCertAgainRoot(x509Cert, peer.tcaCertPool); err != nil {
-			peer.Warningf("Failed verifing certificate against TCA cert pool [%s].", err.Error())
-			// 3. Check against ECA certPool, if this check also fails then return an error
-			if _, err = primitives.CheckCertAgainRoot(x509Cert, peer.ecaCertPool); err != nil {
-				peer.Warningf("Failed verifing certificate against ECA cert pool [%s].", err.Error())
-
-				return tx, fmt.Errorf("Certificate has not been signed by a trusted authority. [%s]", err)
-			}
+		if _, err = primitives.CheckCertAgainRoot(x509Cert, trust.GetTransactionCertPool()); err != nil {
+			peer.Warningf("Failed verifing certificate against transaction cert pool [%s].", err.Error())
+			return tx, fmt.Errorf("Certificate has not been signed by a trusted authority. [%s]", err)
 		}
 
 		// 3. Marshall tx without signature

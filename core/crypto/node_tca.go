@@ -22,6 +22,7 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/trust"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -39,6 +40,8 @@ func (node *nodeImpl) retrieveTCACertsChain(userID string) error {
 		return err
 	}
 	node.Debugf("TCA certificate [% x]", tcaCertRaw)
+
+	trust.SetMyTCACert(tcaCertRaw)
 
 	// TODO: Test TCA cert againt root CA
 	_, err = primitives.DERToX509Certificate(tcaCertRaw)
@@ -69,6 +72,8 @@ func (node *nodeImpl) loadTCACertsChain() error {
 
 		return err
 	}
+
+	trust.SetMyTCACert(cert)
 
 	// Prepare ecaCertPool
 	ok := node.tcaCertPool.AppendCertsFromPEM(cert)
