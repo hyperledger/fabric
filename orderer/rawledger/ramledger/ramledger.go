@@ -89,11 +89,22 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 		}
 		close(list.signal)
 	case ab.SeekInfo_SPECIFIED:
-		list = rl.oldest
-		if specified < list.block.Number || specified > rl.newest.block.Number+1 {
+		oldest := rl.oldest
+		if specified < oldest.block.Number || specified > rl.newest.block.Number+1 {
 			return &rawledger.NotFoundErrorIterator{}, 0
 		}
 
+		if specified == oldest.block.Number {
+			list = &simpleList{
+				block:  &ab.Block{Number: oldest.block.Number - 1},
+				next:   oldest,
+				signal: make(chan struct{}),
+			}
+			close(list.signal)
+			break
+		}
+
+		list = oldest
 		for {
 			if list.block.Number == specified-1 {
 				break
