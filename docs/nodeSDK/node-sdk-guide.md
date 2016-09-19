@@ -21,12 +21,12 @@ The Hyperledger fabric Client (HFC) SDK for Node.js provides a powerful and easy
 
 * [Node.js Standalone Application in Vagrant](sample-standalone-app.md) for a sample standalone Node.js application running in the full development environment within Vagrant.
 
-* [Node.js Web Application](sample-web-app.md) for a sample web application and to see how to use the Node.js client SDK for a sample web app leveraging the client SDK to interact with blockchain network.
+* [Node.js Web Application](sample-web-app.md) for a sample web application and to see how to use the Node.js client SDK for a sample web app leveraging the client SDK to interact with a blockchain network.
 
 
 
 #### Related information
 
-   * To build and view the reference documentation for the Node.js client SDK APIs follow the instructions [here](app-developer-env-setup.md).
+   * To build the reference documentation for the Node.js client SDK APIs follow the instructions [here](app-developer-env-setup.md).
 
    * To learn more about chaincode, see [Writing, Building, and Running Chaincode in a Development Environment](../Setup/Chaincode-setup.md).
