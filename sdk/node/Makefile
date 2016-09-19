@@ -79,4 +79,4 @@ clean:
 	@echo "[CLEAN]"
 	-rm -rf node_modules
 	-rm -rf doc
-	-find lib | grep -v "protos/google" | grep -v "hash.js" | xargs rm
+	-find lib -type f | grep -v "protos/google" | grep -v "hash.js" | xargs rm
