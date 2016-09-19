@@ -4,116 +4,69 @@ This section describes how to set up a self contained environment for Node.js ap
 
 **note:** This sample was prepared using Docker for Mac 1.12.0
 
-1. Prerequisite software to install:
+* Prerequisite software to install:
 
   * Docker
   * docker-compose (may be packaged with Docker)
 
-2. Create a docker-compose file called *docker-compose.yml*
-
-   You may retrieve the docker-compose.yml file:
+* Copy our [docker-compose.yml](https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sdk/node/docker-compose.yml) file to a local directory:
 
 ```
-   curl -o docker-compose.yml https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sdk/node/example02/docker-compose.yml
+   curl -o docker-compose.yml https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sdk/node/docker-compose.yml
+```
+* **Optionally** build your own docker images.
+  The docker compose environment uses three docker images. If you wish to customize and build your own docker images. The following [Dockerfile](https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sdk/node/Dockerfile)
+  was used to build the **nodesdk** image and may be used as a starting point to your own customizations.
+```
+   curl -o Dockerfile https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sdk/node/Dockerfile
+   docker build -t hyperledger/fabric-node-sdk:latest .
 ```
 
-   docker-compose.yml:
-```yaml
-membersrvc:
-  # try 'docker ps' to see the container status after starting this compose
-  container_name: membersrvc
-  image: hyperledger/fabric-membersrvc
-  command: membersrvc
+* Start the fabric network environment using docker-compose. From a terminal session that has the working directory of where the above *docker-compose.yml* is located, execute one of following **docker-compose** commands.
 
-peer:
-  container_name: peer
-  image: hyperledger/fabric-peer
-  environment:
-    - CORE_PEER_ADDRESSAUTODETECT=true
-    - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
-    - CORE_LOGGING_LEVEL=DEBUG
-    - CORE_PEER_ID=vp0
-    - CORE_SECURITY_ENABLED=true
-    - CORE_PEER_PKI_ECA_PADDR=membersrvc:7054
-    - CORE_PEER_PKI_TCA_PADDR=membersrvc:7054
-    - CORE_PEER_PKI_TLSCA_PADDR=membersrvc:7054
-    - CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=noops
-  # this gives access to the docker host daemon to deploy chaincode in network mode
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-  # have the peer wait 10 sec for membersrvc to start
-  #  the following is to run the peer in Developer mode - also set sample DEPLOY_MODE=dev
-  command: sh -c "sleep 10; peer node start --peer-chaincodedev"
-  #command: sh -c "sleep 10; peer node start"
-  links:
-    - membersrvc
+   * to run as detached containers:
+     ```
+       docker-compose up -d
+     ```
+     **note:** to see the logs for the **peer** container use the `docker logs peer` command
+        
+   * to run in the foreground and see the log output in the current terminal session:
+     ```
+       docker-compose up
+     ```
+     
+  Both commands will start three docker containers, to view the container status try `docker ps` command. The first time this is run the **docker** images will be downloaded. This may take 10 minutes or more depending on the network connections of the system running the command.
+   ```      
+    docker ps
+   ```
+   
+   You should see something like the following:
+   ``` 
+    CONTAINER ID    IMAGE                           COMMAND                  CREATED              STATUS              PORTS  NAMES
+    bb01a2fa96ef    hyperledger/fabric-node-sdk     "sh -c 'sleep 20; /op"   About a minute ago   Up 59 seconds              nodesdk
+    ec7572e65f12    hyperledger/fabric-peer         "sh -c 'sleep 10; pee"   About a minute ago   Up About a minute          peer
+    118ef6da1709    hyperledger/fabric-membersrvc   "membersrvc"             About a minute ago   Up About a minute          membersrvc
+   ```
 
-nodesdk:
-  container_name: nodesdk
-  image: hyperledger/fabric-node-sdk
-  volumes:
-    - ~/mytest:/user/mytest
-  environment:
-    - MEMBERSRVC_ADDRESS=membersrvc:7054
-    - PEER_ADDRESS=peer:7051
-    - KEY_VALUE_STORE=/tmp/hl_sdk_node_key_value_store
-    - NODE_PATH=/usr/local/lib/node_modules
-    # set DEPLOY_MODE to 'dev' if peer running in Developer mode
-    - DEPLOY_MODE=dev
-    - CORE_CHAINCODE_ID_NAME=mycc
-    - CORE_PEER_ADDRESS=peer:7051
-  # the following command will start the chaincode when this container starts and ready it for deployment by the app
-  command: sh -c "sleep 20; /opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/chaincode_example02"
-  stdin_open: true
-  tty: true
-  links:
-    - membersrvc
-    - peer
+* Start a terminal session in the **nodesdk** container. This is where the Node.js application is located. 
 
-```
-
-3. Start the fabric environment using docker-compose. From a terminal session where the working directory is where the *docker-compose.yml* from step 2 is located, execute one of following **docker-compose** commands.
-
-   * to run as detached containers, then to see the logs for the **peer** container use the `docker logs peer` command
-```
-   docker-compose up -d
-```
-   * to run in the foreground and see the log output in the current terminal session
-```
-   docker-compose up
-```
-
-   This will start three docker containers, to view the container status try `docker ps` command. The first time this is run the **docker** images will be downloaded. This may take 10 minutes or more depending on the network connections of the system running the command.
-      * Membership services --**membersrvc**
-      * Peer --               **peer**
-      * Node.js SDK Application and chaincode -- **nodesdk**
-
-4. Start a terminal session in the **nodesdk** container. This is where the Node.js application is located. 
-
-  **Note:** Be sure to wait 20 seconds after starting the network before executing.
+  **note:** Be sure to wait 20 seconds after starting the network using the `docker-compose up` command before executing the following command to allow the network to initialize.
 
 ```
    docker exec -it nodesdk /bin/bash
 ```
 
-5. From the terminal session in the **nodesdk** container execute the standalone Node.js application. The docker terminal session should be in the working directory of the sample application called **app.js**  (*/opt/gopath/src/github.com/hyperledger/fabric/examples/sdk/node/example02*). Execute the following Node.js command to run the application.
+* From the terminal session in the **nodesdk** container execute the standalone Node.js application. The docker terminal session should be in the working directory of the sample application called **app.js**  (*/opt/gopath/src/github.com/hyperledger/fabric/examples/sdk/node*). Execute the following Node.js command to run the application.
 
 ```
    node app
 ```
-   On another terminal session on the host you can view the logs for the peer by executing the following command (not in the docker shell above, in a new terminal session of the real system)
+   In another terminal session on the host you can view the logs for the peer by executing the following command (not in the docker shell above, in a new terminal session of the real system)
 ```
    docker logs peer
 ```
 
-6. This environment will have the reference documentation already built and may be access by:
-
-```
-   docker exec -it nodesdk /bin/bash
-   cd /opt/gopath/src/github.com/hyperledger/fabric/sdk/node/doc
-```
-
-7. If you wish to run your own Node.js application
+* If you wish to run your own Node.js application using the pre build docker images:
    * use the directories in the `volumes` tag under **nodesdk** in the `docker-compose.yml` file as a place to store your programs from the host system into the docker container. The first path is the top level system (host system) and the second is created in the docker container. If you wish to use a host location that is not under the `/Users` directory (`~` is under `/Users') then you must add that to the **docker** file sharing under **docker** preferences.
 
 ```yaml
@@ -134,7 +87,7 @@ nodesdk:
    cd /user/mytest
    node app
 ```
-8. To shutdown the environment, execute the following **docker-compose** command in the directory where the *docker-compose.yml* is located. Any changes you made to the sample application or deployment of a chaincode will be lost. Only changes made to the shared area defined in the 'volumes' tag of the **nodesdk** container will persist.  This will shutdown each of the containers and remove the containers from **docker**:
+* To shutdown the environment, execute the following **docker-compose** command in the directory where the *docker-compose.yml* is located. Any changes you made to the sample application or deployment of a chaincode will be lost. Only changes made to the shared area defined in the 'volumes' tag of the **nodesdk** container will persist.  This will shutdown each of the containers and remove the containers from **docker**:
 
 ```
    docker-compose down

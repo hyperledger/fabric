@@ -1,3 +1,19 @@
+/*
+ Copyright IBM Corp 2016 All Rights Reserved.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+
 /**
  * This example shows how to do the following in a web app.
  * 1) At initialization time, enroll the web app with the blockchain.
@@ -7,6 +23,10 @@
  *    b) use this identity to deploy, query, and invoke a chaincode.
  */
 var hfc = require('hfc');
+
+//get the addresses from the docker-compose environment
+var PEER_ADDRESS         = process.env.PEER_ADDRESS;
+var MEMBERSRVC_ADDRESS   = process.env.MEMBERSRVC_ADDRESS;
 
 // Create a client chain.
 // The name can be anything as it is only used internally.
@@ -23,11 +43,11 @@ var chain = hfc.newChain("targetChain");
 chain.setKeyValStore( hfc.newFileKeyValStore('/tmp/keyValStore') );
 
 // Set the URL for membership services
-chain.setMemberServicesUrl("grpc://localhost:7054");
+chain.setMemberServicesUrl("grpc://MEMBERSRVC_ADDRESS");
 
 // Add at least one peer's URL.  If you add multiple peers, it will failover
 // to the 2nd if the 1st fails, to the 3rd if both the 1st and 2nd fails, etc.
-chain.addPeer("grpc://localhost:7051");
+chain.addPeer("grpc://PEER_ADDRESS");
 
 // Enroll "WebAppAdmin" which is already registered because it is
 // listed in fabric/membersrvc/membersrvc.yaml with its one time password.
@@ -49,25 +69,26 @@ function listenForUserRequests() {
    for (;;) {
       // WebApp-specific logic goes here to await the next request.
       // ...
-      // Assume that we received a request from an authenticated user
-      // 'userName', and determined that we need to invoke the chaincode
+      // Assume that we received a request from an authenticated user 
+	  // and have 'userName' and 'userAccount'.
+	  // Then determined that we need to invoke the chaincode
       // with 'chaincodeID' and function named 'fcn' with arguments 'args'.
-      handleUserRequest(userName,chaincodeID,fcn,args);
+      handleUserRequest(userName,userAccount,chaincodeID,fcn,args);
    }
 }
 
 // Handle a user request
-function handleUserRequest(userName, chaincodeID, fcn, args) {
+function handleUserRequest(userName, userAccount, chaincodeID, fcn, args) {
    // Register and enroll this user.
    // If this user has already been registered and/or enrolled, this will
    // still succeed because the state is kept in the KeyValStore
    // (i.e. in '/tmp/keyValStore' in this sample).
    var registrationRequest = {
-        enrollmentID: userName,
-        // Customize account & affiliation
-        account: "bank_a",
-        affiliation: "00001"
-   };
+	         roles: [ 'client' ],
+	         enrollmentID: userName,
+	         affiliation: "bank_a",
+	         attributes: [{name:'role',value:'client'},{name:'account',value:userAccount}]
+	    };
    chain.registerAndEnroll( registrationRequest, function(err, user) {
       if (err) return console.log("ERROR: %s",err);
       // Issue an invoke request

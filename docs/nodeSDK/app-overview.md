@@ -30,11 +30,11 @@ This interaction with the Peer consists of submitting transactions to the blockc
  * invoke - to execute a chaincode function which changes the state of the *blockchain database*;
  * query - to execute a chaincode function which may return state information related to the *blockchain database*.
 
-The **SDK** also interacts with a **Membership Services** process.  In fact, if security is enabled in the Peer (strongly recommended), the Node.js client SDK must interact with Membership Services first in order to retrieve *credentials* which are then used to interact with the Peer.  These *credentials* consist of certificates as described in [Membership Services](membership-services.md).
+The **SDK** also interacts with a **Membership Services** process.  In fact, if security is enabled in the Peer (strongly recommended), the Node.js client SDK must interact with Membership Services first in order to retrieve credential certificates which are then used to interact with the Peer.
 
 The interaction with the Membership Services consists of:
 
- * register - to indicate a new user to the blockchain
+ * register - to invite a new user to the blockchain
  * enroll - to get access to the blockchain
 
 <a name="webApp"></a>
@@ -42,7 +42,7 @@ The interaction with the Membership Services consists of:
 
 The following diagram provides an overview of the major components of Hyperledger fabric for the web application developer.
 
-At a high-level, you can think of the Block Chain as a database with which the web application interacts; therefore, it is similar to the following topology.
+At a high-level, you can think of the blockchain as a database with which the web application interacts; therefore, it is similar to the following topology.
 
 ```
 browser --> web tier --> database tier
@@ -53,4 +53,4 @@ browser --> web tier --> database tier
 
 In the diagram above, the blue boxes are Hyperledger fabric components and the green boxes are application developer components.  Each outer box represents a separate process.
 
-The browser interacts with the developer's Node.js web application using the Hyperledger fabric's Node.js client SDK.  The SDK handles all interactions with other Hyperledger fabric components in the same manor as described in the [SDK interactions](#sdk-interactions) section of [Standalone Application](#standaloneApp).
+The browser interacts with the developer's Node.js web application using the Hyperledger fabric's Node.js client SDK.  The SDK handles all interactions with other Hyperledger fabric components as described in the [SDK interactions](#sdk-interactions) section of [Standalone Application](#standaloneApp).
