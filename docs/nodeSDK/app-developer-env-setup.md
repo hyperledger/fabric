@@ -1,7 +1,7 @@
 # Setting up the Full Hyperledger fabric Developer's Environment
 
  * See [Setting Up The Development Environment](../dev-setup/devenv.md) to set up your development environment.
- 
+
  * The following commands are all issued from the vagrant environment. The following will open a terminal session:
 
 ```
@@ -47,4 +47,3 @@
  ```
    /opt/gopath/src/github.com/hyperledger/fabric/sdk/node/doc
  ```
-    
