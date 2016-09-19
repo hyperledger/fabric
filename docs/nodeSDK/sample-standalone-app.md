@@ -4,38 +4,38 @@ This section describes how to run a sample standalone Node.js application which 
 
 1. If you haven't already done so, see [Setting Up The Application Development Environment](app-developer-env-setup.md) to get your environment set up.  The remaining steps assume that you are running **inside the vagrant environment**.
 
-2. Issue the following commands to build the Node.js Client SDK:  
+2. Issue the following commands to build the Node.js Client SDK:
 
-   ```
+```
    cd /opt/gopath/src/github.com/hyperledger/fabric
    make node-sdk
-   ```
+```
 
 3. Start the membership services and peer processes.  We run the peer in dev mode for simplicity.
 
-   ```
+```
    cd /opt/gopath/src/github.com/hyperledger/fabric/build/bin
    membersrvc > membersrvc.log 2>&1&
    peer node start --peer-chaincodedev > peer.log 2>&1&
-   ```
+```
 
-4. Build and run chaincode example 2:  
+4. Build and run chaincode example 2:
 
-   ```
+```
    cd /opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
    go build
    CORE_CHAINCODE_ID_NAME=mycc CORE_PEER_ADDRESS=0.0.0.0:30303 ./chaincode_example02 > log 2>&1&
-   ```
+```
 
 5. Put the following sample app in a file named **app.js** in the */tmp* directory.  Take a moment (now or later) to read the comments and code to begin to learn the Node.js Client SDK APIs.
 
    You may retrieve the sample application file:
-   ```
+```
     curl -o webapp.js https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sdk/node/standalone-app.js
-   ```
+```
    The sample app:
 
-   ```javascript
+```javascript
    /*
     * A simple application utilizing the Node.js Client SDK to:
     * 1) Enroll a user
@@ -121,14 +121,14 @@ This section describes how to run a sample standalone Node.js application which 
          process.exit(1);
       });
    }
-   ```
+```
 
 6. Run the application as follows:
 
-   ```
+```
    cd /tmp
    node app
-   ```
+```
 
-7. Congratulations!  You've successfully run your first Hyperledger fabric application.  
+7. Congratulations!  You've successfully run your first Hyperledger fabric application.
 
