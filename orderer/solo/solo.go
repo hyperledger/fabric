@@ -26,14 +26,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-var logger = logging.MustGetLogger("solo/server")
+var logger = logging.MustGetLogger("orderer/solo")
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
-
-// MagicLargestWindow is a temporary constant which limits the maximum window size, TODO this should be config at a later date
-const MagicLargestWindow = 1000
 
 type server struct {
 	bs *broadcastServer
@@ -41,11 +38,11 @@ type server struct {
 }
 
 // New creates a ab.AtomicBroadcastServer based on the solo orderer implementation
-func New(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.ReadWriter, grpcServer *grpc.Server) ab.AtomicBroadcastServer {
+func New(queueSize, batchSize, maxWindowSize int, batchTimeout time.Duration, rl rawledger.ReadWriter, grpcServer *grpc.Server) ab.AtomicBroadcastServer {
 	logger.Infof("Starting solo with queueSize=%d, batchSize=%d batchTimeout=%v and ledger=%T", queueSize, batchSize, batchTimeout, rl)
 	s := &server{
 		bs: newBroadcastServer(queueSize, batchSize, batchTimeout, rl),
-		ds: newDeliverServer(rl, MagicLargestWindow),
+		ds: newDeliverServer(rl, maxWindowSize),
 	}
 	ab.RegisterAtomicBroadcastServer(grpcServer, s)
 	return s

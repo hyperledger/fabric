@@ -172,7 +172,7 @@ func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
 	}
 	logger.Debugf("Updating properties for client")
 
-	if update == nil || update.WindowSize == 0 || update.WindowSize > MagicLargestWindow {
+	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) {
 		close(d.exitChan)
 		return d.sendErrorReply(ab.Status_BAD_REQUEST)
 	}

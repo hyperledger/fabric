@@ -27,6 +27,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 )
 
+// MagicLargestWindow is used as the default max window size for initializing the deliver service
+const MagicLargestWindow int = 1000
+
 type mockD struct {
 	grpc.ServerStream
 	recvChan chan *ab.DeliverUpdate
@@ -66,7 +69,7 @@ func TestOldestSeek(t *testing.T) {
 
 	go ds.handleDeliver(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: MagicLargestWindow, Start: ab.SeekInfo_OLDEST}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_OLDEST}}}
 
 	count := 0
 	for {
@@ -98,7 +101,7 @@ func TestNewestSeek(t *testing.T) {
 
 	go ds.handleDeliver(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: MagicLargestWindow, Start: ab.SeekInfo_NEWEST}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_NEWEST}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -126,7 +129,7 @@ func TestSpecificSeek(t *testing.T) {
 
 	go ds.handleDeliver(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: MagicLargestWindow, Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -155,7 +158,7 @@ func TestBadSeek(t *testing.T) {
 
 	go ds.handleDeliver(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: MagicLargestWindow, Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -166,7 +169,7 @@ func TestBadSeek(t *testing.T) {
 		t.Fatalf("Timed out waiting to get all blocks")
 	}
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: MagicLargestWindow, Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(3 * ledgerSize)}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(3 * ledgerSize)}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -188,7 +191,7 @@ func TestBadWindow(t *testing.T) {
 
 	go ds.handleDeliver(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: MagicLargestWindow * 2, Start: ab.SeekInfo_OLDEST}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow) * 2, Start: ab.SeekInfo_OLDEST}}}
 
 	select {
 	case blockReply := <-m.sendChan:
