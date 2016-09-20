@@ -17,6 +17,7 @@ limitations under the License.
 package fsblkstorage
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -25,37 +26,75 @@ import (
 	"github.com/tecbot/gorocksdb"
 )
 
+const (
+	blockNumIdxKeyPrefix  = 'n'
+	blockHashIdxKeyPrefix = 'h'
+	txIDIdxKeyPrefix      = 't'
+	indexCheckpointKeyStr = "indexCheckpointKey"
+)
+
+var indexCheckpointKey = []byte(indexCheckpointKeyStr)
+
+type index interface {
+	getLastBlockIndexed() (uint64, error)
+	indexBlock(blockIdxInfo *blockIdxInfo) error
+	getBlockLocByHash(blockHash []byte) (*fileLocPointer, error)
+	getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error)
+	getTxLoc(txID string) (*fileLocPointer, error)
+}
+
+type blockIdxInfo struct {
+	blockNum  uint64
+	blockHash []byte
+	flp       *fileLocPointer
+	txOffsets []int
+}
+
+// ErrNotFoundInIndex is used to indicate missing entry in the index
+var ErrNotFoundInIndex = errors.New("Entry not found in index")
+
 type blockIndex struct {
 	db           *db.DB
 	blockIndexCF *gorocksdb.ColumnFamilyHandle
 }
 
-func newBlockIndex(db *db.DB) *blockIndex {
-	//TODO during init make sure that the index is in sync with block strorage
-	return &blockIndex{db, db.GetCFHandle(blockIndexCF)}
+func newBlockIndex(db *db.DB, indexCFHandle *gorocksdb.ColumnFamilyHandle) *blockIndex {
+	return &blockIndex{db, indexCFHandle}
 }
 
-func (index *blockIndex) indexBlock(blockNum uint64, blockHash []byte, flp *fileLocPointer, blockLen int, skip int, txOffsets []int) error {
-	logger.Debugf("Adding blockLoc [%s] to index", flp)
+func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
+	var blockNumBytes []byte
+	var err error
+	if blockNumBytes, err = index.db.Get(index.blockIndexCF, indexCheckpointKey); err != nil {
+		return 0, nil
+	}
+	return decodeBlockNum(blockNumBytes), nil
+}
+
+func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
+	logger.Debugf("Indexing block [%s]", blockIdxInfo)
+	flp := blockIdxInfo.flp
+	txOffsets := blockIdxInfo.txOffsets
 	batch := gorocksdb.NewWriteBatch()
 	defer batch.Destroy()
 	flpBytes, err := flp.marshal()
 	if err != nil {
 		return err
 	}
-	batch.PutCF(index.blockIndexCF, index.constructBlockHashKey(blockHash), flpBytes)
-	batch.PutCF(index.blockIndexCF, index.constructBlockNumKey(blockNum), flpBytes)
+	batch.PutCF(index.blockIndexCF, constructBlockHashKey(blockIdxInfo.blockHash), flpBytes)
+	batch.PutCF(index.blockIndexCF, constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
 	for i := 0; i < len(txOffsets)-1; i++ {
-		txID := constructTxID(blockNum, i)
+		txID := constructTxID(blockIdxInfo.blockNum, i)
 		txBytesLength := txOffsets[i+1] - txOffsets[i]
-		txFLP := newFileLocationPointer(flp.fileSuffixNum, flp.offset+skip, &locPointer{txOffsets[i], txBytesLength})
-		logger.Debugf("Adding txLoc [%s] for tx [%s] to index", txFLP, txID)
-		txFLPBytes, marshalErr := txFLP.marshal()
+		txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, &locPointer{txOffsets[i], txBytesLength})
+		logger.Debugf("Adding txLoc [%s] for tx [%s] to index", txFlp, txID)
+		txFlpBytes, marshalErr := txFlp.marshal()
 		if marshalErr != nil {
 			return marshalErr
 		}
-		batch.PutCF(index.blockIndexCF, index.constructTxIDKey(txID), txFLPBytes)
+		batch.PutCF(index.blockIndexCF, constructTxIDKey(txID), txFlpBytes)
 	}
+	batch.PutCF(index.blockIndexCF, indexCheckpointKey, encodeBlockNum(blockIdxInfo.blockNum))
 	if err := index.db.WriteBatch(batch); err != nil {
 		return err
 	}
@@ -63,9 +102,12 @@ func (index *blockIndex) indexBlock(blockNum uint64, blockHash []byte, flp *file
 }
 
 func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, error) {
-	b, err := index.db.Get(index.blockIndexCF, index.constructBlockHashKey(blockHash))
+	b, err := index.db.Get(index.blockIndexCF, constructBlockHashKey(blockHash))
 	if err != nil {
 		return nil, err
+	}
+	if b == nil {
+		return nil, ErrNotFoundInIndex
 	}
 	blkLoc := &fileLocPointer{}
 	blkLoc.unmarshal(b)
@@ -73,9 +115,12 @@ func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, e
 }
 
 func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error) {
-	b, err := index.db.Get(index.blockIndexCF, index.constructBlockNumKey(blockNum))
+	b, err := index.db.Get(index.blockIndexCF, constructBlockNumKey(blockNum))
 	if err != nil {
 		return nil, err
+	}
+	if b == nil {
+		return nil, ErrNotFoundInIndex
 	}
 	blkLoc := &fileLocPointer{}
 	blkLoc.unmarshal(b)
@@ -83,30 +128,42 @@ func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer
 }
 
 func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
-	b, err := index.db.Get(index.blockIndexCF, index.constructTxIDKey(txID))
+	b, err := index.db.Get(index.blockIndexCF, constructTxIDKey(txID))
 	if err != nil {
 		return nil, err
+	}
+	if b == nil {
+		return nil, ErrNotFoundInIndex
 	}
 	txFLP := &fileLocPointer{}
 	txFLP.unmarshal(b)
 	return txFLP, nil
 }
 
-func (index *blockIndex) constructBlockNumKey(blockNum uint64) []byte {
+func constructBlockNumKey(blockNum uint64) []byte {
 	blkNumBytes := util.EncodeOrderPreservingVarUint64(blockNum)
-	return append([]byte{'n'}, blkNumBytes...)
+	return append([]byte{blockNumIdxKeyPrefix}, blkNumBytes...)
 }
 
-func (index *blockIndex) constructBlockHashKey(blockHash []byte) []byte {
-	return append([]byte{'b'}, blockHash...)
+func constructBlockHashKey(blockHash []byte) []byte {
+	return append([]byte{blockHashIdxKeyPrefix}, blockHash...)
 }
 
-func (index *blockIndex) constructTxIDKey(txID string) []byte {
-	return append([]byte{'t'}, []byte(txID)...)
+func constructTxIDKey(txID string) []byte {
+	return append([]byte{txIDIdxKeyPrefix}, []byte(txID)...)
 }
 
 func constructTxID(blockNum uint64, txNum int) string {
 	return fmt.Sprintf("%d:%d", blockNum, txNum)
+}
+
+func encodeBlockNum(blockNum uint64) []byte {
+	return proto.EncodeVarint(blockNum)
+}
+
+func decodeBlockNum(blockNumBytes []byte) uint64 {
+	blockNum, _ := proto.DecodeVarint(blockNumBytes)
+	return blockNum
 }
 
 type locPointer struct {
@@ -172,4 +229,8 @@ func (flp *fileLocPointer) unmarshal(b []byte) error {
 
 func (flp *fileLocPointer) String() string {
 	return fmt.Sprintf("fileSuffixNum=%d, %s", flp.fileSuffixNum, flp.locPointer.String())
+}
+
+func (blockIdxInfo *blockIdxInfo) String() string {
+	return fmt.Sprintf("blockNum=%d, blockHash=%#v", blockIdxInfo.blockNum, blockIdxInfo.blockHash)
 }
