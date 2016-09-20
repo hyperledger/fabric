@@ -66,6 +66,7 @@ K := $(foreach exec,$(EXECUTABLES),\
 SUBDIRS = gotools sdk/node
 SUBDIRS:=$(strip $(SUBDIRS))
 
+GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh github.com/hyperledger/fabric/core/chaincode/shim | sort | uniq)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = src ccenv peer membersrvc javaenv
@@ -192,7 +193,7 @@ build/image/src/.dummy: $(PROJECT_FILES)
 	@touch $@
 
 # Special override for ccenv-image (chaincode-environment)
-build/image/ccenv/.dummy: build/image/src/.dummy build/image/ccenv/bin/protoc-gen-go build/image/ccenv/bin/chaintool Makefile
+build/image/ccenv/.dummy: build/image/ccenv/bin/protoc-gen-go build/image/ccenv/bin/chaintool build/image/ccenv/goshim.tar.bz2 Makefile
 	@echo "Building docker ccenv-image"
 	@cat images/ccenv/Dockerfile.in \
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
@@ -233,6 +234,10 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 	docker build -t $(PROJECT_NAME)-$(TARGET) $(@D)
 	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@
+
+%/goshim.tar.bz2: $(GOSHIM_DEPS) Makefile
+	@echo "Creating $@"
+	@tar -jhc -C $(GOPATH)/src $(patsubst $(GOPATH)/src/%,%,$(GOSHIM_DEPS)) > $@
 
 .PHONY: protos
 protos: gotools
