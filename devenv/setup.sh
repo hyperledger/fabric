@@ -78,9 +78,12 @@ PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 sudo mkdir -p /var/hyperledger
 sudo chown -R vagrant:vagrant /var/hyperledger
 
-# Build the actual hyperledger peer (must be done before chown below)
+# clean any previous builds as they may have image/.dummy files without
+# the backing docker images (since we are, by definition, rebuilding the
+# filesystem) and then ensure we have a fresh set of our go-tools.
+# NOTE: This must be done before the chown below
 cd $GOPATH/src/github.com/hyperledger/fabric
-make clean peer gotools
+make clean gotools
 
 # Ensure permissions are set for GOPATH
 sudo chown -R vagrant:vagrant $GOPATH
