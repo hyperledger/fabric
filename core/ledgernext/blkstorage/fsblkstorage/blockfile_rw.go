@@ -17,12 +17,7 @@ limitations under the License.
 package fsblkstorage
 
 import (
-	"bufio"
-	"fmt"
-	"io"
 	"os"
-
-	"github.com/golang/protobuf/proto"
 )
 
 ////  WRITER ////
@@ -96,50 +91,4 @@ func (r *blockfileReader) read(offset int, length int) ([]byte, error) {
 
 func (r *blockfileReader) close() error {
 	return r.file.Close()
-}
-
-type blockStream struct {
-	file              *os.File
-	reader            *bufio.Reader
-	currentFileOffset int64
-}
-
-func newBlockStream(filePath string, offset int64) (*blockStream, error) {
-	var file *os.File
-	var err error
-	if file, err = os.OpenFile(filePath, os.O_RDONLY, 0600); err != nil {
-		return nil, err
-	}
-
-	var newPosition int64
-	if newPosition, err = file.Seek(offset, 0); err != nil {
-		return nil, err
-	}
-	if newPosition != offset {
-		panic(fmt.Sprintf("Could not seek file [%s] to given offset [%d]. New position = [%d]", filePath, offset, newPosition))
-	}
-	s := &blockStream{file, bufio.NewReader(file), offset}
-	return s, nil
-}
-
-func (s *blockStream) nextBlockBytes() ([]byte, error) {
-	lenBytes, err := s.reader.Peek(8)
-	if err == io.EOF {
-		logger.Debugf("block stream reached end of file. Returning next block as nil")
-		return nil, nil
-	}
-	len, n := proto.DecodeVarint(lenBytes)
-	if _, err = s.reader.Discard(n); err != nil {
-		return nil, err
-	}
-	blockBytes := make([]byte, len)
-	if _, err = io.ReadAtLeast(s.reader, blockBytes, int(len)); err != nil {
-		return nil, err
-	}
-	s.currentFileOffset += int64(n) + int64(len)
-	return blockBytes, nil
-}
-
-func (s *blockStream) close() error {
-	return s.file.Close()
 }

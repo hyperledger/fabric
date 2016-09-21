@@ -269,10 +269,9 @@ func (mgr *blockfileMgr) retrieveBlocks(startNum uint64, endNum uint64) (*Blocks
 	if lp, err = mgr.index.getBlockLocByBlockNum(startNum); err != nil {
 		return nil, err
 	}
-	filePath := deriveBlockfilePath(mgr.rootDir, lp.fileSuffixNum)
-
 	var stream *blockStream
-	if stream, err = newBlockStream(filePath, int64(lp.offset)); err != nil {
+	if stream, err = newBlockStream(mgr.rootDir, lp.fileSuffixNum,
+		int64(lp.offset), mgr.cpInfo.latestFileChunkSuffixNum); err != nil {
 		return nil, err
 	}
 	return newBlockItr(stream, int(endNum-startNum)+1), nil
@@ -322,7 +321,7 @@ func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*protos.Transacti
 
 func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {
 	filePath := deriveBlockfilePath(mgr.rootDir, lp.fileSuffixNum)
-	stream, err := newBlockStream(filePath, int64(lp.offset))
+	stream, err := newBlockfileStream(filePath, int64(lp.offset))
 	if err != nil {
 		return nil, err
 	}
@@ -382,23 +381,23 @@ func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, flush bool) error {
 func scanForLastCompleteBlock(filePath string, startingOffset int64) (int64, int, error) {
 	logger.Debugf("scanForLastCompleteBlock(): filePath=[%s], startingOffset=[%d]", filePath, startingOffset)
 	numBlocks := 0
-	blockStream, err := newBlockStream(filePath, startingOffset)
+	blockStream, err := newBlockfileStream(filePath, startingOffset)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer blockStream.close()
 	for {
 		blockBytes, err := blockStream.nextBlockBytes()
-		if blockBytes == nil || err != nil {
+		if blockBytes == nil || err == ErrUnexpectedEndOfBlockfile {
 			logger.Debugf(`scanForLastCompleteBlock(): error=[%s].
-			This may happen if a crash has happened during block appending.
+			The error may happen if a crash has happened during block appending.
 			Returning current offset as a last complete block's end offset`, err)
 			break
 		}
 		numBlocks++
 	}
-	logger.Debugf("scanForLastCompleteBlock(): last complete block ends at offset=[%d]", blockStream.currentFileOffset)
-	return blockStream.currentFileOffset, numBlocks, err
+	logger.Debugf("scanForLastCompleteBlock(): last complete block ends at offset=[%d]", blockStream.currentOffset)
+	return blockStream.currentOffset, numBlocks, err
 }
 
 // checkpointInfo
