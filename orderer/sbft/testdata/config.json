@@ -1,0 +1,15 @@
+{
+  "consensus": {
+	"n" : 1,
+	"f" : 0,
+	"batch_size_bytes" : 3,
+	"batch_duration_nsec" : 0,
+	"request_timeout_nsec" : 60
+ },
+  "peers": [
+{
+  "id": 0,
+  "address": ":6101",
+  "cert": "testdata/cert1.pem"
+}]
+}
