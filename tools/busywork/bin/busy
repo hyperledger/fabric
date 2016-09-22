@@ -1,13 +1,13 @@
 #!/usr/bin/tclsh
 
 # Copyright IBM Corp. 2016. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # 		 http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,18 +19,18 @@ set usage {
 
 The 'busy' script runs commands on one or more peers in a busywork network,
 printing the salient portion of the response on stdout. 'busy' can be seen as
-an easier-to-use version of the Hyperledger fabric command-line-interface
-(CLI) in that 'busy' takes care of various kinds of bookkeeping and
-boilerplate code behind the scenes. 'busy' is probably best used as a tool for
-small scipts, or for issuing a few interactive commands to a peer
-network. Alhough complex test scripts could be implemented entirely as 'busy'
-calls, the performance of a test implemented this way would likely suffer from
-the process-creation overhead of each 'busy' invocation.
+an easier-to-use, enhanced version of the Hyperledger fabric
+command-line-interface (CLI) in that 'busy' takes care of various kinds of
+bookkeeping and boilerplate code behind the scenes. 'busy' is probably best
+used as a tool for small scipts, or for issuing a few interactive commands to
+a peer network. Alhough complex test scripts could be implemented entirely as
+'busy' calls, the performance of a test implemented this way would likely
+suffer from the process-creation overhead of each 'busy' invocation.
 
 If the 'busy' command targets a single peer (see below) then the response from
-that peer is printed. If multiple peers are targeted, then the results are
-collected and printed as a JSON object, where each result is keyed by the peer
-name, e.g.,
+or for that peer is printed. If multiple peers are targeted, then the results
+are collected and printed as a JSON object, where each result is keyed by the
+peer name, e.g.,
 
     {
      "vp0"   : <VP0 response>,
@@ -39,8 +39,8 @@ name, e.g.,
      "vp<N>" : <VP<N> response>
      }
 
-Use -json to force results from operations on a single peer to print as a JSON
-object.
+Include the -json option to force results from operations on a single peer to
+print as a JSON object.
 
 'busy' is only supported for peer networks described by a 'network' file in
 the BUSYWORK_HOME directory.  The <peers> to target are named by the peer IDs
@@ -76,6 +76,9 @@ The following command and argument forms are supported:
 
    ping   <peers> <user-chaincode-id>
 
+   pid    <peers>
+   ps     <peers> <List of ps display keywords>
+
 The 'network' and 'chaincodes' commands simply print the current 'network' and
 'chaincodes' files respectively from the implied $BUSYWORK_HOME.
 
@@ -110,6 +113,17 @@ queries fail. If the ping query succeeds then the output of the ping queries
 is returned. This function currently assumes that the chaincode implments a
 'ping' query function with no parameters.
 
+The 'pid' command simply returns the PID of each of the <peers>.
+
+The 'ps' command is used to obtain 'ps' information from one or more
+peers. For each peer implied by the <peers> specification, the result returned
+is the result from executing 'ps' as follows, where <pid> is the PID of each
+of the <peers>:
+
+    ps -p <pid> -ww --noheader -o <List of ps display keywords>
+
+Note that leading/trailing whitespace is removed from the result.
+
 Examples:
 
     busy chaincodes
@@ -123,6 +137,9 @@ Examples:
     busy query vp0,vp1 cc1 status a1
 
     busy ping "*" cc2
+
+    busy pid vp0
+    busy ps vp0 etime,cputime
 
 Optional arguments, with defaults after the colon:
 
@@ -149,12 +166,12 @@ Optional arguments, with defaults after the colon:
 
     The -waitFor option is supported for the 'deploy', 'invoke' and 'ping'
     commands only. The semantics are explained below in the section headed
-    "Semantics of -waitFor" 
+    "Semantics of -waitFor"
 
 -json : See below
 
     Select -json to force even single-peer operations to print as a JSON
-    object, rather than simply as a value. This opiton is ignored for the
+    object, rather than simply as a value. This option is ignored for the
     'chaincodes' and 'network' commands.
 
 
@@ -187,6 +204,14 @@ proc singletonCommand {cmd} {
 
     if {[llength [parms other]] != 1} {
         errorExit "The '$cmd' command takes no arguments"
+    }
+}
+
+
+proc fixedArgs {cmd nArgs} {
+
+    if {[llength [parms args]] != $nArgs} {
+        errorExit "The '$cmd' command expects $nArgs arguments."
     }
 }
 
@@ -294,7 +319,7 @@ proc invoke {} {
             "Deployed IDs are $a(ids)"
     }
     set name $a($ccId.name)
-    
+
     if {![null [parms waitFor]]} {
         set heights \
             [mapeach address [parms restAddresses] {
@@ -322,7 +347,7 @@ proc invoke {} {
     }
 }
 
-        
+
 proc query {} {
 
     waitForNotOK query
@@ -344,7 +369,7 @@ proc query {} {
         errorExit
     }
     set name $a($ccId.name)
-    
+
     parms results \
         [mapeach address [parms restAddresses] {
             return [fabric::query $address [parms user] $name $function $args]
@@ -369,7 +394,7 @@ proc ping {} {
         errorExit
     }
     set name $a($ccId.name)
-    
+
     proc _ping {name} {
         set results {}
         foreach address [parms restAddresses] {
@@ -395,7 +420,33 @@ proc ping {} {
     }
 }
 
-        
+
+proc pid {} {
+
+    waitForNotOK pid
+    fixedArgs pid 0
+
+    parms results [mapeach peer [parms peers] {
+        return [parms network.peer.$peer.pid]
+    }]
+}
+
+
+proc ps {} {
+
+    waitForNotOK ps
+    fixedArgs ps 1
+
+    parms results [mapeach peer [parms peers] {
+        set pid [parms network.peer.$peer.pid]
+        if {[catch {exec ps -p $pid -ww --noheader -o [parms args]} result]} {
+            errorExit "Exec of 'ps' failed : $result"
+        }
+        return [string trim $result]; # Remove leading/trailing whitespace
+    }]
+}
+
+
 ############################################################################
 # The script
 ############################################################################
@@ -410,11 +461,11 @@ setLoggingLevel {} warn
 set options {
     {enum {-h -help --help} parms(help)    0   p_help}
     {key  -home             parms(home)    {}}
-    {bool -user             parms(user)    {}  p_user}
+    {key  -user             parms(user)    {}  p_user}
     {key  -waitFor          parms(waitFor) {}}
     {bool -json             parms(json)    0}
 }
-        
+
 mapKeywordArgs $argv $options parms(other)
 
 if {$p_help} {
@@ -430,7 +481,7 @@ parms command [first [parms other]]
 switch [parms command] {
     chaincodes {chaincodes}
     network    {network}
-}    
+}
 
 parms peers [busywork::peersFromSpec [second [parms other]]]
 parms args [restn [parms other] 2]
@@ -459,6 +510,8 @@ switch [parms command] {
     invoke     {invoke}
     query      {query}
     ping       {ping}
+    pid        {pid}
+    ps         {ps}
     default    {errorExit "Unrecognized command: [parms command]"}
 }
 
@@ -489,9 +542,3 @@ if {[parms json] || [expr {[llength [parms results]] > 1}]} {
 
     puts [first [parms results]]
 }
-
-
-            
-
-    
-    
