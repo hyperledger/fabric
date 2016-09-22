@@ -21,6 +21,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/spf13/cobra"
 )
@@ -40,25 +41,44 @@ var chaincodeDeployCmd = &cobra.Command{
 	},
 }
 
-// chaincodeDeploy deploys the chaincode. On success, the chaincode name
-// (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
-// commands.
-func chaincodeDeploy(cmd *cobra.Command, args []string) error {
+//deploy the command via Endorser
+func deploy(cmd *cobra.Command) error {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
 		return err
 	}
 
-	devopsClient, err := common.GetDevopsClient(cmd)
+	ctxt := context.Background()
+
+	cds, err := core.GetChaincodeBytes(ctxt, spec)
 	if err != nil {
-		return fmt.Errorf("Error building %s: %s", chainFuncName, err)
+		return fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
 
-	chaincodeDeploymentSpec, err := devopsClient.Deploy(context.Background(), spec)
+	endorserClient, err := common.GetEndorserClient(cmd)
 	if err != nil {
-		return fmt.Errorf("Error building %s: %s\n", chainFuncName, err)
+		return fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 	}
-	logger.Infof("Deploy result: %s", chaincodeDeploymentSpec.ChaincodeSpec)
 
+	prop, err := getDeployProposal(cds)
+	if err != nil {
+		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
+	}
+
+	proposalResult, err := endorserClient.ProcessProposal(ctxt, prop)
+	if err != nil {
+		return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+	}
+
+	logger.Infof("Deploy(endorser) result: %v", proposalResult)
 	return nil
+}
+
+// chaincodeDeploy deploys the chaincode. On success, the chaincode name
+// (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
+// commands.
+func chaincodeDeploy(cmd *cobra.Command, args []string) error {
+	err := deploy(cmd)
+
+	return err
 }

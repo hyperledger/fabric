@@ -597,9 +597,9 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 	chaincodeLogger.Debugf("deploying chaincode %s(networkid:%s,peerid:%s)", chaincode, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID)
 
 	//create image and create container
-	_, err = container.VMCProcess(context, vmtype, cir)
-	if err != nil {
-		err = fmt.Errorf("Error starting container: %s", err)
+	resp, err2 := container.VMCProcess(context, vmtype, cir)
+	if err2 != nil || (resp != nil && resp.(container.VMCResp).Err != nil) {
+		err = fmt.Errorf("Error creating image: %s", err2)
 	}
 
 	return cds, err

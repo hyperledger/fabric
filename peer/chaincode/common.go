@@ -24,6 +24,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core"
 	u "github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/peer/common"
@@ -36,6 +37,34 @@ import (
 
 type container struct {
 	Args []string
+}
+
+//getProposal gets the proposal for the chaincode invocation
+//Currently supported only for Invokes (Queries still go through devops client)
+func getProposal(cis *pb.ChaincodeInvocationSpec) (*pb.Proposal, error) {
+	b, err := proto.Marshal(cis)
+	if err != nil {
+		return nil, err
+	}
+
+	prop := &pb.Proposal{Type: pb.Proposal_CHAINCODE, Id: u.GenerateUUID(), Payload: b}
+
+	return prop, nil
+}
+
+//getDeployProposal gets the proposal for the chaincode deployment
+//the payload is a ChaincodeDeploymentSpec
+func getDeployProposal(cds *pb.ChaincodeDeploymentSpec) (*pb.Proposal, error) {
+	b, err := proto.Marshal(cds)
+	if err != nil {
+		return nil, err
+	}
+
+	//wrap the deployment in an invocation spec to lccc...
+	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
+
+	//...and get the proposal for it
+	return getProposal(lcccSpec)
 }
 
 func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
@@ -111,20 +140,18 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 }
 
 // chaincodeInvokeOrQuery invokes or queries the chaincode. If successful, the
-// INVOKE form prints the transaction ID on STDOUT, and the QUERY form prints
+// INVOKE form prints the ProposalResponse to STDOUT, and the QUERY form prints
 // the query result on STDOUT. A command-line flag (-r, --raw) determines
 // whether the query result is output as raw bytes, or as a printable string.
 // The printable form is optionally (-x, --hex) a hexadecimal representation
 // of the query response. If the query response is NIL, nothing is output.
+//
+// NOTE - Query will likely go away as all interactions with the endorser are
+// Proposal and ProposalResponses
 func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err error) {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
 		return err
-	}
-
-	devopsClient, err := common.GetDevopsClient(cmd)
-	if err != nil {
-		return fmt.Errorf("Error building %s: %s", chainFuncName, err)
 	}
 
 	// Build the ChaincodeInvocationSpec message
@@ -133,25 +160,39 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		invocation.IdGenerationAlg = customIDGenAlg
 	}
 
-	var resp *pb.Response
 	if invoke {
-		resp, err = devopsClient.Invoke(context.Background(), invocation)
-	} else {
-		resp, err = devopsClient.Query(context.Background(), invocation)
-	}
-
-	if err != nil {
-		if invoke {
-			err = fmt.Errorf("Error invoking %s: %s\n", chainFuncName, err)
-		} else {
-			err = fmt.Errorf("Error querying %s: %s\n", chainFuncName, err)
+		endorserClient, err := common.GetEndorserClient(cmd)
+		if err != nil {
+			return fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 		}
-		return
-	}
-	if invoke {
-		transactionID := string(resp.Msg)
-		logger.Infof("Successfully invoked transaction: %s(%s)", invocation, transactionID)
+
+		var prop *pb.Proposal
+		prop, err = getProposal(invocation)
+		if err != nil {
+			return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
+		}
+
+		var proposalResp *pb.ProposalResponse
+		proposalResp, err = endorserClient.ProcessProposal(context.Background(), prop)
+		if err != nil {
+			return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+		}
+
+		logger.Infof("Invoke result: %v", proposalResp)
 	} else {
+		//for now let's continue to use Query with devops
+		//eventually query will go away
+		var devopsClient pb.DevopsClient
+		devopsClient, err = common.GetDevopsClient(cmd)
+		if err != nil {
+			return fmt.Errorf("Error building %s: %s", chainFuncName, err)
+		}
+
+		var resp *pb.Response
+		if resp, err = devopsClient.Query(context.Background(), invocation); err != nil {
+			return fmt.Errorf("Error querying %s: %s\n", chainFuncName, err)
+		}
+
 		logger.Infof("Successfully queried transaction: %s", invocation)
 		if resp != nil {
 			if chaincodeQueryRaw {
@@ -170,6 +211,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 			}
 		}
 	}
+
 	return nil
 }
 

@@ -44,7 +44,11 @@ func (testDB *TestDBWrapper) CleanDB(t testing.TB) {
 	// at the end of the test
 	testDB.cleanup()
 	testDB.removeDBPath()
-	t.Logf("Creating testDB")
+
+	//if we are cleanup once in Main, we don't have a t
+	if t != nil {
+		t.Logf("Creating testDB")
+	}
 
 	Start()
 	testDB.performCleanup = true
