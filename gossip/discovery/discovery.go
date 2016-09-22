@@ -75,4 +75,8 @@ type DiscoveryService interface {
 
 	// GetMembership returns the alive members in the view
 	GetMembership() []NetworkMember
+
+	// InitiateSync makes the instance ask a given number of peers
+	// for their membership information
+	InitiateSync(peerNum int)
 }
