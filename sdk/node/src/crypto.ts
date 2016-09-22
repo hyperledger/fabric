@@ -115,13 +115,13 @@ export class Crypto {
      * @params hashAlgorithm The hash algorithm ('SHA2' or 'SHA3')
      */
     setHashAlgorithm(hashAlgorithm:string):void {
-        this.checkHashFunction(hashAlgorithm);
+        Crypto.checkHashFunction(hashAlgorithm);
 
         this.hashAlgorithm = hashAlgorithm;
         this.initialize();
     }
 
-    generateNonce() {
+    static generateNonce() {
         return crypto.randomBytes(NonceSize);
     }
 
@@ -305,11 +305,11 @@ export class Crypto {
         return decryptedBytes;
     }
 
-    aesKeyGen() {
+    static aesKeyGen() {
         return crypto.randomBytes(AESKeyLength);
     }
 
-    aesCFBDecryt(key, encryptedBytes) {
+    static aesCFBDecrypt(key, encryptedBytes) {
 
         var iv = crypto.randomBytes(IVLength);
         var aes = new aesjs.ModeOfOperation.cfb(key, iv, IVLength);
@@ -336,13 +336,13 @@ export class Crypto {
 
         var decryptedBytes, unpaddedBytes;
 
-        decryptedBytes = this.CBCDecrypt(key, bytes);
-        unpaddedBytes = this.PKCS7UnPadding(decryptedBytes);
+        decryptedBytes = Crypto.CBCDecrypt(key, bytes);
+        unpaddedBytes = Crypto.PKCS7UnPadding(decryptedBytes);
 
         return unpaddedBytes;
     };
 
-    aes256GCMDecrypt(key:Buffer, ct:Buffer) {
+    static aes256GCMDecrypt(key:Buffer, ct:Buffer) {
         let decipher = crypto.createDecipheriv('aes-256-gcm', key, ct.slice(0, GCMStandardNonceSize));
         decipher.setAuthTag(ct.slice(ct.length - GCMTagSize));
         let dec = decipher.update(
@@ -361,7 +361,7 @@ export class Crypto {
         if (!info)
             info = "";
 
-        var key = this.hkdf2(bytesToBits(new Buffer(ikm)), keyBitLength, bytesToBits(salt), info, this.hashFunctionKeyDerivation);
+        var key = Crypto.hkdf2(bytesToBits(new Buffer(ikm)), keyBitLength, bytesToBits(salt), info, this.hashFunctionKeyDerivation);
 
         return bitsToBytes(key);
 
@@ -394,7 +394,7 @@ export class Crypto {
             throw new Error("Illegal level: " + this.securityLevel + " - must be either 256 or 384");
     }
 
-    private checkHashFunction(hashAlgorithm: string) {
+    private static checkHashFunction(hashAlgorithm: string) {
         if (!_isString(hashAlgorithm))
             throw new Error("Illegal Hash function family: " + hashAlgorithm + " - must be either SHA2 or SHA3");
 
@@ -405,7 +405,7 @@ export class Crypto {
 
     private initialize() {
         this.checkSecurityLevel(this.securityLevel);
-        this.checkHashFunction(this.hashAlgorithm);
+        Crypto.checkHashFunction(this.hashAlgorithm);
 
         this.suite = this.hashAlgorithm.toLowerCase() + '-' + this.securityLevel;
         if (this.securityLevel == CURVE_P_256_Size) {
@@ -454,7 +454,7 @@ export class Crypto {
      * @param {Object} [Hash=sjcl.hash.sha256] The hash function to use.
      * @return {bitArray} derived key.
      */
-    private hkdf2(ikm, keyBitLength, salt, info, Hash) {
+    private static hkdf2(ikm, keyBitLength, salt, info, Hash) {
         var hmac, key, i, hashLen, loops, curOut, ret = [];
 
         // Hash = Hash || sjcl.hash.sha256;
@@ -496,7 +496,7 @@ export class Crypto {
         return sjcl.bitArray.clamp(ret, keyBitLength);
     }
 
-    private CBCDecrypt(key, bytes) {
+    private static CBCDecrypt(key, bytes) {
         debug('key length: ', key.length);
         debug('bytes length: ', bytes.length);
         var iv = bytes.slice(0, BlockSize);
@@ -524,7 +524,6 @@ export class Crypto {
                 start += BlockSize;
                 end += BlockSize;
             }
-            ;
 
             decryptedBytes = Buffer.concat(decryptedBlocks);
         }
@@ -539,7 +538,7 @@ export class Crypto {
 
     };
 
-    private PKCS7UnPadding(bytes) {
+    private static PKCS7UnPadding(bytes) {
 
         //last byte is the number of padded bytes
         var padding = bytes.readUInt8(bytes.length - 1);
