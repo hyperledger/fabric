@@ -2,9 +2,19 @@
 
 The Hyperledger fabric Client (HFC) SDK provides a powerful and easy to use API to interact with a Hyperledger fabric blockchain.
 
+Below, you'll find the following sections:
+
+- [Installing only the SDK](#installing-only-the-sdk)
+- [Terminology](#terminology)
+- [HFC Objects](#hfc-objects)
+- [Pluggability](#pluggability)
+- [Chaincode Deployment](#chaincode-deployment)
+- [Enabling TLS](#enabling-tls)
+- [Troubleshooting](#troubleshooting)
+
 ## Installing only the SDK
 
-If you are an experienced node.js developer and already have a blockchain environment set up and running elsewhere, you can set up a client-only environment to run the node.js client by installing the HFC node module as shown below.  This assumes npm version 2.11.3 and node.js version 0.12.7 are already installed.
+If you are an experienced node.js developer and already have a blockchain environment set up and running elsewhere, you can set up a client-only environment to run the node.js client by installing the HFC node module as shown below.  This assumes a minimum of npm version 2.11.3 and node.js version 0.12.7 are already installed.
 
 * To install the latest HFC module of Hyperledger fabric
 
@@ -14,7 +24,7 @@ If you are an experienced node.js developer and already have a blockchain enviro
 
 ### Terminology
 
-In order to transact on a hyperledger blockchain, you must first have an identity which has been both **registered** and **enrolled** with Membership Services.  For a topological overview of how the components interact, see [Application Developer's Overview](app-developer-overview.md).
+In order to transact on a Hyperledger fabric blockchain, you must first have an identity which has been both **registered** and **enrolled** with Membership Services.  For a topological overview of how the components interact, see [Application Developer's Overview](app-overview.md).
 
 Think of **registration** as *issuing a user invitation* to join a blockchain. It consists of adding a new user name (also called an *enrollment ID*) to the membership service configuration. This can be done programatically with the `Member.register` method, or by adding the enrollment ID directly to the [membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml) configuration file.
 
@@ -46,7 +56,7 @@ The following is a high-level description of the HFC objects (classes and interf
 
   This class implements the bulk of the deploy, invoke, and query logic. It interacts with Membership Services to get a TCert to perform these operations. Note that there is a one-to-one relationship between TCert and TransactionContext.  In other words, a single TransactionContext will always use the same TCert. If you want to issue multiple transactions with the same TCert, then you can get a `TransactionContext` object from a `Member` object directly and issue multiple deploy, invoke, or query operations on it. Note however that if you do this, these transactions are linkable, which means someone could tell that they came from the same user, though not know which user. For this reason, you will typically just call deploy, invoke, and query on the Member or User object.
 
-#### Pluggability
+## Pluggability
 
 HFC was designed to support two pluggable components:
 
@@ -56,9 +66,9 @@ HFC was designed to support two pluggable components:
 
 2. Pluggable `MemberServices` which is used to register and enroll members. Member services enables hyperledger to be a permissioned blockchain, providing security services such as anonymity, unlinkability of transactions, and confidentiality
 
-### Chaincode Deployment
+## Chaincode Deployment
 
-#### 'net' mode
+### 'net' mode
 
 To have the chaincode deployment succeed in network mode, you must properly set
 up the chaincode project outside of your Hyperledger fabric source tree to include all the **golang** dependencies such that when tarred up and sent to the peer, the peer will be able to build the chain code and then deploy it. The
@@ -90,7 +100,7 @@ present.
   go build
 ```
 
-#### 'dev' mode
+### 'dev' mode
 For deploying chaincode in development mode see [Writing, Building, and Running Chaincode in a Development Environment](../Setup/Chaincode-setup.md). 
 The chaincode must be running and connected to the peer before issuing the `deploy()` from the Node.js application. The hfc `chain` object must be set to dev mode.
 
@@ -143,7 +153,7 @@ To configure the peer to connect to the Membership Services server over TLS (oth
 
 *Note:* If you cleanup the folder `/var/hyperledger/production` then don't forget to copy again the *tlsca.cert* file as described above.
 
-### Troublingshooting
+### Troubleshooting
 If you see errors stating that the client has already been registered/enrolled, keep in mind that you can perform the enrollment process only once, as the enrollmentSecret is a one-time-use password. You will see these errors if you have performed a user registration/enrollment and subsequently deleted the cryptographic tokens stored on the client side. The next time you try to enroll, errors similar to the ones below will be seen.
 
 ```
