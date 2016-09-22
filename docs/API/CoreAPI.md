@@ -70,11 +70,19 @@ Deploy creates the docker image for the chaincode and subsequently deploys the p
 
 `peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'`
 
+Or:
+
+`peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args": ["init", "a","100", "b", "200"]}'`
+
 The response to the chaincode deploy command will contain the chaincode identifier (hash) which will be required on subsequent `chaincode invoke` and `chaincode query` commands in order to identify the deployed chaincode.
 
 With security enabled, modify the command to include the -u parameter passing the username of a logged in user as follows:
 
 `peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'`
+
+Or:
+
+`peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args": ["init", "a","100", "b", "200"]}'`
 
 **Note:** If your GOPATH environment variable contains more than one element, the chaincode must be found in the first one or deployment will fail.
 
