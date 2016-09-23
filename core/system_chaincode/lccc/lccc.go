@@ -115,11 +115,18 @@ func (t ChaincodeExistsErr) Error() string {
 	return fmt.Sprintf("Chaincode exists %s", string(t))
 }
 
-//InvalidChainNameErr invalid function error
+//InvalidChainNameErr invalid chain name error
 type InvalidChainNameErr string
 
 func (f InvalidChainNameErr) Error() string {
 	return fmt.Sprintf("invalid chain name %s", string(f))
+}
+
+//InvalidChaincodeNameErr invalid chaincode name error
+type InvalidChaincodeNameErr string
+
+func (f InvalidChaincodeNameErr) Error() string {
+	return fmt.Sprintf("invalid chain code name %s", string(f))
 }
 
 //-------------- helper functions ------------------
@@ -223,6 +230,15 @@ func (lccc *LifeCycleSysCC) isValidChainName(chainname string) bool {
 	return true
 }
 
+//check validity of chaincode name
+func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodename string) bool {
+	//TODO we probably need more checks and have
+	if chaincodename == "" {
+		return false
+	}
+	return true
+}
+
 //deploy the chaincode on to the chain
 func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec) error {
 	_, exists, err := lccc.getChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name)
@@ -281,6 +297,10 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 
 	if err != nil {
 		return err
+	}
+
+	if !lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeID.Name) {
+		return InvalidChaincodeNameErr(cds.ChaincodeSpec.ChaincodeID.Name)
 	}
 
 	if err = lccc.acl(stub, chaincode.DefaultChain, cds); err != nil {
