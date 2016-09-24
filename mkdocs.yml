@@ -27,6 +27,7 @@ pages:
   - System Chaincode: SystemChaincodes/noop.md
 
 - Fabric Developer:
+  - v1.0 Preview: abstract_v1.md
   - Contributing: CONTRIBUTING.md
   - Getting an Account: Gerrit/lf-account.md
   - Gerrit: Gerrit/gerrit.md
