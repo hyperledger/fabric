@@ -14,8 +14,8 @@ vp0:
     - CORE_PEER_PROFILE_ENABLED=true
   links:
     - membersrvc0
-  ports:
-    - 7050:6060
+#  ports:
+#    - 7050:6060
 
 
 vp1:

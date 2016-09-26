@@ -18,7 +18,7 @@ import os
 import re
 import subprocess
 
-def cli_call(arg_list, expect_success=True):
+def cli_call(arg_list, expect_success=True, env=os.environ.copy()):
     """Executes a CLI command in a subprocess and return the results.
 
     @param arg_list: a list command arguments
@@ -29,7 +29,7 @@ def cli_call(arg_list, expect_success=True):
     # the update-cli.py script has a #!/bin/python as the first line
     # which calls the system python, not the virtual env python we
     # setup for running the update-cli
-    p = subprocess.Popen(arg_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(arg_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
     output, error = p.communicate()
     if p.returncode != 0:
         if output is not None:
@@ -93,23 +93,18 @@ def fullNameFromContainerNamePart(namePart, containerDataList):
     return containerData.containerName
 
 def containerDataFromNamePart(namePart, containerDataList):
-    containerNamePrefix = os.path.basename(os.getcwd()) + "_"
-    fullContainerName = containerNamePrefix + namePart
-
     for containerData in containerDataList:
-        if containerData.containerName.startswith(fullContainerName):
+        if containerData.composeService == namePart:
             return containerData
-
-    return None
+    raise Exception("composeService not found: {0}".format(namePart))
 
 def getContainerDataValuesFromContext(context, aliases, callback):
     """Returns the IPAddress based upon a name part of the full container name"""
     assert 'compose_containers' in context, "compose_containers not found in context"
     values = []
-    containerNamePrefix = os.path.basename(os.getcwd()) + "_"
     for namePart in aliases:
         for containerData in context.compose_containers:
-            if containerData.containerName.startswith(containerNamePrefix + namePart):
+            if containerData.composeService == namePart:
                 values.append(callback(containerData))
                 break
     return values

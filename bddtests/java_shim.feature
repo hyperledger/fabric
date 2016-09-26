@@ -25,6 +25,7 @@
 
 
 #@chaincodeImagesUpToDate
+@preV1
 Feature: SimpleSample Java example
 
   Scenario: java SimpleSample chaincode example single peer

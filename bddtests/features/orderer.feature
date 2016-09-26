@@ -26,7 +26,7 @@ Feature: Orderer
             | SPECIFIED |        1         |       10        |
 	    Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "<BatchTimeout>" seconds
 
-    Examples: Orderer Options
+	Examples: Orderer Options
         |          ComposeFile                |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |
         |   docker-compose-orderer-solo.yml   |     true     |        20              |         2          |       10       |
         |   docker-compose-orderer-solo.yml   |     true     |        40              |         4          |       10       |
@@ -45,7 +45,7 @@ Feature: Orderer
             |  Start    | SpecifiedNumber |  WindowSize    |
             | SPECIFIED |        1         |       10        |
 	    Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "<BatchTimeout>" seconds
-	    When user "binhn" seeks to block "1" on deliver function on "orderer0" 
+	    When user "binhn" seeks to block "1" on deliver function on "orderer0"
 	    Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "1" seconds
 
 

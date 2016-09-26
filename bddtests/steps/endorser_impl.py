@@ -16,8 +16,9 @@
 import endorser_util
 import bdd_grpc_util
 import bdd_test_util
+import devops_pb2
 
-@when(u'user "{enrollId}" creates a chaincode spec of type "{ccType}" for chaincode "{chaincodePath}" aliased as "{ccSpecAlias}" with args')
+@when(u'user "{enrollId}" creates a chaincode spec "{ccSpecAlias}" of type "{ccType}" for chaincode "{chaincodePath}" with args')
 def step_impl(context, enrollId, ccType, chaincodePath, ccSpecAlias):
 	userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
 	args =  bdd_grpc_util.getArgsFromContextForUser(context, enrollId)
@@ -25,12 +26,25 @@ def step_impl(context, enrollId, ccType, chaincodePath, ccSpecAlias):
 	print("ccSpec = {0}".format(ccSpec))
 	userRegistration.tags[ccSpecAlias] = ccSpec
 
-@when(u'user "{enrollId}" creates a deployment proposal "{proposalAlias}" using chaincode spec "{ccSpecAlias}"')
-def step_impl(context, enrollId, proposalAlias, ccSpecAlias):
+
+@when(u'user "{enrollId}" creates a deployment spec "{ccDeploymentSpecAlias}" using chaincode spec "{ccSpecAlias}" and devops on peer "{devopsComposeService}"')
+def step_impl(context, enrollId, ccDeploymentSpecAlias, ccSpecAlias, devopsComposeService):
 	userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
 	assert ccSpecAlias in userRegistration.tags, "ChaincodeSpec alias '{0}' not found for user '{1}'".format(ccSpecAlias, enrollId)
-	ccSpec = userRegistration.tags[ccSpecAlias]
-	proposal = endorser_util.createDeploymentProposalForBDD(ccSpec)
+
+	ipAddress = bdd_test_util.ipFromContainerNamePart(devopsComposeService, context.compose_containers)
+	channel = bdd_grpc_util.getGRPCChannel(ipAddress)
+	devopsStub = devops_pb2.beta_create_Devops_stub(channel)
+	deploymentSpec = devopsStub.Build(userRegistration.tags[ccSpecAlias],20)
+	userRegistration.tags[ccDeploymentSpecAlias] = deploymentSpec
+
+
+@when(u'user "{enrollId}" creates a deployment proposal "{proposalAlias}" using chaincode deployment spec "{ccDeploymentSpecAlias}"')
+def step_impl(context, enrollId, proposalAlias, ccDeploymentSpecAlias):
+	userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
+	assert ccDeploymentSpecAlias in userRegistration.tags, "ChaincodeDeploymentSpec alias '{0}' not found for user '{1}'".format(ccDeploymentSpecAlias, enrollId)
+	ccDeploymentSpec = userRegistration.tags[ccDeploymentSpecAlias]
+	proposal = endorser_util.createDeploymentProposalForBDD(ccDeploymentSpec)
 	assert not proposalAlias in userRegistration.tags, "Proposal alias '{0}' already exists for '{1}'".format(proposalAlias, enrollId)
 	userRegistration.tags[proposalAlias] = proposal
 

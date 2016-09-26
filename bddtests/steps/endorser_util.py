@@ -13,12 +13,15 @@ def getChaincodeSpec(ccType, path, args):
 def createPropsalId():
 	return 'TODO proposal Id'
 
-def createDeploymentProposalForBDD(ccSpec):
+def createDeploymentProposalForBDD(ccDeploymentSpec):
 	"Returns a deployment proposal of chaincode type"
-	lc_chaincode_spec = getChaincodeSpec(chaincode_pb2.ChaincodeSpec.GOLANG, "lccc", ['deployBDD', ccSpec.SerializeToString()])
+	lc_chaincode_spec = chaincode_pb2.ChaincodeSpec(type = chaincode_pb2.ChaincodeSpec.GOLANG,
+										 chaincodeID = chaincode_pb2.ChaincodeID(name="lccc"),
+										 ctorMsg = chaincode_pb2.ChaincodeInput(args = ['deploy', 'default', ccDeploymentSpec.SerializeToString()]))
+	lc_chaincode_invocation_spec = chaincode_pb2.ChaincodeInvocationSpec(chaincodeSpec = lc_chaincode_spec)
 	# make proposal
 	proposal = fabric_next_pb2.Proposal(type = fabric_next_pb2.Proposal.CHAINCODE, id = createPropsalId())
-	proposal.payload = lc_chaincode_spec.SerializeToString()
+	proposal.payload = lc_chaincode_invocation_spec.SerializeToString()
 	return proposal
 
 def getEndorserStubs(context, composeServices):

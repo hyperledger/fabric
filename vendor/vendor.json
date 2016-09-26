@@ -8,6 +8,25 @@
 			"revisionTime": "2015-05-01T06:40:42-04:00"
 		},
 		{
+			"checksumSHA1": "Kos2ch8973PnyyQ2JPAgWKtQV1A=",
+			"path": "github.com/DATA-DOG/godog",
+			"revision": "6e3b3f764a57d37691c0dfd007e7e586d3e452dc",
+			"revisionTime": "2016-08-07T16:35:39Z"
+		},
+		{
+			"checksumSHA1": "Zi1ZEYvoDhlK2+AaxrNeqmyZ4wY=",
+			"path": "github.com/DATA-DOG/godog/cmd/godog",
+			"revision": "6e3b3f764a57d37691c0dfd007e7e586d3e452dc",
+			"revisionTime": "2016-08-07T16:35:39Z",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "LCu7pjQ5nMZ505XwUU7tQQ1hBuM=",
+			"path": "github.com/DATA-DOG/godog/gherkin",
+			"revision": "6e3b3f764a57d37691c0dfd007e7e586d3e452dc",
+			"revisionTime": "2016-08-07T16:35:39Z"
+		},
+		{
 			"checksumSHA1": "yXrS4e4yxaRBu/MX+39X3cS4kbg=",
 			"path": "github.com/Sirupsen/logrus",
 			"revision": "a283a10442df8dc09befd873fab202bf8a253d6a",

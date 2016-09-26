@@ -5,10 +5,12 @@ vp:
     - CORE_VM_ENDPOINT=http://172.17.0.1:2375
     # TODO:  This is currently required due to BUG in variant logic based upon log level.
     - CORE_LOGGING_LEVEL=DEBUG
+    - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
   # Script will wait until membersrvc is up (if it exists) before starting
   # $$GOPATH (double dollar) required to prevent docker-compose doing its own
   # substitution before the value gets to the container
-  command: sh -c "exec $$GOPATH/src/github.com/hyperledger/fabric/bddtests/scripts/start-peer.sh"
+  #command: sh -c "exec $$GOPATH/src/github.com/hyperledger/fabric/bddtests/scripts/start-peer.sh"
+  command: peer node start
 
   # Use these options if coverage desired for peers
   #image: hyperledger/fabric-peer-coverage

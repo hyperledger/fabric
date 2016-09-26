@@ -6,6 +6,7 @@
 #  @chaincodeImagesUpToDate use this if all scenarios chaincode images are up to date, and do NOT require building.  BE SURE!!!
 
 #@chaincodeImagesUpToDate
+@preV1
 Feature: Network of Peers
     As a Fabric developer
     I want to run a network of peers
