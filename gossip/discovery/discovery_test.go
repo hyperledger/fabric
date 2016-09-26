@@ -92,7 +92,7 @@ func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 
 	_, alreadyExists := comm.streams[peer.Id]
 	if !alreadyExists {
-		newConn, err := grpc.Dial(peer.Endpoint, grpc.WithInsecure(), grpc.WithTimeout(time.Duration(500) * time.Millisecond))
+		newConn, err := grpc.Dial(peer.Endpoint, grpc.WithInsecure(), grpc.WithTimeout(time.Duration(500)*time.Millisecond))
 		if err != nil {
 			//fmt.Printf("Error dialing: to %v: %v\n",peer.Endpoint, err)
 			return false
@@ -133,7 +133,7 @@ func (comm *dummyCommModule) CloseConn(id string) {
 	comm.streams[id].CloseSend()
 	comm.conns[id].Close()
 
-	delete(comm.streams,id)
+	delete(comm.streams, id)
 	delete(comm.conns, id)
 }
 

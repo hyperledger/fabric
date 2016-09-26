@@ -113,7 +113,6 @@ func NewDiscoveryService(bootstrapPeers []*NetworkMember, self NetworkMember, co
 	go d.periodicalReconnectToDead()
 	go d.handlePresumedDeadPeers()
 
-
 	return d
 }
 
@@ -132,17 +131,16 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 		k = n
 	}
 
-	for _, i := range util.GetRandomIndices(k, n - 1) {
+	for _, i := range util.GetRandomIndices(k, n-1) {
 		pulledPeer := d.cachedMembership.Alive[i].Membership
 		netMember := &NetworkMember{
-			Id: pulledPeer.Id,
+			Id:       pulledPeer.Id,
 			Endpoint: pulledPeer.Endpoint,
 			Metadata: pulledPeer.Metadata,
 		}
 		d.comm.SendToPeer(netMember, memReq)
 	}
 }
-
 
 func (d *gossipDiscoveryImpl) handlePresumedDeadPeers() {
 	d.stopSignal.Add(1)
@@ -231,7 +229,7 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(known []string) *proto.Me
 	defer d.lock.RUnlock()
 
 	alivePeers := make([]*proto.AliveMessage, 0)
-	deadPeers  := make([]*proto.AliveMessage, 0)
+	deadPeers := make([]*proto.AliveMessage, 0)
 
 	for _, am := range d.cachedMembership.Alive {
 		isKnown := false
@@ -261,7 +259,7 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(known []string) *proto.Me
 		}
 	}
 
-	return &proto.MembershipResponse {
+	return &proto.MembershipResponse{
 		Alive: append(alivePeers, aliveMsg),
 		Dead:  deadPeers,
 	}

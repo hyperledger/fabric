@@ -19,17 +19,13 @@ package util
 import (
 	"math/rand"
 	"reflect"
+	"sync"
 )
 
 type Equals func(a interface{}, b interface{}) bool
 
 func init() {
 	rand.Seed(42)
-}
-
-
-func numbericEqual(a interface{}, b interface{}) bool {
-	return a.(int) == b.(int)
 }
 
 func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
@@ -40,6 +36,10 @@ func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 		}
 	}
 	return -1
+}
+
+func numbericEqual(a interface{}, b interface{}) bool {
+	return a.(int) == b.(int)
 }
 
 func GetRandomIndices(indiceCount, highestIndex int) []int {
@@ -63,4 +63,58 @@ func GetRandomIndices(indiceCount, highestIndex int) []int {
 		indices = append(indices, n)
 	}
 	return indices
+}
+
+func Abs(a, b uint64) uint64 {
+	if a > b {
+		return a - b
+	} else {
+		return b - a
+	}
+}
+
+type Set struct {
+	items map[interface{}]struct{}
+	lock  *sync.RWMutex
+}
+
+func NewSet() *Set {
+	return &Set{lock: &sync.RWMutex{}, items: make(map[interface{}]struct{})}
+}
+
+func (s *Set) Add(item interface{}) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.items[item] = struct{}{}
+}
+
+func (s *Set) Exists(item interface{}) bool {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	_, exists := s.items[item]
+	return exists
+}
+
+func (s *Set) ToArray() []interface{} {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	a := make([]interface{}, len(s.items))
+	i := 0
+	for item := range s.items {
+		a[i] = item
+		i++
+	}
+	return a
+}
+
+func (s *Set) Clear() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.items = make(map[interface{}]struct{})
+}
+
+func (s *Set) Remove(item interface{}) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	delete(s.items, item)
 }
