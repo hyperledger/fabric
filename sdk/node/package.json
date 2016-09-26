@@ -15,7 +15,7 @@
     "es6-set": "^0.1.4",
     "events": "^1.1.0",
     "fs": "0.0.2",
-    "grpc": "^0.13.2-pre1",
+    "grpc": "1.0.0",
     "hashtable": "^2.0.2",
     "js-sha3": "^0.5.1",
     "json-stringify-safe": "^5.0.1",
@@ -34,6 +34,7 @@
     "uuidv4": "^0.3.1"
   },
   "devDependencies": {
-    "tape": "^4.5.1"
+    "tape": "^4.5.1",
+    "x509": "^0.2.6"
   }
 }
