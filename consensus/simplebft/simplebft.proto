@@ -1,0 +1,107 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package simplebft;
+
+message config {
+        uint64 n = 1;
+        uint64 f = 2;
+        uint64 batch_duration_nsec = 3;
+        uint64 batch_size_bytes = 4;
+        uint64 request_timeout_nsec = 5;
+};
+
+message msg {
+        oneof type {
+                request request = 1;
+                fetch_request fetch_request = 2;
+                preprepare preprepare = 3;
+                subject prepare = 4;
+                subject commit = 5;
+                signed view_change = 6;
+                new_view new_view = 7;
+                checkpoint checkpoint = 8;
+        };
+};
+
+message request {
+        bytes payload = 1;
+};
+
+message fetch_request {
+        bytes digest = 1;
+};
+
+message query_state {
+};
+
+message seq {
+        uint64 view = 1;
+        uint64 seq = 2;
+};
+
+message batch_header {
+        uint64 seq = 1;
+        bytes prev_hash = 2;
+        bytes data_hash = 3;
+};
+
+message batch {
+        bytes header = 1;
+        repeated bytes payloads = 2;
+        repeated bytes signatures = 3;
+};
+
+message preprepare {
+        seq seq = 1;
+        batch batch = 2;
+};
+
+message subject {
+        seq seq = 1;
+        bytes digest = 2;
+};
+
+message view_change {
+        uint64 view = 1;
+        repeated subject pset = 2;
+        repeated subject qset = 3;
+        uint64 executed = 4;
+};
+
+message signed {
+        bytes data = 1;
+        bytes signature = 2;
+};
+
+message new_view {
+        uint64 view = 1;
+        map<uint64, signed> vset = 2;
+        subject xset = 3;
+        batch batch = 4;
+};
+
+message checkpoint {
+        uint64 seq = 1;
+        bytes digest = 2;
+        bytes signature = 3;
+};
+
+message checkpoint_set {
+        map<uint64, checkpoint> checkpoint_set = 1;
+};
