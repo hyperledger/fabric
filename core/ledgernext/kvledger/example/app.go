@@ -56,6 +56,8 @@ func (app *App) Init(initialBalances map[string]int) (*protos.Transaction2, erro
 
 // TransferFunds simulates a transaction for transferring fund from fromAccount to toAccount
 func (app *App) TransferFunds(fromAccount string, toAccount string, transferAmt int) (*protos.Transaction2, error) {
+
+	// act as endorsing peer shim code to simulate a transaction on behalf of chaincode
 	var txSimulator ledger.TxSimulator
 	var err error
 	if txSimulator, err = app.ledger.NewTxSimulator(); err != nil {
@@ -83,6 +85,9 @@ func (app *App) TransferFunds(fromAccount string, toAccount string, transferAmt 
 	if txSimulationResults, err = txSimulator.GetTxSimulationResults(); err != nil {
 		return nil, err
 	}
+
+	// act as endorsing peer to create an Action with the SimulationResults
+	// then act as SDK to create a Transaction with the EndorsedAction
 	tx := constructTransaction(txSimulationResults)
 	return tx, nil
 }

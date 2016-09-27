@@ -38,6 +38,10 @@ var consenter *example.Consenter
 var accounts = []string{"account1", "account2", "account3", "account4"}
 
 func init() {
+
+	// Initialization will get a handle to the ledger at the specified path
+	// Note, if subledgers are supported in the future,
+	// the various ledgers could be created/managed at this level
 	os.RemoveAll(ledgerPath)
 	ledgerConf := kvledger.NewConf(ledgerPath, 0)
 	var err error
@@ -52,12 +56,31 @@ func init() {
 
 func main() {
 	defer finalLedger.Close()
+
+	// Each of the functions here will emulate endorser, orderer,
+	// and committer by calling ledger APIs to similate the proposal,
+	// get simulation results, create a transaction, add it to a block,
+	// and then commit the block.
+
+	// Initialize account balances by setting each account to 100
 	initApp()
+
 	printBalances()
+
+	// Transfer money between accounts. Exercises happy path.
 	transferFunds()
+
 	printBalances()
+
+	// Attempt to transfer more money than account balance
+	// Exercises simulation failure
 	tryInvalidTransfer()
+
+	// Attempt two transactions, the first one will have sufficient funds,
+	// the second one should fail since the account balance was updated
+	// (by the first tran) since simulation time. This exercises the MVCC check.
 	tryDoubleSpend()
+
 	printBalances()
 }
 
@@ -79,7 +102,11 @@ func transferFunds() {
 	handleError(err, true)
 	tx2, err := app.TransferFunds("account3", "account4", 50)
 	handleError(err, true)
+
+	// act as ordering service (consenter) to create a Raw Block from the Transaction
 	rawBlock := consenter.ConstructBlock(tx1, tx2)
+
+	// act as committing peer to commit the Raw Block
 	finalBlock, invalidTx, err := committer.CommitBlock(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock, finalBlock, invalidTx)
