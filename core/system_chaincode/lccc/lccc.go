@@ -22,6 +22,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	ledger "github.com/hyperledger/fabric/core/ledgernext"
+	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"
@@ -241,11 +243,6 @@ func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodename string) bool {
 
 //deploy the chaincode on to the chain
 func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec) error {
-	_, exists, err := lccc.getChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name)
-	if exists {
-		return ChaincodeExistsErr(cds.ChaincodeSpec.ChaincodeID.Name)
-	}
-
 	//TODO : this needs to be converted to another data structure to be handled
 	//       by the chaincode framework (which currently handles "Transaction")
 	t, err := lccc.toTransaction(cds)
@@ -261,9 +258,26 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 
 	ctxt := context.Background()
 
+	//TODO - we are in the LCCC chaincode simulating an "invoke" to deploy another
+	//chaincode. Deploying the chaincode and calling its "init" involves ledger access
+	//for the called chaincode - ie, it needs to undergo state simulatio as well.
+	//How do we handle the simulation for the called called chaincode ?
+	//    1) don't allow state initialization on deploy
+	//    2) combine both LCCC and the called chaincodes into one RW set
+	//    3) just drop the second
+	lgr := kvledger.GetLedger(chainname)
+
+	var dummytxsim ledger.TxSimulator
+
+	if dummytxsim, err = lgr.NewTxSimulator(); err != nil {
+		return fmt.Errorf("Could not get simulator for %s", chainname)
+	}
+
+	ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, dummytxsim)
+
 	//TODO - create chaincode support for chainname, for now use DefaultChain
-	//chaincodeSupport := chaincode.GetChain(chaincode.ChainName(chainname))
-	chaincodeSupport := chaincode.GetChain(chaincode.DefaultChain)
+	chaincodeSupport := chaincode.GetChain(chaincode.ChainName(chainname))
+
 	_, err = chaincodeSupport.Deploy(ctxt, t)
 	if err != nil {
 		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
@@ -275,10 +289,9 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 		return fmt.Errorf("%s", err)
 	}
 
-	/************ STOP WHEN WE ARE ON NEWLEDGER
 	//stop now that we are done
 	chaincodeSupport.Stop(ctxt, cds)
-	**********/
+
 	return nil
 }
 
@@ -307,9 +320,18 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return err
 	}
 
-	if err = lccc.deploy(stub, chainname, cds); err != nil {
-		return err
+	_, exists, err := lccc.getChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name)
+	if exists {
+		return ChaincodeExistsErr(cds.ChaincodeSpec.ChaincodeID.Name)
 	}
+
+	/**TODO - this is done in the endorser service for now so we can
+		 * collect all state changes under one TXSim. Revisit this ...
+	         * maybe this *is* the right solution
+		 *if err = lccc.deploy(stub, chainname, cds); err != nil {
+		 *	return err
+		 *}
+		 **/
 
 	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name, cds.CodePackage)
 
