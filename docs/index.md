@@ -27,7 +27,7 @@ v0.6-preview.
 
 If you'd like to dive right in and get an operational experience on your local
 server or laptop to begin development, we have just the thing for you. We have
-created a standalone Docker-based [starter kit](Starter/fabric-starter-kit.md)
+created a standalone Docker-based [starter kit](starter/fabric-starter-kit.md)
 that leverages the latest published Docker images that you can run on your
 laptop and be up and running in no time. That should get you going with a
 sample application and some simple chaincode. From there, you can go deeper
@@ -122,14 +122,14 @@ testing Chaincode.
 relating to Chaincode.
 
 ## Application developer guide
-
+```
      - [APIs - CLI, REST, and Node.js](API/CoreAPI.md)
        - [CLI](API/CoreAPI.md#cli): working with the command-line interface.
        - [REST](API/CoreAPI.md#rest-api): working with the REST API (*deprecated*).
        - [Node.js SDK](nodeSDK/node-sdk-guide.md): working with the Node.js SDK.
-
+```
 ## Fabric developer guide
-
+```
      - [Making code contributions](CONTRIBUTING.md): First, you'll want to familiarize
      yourself with the project's contribution guidelines.
      - [Setting up the development environment](dev-setup/devenv.md): after that, you
@@ -145,16 +145,16 @@ relating to Chaincode.
      - [License header](dev-setup/headers.txt): every source file must include this
      license header modified to include a copyright statement for the principle
      author(s).
-
+```
 # Operations guide
-
+```
       - [Setting Up a Network](Setup/Network-setup.md): instructions for setting up a
       network of fabric peers.
       - [Certificate Authority (CA) Setup](Setup/ca-setup.md): setting up a CA to
       support identity, security (authentication/authorization), privacy and
       confidentiality.
       - [Application ACL](tech/application-ACL.md): working with access control lists.
-
+```
 # License <a name="license"></a>
 The Hyperledger Project uses the [Apache License Version 2.0](LICENSE) software
 license.

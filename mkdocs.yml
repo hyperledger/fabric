@@ -11,6 +11,7 @@ pages:
 - Glossary: glossary.md
 - Protocol Spec: protocol-spec.md
 - Usecases: biz/usecases.md
+- System Chaincode: SystemChaincode-noop.md
 
 - Installation and setup:
   - Chaincode or Application Developer Setup: Setup/Chaincode-setup.md
@@ -24,7 +25,6 @@ pages:
   - Chaincode APIs: API/ChaincodeAPI.md
   - Core API: API/CoreAPI.md
   - CA API: API/MemberServicesAPI.md
-  - System Chaincode: SystemChaincodes/noop.md
 
 - Fabric Developer:
   - v1.0 Preview: abstract_v1.md
@@ -37,7 +37,7 @@ pages:
   - Maintainers: MAINTAINERS.md
   - Reviewing: Gerrit/reviewing.md
   - Changes: Gerrit/changes.md
-  - Style guides:
+- Style guides:
     - Golang: Style-guides/go-style.md
 
 - FAQ:
@@ -57,9 +57,13 @@ pages:
   - App-Overview: nodeSDK/app-overview.md
   - Node-SDK-guide: nodeSDK/node-sdk-guide.md
   - Node-SDK-indepth: nodeSDK/node-sdk-indepth.md
-  - Node-SDK-self-contained: nodeSDK/node-sdk-self-contained.md
   - Sample-Standalone-app: nodeSDK/sample-standalone-app.md
   - Sample-web-app: nodeSDK/sample-web-app.md
+
+- Starter Kit:
+  - Starter Kit: starter/fabric-starter-kit.md
+
+- Releases: releases.md
 
 markdown_extensions:
   - extra

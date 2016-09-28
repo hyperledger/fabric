@@ -9,7 +9,7 @@ the fabric's Node.js SDK, and chaincode written in Go.
 There are three Docker images that, when run, will provide a basic
 network environment. There is an image to run a single `peer`, one to run
 the `membersrvc` and one to run both your Node.js application and the your
-chaincode. See [Application Developer's Overview](app-overview.md) on how the
+chaincode. See [Application Developer's Overview](../nodeSDK/app-overview.md) on how the
 components running within the containers will communicate.
 
 The starter kit comes with a sample Node.js application ready to execute and
@@ -28,9 +28,9 @@ Hyperledger fabric.* We recommend first running in chaincode development mode.
 ## Further exploration
 
 If you wish, there are a number of chaincode examples near by.
-
-    `cd ../../chaincode`
-
+```
+   cd ../../chaincode
+```
 ## Getting started
 
 **Note:** This sample was prepared using Docker for Mac 1.12.0
@@ -63,36 +63,35 @@ is located, execute one of following `docker-compose` commands.
 
    * to run as detached containers:
 
-     ```
-       docker-compose up -d
-     ```
+```
+   docker-compose up -d
+```
      **note:** to see the logs for the `peer` container use the
      `docker logs peer` command
 
    * to run in the foreground and see the log output in the current terminal
    session:
 
-     ```
-       docker-compose up
-     ```
+```
+   docker-compose up
+```
 
   Both commands will start three docker containers, to view the container
   status try `docker ps` command. The first time this is run the Docker
   images will be downloaded. This may take 10 minutes or more depending on the
   network connections of the system running the command.
 
-   ```      
-    docker ps
-   ```
+```
+   docker ps
+```
+    You should see something like the following:
 
-   You should see something like the following:
-
-   ```
-    CONTAINER ID    IMAGE                           COMMAND                  CREATED              STATUS              PORTS  NAMES
-    bb01a2fa96ef    hyperledger/fabric-starter-kit  "sh -c 'sleep 20; /op"   About a minute ago   Up 59 seconds           starter
-    ec7572e65f12    hyperledger/fabric-peer         "sh -c 'sleep 10; pee"   About a minute ago   Up About a minute          peer
-    118ef6da1709    hyperledger/fabric-membersrvc   "membersrvc"             About a minute ago   Up About a minute          membersrvc
-   ```
+```
+   CONTAINER ID    IMAGE                           COMMAND                  CREATED              STATUS              PORTS  NAMES
+   bb01a2fa96ef    hyperledger/fabric-starter-kit  "sh -c 'sleep 20; /op"   About a minute ago   Up 59 seconds           starter
+   ec7572e65f12    hyperledger/fabric-peer         "sh -c 'sleep 10; pee"   About a minute ago   Up About a minute          peer
+   118ef6da1709    hyperledger/fabric-membersrvc   "membersrvc"             About a minute ago   Up About a minute          membersrvc
+```
 
 * Start a terminal session in the **starter** container. This is where the
 Node.js application is located.
