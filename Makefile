@@ -38,10 +38,10 @@
 
 PROJECT_NAME   = hyperledger/fabric
 BASE_VERSION   = 0.7.0
-IS_RELEASE     = false # commit as 'true' only once for a given $(BASE_VERSION)
+IS_RELEASE     = false
 
 ifneq ($(IS_RELEASE),true)
-EXTRA_VERSION ?= SNAPSHOT-$(shell git rev-parse --short HEAD)
+EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
 PROJECT_VERSION=$(BASE_VERSION)-$(EXTRA_VERSION)
 else
 PROJECT_VERSION=$(BASE_VERSION)
@@ -52,7 +52,7 @@ GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
 ARCH=$(shell uname -m)
-CHAINTOOL_RELEASE=v0.9.0
+CHAINTOOL_RELEASE=v0.9.1
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 
 DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
