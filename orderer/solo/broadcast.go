@@ -24,10 +24,11 @@ import (
 )
 
 type broadcastServer struct {
-	queue        chan *ab.BroadcastMessage
+	queueSize    int
 	batchSize    int
 	batchTimeout time.Duration
 	rl           rawledger.Writer
+	sendChan     chan *ab.BroadcastMessage
 	exitChan     chan struct{}
 }
 
@@ -39,10 +40,11 @@ func newBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl
 
 func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer) *broadcastServer {
 	bs := &broadcastServer{
-		queue:        make(chan *ab.BroadcastMessage, queueSize),
+		queueSize:    queueSize,
 		batchSize:    batchSize,
 		batchTimeout: batchTimeout,
 		rl:           rl,
+		sendChan:     make(chan *ab.BroadcastMessage),
 		exitChan:     make(chan struct{}),
 	}
 	return bs
@@ -59,7 +61,7 @@ outer:
 		timer := time.After(bs.batchTimeout)
 		for {
 			select {
-			case msg := <-bs.queue:
+			case msg := <-bs.sendChan:
 				curBatch = append(curBatch, msg)
 				if len(curBatch) < bs.batchSize {
 					continue
@@ -83,6 +85,38 @@ outer:
 }
 
 func (bs *broadcastServer) handleBroadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
+	b := newBroadcaster(bs)
+	defer close(b.queue)
+	go b.drainQueue()
+	return b.queueBroadcastMessages(srv)
+}
+
+type broadcaster struct {
+	bs    *broadcastServer
+	queue chan *ab.BroadcastMessage
+}
+
+func (b *broadcaster) drainQueue() {
+	for {
+		select {
+		case msg, ok := <-b.queue:
+			if ok {
+				select {
+				case b.bs.sendChan <- msg:
+				case <-b.bs.exitChan:
+					return
+				}
+			} else {
+				return
+			}
+		case <-b.bs.exitChan:
+			return
+		}
+	}
+}
+
+func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastServer) error {
+
 	for {
 		msg, err := srv.Recv()
 		if err != nil {
@@ -97,7 +131,7 @@ func (bs *broadcastServer) handleBroadcast(srv ab.AtomicBroadcast_BroadcastServe
 		}
 
 		select {
-		case bs.queue <- msg:
+		case b.queue <- msg:
 			err = srv.Send(&ab.BroadcastResponse{ab.Status_SUCCESS})
 		default:
 			err = srv.Send(&ab.BroadcastResponse{ab.Status_SERVICE_UNAVAILABLE})
@@ -107,4 +141,12 @@ func (bs *broadcastServer) handleBroadcast(srv ab.AtomicBroadcast_BroadcastServe
 			return err
 		}
 	}
+}
+
+func newBroadcaster(bs *broadcastServer) *broadcaster {
+	b := &broadcaster{
+		bs:    bs,
+		queue: make(chan *ab.BroadcastMessage, bs.queueSize),
+	}
+	return b
 }
