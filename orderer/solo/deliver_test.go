@@ -65,9 +65,9 @@ func TestOldestSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := newDeliverServer(rl, MagicLargestWindow)
+	ds := NewDeliverServer(rl, MagicLargestWindow)
 
-	go ds.handleDeliver(m)
+	go ds.HandleDeliver(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_OLDEST}}}
 
@@ -97,9 +97,9 @@ func TestNewestSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := newDeliverServer(rl, MagicLargestWindow)
+	ds := NewDeliverServer(rl, MagicLargestWindow)
 
-	go ds.handleDeliver(m)
+	go ds.HandleDeliver(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_NEWEST}}}
 
@@ -125,9 +125,9 @@ func TestSpecificSeek(t *testing.T) {
 	}
 
 	m := newMockD()
-	ds := newDeliverServer(rl, MagicLargestWindow)
+	ds := NewDeliverServer(rl, MagicLargestWindow)
 
-	go ds.handleDeliver(m)
+	go ds.HandleDeliver(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
 
@@ -154,9 +154,9 @@ func TestBadSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := newDeliverServer(rl, MagicLargestWindow)
+	ds := NewDeliverServer(rl, MagicLargestWindow)
 
-	go ds.handleDeliver(m)
+	go ds.HandleDeliver(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
 
@@ -187,9 +187,9 @@ func TestBadWindow(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := newDeliverServer(rl, MagicLargestWindow)
+	ds := NewDeliverServer(rl, MagicLargestWindow)
 
-	go ds.handleDeliver(m)
+	go ds.HandleDeliver(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow) * 2, Start: ab.SeekInfo_OLDEST}}}
 
@@ -213,9 +213,9 @@ func TestAck(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := newDeliverServer(rl, MagicLargestWindow)
+	ds := NewDeliverServer(rl, MagicLargestWindow)
 
-	go ds.handleDeliver(m)
+	go ds.HandleDeliver(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: windowSize, Start: ab.SeekInfo_OLDEST}}}
 

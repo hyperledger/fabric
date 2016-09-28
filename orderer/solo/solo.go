@@ -36,7 +36,7 @@ func init() {
 
 type server struct {
 	bs *broadcastServer
-	ds *deliverServer
+	ds *DeliverServer
 }
 
 // New creates a ab.AtomicBroadcastServer based on the solo orderer implementation
@@ -44,7 +44,7 @@ func New(queueSize, batchSize, maxWindowSize int, batchTimeout time.Duration, rl
 	logger.Infof("Starting solo with queueSize=%d, batchSize=%d batchTimeout=%v and ledger=%T", queueSize, batchSize, batchTimeout, rl)
 	s := &server{
 		bs: newBroadcastServer(queueSize, batchSize, batchTimeout, rl, filters, configManager),
-		ds: newDeliverServer(rl, maxWindowSize),
+		ds: NewDeliverServer(rl, maxWindowSize),
 	}
 	ab.RegisterAtomicBroadcastServer(grpcServer, s)
 	return s
@@ -58,5 +58,5 @@ func (s *server) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 // Deliver sends a stream of blocks to a client after ordering
 func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	logger.Debugf("Starting new Deliver loop")
-	return s.ds.handleDeliver(srv)
+	return s.ds.HandleDeliver(srv)
 }
