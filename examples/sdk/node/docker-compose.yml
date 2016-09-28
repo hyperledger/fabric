@@ -27,10 +27,11 @@ peer:
   links:
     - membersrvc
 
-nodesdk:
-  container_name: nodesdk
-  image: hyperledger/fabric-node-sdk
+starter:
+  container_name: starter
+  image: hyperledger/fabric-starter-kit
   volumes:
+    # tweak this to map a local developmnt directory tree into the container
     - ~/mytest:/user/mytest
   environment:
     - MEMBERSRVC_ADDRESS=membersrvc:7054

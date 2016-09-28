@@ -4,7 +4,7 @@ Chaincode developers need a way to test and debug their chaincode without having
 
 The following instructions apply to _developing_ chaincode in Go or Java. They do not apply to running in a production environment. However, if _developing_ chaincode in Java, please see the [Java chaincode setup](https://github.com/hyperledger/fabric/blob/master/docs/Setup/JAVAChaincode.md) instructions first, to be sure your environment is properly configured.
 
-**Note:** We have added support for [System chaincode](https://github.com/hyperledger/fabric/blob/master/docs/SystemChaincodes/noop.md).
+**Note:** We have added support for [System chaincode](https://github.com/hyperledger/fabric/blob/master/docs/SystemChaincode-noop.md).
 
 ## Choices
 
