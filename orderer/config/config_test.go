@@ -17,8 +17,11 @@ limitations under the License.
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -47,6 +50,45 @@ func TestBadConfig(t *testing.T) {
 	err = ExactWithDateUnmarshal(config, &uconf)
 	if err == nil {
 		t.Fatalf("Should have failed to unmarshal")
+	}
+}
+
+type testSlice struct {
+	Inner struct {
+		Slice []string
+	}
+}
+
+func TestEnvSlice(t *testing.T) {
+	envVar := "ORDERER_INNER_SLICE"
+	envVal := "[a, b, c]"
+	os.Setenv(envVar, envVal)
+	defer os.Unsetenv(envVar)
+	config := viper.New()
+	config.SetEnvPrefix(Prefix)
+	config.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	config.SetEnvKeyReplacer(replacer)
+	config.SetConfigType("yaml")
+
+	data := "---\nInner:\n    Slice: [d,e,f]"
+
+	err := config.ReadConfig(bytes.NewReader([]byte(data)))
+
+	if err != nil {
+		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
+	}
+
+	var uconf testSlice
+
+	err = ExactWithDateUnmarshal(config, &uconf)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal with: %s", err)
+	}
+
+	expected := []string{"a", "b", "c"}
+	if !reflect.DeepEqual(uconf.Inner.Slice, expected) {
+		t.Fatalf("Did not get back the right slice, expeced: %v got %v", expected, uconf.Inner.Slice)
 	}
 }
 
