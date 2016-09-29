@@ -106,7 +106,7 @@ func testReinitialization(lf ledgerFactory, t *testing.T) {
 	if block == nil {
 		t.Fatalf("Error retrieving block 1")
 	}
-	if !bytes.Equal(block.Hash(), aBlock.Hash()) {
+	if !bytes.Equal(block.Header.Hash(), aBlock.Header.Hash()) {
 		t.Fatalf("Block hashes did no match")
 	}
 }
@@ -121,7 +121,7 @@ func testAddition(lf ledgerFactory, t *testing.T) {
 	if genesis == nil {
 		t.Fatalf("Could not retrieve genesis block")
 	}
-	prevHash := genesis.Hash()
+	prevHash := genesis.Header.Hash()
 
 	li.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte("My Data")}}, nil)
 	if li.Height() != 2 {
@@ -131,7 +131,7 @@ func testAddition(lf ledgerFactory, t *testing.T) {
 	if block == nil {
 		t.Fatalf("Error retrieving genesis block")
 	}
-	if !bytes.Equal(block.PrevHash, prevHash) {
+	if !bytes.Equal(block.Header.PreviousHash, prevHash) {
 		t.Fatalf("Block hashes did no match")
 	}
 }
@@ -157,7 +157,7 @@ func testRetrieval(lf ledgerFactory, t *testing.T) {
 	if status != ab.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the genesis block")
 	}
-	if block.Number != 0 {
+	if block.Header.Number != 0 {
 		t.Fatalf("Expected to successfully retrieve the genesis block")
 	}
 	signal = it.ReadyChan()
@@ -170,8 +170,8 @@ func testRetrieval(lf ledgerFactory, t *testing.T) {
 	if status != ab.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the second block")
 	}
-	if block.Number != 1 {
-		t.Fatalf("Expected to successfully retrieve the second block but got block number %d", block.Number)
+	if block.Header.Number != 1 {
+		t.Fatalf("Expected to successfully retrieve the second block but got block number %d", block.Header.Number)
 	}
 }
 
@@ -201,7 +201,7 @@ func testBlockedRetrieval(lf ledgerFactory, t *testing.T) {
 	if status != ab.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the second block")
 	}
-	if block.Number != 1 {
+	if block.Header.Number != 1 {
 		t.Fatalf("Expected to successfully retrieve the second block")
 	}
 }

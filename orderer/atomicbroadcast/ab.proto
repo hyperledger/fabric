@@ -168,15 +168,28 @@ message DeliverUpdate {
     }
 }
 
-// This is a temporary data structure, meant to hold the place of the finalized block structure
-// This must be a 'block' structure and not a 'batch' structure, although the terminology is slightly confusing
-// The requirement is to allow for a consumer of the orderer to declare the unvalidated blockchain as the definitive
-// blockchain, without breaking the hash chain or existing proof
+// This is a temporary data structure, but is hopefully very close to the finalized block structure
+// Note that the BlockHeader chains to the previous BlockHeader, and the BlockData hash is embedded
+// in the BlockHeader.  This makes it natural and obvious that the Data is included in the hash, but
+// the Metadata is not.
 message Block {
-    uint64 Number = 2;
-    bytes PrevHash = 3;
-    bytes Proof = 4;
-    repeated BroadcastMessage Messages = 5;
+    BlockHeader Header = 1;
+    BlockData Data = 2;
+    BlockMetadata Metadata = 3;
+}
+
+message BlockHeader {
+    uint64 Number = 1; // The position in the blockchain
+    bytes PreviousHash = 2; // The hash of the previous block header
+    bytes DataHash = 3; // The hash of the BlockData, by MerkleTree
+}
+
+message BlockData {
+    repeated bytes Data = 1;
+}
+
+message BlockMetadata {
+    repeated bytes Metadata = 1;
 }
 
 message DeliverResponse {

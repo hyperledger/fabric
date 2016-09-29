@@ -89,7 +89,7 @@ func (r *deliverClient) readUntilClose() {
 			r.unAcknowledged++
 			if r.unAcknowledged >= r.windowSize/2 {
 				fmt.Println("Sending acknowledgement")
-				err = r.client.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Acknowledgement{Acknowledgement: &ab.Acknowledgement{Number: t.Block.Number}}})
+				err = r.client.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Acknowledgement{Acknowledgement: &ab.Acknowledgement{Number: t.Block.Header.Number}}})
 				if err != nil {
 					return
 				}

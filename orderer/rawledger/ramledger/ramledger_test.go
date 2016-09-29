@@ -41,7 +41,7 @@ func TestAppend(t *testing.T) {
 	rl := New(maxSize, genesisBlock).(*ramLedger)
 	var blocks []*ab.Block
 	for i := 0; i < 3; i++ {
-		blocks = append(blocks, &ab.Block{Number: uint64(i + 1)})
+		blocks = append(blocks, &ab.Block{Header: &ab.BlockHeader{Number: uint64(i + 1)}})
 		rl.appendBlock(blocks[i])
 	}
 	item := rl.oldest
@@ -49,8 +49,8 @@ func TestAppend(t *testing.T) {
 		if item.block == nil {
 			t.Fatalf("Block for item %d should not be nil", i)
 		}
-		if item.block.Number != blocks[i].Number {
-			t.Errorf("Expected block %d to be %d but got %d", i, blocks[i].Number, item.block.Number)
+		if item.block.Header.Number != blocks[i].Header.Number {
+			t.Errorf("Expected block %d to be %d but got %d", i, blocks[i].Header.Number, item.block.Header.Number)
 		}
 		if i != 2 && item.next == nil {
 			t.Fatalf("Next item should not be nil")
@@ -70,7 +70,7 @@ func TestSignal(t *testing.T) {
 		t.Fatalf("There is no successor, there should be no signal to continue")
 	default:
 	}
-	rl.appendBlock(&ab.Block{Number: 1})
+	rl.appendBlock(&ab.Block{Header: &ab.BlockHeader{Number: 1}})
 	select {
 	case <-item.signal:
 	default:
@@ -87,7 +87,7 @@ func TestTruncationSafety(t *testing.T) {
 	rl := New(maxSize, genesisBlock).(*ramLedger)
 	item := rl.oldest
 	for i := 0; i < newBlocks; i++ {
-		rl.appendBlock(&ab.Block{Number: uint64(i + 1)})
+		rl.appendBlock(&ab.Block{Header: &ab.BlockHeader{Number: uint64(i + 1)}})
 	}
 	count := 0
 	for item.next != nil {

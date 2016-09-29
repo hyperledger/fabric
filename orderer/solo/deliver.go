@@ -98,7 +98,7 @@ func (d *deliverer) main() {
 				}
 				d.cursor = nil
 			} else {
-				d.nextBlockNumber = block.Number + 1
+				d.nextBlockNumber = block.Header.Number + 1
 				if !d.sendBlockReply(block) {
 					return
 				}

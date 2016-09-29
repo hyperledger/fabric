@@ -21,10 +21,12 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/Shopify/sarama"
-	"github.com/Shopify/sarama/mocks"
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
+
+	"github.com/Shopify/sarama"
+	"github.com/Shopify/sarama/mocks"
+	"github.com/golang/protobuf/proto"
 )
 
 type mockConsumerImpl struct {
@@ -93,15 +95,20 @@ func (mc *mockConsumerImpl) testFillWithBlocks(seek int64) {
 }
 
 func testNewConsumerMessage(offset int64, topic string) *sarama.ConsumerMessage {
-	block := &ab.Block{
-		Messages: []*ab.BroadcastMessage{
-			&ab.BroadcastMessage{
-				Data: []byte(strconv.FormatInt(offset, 10)),
-			},
-		},
-		Number: uint64(offset),
+	blockData := &ab.BlockData{
+		Data: [][]byte{[]byte(strconv.FormatInt(offset, 10))},
 	}
-	_, data := hashBlock(block)
+	block := &ab.Block{
+		Header: &ab.BlockHeader{
+			Number: uint64(offset),
+		},
+		Data: blockData,
+	}
+
+	data, err := proto.Marshal(block)
+	if err != nil {
+		panic("Error marshaling block")
+	}
 
 	return &sarama.ConsumerMessage{
 		Value: sarama.ByteEncoder(data),

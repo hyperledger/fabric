@@ -171,7 +171,7 @@ func testClientDeliverAckFunc(label string, seek, window uint64, threshold, expe
 			case msg := <-mds.outgoing:
 				count++
 				if count == threshold {
-					mds.incoming <- testNewAckMessage(msg.GetBlock().Number)
+					mds.incoming <- testNewAckMessage(msg.GetBlock().Header.Number)
 				}
 				if count > expected {
 					t.Fatalf("Delivered %d blocks to the client w/o ACK, expected %d", count, expected)

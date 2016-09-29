@@ -23,6 +23,8 @@ import (
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // Broadcaster allows the caller to submit messages to the orderer
@@ -37,7 +39,7 @@ type broadcasterImpl struct {
 	once     sync.Once
 
 	batchChan  chan *ab.BroadcastMessage
-	messages   []*ab.BroadcastMessage
+	messages   [][]byte
 	nextNumber uint64
 	prevHash   []byte
 }
@@ -47,7 +49,7 @@ func newBroadcaster(conf *config.TopLevel) Broadcaster {
 		producer:   newProducer(conf),
 		config:     conf,
 		batchChan:  make(chan *ab.BroadcastMessage, conf.General.BatchSize),
-		messages:   []*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte("genesis")}},
+		messages:   [][]byte{[]byte("genesis")},
 		nextNumber: 0,
 	}
 }
@@ -75,19 +77,30 @@ func (b *broadcasterImpl) Close() error {
 }
 
 func (b *broadcasterImpl) sendBlock() error {
-	block := &ab.Block{
-		Messages: b.messages,
-		Number:   b.nextNumber,
-		PrevHash: b.prevHash,
+	data := &ab.BlockData{
+		Data: b.messages,
 	}
-	logger.Debugf("Prepared block %d with %d messages (%+v)", block.Number, len(block.Messages), block)
+	block := &ab.Block{
+		Header: &ab.BlockHeader{
+			Number:       b.nextNumber,
+			PreviousHash: b.prevHash,
+			DataHash:     data.Hash(),
+		},
+		Data: data,
+	}
+	logger.Debugf("Prepared block %d with %d messages (%+v)", block.Header.Number, len(block.Data.Data), block)
 
-	b.messages = []*ab.BroadcastMessage{}
+	b.messages = [][]byte{}
 	b.nextNumber++
-	hash, data := hashBlock(block)
-	b.prevHash = hash
+	b.prevHash = block.Header.Hash()
 
-	return b.producer.Send(data)
+	blockBytes, err := proto.Marshal(block)
+
+	if err != nil {
+		logger.Fatalf("Error marshaling block: %s", err)
+	}
+
+	return b.producer.Send(blockBytes)
 }
 
 func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint) {
@@ -96,7 +109,7 @@ func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint) {
 	for {
 		select {
 		case msg := <-b.batchChan:
-			b.messages = append(b.messages, msg)
+			b.messages = append(b.messages, msg.Data)
 			if len(b.messages) >= int(maxSize) {
 				if !timer.Stop() {
 					<-timer.C

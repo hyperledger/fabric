@@ -109,7 +109,7 @@ func TestNewestSeek(t *testing.T) {
 			t.Fatalf("Received an error on the reply channel")
 		}
 
-		if blockReply.GetBlock().Number != uint64(ledgerSize-1) {
+		if blockReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
 			t.Fatalf("Expected only the most recent block")
 		}
 	case <-time.After(time.Second):
@@ -137,7 +137,7 @@ func TestSpecificSeek(t *testing.T) {
 			t.Fatalf("Received an error on the reply channel")
 		}
 
-		if blockReply.GetBlock().Number != uint64(ledgerSize-1) {
+		if blockReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
 			t.Fatalf("Expected only to get block 4")
 		}
 	case <-time.After(time.Second):

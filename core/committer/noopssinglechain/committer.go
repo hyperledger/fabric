@@ -133,10 +133,10 @@ func (r *deliverClient) readUntilClose() {
 			fmt.Println("Got error ", t)
 		case *ab.DeliverResponse_Block:
 			txs := []*pb.Transaction2{}
-			for _, d := range t.Block.Messages {
-				if d != nil && d.Data != nil {
+			for _, d := range t.Block.Data.Data {
+				if d != nil {
 					tx := &pb.Transaction2{}
-					if err = proto.Unmarshal(d.Data, tx); err != nil {
+					if err = proto.Unmarshal(d, tx); err != nil {
 						fmt.Printf("Error getting tx(%s)...dropping block\n", err)
 						continue
 					}
@@ -152,7 +152,7 @@ func (r *deliverClient) readUntilClose() {
 			r.unAcknowledged++
 			if r.unAcknowledged >= r.windowSize/2 {
 				fmt.Println("Sending acknowledgement")
-				err = r.client.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Acknowledgement{Acknowledgement: &ab.Acknowledgement{Number: t.Block.Number}}})
+				err = r.client.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Acknowledgement{Acknowledgement: &ab.Acknowledgement{Number: t.Block.Header.Number}}})
 				if err != nil {
 					return
 				}

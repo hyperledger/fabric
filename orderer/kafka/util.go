@@ -17,13 +17,8 @@ limitations under the License.
 package kafka
 
 import (
-	"fmt"
-
 	"github.com/Shopify/sarama"
-	"github.com/golang/protobuf/proto"
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
-	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -31,17 +26,6 @@ const (
 	seekOutOfRangeError   = "Seek out of range"
 	windowOutOfRangeError = "Window out of range"
 )
-
-func hashBlock(block *ab.Block) (hash, data []byte) {
-	data, err := proto.Marshal(block)
-	if err != nil {
-		panic(fmt.Errorf("Failed to marshal block: %v", err))
-	}
-
-	hash = make([]byte, 64)
-	sha3.ShakeSum256(hash, data)
-	return
-}
 
 func newBrokerConfig(conf *config.TopLevel) *sarama.Config {
 	brokerConfig := sarama.NewConfig()

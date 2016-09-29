@@ -62,7 +62,7 @@ func New(maxSize int, genesis *ab.Block) rawledger.ReadWriter {
 
 // Height returns the highest block number in the chain, plus one
 func (rl *ramLedger) Height() uint64 {
-	return rl.newest.block.Number + 1
+	return rl.newest.block.Header.Number + 1
 }
 
 // Iterator implements the rawledger.Reader definition
@@ -72,7 +72,7 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 	case ab.SeekInfo_OLDEST:
 		oldest := rl.oldest
 		list = &simpleList{
-			block:  &ab.Block{Number: oldest.block.Number - 1},
+			block:  &ab.Block{Header: &ab.BlockHeader{Number: oldest.block.Header.Number - 1}},
 			next:   oldest,
 			signal: make(chan struct{}),
 		}
@@ -80,20 +80,20 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 	case ab.SeekInfo_NEWEST:
 		newest := rl.newest
 		list = &simpleList{
-			block:  &ab.Block{Number: newest.block.Number - 1},
+			block:  &ab.Block{Header: &ab.BlockHeader{Number: newest.block.Header.Number - 1}},
 			next:   newest,
 			signal: make(chan struct{}),
 		}
 		close(list.signal)
 	case ab.SeekInfo_SPECIFIED:
 		oldest := rl.oldest
-		if specified < oldest.block.Number || specified > rl.newest.block.Number+1 {
+		if specified < oldest.block.Header.Number || specified > rl.newest.block.Header.Number+1 {
 			return &rawledger.NotFoundErrorIterator{}, 0
 		}
 
-		if specified == oldest.block.Number {
+		if specified == oldest.block.Header.Number {
 			list = &simpleList{
-				block:  &ab.Block{Number: oldest.block.Number - 1},
+				block:  &ab.Block{Header: &ab.BlockHeader{Number: oldest.block.Header.Number - 1}},
 				next:   oldest,
 				signal: make(chan struct{}),
 			}
@@ -103,13 +103,13 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 
 		list = oldest
 		for {
-			if list.block.Number == specified-1 {
+			if list.block.Header.Number == specified-1 {
 				break
 			}
 			list = list.next // No need for nil check, because of range check above
 		}
 	}
-	return &cursor{list: list}, list.block.Number + 1
+	return &cursor{list: list}, list.block.Header.Number + 1
 }
 
 // Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
@@ -132,11 +132,24 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 
 // Append creates a new block and appends it to the ledger
 func (rl *ramLedger) Append(messages []*ab.BroadcastMessage, proof []byte) *ab.Block {
+	data := &ab.BlockData{
+		Data: make([][]byte, len(messages)),
+	}
+
+	for i := range messages {
+		data.Data[i] = messages[i].Data
+	}
+
 	block := &ab.Block{
-		Number:   rl.newest.block.Number + 1,
-		PrevHash: rl.newest.block.Hash(),
-		Messages: messages,
-		Proof:    proof,
+		Header: &ab.BlockHeader{
+			Number:       rl.newest.block.Header.Number + 1,
+			PreviousHash: rl.newest.block.Header.Hash(),
+			DataHash:     data.Hash(),
+		},
+		Data: data,
+		Metadata: &ab.BlockMetadata{
+			Metadata: [][]byte{proof},
+		},
 	}
 	rl.appendBlock(block)
 	return block
@@ -149,7 +162,7 @@ func (rl *ramLedger) appendBlock(block *ab.Block) {
 	}
 
 	lastSignal := rl.newest.signal
-	logger.Debugf("Sending signal that block %d has a successor", rl.newest.block.Number)
+	logger.Debugf("Sending signal that block %d has a successor", rl.newest.block.Header.Number)
 	rl.newest = rl.newest.next
 	close(lastSignal)
 

@@ -87,12 +87,17 @@ func (b *bootstrapper) GenesisBlock() (*ab.Block, error) {
 		},
 	})
 
+	data := &ab.BlockData{
+		Data: [][]byte{initialConfigTX},
+	}
+
 	return &ab.Block{
-		Number:   0,
-		PrevHash: []byte("GENESIS"),
-		Messages: []*ab.BroadcastMessage{
-			&ab.BroadcastMessage{Data: initialConfigTX},
+		Header: &ab.BlockHeader{
+			Number:       0,
+			PreviousHash: []byte("GENESIS"),
+			DataHash:     data.Hash(),
 		},
+		Data: data,
 	}, nil
 
 }
