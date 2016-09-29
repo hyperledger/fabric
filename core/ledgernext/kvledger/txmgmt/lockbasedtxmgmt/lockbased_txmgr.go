@@ -106,17 +106,33 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *protos.Block2) (*protos.B
 		if err != nil {
 			return nil, nil, err
 		}
-		txRWSet := &txmgmt.TxReadWriteSet{}
 		numEndorsements := len(tx.EndorsedActions)
 		if numEndorsements == 0 {
 			return nil, nil, fmt.Errorf("Tx contains no EndorsedActions")
 		}
+
+		// Eventually we'll want to support multiple EndorsedActions in a tran, see FAB-445
+		// But for now, we'll return an error if there are multiple EndorsedActions
 		if numEndorsements > 1 {
 			return nil, nil, fmt.Errorf("Tx contains more than one [%d] EndorsedActions", numEndorsements)
 		}
-		if err = txRWSet.Unmarshal(tx.EndorsedActions[0].ActionBytes); err != nil {
+
+		// Get the actionBytes from the EndorsedAction
+		// and then Unmarshal it into an Action using protobuf unmarshalling
+		action := &protos.Action{}
+		actionBytes := tx.EndorsedActions[0].ActionBytes
+		err = proto.Unmarshal(actionBytes, action)
+		if err != nil {
 			return nil, nil, err
 		}
+
+		// Get the SimulationResult from the Action
+		// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
+		txRWSet := &txmgmt.TxReadWriteSet{}
+		if err = txRWSet.Unmarshal(action.SimulationResult); err != nil {
+			return nil, nil, err
+		}
+
 		logger.Debugf("validating txRWSet:[%s]", txRWSet)
 		if valid, err = txmgr.validateTx(txRWSet); err != nil {
 			return nil, nil, err
