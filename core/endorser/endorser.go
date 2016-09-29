@@ -17,11 +17,15 @@ limitations under the License.
 package endorser
 
 import (
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/chaincode"
+	ledger "github.com/hyperledger/fabric/core/ledgernext"
+	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
@@ -64,16 +68,102 @@ func (*Endorser) checkEsccAndVscc(prop *pb.Proposal) error {
 	return nil
 }
 
+func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
+	lgr := kvledger.GetLedger(ledgername)
+	return lgr.NewTxSimulator()
+}
+
+//getChaincodeDeploymentSpec returns a ChaincodeDeploymentSpec given args
+func (e *Endorser) getChaincodeDeploymentSpec(code []byte) (*pb.ChaincodeDeploymentSpec, error) {
+	cds := &pb.ChaincodeDeploymentSpec{}
+
+	err := proto.Unmarshal(code, cds)
+	if err != nil {
+		return nil, err
+	}
+
+	return cds, nil
+}
+
+//deploy the chaincode after call to the system chaincode is successful
+func (e *Endorser) deploy(ctxt context.Context, chainname string, cds *pb.ChaincodeDeploymentSpec) error {
+	//TODO : this needs to be converted to another data structure to be handled
+	//       by the chaincode framework (which currently handles "Transaction")
+	t, err := pb.NewChaincodeDeployTransaction(cds, cds.ChaincodeSpec.ChaincodeID.Name)
+	if err != nil {
+		return err
+	}
+
+	//TODO - create chaincode support for chainname, for now use DefaultChain
+	chaincodeSupport := chaincode.GetChain(chaincode.ChainName(chainname))
+
+	_, err = chaincodeSupport.Deploy(ctxt, t)
+	if err != nil {
+		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
+	}
+
+	//launch and wait for ready
+	_, _, err = chaincodeSupport.Launch(ctxt, t)
+	if err != nil {
+		return fmt.Errorf("%s", err)
+	}
+
+	//stop now that we are done
+	chaincodeSupport.Stop(ctxt, cds)
+
+	return nil
+}
+
 //call specified chaincode (system or user)
-func (*Endorser) callChaincode(cis *pb.ChaincodeInvocationSpec) ([]byte, error) {
+func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocationSpec) ([]byte, []byte, error) {
+	var txsim ledger.TxSimulator
+	var err error
+	var b []byte
+
 	//TODO - get chainname from cis when defined
 	chainName := string(chaincode.DefaultChain)
-	b, err := chaincode.ExecuteChaincode(pb.Transaction_CHAINCODE_INVOKE, chainName, cis.ChaincodeSpec.ChaincodeID.Name, cis.ChaincodeSpec.CtorMsg.Args)
-	return b, err
+
+	if txsim, err = e.getTxSimulator(chainName); err != nil {
+		return nil, nil, err
+	}
+	ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
+	b, err = chaincode.ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, chainName, cis.ChaincodeSpec.ChaincodeID.Name, cis.ChaincodeSpec.CtorMsg.Args)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	//----- BEGIN -  SECTION THAT MAY NEED TO BE DONE IN LCCC ------
+	//if this a call to deploy a chaincode, We need a mechanism
+	//to pass TxSimulator into LCCC. Till that is worked out this
+	//special code does the actual deploy, upgrade here so as to collect
+	//all state under one TxSimulator
+	//
+	//NOTE that if there's an error all simulation, including the chaincode
+	//table changes in lccc will be thrown away
+	if cis.ChaincodeSpec.ChaincodeID.Name == "lccc" && len(cis.ChaincodeSpec.CtorMsg.Args) == 3 && string(cis.ChaincodeSpec.CtorMsg.Args[0]) == "deploy" {
+		var cds *pb.ChaincodeDeploymentSpec
+		cds, err = e.getChaincodeDeploymentSpec(cis.ChaincodeSpec.CtorMsg.Args[2])
+		if err != nil {
+			return nil, nil, err
+		}
+		err = e.deploy(ctxt, chainName, cds)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	//----- END -------
+
+	var txSimulationResults []byte
+	if txSimulationResults, err = txsim.GetTxSimulationResults(); err != nil {
+		return nil, nil, err
+	}
+
+	return txSimulationResults, b, err
 }
 
 //simulate the proposal by calling the chaincode
-func (e *Endorser) simulateProposal(prop *pb.Proposal) ([]byte, []byte, error) {
+func (e *Endorser) simulateProposal(ctx context.Context, prop *pb.Proposal) ([]byte, []byte, error) {
 	//we do expect the payload to be a ChaincodeInvocationSpec
 	//if we are supporting other payloads in future, this be glaringly point
 	//as something that should change
@@ -91,17 +181,15 @@ func (e *Endorser) simulateProposal(prop *pb.Proposal) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	//---3. execute the proposal
+	//---3. execute the proposal and get simulation results
+	var simResult []byte
 	var resp []byte
-	resp, err = e.callChaincode(cis)
+	simResult, resp, err = e.callChaincode(ctx, cis)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	//---4. get simulation results
-
-	simulationResult := []byte("TODO: sim results")
-	return resp, simulationResult, nil
+	return resp, simResult, nil
 }
 
 //endorse the proposal by calling the ESCC
@@ -127,7 +215,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, prop *pb.Proposal) (*pb.
 	//1 -- simulate
 	//TODO what do we do with response ? We need it for Invoke responses for sure
 	//Which field in PayloadResponse will carry return value ?
-	_, simulationResult, err := e.simulateProposal(prop)
+	_, simulationResult, err := e.simulateProposal(ctx, prop)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
 	}

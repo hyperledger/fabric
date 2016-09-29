@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/db"
+	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
 	"github.com/hyperledger/fabric/core/system_chaincode"
 	"github.com/hyperledger/fabric/core/system_chaincode/api"
 	u "github.com/hyperledger/fabric/core/util"
@@ -57,11 +58,17 @@ func initPeer() (net.Listener, error) {
 	}
 	grpcServer := grpc.NewServer(opts...)
 
+	viper.Set("peer.fileSystemPath", filepath.Join(os.TempDir(), "hyperledger", "production"))
+
 	peerAddress := viper.GetString("peer.address")
 	lis, err := net.Listen("tcp", peerAddress)
 	if err != nil {
 		return nil, fmt.Errorf("Error starting peer listener %s", err)
 	}
+
+	//initialize ledger
+	lpath := viper.GetString("peer.fileSystemPath")
+	kvledger.Initialize(lpath)
 
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
 		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
@@ -237,9 +244,9 @@ func TestRedeploy(t *testing.T) {
 		return
 	}
 
-	//second time should fail
+	//second time should not fail as we are just simulating
 	_, err = deploy(endorserServer, spec, nil)
-	if err == nil {
+	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
 		chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})

@@ -48,6 +48,9 @@ const (
 	chaincodeStartupTimeoutDefault int    = 5000
 	chaincodeInstallPathDefault    string = "/opt/gopath/bin/"
 	peerAddressDefault             string = "0.0.0.0:7051"
+
+	//TXSimulatorKey is used to attach ledger simulation context
+	TXSimulatorKey string = "txsimulatorkey"
 )
 
 // chains is a map between different blockchains and their ChaincodeSupport.
@@ -257,7 +260,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 
 	var notfy chan *pb.ChaincodeMessage
 	var err error
-	if notfy, err = chrte.handler.initOrReady(txid, initArgs, tx, depTx); err != nil {
+	if notfy, err = chrte.handler.initOrReady(context, txid, initArgs, tx, depTx); err != nil {
 		return fmt.Errorf("Error sending %s: %s", pb.ChaincodeMessage_INIT, err)
 	}
 	if notfy != nil {
@@ -648,7 +651,7 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincod
 
 	var notfy chan *pb.ChaincodeMessage
 	var err error
-	if notfy, err = chrte.handler.sendExecuteMessage(msg, tx); err != nil {
+	if notfy, err = chrte.handler.sendExecuteMessage(ctxt, msg, tx); err != nil {
 		return nil, fmt.Errorf("Error sending %s: %s", msg.Type.String(), err)
 	}
 	var ccresp *pb.ChaincodeMessage

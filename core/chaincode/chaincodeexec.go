@@ -21,7 +21,6 @@ import (
 
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -40,24 +39,15 @@ func createTx(typ pb.Transaction_Type, ccname string, args [][]byte) (*pb.Transa
 }
 
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments
-func ExecuteChaincode(typ pb.Transaction_Type, chainname string, ccname string, args [][]byte) ([]byte, error) {
+func ExecuteChaincode(ctxt context.Context, typ pb.Transaction_Type, chainname string, ccname string, args [][]byte) ([]byte, error) {
 	var tx *pb.Transaction
 	var err error
 	var b []byte
-	var lgr *ledger.Ledger
+
 	tx, err = createTx(typ, ccname, args)
-	lgr, err = ledger.GetLedger()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get handle to ledger: %s ", err)
-	}
-	//TODO - new ledger access will change this call to take a context
-	lgr.BeginTxBatch("1")
-	b, _, err = Execute(context.Background(), GetChain(ChainName(chainname)), tx)
+	b, _, err = Execute(ctxt, GetChain(ChainName(chainname)), tx)
 	if err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode: %s", err)
 	}
-	//TODO - new ledger access will change this call to take a context
-	lgr.CommitTxBatch("1", []*pb.Transaction{tx}, nil, nil)
-
 	return b, err
 }
