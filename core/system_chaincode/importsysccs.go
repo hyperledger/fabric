@@ -20,7 +20,9 @@ import (
 	"github.com/hyperledger/fabric/core/system_chaincode/api"
 	//import system chain codes here
 	"github.com/hyperledger/fabric/bddtests/syschaincode/noop"
+	"github.com/hyperledger/fabric/core/system_chaincode/escc"
 	"github.com/hyperledger/fabric/core/system_chaincode/lccc"
+	"github.com/hyperledger/fabric/core/system_chaincode/vscc"
 )
 
 //see systemchaincode_test.go for an example using "sample_syscc"
@@ -38,6 +40,20 @@ var systemChaincodes = []*api.SystemChaincode{
 		Path:      "github.com/hyperledger/fabric/core/system_chaincode/lccc",
 		InitArgs:  [][]byte{[]byte("")},
 		Chaincode: &lccc.LifeCycleSysCC{},
+	},
+	{
+		Enabled:   true,
+		Name:      "escc",
+		Path:      "github.com/hyperledger/fabric/core/system_chaincode/escc",
+		InitArgs:  [][]byte{[]byte("")},
+		Chaincode: &escc.EndorserOneValidSignature{},
+	},
+	{
+		Enabled:   true,
+		Name:      "vscc",
+		Path:      "github.com/hyperledger/fabric/core/system_chaincode/vscc",
+		InitArgs:  [][]byte{[]byte("")},
+		Chaincode: &vscc.ValidatorOneValidSignature{},
 	}}
 
 //RegisterSysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric
