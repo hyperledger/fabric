@@ -33,7 +33,19 @@ message GossipMessage {
 
         // Empty message, used for pinging
         Empty empty = 11;
+
+        ConnChallenge challenge = 12;
+        ConnResponse challengeResp = 13;
     }
+}
+
+message ConnChallenge {
+    uint64 nonce = 1;
+}
+
+message ConnResponse {
+    bytes pkiID = 1;
+    bytes challengeResponse = 2;
 }
 
 message DataRequest {
@@ -55,11 +67,16 @@ message DataDigest {
 }
 
 message DataMessage {
-    Payload payload = 1;
-}
+    enum Type {
+        UNDEFINED = 0;
+        BLOCK = 1;
+        VAL_REQ = 2;
+        VAL_RES = 3;
+        CERT = 4;
+    }
 
-message AckMessage {
-    uint64 nonce = 1;
+    Type type = 1;
+    Payload payload = 2;
 }
 
 message Payload {
@@ -68,6 +85,9 @@ message Payload {
     bytes   data  = 3;
 }
 
+message AckMessage {
+    uint64 nonce = 1;
+}
 
 // Membership
 
@@ -96,6 +116,7 @@ message Member {
     string id       = 1;
     string endpoint = 2;
     bytes  metadata = 3;
+    bytes pkiID     = 4;
 }
 
 message Empty {}

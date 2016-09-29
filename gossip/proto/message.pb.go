@@ -10,13 +10,15 @@ It is generated from these files:
 
 It has these top-level messages:
 	GossipMessage
+	ConnChallenge
+	ConnResponse
 	DataRequest
 	GossipHello
 	DataUpdate
 	DataDigest
 	DataMessage
-	AckMessage
 	Payload
+	AckMessage
 	AliveMessage
 	PeerTime
 	MembershipRequest
@@ -40,6 +42,35 @@ var _ = proto1.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+type DataMessage_Type int32
+
+const (
+	DataMessage_UNDEFINED DataMessage_Type = 0
+	DataMessage_BLOCK     DataMessage_Type = 1
+	DataMessage_VAL_REQ   DataMessage_Type = 2
+	DataMessage_VAL_RES   DataMessage_Type = 3
+	DataMessage_CERT      DataMessage_Type = 4
+)
+
+var DataMessage_Type_name = map[int32]string{
+	0: "UNDEFINED",
+	1: "BLOCK",
+	2: "VAL_REQ",
+	3: "VAL_RES",
+	4: "CERT",
+}
+var DataMessage_Type_value = map[string]int32{
+	"UNDEFINED": 0,
+	"BLOCK":     1,
+	"VAL_REQ":   2,
+	"VAL_RES":   3,
+	"CERT":      4,
+}
+
+func (x DataMessage_Type) String() string {
+	return proto1.EnumName(DataMessage_Type_name, int32(x))
+}
+
 type GossipMessage struct {
 	Nonce uint64 `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
 	// Types that are valid to be assigned to Content:
@@ -53,6 +84,8 @@ type GossipMessage struct {
 	//	*GossipMessage_DataUpdate
 	//	*GossipMessage_AckMsg
 	//	*GossipMessage_Empty
+	//	*GossipMessage_Challenge
+	//	*GossipMessage_ChallengeResp
 	Content isGossipMessage_Content `protobuf_oneof:"content"`
 }
 
@@ -94,17 +127,25 @@ type GossipMessage_AckMsg struct {
 type GossipMessage_Empty struct {
 	Empty *Empty `protobuf:"bytes,11,opt,name=empty,oneof"`
 }
+type GossipMessage_Challenge struct {
+	Challenge *ConnChallenge `protobuf:"bytes,12,opt,name=challenge,oneof"`
+}
+type GossipMessage_ChallengeResp struct {
+	ChallengeResp *ConnResponse `protobuf:"bytes,13,opt,name=challengeResp,oneof"`
+}
 
-func (*GossipMessage_AliveMsg) isGossipMessage_Content()   {}
-func (*GossipMessage_MemReq) isGossipMessage_Content()     {}
-func (*GossipMessage_MemRes) isGossipMessage_Content()     {}
-func (*GossipMessage_DataMsg) isGossipMessage_Content()    {}
-func (*GossipMessage_Hello) isGossipMessage_Content()      {}
-func (*GossipMessage_DataDig) isGossipMessage_Content()    {}
-func (*GossipMessage_DataReq) isGossipMessage_Content()    {}
-func (*GossipMessage_DataUpdate) isGossipMessage_Content() {}
-func (*GossipMessage_AckMsg) isGossipMessage_Content()     {}
-func (*GossipMessage_Empty) isGossipMessage_Content()      {}
+func (*GossipMessage_AliveMsg) isGossipMessage_Content()      {}
+func (*GossipMessage_MemReq) isGossipMessage_Content()        {}
+func (*GossipMessage_MemRes) isGossipMessage_Content()        {}
+func (*GossipMessage_DataMsg) isGossipMessage_Content()       {}
+func (*GossipMessage_Hello) isGossipMessage_Content()         {}
+func (*GossipMessage_DataDig) isGossipMessage_Content()       {}
+func (*GossipMessage_DataReq) isGossipMessage_Content()       {}
+func (*GossipMessage_DataUpdate) isGossipMessage_Content()    {}
+func (*GossipMessage_AckMsg) isGossipMessage_Content()        {}
+func (*GossipMessage_Empty) isGossipMessage_Content()         {}
+func (*GossipMessage_Challenge) isGossipMessage_Content()     {}
+func (*GossipMessage_ChallengeResp) isGossipMessage_Content() {}
 
 func (m *GossipMessage) GetContent() isGossipMessage_Content {
 	if m != nil {
@@ -183,6 +224,20 @@ func (m *GossipMessage) GetEmpty() *Empty {
 	return nil
 }
 
+func (m *GossipMessage) GetChallenge() *ConnChallenge {
+	if x, ok := m.GetContent().(*GossipMessage_Challenge); ok {
+		return x.Challenge
+	}
+	return nil
+}
+
+func (m *GossipMessage) GetChallengeResp() *ConnResponse {
+	if x, ok := m.GetContent().(*GossipMessage_ChallengeResp); ok {
+		return x.ChallengeResp
+	}
+	return nil
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*GossipMessage) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
 	return _GossipMessage_OneofMarshaler, _GossipMessage_OneofUnmarshaler, []interface{}{
@@ -196,6 +251,8 @@ func (*GossipMessage) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffe
 		(*GossipMessage_DataUpdate)(nil),
 		(*GossipMessage_AckMsg)(nil),
 		(*GossipMessage_Empty)(nil),
+		(*GossipMessage_Challenge)(nil),
+		(*GossipMessage_ChallengeResp)(nil),
 	}
 }
 
@@ -251,6 +308,16 @@ func _GossipMessage_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
 	case *GossipMessage_Empty:
 		b.EncodeVarint(11<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.Empty); err != nil {
+			return err
+		}
+	case *GossipMessage_Challenge:
+		b.EncodeVarint(12<<3 | proto1.WireBytes)
+		if err := b.EncodeMessage(x.Challenge); err != nil {
+			return err
+		}
+	case *GossipMessage_ChallengeResp:
+		b.EncodeVarint(13<<3 | proto1.WireBytes)
+		if err := b.EncodeMessage(x.ChallengeResp); err != nil {
 			return err
 		}
 	case nil:
@@ -343,10 +410,43 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_Empty{msg}
 		return true, err
+	case 12: // content.challenge
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		msg := new(ConnChallenge)
+		err := b.DecodeMessage(msg)
+		m.Content = &GossipMessage_Challenge{msg}
+		return true, err
+	case 13: // content.challengeResp
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		msg := new(ConnResponse)
+		err := b.DecodeMessage(msg)
+		m.Content = &GossipMessage_ChallengeResp{msg}
+		return true, err
 	default:
 		return false, nil
 	}
 }
+
+type ConnChallenge struct {
+	Nonce uint64 `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
+}
+
+func (m *ConnChallenge) Reset()         { *m = ConnChallenge{} }
+func (m *ConnChallenge) String() string { return proto1.CompactTextString(m) }
+func (*ConnChallenge) ProtoMessage()    {}
+
+type ConnResponse struct {
+	PkiID             []byte `protobuf:"bytes,1,opt,name=pkiID,proto3" json:"pkiID,omitempty"`
+	ChallengeResponse []byte `protobuf:"bytes,2,opt,name=challengeResponse,proto3" json:"challengeResponse,omitempty"`
+}
+
+func (m *ConnResponse) Reset()         { *m = ConnResponse{} }
+func (m *ConnResponse) String() string { return proto1.CompactTextString(m) }
+func (*ConnResponse) ProtoMessage()    {}
 
 type DataRequest struct {
 	Nonce  uint64   `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
@@ -390,7 +490,8 @@ func (m *DataDigest) String() string { return proto1.CompactTextString(m) }
 func (*DataDigest) ProtoMessage()    {}
 
 type DataMessage struct {
-	Payload *Payload `protobuf:"bytes,1,opt,name=payload" json:"payload,omitempty"`
+	Type    DataMessage_Type `protobuf:"varint,1,opt,name=type,enum=proto.DataMessage_Type" json:"type,omitempty"`
+	Payload *Payload         `protobuf:"bytes,2,opt,name=payload" json:"payload,omitempty"`
 }
 
 func (m *DataMessage) Reset()         { *m = DataMessage{} }
@@ -404,14 +505,6 @@ func (m *DataMessage) GetPayload() *Payload {
 	return nil
 }
 
-type AckMessage struct {
-	Nonce uint64 `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
-}
-
-func (m *AckMessage) Reset()         { *m = AckMessage{} }
-func (m *AckMessage) String() string { return proto1.CompactTextString(m) }
-func (*AckMessage) ProtoMessage()    {}
-
 type Payload struct {
 	SeqNum uint64 `protobuf:"varint,1,opt,name=seqNum" json:"seqNum,omitempty"`
 	Hash   string `protobuf:"bytes,2,opt,name=hash" json:"hash,omitempty"`
@@ -421,6 +514,14 @@ type Payload struct {
 func (m *Payload) Reset()         { *m = Payload{} }
 func (m *Payload) String() string { return proto1.CompactTextString(m) }
 func (*Payload) ProtoMessage()    {}
+
+type AckMessage struct {
+	Nonce uint64 `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
+}
+
+func (m *AckMessage) Reset()         { *m = AckMessage{} }
+func (m *AckMessage) String() string { return proto1.CompactTextString(m) }
+func (*AckMessage) ProtoMessage()    {}
 
 type AliveMessage struct {
 	Membership *Member   `protobuf:"bytes,1,opt,name=membership" json:"membership,omitempty"`
@@ -498,6 +599,7 @@ type Member struct {
 	Id       string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	Endpoint string `protobuf:"bytes,2,opt,name=endpoint" json:"endpoint,omitempty"`
 	Metadata []byte `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	PkiID    []byte `protobuf:"bytes,4,opt,name=pkiID,proto3" json:"pkiID,omitempty"`
 }
 
 func (m *Member) Reset()         { *m = Member{} }
@@ -510,6 +612,10 @@ type Empty struct {
 func (m *Empty) Reset()         { *m = Empty{} }
 func (m *Empty) String() string { return proto1.CompactTextString(m) }
 func (*Empty) ProtoMessage()    {}
+
+func init() {
+	proto1.RegisterEnum("proto.DataMessage_Type", DataMessage_Type_name, DataMessage_Type_value)
+}
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context

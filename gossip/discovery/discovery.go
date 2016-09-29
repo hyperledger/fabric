@@ -57,6 +57,7 @@ type NetworkMember struct {
 	Id       string
 	Endpoint string
 	Metadata []byte
+	PKIid	 []byte
 }
 
 type DiscoveryService interface {

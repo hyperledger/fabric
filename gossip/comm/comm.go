@@ -25,6 +25,9 @@ type CommModule interface {
 	// Send sends a message to endpoints
 	Send(msg *proto.GossipMessage, endpoints ...string)
 
+	// SetPKIid asserts that pkiId is the PKI_id of endpoint
+	SetPKIid(endpoint, pkiId []byte)
+
 	// Probe probes a remote node and returns nil if its responsive
 	Probe(endpoint string) error
 
@@ -40,6 +43,21 @@ type CommModule interface {
 
 	// Stop stops the module
 	Stop()
+}
+
+type SecurityProvider interface {
+
+	// isEnabled returns whether this
+	isEnabled() bool
+
+	// Sign signs msg with this peers signing key and outputs
+	// the signature if no error occurred.
+	Sign(msg []byte) ([]byte, error)
+
+	// Verify checks that signature if a valid signature of message under vkID's verification key.
+	// If the verification succeeded, Verify returns nil meaning no error occurred.
+	// If vkID is nil, then the signature is verified against this validator's verification key.
+	Verify(vkID, signature, message []byte) error
 }
 
 

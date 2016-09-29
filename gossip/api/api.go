@@ -16,14 +16,6 @@ limitations under the License.
 
 package api
 
-import (
-	"github.com/hyperledger/fabric/gossip/discovery"
-	"google.golang.org/grpc"
-)
-
-type GossipEmitterFactory interface {
-	NewGossipEmitter(id string, discSvc discovery.DiscoveryService) GossipService
-}
 
 // GossipService is used to publish new blocks to the gossip network
 type GossipService interface {
@@ -41,12 +33,6 @@ type Payload struct {
 	Data   []byte // The content of the message, possibly encrypted or signed
 	Hash   string // The message hash
 	SeqNum uint64 // The message sequence number
-}
-
-type GossipMemberFactory interface {
-	NewGossipMember(discovery.DiscoveryService, ReplicationProvider, MessageCryptoService, MessagePolicyVerifier, *grpc.Server) GossipMember
-
-	NewGossipMemberWithRPCServer(discovery.DiscoveryService, ReplicationProvider, MessageCryptoService, MessagePolicyVerifier, BindAddress) (GossipMember, error)
 }
 
 // GossipMember is used to obtain new blocks from the gossip network
@@ -73,21 +59,14 @@ type ReplicationProvider interface {
 type MessageCryptoService interface {
 	// Verify returns nil whether the message and its identifier are authentic,
 	// otherwise returns an error
-	Verify(seqNum uint64, sender string, payload Payload) error
+	VerifyBlock(seqNum uint64, pkiId []byte, payload Payload) error
 
-	// Sign signs the payload
-	Sign(sender string, Payload Payload) Payload
+	// Sign signs msg with this peer's signing key and outputs
+	// the signature if no error occurred.
+	Sign(msg []byte) ([]byte, error)
 
-	// SignBlob signs a blob
-	SignBlob([]byte) []byte
-
-	// VerifyBlob verifies a blob, returns error on failure
-	// and nil if the blob is correctly signed
-	VerifyBlob(sender string, blob []byte) error
-}
-
-// MessagePolicyVerifier verifies whether the message conforms to all required policies,
-// and can be safely delivered to the user.
-type MessagePolicyVerifier interface {
-	Verify(seqNum uint64, sender string, payload Payload) error
+	// Verify checks that signature is a valid signature of message under vkID's verification key.
+	// If the verification succeeded, Verify returns nil meaning no error occurred.
+	// If vkID is nil, then the signature is verified against this validator's verification key.
+	Verify(vkID, signature, message []byte) error
 }
