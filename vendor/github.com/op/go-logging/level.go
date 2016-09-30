@@ -66,6 +66,7 @@ type LeveledBackend interface {
 }
 
 type moduleLeveled struct {
+ 	sync.RWMutex
 	levels    map[string]Level
 	backend   Backend
 	formatter Formatter
@@ -88,6 +89,8 @@ func AddModuleLevel(backend Backend) LeveledBackend {
 
 // GetLevel returns the log level for the given module.
 func (l *moduleLeveled) GetLevel(module string) Level {
+	l.RLock()
+	defer l.RUnlock()
 	level, exists := l.levels[module]
 	if exists == false {
 		level, exists = l.levels[""]
@@ -101,6 +104,8 @@ func (l *moduleLeveled) GetLevel(module string) Level {
 
 // SetLevel sets the log level for the given module.
 func (l *moduleLeveled) SetLevel(level Level, module string) {
+	l.Lock()
+	defer l.Unlock()
 	l.levels[module] = level
 }
 
