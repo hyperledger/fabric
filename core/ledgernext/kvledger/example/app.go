@@ -111,9 +111,12 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 }
 
 func constructTransaction(simulationResults []byte) *protos.Transaction2 {
+	action := &protos.Action{ProposalHash: []byte{}, SimulationResult: simulationResults}
+	actionBytes, _ := proto.Marshal(action)
+
 	tx := &protos.Transaction2{}
 	tx.EndorsedActions = []*protos.EndorsedAction{
-		&protos.EndorsedAction{ActionBytes: simulationResults, Endorsements: []*protos.Endorsement{}, ProposalBytes: []byte{}}}
+		&protos.EndorsedAction{ActionBytes: actionBytes, Endorsements: []*protos.Endorsement{}, ProposalBytes: []byte{}}}
 	return tx
 }
 
