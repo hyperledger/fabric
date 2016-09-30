@@ -178,6 +178,12 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 			return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
 		}
 
+		if proposalResp != nil {
+			if err = sendTransaction(proposalResp); err != nil {
+				return fmt.Errorf("Error sending transaction %s: %s\n", chainFuncName, err)
+			}
+		}
+
 		logger.Infof("Invoke result: %v", proposalResp)
 	} else {
 		//for now let's continue to use Query with devops
@@ -258,4 +264,40 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	}
 
 	return nil
+}
+
+//sendTransactions converts a ProposalResponse and sends it as
+//a Transaction to the orderer
+func sendTransaction(presp *pb.ProposalResponse) error {
+	var orderer string
+	if viper.GetBool("peer.committer.enabled") {
+		orderer = viper.GetString("peer.committer.ledger.orderer")
+	}
+
+	if orderer == "" {
+		return nil
+	}
+
+	var err error
+	if presp != nil {
+		if presp.Response.Status != 200 {
+			return fmt.Errorf("Proposal response erred with status %d", presp.Response.Status)
+		}
+		//create a tx with ActionBytes and Endorsements and send it out
+		if presp.ActionBytes != nil {
+			var b []byte
+			tx := &pb.Transaction2{}
+			tx.EndorsedActions = []*pb.EndorsedAction{
+				&pb.EndorsedAction{ActionBytes: presp.ActionBytes, Endorsements: []*pb.Endorsement{presp.Endorsement}, ProposalBytes: []byte{}}}
+			b, err = proto.Marshal(tx)
+			if err != nil {
+				return err
+			}
+
+			if b != nil {
+				err = Send(orderer, b)
+			}
+		}
+	}
+	return err
 }

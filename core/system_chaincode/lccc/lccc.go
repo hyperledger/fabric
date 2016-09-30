@@ -51,6 +51,9 @@ const (
 
 	//GETCCINFO get chaincode
 	GETCCINFO = "getid"
+
+	//GETDEPSPEC get ChaincodeDeploymentSpec
+	GETDEPSPEC = "getdepspec"
 )
 
 //---------- the LCCC -----------------
@@ -333,7 +336,7 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		 *}
 		 **/
 
-	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name, cds.CodePackage)
+	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name, code)
 
 	return err
 }
@@ -383,7 +386,7 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 		err := lccc.executeDeploy(stub, chainname, code)
 
 		return nil, err
-	case GETCCINFO:
+	case GETCCINFO, GETDEPSPEC:
 		if len(args) != 3 {
 			return nil, InvalidArgsLenErr(len(args))
 		}
@@ -398,7 +401,10 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 			return nil, TXNotFoundErr(chain + "/" + ccname)
 		}
 
-		return []byte(ccrow.Columns[1].GetString_()), nil
+		if function == GETCCINFO {
+			return []byte(ccrow.Columns[1].GetString_()), nil
+		}
+		return ccrow.Columns[2].GetBytes(), nil
 	}
 
 	return nil, InvalidFunctionErr(function)

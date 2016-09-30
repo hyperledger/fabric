@@ -218,8 +218,9 @@ func TestRetryFailedDeploy(t *testing.T) {
 		t.FailNow()
 	}
 
-	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	//get the deploymentspec
+	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
+	if depspec, err := stub.MockInvoke("1", args); err != nil || depspec == nil {
 		t.FailNow()
 	}
 }

@@ -126,6 +126,9 @@ func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocati
 	if txsim, err = e.getTxSimulator(chainName); err != nil {
 		return nil, nil, err
 	}
+
+	defer txsim.Done()
+
 	ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
 	b, err = chaincode.ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, chainName, cis.ChaincodeSpec.ChaincodeID.Name, cis.ChaincodeSpec.CtorMsg.Args)
 
@@ -215,7 +218,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, prop *pb.Proposal) (*pb.
 	//1 -- simulate
 	//TODO what do we do with response ? We need it for Invoke responses for sure
 	//Which field in PayloadResponse will carry return value ?
-	_, simulationResult, err := e.simulateProposal(ctx, prop)
+	payload, simulationResult, err := e.simulateProposal(ctx, prop)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
 	}
@@ -237,7 +240,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, prop *pb.Proposal) (*pb.
 	}
 
 	//TODO when we have additional field in response, use "resp" bytes from the simulation
-	resp := &pb.Response2{Status: 200, Message: "Proposal accepted"}
+	resp := &pb.Response2{Status: 200, Message: "Proposal accepted", Payload: payload}
 
 	return &pb.ProposalResponse{Response: resp, ActionBytes: actionBytes, Endorsement: endorsement}, nil
 }
