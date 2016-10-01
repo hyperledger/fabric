@@ -242,8 +242,7 @@ POST host:port/chaincode
         "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
     "ctorMsg": {
-        "function":"init",
-        "args":["a", "1000", "b", "2000"]
+        "args":["init", "a", "1000", "b", "2000"]
     }
   },
   "id": 1
@@ -266,8 +265,7 @@ POST host:port/chaincode
         "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
     "ctorMsg": {
-        "function":"init",
-        "args":["a", "1000", "b", "2000"]
+        "args":["init", "a", "1000", "b", "2000"]
     },
     "secureContext": "lukas"
   },
@@ -304,8 +302,7 @@ Chaincode Invocation Request without security enabled:
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"invoke",
-         "args":["a", "b", "100"]
+         "args":["invoke", "a", "b", "100"]
       }
   },
   "id": 3
@@ -326,8 +323,7 @@ Chaincode Invocation Request with security enabled (add `secureContext` element)
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"invoke",
-         "args":["a", "b", "100"]
+         "args":["invoke", "a", "b", "100"]
       },
       "secureContext": "lukas"
   },
@@ -364,8 +360,7 @@ Chaincode Query Request without security enabled:
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"query",
-         "args":["a"]
+         "args":["query", "a"]
       }
   },
   "id": 5
@@ -386,8 +381,7 @@ Chaincode Query Request with security enabled (add `secureContext` element):
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"query",
-         "args":["a"]
+         "args":["query", "a"]
       },
       "secureContext": "lukas"
   },
