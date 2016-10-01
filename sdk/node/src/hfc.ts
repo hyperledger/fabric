@@ -567,8 +567,8 @@ export class Chain {
     /**
      * Set and connect to the peer to be used as the event source.
      */
-    eventHubConnect(peeraddr: string):void {
-	this.eventHub.setPeerAddr(peeraddr);
+    eventHubConnect(peerUrl: string, opts?:GRPCOptions):void {
+	this.eventHub.setPeerAddr(peerUrl, opts);
 	this.eventHub.connect();
     };
 
@@ -2861,7 +2861,9 @@ export class ChainCodeCBE {
  */
 export class EventHub {
         // peer addr to connect to
-        private peeraddr: string;
+        private ep: Endpoint;
+        // grpc options
+        private opts: GRPCOptions;
 	// grpc events interface
         private events: any;
 	// grpc event client interface
@@ -2880,12 +2882,14 @@ export class EventHub {
 	this.chaincodeRegistrants = new HashTable();
 	this.blockRegistrants = new Set();
 	this.txRegistrants = new HashTable();
-        this.peeraddr = null;
+        this.ep = null;
         this.connected = false;
     }
 
-    public setPeerAddr(peeraddr: string) {
-        this.peeraddr = peeraddr;
+    public setPeerAddr(peeraddr: string, opts?:GRPCOptions) {
+        let pem = getPemFromOpts(opts);
+        this.opts = getOptsFromOpts(opts);
+        this.ep = new Endpoint(peeraddr,pem);
     }
 
     public isconnected() {
@@ -2894,9 +2898,9 @@ export class EventHub {
 
     public connect() {
         if (this.connected) return;
-	if (!this.peeraddr) throw Error("Must set peer address before connecting.");
+	if (!this.ep) throw Error("Must set peer address before connecting.");
         this.events = grpc.load(__dirname + "/protos/events.proto" ).protos;
-	this.client = new this.events.Events(this.peeraddr,grpc.credentials.createInsecure());
+	this.client = new this.events.Events(this.ep.addr, this.ep.creds, this.opts);
 	this.call = this.client.chat();
         this.connected = true;
         this.registerBlockEvent(this.txCallback);
