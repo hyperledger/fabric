@@ -451,15 +451,9 @@
             "type": "object",
             "properties": {
                 "type": {
-                    "type": "string",
-                    "default": "GOLANG",
-                    "example": "GOLANG",
-                    "enum":[
-                        "UNDEFINED",
-                        "GOLANG",
-                        "NODE",
-                        "JAVA"
-                    ],
+                    "type": "integer",
+                    "default": 1,
+                    "example": 1,
                     "description": "Chaincode specification language."
                 },
                 "chaincodeID": {
