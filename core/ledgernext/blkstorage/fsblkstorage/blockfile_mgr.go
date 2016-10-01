@@ -44,7 +44,7 @@ type blockfileMgr struct {
 	conf              *Conf
 	db                *db.DB
 	defaultCF         *gorocksdb.ColumnFamilyHandle
-	index             *blockIndex
+	index             index
 	cpInfo            *checkpointInfo
 	currentFileWriter *blockfileWriter
 	bcInfo            atomic.Value
@@ -79,9 +79,11 @@ func newBlockfileMgr(conf *Conf) *blockfileMgr {
 		panic(fmt.Sprintf("Could not truncate current file to known size in db: %s", err))
 	}
 
-	mgr.index = newBlockIndex(db)
+	mgr.index = newBlockIndex(db, db.GetCFHandle(blockIndexCF))
 	mgr.cpInfo = cpInfo
 	mgr.currentFileWriter = currentFileWriter
+	mgr.syncIndex()
+
 	// init BlockchainInfo
 	bcInfo := &protos.BlockchainInfo{
 		Height:            0,
@@ -130,7 +132,8 @@ func updateCPInfo(conf *Conf, cpInfo *checkpointInfo) {
 		// check point info is in sync with the file on disk
 		return
 	}
-	endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(filePath, int64(cpInfo.latestFileChunksize))
+	endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(
+		rootDir, cpInfo.latestFileChunkSuffixNum, int64(cpInfo.latestFileChunksize))
 	if err != nil {
 		panic(fmt.Sprintf("Could not open current file for detecting last block in the file: %s", err))
 	}
@@ -217,8 +220,70 @@ func (mgr *blockfileMgr) addBlock(block *protos.Block2) error {
 	}
 	blockFLP := &fileLocPointer{fileSuffixNum: mgr.cpInfo.latestFileChunkSuffixNum}
 	blockFLP.offset = currentOffset
-	mgr.index.indexBlock(mgr.cpInfo.lastBlockNumber, blockHash, blockFLP, blockBytesLen, len(blockBytesEncodedLen), txOffsets)
+	// shift the txoffset because we prepend length of bytes before block bytes
+	for i := 0; i < len(txOffsets); i++ {
+		txOffsets[i] += len(blockBytesEncodedLen)
+	}
+	mgr.index.indexBlock(&blockIdxInfo{
+		blockNum: mgr.cpInfo.lastBlockNumber, blockHash: blockHash,
+		flp: blockFLP, txOffsets: txOffsets})
 	mgr.updateBlockchainInfo(blockHash, block)
+	return nil
+}
+
+func (mgr *blockfileMgr) syncIndex() error {
+	var lastBlockIndexed uint64
+	var err error
+	if lastBlockIndexed, err = mgr.index.getLastBlockIndexed(); err != nil {
+		return err
+	}
+	startFileNum := 0
+	startOffset := 0
+	blockNum := uint64(1)
+	endFileNum := mgr.cpInfo.latestFileChunkSuffixNum
+	if lastBlockIndexed != 0 {
+		var flp *fileLocPointer
+		if flp, err = mgr.index.getBlockLocByBlockNum(lastBlockIndexed); err != nil {
+			return err
+		}
+		startFileNum = flp.fileSuffixNum
+		startOffset = flp.locPointer.offset
+		blockNum = lastBlockIndexed
+	}
+
+	var stream *blockStream
+	if stream, err = newBlockStream(mgr.rootDir, startFileNum, int64(startOffset), endFileNum); err != nil {
+		return err
+	}
+	var blockBytes []byte
+	var blockPlacementInfo *blockPlacementInfo
+
+	for {
+		if blockBytes, blockPlacementInfo, err = stream.nextBlockBytesAndPlacementInfo(); err != nil {
+			return err
+		}
+		if blockBytes == nil {
+			break
+		}
+		serBlock2 := protos.NewSerBlock2(blockBytes)
+		var txOffsets []int
+		if txOffsets, err = serBlock2.GetTxOffsets(); err != nil {
+			return err
+		}
+		for i := 0; i < len(txOffsets); i++ {
+			txOffsets[i] += int(blockPlacementInfo.blockBytesOffset)
+		}
+		blockIdxInfo := &blockIdxInfo{}
+		blockIdxInfo.blockHash = serBlock2.ComputeHash()
+		blockIdxInfo.blockNum = blockNum
+		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
+			locPointer: locPointer{offset: int(blockPlacementInfo.blockStartOffset)}}
+		blockIdxInfo.txOffsets = txOffsets
+		if err = mgr.index.indexBlock(blockIdxInfo); err != nil {
+			return err
+		}
+		blockNum++
+	}
 	return nil
 }
 
@@ -320,8 +385,7 @@ func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*protos.Transacti
 }
 
 func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {
-	filePath := deriveBlockfilePath(mgr.rootDir, lp.fileSuffixNum)
-	stream, err := newBlockfileStream(filePath, int64(lp.offset))
+	stream, err := newBlockfileStream(mgr.rootDir, lp.fileSuffixNum, int64(lp.offset))
 	if err != nil {
 		return nil, err
 	}
@@ -378,10 +442,9 @@ func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, flush bool) error {
 	return nil
 }
 
-func scanForLastCompleteBlock(filePath string, startingOffset int64) (int64, int, error) {
-	logger.Debugf("scanForLastCompleteBlock(): filePath=[%s], startingOffset=[%d]", filePath, startingOffset)
+func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64) (int64, int, error) {
 	numBlocks := 0
-	blockStream, err := newBlockfileStream(filePath, startingOffset)
+	blockStream, err := newBlockfileStream(rootDir, fileNum, startingOffset)
 	if err != nil {
 		return 0, 0, err
 	}

@@ -34,6 +34,7 @@ var ErrUnexpectedEndOfBlockfile = errors.New("unexpected end of blockfile")
 // blockfileStream reads blocks sequentially from a single file.
 // It starts from the given offset and can traverse till the end of the file
 type blockfileStream struct {
+	fileNum       int
 	file          *os.File
 	reader        *bufio.Reader
 	currentOffset int64
@@ -49,10 +50,19 @@ type blockStream struct {
 	currentFileStream *blockfileStream
 }
 
+// blockPlacementInfo captures the information related
+// to block's placement in the file.
+type blockPlacementInfo struct {
+	fileNum          int
+	blockStartOffset int64
+	blockBytesOffset int64
+}
+
 ///////////////////////////////////
 // blockfileStream functions
 ////////////////////////////////////
-func newBlockfileStream(filePath string, startOffset int64) (*blockfileStream, error) {
+func newBlockfileStream(rootDir string, fileNum int, startOffset int64) (*blockfileStream, error) {
+	filePath := deriveBlockfilePath(rootDir, fileNum)
 	logger.Debugf("newBlockfileStream(): filePath=[%s], startOffset=[%d]", filePath, startOffset)
 	var file *os.File
 	var err error
@@ -68,41 +78,50 @@ func newBlockfileStream(filePath string, startOffset int64) (*blockfileStream, e
 		panic(fmt.Sprintf("Could not seek file [%s] to given startOffset [%d]. New position = [%d]",
 			filePath, startOffset, newPosition))
 	}
-	s := &blockfileStream{file, bufio.NewReader(file), startOffset}
+	s := &blockfileStream{fileNum, file, bufio.NewReader(file), startOffset}
 	return s, nil
 }
 
 func (s *blockfileStream) nextBlockBytes() ([]byte, error) {
+	blockBytes, _, err := s.nextBlockBytesAndPlacementInfo()
+	return blockBytes, err
+}
+
+func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacementInfo, error) {
 	var lenBytes []byte
 	var err error
 	if lenBytes, err = s.reader.Peek(8); err != nil {
 		// reader.Peek raises io.EOF error if enough bytes not available
 		if err == io.EOF {
 			if len(lenBytes) > 0 {
-				return nil, ErrUnexpectedEndOfBlockfile
+				return nil, nil, ErrUnexpectedEndOfBlockfile
 			}
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	len, n := proto.DecodeVarint(lenBytes)
 	if n == 0 {
 		panic(fmt.Errorf("Error in decoding varint bytes"))
 	}
 	if _, err = s.reader.Discard(n); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	blockBytes := make([]byte, len)
 	if _, err = io.ReadAtLeast(s.reader, blockBytes, int(len)); err != nil {
 		// io.ReadAtLeast raises io.ErrUnexpectedEOF error if it is able to
 		// read a fewer (non-zero) bytes and io.EOF is encountered
 		if err == io.ErrUnexpectedEOF {
-			return nil, ErrUnexpectedEndOfBlockfile
+			return nil, nil, ErrUnexpectedEndOfBlockfile
 		}
-		return nil, err
+		return nil, nil, err
 	}
+	blockPlacementInfo := &blockPlacementInfo{
+		fileNum:          s.fileNum,
+		blockStartOffset: s.currentOffset,
+		blockBytesOffset: s.currentOffset + int64(n)}
 	s.currentOffset += int64(n) + int64(len)
-	return blockBytes, nil
+	return blockBytes, blockPlacementInfo, nil
 }
 
 func (s *blockfileStream) close() error {
@@ -113,8 +132,7 @@ func (s *blockfileStream) close() error {
 // blockStream functions
 ////////////////////////////////////
 func newBlockStream(rootDir string, startFileNum int, startOffset int64, endFileNum int) (*blockStream, error) {
-	startFile := deriveBlockfilePath(rootDir, startFileNum)
-	startFileStream, err := newBlockfileStream(startFile, startOffset)
+	startFileStream, err := newBlockfileStream(rootDir, startFileNum, startOffset)
 	if err != nil {
 		return nil, err
 	}
@@ -127,30 +145,35 @@ func (s *blockStream) moveToNextBlockfileStream() error {
 		return err
 	}
 	s.currentFileNum++
-	nextFile := deriveBlockfilePath(s.rootDir, s.currentFileNum)
-	if s.currentFileStream, err = newBlockfileStream(nextFile, 0); err != nil {
+	if s.currentFileStream, err = newBlockfileStream(s.rootDir, s.currentFileNum, 0); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (s *blockStream) nextBlockBytes() ([]byte, error) {
+	blockBytes, _, err := s.nextBlockBytesAndPlacementInfo()
+	return blockBytes, err
+}
+
+func (s *blockStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacementInfo, error) {
 	var blockBytes []byte
+	var blockPlacementInfo *blockPlacementInfo
 	var err error
-	if blockBytes, err = s.currentFileStream.nextBlockBytes(); err != nil {
+	if blockBytes, blockPlacementInfo, err = s.currentFileStream.nextBlockBytesAndPlacementInfo(); err != nil {
 		logger.Debugf("current file [%d]", s.currentFileNum)
 		logger.Debugf("blockbytes [%d]. Err:%s", len(blockBytes), err)
-		return nil, err
+		return nil, nil, err
 	}
 	logger.Debugf("blockbytes [%d] read from file [%d]", len(blockBytes), s.currentFileNum)
 	if blockBytes == nil && s.currentFileNum < s.endFileNum {
 		logger.Debugf("current file [%d] exhausted. Moving to next file", s.currentFileNum)
 		if err = s.moveToNextBlockfileStream(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return s.nextBlockBytes()
+		return s.nextBlockBytesAndPlacementInfo()
 	}
-	return blockBytes, nil
+	return blockBytes, blockPlacementInfo, nil
 }
 
 func (s *blockStream) close() error {

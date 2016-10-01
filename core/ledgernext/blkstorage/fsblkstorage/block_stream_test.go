@@ -39,7 +39,7 @@ func testBlockfileStream(t *testing.T, numBlocks int) {
 	w.addBlocks(blocks)
 	w.close()
 
-	s, err := newBlockfileStream(deriveBlockfilePath(blockfileMgr.rootDir, 0), 0)
+	s, err := newBlockfileStream(blockfileMgr.rootDir, 0, 0)
 	defer s.close()
 	testutil.AssertNoError(t, err, "Error in constructing blockfile stream")
 
@@ -80,7 +80,7 @@ func testBlockFileStreamUnexpectedEOF(t *testing.T, numBlocks int, partialBlockB
 	w.addBlocks(blocks)
 	blockfileMgr.currentFileWriter.append(partialBlockBytes, true)
 	w.close()
-	s, err := newBlockfileStream(deriveBlockfilePath(blockfileMgr.rootDir, 0), 0)
+	s, err := newBlockfileStream(blockfileMgr.rootDir, 0, 0)
 	defer s.close()
 	testutil.AssertNoError(t, err, "Error in constructing blockfile stream")
 
