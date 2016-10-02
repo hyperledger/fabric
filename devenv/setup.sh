@@ -40,19 +40,6 @@ DEVENV_REVISION=`(cd /hyperledger/devenv; git rev-parse --short HEAD)`
 SCRIPT_DIR="$(readlink -f "$(dirname "$0")")"
 cat "$SCRIPT_DIR/failure-motd.in" >> /etc/motd
 
-# Update system
-apt-get update -qq
-
-# Prep apt-get for docker install
-apt-get install -y apt-transport-https ca-certificates
-apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
-
-# Add docker repository
-echo deb https://apt.dockerproject.org/repo ubuntu-trusty main > /etc/apt/sources.list.d/docker.list
-
-# Update system
-apt-get update -qq
-
 # Storage backend logic
 case "${DOCKER_STORAGE_BACKEND}" in
   aufs|AUFS|"")
@@ -72,9 +59,6 @@ case "${DOCKER_STORAGE_BACKEND}" in
      exit 1;;
 esac
 
-# Install docker
-apt-get install -y linux-image-extra-$(uname -r) apparmor docker-engine
-
 # Configure docker
 DOCKER_OPTS="-s=${DOCKER_STORAGE_BACKEND_STRING} -r=true --api-cors-header='*' -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock ${DOCKER_OPTS}"
 sed -i.bak '/^DOCKER_OPTS=/{h;s|=.*|=\"'"${DOCKER_OPTS}"'\"|};${x;/^$/{s||DOCKER_OPTS=\"'"${DOCKER_OPTS}"'\"|;H};x}' /etc/default/docker
@@ -85,9 +69,6 @@ usermod -a -G docker vagrant # Add vagrant user to the docker group
 # Test docker
 docker run --rm busybox echo All good
 
-# Run our common setup
-/hyperledger/scripts/provision/host.sh
-
 # Set Go environment variables needed by other scripts
 export GOPATH="/opt/gopath"
 export GOROOT="/opt/go/"
@@ -97,9 +78,12 @@ PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 sudo mkdir -p /var/hyperledger
 sudo chown -R vagrant:vagrant /var/hyperledger
 
-# Build the actual hyperledger peer (must be done before chown below)
+# clean any previous builds as they may have image/.dummy files without
+# the backing docker images (since we are, by definition, rebuilding the
+# filesystem) and then ensure we have a fresh set of our go-tools.
+# NOTE: This must be done before the chown below
 cd $GOPATH/src/github.com/hyperledger/fabric
-make clean peer gotools
+make clean gotools
 
 # Ensure permissions are set for GOPATH
 sudo chown -R vagrant:vagrant $GOPATH

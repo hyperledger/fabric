@@ -513,6 +513,20 @@ parms txDelay [durationToMs [parms txDelay]]
 parms peerDelay [durationToMs [parms peerDelay]]
 parms netDelay [durationToMs [parms netDelay]]
 
+# We can collect run-time statistics if 1) We are running locally on Linux,
+# and 2) if the driver was started from a busywork 'network' file.
+
+if {[parms remote] ||
+    ![null [parms explicitPeers]] ||
+    [catch {exec uname} os] ||
+    ($os ne "Linux")} {
+    errorExit "'[parms remote]' '[null [parms explicitPeers]]' '$os'"
+    parms collectStats 0
+} else {
+    parms collectStats 1
+}
+
+
 ############################################################################
 # Setup
 ############################################################################
@@ -904,6 +918,15 @@ proc clientRoutine {i_logger} {
 }
 
 
+# Get peer stats before the client fork
+
+if {[parms collectStats]} {
+    foreach peer [parms network.peer.ids] pid [parms network.peer.pids] {
+        procPIDStat $pid ::parms stat.before.$peer.
+    }
+}
+
+
 # Fork clients. The parent continues the script once all clients have exited;
 # clients run their driver routine and exit.
 
@@ -946,14 +969,15 @@ if {$p_pprofClient} {
 # event of errors until the final agreement check.
 
 note {} "Waiting (indefinitely) for subprocesses to complete"
-set t [time {set errors [waitPIDs $pids]} 1]
+set startMs [clock milliseconds]
+set errors [waitPIDs $pids]
+set issueSec [expr ([clock milliseconds] - $startMs) / 1000.0]
 
 if {!$errors} {
-    set seconds [expr {[lindex $t 0] / 1e6}]
-    set rate [format %.2f [expr {[parms totalTransactions] / $seconds}]]
+    set rate [format %.2f [expr {[parms totalTransactions] / $issueSec}]]
     note {} \
-        "Transaction rate : $rate per second " \
-        "([parms totalTransactions] / $seconds)"
+        "Issue + interlock TX rate : $rate per second " \
+        "([parms totalTransactions] / $issueSec)"
 }
 
 if {$p_pprofClient} {
@@ -961,6 +985,33 @@ if {$p_pprofClient} {
         warn {} \
             "The pprofClient process (PID [parms pprofClientPID]) is " \
             " still running. The profile may be distorted by inactivity."
+    }
+}
+
+# Print peer stats
+
+if {[parms collectStats]} {
+    if {[catch {exec getconf CLK_TCK} CLK_TCK]} {
+        error {} "Can't getconf CLK_TCK: $CLK_TCK"
+    } else {
+        set CLK_TCK $CLK_TCK.0; # Poor man's float()
+        note {} "Peer statistics (excluding initialization and deployment)"
+        note {} "    Peer: CPU (sec) = User + System: Utilization: Threads"
+        note {} "    -----------------------------------------------------"
+        foreach peer [parms network.peer.ids] pid [parms network.peer.pids] {
+            procPIDStat $pid ::parms stat.after.$peer.
+            set user \
+                [expr {([parms stat.after.$peer.utime] - \
+                            [parms stat.before.$peer.utime]) / $CLK_TCK}]
+            set sys \
+                [expr {([parms stat.after.$peer.stime] - \
+                            [parms stat.before.$peer.stime]) / $CLK_TCK}]
+            set cpu [expr {$user + $sys}]
+            set util [expr {$cpu * 100.0 / $issueSec}]
+            set threads [parms stat.after.$peer.num_threads]
+            note {} [format "%8s %8.2f %8.2f %8.2f %8.0f%% %10d" \
+                         $peer $cpu $user $sys $util $threads]
+        }
     }
 }
 
@@ -987,6 +1038,13 @@ if {[parms interlock] && ![parms noops]} {
         set heights [removeDuplicates $originalHeights]
         if {[llength $heights] != 1} {
             note {} "    Observed block heights: $originalHeights"
+        } else {
+            note {} "    Consensus block height: $heights"
+            set finalSec [expr ([clock milliseconds] - $::startMs) / 1000.0]
+            set rate [format %.2f [expr {[parms totalTransactions] / $finalSec}]]
+            note {} \
+                "Fully committed TX rate : $rate per second " \
+                "([parms totalTransactions] / $finalSec)"
         }
         return [expr {[llength $heights] == 1}]
     }

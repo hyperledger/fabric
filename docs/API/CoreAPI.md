@@ -7,9 +7,9 @@ This document covers the available APIs for interacting with a peer node. Three 
 1. [CLI](#cli)
 2. [REST API](#rest-api)
 3. [Node.js Application](#nodejs-application)
-   * [Using Swagger JS Plugin](#using-swagger-js-plugin)
-   * [Marbles Demo Application](#marbles-demo-application)
-   * [Commercial Paper Demo Application](#commercial-paper-demo-application)
+    * [Using Swagger JS Plugin](#using-swagger-js-plugin)
+    * [Marbles Demo Application](#marbles-demo-application)
+    * [Commercial Paper Demo Application](#commercial-paper-demo-application)
 
 **Note:** If you are working with APIs with security enabled, please review the [security setup instructions](https://github.com/hyperledger/fabric/blob/master/docs/Setup/Chaincode-setup.md#security-setup-optional) before proceeding.
 
@@ -68,13 +68,28 @@ Command | **stdout** result in the event of success
 
 Deploy creates the docker image for the chaincode and subsequently deploys the package to the validating peer. An example is below.
 
-`peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'`
+```
+peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+```
+Or:
+
+```
+peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args": ["init", "a","100", "b", "200"]}'
+```
 
 The response to the chaincode deploy command will contain the chaincode identifier (hash) which will be required on subsequent `chaincode invoke` and `chaincode query` commands in order to identify the deployed chaincode.
 
 With security enabled, modify the command to include the -u parameter passing the username of a logged in user as follows:
 
-`peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'`
+```
+peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+```
+
+Or:
+
+```
+peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args": ["init", "a","100", "b", "200"]}'
+```
 
 **Note:** If your GOPATH environment variable contains more than one element, the chaincode must be found in the first one or deployment will fail.
 
@@ -157,19 +172,19 @@ You can work with the REST API through any tool of your choice. For example, the
 To learn about the REST API through Swagger, please take a look at the Swagger document [here](https://github.com/hyperledger/fabric/blob/master/core/rest/rest_api.json). You can upload the service description file to the Swagger service directly or, if you prefer, you can set up Swagger locally by following the instructions [here](#to-set-up-swagger-ui).
 
 * [Block](#block)
-  * GET /chain/blocks/{Block}
+    * GET /chain/blocks/{Block}
 * [Blockchain](#blockchain)
-  * GET /chain
+    * GET /chain
 * [Chaincode](#chaincode)
     * POST /chaincode
 * [Network](#network)
-  * GET /network/peers
+    * GET /network/peers
 * [Registrar](#registrar)
-  * POST /registrar
-  * DELETE /registrar/{enrollmentID}
-  * GET /registrar/{enrollmentID}
-  * GET /registrar/{enrollmentID}/ecert
-  * GET /registrar/{enrollmentID}/tcert
+    * POST /registrar
+    * DELETE /registrar/{enrollmentID}
+    * GET /registrar/{enrollmentID}
+    * GET /registrar/{enrollmentID}/ecert
+    * GET /registrar/{enrollmentID}/tcert
 * [Transactions](#transactions)
     * GET /transactions/{UUID}
 
@@ -227,8 +242,7 @@ POST host:port/chaincode
         "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
     "ctorMsg": {
-        "function":"init",
-        "args":["a", "1000", "b", "2000"]
+        "args":["init", "a", "1000", "b", "2000"]
     }
   },
   "id": 1
@@ -251,8 +265,7 @@ POST host:port/chaincode
         "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
     "ctorMsg": {
-        "function":"init",
-        "args":["a", "1000", "b", "2000"]
+        "args":["init", "a", "1000", "b", "2000"]
     },
     "secureContext": "lukas"
   },
@@ -289,8 +302,7 @@ Chaincode Invocation Request without security enabled:
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"invoke",
-         "args":["a", "b", "100"]
+         "args":["invoke", "a", "b", "100"]
       }
   },
   "id": 3
@@ -311,8 +323,7 @@ Chaincode Invocation Request with security enabled (add `secureContext` element)
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"invoke",
-         "args":["a", "b", "100"]
+         "args":["invoke", "a", "b", "100"]
       },
       "secureContext": "lukas"
   },
@@ -349,8 +360,7 @@ Chaincode Query Request without security enabled:
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"query",
-         "args":["a"]
+         "args":["query", "a"]
       }
   },
   "id": 5
@@ -371,8 +381,7 @@ Chaincode Query Request with security enabled (add `secureContext` element):
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"query",
-         "args":["a"]
+         "args":["query", "a"]
       },
       "secureContext": "lukas"
   },

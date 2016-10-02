@@ -50,9 +50,7 @@ service Devops {
 
     // Execute a transaction with a specific binding
     rpc EXP_ExecuteWithBinding(ExecuteWithBinding) returns (Response) {}
-
 }
-
 
 // Secret is a temporary object to establish security with the Devops.
 // A better solution using certificate will be introduced later
@@ -69,7 +67,7 @@ message SigmaInput {
 
 message ExecuteWithBinding {
     ChaincodeInvocationSpec chaincodeInvocationSpec = 1;
-    bytes binding = 2;    
+    bytes binding = 2;
 }
 
 message SigmaOutput {
@@ -77,7 +75,6 @@ message SigmaOutput {
     bytes sigma = 2;
     bytes asn1Encoding = 3;
 }
-
 
 message BuildResult {
 
