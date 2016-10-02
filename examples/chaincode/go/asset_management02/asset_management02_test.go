@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto"
+	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/membersrvc/ca"
@@ -524,6 +525,9 @@ func setup() {
 	}
 
 	removeFolders()
+
+	// Start db
+	db.Start()
 }
 
 func initMembershipSrvc() {
