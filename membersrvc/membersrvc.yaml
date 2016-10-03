@@ -119,8 +119,8 @@ eca:
 # Uncomment this section to activate devnet setup as specficied in
 # devnet-setup.md
 #
-#               vp0: 4 vp0_secret
-#               vp1: 4 vp1_secret
+                vp0: 4 vp0_secret
+                vp1: 4 vp1_secret
 
                 test_user0: 1 MS9qrN8hFjlE bank_a
                 test_user1: 1 jGlNl6ImkuDo institution_a
