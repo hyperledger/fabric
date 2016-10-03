@@ -213,7 +213,11 @@ peer:
 
     # Path on the file system where peer will store data
     fileSystemPath: /var/hyperledger/production
-
+    # rocksdb configurations
+    db:
+        maxLogFileSize: 10485760
+        keepLogFileNum: 10
+        logLevel: "warn"
 
     profile:
         enabled:     false
