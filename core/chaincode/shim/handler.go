@@ -876,7 +876,7 @@ func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	}
 	chaincodeLogger.Debugf("[%s]Handling ChaincodeMessage of type: %s(state:%s)", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 	if handler.FSM.Cannot(msg.Type.String()) {
-		errStr := fmt.Sprintf("[%s]Chaincode handler FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type.String(), len(msg.Payload), handler.FSM.Current())
+		errStr := fmt.Sprintf("[%s]XXXXXXXXXXXXXXXXXX Chaincode handler FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type.String(), len(msg.Payload), handler.FSM.Current())
 		err := errors.New(errStr)
 		payload := []byte(err.Error())
 		errorMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
