@@ -166,7 +166,7 @@ func (s *blockStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacementI
 		return nil, nil, err
 	}
 	logger.Debugf("blockbytes [%d] read from file [%d]", len(blockBytes), s.currentFileNum)
-	if blockBytes == nil && s.currentFileNum < s.endFileNum {
+	if blockBytes == nil && (s.currentFileNum < s.endFileNum || s.endFileNum < 0) {
 		logger.Debugf("current file [%d] exhausted. Moving to next file", s.currentFileNum)
 		if err = s.moveToNextBlockfileStream(); err != nil {
 			return nil, nil, err

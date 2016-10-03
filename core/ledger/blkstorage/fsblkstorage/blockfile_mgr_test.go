@@ -103,14 +103,18 @@ func TestBlockfileMgrBlockIterator(t *testing.T) {
 
 func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
 	firstBlockNum int, lastBlockNum int, expectedBlocks []*protos.Block2) {
-	itr, err := blockfileMgr.retrieveBlocks(uint64(firstBlockNum), uint64(lastBlockNum))
+	itr, err := blockfileMgr.retrieveBlocks(uint64(firstBlockNum))
 	defer itr.Close()
 	testutil.AssertNoError(t, err, "Error while getting blocks iterator")
 	numBlocksItrated := 0
-	for ; itr.Next(); numBlocksItrated++ {
-		block, err := itr.Get()
+	for {
+		block, err := itr.Next()
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error while getting block number [%d] from iterator", numBlocksItrated))
 		testutil.AssertEquals(t, block.(*BlockHolder).GetBlock(), expectedBlocks[numBlocksItrated])
+		numBlocksItrated++
+		if numBlocksItrated == lastBlockNum-firstBlockNum+1 {
+			break
+		}
 	}
 	testutil.AssertEquals(t, numBlocksItrated, lastBlockNum-firstBlockNum+1)
 }

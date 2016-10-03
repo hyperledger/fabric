@@ -21,19 +21,28 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/protos"
 )
 
 type testEnv struct {
-	conf *Conf
+	conf        *Conf
+	indexConfig *blkstorage.IndexConfig
 }
 
 func newTestEnv(t testing.TB) *testEnv {
 	conf := NewConf("/tmp/tests/ledger/blkstorage/fsblkstorage", 0)
+	attrsToIndex := []blkstorage.IndexableAttr{
+		blkstorage.IndexableAttrBlockHash,
+		blkstorage.IndexableAttrBlockNum,
+		blkstorage.IndexableAttrTxID,
+	}
 	os.RemoveAll(conf.dbPath)
 	os.RemoveAll(conf.blockfilesDir)
-	return &testEnv{conf}
+	return &testEnv{
+		conf:        conf,
+		indexConfig: &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}}
 }
 
 func (env *testEnv) Cleanup() {
@@ -47,7 +56,7 @@ type testBlockfileMgrWrapper struct {
 }
 
 func newTestBlockfileWrapper(t testing.TB, env *testEnv) *testBlockfileMgrWrapper {
-	return &testBlockfileMgrWrapper{t, newBlockfileMgr(env.conf)}
+	return &testBlockfileMgrWrapper{t, newBlockfileMgr(env.conf, env.indexConfig)}
 }
 
 func (w *testBlockfileMgrWrapper) addBlocks(blocks []*protos.Block2) {
@@ -59,9 +68,8 @@ func (w *testBlockfileMgrWrapper) addBlocks(blocks []*protos.Block2) {
 
 func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*protos.Block2) {
 	for i, block := range blocks {
-		serBlock, err := protos.ConstructSerBlock2(block)
-		testutil.AssertNoError(w.t, err, "Error while getting hash from block")
-		b, err := w.blockfileMgr.retrieveBlockByHash(serBlock.ComputeHash())
+		hash := testutil.ComputeBlockHash(w.t, block)
+		b, err := w.blockfileMgr.retrieveBlockByHash(hash)
 		testutil.AssertNoError(w.t, err, fmt.Sprintf("Error while retrieving [%d]th block from blockfileMgr", i))
 		testutil.AssertEquals(w.t, b, block)
 	}

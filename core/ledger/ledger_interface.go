@@ -22,21 +22,14 @@ import (
 
 // Ledger captures the methods that are common across the 'raw ledger' and the 'final ledger'
 type Ledger interface {
-	// GetTransactionByID retrieves a transaction by id
-	GetTransactionByID(txID string) (*protos.Transaction2, error)
 	// GetBlockchainInfo returns basic info about blockchain
 	GetBlockchainInfo() (*protos.BlockchainInfo, error)
 	// GetBlockchainInfo returns block at a given height
 	GetBlockByNumber(blockNumber uint64) (*protos.Block2, error)
-	// GetBlocksByNumber returns all the blocks between given heights (both inclusive). ResultsIterator contains type BlockHolder
-	GetBlocksByNumber(startBlockNumber, endBlockNumber uint64) (ResultsIterator, error)
-	// GetBlockByHash returns a block given it's hash
-	GetBlockByHash(blockHash []byte) (*protos.Block2, error)
-	//VerifyChain will verify the integrity of the blockchain. This is accomplished
-	// by ensuring that the previous block hash stored in each block matches
-	// the actual hash of the previous block in the chain. The return value is the
-	// block number of lowest block in the range which can be verified as valid.
-	VerifyChain(startBlockNumber, endBlockNumber uint64) (uint64, error)
+	// GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
+	// The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
+	// ResultsIterator contains type BlockHolder
+	GetBlocksIterator(startBlockNumber uint64) (ResultsIterator, error)
 	//Prune prunes the blocks/transactions that satisfy the given policy
 	Prune(policy PrunePolicy) error
 	// Close closes the ledger
@@ -54,6 +47,10 @@ type RawLedger interface {
 // it provides the handle to objects for querying the state and executing transactions.
 type ValidatedLedger interface {
 	Ledger
+	// GetTransactionByID retrieves a transaction by id
+	GetTransactionByID(txID string) (*protos.Transaction2, error)
+	// GetBlockByHash returns a block given it's hash
+	GetBlockByHash(blockHash []byte) (*protos.Block2, error)
 	// NewTxSimulator gives handle to a transaction simulator.
 	// A client can obtain more than one 'TxSimulator's for parallel execution.
 	// Any snapshoting/synchronization should be performed at the implementation level if required
@@ -121,11 +118,9 @@ type TxSimulator interface {
 
 // ResultsIterator - an iterator for query result set
 type ResultsIterator interface {
-	// Next moves to next item in the result set. Returns true if next item exists.
-	//The first call to this method moves the cursor to the first item in the result set
-	Next() bool
-	// Get returns current result item
-	Get() (QueryResult, error)
+	// Next returns the next item in the result set. The `QueryResult` is expected to be nil when
+	// the iterator gets exhausted
+	Next() (QueryResult, error)
 	// Close releases resources occupied by the iterator
 	Close()
 }
@@ -139,7 +134,7 @@ type KV struct {
 	Value []byte
 }
 
-// BlockHolder holds block returned by the iterator in GetBlocksByNumber.
+// BlockHolder holds block returned by the iterator in GetBlocksIterator.
 // The sole purpose of this holder is to avoid desrialization if block is desired in raw bytes form (e.g., for transfer)
 type BlockHolder interface {
 	GetBlock() *protos.Block2

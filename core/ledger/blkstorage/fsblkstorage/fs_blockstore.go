@@ -18,6 +18,7 @@ package fsblkstorage
 
 import (
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/protos"
 )
 
@@ -27,8 +28,8 @@ type FsBlockStore struct {
 }
 
 // NewFsBlockStore constructs a `FsBlockStore`
-func NewFsBlockStore(conf *Conf) *FsBlockStore {
-	return &FsBlockStore{newBlockfileMgr(conf)}
+func NewFsBlockStore(conf *Conf, indexConfig *blkstorage.IndexConfig) *FsBlockStore {
+	return &FsBlockStore{newBlockfileMgr(conf, indexConfig)}
 }
 
 // AddBlock adds a new block
@@ -42,10 +43,10 @@ func (store *FsBlockStore) GetBlockchainInfo() (*protos.BlockchainInfo, error) {
 }
 
 // RetrieveBlocks returns an iterator that can be used for iterating over a range of blocks
-func (store *FsBlockStore) RetrieveBlocks(startNum uint64, endNum uint64) (ledger.ResultsIterator, error) {
+func (store *FsBlockStore) RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error) {
 	var itr *BlocksItr
 	var err error
-	if itr, err = store.fileMgr.retrieveBlocks(startNum, endNum); err != nil {
+	if itr, err = store.fileMgr.retrieveBlocks(startNum); err != nil {
 		return nil, err
 	}
 	return itr, nil

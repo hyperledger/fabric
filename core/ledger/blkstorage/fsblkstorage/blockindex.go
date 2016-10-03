@@ -17,10 +17,10 @@ limitations under the License.
 package fsblkstorage
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
 	"github.com/tecbot/gorocksdb"
@@ -50,16 +50,21 @@ type blockIdxInfo struct {
 	txOffsets []int
 }
 
-// ErrNotFoundInIndex is used to indicate missing entry in the index
-var ErrNotFoundInIndex = errors.New("Entry not found in index")
-
 type blockIndex struct {
-	db           *db.DB
-	blockIndexCF *gorocksdb.ColumnFamilyHandle
+	indexItemsMap map[blkstorage.IndexableAttr]bool
+	db            *db.DB
+	blockIndexCF  *gorocksdb.ColumnFamilyHandle
 }
 
-func newBlockIndex(db *db.DB, indexCFHandle *gorocksdb.ColumnFamilyHandle) *blockIndex {
-	return &blockIndex{db, indexCFHandle}
+func newBlockIndex(indexConfig *blkstorage.IndexConfig, db *db.DB,
+	indexCFHandle *gorocksdb.ColumnFamilyHandle) *blockIndex {
+	indexItems := indexConfig.AttrsToIndex
+	logger.Debugf("newBlockIndex() - indexItems:[%s]", indexItems)
+	indexItemsMap := make(map[blkstorage.IndexableAttr]bool)
+	for _, indexItem := range indexItems {
+		indexItemsMap[indexItem] = true
+	}
+	return &blockIndex{indexItemsMap, db, indexCFHandle}
 }
 
 func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
@@ -72,6 +77,11 @@ func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
 }
 
 func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
+	// do not index anyting
+	if len(index.indexItemsMap) == 0 {
+		logger.Debug("Not indexing block... as nothing to index")
+		return nil
+	}
 	logger.Debugf("Indexing block [%s]", blockIdxInfo)
 	flp := blockIdxInfo.flp
 	txOffsets := blockIdxInfo.txOffsets
@@ -81,19 +91,29 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	if err != nil {
 		return err
 	}
-	batch.PutCF(index.blockIndexCF, constructBlockHashKey(blockIdxInfo.blockHash), flpBytes)
-	batch.PutCF(index.blockIndexCF, constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
-	for i := 0; i < len(txOffsets)-1; i++ {
-		txID := constructTxID(blockIdxInfo.blockNum, i)
-		txBytesLength := txOffsets[i+1] - txOffsets[i]
-		txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, &locPointer{txOffsets[i], txBytesLength})
-		logger.Debugf("Adding txLoc [%s] for tx [%s] to index", txFlp, txID)
-		txFlpBytes, marshalErr := txFlp.marshal()
-		if marshalErr != nil {
-			return marshalErr
-		}
-		batch.PutCF(index.blockIndexCF, constructTxIDKey(txID), txFlpBytes)
+
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockHash]; ok {
+		batch.PutCF(index.blockIndexCF, constructBlockHashKey(blockIdxInfo.blockHash), flpBytes)
 	}
+
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNum]; ok {
+		batch.PutCF(index.blockIndexCF, constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
+	}
+
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; ok {
+		for i := 0; i < len(txOffsets)-1; i++ {
+			txID := constructTxID(blockIdxInfo.blockNum, i)
+			txBytesLength := txOffsets[i+1] - txOffsets[i]
+			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, &locPointer{txOffsets[i], txBytesLength})
+			logger.Debugf("Adding txLoc [%s] for tx [%s] to index", txFlp, txID)
+			txFlpBytes, marshalErr := txFlp.marshal()
+			if marshalErr != nil {
+				return marshalErr
+			}
+			batch.PutCF(index.blockIndexCF, constructTxIDKey(txID), txFlpBytes)
+		}
+	}
+
 	batch.PutCF(index.blockIndexCF, indexCheckpointKey, encodeBlockNum(blockIdxInfo.blockNum))
 	if err := index.db.WriteBatch(batch); err != nil {
 		return err
@@ -102,12 +122,15 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 }
 
 func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, error) {
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockHash]; !ok {
+		return nil, blkstorage.ErrAttrNotIndexed
+	}
 	b, err := index.db.Get(index.blockIndexCF, constructBlockHashKey(blockHash))
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
-		return nil, ErrNotFoundInIndex
+		return nil, blkstorage.ErrNotFoundInIndex
 	}
 	blkLoc := &fileLocPointer{}
 	blkLoc.unmarshal(b)
@@ -115,12 +138,15 @@ func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, e
 }
 
 func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error) {
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNum]; !ok {
+		return nil, blkstorage.ErrAttrNotIndexed
+	}
 	b, err := index.db.Get(index.blockIndexCF, constructBlockNumKey(blockNum))
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
-		return nil, ErrNotFoundInIndex
+		return nil, blkstorage.ErrNotFoundInIndex
 	}
 	blkLoc := &fileLocPointer{}
 	blkLoc.unmarshal(b)
@@ -128,12 +154,15 @@ func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer
 }
 
 func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; !ok {
+		return nil, blkstorage.ErrAttrNotIndexed
+	}
 	b, err := index.db.Get(index.blockIndexCF, constructTxIDKey(txID))
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
-		return nil, ErrNotFoundInIndex
+		return nil, blkstorage.ErrNotFoundInIndex
 	}
 	txFLP := &fileLocPointer{}
 	txFLP.unmarshal(b)

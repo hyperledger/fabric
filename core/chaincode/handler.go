@@ -716,15 +716,17 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 
 		handler.putRangeQueryIterator(txContext, iterID, rangeIter)
 
-		hasNext := rangeIter.Next()
-
 		var keysAndValues []*pb.RangeQueryStateKeyValue
 		var i = uint32(0)
-		for ; hasNext && i < maxRangeQueryStateLimit; i++ {
-			qresult, err := rangeIter.Get()
+		var qresult ledger.QueryResult
+		for ; i < maxRangeQueryStateLimit; i++ {
+			qresult, err := rangeIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
 				return
+			}
+			if qresult == nil {
+				break
 			}
 			//PDMP - let it panic if not KV
 			kv := qresult.(ledger.KV)
@@ -742,16 +744,14 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 			}
 			keyAndValue := pb.RangeQueryStateKeyValue{Key: kv.Key, Value: decryptedValue}
 			keysAndValues = append(keysAndValues, &keyAndValue)
-
-			hasNext = rangeIter.Next()
 		}
 
-		if !hasNext {
+		if qresult != nil {
 			rangeIter.Close()
 			handler.deleteRangeQueryIterator(txContext, iterID)
 		}
 
-		payload := &pb.RangeQueryStateResponse{KeysAndValues: keysAndValues, HasMore: hasNext, ID: iterID}
+		payload := &pb.RangeQueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, ID: iterID}
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
 			rangeIter.Close()
@@ -827,12 +827,17 @@ func (handler *Handler) handleRangeQueryStateNext(msg *pb.ChaincodeMessage) {
 
 		var keysAndValues []*pb.RangeQueryStateKeyValue
 		var i = uint32(0)
-		hasNext := true
-		for ; hasNext && i < maxRangeQueryStateLimit; i++ {
-			qresult, err := rangeIter.Get()
+
+		var qresult ledger.QueryResult
+		var err error
+		for ; i < maxRangeQueryStateLimit; i++ {
+			qresult, err = rangeIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
 				return
+			}
+			if qresult != nil {
+				break
 			}
 			//PDMP - let it panic if not KV
 			kv := qresult.(ledger.KV)
@@ -850,16 +855,14 @@ func (handler *Handler) handleRangeQueryStateNext(msg *pb.ChaincodeMessage) {
 			}
 			keyAndValue := pb.RangeQueryStateKeyValue{Key: kv.Key, Value: decryptedValue}
 			keysAndValues = append(keysAndValues, &keyAndValue)
-
-			hasNext = rangeIter.Next()
 		}
 
-		if !hasNext {
+		if qresult != nil {
 			rangeIter.Close()
 			handler.deleteRangeQueryIterator(txContext, rangeQueryStateNext.ID)
 		}
 
-		payload := &pb.RangeQueryStateResponse{KeysAndValues: keysAndValues, HasMore: hasNext, ID: rangeQueryStateNext.ID}
+		payload := &pb.RangeQueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, ID: rangeQueryStateNext.ID}
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
 			rangeIter.Close()

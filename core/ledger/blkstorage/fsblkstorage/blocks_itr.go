@@ -18,6 +18,7 @@ package fsblkstorage
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos"
@@ -45,36 +46,78 @@ func (bh *BlockHolder) GetBlockBytes() []byte {
 
 // BlocksItr - an iterator for iterating over a sequence of blocks
 type BlocksItr struct {
-	stream            *blockStream
-	nextBlockBytes    []byte
-	err               error
-	numTotalBlocks    int
-	numIteratedBlocks int
+	mgr                  *blockfileMgr
+	maxBlockNumAvailable uint64
+	blockNumToRetrieve   uint64
+	stream               *blockStream
+	closeMarker          bool
+	closeMarkerLock      *sync.Mutex
 }
 
-func newBlockItr(stream *blockStream, numTotalBlocks int) *BlocksItr {
-	return &BlocksItr{stream, nil, nil, numTotalBlocks, 0}
+func newBlockItr(mgr *blockfileMgr, startBlockNum uint64) *BlocksItr {
+	return &BlocksItr{mgr, mgr.cpInfo.lastBlockNumber, startBlockNum, nil, false, &sync.Mutex{}}
+}
+
+func (itr *BlocksItr) waitForBlock(blockNum uint64) uint64 {
+	itr.mgr.cpInfoCond.L.Lock()
+	defer itr.mgr.cpInfoCond.L.Unlock()
+	for itr.mgr.cpInfo.lastBlockNumber < blockNum && !itr.shouldClose() {
+		logger.Debugf("Going to wait for newer blocks. maxAvailaBlockNumber=[%d], waitForBlockNum=[%d]",
+			itr.mgr.cpInfo.lastBlockNumber, blockNum)
+		itr.mgr.cpInfoCond.Wait()
+		logger.Debugf("Came out of wait. maxAvailaBlockNumber=[%d]", itr.mgr.cpInfo.lastBlockNumber)
+	}
+	return itr.mgr.cpInfo.lastBlockNumber
+}
+
+func (itr *BlocksItr) initStream() error {
+	var lp *fileLocPointer
+	var err error
+	if lp, err = itr.mgr.index.getBlockLocByBlockNum(itr.blockNumToRetrieve); err != nil {
+		return err
+	}
+	if itr.stream, err = newBlockStream(itr.mgr.rootDir, lp.fileSuffixNum, int64(lp.offset), -1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (itr *BlocksItr) shouldClose() bool {
+	itr.closeMarkerLock.Lock()
+	defer itr.closeMarkerLock.Unlock()
+	return itr.closeMarker
 }
 
 // Next moves the cursor to next block and returns true iff the iterator is not exhausted
-func (itr *BlocksItr) Next() bool {
-	if itr.err != nil || itr.numIteratedBlocks == itr.numTotalBlocks {
-		return false
+func (itr *BlocksItr) Next() (ledger.QueryResult, error) {
+	if itr.maxBlockNumAvailable < itr.blockNumToRetrieve {
+		itr.maxBlockNumAvailable = itr.waitForBlock(itr.blockNumToRetrieve)
 	}
-	itr.nextBlockBytes, itr.err = itr.stream.nextBlockBytes()
-	itr.numIteratedBlocks++
-	return itr.nextBlockBytes != nil
-}
-
-// Get returns the block at current cursor
-func (itr *BlocksItr) Get() (ledger.QueryResult, error) {
-	if itr.err != nil {
-		return nil, itr.err
+	itr.closeMarkerLock.Lock()
+	defer itr.closeMarkerLock.Unlock()
+	if itr.closeMarker {
+		return nil, nil
 	}
-	return &BlockHolder{itr.nextBlockBytes}, nil
+	if itr.stream == nil {
+		if err := itr.initStream(); err != nil {
+			return nil, err
+		}
+	}
+	nextBlockBytes, err := itr.stream.nextBlockBytes()
+	if err != nil {
+		return nil, err
+	}
+	itr.blockNumToRetrieve++
+	return &BlockHolder{nextBlockBytes}, nil
 }
 
 // Close releases any resources held by the iterator
 func (itr *BlocksItr) Close() {
+	itr.closeMarkerLock.Lock()
+	defer itr.closeMarkerLock.Unlock()
+	itr.closeMarker = true
+	itr.mgr.cpInfoCond.L.Lock()
+	defer itr.mgr.cpInfoCond.L.Unlock()
+	itr.mgr.cpInfoCond.Broadcast()
 	itr.stream.close()
 }

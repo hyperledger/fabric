@@ -48,7 +48,7 @@ func Initialize(lpath string) {
 	}
 
 	//TODO - when we don't need 0.5 DB, we can remove this
-	lpath = lpath + "ledgernext/"
+	lpath = lpath + "ledger/"
 
 	lManager = &ledgerManager{ledgerPath: lpath, ledgers: make(map[string]*KVLedger)}
 }

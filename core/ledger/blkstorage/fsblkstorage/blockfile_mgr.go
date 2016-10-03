@@ -18,9 +18,11 @@ package fsblkstorage
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
 	"github.com/hyperledger/fabric/protos"
@@ -46,11 +48,12 @@ type blockfileMgr struct {
 	defaultCF         *gorocksdb.ColumnFamilyHandle
 	index             index
 	cpInfo            *checkpointInfo
+	cpInfoCond        *sync.Cond
 	currentFileWriter *blockfileWriter
 	bcInfo            atomic.Value
 }
 
-func newBlockfileMgr(conf *Conf) *blockfileMgr {
+func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfileMgr {
 	rootDir := conf.blockfilesDir
 	_, err := util.CreateDirIfMissing(rootDir)
 	if err != nil {
@@ -69,7 +72,7 @@ func newBlockfileMgr(conf *Conf) *blockfileMgr {
 			panic(fmt.Sprintf("Could not save next block file info to db: %s", err))
 		}
 	}
-	updateCPInfo(conf, cpInfo)
+	syncCPInfoFromFS(conf, cpInfo)
 	currentFileWriter, err := newBlockfileWriter(deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum))
 	if err != nil {
 		panic(fmt.Sprintf("Could not open writer to current file: %s", err))
@@ -79,9 +82,10 @@ func newBlockfileMgr(conf *Conf) *blockfileMgr {
 		panic(fmt.Sprintf("Could not truncate current file to known size in db: %s", err))
 	}
 
-	mgr.index = newBlockIndex(db, db.GetCFHandle(blockIndexCF))
+	mgr.index = newBlockIndex(indexConfig, db, db.GetCFHandle(blockIndexCF))
 	mgr.cpInfo = cpInfo
 	mgr.currentFileWriter = currentFileWriter
+	mgr.cpInfoCond = sync.NewCond(&sync.Mutex{})
 	mgr.syncIndex()
 
 	// init BlockchainInfo
@@ -119,7 +123,7 @@ func initDB(conf *Conf) *db.DB {
 	return dbInst
 }
 
-func updateCPInfo(conf *Conf, cpInfo *checkpointInfo) {
+func syncCPInfoFromFS(conf *Conf, cpInfo *checkpointInfo) {
 	logger.Debugf("Starting checkpoint=%s", cpInfo)
 	rootDir := conf.blockfilesDir
 	filePath := deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum)
@@ -156,23 +160,24 @@ func (mgr *blockfileMgr) close() {
 }
 
 func (mgr *blockfileMgr) moveToNextFile() {
-	nextFileInfo := &checkpointInfo{
+	cpInfo := &checkpointInfo{
 		latestFileChunkSuffixNum: mgr.cpInfo.latestFileChunkSuffixNum + 1,
-		latestFileChunksize:      0}
+		latestFileChunksize:      0,
+		lastBlockNumber:          mgr.cpInfo.lastBlockNumber}
 
 	nextFileWriter, err := newBlockfileWriter(
-		deriveBlockfilePath(mgr.rootDir, nextFileInfo.latestFileChunkSuffixNum))
+		deriveBlockfilePath(mgr.rootDir, cpInfo.latestFileChunkSuffixNum))
 
 	if err != nil {
 		panic(fmt.Sprintf("Could not open writer to next file: %s", err))
 	}
 	mgr.currentFileWriter.close()
-	err = mgr.saveCurrentInfo(nextFileInfo, true)
+	err = mgr.saveCurrentInfo(cpInfo, true)
 	if err != nil {
 		panic(fmt.Sprintf("Could not save next block file info to db: %s", err))
 	}
-	mgr.cpInfo = nextFileInfo
 	mgr.currentFileWriter = nextFileWriter
+	mgr.updateCheckpoint(cpInfo)
 }
 
 func (mgr *blockfileMgr) addBlock(block *protos.Block2) error {
@@ -207,26 +212,30 @@ func (mgr *blockfileMgr) addBlock(block *protos.Block2) error {
 		return fmt.Errorf("Error while appending block to file: %s", err)
 	}
 
-	mgr.cpInfo.latestFileChunksize += totalBytesToAppend
-	mgr.cpInfo.lastBlockNumber++
-	err = mgr.saveCurrentInfo(mgr.cpInfo, false)
-	if err != nil {
-		mgr.cpInfo.latestFileChunksize -= totalBytesToAppend
-		truncateErr := mgr.currentFileWriter.truncateFile(mgr.cpInfo.latestFileChunksize)
+	currentCPInfo := mgr.cpInfo
+	newCPInfo := &checkpointInfo{
+		latestFileChunkSuffixNum: currentCPInfo.latestFileChunkSuffixNum,
+		latestFileChunksize:      currentCPInfo.latestFileChunksize + totalBytesToAppend,
+		lastBlockNumber:          currentCPInfo.lastBlockNumber + 1}
+	if err = mgr.saveCurrentInfo(newCPInfo, false); err != nil {
+		truncateErr := mgr.currentFileWriter.truncateFile(currentCPInfo.latestFileChunksize)
 		if truncateErr != nil {
 			panic(fmt.Sprintf("Error in truncating current file to known size after an error in saving checkpoint info: %s", err))
 		}
 		return fmt.Errorf("Error while saving current file info to db: %s", err)
 	}
-	blockFLP := &fileLocPointer{fileSuffixNum: mgr.cpInfo.latestFileChunkSuffixNum}
+
+	blockFLP := &fileLocPointer{fileSuffixNum: newCPInfo.latestFileChunkSuffixNum}
 	blockFLP.offset = currentOffset
 	// shift the txoffset because we prepend length of bytes before block bytes
 	for i := 0; i < len(txOffsets); i++ {
 		txOffsets[i] += len(blockBytesEncodedLen)
 	}
 	mgr.index.indexBlock(&blockIdxInfo{
-		blockNum: mgr.cpInfo.lastBlockNumber, blockHash: blockHash,
+		blockNum: newCPInfo.lastBlockNumber, blockHash: blockHash,
 		flp: blockFLP, txOffsets: txOffsets})
+
+	mgr.updateCheckpoint(newCPInfo)
 	mgr.updateBlockchainInfo(blockHash, block)
 	return nil
 }
@@ -291,6 +300,14 @@ func (mgr *blockfileMgr) getBlockchainInfo() *protos.BlockchainInfo {
 	return mgr.bcInfo.Load().(*protos.BlockchainInfo)
 }
 
+func (mgr *blockfileMgr) updateCheckpoint(cpInfo *checkpointInfo) {
+	mgr.cpInfoCond.L.Lock()
+	defer mgr.cpInfoCond.L.Unlock()
+	mgr.cpInfo = cpInfo
+	logger.Debugf("Broadcasting about update checkpointInfo: %s", cpInfo)
+	mgr.cpInfoCond.Broadcast()
+}
+
 func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *protos.Block2) {
 	currentBCInfo := mgr.getBlockchainInfo()
 	newBCInfo := &protos.BlockchainInfo{
@@ -328,18 +345,8 @@ func (mgr *blockfileMgr) retrieveSerBlockByNumber(blockNum uint64) (*protos.SerB
 	return mgr.fetchSerBlock(loc)
 }
 
-func (mgr *blockfileMgr) retrieveBlocks(startNum uint64, endNum uint64) (*BlocksItr, error) {
-	var lp *fileLocPointer
-	var err error
-	if lp, err = mgr.index.getBlockLocByBlockNum(startNum); err != nil {
-		return nil, err
-	}
-	var stream *blockStream
-	if stream, err = newBlockStream(mgr.rootDir, lp.fileSuffixNum,
-		int64(lp.offset), mgr.cpInfo.latestFileChunkSuffixNum); err != nil {
-		return nil, err
-	}
-	return newBlockItr(stream, int(endNum-startNum)+1), nil
+func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*BlocksItr, error) {
+	return newBlockItr(mgr, startNum), nil
 }
 
 func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*protos.Transaction2, error) {

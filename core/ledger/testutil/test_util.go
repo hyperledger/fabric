@@ -149,7 +149,7 @@ func AssertContains(t testing.TB, slice interface{}, value interface{}) {
 		t.Fatalf("Type of argument 'slice' is expected to be a slice/array, found =[%s]\n %s", reflect.TypeOf(slice), getCallerInfo())
 	}
 
-	if !contains(slice, value) {
+	if !Contains(slice, value) {
 		t.Fatalf("Expected value [%s] not found in slice %s\n %s", value, slice, getCallerInfo())
 	}
 }
@@ -167,7 +167,7 @@ func AssertContainsAll(t testing.TB, sliceActual interface{}, sliceExpected inte
 	array := reflect.ValueOf(sliceExpected)
 	for i := 0; i < array.Len(); i++ {
 		element := array.Index(i).Interface()
-		if !contains(sliceActual, element) {
+		if !Contains(sliceActual, element) {
 			t.Fatalf("Expected value [%s] not found in slice %s\n %s", element, sliceActual, getCallerInfo())
 		}
 	}
@@ -212,7 +212,8 @@ func ConstructRandomBytes(t testing.TB, size int) []byte {
 	return value
 }
 
-func contains(slice interface{}, value interface{}) bool {
+// Contains returns true iff the `value` is present in the `slice`
+func Contains(slice interface{}, value interface{}) bool {
 	array := reflect.ValueOf(slice)
 	for i := 0; i < array.Len(); i++ {
 		element := array.Index(i).Interface()

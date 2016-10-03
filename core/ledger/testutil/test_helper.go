@@ -66,6 +66,13 @@ func ConstructTestTransaction(t *testing.T, simulationResults []byte) *protos.Tr
 	return tx
 }
 
+// ComputeBlockHash computes the crypto-hash of a block
+func ComputeBlockHash(t testing.TB, block *protos.Block2) []byte {
+	serBlock, err := protos.ConstructSerBlock2(block)
+	AssertNoError(t, err, "Error while getting hash from block")
+	return serBlock.ComputeHash()
+}
+
 func newBlock(txs []*protos.Transaction2) *protos.Block2 {
 	block := &protos.Block2{}
 	block.PreviousBlockHash = []byte{}

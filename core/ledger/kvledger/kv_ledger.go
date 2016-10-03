@@ -62,7 +62,14 @@ type KVLedger struct {
 
 // NewKVLedger constructs new `KVLedger`
 func NewKVLedger(conf *Conf) (*KVLedger, error) {
-	blockStore := fsblkstorage.NewFsBlockStore(fsblkstorage.NewConf(conf.blockStorageDir, conf.maxBlockfileSize))
+	attrsToIndex := []blkstorage.IndexableAttr{
+		blkstorage.IndexableAttrBlockHash,
+		blkstorage.IndexableAttrBlockNum,
+		blkstorage.IndexableAttrTxID,
+	}
+	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
+	blockStorageConf := fsblkstorage.NewConf(conf.blockStorageDir, conf.maxBlockfileSize)
+	blockStore := fsblkstorage.NewFsBlockStore(blockStorageConf, indexConfig)
 
 	if kvledgerconfig.IsCouchDBEnabled() == true {
 		//By default we can talk to CouchDB with empty id and pw (""), or you can add your own id and password to talk to a secured CouchDB
@@ -98,23 +105,17 @@ func (l *KVLedger) GetBlockByNumber(blockNumber uint64) (*protos.Block2, error) 
 
 }
 
-// GetBlocksByNumber returns all the blocks between given heights (both inclusive). ResultsIterator contains type BlockHolder
-func (l *KVLedger) GetBlocksByNumber(startBlockNumber, endBlockNumber uint64) (ledger.ResultsIterator, error) {
-	return l.blockStore.RetrieveBlocks(startBlockNumber, endBlockNumber)
+// GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
+// The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
+// ResultsIterator contains type BlockHolder
+func (l *KVLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIterator, error) {
+	return l.blockStore.RetrieveBlocks(startBlockNumber)
 
 }
 
 // GetBlockByHash returns a block given it's hash
 func (l *KVLedger) GetBlockByHash(blockHash []byte) (*protos.Block2, error) {
 	return l.blockStore.RetrieveBlockByHash(blockHash)
-}
-
-//VerifyChain will verify the integrity of the blockchain. This is accomplished
-// by ensuring that the previous block hash stored in each block matches
-// the actual hash of the previous block in the chain. The return value is the
-// block number of lowest block in the range which can be verified as valid.
-func (l *KVLedger) VerifyChain(startBlockNumber, endBlockNumber uint64) (uint64, error) {
-	return 0, errors.New("Not yet implemented")
 }
 
 //Prune prunes the blocks/transactions that satisfy the given policy

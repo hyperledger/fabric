@@ -20,7 +20,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/protos"
 )
 
 type noopIndex struct {
@@ -77,7 +80,7 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 	// The last set of blocks should not be present in the original index
 	for i := numBlocksToIndex + 1; i <= numBlocks; i++ {
 		_, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
-		testutil.AssertSame(t, err, ErrNotFoundInIndex)
+		testutil.AssertSame(t, err, blkstorage.ErrNotFoundInIndex)
 	}
 
 	// perform index sync
@@ -95,5 +98,55 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
 		testutil.AssertNoError(t, err, fmt.Sprintf("block [%d] should have been present in the index", i))
 		testutil.AssertEquals(t, block, blocks[i-1])
+	}
+}
+
+func TestBlockIndexSelectiveIndexing(t *testing.T) {
+	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockHash})
+	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum})
+	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxID})
+	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockHash, blkstorage.IndexableAttrBlockNum})
+}
+
+func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.IndexableAttr) {
+	env := newTestEnv(t)
+	env.indexConfig.AttrsToIndex = indexItems
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(t, env)
+	defer blkfileMgrWrapper.close()
+
+	blocks := testutil.ConstructTestBlocks(t, 3)
+	// add test blocks
+	blkfileMgrWrapper.addBlocks(blocks)
+	blockfileMgr := blkfileMgrWrapper.blockfileMgr
+
+	// if index has been configured for an indexItem then the item should be indexed else not
+	// test 'retrieveBlockByHash'
+	block, err := blockfileMgr.retrieveBlockByHash(testutil.ComputeBlockHash(t, blocks[0]))
+	if testutil.Contains(indexItems, blkstorage.IndexableAttrBlockHash) {
+		testutil.AssertNoError(t, err, "Error while retrieving block by hash")
+		testutil.AssertEquals(t, block, blocks[0])
+	} else {
+		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
+	}
+
+	// test 'retrieveBlockByNumber'
+	block, err = blockfileMgr.retrieveBlockByNumber(1)
+	if testutil.Contains(indexItems, blkstorage.IndexableAttrBlockNum) {
+		testutil.AssertNoError(t, err, "Error while retrieving block by number")
+		testutil.AssertEquals(t, block, blocks[0])
+	} else {
+		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
+	}
+
+	// test 'retrieveTransactionByID'
+	tx, err := blockfileMgr.retrieveTransactionByID(constructTxID(1, 0))
+	if testutil.Contains(indexItems, blkstorage.IndexableAttrTxID) {
+		testutil.AssertNoError(t, err, "Error while retrieving tx by id")
+		txOrig := &protos.Transaction2{}
+		proto.Unmarshal(blocks[0].Transactions[0], txOrig)
+		testutil.AssertEquals(t, tx, txOrig)
+	} else {
+		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
 	}
 }
