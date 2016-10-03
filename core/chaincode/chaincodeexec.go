@@ -38,6 +38,10 @@ func createTx(typ pb.Transaction_Type, ccname string, args [][]byte) (*pb.Transa
 	return tx, nil
 }
 
+func getCDSFromLCCC(ctxt context.Context, chainID string, chaincodeID string) ([]byte, error) {
+	return ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, string(DefaultChain), "lccc", [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+}
+
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments
 func ExecuteChaincode(ctxt context.Context, typ pb.Transaction_Type, chainname string, ccname string, args [][]byte) ([]byte, error) {
 	var tx *pb.Transaction

@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/peer/common"
+	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/cobra"
 )
 
@@ -42,43 +43,50 @@ var chaincodeDeployCmd = &cobra.Command{
 }
 
 //deploy the command via Endorser
-func deploy(cmd *cobra.Command) error {
+func deploy(cmd *cobra.Command) (*pb.ProposalResponse, error) {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctxt := context.Background()
 
 	cds, err := core.GetChaincodeBytes(ctxt, spec)
 	if err != nil {
-		return fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
 
 	endorserClient, err := common.GetEndorserClient(cmd)
 	if err != nil {
-		return fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
+		return nil, fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 	}
 
 	prop, err := getDeployProposal(cds)
 	if err != nil {
-		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}
 
-	proposalResult, err := endorserClient.ProcessProposal(ctxt, prop)
+	proposalResponse, err := endorserClient.ProcessProposal(ctxt, prop)
 	if err != nil {
-		return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
 	}
 
-	logger.Infof("Deploy(endorser) result: %v", proposalResult)
-	return nil
+	logger.Infof("Deploy(endorser) result: %v", proposalResponse)
+	return proposalResponse, nil
 }
 
 // chaincodeDeploy deploys the chaincode. On success, the chaincode name
 // (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
 // commands.
 func chaincodeDeploy(cmd *cobra.Command, args []string) error {
-	err := deploy(cmd)
+	presult, err := deploy(cmd)
+	if err != nil {
+		return err
+	}
+
+	if presult != nil {
+		err = sendTransaction(presult)
+	}
 
 	return err
 }

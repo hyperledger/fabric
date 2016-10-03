@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger"
+	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
 	pb "github.com/hyperledger/fabric/protos"
 )
 
@@ -490,23 +491,37 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		}
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
-		depTx, ledgerErr = ledger.GetTransactionByID(chaincode)
-		if ledgerErr != nil {
-			return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
-		}
-		if depTx == nil {
-			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
-		}
-		if nil != chaincodeSupport.secHelper {
-			var err error
-			depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
-			// Note that t is now decrypted and is a deep clone of the original input t
-			if nil != err {
-				return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", chaincode, err)
+		var depPayload []byte
+		if _, ok := context.Value(TXSimulatorKey).(ledgernext.TxSimulator); ok {
+			depPayload, ledgerErr = getCDSFromLCCC(context, string(DefaultChain), chaincode)
+			if ledgerErr != nil {
+				return cID, cMsg, fmt.Errorf("Could not get deployment transaction from LCCC for %s - %s", chaincode, ledgerErr)
 			}
+		} else {
+			depTx, ledgerErr = ledger.GetTransactionByID(chaincode)
+			if ledgerErr != nil {
+				return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
+			}
+			if depTx == nil {
+				return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
+			}
+			if nil != chaincodeSupport.secHelper {
+				var err error
+				depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
+				// Note that t is now decrypted and is a deep clone of the original input t
+				if nil != err {
+					return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", chaincode, err)
+				}
+			}
+			depPayload = depTx.Payload
 		}
+
+		if depPayload == nil {
+			return cID, cMsg, fmt.Errorf("failed to get deployment payload %s - %s", chaincode, ledgerErr)
+		}
+
 		//Get lang from original deployment
-		err := proto.Unmarshal(depTx.Payload, cds)
+		err = proto.Unmarshal(depPayload, cds)
 		if err != nil {
 			return cID, cMsg, fmt.Errorf("failed to unmarshal deployment transactions for %s - %s", chaincode, err)
 		}
