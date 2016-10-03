@@ -19,8 +19,6 @@ package shim
 import (
 	"fmt"
 	"testing"
-
-	"github.com/spf13/viper"
 )
 
 func TestMockStateRangeQueryIterator(t *testing.T) {
@@ -50,19 +48,5 @@ func TestMockStateRangeQueryIterator(t *testing.T) {
 		if expectValues[i][0] != value[0] {
 			fmt.Println("Expected value", expectValues[i], "got", value)
 		}
-	}
-}
-
-// TestSetChaincodeLoggingLevel uses the utlity function defined in chaincode.go to
-// set the chaincodeLogger's logging level
-func TestSetChaincodeLoggingLevel(t *testing.T) {
-	// set log level to a non-default level
-	testLogLevelString := "debug"
-	viper.Set("logging.chaincode", testLogLevelString)
-
-	SetChaincodeLoggingLevel()
-
-	if !IsEnabledForLogLevel(testLogLevelString) {
-		t.FailNow()
 	}
 }

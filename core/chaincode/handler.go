@@ -161,9 +161,9 @@ func (handler *Handler) deleteRangeQueryIterator(txContext *transactionContext, 
 	delete(txContext.rangeQueryIteratorMap, txid)
 }
 
-//THIS CAN BE REMOVED ONCE WE FULL SUPPORT (Invoke and Query) CONFIDENTIALITY WITH CC-CALLING-CC
-//Only invocation are allowed, not queries
-func (handler *Handler) canCallChaincode(txid string, isQuery bool) *pb.ChaincodeMessage {
+//THIS CAN BE REMOVED ONCE WE SUPPORT CONFIDENTIALITY WITH CC-CALLING-CC
+//we dissallow chaincode-chaincode interactions till confidentiality implications are understood
+func (handler *Handler) canCallChaincode(txid string) *pb.ChaincodeMessage {
 	secHelper := handler.chaincodeSupport.getSecHelper()
 	if secHelper == nil {
 		return nil
@@ -176,9 +176,7 @@ func (handler *Handler) canCallChaincode(txid string, isQuery bool) *pb.Chaincod
 	} else if txctx.transactionSecContext == nil {
 		errMsg = fmt.Sprintf("[%s]Error transaction context is nil while checking for confidentiality. Sending %s", shorttxid(txid), pb.ChaincodeMessage_ERROR)
 	} else if txctx.transactionSecContext.ConfidentialityLevel != pb.ConfidentialityLevel_PUBLIC {
-		if isQuery {
-			errMsg = fmt.Sprintf("[%s]Error chaincode-chaincode interactions not supported for with privacy enabled. Sending %s", shorttxid(txid), pb.ChaincodeMessage_ERROR)
-		}
+		errMsg = fmt.Sprintf("[%s]Error chaincode-chaincode interactions not supported for with privacy enabled. Sending %s", shorttxid(txid), pb.ChaincodeMessage_ERROR)
 	}
 
 	if errMsg != "" {
@@ -211,12 +209,10 @@ func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []by
 	var err error
 	if txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_DEPLOY {
 		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, handler.deployTXSecContext); err != nil {
-			chaincodeLogger.Errorf("error getting crypto encryptor for deploy tx :%s", err)
 			return nil, fmt.Errorf("error getting crypto encryptor for deploy tx :%s", err)
 		}
 	} else if txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_INVOKE || txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_QUERY {
 		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, txctx.transactionSecContext); err != nil {
-			chaincodeLogger.Errorf("error getting crypto encryptor %s", err)
 			return nil, fmt.Errorf("error getting crypto encryptor %s", err)
 		}
 	} else {
@@ -1050,9 +1046,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			err = ledgerObj.DeleteState(chaincodeID, key)
 		} else if msg.Type.String() == pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
 			//check and prohibit C-call-C for CONFIDENTIAL txs
-			chaincodeLogger.Debugf("[%s] C-call-C", shorttxid(msg.Txid))
-
-			if triggerNextStateMsg = handler.canCallChaincode(msg.Txid, false); triggerNextStateMsg != nil {
+			if triggerNextStateMsg = handler.canCallChaincode(msg.Txid); triggerNextStateMsg != nil {
 				return
 			}
 			chaincodeSpec := &pb.ChaincodeSpec{}
@@ -1066,21 +1060,12 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 
 			// Get the chaincodeID to invoke
 			newChaincodeID := chaincodeSpec.ChaincodeID.Name
-			chaincodeLogger.Debugf("[%s] C-call-C %s", shorttxid(msg.Txid), newChaincodeID)
 
 			// Create the transaction object
 			chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 			transaction, _ := pb.NewChaincodeExecute(chaincodeInvocationSpec, msg.Txid, pb.Transaction_CHAINCODE_INVOKE)
 
-			tsc := handler.getTxContext(msg.Txid).transactionSecContext
-
-			transaction.Nonce = tsc.Nonce
-			transaction.ConfidentialityLevel = tsc.ConfidentialityLevel
-			transaction.ConfidentialityProtocolVersion = tsc.ConfidentialityProtocolVersion
-			transaction.Metadata = tsc.Metadata
-			transaction.Cert = tsc.Cert
-
-			// cd the new chaincode if not already running
+			// Launch the new chaincode if not already running
 			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(context.Background(), transaction)
 			if launchErr != nil {
 				payload := []byte(launchErr.Error())
@@ -1232,7 +1217,7 @@ func (handler *Handler) initializeSecContext(tx, depTx *pb.Transaction) error {
 	return nil
 }
 
-func (handler *Handler) setChaincodeSecurityContext(tx, depTx *pb.Transaction, msg *pb.ChaincodeMessage) error {
+func (handler *Handler) setChaincodeSecurityContext(tx *pb.Transaction, msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debug("setting chaincode security context...")
 	if msg.SecurityContext == nil {
 		msg.SecurityContext = &pb.ChaincodeSecurityContext{}
@@ -1263,13 +1248,6 @@ func (handler *Handler) setChaincodeSecurityContext(tx, depTx *pb.Transaction, m
 			return err
 		}
 
-		msg.SecurityContext.Payload = ctorMsgRaw
-		// TODO: add deploy metadata
-		if depTx != nil {
-			msg.SecurityContext.ParentMetadata = depTx.Metadata
-		} else {
-			msg.SecurityContext.ParentMetadata = handler.deployTXSecContext.Metadata
-		}
 		msg.SecurityContext.Payload = ctorMsgRaw
 		msg.SecurityContext.TxTimestamp = tx.Timestamp
 	}
@@ -1311,7 +1289,7 @@ func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Trans
 	}
 
 	//if security is disabled the context elements will just be nil
-	if err := handler.setChaincodeSecurityContext(tx, depTx, ccMsg); err != nil {
+	if err := handler.setChaincodeSecurityContext(tx, ccMsg); err != nil {
 		return nil, err
 	}
 
@@ -1339,7 +1317,7 @@ func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 		}()
 
 		//check and prohibit C-call-C for CONFIDENTIAL txs
-		if serialSendMsg = handler.canCallChaincode(msg.Txid, true); serialSendMsg != nil {
+		if serialSendMsg = handler.canCallChaincode(msg.Txid); serialSendMsg != nil {
 			return
 		}
 
@@ -1358,16 +1336,6 @@ func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 		// Create the transaction object
 		chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 		transaction, _ := pb.NewChaincodeExecute(chaincodeInvocationSpec, msg.Txid, pb.Transaction_CHAINCODE_QUERY)
-
-		tsc := handler.getTxContext(msg.Txid).transactionSecContext
-
-		transaction.Nonce = tsc.Nonce
-		transaction.ConfidentialityLevel = tsc.ConfidentialityLevel
-		transaction.ConfidentialityProtocolVersion = tsc.ConfidentialityProtocolVersion
-		transaction.Metadata = tsc.Metadata
-		transaction.Cert = tsc.Cert
-
-		chaincodeLogger.Debugf("[%s]Invoking another chaincode", shorttxid(msg.Txid))
 
 		// Launch the new chaincode if not already running
 		_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(context.Background(), transaction)
@@ -1498,7 +1466,7 @@ func (handler *Handler) sendExecuteMessage(msg *pb.ChaincodeMessage, tx *pb.Tran
 	}
 
 	//if security is disabled the context elements will just be nil
-	if err := handler.setChaincodeSecurityContext(tx, nil, msg); err != nil {
+	if err := handler.setChaincodeSecurityContext(tx, msg); err != nil {
 		return nil, err
 	}
 

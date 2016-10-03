@@ -827,18 +827,6 @@ func TestChaincodeInvokeChaincode(t *testing.T) {
 
 	go grpcServer.Serve(lis)
 
-	err = chaincodeInvokeChaincode(t, "")
-	if err != nil {
-		t.Fail()
-		t.Logf("Failed chaincode invoke chaincode : %s", err)
-		closeListenerAndSleep(lis)
-		return
-	}
-
-	closeListenerAndSleep(lis)
-}
-
-func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 	var ctxt = context.Background()
 
 	// Deploy first chaincode
@@ -848,7 +836,7 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
-	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
 	_, err = deploy(ctxt, spec1)
 	chaincodeID1 := spec1.ChaincodeID.Name
@@ -856,6 +844,7 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", chaincodeID1, err)
 		GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
+		closeListenerAndSleep(lis)
 		return
 	}
 
@@ -870,7 +859,7 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 	f = "init"
 	args = util.ToChaincodeArgs(f, "e", "0")
 
-	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
 	_, err = deploy(ctxt, spec2)
 	chaincodeID2 := spec2.ChaincodeID.Name
@@ -879,6 +868,7 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 		t.Logf("Error initializing chaincode %s(%s)", chaincodeID2, err)
 		GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
 		GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
+		closeListenerAndSleep(lis)
 		return
 	}
 
@@ -888,7 +878,7 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 	f = "invoke"
 	args = util.ToChaincodeArgs(f, "e", "1")
 
-	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
 	var uuid string
 	_, uuid, _, err = invoke(ctxt, spec2, pb.Transaction_CHAINCODE_INVOKE)
@@ -898,6 +888,7 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 		t.Logf("Error invoking <%s>: %s", chaincodeID2, err)
 		GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
 		GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
+		closeListenerAndSleep(lis)
 		return
 	}
 
@@ -908,67 +899,13 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 		t.Logf("Incorrect final state after transaction for <%s>: %s", chaincodeID1, err)
 		GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
 		GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
+		closeListenerAndSleep(lis)
 		return
 	}
 
 	GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec1})
 	GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
-
-	return
-}
-
-func TestChaincodeInvokeChaincodeWithSec(t *testing.T) {
-	testDBWrapper.CleanDB(t)
-	viper.Set("security.enabled", "true")
-
-	//Initialize crypto
-	if err := crypto.Init(); err != nil {
-		panic(fmt.Errorf("Failed initializing the crypto layer [%s]", err))
-	}
-
-	//set paths for memberservice to pick up
-	viper.Set("peer.fileSystemPath", filepath.Join(os.TempDir(), "hyperledger", "production"))
-	viper.Set("server.rootpath", filepath.Join(os.TempDir(), "ca"))
-
-	var err error
-	var memSrvcLis net.Listener
-	if memSrvcLis, err = initMemSrvc(); err != nil {
-		t.Fail()
-		t.Logf("Error registering user  %s", err)
-		return
-	}
-
-	time.Sleep(2 * time.Second)
-
-	var peerLis net.Listener
-	if peerLis, err = initPeer(); err != nil {
-		finitMemSrvc(memSrvcLis)
-		t.Fail()
-		t.Logf("Error registering user  %s", err)
-		return
-	}
-
-	if err = crypto.RegisterClient("jim", nil, "jim", "6avZQLwcUe9b"); err != nil {
-		finitMemSrvc(memSrvcLis)
-		finitPeer(peerLis)
-		t.Fail()
-		t.Logf("Error registering user  %s", err)
-		return
-	}
-
-	//login as jim and test chaincode-chaincode interaction with security
-	if err = chaincodeInvokeChaincode(t, "jim"); err != nil {
-		finitMemSrvc(memSrvcLis)
-		finitPeer(peerLis)
-		t.Fail()
-		t.Logf("Error executing test %s", err)
-		return
-	}
-
-	//cleanup
-	finitMemSrvc(memSrvcLis)
-	finitPeer(peerLis)
-
+	closeListenerAndSleep(lis)
 }
 
 // Test the execution of a chaincode that invokes another chaincode with wrong parameters. Should receive error from

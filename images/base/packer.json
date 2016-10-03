@@ -1,0 +1,105 @@
+{
+    "push": {
+        "name": "",
+        "vcs": true
+    },
+    "variables": {
+        "artifact": "baseimage",
+        "release": "{{env `BASEIMAGE_RELEASE`}}",
+        "dockerhub_email": "{{env `DOCKERHUB_EMAIL`}}",
+        "dockerhub_username": "{{env `DOCKERHUB_USERNAME`}}",
+        "dockerhub_password": "{{env `DOCKERHUB_PASSWORD`}}"
+    },
+    "provisioners": [
+        {
+            "type": "shell",
+            "environment_vars": ["BASEIMAGE_RELEASE={{user `release`}}"],
+            "override": {
+                "virtualbox-iso": {
+                    "scripts": [
+                        "scripts/common/init.sh",
+                        "scripts/vagrant/init.sh",
+                        "scripts/vagrant/virtualbox.sh",
+                        "scripts/vagrant/vagrant.sh",
+                        "scripts/common/setup.sh",
+                        "scripts/vagrant/cleanup.sh",
+                        "scripts/vagrant/zerodisk.sh"
+                    ],
+                    "execute_command": "echo 'vagrant'|sudo -S {{.Vars}} bash '{{.Path}}'"
+                }
+            }
+        }
+    ],
+    "builders": [
+        {
+            "type": "virtualbox-iso",
+            "boot_command": [
+                "<esc><wait>",
+                "<esc><wait>",
+                "<enter><wait>",
+                "/install/vmlinuz<wait>",
+                " auto<wait>",
+                " console-setup/ask_detect=false<wait>",
+                " console-setup/layoutcode=us<wait>",
+                " console-setup/modelcode=pc105<wait>",
+                " debian-installer=en_US<wait>",
+                " fb=false<wait>",
+                " initrd=/install/initrd.gz<wait>",
+                " kbd-chooser/method=us<wait>",
+                " keyboard-configuration/layout=USA<wait>",
+                " keyboard-configuration/variant=USA<wait>",
+                " locale=en_US<wait>",
+                " netcfg/get_hostname=ubuntu-1404<wait>",
+                " netcfg/get_domain=vagrantup.com<wait>",
+                " noapic<wait>",
+                " preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg<wait>",
+                " -- <wait>",
+                "<enter><wait>"
+            ],
+            "headless": true,
+            "boot_wait": "10s",
+            "disk_size": 40960,
+            "guest_os_type": "Ubuntu_64",
+            "http_directory": "http",
+            "iso_checksum": "ca2531b8cd79ea5b778ede3a524779b9",
+            "iso_checksum_type": "md5",
+            "iso_url": "http://old-releases.ubuntu.com/releases/14.04.1/ubuntu-14.04.1-server-amd64.iso",
+            "ssh_username": "vagrant",
+            "ssh_password": "vagrant",
+            "ssh_port": 22,
+            "ssh_wait_timeout": "10000s",
+            "shutdown_command": "echo '/sbin/halt -h -p' > shutdown.sh; echo 'vagrant'|sudo -S bash 'shutdown.sh'",
+            "virtualbox_version_file": ".vbox_version",
+            "guest_additions_mode": "disable",
+            "hard_drive_interface": "sata",
+            "vboxmanage": [
+                ["modifyvm", "{{.Name}}", "--vrde", "off"],
+                ["modifyvm", "{{.Name}}", "--pae", "off"],
+                ["modifyvm", "{{.Name}}", "--paravirtprovider", "legacy"]
+            ]
+        }
+    ],
+    "post-processors": [
+        [
+            {
+                "type": "vagrant",
+                "only": [
+                    "virtualbox-iso"
+                ],
+                "keep_input_artifact": false
+            },
+            {
+                "type": "atlas",
+                "only": [
+                    "virtualbox-iso"
+                ],
+                "artifact": "hyperledger/{{user `artifact`}}",
+                "artifact_type": "vagrant.box",
+                "metadata": {
+                    "provider": "virtualbox",
+                    "version": "{{user `release`}}"
+                }
+            }
+        ]
+    ]
+}
