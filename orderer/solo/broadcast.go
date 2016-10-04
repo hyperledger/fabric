@@ -20,6 +20,7 @@ import (
 	"time"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 )
 
@@ -28,6 +29,7 @@ type broadcastServer struct {
 	batchSize    int
 	batchTimeout time.Duration
 	rl           rawledger.Writer
+	filter       *broadcastfilter.RuleSet
 	sendChan     chan *ab.BroadcastMessage
 	exitChan     chan struct{}
 }
@@ -44,6 +46,7 @@ func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duratio
 		batchSize:    batchSize,
 		batchTimeout: batchTimeout,
 		rl:           rl,
+		filter:       broadcastfilter.NewRuleSet([]broadcastfilter.Rule{broadcastfilter.EmptyRejectRule, broadcastfilter.AcceptRule}),
 		sendChan:     make(chan *ab.BroadcastMessage),
 		exitChan:     make(chan struct{}),
 	}
@@ -62,11 +65,21 @@ outer:
 		for {
 			select {
 			case msg := <-bs.sendChan:
-				curBatch = append(curBatch, msg)
-				if len(curBatch) < bs.batchSize {
-					continue
+				// The messages must be filtered a second time in case configuration has changed since the message was received
+				action, _ := bs.filter.Apply(msg)
+				switch action {
+				case broadcastfilter.Accept:
+					curBatch = append(curBatch, msg)
+					if len(curBatch) < bs.batchSize {
+						continue
+					}
+					logger.Debugf("Batch size met, creating block")
+				case broadcastfilter.Forward:
+					logger.Debugf("Ignoring message because it was not accepted by a filter")
+				default:
+					// TODO add support for other cases, unreachable for now
+					logger.Fatalf("NOT IMPLEMENTED YET")
 				}
-				logger.Debugf("Batch size met, creating block")
 			case <-timer:
 				if len(curBatch) == 0 {
 					continue outer
@@ -123,18 +136,23 @@ func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastSer
 			return err
 		}
 
-		if msg.Data == nil {
-			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_BAD_REQUEST})
-			if err != nil {
-				return err
-			}
-		}
+		action, _ := b.bs.filter.Apply(msg)
 
-		select {
-		case b.queue <- msg:
-			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SUCCESS})
+		switch action {
+		case broadcastfilter.Accept:
+			select {
+			case b.queue <- msg:
+				err = srv.Send(&ab.BroadcastResponse{ab.Status_SUCCESS})
+			default:
+				err = srv.Send(&ab.BroadcastResponse{ab.Status_SERVICE_UNAVAILABLE})
+			}
+		case broadcastfilter.Forward:
+			fallthrough
+		case broadcastfilter.Reject:
+			err = srv.Send(&ab.BroadcastResponse{ab.Status_BAD_REQUEST})
 		default:
-			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SERVICE_UNAVAILABLE})
+			// TODO add support for other cases, unreachable for now
+			logger.Fatalf("NOT IMPLEMENTED YET")
 		}
 
 		if err != nil {
