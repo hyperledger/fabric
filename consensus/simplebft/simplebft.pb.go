@@ -12,9 +12,7 @@ It has these top-level messages:
 	Config
 	Msg
 	Request
-	FetchRequest
-	QueryState
-	Seq
+	SeqView
 	BatchHeader
 	Batch
 	Preprepare
@@ -23,7 +21,6 @@ It has these top-level messages:
 	Signed
 	NewView
 	Checkpoint
-	CheckpointSet
 */
 package simplebft
 
@@ -51,13 +48,13 @@ func (*Config) ProtoMessage()    {}
 type Msg struct {
 	// Types that are valid to be assigned to Type:
 	//	*Msg_Request
-	//	*Msg_FetchRequest
 	//	*Msg_Preprepare
 	//	*Msg_Prepare
 	//	*Msg_Commit
 	//	*Msg_ViewChange
 	//	*Msg_NewView
 	//	*Msg_Checkpoint
+	//	*Msg_Hello
 	Type isMsg_Type `protobuf_oneof:"type"`
 }
 
@@ -72,36 +69,36 @@ type isMsg_Type interface {
 type Msg_Request struct {
 	Request *Request `protobuf:"bytes,1,opt,name=request,oneof"`
 }
-type Msg_FetchRequest struct {
-	FetchRequest *FetchRequest `protobuf:"bytes,2,opt,name=fetch_request,oneof"`
-}
 type Msg_Preprepare struct {
-	Preprepare *Preprepare `protobuf:"bytes,3,opt,name=preprepare,oneof"`
+	Preprepare *Preprepare `protobuf:"bytes,2,opt,name=preprepare,oneof"`
 }
 type Msg_Prepare struct {
-	Prepare *Subject `protobuf:"bytes,4,opt,name=prepare,oneof"`
+	Prepare *Subject `protobuf:"bytes,3,opt,name=prepare,oneof"`
 }
 type Msg_Commit struct {
-	Commit *Subject `protobuf:"bytes,5,opt,name=commit,oneof"`
+	Commit *Subject `protobuf:"bytes,4,opt,name=commit,oneof"`
 }
 type Msg_ViewChange struct {
-	ViewChange *Signed `protobuf:"bytes,6,opt,name=view_change,oneof"`
+	ViewChange *Signed `protobuf:"bytes,5,opt,name=view_change,oneof"`
 }
 type Msg_NewView struct {
-	NewView *NewView `protobuf:"bytes,7,opt,name=new_view,oneof"`
+	NewView *NewView `protobuf:"bytes,6,opt,name=new_view,oneof"`
 }
 type Msg_Checkpoint struct {
-	Checkpoint *Checkpoint `protobuf:"bytes,8,opt,name=checkpoint,oneof"`
+	Checkpoint *Checkpoint `protobuf:"bytes,7,opt,name=checkpoint,oneof"`
+}
+type Msg_Hello struct {
+	Hello *Batch `protobuf:"bytes,8,opt,name=hello,oneof"`
 }
 
-func (*Msg_Request) isMsg_Type()      {}
-func (*Msg_FetchRequest) isMsg_Type() {}
-func (*Msg_Preprepare) isMsg_Type()   {}
-func (*Msg_Prepare) isMsg_Type()      {}
-func (*Msg_Commit) isMsg_Type()       {}
-func (*Msg_ViewChange) isMsg_Type()   {}
-func (*Msg_NewView) isMsg_Type()      {}
-func (*Msg_Checkpoint) isMsg_Type()   {}
+func (*Msg_Request) isMsg_Type()    {}
+func (*Msg_Preprepare) isMsg_Type() {}
+func (*Msg_Prepare) isMsg_Type()    {}
+func (*Msg_Commit) isMsg_Type()     {}
+func (*Msg_ViewChange) isMsg_Type() {}
+func (*Msg_NewView) isMsg_Type()    {}
+func (*Msg_Checkpoint) isMsg_Type() {}
+func (*Msg_Hello) isMsg_Type()      {}
 
 func (m *Msg) GetType() isMsg_Type {
 	if m != nil {
@@ -113,13 +110,6 @@ func (m *Msg) GetType() isMsg_Type {
 func (m *Msg) GetRequest() *Request {
 	if x, ok := m.GetType().(*Msg_Request); ok {
 		return x.Request
-	}
-	return nil
-}
-
-func (m *Msg) GetFetchRequest() *FetchRequest {
-	if x, ok := m.GetType().(*Msg_FetchRequest); ok {
-		return x.FetchRequest
 	}
 	return nil
 }
@@ -166,17 +156,24 @@ func (m *Msg) GetCheckpoint() *Checkpoint {
 	return nil
 }
 
+func (m *Msg) GetHello() *Batch {
+	if x, ok := m.GetType().(*Msg_Hello); ok {
+		return x.Hello
+	}
+	return nil
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*Msg) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
 	return _Msg_OneofMarshaler, _Msg_OneofUnmarshaler, []interface{}{
 		(*Msg_Request)(nil),
-		(*Msg_FetchRequest)(nil),
 		(*Msg_Preprepare)(nil),
 		(*Msg_Prepare)(nil),
 		(*Msg_Commit)(nil),
 		(*Msg_ViewChange)(nil),
 		(*Msg_NewView)(nil),
 		(*Msg_Checkpoint)(nil),
+		(*Msg_Hello)(nil),
 	}
 }
 
@@ -189,39 +186,39 @@ func _Msg_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 		if err := b.EncodeMessage(x.Request); err != nil {
 			return err
 		}
-	case *Msg_FetchRequest:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.FetchRequest); err != nil {
-			return err
-		}
 	case *Msg_Preprepare:
-		b.EncodeVarint(3<<3 | proto.WireBytes)
+		b.EncodeVarint(2<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Preprepare); err != nil {
 			return err
 		}
 	case *Msg_Prepare:
-		b.EncodeVarint(4<<3 | proto.WireBytes)
+		b.EncodeVarint(3<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Prepare); err != nil {
 			return err
 		}
 	case *Msg_Commit:
-		b.EncodeVarint(5<<3 | proto.WireBytes)
+		b.EncodeVarint(4<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Commit); err != nil {
 			return err
 		}
 	case *Msg_ViewChange:
-		b.EncodeVarint(6<<3 | proto.WireBytes)
+		b.EncodeVarint(5<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.ViewChange); err != nil {
 			return err
 		}
 	case *Msg_NewView:
-		b.EncodeVarint(7<<3 | proto.WireBytes)
+		b.EncodeVarint(6<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.NewView); err != nil {
 			return err
 		}
 	case *Msg_Checkpoint:
-		b.EncodeVarint(8<<3 | proto.WireBytes)
+		b.EncodeVarint(7<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Checkpoint); err != nil {
+			return err
+		}
+	case *Msg_Hello:
+		b.EncodeVarint(8<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Hello); err != nil {
 			return err
 		}
 	case nil:
@@ -242,15 +239,7 @@ func _Msg_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (b
 		err := b.DecodeMessage(msg)
 		m.Type = &Msg_Request{msg}
 		return true, err
-	case 2: // type.fetch_request
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(FetchRequest)
-		err := b.DecodeMessage(msg)
-		m.Type = &Msg_FetchRequest{msg}
-		return true, err
-	case 3: // type.preprepare
+	case 2: // type.preprepare
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -258,7 +247,7 @@ func _Msg_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (b
 		err := b.DecodeMessage(msg)
 		m.Type = &Msg_Preprepare{msg}
 		return true, err
-	case 4: // type.prepare
+	case 3: // type.prepare
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -266,7 +255,7 @@ func _Msg_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (b
 		err := b.DecodeMessage(msg)
 		m.Type = &Msg_Prepare{msg}
 		return true, err
-	case 5: // type.commit
+	case 4: // type.commit
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -274,7 +263,7 @@ func _Msg_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (b
 		err := b.DecodeMessage(msg)
 		m.Type = &Msg_Commit{msg}
 		return true, err
-	case 6: // type.view_change
+	case 5: // type.view_change
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -282,7 +271,7 @@ func _Msg_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (b
 		err := b.DecodeMessage(msg)
 		m.Type = &Msg_ViewChange{msg}
 		return true, err
-	case 7: // type.new_view
+	case 6: // type.new_view
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -290,13 +279,21 @@ func _Msg_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (b
 		err := b.DecodeMessage(msg)
 		m.Type = &Msg_NewView{msg}
 		return true, err
-	case 8: // type.checkpoint
+	case 7: // type.checkpoint
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
 		msg := new(Checkpoint)
 		err := b.DecodeMessage(msg)
 		m.Type = &Msg_Checkpoint{msg}
+		return true, err
+	case 8: // type.hello
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Batch)
+		err := b.DecodeMessage(msg)
+		m.Type = &Msg_Hello{msg}
 		return true, err
 	default:
 		return false, nil
@@ -311,29 +308,14 @@ func (m *Request) Reset()         { *m = Request{} }
 func (m *Request) String() string { return proto.CompactTextString(m) }
 func (*Request) ProtoMessage()    {}
 
-type FetchRequest struct {
-	Digest []byte `protobuf:"bytes,1,opt,name=digest,proto3" json:"digest,omitempty"`
-}
-
-func (m *FetchRequest) Reset()         { *m = FetchRequest{} }
-func (m *FetchRequest) String() string { return proto.CompactTextString(m) }
-func (*FetchRequest) ProtoMessage()    {}
-
-type QueryState struct {
-}
-
-func (m *QueryState) Reset()         { *m = QueryState{} }
-func (m *QueryState) String() string { return proto.CompactTextString(m) }
-func (*QueryState) ProtoMessage()    {}
-
-type Seq struct {
+type SeqView struct {
 	View uint64 `protobuf:"varint,1,opt,name=view" json:"view,omitempty"`
 	Seq  uint64 `protobuf:"varint,2,opt,name=seq" json:"seq,omitempty"`
 }
 
-func (m *Seq) Reset()         { *m = Seq{} }
-func (m *Seq) String() string { return proto.CompactTextString(m) }
-func (*Seq) ProtoMessage()    {}
+func (m *SeqView) Reset()         { *m = SeqView{} }
+func (m *SeqView) String() string { return proto.CompactTextString(m) }
+func (*SeqView) ProtoMessage()    {}
 
 type BatchHeader struct {
 	Seq      uint64 `protobuf:"varint,1,opt,name=seq" json:"seq,omitempty"`
@@ -346,25 +328,32 @@ func (m *BatchHeader) String() string { return proto.CompactTextString(m) }
 func (*BatchHeader) ProtoMessage()    {}
 
 type Batch struct {
-	Header     []byte   `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
-	Payloads   [][]byte `protobuf:"bytes,2,rep,name=payloads,proto3" json:"payloads,omitempty"`
-	Signatures [][]byte `protobuf:"bytes,3,rep,name=signatures,proto3" json:"signatures,omitempty"`
+	Header     []byte            `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	Payloads   [][]byte          `protobuf:"bytes,2,rep,name=payloads,proto3" json:"payloads,omitempty"`
+	Signatures map[uint64][]byte `protobuf:"bytes,3,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *Batch) Reset()         { *m = Batch{} }
 func (m *Batch) String() string { return proto.CompactTextString(m) }
 func (*Batch) ProtoMessage()    {}
 
+func (m *Batch) GetSignatures() map[uint64][]byte {
+	if m != nil {
+		return m.Signatures
+	}
+	return nil
+}
+
 type Preprepare struct {
-	Seq   *Seq   `protobuf:"bytes,1,opt,name=seq" json:"seq,omitempty"`
-	Batch *Batch `protobuf:"bytes,2,opt,name=batch" json:"batch,omitempty"`
+	Seq   *SeqView `protobuf:"bytes,1,opt,name=seq" json:"seq,omitempty"`
+	Batch *Batch   `protobuf:"bytes,2,opt,name=batch" json:"batch,omitempty"`
 }
 
 func (m *Preprepare) Reset()         { *m = Preprepare{} }
 func (m *Preprepare) String() string { return proto.CompactTextString(m) }
 func (*Preprepare) ProtoMessage()    {}
 
-func (m *Preprepare) GetSeq() *Seq {
+func (m *Preprepare) GetSeq() *SeqView {
 	if m != nil {
 		return m.Seq
 	}
@@ -379,15 +368,15 @@ func (m *Preprepare) GetBatch() *Batch {
 }
 
 type Subject struct {
-	Seq    *Seq   `protobuf:"bytes,1,opt,name=seq" json:"seq,omitempty"`
-	Digest []byte `protobuf:"bytes,2,opt,name=digest,proto3" json:"digest,omitempty"`
+	Seq    *SeqView `protobuf:"bytes,1,opt,name=seq" json:"seq,omitempty"`
+	Digest []byte   `protobuf:"bytes,2,opt,name=digest,proto3" json:"digest,omitempty"`
 }
 
 func (m *Subject) Reset()         { *m = Subject{} }
 func (m *Subject) String() string { return proto.CompactTextString(m) }
 func (*Subject) ProtoMessage()    {}
 
-func (m *Subject) GetSeq() *Seq {
+func (m *Subject) GetSeq() *SeqView {
 	if m != nil {
 		return m.Seq
 	}
@@ -469,18 +458,3 @@ type Checkpoint struct {
 func (m *Checkpoint) Reset()         { *m = Checkpoint{} }
 func (m *Checkpoint) String() string { return proto.CompactTextString(m) }
 func (*Checkpoint) ProtoMessage()    {}
-
-type CheckpointSet struct {
-	CheckpointSet map[uint64]*Checkpoint `protobuf:"bytes,1,rep,name=checkpoint_set" json:"checkpoint_set,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-}
-
-func (m *CheckpointSet) Reset()         { *m = CheckpointSet{} }
-func (m *CheckpointSet) String() string { return proto.CompactTextString(m) }
-func (*CheckpointSet) ProtoMessage()    {}
-
-func (m *CheckpointSet) GetCheckpointSet() map[uint64]*Checkpoint {
-	if m != nil {
-		return m.CheckpointSet
-	}
-	return nil
-}

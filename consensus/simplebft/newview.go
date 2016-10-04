@@ -68,12 +68,12 @@ func (s *SBFT) maybeSendNewView() {
 }
 
 func (s *SBFT) handleNewView(nv *NewView, src uint64) {
-	if src != s.primaryIdView(nv.View) {
+	if src != s.primaryIDView(nv.View) {
 		log.Warningf("invalid new view from %d for %d", src, nv.View)
 		return
 	}
 
-	if onv, ok := s.newview[s.primaryIdView(nv.View)]; ok && onv.View >= nv.View {
+	if onv, ok := s.newview[s.primaryIDView(nv.View)]; ok && onv.View >= nv.View {
 		log.Debugf("discarding duplicate new view for %d", nv.View)
 		return
 	}
@@ -128,7 +128,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	s.newview[s.primaryIdView(nv.View)] = nv
+	s.newview[s.primaryIDView(nv.View)] = nv
 
 	s.processNewView()
 }
@@ -138,7 +138,7 @@ func (s *SBFT) processNewView() {
 		return
 	}
 
-	nv, ok := s.newview[s.primaryIdView(s.seq.View)]
+	nv, ok := s.newview[s.primaryIDView(s.seq.View)]
 	if !ok || nv.View != s.seq.View {
 		return
 	}

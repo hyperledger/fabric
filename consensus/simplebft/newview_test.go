@@ -22,26 +22,26 @@ import (
 )
 
 func TestXsetNoByz(t *testing.T) {
-	s := &SBFT{config: Config{N: 4, F: 1}, seq: Seq{3, 1}}
+	s := &SBFT{config: Config{N: 4, F: 1}, seq: SeqView{3, 1}}
 	vcs := []*ViewChange{
 		&ViewChange{
 			View: 3,
 			Pset: nil,
-			Qset: []*Subject{&Subject{&Seq{1, 2}, []byte("val1")},
-				&Subject{&Seq{2, 2}, []byte("val2")}},
+			Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
+				&Subject{&SeqView{2, 2}, []byte("val2")}},
 			Executed: 1,
 		},
 		&ViewChange{
 			View:     3,
-			Pset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
-			Qset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
+			Pset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
 			Executed: 1,
 		},
 		&ViewChange{
 			View: 3,
-			Pset: []*Subject{&Subject{&Seq{2, 2}, []byte("val2")}},
-			Qset: []*Subject{&Subject{&Seq{1, 2}, []byte("val1")},
-				&Subject{&Seq{2, 2}, []byte("val2")}},
+			Pset: []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
+				&Subject{&SeqView{2, 2}, []byte("val2")}},
 			Executed: 1,
 		},
 	}
@@ -51,13 +51,13 @@ func TestXsetNoByz(t *testing.T) {
 		t.Fatal("no xset")
 	}
 
-	if !reflect.DeepEqual(xset, &Subject{&Seq{3, 2}, []byte("val2")}) {
+	if !reflect.DeepEqual(xset, &Subject{&SeqView{3, 2}, []byte("val2")}) {
 		t.Error(xset)
 	}
 }
 
 func TestXsetByz0(t *testing.T) {
-	s := &SBFT{config: Config{N: 4, F: 1}, seq: Seq{3, 1}}
+	s := &SBFT{config: Config{N: 4, F: 1}, seq: SeqView{3, 1}}
 	vcs := []*ViewChange{
 		&ViewChange{
 			View:     3,
@@ -67,15 +67,15 @@ func TestXsetByz0(t *testing.T) {
 		},
 		&ViewChange{
 			View:     3,
-			Pset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
-			Qset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
+			Pset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
 			Executed: 1,
 		},
 		&ViewChange{
 			View: 3,
-			Pset: []*Subject{&Subject{&Seq{2, 2}, []byte("val2")}},
-			Qset: []*Subject{&Subject{&Seq{1, 2}, []byte("val1")},
-				&Subject{&Seq{2, 2}, []byte("val2")}},
+			Pset: []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
+				&Subject{&SeqView{2, 2}, []byte("val2")}},
 			Executed: 1,
 		},
 	}
@@ -87,9 +87,9 @@ func TestXsetByz0(t *testing.T) {
 
 	vcs = append(vcs, &ViewChange{
 		View: 3,
-		Pset: []*Subject{&Subject{&Seq{2, 2}, []byte("val2")}},
-		Qset: []*Subject{&Subject{&Seq{1, 2}, []byte("val1")},
-			&Subject{&Seq{2, 2}, []byte("val2")}},
+		Pset: []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+		Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
+			&Subject{&SeqView{2, 2}, []byte("val2")}},
 		Executed: 2,
 	})
 
@@ -97,31 +97,31 @@ func TestXsetByz0(t *testing.T) {
 	if !ok {
 		t.Error("no xset")
 	}
-	if !reflect.DeepEqual(xset, &Subject{&Seq{3, 2}, []byte("val2")}) {
+	if !reflect.DeepEqual(xset, &Subject{&SeqView{3, 2}, []byte("val2")}) {
 		t.Error(xset)
 	}
 }
 
 func TestXsetByz2(t *testing.T) {
-	s := &SBFT{config: Config{N: 4, F: 1}, seq: Seq{3, 1}}
+	s := &SBFT{config: Config{N: 4, F: 1}, seq: SeqView{3, 1}}
 	vcs := []*ViewChange{
 		&ViewChange{
 			View:     3,
 			Pset:     nil,
-			Qset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
+			Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
 			Executed: 1,
 		},
 		&ViewChange{
 			View:     3,
-			Pset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
-			Qset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
+			Pset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
 			Executed: 1,
 		},
 		&ViewChange{
 			View: 3,
-			Pset: []*Subject{&Subject{&Seq{2, 2}, []byte("val2")}},
-			Qset: []*Subject{&Subject{&Seq{1, 2}, []byte("val1")},
-				&Subject{&Seq{2, 2}, []byte("val2")}},
+			Pset: []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
+				&Subject{&SeqView{2, 2}, []byte("val2")}},
 			Executed: 1,
 		},
 	}
@@ -133,8 +133,8 @@ func TestXsetByz2(t *testing.T) {
 
 	vcs = append(vcs, &ViewChange{
 		View:     3,
-		Pset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
-		Qset:     []*Subject{&Subject{&Seq{1, 2}, []byte("val1")}},
+		Pset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+		Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
 		Executed: 2,
 	})
 
@@ -142,7 +142,7 @@ func TestXsetByz2(t *testing.T) {
 	if !ok {
 		t.Error("no xset")
 	}
-	if !reflect.DeepEqual(xset, &Subject{&Seq{3, 2}, []byte("val1")}) {
+	if !reflect.DeepEqual(xset, &Subject{&SeqView{3, 2}, []byte("val1")}) {
 		t.Error(xset)
 	}
 }

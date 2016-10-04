@@ -18,7 +18,7 @@ syntax = "proto3";
 
 package simplebft;
 
-message config {
+message Config {
         uint64 n = 1;
         uint64 f = 2;
         uint64 batch_duration_nsec = 3;
@@ -26,82 +26,71 @@ message config {
         uint64 request_timeout_nsec = 5;
 };
 
-message msg {
+message Msg {
         oneof type {
-                request request = 1;
-                fetch_request fetch_request = 2;
-                preprepare preprepare = 3;
-                subject prepare = 4;
-                subject commit = 5;
-                signed view_change = 6;
-                new_view new_view = 7;
-                checkpoint checkpoint = 8;
+                Request request = 1;
+                Preprepare preprepare = 2;
+                Subject prepare = 3;
+                Subject commit = 4;
+                Signed view_change = 5;
+                NewView new_view = 6;
+                Checkpoint checkpoint = 7;
+                Batch hello = 8;
         };
 };
 
-message request {
+message Request {
         bytes payload = 1;
 };
 
-message fetch_request {
-        bytes digest = 1;
-};
-
-message query_state {
-};
-
-message seq {
+message SeqView {
         uint64 view = 1;
         uint64 seq = 2;
 };
 
-message batch_header {
+message BatchHeader {
         uint64 seq = 1;
         bytes prev_hash = 2;
         bytes data_hash = 3;
 };
 
-message batch {
+message Batch {
         bytes header = 1;
         repeated bytes payloads = 2;
-        repeated bytes signatures = 3;
+        map<uint64, bytes> signatures = 3;
 };
 
-message preprepare {
-        seq seq = 1;
-        batch batch = 2;
+message Preprepare {
+        SeqView seq = 1;
+        Batch batch = 2;
 };
 
-message subject {
-        seq seq = 1;
+message Subject {
+        SeqView seq = 1;
         bytes digest = 2;
 };
 
-message view_change {
+message ViewChange {
         uint64 view = 1;
-        repeated subject pset = 2;
-        repeated subject qset = 3;
+        repeated Subject pset = 2;
+        repeated Subject qset = 3;
         uint64 executed = 4;
 };
 
-message signed {
+message Signed {
         bytes data = 1;
         bytes signature = 2;
 };
 
-message new_view {
+message NewView {
         uint64 view = 1;
-        map<uint64, signed> vset = 2;
-        subject xset = 3;
-        batch batch = 4;
+        map<uint64, Signed> vset = 2;
+        Subject xset = 3;
+        Batch batch = 4;
 };
 
-message checkpoint {
+message Checkpoint {
         uint64 seq = 1;
         bytes digest = 2;
         bytes signature = 3;
-};
-
-message checkpoint_set {
-        map<uint64, checkpoint> checkpoint_set = 1;
 };

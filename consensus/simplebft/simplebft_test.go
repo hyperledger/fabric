@@ -33,6 +33,17 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "sbft")
 }
 
+func connectAll(sys *testSystem) {
+	for _, a := range sys.adapters {
+		for _, b := range sys.adapters {
+			if a.id != b.id {
+				a.receiver.Connection(b.id)
+			}
+		}
+	}
+	sys.Run()
+}
+
 func TestSBFT(t *testing.T) {
 	N := uint64(4)
 	sys := newTestSystem(N)
@@ -47,6 +58,7 @@ func TestSBFT(t *testing.T) {
 		repls = append(repls, s)
 		adapters = append(adapters, a)
 	}
+	connectAll(sys)
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
 	sys.Run()
@@ -89,6 +101,7 @@ func TestSBFTDelayed(t *testing.T) {
 		adapters[3].arrivals[i] = 200 * time.Millisecond
 	}
 
+	connectAll(sys)
 	r1 := []byte{1, 2, 3}
 	r2 := []byte{3, 1, 2}
 	repls[0].Request(r1)
@@ -122,6 +135,7 @@ func TestN1(t *testing.T) {
 		repls = append(repls, s)
 		adapters = append(adapters, a)
 	}
+	connectAll(sys)
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
 	sys.Run()
@@ -173,6 +187,7 @@ func TestByzPrimary(t *testing.T) {
 		return e, true
 	}
 
+	connectAll(sys)
 	repls[0].Request(r1)
 	sys.Run()
 	for _, a := range adapters {
@@ -210,6 +225,7 @@ func TestViewChange(t *testing.T) {
 		return e, true
 	}
 
+	connectAll(sys)
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
 	sys.Run()
@@ -272,6 +288,7 @@ func TestViewChangeXset(t *testing.T) {
 		return e, true
 	}
 
+	connectAll(sys)
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
 	sys.Run()
@@ -313,6 +330,7 @@ func TestRestart(t *testing.T) {
 		adapters = append(adapters, a)
 	}
 
+	connectAll(sys)
 	// move to view 1
 	for _, r := range repls {
 		r.sendViewChange()
@@ -324,6 +342,12 @@ func TestRestart(t *testing.T) {
 
 	testLog.Notice("restarting 0")
 	repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
+	for _, a := range sys.adapters {
+		if a.id != 0 {
+			a.receiver.Connection(0)
+			adapters[0].receiver.Connection(a.id)
+		}
+	}
 
 	r2 := []byte{3, 1, 2}
 	r3 := []byte{3, 5, 2}
@@ -370,12 +394,19 @@ func TestRestartAfterPrepare(t *testing.T) {
 			if p := msg.msg.GetPrepare(); p != nil && p.Seq.Seq == 3 && !restarted {
 				restarted = true
 				repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
+				for _, a := range sys.adapters {
+					if a.id != 0 {
+						a.receiver.Connection(0)
+						adapters[0].receiver.Connection(a.id)
+					}
+				}
 			}
 		}
 
 		return e, true
 	}
 
+	connectAll(sys)
 	// move to view 1
 	for _, r := range repls {
 		r.sendViewChange()
@@ -431,12 +462,19 @@ func TestRestartAfterCommit(t *testing.T) {
 				restarted = true
 				testLog.Notice("restarting 0")
 				repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
+				for _, a := range sys.adapters {
+					if a.id != 0 {
+						a.receiver.Connection(0)
+						adapters[0].receiver.Connection(a.id)
+					}
+				}
 			}
 		}
 
 		return e, true
 	}
 
+	connectAll(sys)
 	// move to view 1
 	for _, r := range repls {
 		r.sendViewChange()
@@ -492,12 +530,19 @@ func TestRestartAfterCheckpoint(t *testing.T) {
 				restarted = true
 				testLog.Notice("restarting 0")
 				repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
+				for _, a := range sys.adapters {
+					if a.id != 0 {
+						a.receiver.Connection(0)
+						adapters[0].receiver.Connection(a.id)
+					}
+				}
 			}
 		}
 
 		return e, true
 	}
 
+	connectAll(sys)
 	// move to view 1
 	for _, r := range repls {
 		r.sendViewChange()

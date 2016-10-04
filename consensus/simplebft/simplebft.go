@@ -25,10 +25,14 @@ import (
 	"github.com/op/go-logging"
 )
 
+// Receiver defines the API that is exposed by SBFT to the system.
 type Receiver interface {
 	Receive(msg *Msg, src uint64)
+	Request(req []byte)
+	Connection(replica uint64)
 }
 
+// System defines the API that needs to be provided for SBFT.
 type System interface {
 	Send(msg *Msg, dest uint64)
 	Timer(d time.Duration, f func()) Canceller
@@ -41,16 +45,18 @@ type System interface {
 	CheckSig(data []byte, src uint64, sig []byte) error
 }
 
+// Canceller allows cancelling of a scheduled timer event.
 type Canceller interface {
 	Cancel()
 }
 
+// SBFT is a simplified PBFT implementation.
 type SBFT struct {
 	sys System
 
 	config            Config
 	id                uint64
-	seq               Seq
+	seq               SeqView
 	batch             []*Request
 	batchTimer        Canceller
 	cur               reqInfo
@@ -87,6 +93,7 @@ type dummyCanceller struct{}
 
 func (d dummyCanceller) Cancel() {}
 
+// New creates a new SBFT instance.
 func New(id uint64, config *Config, sys System) (*SBFT, error) {
 	if config.F*3+1 > config.N {
 		return nil, fmt.Errorf("invalid combination of N and F")
@@ -123,7 +130,7 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 		if pp.Seq.Seq > bh.Seq {
 			s.seq = *pp.Seq
 			s.seq.Seq -= 1
-			s.handlePreprepare(pp, s.primaryIdView(pp.Seq.View))
+			s.handlePreprepare(pp, s.primaryIDView(pp.Seq.View))
 		}
 	}
 	c := &Subject{}
@@ -146,19 +153,19 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 
 ////////////////////////////////////////////////
 
-func (s *SBFT) primaryIdView(v uint64) uint64 {
+func (s *SBFT) primaryIDView(v uint64) uint64 {
 	return v % s.config.N
 }
 
-func (s *SBFT) primaryId() uint64 {
-	return s.primaryIdView(s.seq.View)
+func (s *SBFT) primaryID() uint64 {
+	return s.primaryIDView(s.seq.View)
 }
 
 func (s *SBFT) isPrimary() bool {
-	return s.primaryId() == s.id
+	return s.primaryID() == s.id
 }
 
-func (s *SBFT) nextSeq() Seq {
+func (s *SBFT) nextSeq() SeqView {
 	seq := s.seq
 	seq.Seq += 1
 	return seq
@@ -184,6 +191,7 @@ func (s *SBFT) broadcast(m *Msg) {
 
 ////////////////////////////////////////////////
 
+// Receive is the ingress method for SBFT messages.
 func (s *SBFT) Receive(m *Msg, src uint64) {
 	log.Debugf("received message from %d: %s", src, m)
 
@@ -198,9 +206,6 @@ func (s *SBFT) Receive(m *Msg, src uint64) {
 		return
 	} else if vs := m.GetViewChange(); vs != nil {
 		s.handleViewChange(vs, src)
-		return
-	} else if c := m.GetCheckpoint(); c != nil {
-		s.handleCheckpoint(c, src)
 		return
 	} else if nv := m.GetNewView(); nv != nil {
 		s.handleNewView(nv, src)
@@ -217,7 +222,10 @@ func (s *SBFT) Receive(m *Msg, src uint64) {
 }
 
 func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
-	if pp := m.GetPreprepare(); pp != nil {
+	if h := m.GetHello(); h != nil {
+		s.handleHello(h, src)
+		return
+	} else if pp := m.GetPreprepare(); pp != nil {
 		s.handlePreprepare(pp, src)
 		return
 	} else if p := m.GetPrepare(); p != nil {
@@ -225,6 +233,9 @@ func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
 		return
 	} else if c := m.GetCommit(); c != nil {
 		s.handleCommit(c, src)
+		return
+	} else if c := m.GetCheckpoint(); c != nil {
+		s.handleCheckpoint(c, src)
 		return
 	}
 

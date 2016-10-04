@@ -41,7 +41,7 @@ func (s *SBFT) sendPreprepare(batch []*Request) {
 }
 
 func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
-	if src != s.primaryId() {
+	if src != s.primaryID() {
 		log.Infof("preprepare from non-primary %d", src)
 		return
 	}

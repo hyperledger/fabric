@@ -75,12 +75,10 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 
 	// got a weak checkpoint
 
-	cpset := &CheckpointSet{make(map[uint64]*Checkpoint)}
-	var sigs [][]byte
+	cpset := make(map[uint64][]byte)
 	for _, r := range replicas {
 		cp := s.cur.checkpoint[r]
-		cpset.CheckpointSet[r] = cp
-		sigs = append(sigs, cp.Signature)
+		cpset[r] = cp.Signature
 	}
 	s.cur.checkpointDone = true
 
@@ -93,11 +91,10 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 	}
 
 	// ignore null requests
-	if s.cur.preprep.Batch != nil {
-		batch := *s.cur.preprep.Batch
-		batch.Signatures = sigs
-		s.sys.Deliver(&batch)
-	}
+	batch := *s.cur.preprep.Batch
+	batch.Signatures = cpset
+	s.sys.Deliver(&batch)
+
 	s.cur.timeout.Cancel()
 	log.Infof("request %s %s completed on %d", s.cur.subject.Seq, hash2str(s.cur.subject.Digest), s.id)
 

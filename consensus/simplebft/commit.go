@@ -39,7 +39,7 @@ func (s *SBFT) handleCommit(c *Subject, src uint64) {
 	}
 
 	if !reflect.DeepEqual(c, &s.cur.subject) {
-		log.Infof("commit does not match expected subject %v, got %v", &s.cur.subject, c)
+		log.Warningf("commit does not match expected subject %v, got %v", &s.cur.subject, c)
 		return
 	}
 	if _, ok := s.cur.commit[src]; ok {
