@@ -39,4 +39,5 @@ func (s *SBFT) Connection(replica uint64) {
 }
 
 func (s *SBFT) handleHello(h *Batch, src uint64) {
+	s.replicaState[src].hello = h
 }

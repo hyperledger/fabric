@@ -22,9 +22,10 @@ func (s *SBFT) sendViewChange() {
 	s.seq.View = s.nextView()
 	s.cur.timeout.Cancel()
 	s.activeView = false
-	for r, vs := range s.viewchange {
-		if vs.vc.View < s.seq.View {
-			delete(s.viewchange, r)
+	for src := range s.replicaState {
+		state := &s.replicaState[src]
+		if state.viewchange != nil && state.viewchange.View < s.seq.View {
+			state.viewchange = nil
 		}
 	}
 	log.Noticef("sending viewchange for view %d", s.seq.View)
@@ -71,21 +72,27 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 		log.Debugf("old view change from %s for view %d, we are in view %d", src, vc.View, s.seq.View)
 		return
 	}
-	if ovc, ok := s.viewchange[src]; ok && vc.View <= ovc.vc.View {
+	if ovc := s.replicaState[src].viewchange; ovc != nil && vc.View <= ovc.View {
 		log.Noticef("duplicate view change for %d from %d", vc.View, src)
 		return
 	}
 
 	log.Infof("viewchange from %d for view %d", src, vc.View)
-	s.viewchange[src] = &viewChangeInfo{svc: svc, vc: vc}
+	s.replicaState[src].viewchange = vc
+	s.replicaState[src].signedViewchange = svc
 
-	if len(s.viewchange) == s.oneCorrectQuorum() {
-		min := vc.View
-		for _, vc := range s.viewchange {
-			if vc.vc.View < min {
-				min = vc.vc.View
+	min := vc.View
+	quorum := 0
+	for _, state := range s.replicaState {
+		if state.viewchange != nil {
+			quorum++
+			if state.viewchange.View < min {
+				min = state.viewchange.View
 			}
 		}
+	}
+
+	if quorum == s.oneCorrectQuorum() {
 		// catch up to the minimum view
 		if s.seq.View < min {
 			log.Notice("we are behind on view change, resending for newer view")
