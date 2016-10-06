@@ -50,6 +50,14 @@ func main() {
 }
 
 func launchSolo(conf *config.TopLevel) {
+	var loglevel string
+	flag.StringVar(&loglevel, "loglevel", "info",
+		"Set the logging level for the orderer. (Suggested values: info, debug)")
+	flag.Parse()
+
+	solo.SetLogLevel(loglevel)
+	config.SetLogLevel(loglevel)
+
 	grpcServer := grpc.NewServer()
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
@@ -84,9 +92,6 @@ func launchSolo(conf *config.TopLevel) {
 }
 
 func launchKafka(conf *config.TopLevel) {
-	var kafkaVersion = sarama.V0_9_0_1 // TODO Ideally we'd set this in the YAML file but its type makes this impossible
-	conf.Kafka.Version = kafkaVersion
-
 	var loglevel string
 	var verbose bool
 
@@ -101,6 +106,9 @@ func launchKafka(conf *config.TopLevel) {
 	if verbose {
 		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
 	}
+
+	var kafkaVersion = sarama.V0_9_0_1 // TODO Ideally we'd set this in the YAML file but its type makes this impossible
+	conf.Kafka.Version = kafkaVersion
 
 	ordererSrv := kafka.New(conf)
 	defer ordererSrv.Teardown()

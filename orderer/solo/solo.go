@@ -22,15 +22,8 @@ import (
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 
-	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
-
-var logger = logging.MustGetLogger("orderer/solo")
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
 
 type server struct {
 	bs *broadcastServer
