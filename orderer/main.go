@@ -97,6 +97,7 @@ func launchKafka(conf *config.TopLevel) {
 	flag.Parse()
 
 	kafka.SetLogLevel(loglevel)
+	config.SetLogLevel(loglevel)
 	if verbose {
 		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
 	}

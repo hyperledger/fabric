@@ -24,15 +24,8 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
-
-var logger = logging.MustGetLogger("orderer/config")
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
 
 // Prefix is the default config prefix for the orderer
 const Prefix string = "ORDERER"
