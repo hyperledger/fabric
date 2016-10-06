@@ -82,6 +82,7 @@ runTests() {
    runAssetMgmtTests
    runAssetMgmtWithRolesTests
    runAssetMgmtWithDynamicRolesTests
+   runEventTests
    echo "End running tests in network mode"
 }
 
@@ -225,6 +226,18 @@ runAssetMgmtWithDynamicRolesTests() {
    fi
    postExample asset_management_with_roles
    echo "END running asset management with dynamic roles tests"
+}
+
+runEventTests() {
+   echo "BEGIN running event-tests ..."
+   preExample eventsender mycc5
+   node $UNITTEST/event-tests.js
+   if [ $? -ne 0 ]; then
+      echo "ERROR running event-tests!"
+      NODE_ERR_CODE=1
+   fi
+   postExample eventsender
+   echo "END running event-tests"
 }
 
 # start process
