@@ -48,7 +48,7 @@ if (fs.existsSync("tlsca.cert")) {
     chain.setMemberServicesUrl("grpc://localhost:7054");
 }
 chain.addPeer("grpc://localhost:7051");
-chain.eventHubConnect("localhost:7053");
+chain.eventHubConnect("grpc://localhost:7053");
 
 process.on('exit', function (){
   chain.eventHubDisconnect();
