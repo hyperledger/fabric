@@ -144,6 +144,16 @@ eca:
                 test_nvp8: 2 LJu8DkUilBEH bank_a
                 test_nvp9: 2 VlEsBsiyXSjw institution_a
 
+                # users for consentmanager demo
+                pharmax: 1 CcXNhMuSuCTu institution_a
+                hmoy: 1 XHYXwiZpouln institution_a
+                ibmadmin: 1 fjYjhmbgOtcg institution_a
+                doc1: 1 iBFobzoqivBp institution_a
+                nurse1: 1 zTqSBNTJZGiW institution_a
+                sally1111: 1 zTqSBNTJZGiW institution_a
+                jimmy2222: 1 lTTkxXARcsfA institution_a
+                audit: 1 zWZTUQCGdeoW institution_a
+
 tca:
           # Enabling/disabling attributes encryption, currently false is unique possible value due attributes encryption is not yet implemented.
           attribute-encryption:
