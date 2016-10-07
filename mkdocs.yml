@@ -19,6 +19,7 @@ pages:
   - Fabric Network Setup: Setup/Network-setup.md
   - NodeSDK Setup: Setup/NodeSDK-setup.md
   - CA Setup: Setup/ca-setup.md
+  - TLS Setup: Setup/TLSSetup.md
   - Logging: Setup/logging-control.md
 
 - APIs:
