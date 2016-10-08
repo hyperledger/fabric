@@ -278,19 +278,12 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.AliveMessage) {
 		d.logger.Debug("Got alive message about ourselves,", m)
 		return
 	}
-	endpoint := m.Membership.Endpoint
 	ts := m.Timestamp
-	meta := m.Membership.Metadata
 
 	d.lock.RLock()
 	_, known := d.id2Member[id]
 	d.lock.RUnlock()
 
-	netMember := &NetworkMember{
-		Id:       id,
-		Endpoint: endpoint,
-		Metadata: meta,
-	}
 
 	if !known {
 		d.learnNewMembers([]*proto.AliveMessage{m}, []*proto.AliveMessage{})
@@ -314,7 +307,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.AliveMessage) {
 
 	if !isAlive && uint64(lastDeadTS.incTime.Nanosecond()) <= ts.IncNumber && lastDeadTS.seqNum < ts.SeqNum {
 		// resurrect peer
-		d.resurrectMember(id, netMember, *ts)
+		d.resurrectMember(m, *ts)
 		return
 	}
 
@@ -330,11 +323,13 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.AliveMessage) {
 	// else, ignore the message because it is too old
 }
 
-func (d *gossipDiscoveryImpl) resurrectMember(id string, member *NetworkMember, t proto.PeerTime) {
-	d.logger.Info("Entering, id =", id, "member = ", member, "t = ", t)
+func (d *gossipDiscoveryImpl) resurrectMember(m *proto.AliveMessage, t proto.PeerTime) {
+	d.logger.Info("Entering,", m, t)
 	defer d.logger.Info("Exiting")
 	d.lock.Lock()
 	defer d.lock.Unlock()
+
+	id := m.Membership.Id
 
 	d.aliveLastTS[id] = &timestamp{
 		lastSeen: time.Now(),
@@ -342,18 +337,23 @@ func (d *gossipDiscoveryImpl) resurrectMember(id string, member *NetworkMember, 
 		incTime:  tsToTime(t.IncNumber),
 	}
 
-	d.id2Member[id] = member
+	d.id2Member[id] = &NetworkMember{
+		Id: id,
+		Endpoint: m.Membership.Endpoint,
+		Metadata: m.Membership.Metadata,
+	}
 	delete(d.deadLastTS, id)
 	aliveMsgWithId := &proto.AliveMessage{
 		Membership: &proto.Member{Id: id},
 	}
 
+	// If the member is in the dead list, delete it from there
 	i := util.IndexInSlice(d.cachedMembership.Dead, aliveMsgWithId, sameIdAliveMessages)
 	if i != -1 {
-		resurrectedMember := d.cachedMembership.Dead[i]
 		d.cachedMembership.Dead = append(d.cachedMembership.Dead[:i], d.cachedMembership.Dead[i+1:]...)
-		d.cachedMembership.Alive = append(d.cachedMembership.Alive, resurrectedMember)
 	}
+	// add the member to the alive list
+	d.cachedMembership.Alive = append(d.cachedMembership.Alive, m)
 }
 
 func (d *gossipDiscoveryImpl) periodicalReconnectToDead() {
@@ -465,9 +465,12 @@ func (d *gossipDiscoveryImpl) expireDeadMembers(dead []string) {
 	for _, id := range dead {
 		d.comm.CloseConn(id)
 		// move lastTS from alive to dead
-		lastTS := d.aliveLastTS[id]
-		d.deadLastTS[id] = lastTS
-		delete(d.aliveLastTS, id)
+		lastTS, hasLastTS := d.aliveLastTS[id]
+		if hasLastTS {
+			d.deadLastTS[id] = lastTS
+			delete(d.aliveLastTS, id)
+		}
+
 		aliveMsgWithId := &proto.AliveMessage{
 			Membership: &proto.Member{Id: id},
 		}
