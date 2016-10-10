@@ -31,8 +31,6 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
-	"github.com/hyperledger/fabric/core/system_chaincode"
-	"github.com/hyperledger/fabric/core/system_chaincode/api"
 	u "github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/viper"
@@ -91,12 +89,12 @@ func initPeer() (net.Listener, error) {
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(chaincode.DefaultChain, getPeerEndpoint, false, ccStartupTimeout, secHelper))
 
-	system_chaincode.RegisterSysCCs()
+	chaincode.RegisterSysCCs()
 
-	chaincodeID := &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/core/system_chaincode/lccc", Name: "lccc"}
+	chaincodeID := &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/core/chaincode/lccc", Name: "lccc"}
 	spec := pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}
 
-	api.DeploySysCC(context.Background(), &spec)
+	chaincode.DeploySysCC(context.Background(), &spec)
 
 	go grpcServer.Serve(lis)
 

@@ -42,11 +42,20 @@ var (
 	instRegistry = make(map[string]*inprocContainer)
 )
 
+// errors
+
+//SysCCRegisteredErr registered error
+type SysCCRegisteredErr string
+
+func (s SysCCRegisteredErr) Error() string {
+	return fmt.Sprintf("%s already registered", string(s))
+}
+
 //Register registers system chaincode with given path. The deploy should be called to initialize
 func Register(path string, cc shim.Chaincode) error {
 	tmp := typeRegistry[path]
 	if tmp != nil {
-		return fmt.Errorf(fmt.Sprintf("%s is registered", path))
+		return SysCCRegisteredErr(path)
 	}
 
 	typeRegistry[path] = &inprocContainer{chaincode: cc}

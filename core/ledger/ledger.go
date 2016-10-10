@@ -90,10 +90,7 @@ var once sync.Once
 
 // GetLedger - gives a reference to a 'singleton' ledger
 func GetLedger() (*Ledger, error) {
-	once.Do(func() {
-		ledger, ledgerError = GetNewLedger()
-	})
-	return ledger, ledgerError
+	panic("----DONT ACCESS OLD LEDGER----")
 }
 
 // GetNewLedger - gives a reference to a new ledger TODO need better approach

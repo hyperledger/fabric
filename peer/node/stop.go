@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/peernext"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

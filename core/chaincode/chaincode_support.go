@@ -34,7 +34,6 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
-	"github.com/hyperledger/fabric/core/ledger"
 	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
 	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/protos"
@@ -64,6 +63,15 @@ func init() {
 	chains = make(map[ChainName]*ChaincodeSupport)
 }
 
+//use this for ledger access and make sure TXSimulator is being used
+func getTxSimulator(context context.Context) ledgernext.TxSimulator {
+	if txsim, ok := context.Value(TXSimulatorKey).(ledgernext.TxSimulator); ok {
+		return txsim
+	}
+	panic("!!!---Not Using ledgernext---!!!")
+}
+
+//
 //chaincode runtime environment encapsulates handler and container environment
 //This is where the VM that's running the chaincode would hook in
 type chaincodeRTEnv struct {
@@ -503,44 +511,22 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	// See issue #710
 
 	if t.Type != pb.Transaction_CHAINCODE_DEPLOY {
-		ledger, ledgerErr := ledger.GetLedger()
-
 		if chaincodeSupport.userRunsCC {
 			chaincodeLogger.Error("You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?")
 		}
 
-		if ledgerErr != nil {
-			return cID, cMsg, fmt.Errorf("Failed to get handle to ledger (%s)", ledgerErr)
-		}
+		//PDMP - panic if not using simulator path
+		_ = getTxSimulator(context)
+
+		var depPayload []byte
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
-		var depPayload []byte
-		if _, ok := context.Value(TXSimulatorKey).(ledgernext.TxSimulator); ok {
-			depPayload, ledgerErr = getCDSFromLCCC(context, string(DefaultChain), chaincode)
-			if ledgerErr != nil {
-				return cID, cMsg, fmt.Errorf("Could not get deployment transaction from LCCC for %s - %s", chaincode, ledgerErr)
-			}
-		} else {
-			depTx, ledgerErr = ledger.GetTransactionByID(chaincode)
-			if ledgerErr != nil {
-				return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
-			}
-			if depTx == nil {
-				return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
-			}
-			if nil != chaincodeSupport.secHelper {
-				var err error
-				depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
-				// Note that t is now decrypted and is a deep clone of the original input t
-				if nil != err {
-					return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", chaincode, err)
-				}
-			}
-			depPayload = depTx.Payload
+		depPayload, err = getCDSFromLCCC(context, string(DefaultChain), chaincode)
+		if err != nil {
+			return cID, cMsg, fmt.Errorf("Could not get deployment transaction from LCCC for %s - %s", chaincode, err)
 		}
-
 		if depPayload == nil {
-			return cID, cMsg, fmt.Errorf("failed to get deployment payload %s - %s", chaincode, ledgerErr)
+			return cID, cMsg, fmt.Errorf("failed to get deployment payload %s - %s", chaincode, err)
 		}
 
 		//Get lang from original deployment

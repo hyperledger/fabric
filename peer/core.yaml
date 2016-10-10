@@ -20,7 +20,7 @@ rest:
     # Enable/disable setting for the REST service. It is recommended to disable
     # REST service on validators in production deployment and use non-validating
     # nodes to host REST service
-    enabled: true
+    enabled: false
 
     # The address that the REST service will listen on for incoming requests.
     address: 0.0.0.0:7050

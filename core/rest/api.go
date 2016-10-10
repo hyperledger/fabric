@@ -49,26 +49,16 @@ type ServerOpenchain struct {
 
 // NewOpenchainServer creates a new instance of the ServerOpenchain.
 func NewOpenchainServer() (*ServerOpenchain, error) {
-	// Get a handle to the Ledger singleton.
-	ledger, err := ledger.GetLedger()
-	if err != nil {
-		return nil, err
-	}
-
-	s := &ServerOpenchain{ledger: ledger}
+	//PDMP - do not use old ledger...set it to nil and let it crash on access
+	s := &ServerOpenchain{ledger: nil}
 
 	return s, nil
 }
 
 // NewOpenchainServerWithPeerInfo creates a new instance of the ServerOpenchain.
 func NewOpenchainServerWithPeerInfo(peerServer PeerInfo) (*ServerOpenchain, error) {
-	// Get a handle to the Ledger singleton.
-	ledger, err := ledger.GetLedger()
-	if err != nil {
-		return nil, err
-	}
-
-	s := &ServerOpenchain{ledger: ledger, peerInfo: peerServer}
+	//PDMP - do not use old ledger...set it to nil and let it crash on access
+	s := &ServerOpenchain{ledger: nil, peerInfo: peerServer}
 
 	return s, nil
 }

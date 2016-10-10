@@ -301,7 +301,7 @@ peer:
         touchMaxNodes: 100
 
     # Path on the file system where peer will store data
-    fileSystemPath: /var/hyperledger/production
+    fileSystemPath: /var/hyperledger/test/tmpdb
 
 
     profile:
@@ -388,6 +388,13 @@ chaincode:
     #between peer and chaincode.
     #A value <= 0 turns keepalive off
     keepalive: 1
+
+    # system chaincodes whitelist. To add system chaincode "myscc" to the
+    # whitelist, add "myscc: enable" to the list
+    system:
+        lccc: enable
+        escc: enable
+        vscc: enable
 ###############################################################################
 #
 #    Ledger section - ledger configuration encompases both the blockchain

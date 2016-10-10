@@ -29,7 +29,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hyperledger/fabric/consensus/helper"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
@@ -37,10 +36,8 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/endorser"
-	"github.com/hyperledger/fabric/core/ledger/genesis"
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/peernext"
 	"github.com/hyperledger/fabric/core/rest"
-	"github.com/hyperledger/fabric/core/system_chaincode"
 	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/cobra"
@@ -152,15 +149,10 @@ func serve(args []string) error {
 
 	// Create the peerServer
 	if peer.ValidatorEnabled() {
-		logger.Debug("Running as validating peer - making genesis block if needed")
-		makeGenesisError := genesis.MakeGenesis()
-		if makeGenesisError != nil {
-			return makeGenesisError
-		}
 		logger.Debugf("Running as validating peer - installing consensus %s",
 			viper.GetString("peer.validator.consensus"))
 
-		peerServer, err = peer.NewPeerWithEngine(secHelperFunc, helper.GetEngine)
+		peerServer, err = peer.NewPeerWithEngine(secHelperFunc, nil) //PDMP- remove need for consensus engine
 	} else {
 		logger.Debug("Running as non-validating peer")
 		peerServer, err = peer.NewPeerWithHandler(secHelperFunc, peer.NewPeerHandler)
@@ -283,7 +275,7 @@ func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Se
 		ccStartupTimeout, secHelper)
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	system_chaincode.RegisterSysCCs()
+	chaincode.RegisterSysCCs()
 
 	pb.RegisterChaincodeSupportServer(grpcServer, ccSrv)
 }

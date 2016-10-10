@@ -19,7 +19,7 @@ package common
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/peernext"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/cobra"
 )
