@@ -17,6 +17,10 @@ limitations under the License.
 package config
 
 import (
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -45,6 +49,37 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 	return result
 }
 
+// customDecodeHook adds the additional functions of parsing durations from strings
+// as well as parsing strings of the format "[thing1, thing2, thing3]" into string slices
+// Note that whitespace around slice elements is removed
+func customDecodeHook() mapstructure.DecodeHookFunc {
+	durationHook := mapstructure.StringToTimeDurationHookFunc()
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		dur, err := mapstructure.DecodeHookExec(durationHook, f, t, data)
+		if err == nil {
+			if _, ok := dur.(time.Duration); ok {
+				return dur, nil
+			}
+		}
+
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+
+		raw := data.(string)
+		l := len(raw)
+		if raw[0] == '[' && raw[l-1] == ']' {
+			slice := strings.Split(raw[1:l-1], ",")
+			for i, v := range slice {
+				slice[i] = strings.TrimSpace(v)
+			}
+			return slice, nil
+		}
+
+		return data, nil
+	}
+}
+
 // ExactWithDateUnmarshal is intended to unmarshal a config file into a structure
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
@@ -58,7 +93,7 @@ func ExactWithDateUnmarshal(v *viper.Viper, output interface{}) error {
 		Metadata:         nil,
 		Result:           output,
 		WeaklyTypedInput: true,
-		DecodeHook:       mapstructure.StringToTimeDurationHookFunc(),
+		DecodeHook:       customDecodeHook(),
 	}
 
 	decoder, err := mapstructure.NewDecoder(config)
