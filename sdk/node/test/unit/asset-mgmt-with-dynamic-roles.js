@@ -22,26 +22,39 @@
  * Simple asset management use case where authentication is performed
  * with the help of TCerts only (use-case 1) or attributes only (use-case 2).*/
 
-var hfc = require('../..');
+var hfc = require('hfc');
 var test = require('tape');
 var util = require('util');
-var crypto = require('../../lib/crypto');
+var crypto = require('lib/crypto');
+var tutil = require('test/unit/test-util.js');
+var fs = require('fs');
 
 var chain, chaincodeID;
 var chaincodeName = "mycc4";
 var deployer, alice, bob, assigner;
 var aliceAccount = "12345-56789";
 var bobAccount = "23456-67890";
-var devMode = process.env.DEPLOY_MODE == 'dev';
+
+var goPath = process.env.GOPATH
+var testChaincodePath = process.env.SDK_CHAINCODE_PATH
+ ? process.env.SDK_CHAINCODE_PATH
+ : "github.com/asset_management_with_roles/"
+var absoluteTestChaincodePath = goPath + "/src/" + testChaincodePath;
+
+function pass(t, msg) {
+    t.pass("Success: [" + msg + "]");
+    t.end();
+}
+
+function fail(t, msg, err) {
+    t.fail("Failure: [" + msg + "]: [" + err + "]");
+    t.end(err);
+}
 
 // Create the chain and enroll users as deployer, assigner, and nonAssigner (who doesn't have privilege to assign.
 function setup(cb) {
    console.log("initializing ...");
-   chain = hfc.newChain("testChain");
-   chain.setKeyValStore(hfc.newFileKeyValStore("/tmp/keyValStore"));
-   chain.setMemberServicesUrl("grpc://localhost:7054");
-   chain.addPeer("grpc://localhost:7051");
-   if (devMode) chain.setDevMode(true);
+   chain = tutil.getTestChain("testChain");
    console.log("enrolling deployer ...");
    chain.enroll("WebAppAdmin", "DJY27pEnl16d", function (err, user) {
       if (err) return cb(err);
@@ -69,15 +82,23 @@ function setup(cb) {
 // Deploy assetmgmt_with_roles with the name of the assigner role in the metadata
 function deploy(cb) {
     console.log("deploying with the role name 'assigner' in metadata ...");
+    if (tutil.tlsOn) {
+       var deployCert = tutil.caCert
+       if (tutil.peerAddr0.match(tutil.hsbnDns)) deployCert = tutil.hsbnCertPath
+       else if (tutil.peerAddr0.match(tutil.bluemixDns)) deployCert = tutil.bluemixCertPath
+       fs.createReadStream(tutil.caCert).pipe(fs.createWriteStream(absoluteTestChaincodePath + '/certificate.pem'));
+    }
     var req = {
         fcn: "init",
         args: [],
+        certificatePath: deployCert,
         metadata: new Buffer("assigner")
     };
-    if (devMode) {
+
+    if (tutil.deployMode === 'dev' ) {
        req.chaincodeName = chaincodeName;
     } else {
-       req.chaincodePath = "github.com/asset_management_with_roles/";
+       req.chaincodePath = testChaincodePath;
     }
     var tx = deployer.deploy(req);
     tx.on('submitted', function (results) {

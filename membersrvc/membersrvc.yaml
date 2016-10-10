@@ -26,6 +26,13 @@ security:
 
     # Either SHA2 or SHA3 (note: must be the exact same value as specified in the core.yaml file)
     hashAlgorithm: SHA3
+    serverhostoverride:
+    tls_enabled: false
+
+    client:
+       cert:
+           file:
+
 
     # The server host CN (Common Name) to be used (needs to match the TLS Server Certificate)
     serverhostoverride:

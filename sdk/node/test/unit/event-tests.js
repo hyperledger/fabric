@@ -18,50 +18,44 @@ var hfc = require('../..');
 var test = require('tape');
 var util = require('util');
 var fs = require('fs');
+var tutil = require('test/unit/test-util.js');
 
 //
 //  Create a test chain
 //
 
-var chain = hfc.newChain("testChain");
+var chain = tutil.getTestChain("testChain");
+chain.setDeployWaitTime(120);
+
+var goPath = process.env.GOPATH;
+// Path to the local directory containing the chaincode project under $GOPATH
+var testChaincodePath = "github.com/eventsender/";
+var absoluteTestChaincodePath = goPath + "/src/" + testChaincodePath;
+
 
 //
 // Configure the test chain
 //
-// Set the directory for the local file-based key value store, point to the
-// address of the membership service, and add an associated peer node.
-//
-// If the "tlsca.cert" file exists then the client-sdk will
-// try to connect to the member services using TLS.
-// The "tlsca.cert" is supposed to contain the root certificate (in PEM format)
-// to be used to authenticate the member services certificate.
-//
-
-chain.setKeyValStore(hfc.newFileKeyValStore('/tmp/keyValStore'));
-if (fs.existsSync("tlsca.cert")) {
-    chain.setMemberServicesUrl("grpcs://localhost:7054", fs.readFileSync('tlsca.cert'));
-} else {
-    chain.setMemberServicesUrl("grpc://localhost:7054");
+if (tutil.tlsOn) {
+    var deployCert = tutil.caCert;
+    fs.createReadStream(tutil.caCert).pipe(fs.createWriteStream(absoluteTestChaincodePath + '/certificate.pem'));
+    if (tutil.caCert) {
+       var pem = fs.readFileSync(tutil.caCert);
+       console.log("tutil.caCertHost:", tutil.caCertHost);
+       if (tutil.caCertHost) { var eventGrpcOpts={ pem:pem, hostnameOverride: tutil.caCertHost} }
+       else { var eventGrpcOpts={ pem:pem } };
+    }
+    console.log("Setting eventHubAddr address to grpcs://" + tutil.eventHubAddr);
+    chain.eventHubConnect("grpcs://" + tutil.eventHubAddr, eventGrpcOpts);
 }
-chain.addPeer("grpc://localhost:7051");
-chain.eventHubConnect("localhost:7053");
+else {
+    console.log("Setting eventHubAddr address to grpc://" + tutil.eventHubAddr);
+    chain.eventHubConnect("grpc://" + tutil.eventHubAddr);
+}
 
 process.on('exit', function (){
   chain.eventHubDisconnect();
 });
-
-//
-// Set the chaincode deployment mode to either developent mode (user runs chaincode)
-// or network mode (code package built and sent to the peer).
-//
-
-var mode = process.env['DEPLOY_MODE'];
-console.log("$DEPLOY_MODE: " + mode);
-if (mode === 'dev') {
-    chain.setDevMode(true);
-} else {
-    chain.setDevMode(false);
-}
 
 //
 // Configure test users
@@ -86,9 +80,6 @@ var test_user_Member1;
 // Declare test variables that will be used to store chaincode values used
 // across multiple tests.
 //
-
-// Path to the local directory containing the chaincode project under $GOPATH
-var testChaincodePath = "github.com/eventsender/";
 
 // Chaincode hash that will be filled in by the deployment operation or
 // chaincode name that will be referenced in development mode.
@@ -203,10 +194,11 @@ test('Deploy a chaincode by enrolled user', function (t) {
         // Function to trigger
         fcn: "init",
         // Arguments to the initializing function
-        args: []
+        args: [],
+        certificatePath: deployCert
     };
 
-    if (mode === 'dev') {
+    if (tutil.deployMode === 'dev') {
         // Name required for deploy in development mode
         deployRequest.chaincodeName = testChaincodeName;
     } else {

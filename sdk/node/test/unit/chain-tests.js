@@ -13,59 +13,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Licensed Materials - Property of IBM
- * © Copyright IBM Corp. 2016
- */
 
-var hfc = require('../..');
+var hfc = require('hfc');
 var test = require('tape');
 var util = require('util');
+var tutil = require('test/unit/test-util.js');
 var fs = require('fs');
+
+// Constant to test for URLs
+var urlpattern = new RegExp( "(http|ftp|grpc)s*:\/\/?");
 
 //
 //  Create a test chain
 //
-
-var chain = hfc.newChain("testChain");
+var chain = tutil.getTestChain("testChain");
 
 //
 // Configure the test chain
 //
-// Set the directory for the local file-based key value store, point to the
-// address of the membership service, and add an associated peer node.
-//
-// If the "tlsca.cert" file exists then the client-sdk will
-// try to connect to the member services using TLS.
-// The "tlsca.cert" is supposed to contain the root certificate (in PEM format)
-// to be used to authenticate the member services certificate.
-//
-
-chain.setKeyValStore(hfc.newFileKeyValStore('/tmp/keyValStore'));
-if (fs.existsSync("tlsca.cert")) {
-    chain.setMemberServicesUrl("grpcs://localhost:7054", fs.readFileSync('tlsca.cert'));
-} else {
-    chain.setMemberServicesUrl("grpc://localhost:7054");
+if (tutil.tlsOn) {
+    if (tutil.caCert) {
+       var pem = fs.readFileSync(tutil.caCert);
+       console.log("tutil.caCertHost:", tutil.caCertHost);
+       if (tutil.caCertHost) { var eventGrpcOpts={ pem:pem, hostnameOverride: tutil.caCertHost} }
+       else { var eventGrpcOpts={ pem:pem } };
+    }
+    console.log("Setting eventHubAddr address to grpcs://" + tutil.eventHubAddr);
+    chain.eventHubConnect("grpcs://" + tutil.eventHubAddr, eventGrpcOpts);
 }
-chain.addPeer("grpc://localhost:7051");
-chain.eventHubConnect("localhost:7053");
+else {
+    console.log("Setting eventHubAddr address to grpc://" + tutil.eventHubAddr);
+    chain.eventHubConnect("grpc://" + tutil.eventHubAddr);
+}
 
 process.on('exit', function (){
   chain.eventHubDisconnect();
 });
-
-//
-// Set the chaincode deployment mode to either developent mode (user runs chaincode)
-// or network mode (code package built and sent to the peer).
-//
-
-var mode = process.env['DEPLOY_MODE'];
-console.log("$DEPLOY_MODE: " + mode);
-if (mode === 'dev') {
-    chain.setDevMode(true);
-} else {
-    chain.setDevMode(false);
-}
 
 //
 // Configure test users
@@ -90,9 +73,11 @@ var test_user_Member1;
 // Declare test variables that will be used to store chaincode values used
 // across multiple tests.
 //
-
-// Path to the local directory containing the chaincode project under $GOPATH
-var testChaincodePath = "github.com/chaincode_example02/";
+var goPath = process.env.GOPATH
+var testChaincodePath = process.env.SDK_CHAINCODE_PATH
+ ? process.env.SDK_CHAINCODE_PATH
+ : "github.com/chaincode_example02/"
+var absoluteTestChaincodePath = goPath + "/src/" + testChaincodePath;
 
 // Chaincode hash that will be filled in by the deployment operation or
 // chaincode name that will be referenced in development mode.
@@ -100,6 +85,14 @@ var testChaincodeName = "mycc1";
 
 // testChaincodeID will store the chaincode ID value after deployment.
 var testChaincodeID;
+
+// var deployCert = '/var/hyperledger/production/.membersrvc/tlsca.cert'
+if (tutil.tlsOn) {
+   var deployCert = tutil.caCert
+   if (tutil.peerAddr0.match(tutil.hsbnDns)) deployCert = tutil.hsbnCertPath
+   else if (tutil.peerAddr0.match(tutil.bluemixDns)) deployCert = tutil.bluemixCertPath
+   fs.createReadStream(tutil.caCert).pipe(fs.createWriteStream(absoluteTestChaincodePath + '/certificate.pem'));
+}
 
 // Initializing values for chaincode parameters
 var initA = "100";
@@ -132,6 +125,78 @@ function fail(t, msg, err) {
     t.fail("Failure: [" + msg + "]: [" + err + "]");
     t.end(err);
 }
+
+//
+//  Test boolean function
+function devMode(c) {
+   var initialDevMode = c.isDevMode();
+
+
+   c.setDevMode(c.isDevMode() ? false : true);  /* toggle boolean */
+
+   if (c.isDevMode == initialDevMode) {
+      console.log("setDevMode did not change devMode");
+      return "unexpected result from setDevMode() and isDevMode()";
+   }
+   c.setDevMode(c.isDevMode() ? false : true);  /* toggle boolean */
+
+   if (c.isDevMode() != initialDevMode)  {
+      console.log("oops DevMode: c.isDevMode() =", c.isDevMode())
+      return "unexpected result from setDevMode() and isDevMode()";
+   }
+   return "";
+} /* DevMode() */
+
+//
+// Test chain.deployWaitTime() and chain.setDeployWaitTime()
+function deployWaitChallenge(cb) {
+   var initDeployWaitTime = chain.getDeployWaitTime();
+   var expectDeployWaitTime = 2*initDeployWaitTime;
+
+   console.log("initDeployWaitTime", initDeployWaitTime);
+
+   // I wrote an issue for these values which shouldn't work.  When issue is resolved, I'll
+   // enhance this test
+   chain.setDeployWaitTime(0);
+   console.log("deployWaitTime", chain.getDeployWaitTime());
+   chain.setDeployWaitTime(6000);
+   console.log("deployWaitTime", chain.getDeployWaitTime());
+   chain.setDeployWaitTime(-1);
+   console.log("deployWaitTime", chain.getDeployWaitTime());
+   chain.setDeployWaitTime("as long as it takes");
+   console.log("deployWaitTime", chain.getDeployWaitTime());
+
+   // conventional testing
+   chain.setDeployWaitTime(initDeployWaitTime*2);
+   var x = chain.getDeployWaitTime();
+   if (x != expectDeployWaitTime) {
+      console.log("deployWaitChallenge: expected " + expectDeployWaitTime + " got " + x);
+      return cb(new Error("deployWaitChallenge: unexpected value from getDeployWaitTime()"));
+   }
+   return cb();
+}; /* deployWaitChallenge() */
+
+//
+// Test chain.setInvokeWaitTime() and chain.getInvokeWaitTime()
+//
+function invokeWaitChallenge(cb) {
+   var initInvokeWaitTime = chain.getInvokeWaitTime();
+   var expectInvokeWaitTime = 2*initInvokeWaitTime;
+
+   //console.log("initInvokeWaitTime", initInvokeWaitTime);
+
+   chain.setInvokeWaitTime(0);
+   chain.setInvokeWaitTime(6000);
+   chain.setInvokeWaitTime(-1);
+   chain.setInvokeWaitTime("as long as it takes");
+   chain.setInvokeWaitTime(expectInvokeWaitTime);
+   var x = chain.getInvokeWaitTime();
+   if (x != expectInvokeWaitTime) {
+      console.log("InvokeWaitChallenge: expected " + expectInvokeWaitTime + " got " + x);
+      return cb(new Error("InvokeWaitChallenge: unexpected value from getInvokeWaitTime()"));
+   }
+   return cb();
+}; /* invokeWaitChallenge() */
 
 //
 // Test adding an invalid peer (omit protocol or use invalid protocol in URL)
@@ -173,7 +238,7 @@ test('Add invalid peer URLs to the chain', function (t) {
 
 
 //
-// Test adding a valid peer (URL must start with grpc or grpcs) 
+// Test adding a valid peer (URL must start with grpc or grpcs)
 //
 test('Add valid peer URLs to the chain', function (t) {
 
@@ -196,7 +261,7 @@ test('Add valid peer URLs to the chain', function (t) {
 
         try {
             chain_test2.addPeer(prefix + "://localhost:7051",
-                fs.readFileSync(__dirname + "/../fixtures/tlsca.cert"));
+                fs.readFileSync(__dirname + "/../fixtures/tlsca.cert", {encoding: "ascii"}));
             t.pass("Successfully added peer with URL starting with " + prefix + "://");
         }
         catch (err) {
@@ -303,13 +368,9 @@ test('Set Invalid security level and hash algorithm.', function (t) {
     try {
         chain.getMemberServices().setSecurityLevel(128);
         t.fail("Setting an invalid security level should fail. Allowed security levels are '256' and '384'.")
-        // Exit the test script after a failure
-        process.exit(1);
     } catch (err) {
         if (securityLevel != chain.getMemberServices().getSecurityLevel()) {
             t.fail("Chain is using an invalid security level.")
-            // Exit the test script after a failure
-            process.exit(1);
         }
 
         t.pass("Setting an invalid security level failed as expected.")
@@ -319,19 +380,15 @@ test('Set Invalid security level and hash algorithm.', function (t) {
     try {
         chain.getMemberServices().setHashAlgorithm('SHA');
         t.fail("Setting an invalid hash algorithm should fail. Allowed hash algorithm are 'SHA2' and 'SHA3'.")
-        // Exit the test script after a failure
-        process.exit(1);
     } catch (err) {
         if (hashAlgorithm != chain.getMemberServices().getHashAlgorithm()) {
             t.fail("Chain is using an invalid hash algorithm.")
-            // Exit the test script after a failure
-            process.exit(1);
         }
 
         t.pass("Setting an invalid hash algorithm failed as expected.")
     }
 
-});
+});  /* Set Invalid security level and hash algorithm */
 
 
 //
@@ -347,8 +404,6 @@ test('Enroll WebAppAdmin', function (t) {
         if (err) {
             t.fail("Failed to get WebAppAdmin member " + " ---> " + err);
             t.end(err);
-            // Exit the test script after a failure
-            process.exit(1);
         } else {
             t.pass("Successfully got WebAppAdmin member" /*+ " ---> " + JSON.stringify(crypto)*/);
 
@@ -359,8 +414,6 @@ test('Enroll WebAppAdmin', function (t) {
                 if (err) {
                     t.fail("Failed to enroll WebAppAdmin member " + " ---> " + err);
                     t.end(err);
-                    // Exit the test script after a failure
-                    process.exit(1);
                 } else {
                     t.pass("Successfully enrolled WebAppAdmin member" /*+ " ---> " + JSON.stringify(crypto)*/);
 
@@ -372,15 +425,13 @@ test('Enroll WebAppAdmin', function (t) {
                             t.pass("Successfully stored client token" /*+ " ---> " + WebAppAdmin.getName()*/);
                         } else {
                             t.fail("Failed to store client token for " + WebAppAdmin.getName() + " ---> " + err);
-                            // Exit the test script after a failure
-                            process.exit(1);
                         }
                     });
                 }
             });
         }
     });
-});
+});  /* Enroll WebAppAdmin */
 
 //
 // Set the WebAppAdmin as the designated chain 'registrar' member who will
@@ -397,8 +448,6 @@ test('Set chain registrar', function (t) {
         if (err) {
             t.fail("Failed to get WebAppAdmin member " + " ---> " + err);
             t.end(err);
-            // Exit the test script after a failure
-            process.exit(1);
         } else {
             t.pass("Successfully got WebAppAdmin member");
 
@@ -409,7 +458,7 @@ test('Set chain registrar', function (t) {
             t.equal(chain.getRegistrar().getName(), "WebAppAdmin", "Successfully set chain registrar");
         }
     });
-});
+}); /* Set Chain Registrar */
 
 //
 // Register and enroll a new user with the certificate authority.
@@ -423,8 +472,6 @@ test('Register and enroll a new user', function (t) {
     getUser(test_user1.name, function (err, user) {
         if (err) {
             fail(t, "Failed to get " + test_user1.name + " ---> ", err);
-            // Exit the test script after a failure
-            process.exit(1);
         } else {
             test_user_Member1 = user;
 
@@ -439,13 +486,11 @@ test('Register and enroll a new user', function (t) {
                 } else {
                     t.fail("Failed to store client token for " + test_user1.name + " ---> " + err);
                     t.end(err);
-                    // Exit the test script after a failure
-                    process.exit(1);
                 }
             });
         }
     });
-});
+}); /* Register and enroll a new user */
 
 //
 // Create and issue a chaincode deploy request with a missing chaincodeName
@@ -462,7 +507,8 @@ test('Deploy with missing chaincodeName or chaincodePath', function (t) {
         // Function to trigger
         fcn: "init",
         // Arguments to the initializing function
-        args: ["a", initA, "b", initB]
+        args: ["a", initA, "b", initB],
+        certificatePath: deployCert
     };
 
     // Trigger the deploy transaction
@@ -476,14 +522,12 @@ test('Deploy with missing chaincodeName or chaincodePath', function (t) {
         testChaincodeID = results.chaincodeID;
         console.log("testChaincodeID:" + testChaincodeID);
         t.fail(util.format("Successfully deployed chaincode: request=%j, response=%j", deployRequest, results));
-        // Exit the test script after a failure
-        process.exit(1);
     });
     deployTx.on('error', function (err) {
         // Deploy request failed
         t.pass(util.format("Failed to deploy chaincode: request=%j, error=%j", deployRequest, err));
     });
-});
+}); /* Deploy with missing chaincodeName or chaincodePath */
 
 //
 // Create and issue a chaincode deploy request by the test user, who was
@@ -499,10 +543,13 @@ test('Deploy a chaincode by enrolled user', function (t) {
         // Function to trigger
         fcn: "init",
         // Arguments to the initializing function
-        args: ["a", initA, "b", initB]
+        args: ["a", initA, "b", initB],
+        certificatePath: deployCert
     };
 
-    if (mode === 'dev') {
+  //chain.setDeployWaitTime(-1);
+  //console.log("setting bogus wait time prior to deploy")
+ if (tutil.deployMode === 'dev') {
         // Name required for deploy in development mode
         deployRequest.chaincodeName = testChaincodeName;
     } else {
@@ -525,10 +572,8 @@ test('Deploy a chaincode by enrolled user', function (t) {
     deployTx.on('error', function (err) {
         // Deploy request failed
         t.fail(util.format("Failed to deploy chaincode: request=%j, error=%j", deployRequest, err));
-        // Exit the test script after a failure
-        process.exit(1);
     });
-});
+}); /* Deploy a chaincode by enrolled user */
 
 //
 // Create and issue a chaincode query request with a missing chaincodeID
@@ -555,14 +600,12 @@ test('Query with missing chaincodeID', function (t) {
     queryTx.on('complete', function (results) {
         // Query completed successfully
         t.fail(util.format("Successfully queried existing chaincode state: request=%j, response=%j, value=%s", queryRequest, results, results.result.toString()));
-        // Exit the test script after a failure
-        process.exit(1);
     });
     queryTx.on('error', function (err) {
         // Query failed
         t.pass(util.format("Failed to query existing chaincode state: request=%j, error=%j", queryRequest, err));
     });
-});
+});  /* Query with missing chaincodeID */
 
 //
 // Create and issue a chaincode query request by the test user, who was
@@ -595,10 +638,8 @@ test('Query existing chaincode state by enrolled user with batch size of 1', fun
     queryTx.on('error', function (err) {
         // Query failed
         t.fail(util.format("Failed to query existing chaincode state: request=%j, error=%j", queryRequest, err));
-        // Exit the test script after a failure
-        process.exit(1);
     });
-});
+}); /* Query existing chaincode state by enrolled user with batch size of 1 */
 
 //
 // Create and issue a chaincode query request by the test user, who was
@@ -631,10 +672,8 @@ test('Query existing chaincode state by enrolled user with batch size of 100', f
     queryTx.on('error', function (err) {
         // Query failed
         t.fail(util.format("Failed to query existing chaincode state: request=%j, error=%j", queryRequest, err));
-        // Exit the test script after a failure
-        process.exit(1);
     });
-});
+}); /* Query existing chaincode state by enrolled user with batch size of 100 */
 
 //
 // Create and issue a chaincode query request by the test user, who was
@@ -662,14 +701,12 @@ test('Query non-existing chaincode state by enrolled user', function (t) {
     queryTx.on('complete', function (results) {
         // Query completed successfully
         t.fail(util.format("Successfully queried non-existing chaincode state: request=%j, response=%j, value=%s", queryRequest, results, results.result.toString()));
-        // Exit the test script after a failure
-        process.exit(1);
     });
     queryTx.on('error', function (err) {
         // Query failed
         t.pass(util.format("Failed to query non-existing chaincode state: request=%j, error=%j", queryRequest, err));
     });
-});
+}); /* Query non-existing chaincode state by enrolled user */
 
 //
 // Create and issue a chaincode query request by the test user, who was
@@ -697,14 +734,12 @@ test('Query non-existing chaincode function by enrolled user', function (t) {
     queryTx.on('complete', function (results) {
         // Query completed successfully
         t.fail(util.format("Successfully queried non-existing chaincode function: request=%j, response=%j, value=%s", queryRequest, results, results.result.toString()));
-        // Exit the test script after a failure
-        process.exit(1);
     });
     queryTx.on('error', function (err) {
         // Query failed
         t.pass(util.format("Failed to query non-existing chaincode function: request=%j, error=%j", queryRequest, err));
     });
-});
+}); /* Query non-existing chaincode function by enrolled user */
 
 //
 // Create and issue a chaincode invoke request with a missing chaincodeID
@@ -730,14 +765,12 @@ test('Invoke with missing chaincodeID', function (t) {
     invokeTx.on('submitted', function (results) {
         // Invoke transaction submitted successfully
         t.fail(util.format("Successfully submitted chaincode invoke transaction: request=%j, response=%j", invokeRequest, results));
-        // Exit the test script after a failure
-        process.exit(1);
     });
     invokeTx.on('error', function (err) {
         // Invoke transaction submission failed
         t.pass(util.format("Failed to submit chaincode invoke transaction: request=%j, error=%j", invokeRequest, err));
     });
-});
+}); /* Invoke with missing chaincodeID */
 
 //
 // Create and issue a chaincode invoke request by the test user, who was
@@ -769,7 +802,268 @@ test('Invoke a chaincode by enrolled user', function (t) {
     invokeTx.on('error', function (err) {
         // Invoke transaction submission failed
         t.fail(util.format("Failed to submit chaincode invoke transaction: request=%j, error=%j", invokeRequest, err));
-        // Exit the test script after a failure
-        process.exit(1);
     });
+}); /* Invoke a chaincode by enrolled user */
+
+
+//
+// Test getting and setting member services
+// registered and enrolled in the UT above.
+//
+test.skip('Get/set Member services', function (t) {
+   //
+   // Leave t.plan(1) for now. Deleting t.plan(1) causes all subsequent test cases to fail.
+   //
+   t.plan(1); // Don't even think of deleting this
+   var initMemberServices = chain.getMemberServices();
+   //console.log("Here is a MemberServices: ", chain.getMemberServices());
+
+   // Make a modifiable copy of incoming member services
+   var myMemberServices = { ecaaClient: initMemberServices.ecaaClient
+                           ,ecapClient: initMemberServices.ecapClient
+                           ,tcapClient: initMemberServices.tcapClient
+                           ,tlscapClient: initMemberServices.tlscapClient
+                           ,cryptoPrimitives: initMemberServices.cryptoPrimitives
+                           };
+
+
+   //console.log("\nCurrent MemberServices copied into myMemberServices", myMemberServices);
+
+   // Modify my MemberServices so I can test chain.setMemberServices()
+   // SecurityLevel and HashAlgorithm have only two valid values, so set each to its other value
+   myMemberServices.cryptoPrimitives.securityLevel = initMemberServices.getSecurityLevel() == 256 ? 384 : 256;
+   myMemberServices.cryptoPrimitives.hashAlgorithm = initMemberServices.getHashAlgorithm('SHA2') == 'SHA2' ? 'SHA3' : 'SHA2';
+
+   console.log("\nMyMemberServices with new security level and hash algorithm: ", myMemberServices);
+   chain.setMemberServices(myMemberServices);
+
+   console.log("\nnew member services after chain.setMemberServices(myMemberServices):", chain.getMemberServices());
+   t.fail(util.format("chain.getMemberServices failed waiting for FAB-249"));
+   console.log("chain.getMemberServices().getSecurityLevel ", chain.getMemberServices().getSecurityLevel());
+   console.log("\nchain.getMemberServices.getHashAlgorithm ", chain.getMemberServices().getHashAlgorithm());
+
+   //var level = chain.getMemberServices().getSecurityLevel();
+   var level = chain.getMemberServices().getSecurityLevel();
+   if (c.securityLevel !== level) {
+      console.log("get/setMemberServices Unexpected result from getSecurityLevel ", level);
+      t.fail(util.format("chain.getMemberServices failed"));
+   }
+   var hash = chain.getMemberServices().getHashAlgorithm();
+   if (c.hashAlgorithm !== hash) {
+      console.log("get/setMemberServices Unexpected result from ", hash);
+      t.fail(util.format("chain.getMemberServices failed"));
+   }
+   chain.setMemberServices(initMemberServices);
+   t.pass(util.format("get/set MemberServices OK"));
+
+}); /* Get/set Member services */
+
+//
+// Test setting and getting deployWaitTime
+//
+test('Deploy wait time', function(t) {
+   deployWaitChallenge(function(err) {
+      if (err) {
+         fail(t, "deployWaitChallenge", err);
+      }
+      else {
+         pass(t, "deployWaitChallenge");
+      }
+   });
 });
+
+//
+// Test setting and getting invokeWaitTime
+//
+test('Invoke wait time', function(t) {
+   invokeWaitChallenge(function(err) {
+      if (err) {
+         fail(t, "invokeWaitChallenge", err);
+      }
+      else {
+         pass(t, "invokeWaitChallenge");
+      }
+   });
+});
+
+
+//
+// Test chain.getPeers() and chain.addPeer()
+//
+test.skip('peer pem', function(t) {
+   console.log("peer pem is blocked by issue FAB-433")
+   var initialPeerCount = chain.getPeers().length;
+   var realPem = "-----BEGIN CERTIFICATE-----" +
+      "MIICSjCCAbOgAwIBAgIJAJHGGR4dGioHMA0GCSqGSIb3DQEBCwUAMFYxCzAJBgNV"+
+      "BAYTAkFVMRMwEQYDVQQIEwpTb21lLVN0YXRlMSEwHwYDVQQKExhJbnRlcm5ldCBX"+
+      "aWRnaXRzIFB0eSBMdGQxDzANBgNVBAMTBnRlc3RjYTAeFw0xNDExMTEyMjMxMjla"+
+      "Fw0yNDExMDgyMjMxMjlaMFYxCzAJBgNVBAYTAkFVMRMwEQYDVQQIEwpTb21lLVN0"+
+      "YXRlMSEwHwYDVQQKExhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQxDzANBgNVBAMT"+
+      "BnRlc3RjYTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEAwEDfBV5MYdlHVHJ7"+
+      "+L4nxrZy7mBfAVXpOc5vMYztssUI7mL2/iYujiIXM+weZYNTEpLdjyJdu7R5gGUu"+
+      "Qah2PH5ACLrIIC6tRka9hcaBlIECAwEAAaMgMB4wDAYDVR0TBAUwAwEB/zAOBgNV"+
+      "HQ8BAf8EBAMCAgQwDQYJKoZIhvcNAQELBQADgYEAHzC7jdYlzAVmddi/gdAeKPau"+
+      "sPBG/C2HCWqHzpCUHcKuvMzDVkY/MP2o6JIW2DBbY64bO/FceExhjcykgaYtCH/m"+
+      "oIU63+CFOTtR7otyQAWHqXa7q4SbCDlG7DyRFxqG0txPtGvy12lgldA2+RgcigQG"+
+      "Dfcog5wrJytaQ6UA0wE=" +
+      "-----END CERTIFICATE-----";
+
+   //console.log("real pem = ", realPem);
+   // Specify invalid pem parameters
+   chain.addPeer("grpc://localhost:20202", realPem);
+   if (chain.addPeer("grpc://localhost:30303", realPem)) {
+      //console.log("real PEM accepted");
+      if (chain.addPeer("grpc://localhost:303030", "")) {
+         // This parameter is optional, so probably empty string should be allowed
+         if (chain.addPeer("grpc://localhost:303031", -12)) {
+            // not a string, so why was it accepted?
+            fail(t, "peer pem: pem=-12 unexpectedly accepted");
+         }
+         else {
+            pass(t, "peer pem");
+         }
+      }
+      else {
+         fail(t, "peer pem: null pem was rejected");
+      }
+   }
+   else {
+      fail(t, "peer pem: text string rejected");
+   }
+
+}); /*  AddPeer pem */
+
+//
+// Test chain.getTCertBatchSize()
+test('Get tcert batch size', function(t) {
+
+   var size = chain.getTCertBatchSize();
+   chain.setTCertBatchSize(0);
+
+   if (!isNaN(size) && (size)) {
+      chain.setTCertBatchSize(size + 1);
+      var newSize = chain.getTCertBatchSize();
+      if (newSize == (size + 1)) {
+         pass(t, "get tcert batch size");
+      }
+      else {
+         fail(t, "chain.getTCertBatchSize() returned " + newSize + " expected " + size);
+      }
+   }
+   else {
+      fail(t, "chain.getTCertBatchSize() unexpectedly returned " + size);
+   }
+   chain.setTCertBatchSize(size);      // restore initial value
+}); /* Get tcert batch size */
+
+//
+// Test chain.isPreFetchMode()
+test('Get and test prefetch mode', function(t) {
+   var initialPreFetchMode = chain.isPreFetchMode();
+
+   chain.setPreFetchMode(chain.isPreFetchMode() ? false : true);  /* toggle value */
+   if (chain.isPreFetchMode == initialPreFetchMode) {
+      fail(t, "get and test prefetch mode", "setPreFetchMode() did not change preFetchMode()");
+   }
+
+   chain.setPreFetchMode(chain.isPreFetchMode() ? false : true);  /* toggle value */
+   if (chain.isPreFetchMode() != initialPreFetchMode)  {
+      fail(t, "get and test prefetch mode",
+      "unexpected result from setPreFetchMode() and isPreFetchMode()");
+   }
+
+  pass(t, "get and test prefetch mode")
+}); /* Get and test prefetch mode */
+
+//
+// Test chain.isDevMode()
+test('Get and test Dev mode', function(t) {
+   //err = DevMode(chain);
+   //console.log("return from DevModeTEst", err)
+   if (err = devMode(chain)) {
+      console.log("DevMode returned ", err);
+      fail(t, "get and test Dev mode: ", err);
+   }
+   else {
+      pass(t, "get and set Dev mode");
+   }
+}); /* Get and test Dev mode */
+
+//
+// Test chain.isSecurityEnabled()
+test('is Security enabled', function(t) {
+   var incoming = chain.isSecurityEnabled();
+   var expected = true;
+
+   if (incoming != expected) {
+      console.log("chain isSecurityEnabled=" + incoming + " Expecting "+ expected);
+      fail(t, "is security enabled: unexpected result from chain.isSecurityEnabled()");
+   }
+   pass(t, "is security enabled");
+});
+
+//
+//  Test peer class methods
+test('Peer class methods', function(t) {
+   var peers = chain.getPeers();
+
+   if (!peers) {
+      fail(t, "Peer class methods: chain has no peers");
+   }
+
+   for (var i = 0; peers[i]; i++) { // For each peer
+      //
+      // Verify peer.chain points to original chain
+      var ch2 = peers[i].getChain();
+      if (ch2 != chain) {
+         console.log("peers[%d]", i, peers[i]);
+         fail(t, "Peer class methods: Peer's chain does not point back to original chain");
+      }
+
+      var url = peers[i].getUrl();
+      // console.log("peer url", url);
+      // This pattern test isn't bullet proof but good enough to test whether the URL of an active peer
+      // seems to be an actual URL.
+      if (!urlpattern.test(url)) {
+         console.log(url + " is not a valid URL");
+         fail(t, "Peer class: peer.getUrl() returned invalid url: " + url);
+      }
+   } /* for each peer */
+
+   pass(t, "Peer class methods");
+
+}); /* Peer class methods */
+
+//
+// Test chain.removePeer().
+// This must be the last test.
+test.skip('Remove peer', function(t) {
+   //  BLOCKED BY DEFECT fab-250.
+   // This test has executed only on a single peer network on my laptop, but is designed to work when
+   // multiple peers are in the chain.
+   //
+   console.log("Remove peer: rewrite this test when FAB-250 fix is available");
+   fail(t, "Remove peer: blocked by issue FAB-250");
+
+   return;
+   var peers = chain.getPeers();
+   if (!peers) {
+      fail(t, "Remove peer: chain has no peers");
+   }
+   try {
+      for (var i = 0; peers[i]; i++) { // Remove all the peers
+         //console.log("Removing this peer: ", peers[i]);
+         peers[i].remove();
+      }
+   } catch (err) {
+      t.fail("Remove peer: exception removing peer from chain");
+   }
+
+   // Verify no peers remain
+   peers = chain.getPeers();
+   if (peers) {
+      fail(t, "Remove peer: chain has peers after peer.remove()");
+   }
+
+   pass(t, 'Remove peer');
+}); /* Remove peer */

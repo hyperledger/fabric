@@ -22,10 +22,13 @@
  * Simple asset management use case where authentication is performed
  * with the help of TCerts only (use-case 1) or attributes only (use-case 2).*/
 
-var hfc = require('../..');
+var hfc = require('hfc');
 var test = require('tape');
 var util = require('util');
 var fs = require('fs');
+var tutil = require('test/unit/test-util.js');
+
+
 
 // constants
 var registrar = {
@@ -37,7 +40,11 @@ var alice, bob, charlie;
 var alicesCert, bobAppCert, charlieAppCert;
 
 // Path to the local directory containing the chaincode project under $GOPATH
-var testChaincodePath = "github.com/asset_management/";
+var goPath = process.env.GOPATH
+var testChaincodePath = process.env.SDK_CHAINCODE_PATH
+ ? process.env.SDK_CHAINCODE_PATH
+ : "github.com/asset_management/" ;
+var absoluteTestChaincodePath = goPath + "/src/" + testChaincodePath;
 
 // Chaincode hash that will be filled in by the deployment operation or
 // chaincode name that will be referenced in development mode.
@@ -49,24 +56,7 @@ var testChaincodeID;
 //
 //  Create and configure a test chain
 //
-var chain = hfc.newChain("testChain");
-chain.setKeyValStore(hfc.newFileKeyValStore('/tmp/keyValStore'));
-chain.setMemberServicesUrl("grpc://localhost:7054");
-chain.addPeer("grpc://localhost:7051");
-
-//
-// Set the chaincode deployment mode to either developent mode (user runs chaincode)
-// or network mode (code package built and sent to the peer).
-//
-
-var mode =  process.env['DEPLOY_MODE'];
-console.log("$DEPLOY_MODE: " + mode);
-if (mode === 'dev') {
-    chain.setDevMode(true);
-} else {
-    chain.setDevMode(false);
-}
-
+chain = tutil.getTestChain("testChain");
 
 /**
  * Get the user and if not enrolled, register and enroll the user.
@@ -181,9 +171,15 @@ test('Enroll Charlie', function (t) {
 
 test("Alice deploys chaincode", function (t) {
     t.plan(1);
+    if (tutil.tlsOn) {
+       var deployCert = tutil.caCert
+       if (tutil.peerAddr0.match(tutil.hsbnDns)) deployCert = tutil.hsbnCertPath
+       else if (tutil.peerAddr0.match(tutil.bluemixDns)) deployCert = tutil.bluemixCertPath
+       // Path (under $GOPATH) required for deploy in network mode
+       fs.createReadStream(tutil.caCert).pipe(fs.createWriteStream(absoluteTestChaincodePath + '/certificate.pem'));
+    }
 
     console.log('Deploy and assigning administrative rights to Alice [%s]', alicesCert.encode().toString('hex'));
-
     // Construct the deploy request
     var deployRequest = {
       // Function to trigger
@@ -193,10 +189,11 @@ test("Alice deploys chaincode", function (t) {
       // Mark chaincode as confidential
       confidential: true,
       // Assign Alice's cert
-      metadata: alicesCert.encode()
+      metadata: alicesCert.encode(),
+      certificatePath: deployCert
     };
 
-    if (mode === 'dev') {
+    if (tutil.deployMode === 'dev') {
         // Name required for deploy in development mode
         deployRequest.chaincodeName = testChaincodeName;
     } else {

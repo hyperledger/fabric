@@ -567,16 +567,16 @@ export class Chain {
     /**
      * Set and connect to the peer to be used as the event source.
      */
-    eventHubConnect(peeraddr: string):void {
-	this.eventHub.setPeerAddr(peeraddr);
-	this.eventHub.connect();
+    eventHubConnect(peerUrl: string, opts?:GRPCOptions):void {
+        this.eventHub.setPeerAddr(peerUrl, opts);
+        this.eventHub.connect();
     };
 
     /**
      * Set and connect to the peer to be used as the event source.
      */
     eventHubDisconnect():void {
-	this.eventHub.disconnect();
+        this.eventHub.disconnect();
     };
 
     /**
@@ -800,27 +800,27 @@ export class Chain {
         }
         let peers = this.peers;
         let trySendTransaction = (pidx) => {
-	       if( pidx >= peers.length ) {
-		      eventEmitter.emit('error', new EventTransactionError("None of "+peers.length+" peers reponding"));
-		      return;
-	       }
-	       let p = urlParser.parse(peers[pidx].getUrl());
-	       let client = new net.Socket();
-	       let tryNext = () => {
-		      debug("Skipping unresponsive peer "+peers[pidx].getUrl());
-		      client.destroy();
-		      trySendTransaction(pidx+1);
-	       }
-	       client.on('timeout', tryNext);
-	       client.on('error', tryNext);
-	       client.connect(p.port, p.hostname, () => {
-		   if( pidx > 0  &&  peers === this.peers )
-		      this.peers = peers.slice(pidx).concat(peers.slice(0,pidx));
-		   client.destroy();
-		   peers[pidx].sendTransaction(tx, eventEmitter);
-	    });
-	}
-	trySendTransaction(0);
+            if( pidx >= peers.length ) {
+                eventEmitter.emit('error', new EventTransactionError("None of "+peers.length+" peers reponding"));
+                return;
+            }
+            let p = urlParser.parse(peers[pidx].getUrl());
+            let client = new net.Socket();
+            let tryNext = () => {
+                debug("Skipping unresponsive peer "+peers[pidx].getUrl());
+                client.destroy();
+                trySendTransaction(pidx+1);
+            }
+            client.on('timeout', tryNext);
+            client.on('error', tryNext);
+            client.connect(p.port, p.hostname, () => {
+            if( pidx > 0  &&  peers === this.peers )
+                this.peers = peers.slice(pidx).concat(peers.slice(0,pidx));
+                client.destroy();
+            peers[pidx].sendTransaction(tx, eventEmitter);
+        });
+    }
+    trySendTransaction(0);
     }
 }
 
@@ -1386,7 +1386,7 @@ export class TransactionContext extends events.EventEmitter {
      * @param tx {Transaction} The transaction.
      */
     private execute(tx:Transaction):TransactionContext {
-        debug('Executing transaction [%j]', tx);
+        debug('Executing transaction');
 
         let self = this;
         // Get the TCert
@@ -1437,9 +1437,9 @@ export class TransactionContext extends events.EventEmitter {
                 } else {
                      let txType = tx.pb.getType();
                      let uuid = tx.pb.getTxid();
-		     let eh = self.getChain().getEventHub();
-		     // async deploy and invokes need to maintain
-		     // tx context(completion status(self.complete))
+                     let eh = self.getChain().getEventHub();
+                     // async deploy and invokes need to maintain
+                     // tx context(completion status(self.complete))
                      if ( txType == _fabricProto.Transaction.Type.CHAINCODE_DEPLOY) {
                          self.cevent = new EventDeployComplete(uuid, tx.chaincodeID);
                          self.waitTime = self.getChain().getDeployWaitTime();
@@ -1449,17 +1449,17 @@ export class TransactionContext extends events.EventEmitter {
                      }
                      eh.registerTxEvent(uuid, function (uuid) {
                          self.complete = true;
-			 if (self.timeoutId) {
+                         if (self.timeoutId) {
                              clearTimeout(self.timeoutId);
-			 }
+             }
                          eh.unregisterTxEvent(uuid);
                          self.emit("complete", self.cevent);
                      });
                      self.getChain().sendTransaction(tx, self);
-		     // sync query can be skipped as response
-		     // is processed and event generated in sendTransaction
-		     // no timeout processing is necessary
-		     if ( txType != _fabricProto.Transaction.Type.CHAINCODE_QUERY) {
+                     // sync query can be skipped as response
+                     // is processed and event generated in sendTransaction
+                     // no timeout processing is necessary
+                     if ( txType != _fabricProto.Transaction.Type.CHAINCODE_QUERY) {
                          debug("waiting %d seconds before emitting complete event", self.waitTime);
                          self.timeoutId = setTimeout(function() {
                              debug("timeout uuid=", uuid);
@@ -1475,7 +1475,7 @@ export class TransactionContext extends events.EventEmitter {
                              },
                                 self.waitTime * 1000
                          );
-		     }
+             }
                 }
             } else {
                 debug('Missing TCert...');
@@ -1611,7 +1611,7 @@ export class TransactionContext extends events.EventEmitter {
      * @param request {Object} A BuildRequest or DeployRequest
      */
     private newBuildOrDeployTransaction(request:DeployRequest, isBuildRequest:boolean, cb:DeployTransactionCallback):void {
-      	debug("newBuildOrDeployTransaction");
+        debug("newBuildOrDeployTransaction");
 
         let self = this;
 
@@ -1756,14 +1756,14 @@ export class TransactionContext extends events.EventEmitter {
         debug("hash: " + hash);
 
         // Compose the Dockerfile commands
-     	  let dockerFileContents =
-        "from hyperledger/fabric-baseimage" + "\n" +
-     	  "COPY . $GOPATH/src/build-chaincode/" + "\n" +
-     	  "WORKDIR $GOPATH" + "\n\n" +
-     	  "RUN go install build-chaincode && cp src/build-chaincode/vendor/github.com/hyperledger/fabric/peer/core.yaml $GOPATH/bin && mv $GOPATH/bin/build-chaincode $GOPATH/bin/%s";
+        let dockerFileContents =
+          "from hyperledger/fabric-baseimage" + "\n" +
+          "COPY . $GOPATH/src/build-chaincode/" + "\n" +
+          "WORKDIR $GOPATH" + "\n\n" +
+          "RUN go install build-chaincode && cp src/build-chaincode/vendor/github.com/hyperledger/fabric/peer/core.yaml $GOPATH/bin && mv $GOPATH/bin/build-chaincode $GOPATH/bin/%s";
 
-     	  // Substitute the hashStrHash for the image name
-     	  dockerFileContents = util.format(dockerFileContents, hash);
+        // Substitute the hashStrHash for the image name
+        dockerFileContents = util.format(dockerFileContents, hash);
 
         // Add the certificate path on the server, if it is being passed in
         debug("type of request.certificatePath: " + typeof(request.certificatePath));
@@ -1775,9 +1775,9 @@ export class TransactionContext extends events.EventEmitter {
             dockerFileContents = util.format(dockerFileContents, request.certificatePath);
         }
 
-     	  // Create a Docker file with dockerFileContents
-     	  let dockerFilePath = projDir + "/Dockerfile";
-     	  fs.writeFile(dockerFilePath, dockerFileContents, function(err) {
+        // Create a Docker file with dockerFileContents
+        let dockerFilePath = projDir + "/Dockerfile";
+        fs.writeFile(dockerFilePath, dockerFileContents, function(err) {
             if (err) {
                 debug(util.format("Error writing file [%s]: %s", dockerFilePath, err));
                 return cb(Error(util.format("Error writing file [%s]: %s", dockerFilePath, err)));
@@ -1939,9 +1939,9 @@ export class TransactionContext extends events.EventEmitter {
                             return cb(null, tx);
                         }); // end delete Dockerfile
                     }); // end delete .tar.gz
-              }); // end reading .tar.zg and composing transaction
-	         }); // end writing .tar.gz
-	      }); // end writing Dockerfile
+                }); // end reading .tar.zg and composing transaction
+            }); // end writing .tar.gz
+        }); // end writing Dockerfile
     }
 
     /**
@@ -2780,19 +2780,27 @@ function getPemFromOpts(opts:any):string {
 
 // Normalize opts
 function getOptsFromOpts(opts:any):GRPCOptions {
-   if (isObject(opts)) {
-      delete opts.pem;
-      if (opts.hostnameOverride) {
-         opts['grpc.ssl_target_name_override'] = opts.hostnameOverride;
-         opts['grpc.default_authority'] = opts.hostnameOverride;
-         delete opts.hostnameOverride;
-      }
-      return <GRPCOptions>opts;
-   }
-   if (isString(opts)) {
-      // backwards compatible to handle pem as opts
-      return <GRPCOptions>{ pem: opts };
-   }
+    if (typeof opts === 'object') {
+        var optCopy = {};
+
+        for (var prop in opts) {
+            if (prop !== 'pem') {
+                if (prop === 'hostnameOverride') {
+                    optCopy['grpc.ssl_target_name_override'] = opts.hostnameOverride;
+                    optCopy['grpc.default_authority'] = opts.hostnameOverride;
+                } else {
+                    optCopy[prop] = opts[prop];
+                }
+            }
+        }
+
+        return <GRPCOptions>optCopy;
+    }
+
+    if (typeof opts === 'string') {
+        // backwards compatible to handle pem as opts
+        return <GRPCOptions>{ pem: opts };
+    }
 }
 
 function endsWith(str:string, suffix:string) {
@@ -2861,31 +2869,35 @@ export class ChainCodeCBE {
  */
 export class EventHub {
         // peer addr to connect to
-        private peeraddr: string;
-	// grpc events interface
+        private ep: Endpoint;
+        // grpc options
+        private opts: GRPCOptions;
+        // grpc events interface
         private events: any;
-	// grpc event client interface
+        // grpc event client interface
         private client: any;
-	// grpc chat streaming interface
+        // grpc chat streaming interface
         private call: any;
-	// hashtable of clients registered for chaincode events
+        // hashtable of clients registered for chaincode events
         private chaincodeRegistrants: any;
-	// set of clients registered for block events
+        // set of clients registered for block events
         private blockRegistrants: any;
-	// hashtable of clients registered for transactional events
+        // hashtable of clients registered for transactional events
         private txRegistrants: any;
-	// fabric connection state of this eventhub
+         // fabric connection state of this eventhub
         private connected: boolean;
     constructor() {
-	this.chaincodeRegistrants = new HashTable();
-	this.blockRegistrants = new Set();
-	this.txRegistrants = new HashTable();
-        this.peeraddr = null;
+        this.chaincodeRegistrants = new HashTable();
+        this.blockRegistrants = new Set();
+        this.txRegistrants = new HashTable();
+        this.ep = null;
         this.connected = false;
     }
 
-    public setPeerAddr(peeraddr: string) {
-        this.peeraddr = peeraddr;
+    public setPeerAddr(peeraddr: string, opts?:GRPCOptions) {
+        let pem = getPemFromOpts(opts);
+        this.opts = getOptsFromOpts(opts);
+        this.ep = new Endpoint(peeraddr,pem);
     }
 
     public isconnected() {
@@ -2894,37 +2906,37 @@ export class EventHub {
 
     public connect() {
         if (this.connected) return;
-	if (!this.peeraddr) throw Error("Must set peer address before connecting.");
+        if (!this.ep) throw Error("Must set peer address before connecting.");
         this.events = grpc.load(__dirname + "/protos/events.proto" ).protos;
-	this.client = new this.events.Events(this.peeraddr,grpc.credentials.createInsecure());
-	this.call = this.client.chat();
+        this.client = new this.events.Events(this.ep.addr, this.ep.creds, this.opts);
+        this.call = this.client.chat();
         this.connected = true;
         this.registerBlockEvent(this.txCallback);
 
-	let eh = this; // for callback context
+        let eh = this; // for callback context
         this.call.on('data', function(event) {
-		if ( event.Event == "chaincodeEvent" ) {
-			var cbtable = eh.chaincodeRegistrants.get(event.chaincodeEvent.chaincodeID);
-                        if( !cbtable ) {
-                            return;
-                        }
-                        cbtable.forEach(function (cbe) {
-                            if ( cbe.eventNameFilter.test(event.chaincodeEvent.eventName)) {
-                                cbe.cb(event.chaincodeEvent);
-                            }
-                        });
-		} else if ( event.Event == "block") {
-			eh.blockRegistrants.forEach(function(cb){
-                            cb(event.block);
-			});
-		}
-	});
-	this.call.on('end', function()  {
-		eh.call.end();
-		// clean up Registrants - should app get notified?
-		eh.chaincodeRegistrants.clear();
-		eh.blockRegistrants.clear();
-	});
+            if ( event.Event == "chaincodeEvent" ) {
+                var cbtable = eh.chaincodeRegistrants.get(event.chaincodeEvent.chaincodeID);
+                if( !cbtable ) {
+                    return;
+                }
+                cbtable.forEach(function (cbe) {
+                    if ( cbe.eventNameFilter.test(event.chaincodeEvent.eventName)) {
+                        cbe.cb(event.chaincodeEvent);
+                    }
+                });
+        } else if ( event.Event == "block") {
+                    eh.blockRegistrants.forEach(function(cb){
+                      cb(event.block);
+                });
+        }
+        });
+        this.call.on('end', function()  {
+            eh.call.end();
+            // clean up Registrants - should app get notified?
+            eh.chaincodeRegistrants.clear();
+            eh.blockRegistrants.clear();
+        });
     }
 
     public disconnect() {
@@ -2936,14 +2948,14 @@ export class EventHub {
 
     public registerChaincodeEvent(ccid: string, eventname: string, callback: Function): ChainCodeCBE {
         if (!this.connected) return;
-	let cb = new ChainCodeCBE(ccid, eventname, callback);
-	let cbtable = this.chaincodeRegistrants.get(ccid);
+        let cb = new ChainCodeCBE(ccid, eventname, callback);
+        let cbtable = this.chaincodeRegistrants.get(ccid);
         if ( !cbtable ) {
-	    cbtable = new Set();
-	    this.chaincodeRegistrants.put(ccid, cbtable);
+            cbtable = new Set();
+            this.chaincodeRegistrants.put(ccid, cbtable);
             cbtable.add(cb);
-	    let register = { register: { events: [ { eventType: "CHAINCODE", chaincodeRegInfo:{ chaincodeID: ccid , eventName: "" }} ] }};
-	    this.call.write(register);
+            let register = { register: { events: [ { eventType: "CHAINCODE", chaincodeRegInfo:{ chaincodeID: ccid , eventName: "" }} ] }};
+            this.call.write(register);
         } else {
             cbtable.add(cb);
         }
@@ -2959,43 +2971,43 @@ export class EventHub {
         }
         cbtable.delete(cbe);
         if( cbtable.size <= 0 ) {
-	    var unregister = { unregister: { events: [ { eventType: "CHAINCODE", chaincodeRegInfo:{ chaincodeID: cbe.ccid, eventName: "" }} ] }};
-	    this.chaincodeRegistrants.remove(cbe.ccid);
-	    this.call.write(unregister);
+            var unregister = { unregister: { events: [ { eventType: "CHAINCODE", chaincodeRegInfo:{ chaincodeID: cbe.ccid, eventName: "" }} ] }};
+            this.chaincodeRegistrants.remove(cbe.ccid);
+            this.call.write(unregister);
         }
     }
 
     public registerBlockEvent(callback:Function){
         if (!this.connected) return;
-	this.blockRegistrants.add(callback);
-	if(this.blockRegistrants.size==1) {
-	    var register = { register: { events: [ { eventType: "BLOCK"} ] }};
-	    this.call.write(register);
-	}
+        this.blockRegistrants.add(callback);
+        if(this.blockRegistrants.size==1) {
+            var register = { register: { events: [ { eventType: "BLOCK"} ] }};
+            this.call.write(register);
+        }
     }
 
     public unregisterBlockEvent(callback:Function){
         if (!this.connected) return;
-	if(this.blockRegistrants.size<=1) {
-	    var unregister = { unregister: { events: [ { eventType: "BLOCK"} ] }};
-	    this.call.write(unregister);
-	}
-	this.blockRegistrants.delete(callback);
+        if(this.blockRegistrants.size<=1) {
+            var unregister = { unregister: { events: [ { eventType: "BLOCK"} ] }};
+            this.call.write(unregister);
+        }
+        this.blockRegistrants.delete(callback);
     }
 
     public registerTxEvent(txid:string, callback:Function){
         debug("reg txid "+txid);
-	this.txRegistrants.put(txid, callback);
+        this.txRegistrants.put(txid, callback);
     }
 
     public unregisterTxEvent(txid:string){
-	this.txRegistrants.remove(txid);
+        this.txRegistrants.remove(txid);
     }
 
     private txCallback = (event) => {
         debug("txCallback event=%j", event);
         var eh = this;
-	event.transactions.forEach(function(transaction){
+        event.transactions.forEach(function(transaction) {
             debug("transaction.txid="+transaction.txid);
             var cb = eh.txRegistrants.get(transaction.txid);
             if (cb)

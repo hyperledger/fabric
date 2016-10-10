@@ -13,18 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Licensed Materials - Property of IBM
- * © Copyright IBM Corp. 2016
- */
 
-var hfc = require('../..');
+var hfc = require('hfc');
 var test = require('tape');
 var util = require('util');
 var fs = require('fs');
+var tutil = require('test/unit/test-util.js');
 
-var keyValStorePath = "/tmp/keyValStore";
+var keyValStorePath = "/tmp/keyValStore"
 var keyValStorePath2 = keyValStorePath + "2";
+var keyValStorePath3 = keyValStorePath + "3";
 
 //
 // Run the registrar test
@@ -42,7 +40,7 @@ test('registrar test', function (t) {
 });
 
 //
-// Run the registrar test
+// Run the enroll again test
 //
 test('enroll again', function (t) {
     enrollAgain(function(err) {
@@ -64,9 +62,8 @@ function registrarTest(cb) {
    //
    // Create and configure the test chain
    //
-   chain = hfc.newChain("testChain");
-   chain.setKeyValStore(hfc.newFileKeyValStore(keyValStorePath));
-   chain.setMemberServicesUrl("grpc://localhost:7054");
+   chain = tutil.getTestChain("testChain");
+
    chain.enroll("admin", "Xurw3yU9zI0l", function (err, user) {
       if (err) return cb(err);
       admin = user;
@@ -91,7 +88,7 @@ function registrarTestStep3(cb) {
    console.log("registrarTest: STEP 3");
    var attrs;
    attrs = [{name:'foo',value:'bar'}];
-   registerAndEnroll("webUser", "client", attrs, null, chain, function(err, user) {
+   registerThenEnroll("webUser", "client", attrs, webAdmin, chain, function(err, user) {
       if (err) return cb(err);
       webUser = user;
       registrarTestStep4(cb);
@@ -152,6 +149,47 @@ function registerAndEnroll(name, role, attributes, registrar, chain, cb) {
     chain.registerAndEnroll(registrationRequest,cb);
 }
 
+// Register, then enroll user 'name' with role 'role' with registrar info 'registrar' for chain 'chain'
+// This drives standalone chain.register() and chain.enroll() functions
+function registerThenEnroll(name, role, attributes, registrar, chain, cb) {
+    console.log("registerThenEnroll %s",name);
+    // User is not enrolled yet, so perform both registration and enrollment
+    var registrationRequest = {
+         roles: [ role ],
+         enrollmentID: name,
+         affiliation: "bank_a",
+         attributes: attributes,
+         registrar: registrar
+    };
+    // Test chain.register()
+    chain.register(registrationRequest, function(err, enrollmentPassword) {
+        if (err) {
+            console.log("registerThenEnroll: couldn't register name ", err)
+            return cb(err);
+        }
+        // Fetch name's member so we can set the Registrar
+        chain.getMember(registrar, function(err, member) {
+            if (err) {
+                console.log("could not get member for ", name, err);
+                return cb(err);
+            }
+            //console.log("I did find this member", member)
+            chain.setRegistrar(member);
+            });
+
+        // Test chain.enroll using password returned by chain.register()
+        chain.enroll(name, enrollmentPassword, function(err, member) {
+        //console.log("am I defined?", cb)  /* yes, defined */
+            if (err) {
+                console.log("registerThenEnroll: enroll failed", err);
+                return cb(err);
+            }
+            //console.log("registerThenEnroll: enroll succeeded for registration request =", registrationRequest);
+            return cb(err, member);
+        });
+   });   /* end chain.register */
+}  /* registerThenEnroll */
+
 // Force the client to try to enroll admin again by creating a different chain
 // This should fail.
 function enrollAgain(cb) {
@@ -162,9 +200,12 @@ function enrollAgain(cb) {
    // This is necessary to start without a local cache.
    //
    fs.renameSync(keyValStorePath,keyValStorePath2);
-   var chain = hfc.newChain("testChain2");
-   chain.setKeyValStore(hfc.newFileKeyValStore('/tmp/keyValStore'));
-   chain.setMemberServicesUrl("grpc://localhost:7054");
+   var chain = tutil.getTestChain("testChain2");
+
+   //console.log("enrollAgain: chain.getDeployWaitTime() = ", x)
+   //var chain2 = hfc.newChain(42)
+   //console.log("enrollAgain: here's my chain: %v", chain)
+
    chain.enroll("admin", "Xurw3yU9zI0l", function (err, admin) {
       rmdir(keyValStorePath);
       fs.renameSync(keyValStorePath2,keyValStorePath);
