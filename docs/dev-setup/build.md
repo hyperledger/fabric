@@ -178,14 +178,21 @@ First, install Docker, as described [here](https://docs.docker.com/engine/instal
 The database by default writes to /var/hyperledger. You can override this in the `core.yaml` configuration file, under `peer.fileSystemPath`.
 
 ```
-brew install go rocksdb snappy gnu-tar     # For RocksDB version 4.1, you can compile your own, as described earlier
+brew install go rocksdb snappy gnu-tar     
+# For RocksDB version 4.1, you need to compile your own locally
+cd /tmp
+git clone https://github.com/facebook/rocksdb.git
+cd rocksdb
+git checkout v4.1
+PORTABLE=1 make shared_lib
+INSTALL_PATH=/usr/local make install-shared
 
-# You will need the following two for every shell you want to use
+# You will need the following two lines for every shell you want to use
 eval $(docker-machine env)
 export PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH"
 
 cd $GOPATH/src/github.com/hyperledger/fabric
-make peer
+make all
 ```
 
 ## Configuration
@@ -198,7 +205,7 @@ There is a **core.yaml** file that contains the configuration for the peer proce
 
 ## Logging
 
-Logging utilizes the [go-logging](https://github.com/op/go-logging) library. 
+Logging utilizes the [go-logging](https://github.com/op/go-logging) library.
 
 The available log levels in order of increasing verbosity are: *CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG*
 
