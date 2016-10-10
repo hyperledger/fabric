@@ -21,57 +21,55 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"time"
 
+	"github.com/hyperledger/fabric/orderer/config"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/solo"
 
+	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
+var logger = logging.MustGetLogger("orderer")
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
+
 func main() {
 
-	address := os.Getenv("ORDERER_LISTEN_ADDRESS")
-	if address == "" {
-		address = "127.0.0.1"
-	}
+	config := config.Load()
+	grpcServer := grpc.NewServer()
 
-	port := os.Getenv("ORDERER_LISTEN_PORT")
-	if port == "" {
-		port = "5005"
-	}
-
-	lis, err := net.Listen("tcp", address+":"+port)
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort))
 	if err != nil {
 		fmt.Println("Failed to listen:", err)
 		return
 	}
-
-	grpcServer := grpc.NewServer()
 
 	// Stand in until real config
 	ledgerType := os.Getenv("ORDERER_LEDGER_TYPE")
 	var rawledger rawledger.ReadWriter
 	switch ledgerType {
 	case "file":
-		name, err := ioutil.TempDir("", "hyperledger") // TODO, config
-		if err != nil {
-			panic(fmt.Errorf("Error creating temp dir: %s", err))
+		location := config.FileLedger.Location
+		if location == "" {
+			var err error
+			location, err = ioutil.TempDir("", config.FileLedger.Prefix)
+			if err != nil {
+				panic(fmt.Errorf("Error creating temp dir: %s", err))
+			}
 		}
 
-		rawledger = fileledger.New(name)
+		rawledger = fileledger.New(location)
 	case "ram":
 		fallthrough
 	default:
-		historySize := 10 // TODO, config
-		rawledger = ramledger.New(historySize)
+		rawledger = ramledger.New(int(config.RAMLedger.HistorySize))
 	}
 
-	queueSize := 100 // TODO configure
-	batchSize := 10
-	batchTimeout := 10 * time.Second
-	solo.New(queueSize, batchSize, batchTimeout, rawledger, grpcServer)
+	solo.New(int(config.General.QueueSize), int(config.General.BatchSize), int(config.General.MaxWindowSize), config.General.BatchTimeout, rawledger, grpcServer)
 	grpcServer.Serve(lis)
 }

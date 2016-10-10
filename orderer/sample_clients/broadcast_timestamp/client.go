@@ -21,6 +21,7 @@ import (
 	"time"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/config"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -39,7 +40,8 @@ func (s *broadcastClient) broadcast(transaction []byte) error {
 }
 
 func main() {
-	serverAddr := "127.0.0.1:5005"
+	config := config.Load()
+	serverAddr := fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort)
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	defer conn.Close()
 	if err != nil {

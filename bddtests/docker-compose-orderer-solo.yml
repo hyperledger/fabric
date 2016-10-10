@@ -1,12 +1,14 @@
 orderer0:
   image: hyperledger/fabric-orderer
   environment:
-    - ORDERER_LISTEN_ADDRESS=0.0.0.0
-    - ORDERER_LISTEN_PORT=5005
-    #- ORDERER_WINDOW_SIZE_MAX=1000 # TODO (implement)
-    #- ORDERER_BATCH_TIMEOUT=10s # TODO (implement)
-    #- ORDERER_BATCH_SIZE=10 # TODO (implement)
-    #- ORDERER_BLOCK_HISTORY_SIZE=100 # TODO (implement)
+    - ORDERER_GENERAL_ORDERERTYPE=solo
+    - ORDERER_GENERAL_LEDGERTYPE=ram
+    - ORDERER_GENERAL_BATCHTIMEOUT=10s
+    - ORDERER_GENERAL_BATCHSIZE=10
+    - ORDERER_GENERAL_MAXWINDOWSIZE=1000
+    - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+    - ORDERER_GENERAL_LISTENPORT=5005
+    - ORDERER_RAMLEDGER_HISTORY_SIZE=100
 
   working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
   command: orderer
