@@ -7,6 +7,7 @@ GO_LDFLAGS=$2
 
 BASEIMAGE="hyperledger/fabric-peer"
 IMAGE=$BASEIMAGE
+ARCH=`uname -m`
 
 if [ "$TAG" != "" ]
 then
@@ -25,6 +26,13 @@ PKGS=`go list github.com/hyperledger/fabric/... | grep -v /vendor/ | \
 						  grep -v /examples/chaincode/go/asset_management | \
 						  grep -v /examples/chaincode/go/utxo | \
 						  grep -v /examples/chaincode/go/rbac_tcerts_no_attrs` 
+
+if [ x$ARCH == xppc64le -o x$ARCH == xs390x ]
+then
+PKGS=`echo $PKGS | sed  's@'github.com/hyperledger/fabric/core/chaincode/platforms/java/test'@@g'`
+PKGS=`echo $PKGS | sed  's@'github.com/hyperledger/fabric/core/chaincode/platforms/java'@@g'`
+fi
+
 echo "DONE!"
 
 echo -n "Starting peer.."
