@@ -25,12 +25,6 @@ and deploy the new Docker image that will run the chaincode. *This is a more
 complicated configuration and not suitable to an introduction to the
 Hyperledger fabric.* We recommend first running in chaincode development mode.
 
-## Further exploration
-
-If you wish, there are a number of chaincode examples near by.
-```
-   cd ../../chaincode
-```
 ## Getting started
 
 **Note:** This sample was prepared using Docker for Mac 1.12.0
@@ -167,4 +161,11 @@ the containers from Docker:
 
 ```
    docker-compose kill
+```
+
+## Further exploration
+
+If you wish, there are a number of chaincode examples nearby.
+```
+   cd $GOPATH/src/github.com/hyperledger/fabric/examples/chaincode
 ```
