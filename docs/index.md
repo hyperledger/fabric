@@ -37,7 +37,7 @@ by exploring our [developer guides](#developer-guides).
 
 We welcome contributions to the Hyperledger Project in many forms. There's
 always plenty to do! Full details of how to contribute to this project are
-documented in the [Fabric developer's guide](#fabric-developer's-guide) below.
+documented in the [Fabric developer's guide](#fabric-developer-guide) below.
 
 ## Maintainers
 
@@ -122,39 +122,39 @@ testing Chaincode.
 relating to Chaincode.
 
 ## Application developer guide
-```
-     - [APIs - CLI, REST, and Node.js](API/CoreAPI.md)
-       - [CLI](API/CoreAPI.md#cli): working with the command-line interface.
-       - [REST](API/CoreAPI.md#rest-api): working with the REST API (*deprecated*).
-       - [Node.js SDK](nodeSDK/node-sdk-guide.md): working with the Node.js SDK.
-```
+
+- [APIs - CLI, REST, and Node.js](API/CoreAPI.md)
+- [CLI](API/CoreAPI.md#cli): working with the command-line interface.
+- [REST](API/CoreAPI.md#rest-api): working with the REST API (*deprecated*).
+- [Node.js SDK](nodeSDK/node-sdk-guide.md): working with the Node.js SDK.
+
 ## Fabric developer guide
-```
-     - [Making code contributions](CONTRIBUTING.md): First, you'll want to familiarize
+
+- [Making code contributions](CONTRIBUTING.md): First, you'll want to familiarize
      yourself with the project's contribution guidelines.
-     - [Setting up the development environment](dev-setup/devenv.md): after that, you
+- [Setting up the development environment](dev-setup/devenv.md): after that, you
      will want to set up your development environment.
-     - [Building the fabric core](dev-setup/build.md): next, try building the project
+- [Building the fabric core](dev-setup/build.md): next, try building the project
      in your local development environment to ensure that everything is set up
      correctly.
-     - [Building outside of Vagrant](dev-setup/build.md#building-outside-of-vagrant):
+- [Building outside of Vagrant](dev-setup/build.md#building-outside-of-vagrant):
      for the *adventurous*, you might try to build outside of the standard Vagrant
      development environment.
-     - [Logging control](Setup/logging-control.md): describes how to tweak the logging
+- [Logging control](Setup/logging-control.md): describes how to tweak the logging
      levels of various components within the fabric.
-     - [License header](dev-setup/headers.txt): every source file must include this
+- [License header](dev-setup/headers.txt): every source file must include this
      license header modified to include a copyright statement for the principle
      author(s).
-```
+
 # Operations guide
-```
-      - [Setting Up a Network](Setup/Network-setup.md): instructions for setting up a
+
+- [Setting Up a Network](Setup/Network-setup.md): instructions for setting up a
       network of fabric peers.
-      - [Certificate Authority (CA) Setup](Setup/ca-setup.md): setting up a CA to
+- [Certificate Authority (CA) Setup](Setup/ca-setup.md): setting up a CA to
       support identity, security (authentication/authorization), privacy and
       confidentiality.
-      - [Application ACL](tech/application-ACL.md): working with access control lists.
-```
+- [Application ACL](tech/application-ACL.md): working with access control lists.
+
 # License <a name="license"></a>
 The Hyperledger Project uses the [Apache License Version 2.0](LICENSE) software
 license.
