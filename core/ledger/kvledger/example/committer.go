@@ -36,9 +36,11 @@ func (c *Committer) CommitBlock(rawBlock *protos.Block2) (*protos.Block2, []*pro
 	var validBlock *protos.Block2
 	var invalidTxs []*protos.InvalidTransaction
 	var err error
+	logger.Debugf("Committer validating the block...")
 	if validBlock, invalidTxs, err = c.ledger.RemoveInvalidTransactionsAndPrepare(rawBlock); err != nil {
 		return nil, nil, err
 	}
+	logger.Debugf("Committer committing the block...")
 	if err = c.ledger.Commit(); err != nil {
 		return nil, nil, err
 	}

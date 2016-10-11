@@ -32,6 +32,7 @@ func ConstructConsenter() *Consenter {
 
 // ConstructBlock constructs a block from a list of transactions
 func (c *Consenter) ConstructBlock(transactions ...*protos.Transaction2) *protos.Block2 {
+	logger.Debugf("Construct a block based on the transactions")
 	block := &protos.Block2{}
 	for _, tx := range transactions {
 		txBytes, _ := proto.Marshal(tx)

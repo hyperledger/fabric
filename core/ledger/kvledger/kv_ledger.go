@@ -24,10 +24,15 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/kvledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/lockbasedtxmgmt"
 	"github.com/hyperledger/fabric/protos"
+	logging "github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("kvledger")
 
 // Conf captures `KVLedger` configurations
 type Conf struct {
@@ -58,8 +63,23 @@ type KVLedger struct {
 // NewKVLedger constructs new `KVLedger`
 func NewKVLedger(conf *Conf) (*KVLedger, error) {
 	blockStore := fsblkstorage.NewFsBlockStore(fsblkstorage.NewConf(conf.blockStorageDir, conf.maxBlockfileSize))
+
+	if kvledgerconfig.IsCouchDBEnabled() == true {
+		//By default we can talk to CouchDB with empty id and pw (""), or you can add your own id and password to talk to a secured CouchDB
+		logger.Debugf("===COUCHDB=== NewKVLedger() Using CouchDB instead of RocksDB...hardcoding and passing connection config for now")
+		txmgmt := couchdbtxmgmt.NewCouchDBTxMgr(&couchdbtxmgmt.Conf{DBPath: conf.txMgrDBPath},
+			"127.0.0.1",   //couchDB host
+			5984,          //couchDB port
+			"marbles_app", //couchDB db name
+			"",            //enter couchDB id here
+			"")            //enter couchDB pw here
+		return &KVLedger{blockStore, txmgmt, nil}, nil
+	}
+
+	// Fall back to using RocksDB lockbased transaction manager
 	txmgmt := lockbasedtxmgmt.NewLockBasedTxMgr(&lockbasedtxmgmt.Conf{DBPath: conf.txMgrDBPath})
 	return &KVLedger{blockStore, txmgmt, nil}, nil
+
 }
 
 // GetTransactionByID retrieves a transaction by id
