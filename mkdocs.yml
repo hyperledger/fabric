@@ -10,6 +10,9 @@ pages:
 - Protocol Spec: protocol-spec.md
 - Usecases: biz/usecases.md
 
+- Starter Kit:
+  - Starter Kit: starter/fabric-starter-kit.md
+
 - Installation and setup:
   - Chaincode or Application Developer Setup: Setup/Chaincode-setup.md
   - Java Chaincode Setup: Setup/JAVAChaincode.md
@@ -25,6 +28,7 @@ pages:
   - System Chaincode: SystemChaincodes/noop.md
 
 - Fabric Developer:
+  - v1.0 Preview: abstract_v1.md
   - Contributing: CONTRIBUTING.md
   - Getting an Account: Gerrit/lf-account.md
   - Gerrit: Gerrit/gerrit.md
@@ -48,6 +52,14 @@ pages:
   - Application ACL: tech/application-ACL.md
   - Attributes: tech/attributes.md
   - Best Practices: tech/best-practices.md
+
+- NodeSDK:
+  - App-developer-env-setup: nodeSDK/app-developer-env-setup.md
+  - App-Overview: nodeSDK/app-overview.md
+  - Node-SDK-guide: nodeSDK/node-sdk-guide.md
+  - Node-SDK-indepth: nodeSDK/node-sdk-indepth.md
+  - Sample-Standalone-app: nodeSDK/sample-standalone-app.md
+  - Sample-web-app: nodeSDK/sample-web-app.md
 
 markdown_extensions:
   - extra
