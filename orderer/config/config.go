@@ -47,6 +47,7 @@ type General struct {
 	MaxWindowSize uint
 	ListenAddress string
 	ListenPort    uint16
+	GenesisMethod string
 }
 
 // RAMLedger contains config for the RAM ledger
@@ -97,6 +98,7 @@ var defaults = TopLevel{
 		MaxWindowSize: 1000,
 		ListenAddress: "127.0.0.1",
 		ListenPort:    5151,
+		GenesisMethod: "static",
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,
@@ -146,6 +148,8 @@ func (c *TopLevel) completeInitialization() {
 		case c.General.ListenPort == 0:
 			logger.Infof("General.ListenPort unset, setting to %s", defaults.General.ListenPort)
 			c.General.ListenPort = defaults.General.ListenPort
+		case c.General.GenesisMethod == "":
+			c.General.GenesisMethod = defaults.General.GenesisMethod
 		case c.FileLedger.Prefix == "":
 			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
 			c.FileLedger.Prefix = defaults.FileLedger.Prefix

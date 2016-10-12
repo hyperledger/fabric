@@ -23,7 +23,19 @@ import (
 	"testing"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/bootstrap/static"
 )
+
+var genesisBlock *ab.Block
+
+func init() {
+	bootstrapper := static.New()
+	var err error
+	genesisBlock, err = bootstrapper.GenesisBlock()
+	if err != nil {
+		panic("Error intializing static bootstrap genesis block")
+	}
+}
 
 type testEnv struct {
 	t        *testing.T
@@ -35,7 +47,7 @@ func initialize(t *testing.T) (*testEnv, *fileLedger) {
 	if err != nil {
 		t.Fatalf("Error creating temp dir: %s", err)
 	}
-	return &testEnv{location: name, t: t}, New(name).(*fileLedger)
+	return &testEnv{location: name, t: t}, New(name, genesisBlock).(*fileLedger)
 }
 
 func (tev *testEnv) tearDown() {
@@ -64,7 +76,7 @@ func TestReinitialization(t *testing.T) {
 	tev, ofl := initialize(t)
 	defer tev.tearDown()
 	ofl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte("My Data")}}, nil)
-	fl := New(tev.location).(*fileLedger)
+	fl := New(tev.location, genesisBlock).(*fileLedger)
 	if fl.height != 2 {
 		t.Fatalf("Block height should be 2")
 	}

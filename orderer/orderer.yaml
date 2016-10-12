@@ -38,6 +38,9 @@ General:
     # Listen port: The port on which to bind to listen
     ListenPort: 5151
 
+    # Genesis method: The method by which to retrieve/generate the genesis block
+    GenesisMethod: static
+
 ################################################################################
 #
 #   SECTION: RAM Ledger

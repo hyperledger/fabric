@@ -58,7 +58,7 @@ func (m *mockD) Recv() (*ab.DeliverUpdate, error) {
 
 func TestOldestSeek(t *testing.T) {
 	ledgerSize := 5
-	rl := ramledger.New(ledgerSize)
+	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
 		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
@@ -90,7 +90,7 @@ func TestOldestSeek(t *testing.T) {
 
 func TestNewestSeek(t *testing.T) {
 	ledgerSize := 5
-	rl := ramledger.New(ledgerSize)
+	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
 		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
@@ -119,7 +119,7 @@ func TestNewestSeek(t *testing.T) {
 
 func TestSpecificSeek(t *testing.T) {
 	ledgerSize := 5
-	rl := ramledger.New(ledgerSize)
+	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
 		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
@@ -147,7 +147,7 @@ func TestSpecificSeek(t *testing.T) {
 
 func TestBadSeek(t *testing.T) {
 	ledgerSize := 5
-	rl := ramledger.New(ledgerSize)
+	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < 2*ledgerSize; i++ {
 		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
@@ -183,7 +183,7 @@ func TestBadSeek(t *testing.T) {
 
 func TestBadWindow(t *testing.T) {
 	ledgerSize := 5
-	rl := ramledger.New(ledgerSize)
+	rl := ramledger.New(ledgerSize, genesisBlock)
 
 	m := newMockD()
 	defer close(m.recvChan)
@@ -206,7 +206,7 @@ func TestBadWindow(t *testing.T) {
 func TestAck(t *testing.T) {
 	ledgerSize := 10
 	windowSize := uint64(2)
-	rl := ramledger.New(ledgerSize)
+	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
 		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}

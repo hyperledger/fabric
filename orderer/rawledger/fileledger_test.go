@@ -20,11 +20,22 @@ import (
 	"io/ioutil"
 	"os"
 
+	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/bootstrap/static"
 	. "github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 )
 
+var genesisBlock *ab.Block
+
 func init() {
+	bootstrapper := static.New()
+	var err error
+	genesisBlock, err = bootstrapper.GenesisBlock()
+	if err != nil {
+		panic("Error intializing static bootstrap genesis block")
+	}
+
 	testables = append(testables, &fileLedgerTestEnv{})
 }
 
@@ -58,5 +69,5 @@ func (env *fileLedgerFactory) Persistent() bool {
 }
 
 func (env *fileLedgerFactory) New() ReadWriter {
-	return fileledger.New(env.location)
+	return fileledger.New(env.location, genesisBlock)
 }

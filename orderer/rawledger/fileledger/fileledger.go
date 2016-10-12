@@ -54,7 +54,7 @@ type fileLedger struct {
 }
 
 // New creates a new instance of the file ledger
-func New(directory string) rawledger.ReadWriter {
+func New(directory string, genesisBlock *ab.Block) rawledger.ReadWriter {
 	logger.Debugf("Initializing fileLedger at '%s'", directory)
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		panic(err)
@@ -64,10 +64,6 @@ func New(directory string) rawledger.ReadWriter {
 		fqFormatString: directory + "/" + blockFileFormatString,
 		signal:         make(chan struct{}),
 		marshaler:      &jsonpb.Marshaler{Indent: "  "},
-	}
-	genesisBlock := &ab.Block{
-		Number:   0,
-		PrevHash: []byte("GENESIS"),
 	}
 	if _, err := os.Stat(fl.blockFilename(genesisBlock.Number)); os.IsNotExist(err) {
 		fl.writeBlock(genesisBlock)

@@ -47,5 +47,5 @@ func (env *ramLedgerFactory) Persistent() bool {
 
 func (env *ramLedgerFactory) New() ReadWriter {
 	historySize := 10
-	return ramledger.New(historySize)
+	return ramledger.New(historySize, genesisBlock)
 }

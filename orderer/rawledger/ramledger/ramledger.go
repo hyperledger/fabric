@@ -47,16 +47,13 @@ type ramLedger struct {
 }
 
 // New creates a new instance of the ram ledger
-func New(maxSize int) rawledger.ReadWriter {
+func New(maxSize int, genesis *ab.Block) rawledger.ReadWriter {
 	rl := &ramLedger{
 		maxSize: maxSize,
 		size:    1,
 		oldest: &simpleList{
 			signal: make(chan struct{}),
-			block: &ab.Block{
-				Number:   0,
-				PrevHash: []byte("GENESIS"),
-			},
+			block:  genesis,
 		},
 	}
 	rl.newest = rl.oldest

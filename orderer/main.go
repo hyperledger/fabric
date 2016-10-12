@@ -25,14 +25,17 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/Shopify/sarama"
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/bootstrap"
+	"github.com/hyperledger/fabric/orderer/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/config"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/solo"
+
+	"github.com/Shopify/sarama"
 	"google.golang.org/grpc"
 )
 
@@ -58,6 +61,22 @@ func launchSolo(conf *config.TopLevel) {
 		return
 	}
 
+	var bootstrapper bootstrap.Helper
+
+	// Select the bootstrapping mechanism
+	switch conf.General.GenesisMethod {
+	case "static":
+		bootstrapper = static.New()
+	default:
+		panic(fmt.Errorf("Unknown genesis method %s", conf.General.GenesisMethod))
+	}
+
+	genesisBlock, err := bootstrapper.GenesisBlock()
+
+	if err != nil {
+		panic(fmt.Errorf("Error retrieving the genesis block %s", err))
+	}
+
 	// Stand in until real config
 	ledgerType := os.Getenv("ORDERER_LEDGER_TYPE")
 	var rawledger rawledger.ReadWriter
@@ -72,11 +91,11 @@ func launchSolo(conf *config.TopLevel) {
 			}
 		}
 
-		rawledger = fileledger.New(location)
+		rawledger = fileledger.New(location, genesisBlock)
 	case "ram":
 		fallthrough
 	default:
-		rawledger = ramledger.New(int(conf.RAMLedger.HistorySize))
+		rawledger = ramledger.New(int(conf.RAMLedger.HistorySize), genesisBlock)
 	}
 
 	solo.New(int(conf.General.QueueSize), int(conf.General.BatchSize), int(conf.General.MaxWindowSize), conf.General.BatchTimeout, rawledger, grpcServer)
