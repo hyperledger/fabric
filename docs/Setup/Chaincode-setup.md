@@ -275,7 +275,7 @@ POST localhost:7050/registrar
 
 First, send a chaincode deploy transaction, only once, to the validating peer. The CLI connects to the validating peer using the properties defined in the core.yaml file. **Note:** The deploy transaction typically requires a `path` parameter to locate, build, and deploy the chaincode. However, because these instructions are specific to local development mode and the chaincode is deployed manually, the `name` parameter is used instead.
 ```
-peer chaincode deploy -n mycc -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+peer chaincode deploy -n mycc -c '{Args": ["init", "a","100", "b", "200"]}'
 ```
 
 Alternatively, you can run the chaincode deploy transaction through the REST API.
@@ -283,7 +283,7 @@ Alternatively, you can run the chaincode deploy transaction through the REST API
 **REST Request:**
 
 ```
-POST host:port/chaincode
+POST <host:port>/chaincode
 
 {
   "jsonrpc": "2.0",
@@ -294,8 +294,7 @@ POST host:port/chaincode
         "name": "mycc"
     },
     "ctorMsg": {
-        "function":"init",
-        "args":["a", "100", "b", "200"]
+        "args":["init", "a", "100", "b", "200"]
     }
   },
   "id": 1
@@ -317,12 +316,12 @@ POST host:port/chaincode
 
 **Note:** When security is enabled, modify the CLI command and the REST API payload to pass the `enrollmentID` of a logged in user. To log in a registered user through the CLI or the REST API, follow the instructions in the [note on security functionality](#note-on-security-functionality). On the CLI, the `enrollmentID` is passed with the `-u` parameter; in the REST API, the `enrollmentID` is passed with the `secureContext` element. If you are enabling security and privacy on the peer process with environment variables, it is important to include these environment variables in the command when executing all subsequent peer operations (e.g. deploy, invoke, or query).
 
- 	  CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode deploy -u jim -n mycc -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+ 	  CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode deploy -u jim -n mycc -c '{"Args": ["init", "a","100", "b", "200"]}'
 
 **REST Request:**
 
 ```
-POST host:port/chaincode
+POST <host:port>/chaincode
 
 {
   "jsonrpc": "2.0",
@@ -333,8 +332,7 @@ POST host:port/chaincode
         "name": "mycc"
     },
     "ctorMsg": {
-        "function":"init",
-        "args":["a", "100", "b", "200"]
+        "args":["init", "a", "100", "b", "200"]
     },
     "secureContext": "jim"
   },
@@ -344,7 +342,7 @@ POST host:port/chaincode
 
 The deploy transaction initializes the chaincode by executing a target initializing function. Though the example shows "init", the name could be arbitrarily chosen by the chaincode developer. You should see the following output in the chaincode window:
 ```
-	2015/11/15 15:19:31 Received INIT(uuid:005dea42-d57f-4983-803e-3232e551bf61), initializing chaincode
+	<TIMESTAMP_SIGNATURE> Received INIT(uuid:005dea42-d57f-4983-803e-3232e551bf61), initializing chaincode
 	Aval = 100, Bval = 200
 ```
 
@@ -353,7 +351,7 @@ The deploy transaction initializes the chaincode by executing a target initializ
 Run the chaincode invoking transaction on the CLI as many times as desired. The `-n` argument should match the value provided in the chaincode window (started in Vagrant terminal 2):
 
 ```
-	peer chaincode invoke -l golang -n mycc -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
+	peer chaincode invoke -l golang -n mycc -c '{Args": ["invoke", "a", "b", "10"]}'
 ```
 
 Alternatively, run the chaincode invoking transaction through the REST API.
@@ -361,7 +359,7 @@ Alternatively, run the chaincode invoking transaction through the REST API.
 **REST Request:**
 
 ```
-POST host:port/chaincode
+POST <host:port>/chaincode
 
 {
   "jsonrpc": "2.0",
@@ -372,8 +370,7 @@ POST host:port/chaincode
           "name":"mycc"
       },
       "ctorMsg": {
-         "function":"invoke",
-         "args":["a", "b", "10"]
+         "args":["invoke", "a", "b", "10"]
       }
   },
   "id": 3
@@ -400,7 +397,7 @@ POST host:port/chaincode
 **REST Request:**
 
 ```
-POST host:port/chaincode
+POST <host:port>/chaincode
 
 {
   "jsonrpc": "2.0",
@@ -411,8 +408,7 @@ POST host:port/chaincode
           "name":"mycc"
       },
       "ctorMsg": {
-         "function":"invoke",
-         "args":["a", "b", "10"]
+         "args":["invoke", "a", "b", "10"]
       },
       "secureContext": "jim"
   },
@@ -423,7 +419,7 @@ POST host:port/chaincode
 The invoking transaction runs the specified chaincode function name "invoke" with the arguments. This transaction transfers 10 units from A to B. You should see the following output in the chaincode window:
 
 ```
-	2015/11/15 15:39:11 Received RESPONSE. Payload 200, Uuid 075d72a4-4d1f-4a1d-a735-4f6f60d597a9
+	<TIMESTAMP_SIGNATURE> Received RESPONSE. Payload 200, Uuid 075d72a4-4d1f-4a1d-a735-4f6f60d597a9
 	Aval = 90, Bval = 210
 ```
 
@@ -432,7 +428,7 @@ The invoking transaction runs the specified chaincode function name "invoke" wit
 Run a query on the chaincode to retrieve the desired values. The `-n` argument should match the value provided in the chaincode window (started in Vagrant terminal 2):
 
 ```
-    peer chaincode query -l golang -n mycc -c '{"Function": "query", "Args": ["b"]}'
+    peer chaincode query -l golang -n mycc -c '{"Args": ["query", "b"]}'
 ```
 
 The response should be similar to the following:
@@ -451,7 +447,7 @@ Alternatively, run the chaincode query transaction through the REST API.
 
 **REST Request:**
 ```
-POST host:port/chaincode
+POST <host:port>/chaincode
 
 {
   "jsonrpc": "2.0",
@@ -462,8 +458,7 @@ POST host:port/chaincode
           "name":"mycc"
       },
       "ctorMsg": {
-         "function":"query",
-         "args":["a"]
+         "args":["query", "a"]
       }
   },
   "id": 5
@@ -485,12 +480,12 @@ POST host:port/chaincode
 **Note:** When security is enabled, modify the CLI command and REST API payload to pass the `enrollmentID` of a logged in user. To log in a registered user through the CLI or the REST API, follow the instructions in the [note on security functionality](#note-on-security-functionality). On the CLI, the `enrollmentID` is passed with the `-u` parameter; in the REST API, the `enrollmentID` is passed with the `secureContext` element. If you are enabling security and privacy on the peer process with environment variables, it is important to include these environment variables in the command when executing all subsequent peer operations (e.g. deploy, invoke, or query).
 
 ```
- 	  CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode query -u jim -l golang -n mycc -c '{"Function": "query", "Args": ["b"]}'
+ 	  CORE_SECURITY_ENABLED=true CORE_SECURITY_PRIVACY=true peer chaincode query -u jim -l golang -n mycc -c '{Args": ["query", "b"]}'
 ```
 
 **REST Request:**
 ```
-POST host:port/chaincode
+POST <host:port>/chaincode
 
 {
   "jsonrpc": "2.0",
@@ -501,8 +496,7 @@ POST host:port/chaincode
           "name":"mycc"
       },
       "ctorMsg": {
-         "function":"query",
-         "args":["a"]
+         "args":["query", "a"]
       },
       "secureContext": "jim"
   },
