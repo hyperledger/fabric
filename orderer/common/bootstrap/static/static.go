@@ -18,7 +18,7 @@ package static
 
 import (
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
-	"github.com/hyperledger/fabric/orderer/bootstrap"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 )
 
 type bootstrapper struct{}

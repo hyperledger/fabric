@@ -26,8 +26,8 @@ import (
 	"os/signal"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
-	"github.com/hyperledger/fabric/orderer/bootstrap"
-	"github.com/hyperledger/fabric/orderer/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/config"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	"github.com/hyperledger/fabric/orderer/rawledger"
