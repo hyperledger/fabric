@@ -18,6 +18,7 @@ package simplebft
 
 import "time"
 
+// Request proposes a new request to the BFT network.
 func (s *SBFT) Request(req []byte) {
 	s.broadcast(&Msg{&Msg_Request{&Request{req}}})
 }

@@ -59,6 +59,7 @@ func (s *SBFT) checkBatch(b *Batch) (*BatchHeader, error) {
 
 ////////////////////////////////////////
 
+// Hash returns the hash of the Batch.
 func (b *Batch) Hash() []byte {
 	return hash(b.Header)
 }
