@@ -104,13 +104,13 @@ func TestExample04_Invoke(t *testing.T) {
 	checkInit(t, stub, []string{"Event", "1"})
 
 	// Invoke A->B for 10 via Example04's chaincode
-	checkInvoke(t, stub, []string{"Event", "1"})
+	checkInvoke(t, stub, []string{"Event", "1", scc.GetChaincodeToCall()})
 	checkQuery(t, stub, "Event", eventResponse)
 	checkQuery(t, stubEx2, "a", "101")
 	checkQuery(t, stubEx2, "b", "232")
 
 	// Invoke A->B for 10 via Example04's chaincode
-	checkInvoke(t, stub, []string{"Event", "1"})
+	checkInvoke(t, stub, []string{"Event", "1", scc.GetChaincodeToCall()})
 	checkQuery(t, stub, "Event", eventResponse)
 	checkQuery(t, stubEx2, "a", "91")
 	checkQuery(t, stubEx2, "b", "242")
