@@ -1,7 +1,6 @@
+Authors: Elli Androulaki, Christian Cachin, Konstantinos Christidis, Chet Murthy, Binh Nguyen, and Marko Vukolić
 
-Authors: Elli Androulaki, Christian Cachin, Angelo De Caro, Konstantinos Christidis, Chet Murthy, Binh Nguyen, Alessandro Sorniotti, and Marko Vukolić
-
-This page documents the architecture of a blockchain infrastructure with the roles of a blockchain node separated into roles of *peers* (who maintain state/ledger) and *consenters* (who consent on the order of transactions included in the blockchain state). In common blockchain architectures (including Hyperledger fabric as of July 2016) these roles are unified (cf. *validating peer* in Hyperledger fabric). The architecture also introduces *endorsing peers* (endorsers), as special type of peers responsible for simulating execution and *endorsing* transactions (roughly corresponding to executing/validating transactions in HL fabric 0.5-developer-preview).
+This page documents the architecture of a blockchain infrastructure with the roles of a blockchain node separated into roles of *peers* (who maintain state/ledger) and *consenters* (who consent on the order of transactions included in the blockchain state). In common blockchain architectures (including Hyperledger fabric v0.6-developer-preview and earlier) these roles are unified (cf. *validating peer* in Hyperledger fabric). The architecture also introduces *endorsing peers* (endorsers), as special type of peers responsible for simulating execution and *endorsing* transactions (roughly corresponding to executing/validating transactions in HL fabric 0.6-developer-preview and earlier).
 
 The architecture has the following advantages compared to the design in which peers/consenters/endorsers are unified.
 
@@ -21,7 +20,6 @@ The architecture has the following advantages compared to the design in which pe
 1. Endorsement policies
 1. Blockchain data structures
 1. State transfer and checkpointing
-1. Confidentiality
 
 ---
 
@@ -59,7 +57,7 @@ KVS operations are modeled as follows:
 * `put(k,v)`, for `k\in K` and `v\in V`, takes the blockchain state `s` and changes it to `s'` such that `s'(k)=(v,next(s(k).version))` with `s'(k')=s(k')` for all `k'!=k`.   
 * `get(k)` returns `s(k)`.
 
-**State partitioning.** Keys in the KVS can be recognized from their name to belong to a particular chaincode, in the sense that only transaction of a certain chaincode may modify the keys belonging to this chaincode. In principle, any chaincode can read the keys belonging to other chaincodes (state of the confidential chaincodes cannot be read in clear - see Section 6).  *Support for cross-chaincode transactions, that modify the state belonging to two or more chaincodes will be added in future.*
+**State partitioning.** Keys in the KVS can be recognized from their name to belong to a particular chaincode, in the sense that only transaction of a certain chaincode may modify the keys belonging to this chaincode. In principle, any chaincode can read the keys belonging to other chaincodes.  *Support for cross-chaincode transactions, that modify the state belonging to two or more chaincodes will be added in future.*
 
 **Ledger.**  Evolution of blockchain state (history) is kept in a *ledger*. Ledger is a hashchain of blocks of transactions. Transactions in the ledger are totally ordered.
 
@@ -73,12 +71,7 @@ There are three types of nodes:
 
 1. **Client** or **submitting-client**: a client that submits an actual transaction-invocation.
 
-2. **Peer**: a node that commits transactions and maintains the state and a copy of the ledger. Besides, peers can have two  special roles:
-
-    a. A **submitting peer** or **submitter**,
-
-    b. An **endorsing peer** or **endorser**.
-
+2. **Peer**: a node that commits transactions and maintains the state and a copy of the ledger. Besides, peers can have a special **endorser** role.
 
 3. **Consensus-service-node** or **consenter**: a node running the communication service that implements a delivery guarantee (such as atomic broadcast) typically by running consensus.
 
@@ -94,14 +87,7 @@ The client represents the entity that acts on behalf of an end-user. It must con
 
 A peer communicates with the consensus service and maintain the blockchain state and the ledger.  Such peers receive ordered state updates from the consensus service and apply them to the locally held state.
 
-Peers can additionally take up one of two roles described next.
-
-* **Submitting peer.** A *submitting peer* is a special role of a peer that provides an interface to clients, such that a client may connect to a submitting peer for invoking transactions and obtaining results.  The peer communicates with the other blockchain nodes on behalf of one or more clients for executing the transaction.
-
-
-*  **Endorsing peer.** The special function of an *endorsing peer* occurs with respect to a particular chaincode and consists in *endorsing* a transaction before it is committed. Every chaincode may specify an *endorsement policy* that may refer to a set of endorsing peers. The policy defines the necessary and sufficient conditions for a valid transaction endorsement (typically a set of endorsers' signatures), as described later in Sections 2 and 3. In the special case of deploy transactions that install new chaincode the (deployment) endorsement policy is specified as an endorsement policy of the system chaincode.
-
-To emphasize a peer that does not also have a role of a submitting peer or an endorsing peer, such a peer is sometimes referred to as a *committing peer*.
+Peers can additionally take up a special role of an **endorsing peer.** The special function of an *endorsing peer* occurs with respect to a particular chaincode and consists in *endorsing* a transaction before it is committed. Every chaincode may specify an *endorsement policy* that may refer to a set of endorsing peers. The policy defines the necessary and sufficient conditions for a valid transaction endorsement (typically a set of endorsers' signatures), as described later in Sections 2 and 3. In the special case of deploy transactions that install new chaincode the (deployment) endorsement policy is specified as an endorsement policy of the system chaincode.
 
 
 #### 1.3.3. Consensus service nodes (Consenters)
@@ -116,12 +102,12 @@ Peers are clients of the consensus service, to which the consensus service provi
 
 **Consensus service API.** Peers connect to the channel provided by the consensus service, via the interface provided by the consensus service. The consensus service API  consists of two basic operations (more generally *asynchronous events*):
 
-* `broadcast(blob)`: the submitting peer calls this to broadcast an arbitrary message `blob` for dissemination over the channel. This is also called `request(blob)` in the BFT context, when sending a request to a service.
+* `broadcast(blob)`: a peer calls this to broadcast an arbitrary message `blob` for dissemination over the channel. This is also called `request(blob)` in the BFT context, when sending a request to a service.
 
 * `deliver(seqno, prevhash, blob)`: the consensus service calls this on the peer to deliver the message `blob` with the specified non-negative integer sequence number (`seqno`) and hash of the most recently delivered blob (`prevhash`). In other words, it is an output event from the consensus service. `deliver()` is also sometimes called `notify()` in pub-sub systems or `commit()` in BFT systems.
 
 
- Notice that consensus service clients (i.e., peers) interact with the service only through `broadcast()` and `deliver()` events.
+**TODO** add the part of the API for fetching particular batches under client/peer specified sequence numbers. 
 
 **Consensus properties.** The guarantees of the consensus service (or atomic-broadcast channel) are as follows.  They answer the following question:  *What happens to a broadcasted message and what relations exist among delivered messages?*
 
@@ -151,125 +137,106 @@ In the following we outline the high-level request flow for a transaction.
 
 **Remark:** *Notice that the following protocol _does not_ assume that all transactions are deterministic, i.e., it allows for non-deterministic transactions.*
 
-### 2.1. The client creates a transaction and sends it to a submitting peer of its choice
+### 2.1. The client creates a transaction and sends it to endorsing peers of its choice
 
-To invoke a transaction, the client sends the following message to a submitting peer `spID`.
+To invoke a transaction, the client sends a `PROPOSE` message to a set of endorsing peers of its choice (possibly not at the same time - see Sections 2.1.2. and 2.3.). The set of endorsing peers for a given `chaincodeID` is made available to client via peer, which in turn knows the set of endorsing peers from endorsement policy (see Section 3). For example, the transaction could be sent to *all* endorsers of a given `chaincodeID`.  That said, some endorsers could be offline, others may object and choose not to endorse the transaction. The submitting client tries to satisfy the policy expression with the endorsers available. 
 
-`<SUBMIT,tx,retryFlag>`, where
+In the following, we first detail `PROPOSE` message format and then discuss possible patterns of interaction between submitting client and endorsers.
 
-- `tx=<clientID,chaincodeID,txPayload,clientSig>`, where
+### 2.1.1. `PROPOSE` message format
+
+The format of a `PROPOSE` message is `<PROPOSE,tx,[verDep]>`, where `tx` is a mandatory and `verDep` optional argument explained in the following.
+
+- `tx=<clientID,chaincodeID,txPayload,timestamp,clientSig>`, where
 	- `clientID` is an ID of the submitting client,
 	- `chaincodeID` refers to the chaincode to which the transaction pertains,
 	- `txPayload` is the payload containing the submitted transaction itself,
+	- `timestamp` is a monotonically increasing (for every new transaction) integer maintained by the client,
 	- `clientSig` is signature of a client on other fields of `tx`.
-- `retryFlag` is a boolean that tells the submitting peer whether to retry the submission of the transaction in case transaction fails,
 
-The details of `txPayload` will differ between invoke transactions and
-deploy transactions (i.e., invoke transactions referring to
-a deploy-specific system chaincode).  For an **invoke transaction**,
-`txPayload` would consist of one field
+	The details of `txPayload` will differ between invoke transactions and deploy transactions (i.e., invoke transactions referring to a deploy-specific system chaincode).  For an **invoke transaction**, `txPayload` would consist of two fields
 
-- `invocation = <operation, metadata>`, where
-	- `operation` denotes the chaincode operation (function) and arguments,
-	- `metadata` denotes attributes related to the invocation.
+	- `txPayload = <operation, metadata>`, where
+		- `operation` denotes the chaincode operation (function) and arguments,
+		- `metadata` denotes attributes related to the invocation.
 
-For a **deploy transaction**, `txPayload` would consist of two fields
+	For a **deploy transaction**, `txPayload` would consist of three fields
 
-- `chainCode = <source, metadata>`, where
-	- `source` denotes the source code of the chaincode,
-	- `metadata` denotes attributes related to the chaincode and application,
-- `policies` contains policies related to the chaincode that are accessible to all peers, such as the endorsement policy
+	- `txPayload = <source, metadata, policies>`, where
+		- `source` denotes the source code of the chaincode,
+		- `metadata` denotes attributes related to the chaincode and application,
+		- `policies` contains policies related to the chaincode that are accessible to all peers, such as the endorsement policy. Note that endorsement policies are not supplied with `txPayload` in a `deploy` transaction, but `txPayload of a `deploy` contains endorsement policy ID and its parameters (see Section 3). 
 
-**TODO:** Decide whether to include explicitly local/logical time at the client (a timestamp).
+- `verDep` is a tuple `verDep=(readset,writeset)` containing _version dependencies_. Specifically, `readset` and `writeset` contain key-version pairs (i.e., `readset` and `writeset` are subsets of `KxN`), that "anchor" the `PROPOSE` request to specified versions of keys in a KVS (see Section 1.2.). If the client specifies the `verDep` argument, an endorser endorses a transaction only upon version numbers of corresponding keys in its local KVS match `verDep` (see Section 2.2.). 
 
-### 2.2. The submitting peer prepares a transaction and sends it to endorsers for obtaining an endorsement
+Cryptographic hash of `tx` is used by all nodes as a unique transaction identifier `tid` (i.e., `tid=HASH(tx)`).
+The client stores `tid` in memory and waits for responses from endorsing peers. 
 
-On reception of a `<SUBMIT,tx,retryFlag>` message from a client, the submitting peer first verifies the client's signature `clientSig` and then prepares a transaction. This involves submitting peer tentatively *executing* a transaction (`txPayload`), by invoking the chaincode to which the transaction refers (`chaincodeID`) and the copy of the state that the submitting peer locally holds.  
+#### 2.1.2. Message patterns
 
-As a result of the execution, the submitting peer computes a _state update_ (`stateUpdate`) and _version dependencies_ (`verDep`), also called *MVCC+postimage info* in DB language.
+The client decides on the sequence of interaction with endorsers. For example, a client would typically send `<PROPOSE, tx>` (i.e., without the `verDep` argument) to a single endorser, which would then produce the version dependencies (`verDep`) which the client can later on use as an argument of its `PROPOSE` message to other endorsers. As another example, the client could directly send `<PROPOSE, tx>` (without `verDep`) to all endorsers of its choice. Different patterns of communication are possible and client is free to decide on those (see also Section 2.3.).  
+
+### 2.2. The endorsing peer simulates a transaction and produces an endorsement signature 
+
+On reception of a `<PROPOSE,tx,[verDep]>` message from a client, the endorsing peer `epID` first verifies the client's signature `clientSig` and then simulates a transaction. If the client specifies `verDep` then endorsing peer simulates the transactions only upon version numbers of corresponding keys in its local KVS match those specified by `verDep`.  
+
+Simulating a transaction involves endorsing peer tentatively *executing* a transaction (`txPayload`), by invoking the chaincode to which the transaction refers (`chaincodeID`) and the copy of the state that the endorsing peer locally holds.  
+
+As a result of the execution, the endorsing peer computes a _state update_ (`stateUpdate`) and _version dependencies_ (`verDep`), also called *MVCC+postimage info* in DB language.
 
 Recall that the state consists of key/value (k/v) pairs.  All k/v entries are versioned, that is, every entry contains ordered version information, which is incremented every time when the value stored under a key is updated.  The peer that interprets the transaction records all k/v pairs accessed by the chaincode, either for reading or for writing, but the peer does not yet update its state.  More specifically:
 
-* `verDep` is a tuple `verDep=(readset,writeset)`. Given state `s` before a submitting peer executes a transaction:
+* `verDep` is a tuple `verDep=(readset,writeset)`. Given state `s` before an endorsing peer executes a transaction:
 	*  for every key `k` read by the transaction, pair `(k,s(k).version)` is added to `readset`.
 	*  for every key `k` modified by the transaction, pair `(k,s(k).version)` is added to `writeset`.
 *  additionally, for every key `k` modified by the transaction to the new value `v'`, pair `(k,v')` is added to `stateUpdate`. Alternatively, `v'` could be the delta of the new value to previous value (`s(k).value`).
 
-An implementation may combine `verDep.writeset` with `stateUpdate` into a single data structure.
+If a client specifies `verDep` in the `PROPOSE` message then client specified `verDep` must equal `verDep` produced by endorsing peer when simulating the transaction.    
 
-Then, `tran-proposal := (spID,chaincodeID,txContentBlob,stateUpdate,verDep)`,
+Then, the peer forwards internally  `tran-proposal` (and possibly `tx`) to the part of its (peer's) logic that endorses a transaction, referred to as **endorsing logic**. By default, endorsing logic at a peer accepts the `tran-proposal` and simply signs the `tran-proposal`.  However, endorsing logic may interpret arbitrary functionality, to, e.g., interact with legacy systems with `tran-proposal` and `tx` as inputs to reach the decision whether to endorse a transaction or not.
 
-where `txContentBlob` is chaincode/transaction specific information. The intention is to have `txContentBlob` used as some representation of `tx` (e.g., `txContentBlob=tx.txPayload`). More details are given in Section 6.
+If endorsing logic decides to endorse a transaction, it sends `<TRANSACTION-ENDORSED, tid, tran-proposal,epSig>` message to the submitting client(`tx.clientID`), where:
 
-Cryptographic hash of `tran-proposal` is used by all nodes as a unique transaction identifier `tid` (i.e., `tid=HASH(tran-proposal)`).
+- `tran-proposal := (epID,tid,chaincodeID,txContentBlob,stateUpdate,verDep)`, 
 
-The submitting peer then sends the transaction (i.e., `tran-proposal`) to the endorsers for the chaincode concerned.  The endorsing peers are selected according to the interpretation of the policy and the availability of peers, known by the peers. For example, the transaction could be sent to *all* endorsers of a given `chaincodeID`.  That said, some endorsers could be offline, others may object and choose not to endorse the transaction. The submitting peer tries to satisfy the policy expression with the endorsers available.
+	where `txContentBlob` is chaincode/transaction specific information. The intention is to have `txContentBlob` used as some representation of `tx` (e.g., `txContentBlob=tx.txPayload`). 
 
-The submitting peer `spID` sends the transaction to an endorsing peer `epID` using the following message:
+-  `epSig` is the endorsing peer's signature on `tran-proposal`  
 
-`<PROPOSE,tx,tran-proposal>`
-
-**Possible optimization:** An implementation may optimize duplication of `chaincodeID` in `tx.chaincodeID` and `tran-proposal.chaincodeID`, as well as possible duplication of `txPayload` in `tx.txPayload` and `tran-proposal.txContentBlob`.
-
-Finally, the submitting peer stores `tran-proposal` and `tid` in memory and waits for responses from endorsing peers.
-
-**Alternative design:** *As described here the submitting peer communicates directly with the endorsers.  This could also be a function performed by the consensus service; in this case it should be determined whether fabric has to follow atomic broadcast delivery guarantee for this or use simple peer-to-peer communication.  In that case the consensus service would also be responsible to collect the endorsements according to the policy and to return them to the submitting peer.*  
-
-**TODO:** Decide on communication between submitting peers and endorsing peers: peer-to-peer or using the consensus service.
-
-### 2.3. An endorser receives and endorses a transaction
-
-When a transaction is delivered to a connected endorsing peer for the chaincode `tran-proposal.chaincodeID` by means of a `PROPOSE` message, the endorsing peer performs the following steps:
-
-* The endorser verifies `tx.clientSig` and ensures `tx.chaincodeID==tran-proposal.chaincodeID`.
-
-* The endorser simulates the transaction (using `tx.txPayload`) and verifies that the state update and dependency information are correct. If everything is valid, the peer digitally signs the statement `(TRANSACTION-VALID, tid)` producing signature `epSig`. The endorsing peer then sends `<TRANSACTION-VALID, tid,epSig>` message to the submitting peer (`tran-proposal.spID`).
-
-* Else, in case the transaction simulation at endorsers fails to produce results from `tran-proposal`, we distinguish the following cases:
-
-	a. if the endorser obtains different state updates than those in `tran-proposal.stateUpdates`, the peer signs a statement `(TRANSACTION-INVALID, tid, INCORRECT_STATE)` and sends the signed statement to the submitting peer.
-
- 	b. if the endorser is aware of more advanced data versions than those referred to in `tran-proposal.verDeps`, it signs a statement `(TRANSACTION-INVALID, tid, STALE_VERSION)` and sends the signed statement to the submitting peer.
-
- 	c. if the endorser does not want to endorse a transaction for any other reason (internal endorser policy, error in a transaction, etc.) it signs a statement `(TRANSACTION-INVALID, tid, REJECTED)` and sends the signed statement to the submitting peer.
+Else, in case the endorsing logic refuses to endorse the transaction, an endorser *may* send a message `(TRANSACTION-INVALID, tid, REJECTED)` to the submitting client.
 
 Notice that an endorser does not change its state in this step, the updates are not logged!
 
-**Alternative design:** *An endorsing peer may omit to inform the submitting peer about an invalid transaction altogether, without sending explicit `TRANSACTION-INVALID` notifications.*
+### 2.3. The submitting client collects an endorsement for a transaction and broadcasts it through consensus
 
-**Alternative design:** *The endorsing peer submits the `TRANSACTION-VALID`/`TRANSACTION-INVALID` statement and signature to the consensus service for delivery.*
+The submitting client waits until it receives "enough" messages and signatures on `(TRANSACTION-ENDORSED, tid, *, *)` statements to conclude that the transaction proposal is endorsed.  As discussed in Section 2.1.2., this may involve one or more round-trips of interaction with endorsers.  
 
-**TODO:** Decide on alternative designs above.
+The exact number of "enough"  depend on the chaincode endorsement policy (see also Section 3). If the endorsement policy is satisfied, the transaction has been *endorsed*; note that it is not yet committed. The collection of signed `TRANSACTION-ENDORSED` messages from endorsing peers which establish that a transaction is endorsed is called an *endorsement* and denoted by `endorsement`.
 
-### 2.4. The submitting peer collects an endorsement for a transaction and broadcasts it through consensus
+If the submitting client does not manage to collect an endorsement for a transaction proposal, it abandons this transaction with an option to retry later. 
 
-The submitting peer waits until it receives enough messages and signatures on `(TRANSACTION-VALID, tid)` statements to conclude that the transaction proposal is endorsed (including possibly its own signature).  This will depend on the chaincode endorsement policy (see also Section 3). If the endorsement policy is satisfied, the transaction has been *endorsed*; note that it is not yet committed. The collection of signatures from endorsing peers which establish that a transaction is endorsed is called an *endorsement*, the peer stores them in `endorsement`.
+For transaction with a valid endorsement, we now start using the consensus-fabric. The submitting client invokes consensus service using the `broadcast(blob)`, where `blob=endorsement`. If the client does not have capability of invoking consensus-fabric directly, it may proxy its broadcast through some peer of its choice. Such a peer must be trusted by the client not to remove any message from the `endorsement` or otherwise the transaction may be deemed invalid. Notice that, however, a proxy peer may not fabricate a valid `endorsement`. 
 
-If the submitting peer does not manage to collect an endorsement for a transaction proposal, it abandons this transaction and notifies the submitting client. If `retryFlag` has been originally set by the submitting client (see step 1 and the `SUBMIT` message) the submitting peer may (depending on submitting peer policies) retry the transaction (from step 2).
-
-For transaction with a valid endorsement, we now start using the consensus-fabric. The submitting peer invokes consensus service using the `broadcast(blob)`, where `blob=(tran-proposal, endorsement)`.
-
-### 2.5. The consensus service delivers a transactions to the peers
+### 2.4. The consensus service delivers a transactions to the peers
 
 When an event `deliver(seqno, prevhash, blob)` occurs and a peer has applied all state updates for blobs with sequence number lower than `seqno`, a peer does the following:
 
-* It checks that the `blob.endorsement` is valid according to the policy of the chaincode (`blob.tran-proposal.chaincodeID`) to which it refers. (This step might be performed even without waiting for applying the state updates with sequence numbers smaller than `seqno`.)
+* It checks that the `blob.endorsement` is valid according to the policy of the chaincode (`blob.tran-proposal.chaincodeID`) to which it refers. 
 
-* It verifies that the dependencies (`blob.tran-proposal.verDep`) have not been violated meanwhile.
+* In a typical case, it also verifies that the dependencies (`blob.endorsement.tran-proposal.verDep`) have not been violated meanwhile. In more complex use cases, `tran-proposal` fields in endorsement may differ and in this case endorsement policy (Section 3) specifies how the state evolves. 
 
 Verification of dependencies can be implemented in different ways, according to a consistency property or "isolation guarantee" that is chosen for the state updates. For example, **serializability** can be provided by requiring the version associated with each key in the `readset` or `writeset` to be equal to that key's version in the state, and rejecting transactions that do not satisfy this requirement. As another example, one can provide **snapshot isolation** when all keys in the `writeset` still have the same version as in the state as in the dependency data. The database literature contains many more isolation guarantees.
 
-**TODO:** Decide whether to insist on serializability or allow chaincode to specify isolation level.
+Serializability is a default isolation guarantee, unless chaincode endorsement policy specifies a different one. 
 
-* If all these checks pass, the transaction is deemed *valid* or *committed*. This means that a peer appends the transaction to the ledger and subsequently applies `blob.tran-proposal.stateUpdates` to blockchain state.  Only committed transactions may change the state.
+* If all these checks pass, the transaction is deemed *valid* or *committed*. This means that a peer appends the transaction to the ledger and subsequently applies `blob.endorsement.tran-proposal.stateUpdates` to blockchain state if `tran-proposals` are the same, otherwise endorsement policy logic defines the function that takes `blob.endorsement` and produces updates to the ledger state. Only committed transactions may change the state.
 
-* If any of these checks fail, the transaction is invalid and the peer drops the transaction.  It is important to note that invalid transactions are not committed, do not change the state, and are not recorded.
+* If the endorsement policy verification of `blob.endorsement` fails the transaction is invalid and the peer drops the transaction.  It is important to note that invalid transactions are not committed, do not change the state, and are not recorded.
 
-Additionally, the submitting peer notifies the client of a dropped transaction. If `retryFlag` has been originally set by the submitting client (see step 1 and the `SUBMIT` message) the submitting peer may (depending on submitting peer policies) retry the transaction (from step 2).
 
-![Illustration of the transaction flow (common-case path).](flow-2.png)
+![Illustration of the transaction flow (common-case path).](http://vukolic.com/hyperledger/flow-3.png)
 
-Figure 1. Illustration of the transaction flow (common-case path).
+Figure 1. Illustration of one possible transaction flow (common-case path).
 
 ---
 
@@ -277,35 +244,44 @@ Figure 1. Illustration of the transaction flow (common-case path).
 
 ### 3.1. Endorsement policy specification
 
-An **endorsement policy**, is a condition on what _endorses_ a transaction. An endorsement policy is specified by a `deploy` transaction that installs specific chaincode. A transaction is declared valid only if it has been endorsed according to the policy. An invoke transaction for a chaincode will first have to obtain an *endorsement* that satisfies the chaincode's policy or it will not be committed. This takes place through the interaction between the submitting peer and endorsing peers as explained in Section 2.
+An **endorsement policy**, is a condition on what _endorses_ a transaction. Blockchain peers have a pre-specified  set of endorsement policies, which are referenced by a `deploy` transaction that installs specific chaincode. Endorsement policies can be parametrized, and these parameters can be specified by a `deploy` transaction.  
 
-Formally the endorsement policy is a predicate on the transaction, endorsement, and potentially further state that evaluates to TRUE or FALSE. For deploy transactions the endorsement is obtained according to a system-wide policy (for example, from the system chaincode).
+To guarantee blockchain and security properties, the set of endorsement policies **should be a set of proven policies** with limited set of functions in order to ensure bounded execution time (termination), determinism, performance and security guarantees. 
 
-Formally an endorsement policy is a predicate referring to certain variables. Potentially it may refer to:
+Dynamic addition of endorsement policies (e.g., by `deploy` transaction on chaincode deploy time) is very sensitive in terms of bounded policy evaluation time (termination), determinism, performance and security guarantees. Therefore, dynamic addition of endorsement policies is not allowed, but can be supported in future.
+
+
+### 3.2. Transaction evaluation against endorsement policy
+
+A transaction is declared valid only if it has been endorsed according to the policy. An invoke transaction for a chaincode will first have to obtain an *endorsement* that satisfies the chaincode's policy or it will not be committed. This takes place through the interaction between the submitting client and endorsing peers as explained in Section 2.
+
+Formally the endorsement policy is a predicate on the endorsement, and potentially further state that evaluates to TRUE or FALSE. For deploy transactions the endorsement is obtained according to a system-wide policy (for example, from the system chaincode).
+
+An endorsement policy predicate refers to certain variables. Potentially it may refer to:
 
 1. keys or identities relating to the chaincode (found in the metadata of the chaincode), for example, a set of endorsers;
 2. further metadata of the chaincode;
-3. elements of the transaction itself;
+3. elements of the `endorsement` and `endorsement.tran-proposal`;
 4. and potentially more.
 
-The evaluation of an endorsement policy predicate must be deterministic. Endorsement policies must not be complex and cannot be "mini chaincode". The endorsement policy specification language must be limited and enforce determinism.
+The above list is ordered by increasing expressiveness and complexity, that is, it will be relatively simple to support policies that only refer to keys and identities of nodes.
 
-The list is ordered by increasing expressiveness and complexity, that is, it will be relatively simple to support policies that only refer to keys and identities of nodes.
+**The evaluation of an endorsement policy predicate must be deterministic.**  An endorsement shall be evaluated locally by every peer or by every consenter node with access to the chaincode metadata (which includes these keys), such that this node does *not*  require interaction with another node yet evaluates in the same way at all correct peers.   
 
-**TODO:** Decide on parameters of the endorsement policy.
+### 3.3. Example endorsement policies
 
 The predicate may contain logical expressions and evaluates to TRUE or FALSE.  Typically the condition will use digital signatures on the transaction invocation issued by endorsing peers for the chaincode.
 
 Suppose the chaincode specifies the endorser set `E = {Alice, Bob, Charlie, Dave, Eve, Frank, George}`.  Some example policies:
 
-- A valid signature from all members of E.
+- A valid signature from on the same `tran-proposal` from all members of E.
 
 - A valid signature from any single member of E.
 
-- Valid signatures from endorsing peers according to the condition
+- Valid signatures on the same `tran-proposal` from endorsing peers according to the condition
   `(Alice OR Bob) AND (any two of: Charlie, Dave, Eve, Frank, George)`.
 
-- Valid signatures by any 5 out of the 7 endorsers. (More generally, for chaincode with `n > 3f` endorsers, valid signatures by any `2f+1` out of the `n` endorsers, or by any group of *more* than `(n+f)/2` endorsers.)
+- Valid signatures on the same `tran-proposal` by any 5 out of the 7 endorsers. (More generally, for chaincode with `n > 3f` endorsers, valid signatures by any `2f+1` out of the `n` endorsers, or by any group of *more* than `(n+f)/2` endorsers.)
 
 - Suppose there is an assignment of "stake" or "weights" to the endorsers,
   like `{Alice=49, Bob=15, Charlie=15, Dave=10, Eve=7, Frank=3, George=1}`,
@@ -316,21 +292,10 @@ Suppose the chaincode specifies the endorser set `E = {Alice, Bob, Charlie, Dave
 
 - The assignment of stake in the previous example condition could be static (fixed in the metadata of the chaincode) or dynamic (e.g., dependent on the state of the chaincode and be modified during the execution).
 
+- Valid signatures from (Alice OR Bob) on `tran-proposal1` and valid signatures from `(any two of: Charlie, Dave, Eve, Frank, George)` on `tran-proposal2`, where `tran-proposal1` and `tran-proposal2` differ only in their endorsing peers and state updates`.
+
 How useful these policies are will depend on the application, on the desired resilience of the solution against failures or misbehavior of endorsers, and on various other properties.
-
-
-### 3.2. Implementation
-
-Typically, endorsement policies will be formulated in terms of signatures required from endorsing peers.  The metadata of the chaincode must contain the corresponding signature verification keys.
-
-An endorsement will typically consist of a set of signatures.  It can be evaluated locally by every peer or by every consenter node with access to the chaincode metadata (which includes these keys), such that this node does *not*  require interaction with another node.  Neither does a node need access to the state for verifying an endorsement.
-
-Endorsements that refer to other metadata of the chaincode can be evaluated in the same way.
-
-**TODO:** Formalize endorsement policies and design an implementation.
-
-
-
+ 
 ---
 
 ## 4. Blockchain data structures
@@ -339,7 +304,7 @@ The blockchain consists of three data structures: a) *raw ledger*, b) *blockchai
 
 * *Raw ledger (RL)*. The raw ledger contains all data output by the consensus service at peers. It is a sequence of `deliver(seqno, prevhash, blob)` events, which form a hash chain according to the computation of `prevhash` described before. The raw ledger contains information about both *valid* and *invalid* transactions and provides a verifiable history of all successful and unsuccessful state changes and attempts to change state, occurring during the operation of the system.
 
-	The RL allows peers to replay the history of all transactions and to reconstruct the blockchain state (see below). It also provides submitting peer with information about *invalid* (uncommitted) transactions, on which submitting peers can act as described in Section 2.5.
+	The RL allows peers to replay the history of all transactions and to reconstruct the blockchain state (see below). It also provides peers with information about *invalid* (uncommitted) transactions.
 
 
 *  *(Blockchain) state*. The state is maintained by the peers (in the form of a KVS) and is derived from the raw ledger by **filtering out invalid transactions** as described in Section 2.5 (Step 5 in Figure 1) and applying valid transactions to state (by executing `put(k,v)` for every `(k,v)` pair in `stateUpdate` or, alternatively, applying state deltas with respect to previous state).
@@ -356,7 +321,7 @@ Instead of outputting individual transactions (blobs), the consensus service may
 Consensus batching does not impact the construction of the raw ledger, which remains a hash chain of blobs. But with batching, the raw ledger becomes a hash chain of batches rather than hash chain of individual blobs.
 
 With batching, the construction of the (optional) validated ledger *blocks* proceeds as follows. As the batches in the raw ledger may contain invalid transactions (i.e., transactions with invalid endorsement or with invalid version dependencies), such transactions are filtered out by peers before a transaction in a batch becomes committed in a block. Every peer does this by itself. A block is defined as a consensus batch without the invalid transactions, that have been filtered out. Such blocks are inherently dynamic in size and may be empty. An illustration of block construction is given in the figure below.
-     ![Illustration of the transaction flow (common-case path).](blocks-2.png)
+     ![Illustration of the transaction flow (common-case path).](http://vukolic.com/hyperledger/blocks-2.png)
 
 Figure 2. Illustration of validated ledger block formation from raw ledger batches.
 
@@ -440,317 +405,3 @@ Conceptually, the block transfer mechanism works similarly to batch transfer. Re
 
 * If the transfer of blocks 26-50 was successful, peer *p* still needs to complete state transfer by fetching blocks 51-53 of the validated ledger or batches 51-53 of the raw ledger. To this end, *p* can simply follow the Raw-ledger batch transfer protocol (Section 5.1), transferring these from *q* or any other peer. Notice that the validated-ledger blocks contain hashes of respective raw-ledger batches (Section 4.2). Hence the batch transfer of the raw ledger can be done even if peer *p* does not have batch 50 in its Raw Ledger, as hash of batch 50 is included in block 50.
 
-
-
-## 6. Confidentiality
-
-This section explains how this architecture facilitates the deployment of
-chaincodes that involve processing of sensitive data that must be kept
-confidential from certain peers.
-
-**Fabric-level confidentiality policies.** In a nutshell, this architecture
-offers certain confidentiality features at the *fabric* layer, where:
-
- * endorsers of a confidential chaincode have access to the plaintext of:
-     *  the chaincode deploy transaction payload;
-     *  the chaincode invoke transaction payload;
-     *  the chaincode state and state updates; and
- * other peers are prevented from accessing plaintext of this information.
-
-Here we make the assumption that the endorsers included in the endorsement set
-of a confidential chaincode are trusted by the chaincode creator to access the
-resources of a chaincode and to maintain their confidentiality.
-
-The degree to which a chaincode employs the fabric-confidentiality features
-is defined in a **confidentiality policy** specified by the deployer at
-deployment time.
-In particular, the fabric offers support for the following confidentiality
-policies:
-
-| Policy ID | Deploy Payload | Invoke Payload | State Updates |
-|---|---|---|---|---|
-| Policy `000` | In-the-clear | In-the-clear | In-the-clear |
-| Policy `010` | In-the-clear | Confidential | In-the-clear |
-| Policy `011` | In-the-clear | Confidential | Confidential |
-| Policy `110` | Confidential | Confidential | In-the-clear |
-| Policy `111` | Confidential | Confidential | Confidential |
-| Policy* `0xx` | In-the-clear | any | any |
-| Policy* `1xx` | Confidential | any | any |
-
-**Table 6.1.** Fabric confidentiality policies.
-
-*Confidential* means that access to the cleartext of the corresponding
-transaction component (i.e., deploy/invoke payload or state updates)  is restricted to the endorsing peers of the
-transaction.
-*In-the-clear* means that the corresponding transaction component can be
-read and accessed by all peers.  *Any* denotes either *Confidential* or
-*In-the-clear*.
-
-In the following we assume that the payload of a deploy transaction
-includes both code and application data/metadata as a single item. However,
-in future revisions of this design, we may treat the two independently from a
-confidentiality policy perspective.
-
-In the rest of this text, a `Confidential` *chaincode* is one with a
-confidentiality policy different from `000`. Also, in the rest of
-this text, we make the assumption that every peer is associated with an
-enrollment (encryption) public key, as described in
-[Hyperledger fabric Protocol specification](https://github.com/hyperledger/fabric/blob/master/docs/protocol-spec.md).  In particular, for every endorser `e` a public key `ePubKey` is known to all
-peers and peer `e` knows the corresponding private key for decryption.
-
-**Disclaimers:**
-
-*Hiding the transaction activity w.r.t. a chaincode*.
-It is important to note that the design does not hide the
-identifiers of the chaincode for which transactions are executed nor does
-it hide which parts of chaincode state are updated by a transaction.
-In other words, transactions and state are encrypted but activity and state
-changes can be linked by the committing peers. With respect to third parties,
-the committing peers are permitted by the chaincode creators to notice activity
-of a chaincode and trusted to not leak this information.
-However, we aim to remedy this in a revised version of this design.
-
-*Granularity of the confidentiality of the state.* This design currently
-treats the a chaincode and its state as one confidentiality domain, not
-distinguishing different key/value entries. It is possible to assign
-different confidentiality policies to different parts of the state at the
-application layer, supporting goals such as some parts of the state need to
-be visible to a subset of the clients, but other parts not. That is, such
-guarantees are not prevented by the architecture and can already be implemented
-at the application level, using adequate cryptographic tools in one or more
-chaincodes.  This would result in *chaincode-level confidentiality*.
-Other requirements, such as hiding the identities of endorsers and/or the
-endorsement policy from the committing peers will be tackled at future iteration
-of this design.
-
-
-
-### 6.1 Confidential chaincode deployment
-
-#### 6.1.1 Creating a deploy transaction
-
-To deploy chaincode `cc` with confidentiality support, the client that
-deploys `cc` (the *deployer* of `cc`) specifies:
-
-* the chaincode itself, including the source code, and metadata associated to
-  it, subsumed in `chainCode`;
-* the policies accompanying the endorsement of transactions associated to that
-  chaincode, i.e.,
-  - an endorsement policy, denoted `ccEndorsementPolicy`;
-  - a set of endorsers, denoted `ccEndorserSet`;
-  - a confidentiality policy `ccConfidentialityPolicy` for the chaincode,
-    specifying confidentiality levels as described in Table 6.1.;
-* cryptographic material associated to the chaincode, i.e., an asymmetric
-  encryption key pair `ccPubKey/ccPrivKey`, intended to provide confidentiality
-  of the transactions, state, and state updates of this particular chaincode.
-
-This information is incorporated into  a (deploy) transaction `tx` that is
-subsequently included in a `SUBMIT` message passed to the submitting peer.
-The client constructs `txPayload` of the deploy transaction of `cc` as follows.
-
-The deployer first sets `txPayload.policies` to
-<`ccEndorsementPolicy`, `ccEndorserSet`, `ccConfidentialityPolicy`>.
-
-To fill in `txPayload.payload`, it first checks if `ccConfidentialityPolicy`
-specifies `Deploy Payload = Confidential`. If so, then the deployer encrypts
-`chainCode` using `ccPubKey`, so that the chaincode and its metadata will
-only be accessible by peers entitled to see them.  That is,
-`txPayload.chainCode := Enc(ccPubKey, chainCode)`.
-
-Furthermore, the chaincode-specific decryption key `ccPrivKey` is
-distributed to all endorsing peers of chaincode `cc` (i.e., endorsers in
-`ccEndorserSet`).  This is done by wrapping `ccPrivKey` under the public key
-of `e` for every endorser `e` in `ccEndorserSet`,
-`wrappedKey_e := Enc(ePubKey, ccPrivKey)`, where `ePubKey` is the
-enrollment public key of `e`. Thus, the deployer creates an additional field
-`txPayload.endorserMessages := ccEndorserMessages`, where `ccEndorserMessages`
-includes `wrappedKey_e` for all `e` in `ccEndorserSet`.
-
-We emphasize that a deploy transaction may include more fields, that are
-intentionally omitted here in favor of presentation simplicity.
-In addition, for sending the wrapped chaincode-key to all endorsers, and for
-actually encrypting `chainCode` hybrid encryption schemes could be used to
-achieve better performance. More details can be provided in future versions of
-this document.
-
-Chaincode `cc` is assigned an identifier, hereafter referred to as
-`chaincodeID`, as described in Section 2.2, for instance, as a hash of the
-deploy transaction `tx`. We assume here that it is unique per chaincode and
-it may become known to all peers.
-
-**Endorsement of Deploy Transaction:** Recall that every deploy transaction is
-treated as an invoke transaction of a system chaincode handling chaincode
-deployments; let this chaincode be denoted by `dsc`, and the respective
-endorsement policy and set of endorsers are `dscEndorsementPolicy` and
-`dscEndorserSet`. This means that the deploy transaction of any chaincode,
-needs to be endorsed according to `dscEndorsementPolicy`.
-
-**TODO:** Consider whether for confidential chaincodes, the endorsement
-policy of deploy transaction itself should satisfy the endorsement policy
-of the chaincode being deployed, that is, whether the deploy transaction of
-`cc` should also satisfy `ccEndorsementPolicy`. Alternatively, see if it makes
-sense to split a deploy transaction into two parts, e.g., a `deploy` (that only states the deploy info) and an `install` that sets up the running chaincode.
-
-
-#### 6.1.2 Peer processes a deploy transaction
-
-When a peer `e` commits a deploy transaction for chaincode `cc`, then it
-has at least access to `chaincodeID` and to `txPayload.policies`, which contains `ccConfidentialityPolicy`, `ccEndorsementPolicy`, and `ccEndorserSet`.
-
-If `e` is also an endorser for `cc` then in addition `e` obtains the following
-values:
-
-* the secret decryption key of the chaincode, as
-  `ccPrivKey := Dec(ePrivKey, wrappedKey_e)`;
-* the cleartext of the deployment payload, as
-  `chainCode := Dec(ccPrivKey, txPayload.chainCode)`, if `Deploy Payload = Confidential`.
-
-Given the in plaintext deployment payload `chainCode`, and prior to actually
-installing it, the peer performs a consistency check as described below.
-The peer then uses cleartext `chainCode` in the remainder of the
-deployment procedure, as described in Section 2.
-
-
-**Consistency:** For deploying a chaincode, the protocol should ensure that
-every endorser `e` will actually install and run the same code, even if the
-creator of the chaincode (the peer that submits the deploy transaction)
-would intend to make endorsers run different code.  To this effect, `e`
-should run a verification step during the execution of the deploy
-transaction, which ensures, roughly, the following.  The deployment
-transaction either *succeeds* and the peer outputs the chaincode `cc` to be
-executed or the transaction *fails* and outputs a corresponding error.  The
-deployment ensures the following condition: If two deployment succeeds for
-two distinct [correct, non-faulty] endorsers, then they both deploy the
-same chaincode.  This condition is equivalent to the *Consistency* property
-of a Byzantine Consistent Broadcast [[CGR11; Sec. 3.10]](http://distributedprogramming.net).
-
-Since every endorser executes the deployment transaction as a result of
-obtaining it from the consensus service, all endorsers receive the same
-`chainCode` blob, which may contain encryptions.  But when an
-endorser decrypts that with its own key, it does not automatically
-guarantee that the resulting code of `cc` is the same for every other
-endorser.
-
-This can be addressed in multiple ways: One solution would be to use a
-specialized multi-receiver encryption scheme that includes randomness in
-the ciphertext. Alternatively, verifiable encryption can be used with a
-zero-knowledge proof that the plaintext for all receivers are equal (this
-seems less efficient than the first option). In any case, this additional data
-that ensures the consistency condition must be included by the deployer in
-the deploy transaction `tx`.
-
-**TODOs:**  Many details are not yet addressed, such as:
-
-* Give more information on the implementation of `dsc` (perhaps in a different
-  section). More specifically, information on:
-	- the `dsc` code itself, and its `dscEndorsmentPolicy` implementation (ref. section 2.4)
-	- details of `tran-proposal` of `dsc` . Perhaps in a separate section?
-* Consider alternative implementations for the identifier of the deployed
-  chaincode (`chaincodeID`).
-* Describe how to react on detecting a violation of the consistency
-  property above, for example, because the creator provided the
-  wrong wrapped keys to endorsers.
-
-
-### 6.2 Confidential chaincode invocation
-
-Invoke transactions for confidential chaincode will comply with the
-*static* confidentiality policy that has been specified at deployment time (in
-`ccConfidentialityPolicy`). Future revisions may consider
-possibilities of *dynamic* confidentiality policy that may evolve during
-the runtime of the system.
-
-A confidential chaincode is invoked similarly to any other chaincode.
-The difference is that here a submitting peer of a transaction pertaining
-to confidential chaincode needs to be an endorser for that chaincode. This
-means it has access to the keys protecting that chaincode and its state. To
-help maintain stateless clients, every peer knows which peers are endorsers for
-a given confidential chaincode (see Section 6.1, `ccEndorserSet`), and can
-direct clients to an appropriate submitting peer. Hence, in the rest of this
-section, we assume that a submitting peer is also an endorser.
-
-
-#### 6.2.1 Creating and submitting a confidential transaction
-
-The client is aware of the chaincode for which it creates a transaction,
-and of its endorsers. The `SUBMIT` message of a confidential transaction
-invocation consists of the same fields as non-confidential (see Section 2.1.),
-i.e.,  `<SUBMIT, tx, retryFlag>`, where
-`tx=<clientID,chaincodeID,txPayload,clientSig>`, and where `clientID` is
-some form of identification of the client at the fabric layer, e.g., a
-transaction certificate, `clientSig` is signature of a client on other
-fields of `tx`.
-
-Notice that for security purposes, `tx` may also consist of more fields, that
-are intentionally omitted here in favor of presentation simplicity.
-
-The difference with respect to non-confidential transactions is as follows.
-If the confidentiality policy associated to the chaincode (`ccConfidentialityPolicy`)
-specifies
-`Invoke Payload = Confidential`, then the client additionally encrypts
-the invocation arguments, and metadata, say `invocation` with `ccPubKey`
-into `txPayload.invocation`.  That is,
-`txPayload.invocation := Enc(ccPubKey, invocation)`.
-
-Again, hybrid encryption schemes can be used for better performance.
-Also keys  defined at deployment time can be used to generate other keys, e.g.,
-keys the key state would need to be encrypted with to reduce the overall
-number of keys that need to be managed/distributed.
-
-**TODO:** Optionally provide a customized encryption method that also
-hides the chaincode identifier.
-
-
-#### 6.2.2 Endorsing a confidential transaction
-
-Upon receiving and verifying `<SUBMIT, tx, retryFlag>`, for tentatively
-executing the code associated to the transaction,
-and for preparing the transaction to be sent to the consensus service, the
-submitting peer first decrypts a confidential transaction payload.  More
-precisely, if `ccConfidentialityPolicy` specifies that `Invoke Payload` is
-`Confidential`, the submitting peer first retrieves the corresponding
-chaincode-specific decryption key `ccPrivKey` and then decrypts
-`txPayload.invocation`.  Recall that the submitting peer is assumed to be an endorser
-for the chaincode.  The peer, say `e`, may retrieve `ccPrivKey` from the deploy
-transaction of the chaincode `chaincodeID` and obtain `ccPrivKey` through
-`wrapped_e`.  Then the peer computes `invocation := Dec(ccPrivKey, txPayload.invocation)`.
-
-With the operation and metadata in `invocation` the submitting peer tentatively executes the
-transaction using its copy of the state for producing a transaction
-proposal.  If the confidentiality policy of the chaincode specifies that
-`State` is also `Confidential`, then the peer uses `ccPrivKey` to
-access the state, decrypting state values while reading.
-
-Moreover, for the state updates when the confidentiality policy specifies that
-`State = Confidential`, the submitting peer encrypts
-new state values in `stateUpdates` using  `ccPubKey`.  With the state
-in the form of key/value pairs, only the changed values are encrypted.
-The version dependencies are not encrypted.
-
-The transaction-proposal from the submitting peer now consists of
-
-`tran-proposal := (spID, chaincodeID, txContentBlob, stateUpdates, verDep)`,
-
-where `txContentBlob` is some form of invoke transaction `tx`, as submitted
-by the client.
-
-The submitting peer creates a `PROPOSE` message to send to the rest of endorsers
-in the endorser set as before (Section 2.2):
-
-`<PROPOSE, tx, tran-proposal>`.
-
-Notice that is imperative that endorsers check that the chaincodeID that appears
-in `tx` is consistent with the content of `tran-proposal`. Endorsers follow
-the same process as before to endorse a transaction.
-
-In summary, this mechanism ensures that in case the state is encrypted, the
-endorsers for a chaincode have access to the state in the clear but other
-peers have not.  Once the `stateUpdates` is applied to the state after the
-consensus service has delivered it to a peer, every peer updates its state.
-Note that also the endorsers of a chaincode apply the updates and
-transparently operate on the ciphertext; they only need access to the
-plaintext again for endorsing a next transaction.
-
-
-**TODO:** Revisit section 4 and describe in more detail which parts are
-added to the ledger.
