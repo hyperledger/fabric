@@ -18,7 +18,37 @@ package cauthdsl
 
 import (
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+
+	"github.com/golang/protobuf/proto"
 )
+
+// AcceptAllPolicy always evaluates to true
+var AcceptAllPolicy *ab.SignaturePolicyEnvelope
+
+// MarshaledAcceptAllPolicy is the Marshaled version of AcceptAllPolicy
+var MarshaledAcceptAllPolicy []byte
+
+// RejectAllPolicy always evaluates to false
+var RejectAllPolicy *ab.SignaturePolicyEnvelope
+
+// MarshaledRejectAllPolicy is the Marshaled version of RejectAllPolicy
+var MarshaledRejectAllPolicy []byte
+
+func init() {
+	var err error
+
+	AcceptAllPolicy = Envelope(NOutOf(0, []*ab.SignaturePolicy{}), [][]byte{})
+	MarshaledAcceptAllPolicy, err = proto.Marshal(AcceptAllPolicy)
+	if err != nil {
+		panic("Error marshaling trueEnvelope")
+	}
+
+	RejectAllPolicy = Envelope(NOutOf(1, []*ab.SignaturePolicy{}), [][]byte{})
+	MarshaledRejectAllPolicy, err = proto.Marshal(RejectAllPolicy)
+	if err != nil {
+		panic("Error marshaling falseEnvelope")
+	}
+}
 
 // Envelope builds an envelope message embedding a SignaturePolicy
 func Envelope(policy *ab.SignaturePolicy, identities [][]byte) *ab.SignaturePolicyEnvelope {
