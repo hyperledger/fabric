@@ -1,7 +1,7 @@
 site_name: Hyperledger Fabric
 site_url: http://hyperledger-fabric.readthedocs.io
 theme: readthedocs
-repo_url: http://gerrit.hyperledger.org/r/fabric
+repo_url: https://github.com/hyperledger/fabric.git
 site_description: 'Welcome to the Hyperledger fabric documentation'
 
 pages:
@@ -13,7 +13,7 @@ pages:
 - Starter Kit:
   - Starter Kit: starter/fabric-starter-kit.md
 
-- Installation and setup:
+- Installation and Setup:
   - Chaincode or Application Developer Setup: Setup/Chaincode-setup.md
   - Java Chaincode Setup: Setup/JAVAChaincode.md
   - Fabric Network Setup: Setup/Network-setup.md
@@ -22,7 +22,7 @@ pages:
   - TLS Setup: Setup/TLSSetup.md
   - Logging: Setup/logging-control.md
 
-- APIs:
+- API's:
   - Chaincode APIs: API/ChaincodeAPI.md
   - Core API: API/CoreAPI.md
   - CA API: API/MemberServicesAPI.md
@@ -31,18 +31,18 @@ pages:
 - Fabric Developer:
   - v1.0 Preview: abstract_v1.md
   - Contributing: CONTRIBUTING.md
-  - Getting an Account: Gerrit/lf-account.md
-  - Gerrit: Gerrit/gerrit.md
+  - Maintainers: MAINTAINERS.md
   - Fabric Developer Setup: dev-setup/devenv.md
   - Building Fabric: dev-setup/build.md
-  - Best Practices: Gerrit/best-practices.md
-  - Maintainers: MAINTAINERS.md
+  - Getting an Account: Gerrit/lf-account.md
+  - Gerrit: Gerrit/gerrit.md
   - Reviewing: Gerrit/reviewing.md
   - Changes: Gerrit/changes.md
-  - Style guides:
+  - Best Practices: Gerrit/best-practices.md
+- Go Style Guides:
     - Golang: Style-guides/go-style.md
 
-- FAQ:
+- FAQ's:
   - ChainCodeFAQ: FAQ/chaincode_FAQ.md
   - ConfidentialityFAQ: FAQ/confidentiality_FAQ.md
   - ConsensusFAQ: FAQ/consensus_FAQ.md
@@ -63,6 +63,9 @@ pages:
   - Sample-web-app: nodeSDK/sample-web-app.md
 
 markdown_extensions:
+  - toc:
+     permalink: true
+  - admonition
   - extra
   - tables
   - toc
