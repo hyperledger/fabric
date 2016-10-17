@@ -28,6 +28,8 @@ import (
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/policies"
 	"github.com/hyperledger/fabric/orderer/config"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	"github.com/hyperledger/fabric/orderer/rawledger"
@@ -36,6 +38,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/solo"
 
 	"github.com/Shopify/sarama"
+	"github.com/golang/protobuf/proto"
+	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -50,6 +54,69 @@ func main() {
 	default:
 		panic("Invalid orderer type specified in config")
 	}
+}
+
+// XXX This crypto helper is a stand in until we have a real crypto handler
+// it considers all signatures to be valid
+type xxxCryptoHelper struct{}
+
+func (xxx xxxCryptoHelper) VerifySignature(msg []byte, ids []byte, sigs []byte) bool {
+	return true
+}
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
+
+func retrieveConfiguration(rl rawledger.Reader) *ab.ConfigurationEnvelope {
+	var lastConfigTx *ab.ConfigurationEnvelope
+
+	it, _ := rl.Iterator(ab.SeekInfo_OLDEST, 0)
+	// Iterate over the blockchain, looking for config transactions, track the most recent one encountered
+	// this will be the transaction which is returned
+	for {
+		select {
+		case <-it.ReadyChan():
+			block, status := it.Next()
+			if status != ab.Status_SUCCESS {
+				panic(fmt.Errorf("Error parsing blockchain at startup: %v", status))
+			}
+			// ConfigTxs should always be by themselves
+			if len(block.Messages) != 1 {
+				continue
+			}
+
+			maybeConfigTx := &ab.ConfigurationEnvelope{}
+
+			err := proto.Unmarshal(block.Messages[0].Data, maybeConfigTx)
+
+			if err == nil {
+				lastConfigTx = maybeConfigTx
+			}
+		default:
+			return lastConfigTx
+		}
+	}
+}
+
+func bootstrapConfigManager(lastConfigTx *ab.ConfigurationEnvelope) configtx.Manager {
+	policyManager := policies.NewManagerImpl(xxxCryptoHelper{})
+	configHandlerMap := make(map[ab.Configuration_ConfigurationType]configtx.Handler)
+	for ctype := range ab.Configuration_ConfigurationType_name {
+		rtype := ab.Configuration_ConfigurationType(ctype)
+		switch rtype {
+		case ab.Configuration_Policy:
+			configHandlerMap[rtype] = policyManager
+		default:
+			configHandlerMap[rtype] = configtx.NewBytesHandler()
+		}
+	}
+
+	configManager, err := configtx.NewConfigurationManager(lastConfigTx, policyManager, configHandlerMap)
+	if err != nil {
+		panic(err)
+	}
+	return configManager
 }
 
 func launchSolo(conf *config.TopLevel) {
@@ -97,6 +164,16 @@ func launchSolo(conf *config.TopLevel) {
 	default:
 		rawledger = ramledger.New(int(conf.RAMLedger.HistorySize), genesisBlock)
 	}
+
+	lastConfigTx := retrieveConfiguration(rawledger)
+	if lastConfigTx == nil {
+		panic("No chain configuration found")
+	}
+
+	configManager := bootstrapConfigManager(lastConfigTx)
+
+	// XXX actually use the config manager in the future
+	_ = configManager
 
 	solo.New(int(conf.General.QueueSize), int(conf.General.BatchSize), int(conf.General.MaxWindowSize), conf.General.BatchTimeout, rawledger, grpcServer)
 	grpcServer.Serve(lis)
