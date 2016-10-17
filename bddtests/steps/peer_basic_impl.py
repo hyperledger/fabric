@@ -191,7 +191,7 @@ def deployChainCodeToContainer(context, chaincode, containerName):
 
 def createChaincodeSpec(context, chaincode):
     chaincode = validateChaincodeDictionary(chaincode)
-    args = to_bytes(prepend(chaincode["constructor"], chaincode["args"]))
+    args = prepend(chaincode["constructor"], chaincode["args"])
     # Create a ChaincodeSpec structure
     chaincodeSpec = {
         "type": getChaincodeTypeValue(chaincode["language"]),
@@ -317,17 +317,18 @@ def invokeChaincode(context, devopsFunc, functionName, containerName, idGenAlg=N
     if 'table' in context:
        # There is ctor arguments
        args = context.table[0].cells
-    args = to_bytes(prepend(functionName, args))
+    args = prepend(functionName, args)
     for idx, attr in enumerate(attributes):
         attributes[idx] = attr.strip()
 
-    context.chaincodeSpec['ctorMsg']['args'] = args
     context.chaincodeSpec['attributes'] = attributes
 
     #If idGenAlg is passed then, we still using the deprecated devops API because this parameter can't be passed in the new API.
     if idGenAlg != None:
+        context.chaincodeSpec['ctorMsg']['args'] = to_bytes(args)
         invokeUsingDevopsService(context, devopsFunc, functionName, containerName, idGenAlg)
     else:
+        context.chaincodeSpec['ctorMsg']['args'] = args
         invokeUsingChaincodeService(context, devopsFunc, functionName, containerName)
 
 def invokeUsingChaincodeService(context, devopsFunc, functionName, containerName):
@@ -375,7 +376,7 @@ def invokeMasterChaincode(context, devopsFunc, chaincodeName, functionName, cont
     args = []
     if 'table' in context:
        args = context.table[0].cells
-    args = to_bytes(prepend(functionName, args))
+    args = prepend(functionName, args)
     typeGolang = 1
     chaincodeSpec = {
         "type": typeGolang,
@@ -585,7 +586,7 @@ def step_impl(context, chaincodeName, functionName):
     if 'table' in context:
        # There is ctor arguments
        args = context.table[0].cells
-    args = to_bytes(prepend(functionName, args))
+    args = prepend(functionName, args)
     context.chaincodeSpec['ctorMsg']['args'] = args #context.table[0].cells if ('table' in context) else []
     # Invoke the POST
     chaincodeOpPayload = createChaincodeOpPayload("query", context.chaincodeSpec)
@@ -617,7 +618,7 @@ def query_common(context, chaincodeName, functionName, value, failOnError):
     containerDataList = bdd_test_util.getContainerDataValuesFromContext(context, aliases, lambda containerData: containerData)
 
     # Update the chaincodeSpec ctorMsg for invoke
-    context.chaincodeSpec['ctorMsg']['args'] = to_bytes([functionName, value])
+    context.chaincodeSpec['ctorMsg']['args'] = [functionName, value]
     # Invoke the POST
     # Make deep copy of chaincodeSpec as we will be changing the SecurityContext per call.
     chaincodeOpPayload = createChaincodeOpPayload("query", copy.deepcopy(context.chaincodeSpec))
@@ -724,7 +725,7 @@ def step_impl(context):
 def step_impl(context):
     gopath = os.environ.get('GOPATH')
     assert gopath is not None, "Please set GOPATH properly!"
-    listener = os.path.join(gopath, "src/github.com/hyperledger/fabric/build/docker/bin/block-listener")
+    listener = os.path.join(gopath, "src/github.com/hyperledger/fabric/build/bin/block-listener")
     assert os.path.isfile(listener), "Please build the block-listener binary!"
     bdd_test_util.start_background_process(context, "eventlistener", [listener, "-listen-to-rejections"] )
 
@@ -753,8 +754,12 @@ def to_bytes(strlist):
 
 def prepend(elem, l):
     if l is None or l == "":
-        return [elem]
-    return [elem] + l
+        tail = []
+    else:
+        tail = l
+    if elem is None:
+	return tail
+    return [elem] + tail
 
 @given(u'I do nothing')
 def step_impl(context):

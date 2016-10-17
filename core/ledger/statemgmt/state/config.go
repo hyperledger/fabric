@@ -25,7 +25,7 @@ import (
 
 var loadConfigOnce sync.Once
 
-var stateImplName string
+var stateImplName stateImplType
 var stateImplConfigs map[string]interface{}
 var deltaHistorySize int
 
@@ -35,7 +35,7 @@ func initConfig() {
 
 func loadConfig() {
 	logger.Info("Loading configurations...")
-	stateImplName = viper.GetString("ledger.state.dataStructure.name")
+	stateImplName = stateImplType(viper.GetString("ledger.state.dataStructure.name"))
 	stateImplConfigs = viper.GetStringMap("ledger.state.dataStructure.configs")
 	deltaHistorySize = viper.GetInt("ledger.state.deltaHistorySize")
 	logger.Infof("Configurations loaded. stateImplName=[%s], stateImplConfigs=%s, deltaHistorySize=[%d]",
@@ -44,7 +44,7 @@ func loadConfig() {
 	if len(stateImplName) == 0 {
 		stateImplName = defaultStateImpl
 		stateImplConfigs = nil
-	} else if stateImplName != "buckettree" && stateImplName != "trie" && stateImplName != "raw" {
+	} else if stateImplName != buckettreeType && stateImplName != trieType && stateImplName != rawType {
 		panic(fmt.Errorf("Error during initialization of state implementation. State data structure '%s' is not valid.", stateImplName))
 	}
 

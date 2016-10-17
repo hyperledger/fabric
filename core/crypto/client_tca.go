@@ -26,11 +26,11 @@ import (
 	"errors"
 	"fmt"
 
-	"google/protobuf"
 	"math/big"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"golang.org/x/net/context"
 )
@@ -575,7 +575,7 @@ func (client *clientImpl) callTCACreateCertificateSet(num int, attributes []stri
 
 	// Execute the protocol
 	now := time.Now()
-	timestamp := google_protobuf.Timestamp{Seconds: int64(now.Second()), Nanos: int32(now.Nanosecond())}
+	timestamp := timestamp.Timestamp{Seconds: int64(now.Second()), Nanos: int32(now.Nanosecond())}
 	req := &membersrvc.TCertCreateSetReq{
 		Ts:         &timestamp,
 		Id:         &membersrvc.Identity{Id: client.enrollID},

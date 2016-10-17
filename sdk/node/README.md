@@ -1,52 +1,99 @@
-## Hyperledger Fabric Client SDK for Node.js
+# Hyperledger Fabric Client SDK for Node.js
 
-The Hyperledger Fabric Client SDK (HFC) provides a powerful and easy to use API to interact with a Hyperledger Fabric blockchain.
+## Overview
 
-To learn about how to install and use the Node.js SDK, please visit the [fabric documentation](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/NodeSDK-setup).
+The Hyperledger Fabric Client SDK (HFC) provides a powerful and easy to use API to interact with a [Hyperledger Fabric](https://www.hyperledger.org/) blockchain from a Node.js application. It provides a set of APIs to register and enroll new network clients, to deploy new chaincodes to the network, and to interact with existing chaincodes through chaincode function invocations and queries.
 
-The [Going Deeper](#going-deeper) section discusses HFC's pluggability and extensibility design. It also describes the main object hierarchy to help you get started in navigating the reference documentation. The top-level class is `Chain`.
+To view the complete Node.js SDK documentation, additional usage samples, and getting started materials please visit the Hyperledger Fabric [SDK documentation page](http://hyperledger-fabric.readthedocs.io/en/latest/nodeSDK/node-sdk-guide/).
 
-The [Future Work](#future-work) section describes some upcoming work to be done.
+## Installation
 
-   **WARNING**: To view the reference documentation correctly, you first need to build the SDK and confirm functionality by [running the unit tests](#running-unit-tests). Subsequently open the following URLs directly in your browser. Be sure to replace YOUR-FABRIC-DIR with the path to your fabric directory.
+If you are interfacing with a network running the Hyperledger Fabric [`v0.5-developer-preview`](https://github.com/hyperledger-archives/fabric/tree/v0.5-developer-preview) branch, you must use the hfc version 0.5.x release and install it with the following command:
 
-   `file:///YOUR-FABRIC-DIR/sdk/node/doc/modules/_hfc_.html`
+    npm install hfc@0.5.x
 
-   `file:///YOUR-FABRIC-DIR/sdk/node/doc/classes/_hfc_.chain.html`
+For networks running newer versions of the Hyperledger Fabric, please install the version of hfc that corresponds to the same version of the Fabric code base. For example, for the Fabric v0.6 branch install hfc with the following command:
 
-### Going Deeper
+    npm install hfc@0.6.x
 
-#### Pluggability
-HFC was designed to support two pluggable components:
+## Usage
 
-1. Pluggable key value store which is used to retrieve and store keys associated with a member. The key value store is used to store sensitive private keys, so care must be taken to properly protect access.
+### Terminology
 
-2. Pluggable member service which is used to register and enroll members. Member services enables hyperledger to be a permissioned blockchain, providing security services such as anonymity, unlinkability of transactions, and confidentiality
+In order to transact on a Hyperledger blockchain, you must first have an identity which is both **registered** and **enrolled**. **Registration** means issuing a user invitation to join a blockchain network. **Enrollment** means accepting a user invitation to join a blockchain network.
 
-#### HFC objects and reference documentation
-HFC is written primarily in typescript and is object-oriented. The source can be found in the `fabric/sdk/node/src` directory.
+In the current Hyperleger Fabric implementation, the administative user admin is already registered on the network by the virtue of the fact that their user ID and password pair are already added to the membership services server confiruation file, [membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml). Therefore, the admin user must only enroll to be able to transact on the network. After enrollment, the administrative user is then able to register and enroll new users, in the role of a registrar. New users are added to the network programmatically, through the HFC `chain.registerAndEnroll` API.
 
-To go deeper, you can view the reference documentation in your browser by opening the [reference documentation](doc/modules/_hfc_.html) and clicking on **"hfc"** on the right-hand side under **"Globals"**. This will work after you have built the SDK per the instruction [here](#building-the-client-sdk).
+### Example
 
-The following is a high-level description of the HFC objects (classes and interfaces) to help guide you through the object hierarchy.
+An example presented in the [SDK documentation](http://hyperledger-fabric.readthedocs.io/en/latest/nodeSDK/sample-standalone-app/) demonstrated a typical application using the hfc.
 
-* The main top-level class is [Chain](doc/classes/_hfc_.chain.html). It is the client's representation of a chain. HFC allows you to interact with multiple chains and to share a single [KeyValStore](doc/interfaces/_hfc_.keyvalstore.html) and [MemberServices](doc/interfaces/_hfc_.memberservices.html) object with multiple Chain objects as needed. For each chain, you add one or more [Peer](doc/classes/_hfc_.peer.html) objects which represents the endpoint(s) to which HFC connects to transact on the chain.
+The application sets up a target for the membership service server and enrolls the `admin` user. Subsequently, the admin user is set as the registrar user and registers and enrolls a new member, `JohnDoe`. The new member, `JohnDoe`, is then able to transact on the blockchain by deploying a chaincode, invoking a chaincode function, and querying chaincode state.
 
-* The [KeyValStore](doc/interfaces/_hfc_.keyvalstore.html) is a very simple interface which HFC uses to store and retrieve all persistent data. This data includes private keys, so it is very important to keep this storage secure. The default implementation is a simple file-based version found in the [FileKeyValStore](doc/classes/_hfc_.filekeyvalstore.html) class.
+### Chaincode Deployment
 
-* The [MemberServices](doc/interfaces/_hfc_.memberservices.html) interface is implemented by the [MemberServicesImpl](doc/classes/_hfc_.memberservicesimpl.html) class and provides security and identity related features such as privacy, unlinkability, and confidentiality. This implementation issues *ECerts* (enrollment certificates) and *TCerts* (transaction certificates). ECerts are for enrollment identity and TCerts are for transactions.
+Chaincode may be deployed in **development** mode or **network** mode. **Development** mode refers to running the chaincode as a stand alone process outside the network peer. This approach is useful while doing chaincode development and testing. The approach is described [here](http://hyperledger-fabric.readthedocs.io/en/latest/Setup/Chaincode-setup/). **Network** mode refers to packaging the chaincode and its dependencies and subsequently deploying the package to an existing network as a Docker container. To have the chaincode deployment with hfc succeed in network mode, you must properly set up the chaincode project and its dependencies. The instructions for doing so can be found in the [Chaincode Deployment](http://hyperledger-fabric.readthedocs.io/en/latest/nodeSDK/node-sdk-indepth/#chaincode-deployment) section of the Node.js SDK documentation page.
 
-* The [Member](doc/classes/_hfc_.member.html) class most often represents an end user who transacts on the chain, but it may also represent other types of members such as peers. From the Member class, you can *register* and *enroll* members or users. This interacts with the [MemberServices](doc/interfaces/_hfc_.memberservices.html) object. You can also deploy, query, and invoke chaincode directly, which interacts with the [Peer](doc/classes/_hfc_.peer.html). The implementation for deploy, query and invoke simply creates a temporary [TransactionContext](doc/classes/_hfc_.transactioncontext.html) object and delegates the work to it.
+### Enabling TLS
 
-* The [TransactionContext](doc/classes/_hfc_.transactioncontext.html) class implements the bulk of the deploy, invoke, and query logic. It interacts with MemberServices to get a TCert to perform these operations. Note that there is a one-to-one relationship between TCert and TransactionContext; in other words, a single TransactionContext will always use the same TCert. If you want to issue multiple transactions with the same TCert, then you can get a [TransactionContext](doc/classes/_hfc_.transactioncontext.html) object from a [Member](doc/classes/_hfc_.member.html) object directly and issue multiple deploy, invoke, or query operations on it. Note however that if you do this, these transactions are linkable, which means someone could tell that they came from the same user, though not know which user. For this reason, you will typically just call deploy, invoke, and query on the User or Member object.
+If you wish to enable TLS connection between the member services, the peers, and the chaincode container, please see the [Enabling TLS](http://hyperledger-fabric.readthedocs.io/en/latest/nodeSDK/node-sdk-indepth/#enabling-tls) section within the Node.js SDK documentation.
 
-## Future Work
-The following is a list of known remaining work to be done.
+## Objects, Classes, And Interfaces
 
-* The reference documentation needs to be made simpler to follow as there are currently some internal classes and interfaces that are being exposed.
+HFC is written primarily in Typescript and is object-oriented. The source can be found in the [fabric/sdk/node](https://github.com/hyperledger/fabric/tree/master/sdk/node) directory of the Hyperledger Fabric project. To better understand the object hierarchy, please read the high-level descriptions of the HFC objects (classes and interfaces) in the [HFC Objects](http://hyperledger-fabric.readthedocs.io/en/latest/nodeSDK/node-sdk-indepth/#hfc-objects) section within the Node.js SDK documentation. You can also build the complete reference documentation locally by following the instructions [here](http://hyperledger-fabric.readthedocs.io/en/latest/nodeSDK/app-developer-env-setup/).
 
-* We are investigating how to make deployment of a chaincode simpler by not requiring you to set up a specific directory structure with dependencies.
+## Unit Tests
 
-* Implement events appropriately, both custom and non-custom. The 'complete' event for `deploy` and `invoke` is currently implemented by simply waiting a set number of seconds (5 for invoke, 20 for deploy). It needs to receive a complete event from the server with the result of the transaction and make this available to the caller. This has not yet been implemented.
+HFC includes a set of unit tests implemented with the [tape framework](https://github.com/substack/tape). Currently, the unit tests are designed to run inside the Hyperledger Fabric Vagrant development environment. To run the unit tests, first set up the Hyperledger Fabric Vagrant development environment per the instructions [here](http://hyperledger-fabric.readthedocs.io/en/latest/dev-setup/devenv/).
 
-* Support SHA2. HFC currently supports SHA3.
+Launch the Vagrant VM and log into the VM by executing the following command:
+
+    vagrant ssh
+
+Run the unit tests within the Vagrant environment with the following commands:
+
+    cd $GOPATH/src/github.com/hyperledger/fabric
+    make node-sdk-unit-tests
+
+The following are brief descriptions of each of the unit tests that are being run.
+
+#### registrar
+
+The [registrar.js](https://github.com/hyperledger/fabric/blob/master/sdk/node/test/unit/registrar.js) test case exercises registering users with the membership services server. It also tests registering a designated registrar user which can then register additional users.
+
+#### chain-tests
+
+The [chain-tests.js](https://github.com/hyperledger/fabric/blob/master/sdk/node/test/unit/chain-tests.js) test case exercises the [chaincode_example02.go](https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go/chaincode_example02) chaincode when it has been deployed in both development mode and network mode.
+
+#### asset-mgmt
+
+The [asset-mgmt.js](https://github.com/hyperledger/fabric/blob/master/sdk/node/test/unit/asset-mgmt.js) test case exercises the [asset_management.go](https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go/asset_management) chaincode when it has been deployed in both development mode and network mode.
+
+#### asset-mgmt-with-roles
+
+The [asset-mgmt-with-roles.js](https://github.com/hyperledger/fabric/blob/master/sdk/node/test/unit/asset-mgmt-with-roles.js) test case exercises the [asset_management_with_roles.go](https://github.com/hyperledger/fabric/tree/master/examples/chaincode/go/asset_management_with_roles) chaincode when it has been deployed in both development mode and network mode.
+
+## Basic Troubleshooting
+
+Keep in mind that you can perform the enrollment process with the membership services server only once, as the enrollmentSecret is a one-time-use password. If you have performed a user registration/enrollment with the membership services and subsequently deleted the crypto tokens stored on the client side, the next time you try to enroll, errors similar to the ones below will be seen.
+
+   ```
+   Error: identity or token do not match
+   ```
+   ```
+   Error: user is already registered
+   ```
+
+To address this, remove any stored crypto material from the CA server by following the instructions [here](https://github.com/hyperledger/fabric/blob/master/docs/Setup/Chaincode-setup.md#removing-temporary-files-when-security-is-enabled). You will also need to remove any of the crypto tokens stored on the client side by deleting the KeyValStore directory. That directory is configurable and is set to `/tmp/keyValStore` within the unit tests.
+
+## Support
+
+We use [Hyperledger Slack](https://hyperledgerproject.slack.com/) for communication regarding the SDK and any potential issues. Please join SDK related channels on Slack such as #fabric-sdk and #nodesdk. If you would like to file a bug report or submit a request for a feature please do so on Jira [here](https://jira.hyperledger.org).
+
+## Contributing
+
+We welcome any contributions to the Hyperledger Fabric Node.js SDK project. If you would like to contribute please read the contribution guidelines [here](http://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING/) for more information.
+
+## License
+
+Contributed to the Hyperledger Project under the [Apache Software License 2.0](https://github.com/hyperledger/fabric/blob/master/LICENSE).

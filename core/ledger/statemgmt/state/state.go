@@ -35,6 +35,14 @@ const defaultStateImpl = "buckettree"
 
 var stateImpl statemgmt.HashableState
 
+type stateImplType string
+
+const (
+	buckettreeType stateImplType = "buckettree"
+	trieType       stateImplType = "trie"
+	rawType        stateImplType = "raw"
+)
+
 // State structure for maintaining world state.
 // This encapsulates a particular implementation for managing the state persistence
 // This is not thread safe
@@ -53,12 +61,12 @@ func NewState() *State {
 	initConfig()
 	logger.Infof("Initializing state implementation [%s]", stateImplName)
 	switch stateImplName {
-	case "buckettree":
+	case buckettreeType:
 		stateImpl = buckettree.NewStateImpl()
-	case "trie":
-		stateImpl = trie.NewStateTrie()
-	case "raw":
-		stateImpl = raw.NewRawState()
+	case trieType:
+		stateImpl = trie.NewStateImpl()
+	case rawType:
+		stateImpl = raw.NewStateImpl()
 	default:
 		panic("Should not reach here. Configs should have checked for the stateImplName being a valid names ")
 	}
@@ -81,13 +89,13 @@ func (state *State) TxBegin(txID string) {
 
 // TxFinish marks the completion of on-going tx. If txID is not same as of the on-going tx, this call panics
 func (state *State) TxFinish(txID string, txSuccessful bool) {
-	logger.Debugf("txFinish() for txUuid [%s], txSuccessful=[%t]", txID, txSuccessful)
+	logger.Debugf("txFinish() for txId [%s], txSuccessful=[%t]", txID, txSuccessful)
 	if state.currentTxID != txID {
-		panic(fmt.Errorf("Different Uuid in tx-begin [%s] and tx-finish [%s]", state.currentTxID, txID))
+		panic(fmt.Errorf("Different txId in tx-begin [%s] and tx-finish [%s]", state.currentTxID, txID))
 	}
 	if txSuccessful {
 		if !state.currentTxStateDelta.IsEmpty() {
-			logger.Debugf("txFinish() for txUuid [%s] merging state changes", txID)
+			logger.Debugf("txFinish() for txId [%s] merging state changes", txID)
 			state.stateDelta.ApplyChanges(state.currentTxStateDelta)
 			state.txStateDeltaHash[txID] = state.currentTxStateDelta.ComputeCryptoHash()
 			state.updateStateImpl = true
@@ -136,7 +144,7 @@ func (state *State) GetRangeScanIterator(chaincodeID string, startKey string, en
 		stateImplItr), nil
 }
 
-// Set sets state to given value for chaincodeID and key. Does not immideatly writes to DB
+// Set sets state to given value for chaincodeID and key. Does not immediately writes to DB
 func (state *State) Set(chaincodeID string, key string, value []byte) error {
 	logger.Debugf("set() chaincodeID=[%s], key=[%s], value=[%#v]", chaincodeID, key, value)
 	if !state.txInProgress() {
@@ -160,7 +168,7 @@ func (state *State) Set(chaincodeID string, key string, value []byte) error {
 	return nil
 }
 
-// Delete tracks the deletion of state for chaincodeID and key. Does not immideatly writes to DB
+// Delete tracks the deletion of state for chaincodeID and key. Does not immediately writes to DB
 func (state *State) Delete(chaincodeID string, key string) error {
 	logger.Debugf("delete() chaincodeID=[%s], key=[%s]", chaincodeID, key)
 	if !state.txInProgress() {

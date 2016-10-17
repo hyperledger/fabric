@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 func createTable(stub ChaincodeStubInterface) error {
@@ -173,4 +175,18 @@ func TestMockTable(t *testing.T) {
 		t.FailNow()
 	}
 	***/
+}
+
+// TestSetChaincodeLoggingLevel uses the utlity function defined in chaincode.go to
+// set the chaincodeLogger's logging level
+func TestSetChaincodeLoggingLevel(t *testing.T) {
+	// set log level to a non-default level
+	testLogLevelString := "debug"
+	viper.Set("logging.chaincode", testLogLevelString)
+
+	SetChaincodeLoggingLevel()
+
+	if !IsEnabledForLogLevel(testLogLevelString) {
+		t.FailNow()
+	}
 }

@@ -165,15 +165,6 @@ peer:
     # networkId: test
     networkId: dev
 
-    Dockerfile:  |
-        from hyperledger/fabric-baseimage:latest
-        # Copy GOPATH src and install Peer
-        COPY src $GOPATH/src
-        RUN mkdir -p /var/hyperledger/db
-        WORKDIR $GOPATH/src/github.com/hyperledger/fabric/peer/
-        RUN CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy" go install && cp $GOPATH/src/github.com/hyperledger/fabric/peer/core.yaml $GOPATH/bin
-
-
     # The Address this Peer will listen on
     listenAddress: 0.0.0.0:21212
     # The Address this Peer will bind to for providing services
@@ -363,17 +354,16 @@ chaincode:
         # This is the basis for the Golang Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
         Dockerfile:  |
-            from hyperledger/fabric-baseimage
-            #from utxo:0.1.0
-            COPY src $GOPATH/src
-            WORKDIR $GOPATH
+          FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+          COPY src $GOPATH/src
+          WORKDIR $GOPATH
 
     car:
 
         # This is the basis for the CAR Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
         Dockerfile:  |
-            FROM hyperledger/fabric-baseimage
+          FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests

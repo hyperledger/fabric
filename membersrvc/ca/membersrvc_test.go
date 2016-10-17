@@ -70,7 +70,7 @@ func setupTestConfig() {
 func initPKI() {
 	CacheConfiguration() // Cache configuration
 	aca = NewACA()
-	eca = NewECA()
+	eca = NewECA(aca)
 	tca = NewTCA(eca)
 }
 

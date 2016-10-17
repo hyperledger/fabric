@@ -88,6 +88,13 @@ func TestMain(m *testing.M) {
 	if ret != 0 {
 		os.Exit(ret)
 	}
+
+	// Third scenario (repeat the above) now also with 'security.multithreading.multichannel' enabled.
+	properties["security.multithreading.multichannel"] = "true"
+	ret = runTestsOnScenario(m, properties, "Using multithread + multichannel enabled")
+	if ret != 0 {
+		os.Exit(ret)
+	}
 	properties["security.multithreading.enabled"] = "false"
 
 	//Fourth scenario with security level = 384
@@ -1536,7 +1543,7 @@ func setup() {
 func initPKI() {
 	ca.CacheConfiguration() // Need cache the configuration first
 	aca = ca.NewACA()
-	eca = ca.NewECA()
+	eca = ca.NewECA(aca)
 	tca = ca.NewTCA(eca)
 	tlsca = ca.NewTLSCA(eca)
 }

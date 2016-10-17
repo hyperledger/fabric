@@ -1,0 +1,50 @@
+membersrvc:
+  # try 'docker ps' to see the container status after starting this compose
+  container_name: membersrvc
+  image: hyperledger/fabric-membersrvc
+  command: membersrvc
+
+peer:
+  container_name: peer
+  image: hyperledger/fabric-peer
+  environment:
+    - CORE_PEER_ADDRESSAUTODETECT=true
+    - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
+    - CORE_LOGGING_LEVEL=DEBUG
+    - CORE_PEER_ID=vp0
+    - CORE_SECURITY_ENABLED=true
+    - CORE_PEER_PKI_ECA_PADDR=membersrvc:7054
+    - CORE_PEER_PKI_TCA_PADDR=membersrvc:7054
+    - CORE_PEER_PKI_TLSCA_PADDR=membersrvc:7054
+    - CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=noops
+  # this gives access to the docker host daemon to deploy chain code in network mode
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+  # have the peer wait 10 sec for membersrvc to start
+  #  the following is to run the peer in Developer mode - also set sample DEPLOY_MODE=dev
+  command: sh -c "sleep 10; peer node start --peer-chaincodedev"
+  #command: sh -c "sleep 10; peer node start"
+  links:
+    - membersrvc
+
+starter:
+  container_name: starter
+  image: hyperledger/fabric-starter-kit
+  volumes:
+    # tweak this to map a local developmnt directory tree into the container
+    - ~/mytest:/user/mytest
+  environment:
+    - MEMBERSRVC_ADDRESS=membersrvc:7054
+    - PEER_ADDRESS=peer:7051
+    - KEY_VALUE_STORE=/tmp/hl_sdk_node_key_value_store
+    # set to following to 'dev' if peer running in Developer mode
+    - DEPLOY_MODE=dev
+    - CORE_CHAINCODE_ID_NAME=mycc
+    - CORE_PEER_ADDRESS=peer:7051
+  # the following command will start the chain code when this container starts and ready it for deployment by the app
+  command: sh -c "sleep 20; /opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/chaincode_example02"
+  stdin_open: true
+  tty: true
+  links:
+    - membersrvc
+    - peer

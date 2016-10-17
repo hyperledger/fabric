@@ -21,7 +21,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"google/protobuf"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/membersrvc/protos"
@@ -155,14 +155,15 @@ func initTCA() (*TCA, error) {
 	}
 
 	CacheConfiguration() // Cache configuration
-	eca := NewECA()
-	if eca == nil {
-		return nil, fmt.Errorf("Could not create a new ECA")
-	}
 
 	aca := NewACA()
 	if aca == nil {
 		return nil, fmt.Errorf("Could not create a new ACA")
+	}
+
+	eca := NewECA(aca)
+	if eca == nil {
+		return nil, fmt.Errorf("Could not create a new ECA")
 	}
 
 	tca := NewTCA(eca)
@@ -175,7 +176,7 @@ func initTCA() (*TCA, error) {
 
 func buildCertificateSetRequest(enrollID string, enrollmentPrivKey *ecdsa.PrivateKey, num, numattrs int) (*protos.TCertCreateSetReq, error) {
 	now := time.Now()
-	timestamp := google_protobuf.Timestamp{Seconds: int64(now.Second()), Nanos: int32(now.Nanosecond())}
+	timestamp := timestamp.Timestamp{Seconds: int64(now.Second()), Nanos: int32(now.Nanosecond())}
 
 	var attributes []*protos.TCertAttribute
 	if numattrs >= 0 { // else negative means use nil from above

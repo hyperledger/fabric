@@ -19,7 +19,7 @@ def getDockerComposeFileArgsFromYamlFile(compose_yaml):
 
 def after_scenario(context, scenario):
     get_logs = context.config.userdata.get("logs", "N")
-    if get_logs.lower() == "force" or (scenario.status == "failed" and get_logs.lower() == "y"):
+    if get_logs.lower() == "force" or (scenario.status == "failed" and get_logs.lower() == "y" and "compose_containers" in context):
         print("Scenario {0} failed. Getting container logs".format(scenario.name))
         file_suffix = "_" + scenario.name.replace(" ", "_") + ".log"
         # get logs from the peer containers

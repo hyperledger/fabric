@@ -366,7 +366,7 @@ func setup() {
 func initMembershipSrvc() {
 	ca.CacheConfiguration() // Cache configuration
 	aca = ca.NewACA()
-	eca = ca.NewECA()
+	eca = ca.NewECA(aca)
 	tca = ca.NewTCA(eca)
 	tlsca = ca.NewTLSCA(eca)
 

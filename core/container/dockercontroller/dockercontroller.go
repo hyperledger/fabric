@@ -207,7 +207,7 @@ func (vm *DockerVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, d
 	id, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
 	if err != nil {
-		dockerLogger.Debugf("start - cannot create client %s", err)
+		dockerLogger.Debugf("stop - cannot create client %s", err)
 		return err
 	}
 	id = strings.Replace(id, ":", "_", -1)

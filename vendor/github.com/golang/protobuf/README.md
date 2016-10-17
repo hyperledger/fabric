@@ -101,6 +101,12 @@ for a protocol buffer variable v:
 	with distinguished wrapper types for each possible field value.
   - Marshal and Unmarshal are functions to encode and decode the wire format.
 
+When the .proto file specifies `syntax="proto3"`, there are some differences:
+
+  - Non-repeated fields of non-message type are values instead of pointers.
+  - Getters are only generated for message and oneof fields.
+  - Enum types do not get an Enum method.
+
 Consider file test.proto, containing
 
 ```proto
@@ -134,6 +140,7 @@ To create and play with a Test object from the example package,
 		test := &example.Test {
 			Label: proto.String("hello"),
 			Type:  proto.Int32(17),
+			Reps:  []int64{1, 2, 3},
 			Optionalgroup: &example.Test_OptionalGroup {
 				RequiredField: proto.String("good bye"),
 			},
@@ -184,3 +191,51 @@ the `plugins` parameter to protoc-gen-go; the usual way is to insert it into
 the --go_out argument to protoc:
 
 	protoc --go_out=plugins=grpc:. *.proto
+
+## Compatibility ##
+
+The library and the generated code are expected to be stable over time.
+However, we reserve the right to make breaking changes without notice for the
+following reasons:
+
+- Security. A security issue in the specification or implementation may come to
+  light whose resolution requires breaking compatibility. We reserve the right
+  to address such security issues.
+- Unspecified behavior.  There are some aspects of the Protocol Buffers
+  specification that are undefined.  Programs that depend on such unspecified
+  behavior may break in future releases.
+- Specification errors or changes. If it becomes necessary to address an
+  inconsistency, incompleteness, or change in the Protocol Buffers
+  specification, resolving the issue could affect the meaning or legality of
+  existing programs.  We reserve the right to address such issues, including
+  updating the implementations.
+- Bugs.  If the library has a bug that violates the specification, a program
+  that depends on the buggy behavior may break if the bug is fixed.  We reserve
+  the right to fix such bugs.
+- Adding methods or fields to generated structs.  These may conflict with field
+  names that already exist in a schema, causing applications to break.  When the
+  code generator encounters a field in the schema that would collide with a
+  generated field or method name, the code generator will append an underscore
+  to the generated field or method name.
+- Adding, removing, or changing methods or fields in generated structs that
+  start with `XXX`.  These parts of the generated code are exported out of
+  necessity, but should not be considered part of the public API.
+- Adding, removing, or changing unexported symbols in generated code.
+
+Any breaking changes outside of these will be announced 6 months in advance to
+protobuf@googlegroups.com.
+
+You should, whenever possible, use generated code created by the `protoc-gen-go`
+tool built at the same commit as the `proto` package.  The `proto` package
+declares package-level constants in the form `ProtoPackageIsVersionX`.
+Application code and generated code may depend on one of these constants to
+ensure that compilation will fail if the available version of the proto library
+is too old.  Whenever we make a change to the generated code that requires newer
+library support, in the same commit we will increment the version number of the
+generated code and declare a new package-level constant whose name incorporates
+the latest version number.  Removing a compatibility constant is considered a
+breaking change and would be subject to the announcement policy stated above.
+
+The `protoc-gen-go/generator` package exposes a plugin interface,
+which is used by the gRPC code generation. This interface is not
+supported and is subject to incompatible changes without notice.

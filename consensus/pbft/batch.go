@@ -18,7 +18,6 @@ package pbft
 
 import (
 	"fmt"
-	"google/protobuf"
 	"time"
 
 	"github.com/hyperledger/fabric/consensus"
@@ -26,6 +25,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -83,8 +83,17 @@ func newObcBatch(id uint64, config *viper.Viper, stack consensus.Stack) *obcBatc
 	etf := events.NewTimerFactoryImpl(op.manager)
 	op.pbft = newPbftCore(id, config, op, etf)
 	op.manager.Start()
+	blockchainInfoBlob := stack.GetBlockchainInfoBlob()
 	op.externalEventReceiver.manager = op.manager
-	op.broadcaster = newBroadcaster(id, op.pbft.N, op.pbft.f, stack)
+	op.broadcaster = newBroadcaster(id, op.pbft.N, op.pbft.f, op.pbft.broadcastTimeout, stack)
+	op.manager.Queue() <- workEvent(func() {
+		op.pbft.stateTransfer(&stateUpdateTarget{
+			checkpointMessage: checkpointMessage{
+				seqNo: op.pbft.lastExec,
+				id:    blockchainInfoBlob,
+			},
+		})
+	})
 
 	op.batchSize = config.GetInt("general.batchsize")
 	op.batchStore = nil
@@ -242,7 +251,7 @@ func (op *obcBatch) sendBatch() events.Event {
 func (op *obcBatch) txToReq(tx []byte) *Request {
 	now := time.Now()
 	req := &Request{
-		Timestamp: &google_protobuf.Timestamp{
+		Timestamp: &timestamp.Timestamp{
 			Seconds: now.Unix(),
 			Nanos:   int32(now.UnixNano() % 1000000000),
 		},

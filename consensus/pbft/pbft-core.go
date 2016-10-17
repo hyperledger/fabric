@@ -155,6 +155,7 @@ type pbftCore struct {
 	newViewTimeout        time.Duration            // progress timeout for new views
 	newViewTimerReason    string                   // what triggered the timer
 	lastNewViewTimeout    time.Duration            // last timeout we used during this view change
+	broadcastTimeout      time.Duration            // progress timeout for broadcast
 	outstandingReqBatches map[string]*RequestBatch // track whether we are waiting for request batches to execute
 
 	nullRequestTimer   events.Timer  // timeout triggering a null request
@@ -255,6 +256,10 @@ func newPbftCore(id uint64, config *viper.Viper, consumer innerStack, etf events
 	if err != nil {
 		instance.nullRequestTimeout = 0
 	}
+	instance.broadcastTimeout, err = time.ParseDuration(config.GetString("general.timeout.broadcast"))
+	if err != nil {
+		panic(fmt.Errorf("Cannot parse new broadcast timeout: %s", err))
+	}
 
 	instance.activeView = true
 	instance.replicaCount = instance.N
@@ -266,6 +271,7 @@ func newPbftCore(id uint64, config *viper.Viper, consumer innerStack, etf events
 	logger.Infof("PBFT request timeout = %v", instance.requestTimeout)
 	logger.Infof("PBFT view change timeout = %v", instance.newViewTimeout)
 	logger.Infof("PBFT Checkpoint period (K) = %v", instance.K)
+	logger.Infof("PBFT broadcast timeout = %v", instance.broadcastTimeout)
 	logger.Infof("PBFT Log multiplier = %v", instance.logMultiplier)
 	logger.Infof("PBFT log size (L) = %v", instance.L)
 	if instance.nullRequestTimeout > 0 {
@@ -370,11 +376,11 @@ func (instance *pbftCore) ProcessEvent(e events.Event) events.Event {
 			return nil
 		}
 		logger.Infof("Replica %d application caught up via state transfer, lastExec now %d", instance.id, update.seqNo)
-		// XXX create checkpoint
 		instance.lastExec = update.seqNo
 		instance.moveWatermarks(instance.lastExec) // The watermark movement handles moving this to a checkpoint boundary
 		instance.skipInProgress = false
 		instance.consumer.validateState()
+		instance.Checkpoint(update.seqNo, update.id)
 		instance.executeOutstanding()
 	case execDoneEvent:
 		instance.execDoneSync()
@@ -1154,17 +1160,40 @@ func (instance *pbftCore) recvCheckpoint(chkpt *Checkpoint) events.Event {
 
 	instance.checkpointStore[*chkpt] = true
 
+	// Track how many different checkpoint values we have for the seqNo in question
+	diffValues := make(map[string]struct{})
+	diffValues[chkpt.Id] = struct{}{}
+
 	matching := 0
 	for testChkpt := range instance.checkpointStore {
-		if testChkpt.SequenceNumber == chkpt.SequenceNumber && testChkpt.Id == chkpt.Id {
-			matching++
+		if testChkpt.SequenceNumber == chkpt.SequenceNumber {
+			if testChkpt.Id == chkpt.Id {
+				matching++
+			} else {
+				if _, ok := diffValues[testChkpt.Id]; !ok {
+					diffValues[testChkpt.Id] = struct{}{}
+				}
+			}
 		}
 	}
 	logger.Debugf("Replica %d found %d matching checkpoints for seqNo %d, digest %s",
 		instance.id, matching, chkpt.SequenceNumber, chkpt.Id)
 
+	// If f+2 different values have been observed, we'll never be able to get a stable cert for this seqNo
+	if count := len(diffValues); count > instance.f+1 {
+		logger.Panicf("Network unable to find stable certificate for seqNo %d (%d different values observed already)",
+			chkpt.SequenceNumber, count)
+	}
+
 	if matching == instance.f+1 {
-		// We do have a weak cert
+		// We have a weak cert
+		// If we have generated a checkpoint for this seqNo, make sure we have a match
+		if ownChkptID, ok := instance.chkpts[chkpt.SequenceNumber]; ok {
+			if ownChkptID != chkpt.Id {
+				logger.Panicf("Own checkpoint for seqNo %d (%s) different from weak checkpoint certificate (%s)",
+					chkpt.SequenceNumber, ownChkptID, chkpt.Id)
+			}
+		}
 		instance.witnessCheckpointWeakCert(chkpt)
 	}
 
@@ -1181,8 +1210,7 @@ func (instance *pbftCore) recvCheckpoint(chkpt *Checkpoint) events.Event {
 	// we have reached this checkpoint
 	// Note, this is not divergent from the paper, as the paper requires that
 	// the quorum certificate must contain 2f+1 messages, including its own
-	chkptID, ok := instance.chkpts[chkpt.SequenceNumber]
-	if !ok {
+	if _, ok := instance.chkpts[chkpt.SequenceNumber]; !ok {
 		logger.Debugf("Replica %d found checkpoint quorum for seqNo %d, digest %s, but it has not reached this checkpoint itself yet",
 			instance.id, chkpt.SequenceNumber, chkpt.Id)
 		if instance.skipInProgress {
@@ -1199,12 +1227,6 @@ func (instance *pbftCore) recvCheckpoint(chkpt *Checkpoint) events.Event {
 
 	logger.Debugf("Replica %d found checkpoint quorum for seqNo %d, digest %s",
 		instance.id, chkpt.SequenceNumber, chkpt.Id)
-
-	if chkptID != chkpt.Id {
-		logger.Criticalf("Replica %d generated a checkpoint of %s, but a quorum of the network agrees on %s. This is almost definitely non-deterministic chaincode.",
-			instance.id, chkptID, chkpt.Id)
-		instance.stateTransfer(nil)
-	}
 
 	instance.moveWatermarks(chkpt.SequenceNumber)
 

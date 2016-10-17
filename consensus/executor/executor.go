@@ -131,6 +131,7 @@ func (co *coordinatorImpl) ProcessEvent(event events.Event) events.Event {
 		for {
 			err, recoverable := co.stc.SyncToTarget(info.Height-1, info.CurrentBlockHash, et.peers)
 			if err == nil {
+				logger.Debug("State transfer sync completed, returning")
 				co.skipInProgress = false
 				co.consumer.StateUpdated(et.tag, info)
 				return nil

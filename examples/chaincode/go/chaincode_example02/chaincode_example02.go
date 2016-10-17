@@ -113,6 +113,9 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 
 	// Perform the execution
 	X, err = strconv.Atoi(args[2])
+	if err != nil {
+		return nil, errors.New("Invalid transaction amount, expecting a integer value")
+	}
 	Aval = Aval - X
 	Bval = Bval + X
 	fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)

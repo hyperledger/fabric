@@ -35,6 +35,8 @@ import (
 	"sync"
 	"time"
 
+	gp "google/protobuf"
+
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
@@ -578,11 +580,11 @@ func (ca *CA) validateAndGenerateEnrollID(id, affiliation string, role pb.Role) 
 
 // registerUser registers a new member with the CA
 //
-func (ca *CA) registerUser(id, affiliation string, role pb.Role, registrar, memberMetadata string, opt ...string) (string, error) {
+func (ca *CA) registerUser(id, affiliation string, role pb.Role, attrs []*pb.Attribute, aca *ACA, registrar, memberMetadata string, opt ...string) (string, error) {
 	memberMetadata = removeQuotes(memberMetadata)
 	roleStr, _ := MemberRoleToString(role)
-	caLogger.Debugf("Received request to register user with id: %s, affiliation: %s, role: %s, registrar: %s, memberMetadata: %s\n",
-		id, affiliation, roleStr, registrar, memberMetadata)
+	caLogger.Debugf("Received request to register user with id: %s, affiliation: %s, role: %s, attrs: %+v, registrar: %s, memberMetadata: %s\n",
+		id, affiliation, roleStr, attrs, registrar, memberMetadata)
 
 	var enrollID, tok string
 	var err error
@@ -606,11 +608,21 @@ func (ca *CA) registerUser(id, affiliation string, role pb.Role, registrar, memb
 	if err != nil {
 		return "", err
 	}
+
 	tok, err = ca.registerUserWithEnrollID(id, enrollID, role, memberMetadata, opt...)
 	if err != nil {
 		return "", err
 	}
-	return tok, nil
+
+	if attrs != nil && aca != nil {
+		var pairs []*AttributePair
+		pairs, err = toAttributePairs(id, affiliation, attrs)
+		if err == nil {
+			err = aca.PopulateAttributes(pairs)
+		}
+	}
+
+	return tok, err
 }
 
 // registerUserWithEnrollID registers a new user and its enrollmentID, role and state
@@ -870,25 +882,36 @@ func (mm *MemberMetadata) canRegister(registrar string, newRole string, newMembe
 		caLogger.Debugf("MM.canRegister: role %s can't be registered by %s\n", newRole, registrar)
 		return errors.New("member " + registrar + " may not register member of type " + newRole)
 	}
+
 	// The registrar privileges that are being registered must not be larger than the registrar's
 	if newMemberMetadata == nil {
 		// Not requesting registrar privileges for this member, so we are OK
 		caLogger.Debug("MM.canRegister: not requesting registrar privileges")
 		return nil
 	}
-	return strsContained(newMemberMetadata.Registrar.Roles, mm.Registrar.DelegateRoles, registrar, "delegateRoles")
+
+	// Make sure this registrar is not delegating an invalid role
+	err := checkDelegateRoles(newMemberMetadata.Registrar.Roles, mm.Registrar.DelegateRoles, registrar)
+	if err != nil {
+		caLogger.Debug("MM.canRegister: checkDelegateRoles failure")
+		return err
+	}
+
+	// Can register OK
+	caLogger.Debug("MM.canRegister: OK")
+	return nil
 }
 
 // Return an error if all strings in 'strs1' are not contained in 'strs2'
-func strsContained(strs1 []string, strs2 []string, registrar string, field string) error {
-	caLogger.Debugf("CA.strsContained: registrar=%s, field=%s, strs1=%+v, strs2=%+v\n", registrar, field, strs1, strs2)
+func checkDelegateRoles(strs1 []string, strs2 []string, registrar string) error {
+	caLogger.Debugf("CA.checkDelegateRoles: registrar=%s, strs1=%+v, strs2=%+v\n", registrar, strs1, strs2)
 	for _, s := range strs1 {
 		if !strContained(s, strs2) {
-			caLogger.Debugf("CA.strsContained: no: %s not in %+v\n", s, strs2)
-			return errors.New("user " + registrar + " may not register " + field + " " + s)
+			caLogger.Debugf("CA.checkDelegateRoles: no: %s not in %+v\n", s, strs2)
+			return errors.New("user " + registrar + " may not register delegateRoles " + s)
 		}
 	}
-	caLogger.Debug("CA.strsContained: ok")
+	caLogger.Debug("CA.checkDelegateRoles: ok")
 	return nil
 }
 
@@ -896,6 +919,16 @@ func strsContained(strs1 []string, strs2 []string, registrar string, field strin
 func strContained(str string, strs []string) bool {
 	for _, s := range strs {
 		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+// Return true if 'str' is prefixed by any string in 'strs'; otherwise return false
+func isPrefixed(str string, strs []string) bool {
+	for _, s := range strs {
+		if strings.HasPrefix(str, s) {
 			return true
 		}
 	}
@@ -927,4 +960,31 @@ func removeQuotes(str string) string {
 	}
 	caLogger.Debugf("removeQuotes: %s\n", str)
 	return str
+}
+
+// Convert the protobuf array of attributes to the AttributePair array format
+// as required by the ACA code to populate the table
+func toAttributePairs(id, affiliation string, attrs []*pb.Attribute) ([]*AttributePair, error) {
+	var pairs = make([]*AttributePair, 0)
+	for _, attr := range attrs {
+		vals := []string{id, affiliation, attr.Name, attr.Value, attr.NotBefore, attr.NotAfter}
+		pair, err := NewAttributePair(vals, nil)
+		if err != nil {
+			return nil, err
+		}
+		pairs = append(pairs, pair)
+	}
+	caLogger.Debugf("toAttributePairs: id=%s, affiliation=%s, attrs=%v, pairs=%v\n",
+		id, affiliation, attrs, pairs)
+	return pairs, nil
+}
+
+func convertTime(ts *gp.Timestamp) time.Time {
+	var t time.Time
+	if ts == nil {
+		t = time.Unix(0, 0).UTC()
+	} else {
+		t = time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
+	}
+	return t
 }

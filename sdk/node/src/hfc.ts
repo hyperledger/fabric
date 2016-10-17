@@ -43,8 +43,16 @@
  *          the server side transaction processing path.
  */
 
-// Instruct boringssl to use ECC for tls.
-process.env['GRPC_SSL_CIPHER_SUITES'] = 'HIGH+ECDSA';
+process.env.GRPC_SSL_CIPHER_SUITES = process.env.GRPC_SSL_CIPHER_SUITES
+   ? process.env.GRPC_SSL_CIPHER_SUITES
+   : 'ECDHE-RSA-AES128-GCM-SHA256:' +
+     'ECDHE-RSA-AES128-SHA256:' +
+     'ECDHE-RSA-AES256-SHA384:' +
+     'ECDHE-RSA-AES256-GCM-SHA384:' +
+     'ECDHE-ECDSA-AES128-GCM-SHA256:' +
+     'ECDHE-ECDSA-AES128-SHA256:' +
+     'ECDHE-ECDSA-AES256-SHA384:' +
+     'ECDHE-ECDSA-AES256-GCM-SHA384' ;
 
 var debugModule = require('debug');
 var fs = require('fs');
@@ -55,6 +63,8 @@ var jsrsa = require('jsrsasign');
 var elliptic = require('elliptic');
 var sha3 = require('js-sha3');
 var BN = require('bn.js');
+var Set = require('es6-set');
+var HashTable = require('hashtable');
 import * as crypto from "./crypto"
 import * as stats from "./stats"
 import * as sdk_util from "./sdk_util"
@@ -159,6 +169,8 @@ export interface RegistrationRequest {
     roles?:string[];
     // Affiliation for a user
     affiliation:string;
+    // The attribute names and values to grant to this member
+    attributes?:Attribute[];
     // 'registrar' enables this identity to register other members with types
     // and can delegate the 'delegationRoles' roles
     registrar?:{
@@ -169,6 +181,15 @@ export interface RegistrationRequest {
     };
 }
 
+// An attribute consisting of a name and value
+export interface Attribute {
+   // The attribute name
+   name:string;
+   // The attribute value
+   value:string;
+}
+
+// An enrollment request
 export interface EnrollmentRequest {
     // The enrollment ID
     enrollmentID:string;
@@ -196,6 +217,12 @@ export interface Enrollment {
     key:Buffer;
     cert:string;
     chainKey:string;
+}
+
+// GRPCOptions
+export interface GRPCOptions {
+   pem: string;
+   hostnameOverride: string;
 }
 
 // A request to get a batch of TCerts
@@ -290,7 +317,7 @@ export class Certificate {
 /**
  * Enrollment certificate.
  */
-export class ECert extends Certificate {
+class ECert extends Certificate {
 
     constructor(public cert:Buffer,
                 public privateKey:any) {
@@ -335,6 +362,8 @@ export interface DeployRequest extends TransactionRequest {
     chaincodePath:string;
     // The name identifier for the chaincode to deploy in development mode.
     chaincodeName:string;
+    // The directory on the server side, where the certificate.pem will be copied
+    certificatePath:string;
 }
 
 /**
@@ -369,6 +398,7 @@ export interface TransactionProtobuf {
     setConfidentialityProtocolVersion(version:string):void;
     setNonce(nonce:Buffer):void;
     setToValidators(Buffer):void;
+    getTxid():string;
     getChaincodeID():{buffer: Buffer};
     setChaincodeID(buffer:Buffer):void;
     getMetadata():{buffer: Buffer};
@@ -419,6 +449,9 @@ export class Chain {
     // The member services used for this chain
     private memberServices:MemberServices;
 
+    // The eventHub service used for this chain
+    private eventHub:EventHub;
+
     // The key-val store used for this chain
     private keyValStore:KeyValStore;
 
@@ -430,7 +463,7 @@ export class Chain {
 
     // Temporary variables to control how long to wait for deploy and invoke to complete before
     // emitting events.  This will be removed when the SDK is able to receive events from the
-    private deployWaitTime:number = 20;
+    private deployWaitTime:number = 30;
     private invokeWaitTime:number = 5;
 
     // The crypto primitives object
@@ -438,6 +471,7 @@ export class Chain {
 
     constructor(name:string) {
         this.name = name;
+        this.eventHub = new EventHub();
     }
 
     /**
@@ -450,11 +484,24 @@ export class Chain {
 
     /**
      * Add a peer given an endpoint specification.
-     * @param endpoint The endpoint of the form: { url: "grpcs://host:port", tls: { .... } }
+     * @param url The URL of the peer.
+     * @param opts Optional GRPC options.
      * @returns {Peer} Returns a new peer.
      */
-    addPeer(url:string, pem?:string):Peer {
-        let peer = new Peer(url, this, pem);
+    addPeer(url:string, opts?:GRPCOptions):Peer {
+
+        //check to see if the peer is already part of the chain
+        this.peers.forEach(function(peer){
+            if (peer.getUrl()===url)
+            {
+                var error = new Error();
+                error.name = "DuplicatePeer";
+                error.message = "Peer with URL " + url + " is already a member of the chain";
+                throw error;
+            }
+        })
+
+        let peer = new Peer(url, this, opts);
         this.peers.push(peer);
         return peer;
     };
@@ -485,9 +532,10 @@ export class Chain {
     /**
      * Set the member services URL
      * @param {string} url Member services URL of the form: "grpc://host:port" or "grpcs://host:port"
+     * @param {GRPCOptions} opts optional GRPC options
      */
-    setMemberServicesUrl(url:string, pem?:string):void {
-        this.setMemberServices(newMemberServices(url,pem));
+    setMemberServicesUrl(url:string, opts?:GRPCOptions):void {
+        this.setMemberServices(newMemberServices(url,opts));
     }
 
     /**
@@ -509,6 +557,29 @@ export class Chain {
     };
 
     /**
+     * Get the eventHub service associated this chain.
+     * @returns {eventHub} Return the current eventHub service, or undefined if not set.
+     */
+    getEventHub():EventHub{
+        return this.eventHub;
+    };
+
+    /**
+     * Set and connect to the peer to be used as the event source.
+     */
+    eventHubConnect(peerUrl: string, opts?:GRPCOptions):void {
+	this.eventHub.setPeerAddr(peerUrl, opts);
+	this.eventHub.connect();
+    };
+
+    /**
+     * Set and connect to the peer to be used as the event source.
+     */
+    eventHubDisconnect():void {
+	this.eventHub.disconnect();
+    };
+
+    /**
      * Determine if security is enabled.
      */
     isSecurityEnabled():boolean {
@@ -527,6 +598,20 @@ export class Chain {
      */
     setPreFetchMode(preFetchMode:boolean):void {
         this.preFetchMode = preFetchMode;
+    }
+
+    /**
+     * Enable or disable ECDSA mode for GRPC.
+     */
+    setECDSAModeForGRPC(enabled:boolean):void {
+       // TODO: Handle multiple chains in different modes appropriately; this will not currently work
+       // since it is based env variables.
+       if (enabled) {
+          // Instruct boringssl to use ECC for tls.
+          process.env.GRPC_SSL_CIPHER_SUITES = 'HIGH+ECDSA';
+       } else {
+          delete process.env.GRPC_SSL_CIPHER_SUITES;
+       }
     }
 
     /**
@@ -552,6 +637,11 @@ export class Chain {
 
     /**
      * Set the deploy wait time in seconds.
+     * Node.js will automatically enforce a
+     * minimum and maximum wait time.  If the
+     * number of seconds is larger than 2147483,
+     * less than 1, or not a number,
+     * the actual wait time used will be 1 ms.
      * @param secs
      */
     setDeployWaitTime(secs:number):void {
@@ -603,7 +693,8 @@ export class Chain {
     }
 
     /**
-     * Get the user member named 'name'.
+     * Get the user member named 'name' or create
+     * a new member if the member does not exist.
      * @param cb Callback of form "function(err,Member)"
      */
     getMember(name:string, cb:GetMemberCallback):void {
@@ -627,7 +718,11 @@ export class Chain {
     }
 
     // Try to get the member from cache.
-    // If not found, create a new one, restore the state if found, and then store in cache.
+    // If not found, create a new one.
+    // If member is found in the key value store,
+    //    restore the state to the new member, store in cache and return the member.
+    // If there are no errors and member is not found in the key value store,
+    //    return the new member.
     private getMemberHelper(name:string, cb:GetMemberCallback) {
         let self = this;
         // Try to get the member state from the cache
@@ -637,6 +732,7 @@ export class Chain {
         member = new Member(name, self);
         member.restoreState(function (err) {
             if (err) return cb(err);
+            self.members[name]=member;
             cb(null, member);
         });
     }
@@ -737,7 +833,6 @@ export class Member {
     private chain:Chain;
     private name:string;
     private roles:string[];
-    private account:string;
     private affiliation:string;
     private enrollmentSecret:string;
     private enrollment:any;
@@ -759,7 +854,6 @@ export class Member {
             let req = cfg;
             this.name = req.enrollmentID || req.name;
             this.roles = req.roles || ['fabric.user'];
-            this.account = req.account;
             this.affiliation = req.affiliation;
         }
         this.chain = chain;
@@ -807,22 +901,6 @@ export class Member {
      */
     setRoles(roles:string[]):void {
         this.roles = roles;
-    };
-
-    /**
-     * Get the account.
-     * @returns {string} The account.
-     */
-    getAccount():string {
-        return this.account;
-    };
-
-    /**
-     * Set the account.
-     * @param account The account.
-     */
-    setAccount(account:string):void {
-        this.account = account;
     };
 
     /**
@@ -932,7 +1010,7 @@ export class Member {
             if (err) return cb(err);
             self.enrollment = enrollment;
             // Generate queryStateKey
-            self.enrollment.queryStateKey = self.chain.cryptoPrimitives.generateNonce();
+            self.enrollment.queryStateKey = crypto.Crypto.generateNonce()
 
             // Save state
             self.saveState(function (err) {
@@ -1083,7 +1161,6 @@ export class Member {
         if (state.name !== this.getName()) throw Error("name mismatch: '" + state.name + "' does not equal '" + this.getName() + "'");
         this.name = state.name;
         this.roles = state.roles;
-        this.account = state.account;
         this.affiliation = state.affiliation;
         this.enrollmentSecret = state.enrollmentSecret;
         this.enrollment = state.enrollment;
@@ -1098,7 +1175,6 @@ export class Member {
         let state = {
             name: self.name,
             roles: self.roles,
-            account: self.account,
             affiliation: self.affiliation,
             enrollmentSecret: self.enrollmentSecret,
             enrollment: self.enrollment
@@ -1121,6 +1197,10 @@ export class TransactionContext extends events.EventEmitter {
     private binding: any;
     private tcert:TCert;
     private attrs:string[];
+    private complete:boolean;
+    private timeoutId:any;
+    private waitTime:number;
+    private cevent:any;
 
     constructor(member:Member, tcert:TCert) {
         super();
@@ -1128,7 +1208,9 @@ export class TransactionContext extends events.EventEmitter {
         this.chain = member.getChain();
         this.memberServices = this.chain.getMemberServices();
         this.tcert = tcert;
-        this.nonce = this.chain.cryptoPrimitives.generateNonce();
+        this.nonce = crypto.Crypto.generateNonce();
+        this.complete = false;
+        this.timeoutId = null;
     }
 
     /**
@@ -1353,7 +1435,47 @@ export class TransactionContext extends events.EventEmitter {
                     });
                     self.getChain().sendTransaction(tx, emitter);
                 } else {
-                    self.getChain().sendTransaction(tx, self);
+                     let txType = tx.pb.getType();
+                     let uuid = tx.pb.getTxid();
+		     let eh = self.getChain().getEventHub();
+		     // async deploy and invokes need to maintain
+		     // tx context(completion status(self.complete))
+                     if ( txType == _fabricProto.Transaction.Type.CHAINCODE_DEPLOY) {
+                         self.cevent = new EventDeployComplete(uuid, tx.chaincodeID);
+                         self.waitTime = self.getChain().getDeployWaitTime();
+                     } else if ( txType == _fabricProto.Transaction.Type.CHAINCODE_INVOKE) {
+                         self.cevent = new EventInvokeComplete("Tx "+uuid+" complete");
+                         self.waitTime = self.getChain().getInvokeWaitTime();
+                     }
+                     eh.registerTxEvent(uuid, function (uuid) {
+                         self.complete = true;
+			 if (self.timeoutId) {
+                             clearTimeout(self.timeoutId);
+			 }
+                         eh.unregisterTxEvent(uuid);
+                         self.emit("complete", self.cevent);
+                     });
+                     self.getChain().sendTransaction(tx, self);
+		     // sync query can be skipped as response
+		     // is processed and event generated in sendTransaction
+		     // no timeout processing is necessary
+		     if ( txType != _fabricProto.Transaction.Type.CHAINCODE_QUERY) {
+                         debug("waiting %d seconds before emitting complete event", self.waitTime);
+                         self.timeoutId = setTimeout(function() {
+                             debug("timeout uuid=", uuid);
+                             if(!self.complete)
+                                 // emit error if eventhub connect otherwise
+                                 // emit a complete event as done previously
+                                 if(eh.isconnected())
+                                     self.emit("error","timed out waiting for transaction to complete");
+                                 else
+                                     self.emit("complete",self.cevent);
+                             else
+                                 eh.unregisterTxEvent(uuid);
+                             },
+                                self.waitTime * 1000
+                         );
+		     }
                 }
             } else {
                 debug('Missing TCert...');
@@ -1404,7 +1526,7 @@ export class TransactionContext extends events.EventEmitter {
         var stateKey;
         if (transaction.pb.getType() == _fabricProto.Transaction.Type.CHAINCODE_DEPLOY) {
             // The request is for a deploy
-            stateKey = new Buffer(self.chain.cryptoPrimitives.aesKeyGen());
+            stateKey = new Buffer(crypto.Crypto.aesKeyGen());
         } else if (transaction.pb.getType() == _fabricProto.Transaction.Type.CHAINCODE_INVOKE ) {
             // The request is for an execute
             // Empty state key
@@ -1481,7 +1603,7 @@ export class TransactionContext extends events.EventEmitter {
         );
 
         debug('Decrypt Result [%s]', ct.toString('hex'));
-        return this.chain.cryptoPrimitives.aes256GCMDecrypt(key, ct);
+        return crypto.Crypto.aes256GCMDecrypt(key, ct);
     }
 
     /**
@@ -1643,6 +1765,16 @@ export class TransactionContext extends events.EventEmitter {
      	  // Substitute the hashStrHash for the image name
      	  dockerFileContents = util.format(dockerFileContents, hash);
 
+        // Add the certificate path on the server, if it is being passed in
+        debug("type of request.certificatePath: " + typeof(request.certificatePath));
+        debug("request.certificatePath: " + request.certificatePath);
+        if (request.certificatePath !== "" && request.certificatePath !== undefined) {
+            debug("Adding COPY certificate.pem command");
+
+            dockerFileContents = dockerFileContents + "\n" + "COPY certificate.pem %s";
+            dockerFileContents = util.format(dockerFileContents, request.certificatePath);
+        }
+
      	  // Create a Docker file with dockerFileContents
      	  let dockerFilePath = projDir + "/Dockerfile";
      	  fs.writeFile(dockerFilePath, dockerFileContents, function(err) {
@@ -1723,10 +1855,10 @@ export class TransactionContext extends events.EventEmitter {
                     tx.setPayload(chaincodeDeploymentSpec.toBuffer());
 
                     //
-                    // Set the transaction UUID
+                    // Set the transaction ID
                     //
 
-                    tx.setTxid(sdk_util.GenerateUUID());
+                    tx.setTxid(hash);
 
                     //
                     // Set the transaction timestamp
@@ -2039,16 +2171,23 @@ export class Peer {
     private peerClient:any;
 
     /**
-     * Constructor for a peer given the endpoint config for the peer.
-     * @param {string} url The URL of
-     * @param {Chain} The chain of which this peer is a member.
+     * Constructs a Peer given its endpoint configuration settings
+     * and returns the new Peer.
+     * @param {string} url The URL with format of "grpcs://host:port".
+     * @param {Chain} chain The chain of which this peer is a member.
+     * @param {GRPCOptions} optional GRPC options to use with the gRPC,
+     * protocol (that is, with TransportCredentials) including a root
+     * certificate file, in PEM format, and hostnameOverride. A certificate
+     * is required when using the grpcs (TLS) protocol.
      * @returns {Peer} The new peer.
      */
-    constructor(url:string, chain:Chain, pem:string) {
+    constructor(url:string, chain:Chain, opts:GRPCOptions) {
         this.url = url;
         this.chain = chain;
+        let pem = getPemFromOpts(opts);
+        opts = getOptsFromOpts(opts);
         this.ep = new Endpoint(url,pem);
-        this.peerClient = new _fabricProto.Peer(this.ep.addr, this.ep.creds);
+        this.peerClient = new _fabricProto.Peer(this.ep.addr, this.ep.creds, opts);
     }
 
     /**
@@ -2103,7 +2242,6 @@ export class Peer {
                         let event = new EventDeploySubmitted(response.msg.toString(), tx.chaincodeID);
                         debug("EventDeploySubmitted event: %j", event);
                         eventEmitter.emit("submitted", event);
-                        self.waitForDeployComplete(eventEmitter,event);
                      }
                   } else {
                      // Deploy completed with status "FAILURE" or "UNDEFINED"
@@ -2117,7 +2255,6 @@ export class Peer {
                         eventEmitter.emit("error", new EventTransactionError("the invoke response is missing the transaction UUID"));
                      } else {
                         eventEmitter.emit("submitted", new EventInvokeSubmitted(response.msg.toString()));
-                        self.waitForInvokeComplete(eventEmitter);
                      }
                   } else {
                      // Invoke completed with status "FAILURE" or "UNDEFINED"
@@ -2140,43 +2277,6 @@ export class Peer {
     };
 
     /**
-     * TODO: Temporary hack to wait until the deploy event has hopefully completed.
-     * This does not detect if an error occurs in the peer or chaincode when deploying.
-     * When peer event listening is added to the SDK, this will be implemented correctly.
-     */
-    private waitForDeployComplete(eventEmitter:events.EventEmitter, submitted:EventDeploySubmitted): void {
-        let waitTime = this.chain.getDeployWaitTime();
-        debug("waiting %d seconds before emitting deploy complete event",waitTime);
-        setTimeout(
-           function() {
-              let event = new EventDeployComplete(
-                  submitted.uuid,
-                  submitted.chaincodeID,
-                  "TODO: get actual results; waited "+waitTime+" seconds and assumed deploy was successful"
-              );
-              eventEmitter.emit("complete",event);
-           },
-           waitTime * 1000
-        );
-    }
-
-    /**
-     * TODO: Temporary hack to wait until the deploy event has hopefully completed.
-     * This does not detect if an error occurs in the peer or chaincode when deploying.
-     * When peer event listening is added to the SDK, this will be implemented correctly.
-     */
-    private waitForInvokeComplete(eventEmitter:events.EventEmitter): void {
-        let waitTime = this.chain.getInvokeWaitTime();
-        debug("waiting %d seconds before emitting invoke complete event",waitTime);
-        setTimeout(
-           function() {
-              eventEmitter.emit("complete",new EventInvokeComplete("waited "+waitTime+" seconds and assumed invoke was successful"));
-           },
-           waitTime * 1000
-        );
-    }
-
-    /**
      * Remove the peer from the chain.
      */
     remove():void {
@@ -2196,15 +2296,24 @@ class Endpoint {
 
     constructor(url:string, pem?:string) {
         let purl = parseUrl(url);
-        let protocol = purl.protocol.toLowerCase();
+        var protocol;
+        if (purl.protocol) {
+            protocol = purl.protocol.toLowerCase().slice(0,-1);
+        }
         if (protocol === 'grpc') {
             this.addr = purl.host;
             this.creds = grpc.credentials.createInsecure();
-        } else if (protocol === 'grpcs') {
+        }
+        else if (protocol === 'grpcs') {
             this.addr = purl.host;
             this.creds = grpc.credentials.createSsl(new Buffer(pem));
-        } else {
-            throw Error("invalid protocol: " + protocol);
+        }
+        else {
+            var error = new Error();
+            error.name = "InvalidProtocol";
+            error.message = "Invalid protocol: " + protocol +
+                ".  URLs must begin with grpc:// or grpcs://"
+            throw error;
         }
     }
 }
@@ -2225,16 +2334,14 @@ class MemberServicesImpl implements MemberServices {
      * @param config The config information required by this member services implementation.
      * @returns {MemberServices} A MemberServices object.
      */
-    constructor(url:string,pem:string) {
+    constructor(url:string,opts:GRPCOptions) {
+        var pem = getPemFromOpts(opts);
+        opts = getOptsFromOpts(opts);
         let ep = new Endpoint(url,pem);
-        var options = {
-              'grpc.ssl_target_name_override' : 'tlsca',
-              'grpc.default_authority': 'tlsca'
-        };
-        this.ecaaClient = new _caProto.ECAA(ep.addr, ep.creds, options);
-        this.ecapClient = new _caProto.ECAP(ep.addr, ep.creds, options);
-        this.tcapClient = new _caProto.TCAP(ep.addr, ep.creds, options);
-        this.tlscapClient = new _caProto.TLSCAP(ep.addr, ep.creds, options);
+        this.ecaaClient = new _caProto.ECAA(ep.addr, ep.creds, opts);
+        this.ecapClient = new _caProto.ECAP(ep.addr, ep.creds, opts);
+        this.tcapClient = new _caProto.TCAP(ep.addr, ep.creds, opts);
+        this.tlscapClient = new _caProto.TLSCAP(ep.addr, ep.creds, opts);
         this.cryptoPrimitives = new crypto.Crypto(DEFAULT_HASH_ALGORITHM, DEFAULT_SECURITY_LEVEL);
     }
 
@@ -2270,6 +2377,9 @@ class MemberServicesImpl implements MemberServices {
         this.cryptoPrimitives.setHashAlgorithm(hashAlgorithm);
     }
 
+    /**
+     * Get the crypto object.
+     */
     getCrypto():crypto.Crypto {
         return this.cryptoPrimitives;
     }
@@ -2285,10 +2395,25 @@ class MemberServicesImpl implements MemberServices {
         debug("MemberServicesImpl.register: req=%j", req);
         if (!req.enrollmentID) return cb(new Error("missing req.enrollmentID"));
         if (!registrar) return cb(new Error("chain registrar is not set"));
+        // Create proto request
         let protoReq = new _caProto.RegisterUserReq();
         protoReq.setId({id:req.enrollmentID});
         protoReq.setRole(rolesToMask(req.roles));
         protoReq.setAffiliation(req.affiliation);
+        let attrs = req.attributes;
+        if (Array.isArray(attrs)) {
+           let pattrs = [];
+           for (var i = 0; i < attrs.length; i++) {
+              var attr = attrs[i];
+              var pattr = new _caProto.Attribute();
+              if (attr.name) pattr.setName(attr.name);
+              if (attr.value) pattr.setValue(attr.value);
+              if (attr.notBefore) pattr.setNotBefore(attr.notBefore);
+              if (attr.notAfter) pattr.setNotAfter(attr.notAfter);
+              pattrs.push(pattr);
+           }
+           protoReq.setAttributes(pattrs);
+        }
         // Create registrar info
         let protoRegistrar = new _caProto.Registrar();
         protoRegistrar.setId({id:registrar.getName()});
@@ -2537,8 +2662,8 @@ class MemberServicesImpl implements MemberServices {
 
 } // end MemberServicesImpl
 
-function newMemberServices(url,pem) {
-    return new MemberServicesImpl(url,pem);
+function newMemberServices(url:string,opts:GRPCOptions) {
+    return new MemberServicesImpl(url,opts);
 }
 
 /**
@@ -2619,10 +2744,6 @@ function isFunction(fcn:any):boolean {
 function parseUrl(url:string):any {
     // TODO: find ambient definition for url
     var purl = urlParser.parse(url, true);
-    var protocol = purl.protocol;
-    if (endsWith(protocol, ":")) {
-        purl.protocol = protocol.slice(0, -1);
-    }
     return purl;
 }
 
@@ -2649,6 +2770,29 @@ function rolesToMask(roles?:string[]):number {
     }
     if (mask === 0) mask = 1;  // Client
     return mask;
+}
+
+// Get the PEM from the options
+function getPemFromOpts(opts:any):string {
+   if (isObject(opts)) return opts.pem;
+   return opts;
+}
+
+// Normalize opts
+function getOptsFromOpts(opts:any):GRPCOptions {
+   if (isObject(opts)) {
+      delete opts.pem;
+      if (opts.hostnameOverride) {
+         opts['grpc.ssl_target_name_override'] = opts.hostnameOverride;
+         opts['grpc.default_authority'] = opts.hostnameOverride;
+         delete opts.hostnameOverride;
+      }
+      return <GRPCOptions>opts;
+   }
+   if (isString(opts)) {
+      // backwards compatible to handle pem as opts
+      return <GRPCOptions>{ pem: opts };
+   }
 }
 
 function endsWith(str:string, suffix:string) {
@@ -2683,7 +2827,7 @@ export function newChain(name) {
 export function getChain(chainName, create) {
     let chain = _chains[chainName];
     if (!chain && create) {
-        chain = newChain(name);
+        chain = newChain(chainName);
     }
     return chain;
 }
@@ -2693,4 +2837,173 @@ export function getChain(chainName, create) {
  */
 export function newFileKeyValStore(dir:string):KeyValStore {
     return new FileKeyValStore(dir);
+}
+
+/**
+ * The ChainCodeCBE is used internal to the EventHub to hold chaincode event registration callbacks.
+ */
+export class ChainCodeCBE {
+    // chaincode id
+    ccid: string;
+    // event name regex filter
+    eventNameFilter: RegExp;
+    // callback function to invoke on successful filter match
+    cb: Function;
+    constructor(ccid: string, eventNameFilter: string, cb: Function) {
+        this.ccid = ccid;
+        this.eventNameFilter = new RegExp(eventNameFilter);
+        this.cb = cb;
+    }
+}
+
+/**
+ * The EventHub is used to distribute events from a specific event source(peer)
+ */
+export class EventHub {
+        // peer addr to connect to
+        private ep: Endpoint;
+        // grpc options
+        private opts: GRPCOptions;
+	// grpc events interface
+        private events: any;
+	// grpc event client interface
+        private client: any;
+	// grpc chat streaming interface
+        private call: any;
+	// hashtable of clients registered for chaincode events
+        private chaincodeRegistrants: any;
+	// set of clients registered for block events
+        private blockRegistrants: any;
+	// hashtable of clients registered for transactional events
+        private txRegistrants: any;
+	// fabric connection state of this eventhub
+        private connected: boolean;
+    constructor() {
+	this.chaincodeRegistrants = new HashTable();
+	this.blockRegistrants = new Set();
+	this.txRegistrants = new HashTable();
+        this.ep = null;
+        this.connected = false;
+    }
+
+    public setPeerAddr(peeraddr: string, opts?:GRPCOptions) {
+        let pem = getPemFromOpts(opts);
+        this.opts = getOptsFromOpts(opts);
+        this.ep = new Endpoint(peeraddr,pem);
+    }
+
+    public isconnected() {
+        return this.connected;
+    }
+
+    public connect() {
+        if (this.connected) return;
+	if (!this.ep) throw Error("Must set peer address before connecting.");
+        this.events = grpc.load(__dirname + "/protos/events.proto" ).protos;
+	this.client = new this.events.Events(this.ep.addr, this.ep.creds, this.opts);
+	this.call = this.client.chat();
+        this.connected = true;
+        this.registerBlockEvent(this.txCallback);
+
+	let eh = this; // for callback context
+        this.call.on('data', function(event) {
+		if ( event.Event == "chaincodeEvent" ) {
+			var cbtable = eh.chaincodeRegistrants.get(event.chaincodeEvent.chaincodeID);
+                        if( !cbtable ) {
+                            return;
+                        }
+                        cbtable.forEach(function (cbe) {
+                            if ( cbe.eventNameFilter.test(event.chaincodeEvent.eventName)) {
+                                cbe.cb(event.chaincodeEvent);
+                            }
+                        });
+		} else if ( event.Event == "block") {
+			eh.blockRegistrants.forEach(function(cb){
+                            cb(event.block);
+			});
+		}
+	});
+	this.call.on('end', function()  {
+		eh.call.end();
+		// clean up Registrants - should app get notified?
+		eh.chaincodeRegistrants.clear();
+		eh.blockRegistrants.clear();
+	});
+    }
+
+    public disconnect() {
+        if (!this.connected) return;
+        this.unregisterBlockEvent(this.txCallback);
+        this.call.end();
+        this.connected = false;
+    }
+
+    public registerChaincodeEvent(ccid: string, eventname: string, callback: Function): ChainCodeCBE {
+        if (!this.connected) return;
+	let cb = new ChainCodeCBE(ccid, eventname, callback);
+	let cbtable = this.chaincodeRegistrants.get(ccid);
+        if ( !cbtable ) {
+	    cbtable = new Set();
+	    this.chaincodeRegistrants.put(ccid, cbtable);
+            cbtable.add(cb);
+	    let register = { register: { events: [ { eventType: "CHAINCODE", chaincodeRegInfo:{ chaincodeID: ccid , eventName: "" }} ] }};
+	    this.call.write(register);
+        } else {
+            cbtable.add(cb);
+        }
+        return cb;
+    }
+
+    public unregisterChaincodeEvent(cbe: ChainCodeCBE){
+        if (!this.connected) return;
+        let cbtable = this.chaincodeRegistrants.get(cbe.ccid);
+        if ( !cbtable ) {
+            debug("No event registration for ccid %s ", cbe.ccid);
+            return;
+        }
+        cbtable.delete(cbe);
+        if( cbtable.size <= 0 ) {
+	    var unregister = { unregister: { events: [ { eventType: "CHAINCODE", chaincodeRegInfo:{ chaincodeID: cbe.ccid, eventName: "" }} ] }};
+	    this.chaincodeRegistrants.remove(cbe.ccid);
+	    this.call.write(unregister);
+        }
+    }
+
+    public registerBlockEvent(callback:Function){
+        if (!this.connected) return;
+	this.blockRegistrants.add(callback);
+	if(this.blockRegistrants.size==1) {
+	    var register = { register: { events: [ { eventType: "BLOCK"} ] }};
+	    this.call.write(register);
+	}
+    }
+
+    public unregisterBlockEvent(callback:Function){
+        if (!this.connected) return;
+	if(this.blockRegistrants.size<=1) {
+	    var unregister = { unregister: { events: [ { eventType: "BLOCK"} ] }};
+	    this.call.write(unregister);
+	}
+	this.blockRegistrants.delete(callback);
+    }
+
+    public registerTxEvent(txid:string, callback:Function){
+        debug("reg txid "+txid);
+	this.txRegistrants.put(txid, callback);
+    }
+
+    public unregisterTxEvent(txid:string){
+	this.txRegistrants.remove(txid);
+    }
+
+    private txCallback = (event) => {
+        debug("txCallback event=%j", event);
+        var eh = this;
+	event.transactions.forEach(function(transaction){
+            debug("transaction.txid="+transaction.txid);
+            var cb = eh.txRegistrants.get(transaction.txid);
+            if (cb)
+                cb(transaction.txid);
+        });
+    }
 }

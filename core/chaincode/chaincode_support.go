@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	logging "github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 
@@ -35,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
+	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/protos"
 )
 
@@ -151,6 +153,21 @@ func NewChaincodeSupport(chainname ChainName, getPeerEndpoint func() (*pb.PeerEn
 		s.keepalive = time.Duration(t) * time.Second
 	}
 
+	viper.SetEnvPrefix("CORE")
+	viper.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+
+	chaincodeLogLevelString := viper.GetString("logging.chaincode")
+	chaincodeLogLevel, err := logging.LogLevel(chaincodeLogLevelString)
+
+	if err == nil {
+		s.chaincodeLogLevel = chaincodeLogLevel.String()
+	} else {
+		chaincodeLogger.Infof("chaincode logging level %s is invalid. defaulting to %s\n", chaincodeLogLevelString, flogging.DefaultLoggingLevel().String())
+		s.chaincodeLogLevel = flogging.DefaultLoggingLevel().String()
+	}
+
 	return s
 }
 
@@ -176,6 +193,7 @@ type ChaincodeSupport struct {
 	peerTLSKeyFile       string
 	peerTLSSvrHostOrd    string
 	keepalive            time.Duration
+	chaincodeLogLevel    string
 }
 
 // DuplicateChaincodeHandlerError returned if attempt to register same chaincodeID while a stream already exists.
@@ -294,6 +312,11 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cID *pb.ChaincodeID, cLa
 	} else {
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=false")
 	}
+
+	if chaincodeSupport.chaincodeLogLevel != "" {
+		envs = append(envs, "CORE_LOGGING_CHAINCODE="+chaincodeSupport.chaincodeLogLevel)
+	}
+
 	switch cLang {
 	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
 		//chaincode executable will be same as the name of the chaincode

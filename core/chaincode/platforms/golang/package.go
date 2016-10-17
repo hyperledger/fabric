@@ -69,7 +69,7 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 		newRunLine = fmt.Sprintf("%s\nCOPY src/certs/cert.pem %s", newRunLine, viper.GetString("peer.tls.cert.file"))
 	}
 
-	dockerFileContents := fmt.Sprintf("%s\n%s", viper.GetString("chaincode.golang.Dockerfile"), newRunLine)
+	dockerFileContents := fmt.Sprintf("%s\n%s", cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"), newRunLine)
 	dockerFileSize := int64(len([]byte(dockerFileContents)))
 
 	//Make headers identical by using zero time

@@ -4,7 +4,7 @@ Chaincode developers need a way to test and debug their chaincode without having
 
 The following instructions apply to _developing_ chaincode in Go or Java. They do not apply to running in a production environment. However, if _developing_ chaincode in Java, please see the [Java chaincode setup](https://github.com/hyperledger/fabric/blob/master/docs/Setup/JAVAChaincode.md) instructions first, to be sure your environment is properly configured.
 
-**Note:** We have added support for [System chaincode](https://github.com/hyperledger/fabric/blob/master/docs/SystemChaincodes/noop.md).
+**Note:** We have added support for [System chaincode](https://github.com/hyperledger/fabric/blob/master/docs/SystemChaincode-noop.md).
 
 ## Choices
 
@@ -344,7 +344,7 @@ POST host:port/chaincode
 
 The deploy transaction initializes the chaincode by executing a target initializing function. Though the example shows "init", the name could be arbitrarily chosen by the chaincode developer. You should see the following output in the chaincode window:
 ```
-	2015/11/15 15:19:31 Received INIT(uuid:005dea42-d57f-4983-803e-3232e551bf61), initializing chaincode
+	<TIMESTAMP_SIGNATURE> Received INIT(uuid:005dea42-d57f-4983-803e-3232e551bf61), initializing chaincode
 	Aval = 100, Bval = 200
 ```
 
@@ -423,7 +423,7 @@ POST host:port/chaincode
 The invoking transaction runs the specified chaincode function name "invoke" with the arguments. This transaction transfers 10 units from A to B. You should see the following output in the chaincode window:
 
 ```
-	2015/11/15 15:39:11 Received RESPONSE. Payload 200, Uuid 075d72a4-4d1f-4a1d-a735-4f6f60d597a9
+	<TIMESTAMP_SIGNATURE> Received RESPONSE. Payload 200, Uuid 075d72a4-4d1f-4a1d-a735-4f6f60d597a9
 	Aval = 90, Bval = 210
 ```
 

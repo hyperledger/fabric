@@ -33,10 +33,11 @@ type communicator interface {
 type broadcaster struct {
 	comm communicator
 
-	f        int
-	msgChans map[uint64]chan *sendRequest
-	closed   sync.WaitGroup
-	closedCh chan struct{}
+	f                int
+	broadcastTimeout time.Duration
+	msgChans         map[uint64]chan *sendRequest
+	closed           sync.WaitGroup
+	closedCh         chan struct{}
 }
 
 type sendRequest struct {
@@ -44,15 +45,16 @@ type sendRequest struct {
 	done chan bool
 }
 
-func newBroadcaster(self uint64, N int, f int, c communicator) *broadcaster {
+func newBroadcaster(self uint64, N int, f int, broadcastTimeout time.Duration, c communicator) *broadcaster {
 	queueSize := 10 // XXX increase after testing
 
 	chans := make(map[uint64]chan *sendRequest)
 	b := &broadcaster{
-		comm:     c,
-		f:        f,
-		msgChans: chans,
-		closedCh: make(chan struct{}),
+		comm:             c,
+		f:                f,
+		broadcastTimeout: broadcastTimeout,
+		msgChans:         chans,
+		closedCh:         make(chan struct{}),
 	}
 	for i := 0; i < N; i++ {
 		if uint64(i) == self {
@@ -179,7 +181,7 @@ func (b *broadcaster) send(msg *pb.Message, dest *uint64) error {
 	}
 
 	succeeded := 0
-	timer := time.NewTimer(time.Second) // TODO, make this configurable
+	timer := time.NewTimer(b.broadcastTimeout)
 
 	// This loop will try to send, until one of:
 	// a) the required number of sends succeed

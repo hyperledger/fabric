@@ -1,13 +1,13 @@
 #!/usr/bin/tclsh
 
 # Copyright IBM Corp. 2016. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # 		 http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -66,7 +66,7 @@ of the profile files - they are named by the host:port of the profiling port,
 and given sequence numbers to make them unique. When this script is run
 against busywork networks, the final act of the script is to create symbolic
 links that substitute the host:port portion of the file names with the peer
-names (vp[0,...N]).  
+names (vp[0,...N]).
 
 Optional arguments, with defaults after the colon:
 
@@ -140,7 +140,7 @@ set options {
     {key  -peers            parms(peers)    {} p_peers}
     {key  -port             parms(port)  6060}
 }
-        
+
 mapKeywordArgs $argv $options parms(other)
 
 if {$p_help} {
@@ -153,12 +153,12 @@ if {[parms quiet]} {
 } else {
     setLoggingLevel {} note
 }
-    
+
 parms home [busywork::home [parms home]]
 
 # Handle implicit vs. explict peers. With implicit peers we can give the files
 # recognizable names. With explicit peers we can only use the host:port as the
-# names. 
+# names.
 
 if {$p_peers} {
 
@@ -175,34 +175,34 @@ if {$p_peers} {
    parms profileAddresses [parms ids]
 
 } else {
-    
+
     # Implicit peers
-    
+
     if {[catch {busywork::networkToArray ::parms network.} msg]} {
         errorExit $msg
     }
-    
+
     switch [llength [parms other]] {
-        
+
         1 {
             # All peers
-            
+
             parms service [parms other]
             parms ids [parms network.peer.ids]
             parms profileAddresses [parms network.peer.profileAddresses]
         }
         2 {
             # Subset of peers
-            
+
             set spec [first [parms other]]
             parms service [second [parms other]]
-                      
+
             if {[catch {enumerate $spec} result]} {
                 errorExit \
                     "Error parsing peer specification : $result"
             }
             set nPeers [llength [parms network.peer.ids]]
-            
+
             parms ids \
                 [mapeach n $result {
                     if {$n > $nPeers} {
@@ -214,7 +214,7 @@ if {$p_peers} {
                 [mapeach n $result {
                     return [lindex [parms network.peer.profileAddresses] $n]
                 }]
-            
+
         }
         default {
             puts $usage
@@ -283,7 +283,8 @@ if {[waitPIDs $pids]} {
 # find the profile files that the tool just created and link the names given
 # by the tool with names based on the peer IDs. The Go pprof tool does not
 # support providing names for the profile files - it names them based on their
-# http addresses using the form 'pprof.<host+port>.<other junk>'.
+# http addresses using the form 'pprof.[<executable>.]<host:port>.<other
+# junk>'.  The form with the [<executable>.] was introduced in Go 1.7.
 
 # The renaming-via-links being done here is not perfect in every case, and can
 # cause confusion (but NOT lost files) if profiles from multiple runs are
@@ -297,31 +298,41 @@ if {!$p_peers} {
         set idMap($target) $id
     }
     foreach file [glob pprof.*] {
-        if {[regexp {^pprof.([^:]+:\d+)(.*)(\d\d\d)(.*)} \
+        set executable ""
+        if {[regexp {^pprof\.([^:]+:\d+)\.(.*)(\d\d\d)(.*)} \
                  $file match host a b c]} {
-            if {[info exists idMap($host)]} {
-                if {$p_tag} {
-                    set b [parms tag]
-                }
-                set reName pprof.$host$a$b$c
-                set newName pprof.$idMap($host)$a$b$c
-                if {![file exists $newName]} {
+
+            # We can't disambiguate the <executable>.<host.port> form from a
+            # generic <host:port> with a regular expression. So we need to
+            # check to see if one of the hosts we're interested in is a
+            # terminal suffix of the 'host' pulled form the regex match.
+
+            foreach target [parms profileAddresses] {
+                if {[string match *$target $host]} {
                     if {$p_tag} {
-                        if {[catch {exec mv $file $reName} why]} {
-                            errorExit "Can't rename $file to $reName : $why"
+                        set b [parms tag]
+                    }
+                    set reName pprof.$host.$a$b$c
+                    set newName pprof.$idMap($target).$a$b$c
+                    if {![file exists $newName]} {
+                        if {$p_tag} {
+                            if {[catch {exec mv $file $reName} why]} {
+                                errorExit "Can't rename $file to $reName : $why"
+                            }
+                            if {[catch {exec ln -sf $reName $newName} code]} {
+                                errorExit \
+                                    "Error linking $file to $newName : $code"
+                            }
+                            note {} "$newName -> $reName (from $file)"
+                        } else {
+                            if {[catch {exec ln -sf $file $newName} code]} {
+                                errorExit \
+                                    "Error linking $file to $newName : $code"
+                            }
+                            note {} "$newName -> $file"
                         }
-                        if {[catch {exec ln -sf $reName $newName} code]} {
-                            errorExit \
-                                "Error linking $file to $newName : $code"
-                        }
-                        note {} "$newName -> $reName (from $file)"
-                    } else {
-                        if {[catch {exec ln -sf $file $newName} code]} {
-                            errorExit \
-                                "Error linking $file to $newName : $code"
-                        }
-                        note {} "$newName -> $file"
-                    }                        
+                    }
+                    break
                 }
             }
         }

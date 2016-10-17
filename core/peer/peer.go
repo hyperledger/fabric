@@ -177,7 +177,7 @@ type handlerMap struct {
 }
 
 // HandlerFactory for creating new MessageHandlers
-type HandlerFactory func(MessageHandlerCoordinator, ChatStream, bool, MessageHandler) (MessageHandler, error)
+type HandlerFactory func(MessageHandlerCoordinator, ChatStream, bool) (MessageHandler, error)
 
 // EngineFactory for creating new engines
 type EngineFactory func(MessageHandlerCoordinator) (Engine, error)
@@ -597,7 +597,7 @@ func (p *Impl) chatWithPeer(address string) error {
 func (p *Impl) handleChat(ctx context.Context, stream ChatStream, initiatedStream bool) error {
 	deadline, ok := ctx.Deadline()
 	peerLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
-	handler, err := p.handlerFactory(p, stream, initiatedStream, nil)
+	handler, err := p.handlerFactory(p, stream, initiatedStream)
 	if err != nil {
 		return fmt.Errorf("Error creating handler during handleChat initiation: %s", err)
 	}

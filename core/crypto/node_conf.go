@@ -62,6 +62,8 @@ type configuration struct {
 	tlsServerName string
 
 	multiThreading bool
+	multiChannel   bool
+
 	tCertBatchSize int
 }
 
@@ -150,6 +152,12 @@ func (conf *configuration) init() error {
 	conf.multiThreading = false
 	if viper.IsSet("security.multithreading.enabled") {
 		conf.multiThreading = viper.GetBool("security.multithreading.enabled")
+	}
+
+	// Set multichannel
+	conf.multiChannel = false
+	if viper.IsSet("security.multithreading.multichannel") {
+		conf.multiChannel = viper.GetBool("security.multithreading.multichannel")
 	}
 
 	return nil
@@ -253,6 +261,10 @@ func (conf *configuration) isTLSClientAuthEnabled() bool {
 
 func (conf *configuration) IsMultithreadingEnabled() bool {
 	return conf.multiThreading
+}
+
+func (conf *configuration) IsMultiChannelEnabled() bool {
+	return conf.multiChannel
 }
 
 func (conf *configuration) getTCAServerName() string {

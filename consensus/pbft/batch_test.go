@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/consensus/util/events"
 	pb "github.com/hyperledger/fabric/protos"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/spf13/viper"
 )
 
@@ -76,8 +77,31 @@ func TestNetworkBatch(t *testing.T) {
 	}
 }
 
-func TestClearOustandingReqsOnStateRecovery(t *testing.T) {
-	b := newObcBatch(0, loadConfig(), &omniProto{})
+var inertState = &omniProto{
+	GetBlockchainInfoImpl: func() *pb.BlockchainInfo {
+		return &pb.BlockchainInfo{
+			CurrentBlockHash: []byte("GENESIS"),
+			Height:           1,
+		}
+	},
+	GetBlockchainInfoBlobImpl: func() []byte {
+		b, _ := proto.Marshal(&pb.BlockchainInfo{
+			CurrentBlockHash: []byte("GENESIS"),
+			Height:           1,
+		})
+		return b
+	},
+	InvalidateStateImpl: func() {},
+	ValidateStateImpl:   func() {},
+	UpdateStateImpl:     func(id interface{}, target *pb.BlockchainInfo, peers []*pb.PeerID) {},
+}
+
+func TestClearOutstandingReqsOnStateRecovery(t *testing.T) {
+	omni := *inertState
+	omni.UnicastImpl = func(msg *pb.Message, receiverHandle *pb.PeerID) error { return nil }
+	b := newObcBatch(0, loadConfig(), &omni)
+	b.StateUpdated(&checkpointMessage{seqNo: 0, id: inertState.GetBlockchainInfoBlobImpl()}, inertState.GetBlockchainInfoImpl())
+
 	defer b.Close()
 
 	b.reqStore.storeOutstanding(&Request{})
@@ -98,10 +122,9 @@ func TestClearOustandingReqsOnStateRecovery(t *testing.T) {
 func TestOutstandingReqsIngestion(t *testing.T) {
 	bs := [3]*obcBatch{}
 	for i := range bs {
-		omni := &omniProto{
-			UnicastImpl: func(ocMsg *pb.Message, peer *pb.PeerID) error { return nil },
-		}
-		bs[i] = newObcBatch(uint64(i), loadConfig(), omni)
+		omni := *inertState
+		omni.UnicastImpl = func(ocMsg *pb.Message, peer *pb.PeerID) error { return nil }
+		bs[i] = newObcBatch(uint64(i), loadConfig(), &omni)
 		defer bs[i].Close()
 
 		// Have vp1 only deliver messages
@@ -114,6 +137,9 @@ func TestOutstandingReqsIngestion(t *testing.T) {
 				return nil
 			}
 		}
+	}
+	for i := range bs {
+		bs[i].StateUpdated(&checkpointMessage{seqNo: 0, id: inertState.GetBlockchainInfoBlobImpl()}, inertState.GetBlockchainInfoImpl())
 	}
 
 	err := bs[1].RecvMsg(createTxMsg(1), &pb.PeerID{Name: "vp1"})
@@ -137,10 +163,10 @@ func TestOutstandingReqsIngestion(t *testing.T) {
 }
 
 func TestOutstandingReqsResubmission(t *testing.T) {
-	omni := &omniProto{}
 	config := loadConfig()
 	config.Set("general.batchsize", 2)
-	b := newObcBatch(0, config, omni)
+	omni := *inertState
+	b := newObcBatch(0, config, &omni)
 	defer b.Close() // The broadcasting threads only cause problems here... but this test stalls without them
 
 	transactionsBroadcast := 0
@@ -159,6 +185,9 @@ func TestOutstandingReqsResubmission(t *testing.T) {
 	omni.UnicastImpl = func(ocMsg *pb.Message, dest *pb.PeerID) error {
 		return nil
 	}
+
+	b.StateUpdated(&checkpointMessage{seqNo: 0, id: inertState.GetBlockchainInfoBlobImpl()}, inertState.GetBlockchainInfoImpl())
+	b.manager.Queue() <- nil // Make sure the state update finishes first
 
 	reqs := make([]*Request, 8)
 	for i := 0; i < len(reqs); i++ {
@@ -232,11 +261,12 @@ func TestOutstandingReqsResubmission(t *testing.T) {
 }
 
 func TestViewChangeOnPrimarySilence(t *testing.T) {
-	b := newObcBatch(1, loadConfig(), &omniProto{
-		UnicastImpl: func(ocMsg *pb.Message, peer *pb.PeerID) error { return nil },
-		SignImpl:    func(msg []byte) ([]byte, error) { return msg, nil },
-		VerifyImpl:  func(peerID *pb.PeerID, signature []byte, message []byte) error { return nil },
-	})
+	omni := *inertState
+	omni.UnicastImpl = func(ocMsg *pb.Message, peer *pb.PeerID) error { return nil } // For the checkpoint
+	omni.SignImpl = func(msg []byte) ([]byte, error) { return msg, nil }
+	omni.VerifyImpl = func(peerID *pb.PeerID, signature []byte, message []byte) error { return nil }
+	b := newObcBatch(1, loadConfig(), &omni)
+	b.StateUpdated(&checkpointMessage{seqNo: 0, id: inertState.GetBlockchainInfoBlobImpl()}, inertState.GetBlockchainInfoImpl())
 	b.pbft.requestTimeout = 50 * time.Millisecond
 	defer b.Close()
 
@@ -347,7 +377,10 @@ func TestClassicBackToBackStateTransfer(t *testing.T) {
 }
 
 func TestClearBatchStoreOnViewChange(t *testing.T) {
-	b := newObcBatch(1, loadConfig(), &omniProto{})
+	omni := *inertState
+	omni.UnicastImpl = func(ocMsg *pb.Message, peer *pb.PeerID) error { return nil } // For the checkpoint
+	b := newObcBatch(1, loadConfig(), &omni)
+	b.StateUpdated(&checkpointMessage{seqNo: 0, id: inertState.GetBlockchainInfoBlobImpl()}, inertState.GetBlockchainInfoImpl())
 	defer b.Close()
 
 	b.batchStore = []*Request{&Request{}}

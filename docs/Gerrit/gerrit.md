@@ -75,8 +75,10 @@ git checkout -b issue-nnnn
 please read [this document](changes.md).
 
 ```
-git commit -s
+git commit -s -a
 ```
+
+Then input precise and readable commit msg and submit.
 
 6. Any code changes that affect documentation should be accompanied by
 corresponding changes (or additions) to the documentation and tests. This

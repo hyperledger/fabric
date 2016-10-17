@@ -123,7 +123,7 @@ func (vm *VM) buildChaincodeContainerUsingDockerfilePackageBytes(spec *pb.Chainc
 	}
 	if err := vm.Client.BuildImage(opts); err != nil {
 		vmLogger.Errorf("Failed Chaincode docker build:\n%s\n", outputbuf.String())
-		return fmt.Errorf("Error building Chaincode container: %s", err)
+		return err
 	}
 	return nil
 }

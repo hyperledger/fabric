@@ -28,7 +28,6 @@ import (
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/spf13/viper"
 )
 
 func download(path string) (string, error) {
@@ -78,7 +77,7 @@ func (carPlatform *Platform) WritePackage(spec *pb.ChaincodeSpec, tw *tar.Writer
 	var buf []string
 
 	//let the executable's name be chaincode ID's name
-	buf = append(buf, viper.GetString("chaincode.car.Dockerfile"))
+	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.car.Dockerfile"))
 	buf = append(buf, "COPY package.car /tmp/package.car")
 	buf = append(buf, fmt.Sprintf("RUN chaintool buildcar /tmp/package.car -o $GOPATH/bin/%s && rm /tmp/package.car", spec.ChaincodeID.Name))
 
