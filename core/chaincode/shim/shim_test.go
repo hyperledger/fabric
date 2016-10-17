@@ -134,3 +134,11 @@ func TestChaincodeLogging(t *testing.T) {
 		t.Errorf("'bar' should be enabled for LogCritical")
 	}
 }
+
+func TestNilEventName(t *testing.T) {
+	stub := ChaincodeStub{}
+	if err := stub.SetEvent("", []byte("event payload")); err == nil {
+		t.Error("Event name can not be nil string.")
+	}
+
+}

@@ -904,6 +904,9 @@ func insertRowInternal(stub ChaincodeStubInterface, tableName string, row Row, u
 
 // SetEvent saves the event to be sent when a transaction is made part of a block
 func (stub *ChaincodeStub) SetEvent(name string, payload []byte) error {
+	if name == "" {
+		return errors.New("Event name can not be nil string.")
+	}
 	stub.chaincodeEvent = &pb.ChaincodeEvent{EventName: name, Payload: payload}
 	return nil
 }
