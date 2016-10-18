@@ -1,0 +1,119 @@
+[
+{
+	"name":"Mozilla",
+	"weight": 25,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/nss.pem"
+},
+{
+	"name":"Windows XP",
+	"weight": 21,
+	"hash_algo": "SHA1",
+	"key_algo": "RSA",
+	"keystore": "trusted_roots/windows.pem"
+},
+{
+	"name":"Windows Vista and up",
+	"weight": 21,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/windows.pem"
+},
+{
+	"name":"Windows Phone 8+",
+	"weight": 5,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/windows.pem"
+},
+{
+	"name":"Mac OSX",
+	"weight": 8,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/osx.pem"
+},
+{
+	"name":"Apple ios",
+	"weight": 40,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/ios.pem"
+},
+{
+	"name":"Chrome Browser M39",
+	"weight": 0,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"hash_algo_expiry":	{
+					"target": "SHA1",
+					"effective_date": "2014-09-20T00:00:00Z",
+					"expiry_deadline": "2017-01-01T00:00:00Z"
+				}
+},
+{
+	"name":"Chrome Browser M40",
+	"weight": 0,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"hash_algo_expiry":	{
+					"target": "SHA1",
+					"effective_date": "2014-09-20T00:00:00Z",
+					"expiry_deadline": "2016-06-01T00:00:00Z"
+				}
+},
+{
+	"name":"Chrome Browser M41 and later",
+	"weight": 0,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"hash_algo_expiry":	{
+					"target": "SHA1",
+					"effective_date": "2014-09-20T00:00:00Z",
+					"expiry_deadline": "2016-01-01T00:00:00Z"
+				}
+},
+{
+	"name":"Android 2.2 Froyo",
+	"weight": 1,
+	"hash_algo": "SHA2",
+	"key_algo": "RSA",
+	"keystore": "trusted_roots/froyo.pem"
+},
+{
+	"name":"Android 2.3 Gingerbread",
+	"weight": 10,
+	"hash_algo": "SHA2",
+	"key_algo": "RSA",
+	"keystore": "trusted_roots/gingerbread.pem"
+},
+{
+	"name":"Android 3.0 Honeycomb",
+	"weight": 1,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/honeycomb.pem"
+},
+{
+	"name":"Android 4.0 ICS",
+	"weight": 40,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/ics.pem"
+},
+{
+	"name":"Android 4.4 KitKat",
+	"weight": 8,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/kitkat.pem"
+},
+{
+	"name":"Ubuntu",
+	"weight": 1,
+	"hash_algo": "SHA2",
+	"key_algo": "ECDSA256",
+	"keystore": "trusted_roots/ubuntu.pem"
+}
+]

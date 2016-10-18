@@ -1,0 +1,3 @@
+cli/cop/cop
+*.pem
+*.csr

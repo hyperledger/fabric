@@ -1,0 +1,14 @@
+{
+	"label":"server",
+	"request":{
+		"names":[
+			{
+				"C":"US",
+				"ST":"California",
+				"L":"San Francisco",
+				"O":"Server Cert"
+			}
+		],
+		"CN":"Server Cert"
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"label":"client",
+	"request":{
+		"names":[
+			{
+				"C":"US",
+				"ST":"California",
+				"L":"San Francisco",
+				"O":"Client Cert"
+			}
+		],
+		"CN":"Client Cert"
+	}
+}

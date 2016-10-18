@@ -1,0 +1,18 @@
+{
+	"signing": {
+		"profiles": {
+			"server": {
+				"usages": ["server auth"],
+				"expiry": "43830h"
+			},
+			"client": {
+				"usages": ["client auth"],
+				"expiry": "43830h"
+			}
+		},
+		"default": {
+			"usages": ["server auth"],
+			"expiry": "43830h"
+		}
+	}
+}

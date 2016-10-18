@@ -1,0 +1,331 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/GeertJohan/go.incremental",
+			"repository": "https://github.com/GeertJohan/go.incremental",
+			"vcs": "",
+			"revision": "92fd0ce4a694213e8b3dfd2d39b16e51d26d0fbf",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/GeertJohan/go.rice",
+			"repository": "https://github.com/GeertJohan/go.rice",
+			"vcs": "",
+			"revision": "0f3f5fde32fd1f755632a3d31ba2ec6d449e387b",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/akavel/rsrc/binutil",
+			"repository": "https://github.com/akavel/rsrc",
+			"vcs": "",
+			"revision": "ba14da1f827188454a4591717fff29999010887f",
+			"branch": "master",
+			"path": "/binutil"
+		},
+		{
+			"importpath": "github.com/akavel/rsrc/coff",
+			"repository": "https://github.com/akavel/rsrc",
+			"vcs": "",
+			"revision": "ba14da1f827188454a4591717fff29999010887f",
+			"branch": "master",
+			"path": "/coff"
+		},
+		{
+			"importpath": "github.com/cloudflare/backoff",
+			"repository": "https://github.com/cloudflare/backoff",
+			"vcs": "git",
+			"revision": "f659644c644c7ac3564c8acba556d8d74a07c547",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/cloudflare/cfssl_trust",
+			"repository": "https://github.com/cloudflare/cfssl_trust",
+			"vcs": "",
+			"revision": "555f7ac5ef2bac5643fa0567bcdc174e0dfd72c1",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/cloudflare/go-metrics",
+			"repository": "https://github.com/cloudflare/go-metrics",
+			"vcs": "",
+			"revision": "6a9aea36fb410b71add0d0e58438e0cfc44d3076",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/client",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/client"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/core",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/core"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/cryptor",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/cryptor"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/ecdh",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/ecdh"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/hipchat",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/hipchat"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/keycache",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/keycache"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/msp",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/msp"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/order",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/order"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/padding",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/padding"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/passvault",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/passvault"
+		},
+		{
+			"importpath": "github.com/cloudflare/redoctober/symcrypt",
+			"repository": "https://github.com/cloudflare/redoctober",
+			"vcs": "",
+			"revision": "18b5ac859f0a0cdfc2e2c14dcce8fe4aa8f8cec5",
+			"branch": "master",
+			"path": "/symcrypt"
+		},
+		{
+			"importpath": "github.com/daaku/go.zipexe",
+			"repository": "https://github.com/daaku/go.zipexe",
+			"vcs": "",
+			"revision": "a5fe2436ffcb3236e175e5149162b41cd28bd27d",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/davecgh/go-spew/spew",
+			"repository": "https://github.com/davecgh/go-spew",
+			"vcs": "",
+			"revision": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d",
+			"branch": "master",
+			"path": "/spew"
+		},
+		{
+			"importpath": "github.com/go-sql-driver/mysql",
+			"repository": "https://github.com/go-sql-driver/mysql",
+			"vcs": "",
+			"revision": "a732e14c62dde3285440047bba97581bc472ae18",
+			"branch": "heads/v1.2",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/google/certificate-transparency/go",
+			"repository": "https://github.com/google/certificate-transparency",
+			"vcs": "git",
+			"revision": "0f6e3d1d1ba4d03fdaab7cd716f36255c2e48341",
+			"branch": "master",
+			"path": "/go"
+		},
+		{
+			"importpath": "github.com/jessevdk/go-flags",
+			"repository": "https://github.com/jessevdk/go-flags",
+			"vcs": "",
+			"revision": "97448c91aac742cbca3d020b3e769013a420a06f",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/jmhodges/clock",
+			"repository": "https://github.com/jmhodges/clock",
+			"vcs": "",
+			"revision": "3c4ebd218625c9364c33db6d39c276d80c3090c6",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/jmoiron/sqlx",
+			"repository": "https://github.com/jmoiron/sqlx",
+			"vcs": "",
+			"revision": "398dd5876282499cdfd4cb8ea0f31a672abe9495",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/kardianos/osext",
+			"repository": "https://github.com/kardianos/osext",
+			"vcs": "",
+			"revision": "29ae4ffbc9a6fe9fb2bc5029050ce6996ea1d3bc",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/kisielk/sqlstruct",
+			"repository": "https://github.com/kisielk/sqlstruct",
+			"vcs": "",
+			"revision": "648daed35d49dac24a4bff253b190a80da3ab6a5",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/kisom/goutils/assert",
+			"repository": "https://github.com/kisom/goutils",
+			"vcs": "git",
+			"revision": "fb87692b5525ec1c1f19dda407e56f610509d473",
+			"branch": "master",
+			"path": "/assert",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/lib/pq",
+			"repository": "https://github.com/lib/pq",
+			"vcs": "",
+			"revision": "69552e54d2a9d4c6a2438926a774930f7bc398ec",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mattn/go-sqlite3",
+			"repository": "https://github.com/mattn/go-sqlite3",
+			"vcs": "",
+			"revision": "c5aee9649735e8dadac55eb968ccebd9fa29a881",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mitchellh/gox",
+			"repository": "https://github.com/mitchellh/gox",
+			"vcs": "",
+			"revision": "39862d88e853ecc97f45e91c1cdcb1b312c51eaa",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mitchellh/iochan",
+			"repository": "https://github.com/mitchellh/iochan",
+			"vcs": "",
+			"revision": "87b45ffd0e9581375c491fef3d32130bb15c5bd7",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mreiferson/go-httpclient",
+			"repository": "https://github.com/mreiferson/go-httpclient",
+			"vcs": "",
+			"revision": "63fe23f7434723dc904c901043af07931f293c47",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/pmezard/go-difflib/difflib",
+			"repository": "https://github.com/pmezard/go-difflib",
+			"vcs": "",
+			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
+			"branch": "master",
+			"path": "/difflib"
+		},
+		{
+			"importpath": "github.com/rcrowley/go-metrics",
+			"repository": "https://github.com/rcrowley/go-metrics",
+			"vcs": "",
+			"revision": "51425a2415d21afadfd55cd93432c0bc69e9598d",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/stathat/go",
+			"repository": "https://github.com/stathat/go",
+			"vcs": "",
+			"revision": "cf69b0bcb80478755dc0ea1120b36000e35dcbbb",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/stretchr/objx",
+			"repository": "https://github.com/stretchr/objx",
+			"vcs": "",
+			"revision": "1a9d0bb9f541897e62256577b352fdbc1fb4fd94",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/stretchr/testify",
+			"repository": "https://github.com/stretchr/testify",
+			"vcs": "",
+			"revision": "9f9027faeb0dad515336ed2f28317f9f8f527ab4",
+			"branch": "master"
+		},
+		{
+			"importpath": "golang.org/x/crypto/ocsp",
+			"repository": "https://go.googlesource.com/crypto",
+			"vcs": "",
+			"revision": "1f22c0103821b9390939b6776727195525381532",
+			"branch": "master",
+			"path": "/ocsp"
+		},
+		{
+			"importpath": "golang.org/x/crypto/pbkdf2",
+			"repository": "https://go.googlesource.com/crypto",
+			"vcs": "",
+			"revision": "1f22c0103821b9390939b6776727195525381532",
+			"branch": "master",
+			"path": "/pbkdf2"
+		},
+		{
+			"importpath": "golang.org/x/crypto/pkcs12",
+			"repository": "https://go.googlesource.com/crypto",
+			"vcs": "",
+			"revision": "1f22c0103821b9390939b6776727195525381532",
+			"branch": "master",
+			"path": "/pkcs12"
+		},
+		{
+			"importpath": "golang.org/x/crypto/scrypt",
+			"repository": "https://go.googlesource.com/crypto",
+			"vcs": "",
+			"revision": "1f22c0103821b9390939b6776727195525381532",
+			"branch": "master",
+			"path": "/scrypt"
+		},
+		{
+			"importpath": "golang.org/x/net/context",
+			"repository": "https://go.googlesource.com/net",
+			"vcs": "git",
+			"revision": "3f122ce3dbbe488b7e6a8bdb26f41edec852a40b",
+			"branch": "master",
+			"path": "/context"
+		}
+	]
+}

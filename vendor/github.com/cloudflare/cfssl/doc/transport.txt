@@ -1,0 +1,406 @@
+Using the transport package
+===========================
+
+The transport package is designed to provide automated mutually-
+authenticated and server-only TLS security with proper security
+settings for Go programs. Mutually-authenticated means that clients
+will strictly validate the server's certificate, and servers will
+require that clients present a valid client authentication
+certificate.
+
+Adding the transport package to a project consists of a few steps:
+
+1. Planning the right communications model.
+2. Determining the configuration.
+3. Adding the transport package to the project.
+
+Each of these steps will be covered in sequence, with the examples
+under transport/example/ used as illustrations. Some terminology:
+
+  certificate provider: an interface to a CA that will sign CSRs and
+  return certificates. The only available certificate provider at
+  this time is CFSSL.
+
+  key provider: mechanism for providing keys and signing certificate
+  signing requests (CSRs). The only available key provider at this
+  time is a disk-backed key set.
+
+  root: the public certificate for a certificate authority (CA). This
+  certificate is used to verify the certificate of a remote system: a
+  client authentication root specifies the CA that a server uses to
+  verify clients. The unqualified term root usually refers to a CA
+  certificate that a client uses to verify a server's certificate.
+
+
+Transport package communication models
+--------------------------------------
+
+There are three models for communications:
+
+1. A general TLS listener, such as a public HTTPS server. In this
+   model, the server does not expect clients to authenticate
+   themselves to the server using client authentication
+   certificates. This listener doesn't need to configure any roots.
+
+2. A mutually-authenticated TCP server. This can be an HTTPS server
+   that requires client authentication, or any other TCP server that
+   wants to set up mutually-authenticated communications. A server
+   will construct a `Listener` and call the `Listen` method on that
+   structure (this will be useful to remember later).
+
+3. A mutually-authenticated TCP client. This can be an HTTPS client
+   that supplies a client authentication certificate, or any other TCP
+   client setting up a mutually-authenticated connection. A client
+   will call `Dial` from a `Transport` structure.
+
+Once the model is determined, the configuration can be built.
+
+
+Transport package configuration
+-------------------------------
+
+In general, the transport package is build around the `core.Identity`
+type. This contains several top-level fields:
+
++ `Request` contains a `CertificateRequest` from the CFSSL csr package
+  (e.g. https://godoc.org/github.com/cloudflare/cfssl/csr#CertificateRequest).
+  The JSON tag for this field is "request".
++ `Profiles` contains profiles for certificate and key providers. The
+  JSON tag for this field is "profiles".
++ `Roots` specifies roots that are used by clients to verify server
+  certificates. The JSON tag for this field is "roots".
++ `ClientRoots` specifies roots that are used by servers to verify
+  client certificates. The JSON tag for this field is "client_roots".
+
+The `Identity` structure is set up so that it could be integrated into
+a current configuration set up, or it can be present as a standalone
+configuration. The example programs use the code
+
+        // conf is a string contain the path to a JSON configuration
+        // file.
+        var id = new(core.Identity)
+        data, err := ioutil.ReadFile(conf)
+        if err != nil {
+                exlib.Err(1, err, "reading config file")
+        }
+
+        err = json.Unmarshal(data, id)
+        if err != nil {
+                exlib.Err(1, err, "parsing config file")
+        }
+
+to load a standalone transport configuration file in JSON.
+
+The `Profiles` field configures both key providers and certificate
+authorities.
+
+Key providers use the key request in the `Request` field to determine
+what sort of key to generate, and the rest of the field to determine
+the certificate signing request to generate.
+
+The only key-provider supported right now is the "path" provider,
+which would be configured something like
+
+	// id is a core.Identity value.
+	id.Profiles["path"] = map[string]string{
+		"private_key": "/path/to/key.pem",
+		"certificate": "/path/to/cert.pem",
+	}
+
+The path provider determines whether a private key exists at the path
+provided; if it does not, a key is generated. If a certificate exists
+at the configured path, it is loaded --- if it's valid, it's
+kept. Otherwise, when the transport setup occurs, a new certificate
+will be requested. If the path fields are empty, then the keys will
+never be stored on disk; the "path" key must still be present though.
+
+        // A path configuration for keys that are never stored on
+        // disk.
+	id["profiles"]["path"] = map[string]string{}
+
+When the key provider determines that its certificate is out of date
+(or, in the case of auto-updating, at some interval before the
+certificate expires), it will generate a CSR and pass it to a
+certificate provider.
+
+A CFSSL certificate provider points to a CFSSL server. It supports the
+following keys:
+
++ "remote" provides the hostname/IP and port for the CFSSL server.
++ "label" identifies which signer in a multiroot CFSSL should be
+  used. An empty or missing label assumes the remote's default
+  label will be used.
++ "profile" identifies the signing profile. An empty or missing
+  profile assumes the remote's default profile will be used.
++ "auth-type" should be present if the remote CFSSL needs
+  authentication. It tells the transport package what type of
+  authentication to use. The authentication system in CFSSL
+  is documented in "doc/authentication.txt"; for now, the
+  only available authentication type is "standard".
++ "auth-key" specifies the authentication key in the case where the
+  remote CFSSL requires authentication. Details are in
+  "doc/authentication.txt", particularly the section covering key
+  specification. As of now, The key may be specified in one of three
+  ways:
+
+
+    * hex-encoded string (e.g. "000102030405060708")
+    * an environment variable prefixed with "env:"
+      (e.g. "env:AUTH_KEY") that contains a hex-encoded string.
+    * a path to a file containing the hex-encoded key, prefixed with
+      "file:" (e.g. "file:/path/to/auth.key")
+
+A configuration that talks to the CFSSL instance running on
+ca.example.org might look like
+
+        id["profiles"]["cfssl"] = map[string]string{
+                "remote": "ca.example.org:8888",
+		"profile": "short-lived",
+		"auth-type": "standard",
+		"auth-key": "env:TRANSPORT_CA_AUTH_KEY",
+        }
+
+where the auth key would be set up as
+
+        $ TRANSPORT_CA_AUTH_KEY="000102030405060708" ./some-program
+
+The `Roots` and `ClientRoots` fields are set up the same way; they
+differ only in how they are used. The are an array of root
+structures. There are three supported types of roots, each specified
+with the "type" key:
+
++ system roots use the operating system's default set of roots
++ file load PEM-encoded certificates from a file
++ cfssl retrieves the CA certificate from a remote CFSSL instance
+
+The file and cfssl types should contain a "metadata" key that contains
+a `map[string]string` with further information. The file type looks
+for the "source" metadata key, which should contain a path to the file
+to be loaded. The cfssl type accepts the same arguments as the CFSSL
+certificate provider; note that CFSSL servers don't authenticate the
+info endpoint. If the metadata contains authentication information
+(e.g. because it was copied from the certificate provider
+specification), the authentication keys will be ignored.
+
+The following example loads the system roots, a set of root
+certificates stored in a "custom.pem" file, and the same CFSSL
+instance used above; they are used for server authentication in this
+example.
+
+	id["roots"] = []*core.Root{
+                {
+		        Type: "system",
+	        },
+		{
+		        Type: "file",
+			Metadata: map[string]string{
+                                "source": "/etc/ssl/custom.pem",
+                        },
+		},
+		{
+                        Type: "cfssl",
+			Metadata: map[string]string{
+				"remote": "ca.example.org:8888",
+				"profile": "short-lived",
+                        },
+                },
+	}
+
+If the above configuration was placed into a JSON file, it would look
+like:
+
+	{
+	    "request": {
+		"CN": "Example Service Client",
+		"hosts": [
+		    "svc-client.example.org"
+		]
+	    },
+	    "profiles": {
+		"path": {
+		    "private_key": "/path/to/key.pem",
+		    "certificate": "/path/to/cert.pem"
+		},
+		"cfssl": {
+		    "remote": "ca.example.org:8888",
+		    "profile": "short-lived",
+		    "auth-type": "standard",
+		    "auth-key": "env:TRANSPORT_CA_AUTH_KEY"
+		}
+	    },
+	    "roots": [
+		{
+		    "type": "system"
+		},
+		{
+		    "type": "file",
+		    "metadata": {
+			"source": "/etc/ssl/custom.pem"
+		    }
+		},
+		{
+		    "type": "cfssl",
+		    "metadata": {
+			"remote": "ca.example.org:8888",
+			"profile": "short-lived"
+		    }
+		}
+	    ]
+	}
+
+This configuration would be used for a system using the third
+communications model discussed above. It could also be integrated into
+an existing configuration; an example of such a configuration would be
+
+    type Configuration struct {
+        Remote  string // Server to connect to.
+	Port    int    // Server's port.
+
+        // Additional configuration fields follow
+
+        Transport *core.Identity
+    }
+
+Now that the service has a configuration, the transport package can be
+integrated into the code.
+
+
+Adding the transport package to a project
+-----------------------------------------
+
+Somehow, the program needs to load the `Identity` described in the
+previous section. For the sake of this discussion, it's assumed to
+be in the `id` variable:
+
+        var id core.Identity
+
+The next step is to build a `Transport` from this. A `Transport` is
+set up with a "before" time (how long before the certificate expires
+should the service attempt to update the certificate) and a
+`*Identity`.
+
+        // The default is to get a new certificate one day prior to
+        // its expiration.
+        tr, err := transport.New(core.DefaultBefore, &id)
+        if err != nil {
+                log.Fatalf("failed to configure a new TLS transport: %s", err)
+        }
+
+The auto-updater must be configured explicitly. It takes two
+arguments: the update channel and an error channel. If the update
+channel is non-nil, it will receive `time.Time` values indicating when
+the certificate was renewed. If the error channel is non-nil, it will
+receive `error` values from the auto updater.
+
+If an error in updating occurs, the updater will use a backoff to keep
+retrying. If the backoff isn't configured, a default backoff (using
+an interval of 5 minutes and a max delay of six hours) will be
+used. The values for the default interval and maximum duration are
+found in the `DefaultInterval` and `DefaultMaxDuration` variables in
+the `backoff` package; these can be changed to suit the program's needs.
+(c.f https://godoc.org/github.com/cloudflare/backoff#Backoff).
+
+Clients will call `AutoUpdate` on the `Transport` itself; servers
+should call `AutoUpdate` on the listener (discussed below).
+
+The following example logs update timestamps and errors for a client:
+
+	updates := make(chan time.Time, 0)
+	go func(updatesc <-chan time.Time) {
+                for {
+                        t, ok := <-updatesc
+			if !ok {
+                                return
+                        }
+			log.Printf("certificate auto-updated at %s",
+			        t.Format(time.RFC3339))
+                }
+	}
+
+        errs := make(chan error, 0)
+	go func(errsc <-chan error) {
+                for {
+                        err, ok := <-errsc
+			if !ok {
+                                return
+                        }
+			log.Printf("certificate auto-update error: %s", err)
+                }
+	}
+
+	go tr.AutoUpdate(updates, errs)
+
+A client may not want to start the auto-updater if the connection is
+expected to be short-lived. The package will check the certificate
+before the connection occurs, making sure it's still valid.
+
+At this point, the client can call the `Dial` function:
+
+        conn, err := transport.Dial(address, tr)
+	if err != nil {
+	        log.Fatalf("failed to dial remote host: %s", err)
+	}
+
+The returned `conn` is a `*tls.Conn`, which is an implementation of
+`net.Conn`.
+
+Servers need one extra step before they are ready:
+
+        l, err := transport.Listen(address, tr)
+	if err != nil {
+		loglFatalf("error setting up listener: %s", err)
+	}
+
+	// The same update channels
+	go l.AutoUpdate(nil, nil)
+	defer l.Close()
+
+	for {
+	        conn, err := l.Accept()
+		if err != nil {
+		        log.Printf("connection failed: %s", err)
+			continue
+                }
+		log.Printf("connection from %s", conn.RemoteAddr())
+		go serveClient(conn)
+	}
+
+
+Extending the transport package
+===============================
+
+The package is set up to deliver a useful set of defaults, but these
+defaults won't be appropriate for everyone. There are several places
+where the behaviour can be altered.
+
+Additional root providers may be set up by adding the relevant entries
+to `roots.Providers`. This is a map of string names (e.g. the `Type`
+field) to a function that accepts the `Metadata` field (a
+`map[string]string`), and which returns a list of `*x509.Certificate`:
+
+        var Providers map[string]func(map[string]string) ([]*x509.Certificate, error)
+
+The `NewKeyProvider` and `NewCA` functions provide a mechanism for
+choosing a key provider and CA from an identity. The default is to
+attempt to load the standard ("path") key provider and a CFSSL CA:
+
+	var (
+	    // NewKeyProvider is the function used to build key providers
+	    // from some identity.
+	    NewKeyProvider = func(id *core.Identity) (kp.KeyProvider, error) {
+		return kp.NewStandardProvider(id)
+	    }
+
+	    // NewCA is used to load a configuration for a certificate
+	    // authority.
+	    NewCA = func(id *core.Identity) (ca.CertificateAuthority, error) {
+		return ca.NewCFSSLProvider(id, nil)
+	    }
+	)
+
+By default, `AutoUpdate` checks the expiry on the certificate every
+thirty seconds. This behaviour may be changed by changing
+`transport.PollInterval`. If set to 0, the updater will just wait for
+the lifespan of the certificate.
+
+

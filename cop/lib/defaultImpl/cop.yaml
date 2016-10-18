@@ -1,0 +1,17 @@
+###############################################################################
+#
+#    Security section -
+#
+###############################################################################
+security:
+  affiliations:
+     banks_and_institutions:
+        banks:
+            - bank_a
+            - bank_b
+            - bank_c
+        institutions:
+            - institution_a
+  users:
+          # <EnrollmentID>: <system_role (1:client, 2: peer, 4: validator, 8: auditor)> <EnrollmentPWD> <Affiliation> <Affiliation_Role>
+          admin: 1 Xurw3yU9zI0l institution_a '{"registrar":{"roles":["client","peer","validator","auditor"],"delegateRoles":["client"]}}'

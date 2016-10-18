@@ -1,0 +1,15 @@
+development:
+  driver: mysql
+  open: root@tcp(localhost:3306)/certdb_development?parseTime=true
+
+test:
+  driver: mysql
+  open: root@tcp(localhost:3306)/certdb_test?parseTime=true
+
+staging:
+  driver: mysql
+  open: root@tcp(localhost:3306)/certdb_staging?parseTime=true
+
+production:
+  driver: mysql
+  open: root@tcp(localhost:3306)/certdb_production?parseTime=true

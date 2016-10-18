@@ -1,0 +1,194 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package protos;
+
+//
+// API for the COP service
+//
+service COP {
+
+   // Register an identity.
+   // The caller must have the 'hf.registrar' attribute.
+   rpc Register(RegisterReq) returns (RegisterResp);
+
+   // Unregister an identity.
+   // This deletes all state associated with the identity.
+   // The caller must be the identity or the registrar of the identity.
+   rpc Unregister(UnregisterReq) returns (UnregisterResp);
+
+   // Enroll an identity.
+   // The caller must pass the enrollment secret.
+	rpc Enroll(EnrollReq) returns (EnrollResp);
+
+   // Re-enroll an identity, which renews the certificate
+   // The caller must be the identity.
+	rpc Reenroll(ReenrollReq) returns (ReenrollResp);
+
+   // Get a batch of tcerts
+   //rpc GetTCertBatch(TCertBatchReq) returns (TCertBatchResp);
+
+   // Get attributes associated with an identity.
+   // The caller must be the identity.
+	rpc GetAttributes(GetAttributesReq) returns (GetAttributesResp);
+
+   // Add attributes associated with an identity.
+   // The caller must be the identity's registrar.
+	rpc AddAttributes(AddAttributesReq) returns (AddAttributesResp);
+
+   // Delete attributes associated with an identity.
+   // The caller must be the identity's registrar.
+	rpc DelAttributes(DelAttributesReq) returns (DelAttributesResp);
+
+   // Get a nonce to use in various requests which prevents replay attacks.
+	//rpc GetNonce() returns (Nonce);
+
+}
+
+// A register request
+message RegisterReq {
+   string id = 1;                          // unique ID of identity being registered
+   string affiliation = 2;                 // Affiliation of identity being registered
+   repeated Attribute attributes = 3;      // Attributes of identity being registered
+   Nonce nonce = 4;                        // Nonce to prevent replay attack
+   string callerId = 5;                    // ID of caller.  Must have "cop.registrar" attribute
+   Signature sig = 6;                      // Signature of caller
+}
+
+// A register response
+message RegisterResp {
+	bytes enrollSecret = 1;
+}
+
+// An unregister request
+message UnregisterReq {
+   string id = 1;                          // ID being unregistered/deleted
+   Nonce nonce = 2;                        // Nonce to prevent replay attack
+   string callerId = 3;                    // ID of caller.  Must be same as 'id' (or the one who registered?)
+   Signature sig = 4;                      // Signature of caller
+}
+
+// An unregister response
+message UnregisterResp {
+}
+
+// An enroll request
+message EnrollReq {
+   string id = 1;             // enrollment ID
+   bytes enrollSecret = 2;    // enrollment secret
+   PublicKey key = 3;         // public key of enroller
+   Signature sig = 4;         // signature with coressponding private key
+}
+
+// An enroll response
+message EnrollResp {
+   bytes cert = 1;                     // Enrollment certificate (aka "ECert")
+   repeated Attribute attributes = 2;  // Attributes of identity
+}
+
+// A reenroll request is used to update the public key
+message ReenrollReq {
+   string id = 1;             // identity to reenroll
+   Nonce nonce = 2;           // nonce to prevent replay attacks
+   PublicKey key = 3;         // new public key
+   Signature sig = 4;         // signature using private key of old public key
+}
+
+// A Reenroll response
+message ReenrollResp {
+   bytes cert = 1;                     // Enrollment certificate (aka "ECert")
+   repeated Attribute attributes = 2;  // Attributes of identity
+}
+
+// A get attributes request
+// The callerId must equal id or be the registrar which registered the identity
+message GetAttributesReq {
+   string id = 1;             // id whose attributes are to be retrieved
+   Nonce nonce = 2;           // nonce to prevent replay attack
+   string callerId = 3;       // caller's ID
+   Signature sig = 4;         // signature of caller
+}
+
+// A get attributes response
+message GetAttributesResp {
+   string id = 1;
+   repeated Attribute attributes = 2;  // Attributes of identity
+}
+
+// An add attributes request
+// The callerId must be the registrar which registered the identity
+message AddAttributesReq {
+   string id = 1;                      // id whose attributes are to be retrieved
+   repeated Attribute attributes = 2;  // Attributes to add to identity
+   Nonce nonce = 3;                    // nonce to prevent replay attack
+   string callerId = 4;                // caller's ID
+   Signature sig = 5;                  // signature of caller
+}
+
+// An add attributes response
+message AddAttributesResp {
+   string id = 1;             // id to which to add attributes
+   repeated Attribute attributes = 2;  // Resulting attributes after addition
+}
+
+// A delete attributes request
+// The callerId must equal id or be the registrar which registered the identity
+message DelAttributesReq {
+   string id = 1;             // id whose attributes are to be retrieved
+   repeated Attribute attributes = 2;  // Attributes to delete from identity
+   Nonce nonce = 3;           // nonce to prevent replay attack
+   string callerId = 4;       // caller's ID
+   Signature sig = 5;         // signature of caller
+}
+
+// A delete attributes response
+message DelAttributesResp {
+   string id = 1;             // id whose attributes have been deleted
+   repeated Attribute attributes = 2;  // resulting attributes after deletion
+}
+
+// An add attributes request
+message Attribute {
+   string name = 1;
+   bytes value = 2;
+}
+
+// Signature.
+message Signature {
+	CryptoType type = 1;
+	bytes r = 2;
+	bytes s = 3;
+}
+
+message PublicKey {
+	CryptoType type = 1;
+	bytes key = 2; // DER / ASN.1
+}
+
+// CryptoType
+enum CryptoType {
+	ECDSA = 0;
+	RSA = 1;
+	DSA = 2;
+}
+
+// A nonce used to prevent replay attacks
+message Nonce {
+	bytes name = 1;
+	bytes value = 2;
+}

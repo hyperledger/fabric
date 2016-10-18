@@ -1,0 +1,19 @@
+{
+    "hosts": [
+        "ibm.com",
+        "www.ibm.com"
+    ],
+    "key": {
+        "algo": "ecdsa",
+        "size": 256
+    },
+    "names": [
+        {
+            "C": "US",
+            "L": "San Francisco",
+            "O": "CloudFlare",
+            "OU": "Systems Engineering",
+            "ST": "California"
+        }
+    ]
+}

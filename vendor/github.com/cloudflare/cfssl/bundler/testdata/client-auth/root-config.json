@@ -1,0 +1,11 @@
+{
+	"signing": {
+		"default": {
+			"ca_constraint": {
+				"is_ca": true
+            },
+			"usages": ["cert sign"],
+			"expiry": "43830h"
+		}
+	}
+}

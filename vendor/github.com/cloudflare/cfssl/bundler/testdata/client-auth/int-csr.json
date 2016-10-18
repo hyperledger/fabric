@@ -1,0 +1,13 @@
+{
+	"request":{
+		"names":[
+			{
+				"C":"US",
+				"ST":"California",
+				"L":"San Francisco",
+				"O":"example.com"
+			}
+		],
+		"CN":"Intermediate CA"
+	}
+}
