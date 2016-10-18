@@ -413,7 +413,7 @@ security:
     # the chaincode using the metadata field of the transaction (requires
     # security to be enabled).
     attributes:
-      enabled: false
+      enabled: true
 
     # TCerts pool configuration.  Multi-thread pool can also be configured
     # by multichannel option switching concurrency in communication with TCA. 
