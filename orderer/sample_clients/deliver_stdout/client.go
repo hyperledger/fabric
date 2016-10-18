@@ -73,6 +73,7 @@ func (r *deliverClient) readUntilClose() {
 	for {
 		msg, err := r.client.Recv()
 		if err != nil {
+			fmt.Println("Error receiving:", err)
 			return
 		}
 

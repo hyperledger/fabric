@@ -39,6 +39,17 @@ func (s *broadcastClient) broadcast(transaction []byte) error {
 	return s.client.Send(&ab.BroadcastMessage{Data: transaction})
 }
 
+func (s *broadcastClient) getAck() error {
+	msg, err := s.client.Recv()
+	if err != nil {
+		return err
+	}
+	if msg.Status != ab.Status_SUCCESS {
+		return fmt.Errorf("Got unexpected status: %v", msg.Status)
+	}
+	return nil
+}
+
 func main() {
 	config := config.Load()
 	serverAddr := fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort)
@@ -56,4 +67,8 @@ func main() {
 
 	s := newBroadcastClient(client)
 	s.broadcast([]byte(fmt.Sprintf("Testing %v", time.Now())))
+	err = s.getAck()
+	if err != nil {
+		fmt.Printf("\n\n!!!!!!!!!!!!!!!!!\n%v\n!!!!!!!!!!!!!!!!!\n", err)
+	}
 }
