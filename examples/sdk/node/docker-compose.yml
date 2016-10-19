@@ -28,8 +28,8 @@ peer:
     - membersrvc
 
 nodesdk:
-  container_name: nodesdk
-  image: hyperledger/fabric-node-sdk
+  container_name: starter-kit
+  image: hyperledger/fabric-starter-kit
   volumes:
     - ~/mytest:/user/mytest
   environment:
