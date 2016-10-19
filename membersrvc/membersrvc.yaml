@@ -184,6 +184,21 @@ aca:
               
               # for consent manmt demo
               attribute-entry-12: WebAppAdmin;institution_a;role;system;2015-01-01T00:00:00-03:00;;
+              attribute-entry-13: pharmax;institution_a;role;org;2015-01-01T00:00:00-03:00;;
+              attribute-entry-14: pharmax;institution_a;org;pharmax;2015-01-01T00:00:00-03:00;;
+              attribute-entry-15: hmoy;institution_a;role;org;2015-01-01T00:00:00-03:00;;
+              attribute-entry-16: hmoy;institution_a;org;hmoy;2015-01-01T00:00:00-03:00;;
+              attribute-entry-17: ibmadmin;institution_a;role;org;2015-01-01T00:00:00-03:00;;
+              attribute-entry-18: ibmadmin;institution_a;org;IBM;2015-01-01T00:00:00-03:00;;
+              attribute-entry-19: doc1;institution_a;role;service;2015-01-01T00:00:00-03:00;;
+              attribute-entry-20: doc1;institution_a;org;hmoy;2015-01-01T00:00:00-03:00;;
+              attribute-entry-21: doc1;institution_a;service;1;2015-01-01T00:00:00-03:00;;
+              attribute-entry-22: nurse1;institution_a;role;service;2015-01-01T00:00:00-03:00;;
+              attribute-entry-23: nurse1;institution_a;org;hmoy;2015-01-01T00:00:00-03:00;;
+              attribute-entry-24: nurse1;institution_a;service;4;2015-01-01T00:00:00-03:00;;
+              attribute-entry-25: sally1111;institution_a;role;user;2015-01-01T00:00:00-03:00;;
+              attribute-entry-26: jimmy2222;institution_a;role;user;2015-01-01T00:00:00-03:00;;
+              attribute-entry-27: audit;institution_a;role;audit;2015-01-01T00:00:00-03:00;;
 
           address: localhost:7054
           server-name: acap
