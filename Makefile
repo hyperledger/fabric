@@ -52,7 +52,7 @@ GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
 ARCH=$(shell uname -m)
-CHAINTOOL_RELEASE=v0.9.1
+CHAINTOOL_RELEASE=v0.10.0
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 
 DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
