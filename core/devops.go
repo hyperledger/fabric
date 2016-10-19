@@ -196,7 +196,7 @@ func (d *Devops) Deploy(ctx context.Context, spec *pb.ChaincodeSpec) (*pb.Chainc
 	}
 	resp := d.coord.ExecuteTransaction(tx)
 	if resp.Status == pb.Response_FAILURE {
-		err = fmt.Errorf(string(resp.Msg))
+		err = errors.New(string(resp.Msg))
 	}
 
 	return chaincodeDeploymentSpec, err
@@ -205,7 +205,7 @@ func (d *Devops) Deploy(ctx context.Context, spec *pb.ChaincodeSpec) (*pb.Chainc
 func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.ChaincodeInvocationSpec, attributes []string, invoke bool) (*pb.Response, error) {
 
 	if chaincodeInvocationSpec.ChaincodeSpec.ChaincodeID.Name == "" {
-		return nil, fmt.Errorf("name not given for invoke/query")
+		return nil, errors.New("name not given for invoke/query")
 	}
 
 	// Now create the Transactions message and send to Peer.
@@ -249,12 +249,10 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 	if err != nil {
 		return nil, err
 	}
-	if devopsLogger.IsEnabledFor(logging.DEBUG) {
-		devopsLogger.Debugf("Sending invocation transaction (%s) to validator", transaction.Txid)
-	}
+	devopsLogger.Debugf("Sending invocation transaction (%s) to validator", transaction.Txid)
 	resp := d.coord.ExecuteTransaction(transaction)
 	if resp.Status == pb.Response_FAILURE {
-		err = fmt.Errorf(string(resp.Msg))
+		err = errors.New(string(resp.Msg))
 	} else {
 		if !invoke && nil != sec && viper.GetBool("security.privacy") {
 			if resp.Msg, err = sec.DecryptQueryResult(transaction, resp.Msg); nil != err {
