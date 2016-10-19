@@ -503,6 +503,8 @@ func TestRestartAfterCommit(t *testing.T) {
 }
 
 func TestRestartAfterCheckpoint(t *testing.T) {
+	// TODO re-enable this test after https://jira.hyperledger.org/browse/FAB-624 has been resolved
+	t.Skip()
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
