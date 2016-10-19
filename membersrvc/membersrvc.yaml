@@ -181,6 +181,9 @@ aca:
               attribute-entry-9: bob;bank_a;role;client;2015-02-02T00:00:00-03:00;;
               attribute-entry-10: bob;bank_a;account;23456-67890;2015-02-02T00:00:00-03:00;;
               attribute-entry-11: assigner;bank_a;role;assigner;2015-01-01T00:00:00-03:00;;
+              
+              # for consent manmt demo
+              attribute-entry-12: WebAppAdmin;institution_a;role;system;2015-01-01T00:00:00-03:00;;
 
           address: localhost:7054
           server-name: acap
