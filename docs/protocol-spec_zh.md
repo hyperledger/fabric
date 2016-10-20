@@ -2219,7 +2219,7 @@ POST host:port/chaincode
   "params": {
     "type": "GOLANG",
     "chaincodeID":{
-        "path":"github.com/hyperledger/fabic/examples/chaincode/go/chaincode_example02"
+        "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
     "ctorMsg": {
         "function":"init",
@@ -2254,7 +2254,7 @@ POST host:port/chaincode
   "params": {
     "type": "GOLANG",
     "chaincodeID":{
-        "path":"github.com/hyperledger/fabic/examples/chaincode/go/chaincode_example02"
+        "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
     "ctorMsg": {
         "function":"init",
@@ -2603,7 +2603,7 @@ To see what CLI commands are currently available in the implementation, execute 
 
 要查看当前可用的CLI命令，执行如下命令
 
-    cd $GOPATH/src/github.com/hyperledger/fabic/peer
+    cd $GOPATH/src/github.com/hyperledger/fabric/peer
     ./peer
 
 你可以获得和下面类似的响应：

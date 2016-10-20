@@ -19,7 +19,6 @@ package ca
 import (
 	"encoding/asn1"
 	"errors"
-	"google/protobuf"
 	"strings"
 	"time"
 
@@ -32,6 +31,7 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/hyperledger/fabric/membersrvc/protos"
 )
 
@@ -205,16 +205,16 @@ func (attrPair *AttributePair) SetValidTo(date time.Time) {
 
 //ToACAAttribute converts the receiver to the protobuf format.
 func (attrPair *AttributePair) ToACAAttribute() *pb.ACAAttribute {
-	var from, to *google_protobuf.Timestamp
+	var from, to *timestamp.Timestamp
 	if attrPair.validFrom.IsZero() {
 		from = nil
 	} else {
-		from = &google_protobuf.Timestamp{Seconds: attrPair.validFrom.Unix(), Nanos: int32(attrPair.validFrom.UnixNano())}
+		from = &timestamp.Timestamp{Seconds: attrPair.validFrom.Unix(), Nanos: int32(attrPair.validFrom.UnixNano())}
 	}
 	if attrPair.validTo.IsZero() {
 		to = nil
 	} else {
-		to = &google_protobuf.Timestamp{Seconds: attrPair.validTo.Unix(), Nanos: int32(attrPair.validTo.UnixNano())}
+		to = &timestamp.Timestamp{Seconds: attrPair.validTo.Unix(), Nanos: int32(attrPair.validTo.UnixNano())}
 
 	}
 	return &pb.ACAAttribute{AttributeName: attrPair.attributeName, AttributeValue: attrPair.attributeValue, ValidFrom: from, ValidTo: to}
@@ -276,7 +276,10 @@ func (aca *ACA) fetchAttributes(id, affiliation string) ([]*AttributePair, error
 	return attributes, nil
 }
 
-func (aca *ACA) populateAttributes(attrs []*AttributePair) error {
+func (aca *ACA) PopulateAttributes(attrs []*AttributePair) error {
+
+	acaLogger.Debugf("PopulateAttributes: %+v", attrs)
+
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -285,6 +288,7 @@ func (aca *ACA) populateAttributes(attrs []*AttributePair) error {
 		return dberr
 	}
 	for _, attr := range attrs {
+		acaLogger.Debugf("attr: %+v", attr)
 		if err := aca.populateAttribute(tx, attr); err != nil {
 			dberr = tx.Rollback()
 			if dberr != nil {
@@ -331,7 +335,7 @@ func (aca *ACA) fetchAndPopulateAttributes(id, affiliation string) error {
 	if err != nil {
 		return err
 	}
-	err = aca.populateAttributes(attrs)
+	err = aca.PopulateAttributes(attrs)
 	if err != nil {
 		return err
 	}

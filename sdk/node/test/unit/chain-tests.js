@@ -48,13 +48,18 @@ if (fs.existsSync("tlsca.cert")) {
     chain.setMemberServicesUrl("grpc://localhost:7054");
 }
 chain.addPeer("grpc://localhost:7051");
+chain.eventHubConnect("grpc://localhost:7053");
+
+process.on('exit', function (){
+  chain.eventHubDisconnect();
+});
 
 //
 // Set the chaincode deployment mode to either developent mode (user runs chaincode)
 // or network mode (code package built and sent to the peer).
 //
 
-var mode =  process.env['DEPLOY_MODE'];
+var mode = process.env['DEPLOY_MODE'];
 console.log("$DEPLOY_MODE: " + mode);
 if (mode === 'dev') {
     chain.setDevMode(true);
@@ -104,7 +109,7 @@ var deltaAB = "1";
 function getUser(name, cb) {
     chain.getUser(name, function (err, user) {
         if (err) return cb(err);
-        if (user.isEnrolled()) return cb(null,user);
+        if (user.isEnrolled()) return cb(null, user);
         // User is not enrolled yet, so perform both registration and enrollment
         // The chain registrar is already set inside 'Set chain registrar' test
         var registrationRequest = {
@@ -127,6 +132,165 @@ function fail(t, msg, err) {
     t.fail("Failure: [" + msg + "]: [" + err + "]");
     t.end(err);
 }
+
+//
+// Test adding an invalid peer (omit protocol or use invalid protocol in URL)
+//
+test('Add invalid peer URLs to the chain', function (t) {
+
+    //list of valid protocol prefixes to test
+    var prefixes = [
+        "",
+        "grpcio://",
+        "http://",
+        " "
+    ];
+
+    t.plan(prefixes.length);
+
+    var chain_test;
+
+    //loop through the prefixes
+    prefixes.forEach(function (prefix, index) {
+
+        chain_test = hfc.newChain("chain_test" + index);
+
+        try {
+            chain_test.addPeer(prefix + "://localhost:7051", new Buffer(32));
+            t.fail("Should not be able to add peer with URL starting with " + prefix);
+        }
+        catch (err) {
+            if (err.name === 'InvalidProtocol') {
+                t.pass("Returned 'InvalidProtocol' error for URL starting with " + prefix);
+            }
+            else {
+                t.fail("Failed to return 'InvalidProtocol' error  for URL starting with " + prefix);
+            }
+        }
+    })
+
+});
+
+
+//
+// Test adding a valid peer (URL must start with grpc or grpcs) 
+//
+test('Add valid peer URLs to the chain', function (t) {
+
+    //list of valid protocol prefixes to test
+    var prefixes = [
+        "grpc",
+        "GRPC",
+        "grpcs",
+        "GRPCS"
+    ];
+
+    t.plan(prefixes.length);
+
+    var chain_test2;
+
+    //loop through the prefixes
+    prefixes.forEach(function (prefix, index) {
+
+        chain_test2 = hfc.newChain("chain_test2" + index);
+
+        try {
+            chain_test2.addPeer(prefix + "://localhost:7051",
+                fs.readFileSync(__dirname + "/../fixtures/tlsca.cert"));
+            t.pass("Successfully added peer with URL starting with " + prefix + "://");
+        }
+        catch (err) {
+            t.fail("Could not add peer to the chain with URL starting with " + prefix + "://");
+        }
+    })
+
+});
+
+//
+// Test adding multiple peers to the chain
+//
+test('Add multiple peers to the chain', function (t) {
+
+    t.plan(1);
+
+    var chain_multiple = hfc.newChain("chain_multiple");
+
+    var peers = [
+        "grpc://localhost:7051",
+        "grpc://localhost:7052",
+        "grpc://localhost:7053",
+        "grpc://localhost:7054"
+    ];
+
+    peers.forEach(function (peer) {
+
+        try {
+            chain_multiple.addPeer(peer);
+        }
+        catch (err) {
+            t.fail("Failed to add multiple peers to the chain");
+        }
+
+    })
+
+    //check to see we have the correct number of peers
+    if (chain_multiple.getPeers().length == peers.length) {
+        t.pass("Successfully added multiple peers to the chain(" + peers.length +
+            " expected | " + chain_multiple.getPeers().length + " found)");
+
+    }
+    else {
+        t.fail("Failed to add multiple peers to the chain(" + peers.length +
+            " expected | " + chain_multiple.getPeers().length + " found)");
+    }
+});
+
+//
+// Test adding duplicate peers to the chain
+//
+test('Catch duplicate peer added to chain', function (t) {
+
+    t.plan(2);
+
+    var chain_duplicate = hfc.newChain("chain_duplicate");
+
+    var peers = [
+        "grpc://localhost:7051",
+        "grpc://localhost:7052",
+        "grpc://localhost:7053",
+        "grpc://localhost:7051"
+    ];
+
+    //we have one duplicate to set the expected value
+    var expected = peers.length - 1;
+
+    peers.forEach(function (peer) {
+
+        try {
+            chain_duplicate.addPeer(peer);
+        }
+        catch (err) {
+            if (err.name != "DuplicatePeer"){
+                t.fail("Unexpected error " + err.toString());
+            }
+            else {
+                t.pass("Expected error message 'DuplicatePeer' thrown");
+            }
+        }
+
+    })
+
+    //check to see we have the correct number of peers
+    if (chain_duplicate.getPeers().length == expected) {
+        t.pass("Duplicate peer not added to the chain(" + expected +
+            " expected | " + chain_duplicate.getPeers().length + " found)");
+
+    }
+    else {
+        t.fail("Failed to detect duplicate peer (" + expected +
+            " expected | " + chain_duplicate.getPeers().length + " found)");
+    }
+});
 
 //
 // Set Invalid security level and hash algorithm.
@@ -290,35 +454,35 @@ test('Register and enroll a new user', function (t) {
 // the missing parameter.
 //
 
-test('Deploy with missing chaincodeName or chaincodePath', function(t) {
-  t.plan(1);
+test('Deploy with missing chaincodeName or chaincodePath', function (t) {
+    t.plan(1);
 
-  // Construct the deploy request with a missing chaincodeName/chaincodePath
-  var deployRequest = {
-    // Function to trigger
-    fcn: "init",
-    // Arguments to the initializing function
-    args: ["a", initA, "b", initB]
-  };
+    // Construct the deploy request with a missing chaincodeName/chaincodePath
+    var deployRequest = {
+        // Function to trigger
+        fcn: "init",
+        // Arguments to the initializing function
+        args: ["a", initA, "b", initB]
+    };
 
-  // Trigger the deploy transaction
-  var deployTx = test_user_Member1.deploy(deployRequest);
+    // Trigger the deploy transaction
+    var deployTx = test_user_Member1.deploy(deployRequest);
 
-  // Print the deploy results
-  deployTx.on('complete', function(results) {
-    // Deploy request completed successfully
-    console.log(util.format("deploy results: %j",results));
-    // Set the testChaincodeID for subsequent tests
-    testChaincodeID = results.chaincodeID;
-    console.log("testChaincodeID:" + testChaincodeID);
-    t.fail(util.format("Successfully deployed chaincode: request=%j, response=%j", deployRequest, results));
-    // Exit the test script after a failure
-    process.exit(1);
-  });
-  deployTx.on('error', function(err) {
-    // Deploy request failed
-    t.pass(util.format("Failed to deploy chaincode: request=%j, error=%j",deployRequest,err));
-  });
+    // Print the deploy results
+    deployTx.on('complete', function (results) {
+        // Deploy request completed successfully
+        console.log(util.format("deploy results: %j", results));
+        // Set the testChaincodeID for subsequent tests
+        testChaincodeID = results.chaincodeID;
+        console.log("testChaincodeID:" + testChaincodeID);
+        t.fail(util.format("Successfully deployed chaincode: request=%j, response=%j", deployRequest, results));
+        // Exit the test script after a failure
+        process.exit(1);
+    });
+    deployTx.on('error', function (err) {
+        // Deploy request failed
+        t.pass(util.format("Failed to deploy chaincode: request=%j, error=%j", deployRequest, err));
+    });
 });
 
 //
@@ -327,43 +491,43 @@ test('Deploy with missing chaincodeName or chaincodePath', function(t) {
 // a local directory in the user's $GOPATH.
 //
 
-test('Deploy a chaincode by enrolled user', function(t) {
-  t.plan(1);
+test('Deploy a chaincode by enrolled user', function (t) {
+    t.plan(1);
 
-  // Construct the deploy request
-  var deployRequest = {
-    // Function to trigger
-    fcn: "init",
-    // Arguments to the initializing function
-    args: ["a", initA, "b", initB]
-  };
+    // Construct the deploy request
+    var deployRequest = {
+        // Function to trigger
+        fcn: "init",
+        // Arguments to the initializing function
+        args: ["a", initA, "b", initB]
+    };
 
-  if (mode === 'dev') {
-      // Name required for deploy in development mode
-      deployRequest.chaincodeName = testChaincodeName;
-  } else {
-      // Path (under $GOPATH) required for deploy in network mode
-      deployRequest.chaincodePath = testChaincodePath;
-  }
+    if (mode === 'dev') {
+        // Name required for deploy in development mode
+        deployRequest.chaincodeName = testChaincodeName;
+    } else {
+        // Path (under $GOPATH) required for deploy in network mode
+        deployRequest.chaincodePath = testChaincodePath;
+    }
 
-  // Trigger the deploy transaction
-  var deployTx = test_user_Member1.deploy(deployRequest);
+    // Trigger the deploy transaction
+    var deployTx = test_user_Member1.deploy(deployRequest);
 
-  // Print the deploy results
-  deployTx.on('complete', function(results) {
-    // Deploy request completed successfully
-    console.log(util.format("deploy results: %j",results));
-    // Set the testChaincodeID for subsequent tests
-    testChaincodeID = results.chaincodeID;
-    console.log("testChaincodeID:" + testChaincodeID);
-    t.pass(util.format("Successfully deployed chaincode: request=%j, response=%j", deployRequest, results));
-  });
-  deployTx.on('error', function(err) {
-    // Deploy request failed
-    t.fail(util.format("Failed to deploy chaincode: request=%j, error=%j",deployRequest,err));
-    // Exit the test script after a failure
-    process.exit(1);
-  });
+    // Print the deploy results
+    deployTx.on('complete', function (results) {
+        // Deploy request completed successfully
+        console.log(util.format("deploy results: %j", results));
+        // Set the testChaincodeID for subsequent tests
+        testChaincodeID = results.chaincodeID;
+        console.log("testChaincodeID:" + testChaincodeID);
+        t.pass(util.format("Successfully deployed chaincode: request=%j, response=%j", deployRequest, results));
+    });
+    deployTx.on('error', function (err) {
+        // Deploy request failed
+        t.fail(util.format("Failed to deploy chaincode: request=%j, error=%j", deployRequest, err));
+        // Exit the test script after a failure
+        process.exit(1);
+    });
 });
 
 //
@@ -465,10 +629,10 @@ test('Query existing chaincode state by enrolled user with batch size of 100', f
         t.pass(util.format("Successfully queried existing chaincode state: request=%j, response=%j, value=%s", queryRequest, results, results.result.toString()));
     });
     queryTx.on('error', function (err) {
-      // Query failed
-      t.fail(util.format("Failed to query existing chaincode state: request=%j, error=%j", queryRequest, err));
-      // Exit the test script after a failure
-      process.exit(1);
+        // Query failed
+        t.fail(util.format("Failed to query existing chaincode state: request=%j, error=%j", queryRequest, err));
+        // Exit the test script after a failure
+        process.exit(1);
     });
 });
 
@@ -503,7 +667,7 @@ test('Query non-existing chaincode state by enrolled user', function (t) {
     });
     queryTx.on('error', function (err) {
         // Query failed
-        t.pass(util.format("Failed to query non-existing chaincode state: request=%j, error=%j",queryRequest,err));
+        t.pass(util.format("Failed to query non-existing chaincode state: request=%j, error=%j", queryRequest, err));
     });
 });
 
@@ -538,7 +702,7 @@ test('Query non-existing chaincode function by enrolled user', function (t) {
     });
     queryTx.on('error', function (err) {
         // Query failed
-        t.pass(util.format("Failed to query non-existing chaincode function: request=%j, error=%j",queryRequest,err));
+        t.pass(util.format("Failed to query non-existing chaincode function: request=%j, error=%j", queryRequest, err));
     });
 });
 
@@ -565,7 +729,7 @@ test('Invoke with missing chaincodeID', function (t) {
     // Print the invoke results
     invokeTx.on('submitted', function (results) {
         // Invoke transaction submitted successfully
-        t.fail(util.format("Successfully submitted chaincode invoke transaction: request=%j, response=%j", invokeRequest,results));
+        t.fail(util.format("Successfully submitted chaincode invoke transaction: request=%j, response=%j", invokeRequest, results));
         // Exit the test script after a failure
         process.exit(1);
     });
@@ -599,7 +763,8 @@ test('Invoke a chaincode by enrolled user', function (t) {
     // Print the invoke results
     invokeTx.on('submitted', function (results) {
         // Invoke transaction submitted successfully
-        t.pass(util.format("Successfully submitted chaincode invoke transaction: request=%j, response=%j", invokeRequest,results));
+        t.pass(util.format("Successfully submitted chaincode invoke transaction: request=%j, response=%j", invokeRequest, results));
+        chain.eventHubDisconnect();
     });
     invokeTx.on('error', function (err) {
         // Invoke transaction submission failed

@@ -31,7 +31,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
-	"google/protobuf"
 	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
@@ -40,6 +39,8 @@ import (
 	membersrvc "github.com/hyperledger/fabric/membersrvc/protos"
 
 	_ "fmt"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 var (
@@ -63,7 +64,7 @@ func TestTLS(t *testing.T) {
 
 func startTLSCA(t *testing.T) {
 	CacheConfiguration() // Cache configuration
-	ecaS = NewECA()
+	ecaS = NewECA(nil)
 	tlscaS = NewTLSCA(ecaS)
 
 	var opts []grpc.ServerOption
@@ -122,7 +123,7 @@ func requestTLSCertificate(t *testing.T) {
 
 	pubraw, _ := x509.MarshalPKIXPublicKey(&priv.PublicKey)
 	now := time.Now()
-	timestamp := google_protobuf.Timestamp{Seconds: int64(now.Second()), Nanos: int32(now.Nanosecond())}
+	timestamp := timestamp.Timestamp{Seconds: int64(now.Second()), Nanos: int32(now.Nanosecond())}
 
 	req := &membersrvc.TLSCertCreateReq{
 		Ts: &timestamp,

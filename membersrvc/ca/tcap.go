@@ -39,7 +39,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 
-	"google/protobuf"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 var tcapLogger = logging.MustGetLogger("tcap")
@@ -69,7 +69,7 @@ func (tcap *TCAP) selectValidAttributes(certRaw []byte) ([]*pb.ACAAttribute, err
 	}
 	currentTime := time.Now()
 	for _, extension := range cert.Extensions {
-		acaAtt := &pb.ACAAttribute{AttributeName: "", AttributeValue: nil, ValidFrom: &google_protobuf.Timestamp{Seconds: 0, Nanos: 0}, ValidTo: &google_protobuf.Timestamp{Seconds: 0, Nanos: 0}}
+		acaAtt := &pb.ACAAttribute{AttributeName: "", AttributeValue: nil, ValidFrom: &timestamp.Timestamp{Seconds: 0, Nanos: 0}, ValidTo: &timestamp.Timestamp{Seconds: 0, Nanos: 0}}
 
 		if IsAttributeOID(extension.Id) {
 			if err := proto.Unmarshal(extension.Value, acaAtt); err != nil {
@@ -111,7 +111,7 @@ func (tcap *TCAP) requestAttributes(id string, ecert []byte, attrs []*pb.TCertAt
 	}
 
 	req := &pb.ACAAttrReq{
-		Ts:         &google_protobuf.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
+		Ts:         &timestamp.Timestamp{Seconds: time.Now().Unix(), Nanos: 0},
 		Id:         &pb.Identity{Id: id},
 		ECert:      &pb.Cert{Cert: ecert},
 		Attributes: attrNames,

@@ -139,17 +139,25 @@ enum Role {
 }
 
 message Registrar {
-    Identity id = 1;                     // The identity of the registrar
-    repeated string roles = 2;           // Roles that the registrar can register
-    repeated string delegateRoles = 3;   // Roles that the registrar can give to another to register
+    Identity id = 1;                            // The identity of the registrar
+    repeated string roles = 2;                  // Roles that the registrar can register
+    repeated string delegateRoles = 3;          // Roles that the registrar can give to another to register
 }
 
 message RegisterUserReq {
     Identity id = 1;
     Role role = 2;
-    string affiliation = 4; // Skipping field number 3 to maintain backward compatibility. It was used before for the primary account.
+    repeated Attribute attributes = 3;
+    string affiliation = 4;
     Registrar registrar = 5;
     Signature sig = 6;
+}
+
+message Attribute {
+    string name = 1;
+    string value = 2;
+	 string notBefore = 3;
+	 string notAfter = 4;
 }
 
 message ReadUserSetReq {

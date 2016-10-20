@@ -10,8 +10,18 @@ before participating. It is important that we keep things civil.
 ## Getting a Linux Foundation account
 
 In order to participate in the development of the Hyperledger Fabric project,
-you will need an [LF account](Gerrit/lf-account.md). This will give you single
-sign-on to all the community tools, including Gerrit and Jira (coming soon!).
+you will need an [LF account](Gerrit/lf-account.md). You will need to use
+your LF ID to grant you access to all the Hyperledger community tools, including
+[Gerrit](https://gerrit.hyperledger.org) and [Jira](https://jira.hyperledger.org).
+
+### Setting up your SSH key
+
+For Gerrit, you will want to register your public SSH key. Login to
+[Gerrit](https://gerrit.hyperledger.org)
+with your LF account, and click on your name in the upper right-hand corner
+and then click 'Settings'. In the left-hand margin, you should see a link for
+'SSH Public Keys'. Copy-n-paste your [public SSH key](https://help.github.com/articles/generating-an-ssh-key/)
+into the window and press 'Add'.
 
 ## Getting help
 

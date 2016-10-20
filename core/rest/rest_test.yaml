@@ -296,17 +296,16 @@ chaincode:
         # This is the basis for the Golang Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
         Dockerfile:  |
-            from hyperledger/fabric-baseimage
-            #from utxo:0.1.0
-            COPY src $GOPATH/src
-            WORKDIR $GOPATH
+          FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+          COPY src $GOPATH/src
+          WORKDIR $GOPATH
 
     car:
 
         # This is the basis for the CAR Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
         Dockerfile:  |
-            FROM hyperledger/fabric-ccenv
+            FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests

@@ -50,7 +50,7 @@ func (t *Attributes2State) setStateToAttributes(stub shim.ChaincodeStubInterface
 // Init intializes the chaincode by reading the transaction attributes and storing
 // the attrbute values in the state
 func (t *Attributes2State) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
+	_, args := stub.GetFunctionAndParameters()
 	err := t.setStateToAttributes(stub, args)
 	if err != nil {
 		return nil, err

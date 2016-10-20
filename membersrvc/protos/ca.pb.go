@@ -19,6 +19,7 @@ It has these top-level messages:
 	Signature
 	Registrar
 	RegisterUserReq
+	Attribute
 	ReadUserSetReq
 	User
 	UserSet
@@ -57,7 +58,7 @@ package protos
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "google/protobuf"
+import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 
 import (
 	context "golang.org/x/net/context"
@@ -68,6 +69,12 @@ import (
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // Public/private keys.
 type CryptoType int32
@@ -92,6 +99,7 @@ var CryptoType_value = map[string]int32{
 func (x CryptoType) String() string {
 	return proto.EnumName(CryptoType_name, int32(x))
 }
+func (CryptoType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 // User registration.
 //
@@ -126,6 +134,7 @@ var Role_value = map[string]int32{
 func (x Role) String() string {
 	return proto.EnumName(Role_name, int32(x))
 }
+func (Role) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 type CAStatus_StatusCode int32
 
@@ -146,6 +155,7 @@ var CAStatus_StatusCode_value = map[string]int32{
 func (x CAStatus_StatusCode) String() string {
 	return proto.EnumName(CAStatus_StatusCode_name, int32(x))
 }
+func (CAStatus_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0} }
 
 type ACAAttrResp_StatusCode int32
 
@@ -200,6 +210,7 @@ var ACAAttrResp_StatusCode_value = map[string]int32{
 func (x ACAAttrResp_StatusCode) String() string {
 	return proto.EnumName(ACAAttrResp_StatusCode_name, int32(x))
 }
+func (ACAAttrResp_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{38, 0} }
 
 type ACAFetchAttrResp_StatusCode int32
 
@@ -221,6 +232,9 @@ var ACAFetchAttrResp_StatusCode_value = map[string]int32{
 
 func (x ACAFetchAttrResp_StatusCode) String() string {
 	return proto.EnumName(ACAFetchAttrResp_StatusCode_name, int32(x))
+}
+func (ACAFetchAttrResp_StatusCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor0, []int{40, 0}
 }
 
 type FetchAttrsResult_StatusCode int32
@@ -244,6 +258,9 @@ var FetchAttrsResult_StatusCode_value = map[string]int32{
 func (x FetchAttrsResult_StatusCode) String() string {
 	return proto.EnumName(FetchAttrsResult_StatusCode_name, int32(x))
 }
+func (FetchAttrsResult_StatusCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor0, []int{41, 0}
+}
 
 // Status codes shared by both CAs.
 //
@@ -251,60 +268,67 @@ type CAStatus struct {
 	Status CAStatus_StatusCode `protobuf:"varint,1,opt,name=status,enum=protos.CAStatus_StatusCode" json:"status,omitempty"`
 }
 
-func (m *CAStatus) Reset()         { *m = CAStatus{} }
-func (m *CAStatus) String() string { return proto.CompactTextString(m) }
-func (*CAStatus) ProtoMessage()    {}
+func (m *CAStatus) Reset()                    { *m = CAStatus{} }
+func (m *CAStatus) String() string            { return proto.CompactTextString(m) }
+func (*CAStatus) ProtoMessage()               {}
+func (*CAStatus) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 // Empty message.
 type Empty struct {
 }
 
-func (m *Empty) Reset()         { *m = Empty{} }
-func (m *Empty) String() string { return proto.CompactTextString(m) }
-func (*Empty) ProtoMessage()    {}
+func (m *Empty) Reset()                    { *m = Empty{} }
+func (m *Empty) String() string            { return proto.CompactTextString(m) }
+func (*Empty) ProtoMessage()               {}
+func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 // Uniquely identifies a user towards either CA.
 type Identity struct {
 	Id string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 }
 
-func (m *Identity) Reset()         { *m = Identity{} }
-func (m *Identity) String() string { return proto.CompactTextString(m) }
-func (*Identity) ProtoMessage()    {}
+func (m *Identity) Reset()                    { *m = Identity{} }
+func (m *Identity) String() string            { return proto.CompactTextString(m) }
+func (*Identity) ProtoMessage()               {}
+func (*Identity) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type Token struct {
 	Tok []byte `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`
 }
 
-func (m *Token) Reset()         { *m = Token{} }
-func (m *Token) String() string { return proto.CompactTextString(m) }
-func (*Token) ProtoMessage()    {}
+func (m *Token) Reset()                    { *m = Token{} }
+func (m *Token) String() string            { return proto.CompactTextString(m) }
+func (*Token) ProtoMessage()               {}
+func (*Token) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 type Hash struct {
 	Hash []byte `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
 }
 
-func (m *Hash) Reset()         { *m = Hash{} }
-func (m *Hash) String() string { return proto.CompactTextString(m) }
-func (*Hash) ProtoMessage()    {}
+func (m *Hash) Reset()                    { *m = Hash{} }
+func (m *Hash) String() string            { return proto.CompactTextString(m) }
+func (*Hash) ProtoMessage()               {}
+func (*Hash) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 type PublicKey struct {
 	Type CryptoType `protobuf:"varint,1,opt,name=type,enum=protos.CryptoType" json:"type,omitempty"`
 	Key  []byte     `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
 }
 
-func (m *PublicKey) Reset()         { *m = PublicKey{} }
-func (m *PublicKey) String() string { return proto.CompactTextString(m) }
-func (*PublicKey) ProtoMessage()    {}
+func (m *PublicKey) Reset()                    { *m = PublicKey{} }
+func (m *PublicKey) String() string            { return proto.CompactTextString(m) }
+func (*PublicKey) ProtoMessage()               {}
+func (*PublicKey) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 type PrivateKey struct {
 	Type CryptoType `protobuf:"varint,1,opt,name=type,enum=protos.CryptoType" json:"type,omitempty"`
 	Key  []byte     `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
 }
 
-func (m *PrivateKey) Reset()         { *m = PrivateKey{} }
-func (m *PrivateKey) String() string { return proto.CompactTextString(m) }
-func (*PrivateKey) ProtoMessage()    {}
+func (m *PrivateKey) Reset()                    { *m = PrivateKey{} }
+func (m *PrivateKey) String() string            { return proto.CompactTextString(m) }
+func (*PrivateKey) ProtoMessage()               {}
+func (*PrivateKey) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 // Signature.
 //
@@ -314,9 +338,10 @@ type Signature struct {
 	S    []byte     `protobuf:"bytes,3,opt,name=s,proto3" json:"s,omitempty"`
 }
 
-func (m *Signature) Reset()         { *m = Signature{} }
-func (m *Signature) String() string { return proto.CompactTextString(m) }
-func (*Signature) ProtoMessage()    {}
+func (m *Signature) Reset()                    { *m = Signature{} }
+func (m *Signature) String() string            { return proto.CompactTextString(m) }
+func (*Signature) ProtoMessage()               {}
+func (*Signature) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 type Registrar struct {
 	Id            *Identity `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
@@ -324,9 +349,10 @@ type Registrar struct {
 	DelegateRoles []string  `protobuf:"bytes,3,rep,name=delegateRoles" json:"delegateRoles,omitempty"`
 }
 
-func (m *Registrar) Reset()         { *m = Registrar{} }
-func (m *Registrar) String() string { return proto.CompactTextString(m) }
-func (*Registrar) ProtoMessage()    {}
+func (m *Registrar) Reset()                    { *m = Registrar{} }
+func (m *Registrar) String() string            { return proto.CompactTextString(m) }
+func (*Registrar) ProtoMessage()               {}
+func (*Registrar) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 func (m *Registrar) GetId() *Identity {
 	if m != nil {
@@ -336,20 +362,29 @@ func (m *Registrar) GetId() *Identity {
 }
 
 type RegisterUserReq struct {
-	Id          *Identity  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Role        Role       `protobuf:"varint,2,opt,name=role,enum=protos.Role" json:"role,omitempty"`
-	Affiliation string     `protobuf:"bytes,4,opt,name=affiliation" json:"affiliation,omitempty"`
-	Registrar   *Registrar `protobuf:"bytes,5,opt,name=registrar" json:"registrar,omitempty"`
-	Sig         *Signature `protobuf:"bytes,6,opt,name=sig" json:"sig,omitempty"`
+	Id          *Identity    `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Role        Role         `protobuf:"varint,2,opt,name=role,enum=protos.Role" json:"role,omitempty"`
+	Attributes  []*Attribute `protobuf:"bytes,3,rep,name=attributes" json:"attributes,omitempty"`
+	Affiliation string       `protobuf:"bytes,4,opt,name=affiliation" json:"affiliation,omitempty"`
+	Registrar   *Registrar   `protobuf:"bytes,5,opt,name=registrar" json:"registrar,omitempty"`
+	Sig         *Signature   `protobuf:"bytes,6,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *RegisterUserReq) Reset()         { *m = RegisterUserReq{} }
-func (m *RegisterUserReq) String() string { return proto.CompactTextString(m) }
-func (*RegisterUserReq) ProtoMessage()    {}
+func (m *RegisterUserReq) Reset()                    { *m = RegisterUserReq{} }
+func (m *RegisterUserReq) String() string            { return proto.CompactTextString(m) }
+func (*RegisterUserReq) ProtoMessage()               {}
+func (*RegisterUserReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 func (m *RegisterUserReq) GetId() *Identity {
 	if m != nil {
 		return m.Id
+	}
+	return nil
+}
+
+func (m *RegisterUserReq) GetAttributes() []*Attribute {
+	if m != nil {
+		return m.Attributes
 	}
 	return nil
 }
@@ -368,15 +403,28 @@ func (m *RegisterUserReq) GetSig() *Signature {
 	return nil
 }
 
+type Attribute struct {
+	Name      string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Value     string `protobuf:"bytes,2,opt,name=value" json:"value,omitempty"`
+	NotBefore string `protobuf:"bytes,3,opt,name=notBefore" json:"notBefore,omitempty"`
+	NotAfter  string `protobuf:"bytes,4,opt,name=notAfter" json:"notAfter,omitempty"`
+}
+
+func (m *Attribute) Reset()                    { *m = Attribute{} }
+func (m *Attribute) String() string            { return proto.CompactTextString(m) }
+func (*Attribute) ProtoMessage()               {}
+func (*Attribute) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+
 type ReadUserSetReq struct {
 	Req  *Identity  `protobuf:"bytes,1,opt,name=req" json:"req,omitempty"`
 	Role Role       `protobuf:"varint,2,opt,name=role,enum=protos.Role" json:"role,omitempty"`
 	Sig  *Signature `protobuf:"bytes,3,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *ReadUserSetReq) Reset()         { *m = ReadUserSetReq{} }
-func (m *ReadUserSetReq) String() string { return proto.CompactTextString(m) }
-func (*ReadUserSetReq) ProtoMessage()    {}
+func (m *ReadUserSetReq) Reset()                    { *m = ReadUserSetReq{} }
+func (m *ReadUserSetReq) String() string            { return proto.CompactTextString(m) }
+func (*ReadUserSetReq) ProtoMessage()               {}
+func (*ReadUserSetReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 func (m *ReadUserSetReq) GetReq() *Identity {
 	if m != nil {
@@ -397,9 +445,10 @@ type User struct {
 	Role Role      `protobuf:"varint,2,opt,name=role,enum=protos.Role" json:"role,omitempty"`
 }
 
-func (m *User) Reset()         { *m = User{} }
-func (m *User) String() string { return proto.CompactTextString(m) }
-func (*User) ProtoMessage()    {}
+func (m *User) Reset()                    { *m = User{} }
+func (m *User) String() string            { return proto.CompactTextString(m) }
+func (*User) ProtoMessage()               {}
+func (*User) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
 func (m *User) GetId() *Identity {
 	if m != nil {
@@ -412,9 +461,10 @@ type UserSet struct {
 	Users []*User `protobuf:"bytes,1,rep,name=users" json:"users,omitempty"`
 }
 
-func (m *UserSet) Reset()         { *m = UserSet{} }
-func (m *UserSet) String() string { return proto.CompactTextString(m) }
-func (*UserSet) ProtoMessage()    {}
+func (m *UserSet) Reset()                    { *m = UserSet{} }
+func (m *UserSet) String() string            { return proto.CompactTextString(m) }
+func (*UserSet) ProtoMessage()               {}
+func (*UserSet) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
 func (m *UserSet) GetUsers() []*User {
 	if m != nil {
@@ -434,9 +484,10 @@ type ECertCreateReq struct {
 	Sig  *Signature                 `protobuf:"bytes,6,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *ECertCreateReq) Reset()         { *m = ECertCreateReq{} }
-func (m *ECertCreateReq) String() string { return proto.CompactTextString(m) }
-func (*ECertCreateReq) ProtoMessage()    {}
+func (m *ECertCreateReq) Reset()                    { *m = ECertCreateReq{} }
+func (m *ECertCreateReq) String() string            { return proto.CompactTextString(m) }
+func (*ECertCreateReq) ProtoMessage()               {}
+func (*ECertCreateReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
 
 func (m *ECertCreateReq) GetTs() *google_protobuf.Timestamp {
 	if m != nil {
@@ -488,9 +539,10 @@ type ECertCreateResp struct {
 	FetchResult *FetchAttrsResult `protobuf:"bytes,4,opt,name=fetchResult" json:"fetchResult,omitempty"`
 }
 
-func (m *ECertCreateResp) Reset()         { *m = ECertCreateResp{} }
-func (m *ECertCreateResp) String() string { return proto.CompactTextString(m) }
-func (*ECertCreateResp) ProtoMessage()    {}
+func (m *ECertCreateResp) Reset()                    { *m = ECertCreateResp{} }
+func (m *ECertCreateResp) String() string            { return proto.CompactTextString(m) }
+func (*ECertCreateResp) ProtoMessage()               {}
+func (*ECertCreateResp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
 
 func (m *ECertCreateResp) GetCerts() *CertPair {
 	if m != nil {
@@ -524,9 +576,10 @@ type ECertReadReq struct {
 	Id *Identity `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 }
 
-func (m *ECertReadReq) Reset()         { *m = ECertReadReq{} }
-func (m *ECertReadReq) String() string { return proto.CompactTextString(m) }
-func (*ECertReadReq) ProtoMessage()    {}
+func (m *ECertReadReq) Reset()                    { *m = ECertReadReq{} }
+func (m *ECertReadReq) String() string            { return proto.CompactTextString(m) }
+func (*ECertReadReq) ProtoMessage()               {}
+func (*ECertReadReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
 
 func (m *ECertReadReq) GetId() *Identity {
 	if m != nil {
@@ -541,9 +594,10 @@ type ECertRevokeReq struct {
 	Sig  *Signature `protobuf:"bytes,3,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *ECertRevokeReq) Reset()         { *m = ECertRevokeReq{} }
-func (m *ECertRevokeReq) String() string { return proto.CompactTextString(m) }
-func (*ECertRevokeReq) ProtoMessage()    {}
+func (m *ECertRevokeReq) Reset()                    { *m = ECertRevokeReq{} }
+func (m *ECertRevokeReq) String() string            { return proto.CompactTextString(m) }
+func (*ECertRevokeReq) ProtoMessage()               {}
+func (*ECertRevokeReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
 
 func (m *ECertRevokeReq) GetId() *Identity {
 	if m != nil {
@@ -571,9 +625,10 @@ type ECertCRLReq struct {
 	Sig *Signature `protobuf:"bytes,2,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *ECertCRLReq) Reset()         { *m = ECertCRLReq{} }
-func (m *ECertCRLReq) String() string { return proto.CompactTextString(m) }
-func (*ECertCRLReq) ProtoMessage()    {}
+func (m *ECertCRLReq) Reset()                    { *m = ECertCRLReq{} }
+func (m *ECertCRLReq) String() string            { return proto.CompactTextString(m) }
+func (*ECertCRLReq) ProtoMessage()               {}
+func (*ECertCRLReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
 
 func (m *ECertCRLReq) GetId() *Identity {
 	if m != nil {
@@ -596,9 +651,10 @@ type TCertCreateReq struct {
 	Sig *Signature                 `protobuf:"bytes,4,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *TCertCreateReq) Reset()         { *m = TCertCreateReq{} }
-func (m *TCertCreateReq) String() string { return proto.CompactTextString(m) }
-func (*TCertCreateReq) ProtoMessage()    {}
+func (m *TCertCreateReq) Reset()                    { *m = TCertCreateReq{} }
+func (m *TCertCreateReq) String() string            { return proto.CompactTextString(m) }
+func (*TCertCreateReq) ProtoMessage()               {}
+func (*TCertCreateReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
 
 func (m *TCertCreateReq) GetTs() *google_protobuf.Timestamp {
 	if m != nil {
@@ -632,9 +688,10 @@ type TCertCreateResp struct {
 	Cert *Cert `protobuf:"bytes,1,opt,name=cert" json:"cert,omitempty"`
 }
 
-func (m *TCertCreateResp) Reset()         { *m = TCertCreateResp{} }
-func (m *TCertCreateResp) String() string { return proto.CompactTextString(m) }
-func (*TCertCreateResp) ProtoMessage()    {}
+func (m *TCertCreateResp) Reset()                    { *m = TCertCreateResp{} }
+func (m *TCertCreateResp) String() string            { return proto.CompactTextString(m) }
+func (*TCertCreateResp) ProtoMessage()               {}
+func (*TCertCreateResp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20} }
 
 func (m *TCertCreateResp) GetCert() *Cert {
 	if m != nil {
@@ -651,9 +708,10 @@ type TCertCreateSetReq struct {
 	Sig        *Signature                 `protobuf:"bytes,5,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *TCertCreateSetReq) Reset()         { *m = TCertCreateSetReq{} }
-func (m *TCertCreateSetReq) String() string { return proto.CompactTextString(m) }
-func (*TCertCreateSetReq) ProtoMessage()    {}
+func (m *TCertCreateSetReq) Reset()                    { *m = TCertCreateSetReq{} }
+func (m *TCertCreateSetReq) String() string            { return proto.CompactTextString(m) }
+func (*TCertCreateSetReq) ProtoMessage()               {}
+func (*TCertCreateSetReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{21} }
 
 func (m *TCertCreateSetReq) GetTs() *google_protobuf.Timestamp {
 	if m != nil {
@@ -687,17 +745,19 @@ type TCertAttribute struct {
 	AttributeName string `protobuf:"bytes,1,opt,name=attributeName" json:"attributeName,omitempty"`
 }
 
-func (m *TCertAttribute) Reset()         { *m = TCertAttribute{} }
-func (m *TCertAttribute) String() string { return proto.CompactTextString(m) }
-func (*TCertAttribute) ProtoMessage()    {}
+func (m *TCertAttribute) Reset()                    { *m = TCertAttribute{} }
+func (m *TCertAttribute) String() string            { return proto.CompactTextString(m) }
+func (*TCertAttribute) ProtoMessage()               {}
+func (*TCertAttribute) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{22} }
 
 type TCertCreateSetResp struct {
 	Certs *CertSet `protobuf:"bytes,1,opt,name=certs" json:"certs,omitempty"`
 }
 
-func (m *TCertCreateSetResp) Reset()         { *m = TCertCreateSetResp{} }
-func (m *TCertCreateSetResp) String() string { return proto.CompactTextString(m) }
-func (*TCertCreateSetResp) ProtoMessage()    {}
+func (m *TCertCreateSetResp) Reset()                    { *m = TCertCreateSetResp{} }
+func (m *TCertCreateSetResp) String() string            { return proto.CompactTextString(m) }
+func (*TCertCreateSetResp) ProtoMessage()               {}
+func (*TCertCreateSetResp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{23} }
 
 func (m *TCertCreateSetResp) GetCerts() *CertSet {
 	if m != nil {
@@ -714,9 +774,10 @@ type TCertReadSetsReq struct {
 	Sig   *Signature                 `protobuf:"bytes,5,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *TCertReadSetsReq) Reset()         { *m = TCertReadSetsReq{} }
-func (m *TCertReadSetsReq) String() string { return proto.CompactTextString(m) }
-func (*TCertReadSetsReq) ProtoMessage()    {}
+func (m *TCertReadSetsReq) Reset()                    { *m = TCertReadSetsReq{} }
+func (m *TCertReadSetsReq) String() string            { return proto.CompactTextString(m) }
+func (*TCertReadSetsReq) ProtoMessage()               {}
+func (*TCertReadSetsReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{24} }
 
 func (m *TCertReadSetsReq) GetBegin() *google_protobuf.Timestamp {
 	if m != nil {
@@ -752,9 +813,10 @@ type TCertRevokeReq struct {
 	Sig  *Signature `protobuf:"bytes,3,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *TCertRevokeReq) Reset()         { *m = TCertRevokeReq{} }
-func (m *TCertRevokeReq) String() string { return proto.CompactTextString(m) }
-func (*TCertRevokeReq) ProtoMessage()    {}
+func (m *TCertRevokeReq) Reset()                    { *m = TCertRevokeReq{} }
+func (m *TCertRevokeReq) String() string            { return proto.CompactTextString(m) }
+func (*TCertRevokeReq) ProtoMessage()               {}
+func (*TCertRevokeReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{25} }
 
 func (m *TCertRevokeReq) GetId() *Identity {
 	if m != nil {
@@ -783,9 +845,10 @@ type TCertRevokeSetReq struct {
 	Sig *Signature                 `protobuf:"bytes,3,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *TCertRevokeSetReq) Reset()         { *m = TCertRevokeSetReq{} }
-func (m *TCertRevokeSetReq) String() string { return proto.CompactTextString(m) }
-func (*TCertRevokeSetReq) ProtoMessage()    {}
+func (m *TCertRevokeSetReq) Reset()                    { *m = TCertRevokeSetReq{} }
+func (m *TCertRevokeSetReq) String() string            { return proto.CompactTextString(m) }
+func (*TCertRevokeSetReq) ProtoMessage()               {}
+func (*TCertRevokeSetReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{26} }
 
 func (m *TCertRevokeSetReq) GetId() *Identity {
 	if m != nil {
@@ -813,9 +876,10 @@ type TCertCRLReq struct {
 	Sig *Signature `protobuf:"bytes,2,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *TCertCRLReq) Reset()         { *m = TCertCRLReq{} }
-func (m *TCertCRLReq) String() string { return proto.CompactTextString(m) }
-func (*TCertCRLReq) ProtoMessage()    {}
+func (m *TCertCRLReq) Reset()                    { *m = TCertCRLReq{} }
+func (m *TCertCRLReq) String() string            { return proto.CompactTextString(m) }
+func (*TCertCRLReq) ProtoMessage()               {}
+func (*TCertCRLReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{27} }
 
 func (m *TCertCRLReq) GetId() *Identity {
 	if m != nil {
@@ -838,9 +902,10 @@ type TLSCertCreateReq struct {
 	Sig *Signature                 `protobuf:"bytes,4,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *TLSCertCreateReq) Reset()         { *m = TLSCertCreateReq{} }
-func (m *TLSCertCreateReq) String() string { return proto.CompactTextString(m) }
-func (*TLSCertCreateReq) ProtoMessage()    {}
+func (m *TLSCertCreateReq) Reset()                    { *m = TLSCertCreateReq{} }
+func (m *TLSCertCreateReq) String() string            { return proto.CompactTextString(m) }
+func (*TLSCertCreateReq) ProtoMessage()               {}
+func (*TLSCertCreateReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{28} }
 
 func (m *TLSCertCreateReq) GetTs() *google_protobuf.Timestamp {
 	if m != nil {
@@ -875,9 +940,10 @@ type TLSCertCreateResp struct {
 	RootCert *Cert `protobuf:"bytes,2,opt,name=rootCert" json:"rootCert,omitempty"`
 }
 
-func (m *TLSCertCreateResp) Reset()         { *m = TLSCertCreateResp{} }
-func (m *TLSCertCreateResp) String() string { return proto.CompactTextString(m) }
-func (*TLSCertCreateResp) ProtoMessage()    {}
+func (m *TLSCertCreateResp) Reset()                    { *m = TLSCertCreateResp{} }
+func (m *TLSCertCreateResp) String() string            { return proto.CompactTextString(m) }
+func (*TLSCertCreateResp) ProtoMessage()               {}
+func (*TLSCertCreateResp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{29} }
 
 func (m *TLSCertCreateResp) GetCert() *Cert {
 	if m != nil {
@@ -897,9 +963,10 @@ type TLSCertReadReq struct {
 	Id *Identity `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 }
 
-func (m *TLSCertReadReq) Reset()         { *m = TLSCertReadReq{} }
-func (m *TLSCertReadReq) String() string { return proto.CompactTextString(m) }
-func (*TLSCertReadReq) ProtoMessage()    {}
+func (m *TLSCertReadReq) Reset()                    { *m = TLSCertReadReq{} }
+func (m *TLSCertReadReq) String() string            { return proto.CompactTextString(m) }
+func (*TLSCertReadReq) ProtoMessage()               {}
+func (*TLSCertReadReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{30} }
 
 func (m *TLSCertReadReq) GetId() *Identity {
 	if m != nil {
@@ -914,9 +981,10 @@ type TLSCertRevokeReq struct {
 	Sig  *Signature `protobuf:"bytes,3,opt,name=sig" json:"sig,omitempty"`
 }
 
-func (m *TLSCertRevokeReq) Reset()         { *m = TLSCertRevokeReq{} }
-func (m *TLSCertRevokeReq) String() string { return proto.CompactTextString(m) }
-func (*TLSCertRevokeReq) ProtoMessage()    {}
+func (m *TLSCertRevokeReq) Reset()                    { *m = TLSCertRevokeReq{} }
+func (m *TLSCertRevokeReq) String() string            { return proto.CompactTextString(m) }
+func (*TLSCertRevokeReq) ProtoMessage()               {}
+func (*TLSCertRevokeReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{31} }
 
 func (m *TLSCertRevokeReq) GetId() *Identity {
 	if m != nil {
@@ -945,9 +1013,10 @@ type Cert struct {
 	Cert []byte `protobuf:"bytes,1,opt,name=cert,proto3" json:"cert,omitempty"`
 }
 
-func (m *Cert) Reset()         { *m = Cert{} }
-func (m *Cert) String() string { return proto.CompactTextString(m) }
-func (*Cert) ProtoMessage()    {}
+func (m *Cert) Reset()                    { *m = Cert{} }
+func (m *Cert) String() string            { return proto.CompactTextString(m) }
+func (*Cert) ProtoMessage()               {}
+func (*Cert) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{32} }
 
 // TCert
 //
@@ -956,9 +1025,10 @@ type TCert struct {
 	Prek0 []byte `protobuf:"bytes,2,opt,name=prek0,proto3" json:"prek0,omitempty"`
 }
 
-func (m *TCert) Reset()         { *m = TCert{} }
-func (m *TCert) String() string { return proto.CompactTextString(m) }
-func (*TCert) ProtoMessage()    {}
+func (m *TCert) Reset()                    { *m = TCert{} }
+func (m *TCert) String() string            { return proto.CompactTextString(m) }
+func (*TCert) ProtoMessage()               {}
+func (*TCert) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{33} }
 
 type CertSet struct {
 	Ts    *google_protobuf.Timestamp `protobuf:"bytes,1,opt,name=ts" json:"ts,omitempty"`
@@ -967,9 +1037,10 @@ type CertSet struct {
 	Certs []*TCert                   `protobuf:"bytes,4,rep,name=certs" json:"certs,omitempty"`
 }
 
-func (m *CertSet) Reset()         { *m = CertSet{} }
-func (m *CertSet) String() string { return proto.CompactTextString(m) }
-func (*CertSet) ProtoMessage()    {}
+func (m *CertSet) Reset()                    { *m = CertSet{} }
+func (m *CertSet) String() string            { return proto.CompactTextString(m) }
+func (*CertSet) ProtoMessage()               {}
+func (*CertSet) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{34} }
 
 func (m *CertSet) GetTs() *google_protobuf.Timestamp {
 	if m != nil {
@@ -996,9 +1067,10 @@ type CertSets struct {
 	Sets []*CertSet `protobuf:"bytes,1,rep,name=sets" json:"sets,omitempty"`
 }
 
-func (m *CertSets) Reset()         { *m = CertSets{} }
-func (m *CertSets) String() string { return proto.CompactTextString(m) }
-func (*CertSets) ProtoMessage()    {}
+func (m *CertSets) Reset()                    { *m = CertSets{} }
+func (m *CertSets) String() string            { return proto.CompactTextString(m) }
+func (*CertSets) ProtoMessage()               {}
+func (*CertSets) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{35} }
 
 func (m *CertSets) GetSets() []*CertSet {
 	if m != nil {
@@ -1012,9 +1084,10 @@ type CertPair struct {
 	Enc  []byte `protobuf:"bytes,2,opt,name=enc,proto3" json:"enc,omitempty"`
 }
 
-func (m *CertPair) Reset()         { *m = CertPair{} }
-func (m *CertPair) String() string { return proto.CompactTextString(m) }
-func (*CertPair) ProtoMessage()    {}
+func (m *CertPair) Reset()                    { *m = CertPair{} }
+func (m *CertPair) String() string            { return proto.CompactTextString(m) }
+func (*CertPair) ProtoMessage()               {}
+func (*CertPair) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{36} }
 
 // ACAAttrReq is sent to request an ACert (attributes certificate) to the Attribute Certificate Authority (ACA).
 type ACAAttrReq struct {
@@ -1030,9 +1103,10 @@ type ACAAttrReq struct {
 	Signature *Signature `protobuf:"bytes,5,opt,name=signature" json:"signature,omitempty"`
 }
 
-func (m *ACAAttrReq) Reset()         { *m = ACAAttrReq{} }
-func (m *ACAAttrReq) String() string { return proto.CompactTextString(m) }
-func (*ACAAttrReq) ProtoMessage()    {}
+func (m *ACAAttrReq) Reset()                    { *m = ACAAttrReq{} }
+func (m *ACAAttrReq) String() string            { return proto.CompactTextString(m) }
+func (*ACAAttrReq) ProtoMessage()               {}
+func (*ACAAttrReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{37} }
 
 func (m *ACAAttrReq) GetTs() *google_protobuf.Timestamp {
 	if m != nil {
@@ -1079,9 +1153,10 @@ type ACAAttrResp struct {
 	Signature *Signature `protobuf:"bytes,3,opt,name=signature" json:"signature,omitempty"`
 }
 
-func (m *ACAAttrResp) Reset()         { *m = ACAAttrResp{} }
-func (m *ACAAttrResp) String() string { return proto.CompactTextString(m) }
-func (*ACAAttrResp) ProtoMessage()    {}
+func (m *ACAAttrResp) Reset()                    { *m = ACAAttrResp{} }
+func (m *ACAAttrResp) String() string            { return proto.CompactTextString(m) }
+func (*ACAAttrResp) ProtoMessage()               {}
+func (*ACAAttrResp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{38} }
 
 func (m *ACAAttrResp) GetCert() *Cert {
 	if m != nil {
@@ -1107,9 +1182,10 @@ type ACAFetchAttrReq struct {
 	Signature *Signature `protobuf:"bytes,3,opt,name=signature" json:"signature,omitempty"`
 }
 
-func (m *ACAFetchAttrReq) Reset()         { *m = ACAFetchAttrReq{} }
-func (m *ACAFetchAttrReq) String() string { return proto.CompactTextString(m) }
-func (*ACAFetchAttrReq) ProtoMessage()    {}
+func (m *ACAFetchAttrReq) Reset()                    { *m = ACAFetchAttrReq{} }
+func (m *ACAFetchAttrReq) String() string            { return proto.CompactTextString(m) }
+func (*ACAFetchAttrReq) ProtoMessage()               {}
+func (*ACAFetchAttrReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{39} }
 
 func (m *ACAFetchAttrReq) GetTs() *google_protobuf.Timestamp {
 	if m != nil {
@@ -1137,24 +1213,26 @@ type ACAFetchAttrResp struct {
 	// Status of the fetch process.
 	Status ACAFetchAttrResp_StatusCode `protobuf:"varint,1,opt,name=status,enum=protos.ACAFetchAttrResp_StatusCode" json:"status,omitempty"`
 	// Error message.
-	Msg string `protobuf:"bytes,2,opt,name=Msg" json:"Msg,omitempty"`
+	Msg string `protobuf:"bytes,2,opt,name=Msg,json=msg" json:"Msg,omitempty"`
 }
 
-func (m *ACAFetchAttrResp) Reset()         { *m = ACAFetchAttrResp{} }
-func (m *ACAFetchAttrResp) String() string { return proto.CompactTextString(m) }
-func (*ACAFetchAttrResp) ProtoMessage()    {}
+func (m *ACAFetchAttrResp) Reset()                    { *m = ACAFetchAttrResp{} }
+func (m *ACAFetchAttrResp) String() string            { return proto.CompactTextString(m) }
+func (*ACAFetchAttrResp) ProtoMessage()               {}
+func (*ACAFetchAttrResp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{40} }
 
 // FetchAttrsResult is returned within the ECertCreateResp indicating the results of the fetch attributes invoked during enroll.
 type FetchAttrsResult struct {
 	// Status of the fetch process.
 	Status FetchAttrsResult_StatusCode `protobuf:"varint,1,opt,name=status,enum=protos.FetchAttrsResult_StatusCode" json:"status,omitempty"`
 	// Error message.
-	Msg string `protobuf:"bytes,2,opt,name=Msg" json:"Msg,omitempty"`
+	Msg string `protobuf:"bytes,2,opt,name=Msg,json=msg" json:"Msg,omitempty"`
 }
 
-func (m *FetchAttrsResult) Reset()         { *m = FetchAttrsResult{} }
-func (m *FetchAttrsResult) String() string { return proto.CompactTextString(m) }
-func (*FetchAttrsResult) ProtoMessage()    {}
+func (m *FetchAttrsResult) Reset()                    { *m = FetchAttrsResult{} }
+func (m *FetchAttrsResult) String() string            { return proto.CompactTextString(m) }
+func (*FetchAttrsResult) ProtoMessage()               {}
+func (*FetchAttrsResult) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{41} }
 
 // ACAAttribute is an instance of an attribute with the time constraints. Is used to marshal attributes to be stored within the certificate extensions.
 type ACAAttribute struct {
@@ -1168,9 +1246,10 @@ type ACAAttribute struct {
 	ValidTo *google_protobuf.Timestamp `protobuf:"bytes,4,opt,name=validTo" json:"validTo,omitempty"`
 }
 
-func (m *ACAAttribute) Reset()         { *m = ACAAttribute{} }
-func (m *ACAAttribute) String() string { return proto.CompactTextString(m) }
-func (*ACAAttribute) ProtoMessage()    {}
+func (m *ACAAttribute) Reset()                    { *m = ACAAttribute{} }
+func (m *ACAAttribute) String() string            { return proto.CompactTextString(m) }
+func (*ACAAttribute) ProtoMessage()               {}
+func (*ACAAttribute) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{42} }
 
 func (m *ACAAttribute) GetValidFrom() *google_protobuf.Timestamp {
 	if m != nil {
@@ -1187,6 +1266,49 @@ func (m *ACAAttribute) GetValidTo() *google_protobuf.Timestamp {
 }
 
 func init() {
+	proto.RegisterType((*CAStatus)(nil), "protos.CAStatus")
+	proto.RegisterType((*Empty)(nil), "protos.Empty")
+	proto.RegisterType((*Identity)(nil), "protos.Identity")
+	proto.RegisterType((*Token)(nil), "protos.Token")
+	proto.RegisterType((*Hash)(nil), "protos.Hash")
+	proto.RegisterType((*PublicKey)(nil), "protos.PublicKey")
+	proto.RegisterType((*PrivateKey)(nil), "protos.PrivateKey")
+	proto.RegisterType((*Signature)(nil), "protos.Signature")
+	proto.RegisterType((*Registrar)(nil), "protos.Registrar")
+	proto.RegisterType((*RegisterUserReq)(nil), "protos.RegisterUserReq")
+	proto.RegisterType((*Attribute)(nil), "protos.Attribute")
+	proto.RegisterType((*ReadUserSetReq)(nil), "protos.ReadUserSetReq")
+	proto.RegisterType((*User)(nil), "protos.User")
+	proto.RegisterType((*UserSet)(nil), "protos.UserSet")
+	proto.RegisterType((*ECertCreateReq)(nil), "protos.ECertCreateReq")
+	proto.RegisterType((*ECertCreateResp)(nil), "protos.ECertCreateResp")
+	proto.RegisterType((*ECertReadReq)(nil), "protos.ECertReadReq")
+	proto.RegisterType((*ECertRevokeReq)(nil), "protos.ECertRevokeReq")
+	proto.RegisterType((*ECertCRLReq)(nil), "protos.ECertCRLReq")
+	proto.RegisterType((*TCertCreateReq)(nil), "protos.TCertCreateReq")
+	proto.RegisterType((*TCertCreateResp)(nil), "protos.TCertCreateResp")
+	proto.RegisterType((*TCertCreateSetReq)(nil), "protos.TCertCreateSetReq")
+	proto.RegisterType((*TCertAttribute)(nil), "protos.TCertAttribute")
+	proto.RegisterType((*TCertCreateSetResp)(nil), "protos.TCertCreateSetResp")
+	proto.RegisterType((*TCertReadSetsReq)(nil), "protos.TCertReadSetsReq")
+	proto.RegisterType((*TCertRevokeReq)(nil), "protos.TCertRevokeReq")
+	proto.RegisterType((*TCertRevokeSetReq)(nil), "protos.TCertRevokeSetReq")
+	proto.RegisterType((*TCertCRLReq)(nil), "protos.TCertCRLReq")
+	proto.RegisterType((*TLSCertCreateReq)(nil), "protos.TLSCertCreateReq")
+	proto.RegisterType((*TLSCertCreateResp)(nil), "protos.TLSCertCreateResp")
+	proto.RegisterType((*TLSCertReadReq)(nil), "protos.TLSCertReadReq")
+	proto.RegisterType((*TLSCertRevokeReq)(nil), "protos.TLSCertRevokeReq")
+	proto.RegisterType((*Cert)(nil), "protos.Cert")
+	proto.RegisterType((*TCert)(nil), "protos.TCert")
+	proto.RegisterType((*CertSet)(nil), "protos.CertSet")
+	proto.RegisterType((*CertSets)(nil), "protos.CertSets")
+	proto.RegisterType((*CertPair)(nil), "protos.CertPair")
+	proto.RegisterType((*ACAAttrReq)(nil), "protos.ACAAttrReq")
+	proto.RegisterType((*ACAAttrResp)(nil), "protos.ACAAttrResp")
+	proto.RegisterType((*ACAFetchAttrReq)(nil), "protos.ACAFetchAttrReq")
+	proto.RegisterType((*ACAFetchAttrResp)(nil), "protos.ACAFetchAttrResp")
+	proto.RegisterType((*FetchAttrsResult)(nil), "protos.FetchAttrsResult")
+	proto.RegisterType((*ACAAttribute)(nil), "protos.ACAAttribute")
 	proto.RegisterEnum("protos.CryptoType", CryptoType_name, CryptoType_value)
 	proto.RegisterEnum("protos.Role", Role_name, Role_value)
 	proto.RegisterEnum("protos.CAStatus_StatusCode", CAStatus_StatusCode_name, CAStatus_StatusCode_value)
@@ -1198,6 +1320,10 @@ func init() {
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for ECAP service
 
@@ -1276,64 +1402,94 @@ func RegisterECAPServer(s *grpc.Server, srv ECAPServer) {
 	s.RegisterService(&_ECAP_serviceDesc, srv)
 }
 
-func _ECAP_ReadCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAP_ReadCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAPServer).ReadCACertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAPServer).ReadCACertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAP/ReadCACertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAPServer).ReadCACertificate(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ECAP_CreateCertificatePair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAP_CreateCertificatePair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ECertCreateReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAPServer).CreateCertificatePair(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAPServer).CreateCertificatePair(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAP/CreateCertificatePair",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAPServer).CreateCertificatePair(ctx, req.(*ECertCreateReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ECAP_ReadCertificatePair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAP_ReadCertificatePair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ECertReadReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAPServer).ReadCertificatePair(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAPServer).ReadCertificatePair(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAP/ReadCertificatePair",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAPServer).ReadCertificatePair(ctx, req.(*ECertReadReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ECAP_ReadCertificateByHash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAP_ReadCertificateByHash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Hash)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAPServer).ReadCertificateByHash(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAPServer).ReadCertificateByHash(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAP/ReadCertificateByHash",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAPServer).ReadCertificateByHash(ctx, req.(*Hash))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ECAP_RevokeCertificatePair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAP_RevokeCertificatePair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ECertRevokeReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAPServer).RevokeCertificatePair(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAPServer).RevokeCertificatePair(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAP/RevokeCertificatePair",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAPServer).RevokeCertificatePair(ctx, req.(*ECertRevokeReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _ECAP_serviceDesc = grpc.ServiceDesc{
@@ -1361,7 +1517,8 @@ var _ECAP_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ECAP_RevokeCertificatePair_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptor0,
 }
 
 // Client API for ECAA service
@@ -1430,52 +1587,76 @@ func RegisterECAAServer(s *grpc.Server, srv ECAAServer) {
 	s.RegisterService(&_ECAA_serviceDesc, srv)
 }
 
-func _ECAA_RegisterUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAA_RegisterUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterUserReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAAServer).RegisterUser(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAAServer).RegisterUser(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAA/RegisterUser",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAAServer).RegisterUser(ctx, req.(*RegisterUserReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ECAA_ReadUserSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAA_ReadUserSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReadUserSetReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAAServer).ReadUserSet(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAAServer).ReadUserSet(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAA/ReadUserSet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAAServer).ReadUserSet(ctx, req.(*ReadUserSetReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ECAA_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAA_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ECertRevokeReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAAServer).RevokeCertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAAServer).RevokeCertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAA/RevokeCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAAServer).RevokeCertificate(ctx, req.(*ECertRevokeReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ECAA_PublishCRL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ECAA_PublishCRL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ECertCRLReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ECAAServer).PublishCRL(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ECAAServer).PublishCRL(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ECAA/PublishCRL",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ECAAServer).PublishCRL(ctx, req.(*ECertCRLReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _ECAA_serviceDesc = grpc.ServiceDesc{
@@ -1499,7 +1680,8 @@ var _ECAA_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ECAA_PublishCRL_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptor0,
 }
 
 // Client API for TCAP service
@@ -1568,52 +1750,76 @@ func RegisterTCAPServer(s *grpc.Server, srv TCAPServer) {
 	s.RegisterService(&_TCAP_serviceDesc, srv)
 }
 
-func _TCAP_ReadCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TCAP_ReadCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TCAPServer).ReadCACertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TCAPServer).ReadCACertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TCAP/ReadCACertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TCAPServer).ReadCACertificate(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TCAP_CreateCertificateSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TCAP_CreateCertificateSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TCertCreateSetReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TCAPServer).CreateCertificateSet(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TCAPServer).CreateCertificateSet(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TCAP/CreateCertificateSet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TCAPServer).CreateCertificateSet(ctx, req.(*TCertCreateSetReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TCAP_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TCAP_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TCertRevokeReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TCAPServer).RevokeCertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TCAPServer).RevokeCertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TCAP/RevokeCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TCAPServer).RevokeCertificate(ctx, req.(*TCertRevokeReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TCAP_RevokeCertificateSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TCAP_RevokeCertificateSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TCertRevokeSetReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TCAPServer).RevokeCertificateSet(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TCAPServer).RevokeCertificateSet(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TCAP/RevokeCertificateSet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TCAPServer).RevokeCertificateSet(ctx, req.(*TCertRevokeSetReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _TCAP_serviceDesc = grpc.ServiceDesc{
@@ -1637,7 +1843,8 @@ var _TCAP_serviceDesc = grpc.ServiceDesc{
 			Handler:    _TCAP_RevokeCertificateSet_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptor0,
 }
 
 // Client API for TCAA service
@@ -1695,40 +1902,58 @@ func RegisterTCAAServer(s *grpc.Server, srv TCAAServer) {
 	s.RegisterService(&_TCAA_serviceDesc, srv)
 }
 
-func _TCAA_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TCAA_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TCertRevokeReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TCAAServer).RevokeCertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TCAAServer).RevokeCertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TCAA/RevokeCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TCAAServer).RevokeCertificate(ctx, req.(*TCertRevokeReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TCAA_RevokeCertificateSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TCAA_RevokeCertificateSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TCertRevokeSetReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TCAAServer).RevokeCertificateSet(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TCAAServer).RevokeCertificateSet(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TCAA/RevokeCertificateSet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TCAAServer).RevokeCertificateSet(ctx, req.(*TCertRevokeSetReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TCAA_PublishCRL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TCAA_PublishCRL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TCertCRLReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TCAAServer).PublishCRL(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TCAAServer).PublishCRL(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TCAA/PublishCRL",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TCAAServer).PublishCRL(ctx, req.(*TCertCRLReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _TCAA_serviceDesc = grpc.ServiceDesc{
@@ -1748,7 +1973,8 @@ var _TCAA_serviceDesc = grpc.ServiceDesc{
 			Handler:    _TCAA_PublishCRL_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptor0,
 }
 
 // Client API for TLSCAP service
@@ -1817,52 +2043,76 @@ func RegisterTLSCAPServer(s *grpc.Server, srv TLSCAPServer) {
 	s.RegisterService(&_TLSCAP_serviceDesc, srv)
 }
 
-func _TLSCAP_ReadCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TLSCAP_ReadCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TLSCAPServer).ReadCACertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TLSCAPServer).ReadCACertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TLSCAP/ReadCACertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TLSCAPServer).ReadCACertificate(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TLSCAP_CreateCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TLSCAP_CreateCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TLSCertCreateReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TLSCAPServer).CreateCertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TLSCAPServer).CreateCertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TLSCAP/CreateCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TLSCAPServer).CreateCertificate(ctx, req.(*TLSCertCreateReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TLSCAP_ReadCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TLSCAP_ReadCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TLSCertReadReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TLSCAPServer).ReadCertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TLSCAPServer).ReadCertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TLSCAP/ReadCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TLSCAPServer).ReadCertificate(ctx, req.(*TLSCertReadReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TLSCAP_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TLSCAP_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TLSCertRevokeReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TLSCAPServer).RevokeCertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TLSCAPServer).RevokeCertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TLSCAP/RevokeCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TLSCAPServer).RevokeCertificate(ctx, req.(*TLSCertRevokeReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _TLSCAP_serviceDesc = grpc.ServiceDesc{
@@ -1886,7 +2136,8 @@ var _TLSCAP_serviceDesc = grpc.ServiceDesc{
 			Handler:    _TLSCAP_RevokeCertificate_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptor0,
 }
 
 // Client API for TLSCAA service
@@ -1922,16 +2173,22 @@ func RegisterTLSCAAServer(s *grpc.Server, srv TLSCAAServer) {
 	s.RegisterService(&_TLSCAA_serviceDesc, srv)
 }
 
-func _TLSCAA_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TLSCAA_RevokeCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TLSCertRevokeReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TLSCAAServer).RevokeCertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TLSCAAServer).RevokeCertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.TLSCAA/RevokeCertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TLSCAAServer).RevokeCertificate(ctx, req.(*TLSCertRevokeReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _TLSCAA_serviceDesc = grpc.ServiceDesc{
@@ -1943,7 +2200,8 @@ var _TLSCAA_serviceDesc = grpc.ServiceDesc{
 			Handler:    _TLSCAA_RevokeCertificate_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptor0,
 }
 
 // Client API for ACAP service
@@ -2001,40 +2259,58 @@ func RegisterACAPServer(s *grpc.Server, srv ACAPServer) {
 	s.RegisterService(&_ACAP_serviceDesc, srv)
 }
 
-func _ACAP_ReadCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ACAP_ReadCACertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ACAPServer).ReadCACertificate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ACAPServer).ReadCACertificate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ACAP/ReadCACertificate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ACAPServer).ReadCACertificate(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ACAP_RequestAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ACAP_RequestAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ACAAttrReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ACAPServer).RequestAttributes(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ACAPServer).RequestAttributes(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ACAP/RequestAttributes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ACAPServer).RequestAttributes(ctx, req.(*ACAAttrReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _ACAP_FetchAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _ACAP_FetchAttributes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ACAFetchAttrReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ACAPServer).FetchAttributes(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ACAPServer).FetchAttributes(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/protos.ACAP/FetchAttributes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ACAPServer).FetchAttributes(ctx, req.(*ACAFetchAttrReq))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _ACAP_serviceDesc = grpc.ServiceDesc{
@@ -2054,5 +2330,130 @@ var _ACAP_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ACAP_FetchAttributes_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptor0,
+}
+
+func init() { proto.RegisterFile("ca.proto", fileDescriptor0) }
+
+var fileDescriptor0 = []byte{
+	// 1881 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xd4, 0x59, 0x5f, 0x6f, 0xeb, 0x48,
+	0x15, 0x5f, 0xc7, 0x49, 0x9b, 0x9c, 0xa4, 0xa9, 0x3b, 0xed, 0x6e, 0x73, 0x03, 0x62, 0xaf, 0xbc,
+	0xec, 0xb2, 0x5c, 0x41, 0x7b, 0xb7, 0x45, 0x17, 0xc4, 0xb2, 0x42, 0x6e, 0xea, 0xb2, 0xe1, 0xa6,
+	0x49, 0x99, 0x38, 0x0b, 0x6f, 0x51, 0xda, 0xba, 0xa9, 0xd5, 0x34, 0x4e, 0x6d, 0xa7, 0x52, 0xb4,
+	0x2f, 0x3c, 0x21, 0x01, 0x12, 0x0f, 0x7c, 0x07, 0x24, 0xc4, 0x37, 0x40, 0x42, 0xe2, 0x95, 0x3f,
+	0xbb, 0x12, 0x2f, 0x3c, 0xf2, 0x8c, 0xc4, 0x13, 0x9f, 0x80, 0xcb, 0x99, 0xf1, 0xd8, 0xb1, 0x9d,
+	0x3f, 0xf5, 0xed, 0x2d, 0xba, 0xec, 0x43, 0x95, 0x99, 0x39, 0x67, 0x66, 0xce, 0xf9, 0x9d, 0x9f,
+	0xcf, 0x9c, 0x99, 0x42, 0xfe, 0xac, 0xb7, 0x33, 0x72, 0x6c, 0xcf, 0x26, 0x2b, 0xfc, 0xc7, 0xad,
+	0xbe, 0xdd, 0xb7, 0xed, 0xfe, 0xc0, 0xdc, 0xe5, 0xdd, 0xd3, 0xf1, 0xc5, 0xae, 0x67, 0x5d, 0x9b,
+	0xae, 0xd7, 0xbb, 0x1e, 0xf9, 0x8a, 0xea, 0x25, 0xe4, 0x6b, 0x5a, 0xdb, 0xeb, 0x79, 0x63, 0x97,
+	0xec, 0xc3, 0x8a, 0xcb, 0x5b, 0x15, 0xe9, 0xb1, 0xf4, 0x7e, 0x79, 0xef, 0x4b, 0xbe, 0x8e, 0xbb,
+	0x13, 0x68, 0xec, 0xf8, 0x3f, 0x35, 0xfb, 0xdc, 0xa4, 0x42, 0x55, 0xfd, 0x1a, 0xc0, 0x74, 0x94,
+	0xac, 0x40, 0xa6, 0xf5, 0x5c, 0x79, 0x83, 0x6c, 0xc0, 0x5a, 0xa7, 0xf9, 0xbc, 0xd9, 0xfa, 0x71,
+	0xb3, 0xab, 0x53, 0xda, 0xa2, 0x8a, 0xa4, 0xae, 0x42, 0x4e, 0xbf, 0x1e, 0x79, 0x13, 0xb5, 0x0a,
+	0xf9, 0xfa, 0xb9, 0x39, 0xf4, 0x2c, 0x6f, 0x42, 0xca, 0x90, 0xb1, 0xce, 0xf9, 0x76, 0x05, 0x8a,
+	0x2d, 0xf5, 0x11, 0xe4, 0x0c, 0xfb, 0xca, 0x1c, 0x12, 0x05, 0x64, 0xcf, 0xbe, 0xe2, 0x92, 0x12,
+	0x65, 0x4d, 0x9c, 0x96, 0xfd, 0xb8, 0xe7, 0x5e, 0x12, 0x02, 0xd9, 0x4b, 0xfc, 0x15, 0x22, 0xde,
+	0x56, 0x75, 0x28, 0x9c, 0x8c, 0x4f, 0x07, 0xd6, 0xd9, 0x73, 0x73, 0x42, 0xde, 0x83, 0xac, 0x37,
+	0x19, 0x99, 0xc2, 0x09, 0x12, 0x3a, 0xe1, 0x4c, 0x46, 0x9e, 0x6d, 0xa0, 0x84, 0x72, 0x39, 0xdb,
+	0xe2, 0xca, 0x9c, 0x54, 0x32, 0xfe, 0x16, 0xd8, 0x54, 0x8f, 0x00, 0x4e, 0x1c, 0xeb, 0xb6, 0xe7,
+	0x99, 0xaf, 0xb6, 0x4e, 0x0b, 0x0a, 0x6d, 0xab, 0x3f, 0x44, 0x54, 0x1c, 0x33, 0xf5, 0x32, 0x25,
+	0x90, 0x1c, 0xb1, 0x88, 0xe4, 0xb0, 0x9e, 0x5b, 0x91, 0xfd, 0x9e, 0xab, 0x5a, 0x50, 0xa0, 0x66,
+	0xdf, 0x72, 0x3d, 0xa7, 0xe7, 0x90, 0xc7, 0x21, 0x66, 0xc5, 0x3d, 0x25, 0x58, 0x2e, 0x40, 0x94,
+	0xa1, 0x48, 0xb6, 0x20, 0xe7, 0xd8, 0x03, 0xd3, 0xc5, 0xe5, 0x64, 0x04, 0xd6, 0xef, 0x90, 0xaf,
+	0xc2, 0xda, 0xb9, 0x39, 0x30, 0xfb, 0xe8, 0x1e, 0xe5, 0x52, 0x99, 0x4b, 0xe3, 0x83, 0xea, 0x4f,
+	0x33, 0xb0, 0xee, 0xef, 0x65, 0x3a, 0x1d, 0xd7, 0x74, 0xa8, 0x79, 0x93, 0x62, 0xc7, 0xc7, 0x90,
+	0x65, 0x9b, 0x70, 0xfb, 0xcb, 0x7b, 0xa5, 0x40, 0x87, 0x2d, 0x49, 0xb9, 0x84, 0x7c, 0x00, 0xd0,
+	0xf3, 0x3c, 0xc7, 0x3a, 0x1d, 0x7b, 0x62, 0xeb, 0xe2, 0xde, 0x46, 0xa0, 0xa7, 0x05, 0x12, 0x1a,
+	0x51, 0xc2, 0x45, 0x8b, 0xbd, 0x8b, 0x0b, 0x6b, 0x60, 0xf5, 0x3c, 0xcb, 0x1e, 0x56, 0xb2, 0x9c,
+	0x25, 0xd1, 0x21, 0xb2, 0x0b, 0x05, 0x27, 0xc0, 0xa5, 0x92, 0xe3, 0xf6, 0x85, 0x6b, 0x86, 0x80,
+	0xd1, 0xa9, 0x0e, 0x79, 0x07, 0x64, 0xd7, 0xea, 0x57, 0x56, 0xe2, 0xaa, 0x61, 0xb0, 0x28, 0x93,
+	0xaa, 0x36, 0x14, 0x42, 0x83, 0x18, 0xdd, 0x86, 0xbd, 0x6b, 0x53, 0x70, 0x94, 0xb7, 0x19, 0xbe,
+	0xb7, 0xbd, 0xc1, 0xd8, 0x77, 0x17, 0xf1, 0xe5, 0x1d, 0xf2, 0x65, 0x28, 0x0c, 0x6d, 0xef, 0xc0,
+	0xbc, 0xb0, 0x1d, 0x93, 0x87, 0xae, 0x40, 0xa7, 0x03, 0x04, 0x59, 0x8f, 0x1d, 0xed, 0x02, 0x61,
+	0x15, 0x9e, 0x84, 0x7d, 0xf5, 0x53, 0x28, 0x53, 0xb3, 0x77, 0xce, 0xe0, 0x6e, 0x9b, 0x1e, 0x43,
+	0x5c, 0x05, 0xd9, 0x31, 0x6f, 0x16, 0x42, 0xce, 0x84, 0x29, 0x30, 0x17, 0xde, 0xca, 0x4b, 0xbd,
+	0xfd, 0x21, 0x64, 0xd9, 0xc6, 0x0f, 0x11, 0x64, 0xf5, 0x9b, 0xb0, 0x2a, 0x9c, 0x40, 0x0f, 0x72,
+	0x63, 0x6c, 0xb2, 0x5c, 0xc2, 0x42, 0x1d, 0x6a, 0x73, 0x4e, 0xf9, 0x22, 0xf5, 0xdf, 0x12, 0x94,
+	0xf5, 0x9a, 0xe9, 0x78, 0x35, 0xc7, 0x64, 0x04, 0x44, 0xa7, 0x9e, 0x40, 0xc6, 0x73, 0x85, 0x15,
+	0xd5, 0x1d, 0x3f, 0x7b, 0xed, 0x04, 0xd9, 0x6b, 0xc7, 0x08, 0xb2, 0x17, 0x45, 0x2d, 0x61, 0x71,
+	0x66, 0x89, 0xc5, 0x6f, 0xfb, 0x59, 0xc4, 0x07, 0x60, 0x2d, 0x50, 0xe1, 0x19, 0x86, 0x27, 0x15,
+	0xf2, 0x2e, 0x64, 0x11, 0x03, 0x9f, 0x5b, 0x11, 0x88, 0xc2, 0x64, 0x42, 0xb9, 0x98, 0x01, 0x69,
+	0x0e, 0xcf, 0x92, 0x0c, 0x9b, 0x6a, 0x31, 0x69, 0x3a, 0x6e, 0xfd, 0x5d, 0x82, 0xf5, 0x98, 0xcb,
+	0xee, 0x08, 0x33, 0x44, 0xee, 0x0c, 0x47, 0xdc, 0x24, 0xf8, 0x4c, 0xed, 0xa4, 0x67, 0x21, 0x5c,
+	0x5c, 0x8c, 0x1b, 0xe4, 0xce, 0x2e, 0x7b, 0xd6, 0x50, 0xb8, 0x9c, 0xf0, 0xc7, 0x97, 0x91, 0x0a,
+	0xac, 0x8e, 0xae, 0x7c, 0xb5, 0x1c, 0x4f, 0x1f, 0x41, 0xf7, 0x6e, 0x30, 0xbe, 0x0b, 0xc5, 0x0b,
+	0xd3, 0x3b, 0xbb, 0x44, 0xa3, 0xc6, 0x03, 0x4f, 0x60, 0x52, 0x09, 0x14, 0x8f, 0x98, 0x88, 0x7d,
+	0x17, 0xae, 0x2f, 0xa7, 0x51, 0x65, 0xf5, 0x29, 0x94, 0xb8, 0x5b, 0x8c, 0xc7, 0xa9, 0x52, 0x86,
+	0x3a, 0x11, 0xb1, 0xa7, 0xe6, 0x2d, 0x9a, 0x90, 0x3a, 0xcd, 0x30, 0x28, 0x04, 0x00, 0xa5, 0x28,
+	0x50, 0x94, 0x4b, 0xd2, 0x51, 0xde, 0x80, 0xa2, 0x1f, 0x03, 0xda, 0x48, 0xb7, 0xaf, 0x58, 0x35,
+	0xb3, 0x74, 0xd5, 0xdf, 0x22, 0x9b, 0x8d, 0xff, 0x25, 0x9b, 0xd1, 0x8a, 0xd1, 0xf8, 0x34, 0xe9,
+	0x5b, 0x84, 0x85, 0x28, 0x0d, 0x4c, 0xcd, 0x2e, 0x35, 0x75, 0x1f, 0xd6, 0x8d, 0x04, 0x09, 0x03,
+	0x68, 0xa5, 0x45, 0xd0, 0xaa, 0x7f, 0x93, 0x60, 0x23, 0x32, 0x4b, 0x64, 0xaa, 0x87, 0x75, 0x11,
+	0xcf, 0xd2, 0xe1, 0xf8, 0x9a, 0xbb, 0xb8, 0x46, 0x59, 0x93, 0x3c, 0x8b, 0x9d, 0x1b, 0x59, 0x9e,
+	0x4c, 0xde, 0x0a, 0xc9, 0xcb, 0xcc, 0x99, 0x7f, 0x78, 0x08, 0x1c, 0x72, 0x4b, 0x71, 0x78, 0x26,
+	0x22, 0x36, 0x4d, 0xf7, 0x78, 0x48, 0x86, 0x8b, 0x34, 0xa7, 0x79, 0x3f, 0x3e, 0xa8, 0x7e, 0x08,
+	0x24, 0x89, 0x04, 0x42, 0xf8, 0x6e, 0xfc, 0x3b, 0x5e, 0x8f, 0x62, 0xc8, 0x74, 0x7c, 0xa9, 0xfa,
+	0x0f, 0x09, 0x14, 0x23, 0xf8, 0x56, 0x70, 0xdc, 0x65, 0x30, 0x3e, 0x85, 0xdc, 0x29, 0x9e, 0x52,
+	0xc3, 0x14, 0x48, 0xfa, 0x8a, 0xe4, 0x1b, 0x2c, 0x27, 0x05, 0x68, 0x2e, 0xd3, 0x67, 0x6a, 0xc1,
+	0x81, 0x22, 0xa7, 0x39, 0x50, 0xb2, 0x77, 0x1d, 0x28, 0xcb, 0x41, 0x9d, 0x08, 0x50, 0x5f, 0xc3,
+	0x87, 0xfd, 0xb3, 0x80, 0xa2, 0xfe, 0xde, 0x82, 0xa2, 0x77, 0x6f, 0xef, 0x93, 0x38, 0x93, 0x8a,
+	0xc4, 0x69, 0x33, 0x8c, 0xf1, 0xf0, 0x19, 0xe6, 0x77, 0x8c, 0x39, 0x8d, 0xf6, 0x17, 0x23, 0xc7,
+	0x74, 0x31, 0x14, 0x71, 0x5b, 0xd3, 0x64, 0x19, 0xf2, 0x3e, 0xe4, 0x1d, 0xdb, 0xf6, 0x6a, 0x8b,
+	0xd8, 0x10, 0x4a, 0xd5, 0x3d, 0xe4, 0x99, 0xbf, 0x41, 0xfa, 0x43, 0xe7, 0xd3, 0x10, 0xc0, 0xd7,
+	0xc0, 0x4e, 0xbc, 0xc1, 0xb0, 0x29, 0xac, 0xa4, 0x0c, 0x41, 0x28, 0x89, 0xe4, 0xfa, 0x01, 0x5e,
+	0x7c, 0x16, 0x09, 0x59, 0xbd, 0x39, 0x72, 0xcc, 0xab, 0xa7, 0xe2, 0x7a, 0xe0, 0x77, 0xd4, 0x5f,
+	0x49, 0xb0, 0x2a, 0x52, 0xcb, 0xc3, 0x67, 0x61, 0x76, 0xa3, 0x91, 0xc3, 0x1b, 0x0d, 0x2f, 0x3d,
+	0x78, 0x6a, 0xf3, 0x13, 0xf0, 0x5a, 0x2c, 0x01, 0x07, 0x89, 0x6d, 0x17, 0xef, 0x92, 0xbe, 0x3d,
+	0xec, 0x2b, 0xc9, 0xba, 0xa6, 0x17, 0x54, 0x7f, 0x33, 0xa9, 0x90, 0x0b, 0xb1, 0x68, 0xc8, 0x07,
+	0x35, 0x0e, 0xf3, 0x9b, 0x57, 0x62, 0xc2, 0x6f, 0x5e, 0x76, 0x29, 0x7e, 0xd9, 0x25, 0x6e, 0x56,
+	0xd8, 0x54, 0xff, 0x29, 0x01, 0x68, 0x35, 0x8d, 0xe5, 0xeb, 0x87, 0xe7, 0x3e, 0x96, 0xac, 0x26,
+	0xe7, 0x9d, 0x3c, 0x27, 0xce, 0xbe, 0xe8, 0xde, 0xc7, 0x11, 0xde, 0x54, 0xdc, 0x80, 0x0d, 0x8b,
+	0xf3, 0xe7, 0x54, 0x47, 0xfd, 0x8d, 0x0c, 0xc5, 0xd0, 0x53, 0xfc, 0x72, 0x9e, 0x25, 0x2e, 0xe7,
+	0x5f, 0x09, 0xef, 0x4e, 0x53, 0xa5, 0x39, 0xf7, 0xf3, 0x14, 0xdc, 0x8d, 0x99, 0x26, 0xa7, 0x30,
+	0xed, 0x17, 0x99, 0xd8, 0x9d, 0x7f, 0x13, 0xd6, 0x8f, 0x3a, 0x8d, 0x46, 0xb7, 0xdd, 0xa9, 0xd5,
+	0xf4, 0x76, 0x1b, 0xdb, 0xca, 0x1b, 0xe4, 0x2d, 0x20, 0x27, 0x1a, 0x35, 0xea, 0x5a, 0x6c, 0x5c,
+	0x22, 0xdb, 0xb0, 0xd9, 0x6c, 0x75, 0x35, 0xc3, 0xa0, 0xf5, 0x83, 0x8e, 0xa1, 0xb7, 0xbb, 0x47,
+	0xad, 0x4e, 0xf3, 0x50, 0xc9, 0x63, 0xfc, 0xcb, 0x47, 0x5a, 0xbd, 0xd1, 0xa1, 0x7a, 0xf7, 0xb8,
+	0xde, 0xfc, 0x44, 0x6b, 0x28, 0xe7, 0xa4, 0x08, 0xab, 0x62, 0x4c, 0x61, 0xa4, 0x2c, 0x1e, 0x68,
+	0x87, 0x5d, 0xaa, 0xff, 0xa8, 0xa3, 0xb7, 0x0d, 0xe5, 0x4f, 0x12, 0x1b, 0x61, 0xe2, 0x6e, 0x13,
+	0xff, 0x8c, 0xb6, 0xf2, 0xe7, 0xf8, 0x48, 0xfd, 0x50, 0xf9, 0x8b, 0x84, 0xc6, 0x95, 0xc3, 0x11,
+	0xbd, 0xa6, 0x53, 0x43, 0xf9, 0x2b, 0x33, 0x82, 0x84, 0x83, 0xed, 0xfa, 0x0f, 0x9a, 0x9a, 0xc1,
+	0xb6, 0xf8, 0x4c, 0xc2, 0xe2, 0x79, 0x33, 0x14, 0x4c, 0x6d, 0x54, 0x3e, 0x0f, 0xd7, 0xe1, 0xe6,
+	0x69, 0x3f, 0x61, 0xe6, 0x7d, 0x2e, 0x55, 0x33, 0x8a, 0xa4, 0xfe, 0x1a, 0x0b, 0x7a, 0x0c, 0x41,
+	0x58, 0x1d, 0xbf, 0x2c, 0x2d, 0x43, 0xd2, 0x65, 0x16, 0x93, 0xee, 0xa5, 0x23, 0xf4, 0x73, 0x3c,
+	0x28, 0xe2, 0x46, 0x21, 0x83, 0x3e, 0x4c, 0x30, 0xe8, 0x9d, 0x08, 0x83, 0x62, 0x9a, 0xf3, 0x68,
+	0x84, 0x9f, 0xe2, 0xb1, 0xdb, 0x17, 0x17, 0x5e, 0xf9, 0xda, 0xed, 0xab, 0xef, 0xc5, 0x48, 0x80,
+	0xa1, 0x12, 0x71, 0xc6, 0xe0, 0x47, 0xe3, 0xc6, 0x6d, 0x49, 0xde, 0x1d, 0x16, 0xdb, 0x92, 0xd4,
+	0x7c, 0x58, 0x5b, 0x3e, 0x93, 0xa0, 0x24, 0xbe, 0x97, 0x97, 0x28, 0xf7, 0xf0, 0x82, 0x56, 0x0e,
+	0x07, 0x3e, 0x09, 0x2f, 0xfe, 0x25, 0x9a, 0x18, 0x25, 0xdf, 0x81, 0xc2, 0x6d, 0x6f, 0x60, 0x9d,
+	0x1f, 0x39, 0xf6, 0xb5, 0x88, 0xd3, 0xb2, 0xf0, 0x4f, 0x95, 0xc9, 0xb7, 0x60, 0x95, 0x77, 0x0c,
+	0x5b, 0x9c, 0xaa, 0xcb, 0xe6, 0x05, 0xaa, 0x4f, 0xbe, 0x0e, 0x30, 0x7d, 0x46, 0x22, 0x05, 0xc8,
+	0xe9, 0xb5, 0xc3, 0xb6, 0x86, 0x4e, 0xaf, 0x82, 0x4c, 0xb1, 0x21, 0xb1, 0x06, 0x1b, 0xc9, 0x3c,
+	0x39, 0x86, 0x2c, 0xab, 0xe3, 0x48, 0x1e, 0xb2, 0xcd, 0x56, 0x53, 0x47, 0x1d, 0x80, 0x95, 0x5a,
+	0xa3, 0xae, 0x37, 0x0d, 0x54, 0xc3, 0xd1, 0x13, 0x5d, 0xa7, 0x4a, 0x86, 0xac, 0x41, 0x01, 0xc9,
+	0x5d, 0x3f, 0xd4, 0x8c, 0x16, 0x55, 0xb2, 0x0c, 0x3d, 0xad, 0x73, 0x58, 0x67, 0x9d, 0x3c, 0x6e,
+	0x20, 0x6b, 0x8d, 0x86, 0xf2, 0xe2, 0x85, 0xbc, 0xf7, 0xfb, 0x0c, 0x64, 0xf5, 0x9a, 0x76, 0x82,
+	0x75, 0xeb, 0x06, 0x3b, 0x7d, 0x6b, 0x1a, 0x23, 0xaa, 0x75, 0x61, 0x9d, 0xe1, 0x49, 0x4f, 0xc2,
+	0xe3, 0x81, 0x3f, 0xf8, 0x55, 0x63, 0x9c, 0x26, 0x1f, 0xc3, 0x9b, 0x7e, 0x41, 0x10, 0x99, 0xc1,
+	0x4f, 0x80, 0x30, 0x8d, 0xc6, 0x9f, 0x04, 0xaa, 0xdb, 0x73, 0xc7, 0x91, 0xd0, 0x1f, 0xc1, 0x26,
+	0xdf, 0x3b, 0xb1, 0xce, 0x56, 0x4c, 0x5f, 0xd4, 0x06, 0xd5, 0x99, 0x5b, 0x35, 0xd9, 0x87, 0x37,
+	0x13, 0xd3, 0x0f, 0x26, 0xfc, 0x85, 0x31, 0xb4, 0x97, 0xf5, 0x12, 0xd6, 0x6b, 0x6c, 0x12, 0xab,
+	0x1c, 0x96, 0x5b, 0x1f, 0x56, 0x17, 0x91, 0x7d, 0xc5, 0x23, 0xea, 0xde, 0xbf, 0x24, 0x8e, 0x9d,
+	0x86, 0x29, 0xbd, 0x14, 0x7d, 0x69, 0x23, 0xdb, 0xf1, 0xa7, 0xab, 0xf0, 0xfd, 0xad, 0x1a, 0xbf,
+	0xac, 0xe3, 0xbc, 0x62, 0xe4, 0xb9, 0x68, 0xba, 0x73, 0xfc, 0x0d, 0xa9, 0xba, 0x1e, 0x7d, 0x72,
+	0x61, 0x8a, 0x1f, 0xb1, 0x58, 0x25, 0x6c, 0x4f, 0x6f, 0x37, 0xe2, 0x05, 0xbc, 0x0e, 0x74, 0x2f,
+	0xb1, 0xaa, 0x25, 0x9b, 0xf1, 0xa8, 0xf0, 0x3a, 0x77, 0x8e, 0xb3, 0xbf, 0x44, 0xa2, 0x18, 0xf7,
+	0x23, 0xca, 0x31, 0x6c, 0xcd, 0x10, 0x85, 0xb9, 0xf1, 0x28, 0x76, 0xdc, 0x46, 0x2f, 0xa3, 0xd5,
+	0xea, 0x22, 0x11, 0x67, 0xcb, 0x32, 0xef, 0x8d, 0xbb, 0xbc, 0xaf, 0xc1, 0xd6, 0xcc, 0xf4, 0x59,
+	0x6b, 0xa2, 0xf7, 0x8e, 0x39, 0x68, 0xfc, 0x51, 0xe2, 0x68, 0x68, 0xff, 0x0f, 0xc6, 0x2c, 0x8a,
+	0xa7, 0xb1, 0x34, 0x9e, 0xff, 0x91, 0x60, 0x85, 0x55, 0xd0, 0xf7, 0xfc, 0xf4, 0x37, 0x66, 0x22,
+	0x4a, 0xc2, 0x07, 0xa6, 0xe4, 0xcd, 0xa6, 0xfa, 0x68, 0x81, 0x04, 0x83, 0xf9, 0x6d, 0xf6, 0x48,
+	0x1d, 0xfb, 0x76, 0x23, 0xe8, 0xc5, 0x2e, 0x05, 0x09, 0x13, 0xbe, 0x3f, 0x0f, 0xf8, 0xca, 0xcc,
+	0xd4, 0xc5, 0x5f, 0x6f, 0x5d, 0xf8, 0xaf, 0xbd, 0xfa, 0x52, 0x7f, 0x40, 0x36, 0x68, 0xf7, 0x43,
+	0xf2, 0x7b, 0x6c, 0xc6, 0xcd, 0x18, 0x0f, 0x04, 0x6d, 0x5a, 0x63, 0x92, 0x99, 0x92, 0xf0, 0xa6,
+	0xba, 0x39, 0xa7, 0x4c, 0x24, 0x87, 0x58, 0xb1, 0x05, 0xe7, 0xac, 0x98, 0xbb, 0x3d, 0xbf, 0x18,
+	0xb8, 0xa9, 0x56, 0x16, 0x55, 0x09, 0xa7, 0xfe, 0xff, 0x98, 0xf6, 0xff, 0x1b, 0x00, 0x00, 0xff,
+	0xff, 0x84, 0xb1, 0xb8, 0x2a, 0x76, 0x1a, 0x00, 0x00,
 }

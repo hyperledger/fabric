@@ -58,7 +58,7 @@ func TestInvokeExecuteNotEnoughArgs(t *testing.T) {
 
 func TestInvokeExecuteOneArgReturnsNothing(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	stub := shim.InitTestStub("arg1")
+	stub := shim.InitTestStub("transaction")
 	var res, err = noop.Invoke(stub)
 	if res != nil || err != nil {
 		t.Errorf("Invoke.execute has to return nil with no error.")
@@ -67,7 +67,7 @@ func TestInvokeExecuteOneArgReturnsNothing(t *testing.T) {
 
 func TestInvokeExecuteMoreArgsReturnsError(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	stub := shim.InitTestStub("arg1", "arg2")
+	stub := shim.InitTestStub("transaction", "arg1")
 	var res, err = noop.Invoke(stub)
 	if res != nil || err == nil {
 		t.Errorf("Invoke.execute has to return error when called with more than one arguments.")

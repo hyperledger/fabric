@@ -7,9 +7,9 @@ This document covers the available APIs for interacting with a peer node. Three 
 1. [CLI](#cli)
 2. [REST API](#rest-api)
 3. [Node.js Application](#nodejs-application)
-   * [Using Swagger JS Plugin](#using-swagger-js-plugin)
-   * [Marbles Demo Application](#marbles-demo-application)
-   * [Commercial Paper Demo Application](#commercial-paper-demo-application)
+    * [Using Swagger JS Plugin](#using-swagger-js-plugin)
+    * [Marbles Demo Application](#marbles-demo-application)
+    * [Commercial Paper Demo Application](#commercial-paper-demo-application)
 
 **Note:** If you are working with APIs with security enabled, please review the [security setup instructions](https://github.com/hyperledger/fabric/blob/master/docs/Setup/Chaincode-setup.md#security-setup-optional) before proceeding.
 
@@ -68,13 +68,28 @@ Command | **stdout** result in the event of success
 
 Deploy creates the docker image for the chaincode and subsequently deploys the package to the validating peer. An example is below.
 
-`peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'`
+```
+peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+```
+Or:
+
+```
+peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args": ["init", "a","100", "b", "200"]}'
+```
 
 The response to the chaincode deploy command will contain the chaincode identifier (hash) which will be required on subsequent `chaincode invoke` and `chaincode query` commands in order to identify the deployed chaincode.
 
 With security enabled, modify the command to include the -u parameter passing the username of a logged in user as follows:
 
-`peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'`
+```
+peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
+```
+
+Or:
+
+```
+peer chaincode deploy -u jim -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args": ["init", "a","100", "b", "200"]}'
+```
 
 **Note:** If your GOPATH environment variable contains more than one element, the chaincode must be found in the first one or deployment will fail.
 
@@ -157,23 +172,19 @@ You can work with the REST API through any tool of your choice. For example, the
 To learn about the REST API through Swagger, please take a look at the Swagger document [here](https://github.com/hyperledger/fabric/blob/master/core/rest/rest_api.json). You can upload the service description file to the Swagger service directly or, if you prefer, you can set up Swagger locally by following the instructions [here](#to-set-up-swagger-ui).
 
 * [Block](#block)
-  * GET /chain/blocks/{Block}
+    * GET /chain/blocks/{Block}
 * [Blockchain](#blockchain)
-  * GET /chain
-* [Devops](#devops-deprecated) [DEPRECATED]
-  * POST /devops/deploy
-  * POST /devops/invoke
-  * POST /devops/query
+    * GET /chain
 * [Chaincode](#chaincode)
     * POST /chaincode
 * [Network](#network)
-  * GET /network/peers
+    * GET /network/peers
 * [Registrar](#registrar)
-  * POST /registrar
-  * DELETE /registrar/{enrollmentID}
-  * GET /registrar/{enrollmentID}
-  * GET /registrar/{enrollmentID}/ecert
-  * GET /registrar/{enrollmentID}/tcert
+    * POST /registrar
+    * DELETE /registrar/{enrollmentID}
+    * GET /registrar/{enrollmentID}
+    * GET /registrar/{enrollmentID}/ecert
+    * GET /registrar/{enrollmentID}/tcert
 * [Transactions](#transactions)
     * GET /transactions/{UUID}
 
@@ -207,138 +218,11 @@ message BlockchainInfo {
 }
 ```
 
-#### Devops [DEPRECATED]
-
-* **POST /devops/deploy**
-* **POST /devops/invoke**
-* **POST /devops/query**
-
-**[DEPRECATED] The /devops endpoints have been deprecated and are superseded by the [/chaincode](#chaincode) endpoint. Please use the [/chaincode](#chaincode) endpoint to deploy, invoke, and query a chaincode. [DEPRECATED]**
-
-Use the Devops APIs to deploy, invoke, and query a chaincode. The required [ChaincodeSpec](https://github.com/hyperledger/fabric/blob/master/protos/chaincode.proto#L60) and [ChaincodeInvocationSpec](https://github.com/hyperledger/fabric/blob/master/protos/chaincode.proto#L89) payloads are defined in [chaincode.proto](https://github.com/hyperledger/fabric/blob/master/protos/chaincode.proto).
-
-```
-message ChaincodeSpec {
-
-    enum Type {
-        UNDEFINED = 0;
-        GOLANG = 1;
-        NODE = 2;
-    }
-
-    Type type = 1;
-    ChaincodeID chaincodeID = 2;
-    ChaincodeInput ctorMsg = 3;
-    int32 timeout = 4;
-    string secureContext = 5;
-    ConfidentialityLevel confidentialityLevel = 6;
-}
-```
-
-```
-message ChaincodeInvocationSpec {
-    ChaincodeSpec chaincodeSpec = 1;
-    //ChaincodeInput message = 2;
-}
-```
-
-**Note:** The deploy transaction requires a 'path' parameter to locate the chaincode source-code in the file system, build it, and deploy it to the validating peers. On the other hand, invoke and query transactions require a 'name' parameter to reference the chaincode that has already been deployed. These 'path' and 'name' parameters are specified in the ChaincodeID, defined in [chaincode.proto](https://github.com/hyperledger/fabric/blob/master/protos/chaincode.proto#L41). The only exception to the aforementioned rule is when the peer is running in chaincode development mode (as opposed to production mode), i.e. the user starts the peer with `--peer-chaincodedev` and runs the chaincode manually in a separate terminal window. In that case, the deploy transaction requires a 'name' parameter that is specified by the end user.
-
-```
-message ChaincodeID {
-    //deploy transaction will use the path
-    string path = 1;
-
-    //all other requests will use the name (really a hashcode) generated by
-    //the deploy transaction
-    string name = 2;
-}
-```
-
-An example of a valid ChaincodeSpec message for a deployment transaction is shown below. The 'path' parameter specifies the location of the chaincode in the filesystem. Eventually, we imagine that the 'path' will represent a location on GitHub.
-
-```
-{
-    "type": "GOLANG",
-    "chaincodeID":{
-        "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-    },
-    "ctorMsg": {
-        "function":"init",
-        "args":["a", "100", "b", "200"]
-    }
-  }
-```
-
-An example of a valid ChaincodeInvocationSpec message for an invocation transaction is shown below. Consult [chaincode.proto](https://github.com/hyperledger/fabric/blob/master/protos/chaincode.proto#L89) for more information.
-
-```
-{
-  "chaincodeSpec":{
-      "type": "GOLANG",
-      "chaincodeID":{
-          "name":"mycc"
-      },
-      "ctorMsg":{
-          "function":"invoke",
-          "args":["a", "b", "10"]
-      }
-  }
-}
-```
-
-With security enabled, modify each of the above payloads to include the secureContext element, passing the enrollmentID of a logged in user as follows:
-
-```
-{
-  "chaincodeSpec":{
-      "type": "GOLANG",
-      "chaincodeID":{
-          "name":"mycc"
-      },
-      "ctorMsg":{
-          "function":"invoke",
-          "args":["a", "b", "10"]
-      },
-  	  "secureContext": "jim"
-  }
-}
-```
-
-**Note:** The deployment transaction will take a little time as the docker image is being created.
-
-The response to a deploy request is either a message containing a confirmation of successful execution or an error, containing a reason for the failure. The response to a successful deployment request also contains the assigned chaincode name (hash), which is to be used in subsequent invocation and query transactions. An example is below:
-
-```
-{
-    "OK": "Successfully deployed chainCode.",
-    "message": "3940678a8dff854c5ca4365fe0e29771edccb16b2103578c9d9207fea56b10559b43ff5c3025e68917f5a959f2a121d6b19da573016401d9a028b4211e10b20a"
-}
-```
-
-The response to an invoke request is either a message containing a confirmation of successful execution or an error, containing a reason for the failure. The response to an invoke request also contains the transaction identifier (UUID). An example is below:
-
-```
-{
-    "OK": "Successfully invoked chainCode.",
-    "message": "1ca30d0c-0153-46b4-8826-26dc7cfff852"
-}
-```
-
-The response to a successful query request depends on the chaincode implementation. It may contain a string formatted value of a state variable, any string message, or not have an output. An example is below:
-
-```
-{
-    "OK": "80"
-}
-
-```
-
 #### Chaincode
 
 * **POST /chaincode**
 
-Use the /chaincode endpoint to deploy, invoke, and query a target chaincode. This endpoint supersedes the [/devops](#devops-deprecated) endpoints and should be used for all chaincode operations. This service endpoint implements the [JSON RPC 2.0 specification](http://www.jsonrpc.org/specification) with the payload identifying the desired chaincode operation within the `method` field. The supported methods are `deploy`, `invoke`, and `query`.
+Use the /chaincode endpoint to deploy, invoke, and query a target chaincode. This service endpoint implements the [JSON RPC 2.0 specification](http://www.jsonrpc.org/specification) with the payload identifying the desired chaincode operation within the `method` field. The supported methods are `deploy`, `invoke`, and `query`.
 
 The /chaincode endpoint implements the [JSON RPC 2.0 specification](http://www.jsonrpc.org/specification) and as such, must have the required fields of `jsonrpc`, `method`, and in our case `params` supplied within the payload. The client should also add the `id` element within the payload if they wish to receive a response to the request. If the `id` element is missing from the request payload, the request is assumed to be a notification and the server will not produce a response.
 
@@ -358,8 +242,7 @@ POST host:port/chaincode
         "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
     "ctorMsg": {
-        "function":"init",
-        "args":["a", "1000", "b", "2000"]
+        "args":["init", "a", "1000", "b", "2000"]
     }
   },
   "id": 1
@@ -382,8 +265,7 @@ POST host:port/chaincode
         "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
     "ctorMsg": {
-        "function":"init",
-        "args":["a", "1000", "b", "2000"]
+        "args":["init", "a", "1000", "b", "2000"]
     },
     "secureContext": "lukas"
   },
@@ -420,8 +302,7 @@ Chaincode Invocation Request without security enabled:
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"invoke",
-         "args":["a", "b", "100"]
+         "args":["invoke", "a", "b", "100"]
       }
   },
   "id": 3
@@ -442,8 +323,7 @@ Chaincode Invocation Request with security enabled (add `secureContext` element)
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"invoke",
-         "args":["a", "b", "100"]
+         "args":["invoke", "a", "b", "100"]
       },
       "secureContext": "lukas"
   },
@@ -480,8 +360,7 @@ Chaincode Query Request without security enabled:
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"query",
-         "args":["a"]
+         "args":["query", "a"]
       }
   },
   "id": 5
@@ -502,8 +381,7 @@ Chaincode Query Request with security enabled (add `secureContext` element):
           "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
       },
       "ctorMsg": {
-         "function":"query",
-         "args":["a"]
+         "args":["query", "a"]
       },
       "secureContext": "lukas"
   },

@@ -350,6 +350,7 @@ Feature: Network of Peers
 
 #    @doNotDecompose
 #    @wip
+  @devops
 	Scenario: chaincode map single peer content generated ID
 	    Given we compose "docker-compose-1.yml"
 	    When requesting "/chain" from "vp0"
@@ -505,9 +506,11 @@ Feature: Network of Peers
         |   docker-compose-4-consensus-batch.yml   |      60      |
 
 
+    #@doNotDecompose
+    #@wip
     @issue_680
+    @fab380
     Scenario Outline: chaincode example02 with 4 peers and 1 membersrvc, issue #680 (State transfer)
-
         Given we compose "<ComposeFile>"
         And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
             | vp0  |
@@ -579,8 +582,9 @@ Feature: Network of Peers
 
 
     Examples: Consensus Options
-        |          ComposeFile                       |   WaitTime   |
-        |   docker-compose-4-consensus-batch.yml     |      60      |
+        |          ComposeFile                                                                            |   WaitTime   |
+        |   docker-compose-4-consensus-batch.yml                                                          |      60      |
+        |   docker-compose-4-consensus-batch.yml docker-compose-4-consensus-batch-nosnapshotbuffer.yml    |      60      |
 
 
 #    @doNotDecompose

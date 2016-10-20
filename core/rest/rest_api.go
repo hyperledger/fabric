@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"google/protobuf"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -37,6 +36,7 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	core "github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
@@ -637,7 +637,7 @@ func (s *ServerOpenchainREST) GetTransactionCert(rw web.ResponseWriter, req *web
 // GetBlockchainInfo returns information about the blockchain ledger such as
 // height, current block hash, and previous block hash.
 func (s *ServerOpenchainREST) GetBlockchainInfo(rw web.ResponseWriter, req *web.Request) {
-	info, err := s.server.GetBlockchainInfo(context.Background(), &google_protobuf.Empty{})
+	info, err := s.server.GetBlockchainInfo(context.Background(), &empty.Empty{})
 
 	encoder := json.NewEncoder(rw)
 
@@ -1297,10 +1297,10 @@ func (s *ServerOpenchainREST) ProcessChaincode(rw web.ResponseWriter, req *web.R
 		}
 
 		// Extract the ChaincodeSpec from the params field
-		deploySpec := requestPayload.Params
+		ccSpec := requestPayload.Params
 
 		// Process the chaincode deployment request and record the result
-		result = s.processChaincodeDeploy(deploySpec)
+		result = s.processChaincodeDeploy(ccSpec)
 	} else {
 
 		//
@@ -1310,7 +1310,8 @@ func (s *ServerOpenchainREST) ProcessChaincode(rw web.ResponseWriter, req *web.R
 		// Because chaincode invocation/query requests require a ChaincodeInvocationSpec
 		// message instead of a ChaincodeSpec message, we must initialize it here
 		// before  proceeding.
-		invokequeryPayload := &pb.ChaincodeInvocationSpec{ChaincodeSpec: requestPayload.Params}
+		ccSpec := requestPayload.Params
+		invokequeryPayload := &pb.ChaincodeInvocationSpec{ChaincodeSpec: ccSpec}
 
 		// Payload params field must contain a ChaincodeSpec message
 		if invokequeryPayload.ChaincodeSpec == nil {
@@ -1673,8 +1674,8 @@ func (s *ServerOpenchainREST) processChaincodeInvokeOrQuery(method string, spec 
 
 // GetPeers returns a list of all peer nodes currently connected to the target peer, including itself
 func (s *ServerOpenchainREST) GetPeers(rw web.ResponseWriter, req *web.Request) {
-	peers, err := s.server.GetPeers(context.Background(), &google_protobuf.Empty{})
-	currentPeer, err1 := s.server.GetPeerEndpoint(context.Background(), &google_protobuf.Empty{})
+	peers, err := s.server.GetPeers(context.Background(), &empty.Empty{})
+	currentPeer, err1 := s.server.GetPeerEndpoint(context.Background(), &empty.Empty{})
 
 	encoder := json.NewEncoder(rw)
 
@@ -1732,11 +1733,6 @@ func buildOpenchainRESTRouter() *web.Router {
 
 	router.Get("/chain", (*ServerOpenchainREST).GetBlockchainInfo)
 	router.Get("/chain/blocks/:id", (*ServerOpenchainREST).GetBlockByNumber)
-
-	// The /devops endpoint is now considered deprecated and superseded by the /chaincode endpoint
-	router.Post("/devops/deploy", (*ServerOpenchainREST).Deploy)
-	router.Post("/devops/invoke", (*ServerOpenchainREST).Invoke)
-	router.Post("/devops/query", (*ServerOpenchainREST).Query)
 
 	// The /chaincode endpoint which superceedes the /devops endpoint from above
 	router.Post("/chaincode", (*ServerOpenchainREST).ProcessChaincode)

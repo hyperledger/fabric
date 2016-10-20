@@ -25,6 +25,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 type ColumnDefinition_Type int32
 
 const (
@@ -59,6 +65,7 @@ var ColumnDefinition_Type_value = map[string]int32{
 func (x ColumnDefinition_Type) String() string {
 	return proto.EnumName(ColumnDefinition_Type_name, int32(x))
 }
+func (ColumnDefinition_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0} }
 
 type ColumnDefinition struct {
 	Name string                `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
@@ -66,18 +73,20 @@ type ColumnDefinition struct {
 	Key  bool                  `protobuf:"varint,3,opt,name=key" json:"key,omitempty"`
 }
 
-func (m *ColumnDefinition) Reset()         { *m = ColumnDefinition{} }
-func (m *ColumnDefinition) String() string { return proto.CompactTextString(m) }
-func (*ColumnDefinition) ProtoMessage()    {}
+func (m *ColumnDefinition) Reset()                    { *m = ColumnDefinition{} }
+func (m *ColumnDefinition) String() string            { return proto.CompactTextString(m) }
+func (*ColumnDefinition) ProtoMessage()               {}
+func (*ColumnDefinition) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type Table struct {
 	Name              string              `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	ColumnDefinitions []*ColumnDefinition `protobuf:"bytes,2,rep,name=columnDefinitions" json:"columnDefinitions,omitempty"`
 }
 
-func (m *Table) Reset()         { *m = Table{} }
-func (m *Table) String() string { return proto.CompactTextString(m) }
-func (*Table) ProtoMessage()    {}
+func (m *Table) Reset()                    { *m = Table{} }
+func (m *Table) String() string            { return proto.CompactTextString(m) }
+func (*Table) ProtoMessage()               {}
+func (*Table) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *Table) GetColumnDefinitions() []*ColumnDefinition {
 	if m != nil {
@@ -98,9 +107,10 @@ type Column struct {
 	Value isColumn_Value `protobuf_oneof:"value"`
 }
 
-func (m *Column) Reset()         { *m = Column{} }
-func (m *Column) String() string { return proto.CompactTextString(m) }
-func (*Column) ProtoMessage()    {}
+func (m *Column) Reset()                    { *m = Column{} }
+func (m *Column) String() string            { return proto.CompactTextString(m) }
+func (*Column) ProtoMessage()               {}
+func (*Column) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type isColumn_Value interface {
 	isColumn_Value()
@@ -193,8 +203,8 @@ func (m *Column) GetBool() bool {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*Column) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _Column_OneofMarshaler, _Column_OneofUnmarshaler, []interface{}{
+func (*Column) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _Column_OneofMarshaler, _Column_OneofUnmarshaler, _Column_OneofSizer, []interface{}{
 		(*Column_String_)(nil),
 		(*Column_Int32)(nil),
 		(*Column_Int64)(nil),
@@ -298,13 +308,48 @@ func _Column_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer)
 	}
 }
 
+func _Column_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*Column)
+	// value
+	switch x := m.Value.(type) {
+	case *Column_String_:
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.String_)))
+		n += len(x.String_)
+	case *Column_Int32:
+		n += proto.SizeVarint(2<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Int32))
+	case *Column_Int64:
+		n += proto.SizeVarint(3<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Int64))
+	case *Column_Uint32:
+		n += proto.SizeVarint(4<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Uint32))
+	case *Column_Uint64:
+		n += proto.SizeVarint(5<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Uint64))
+	case *Column_Bytes:
+		n += proto.SizeVarint(6<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Bytes)))
+		n += len(x.Bytes)
+	case *Column_Bool:
+		n += proto.SizeVarint(7<<3 | proto.WireVarint)
+		n += 1
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type Row struct {
 	Columns []*Column `protobuf:"bytes,1,rep,name=columns" json:"columns,omitempty"`
 }
 
-func (m *Row) Reset()         { *m = Row{} }
-func (m *Row) String() string { return proto.CompactTextString(m) }
-func (*Row) ProtoMessage()    {}
+func (m *Row) Reset()                    { *m = Row{} }
+func (m *Row) String() string            { return proto.CompactTextString(m) }
+func (*Row) ProtoMessage()               {}
+func (*Row) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 func (m *Row) GetColumns() []*Column {
 	if m != nil {
@@ -314,5 +359,37 @@ func (m *Row) GetColumns() []*Column {
 }
 
 func init() {
+	proto.RegisterType((*ColumnDefinition)(nil), "shim.ColumnDefinition")
+	proto.RegisterType((*Table)(nil), "shim.Table")
+	proto.RegisterType((*Column)(nil), "shim.Column")
+	proto.RegisterType((*Row)(nil), "shim.Row")
 	proto.RegisterEnum("shim.ColumnDefinition_Type", ColumnDefinition_Type_name, ColumnDefinition_Type_value)
+}
+
+func init() { proto.RegisterFile("chaincode.proto", fileDescriptor0) }
+
+var fileDescriptor0 = []byte{
+	// 351 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x52, 0xcd, 0x6a, 0xea, 0x40,
+	0x14, 0x36, 0x66, 0x12, 0xf5, 0x5c, 0xef, 0xbd, 0xe9, 0x50, 0x24, 0xd0, 0x4d, 0xc9, 0xa2, 0xb8,
+	0x69, 0x0a, 0x51, 0x7c, 0x00, 0x6b, 0x69, 0x85, 0xa2, 0x30, 0xc6, 0x45, 0x97, 0x89, 0x9d, 0xd6,
+	0xd0, 0x38, 0x23, 0x26, 0xb6, 0xf8, 0x70, 0x85, 0x3e, 0x5a, 0xcf, 0xcc, 0x24, 0x50, 0xac, 0xbb,
+	0xf3, 0xfd, 0x9d, 0xcc, 0xf9, 0x08, 0xfc, 0x5f, 0xad, 0x93, 0x4c, 0xac, 0xe4, 0x33, 0x0f, 0xb7,
+	0x3b, 0x59, 0x4a, 0x4a, 0x8a, 0x75, 0xb6, 0x09, 0xbe, 0x2c, 0xf0, 0x6e, 0x65, 0xbe, 0xdf, 0x88,
+	0x09, 0x7f, 0xc9, 0x44, 0x56, 0x66, 0x52, 0x50, 0x0a, 0x44, 0x24, 0x1b, 0xee, 0x5b, 0x97, 0x56,
+	0xbf, 0xc3, 0xf4, 0x4c, 0x6f, 0x80, 0x94, 0x87, 0x2d, 0xf7, 0x9b, 0xc8, 0xfd, 0x8b, 0x2e, 0x42,
+	0x95, 0x0e, 0x8f, 0x93, 0x61, 0x8c, 0x16, 0xa6, 0x8d, 0xd4, 0x03, 0xfb, 0x8d, 0x1f, 0x7c, 0x1b,
+	0xfd, 0x6d, 0xa6, 0xc6, 0x60, 0x09, 0x44, 0xe9, 0x14, 0xc0, 0x5d, 0xc4, 0x6c, 0x3a, 0xbb, 0xf7,
+	0x1a, 0xb4, 0x03, 0xce, 0x74, 0x16, 0x0f, 0x22, 0xcf, 0xaa, 0xc6, 0xd1, 0xd0, 0x6b, 0x2a, 0xc7,
+	0xd2, 0xd0, 0x76, 0x3d, 0x23, 0x4f, 0x94, 0x65, 0xfc, 0x14, 0xdf, 0x2d, 0x3c, 0x87, 0xb6, 0x81,
+	0x8c, 0xe7, 0xf3, 0x47, 0xcf, 0x0d, 0x12, 0x70, 0xe2, 0x24, 0xcd, 0xf9, 0xc9, 0x67, 0x4f, 0xe0,
+	0x6c, 0x75, 0xf4, 0xc8, 0x02, 0x6f, 0xb0, 0xfb, 0x7f, 0xa2, 0xde, 0xe9, 0x1b, 0xd8, 0xef, 0x40,
+	0xf0, 0x69, 0x81, 0x6b, 0x7c, 0xd4, 0x07, 0xb7, 0x28, 0x77, 0x99, 0x78, 0x35, 0x9f, 0x79, 0x68,
+	0xb0, 0x0a, 0xd3, 0x1e, 0x38, 0x99, 0x28, 0x07, 0x91, 0xae, 0xc8, 0x41, 0xc1, 0xc0, 0x8a, 0x1f,
+	0x0d, 0x75, 0x15, 0x76, 0xc5, 0x8f, 0x86, 0x6a, 0xd3, 0xde, 0x04, 0x08, 0x0a, 0x7f, 0xd5, 0x26,
+	0x83, 0x6b, 0x05, 0x23, 0x0e, 0x2a, 0xa4, 0x56, 0x30, 0x83, 0xbb, 0xd2, 0x43, 0xc9, 0x0b, 0xdf,
+	0x45, 0xa1, 0xab, 0x76, 0x69, 0x48, 0xcf, 0x81, 0xa4, 0x52, 0xe6, 0x7e, 0x4b, 0xb5, 0x8d, 0xb4,
+	0x46, 0xe3, 0x16, 0x38, 0xef, 0x49, 0xbe, 0xe7, 0xc1, 0x35, 0xd8, 0x4c, 0x7e, 0xd0, 0x2b, 0x68,
+	0x99, 0xdb, 0x0a, 0x7c, 0xbc, 0xaa, 0xa0, 0xfb, 0xb3, 0x02, 0x56, 0x8b, 0xa9, 0xab, 0xff, 0x90,
+	0xc1, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff, 0x55, 0xda, 0xb2, 0xc7, 0x34, 0x02, 0x00, 0x00,
 }

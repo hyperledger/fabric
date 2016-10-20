@@ -23,7 +23,7 @@ var test = require('tape');
 var util = require('util');
 var fs = require('fs');
 
-var keyValStorePath = "/tmp/keyValStore"
+var keyValStorePath = "/tmp/keyValStore";
 var keyValStorePath2 = keyValStorePath + "2";
 
 //
@@ -56,60 +56,97 @@ test('enroll again', function (t) {
     });
 });
 
-// The registrar test
+var chain,admin,webAdmin,webUser;
+
+// STEP1: Init the chain and enroll admin
 function registrarTest(cb) {
-   console.log("testRegistrar");
+   console.log("registrarTest: STEP 1");
    //
    // Create and configure the test chain
    //
-   var chain = hfc.newChain("testChain");
-   var expect="";
-   var found="";
-
+   chain = hfc.newChain("testChain");
    chain.setKeyValStore(hfc.newFileKeyValStore(keyValStorePath));
    chain.setMemberServicesUrl("grpc://localhost:7054");
-   chain.enroll("admin", "Xurw3yU9zI0l", function (err, admin) {
+   chain.enroll("admin", "Xurw3yU9zI0l", function (err, user) {
       if (err) return cb(err);
+      admin = user;
       chain.setRegistrar(admin);
-      // Register and enroll webAdmin
-      registerAndEnroll("webAdmin", "client", {roles:['client']}, chain, function(err,webAdmin) {
-         if (err) return cb(err);
-         chain.setRegistrar(webAdmin);
-         registerAndEnroll("webUser", "client", null, chain, function(err, webUser) {
-            if (err) return cb(err);
-            registerAndEnroll("auditor", "auditor", null, chain, function(err, auditor) {
-               if (!err) return cb(err);
-               expect="webAdmin may not register member of type auditor";
-               found = (err.toString()).match(expect);
-               if (!(found==expect)) cb(err);
-               registerAndEnroll("validator", "validator", null, chain, function(err, validator) {
-                  if (!err) return cb(err);
-                  expect="webAdmin may not register member of type validator";
-                  found = (err.toString()).match(expect);
-                  if (!(found==expect)) cb(err);
-                  chain.setRegistrar(webUser);
-                  registerAndEnroll("webUser2", "client", null, chain, function(err) {
-                     if (!err) return cb(Error("webUser should not be allowed to register a client"));
-                     expect="webUser may not register member of type client";
-                     found = (err.toString()).match(expect);
-                     if (!(found==expect)) cb(err);
-                     return cb();
-                  });
-               });
-            });
-         });
-      });
+      registrarTestStep2(cb);
    });
 }
 
-// Register and enroll user 'name' with role 'r' with registrar info 'registrar' for chain 'chain'
-function registerAndEnroll(name, r, registrar, chain, cb) {
+// STEP 2: Register and enroll webAdmin and set as register
+function registrarTestStep2(cb) {
+   console.log("registrarTest: STEP 2");
+   registerAndEnroll("webAdmin", "client", null, {roles:['client']}, chain, function(err,user) {
+      if (err) return cb(err);
+      webAdmin = user;
+      chain.setRegistrar(webAdmin);
+      registrarTestStep3(cb);
+   });
+}
+
+// STEP 3: Register webUser with an attribute"
+function registrarTestStep3(cb) {
+   console.log("registrarTest: STEP 3");
+   var attrs;
+   attrs = [{name:'foo',value:'bar'}];
+   registerAndEnroll("webUser", "client", attrs, null, chain, function(err, user) {
+      if (err) return cb(err);
+      webUser = user;
+      registrarTestStep4(cb);
+   });
+}
+
+// STEP 4: Negative test attempting to register an auditor type by webAdmin
+function registrarTestStep4(cb) {
+   console.log("registrarTest: STEP 4");
+   registerAndEnroll("auditorUser", "auditor", null, null, chain, function(err) {
+      if (!err) return cb(Error("webAdmin should not have been allowed to register member of type auditor"));
+      err = checkErr(err,"webAdmin may not register member of type auditor");
+      if (err) return cb(err);
+      registrarTestStep5(cb);
+   });
+}
+
+// STEP 5: Negative test attempting to register a validator type by webAdmin
+function registrarTestStep5(cb) {
+   console.log("registrarTest: STEP 5");
+   registerAndEnroll("validatorUser", "validator", null, null, chain, function(err) {
+      if (!err) return cb(Error("webAdmin should not have been allowed to register member of type validator"));
+      err = checkErr(err,"webAdmin may not register member of type validator");
+      if (err) return cb(err);
+      registrarTestStep6(cb);
+   });
+}
+
+// STEP 6: Negative test attempting to register a client type by webUser
+function registrarTestStep6(cb) {
+   console.log("registrarTest: STEP 6");
+   chain.setRegistrar(webUser);
+   registerAndEnroll("webUser2", "client", null, webUser, chain, function(err) {
+      if (!err) return cb(Error("webUser should not be allowed to register a member of type client"));
+      err = checkErr(err,"webUser may not register member of type client");
+      if (err) return cb(err);
+      registrarTestDone(cb);
+   });
+}
+
+// Final step: success
+function registrarTestDone(cb) {
+   console.log("registrarTest: Done");
+   return cb();
+}
+
+// Register and enroll user 'name' with role 'role' with registrar info 'registrar' for chain 'chain'
+function registerAndEnroll(name, role, attributes, registrar, chain, cb) {
     console.log("registerAndEnroll %s",name);
     // User is not enrolled yet, so perform both registration and enrollment
     var registrationRequest = {
-         roles: [ r ],
+         roles: [ role ],
          enrollmentID: name,
          affiliation: "bank_a",
+         attributes: attributes,
          registrar: registrar
     };
     chain.registerAndEnroll(registrationRequest,cb);
@@ -148,6 +185,16 @@ function rmdir(path) {
     });
     fs.rmdirSync(path);
   }
+}
+
+function checkErr(err,expect) {
+   err = err.toString();
+   var found = err.match(expect);
+   if (!found || found.length === 0) {
+      err = new Error(util.format("Incorrect error: expecting '%s' but found '%s'",expect,err));
+      return err;
+   }
+   return null;
 }
 
 function pass(t, msg) {

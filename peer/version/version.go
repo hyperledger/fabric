@@ -19,8 +19,8 @@ package version
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/metadata"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // Cmd returns the Cobra Command for Version
@@ -39,6 +39,5 @@ var cobraCommand = &cobra.Command{
 
 // Print outputs the current executable version to stdout
 func Print() {
-	version := viper.GetString("peer.version")
-	fmt.Printf("Fabric peer server version %s\n", version)
+	fmt.Printf("Fabric peer server version %s\n", metadata.Version)
 }

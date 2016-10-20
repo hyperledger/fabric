@@ -38,7 +38,7 @@ type Message struct {
 
 // MessageFan contains the reference to the peer's MessageHandlerCoordinator
 type MessageFan struct {
-	ins  map[*pb.PeerID]<-chan *Message
+	ins  []<-chan *Message
 	out  chan *Message
 	lock sync.Mutex
 }
@@ -46,35 +46,38 @@ type MessageFan struct {
 // NewMessageFan will return an initialized MessageFan
 func NewMessageFan() *MessageFan {
 	return &MessageFan{
-		ins: make(map[*pb.PeerID]<-chan *Message),
+		ins: []<-chan *Message{},
 		out: make(chan *Message),
 	}
 }
 
-// RegisterChannel is intended to be invoked by Handler to add a channel to be fan-ed in
-func (fan *MessageFan) RegisterChannel(sender *pb.PeerID, channel <-chan *Message) {
+// AddFaninChannel is intended to be invoked by Handler to add a channel to be fan-ed in
+func (fan *MessageFan) AddFaninChannel(channel <-chan *Message) {
 	fan.lock.Lock()
 	defer fan.lock.Unlock()
 
-	if _, ok := fan.ins[sender]; ok {
-		logger.Warningf("Received duplicate connection from %v, switching to new connection", sender)
-	} else {
-		logger.Infof("Registering connection from %v", sender)
+	for _, c := range fan.ins {
+		if c == channel {
+			logger.Warningf("Received duplicate connection")
+			return
+		}
 	}
 
-	fan.ins[sender] = channel
+	fan.ins = append(fan.ins, channel)
 
 	go func() {
 		for msg := range channel {
 			fan.out <- msg
 		}
 
-		logger.Infof("Connection from peer %v terminated", sender)
-
 		fan.lock.Lock()
 		defer fan.lock.Unlock()
 
-		delete(fan.ins, sender)
+		for i, c := range fan.ins {
+			if c == channel {
+				fan.ins = append(fan.ins[:i], fan.ins[i+1:]...)
+			}
+		}
 	}()
 }
 

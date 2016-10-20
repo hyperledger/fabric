@@ -17,6 +17,7 @@ limitations under the License.
 package protos
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -110,4 +111,25 @@ func NewChaincodeExecute(chaincodeInvocationSpec *ChaincodeInvocationSpec, uuid 
 	}
 	transaction.Payload = data
 	return transaction, nil
+}
+
+type strArgs struct {
+	Function string
+	Args     []string
+}
+
+// UnmarshalJSON converts the string-based REST/JSON input to
+// the []byte-based current ChaincodeInput structure.
+func (c *ChaincodeInput) UnmarshalJSON(b []byte) error {
+	sa := &strArgs{}
+	err := json.Unmarshal(b, sa)
+	if err != nil {
+		return err
+	}
+	allArgs := sa.Args
+	if sa.Function != "" {
+		allArgs = append([]string{sa.Function}, sa.Args...)
+	}
+	c.Args = util.ToChaincodeArgs(allArgs...)
+	return nil
 }

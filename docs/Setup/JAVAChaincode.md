@@ -74,15 +74,20 @@ Note: This guide generally assumes you have followed the Chaincode development e
     make peer
     peer node start --peer-chaincodedev
 ```
-3. Open the second Vagrant terminal, and change to Java shim root folder and run gradle build,
+3. Open the second Vagrant terminal and build the Java shim layer and publish it to Local Maven Repo
+```
+cd $GOPATH/src/github.com/hyperledger/fabric/core/chaincode/shim/java
+gradle -b build.gradle clean
+gradle -b build.gradle build
+```
+4. Change to examples folder to build and run,
 ```
     cd $GOPATH/src/github.com/hyperledger/fabric/examples/chaincode/java/SimpleSample
     gradle -b build.gradle build
 ```
-4. Run the SimpleSample chaincode using the `gradle -b build.gradle run`
+5. Run the SimpleSample chaincode using the `gradle -b build.gradle run`
 
-5. Open the third Vagrant terminal to run init and invoke on the chaincode
-
+6. Open the third Vagrant terminal to run init and invoke on the chaincode
 
     peer chaincode deploy -l java -n SimpleSample -c '{"Args": ["init", "a","100", "b", "200"]}'
 ```

@@ -93,6 +93,13 @@ To deploy a chaincode with attributes "company" and "position" it should be writ
 
 ```
 
+Or:
+
+```
+./peer chaincode deploy -u userName -n mycc -c '{"Args": ["init"]}' -a '["position", "company"]'
+
+```
+
 #### REST
 
 ```
@@ -142,6 +149,13 @@ To invoke "autorizable counter" with attributes "company" and "position" it shou
 
 ```
 ./peer chaincode invoke -u userName -n mycc -c '{"Function":"increment", "Args": []}' -a '["position", "company"]'
+
+```
+
+Or:
+
+```
+./peer chaincode invoke -u userName -n mycc -c '{"Args": ["increment"]}' -a '["position", "company"]'
 
 ```
 
@@ -199,6 +213,13 @@ To query "autorizable counter" with attributes "company" and "position" it shoul
 
 ```
 ./peer chaincode query -u userName -n mycc -c '{"Function":"read", "Args": []}' -a '["position", "company"]'
+
+```
+
+Or:
+
+```
+./peer chaincode query -u userName -n mycc -c '{"Args": ["read"]}' -a '["position", "company"]'
 
 ```
 

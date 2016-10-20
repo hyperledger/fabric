@@ -33,6 +33,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 // These status codes are intended to resemble selected HTTP status codes
 type Status int32
 
@@ -62,6 +68,7 @@ var Status_value = map[string]int32{
 func (x Status) String() string {
 	return proto.EnumName(Status_name, int32(x))
 }
+func (Status) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 // Start may be specified to a specific block number, or may be request from the newest or oldest available
 // The start location is always inclusive, so the first reply from NEWEST will contain the newest block at the time
@@ -89,40 +96,45 @@ var SeekInfo_StartType_value = map[string]int32{
 func (x SeekInfo_StartType) String() string {
 	return proto.EnumName(SeekInfo_StartType_name, int32(x))
 }
+func (SeekInfo_StartType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{2, 0} }
 
 type BroadcastResponse struct {
-	Status Status `protobuf:"varint,1,opt,name=Status,enum=atomicbroadcast.Status" json:"Status,omitempty"`
+	Status Status `protobuf:"varint,1,opt,name=Status,json=status,enum=atomicbroadcast.Status" json:"Status,omitempty"`
 }
 
-func (m *BroadcastResponse) Reset()         { *m = BroadcastResponse{} }
-func (m *BroadcastResponse) String() string { return proto.CompactTextString(m) }
-func (*BroadcastResponse) ProtoMessage()    {}
+func (m *BroadcastResponse) Reset()                    { *m = BroadcastResponse{} }
+func (m *BroadcastResponse) String() string            { return proto.CompactTextString(m) }
+func (*BroadcastResponse) ProtoMessage()               {}
+func (*BroadcastResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type BroadcastMessage struct {
-	Data []byte `protobuf:"bytes,1,opt,name=Data,proto3" json:"Data,omitempty"`
+	Data []byte `protobuf:"bytes,1,opt,name=Data,json=data,proto3" json:"Data,omitempty"`
 }
 
-func (m *BroadcastMessage) Reset()         { *m = BroadcastMessage{} }
-func (m *BroadcastMessage) String() string { return proto.CompactTextString(m) }
-func (*BroadcastMessage) ProtoMessage()    {}
+func (m *BroadcastMessage) Reset()                    { *m = BroadcastMessage{} }
+func (m *BroadcastMessage) String() string            { return proto.CompactTextString(m) }
+func (*BroadcastMessage) ProtoMessage()               {}
+func (*BroadcastMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 type SeekInfo struct {
-	Start           SeekInfo_StartType `protobuf:"varint,1,opt,name=Start,enum=atomicbroadcast.SeekInfo_StartType" json:"Start,omitempty"`
-	SpecifiedNumber uint64             `protobuf:"varint,2,opt,name=SpecifiedNumber" json:"SpecifiedNumber,omitempty"`
-	WindowSize      uint64             `protobuf:"varint,3,opt,name=WindowSize" json:"WindowSize,omitempty"`
+	Start           SeekInfo_StartType `protobuf:"varint,1,opt,name=Start,json=start,enum=atomicbroadcast.SeekInfo_StartType" json:"Start,omitempty"`
+	SpecifiedNumber uint64             `protobuf:"varint,2,opt,name=SpecifiedNumber,json=specifiedNumber" json:"SpecifiedNumber,omitempty"`
+	WindowSize      uint64             `protobuf:"varint,3,opt,name=WindowSize,json=windowSize" json:"WindowSize,omitempty"`
 }
 
-func (m *SeekInfo) Reset()         { *m = SeekInfo{} }
-func (m *SeekInfo) String() string { return proto.CompactTextString(m) }
-func (*SeekInfo) ProtoMessage()    {}
+func (m *SeekInfo) Reset()                    { *m = SeekInfo{} }
+func (m *SeekInfo) String() string            { return proto.CompactTextString(m) }
+func (*SeekInfo) ProtoMessage()               {}
+func (*SeekInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type Acknowledgement struct {
-	Number uint64 `protobuf:"varint,1,opt,name=Number" json:"Number,omitempty"`
+	Number uint64 `protobuf:"varint,1,opt,name=Number,json=number" json:"Number,omitempty"`
 }
 
-func (m *Acknowledgement) Reset()         { *m = Acknowledgement{} }
-func (m *Acknowledgement) String() string { return proto.CompactTextString(m) }
-func (*Acknowledgement) ProtoMessage()    {}
+func (m *Acknowledgement) Reset()                    { *m = Acknowledgement{} }
+func (m *Acknowledgement) String() string            { return proto.CompactTextString(m) }
+func (*Acknowledgement) ProtoMessage()               {}
+func (*Acknowledgement) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 // The update message either causes a seek to a new stream start with a new window, or acknowledges a received block and advances the base of the window
 type DeliverUpdate struct {
@@ -132,19 +144,20 @@ type DeliverUpdate struct {
 	Type isDeliverUpdate_Type `protobuf_oneof:"Type"`
 }
 
-func (m *DeliverUpdate) Reset()         { *m = DeliverUpdate{} }
-func (m *DeliverUpdate) String() string { return proto.CompactTextString(m) }
-func (*DeliverUpdate) ProtoMessage()    {}
+func (m *DeliverUpdate) Reset()                    { *m = DeliverUpdate{} }
+func (m *DeliverUpdate) String() string            { return proto.CompactTextString(m) }
+func (*DeliverUpdate) ProtoMessage()               {}
+func (*DeliverUpdate) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 type isDeliverUpdate_Type interface {
 	isDeliverUpdate_Type()
 }
 
 type DeliverUpdate_Acknowledgement struct {
-	Acknowledgement *Acknowledgement `protobuf:"bytes,1,opt,name=Acknowledgement,oneof"`
+	Acknowledgement *Acknowledgement `protobuf:"bytes,1,opt,name=Acknowledgement,json=acknowledgement,oneof"`
 }
 type DeliverUpdate_Seek struct {
-	Seek *SeekInfo `protobuf:"bytes,2,opt,name=Seek,oneof"`
+	Seek *SeekInfo `protobuf:"bytes,2,opt,name=Seek,json=seek,oneof"`
 }
 
 func (*DeliverUpdate_Acknowledgement) isDeliverUpdate_Type() {}
@@ -172,8 +185,8 @@ func (m *DeliverUpdate) GetSeek() *SeekInfo {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*DeliverUpdate) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _DeliverUpdate_OneofMarshaler, _DeliverUpdate_OneofUnmarshaler, []interface{}{
+func (*DeliverUpdate) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _DeliverUpdate_OneofMarshaler, _DeliverUpdate_OneofUnmarshaler, _DeliverUpdate_OneofSizer, []interface{}{
 		(*DeliverUpdate_Acknowledgement)(nil),
 		(*DeliverUpdate_Seek)(nil),
 	}
@@ -224,20 +237,42 @@ func _DeliverUpdate_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.
 	}
 }
 
+func _DeliverUpdate_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*DeliverUpdate)
+	// Type
+	switch x := m.Type.(type) {
+	case *DeliverUpdate_Acknowledgement:
+		s := proto.Size(x.Acknowledgement)
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *DeliverUpdate_Seek:
+		s := proto.Size(x.Seek)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 // This is a temporary data structure, meant to hold the place of the finalized block structure
 // This must be a 'block' structure and not a 'batch' structure, although the terminology is slightly confusing
 // The requirement is to allow for a consumer of the orderer to declare the unvalidated blockchain as the definitive
 // blockchain, without breaking the hash chain or existing proof
 type Block struct {
-	Number   uint64              `protobuf:"varint,2,opt,name=Number" json:"Number,omitempty"`
-	PrevHash []byte              `protobuf:"bytes,3,opt,name=PrevHash,proto3" json:"PrevHash,omitempty"`
-	Proof    []byte              `protobuf:"bytes,4,opt,name=Proof,proto3" json:"Proof,omitempty"`
-	Messages []*BroadcastMessage `protobuf:"bytes,5,rep,name=Messages" json:"Messages,omitempty"`
+	Number   uint64              `protobuf:"varint,2,opt,name=Number,json=number" json:"Number,omitempty"`
+	PrevHash []byte              `protobuf:"bytes,3,opt,name=PrevHash,json=prevHash,proto3" json:"PrevHash,omitempty"`
+	Proof    []byte              `protobuf:"bytes,4,opt,name=Proof,json=proof,proto3" json:"Proof,omitempty"`
+	Messages []*BroadcastMessage `protobuf:"bytes,5,rep,name=Messages,json=messages" json:"Messages,omitempty"`
 }
 
-func (m *Block) Reset()         { *m = Block{} }
-func (m *Block) String() string { return proto.CompactTextString(m) }
-func (*Block) ProtoMessage()    {}
+func (m *Block) Reset()                    { *m = Block{} }
+func (m *Block) String() string            { return proto.CompactTextString(m) }
+func (*Block) ProtoMessage()               {}
+func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 func (m *Block) GetMessages() []*BroadcastMessage {
 	if m != nil {
@@ -253,19 +288,20 @@ type DeliverResponse struct {
 	Type isDeliverResponse_Type `protobuf_oneof:"Type"`
 }
 
-func (m *DeliverResponse) Reset()         { *m = DeliverResponse{} }
-func (m *DeliverResponse) String() string { return proto.CompactTextString(m) }
-func (*DeliverResponse) ProtoMessage()    {}
+func (m *DeliverResponse) Reset()                    { *m = DeliverResponse{} }
+func (m *DeliverResponse) String() string            { return proto.CompactTextString(m) }
+func (*DeliverResponse) ProtoMessage()               {}
+func (*DeliverResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 type isDeliverResponse_Type interface {
 	isDeliverResponse_Type()
 }
 
 type DeliverResponse_Error struct {
-	Error Status `protobuf:"varint,1,opt,name=Error,enum=atomicbroadcast.Status,oneof"`
+	Error Status `protobuf:"varint,1,opt,name=Error,json=error,enum=atomicbroadcast.Status,oneof"`
 }
 type DeliverResponse_Block struct {
-	Block *Block `protobuf:"bytes,2,opt,name=Block,oneof"`
+	Block *Block `protobuf:"bytes,2,opt,name=Block,json=block,oneof"`
 }
 
 func (*DeliverResponse_Error) isDeliverResponse_Type() {}
@@ -293,8 +329,8 @@ func (m *DeliverResponse) GetBlock() *Block {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*DeliverResponse) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _DeliverResponse_OneofMarshaler, _DeliverResponse_OneofUnmarshaler, []interface{}{
+func (*DeliverResponse) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _DeliverResponse_OneofMarshaler, _DeliverResponse_OneofUnmarshaler, _DeliverResponse_OneofSizer, []interface{}{
 		(*DeliverResponse_Error)(nil),
 		(*DeliverResponse_Block)(nil),
 	}
@@ -342,7 +378,33 @@ func _DeliverResponse_OneofUnmarshaler(msg proto.Message, tag, wire int, b *prot
 	}
 }
 
+func _DeliverResponse_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*DeliverResponse)
+	// Type
+	switch x := m.Type.(type) {
+	case *DeliverResponse_Error:
+		n += proto.SizeVarint(1<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Error))
+	case *DeliverResponse_Block:
+		s := proto.Size(x.Block)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 func init() {
+	proto.RegisterType((*BroadcastResponse)(nil), "atomicbroadcast.BroadcastResponse")
+	proto.RegisterType((*BroadcastMessage)(nil), "atomicbroadcast.BroadcastMessage")
+	proto.RegisterType((*SeekInfo)(nil), "atomicbroadcast.SeekInfo")
+	proto.RegisterType((*Acknowledgement)(nil), "atomicbroadcast.Acknowledgement")
+	proto.RegisterType((*DeliverUpdate)(nil), "atomicbroadcast.DeliverUpdate")
+	proto.RegisterType((*Block)(nil), "atomicbroadcast.Block")
+	proto.RegisterType((*DeliverResponse)(nil), "atomicbroadcast.DeliverResponse")
 	proto.RegisterEnum("atomicbroadcast.Status", Status_name, Status_value)
 	proto.RegisterEnum("atomicbroadcast.SeekInfo_StartType", SeekInfo_StartType_name, SeekInfo_StartType_value)
 }
@@ -350,6 +412,10 @@ func init() {
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for AtomicBroadcast service
 
@@ -517,4 +583,47 @@ var _AtomicBroadcast_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
+	Metadata: fileDescriptor0,
+}
+
+func init() { proto.RegisterFile("ab.proto", fileDescriptor0) }
+
+var fileDescriptor0 = []byte{
+	// 576 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x54, 0x4d, 0x6f, 0xda, 0x40,
+	0x10, 0x8d, 0x83, 0xed, 0x38, 0x43, 0x12, 0xbb, 0xdb, 0x2a, 0x75, 0x73, 0x88, 0xa8, 0x2b, 0x55,
+	0x69, 0x0f, 0xa4, 0xa2, 0xa7, 0x1e, 0x7a, 0xc0, 0xd8, 0x28, 0x96, 0xa8, 0x21, 0x36, 0x24, 0xbd,
+	0x21, 0x03, 0x4b, 0x6a, 0x01, 0x5e, 0xcb, 0xeb, 0x04, 0x35, 0xbf, 0x22, 0x52, 0xab, 0xfe, 0x9c,
+	0x5e, 0xfa, 0xa3, 0x7a, 0xed, 0x7a, 0x63, 0x28, 0x60, 0xa1, 0x9c, 0x98, 0xf1, 0xbc, 0x37, 0x1f,
+	0x6f, 0x9f, 0x00, 0x25, 0x18, 0x54, 0xe3, 0x84, 0xa4, 0x04, 0xa9, 0x41, 0x4a, 0x66, 0xe1, 0x70,
+	0x90, 0x90, 0x60, 0x34, 0x0c, 0x68, 0x6a, 0x58, 0xf0, 0xcc, 0x5c, 0x24, 0x1e, 0xa6, 0x31, 0x89,
+	0x28, 0x46, 0xe7, 0x20, 0xfb, 0x69, 0x90, 0xde, 0x52, 0x5d, 0xa8, 0x08, 0x67, 0x47, 0xb5, 0x97,
+	0xd5, 0x0d, 0x5a, 0xf5, 0xb1, 0xec, 0xc9, 0x94, 0xff, 0x1a, 0x6f, 0x41, 0x5b, 0x76, 0xf9, 0x82,
+	0x29, 0x0d, 0x6e, 0x30, 0x42, 0x20, 0x5a, 0x41, 0x1a, 0xf0, 0x16, 0x07, 0x9e, 0x38, 0x62, 0xb1,
+	0xf1, 0x47, 0x00, 0xc5, 0xc7, 0x78, 0xe2, 0x44, 0x63, 0x82, 0x3e, 0x81, 0xc4, 0xda, 0x24, 0x69,
+	0x3e, 0xe4, 0x4d, 0x71, 0x48, 0x8e, 0xac, 0x72, 0x58, 0xf7, 0x7b, 0x8c, 0x3d, 0x89, 0x66, 0x21,
+	0x3a, 0x03, 0xd5, 0x8f, 0xf1, 0x30, 0x1c, 0x87, 0x78, 0xe4, 0xde, 0xce, 0x06, 0x38, 0xd1, 0x77,
+	0x59, 0x13, 0xd1, 0x53, 0xe9, 0xfa, 0x67, 0x74, 0x0a, 0x70, 0x1d, 0x46, 0x23, 0x32, 0xf7, 0xc3,
+	0x7b, 0xac, 0x97, 0x38, 0x08, 0xe6, 0xcb, 0x2f, 0x46, 0x0d, 0xf6, 0x97, 0xdd, 0x11, 0x80, 0xec,
+	0xda, 0xd7, 0xb6, 0xdf, 0xd5, 0x76, 0xb2, 0xb8, 0xdd, 0xb2, 0xb2, 0x58, 0x40, 0x87, 0x0c, 0xd4,
+	0xb1, 0x1b, 0x4e, 0xd3, 0xb1, 0x2d, 0x6d, 0xd7, 0x78, 0x07, 0x6a, 0x7d, 0x38, 0x89, 0xc8, 0x7c,
+	0x8a, 0x47, 0x37, 0x78, 0x86, 0xa3, 0x14, 0x1d, 0x33, 0xe6, 0xe3, 0x1e, 0x02, 0x1f, 0x21, 0x47,
+	0x3c, 0x33, 0x7e, 0x09, 0x70, 0x68, 0xe1, 0x69, 0x78, 0x87, 0x93, 0x5e, 0xcc, 0x24, 0xc0, 0xa8,
+	0x55, 0x20, 0x73, 0x4a, 0xb9, 0x56, 0x29, 0xdc, 0xbf, 0x81, 0xbb, 0xd8, 0xf1, 0xd4, 0x60, 0x63,
+	0xee, 0x39, 0x88, 0x99, 0x4a, 0xfc, 0xfa, 0x72, 0xed, 0xd5, 0x56, 0x09, 0x19, 0x57, 0xa4, 0x2c,
+	0x36, 0x65, 0x10, 0xb3, 0x53, 0x8d, 0x07, 0x01, 0x24, 0x73, 0x4a, 0x86, 0x93, 0x95, 0xd5, 0x77,
+	0x57, 0x57, 0x47, 0x27, 0xa0, 0x74, 0x12, 0x7c, 0x77, 0x11, 0xd0, 0x6f, 0x5c, 0xb7, 0x03, 0x4f,
+	0x89, 0xf3, 0x1c, 0xbd, 0x00, 0xa9, 0x93, 0x10, 0x32, 0xd6, 0x45, 0x5e, 0x90, 0xe2, 0x2c, 0x41,
+	0x9f, 0x41, 0xc9, 0x1f, 0x9f, 0xea, 0x52, 0xa5, 0xc4, 0x16, 0x7a, 0x5d, 0x58, 0x68, 0xd3, 0x26,
+	0x9e, 0x32, 0xcb, 0x29, 0xc6, 0x3d, 0xa8, 0xb9, 0x54, 0x2b, 0x46, 0x94, 0xec, 0x24, 0x21, 0xc9,
+	0x13, 0x3e, 0x64, 0xd7, 0x49, 0x38, 0xc3, 0xa1, 0x6a, 0x7e, 0x55, 0x2e, 0xc8, 0x71, 0x71, 0x7e,
+	0x56, 0xcd, 0xf0, 0x83, 0x2c, 0x58, 0xc8, 0xf1, 0x3e, 0x58, 0x38, 0x1e, 0x95, 0x61, 0xcf, 0xef,
+	0x35, 0x1a, 0xb6, 0xef, 0x33, 0x13, 0x68, 0x50, 0x36, 0xeb, 0x56, 0xdf, 0xb3, 0x2f, 0x7b, 0x99,
+	0x13, 0x1e, 0x4a, 0xe8, 0x08, 0xf6, 0x9b, 0x6d, 0xcf, 0x74, 0x2c, 0xcb, 0x76, 0xb5, 0x1f, 0x3c,
+	0x77, 0xdb, 0xdd, 0x7e, 0xb3, 0xdd, 0x73, 0x2d, 0xed, 0x67, 0x09, 0xe9, 0xf0, 0xdc, 0xb7, 0xbd,
+	0x2b, 0xa7, 0x61, 0xf7, 0x7b, 0x6e, 0xfd, 0xaa, 0xee, 0xb4, 0xea, 0x66, 0xcb, 0xd6, 0xfe, 0x96,
+	0x6a, 0xbf, 0x05, 0xf6, 0xf2, 0x7c, 0x9b, 0xa5, 0x06, 0xe8, 0x2b, 0xec, 0xff, 0x4f, 0x9e, 0x16,
+	0xeb, 0xc4, 0xd8, 0x0e, 0x59, 0x68, 0x66, 0xec, 0x9c, 0x09, 0x1f, 0x04, 0x74, 0x09, 0x7b, 0xb9,
+	0x98, 0xe8, 0xb4, 0x40, 0x5a, 0x73, 0xe4, 0x49, 0x65, 0x5b, 0x7d, 0xbd, 0xe5, 0x40, 0xe6, 0x7f,
+	0x21, 0x1f, 0xff, 0x05, 0x00, 0x00, 0xff, 0xff, 0xb0, 0xf0, 0x26, 0x9a, 0x4e, 0x04, 0x00, 0x00,
 }

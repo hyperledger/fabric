@@ -197,7 +197,7 @@ func (chaincodeStateDelta *ChaincodeStateDelta) set(key string, updatedValue, pr
 func (chaincodeStateDelta *ChaincodeStateDelta) remove(key string, previousValue []byte) {
 	updatedKV, ok := chaincodeStateDelta.UpdatedKVs[key]
 	if ok {
-		// Key already exists, just set the previous value
+		// Key already exists, just set the value
 		updatedKV.Value = nil
 	} else {
 		// New key. Create a new entry in the map

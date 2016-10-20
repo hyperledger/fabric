@@ -59,6 +59,9 @@ general:
         # Interval to send "keep-alive" null requests.  Set to 0 to disable. If enabled, must be greater than request timeout
         nullrequest: 0s
 
+        # How long may a message broadcast take.
+        broadcast: 1s
+
 ################################################################################
 #
 #   SECTION: EXECUTOR

@@ -36,11 +36,27 @@
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
 
-PROJECT_NAME=hyperledger/fabric
+PROJECT_NAME   = hyperledger/fabric
+BASE_VERSION   = 0.7.0
+IS_RELEASE     = false
+
+ifneq ($(IS_RELEASE),true)
+EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
+PROJECT_VERSION=$(BASE_VERSION)-$(EXTRA_VERSION)
+else
+PROJECT_VERSION=$(BASE_VERSION)
+endif
+
 PKGNAME = github.com/$(PROJECT_NAME)
+GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
-CHAINTOOL_RELEASE=v0.8.1
+ARCH=$(shell uname -m)
+CHAINTOOL_RELEASE=v0.10.0
+BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
+
+DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
+BASE_DOCKER_TAG=$(ARCH)-$(BASEIMAGE_RELEASE)
 
 EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
@@ -50,13 +66,10 @@ K := $(foreach exec,$(EXECUTABLES),\
 SUBDIRS = gotools sdk/node
 SUBDIRS:=$(strip $(SUBDIRS))
 
-# Make our baseimage depend on any changes to images/base or scripts/provision
-BASEIMAGE_RELEASE = $(shell cat ./images/base/release)
-BASEIMAGE_DEPS    = $(shell git ls-files images/base scripts/provision)
-
+GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh github.com/hyperledger/fabric/core/chaincode/shim | sort | uniq)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = base src ccenv peer membersrvc javaenv orderer
+IMAGES = src ccenv peer membersrvc javaenv orderer
 
 
 all: peer membersrvc checks
@@ -80,12 +93,19 @@ membersrvc: build/bin/membersrvc
 membersrvc-image: build/image/membersrvc/.dummy
 
 unit-test: peer-image gotools
-	@./scripts/goUnitTests.sh
+	@./scripts/goUnitTests.sh $(DOCKER_TAG) "$(GO_LDFLAGS)"
+
+node-sdk: sdk/node
+
+node-sdk-unit-tests: peer membersrvc
+	cd sdk/node && $(MAKE) unit-tests
+
+unit-tests: unit-test node-sdk-unit-tests
 
 .PHONY: images
 images: $(patsubst %,build/image/%/.dummy, $(IMAGES))
 
-behave-deps: images peer
+behave-deps: images peer build/bin/block-listener
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
@@ -108,14 +128,14 @@ linter: gotools
 # we may later inject the binary into a different docker environment
 # This is necessary since we cannot guarantee that binaries built
 # on the host natively will be compatible with the docker env.
-%/bin/protoc-gen-go: build/image/base/.dummy Makefile
+%/bin/protoc-gen-go: Makefile
 	@echo "Building $@"
 	@mkdir -p $(@D)
 	@docker run -i \
 		--user=$(UID) \
 		-v $(abspath vendor/github.com/golang/protobuf):/opt/gopath/src/github.com/golang/protobuf \
 		-v $(abspath $(@D)):/opt/gopath/bin \
-		hyperledger/fabric-baseimage go install github.com/golang/protobuf/protoc-gen-go
+		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) go install github.com/golang/protobuf/protoc-gen-go
 
 build/bin/chaintool: Makefile
 	@echo "Installing chaintool"
@@ -127,6 +147,11 @@ build/bin/chaintool: Makefile
 	@mkdir -p $(@D)
 	@cp $^ $@
 
+# JIRA FAB-243 - Mark build/docker/bin artifacts explicitly as secondary
+#                since they are never referred to directly. This prevents
+#                the makefile from deleting them inadvertently.
+.SECONDARY: build/docker/bin/peer build/docker/bin/membersrvc
+
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
 build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
@@ -137,7 +162,8 @@ build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
 		--user=$(UID) \
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/pkg):/opt/gopath/pkg \
-		hyperledger/fabric-src go install github.com/hyperledger/fabric/$(TARGET)
+		hyperledger/fabric-src:$(DOCKER_TAG) go install -ldflags "$(GO_LDFLAGS)" github.com/hyperledger/fabric/$(TARGET)
+	@touch $@
 
 build/bin:
 	mkdir -p $@
@@ -145,50 +171,60 @@ build/bin:
 # Both peer and peer-image depend on ccenv-image and javaenv-image (all docker env images it supports)
 build/bin/peer: build/image/ccenv/.dummy build/image/javaenv/.dummy
 build/image/peer/.dummy: build/image/ccenv/.dummy build/image/javaenv/.dummy
-build/image/peer/.dummy: build/docker/bin/examples/events/block-listener/
 
-build/bin/%: build/image/base/.dummy $(PROJECT_FILES)
+build/bin/block-listener:
 	@mkdir -p $(@D)
-	@echo "$@"
-	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install $(PKGNAME)/$(@F)
+	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install $(PKGNAME)/examples/events/block-listener
 	@echo "Binary available as $@"
 	@touch $@
 
-# Special override for base-image.
-build/image/base/.dummy: $(BASEIMAGE_DEPS)
-	@echo "Building docker base-image"
+build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
-	@./scripts/provision/docker.sh $(BASEIMAGE_RELEASE)
+	@echo "$@"
+	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -ldflags "$(GO_LDFLAGS)" $(PKGNAME)/$(@F)
+	@echo "Binary available as $@"
 	@touch $@
 
 # Special override for src-image
-build/image/src/.dummy: build/image/base/.dummy $(PROJECT_FILES)
+build/image/src/.dummy: $(PROJECT_FILES)
 	@echo "Building docker src-image"
 	@mkdir -p $(@D)
-	@cat images/src/Dockerfile.in > $(@D)/Dockerfile
+	@cat images/src/Dockerfile.in \
+		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
+		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		> $(@D)/Dockerfile
 	@git ls-files | tar -jcT - > $(@D)/gopath.tar.bz2
-	docker build -t $(PROJECT_NAME)-src:latest $(@D)
+	docker build -t $(PROJECT_NAME)-src $(@D)
+	docker tag $(PROJECT_NAME)-src $(PROJECT_NAME)-src:$(DOCKER_TAG)
 	@touch $@
 
 # Special override for ccenv-image (chaincode-environment)
-build/image/ccenv/.dummy: build/image/src/.dummy build/image/ccenv/bin/protoc-gen-go build/image/ccenv/bin/chaintool Makefile
+build/image/ccenv/.dummy: build/image/ccenv/bin/protoc-gen-go build/image/ccenv/bin/chaintool build/image/ccenv/goshim.tar.bz2 Makefile
 	@echo "Building docker ccenv-image"
-	@cat images/ccenv/Dockerfile.in > $(@D)/Dockerfile
-	docker build -t $(PROJECT_NAME)-ccenv:latest $(@D)
+	@cat images/ccenv/Dockerfile.in \
+		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
+		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		> $(@D)/Dockerfile
+	docker build -t $(PROJECT_NAME)-ccenv $(@D)
+	docker tag $(PROJECT_NAME)-ccenv $(PROJECT_NAME)-ccenv:$(DOCKER_TAG)
 	@touch $@
 
-# Special override for java-image 
+# Special override for java-image
 build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 	@echo "Building docker javaenv-image"
 	@mkdir -p $(@D)
-	@cat images/javaenv/Dockerfile.in > $(@D)/Dockerfile
+	@cat images/javaenv/Dockerfile.in \
+		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
+		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		> $(@D)/Dockerfile
 	# Following items are packed and sent to docker context while building image
 	# 1. Java shim layer source code
 	# 2. Proto files used to generate java classes
 	# 3. Gradle settings file
 	@git ls-files core/chaincode/shim/java | tar -jcT - > $(@D)/javashimsrc.tar.bz2
 	@git ls-files protos settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
-	docker build -t $(PROJECT_NAME)-javaenv:latest $(@D)
+	docker build -t $(PROJECT_NAME)-javaenv $(@D)
+	docker tag $(PROJECT_NAME)-javaenv $(PROJECT_NAME)-javaenv:$(DOCKER_TAG)
 	@touch $@
 
 # Default rule for image creation
@@ -196,30 +232,31 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 	$(eval TARGET = ${patsubst build/image/%/.dummy,%,${@}})
 	@echo "Building docker $(TARGET)-image"
 	@mkdir -p $(@D)/bin
-	@cat images/app/Dockerfile.in | sed -e 's/_TARGET_/$(TARGET)/g' > $(@D)/Dockerfile
+	@cat images/app/Dockerfile.in \
+		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
+		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
+		> $(@D)/Dockerfile
 	cp build/docker/bin/$(TARGET) $(@D)/bin
-	docker build -t $(PROJECT_NAME)-$(TARGET):latest $(@D)
+	docker build -t $(PROJECT_NAME)-$(TARGET) $(@D)
+	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@
+
+%/goshim.tar.bz2: $(GOSHIM_DEPS) Makefile
+	@echo "Creating $@"
+	@tar -jhc -C $(GOPATH)/src $(patsubst $(GOPATH)/src/%,%,$(GOSHIM_DEPS)) > $@
 
 .PHONY: protos
 protos: gotools
 	./devenv/compile_protos.sh
 
-base-image-clean:
-	-docker rmi -f $(PROJECT_NAME)-baseimage
-	-@rm -rf build/image/base ||:
+src-image-clean: ccenv-image-clean peer-image-clean membersrvc-image-clean
 
 %-image-clean:
 	$(eval TARGET = ${patsubst %-image-clean,%,${@}})
-	-docker rmi -f $(PROJECT_NAME)-$(TARGET)
+	-docker images -q $(PROJECT_NAME)-$(TARGET) | xargs -r docker rmi -f
 	-@rm -rf build/image/$(TARGET) ||:
 
 images-clean: $(patsubst %,%-image-clean, $(IMAGES))
-
-node-sdk: sdk/node
-
-node-sdk-unit-tests: peer membersrvc
-	cd sdk/node && $(MAKE) unit-tests
 
 .PHONY: $(SUBDIRS:=-clean)
 $(SUBDIRS:=-clean):

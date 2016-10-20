@@ -363,24 +363,31 @@ chaincode:
         # This is the basis for the Golang Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
         Dockerfile:  |
-            from hyperledger/fabric-baseimage
-            #from utxo:0.1.0
-            COPY src $GOPATH/src
-            WORKDIR $GOPATH
+          FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+          COPY src $GOPATH/src
+          WORKDIR $GOPATH
 
     car:
 
         # This is the basis for the CAR Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
         Dockerfile:  |
-            FROM hyperledger/fabric-baseimage
+            FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+
+    java:
+        # This is an image based on java:openjdk-8 with addition compiler
+        # tools added for java shim layer packaging.
+        # This image is packed with shim layer libraries that are necessary
+        # for Java chaincode runtime.
+        Dockerfile:  |
+            from hyperledger/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
-    startuptimeout: 1000
+    startuptimeout: 300000
 
     #timeout in millisecs for deploying chaincode from a remote repository.
-    deploytimeout: 60000
+    deploytimeout: 30000
 
     #mode - options are "dev", "net"
     #dev - in dev mode, user runs the chaincode after starting validator from
@@ -393,16 +400,18 @@ chaincode:
     # the image
     installpath: /opt/gopath/bin/
 
-    #keepalive in seconds. In situations where the communiction goes through a
-    #proxy that does not support keep-alive, this parameter will maintain connection
-    #between peer and chaincode.
-    #A value <= 0 turns keepalive off
-    keepalive: 1
+    # keepalive in seconds. In situations where the communiction goes through a
+    # proxy that does not support keep-alive, this parameter will maintain connection
+    # between peer and chaincode.
+    # A value <= 0 turns keepalive off
+    keepalive: 0
 
     # system chaincodes whitelist. To add system chaincode "myscc" to the  
     # whitelist, add "myscc: enable" to the list
     system:
         lccc: enable
+        escc: enable
+        vscc: enable
     
 ###############################################################################
 #
