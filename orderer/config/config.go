@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Shopify/sarama"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -59,6 +60,21 @@ type FileLedger struct {
 	Prefix   string
 }
 
+// Kafka contains config for the Kafka orderer
+type Kafka struct {
+	Brokers     []string
+	Topic       string
+	PartitionID int32
+	Retry       Retry
+	Version     sarama.KafkaVersion // TODO For now set this in code
+}
+
+// Retry contains config for the reconnection attempts to the Kafka brokers
+type Retry struct {
+	Period time.Duration
+	Stop   time.Duration
+}
+
 // TopLevel directly corresponds to the orderer config yaml
 // Note, for non 1-1 mappings, you may append
 // something like `mapstructure:"weirdFoRMat"` to
@@ -68,6 +84,7 @@ type TopLevel struct {
 	General    General
 	RAMLedger  RAMLedger
 	FileLedger FileLedger
+	Kafka      Kafka
 }
 
 var defaults = TopLevel{
@@ -87,6 +104,16 @@ var defaults = TopLevel{
 	FileLedger: FileLedger{
 		Location: "",
 		Prefix:   "hyperledger-fabric-rawledger",
+	},
+	Kafka: Kafka{
+		Brokers:     []string{"127.0.0.1:9092"},
+		Topic:       "test",
+		PartitionID: 0,
+		Version:     sarama.V0_9_0_1,
+		Retry: Retry{
+			Period: 3 * time.Second,
+			Stop:   60 * time.Second,
+		},
 	},
 }
 
@@ -122,7 +149,22 @@ func (c *TopLevel) completeInitialization() {
 		case c.FileLedger.Prefix == "":
 			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
 			c.FileLedger.Prefix = defaults.FileLedger.Prefix
+		case c.Kafka.Brokers == nil:
+			logger.Infof("Kafka.Brokers unset, setting to %v", defaults.Kafka.Brokers)
+			c.Kafka.Brokers = defaults.Kafka.Brokers
+		case c.Kafka.Topic == "":
+			logger.Infof("Kafka.Topic unset, setting to %v", defaults.Kafka.Topic)
+			c.Kafka.Topic = defaults.Kafka.Topic
+		case c.Kafka.Retry.Period == 0*time.Second:
+			logger.Infof("Kafka.Retry.Period unset, setting to %v", defaults.Kafka.Retry.Period)
+			c.Kafka.Retry.Period = defaults.Kafka.Retry.Period
+		case c.Kafka.Retry.Stop == 0*time.Second:
+			logger.Infof("Kafka.Retry.Stop unset, setting to %v", defaults.Kafka.Retry.Stop)
+			c.Kafka.Retry.Stop = defaults.Kafka.Retry.Stop
 		default:
+			// A bit hacky, but its type makes it impossible to test for a nil value.
+			// This may be overwritten by the Kafka orderer upon instantiation.
+			c.Kafka.Version = defaults.Kafka.Version
 			return
 		}
 	}
@@ -140,6 +182,7 @@ func Load() *TopLevel {
 
 	config.SetConfigName("orderer")
 	config.AddConfigPath("./")
+	config.AddConfigPath("../../.")
 	config.AddConfigPath("../orderer/")
 	config.AddConfigPath("../../orderer/")
 	// Path to look for the config file in based on GOPATH
