@@ -70,8 +70,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	var eventVal int // State of event
 	var err error
 
-	if len(args) != 3 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 3")
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
 
 	event = args[0]
@@ -86,7 +86,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	}
 
 	// Get the chaincode to call from the ledger
-	chainCodeToCall := args[2] //t.GetChaincodeToCall()
+	chainCodeToCall := t.GetChaincodeToCall()
 
 	f := "invoke"
 	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")
