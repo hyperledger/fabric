@@ -38,6 +38,7 @@ Vagrant.configure('2') do |config|
   config.vm.network :forwarded_port, guest: 7051, host: 7051 # Openchain gRPC services
   config.vm.network :forwarded_port, guest: 7054, host: 7054 # Membership service
   config.vm.network :forwarded_port, guest: 7053, host: 7053 # GRPCCient gRPC services
+  config.vm.network :forwarded_port, guest: 5984, host: 5984 # CouchDB service
 
   config.vm.synced_folder "..", "#{SRCMOUNT}"
   config.vm.synced_folder "..", "/opt/gopath/src/github.com/hyperledger/fabric"

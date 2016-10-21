@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+couchDbContainerStatus() {
+  for s in created restarting running paused exited dead ; do
+    if [ -n "$(docker ps --all --quiet --filter name=couchdb --filter status=$s)" ] ; then
+      echo $s
+      return 0
+    fi
+  done
+}
+
+case "$1" in
+  "start")
+    case "$(couchDbContainerStatus)" in
+      "created" )
+        echo "Starting couchdb container..."
+        docker start couchdb
+        ;;
+      "exited" )
+        echo "Restarting couchdb container..."
+        docker restart couchdb
+        ;;
+      "paused" )
+        echo "Unpausing couchdb container..."
+        docker unpause couchdb
+        ;;
+      "running" )
+        echo "couchdb container is already started"
+        docker ps --filter name=couchdb
+        ;;
+      "restarting" | "dead" | * )
+        # if running, restarting, or dead, just let user deal with error
+        docker run \
+          --publish 5984:5984    `# publish port`   \
+          --detach               `# run as daemon`  \
+          --name couchdb         `# name container` \
+          `# map database dir to a host dir`        \
+          klaemo/couchdb:2.0.0
+        ;;
+    esac
+    ;;
+  "stop")
+    echo "Stopping couchdb container..."
+    docker stop couchdb
+    ;;
+  "status" | *)
+    docker ps --all --filter name=couchdb --format "{{.Status}}"
+    ;;
+esac
