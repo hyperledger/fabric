@@ -21,13 +21,25 @@ server:
                 file:
 
 security:
-    # Can be 256 or 384
-    # Must be the same as in core.yaml
+    # Either 256 or 384   (note: must be the exact same value as specified in the core.yaml file)
     level: 256
 
-    # Can be SHA2 or SHA3
-    # Must be the same as in core.yaml
+    # Either SHA2 or SHA3 (note: must be the exact same value as specified in the core.yaml file)
     hashAlgorithm: SHA3
+
+    # The server host CN (Common Name) to be used (needs to match the TLS Server Certificate)
+    serverhostoverride:
+
+    # Boolean (true/false) value indicating whether TLS should be used between the client and
+    # the various CA services (ECA, TCA, TLSCA, ACA)
+    tls_enabled: false
+
+    # A PEM-encoded (X509 v3, Base64) certificate to use for establishing the TLS connection
+    # between the client and the ACA service
+    client:
+       cert:
+           file:
+
 
 # Enabling/disabling different logging levels of the CA.
 #

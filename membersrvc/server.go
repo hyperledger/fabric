@@ -85,16 +85,22 @@ func main() {
 	runtime.GOMAXPROCS(viper.GetInt("server.gomaxprocs"))
 
 	var opts []grpc.ServerOption
-	if viper.GetString("server.tls.cert.file") != "" {
+
+	if viper.GetBool("security.tls_enabled") {
+		logger.Debug("TLS was enabled [security.tls_enabled == true]")
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("server.tls.cert.file"), viper.GetString("server.tls.key.file"))
 		if err != nil {
 			logger.Panic(err)
 		}
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
+	} else {
+		logger.Debug("TLS was not enabled [security.tls_enabled == false]")
 	}
+
 	srv := grpc.NewServer(opts...)
 
 	if viper.GetBool("aca.enabled") {
+		logger.Debug("ACA was enabled [aca.enabled == true]")
 		aca.Start(srv)
 	}
 	eca.Start(srv)
