@@ -35,7 +35,7 @@
    make doc
 ```  
 
- * To build the reference documentation in the [Self Contained Node.js Environment](node-sdk-self-contained.md):
+ * To build the reference documentation in the [Fabric-starter-kit](../starter/fabric-starter-kit.md)
 
 ```
    docker exec -it nodesdk /bin/bash

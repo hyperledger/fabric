@@ -29,6 +29,12 @@ import (
 )
 
 var dbLogger = logging.MustGetLogger("db")
+var rocksDBLogLevelMap = map[string]gorocksdb.InfoLogLevel{
+	"debug": gorocksdb.DebugInfoLogLevel,
+	"info":  gorocksdb.InfoInfoLogLevel,
+	"warn":  gorocksdb.WarnInfoLogLevel,
+	"error": gorocksdb.ErrorInfoLogLevel,
+	"fatal": gorocksdb.FatalInfoLogLevel}
 
 const blockchainCF = "blockchainCF"
 const stateCF = "stateCF"
@@ -158,6 +164,26 @@ func (openchainDB *OpenchainDB) open() {
 
 	opts := gorocksdb.NewDefaultOptions()
 	defer opts.Destroy()
+
+	maxLogFileSize := viper.GetInt("peer.db.maxLogFileSize")
+	if maxLogFileSize > 0 {
+		dbLogger.Infof("Setting rocksdb maxLogFileSize to %d", maxLogFileSize)
+		opts.SetMaxLogFileSize(maxLogFileSize)
+	}
+
+	keepLogFileNum := viper.GetInt("peer.db.keepLogFileNum")
+	if keepLogFileNum > 0 {
+		dbLogger.Infof("Setting rocksdb keepLogFileNum to %d", keepLogFileNum)
+		opts.SetKeepLogFileNum(keepLogFileNum)
+	}
+
+	logLevelStr := viper.GetString("peer.db.loglevel")
+	logLevel, ok := rocksDBLogLevelMap[logLevelStr]
+
+	if ok {
+		dbLogger.Infof("Setting rocks db InfoLogLevel to %d", logLevel)
+		opts.SetInfoLogLevel(logLevel)
+	}
 
 	opts.SetCreateIfMissing(missing)
 	opts.SetCreateIfMissingColumnFamilies(true)

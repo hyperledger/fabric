@@ -428,7 +428,7 @@ The invoking transaction runs the specified chaincode function name "invoke" wit
 Run a query on the chaincode to retrieve the desired values. The `-n` argument should match the value provided in the chaincode window (started in Vagrant terminal 2):
 
 ```
-    peer chaincode query -l golang -n mycc -c '{Args": ["query", "b"]}'
+    peer chaincode query -l golang -n mycc -c '{"Args": ["query", "b"]}'
 ```
 
 The response should be similar to the following:

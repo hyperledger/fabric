@@ -1,6 +1,6 @@
 {
   "name": "hfc",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "The Hyperledger Fabric Client SDK (HFC) provides a powerful and easy to use API to interact with a Hyperledger Fabric blockchain.",
   "keywords": [
     "hfc",
@@ -38,6 +38,7 @@
     "sjcl-codec": "0.1.1",
     "sleep": "^3.0.1",
     "tar-fs": "^1.13.0",
+    "typedoc": "0.4.5",
     "typescript": "1.8.10",
     "url": "^0.11.0",
     "util": "^0.10.3",

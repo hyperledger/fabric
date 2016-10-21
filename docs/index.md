@@ -79,14 +79,12 @@ contracts development.
 
 Below, you'll find the following sections:
 
-- [Read All About It](#read-all-about-it)
-- [Developer guides](#developer-guides)
-
-  - [Chaincode developer's guide](#chaincode-developer-guide)
-  - [Application developer's guide](#application-developer-guide)
-  - [Fabric developer's guide](#fabric-developer-guide)
-
-- [Operations guide](#operations-guide)
+* [Read All About It](#read-all-about-it)
+* [Developer guides](#developer-guides)
+    * [Chaincode developer's guide](#chaincode-developer-guide)
+    * [Application developer's guide](#application-developer-guide)
+    * [Fabric developer's guide](#fabric-developer-guide)
+* [Operations guide](#operations-guide)
 
 ## Read all about it
 
