@@ -17,8 +17,8 @@
 #
 #
 set -e
-PARENTDIR=$(pwd)
+PARENTDIR=$(pwd)	
+
 
 gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle clean
 gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle build
-cp -r ${PARENTDIR}/core/chaincode/shim/java/build/libs /root/

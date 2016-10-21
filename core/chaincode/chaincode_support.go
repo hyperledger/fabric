@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger"
+	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
 	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -50,6 +51,9 @@ const (
 	chaincodeStartupTimeoutDefault int    = 5000
 	chaincodeInstallPathDefault    string = "/opt/gopath/bin/"
 	peerAddressDefault             string = "0.0.0.0:7051"
+
+	//TXSimulatorKey is used to attach ledger simulation context
+	TXSimulatorKey string = "txsimulatorkey"
 )
 
 // chains is a map between different blockchains and their ChaincodeSupport.
@@ -275,7 +279,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 
 	var notfy chan *pb.ChaincodeMessage
 	var err error
-	if notfy, err = chrte.handler.initOrReady(txid, initArgs, tx, depTx); err != nil {
+	if notfy, err = chrte.handler.initOrReady(context, txid, initArgs, tx, depTx); err != nil {
 		return fmt.Errorf("Error sending %s: %s", pb.ChaincodeMessage_INIT, err)
 	}
 	if notfy != nil {
@@ -321,7 +325,7 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cID *pb.ChaincodeID, cLa
 	case pb.ChaincodeSpec_JAVA:
 		//TODO add security args
 		args = strings.Split(
-			fmt.Sprintf("java -jar chaincode.jar -a %s -i %s",
+			fmt.Sprintf("/root/Chaincode/bin/runChaincode -a %s -i %s",
 				chaincodeSupport.peerAddress, cID.Name),
 			" ")
 		if chaincodeSupport.peerTLS {
@@ -510,23 +514,37 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		}
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
-		depTx, ledgerErr = ledger.GetTransactionByID(chaincode)
-		if ledgerErr != nil {
-			return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
-		}
-		if depTx == nil {
-			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
-		}
-		if nil != chaincodeSupport.secHelper {
-			var err error
-			depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
-			// Note that t is now decrypted and is a deep clone of the original input t
-			if nil != err {
-				return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", chaincode, err)
+		var depPayload []byte
+		if _, ok := context.Value(TXSimulatorKey).(ledgernext.TxSimulator); ok {
+			depPayload, ledgerErr = getCDSFromLCCC(context, string(DefaultChain), chaincode)
+			if ledgerErr != nil {
+				return cID, cMsg, fmt.Errorf("Could not get deployment transaction from LCCC for %s - %s", chaincode, ledgerErr)
 			}
+		} else {
+			depTx, ledgerErr = ledger.GetTransactionByID(chaincode)
+			if ledgerErr != nil {
+				return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
+			}
+			if depTx == nil {
+				return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
+			}
+			if nil != chaincodeSupport.secHelper {
+				var err error
+				depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
+				// Note that t is now decrypted and is a deep clone of the original input t
+				if nil != err {
+					return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", chaincode, err)
+				}
+			}
+			depPayload = depTx.Payload
 		}
+
+		if depPayload == nil {
+			return cID, cMsg, fmt.Errorf("failed to get deployment payload %s - %s", chaincode, ledgerErr)
+		}
+
 		//Get lang from original deployment
-		err := proto.Unmarshal(depTx.Payload, cds)
+		err = proto.Unmarshal(depPayload, cds)
 		if err != nil {
 			return cID, cMsg, fmt.Errorf("failed to unmarshal deployment transactions for %s - %s", chaincode, err)
 		}
@@ -620,9 +638,9 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 	chaincodeLogger.Debugf("deploying chaincode %s(networkid:%s,peerid:%s)", chaincode, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID)
 
 	//create image and create container
-	_, err = container.VMCProcess(context, vmtype, cir)
-	if err != nil {
-		err = fmt.Errorf("Error starting container: %s", err)
+	resp, err2 := container.VMCProcess(context, vmtype, cir)
+	if err2 != nil || (resp != nil && resp.(container.VMCResp).Err != nil) {
+		err = fmt.Errorf("Error creating image: %s", err2)
 	}
 
 	return cds, err
@@ -671,7 +689,7 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincod
 
 	var notfy chan *pb.ChaincodeMessage
 	var err error
-	if notfy, err = chrte.handler.sendExecuteMessage(msg, tx); err != nil {
+	if notfy, err = chrte.handler.sendExecuteMessage(ctxt, msg, tx); err != nil {
 		return nil, fmt.Errorf("Error sending %s: %s", msg.Type.String(), err)
 	}
 	var ccresp *pb.ChaincodeMessage

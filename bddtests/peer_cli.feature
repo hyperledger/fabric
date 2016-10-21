@@ -1,7 +1,7 @@
 #
 # Test Command Line Features of a Peer
 #
-
+@preV1
 Feature: Peer Command Line Interface
     As a User of the Fabric
     I want the command line interface to work correctly

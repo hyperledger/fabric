@@ -5,7 +5,8 @@
 #
 #  @doNotDecompose will NOT decompose the named compose_yaml after scenario ends.  Useful for setting up environment and reviewing after scenario.
 #
-
+@preV1
+@preV1_sdk
 Feature: Node SDK
     As a HyperLedger developer
     I want to have a single test driver for the various Hyperledger SDKs

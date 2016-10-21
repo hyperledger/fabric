@@ -51,15 +51,16 @@ func (t *SystemChaincode) getLedger() ledgerHandler {
 }
 
 // Init initailizes the system chaincode
-func (t *SystemChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *SystemChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	logger.SetLevel(shim.LogDebug)
 	logger.Debugf("NOOP INIT")
 	return nil, nil
 }
 
 // Invoke runs an invocation on the system chaincode
-func (t *SystemChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	if len(args) != 0 || function == "" {
+func (t *SystemChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	args := stub.GetStringArgs()
+	if len(args) != 1 {
 		return nil, errors.New("Noop execute operation must have one single argument.")
 	}
 	logger.Infof("Executing noop invoke.")
@@ -67,7 +68,8 @@ func (t *SystemChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 }
 
 // Query callback representing the query of a chaincode
-func (t *SystemChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *SystemChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
 	switch function {
 	case "getTran":
 		if len(args) < 1 {

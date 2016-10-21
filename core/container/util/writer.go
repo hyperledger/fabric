@@ -32,21 +32,20 @@ import (
 
 var vmLogger = logging.MustGetLogger("container")
 
-var includeFileTypes = map[string]bool{
+var fileTypes = map[string]bool{
 	".c":    true,
 	".h":    true,
 	".go":   true,
 	".yaml": true,
 	".json": true,
 }
-
-// These filetypes are excluded while creating the tar package sent to Docker
-// Generated .class and other temporary files can be excluded
-var javaExcludeFileTypes = map[string]bool{
-	".class": true,
+var javaFileTypes = map[string]bool{
+	".java":       true,
+	".properties": true,
+	".gradle":     true,
 }
 
-func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) error {
+func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, includeFileTypeMap map[string]bool) error {
 	rootDirectory := srcPath
 	vmLogger.Infof("rootDirectory = %s", rootDirectory)
 
@@ -76,20 +75,11 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 		if len(path[rootDirLen:]) == 0 {
 			return nil
 		}
+
+		// we only want 'fileTypes' source files at this point
 		ext := filepath.Ext(path)
-
-		if includeFileTypeMap != nil {
-			// we only want 'fileTypes' source files at this point
-			if _, ok := includeFileTypeMap[ext]; ok != true {
-				return nil
-			}
-		}
-
-		//exclude the given file types
-		if excludeFileTypeMap != nil {
-			if exclude, ok := excludeFileTypeMap[ext]; ok && exclude {
-				return nil
-			}
+		if _, ok := includeFileTypeMap[ext]; ok != true {
+			return nil
 		}
 
 		newPath := fmt.Sprintf("src%s", path[rootDirLen:])
@@ -99,6 +89,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 		if err != nil {
 			return fmt.Errorf("Error writing file to package: %s", err)
 		}
+
 		return nil
 	}
 
@@ -118,7 +109,7 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	rootDirectory := filepath.Join(gopath, "src")
 	vmLogger.Infof("rootDirectory = %s", rootDirectory)
 
-	if err := WriteFolderToTarPackage(tw, rootDirectory, excludeDir, includeFileTypes, nil); err != nil {
+	if err := WriteFolderToTarPackage(tw, rootDirectory, excludeDir, fileTypes); err != nil {
 		vmLogger.Errorf("Error writing folder to tar package %s", err)
 		return err
 	}
@@ -139,12 +130,9 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	return nil
 }
 
-//Package Java project to tar file from the source path
 func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 
-	vmLogger.Debugf("Packaging Java project from path %s", srcPath)
-
-	if err := WriteFolderToTarPackage(tw, srcPath, "", nil, javaExcludeFileTypes); err != nil {
+	if err := WriteFolderToTarPackage(tw, srcPath, "", javaFileTypes); err != nil {
 
 		vmLogger.Errorf("Error writing folder to tar package %s", err)
 		return err

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos"
 )
@@ -39,7 +40,8 @@ func TestMocking(t *testing.T) {
 
 func TestInvokeUnsupported(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Invoke(nil, "unsupported_operation", []string{"arg1", "arg2"})
+	stub := shim.InitTestStub("unsupported_operation", "arg1", "arg2")
+	var res, err = noop.Invoke(stub)
 	if res != nil || err == nil {
 		t.Errorf("Invoke has to return nil and error when called with unsupported operation!")
 	}
@@ -47,7 +49,8 @@ func TestInvokeUnsupported(t *testing.T) {
 
 func TestInvokeExecuteNotEnoughArgs(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Invoke(nil, "", []string{})
+	stub := shim.InitTestStub()
+	var res, err = noop.Invoke(stub)
 	if res != nil || err == nil {
 		t.Errorf("Invoke.execute has to indicate error if called with less than one arguments!")
 	}
@@ -55,7 +58,8 @@ func TestInvokeExecuteNotEnoughArgs(t *testing.T) {
 
 func TestInvokeExecuteOneArgReturnsNothing(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Invoke(nil, "transaction", []string{})
+	stub := shim.InitTestStub("transaction")
+	var res, err = noop.Invoke(stub)
 	if res != nil || err != nil {
 		t.Errorf("Invoke.execute has to return nil with no error.")
 	}
@@ -63,7 +67,8 @@ func TestInvokeExecuteOneArgReturnsNothing(t *testing.T) {
 
 func TestInvokeExecuteMoreArgsReturnsError(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Invoke(nil, "transaction", []string{"arg1"})
+	stub := shim.InitTestStub("transaction", "arg1")
+	var res, err = noop.Invoke(stub)
 	if res != nil || err == nil {
 		t.Errorf("Invoke.execute has to return error when called with more than one arguments.")
 	}
@@ -71,7 +76,8 @@ func TestInvokeExecuteMoreArgsReturnsError(t *testing.T) {
 
 func TestQueryUnsupported(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Query(nil, "unsupported_operation", []string{"arg1", "arg2"})
+	stub := shim.InitTestStub("unsupported_operation", "arg1", "arg2")
+	var res, err = noop.Query(stub)
 	if res != nil || err == nil {
 		t.Errorf("Invoke has to return nil and error when called with unsupported operation!")
 	}
@@ -79,7 +85,8 @@ func TestQueryUnsupported(t *testing.T) {
 
 func TestQueryGetTranNotEnoughArgs(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Query(nil, "getTran", []string{})
+	stub := shim.InitTestStub("getTran")
+	var res, err = noop.Query(stub)
 	if res != nil || err == nil {
 		t.Errorf("Invoke has to return nil and error when called with unsupported operation!")
 	}
@@ -87,7 +94,8 @@ func TestQueryGetTranNotEnoughArgs(t *testing.T) {
 
 func TestQueryGetTranNonExisting(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Query(nil, "getTran", []string{"noSuchTX"})
+	stub := shim.InitTestStub("getTran", "noSuchTX")
+	res, err := noop.Query(stub)
 	if res != nil || err == nil {
 		t.Errorf("Invoke has to return nil when called with a non-existent transaction.")
 	}
@@ -95,7 +103,8 @@ func TestQueryGetTranNonExisting(t *testing.T) {
 
 func TestQueryGetTranNonExistingWithManyArgs(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Query(nil, "getTran", []string{"noSuchTX", "arg2"})
+	stub := shim.InitTestStub("getTran", "noSuchTX", "arg2")
+	res, err := noop.Query(stub)
 	if res != nil || err == nil {
 		t.Errorf("Invoke has to return nil when called with a non-existent transaction.")
 	}
@@ -103,7 +112,8 @@ func TestQueryGetTranNonExistingWithManyArgs(t *testing.T) {
 
 func TestQueryGetTranExisting(t *testing.T) {
 	var noop = SystemChaincode{mockLedger{}}
-	var res, err = noop.Query(nil, "getTran", []string{"someTx"})
+	stub := shim.InitTestStub("getTran", "someTx")
+	var res, err = noop.Query(stub)
 	if res == nil || err != nil {
 		t.Errorf("Invoke has to return a transaction when called with an existing one.")
 	}

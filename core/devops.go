@@ -121,8 +121,8 @@ func (*Devops) Build(context context.Context, spec *pb.ChaincodeSpec) (*pb.Chain
 	return chaincodeDeploymentSpec, nil
 }
 
-// get chaincode bytes
-func (*Devops) getChaincodeBytes(context context.Context, spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
+// GetChaincodeBytes get chaincode deployment spec given the chaincode spec
+func GetChaincodeBytes(context context.Context, spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
 	mode := viper.GetString("chaincode.mode")
 	var codePackageBytes []byte
 	if mode != chaincode.DevModeUserRunsChaincode {
@@ -146,7 +146,7 @@ func (*Devops) getChaincodeBytes(context context.Context, spec *pb.ChaincodeSpec
 // Deploy deploys the supplied chaincode image to the validators through a transaction
 func (d *Devops) Deploy(ctx context.Context, spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
 	// get the deployment spec
-	chaincodeDeploymentSpec, err := d.getChaincodeBytes(ctx, spec)
+	chaincodeDeploymentSpec, err := GetChaincodeBytes(ctx, spec)
 
 	if err != nil {
 		devopsLogger.Error(fmt.Sprintf("Error deploying chaincode spec: %v\n\n error: %s", spec, err))

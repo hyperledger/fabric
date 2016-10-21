@@ -1,0 +1,97 @@
+---
+################################################################################
+#
+#   Orderer Configuration
+#
+#   - This controls the type and configuration for the orderer which is started
+#   - This controls the type and configuration for the rawledger if needed
+#
+################################################################################
+General:
+
+    # Orderer Type: The orderer implementation to start
+    # Available types are "solo" and "kafka"
+    OrdererType: solo
+
+    # Ledger Type: The ledger type to provide to the orderer (if needed)
+    # Available types are "ram", "file". When "kafka" is chosen as the
+    # OrdererType, this option is ignored.
+    LedgerType: ram
+
+    # Batch Timeout: The amount of time to wait before creating a batch
+    BatchTimeout: 10s
+
+    # Batch Size: The maximum number of messages to permit in a batch
+    BatchSize: 10
+
+    # Queue Size: The maximum number of messages to allow pending from a gRPC client
+    # When Kafka is chosen as the OrdererType, this option is ignored.
+    QueueSize: 10
+
+    # Max Window Size: The maximum number of messages to for the orderer Deliver
+    # to allow before acknowledgement must be received from the client
+    MaxWindowSize: 1000
+
+    # Listen address: The IP on which to bind to listen
+    ListenAddress: 127.0.0.1
+
+    # Listen port: The port on which to bind to listen
+    ListenPort: 5151
+
+################################################################################
+#
+#   SECTION: RAM Ledger
+#
+#   - This section applies to the configuration of the RAM ledger
+#
+################################################################################
+RAMLedger:
+
+    # History Size: The number of blocks that the RAM ledger is set to retain
+    HistorySize: 1000
+
+
+################################################################################
+#
+#   SECTION: File Ledger
+#
+#   - This section applies to the configuration of the file ledger
+#
+################################################################################
+FileLedger:
+
+    # Location: The directory to store the blocks in
+    # NOTE: if this unset, a temporary location will be chosen using
+    # the prefix specified by Prefix
+    Location:
+
+    # The prefix to use when generating a ledger directory in temporary space
+    # Otherwise, this value is ignored
+    Prefix: hyperledger-fabric-rawledger
+
+################################################################################
+#
+#   SECTION: Kafka
+#
+#   - This section applies to the configuration of the Kafka-backed orderer
+#
+################################################################################
+Kafka:
+
+    # Brokers: A list of Kafka brokers to which the orderer connects
+    # NOTE: Use IP:port notation
+    Brokers:
+        - 127.0.0.1:9092
+
+    # Topic: The Kafka topic the orderer writes to/reads from
+    Topic: test
+
+    # Partition ID: The partition of the Kafka topic the orderer writes to/reads from
+    PartitionID: 0
+
+    # Retry: What to do if none of the Kafka brokers are available.
+    Retry:
+        # The producer should attempt to reconnect every <Period>.
+        Period: 3s
+        # Panic if <Stop> has elapsed and no connection has been established.
+        Stop: 60s

@@ -1,0 +1,3 @@
+empty:
+  image: hyperledger/fabric-src
+  command: bash -c "sleep inf"

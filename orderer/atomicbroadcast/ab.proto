@@ -1,0 +1,92 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+                 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package atomicbroadcast;
+
+// These status codes are intended to resemble selected HTTP status codes
+enum Status {
+    SUCCESS = 0;
+    BAD_REQUEST = 400;
+    FORBIDDEN = 403;
+    NOT_FOUND = 404;
+    SERVICE_UNAVAILABLE = 503;
+}
+
+message BroadcastResponse {
+    Status Status = 1;
+}
+
+message BroadcastMessage {
+    bytes Data = 1;
+}
+
+message SeekInfo {
+    // Start may be specified to a specific block number, or may be request from the newest or oldest available
+    // The start location is always inclusive, so the first reply from NEWEST will contain the newest block at the time
+    // of reception, it will must not wait until a new block is created.  Similarly, when SPECIFIED, and SpecifiedNumber = 10
+    // The first block received must be block 10, not block 11
+    enum StartType {
+        NEWEST = 0;
+        OLDEST = 1;
+        SPECIFIED = 2;
+    }
+    StartType Start = 1;
+    uint64 SpecifiedNumber = 2; // Only used when start = SPECIFIED
+    uint64 WindowSize = 3; // The window size is the maximum number of blocks that will be sent without Acknowledgement, the base of the window moves to the most recently received acknowledgment
+}
+
+message Acknowledgement {
+    uint64 Number = 1;
+}
+
+// The update message either causes a seek to a new stream start with a new window, or acknowledges a received block and advances the base of the window
+message DeliverUpdate {
+    oneof Type {
+        Acknowledgement Acknowledgement = 1; // Acknowledgement should be sent monotonically and only for a block which has been received, Acknowledgements received non-monotonically has undefined behavior
+        SeekInfo Seek = 2; // When set, SeekInfo causes a seek and potential reconfiguration of the window size
+    }
+}
+
+// This is a temporary data structure, meant to hold the place of the finalized block structure
+// This must be a 'block' structure and not a 'batch' structure, although the terminology is slightly confusing
+// The requirement is to allow for a consumer of the orderer to declare the unvalidated blockchain as the definitive
+// blockchain, without breaking the hash chain or existing proof
+message Block {
+    uint64 Number = 2;
+    bytes PrevHash = 3;
+    bytes Proof = 4;
+    repeated BroadcastMessage Messages = 5;
+}
+
+message DeliverResponse {
+    oneof Type {
+        Status Error = 1;
+        Block Block = 2;
+    }
+}
+
+service AtomicBroadcast {
+    // broadcast receives a reply of Acknowledgement for each BroadcastMessage in order, indicating success or type of failure
+    rpc Broadcast(stream BroadcastMessage) returns (stream BroadcastResponse) {}
+
+    // deliver first requires an update containing a seek message, then a stream of block replies is received.
+    // The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
+    // To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
+    rpc Deliver(stream DeliverUpdate) returns (stream DeliverResponse) {}
+}
+

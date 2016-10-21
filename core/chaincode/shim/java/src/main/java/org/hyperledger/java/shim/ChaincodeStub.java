@@ -17,440 +17,579 @@ limitations under the License.
 package org.hyperledger.java.shim;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.hyperledger.protos.Chaincode;
-import org.hyperledger.protos.TableProto;
-
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import static org.hyperledger.protos.TableProto.ColumnDefinition.Type.STRING;
+
+import java.util.List;
 
 public class ChaincodeStub {
-    private static Log logger = LogFactory.getLog(ChaincodeStub.class);
-    private final String uuid;
-    private final Handler handler;
 
-    public ChaincodeStub(String uuid, Handler handler) {
-        this.uuid = uuid;
-        this.handler = handler;
-    }
+	private final String uuid;
+	private final Handler handler;
 
-    /**
-     * Gets the UUID of this stub
-     *
-     * @return the id used to identify this communication channel
-     */
-    public String getUuid() {
-        return uuid;
-    }
+	public ChaincodeStub(String uuid, Handler handler) {
+		this.uuid = uuid;
+		this.handler = handler;
+	}
+	
+	/**
+	 * Gets the UUID of this stub
+	 * @return the id used to identify this communication channel
+	 */
+	public String getUuid() {
+		return uuid;
+	}
+	
+	/**
+	 * Get the state of the provided key from the ledger, and returns is as a string
+	 * @param key the key of the desired state
+	 * @return the String value of the requested state
+	 */
+	public String getState(String key) {
+		return handler.handleGetState(key, uuid).toStringUtf8();
+	}
 
-    /**
-     * Get the state of the provided key from the ledger, and returns is as a string
-     *
-     * @param key the key of the desired state
-     * @return the String value of the requested state
-     */
-    public String getState(String key) {
-        return handler.handleGetState(key, uuid).toStringUtf8();
-    }
+	/**
+	 * Puts the given state into a ledger, automatically wrapping it in a ByteString
+	 * @param key reference key
+	 * @param value value to be put
+	 */
+	public void putState(String key, String value) {
+		handler.handlePutState(key, ByteString.copyFromUtf8(value), uuid);
+	}
 
-    /**
-     * Puts the given state into a ledger, automatically wrapping it in a ByteString
-     *
-     * @param key   reference key
-     * @param value value to be put
-     */
-    public void putState(String key, String value) {
-        handler.handlePutState(key, ByteString.copyFromUtf8(value), uuid);
-    }
+	/**
+	 * Deletes the state of the given key from the ledger
+	 * @param key key of the state to be deleted
+	 */
+	public void delState(String key) {
+		handler.handleDeleteState(key, uuid);
+	}
 
-    /**
-     * Deletes the state of the given key from the ledger
-     *
-     * @param key key of the state to be deleted
-     */
-    public void delState(String key) {
-        handler.handleDeleteState(key, uuid);
-    }
+	/**
+	 * Given a start key and end key, this method returns a map of items with value converted to UTF-8 string.
+	 * @param startKey
+	 * @param endKey
+	 * @return
+	 */
+	public Map<String, String> rangeQueryState(String startKey, String endKey) {
+		Map<String, String> retMap = new HashMap<>();
+		for (Map.Entry<String, ByteString> item: rangeQueryRawState(startKey, endKey).entrySet()) {
+			retMap.put(item.getKey(), item.getValue().toStringUtf8());
+		}
+		return retMap;
+	}
 
-    /**
-     * Given a start key and end key, this method returns a map of items with value converted to UTF-8 string.
-     *
-     * @param startKey
-     * @param endKey
+	/**
+	 * This method is same as rangeQueryState, except it returns value in ByteString, useful in cases where
+	 * serialized object can be retrieved.
+	 * @param startKey
+	 * @param endKey
      * @return
      */
-    public Map<String, String> rangeQueryState(String startKey, String endKey) {
-        Map<String, String> retMap = new HashMap<>();
-        for (Map.Entry<String, ByteString> item : rangeQueryRawState(startKey, endKey).entrySet()) {
-            retMap.put(item.getKey(), item.getValue().toStringUtf8());
-        }
-        return retMap;
-    }
+	public Map<String, ByteString> rangeQueryRawState(String startKey, String endKey) {
+		Map<String, ByteString> map = new HashMap<>();
+		for (Chaincode.RangeQueryStateKeyValue mapping : handler.handleRangeQueryState(
+				startKey, endKey, uuid).getKeysAndValuesList()) {
+			map.put(mapping.getKey(), mapping.getValue());
+		}
+		return map;
+	}
 
-    /**
-     * This method is same as rangeQueryState, except it returns value in ByteString, useful in cases where
-     * serialized object can be retrieved.
-     *
-     * @param startKey
-     * @param endKey
-     * @return
-     */
-    public Map<String, ByteString> rangeQueryRawState(String startKey, String endKey) {
-        Map<String, ByteString> map = new HashMap<>();
-        for (Chaincode.RangeQueryStateKeyValue mapping : handler.handleRangeQueryState(
-                startKey, endKey, uuid).getKeysAndValuesList()) {
-            map.put(mapping.getKey(), mapping.getValue());
-        }
-        return map;
-    }
+	/**
+	 * 
+	 * @param chaincodeName
+	 * @param function
+	 * @param args
+	 * @return
+	 */
+	public String invokeChaincode(String chaincodeName, String function, List<ByteString> args) {
+		return handler.handleInvokeChaincode(chaincodeName, function, args, uuid).toStringUtf8();
+	}
+	
+	/**
+	 * 
+	 * @param chaincodeName
+	 * @param function
+	 * @param args
+	 * @return
+	 */
+	public String queryChaincode(String chaincodeName, String function, List<ByteString> args) {
+		return handler.handleQueryChaincode(chaincodeName, function, args, uuid).toStringUtf8();
+	}
 
-    /**
-     * @param chaincodeName
-     * @param function
-     * @param args
-     * @return
-     */
-    public String invokeChaincode(String chaincodeName, String function, List<ByteString> args) {
-        return handler.handleInvokeChaincode(chaincodeName, function, args, uuid).toStringUtf8();
-    }
+	//------RAW CALLS------
+	
+	/**
+	 * 
+	 * @param key
+	 * @return
+	 */
+	public ByteString getRawState(String key) {
+		return handler.handleGetState(key, uuid);
+	}
 
-    /**
-     * @param chaincodeName
-     * @param function
-     * @param args
-     * @return
-     */
-    public String queryChaincode(String chaincodeName, String function, List<ByteString> args) {
-        return handler.handleQueryChaincode(chaincodeName, function, args, uuid).toStringUtf8();
-    }
+	/**
+	 * 
+	 * @param key
+	 * @param value
+	 */
+	public void putRawState(String key, ByteString value) {
+		handler.handlePutState(key, value, uuid);
+	}
 
-    //------RAW CALLS------
-
-    /**
-     * @param key
-     * @return
-     */
-    public ByteString getRawState(String key) {
-        return handler.handleGetState(key, uuid);
-    }
-
-    /**
-     * @param key
-     * @param value
-     */
-    public void putRawState(String key, ByteString value) {
-        handler.handlePutState(key, value, uuid);
-    }
-
-    /**
-     *
-     * @param startKey
-     * @param endKey
-     * @param limit
-     * @return
-     */
+	/**
+	 * 
+	 * @param startKey
+	 * @param endKey
+	 * @param limit
+	 * @return
+	 */
 //	public RangeQueryStateResponse rangeQueryRawState(String startKey, String endKey, int limit) {
 //		return handler.handleRangeQueryState(startKey, endKey, limit, uuid);
 //	}
 
-    /**
-     * @param chaincodeName
-     * @param function
-     * @param args
-     * @return
-     */
-    public ByteString queryRawChaincode(String chaincodeName, String function, List<ByteString> args) {
-        return handler.handleQueryChaincode(chaincodeName, function, args, uuid);
-    }
-
-    /**
-     * Invokes the provided chaincode with the given function and arguments, and returns the
-     * raw ByteString value that invocation generated.
-     *
-     * @param chaincodeName The name of the chaincode to invoke
-     * @param function      the function parameter to pass to the chaincode
-     * @param args          the arguments to be provided in the chaincode call
-     * @return the value returned by the chaincode call
-     */
-    public ByteString invokeRawChaincode(String chaincodeName, String function, List<ByteString> args) {
-        return handler.handleInvokeChaincode(chaincodeName, function, args, uuid);
-    }
-
-    public boolean createTable(String tableName, List<TableProto.ColumnDefinition> columnDefinitions)
-            throws Exception    {
-        if (validateTableName(tableName)) {
-            logger.debug("Table name %s is valid, continue table creation");
-
-            if (tableExist(tableName)) {
-                logger.error("Table with tableName already exist, Create table operation failed");
-                return false;//table exist
-            } else {
-                if (columnDefinitions != null && columnDefinitions.size() == 0) {
-                    logger.error("Invalid column definitions. Table must contain at least one column");
-                    return false;
-                }
-                Map<String, Boolean> nameMap = new HashMap<>();
-                int idx = 0;
-                boolean hasKey = false;
-                logger.debug("Number of columns " + columnDefinitions.size());
-                for (TableProto.ColumnDefinition colDef : columnDefinitions) {
-                    logger.debug("Col information - " + colDef.getName()+ "=" + colDef.getType()+ "=" +colDef.isInitialized());
-
-                    if (!colDef.isInitialized() || colDef.getName().length() == 0) {
-                        logger.error("Column definition is invalid for index " + idx);
-                    return false;
-                    }
-
-                    if (!nameMap.isEmpty() && nameMap.containsKey(colDef.getName())){
-                        logger.error("Column already exist for colIdx " + idx + " with name " + colDef.getName());
-                        return false;
-                    }
-                    nameMap.put(colDef.getName(), true);
-                    switch (colDef.getType()) {
-                        case STRING:
-                            break;
-                        case INT32:
-                            break;
-                        case INT64:
-                            break;
-                        case UINT32:
-                            break;
-                        case UINT64:
-                            break;
-                        case BYTES:
-                            break;
-                        case BOOL:
-                            break;
-                        default:
-                            logger.error("Invalid column type for index " + idx + " given type " + colDef.getType());
-//                            return false;
-
-                    }
-
-                    if (colDef.getKey()) hasKey = true;
-
-                    idx++;
-                }
-                if (!hasKey) {
-                    logger.error("Invalid table. One or more columns must be a key.");
-                    return false;
-                }
-                TableProto.Table table = TableProto.Table.newBuilder()
-                        .setName(tableName)
-                        .addAllColumnDefinitions(columnDefinitions)
-                        .build();
-                String tableNameKey = getTableNameKey(tableName);
-                putRawState(tableNameKey, table.toByteString());
-                return true;
-            }
-        }
-        return false;
-    }
-    public boolean deleteTable(String tableName) {
-        String tableNameKey = getTableNameKey(tableName);
-        rangeQueryState(tableNameKey + "1", tableNameKey + ":")
-                .keySet().forEach(key -> delState(key));
-        delState(tableNameKey);
-        return true;
-    }
-    public boolean insertRow(String tableName, TableProto.Row row) throws Exception {
-        try {
-            return insertRowInternal(tableName, row, false);
-         } catch (Exception e) {
-            logger.error("Error while inserting row on table - " + tableName);
-            logger.error(e.getMessage());
-
-            throw e;
-        }
-    }
-
-    public boolean replaceRow(String tableName, TableProto.Row row) throws Exception {
-        try {
-            return insertRowInternal(tableName, row, true);
-        } catch (Exception e) {
-            logger.error("Error while updating row on table - " + tableName);
-            logger.error(e.getMessage());
-
-            throw e;
-        }
-    }
-    private List<TableProto.Column> getKeyAndVerifyRow(TableProto.Table table, TableProto.Row row) throws Exception {
-        List keys  = new ArrayList();
-        //logger.debug("Entering getKeyAndVerifyRow with tableName -" + table.getName() );
-        //logger.debug("Entering getKeyAndVerifyRow with rowcount -" + row.getColumnsCount() );
-        if ( !row.isInitialized() || row.getColumnsCount() != table.getColumnDefinitionsCount()){
-            logger.error("Table " + table.getName() + " define "
-            + table.getColumnDefinitionsCount() + " columns but row has "
-            + row.getColumnsCount() + " columns");
-            return keys;
-        }
-        int colIdx = 0;
-        for (TableProto.Column col: row.getColumnsList()) {
-            boolean expectedType;
-            switch (col.getValueCase()){
-                case STRING:
-                    expectedType = table.getColumnDefinitions(colIdx).getType()
-                            == STRING;
-                    break;
-                case INT32:
-                    expectedType = table.getColumnDefinitions(colIdx).getType()
-                            == TableProto.ColumnDefinition.Type.INT32;
-                    break;
-                case INT64:
-                    expectedType = table.getColumnDefinitions(colIdx).getType()
-                            == TableProto.ColumnDefinition.Type.INT64;
-                    break;
-                case UINT32:
-                    expectedType = table.getColumnDefinitions(colIdx).getType()
-                            == TableProto.ColumnDefinition.Type.UINT32;
-                    break;
-                case UINT64:
-                    expectedType = table.getColumnDefinitions(colIdx).getType()
-                            == TableProto.ColumnDefinition.Type.UINT64;
-                    break;
-                case BYTES:
-                    expectedType = table.getColumnDefinitions(colIdx).getType()
-                            == TableProto.ColumnDefinition.Type.BYTES;
-                    break;
-                case BOOL:
-                    expectedType = table.getColumnDefinitions(colIdx).getType()
-                            == TableProto.ColumnDefinition.Type.BOOL;
-                    break;
-                default:
-                    expectedType = false;
-            }
-            if (!expectedType){
-                logger.error("The type for table " + table.getName()
-                        + " column " + table.getColumnDefinitions(colIdx).getName() + " is "
-                        + table.getColumnDefinitions(colIdx).getType() +  " but the column in the row does not match" );
-                throw new Exception();
-            }
-            if (table.getColumnDefinitions(colIdx).getKey()){
-                keys.add(col);
-            }
-
-        colIdx++;
-        }
-        return keys;
-    }
-    private boolean isRowPresent(String tableName, List<TableProto.Column> keys){
-        String keyString = buildKeyString(tableName, keys);
-        ByteString rowBytes =   getRawState(keyString);
-        return  !rowBytes.isEmpty();
-    }
-
-    private String buildKeyString(String tableName, List<TableProto.Column> keys){
-
-        StringBuffer sb = new StringBuffer();
-        String tableNameKey = getTableNameKey(tableName);
-
-        sb.append(tableNameKey);
-        String keyString="";
-        for (TableProto.Column col: keys) {
-
-            switch (col.getValueCase()){
-                case STRING:
-                    keyString = col.getString();
-                    break;
-                case INT32:
-                    keyString = ""+col.getInt32();
-                    break;
-                case INT64:
-                    keyString = ""+col.getInt64();
-                    break;
-                case UINT32:
-                    keyString = ""+col.getUint32();
-                    break;
-                case UINT64:
-                    keyString = ""+col.getUint64();
-                    break;
-                case BYTES:
-                    keyString = col.getBytes().toString();
-                    break;
-                case BOOL:
-                    keyString = ""+col.getBool();
-                    break;
-            }
-
-            sb.append(keyString.length());
-            sb.append(keyString);
-
-        }
-        return sb.toString();
-    }
-    public TableProto.Row getRow(String tableName, List<TableProto.Column> key) throws InvalidProtocolBufferException {
-
-        String keyString = buildKeyString(tableName, key);
-        try {
-            return TableProto.Row.parseFrom(getRawState(keyString));
-        } catch (InvalidProtocolBufferException e) {
-
-            logger.error("Error while retrieving row on table -" + tableName);
-            throw e;
-        }
-    }
-
-    public boolean deleteRow(String tableName, List<TableProto.Column> key){
-        String keyString = buildKeyString(tableName, key);
-        delState(keyString);
-        return true;
-    }
-
-    private boolean insertRowInternal(String tableName, TableProto.Row row, boolean update)
-    throws  Exception{
-        try {
-            //logger.debug("inside insertRowInternal with tname " + tableName);
-            TableProto.Table table = getTable(tableName);
-            //logger.debug("inside insertRowInternal with tableName " + table.getName());
-            List<TableProto.Column> keys = getKeyAndVerifyRow(table, row);
-            Boolean present = isRowPresent(tableName, keys);
-            if((present && !update) || (!present && update)){
-                return false;
-            }
-            String keyString = buildKeyString(tableName, keys);
-            putRawState(keyString, row.toByteString());
-        } catch (Exception e) {
-            logger.error("Unable to insert/update table -" + tableName);
-            logger.error(e.getMessage());
-            throw e;
-        }
-
-        return true;
-    }
-
-    private TableProto.Table getTable(String tableName) throws Exception {
-logger.info("Inside get tbale");
-        String tName = getTableNameKey(tableName);
-        logger.debug("Table name key for getRawState - " + tName);
-        ByteString tableBytes = getRawState(tName);
-        logger.debug("Table after getrawState -" + tableBytes);
-        return TableProto.Table.parseFrom(tableBytes);
-    }
-
-    private boolean tableExist(String tableName) throws Exception {
-        boolean tableExist = false;
-        //TODO Better way to check table existence ?
-        if (getTable(tableName).getName().equals(tableName)) {
-            tableExist = true;
-        }
-        return tableExist;
-    }
-
-    private String getTableNameKey(String name) {
-        return name.length() + name;
-    }
-
-    public boolean validateTableName(String name) throws Exception {
-        boolean validTableName = true;
-        if (name.length() == 0) {
-            validTableName = false;
-        }
-        return validTableName;
-    }
+	/**
+	 * 
+	 * @param chaincodeName
+	 * @param function
+	 * @param args
+	 * @return
+	 */
+	public ByteString queryRawChaincode(String chaincodeName, String function, List<ByteString> args) {
+		return handler.handleQueryChaincode(chaincodeName, function, args, uuid);
+	}
+	
+	/**
+	 * Invokes the provided chaincode with the given function and arguments, and returns the
+	 * raw ByteString value that invocation generated. 
+	 * @param chaincodeName The name of the chaincode to invoke
+	 * @param function the function parameter to pass to the chaincode
+	 * @param args the arguments to be provided in the chaincode call
+	 * @return the value returned by the chaincode call
+	 */
+	public ByteString invokeRawChaincode(String chaincodeName, String function, List<ByteString> args) {
+		return handler.handleInvokeChaincode(chaincodeName, function, args, uuid);
+	}
+	
+	
+//	//TODO Table calls
+	public void createTable(String name) {
+		
+//		if (getTable(name) != null)
+//			throw new RuntimeException("CreateTable operation failed. Table %s already exists.");
+		
+//		if err != ErrTableNotFound {
+//			return fmt.Errorf("CreateTable operation failed. %s", err)
+//		}
+//
+//		if columnDefinitions == nil || len(columnDefinitions) == 0 {
+//			return errors.New("Invalid column definitions. Tables must contain at least one column.")
+//		}
+//
+//		hasKey := false
+//		nameMap := make(map[string]bool)
+//		for i, definition := range columnDefinitions {
+//
+//			// Check name
+//			if definition == nil {
+//				return fmt.Errorf("Column definition %d is invalid. Definition must not be nil.", i)
+//			}
+//			if len(definition.Name) == 0 {
+//				return fmt.Errorf("Column definition %d is invalid. Name must be 1 or more characters.", i)
+//			}
+//			if _, exists := nameMap[definition.Name]; exists {
+//				return fmt.Errorf("Invalid table. Table contains duplicate column name '%s'.", definition.Name)
+//			}
+//			nameMap[definition.Name] = true
+//
+//			// Check type
+//			switch definition.Type {
+//			case ColumnDefinition_STRING:
+//			case ColumnDefinition_INT32:
+//			case ColumnDefinition_INT64:
+//			case ColumnDefinition_UINT32:
+//			case ColumnDefinition_UINT64:
+//			case ColumnDefinition_BYTES:
+//			case ColumnDefinition_BOOL:
+//			default:
+//				return fmt.Errorf("Column definition %s does not have a valid type.", definition.Name)
+//			}
+//
+//			if definition.Key {
+//				hasKey = true
+//			}
+//		}
+//
+//		if !hasKey {
+//			return errors.New("Inavlid table. One or more columns must be a key.")
+//		}
+//
+//		table := &Table{name, columnDefinitions}
+//		tableBytes, err := proto.Marshal(table)
+//		if err != nil {
+//			return fmt.Errorf("Error marshalling table: %s", err)
+//		}
+//		tableNameKey, err := getTableNameKey(name)
+//		if err != nil {
+//			return fmt.Errorf("Error creating table key: %s", err)
+//		}
+//		try {
+//			stub.PutState(tableNameKey, tableBytes)
+//		} catch (Exception e) {
+//			throw new RuntimeException("Error inserting table in state: " + e.getMessage());			
+//		}
+//		return;
+	}
+//
+//	// GetTable returns the table for the specified table name or ErrTableNotFound
+//	// if the table does not exist.
+//	func (stub *ChaincodeStub) GetTable(tableName string) (*Table, error) {
+//		return stub.getTable(tableName)
+//	}
+//
+//	// DeleteTable deletes and entire table and all associated row
+//	func (stub *ChaincodeStub) DeleteTable(tableName string) error {
+//		tableNameKey, err := getTableNameKey(tableName)
+//		if err != nil {
+//			return err
+//		}
+//
+//		// Delete rows
+//		iter, err := stub.RangeQueryState(tableNameKey+"1", tableNameKey+":")
+//		if err != nil {
+//			return fmt.Errorf("Error deleting table: %s", err)
+//		}
+//		defer iter.Close()
+//		for iter.HasNext() {
+//			key, _, err := iter.Next()
+//			if err != nil {
+//				return fmt.Errorf("Error deleting table: %s", err)
+//			}
+//			err = stub.DelState(key)
+//			if err != nil {
+//				return fmt.Errorf("Error deleting table: %s", err)
+//			}
+//		}
+//
+//		return stub.DelState(tableNameKey)
+//	}
+//
+//	// InsertRow inserts a new row into the specified table.
+//	// Returns -
+//	// true and no error if the row is successfully inserted.
+//	// false and no error if a row already exists for the given key.
+//	// false and a TableNotFoundError if the specified table name does not exist.
+//	// false and an error if there is an unexpected error condition.
+//	func (stub *ChaincodeStub) InsertRow(tableName string, row Row) (bool, error) {
+//		return stub.insertRowInternal(tableName, row, false)
+//	}
+//
+//	// ReplaceRow updates the row in the specified table.
+//	// Returns -
+//	// true and no error if the row is successfully updated.
+//	// false and no error if a row does not exist the given key.
+//	// flase and a TableNotFoundError if the specified table name does not exist.
+//	// false and an error if there is an unexpected error condition.
+//	func (stub *ChaincodeStub) ReplaceRow(tableName string, row Row) (bool, error) {
+//		return stub.insertRowInternal(tableName, row, true)
+//	}
+//
+//	// GetRow fetches a row from the specified table for the given key.
+//	func (stub *ChaincodeStub) GetRow(tableName string, key []Column) (Row, error) {
+//
+//		var row Row
+//
+//		keyString, err := buildKeyString(tableName, key)
+//		if err != nil {
+//			return row, err
+//		}
+//
+//		rowBytes, err := stub.GetState(keyString)
+//		if err != nil {
+//			return row, fmt.Errorf("Error fetching row from DB: %s", err)
+//		}
+//
+//		err = proto.Unmarshal(rowBytes, &row)
+//		if err != nil {
+//			return row, fmt.Errorf("Error unmarshalling row: %s", err)
+//		}
+//
+//		return row, nil
+//
+//	}
+//
+//	// GetRows returns multiple rows based on a partial key. For example, given table
+//	// | A | B | C | D |
+//	// where A, C and D are keys, GetRows can be called with [A, C] to return
+//	// all rows that have A, C and any value for D as their key. GetRows could
+//	// also be called with A only to return all rows that have A and any value
+//	// for C and D as their key.
+//	func (stub *ChaincodeStub) GetRows(tableName string, key []Column) (<-chan Row, error) {
+//
+//		keyString, err := buildKeyString(tableName, key)
+//		if err != nil {
+//			return nil, err
+//		}
+//
+//		iter, err := stub.RangeQueryState(keyString+"1", keyString+":")
+//		if err != nil {
+//			return nil, fmt.Errorf("Error fetching rows: %s", err)
+//		}
+//		defer iter.Close()
+//
+//		rows := make(chan Row)
+//
+//		go func() {
+//			for iter.HasNext() {
+//				_, rowBytes, err := iter.Next()
+//				if err != nil {
+//					close(rows)
+//				}
+//
+//				var row Row
+//				err = proto.Unmarshal(rowBytes, &row)
+//				if err != nil {
+//					close(rows)
+//				}
+//
+//				rows <- row
+//
+//			}
+//			close(rows)
+//		}()
+//
+//		return rows, nil
+//
+//	}
+//
+//	// DeleteRow deletes the row for the given key from the specified table.
+//	func (stub *ChaincodeStub) DeleteRow(tableName string, key []Column) error {
+//
+//		keyString, err := buildKeyString(tableName, key)
+//		if err != nil {
+//			return err
+//		}
+//
+//		err = stub.DelState(keyString)
+//		if err != nil {
+//			return fmt.Errorf("DeleteRow operation error. Error deleting row: %s", err)
+//		}
+//
+//		return nil
+//	}
+//
+//	// VerifySignature ...
+//	func (stub *ChaincodeStub) VerifySignature(certificate, signature, message []byte) (bool, error) {
+//		// Instantiate a new SignatureVerifier
+//		sv := ecdsa.NewX509ECDSASignatureVerifier()
+//
+//		// Verify the signature
+//		return sv.Verify(certificate, signature, message)
+//	}
+//
+//	// GetCallerCertificate returns caller certificate
+//	func (stub *ChaincodeStub) GetCallerCertificate() ([]byte, error) {
+//		return stub.securityContext.CallerCert, nil
+//	}
+//
+//	// GetCallerMetadata returns caller metadata
+//	func (stub *ChaincodeStub) GetCallerMetadata() ([]byte, error) {
+//		return stub.securityContext.Metadata, nil
+//	}
+//
+//	// GetBinding returns tx binding
+//	func (stub *ChaincodeStub) GetBinding() ([]byte, error) {
+//		return stub.securityContext.Binding, nil
+//	}
+//
+//	// GetPayload returns tx payload
+//	func (stub *ChaincodeStub) GetPayload() ([]byte, error) {
+//		return stub.securityContext.Payload, nil
+//	}
+//
+//	func (stub *ChaincodeStub) getTable(tableName string) (*Table, error) {
+//
+//		tableName, err := getTableNameKey(tableName)
+//		if err != nil {
+//			return nil, err
+//		}
+//
+//		tableBytes, err := stub.GetState(tableName)
+//		if tableBytes == nil {
+//			return nil, ErrTableNotFound
+//		}
+//		if err != nil {
+//			return nil, fmt.Errorf("Error fetching table: %s", err)
+//		}
+//		table := &Table{}
+//		err = proto.Unmarshal(tableBytes, table)
+//		if err != nil {
+//			return nil, fmt.Errorf("Error unmarshalling table: %s", err)
+//		}
+//
+//		return table, nil
+//	}
+//
+//	func validateTableName(name string) error {
+//		if len(name) == 0 {
+//			return errors.New("Inavlid table name. Table name must be 1 or more characters.")
+//		}
+//
+//		return nil
+//	}
+//
+//	func getTableNameKey(name string) (string, error) {
+//		err := validateTableName(name)
+//		if err != nil {
+//			return "", err
+//		}
+//
+//		return strconv.Itoa(len(name)) + name, nil
+//	}
+//
+//	func buildKeyString(tableName string, keys []Column) (string, error) {
+//
+//		var keyBuffer bytes.Buffer
+//
+//		tableNameKey, err := getTableNameKey(tableName)
+//		if err != nil {
+//			return "", err
+//		}
+//
+//		keyBuffer.WriteString(tableNameKey)
+//
+//		for _, key := range keys {
+//
+//			var keyString string
+//			switch key.Value.(type) {
+//			case *Column_String_:
+//				keyString = key.GetString_()
+//			case *Column_Int32:
+//				// b := make([]byte, 4)
+//				// binary.LittleEndian.PutUint32(b, uint32(key.GetInt32()))
+//				// keyBuffer.Write(b)
+//				keyString = strconv.FormatInt(int64(key.GetInt32()), 10)
+//			case *Column_Int64:
+//				keyString = strconv.FormatInt(key.GetInt64(), 10)
+//			case *Column_Uint32:
+//				keyString = strconv.FormatUint(uint64(key.GetInt32()), 10)
+//			case *Column_Uint64:
+//				keyString = strconv.FormatUint(key.GetUint64(), 10)
+//			case *Column_Bytes:
+//				keyString = string(key.GetBytes())
+//			case *Column_Bool:
+//				keyString = strconv.FormatBool(key.GetBool())
+//			}
+//
+//			keyBuffer.WriteString(strconv.Itoa(len(keyString)))
+//			keyBuffer.WriteString(keyString)
+//		}
+//
+//		return keyBuffer.String(), nil
+//	}
+//
+//	func getKeyAndVerifyRow(table Table, row Row) ([]Column, error) {
+//
+//		var keys []Column
+//
+//		if row.Columns == nil || len(row.Columns) != len(table.ColumnDefinitions) {
+//			return keys, fmt.Errorf("Table '%s' defines %d columns, but row has %d columns.",
+//				table.Name, len(table.ColumnDefinitions), len(row.Columns))
+//		}
+//
+//		for i, column := range row.Columns {
+//
+//			// Check types
+//			var expectedType bool
+//			switch column.Value.(type) {
+//			case *Column_String_:
+//				expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_STRING
+//			case *Column_Int32:
+//				expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_INT32
+//			case *Column_Int64:
+//				expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_INT64
+//			case *Column_Uint32:
+//				expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_UINT32
+//			case *Column_Uint64:
+//				expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_UINT64
+//			case *Column_Bytes:
+//				expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_BYTES
+//			case *Column_Bool:
+//				expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_BOOL
+//			default:
+//				expectedType = false
+//			}
+//			if !expectedType {
+//				return keys, fmt.Errorf("The type for table '%s', column '%s' is '%s', but the column in the row does not match.",
+//					table.Name, table.ColumnDefinitions[i].Name, table.ColumnDefinitions[i].Type)
+//			}
+//
+//			if table.ColumnDefinitions[i].Key {
+//				keys = append(keys, *column)
+//			}
+//
+//		}
+//
+//		return keys, nil
+//	}
+//
+//	func (stub *ChaincodeStub) isRowPrsent(tableName string, key []Column) (bool, error) {
+//		keyString, err := buildKeyString(tableName, key)
+//		if err != nil {
+//			return false, err
+//		}
+//		rowBytes, err := stub.GetState(keyString)
+//		if err != nil {
+//			return false, fmt.Errorf("Error fetching row for key %s: %s", keyString, err)
+//		}
+//		if rowBytes != nil {
+//			return true, nil
+//		}
+//		return false, nil
+//	}
+//
+//	// insertRowInternal inserts a new row into the specified table.
+//	// Returns -
+//	// true and no error if the row is successfully inserted.
+//	// false and no error if a row already exists for the given key.
+//	// flase and a TableNotFoundError if the specified table name does not exist.
+//	// false and an error if there is an unexpected error condition.
+//	func (stub *ChaincodeStub) insertRowInternal(tableName string, row Row, update bool) (bool, error) {
+//
+//		table, err := stub.getTable(tableName)
+//		if err != nil {
+//			return false, err
+//		}
+//
+//		key, err := getKeyAndVerifyRow(*table, row)
+//		if err != nil {
+//			return false, err
+//		}
+//
+//		present, err := stub.isRowPrsent(tableName, key)
+//		if err != nil {
+//			return false, err
+//		}
+//		if (present && !update) || (!present && update) {
+//			return false, nil
+//		}
+//
+//		rowBytes, err := proto.Marshal(&row)
+//		if err != nil {
+//			return false, fmt.Errorf("Error marshalling row: %s", err)
+//		}
+//
+//		keyString, err := buildKeyString(tableName, key)
+//		if err != nil {
+//			return false, err
+//		}
+//		err = stub.PutState(keyString, rowBytes)
+//		if err != nil {
+//			return false, fmt.Errorf("Error inserting row in table %s: %s", tableName, err)
+//		}
+//
+//		return true, nil
 }

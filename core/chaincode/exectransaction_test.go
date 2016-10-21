@@ -376,7 +376,7 @@ func TestHTTPExecuteDeployTransaction(t *testing.T) {
 	// itself or it won't be downloaded because it will be found
 	// in GOPATH, which would defeat the test
 	testDBWrapper.CleanDB(t)
-	executeDeployTransaction(t, "http://gopkg.in/mastersingh24/fabric-test-resources.v0")
+	executeDeployTransaction(t, "http://gopkg.in/mastersingh24/fabric-test-resources.v1")
 }
 
 // Check the correctness of the final state after transaction execution.

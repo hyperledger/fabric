@@ -25,6 +25,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
 	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -33,10 +34,16 @@ import (
 func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
 
-	// get a handle to ledger to mark the begin/finish of a tx
-	ledger, ledgerErr := ledger.GetLedger()
-	if ledgerErr != nil {
-		return nil, nil, fmt.Errorf("Failed to get handle to ledger (%s)", ledgerErr)
+	//are we in V1 mode doing simulation ?
+	txsim, _ := ctxt.Value(TXSimulatorKey).(ledgernext.TxSimulator)
+
+	var lgr *ledger.Ledger
+	if txsim == nil {
+		// get a handle to ledger to mark the begin/finish of a tx
+		lgr, err = ledger.GetLedger()
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to get handle to ledger (%s)", err)
+		}
 	}
 
 	if secHelper := chain.getSecHelper(); nil != secHelper {
@@ -55,13 +62,13 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 		}
 
 		//launch and wait for ready
-		markTxBegin(ledger, t)
+		markTxBegin(lgr, t)
 		_, _, err = chain.Launch(ctxt, t)
 		if err != nil {
-			markTxFinish(ledger, t, false)
+			markTxFinish(lgr, t, false)
 			return nil, nil, fmt.Errorf("%s", err)
 		}
-		markTxFinish(ledger, t, true)
+		markTxFinish(lgr, t, true)
 	} else if t.Type == pb.Transaction_CHAINCODE_INVOKE || t.Type == pb.Transaction_CHAINCODE_QUERY {
 		//will launch if necessary (and wait for ready)
 		cID, cMsg, err := chain.Launch(ctxt, t)
@@ -97,15 +104,15 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 			}
 		}
 
-		markTxBegin(ledger, t)
+		markTxBegin(lgr, t)
 		resp, err := chain.Execute(ctxt, chaincode, ccMsg, timeout, t)
 		if err != nil {
 			// Rollback transaction
-			markTxFinish(ledger, t, false)
+			markTxFinish(lgr, t, false)
 			return nil, nil, fmt.Errorf("Failed to execute transaction or query(%s)", err)
 		} else if resp == nil {
 			// Rollback transaction
-			markTxFinish(ledger, t, false)
+			markTxFinish(lgr, t, false)
 			return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", t.Txid)
 		} else {
 			if resp.ChaincodeEvent != nil {
@@ -115,14 +122,14 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 
 			if resp.Type == pb.ChaincodeMessage_COMPLETED || resp.Type == pb.ChaincodeMessage_QUERY_COMPLETED {
 				// Success
-				markTxFinish(ledger, t, true)
+				markTxFinish(lgr, t, true)
 				return resp.Payload, resp.ChaincodeEvent, nil
 			} else if resp.Type == pb.ChaincodeMessage_ERROR || resp.Type == pb.ChaincodeMessage_QUERY_ERROR {
 				// Rollback transaction
-				markTxFinish(ledger, t, false)
+				markTxFinish(lgr, t, false)
 				return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction or query returned with failure: %s", string(resp.Payload))
 			}
-			markTxFinish(ledger, t, false)
+			markTxFinish(lgr, t, false)
 			return resp.Payload, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", t.Txid, resp.Type)
 		}
 
@@ -201,17 +208,23 @@ func getTimeout(cID *pb.ChaincodeID) (time.Duration, error) {
 }
 
 func markTxBegin(ledger *ledger.Ledger, t *pb.Transaction) {
-	if t.Type == pb.Transaction_CHAINCODE_QUERY {
-		return
+	//ledger would be nil if are in simulation mode
+	if ledger != nil {
+		if t.Type == pb.Transaction_CHAINCODE_QUERY {
+			return
+		}
+		ledger.TxBegin(t.Txid)
 	}
-	ledger.TxBegin(t.Txid)
 }
 
 func markTxFinish(ledger *ledger.Ledger, t *pb.Transaction, successful bool) {
-	if t.Type == pb.Transaction_CHAINCODE_QUERY {
-		return
+	//ledger would be nil if are in simulation mode
+	if ledger != nil {
+		if t.Type == pb.Transaction_CHAINCODE_QUERY {
+			return
+		}
+		ledger.TxFinished(t.Txid, successful)
 	}
-	ledger.TxFinished(t.Txid, successful)
 }
 
 func sendTxRejectedEvent(tx *pb.Transaction, errorMsg string) {

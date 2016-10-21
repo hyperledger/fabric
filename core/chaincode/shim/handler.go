@@ -222,9 +222,8 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		stub.init(msg.Txid, msg.SecurityContext)
-		function, params := getFunctionAndParams(stub)
-		res, err := handler.cc.Init(stub, function, params)
+		stub.init(handler, msg.Txid, msg.SecurityContext)
+		res, err := handler.cc.Init(stub)
 
 		// delete isTransaction entry
 		handler.deleteIsTransaction(msg.Txid)
@@ -290,9 +289,8 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		stub.init(msg.Txid, msg.SecurityContext)
-		function, params := getFunctionAndParams(stub)
-		res, err := handler.cc.Invoke(stub, function, params)
+		stub.init(handler, msg.Txid, msg.SecurityContext)
+		res, err := handler.cc.Invoke(stub)
 
 		// delete isTransaction entry
 		handler.deleteIsTransaction(msg.Txid)
@@ -338,9 +336,8 @@ func (handler *Handler) handleQuery(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Query
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		stub.init(msg.Txid, msg.SecurityContext)
-		function, params := getFunctionAndParams(stub)
-		res, err := handler.cc.Query(stub, function, params)
+		stub.init(handler, msg.Txid, msg.SecurityContext)
+		res, err := handler.cc.Query(stub)
 
 		// delete isTransaction entry
 		handler.deleteIsTransaction(msg.Txid)
@@ -906,15 +903,4 @@ func filterError(errFromFSMEvent error) error {
 		}
 	}
 	return nil
-}
-
-func getFunctionAndParams(stub ChaincodeStubInterface) (function string, params []string) {
-	allargs := stub.GetStringArgs()
-	function = ""
-	params = []string{}
-	if len(allargs) >= 1 {
-		function = allargs[0]
-		params = allargs[1:]
-	}
-	return
 }

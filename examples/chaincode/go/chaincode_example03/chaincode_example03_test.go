@@ -22,8 +22,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
-func checkInit(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args []string) {
-	_, err := stub.MockInit("1", "init", args)
+func checkInit(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args [][]byte) {
+	_, err := stub.MockInit("1", args)
 	if err != nil {
 		fmt.Println("Init failed", err)
 		t.FailNow()
@@ -42,8 +42,9 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 	}
 }
 
-func checkQuery(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args []string, value string) {
-	bytes, err := scc.Query(stub, "query", args)
+func checkQuery(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args [][]byte) {
+	_, err := stub.MockInit("1", args)
+	bytes, err := scc.Query(stub)
 	if err != nil {
 		// expected failure
 		fmt.Println("Query below is expected to fail")
@@ -61,8 +62,8 @@ func checkQuery(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args []
 	}
 }
 
-func checkInvoke(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args []string) {
-	_, err := stub.MockInvoke("1", "query", args)
+func checkInvoke(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args [][]byte) {
+	_, err := stub.MockInvoke("1", args)
 	if err != nil {
 		fmt.Println("Invoke", args, "failed", err)
 		t.FailNow()
@@ -74,7 +75,7 @@ func TestExample03_Init(t *testing.T) {
 	stub := shim.NewMockStub("ex03", scc)
 
 	// Init A=123 B=234
-	checkInit(t, scc, stub, []string{"A", "123"})
+	checkInit(t, scc, stub, [][]byte{[]byte("init"), []byte("A"), []byte("123")})
 
 	checkState(t, stub, "A", "123")
 }
@@ -84,10 +85,10 @@ func TestExample03_Query(t *testing.T) {
 	stub := shim.NewMockStub("ex03", scc)
 
 	// Init A=345 B=456
-	checkInit(t, scc, stub, []string{"A", "345"})
+	checkInit(t, scc, stub, [][]byte{[]byte("init"), []byte("A"), []byte("345")})
 
 	// Query A
-	checkQuery(t, scc, stub, []string{"A", "345"}, "345")
+	checkQuery(t, scc, stub, [][]byte{[]byte("query"), []byte("A"), []byte("345")})
 }
 
 func TestExample03_Invoke(t *testing.T) {

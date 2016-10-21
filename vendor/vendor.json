@@ -8,6 +8,32 @@
 			"revisionTime": "2015-05-01T06:40:42-04:00"
 		},
 		{
+			"checksumSHA1": "Kos2ch8973PnyyQ2JPAgWKtQV1A=",
+			"path": "github.com/DATA-DOG/godog",
+			"revision": "6e3b3f764a57d37691c0dfd007e7e586d3e452dc",
+			"revisionTime": "2016-08-07T16:35:39Z"
+		},
+		{
+			"checksumSHA1": "Zi1ZEYvoDhlK2+AaxrNeqmyZ4wY=",
+			"path": "github.com/DATA-DOG/godog/cmd/godog",
+			"revision": "6e3b3f764a57d37691c0dfd007e7e586d3e452dc",
+			"revisionTime": "2016-08-07T16:35:39Z",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "LCu7pjQ5nMZ505XwUU7tQQ1hBuM=",
+			"path": "github.com/DATA-DOG/godog/gherkin",
+			"revision": "6e3b3f764a57d37691c0dfd007e7e586d3e452dc",
+			"revisionTime": "2016-08-07T16:35:39Z"
+		},
+		{
+			"checksumSHA1": "a/iaWA9b8WJcVD1sN4fHUDRf0Uk=",
+			"path": "github.com/Shopify/sarama",
+			"revision": "af0513c4d97979eb876d201391fac6475ec08268",
+			"revisionTime": "2016-09-21T18:20:11Z",
+			"tree": true
+		},
+		{
 			"checksumSHA1": "yXrS4e4yxaRBu/MX+39X3cS4kbg=",
 			"path": "github.com/Sirupsen/logrus",
 			"revision": "a283a10442df8dc09befd873fab202bf8a253d6a",
@@ -126,6 +152,24 @@
 			"revisionTime": "2016-06-13T21:20:13Z"
 		},
 		{
+			"checksumSHA1": "y2Kh4iPlgCPXSGTCcFpzePYdzzg=",
+			"path": "github.com/eapache/go-resiliency/breaker",
+			"revision": "b86b1ec0dd4209a588dc1285cdd471e73525c0b3",
+			"revisionTime": "2016-01-04T19:15:39Z"
+		},
+		{
+			"checksumSHA1": "WHl96RVZlOOdF4Lb1OOadMpw8ls=",
+			"path": "github.com/eapache/go-xerial-snappy",
+			"revision": "bb955e01b9346ac19dc29eb16586c90ded99a98c",
+			"revisionTime": "2016-06-09T14:24:08Z"
+		},
+		{
+			"checksumSHA1": "oCCs6kDanizatplM5e/hX76busE=",
+			"path": "github.com/eapache/queue",
+			"revision": "44cc805cf13205b55f69e14bcb69867d1ae92f98",
+			"revisionTime": "2016-08-05T00:47:13Z"
+		},
+		{
 			"checksumSHA1": "uhWARwDA6NE60a3/snaz9QBM7Ow=",
 			"path": "github.com/fsouza/go-dockerclient",
 			"revision": "d433254bb83b41d7072ce470e312ea3cee257882",
@@ -178,6 +222,12 @@
 			"revisionTime": "2015-10-28T16:14:47+11:00"
 		},
 		{
+			"checksumSHA1": "W+E/2xXcE1GmJ0Qb784ald0Fn6I=",
+			"path": "github.com/golang/snappy",
+			"revision": "d9eb7a3d35ec988b8585d4a0068e462c27d28380",
+			"revisionTime": "2016-05-29T05:00:41Z"
+		},
+		{
 			"path": "github.com/google/gofuzz",
 			"revision": "e4af62d086c303f2bed467b227fc0a034b218916",
 			"revisionTime": "2015-09-03T16:45:19-07:00"
@@ -198,6 +248,12 @@
 			"path": "github.com/inconshreveable/mousetrap",
 			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75",
 			"revisionTime": "2014-10-17T13:07:13-07:00"
+		},
+		{
+			"checksumSHA1": "hX+j017F4PEtIUGflAneDtLC6hs=",
+			"path": "github.com/klauspost/crc32",
+			"revision": "19b0b332c9e4516a6370a0456e6182c3b5036720",
+			"revisionTime": "2016-02-19T14:26:09Z"
 		},
 		{
 			"path": "github.com/kr/pretty",
@@ -245,6 +301,12 @@
 			"path": "github.com/pmezard/go-difflib/difflib",
 			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
 			"revisionTime": "2016-01-10T10:55:54Z"
+		},
+		{
+			"checksumSHA1": "GiX6yRUzizn1C+ckgj1xLFLoz8g=",
+			"path": "github.com/rcrowley/go-metrics",
+			"revision": "ab2277b1c5d15c3cba104e9cbddbdfc622df5ad8",
+			"revisionTime": "2016-09-21T19:52:07Z"
 		},
 		{
 			"path": "github.com/russross/blackfriday",

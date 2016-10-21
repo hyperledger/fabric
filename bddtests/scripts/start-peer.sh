@@ -2,7 +2,7 @@
 
 SCRIPT_DIR=$(dirname $0)
 MEMBERSHIP_IP=$(cat /etc/hosts | grep membersrvc | head -n 1 | cut -f1)
-TIMEOUT=20
+TIMEOUT=10
 
 if [ -n "$MEMBERSHIP_IP" ]; then
     echo "membersrvc detected, waiting for it before starting with a $TIMEOUT second timout"

@@ -14,9 +14,17 @@
 # limitations under the License.
 #
 
+import os
+import os.path
+import re
 import time
+import copy
+from datetime import datetime, timedelta
 from behave import *
-from bdd_test_util import cli_call
+
+import sys, requests, json
+
+import bdd_test_util
 
 @then(u'I wait up to {waitTime} seconds for an error in the logs for peer {peerName}')
 def step_impl(context, waitTime, peerName):
@@ -35,8 +43,8 @@ def step_impl(context, waitTime, peerName):
     assert hasError is True
 
 def getPeerLogs(context, peerName):
-    fullContainerName = context.containerAliasMap[peerName].name
-    stdout, stderr, retcode = cli_call(["docker", "logs", fullContainerName], expect_success=True)
+    fullContainerName = bdd_test_util.fullNameFromContainerNamePart(peerName, context.compose_containers)
+    stdout, stderr, retcode = bdd_test_util.cli_call(["docker", "logs", fullContainerName], expect_success=True)
 
     return stdout, stderr
 

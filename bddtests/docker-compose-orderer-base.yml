@@ -1,0 +1,12 @@
+ordererBase:
+    image: hyperledger/fabric-orderer
+    environment:
+        - ORDERER_GENERAL_LEDGERTYPE=ram
+        - ORDERER_GENERAL_BATCHTIMEOUT=10s
+        - ORDERER_GENERAL_BATCHSIZE=10
+        - ORDERER_GENERAL_MAXWINDOWSIZE=1000
+        - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+        - ORDERER_GENERAL_LISTENPORT=5005
+        - ORDERER_RAMLEDGER_HISTORY_SIZE=100
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+    command: orderer

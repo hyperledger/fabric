@@ -11,6 +11,7 @@ It is generated from these files:
 	chaincode.proto
 	devops.proto
 	events.proto
+	fabric_next.proto
 	fabric.proto
 	server_admin.proto
 
@@ -43,6 +44,18 @@ It has these top-level messages:
 	Rejection
 	Unregister
 	Event
+	Envelope
+	Message2
+	Proposal
+	Response2
+	SystemChaincode
+	Action
+	Endorsement
+	ProposalResponse
+	EndorsedAction
+	Transaction2
+	InvalidTransaction
+	Block2
 	Transaction
 	TransactionBlock
 	TransactionResult

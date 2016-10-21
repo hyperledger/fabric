@@ -26,6 +26,7 @@ import (
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/looplab/fsm"
@@ -61,6 +62,8 @@ type transactionContext struct {
 
 	// tracks open iterators used for range queries
 	rangeQueryIteratorMap map[string]statemgmt.RangeScanIterator
+
+	txsimulator ledgernext.TxSimulator
 }
 
 type nextStateInfo struct {
@@ -113,7 +116,7 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
-func (handler *Handler) createTxContext(txid string, tx *pb.Transaction) (*transactionContext, error) {
+func (handler *Handler) createTxContext(ctxt context.Context, txid string, tx *pb.Transaction) (*transactionContext, error) {
 	if handler.txCtxs == nil {
 		return nil, fmt.Errorf("cannot create notifier for txid:%s", txid)
 	}
@@ -125,6 +128,10 @@ func (handler *Handler) createTxContext(txid string, tx *pb.Transaction) (*trans
 	txctx := &transactionContext{transactionSecContext: tx, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
 		rangeQueryIteratorMap: make(map[string]statemgmt.RangeScanIterator)}
 	handler.txCtxs[txid] = txctx
+	if txsim, ok := ctxt.Value(TXSimulatorKey).(ledgernext.TxSimulator); ok {
+		txctx.txsimulator = txsim
+	}
+
 	return txctx, nil
 }
 
@@ -628,7 +635,16 @@ func (handler *Handler) handleGetState(msg *pb.ChaincodeMessage) {
 		chaincodeID := handler.ChaincodeID.Name
 
 		readCommittedState := !handler.getIsTransaction(msg.Txid)
-		res, err := ledgerObj.GetState(chaincodeID, key, readCommittedState)
+		var res []byte
+		var err error
+
+		txContext := handler.getTxContext(msg.Txid)
+		if txContext.txsimulator != nil {
+			res, err = txContext.txsimulator.GetState(chaincodeID, key)
+		} else {
+			res, err = ledgerObj.GetState(chaincodeID, key, readCommittedState)
+		}
+
 		if err != nil {
 			// Send error msg back to chaincode. GetState will not trigger event
 			payload := []byte(err.Error())
@@ -1042,12 +1058,23 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			// Encrypt the data if the confidential is enabled
 			if pVal, err = handler.encrypt(msg.Txid, putStateInfo.Value); err == nil {
 				// Invoke ledger to put state
-				err = ledgerObj.SetState(chaincodeID, putStateInfo.Key, pVal)
+				txContext := handler.getTxContext(msg.Txid)
+				if txContext.txsimulator != nil {
+					err = txContext.txsimulator.SetState(chaincodeID, putStateInfo.Key, pVal)
+				} else {
+					err = ledgerObj.SetState(chaincodeID, putStateInfo.Key, pVal)
+				}
+
 			}
 		} else if msg.Type.String() == pb.ChaincodeMessage_DEL_STATE.String() {
 			// Invoke ledger to delete state
 			key := string(msg.Payload)
-			err = ledgerObj.DeleteState(chaincodeID, key)
+			txContext := handler.getTxContext(msg.Txid)
+			if txContext.txsimulator != nil {
+				err = txContext.txsimulator.DeleteState(chaincodeID, key)
+			} else {
+				err = ledgerObj.DeleteState(chaincodeID, key)
+			}
 		} else if msg.Type.String() == pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
 			//check and prohibit C-call-C for CONFIDENTIAL txs
 			chaincodeLogger.Debugf("[%s] C-call-C", shorttxid(msg.Txid))
@@ -1278,11 +1305,11 @@ func (handler *Handler) setChaincodeSecurityContext(tx, depTx *pb.Transaction, m
 
 //if initArgs is set (should be for "deploy" only) move to Init
 //else move to ready
-func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Transaction, depTx *pb.Transaction) (chan *pb.ChaincodeMessage, error) {
+func (handler *Handler) initOrReady(ctxt context.Context, txid string, initArgs [][]byte, tx *pb.Transaction, depTx *pb.Transaction) (chan *pb.ChaincodeMessage, error) {
 	var ccMsg *pb.ChaincodeMessage
 	var send bool
 
-	txctx, funcErr := handler.createTxContext(txid, tx)
+	txctx, funcErr := handler.createTxContext(ctxt, txid, tx)
 	if funcErr != nil {
 		return nil, funcErr
 	}
@@ -1483,8 +1510,8 @@ func filterError(errFromFSMEvent error) error {
 	return nil
 }
 
-func (handler *Handler) sendExecuteMessage(msg *pb.ChaincodeMessage, tx *pb.Transaction) (chan *pb.ChaincodeMessage, error) {
-	txctx, err := handler.createTxContext(msg.Txid, tx)
+func (handler *Handler) sendExecuteMessage(ctxt context.Context, msg *pb.ChaincodeMessage, tx *pb.Transaction) (chan *pb.ChaincodeMessage, error) {
+	txctx, err := handler.createTxContext(ctxt, msg.Txid, tx)
 	if err != nil {
 		return nil, err
 	}

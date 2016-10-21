@@ -51,7 +51,7 @@ var Transaction_Type_value = map[string]int32{
 func (x Transaction_Type) String() string {
 	return proto.EnumName(Transaction_Type_name, int32(x))
 }
-func (Transaction_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{0, 0} }
+func (Transaction_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor6, []int{0, 0} }
 
 type PeerEndpoint_Type int32
 
@@ -75,7 +75,7 @@ var PeerEndpoint_Type_value = map[string]int32{
 func (x PeerEndpoint_Type) String() string {
 	return proto.EnumName(PeerEndpoint_Type_name, int32(x))
 }
-func (PeerEndpoint_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{8, 0} }
+func (PeerEndpoint_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor6, []int{8, 0} }
 
 type Message_Type int32
 
@@ -138,7 +138,7 @@ var Message_Type_value = map[string]int32{
 func (x Message_Type) String() string {
 	return proto.EnumName(Message_Type_name, int32(x))
 }
-func (Message_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{12, 0} }
+func (Message_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor6, []int{12, 0} }
 
 type Response_StatusCode int32
 
@@ -162,7 +162,7 @@ var Response_StatusCode_value = map[string]int32{
 func (x Response_StatusCode) String() string {
 	return proto.EnumName(Response_StatusCode_name, int32(x))
 }
-func (Response_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{13, 0} }
+func (Response_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor6, []int{13, 0} }
 
 // Transaction defines a function call to a contract.
 // `args` is an array of type string so that the chaincode writer can choose
@@ -188,7 +188,7 @@ type Transaction struct {
 func (m *Transaction) Reset()                    { *m = Transaction{} }
 func (m *Transaction) String() string            { return proto.CompactTextString(m) }
 func (*Transaction) ProtoMessage()               {}
-func (*Transaction) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*Transaction) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 func (m *Transaction) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -205,7 +205,7 @@ type TransactionBlock struct {
 func (m *TransactionBlock) Reset()                    { *m = TransactionBlock{} }
 func (m *TransactionBlock) String() string            { return proto.CompactTextString(m) }
 func (*TransactionBlock) ProtoMessage()               {}
-func (*TransactionBlock) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
+func (*TransactionBlock) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{1} }
 
 func (m *TransactionBlock) GetTransactions() []*Transaction {
 	if m != nil {
@@ -232,7 +232,7 @@ type TransactionResult struct {
 func (m *TransactionResult) Reset()                    { *m = TransactionResult{} }
 func (m *TransactionResult) String() string            { return proto.CompactTextString(m) }
 func (*TransactionResult) ProtoMessage()               {}
-func (*TransactionResult) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
+func (*TransactionResult) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{2} }
 
 func (m *TransactionResult) GetChaincodeEvent() *ChaincodeEvent {
 	if m != nil {
@@ -266,7 +266,7 @@ type Block struct {
 func (m *Block) Reset()                    { *m = Block{} }
 func (m *Block) String() string            { return proto.CompactTextString(m) }
 func (*Block) ProtoMessage()               {}
-func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{3} }
+func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{3} }
 
 func (m *Block) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -300,7 +300,7 @@ type BlockchainInfo struct {
 func (m *BlockchainInfo) Reset()                    { *m = BlockchainInfo{} }
 func (m *BlockchainInfo) String() string            { return proto.CompactTextString(m) }
 func (*BlockchainInfo) ProtoMessage()               {}
-func (*BlockchainInfo) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{4} }
+func (*BlockchainInfo) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{4} }
 
 // NonHashData is data that is recorded on the block, but not included in
 // the block hash when verifying the blockchain.
@@ -316,7 +316,7 @@ type NonHashData struct {
 func (m *NonHashData) Reset()                    { *m = NonHashData{} }
 func (m *NonHashData) String() string            { return proto.CompactTextString(m) }
 func (*NonHashData) ProtoMessage()               {}
-func (*NonHashData) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{5} }
+func (*NonHashData) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{5} }
 
 func (m *NonHashData) GetLocalLedgerCommitTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -340,7 +340,7 @@ type PeerAddress struct {
 func (m *PeerAddress) Reset()                    { *m = PeerAddress{} }
 func (m *PeerAddress) String() string            { return proto.CompactTextString(m) }
 func (*PeerAddress) ProtoMessage()               {}
-func (*PeerAddress) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{6} }
+func (*PeerAddress) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{6} }
 
 type PeerID struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
@@ -349,7 +349,7 @@ type PeerID struct {
 func (m *PeerID) Reset()                    { *m = PeerID{} }
 func (m *PeerID) String() string            { return proto.CompactTextString(m) }
 func (*PeerID) ProtoMessage()               {}
-func (*PeerID) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{7} }
+func (*PeerID) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{7} }
 
 type PeerEndpoint struct {
 	ID      *PeerID           `protobuf:"bytes,1,opt,name=ID,json=iD" json:"ID,omitempty"`
@@ -361,7 +361,7 @@ type PeerEndpoint struct {
 func (m *PeerEndpoint) Reset()                    { *m = PeerEndpoint{} }
 func (m *PeerEndpoint) String() string            { return proto.CompactTextString(m) }
 func (*PeerEndpoint) ProtoMessage()               {}
-func (*PeerEndpoint) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{8} }
+func (*PeerEndpoint) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{8} }
 
 func (m *PeerEndpoint) GetID() *PeerID {
 	if m != nil {
@@ -377,7 +377,7 @@ type PeersMessage struct {
 func (m *PeersMessage) Reset()                    { *m = PeersMessage{} }
 func (m *PeersMessage) String() string            { return proto.CompactTextString(m) }
 func (*PeersMessage) ProtoMessage()               {}
-func (*PeersMessage) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{9} }
+func (*PeersMessage) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{9} }
 
 func (m *PeersMessage) GetPeers() []*PeerEndpoint {
 	if m != nil {
@@ -393,7 +393,7 @@ type PeersAddresses struct {
 func (m *PeersAddresses) Reset()                    { *m = PeersAddresses{} }
 func (m *PeersAddresses) String() string            { return proto.CompactTextString(m) }
 func (*PeersAddresses) ProtoMessage()               {}
-func (*PeersAddresses) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{10} }
+func (*PeersAddresses) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{10} }
 
 type HelloMessage struct {
 	PeerEndpoint   *PeerEndpoint   `protobuf:"bytes,1,opt,name=peerEndpoint" json:"peerEndpoint,omitempty"`
@@ -403,7 +403,7 @@ type HelloMessage struct {
 func (m *HelloMessage) Reset()                    { *m = HelloMessage{} }
 func (m *HelloMessage) String() string            { return proto.CompactTextString(m) }
 func (*HelloMessage) ProtoMessage()               {}
-func (*HelloMessage) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{11} }
+func (*HelloMessage) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{11} }
 
 func (m *HelloMessage) GetPeerEndpoint() *PeerEndpoint {
 	if m != nil {
@@ -429,7 +429,7 @@ type Message struct {
 func (m *Message) Reset()                    { *m = Message{} }
 func (m *Message) String() string            { return proto.CompactTextString(m) }
 func (*Message) ProtoMessage()               {}
-func (*Message) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{12} }
+func (*Message) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{12} }
 
 func (m *Message) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -446,7 +446,7 @@ type Response struct {
 func (m *Response) Reset()                    { *m = Response{} }
 func (m *Response) String() string            { return proto.CompactTextString(m) }
 func (*Response) ProtoMessage()               {}
-func (*Response) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{13} }
+func (*Response) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{13} }
 
 // BlockState is the payload of Message.SYNC_BLOCK_ADDED. When a VP
 // commits a new block to the ledger, it will notify its connected NVPs of the
@@ -461,7 +461,7 @@ type BlockState struct {
 func (m *BlockState) Reset()                    { *m = BlockState{} }
 func (m *BlockState) String() string            { return proto.CompactTextString(m) }
 func (*BlockState) ProtoMessage()               {}
-func (*BlockState) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{14} }
+func (*BlockState) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{14} }
 
 func (m *BlockState) GetBlock() *Block {
 	if m != nil {
@@ -484,7 +484,7 @@ type SyncBlockRange struct {
 func (m *SyncBlockRange) Reset()                    { *m = SyncBlockRange{} }
 func (m *SyncBlockRange) String() string            { return proto.CompactTextString(m) }
 func (*SyncBlockRange) ProtoMessage()               {}
-func (*SyncBlockRange) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{15} }
+func (*SyncBlockRange) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{15} }
 
 // SyncBlocks is the payload of Message.SYNC_BLOCKS, where the range
 // indicates the blocks responded to the request SYNC_GET_BLOCKS
@@ -496,7 +496,7 @@ type SyncBlocks struct {
 func (m *SyncBlocks) Reset()                    { *m = SyncBlocks{} }
 func (m *SyncBlocks) String() string            { return proto.CompactTextString(m) }
 func (*SyncBlocks) ProtoMessage()               {}
-func (*SyncBlocks) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{16} }
+func (*SyncBlocks) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{16} }
 
 func (m *SyncBlocks) GetRange() *SyncBlockRange {
 	if m != nil {
@@ -520,7 +520,7 @@ type SyncStateSnapshotRequest struct {
 func (m *SyncStateSnapshotRequest) Reset()                    { *m = SyncStateSnapshotRequest{} }
 func (m *SyncStateSnapshotRequest) String() string            { return proto.CompactTextString(m) }
 func (*SyncStateSnapshotRequest) ProtoMessage()               {}
-func (*SyncStateSnapshotRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{17} }
+func (*SyncStateSnapshotRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{17} }
 
 // SyncStateSnapshot is the payload of Message.SYNC_SNAPSHOT, which is a response
 // to penchainMessage.SYNC_GET_SNAPSHOT. It contains the snapshot or a chunk of the
@@ -536,7 +536,7 @@ type SyncStateSnapshot struct {
 func (m *SyncStateSnapshot) Reset()                    { *m = SyncStateSnapshot{} }
 func (m *SyncStateSnapshot) String() string            { return proto.CompactTextString(m) }
 func (*SyncStateSnapshot) ProtoMessage()               {}
-func (*SyncStateSnapshot) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{18} }
+func (*SyncStateSnapshot) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{18} }
 
 func (m *SyncStateSnapshot) GetRequest() *SyncStateSnapshotRequest {
 	if m != nil {
@@ -556,7 +556,7 @@ type SyncStateDeltasRequest struct {
 func (m *SyncStateDeltasRequest) Reset()                    { *m = SyncStateDeltasRequest{} }
 func (m *SyncStateDeltasRequest) String() string            { return proto.CompactTextString(m) }
 func (*SyncStateDeltasRequest) ProtoMessage()               {}
-func (*SyncStateDeltasRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{19} }
+func (*SyncStateDeltasRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{19} }
 
 func (m *SyncStateDeltasRequest) GetRange() *SyncBlockRange {
 	if m != nil {
@@ -575,7 +575,7 @@ type SyncStateDeltas struct {
 func (m *SyncStateDeltas) Reset()                    { *m = SyncStateDeltas{} }
 func (m *SyncStateDeltas) String() string            { return proto.CompactTextString(m) }
 func (*SyncStateDeltas) ProtoMessage()               {}
-func (*SyncStateDeltas) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{20} }
+func (*SyncStateDeltas) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{20} }
 
 func (m *SyncStateDeltas) GetRange() *SyncBlockRange {
 	if m != nil {
@@ -753,12 +753,12 @@ var _Peer_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: fileDescriptor5,
+	Metadata: fileDescriptor6,
 }
 
-func init() { proto.RegisterFile("fabric.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("fabric.proto", fileDescriptor6) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor6 = []byte{
 	// 1463 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x57, 0xcd, 0x6e, 0xdb, 0xc6,
 	0x13, 0x8f, 0x3e, 0x1d, 0x8d, 0x64, 0x99, 0xde, 0x38, 0x09, 0xe3, 0x04, 0xf9, 0x07, 0xfc, 0xb7,

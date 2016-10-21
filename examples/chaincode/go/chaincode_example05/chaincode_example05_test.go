@@ -32,8 +32,8 @@ func jsonResponse(name string, value string) string {
 	return fmt.Sprintf("jsonResponse = \"{\"Name\":\"%v\",\"Value\":\"%v\"}", name, value)
 }
 
-func checkInit(t *testing.T, stub *shim.MockStub, args []string) {
-	_, err := stub.MockInit("1", "init", args)
+func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte) {
+	_, err := stub.MockInit("1", args)
 	if err != nil {
 		fmt.Println("Init failed", err)
 		t.FailNow()
@@ -52,8 +52,8 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, expect string) {
 	}
 }
 
-func checkQuery(t *testing.T, stub *shim.MockStub, args []string, expect string) {
-	bytes, err := stub.MockQuery("query", args)
+func checkQuery(t *testing.T, stub *shim.MockStub, args [][]byte, expect string) {
+	bytes, err := stub.MockQuery(args)
 	if err != nil {
 		fmt.Println("Query", args, "failed", err)
 		t.FailNow()
@@ -68,8 +68,8 @@ func checkQuery(t *testing.T, stub *shim.MockStub, args []string, expect string)
 	}
 }
 
-func checkInvoke(t *testing.T, stub *shim.MockStub, args []string) {
-	_, err := stub.MockInvoke("1", "query", args)
+func checkInvoke(t *testing.T, stub *shim.MockStub, args [][]byte) {
+	_, err := stub.MockInvoke("1", args)
 	if err != nil {
 		fmt.Println("Invoke", args, "failed", err)
 		t.FailNow()
@@ -81,7 +81,7 @@ func TestExample04_Init(t *testing.T) {
 	stub := shim.NewMockStub("ex05", scc)
 
 	// Init A=123 B=234
-	checkInit(t, stub, []string{"sumStoreName", "432"})
+	checkInit(t, stub, [][]byte{[]byte("init"), []byte("sumStoreName"), []byte("432")})
 
 	checkState(t, stub, "sumStoreName", "432")
 }
@@ -92,13 +92,13 @@ func TestExample04_Query(t *testing.T) {
 
 	ccEx2 := new(ex02.SimpleChaincode)
 	stubEx2 := shim.NewMockStub("ex02", ccEx2)
-	checkInit(t, stubEx2, []string{"a", "111", "b", "222"})
+	checkInit(t, stubEx2, [][]byte{[]byte("init"), []byte("a"), []byte("111"), []byte("b"), []byte("222")})
 	stub.MockPeerChaincode(example02Url, stubEx2)
 
-	checkInit(t, stub, []string{"sumStoreName", "0"})
+	checkInit(t, stub, [][]byte{[]byte("init"), []byte("sumStoreName"), []byte("0")})
 
 	// a + b = 111 + 222 = 333
-	checkQuery(t, stub, []string{example02Url, "sumStoreName"}, "333") // example05 doesn't return JSON?
+	checkQuery(t, stub, [][]byte{[]byte("query"), []byte(example02Url), []byte("sumStoreName")}, "333") // example05 doesn't return JSON?
 }
 
 func TestExample04_Invoke(t *testing.T) {
@@ -107,23 +107,23 @@ func TestExample04_Invoke(t *testing.T) {
 
 	ccEx2 := new(ex02.SimpleChaincode)
 	stubEx2 := shim.NewMockStub("ex02", ccEx2)
-	checkInit(t, stubEx2, []string{"a", "222", "b", "333"})
+	checkInit(t, stubEx2, [][]byte{[]byte("init"), []byte("a"), []byte("222"), []byte("b"), []byte("333")})
 	stub.MockPeerChaincode(example02Url, stubEx2)
 
-	checkInit(t, stub, []string{"sumStoreName", "0"})
+	checkInit(t, stub, [][]byte{[]byte("init"), []byte("sumStoreName"), []byte("0")})
 
 	// a + b = 222 + 333 = 555
-	checkInvoke(t, stub, []string{example02Url, "sumStoreName"})
-	checkQuery(t, stub, []string{example02Url, "sumStoreName"}, "555") // example05 doesn't return JSON?
-	checkQuery(t, stubEx2, []string{"a"}, "222")
-	checkQuery(t, stubEx2, []string{"b"}, "333")
+	checkInvoke(t, stub, [][]byte{[]byte("invoke"), []byte(example02Url), []byte("sumStoreName")})
+	checkQuery(t, stub, [][]byte{[]byte("query"), []byte(example02Url), []byte("sumStoreName")}, "555") // example05 doesn't return JSON?
+	checkQuery(t, stubEx2, [][]byte{[]byte("query"), []byte("a")}, "222")
+	checkQuery(t, stubEx2, [][]byte{[]byte("query"), []byte("b")}, "333")
 
 	// update A-=10 and B+=10
-	checkInvoke(t, stubEx2, []string{"a", "b", "10"})
+	checkInvoke(t, stubEx2, [][]byte{[]byte("invoke"), []byte("a"), []byte("b"), []byte("10")})
 
 	// a + b = 212 + 343 = 555
-	checkInvoke(t, stub, []string{example02Url, "sumStoreName"})
-	checkQuery(t, stub, []string{example02Url, "sumStoreName"}, "555") // example05 doesn't return JSON?
-	checkQuery(t, stubEx2, []string{"a"}, "212")
-	checkQuery(t, stubEx2, []string{"b"}, "343")
+	checkInvoke(t, stub, [][]byte{[]byte("invoke"), []byte(example02Url), []byte("sumStoreName")})
+	checkQuery(t, stub, [][]byte{[]byte("query"), []byte(example02Url), []byte("sumStoreName")}, "555") // example05 doesn't return JSON?
+	checkQuery(t, stubEx2, [][]byte{[]byte("query"), []byte("a")}, "212")
+	checkQuery(t, stubEx2, [][]byte{[]byte("query"), []byte("b")}, "343")
 }
