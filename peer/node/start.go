@@ -33,8 +33,10 @@ import (
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/db"
+	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/genesis"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/rest"
@@ -192,6 +194,22 @@ func serve(args []string) error {
 	// Create and register the REST service if configured
 	if viper.GetBool("rest.enabled") {
 		go rest.StartOpenchainRESTServer(serverOpenchain, serverDevops)
+	}
+
+	// Register the Endorser server
+	serverEndorser := endorser.NewEndorserServer(peerServer)
+	pb.RegisterEndorserServer(grpcServer, serverEndorser)
+
+	// !!!IMPORTANT!!! - as mentioned in core.yaml, peer-orderer-committer
+	// interaction is closely tied to bootstrapping. This is to be viewed
+	// as temporary implementation to test the end-to-end flows in the
+	// system outside of multi-ledger, multi-channel work
+	if committer := noopssinglechain.NewCommitter(); committer != nil {
+		go func() {
+			if err := committer.Start(); err != nil {
+				fmt.Printf("Could not start solo committer(%s), continuing without committer\n", err)
+			}
+		}()
 	}
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s, rootnodes=%v, validator=%v",

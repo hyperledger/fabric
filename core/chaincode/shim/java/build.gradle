@@ -15,67 +15,65 @@ limitations under the License.
 */
 
 buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.6'
-    }
+	repositories {
+		mavenLocal()
+		mavenCentral()
+		jcenter()
+	}
+	dependencies {
+		classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.6'
+	}
 }
 
 plugins {
-    id "java"
-    id "com.google.protobuf" version "0.7.6"
-    id "eclipse"
-    id "maven-publish"
-
+	id "java"
+	id "com.google.protobuf" version "0.7.6"
+	id "eclipse"
 }
-archivesBaseName = 'shim-client'
+archivesBaseName = 'chaincode'
 version = '1.0'
 
 
 sourceSets {
-    main {
-        java {
-            srcDir 'src/main/java'
-        }
-        proto {
-            srcDir 'src/main/proto'
-        }
-    }
+	main {
+		java {
+			srcDir 'src/main/java'
+		}
+		proto {
+			srcDir 'src/main/proto'
+		}
+	}
 }
 
 repositories {
-    mavenLocal()
+	mavenLocal()
     mavenCentral()
 }
 
 protobuf {
-    generatedFilesBaseDir = "$projectDir/src"
-    protoc {
-        artifact = 'com.google.protobuf:protoc:3.0.0-beta-2'
-    }
-    plugins {
-        grpc {
-            artifact = 'io.grpc:protoc-gen-grpc-java:0.13.2'
-        }
-    }
-    generateProtoTasks {
-        all().each { task ->
-            task.builtins {
-                java {
-                    outputSubDir = 'java'
-                }
-            }
-            task.plugins {
-                grpc {
-                outputSubDir = 'java'
-                }
-            }
-        }
-    }
+	generatedFilesBaseDir = "$projectDir/src"
+	protoc {
+		artifact = 'com.google.protobuf:protoc:3.0.0-beta-2'
+	}
+	plugins {
+		grpc {
+			artifact = 'io.grpc:protoc-gen-grpc-java:0.13.2'
+		}
+	}
+	generateProtoTasks {
+		all().each { task ->
+			task.builtins {
+				java {
+					outputSubDir = 'java'
+				}
+			}
+			task.plugins {
+				grpc {
+				outputSubDir = 'java'
+				}
+			}
+		}
+	}
 }
 
 task copyToLib(type: Copy) {
@@ -85,38 +83,18 @@ task copyToLib(type: Copy) {
 
 
 task copyProtos(type:Copy){
-
- from ("${rootDir}/protos"){
-     include '**/chaincodeevent.proto'
-     include '**/chaincode.proto'
- }
-    from ("../") {
-        duplicatesStrategy.EXCLUDE
-        include '**/table.proto'
-        exclude 'java'
-    }
-    into "${projectDir}/src/main/proto"
-
+ into "${projectDir}/src/main/proto"
+ from "${rootDir}/protos"
+ include '**/chaincodeevent.proto'
+ include '**/chaincode.proto'
 }
 
 tasks['build'].mustRunAfter tasks['copyProtos']
 build.dependsOn(copyProtos)
 build.finalizedBy(copyToLib)
-build.finalizedBy(publishToMavenLocal)
 
 dependencies {
-    compile 'com.google.protobuf:protobuf-java:3.0.0-beta-2'
-    compile 'io.grpc:grpc-all:0.13.2'
-    compile 'commons-cli:commons-cli:1.3.1'
-}
-
-publishing {
-   publications {
-       mavenJava(MavenPublication) {
-           groupId 'org.hyperledger'
-           artifactId 'shim-client'
-           version '1.0'
-           from components.java
-       }
-   }
+	compile 'com.google.protobuf:protobuf-java:3.0.0-beta-2' 
+	compile 'io.grpc:grpc-all:0.13.2'
+	compile 'commons-cli:commons-cli:1.3.1'
 }

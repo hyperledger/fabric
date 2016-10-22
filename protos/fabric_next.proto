@@ -1,0 +1,284 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package protos;
+
+import "google/protobuf/timestamp.proto";
+
+// This proto file defines messages that are passed between the SDK, endorsers,
+// the ordering service, and committers. The top level message is an
+// Envelope. This is used for all message passing. An Envelope contains a
+// Message2 (note the capital 'M' as this is a message named Message2) and a
+// Message2 has a payload.
+// Envelope -> Message2 -> payload
+//
+// The flow is as follows
+// SDK -[Proposal]-> Endorser -[ProposalResponse]-> SDK -[Transaction2]->
+// Ordering Service -[batch of Transaction2] -> Committer
+//
+// The SDK constructs a Proposal and sends it to one or more endorsers for
+// endorsement
+//
+// Endorsers create an Action for the given proposal and include the Action
+// in a ProposalResponse which is sent back to the SDK. The ProposalResponse
+// also contains an Endorsement which is the signature of the Action.
+//
+// When an SDK receives a ProposalResponse from and Endorser, it must look
+// at the proposalHash within the Action to correlate it with the
+// Proposal that was sent. After correlation, an SDK should
+// 1. Inspect the response within the PrposalResponse to confirm the
+// endorsement of the proposal was successful
+// 2. Confirm that the 'actionBytes' match for all ProposalResponses that
+// correlate to the same proposal hash.
+//
+// At this point, the SDK can construct an EndorsedAction. This is simply a
+// combination of the Action, all Endorsements, and the Proposal as an
+// optional field. One or more EndorsedActions can then be added to a
+// Transaction2. This Transaction2 is then submitted to the ordering service.
+// All endorsed actions contained in a single transaction are committed
+// atomically, meaning that either all actions in the transaction will be
+// committed or none will be committed.
+
+// Protocol Buffer Limitation:
+// Something important to understand about protocol buffers is that while
+// serialization is deterministic in that it will always produce the same
+// bytes, deserialization is non-deterministic. This creates the following
+// issue. If a message is serialized and a hash is calculated based on the
+// bytes, then the message is deserialized, serialized, and the hash is
+// calculated again, the hashes may not match! To avoid this problem, you
+// will notice cases where the bytes of a message are included in a field
+// instead of the message itself. In locations where this is done, you will
+// see the acronym NDD (non-deterministic serialization).
+
+// Envelope is used to deliver a message
+message Envelope {
+
+	// Signature of the message.
+	bytes signature = 1;
+
+	// The message.
+	Message2 message = 2;
+
+}
+
+// A Message2 encapsulates a payload of the indicated type in this message.
+message Message2 {
+
+	enum Type {
+
+		 // Undefined exists to prevent invalid message construction.
+		UNDEFINED = 0;
+
+		 // Handshake messages.
+		DISCOVERY = 1;
+
+		// Sent to catch up with existing peers.
+		SYNC = 2;
+
+		 // Sent from SDK to endorser. Payload is a Proposal.
+		PROPOSAL = 3;
+
+		// Reserved for future use.
+		PROPOSAL_SET = 4;
+
+		 // Sent from endorser to SDK. Payload is a ProposalResponse.
+		PROPOSAL_RESULT = 5;
+
+		// Reserved for future use.
+		PROPOSAL_SET_RESULT = 6;
+
+		// Sent from SDK to peer for relay or ordering service. Payload is a
+		// Transaction2.
+		TRANSACTION = 7;
+
+	}
+
+	// Type of this message.
+	Type type = 1;
+
+	 // Version indicates message protocol version.
+	int32 version = 2;
+
+	 // Timestamp is the time that the message was created as defined by the
+	 // sender.
+	google.protobuf.Timestamp timestamp = 3;
+
+	// The payload in this message.
+	bytes payload = 4;
+
+}
+
+// A Proposal is sent to an endorser for endorsement. The proposal contains
+// a payload (such as a ChaincodeSpec) based on the type field.
+message Proposal {
+
+	enum Type {
+
+		// Undefined exists to prevent invalid message construction.
+		UNDEFINED = 0;
+
+		 // A chaincode. The payload is a ChaincodeSpec.
+		CHAINCODE = 1;
+
+	}
+
+	// Type of this message.
+	Type type = 1;
+
+	// Unique ID corresponding to this proposal
+	string id = 2;
+
+	// The payload of the proposal as defined by the proposal type.
+	bytes payload = 3;
+
+}
+
+// A response with a representation similar to an HTTP response that can
+// be used within another message.
+message Response2 {
+
+	// A status code that should follow the HTTP status codes.
+	int32 status = 1;
+
+	// A message associated with the response code.
+	string message = 2;
+
+	// A payload that can be used to include metadata with this response.
+	bytes payload = 3;
+
+}
+
+// A SystemChaincode is a chaincode compiled into the peer that cannot
+// be modified at runtime. These are used to perform critical system level
+// functions, including processing endorsements and validating transactions.
+message SystemChaincode {
+
+	// The ID used to identify a system chaincode.
+	string id = 1;
+
+}
+
+// An action to be taken against the ledger.
+message Action {
+
+	// Hash of proposal encoded in the Message2 payload. NDD.
+	bytes proposalHash = 1;
+
+	// Uncommitted state changes (simulated) as calculated by the endorser.
+	// This generally would include MVCC and PostImage information for both the
+	// read set and write set. This is to be forwarded to the ordering
+	// service as part of the transaction and must match the simulationResult
+	// returned by other endorsers for the proposal.
+	bytes simulationResult = 2;
+
+	// Events that should be sent by committers after the transaction is written
+	// to the ledger. This is to be forwarded to the ordering
+	// service as part of the transaction and must match the events
+	// returned by other endorsers for the proposal.
+	repeated bytes events = 3;
+
+	// ESCC (Endorser System Chaincode) is logic that is run prior to the
+	// ProposalResponse being returned to the SDK. It can manipulate the
+	// ProposalResponse as needed.
+	SystemChaincode escc = 4;
+
+	// VSCC (Validaing System Chaincode) is logic that is run to transform the
+	// raw ledger into the validated ledger.
+	SystemChaincode vscc = 5;
+
+}
+
+// Endorsement is included within a proposal response.
+message Endorsement {
+
+	// Signature of the actionBytes included in the Endorsement.
+	bytes signature = 1;
+
+}
+
+// A ProposalResponse is returned from an endorser to the proposal submitter.
+message ProposalResponse {
+
+	// A response message indicating whether the endorsement of the action
+	// was successful. Additional metadata can be included. This will not
+	// be forwarded from the SDK to the ordering service.
+	Response2 response = 1;
+
+	// A serialized Action message. NDD.
+	bytes actionBytes = 2;
+
+	// The endorsement of the action included in the proposal response
+	Endorsement endorsement = 3;
+
+}
+
+// An EndorsedAction describes a single action endorsed by one or more
+// endorsers. Multiple endorsed actions can be included in a single
+// transaction. The transaction is atomic meaning that either all
+// actions in the transaction will be committed or none will be committed.
+message EndorsedAction {
+
+	// The action to be taken against the ledger. This is generally constructed
+	// by an endorser. NDD.
+	bytes actionBytes = 1;
+
+	// The endorsements of the action.
+	repeated Endorsement endorsements = 2;
+
+	// The proposal. This is optional and only needed if the SDK wants to store
+	// the Proposal on the ledger as opposed to just the hash. The proposal is
+	// not included within the Action because it is the SDK's decision whether
+	// or not they would like to include this information in the Transaction2.
+	// If it was in the Action and signed, either the Endorsers would be
+	// required to make the decision or the SDK would need to provide a hint
+	// in the Proposal about whether it should be included in the Action.
+	// TODO Revisit this decision.
+	bytes proposalBytes = 3;
+
+}
+
+// The transaction to be sent to the ordering service. A transaction contains
+// one or more endorsed actions. The transaction is atomic meaning that either
+// all actions in the transaction will be committed or none will be committed.
+message Transaction2 {
+
+	// One or more endorsed actions to be committed to the ledger.
+	repeated EndorsedAction endorsedActions = 1;
+
+}
+
+// This is used to wrap an invalid Transaction with the cause
+message InvalidTransaction {
+	enum Cause {
+		TxIdAlreadyExists = 0;
+		RWConflictDuringCommit = 1;
+	}
+	Transaction2 transaction = 1;
+	Cause cause = 2;
+}
+
+// Block contains a list of transactions and the crypto hash of previous block
+message Block2 {
+	bytes PreviousBlockHash = 1;
+	// transactions are stored in serialized form so that the concenters can avoid marshaling of transactions
+	repeated bytes Transactions = 2;
+}
+
+service Endorser {
+	rpc ProcessProposal(Proposal) returns (ProposalResponse) {}
+}

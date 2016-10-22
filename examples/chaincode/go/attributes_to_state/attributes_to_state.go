@@ -49,7 +49,8 @@ func (t *Attributes2State) setStateToAttributes(stub shim.ChaincodeStubInterface
 
 // Init intializes the chaincode by reading the transaction attributes and storing
 // the attrbute values in the state
-func (t *Attributes2State) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *Attributes2State) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	_, args := stub.GetFunctionAndParameters()
 	err := t.setStateToAttributes(stub, args)
 	if err != nil {
 		return nil, err
@@ -58,7 +59,8 @@ func (t *Attributes2State) Init(stub shim.ChaincodeStubInterface, function strin
 }
 
 // Invoke takes two arguements, a key and value, and stores these in the state
-func (t *Attributes2State) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *Attributes2State) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
 	if function == "delete" {
 		return nil, t.delete(stub, args)
 	}
@@ -105,7 +107,8 @@ func (t *Attributes2State) delete(stub shim.ChaincodeStubInterface, args []strin
 }
 
 // Query callback representing the query of a chaincode
-func (t *Attributes2State) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *Attributes2State) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
 	if function != "read" {
 		return nil, errors.New("Invalid query function name. Expecting \"read\"")
 	}

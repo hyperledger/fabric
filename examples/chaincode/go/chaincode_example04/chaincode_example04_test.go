@@ -26,8 +26,8 @@ import (
 // this is the response to any successful Invoke() on chaincode_example04
 var eventResponse = "{\"Name\":\"Event\",\"Amount\":\"1\"}"
 
-func checkInit(t *testing.T, stub *shim.MockStub, args []string) {
-	_, err := stub.MockInit("1", "init", args)
+func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte) {
+	_, err := stub.MockInit("1", args)
 	if err != nil {
 		fmt.Println("Init failed", err)
 		t.FailNow()
@@ -47,7 +47,7 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 }
 
 func checkQuery(t *testing.T, stub *shim.MockStub, name string, value string) {
-	bytes, err := stub.MockQuery("query", []string{name})
+	bytes, err := stub.MockQuery([][]byte{[]byte("query"), []byte(name)})
 	if err != nil {
 		fmt.Println("Query", name, "failed", err)
 		t.FailNow()
@@ -62,8 +62,8 @@ func checkQuery(t *testing.T, stub *shim.MockStub, name string, value string) {
 	}
 }
 
-func checkInvoke(t *testing.T, stub *shim.MockStub, args []string) {
-	_, err := stub.MockInvoke("1", "query", args)
+func checkInvoke(t *testing.T, stub *shim.MockStub, args [][]byte) {
+	_, err := stub.MockInvoke("1", args)
 	if err != nil {
 		fmt.Println("Invoke", args, "failed", err)
 		t.FailNow()
@@ -75,7 +75,7 @@ func TestExample04_Init(t *testing.T) {
 	stub := shim.NewMockStub("ex04", scc)
 
 	// Init A=123 B=234
-	checkInit(t, stub, []string{"Event", "123"})
+	checkInit(t, stub, [][]byte{[]byte("init"), []byte("Event"), []byte("123")})
 
 	checkState(t, stub, "Event", "123")
 }
@@ -85,7 +85,7 @@ func TestExample04_Query(t *testing.T) {
 	stub := shim.NewMockStub("ex04", scc)
 
 	// Init A=345 B=456
-	checkInit(t, stub, []string{"Event", "1"})
+	checkInit(t, stub, [][]byte{[]byte("init"), []byte("Event"), []byte("1")})
 
 	// Query A
 	checkQuery(t, stub, "Event", eventResponse)
@@ -97,20 +97,20 @@ func TestExample04_Invoke(t *testing.T) {
 
 	ccEx2 := new(ex02.SimpleChaincode)
 	stubEx2 := shim.NewMockStub("ex02", ccEx2)
-	checkInit(t, stubEx2, []string{"a", "111", "b", "222"})
+	checkInit(t, stubEx2, [][]byte{[]byte("init"), []byte("a"), []byte("111"), []byte("b"), []byte("222")})
 	stub.MockPeerChaincode(scc.GetChaincodeToCall(), stubEx2)
 
 	// Init A=567 B=678
-	checkInit(t, stub, []string{"Event", "1"})
+	checkInit(t, stub, [][]byte{[]byte("init"), []byte("Event"), []byte("1")})
 
 	// Invoke A->B for 10 via Example04's chaincode
-	checkInvoke(t, stub, []string{"Event", "1"})
+	checkInvoke(t, stub, [][]byte{[]byte("invoke"), []byte("Event"), []byte("1")})
 	checkQuery(t, stub, "Event", eventResponse)
 	checkQuery(t, stubEx2, "a", "101")
 	checkQuery(t, stubEx2, "b", "232")
 
 	// Invoke A->B for 10 via Example04's chaincode
-	checkInvoke(t, stub, []string{"Event", "1"})
+	checkInvoke(t, stub, [][]byte{[]byte("invoke"), []byte("Event"), []byte("1")})
 	checkQuery(t, stub, "Event", eventResponse)
 	checkQuery(t, stubEx2, "a", "91")
 	checkQuery(t, stubEx2, "b", "242")

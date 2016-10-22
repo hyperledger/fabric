@@ -5,7 +5,8 @@
 #
 #  @doNotDecompose will NOT decompose the named compose_yaml after scenario ends.  Useful for setting up environment and reviewing after scenario.
 #
-
+@preV1
+@feature_chaincode_rbac
 Feature: Role Based Access Control (RBAC)
     As a HyperLedger developer
     I want various mechanisms available for implementing RBAC within Chaincode

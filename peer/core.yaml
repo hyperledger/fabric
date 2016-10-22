@@ -153,6 +153,20 @@ peer:
             # if > 0, if buffer full, blocks till timeout
             timeout: 10
 
+    # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
+    # THIS HAS TO BE DONE IN THE CONTEXT OF BOOTSTRAP. TILL THAT
+    # IS DESIGNED AND FINALIZED, THE FOLLOWING COMMITTER/ORDERER
+    # DEFINITIONS HAVE TO SERVE AS THE MEANS TO DRIVE A SIMPLE
+    # SKELETON.
+    #
+    # All "chaincode" commands from CLI (except "query") will
+    # send response from the endorser to the Committer defined below.
+    committer:
+        enabled: true
+        ledger:
+            # orderer to talk to
+            orderer: 127.0.0.1:5005
+
     # TLS Settings for p2p communications
     tls:
         enabled:  false
@@ -329,6 +343,12 @@ chaincode:
     # A value <= 0 turns keepalive off
     keepalive: 0
 
+    # system chaincodes whitelist. To add system chaincode "myscc" to the  
+    # whitelist, add "myscc: enable" to the list
+    system:
+        lccc: enable
+        escc: enable
+        vscc: enable
 ###############################################################################
 #
 ###############################################################################

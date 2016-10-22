@@ -38,7 +38,8 @@ type AssetManagementChaincode struct {
 
 // Init method will be called during deployment.
 // The deploy transaction metadata is supposed to contain the administrator cert
-func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	_, args := stub.GetFunctionAndParameters()
 	myLogger.Debug("Init Chaincode...")
 	if len(args) != 0 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 0")
@@ -242,8 +243,8 @@ func (t *AssetManagementChaincode) isCaller(stub shim.ChaincodeStubInterface, ce
 // "transfer(asset, newOwner)": to transfer the ownership of an asset. Only the owner of the specific
 // asset can call this function.
 // An asset is any string to identify it. An owner is representated by one of his ECert/TCert.
-func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-
+func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
 	// Handle different functions
 	if function == "assign" {
 		// Assign ownership
@@ -260,7 +261,8 @@ func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface, func
 // Supported functions are the following:
 // "query(asset)": returns the owner of the asset.
 // Anyone can invoke this function.
-func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
 	myLogger.Debugf("Query [%s]", function)
 
 	if function != "query" {

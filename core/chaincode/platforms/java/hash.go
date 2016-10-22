@@ -1,19 +1,3 @@
-/*
-Copyright DTCC 2016 All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-         http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package java
 
 import (
@@ -23,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -88,24 +71,8 @@ func isCodeExist(tmppath string) error {
 }
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
-
-	var tmp string
-	tmp, err = ioutil.TempDir("", "javachaincode")
-
-	if err != nil {
-		return "", fmt.Errorf("Error creating temporary file: %s", err)
-	}
-	var out bytes.Buffer
-
-	cmd := exec.Command("git", "clone", path, tmp)
-	cmd.Stderr = &out
-	cmderr := cmd.Run()
-	if cmderr != nil {
-		return "", fmt.Errorf("Error cloning git repository %s", cmderr)
-	}
-
-	return tmp, nil
-
+	//TODO
+	return "", nil
 }
 
 //generateHashcode gets hashcode of the code under path. If path is a HTTP(s) url
@@ -139,9 +106,13 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	}()
 
 	var err error
-	if strings.HasPrefix(codepath, "http://") ||
-		strings.HasPrefix(codepath, "https://") {
+	if strings.HasPrefix(codepath, "http://") {
 		ishttp = true
+		codepath = codepath[7:]
+		codepath, err = getCodeFromHTTP(codepath)
+	} else if strings.HasPrefix(codepath, "https://") {
+		ishttp = true
+		codepath = codepath[8:]
 		codepath, err = getCodeFromHTTP(codepath)
 	} else if !strings.HasPrefix(codepath, "/") {
 		wd := ""

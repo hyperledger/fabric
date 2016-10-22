@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -55,10 +54,6 @@ type SystemChaincode struct {
 
 // RegisterSysCC registers the given system chaincode with the peer
 func RegisterSysCC(syscc *SystemChaincode) error {
-	if peer.SecurityEnabled() {
-		sysccLogger.Warning(fmt.Sprintf("Currently system chaincode does support security(%s,%s)", syscc.Name, syscc.Path))
-		return nil
-	}
 	if !syscc.Enabled || !isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name, syscc.Path))
 		return nil
@@ -74,7 +69,7 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 	chaincodeID := &protos.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
 	spec := protos.ChaincodeSpec{Type: protos.ChaincodeSpec_Type(protos.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &protos.ChaincodeInput{Args: syscc.InitArgs}}
 
-	if deployErr := deploySysCC(context.Background(), &spec); deployErr != nil {
+	if deployErr := DeploySysCC(context.Background(), &spec); deployErr != nil {
 		errStr := fmt.Sprintf("deploy chaincode failed: %s", deployErr)
 		sysccLogger.Error(errStr)
 		return fmt.Errorf(errStr)
@@ -91,8 +86,8 @@ func buildSysCC(context context.Context, spec *protos.ChaincodeSpec) (*protos.Ch
 	return chaincodeDeploymentSpec, nil
 }
 
-// deployLocal deploys the supplied chaincode image to the local peer
-func deploySysCC(ctx context.Context, spec *protos.ChaincodeSpec) error {
+// DeploySysCC deploys the supplied system chaincode to the local peer
+func DeploySysCC(ctx context.Context, spec *protos.ChaincodeSpec) error {
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec, err := buildSysCC(ctx, spec)
 

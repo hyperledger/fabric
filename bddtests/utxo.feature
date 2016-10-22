@@ -8,6 +8,7 @@
 #  @chaincodeImagesUpToDate use this if all scenarios chaincode images are up to date, and do NOT require building.  BE SURE!!!
 
 #@chaincodeImagesUpToDate
+@preV1
 Feature: utxo
     As an openchain developer
     I want to be able to launch a 3 peers

@@ -1,0 +1,15 @@
+kafka0:
+    image: kchristidis/kafka
+    environment:
+        - ADVERTISED_PORT=9092
+
+orderer0:
+    extends:
+        file: docker-compose-orderer-base.yml
+        service: ordererBase
+    environment:
+        - ORDERER_GENERAL_ORDERERTYPE=kafka
+        - ORDERER_KAFKA_BROKERS=[kafka0:9092]
+    links:
+        - kafka0
+    command: orderer -loglevel debug -verbose true

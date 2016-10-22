@@ -336,7 +336,8 @@ func (c *counters) status(args []string) (val []byte, err error) {
 
 // Init handles chaincode initialization. Only the 'parms' function is
 // recognized here.
-func (c *counters) Init(stub shim.ChaincodeStubInterface, function string, args []string) (val []byte, err error) {
+func (c *counters) Init(stub shim.ChaincodeStubInterface) (val []byte, err error) {
+	function, args := stub.GetFunctionAndParameters()
 	c.stub = stub
 	defer busy.Catch(&err)
 	switch function {
@@ -349,7 +350,8 @@ func (c *counters) Init(stub shim.ChaincodeStubInterface, function string, args 
 }
 
 // Invoke handles the `invoke` methods.
-func (c *counters) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) (val []byte, err error) {
+func (c *counters) Invoke(stub shim.ChaincodeStubInterface) (val []byte, err error) {
+	function, args := stub.GetFunctionAndParameters()
 	c.stub = stub
 	defer busy.Catch(&err)
 	switch function {
@@ -366,7 +368,8 @@ func (c *counters) Invoke(stub shim.ChaincodeStubInterface, function string, arg
 }
 
 // Query handles the `query` methods.
-func (c *counters) Query(stub shim.ChaincodeStubInterface, function string, args []string) (val []byte, err error) {
+func (c *counters) Query(stub shim.ChaincodeStubInterface) (val []byte, err error) {
+	function, args := stub.GetFunctionAndParameters()
 	c.stub = stub
 	defer busy.Catch(&err)
 	switch function {

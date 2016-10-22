@@ -52,7 +52,7 @@ GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
 ARCH=$(shell uname -m)
-CHAINTOOL_RELEASE=v0.9.1
+CHAINTOOL_RELEASE=v0.10.0
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 
 DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
@@ -69,7 +69,8 @@ SUBDIRS:=$(strip $(SUBDIRS))
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh github.com/hyperledger/fabric/core/chaincode/shim | sort | uniq)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = src ccenv peer membersrvc javaenv
+IMAGES = src ccenv peer membersrvc javaenv orderer
+
 
 all: peer membersrvc checks
 
@@ -82,6 +83,10 @@ $(SUBDIRS):
 .PHONY: peer
 peer: build/bin/peer
 peer-image: build/image/peer/.dummy
+
+.PHONY: orderer
+orderer: build/bin/orderer
+orderer-image: build/image/orderer/.dummy
 
 .PHONY: membersrvc
 membersrvc: build/bin/membersrvc
@@ -115,6 +120,7 @@ linter: gotools
 	go vet ./membersrvc/...
 	go vet ./peer/...
 	go vet ./protos/...
+	go vet ./orderer/...
 	@echo "Running goimports"
 	@./scripts/goimports.sh
 
@@ -204,10 +210,6 @@ build/image/ccenv/.dummy: build/image/ccenv/bin/protoc-gen-go build/image/ccenv/
 	@touch $@
 
 # Special override for java-image
-# Following items are packed and sent to docker context while building image
-# 1. Java shim layer source code
-# 2. Proto files used to generate java classes
-# 3. Gradle settings file
 build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 	@echo "Building docker javaenv-image"
 	@mkdir -p $(@D)
@@ -215,8 +217,12 @@ build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
+	# Following items are packed and sent to docker context while building image
+	# 1. Java shim layer source code
+	# 2. Proto files used to generate java classes
+	# 3. Gradle settings file
 	@git ls-files core/chaincode/shim/java | tar -jcT - > $(@D)/javashimsrc.tar.bz2
-	@git ls-files protos core/chaincode/shim/table.proto settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
+	@git ls-files protos settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
 	docker build -t $(PROJECT_NAME)-javaenv $(@D)
 	docker tag $(PROJECT_NAME)-javaenv $(PROJECT_NAME)-javaenv:$(DOCKER_TAG)
 	@touch $@

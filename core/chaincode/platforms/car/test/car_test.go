@@ -33,6 +33,7 @@ func TestMain(m *testing.M) {
 
 func TestCar_BuildImage(t *testing.T) {
 	vm, err := container.NewVM()
+
 	if err != nil {
 		t.Fail()
 		t.Logf("Error getting VM: %s", err)

@@ -16,19 +16,19 @@
 
 import json
 from behave import *
-from bdd_test_util import cli_call, bdd_log
+from bdd_test_util import cli_call, fullNameFromContainerNamePart
 from peer_basic_impl import getAttributeFromJSON
 
-@when(u'I execute "{command}" in container {containerAlias}')
-def step_impl(context, command, containerAlias):
-    bdd_log("Run command: \"{0}\" in container {1}".format(command, containerAlias))
-    executeCommandInContainer(context, command, containerAlias)
-    bdd_log("stdout: {0}".format(context.command["stdout"]))
-    bdd_log("stderr: {0}".format(context.command["stderr"]))
-    bdd_log("returnCode: {0}".format(context.command["returnCode"]))
+@when(u'I execute "{command}" in container {containerName}')
+def step_impl(context, command, containerName):
+    print("Run command: \"{0}\" in container {1}".format(command, containerName))
+    executeCommandInContainer(context, command, containerName)
+    print("stdout: {0}".format(context.command["stdout"]))
+    print("stderr: {0}".format(context.command["stderr"]))
+    print("returnCode: {0}".format(context.command["returnCode"]))
 
-def executeCommandInContainer(context, command, containerAlias):
-    fullContainerName = context.containerAliasMap[containerAlias].name
+def executeCommandInContainer(context, command, container):
+    fullContainerName = fullNameFromContainerNamePart(container, context.compose_containers)
     command = "docker exec {} {}".format(fullContainerName, command)
     executeCommand(context, command)
 
@@ -67,7 +67,7 @@ def step_impl(context, stream, attribute, length):
     assertIsJson(data)
 
     json = decodeJson(data)
-    array = getAttributeFromJSON(attribute, json)
+    array = getAttribute(attribute, json)
     assertLength(array, int(length))
 
 @then(u'I should get result with "{expectResult}"')
@@ -87,6 +87,10 @@ def isJson(data):
 
 def decodeJson(data):
     return json.loads(data)
+
+def getAttribute(attribute, json):
+    return getAttributeFromJSON(attribute, json,
+        "Attribute '{}' missing from JSON".format(attribute))
 
 def assertLength(array, length):
     arrayLength = len(array)

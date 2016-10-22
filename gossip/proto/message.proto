@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package proto;
+
+
+// Gossip
+service Gossip {
+
+    rpc GossipStream (stream GossipMessage) returns (stream GossipMessage) {}
+
+    rpc Ping (Empty) returns (Empty) {}
+
+}
+
+message GossipMessage {
+    uint64 nonce  = 1;
+    oneof content {
+        // Membership
+        AliveMessage aliveMsg = 2;
+        MembershipRequest memReq = 3;
+        MembershipResponse memRes = 4;
+
+        // Contains a ledger block
+        DataMessage dataMsg = 5;
+
+        // Used for push&pull
+        GossipHello hello = 6;
+        DataDigest  dataDig = 7;
+        DataRequest dataReq = 8;
+        DataUpdate  dataUpdate = 9;
+
+        AckMessage ackMsg   = 10;
+
+        // Empty message, used for pinging
+        Empty empty = 11;
+
+        ConnChallenge challenge = 12;
+        ConnResponse challengeResp = 13;
+    }
+}
+
+message ConnChallenge {
+    uint64 nonce = 1;
+}
+
+message ConnResponse {
+    bytes pkiID = 1;
+    bytes challengeResponse = 2;
+}
+
+message DataRequest {
+    uint64 nonce            = 1;
+    repeated uint64 seqMap  = 2; // Maybe change this to bitmap later on
+}
+
+message GossipHello {
+    uint64 nonce  = 1;
+}
+
+message DataUpdate {
+    repeated DataMessage data = 1;
+}
+
+message DataDigest {
+    uint64 nonce     = 1;
+    repeated uint64 seqMap  = 2; // Maybe change this to bitmap later on
+}
+
+message DataMessage {
+    enum Type {
+        UNDEFINED = 0;
+        BLOCK = 1;
+        VAL_REQ = 2;
+        VAL_RES = 3;
+        CERT = 4;
+    }
+
+    Type type = 1;
+    Payload payload = 2;
+}
+
+message Payload {
+    uint64  seqNum  = 1;
+    string  hash = 2;
+    bytes   data  = 3;
+}
+
+message AckMessage {
+    uint64 nonce = 1;
+}
+
+// Membership
+
+message AliveMessage {
+    Member membership  = 1;
+    PeerTime timestamp = 2;
+    bytes signature    = 3;
+}
+
+message PeerTime {
+    uint64 inc_number = 1;
+    uint64 seqNum     = 2;
+}
+
+message MembershipRequest {
+    AliveMessage selfInformation = 1;
+    repeated string        known = 2;
+}
+
+message MembershipResponse {
+    repeated AliveMessage alive = 1;
+    repeated AliveMessage dead  = 2;
+}
+
+message Member {
+    string id       = 1;
+    string endpoint = 2;
+    bytes  metadata = 3;
+    bytes pkiID     = 4;
+}
+
+message Empty {}

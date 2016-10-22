@@ -1,3 +1,0 @@
-vp3:
-  environment:
-    - CORE_PBFT_GENERAL_BYZANTINE=true

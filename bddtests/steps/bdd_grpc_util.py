@@ -22,7 +22,6 @@ import fabric_pb2
 import chaincode_pb2
 
 import bdd_test_util
-from bdd_test_util import bdd_log
 
 from grpc.beta import implementations
 
@@ -47,7 +46,7 @@ def getTxResult(context, enrollId):
 
 def getGRPCChannel(ipAddress):
     channel = implementations.insecure_channel(ipAddress, 7051)
-    bdd_log("Returning GRPC for address: {0}".format(ipAddress))
+    print("Returning GRPC for address: {0}".format(ipAddress))
     return channel
 
 def getGRPCChannelAndUser(context, enrollId):
@@ -55,7 +54,7 @@ def getGRPCChannelAndUser(context, enrollId):
     userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
 
     # Get the IP address of the server that the user registered on
-    ipAddress = context.containerAliasMap[userRegistration.composeService].ipAddress
+    ipAddress = bdd_test_util.ipFromContainerNamePart(userRegistration.composeService, context.compose_containers)
 
     channel = getGRPCChannel(ipAddress)
 
@@ -126,19 +125,33 @@ def getArgsFromContextForUser(context, enrollId):
     # Update the chaincodeSpec ctorMsg for invoke
     args = []
     if 'table' in context:
-       # There are function arguments
-       userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
-       # Allow the user to specify expressions referencing tags in the args list
-       pattern = re.compile('\{(.*)\}$')
-       for arg in context.table[0].cells:
-          m = pattern.match(arg)
-          if m:
-              # tagName reference found in args list
-              tagName = m.groups()[0]
-              # make sure the tagName is found in the users tags
-              assert tagName in userRegistration.tags, "TagName '{0}' not found for user '{1}'".format(tagName, userRegistration.getUserName())
-              args.append(userRegistration.tags[tagName])
-          else:
-              #No tag referenced, pass the arg
-              args.append(arg)
+        if context.table:
+            # There are function arguments
+            userRegistration = bdd_test_util.getUserRegistration(context, enrollId)
+            # Allow the user to specify expressions referencing tags in the args list
+            pattern = re.compile('\{(.*)\}$')
+            for arg in context.table[0].cells:
+                m = pattern.match(arg)
+                if m:
+                    # tagName reference found in args list
+                    tagName = m.groups()[0]
+                    # make sure the tagName is found in the users tags
+                    assert tagName in userRegistration.tags, "TagName '{0}' not found for user '{1}'".format(tagName, userRegistration.getUserName())
+                    args.append(userRegistration.tags[tagName])
+                else:
+                    #No tag referenced, pass the arg
+                    args.append(arg)
     return args
+
+def toStringArray(items):
+    itemsAsStr = []
+    for item in items:
+        if type(item) == str:
+            itemsAsStr.append(item)
+        elif type(item) == unicode:
+            itemsAsStr.append(str(item))
+        else:
+            raise Exception("Error tring to convert to string: unexpected type '{0}'".format(type(item)))
+    return itemsAsStr
+
+
