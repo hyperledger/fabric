@@ -882,13 +882,11 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 		return
 	}
 
-	t.Logf("deployed chaincode_example04 got cID2:% s,\n chaincodeID2:% s", cID2, chaincodeID2)
-
 	time.Sleep(time.Second)
 
 	// Invoke second chaincode, which will inturn invoke the first chaincode
 	f = "invoke"
-	args = util.ToChaincodeArgs(f, "e", "1", chaincodeID1)
+	args = util.ToChaincodeArgs(f, "e", "1")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 	// Invoke chaincode
