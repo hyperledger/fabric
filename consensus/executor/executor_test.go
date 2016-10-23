@@ -22,10 +22,9 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/consensus/util/events"
+	"github.com/op/go-logging"
 
 	pb "github.com/hyperledger/fabric/protos"
-
-	"github.com/op/go-logging"
 )
 
 func init() {

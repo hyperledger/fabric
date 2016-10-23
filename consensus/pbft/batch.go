@@ -23,10 +23,10 @@ import (
 	"github.com/hyperledger/fabric/consensus"
 	"github.com/hyperledger/fabric/consensus/util/events"
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 

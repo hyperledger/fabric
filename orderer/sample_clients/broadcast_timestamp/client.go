@@ -36,7 +36,7 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient) *broadcastCli
 }
 
 func (s *broadcastClient) broadcast(transaction []byte) error {
-	return s.client.Send(&ab.BroadcastMessage{transaction})
+	return s.client.Send(&ab.BroadcastMessage{Data: transaction})
 }
 
 func main() {

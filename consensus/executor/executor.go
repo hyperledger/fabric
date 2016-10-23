@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/consensus/util/events"
 	"github.com/hyperledger/fabric/core/peer/statetransfer"
 	pb "github.com/hyperledger/fabric/protos"
-
 	"github.com/op/go-logging"
 )
 

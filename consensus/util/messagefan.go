@@ -19,9 +19,8 @@ package util
 import (
 	"sync"
 
-	"github.com/op/go-logging"
-
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/op/go-logging"
 )
 
 var logger *logging.Logger // package-level logger

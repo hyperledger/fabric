@@ -24,11 +24,11 @@ import (
 	"time"
 
 	_ "github.com/hyperledger/fabric/core" // Logging format init
+	"github.com/op/go-logging"
 
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 

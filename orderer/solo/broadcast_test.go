@@ -64,14 +64,14 @@ func TestQueueOverflow(t *testing.T) {
 	bs.halt()
 
 	for i := 0; i < 2; i++ {
-		m.recvChan <- &ab.BroadcastMessage{[]byte("Some bytes")}
+		m.recvChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
 		reply := <-m.sendChan
 		if reply.Status != ab.Status_SUCCESS {
 			t.Fatalf("Should have successfully queued the message")
 		}
 	}
 
-	m.recvChan <- &ab.BroadcastMessage{[]byte("Some bytes")}
+	m.recvChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
 	reply := <-m.sendChan
 	if reply.Status != ab.Status_SERVICE_UNAVAILABLE {
 		t.Fatalf("Should not have successfully queued the message")
@@ -92,7 +92,7 @@ func TestMultiQueueOverflow(t *testing.T) {
 
 	for _, m := range ms {
 		for i := 0; i < 2; i++ {
-			m.recvChan <- &ab.BroadcastMessage{[]byte("Some bytes")}
+			m.recvChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
 			reply := <-m.sendChan
 			if reply.Status != ab.Status_SUCCESS {
 				t.Fatalf("Should have successfully queued the message")
@@ -101,7 +101,7 @@ func TestMultiQueueOverflow(t *testing.T) {
 	}
 
 	for _, m := range ms {
-		m.recvChan <- &ab.BroadcastMessage{[]byte("Some bytes")}
+		m.recvChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
 		reply := <-m.sendChan
 		if reply.Status != ab.Status_SERVICE_UNAVAILABLE {
 			t.Fatalf("Should not have successfully queued the message")
@@ -137,7 +137,7 @@ func TestFilledBatch(t *testing.T) {
 	defer bs.halt()
 	messages := 11 // Sending 11 messages, with a batch size of 2, ensures the 10th message is processed before we proceed for 5 blocks
 	for i := 0; i < messages; i++ {
-		bs.sendChan <- &ab.BroadcastMessage{[]byte("Some bytes")}
+		bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
 	}
 	expected := uint64(1 + messages/batchSize)
 	if bs.rl.(rawledger.Reader).Height() != expected {

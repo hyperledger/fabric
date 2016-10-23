@@ -28,7 +28,6 @@ import (
 	configSetup "github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos"
-
 	"github.com/op/go-logging"
 )
 

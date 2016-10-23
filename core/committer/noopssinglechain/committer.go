@@ -146,7 +146,7 @@ func (r *deliverClient) readUntilClose() {
 			if err = r.commit(txs); err != nil {
 				fmt.Printf("Got error while committing(%s)\n", err)
 			} else {
-				fmt.Printf("Commit success, created a block!\n", err)
+				fmt.Printf("Commit success, created a block!\n")
 			}
 
 			r.unAcknowledged++

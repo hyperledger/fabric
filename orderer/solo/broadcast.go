@@ -124,7 +124,7 @@ func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastSer
 		}
 
 		if msg.Data == nil {
-			err = srv.Send(&ab.BroadcastResponse{ab.Status_BAD_REQUEST})
+			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_BAD_REQUEST})
 			if err != nil {
 				return err
 			}
@@ -132,9 +132,9 @@ func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastSer
 
 		select {
 		case b.queue <- msg:
-			err = srv.Send(&ab.BroadcastResponse{ab.Status_SUCCESS})
+			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SUCCESS})
 		default:
-			err = srv.Send(&ab.BroadcastResponse{ab.Status_SERVICE_UNAVAILABLE})
+			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SERVICE_UNAVAILABLE})
 		}
 
 		if err != nil {
