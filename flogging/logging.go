@@ -98,3 +98,33 @@ func init() {
 	backendFormatter := logging.NewBackendFormatter(backend, format)
 	logging.SetBackend(backendFormatter).SetLevel(loggingDefaultLevel, "")
 }
+
+// GetModuleLogLevel gets the current logging level for the specified module
+func GetModuleLogLevel(module string) (string, error) {
+	// logging.GetLevel() returns the logging level for the module, if defined.
+	// otherwise, it returns the default logging level, as set by
+	// flogging/logging.go
+	level := logging.GetLevel(module).String()
+
+	loggingLogger.Infof("Module '%s' logger enabled for log level: %s", module, level)
+
+	return level, nil
+}
+
+// SetModuleLogLevel sets the logging level for the specified module. This is
+// currently only called from admin.go but can be called from anywhere in the
+// code on a running peer to dynamically change the log level for the module.
+func SetModuleLogLevel(module string, logLevel string) (string, error) {
+	level, err := logging.LogLevel(logLevel)
+
+	if err != nil {
+		loggingLogger.Warningf("Invalid logging level: %s - ignored", logLevel)
+	} else {
+		logging.SetLevel(logging.Level(level), module)
+		loggingLogger.Infof("Module '%s' logger enabled for log level: %s", module, level)
+	}
+
+	logLevelString := level.String()
+
+	return logLevelString, err
+}

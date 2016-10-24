@@ -92,6 +92,8 @@ It has these top-level messages:
 	Transaction2
 	TransactionAction
 	ServerStatus
+	LogLevelRequest
+	LogLevelResponse
 */
 package protos
 
