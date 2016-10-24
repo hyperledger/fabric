@@ -1,16 +1,16 @@
 Authors: Elli Androulaki, Christian Cachin, Konstantinos Christidis, Chet Murthy, Binh Nguyen, and Marko Vukolić
 
-This page documents the architecture of a blockchain infrastructure with the roles of a blockchain node separated into roles of *peers* (who maintain state/ledger) and *consenters* (who consent on the order of transactions included in the blockchain state). In common blockchain architectures (including Hyperledger fabric v0.6-developer-preview and earlier) these roles are unified (cf. *validating peer* in Hyperledger fabric). The architecture also introduces *endorsing peers* (endorsers), as special type of peers responsible for simulating execution and *endorsing* transactions (roughly corresponding to executing/validating transactions in HL fabric 0.6-developer-preview and earlier).
+This page documents the architecture of a blockchain network infrastructure in which the roles of blockchain nodes are separated into *peers* (which maintain state/ledger) and *consenters* (which reach agreement on the order of transactions included in the blockchain state/ledger). In common blockchain architectures to date (including Hyperledger Fabric v0.6-developer-preview, and earlier), these roles are unified on each node (cf. *validating peer* in Hyperledger Fabric v0.6-developer-preview, and earlier). This new architecture also introduces *endorsing peers* (endorsers), as a specific class of peers responsible for simulating execution and *endorsing* transactions (roughly corresponding to executing/validating transactions in Hyperledger Fabric 0.6-developer-preview, and earlier).
 
-The architecture has the following advantages compared to the design in which peers/consenters/endorsers are unified.
+This new architecture provides the following advantages, compared to the v0.6 and earlier design, which combined the work of peers/consenters/endorsers all on each node:
 
-* **Chaincode trust flexibility.** The architecture separates *trust assumptions* for chaincodes (blockchain applications) from trust assumptions for consensus. In other words, the consensus  service may be provided by one set of nodes (consenters) and tolerate some of them to fail or misbehave, and the endorsers may be different for each chaincode.
+* **Chaincode trust flexibility.** The architecture separates *trust assumptions* for chaincodes (blockchain applications) from trust assumptions for consensus. In other words, the consensus service is provided by one set of nodes (consenters), which can  tolerate some of them to fail or misbehave, while blockchain applications (chaincode smart contracts) are managed by a completely different set of nodes (endorsers). 
 
-* **Scalability.** As the endorser nodes responsible for particular chaincode are orthogonal to the consenters, the system may *scale* better than if these functions were done by the same nodes. In particular, this results when different chaincodes specify disjoint endorsers, which introduces a partitioning of chaincodes between endorsers and allows parallel chaincode execution (endorsement). Besides, chaincode execution, which can potentially be costly, is removed from the critical path of the consensus service.
+* **Scalability.** Because endorser nodes, which are responsible for running chaincode applications, are orthogonal to  consenter nodes, the blockchain network has increased *scalability* (compared to non-specialized nodes sharing all work). In particular, scalability results from unique chaincode applications specifying disjointed endorsers, which partitions chaincode across endorsers and allows parallel chaincode execution (endorsement). In addition, potentially costly (in terms of CPU demand) chaincode execution is removed from the critical path of the consensus service.
 
-* **Confidentiality.** The architecture facilitates deployment of chaincodes that have *confidentiality* requirements with respect to the content and state updates of its transactions.
+* **Confidentiality.** The architecture facilitates deployment of chaincode applications that have *confidentiality* requirements with respect to the content and state updates of its transactions.
 
-* **Consensus modularity.** The architecture is *modular* and allows pluggable consensus implementations.
+* **Consensus modularity.** The architecture is *modular*, which allows a pluggable consensus alogorithm to be selected based on the requirements of the specific blockchain network.
 
 
 ## Table of contents
