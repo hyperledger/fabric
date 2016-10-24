@@ -31,8 +31,6 @@
 #   - peer-image[-clean] - ensures the peer-image is available[/cleaned] (for behave, etc)
 #   - membersrvc-image[-clean] - ensures the membersrvc-image is available[/cleaned] (for behave, etc)
 #   - protos - generate all protobuf artifacts based on .proto files
-#   - node-sdk - builds the node.js client sdk
-#   - node-sdk-unit-tests - runs the node.js client sdk unit tests
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
 
@@ -63,7 +61,7 @@ K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
 # SUBDIRS are components that have their own Makefiles that we can invoke
-SUBDIRS = gotools sdk/node
+SUBDIRS = gotools
 SUBDIRS:=$(strip $(SUBDIRS))
 
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh github.com/hyperledger/fabric/core/chaincode/shim | sort | uniq)
@@ -95,12 +93,7 @@ membersrvc-image: build/image/membersrvc/.dummy
 unit-test: peer-image gotools
 	@./scripts/goUnitTests.sh $(DOCKER_TAG) "$(GO_LDFLAGS)"
 
-node-sdk: sdk/node
-
-node-sdk-unit-tests: peer membersrvc
-	cd sdk/node && $(MAKE) unit-tests
-
-unit-tests: unit-test node-sdk-unit-tests
+unit-tests: unit-test
 
 .PHONY: images
 images: $(patsubst %,build/image/%/.dummy, $(IMAGES))
