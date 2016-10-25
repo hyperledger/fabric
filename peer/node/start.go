@@ -152,7 +152,7 @@ func serve(args []string) error {
 		logger.Debugf("Running as validating peer - installing consensus %s",
 			viper.GetString("peer.validator.consensus"))
 
-		peerServer, err = peer.NewPeerWithEngine(secHelperFunc, nil) //PDMP- remove need for consensus engine
+		peerServer, err = peer.NewPeerWithEngine(secHelperFunc, peer.GetEngine)
 	} else {
 		logger.Debug("Running as non-validating peer")
 		peerServer, err = peer.NewPeerWithHandler(secHelperFunc, peer.NewPeerHandler)

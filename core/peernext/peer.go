@@ -613,14 +613,15 @@ func (p *Impl) newHelloMessage() (*pb.HelloMessage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error creating hello message: %s", err)
 	}
-	p.ledgerWrapper.RLock()
-	defer p.ledgerWrapper.RUnlock()
-	//size := p.ledgerWrapper.ledger.GetBlockchainSize()
-	blockChainInfo, err := p.ledgerWrapper.ledger.GetBlockchainInfo()
-	if err != nil {
-		return nil, fmt.Errorf("Error creating hello message, error getting block chain info: %s", err)
-	}
-	return &pb.HelloMessage{PeerEndpoint: endpoint, BlockchainInfo: blockChainInfo}, nil
+	//p.ledgerWrapper.RLock()
+	//defer p.ledgerWrapper.RUnlock()
+	////size := p.ledgerWrapper.ledger.GetBlockchainSize()
+	//blockChainInfo, err := p.ledgerWrapper.ledger.GetBlockchainInfo()
+	//if err != nil {
+	//	return nil, fmt.Errorf("Error creating hello message, error getting block chain info: %s", err)
+	//}
+	//return &pb.HelloMessage{PeerEndpoint: endpoint, BlockchainInfo: blockChainInfo}, nil
+	return &pb.HelloMessage{PeerEndpoint: endpoint}, nil
 }
 
 // GetBlockByNumber return a block by block number
