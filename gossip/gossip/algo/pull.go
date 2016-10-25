@@ -43,19 +43,28 @@ import (
 
 */
 
-const (
-	DEF_DIGEST_WAIT_TIME   = time.Duration(4) * time.Second
-	DEF_REQUEST_WAIT_TIME  = time.Duration(4) * time.Second
-	DEF_RESPONSE_WAIT_TIME = time.Duration(7) * time.Second
-)
-
 func init() {
 	rand.Seed(42)
 }
 
-var defaultDigestWaitTime = DEF_DIGEST_WAIT_TIME
-var defaultRequestWaitTime = DEF_REQUEST_WAIT_TIME
-var defaultResponseWaitTime = DEF_RESPONSE_WAIT_TIME
+var digestWaitTime = time.Duration(4) * time.Second
+var requestWaitTime = time.Duration(4) * time.Second
+var responseWaitTime = time.Duration(7) * time.Second
+
+// SetDigestWaitTime sets the digest wait time
+func SetDigestWaitTime(time time.Duration) {
+	digestWaitTime = time
+}
+
+// SetRequestWaitTime sets the request wait time
+func SetRequestWaitTime(time time.Duration) {
+	requestWaitTime = time
+}
+
+// SetResponseWaitTime sets the response wait time
+func SetResponseWaitTime(time time.Duration) {
+	responseWaitTime = time
+}
 
 // PullAdapter is needed by the PullEngine in order to
 // send messages to the remote PullEngine instances.
@@ -83,6 +92,8 @@ type PullAdapter interface {
 	SendRes(items []uint64, context interface{}, nonce uint64)
 }
 
+// PullEngine is the component that actually invokes the pull algorithm
+// with the help of the PullAdapter
 type PullEngine struct {
 	PullAdapter
 	stopFlag           int32
@@ -93,12 +104,15 @@ type PullEngine struct {
 	acceptingDigests   int32
 	acceptingResponses int32
 	lock               sync.Mutex
-	nonces             *util.Set
+	outgoingNONCES     *util.Set
+	incomingNONCES     *util.Set
 }
 
+// NewPullEngine creates an instance of a PullEngine with a certain sleep time
+// between pull initiations
 func NewPullEngine(participant PullAdapter, sleepTime time.Duration) *PullEngine {
 	engine := &PullEngine{
-		PullAdapter:    participant,
+		PullAdapter:        participant,
 		stopFlag:           int32(0),
 		state:              util.NewSet(),
 		item2owners:        make(map[uint64][]string),
@@ -106,7 +120,8 @@ func NewPullEngine(participant PullAdapter, sleepTime time.Duration) *PullEngine
 		nonces2peers:       make(map[uint64]string),
 		acceptingDigests:   int32(0),
 		acceptingResponses: int32(0),
-		nonces:             util.NewSet(),
+		incomingNONCES:     util.NewSet(),
+		outgoingNONCES:     util.NewSet(),
 	}
 
 	go func() {
@@ -144,6 +159,7 @@ func (engine *PullEngine) ignoreDigests() {
 	atomic.StoreInt32(&(engine.acceptingDigests), int32(0))
 }
 
+// Stop stops the engine
 func (engine *PullEngine) Stop() {
 	atomic.StoreInt32(&(engine.stopFlag), int32(1))
 }
@@ -155,13 +171,13 @@ func (engine *PullEngine) initiatePull() {
 	engine.acceptDigests()
 	for _, peer := range engine.SelectPeers() {
 		nonce := engine.newNONCE()
-		engine.nonces.Add(nonce)
+		engine.outgoingNONCES.Add(nonce)
 		engine.nonces2peers[nonce] = peer
 		engine.peers2nonces[peer] = nonce
 		engine.Hello(peer, nonce)
 	}
 
-	time.AfterFunc(defaultDigestWaitTime, func() {
+	time.AfterFunc(digestWaitTime, func() {
 		engine.processIncomingDigests()
 	})
 }
@@ -189,7 +205,7 @@ func (engine *PullEngine) processIncomingDigests() {
 		engine.SendReq(dest, seqsToReq, engine.peers2nonces[dest])
 	}
 
-	time.AfterFunc(defaultResponseWaitTime, engine.endPull)
+	time.AfterFunc(responseWaitTime, engine.endPull)
 
 }
 
@@ -198,15 +214,16 @@ func (engine *PullEngine) endPull() {
 	defer engine.lock.Unlock()
 
 	atomic.StoreInt32(&(engine.acceptingResponses), int32(0))
-	engine.nonces.Clear()
+	engine.outgoingNONCES.Clear()
 
 	engine.item2owners = make(map[uint64][]string)
 	engine.peers2nonces = make(map[string]uint64)
 	engine.nonces2peers = make(map[uint64]string)
 }
 
+// OnDigest notifies the engine that a digest has arrived
 func (engine *PullEngine) OnDigest(digest []uint64, nonce uint64, context interface{}) {
-	if !engine.isAcceptingDigests() || !engine.nonces.Exists(nonce) {
+	if !engine.isAcceptingDigests() || !engine.outgoingNONCES.Exists(nonce) {
 		return
 	}
 
@@ -226,22 +243,25 @@ func (engine *PullEngine) OnDigest(digest []uint64, nonce uint64, context interf
 	}
 }
 
+// Add adds items to the state
 func (engine *PullEngine) Add(seqs ...uint64) {
 	for _, seq := range seqs {
 		engine.state.Add(seq)
 	}
 }
 
+// Remove removes items from the state
 func (engine *PullEngine) Remove(seqs ...uint64) {
 	for _, seq := range seqs {
 		engine.state.Remove(seq)
 	}
 }
 
+// OnHello notifies the engine a hello has arrived
 func (engine *PullEngine) OnHello(nonce uint64, context interface{}) {
-	engine.nonces.Add(nonce)
-	time.AfterFunc(defaultRequestWaitTime, func() {
-		engine.nonces.Remove(nonce)
+	engine.incomingNONCES.Add(nonce)
+	time.AfterFunc(requestWaitTime, func() {
+		engine.incomingNONCES.Remove(nonce)
 	})
 
 	a := engine.state.ToArray()
@@ -252,14 +272,15 @@ func (engine *PullEngine) OnHello(nonce uint64, context interface{}) {
 	engine.SendDigest(digest, nonce, context)
 }
 
+// OnReq notifies the engine a request has arrived
 func (engine *PullEngine) OnReq(items []uint64, nonce uint64, context interface{}) {
-	if !engine.nonces.Exists(nonce) {
+	if !engine.incomingNONCES.Exists(nonce) {
 		return
 	}
 	engine.lock.Lock()
 	defer engine.lock.Unlock()
 
-	items2Send := make([]uint64, 0)
+	var items2Send []uint64
 	for _, item := range items {
 		if engine.state.Exists(item) {
 			items2Send = append(items2Send, item)
@@ -269,8 +290,9 @@ func (engine *PullEngine) OnReq(items []uint64, nonce uint64, context interface{
 	engine.SendRes(items2Send, context, nonce)
 }
 
+// OnRes notifies the engine a response has arrived
 func (engine *PullEngine) OnRes(items []uint64, nonce uint64) {
-	if !engine.nonces.Exists(nonce) || !engine.isAcceptingResponses() {
+	if !engine.outgoingNONCES.Exists(nonce) || !engine.isAcceptingResponses() {
 		return
 	}
 
@@ -281,7 +303,7 @@ func (engine *PullEngine) newNONCE() uint64 {
 	n := uint64(0)
 	for {
 		n = uint64(rand.Int63())
-		if !engine.nonces.Exists(n) {
+		if !engine.outgoingNONCES.Exists(n) {
 			return n
 		}
 	}

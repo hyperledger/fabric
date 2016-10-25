@@ -21,16 +21,17 @@ import (
 	"testing"
 	"time"
 
+	"fmt"
+	"sync/atomic"
+
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/stretchr/testify/assert"
-	"sync/atomic"
 )
 
 func init() {
-	defaultRequestWaitTime = time.Duration(50) * time.Millisecond
-	defaultDigestWaitTime = time.Duration(20) * time.Millisecond
-	defaultResponseWaitTime = time.Duration(50) * time.Millisecond
-
+	requestWaitTime = time.Duration(50) * time.Millisecond
+	digestWaitTime = time.Duration(20) * time.Millisecond
+	responseWaitTime = time.Duration(50) * time.Millisecond
 }
 
 type messageHook func(interface{})
@@ -78,7 +79,7 @@ func newPushPullTestInstance(name string, peers map[string]*pullTestInstance) *p
 		name:              name,
 	}
 
-	inst.PullEngine = NewPullEngine(inst, time.Duration(500)*time.Millisecond)
+	inst.PullEngine = NewPullEngine(inst, time.Duration(100)*time.Millisecond)
 
 	peers[name] = inst
 	go func() {
@@ -86,7 +87,6 @@ func newPushPullTestInstance(name string, peers map[string]*pullTestInstance) *p
 			select {
 			case <-inst.stopChan:
 				return
-				break
 			case m := <-inst.msgQueue:
 				inst.handleMessage(m)
 				break
@@ -207,6 +207,31 @@ func TestPullEngine_Stop(t *testing.T) {
 	assert.Equal(t, len1, len2, "PullEngine was still active after Stop() was invoked!")
 }
 
+func TestPullEngineAll2AllWithIncrementalSpawning(t *testing.T) {
+	// Scenario: spawn 10 nodes, each 50 ms after the other
+	// and have them transfer data between themselves.
+	// Expected outcome: obviously, everything should succeed.
+	// Isn't that's why we're here?
+	instanceCount := 10
+	peers := make(map[string]*pullTestInstance)
+
+	for i := 0; i < instanceCount; i++ {
+		inst := newPushPullTestInstance(fmt.Sprintf("p%d", i+1), peers)
+		inst.Add(uint64(i + 1))
+		time.Sleep(time.Duration(50) * time.Millisecond)
+	}
+	for i := 0; i < instanceCount; i++ {
+		pID := fmt.Sprintf("p%d", i+1)
+		peers[pID].setNextPeerSelection(keySet(pID, peers))
+	}
+	time.Sleep(time.Duration(500) * time.Millisecond)
+
+	for i := 0; i < instanceCount; i++ {
+		pID := fmt.Sprintf("p%d", i+1)
+		assert.Equal(t, instanceCount, len(peers[pID].state.ToArray()))
+	}
+}
+
 func TestPullEngineSelectiveUpdates(t *testing.T) {
 	// Scenario: inst1 has {1, 3} and inst2 has {0,1,2,3}.
 	// inst1 initiates to inst2
@@ -254,7 +279,7 @@ func TestPullEngineSelectiveUpdates(t *testing.T) {
 
 	inst1.setNextPeerSelection([]string{"p2"})
 
-	time.Sleep(time.Duration(800) * time.Millisecond)
+	time.Sleep(time.Duration(200) * time.Millisecond)
 	assert.Equal(t, len(inst2.state.ToArray()), len(inst1.state.ToArray()))
 }
 
@@ -301,7 +326,7 @@ func TestByzantineResponder(t *testing.T) {
 
 	inst1.setNextPeerSelection([]string{"p2"})
 
-	time.Sleep(time.Duration(800) * time.Millisecond)
+	time.Sleep(time.Duration(200) * time.Millisecond)
 
 	assert.Equal(t, int32(1), atomic.LoadInt32(&receivedDigestFromInst3), "inst1 hasn't received a digest from inst3")
 
@@ -333,7 +358,7 @@ func TestMultipleInitiators(t *testing.T) {
 	inst2.setNextPeerSelection([]string{"p4"})
 	inst3.setNextPeerSelection([]string{"p4"})
 
-	time.Sleep(time.Duration(800) * time.Millisecond)
+	time.Sleep(time.Duration(200) * time.Millisecond)
 
 	for _, inst := range []*pullTestInstance{inst1, inst2, inst3} {
 		assert.True(t, util.IndexInSlice(inst.state.ToArray(), uint64(1), numericCompare) != -1)
@@ -362,7 +387,7 @@ func TestLatePeers(t *testing.T) {
 	})
 	inst1.setNextPeerSelection([]string{"p2", "p3"})
 
-	time.Sleep(time.Duration(800) * time.Millisecond)
+	time.Sleep(time.Duration(200) * time.Millisecond)
 
 	assert.True(t, util.IndexInSlice(inst1.state.ToArray(), uint64(1), numericCompare) == -1)
 	assert.True(t, util.IndexInSlice(inst1.state.ToArray(), uint64(2), numericCompare) == -1)
@@ -391,7 +416,7 @@ func TestBiDiUpdates(t *testing.T) {
 	inst1.setNextPeerSelection([]string{"p2"})
 	inst2.setNextPeerSelection([]string{"p1"})
 
-	time.Sleep(time.Duration(800) * time.Millisecond)
+	time.Sleep(time.Duration(200) * time.Millisecond)
 
 	assert.True(t, util.IndexInSlice(inst1.state.ToArray(), uint64(0), numericCompare) != -1)
 	assert.True(t, util.IndexInSlice(inst1.state.ToArray(), uint64(1), numericCompare) != -1)
@@ -453,14 +478,14 @@ func TestSpread(t *testing.T) {
 
 	inst1.setNextPeerSelection([]string{"p2", "p3", "p4"})
 
-	time.Sleep(time.Duration(800) * time.Millisecond)
+	time.Sleep(time.Duration(200) * time.Millisecond)
 
 	lock.Lock()
-	for p_i, counter := range chooseCounters {
-		if p_i == "p5" {
+	for pI, counter := range chooseCounters {
+		if pI == "p5" {
 			assert.Equal(t, 0, counter)
 		} else {
-			assert.True(t, counter > 0, "%s was not selected!", p_i)
+			assert.True(t, counter > 0, "%s was not selected!", pI)
 		}
 	}
 	lock.Unlock()
@@ -469,4 +494,18 @@ func TestSpread(t *testing.T) {
 
 func numericCompare(a interface{}, b interface{}) bool {
 	return a.(uint64) == b.(uint64)
+}
+
+func keySet(selfPeer string, m map[string]*pullTestInstance) []string {
+	peers := make([]string, len(m)-1)
+	i := 0
+	for pID := range m {
+		if pID == selfPeer {
+			continue
+		}
+		peers[i] = pID
+		i++
+	}
+
+	return peers
 }
