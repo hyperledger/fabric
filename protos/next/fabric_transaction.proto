@@ -1,0 +1,65 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package protos;
+
+import "google/protobuf/timestamp.proto";
+import "fabric_transaction_header.proto";
+
+message SignedTransaction {
+
+	// The bytes of the Transaction. NDD
+	bytes transactionBytes = 1;
+
+	// Signature of the transactionBytes
+	// The public key of the signature is in the header field of TransactionActions
+	// There might be multiple TransactionActions, so multiple headers,
+	// but there should be same transactor identity (cert) in all headers
+	bytes signature = 2;
+}
+
+// The transaction to be sent to the ordering service. A transaction contains
+// one or more TransactionActions. Each TransactionActions binds a proposal
+// to potentially multiple actions.
+// The transaction is atomic meaning that either
+// all actions in the transaction will be committed or none will be committed.
+message Transaction {
+	// Version indicates message protocol version.
+	int32 version = 1;
+
+	// Timestamp is the local time that the
+	// message was created by the sender
+	google.protobuf.Timestamp timestamp = 2;
+
+	// The payload is an array of TransactionActions. An array is neccessary
+	// accommodate multiple proposals per transaction
+	repeated TransactionActions TransactionActions = 3;
+}
+
+// TransactionActions binds a proposal to one of more actions.
+// The type field in the header dictecates the type actions
+// to be applied to the ledger.
+message TransactionActions {
+
+	// The header of the proposal action, which is the proposal header
+	TransactionHeader header = 1;
+
+	// The payload of the action as defined by the type in the header
+	// For chaincode, it's the bytes of ChaincodeActionsPayload
+	bytes payload = 2;
+}

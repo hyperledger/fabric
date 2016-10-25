@@ -1,0 +1,84 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package protos;
+
+import "google/protobuf/timestamp.proto";
+
+// A ProposalResponse is returned from an endorser to the proposal submitter
+message ProposalResponse {
+	// Version indicates message protocol version
+	int32 version = 1;
+
+	// Timestamp is the time that the message
+	// was created as  defined by the sender
+	google.protobuf.Timestamp timestamp = 2;
+
+	// A response message indicating whether the
+	// endorsement of the action was successful
+	Response response = 4;
+
+	// The payload of response, which is the bytes of ProposalResponsePayload
+	bytes payload = 5;
+
+	// The endorsement of the proposal
+	Endorsement endorsement = 6;
+}
+
+// A response with a representation similar to an HTTP response that can
+// be used within another message.
+message Response {
+
+	// A status code that should follow the HTTP status codes.
+	int32 status = 1;
+
+	// A message associated with the response code.
+	string message = 2;
+
+	// A payload that can be used to include metadata with this response.
+	bytes payload = 3;
+
+}
+
+// ProposalResponsePayload is the payload of ProposalResponse.
+// It links the proposal and add support for replay-attack protection.
+// It can include also type-dependant fields by using the
+// 'extensions' field. The type here refers to type specified in the proposal
+// header.
+message ProposalResponsePayload {
+	// Hash of the proposal that the endorser acts on
+	bytes proposalHash = 1;
+
+	// Epoch in which the response has been generated
+	bytes epoch = 2;
+
+	// Extension depends on type in proposal indexed by proposalHash.
+	// For chaincode, it's bytes of ChaincodeProposalResponsePayload
+	bytes extension = 3;
+
+}
+
+// Endorsement represents the will of an endorse to endorse a proposal.
+message Endorsement {
+	// Identifier of the endorser (eg ecert)
+	bytes endorser = 1;
+
+	// Signature of the payload included in ProposalResponse concatenate with
+	// the endorser's certificate; ie, sign(ProposalResponse.payload + endorser)
+	bytes signature = 2;
+}

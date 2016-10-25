@@ -1,0 +1,55 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package protos;
+
+import "google/protobuf/timestamp.proto";
+
+// A TransactionHeader contains fields common to all transactions.
+// It can include also type-dependant fields by using the
+// 'extensions' field.
+message TransactionHeader {
+	enum Type {
+		UNDEFINED = 0;
+		CHAINCODE = 1;
+	}
+
+	// Version indicates message protocol version
+	int32 version = 1;
+
+	// Timestamp is the local time when the message was created
+	// by the sender
+	google.protobuf.Timestamp timestamp = 2;
+
+	// Type of the transaction
+	Type type = 3;
+
+	// Creator of the header. This is normally a tcert or ecert identifying
+	// the transactor, who submits the proposal
+	bytes creator = 4;
+
+	// Arbitrary number that may only be used once. This ensures the hash of
+	// the proposal is unique and may be used in replay detection
+	bytes nonce = 5;
+
+	// Identifier of the chain this header targets to
+	bytes chainID = 6;
+
+	// Extensions is used to include type-dependant fields
+	bytes extensions = 7;
+}
