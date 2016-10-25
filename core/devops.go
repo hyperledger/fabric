@@ -34,7 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container"
 	crypto "github.com/hyperledger/fabric/core/crypto"
-	"github.com/hyperledger/fabric/core/peernext"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 )

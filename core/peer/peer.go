@@ -50,23 +50,6 @@ type Peer interface {
 	NewOpenchainDiscoveryHello() (*pb.Message, error)
 }
 
-// BlocksRetriever interface for retrieving blocks .
-type BlocksRetriever interface {
-	RequestBlocks(*pb.SyncBlockRange) (<-chan *pb.SyncBlocks, error)
-}
-
-// StateRetriever interface for retrieving state deltas, etc.
-type StateRetriever interface {
-	RequestStateSnapshot() (<-chan *pb.SyncStateSnapshot, error)
-	RequestStateDeltas(syncBlockRange *pb.SyncBlockRange) (<-chan *pb.SyncStateDeltas, error)
-}
-
-// RemoteLedger interface for retrieving remote ledger data.
-type RemoteLedger interface {
-	BlocksRetriever
-	StateRetriever
-}
-
 // BlockChainAccessor interface for retreiving blocks by block number
 type BlockChainAccessor interface {
 	GetBlockByNumber(blockNumber uint64) (*pb.Block, error)
@@ -97,7 +80,6 @@ type StateAccessor interface {
 
 // MessageHandler standard interface for handling Openchain messages.
 type MessageHandler interface {
-	RemoteLedger
 	HandleMessage(msg *pb.Message) error
 	SendMessage(msg *pb.Message) error
 	To() (pb.PeerEndpoint, error)
@@ -117,7 +99,6 @@ type MessageHandlerCoordinator interface {
 	Broadcast(*pb.Message, pb.PeerEndpoint_Type) []error
 	Unicast(*pb.Message, *pb.PeerID) error
 	GetPeers() (*pb.PeersMessage, error)
-	GetRemoteLedger(receiver *pb.PeerID) (RemoteLedger, error)
 	PeersDiscovered(*pb.PeersMessage) error
 	ExecuteTransaction(transaction *pb.Transaction) *pb.Response
 	Discoverer
@@ -177,7 +158,7 @@ type handlerMap struct {
 }
 
 // HandlerFactory for creating new MessageHandlers
-type HandlerFactory func(MessageHandlerCoordinator, ChatStream, bool) (MessageHandler, error)
+type HandlerFactory func(MessageHandlerCoordinator, ChatStream, bool, MessageHandler) (MessageHandler, error)
 
 // EngineFactory for creating new engines
 type EngineFactory func(MessageHandlerCoordinator) (Engine, error)
@@ -319,17 +300,6 @@ func getPeerAddresses(peersMsg *pb.PeersMessage) []string {
 		addresses[i] = v.Address
 	}
 	return addresses
-}
-
-// GetRemoteLedger returns the RemoteLedger interface for the remote Peer Endpoint
-func (p *Impl) GetRemoteLedger(receiverHandle *pb.PeerID) (RemoteLedger, error) {
-	p.handlerMap.RLock()
-	defer p.handlerMap.RUnlock()
-	remoteLedger, ok := p.handlerMap.m[*receiverHandle]
-	if !ok {
-		return nil, fmt.Errorf("Remote ledger not found for receiver %s", receiverHandle.Name)
-	}
-	return remoteLedger, nil
 }
 
 // PeersDiscovered used by MessageHandlers for notifying this coordinator of discovered PeerEndoints. May include this Peer's PeerEndpoint.
@@ -593,7 +563,7 @@ func (p *Impl) chatWithPeer(address string) error {
 func (p *Impl) handleChat(ctx context.Context, stream ChatStream, initiatedStream bool) error {
 	deadline, ok := ctx.Deadline()
 	peerLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
-	handler, err := p.handlerFactory(p, stream, initiatedStream)
+	handler, err := p.handlerFactory(p, stream, initiatedStream, nil)
 	if err != nil {
 		return fmt.Errorf("Error creating handler during handleChat initiation: %s", err)
 	}
@@ -643,14 +613,15 @@ func (p *Impl) newHelloMessage() (*pb.HelloMessage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error creating hello message: %s", err)
 	}
-	p.ledgerWrapper.RLock()
-	defer p.ledgerWrapper.RUnlock()
-	//size := p.ledgerWrapper.ledger.GetBlockchainSize()
-	blockChainInfo, err := p.ledgerWrapper.ledger.GetBlockchainInfo()
-	if err != nil {
-		return nil, fmt.Errorf("Error creating hello message, error getting block chain info: %s", err)
-	}
-	return &pb.HelloMessage{PeerEndpoint: endpoint, BlockchainInfo: blockChainInfo}, nil
+	//p.ledgerWrapper.RLock()
+	//defer p.ledgerWrapper.RUnlock()
+	////size := p.ledgerWrapper.ledger.GetBlockchainSize()
+	//blockChainInfo, err := p.ledgerWrapper.ledger.GetBlockchainInfo()
+	//if err != nil {
+	//	return nil, fmt.Errorf("Error creating hello message, error getting block chain info: %s", err)
+	//}
+	//return &pb.HelloMessage{PeerEndpoint: endpoint, BlockchainInfo: blockChainInfo}, nil
+	return &pb.HelloMessage{PeerEndpoint: endpoint}, nil
 }
 
 // GetBlockByNumber return a block by block number
