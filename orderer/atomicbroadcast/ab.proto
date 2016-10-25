@@ -31,10 +31,90 @@ message BroadcastResponse {
     Status Status = 1;
 }
 
+// For backwards compatibility, this is message is being left as bytes for the moment. 
+// Internally, for testing authentication, the Data payload will be a marshalled SignedData message
+// However in the future, this whole message is likely to go away.
+// XXX Temporary
 message BroadcastMessage {
     bytes Data = 1;
 }
 
+// SignedData is a temporary message type to be removed once the real transaction type is finalized
+// Note that the identity of the signer is explicitely not included, but embedded in the envelope because
+// apparently the signature should always be over an object which contains the signer's identity
+// XXX Temporary
+message SignedData {
+    bytes PayloadEnvelope = 1;
+    bytes Signature = 2;
+}
+
+// PayloadEnvelope is the thin wrapper which allows the embedding of a signer's identity to sign over
+// XXX Temporary
+message PayloadEnvelope {
+    bytes Payload = 1;
+    bytes Signer = 2;
+}
+
+
+// Transaction embeds a configuration change and associated signoffs
+// This will be superseded once the real transaction format is finalized
+// XXX Temporary
+message Transaction {
+    oneof Type {
+        bytes Opaque = 1;               // An opaque set of bytes
+	bytes ConfigurationEnvelope = 2;        // A marshalled Configuration message
+    }
+    repeated SignedData Signatures = 3; // Signatures over the hash of the bytes for Type
+}
+
+// ConfigurationEnvelope is designed to contain _all_ configuration for a chain and is
+// intended to be a permenant data structure (noted explicitly because others above are temporary)
+// Its generated with the following scheme.  Given an existing configuration, a new configuration
+// increments the Sequence number, and updates any existing configuration entries and or adds new
+// configuration entries.  For each added or modified entry, the LastModified value must be set
+// to the Sequence number of the ConfigurationEnvelope.  The configuration manager will verify that
+// all configuration changes satisfy system policy, that all configuration changes have a LastModified
+// field equal to Sequence, that no configuration has been deleted without corresponding authorization,
+// that the configuration is well formed, and that some configuration item corresponds to the new
+// ConfigurationEnvelope sequence number.
+message ConfigurationEnvelope {
+    uint64 Sequence = 1;
+    bytes ChainID = 2;
+    repeated ConfigurationEntry Entries = 3;
+}
+
+// This message may change slightly depending on the finalization of signature schemes for transactions
+message ConfigurationEntry {
+    bytes Configuration = 1;
+    repeated SignedData Signatures = 2; // Signatures over the hash of Configuration
+}
+
+
+message Configuration {
+    enum ConfigurationType {
+        Policy = 0;
+        Fabric = 1;
+	Chain = 2;
+        Solo = 3;
+        Kafka = 4;
+        PBFT = 5;
+    }
+
+    bytes ChainID = 1;              // A Globally Unique Chain ID
+    string ID = 2;                  // A unique ID, unique scoped by Type
+    uint64 LastModified = 3;        // The Sequence number in the ConfigurationEnvelope this item was last modified
+    ConfigurationType Type = 4;     // The type of configuration
+    bytes Data = 5;                 // The byte representation of this configuration, usually a marshaled message
+    string ModificationPolicy = 6;  // What policy to check before allowing modification
+}
+
+// Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
+// multiple policy engines, this is typed as a oneof for now
+message Policy {
+    oneof Type {
+        SignaturePolicyEnvelope SignaturePolicy = 2;
+    }
+}
 
 // SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
 message SignaturePolicyEnvelope {
