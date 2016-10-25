@@ -35,6 +35,32 @@ message BroadcastMessage {
     bytes Data = 1;
 }
 
+
+// SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
+message SignaturePolicyEnvelope {
+    int32 Version = 1;
+    SignaturePolicy Policy = 2;
+    repeated bytes Identities = 3;
+}
+
+// SignaturePolicy is a recursive message structure which defines a featherweight DSL for describing
+// policies which are more complicated than 'exactly this signature'.  The NOutOf operator is sufficent
+// to express AND as well as OR, as well as of course N out of the following M policies
+// SignedBy implies that the signature is from a valid certificate which is signed by the trusted
+// authority specified in the bytes.  This will be the certificate itself for a self-signed certificate
+// and will be the CA for more traditional certificates
+message SignaturePolicy {
+    message NOutOf {
+        int32 N = 1;
+        repeated SignaturePolicy Policies = 2;
+    }
+    oneof Type {
+        int32 SignedBy = 1;
+        NOutOf From = 2;
+    }
+}
+
+
 message SeekInfo {
     // Start may be specified to a specific block number, or may be request from the newest or oldest available
     // The start location is always inclusive, so the first reply from NEWEST will contain the newest block at the time
@@ -89,4 +115,3 @@ service AtomicBroadcast {
     // To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
     rpc Deliver(stream DeliverUpdate) returns (stream DeliverResponse) {}
 }
-
