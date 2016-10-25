@@ -29,7 +29,7 @@ type mockProducerImpl struct {
 	producer *mocks.SyncProducer
 
 	checker        mocks.ValueChecker
-	disk           chan []byte // This is the "disk"/log that the producer writes to
+	disk           chan []byte // This simulates the broker's "disk" where the producer's messages eventually end up
 	producedOffset int64
 	t              *testing.T
 }
@@ -54,13 +54,13 @@ func mockNewProducer(t *testing.T, conf *config.TopLevel, seek int64, disk chan 
 func (mp *mockProducerImpl) Send(payload []byte) error {
 	mp.producer.ExpectSendMessageWithCheckerFunctionAndSucceed(mp.checker)
 	mp.producedOffset++
-	mp.disk <- payload
 	prt, ofs, err := mp.producer.SendMessage(newMsg(payload, mp.config.Kafka.Topic))
 	if err != nil ||
 		prt != mp.config.Kafka.PartitionID ||
 		ofs != mp.producedOffset {
 		mp.t.Fatal("Producer not functioning as expected")
 	}
+	mp.disk <- payload // Reaches the broker's disk
 	return err
 }
 
@@ -72,7 +72,7 @@ func (mp *mockProducerImpl) testFillWithBlocks(seek int64) {
 	dyingChan := make(chan struct{})
 	deadChan := make(chan struct{})
 
-	go func() { // This goroutine is meant to read only the "fill-in" blocks.
+	go func() { // This goroutine is meant to read only the "fill-in" blocks
 		for {
 			select {
 			case <-mp.disk:
