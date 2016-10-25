@@ -65,6 +65,11 @@ Optional arguments, with defaults after the colon:
     the 'membersrvc' server. Peer login credentials are obtained from the
     fabric/membersrvc.yaml file.
 
+-privacy | -noPrivacy : -noPrivacy
+
+    Controls whether privacy is enabled. This option only has effect if
+    -security is enabled.
+
 -noops | -batch : -batch
 
     Use one of these options to select the consensus mode. The default
@@ -194,6 +199,7 @@ set options {
     {key  -home                           parms(home)          {}}
     {key  -interface                      parms(interface)     {} p_interface}
     {bool {-security -noSecurity}         parms(security)      0}
+    {bool {-privacy -noPrivacy}           parms(privacy)       0}
     {enum {-noops -batch}                 parms(consensus)     -batch}
     {bool {-profile -noProfile}           parms(profile)       1}
     {enum {-pristine -clean -dirty}       parms(clean)         -pristine}
@@ -360,6 +366,7 @@ puts $config "    \"host\": \"local\","
 puts $config "    \"date\": \"[timestamp]\","
 puts $config "    \"createdBy\": \"userModeNetwork\","
 puts $config "    \"security\": \"[? [parms security] true false]\","
+puts $config "    \"privacy\": \"[? [parms privacy] true false]\","
 puts $config "    \"consensus\": \"$CONSENSUS_TO_MODE([parms consensus])\","
 puts $config "    \"peerProfileServer\": \"[? [parms profile] true false]\","
 
@@ -454,6 +461,7 @@ foreach clause $peerMap {
         set ::env(CORE_SECURITY_ENROLLID)     $user
         set ::env(CORE_SECURITY_ENROLLSECRET) $password
         set ::env(CORE_SECURITY_ENABLED)      true
+        set ::env(CORE_SECURITY_PRIVACY)      [? [parms privacy] true false]
     } else {
         set ::env(CORE_SECURITY_ENABLED) false
     }
