@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
-	"github.com/hyperledger/fabric/orderer/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 )
 
 var genesisBlock *ab.Block

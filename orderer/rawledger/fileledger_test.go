@@ -21,7 +21,7 @@ import (
 	"os"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
-	"github.com/hyperledger/fabric/orderer/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	. "github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 )
