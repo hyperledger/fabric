@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/hyperledger/fabric/core/peernext"
+	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"

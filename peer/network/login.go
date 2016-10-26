@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/howeyc/gopass"
-	"github.com/hyperledger/fabric/core/peernext"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
 	pb "github.com/hyperledger/fabric/protos"
