@@ -117,13 +117,18 @@ func SetChaincodeLoggingLevel() {
 	viper.SetEnvKeyReplacer(replacer)
 
 	chaincodeLogLevelString := viper.GetString("logging.chaincode")
-	chaincodeLogLevel, err := LogLevel(chaincodeLogLevelString)
-
-	if err == nil {
-		SetLoggingLevel(chaincodeLogLevel)
+	if chaincodeLogLevelString == "" {
+		shimLogLevelDefault := logging.Level(shimLoggingLevel)
+		chaincodeLogger.Infof("Chaincode log level not provided; defaulting to: %s", shimLogLevelDefault)
 	} else {
-		chaincodeLogger.Infof("error with chaincode log level: %s level= %s\n", err, chaincodeLogLevelString)
+		chaincodeLogLevel, err := LogLevel(chaincodeLogLevelString)
+		if err == nil {
+			SetLoggingLevel(chaincodeLogLevel)
+		} else {
+			chaincodeLogger.Warningf("Error: %s for chaincode log level: %s", err, chaincodeLogLevelString)
+		}
 	}
+
 }
 
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an

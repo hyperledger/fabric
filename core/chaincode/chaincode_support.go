@@ -172,7 +172,7 @@ func NewChaincodeSupport(chainname ChainName, getPeerEndpoint func() (*pb.PeerEn
 	if err == nil {
 		s.chaincodeLogLevel = chaincodeLogLevel.String()
 	} else {
-		chaincodeLogger.Infof("chaincode logging level %s is invalid. defaulting to %s\n", chaincodeLogLevelString, flogging.DefaultLoggingLevel().String())
+		chaincodeLogger.Warningf("Chaincode logging level %s is invalid; defaulting to %s", chaincodeLogLevelString, flogging.DefaultLoggingLevel().String())
 		s.chaincodeLogLevel = flogging.DefaultLoggingLevel().String()
 	}
 
