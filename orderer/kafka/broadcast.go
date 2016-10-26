@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/hyperledger/fabric/orderer/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -112,7 +114,7 @@ func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint) {
 		case msg := <-b.batchChan:
 			data, err := proto.Marshal(msg)
 			if err != nil {
-				logger.Fatalf("Error marshaling what should be a valid proto message: %s", err)
+				panic(fmt.Errorf("Error marshaling what should be a valid proto message: %s", err))
 			}
 			b.messages = append(b.messages, data)
 			if len(b.messages) >= int(maxSize) {
@@ -136,7 +138,9 @@ func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint) {
 }
 
 func (b *broadcasterImpl) recvRequests(stream ab.AtomicBroadcast_BroadcastServer) error {
-	reply := new(ab.BroadcastResponse)
+	context, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	bsr := newBroadcastSessionResponder(context, stream, b.config.General.QueueSize)
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
@@ -145,12 +149,37 @@ func (b *broadcasterImpl) recvRequests(stream ab.AtomicBroadcast_BroadcastServer
 		}
 
 		b.batchChan <- msg
-		reply.Status = cb.Status_SUCCESS // TODO This shouldn't always be a success
+		bsr.reply(cb.Status_SUCCESS) // TODO This shouldn't always be a success
 
-		if err := stream.Send(reply); err != nil {
-			logger.Info("Cannot send broadcast reply to client")
-			return err
+	}
+}
+
+type broadcastSessionResponder struct {
+	queue chan *ab.BroadcastResponse
+}
+
+func newBroadcastSessionResponder(context context.Context, stream ab.AtomicBroadcast_BroadcastServer, queueSize uint) *broadcastSessionResponder {
+	bsr := &broadcastSessionResponder{
+		queue: make(chan *ab.BroadcastResponse, queueSize),
+	}
+	go bsr.sendReplies(context, stream)
+	return bsr
+}
+
+func (bsr *broadcastSessionResponder) reply(status cb.Status) {
+	bsr.queue <- &ab.BroadcastResponse{Status: status}
+}
+
+func (bsr *broadcastSessionResponder) sendReplies(context context.Context, stream ab.AtomicBroadcast_BroadcastServer) {
+	for {
+		select {
+		case reply := <-bsr.queue:
+			if err := stream.Send(reply); err != nil {
+				logger.Info("Cannot send broadcast reply to client")
+			}
+			logger.Debugf("Sent broadcast reply %v to client", reply.Status.String())
+		case <-context.Done():
+			return
 		}
-		logger.Debugf("Sent broadcast reply %v to client", reply.Status.String())
 	}
 }

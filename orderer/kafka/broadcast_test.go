@@ -135,6 +135,53 @@ func TestBroadcastBatch(t *testing.T) {
 	}
 }
 
+// If the capacity of the response queue is less than the batch size,
+// then if the response queue overflows, the order should not be able
+// to send back a block to the client. (Sending replies and adding
+// messages to the about-to-be-sent block happens on the same routine.)
+func TestBroadcastResponseQueueOverflow(t *testing.T) {
+
+	// Make sure that the response queue is less than the batch size
+	originalQueueSize := testConf.General.QueueSize
+	defer func() { testConf.General.QueueSize = originalQueueSize }()
+	testConf.General.QueueSize = testConf.General.BatchSize - 1
+
+	disk := make(chan []byte)
+
+	mb := mockNewBroadcaster(t, testConf, oldestOffset, disk)
+	defer testClose(t, mb)
+
+	mbs := newMockBroadcastStream(t)
+	go func() {
+		if err := mb.Broadcast(mbs); err != nil {
+			t.Fatal("Broadcast error:", err)
+		}
+	}()
+
+	<-disk // We tested the checkpoint block in a previous test, so we can ignore it now
+
+	// Force the response queue to overflow by blocking the broadcast stream's Send() method
+	mbs.closed = true
+	defer func() { mbs.closed = false }()
+
+	// Pump a batch's worth of messages into the system
+	go func() {
+		for i := 0; i < int(testConf.General.BatchSize); i++ {
+			mbs.incoming <- &cb.Envelope{Payload: []byte("message " + strconv.Itoa(i))}
+		}
+	}()
+
+loop:
+	for {
+		select {
+		case <-mbs.outgoing:
+			t.Fatal("Client shouldn't have received anything from the orderer")
+		case <-time.After(testConf.General.BatchTimeout + timePadding):
+			break loop // This is the success path
+		}
+	}
+}
+
 func TestBroadcastIncompleteBatch(t *testing.T) {
 	if testConf.General.BatchSize <= 1 {
 		t.Skip("Skipping test as it requires a batchsize > 1")

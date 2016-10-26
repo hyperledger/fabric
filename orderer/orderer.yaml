@@ -25,7 +25,6 @@ General:
     BatchSize: 10
 
     # Queue Size: The maximum number of messages to allow pending from a gRPC client
-    # When Kafka is chosen as the OrdererType, this option is ignored.
     QueueSize: 10
 
     # Max Window Size: The maximum number of messages to for the orderer Deliver

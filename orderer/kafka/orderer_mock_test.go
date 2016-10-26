@@ -53,6 +53,8 @@ func (mbs *mockBroadcastStream) Recv() (*cb.Envelope, error) {
 }
 
 func (mbs *mockBroadcastStream) Send(reply *ab.BroadcastResponse) error {
+	for mbs.closed {
+	}
 	if !mbs.closed {
 		mbs.outgoing <- reply
 	}
