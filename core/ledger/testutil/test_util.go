@@ -33,11 +33,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+// TestRandomNumberGenerator a random number generator for testing
 type TestRandomNumberGenerator struct {
 	rand      *mathRand.Rand
 	maxNumber int
 }
 
+// NewTestRandomNumberGenerator constructs a new `TestRandomNumberGenerator`
 func NewTestRandomNumberGenerator(maxNumber int) *TestRandomNumberGenerator {
 	return &TestRandomNumberGenerator{
 		mathRand.New(mathRand.NewSource(time.Now().UnixNano())),
@@ -45,10 +47,12 @@ func NewTestRandomNumberGenerator(maxNumber int) *TestRandomNumberGenerator {
 	}
 }
 
+// Next generates next random number
 func (randNumGenerator *TestRandomNumberGenerator) Next() int {
 	return randNumGenerator.rand.Intn(randNumGenerator.maxNumber)
 }
 
+// SetupTestConfig sets up configurations for tetsing
 func SetupTestConfig() {
 	viper.AddConfigPath(".")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -68,10 +72,12 @@ func SetupTestConfig() {
 	logging.SetFormatter(formatter)
 }
 
+// SetLogLevel sets up log level
 func SetLogLevel(level logging.Level, module string) {
 	logging.SetLevel(level, module)
 }
 
+// ParseTestParams parses tests params
 func ParseTestParams() []string {
 	testParams := flag.String("testParams", "", "Test specific parameters")
 	flag.Parse()
@@ -83,18 +89,21 @@ func ParseTestParams() []string {
 	return paramsArray
 }
 
+// AssertNil varifies that the value is nil
 func AssertNil(t testing.TB, value interface{}) {
 	if !isNil(value) {
 		t.Fatalf("Value not nil. value=[%#v]\n %s", value, getCallerInfo())
 	}
 }
 
+// AssertNotNil varifies that the value is not nil
 func AssertNotNil(t testing.TB, value interface{}) {
 	if isNil(value) {
 		t.Fatalf("Values is nil. %s", getCallerInfo())
 	}
 }
 
+// AssertSame varifies that the two values are same
 func AssertSame(t testing.TB, actual interface{}, expected interface{}) {
 	t.Logf("%s: AssertSame [%#v] and [%#v]", getCallerInfo(), actual, expected)
 	if actual != expected {
@@ -102,6 +111,7 @@ func AssertSame(t testing.TB, actual interface{}, expected interface{}) {
 	}
 }
 
+// AssertEquals varifies that the two values are equal
 func AssertEquals(t testing.TB, actual interface{}, expected interface{}) {
 	t.Logf("%s: AssertEquals [%#v] and [%#v]", getCallerInfo(), actual, expected)
 	if expected == nil && isNil(actual) {
@@ -112,24 +122,28 @@ func AssertEquals(t testing.TB, actual interface{}, expected interface{}) {
 	}
 }
 
+// AssertNotEquals varifies that the two values are not equal
 func AssertNotEquals(t testing.TB, actual interface{}, expected interface{}) {
 	if reflect.DeepEqual(actual, expected) {
 		t.Fatalf("Values are not supposed to be equal. Actual=[%#v], Expected=[%#v]\n %s", actual, expected, getCallerInfo())
 	}
 }
 
+// AssertError varifies that the err is not nil
 func AssertError(t testing.TB, err error, message string) {
 	if err == nil {
 		t.Fatalf("%s\n %s", message, getCallerInfo())
 	}
 }
 
+// AssertNoError varifies that the err is nil
 func AssertNoError(t testing.TB, err error, message string) {
 	if err != nil {
 		t.Fatalf("%s - Error: %s\n %s", message, err, getCallerInfo())
 	}
 }
 
+// AssertContains varifies that the slice contains the value
 func AssertContains(t testing.TB, slice interface{}, value interface{}) {
 	if reflect.TypeOf(slice).Kind() != reflect.Slice && reflect.TypeOf(slice).Kind() != reflect.Array {
 		t.Fatalf("Type of argument 'slice' is expected to be a slice/array, found =[%s]\n %s", reflect.TypeOf(slice), getCallerInfo())
@@ -140,6 +154,7 @@ func AssertContains(t testing.TB, slice interface{}, value interface{}) {
 	}
 }
 
+// AssertContainsAll varifies that sliceActual is a superset of sliceExpected
 func AssertContainsAll(t testing.TB, sliceActual interface{}, sliceExpected interface{}) {
 	if reflect.TypeOf(sliceActual).Kind() != reflect.Slice && reflect.TypeOf(sliceActual).Kind() != reflect.Array {
 		t.Fatalf("Type of argument 'sliceActual' is expected to be a slice/array, found =[%s]\n %s", reflect.TypeOf(sliceActual), getCallerInfo())
@@ -158,6 +173,7 @@ func AssertContainsAll(t testing.TB, sliceActual interface{}, sliceExpected inte
 	}
 }
 
+// AssertPanic varifies that a panic is raised during a test
 func AssertPanic(t testing.TB, msg string) {
 	x := recover()
 	if x == nil {
@@ -167,10 +183,12 @@ func AssertPanic(t testing.TB, msg string) {
 	}
 }
 
+// ComputeCryptoHash computes crypto hash for testing
 func ComputeCryptoHash(content ...[]byte) []byte {
 	return util.ComputeCryptoHash(AppendAll(content...))
 }
 
+// AppendAll combines the bytes from different []byte into one []byte
 func AppendAll(content ...[]byte) []byte {
 	combinedContent := []byte{}
 	for _, b := range content {
@@ -179,10 +197,12 @@ func AppendAll(content ...[]byte) []byte {
 	return combinedContent
 }
 
+// GenerateID generates a uuid
 func GenerateID(t *testing.T) string {
 	return util.GenerateUUID()
 }
 
+// ConstructRandomBytes constructs random bytes of given size
 func ConstructRandomBytes(t testing.TB, size int) []byte {
 	value := make([]byte, size)
 	_, err := rand.Read(value)

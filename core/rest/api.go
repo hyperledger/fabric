@@ -22,11 +22,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -43,22 +40,19 @@ type PeerInfo interface {
 // ServerOpenchain defines the Openchain server object, which holds the
 // Ledger data structure and the pointer to the peerServer.
 type ServerOpenchain struct {
-	ledger   *ledger.Ledger
 	peerInfo PeerInfo
 }
 
 // NewOpenchainServer creates a new instance of the ServerOpenchain.
 func NewOpenchainServer() (*ServerOpenchain, error) {
-	//PDMP - do not use old ledger...set it to nil and let it crash on access
-	s := &ServerOpenchain{ledger: nil}
+	s := &ServerOpenchain{}
 
 	return s, nil
 }
 
 // NewOpenchainServerWithPeerInfo creates a new instance of the ServerOpenchain.
 func NewOpenchainServerWithPeerInfo(peerServer PeerInfo) (*ServerOpenchain, error) {
-	//PDMP - do not use old ledger...set it to nil and let it crash on access
-	s := &ServerOpenchain{ledger: nil, peerInfo: peerServer}
+	s := &ServerOpenchain{peerInfo: peerServer}
 
 	return s, nil
 }
@@ -66,90 +60,29 @@ func NewOpenchainServerWithPeerInfo(peerServer PeerInfo) (*ServerOpenchain, erro
 // GetBlockchainInfo returns information about the blockchain ledger such as
 // height, current block hash, and previous block hash.
 func (s *ServerOpenchain) GetBlockchainInfo(ctx context.Context, e *empty.Empty) (*pb.BlockchainInfo, error) {
-	blockchainInfo, err := s.ledger.GetBlockchainInfo()
-	if blockchainInfo.Height == 0 {
-		return nil, fmt.Errorf("No blocks in blockchain.")
-	}
-	return blockchainInfo, err
+	return nil, fmt.Errorf("GetBlockchainInfo not implemented")
 }
 
 // GetBlockByNumber returns the data contained within a specific block in the
 // blockchain. The genesis block is block zero.
 func (s *ServerOpenchain) GetBlockByNumber(ctx context.Context, num *pb.BlockNumber) (*pb.Block, error) {
-	block, err := s.ledger.GetBlockByNumber(num.Number)
-	if err != nil {
-		switch err {
-		case ledger.ErrOutOfBounds:
-			return nil, ErrNotFound
-		default:
-			return nil, fmt.Errorf("Error retrieving block from blockchain: %s", err)
-		}
-	}
-
-	// Remove payload from deploy transactions. This is done to make rest api
-	// calls more lightweight as the payload for these types of transactions
-	// can be very large. If the payload is needed, the caller should fetch the
-	// individual transaction.
-	blockTransactions := block.GetTransactions()
-	for _, transaction := range blockTransactions {
-		if transaction.Type == pb.Transaction_CHAINCODE_DEPLOY {
-			deploymentSpec := &pb.ChaincodeDeploymentSpec{}
-			err := proto.Unmarshal(transaction.Payload, deploymentSpec)
-			if err != nil {
-				if !viper.GetBool("security.privacy") {
-					return nil, err
-				}
-				//if privacy is enabled, payload is encrypted and unmarshal will
-				//likely fail... given we were going to just set the CodePackage
-				//to nil anyway, just recover and continue
-				deploymentSpec = &pb.ChaincodeDeploymentSpec{}
-			}
-			deploymentSpec.CodePackage = nil
-			deploymentSpecBytes, err := proto.Marshal(deploymentSpec)
-			if err != nil {
-				return nil, err
-			}
-			transaction.Payload = deploymentSpecBytes
-		}
-	}
-
-	return block, nil
+	return nil, fmt.Errorf("GetBlockByNumber not implemented")
 }
 
 // GetBlockCount returns the current number of blocks in the blockchain data
 // structure.
 func (s *ServerOpenchain) GetBlockCount(ctx context.Context, e *empty.Empty) (*pb.BlockCount, error) {
-	// Total number of blocks in the blockchain.
-	size := s.ledger.GetBlockchainSize()
-
-	// Check the number of blocks in the blockchain. If the blockchain is empty,
-	// return error. There will always be at least one block in the blockchain,
-	// the genesis block.
-	if size > 0 {
-		count := &pb.BlockCount{Count: size}
-		return count, nil
-	}
-
-	return nil, fmt.Errorf("No blocks in blockchain.")
+	return nil, fmt.Errorf("GetBlockCount not implemented")
 }
 
 // GetState returns the value for a particular chaincode ID and key
 func (s *ServerOpenchain) GetState(ctx context.Context, chaincodeID, key string) ([]byte, error) {
-	return s.ledger.GetState(chaincodeID, key, true)
+	return nil, fmt.Errorf("GetState not implemented")
 }
 
 // GetTransactionByID returns a transaction matching the specified ID
 func (s *ServerOpenchain) GetTransactionByID(ctx context.Context, txID string) (*pb.Transaction, error) {
-	transaction, err := s.ledger.GetTransactionByID(txID)
-	if err != nil {
-		switch err {
-		case ledger.ErrResourceNotFound:
-			return nil, ErrNotFound
-		default:
-			return nil, fmt.Errorf("Error retrieving transaction from blockchain: %s", err)
-		}
-	}
-	return transaction, nil
+	return nil, fmt.Errorf("GetTransactionByID not implemented")
 }
 
 // GetPeers returns a list of all peer nodes currently connected to the target peer.

@@ -21,7 +21,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	ld "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos"
 )
 
@@ -40,10 +39,6 @@ type SystemChaincode struct {
 
 func (t *SystemChaincode) getLedger() ledgerHandler {
 	if t.mockLedgerH == nil {
-		lh, err := ld.GetLedger()
-		if err == nil {
-			return lh
-		}
 		panic("Chaincode is unable to get the ledger.")
 	} else {
 		return t.mockLedgerH

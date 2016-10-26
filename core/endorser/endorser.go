@@ -24,8 +24,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/chaincode"
-	ledger "github.com/hyperledger/fabric/core/ledgernext"
-	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"

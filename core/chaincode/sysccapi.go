@@ -23,8 +23,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
-	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
-	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -80,7 +80,7 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 	chainName := string(DefaultChain)
 
 	lgr := kvledger.GetLedger(chainName)
-	var txsim ledgernext.TxSimulator
+	var txsim ledger.TxSimulator
 	if txsim, err = lgr.NewTxSimulator(); err != nil {
 		return err
 	}

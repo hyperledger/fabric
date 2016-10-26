@@ -34,7 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
-	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -64,8 +64,8 @@ func init() {
 }
 
 //use this for ledger access and make sure TXSimulator is being used
-func getTxSimulator(context context.Context) ledgernext.TxSimulator {
-	if txsim, ok := context.Value(TXSimulatorKey).(ledgernext.TxSimulator); ok {
+func getTxSimulator(context context.Context) ledger.TxSimulator {
+	if txsim, ok := context.Value(TXSimulatorKey).(ledger.TxSimulator); ok {
 		return txsim
 	}
 	panic("!!!---Not Using ledgernext---!!!")

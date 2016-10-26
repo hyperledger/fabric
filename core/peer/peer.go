@@ -37,9 +37,6 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/discovery"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt/state"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -48,34 +45,6 @@ import (
 type Peer interface {
 	GetPeerEndpoint() (*pb.PeerEndpoint, error)
 	NewOpenchainDiscoveryHello() (*pb.Message, error)
-}
-
-// BlockChainAccessor interface for retreiving blocks by block number
-type BlockChainAccessor interface {
-	GetBlockByNumber(blockNumber uint64) (*pb.Block, error)
-	GetBlockchainSize() uint64
-	GetCurrentStateHash() (stateHash []byte, err error)
-}
-
-// BlockChainModifier interface for applying changes to the block chain
-type BlockChainModifier interface {
-	ApplyStateDelta(id interface{}, delta *statemgmt.StateDelta) error
-	RollbackStateDelta(id interface{}) error
-	CommitStateDelta(id interface{}) error
-	EmptyState() error
-	PutBlock(blockNumber uint64, block *pb.Block) error
-}
-
-// BlockChainUtil interface for interrogating the block chain
-type BlockChainUtil interface {
-	HashBlock(block *pb.Block) ([]byte, error)
-	VerifyBlockchain(start, finish uint64) (uint64, error)
-}
-
-// StateAccessor interface for retreiving blocks by block number
-type StateAccessor interface {
-	GetStateSnapshot() (*state.StateSnapshot, error)
-	GetStateDelta(blockNumber uint64) (*statemgmt.StateDelta, error)
 }
 
 // MessageHandler standard interface for handling Openchain messages.
@@ -90,10 +59,6 @@ type MessageHandler interface {
 type MessageHandlerCoordinator interface {
 	Peer
 	SecurityAccessor
-	BlockChainAccessor
-	BlockChainModifier
-	BlockChainUtil
-	StateAccessor
 	RegisterHandler(messageHandler MessageHandler) error
 	DeregisterHandler(messageHandler MessageHandler) error
 	Broadcast(*pb.Message, pb.PeerEndpoint_Type) []error
@@ -147,11 +112,6 @@ func NewPeerClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn, e
 	return comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
 }
 
-type ledgerWrapper struct {
-	sync.RWMutex
-	ledger *ledger.Ledger
-}
-
 type handlerMap struct {
 	sync.RWMutex
 	m map[pb.PeerID]MessageHandler
@@ -167,7 +127,6 @@ type EngineFactory func(MessageHandlerCoordinator) (Engine, error)
 type Impl struct {
 	handlerFactory HandlerFactory
 	handlerMap     *handlerMap
-	ledgerWrapper  *ledgerWrapper
 	secHelper      crypto.Peer
 	engine         Engine
 	isValidator    bool
@@ -209,9 +168,6 @@ func NewPeerWithHandler(secHelperFunc func() crypto.Peer, handlerFact HandlerFac
 		}
 	}
 
-	//PDMP - no more old ledger
-	peer.ledgerWrapper = &ledgerWrapper{ledger: nil}
-
 	peer.chatWithSomePeers(peerNodes)
 	return peer, nil
 }
@@ -233,10 +189,6 @@ func NewPeerWithEngine(secHelperFunc func() crypto.Peer, engFactory EngineFactor
 		}
 	}
 
-	//PDMP - no more old ledger
-	peer.ledgerWrapper = &ledgerWrapper{ledger: nil}
-
-	//PDMP - no more consensus factory
 	if engFactory != nil {
 		peer.engine, err = engFactory(peer)
 		if err != nil {
@@ -622,94 +574,6 @@ func (p *Impl) newHelloMessage() (*pb.HelloMessage, error) {
 	//}
 	//return &pb.HelloMessage{PeerEndpoint: endpoint, BlockchainInfo: blockChainInfo}, nil
 	return &pb.HelloMessage{PeerEndpoint: endpoint}, nil
-}
-
-// GetBlockByNumber return a block by block number
-func (p *Impl) GetBlockByNumber(blockNumber uint64) (*pb.Block, error) {
-	p.ledgerWrapper.RLock()
-	defer p.ledgerWrapper.RUnlock()
-	return p.ledgerWrapper.ledger.GetBlockByNumber(blockNumber)
-}
-
-// GetBlockchainSize returns the height/length of the blockchain
-func (p *Impl) GetBlockchainSize() uint64 {
-	p.ledgerWrapper.RLock()
-	defer p.ledgerWrapper.RUnlock()
-	return p.ledgerWrapper.ledger.GetBlockchainSize()
-}
-
-// GetCurrentStateHash returns the current non-committed hash of the in memory state
-func (p *Impl) GetCurrentStateHash() (stateHash []byte, err error) {
-	p.ledgerWrapper.RLock()
-	defer p.ledgerWrapper.RUnlock()
-	return p.ledgerWrapper.ledger.GetTempStateHash()
-}
-
-// HashBlock returns the hash of the included block, useful for mocking
-func (p *Impl) HashBlock(block *pb.Block) ([]byte, error) {
-	return block.GetHash()
-}
-
-// VerifyBlockchain checks the integrity of the blockchain between indices start and finish,
-// returning the first block who's PreviousBlockHash field does not match the hash of the previous block
-func (p *Impl) VerifyBlockchain(start, finish uint64) (uint64, error) {
-	p.ledgerWrapper.RLock()
-	defer p.ledgerWrapper.RUnlock()
-	return p.ledgerWrapper.ledger.VerifyChain(start, finish)
-}
-
-// ApplyStateDelta applies a state delta to the current state
-// The result of this function can be retrieved using GetCurrentStateDelta
-// To commit the result, call CommitStateDelta, or to roll it back
-// call RollbackStateDelta
-func (p *Impl) ApplyStateDelta(id interface{}, delta *statemgmt.StateDelta) error {
-	p.ledgerWrapper.Lock()
-	defer p.ledgerWrapper.Unlock()
-	return p.ledgerWrapper.ledger.ApplyStateDelta(id, delta)
-}
-
-// CommitStateDelta makes the result of ApplyStateDelta permanent
-// and releases the resources necessary to rollback the delta
-func (p *Impl) CommitStateDelta(id interface{}) error {
-	p.ledgerWrapper.Lock()
-	defer p.ledgerWrapper.Unlock()
-	return p.ledgerWrapper.ledger.CommitStateDelta(id)
-}
-
-// RollbackStateDelta undoes the results of ApplyStateDelta to revert
-// the current state back to the state before ApplyStateDelta was invoked
-func (p *Impl) RollbackStateDelta(id interface{}) error {
-	p.ledgerWrapper.Lock()
-	defer p.ledgerWrapper.Unlock()
-	return p.ledgerWrapper.ledger.RollbackStateDelta(id)
-}
-
-// EmptyState completely empties the state and prepares it to restore a snapshot
-func (p *Impl) EmptyState() error {
-	p.ledgerWrapper.Lock()
-	defer p.ledgerWrapper.Unlock()
-	return p.ledgerWrapper.ledger.DeleteALLStateKeysAndValues()
-}
-
-// GetStateSnapshot return the state snapshot
-func (p *Impl) GetStateSnapshot() (*state.StateSnapshot, error) {
-	p.ledgerWrapper.RLock()
-	defer p.ledgerWrapper.RUnlock()
-	return p.ledgerWrapper.ledger.GetStateSnapshot()
-}
-
-// GetStateDelta return the state delta for the requested block number
-func (p *Impl) GetStateDelta(blockNumber uint64) (*statemgmt.StateDelta, error) {
-	p.ledgerWrapper.RLock()
-	defer p.ledgerWrapper.RUnlock()
-	return p.ledgerWrapper.ledger.GetStateDelta(blockNumber)
-}
-
-// PutBlock inserts a raw block into the blockchain at the specified index, nearly no error checking is performed
-func (p *Impl) PutBlock(blockNumber uint64, block *pb.Block) error {
-	p.ledgerWrapper.Lock()
-	defer p.ledgerWrapper.Unlock()
-	return p.ledgerWrapper.ledger.PutRawBlock(block, blockNumber)
 }
 
 // NewOpenchainDiscoveryHello constructs a new HelloMessage for sending
