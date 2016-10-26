@@ -16,42 +16,50 @@ limitations under the License.
 
 package example;
 
-import com.google.protobuf.ByteString;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hyperledger.java.shim.ChaincodeBase;
 import org.hyperledger.java.shim.ChaincodeStub;
-
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedList;
-import java.util.List;
 
 public class LinkExample extends ChaincodeBase {
 
 	//Default name for map chaincode in dev mode
 	//Can be set to a hash location via init or setMap 
-	private String mapChaincode = "map";
+	private static Log log = LogFactory.getLog(LinkExample.class);
 	
 	@Override
 	public String run(ChaincodeStub stub, String function, String[] args) {
+		log.info("In run, function:" + function);
 		switch (function) {
-		case "init":
-		case "setMap":
-			mapChaincode = args[0];
+		case "del":
+			for (String arg : args)
+				stub.delState(arg);
 			break;
 		case "put":
-			stub.invokeChaincode(mapChaincode, function, toByteStringList(args));
-		default:
+			for (int i = 0; i < args.length; i += 2)
+				stub.putState(args[i], args[i + 1]);
 			break;
 		}
+		log.error("No matching case for function:" + function);
 		return null;
 	}
 
 	@Override
 	public String query(ChaincodeStub stub, String function, String[] args) {
-		String tmp = stub.queryChaincode("map", function, toByteStringList(args));
-		if (tmp.isEmpty()) tmp = "NULL";
-		else tmp = "\"" + tmp + "\"";
-		tmp += " (queried from map chaincode)";
-		return tmp;
+		log.info("query");
+		log.debug("query:" + args[0] + "=" + stub.getState(args[0]));
+		if (stub.getState(args[0]) != null && !stub.getState(args[0]).isEmpty()) {
+			log.trace("returning: message " + stub.getState(args[0]));
+			return stub.getState(args[0]);
+		} else {
+			log.debug("No value found " + args[0] + "'");
+			return "Hello " + args[0] + "!";
+		}
+//		String tmp = stub.queryChaincode("map", function, toByteStringList(args));
+//		if (tmp.isEmpty()) tmp = "NULL";
+//		else tmp = "\"" + tmp + "\"";
+//		tmp += " (queried from map chaincode)";
+//		return tmp;
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -61,14 +69,6 @@ public class LinkExample extends ChaincodeBase {
 
 	@Override
 	public String getChaincodeID() {
-		return "link";
-	}
-
-	private List<ByteString> toByteStringList(String[] args) {
-		LinkedList<ByteString> result = new LinkedList();
-		for (int i=0; i<args.length; ++i) {
-			result.add(ByteString.copyFrom(args[i].getBytes(StandardCharsets.UTF_8)));
-		}
-		return result;
+		return "e-voting";
 	}
 }
