@@ -19,7 +19,7 @@ package node
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/op/go-logging"
 
 	"github.com/spf13/cobra"

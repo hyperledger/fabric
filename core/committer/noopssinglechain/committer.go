@@ -26,7 +26,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

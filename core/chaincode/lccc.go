@@ -21,8 +21,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	ledger "github.com/hyperledger/fabric/core/ledgernext"
-	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"

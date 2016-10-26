@@ -25,7 +25,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
-	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/looplab/fsm"
@@ -58,9 +58,9 @@ type transactionContext struct {
 	responseNotifier      chan *pb.ChaincodeMessage
 
 	// tracks open iterators used for range queries
-	rangeQueryIteratorMap map[string]ledgernext.ResultsIterator
+	rangeQueryIteratorMap map[string]ledger.ResultsIterator
 
-	txsimulator ledgernext.TxSimulator
+	txsimulator ledger.TxSimulator
 }
 
 type nextStateInfo struct {
@@ -123,7 +123,7 @@ func (handler *Handler) createTxContext(ctxt context.Context, txid string, tx *p
 		return nil, fmt.Errorf("txid:%s exists", txid)
 	}
 	txctx := &transactionContext{transactionSecContext: tx, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
-		rangeQueryIteratorMap: make(map[string]ledgernext.ResultsIterator)}
+		rangeQueryIteratorMap: make(map[string]ledger.ResultsIterator)}
 	handler.txCtxs[txid] = txctx
 	txctx.txsimulator = getTxSimulator(ctxt)
 
@@ -145,13 +145,13 @@ func (handler *Handler) deleteTxContext(txid string) {
 }
 
 func (handler *Handler) putRangeQueryIterator(txContext *transactionContext, txid string,
-	rangeScanIterator ledgernext.ResultsIterator) {
+	rangeScanIterator ledger.ResultsIterator) {
 	handler.Lock()
 	defer handler.Unlock()
 	txContext.rangeQueryIteratorMap[txid] = rangeScanIterator
 }
 
-func (handler *Handler) getRangeQueryIterator(txContext *transactionContext, txid string) ledgernext.ResultsIterator {
+func (handler *Handler) getRangeQueryIterator(txContext *transactionContext, txid string) ledger.ResultsIterator {
 	handler.Lock()
 	defer handler.Unlock()
 	return txContext.rangeQueryIteratorMap[txid]
@@ -727,7 +727,7 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 				return
 			}
 			//PDMP - let it panic if not KV
-			kv := qresult.(ledgernext.KV)
+			kv := qresult.(ledger.KV)
 			// Decrypt the data if the confidential is enabled
 			decryptedValue, decryptErr := handler.decrypt(msg.Txid, kv.Value)
 			if decryptErr != nil {
@@ -835,7 +835,7 @@ func (handler *Handler) handleRangeQueryStateNext(msg *pb.ChaincodeMessage) {
 				return
 			}
 			//PDMP - let it panic if not KV
-			kv := qresult.(ledgernext.KV)
+			kv := qresult.(ledger.KV)
 			// Decrypt the data if the confidential is enabled
 			decryptedValue, decryptErr := handler.decrypt(msg.Txid, kv.Value)
 			if decryptErr != nil {

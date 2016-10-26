@@ -18,20 +18,12 @@ package chaincode
 
 import (
 	//import system chain codes here
-	"github.com/hyperledger/fabric/bddtests/syschaincode/noop"
 	"github.com/hyperledger/fabric/core/system_chaincode/escc"
 	"github.com/hyperledger/fabric/core/system_chaincode/vscc"
 )
 
 //see systemchaincode_test.go for an example using "sample_syscc"
 var systemChaincodes = []*SystemChaincode{
-	{
-		Enabled:   true,
-		Name:      "noop",
-		Path:      "github.com/hyperledger/fabric/bddtests/syschaincode/noop",
-		InitArgs:  [][]byte{},
-		Chaincode: &noop.SystemChaincode{},
-	},
 	{
 		Enabled:   true,
 		Name:      "lccc",

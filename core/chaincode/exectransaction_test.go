@@ -31,8 +31,8 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
-	ledgernext "github.com/hyperledger/fabric/core/ledgernext"
-	"github.com/hyperledger/fabric/core/ledgernext/kvledger"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/membersrvc/ca"
 	pb "github.com/hyperledger/fabric/protos"
@@ -154,7 +154,7 @@ func finitPeer(lis net.Listener) {
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
 }
 
-func startTxSimulation(ctxt context.Context) (context.Context, ledgernext.TxSimulator, error) {
+func startTxSimulation(ctxt context.Context) (context.Context, ledger.TxSimulator, error) {
 	ledgername := string(DefaultChain)
 	lgr := kvledger.GetLedger(ledgername)
 	txsim, err := lgr.NewTxSimulator()
@@ -166,7 +166,7 @@ func startTxSimulation(ctxt context.Context) (context.Context, ledgernext.TxSimu
 	return ctxt, txsim, nil
 }
 
-func endTxSimulation(txsim ledgernext.TxSimulator, payload []byte, commit bool) error {
+func endTxSimulation(txsim ledger.TxSimulator, payload []byte, commit bool) error {
 	txsim.Done()
 	ledgername := string(DefaultChain)
 	if lgr := kvledger.GetLedger(ledgername); lgr != nil {
@@ -361,7 +361,7 @@ func invoke(ctx context.Context, spec *pb.ChaincodeSpec) (ccevt *pb.ChaincodeEve
 		return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s ", err)
 	}
 
-	var txsim ledgernext.TxSimulator
+	var txsim ledger.TxSimulator
 	ctx, txsim, err = startTxSimulation(ctx)
 	if err != nil {
 		return nil, uuid, nil, fmt.Errorf("Failed to get handle to simulator: %s ", err)
@@ -1120,7 +1120,7 @@ func TestChaincodeQueryChaincodeWithSec(t *testing.T) {
 
 // Test the invocation of a transaction.
 func TestRangeQuery(t *testing.T) {
-	//TODO enable after ledgernext enables RangeQuery
+	//TODO enable after ledger enables RangeQuery
 	t.Skip()
 
 	lis, err := initPeer()
