@@ -84,6 +84,8 @@ def getContainerNamesFromContext(context):
 
         if len(tokens) > 1:
             thisContainer = tokens[1]
+            if hasattr(context, "containerAliasMap"):
+               thisContainer = context.containerAliasMap.get(tokens[1], tokens[1])
 
             if thisContainer not in containerNames:
                containerNames.append(thisContainer)
