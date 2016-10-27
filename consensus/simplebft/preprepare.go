@@ -50,6 +50,10 @@ func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
 		log.Infof("preprepare does not match expected %v, got %v", nextSeq, *pp.Seq)
 		return
 	}
+	if s.cur.subject.Seq.Seq == pp.Seq.Seq {
+		log.Infof("duplicate preprepare for %v", *pp.Seq)
+		return
+	}
 	var blockhash []byte
 	if pp.Batch != nil {
 		blockhash = hash(pp.Batch.Header)

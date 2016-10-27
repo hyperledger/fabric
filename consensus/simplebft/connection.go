@@ -16,6 +16,8 @@ limitations under the License.
 
 package simplebft
 
+import "github.com/golang/protobuf/proto"
+
 // Connection is an event from system to notify a new connection with
 // replica.
 // On connection, we send our latest (weak) checkpoint, and we expect
@@ -25,8 +27,6 @@ func (s *SBFT) Connection(replica uint64) {
 	batch.Payloads = nil // don't send the big payload
 	s.sys.Send(&Msg{&Msg_Hello{&batch}}, replica)
 
-	// TODO
-	//
 	// A reconnecting replica can play forward its blockchain to
 	// the batch listed in the hello message.  However, the
 	// currently in-flight batch will not be reflected in the
@@ -36,6 +36,32 @@ func (s *SBFT) Connection(replica uint64) {
 	// Therefore we also send the most recent (pre)prepare,
 	// commit, checkpoint so that the reconnecting replica can
 	// catch up on the in-flight batch.
+	//
+	// TODO We need to communicate the latest view to the
+	// connecting replica.  The new view message is not signed, so
+	// we cannot send that message.  The worst corner case is
+	// connecting right after a new-view message was received, and
+	// its xset batch is in-flight.
+
+	batchheader := &BatchHeader{}
+	err := proto.Unmarshal(batch.Header, batchheader)
+	if err != nil {
+		panic(err)
+	}
+
+	if s.cur.subject.Seq.Seq > batchheader.Seq {
+		if s.isPrimary() {
+			s.sys.Send(&Msg{&Msg_Preprepare{s.cur.preprep}}, replica)
+		} else {
+			s.sys.Send(&Msg{&Msg_Prepare{&s.cur.subject}}, replica)
+		}
+		if s.cur.sentCommit {
+			s.sys.Send(&Msg{&Msg_Commit{&s.cur.subject}}, replica)
+		}
+		if s.cur.executed {
+			s.sys.Send(&Msg{&Msg_Checkpoint{s.makeCheckpoint()}}, replica)
+		}
+	}
 }
 
 func (s *SBFT) handleHello(h *Batch, src uint64) {
