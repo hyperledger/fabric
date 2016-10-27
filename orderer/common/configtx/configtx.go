@@ -55,7 +55,7 @@ const DefaultModificationPolicyID = "DefaultModificationPolicy"
 
 type acceptAllPolicy struct{}
 
-func (ap *acceptAllPolicy) Evaluate(msg []byte, sigs []*ab.SignedData) error {
+func (ap *acceptAllPolicy) Evaluate(msg []byte, sigs []*ab.Envelope) error {
 	return nil
 }
 

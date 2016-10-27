@@ -34,13 +34,23 @@ func New(manager configtx.Manager) broadcastfilter.Rule {
 	}
 }
 
-// Apply applies the rule to the given BroadcastMessage, replying with the Action to take for the message
-func (cf *configFilter) Apply(message *ab.BroadcastMessage) broadcastfilter.Action {
-	config := &ab.ConfigurationEnvelope{}
+// Apply applies the rule to the given Envelope, replying with the Action to take for the message
+func (cf *configFilter) Apply(message *ab.Envelope) broadcastfilter.Action {
+	msgData := &ab.Payload{}
 
-	err := proto.Unmarshal(message.Data, config)
+	err := proto.Unmarshal(message.Payload, msgData)
 	if err != nil {
 		return broadcastfilter.Forward
+	}
+
+	if msgData.Header == nil || msgData.Header.Type != ab.Header_CONFIGURATION_TRANSACTION {
+		return broadcastfilter.Forward
+	}
+
+	config := &ab.ConfigurationEnvelope{}
+	err = proto.Unmarshal(msgData.Data, config)
+	if err != nil {
+		return broadcastfilter.Reject
 	}
 
 	err = cf.configManager.Validate(config)

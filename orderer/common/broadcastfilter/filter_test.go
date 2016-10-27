@@ -26,7 +26,7 @@ var RejectRule = Rule(rejectRule{})
 
 type rejectRule struct{}
 
-func (r rejectRule) Apply(message *ab.BroadcastMessage) Action {
+func (r rejectRule) Apply(message *ab.Envelope) Action {
 	return Reject
 }
 
@@ -34,20 +34,20 @@ var ForwardRule = Rule(forwardRule{})
 
 type forwardRule struct{}
 
-func (r forwardRule) Apply(message *ab.BroadcastMessage) Action {
+func (r forwardRule) Apply(message *ab.Envelope) Action {
 	return Forward
 }
 
 func TestEmptyRejectRule(t *testing.T) {
 	rs := NewRuleSet([]Rule{EmptyRejectRule})
-	result, rule := rs.Apply(&ab.BroadcastMessage{})
+	result, rule := rs.Apply(&ab.Envelope{})
 	if result != Reject {
 		t.Fatalf("Should have rejected")
 	}
 	if rule != EmptyRejectRule {
 		t.Fatalf("Rejected but not for the right rule")
 	}
-	result, _ = rs.Apply(&ab.BroadcastMessage{Data: []byte("fakedata")})
+	result, _ = rs.Apply(&ab.Envelope{Payload: []byte("fakedata")})
 	if result != Forward {
 		t.Fatalf("Should have forwarded")
 	}
@@ -55,7 +55,7 @@ func TestEmptyRejectRule(t *testing.T) {
 
 func TestAcceptReject(t *testing.T) {
 	rs := NewRuleSet([]Rule{AcceptRule, RejectRule})
-	result, rule := rs.Apply(&ab.BroadcastMessage{})
+	result, rule := rs.Apply(&ab.Envelope{})
 	if result != Accept {
 		t.Fatalf("Should have accepted")
 	}
@@ -66,7 +66,7 @@ func TestAcceptReject(t *testing.T) {
 
 func TestRejectAccept(t *testing.T) {
 	rs := NewRuleSet([]Rule{RejectRule, AcceptRule})
-	result, rule := rs.Apply(&ab.BroadcastMessage{})
+	result, rule := rs.Apply(&ab.Envelope{})
 	if result != Reject {
 		t.Fatalf("Should have rejected")
 	}
@@ -77,7 +77,7 @@ func TestRejectAccept(t *testing.T) {
 
 func TestForwardAccept(t *testing.T) {
 	rs := NewRuleSet([]Rule{ForwardRule, AcceptRule})
-	result, rule := rs.Apply(&ab.BroadcastMessage{})
+	result, rule := rs.Apply(&ab.Envelope{})
 	if result != Accept {
 		t.Fatalf("Should have accepted")
 	}
@@ -88,7 +88,7 @@ func TestForwardAccept(t *testing.T) {
 
 func TestForward(t *testing.T) {
 	rs := NewRuleSet([]Rule{ForwardRule})
-	result, rule := rs.Apply(&ab.BroadcastMessage{})
+	result, rule := rs.Apply(&ab.Envelope{})
 	if result != Forward {
 		t.Fatalf("Should have forwarded")
 	}
@@ -99,7 +99,7 @@ func TestForward(t *testing.T) {
 
 func TestNoRule(t *testing.T) {
 	rs := NewRuleSet([]Rule{})
-	result, rule := rs.Apply(&ab.BroadcastMessage{})
+	result, rule := rs.Apply(&ab.Envelope{})
 	if result != Forward {
 		t.Fatalf("Should have forwarded")
 	}

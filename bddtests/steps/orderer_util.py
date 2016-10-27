@@ -24,6 +24,7 @@ import devops_pb2
 import fabric_pb2
 import chaincode_pb2
 import ab_pb2
+import message_pb2
 
 import bdd_test_util
 import bdd_grpc_util
@@ -32,6 +33,7 @@ from grpc.beta import implementations
 from grpc.framework.interfaces.face.face import NetworkError
 from grpc.framework.interfaces.face.face import AbortionError
 from grpc.beta.interfaces import StatusCode
+from message_pb2 import Payload
 
 
 class StreamHelper:
@@ -221,12 +223,17 @@ def createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize):
 
 
 def generateBroadcastMessages(numToGenerate = 1, timeToHoldOpen = 1):
-	messages = []
-	for i in range(0, numToGenerate):
-		messages.append(ab_pb2.BroadcastMessage(Data = str("BDD test: {0}".format(datetime.datetime.utcnow()))))
-	for msg in messages:
-		yield msg
-	time.sleep(timeToHoldOpen)
+    messages = []
+    for i in range(0, numToGenerate):
+        envelope = message_pb2.Envelope()
+        payload = message_pb2.Payload()
+        payload.header.type = message_pb2.Header.MESSAGE
+        payload.data = str("BDD test: {0}".format(datetime.datetime.utcnow()))
+        envelope.payload = payload.SerializeToString()
+        messages.append(envelope)
+    for msg in messages:
+        yield msg
+    time.sleep(timeToHoldOpen)
 
 
 def getGRPCChannel(ipAddress):

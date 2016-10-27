@@ -1,0 +1,68 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+                 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package atomicbroadcast;
+
+// Header is a generic replay prevention and identity message to include in a signed payload
+message Header {
+    enum Type {
+        MESSAGE = 0;
+        CONFIGURATION_TRANSACTION = 1;
+        CONFIGURATION_ITEM = 2;
+    }
+
+    // Version indicates message protocol version
+    int32 version = 1;
+
+    // Timestamp is the local time when the message was created
+    // by the sender
+    google.protobuf.Timestamp timestamp = 2;
+
+    // Type of the transaction
+    Type type = 3;
+
+    // Creator of the message, specified as a certificate chain
+    bytes creator = 4;
+
+    // Arbitrary number that may only be used once. Can be used to detect replay attacks.
+    bytes nonce = 5;
+
+    // Identifier of the chain this message is bound for
+    bytes chainID = 6;
+}
+
+// Payload is the message contents (and header to allow for signing)
+message Payload {
+
+    // Header is included to provide identity and prevent replay
+    Header header = 1;
+
+    // Data, the encoding of which is defined by the type in the header
+    bytes data = 2;
+}
+
+// Envelope wraps a Payload with a signature so that the message may be authenticated
+message Envelope {
+    // A marshaled Payload
+    bytes payload = 1;
+
+    // A signature by the creator specified in the Payload header
+    bytes signature = 2;
+}

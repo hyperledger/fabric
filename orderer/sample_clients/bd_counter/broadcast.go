@@ -21,13 +21,14 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/golang/protobuf/proto"
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	context "golang.org/x/net/context"
 )
 
 func (c *clientImpl) broadcast() {
 	var count int
-	message := &ab.BroadcastMessage{} // Has a Data field
+	message := &ab.Envelope{} // Has a Data field
 	tokenChan := make(chan struct{}, c.config.count)
 
 	stream, err := c.rpc.Broadcast(context.Background())
@@ -47,12 +48,16 @@ func (c *clientImpl) broadcast() {
 			logger.Info("Client shutting down")
 			return
 		case tokenChan <- struct{}{}:
-			message.Data = []byte(strconv.Itoa(count))
-			err := stream.Send(message)
+			payload, err := proto.Marshal(&ab.Payload{Data: []byte(strconv.Itoa(count))})
+			if err != nil {
+				panic(err)
+			}
+			message.Payload = payload
+			err = stream.Send(message)
 			if err != nil {
 				logger.Info("Failed to send broadcast message to orderer:", err)
 			}
-			logger.Debugf("Sent broadcast message \"%s\" to orderer\n", message.Data)
+			logger.Debugf("Sent broadcast message \"%v\" to orderer\n", message)
 			count++
 		}
 	}

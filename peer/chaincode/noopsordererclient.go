@@ -25,6 +25,7 @@ package chaincode
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -40,7 +41,11 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient) *broadcastCli
 }
 
 func (s *broadcastClient) broadcast(transaction []byte) error {
-	return s.client.Send(&ab.BroadcastMessage{Data: transaction})
+	payload, err := proto.Marshal(&ab.Payload{Header: &ab.Header{}, Data: transaction})
+	if err != nil {
+		return fmt.Errorf("Unable to marshal: %s", err)
+	}
+	return s.client.Send(&ab.Envelope{Payload: payload})
 }
 
 //Send data to solo orderer
