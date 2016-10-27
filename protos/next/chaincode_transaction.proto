@@ -20,23 +20,36 @@ package protos;
 
 import "fabric_proposal_response.proto";
 
-message ChaincodeActionsPayload {
+// ChaincodeActionPayload is the message to be used for the TransactionAction's
+// payload when the Header's type is set to CHAINCODE.  It carries the
+// chaincodeProposalPayload and an endorsed action to apply to the ledger.
+message ChaincodeActionPayload {
 
-	// ChaincodeProposalPayload is present in the transaction
-	// depending on the payloadVisibility field in the
-	// ChaincodeTransactionHeaderExtension.
-	// (it could be there in its entirety, it could be hashed or it
-	// could be totally absent)
+	// This field contains the bytes of the ChaincodeProposalPayload message from
+	// the original invocation (essentially the arguments) after the application
+	// of the visibility function. The main visibility modes are "full" (the
+	// entire ChaincodeProposalPayload message is included here), "hash" (only
+	// the hash of the ChaincodeProposalPayload message is included) or
+	// "nothing".  This field will be used to check the consistency of
+	// ProposalResponsePayload.proposalHash.  For the CHAINCODE type,
+	// ProposalResponsePayload.proposalHash is supposed to be H(ProposalHeader ||
+	// f(ChaincodeProposalPayload)) where f is the visibility function.
 	bytes chaincodeProposalPayload = 1;
 
-	repeated ChaincodeEndorsedAction actions = 2;
-
+	// The list of actions to apply to the ledger
+	ChaincodeEndorsedAction action = 2;
 }
 
+// ChaincodeEndorsedAction carries information about the endorsement of a
+// specific proposal
 message ChaincodeEndorsedAction {
 
-	ProposalResponsePayload responsePayload = 1;
+	// This is the bytes of the ProposalResponsePayload message signed by the
+	// endorsers.  Recall that for the CHAINCODE type, the
+	// ProposalResponsePayload's extenstion field carries a ChaincodeAction
+	bytes proposalResponsePayload = 1;
 
+	// The endorsement of the proposal, basically the endorser's signature over
+	// proposalResponsePayload
 	repeated Endorsement endorsements = 2;
-
 }
