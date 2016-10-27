@@ -21,6 +21,7 @@
 #   - all (default) - builds all targets and runs all tests/checks
 #   - checks - runs all tests/checks
 #   - peer - builds the fabric peer binary
+#   - orderer - builds the fabric orderer binary
 #   - membersrvc - builds the membersrvc binary
 #   - unit-test - runs the go-test based unit tests
 #   - behave - runs the behave test
@@ -29,6 +30,7 @@
 #   - linter - runs all code checks
 #   - images[-clean] - ensures all docker images are available[/cleaned]
 #   - peer-image[-clean] - ensures the peer-image is available[/cleaned] (for behave, etc)
+#   - orderer-image[-clean] - ensures the orderer-image is available[/cleaned] (for behave, etc)
 #   - membersrvc-image[-clean] - ensures the membersrvc-image is available[/cleaned] (for behave, etc)
 #   - protos - generate all protobuf artifacts based on .proto files
 #   - clean - cleans the build area
@@ -70,7 +72,7 @@ PROJECT_FILES = $(shell git ls-files)
 IMAGES = src ccenv peer membersrvc javaenv orderer
 
 
-all: peer membersrvc checks
+all: peer orderer membersrvc checks
 
 checks: linter unit-test behave
 
@@ -142,7 +144,7 @@ build/bin/chaintool: Makefile
 # JIRA FAB-243 - Mark build/docker/bin artifacts explicitly as secondary
 #                since they are never referred to directly. This prevents
 #                the makefile from deleting them inadvertently.
-.SECONDARY: build/docker/bin/peer build/docker/bin/membersrvc
+.SECONDARY: build/docker/bin/peer build/docker/bin/orderer build/docker/bin/membersrvc
 
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
@@ -241,7 +243,7 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 protos: gotools
 	./devenv/compile_protos.sh
 
-src-image-clean: ccenv-image-clean peer-image-clean membersrvc-image-clean
+src-image-clean: ccenv-image-clean peer-image-clean orderer-image-clean membersrvc-image-clean
 
 %-image-clean:
 	$(eval TARGET = ${patsubst %-image-clean,%,${@}})
