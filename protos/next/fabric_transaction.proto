@@ -19,26 +19,46 @@ syntax = "proto3";
 package protos;
 
 import "google/protobuf/timestamp.proto";
-import "fabric_transaction_header.proto";
 
+// This message is necessary to facilitate the verification of the signature
+// (in the signature field) over the bytes of the transaction (in the
+// transactionBytes field).
 message SignedTransaction {
 
 	// The bytes of the Transaction. NDD
 	bytes transactionBytes = 1;
 
-	// Signature of the transactionBytes
-	// The public key of the signature is in the header field of TransactionActions
-	// There might be multiple TransactionActions, so multiple headers,
-	// but there should be same transactor identity (cert) in all headers
+	// Signature of the transactionBytes The public key of the signature is in
+	// the header field of TransactionAction There might be multiple
+	// TransactionAction, so multiple headers, but there should be same
+	// transactor identity (cert) in all headers
 	bytes signature = 2;
 }
 
+// This is used to wrap an invalid Transaction with the cause
+message InvalidTransaction {
+	enum Cause {
+		TxIdAlreadyExists = 0;
+		RWConflictDuringCommit = 1;
+	}
+	Transaction2 transaction = 1;
+	Cause cause = 2;
+}
+
 // The transaction to be sent to the ordering service. A transaction contains
-// one or more TransactionActions. Each TransactionActions binds a proposal
-// to potentially multiple actions.
-// The transaction is atomic meaning that either
-// all actions in the transaction will be committed or none will be committed.
-message Transaction {
+// one or more TransactionAction. Each TransactionAction binds a proposal to
+// potentially multiple actions. The transaction is atomic meaning that either
+// all actions in the transaction will be committed or none will.  Note that
+// while a Transaction might include more than one Header, the Header.creator
+// field must be the same in each.
+// A single client is free to issue a number of independent Proposal, each with
+// their header (Header) and request payload (ChaincodeProposalPayload).  Each
+// proposal is independently endorsed generating an action
+// (ProposalResponsePayload) with one signature per Endorser. Any number of
+// independent proposals (and their action) might be included in a transaction
+// to ensure that they are treated atomically.
+message Transaction2 {
+
 	// Version indicates message protocol version.
 	int32 version = 1;
 
@@ -46,20 +66,19 @@ message Transaction {
 	// message was created by the sender
 	google.protobuf.Timestamp timestamp = 2;
 
-	// The payload is an array of TransactionActions. An array is neccessary
-	// accommodate multiple proposals per transaction
-	repeated TransactionActions TransactionActions = 3;
+	// The payload is an array of TransactionAction. An array is necessary to
+	// accommodate multiple actions per transaction
+	repeated TransactionAction actions = 3;
 }
 
-// TransactionActions binds a proposal to one of more actions.
-// The type field in the header dictecates the type actions
-// to be applied to the ledger.
-message TransactionActions {
+// TransactionAction binds a proposal to its action.  The type field in the
+// header dictates the type of action to be applied to the ledger.
+message TransactionAction {
 
 	// The header of the proposal action, which is the proposal header
-	TransactionHeader header = 1;
+	bytes header = 1;
 
-	// The payload of the action as defined by the type in the header
-	// For chaincode, it's the bytes of ChaincodeActionsPayload
+	// The payload of the action as defined by the type in the header For
+	// chaincode, it's the bytes of ChaincodeActionPayload
 	bytes payload = 2;
 }
