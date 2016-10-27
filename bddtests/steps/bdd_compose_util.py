@@ -127,7 +127,9 @@ def containersAreReadyWithinTimeout(context, containers, timeout):
     bdd_log("All containers should be up by {}".format(formattedTime))
 
     for container in containers:
-        if not containerIsInitializedByTimestamp(container, timeoutTimestamp):
+        if 'dbstore' in container.name:
+            containers.remove(container)
+        elif not containerIsInitializedByTimestamp(container, timeoutTimestamp):
             return False
 
     peersAreReady = peersAreReadyByTimestamp(context, containers, timeoutTimestamp)
@@ -216,7 +218,9 @@ def containerIsPeer(container):
     # is to determine if the container is listening on the REST port. However, this method
     # may run before the listening port is ready. Hence, as along as the current
     # convention of vp[0-9] is adhered to this function will be good enough.
-    return re.search("vp[0-9]+", container.name, re.IGNORECASE)
+    if 'dbstore' not in container.name:
+        return re.search("vp[0-9]+", container.name, re.IGNORECASE)
+    return False
 
 def peerIsReadyByTimestamp(context, peerContainer, allPeerContainers, timeoutTimestamp):
     while peerIsNotReady(context, peerContainer, allPeerContainers):

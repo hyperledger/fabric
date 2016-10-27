@@ -40,7 +40,7 @@ def step_impl(context, composeYamlFile):
 
     bdd_compose_util.parseComposeOutput(context)
 
-    timeoutSeconds = 30
+    timeoutSeconds = 60
     assert bdd_compose_util.allContainersAreReadyWithinTimeout(context, timeoutSeconds), \
         "Containers did not come up within {} seconds, aborting".format(timeoutSeconds)
 
@@ -68,10 +68,10 @@ def formatStringToCompare(value):
     # double quotes are replaced by simple quotes because is not possible escape double quotes in the attribute parameters.
     return str(value).replace("\"", "'")
 
-@then(u'I should get a JSON response with "{attribute}" = "{expectedValue}"')
-def step_impl(context, attribute, expectedValue):
-    foundValue = getAttributeFromJSON(attribute, context.response.json())
-    assert (formatStringToCompare(foundValue) == expectedValue), "For attribute %s, expected (%s), instead found (%s)" % (attribute, expectedValue, foundValue)
+#@then(u'I should get a JSON response with "{attribute}" = "{expectedValue}"')
+#def step_impl(context, attribute, expectedValue):
+#    foundValue = getAttributeFromJSON(attribute, context.response.json())
+#    assert (formatStringToCompare(foundValue) == expectedValue), "For attribute %s, expected (%s), instead found (%s)" % (attribute, expectedValue, foundValue)
 
 @then(u'I should get a JSON response with array "{attribute}" contains "{expectedValue}" elements')
 def step_impl(context, attribute, expectedValue):
@@ -518,7 +518,8 @@ def step_impl(context, attribute, expectedValue):
     assert 'responses' in context, "responses not found in context"
     for resp in context.responses:
         foundValue = getAttributeFromJSON(attribute, resp.json())
-        assert (formatStringToCompare(foundValue) == expectedValue), "For attribute %s, expected (%s), instead found (%s)" % (attribute, expectedValue, foundValue)
+        errStr = "For attribute %s, expected (%s), instead found (%s)" % (attribute, expectedValue, foundValue)
+        assert (formatStringToCompare(foundValue) == expectedValue), errStr
 
 @then(u'I should get a JSON response from peers with "{attribute}" = "{expectedValue}"')
 def step_impl(context, attribute, expectedValue):
@@ -528,7 +529,56 @@ def step_impl(context, attribute, expectedValue):
 
     for resp in context.responses:
         foundValue = getAttributeFromJSON(attribute, resp.json())
-        assert (formatStringToCompare(foundValue) == expectedValue), "For attribute %s, expected (%s), instead found (%s)" % (attribute, expectedValue, foundValue)
+        errStr = "For attribute %s, expected (%s), instead found (%s)" % (attribute, expectedValue, foundValue)
+        assert (formatStringToCompare(foundValue) == expectedValue), errStr
+
+@then(u'I should "{action}" the "{attribute}" from the JSON response')
+def step_impl(context, action, attribute):
+    assert attribute in context.response.json(), "Attribute not found in response ({})".format(attribute)
+    foundValue = context.response.json()[attribute]
+    if action == 'store':
+        foundValue = getAttributeFromJSON(attribute, context.response.json())
+        setattr(context, attribute, foundValue)
+        bdd_log("Stored %s: %s" % (attribute, getattr(context, attribute)) )
+
+def checkHeight(context, foundValue, expectedValue):
+#    if context.byon:
+#        errStr = "For attribute height, expected equal or greater than (%s), instead found (%s)" % (expectedValue, foundValue)
+#        assert (foundValue >= int(expectedValue)), errStr
+#    elif expectedValue == 'previous':
+    if expectedValue == 'previous':
+        bdd_log("Stored height: {}".format(context.height))
+        errStr = "For attribute height, expected (%s), instead found (%s)" % (context.height, foundValue)
+        assert (foundValue == context.height), errStr
+    else:
+        errStr = "For attribute height, expected (%s), instead found (%s)" % (expectedValue, foundValue)
+        assert (formatStringToCompare(foundValue) == expectedValue), errStr
+
+@then(u'I should get a JSON response with "{attribute}" = "{expectedValue}"')
+def step_impl(context, attribute, expectedValue):
+    foundValue = getAttributeFromJSON(attribute, context.response.json())
+    if attribute == 'height':
+        checkHeight(context, foundValue, expectedValue)
+    else:
+        errStr = "For attribute %s, expected (%s), instead found (%s)" % (attribute, expectedValue, foundValue)
+        assert (formatStringToCompare(foundValue) == expectedValue), errStr
+    # Set the new value of the attribute
+    setattr(context, attribute, foundValue)
+
+@then(u'I should get a JSON response with "{attribute}" > "{expectedValue}"')
+def step_impl(context, attribute, expectedValue):
+    foundValue = getAttributeFromJSON(attribute, context.response.json())
+    if expectedValue == 'previous':
+        prev_value = getattr(context, attribute)
+        bdd_log("Stored value: {}".format(prev_value))
+        errStr = "For attribute %s, expected greater than (%s), instead found (%s)" % (attribute, prev_value, foundValue)
+        assert (foundValue > prev_value), errStr
+    else:
+        errStr = "For attribute %s, expected greater than (%s), instead found (%s)" % (attribute, expectedValue, foundValue)
+        assert (formatStringToCompare(foundValue) > expectedValue), errStr
+    # Set the new value of the attribute
+    setattr(context, attribute, foundValue)
+
 
 @given(u'I register with CA supplying username "{userName}" and secret "{secret}" on peers')
 def step_impl(context, userName, secret):
@@ -593,6 +643,10 @@ def step_impl(context, seconds):
     timeout = int(seconds)
     assert bdd_compose_util.allContainersAreReadyWithinTimeout(context, timeout), \
         "Peers did not come up within {} seconds, aborting.".format(timeout)
+
+@given(u'I start peers')
+def step_impl(context):
+    compose_op(context, "start")
 
 @given(u'I stop peers')
 def step_impl(context):
