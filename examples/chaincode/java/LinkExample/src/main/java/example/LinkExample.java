@@ -26,18 +26,23 @@ public class LinkExample extends ChaincodeBase {
 	//Default name for map chaincode in dev mode
 	//Can be set to a hash location via init or setMap 
 	private static Log log = LogFactory.getLog(LinkExample.class);
+	private int id = 0;
 	
 	@Override
 	public String run(ChaincodeStub stub, String function, String[] args) {
 		log.info("In run, function:" + function);
 		switch (function) {
-		case "del":
+//		case "del":
+//			for (String arg : args)
+//				stub.delState(arg);
+//			break;
+//		case "put":
+//			for (int i = 0; i < args.length; i += 2)
+//				stub.putState(args[i], args[i + 1]);
+//			break;
+		case "deploy":
 			for (String arg : args)
-				stub.delState(arg);
-			break;
-		case "put":
-			for (int i = 0; i < args.length; i += 2)
-				stub.putState(args[i], args[i + 1]);
+				stub.putState(Integer.toString(id++), arg);
 			break;
 		}
 		log.error("No matching case for function:" + function);
