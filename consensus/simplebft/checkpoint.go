@@ -21,14 +21,18 @@ import (
 	"reflect"
 )
 
-func (s *SBFT) sendCheckpoint() {
+func (s *SBFT) makeCheckpoint() *Checkpoint {
 	sig := s.sys.Sign(s.cur.subject.Digest)
 	c := &Checkpoint{
 		Seq:       s.cur.subject.Seq.Seq,
 		Digest:    s.cur.subject.Digest,
 		Signature: sig,
 	}
-	s.broadcast(&Msg{&Msg_Checkpoint{c}})
+	return c
+}
+
+func (s *SBFT) sendCheckpoint() {
+	s.broadcast(&Msg{&Msg_Checkpoint{s.makeCheckpoint()}})
 }
 
 func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {

@@ -129,17 +129,16 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 			s.seq = *pp.Seq
 			s.seq.Seq -= 1
 			s.handlePreprepare(pp, s.primaryIDView(pp.Seq.View))
+			// ideally we wouldn't send a prepare here
 		}
 	}
 	c := &Subject{}
 	if s.sys.Restore("commit", c) && reflect.DeepEqual(c, &s.cur.subject) {
 		s.cur.sentCommit = true
-		s.sendCommit()
 	}
 	ex := &Subject{}
 	if s.sys.Restore("execute", ex) && reflect.DeepEqual(c, &s.cur.subject) {
 		s.cur.executed = true
-		s.sendCheckpoint()
 	}
 
 	// XXX set active after checking with the network

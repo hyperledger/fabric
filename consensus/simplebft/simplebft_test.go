@@ -34,8 +34,25 @@ func init() {
 }
 
 func connectAll(sys *testSystem) {
+	// map iteration is non-deterministic, so use linear iteration instead
+	max := uint64(0)
 	for _, a := range sys.adapters {
-		for _, b := range sys.adapters {
+		if a.id > max {
+			max = a.id
+		}
+	}
+
+	for i := uint64(0); i <= max; i++ {
+		a, ok := sys.adapters[i]
+		if !ok {
+			continue
+		}
+
+		for j := uint64(0); j <= max; j++ {
+			b, ok := sys.adapters[j]
+			if !ok {
+				continue
+			}
 			if a.id != b.id {
 				a.receiver.Connection(b.id)
 			}
@@ -342,7 +359,7 @@ func TestRestart(t *testing.T) {
 
 	testLog.Notice("restarting 0")
 	repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
-	for _, a := range sys.adapters {
+	for _, a := range adapters {
 		if a.id != 0 {
 			a.receiver.Connection(0)
 			adapters[0].receiver.Connection(a.id)
@@ -394,7 +411,7 @@ func TestRestartAfterPrepare(t *testing.T) {
 			if p := msg.msg.GetPrepare(); p != nil && p.Seq.Seq == 3 && !restarted {
 				restarted = true
 				repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
-				for _, a := range sys.adapters {
+				for _, a := range adapters {
 					if a.id != 0 {
 						a.receiver.Connection(0)
 						adapters[0].receiver.Connection(a.id)
@@ -462,7 +479,7 @@ func TestRestartAfterCommit(t *testing.T) {
 				restarted = true
 				testLog.Notice("restarting 0")
 				repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
-				for _, a := range sys.adapters {
+				for _, a := range adapters {
 					if a.id != 0 {
 						a.receiver.Connection(0)
 						adapters[0].receiver.Connection(a.id)
@@ -503,8 +520,6 @@ func TestRestartAfterCommit(t *testing.T) {
 }
 
 func TestRestartAfterCheckpoint(t *testing.T) {
-	// TODO re-enable this test after https://jira.hyperledger.org/browse/FAB-624 has been resolved
-	t.Skip()
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -532,7 +547,7 @@ func TestRestartAfterCheckpoint(t *testing.T) {
 				restarted = true
 				testLog.Notice("restarting 0")
 				repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
-				for _, a := range sys.adapters {
+				for _, a := range adapters {
 					if a.id != 0 {
 						a.receiver.Connection(0)
 						adapters[0].receiver.Connection(a.id)
@@ -545,6 +560,94 @@ func TestRestartAfterCheckpoint(t *testing.T) {
 	}
 
 	connectAll(sys)
+	// move to view 1
+	for _, r := range repls {
+		r.sendViewChange()
+	}
+
+	r1 := []byte{1, 2, 3}
+	repls[0].Request(r1)
+	sys.Run()
+
+	r2 := []byte{3, 1, 2}
+	r3 := []byte{3, 5, 2}
+	repls[1].Request(r2)
+	repls[1].Request(r3)
+	sys.Run()
+	for _, a := range adapters {
+		if len(a.batches) != 3 {
+			t.Fatal("expected execution of 3 batches")
+		}
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[1].Payloads) {
+			t.Error("wrong request executed (1)")
+		}
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2].Payloads) {
+			t.Error("wrong request executed (2)")
+		}
+	}
+}
+
+func TestErroneousViewChange(t *testing.T) {
+	N := uint64(4)
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	restarted := false
+
+	// network outage after prepares are received
+	sys.filterFn = func(e testElem) (testElem, bool) {
+		if msg, ok := e.ev.(*testMsgEvent); ok {
+			if msg.src == msg.dst || msg.src != 0 {
+				return e, true
+			}
+
+			if c := msg.msg.GetCheckpoint(); c != nil && c.Seq == 3 && !restarted {
+				restarted = true
+				testLog.Notice("restarting 0")
+				repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
+				for _, a := range adapters {
+					if a.id != 0 {
+						a.receiver.Connection(0)
+						adapters[0].receiver.Connection(a.id)
+					}
+				}
+			}
+		}
+
+		return e, true
+	}
+
+	// iteration order here is essential to trigger the bug
+	outer := []uint64{2, 3, 0, 1}
+	inner := []uint64{0, 1, 2, 3}
+	for _, i := range outer {
+		a, ok := sys.adapters[i]
+		if !ok {
+			continue
+		}
+
+		for _, j := range inner {
+			b, ok := sys.adapters[j]
+			if !ok {
+				continue
+			}
+			if a.id != b.id {
+				a.receiver.Connection(b.id)
+			}
+		}
+	}
+	sys.Run()
+
 	// move to view 1
 	for _, r := range repls {
 		r.sendViewChange()
