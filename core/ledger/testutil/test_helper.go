@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos"
+	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
 // ConstructBlockForSimulationResults constructs a block that includes a number of transactions - one per simulationResults
@@ -46,9 +47,7 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*protos.Block2 {
 func ConstructTestBlock(t *testing.T, numTx int, startingTxID int) *protos.Block2 {
 	txs := []*protos.Transaction2{}
 	for i := startingTxID; i < numTx+startingTxID; i++ {
-		tx := &protos.Transaction2{}
-		tx.EndorsedActions = []*protos.EndorsedAction{
-			&protos.EndorsedAction{ActionBytes: ConstructRandomBytes(t, 100), Endorsements: []*protos.Endorsement{}, ProposalBytes: []byte{}}}
+		tx, _ := putils.CreateTx(protos.Header_CHAINCODE, []byte{}, []byte{}, ConstructRandomBytes(t, 100), []*protos.Endorsement{})
 		txs = append(txs, tx)
 	}
 	return newBlock(txs)
@@ -56,13 +55,7 @@ func ConstructTestBlock(t *testing.T, numTx int, startingTxID int) *protos.Block
 
 // ConstructTestTransaction constructs a transaction for testing
 func ConstructTestTransaction(t *testing.T, simulationResults []byte) *protos.Transaction2 {
-
-	action := &protos.Action{ProposalHash: []byte{}, SimulationResult: simulationResults}
-	actionBytes, _ := proto.Marshal(action)
-
-	tx := &protos.Transaction2{}
-	tx.EndorsedActions = []*protos.EndorsedAction{
-		&protos.EndorsedAction{ActionBytes: actionBytes, Endorsements: []*protos.Endorsement{}, ProposalBytes: []byte{}}}
+	tx, _ := putils.CreateTx(protos.Header_CHAINCODE, []byte{}, []byte{}, simulationResults, []*protos.Endorsement{})
 	return tx
 }
 

@@ -27,8 +27,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
+	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
 var devopsLogger = logging.MustGetLogger("devops")
@@ -46,16 +46,6 @@ func NewEndorserServer(coord peer.MessageHandlerCoordinator) pb.EndorserServer {
 	e := new(Endorser)
 	e.coord = coord
 	return e
-}
-
-//get the ChaincodeInvocationSpec from the proposal
-func (*Endorser) getChaincodeInvocationSpec(prop *pb.Proposal) (*pb.ChaincodeInvocationSpec, error) {
-	cis := &pb.ChaincodeInvocationSpec{}
-	err := proto.Unmarshal(prop.Payload, cis)
-	if err != nil {
-		return nil, err
-	}
-	return cis, nil
 }
 
 //TODO - what would Endorser's ACL be ?
@@ -115,25 +105,26 @@ func (e *Endorser) deploy(ctxt context.Context, chainname string, cds *pb.Chainc
 }
 
 //call specified chaincode (system or user)
-func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocationSpec) ([]byte, []byte, error) {
+func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocationSpec) ([]byte, []byte, *pb.ChaincodeEvent, error) {
 	var txsim ledger.TxSimulator
 	var err error
 	var b []byte
+	var ccevent *pb.ChaincodeEvent
 
 	//TODO - get chainname from cis when defined
 	chainName := string(chaincode.DefaultChain)
 
 	if txsim, err = e.getTxSimulator(chainName); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	defer txsim.Done()
 
 	ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
-	b, err = chaincode.ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, chainName, cis.ChaincodeSpec.ChaincodeID.Name, cis.ChaincodeSpec.CtorMsg.Args)
+	b, ccevent, err = chaincode.ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, chainName, cis.ChaincodeSpec.ChaincodeID.Name, cis.ChaincodeSpec.CtorMsg.Args)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	//----- BEGIN -  SECTION THAT MAY NEED TO BE DONE IN LCCC ------
@@ -148,51 +139,52 @@ func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocati
 		var cds *pb.ChaincodeDeploymentSpec
 		cds, err = e.getChaincodeDeploymentSpec(cis.ChaincodeSpec.CtorMsg.Args[2])
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		err = e.deploy(ctxt, chainName, cds)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	//----- END -------
 
 	var txSimulationResults []byte
 	if txSimulationResults, err = txsim.GetTxSimulationResults(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return txSimulationResults, b, err
+	return txSimulationResults, b, ccevent, err
 }
 
 //simulate the proposal by calling the chaincode
-func (e *Endorser) simulateProposal(ctx context.Context, prop *pb.Proposal) ([]byte, []byte, error) {
+func (e *Endorser) simulateProposal(ctx context.Context, prop *pb.Proposal) ([]byte, []byte, *pb.ChaincodeEvent, error) {
 	//we do expect the payload to be a ChaincodeInvocationSpec
 	//if we are supporting other payloads in future, this be glaringly point
 	//as something that should change
-	cis, err := e.getChaincodeInvocationSpec(prop)
+	cis, err := putils.GetChaincodeInvocationSpec(prop)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	//---1. check ACL
 	if err = e.checkACL(prop); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	//---2. check ESCC and VSCC for the chaincode
 	if err = e.checkEsccAndVscc(prop); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	//---3. execute the proposal and get simulation results
 	var simResult []byte
 	var resp []byte
-	simResult, resp, err = e.callChaincode(ctx, cis)
+	var ccevent *pb.ChaincodeEvent
+	simResult, resp, ccevent, err = e.callChaincode(ctx, cis)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return resp, simResult, nil
+	return resp, simResult, ccevent, nil
 }
 
 //endorse the proposal by calling the ESCC
@@ -218,7 +210,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, prop *pb.Proposal) (*pb.
 	//1 -- simulate
 	//TODO what do we do with response ? We need it for Invoke responses for sure
 	//Which field in PayloadResponse will carry return value ?
-	payload, simulationResult, err := e.simulateProposal(ctx, prop)
+	payload, simulationResult, ccevent, err := e.simulateProposal(ctx, prop)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
 	}
@@ -232,15 +224,13 @@ func (e *Endorser) ProcessProposal(ctx context.Context, prop *pb.Proposal) (*pb.
 
 	//3 -- respond
 	// Create action
-	action := &pb.Action{ProposalHash: util.ComputeCryptoHash(prop.Payload), SimulationResult: simulationResult}
-
-	actionBytes, err := proto.Marshal(action)
+	pResp, err := putils.CreateProposalResponse(pb.Header_CHAINCODE, prop, ccevent, simulationResult, endorsement)
 	if err != nil {
 		return nil, err
 	}
 
 	//TODO when we have additional field in response, use "resp" bytes from the simulation
-	resp := &pb.Response2{Status: 200, Message: "Proposal accepted", Payload: payload}
+	pResp.Response = &pb.Response2{Status: 200, Message: "Proposal accepted", Payload: payload}
 
-	return &pb.ProposalResponse{Response: resp, ActionBytes: actionBytes, Endorsement: endorsement}, nil
+	return pResp, nil
 }

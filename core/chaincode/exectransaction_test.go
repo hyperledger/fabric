@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/membersrvc/ca"
 	pb "github.com/hyperledger/fabric/protos"
+	putils "github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/spf13/viper"
@@ -178,17 +179,10 @@ func endTxSimulation(txsim ledger.TxSimulator, payload []byte, commit bool) erro
 			if txSimulationResults, err = txsim.GetTxSimulationResults(); err != nil {
 				return err
 			}
-			//create action bytes
-			action := &pb.Action{ProposalHash: util.ComputeCryptoHash([]byte("dummyProposal")), SimulationResult: txSimulationResults}
-			actionBytes, err := proto.Marshal(action)
+			tx, err := putils.CreateTx(pb.Header_CHAINCODE, util.ComputeCryptoHash([]byte("dummyProposal")), []byte("dummyCCEvents"), txSimulationResults, []*pb.Endorsement{&pb.Endorsement{}})
 			if err != nil {
 				return err
 			}
-			//create transaction with endorsed actions
-			tx := &pb.Transaction2{}
-			tx.EndorsedActions = []*pb.EndorsedAction{
-				&pb.EndorsedAction{ActionBytes: actionBytes, Endorsements: []*pb.Endorsement{&pb.Endorsement{Signature: []byte("--Endorsement signature--")}}, ProposalBytes: []byte{}}}
-
 			txBytes, err := proto.Marshal(tx)
 			if err != nil {
 				return err
