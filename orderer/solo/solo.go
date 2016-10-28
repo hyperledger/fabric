@@ -20,6 +20,8 @@ import (
 	"time"
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 
 	"github.com/op/go-logging"
@@ -38,10 +40,10 @@ type server struct {
 }
 
 // New creates a ab.AtomicBroadcastServer based on the solo orderer implementation
-func New(queueSize, batchSize, maxWindowSize int, batchTimeout time.Duration, rl rawledger.ReadWriter, grpcServer *grpc.Server) ab.AtomicBroadcastServer {
+func New(queueSize, batchSize, maxWindowSize int, batchTimeout time.Duration, rl rawledger.ReadWriter, grpcServer *grpc.Server, filters *broadcastfilter.RuleSet, configManager configtx.Manager) ab.AtomicBroadcastServer {
 	logger.Infof("Starting solo with queueSize=%d, batchSize=%d batchTimeout=%v and ledger=%T", queueSize, batchSize, batchTimeout, rl)
 	s := &server{
-		bs: newBroadcastServer(queueSize, batchSize, batchTimeout, rl),
+		bs: newBroadcastServer(queueSize, batchSize, batchTimeout, rl, filters, configManager),
 		ds: newDeliverServer(rl, maxWindowSize),
 	}
 	ab.RegisterAtomicBroadcastServer(grpcServer, s)

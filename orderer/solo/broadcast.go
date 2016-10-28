@@ -21,34 +21,39 @@ import (
 
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type broadcastServer struct {
-	queueSize    int
-	batchSize    int
-	batchTimeout time.Duration
-	rl           rawledger.Writer
-	filter       *broadcastfilter.RuleSet
-	sendChan     chan *ab.BroadcastMessage
-	exitChan     chan struct{}
+	queueSize     int
+	batchSize     int
+	batchTimeout  time.Duration
+	rl            rawledger.Writer
+	filter        *broadcastfilter.RuleSet
+	configManager configtx.Manager
+	sendChan      chan *ab.BroadcastMessage
+	exitChan      chan struct{}
 }
 
-func newBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer) *broadcastServer {
-	bs := newPlainBroadcastServer(queueSize, batchSize, batchTimeout, rl)
+func newBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *broadcastServer {
+	bs := newPlainBroadcastServer(queueSize, batchSize, batchTimeout, rl, filters, configManager)
 	go bs.main()
 	return bs
 }
 
-func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer) *broadcastServer {
+func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *broadcastServer {
 	bs := &broadcastServer{
-		queueSize:    queueSize,
-		batchSize:    batchSize,
-		batchTimeout: batchTimeout,
-		rl:           rl,
-		filter:       broadcastfilter.NewRuleSet([]broadcastfilter.Rule{broadcastfilter.EmptyRejectRule, broadcastfilter.AcceptRule}),
-		sendChan:     make(chan *ab.BroadcastMessage),
-		exitChan:     make(chan struct{}),
+		queueSize:     queueSize,
+		batchSize:     batchSize,
+		batchTimeout:  batchTimeout,
+		rl:            rl,
+		filter:        filters,
+		configManager: configManager,
+		sendChan:      make(chan *ab.BroadcastMessage),
+		exitChan:      make(chan struct{}),
 	}
 	return bs
 }
@@ -59,41 +64,64 @@ func (bs *broadcastServer) halt() {
 
 func (bs *broadcastServer) main() {
 	var curBatch []*ab.BroadcastMessage
-outer:
-	for {
-		timer := time.After(bs.batchTimeout)
-		for {
-			select {
-			case msg := <-bs.sendChan:
-				// The messages must be filtered a second time in case configuration has changed since the message was received
-				action, _ := bs.filter.Apply(msg)
-				switch action {
-				case broadcastfilter.Accept:
-					curBatch = append(curBatch, msg)
-					if len(curBatch) < bs.batchSize {
-						continue
-					}
-					logger.Debugf("Batch size met, creating block")
-				case broadcastfilter.Forward:
-					logger.Debugf("Ignoring message because it was not accepted by a filter")
-				default:
-					// TODO add support for other cases, unreachable for now
-					logger.Fatalf("NOT IMPLEMENTED YET")
-				}
-			case <-timer:
-				if len(curBatch) == 0 {
-					continue outer
-				}
-				logger.Debugf("Batch timer expired, creating block")
-			case <-bs.exitChan:
-				logger.Debugf("Exiting")
-				return
-			}
-			break
-		}
+	var timer <-chan time.Time
 
+	cutBatch := func() {
 		bs.rl.Append(curBatch, nil)
 		curBatch = nil
+		timer = nil
+	}
+
+	for {
+		select {
+		case msg := <-bs.sendChan:
+			// The messages must be filtered a second time in case configuration has changed since the message was received
+			action, _ := bs.filter.Apply(msg)
+			switch action {
+			case broadcastfilter.Accept:
+				curBatch = append(curBatch, msg)
+
+				if len(curBatch) >= bs.batchSize {
+					logger.Debugf("Batch size met, creating block")
+					cutBatch()
+				} else if len(curBatch) == 1 {
+					// If this is the first request in a batch, start the batch timer
+					timer = time.After(bs.batchTimeout)
+				}
+			case broadcastfilter.Reconfigure:
+				// TODO, this is unmarshaling for a second time, we need a cleaner interface, maybe Apply returns a second arg with thing to put in the batch
+				newConfig := &ab.ConfigurationEnvelope{}
+				if err := proto.Unmarshal(msg.Data, newConfig); err != nil {
+					logger.Errorf("A change was flagged as configuration, but could not be unmarshaled: %v", err)
+					continue
+				}
+				err := bs.configManager.Apply(newConfig)
+				if err != nil {
+					logger.Warningf("A configuration change made it through the ingress filter but could not be included in a batch: %v", err)
+					continue
+				}
+
+				logger.Debugf("Configuration change applied successfully, committing previous block and configuration block")
+				cutBatch()
+				bs.rl.Append([]*ab.BroadcastMessage{msg}, nil)
+			case broadcastfilter.Reject:
+				fallthrough
+			case broadcastfilter.Forward:
+				logger.Debugf("Ignoring message because it was not accepted by a filter")
+			default:
+				logger.Fatalf("Received an unknown rule response: %v", action)
+			}
+		case <-timer:
+			if len(curBatch) == 0 {
+				logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
+				continue
+			}
+			logger.Debugf("Batch timer expired, creating block")
+			cutBatch()
+		case <-bs.exitChan:
+			logger.Debugf("Exiting")
+			return
+		}
 	}
 }
 
@@ -139,6 +167,8 @@ func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastSer
 		action, _ := b.bs.filter.Apply(msg)
 
 		switch action {
+		case broadcastfilter.Reconfigure:
+			fallthrough
 		case broadcastfilter.Accept:
 			select {
 			case b.queue <- msg:
@@ -151,8 +181,7 @@ func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastSer
 		case broadcastfilter.Reject:
 			err = srv.Send(&ab.BroadcastResponse{ab.Status_BAD_REQUEST})
 		default:
-			// TODO add support for other cases, unreachable for now
-			logger.Fatalf("NOT IMPLEMENTED YET")
+			logger.Fatalf("Unknown filter action :%v", action)
 		}
 
 		if err != nil {

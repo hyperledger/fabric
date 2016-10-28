@@ -28,6 +28,8 @@ import (
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"github.com/hyperledger/fabric/orderer/common/broadcastfilter/configfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/policies"
 	"github.com/hyperledger/fabric/orderer/config"
@@ -119,6 +121,14 @@ func bootstrapConfigManager(lastConfigTx *ab.ConfigurationEnvelope) configtx.Man
 	return configManager
 }
 
+func createBroadcastRuleset(configManager configtx.Manager) *broadcastfilter.RuleSet {
+	return broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
+		broadcastfilter.EmptyRejectRule,
+		configfilter.New(configManager),
+		broadcastfilter.AcceptRule,
+	})
+}
+
 func launchSolo(conf *config.TopLevel) {
 	grpcServer := grpc.NewServer()
 
@@ -175,7 +185,15 @@ func launchSolo(conf *config.TopLevel) {
 	// XXX actually use the config manager in the future
 	_ = configManager
 
-	solo.New(int(conf.General.QueueSize), int(conf.General.BatchSize), int(conf.General.MaxWindowSize), conf.General.BatchTimeout, rawledger, grpcServer)
+	solo.New(int(conf.General.QueueSize),
+		int(conf.General.BatchSize),
+		int(conf.General.MaxWindowSize),
+		conf.General.BatchTimeout,
+		rawledger,
+		grpcServer,
+		createBroadcastRuleset(configManager),
+		configManager,
+	)
 	grpcServer.Serve(lis)
 }
 
