@@ -61,13 +61,10 @@ type SBFT struct {
 	batchTimer        Canceller
 	cur               reqInfo
 	activeView        bool
-	viewchange        map[uint64]*viewChangeInfo
-	newview           map[uint64]*NewView
 	lastNewViewSent   uint64
 	viewChangeTimeout time.Duration
 	viewChangeTimer   Canceller
-
-	backLog map[uint64][]*Msg
+	replicaState      []replicaInfo
 }
 
 type reqInfo struct {
@@ -82,9 +79,12 @@ type reqInfo struct {
 	checkpointDone bool
 }
 
-type viewChangeInfo struct {
-	svc *Signed
-	vc  *ViewChange
+type replicaInfo struct {
+	backLog          []*Msg
+	hello            *Batch
+	signedViewchange *Signed
+	viewchange       *ViewChange
+	newview          *NewView
 }
 
 var log = logging.MustGetLogger("sbft")
@@ -103,10 +103,8 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 		config:          *config,
 		sys:             sys,
 		id:              id,
-		viewchange:      make(map[uint64]*viewChangeInfo),
-		newview:         make(map[uint64]*NewView),
 		viewChangeTimer: dummyCanceller{},
-		backLog:         make(map[uint64][]*Msg),
+		replicaState:    make([]replicaInfo, config.N),
 	}
 	s.sys.SetReceiver(s)
 

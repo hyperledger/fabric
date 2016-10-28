@@ -29,10 +29,10 @@ func (s *SBFT) maybeSendNewView() {
 	vset := make(map[uint64]*Signed)
 	var vcs []*ViewChange
 
-	for src, vc := range s.viewchange {
-		if vc.vc.View == s.seq.View {
-			vset[src] = vc.svc
-			vcs = append(vcs, vc.vc)
+	for src, state := range s.replicaState {
+		if state.viewchange != nil && state.viewchange.View == s.seq.View {
+			vset[uint64(src)] = state.signedViewchange
+			vcs = append(vcs, state.viewchange)
 		}
 	}
 
@@ -73,7 +73,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	if onv, ok := s.newview[s.primaryIDView(nv.View)]; ok && onv.View >= nv.View {
+	if onv := s.replicaState[s.primaryIDView(nv.View)].newview; onv != nil && onv.View >= nv.View {
 		log.Debugf("discarding duplicate new view for %d", nv.View)
 		return
 	}
@@ -128,7 +128,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	s.newview[s.primaryIDView(nv.View)] = nv
+	s.replicaState[s.primaryIDView(nv.View)].newview = nv
 
 	s.processNewView()
 }
@@ -138,8 +138,8 @@ func (s *SBFT) processNewView() {
 		return
 	}
 
-	nv, ok := s.newview[s.primaryIDView(s.seq.View)]
-	if !ok || nv.View != s.seq.View {
+	nv := s.replicaState[s.primaryIDView(s.seq.View)].newview
+	if nv == nil || nv.View != s.seq.View {
 		return
 	}
 

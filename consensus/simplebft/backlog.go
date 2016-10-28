@@ -17,7 +17,7 @@ limitations under the License.
 package simplebft
 
 func (s *SBFT) testBacklog(m *Msg, src uint64) bool {
-	if len(s.backLog[src]) > 0 {
+	if len(s.replicaState[src].backLog) > 0 {
 		return true
 	}
 
@@ -66,7 +66,7 @@ func (s *SBFT) recordBacklogMsg(m *Msg, src uint64) {
 	// to make progress, the backlog processing algorithm as lined
 	// out below will take care of starting a state transfer,
 	// using the hello message we received on reconnect.
-	s.backLog[src] = append(s.backLog[src], m)
+	s.replicaState[src].backLog = append(s.replicaState[src].backLog, m)
 }
 
 func (s *SBFT) processBacklog() {
@@ -75,14 +75,17 @@ func (s *SBFT) processBacklog() {
 
 	for processed {
 		processed = false
-		for src := range s.backLog {
-			for len(s.backLog[src]) > 0 {
-				m, rest := s.backLog[src][0], s.backLog[src][1:]
+		for src := range s.replicaState {
+			state := &s.replicaState[src]
+			src := uint64(src)
+
+			for len(state.backLog) > 0 {
+				m, rest := state.backLog[0], state.backLog[1:]
 				if s.testBacklog2(m, src) {
 					notReady++
 					break
 				}
-				s.backLog[src] = rest
+				state.backLog = rest
 
 				log.Debugf("processing stored message from %d: %s", src, m)
 
