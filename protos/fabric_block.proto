@@ -18,29 +18,9 @@ syntax = "proto3";
 
 package protos;
 
-// A Message encapsulates a payload of the indicated type in this message.
-message Message {
-
-	enum Type {
-
-	    // Undefined exists to prevent invalid message construction.
-	    UNDEFINED = 0;
-
-	    // Handshake messages.
-	    DISCOVERY = 1;
-
-	    // Sent to catch up with existing peers.
-	    SYNC = 2;
-	}
-
-	// Type of this message.
-	Type type = 1;
-
-	// Version indicates message protocol version.
-	int32 version = 2;
-
-	// The payload in this message. The way it should be unmarshaled
-	// depends in the type field
-	bytes payload = 3;
-
+// Block contains a list of transactions and the crypto hash of previous block
+message Block2 {
+	bytes PreviousBlockHash = 1;
+	// transactions are stored in serialized form so that the concenters can avoid marshaling of transactions
+	repeated bytes Transactions = 2;
 }

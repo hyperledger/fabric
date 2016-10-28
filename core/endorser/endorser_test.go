@@ -31,8 +31,8 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	u "github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
+	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -116,14 +116,7 @@ func closeListenerAndSleep(l net.Listener) {
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
 func getProposal(cis *pb.ChaincodeInvocationSpec) (*pb.Proposal, error) {
-	b, err := proto.Marshal(cis)
-	if err != nil {
-		return nil, err
-	}
-
-	prop := &pb.Proposal{Type: pb.Proposal_CHAINCODE, Id: u.GenerateUUID(), Payload: b}
-
-	return prop, nil
+	return pbutils.CreateChaincodeProposal(cis)
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment

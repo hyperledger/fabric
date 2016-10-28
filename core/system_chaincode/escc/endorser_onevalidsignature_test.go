@@ -61,9 +61,8 @@ func TestInvoke(t *testing.T) {
 }
 
 func mockAction() []byte {
-	action := &pb.Action{}
-	action.ProposalHash = []byte("123")
-	action.SimulationResult = []byte("read-write set")
+	action := &pb.ChaincodeAction{}
+	action.Results = []byte("read-write set")
 	payload, _ := proto.Marshal(action)
 	return payload
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt/couchdb"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
 	"github.com/hyperledger/fabric/protos"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
 )
@@ -120,30 +121,27 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *protos.Block2) (*protos.Blo
 		if err != nil {
 			return nil, nil, err
 		}
-		numEndorsements := len(tx.EndorsedActions)
+		numEndorsements := len(tx.Actions)
 		if numEndorsements == 0 {
-			return nil, nil, fmt.Errorf("Tx contains no EndorsedActions")
+			return nil, nil, fmt.Errorf("Tx contains no TransactionActions")
 		}
 
-		// Eventually we'll want to support multiple EndorsedActions in a tran, see FAB-445
-		// But for now, we'll return an error if there are multiple EndorsedActions
+		// Eventually we'll want to support multiple TransactionActions in a tran, see FAB-445
+		// But for now, we'll return an error if there are multiple TransactionActions
 		if numEndorsements > 1 {
-			return nil, nil, fmt.Errorf("Tx contains more than one [%d] EndorsedActions", numEndorsements)
+			return nil, nil, fmt.Errorf("Tx contains more than one [%d] TransactionActions", numEndorsements)
 		}
 
-		// Get the actionBytes from the EndorsedAction
-		// and then Unmarshal it into an Action using protobuf unmarshalling
-		action := &protos.Action{}
-		actionBytes := tx.EndorsedActions[0].ActionBytes
-		err = proto.Unmarshal(actionBytes, action)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// Get the SimulationResult from the Action
-		// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
+		//preparation for extracting RWSet from transaction
 		txRWSet := &txmgmt.TxReadWriteSet{}
-		if err = txRWSet.Unmarshal(action.SimulationResult); err != nil {
+
+		//----- NOTE: should Ledger be in the biz of
+		//understanding payload type ?
+		_, respPayload, err := putils.GetPayloads(tx.Actions[0])
+
+		// Get the Result from the Action
+		// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
+		if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
 			return nil, nil, err
 		}
 

@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos"
+	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
 // App - a sample fund transfer app
@@ -111,12 +112,7 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 }
 
 func constructTransaction(simulationResults []byte) *protos.Transaction2 {
-	action := &protos.Action{ProposalHash: []byte{}, SimulationResult: simulationResults}
-	actionBytes, _ := proto.Marshal(action)
-
-	tx := &protos.Transaction2{}
-	tx.EndorsedActions = []*protos.EndorsedAction{
-		&protos.EndorsedAction{ActionBytes: actionBytes, Endorsements: []*protos.Endorsement{}, ProposalBytes: []byte{}}}
+	tx, _ := putils.CreateTx(protos.Header_CHAINCODE, nil, nil, simulationResults, []*protos.Endorsement{})
 	return tx
 }
 

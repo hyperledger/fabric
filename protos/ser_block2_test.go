@@ -25,9 +25,9 @@ import (
 
 func TestSerBlock2(t *testing.T) {
 	tx1 := &Transaction2{}
-	tx1.EndorsedActions = []*EndorsedAction{
-		&EndorsedAction{[]byte("action1"), []*Endorsement{&Endorsement{[]byte("signature1")}}, []byte("proposal1")},
-		&EndorsedAction{[]byte("action2"), []*Endorsement{&Endorsement{[]byte("signature1")}, &Endorsement{[]byte("signature2")}}, []byte("proposal1")}}
+	tx1.Actions = []*TransactionAction{
+		&TransactionAction{Header: []byte("action1"), Payload: []byte("payload1")},
+		&TransactionAction{Header: []byte("action2"), Payload: []byte("payload2")}}
 
 	tx1Bytes, err := proto.Marshal(tx1)
 	if err != nil {
@@ -35,9 +35,9 @@ func TestSerBlock2(t *testing.T) {
 	}
 
 	tx2 := &Transaction2{}
-	tx2.EndorsedActions = []*EndorsedAction{
-		&EndorsedAction{[]byte("action1"), []*Endorsement{&Endorsement{[]byte("signature1")}}, []byte("proposal1")},
-		&EndorsedAction{[]byte("action2"), []*Endorsement{&Endorsement{[]byte("signature2")}}, []byte("proposal1")}}
+	tx2.Actions = []*TransactionAction{
+		&TransactionAction{Header: []byte("action1"), Payload: []byte("payload1")},
+		&TransactionAction{Header: []byte("action2"), Payload: []byte("payload2")}}
 
 	tx2Bytes, err := proto.Marshal(tx2)
 	if err != nil {

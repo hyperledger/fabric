@@ -39,19 +39,21 @@ func createTx(typ pb.Transaction_Type, ccname string, args [][]byte) (*pb.Transa
 }
 
 func getCDSFromLCCC(ctxt context.Context, chainID string, chaincodeID string) ([]byte, error) {
-	return ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, string(DefaultChain), "lccc", [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+	payload, _, err := ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, string(DefaultChain), "lccc", [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+	return payload, err
 }
 
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments
-func ExecuteChaincode(ctxt context.Context, typ pb.Transaction_Type, chainname string, ccname string, args [][]byte) ([]byte, error) {
+func ExecuteChaincode(ctxt context.Context, typ pb.Transaction_Type, chainname string, ccname string, args [][]byte) ([]byte, *pb.ChaincodeEvent, error) {
 	var tx *pb.Transaction
 	var err error
 	var b []byte
+	var ccevent *pb.ChaincodeEvent
 
 	tx, err = createTx(typ, ccname, args)
-	b, _, err = Execute(ctxt, GetChain(ChainName(chainname)), tx)
+	b, ccevent, err = Execute(ctxt, GetChain(ChainName(chainname)), tx)
 	if err != nil {
-		return nil, fmt.Errorf("Error deploying chaincode: %s", err)
+		return nil, nil, fmt.Errorf("Error deploying chaincode: %s", err)
 	}
-	return b, err
+	return b, ccevent, err
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
+	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
 func createChaincodeSpec(ccType string, path string, args [][]byte) *pb.ChaincodeSpec {
@@ -47,11 +48,6 @@ func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymen
 		ChaincodeID: &pb.ChaincodeID{Name: "lccc"},
 		CtorMsg:     &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), ccDeploymentSpecBytes}}}
 	lcChaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: lcChaincodeSpec}
-	var ccLifecycleChaincodeInvocationSpecBytes []byte
-	if ccLifecycleChaincodeInvocationSpecBytes, err = proto.Marshal(lcChaincodeInvocationSpec); err != nil {
-		return nil, fmt.Errorf("Error creating proposal from ChaincodeDeploymentSpec:  %s", err)
-	}
 	// make proposal
-	proposal = &pb.Proposal{Type: pb.Proposal_CHAINCODE, Id: createPropsalID(), Payload: ccLifecycleChaincodeInvocationSpecBytes}
-	return proposal, nil
+	return putils.CreateChaincodeProposal(lcChaincodeInvocationSpec)
 }

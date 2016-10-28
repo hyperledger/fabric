@@ -26,10 +26,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core"
-	u "github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
 	pb "github.com/hyperledger/fabric/protos"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -38,14 +38,7 @@ import (
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
 func getProposal(cis *pb.ChaincodeInvocationSpec) (*pb.Proposal, error) {
-	b, err := proto.Marshal(cis)
-	if err != nil {
-		return nil, err
-	}
-
-	prop := &pb.Proposal{Type: pb.Proposal_CHAINCODE, Id: u.GenerateUUID(), Payload: b}
-
-	return prop, nil
+	return putils.CreateChaincodeProposal(cis)
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment
@@ -277,13 +270,9 @@ func sendTransaction(presp *pb.ProposalResponse) error {
 		if presp.Response.Status != 200 {
 			return fmt.Errorf("Proposal response erred with status %d", presp.Response.Status)
 		}
-		//create a tx with ActionBytes and Endorsements and send it out
-		if presp.ActionBytes != nil {
-			var b []byte
-			tx := &pb.Transaction2{}
-			tx.EndorsedActions = []*pb.EndorsedAction{
-				&pb.EndorsedAction{ActionBytes: presp.ActionBytes, Endorsements: []*pb.Endorsement{presp.Endorsement}, ProposalBytes: []byte{}}}
-			b, err = proto.Marshal(tx)
+		if presp.Payload != nil {
+			tx, err := putils.CreateTxFromProposalResponse(presp)
+			b, err := proto.Marshal(tx)
 			if err != nil {
 				return err
 			}
