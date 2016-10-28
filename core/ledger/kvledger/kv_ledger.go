@@ -62,6 +62,9 @@ type KVLedger struct {
 
 // NewKVLedger constructs new `KVLedger`
 func NewKVLedger(conf *Conf) (*KVLedger, error) {
+
+	logger.Debugf("Creating KVLedger using config: ", conf)
+
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockHash,
 		blkstorage.IndexableAttrBlockNum,
@@ -153,9 +156,13 @@ func (l *KVLedger) Commit() error {
 	if l.pendingBlockToCommit == nil {
 		panic(fmt.Errorf(`Nothing to commit. RemoveInvalidTransactionsAndPrepare() method should have been called and should not have thrown error`))
 	}
+
+	logger.Debugf("Committing block to storage")
 	if err := l.blockStore.AddBlock(l.pendingBlockToCommit); err != nil {
 		return err
 	}
+
+	logger.Debugf("Committing block to state database")
 	if err := l.txtmgmt.Commit(); err != nil {
 		panic(fmt.Errorf(`Error during commit to txmgr:%s`, err))
 	}

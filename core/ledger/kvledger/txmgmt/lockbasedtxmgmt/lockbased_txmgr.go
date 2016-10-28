@@ -131,7 +131,16 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *protos.Block2) (*protos.B
 			return nil, nil, err
 		}
 
-		logger.Debugf("validating txRWSet:[%s]", txRWSet)
+		// trace the first 2000 characters of RWSet only, in case it is huge
+		if logger.IsEnabledFor(logging.DEBUG) {
+			txRWSetString := txRWSet.String()
+			if len(txRWSetString) < 2000 {
+				logger.Debugf("validating txRWSet:[%s]", txRWSetString)
+			} else {
+				logger.Debugf("validating txRWSet:[%s...]", txRWSetString[0:2000])
+			}
+		}
+
 		if valid, err = txmgr.validateTx(txRWSet); err != nil {
 			return nil, nil, err
 		}
@@ -155,7 +164,17 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 }
 
 func (txmgr *LockBasedTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, error) {
-	logger.Debugf("Validating txRWSet:%s", txRWSet)
+
+	// trace the first 2000 characters of RWSet only, in case it is huge
+	if logger.IsEnabledFor(logging.DEBUG) {
+		txRWSetString := txRWSet.String()
+		if len(txRWSetString) < 2000 {
+			logger.Debugf("Validating txRWSet:%s", txRWSetString)
+		} else {
+			logger.Debugf("Validating txRWSet:%s...", txRWSetString[0:2000])
+		}
+	}
+
 	var err error
 	var currentVersion uint64
 
