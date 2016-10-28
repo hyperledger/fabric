@@ -87,7 +87,7 @@ func ExactWithDateUnmarshal(v *viper.Viper, output interface{}) error {
 	baseKeys := v.AllSettings() // AllKeys doesn't actually return all keys, it only returns the base ones
 	leafKeys := getKeysRecursively("", v, baseKeys)
 
-	logger.Infof("%+v", leafKeys)
+	logger.Debugf("%+v", leafKeys)
 	config := &mapstructure.DecoderConfig{
 		ErrorUnused:      true,
 		Metadata:         nil,
