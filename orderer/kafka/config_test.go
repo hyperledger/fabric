@@ -38,7 +38,7 @@ var (
 var testConf = &config.TopLevel{
 	General: config.General{
 		OrdererType:   "kafka",
-		BatchTimeout:  2 * time.Second,
+		BatchTimeout:  500 * time.Millisecond,
 		BatchSize:     100,
 		QueueSize:     100,
 		MaxWindowSize: 100,
