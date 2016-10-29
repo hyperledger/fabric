@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/hyperledger/fabric/core/peer"
 )
 
 var devopsLogger = logging.MustGetLogger("devops")
