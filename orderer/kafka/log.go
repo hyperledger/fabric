@@ -28,7 +28,7 @@ var logger *logging.Logger
 func init() {
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
 	logging.SetBackend(backend)
-	formatter := logging.MustStringFormatter("[%{time:15:04:05}] %{shortfile:18s}: %{color}[%{level:-5s}]%{color:reset} %{message}")
+	formatter := logging.MustStringFormatter("[%{time:15:04:05.000}] %{shortfile:18s}: %{color}[%{level:-5s}]%{color:reset} %{message}")
 	logging.SetFormatter(formatter)
 	logger = logging.MustGetLogger("orderer/kafka")
 	logging.SetLevel(logging.INFO, "") // Silence debug-level outputs when testing
