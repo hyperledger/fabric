@@ -1,0 +1,163 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package state
+
+import (
+	"fmt"
+	"github.com/hyperledger/fabric/gossip/proto"
+	"strconv"
+	"sync"
+	"sync/atomic"
+)
+
+// PayloadsBuffer is used to store payloads into which used to
+// support payloads with blocks reordering according to the
+// sequence numbers. It also will provide the capability
+// to signal whenever expected block has arrived.
+type PayloadsBuffer interface {
+	// Adds new block into the buffer
+	Push(payload *proto.Payload) error
+
+	// Returns next expected sequence number
+	Next() uint64
+
+	// Remove and return payload with given sequence number
+	Pop() *proto.Payload
+
+	// Get current buffer size
+	Size() int
+
+	// Minimum available seq number
+	MinAvail() (uint64, error)
+
+	// Channel to indicate event when new payload pushed with sequence
+	// number equal to the next expected value.
+	Ready() chan struct{}
+}
+
+// PayloadsBufferImpl structure to implement PayloadsBuffer interface
+// store inner state of available payloads and sequence numbers
+type PayloadsBufferImpl struct {
+	buf       map[uint64]*proto.Payload
+
+	minQueue  []uint64
+
+	next      uint64
+
+	readyChan chan struct{}
+
+	mutex     sync.RWMutex
+}
+
+// NewPayloadsBuffer is factory function to create new payloads buffer
+func NewPayloadsBuffer(next uint64) PayloadsBuffer {
+	return &PayloadsBufferImpl{
+		buf:       make(map[uint64]*proto.Payload),
+		minQueue:  make([]uint64, 0),
+		readyChan: make(chan struct{}),
+		next:      next,
+	}
+}
+
+// Ready function returns the channel which indicates whenever expected
+// next block has arrived and one could safely pop out
+// next sequence of blocks
+func (b *PayloadsBufferImpl) Ready() chan struct{} {
+	return b.readyChan
+}
+
+// Push new payload into the buffer structure in case new arrived payload
+// sequence number is below the expected next block number payload will be
+// thrown away and error will be returned.
+func (b *PayloadsBufferImpl) Push(payload *proto.Payload) error {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	seqNum := payload.SeqNum
+
+	if seqNum < b.next || b.buf[seqNum] != nil {
+		return fmt.Errorf("Payload with sequence number = %s has been already processed",
+			strconv.FormatUint(payload.SeqNum, 10))
+	}
+
+	b.buf[seqNum] = payload
+
+	lenMinQueue := len(b.minQueue)
+	if lenMinQueue == 0 {
+		// New element to insert
+		b.minQueue = append(b.minQueue, seqNum)
+	} else {
+		if b.minQueue[lenMinQueue - 1] > seqNum {
+			// in case new sequence number is lower than
+			// available one add it to the queue
+			b.minQueue = append(b.minQueue, seqNum)
+		}
+	}
+
+	// Send notification that next sequence has arrived
+	if seqNum == b.next {
+		// Do not block execution of current routine
+		go func() {
+			b.readyChan <- struct{}{}
+		}()
+	}
+	return nil
+}
+
+// Next function provides the number of the next expected block
+func (b *PayloadsBufferImpl) Next() uint64 {
+	// Atomically read the value of the top sequence number
+	return atomic.LoadUint64(&b.next)
+}
+
+// Pop function extracts the payload according to the next expected block
+// number, if no next block arrived yet, function returns nil.
+func (b *PayloadsBufferImpl) Pop() *proto.Payload {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	result := b.buf[b.Next()]
+
+	if result != nil {
+		// If there is such sequence in the buffer need to delete it
+		delete(b.buf, b.Next())
+		b.minQueue = b.minQueue[:len(b.minQueue) - 1]
+		// Increment next expect block index
+		atomic.AddUint64(&b.next, 1)
+	}
+	return result
+}
+
+// Size returns current number of payloads stored within buffer
+func (b *PayloadsBufferImpl) Size() int {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	return len(b.buf)
+}
+
+// MinAvail returns minimum available payload sequence number, if no payloads
+// within buffer results with error "Empty buffer".
+func (b *PayloadsBufferImpl) MinAvail() (uint64, error) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if len(b.buf) == 0 {
+		return ^uint64(0), fmt.Errorf("Empty buffer")
+	}
+
+	return b.minQueue[len(b.minQueue) - 1], nil
+}
