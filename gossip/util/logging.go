@@ -18,16 +18,22 @@ package util
 
 import (
 	"fmt"
-	"github.com/op/go-logging"
+	"io/ioutil"
+	"log"
 	"os"
 	"sync"
+
+	"github.com/op/go-logging"
+
+	"google.golang.org/grpc/grpclog"
 )
 
 const (
 	LOGGING_MESSAGE_BUFF_MODULE = "mbuff"
 	LOGGING_EMITTER_MODULE      = "emitter"
-	LOGGING_GOSMEMBER_MODULE    = "gossip"
+	LOGGING_GOSSIP_MODULE       = "gossip"
 	LOGGING_DISCOVERY_MODULE    = "discovery"
+	LOGGING_COMM_MODULE         = "comm"
 )
 
 var loggersByModules = make(map[string]*Logger)
@@ -35,11 +41,12 @@ var defaultLevel = logging.WARNING
 var lock = sync.Mutex{}
 
 var format = logging.MustStringFormatter(
-	`%{color}%{level} %{longfunc}():%{color:reset}(%{module})%{message}`,
+	`%{color} %{level} %{longfunc}():%{color:reset}(%{module})%{message}`,
 )
 
 func init() {
 	logging.SetFormatter(format)
+	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 }
 
 type Logger struct {
