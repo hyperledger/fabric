@@ -62,8 +62,8 @@ type DBInfo struct {
 	InstanceStartTime string `json:"instance_start_time"`
 }
 
-// DBConnectionDef contains parameters
-type DBConnectionDef struct {
+// CouchDBConnectionDef contains parameters
+type CouchDBConnectionDef struct {
 	URL      string
 	Username string
 	Password string
@@ -78,7 +78,7 @@ type CouchDBReturn struct {
 }
 
 //CreateConnectionDefinition for a new client connection
-func CreateConnectionDefinition(host string, port int, databaseName, username, password string) (*DBConnectionDef, error) {
+func CreateConnectionDefinition(host string, port int, databaseName, username, password string) (*CouchDBConnectionDef, error) {
 
 	logger.Debugf("===COUCHDB=== Entering CreateConnectionDefinition()")
 
@@ -94,6 +94,7 @@ func CreateConnectionDefinition(host string, port int, databaseName, username, p
 	//parse the constructed URL to verify no errors
 	finalURL, err := url.Parse(urlConcat)
 	if err != nil {
+		logger.Errorf("===COUCHDB=== URL parse error: %s", err.Error())
 		return nil, err
 	}
 
@@ -102,11 +103,11 @@ func CreateConnectionDefinition(host string, port int, databaseName, username, p
 	logger.Debugf("===COUCHDB=== Exiting CreateConnectionDefinition()")
 
 	//return an object containing the connection information
-	return &DBConnectionDef{finalURL.String(), username, password, databaseName}, nil
+	return &CouchDBConnectionDef{finalURL.String(), username, password, databaseName}, nil
 }
 
 //CreateDatabaseIfNotExist method provides function to create database
-func (dbclient *DBConnectionDef) CreateDatabaseIfNotExist() (*DBOperationResponse, error) {
+func (dbclient *CouchDBConnectionDef) CreateDatabaseIfNotExist() (*DBOperationResponse, error) {
 
 	logger.Debugf("===COUCHDB=== Entering CreateDatabaseIfNotExist()")
 
@@ -154,7 +155,7 @@ func (dbclient *DBConnectionDef) CreateDatabaseIfNotExist() (*DBOperationRespons
 }
 
 //GetDatabaseInfo method provides function to retrieve database information
-func (dbclient *DBConnectionDef) GetDatabaseInfo() (*DBInfo, *CouchDBReturn, error) {
+func (dbclient *CouchDBConnectionDef) GetDatabaseInfo() (*DBInfo, *CouchDBReturn, error) {
 
 	url := fmt.Sprintf("%s/%s", dbclient.URL, dbclient.Database)
 
@@ -167,12 +168,20 @@ func (dbclient *DBConnectionDef) GetDatabaseInfo() (*DBInfo, *CouchDBReturn, err
 	dbResponse := &DBInfo{}
 	json.NewDecoder(resp.Body).Decode(&dbResponse)
 
+	// trace the database info response
+	if logger.IsEnabledFor(logging.DEBUG) {
+		dbResponseJSON, err := json.Marshal(dbResponse)
+		if err == nil {
+			logger.Debugf("===COUCHDB=== GetDatabaseInfo() dbResponseJSON: %s", dbResponseJSON)
+		}
+	}
+
 	return dbResponse, couchDBReturn, nil
 
 }
 
 //DropDatabase provides method to drop an existing database
-func (dbclient *DBConnectionDef) DropDatabase() (*DBOperationResponse, error) {
+func (dbclient *CouchDBConnectionDef) DropDatabase() (*DBOperationResponse, error) {
 
 	logger.Debugf("===COUCHDB=== Entering DropDatabase()")
 
@@ -206,7 +215,7 @@ func (dbclient *DBConnectionDef) DropDatabase() (*DBOperationResponse, error) {
 }
 
 //SaveDoc method provides a function to save a document, id and byte array
-func (dbclient *DBConnectionDef) SaveDoc(id string, bytesDoc []byte) (string, error) {
+func (dbclient *CouchDBConnectionDef) SaveDoc(id string, bytesDoc []byte) (string, error) {
 
 	logger.Debugf("===COUCHDB=== Entering SaveDoc()")
 
@@ -246,7 +255,7 @@ func getRevisionHeader(resp *http.Response) (string, error) {
 }
 
 //ReadDoc method provides function to retrieve a document from the database by id
-func (dbclient *DBConnectionDef) ReadDoc(id string) ([]byte, string, error) {
+func (dbclient *CouchDBConnectionDef) ReadDoc(id string) ([]byte, string, error) {
 
 	logger.Debugf("===COUCHDB=== Entering ReadDoc()  id=%s", id)
 
@@ -277,7 +286,7 @@ func (dbclient *DBConnectionDef) ReadDoc(id string) ([]byte, string, error) {
 }
 
 //handleRequest method is a generic http request handler
-func (dbclient *DBConnectionDef) handleRequest(method, url string, data io.Reader) (*http.Response, *CouchDBReturn, error) {
+func (dbclient *CouchDBConnectionDef) handleRequest(method, url string, data io.Reader) (*http.Response, *CouchDBReturn, error) {
 
 	logger.Debugf("===COUCHDB=== Entering handleRequest()  method=%s  url=%s", method, url)
 

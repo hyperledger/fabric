@@ -67,11 +67,11 @@ func (u *updateSet) get(compositeKey []byte) *versionedValue {
 // CouchDBTxMgr a simple implementation of interface `txmgmt.TxMgr`.
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type CouchDBTxMgr struct {
-	db                  *db.DB
-	stateIndexCF        *gorocksdb.ColumnFamilyHandle
-	updateSet           *updateSet
-	commitRWLock        sync.RWMutex
-	couchConnectionInfo CouchConnection // COUCHDB new properties for CouchDB
+	db           *db.DB
+	stateIndexCF *gorocksdb.ColumnFamilyHandle
+	updateSet    *updateSet
+	commitRWLock sync.RWMutex
+	couchDB      *couchdb.CouchDBConnectionDef // COUCHDB new properties for CouchDB
 }
 
 // CouchConnection provides connection info for CouchDB
@@ -85,11 +85,28 @@ type CouchConnection struct {
 
 // NewCouchDBTxMgr constructs a `CouchDBTxMgr`
 func NewCouchDBTxMgr(conf *Conf, host string, port int, dbName string, id string, pw string) *CouchDBTxMgr {
-	couchConnectionInfo := CouchConnection{host: host, port: port, dbName: dbName, id: id, pw: pw}
+
+	// TODO cleanup this RocksDB handle
 	db := db.CreateDB(&db.Conf{DBPath: conf.DBPath, CFNames: []string{}})
 	db.Open()
+
+	couchDB, err := couchdb.CreateConnectionDefinition(host,
+		port,
+		dbName,
+		id,
+		pw)
+	if err != nil {
+		logger.Errorf("===COUCHDB=== Error during CreateConnectionDefinition(): %s\n", err.Error())
+	}
+
+	// Create CouchDB database upon ledger startup, if it doesn't already exist
+	_, err = couchDB.CreateDatabaseIfNotExist()
+	if err != nil {
+		logger.Errorf("===COUCHDB=== Error during CreateDatabaseIfNotExist(): %s\n", err.Error())
+	}
+
 	// db and stateIndexCF will not be used for CouchDB. TODO to cleanup
-	return &CouchDBTxMgr{db: db, stateIndexCF: db.GetDefaultCFHandle(), couchConnectionInfo: couchConnectionInfo}
+	return &CouchDBTxMgr{db: db, stateIndexCF: db.GetDefaultCFHandle(), couchDB: couchDB}
 }
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
@@ -145,7 +162,16 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *protos.Block2) (*protos.Blo
 			return nil, nil, err
 		}
 
-		logger.Debugf("validating txRWSet:[%s]", txRWSet)
+		// trace the first 2000 characters of RWSet only, in case it is huge
+		if logger.IsEnabledFor(logging.DEBUG) {
+			txRWSetString := txRWSet.String()
+			if len(txRWSetString) < 2000 {
+				logger.Debugf("validating txRWSet:[%s]", txRWSetString)
+			} else {
+				logger.Debugf("validating txRWSet:[%s...]", txRWSetString[0:2000])
+			}
+		}
+
 		if valid, err = txmgr.validateTx(txRWSet); err != nil {
 			return nil, nil, err
 		}
@@ -170,7 +196,17 @@ func (txmgr *CouchDBTxMgr) Shutdown() {
 }
 
 func (txmgr *CouchDBTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, error) {
-	logger.Debugf("Validating txRWSet:%s", txRWSet)
+
+	// trace the first 2000 characters of RWSet only, in case it is huge
+	if logger.IsEnabledFor(logging.DEBUG) {
+		txRWSetString := txRWSet.String()
+		if len(txRWSetString) < 2000 {
+			logger.Debugf("Validating txRWSet:%s", txRWSetString)
+		} else {
+			logger.Debugf("Validating txRWSet:%s...", txRWSetString[0:2000])
+		}
+	}
+
 	var err error
 	var currentVersion uint64
 
@@ -228,12 +264,6 @@ func (txmgr *CouchDBTxMgr) Commit() error {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
 
-	db, _ := couchdb.CreateConnectionDefinition(txmgr.couchConnectionInfo.host,
-		txmgr.couchConnectionInfo.port,
-		txmgr.couchConnectionInfo.dbName,
-		txmgr.couchConnectionInfo.id,
-		txmgr.couchConnectionInfo.pw)
-
 	for k, v := range txmgr.updateSet.m {
 
 		txmgr.commitRWLock.Lock()
@@ -241,7 +271,7 @@ func (txmgr *CouchDBTxMgr) Commit() error {
 		defer func() { txmgr.updateSet = nil }()
 
 		// SaveDoc using couchdb client
-		rev, err := db.SaveDoc(k, v.value)
+		rev, err := txmgr.couchDB.SaveDoc(k, v.value)
 
 		if err != nil {
 			logger.Errorf("===COUCHDB=== Error during Commit(): %s\n", err.Error())
@@ -286,13 +316,7 @@ func (txmgr *CouchDBTxMgr) getCommittedValueAndVersion(ns string, key string) ([
 	value, version := decodeValue(encodedValue)
 	*/
 
-	db, _ := couchdb.CreateConnectionDefinition(txmgr.couchConnectionInfo.host,
-		txmgr.couchConnectionInfo.port,
-		txmgr.couchConnectionInfo.dbName,
-		txmgr.couchConnectionInfo.id,
-		txmgr.couchConnectionInfo.pw)
-
-	jsonBytes, _, _ := db.ReadDoc(string(compositeKey)) // TODO add error handling
+	jsonBytes, _, _ := txmgr.couchDB.ReadDoc(string(compositeKey)) // TODO add error handling
 
 	if jsonBytes != nil {
 		jsonString := string(jsonBytes[:])
