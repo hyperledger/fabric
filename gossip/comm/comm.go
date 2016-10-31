@@ -17,38 +17,63 @@ limitations under the License.
 package comm
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/gossip/proto"
-	"sync"
+	"github.com/hyperledger/fabric/gossip/util"
 )
 
-type CommModule interface {
-	// Send sends a message to endpoints
-	Send(msg *proto.GossipMessage, endpoints ...string)
+// Comm is an object that enables to communicate with other peers
+// that also embed a CommModule.
+type Comm interface {
 
-	// SetPKIid asserts that pkiId is the PKI_id of endpoint
-	SetPKIid(endpoint, pkiId []byte)
+	// GetPKIid returns this instance's PKI id
+	GetPKIid() PKIidType
+
+	// Send sends a message to remote peers
+	Send(msg *proto.GossipMessage, peers ...*RemotePeer)
 
 	// Probe probes a remote node and returns nil if its responsive
-	Probe(endpoint string) error
+	Probe(endpoint string, pkiID PKIidType) error
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// Each message from the channel can be used to send a reply back to the sender
-	Accept(MessageAcceptor) <-chan *ReceivedMessage
+	Accept(util.MessageAcceptor) <-chan ReceivedMessage
 
 	// PresumedDead returns a read-only channel for node endpoints that are suspected to be offline
-	PresumedDead() <-chan string
+	PresumedDead() <-chan PKIidType
 
 	// CloseConn closes a connection to a certain endpoint
-	CloseConn(endpoint string)
+	CloseConn(peer *RemotePeer)
 
 	// Stop stops the module
 	Stop()
+
+	// BlackListPKIid prohibits the module communicating with the given PKIid
+	BlackListPKIid(PKIid PKIidType)
 }
 
+// PKIidType defines the type that holds the PKI-id
+// which is the security identifier of a peer
+type PKIidType []byte
+
+// RemotePeer defines a peer's endpoint and its PKIid
+type RemotePeer struct {
+	Endpoint string
+	PKIID    PKIidType
+}
+
+// String converts a RemotePeer to a string
+func (p *RemotePeer) String() string {
+	return fmt.Sprintf("%s, PKIid:%v", p.Endpoint, p.PKIID)
+}
+
+// SecurityProvider enables the communication module to perform
+// a handshake that authenticates the client to the server and vice versa
 type SecurityProvider interface {
 
 	// isEnabled returns whether this
-	isEnabled() bool
+	IsEnabled() bool
 
 	// Sign signs msg with this peers signing key and outputs
 	// the signature if no error occurred.
@@ -60,12 +85,14 @@ type SecurityProvider interface {
 	Verify(vkID, signature, message []byte) error
 }
 
+// ReceivedMessage is a GossipMessage wrapper that
+// enables the user to send a message to the origin from which
+// the ReceivedMessage was sent from
+type ReceivedMessage interface {
 
-type MessageAcceptor func(*proto.GossipMessage) bool
+	// Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
+	Respond(msg *proto.GossipMessage)
 
-type ReceivedMessage struct {
-	*proto.GossipMessage
-	lock      *sync.Mutex
-	srvStream proto.Gossip_GossipStreamServer
-	clStream  proto.Gossip_GossipStreamClient
+	// GetGossipMessage returns the underlying GossipMessage
+	GetGossipMessage() *proto.GossipMessage
 }

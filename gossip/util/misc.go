@@ -38,6 +38,8 @@ func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	return -1
 }
 
+type MessageAcceptor func(interface{}) bool
+
 func numbericEqual(a interface{}, b interface{}) bool {
 	return a.(int) == b.(int)
 }
@@ -117,4 +119,9 @@ func (s *Set) Remove(item interface{}) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	delete(s.items, item)
+}
+
+type goroutine struct {
+	id    int64
+	Stack []string
 }

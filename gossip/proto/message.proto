@@ -34,18 +34,15 @@ message GossipMessage {
         // Empty message, used for pinging
         Empty empty = 11;
 
-        ConnChallenge challenge = 12;
-        ConnResponse challengeResp = 13;
+        // ConnEstablish, used for establishing a connection
+        ConnEstablish conn = 12;
     }
 }
 
-message ConnChallenge {
-    uint64 nonce = 1;
-}
 
-message ConnResponse {
-    bytes pkiID = 1;
-    bytes challengeResponse = 2;
+message ConnEstablish {
+    bytes sig = 1;
+    bytes pkiID = 2;
 }
 
 message DataRequest {
@@ -58,7 +55,8 @@ message GossipHello {
 }
 
 message DataUpdate {
-    repeated DataMessage data = 1;
+    uint64 nonce = 1;
+    repeated DataMessage data = 2;
 }
 
 message DataDigest {
@@ -104,7 +102,7 @@ message PeerTime {
 
 message MembershipRequest {
     AliveMessage selfInformation = 1;
-    repeated string        known = 2;
+    repeated bytes        known = 2;
 }
 
 message MembershipResponse {
@@ -113,10 +111,9 @@ message MembershipResponse {
 }
 
 message Member {
-    string id       = 1;
-    string endpoint = 2;
-    bytes  metadata = 3;
-    bytes pkiID     = 4;
+    string endpoint = 1;
+    bytes  metadata = 2;
+    bytes pkiID     = 3;
 }
 
 message Empty {}

@@ -17,15 +17,18 @@ limitations under the License.
 package gossip
 
 import (
+	"time"
+
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/proto"
-	"time"
+	"github.com/hyperledger/fabric/gossip/util"
 )
 
-type GossipService interface {
+// Gossip is the interface of the gossip component
+type Gossip interface {
 
-	// GetPeersMetadata returns a mapping of endpoint --> metadata
-	GetPeersMetadata() map[string][]byte
+	// GetPeers returns a mapping of endpoint --> []discovery.NetworkMember
+	GetPeers() []discovery.NetworkMember
 
 	// UpdateMetadata updates the self metadata of the discovery layer
 	UpdateMetadata([]byte)
@@ -34,27 +37,26 @@ type GossipService interface {
 	Gossip(msg *proto.GossipMessage)
 
 	// Accept returns a channel that outputs messages from other peers
-	Accept(MessageAcceptor) <-chan *proto.GossipMessage
+	Accept(util.MessageAcceptor) <-chan *proto.GossipMessage
 
 	// Stop stops the gossip component
 	Stop()
 }
 
-type MessageAcceptor func(*proto.GossipMessage) bool
+// Config is the configuration of the gossip component
+type Config struct {
+	BindPort                   int
+	ID                         string
+	SelfEndpoint               string
+	BootstrapPeers             []string
+	PropagateIterations        int
+	PropagatePeerNum           int
 
-type GossipConfig struct {
-	BindPort            int
-	Id                  string
-	SelfEndpoint        string
-	BootstrapPeers      []*discovery.NetworkMember
-	PropagateIterations int
-	PropagatePeerNum    int
-
-	MaxMessageCountToStore int
+	MaxMessageCountToStore     int
 
 	MaxPropagationBurstSize    int
 	MaxPropagationBurstLatency time.Duration
 
-	PullInterval time.Duration
-	PullPeerNum  int
+	PullInterval               time.Duration
+	PullPeerNum                int
 }

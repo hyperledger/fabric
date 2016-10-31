@@ -40,27 +40,27 @@ type CommService interface {
 	Ping(peer *NetworkMember) bool
 
 	// Accept returns a read-only channel for membership messages sent from remote peers
-	Accept() <-chan GossipMsg
+	Accept() <-chan *proto.GossipMessage
 
 	// PresumedDead returns a read-only channel for peers that are presumed to be dead
-	PresumedDead() <-chan string
+	PresumedDead() <-chan PKIidType
 
 	// CloseConn orders to close the connection with a certain peer
-	CloseConn(id string)
+	CloseConn(peer *NetworkMember)
 }
 
-type GossipMsg interface {
-	GetGossipMessage() *proto.GossipMessage
-}
+// PKIidType represents a peer's security identity
+type PKIidType []byte
 
+// NetworkMember is a peer's representation
 type NetworkMember struct {
-	Id       string
 	Endpoint string
 	Metadata []byte
-	PKIid	 []byte
+	PKIid    PKIidType
 }
 
-type DiscoveryService interface {
+// Discovery is the interface that represents a discovery module
+type Discovery interface {
 
 	// Self returns this instance's membership information
 	Self() NetworkMember
