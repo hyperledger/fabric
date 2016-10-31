@@ -28,12 +28,17 @@ var (
 	oldestOffset = int64(100)                            // The oldest block available on the broker
 	newestOffset = int64(1100)                           // The offset that will be assigned to the next block
 	middleOffset = (oldestOffset + newestOffset - 1) / 2 // Just an offset in the middle
+
+	// Amount of time to wait for block processing when doing time-based tests
+	// We generally want this value to be as small as possible so as to make tests execute faster
+	// But this may have to be bumped up in slower machines
+	timePadding = 200 * time.Millisecond
 )
 
 var testConf = &config.TopLevel{
 	General: config.General{
 		OrdererType:   "kafka",
-		BatchTimeout:  2 * time.Second,
+		BatchTimeout:  500 * time.Millisecond,
 		BatchSize:     100,
 		QueueSize:     100,
 		MaxWindowSize: 100,

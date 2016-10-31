@@ -98,15 +98,16 @@ func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint) {
 		case msg := <-b.batchChan:
 			b.messages = append(b.messages, msg)
 			if len(b.messages) >= int(maxSize) {
-				if err := b.sendBlock(); err != nil {
-					panic(fmt.Errorf("Cannot communicate with Kafka broker: %s", err))
-				}
 				if !timer.Stop() {
 					<-timer.C
 				}
 				timer.Reset(period)
+				if err := b.sendBlock(); err != nil {
+					panic(fmt.Errorf("Cannot communicate with Kafka broker: %s", err))
+				}
 			}
 		case <-timer.C:
+			timer.Reset(period)
 			if len(b.messages) > 0 {
 				if err := b.sendBlock(); err != nil {
 					panic(fmt.Errorf("Cannot communicate with Kafka broker: %s", err))
