@@ -38,16 +38,16 @@ func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte
 func ConstructTestBlocks(t *testing.T, numBlocks int) []*protos.Block2 {
 	blocks := []*protos.Block2{}
 	for i := 0; i < numBlocks; i++ {
-		blocks = append(blocks, ConstructTestBlock(t, 10, i*10))
+		blocks = append(blocks, ConstructTestBlock(t, 10, 100, i*10))
 	}
 	return blocks
 }
 
 // ConstructTestBlock constructs a block with 'numTx' number of transactions for testing
-func ConstructTestBlock(t *testing.T, numTx int, startingTxID int) *protos.Block2 {
+func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *protos.Block2 {
 	txs := []*protos.Transaction2{}
 	for i := startingTxID; i < numTx+startingTxID; i++ {
-		tx, _ := putils.CreateTx(protos.Header_CHAINCODE, []byte{}, []byte{}, ConstructRandomBytes(t, 100), []*protos.Endorsement{})
+		tx, _ := putils.CreateTx(protos.Header_CHAINCODE, []byte{}, []byte{}, ConstructRandomBytes(t, txSize), []*protos.Endorsement{})
 		txs = append(txs, tx)
 	}
 	return newBlock(txs)
