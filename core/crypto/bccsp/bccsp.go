@@ -32,13 +32,12 @@ type Key interface {
 	// false is this key is asymmetric
 	Symmetric() bool
 
-	// Private returns true if this key is an asymmetric private key,
+	// Private returns true if this key is a private key,
 	// false otherwise.
 	Private() bool
 
-	// PublicKey returns the corresponding public key if this key
-	// is an asymmetric private key. If this key is already public,
-	// PublicKey returns this key itself.
+	// PublicKey returns the corresponding public key part of an asymmetric public/private key pair.
+	// This method returns an error in symmetric key schemes.
 	PublicKey() (Key, error)
 }
 
