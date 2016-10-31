@@ -21,9 +21,9 @@ import "sync"
 type invalidationResult int
 
 const (
-	MESSAGE_NO_ACTION   = invalidationResult(0)
-	MESSAGE_INVALIDATES = invalidationResult(1)
-	MESSAGE_INVALIDATED = invalidationResult(2)
+	messageNoAction = invalidationResult(0)
+	messageInvalidates = invalidationResult(1)
+	messageInvalidated = invalidationResult(2)
 )
 
 // Returns:
@@ -79,10 +79,9 @@ func (s *messageStoreImpl) add(message interface{}) bool {
 	for i := 0; i < n; i++ {
 		m := s.messages[i]
 		switch s.pol(message, m.data) {
-		case MESSAGE_INVALIDATED:
+		case messageInvalidated:
 			return false
-			break
-		case MESSAGE_INVALIDATES:
+		case messageInvalidates:
 			s.invTrigger(m.data)
 			s.messages = append(s.messages[:i], s.messages[i+1:]...)
 			n--

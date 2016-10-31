@@ -17,11 +17,12 @@ limitations under the License.
 package gossip
 
 import (
-	"github.com/stretchr/testify/assert"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBatchingEmitterAddAndSize(t *testing.T) {

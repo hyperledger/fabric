@@ -106,10 +106,18 @@ func TestHandshake(t *testing.T) {
 		m := <-comm1.Accept(acceptAll)
 		rcvChan <- m.GetGossipMessage()
 	}()
-	stream.Send(msg2Send)
+	go stream.Send(msg2Send)
 	time.Sleep(time.Second)
 	assert.Equal(t, 1, len(rcvChan))
-	receivedMsg := <-rcvChan
+	var receivedMsg *proto.GossipMessage
+	select {
+	case receivedMsg = <-rcvChan:
+		break
+	case <- time.NewTicker(time.Duration(time.Second * 2)).C:
+		assert.Fail(t, "Timed out waiting for received message")
+		break
+	}
+
 	assert.Equal(t, nonce, receivedMsg.Nonce)
 
 	// negative path, nothing should be read from the channel because the signature is wrong

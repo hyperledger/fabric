@@ -47,9 +47,9 @@ func init() {
 	rand.Seed(42)
 }
 
-var digestWaitTime = time.Duration(4) * time.Second
-var requestWaitTime = time.Duration(4) * time.Second
-var responseWaitTime = time.Duration(7) * time.Second
+var digestWaitTime = time.Duration(1) * time.Second
+var requestWaitTime = time.Duration(1) * time.Second
+var responseWaitTime = time.Duration(2) * time.Second
 
 // SetDigestWaitTime sets the digest wait time
 func SetDigestWaitTime(time time.Duration) {
@@ -127,8 +127,10 @@ func NewPullEngine(participant PullAdapter, sleepTime time.Duration) *PullEngine
 	go func() {
 		for !engine.toDie() {
 			time.Sleep(sleepTime)
+			if engine.toDie() {
+				return
+			}
 			engine.initiatePull()
-
 		}
 	}()
 
@@ -278,7 +280,6 @@ func (engine *PullEngine) OnReq(items []uint64, nonce uint64, context interface{
 		return
 	}
 	engine.lock.Lock()
-	defer engine.lock.Unlock()
 
 	var items2Send []uint64
 	for _, item := range items {
@@ -287,7 +288,9 @@ func (engine *PullEngine) OnReq(items []uint64, nonce uint64, context interface{
 		}
 	}
 
-	engine.SendRes(items2Send, context, nonce)
+	engine.lock.Unlock()
+
+	go engine.SendRes(items2Send, context, nonce)
 }
 
 // OnRes notifies the engine a response has arrived

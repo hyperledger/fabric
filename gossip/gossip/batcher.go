@@ -68,6 +68,9 @@ func (p *batchingEmitterImpl) periodicEmit() {
 }
 
 func (p *batchingEmitterImpl) emit() {
+	if p.toDie() {
+		return
+	}
 	if len(p.buff) == 0 {
 		return
 	}

@@ -17,11 +17,12 @@ limitations under the License.
 package gossip
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -29,7 +30,7 @@ func init() {
 }
 
 func alwaysNoAction(this interface{}, that interface{}) invalidationResult {
-	return MESSAGE_NO_ACTION
+	return messageNoAction
 }
 
 func noopTrigger(m interface{}) {
@@ -40,13 +41,13 @@ func compareInts(this interface{}, that interface{}) invalidationResult {
 	a := this.(int)
 	b := that.(int)
 	if a == b {
-		return MESSAGE_NO_ACTION
+		return messageNoAction
 	}
 	if a > b {
-		return MESSAGE_INVALIDATES
+		return messageInvalidates
 	}
 
-	return MESSAGE_INVALIDATED
+	return messageInvalidated
 }
 
 func TestSize(t *testing.T) {
@@ -65,7 +66,7 @@ func TestNewMessagesInvalidates(t *testing.T) {
 	assert.True(t, msgStore.add(0))
 	for i := 1; i < 10; i++ {
 		assert.True(t, msgStore.add(i))
-		assert.Equal(t, i - 1, invalidated[len(invalidated) - 1])
+		assert.Equal(t, i-1, invalidated[len(invalidated)-1])
 		assert.Equal(t, 1, msgStore.size())
 		assert.Equal(t, i, msgStore.get()[0].(int))
 	}
@@ -82,7 +83,7 @@ func TestMessagesGet(t *testing.T) {
 	}
 
 	msgStore := newMessageStore(alwaysNoAction, noopTrigger)
-	expected := make([]int, 0)
+	expected := []int{}
 	for i := 0; i < 2; i++ {
 		n := rand.Int()
 		expected = append(expected, n)
