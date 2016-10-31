@@ -16,8 +16,6 @@ limitations under the License.
 
 package simplebft
 
-import "github.com/golang/protobuf/proto"
-
 // Connection is an event from system to notify a new connection with
 // replica.
 // On connection, we send our latest (weak) checkpoint, and we expect
@@ -25,7 +23,11 @@ import "github.com/golang/protobuf/proto"
 func (s *SBFT) Connection(replica uint64) {
 	batch := *s.sys.LastBatch()
 	batch.Payloads = nil // don't send the big payload
-	s.sys.Send(&Msg{&Msg_Hello{&batch}}, replica)
+	hello := &Hello{Batch: &batch}
+	if s.isPrimary() && s.activeView && s.lastNewViewSent != nil {
+		hello.NewView = s.lastNewViewSent
+	}
+	s.sys.Send(&Msg{&Msg_Hello{hello}}, replica)
 
 	// A reconnecting replica can play forward its blockchain to
 	// the batch listed in the hello message.  However, the
@@ -43,13 +45,12 @@ func (s *SBFT) Connection(replica uint64) {
 	// connecting right after a new-view message was received, and
 	// its xset batch is in-flight.
 
-	batchheader := &BatchHeader{}
-	err := proto.Unmarshal(batch.Header, batchheader)
+	batchheader, err := s.checkBatch(&batch, false)
 	if err != nil {
 		panic(err)
 	}
 
-	if s.cur.subject.Seq.Seq > batchheader.Seq {
+	if s.cur.subject.Seq.Seq > batchheader.Seq && s.activeView {
 		if s.isPrimary() {
 			s.sys.Send(&Msg{&Msg_Preprepare{s.cur.preprep}}, replica)
 		} else {
@@ -64,6 +65,44 @@ func (s *SBFT) Connection(replica uint64) {
 	}
 }
 
-func (s *SBFT) handleHello(h *Batch, src uint64) {
+func (s *SBFT) handleHello(h *Hello, src uint64) {
+	bh, err := s.checkBatch(h.Batch, false)
+	if err != nil {
+		log.Warningf("invalid hello batch from %d: %s", src, err)
+		return
+	}
+
+	if s.sys.LastBatch().DecodeHeader().Seq < bh.Seq {
+		s.sys.Deliver(h.Batch)
+		s.seq.Seq = bh.Seq
+	}
+
+	if h.NewView != nil {
+		if s.primaryIDView(h.NewView.View) != src {
+			log.Warningf("invalid hello with new view from non-primary %d", src)
+			return
+		}
+
+		vcs, err := s.checkNewViewSignatures(h.NewView)
+		if err != nil {
+			log.Warningf("invalid hello new view from %d: %s", src, err)
+			return
+		}
+
+		_, ok := s.makeXset(vcs)
+		if !ok {
+			log.Warningf("invalid hello new view xset from %d", src)
+			return
+		}
+
+		if s.seq.View <= h.NewView.View {
+			s.seq.View = h.NewView.View
+		}
+		s.activeView = true
+	}
+
 	s.replicaState[src].hello = h
+
+	s.discardBacklog(src)
+	s.processBacklog()
 }

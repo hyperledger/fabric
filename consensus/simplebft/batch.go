@@ -41,17 +41,26 @@ func (s *SBFT) makeBatch(seq uint64, prevHash []byte, data [][]byte) *Batch {
 	}
 }
 
-func (s *SBFT) checkBatch(b *Batch) (*BatchHeader, error) {
-	datahash := merkleHashData(b.Payloads)
-
+func (s *SBFT) checkBatch(b *Batch, checkData bool) (*BatchHeader, error) {
 	batchheader := &BatchHeader{}
 	err := proto.Unmarshal(b.Header, batchheader)
 	if err != nil {
 		return nil, err
 	}
 
-	if !reflect.DeepEqual(datahash, batchheader.DataHash) {
-		return nil, fmt.Errorf("malformed batch: invalid hash")
+	if checkData {
+		datahash := merkleHashData(b.Payloads)
+		if !reflect.DeepEqual(datahash, batchheader.DataHash) {
+			return nil, fmt.Errorf("malformed batch: invalid hash")
+		}
+	}
+
+	bh := b.Hash()
+	for r, sig := range b.Signatures {
+		err = s.sys.CheckSig(bh, r, sig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return batchheader, nil
@@ -62,4 +71,14 @@ func (s *SBFT) checkBatch(b *Batch) (*BatchHeader, error) {
 // Hash returns the hash of the Batch.
 func (b *Batch) Hash() []byte {
 	return hash(b.Header)
+}
+
+func (b *Batch) DecodeHeader() *BatchHeader {
+	batchheader := &BatchHeader{}
+	err := proto.Unmarshal(b.Header, batchheader)
+	if err != nil {
+		panic(err)
+	}
+
+	return batchheader
 }

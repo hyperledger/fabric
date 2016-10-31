@@ -35,7 +35,7 @@ message Msg {
                 Signed view_change = 5;
                 NewView new_view = 6;
                 Checkpoint checkpoint = 7;
-                Batch hello = 8;
+                Hello hello = 8;
         };
 };
 
@@ -93,4 +93,9 @@ message Checkpoint {
         uint64 seq = 1;
         bytes digest = 2;
         bytes signature = 3;
+};
+
+message Hello {
+        Batch batch = 1;
+        NewView new_view = 2;
 };

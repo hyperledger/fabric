@@ -61,7 +61,7 @@ type SBFT struct {
 	batchTimer        Canceller
 	cur               reqInfo
 	activeView        bool
-	lastNewViewSent   uint64
+	lastNewViewSent   *NewView
 	viewChangeTimeout time.Duration
 	viewChangeTimer   Canceller
 	replicaState      []replicaInfo
@@ -81,7 +81,7 @@ type reqInfo struct {
 
 type replicaInfo struct {
 	backLog          []*Msg
-	hello            *Batch
+	hello            *Hello
 	signedViewchange *Signed
 	viewchange       *ViewChange
 	newview          *NewView
@@ -109,7 +109,7 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 	s.sys.SetReceiver(s)
 
 	lastBatch := s.sys.LastBatch()
-	bh, err := s.checkBatch(lastBatch)
+	bh, err := s.checkBatch(lastBatch, false)
 	if err != nil {
 		panic(err)
 	}
@@ -128,8 +128,7 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 		if pp.Seq.Seq > bh.Seq {
 			s.seq = *pp.Seq
 			s.seq.Seq -= 1
-			s.handlePreprepare(pp, s.primaryIDView(pp.Seq.View))
-			// ideally we wouldn't send a prepare here
+			s.acceptPreprepare(pp)
 		}
 	}
 	c := &Subject{}
@@ -141,8 +140,9 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 		s.cur.executed = true
 	}
 
-	// XXX set active after checking with the network
-	s.activeView = true
+	if s.seq.Seq == 0 {
+		s.activeView = true
+	}
 
 	s.cancelViewChangeTimer()
 	return s, nil
@@ -198,7 +198,10 @@ func (s *SBFT) Receive(m *Msg, src uint64) {
 		return
 	}
 
-	if req := m.GetRequest(); req != nil {
+	if h := m.GetHello(); h != nil {
+		s.handleHello(h, src)
+		return
+	} else if req := m.GetRequest(); req != nil {
 		s.handleRequest(req, src)
 		return
 	} else if vs := m.GetViewChange(); vs != nil {
@@ -219,10 +222,7 @@ func (s *SBFT) Receive(m *Msg, src uint64) {
 }
 
 func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
-	if h := m.GetHello(); h != nil {
-		s.handleHello(h, src)
-		return
-	} else if pp := m.GetPreprepare(); pp != nil {
+	if pp := m.GetPreprepare(); pp != nil {
 		s.handlePreprepare(pp, src)
 		return
 	} else if p := m.GetPrepare(); p != nil {

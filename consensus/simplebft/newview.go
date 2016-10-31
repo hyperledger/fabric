@@ -22,7 +22,7 @@ import (
 )
 
 func (s *SBFT) maybeSendNewView() {
-	if s.lastNewViewSent == s.seq.View {
+	if s.lastNewViewSent != nil && s.lastNewViewSent.View == s.seq.View {
 		return
 	}
 
@@ -63,8 +63,27 @@ func (s *SBFT) maybeSendNewView() {
 	}
 
 	log.Noticef("sending new view for %d", nv.View)
-	s.lastNewViewSent = nv.View
+	s.lastNewViewSent = nv
 	s.broadcast(&Msg{&Msg_NewView{nv}})
+}
+
+func (s *SBFT) checkNewViewSignatures(nv *NewView) ([]*ViewChange, error) {
+	var vcs []*ViewChange
+	for vcsrc, svc := range nv.Vset {
+		vc := &ViewChange{}
+		err := s.checkSig(svc, vcsrc, vc)
+		if err == nil {
+			if vc.View != nv.View {
+				err = fmt.Errorf("view does not match")
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		vcs = append(vcs, vc)
+	}
+
+	return vcs, nil
 }
 
 func (s *SBFT) handleNewView(nv *NewView, src uint64) {
@@ -78,21 +97,10 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	var vcs []*ViewChange
-	for vcsrc, svc := range nv.Vset {
-		vc := &ViewChange{}
-		err := s.checkSig(svc, vcsrc, vc)
-		if err == nil {
-			if vc.View != nv.View {
-				err = fmt.Errorf("view does not match")
-			}
-		}
-		if err != nil {
-			log.Warningf("invalid new view from %d: view change for %d: %s", src, vcsrc, err)
-			s.sendViewChange()
-			return
-		}
-		vcs = append(vcs, vc)
+	vcs, err := s.checkNewViewSignatures(nv)
+	if err != nil {
+		log.Warningf("invalid new view from %d: %s", src, err)
+		s.sendViewChange()
 	}
 
 	xset, ok := s.makeXset(vcs)
@@ -120,7 +128,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	_, err := s.checkBatch(nv.Batch)
+	_, err = s.checkBatch(nv.Batch, true)
 	if err != nil {
 		log.Warningf("invalid new view from %d: invalid batch, %s",
 			src, err)
@@ -155,9 +163,5 @@ func (s *SBFT) processNewView() {
 	}
 
 	s.activeView = true
-	var h []byte
-	if nv.Batch != nil {
-		h = hash(nv.Batch.Header)
-	}
-	s.acceptPreprepare(Subject{Seq: &nextSeq, Digest: h}, pp)
+	s.handleCheckedPreprepare(pp)
 }
