@@ -746,3 +746,44 @@ func TestRestartMissedViewChange(t *testing.T) {
 		}
 	}
 }
+
+func TestFullBacklog(t *testing.T) {
+	N := uint64(4)
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 1, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	r1 := []byte{1, 2, 3}
+
+	connectAll(sys)
+	sys.enqueue(200*time.Millisecond, &testTimer{id: 999, tf: func() {
+		repls[0].sys.Send(&Msg{&Msg_Prepare{&Subject{Seq: &SeqView{Seq: 100}}}}, 1)
+	}})
+	for i := 0; i < 10; i++ {
+		sys.enqueue(time.Duration(i)*100*time.Millisecond, &testTimer{id: 999, tf: func() {
+			repls[0].Request(r1)
+		}})
+	}
+	sys.Run()
+	if len(repls[1].replicaState[2].backLog) > 4*3 {
+		t.Errorf("backlog too long: %d", len(repls[1].replicaState[0].backLog))
+	}
+	for _, a := range adapters {
+		if len(a.batches) == 0 {
+			t.Fatalf("expected execution of batches on %d", a.id)
+		}
+		bh := a.batches[len(a.batches)-1].DecodeHeader()
+		if bh.Seq != 10 {
+			t.Errorf("wrong request executed on %d: %v", a.id, bh)
+		}
+	}
+}

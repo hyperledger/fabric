@@ -16,6 +16,9 @@ limitations under the License.
 
 package simplebft
 
+const maxBacklogSeq = 4
+const msgPerSeq = 3 // (pre)prepare, commit, checkpoint
+
 func (s *SBFT) testBacklog(m *Msg, src uint64) bool {
 	if len(s.replicaState[src].backLog) > 0 {
 		return true
@@ -52,17 +55,13 @@ func (s *SBFT) recordBacklogMsg(m *Msg, src uint64) {
 	if src == s.id {
 		panic("should never have to backlog my own message")
 	}
-	// TODO
-	//
-	// Prevent DoS by limiting the number of messages per replica.
-	//
-	// If the backlog limit is exceeded, re-establish the
-	// connection.
-	//
-	// After the connection has been re-established, we will
-	// receive a hello, which will advance our state and discard
-	// old messages.
+
 	s.replicaState[src].backLog = append(s.replicaState[src].backLog, m)
+
+	if len(s.replicaState[src].backLog) > maxBacklogSeq*msgPerSeq {
+		s.discardBacklog(src)
+		s.sys.Reconnect(src)
+	}
 }
 
 func (s *SBFT) discardBacklog(src uint64) {
