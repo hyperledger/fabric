@@ -29,9 +29,11 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto"
+	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
@@ -80,6 +82,13 @@ func initPeer() (net.Listener, error) {
 	var secHelper crypto.Peer
 	if viper.GetBool("security.enabled") {
 		//TODO:  integrate new crypto / idp
+		securityLevel := viper.GetInt("security.level")
+		hashAlgorithm := viper.GetString("security.hashAlgorithm")
+		primitives.SetSecurityLevel(hashAlgorithm, securityLevel)
+	} else {
+		// the primitives need to be instantiated no matter what. Otherwise
+		// the escc code won't have a hash algorithm available to hash the proposal
+		primitives.SetSecurityLevel("SHA2", 256)
 	}
 
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
@@ -112,7 +121,7 @@ func closeListenerAndSleep(l net.Listener) {
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
 func getProposal(cis *pb.ChaincodeInvocationSpec) (*pb.Proposal, error) {
-	return pbutils.CreateChaincodeProposal(cis)
+	return pbutils.CreateChaincodeProposal(cis, []byte("cert"))
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment
@@ -161,6 +170,23 @@ func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb
 
 	var resp *pb.ProposalResponse
 	resp, err = endorserServer.ProcessProposal(context.Background(), prop)
+
+	return resp, err
+}
+
+func invoke(spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
+	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
+
+	var prop *pb.Proposal
+	prop, err := getProposal(invocation)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", spec.ChaincodeID, err)
+	}
+
+	resp, err := endorserServer.ProcessProposal(context.Background(), prop)
+	if err != nil {
+		return nil, fmt.Errorf("Error endorsing %s: %s\n", spec.ChaincodeID, err)
+	}
 
 	return resp, err
 }
@@ -240,6 +266,49 @@ func TestRedeploy(t *testing.T) {
 		return
 	}
 	chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+}
+
+// TestDeployAndInvoke deploys and invokes chaincode_example01
+func TestDeployAndInvoke(t *testing.T) {
+	var ctxt = context.Background()
+
+	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
+	chaincodeID := &pb.ChaincodeID{Path: url, Name: "ex01"}
+
+	args := []string{"10"}
+
+	f := "init"
+	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
+	resp, err := deploy(endorserServer, spec, nil)
+	chaincodeID1 := spec.ChaincodeID.Name
+	if err != nil {
+		t.Fail()
+		t.Logf("Error deploying <%s>: %s", chaincodeID1, err)
+		return
+	}
+
+	err = endorserServer.(*Endorser).commitTxSimulation(resp)
+	if err != nil {
+		t.Fail()
+		t.Logf("Error committing <%s>: %s", chaincodeID1, err)
+		return
+	}
+
+	f = "invoke"
+	invokeArgs := append([]string{f}, args...)
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
+	resp, err = invoke(spec)
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking transaction: %s", err)
+		return
+	} else {
+		fmt.Printf("Invoke test passed\n")
+		t.Logf("Invoke test passed")
+	}
+
+	chaincode.GetChain(chaincode.DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 }
 
 func TestMain(m *testing.M) {

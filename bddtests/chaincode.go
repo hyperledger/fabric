@@ -39,7 +39,7 @@ func createPropsalID() string {
 }
 
 // createChaincodeDeploymentSpec  Returns a deployment proposal of chaincode type
-func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec) (proposal *pb.Proposal, err error) {
+func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec, creator []byte) (proposal *pb.Proposal, err error) {
 	var ccDeploymentSpecBytes []byte
 	if ccDeploymentSpecBytes, err = proto.Marshal(ccChaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error creating proposal from ChaincodeDeploymentSpec:  %s", err)
@@ -49,5 +49,5 @@ func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymen
 		CtorMsg:     &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), ccDeploymentSpecBytes}}}
 	lcChaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: lcChaincodeSpec}
 	// make proposal
-	return putils.CreateChaincodeProposal(lcChaincodeInvocationSpec)
+	return putils.CreateChaincodeProposal(lcChaincodeInvocationSpec, creator)
 }

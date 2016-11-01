@@ -37,13 +37,13 @@ import (
 
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
-func getProposal(cis *pb.ChaincodeInvocationSpec) (*pb.Proposal, error) {
-	return putils.CreateChaincodeProposal(cis)
+func getProposal(cis *pb.ChaincodeInvocationSpec, creator []byte) (*pb.Proposal, error) {
+	return putils.CreateChaincodeProposal(cis, creator)
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment
 //the payload is a ChaincodeDeploymentSpec
-func getDeployProposal(cds *pb.ChaincodeDeploymentSpec) (*pb.Proposal, error) {
+func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, creator []byte) (*pb.Proposal, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func getDeployProposal(cds *pb.ChaincodeDeploymentSpec) (*pb.Proposal, error) {
 	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
 
 	//...and get the proposal for it
-	return getProposal(lcccSpec)
+	return getProposal(lcccSpec, creator)
 }
 
 func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
@@ -155,7 +155,8 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		}
 
 		var prop *pb.Proposal
-		prop, err = getProposal(invocation)
+		// TODO: how should we get a cert from the command line?
+		prop, err = getProposal(invocation, []byte("cert"))
 		if err != nil {
 			return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 		}

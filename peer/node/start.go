@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
 	"github.com/hyperledger/fabric/core/crypto"
+	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/peer"
@@ -357,5 +358,8 @@ var once sync.Once
 //and universally accessed
 func getSecHelper() (crypto.Peer, error) {
 	//TODO:  integrated new crypto / idp code
+	once.Do(func() {
+		primitives.SetSecurityLevel("SHA2", 256)
+	})
 	return nil, nil
 }

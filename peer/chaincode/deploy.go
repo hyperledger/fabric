@@ -61,7 +61,8 @@ func deploy(cmd *cobra.Command) (*pb.ProposalResponse, error) {
 		return nil, fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 	}
 
-	prop, err := getDeployProposal(cds)
+	// TODO: how should we get a cert from the command line?
+	prop, err := getDeployProposal(cds, []byte("cert"))
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}

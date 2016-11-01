@@ -521,7 +521,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		var depPayload []byte
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
-		depPayload, err = getCDSFromLCCC(context, string(DefaultChain), chaincode)
+		depPayload, err = GetCDSFromLCCC(context, string(DefaultChain), chaincode)
 		if err != nil {
 			return cID, cMsg, fmt.Errorf("Could not get deployment transaction from LCCC for %s - %s", chaincode, err)
 		}

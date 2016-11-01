@@ -20,6 +20,8 @@ option go_package = "github.com/hyperledger/fabric/protos";
 
 package protos;
 
+import "chaincode.proto";
+
 /*
 The flow to get a CHAINCODE transaction approved goes as follows:
 
@@ -102,7 +104,7 @@ message ChaincodeHeaderExtension {
 	bytes payloadVisibility = 1;
 
 	// The ID of the chaincode to target.
-	bytes chaincodeID = 2;
+	ChaincodeID chaincodeID = 2;
 }
 
 // ChaincodeProposalPayload is the Proposal's payload message to be used when

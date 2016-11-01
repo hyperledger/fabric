@@ -94,7 +94,8 @@ func (b *BDDContext) userCreatesADeploymentProposalUsingChaincodeDeploymentSpec(
 		return errRetFunc()
 	}
 	var proposal *pb.Proposal
-	if proposal, err = createProposalForChaincode(ccDeploymentSpec); err != nil {
+	// TODO: how should we get a cert from the command line?
+	if proposal, err = createProposalForChaincode(ccDeploymentSpec, []byte("cert")); err != nil {
 
 	}
 	if _, err = userRegistration.SetTagValue(proposalAlias, proposal); err != nil {
