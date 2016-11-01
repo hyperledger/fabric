@@ -31,7 +31,7 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 		fqKey := base + key
 		val := v.Get(fqKey)
 		if m, ok := val.(map[interface{}]interface{}); ok {
-			logger.Debugf("Found map value for %s", fqKey)
+			logger.Debugf("Found map[interface{}]interface{} value for %s", fqKey)
 			tmp := make(map[string]interface{})
 			for ik, iv := range m {
 				cik, ok := ik.(string)
@@ -41,6 +41,9 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 				tmp[cik] = iv
 			}
 			result[key] = getKeysRecursively(fqKey+".", v, tmp)
+		} else if m, ok := val.(map[string]interface{}); ok {
+			logger.Debugf("Found map[string]interface{} value for %s", fqKey)
+			result[key] = getKeysRecursively(fqKey+".", v, m)
 		} else {
 			logger.Debugf("Found real value for %s setting to %T %v", fqKey, val, val)
 			result[key] = val

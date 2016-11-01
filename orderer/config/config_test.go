@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -97,17 +98,25 @@ func TestEnvSlice(t *testing.T) {
 // a bug in the original viper implementation that is worked around in
 // the Load codepath for now
 func TestEnvInnerVar(t *testing.T) {
-	envVar := "ORDERER_GENERAL_LISTENPORT"
-	envVal := uint16(80)
-	os.Setenv(envVar, fmt.Sprintf("%d", envVal))
-	defer os.Unsetenv(envVar)
+	envVar1 := "ORDERER_GENERAL_LISTENPORT"
+	envVal1 := uint16(80)
+	envVar2 := "ORDERER_KAFKA_RETRY_PERIOD"
+	envVal2 := "42s"
+	os.Setenv(envVar1, fmt.Sprintf("%d", envVal1))
+	os.Setenv(envVar2, envVal2)
+	defer os.Unsetenv(envVar1)
+	defer os.Unsetenv(envVar2)
 	config := Load()
 
 	if config == nil {
 		t.Fatalf("Could not load config")
 	}
 
-	if config.General.ListenPort != envVal {
-		t.Fatalf("Environmental override of inner config did not work")
+	if config.General.ListenPort != envVal1 {
+		t.Fatalf("Environmental override of inner config test 1 did not work")
+	}
+	v2, _ := time.ParseDuration(envVal2)
+	if config.Kafka.Retry.Period != v2 {
+		t.Fatalf("Environmental override of inner config test 2 did not work")
 	}
 }
