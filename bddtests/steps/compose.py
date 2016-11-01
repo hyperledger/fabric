@@ -79,7 +79,7 @@ class Composition:
             output, error, returncode = \
                 bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .Config.Labels }}", containerID], expect_success=True)
             labels = output.splitlines()[0][4:-1].split()
-            dockerComposeService = [composeService[27:] for composeService in labels if composeService.startswith("com.docker.compose.service:")][0]
+            dockerComposeService = [unicode(composeService[27:]) for composeService in labels if composeService.startswith("com.docker.compose.service:")][0]
             #print("dockerComposeService = {0}".format(dockerComposeService))
             #print("container {0} has env = {1}".format(containerName, env))
             self.containerDataList.append(peer_basic_impl.ContainerData(containerName, ipAddress, env, dockerComposeService))
