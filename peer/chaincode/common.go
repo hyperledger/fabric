@@ -211,10 +211,9 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
 
+	//we need chaincode name for everything, including deploy
 	if chaincodeName == common.UndefinedParamValue {
-		if chaincodePath == common.UndefinedParamValue {
-			return fmt.Errorf("Must supply value for %s path parameter.\n", chainFuncName)
-		}
+		return fmt.Errorf("Must supply value for %s name parameter.\n", chainFuncName)
 	}
 
 	// Check that non-empty chaincode parameters contain only Args as a key.

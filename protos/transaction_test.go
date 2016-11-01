@@ -24,7 +24,7 @@ import (
 
 func Test_Transaction_CreateNew(t *testing.T) {
 
-	cidBytes, err := proto.Marshal(&ChaincodeID{Path: "Contract001"})
+	cidBytes, err := proto.Marshal(&ChaincodeID{Name: "C01", Path: "Contract001"})
 	if err != nil {
 		t.Fatalf("Could not marshal chaincode: %s", err)
 	}

@@ -75,25 +75,25 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 	return "", nil
 }
 
-//generateHashcode gets hashcode of the code under path. If path is a HTTP(s) url
-//it downloads the code first to compute the hash.
+//collectChaincodeFiles collects chaincode files and generates hashcode for the
+//package. If path is a HTTP(s) url it downloads the code first.
 //NOTE: for dev mode, user builds and runs chaincode manually. The name provided
 //by the user is equivalent to the path. This method will treat the name
 //as codebytes and compute the hash from it. ie, user cannot run the chaincode
 //with the same (name, ctor, args)
-func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
+func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if spec == nil {
-		return "", fmt.Errorf("Cannot generate hashcode from nil spec")
+		return "", fmt.Errorf("Cannot collect chaincode files from nil spec")
 	}
 
 	chaincodeID := spec.ChaincodeID
 	if chaincodeID == nil || chaincodeID.Path == "" {
-		return "", fmt.Errorf("Cannot generate hashcode from empty chaincode path")
+		return "", fmt.Errorf("Cannot collect chaincode files from empty chaincode path")
 	}
 
 	ctor := spec.CtorMsg
 	if ctor == nil || len(ctor.Args) == 0 {
-		return "", fmt.Errorf("Cannot generate hashcode from empty ctor")
+		return "", fmt.Errorf("Cannot collect chaincode files from empty ctor")
 	}
 
 	codepath := chaincodeID.Path

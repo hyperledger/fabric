@@ -95,22 +95,24 @@ func TestExample04_Invoke(t *testing.T) {
 	scc := new(SimpleChaincode)
 	stub := shim.NewMockStub("ex04", scc)
 
+	chaincodeToInvoke := "ex02"
+
 	ccEx2 := new(ex02.SimpleChaincode)
-	stubEx2 := shim.NewMockStub("ex02", ccEx2)
+	stubEx2 := shim.NewMockStub(chaincodeToInvoke, ccEx2)
 	checkInit(t, stubEx2, [][]byte{[]byte("init"), []byte("a"), []byte("111"), []byte("b"), []byte("222")})
-	stub.MockPeerChaincode(scc.GetChaincodeToCall(), stubEx2)
+	stub.MockPeerChaincode(chaincodeToInvoke, stubEx2)
 
 	// Init A=567 B=678
 	checkInit(t, stub, [][]byte{[]byte("init"), []byte("Event"), []byte("1")})
 
 	// Invoke A->B for 10 via Example04's chaincode
-	checkInvoke(t, stub, [][]byte{[]byte("invoke"), []byte("Event"), []byte("1")})
+	checkInvoke(t, stub, [][]byte{[]byte(chaincodeToInvoke), []byte("Event"), []byte("1")})
 	checkQuery(t, stub, "Event", eventResponse)
 	checkQuery(t, stubEx2, "a", "101")
 	checkQuery(t, stubEx2, "b", "232")
 
 	// Invoke A->B for 10 via Example04's chaincode
-	checkInvoke(t, stub, [][]byte{[]byte("invoke"), []byte("Event"), []byte("1")})
+	checkInvoke(t, stub, [][]byte{[]byte(chaincodeToInvoke), []byte("Event"), []byte("1")})
 	checkQuery(t, stub, "Event", eventResponse)
 	checkQuery(t, stubEx2, "a", "91")
 	checkQuery(t, stubEx2, "b", "242")
