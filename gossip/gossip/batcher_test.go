@@ -41,11 +41,11 @@ func TestBatchingEmitterStop(t *testing.T) {
 		atomic.AddInt32(&disseminationAttempts, int32(1))
 	}
 
-	emitter := newBatchingEmitter(10, 1, time.Duration(10)*time.Millisecond, cb)
+	emitter := newBatchingEmitter(10, 1, time.Duration(100)*time.Millisecond, cb)
 	emitter.Add(1)
-	time.Sleep(time.Duration(10) * time.Millisecond)
-	emitter.Stop()
 	time.Sleep(time.Duration(100) * time.Millisecond)
+	emitter.Stop()
+	time.Sleep(time.Duration(1000) * time.Millisecond)
 	assert.True(t, atomic.LoadInt32(&disseminationAttempts) < int32(5))
 }
 
@@ -57,11 +57,11 @@ func TestBatchingEmitterExpiration(t *testing.T) {
 		atomic.AddInt32(&disseminationAttempts, int32(1))
 	}
 
-	emitter := newBatchingEmitter(10, 1, time.Duration(1)*time.Millisecond, cb)
+	emitter := newBatchingEmitter(10, 1, time.Duration(10)*time.Millisecond, cb)
 	defer emitter.Stop()
 
 	emitter.Add(1)
-	time.Sleep(time.Duration(50) * time.Millisecond)
+	time.Sleep(time.Duration(500) * time.Millisecond)
 	assert.Equal(t, int32(10), atomic.LoadInt32(&disseminationAttempts), "Inadaquate amount of dissemination attempts detected")
 	assert.Equal(t, 0, emitter.Size())
 }
@@ -83,7 +83,7 @@ func TestBatchingEmitterCounter(t *testing.T) {
 		}
 	}
 
-	emitter := newBatchingEmitter(5, 100, time.Duration(50)*time.Millisecond, cb)
+	emitter := newBatchingEmitter(5, 100, time.Duration(500)*time.Millisecond, cb)
 	defer emitter.Stop()
 
 	for i := 1; i <= 5; i++ {
@@ -91,7 +91,7 @@ func TestBatchingEmitterCounter(t *testing.T) {
 		if i == 5 {
 			break
 		}
-		time.Sleep(time.Duration(60) * time.Millisecond)
+		time.Sleep(time.Duration(600) * time.Millisecond)
 	}
 	emitter.Stop()
 

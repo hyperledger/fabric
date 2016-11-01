@@ -29,9 +29,9 @@ import (
 )
 
 func init() {
-	requestWaitTime = time.Duration(50) * time.Millisecond
-	digestWaitTime = time.Duration(20) * time.Millisecond
-	responseWaitTime = time.Duration(50) * time.Millisecond
+	requestWaitTime = time.Duration(200) * time.Millisecond
+	digestWaitTime = time.Duration(100) * time.Millisecond
+	responseWaitTime = time.Duration(200) * time.Millisecond
 }
 
 type messageHook func(interface{})
@@ -79,7 +79,7 @@ func newPushPullTestInstance(name string, peers map[string]*pullTestInstance) *p
 		name:              name,
 	}
 
-	inst.PullEngine = NewPullEngine(inst, time.Duration(100)*time.Millisecond)
+	inst.PullEngine = NewPullEngine(inst, time.Duration(500)*time.Millisecond)
 
 	peers[name] = inst
 	go func() {
@@ -224,7 +224,7 @@ func TestPullEngineAll2AllWithIncrementalSpawning(t *testing.T) {
 		pID := fmt.Sprintf("p%d", i+1)
 		peers[pID].setNextPeerSelection(keySet(pID, peers))
 	}
-	time.Sleep(time.Duration(500) * time.Millisecond)
+	time.Sleep(time.Duration(4000) * time.Millisecond)
 
 	for i := 0; i < instanceCount; i++ {
 		pID := fmt.Sprintf("p%d", i+1)
@@ -279,7 +279,7 @@ func TestPullEngineSelectiveUpdates(t *testing.T) {
 
 	inst1.setNextPeerSelection([]string{"p2"})
 
-	time.Sleep(time.Duration(200) * time.Millisecond)
+	time.Sleep(time.Duration(2000) * time.Millisecond)
 	assert.Equal(t, len(inst2.state.ToArray()), len(inst1.state.ToArray()))
 }
 
@@ -309,7 +309,7 @@ func TestByzantineResponder(t *testing.T) {
 		if dig, isDig := m.(*digestMsg); isDig {
 			if dig.source == "p3" {
 				atomic.StoreInt32(&receivedDigestFromInst3, int32(1))
-				time.AfterFunc(time.Duration(25)*time.Millisecond, func() {
+				time.AfterFunc(time.Duration(150)*time.Millisecond, func() {
 					inst3.SendRes([]uint64{uint64(5), uint64(6), uint64(7)}, "p1", 0)
 				})
 			}
@@ -319,14 +319,14 @@ func TestByzantineResponder(t *testing.T) {
 			// the response is from p3
 			if util.IndexInSlice(res.items, uint64(6), numericCompare) != -1 {
 				// inst1 is currently accepting responses
-				assert.Equal(t, int32(1), atomic.LoadInt32(&(inst1.acceptingResponses)))
+				assert.Equal(t, int32(1), atomic.LoadInt32(&(inst1.acceptingResponses)), "inst1 is not accepting digests")
 			}
 		}
 	})
 
 	inst1.setNextPeerSelection([]string{"p2"})
 
-	time.Sleep(time.Duration(200) * time.Millisecond)
+	time.Sleep(time.Duration(1000) * time.Millisecond)
 
 	assert.Equal(t, int32(1), atomic.LoadInt32(&receivedDigestFromInst3), "inst1 hasn't received a digest from inst3")
 
@@ -358,7 +358,7 @@ func TestMultipleInitiators(t *testing.T) {
 	inst2.setNextPeerSelection([]string{"p4"})
 	inst3.setNextPeerSelection([]string{"p4"})
 
-	time.Sleep(time.Duration(200) * time.Millisecond)
+	time.Sleep(time.Duration(2000) * time.Millisecond)
 
 	for _, inst := range []*pullTestInstance{inst1, inst2, inst3} {
 		assert.True(t, util.IndexInSlice(inst.state.ToArray(), uint64(1), numericCompare) != -1)
@@ -383,11 +383,11 @@ func TestLatePeers(t *testing.T) {
 	inst2.Add(uint64(1), uint64(2), uint64(3), uint64(4))
 	inst3.Add(uint64(5), uint64(6), uint64(7), uint64(8))
 	inst2.hook(func(m interface{}) {
-		time.Sleep(time.Duration(60) * time.Millisecond)
+		time.Sleep(time.Duration(600) * time.Millisecond)
 	})
 	inst1.setNextPeerSelection([]string{"p2", "p3"})
 
-	time.Sleep(time.Duration(200) * time.Millisecond)
+	time.Sleep(time.Duration(2000) * time.Millisecond)
 
 	assert.True(t, util.IndexInSlice(inst1.state.ToArray(), uint64(1), numericCompare) == -1)
 	assert.True(t, util.IndexInSlice(inst1.state.ToArray(), uint64(2), numericCompare) == -1)
@@ -416,7 +416,7 @@ func TestBiDiUpdates(t *testing.T) {
 	inst1.setNextPeerSelection([]string{"p2"})
 	inst2.setNextPeerSelection([]string{"p1"})
 
-	time.Sleep(time.Duration(200) * time.Millisecond)
+	time.Sleep(time.Duration(2000) * time.Millisecond)
 
 	assert.True(t, util.IndexInSlice(inst1.state.ToArray(), uint64(0), numericCompare) != -1)
 	assert.True(t, util.IndexInSlice(inst1.state.ToArray(), uint64(1), numericCompare) != -1)
@@ -478,7 +478,7 @@ func TestSpread(t *testing.T) {
 
 	inst1.setNextPeerSelection([]string{"p2", "p3", "p4"})
 
-	time.Sleep(time.Duration(200) * time.Millisecond)
+	time.Sleep(time.Duration(2000) * time.Millisecond)
 
 	lock.Lock()
 	for pI, counter := range chooseCounters {
