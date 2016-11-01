@@ -138,13 +138,13 @@ func (pm *ManagerImpl) CommitConfig() {
 }
 
 // ProposeConfig is used to add new configuration to the configuration proposal
-func (pm *ManagerImpl) ProposeConfig(configItem *ab.Configuration) error {
-	if configItem.Type != ab.Configuration_Policy {
-		return fmt.Errorf("Expected type of Configuration_Policy, got %v", configItem.Type)
+func (pm *ManagerImpl) ProposeConfig(configItem *ab.ConfigurationItem) error {
+	if configItem.Type != ab.ConfigurationItem_Policy {
+		return fmt.Errorf("Expected type of ConfigurationItem_Policy, got %v", configItem.Type)
 	}
 
 	policy := &ab.Policy{}
-	err := proto.Unmarshal(configItem.Data, policy)
+	err := proto.Unmarshal(configItem.Value, policy)
 	if err != nil {
 		return err
 	}
@@ -154,6 +154,6 @@ func (pm *ManagerImpl) ProposeConfig(configItem *ab.Configuration) error {
 		return err
 	}
 
-	pm.pendingPolicies[configItem.ID] = cPolicy
+	pm.pendingPolicies[configItem.Key] = cPolicy
 	return nil
 }

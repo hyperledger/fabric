@@ -116,11 +116,11 @@ func retrieveConfiguration(rl rawledger.Reader) *ab.ConfigurationEnvelope {
 
 func bootstrapConfigManager(lastConfigTx *ab.ConfigurationEnvelope) configtx.Manager {
 	policyManager := policies.NewManagerImpl(xxxCryptoHelper{})
-	configHandlerMap := make(map[ab.Configuration_ConfigurationType]configtx.Handler)
-	for ctype := range ab.Configuration_ConfigurationType_name {
-		rtype := ab.Configuration_ConfigurationType(ctype)
+	configHandlerMap := make(map[ab.ConfigurationItem_ConfigurationType]configtx.Handler)
+	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
+		rtype := ab.ConfigurationItem_ConfigurationType(ctype)
 		switch rtype {
-		case ab.Configuration_Policy:
+		case ab.ConfigurationItem_Policy:
 			configHandlerMap[rtype] = policyManager
 		default:
 			configHandlerMap[rtype] = configtx.NewBytesHandler()
