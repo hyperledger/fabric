@@ -29,8 +29,8 @@ var testLog = logging.MustGetLogger("test")
 
 func init() {
 	logging.SetLevel(logging.NOTICE, "")
-	logging.SetLevel(logging.DEBUG, "test")
-	logging.SetLevel(logging.DEBUG, "sbft")
+	// logging.SetLevel(logging.DEBUG, "test")
+	// logging.SetLevel(logging.DEBUG, "sbft")
 }
 
 func connectAll(sys *testSystem) {

@@ -38,12 +38,6 @@ func (s *SBFT) Connection(replica uint64) {
 	// Therefore we also send the most recent (pre)prepare,
 	// commit, checkpoint so that the reconnecting replica can
 	// catch up on the in-flight batch.
-	//
-	// TODO We need to communicate the latest view to the
-	// connecting replica.  The new view message is not signed, so
-	// we cannot send that message.  The worst corner case is
-	// connecting right after a new-view message was received, and
-	// its xset batch is in-flight.
 
 	batchheader, err := s.checkBatch(&batch, false)
 	if err != nil {
