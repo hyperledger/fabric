@@ -65,7 +65,7 @@ func New(directory string, genesisBlock *ab.Block) rawledger.ReadWriter {
 		signal:         make(chan struct{}),
 		marshaler:      &jsonpb.Marshaler{Indent: "  "},
 	}
-	if _, err := os.Stat(fl.blockFilename(genesisBlock.Number)); os.IsNotExist(err) {
+	if _, err := os.Stat(fl.blockFilename(genesisBlock.Header.Number)); os.IsNotExist(err) {
 		fl.writeBlock(genesisBlock)
 	}
 	fl.initializeBlockHeight()
@@ -102,7 +102,7 @@ func (fl *fileLedger) initializeBlockHeight() {
 	if block == nil {
 		panic(fmt.Errorf("Error reading block %d", fl.height-1))
 	}
-	fl.lastHash = block.Hash()
+	fl.lastHash = block.Header.Hash()
 }
 
 // blockFilename returns the fully qualified path to where a block of a given number should be stored on disk
@@ -112,13 +112,13 @@ func (fl *fileLedger) blockFilename(number uint64) string {
 
 // writeBlock commits a block to disk
 func (fl *fileLedger) writeBlock(block *ab.Block) {
-	file, err := os.Create(fl.blockFilename(block.Number))
+	file, err := os.Create(fl.blockFilename(block.Header.Number))
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 	err = fl.marshaler.Marshal(file, block)
-	logger.Debugf("Wrote block %d", block.Number)
+	logger.Debugf("Wrote block %d", block.Header.Number)
 	if err != nil {
 		panic(err)
 	}
@@ -135,7 +135,7 @@ func (fl *fileLedger) readBlock(number uint64) (*ab.Block, bool) {
 		if err != nil {
 			return nil, true
 		}
-		logger.Debugf("Read block %d", block.Number)
+		logger.Debugf("Read block %d", block.Header.Number)
 		return block, true
 	}
 	return nil, false
@@ -148,11 +148,24 @@ func (fl *fileLedger) Height() uint64 {
 
 // Append creates a new block and appends it to the ledger
 func (fl *fileLedger) Append(messages []*ab.BroadcastMessage, proof []byte) *ab.Block {
+	data := &ab.BlockData{
+		Data: make([][]byte, len(messages)),
+	}
+
+	for i := range messages {
+		data.Data[i] = messages[i].Data
+	}
+
 	block := &ab.Block{
-		Number:   fl.height,
-		PrevHash: fl.lastHash,
-		Messages: messages,
-		Proof:    proof,
+		Header: &ab.BlockHeader{
+			Number:       fl.height,
+			PreviousHash: fl.lastHash,
+			DataHash:     data.Hash(),
+		},
+		Data: data,
+		Metadata: &ab.BlockMetadata{
+			Metadata: [][]byte{proof},
+		},
 	}
 	fl.writeBlock(block)
 	fl.height++

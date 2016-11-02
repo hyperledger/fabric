@@ -84,13 +84,13 @@ func retrieveConfiguration(rl rawledger.Reader) *ab.ConfigurationEnvelope {
 				panic(fmt.Errorf("Error parsing blockchain at startup: %v", status))
 			}
 			// ConfigTxs should always be by themselves
-			if len(block.Messages) != 1 {
+			if len(block.Data.Data) != 1 {
 				continue
 			}
 
 			maybeConfigTx := &ab.ConfigurationEnvelope{}
 
-			err := proto.Unmarshal(block.Messages[0].Data, maybeConfigTx)
+			err := proto.Unmarshal(block.Data.Data[0], maybeConfigTx)
 
 			if err == nil {
 				lastConfigTx = maybeConfigTx

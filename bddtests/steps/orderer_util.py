@@ -122,7 +122,7 @@ class DeliverStreamHelper(StreamHelper):
                 numToRead = self.getWindowSize() if self.getWindowSize() < expectedCount else expectedCount
                 msgsRead.extend(self.readMessages(numToRead))
                 # send the ack
-                self.sendAcknowledgment(msgsRead[-1].Block.Number)
+                self.sendAcknowledgment(msgsRead[-1].Block.Header.Number)
                 print('SentACK!!')
                 print('')
             return msgsRead

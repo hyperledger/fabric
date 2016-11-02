@@ -21,8 +21,17 @@ import (
 	"github.com/hyperledger/fabric/core/util"
 )
 
-func (b *Block) Hash() []byte {
+func (b *BlockHeader) Hash() []byte {
 	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash
+	if err != nil {
+		panic("This should never fail and is generally irrecoverable")
+	}
+
+	return util.ComputeCryptoHash(data)
+}
+
+func (b *BlockData) Hash() []byte {
+	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash, AND, it is not a MerkleTree hash
 	if err != nil {
 		panic("This should never fail and is generally irrecoverable")
 	}

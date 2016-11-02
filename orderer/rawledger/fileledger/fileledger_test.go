@@ -67,7 +67,7 @@ func TestInitialization(t *testing.T) {
 	if block == nil || !found {
 		t.Fatalf("Error retrieving genesis block")
 	}
-	if !bytes.Equal(block.Hash(), fl.lastHash) {
+	if !bytes.Equal(block.Header.Hash(), fl.lastHash) {
 		t.Fatalf("Block hashes did no match")
 	}
 }
@@ -84,7 +84,7 @@ func TestReinitialization(t *testing.T) {
 	if block == nil || !found {
 		t.Fatalf("Error retrieving block 1")
 	}
-	if !bytes.Equal(block.Hash(), fl.lastHash) {
+	if !bytes.Equal(block.Header.Hash(), fl.lastHash) {
 		t.Fatalf("Block hashes did no match")
 	}
 }
@@ -101,7 +101,7 @@ func TestAddition(t *testing.T) {
 	if block == nil || !found {
 		t.Fatalf("Error retrieving genesis block")
 	}
-	if !bytes.Equal(block.PrevHash, prevHash) {
+	if !bytes.Equal(block.Header.PreviousHash, prevHash) {
 		t.Fatalf("Block hashes did no match")
 	}
 }
@@ -124,7 +124,7 @@ func TestRetrieval(t *testing.T) {
 	if status != ab.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the genesis block")
 	}
-	if block.Number != 0 {
+	if block.Header.Number != 0 {
 		t.Fatalf("Expected to successfully retrieve the genesis block")
 	}
 	signal = it.ReadyChan()
@@ -137,8 +137,8 @@ func TestRetrieval(t *testing.T) {
 	if status != ab.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the second block")
 	}
-	if block.Number != 1 {
-		t.Fatalf("Expected to successfully retrieve the second block but got block number %d", block.Number)
+	if block.Header.Number != 1 {
+		t.Fatalf("Expected to successfully retrieve the second block but got block number %d", block.Header.Number)
 	}
 }
 
@@ -165,7 +165,7 @@ func TestBlockedRetrieval(t *testing.T) {
 	if status != ab.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the second block")
 	}
-	if block.Number != 1 {
+	if block.Header.Number != 1 {
 		t.Fatalf("Expected to successfully retrieve the second block")
 	}
 }

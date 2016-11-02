@@ -47,7 +47,7 @@ func TestBroadcastInit(t *testing.T) {
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
 			}
-			if !(bytes.Equal(block.GetMessages()[0].Data, []byte("checkpoint"))) {
+			if !(bytes.Equal(block.Data.Data[0], []byte("checkpoint"))) {
 				t.Fatal("Expected first block to be a checkpoint")
 			}
 			return
@@ -125,8 +125,8 @@ func TestBroadcastBatch(t *testing.T) {
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
 			}
-			if len(block.Messages) != int(testConf.General.BatchSize) {
-				t.Fatalf("Expected block to have %d messages instead of %d", testConf.General.BatchSize, len(block.Messages))
+			if len(block.Data.Data) != int(testConf.General.BatchSize) {
+				t.Fatalf("Expected block to have %d messages instead of %d", testConf.General.BatchSize, len(block.Data.Data))
 			}
 			return
 		case <-time.After(500 * time.Millisecond):
@@ -176,8 +176,8 @@ func TestBroadcastIncompleteBatch(t *testing.T) {
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
 			}
-			if len(block.Messages) != messageCount {
-				t.Fatalf("Expected block to have %d messages instead of %d", messageCount, len(block.Messages))
+			if len(block.Data.Data) != messageCount {
+				t.Fatalf("Expected block to have %d messages instead of %d", messageCount, len(block.Data.Data))
 			}
 			return
 		case <-time.After(testConf.General.BatchTimeout + timePadding):
@@ -229,8 +229,8 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
 			}
-			if len(block.Messages) != messageCount {
-				t.Fatalf("Expected block to have %d messages instead of %d", messageCount, len(block.Messages))
+			if len(block.Data.Data) != messageCount {
+				t.Fatalf("Expected block to have %d messages instead of %d", messageCount, len(block.Data.Data))
 			}
 			return
 		case <-time.After(testConf.General.BatchTimeout + timePadding):
@@ -276,8 +276,8 @@ func TestBroadcastBatchAndQuitEarly(t *testing.T) {
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
 			}
-			if len(block.Messages) != int(testConf.General.BatchSize) {
-				t.Fatalf("Expected block to have %d messages instead of %d", testConf.General.BatchSize, len(block.Messages))
+			if len(block.Data.Data) != int(testConf.General.BatchSize) {
+				t.Fatalf("Expected block to have %d messages instead of %d", testConf.General.BatchSize, len(block.Data.Data))
 			}
 			return
 		case <-time.After(500 * time.Millisecond):

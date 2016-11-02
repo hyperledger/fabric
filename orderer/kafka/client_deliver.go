@@ -136,7 +136,7 @@ func (cd *clientDelivererImpl) sendBlocks(stream ab.AtomicBroadcast_DeliverServe
 					return fmt.Errorf("Failed to send block to the client: %s", err)
 				}
 				logger.Debugf("Sent block %v to client (prevHash: %v, messages: %v)\n",
-					block.Number, block.PrevHash, block.Messages)
+					block.Header.Number, block.Header.PreviousHash, block.Data.Data)
 			default:
 				// Return the push token if there are no messages
 				// available from the ordering service.

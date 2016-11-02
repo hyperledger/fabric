@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='ab.proto',
   package='atomicbroadcast',
   syntax='proto3',
-  serialized_pb=_b('\n\x08\x61\x62.proto\x12\x0f\x61tomicbroadcast\"<\n\x11\x42roadcastResponse\x12\'\n\x06Status\x18\x01 \x01(\x0e\x32\x17.atomicbroadcast.Status\" \n\x10\x42roadcastMessage\x12\x0c\n\x04\x44\x61ta\x18\x01 \x01(\x0c\"\x9f\x01\n\x08SeekInfo\x12\x32\n\x05Start\x18\x01 \x01(\x0e\x32#.atomicbroadcast.SeekInfo.StartType\x12\x17\n\x0fSpecifiedNumber\x18\x02 \x01(\x04\x12\x12\n\nWindowSize\x18\x03 \x01(\x04\"2\n\tStartType\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x41\x63knowledgement\x12\x0e\n\x06Number\x18\x01 \x01(\x04\"\x7f\n\rDeliverUpdate\x12;\n\x0f\x41\x63knowledgement\x18\x01 \x01(\x0b\x32 .atomicbroadcast.AcknowledgementH\x00\x12)\n\x04Seek\x18\x02 \x01(\x0b\x32\x19.atomicbroadcast.SeekInfoH\x00\x42\x06\n\x04Type\"m\n\x05\x42lock\x12\x0e\n\x06Number\x18\x02 \x01(\x04\x12\x10\n\x08PrevHash\x18\x03 \x01(\x0c\x12\r\n\x05Proof\x18\x04 \x01(\x0c\x12\x33\n\x08Messages\x18\x05 \x03(\x0b\x32!.atomicbroadcast.BroadcastMessage\"l\n\x0f\x44\x65liverResponse\x12(\n\x05\x45rror\x18\x01 \x01(\x0e\x32\x17.atomicbroadcast.StatusH\x00\x12\'\n\x05\x42lock\x18\x02 \x01(\x0b\x32\x16.atomicbroadcast.BlockH\x00\x42\x06\n\x04Type*a\n\x06Status\x12\x0b\n\x07SUCCESS\x10\x00\x12\x10\n\x0b\x42\x41\x44_REQUEST\x10\x90\x03\x12\x0e\n\tFORBIDDEN\x10\x93\x03\x12\x0e\n\tNOT_FOUND\x10\x94\x03\x12\x18\n\x13SERVICE_UNAVAILABLE\x10\xf7\x03\x32\xbe\x01\n\x0f\x41tomicBroadcast\x12X\n\tBroadcast\x12!.atomicbroadcast.BroadcastMessage\x1a\".atomicbroadcast.BroadcastResponse\"\x00(\x01\x30\x01\x12Q\n\x07\x44\x65liver\x12\x1e.atomicbroadcast.DeliverUpdate\x1a .atomicbroadcast.DeliverResponse\"\x00(\x01\x30\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x08\x61\x62.proto\x12\x0f\x61tomicbroadcast\"<\n\x11\x42roadcastResponse\x12\'\n\x06Status\x18\x01 \x01(\x0e\x32\x17.atomicbroadcast.Status\" \n\x10\x42roadcastMessage\x12\x0c\n\x04\x44\x61ta\x18\x01 \x01(\x0c\"8\n\nSignedData\x12\x17\n\x0fPayloadEnvelope\x18\x01 \x01(\x0c\x12\x11\n\tSignature\x18\x02 \x01(\x0c\"2\n\x0fPayloadEnvelope\x12\x0f\n\x07Payload\x18\x01 \x01(\x0c\x12\x0e\n\x06Signer\x18\x02 \x01(\x0c\"y\n\x0bTransaction\x12\x10\n\x06Opaque\x18\x01 \x01(\x0cH\x00\x12\x1f\n\x15\x43onfigurationEnvelope\x18\x02 \x01(\x0cH\x00\x12/\n\nSignatures\x18\x03 \x03(\x0b\x32\x1b.atomicbroadcast.SignedDataB\x06\n\x04Type\"p\n\x15\x43onfigurationEnvelope\x12\x10\n\x08Sequence\x18\x01 \x01(\x04\x12\x0f\n\x07\x43hainID\x18\x02 \x01(\x0c\x12\x34\n\x07\x45ntries\x18\x03 \x03(\x0b\x32#.atomicbroadcast.ConfigurationEntry\"\\\n\x12\x43onfigurationEntry\x12\x15\n\rConfiguration\x18\x01 \x01(\x0c\x12/\n\nSignatures\x18\x02 \x03(\x0b\x32\x1b.atomicbroadcast.SignedData\"\x83\x02\n\rConfiguration\x12\x0f\n\x07\x43hainID\x18\x01 \x01(\x0c\x12\n\n\x02ID\x18\x02 \x01(\t\x12\x14\n\x0cLastModified\x18\x03 \x01(\x04\x12>\n\x04Type\x18\x04 \x01(\x0e\x32\x30.atomicbroadcast.Configuration.ConfigurationType\x12\x0c\n\x04\x44\x61ta\x18\x05 \x01(\x0c\x12\x1a\n\x12ModificationPolicy\x18\x06 \x01(\t\"U\n\x11\x43onfigurationType\x12\n\n\x06Policy\x10\x00\x12\n\n\x06\x46\x61\x62ric\x10\x01\x12\t\n\x05\x43hain\x10\x02\x12\x08\n\x04Solo\x10\x03\x12\t\n\x05Kafka\x10\x04\x12\x08\n\x04PBFT\x10\x05\"U\n\x06Policy\x12\x43\n\x0fSignaturePolicy\x18\x02 \x01(\x0b\x32(.atomicbroadcast.SignaturePolicyEnvelopeH\x00\x42\x06\n\x04Type\"p\n\x17SignaturePolicyEnvelope\x12\x0f\n\x07Version\x18\x01 \x01(\x05\x12\x30\n\x06Policy\x18\x02 \x01(\x0b\x32 .atomicbroadcast.SignaturePolicy\x12\x12\n\nIdentities\x18\x03 \x03(\x0c\"\xaf\x01\n\x0fSignaturePolicy\x12\x12\n\x08SignedBy\x18\x01 \x01(\x05H\x00\x12\x37\n\x04\x46rom\x18\x02 \x01(\x0b\x32\'.atomicbroadcast.SignaturePolicy.NOutOfH\x00\x1aG\n\x06NOutOf\x12\t\n\x01N\x18\x01 \x01(\x05\x12\x32\n\x08Policies\x18\x02 \x03(\x0b\x32 .atomicbroadcast.SignaturePolicyB\x06\n\x04Type\"\x9f\x01\n\x08SeekInfo\x12\x32\n\x05Start\x18\x01 \x01(\x0e\x32#.atomicbroadcast.SeekInfo.StartType\x12\x17\n\x0fSpecifiedNumber\x18\x02 \x01(\x04\x12\x12\n\nWindowSize\x18\x03 \x01(\x04\"2\n\tStartType\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x41\x63knowledgement\x12\x0e\n\x06Number\x18\x01 \x01(\x04\"\x7f\n\rDeliverUpdate\x12;\n\x0f\x41\x63knowledgement\x18\x01 \x01(\x0b\x32 .atomicbroadcast.AcknowledgementH\x00\x12)\n\x04Seek\x18\x02 \x01(\x0b\x32\x19.atomicbroadcast.SeekInfoH\x00\x42\x06\n\x04Type\"\x91\x01\n\x05\x42lock\x12,\n\x06Header\x18\x01 \x01(\x0b\x32\x1c.atomicbroadcast.BlockHeader\x12(\n\x04\x44\x61ta\x18\x02 \x01(\x0b\x32\x1a.atomicbroadcast.BlockData\x12\x30\n\x08Metadata\x18\x03 \x01(\x0b\x32\x1e.atomicbroadcast.BlockMetadata\"E\n\x0b\x42lockHeader\x12\x0e\n\x06Number\x18\x01 \x01(\x04\x12\x14\n\x0cPreviousHash\x18\x02 \x01(\x0c\x12\x10\n\x08\x44\x61taHash\x18\x03 \x01(\x0c\"\x19\n\tBlockData\x12\x0c\n\x04\x44\x61ta\x18\x01 \x03(\x0c\"!\n\rBlockMetadata\x12\x10\n\x08Metadata\x18\x01 \x03(\x0c\"l\n\x0f\x44\x65liverResponse\x12(\n\x05\x45rror\x18\x01 \x01(\x0e\x32\x17.atomicbroadcast.StatusH\x00\x12\'\n\x05\x42lock\x18\x02 \x01(\x0b\x32\x16.atomicbroadcast.BlockH\x00\x42\x06\n\x04Type*a\n\x06Status\x12\x0b\n\x07SUCCESS\x10\x00\x12\x10\n\x0b\x42\x41\x44_REQUEST\x10\x90\x03\x12\x0e\n\tFORBIDDEN\x10\x93\x03\x12\x0e\n\tNOT_FOUND\x10\x94\x03\x12\x18\n\x13SERVICE_UNAVAILABLE\x10\xf7\x03\x32\xbe\x01\n\x0f\x41tomicBroadcast\x12X\n\tBroadcast\x12!.atomicbroadcast.BroadcastMessage\x1a\".atomicbroadcast.BroadcastResponse\"\x00(\x01\x30\x01\x12Q\n\x07\x44\x65liver\x12\x1e.atomicbroadcast.DeliverUpdate\x1a .atomicbroadcast.DeliverResponse\"\x00(\x01\x30\x01\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -53,8 +53,8 @@ _STATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=672,
-  serialized_end=769,
+  serialized_start=1924,
+  serialized_end=2021,
 )
 _sym_db.RegisterEnumDescriptor(_STATUS)
 
@@ -65,6 +65,44 @@ FORBIDDEN = 403
 NOT_FOUND = 404
 SERVICE_UNAVAILABLE = 503
 
+
+_CONFIGURATION_CONFIGURATIONTYPE = _descriptor.EnumDescriptor(
+  name='ConfigurationType',
+  full_name='atomicbroadcast.Configuration.ConfigurationType',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='Policy', index=0, number=0,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='Fabric', index=1, number=1,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='Chain', index=2, number=2,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='Solo', index=3, number=3,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='Kafka', index=4, number=4,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='PBFT', index=5, number=5,
+      options=None,
+      type=None),
+  ],
+  containing_type=None,
+  options=None,
+  serialized_start=741,
+  serialized_end=826,
+)
+_sym_db.RegisterEnumDescriptor(_CONFIGURATION_CONFIGURATIONTYPE)
 
 _SEEKINFO_STARTTYPE = _descriptor.EnumDescriptor(
   name='StartType',
@@ -87,8 +125,8 @@ _SEEKINFO_STARTTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=235,
-  serialized_end=285,
+  serialized_start=1317,
+  serialized_end=1367,
 )
 _sym_db.RegisterEnumDescriptor(_SEEKINFO_STARTTYPE)
 
@@ -155,6 +193,437 @@ _BROADCASTMESSAGE = _descriptor.Descriptor(
 )
 
 
+_SIGNEDDATA = _descriptor.Descriptor(
+  name='SignedData',
+  full_name='atomicbroadcast.SignedData',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='PayloadEnvelope', full_name='atomicbroadcast.SignedData.PayloadEnvelope', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Signature', full_name='atomicbroadcast.SignedData.Signature', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=125,
+  serialized_end=181,
+)
+
+
+_PAYLOADENVELOPE = _descriptor.Descriptor(
+  name='PayloadEnvelope',
+  full_name='atomicbroadcast.PayloadEnvelope',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='Payload', full_name='atomicbroadcast.PayloadEnvelope.Payload', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Signer', full_name='atomicbroadcast.PayloadEnvelope.Signer', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=183,
+  serialized_end=233,
+)
+
+
+_TRANSACTION = _descriptor.Descriptor(
+  name='Transaction',
+  full_name='atomicbroadcast.Transaction',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='Opaque', full_name='atomicbroadcast.Transaction.Opaque', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='ConfigurationEnvelope', full_name='atomicbroadcast.Transaction.ConfigurationEnvelope', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Signatures', full_name='atomicbroadcast.Transaction.Signatures', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='Type', full_name='atomicbroadcast.Transaction.Type',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=235,
+  serialized_end=356,
+)
+
+
+_CONFIGURATIONENVELOPE = _descriptor.Descriptor(
+  name='ConfigurationEnvelope',
+  full_name='atomicbroadcast.ConfigurationEnvelope',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='Sequence', full_name='atomicbroadcast.ConfigurationEnvelope.Sequence', index=0,
+      number=1, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='ChainID', full_name='atomicbroadcast.ConfigurationEnvelope.ChainID', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Entries', full_name='atomicbroadcast.ConfigurationEnvelope.Entries', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=358,
+  serialized_end=470,
+)
+
+
+_CONFIGURATIONENTRY = _descriptor.Descriptor(
+  name='ConfigurationEntry',
+  full_name='atomicbroadcast.ConfigurationEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='Configuration', full_name='atomicbroadcast.ConfigurationEntry.Configuration', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Signatures', full_name='atomicbroadcast.ConfigurationEntry.Signatures', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=472,
+  serialized_end=564,
+)
+
+
+_CONFIGURATION = _descriptor.Descriptor(
+  name='Configuration',
+  full_name='atomicbroadcast.Configuration',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='ChainID', full_name='atomicbroadcast.Configuration.ChainID', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='ID', full_name='atomicbroadcast.Configuration.ID', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='LastModified', full_name='atomicbroadcast.Configuration.LastModified', index=2,
+      number=3, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Type', full_name='atomicbroadcast.Configuration.Type', index=3,
+      number=4, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Data', full_name='atomicbroadcast.Configuration.Data', index=4,
+      number=5, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='ModificationPolicy', full_name='atomicbroadcast.Configuration.ModificationPolicy', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _CONFIGURATION_CONFIGURATIONTYPE,
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=567,
+  serialized_end=826,
+)
+
+
+_POLICY = _descriptor.Descriptor(
+  name='Policy',
+  full_name='atomicbroadcast.Policy',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='SignaturePolicy', full_name='atomicbroadcast.Policy.SignaturePolicy', index=0,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='Type', full_name='atomicbroadcast.Policy.Type',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=828,
+  serialized_end=913,
+)
+
+
+_SIGNATUREPOLICYENVELOPE = _descriptor.Descriptor(
+  name='SignaturePolicyEnvelope',
+  full_name='atomicbroadcast.SignaturePolicyEnvelope',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='Version', full_name='atomicbroadcast.SignaturePolicyEnvelope.Version', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Policy', full_name='atomicbroadcast.SignaturePolicyEnvelope.Policy', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Identities', full_name='atomicbroadcast.SignaturePolicyEnvelope.Identities', index=2,
+      number=3, type=12, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=915,
+  serialized_end=1027,
+)
+
+
+_SIGNATUREPOLICY_NOUTOF = _descriptor.Descriptor(
+  name='NOutOf',
+  full_name='atomicbroadcast.SignaturePolicy.NOutOf',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='N', full_name='atomicbroadcast.SignaturePolicy.NOutOf.N', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Policies', full_name='atomicbroadcast.SignaturePolicy.NOutOf.Policies', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1126,
+  serialized_end=1197,
+)
+
+_SIGNATUREPOLICY = _descriptor.Descriptor(
+  name='SignaturePolicy',
+  full_name='atomicbroadcast.SignaturePolicy',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='SignedBy', full_name='atomicbroadcast.SignaturePolicy.SignedBy', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='From', full_name='atomicbroadcast.SignaturePolicy.From', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[_SIGNATUREPOLICY_NOUTOF, ],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='Type', full_name='atomicbroadcast.SignaturePolicy.Type',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=1030,
+  serialized_end=1205,
+)
+
+
 _SEEKINFO = _descriptor.Descriptor(
   name='SeekInfo',
   full_name='atomicbroadcast.SeekInfo',
@@ -196,8 +665,8 @@ _SEEKINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=126,
-  serialized_end=285,
+  serialized_start=1208,
+  serialized_end=1367,
 )
 
 
@@ -227,8 +696,8 @@ _ACKNOWLEDGEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=287,
-  serialized_end=320,
+  serialized_start=1369,
+  serialized_end=1402,
 )
 
 
@@ -268,8 +737,8 @@ _DELIVERUPDATE = _descriptor.Descriptor(
       name='Type', full_name='atomicbroadcast.DeliverUpdate.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=322,
-  serialized_end=449,
+  serialized_start=1404,
+  serialized_end=1531,
 )
 
 
@@ -281,29 +750,98 @@ _BLOCK = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Number', full_name='atomicbroadcast.Block.Number', index=0,
-      number=2, type=4, cpp_type=4, label=1,
+      name='Header', full_name='atomicbroadcast.Block.Header', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Data', full_name='atomicbroadcast.Block.Data', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='Metadata', full_name='atomicbroadcast.Block.Metadata', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1534,
+  serialized_end=1679,
+)
+
+
+_BLOCKHEADER = _descriptor.Descriptor(
+  name='BlockHeader',
+  full_name='atomicbroadcast.BlockHeader',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='Number', full_name='atomicbroadcast.BlockHeader.Number', index=0,
+      number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='PrevHash', full_name='atomicbroadcast.Block.PrevHash', index=1,
+      name='PreviousHash', full_name='atomicbroadcast.BlockHeader.PreviousHash', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='DataHash', full_name='atomicbroadcast.BlockHeader.DataHash', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1681,
+  serialized_end=1750,
+)
+
+
+_BLOCKDATA = _descriptor.Descriptor(
+  name='BlockData',
+  full_name='atomicbroadcast.BlockData',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
     _descriptor.FieldDescriptor(
-      name='Proof', full_name='atomicbroadcast.Block.Proof', index=2,
-      number=4, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='Messages', full_name='atomicbroadcast.Block.Messages', index=3,
-      number=5, type=11, cpp_type=10, label=3,
+      name='Data', full_name='atomicbroadcast.BlockData.Data', index=0,
+      number=1, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -320,8 +858,39 @@ _BLOCK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=451,
-  serialized_end=560,
+  serialized_start=1752,
+  serialized_end=1777,
+)
+
+
+_BLOCKMETADATA = _descriptor.Descriptor(
+  name='BlockMetadata',
+  full_name='atomicbroadcast.BlockMetadata',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='Metadata', full_name='atomicbroadcast.BlockMetadata.Metadata', index=0,
+      number=1, type=12, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1779,
+  serialized_end=1812,
 )
 
 
@@ -361,11 +930,36 @@ _DELIVERRESPONSE = _descriptor.Descriptor(
       name='Type', full_name='atomicbroadcast.DeliverResponse.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=562,
-  serialized_end=670,
+  serialized_start=1814,
+  serialized_end=1922,
 )
 
 _BROADCASTRESPONSE.fields_by_name['Status'].enum_type = _STATUS
+_TRANSACTION.fields_by_name['Signatures'].message_type = _SIGNEDDATA
+_TRANSACTION.oneofs_by_name['Type'].fields.append(
+  _TRANSACTION.fields_by_name['Opaque'])
+_TRANSACTION.fields_by_name['Opaque'].containing_oneof = _TRANSACTION.oneofs_by_name['Type']
+_TRANSACTION.oneofs_by_name['Type'].fields.append(
+  _TRANSACTION.fields_by_name['ConfigurationEnvelope'])
+_TRANSACTION.fields_by_name['ConfigurationEnvelope'].containing_oneof = _TRANSACTION.oneofs_by_name['Type']
+_CONFIGURATIONENVELOPE.fields_by_name['Entries'].message_type = _CONFIGURATIONENTRY
+_CONFIGURATIONENTRY.fields_by_name['Signatures'].message_type = _SIGNEDDATA
+_CONFIGURATION.fields_by_name['Type'].enum_type = _CONFIGURATION_CONFIGURATIONTYPE
+_CONFIGURATION_CONFIGURATIONTYPE.containing_type = _CONFIGURATION
+_POLICY.fields_by_name['SignaturePolicy'].message_type = _SIGNATUREPOLICYENVELOPE
+_POLICY.oneofs_by_name['Type'].fields.append(
+  _POLICY.fields_by_name['SignaturePolicy'])
+_POLICY.fields_by_name['SignaturePolicy'].containing_oneof = _POLICY.oneofs_by_name['Type']
+_SIGNATUREPOLICYENVELOPE.fields_by_name['Policy'].message_type = _SIGNATUREPOLICY
+_SIGNATUREPOLICY_NOUTOF.fields_by_name['Policies'].message_type = _SIGNATUREPOLICY
+_SIGNATUREPOLICY_NOUTOF.containing_type = _SIGNATUREPOLICY
+_SIGNATUREPOLICY.fields_by_name['From'].message_type = _SIGNATUREPOLICY_NOUTOF
+_SIGNATUREPOLICY.oneofs_by_name['Type'].fields.append(
+  _SIGNATUREPOLICY.fields_by_name['SignedBy'])
+_SIGNATUREPOLICY.fields_by_name['SignedBy'].containing_oneof = _SIGNATUREPOLICY.oneofs_by_name['Type']
+_SIGNATUREPOLICY.oneofs_by_name['Type'].fields.append(
+  _SIGNATUREPOLICY.fields_by_name['From'])
+_SIGNATUREPOLICY.fields_by_name['From'].containing_oneof = _SIGNATUREPOLICY.oneofs_by_name['Type']
 _SEEKINFO.fields_by_name['Start'].enum_type = _SEEKINFO_STARTTYPE
 _SEEKINFO_STARTTYPE.containing_type = _SEEKINFO
 _DELIVERUPDATE.fields_by_name['Acknowledgement'].message_type = _ACKNOWLEDGEMENT
@@ -376,7 +970,9 @@ _DELIVERUPDATE.fields_by_name['Acknowledgement'].containing_oneof = _DELIVERUPDA
 _DELIVERUPDATE.oneofs_by_name['Type'].fields.append(
   _DELIVERUPDATE.fields_by_name['Seek'])
 _DELIVERUPDATE.fields_by_name['Seek'].containing_oneof = _DELIVERUPDATE.oneofs_by_name['Type']
-_BLOCK.fields_by_name['Messages'].message_type = _BROADCASTMESSAGE
+_BLOCK.fields_by_name['Header'].message_type = _BLOCKHEADER
+_BLOCK.fields_by_name['Data'].message_type = _BLOCKDATA
+_BLOCK.fields_by_name['Metadata'].message_type = _BLOCKMETADATA
 _DELIVERRESPONSE.fields_by_name['Error'].enum_type = _STATUS
 _DELIVERRESPONSE.fields_by_name['Block'].message_type = _BLOCK
 _DELIVERRESPONSE.oneofs_by_name['Type'].fields.append(
@@ -387,10 +983,22 @@ _DELIVERRESPONSE.oneofs_by_name['Type'].fields.append(
 _DELIVERRESPONSE.fields_by_name['Block'].containing_oneof = _DELIVERRESPONSE.oneofs_by_name['Type']
 DESCRIPTOR.message_types_by_name['BroadcastResponse'] = _BROADCASTRESPONSE
 DESCRIPTOR.message_types_by_name['BroadcastMessage'] = _BROADCASTMESSAGE
+DESCRIPTOR.message_types_by_name['SignedData'] = _SIGNEDDATA
+DESCRIPTOR.message_types_by_name['PayloadEnvelope'] = _PAYLOADENVELOPE
+DESCRIPTOR.message_types_by_name['Transaction'] = _TRANSACTION
+DESCRIPTOR.message_types_by_name['ConfigurationEnvelope'] = _CONFIGURATIONENVELOPE
+DESCRIPTOR.message_types_by_name['ConfigurationEntry'] = _CONFIGURATIONENTRY
+DESCRIPTOR.message_types_by_name['Configuration'] = _CONFIGURATION
+DESCRIPTOR.message_types_by_name['Policy'] = _POLICY
+DESCRIPTOR.message_types_by_name['SignaturePolicyEnvelope'] = _SIGNATUREPOLICYENVELOPE
+DESCRIPTOR.message_types_by_name['SignaturePolicy'] = _SIGNATUREPOLICY
 DESCRIPTOR.message_types_by_name['SeekInfo'] = _SEEKINFO
 DESCRIPTOR.message_types_by_name['Acknowledgement'] = _ACKNOWLEDGEMENT
 DESCRIPTOR.message_types_by_name['DeliverUpdate'] = _DELIVERUPDATE
 DESCRIPTOR.message_types_by_name['Block'] = _BLOCK
+DESCRIPTOR.message_types_by_name['BlockHeader'] = _BLOCKHEADER
+DESCRIPTOR.message_types_by_name['BlockData'] = _BLOCKDATA
+DESCRIPTOR.message_types_by_name['BlockMetadata'] = _BLOCKMETADATA
 DESCRIPTOR.message_types_by_name['DeliverResponse'] = _DELIVERRESPONSE
 DESCRIPTOR.enum_types_by_name['Status'] = _STATUS
 
@@ -407,6 +1015,77 @@ BroadcastMessage = _reflection.GeneratedProtocolMessageType('BroadcastMessage', 
   # @@protoc_insertion_point(class_scope:atomicbroadcast.BroadcastMessage)
   ))
 _sym_db.RegisterMessage(BroadcastMessage)
+
+SignedData = _reflection.GeneratedProtocolMessageType('SignedData', (_message.Message,), dict(
+  DESCRIPTOR = _SIGNEDDATA,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.SignedData)
+  ))
+_sym_db.RegisterMessage(SignedData)
+
+PayloadEnvelope = _reflection.GeneratedProtocolMessageType('PayloadEnvelope', (_message.Message,), dict(
+  DESCRIPTOR = _PAYLOADENVELOPE,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.PayloadEnvelope)
+  ))
+_sym_db.RegisterMessage(PayloadEnvelope)
+
+Transaction = _reflection.GeneratedProtocolMessageType('Transaction', (_message.Message,), dict(
+  DESCRIPTOR = _TRANSACTION,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.Transaction)
+  ))
+_sym_db.RegisterMessage(Transaction)
+
+ConfigurationEnvelope = _reflection.GeneratedProtocolMessageType('ConfigurationEnvelope', (_message.Message,), dict(
+  DESCRIPTOR = _CONFIGURATIONENVELOPE,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.ConfigurationEnvelope)
+  ))
+_sym_db.RegisterMessage(ConfigurationEnvelope)
+
+ConfigurationEntry = _reflection.GeneratedProtocolMessageType('ConfigurationEntry', (_message.Message,), dict(
+  DESCRIPTOR = _CONFIGURATIONENTRY,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.ConfigurationEntry)
+  ))
+_sym_db.RegisterMessage(ConfigurationEntry)
+
+Configuration = _reflection.GeneratedProtocolMessageType('Configuration', (_message.Message,), dict(
+  DESCRIPTOR = _CONFIGURATION,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.Configuration)
+  ))
+_sym_db.RegisterMessage(Configuration)
+
+Policy = _reflection.GeneratedProtocolMessageType('Policy', (_message.Message,), dict(
+  DESCRIPTOR = _POLICY,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.Policy)
+  ))
+_sym_db.RegisterMessage(Policy)
+
+SignaturePolicyEnvelope = _reflection.GeneratedProtocolMessageType('SignaturePolicyEnvelope', (_message.Message,), dict(
+  DESCRIPTOR = _SIGNATUREPOLICYENVELOPE,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.SignaturePolicyEnvelope)
+  ))
+_sym_db.RegisterMessage(SignaturePolicyEnvelope)
+
+SignaturePolicy = _reflection.GeneratedProtocolMessageType('SignaturePolicy', (_message.Message,), dict(
+
+  NOutOf = _reflection.GeneratedProtocolMessageType('NOutOf', (_message.Message,), dict(
+    DESCRIPTOR = _SIGNATUREPOLICY_NOUTOF,
+    __module__ = 'ab_pb2'
+    # @@protoc_insertion_point(class_scope:atomicbroadcast.SignaturePolicy.NOutOf)
+    ))
+  ,
+  DESCRIPTOR = _SIGNATUREPOLICY,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.SignaturePolicy)
+  ))
+_sym_db.RegisterMessage(SignaturePolicy)
+_sym_db.RegisterMessage(SignaturePolicy.NOutOf)
 
 SeekInfo = _reflection.GeneratedProtocolMessageType('SeekInfo', (_message.Message,), dict(
   DESCRIPTOR = _SEEKINFO,
@@ -435,6 +1114,27 @@ Block = _reflection.GeneratedProtocolMessageType('Block', (_message.Message,), d
   # @@protoc_insertion_point(class_scope:atomicbroadcast.Block)
   ))
 _sym_db.RegisterMessage(Block)
+
+BlockHeader = _reflection.GeneratedProtocolMessageType('BlockHeader', (_message.Message,), dict(
+  DESCRIPTOR = _BLOCKHEADER,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.BlockHeader)
+  ))
+_sym_db.RegisterMessage(BlockHeader)
+
+BlockData = _reflection.GeneratedProtocolMessageType('BlockData', (_message.Message,), dict(
+  DESCRIPTOR = _BLOCKDATA,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.BlockData)
+  ))
+_sym_db.RegisterMessage(BlockData)
+
+BlockMetadata = _reflection.GeneratedProtocolMessageType('BlockMetadata', (_message.Message,), dict(
+  DESCRIPTOR = _BLOCKMETADATA,
+  __module__ = 'ab_pb2'
+  # @@protoc_insertion_point(class_scope:atomicbroadcast.BlockMetadata)
+  ))
+_sym_db.RegisterMessage(BlockMetadata)
 
 DeliverResponse = _reflection.GeneratedProtocolMessageType('DeliverResponse', (_message.Message,), dict(
   DESCRIPTOR = _DELIVERRESPONSE,

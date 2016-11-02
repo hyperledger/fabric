@@ -88,15 +88,15 @@ func (c *clientImpl) recvDeliverReplies(stream ab.AtomicBroadcast_DeliverClient)
 		switch t := reply.GetType().(type) {
 		case *ab.DeliverResponse_Block:
 			logger.Infof("Deliver reply from orderer: block %v, payload %v, prevHash %v",
-				t.Block.Number, t.Block.Messages, t.Block.PrevHash)
+				t.Block.Header.Number, t.Block.Data.Data, t.Block.Header.PreviousHash)
 			count++
 			if (count > 0) && (count%c.config.ack == 0) {
-				updateAck.GetAcknowledgement().Number = t.Block.Number
+				updateAck.GetAcknowledgement().Number = t.Block.Header.Number
 				err = stream.Send(updateAck)
 				if err != nil {
 					logger.Info("Failed to send ACK update to orderer: ", err)
 				}
-				logger.Debugf("Sent ACK for block %d", t.Block.Number)
+				logger.Debugf("Sent ACK for block %d", t.Block.Header.Number)
 			}
 		case *ab.DeliverResponse_Error:
 			logger.Info("Deliver reply from orderer:", t.Error.String())

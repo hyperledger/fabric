@@ -69,6 +69,6 @@ func main() {
 	s.broadcast([]byte(fmt.Sprintf("Testing %v", time.Now())))
 	err = s.getAck()
 	if err != nil {
-		fmt.Printf("\n\n!!!!!!!!!!!!!!!!!\n%v\n!!!!!!!!!!!!!!!!!\n", err)
+		fmt.Printf("\nError: %v\n", err)
 	}
 }
