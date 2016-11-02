@@ -17,31 +17,34 @@ limitations under the License.
 package static
 
 import (
-	"math/rand"
+	"fmt"
+	"time"
 
+	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 type bootstrapper struct {
 	chainID []byte
 }
 
-// New returns a new static bootstrap helper
+// New returns a new static bootstrap helper.
 func New() bootstrap.Helper {
-	b := make([]byte, 16)
-	rand.Read(b)
-
-	return &bootstrapper{
-		chainID: b,
+	chainID, err := primitives.GetRandomBytes(16)
+	if err != nil {
+		panic(fmt.Errorf("Cannot generate random chain ID: %s", err))
 	}
+	return &bootstrapper{chainID}
 }
 
-// errorlessMarshal prevents poluting this code with many panics, if the genesis block cannot be created, the system cannot start so panic is correct
+// errorlessMarshal prevents poluting this code with panics
+// If the genesis block cannot be created, the system cannot start so panic is correct
 func errorlessMarshal(thing proto.Message) []byte {
 	data, err := proto.Marshal(thing)
 	if err != nil {
@@ -50,19 +53,63 @@ func errorlessMarshal(thing proto.Message) []byte {
 	return data
 }
 
-func (b *bootstrapper) makeSignedConfigurationItem(id string, ctype cb.ConfigurationItem_ConfigurationType, data []byte, modificationPolicyID string) *cb.SignedConfigurationItem {
-	configurationBytes := errorlessMarshal(&cb.ConfigurationItem{
-		Header: &cb.ChainHeader{
-			ChainID: b.chainID,
+func makeChainHeader(headerType cb.HeaderType, version int32, chainID []byte) *cb.ChainHeader {
+	return &cb.ChainHeader{
+		Type:    int32(headerType),
+		Version: version,
+		Timestamp: &timestamp.Timestamp{
+			Seconds: time.Now().Unix(),
+			Nanos:   0,
 		},
+		ChainID: chainID,
+	}
+}
+
+func makeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte, epoch uint64) *cb.SignatureHeader {
+	return &cb.SignatureHeader{
+		Creator: serializedCreatorCertChain,
+		Nonce:   nonce,
+		Epoch:   epoch,
+	}
+}
+
+func (b *bootstrapper) makeSignedConfigurationItem(configurationItemType cb.ConfigurationItem_ConfigurationType, modificationPolicyID string, key string, value []byte) *cb.SignedConfigurationItem {
+	marshaledConfigurationItem := errorlessMarshal(&cb.ConfigurationItem{
+		Header:             makeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, 1, b.chainID),
+		Type:               configurationItemType,
 		LastModified:       0,
-		Type:               ctype,
 		ModificationPolicy: modificationPolicyID,
-		Key:                id,
-		Value:              data,
+		Key:                key,
+		Value:              value,
 	})
+
 	return &cb.SignedConfigurationItem{
-		ConfigurationItem: configurationBytes,
+		ConfigurationItem: marshaledConfigurationItem,
+		Signatures:        nil,
+	}
+}
+
+func (b *bootstrapper) makeConfigurationEnvelope(items ...*cb.SignedConfigurationItem) *cb.ConfigurationEnvelope {
+	return &cb.ConfigurationEnvelope{
+		Items: items,
+	}
+}
+
+func (b *bootstrapper) makeEnvelope(configurationEnvelope *cb.ConfigurationEnvelope) *cb.Envelope {
+	nonce, err := primitives.GetRandomNonce()
+	if err != nil {
+		panic(fmt.Errorf("Cannot generate random nonce: %s", err))
+	}
+	marshaledPayload := errorlessMarshal(&cb.Payload{
+		Header: &cb.Header{
+			ChainHeader:     makeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, 1, b.chainID),
+			SignatureHeader: makeSignatureHeader(nil, nonce, 0),
+		},
+		Data: errorlessMarshal(configurationEnvelope),
+	})
+	return &cb.Envelope{
+		Payload:   marshaledPayload,
+		Signature: nil,
 	}
 }
 
@@ -77,27 +124,20 @@ func sigPolicyToPolicy(sigPolicy *cb.SignaturePolicyEnvelope) []byte {
 
 // GenesisBlock returns the genesis block to be used for bootstrapping
 func (b *bootstrapper) GenesisBlock() (*cb.Block, error) {
-
 	// Lock down the default modification policy to prevent any further policy modifications
-	lockdownDefaultModificationPolicy := b.makeSignedConfigurationItem(configtx.DefaultModificationPolicyID, cb.ConfigurationItem_Policy, sigPolicyToPolicy(cauthdsl.RejectAllPolicy), configtx.DefaultModificationPolicyID)
+	lockdownDefaultModificationPolicy := b.makeSignedConfigurationItem(cb.ConfigurationItem_Policy, configtx.DefaultModificationPolicyID, configtx.DefaultModificationPolicyID, sigPolicyToPolicy(cauthdsl.RejectAllPolicy))
 
-	initialConfigTX := errorlessMarshal(&cb.ConfigurationEnvelope{
-		Items: []*cb.SignedConfigurationItem{
-			lockdownDefaultModificationPolicy,
-		},
-	})
-
-	data := &cb.BlockData{
-		Data: [][]byte{initialConfigTX},
+	blockData := &cb.BlockData{
+		Data: [][]byte{errorlessMarshal(b.makeEnvelope(b.makeConfigurationEnvelope(lockdownDefaultModificationPolicy)))},
 	}
 
 	return &cb.Block{
 		Header: &cb.BlockHeader{
 			Number:       0,
-			PreviousHash: []byte("GENESIS"),
-			DataHash:     data.Hash(),
+			PreviousHash: nil,
+			DataHash:     blockData.Hash(),
 		},
-		Data: data,
+		Data:     blockData,
+		Metadata: nil,
 	}, nil
-
 }

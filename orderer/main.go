@@ -87,9 +87,13 @@ func init() {
 func retrieveConfiguration(rl rawledger.Reader) *cb.ConfigurationEnvelope {
 	var lastConfigTx *cb.ConfigurationEnvelope
 
+	envelope := new(cb.Envelope)
+	payload := new(cb.Payload)
+	configurationEnvelope := new(cb.ConfigurationEnvelope)
+
 	it, _ := rl.Iterator(ab.SeekInfo_OLDEST, 0)
 	// Iterate over the blockchain, looking for config transactions, track the most recent one encountered
-	// this will be the transaction which is returned
+	// This will be the transaction which is returned
 	for {
 		select {
 		case <-it.ReadyChan():
@@ -97,17 +101,20 @@ func retrieveConfiguration(rl rawledger.Reader) *cb.ConfigurationEnvelope {
 			if status != cb.Status_SUCCESS {
 				panic(fmt.Errorf("Error parsing blockchain at startup: %v", status))
 			}
-			// ConfigTxs should always be by themselves
 			if len(block.Data.Data) != 1 {
 				continue
 			}
-
-			maybeConfigTx := &cb.ConfigurationEnvelope{}
-
-			err := proto.Unmarshal(block.Data.Data[0], maybeConfigTx)
-
-			if err == nil {
-				lastConfigTx = maybeConfigTx
+			if err := proto.Unmarshal(block.Data.Data[0], envelope); err != nil {
+				panic(fmt.Errorf("Block doesn't carry a message envelope: %s", err))
+			}
+			if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+				panic(fmt.Errorf("Message envelope doesn't carry a payload: %s", err))
+			}
+			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
+				continue
+			}
+			if err := proto.Unmarshal(payload.Data, configurationEnvelope); err == nil {
+				lastConfigTx = configurationEnvelope
 			}
 		default:
 			return lastConfigTx

@@ -35,14 +35,14 @@ package common;
 //     b) The ConfigurationSignature signature is over the concatenation of signatureHeader and the ConfigurationItem bytes (which includes a ChainHeader)
 //   5. Submit new Configuration for ordering in Envelope signed by submitter
 //     a) The Envelope Payload has data set to the marshaled ConfigurationEnvelope
-//     b) The Envelope Payload has a header of type Header.Type.CONFIGURATION_TRANSACTION 
-// 
+//     b) The Envelope Payload has a header of type Header.Type.CONFIGURATION_TRANSACTION
+//
 // The configuration manager will verify:
 //   1. All configuration items and the envelope refer to the correct chain
 //   2. Some configuration item has been added or modified
 //   3. No existing configuration item has been ommitted
 //   4. All configuration changes have a LastModification of one more than the last configuration's highest LastModification number
-//   5. All configuration changes satisfy the corresponding modification policy 
+//   5. All configuration changes satisfy the corresponding modification policy
 message ConfigurationEnvelope {
     repeated SignedConfigurationItem Items = 1;
 }
@@ -50,7 +50,7 @@ message ConfigurationEnvelope {
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message SignedConfigurationItem {
     bytes ConfigurationItem = 1;
-    repeated ConfigurationSignature Signatures = 2; // Signatures over the hash of Configuration
+    repeated ConfigurationSignature Signatures = 2; // Signatures over the hash of ConfigurationItem
 }
 
 message ConfigurationItem {
@@ -100,7 +100,7 @@ message SignaturePolicy {
         repeated SignaturePolicy Policies = 2;
     }
     oneof Type {
-        int32 SignedBy = 1; 
+        int32 SignedBy = 1;
         NOutOf From = 2;
     }
 }
