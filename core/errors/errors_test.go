@@ -29,8 +29,27 @@ func TestError(t *testing.T) {
 	}
 }
 
+// TestErrorWithArg tests creating an error with a message argument
+func TestErrorWithArg(t *testing.T) {
+	e := Error(Utility, ErrorWithArg, "arg1")
+	s := e.GetStack()
+	if s != "" {
+		t.Fatalf("No error stack should have been recorded.")
+	}
+}
+
 func TestErrorWithCallstack(t *testing.T) {
 	e := ErrorWithCallstack(Utility, UnknownError)
+	s := e.GetStack()
+	if s == "" {
+		t.Fatalf("No error stack was recorded.")
+	}
+}
+
+// TestErrorWithCallstackAndArg tests creating an error with a callstack and
+// message argument
+func TestErrorWithCallstackAndArg(t *testing.T) {
+	e := ErrorWithCallstack(Utility, ErrorWithArg, "arg1")
 	s := e.GetStack()
 	if s == "" {
 		t.Fatalf("No error stack was recorded.")
@@ -48,14 +67,36 @@ func ExampleError() {
 		fmt.Printf("%s\n", err.GetErrorCode())
 		fmt.Printf("%d\n", err.GetComponentCode())
 		fmt.Printf("%d\n", err.GetReasonCode())
-		fmt.Printf("%s\n", err.GetComponentCode().Message(err.GetReasonCode()))
-		fmt.Printf("%s", err.GetComponentCode().MessageIn(err.GetReasonCode(), "en"))
+		fmt.Printf("%s\n", err.Message())
+		fmt.Printf("%s\n", err.MessageIn("en"))
 		// Output:
-		// An unknown error occured.
+		// An unknown error occurred.
 		// 0-0
 		// 0
 		// 0
-		// An unknown error occured.
-		// An unknown error occured.
+		// An unknown error occurred.
+		// An unknown error occurred.
+	}
+}
+
+// ExampleErrorWithArg tests the output for a sample error with a message
+// argument
+func ExampleErrorWithArg() {
+	err := Error(Utility, ErrorWithArg, "arg1")
+
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		fmt.Printf("%s\n", err.GetErrorCode())
+		fmt.Printf("%d\n", err.GetComponentCode())
+		fmt.Printf("%d\n", err.GetReasonCode())
+		fmt.Printf("%s\n", err.Message())
+		fmt.Printf("%s\n", err.MessageIn("en"))
+		// Output:
+		// An error occurred: arg1
+		// 0-1
+		// 0
+		// 1
+		// An error occurred: arg1
+		// An error occurred: arg1
 	}
 }

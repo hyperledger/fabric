@@ -39,8 +39,9 @@ const (
 
 // Result codes
 const (
-	// Placeholder
+	// Placeholders
 	UnknownError ReasonCode = iota
+	ErrorWithArg ReasonCode = 1
 )
 
 // CallStackError is a general interface for
@@ -51,6 +52,8 @@ type CallStackError interface {
 	GetErrorCode() string
 	GetComponentCode() ComponentCode
 	GetReasonCode() ReasonCode
+	Message() string
+	MessageIn(string) string
 }
 
 type errormap map[string]map[string]map[string]string
@@ -81,6 +84,7 @@ type hlError struct {
 	stack         callstack
 	componentcode ComponentCode
 	reasoncode    ReasonCode
+	args          []interface{}
 	stackGetter   func(callstack) string
 }
 
@@ -108,7 +112,7 @@ func setupHLError(e *hlError, debug bool) {
 
 // Error comes from the error interface
 func (h *hlError) Error() string {
-	return h.componentcode.Message(h.reasoncode)
+	return h.Message()
 }
 
 // GetStack returns the call stack as a string
@@ -131,33 +135,37 @@ func (h *hlError) GetErrorCode() string {
 	return fmt.Sprintf("%d-%d", h.componentcode, h.reasoncode)
 }
 
-// Message returns the corresponding error message for this code in default language
-func (c ComponentCode) Message(reasoncode ReasonCode) string {
-	return emap[fmt.Sprintf("%d", c)][fmt.Sprintf("%d", reasoncode)][language]
+// Message returns the corresponding error message for this error in default
+// language.
+// TODO - figure out the best way to read in system language instead of using
+// hard-coded default language
+func (h *hlError) Message() string {
+	return fmt.Sprintf(emap[fmt.Sprintf("%d", h.componentcode)][fmt.Sprintf("%d", h.reasoncode)][language], h.args...)
 }
 
-// MessageIn returns the corresponding error message for this code in 'language'
-func (c ComponentCode) MessageIn(reasoncode ReasonCode, language string) string {
-	return emap[fmt.Sprintf("%d", c)][fmt.Sprintf("%d", reasoncode)][language]
+// MessageIn returns the corresponding error message for this error in 'language'
+func (h *hlError) MessageIn(language string) string {
+	return fmt.Sprintf(emap[fmt.Sprintf("%d", h.componentcode)][fmt.Sprintf("%d", h.reasoncode)][language], h.args...)
 }
 
 // Error creates a CallStackError using a specific Component Code and
 // Reason Code (no callstack is recorded)
-func Error(componentcode ComponentCode, reasoncode ReasonCode) CallStackError {
-	return newCustomError(componentcode, reasoncode, false)
+func Error(componentcode ComponentCode, reasoncode ReasonCode, args ...interface{}) CallStackError {
+	return newCustomError(componentcode, reasoncode, false, args...)
 }
 
 // ErrorWithCallstack creates a CallStackError using a specific Component Code and
 // Reason Code and fills its callstack
-func ErrorWithCallstack(componentcode ComponentCode, reasoncode ReasonCode) CallStackError {
-	return newCustomError(componentcode, reasoncode, true)
+func ErrorWithCallstack(componentcode ComponentCode, reasoncode ReasonCode, args ...interface{}) CallStackError {
+	return newCustomError(componentcode, reasoncode, true, args...)
 }
 
-func newCustomError(componentcode ComponentCode, reasoncode ReasonCode, generateStack bool) CallStackError {
+func newCustomError(componentcode ComponentCode, reasoncode ReasonCode, generateStack bool, args ...interface{}) CallStackError {
 	e := &hlError{}
 	setupHLError(e, generateStack)
 	e.componentcode = componentcode
 	e.reasoncode = reasoncode
+	e.args = args
 	return e
 }
 
