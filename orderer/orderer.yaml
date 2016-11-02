@@ -41,6 +41,12 @@ General:
     # Genesis method: The method by which to retrieve/generate the genesis block
     GenesisMethod: static
 
+    # Enable an HTTP service for Go "pprof" profiling as documented at
+    # https://golang.org/pkg/net/http/pprof
+    Profile:
+        Enabled: false
+        Address: 0.0.0.0:6060
+
 ################################################################################
 #
 #   SECTION: RAM Ledger

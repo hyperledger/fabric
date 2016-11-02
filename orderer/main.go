@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 
@@ -45,8 +47,19 @@ import (
 	"google.golang.org/grpc"
 )
 
+var logger = logging.MustGetLogger("orderer/main")
+
 func main() {
 	conf := config.Load()
+
+	// Start the profiling service if enabled. The ListenAndServe()
+	// call does not return unless an error occurs.
+	if conf.General.Profile.Enabled {
+		go func() {
+			logger.Infof("Starting Go pprof profiling service on %s", conf.General.Profile.Address)
+			panic(fmt.Errorf("Go pprof service failed: %s", http.ListenAndServe(conf.General.Profile.Address, nil)))
+		}()
+	}
 
 	switch conf.General.OrdererType {
 	case "solo":
