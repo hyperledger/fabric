@@ -53,7 +53,7 @@ func errorlessMarshal(thing proto.Message) []byte {
 	return data
 }
 
-func makeChainHeader(headerType cb.HeaderType, version int32, chainID []byte) *cb.ChainHeader {
+func makeChainHeader(headerType cb.HeaderType, version int32, chainID []byte, epoch uint64) *cb.ChainHeader {
 	return &cb.ChainHeader{
 		Type:    int32(headerType),
 		Version: version,
@@ -62,6 +62,7 @@ func makeChainHeader(headerType cb.HeaderType, version int32, chainID []byte) *c
 			Nanos:   0,
 		},
 		ChainID: chainID,
+		Epoch:   epoch,
 	}
 }
 
@@ -74,7 +75,7 @@ func makeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte) *cb.Si
 
 func (b *bootstrapper) makeSignedConfigurationItem(configurationItemType cb.ConfigurationItem_ConfigurationType, modificationPolicyID string, key string, value []byte) *cb.SignedConfigurationItem {
 	marshaledConfigurationItem := errorlessMarshal(&cb.ConfigurationItem{
-		Header:             makeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, 1, b.chainID),
+		Header:             makeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, 1, b.chainID, 0),
 		Type:               configurationItemType,
 		LastModified:       0,
 		ModificationPolicy: modificationPolicyID,
@@ -101,7 +102,7 @@ func (b *bootstrapper) makeEnvelope(configurationEnvelope *cb.ConfigurationEnvel
 	}
 	marshaledPayload := errorlessMarshal(&cb.Payload{
 		Header: &cb.Header{
-			ChainHeader:     makeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, 1, b.chainID),
+			ChainHeader:     makeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, 1, b.chainID, 0),
 			SignatureHeader: makeSignatureHeader(nil, nonce),
 		},
 		Data: errorlessMarshal(configurationEnvelope),
