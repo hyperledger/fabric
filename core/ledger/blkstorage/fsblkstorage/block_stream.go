@@ -87,40 +87,65 @@ func (s *blockfileStream) nextBlockBytes() ([]byte, error) {
 	return blockBytes, err
 }
 
+// nextBlockBytesAndPlacementInfo returns bytes for the next block
+// along with the offset information in the block file.
+// An error `ErrUnexpectedEndOfBlockfile` is returned if a partial written data is detected
+// which is possible towards the tail of the file if a crash had taken place during appending of a block
 func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacementInfo, error) {
 	var lenBytes []byte
 	var err error
-	if lenBytes, err = s.reader.Peek(8); err != nil {
-		// reader.Peek raises io.EOF error if enough bytes not available
-		if err == io.EOF {
-			if len(lenBytes) > 0 {
-				return nil, nil, ErrUnexpectedEndOfBlockfile
-			}
-			return nil, nil, nil
-		}
+	var fileInfo os.FileInfo
+	moreContentAvailable := true
+
+	if fileInfo, err = s.file.Stat(); err != nil {
 		return nil, nil, err
 	}
-	len, n := proto.DecodeVarint(lenBytes)
-	if n == 0 {
-		panic(fmt.Errorf("Error in decoding varint bytes"))
+	if s.currentOffset == fileInfo.Size() {
+		logger.Debugf("Finished reading file number [%d]", s.fileNum)
+		return nil, nil, nil
 	}
+	remainingBytes := fileInfo.Size() - s.currentOffset
+	// Peek 8 or smaller number of bytes (if remaining bytes are less than 8)
+	// Assumption is that a block size would be small enough to be represented in 8 bytes varint
+	peekBytes := 8
+	if remainingBytes < int64(peekBytes) {
+		peekBytes = int(remainingBytes)
+		moreContentAvailable = false
+	}
+	logger.Debugf("Remaining bytes=[%d], Going to peek [%d] bytes", remainingBytes, peekBytes)
+	if lenBytes, err = s.reader.Peek(peekBytes); err != nil {
+		return nil, nil, err
+	}
+	length, n := proto.DecodeVarint(lenBytes)
+	if n == 0 {
+		// proto.DecodeVarint did not consume any byte at all which means that the bytes
+		// representing the size of the block are partial bytes
+		if !moreContentAvailable {
+			return nil, nil, ErrUnexpectedEndOfBlockfile
+		}
+		panic(fmt.Errorf("Error in decoding varint bytes [%#v]", lenBytes))
+	}
+	bytesExpected := int64(n) + int64(length)
+	if bytesExpected > remainingBytes {
+		logger.Debugf("At least [%d] bytes expected. Remaining bytes = [%d]. Returning with error [%s]",
+			bytesExpected, remainingBytes, ErrUnexpectedEndOfBlockfile)
+		return nil, nil, ErrUnexpectedEndOfBlockfile
+	}
+	// skip the bytes representing the block size
 	if _, err = s.reader.Discard(n); err != nil {
 		return nil, nil, err
 	}
-	blockBytes := make([]byte, len)
-	if _, err = io.ReadAtLeast(s.reader, blockBytes, int(len)); err != nil {
-		// io.ReadAtLeast raises io.ErrUnexpectedEOF error if it is able to
-		// read a fewer (non-zero) bytes and io.EOF is encountered
-		if err == io.ErrUnexpectedEOF {
-			return nil, nil, ErrUnexpectedEndOfBlockfile
-		}
+	blockBytes := make([]byte, length)
+	if _, err = io.ReadAtLeast(s.reader, blockBytes, int(length)); err != nil {
+		logger.Debugf("Error while trying to read [%d] bytes from fileNum [%d]: %s", length, s.fileNum, err)
 		return nil, nil, err
 	}
 	blockPlacementInfo := &blockPlacementInfo{
 		fileNum:          s.fileNum,
 		blockStartOffset: s.currentOffset,
 		blockBytesOffset: s.currentOffset + int64(n)}
-	s.currentOffset += int64(n) + int64(len)
+	s.currentOffset += int64(n) + int64(length)
+	logger.Debugf("Returning blockbytes - length=[%d], placementInfo={%s}", len(blockBytes), blockPlacementInfo)
 	return blockBytes, blockPlacementInfo, nil
 }
 
@@ -178,4 +203,9 @@ func (s *blockStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacementI
 
 func (s *blockStream) close() error {
 	return s.currentFileStream.close()
+}
+
+func (i *blockPlacementInfo) String() string {
+	return fmt.Sprintf("fileNum=[%d], startOffset=[%d], bytesOffset=[%d]",
+		i.fileNum, i.blockStartOffset, i.blockBytesOffset)
 }

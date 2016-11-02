@@ -449,25 +449,32 @@ func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, flush bool) error {
 	return nil
 }
 
+// scanForLastCompleteBlock scan a given block file and detects the last offset in the file
+// after which there may lie a block partially written (towards the end of the file in a crash scenario).
 func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64) (int64, int, error) {
 	numBlocks := 0
-	blockStream, err := newBlockfileStream(rootDir, fileNum, startingOffset)
-	if err != nil {
-		return 0, 0, err
+	blockStream, errOpen := newBlockfileStream(rootDir, fileNum, startingOffset)
+	if errOpen != nil {
+		return 0, 0, errOpen
 	}
 	defer blockStream.close()
+	var errRead error
+	var blockBytes []byte
 	for {
-		blockBytes, err := blockStream.nextBlockBytes()
-		if blockBytes == nil || err == ErrUnexpectedEndOfBlockfile {
-			logger.Debugf(`scanForLastCompleteBlock(): error=[%s].
-			The error may happen if a crash has happened during block appending.
-			Returning current offset as a last complete block's end offset`, err)
+		blockBytes, errRead = blockStream.nextBlockBytes()
+		if blockBytes == nil || errRead != nil {
 			break
 		}
 		numBlocks++
 	}
+	if errRead == ErrUnexpectedEndOfBlockfile {
+		logger.Debugf(`Error:%s
+		The error may happen if a crash has happened during block appending.
+		Resetting error to nil and returning current offset as a last complete block's end offset`, errRead)
+		errRead = nil
+	}
 	logger.Debugf("scanForLastCompleteBlock(): last complete block ends at offset=[%d]", blockStream.currentOffset)
-	return blockStream.currentOffset, numBlocks, err
+	return blockStream.currentOffset, numBlocks, errRead
 }
 
 // checkpointInfo
