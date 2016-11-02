@@ -39,10 +39,10 @@ This section describes how to run a sample standalone Node.js application which 
      npm install /opt/gopath/src/github.com/hyperledger/fabric/sdk/node
 ```
 
-* Run the application as follows:
+* To run the application :
 
 ```
-   node app
+     CORE_CHAINCODE_ID_NAME=mycc CORE_PEER_ADDRESS=0.0.0.0:7051 MEMBERSRVC_ADDRESS=0.0.0.0:7054 DEPLOY_MODE=dev node app
 ```
 
 Congratulations!  You've successfully run your first Hyperledger fabric application.

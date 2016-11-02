@@ -45,6 +45,7 @@ If you wish, there are a number of chaincode examples near by.
 ```
    curl -o docker-compose.yml https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sdk/node/docker-compose.yml
 ```
+
   The docker-compose environment uses three Docker images. Two are published to
   DockerHub. However, with the third, we provide you the source to build your own,
   so that you can customize it to inject your application code for development. The following    [Dockerfile](https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sdk/node/Dockerfile)
@@ -62,18 +63,19 @@ is located, execute one of following `docker-compose` commands.
 
    * to run as detached containers:
 
-```
-   docker-compose up -d
-```
+     ```
+       docker-compose up -d
+     ```
+
      **note:** to see the logs for the `peer` container use the
      `docker logs peer` command
 
    * to run in the foreground and see the log output in the current terminal
    session:
 
-```
-   docker-compose up
-```
+     ```
+       docker-compose up
+     ```
 
   Both commands will start three Docker containers. To view the container
   status use the `docker ps` command. The first time this is run, the Docker
@@ -83,14 +85,15 @@ is located, execute one of following `docker-compose` commands.
 ```
    docker ps
 ```
-    You should see something similar to the following:
 
-```
-   CONTAINER ID    IMAGE                           COMMAND                  CREATED              STATUS              PORTS  NAMES
-   bb01a2fa96ef    hyperledger/fabric-starter-kit  "sh -c 'sleep 20; /op"   About a minute ago   Up 59 seconds           starter
-   ec7572e65f12    hyperledger/fabric-peer         "sh -c 'sleep 10; pee"   About a minute ago   Up About a minute          peer
-   118ef6da1709    hyperledger/fabric-membersrvc   "membersrvc"             About a minute ago   Up About a minute          membersrvc
-```
+   You should see something like the following:
+
+   ```
+    CONTAINER ID    IMAGE                           COMMAND                  CREATED              STATUS              PORTS  NAMES
+    bb01a2fa96ef    hyperledger/fabric-starter-kit  "sh -c 'sleep 20; /op"   About a minute ago   Up 59 seconds           starter
+    ec7572e65f12    hyperledger/fabric-peer         "sh -c 'sleep 10; pee"   About a minute ago   Up About a minute          peer
+    118ef6da1709    hyperledger/fabric-membersrvc   "membersrvc"             About a minute ago   Up About a minute          membersrvc
+   ```
 
 * Start a terminal session in the **starter** container. This is where the
 Node.js application is located.
