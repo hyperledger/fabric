@@ -13,6 +13,8 @@ pages:
 - Protocol Spec: protocol-spec.md
 - Usecases: biz/usecases.md
 
+- Release Notes: v0.6_migration.md
+
 - Starter Kit:
   - Starter Kit: starter/fabric-starter-kit.md
 
