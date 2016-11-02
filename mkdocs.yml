@@ -13,7 +13,9 @@ pages:
 - Protocol Spec: protocol-spec.md
 - Usecases: biz/usecases.md
 
-- Release Notes: v0.6_migration.md
+- Release Notes:
+  - Migration Considerations: v0.6_migration.md
+  - Releases: releases.md
 
 - Starter Kit:
   - Starter Kit: starter/fabric-starter-kit.md
@@ -31,7 +33,8 @@ pages:
   - Chaincode APIs: API/ChaincodeAPI.md
   - Core API: API/CoreAPI.md
   - CA API: API/MemberServicesAPI.md
-  - System Chaincode: SystemChaincodes/noop.md
+  - AttributesUsage API: API/AttributesUsage.md
+  - System Chaincode: SystemChaincode-noop.md
 
 - Fabric Developer:
   - v1.0 Preview: abstract_v1.md
