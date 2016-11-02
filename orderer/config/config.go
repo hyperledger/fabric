@@ -48,6 +48,13 @@ type General struct {
 	ListenAddress string
 	ListenPort    uint16
 	GenesisMethod string
+	Profile       Profile
+}
+
+// Profile contains configuration for Go pprof profiling
+type Profile struct {
+	Enabled bool
+	Address string
 }
 
 // RAMLedger contains config for the RAM ledger
@@ -99,6 +106,10 @@ var defaults = TopLevel{
 		ListenAddress: "127.0.0.1",
 		ListenPort:    5151,
 		GenesisMethod: "static",
+		Profile: Profile{
+			Enabled: false,
+			Address: "0.0.0.0:6060",
+		},
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,
@@ -150,6 +161,9 @@ func (c *TopLevel) completeInitialization() {
 			c.General.ListenPort = defaults.General.ListenPort
 		case c.General.GenesisMethod == "":
 			c.General.GenesisMethod = defaults.General.GenesisMethod
+		case c.General.Profile.Enabled && (c.General.Profile.Address == ""):
+			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", defaults.General.Profile.Address)
+			c.General.Profile.Address = defaults.General.Profile.Address
 		case c.FileLedger.Prefix == "":
 			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
 			c.FileLedger.Prefix = defaults.FileLedger.Prefix
