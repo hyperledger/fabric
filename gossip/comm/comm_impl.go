@@ -458,6 +458,9 @@ func (c *commImpl) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
 }
 
 func (c *commImpl) disconnect(pkiID PKIidType) {
+	if c.isStopping() {
+		return
+	}
 	c.deadEndpoints <- pkiID
 	c.connStore.closeByPKIid(pkiID)
 }
