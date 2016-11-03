@@ -25,22 +25,25 @@ func (s *SBFT) testBacklog(m *Msg, src uint64) bool {
 }
 
 func (s *SBFT) testBacklog2(m *Msg, src uint64) bool {
-	record := func(seq uint64) bool {
-		if seq > s.cur.subject.Seq.Seq {
+	record := func(seq *SeqView) bool {
+		if !s.activeView {
+			return true
+		}
+		if seq.Seq > s.cur.subject.Seq.Seq || seq.View > s.seq.View {
 			return true
 		}
 		return false
 	}
 
-	if pp := m.GetPreprepare(); pp != nil && !s.cur.executed {
-		return true
+	if pp := m.GetPreprepare(); pp != nil {
+		return record(pp.Seq) && !s.cur.checkpointDone
 	} else if p := m.GetPrepare(); p != nil {
-		return record(p.Seq.Seq)
+		return record(p.Seq)
 	} else if c := m.GetCommit(); c != nil {
-		return record(c.Seq.Seq)
+		return record(c.Seq)
 	} else if cs := m.GetCheckpoint(); cs != nil {
 		c := &Checkpoint{}
-		return record(c.Seq)
+		return record(&SeqView{Seq: c.Seq})
 	}
 	return false
 }
@@ -53,20 +56,17 @@ func (s *SBFT) recordBacklogMsg(m *Msg, src uint64) {
 	//
 	// Prevent DoS by limiting the number of messages per replica.
 	//
-	// If the backlog limit is exceeded, discard all messages with
-	// Seq before the replica's hello message (we can, because we
-	// can play forward to this batch via state transfer).  If
-	// there is no hello message, we must be really slow or the
-	// replica must be byzantine.  In this case we probably should
-	// re-establish the connection.
+	// If the backlog limit is exceeded, re-establish the
+	// connection.
 	//
 	// After the connection has been re-established, we will
-	// receive a hello, and the following messages will trigger
-	// the pruning of old messages.  If this pruning lead us not
-	// to make progress, the backlog processing algorithm as lined
-	// out below will take care of starting a state transfer,
-	// using the hello message we received on reconnect.
+	// receive a hello, which will advance our state and discard
+	// old messages.
 	s.replicaState[src].backLog = append(s.replicaState[src].backLog, m)
+}
+
+func (s *SBFT) discardBacklog(src uint64) {
+	s.replicaState[src].backLog = nil
 }
 
 func (s *SBFT) processBacklog() {
@@ -110,18 +110,6 @@ func (s *SBFT) processBacklog() {
 	// either missed some messages, or our connection is bad and
 	// we should reconnect to get a working connection going
 	// again.
-	//
-	// If a noFaultyQuorum (-1, because we're not faulty, just
-	// were disconnected) is backlogged, we know that we need to
-	// perform a state transfer.  Of course, f of these might be
-	// byzantine, and the remaining f that are not backlogged will
-	// allow us to get unstuck.  To check against that, we need to
-	// only consider backlogged replicas of which we have a hello
-	// message that talks about a future Seq.
-	//
-	// We need to pick the highest Seq of all the hello messages
-	// we received, perform a state transfer to that Batch, and
-	// discard all backlogged messages that refer to a lower Seq.
 	//
 	// Do we need to detect that a connection is stuck and we
 	// should reconnect?

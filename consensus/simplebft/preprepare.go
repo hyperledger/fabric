@@ -54,27 +54,32 @@ func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
 		log.Infof("duplicate preprepare for %v", *pp.Seq)
 		return
 	}
-	var blockhash []byte
-	if pp.Batch != nil {
-		blockhash = hash(pp.Batch.Header)
-
-		batchheader, err := s.checkBatch(pp.Batch)
-		if err != nil || batchheader.Seq != pp.Seq.Seq {
-			log.Infof("preprepare %v batch head inconsistent from %d", pp.Seq, src)
-			return
-		}
-
-		prevhash := hash(s.sys.LastBatch().Header)
-		if !bytes.Equal(batchheader.PrevHash, prevhash) {
-			log.Infof("preprepare batch prev hash does not match expected %s, got %s", hash2str(batchheader.PrevHash), hash2str(prevhash))
-			return
-		}
+	if pp.Batch == nil {
+		log.Infof("preprepare without batch")
+		return
 	}
 
-	s.acceptPreprepare(Subject{Seq: &nextSeq, Digest: blockhash}, pp)
+	batchheader, err := s.checkBatch(pp.Batch, true)
+	if err != nil || batchheader.Seq != pp.Seq.Seq {
+		log.Infof("preprepare %v batch head inconsistent from %d", pp.Seq, src)
+		return
+	}
+
+	prevhash := s.sys.LastBatch().Hash()
+	if !bytes.Equal(batchheader.PrevHash, prevhash) {
+		log.Infof("preprepare batch prev hash does not match expected %s, got %s", hash2str(batchheader.PrevHash), hash2str(prevhash))
+		return
+	}
+
+	s.handleCheckedPreprepare(pp)
 }
 
-func (s *SBFT) acceptPreprepare(sub Subject, pp *Preprepare) {
+func (s *SBFT) acceptPreprepare(pp *Preprepare) {
+	sub := Subject{Seq: pp.Seq, Digest: pp.Batch.Hash()}
+
+	log.Infof("accepting preprepare for %v, %x", sub.Seq, sub.Digest)
+	s.sys.Persist("preprepare", pp)
+
 	s.cur = reqInfo{
 		subject:    sub,
 		timeout:    s.sys.Timer(time.Duration(s.config.RequestTimeoutNsec)*time.Nanosecond, s.requestTimeout),
@@ -83,9 +88,10 @@ func (s *SBFT) acceptPreprepare(sub Subject, pp *Preprepare) {
 		commit:     make(map[uint64]*Subject),
 		checkpoint: make(map[uint64]*Checkpoint),
 	}
+}
 
-	log.Infof("accepting preprepare for %v, %x", sub.Seq, sub.Digest)
-	s.sys.Persist("preprepare", pp)
+func (s *SBFT) handleCheckedPreprepare(pp *Preprepare) {
+	s.acceptPreprepare(pp)
 	s.cancelViewChangeTimer()
 	if !s.isPrimary() {
 		s.sendPrepare()
