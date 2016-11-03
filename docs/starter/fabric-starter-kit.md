@@ -9,7 +9,7 @@ the fabric's Node.js SDK, and chaincode written in Go.
 There are three Docker images that, when run, will provide a basic
 network environment. There is an image to run a single `peer`, one to run
 the `membersrvc`, and one to run both your Node.js application and your
-chaincode. See [Application Developer's Overview](../nodeSDK/app-overview.md) on how the
+chaincode. See [Application Developer's Overview](http://fabric-sdk-node.readthedocs.io/en/latest/app-overview) on how the
 components running within the containers will communicate.
 
 The starter kit comes with a sample Node.js application ready to execute and
@@ -132,7 +132,7 @@ images:
    * run npm to install Hyperledger fabric Node.js SDK in the `mytest` directory:
 
 ```
-     npm install /opt/gopath/src/github.com/hyperledger/fabric/sdk/node
+     npm install /opt/gopath/src/github.com/hyperledger/fabric-sdk-node
 ```
    * run the application from within the **starter** Docker container using the
      following commands:

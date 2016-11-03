@@ -18,7 +18,7 @@ execute the following command:
 npm install -g hfc
 ```
 
-See [Hyperledger fabric Node.js client SDK](../nodeSDK/node-sdk-guide.md) for more information.
+See [Hyperledger fabric Node.js client SDK](http://fabric-sdk-node.readthedocs.io/en/latest/node-sdk-guide) for more information.
 
 
 ## Hyperledger fabric network
