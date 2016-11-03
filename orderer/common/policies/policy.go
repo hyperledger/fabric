@@ -19,8 +19,9 @@ package policies
 import (
 	"fmt"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -28,7 +29,7 @@ import (
 // Policy is used to determine if a signature is valid
 type Policy interface {
 	// Evaluate returns nil if a msg is properly signed by sigs, or an error indicating why it failed
-	Evaluate(msg []byte, sigs []*ab.Envelope) error
+	Evaluate(msg []byte, sigs []*cb.Envelope) error
 }
 
 // Manager is intended to be the primary accessor of ManagerImpl
@@ -69,7 +70,7 @@ func newPolicy(policySource *ab.Policy, ch cauthdsl.CryptoHelper) (*policy, erro
 }
 
 // Evaluate returns nil if a msg is properly signed by sigs, or an error indicating why it failed
-func (p *policy) Evaluate(msg []byte, sigs []*ab.Envelope) error {
+func (p *policy) Evaluate(msg []byte, sigs []*cb.Envelope) error {
 	if p == nil {
 		return fmt.Errorf("Evaluated default policy, results in reject")
 	}
@@ -77,7 +78,7 @@ func (p *policy) Evaluate(msg []byte, sigs []*ab.Envelope) error {
 	identities := make([][]byte, len(sigs))
 	signatures := make([][]byte, len(sigs))
 	for i, sigpair := range sigs {
-		payload := &ab.Payload{}
+		payload := &cb.Payload{}
 		if err := proto.Unmarshal(sigpair.Payload, payload); err != nil {
 			return fmt.Errorf("Failed to unmarshal the payload to extract the signatures")
 		}

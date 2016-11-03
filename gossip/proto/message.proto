@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+option go_package = "github.com/hyperledger/fabric/gossip/proto" ;
+
 package proto;
 
 

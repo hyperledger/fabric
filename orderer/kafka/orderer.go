@@ -17,8 +17,8 @@ limitations under the License.
 package kafka
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 // Orderer allows the caller to submit to and receive messages from the orderer

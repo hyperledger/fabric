@@ -19,6 +19,8 @@ syntax = "proto3";
 import "chaincodeevent.proto";
 import "fabric.proto";
 
+option go_package = "github.com/hyperledger/fabric/protos";
+
 package protos;
 
 

@@ -19,7 +19,7 @@ package kafka
 import (
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 func testClose(t *testing.T, x Closeable) {

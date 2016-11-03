@@ -19,15 +19,15 @@ package kafka
 import (
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 func mockNewBroadcaster(t *testing.T, conf *config.TopLevel, seek int64, disk chan []byte) Broadcaster {
 	mb := &broadcasterImpl{
 		producer:   mockNewProducer(t, conf, seek, disk),
 		config:     conf,
-		batchChan:  make(chan *ab.Envelope, conf.General.BatchSize),
+		batchChan:  make(chan *cb.Envelope, conf.General.BatchSize),
 		messages:   [][]byte{[]byte("checkpoint")},
 		nextNumber: uint64(seek),
 	}

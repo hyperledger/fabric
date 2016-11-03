@@ -16,6 +16,8 @@ limitations under the License.
 
 syntax = "proto3";
 
+option go_package = "github.com/hyperledger/fabric/protos";
+
 package protos;
 
 // A Message2 encapsulates a payload of the indicated type in this message.

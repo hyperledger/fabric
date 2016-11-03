@@ -19,10 +19,11 @@ package static
 import (
 	"math/rand"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -74,7 +75,7 @@ func sigPolicyToPolicy(sigPolicy *ab.SignaturePolicyEnvelope) []byte {
 }
 
 // GenesisBlock returns the genesis block to be used for bootstrapping
-func (b *bootstrapper) GenesisBlock() (*ab.Block, error) {
+func (b *bootstrapper) GenesisBlock() (*cb.Block, error) {
 
 	// Lock down the default modification policy to prevent any further policy modifications
 	lockdownDefaultModificationPolicy := b.makeSignedConfigurationItem(configtx.DefaultModificationPolicyID, ab.ConfigurationItem_Policy, sigPolicyToPolicy(cauthdsl.RejectAllPolicy), configtx.DefaultModificationPolicyID)
@@ -87,12 +88,12 @@ func (b *bootstrapper) GenesisBlock() (*ab.Block, error) {
 		},
 	})
 
-	data := &ab.BlockData{
+	data := &cb.BlockData{
 		Data: [][]byte{initialConfigTX},
 	}
 
-	return &ab.Block{
-		Header: &ab.BlockHeader{
+	return &cb.Block{
+		Header: &cb.BlockHeader{
 			Number:       0,
 			PreviousHash: []byte("GENESIS"),
 			DataHash:     data.Hash(),

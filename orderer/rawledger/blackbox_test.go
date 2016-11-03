@@ -20,8 +20,9 @@ import (
 	"bytes"
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	. "github.com/hyperledger/fabric/orderer/rawledger"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 type ledgerTestable interface {
@@ -37,7 +38,7 @@ type ledgerFactory interface {
 
 var testables []ledgerTestable
 
-func getBlock(number uint64, li ReadWriter) *ab.Block {
+func getBlock(number uint64, li ReadWriter) *cb.Block {
 	i, _ := li.Iterator(ab.SeekInfo_SPECIFIED, number)
 	select {
 	case <-i.ReadyChan():
@@ -97,7 +98,7 @@ func testReinitialization(lf ledgerFactory, t *testing.T) {
 		return
 	}
 	oli := lf.New()
-	aBlock := oli.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
+	aBlock := oli.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	li := lf.New()
 	if li.Height() != 2 {
 		t.Fatalf("Block height should be 2")
@@ -123,7 +124,7 @@ func testAddition(lf ledgerFactory, t *testing.T) {
 	}
 	prevHash := genesis.Header.Hash()
 
-	li.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
+	li.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	if li.Height() != 2 {
 		t.Fatalf("Block height should be 2")
 	}
@@ -142,7 +143,7 @@ func TestRetrieval(t *testing.T) {
 
 func testRetrieval(lf ledgerFactory, t *testing.T) {
 	li := lf.New()
-	li.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
+	li.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	it, num := li.Iterator(ab.SeekInfo_OLDEST, 99)
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
@@ -191,7 +192,7 @@ func testBlockedRetrieval(lf ledgerFactory, t *testing.T) {
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	li.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
+	li.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	select {
 	case <-signal:
 	default:

@@ -16,9 +16,11 @@ limitations under the License.
 
 syntax = "proto3";
 
-package atomicbroadcast;
+import "common/common.proto";
 
-import "message.proto";
+option go_package = "github.com/hyperledger/fabric/protos/orderer";
+
+package orderer;
 
 // These status codes are intended to resemble selected HTTP status codes
 enum Status {
@@ -43,12 +45,12 @@ message BroadcastResponse {
 //   2. Increment Sequence in the ConfigurationEnvelope
 //   3. Modify desired ConfigurationItems, setting each LastModified to the ConfigurationEnvelope Sequence
 //   4. Update SignedConfigurationItem with appropriate signatures over the modified ConfigurationItem
-//     a) Each signature is of type Envelope
-//     b) The Envelope Payload has data set to the hash of the ConfigurationItem
-//     c) The Envelope Payload has a header with the type set to CONFIGURATION_ITEM
+//     a) Each signature is of type common.Envelope
+//     b) The common.Envelope common.Payload has data set to the hash of the ConfigurationItem
+//     c) The common.Envelope common.Payload has a header with the type set to common.Header.Type.CONFIGURATION_ITEM
 //   5. Submit new Configuration for ordering in Envelope signed by submitter
-//     a) The Envelope Payload has data set to the marshaled ConfigurationEnvelope
-//     b) The Envelope Payload has a header of type CONFIGURATION_TRANSACTION 
+//     a) The common.Envelope common.Payload has data set to the marshaled ConfigurationEnvelope
+//     b) The common.Envelope common.Payload has a header of type common.Header.Type.CONFIGURATION_TRANSACTION 
 // 
 // The configuration manager will verify:
 //   1. All configuration items and the envelope refer to the correct chain
@@ -65,7 +67,7 @@ message ConfigurationEnvelope {
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message SignedConfigurationItem {
     bytes Configuration = 1;
-    repeated Envelope Signatures = 2; // Signatures over the hash of Configuration
+    repeated common.Envelope Signatures = 2; // Signatures over the hash of Configuration
 }
 
 
@@ -146,40 +148,16 @@ message DeliverUpdate {
     }
 }
 
-// This is a temporary data structure, but is hopefully very close to the finalized block structure
-// Note that the BlockHeader chains to the previous BlockHeader, and the BlockData hash is embedded
-// in the BlockHeader.  This makes it natural and obvious that the Data is included in the hash, but
-// the Metadata is not.
-message Block {
-    BlockHeader Header = 1;
-    BlockData Data = 2;
-    BlockMetadata Metadata = 3;
-}
-
-message BlockHeader {
-    uint64 Number = 1; // The position in the blockchain
-    bytes PreviousHash = 2; // The hash of the previous block header
-    bytes DataHash = 3; // The hash of the BlockData, by MerkleTree
-}
-
-message BlockData {
-    repeated bytes Data = 1;
-}
-
-message BlockMetadata {
-    repeated bytes Metadata = 1;
-}
-
 message DeliverResponse {
     oneof Type {
         Status Error = 1;
-        Block Block = 2;
+        common.Block Block = 2;
     }
 }
 
 service AtomicBroadcast {
-    // broadcast receives a reply of Acknowledgement for each Envelope in order, indicating success or type of failure
-    rpc Broadcast(stream Envelope) returns (stream BroadcastResponse) {}
+    // broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
+    rpc Broadcast(stream common.Envelope) returns (stream BroadcastResponse) {}
 
     // deliver first requires an update containing a seek message, then a stream of block replies is received.
     // The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart

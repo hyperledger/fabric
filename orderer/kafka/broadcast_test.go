@@ -23,7 +23,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 func TestBroadcastInit(t *testing.T) {
@@ -42,7 +43,7 @@ func TestBroadcastInit(t *testing.T) {
 	for {
 		select {
 		case in := <-disk:
-			block := new(ab.Block)
+			block := new(cb.Block)
 			err := proto.Unmarshal(in, block)
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
@@ -74,7 +75,7 @@ func TestBroadcastResponse(t *testing.T) {
 
 	// Send a message to the orderer
 	go func() {
-		mbs.incoming <- &ab.Envelope{Payload: []byte("single message")}
+		mbs.incoming <- &cb.Envelope{Payload: []byte("single message")}
 	}()
 
 	for {
@@ -108,7 +109,7 @@ func TestBroadcastBatch(t *testing.T) {
 	// Pump a batch's worth of messages into the system
 	go func() {
 		for i := 0; i < int(testConf.General.BatchSize); i++ {
-			mbs.incoming <- &ab.Envelope{Payload: []byte("message " + strconv.Itoa(i))}
+			mbs.incoming <- &cb.Envelope{Payload: []byte("message " + strconv.Itoa(i))}
 		}
 	}()
 
@@ -120,7 +121,7 @@ func TestBroadcastBatch(t *testing.T) {
 	for {
 		select {
 		case in := <-disk:
-			block := new(ab.Block)
+			block := new(cb.Block)
 			err := proto.Unmarshal(in, block)
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
@@ -159,8 +160,8 @@ func TestBroadcastIncompleteBatch(t *testing.T) {
 	// Pump less than batchSize messages into the system
 	go func() {
 		for i := 0; i < messageCount; i++ {
-			payload, _ := proto.Marshal(&ab.Payload{Data: []byte("message " + strconv.Itoa(i))})
-			mbs.incoming <- &ab.Envelope{Payload: payload}
+			payload, _ := proto.Marshal(&cb.Payload{Data: []byte("message " + strconv.Itoa(i))})
+			mbs.incoming <- &cb.Envelope{Payload: payload}
 		}
 	}()
 
@@ -172,7 +173,7 @@ func TestBroadcastIncompleteBatch(t *testing.T) {
 	for {
 		select {
 		case in := <-disk:
-			block := new(ab.Block)
+			block := new(cb.Block)
 			err := proto.Unmarshal(in, block)
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
@@ -212,8 +213,8 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 		// Pump less than batchSize messages into the system
 		go func() {
 			for i := 0; i < messageCount; i++ {
-				payload, _ := proto.Marshal(&ab.Payload{Data: []byte("message " + strconv.Itoa(i))})
-				mbs.incoming <- &ab.Envelope{Payload: payload}
+				payload, _ := proto.Marshal(&cb.Payload{Data: []byte("message " + strconv.Itoa(i))})
+				mbs.incoming <- &cb.Envelope{Payload: payload}
 			}
 		}()
 
@@ -226,7 +227,7 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 	for {
 		select {
 		case in := <-disk:
-			block := new(ab.Block)
+			block := new(cb.Block)
 			err := proto.Unmarshal(in, block)
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")
@@ -259,7 +260,7 @@ func TestBroadcastBatchAndQuitEarly(t *testing.T) {
 	// Pump a batch's worth of messages into the system
 	go func() {
 		for i := 0; i < int(testConf.General.BatchSize); i++ {
-			mbs.incoming <- &ab.Envelope{Payload: []byte("message " + strconv.Itoa(i))}
+			mbs.incoming <- &cb.Envelope{Payload: []byte("message " + strconv.Itoa(i))}
 		}
 	}()
 
@@ -273,7 +274,7 @@ func TestBroadcastBatchAndQuitEarly(t *testing.T) {
 	for {
 		select {
 		case in := <-disk:
-			block := new(ab.Block)
+			block := new(cb.Block)
 			err := proto.Unmarshal(in, block)
 			if err != nil {
 				t.Fatal("Expected a block on the broker's disk")

@@ -20,13 +20,13 @@ import (
 	"io/ioutil"
 	"os"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	. "github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-var genesisBlock *ab.Block
+var genesisBlock *cb.Block
 
 func init() {
 	bootstrapper := static.New()

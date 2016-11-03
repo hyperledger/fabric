@@ -21,6 +21,8 @@ package protos;
 import "fabric.proto";
 import "google/protobuf/empty.proto";
 
+option go_package = "github.com/hyperledger/fabric/protos";
+
 // Interface exported by the server.
 service Openchain {
 

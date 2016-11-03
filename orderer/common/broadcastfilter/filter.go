@@ -17,7 +17,7 @@ limitations under the License.
 package broadcastfilter
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/common"
 )
 
 // Action is used to express the output of a rule

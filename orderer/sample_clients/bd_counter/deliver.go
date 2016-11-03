@@ -21,7 +21,7 @@ import (
 	"io"
 	"log"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	context "golang.org/x/net/context"
 )
 

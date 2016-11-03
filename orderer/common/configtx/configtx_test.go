@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/policies"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -41,7 +42,7 @@ type mockPolicy struct {
 	policyResult error
 }
 
-func (mp *mockPolicy) Evaluate(msg []byte, sigs []*ab.Envelope) error {
+func (mp *mockPolicy) Evaluate(msg []byte, sigs []*cb.Envelope) error {
 	if mp == nil {
 		return fmt.Errorf("Invoked nil policy")
 	}

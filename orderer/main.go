@@ -27,7 +27,6 @@ import (
 	"os"
 	"os/signal"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
@@ -40,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/solo"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"

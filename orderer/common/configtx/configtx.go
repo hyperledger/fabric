@@ -20,8 +20,9 @@ import (
 	"bytes"
 	"fmt"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/policies"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -55,7 +56,7 @@ const DefaultModificationPolicyID = "DefaultModificationPolicy"
 
 type acceptAllPolicy struct{}
 
-func (ap *acceptAllPolicy) Evaluate(msg []byte, sigs []*ab.Envelope) error {
+func (ap *acceptAllPolicy) Evaluate(msg []byte, sigs []*cb.Envelope) error {
 	return nil
 }
 

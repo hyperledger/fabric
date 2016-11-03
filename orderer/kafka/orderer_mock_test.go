@@ -19,8 +19,9 @@ package kafka
 import (
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	"google.golang.org/grpc"
 )
 
@@ -33,7 +34,7 @@ func mockNew(t *testing.T, conf *config.TopLevel, disk chan []byte) Orderer {
 
 type mockBroadcastStream struct {
 	grpc.ServerStream
-	incoming chan *ab.Envelope
+	incoming chan *cb.Envelope
 	outgoing chan *ab.BroadcastResponse
 	t        *testing.T
 	closed   bool // Set to true if the outgoing channel is closed
@@ -41,13 +42,13 @@ type mockBroadcastStream struct {
 
 func newMockBroadcastStream(t *testing.T) *mockBroadcastStream {
 	return &mockBroadcastStream{
-		incoming: make(chan *ab.Envelope),
+		incoming: make(chan *cb.Envelope),
 		outgoing: make(chan *ab.BroadcastResponse),
 		t:        t,
 	}
 }
 
-func (mbs *mockBroadcastStream) Recv() (*ab.Envelope, error) {
+func (mbs *mockBroadcastStream) Recv() (*cb.Envelope, error) {
 	return <-mbs.incoming, nil
 }
 

@@ -16,6 +16,8 @@ limitations under the License.
 
 syntax = "proto3";
 
+option go_package = "github.com/hyperledger/fabric/core/crypto/attributes/proto" ;
+
 package protos;
 
 //AttributesMetadataEntry is an entry within the metadata that store an attribute name with its respective key.

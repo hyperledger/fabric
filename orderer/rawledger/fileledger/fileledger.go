@@ -21,8 +21,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/rawledger"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -55,7 +56,7 @@ type fileLedger struct {
 }
 
 // New creates a new instance of the file ledger
-func New(directory string, genesisBlock *ab.Block) rawledger.ReadWriter {
+func New(directory string, genesisBlock *cb.Block) rawledger.ReadWriter {
 	logger.Debugf("Initializing fileLedger at '%s'", directory)
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		panic(err)
@@ -112,7 +113,7 @@ func (fl *fileLedger) blockFilename(number uint64) string {
 }
 
 // writeBlock commits a block to disk
-func (fl *fileLedger) writeBlock(block *ab.Block) {
+func (fl *fileLedger) writeBlock(block *cb.Block) {
 	file, err := os.Create(fl.blockFilename(block.Header.Number))
 	if err != nil {
 		panic(err)
@@ -127,11 +128,11 @@ func (fl *fileLedger) writeBlock(block *ab.Block) {
 }
 
 // readBlock returns the block or nil, and whether the block was found or not, (nil,true) generally indicates an irrecoverable problem
-func (fl *fileLedger) readBlock(number uint64) (*ab.Block, bool) {
+func (fl *fileLedger) readBlock(number uint64) (*cb.Block, bool) {
 	file, err := os.Open(fl.blockFilename(number))
 	if err == nil {
 		defer file.Close()
-		block := &ab.Block{}
+		block := &cb.Block{}
 		err = jsonpb.Unmarshal(file, block)
 		if err != nil {
 			return nil, true
@@ -148,8 +149,8 @@ func (fl *fileLedger) Height() uint64 {
 }
 
 // Append creates a new block and appends it to the ledger
-func (fl *fileLedger) Append(messages []*ab.Envelope, proof []byte) *ab.Block {
-	data := &ab.BlockData{
+func (fl *fileLedger) Append(messages []*cb.Envelope, proof []byte) *cb.Block {
+	data := &cb.BlockData{
 		Data: make([][]byte, len(messages)),
 	}
 
@@ -161,14 +162,14 @@ func (fl *fileLedger) Append(messages []*ab.Envelope, proof []byte) *ab.Block {
 		}
 	}
 
-	block := &ab.Block{
-		Header: &ab.BlockHeader{
+	block := &cb.Block{
+		Header: &cb.BlockHeader{
 			Number:       fl.height,
 			PreviousHash: fl.lastHash,
 			DataHash:     data.Hash(),
 		},
 		Data: data,
-		Metadata: &ab.BlockMetadata{
+		Metadata: &cb.BlockMetadata{
 			Metadata: [][]byte{proof},
 		},
 	}
@@ -199,7 +200,7 @@ func (fl *fileLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64
 }
 
 // Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
-func (cu *cursor) Next() (*ab.Block, ab.Status) {
+func (cu *cursor) Next() (*cb.Block, ab.Status) {
 	// This only loops once, as signal reading indicates the new block has been written
 	for {
 		block, found := cu.fl.readBlock(cu.blockNumber)

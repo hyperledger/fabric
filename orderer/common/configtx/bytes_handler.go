@@ -17,7 +17,7 @@ limitations under the License.
 package configtx
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 // BytesHandler is a trivial ConfigHandler which simpy tracks the bytes stores in a config

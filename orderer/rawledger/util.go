@@ -17,7 +17,8 @@ limitations under the License.
 package rawledger
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 var closedChan chan struct{}
@@ -31,7 +32,7 @@ func init() {
 type NotFoundErrorIterator struct{}
 
 // Next returns nil, ab.Status_NOT_FOUND
-func (nfei *NotFoundErrorIterator) Next() (*ab.Block, ab.Status) {
+func (nfei *NotFoundErrorIterator) Next() (*cb.Block, ab.Status) {
 	return nil, ab.Status_NOT_FOUND
 }
 

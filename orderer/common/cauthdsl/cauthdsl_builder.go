@@ -17,7 +17,7 @@ limitations under the License.
 package cauthdsl
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )

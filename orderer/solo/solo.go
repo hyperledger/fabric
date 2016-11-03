@@ -19,10 +19,10 @@ package solo
 import (
 	"time"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"

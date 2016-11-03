@@ -18,12 +18,14 @@ syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
 
-package atomicbroadcast;
+option go_package = "github.com/hyperledger/fabric/protos/common";
+
+package common;
 
 // Header is a generic replay prevention and identity message to include in a signed payload
 message Header {
     enum Type {
-        MESSAGE = 0;                   // Used for messages which require no introspection on the part of the orderer
+        MESSAGE = 0;                   // Used for messages which are signed but opaque
         CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain
         CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
     }
@@ -65,4 +67,28 @@ message Envelope {
 
     // A signature by the creator specified in the Payload header
     bytes signature = 2;
+}
+
+// This is finalized block structure to be shared among the orderer and peer
+// Note that the BlockHeader chains to the previous BlockHeader, and the BlockData hash is embedded
+// in the BlockHeader.  This makes it natural and obvious that the Data is included in the hash, but
+// the Metadata is not.
+message Block {
+    BlockHeader Header = 1;
+    BlockData Data = 2;
+    BlockMetadata Metadata = 3;
+}
+
+message BlockHeader {
+    uint64 Number = 1; // The position in the blockchain
+    bytes PreviousHash = 2; // The hash of the previous block header
+    bytes DataHash = 3; // The hash of the BlockData, by MerkleTree
+}
+
+message BlockData {
+    repeated bytes Data = 1;
+}
+
+message BlockMetadata {
+    repeated bytes Metadata = 1;
 }

@@ -17,13 +17,14 @@ limitations under the License.
 package rawledger
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 // Iterator is useful for a chain Reader to stream blocks as they are created
 type Iterator interface {
 	// Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
-	Next() (*ab.Block, ab.Status)
+	Next() (*cb.Block, ab.Status)
 	// ReadyChan supplies a channel which will block until Next will not block
 	ReadyChan() <-chan struct{}
 }
@@ -39,7 +40,7 @@ type Reader interface {
 // Writer allows the caller to modify the raw ledger
 type Writer interface {
 	// Append a new block to the ledger
-	Append(blockContents []*ab.Envelope, proof []byte) *ab.Block
+	Append(blockContents []*cb.Envelope, proof []byte) *cb.Block
 }
 
 // ReadWriter encapsulated both the reading and writing functions of the rawledger
