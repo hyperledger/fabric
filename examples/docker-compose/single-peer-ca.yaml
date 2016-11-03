@@ -1,0 +1,50 @@
+version: '2'
+services:
+  baseimage:
+    image: hyperledger/fabric-baseimage:x86_64-0.2.0
+
+  membersrvc:
+    image: hyperledger/fabric-membersrvc
+    ports:
+    - "7054:7054"
+    command: membersrvc
+    environment:
+      - MEMBERSRVC_CA_LOGGING_SERVER=INFO
+      - MEMBERSRVC_CA_LOGGING_CA=INFO
+      - MEMBERSRVC_CA_LOGGING_ECA=INFO
+      - MEMBERSRVC_CA_LOGGING_ECAP=INFO
+      - MEMBERSRVC_CA_LOGGING_ECAA=INFO
+      - MEMBERSRVC_CA_LOGGING_ACA=INFO
+      - MEMBERSRVC_CA_LOGGING_ACAP=INFO
+      - MEMBERSRVC_CA_LOGGING_TCA=INFO
+      - MEMBERSRVC_CA_LOGGING_TCAP=INFO
+      - MEMBERSRVC_CA_LOGGING_TCAA=INFO
+      - MEMBERSRVC_CA_LOGGING_TLSCA=INFO
+
+  vp0:
+    image: hyperledger/fabric-peer
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "7050:7050"
+      - "7051:7051"
+      - "7053:7053"
+    environment:
+      - CORE_PEER_ID=vp0
+      - CORE_SECURITY_ENROLLID=test_vp0
+      - CORE_SECURITY_ENROLLSECRET=MwYpmSRjupbT
+      - CORE_PEER_DISCOVERY_PERIOD=60s
+      - CORE_PEER_DISCOVERY_TOUCHPERIOD=61s
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
+      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_PKI_ECA_PADDR=membersrvc:7054
+      - CORE_PEER_PKI_TCA_PADDR=membersrvc:7054
+      - CORE_PEER_PKI_TLSCA_PADDR=membersrvc:7054
+      - CORE_SECURITY_ENABLED=true
+      - CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft
+      - CORE_PBFT_GENERAL_MODE=batch
+      - CORE_PBFT_GENERAL_N=4
+    command: sh -c "sleep 10; peer node start"
+    links:
+      - membersrvc
