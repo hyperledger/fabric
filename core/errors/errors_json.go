@@ -19,6 +19,8 @@ package errors
 const errorCodes string = `
 {"0" :
     {"0" :
-        {"en": "An unknown error occured."}
+        {"en": "An unknown error occurred."},
+     "1":
+        {"en": "An error occurred: %s"}
     }
 }`
