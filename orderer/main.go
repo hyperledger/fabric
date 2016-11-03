@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter/configfilter"
+	// "github.com/hyperledger/fabric/orderer/common/broadcastfilter/configfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/policies"
 	"github.com/hyperledger/fabric/orderer/config"
@@ -137,7 +137,7 @@ func bootstrapConfigManager(lastConfigTx *ab.ConfigurationEnvelope) configtx.Man
 func createBroadcastRuleset(configManager configtx.Manager) *broadcastfilter.RuleSet {
 	return broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
 		broadcastfilter.EmptyRejectRule,
-		configfilter.New(configManager),
+		// configfilter.New(configManager),
 		broadcastfilter.AcceptRule,
 	})
 }
