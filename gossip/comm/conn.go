@@ -89,6 +89,10 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 
 	destinationLock.Unlock()
 
+	if cs.isClosing {
+		return nil, fmt.Errorf("ConnStore is closing")
+	}
+
 	cs.Lock()
 	delete(cs.destinationLocks, string(pkiID))
 	defer cs.Unlock()
