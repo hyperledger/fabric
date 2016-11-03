@@ -128,7 +128,7 @@ nextm:
 
 			log.Debugf("selecting %d with %x", next, mtuple.Digest)
 			xset = &Subject{
-				Seq:    &SeqView{Seq: next, View: s.seq.View},
+				Seq:    &SeqView{Seq: next, View: s.view},
 				Digest: mtuple.Digest,
 			}
 			break nextm
@@ -141,7 +141,7 @@ nextm:
 	if emptycount >= s.noFaultyQuorum() {
 		log.Debugf("selecting null request for %d", next)
 		xset = &Subject{
-			Seq:    &SeqView{Seq: next, View: s.seq.View},
+			Seq:    &SeqView{Seq: next, View: s.view},
 			Digest: nil,
 		}
 	}

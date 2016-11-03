@@ -19,16 +19,16 @@ package simplebft
 import "time"
 
 func (s *SBFT) sendViewChange() {
-	s.seq.View = s.nextView()
+	s.view = s.nextView()
 	s.cur.timeout.Cancel()
 	s.activeView = false
 	for src := range s.replicaState {
 		state := &s.replicaState[src]
-		if state.viewchange != nil && state.viewchange.View < s.seq.View {
+		if state.viewchange != nil && state.viewchange.View < s.view {
 			state.viewchange = nil
 		}
 	}
-	log.Noticef("sending viewchange for view %d", s.seq.View)
+	log.Noticef("sending viewchange for view %d", s.view)
 
 	var q, p []*Subject
 	if s.cur.sentCommit {
@@ -39,10 +39,10 @@ func (s *SBFT) sendViewChange() {
 	}
 
 	vc := &ViewChange{
-		View:     s.seq.View,
+		View:     s.view,
 		Qset:     q,
 		Pset:     p,
-		Executed: s.seq.Seq,
+		Executed: s.seq(),
 	}
 	svc := s.sign(vc)
 	s.viewChangeTimer.Cancel()
@@ -68,8 +68,8 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 		log.Noticef("invalid viewchange: %s", err)
 		return
 	}
-	if vc.View < s.seq.View {
-		log.Debugf("old view change from %s for view %d, we are in view %d", src, vc.View, s.seq.View)
+	if vc.View < s.view {
+		log.Debugf("old view change from %s for view %d, we are in view %d", src, vc.View, s.view)
 		return
 	}
 	if ovc := s.replicaState[src].viewchange; ovc != nil && vc.View <= ovc.View {
@@ -94,9 +94,9 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 
 	if quorum == s.oneCorrectQuorum() {
 		// catch up to the minimum view
-		if s.seq.View < min {
+		if s.view < min {
 			log.Notice("we are behind on view change, resending for newer view")
-			s.seq.View = min - 1
+			s.view = min - 1
 			s.sendViewChange()
 			return
 		}

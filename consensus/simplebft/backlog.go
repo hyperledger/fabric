@@ -32,7 +32,7 @@ func (s *SBFT) testBacklog2(m *Msg, src uint64) bool {
 		if !s.activeView {
 			return true
 		}
-		if seq.Seq > s.cur.subject.Seq.Seq || seq.View > s.seq.View {
+		if seq.Seq > s.cur.subject.Seq.Seq || seq.View > s.view {
 			return true
 		}
 		return false

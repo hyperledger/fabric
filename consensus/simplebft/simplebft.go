@@ -57,7 +57,7 @@ type SBFT struct {
 
 	config            Config
 	id                uint64
-	seq               SeqView
+	view              uint64
 	batch             []*Request
 	batchTimer        Canceller
 	cur               reqInfo
@@ -109,15 +109,8 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 	}
 	s.sys.SetReceiver(s)
 
-	lastBatch := s.sys.LastBatch()
-	bh, err := s.checkBatch(lastBatch, false)
-	if err != nil {
-		panic(err)
-	}
-
-	s.seq.View = 0
-	s.seq.Seq = bh.Seq
-	s.cur.subject.Seq = &s.seq
+	s.view = 0
+	s.cur.subject.Seq = &SeqView{}
 	s.cur.sentCommit = true
 	s.cur.executed = true
 	s.cur.checkpointDone = true
@@ -125,10 +118,8 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 
 	pp := &Preprepare{}
 	if s.sys.Restore("preprepare", pp) {
-		s.seq.View = pp.Seq.View
-		if pp.Seq.Seq > bh.Seq {
-			s.seq = *pp.Seq
-			s.seq.Seq -= 1
+		s.view = pp.Seq.View
+		if pp.Seq.Seq > s.seq() {
 			s.acceptPreprepare(pp)
 		}
 	}
@@ -141,7 +132,7 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 		s.cur.executed = true
 	}
 
-	if s.seq.Seq == 0 {
+	if s.seq() == 0 {
 		s.activeView = true
 	}
 
@@ -156,21 +147,23 @@ func (s *SBFT) primaryIDView(v uint64) uint64 {
 }
 
 func (s *SBFT) primaryID() uint64 {
-	return s.primaryIDView(s.seq.View)
+	return s.primaryIDView(s.view)
 }
 
 func (s *SBFT) isPrimary() bool {
 	return s.primaryID() == s.id
 }
 
+func (s *SBFT) seq() uint64 {
+	return s.sys.LastBatch().DecodeHeader().Seq
+}
+
 func (s *SBFT) nextSeq() SeqView {
-	seq := s.seq
-	seq.Seq += 1
-	return seq
+	return SeqView{Seq: s.seq() + 1, View: s.view}
 }
 
 func (s *SBFT) nextView() uint64 {
-	return s.seq.View + 1
+	return s.view + 1
 }
 
 func (s *SBFT) noFaultyQuorum() int {

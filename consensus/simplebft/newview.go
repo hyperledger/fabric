@@ -22,7 +22,7 @@ import (
 )
 
 func (s *SBFT) maybeSendNewView() {
-	if s.lastNewViewSent != nil && s.lastNewViewSent.View == s.seq.View {
+	if s.lastNewViewSent != nil && s.lastNewViewSent.View == s.view {
 		return
 	}
 
@@ -30,7 +30,7 @@ func (s *SBFT) maybeSendNewView() {
 	var vcs []*ViewChange
 
 	for src, state := range s.replicaState {
-		if state.viewchange != nil && state.viewchange.View == s.seq.View {
+		if state.viewchange != nil && state.viewchange.View == s.view {
 			vset[uint64(src)] = state.signedViewchange
 			vcs = append(vcs, state.viewchange)
 		}
@@ -56,7 +56,7 @@ func (s *SBFT) maybeSendNewView() {
 	}
 
 	nv := &NewView{
-		View:  s.seq.View,
+		View:  s.view,
 		Vset:  vset,
 		Xset:  xset,
 		Batch: batch,
@@ -146,8 +146,8 @@ func (s *SBFT) processNewView() {
 		return
 	}
 
-	nv := s.replicaState[s.primaryIDView(s.seq.View)].newview
-	if nv == nil || nv.View != s.seq.View {
+	nv := s.replicaState[s.primaryIDView(s.view)].newview
+	if nv == nil || nv.View != s.view {
 		return
 	}
 
