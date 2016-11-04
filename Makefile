@@ -54,6 +54,8 @@ OS=$(shell uname)
 CHAINTOOL_RELEASE=v0.10.0
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 
+export GO_LDFLAGS
+
 DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
 BASE_DOCKER_TAG=$(ARCH)-$(BASEIMAGE_RELEASE)
 
@@ -73,7 +75,7 @@ GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | 
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv
+IMAGES = peer orderer ccenv javaenv testenv
 
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
@@ -103,8 +105,10 @@ peer-docker: build/image/peer/.dummy
 orderer: build/bin/orderer
 orderer-docker: build/image/orderer/.dummy
 
-unit-test: peer-docker gotools
-	@./scripts/goUnitTests.sh $(DOCKER_TAG) "$(GO_LDFLAGS)"
+testenv: build/image/testenv/.dummy
+
+unit-test: peer-docker testenv
+	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
 
@@ -119,19 +123,6 @@ behave: behave-deps
 linter: gotools
 	@echo "LINT: Running code checks.."
 	@./scripts/golinter.sh
-
-# We (re)build protoc-gen-go from within docker context so that
-# we may later inject the binary into a different docker environment
-# This is necessary since we cannot guarantee that binaries built
-# on the host natively will be compatible with the docker env.
-%/bin/protoc-gen-go: Makefile
-	@echo "Building $@"
-	@mkdir -p $(@D)
-	@$(DRUN) \
-		-v $(abspath vendor/github.com/golang/protobuf):/opt/gopath/src/github.com/golang/protobuf \
-		-v $(abspath $(@D)):/opt/gopath/bin \
-		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		go install github.com/golang/protobuf/protoc-gen-go
 
 build/bin/chaintool: Makefile
 	@echo "Installing chaintool"
@@ -159,6 +150,16 @@ build/docker/bin/%: $(PROJECT_FILES)
 build/bin:
 	mkdir -p $@
 
+build/docker/gotools/bin/protoc-gen-go: build/docker/gotools
+
+build/docker/gotools: gotools/Makefile
+	@mkdir -p $@/bin $@/obj
+	@$(DRUN) \
+		-v $(abspath $@):/opt/gotools \
+		-w /opt/gopath/src/$(PKGNAME)/gotools \
+		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
+		make install BINDIR=/opt/gotools/bin OBJDIR=/opt/gotools/obj
+
 # Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports)
 build/bin/peer: build/image/ccenv/.dummy build/image/javaenv/.dummy
 build/image/peer/.dummy: build/image/ccenv/.dummy build/image/javaenv/.dummy
@@ -171,7 +172,7 @@ build/bin/%: $(PROJECT_FILES)
 	@touch $@
 
 # payload definitions'
-build/image/ccenv/payload:      build/docker/bin/protoc-gen-go \
+build/image/ccenv/payload:      build/docker/gotools/bin/protoc-gen-go \
 				build/bin/chaintool \
 				build/goshim.tar.bz2
 build/image/javaenv/payload:    build/javashim.tar.bz2 \
@@ -182,6 +183,7 @@ build/image/peer/payload:       build/docker/bin/peer \
 				msp/peer-config.json
 build/image/orderer/payload:    build/docker/bin/orderer \
 				orderer/orderer.yaml
+build/image/testenv/payload:    build/gotools.tar.bz2
 
 build/image/%/payload:
 	mkdir -p $@
@@ -197,6 +199,9 @@ build/image/%/.dummy: Makefile build/image/%/payload
 	docker build -t $(PROJECT_NAME)-$(TARGET) $(@D)
 	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@
+
+build/gotools.tar.bz2: build/docker/gotools
+	(cd $</bin && tar -jc *) > $@
 
 build/goshim.tar.bz2: $(GOSHIM_DEPS)
 	@echo "Creating $@"
