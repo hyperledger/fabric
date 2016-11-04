@@ -101,7 +101,7 @@ peer:
     address: 0.0.0.0:7051
     # Whether the Peer should programmatically determine the address to bind to.
     # This case is useful for docker containers.
-    addressAutoDetect: false
+    addressAutoDetect: true
 
     # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
     gomaxprocs: -1

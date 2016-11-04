@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
 	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
@@ -58,7 +59,10 @@ func initPeer() (net.Listener, error) {
 
 	viper.Set("peer.fileSystemPath", filepath.Join(os.TempDir(), "hyperledger", "production"))
 
-	peerAddress := viper.GetString("peer.address")
+	peerAddress, err := peer.GetLocalAddress()
+	if err != nil {
+		return nil, fmt.Errorf("Error obtaining peer address: %s", err)
+	}
 	lis, err := net.Listen("tcp", peerAddress)
 	if err != nil {
 		return nil, fmt.Errorf("Error starting peer listener %s", err)

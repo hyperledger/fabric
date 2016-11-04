@@ -47,6 +47,7 @@ func constructDeploymentSpec(name string, path string, initArgs [][]byte) (*pb.C
 func initialize() {
 	//use a different address than what we usually use for "peer"
 	//we override the peerAddress set in chaincode_support.go
+	// FIXME: Use peer.GetLocalAddress()
 	peerAddress := "0.0.0.0:21212"
 
 	var opts []grpc.ServerOption

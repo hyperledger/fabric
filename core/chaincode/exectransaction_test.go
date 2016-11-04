@@ -33,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -70,7 +71,10 @@ func initPeer() (net.Listener, error) {
 
 	kvledger.Initialize(ledgerPath)
 
-	peerAddress := viper.GetString("peer.address")
+	peerAddress, err := peer.GetLocalAddress()
+	if err != nil {
+		return nil, fmt.Errorf("Error obtaining peer address: %s", err)
+	}
 	lis, err := net.Listen("tcp", peerAddress)
 	if err != nil {
 		return nil, fmt.Errorf("Error starting peer listener %s", err)

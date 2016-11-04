@@ -490,6 +490,7 @@ func initVP() {
 
 	//use a different address than what we usually use for "peer"
 	//we override the peerAddress set in chaincode_support.go
+	// FIXME: Use peer.GetLocalAddress()
 	peerAddress := "0.0.0.0:40404"
 	var err error
 	lis, err = net.Listen("tcp", peerAddress)
