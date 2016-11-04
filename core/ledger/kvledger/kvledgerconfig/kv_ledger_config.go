@@ -17,6 +17,8 @@ limitations under the License.
 package kvledgerconfig
 
 // Change this feature toggle to true to use CouchDB for state database
+// TODO Eventually this feature toggle will be externalized via a real
+//      config option on the peer
 var useCouchDB = false
 
 //IsCouchDBEnabled exposes the useCouchDB variable

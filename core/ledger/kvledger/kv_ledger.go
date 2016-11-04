@@ -77,12 +77,13 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 	if kvledgerconfig.IsCouchDBEnabled() == true {
 		//By default we can talk to CouchDB with empty id and pw (""), or you can add your own id and password to talk to a secured CouchDB
 		logger.Debugf("===COUCHDB=== NewKVLedger() Using CouchDB instead of RocksDB...hardcoding and passing connection config for now")
+		//TODO Hardcoding and passing connection config for now, eventually this will be passed from external config
 		txmgmt := couchdbtxmgmt.NewCouchDBTxMgr(&couchdbtxmgmt.Conf{DBPath: conf.txMgrDBPath},
-			"127.0.0.1",   //couchDB host
-			5984,          //couchDB port
-			"marbles_app", //couchDB db name
-			"",            //enter couchDB id here
-			"")            //enter couchDB pw here
+			"127.0.0.1", //couchDB host
+			5984,        //couchDB port
+			"system",    //couchDB db name matches ledger name, TODO for now use system ledger, eventually allow passing in subledger name
+			"",          //enter couchDB id here
+			"")          //enter couchDB pw here
 		return &KVLedger{blockStore, txmgmt, nil}, nil
 	}
 

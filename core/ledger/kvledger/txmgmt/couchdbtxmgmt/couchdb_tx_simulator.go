@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
+	logging "github.com/op/go-logging"
 )
 
 type kvReadCache struct {
@@ -62,19 +63,41 @@ func (s *CouchDBTxSimulator) GetState(ns string, key string) ([]byte, error) {
 	// check if it was written
 	kvWrite, ok := nsRWs.writeMap[key]
 	if ok {
-		logger.Debugf("Returing value for key=[%s:%s] from write set", ns, key, kvWrite.Value)
+		// trace the first 500 bytes of value only, in case it is huge
+		if logger.IsEnabledFor(logging.DEBUG) {
+			if len(kvWrite.Value) < 500 {
+				logger.Debugf("Returing value for key=[%s:%s] from write set", ns, key, kvWrite.Value)
+			} else {
+				logger.Debugf("Returing value for key=[%s:%s] from write set", ns, key, kvWrite.Value[0:500])
+			}
+		}
 		return kvWrite.Value, nil
 	}
 	// check if it was read
 	readCache, ok := nsRWs.readMap[key]
 	if ok {
-		logger.Debugf("Returing value for key=[%s:%s] from read set", ns, key, readCache.cachedValue)
+		// trace the first 500 bytes of value only, in case it is huge
+		if logger.IsEnabledFor(logging.DEBUG) {
+			if len(readCache.cachedValue) < 500 {
+				logger.Debugf("Returing value for key=[%s:%s] from read set", ns, key, readCache.cachedValue)
+			} else {
+				logger.Debugf("Returing value for key=[%s:%s] from read set", ns, key, readCache.cachedValue[0:500])
+			}
+		}
 		return readCache.cachedValue, nil
 	}
 
 	// read from storage
 	value, version, err := s.txmgr.getCommittedValueAndVersion(ns, key)
-	logger.Debugf("Read state from storage key=[%s:%s], value=[%#v], version=[%d]", ns, key, value, version)
+
+	// trace the first 500 bytes of value only, in case it is huge
+	if logger.IsEnabledFor(logging.DEBUG) {
+		if len(value) < 500 {
+			logger.Debugf("Read state from storage key=[%s:%s], value=[%#v], version=[%d]", ns, key, value, version)
+		} else {
+			logger.Debugf("Read state from storage key=[%s:%s], value=[%#v...], version=[%d]", ns, key, value[0:500], version)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +162,17 @@ func (s *CouchDBTxSimulator) getTxReadWriteSet() *txmgmt.TxReadWriteSet {
 		nsRWs := &txmgmt.NsReadWriteSet{NameSpace: ns, Reads: reads, Writes: writes}
 		txRWSet.NsRWs = append(txRWSet.NsRWs, nsRWs)
 	}
-	logger.Debugf("txRWSet = [%s]", txRWSet)
+
+	// trace the first 2000 characters of RWSet only, in case it is huge
+	if logger.IsEnabledFor(logging.DEBUG) {
+		txRWSetString := txRWSet.String()
+		if len(txRWSetString) < 2000 {
+			logger.Debugf("txRWSet = [%s]", txRWSetString)
+		} else {
+			logger.Debugf("txRWSet = [%s...]", txRWSetString[0:2000])
+		}
+	}
+
 	return txRWSet
 }
 
@@ -155,6 +188,7 @@ func getSortedKeys(m interface{}) []string {
 
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
 func (s *CouchDBTxSimulator) GetTxSimulationResults() ([]byte, error) {
+	logger.Debugf("Simulation completed, getting simulation results")
 	return s.getTxReadWriteSet().Marshal()
 }
 
