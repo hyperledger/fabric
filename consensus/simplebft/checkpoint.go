@@ -98,7 +98,6 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 	batch := *s.cur.preprep.Batch
 	batch.Signatures = cpset
 	s.sys.Deliver(&batch)
-	s.seq = *s.cur.subject.Seq
 
 	s.cur.timeout.Cancel()
 	log.Infof("request %s %s completed on %d", s.cur.subject.Seq, hash2str(s.cur.subject.Digest), s.id)

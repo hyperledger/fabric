@@ -68,7 +68,6 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 
 	if s.sys.LastBatch().DecodeHeader().Seq < bh.Seq {
 		s.sys.Deliver(h.Batch)
-		s.seq.Seq = bh.Seq
 	}
 
 	if h.NewView != nil {
@@ -89,8 +88,8 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 			return
 		}
 
-		if s.seq.View <= h.NewView.View {
-			s.seq.View = h.NewView.View
+		if s.view < h.NewView.View {
+			s.view = h.NewView.View
 		}
 		s.activeView = true
 	}

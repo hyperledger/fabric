@@ -22,7 +22,7 @@ import (
 )
 
 func TestXsetNoByz(t *testing.T) {
-	s := &SBFT{config: Config{N: 4, F: 1}, seq: SeqView{3, 1}}
+	s := &SBFT{config: Config{N: 4, F: 1}, view: 3}
 	vcs := []*ViewChange{
 		&ViewChange{
 			View: 3,
@@ -57,7 +57,7 @@ func TestXsetNoByz(t *testing.T) {
 }
 
 func TestXsetByz0(t *testing.T) {
-	s := &SBFT{config: Config{N: 4, F: 1}, seq: SeqView{3, 1}}
+	s := &SBFT{config: Config{N: 4, F: 1}, view: 3}
 	vcs := []*ViewChange{
 		&ViewChange{
 			View:     3,
@@ -103,7 +103,7 @@ func TestXsetByz0(t *testing.T) {
 }
 
 func TestXsetByz2(t *testing.T) {
-	s := &SBFT{config: Config{N: 4, F: 1}, seq: SeqView{3, 1}}
+	s := &SBFT{config: Config{N: 4, F: 1}, view: 3}
 	vcs := []*ViewChange{
 		&ViewChange{
 			View:     3,
