@@ -228,7 +228,12 @@ Note: Syslog hook also support connecting to local syslog (Ex. "/dev/log" or "/v
 | [Typetalk](https://github.com/dragon3/logrus-typetalk-hook) | Hook for logging to [Typetalk](https://www.typetalk.in/) |
 | [ElasticSearch](https://github.com/sohlich/elogrus) | Hook for logging to ElasticSearch|
 | [Sumorus](https://github.com/doublefree/sumorus) | Hook for logging to [SumoLogic](https://www.sumologic.com/)|
+| [Scribe](https://github.com/sagar8192/logrus-scribe-hook) | Hook for logging to [Scribe](https://github.com/facebookarchive/scribe)|
 | [Logstash](https://github.com/bshuster-repo/logrus-logstash-hook) | Hook for logging to [Logstash](https://www.elastic.co/products/logstash) |
+| [logz.io](https://github.com/ripcurld00d/logrus-logzio-hook) | Hook for logging to [logz.io](https://logz.io), a Log as a Service using Logstash |
+| [Logmatic.io](https://github.com/logmatic/logmatic-go) | Hook for logging to [Logmatic.io](http://logmatic.io/) |
+| [Pushover](https://github.com/toorop/logrus_pushover) | Send error via [Pushover](https://pushover.net) |
+
 
 #### Level logging
 
@@ -365,6 +370,7 @@ entries. It should not be a feature of the application-level logger.
 | Tool | Description |
 | ---- | ----------- |
 |[Logrus Mate](https://github.com/gogap/logrus_mate)|Logrus mate is a tool for Logrus to manage loggers, you can initial logger's level, hook and formatter by config file, the logger will generated with different config at different environment.|
+|[Logrus Viper Helper](https://github.com/heirko/go-contrib/tree/master/logrusHelper)|An Helper arround Logrus to wrap with spf13/Viper to load configuration with fangs! And to simplify Logrus configuration use some behavior of [Logrus Mate](https://github.com/gogap/logrus_mate). [sample](https://github.com/heirko/iris-contrib/blob/master/middleware/logrus-logger/example) |
 
 #### Testing
 
@@ -400,3 +406,20 @@ handler := func() {
 logrus.RegisterExitHandler(handler)
 ...
 ```
+
+#### Thread safty
+
+By default Logger is protected by mutex for concurrent writes, this mutex is invoked when calling hooks and writing logs.
+If you are sure such locking is not needed, you can call logger.SetNoLock() to disable the locking.
+
+Situation when locking is not needed includes:
+
+* You have no hooks registered, or hooks calling is already thread-safe.
+
+* Writing to logger.Out is already thread-safe, for example:
+
+  1) logger.Out is protected by locks.
+
+  2) logger.Out is a os.File handler opened with `O_APPEND` flag, and every write is smaller than 4k. (This allow multi-thread/multi-process writing)
+
+     (Refer to http://www.notthewizard.com/2014/06/17/are-files-appends-really-atomic/)
