@@ -43,6 +43,7 @@ type System interface {
 	LastBatch() *Batch
 	Sign(data []byte) []byte
 	CheckSig(data []byte, src uint64, sig []byte) error
+	Reconnect(replica uint64)
 }
 
 // Canceller allows cancelling of a scheduled timer event.
@@ -192,12 +193,6 @@ func (s *SBFT) broadcast(m *Msg) {
 func (s *SBFT) Receive(m *Msg, src uint64) {
 	log.Debugf("received message from %d: %s", src, m)
 
-	if s.testBacklog(m, src) {
-		log.Debugf("message for future seq, storing for later")
-		s.recordBacklogMsg(m, src)
-		return
-	}
-
 	if h := m.GetHello(); h != nil {
 		s.handleHello(h, src)
 		return
@@ -212,9 +207,9 @@ func (s *SBFT) Receive(m *Msg, src uint64) {
 		return
 	}
 
-	if !s.activeView {
-		log.Infof("we are not active in view %d, discarding message from %d",
-			s.seq.View, src)
+	if s.testBacklog(m, src) {
+		log.Debugf("message for future seq, storing for later")
+		s.recordBacklogMsg(m, src)
 		return
 	}
 

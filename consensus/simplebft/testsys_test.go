@@ -65,7 +65,7 @@ func (t *testSystemAdapter) SetReceiver(recv Receiver) {
 	t.receiver = recv
 }
 
-func (t *testSystemAdapter) Send(msg *Msg, dest uint64) {
+func (t *testSystemAdapter) getArrival(dest uint64) time.Duration {
 	// XXX for now, define fixed variance per destination
 	arr, ok := t.arrivals[dest]
 	if !ok {
@@ -78,7 +78,11 @@ func (t *testSystemAdapter) Send(msg *Msg, dest uint64) {
 		arr = inflight + variance
 		t.arrivals[dest] = arr
 	}
+	return arr
+}
 
+func (t *testSystemAdapter) Send(msg *Msg, dest uint64) {
+	arr := t.getArrival(dest)
 	ev := &testMsgEvent{
 		inflight: arr,
 		src:      t.id,
@@ -200,6 +204,24 @@ func (t *testSystemAdapter) CheckSig(data []byte, src uint64, sig []byte) error 
 		return fmt.Errorf("invalid signature")
 	}
 	return nil
+}
+
+func (t *testSystemAdapter) Reconnect(replica uint64) {
+	testLog.Infof("dropping connection from %d to %d", replica, t.id)
+	t.sys.queue.filter(func(e testElem) bool {
+		switch e := e.ev.(type) {
+		case *testMsgEvent:
+			if e.dst == t.id && e.src == replica {
+				return false
+			}
+		}
+		return true
+	})
+	arr := t.sys.adapters[replica].arrivals[t.id] * 10
+	t.sys.enqueue(arr, &testTimer{id: t.id, tf: func() {
+		testLog.Infof("reconnecting %d to %d", replica, t.id)
+		t.sys.adapters[replica].receiver.Connection(t.id)
+	}})
 }
 
 // ==============================================
