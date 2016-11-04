@@ -34,10 +34,10 @@
 			"tree": true
 		},
 		{
-			"checksumSHA1": "yXrS4e4yxaRBu/MX+39X3cS4kbg=",
+			"checksumSHA1": "yRNw/uu/4N7XHVe1PHtKPl6xtDg=",
 			"path": "github.com/Sirupsen/logrus",
-			"revision": "a283a10442df8dc09befd873fab202bf8a253d6a",
-			"revisionTime": "2016-07-16T02:56:31Z"
+			"revision": "d26492970760ca5d33129d2d799e34be5c4782eb",
+			"revisionTime": "2016-11-03T21:40:07Z"
 		},
 		{
 			"path": "github.com/cpuguy83/go-md2man/md2man",
@@ -430,6 +430,12 @@
 			"path": "golang.org/x/net/trace",
 			"revision": "b7f5d985f9013f771282befb2c58ef0fc45fe332",
 			"revisionTime": "2015-10-26T13:59:20-05:00"
+		},
+		{
+			"checksumSHA1": "aVgPDgwY3/t4J/JOw9H3FVMHqh0=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "c200b10b5d5e122be351b67af224adc6128af5bf",
+			"revisionTime": "2016-10-22T18:22:21Z"
 		},
 		{
 			"path": "golang.org/x/tools/cmd/cover",
