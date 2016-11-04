@@ -21,7 +21,7 @@ func (s *SBFT) maybeExecute() {
 		return
 	}
 	s.cur.executed = true
-	log.Noticef("executing %v", s.cur.subject)
+	log.Noticef("%d is executing %v %x", s.id, s.cur.subject.Seq, s.cur.subject.Digest)
 
 	s.sys.Persist("execute", &s.cur.subject)
 

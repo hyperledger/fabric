@@ -93,23 +93,4 @@ func (s *SBFT) processBacklog() {
 			}
 		}
 	}
-
-	// TODO
-	//
-	// Detect when we need to reconsider our options.
-	//
-	// We arrived here because either all is fine, we're with the
-	// pack.  Or we have messages in the backlog because we're
-	// connected asymmetrically, and a close replica already
-	// started talking about the next batch while we're still
-	// waiting for rounds to arrive for our current batch.  That's
-	// still fine.
-	//
-	// We might also be here because we lost connectivity, and we
-	// either missed some messages, or our connection is bad and
-	// we should reconnect to get a working connection going
-	// again.
-	//
-	// Do we need to detect that a connection is stuck and we
-	// should reconnect?
 }
