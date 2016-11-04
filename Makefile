@@ -120,9 +120,9 @@ behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
 
-linter: gotools
+linter: testenv
 	@echo "LINT: Running code checks.."
-	@./scripts/golinter.sh
+	@$(DRUN) hyperledger/fabric-testenv:$(DOCKER_TAG) ./scripts/golinter.sh
 
 build/bin/chaintool: Makefile
 	@echo "Installing chaintool"
