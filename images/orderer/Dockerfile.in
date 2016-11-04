@@ -1,0 +1,7 @@
+FROM hyperledger/fabric-baseimage:_BASE_TAG_
+RUN mkdir -p /var/hyperledger/db /etc/hyperledger/fabric
+COPY payload/orderer /usr/local/bin
+COPY payload/orderer.yaml /etc/hyperledger/fabric
+WORKDIR /etc/hyperledger/fabric
+EXPOSE 5151
+CMD orderer
