@@ -192,12 +192,6 @@ func (s *SBFT) Receive(m *Msg, src uint64) {
 	} else if req := m.GetRequest(); req != nil {
 		s.handleRequest(req, src)
 		return
-	} else if vs := m.GetViewChange(); vs != nil {
-		s.handleViewChange(vs, src)
-		return
-	} else if nv := m.GetNewView(); nv != nil {
-		s.handleNewView(nv, src)
-		return
 	}
 
 	if s.testBacklog(m, src) {
@@ -221,6 +215,12 @@ func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
 		return
 	} else if c := m.GetCheckpoint(); c != nil {
 		s.handleCheckpoint(c, src)
+		return
+	} else if vs := m.GetViewChange(); vs != nil {
+		s.handleViewChange(vs, src)
+		return
+	} else if nv := m.GetNewView(); nv != nil {
+		s.handleNewView(nv, src)
 		return
 	}
 

@@ -24,10 +24,10 @@ func (s *SBFT) testBacklog(m *Msg, src uint64) bool {
 		return true
 	}
 
-	return s.testBacklog2(m, src)
+	return s.testBacklogMessage(m, src)
 }
 
-func (s *SBFT) testBacklog2(m *Msg, src uint64) bool {
+func (s *SBFT) testBacklogMessage(m *Msg, src uint64) bool {
 	record := func(seq *SeqView) bool {
 		if !s.activeView {
 			return true
@@ -80,7 +80,7 @@ func (s *SBFT) processBacklog() {
 
 			for len(state.backLog) > 0 {
 				m, rest := state.backLog[0], state.backLog[1:]
-				if s.testBacklog2(m, src) {
+				if s.testBacklogMessage(m, src) {
 					notReady++
 					break
 				}
