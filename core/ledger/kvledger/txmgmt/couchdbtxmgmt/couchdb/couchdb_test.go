@@ -74,12 +74,8 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("2", assetJSON)
+		_, saveerr := db.SaveDoc("2", "", assetJSON, nil)
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
-
-		//Attempt to save the document again without updating the revision.  this should fail
-		_, saveerr = db.SaveDoc("2", assetJSON)
-		testutil.AssertError(t, saveerr, fmt.Sprintf("Error should have thown for a missing revision number"))
 
 	}
 }
@@ -97,7 +93,7 @@ func TestDBBadConnection(t *testing.T) {
 		testutil.AssertError(t, errdb, fmt.Sprintf("Error should have been thrown while creating a database with an invalid connecion"))
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("3", assetJSON)
+		_, saveerr := db.SaveDoc("3", "", assetJSON, nil)
 		testutil.AssertError(t, saveerr, fmt.Sprintf("Error should have been thrown while saving a document with an invalid connecion"))
 
 		//Retrieve the updated test document
@@ -127,7 +123,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 		testutil.AssertEquals(t, dbResp.DbName, database)
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("1", assetJSON)
+		_, saveerr := db.SaveDoc("1", "", assetJSON, nil)
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 		//Retrieve the test document
@@ -148,7 +144,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 		assetDocUpdated, _ := json.Marshal(assetResp)
 
 		//Save the updated test document
-		_, saveerr = db.SaveDoc("1", assetDocUpdated)
+		_, saveerr = db.SaveDoc("1", "", assetDocUpdated, nil)
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save the updated document"))
 
 		//Retrieve the updated test document
@@ -174,6 +170,70 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 }
 
+func TestDBBadJSON(t *testing.T) {
+
+	if kvledgerconfig.IsCouchDBEnabled() == true {
+
+		cleanup()
+
+		//create a new connection
+		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+
+		//create a new database
+		_, errdb := db.CreateDatabaseIfNotExist()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+		//Retrieve the info for the new database and make sure the name matches
+		dbResp, _, errdb := db.GetDatabaseInfo()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve database information"))
+		testutil.AssertEquals(t, dbResp.DbName, database)
+
+		badJSON := []byte(`{"asset_name"}`)
+
+		//Save the test document
+		_, saveerr := db.SaveDoc("1", "", badJSON, nil)
+		testutil.AssertError(t, saveerr, fmt.Sprintf("Error should have been thrown for a bad JSON"))
+
+	}
+
+}
+
+func TestDBSaveAttachment(t *testing.T) {
+
+	if kvledgerconfig.IsCouchDBEnabled() == true {
+
+		cleanup()
+		defer cleanup()
+		byteText := []byte(`This is a test document.  This is only a test`)
+
+		attachment := Attachment{}
+		attachment.AttachmentBytes = byteText
+		attachment.ContentType = "text/plain"
+		attachment.Name = "valueBytes"
+
+		attachments := []Attachment{}
+		attachments = append(attachments, attachment)
+
+		//create a new connection
+		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+
+		//create a new database
+		_, errdb := db.CreateDatabaseIfNotExist()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+		//Save the test document
+		_, saveerr := db.SaveDoc("10", "", nil, attachments)
+		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
+
+		//Attempt to retrieve the updated test document with attachments
+		_, _, geterr2 := db.ReadDoc("10")
+		testutil.AssertNoError(t, geterr2, fmt.Sprintf("Error when trying to retrieve a document with attachment"))
+
+	}
+}
+
 func TestDBRetrieveNonExistingDocument(t *testing.T) {
 
 	if kvledgerconfig.IsCouchDBEnabled() == true {
@@ -194,6 +254,64 @@ func TestDBRetrieveNonExistingDocument(t *testing.T) {
 		testutil.AssertError(t, geterr2, fmt.Sprintf("Error should have been thrown while attempting to retrieve a nonexisting document"))
 
 	}
+}
+
+func TestDBTestExistingDB(t *testing.T) {
+
+	if kvledgerconfig.IsCouchDBEnabled() == true {
+
+		cleanup()
+		defer cleanup()
+
+		//create a new connection
+		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+
+		//create a new database
+		_, errdb := db.CreateDatabaseIfNotExist()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when attempting to create a database"))
+
+		//run the create if not exist again.  should not return an error
+		_, errdb = db.CreateDatabaseIfNotExist()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when attempting to create a database"))
+
+	}
+}
+
+func TestDBTestDropNonExistDatabase(t *testing.T) {
+
+	if kvledgerconfig.IsCouchDBEnabled() == true {
+
+		cleanup()
+		defer cleanup()
+
+		//create a new connection
+		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+
+		//Attempt to drop the database without creating first
+		_, errdbdrop := db.DropDatabase()
+		testutil.AssertError(t, errdbdrop, fmt.Sprintf("Error should have been reported for attempting to drop a database before creation"))
+	}
+
+}
+
+func TestDBTestDropDatabaseBadConnection(t *testing.T) {
+
+	if kvledgerconfig.IsCouchDBEnabled() == true {
+
+		cleanup()
+		defer cleanup()
+
+		//create a new connection
+		db, err := CreateConnectionDefinition(hostname, port+4, database, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+
+		//Attempt to drop the database without creating first
+		_, errdbdrop := db.DropDatabase()
+		testutil.AssertError(t, errdbdrop, fmt.Sprintf("Error should have been reported for attempting to drop a database before creation"))
+	}
+
 }
 
 func cleanup() {

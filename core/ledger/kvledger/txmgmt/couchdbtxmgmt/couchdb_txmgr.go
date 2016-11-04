@@ -270,15 +270,39 @@ func (txmgr *CouchDBTxMgr) Commit() error {
 		defer txmgr.commitRWLock.Unlock()
 		defer func() { txmgr.updateSet = nil }()
 
-		// SaveDoc using couchdb client
-		rev, err := txmgr.couchDB.SaveDoc(k, v.value)
+		if couchdb.IsJSON(string(v.value)) {
 
-		if err != nil {
-			logger.Errorf("===COUCHDB=== Error during Commit(): %s\n", err.Error())
-			return err
-		}
-		if rev != "" {
-			logger.Debugf("===COUCHDB=== Saved document revision number: %s\n", rev)
+			// SaveDoc using couchdb client and use JSON format
+			rev, err := txmgr.couchDB.SaveDoc(k, "", v.value, nil)
+			if err != nil {
+				logger.Errorf("===COUCHDB=== Error during Commit(): %s\n", err.Error())
+				return err
+			}
+			if rev != "" {
+				logger.Debugf("===COUCHDB=== Saved document revision number: %s\n", rev)
+			}
+
+		} else {
+
+			//Create an attachment structure and load the bytes
+			attachment := &couchdb.Attachment{}
+			attachment.AttachmentBytes = v.value
+			attachment.ContentType = "application/octet-stream"
+			attachment.Name = "valueBytes"
+
+			attachments := []couchdb.Attachment{}
+			attachments = append(attachments, *attachment)
+
+			// SaveDoc using couchdb client and use attachment
+			rev, err := txmgr.couchDB.SaveDoc(k, "", nil, attachments)
+			if err != nil {
+				logger.Errorf("===COUCHDB=== Error during Commit(): %s\n", err.Error())
+				return err
+			}
+			if rev != "" {
+				logger.Debugf("===COUCHDB=== Saved document revision number: %s\n", rev)
+			}
+
 		}
 
 	}
