@@ -16,8 +16,14 @@
 # under the License.
 #
 
+BINDIR ?= /usr/local/bin
+OBJDIR ?= build
+
+TMP_GOPATH=$(OBJDIR)/gopath
+GOBIN=$(TMP_GOPATH)/bin
+
 GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml
-GOTOOLS_BIN = $(patsubst %,$(GOPATH)/bin/%, $(GOTOOLS))
+GOTOOLS_BIN = $(patsubst %,$(GOBIN)/%, $(GOTOOLS))
 
 # go tool->path mapping
 go.fqp.govendor  := github.com/kardianos/govendor
@@ -29,23 +35,27 @@ go.fqp.gocov-xml := github.com/AlekSi/gocov-xml
 
 all: $(GOTOOLS_BIN)
 
+install: $(GOTOOLS_BIN)
+	@mkdir -p $(BINDIR)
+	cp $^ $(BINDIR)
+
 # Special override for protoc-gen-go since we want to use the version vendored with the project
 gotool.protoc-gen-go:
-	mkdir -p $(GOPATH)/src/github.com/golang/protobuf/
-	cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/golang/protobuf/ $(GOPATH)/src/github.com/golang/
-	go install github.com/golang/protobuf/protoc-gen-go
-	rm -rf $(GOPATH)/src/github.com/golang/protobuf
+	@echo "Building github.com/golang/protobuf/protoc-gen-go -> protoc-gen-go"
+	@mkdir -p $(TMP_GOPATH)/src/github.com/golang/protobuf/
+	@cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/golang/protobuf/* $(TMP_GOPATH)/src/github.com/golang/protobuf
+	@GOPATH=$(abspath $(TMP_GOPATH)) go install github.com/golang/protobuf/protoc-gen-go
 
 # Default rule for gotools uses the name->path map for a generic 'go get' style build
 gotool.%:
 	$(eval TOOL = ${subst gotool.,,${@}})
-	@echo "Building $(TOOL)"
-	go get ${go.fqp.${TOOL}}
+	@echo "Building ${go.fqp.${TOOL}} -> $(TOOL)"
+	@GOPATH=$(abspath $(TMP_GOPATH)) go get ${go.fqp.${TOOL}}
 
-$(GOPATH)/bin/%:
-	$(eval TOOL = ${subst $(GOPATH)/bin/,,${@}})
+$(GOBIN)/%:
+	$(eval TOOL = ${subst $(GOBIN)/,,${@}})
 	@$(MAKE) gotool.$(TOOL)
 
 .PHONY: clean
 clean:
-	-@rm -f $(GOTOOLS_BIN) ||:
+	-@rm -rf $(OBJDIR)
