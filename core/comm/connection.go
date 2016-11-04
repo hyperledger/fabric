@@ -17,6 +17,7 @@ limitations under the License.
 package comm
 
 import (
+	"os"
 	"time"
 
 	"google.golang.org/grpc"
@@ -30,6 +31,19 @@ import (
 const defaultTimeout = time.Second * 3
 
 var commLogger = logging.MustGetLogger("comm")
+
+func getEnv(key, def string) string {
+	val := os.Getenv(key)
+	if len(val) > 0 {
+		return val
+	} else {
+		return def
+	}
+}
+
+func GetPeerTestingAddress(port string) string {
+	return getEnv("UNIT_TEST_PEER_IP", "localhost") + ":" + port
+}
 
 // NewClientConnectionWithAddress Returns a new grpc.ClientConn to the given address.
 func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
