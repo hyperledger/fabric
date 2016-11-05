@@ -7,6 +7,7 @@ services:
 env:
     - TEST_TARGET=unit-test
     - TEST_TARGET=behave
+    - TEST_TARGET=node-sdk-unit-tests
 
 before_install:
 
@@ -15,7 +16,7 @@ before_install:
    export TR_PULL_REQUEST="$TRAVIS_PULL_REQUEST" && export GIT_USER="$TRAVIS_REPO_SLUG"
    USER_NAME="$(echo $GIT_USER | cut -d '/' -f 1)" && REPO_NAME="$(echo $GIT_USER | cut -d '/' -f 2)"
    ip="$(ifconfig docker0 | grep "inet addr:" | awk '{print $2}' | cut -d ':' -f 2)"
-   port="$(ps -ef | grep docker | awk '{print $11}' | cut -d ':' -f 3)"
+   port="$(ps -ef | grep docker | awk '{print $10}' | cut -d ':' -f 3 | cut -d '' -f 1)"
    sudo stop docker
    sudo docker daemon -H tcp://0.0.0.0:$port -H unix:///var/run/docker.sock >> dockerlogfile.log 2>&1 &
 
@@ -23,7 +24,10 @@ install:
 
  - echo " INSTALLING DEPENDENCIES "
  - |
-   cd $HOME/gopath/src/github.com/$USER_NAME/$REPO_NAME/scripts/provision/ && chmod +x host.sh && sudo ./host.sh
+   cd $HOME/gopath/src/github.com/$USER_NAME/$REPO_NAME
+   git clone https://github.com/hyperledger/fabric-baseimage.git
+   cd $HOME/gopath/src/github.com/$USER_NAME/$REPO_NAME/fabric-baseimage/scripts/devenv && chmod +x setup.sh && sudo ./setup.sh
+   rm -rf ../../../fabric-baseimage
    echo " Installing Rocks DB, g++ compilers & Dependencies "
    sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && sudo apt-get -qq update && sudo apt-get -qq install g++-4.8 && sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
    sudo apt-get install build-essential -y
