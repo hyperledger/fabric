@@ -208,7 +208,7 @@ func TestBatchTimer(t *testing.T) {
 	defer bs.halt()
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
 
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Some bytes")}
+	bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
 
 	select {
 	case <-it.ReadyChan():
@@ -248,10 +248,10 @@ func TestReconfigureGoodPath(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg1")}
-	bs.sendChan <- &ab.BroadcastMessage{configTx}
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg2")}
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg3")}
+	bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Msg1")}
+	bs.sendChan <- &ab.BroadcastMessage{Data: configTx}
+	bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Msg2")}
+	bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Msg3")}
 
 	bs.halt()
 	<-done
@@ -280,9 +280,9 @@ func TestReconfigureFailToValidate(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg1")}
-	bs.sendChan <- &ab.BroadcastMessage{configTx}
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg2")}
+	bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Msg1")}
+	bs.sendChan <- &ab.BroadcastMessage{Data: configTx}
+	bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Msg2")}
 
 	bs.halt()
 	<-done
@@ -311,9 +311,9 @@ func TestReconfigureFailToApply(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg1")}
-	bs.sendChan <- &ab.BroadcastMessage{configTx}
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg2")}
+	bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Msg1")}
+	bs.sendChan <- &ab.BroadcastMessage{Data: configTx}
+	bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Msg2")}
 
 	bs.halt()
 	<-done
