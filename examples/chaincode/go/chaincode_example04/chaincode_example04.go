@@ -31,13 +31,6 @@ import (
 type SimpleChaincode struct {
 }
 
-func (t *SimpleChaincode) GetChaincodeToCall() string {
-	//This is the hashcode for github.com/hyperledger/fabric/core/example/chaincode/chaincode_example02
-	//if the example is modifed this hashcode will change!!
-	chainCodeToCall := "d8f2ef95a72aa85b0f92580580176479fcd0874f6b0855ae21b98dcb926353d357e94cc80b5fb9b789d3a0acfdf143166b3bdc3e483feabeb4ab0b0a530b83a6"
-	return chainCodeToCall
-}
-
 // Init takes two arguements, a string and int. These are stored in the key/value pair in the state
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	var event string // Indicates whether event has happened. Initially 0
@@ -69,7 +62,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 	var event string // Event entity
 	var eventVal int // State of event
 	var err error
-	_, args := stub.GetFunctionAndParameters()
+	chainCodeToCall, args := stub.GetFunctionAndParameters()
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
@@ -84,9 +77,6 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 		fmt.Printf("Unexpected event. Doing nothing\n")
 		return nil, nil
 	}
-
-	// Get the chaincode to call from the ledger
-	chainCodeToCall := t.GetChaincodeToCall()
 
 	f := "invoke"
 	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")

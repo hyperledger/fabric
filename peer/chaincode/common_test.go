@@ -26,6 +26,7 @@ func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
 	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Args":["func", "param"] }`
 	chaincodePath = "some/path"
+	chaincodeName = "somename"
 	require := require.New(t)
 	result := checkChaincodeCmdParams(nil)
 
@@ -36,16 +37,29 @@ func TestCheckChaincodeCmdParamsWithOldCallingSchema(t *testing.T) {
 	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Function":"func", "Args":["param"] }`
 	chaincodePath = "some/path"
+	chaincodeName = "somename"
 	require := require.New(t)
 	result := checkChaincodeCmdParams(nil)
 
 	require.Nil(result)
 }
 
+func TestCheckChaincodeCmdParamsWithoutName(t *testing.T) {
+	chaincodeAttributesJSON = "[]"
+	chaincodeCtorJSON = `{ "Function":"func", "Args":["param"] }`
+	chaincodePath = "some/path"
+	chaincodeName = ""
+	require := require.New(t)
+	result := checkChaincodeCmdParams(nil)
+
+	require.Error(result)
+}
+
 func TestCheckChaincodeCmdParamsWithFunctionOnly(t *testing.T) {
 	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Function":"func" }`
 	chaincodePath = "some/path"
+	chaincodeName = "somename"
 	require := require.New(t)
 	result := checkChaincodeCmdParams(nil)
 
@@ -56,6 +70,7 @@ func TestCheckChaincodeCmdParamsEmptyCtor(t *testing.T) {
 	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{}`
 	chaincodePath = "some/path"
+	chaincodeName = "somename"
 	require := require.New(t)
 	result := checkChaincodeCmdParams(nil)
 

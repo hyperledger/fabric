@@ -18,6 +18,7 @@ package chaincode
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -53,6 +54,9 @@ const (
 
 	//GETDEPSPEC get ChaincodeDeploymentSpec
 	GETDEPSPEC = "getdepspec"
+
+	//characters used in chaincodenamespace
+	specialChars = "/:[]${}"
 )
 
 //---------- the LCCC -----------------
@@ -227,7 +231,7 @@ func (lccc *LifeCycleSysCC) acl(stub shim.ChaincodeStubInterface, chainname Chai
 
 //check validity of chain name
 func (lccc *LifeCycleSysCC) isValidChainName(chainname string) bool {
-	//TODO we probably need more checks and have
+	//TODO we probably need more checks
 	if chainname == "" {
 		return false
 	}
@@ -236,10 +240,16 @@ func (lccc *LifeCycleSysCC) isValidChainName(chainname string) bool {
 
 //check validity of chaincode name
 func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodename string) bool {
-	//TODO we probably need more checks and have
+	//TODO we probably need more checks
 	if chaincodename == "" {
 		return false
 	}
+
+	//do not allow special characters in chaincode name
+	if strings.ContainsAny(chaincodename, specialChars) {
+		return false
+	}
+
 	return true
 }
 

@@ -34,8 +34,8 @@ func register(stub *shim.MockStub, ccname string) error {
 	return nil
 }
 
-func constructDeploymentSpec(path string, initArgs [][]byte) (*pb.ChaincodeDeploymentSpec, error) {
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Path: path}, CtorMsg: &pb.ChaincodeInput{Args: initArgs}}
+func constructDeploymentSpec(name string, path string, initArgs [][]byte) (*pb.ChaincodeDeploymentSpec, error) {
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: name, Path: path}, CtorMsg: &pb.ChaincodeInput{Args: initArgs}}
 	codePackageBytes, err := container.GetChaincodePackageBytes(spec)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func TestDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
-	cds, err := constructDeploymentSpec("github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -94,6 +94,30 @@ func TestInvalidCodeDeploy(t *testing.T) {
 	}
 }
 
+//TestInvalidChaincodeName tests the deploy function with invalid chaincode name
+func TestInvalidChaincodeName(t *testing.T) {
+	initialize()
+
+	scc := new(LifeCycleSysCC)
+	stub := shim.NewMockStub("lccc", scc)
+
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+
+	//change name to empty
+	cds.ChaincodeSpec.ChaincodeID.Name = ""
+
+	var b []byte
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.FailNow()
+	}
+
+	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	_, err = stub.MockInvoke("1", args)
+	if _, ok := err.(InvalidChaincodeNameErr); !ok {
+		t.FailNow()
+	}
+}
+
 //TestRedeploy tests the redeploying will fail function(and fail with "exists" error)
 func TestRedeploy(t *testing.T) {
 	initialize()
@@ -101,7 +125,7 @@ func TestRedeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
-	cds, err := constructDeploymentSpec("github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -127,7 +151,7 @@ func TestCheckCC(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
-	cds, err := constructDeploymentSpec("github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -152,7 +176,7 @@ func TestMultipleDeploy(t *testing.T) {
 	stub := shim.NewMockStub("lccc", scc)
 
 	//deploy 02
-	cds, err := constructDeploymentSpec("github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
@@ -169,7 +193,7 @@ func TestMultipleDeploy(t *testing.T) {
 	}
 
 	//deploy 01
-	cds, err = constructDeploymentSpec("github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	cds, err = constructDeploymentSpec("example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
 	}
@@ -193,7 +217,7 @@ func TestRetryFailedDeploy(t *testing.T) {
 	stub := shim.NewMockStub("lccc", scc)
 
 	//deploy 02
-	cds, err := constructDeploymentSpec("github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()

@@ -69,11 +69,6 @@ func (carPlatform *Platform) WritePackage(spec *pb.ChaincodeSpec, tw *tar.Writer
 		return err
 	}
 
-	spec.ChaincodeID.Name, err = generateHashcode(spec, path)
-	if err != nil {
-		return fmt.Errorf("Error generating hashcode: %s", err)
-	}
-
 	var buf []string
 
 	//let the executable's name be chaincode ID's name

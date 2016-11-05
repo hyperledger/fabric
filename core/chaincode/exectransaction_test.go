@@ -387,7 +387,7 @@ func closeListenerAndSleep(l net.Listener) {
 	}
 }
 
-func executeDeployTransaction(t *testing.T, url string) {
+func executeDeployTransaction(t *testing.T, name string, url string) {
 	lis, err := initPeer()
 	if err != nil {
 		t.Fail()
@@ -400,7 +400,7 @@ func executeDeployTransaction(t *testing.T, url string) {
 
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: name, Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	_, err = deploy(ctxt, spec)
 	chaincodeID := spec.ChaincodeID.Name
 	if err != nil {
@@ -415,7 +415,7 @@ func executeDeployTransaction(t *testing.T, url string) {
 
 // Test deploy of a transaction
 func TestExecuteDeployTransaction(t *testing.T) {
-	executeDeployTransaction(t, "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
+	executeDeployTransaction(t, "example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
 }
 
 // Test deploy of a transaction with a GOPATH with multiple elements
@@ -423,7 +423,7 @@ func TestGopathExecuteDeployTransaction(t *testing.T) {
 	// add a trailing slash to GOPATH
 	// and a couple of elements - it doesn't matter what they are
 	os.Setenv("GOPATH", os.Getenv("GOPATH")+string(os.PathSeparator)+string(os.PathListSeparator)+"/tmp/foo"+string(os.PathListSeparator)+"/tmp/bar")
-	executeDeployTransaction(t, "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
+	executeDeployTransaction(t, "example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
 }
 
 // Test deploy of a transaction with a chaincode over HTTP.
@@ -431,7 +431,7 @@ func TestHTTPExecuteDeployTransaction(t *testing.T) {
 	// The chaincode used here cannot be from the fabric repo
 	// itself or it won't be downloaded because it will be found
 	// in GOPATH, which would defeat the test
-	executeDeployTransaction(t, "http://gopkg.in/mastersingh24/fabric-test-resources.v1")
+	executeDeployTransaction(t, "example01", "http://gopkg.in/mastersingh24/fabric-test-resources.v1")
 }
 
 // Check the correctness of the final state after transaction execution.
@@ -537,7 +537,7 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	chaincodeID := &pb.ChaincodeID{Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url}
 
 	args := []string{"a", "b", "10"}
 	err = invokeExample02Transaction(ctxt, chaincodeID, args, true)
@@ -601,7 +601,7 @@ func TestExecuteQuery(t *testing.T) {
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID := &pb.ChaincodeID{Path: url}
+	cID := &pb.ChaincodeID{Name: "example02", Path: url}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -658,7 +658,7 @@ func TestExecuteInvokeInvalidTransaction(t *testing.T) {
 	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	chaincodeID := &pb.ChaincodeID{Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url}
 
 	//FAIL, FAIL!
 	args := []string{"x", "-1"}
@@ -707,7 +707,7 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 	// Deploy first chaincode
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID1 := &pb.ChaincodeID{Path: url1}
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -729,7 +729,7 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 	// Deploy second chaincode
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example04"
 
-	cID2 := &pb.ChaincodeID{Path: url2}
+	cID2 := &pb.ChaincodeID{Name: "example04", Path: url2}
 	f = "init"
 	args = util.ToChaincodeArgs(f, "e", "0")
 
@@ -747,8 +747,9 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 
 	time.Sleep(time.Second)
 
-	// Invoke second chaincode, which will inturn invoke the first chaincode
-	f = "invoke"
+	// Invoke second chaincode passing the first chaincode's name as first param,
+	// which will inturn invoke the first chaincode
+	f = spec1.ChaincodeID.Name
 	args = util.ToChaincodeArgs(f, "e", "1")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
@@ -796,7 +797,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	// Deploy first chaincode
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID1 := &pb.ChaincodeID{Path: url1}
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -816,7 +817,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	// Deploy second chaincode
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
 
-	cID2 := &pb.ChaincodeID{Path: url2}
+	cID2 := &pb.ChaincodeID{Name: "pthru", Path: url2}
 	f = "init"
 	args = util.ToChaincodeArgs(f)
 
@@ -868,7 +869,7 @@ func chaincodeQueryChaincode(user string) error {
 	// Deploy first chaincode
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID1 := &pb.ChaincodeID{Path: url1}
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -886,7 +887,7 @@ func chaincodeQueryChaincode(user string) error {
 	// Deploy second chaincode
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example05"
 
-	cID2 := &pb.ChaincodeID{Path: url2}
+	cID2 := &pb.ChaincodeID{Name: "example05", Path: url2}
 	f = "init"
 	args = util.ToChaincodeArgs(f, "sum", "0")
 
@@ -994,7 +995,7 @@ func TestChaincodeQueryChaincodeErrorCase(t *testing.T) {
 	// Deploy first chaincode
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID1 := &pb.ChaincodeID{Path: url1}
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -1014,7 +1015,7 @@ func TestChaincodeQueryChaincodeErrorCase(t *testing.T) {
 	// Deploy second chaincode
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
 
-	cID2 := &pb.ChaincodeID{Path: url2}
+	cID2 := &pb.ChaincodeID{Name: "pthru", Path: url2}
 	f = "init"
 	args = util.ToChaincodeArgs(f)
 
@@ -1128,7 +1129,7 @@ func TestRangeQuery(t *testing.T) {
 	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/map"
-	cID := &pb.ChaincodeID{Path: url}
+	cID := &pb.ChaincodeID{Name: "tmap", Path: url}
 
 	f := "init"
 	args := util.ToChaincodeArgs(f)
@@ -1173,7 +1174,7 @@ func TestGetEvent(t *testing.T) {
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/eventsender"
 
-	cID := &pb.ChaincodeID{Path: url}
+	cID := &pb.ChaincodeID{Name: "esender", Path: url}
 	f := "init"
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(f)}}
 
