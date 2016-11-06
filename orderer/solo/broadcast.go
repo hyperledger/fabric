@@ -172,14 +172,14 @@ func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastSer
 		case broadcastfilter.Accept:
 			select {
 			case b.queue <- msg:
-				err = srv.Send(&ab.BroadcastResponse{ab.Status_SUCCESS})
+				err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SUCCESS})
 			default:
-				err = srv.Send(&ab.BroadcastResponse{ab.Status_SERVICE_UNAVAILABLE})
+				err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SERVICE_UNAVAILABLE})
 			}
 		case broadcastfilter.Forward:
 			fallthrough
 		case broadcastfilter.Reject:
-			err = srv.Send(&ab.BroadcastResponse{ab.Status_BAD_REQUEST})
+			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_BAD_REQUEST})
 		default:
 			logger.Fatalf("Unknown filter action :%v", action)
 		}
