@@ -53,14 +53,6 @@ pages:
   - Attributes: tech/attributes.md
   - Best Practices: tech/best-practices.md
 
-- NodeSDK:
-  - App-developer-env-setup: nodeSDK/app-developer-env-setup.md
-  - App-Overview: nodeSDK/app-overview.md
-  - Node-SDK-guide: nodeSDK/node-sdk-guide.md
-  - Node-SDK-indepth: nodeSDK/node-sdk-indepth.md
-  - Sample-Standalone-app: nodeSDK/sample-standalone-app.md
-  - Sample-web-app: nodeSDK/sample-web-app.md
-
 - Starter Kit:
   - Starter Kit: starter/fabric-starter-kit.md
 

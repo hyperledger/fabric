@@ -124,7 +124,7 @@ relating to Chaincode.
 - [APIs - CLI, REST, and Node.js](API/CoreAPI.md)
 - [CLI](API/CoreAPI.md#cli): working with the command-line interface.
 - [REST](API/CoreAPI.md#rest-api): working with the REST API (*deprecated*).
-- [Node.js SDK](nodeSDK/node-sdk-guide.md): working with the Node.js SDK.
+- [Node.js SDK](http://fabric-sdk-node.readthedocs.io/en/latest/node-sdk-guide): working with the Node.js SDK.
 
 ## Fabric developer guide
 
