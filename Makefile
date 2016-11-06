@@ -22,7 +22,6 @@
 #   - checks - runs all tests/checks
 #   - peer - builds the fabric peer binary
 #   - orderer - builds the fabric orderer binary
-#   - membersrvc - builds the membersrvc binary
 #   - unit-test - runs the go-test based unit tests
 #   - behave - runs the behave test
 #   - behave-deps - ensures pre-requisites are availble for running behave manually
@@ -31,7 +30,6 @@
 #   - images[-clean] - ensures all docker images are available[/cleaned]
 #   - peer-image[-clean] - ensures the peer-image is available[/cleaned] (for behave, etc)
 #   - orderer-image[-clean] - ensures the orderer-image is available[/cleaned] (for behave, etc)
-#   - membersrvc-image[-clean] - ensures the membersrvc-image is available[/cleaned] (for behave, etc)
 #   - protos - generate all protobuf artifacts based on .proto files
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
@@ -69,16 +67,19 @@ SUBDIRS:=$(strip $(SUBDIRS))
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh github.com/hyperledger/fabric/core/chaincode/shim | sort | uniq)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = src ccenv peer membersrvc javaenv orderer
+IMAGES = src ccenv peer javaenv orderer
 
 
-all: peer orderer membersrvc checks
+all: peer orderer checks
 
 checks: linter unit-test behave
 
 .PHONY: $(SUBDIRS)
 $(SUBDIRS):
 	cd $@ && $(MAKE)
+
+membersrvc-image:
+	@echo "membersrvc has been removed from this build"
 
 .PHONY: peer
 peer: build/bin/peer
@@ -87,10 +88,6 @@ peer-image: build/image/peer/.dummy
 .PHONY: orderer
 orderer: build/bin/orderer
 orderer-image: build/image/orderer/.dummy
-
-.PHONY: membersrvc
-membersrvc: build/bin/membersrvc
-membersrvc-image: build/image/membersrvc/.dummy
 
 unit-test: peer-image gotools
 	@./scripts/goUnitTests.sh $(DOCKER_TAG) "$(GO_LDFLAGS)"
@@ -111,7 +108,6 @@ linter: gotools
 	go vet ./core/...
 	go vet ./events/...
 	go vet ./examples/...
-	go vet ./membersrvc/...
 	go vet ./peer/...
 	go vet ./protos/...
 	go vet ./orderer/...
@@ -144,7 +140,7 @@ build/bin/chaintool: Makefile
 # JIRA FAB-243 - Mark build/docker/bin artifacts explicitly as secondary
 #                since they are never referred to directly. This prevents
 #                the makefile from deleting them inadvertently.
-.SECONDARY: build/docker/bin/peer build/docker/bin/orderer build/docker/bin/membersrvc
+.SECONDARY: build/docker/bin/peer build/docker/bin/orderer
 
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
@@ -247,7 +243,7 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 protos: gotools
 	./devenv/compile_protos.sh
 
-src-image-clean: ccenv-image-clean peer-image-clean orderer-image-clean membersrvc-image-clean
+src-image-clean: ccenv-image-clean peer-image-clean orderer-image-clean
 
 %-image-clean:
 	$(eval TARGET = ${patsubst %-image-clean,%,${@}})
