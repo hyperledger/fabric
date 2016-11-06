@@ -10,7 +10,7 @@ vp:
   # $$GOPATH (double dollar) required to prevent docker-compose doing its own
   # substitution before the value gets to the container
   #command: sh -c "exec $$GOPATH/src/github.com/hyperledger/fabric/bddtests/scripts/start-peer.sh"
-  command: peer node start
+  command: sh -c "sleep 2; peer node start"
 
   # Use these options if coverage desired for peers
   #image: hyperledger/fabric-peer-coverage
