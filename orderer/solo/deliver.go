@@ -21,19 +21,19 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger"
 )
 
-type deliverServer struct {
+type DeliverServer struct {
 	rl        rawledger.Reader
 	maxWindow int
 }
 
-func newDeliverServer(rl rawledger.Reader, maxWindow int) *deliverServer {
-	return &deliverServer{
+func NewDeliverServer(rl rawledger.Reader, maxWindow int) *DeliverServer {
+	return &DeliverServer{
 		rl:        rl,
 		maxWindow: maxWindow,
 	}
 }
 
-func (ds *deliverServer) handleDeliver(srv ab.AtomicBroadcast_DeliverServer) error {
+func (ds *DeliverServer) HandleDeliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	logger.Debugf("Starting new Deliver loop")
 	d := newDeliverer(ds, srv)
 	return d.recv()
@@ -41,7 +41,7 @@ func (ds *deliverServer) handleDeliver(srv ab.AtomicBroadcast_DeliverServer) err
 }
 
 type deliverer struct {
-	ds              *deliverServer
+	ds              *DeliverServer
 	srv             ab.AtomicBroadcast_DeliverServer
 	cursor          rawledger.Iterator
 	nextBlockNumber uint64
@@ -51,7 +51,7 @@ type deliverer struct {
 	exitChan        chan struct{}
 }
 
-func newDeliverer(ds *deliverServer, srv ab.AtomicBroadcast_DeliverServer) *deliverer {
+func newDeliverer(ds *DeliverServer, srv ab.AtomicBroadcast_DeliverServer) *deliverer {
 	d := &deliverer{
 		ds:       ds,
 		srv:      srv,
