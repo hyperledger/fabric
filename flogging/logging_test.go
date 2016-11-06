@@ -143,6 +143,49 @@ func TestLoggingLevelInvalidModuleSyntax(t *testing.T) {
 	assertDefaultLoggingLevel(t, flogging.DefaultLoggingLevel())
 }
 
+func TestGetModuleLoggingLevelDefault(t *testing.T) {
+	level, _ := flogging.GetModuleLogLevel("peer")
+
+	// peer should be using the default log level at this point
+	if level != "INFO" {
+		t.FailNow()
+	}
+}
+
+func TestGetModuleLoggingLevelDebug(t *testing.T) {
+	flogging.SetModuleLogLevel("peer", "DEBUG")
+	level, _ := flogging.GetModuleLogLevel("peer")
+
+	// ensure that the log level has changed to debug
+	if level != "DEBUG" {
+		t.FailNow()
+	}
+}
+
+func TestGetModuleLoggingLevelInvalid(t *testing.T) {
+	flogging.SetModuleLogLevel("peer", "invalid")
+	level, _ := flogging.GetModuleLogLevel("peer")
+
+	// ensure that the log level didn't change after invalid log level specified
+	if level != "DEBUG" {
+		t.FailNow()
+	}
+}
+
+func TestSetModuleLoggingLevel(t *testing.T) {
+	flogging.SetModuleLogLevel("peer", "WARNING")
+
+	// ensure that the log level has changed to warning
+	assertModuleLoggingLevel(t, "peer", logging.WARNING)
+}
+
+func TestSetModuleLoggingLevelInvalid(t *testing.T) {
+	flogging.SetModuleLogLevel("peer", "invalid")
+
+	// ensure that the log level didn't change after invalid log level specified
+	assertModuleLoggingLevel(t, "peer", logging.WARNING)
+}
+
 func assertDefaultLoggingLevel(t *testing.T, expectedLevel logging.Level) {
 	assertModuleLoggingLevel(t, "", expectedLevel)
 }

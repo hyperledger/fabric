@@ -26,6 +26,8 @@ service Admin {
     rpc GetStatus(google.protobuf.Empty) returns (ServerStatus) {}
     rpc StartServer(google.protobuf.Empty) returns (ServerStatus) {}
     rpc StopServer(google.protobuf.Empty) returns (ServerStatus) {}
+    rpc GetModuleLogLevel(LogLevelRequest) returns (LogLevelResponse) {}
+    rpc SetModuleLogLevel(LogLevelRequest) returns (LogLevelResponse) {}
 }
 
 message ServerStatus {
@@ -41,4 +43,13 @@ message ServerStatus {
 
     StatusCode status = 1;
 
+}
+message LogLevelRequest {
+	string logModule = 1;
+	string logLevel = 2;
+}
+
+message LogLevelResponse {
+	string logModule = 1;
+	string logLevel = 2;
 }
