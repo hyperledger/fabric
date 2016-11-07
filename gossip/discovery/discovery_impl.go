@@ -96,11 +96,11 @@ type gossipDiscoveryImpl struct {
 // NewDiscoveryService returns a new discovery service with the comm module passed and the crypto service passed
 func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommService, crypt CryptoService) Discovery {
 	d := &gossipDiscoveryImpl{
-		endpoint: self.Endpoint,
-		incTime:  uint64(time.Now().UnixNano()),
-		metadata: self.Metadata,
-		pkiID:    self.PKIid,
-		seqNum: uint64(0),
+		endpoint:    self.Endpoint,
+		incTime:     uint64(time.Now().UnixNano()),
+		metadata:    self.Metadata,
+		pkiID:       self.PKIid,
+		seqNum:      uint64(0),
 		deadLastTS:  make(map[string]*timestamp),
 		aliveLastTS: make(map[string]*timestamp),
 		id2Member:   make(map[string]*NetworkMember),
@@ -108,13 +108,13 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 			Alive: make([]*proto.AliveMessage, 0),
 			Dead:  make([]*proto.AliveMessage, 0),
 		},
-		crpypt: crypt,
+		crpypt:         crypt,
 		bootstrapPeers: bootstrapPeers,
-		comm: comm,
-		lock: &sync.RWMutex{},
-		toDieChan: make(chan struct{}, 1),
-		toDieFlag: int32(0),
-		logger:    util.GetLogger(util.LOGGING_DISCOVERY_MODULE, self.Endpoint),
+		comm:           comm,
+		lock:           &sync.RWMutex{},
+		toDieChan:      make(chan struct{}, 1),
+		toDieFlag:      int32(0),
+		logger:         util.GetLogger(util.LOGGING_DISCOVERY_MODULE, self.Endpoint),
 	}
 
 	d.logger.SetLevel(logging.WARNING)
