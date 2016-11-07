@@ -55,8 +55,8 @@ type mockConfigFilter struct {
 	manager configtx.Manager
 }
 
-func (mcf *mockConfigFilter) Apply(msg *ab.BroadcastMessage) broadcastfilter.Action {
-	if bytes.Equal(msg.Data, configTx) {
+func (mcf *mockConfigFilter) Apply(msg *ab.Envelope) broadcastfilter.Action {
+	if bytes.Equal(msg.Payload, configTx) {
 		if mcf.manager == nil || mcf.manager.Validate(nil) != nil {
 			return broadcastfilter.Reject
 		}
@@ -96,13 +96,13 @@ func init() {
 
 type mockB struct {
 	grpc.ServerStream
-	recvChan chan *ab.BroadcastMessage
+	recvChan chan *ab.Envelope
 	sendChan chan *ab.BroadcastResponse
 }
 
 func newMockB() *mockB {
 	return &mockB{
-		recvChan: make(chan *ab.BroadcastMessage),
+		recvChan: make(chan *ab.Envelope),
 		sendChan: make(chan *ab.BroadcastResponse),
 	}
 }
@@ -112,7 +112,7 @@ func (m *mockB) Send(br *ab.BroadcastResponse) error {
 	return nil
 }
 
-func (m *mockB) Recv() (*ab.BroadcastMessage, error) {
+func (m *mockB) Recv() (*ab.Envelope, error) {
 	msg, ok := <-m.recvChan
 	if !ok {
 		return msg, fmt.Errorf("Channel closed")
@@ -125,20 +125,20 @@ func TestQueueOverflow(t *testing.T) {
 	bs := newPlainBroadcastServer(2, 1, time.Second, nil, filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
 	m := newMockB()
 	b := newBroadcaster(bs)
-	go b.queueBroadcastMessages(m)
+	go b.queueEnvelopes(m)
 	defer close(m.recvChan)
 
 	bs.halt()
 
 	for i := 0; i < 2; i++ {
-		m.recvChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
+		m.recvChan <- &ab.Envelope{Payload: []byte("Some bytes")}
 		reply := <-m.sendChan
 		if reply.Status != ab.Status_SUCCESS {
 			t.Fatalf("Should have successfully queued the message")
 		}
 	}
 
-	m.recvChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
+	m.recvChan <- &ab.Envelope{Payload: []byte("Some bytes")}
 	reply := <-m.sendChan
 	if reply.Status != ab.Status_SERVICE_UNAVAILABLE {
 		t.Fatalf("Should not have successfully queued the message")
@@ -154,13 +154,13 @@ func TestMultiQueueOverflow(t *testing.T) {
 
 	for _, m := range ms {
 		b := newBroadcaster(bs)
-		go b.queueBroadcastMessages(m)
+		go b.queueEnvelopes(m)
 		defer close(m.recvChan)
 	}
 
 	for _, m := range ms {
 		for i := 0; i < 2; i++ {
-			m.recvChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
+			m.recvChan <- &ab.Envelope{Payload: []byte("Some bytes")}
 			reply := <-m.sendChan
 			if reply.Status != ab.Status_SUCCESS {
 				t.Fatalf("Should have successfully queued the message")
@@ -169,7 +169,7 @@ func TestMultiQueueOverflow(t *testing.T) {
 	}
 
 	for _, m := range ms {
-		m.recvChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
+		m.recvChan <- &ab.Envelope{Payload: []byte("Some bytes")}
 		reply := <-m.sendChan
 		if reply.Status != ab.Status_SERVICE_UNAVAILABLE {
 			t.Fatalf("Should not have successfully queued the message")
@@ -177,14 +177,14 @@ func TestMultiQueueOverflow(t *testing.T) {
 	}
 }
 
-func TestEmptyBroadcastMessage(t *testing.T) {
+func TestEmptyEnvelope(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	bs := newPlainBroadcastServer(2, 1, time.Second, nil, filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
 	m := newMockB()
 	defer close(m.recvChan)
 	go bs.handleBroadcast(m)
 
-	m.recvChan <- &ab.BroadcastMessage{}
+	m.recvChan <- &ab.Envelope{}
 	reply := <-m.sendChan
 	if reply.Status != ab.Status_BAD_REQUEST {
 		t.Fatalf("Should have rejected the null message")
@@ -208,7 +208,7 @@ func TestBatchTimer(t *testing.T) {
 	defer bs.halt()
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
 
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Some bytes")}
+	bs.sendChan <- &ab.Envelope{Payload: []byte("Some bytes")}
 
 	select {
 	case <-it.ReadyChan():
@@ -228,7 +228,7 @@ func TestFilledBatch(t *testing.T) {
 		close(done)
 	}()
 	for i := 0; i < messages; i++ {
-		bs.sendChan <- &ab.BroadcastMessage{Data: []byte("Some bytes")}
+		bs.sendChan <- &ab.Envelope{Payload: []byte("Some bytes")}
 	}
 	bs.halt()
 	<-done
@@ -248,10 +248,10 @@ func TestReconfigureGoodPath(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg1")}
-	bs.sendChan <- &ab.BroadcastMessage{configTx}
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg2")}
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg3")}
+	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg1")}
+	bs.sendChan <- &ab.Envelope{Payload: configTx}
+	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg2")}
+	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg3")}
 
 	bs.halt()
 	<-done
@@ -280,9 +280,9 @@ func TestReconfigureFailToValidate(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg1")}
-	bs.sendChan <- &ab.BroadcastMessage{configTx}
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg2")}
+	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg1")}
+	bs.sendChan <- &ab.Envelope{Payload: configTx}
+	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg2")}
 
 	bs.halt()
 	<-done
@@ -311,9 +311,9 @@ func TestReconfigureFailToApply(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg1")}
-	bs.sendChan <- &ab.BroadcastMessage{configTx}
-	bs.sendChan <- &ab.BroadcastMessage{[]byte("Msg2")}
+	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg1")}
+	bs.sendChan <- &ab.Envelope{Payload: configTx}
+	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg2")}
 
 	bs.halt()
 	<-done

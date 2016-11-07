@@ -60,7 +60,7 @@ func TestOldestSeek(t *testing.T) {
 	ledgerSize := 5
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -75,7 +75,7 @@ func TestOldestSeek(t *testing.T) {
 	for {
 		select {
 		case deliverReply := <-m.sendChan:
-			if deliverReply.GetError() != ab.Status_SUCCESS {
+			if deliverReply.GetBlock() == nil {
 				t.Fatalf("Received an error on the reply channel")
 			}
 		case <-time.After(time.Second):
@@ -92,7 +92,7 @@ func TestNewestSeek(t *testing.T) {
 	ledgerSize := 5
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -105,7 +105,7 @@ func TestNewestSeek(t *testing.T) {
 
 	select {
 	case blockReply := <-m.sendChan:
-		if blockReply.GetError() != ab.Status_SUCCESS {
+		if blockReply.GetBlock() == nil {
 			t.Fatalf("Received an error on the reply channel")
 		}
 
@@ -121,7 +121,7 @@ func TestSpecificSeek(t *testing.T) {
 	ledgerSize := 5
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -133,7 +133,7 @@ func TestSpecificSeek(t *testing.T) {
 
 	select {
 	case blockReply := <-m.sendChan:
-		if blockReply.GetError() != ab.Status_SUCCESS {
+		if blockReply.GetBlock() == nil {
 			t.Fatalf("Received an error on the reply channel")
 		}
 
@@ -149,7 +149,7 @@ func TestBadSeek(t *testing.T) {
 	ledgerSize := 5
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < 2*ledgerSize; i++ {
-		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -208,7 +208,7 @@ func TestAck(t *testing.T) {
 	windowSize := uint64(2)
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -223,7 +223,7 @@ func TestAck(t *testing.T) {
 	for {
 		select {
 		case blockReply := <-m.sendChan:
-			if blockReply.GetError() != ab.Status_SUCCESS {
+			if blockReply.GetBlock() == nil {
 				t.Fatalf("Received an error on the reply channel")
 			}
 		case <-time.After(time.Second):

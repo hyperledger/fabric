@@ -20,6 +20,7 @@ import (
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
 
@@ -131,13 +132,17 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 }
 
 // Append creates a new block and appends it to the ledger
-func (rl *ramLedger) Append(messages []*ab.BroadcastMessage, proof []byte) *ab.Block {
+func (rl *ramLedger) Append(messages []*ab.Envelope, proof []byte) *ab.Block {
 	data := &ab.BlockData{
 		Data: make([][]byte, len(messages)),
 	}
 
-	for i := range messages {
-		data.Data[i] = messages[i].Data
+	var err error
+	for i, msg := range messages {
+		data.Data[i], err = proto.Marshal(msg)
+		if err != nil {
+			logger.Fatalf("Error marshaling data which should be a valid proto: %s", err)
+		}
 	}
 
 	block := &ab.Block{

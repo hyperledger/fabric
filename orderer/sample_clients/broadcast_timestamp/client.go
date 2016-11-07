@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
 	"golang.org/x/net/context"
@@ -36,7 +37,11 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient) *broadcastCli
 }
 
 func (s *broadcastClient) broadcast(transaction []byte) error {
-	return s.client.Send(&ab.BroadcastMessage{Data: transaction})
+	payload, err := proto.Marshal(&ab.Payload{Data: transaction})
+	if err != nil {
+		panic(err)
+	}
+	return s.client.Send(&ab.Envelope{Payload: payload})
 }
 
 func (s *broadcastClient) getAck() error {

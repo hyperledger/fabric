@@ -33,7 +33,7 @@ func mockNew(t *testing.T, conf *config.TopLevel, disk chan []byte) Orderer {
 
 type mockBroadcastStream struct {
 	grpc.ServerStream
-	incoming chan *ab.BroadcastMessage
+	incoming chan *ab.Envelope
 	outgoing chan *ab.BroadcastResponse
 	t        *testing.T
 	closed   bool // Set to true if the outgoing channel is closed
@@ -41,13 +41,13 @@ type mockBroadcastStream struct {
 
 func newMockBroadcastStream(t *testing.T) *mockBroadcastStream {
 	return &mockBroadcastStream{
-		incoming: make(chan *ab.BroadcastMessage),
+		incoming: make(chan *ab.Envelope),
 		outgoing: make(chan *ab.BroadcastResponse),
 		t:        t,
 	}
 }
 
-func (mbs *mockBroadcastStream) Recv() (*ab.BroadcastMessage, error) {
+func (mbs *mockBroadcastStream) Recv() (*ab.Envelope, error) {
 	return <-mbs.incoming, nil
 }
 

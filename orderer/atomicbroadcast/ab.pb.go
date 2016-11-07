@@ -7,13 +7,10 @@ Package atomicbroadcast is a generated protocol buffer package.
 
 It is generated from these files:
 	ab.proto
+	message.proto
 
 It has these top-level messages:
 	BroadcastResponse
-	BroadcastMessage
-	SignedData
-	PayloadEnvelope
-	Transaction
 	ConfigurationEnvelope
 	ConfigurationEntry
 	Configuration
@@ -28,6 +25,9 @@ It has these top-level messages:
 	BlockData
 	BlockMetadata
 	DeliverResponse
+	Header
+	Payload
+	Envelope
 */
 package atomicbroadcast
 
@@ -55,26 +55,32 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 type Status int32
 
 const (
-	Status_SUCCESS             Status = 0
-	Status_BAD_REQUEST         Status = 400
-	Status_FORBIDDEN           Status = 403
-	Status_NOT_FOUND           Status = 404
-	Status_SERVICE_UNAVAILABLE Status = 503
+	Status_UNKNOWN               Status = 0
+	Status_SUCCESS               Status = 200
+	Status_BAD_REQUEST           Status = 400
+	Status_FORBIDDEN             Status = 403
+	Status_NOT_FOUND             Status = 404
+	Status_INTERNAL_SERVER_ERROR Status = 500
+	Status_SERVICE_UNAVAILABLE   Status = 503
 )
 
 var Status_name = map[int32]string{
-	0:   "SUCCESS",
+	0:   "UNKNOWN",
+	200: "SUCCESS",
 	400: "BAD_REQUEST",
 	403: "FORBIDDEN",
 	404: "NOT_FOUND",
+	500: "INTERNAL_SERVER_ERROR",
 	503: "SERVICE_UNAVAILABLE",
 }
 var Status_value = map[string]int32{
-	"SUCCESS":             0,
-	"BAD_REQUEST":         400,
-	"FORBIDDEN":           403,
-	"NOT_FOUND":           404,
-	"SERVICE_UNAVAILABLE": 503,
+	"UNKNOWN":               0,
+	"SUCCESS":               200,
+	"BAD_REQUEST":           400,
+	"FORBIDDEN":             403,
+	"NOT_FOUND":             404,
+	"INTERNAL_SERVER_ERROR": 500,
+	"SERVICE_UNAVAILABLE":   503,
 }
 
 func (x Status) String() string {
@@ -114,7 +120,7 @@ func (x Configuration_ConfigurationType) String() string {
 	return proto.EnumName(Configuration_ConfigurationType_name, int32(x))
 }
 func (Configuration_ConfigurationType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{7, 0}
+	return fileDescriptor0, []int{3, 0}
 }
 
 // Start may be specified to a specific block number, or may be request from the newest or oldest available
@@ -143,179 +149,16 @@ var SeekInfo_StartType_value = map[string]int32{
 func (x SeekInfo_StartType) String() string {
 	return proto.EnumName(SeekInfo_StartType_name, int32(x))
 }
-func (SeekInfo_StartType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{11, 0} }
+func (SeekInfo_StartType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{7, 0} }
 
 type BroadcastResponse struct {
-	Status Status `protobuf:"varint,1,opt,name=Status,json=status,enum=atomicbroadcast.Status" json:"Status,omitempty"`
+	Status Status `protobuf:"varint,1,opt,name=Status,enum=atomicbroadcast.Status" json:"Status,omitempty"`
 }
 
 func (m *BroadcastResponse) Reset()                    { *m = BroadcastResponse{} }
 func (m *BroadcastResponse) String() string            { return proto.CompactTextString(m) }
 func (*BroadcastResponse) ProtoMessage()               {}
 func (*BroadcastResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
-
-// For backwards compatibility, this is message is being left as bytes for the moment.
-// Internally, for testing authentication, the Data payload will be a marshalled SignedData message
-// However in the future, this whole message is likely to go away.
-// XXX Temporary
-type BroadcastMessage struct {
-	Data []byte `protobuf:"bytes,1,opt,name=Data,json=data,proto3" json:"Data,omitempty"`
-}
-
-func (m *BroadcastMessage) Reset()                    { *m = BroadcastMessage{} }
-func (m *BroadcastMessage) String() string            { return proto.CompactTextString(m) }
-func (*BroadcastMessage) ProtoMessage()               {}
-func (*BroadcastMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
-
-// SignedData is a temporary message type to be removed once the real transaction type is finalized
-// Note that the identity of the signer is explicitely not included, but embedded in the envelope because
-// apparently the signature should always be over an object which contains the signer's identity
-// XXX Temporary
-type SignedData struct {
-	PayloadEnvelope []byte `protobuf:"bytes,1,opt,name=PayloadEnvelope,json=payloadEnvelope,proto3" json:"PayloadEnvelope,omitempty"`
-	Signature       []byte `protobuf:"bytes,2,opt,name=Signature,json=signature,proto3" json:"Signature,omitempty"`
-}
-
-func (m *SignedData) Reset()                    { *m = SignedData{} }
-func (m *SignedData) String() string            { return proto.CompactTextString(m) }
-func (*SignedData) ProtoMessage()               {}
-func (*SignedData) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
-
-// PayloadEnvelope is the thin wrapper which allows the embedding of a signer's identity to sign over
-// XXX Temporary
-type PayloadEnvelope struct {
-	Payload []byte `protobuf:"bytes,1,opt,name=Payload,json=payload,proto3" json:"Payload,omitempty"`
-	Signer  []byte `protobuf:"bytes,2,opt,name=Signer,json=signer,proto3" json:"Signer,omitempty"`
-}
-
-func (m *PayloadEnvelope) Reset()                    { *m = PayloadEnvelope{} }
-func (m *PayloadEnvelope) String() string            { return proto.CompactTextString(m) }
-func (*PayloadEnvelope) ProtoMessage()               {}
-func (*PayloadEnvelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
-
-// Transaction embeds a configuration change and associated signoffs
-// This will be superseded once the real transaction format is finalized
-// XXX Temporary
-type Transaction struct {
-	// Types that are valid to be assigned to Type:
-	//	*Transaction_Opaque
-	//	*Transaction_ConfigurationEnvelope
-	Type       isTransaction_Type `protobuf_oneof:"Type"`
-	Signatures []*SignedData      `protobuf:"bytes,3,rep,name=Signatures,json=signatures" json:"Signatures,omitempty"`
-}
-
-func (m *Transaction) Reset()                    { *m = Transaction{} }
-func (m *Transaction) String() string            { return proto.CompactTextString(m) }
-func (*Transaction) ProtoMessage()               {}
-func (*Transaction) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
-
-type isTransaction_Type interface {
-	isTransaction_Type()
-}
-
-type Transaction_Opaque struct {
-	Opaque []byte `protobuf:"bytes,1,opt,name=Opaque,json=opaque,proto3,oneof"`
-}
-type Transaction_ConfigurationEnvelope struct {
-	ConfigurationEnvelope []byte `protobuf:"bytes,2,opt,name=ConfigurationEnvelope,json=configurationEnvelope,proto3,oneof"`
-}
-
-func (*Transaction_Opaque) isTransaction_Type()                {}
-func (*Transaction_ConfigurationEnvelope) isTransaction_Type() {}
-
-func (m *Transaction) GetType() isTransaction_Type {
-	if m != nil {
-		return m.Type
-	}
-	return nil
-}
-
-func (m *Transaction) GetOpaque() []byte {
-	if x, ok := m.GetType().(*Transaction_Opaque); ok {
-		return x.Opaque
-	}
-	return nil
-}
-
-func (m *Transaction) GetConfigurationEnvelope() []byte {
-	if x, ok := m.GetType().(*Transaction_ConfigurationEnvelope); ok {
-		return x.ConfigurationEnvelope
-	}
-	return nil
-}
-
-func (m *Transaction) GetSignatures() []*SignedData {
-	if m != nil {
-		return m.Signatures
-	}
-	return nil
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Transaction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Transaction_OneofMarshaler, _Transaction_OneofUnmarshaler, _Transaction_OneofSizer, []interface{}{
-		(*Transaction_Opaque)(nil),
-		(*Transaction_ConfigurationEnvelope)(nil),
-	}
-}
-
-func _Transaction_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Transaction)
-	// Type
-	switch x := m.Type.(type) {
-	case *Transaction_Opaque:
-		b.EncodeVarint(1<<3 | proto.WireBytes)
-		b.EncodeRawBytes(x.Opaque)
-	case *Transaction_ConfigurationEnvelope:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		b.EncodeRawBytes(x.ConfigurationEnvelope)
-	case nil:
-	default:
-		return fmt.Errorf("Transaction.Type has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Transaction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Transaction)
-	switch tag {
-	case 1: // Type.Opaque
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeRawBytes(true)
-		m.Type = &Transaction_Opaque{x}
-		return true, err
-	case 2: // Type.ConfigurationEnvelope
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeRawBytes(true)
-		m.Type = &Transaction_ConfigurationEnvelope{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _Transaction_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Transaction)
-	// Type
-	switch x := m.Type.(type) {
-	case *Transaction_Opaque:
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.Opaque)))
-		n += len(x.Opaque)
-	case *Transaction_ConfigurationEnvelope:
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(len(x.ConfigurationEnvelope)))
-		n += len(x.ConfigurationEnvelope)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
 
 // ConfigurationEnvelope is designed to contain _all_ configuration for a chain and is
 // intended to be a permenant data structure (noted explicitly because others above are temporary)
@@ -328,15 +171,15 @@ func _Transaction_OneofSizer(msg proto.Message) (n int) {
 // that the configuration is well formed, and that some configuration item corresponds to the new
 // ConfigurationEnvelope sequence number.
 type ConfigurationEnvelope struct {
-	Sequence uint64                `protobuf:"varint,1,opt,name=Sequence,json=sequence" json:"Sequence,omitempty"`
-	ChainID  []byte                `protobuf:"bytes,2,opt,name=ChainID,json=chainID,proto3" json:"ChainID,omitempty"`
-	Entries  []*ConfigurationEntry `protobuf:"bytes,3,rep,name=Entries,json=entries" json:"Entries,omitempty"`
+	Sequence uint64                `protobuf:"varint,1,opt,name=Sequence" json:"Sequence,omitempty"`
+	ChainID  []byte                `protobuf:"bytes,2,opt,name=ChainID,proto3" json:"ChainID,omitempty"`
+	Entries  []*ConfigurationEntry `protobuf:"bytes,3,rep,name=Entries" json:"Entries,omitempty"`
 }
 
 func (m *ConfigurationEnvelope) Reset()                    { *m = ConfigurationEnvelope{} }
 func (m *ConfigurationEnvelope) String() string            { return proto.CompactTextString(m) }
 func (*ConfigurationEnvelope) ProtoMessage()               {}
-func (*ConfigurationEnvelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*ConfigurationEnvelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *ConfigurationEnvelope) GetEntries() []*ConfigurationEntry {
 	if m != nil {
@@ -347,16 +190,16 @@ func (m *ConfigurationEnvelope) GetEntries() []*ConfigurationEntry {
 
 // This message may change slightly depending on the finalization of signature schemes for transactions
 type ConfigurationEntry struct {
-	Configuration []byte        `protobuf:"bytes,1,opt,name=Configuration,json=configuration,proto3" json:"Configuration,omitempty"`
-	Signatures    []*SignedData `protobuf:"bytes,2,rep,name=Signatures,json=signatures" json:"Signatures,omitempty"`
+	Configuration []byte      `protobuf:"bytes,1,opt,name=Configuration,proto3" json:"Configuration,omitempty"`
+	Signatures    []*Envelope `protobuf:"bytes,2,rep,name=Signatures" json:"Signatures,omitempty"`
 }
 
 func (m *ConfigurationEntry) Reset()                    { *m = ConfigurationEntry{} }
 func (m *ConfigurationEntry) String() string            { return proto.CompactTextString(m) }
 func (*ConfigurationEntry) ProtoMessage()               {}
-func (*ConfigurationEntry) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (*ConfigurationEntry) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-func (m *ConfigurationEntry) GetSignatures() []*SignedData {
+func (m *ConfigurationEntry) GetSignatures() []*Envelope {
 	if m != nil {
 		return m.Signatures
 	}
@@ -364,18 +207,18 @@ func (m *ConfigurationEntry) GetSignatures() []*SignedData {
 }
 
 type Configuration struct {
-	ChainID            []byte                          `protobuf:"bytes,1,opt,name=ChainID,json=chainID,proto3" json:"ChainID,omitempty"`
-	ID                 string                          `protobuf:"bytes,2,opt,name=ID,json=iD" json:"ID,omitempty"`
-	LastModified       uint64                          `protobuf:"varint,3,opt,name=LastModified,json=lastModified" json:"LastModified,omitempty"`
-	Type               Configuration_ConfigurationType `protobuf:"varint,4,opt,name=Type,json=type,enum=atomicbroadcast.Configuration_ConfigurationType" json:"Type,omitempty"`
-	Data               []byte                          `protobuf:"bytes,5,opt,name=Data,json=data,proto3" json:"Data,omitempty"`
-	ModificationPolicy string                          `protobuf:"bytes,6,opt,name=ModificationPolicy,json=modificationPolicy" json:"ModificationPolicy,omitempty"`
+	ChainID            []byte                          `protobuf:"bytes,1,opt,name=ChainID,proto3" json:"ChainID,omitempty"`
+	ID                 string                          `protobuf:"bytes,2,opt,name=ID" json:"ID,omitempty"`
+	LastModified       uint64                          `protobuf:"varint,3,opt,name=LastModified" json:"LastModified,omitempty"`
+	Type               Configuration_ConfigurationType `protobuf:"varint,4,opt,name=Type,enum=atomicbroadcast.Configuration_ConfigurationType" json:"Type,omitempty"`
+	Data               []byte                          `protobuf:"bytes,5,opt,name=Data,proto3" json:"Data,omitempty"`
+	ModificationPolicy string                          `protobuf:"bytes,6,opt,name=ModificationPolicy" json:"ModificationPolicy,omitempty"`
 }
 
 func (m *Configuration) Reset()                    { *m = Configuration{} }
 func (m *Configuration) String() string            { return proto.CompactTextString(m) }
 func (*Configuration) ProtoMessage()               {}
-func (*Configuration) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*Configuration) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
 // multiple policy engines, this is typed as a oneof for now
@@ -388,14 +231,14 @@ type Policy struct {
 func (m *Policy) Reset()                    { *m = Policy{} }
 func (m *Policy) String() string            { return proto.CompactTextString(m) }
 func (*Policy) ProtoMessage()               {}
-func (*Policy) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (*Policy) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 type isPolicy_Type interface {
 	isPolicy_Type()
 }
 
 type Policy_SignaturePolicy struct {
-	SignaturePolicy *SignaturePolicyEnvelope `protobuf:"bytes,2,opt,name=SignaturePolicy,json=signaturePolicy,oneof"`
+	SignaturePolicy *SignaturePolicyEnvelope `protobuf:"bytes,1,opt,name=SignaturePolicy,oneof"`
 }
 
 func (*Policy_SignaturePolicy) isPolicy_Type() {}
@@ -426,7 +269,7 @@ func _Policy_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	// Type
 	switch x := m.Type.(type) {
 	case *Policy_SignaturePolicy:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
+		b.EncodeVarint(1<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.SignaturePolicy); err != nil {
 			return err
 		}
@@ -440,7 +283,7 @@ func _Policy_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 func _Policy_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
 	m := msg.(*Policy)
 	switch tag {
-	case 2: // Type.SignaturePolicy
+	case 1: // Type.SignaturePolicy
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -459,7 +302,7 @@ func _Policy_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.Type.(type) {
 	case *Policy_SignaturePolicy:
 		s := proto.Size(x.SignaturePolicy)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -471,15 +314,15 @@ func _Policy_OneofSizer(msg proto.Message) (n int) {
 
 // SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
 type SignaturePolicyEnvelope struct {
-	Version    int32            `protobuf:"varint,1,opt,name=Version,json=version" json:"Version,omitempty"`
-	Policy     *SignaturePolicy `protobuf:"bytes,2,opt,name=Policy,json=policy" json:"Policy,omitempty"`
-	Identities [][]byte         `protobuf:"bytes,3,rep,name=Identities,json=identities,proto3" json:"Identities,omitempty"`
+	Version    int32            `protobuf:"varint,1,opt,name=Version" json:"Version,omitempty"`
+	Policy     *SignaturePolicy `protobuf:"bytes,2,opt,name=Policy" json:"Policy,omitempty"`
+	Identities [][]byte         `protobuf:"bytes,3,rep,name=Identities,proto3" json:"Identities,omitempty"`
 }
 
 func (m *SignaturePolicyEnvelope) Reset()                    { *m = SignaturePolicyEnvelope{} }
 func (m *SignaturePolicyEnvelope) String() string            { return proto.CompactTextString(m) }
 func (*SignaturePolicyEnvelope) ProtoMessage()               {}
-func (*SignaturePolicyEnvelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (*SignaturePolicyEnvelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 func (m *SignaturePolicyEnvelope) GetPolicy() *SignaturePolicy {
 	if m != nil {
@@ -504,17 +347,17 @@ type SignaturePolicy struct {
 func (m *SignaturePolicy) Reset()                    { *m = SignaturePolicy{} }
 func (m *SignaturePolicy) String() string            { return proto.CompactTextString(m) }
 func (*SignaturePolicy) ProtoMessage()               {}
-func (*SignaturePolicy) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*SignaturePolicy) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 type isSignaturePolicy_Type interface {
 	isSignaturePolicy_Type()
 }
 
 type SignaturePolicy_SignedBy struct {
-	SignedBy int32 `protobuf:"varint,1,opt,name=SignedBy,json=signedBy,oneof"`
+	SignedBy int32 `protobuf:"varint,1,opt,name=SignedBy,oneof"`
 }
 type SignaturePolicy_From struct {
-	From *SignaturePolicy_NOutOf `protobuf:"bytes,2,opt,name=From,json=from,oneof"`
+	From *SignaturePolicy_NOutOf `protobuf:"bytes,2,opt,name=From,oneof"`
 }
 
 func (*SignaturePolicy_SignedBy) isSignaturePolicy_Type() {}
@@ -611,14 +454,14 @@ func _SignaturePolicy_OneofSizer(msg proto.Message) (n int) {
 }
 
 type SignaturePolicy_NOutOf struct {
-	N        int32              `protobuf:"varint,1,opt,name=N,json=n" json:"N,omitempty"`
-	Policies []*SignaturePolicy `protobuf:"bytes,2,rep,name=Policies,json=policies" json:"Policies,omitempty"`
+	N        int32              `protobuf:"varint,1,opt,name=N" json:"N,omitempty"`
+	Policies []*SignaturePolicy `protobuf:"bytes,2,rep,name=Policies" json:"Policies,omitempty"`
 }
 
 func (m *SignaturePolicy_NOutOf) Reset()                    { *m = SignaturePolicy_NOutOf{} }
 func (m *SignaturePolicy_NOutOf) String() string            { return proto.CompactTextString(m) }
 func (*SignaturePolicy_NOutOf) ProtoMessage()               {}
-func (*SignaturePolicy_NOutOf) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10, 0} }
+func (*SignaturePolicy_NOutOf) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6, 0} }
 
 func (m *SignaturePolicy_NOutOf) GetPolicies() []*SignaturePolicy {
 	if m != nil {
@@ -628,24 +471,25 @@ func (m *SignaturePolicy_NOutOf) GetPolicies() []*SignaturePolicy {
 }
 
 type SeekInfo struct {
-	Start           SeekInfo_StartType `protobuf:"varint,1,opt,name=Start,json=start,enum=atomicbroadcast.SeekInfo_StartType" json:"Start,omitempty"`
-	SpecifiedNumber uint64             `protobuf:"varint,2,opt,name=SpecifiedNumber,json=specifiedNumber" json:"SpecifiedNumber,omitempty"`
-	WindowSize      uint64             `protobuf:"varint,3,opt,name=WindowSize,json=windowSize" json:"WindowSize,omitempty"`
+	Start           SeekInfo_StartType `protobuf:"varint,1,opt,name=Start,enum=atomicbroadcast.SeekInfo_StartType" json:"Start,omitempty"`
+	SpecifiedNumber uint64             `protobuf:"varint,2,opt,name=SpecifiedNumber" json:"SpecifiedNumber,omitempty"`
+	WindowSize      uint64             `protobuf:"varint,3,opt,name=WindowSize" json:"WindowSize,omitempty"`
+	ChainID         []byte             `protobuf:"bytes,4,opt,name=ChainID,proto3" json:"ChainID,omitempty"`
 }
 
 func (m *SeekInfo) Reset()                    { *m = SeekInfo{} }
 func (m *SeekInfo) String() string            { return proto.CompactTextString(m) }
 func (*SeekInfo) ProtoMessage()               {}
-func (*SeekInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (*SeekInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 type Acknowledgement struct {
-	Number uint64 `protobuf:"varint,1,opt,name=Number,json=number" json:"Number,omitempty"`
+	Number uint64 `protobuf:"varint,1,opt,name=Number" json:"Number,omitempty"`
 }
 
 func (m *Acknowledgement) Reset()                    { *m = Acknowledgement{} }
 func (m *Acknowledgement) String() string            { return proto.CompactTextString(m) }
 func (*Acknowledgement) ProtoMessage()               {}
-func (*Acknowledgement) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+func (*Acknowledgement) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 // The update message either causes a seek to a new stream start with a new window, or acknowledges a received block and advances the base of the window
 type DeliverUpdate struct {
@@ -658,17 +502,17 @@ type DeliverUpdate struct {
 func (m *DeliverUpdate) Reset()                    { *m = DeliverUpdate{} }
 func (m *DeliverUpdate) String() string            { return proto.CompactTextString(m) }
 func (*DeliverUpdate) ProtoMessage()               {}
-func (*DeliverUpdate) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
+func (*DeliverUpdate) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 type isDeliverUpdate_Type interface {
 	isDeliverUpdate_Type()
 }
 
 type DeliverUpdate_Acknowledgement struct {
-	Acknowledgement *Acknowledgement `protobuf:"bytes,1,opt,name=Acknowledgement,json=acknowledgement,oneof"`
+	Acknowledgement *Acknowledgement `protobuf:"bytes,1,opt,name=Acknowledgement,oneof"`
 }
 type DeliverUpdate_Seek struct {
-	Seek *SeekInfo `protobuf:"bytes,2,opt,name=Seek,json=seek,oneof"`
+	Seek *SeekInfo `protobuf:"bytes,2,opt,name=Seek,oneof"`
 }
 
 func (*DeliverUpdate_Acknowledgement) isDeliverUpdate_Type() {}
@@ -774,15 +618,15 @@ func _DeliverUpdate_OneofSizer(msg proto.Message) (n int) {
 // in the BlockHeader.  This makes it natural and obvious that the Data is included in the hash, but
 // the Metadata is not.
 type Block struct {
-	Header   *BlockHeader   `protobuf:"bytes,1,opt,name=Header,json=header" json:"Header,omitempty"`
-	Data     *BlockData     `protobuf:"bytes,2,opt,name=Data,json=data" json:"Data,omitempty"`
-	Metadata *BlockMetadata `protobuf:"bytes,3,opt,name=Metadata,json=metadata" json:"Metadata,omitempty"`
+	Header   *BlockHeader   `protobuf:"bytes,1,opt,name=Header" json:"Header,omitempty"`
+	Data     *BlockData     `protobuf:"bytes,2,opt,name=Data" json:"Data,omitempty"`
+	Metadata *BlockMetadata `protobuf:"bytes,3,opt,name=Metadata" json:"Metadata,omitempty"`
 }
 
 func (m *Block) Reset()                    { *m = Block{} }
 func (m *Block) String() string            { return proto.CompactTextString(m) }
 func (*Block) ProtoMessage()               {}
-func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
+func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 func (m *Block) GetHeader() *BlockHeader {
 	if m != nil {
@@ -806,33 +650,33 @@ func (m *Block) GetMetadata() *BlockMetadata {
 }
 
 type BlockHeader struct {
-	Number       uint64 `protobuf:"varint,1,opt,name=Number,json=number" json:"Number,omitempty"`
-	PreviousHash []byte `protobuf:"bytes,2,opt,name=PreviousHash,json=previousHash,proto3" json:"PreviousHash,omitempty"`
-	DataHash     []byte `protobuf:"bytes,3,opt,name=DataHash,json=dataHash,proto3" json:"DataHash,omitempty"`
+	Number       uint64 `protobuf:"varint,1,opt,name=Number" json:"Number,omitempty"`
+	PreviousHash []byte `protobuf:"bytes,2,opt,name=PreviousHash,proto3" json:"PreviousHash,omitempty"`
+	DataHash     []byte `protobuf:"bytes,3,opt,name=DataHash,proto3" json:"DataHash,omitempty"`
 }
 
 func (m *BlockHeader) Reset()                    { *m = BlockHeader{} }
 func (m *BlockHeader) String() string            { return proto.CompactTextString(m) }
 func (*BlockHeader) ProtoMessage()               {}
-func (*BlockHeader) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
+func (*BlockHeader) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 type BlockData struct {
-	Data [][]byte `protobuf:"bytes,1,rep,name=Data,json=data,proto3" json:"Data,omitempty"`
+	Data [][]byte `protobuf:"bytes,1,rep,name=Data,proto3" json:"Data,omitempty"`
 }
 
 func (m *BlockData) Reset()                    { *m = BlockData{} }
 func (m *BlockData) String() string            { return proto.CompactTextString(m) }
 func (*BlockData) ProtoMessage()               {}
-func (*BlockData) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
+func (*BlockData) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
 type BlockMetadata struct {
-	Metadata [][]byte `protobuf:"bytes,1,rep,name=Metadata,json=metadata,proto3" json:"Metadata,omitempty"`
+	Metadata [][]byte `protobuf:"bytes,1,rep,name=Metadata,proto3" json:"Metadata,omitempty"`
 }
 
 func (m *BlockMetadata) Reset()                    { *m = BlockMetadata{} }
 func (m *BlockMetadata) String() string            { return proto.CompactTextString(m) }
 func (*BlockMetadata) ProtoMessage()               {}
-func (*BlockMetadata) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
+func (*BlockMetadata) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
 type DeliverResponse struct {
 	// Types that are valid to be assigned to Type:
@@ -844,17 +688,17 @@ type DeliverResponse struct {
 func (m *DeliverResponse) Reset()                    { *m = DeliverResponse{} }
 func (m *DeliverResponse) String() string            { return proto.CompactTextString(m) }
 func (*DeliverResponse) ProtoMessage()               {}
-func (*DeliverResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
+func (*DeliverResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
 
 type isDeliverResponse_Type interface {
 	isDeliverResponse_Type()
 }
 
 type DeliverResponse_Error struct {
-	Error Status `protobuf:"varint,1,opt,name=Error,json=error,enum=atomicbroadcast.Status,oneof"`
+	Error Status `protobuf:"varint,1,opt,name=Error,enum=atomicbroadcast.Status,oneof"`
 }
 type DeliverResponse_Block struct {
-	Block *Block `protobuf:"bytes,2,opt,name=Block,json=block,oneof"`
+	Block *Block `protobuf:"bytes,2,opt,name=Block,oneof"`
 }
 
 func (*DeliverResponse_Error) isDeliverResponse_Type() {}
@@ -871,7 +715,7 @@ func (m *DeliverResponse) GetError() Status {
 	if x, ok := m.GetType().(*DeliverResponse_Error); ok {
 		return x.Error
 	}
-	return Status_SUCCESS
+	return Status_UNKNOWN
 }
 
 func (m *DeliverResponse) GetBlock() *Block {
@@ -952,10 +796,6 @@ func _DeliverResponse_OneofSizer(msg proto.Message) (n int) {
 
 func init() {
 	proto.RegisterType((*BroadcastResponse)(nil), "atomicbroadcast.BroadcastResponse")
-	proto.RegisterType((*BroadcastMessage)(nil), "atomicbroadcast.BroadcastMessage")
-	proto.RegisterType((*SignedData)(nil), "atomicbroadcast.SignedData")
-	proto.RegisterType((*PayloadEnvelope)(nil), "atomicbroadcast.PayloadEnvelope")
-	proto.RegisterType((*Transaction)(nil), "atomicbroadcast.Transaction")
 	proto.RegisterType((*ConfigurationEnvelope)(nil), "atomicbroadcast.ConfigurationEnvelope")
 	proto.RegisterType((*ConfigurationEntry)(nil), "atomicbroadcast.ConfigurationEntry")
 	proto.RegisterType((*Configuration)(nil), "atomicbroadcast.Configuration")
@@ -987,7 +827,7 @@ const _ = grpc.SupportPackageIsVersion3
 // Client API for AtomicBroadcast service
 
 type AtomicBroadcastClient interface {
-	// broadcast receives a reply of Acknowledgement for each BroadcastMessage in order, indicating success or type of failure
+	// broadcast receives a reply of Acknowledgement for each Envelope in order, indicating success or type of failure
 	Broadcast(ctx context.Context, opts ...grpc.CallOption) (AtomicBroadcast_BroadcastClient, error)
 	// deliver first requires an update containing a seek message, then a stream of block replies is received.
 	// The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
@@ -1013,7 +853,7 @@ func (c *atomicBroadcastClient) Broadcast(ctx context.Context, opts ...grpc.Call
 }
 
 type AtomicBroadcast_BroadcastClient interface {
-	Send(*BroadcastMessage) error
+	Send(*Envelope) error
 	Recv() (*BroadcastResponse, error)
 	grpc.ClientStream
 }
@@ -1022,7 +862,7 @@ type atomicBroadcastBroadcastClient struct {
 	grpc.ClientStream
 }
 
-func (x *atomicBroadcastBroadcastClient) Send(m *BroadcastMessage) error {
+func (x *atomicBroadcastBroadcastClient) Send(m *Envelope) error {
 	return x.ClientStream.SendMsg(m)
 }
 
@@ -1068,7 +908,7 @@ func (x *atomicBroadcastDeliverClient) Recv() (*DeliverResponse, error) {
 // Server API for AtomicBroadcast service
 
 type AtomicBroadcastServer interface {
-	// broadcast receives a reply of Acknowledgement for each BroadcastMessage in order, indicating success or type of failure
+	// broadcast receives a reply of Acknowledgement for each Envelope in order, indicating success or type of failure
 	Broadcast(AtomicBroadcast_BroadcastServer) error
 	// deliver first requires an update containing a seek message, then a stream of block replies is received.
 	// The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
@@ -1086,7 +926,7 @@ func _AtomicBroadcast_Broadcast_Handler(srv interface{}, stream grpc.ServerStrea
 
 type AtomicBroadcast_BroadcastServer interface {
 	Send(*BroadcastResponse) error
-	Recv() (*BroadcastMessage, error)
+	Recv() (*Envelope, error)
 	grpc.ServerStream
 }
 
@@ -1098,8 +938,8 @@ func (x *atomicBroadcastBroadcastServer) Send(m *BroadcastResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *atomicBroadcastBroadcastServer) Recv() (*BroadcastMessage, error) {
-	m := new(BroadcastMessage)
+func (x *atomicBroadcastBroadcastServer) Recv() (*Envelope, error) {
+	m := new(Envelope)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -1156,76 +996,70 @@ var _AtomicBroadcast_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("ab.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 1128 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x56, 0x5f, 0x6f, 0xe3, 0x44,
-	0x10, 0xaf, 0x13, 0xc7, 0x71, 0x26, 0xe9, 0xc5, 0xb7, 0xe8, 0xee, 0x42, 0x39, 0x1d, 0xc5, 0x20,
-	0x28, 0x20, 0xe5, 0x4e, 0x01, 0x21, 0xfe, 0x3e, 0x24, 0xb1, 0xa3, 0x46, 0xf4, 0x92, 0x9e, 0x9d,
-	0xf4, 0x78, 0xab, 0x36, 0xce, 0xa6, 0xb5, 0x9a, 0xd8, 0xc6, 0x76, 0x5a, 0xf5, 0x3e, 0x03, 0x48,
-	0x48, 0x20, 0x3e, 0x01, 0x2f, 0x7c, 0x89, 0x7b, 0xe1, 0x95, 0xef, 0xc3, 0x2b, 0xbb, 0xeb, 0xb5,
-	0x2f, 0x89, 0x13, 0x2a, 0x5e, 0x92, 0x9d, 0xd9, 0x99, 0xd9, 0xdf, 0xfc, 0x66, 0x76, 0xbc, 0xa0,
-	0xe2, 0x49, 0x33, 0x08, 0xfd, 0xd8, 0x47, 0x75, 0x1c, 0xfb, 0x0b, 0xd7, 0x99, 0x84, 0x3e, 0x9e,
-	0x3a, 0x38, 0x8a, 0x75, 0x03, 0xee, 0x77, 0x52, 0xc1, 0x22, 0x51, 0xe0, 0x7b, 0x11, 0x41, 0x4f,
-	0x41, 0xb1, 0x63, 0x1c, 0x2f, 0xa3, 0x86, 0x74, 0x28, 0x1d, 0xdd, 0x6b, 0x3d, 0x6a, 0x6e, 0xb8,
-	0x35, 0x93, 0x6d, 0x4b, 0x89, 0xf8, 0xbf, 0xfe, 0x21, 0x68, 0x59, 0x94, 0xe7, 0x24, 0x8a, 0xf0,
-	0x05, 0x41, 0x08, 0x64, 0x03, 0xc7, 0x98, 0x87, 0xa8, 0x59, 0xf2, 0x94, 0xae, 0xf5, 0x11, 0x80,
-	0xed, 0x5e, 0x78, 0x64, 0xca, 0x76, 0xd0, 0x11, 0xd4, 0x4f, 0xf1, 0xed, 0x9c, 0xfa, 0x99, 0xde,
-	0x35, 0x99, 0xfb, 0x01, 0x11, 0xc6, 0xf5, 0x60, 0x5d, 0x8d, 0x1e, 0x43, 0x85, 0xf9, 0xd1, 0xb3,
-	0x42, 0xd2, 0x28, 0x70, 0x9b, 0x4a, 0x94, 0x2a, 0xf4, 0x6e, 0x2e, 0x0e, 0x6a, 0x40, 0x59, 0xa8,
-	0x44, 0xc8, 0xb2, 0x08, 0x89, 0x1e, 0xd2, 0xdc, 0x18, 0x84, 0x50, 0xc4, 0x51, 0x22, 0x2e, 0xe9,
-	0x7f, 0x48, 0x50, 0x1d, 0x85, 0xd8, 0x8b, 0xb0, 0x13, 0xbb, 0xbe, 0x47, 0x23, 0x28, 0xc3, 0x00,
-	0xff, 0xb8, 0x14, 0x98, 0x8e, 0xf7, 0x2c, 0xc5, 0xe7, 0x32, 0xfa, 0x02, 0x1e, 0x74, 0x7d, 0x6f,
-	0xe6, 0x5e, 0x2c, 0x43, 0xcc, 0x4c, 0x33, 0xf0, 0x05, 0x61, 0xf8, 0xc0, 0xd9, 0xb6, 0x8d, 0xbe,
-	0x49, 0x92, 0xe7, 0x98, 0xa3, 0x46, 0xf1, 0xb0, 0x78, 0x54, 0x6d, 0xbd, 0x93, 0x67, 0x36, 0xe3,
-	0xc7, 0x82, 0x2c, 0xc5, 0xa8, 0xa3, 0x80, 0x3c, 0xba, 0x0d, 0x88, 0xfe, 0x93, 0xb4, 0xe3, 0x74,
-	0x74, 0x00, 0xaa, 0x4d, 0x28, 0x3e, 0xcf, 0x49, 0x20, 0xcb, 0x96, 0x1a, 0x09, 0x99, 0xd1, 0xd1,
-	0xbd, 0xc4, 0xae, 0xd7, 0x37, 0x44, 0xd6, 0x65, 0x27, 0x11, 0xd1, 0x77, 0x50, 0x36, 0xbd, 0x38,
-	0x74, 0x33, 0x44, 0xef, 0xe7, 0x10, 0x6d, 0x1c, 0x17, 0x87, 0xb7, 0x56, 0x99, 0x24, 0x3e, 0xfa,
-	0x0d, 0xa0, 0xfc, 0x36, 0xfa, 0x00, 0xf6, 0xd7, 0xb4, 0xa2, 0x06, 0xfb, 0x6b, 0xbc, 0x6c, 0xf0,
-	0x51, 0xf8, 0x5f, 0x7c, 0xe8, 0xaf, 0x0b, 0x1b, 0x67, 0xac, 0xe6, 0x28, 0xad, 0xe7, 0x78, 0x0f,
-	0x0a, 0x22, 0xf1, 0x8a, 0x55, 0x70, 0x0d, 0xa4, 0x43, 0xed, 0x84, 0x35, 0xaa, 0x3f, 0x75, 0x67,
-	0x2e, 0x99, 0xd2, 0xc4, 0x19, 0x5b, 0xb5, 0xf9, 0x8a, 0x0e, 0x19, 0x09, 0xdf, 0x0d, 0x99, 0x5f,
-	0x80, 0x67, 0xff, 0x4d, 0xca, 0xba, 0xc4, 0xfc, 0x2c, 0x39, 0xa6, 0xbf, 0xd9, 0x1d, 0x28, 0xbd,
-	0xb9, 0x03, 0xa8, 0x09, 0x28, 0x39, 0xc5, 0xe1, 0xd6, 0xa7, 0xfe, 0xdc, 0x75, 0x6e, 0x1b, 0x0a,
-	0x47, 0x87, 0x16, 0xb9, 0x1d, 0x7d, 0x0c, 0xf7, 0x73, 0xe1, 0x11, 0x80, 0x92, 0x6c, 0x6b, 0x7b,
-	0x6c, 0xdd, 0xc3, 0x93, 0xd0, 0x75, 0x34, 0x09, 0x55, 0xa0, 0xc4, 0x49, 0xd0, 0x0a, 0x48, 0x05,
-	0xd9, 0xf6, 0xe7, 0xbe, 0x56, 0x64, 0xca, 0xef, 0xf1, 0xec, 0x0a, 0x6b, 0x32, 0x53, 0x9e, 0x76,
-	0x7a, 0x23, 0xad, 0xa4, 0xcf, 0xd2, 0x08, 0x68, 0x04, 0xf5, 0xac, 0x0e, 0x02, 0x0d, 0xe3, 0xaa,
-	0xda, 0x3a, 0xda, 0x5a, 0x8c, 0x15, 0xbb, 0xb4, 0xf7, 0x68, 0xcf, 0xd7, 0xa3, 0xf5, 0xad, 0xac,
-	0x61, 0x7f, 0x96, 0xe0, 0xd1, 0x0e, 0x37, 0x56, 0xb2, 0x33, 0x12, 0x46, 0x69, 0x87, 0x94, 0xac,
-	0xf2, 0x75, 0x22, 0xa2, 0x2f, 0x53, 0x74, 0x02, 0xca, 0xe1, 0x5d, 0x50, 0x2c, 0x25, 0x48, 0xb2,
-	0x79, 0x02, 0xd0, 0x9f, 0xd2, 0xf6, 0x74, 0xe3, 0xb4, 0xa7, 0x6b, 0x16, 0xb8, 0x99, 0x46, 0xff,
-	0x5b, 0xca, 0xa5, 0x4b, 0xc7, 0x8b, 0x9a, 0xb4, 0x59, 0xe7, 0x36, 0x01, 0x42, 0x13, 0x52, 0x23,
-	0xa1, 0xa1, 0x57, 0x44, 0xee, 0x85, 0xfe, 0x42, 0x20, 0xf9, 0xe8, 0x2e, 0x24, 0xcd, 0xc1, 0x70,
-	0x19, 0x0f, 0x67, 0x34, 0x84, 0x3c, 0xa3, 0x6e, 0x07, 0x23, 0x50, 0x12, 0x0d, 0xaa, 0x81, 0x34,
-	0x10, 0x89, 0x4a, 0x1e, 0xfa, 0x16, 0x54, 0xee, 0xe0, 0x66, 0xcd, 0x7f, 0x77, 0x92, 0x6a, 0x20,
-	0x3c, 0x32, 0x7a, 0xff, 0x92, 0xd8, 0xb5, 0x27, 0x57, 0x7d, 0x6f, 0xe6, 0xa3, 0xaf, 0xa0, 0x44,
-	0x07, 0x73, 0x18, 0x8b, 0xb1, 0x9d, 0xbf, 0xca, 0xa9, 0x65, 0x93, 0x9b, 0xf1, 0x46, 0x2d, 0x45,
-	0x6c, 0xc9, 0x66, 0xb1, 0x1d, 0x10, 0x87, 0x37, 0xff, 0x60, 0xb9, 0x98, 0x88, 0xf9, 0x28, 0xd3,
-	0xc2, 0xae, 0xab, 0x19, 0xc1, 0x2f, 0x5d, 0x6f, 0xea, 0xdf, 0xd8, 0xee, 0x2b, 0x22, 0xee, 0x0e,
-	0xdc, 0x64, 0x1a, 0xbd, 0x45, 0x67, 0x75, 0x1a, 0x9d, 0xf5, 0xe6, 0xc0, 0x7c, 0x69, 0xda, 0xa3,
-	0xa4, 0x4f, 0x87, 0x27, 0x06, 0x5b, 0x4b, 0x68, 0x9f, 0x1a, 0x9d, 0x9a, 0xdd, 0x7e, 0xaf, 0x6f,
-	0x1a, 0x5a, 0x41, 0xff, 0x18, 0xea, 0x6d, 0xe7, 0xca, 0xf3, 0x6f, 0xe6, 0x64, 0x7a, 0x41, 0x16,
-	0xb4, 0x58, 0x6c, 0x4e, 0x0b, 0x1c, 0xc9, 0x30, 0x53, 0x3c, 0x2e, 0xe9, 0xbf, 0x4b, 0xb0, 0x6f,
-	0x90, 0xb9, 0x4b, 0x3b, 0x65, 0x1c, 0xd0, 0x0b, 0x45, 0xd0, 0x49, 0xce, 0x99, 0xbb, 0x6c, 0xe3,
-	0x73, 0xc3, 0x8e, 0xf5, 0x2d, 0xde, 0x38, 0xf7, 0x29, 0xbd, 0x36, 0x94, 0x25, 0x51, 0xed, 0xb7,
-	0x77, 0x52, 0xc8, 0xea, 0x1b, 0xd1, 0x75, 0x56, 0x89, 0x3f, 0x25, 0x28, 0x75, 0xe6, 0xbe, 0x73,
-	0x85, 0x3e, 0x07, 0xe5, 0x98, 0xe0, 0xa9, 0x80, 0x5e, 0x6d, 0x3d, 0xce, 0x05, 0xe1, 0x76, 0x89,
-	0x8d, 0xa5, 0x5c, 0xf2, 0x7f, 0x3a, 0x17, 0x92, 0x59, 0x91, 0x1c, 0x7c, 0xb0, 0xdd, 0x87, 0xcf,
-	0xc1, 0x64, 0x8e, 0x7c, 0x0d, 0xea, 0x73, 0x12, 0x63, 0xb6, 0xe6, 0x55, 0xa8, 0xb6, 0x9e, 0x6c,
-	0xf7, 0x49, 0xad, 0x2c, 0x75, 0x21, 0x56, 0x3a, 0x81, 0xea, 0x0a, 0x84, 0x5d, 0x5c, 0xb3, 0x41,
-	0x79, 0x1a, 0x92, 0x6b, 0xd7, 0x5f, 0x46, 0xc7, 0x38, 0xba, 0x14, 0xdf, 0x8e, 0x5a, 0xb0, 0xa2,
-	0x63, 0x9f, 0x1d, 0x06, 0x8a, 0xef, 0x17, 0xf9, 0xbe, 0x3a, 0x15, 0xb2, 0xfe, 0x2e, 0x54, 0x32,
-	0xd4, 0x2b, 0xef, 0x81, 0x62, 0xf6, 0x1e, 0xf8, 0x14, 0xf6, 0xd7, 0x20, 0xb2, 0x68, 0x59, 0x52,
-	0x89, 0xe1, 0x1b, 0xd0, 0xaf, 0xa0, 0x2e, 0x0a, 0xbf, 0xf2, 0x50, 0x29, 0x99, 0x61, 0xe8, 0x87,
-	0x77, 0xbc, 0x53, 0x68, 0xad, 0x4a, 0x84, 0xd9, 0x51, 0x92, 0x93, 0x1a, 0x09, 0x96, 0x1f, 0xee,
-	0xa8, 0x0c, 0xb5, 0x9f, 0xb0, 0x45, 0x5a, 0xdc, 0x4f, 0x70, 0xfa, 0x22, 0x42, 0x55, 0x28, 0xdb,
-	0xe3, 0x6e, 0xd7, 0xb4, 0x6d, 0xda, 0xd2, 0x1a, 0xe5, 0xb1, 0x6d, 0x9c, 0x5b, 0xe6, 0x8b, 0x31,
-	0xeb, 0xeb, 0x5f, 0x8a, 0xf4, 0x5b, 0x53, 0xe9, 0x0d, 0xad, 0x4e, 0xdf, 0x30, 0xcc, 0x81, 0xf6,
-	0x2b, 0x97, 0x07, 0xc3, 0xd1, 0x79, 0x6f, 0x38, 0x1e, 0x18, 0xda, 0x6f, 0x45, 0x3a, 0xf2, 0xde,
-	0xb2, 0x4d, 0xeb, 0xac, 0xdf, 0x35, 0xcf, 0xc7, 0x83, 0xf6, 0x59, 0xbb, 0x7f, 0xd2, 0xee, 0x9c,
-	0x98, 0xda, 0x3f, 0xc5, 0xd6, 0x6b, 0x3a, 0x98, 0xda, 0x1c, 0x4d, 0xf6, 0x94, 0x42, 0x3f, 0x50,
-	0x02, 0x33, 0xe1, 0xbd, 0x3c, 0xd8, 0x8d, 0x37, 0xd7, 0x81, 0xbe, 0xdb, 0x24, 0xe5, 0x4c, 0xdf,
-	0x3b, 0x92, 0x9e, 0x49, 0xe8, 0x05, 0x94, 0x05, 0x99, 0x28, 0xdf, 0x36, 0x6b, 0xf7, 0xeb, 0xe0,
-	0x70, 0xd7, 0xfe, 0x7a, 0xc8, 0x89, 0xc2, 0x9f, 0x98, 0x9f, 0xfd, 0x1b, 0x00, 0x00, 0xff, 0xff,
-	0x0d, 0xa8, 0x86, 0x10, 0x6e, 0x0a, 0x00, 0x00,
+	// 1027 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x56, 0x5f, 0x8f, 0xda, 0x46,
+	0x10, 0xc7, 0xfc, 0x3b, 0x18, 0xb8, 0xc3, 0x99, 0x2a, 0x09, 0x41, 0x51, 0x7a, 0x72, 0x2b, 0x95,
+	0xb6, 0x12, 0x89, 0x68, 0x1f, 0x9a, 0xaa, 0x79, 0x00, 0x6c, 0x04, 0x0a, 0x31, 0x97, 0x35, 0xdc,
+	0x3d, 0x9e, 0xf6, 0x60, 0xb9, 0x58, 0x07, 0x36, 0xb5, 0xcd, 0x45, 0x97, 0xaf, 0xd0, 0x56, 0xaa,
+	0xd4, 0xaa, 0xdf, 0xa1, 0x5f, 0xa0, 0x8f, 0x7d, 0xee, 0x43, 0xbf, 0x42, 0xbf, 0x45, 0xa5, 0xbe,
+	0x56, 0xbb, 0x5e, 0x3b, 0x18, 0x1f, 0xb9, 0x37, 0xcf, 0xcc, 0x6f, 0x66, 0x7e, 0xf3, 0x67, 0x77,
+	0x0d, 0x25, 0x7a, 0xd1, 0x5a, 0x7b, 0x6e, 0xe0, 0x62, 0x8d, 0x06, 0xee, 0xca, 0x9e, 0x5d, 0x78,
+	0x2e, 0x9d, 0xcf, 0xa8, 0x1f, 0x34, 0x0e, 0x57, 0xcc, 0xf7, 0xe9, 0x25, 0x0b, 0xed, 0x9a, 0x0e,
+	0xf7, 0xba, 0x91, 0x8d, 0x30, 0x7f, 0xed, 0x3a, 0x3e, 0xc3, 0xa7, 0x50, 0xb4, 0x02, 0x1a, 0x6c,
+	0xfc, 0xba, 0x72, 0xac, 0x34, 0x8f, 0xda, 0x0f, 0x5b, 0x3b, 0x51, 0x5a, 0xa1, 0x99, 0x48, 0x98,
+	0xf6, 0xa3, 0x02, 0xf7, 0x7b, 0xae, 0xb3, 0xb0, 0x2f, 0x37, 0x1e, 0x0d, 0x6c, 0xd7, 0x31, 0x9c,
+	0x6b, 0xb6, 0x74, 0xd7, 0x0c, 0x1b, 0x50, 0xb2, 0xd8, 0xf7, 0x1b, 0xe6, 0xcc, 0x98, 0x08, 0x96,
+	0x27, 0xb1, 0x8c, 0x75, 0x38, 0xe8, 0xbd, 0xa1, 0xb6, 0x33, 0xd4, 0xeb, 0xd9, 0x63, 0xa5, 0x59,
+	0x25, 0x91, 0x88, 0x2f, 0xe0, 0xc0, 0x70, 0x02, 0xcf, 0x66, 0x7e, 0x3d, 0x77, 0x9c, 0x6b, 0x56,
+	0xda, 0x9f, 0xa4, 0x18, 0xec, 0xa4, 0x0b, 0xbc, 0x1b, 0x12, 0xf9, 0x68, 0x1b, 0xc0, 0xb4, 0x19,
+	0x3f, 0x85, 0xc3, 0x84, 0x56, 0xf0, 0xa9, 0x92, 0xa4, 0x12, 0x9f, 0x03, 0x58, 0xf6, 0xa5, 0x43,
+	0x83, 0x8d, 0xc7, 0xfc, 0x7a, 0x56, 0x64, 0x7f, 0x94, 0xca, 0x1e, 0xd5, 0x47, 0xb6, 0xc0, 0xda,
+	0x9f, 0xd9, 0x9d, 0x0c, 0xdb, 0x15, 0x2a, 0xc9, 0x0a, 0x8f, 0x20, 0x2b, 0xcb, 0x2e, 0x93, 0xec,
+	0x50, 0x47, 0x0d, 0xaa, 0x23, 0xea, 0x07, 0xaf, 0xdc, 0xb9, 0xbd, 0xb0, 0xd9, 0xbc, 0x9e, 0x13,
+	0xbd, 0x4a, 0xe8, 0x50, 0x87, 0xfc, 0xe4, 0x66, 0xcd, 0xea, 0x79, 0x31, 0x94, 0x67, 0x1f, 0x6e,
+	0x49, 0x52, 0xe2, 0x7e, 0x44, 0x78, 0x23, 0x42, 0x5e, 0xa7, 0x01, 0xad, 0x17, 0x04, 0x21, 0xf1,
+	0x8d, 0x2d, 0xc0, 0x30, 0xcb, 0x4c, 0xa0, 0x4f, 0xdc, 0xa5, 0x3d, 0xbb, 0xa9, 0x17, 0x05, 0xbb,
+	0x5b, 0x2c, 0xda, 0x14, 0xee, 0xa5, 0xc2, 0x23, 0x40, 0x31, 0x34, 0xab, 0x19, 0xfe, 0xdd, 0xa7,
+	0x17, 0x9e, 0x3d, 0x53, 0x15, 0x2c, 0x43, 0x41, 0x54, 0xad, 0x66, 0xb1, 0x04, 0x79, 0xcb, 0x5d,
+	0xba, 0x6a, 0x8e, 0x2b, 0x5f, 0xd2, 0xc5, 0x15, 0x55, 0xf3, 0x5c, 0x79, 0xd2, 0xed, 0x4f, 0xd4,
+	0x82, 0xb6, 0x88, 0x22, 0xe0, 0x04, 0x6a, 0x71, 0x63, 0x25, 0x1b, 0xde, 0xc0, 0x4a, 0xbb, 0x99,
+	0x5e, 0xc5, 0x24, 0x2e, 0x9a, 0xcc, 0x20, 0x43, 0x76, 0x43, 0x74, 0x8b, 0x61, 0x03, 0xb5, 0x9f,
+	0x14, 0x78, 0xb8, 0xc7, 0x8d, 0x8f, 0xec, 0x94, 0x79, 0x7e, 0xb4, 0x1f, 0x05, 0x12, 0x89, 0xf8,
+	0x4d, 0xc4, 0x4e, 0x8c, 0xad, 0xd2, 0x3e, 0xbe, 0x8b, 0x0a, 0x89, 0xaa, 0x79, 0x02, 0x30, 0x9c,
+	0x33, 0x27, 0xb0, 0x83, 0x68, 0xa3, 0xab, 0x64, 0x4b, 0xa3, 0xfd, 0xad, 0xa4, 0xca, 0xc5, 0xc7,
+	0x50, 0xe2, 0x2a, 0x36, 0xef, 0x86, 0xa5, 0x17, 0x06, 0x19, 0x12, 0x6b, 0xf0, 0x05, 0xe4, 0xfb,
+	0x9e, 0xbb, 0x92, 0x4c, 0x3e, 0xbb, 0x8b, 0x49, 0xcb, 0x1c, 0x6f, 0x82, 0xf1, 0x62, 0x90, 0x21,
+	0xc2, 0xad, 0x31, 0x81, 0x62, 0xa8, 0xc1, 0x2a, 0x28, 0xa6, 0x2c, 0x54, 0x31, 0xf1, 0x3b, 0x28,
+	0x09, 0x07, 0x3b, 0x5e, 0xfd, 0xbb, 0x8b, 0x8c, 0x3d, 0xe2, 0xf6, 0xfe, 0xa3, 0xf0, 0x43, 0xcf,
+	0xae, 0x86, 0xce, 0xc2, 0xc5, 0xe7, 0x50, 0xb0, 0x02, 0xea, 0x05, 0xf2, 0x2a, 0x49, 0x1f, 0xe4,
+	0x08, 0xd9, 0x12, 0x30, 0xb1, 0xa8, 0xa1, 0x07, 0x36, 0xa1, 0x66, 0xad, 0xd9, 0x4c, 0x2c, 0xbf,
+	0xb9, 0x59, 0x5d, 0x30, 0x4f, 0xd4, 0x9b, 0x27, 0xbb, 0x6a, 0xde, 0xe0, 0x33, 0xdb, 0x99, 0xbb,
+	0x6f, 0x2d, 0xfb, 0x1d, 0x93, 0x67, 0x67, 0x4b, 0xb3, 0x7d, 0x0e, 0xf3, 0x89, 0x73, 0xa8, 0xb5,
+	0xa1, 0x1c, 0xe7, 0xe5, 0x5b, 0x6b, 0x1a, 0x67, 0x86, 0x35, 0x09, 0x37, 0x78, 0x3c, 0xd2, 0xf9,
+	0xb7, 0x82, 0x87, 0x50, 0xb6, 0x4e, 0x8c, 0xde, 0xb0, 0x3f, 0x34, 0x74, 0x35, 0xab, 0x7d, 0x0e,
+	0xb5, 0xce, 0xec, 0xca, 0x71, 0xdf, 0x2e, 0xd9, 0xfc, 0x92, 0xad, 0x98, 0x13, 0xe0, 0x03, 0x28,
+	0x4a, 0x86, 0xe1, 0x25, 0x27, 0x25, 0xed, 0x37, 0x05, 0x0e, 0x75, 0xb6, 0xb4, 0xaf, 0x99, 0x37,
+	0x5d, 0xcf, 0x69, 0xc0, 0x70, 0x94, 0x72, 0x96, 0x9b, 0x9d, 0xee, 0xf4, 0x0e, 0x8e, 0x6f, 0xf4,
+	0x6e, 0xde, 0xa7, 0x90, 0xe7, 0xfd, 0x93, 0x7b, 0xf0, 0x68, 0x6f, 0x73, 0xf9, 0xe4, 0xf9, 0x77,
+	0x3c, 0xa3, 0xdf, 0x15, 0x28, 0x74, 0x97, 0xee, 0xec, 0x0a, 0xbf, 0x86, 0xe2, 0x80, 0xd1, 0xb9,
+	0xa4, 0x5e, 0x69, 0x3f, 0x4e, 0x05, 0x11, 0xb8, 0x10, 0x43, 0x24, 0x16, 0x5b, 0xf2, 0x16, 0x09,
+	0x13, 0x37, 0x6e, 0xf7, 0xe1, 0x08, 0x79, 0xc3, 0x7c, 0x0b, 0xa5, 0x57, 0x2c, 0xa0, 0x73, 0xee,
+	0x93, 0x13, 0x3e, 0x4f, 0x6e, 0xf7, 0x89, 0x50, 0x24, 0xc6, 0x6b, 0x0c, 0x2a, 0x5b, 0x14, 0xf6,
+	0xf5, 0x9a, 0x5f, 0xa1, 0x27, 0x1e, 0xbb, 0xb6, 0xdd, 0x8d, 0x3f, 0xa0, 0xfe, 0x1b, 0xf9, 0xa6,
+	0x24, 0x74, 0xfc, 0x39, 0xe2, 0x74, 0x84, 0x3d, 0x27, 0xec, 0xb1, 0xac, 0x7d, 0x0c, 0xe5, 0x98,
+	0x75, 0x7c, 0x4b, 0x2a, 0xe2, 0xb0, 0x8a, 0x6f, 0xed, 0x4b, 0x38, 0x4c, 0x50, 0xe4, 0xd1, 0xe2,
+	0xa2, 0x42, 0xe0, 0x7b, 0xd2, 0xef, 0xa0, 0x26, 0x07, 0xbf, 0xf5, 0xac, 0x16, 0x0c, 0xcf, 0x73,
+	0xbd, 0x3b, 0x5e, 0xd5, 0x41, 0x86, 0x84, 0x38, 0x6c, 0xc9, 0x19, 0xc9, 0x2e, 0x3f, 0xd8, 0x33,
+	0x99, 0x0c, 0x09, 0x61, 0xd1, 0x70, 0xbf, 0xf8, 0x41, 0x89, 0x1e, 0x70, 0xac, 0xc0, 0xc1, 0xd4,
+	0x7c, 0x69, 0x8e, 0xcf, 0x4c, 0x35, 0x83, 0x55, 0x38, 0xb0, 0xa6, 0xbd, 0x9e, 0x61, 0x59, 0xea,
+	0x5f, 0x0a, 0xaa, 0x50, 0xe9, 0x76, 0xf4, 0x73, 0x62, 0xbc, 0x9e, 0xf2, 0x35, 0xff, 0x39, 0x87,
+	0x47, 0x50, 0xee, 0x8f, 0x49, 0x77, 0xa8, 0xeb, 0x86, 0xa9, 0xfe, 0x22, 0x64, 0x73, 0x3c, 0x39,
+	0xef, 0x8f, 0xa7, 0xa6, 0xae, 0xfe, 0x9a, 0xc3, 0x06, 0xdc, 0x1f, 0x9a, 0x13, 0x83, 0x98, 0x9d,
+	0xd1, 0xb9, 0x65, 0x90, 0x53, 0x83, 0x9c, 0x1b, 0x84, 0x8c, 0x89, 0xfa, 0x6f, 0x0e, 0xeb, 0xf0,
+	0x11, 0x57, 0x0d, 0x7b, 0xc6, 0xf9, 0xd4, 0xec, 0x9c, 0x76, 0x86, 0xa3, 0x4e, 0x77, 0x64, 0xa8,
+	0xff, 0xe5, 0xda, 0x7f, 0x28, 0x50, 0xeb, 0x08, 0xe2, 0xf1, 0x9f, 0x06, 0x9e, 0x40, 0xf9, 0xbd,
+	0xb0, 0xff, 0x79, 0x6d, 0x68, 0xe9, 0x92, 0x77, 0xff, 0x56, 0xb4, 0x4c, 0x53, 0x79, 0xa6, 0xe0,
+	0x6b, 0x38, 0x90, 0xfd, 0xc6, 0xf4, 0x66, 0x25, 0x8e, 0x60, 0xe3, 0x78, 0x9f, 0x3d, 0x19, 0xf2,
+	0xa2, 0x28, 0x7e, 0x91, 0xbe, 0xfa, 0x3f, 0x00, 0x00, 0xff, 0xff, 0xad, 0x3f, 0xe7, 0xc7, 0x4e,
+	0x09, 0x00, 0x00,
 }

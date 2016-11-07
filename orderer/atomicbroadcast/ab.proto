@@ -18,53 +18,21 @@ syntax = "proto3";
 
 package atomicbroadcast;
 
+import "message.proto";
+
 // These status codes are intended to resemble selected HTTP status codes
 enum Status {
-    SUCCESS = 0;
+    UNKNOWN = 0;
+    SUCCESS = 200;
     BAD_REQUEST = 400;
     FORBIDDEN = 403;
     NOT_FOUND = 404;
+    INTERNAL_SERVER_ERROR = 500;
     SERVICE_UNAVAILABLE = 503;
 }
 
 message BroadcastResponse {
     Status Status = 1;
-}
-
-// For backwards compatibility, this is message is being left as bytes for the moment. 
-// Internally, for testing authentication, the Data payload will be a marshalled SignedData message
-// However in the future, this whole message is likely to go away.
-// XXX Temporary
-message BroadcastMessage {
-    bytes Data = 1;
-}
-
-// SignedData is a temporary message type to be removed once the real transaction type is finalized
-// Note that the identity of the signer is explicitely not included, but embedded in the envelope because
-// apparently the signature should always be over an object which contains the signer's identity
-// XXX Temporary
-message SignedData {
-    bytes PayloadEnvelope = 1;
-    bytes Signature = 2;
-}
-
-// PayloadEnvelope is the thin wrapper which allows the embedding of a signer's identity to sign over
-// XXX Temporary
-message PayloadEnvelope {
-    bytes Payload = 1;
-    bytes Signer = 2;
-}
-
-
-// Transaction embeds a configuration change and associated signoffs
-// This will be superseded once the real transaction format is finalized
-// XXX Temporary
-message Transaction {
-    oneof Type {
-        bytes Opaque = 1;               // An opaque set of bytes
-	bytes ConfigurationEnvelope = 2;        // A marshalled Configuration message
-    }
-    repeated SignedData Signatures = 3; // Signatures over the hash of the bytes for Type
 }
 
 // ConfigurationEnvelope is designed to contain _all_ configuration for a chain and is
@@ -86,7 +54,7 @@ message ConfigurationEnvelope {
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message ConfigurationEntry {
     bytes Configuration = 1;
-    repeated SignedData Signatures = 2; // Signatures over the hash of Configuration
+    repeated Envelope Signatures = 2; // Signatures over the hash of Configuration
 }
 
 
@@ -94,7 +62,7 @@ message Configuration {
     enum ConfigurationType {
         Policy = 0;
         Fabric = 1;
-	Chain = 2;
+        Chain = 2;
         Solo = 3;
         Kafka = 4;
         PBFT = 5;
@@ -112,7 +80,7 @@ message Configuration {
 // multiple policy engines, this is typed as a oneof for now
 message Policy {
     oneof Type {
-        SignaturePolicyEnvelope SignaturePolicy = 2;
+        SignaturePolicyEnvelope SignaturePolicy = 1;
     }
 }
 
@@ -154,6 +122,7 @@ message SeekInfo {
     StartType Start = 1;
     uint64 SpecifiedNumber = 2; // Only used when start = SPECIFIED
     uint64 WindowSize = 3; // The window size is the maximum number of blocks that will be sent without Acknowledgement, the base of the window moves to the most recently received acknowledgment
+    bytes ChainID = 4; // The chain to seek within
 }
 
 message Acknowledgement {
@@ -200,8 +169,8 @@ message DeliverResponse {
 }
 
 service AtomicBroadcast {
-    // broadcast receives a reply of Acknowledgement for each BroadcastMessage in order, indicating success or type of failure
-    rpc Broadcast(stream BroadcastMessage) returns (stream BroadcastResponse) {}
+    // broadcast receives a reply of Acknowledgement for each Envelope in order, indicating success or type of failure
+    rpc Broadcast(stream Envelope) returns (stream BroadcastResponse) {}
 
     // deliver first requires an update containing a seek message, then a stream of block replies is received.
     // The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart

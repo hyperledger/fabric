@@ -39,7 +39,7 @@ type Reader interface {
 // Writer allows the caller to modify the raw ledger
 type Writer interface {
 	// Append a new block to the ledger
-	Append(blockContents []*ab.BroadcastMessage, proof []byte) *ab.Block
+	Append(blockContents []*ab.Envelope, proof []byte) *ab.Block
 }
 
 // ReadWriter encapsulated both the reading and writing functions of the rawledger

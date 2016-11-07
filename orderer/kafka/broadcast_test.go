@@ -74,7 +74,7 @@ func TestBroadcastResponse(t *testing.T) {
 
 	// Send a message to the orderer
 	go func() {
-		mbs.incoming <- &ab.BroadcastMessage{Data: []byte("single message")}
+		mbs.incoming <- &ab.Envelope{Payload: []byte("single message")}
 	}()
 
 	for {
@@ -108,7 +108,7 @@ func TestBroadcastBatch(t *testing.T) {
 	// Pump a batch's worth of messages into the system
 	go func() {
 		for i := 0; i < int(testConf.General.BatchSize); i++ {
-			mbs.incoming <- &ab.BroadcastMessage{Data: []byte("message " + strconv.Itoa(i))}
+			mbs.incoming <- &ab.Envelope{Payload: []byte("message " + strconv.Itoa(i))}
 		}
 	}()
 
@@ -159,7 +159,8 @@ func TestBroadcastIncompleteBatch(t *testing.T) {
 	// Pump less than batchSize messages into the system
 	go func() {
 		for i := 0; i < messageCount; i++ {
-			mbs.incoming <- &ab.BroadcastMessage{Data: []byte("message " + strconv.Itoa(i))}
+			payload, _ := proto.Marshal(&ab.Payload{Data: []byte("message " + strconv.Itoa(i))})
+			mbs.incoming <- &ab.Envelope{Payload: payload}
 		}
 	}()
 
@@ -211,7 +212,8 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 		// Pump less than batchSize messages into the system
 		go func() {
 			for i := 0; i < messageCount; i++ {
-				mbs.incoming <- &ab.BroadcastMessage{Data: []byte("message " + strconv.Itoa(i))}
+				payload, _ := proto.Marshal(&ab.Payload{Data: []byte("message " + strconv.Itoa(i))})
+				mbs.incoming <- &ab.Envelope{Payload: payload}
 			}
 		}()
 
@@ -257,7 +259,7 @@ func TestBroadcastBatchAndQuitEarly(t *testing.T) {
 	// Pump a batch's worth of messages into the system
 	go func() {
 		for i := 0; i < int(testConf.General.BatchSize); i++ {
-			mbs.incoming <- &ab.BroadcastMessage{Data: []byte("message " + strconv.Itoa(i))}
+			mbs.incoming <- &ab.Envelope{Payload: []byte("message " + strconv.Itoa(i))}
 		}
 	}()
 

@@ -38,7 +38,7 @@ type broadcasterImpl struct {
 	config   *config.TopLevel
 	once     sync.Once
 
-	batchChan  chan *ab.BroadcastMessage
+	batchChan  chan *ab.Envelope
 	messages   [][]byte
 	nextNumber uint64
 	prevHash   []byte
@@ -48,7 +48,7 @@ func newBroadcaster(conf *config.TopLevel) Broadcaster {
 	return &broadcasterImpl{
 		producer:   newProducer(conf),
 		config:     conf,
-		batchChan:  make(chan *ab.BroadcastMessage, conf.General.BatchSize),
+		batchChan:  make(chan *ab.Envelope, conf.General.BatchSize),
 		messages:   [][]byte{[]byte("genesis")},
 		nextNumber: 0,
 	}
@@ -109,7 +109,11 @@ func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint) {
 	for {
 		select {
 		case msg := <-b.batchChan:
-			b.messages = append(b.messages, msg.Data)
+			data, err := proto.Marshal(msg)
+			if err != nil {
+				logger.Fatalf("Error marshaling what should be a valid proto message: %s", err)
+			}
+			b.messages = append(b.messages, data)
 			if len(b.messages) >= int(maxSize) {
 				if !timer.Stop() {
 					<-timer.C

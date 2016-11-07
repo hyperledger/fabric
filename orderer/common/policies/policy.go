@@ -28,7 +28,7 @@ import (
 // Policy is used to determine if a signature is valid
 type Policy interface {
 	// Evaluate returns nil if a msg is properly signed by sigs, or an error indicating why it failed
-	Evaluate(msg []byte, sigs []*ab.SignedData) error
+	Evaluate(msg []byte, sigs []*ab.Envelope) error
 }
 
 // Manager is intended to be the primary accessor of ManagerImpl
@@ -69,7 +69,7 @@ func newPolicy(policySource *ab.Policy, ch cauthdsl.CryptoHelper) (*policy, erro
 }
 
 // Evaluate returns nil if a msg is properly signed by sigs, or an error indicating why it failed
-func (p *policy) Evaluate(msg []byte, sigs []*ab.SignedData) error {
+func (p *policy) Evaluate(msg []byte, sigs []*ab.Envelope) error {
 	if p == nil {
 		return fmt.Errorf("Evaluated default policy, results in reject")
 	}
@@ -77,13 +77,14 @@ func (p *policy) Evaluate(msg []byte, sigs []*ab.SignedData) error {
 	identities := make([][]byte, len(sigs))
 	signatures := make([][]byte, len(sigs))
 	for i, sigpair := range sigs {
-		envelope := &ab.PayloadEnvelope{}
-		if err := proto.Unmarshal(sigpair.PayloadEnvelope, envelope); err != nil {
-			return fmt.Errorf("Failed to unmarshal the payload envelope to extract the signatures")
+		payload := &ab.Payload{}
+		if err := proto.Unmarshal(sigpair.Payload, payload); err != nil {
+			return fmt.Errorf("Failed to unmarshal the payload to extract the signatures")
 		}
-		identities[i] = envelope.Signer
+		identities[i] = payload.Header.Creator
 		signatures[i] = sigpair.Signature
 	}
+
 	// XXX This is wrong, as the signatures are over the payload envelope, not the message, fix either here, or in cauthdsl once transaction is finalized
 	if !p.evaluator.Authenticate(msg, identities, signatures) {
 		return fmt.Errorf("Failed to authenticate policy")

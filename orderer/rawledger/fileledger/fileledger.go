@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger"
 
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
 
@@ -147,13 +148,17 @@ func (fl *fileLedger) Height() uint64 {
 }
 
 // Append creates a new block and appends it to the ledger
-func (fl *fileLedger) Append(messages []*ab.BroadcastMessage, proof []byte) *ab.Block {
+func (fl *fileLedger) Append(messages []*ab.Envelope, proof []byte) *ab.Block {
 	data := &ab.BlockData{
 		Data: make([][]byte, len(messages)),
 	}
 
-	for i := range messages {
-		data.Data[i] = messages[i].Data
+	var err error
+	for i, msg := range messages {
+		data.Data[i], err = proto.Marshal(msg)
+		if err != nil {
+			logger.Fatalf("Error marshaling what should be a valid proto message: %s", err)
+		}
 	}
 
 	block := &ab.Block{

@@ -34,7 +34,7 @@ type broadcastServer struct {
 	rl            rawledger.Writer
 	filter        *broadcastfilter.RuleSet
 	configManager configtx.Manager
-	sendChan      chan *ab.BroadcastMessage
+	sendChan      chan *ab.Envelope
 	exitChan      chan struct{}
 }
 
@@ -52,7 +52,7 @@ func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duratio
 		rl:            rl,
 		filter:        filters,
 		configManager: configManager,
-		sendChan:      make(chan *ab.BroadcastMessage),
+		sendChan:      make(chan *ab.Envelope),
 		exitChan:      make(chan struct{}),
 	}
 	return bs
@@ -63,7 +63,7 @@ func (bs *broadcastServer) halt() {
 }
 
 func (bs *broadcastServer) main() {
-	var curBatch []*ab.BroadcastMessage
+	var curBatch []*ab.Envelope
 	var timer <-chan time.Time
 
 	cutBatch := func() {
@@ -90,8 +90,13 @@ func (bs *broadcastServer) main() {
 				}
 			case broadcastfilter.Reconfigure:
 				// TODO, this is unmarshaling for a second time, we need a cleaner interface, maybe Apply returns a second arg with thing to put in the batch
+				payload := &ab.Payload{}
+				if err := proto.Unmarshal(msg.Payload, payload); err != nil {
+					logger.Errorf("A change was flagged as configuration, but could not be unmarshaled: %v", err)
+					continue
+				}
 				newConfig := &ab.ConfigurationEnvelope{}
-				if err := proto.Unmarshal(msg.Data, newConfig); err != nil {
+				if err := proto.Unmarshal(payload.Data, newConfig); err != nil {
 					logger.Errorf("A change was flagged as configuration, but could not be unmarshaled: %v", err)
 					continue
 				}
@@ -103,7 +108,7 @@ func (bs *broadcastServer) main() {
 
 				logger.Debugf("Configuration change applied successfully, committing previous block and configuration block")
 				cutBatch()
-				bs.rl.Append([]*ab.BroadcastMessage{msg}, nil)
+				bs.rl.Append([]*ab.Envelope{msg}, nil)
 			case broadcastfilter.Reject:
 				fallthrough
 			case broadcastfilter.Forward:
@@ -129,12 +134,12 @@ func (bs *broadcastServer) handleBroadcast(srv ab.AtomicBroadcast_BroadcastServe
 	b := newBroadcaster(bs)
 	defer close(b.queue)
 	go b.drainQueue()
-	return b.queueBroadcastMessages(srv)
+	return b.queueEnvelopes(srv)
 }
 
 type broadcaster struct {
 	bs    *broadcastServer
-	queue chan *ab.BroadcastMessage
+	queue chan *ab.Envelope
 }
 
 func (b *broadcaster) drainQueue() {
@@ -156,7 +161,7 @@ func (b *broadcaster) drainQueue() {
 	}
 }
 
-func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastServer) error {
+func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 	for {
 		msg, err := srv.Recv()
@@ -193,7 +198,7 @@ func (b *broadcaster) queueBroadcastMessages(srv ab.AtomicBroadcast_BroadcastSer
 func newBroadcaster(bs *broadcastServer) *broadcaster {
 	b := &broadcaster{
 		bs:    bs,
-		queue: make(chan *ab.BroadcastMessage, bs.queueSize),
+		queue: make(chan *ab.Envelope, bs.queueSize),
 	}
 	return b
 }

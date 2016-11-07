@@ -34,10 +34,10 @@ const (
 	Forward
 )
 
-// Rule defines a filter function which accepts, rejects, or forwards (to the next rule) a BroadcastMessage
+// Rule defines a filter function which accepts, rejects, or forwards (to the next rule) a Envelope
 type Rule interface {
-	// Apply applies the rule to the given BroadcastMessage, replying with the Action to take for the message
-	Apply(message *ab.BroadcastMessage) Action
+	// Apply applies the rule to the given Envelope, replying with the Action to take for the message
+	Apply(message *ab.Envelope) Action
 }
 
 // EmptyRejectRule rejects empty messages
@@ -45,8 +45,8 @@ var EmptyRejectRule = Rule(emptyRejectRule{})
 
 type emptyRejectRule struct{}
 
-func (a emptyRejectRule) Apply(message *ab.BroadcastMessage) Action {
-	if message.Data == nil {
+func (a emptyRejectRule) Apply(message *ab.Envelope) Action {
+	if message.Payload == nil {
 		return Reject
 	}
 	return Forward
@@ -57,7 +57,7 @@ var AcceptRule = Rule(acceptRule{})
 
 type acceptRule struct{}
 
-func (a acceptRule) Apply(message *ab.BroadcastMessage) Action {
+func (a acceptRule) Apply(message *ab.Envelope) Action {
 	return Accept
 }
 
@@ -75,7 +75,7 @@ func NewRuleSet(rules []Rule) *RuleSet {
 
 // Apply applies the rules given for this set in order, returning the first non-Forward result and the Rule which generated it
 // or returning Forward, nil if no rules accept or reject it
-func (rs *RuleSet) Apply(message *ab.BroadcastMessage) (Action, Rule) {
+func (rs *RuleSet) Apply(message *ab.Envelope) (Action, Rule) {
 	for _, rule := range rs.rules {
 		action := rule.Apply(message)
 		switch action {

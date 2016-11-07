@@ -97,7 +97,7 @@ func testReinitialization(lf ledgerFactory, t *testing.T) {
 		return
 	}
 	oli := lf.New()
-	aBlock := oli.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte("My Data")}}, nil)
+	aBlock := oli.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
 	li := lf.New()
 	if li.Height() != 2 {
 		t.Fatalf("Block height should be 2")
@@ -123,7 +123,7 @@ func testAddition(lf ledgerFactory, t *testing.T) {
 	}
 	prevHash := genesis.Header.Hash()
 
-	li.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte("My Data")}}, nil)
+	li.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
 	if li.Height() != 2 {
 		t.Fatalf("Block height should be 2")
 	}
@@ -142,7 +142,7 @@ func TestRetrieval(t *testing.T) {
 
 func testRetrieval(lf ledgerFactory, t *testing.T) {
 	li := lf.New()
-	li.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte("My Data")}}, nil)
+	li.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
 	it, num := li.Iterator(ab.SeekInfo_OLDEST, 99)
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
@@ -191,7 +191,7 @@ func testBlockedRetrieval(lf ledgerFactory, t *testing.T) {
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	li.Append([]*ab.BroadcastMessage{&ab.BroadcastMessage{Data: []byte("My Data")}}, nil)
+	li.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
 	select {
 	case <-signal:
 	default:

@@ -40,8 +40,8 @@ func (mcm *mockConfigManager) Apply(configtx *ab.ConfigurationEnvelope) error {
 
 func TestForwardNonConfig(t *testing.T) {
 	cf := New(&mockConfigManager{})
-	result := cf.Apply(&ab.BroadcastMessage{
-		Data: []byte("Opaque"),
+	result := cf.Apply(&ab.Envelope{
+		Payload: []byte("Opaque"),
 	})
 	if result != broadcastfilter.Forward {
 		t.Fatalf("Should have forwarded opaque message")
@@ -50,10 +50,10 @@ func TestForwardNonConfig(t *testing.T) {
 
 func TestAcceptGoodConfig(t *testing.T) {
 	cf := New(&mockConfigManager{})
-	config := &ab.ConfigurationEnvelope{}
-	configBytes, _ := proto.Marshal(config)
-	result := cf.Apply(&ab.BroadcastMessage{
-		Data: configBytes,
+	config, _ := proto.Marshal(&ab.ConfigurationEnvelope{})
+	configBytes, _ := proto.Marshal(&ab.Payload{Header: &ab.Header{Type: ab.Header_CONFIGURATION_TRANSACTION}, Data: config})
+	result := cf.Apply(&ab.Envelope{
+		Payload: configBytes,
 	})
 	if result != broadcastfilter.Reconfigure {
 		t.Fatalf("Should have indiated a good config message causes a reconfiguration")
@@ -62,10 +62,10 @@ func TestAcceptGoodConfig(t *testing.T) {
 
 func TestRejectBadConfig(t *testing.T) {
 	cf := New(&mockConfigManager{err: fmt.Errorf("Error")})
-	config := &ab.ConfigurationEnvelope{}
-	configBytes, _ := proto.Marshal(config)
-	result := cf.Apply(&ab.BroadcastMessage{
-		Data: configBytes,
+	config, _ := proto.Marshal(&ab.ConfigurationEnvelope{})
+	configBytes, _ := proto.Marshal(&ab.Payload{Header: &ab.Header{Type: ab.Header_CONFIGURATION_TRANSACTION}, Data: config})
+	result := cf.Apply(&ab.Envelope{
+		Payload: configBytes,
 	})
 	if result != broadcastfilter.Reject {
 		t.Fatalf("Should have rejected bad config message")
