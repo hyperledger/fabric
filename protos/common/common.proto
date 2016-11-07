@@ -22,32 +22,42 @@ option go_package = "github.com/hyperledger/fabric/protos/common";
 
 package common;
 
-// Header is a generic replay prevention and identity message to include in a signed payload
-message Header {
-    enum Type {
+enum HeaderType {
         MESSAGE = 0;                   // Used for messages which are signed but opaque
         CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain
         CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
-    }
+        ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
+}
+
+message Header {
+    ChainHeader chainHeader = 1;
+    SignatureHeader signatureHeader = 2;
+}
+
+// Header is a generic replay prevention and identity message to include in a signed payload
+message ChainHeader {
+    int32 type = 1; // Header types 0-10000 are reserved and defined by HeaderType
 
     // Version indicates message protocol version
-    int32 version = 1;
+    int32 version = 2;
 
     // Timestamp is the local time when the message was created
     // by the sender
-    google.protobuf.Timestamp timestamp = 2;
-
-    // Type of the transaction
-    Type type = 3;
-
-    // Creator of the message, specified as a certificate chain
-    bytes creator = 4;
-
-    // Arbitrary number that may only be used once. Can be used to detect replay attacks.
-    bytes nonce = 5;
+    google.protobuf.Timestamp timestamp = 3;
 
     // Identifier of the chain this message is bound for
-    bytes chainID = 6;
+    bytes chainID = 4;
+}
+
+message SignatureHeader {
+    // Creator of the message, specified as a certificate chain
+    bytes creator = 1;
+
+    // Arbitrary number that may only be used once. Can be used to detect replay attacks.
+    bytes nonce = 2;
+
+    // The epoch in which this header was generated, where epoch is defined based on block height
+    uint64 epoch = 3;
 }
 
 // Payload is the message contents (and header to allow for signing)

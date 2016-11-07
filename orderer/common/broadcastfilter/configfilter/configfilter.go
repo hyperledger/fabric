@@ -44,7 +44,7 @@ func (cf *configFilter) Apply(message *cb.Envelope) broadcastfilter.Action {
 		return broadcastfilter.Forward
 	}
 
-	if msgData.Header == nil || msgData.Header.Type != cb.Header_CONFIGURATION_TRANSACTION {
+	if msgData.Header == nil || msgData.Header.ChainHeader == nil || msgData.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
 		return broadcastfilter.Forward
 	}
 

@@ -42,7 +42,7 @@ type mockPolicy struct {
 	policyResult error
 }
 
-func (mp *mockPolicy) Evaluate(msg []byte, sigs []*cb.Envelope) error {
+func (mp *mockPolicy) Evaluate(headers [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error {
 	if mp == nil {
 		return fmt.Errorf("Invoked nil policy")
 	}
@@ -60,7 +60,7 @@ func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 
 func makeConfiguration(id, modificationPolicy string, lastModified uint64, data []byte) *ab.ConfigurationItem {
 	return &ab.ConfigurationItem{
-		ChainID:            defaultChain,
+		Header:             &cb.ChainHeader{ChainID: defaultChain},
 		ModificationPolicy: modificationPolicy,
 		LastModified:       lastModified,
 		Key:                id,
@@ -75,7 +75,7 @@ func makeSignedConfigurationItem(id, modificationPolicy string, lastModified uin
 		panic(err)
 	}
 	return &ab.SignedConfigurationItem{
-		Configuration: marshaledConfig,
+		ConfigurationItem: marshaledConfig,
 	}
 }
 
@@ -148,7 +148,7 @@ func TestOldConfigReplay(t *testing.T) {
 // TestInvalidInitialConfigByStructure tests to make sure that if the config contains corrupted configuration that construction results in error
 func TestInvalidInitialConfigByStructure(t *testing.T) {
 	entries := []*ab.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"))}
-	entries[0].Configuration = []byte("Corrupted")
+	entries[0].ConfigurationItem = []byte("Corrupted")
 	_, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  defaultChain,
@@ -477,7 +477,7 @@ func TestConfigItemOnWrongChain(t *testing.T) {
 	}
 
 	config := makeConfiguration("foo", "foo", 1, []byte("foo"))
-	config.ChainID = []byte("Wrong")
+	config.Header = &cb.ChainHeader{ChainID: []byte("Wrong")}
 	marshaledConfig, err := proto.Marshal(config)
 	if err != nil {
 		t.Fatalf("Should have been able marshal config: %s", err)
@@ -485,7 +485,7 @@ func TestConfigItemOnWrongChain(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Items:    []*ab.SignedConfigurationItem{&ab.SignedConfigurationItem{Configuration: marshaledConfig}},
+		Items:    []*ab.SignedConfigurationItem{&ab.SignedConfigurationItem{ConfigurationItem: marshaledConfig}},
 	}
 
 	err = cm.Validate(newConfig)

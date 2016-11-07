@@ -52,7 +52,7 @@ func TestForwardNonConfig(t *testing.T) {
 func TestAcceptGoodConfig(t *testing.T) {
 	cf := New(&mockConfigManager{})
 	config, _ := proto.Marshal(&ab.ConfigurationEnvelope{})
-	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{Type: cb.Header_CONFIGURATION_TRANSACTION}, Data: config})
+	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	result := cf.Apply(&cb.Envelope{
 		Payload: configBytes,
 	})
@@ -64,7 +64,7 @@ func TestAcceptGoodConfig(t *testing.T) {
 func TestRejectBadConfig(t *testing.T) {
 	cf := New(&mockConfigManager{err: fmt.Errorf("Error")})
 	config, _ := proto.Marshal(&ab.ConfigurationEnvelope{})
-	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{Type: cb.Header_CONFIGURATION_TRANSACTION}, Data: config})
+	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	result := cf.Apply(&cb.Envelope{
 		Payload: configBytes,
 	})

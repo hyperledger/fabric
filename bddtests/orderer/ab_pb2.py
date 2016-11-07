@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/ab.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x10orderer/ab.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"4\n\x11\x42roadcastResponse\x12\x1f\n\x06Status\x18\x01 \x01(\x0e\x32\x0f.orderer.Status\"k\n\x15\x43onfigurationEnvelope\x12\x10\n\x08Sequence\x18\x01 \x01(\x04\x12\x0f\n\x07\x43hainID\x18\x02 \x01(\x0c\x12/\n\x05Items\x18\x03 \x03(\x0b\x32 .orderer.SignedConfigurationItem\"V\n\x17SignedConfigurationItem\x12\x15\n\rConfiguration\x18\x01 \x01(\x0c\x12$\n\nSignatures\x18\x02 \x03(\x0b\x32\x10.common.Envelope\"\xf3\x01\n\x11\x43onfigurationItem\x12\x0f\n\x07\x43hainID\x18\x01 \x01(\x0c\x12\x14\n\x0cLastModified\x18\x02 \x01(\x04\x12:\n\x04Type\x18\x03 \x01(\x0e\x32,.orderer.ConfigurationItem.ConfigurationType\x12\x1a\n\x12ModificationPolicy\x18\x04 \x01(\t\x12\x0b\n\x03Key\x18\x05 \x01(\t\x12\r\n\x05Value\x18\x06 \x01(\x0c\"C\n\x11\x43onfigurationType\x12\n\n\x06Policy\x10\x00\x12\t\n\x05\x43hain\x10\x01\x12\x0b\n\x07Orderer\x10\x02\x12\n\n\x06\x46\x61\x62ric\x10\x03\"M\n\x06Policy\x12;\n\x0fSignaturePolicy\x18\x01 \x01(\x0b\x32 .orderer.SignaturePolicyEnvelopeH\x00\x42\x06\n\x04Type\"h\n\x17SignaturePolicyEnvelope\x12\x0f\n\x07Version\x18\x01 \x01(\x05\x12(\n\x06Policy\x18\x02 \x01(\x0b\x32\x18.orderer.SignaturePolicy\x12\x12\n\nIdentities\x18\x03 \x03(\x0c\"\x9f\x01\n\x0fSignaturePolicy\x12\x12\n\x08SignedBy\x18\x01 \x01(\x05H\x00\x12/\n\x04\x46rom\x18\x02 \x01(\x0b\x32\x1f.orderer.SignaturePolicy.NOutOfH\x00\x1a?\n\x06NOutOf\x12\t\n\x01N\x18\x01 \x01(\x05\x12*\n\x08Policies\x18\x02 \x03(\x0b\x32\x18.orderer.SignaturePolicyB\x06\n\x04Type\"\xa8\x01\n\x08SeekInfo\x12*\n\x05Start\x18\x01 \x01(\x0e\x32\x1b.orderer.SeekInfo.StartType\x12\x17\n\x0fSpecifiedNumber\x18\x02 \x01(\x04\x12\x12\n\nWindowSize\x18\x03 \x01(\x04\x12\x0f\n\x07\x43hainID\x18\x04 \x01(\x0c\"2\n\tStartType\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x41\x63knowledgement\x12\x0e\n\x06Number\x18\x01 \x01(\x04\"o\n\rDeliverUpdate\x12\x33\n\x0f\x41\x63knowledgement\x18\x01 \x01(\x0b\x32\x18.orderer.AcknowledgementH\x00\x12!\n\x04Seek\x18\x02 \x01(\x0b\x32\x11.orderer.SeekInfoH\x00\x42\x06\n\x04Type\"[\n\x0f\x44\x65liverResponse\x12 \n\x05\x45rror\x18\x01 \x01(\x0e\x32\x0f.orderer.StatusH\x00\x12\x1e\n\x05\x42lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x42\x06\n\x04Type*\x8b\x01\n\x06Status\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0c\n\x07SUCCESS\x10\xc8\x01\x12\x10\n\x0b\x42\x41\x44_REQUEST\x10\x90\x03\x12\x0e\n\tFORBIDDEN\x10\x93\x03\x12\x0e\n\tNOT_FOUND\x10\x94\x03\x12\x1a\n\x15INTERNAL_SERVER_ERROR\x10\xf4\x03\x12\x18\n\x13SERVICE_UNAVAILABLE\x10\xf7\x03\x32\x95\x01\n\x0f\x41tomicBroadcast\x12?\n\tBroadcast\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x01\x30\x01\x12\x41\n\x07\x44\x65liver\x12\x16.orderer.DeliverUpdate\x1a\x18.orderer.DeliverResponse\"\x00(\x01\x30\x01\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+  serialized_pb=_b('\n\x10orderer/ab.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"4\n\x11\x42roadcastResponse\x12\x1f\n\x06Status\x18\x01 \x01(\x0e\x32\x0f.orderer.Status\"k\n\x15\x43onfigurationEnvelope\x12/\n\x05Items\x18\x01 \x03(\x0b\x32 .orderer.SignedConfigurationItem\x12\x0f\n\x07\x43hainID\x18\x02 \x01(\x0c\x12\x10\n\x08Sequence\x18\x03 \x01(\x04\"i\n\x17SignedConfigurationItem\x12\x19\n\x11\x43onfigurationItem\x18\x01 \x01(\x0c\x12\x33\n\nSignatures\x18\x02 \x03(\x0b\x32\x1f.orderer.ConfigurationSignature\"\x87\x02\n\x11\x43onfigurationItem\x12#\n\x06Header\x18\x01 \x01(\x0b\x32\x13.common.ChainHeader\x12:\n\x04Type\x18\x02 \x01(\x0e\x32,.orderer.ConfigurationItem.ConfigurationType\x12\x14\n\x0cLastModified\x18\x03 \x01(\x04\x12\x1a\n\x12ModificationPolicy\x18\x04 \x01(\t\x12\x0b\n\x03Key\x18\x05 \x01(\t\x12\r\n\x05Value\x18\x06 \x01(\x0c\"C\n\x11\x43onfigurationType\x12\n\n\x06Policy\x10\x00\x12\t\n\x05\x43hain\x10\x01\x12\x0b\n\x07Orderer\x10\x02\x12\n\n\x06\x46\x61\x62ric\x10\x03\"D\n\x16\x43onfigurationSignature\x12\x17\n\x0fsignatureHeader\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\"M\n\x06Policy\x12;\n\x0fSignaturePolicy\x18\x01 \x01(\x0b\x32 .orderer.SignaturePolicyEnvelopeH\x00\x42\x06\n\x04Type\"h\n\x17SignaturePolicyEnvelope\x12\x0f\n\x07Version\x18\x01 \x01(\x05\x12(\n\x06Policy\x18\x02 \x01(\x0b\x32\x18.orderer.SignaturePolicy\x12\x12\n\nIdentities\x18\x03 \x03(\x0c\"\x9f\x01\n\x0fSignaturePolicy\x12\x12\n\x08SignedBy\x18\x01 \x01(\x05H\x00\x12/\n\x04\x46rom\x18\x02 \x01(\x0b\x32\x1f.orderer.SignaturePolicy.NOutOfH\x00\x1a?\n\x06NOutOf\x12\t\n\x01N\x18\x01 \x01(\x05\x12*\n\x08Policies\x18\x02 \x03(\x0b\x32\x18.orderer.SignaturePolicyB\x06\n\x04Type\"\xa8\x01\n\x08SeekInfo\x12*\n\x05Start\x18\x01 \x01(\x0e\x32\x1b.orderer.SeekInfo.StartType\x12\x17\n\x0fSpecifiedNumber\x18\x02 \x01(\x04\x12\x12\n\nWindowSize\x18\x03 \x01(\x04\x12\x0f\n\x07\x43hainID\x18\x04 \x01(\x0c\"2\n\tStartType\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x41\x63knowledgement\x12\x0e\n\x06Number\x18\x01 \x01(\x04\"o\n\rDeliverUpdate\x12\x33\n\x0f\x41\x63knowledgement\x18\x01 \x01(\x0b\x32\x18.orderer.AcknowledgementH\x00\x12!\n\x04Seek\x18\x02 \x01(\x0b\x32\x11.orderer.SeekInfoH\x00\x42\x06\n\x04Type\"[\n\x0f\x44\x65liverResponse\x12 \n\x05\x45rror\x18\x01 \x01(\x0e\x32\x0f.orderer.StatusH\x00\x12\x1e\n\x05\x42lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x42\x06\n\x04Type*\x8b\x01\n\x06Status\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0c\n\x07SUCCESS\x10\xc8\x01\x12\x10\n\x0b\x42\x41\x44_REQUEST\x10\x90\x03\x12\x0e\n\tFORBIDDEN\x10\x93\x03\x12\x0e\n\tNOT_FOUND\x10\x94\x03\x12\x1a\n\x15INTERNAL_SERVER_ERROR\x10\xf4\x03\x12\x18\n\x13SERVICE_UNAVAILABLE\x10\xf7\x03\x32\x95\x01\n\x0f\x41tomicBroadcast\x12?\n\tBroadcast\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x01\x30\x01\x12\x41\n\x07\x44\x65liver\x12\x16.orderer.DeliverUpdate\x1a\x18.orderer.DeliverResponse\"\x00(\x01\x30\x01\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
   ,
   dependencies=[common_dot_common__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -63,8 +63,8 @@ _STATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1307,
-  serialized_end=1446,
+  serialized_start=1416,
+  serialized_end=1555,
 )
 _sym_db.RegisterEnumDescriptor(_STATUS)
 
@@ -103,8 +103,8 @@ _CONFIGURATIONITEM_CONFIGURATIONTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=478,
-  serialized_end=545,
+  serialized_start=517,
+  serialized_end=584,
 )
 _sym_db.RegisterEnumDescriptor(_CONFIGURATIONITEM_CONFIGURATIONTYPE)
 
@@ -129,8 +129,8 @@ _SEEKINFO_STARTTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1013,
-  serialized_end=1063,
+  serialized_start=1122,
+  serialized_end=1172,
 )
 _sym_db.RegisterEnumDescriptor(_SEEKINFO_STARTTYPE)
 
@@ -174,9 +174,9 @@ _CONFIGURATIONENVELOPE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Sequence', full_name='orderer.ConfigurationEnvelope.Sequence', index=0,
-      number=1, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
+      name='Items', full_name='orderer.ConfigurationEnvelope.Items', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -188,9 +188,9 @@ _CONFIGURATIONENVELOPE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Items', full_name='orderer.ConfigurationEnvelope.Items', index=2,
-      number=3, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      name='Sequence', full_name='orderer.ConfigurationEnvelope.Sequence', index=2,
+      number=3, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -219,7 +219,7 @@ _SIGNEDCONFIGURATIONITEM = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Configuration', full_name='orderer.SignedConfigurationItem.Configuration', index=0,
+      name='ConfigurationItem', full_name='orderer.SignedConfigurationItem.ConfigurationItem', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -245,7 +245,7 @@ _SIGNEDCONFIGURATIONITEM = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=213,
-  serialized_end=299,
+  serialized_end=318,
 )
 
 
@@ -257,22 +257,22 @@ _CONFIGURATIONITEM = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='ChainID', full_name='orderer.ConfigurationItem.ChainID', index=0,
-      number=1, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
+      name='Header', full_name='orderer.ConfigurationItem.Header', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='LastModified', full_name='orderer.ConfigurationItem.LastModified', index=1,
-      number=2, type=4, cpp_type=4, label=1,
+      name='Type', full_name='orderer.ConfigurationItem.Type', index=1,
+      number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Type', full_name='orderer.ConfigurationItem.Type', index=2,
-      number=3, type=14, cpp_type=8, label=1,
+      name='LastModified', full_name='orderer.ConfigurationItem.LastModified', index=2,
+      number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -311,8 +311,46 @@ _CONFIGURATIONITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=302,
-  serialized_end=545,
+  serialized_start=321,
+  serialized_end=584,
+)
+
+
+_CONFIGURATIONSIGNATURE = _descriptor.Descriptor(
+  name='ConfigurationSignature',
+  full_name='orderer.ConfigurationSignature',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='signatureHeader', full_name='orderer.ConfigurationSignature.signatureHeader', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='signature', full_name='orderer.ConfigurationSignature.signature', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=586,
+  serialized_end=654,
 )
 
 
@@ -345,8 +383,8 @@ _POLICY = _descriptor.Descriptor(
       name='Type', full_name='orderer.Policy.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=547,
-  serialized_end=624,
+  serialized_start=656,
+  serialized_end=733,
 )
 
 
@@ -390,8 +428,8 @@ _SIGNATUREPOLICYENVELOPE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=626,
-  serialized_end=730,
+  serialized_start=735,
+  serialized_end=839,
 )
 
 
@@ -428,8 +466,8 @@ _SIGNATUREPOLICY_NOUTOF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=821,
-  serialized_end=884,
+  serialized_start=930,
+  serialized_end=993,
 )
 
 _SIGNATUREPOLICY = _descriptor.Descriptor(
@@ -468,8 +506,8 @@ _SIGNATUREPOLICY = _descriptor.Descriptor(
       name='Type', full_name='orderer.SignaturePolicy.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=733,
-  serialized_end=892,
+  serialized_start=842,
+  serialized_end=1001,
 )
 
 
@@ -521,8 +559,8 @@ _SEEKINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=895,
-  serialized_end=1063,
+  serialized_start=1004,
+  serialized_end=1172,
 )
 
 
@@ -552,8 +590,8 @@ _ACKNOWLEDGEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1065,
-  serialized_end=1098,
+  serialized_start=1174,
+  serialized_end=1207,
 )
 
 
@@ -593,8 +631,8 @@ _DELIVERUPDATE = _descriptor.Descriptor(
       name='Type', full_name='orderer.DeliverUpdate.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1100,
-  serialized_end=1211,
+  serialized_start=1209,
+  serialized_end=1320,
 )
 
 
@@ -634,13 +672,14 @@ _DELIVERRESPONSE = _descriptor.Descriptor(
       name='Type', full_name='orderer.DeliverResponse.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1213,
-  serialized_end=1304,
+  serialized_start=1322,
+  serialized_end=1413,
 )
 
 _BROADCASTRESPONSE.fields_by_name['Status'].enum_type = _STATUS
 _CONFIGURATIONENVELOPE.fields_by_name['Items'].message_type = _SIGNEDCONFIGURATIONITEM
-_SIGNEDCONFIGURATIONITEM.fields_by_name['Signatures'].message_type = common_dot_common__pb2._ENVELOPE
+_SIGNEDCONFIGURATIONITEM.fields_by_name['Signatures'].message_type = _CONFIGURATIONSIGNATURE
+_CONFIGURATIONITEM.fields_by_name['Header'].message_type = common_dot_common__pb2._CHAINHEADER
 _CONFIGURATIONITEM.fields_by_name['Type'].enum_type = _CONFIGURATIONITEM_CONFIGURATIONTYPE
 _CONFIGURATIONITEM_CONFIGURATIONTYPE.containing_type = _CONFIGURATIONITEM
 _POLICY.fields_by_name['SignaturePolicy'].message_type = _SIGNATUREPOLICYENVELOPE
@@ -679,6 +718,7 @@ DESCRIPTOR.message_types_by_name['BroadcastResponse'] = _BROADCASTRESPONSE
 DESCRIPTOR.message_types_by_name['ConfigurationEnvelope'] = _CONFIGURATIONENVELOPE
 DESCRIPTOR.message_types_by_name['SignedConfigurationItem'] = _SIGNEDCONFIGURATIONITEM
 DESCRIPTOR.message_types_by_name['ConfigurationItem'] = _CONFIGURATIONITEM
+DESCRIPTOR.message_types_by_name['ConfigurationSignature'] = _CONFIGURATIONSIGNATURE
 DESCRIPTOR.message_types_by_name['Policy'] = _POLICY
 DESCRIPTOR.message_types_by_name['SignaturePolicyEnvelope'] = _SIGNATUREPOLICYENVELOPE
 DESCRIPTOR.message_types_by_name['SignaturePolicy'] = _SIGNATUREPOLICY
@@ -715,6 +755,13 @@ ConfigurationItem = _reflection.GeneratedProtocolMessageType('ConfigurationItem'
   # @@protoc_insertion_point(class_scope:orderer.ConfigurationItem)
   ))
 _sym_db.RegisterMessage(ConfigurationItem)
+
+ConfigurationSignature = _reflection.GeneratedProtocolMessageType('ConfigurationSignature', (_message.Message,), dict(
+  DESCRIPTOR = _CONFIGURATIONSIGNATURE,
+  __module__ = 'orderer.ab_pb2'
+  # @@protoc_insertion_point(class_scope:orderer.ConfigurationSignature)
+  ))
+_sym_db.RegisterMessage(ConfigurationSignature)
 
 Policy = _reflection.GeneratedProtocolMessageType('Policy', (_message.Message,), dict(
   DESCRIPTOR = _POLICY,

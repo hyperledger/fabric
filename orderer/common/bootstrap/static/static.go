@@ -53,7 +53,9 @@ func errorlessMarshal(thing proto.Message) []byte {
 
 func (b *bootstrapper) makeSignedConfigurationItem(id string, ctype ab.ConfigurationItem_ConfigurationType, data []byte, modificationPolicyID string) *ab.SignedConfigurationItem {
 	configurationBytes := errorlessMarshal(&ab.ConfigurationItem{
-		ChainID:            b.chainID,
+		Header: &cb.ChainHeader{
+			ChainID: b.chainID,
+		},
 		LastModified:       0,
 		Type:               ctype,
 		ModificationPolicy: modificationPolicyID,
@@ -61,7 +63,7 @@ func (b *bootstrapper) makeSignedConfigurationItem(id string, ctype ab.Configura
 		Value:              data,
 	})
 	return &ab.SignedConfigurationItem{
-		Configuration: configurationBytes,
+		ConfigurationItem: configurationBytes,
 	}
 }
 

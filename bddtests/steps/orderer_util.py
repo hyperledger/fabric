@@ -226,8 +226,8 @@ def generateBroadcastMessages(numToGenerate = 1, timeToHoldOpen = 1):
     messages = []
     for i in range(0, numToGenerate):
         envelope = common_pb2.Envelope()
-        payload = common_pb2.Payload()
-        payload.header.type = common_pb2.Header.MESSAGE
+        payload = common_pb2.Payload(header = common_pb2.Header(chainHeader = common_pb2.ChainHeader()))
+        # TODO, appropriately set the header type
         payload.data = str("BDD test: {0}".format(datetime.datetime.utcnow()))
         envelope.payload = payload.SerializeToString()
         messages.append(envelope)
