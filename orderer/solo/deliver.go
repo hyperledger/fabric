@@ -17,8 +17,9 @@ limitations under the License.
 package solo
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/rawledger"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 type DeliverServer struct {
@@ -152,7 +153,7 @@ func (d *deliverer) sendErrorReply(status ab.Status) bool {
 
 }
 
-func (d *deliverer) sendBlockReply(block *ab.Block) bool {
+func (d *deliverer) sendBlockReply(block *cb.Block) bool {
 	err := d.srv.Send(&ab.DeliverResponse{
 		Type: &ab.DeliverResponse_Block{Block: block},
 	})

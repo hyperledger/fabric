@@ -23,8 +23,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 // MagicLargestWindow is used as the default max window size for initializing the deliver service
@@ -60,7 +61,7 @@ func TestOldestSeek(t *testing.T) {
 	ledgerSize := 5
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -92,7 +93,7 @@ func TestNewestSeek(t *testing.T) {
 	ledgerSize := 5
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -121,7 +122,7 @@ func TestSpecificSeek(t *testing.T) {
 	ledgerSize := 5
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -149,7 +150,7 @@ func TestBadSeek(t *testing.T) {
 	ledgerSize := 5
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < 2*ledgerSize; i++ {
-		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
@@ -208,7 +209,7 @@ func TestAck(t *testing.T) {
 	windowSize := uint64(2)
 	rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()

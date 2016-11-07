@@ -21,8 +21,9 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 type clientDelivererImpl struct {
@@ -88,7 +89,7 @@ func (cd *clientDelivererImpl) sendBlocks(stream ab.AtomicBroadcast_DeliverServe
 	var err error
 	var reply *ab.DeliverResponse
 	var upd *ab.DeliverUpdate
-	block := new(ab.Block)
+	block := new(cb.Block)
 	for {
 		select {
 		case <-cd.deadChan:

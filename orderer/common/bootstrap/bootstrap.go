@@ -17,7 +17,7 @@ limitations under the License.
 package bootstrap
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/common"
 )
 
 // Helper defines the functions a bootstrapping implementation to provide

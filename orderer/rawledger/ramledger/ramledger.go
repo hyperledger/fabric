@@ -17,8 +17,9 @@ limitations under the License.
 package ramledger
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/rawledger"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
@@ -37,7 +38,7 @@ type cursor struct {
 type simpleList struct {
 	next   *simpleList
 	signal chan struct{}
-	block  *ab.Block
+	block  *cb.Block
 }
 
 type ramLedger struct {
@@ -48,7 +49,7 @@ type ramLedger struct {
 }
 
 // New creates a new instance of the ram ledger
-func New(maxSize int, genesis *ab.Block) rawledger.ReadWriter {
+func New(maxSize int, genesis *cb.Block) rawledger.ReadWriter {
 	rl := &ramLedger{
 		maxSize: maxSize,
 		size:    1,
@@ -73,7 +74,7 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 	case ab.SeekInfo_OLDEST:
 		oldest := rl.oldest
 		list = &simpleList{
-			block:  &ab.Block{Header: &ab.BlockHeader{Number: oldest.block.Header.Number - 1}},
+			block:  &cb.Block{Header: &cb.BlockHeader{Number: oldest.block.Header.Number - 1}},
 			next:   oldest,
 			signal: make(chan struct{}),
 		}
@@ -81,7 +82,7 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 	case ab.SeekInfo_NEWEST:
 		newest := rl.newest
 		list = &simpleList{
-			block:  &ab.Block{Header: &ab.BlockHeader{Number: newest.block.Header.Number - 1}},
+			block:  &cb.Block{Header: &cb.BlockHeader{Number: newest.block.Header.Number - 1}},
 			next:   newest,
 			signal: make(chan struct{}),
 		}
@@ -94,7 +95,7 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 
 		if specified == oldest.block.Header.Number {
 			list = &simpleList{
-				block:  &ab.Block{Header: &ab.BlockHeader{Number: oldest.block.Header.Number - 1}},
+				block:  &cb.Block{Header: &cb.BlockHeader{Number: oldest.block.Header.Number - 1}},
 				next:   oldest,
 				signal: make(chan struct{}),
 			}
@@ -114,7 +115,7 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 }
 
 // Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
-func (cu *cursor) Next() (*ab.Block, ab.Status) {
+func (cu *cursor) Next() (*cb.Block, ab.Status) {
 	// This only loops once, as signal reading indicates non-nil next
 	for {
 		if cu.list.next != nil {
@@ -132,8 +133,8 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 }
 
 // Append creates a new block and appends it to the ledger
-func (rl *ramLedger) Append(messages []*ab.Envelope, proof []byte) *ab.Block {
-	data := &ab.BlockData{
+func (rl *ramLedger) Append(messages []*cb.Envelope, proof []byte) *cb.Block {
+	data := &cb.BlockData{
 		Data: make([][]byte, len(messages)),
 	}
 
@@ -145,14 +146,14 @@ func (rl *ramLedger) Append(messages []*ab.Envelope, proof []byte) *ab.Block {
 		}
 	}
 
-	block := &ab.Block{
-		Header: &ab.BlockHeader{
+	block := &cb.Block{
+		Header: &cb.BlockHeader{
 			Number:       rl.newest.block.Header.Number + 1,
 			PreviousHash: rl.newest.block.Header.Hash(),
 			DataHash:     data.Hash(),
 		},
 		Data: data,
-		Metadata: &ab.BlockMetadata{
+		Metadata: &cb.BlockMetadata{
 			Metadata: [][]byte{proof},
 		},
 	}
@@ -160,7 +161,7 @@ func (rl *ramLedger) Append(messages []*ab.Envelope, proof []byte) *ab.Block {
 	return block
 }
 
-func (rl *ramLedger) appendBlock(block *ab.Block) {
+func (rl *ramLedger) appendBlock(block *cb.Block) {
 	rl.newest.next = &simpleList{
 		signal: make(chan struct{}),
 		block:  block,

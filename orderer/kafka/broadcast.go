@@ -21,8 +21,9 @@ import (
 	"sync"
 	"time"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -38,7 +39,7 @@ type broadcasterImpl struct {
 	config   *config.TopLevel
 	once     sync.Once
 
-	batchChan  chan *ab.Envelope
+	batchChan  chan *cb.Envelope
 	messages   [][]byte
 	nextNumber uint64
 	prevHash   []byte
@@ -48,7 +49,7 @@ func newBroadcaster(conf *config.TopLevel) Broadcaster {
 	return &broadcasterImpl{
 		producer:   newProducer(conf),
 		config:     conf,
-		batchChan:  make(chan *ab.Envelope, conf.General.BatchSize),
+		batchChan:  make(chan *cb.Envelope, conf.General.BatchSize),
 		messages:   [][]byte{[]byte("genesis")},
 		nextNumber: 0,
 	}
@@ -77,11 +78,11 @@ func (b *broadcasterImpl) Close() error {
 }
 
 func (b *broadcasterImpl) sendBlock() error {
-	data := &ab.BlockData{
+	data := &cb.BlockData{
 		Data: b.messages,
 	}
-	block := &ab.Block{
-		Header: &ab.BlockHeader{
+	block := &cb.Block{
+		Header: &cb.BlockHeader{
 			Number:       b.nextNumber,
 			PreviousHash: b.prevHash,
 			DataHash:     data.Hash(),

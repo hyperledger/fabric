@@ -22,11 +22,12 @@ import (
 	"os"
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
-var genesisBlock *ab.Block
+var genesisBlock *cb.Block
 
 func init() {
 	bootstrapper := static.New()
@@ -75,7 +76,7 @@ func TestInitialization(t *testing.T) {
 func TestReinitialization(t *testing.T) {
 	tev, ofl := initialize(t)
 	defer tev.tearDown()
-	ofl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
+	ofl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	fl := New(tev.location, genesisBlock).(*fileLedger)
 	if fl.height != 2 {
 		t.Fatalf("Block height should be 2")
@@ -93,7 +94,7 @@ func TestAddition(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
 	prevHash := fl.lastHash
-	fl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
+	fl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	if fl.height != 2 {
 		t.Fatalf("Block height should be 2")
 	}
@@ -109,7 +110,7 @@ func TestAddition(t *testing.T) {
 func TestRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	fl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
+	fl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	it, num := fl.Iterator(ab.SeekInfo_OLDEST, 99)
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
@@ -155,7 +156,7 @@ func TestBlockedRetrieval(t *testing.T) {
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	fl.Append([]*ab.Envelope{&ab.Envelope{Payload: []byte("My Data")}}, nil)
+	fl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	select {
 	case <-signal:
 	default:

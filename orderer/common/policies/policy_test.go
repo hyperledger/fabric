@@ -19,8 +19,8 @@ package policies
 import (
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -79,7 +79,7 @@ func TestAccept(t *testing.T) {
 	if !ok {
 		t.Errorf("Should have found policy which was just added, but did not")
 	}
-	err := policy.Evaluate(nil, nil)
+	err := policy.Evaluate(nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Should not have errored evaluating an acceptAll policy: %s", err)
 	}
@@ -93,7 +93,7 @@ func TestReject(t *testing.T) {
 	if !ok {
 		t.Errorf("Should have found policy which was just added, but did not")
 	}
-	err := policy.Evaluate(nil, nil)
+	err := policy.Evaluate(nil, nil, nil, nil)
 	if err == nil {
 		t.Fatalf("Should have errored evaluating the rejectAll policy")
 	}
@@ -105,7 +105,7 @@ func TestRejectOnUnknown(t *testing.T) {
 	if ok {
 		t.Errorf("Should not have found policy which was never added, but did")
 	}
-	err := policy.Evaluate(nil, nil)
+	err := policy.Evaluate(nil, nil, nil, nil)
 	if err == nil {
 		t.Fatalf("Should have errored evaluating the default policy")
 	}

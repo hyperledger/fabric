@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -40,7 +41,7 @@ func (mcm *mockConfigManager) Apply(configtx *ab.ConfigurationEnvelope) error {
 
 func TestForwardNonConfig(t *testing.T) {
 	cf := New(&mockConfigManager{})
-	result := cf.Apply(&ab.Envelope{
+	result := cf.Apply(&cb.Envelope{
 		Payload: []byte("Opaque"),
 	})
 	if result != broadcastfilter.Forward {
@@ -51,8 +52,8 @@ func TestForwardNonConfig(t *testing.T) {
 func TestAcceptGoodConfig(t *testing.T) {
 	cf := New(&mockConfigManager{})
 	config, _ := proto.Marshal(&ab.ConfigurationEnvelope{})
-	configBytes, _ := proto.Marshal(&ab.Payload{Header: &ab.Header{Type: ab.Header_CONFIGURATION_TRANSACTION}, Data: config})
-	result := cf.Apply(&ab.Envelope{
+	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
+	result := cf.Apply(&cb.Envelope{
 		Payload: configBytes,
 	})
 	if result != broadcastfilter.Reconfigure {
@@ -63,8 +64,8 @@ func TestAcceptGoodConfig(t *testing.T) {
 func TestRejectBadConfig(t *testing.T) {
 	cf := New(&mockConfigManager{err: fmt.Errorf("Error")})
 	config, _ := proto.Marshal(&ab.ConfigurationEnvelope{})
-	configBytes, _ := proto.Marshal(&ab.Payload{Header: &ab.Header{Type: ab.Header_CONFIGURATION_TRANSACTION}, Data: config})
-	result := cf.Apply(&ab.Envelope{
+	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
+	result := cf.Apply(&cb.Envelope{
 		Payload: configBytes,
 	})
 	if result != broadcastfilter.Reject {

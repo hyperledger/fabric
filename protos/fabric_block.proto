@@ -16,6 +16,8 @@ limitations under the License.
 
 syntax = "proto3";
 
+option go_package = "github.com/hyperledger/fabric/protos";
+
 package protos;
 
 // Block contains a list of transactions and the crypto hash of previous block

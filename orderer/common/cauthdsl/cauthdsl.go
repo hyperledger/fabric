@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"fmt"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 // CryptoHelper is used to provide a plugin point for different signature validation types

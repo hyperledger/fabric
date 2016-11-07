@@ -16,9 +16,11 @@ limitations under the License.
 
 syntax = "proto3";
 
-package atomicbroadcast;
+import "common/common.proto";
 
-import "message.proto";
+option go_package = "github.com/hyperledger/fabric/protos/orderer";
+
+package orderer;
 
 // These status codes are intended to resemble selected HTTP status codes
 enum Status {
@@ -40,34 +42,32 @@ message BroadcastResponse {
 //
 // It is generated with the following scheme:
 //   1. Retrieve the existing configuration
-//   2. Increment Sequence in the ConfigurationEnvelope
-//   3. Modify desired ConfigurationItems, setting each LastModified to the ConfigurationEnvelope Sequence
+//   2. Note the highest configuration sequence number, store it an increment it by one
+//   3. Modify desired ConfigurationItems, setting each LastModified to the stored and incremented sequence number
 //   4. Update SignedConfigurationItem with appropriate signatures over the modified ConfigurationItem
-//     a) Each signature is of type Envelope
-//     b) The Envelope Payload has data set to the hash of the ConfigurationItem
-//     c) The Envelope Payload has a header with the type set to CONFIGURATION_ITEM
+//     a) Each signature is of type ConfigurationSignature
+//     b) The ConfigurationSignature signature is over the concatenation of signatureHeader and the ConfigurationItem header
 //   5. Submit new Configuration for ordering in Envelope signed by submitter
-//     a) The Envelope Payload has data set to the marshaled ConfigurationEnvelope
-//     b) The Envelope Payload has a header of type CONFIGURATION_TRANSACTION 
+//     a) The common.Envelope common.Payload has data set to the marshaled ConfigurationEnvelope
+//     b) The common.Envelope common.Payload has a header of type common.Header.Type.CONFIGURATION_TRANSACTION 
 // 
 // The configuration manager will verify:
 //   1. All configuration items and the envelope refer to the correct chain
 //   2. Some configuration item has been added or modified
 //   3. No existing configuration item has been ommitted
-//   4. All configuration changes have a LastModification equal to Sequence from the ConfigurationEnvelope
+//   4. All configuration changes have a LastModification of one more than the last configuration's sequence
 //   5. All configuration changes satisfy the corresponding modification policy 
 message ConfigurationEnvelope {
-    uint64 Sequence = 1;
-    bytes ChainID = 2;
-    repeated SignedConfigurationItem Items = 3;
+    repeated SignedConfigurationItem Items = 1;
+    bytes ChainID = 2;   // XXX remove me, and infer from the items set
+    uint64 Sequence = 3; // XXX remove me, infer from the items set
 }
 
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message SignedConfigurationItem {
-    bytes Configuration = 1;
-    repeated Envelope Signatures = 2; // Signatures over the hash of Configuration
+    bytes ConfigurationItem = 1;
+    repeated ConfigurationSignature Signatures = 2; // Signatures over the hash of Configuration
 }
-
 
 message ConfigurationItem {
     enum ConfigurationType {
@@ -76,13 +76,17 @@ message ConfigurationItem {
         Orderer = 2;  // Marshaled format for this type is yet to be determined
         Fabric = 3;   // Marshaled format for this type is yet to be determined
     }
-
-    bytes ChainID = 1;              // A Globally Unique Chain ID
-    uint64 LastModified = 2;        // The Sequence number in the ConfigurationEnvelope this item was last modified
-    ConfigurationType Type = 3;     // The type of configuration
+    common.ChainHeader Header = 1;  // The header which ties this configuration to a particular chain
+    ConfigurationType Type = 2;     // The type of configuration this is.
+    uint64 LastModified = 3;        // The Sequence number in the ConfigurationEnvelope this item was last modified
     string ModificationPolicy = 4;  // What policy to check before allowing modification
     string Key = 5;                 // A unique ID, unique scoped by Type, to reference the value by
     bytes Value = 6;                // The byte representation of this configuration, usually a marshaled message
+}
+
+message ConfigurationSignature {
+    bytes signatureHeader = 1;
+    bytes signature = 2; // Signature over the concatenation of configurationItem bytes and signatureHeader bytes
 }
 
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
@@ -146,40 +150,16 @@ message DeliverUpdate {
     }
 }
 
-// This is a temporary data structure, but is hopefully very close to the finalized block structure
-// Note that the BlockHeader chains to the previous BlockHeader, and the BlockData hash is embedded
-// in the BlockHeader.  This makes it natural and obvious that the Data is included in the hash, but
-// the Metadata is not.
-message Block {
-    BlockHeader Header = 1;
-    BlockData Data = 2;
-    BlockMetadata Metadata = 3;
-}
-
-message BlockHeader {
-    uint64 Number = 1; // The position in the blockchain
-    bytes PreviousHash = 2; // The hash of the previous block header
-    bytes DataHash = 3; // The hash of the BlockData, by MerkleTree
-}
-
-message BlockData {
-    repeated bytes Data = 1;
-}
-
-message BlockMetadata {
-    repeated bytes Metadata = 1;
-}
-
 message DeliverResponse {
     oneof Type {
         Status Error = 1;
-        Block Block = 2;
+        common.Block Block = 2;
     }
 }
 
 service AtomicBroadcast {
-    // broadcast receives a reply of Acknowledgement for each Envelope in order, indicating success or type of failure
-    rpc Broadcast(stream Envelope) returns (stream BroadcastResponse) {}
+    // broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
+    rpc Broadcast(stream common.Envelope) returns (stream BroadcastResponse) {}
 
     // deliver first requires an update containing a seek message, then a stream of block replies is received.
     // The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart

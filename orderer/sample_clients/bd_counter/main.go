@@ -22,7 +22,7 @@ import (
 	"os/signal"
 	"strings"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	logging "github.com/op/go-logging"
 	"google.golang.org/grpc"
 )

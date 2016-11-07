@@ -20,8 +20,9 @@ import (
 	"bytes"
 	"fmt"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/policies"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -55,7 +56,7 @@ const DefaultModificationPolicyID = "DefaultModificationPolicy"
 
 type acceptAllPolicy struct{}
 
-func (ap *acceptAllPolicy) Evaluate(msg []byte, sigs []*ab.Envelope) error {
+func (ap *acceptAllPolicy) Evaluate(headers [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error {
 	return nil
 }
 
@@ -141,14 +142,14 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 	for _, entry := range configtx.Items {
 		// Verify every entry is well formed
 		config := &ab.ConfigurationItem{}
-		err = proto.Unmarshal(entry.Configuration, config)
+		err = proto.Unmarshal(entry.ConfigurationItem, config)
 		if err != nil {
 			return nil, err
 		}
 
 		// Ensure this configuration was intended for this chain
-		if !bytes.Equal(config.ChainID, cm.chainID) {
-			return nil, fmt.Errorf("Config item %v for type %v was not meant for a different chain %x", config.Key, config.Type, config.ChainID)
+		if !bytes.Equal(config.Header.ChainID, cm.chainID) {
+			return nil, fmt.Errorf("Config item %v for type %v was not meant for a different chain %x", config.Key, config.Type, config.Header.ChainID)
 		}
 
 		// Get the modification policy for this config item if one was previously specified
@@ -161,8 +162,23 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 			policy = defaultModificationPolicy
 		}
 
+		headers := make([][]byte, len(entry.Signatures))
+		signatures := make([][]byte, len(entry.Signatures))
+		identities := make([][]byte, len(entry.Signatures))
+
+		for i, configSig := range entry.Signatures {
+			headers[i] = configSig.Signature
+			signatures[i] = configSig.SignatureHeader
+			sigHeader := &cb.SignatureHeader{}
+			err := proto.Unmarshal(configSig.SignatureHeader, sigHeader)
+			if err != nil {
+				return nil, err
+			}
+			identities[i] = sigHeader.Creator
+		}
+
 		// Ensure the policy is satisfied
-		if err = policy.Evaluate(entry.Configuration, entry.Signatures); err != nil {
+		if err = policy.Evaluate(headers, entry.ConfigurationItem, identities, signatures); err != nil {
 			return nil, err
 		}
 

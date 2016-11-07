@@ -18,6 +18,8 @@ syntax = "proto3";
 
 package protos;
 
+option go_package = "github.com/hyperledger/fabric/protos";
+
 import "chaincode.proto";
 import "fabric.proto";
 

@@ -24,12 +24,13 @@ import (
 
 	"google.golang.org/grpc"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -55,7 +56,7 @@ type mockConfigFilter struct {
 	manager configtx.Manager
 }
 
-func (mcf *mockConfigFilter) Apply(msg *ab.Envelope) broadcastfilter.Action {
+func (mcf *mockConfigFilter) Apply(msg *cb.Envelope) broadcastfilter.Action {
 	if bytes.Equal(msg.Payload, configTx) {
 		if mcf.manager == nil || mcf.manager.Validate(nil) != nil {
 			return broadcastfilter.Reject
@@ -76,7 +77,7 @@ func getFiltersAndConfig() (*broadcastfilter.RuleSet, *mockConfigManager) {
 
 }
 
-var genesisBlock *ab.Block
+var genesisBlock *cb.Block
 
 var configTx []byte
 
@@ -96,13 +97,13 @@ func init() {
 
 type mockB struct {
 	grpc.ServerStream
-	recvChan chan *ab.Envelope
+	recvChan chan *cb.Envelope
 	sendChan chan *ab.BroadcastResponse
 }
 
 func newMockB() *mockB {
 	return &mockB{
-		recvChan: make(chan *ab.Envelope),
+		recvChan: make(chan *cb.Envelope),
 		sendChan: make(chan *ab.BroadcastResponse),
 	}
 }
@@ -112,7 +113,7 @@ func (m *mockB) Send(br *ab.BroadcastResponse) error {
 	return nil
 }
 
-func (m *mockB) Recv() (*ab.Envelope, error) {
+func (m *mockB) Recv() (*cb.Envelope, error) {
 	msg, ok := <-m.recvChan
 	if !ok {
 		return msg, fmt.Errorf("Channel closed")
@@ -131,14 +132,14 @@ func TestQueueOverflow(t *testing.T) {
 	bs.halt()
 
 	for i := 0; i < 2; i++ {
-		m.recvChan <- &ab.Envelope{Payload: []byte("Some bytes")}
+		m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 		reply := <-m.sendChan
 		if reply.Status != ab.Status_SUCCESS {
 			t.Fatalf("Should have successfully queued the message")
 		}
 	}
 
-	m.recvChan <- &ab.Envelope{Payload: []byte("Some bytes")}
+	m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 	reply := <-m.sendChan
 	if reply.Status != ab.Status_SERVICE_UNAVAILABLE {
 		t.Fatalf("Should not have successfully queued the message")
@@ -160,7 +161,7 @@ func TestMultiQueueOverflow(t *testing.T) {
 
 	for _, m := range ms {
 		for i := 0; i < 2; i++ {
-			m.recvChan <- &ab.Envelope{Payload: []byte("Some bytes")}
+			m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 			reply := <-m.sendChan
 			if reply.Status != ab.Status_SUCCESS {
 				t.Fatalf("Should have successfully queued the message")
@@ -169,7 +170,7 @@ func TestMultiQueueOverflow(t *testing.T) {
 	}
 
 	for _, m := range ms {
-		m.recvChan <- &ab.Envelope{Payload: []byte("Some bytes")}
+		m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 		reply := <-m.sendChan
 		if reply.Status != ab.Status_SERVICE_UNAVAILABLE {
 			t.Fatalf("Should not have successfully queued the message")
@@ -184,7 +185,7 @@ func TestEmptyEnvelope(t *testing.T) {
 	defer close(m.recvChan)
 	go bs.handleBroadcast(m)
 
-	m.recvChan <- &ab.Envelope{}
+	m.recvChan <- &cb.Envelope{}
 	reply := <-m.sendChan
 	if reply.Status != ab.Status_BAD_REQUEST {
 		t.Fatalf("Should have rejected the null message")
@@ -208,7 +209,7 @@ func TestBatchTimer(t *testing.T) {
 	defer bs.halt()
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
 
-	bs.sendChan <- &ab.Envelope{Payload: []byte("Some bytes")}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 
 	select {
 	case <-it.ReadyChan():
@@ -228,7 +229,7 @@ func TestFilledBatch(t *testing.T) {
 		close(done)
 	}()
 	for i := 0; i < messages; i++ {
-		bs.sendChan <- &ab.Envelope{Payload: []byte("Some bytes")}
+		bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 	}
 	bs.halt()
 	<-done
@@ -248,10 +249,10 @@ func TestReconfigureGoodPath(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg1")}
-	bs.sendChan <- &ab.Envelope{Payload: configTx}
-	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg2")}
-	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg3")}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg1")}
+	bs.sendChan <- &cb.Envelope{Payload: configTx}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg2")}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg3")}
 
 	bs.halt()
 	<-done
@@ -280,9 +281,9 @@ func TestReconfigureFailToValidate(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg1")}
-	bs.sendChan <- &ab.Envelope{Payload: configTx}
-	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg2")}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg1")}
+	bs.sendChan <- &cb.Envelope{Payload: configTx}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg2")}
 
 	bs.halt()
 	<-done
@@ -311,9 +312,9 @@ func TestReconfigureFailToApply(t *testing.T) {
 		close(done)
 	}()
 
-	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg1")}
-	bs.sendChan <- &ab.Envelope{Payload: configTx}
-	bs.sendChan <- &ab.Envelope{Payload: []byte("Msg2")}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg1")}
+	bs.sendChan <- &cb.Envelope{Payload: configTx}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg2")}
 
 	bs.halt()
 	<-done

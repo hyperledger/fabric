@@ -18,34 +18,46 @@ syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
 
-package atomicbroadcast;
+option go_package = "github.com/hyperledger/fabric/protos/common";
 
-// Header is a generic replay prevention and identity message to include in a signed payload
-message Header {
-    enum Type {
-        MESSAGE = 0;                   // Used for messages which require no introspection on the part of the orderer
+package common;
+
+enum HeaderType {
+        MESSAGE = 0;                   // Used for messages which are signed but opaque
         CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain
         CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
-    }
+        ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
+}
+
+message Header {
+    ChainHeader chainHeader = 1;
+    SignatureHeader signatureHeader = 2;
+}
+
+// Header is a generic replay prevention and identity message to include in a signed payload
+message ChainHeader {
+    int32 type = 1; // Header types 0-10000 are reserved and defined by HeaderType
 
     // Version indicates message protocol version
-    int32 version = 1;
+    int32 version = 2;
 
     // Timestamp is the local time when the message was created
     // by the sender
-    google.protobuf.Timestamp timestamp = 2;
-
-    // Type of the transaction
-    Type type = 3;
-
-    // Creator of the message, specified as a certificate chain
-    bytes creator = 4;
-
-    // Arbitrary number that may only be used once. Can be used to detect replay attacks.
-    bytes nonce = 5;
+    google.protobuf.Timestamp timestamp = 3;
 
     // Identifier of the chain this message is bound for
-    bytes chainID = 6;
+    bytes chainID = 4;
+}
+
+message SignatureHeader {
+    // Creator of the message, specified as a certificate chain
+    bytes creator = 1;
+
+    // Arbitrary number that may only be used once. Can be used to detect replay attacks.
+    bytes nonce = 2;
+
+    // The epoch in which this header was generated, where epoch is defined based on block height
+    uint64 epoch = 3;
 }
 
 // Payload is the message contents (and header to allow for signing)
@@ -65,4 +77,28 @@ message Envelope {
 
     // A signature by the creator specified in the Payload header
     bytes signature = 2;
+}
+
+// This is finalized block structure to be shared among the orderer and peer
+// Note that the BlockHeader chains to the previous BlockHeader, and the BlockData hash is embedded
+// in the BlockHeader.  This makes it natural and obvious that the Data is included in the hash, but
+// the Metadata is not.
+message Block {
+    BlockHeader Header = 1;
+    BlockData Data = 2;
+    BlockMetadata Metadata = 3;
+}
+
+message BlockHeader {
+    uint64 Number = 1; // The position in the blockchain
+    bytes PreviousHash = 2; // The hash of the previous block header
+    bytes DataHash = 3; // The hash of the BlockData, by MerkleTree
+}
+
+message BlockData {
+    repeated bytes Data = 1;
+}
+
+message BlockMetadata {
+    repeated bytes Metadata = 1;
 }

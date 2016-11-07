@@ -17,9 +17,10 @@ limitations under the License.
 package configfilter
 
 import (
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -35,15 +36,15 @@ func New(manager configtx.Manager) broadcastfilter.Rule {
 }
 
 // Apply applies the rule to the given Envelope, replying with the Action to take for the message
-func (cf *configFilter) Apply(message *ab.Envelope) broadcastfilter.Action {
-	msgData := &ab.Payload{}
+func (cf *configFilter) Apply(message *cb.Envelope) broadcastfilter.Action {
+	msgData := &cb.Payload{}
 
 	err := proto.Unmarshal(message.Payload, msgData)
 	if err != nil {
 		return broadcastfilter.Forward
 	}
 
-	if msgData.Header == nil || msgData.Header.Type != ab.Header_CONFIGURATION_TRANSACTION {
+	if msgData.Header == nil || msgData.Header.ChainHeader == nil || msgData.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
 		return broadcastfilter.Forward
 	}
 

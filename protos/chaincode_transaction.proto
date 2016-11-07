@@ -18,6 +18,8 @@ syntax = "proto3";
 
 package protos;
 
+option go_package = "github.com/hyperledger/fabric/protos";
+
 import "fabric_proposal_response.proto";
 
 // ChaincodeActionPayload is the message to be used for the TransactionAction's

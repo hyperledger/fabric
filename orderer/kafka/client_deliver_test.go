@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 /* Disabling this until the upgrade to Go 1.7 kicks in

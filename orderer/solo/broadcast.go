@@ -19,10 +19,11 @@ package solo
 import (
 	"time"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -34,7 +35,7 @@ type broadcastServer struct {
 	rl            rawledger.Writer
 	filter        *broadcastfilter.RuleSet
 	configManager configtx.Manager
-	sendChan      chan *ab.Envelope
+	sendChan      chan *cb.Envelope
 	exitChan      chan struct{}
 }
 
@@ -52,7 +53,7 @@ func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duratio
 		rl:            rl,
 		filter:        filters,
 		configManager: configManager,
-		sendChan:      make(chan *ab.Envelope),
+		sendChan:      make(chan *cb.Envelope),
 		exitChan:      make(chan struct{}),
 	}
 	return bs
@@ -63,7 +64,7 @@ func (bs *broadcastServer) halt() {
 }
 
 func (bs *broadcastServer) main() {
-	var curBatch []*ab.Envelope
+	var curBatch []*cb.Envelope
 	var timer <-chan time.Time
 
 	cutBatch := func() {
@@ -90,7 +91,7 @@ func (bs *broadcastServer) main() {
 				}
 			case broadcastfilter.Reconfigure:
 				// TODO, this is unmarshaling for a second time, we need a cleaner interface, maybe Apply returns a second arg with thing to put in the batch
-				payload := &ab.Payload{}
+				payload := &cb.Payload{}
 				if err := proto.Unmarshal(msg.Payload, payload); err != nil {
 					logger.Errorf("A change was flagged as configuration, but could not be unmarshaled: %v", err)
 					continue
@@ -108,7 +109,7 @@ func (bs *broadcastServer) main() {
 
 				logger.Debugf("Configuration change applied successfully, committing previous block and configuration block")
 				cutBatch()
-				bs.rl.Append([]*ab.Envelope{msg}, nil)
+				bs.rl.Append([]*cb.Envelope{msg}, nil)
 			case broadcastfilter.Reject:
 				fallthrough
 			case broadcastfilter.Forward:
@@ -139,7 +140,7 @@ func (bs *broadcastServer) handleBroadcast(srv ab.AtomicBroadcast_BroadcastServe
 
 type broadcaster struct {
 	bs    *broadcastServer
-	queue chan *ab.Envelope
+	queue chan *cb.Envelope
 }
 
 func (b *broadcaster) drainQueue() {
@@ -177,14 +178,14 @@ func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) err
 		case broadcastfilter.Accept:
 			select {
 			case b.queue <- msg:
-				err = srv.Send(&ab.BroadcastResponse{ab.Status_SUCCESS})
+				err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SUCCESS})
 			default:
-				err = srv.Send(&ab.BroadcastResponse{ab.Status_SERVICE_UNAVAILABLE})
+				err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SERVICE_UNAVAILABLE})
 			}
 		case broadcastfilter.Forward:
 			fallthrough
 		case broadcastfilter.Reject:
-			err = srv.Send(&ab.BroadcastResponse{ab.Status_BAD_REQUEST})
+			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_BAD_REQUEST})
 		default:
 			logger.Fatalf("Unknown filter action :%v", action)
 		}
@@ -198,7 +199,7 @@ func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) err
 func newBroadcaster(bs *broadcastServer) *broadcaster {
 	b := &broadcaster{
 		bs:    bs,
-		queue: make(chan *ab.Envelope, bs.queueSize),
+		queue: make(chan *cb.Envelope, bs.queueSize),
 	}
 	return b
 }

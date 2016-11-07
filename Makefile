@@ -241,7 +241,7 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 
 .PHONY: protos
 protos: gotools
-	./devenv/compile_protos.sh
+	./scripts/compile_protos.sh
 
 src-image-clean: ccenv-image-clean peer-image-clean orderer-image-clean
 

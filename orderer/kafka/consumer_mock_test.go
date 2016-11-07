@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/config"
+	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/Shopify/sarama"
 	"github.com/Shopify/sarama/mocks"
@@ -95,11 +95,11 @@ func (mc *mockConsumerImpl) testFillWithBlocks(seek int64) {
 }
 
 func testNewConsumerMessage(offset int64, topic string) *sarama.ConsumerMessage {
-	blockData := &ab.BlockData{
+	blockData := &cb.BlockData{
 		Data: [][]byte{[]byte(strconv.FormatInt(offset, 10))},
 	}
-	block := &ab.Block{
-		Header: &ab.BlockHeader{
+	block := &cb.Block{
+		Header: &cb.BlockHeader{
 			Number: uint64(offset),
 		},
 		Data: blockData,

@@ -19,11 +19,11 @@ package ramledger
 import (
 	"testing"
 
-	ab "github.com/hyperledger/fabric/orderer/atomicbroadcast"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-var genesisBlock *ab.Block
+var genesisBlock *cb.Block
 
 func init() {
 	bootstrapper := static.New()
@@ -39,9 +39,9 @@ func init() {
 func TestAppend(t *testing.T) {
 	maxSize := 3
 	rl := New(maxSize, genesisBlock).(*ramLedger)
-	var blocks []*ab.Block
+	var blocks []*cb.Block
 	for i := 0; i < 3; i++ {
-		blocks = append(blocks, &ab.Block{Header: &ab.BlockHeader{Number: uint64(i + 1)}})
+		blocks = append(blocks, &cb.Block{Header: &cb.BlockHeader{Number: uint64(i + 1)}})
 		rl.appendBlock(blocks[i])
 	}
 	item := rl.oldest
@@ -70,7 +70,7 @@ func TestSignal(t *testing.T) {
 		t.Fatalf("There is no successor, there should be no signal to continue")
 	default:
 	}
-	rl.appendBlock(&ab.Block{Header: &ab.BlockHeader{Number: 1}})
+	rl.appendBlock(&cb.Block{Header: &cb.BlockHeader{Number: 1}})
 	select {
 	case <-item.signal:
 	default:
@@ -87,7 +87,7 @@ func TestTruncationSafety(t *testing.T) {
 	rl := New(maxSize, genesisBlock).(*ramLedger)
 	item := rl.oldest
 	for i := 0; i < newBlocks; i++ {
-		rl.appendBlock(&ab.Block{Header: &ab.BlockHeader{Number: uint64(i + 1)}})
+		rl.appendBlock(&cb.Block{Header: &cb.BlockHeader{Number: uint64(i + 1)}})
 	}
 	count := 0
 	for item.next != nil {
