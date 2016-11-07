@@ -106,6 +106,7 @@ func TestHandshake(t *testing.T) {
 		m := <-comm1.Accept(acceptAll)
 		rcvChan <- m.GetGossipMessage()
 	}()
+	time.Sleep(time.Second)
 	go stream.Send(msg2Send)
 	time.Sleep(time.Second)
 	assert.Equal(t, 1, len(rcvChan))
@@ -113,7 +114,7 @@ func TestHandshake(t *testing.T) {
 	select {
 	case receivedMsg = <-rcvChan:
 		break
-	case <- time.NewTicker(time.Duration(time.Second * 2)).C:
+	case <-time.NewTicker(time.Duration(time.Second * 2)).C:
 		assert.Fail(t, "Timed out waiting for received message")
 		break
 	}
@@ -255,7 +256,7 @@ func TestParallelSend(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	messages2Send := 100
+	messages2Send := 20
 
 	wg := sync.WaitGroup{}
 	go func() {
@@ -272,13 +273,16 @@ func TestParallelSend(t *testing.T) {
 
 	c := 0
 	waiting := true
-	ticker := time.NewTicker(time.Duration(1) * time.Second)
+	ticker := time.NewTicker(time.Duration(5) * time.Second)
 	ch := comm2.Accept(acceptAll)
 	for waiting {
 		select {
 		case <-ch:
 			c++
-			continue
+			if c == messages2Send {
+				waiting = false
+			}
+			break
 		case <-ticker.C:
 			waiting = false
 			break
@@ -359,7 +363,7 @@ func TestAccept(t *testing.T) {
 		comm2.Send(createGossipMsg(), &RemotePeer{Endpoint: "localhost:7611", PKIID: []byte("localhost:7611")})
 	}
 
-	time.Sleep(time.Duration(1) * time.Second)
+	time.Sleep(time.Duration(5) * time.Second)
 
 	comm1.Stop()
 	comm2.Stop()

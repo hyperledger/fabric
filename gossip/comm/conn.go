@@ -116,7 +116,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	conn = createdConnection
 	cs.pki2Conn[string(createdConnection.pkiID)] = conn
 
-	go conn.serviceInput()
+	go conn.serviceConnection()
 
 	return conn, nil
 }
@@ -184,6 +184,7 @@ func (cs *connectionStore) closeByPKIid(pkiID PKIidType) {
 
 func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_GossipStreamClient, ss proto.Gossip_GossipStreamServer) *connection {
 	connection := &connection{
+		outBuff:      make(chan *msgSending, defSendBuffSize),
 		cl:           cl,
 		conn:         c,
 		clientStream: cs,
@@ -196,6 +197,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 }
 
 type connection struct {
+	outBuff      chan *msgSending
 	logger       *util.Logger                    // logger
 	pkiID        PKIidType                       // pkiID of the remote endpoint
 	handler      handler                         // function to invoke upon a message reception
@@ -237,26 +239,24 @@ func (conn *connection) toDie() bool {
 	return atomic.LoadInt32(&(conn.stopFlag)) == int32(1)
 }
 
-func (conn *connection) send(msg *proto.GossipMessage) error {
+func (conn *connection) send(msg *proto.GossipMessage, onErr func(error)) {
 	conn.Lock()
 	defer conn.Unlock()
 
-	if conn.toDie() {
-		return fmt.Errorf("Connection aborted")
+	if len(conn.outBuff) == defSendBuffSize {
+		go onErr(errSendOverflow)
+		return
 	}
 
-	if conn.clientStream != nil {
-		return conn.clientStream.Send(msg)
+	m := &msgSending{
+		msg:   msg,
+		onErr: onErr,
 	}
 
-	if conn.serverStream != nil {
-		return conn.serverStream.Send(msg)
-	}
-
-	return fmt.Errorf("Both streams are nil")
+	conn.outBuff <- m
 }
 
-func (conn *connection) serviceInput() error {
+func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
 	msgChan := make(chan *proto.GossipMessage, defRecvBuffSize)
 	defer close(msgChan)
@@ -267,6 +267,8 @@ func (conn *connection) serviceInput() error {
 	// the method and makes the Recv() call to fail in the
 	// readFromStream() method
 	go conn.readFromStream(errChan, msgChan)
+
+	go conn.writeToStream()
 
 	for !conn.toDie() {
 		select {
@@ -281,6 +283,29 @@ func (conn *connection) serviceInput() error {
 		}
 	}
 	return nil
+}
+
+func (conn *connection) writeToStream() {
+	for !conn.toDie() {
+		stream := conn.getStream()
+		if stream == nil {
+			conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
+			return
+		}
+		select {
+		case m := <-conn.outBuff:
+			err := stream.Send(m.msg)
+			if err != nil {
+				go m.onErr(err)
+				return
+			}
+			break
+		case stop := <-conn.stopChan:
+			conn.logger.Warning("Closing writing to stream")
+			conn.stopChan <- stop
+			return
+		}
+	}
 }
 
 func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.GossipMessage) {
