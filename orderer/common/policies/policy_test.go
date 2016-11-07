@@ -59,10 +59,10 @@ func makePolicySource(policyResult bool) []byte {
 
 func addPolicy(manager *ManagerImpl, id string, policy []byte) {
 	manager.BeginConfig()
-	err := manager.ProposeConfig(&ab.Configuration{
-		ID:   id,
-		Type: ab.Configuration_Policy,
-		Data: policy,
+	err := manager.ProposeConfig(&ab.ConfigurationItem{
+		Type:  ab.ConfigurationItem_Policy,
+		Key:   id,
+		Value: policy,
 	})
 	if err != nil {
 		panic(err)
@@ -73,6 +73,7 @@ func addPolicy(manager *ManagerImpl, id string, policy []byte) {
 func TestAccept(t *testing.T) {
 	policyID := "policyID"
 	m := NewManagerImpl(&mockCryptoHelper{})
+	t.Logf("%p %x %v", acceptAllPolicy, acceptAllPolicy, acceptAllPolicy)
 	addPolicy(m, policyID, acceptAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {

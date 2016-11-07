@@ -35,45 +35,54 @@ message BroadcastResponse {
     Status Status = 1;
 }
 
-// ConfigurationEnvelope is designed to contain _all_ configuration for a chain and is
-// intended to be a permenant data structure (noted explicitly because others above are temporary)
-// Its generated with the following scheme.  Given an existing configuration, a new configuration
-// increments the Sequence number, and updates any existing configuration entries and or adds new
-// configuration entries.  For each added or modified entry, the LastModified value must be set
-// to the Sequence number of the ConfigurationEnvelope.  The configuration manager will verify that
-// all configuration changes satisfy system policy, that all configuration changes have a LastModified
-// field equal to Sequence, that no configuration has been deleted without corresponding authorization,
-// that the configuration is well formed, and that some configuration item corresponds to the new
-// ConfigurationEnvelope sequence number.
+// ConfigurationEnvelope is designed to contain _all_ configuration for a chain with no dependency
+// on previous configuration transactions.
+//
+// It is generated with the following scheme:
+//   1. Retrieve the existing configuration
+//   2. Increment Sequence in the ConfigurationEnvelope
+//   3. Modify desired ConfigurationItems, setting each LastModified to the ConfigurationEnvelope Sequence
+//   4. Update SignedConfigurationItem with appropriate signatures over the modified ConfigurationItem
+//     a) Each signature is of type Envelope
+//     b) The Envelope Payload has data set to the hash of the ConfigurationItem
+//     c) The Envelope Payload has a header with the type set to CONFIGURATION_ITEM
+//   5. Submit new Configuration for ordering in Envelope signed by submitter
+//     a) The Envelope Payload has data set to the marshaled ConfigurationEnvelope
+//     b) The Envelope Payload has a header of type CONFIGURATION_TRANSACTION 
+// 
+// The configuration manager will verify:
+//   1. All configuration items and the envelope refer to the correct chain
+//   2. Some configuration item has been added or modified
+//   3. No existing configuration item has been ommitted
+//   4. All configuration changes have a LastModification equal to Sequence from the ConfigurationEnvelope
+//   5. All configuration changes satisfy the corresponding modification policy 
 message ConfigurationEnvelope {
     uint64 Sequence = 1;
     bytes ChainID = 2;
-    repeated ConfigurationEntry Entries = 3;
+    repeated SignedConfigurationItem Items = 3;
 }
 
 // This message may change slightly depending on the finalization of signature schemes for transactions
-message ConfigurationEntry {
+message SignedConfigurationItem {
     bytes Configuration = 1;
     repeated Envelope Signatures = 2; // Signatures over the hash of Configuration
 }
 
 
-message Configuration {
+message ConfigurationItem {
     enum ConfigurationType {
-        Policy = 0;
-        Fabric = 1;
-        Chain = 2;
-        Solo = 3;
-        Kafka = 4;
-        PBFT = 5;
+        Policy = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
+        Chain = 1;    // Marshaled format for this type is yet to be determined
+        Orderer = 2;  // Marshaled format for this type is yet to be determined
+        Fabric = 3;   // Marshaled format for this type is yet to be determined
     }
 
     bytes ChainID = 1;              // A Globally Unique Chain ID
-    string ID = 2;                  // A unique ID, unique scoped by Type
-    uint64 LastModified = 3;        // The Sequence number in the ConfigurationEnvelope this item was last modified
-    ConfigurationType Type = 4;     // The type of configuration
-    bytes Data = 5;                 // The byte representation of this configuration, usually a marshaled message
-    string ModificationPolicy = 6;  // What policy to check before allowing modification
+    uint64 LastModified = 2;        // The Sequence number in the ConfigurationEnvelope this item was last modified
+    ConfigurationType Type = 3;     // The type of configuration
+    string ModificationPolicy = 4;  // What policy to check before allowing modification
+    string Key = 5;                 // A unique ID, unique scoped by Type, to reference the value by
+    bytes Value = 6;                // The byte representation of this configuration, usually a marshaled message
 }
 
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support

@@ -38,7 +38,7 @@ type Handler interface {
 	CommitConfig()
 
 	// ProposeConfig called when config is added to a proposal
-	ProposeConfig(configItem *ab.Configuration) error
+	ProposeConfig(configItem *ab.ConfigurationItem) error
 }
 
 // Manager provides a mechanism to query and update configuration
@@ -63,14 +63,14 @@ type configurationManager struct {
 	sequence      uint64
 	chainID       []byte
 	pm            policies.Manager
-	configuration map[ab.Configuration_ConfigurationType]map[string]*ab.Configuration
-	handlers      map[ab.Configuration_ConfigurationType]Handler
+	configuration map[ab.ConfigurationItem_ConfigurationType]map[string]*ab.ConfigurationItem
+	handlers      map[ab.ConfigurationItem_ConfigurationType]Handler
 }
 
 // NewConfigurationManager creates a new Manager unless an error is encountered
-func NewConfigurationManager(configtx *ab.ConfigurationEnvelope, pm policies.Manager, handlers map[ab.Configuration_ConfigurationType]Handler) (Manager, error) {
-	for ctype := range ab.Configuration_ConfigurationType_name {
-		if _, ok := handlers[ab.Configuration_ConfigurationType(ctype)]; !ok {
+func NewConfigurationManager(configtx *ab.ConfigurationEnvelope, pm policies.Manager, handlers map[ab.ConfigurationItem_ConfigurationType]Handler) (Manager, error) {
+	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
+		if _, ok := handlers[ab.ConfigurationItem_ConfigurationType(ctype)]; !ok {
 			return nil, fmt.Errorf("Must supply a handler for all known types")
 		}
 	}
@@ -92,33 +92,33 @@ func NewConfigurationManager(configtx *ab.ConfigurationEnvelope, pm policies.Man
 	return cm, nil
 }
 
-func makeConfigMap() map[ab.Configuration_ConfigurationType]map[string]*ab.Configuration {
-	configMap := make(map[ab.Configuration_ConfigurationType]map[string]*ab.Configuration)
-	for ctype := range ab.Configuration_ConfigurationType_name {
-		configMap[ab.Configuration_ConfigurationType(ctype)] = make(map[string]*ab.Configuration)
+func makeConfigMap() map[ab.ConfigurationItem_ConfigurationType]map[string]*ab.ConfigurationItem {
+	configMap := make(map[ab.ConfigurationItem_ConfigurationType]map[string]*ab.ConfigurationItem)
+	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
+		configMap[ab.ConfigurationItem_ConfigurationType(ctype)] = make(map[string]*ab.ConfigurationItem)
 	}
 	return configMap
 }
 
 func (cm *configurationManager) beginHandlers() {
-	for ctype := range ab.Configuration_ConfigurationType_name {
-		cm.handlers[ab.Configuration_ConfigurationType(ctype)].BeginConfig()
+	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
+		cm.handlers[ab.ConfigurationItem_ConfigurationType(ctype)].BeginConfig()
 	}
 }
 
 func (cm *configurationManager) rollbackHandlers() {
-	for ctype := range ab.Configuration_ConfigurationType_name {
-		cm.handlers[ab.Configuration_ConfigurationType(ctype)].RollbackConfig()
+	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
+		cm.handlers[ab.ConfigurationItem_ConfigurationType(ctype)].RollbackConfig()
 	}
 }
 
 func (cm *configurationManager) commitHandlers() {
-	for ctype := range ab.Configuration_ConfigurationType_name {
-		cm.handlers[ab.Configuration_ConfigurationType(ctype)].CommitConfig()
+	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
+		cm.handlers[ab.ConfigurationItem_ConfigurationType(ctype)].CommitConfig()
 	}
 }
 
-func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope) (configMap map[ab.Configuration_ConfigurationType]map[string]*ab.Configuration, err error) {
+func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope) (configMap map[ab.ConfigurationItem_ConfigurationType]map[string]*ab.ConfigurationItem, err error) {
 	// Verify config is a sequential update to prevent exhausting sequence numbers
 	if configtx.Sequence != cm.sequence+1 {
 		return nil, fmt.Errorf("Config sequence number jumped from %d to %d", cm.sequence, configtx.Sequence)
@@ -138,9 +138,9 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 
 	configMap = makeConfigMap()
 
-	for _, entry := range configtx.Entries {
+	for _, entry := range configtx.Items {
 		// Verify every entry is well formed
-		config := &ab.Configuration{}
+		config := &ab.ConfigurationItem{}
 		err = proto.Unmarshal(entry.Configuration, config)
 		if err != nil {
 			return nil, err
@@ -148,13 +148,13 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 
 		// Ensure this configuration was intended for this chain
 		if !bytes.Equal(config.ChainID, cm.chainID) {
-			return nil, fmt.Errorf("Config item %v for type %v was not meant for a different chain %x", config.ID, config.Type, config.ChainID)
+			return nil, fmt.Errorf("Config item %v for type %v was not meant for a different chain %x", config.Key, config.Type, config.ChainID)
 		}
 
 		// Get the modification policy for this config item if one was previously specified
 		// or the default if this is a new config item
 		var policy policies.Policy
-		oldItem, ok := cm.configuration[config.Type][config.ID]
+		oldItem, ok := cm.configuration[config.Type][config.Key]
 		if ok {
 			policy, _ = cm.pm.GetPolicy(oldItem.ModificationPolicy)
 		} else {
@@ -169,12 +169,12 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 		// Ensure the config sequence numbers are correct to prevent replay attacks
 		isModified := false
 
-		if val, ok := cm.configuration[config.Type][config.ID]; ok {
+		if val, ok := cm.configuration[config.Type][config.Key]; ok {
 			// Config was modified if the LastModified or the Data contents changed
-			isModified = (val.LastModified != config.LastModified) || !bytes.Equal(config.Data, val.Data)
+			isModified = (val.LastModified != config.LastModified) || !bytes.Equal(config.Value, val.Value)
 		} else {
 			if config.LastModified != configtx.Sequence {
-				return nil, fmt.Errorf("Key %v for type %v was new, but had an older Sequence %d set", config.ID, config.Type, config.LastModified)
+				return nil, fmt.Errorf("Key %v for type %v was new, but had an older Sequence %d set", config.Key, config.Type, config.LastModified)
 			}
 			isModified = true
 		}
@@ -182,7 +182,7 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 		// If a config item was modified, its LastModified must be set correctly
 		if isModified {
 			if config.LastModified != configtx.Sequence {
-				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", config.ID, config.Type, config.LastModified, configtx.Sequence)
+				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", config.Key, config.Type, config.LastModified, configtx.Sequence)
 			}
 		}
 
@@ -192,13 +192,13 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 			return nil, err
 		}
 
-		configMap[config.Type][config.ID] = config
+		configMap[config.Type][config.Key] = config
 	}
 
 	// Ensure that any config items which used to exist still exist, to prevent implicit deletion
-	for ctype := range ab.Configuration_ConfigurationType_name {
-		curMap := cm.configuration[ab.Configuration_ConfigurationType(ctype)]
-		newMap := configMap[ab.Configuration_ConfigurationType(ctype)]
+	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
+		curMap := cm.configuration[ab.ConfigurationItem_ConfigurationType(ctype)]
+		newMap := configMap[ab.ConfigurationItem_ConfigurationType(ctype)]
 		for id := range curMap {
 			_, ok := newMap[id]
 			if !ok {

@@ -50,16 +50,16 @@ func errorlessMarshal(thing proto.Message) []byte {
 	return data
 }
 
-func (b *bootstrapper) makeConfigurationEntry(id string, ctype ab.Configuration_ConfigurationType, data []byte, modificationPolicyID string) *ab.ConfigurationEntry {
-	configurationBytes := errorlessMarshal(&ab.Configuration{
+func (b *bootstrapper) makeSignedConfigurationItem(id string, ctype ab.ConfigurationItem_ConfigurationType, data []byte, modificationPolicyID string) *ab.SignedConfigurationItem {
+	configurationBytes := errorlessMarshal(&ab.ConfigurationItem{
 		ChainID:            b.chainID,
-		ID:                 id,
 		LastModified:       0,
 		Type:               ctype,
-		Data:               data,
 		ModificationPolicy: modificationPolicyID,
+		Key:                id,
+		Value:              data,
 	})
-	return &ab.ConfigurationEntry{
+	return &ab.SignedConfigurationItem{
 		Configuration: configurationBytes,
 	}
 }
@@ -77,12 +77,12 @@ func sigPolicyToPolicy(sigPolicy *ab.SignaturePolicyEnvelope) []byte {
 func (b *bootstrapper) GenesisBlock() (*ab.Block, error) {
 
 	// Lock down the default modification policy to prevent any further policy modifications
-	lockdownDefaultModificationPolicy := b.makeConfigurationEntry(configtx.DefaultModificationPolicyID, ab.Configuration_Policy, sigPolicyToPolicy(cauthdsl.RejectAllPolicy), configtx.DefaultModificationPolicyID)
+	lockdownDefaultModificationPolicy := b.makeSignedConfigurationItem(configtx.DefaultModificationPolicyID, ab.ConfigurationItem_Policy, sigPolicyToPolicy(cauthdsl.RejectAllPolicy), configtx.DefaultModificationPolicyID)
 
 	initialConfigTX := errorlessMarshal(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  b.chainID,
-		Entries: []*ab.ConfigurationEntry{
+		Items: []*ab.SignedConfigurationItem{
 			lockdownDefaultModificationPolicy,
 		},
 	})

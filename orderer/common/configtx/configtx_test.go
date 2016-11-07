@@ -28,10 +28,10 @@ import (
 
 var defaultChain = []byte("DefaultChainID")
 
-func defaultHandlers() map[ab.Configuration_ConfigurationType]Handler {
-	handlers := make(map[ab.Configuration_ConfigurationType]Handler)
-	for ctype := range ab.Configuration_ConfigurationType_name {
-		handlers[ab.Configuration_ConfigurationType(ctype)] = NewBytesHandler()
+func defaultHandlers() map[ab.ConfigurationItem_ConfigurationType]Handler {
+	handlers := make(map[ab.ConfigurationItem_ConfigurationType]Handler)
+	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
+		handlers[ab.ConfigurationItem_ConfigurationType(ctype)] = NewBytesHandler()
 	}
 	return handlers
 }
@@ -57,23 +57,23 @@ func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 	return mpm.policy, (mpm.policy != nil)
 }
 
-func makeConfiguration(id, modificationPolicy string, lastModified uint64, data []byte) *ab.Configuration {
-	return &ab.Configuration{
+func makeConfiguration(id, modificationPolicy string, lastModified uint64, data []byte) *ab.ConfigurationItem {
+	return &ab.ConfigurationItem{
 		ChainID:            defaultChain,
-		ID:                 id,
-		Data:               data,
 		ModificationPolicy: modificationPolicy,
 		LastModified:       lastModified,
+		Key:                id,
+		Value:              data,
 	}
 }
 
-func makeConfigurationEntry(id, modificationPolicy string, lastModified uint64, data []byte) *ab.ConfigurationEntry {
+func makeSignedConfigurationItem(id, modificationPolicy string, lastModified uint64, data []byte) *ab.SignedConfigurationItem {
 	config := makeConfiguration(id, modificationPolicy, lastModified, data)
 	marshaledConfig, err := proto.Marshal(config)
 	if err != nil {
 		panic(err)
 	}
-	return &ab.ConfigurationEntry{
+	return &ab.SignedConfigurationItem{
 		Configuration: marshaledConfig,
 	}
 }
@@ -83,7 +83,7 @@ func TestOmittedHandler(t *testing.T) {
 	_, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  defaultChain,
-	}, &mockPolicyManager{&mockPolicy{}}, map[ab.Configuration_ConfigurationType]Handler{})
+	}, &mockPolicyManager{&mockPolicy{}}, map[ab.ConfigurationItem_ConfigurationType]Handler{})
 
 	if err == nil {
 		t.Fatalf("Should have failed to construct manager because handlers were missing")
@@ -146,12 +146,12 @@ func TestOldConfigReplay(t *testing.T) {
 
 // TestInvalidInitialConfigByStructure tests to make sure that if the config contains corrupted configuration that construction results in error
 func TestInvalidInitialConfigByStructure(t *testing.T) {
-	entries := []*ab.ConfigurationEntry{makeConfigurationEntry("foo", "foo", 0, []byte("foo"))}
+	entries := []*ab.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"))}
 	entries[0].Configuration = []byte("Corrupted")
 	_, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  defaultChain,
-		Entries:  entries,
+		Items:    entries,
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err == nil {
@@ -173,7 +173,7 @@ func TestValidConfigChange(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Entries:  []*ab.ConfigurationEntry{makeConfigurationEntry("foo", "foo", 1, []byte("foo"))},
+		Items:    []*ab.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"))},
 	}
 
 	err = cm.Validate(newConfig)
@@ -203,7 +203,7 @@ func TestConfigChangeNoUpdatedSequence(t *testing.T) {
 		Sequence: 1,
 		ChainID:  defaultChain,
 		// Note that the entries do not contain any config items with seqNo=1, so this is invalid
-		Entries: []*ab.ConfigurationEntry{makeConfigurationEntry("foo", "foo", 0, []byte("foo"))},
+		Items: []*ab.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"))},
 	}
 
 	err = cm.Validate(newConfig)
@@ -223,7 +223,7 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 	cm, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Entries:  []*ab.ConfigurationEntry{makeConfigurationEntry("foo", "foo", 1, []byte("foo"))},
+		Items:    []*ab.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"))},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err != nil {
@@ -233,9 +233,9 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 2,
 		ChainID:  defaultChain,
-		Entries: []*ab.ConfigurationEntry{
-			makeConfigurationEntry("foo", "foo", 0, []byte("foo")),
-			makeConfigurationEntry("bar", "bar", 2, []byte("bar")),
+		Items: []*ab.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
+			makeSignedConfigurationItem("bar", "bar", 2, []byte("bar")),
 		},
 	}
 
@@ -256,9 +256,9 @@ func TestConfigImplicitDelete(t *testing.T) {
 	cm, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  defaultChain,
-		Entries: []*ab.ConfigurationEntry{
-			makeConfigurationEntry("foo", "foo", 0, []byte("foo")),
-			makeConfigurationEntry("bar", "bar", 0, []byte("bar")),
+		Items: []*ab.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
+			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar")),
 		},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
@@ -269,8 +269,8 @@ func TestConfigImplicitDelete(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Entries: []*ab.ConfigurationEntry{
-			makeConfigurationEntry("bar", "bar", 1, []byte("bar")),
+		Items: []*ab.SignedConfigurationItem{
+			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar")),
 		},
 	}
 
@@ -291,9 +291,9 @@ func TestConfigModifyWithoutFullIncrease(t *testing.T) {
 	cm, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  defaultChain,
-		Entries: []*ab.ConfigurationEntry{
-			makeConfigurationEntry("foo", "foo", 0, []byte("foo")),
-			makeConfigurationEntry("bar", "bar", 0, []byte("bar")),
+		Items: []*ab.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
+			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar")),
 		},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
@@ -304,9 +304,9 @@ func TestConfigModifyWithoutFullIncrease(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Entries: []*ab.ConfigurationEntry{
-			makeConfigurationEntry("foo", "foo", 0, []byte("foo")),
-			makeConfigurationEntry("bar", "bar", 1, []byte("bar")),
+		Items: []*ab.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
+			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar")),
 		},
 	}
 
@@ -323,9 +323,9 @@ func TestConfigModifyWithoutFullIncrease(t *testing.T) {
 	newConfig = &ab.ConfigurationEnvelope{
 		Sequence: 2,
 		ChainID:  defaultChain,
-		Entries: []*ab.ConfigurationEntry{
-			makeConfigurationEntry("foo", "foo", 1, []byte("foo")),
-			makeConfigurationEntry("bar", "bar", 2, []byte("bar")),
+		Items: []*ab.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 1, []byte("foo")),
+			makeSignedConfigurationItem("bar", "bar", 2, []byte("bar")),
 		},
 	}
 
@@ -347,9 +347,9 @@ func TestSilentConfigModification(t *testing.T) {
 	cm, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  defaultChain,
-		Entries: []*ab.ConfigurationEntry{
-			makeConfigurationEntry("foo", "foo", 0, []byte("foo")),
-			makeConfigurationEntry("bar", "bar", 0, []byte("bar")),
+		Items: []*ab.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
+			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar")),
 		},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
@@ -360,9 +360,9 @@ func TestSilentConfigModification(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Entries: []*ab.ConfigurationEntry{
-			makeConfigurationEntry("foo", "foo", 0, []byte("different")),
-			makeConfigurationEntry("bar", "bar", 1, []byte("bar")),
+		Items: []*ab.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("different")),
+			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar")),
 		},
 	}
 
@@ -383,7 +383,7 @@ func TestInvalidInitialConfigByPolicy(t *testing.T) {
 	_, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  defaultChain,
-		Entries:  []*ab.ConfigurationEntry{makeConfigurationEntry("foo", "foo", 0, []byte("foo"))},
+		Items:    []*ab.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"))},
 	}, &mockPolicyManager{&mockPolicy{fmt.Errorf("err")}}, defaultHandlers())
 	// mockPolicyManager will return non-validating defualt policy
 
@@ -410,7 +410,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Entries:  []*ab.ConfigurationEntry{makeConfigurationEntry("foo", "foo", 1, []byte("foo"))},
+		Items:    []*ab.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"))},
 	}
 
 	err = cm.Validate(newConfig)
@@ -429,7 +429,7 @@ type failHandler struct{}
 func (fh failHandler) BeginConfig()    {}
 func (fh failHandler) RollbackConfig() {}
 func (fh failHandler) CommitConfig()   {}
-func (fh failHandler) ProposeConfig(item *ab.Configuration) error {
+func (fh failHandler) ProposeConfig(item *ab.ConfigurationItem) error {
 	return fmt.Errorf("Fail")
 }
 
@@ -437,7 +437,7 @@ func (fh failHandler) ProposeConfig(item *ab.Configuration) error {
 // that if the handler does not accept the config, it is rejected
 func TestInvalidProposal(t *testing.T) {
 	handlers := defaultHandlers()
-	handlers[ab.Configuration_ConfigurationType(0)] = failHandler{}
+	handlers[ab.ConfigurationItem_ConfigurationType(0)] = failHandler{}
 	cm, err := NewConfigurationManager(&ab.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  defaultChain,
@@ -450,7 +450,7 @@ func TestInvalidProposal(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Entries:  []*ab.ConfigurationEntry{makeConfigurationEntry("foo", "foo", 1, []byte("foo"))},
+		Items:    []*ab.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"))},
 	}
 
 	err = cm.Validate(newConfig)
@@ -484,7 +484,7 @@ func TestConfigItemOnWrongChain(t *testing.T) {
 	newConfig := &ab.ConfigurationEnvelope{
 		Sequence: 1,
 		ChainID:  defaultChain,
-		Entries:  []*ab.ConfigurationEntry{&ab.ConfigurationEntry{Configuration: marshaledConfig}},
+		Items:    []*ab.SignedConfigurationItem{&ab.SignedConfigurationItem{Configuration: marshaledConfig}},
 	}
 
 	err = cm.Validate(newConfig)

@@ -23,9 +23,9 @@ package atomicbroadcast;
 // Header is a generic replay prevention and identity message to include in a signed payload
 message Header {
     enum Type {
-        MESSAGE = 0;
-        CONFIGURATION_TRANSACTION = 1;
-        CONFIGURATION_ITEM = 2;
+        MESSAGE = 0;                   // Used for messages which require no introspection on the part of the orderer
+        CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain
+        CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
     }
 
     // Version indicates message protocol version
