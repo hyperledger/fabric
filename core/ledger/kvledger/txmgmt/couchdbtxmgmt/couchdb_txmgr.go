@@ -264,11 +264,11 @@ func (txmgr *CouchDBTxMgr) Commit() error {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
 
-	for k, v := range txmgr.updateSet.m {
+	txmgr.commitRWLock.Lock()
+	defer txmgr.commitRWLock.Unlock()
+	defer func() { txmgr.updateSet = nil }()
 
-		txmgr.commitRWLock.Lock()
-		defer txmgr.commitRWLock.Unlock()
-		defer func() { txmgr.updateSet = nil }()
+	for k, v := range txmgr.updateSet.m {
 
 		if couchdb.IsJSON(string(v.value)) {
 
