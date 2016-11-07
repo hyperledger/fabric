@@ -30,7 +30,6 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hyperledger/fabric/core"
-	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/flogging"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/clilogging"
@@ -115,9 +114,7 @@ func main() {
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 
 	// Init the crypto layer
-	if err := crypto.Init(); err != nil {
-		panic(fmt.Errorf("Failed to initialize the crypto layer: %s", err))
-	}
+	//TODO: integrate new crypto / idp code
 
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status

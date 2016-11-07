@@ -75,15 +75,7 @@ func initPeer() (net.Listener, error) {
 	// Install security object for peer
 	var secHelper crypto.Peer
 	if viper.GetBool("security.enabled") {
-		enrollID := viper.GetString("security.enrollID")
-		enrollSecret := viper.GetString("security.enrollSecret")
-		if err = crypto.RegisterValidator(enrollID, nil, enrollID, enrollSecret); nil != err {
-			return nil, err
-		}
-		secHelper, err = crypto.InitValidator(enrollID, nil)
-		if nil != err {
-			return nil, err
-		}
+		//TODO:  integrate new crypto / idp
 	}
 
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond

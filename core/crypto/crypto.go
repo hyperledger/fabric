@@ -59,18 +59,6 @@ type Client interface {
 
 	// DecryptQueryResult is used to decrypt the result of a query transaction
 	DecryptQueryResult(queryTx *obc.Transaction, result []byte) ([]byte, error)
-
-	// GetEnrollmentCertHandler returns a CertificateHandler whose certificate is the enrollment certificate
-	GetEnrollmentCertificateHandler() (CertificateHandler, error)
-
-	// GetTCertHandlerNext returns a CertificateHandler whose certificate is the next available TCert
-	GetTCertificateHandlerNext(attributes ...string) (CertificateHandler, error)
-
-	// GetTCertHandlerFromDER returns a CertificateHandler whose certificate is the one passed
-	GetTCertificateHandlerFromDER(tCertDER []byte) (CertificateHandler, error)
-
-	// GetNextTCert returns a slice of a requested number of (not yet used) transaction certificates
-	GetNextTCerts(nCerts int, attributes ...string) ([]tCert, error)
 }
 
 // Peer is an entity able to verify transactions
