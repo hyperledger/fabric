@@ -16,7 +16,7 @@
 # under the License.
 #
 
-GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gomega gocov gocovxml
+GOTOOLS = golint govendor goimports protoc-gen-go ginkgo gocov gocov-xml
 GOTOOLS_BIN = $(patsubst %,$(GOPATH)/bin/%, $(GOTOOLS))
 
 # go tool->path mapping
@@ -24,9 +24,8 @@ go.fqp.govendor  := github.com/kardianos/govendor
 go.fqp.golint    := github.com/golang/lint/golint
 go.fqp.goimports := golang.org/x/tools/cmd/goimports
 go.fqp.ginkgo    := github.com/onsi/ginkgo/ginkgo
-go.fqp.gomega    := github.com/onsi/gomega
 go.fqp.gocov     := github.com/axw/gocov/...
-go.fqp.gocovxml  := github.com/AlekSi/gocov-xml
+go.fqp.gocov-xml := github.com/AlekSi/gocov-xml
 
 all: $(GOTOOLS_BIN)
 
