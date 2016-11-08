@@ -33,7 +33,7 @@ all: $(GOTOOLS_BIN)
 # Special override for protoc-gen-go since we want to use the version vendored with the project
 gotool.protoc-gen-go:
 	mkdir -p $(GOPATH)/src/github.com/golang/protobuf/
-	cp -r $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/golang/protobuf/ $(GOPATH)/src/github.com/golang/
+	cp -R $(GOPATH)/src/github.com/hyperledger/fabric/vendor/github.com/golang/protobuf/ $(GOPATH)/src/github.com/golang/
 	go install github.com/golang/protobuf/protoc-gen-go
 	rm -rf $(GOPATH)/src/github.com/golang/protobuf
 

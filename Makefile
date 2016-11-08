@@ -46,7 +46,7 @@ PROJECT_VERSION=$(BASE_VERSION)
 endif
 
 PKGNAME = github.com/$(PROJECT_NAME)
-GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION)
+GO_LDFLAGS = -X $(PKGNAME)/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
 ARCH=$(shell uname -m)
@@ -64,7 +64,7 @@ K := $(foreach exec,$(EXECUTABLES),\
 SUBDIRS = gotools
 SUBDIRS:=$(strip $(SUBDIRS))
 
-GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh github.com/hyperledger/fabric/core/chaincode/shim | sort | uniq)
+GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | sort | uniq)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = src ccenv peer javaenv orderer
@@ -152,7 +152,7 @@ build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
 		--user=$(UID) \
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/pkg):/opt/gopath/pkg \
-		hyperledger/fabric-src:$(DOCKER_TAG) go install -ldflags "$(GO_LDFLAGS)" github.com/hyperledger/fabric/$(TARGET)
+		hyperledger/fabric-src:$(DOCKER_TAG) go install -ldflags "$(GO_LDFLAGS)" $(PKGNAME)/$(TARGET)
 	@touch $@
 
 build/bin:
