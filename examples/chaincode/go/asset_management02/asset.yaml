@@ -214,7 +214,7 @@ peer:
     address: 0.0.0.0:40404
     # Whether the Peer should programmatically determine the address to bind to.
     # This case is useful for docker containers.
-    addressAutoDetect: false
+    addressAutoDetect: true
 
     # Peer port to accept connections on
     port:    40404

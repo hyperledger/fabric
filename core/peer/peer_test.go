@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/config"
 	pb "github.com/hyperledger/fabric/protos"
 	"golang.org/x/net/context"
@@ -37,9 +38,10 @@ func TestMain(m *testing.M) {
 	config.SetupTestConfig("./../../peer")
 	viper.Set("ledger.blockchain.deploy-system-chaincode", "false")
 
-	tmpConn, err := NewPeerClientConnection()
+	peerAddress := comm.GetPeerTestingAddress("7051")
+	tmpConn, err := NewPeerClientConnectionWithAddress(peerAddress)
 	if err != nil {
-		fmt.Printf("error connection to server at host:port = %s\n", viper.GetString("peer.address"))
+		fmt.Printf("error connection to server at host:port = %s\n", peerAddress)
 		os.Exit(1)
 	}
 	peerClientConn = tmpConn

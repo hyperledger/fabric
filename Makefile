@@ -60,10 +60,6 @@ EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
-# SUBDIRS are components that have their own Makefiles that we can invoke
-SUBDIRS = gotools
-SUBDIRS:=$(strip $(SUBDIRS))
-
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | sort | uniq)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
@@ -74,9 +70,13 @@ all: peer orderer checks
 
 checks: linter unit-test behave
 
-.PHONY: $(SUBDIRS)
-$(SUBDIRS):
-	cd $@ && $(MAKE)
+.PHONY: gotools
+gotools:
+	mkdir -p build/bin
+	cd gotools && $(MAKE) install BINDIR=$(GOPATH)/bin
+
+gotools-clean:
+	cd gotools && $(MAKE) clean
 
 membersrvc-image:
 	@echo "membersrvc has been removed from this build"
@@ -104,15 +104,7 @@ behave: behave-deps
 
 linter: gotools
 	@echo "LINT: Running code checks.."
-	@echo "Running go vet"
-	go vet ./core/...
-	go vet ./events/...
-	go vet ./examples/...
-	go vet ./peer/...
-	go vet ./protos/...
-	go vet ./orderer/...
-	@echo "Running goimports"
-	@./scripts/goimports.sh
+	@./scripts/golinter.sh
 
 # We (re)build protoc-gen-go from within docker context so that
 # we may later inject the binary into a different docker environment
@@ -252,12 +244,8 @@ src-image-clean: ccenv-image-clean peer-image-clean orderer-image-clean
 
 images-clean: $(patsubst %,%-image-clean, $(IMAGES))
 
-.PHONY: $(SUBDIRS:=-clean)
-$(SUBDIRS:=-clean):
-	cd $(patsubst %-clean,%,$@) && $(MAKE) clean
-
 .PHONY: clean
-clean: images-clean $(filter-out gotools-clean, $(SUBDIRS:=-clean))
+clean: images-clean
 	-@rm -rf build ||:
 
 .PHONY: dist-clean
