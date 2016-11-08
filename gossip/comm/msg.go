@@ -31,7 +31,7 @@ type ReceivedMessageImpl struct {
 
 // Respond sends a msg to the source that sent the ReceivedMessageImpl
 func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
-	m.conn.send(msg)
+	m.conn.send(msg, func(e error) {})
 }
 
 // GetGossipMessage returns the inner GossipMessage

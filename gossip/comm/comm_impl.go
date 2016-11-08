@@ -40,9 +40,12 @@ import (
 const (
 	defDialTimeout  = time.Second * time.Duration(3)
 	defConnTimeout  = time.Second * time.Duration(2)
-	defRecvBuffSize = 100
+	defRecvBuffSize = 20
+	defSendBuffSize = 20
+	sendOverflowErr = "Send buffer overflow"
 )
 
+var errSendOverflow = fmt.Errorf(sendOverflowErr)
 var dialTimeout = defDialTimeout
 
 func init() {
@@ -195,7 +198,6 @@ func (c *commImpl) Send(msg *proto.GossipMessage, peers ...*RemotePeer) {
 	c.logger.Info("Entering, sending", msg, "to ", len(peers), "peers")
 
 	for _, peer := range peers {
-		// TODO: create outgoing buffers and flow control per connection
 		go func(peer *RemotePeer, msg *proto.GossipMessage) {
 			c.sendToEndpoint(peer, msg)
 		}(peer, msg)
@@ -224,9 +226,9 @@ func (c *commImpl) isPKIblackListed(p PKIidType) bool {
 	return false
 }
 
-func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.GossipMessage) error {
+func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.GossipMessage) {
 	if c.isStopping() {
-		return nil
+		return
 	}
 	c.logger.Debug("Entering, Sending to", peer.Endpoint, ", msg:", msg)
 	defer c.logger.Debug("Exiting")
@@ -234,19 +236,15 @@ func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.GossipMessage) er
 
 	conn, err := c.connStore.getConnection(peer)
 	if err == nil {
-		t1 := time.Now()
-		err = conn.send(msg)
-		if err != nil {
+		disConnectOnErr := func(err error) {
 			c.logger.Warning(peer, "isn't responsive:", err)
 			c.disconnect(peer.PKIID)
-			return err
 		}
-		c.logger.Debug("Send took", time.Since(t1))
-		return nil
+		conn.send(msg, disConnectOnErr)
+		return
 	}
 	c.logger.Warning("Failed obtaining connection for", peer, "reason:", err)
 	c.disconnect(peer.PKIID)
-	return err
 }
 
 func (c *commImpl) isStopping() bool {
@@ -450,7 +448,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 		c.connStore.closeByPKIid(PKIID)
 	}()
 
-	return conn.serviceInput()
+	return conn.serviceConnection()
 }
 
 func (c *commImpl) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
