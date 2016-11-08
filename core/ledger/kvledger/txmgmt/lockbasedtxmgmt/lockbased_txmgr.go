@@ -165,16 +165,6 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 
 func (txmgr *LockBasedTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, error) {
 
-	// trace the first 2000 characters of RWSet only, in case it is huge
-	if logger.IsEnabledFor(logging.DEBUG) {
-		txRWSetString := txRWSet.String()
-		if len(txRWSetString) < 2000 {
-			logger.Debugf("Validating txRWSet:%s", txRWSetString)
-		} else {
-			logger.Debugf("Validating txRWSet:%s...", txRWSetString[0:2000])
-		}
-	}
-
 	var err error
 	var currentVersion uint64
 

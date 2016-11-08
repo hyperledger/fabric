@@ -63,12 +63,12 @@ func (s *CouchDBTxSimulator) GetState(ns string, key string) ([]byte, error) {
 	// check if it was written
 	kvWrite, ok := nsRWs.writeMap[key]
 	if ok {
-		// trace the first 500 bytes of value only, in case it is huge
+		// trace the first 200 bytes of value only, in case it is huge
 		if logger.IsEnabledFor(logging.DEBUG) {
-			if len(kvWrite.Value) < 500 {
+			if len(kvWrite.Value) < 200 {
 				logger.Debugf("Returing value for key=[%s:%s] from write set", ns, key, kvWrite.Value)
 			} else {
-				logger.Debugf("Returing value for key=[%s:%s] from write set", ns, key, kvWrite.Value[0:500])
+				logger.Debugf("Returing value for key=[%s:%s] from write set", ns, key, kvWrite.Value[0:200])
 			}
 		}
 		return kvWrite.Value, nil
@@ -76,12 +76,12 @@ func (s *CouchDBTxSimulator) GetState(ns string, key string) ([]byte, error) {
 	// check if it was read
 	readCache, ok := nsRWs.readMap[key]
 	if ok {
-		// trace the first 500 bytes of value only, in case it is huge
+		// trace the first 200 bytes of value only, in case it is huge
 		if logger.IsEnabledFor(logging.DEBUG) {
-			if len(readCache.cachedValue) < 500 {
+			if len(readCache.cachedValue) < 200 {
 				logger.Debugf("Returing value for key=[%s:%s] from read set", ns, key, readCache.cachedValue)
 			} else {
-				logger.Debugf("Returing value for key=[%s:%s] from read set", ns, key, readCache.cachedValue[0:500])
+				logger.Debugf("Returing value for key=[%s:%s] from read set", ns, key, readCache.cachedValue[0:200])
 			}
 		}
 		return readCache.cachedValue, nil
@@ -90,21 +90,17 @@ func (s *CouchDBTxSimulator) GetState(ns string, key string) ([]byte, error) {
 	// read from storage
 	value, version, err := s.txmgr.getCommittedValueAndVersion(ns, key)
 
-	// trace the first 500 bytes of value only, in case it is huge
-	if logger.IsEnabledFor(logging.DEBUG) {
-		if len(value) < 500 {
-			logger.Debugf("Read state from storage key=[%s:%s], value=[%#v], version=[%d]", ns, key, value, version)
-		} else {
-			logger.Debugf("Read state from storage key=[%s:%s], value=[%#v...], version=[%d]", ns, key, value[0:500], version)
-		}
-	}
 	if err != nil {
 		return nil, err
 	}
 
-	if value != nil {
-		jsonString := string(value[:])
-		logger.Debugf("===COUCHDB=== GetState() Read jsonString from storage:\n%s\n", jsonString)
+	// trace the first 200 bytes of value only, in case it is huge
+	if value != nil && logger.IsEnabledFor(logging.DEBUG) {
+		if len(value) < 200 {
+			logger.Debugf("===Read state from storage key=[%s:%s], value=[%#v], version=[%d]", ns, key, value, version)
+		} else {
+			logger.Debugf("===Read state from storage key=[%s:%s], value=[%#v...], version=[%d]", ns, key, value[0:200], version)
+		}
 	}
 
 	nsRWs.readMap[key] = &kvReadCache{txmgmt.NewKVRead(key, version), value}
