@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 // GetPayloads get's the underlying payload objects in a TransactionAction
@@ -117,4 +118,27 @@ func CreateTxFromProposalResponse(pResp *protos.ProposalResponse) (*protos.Trans
 		return nil, err
 	}
 	return CreateTx(protos.Header_CHAINCODE, pRespPayload.ProposalHash, ccAction.Events, ccAction.Results, []*protos.Endorsement{pResp.Endorsement})
+}
+
+// GetEndorserTxFromBlock gets Transaction2 from Block.Data.Data
+func GetEndorserTxFromBlock(data []byte) (*protos.Transaction2, error) {
+	//Block always begins with an envelope
+	var err error
+	env := &common.Envelope{}
+	if err = proto.Unmarshal(data, env); err != nil {
+		return nil, fmt.Errorf("Error getting envelope(%s)\n", err)
+	}
+	payload := &common.Payload{}
+	if err = proto.Unmarshal(env.Payload, payload); err != nil {
+		return nil, fmt.Errorf("Error getting payload(%s)\n", err)
+	}
+
+	if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		tx := &protos.Transaction2{}
+		if err = proto.Unmarshal(payload.Data, tx); err != nil {
+			return nil, fmt.Errorf("Error getting tx(%s)\n", err)
+		}
+		return tx, nil
+	}
+	return nil, nil
 }

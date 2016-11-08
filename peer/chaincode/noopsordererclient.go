@@ -42,7 +42,7 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient) *broadcastCli
 }
 
 func (s *broadcastClient) broadcast(transaction []byte) error {
-	payload, err := proto.Marshal(&cb.Payload{Header: &cb.Header{}, Data: transaction})
+	payload, err := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_ENDORSER_TRANSACTION)}}, Data: transaction})
 	if err != nil {
 		return fmt.Errorf("Unable to marshal: %s", err)
 	}
