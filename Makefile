@@ -247,7 +247,7 @@ src-image-clean: ccenv-image-clean peer-image-clean orderer-image-clean
 
 %-image-clean:
 	$(eval TARGET = ${patsubst %-image-clean,%,${@}})
-	-docker images -q $(PROJECT_NAME)-$(TARGET) | xargs -r docker rmi -f
+	-docker images -q $(PROJECT_NAME)-$(TARGET) | xargs docker rmi -f
 	-@rm -rf build/image/$(TARGET) ||:
 
 images-clean: $(patsubst %,%-image-clean, $(IMAGES))
