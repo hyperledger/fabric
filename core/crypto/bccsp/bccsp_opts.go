@@ -17,12 +17,16 @@ limitations under the License.
 package bccsp
 
 const (
-	// ECDSA Elliptic Curve Digital Signature Algorithm (key gen, import, sign, veirfy).
+	// ECDSA Elliptic Curve Digital Signature Algorithm (key gen, import, sign, verify),
+	// at default security level (see primitives package).
 	ECDSA = "ECDSA"
 	// ECDSAReRand ECDSA key re-randomization
 	ECDSAReRand = "ECDSA_RERAND"
 
-	// AES Advanced Encryption Standard
+	// RSA at default security level (see primitives package)
+	RSA = "RSA"
+
+	// AES Advanced Encryption Standard at default security level (see primitives package)
 	AES = "AES"
 
 	// HMAC keyed-hash message authentication code
@@ -30,7 +34,7 @@ const (
 	// HMACTruncated256 HMAC truncated at 256 bits.
 	HMACTruncated256 = "HMAC_TRUNCATED_256"
 
-	// SHA Secure Hash Algorithm
+	// SHA Secure Hash Algorithm using default family (see primitives package)
 	SHA = "SHA"
 )
 
@@ -184,4 +188,21 @@ type SHAOpts struct {
 // to hash.
 func (opts *SHAOpts) Algorithm() string {
 	return SHA
+}
+
+// RSAKeyGenOpts contains options for RSA key generation.
+type RSAKeyGenOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns an identifier for the algorithm to be used
+// to generate a key.
+func (opts *RSAKeyGenOpts) Algorithm() string {
+	return RSA
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (opts *RSAKeyGenOpts) Ephemeral() bool {
+	return opts.Temporary
 }

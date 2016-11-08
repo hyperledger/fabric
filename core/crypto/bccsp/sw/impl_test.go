@@ -20,6 +20,9 @@ import (
 	"os"
 	"testing"
 
+	"crypto"
+	"crypto/rsa"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/spf13/viper"
@@ -253,7 +256,7 @@ func TestECDSAVerify(t *testing.T) {
 		t.Fatalf("Failed generating ECDSA signature [%s]", err)
 	}
 
-	valid, err := csp.Verify(k, signature, digest)
+	valid, err := csp.Verify(k, signature, digest, nil)
 	if err != nil {
 		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
 	}
@@ -287,7 +290,7 @@ func TestECDSAKeyDeriv(t *testing.T) {
 		t.Fatalf("Failed generating ECDSA signature [%s]", err)
 	}
 
-	valid, err := csp.Verify(reRandomizedKey, signature, digest)
+	valid, err := csp.Verify(reRandomizedKey, signature, digest, nil)
 	if err != nil {
 		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
 	}
@@ -551,5 +554,200 @@ func TestSHA(t *testing.T) {
 		if !bytes.Equal(h1, h2) {
 			t.Fatalf("Discrempancy found in HASH result [%x], [%x]!=[%x]", b, h1, h2)
 		}
+	}
+}
+
+func TestRSAKeyGenEphemeral(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating RSA key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating RSA key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating RSA key. Key should be asymmetric")
+	}
+}
+
+func TestRSAPrivateKeySKI(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	ski := k.SKI()
+	if len(ski) == 0 {
+		t.Fatal("SKI not valid. Zero length.")
+	}
+}
+
+func TestRSAKeyGenNonEphemeral(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating RSA key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating RSA key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating RSA key. Key should be asymmetric")
+	}
+}
+
+func TestRSAGetKeyBySKI(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	k2, err := csp.GetKey(k.SKI())
+	if err != nil {
+		t.Fatalf("Failed getting RSA key [%s]", err)
+	}
+	if k2 == nil {
+		t.Fatal("Failed getting RSA key. Key must be different from nil")
+	}
+	if !k2.Private() {
+		t.Fatal("Failed getting RSA key. Key should be private")
+	}
+	if k2.Symmetric() {
+		t.Fatal("Failed getting RSA key. Key should be asymmetric")
+	}
+
+	// Check that the SKIs are the same
+	if !bytes.Equal(k.SKI(), k2.SKI()) {
+		t.Fatalf("SKIs are different [%x]!=[%x]", k.SKI(), k2.SKI())
+	}
+}
+
+func TestRSAPublicKeyFromPrivateKey(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private RSA key [%s]", err)
+	}
+	if pk == nil {
+		t.Fatal("Failed getting public key from private RSA key. Key must be different from nil")
+	}
+	if pk.Private() {
+		t.Fatal("Failed generating RSA key. Key should be public")
+	}
+	if pk.Symmetric() {
+		t.Fatal("Failed generating RSA key. Key should be asymmetric")
+	}
+}
+
+func TestRSAPublicKeyBytes(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private RSA key [%s]", err)
+	}
+
+	raw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed marshalling RSA public key [%s]", err)
+	}
+	if len(raw) == 0 {
+		t.Fatal("Failed marshalling RSA public key. Zero length")
+	}
+}
+
+func TestRSAPublicKeySKI(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private RSA key [%s]", err)
+	}
+
+	ski := pk.SKI()
+	if len(ski) == 0 {
+		t.Fatal("SKI not valid. Zero length.")
+	}
+}
+
+func TestRSASign(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := csp.Sign(k, digest, &rsa.PSSOptions{SaltLength: 32, Hash: crypto.SHA256})
+	if err != nil {
+		t.Fatalf("Failed generating RSA signature [%s]", err)
+	}
+	if len(signature) == 0 {
+		t.Fatal("Failed generating RSA key. Signature must be different from nil")
+	}
+}
+
+func TestRSAVerify(t *testing.T) {
+	csp := getBCCSP(t)
+
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := csp.Sign(k, digest, &rsa.PSSOptions{SaltLength: 32, Hash: crypto.SHA256})
+	if err != nil {
+		t.Fatalf("Failed generating RSA signature [%s]", err)
+	}
+
+	valid, err := csp.Verify(k, signature, digest, &rsa.PSSOptions{SaltLength: 32, Hash: crypto.SHA256})
+	if err != nil {
+		t.Fatalf("Failed verifying RSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying RSA signature. Signature not valid.")
 	}
 }

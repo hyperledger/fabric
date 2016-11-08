@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"crypto/rsa"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/utils"
@@ -96,6 +98,25 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		if !opts.Ephemeral() {
 			// Store the key
 			err = csp.ks.storeKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			if err != nil {
+				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
+			}
+		}
+
+		return k, nil
+	case bccsp.RSA:
+		lowLevelKey, err := primitives.NewRSAKey()
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating RSA (2048) key [%s]", err)
+		}
+
+		k = &rsaPrivateKey{lowLevelKey}
+
+		// If the key is not Ephemeral, store it.
+		if !opts.Ephemeral() {
+			// Store the key
+			err = csp.ks.storePrivateKey(hex.EncodeToString(k.SKI()), lowLevelKey)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
 			}
@@ -309,6 +330,8 @@ func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
 		switch key.(type) {
 		case *ecdsa.PrivateKey:
 			return &ecdsaPrivateKey{key.(*ecdsa.PrivateKey)}, nil
+		case *rsa.PrivateKey:
+			return &rsaPrivateKey{key.(*rsa.PrivateKey)}, nil
 		default:
 			return nil, errors.New("Key type not recognized")
 		}
@@ -350,13 +373,19 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 	switch k.(type) {
 	case *ecdsaPrivateKey:
 		return k.(*ecdsaPrivateKey).k.Sign(rand.Reader, digest, nil)
+	case *rsaPrivateKey:
+		if opts == nil {
+			return nil, errors.New("Invalid options. Nil.")
+		}
+
+		return k.(*rsaPrivateKey).k.Sign(rand.Reader, digest, opts)
 	default:
 		return nil, fmt.Errorf("Key type not recognized [%s]", k)
 	}
 }
 
 // Verify verifies signature against key k and digest
-func (csp *impl) Verify(k bccsp.Key, signature, digest []byte) (valid bool, err error) {
+func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
 	// Validate arguments
 	if k == nil {
 		return false, errors.New("Invalid Key. It must not be nil.")
@@ -378,6 +407,20 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte) (valid bool, err 
 		}
 
 		return ecdsa.Verify(&(k.(*ecdsaPrivateKey).k.PublicKey), digest, ecdsaSignature.R, ecdsaSignature.S), nil
+	case *rsaPrivateKey:
+		if opts == nil {
+			return false, errors.New("Invalid options. Nil.")
+		}
+		switch opts.(type) {
+		case *rsa.PSSOptions:
+			err := rsa.VerifyPSS(&(k.(*rsaPrivateKey).k.PublicKey),
+				(opts.(*rsa.PSSOptions)).Hash,
+				digest, signature, opts.(*rsa.PSSOptions))
+
+			return err == nil, err
+		default:
+			return false, fmt.Errorf("Opts type not recognized [%s]", opts)
+		}
 	default:
 		return false, fmt.Errorf("Key type not recognized [%s]", k)
 	}
