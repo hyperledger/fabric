@@ -39,13 +39,13 @@ import (
 	"encoding/asn1"
 
 	"github.com/golang/protobuf/proto"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	s "github.com/hyperledger/fabric/consensus/simplebft"
+	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
-	s "github.com/hyperledger/fabric/consensus/simplebft"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
-	"github.com/hyperledger/fabric/orderer/rawledger"
 )
 
 var logger = logging.MustGetLogger("backend")
@@ -63,7 +63,7 @@ type Backend struct {
 	queue chan Executable
 
 	persistence *persist.Persist
-	ledger	rawledger.ReadWriter
+	ledger      rawledger.ReadWriter
 }
 
 type consensusConn Backend
@@ -92,7 +92,7 @@ func NewBackend(peers map[string][]byte, conn *connection.Manager, rl rawledger.
 		conn:     conn,
 		peers:    make(map[uint64]chan<- *s.Msg),
 		peerInfo: make(map[string]*PeerInfo),
-		ledger: rl,
+		ledger:   rl,
 	}
 
 	var peerInfo []*PeerInfo
@@ -191,7 +191,7 @@ func (b *Backend) enqueueRequest(request []byte) {
 func (b *Backend) enqueueForReceive(msg *s.Msg, src uint64) {
 	go func() {
 		b.queue <- &msgEvent{msg: msg, src: src}
-	} ()
+	}()
 }
 
 func (b *Backend) initTimer(t *Timer, d time.Duration) {
