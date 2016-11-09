@@ -28,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric/protos"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
-	"github.com/tecbot/gorocksdb"
 )
 
 var logger = logging.MustGetLogger("couchdbtxmgmt")
@@ -68,7 +67,6 @@ func (u *updateSet) get(compositeKey []byte) *versionedValue {
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type CouchDBTxMgr struct {
 	db           *db.DB
-	stateIndexCF *gorocksdb.ColumnFamilyHandle
 	updateSet    *updateSet
 	commitRWLock sync.RWMutex
 	couchDB      *couchdb.CouchDBConnectionDef // COUCHDB new properties for CouchDB
@@ -87,7 +85,7 @@ type CouchConnection struct {
 func NewCouchDBTxMgr(conf *Conf, host string, port int, dbName string, id string, pw string) *CouchDBTxMgr {
 
 	// TODO cleanup this RocksDB handle
-	db := db.CreateDB(&db.Conf{DBPath: conf.DBPath, CFNames: []string{}})
+	db := db.CreateDB(&db.Conf{DBPath: conf.DBPath})
 	db.Open()
 
 	couchDB, err := couchdb.CreateConnectionDefinition(host,
@@ -106,7 +104,7 @@ func NewCouchDBTxMgr(conf *Conf, host string, port int, dbName string, id string
 	}
 
 	// db and stateIndexCF will not be used for CouchDB. TODO to cleanup
-	return &CouchDBTxMgr{db: db, stateIndexCF: db.GetDefaultCFHandle(), couchDB: couchDB}
+	return &CouchDBTxMgr{db: db, couchDB: couchDB}
 }
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`

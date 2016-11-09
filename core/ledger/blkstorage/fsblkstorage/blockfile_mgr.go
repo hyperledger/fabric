@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util/db"
 	"github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
-	"github.com/tecbot/gorocksdb"
 )
 
 var logger = logging.MustGetLogger("kvledger")
@@ -45,7 +44,6 @@ type blockfileMgr struct {
 	rootDir           string
 	conf              *Conf
 	db                *db.DB
-	defaultCF         *gorocksdb.ColumnFamilyHandle
 	index             index
 	cpInfo            *checkpointInfo
 	cpInfoCond        *sync.Cond
@@ -60,7 +58,7 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 		panic(fmt.Sprintf("Error: %s", err))
 	}
 	db := initDB(conf)
-	mgr := &blockfileMgr{rootDir: rootDir, conf: conf, db: db, defaultCF: db.GetDefaultCFHandle()}
+	mgr := &blockfileMgr{rootDir: rootDir, conf: conf, db: db}
 	cpInfo, err := mgr.loadCurrentInfo()
 	if err != nil {
 		panic(fmt.Sprintf("Could not get block file info for current block file from db: %s", err))
@@ -82,7 +80,7 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 		panic(fmt.Sprintf("Could not truncate current file to known size in db: %s", err))
 	}
 
-	mgr.index = newBlockIndex(indexConfig, db, db.GetCFHandle(blockIndexCF))
+	mgr.index = newBlockIndex(indexConfig, db)
 	mgr.cpInfo = cpInfo
 	mgr.currentFileWriter = currentFileWriter
 	mgr.cpInfoCond = sync.NewCond(&sync.Mutex{})
@@ -115,10 +113,7 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 
 func initDB(conf *Conf) *db.DB {
 	dbInst := db.CreateDB(&db.Conf{
-		DBPath:     conf.dbPath,
-		CFNames:    []string{blockIndexCF},
-		DisableWAL: true})
-
+		DBPath: conf.dbPath})
 	dbInst.Open()
 	return dbInst
 }
@@ -421,7 +416,7 @@ func (mgr *blockfileMgr) fetchRawBytes(lp *fileLocPointer) ([]byte, error) {
 func (mgr *blockfileMgr) loadCurrentInfo() (*checkpointInfo, error) {
 	var b []byte
 	var err error
-	if b, err = mgr.db.Get(mgr.defaultCF, blkMgrInfoKey); b == nil || err != nil {
+	if b, err = mgr.db.Get(blkMgrInfoKey); b == nil || err != nil {
 		return nil, err
 	}
 	i := &checkpointInfo{}
@@ -432,19 +427,13 @@ func (mgr *blockfileMgr) loadCurrentInfo() (*checkpointInfo, error) {
 	return i, nil
 }
 
-func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, flush bool) error {
+func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, sync bool) error {
 	b, err := i.marshal()
 	if err != nil {
 		return err
 	}
-	if err = mgr.db.Put(mgr.defaultCF, blkMgrInfoKey, b); err != nil {
+	if err = mgr.db.Put(blkMgrInfoKey, b, sync); err != nil {
 		return err
-	}
-	if flush {
-		if err = mgr.db.Flush(true); err != nil {
-			return err
-		}
-		logger.Debugf("saved checkpointInfo:%s", i)
 	}
 	return nil
 }

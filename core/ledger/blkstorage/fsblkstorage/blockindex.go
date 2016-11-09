@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
-	"github.com/tecbot/gorocksdb"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 const (
@@ -53,24 +53,22 @@ type blockIdxInfo struct {
 type blockIndex struct {
 	indexItemsMap map[blkstorage.IndexableAttr]bool
 	db            *db.DB
-	blockIndexCF  *gorocksdb.ColumnFamilyHandle
 }
 
-func newBlockIndex(indexConfig *blkstorage.IndexConfig, db *db.DB,
-	indexCFHandle *gorocksdb.ColumnFamilyHandle) *blockIndex {
+func newBlockIndex(indexConfig *blkstorage.IndexConfig, db *db.DB) *blockIndex {
 	indexItems := indexConfig.AttrsToIndex
 	logger.Debugf("newBlockIndex() - indexItems:[%s]", indexItems)
 	indexItemsMap := make(map[blkstorage.IndexableAttr]bool)
 	for _, indexItem := range indexItems {
 		indexItemsMap[indexItem] = true
 	}
-	return &blockIndex{indexItemsMap, db, indexCFHandle}
+	return &blockIndex{indexItemsMap, db}
 }
 
 func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
 	var blockNumBytes []byte
 	var err error
-	if blockNumBytes, err = index.db.Get(index.blockIndexCF, indexCheckpointKey); err != nil {
+	if blockNumBytes, err = index.db.Get(indexCheckpointKey); err != nil {
 		return 0, nil
 	}
 	return decodeBlockNum(blockNumBytes), nil
@@ -85,19 +83,18 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	logger.Debugf("Indexing block [%s]", blockIdxInfo)
 	flp := blockIdxInfo.flp
 	txOffsets := blockIdxInfo.txOffsets
-	batch := gorocksdb.NewWriteBatch()
-	defer batch.Destroy()
+	batch := &leveldb.Batch{}
 	flpBytes, err := flp.marshal()
 	if err != nil {
 		return err
 	}
 
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockHash]; ok {
-		batch.PutCF(index.blockIndexCF, constructBlockHashKey(blockIdxInfo.blockHash), flpBytes)
+		batch.Put(constructBlockHashKey(blockIdxInfo.blockHash), flpBytes)
 	}
 
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNum]; ok {
-		batch.PutCF(index.blockIndexCF, constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
+		batch.Put(constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
 	}
 
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; ok {
@@ -110,12 +107,12 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 			if marshalErr != nil {
 				return marshalErr
 			}
-			batch.PutCF(index.blockIndexCF, constructTxIDKey(txID), txFlpBytes)
+			batch.Put(constructTxIDKey(txID), txFlpBytes)
 		}
 	}
 
-	batch.PutCF(index.blockIndexCF, indexCheckpointKey, encodeBlockNum(blockIdxInfo.blockNum))
-	if err := index.db.WriteBatch(batch); err != nil {
+	batch.Put(indexCheckpointKey, encodeBlockNum(blockIdxInfo.blockNum))
+	if err := index.db.WriteBatch(batch, false); err != nil {
 		return err
 	}
 	return nil
@@ -125,7 +122,7 @@ func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, e
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockHash]; !ok {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
-	b, err := index.db.Get(index.blockIndexCF, constructBlockHashKey(blockHash))
+	b, err := index.db.Get(constructBlockHashKey(blockHash))
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +138,7 @@ func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNum]; !ok {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
-	b, err := index.db.Get(index.blockIndexCF, constructBlockNumKey(blockNum))
+	b, err := index.db.Get(constructBlockNumKey(blockNum))
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +154,7 @@ func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; !ok {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}
-	b, err := index.db.Get(index.blockIndexCF, constructTxIDKey(txID))
+	b, err := index.db.Get(constructTxIDKey(txID))
 	if err != nil {
 		return nil, err
 	}

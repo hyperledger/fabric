@@ -22,7 +22,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/op/go-logging"
-	"github.com/tecbot/gorocksdb"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 var logger = logging.MustGetLogger("kvledger.db")
@@ -30,92 +31,71 @@ var logger = logging.MustGetLogger("kvledger.db")
 type dbState int32
 
 const (
-	defaultCFName         = "default"
-	closed        dbState = iota
+	closed dbState = iota
 	opened
 )
 
 // Conf configuration for `DB`
 type Conf struct {
-	DBPath     string
-	CFNames    []string
-	DisableWAL bool
+	DBPath string
 }
 
-// DB - a rocksDB instance
+// DB - a wrapper on an actual store
 type DB struct {
-	conf         *Conf
-	rocksDB      *gorocksdb.DB
-	cfHandlesMap map[string]*gorocksdb.ColumnFamilyHandle
-	dbState      dbState
-	mux          sync.Mutex
+	conf    *Conf
+	db      *leveldb.DB
+	dbState dbState
+	mux     sync.Mutex
 
-	readOpts  *gorocksdb.ReadOptions
-	writeOpts *gorocksdb.WriteOptions
+	readOpts        *opt.ReadOptions
+	writeOptsNoSync *opt.WriteOptions
+	writeOptsSync   *opt.WriteOptions
 }
 
 // CreateDB constructs a `DB`
 func CreateDB(conf *Conf) *DB {
-	conf.CFNames = append(conf.CFNames, defaultCFName)
-	readOpts := gorocksdb.NewDefaultReadOptions()
-	writeOpts := gorocksdb.NewDefaultWriteOptions()
-	writeOpts.DisableWAL(conf.DisableWAL)
+	readOpts := &opt.ReadOptions{}
+	writeOptsNoSync := &opt.WriteOptions{}
+	writeOptsSync := &opt.WriteOptions{}
+	writeOptsSync.Sync = true
+
 	return &DB{
-		conf:         conf,
-		cfHandlesMap: make(map[string]*gorocksdb.ColumnFamilyHandle),
-		dbState:      closed,
-		readOpts:     readOpts,
-		writeOpts:    writeOpts}
+		conf:            conf,
+		dbState:         closed,
+		readOpts:        readOpts,
+		writeOptsNoSync: writeOptsNoSync,
+		writeOptsSync:   writeOptsSync}
 }
 
-// Open open underlying rocksdb
+// Open opens the underlying db
 func (dbInst *DB) Open() {
 	dbInst.mux.Lock()
+	defer dbInst.mux.Unlock()
 	if dbInst.dbState == opened {
-		dbInst.mux.Unlock()
 		return
 	}
-
-	defer dbInst.mux.Unlock()
-
+	dbOpts := &opt.Options{}
 	dbPath := dbInst.conf.DBPath
-	dirEmpty, err := util.CreateDirIfMissing(dbPath)
-	if err != nil {
+	var err error
+	var dirEmpty bool
+	if dirEmpty, err = util.CreateDirIfMissing(dbPath); err != nil {
 		panic(fmt.Sprintf("Error while trying to open DB: %s", err))
 	}
-	opts := gorocksdb.NewDefaultOptions()
-	defer opts.Destroy()
-	opts.SetCreateIfMissing(dirEmpty)
-	opts.SetCreateIfMissingColumnFamilies(true)
-
-	var cfOpts []*gorocksdb.Options
-	for range dbInst.conf.CFNames {
-		cfOpts = append(cfOpts, opts)
-	}
-	db, cfHandlers, err := gorocksdb.OpenDbColumnFamilies(opts, dbPath, dbInst.conf.CFNames, cfOpts)
-	if err != nil {
-		panic(fmt.Sprintf("Error opening DB: %s", err))
-	}
-	dbInst.rocksDB = db
-	for i := 0; i < len(dbInst.conf.CFNames); i++ {
-		dbInst.cfHandlesMap[dbInst.conf.CFNames[i]] = cfHandlers[i]
+	dbOpts.ErrorIfMissing = !dirEmpty
+	if dbInst.db, err = leveldb.OpenFile(dbPath, dbOpts); err != nil {
+		panic(fmt.Sprintf("Error while trying to open DB: %s", err))
 	}
 	dbInst.dbState = opened
 }
 
-// Close releases all column family handles and closes rocksdb
+// Close closes the underlying db
 func (dbInst *DB) Close() {
 	dbInst.mux.Lock()
+	defer dbInst.mux.Unlock()
 	if dbInst.dbState == closed {
-		dbInst.mux.Unlock()
 		return
 	}
-
-	defer dbInst.mux.Unlock()
-	for _, cfHandler := range dbInst.cfHandlesMap {
-		cfHandler.Destroy()
-	}
-	dbInst.rocksDB.Close()
+	dbInst.db.Close()
 	dbInst.dbState = closed
 }
 
@@ -125,74 +105,55 @@ func (dbInst *DB) isOpen() bool {
 	return dbInst.dbState == opened
 }
 
-// Get returns the value for the given column family and key
-func (dbInst *DB) Get(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
-	slice, err := dbInst.rocksDB.GetCF(dbInst.readOpts, cfHandle, key)
+// Get returns the value for the given key
+func (dbInst *DB) Get(key []byte) ([]byte, error) {
+	value, err := dbInst.db.Get(key, dbInst.readOpts)
+	if err == leveldb.ErrNotFound {
+		err = nil
+	}
 	if err != nil {
-		fmt.Println("Error while trying to retrieve key:", key)
+		logger.Errorf("Error while trying to retrieve key [%#v]: %s", key, err)
 		return nil, err
 	}
-	defer slice.Free()
-	if slice.Data() == nil {
-		return nil, nil
-	}
-	data := makeCopy(slice.Data())
-	return data, nil
+	return value, nil
 }
 
-// Put saves the key/value in the given column family
-func (dbInst *DB) Put(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte, value []byte) error {
-	err := dbInst.rocksDB.PutCF(dbInst.writeOpts, cfHandle, key, value)
+// Put saves the key/value
+func (dbInst *DB) Put(key []byte, value []byte, sync bool) error {
+	wo := dbInst.writeOptsNoSync
+	if sync {
+		wo = dbInst.writeOptsSync
+	}
+	err := dbInst.db.Put(key, value, wo)
 	if err != nil {
-		fmt.Println("Error while trying to write key:", key)
+		logger.Errorf("Error while trying to write key [%#v]", key)
 		return err
 	}
 	return nil
 }
 
-// Delete delets the given key in the specified column family
-func (dbInst *DB) Delete(cfHandle *gorocksdb.ColumnFamilyHandle, key []byte) error {
-	err := dbInst.rocksDB.DeleteCF(dbInst.writeOpts, cfHandle, key)
+// Delete deletes the given key
+func (dbInst *DB) Delete(key []byte, sync bool) error {
+	wo := dbInst.writeOptsNoSync
+	if sync {
+		wo = dbInst.writeOptsSync
+	}
+	err := dbInst.db.Delete(key, wo)
 	if err != nil {
-		fmt.Println("Error while trying to delete key:", key)
+		logger.Errorf("Error while trying to delete key [%#v]", key)
 		return err
 	}
 	return nil
 }
 
 // WriteBatch writes a batch
-func (dbInst *DB) WriteBatch(batch *gorocksdb.WriteBatch) error {
-	if err := dbInst.rocksDB.Write(dbInst.writeOpts, batch); err != nil {
+func (dbInst *DB) WriteBatch(batch *leveldb.Batch, sync bool) error {
+	wo := dbInst.writeOptsNoSync
+	if sync {
+		wo = dbInst.writeOptsSync
+	}
+	if err := dbInst.db.Write(batch, wo); err != nil {
 		return err
 	}
 	return nil
-}
-
-// GetIterator returns an iterator for the given column family
-func (dbInst *DB) GetIterator(cfName string) *gorocksdb.Iterator {
-	return dbInst.rocksDB.NewIteratorCF(dbInst.readOpts, dbInst.GetCFHandle(cfName))
-}
-
-// GetCFHandle returns handle to a named column family
-func (dbInst *DB) GetCFHandle(cfName string) *gorocksdb.ColumnFamilyHandle {
-	return dbInst.cfHandlesMap[cfName]
-}
-
-// GetDefaultCFHandle returns handle to default column family
-func (dbInst *DB) GetDefaultCFHandle() *gorocksdb.ColumnFamilyHandle {
-	return dbInst.GetCFHandle(defaultCFName)
-}
-
-// Flush flushes rocksDB memory to sst files
-func (dbInst *DB) Flush(wait bool) error {
-	flushOpts := gorocksdb.NewDefaultFlushOptions()
-	defer flushOpts.Destroy()
-	flushOpts.SetWait(wait)
-	return dbInst.rocksDB.Flush(flushOpts)
-}
-
-func makeCopy(src []byte) []byte {
-	dest := make([]byte, len(src))
-	copy(dest, src)
-	return dest
 }
