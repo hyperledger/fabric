@@ -16,7 +16,7 @@ limitations under the License.
 
 syntax = "proto3";
 
-option go_package = "github.com/hyperledger/fabric/consensus/simplebft" ;
+option go_package = "github.com/hyperledger/fabric/orderer/sbft/simplebft";
 
 package simplebft;
 

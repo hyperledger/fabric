@@ -17,7 +17,7 @@ limitations under the License.
 package backend
 
 import (
-	s "github.com/hyperledger/fabric/consensus/simplebft"
+	s "github.com/hyperledger/fabric/orderer/sbft/simplebft"
 )
 
 type Timer struct {

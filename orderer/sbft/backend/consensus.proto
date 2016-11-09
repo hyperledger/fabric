@@ -2,10 +2,12 @@ syntax = "proto3";
 
 package backend;
 
-import "github.com/hyperledger/fabric/consensus/simplebft/simplebft.proto";
+option go_package = "github.com/hyperledger/fabric/orderer/sbft/backend";
+
+import "simplebft/simplebft.proto";
 
 service consensus {
-    rpc consensus(handshake) returns (stream simplebft.msg) {}
+    rpc consensus(handshake) returns (stream simplebft.Msg) {}
 }
 
 message handshake {

@@ -39,10 +39,10 @@ import (
 	"encoding/asn1"
 
 	"github.com/golang/protobuf/proto"
-	s "github.com/hyperledger/fabric/consensus/simplebft"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
+	s "github.com/hyperledger/fabric/orderer/sbft/simplebft"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"

@@ -16,17 +16,19 @@ limitations under the License.
 
 syntax = "proto3";
 
-package main;
+option go_package = "github.com/hyperledger/fabric/orderer/sbft";
 
-import "github.com/hyperledger/fabric/consensus/simplebft/simplebft.proto";
+package sbft;
+
+import "simplebft/simplebft.proto";
 
 message consensus_config {
-        simplebft.config consensus = 1;
+        simplebft.Config consensus = 1;
         map<string, bytes> peers = 2;
 };
 
 message json_config {
-        simplebft.config consensus = 1;
+        simplebft.Config consensus = 1;
         repeated peer peers = 2;
 };
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package sbft
 
 import (
 	"flag"
@@ -23,12 +23,12 @@ import (
 	_ "net/http/pprof"
 	"os"
 
-	pb "github.com/hyperledger/fabric/consensus/simplebft"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/sbft/backend"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
+	pb "github.com/hyperledger/fabric/orderer/sbft/simplebft"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
