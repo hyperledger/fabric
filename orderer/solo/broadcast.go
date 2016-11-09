@@ -96,7 +96,7 @@ func (bs *broadcastServer) main() {
 					logger.Errorf("A change was flagged as configuration, but could not be unmarshaled: %v", err)
 					continue
 				}
-				newConfig := &ab.ConfigurationEnvelope{}
+				newConfig := &cb.ConfigurationEnvelope{}
 				if err := proto.Unmarshal(payload.Data, newConfig); err != nil {
 					logger.Errorf("A change was flagged as configuration, but could not be unmarshaled: %v", err)
 					continue

@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"fmt"
 
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 // CryptoHelper is used to provide a plugin point for different signature validation types
@@ -34,7 +34,7 @@ type SignaturePolicyEvaluator struct {
 }
 
 // NewSignaturePolicyEvaluator evaluates a protbuf SignaturePolicy to produce a 'compiled' version which can be invoked in code
-func NewSignaturePolicyEvaluator(policy *ab.SignaturePolicyEnvelope, ch CryptoHelper) (*SignaturePolicyEvaluator, error) {
+func NewSignaturePolicyEvaluator(policy *cb.SignaturePolicyEnvelope, ch CryptoHelper) (*SignaturePolicyEvaluator, error) {
 	if policy.Version != 0 {
 		return nil, fmt.Errorf("This evaluator only understands messages of version 0, but version was %d", policy.Version)
 	}
@@ -50,9 +50,9 @@ func NewSignaturePolicyEvaluator(policy *ab.SignaturePolicyEnvelope, ch CryptoHe
 }
 
 // compile recursively builds a go evaluatable function corresponding to the policy specified
-func compile(policy *ab.SignaturePolicy, identities [][]byte, ch CryptoHelper) (func([]byte, [][]byte, [][]byte) bool, error) {
+func compile(policy *cb.SignaturePolicy, identities [][]byte, ch CryptoHelper) (func([]byte, [][]byte, [][]byte) bool, error) {
 	switch t := policy.Type.(type) {
-	case *ab.SignaturePolicy_From:
+	case *cb.SignaturePolicy_From:
 		policies := make([]func([]byte, [][]byte, [][]byte) bool, len(t.From.Policies))
 		for i, policy := range t.From.Policies {
 			compiledPolicy, err := compile(policy, identities, ch)
@@ -71,7 +71,7 @@ func compile(policy *ab.SignaturePolicy, identities [][]byte, ch CryptoHelper) (
 			}
 			return verified >= t.From.N
 		}, nil
-	case *ab.SignaturePolicy_SignedBy:
+	case *cb.SignaturePolicy_SignedBy:
 		if t.SignedBy < 0 || t.SignedBy >= int32(len(identities)) {
 			return nil, fmt.Errorf("Identity index out of range, requested %d, but identies length is %d", t.SignedBy, len(identities))
 		}

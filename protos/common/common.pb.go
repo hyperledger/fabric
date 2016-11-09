@@ -7,6 +7,7 @@ Package common is a generated protocol buffer package.
 
 It is generated from these files:
 	common/common.proto
+	common/configuration.proto
 
 It has these top-level messages:
 	Header
@@ -18,6 +19,13 @@ It has these top-level messages:
 	BlockHeader
 	BlockData
 	BlockMetadata
+	ConfigurationEnvelope
+	SignedConfigurationItem
+	ConfigurationItem
+	ConfigurationSignature
+	Policy
+	SignaturePolicyEnvelope
+	SignaturePolicy
 */
 package common
 

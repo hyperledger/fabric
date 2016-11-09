@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 var invalidSignature = []byte("badsigned")
@@ -100,7 +100,7 @@ func TestNegatively(t *testing.T) {
 	rpolicy := Envelope(And(SignedBy(0), SignedBy(1)), signers)
 	rpolicy.Policy.Type = nil
 	b, _ := proto.Marshal(rpolicy)
-	policy := &ab.SignaturePolicyEnvelope{}
+	policy := &cb.SignaturePolicyEnvelope{}
 	_ = proto.Unmarshal(b, policy)
 	_, err := NewSignaturePolicyEvaluator(policy, mch)
 	if err == nil {

@@ -17,19 +17,19 @@ limitations under the License.
 package cauthdsl
 
 import (
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 )
 
 // AcceptAllPolicy always evaluates to true
-var AcceptAllPolicy *ab.SignaturePolicyEnvelope
+var AcceptAllPolicy *cb.SignaturePolicyEnvelope
 
 // MarshaledAcceptAllPolicy is the Marshaled version of AcceptAllPolicy
 var MarshaledAcceptAllPolicy []byte
 
 // RejectAllPolicy always evaluates to false
-var RejectAllPolicy *ab.SignaturePolicyEnvelope
+var RejectAllPolicy *cb.SignaturePolicyEnvelope
 
 // MarshaledRejectAllPolicy is the Marshaled version of RejectAllPolicy
 var MarshaledRejectAllPolicy []byte
@@ -37,13 +37,13 @@ var MarshaledRejectAllPolicy []byte
 func init() {
 	var err error
 
-	AcceptAllPolicy = Envelope(NOutOf(0, []*ab.SignaturePolicy{}), [][]byte{})
+	AcceptAllPolicy = Envelope(NOutOf(0, []*cb.SignaturePolicy{}), [][]byte{})
 	MarshaledAcceptAllPolicy, err = proto.Marshal(AcceptAllPolicy)
 	if err != nil {
 		panic("Error marshaling trueEnvelope")
 	}
 
-	RejectAllPolicy = Envelope(NOutOf(1, []*ab.SignaturePolicy{}), [][]byte{})
+	RejectAllPolicy = Envelope(NOutOf(1, []*cb.SignaturePolicy{}), [][]byte{})
 	MarshaledRejectAllPolicy, err = proto.Marshal(RejectAllPolicy)
 	if err != nil {
 		panic("Error marshaling falseEnvelope")
@@ -51,8 +51,8 @@ func init() {
 }
 
 // Envelope builds an envelope message embedding a SignaturePolicy
-func Envelope(policy *ab.SignaturePolicy, identities [][]byte) *ab.SignaturePolicyEnvelope {
-	return &ab.SignaturePolicyEnvelope{
+func Envelope(policy *cb.SignaturePolicy, identities [][]byte) *cb.SignaturePolicyEnvelope {
+	return &cb.SignaturePolicyEnvelope{
 		Version:    0,
 		Policy:     policy,
 		Identities: identities,
@@ -60,29 +60,29 @@ func Envelope(policy *ab.SignaturePolicy, identities [][]byte) *ab.SignaturePoli
 }
 
 // SignedBy creates a SignaturePolicy requiring a given signer's signature
-func SignedBy(index int32) *ab.SignaturePolicy {
-	return &ab.SignaturePolicy{
-		Type: &ab.SignaturePolicy_SignedBy{
+func SignedBy(index int32) *cb.SignaturePolicy {
+	return &cb.SignaturePolicy{
+		Type: &cb.SignaturePolicy_SignedBy{
 			SignedBy: index,
 		},
 	}
 }
 
 // And is a convenience method which utilizes NOutOf to produce And equivalent behavior
-func And(lhs, rhs *ab.SignaturePolicy) *ab.SignaturePolicy {
-	return NOutOf(2, []*ab.SignaturePolicy{lhs, rhs})
+func And(lhs, rhs *cb.SignaturePolicy) *cb.SignaturePolicy {
+	return NOutOf(2, []*cb.SignaturePolicy{lhs, rhs})
 }
 
 // Or is a convenience method which utilizes NOutOf to produce Or equivalent behavior
-func Or(lhs, rhs *ab.SignaturePolicy) *ab.SignaturePolicy {
-	return NOutOf(1, []*ab.SignaturePolicy{lhs, rhs})
+func Or(lhs, rhs *cb.SignaturePolicy) *cb.SignaturePolicy {
+	return NOutOf(1, []*cb.SignaturePolicy{lhs, rhs})
 }
 
 // NOutOf creates a policy which requires N out of the slice of policies to evaluate to true
-func NOutOf(n int32, policies []*ab.SignaturePolicy) *ab.SignaturePolicy {
-	return &ab.SignaturePolicy{
-		Type: &ab.SignaturePolicy_From{
-			From: &ab.SignaturePolicy_NOutOf{
+func NOutOf(n int32, policies []*cb.SignaturePolicy) *cb.SignaturePolicy {
+	return &cb.SignaturePolicy{
+		Type: &cb.SignaturePolicy_From{
+			From: &cb.SignaturePolicy_NOutOf{
 				N:        n,
 				Policies: policies,
 			},

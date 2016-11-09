@@ -42,12 +42,12 @@ type mockConfigManager struct {
 	applyErr    error
 }
 
-func (mcm *mockConfigManager) Validate(configtx *ab.ConfigurationEnvelope) error {
+func (mcm *mockConfigManager) Validate(configtx *cb.ConfigurationEnvelope) error {
 	mcm.validated = true
 	return mcm.validateErr
 }
 
-func (mcm *mockConfigManager) Apply(message *ab.ConfigurationEnvelope) error {
+func (mcm *mockConfigManager) Apply(message *cb.ConfigurationEnvelope) error {
 	mcm.applied = true
 	return mcm.applyErr
 }
@@ -89,7 +89,7 @@ func init() {
 		panic("Error intializing static bootstrap genesis block")
 	}
 
-	configTx, err = proto.Marshal(&ab.ConfigurationEnvelope{})
+	configTx, err = proto.Marshal(&cb.ConfigurationEnvelope{})
 	if err != nil {
 		panic("Error marshaling empty config tx")
 	}

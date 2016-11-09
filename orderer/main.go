@@ -39,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/solo"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/Shopify/sarama"
@@ -83,8 +84,8 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func retrieveConfiguration(rl rawledger.Reader) *ab.ConfigurationEnvelope {
-	var lastConfigTx *ab.ConfigurationEnvelope
+func retrieveConfiguration(rl rawledger.Reader) *cb.ConfigurationEnvelope {
+	var lastConfigTx *cb.ConfigurationEnvelope
 
 	it, _ := rl.Iterator(ab.SeekInfo_OLDEST, 0)
 	// Iterate over the blockchain, looking for config transactions, track the most recent one encountered
@@ -101,7 +102,7 @@ func retrieveConfiguration(rl rawledger.Reader) *ab.ConfigurationEnvelope {
 				continue
 			}
 
-			maybeConfigTx := &ab.ConfigurationEnvelope{}
+			maybeConfigTx := &cb.ConfigurationEnvelope{}
 
 			err := proto.Unmarshal(block.Data.Data[0], maybeConfigTx)
 
@@ -114,13 +115,13 @@ func retrieveConfiguration(rl rawledger.Reader) *ab.ConfigurationEnvelope {
 	}
 }
 
-func bootstrapConfigManager(lastConfigTx *ab.ConfigurationEnvelope) configtx.Manager {
+func bootstrapConfigManager(lastConfigTx *cb.ConfigurationEnvelope) configtx.Manager {
 	policyManager := policies.NewManagerImpl(xxxCryptoHelper{})
-	configHandlerMap := make(map[ab.ConfigurationItem_ConfigurationType]configtx.Handler)
-	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
-		rtype := ab.ConfigurationItem_ConfigurationType(ctype)
+	configHandlerMap := make(map[cb.ConfigurationItem_ConfigurationType]configtx.Handler)
+	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
+		rtype := cb.ConfigurationItem_ConfigurationType(ctype)
 		switch rtype {
-		case ab.ConfigurationItem_Policy:
+		case cb.ConfigurationItem_Policy:
 			configHandlerMap[rtype] = policyManager
 		default:
 			configHandlerMap[rtype] = configtx.NewBytesHandler()

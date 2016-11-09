@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -48,7 +47,7 @@ func (cf *configFilter) Apply(message *cb.Envelope) broadcastfilter.Action {
 		return broadcastfilter.Forward
 	}
 
-	config := &ab.ConfigurationEnvelope{}
+	config := &cb.ConfigurationEnvelope{}
 	err = proto.Unmarshal(msgData.Data, config)
 	if err != nil {
 		return broadcastfilter.Reject

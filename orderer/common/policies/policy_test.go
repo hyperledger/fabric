@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -40,14 +40,14 @@ func init() {
 }
 
 func makePolicySource(policyResult bool) []byte {
-	var policyData *ab.SignaturePolicyEnvelope
+	var policyData *cb.SignaturePolicyEnvelope
 	if policyResult {
 		policyData = cauthdsl.AcceptAllPolicy
 	} else {
 		policyData = cauthdsl.RejectAllPolicy
 	}
-	marshaledPolicy, err := proto.Marshal(&ab.Policy{
-		Type: &ab.Policy_SignaturePolicy{
+	marshaledPolicy, err := proto.Marshal(&cb.Policy{
+		Type: &cb.Policy_SignaturePolicy{
 			SignaturePolicy: policyData,
 		},
 	})
@@ -59,8 +59,8 @@ func makePolicySource(policyResult bool) []byte {
 
 func addPolicy(manager *ManagerImpl, id string, policy []byte) {
 	manager.BeginConfig()
-	err := manager.ProposeConfig(&ab.ConfigurationItem{
-		Type:  ab.ConfigurationItem_Policy,
+	err := manager.ProposeConfig(&cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Policy,
 		Key:   id,
 		Value: policy,
 	})
