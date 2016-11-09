@@ -18,8 +18,8 @@ package backend
 
 import (
 	"github.com/golang/protobuf/proto"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/orderer/solo"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 type BackendAB struct {
@@ -51,7 +51,7 @@ func (b *BackendAB) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 		req, err := proto.Marshal(envelope)
 		if err != nil {
-			return err
+			panic(err)
 		}
 		b.backend.enqueueRequest(req)
 		err = srv.Send(&ab.BroadcastResponse{ab.Status_SUCCESS})

@@ -49,9 +49,9 @@ cat > config.json <<EOF
   "consensus": {
 	"n" : $count,
 	"f" : $fail,
-	"batch_size_bytes" : 3,
-	"batch_duration_nsec" : 0,
-	"request_timeout_nsec" : 2
+	"batch_size_bytes" : 1000,
+	"batch_duration_nsec" : 1000000000,
+	"request_timeout_nsec" : 1000000000
  },
   "peers": [${peerconf}]
 }
