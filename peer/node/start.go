@@ -197,9 +197,9 @@ func serve(args []string) error {
 	// interaction is closely tied to bootstrapping. This is to be viewed
 	// as temporary implementation to test the end-to-end flows in the
 	// system outside of multi-ledger, multi-channel work
-	if committer := noopssinglechain.NewCommitter(); committer != nil {
+	if deliverService := noopssinglechain.NewDeliverService(); deliverService != nil {
 		go func() {
-			if err := committer.Start(); err != nil {
+			if err := deliverService.Start(); err != nil {
 				fmt.Printf("Could not start solo committer(%s), continuing without committer\n", err)
 			}
 		}()
