@@ -27,11 +27,12 @@ package common;
 //
 // It is generated with the following scheme:
 //   1. Retrieve the existing configuration
-//   2. Note the highest configuration sequence number, store it an increment it by one
+//   2. Note the highest configuration sequence number, store it and increment it by one
 //   3. Modify desired ConfigurationItems, setting each LastModified to the stored and incremented sequence number
+//     a) Note that the ConfigurationItem has a ChainHeader header attached to it, who's type is set to CONFIGURATION_ITEM
 //   4. Update SignedConfigurationItem with appropriate signatures over the modified ConfigurationItem
 //     a) Each signature is of type ConfigurationSignature
-//     b) The ConfigurationSignature signature is over the concatenation of signatureHeader and the ConfigurationItem header
+//     b) The ConfigurationSignature signature is over the concatenation of signatureHeader and the ConfigurationItem bytes (which includes a ChainHeader)
 //   5. Submit new Configuration for ordering in Envelope signed by submitter
 //     a) The Envelope Payload has data set to the marshaled ConfigurationEnvelope
 //     b) The Envelope Payload has a header of type Header.Type.CONFIGURATION_TRANSACTION 
@@ -40,12 +41,10 @@ package common;
 //   1. All configuration items and the envelope refer to the correct chain
 //   2. Some configuration item has been added or modified
 //   3. No existing configuration item has been ommitted
-//   4. All configuration changes have a LastModification of one more than the last configuration's sequence
+//   4. All configuration changes have a LastModification of one more than the last configuration's highest LastModification number
 //   5. All configuration changes satisfy the corresponding modification policy 
 message ConfigurationEnvelope {
     repeated SignedConfigurationItem Items = 1;
-    bytes ChainID = 2;   // XXX remove me, and infer from the items set
-    uint64 Sequence = 3; // XXX remove me, infer from the items set
 }
 
 // This message may change slightly depending on the finalization of signature schemes for transactions

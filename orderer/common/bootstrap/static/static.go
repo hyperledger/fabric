@@ -82,8 +82,6 @@ func (b *bootstrapper) GenesisBlock() (*cb.Block, error) {
 	lockdownDefaultModificationPolicy := b.makeSignedConfigurationItem(configtx.DefaultModificationPolicyID, cb.ConfigurationItem_Policy, sigPolicyToPolicy(cauthdsl.RejectAllPolicy), configtx.DefaultModificationPolicyID)
 
 	initialConfigTX := errorlessMarshal(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  b.chainID,
 		Items: []*cb.SignedConfigurationItem{
 			lockdownDefaultModificationPolicy,
 		},
