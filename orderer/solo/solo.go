@@ -19,6 +19,7 @@ package solo
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
@@ -35,6 +36,7 @@ func init() {
 }
 
 type server struct {
+	bh broadcast.Handler
 	bs *broadcastServer
 	ds *DeliverServer
 }
@@ -42,9 +44,14 @@ type server struct {
 // New creates a ab.AtomicBroadcastServer based on the solo orderer implementation
 func New(queueSize, batchSize, maxWindowSize int, batchTimeout time.Duration, rl rawledger.ReadWriter, grpcServer *grpc.Server, filters *broadcastfilter.RuleSet, configManager configtx.Manager) ab.AtomicBroadcastServer {
 	logger.Infof("Starting solo with queueSize=%d, batchSize=%d batchTimeout=%v and ledger=%T", queueSize, batchSize, batchTimeout, rl)
+	bs := newBroadcastServer(batchSize, batchTimeout, rl, filters, configManager)
+	ds := NewDeliverServer(rl, maxWindowSize)
+	bh := broadcast.NewHandlerImpl(queueSize, bs, filters, configManager)
+
 	s := &server{
-		bs: newBroadcastServer(queueSize, batchSize, batchTimeout, rl, filters, configManager),
-		ds: NewDeliverServer(rl, maxWindowSize),
+		bs: bs,
+		ds: ds,
+		bh: bh,
 	}
 	ab.RegisterAtomicBroadcastServer(grpcServer, s)
 	return s
@@ -52,7 +59,7 @@ func New(queueSize, batchSize, maxWindowSize int, batchTimeout time.Duration, rl
 
 // Broadcast receives a stream of messages from a client for ordering
 func (s *server) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
-	return s.bs.handleBroadcast(srv)
+	return s.bh.Handle(srv)
 }
 
 // Deliver sends a stream of blocks to a client after ordering

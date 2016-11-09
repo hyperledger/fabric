@@ -23,13 +23,11 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
 
 type broadcastServer struct {
-	queueSize     int
 	batchSize     int
 	batchTimeout  time.Duration
 	rl            rawledger.Writer
@@ -39,15 +37,14 @@ type broadcastServer struct {
 	exitChan      chan struct{}
 }
 
-func newBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *broadcastServer {
-	bs := newPlainBroadcastServer(queueSize, batchSize, batchTimeout, rl, filters, configManager)
+func newBroadcastServer(batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *broadcastServer {
+	bs := newPlainBroadcastServer(batchSize, batchTimeout, rl, filters, configManager)
 	go bs.main()
 	return bs
 }
 
-func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *broadcastServer {
+func newPlainBroadcastServer(batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *broadcastServer {
 	bs := &broadcastServer{
-		queueSize:     queueSize,
 		batchSize:     batchSize,
 		batchTimeout:  batchTimeout,
 		rl:            rl,
@@ -61,6 +58,16 @@ func newPlainBroadcastServer(queueSize, batchSize int, batchTimeout time.Duratio
 
 func (bs *broadcastServer) halt() {
 	close(bs.exitChan)
+}
+
+// Enqueue accepts a message and returns true on acceptance, or false on shutdown
+func (bs *broadcastServer) Enqueue(env *cb.Envelope) bool {
+	select {
+	case bs.sendChan <- env:
+		return true
+	case <-bs.exitChan:
+		return false
+	}
 }
 
 func (bs *broadcastServer) main() {
@@ -129,77 +136,4 @@ func (bs *broadcastServer) main() {
 			return
 		}
 	}
-}
-
-func (bs *broadcastServer) handleBroadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
-	b := newBroadcaster(bs)
-	defer close(b.queue)
-	go b.drainQueue()
-	return b.queueEnvelopes(srv)
-}
-
-type broadcaster struct {
-	bs    *broadcastServer
-	queue chan *cb.Envelope
-}
-
-func (b *broadcaster) drainQueue() {
-	for {
-		select {
-		case msg, ok := <-b.queue:
-			if ok {
-				select {
-				case b.bs.sendChan <- msg:
-				case <-b.bs.exitChan:
-					return
-				}
-			} else {
-				return
-			}
-		case <-b.bs.exitChan:
-			return
-		}
-	}
-}
-
-func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) error {
-
-	for {
-		msg, err := srv.Recv()
-		if err != nil {
-			return err
-		}
-
-		action, _ := b.bs.filter.Apply(msg)
-
-		switch action {
-		case broadcastfilter.Reconfigure:
-			fallthrough
-		case broadcastfilter.Accept:
-			select {
-			case b.queue <- msg:
-				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
-			default:
-				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
-			}
-		case broadcastfilter.Forward:
-			fallthrough
-		case broadcastfilter.Reject:
-			err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
-		default:
-			logger.Fatalf("Unknown filter action :%v", action)
-		}
-
-		if err != nil {
-			return err
-		}
-	}
-}
-
-func newBroadcaster(bs *broadcastServer) *broadcaster {
-	b := &broadcaster{
-		bs:    bs,
-		queue: make(chan *cb.Envelope, bs.queueSize),
-	}
-	return b
 }
