@@ -11,10 +11,11 @@ PROTO_ROOT_FILES="$(find . -name ".protoroot" -exec readlink -f {} \;)"
 PROTO_ROOT_DIRS="$(dirname $PROTO_ROOT_FILES)"
 
 
-# Find all proto files to be compiled, excluding any which are in a proto root or in the vendor folder
+# Find all proto files to be compiled, excluding any which are in a proto root or in the vendor folder, as well as the gotools dir
 ROOTLESS_PROTO_FILES="$(find $PWD \
                              $(for dir in $PROTO_ROOT_DIRS ; do echo "-path $dir -prune -o " ; done) \
                              -path $PWD/vendor -prune -o \
+                             -path $PWD/gotools -prune -o \
                              -name "*.proto" -exec readlink -f {} \;)"
 ROOTLESS_PROTO_DIRS="$(dirname $ROOTLESS_PROTO_FILES | sort | uniq)"
 
