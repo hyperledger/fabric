@@ -3,7 +3,6 @@
 
 import sys
 _b=sys.version_info[0]<3 and (lambda x:x) or (lambda x:x.encode('latin1'))
-from google.protobuf.internal import enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
@@ -21,61 +20,11 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/ab.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x10orderer/ab.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"4\n\x11\x42roadcastResponse\x12\x1f\n\x06Status\x18\x01 \x01(\x0e\x32\x0f.orderer.Status\"\xa8\x01\n\x08SeekInfo\x12*\n\x05Start\x18\x01 \x01(\x0e\x32\x1b.orderer.SeekInfo.StartType\x12\x17\n\x0fSpecifiedNumber\x18\x02 \x01(\x04\x12\x12\n\nWindowSize\x18\x03 \x01(\x04\x12\x0f\n\x07\x43hainID\x18\x04 \x01(\x0c\"2\n\tStartType\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x41\x63knowledgement\x12\x0e\n\x06Number\x18\x01 \x01(\x04\"o\n\rDeliverUpdate\x12\x33\n\x0f\x41\x63knowledgement\x18\x01 \x01(\x0b\x32\x18.orderer.AcknowledgementH\x00\x12!\n\x04Seek\x18\x02 \x01(\x0b\x32\x11.orderer.SeekInfoH\x00\x42\x06\n\x04Type\"[\n\x0f\x44\x65liverResponse\x12 \n\x05\x45rror\x18\x01 \x01(\x0e\x32\x0f.orderer.StatusH\x00\x12\x1e\n\x05\x42lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x42\x06\n\x04Type*\x8b\x01\n\x06Status\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0c\n\x07SUCCESS\x10\xc8\x01\x12\x10\n\x0b\x42\x41\x44_REQUEST\x10\x90\x03\x12\x0e\n\tFORBIDDEN\x10\x93\x03\x12\x0e\n\tNOT_FOUND\x10\x94\x03\x12\x1a\n\x15INTERNAL_SERVER_ERROR\x10\xf4\x03\x12\x18\n\x13SERVICE_UNAVAILABLE\x10\xf7\x03\x32\x95\x01\n\x0f\x41tomicBroadcast\x12?\n\tBroadcast\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x01\x30\x01\x12\x41\n\x07\x44\x65liver\x12\x16.orderer.DeliverUpdate\x1a\x18.orderer.DeliverResponse\"\x00(\x01\x30\x01\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+  serialized_pb=_b('\n\x10orderer/ab.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"3\n\x11\x42roadcastResponse\x12\x1e\n\x06Status\x18\x01 \x01(\x0e\x32\x0e.common.Status\"\xa8\x01\n\x08SeekInfo\x12*\n\x05Start\x18\x01 \x01(\x0e\x32\x1b.orderer.SeekInfo.StartType\x12\x17\n\x0fSpecifiedNumber\x18\x02 \x01(\x04\x12\x12\n\nWindowSize\x18\x03 \x01(\x04\x12\x0f\n\x07\x43hainID\x18\x04 \x01(\x0c\"2\n\tStartType\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x41\x63knowledgement\x12\x0e\n\x06Number\x18\x01 \x01(\x04\"o\n\rDeliverUpdate\x12\x33\n\x0f\x41\x63knowledgement\x18\x01 \x01(\x0b\x32\x18.orderer.AcknowledgementH\x00\x12!\n\x04Seek\x18\x02 \x01(\x0b\x32\x11.orderer.SeekInfoH\x00\x42\x06\n\x04Type\"Z\n\x0f\x44\x65liverResponse\x12\x1f\n\x05\x45rror\x18\x01 \x01(\x0e\x32\x0e.common.StatusH\x00\x12\x1e\n\x05\x42lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x42\x06\n\x04Type2\x95\x01\n\x0f\x41tomicBroadcast\x12?\n\tBroadcast\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x01\x30\x01\x12\x41\n\x07\x44\x65liver\x12\x16.orderer.DeliverUpdate\x1a\x18.orderer.DeliverResponse\"\x00(\x01\x30\x01\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
   ,
   dependencies=[common_dot_common__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-_STATUS = _descriptor.EnumDescriptor(
-  name='Status',
-  full_name='orderer.Status',
-  filename=None,
-  file=DESCRIPTOR,
-  values=[
-    _descriptor.EnumValueDescriptor(
-      name='UNKNOWN', index=0, number=0,
-      options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='SUCCESS', index=1, number=200,
-      options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='BAD_REQUEST', index=2, number=400,
-      options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='FORBIDDEN', index=3, number=403,
-      options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='NOT_FOUND', index=4, number=404,
-      options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='INTERNAL_SERVER_ERROR', index=5, number=500,
-      options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='SERVICE_UNAVAILABLE', index=6, number=503,
-      options=None,
-      type=None),
-  ],
-  containing_type=None,
-  options=None,
-  serialized_start=517,
-  serialized_end=656,
-)
-_sym_db.RegisterEnumDescriptor(_STATUS)
-
-Status = enum_type_wrapper.EnumTypeWrapper(_STATUS)
-UNKNOWN = 0
-SUCCESS = 200
-BAD_REQUEST = 400
-FORBIDDEN = 403
-NOT_FOUND = 404
-INTERNAL_SERVER_ERROR = 500
-SERVICE_UNAVAILABLE = 503
 
 
 _SEEKINFO_STARTTYPE = _descriptor.EnumDescriptor(
@@ -99,8 +48,8 @@ _SEEKINFO_STARTTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=223,
-  serialized_end=273,
+  serialized_start=222,
+  serialized_end=272,
 )
 _sym_db.RegisterEnumDescriptor(_SEEKINFO_STARTTYPE)
 
@@ -132,7 +81,7 @@ _BROADCASTRESPONSE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=50,
-  serialized_end=102,
+  serialized_end=101,
 )
 
 
@@ -184,8 +133,8 @@ _SEEKINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=105,
-  serialized_end=273,
+  serialized_start=104,
+  serialized_end=272,
 )
 
 
@@ -215,8 +164,8 @@ _ACKNOWLEDGEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=275,
-  serialized_end=308,
+  serialized_start=274,
+  serialized_end=307,
 )
 
 
@@ -256,8 +205,8 @@ _DELIVERUPDATE = _descriptor.Descriptor(
       name='Type', full_name='orderer.DeliverUpdate.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=310,
-  serialized_end=421,
+  serialized_start=309,
+  serialized_end=420,
 )
 
 
@@ -297,11 +246,11 @@ _DELIVERRESPONSE = _descriptor.Descriptor(
       name='Type', full_name='orderer.DeliverResponse.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=423,
-  serialized_end=514,
+  serialized_start=422,
+  serialized_end=512,
 )
 
-_BROADCASTRESPONSE.fields_by_name['Status'].enum_type = _STATUS
+_BROADCASTRESPONSE.fields_by_name['Status'].enum_type = common_dot_common__pb2._STATUS
 _SEEKINFO.fields_by_name['Start'].enum_type = _SEEKINFO_STARTTYPE
 _SEEKINFO_STARTTYPE.containing_type = _SEEKINFO
 _DELIVERUPDATE.fields_by_name['Acknowledgement'].message_type = _ACKNOWLEDGEMENT
@@ -312,7 +261,7 @@ _DELIVERUPDATE.fields_by_name['Acknowledgement'].containing_oneof = _DELIVERUPDA
 _DELIVERUPDATE.oneofs_by_name['Type'].fields.append(
   _DELIVERUPDATE.fields_by_name['Seek'])
 _DELIVERUPDATE.fields_by_name['Seek'].containing_oneof = _DELIVERUPDATE.oneofs_by_name['Type']
-_DELIVERRESPONSE.fields_by_name['Error'].enum_type = _STATUS
+_DELIVERRESPONSE.fields_by_name['Error'].enum_type = common_dot_common__pb2._STATUS
 _DELIVERRESPONSE.fields_by_name['Block'].message_type = common_dot_common__pb2._BLOCK
 _DELIVERRESPONSE.oneofs_by_name['Type'].fields.append(
   _DELIVERRESPONSE.fields_by_name['Error'])
@@ -325,7 +274,6 @@ DESCRIPTOR.message_types_by_name['SeekInfo'] = _SEEKINFO
 DESCRIPTOR.message_types_by_name['Acknowledgement'] = _ACKNOWLEDGEMENT
 DESCRIPTOR.message_types_by_name['DeliverUpdate'] = _DELIVERUPDATE
 DESCRIPTOR.message_types_by_name['DeliverResponse'] = _DELIVERRESPONSE
-DESCRIPTOR.enum_types_by_name['Status'] = _STATUS
 
 BroadcastResponse = _reflection.GeneratedProtocolMessageType('BroadcastResponse', (_message.Message,), dict(
   DESCRIPTOR = _BROADCASTRESPONSE,

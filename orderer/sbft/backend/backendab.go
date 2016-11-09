@@ -19,6 +19,7 @@ package backend
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/solo"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
@@ -44,7 +45,7 @@ func (b *BackendAB) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		if envelope.Payload == nil {
-			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_BAD_REQUEST})
+			err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 			if err != nil {
 				return err
 			}
@@ -54,7 +55,7 @@ func (b *BackendAB) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 			panic(err)
 		}
 		b.backend.enqueueRequest(req)
-		err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SUCCESS})
+		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
 		if err != nil {
 			return err
 		}

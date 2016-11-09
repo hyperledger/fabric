@@ -94,7 +94,7 @@ func retrieveConfiguration(rl rawledger.Reader) *cb.ConfigurationEnvelope {
 		select {
 		case <-it.ReadyChan():
 			block, status := it.Next()
-			if status != ab.Status_SUCCESS {
+			if status != cb.Status_SUCCESS {
 				panic(fmt.Errorf("Error parsing blockchain at startup: %v", status))
 			}
 			// ConfigTxs should always be by themselves

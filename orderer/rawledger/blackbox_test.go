@@ -43,7 +43,7 @@ func getBlock(number uint64, li ReadWriter) *cb.Block {
 	select {
 	case <-i.ReadyChan():
 		block, status := i.Next()
-		if status != ab.Status_SUCCESS {
+		if status != cb.Status_SUCCESS {
 			return nil
 		}
 		return block
@@ -155,7 +155,7 @@ func testRetrieval(lf ledgerFactory, t *testing.T) {
 		t.Fatalf("Should be ready for block read")
 	}
 	block, status := it.Next()
-	if status != ab.Status_SUCCESS {
+	if status != cb.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the genesis block")
 	}
 	if block.Header.Number != 0 {
@@ -168,7 +168,7 @@ func testRetrieval(lf ledgerFactory, t *testing.T) {
 		t.Fatalf("Should still be ready for block read")
 	}
 	block, status = it.Next()
-	if status != ab.Status_SUCCESS {
+	if status != cb.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the second block")
 	}
 	if block.Header.Number != 1 {
@@ -199,7 +199,7 @@ func testBlockedRetrieval(lf ledgerFactory, t *testing.T) {
 		t.Fatalf("Should now be ready for block read")
 	}
 	block, status := it.Next()
-	if status != ab.Status_SUCCESS {
+	if status != cb.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the second block")
 	}
 	if block.Header.Number != 1 {

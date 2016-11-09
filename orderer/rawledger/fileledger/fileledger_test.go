@@ -122,7 +122,7 @@ func TestRetrieval(t *testing.T) {
 		t.Fatalf("Should be ready for block read")
 	}
 	block, status := it.Next()
-	if status != ab.Status_SUCCESS {
+	if status != cb.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the genesis block")
 	}
 	if block.Header.Number != 0 {
@@ -135,7 +135,7 @@ func TestRetrieval(t *testing.T) {
 		t.Fatalf("Should still be ready for block read")
 	}
 	block, status = it.Next()
-	if status != ab.Status_SUCCESS {
+	if status != cb.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the second block")
 	}
 	if block.Header.Number != 1 {
@@ -163,7 +163,7 @@ func TestBlockedRetrieval(t *testing.T) {
 		t.Fatalf("Should now be ready for block read")
 	}
 	block, status := it.Next()
-	if status != ab.Status_SUCCESS {
+	if status != cb.Status_SUCCESS {
 		t.Fatalf("Expected to successfully read the second block")
 	}
 	if block.Header.Number != 1 {

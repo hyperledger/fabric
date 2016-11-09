@@ -50,7 +50,7 @@ func (s *broadcastClient) getAck() error {
 	if err != nil {
 		return err
 	}
-	if msg.Status != ab.Status_SUCCESS {
+	if msg.Status != cb.Status_SUCCESS {
 		return fmt.Errorf("Got unexpected status: %v", msg.Status)
 	}
 	return nil

@@ -21,11 +21,54 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common/common.proto',
   package='common',
   syntax='proto3',
-  serialized_pb=_b('\n\x13\x63ommon/common.proto\x12\x06\x63ommon\x1a\x1fgoogle/protobuf/timestamp.proto\"d\n\x06Header\x12(\n\x0b\x63hainHeader\x18\x01 \x01(\x0b\x32\x13.common.ChainHeader\x12\x30\n\x0fsignatureHeader\x18\x02 \x01(\x0b\x32\x17.common.SignatureHeader\"l\n\x0b\x43hainHeader\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x0f\n\x07version\x18\x02 \x01(\x05\x12-\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07\x63hainID\x18\x04 \x01(\x0c\"@\n\x0fSignatureHeader\x12\x0f\n\x07\x63reator\x18\x01 \x01(\x0c\x12\r\n\x05nonce\x18\x02 \x01(\x0c\x12\r\n\x05\x65poch\x18\x03 \x01(\x04\"7\n\x07Payload\x12\x1e\n\x06header\x18\x01 \x01(\x0b\x32\x0e.common.Header\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\".\n\x08\x45nvelope\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\"v\n\x05\x42lock\x12#\n\x06Header\x18\x01 \x01(\x0b\x32\x13.common.BlockHeader\x12\x1f\n\x04\x44\x61ta\x18\x02 \x01(\x0b\x32\x11.common.BlockData\x12\'\n\x08Metadata\x18\x03 \x01(\x0b\x32\x15.common.BlockMetadata\"E\n\x0b\x42lockHeader\x12\x0e\n\x06Number\x18\x01 \x01(\x04\x12\x14\n\x0cPreviousHash\x18\x02 \x01(\x0c\x12\x10\n\x08\x44\x61taHash\x18\x03 \x01(\x0c\"\x19\n\tBlockData\x12\x0c\n\x04\x44\x61ta\x18\x01 \x03(\x0c\"!\n\rBlockMetadata\x12\x10\n\x08Metadata\x18\x01 \x03(\x0c*j\n\nHeaderType\x12\x0b\n\x07MESSAGE\x10\x00\x12\x1d\n\x19\x43ONFIGURATION_TRANSACTION\x10\x01\x12\x16\n\x12\x43ONFIGURATION_ITEM\x10\x02\x12\x18\n\x14\x45NDORSER_TRANSACTION\x10\x03\x42-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
+  serialized_pb=_b('\n\x13\x63ommon/common.proto\x12\x06\x63ommon\x1a\x1fgoogle/protobuf/timestamp.proto\"d\n\x06Header\x12(\n\x0b\x63hainHeader\x18\x01 \x01(\x0b\x32\x13.common.ChainHeader\x12\x30\n\x0fsignatureHeader\x18\x02 \x01(\x0b\x32\x17.common.SignatureHeader\"l\n\x0b\x43hainHeader\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x0f\n\x07version\x18\x02 \x01(\x05\x12-\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07\x63hainID\x18\x04 \x01(\x0c\"@\n\x0fSignatureHeader\x12\x0f\n\x07\x63reator\x18\x01 \x01(\x0c\x12\r\n\x05nonce\x18\x02 \x01(\x0c\x12\r\n\x05\x65poch\x18\x03 \x01(\x04\"7\n\x07Payload\x12\x1e\n\x06header\x18\x01 \x01(\x0b\x32\x0e.common.Header\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\".\n\x08\x45nvelope\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\"v\n\x05\x42lock\x12#\n\x06Header\x18\x01 \x01(\x0b\x32\x13.common.BlockHeader\x12\x1f\n\x04\x44\x61ta\x18\x02 \x01(\x0b\x32\x11.common.BlockData\x12\'\n\x08Metadata\x18\x03 \x01(\x0b\x32\x15.common.BlockMetadata\"E\n\x0b\x42lockHeader\x12\x0e\n\x06Number\x18\x01 \x01(\x04\x12\x14\n\x0cPreviousHash\x18\x02 \x01(\x0c\x12\x10\n\x08\x44\x61taHash\x18\x03 \x01(\x0c\"\x19\n\tBlockData\x12\x0c\n\x04\x44\x61ta\x18\x01 \x03(\x0c\"!\n\rBlockMetadata\x12\x10\n\x08Metadata\x18\x01 \x03(\x0c*\x8b\x01\n\x06Status\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0c\n\x07SUCCESS\x10\xc8\x01\x12\x10\n\x0b\x42\x41\x44_REQUEST\x10\x90\x03\x12\x0e\n\tFORBIDDEN\x10\x93\x03\x12\x0e\n\tNOT_FOUND\x10\x94\x03\x12\x1a\n\x15INTERNAL_SERVER_ERROR\x10\xf4\x03\x12\x18\n\x13SERVICE_UNAVAILABLE\x10\xf7\x03*j\n\nHeaderType\x12\x0b\n\x07MESSAGE\x10\x00\x12\x1d\n\x19\x43ONFIGURATION_TRANSACTION\x10\x01\x12\x16\n\x12\x43ONFIGURATION_ITEM\x10\x02\x12\x18\n\x14\x45NDORSER_TRANSACTION\x10\x03\x42-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
+_STATUS = _descriptor.EnumDescriptor(
+  name='Status',
+  full_name='common.Status',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='UNKNOWN', index=0, number=0,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='SUCCESS', index=1, number=200,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='BAD_REQUEST', index=2, number=400,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='FORBIDDEN', index=3, number=403,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='NOT_FOUND', index=4, number=404,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='INTERNAL_SERVER_ERROR', index=5, number=500,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='SERVICE_UNAVAILABLE', index=6, number=503,
+      options=None,
+      type=None),
+  ],
+  containing_type=None,
+  options=None,
+  serialized_start=701,
+  serialized_end=840,
+)
+_sym_db.RegisterEnumDescriptor(_STATUS)
+
+Status = enum_type_wrapper.EnumTypeWrapper(_STATUS)
 _HEADERTYPE = _descriptor.EnumDescriptor(
   name='HeaderType',
   full_name='common.HeaderType',
@@ -51,12 +94,19 @@ _HEADERTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=700,
-  serialized_end=806,
+  serialized_start=842,
+  serialized_end=948,
 )
 _sym_db.RegisterEnumDescriptor(_HEADERTYPE)
 
 HeaderType = enum_type_wrapper.EnumTypeWrapper(_HEADERTYPE)
+UNKNOWN = 0
+SUCCESS = 200
+BAD_REQUEST = 400
+FORBIDDEN = 403
+NOT_FOUND = 404
+INTERNAL_SERVER_ERROR = 500
+SERVICE_UNAVAILABLE = 503
 MESSAGE = 0
 CONFIGURATION_TRANSACTION = 1
 CONFIGURATION_ITEM = 2
@@ -442,6 +492,7 @@ DESCRIPTOR.message_types_by_name['Block'] = _BLOCK
 DESCRIPTOR.message_types_by_name['BlockHeader'] = _BLOCKHEADER
 DESCRIPTOR.message_types_by_name['BlockData'] = _BLOCKDATA
 DESCRIPTOR.message_types_by_name['BlockMetadata'] = _BLOCKMETADATA
+DESCRIPTOR.enum_types_by_name['Status'] = _STATUS
 DESCRIPTOR.enum_types_by_name['HeaderType'] = _HEADERTYPE
 
 Header = _reflection.GeneratedProtocolMessageType('Header', (_message.Message,), dict(

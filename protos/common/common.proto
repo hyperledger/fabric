@@ -22,6 +22,17 @@ option go_package = "github.com/hyperledger/fabric/protos/common";
 
 package common;
 
+// These status codes are intended to resemble selected HTTP status codes
+enum Status {
+    UNKNOWN = 0;
+    SUCCESS = 200;
+    BAD_REQUEST = 400;
+    FORBIDDEN = 403;
+    NOT_FOUND = 404;
+    INTERNAL_SERVER_ERROR = 500;
+    SERVICE_UNAVAILABLE = 503;
+}
+
 enum HeaderType {
         MESSAGE = 0;                   // Used for messages which are signed but opaque
         CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain

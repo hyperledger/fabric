@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
@@ -127,7 +128,7 @@ func (r *deliverClient) readUntilClose() {
 
 		switch t := msg.Type.(type) {
 		case *ab.DeliverResponse_Error:
-			if t.Error == ab.Status_SUCCESS {
+			if t.Error == cb.Status_SUCCESS {
 				fmt.Println("ERROR! Received success in error field")
 				return
 			}

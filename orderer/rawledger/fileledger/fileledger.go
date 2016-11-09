@@ -200,16 +200,16 @@ func (fl *fileLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64
 }
 
 // Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
-func (cu *cursor) Next() (*cb.Block, ab.Status) {
+func (cu *cursor) Next() (*cb.Block, cb.Status) {
 	// This only loops once, as signal reading indicates the new block has been written
 	for {
 		block, found := cu.fl.readBlock(cu.blockNumber)
 		if found {
 			if block == nil {
-				return nil, ab.Status_SERVICE_UNAVAILABLE
+				return nil, cb.Status_SERVICE_UNAVAILABLE
 			}
 			cu.blockNumber++
-			return block, ab.Status_SUCCESS
+			return block, cb.Status_SUCCESS
 		}
 		<-cu.fl.signal
 	}

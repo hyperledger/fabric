@@ -24,7 +24,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 func TestBroadcastInit(t *testing.T) {
@@ -81,7 +80,7 @@ func TestBroadcastResponse(t *testing.T) {
 	for {
 		select {
 		case reply := <-mbs.outgoing:
-			if reply.Status != ab.Status_SUCCESS {
+			if reply.Status != cb.Status_SUCCESS {
 				t.Fatal("Client should have received a SUCCESS reply")
 			}
 			return

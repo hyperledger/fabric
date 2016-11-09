@@ -134,14 +134,14 @@ func TestQueueOverflow(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 		reply := <-m.sendChan
-		if reply.Status != ab.Status_SUCCESS {
+		if reply.Status != cb.Status_SUCCESS {
 			t.Fatalf("Should have successfully queued the message")
 		}
 	}
 
 	m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 	reply := <-m.sendChan
-	if reply.Status != ab.Status_SERVICE_UNAVAILABLE {
+	if reply.Status != cb.Status_SERVICE_UNAVAILABLE {
 		t.Fatalf("Should not have successfully queued the message")
 	}
 
@@ -163,7 +163,7 @@ func TestMultiQueueOverflow(t *testing.T) {
 		for i := 0; i < 2; i++ {
 			m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 			reply := <-m.sendChan
-			if reply.Status != ab.Status_SUCCESS {
+			if reply.Status != cb.Status_SUCCESS {
 				t.Fatalf("Should have successfully queued the message")
 			}
 		}
@@ -172,7 +172,7 @@ func TestMultiQueueOverflow(t *testing.T) {
 	for _, m := range ms {
 		m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 		reply := <-m.sendChan
-		if reply.Status != ab.Status_SERVICE_UNAVAILABLE {
+		if reply.Status != cb.Status_SERVICE_UNAVAILABLE {
 			t.Fatalf("Should not have successfully queued the message")
 		}
 	}
@@ -187,7 +187,7 @@ func TestEmptyEnvelope(t *testing.T) {
 
 	m.recvChan <- &cb.Envelope{}
 	reply := <-m.sendChan
-	if reply.Status != ab.Status_BAD_REQUEST {
+	if reply.Status != cb.Status_BAD_REQUEST {
 		t.Fatalf("Should have rejected the null message")
 	}
 
