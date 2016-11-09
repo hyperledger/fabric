@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protos"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
-	"github.com/tecbot/gorocksdb"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 var logger = logging.MustGetLogger("lockbasedtxmgmt")
@@ -67,16 +67,15 @@ func (u *updateSet) get(compositeKey []byte) *versionedValue {
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type LockBasedTxMgr struct {
 	db           *db.DB
-	stateIndexCF *gorocksdb.ColumnFamilyHandle
 	updateSet    *updateSet
 	commitRWLock sync.RWMutex
 }
 
 // NewLockBasedTxMgr constructs a `LockBasedTxMgr`
 func NewLockBasedTxMgr(conf *Conf) *LockBasedTxMgr {
-	db := db.CreateDB(&db.Conf{DBPath: conf.DBPath, CFNames: []string{}})
+	db := db.CreateDB(&db.Conf{DBPath: conf.DBPath})
 	db.Open()
-	return &LockBasedTxMgr{db: db, stateIndexCF: db.GetDefaultCFHandle()}
+	return &LockBasedTxMgr{db: db}
 }
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
@@ -226,18 +225,17 @@ func (txmgr *LockBasedTxMgr) addWriteSetToBatch(txRWSet *txmgmt.TxReadWriteSet) 
 
 // Commit implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Commit() error {
-	batch := gorocksdb.NewWriteBatch()
+	batch := &leveldb.Batch{}
 	if txmgr.updateSet == nil {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
 	for k, v := range txmgr.updateSet.m {
-		batch.PutCF(txmgr.stateIndexCF, []byte(k), encodeValue(v.value, v.version))
+		batch.Put([]byte(k), encodeValue(v.value, v.version))
 	}
 	txmgr.commitRWLock.Lock()
 	defer txmgr.commitRWLock.Unlock()
 	defer func() { txmgr.updateSet = nil }()
-	defer batch.Destroy()
-	if err := txmgr.db.WriteBatch(batch); err != nil {
+	if err := txmgr.db.WriteBatch(batch, false); err != nil {
 		return err
 	}
 	return nil
@@ -261,7 +259,7 @@ func (txmgr *LockBasedTxMgr) getCommittedValueAndVersion(ns string, key string) 
 	compositeKey := constructCompositeKey(ns, key)
 	var encodedValue []byte
 	var err error
-	if encodedValue, err = txmgr.db.Get(txmgr.stateIndexCF, compositeKey); err != nil {
+	if encodedValue, err = txmgr.db.Get(compositeKey); err != nil {
 		return nil, 0, err
 	}
 	if encodedValue == nil {

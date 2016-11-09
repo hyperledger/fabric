@@ -17,28 +17,34 @@ limitations under the License.
 package db
 
 import (
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
 func TestDBBasicWriteAndReads(t *testing.T) {
-	dbConf := &Conf{"/tmp/v2/test/db", []string{"cf1", "cf2"}, false}
+	testDBPath := "/tmp/test/hyperledger/fabric/core/ledger/util/db"
+	if err := os.RemoveAll(testDBPath); err != nil {
+		t.Fatalf("Error:%s", err)
+	}
+	dbConf := &Conf{testDBPath}
+	defer func() { os.RemoveAll(testDBPath) }()
 	db := CreateDB(dbConf)
 	db.Open()
 	defer db.Close()
-	db.Put(db.GetCFHandle("cf1"), []byte("key1"), []byte("value1"))
-	db.Put(db.GetCFHandle("cf2"), []byte("key2"), []byte("value2"))
-	db.Put(db.GetDefaultCFHandle(), []byte("key3"), []byte("value3"))
-	val, err := db.Get(db.GetCFHandle("cf1"), []byte("key1"))
+	db.Put([]byte("key1"), []byte("value1"), false)
+	db.Put([]byte("key2"), []byte("value2"), false)
+	db.Put([]byte("key3"), []byte("value3"), false)
+	val, err := db.Get([]byte("key1"))
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, val, []byte("value1"))
 
-	val, err = db.Get(db.GetCFHandle("cf2"), []byte("key2"))
+	val, err = db.Get([]byte("key2"))
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, val, []byte("value2"))
 
-	val, err = db.Get(db.GetDefaultCFHandle(), []byte("key3"))
+	val, err = db.Get([]byte("key3"))
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, val, []byte("value3"))
 }
