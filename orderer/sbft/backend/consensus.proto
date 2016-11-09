@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package backend;
+
+import "github.com/hyperledger/fabric/consensus/simplebft/simplebft.proto";
+
+service consensus {
+    rpc consensus(handshake) returns (stream simplebft.msg) {}
+}
+
+message handshake {
+}
