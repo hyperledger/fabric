@@ -44,7 +44,7 @@ func (b *BackendAB) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		if envelope.Payload == nil {
-			err = srv.Send(&ab.BroadcastResponse{ab.Status_BAD_REQUEST})
+			err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_BAD_REQUEST})
 			if err != nil {
 				return err
 			}
@@ -54,7 +54,7 @@ func (b *BackendAB) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 			panic(err)
 		}
 		b.backend.enqueueRequest(req)
-		err = srv.Send(&ab.BroadcastResponse{ab.Status_SUCCESS})
+		err = srv.Send(&ab.BroadcastResponse{Status: ab.Status_SUCCESS})
 		if err != nil {
 			return err
 		}

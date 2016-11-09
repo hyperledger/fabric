@@ -24,12 +24,12 @@ import (
 	"os"
 
 	pb "github.com/hyperledger/fabric/consensus/simplebft"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/sbft/backend"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )

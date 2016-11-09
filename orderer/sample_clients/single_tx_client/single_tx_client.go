@@ -18,13 +18,14 @@ package main
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
-	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"time"
 )
 
 var logger = logging.MustGetLogger("sbft_test")
