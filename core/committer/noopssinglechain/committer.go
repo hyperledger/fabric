@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -135,12 +136,13 @@ func (r *deliverClient) readUntilClose() {
 			txs := []*pb.Transaction2{}
 			for _, d := range t.Block.Data.Data {
 				if d != nil {
-					tx := &pb.Transaction2{}
-					if err = proto.Unmarshal(d, tx); err != nil {
-						fmt.Printf("Error getting tx(%s)...dropping block\n", err)
-						continue
+					if tx, err := putils.GetEndorserTxFromBlock(d); err != nil {
+						fmt.Printf("Error getting tx from block(%s)\n", err)
+					} else if tx != nil {
+						txs = append(txs, tx)
+					} else {
+						fmt.Printf("Nil tx from block\n")
 					}
-					txs = append(txs, tx)
 				}
 			}
 			if err = r.commit(txs); err != nil {
@@ -178,7 +180,7 @@ type solo struct {
 
 const defaultTimeout = time.Second * 3
 
-//Start establishes communication with an orders
+//Start establishes communication with an orderer
 func (s *solo) Start() error {
 	if s.client != nil {
 		return fmt.Errorf("Client to (%s) exists", s.orderer)
