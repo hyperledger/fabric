@@ -63,4 +63,3 @@ type connectionEvent struct {
 func (c *connectionEvent) Execute(backend *Backend) {
 	backend.consensus.Connection(c.peerid)
 }
-
