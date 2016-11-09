@@ -14,19 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package solo
+package deliver
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
-	"google.golang.org/grpc"
-
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"google.golang.org/grpc"
 )
+
+var genesisBlock *cb.Block
+
+func init() {
+	bootstrapper := static.New()
+	var err error
+	genesisBlock, err = bootstrapper.GenesisBlock()
+	if err != nil {
+		panic("Error intializing static bootstrap genesis block")
+	}
+}
 
 // MagicLargestWindow is used as the default max window size for initializing the deliver service
 const MagicLargestWindow int = 1000
@@ -66,9 +78,9 @@ func TestOldestSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewDeliverServer(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(rl, MagicLargestWindow)
 
-	go ds.HandleDeliver(m)
+	go ds.Handle(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_OLDEST}}}
 
@@ -98,9 +110,9 @@ func TestNewestSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewDeliverServer(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(rl, MagicLargestWindow)
 
-	go ds.HandleDeliver(m)
+	go ds.Handle(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_NEWEST}}}
 
@@ -126,9 +138,9 @@ func TestSpecificSeek(t *testing.T) {
 	}
 
 	m := newMockD()
-	ds := NewDeliverServer(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(rl, MagicLargestWindow)
 
-	go ds.HandleDeliver(m)
+	go ds.Handle(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
 
@@ -155,9 +167,9 @@ func TestBadSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewDeliverServer(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(rl, MagicLargestWindow)
 
-	go ds.HandleDeliver(m)
+	go ds.Handle(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
 
@@ -188,9 +200,9 @@ func TestBadWindow(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewDeliverServer(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(rl, MagicLargestWindow)
 
-	go ds.HandleDeliver(m)
+	go ds.Handle(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow) * 2, Start: ab.SeekInfo_OLDEST}}}
 
@@ -214,9 +226,9 @@ func TestAck(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewDeliverServer(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(rl, MagicLargestWindow)
 
-	go ds.HandleDeliver(m)
+	go ds.Handle(m)
 
 	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: windowSize, Start: ab.SeekInfo_OLDEST}}}
 

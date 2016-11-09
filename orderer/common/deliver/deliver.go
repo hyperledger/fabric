@@ -14,27 +14,39 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package solo
+package deliver
 
 import (
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("orderer/common/deliver")
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
+
+type Handler interface {
+	Handle(srv ab.AtomicBroadcast_DeliverServer) error
+}
 
 type DeliverServer struct {
 	rl        rawledger.Reader
 	maxWindow int
 }
 
-func NewDeliverServer(rl rawledger.Reader, maxWindow int) *DeliverServer {
+func NewHandlerImpl(rl rawledger.Reader, maxWindow int) Handler {
 	return &DeliverServer{
 		rl:        rl,
 		maxWindow: maxWindow,
 	}
 }
 
-func (ds *DeliverServer) HandleDeliver(srv ab.AtomicBroadcast_DeliverServer) error {
+func (ds *DeliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 	logger.Debugf("Starting new Deliver loop")
 	d := newDeliverer(ds, srv)
 	return d.recv()

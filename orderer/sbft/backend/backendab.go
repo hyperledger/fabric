@@ -18,20 +18,20 @@ package backend
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/solo"
+	"github.com/hyperledger/fabric/orderer/common/deliver"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 type BackendAB struct {
 	backend       *Backend
-	deliverserver *solo.DeliverServer
+	deliverserver deliver.Handler
 }
 
 func NewBackendAB(backend *Backend) *BackendAB {
 	bab := &BackendAB{
 		backend:       backend,
-		deliverserver: solo.NewDeliverServer(backend.ledger, 1000),
+		deliverserver: deliver.NewHandlerImpl(backend.ledger, 1000),
 	}
 	return bab
 }
@@ -64,5 +64,5 @@ func (b *BackendAB) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 // Deliver sends a stream of blocks to a client after ordering
 func (b *BackendAB) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
-	return b.deliverserver.HandleDeliver(srv)
+	return b.deliverserver.Handle(srv)
 }
