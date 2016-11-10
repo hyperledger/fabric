@@ -199,19 +199,26 @@ func launchSolo(conf *config.TopLevel) {
 	}
 
 	configManager := bootstrapConfigManager(lastConfigTx)
+	filters := createBroadcastRuleset(configManager)
 
-	// XXX actually use the config manager in the future
-	_ = configManager
-
-	solo.New(int(conf.General.QueueSize),
+	soloConsenter := solo.NewConsenter(
 		int(conf.General.BatchSize),
-		int(conf.General.MaxWindowSize),
 		conf.General.BatchTimeout,
 		rawledger,
-		grpcServer,
-		createBroadcastRuleset(configManager),
+		filters,
 		configManager,
 	)
+
+	server := NewServer(
+		soloConsenter,
+		rawledger,
+		int(conf.General.QueueSize),
+		int(conf.General.MaxWindowSize),
+		filters,
+		configManager,
+	)
+
+	ab.RegisterAtomicBroadcastServer(grpcServer, server)
 	grpcServer.Serve(lis)
 }
 
