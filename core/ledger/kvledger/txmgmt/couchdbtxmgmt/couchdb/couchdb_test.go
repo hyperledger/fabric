@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/kvledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
@@ -63,7 +63,7 @@ func TestDBBadConnectionDef(t *testing.T) {
 
 func TestDBCreateSaveWithoutRevision(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
 		defer cleanup()
@@ -85,7 +85,7 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 
 func TestDBBadConnection(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		//create a new connection
 		db, err := CreateConnectionDefinition(badConnectURL, database, username, password)
@@ -108,7 +108,7 @@ func TestDBBadConnection(t *testing.T) {
 
 func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
 
@@ -175,9 +175,10 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 func TestDBBadJSON(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
+		defer cleanup()
 
 		//create a new connection
 		db, err := CreateConnectionDefinition(connectURL, database, username, password)
@@ -204,7 +205,7 @@ func TestDBBadJSON(t *testing.T) {
 
 func TestDBSaveAttachment(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
 		defer cleanup()
@@ -239,7 +240,7 @@ func TestDBSaveAttachment(t *testing.T) {
 
 func TestDBRetrieveNonExistingDocument(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
 		defer cleanup()
@@ -261,7 +262,7 @@ func TestDBRetrieveNonExistingDocument(t *testing.T) {
 
 func TestDBTestExistingDB(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
 		defer cleanup()
@@ -283,7 +284,7 @@ func TestDBTestExistingDB(t *testing.T) {
 
 func TestDBTestDropNonExistDatabase(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
 		defer cleanup()
@@ -301,7 +302,7 @@ func TestDBTestDropNonExistDatabase(t *testing.T) {
 
 func TestDBTestDropDatabaseBadConnection(t *testing.T) {
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
 		defer cleanup()

@@ -72,7 +72,7 @@ func SetupTestConfig() {
 	logging.SetFormatter(formatter)
 }
 
-// SetupCoreYAMLConfig sets up configurations for tetsing
+// SetupCoreYAMLConfig sets up configurations for testing
 func SetupCoreYAMLConfig(coreYamlPath string) {
 	viper.SetConfigName("core")
 	viper.SetEnvPrefix("CORE")
@@ -83,6 +83,13 @@ func SetupCoreYAMLConfig(coreYamlPath string) {
 	if err != nil { // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
+}
+
+// ResetConfigToDefaultValues resets configurations optins back to defaults
+func ResetConfigToDefaultValues() {
+	//reset to defaults
+	viper.Set("ledger.state.stateDatabase", "goleveldb")
+	viper.Set("ledger.state.historyDatabase", false)
 }
 
 // SetLogLevel sets up log level

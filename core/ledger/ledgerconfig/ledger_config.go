@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kvledgerconfig
+package ledgerconfig
 
 import "github.com/spf13/viper"
 
@@ -22,6 +22,7 @@ var stateDatabase = "goleveldb"
 var couchDBAddress = "127.0.0.1:5984"
 var username = ""
 var password = ""
+var historyDatabase = true
 
 // CouchDBDef contains parameters
 type CouchDBDef struct {
@@ -47,4 +48,16 @@ func GetCouchDBDefinition() *CouchDBDef {
 	password = viper.GetString("ledger.state.couchDBConfig.password")
 
 	return &CouchDBDef{couchDBAddress, username, password}
+}
+
+//IsHistoryDBEnabled exposes the historyDatabase variable
+//History database can only be enabled if couchDb is enabled
+//as it the history stored in the same couchDB instance.
+//TODO put History DB in it's own instance
+func IsHistoryDBEnabled() bool {
+	historyDatabase = viper.GetBool("ledger.state.historyDatabase")
+	if IsCouchDBEnabled() && historyDatabase {
+		return historyDatabase
+	}
+	return false
 }
