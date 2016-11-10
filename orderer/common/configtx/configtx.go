@@ -67,6 +67,47 @@ type configurationManager struct {
 	handlers      map[cb.ConfigurationItem_ConfigurationType]Handler
 }
 
+// computeChainIDAndSequence returns the chain id and the sequence number for a configuration envelope
+// or an error if there is a problem with the configuration envelope
+func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) ([]byte, uint64, error) {
+	if len(configtx.Items) == 0 {
+		return nil, 0, fmt.Errorf("Empty envelope unsupported")
+	}
+
+	m := uint64(0)     //configtx.Items[0].LastModified
+	var chainID []byte //:= configtx.Items[0].Header.ChainID
+
+	for _, signedItem := range configtx.Items {
+		item := &cb.ConfigurationItem{}
+		err := proto.Unmarshal(signedItem.ConfigurationItem, item)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		if item.LastModified > m {
+			m = item.LastModified
+		}
+
+		if item.Header == nil {
+			return nil, 0, fmt.Errorf("Header not set: %v", item)
+		}
+
+		if item.Header.ChainID == nil {
+			return nil, 0, fmt.Errorf("Header chainID was nil: %v", item)
+		}
+
+		if chainID == nil {
+			chainID = item.Header.ChainID
+		} else {
+			if !bytes.Equal(chainID, item.Header.ChainID) {
+				return nil, 0, fmt.Errorf("Mismatched chainIDs in envelope %x != %x", chainID, item.Header.ChainID)
+			}
+		}
+	}
+
+	return chainID, m, nil
+}
+
 // NewConfigurationManager creates a new Manager unless an error is encountered
 func NewConfigurationManager(configtx *cb.ConfigurationEnvelope, pm policies.Manager, handlers map[cb.ConfigurationItem_ConfigurationType]Handler) (Manager, error) {
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
@@ -75,15 +116,20 @@ func NewConfigurationManager(configtx *cb.ConfigurationEnvelope, pm policies.Man
 		}
 	}
 
+	chainID, seq, err := computeChainIDAndSequence(configtx)
+	if err != nil {
+		return nil, err
+	}
+
 	cm := &configurationManager{
-		sequence:      configtx.Sequence - 1,
-		chainID:       configtx.ChainID,
+		sequence:      seq - 1,
+		chainID:       chainID,
 		pm:            pm,
 		handlers:      handlers,
 		configuration: makeConfigMap(),
 	}
 
-	err := cm.Apply(configtx)
+	err = cm.Apply(configtx)
 
 	if err != nil {
 		return nil, err
@@ -119,14 +165,19 @@ func (cm *configurationManager) commitHandlers() {
 }
 
 func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope) (configMap map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem, err error) {
+	chainID, seq, err := computeChainIDAndSequence(configtx)
+	if err != nil {
+		return nil, err
+	}
+
 	// Verify config is a sequential update to prevent exhausting sequence numbers
-	if configtx.Sequence != cm.sequence+1 {
-		return nil, fmt.Errorf("Config sequence number jumped from %d to %d", cm.sequence, configtx.Sequence)
+	if seq != cm.sequence+1 {
+		return nil, fmt.Errorf("Config sequence number jumped from %d to %d", cm.sequence, seq)
 	}
 
 	// Verify config is intended for this globally unique chain ID
-	if !bytes.Equal(configtx.ChainID, cm.chainID) {
-		return nil, fmt.Errorf("Config is for the wrong chain, expected %x, got %x", cm.chainID, configtx.ChainID)
+	if !bytes.Equal(chainID, cm.chainID) {
+		return nil, fmt.Errorf("Config is for the wrong chain, expected %x, got %x", cm.chainID, chainID)
 	}
 
 	defaultModificationPolicy, defaultPolicySet := cm.pm.GetPolicy(DefaultModificationPolicyID)
@@ -143,12 +194,8 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 		config := &cb.ConfigurationItem{}
 		err = proto.Unmarshal(entry.ConfigurationItem, config)
 		if err != nil {
+			// Note that this is not reachable by test coverage because the unmarshal error would have already been found when computing the chainID and seqNo
 			return nil, err
-		}
-
-		// Ensure this configuration was intended for this chain
-		if !bytes.Equal(config.Header.ChainID, cm.chainID) {
-			return nil, fmt.Errorf("Config item %v for type %v was not meant for a different chain %x", config.Key, config.Type, config.Header.ChainID)
 		}
 
 		// Get the modification policy for this config item if one was previously specified
@@ -188,7 +235,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 			// Config was modified if the LastModified or the Data contents changed
 			isModified = (val.LastModified != config.LastModified) || !bytes.Equal(config.Value, val.Value)
 		} else {
-			if config.LastModified != configtx.Sequence {
+			if config.LastModified != seq {
 				return nil, fmt.Errorf("Key %v for type %v was new, but had an older Sequence %d set", config.Key, config.Type, config.LastModified)
 			}
 			isModified = true
@@ -196,8 +243,8 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 
 		// If a config item was modified, its LastModified must be set correctly
 		if isModified {
-			if config.LastModified != configtx.Sequence {
-				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", config.Key, config.Type, config.LastModified, configtx.Sequence)
+			if config.LastModified != seq {
+				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", config.Key, config.Type, config.LastModified, seq)
 			}
 		}
 
@@ -244,7 +291,7 @@ func (cm *configurationManager) Apply(configtx *cb.ConfigurationEnvelope) error 
 		return err
 	}
 	cm.configuration = configMap
-	cm.sequence = configtx.Sequence
+	cm.sequence++
 	cm.commitHandlers()
 	return nil
 }

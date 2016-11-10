@@ -57,9 +57,9 @@ func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 	return mpm.policy, (mpm.policy != nil)
 }
 
-func makeConfiguration(id, modificationPolicy string, lastModified uint64, data []byte) *cb.ConfigurationItem {
+func makeConfigurationItem(id, modificationPolicy string, lastModified uint64, data []byte, chainID []byte) *cb.ConfigurationItem {
 	return &cb.ConfigurationItem{
-		Header:             &cb.ChainHeader{ChainID: defaultChain},
+		Header:             &cb.ChainHeader{ChainID: chainID},
 		ModificationPolicy: modificationPolicy,
 		LastModified:       lastModified,
 		Key:                id,
@@ -67,8 +67,8 @@ func makeConfiguration(id, modificationPolicy string, lastModified uint64, data 
 	}
 }
 
-func makeSignedConfigurationItem(id, modificationPolicy string, lastModified uint64, data []byte) *cb.SignedConfigurationItem {
-	config := makeConfiguration(id, modificationPolicy, lastModified, data)
+func makeSignedConfigurationItem(id, modificationPolicy string, lastModified uint64, data []byte, chainID []byte) *cb.SignedConfigurationItem {
+	config := makeConfigurationItem(id, modificationPolicy, lastModified, data, chainID)
 	marshaledConfig, err := proto.Marshal(config)
 	if err != nil {
 		panic(err)
@@ -81,8 +81,7 @@ func makeSignedConfigurationItem(id, modificationPolicy string, lastModified uin
 // TestOmittedHandler tests that startup fails if not all configuration types have an associated handler
 func TestOmittedHandler(t *testing.T) {
 	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}, &mockPolicyManager{&mockPolicy{}}, map[cb.ConfigurationItem_ConfigurationType]Handler{})
 
 	if err == nil {
@@ -93,8 +92,7 @@ func TestOmittedHandler(t *testing.T) {
 // TestWrongChainID tests that a configuration update for a different chain ID fails
 func TestWrongChainID(t *testing.T) {
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err != nil {
@@ -102,8 +100,7 @@ func TestWrongChainID(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  []byte("wrongChain"),
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), []byte("wrongChain"))},
 	}
 
 	err = cm.Validate(newConfig)
@@ -120,8 +117,7 @@ func TestWrongChainID(t *testing.T) {
 // TestOldConfigReplay tests that resubmitting a config for a sequence number which is not newer is ignored
 func TestOldConfigReplay(t *testing.T) {
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err != nil {
@@ -129,8 +125,7 @@ func TestOldConfigReplay(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}
 
 	err = cm.Validate(newConfig)
@@ -146,12 +141,10 @@ func TestOldConfigReplay(t *testing.T) {
 
 // TestInvalidInitialConfigByStructure tests to make sure that if the config contains corrupted configuration that construction results in error
 func TestInvalidInitialConfigByStructure(t *testing.T) {
-	entries := []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"))}
+	entries := []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)}
 	entries[0].ConfigurationItem = []byte("Corrupted")
 	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
-		Items:    entries,
+		Items: entries,
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err == nil {
@@ -162,18 +155,15 @@ func TestInvalidInitialConfigByStructure(t *testing.T) {
 // TestValidConfigChange tests the happy path of updating a configuration value with no defaultModificationPolicy
 func TestValidConfigChange(t *testing.T) {
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
-	}, &mockPolicyManager{}, defaultHandlers())
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
+	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
 	}
 
 	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
-		Items:    []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"))},
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), defaultChain)},
 	}
 
 	err = cm.Validate(newConfig)
@@ -187,43 +177,11 @@ func TestValidConfigChange(t *testing.T) {
 	}
 }
 
-// TestConfigChangeNoUpdatedSequence tests that a new submitted config is rejected if it increments the
-// sequence number without a corresponding config item with that sequence number
-func TestConfigChangeNoUpdatedSequence(t *testing.T) {
-	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
-	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
-
-	if err != nil {
-		t.Fatalf("Error constructing configuration manager: %s", err)
-	}
-
-	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
-		// Note that the entries do not contain any config items with seqNo=1, so this is invalid
-		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"))},
-	}
-
-	err = cm.Validate(newConfig)
-	if err == nil {
-		t.Errorf("Should have errored validating config because no new sequence number matches")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Errorf("Should have errored applying config because no new sequence number matches")
-	}
-}
-
 // TestConfigChangeRegressedSequence tests to make sure that a new config cannot roll back one of the
 // config values while advancing another
 func TestConfigChangeRegressedSequence(t *testing.T) {
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
-		Items:    []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"))},
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), defaultChain)},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err != nil {
@@ -231,11 +189,9 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 2,
-		ChainID:  defaultChain,
 		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
-			makeSignedConfigurationItem("bar", "bar", 2, []byte("bar")),
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain),
+			makeSignedConfigurationItem("bar", "bar", 2, []byte("bar"), defaultChain),
 		},
 	}
 
@@ -250,15 +206,42 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 	}
 }
 
+// TestConfigChangeOldSequence tests to make sure that a new config cannot roll back one of the
+// config values while advancing another
+func TestConfigChangeOldSequence(t *testing.T) {
+	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), defaultChain)},
+	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
+
+	if err != nil {
+		t.Fatalf("Error constructing configuration manager: %s", err)
+	}
+
+	newConfig := &cb.ConfigurationEnvelope{
+		Items: []*cb.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 2, []byte("foo"), defaultChain),
+			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar"), defaultChain),
+		},
+	}
+
+	err = cm.Validate(newConfig)
+	if err == nil {
+		t.Errorf("Should have errored validating config because bar was new but its sequence number was old")
+	}
+
+	err = cm.Apply(newConfig)
+	if err == nil {
+		t.Errorf("Should have errored applying config because bar was new but its sequence number was old")
+	}
+}
+
 // TestConfigImplicitDelete tests to make sure that a new config does not implicitly delete config items
 // by omitting them in the new config
 func TestConfigImplicitDelete(t *testing.T) {
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
 		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
-			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar")),
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain),
+			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar"), defaultChain),
 		},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
@@ -267,10 +250,8 @@ func TestConfigImplicitDelete(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
 		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar")),
+			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar"), defaultChain),
 		},
 	}
 
@@ -285,58 +266,26 @@ func TestConfigImplicitDelete(t *testing.T) {
 	}
 }
 
-// TestConfigModifyWithoutFullIncrease tests to make sure that if an item is modified in a config change
-// that it not only increments its LastModified, but also increments it to the current sequence number
-func TestConfigModifyWithoutFullIncrease(t *testing.T) {
+// TestEmptyConfigUpdate tests to make sure that an empty config is rejected as an update
+func TestEmptyConfigUpdate(t *testing.T) {
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
-		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
-			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar")),
-		},
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
-		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
-			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar")),
-		},
-	}
-
-	err = cm.Validate(newConfig)
-	if err != nil {
-		t.Errorf("Should not have errored validating config: %s", err)
-	}
-
-	err = cm.Apply(newConfig)
-	if err != nil {
-		t.Errorf("Should not have errored applying config: %s", err)
-	}
-
-	newConfig = &cb.ConfigurationEnvelope{
-		Sequence: 2,
-		ChainID:  defaultChain,
-		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("foo", "foo", 1, []byte("foo")),
-			makeSignedConfigurationItem("bar", "bar", 2, []byte("bar")),
-		},
-	}
+	newConfig := &cb.ConfigurationEnvelope{}
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored validating config because foo was modified, but its lastModifiedSeqNo did not increase to the current seqNo")
+		t.Errorf("Should not errored validating config because new config is empty")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored applying config because foo was modified, but its lastModifiedSeqNo did not increase to the current seqNo")
+		t.Errorf("Should not errored applying config because new config is empty")
 	}
 }
 
@@ -345,11 +294,9 @@ func TestConfigModifyWithoutFullIncrease(t *testing.T) {
 // increasing the config item's LastModified
 func TestSilentConfigModification(t *testing.T) {
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
 		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo")),
-			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar")),
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain),
+			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar"), defaultChain),
 		},
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
@@ -358,11 +305,9 @@ func TestSilentConfigModification(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
 		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("foo", "foo", 0, []byte("different")),
-			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar")),
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("different"), defaultChain),
+			makeSignedConfigurationItem("bar", "bar", 1, []byte("bar"), defaultChain),
 		},
 	}
 
@@ -381,9 +326,7 @@ func TestSilentConfigModification(t *testing.T) {
 // even construction fails
 func TestInvalidInitialConfigByPolicy(t *testing.T) {
 	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
-		Items:    []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"))},
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}, &mockPolicyManager{&mockPolicy{fmt.Errorf("err")}}, defaultHandlers())
 	// mockPolicyManager will return non-validating defualt policy
 
@@ -397,8 +340,7 @@ func TestInvalidInitialConfigByPolicy(t *testing.T) {
 func TestConfigChangeViolatesPolicy(t *testing.T) {
 	mpm := &mockPolicyManager{}
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}, mpm, defaultHandlers())
 
 	if err != nil {
@@ -408,9 +350,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	mpm.policy = &mockPolicy{fmt.Errorf("err")}
 
 	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
-		Items:    []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"))},
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), defaultChain)},
 	}
 
 	err = cm.Validate(newConfig)
@@ -437,20 +377,18 @@ func (fh failHandler) ProposeConfig(item *cb.ConfigurationItem) error {
 // that if the handler does not accept the config, it is rejected
 func TestInvalidProposal(t *testing.T) {
 	handlers := defaultHandlers()
-	handlers[cb.ConfigurationItem_ConfigurationType(0)] = failHandler{}
 	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}, &mockPolicyManager{&mockPolicy{}}, handlers)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
 	}
 
+	cm.(*configurationManager).handlers[cb.ConfigurationItem_ConfigurationType(0)] = failHandler{}
+
 	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
-		Items:    []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"))},
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), defaultChain)},
 	}
 
 	err = cm.Validate(newConfig)
@@ -464,36 +402,44 @@ func TestInvalidProposal(t *testing.T) {
 	}
 }
 
-// TestConfigItemOnWrongChain tests to make sure that a config is rejected if it contains an item for the wrong chain
-func TestConfigItemOnWrongChain(t *testing.T) {
-	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Sequence: 0,
-		ChainID:  defaultChain,
-	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
+// TestMissingHeader checks that a configuration item with a missing header causes the config to be rejected
+func TestMissingHeader(t *testing.T) {
+	handlers := defaultHandlers()
+	configItem := makeConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)
+	configItem.Header = nil
+	data, _ := proto.Marshal(configItem)
+	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
+		Items: []*cb.SignedConfigurationItem{&cb.SignedConfigurationItem{ConfigurationItem: data}},
+	}, &mockPolicyManager{&mockPolicy{}}, handlers)
 
-	if err != nil {
-		t.Fatalf("Error constructing configuration manager: %s", err)
-	}
-
-	config := makeConfiguration("foo", "foo", 1, []byte("foo"))
-	config.Header = &cb.ChainHeader{ChainID: []byte("Wrong")}
-	marshaledConfig, err := proto.Marshal(config)
-	if err != nil {
-		t.Fatalf("Should have been able marshal config: %s", err)
-	}
-	newConfig := &cb.ConfigurationEnvelope{
-		Sequence: 1,
-		ChainID:  defaultChain,
-		Items:    []*cb.SignedConfigurationItem{&cb.SignedConfigurationItem{ConfigurationItem: marshaledConfig}},
-	}
-
-	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored validating config because new config item is for a different chain")
+		t.Errorf("Should have errored creating the configuration manager because of the missing header")
 	}
+}
 
-	err = cm.Apply(newConfig)
+// TestMissingChainID checks that a configuration item with a missing chainID causes the config to be rejected
+func TestMissingChainID(t *testing.T) {
+	handlers := defaultHandlers()
+	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), nil)},
+	}, &mockPolicyManager{&mockPolicy{}}, handlers)
+
 	if err == nil {
-		t.Errorf("Should have errored applying config because new config item is for a different chain")
+		t.Errorf("Should have errored creating the configuration manager because of the missing header")
+	}
+}
+
+// TestMismatchedChainID checks that a configuration envelope with items with mixed chainIDs causes the config to be rejected
+func TestMismatchedChainID(t *testing.T) {
+	handlers := defaultHandlers()
+	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
+		Items: []*cb.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), []byte("chain1")),
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), []byte("chain2")),
+		},
+	}, &mockPolicyManager{&mockPolicy{}}, handlers)
+
+	if err == nil {
+		t.Errorf("Should have errored creating the configuration manager because of the missing header")
 	}
 }
