@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/orderer/config"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -79,7 +80,7 @@ func (r *deliverClient) readUntilClose() {
 
 		switch t := msg.Type.(type) {
 		case *ab.DeliverResponse_Error:
-			if t.Error == ab.Status_SUCCESS {
+			if t.Error == cb.Status_SUCCESS {
 				fmt.Println("ERROR! Received success in error field")
 				return
 			}

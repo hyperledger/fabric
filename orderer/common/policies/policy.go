@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -40,12 +40,12 @@ type Manager interface {
 }
 
 type policy struct {
-	source    *ab.Policy
+	source    *cb.Policy
 	evaluator *cauthdsl.SignaturePolicyEvaluator
 }
 
-func newPolicy(policySource *ab.Policy, ch cauthdsl.CryptoHelper) (*policy, error) {
-	envelopeWrapper, ok := policySource.Type.(*ab.Policy_SignaturePolicy)
+func newPolicy(policySource *cb.Policy, ch cauthdsl.CryptoHelper) (*policy, error) {
+	envelopeWrapper, ok := policySource.Type.(*cb.Policy_SignaturePolicy)
 
 	if !ok {
 		return nil, fmt.Errorf("Unknown policy type: %T", policySource.Type)
@@ -129,12 +129,12 @@ func (pm *ManagerImpl) CommitConfig() {
 }
 
 // ProposeConfig is used to add new configuration to the configuration proposal
-func (pm *ManagerImpl) ProposeConfig(configItem *ab.ConfigurationItem) error {
-	if configItem.Type != ab.ConfigurationItem_Policy {
+func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
+	if configItem.Type != cb.ConfigurationItem_Policy {
 		return fmt.Errorf("Expected type of ConfigurationItem_Policy, got %v", configItem.Type)
 	}
 
-	policy := &ab.Policy{}
+	policy := &cb.Policy{}
 	err := proto.Unmarshal(configItem.Value, policy)
 	if err != nil {
 		return err

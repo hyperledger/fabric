@@ -330,7 +330,7 @@ func (t *Backend) LastBatch() *s.Batch {
 	it, _ := t.ledger.Iterator(ab.SeekInfo_NEWEST, 0)
 	block, status := it.Next()
 	data := block.Data.Data
-	if status != ab.Status_SUCCESS {
+	if status != cb.Status_SUCCESS {
 		panic("Fatal ledger error: unable to get last block.")
 	}
 	header := []byte{}

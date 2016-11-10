@@ -24,14 +24,14 @@ import (
 // Iterator is useful for a chain Reader to stream blocks as they are created
 type Iterator interface {
 	// Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
-	Next() (*cb.Block, ab.Status)
+	Next() (*cb.Block, cb.Status)
 	// ReadyChan supplies a channel which will block until Next will not block
 	ReadyChan() <-chan struct{}
 }
 
 // Reader allows the caller to inspect the raw ledger
 type Reader interface {
-	// Iterator retrieves an Iterator, as specified by an ab.SeekInfo message, returning an iterator, and it's starting block number
+	// Iterator retrieves an Iterator, as specified by an cb.SeekInfo message, returning an iterator, and it's starting block number
 	Iterator(startType ab.SeekInfo_StartType, specified uint64) (Iterator, uint64)
 	// Height returns the highest block number in the chain, plus one
 	Height() uint64

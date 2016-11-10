@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -51,8 +50,8 @@ func errorlessMarshal(thing proto.Message) []byte {
 	return data
 }
 
-func (b *bootstrapper) makeSignedConfigurationItem(id string, ctype ab.ConfigurationItem_ConfigurationType, data []byte, modificationPolicyID string) *ab.SignedConfigurationItem {
-	configurationBytes := errorlessMarshal(&ab.ConfigurationItem{
+func (b *bootstrapper) makeSignedConfigurationItem(id string, ctype cb.ConfigurationItem_ConfigurationType, data []byte, modificationPolicyID string) *cb.SignedConfigurationItem {
+	configurationBytes := errorlessMarshal(&cb.ConfigurationItem{
 		Header: &cb.ChainHeader{
 			ChainID: b.chainID,
 		},
@@ -62,14 +61,14 @@ func (b *bootstrapper) makeSignedConfigurationItem(id string, ctype ab.Configura
 		Key:                id,
 		Value:              data,
 	})
-	return &ab.SignedConfigurationItem{
+	return &cb.SignedConfigurationItem{
 		ConfigurationItem: configurationBytes,
 	}
 }
 
-func sigPolicyToPolicy(sigPolicy *ab.SignaturePolicyEnvelope) []byte {
-	policy := &ab.Policy{
-		Type: &ab.Policy_SignaturePolicy{
+func sigPolicyToPolicy(sigPolicy *cb.SignaturePolicyEnvelope) []byte {
+	policy := &cb.Policy{
+		Type: &cb.Policy_SignaturePolicy{
 			SignaturePolicy: sigPolicy,
 		},
 	}
@@ -80,12 +79,12 @@ func sigPolicyToPolicy(sigPolicy *ab.SignaturePolicyEnvelope) []byte {
 func (b *bootstrapper) GenesisBlock() (*cb.Block, error) {
 
 	// Lock down the default modification policy to prevent any further policy modifications
-	lockdownDefaultModificationPolicy := b.makeSignedConfigurationItem(configtx.DefaultModificationPolicyID, ab.ConfigurationItem_Policy, sigPolicyToPolicy(cauthdsl.RejectAllPolicy), configtx.DefaultModificationPolicyID)
+	lockdownDefaultModificationPolicy := b.makeSignedConfigurationItem(configtx.DefaultModificationPolicyID, cb.ConfigurationItem_Policy, sigPolicyToPolicy(cauthdsl.RejectAllPolicy), configtx.DefaultModificationPolicyID)
 
-	initialConfigTX := errorlessMarshal(&ab.ConfigurationEnvelope{
+	initialConfigTX := errorlessMarshal(&cb.ConfigurationEnvelope{
 		Sequence: 0,
 		ChainID:  b.chainID,
-		Items: []*ab.SignedConfigurationItem{
+		Items: []*cb.SignedConfigurationItem{
 			lockdownDefaultModificationPolicy,
 		},
 	})

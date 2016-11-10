@@ -115,12 +115,12 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 }
 
 // Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
-func (cu *cursor) Next() (*cb.Block, ab.Status) {
+func (cu *cursor) Next() (*cb.Block, cb.Status) {
 	// This only loops once, as signal reading indicates non-nil next
 	for {
 		if cu.list.next != nil {
 			cu.list = cu.list.next
-			return cu.list.block, ab.Status_SUCCESS
+			return cu.list.block, cb.Status_SUCCESS
 		}
 
 		<-cu.list.signal

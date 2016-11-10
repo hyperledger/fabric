@@ -17,7 +17,7 @@ limitations under the License.
 package configtx
 
 import (
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 // BytesHandler is a trivial ConfigHandler which simpy tracks the bytes stores in a config
@@ -56,7 +56,7 @@ func (bh *BytesHandler) CommitConfig() {
 }
 
 // ProposeConfig called when config is added to a proposal
-func (bh *BytesHandler) ProposeConfig(configItem *ab.ConfigurationItem) error {
+func (bh *BytesHandler) ProposeConfig(configItem *cb.ConfigurationItem) error {
 	bh.proposed[configItem.Key] = configItem.Value
 	return nil
 }

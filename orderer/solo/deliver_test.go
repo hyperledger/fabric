@@ -163,7 +163,7 @@ func TestBadSeek(t *testing.T) {
 
 	select {
 	case blockReply := <-m.sendChan:
-		if blockReply.GetError() != ab.Status_NOT_FOUND {
+		if blockReply.GetError() != cb.Status_NOT_FOUND {
 			t.Fatalf("Received wrong error on the reply channel")
 		}
 	case <-time.After(time.Second):
@@ -174,7 +174,7 @@ func TestBadSeek(t *testing.T) {
 
 	select {
 	case blockReply := <-m.sendChan:
-		if blockReply.GetError() != ab.Status_NOT_FOUND {
+		if blockReply.GetError() != cb.Status_NOT_FOUND {
 			t.Fatalf("Received wrong error on the reply channel")
 		}
 	case <-time.After(time.Second):
@@ -196,7 +196,7 @@ func TestBadWindow(t *testing.T) {
 
 	select {
 	case blockReply := <-m.sendChan:
-		if blockReply.GetError() != ab.Status_BAD_REQUEST {
+		if blockReply.GetError() != cb.Status_BAD_REQUEST {
 			t.Fatalf("Received wrong error on the reply channel")
 		}
 	case <-time.After(time.Second):

@@ -22,7 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -31,11 +30,11 @@ type mockConfigManager struct {
 	err error
 }
 
-func (mcm *mockConfigManager) Validate(configtx *ab.ConfigurationEnvelope) error {
+func (mcm *mockConfigManager) Validate(configtx *cb.ConfigurationEnvelope) error {
 	return mcm.err
 }
 
-func (mcm *mockConfigManager) Apply(configtx *ab.ConfigurationEnvelope) error {
+func (mcm *mockConfigManager) Apply(configtx *cb.ConfigurationEnvelope) error {
 	return mcm.err
 }
 
@@ -51,7 +50,7 @@ func TestForwardNonConfig(t *testing.T) {
 
 func TestAcceptGoodConfig(t *testing.T) {
 	cf := New(&mockConfigManager{})
-	config, _ := proto.Marshal(&ab.ConfigurationEnvelope{})
+	config, _ := proto.Marshal(&cb.ConfigurationEnvelope{})
 	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	result := cf.Apply(&cb.Envelope{
 		Payload: configBytes,
@@ -63,7 +62,7 @@ func TestAcceptGoodConfig(t *testing.T) {
 
 func TestRejectBadConfig(t *testing.T) {
 	cf := New(&mockConfigManager{err: fmt.Errorf("Error")})
-	config, _ := proto.Marshal(&ab.ConfigurationEnvelope{})
+	config, _ := proto.Marshal(&cb.ConfigurationEnvelope{})
 	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	result := cf.Apply(&cb.Envelope{
 		Payload: configBytes,

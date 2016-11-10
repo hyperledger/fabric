@@ -105,16 +105,16 @@ func (cd *clientDelivererImpl) sendBlocks(stream ab.AtomicBroadcast_DeliverServe
 				err = cd.processACK(t)
 			}
 			if err != nil {
-				var errorStatus ab.Status
+				var errorStatus cb.Status
 				// TODO Will need to flesh this out into
 				// a proper error handling system eventually.
 				switch err.Error() {
 				case seekOutOfRangeError:
-					errorStatus = ab.Status_NOT_FOUND
+					errorStatus = cb.Status_NOT_FOUND
 				case ackOutOfRangeError, windowOutOfRangeError:
-					errorStatus = ab.Status_BAD_REQUEST
+					errorStatus = cb.Status_BAD_REQUEST
 				default:
-					errorStatus = ab.Status_SERVICE_UNAVAILABLE
+					errorStatus = cb.Status_SERVICE_UNAVAILABLE
 				}
 				reply = new(ab.DeliverResponse)
 				reply.Type = &ab.DeliverResponse_Error{Error: errorStatus}

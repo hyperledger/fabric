@@ -22,105 +22,9 @@ option go_package = "github.com/hyperledger/fabric/protos/orderer";
 
 package orderer;
 
-// These status codes are intended to resemble selected HTTP status codes
-enum Status {
-    UNKNOWN = 0;
-    SUCCESS = 200;
-    BAD_REQUEST = 400;
-    FORBIDDEN = 403;
-    NOT_FOUND = 404;
-    INTERNAL_SERVER_ERROR = 500;
-    SERVICE_UNAVAILABLE = 503;
-}
-
 message BroadcastResponse {
-    Status Status = 1;
+    common.Status Status = 1;
 }
-
-// ConfigurationEnvelope is designed to contain _all_ configuration for a chain with no dependency
-// on previous configuration transactions.
-//
-// It is generated with the following scheme:
-//   1. Retrieve the existing configuration
-//   2. Note the highest configuration sequence number, store it an increment it by one
-//   3. Modify desired ConfigurationItems, setting each LastModified to the stored and incremented sequence number
-//   4. Update SignedConfigurationItem with appropriate signatures over the modified ConfigurationItem
-//     a) Each signature is of type ConfigurationSignature
-//     b) The ConfigurationSignature signature is over the concatenation of signatureHeader and the ConfigurationItem header
-//   5. Submit new Configuration for ordering in Envelope signed by submitter
-//     a) The common.Envelope common.Payload has data set to the marshaled ConfigurationEnvelope
-//     b) The common.Envelope common.Payload has a header of type common.Header.Type.CONFIGURATION_TRANSACTION 
-// 
-// The configuration manager will verify:
-//   1. All configuration items and the envelope refer to the correct chain
-//   2. Some configuration item has been added or modified
-//   3. No existing configuration item has been ommitted
-//   4. All configuration changes have a LastModification of one more than the last configuration's sequence
-//   5. All configuration changes satisfy the corresponding modification policy 
-message ConfigurationEnvelope {
-    repeated SignedConfigurationItem Items = 1;
-    bytes ChainID = 2;   // XXX remove me, and infer from the items set
-    uint64 Sequence = 3; // XXX remove me, infer from the items set
-}
-
-// This message may change slightly depending on the finalization of signature schemes for transactions
-message SignedConfigurationItem {
-    bytes ConfigurationItem = 1;
-    repeated ConfigurationSignature Signatures = 2; // Signatures over the hash of Configuration
-}
-
-message ConfigurationItem {
-    enum ConfigurationType {
-        Policy = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
-        Chain = 1;    // Marshaled format for this type is yet to be determined
-        Orderer = 2;  // Marshaled format for this type is yet to be determined
-        Fabric = 3;   // Marshaled format for this type is yet to be determined
-    }
-    common.ChainHeader Header = 1;  // The header which ties this configuration to a particular chain
-    ConfigurationType Type = 2;     // The type of configuration this is.
-    uint64 LastModified = 3;        // The Sequence number in the ConfigurationEnvelope this item was last modified
-    string ModificationPolicy = 4;  // What policy to check before allowing modification
-    string Key = 5;                 // A unique ID, unique scoped by Type, to reference the value by
-    bytes Value = 6;                // The byte representation of this configuration, usually a marshaled message
-}
-
-message ConfigurationSignature {
-    bytes signatureHeader = 1;
-    bytes signature = 2; // Signature over the concatenation of configurationItem bytes and signatureHeader bytes
-}
-
-// Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
-// multiple policy engines, this is typed as a oneof for now
-message Policy {
-    oneof Type {
-        SignaturePolicyEnvelope SignaturePolicy = 1;
-    }
-}
-
-// SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
-message SignaturePolicyEnvelope {
-    int32 Version = 1;
-    SignaturePolicy Policy = 2;
-    repeated bytes Identities = 3;
-}
-
-// SignaturePolicy is a recursive message structure which defines a featherweight DSL for describing
-// policies which are more complicated than 'exactly this signature'.  The NOutOf operator is sufficent
-// to express AND as well as OR, as well as of course N out of the following M policies
-// SignedBy implies that the signature is from a valid certificate which is signed by the trusted
-// authority specified in the bytes.  This will be the certificate itself for a self-signed certificate
-// and will be the CA for more traditional certificates
-message SignaturePolicy {
-    message NOutOf {
-        int32 N = 1;
-        repeated SignaturePolicy Policies = 2;
-    }
-    oneof Type {
-        int32 SignedBy = 1;
-        NOutOf From = 2;
-    }
-}
-
 
 message SeekInfo {
     // Start may be specified to a specific block number, or may be request from the newest or oldest available
@@ -152,7 +56,7 @@ message DeliverUpdate {
 
 message DeliverResponse {
     oneof Type {
-        Status Error = 1;
+        common.Status Error = 1;
         common.Block Block = 2;
     }
 }

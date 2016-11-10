@@ -92,7 +92,7 @@ func (d *deliverer) main() {
 			}
 		case <-signal:
 			block, status := d.cursor.Next()
-			if status != ab.Status_SUCCESS {
+			if status != cb.Status_SUCCESS {
 				logger.Errorf("Error reading from channel, cause was: %v", status)
 				if !d.sendErrorReply(status) {
 					return
@@ -139,7 +139,7 @@ func (d *deliverer) recv() error {
 	}
 }
 
-func (d *deliverer) sendErrorReply(status ab.Status) bool {
+func (d *deliverer) sendErrorReply(status cb.Status) bool {
 	err := d.srv.Send(&ab.DeliverResponse{
 		Type: &ab.DeliverResponse_Error{Error: status},
 	})
@@ -175,7 +175,7 @@ func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
 
 	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) {
 		close(d.exitChan)
-		return d.sendErrorReply(ab.Status_BAD_REQUEST)
+		return d.sendErrorReply(cb.Status_BAD_REQUEST)
 	}
 
 	d.windowSize = update.WindowSize

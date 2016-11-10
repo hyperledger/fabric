@@ -22,7 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -39,16 +38,16 @@ type Handler interface {
 	CommitConfig()
 
 	// ProposeConfig called when config is added to a proposal
-	ProposeConfig(configItem *ab.ConfigurationItem) error
+	ProposeConfig(configItem *cb.ConfigurationItem) error
 }
 
 // Manager provides a mechanism to query and update configuration
 type Manager interface {
 	// Apply attempts to apply a configtx to become the new configuration
-	Apply(configtx *ab.ConfigurationEnvelope) error
+	Apply(configtx *cb.ConfigurationEnvelope) error
 
 	// Validate attempts to validate a new configtx against the current config state
-	Validate(configtx *ab.ConfigurationEnvelope) error
+	Validate(configtx *cb.ConfigurationEnvelope) error
 }
 
 // DefaultModificationPolicyID is the ID of the policy used when no other policy can be resolved, for instance when attempting to create a new config item
@@ -64,14 +63,14 @@ type configurationManager struct {
 	sequence      uint64
 	chainID       []byte
 	pm            policies.Manager
-	configuration map[ab.ConfigurationItem_ConfigurationType]map[string]*ab.ConfigurationItem
-	handlers      map[ab.ConfigurationItem_ConfigurationType]Handler
+	configuration map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem
+	handlers      map[cb.ConfigurationItem_ConfigurationType]Handler
 }
 
 // NewConfigurationManager creates a new Manager unless an error is encountered
-func NewConfigurationManager(configtx *ab.ConfigurationEnvelope, pm policies.Manager, handlers map[ab.ConfigurationItem_ConfigurationType]Handler) (Manager, error) {
-	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
-		if _, ok := handlers[ab.ConfigurationItem_ConfigurationType(ctype)]; !ok {
+func NewConfigurationManager(configtx *cb.ConfigurationEnvelope, pm policies.Manager, handlers map[cb.ConfigurationItem_ConfigurationType]Handler) (Manager, error) {
+	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
+		if _, ok := handlers[cb.ConfigurationItem_ConfigurationType(ctype)]; !ok {
 			return nil, fmt.Errorf("Must supply a handler for all known types")
 		}
 	}
@@ -93,33 +92,33 @@ func NewConfigurationManager(configtx *ab.ConfigurationEnvelope, pm policies.Man
 	return cm, nil
 }
 
-func makeConfigMap() map[ab.ConfigurationItem_ConfigurationType]map[string]*ab.ConfigurationItem {
-	configMap := make(map[ab.ConfigurationItem_ConfigurationType]map[string]*ab.ConfigurationItem)
-	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
-		configMap[ab.ConfigurationItem_ConfigurationType(ctype)] = make(map[string]*ab.ConfigurationItem)
+func makeConfigMap() map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem {
+	configMap := make(map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem)
+	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
+		configMap[cb.ConfigurationItem_ConfigurationType(ctype)] = make(map[string]*cb.ConfigurationItem)
 	}
 	return configMap
 }
 
 func (cm *configurationManager) beginHandlers() {
-	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
-		cm.handlers[ab.ConfigurationItem_ConfigurationType(ctype)].BeginConfig()
+	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
+		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].BeginConfig()
 	}
 }
 
 func (cm *configurationManager) rollbackHandlers() {
-	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
-		cm.handlers[ab.ConfigurationItem_ConfigurationType(ctype)].RollbackConfig()
+	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
+		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].RollbackConfig()
 	}
 }
 
 func (cm *configurationManager) commitHandlers() {
-	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
-		cm.handlers[ab.ConfigurationItem_ConfigurationType(ctype)].CommitConfig()
+	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
+		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].CommitConfig()
 	}
 }
 
-func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope) (configMap map[ab.ConfigurationItem_ConfigurationType]map[string]*ab.ConfigurationItem, err error) {
+func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope) (configMap map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem, err error) {
 	// Verify config is a sequential update to prevent exhausting sequence numbers
 	if configtx.Sequence != cm.sequence+1 {
 		return nil, fmt.Errorf("Config sequence number jumped from %d to %d", cm.sequence, configtx.Sequence)
@@ -141,7 +140,7 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 
 	for _, entry := range configtx.Items {
 		// Verify every entry is well formed
-		config := &ab.ConfigurationItem{}
+		config := &cb.ConfigurationItem{}
 		err = proto.Unmarshal(entry.ConfigurationItem, config)
 		if err != nil {
 			return nil, err
@@ -212,9 +211,9 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 	}
 
 	// Ensure that any config items which used to exist still exist, to prevent implicit deletion
-	for ctype := range ab.ConfigurationItem_ConfigurationType_name {
-		curMap := cm.configuration[ab.ConfigurationItem_ConfigurationType(ctype)]
-		newMap := configMap[ab.ConfigurationItem_ConfigurationType(ctype)]
+	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
+		curMap := cm.configuration[cb.ConfigurationItem_ConfigurationType(ctype)]
+		newMap := configMap[cb.ConfigurationItem_ConfigurationType(ctype)]
 		for id := range curMap {
 			_, ok := newMap[id]
 			if !ok {
@@ -229,7 +228,7 @@ func (cm *configurationManager) processConfig(configtx *ab.ConfigurationEnvelope
 }
 
 // Validate attempts to validate a new configtx against the current config state
-func (cm *configurationManager) Validate(configtx *ab.ConfigurationEnvelope) error {
+func (cm *configurationManager) Validate(configtx *cb.ConfigurationEnvelope) error {
 	cm.beginHandlers()
 	_, err := cm.processConfig(configtx)
 	cm.rollbackHandlers()
@@ -237,7 +236,7 @@ func (cm *configurationManager) Validate(configtx *ab.ConfigurationEnvelope) err
 }
 
 // Apply attempts to apply a configtx to become the new configuration
-func (cm *configurationManager) Apply(configtx *ab.ConfigurationEnvelope) error {
+func (cm *configurationManager) Apply(configtx *cb.ConfigurationEnvelope) error {
 	cm.beginHandlers()
 	configMap, err := cm.processConfig(configtx)
 	if err != nil {
