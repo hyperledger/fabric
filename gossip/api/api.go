@@ -16,16 +16,10 @@ limitations under the License.
 
 package api
 
-
 // GossipService is used to publish new blocks to the gossip network
 type GossipService interface {
 	// payload: Holds the block's content, hash and seqNum
 	Publish(payload Payload) error
-}
-
-type BindAddress struct {
-	Host string
-	Port int16
 }
 
 // Payload defines an object that contains a ledger block
@@ -54,12 +48,12 @@ type ReplicationProvider interface {
 	LastBlockSeq() uint64
 }
 
-// MessageCryptoVerifier verifies the message's authenticity,
+// MessageCryptoService verifies the message's authenticity,
 // if messages are cryptographically signed
 type MessageCryptoService interface {
 	// Verify returns nil whether the message and its identifier are authentic,
 	// otherwise returns an error
-	VerifyBlock(seqNum uint64, pkiId []byte, payload Payload) error
+	VerifyBlock(seqNum uint64, pkiID []byte, payload Payload) error
 
 	// Sign signs msg with this peer's signing key and outputs
 	// the signature if no error occurred.
