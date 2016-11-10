@@ -100,7 +100,7 @@ func TestSign(t *testing.T) {
 		t.Fatalf("Failed generating ECDSA signature [%s]", err)
 	}
 
-	valid, err := csp.Verify(k, signature, primitives.Hash(msg))
+	valid, err := csp.Verify(k, signature, primitives.Hash(msg), nil)
 	if err != nil {
 		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
 	}

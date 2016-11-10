@@ -126,7 +126,7 @@ type BCCSP interface {
 
 	// Verify verifies signature against key k and digest
 	// The opts argument should be appropriate for the algorithm used.
-	Verify(k Key, signature, digest []byte) (valid bool, err error)
+	Verify(k Key, signature, digest []byte, opts SignerOpts) (valid bool, err error)
 
 	// Encrypt encrypts plaintext using key k.
 	// The opts argument should be appropriate for the algorithm used.

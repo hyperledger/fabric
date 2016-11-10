@@ -57,6 +57,15 @@ func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 				Bytes: raw,
 			},
 		), nil
+	case *rsa.PrivateKey:
+		raw := x509.MarshalPKCS1PrivateKey(x)
+
+		return pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "RSA PRIVATE KEY",
+				Bytes: raw,
+			},
+		), nil
 	default:
 		return nil, utils.ErrInvalidKey
 	}
