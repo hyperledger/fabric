@@ -343,7 +343,7 @@ chaincode:
     # A value <= 0 turns keepalive off
     keepalive: 0
 
-    # system chaincodes whitelist. To add system chaincode "myscc" to the  
+    # system chaincodes whitelist. To add system chaincode "myscc" to the
     # whitelist, add "myscc: enable" to the list
     system:
         lccc: enable
@@ -397,6 +397,14 @@ ledger:
         # configurations for 'trie'
         # 'tire' has no additional configurations exposed as yet
 
+    # stateDatabase - options are "goleveldb", "CouchDB"
+    # goleveldb - default state database stored in goleveldb.
+    # CouchDB - store state database in CouchDB
+    stateDatabase: goleveldb
+    couchDBConfig:
+       couchDBAddress: 127.0.0.1:5984
+       username:
+       password:
 
 ###############################################################################
 #

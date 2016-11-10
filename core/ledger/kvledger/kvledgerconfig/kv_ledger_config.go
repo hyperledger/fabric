@@ -16,12 +16,35 @@ limitations under the License.
 
 package kvledgerconfig
 
-// Change this feature toggle to true to use CouchDB for state database
-// TODO Eventually this feature toggle will be externalized via a real
-//      config option on the peer
-var useCouchDB = false
+import "github.com/spf13/viper"
+
+var stateDatabase = "goleveldb"
+var couchDBAddress = "127.0.0.1:5984"
+var username = ""
+var password = ""
+
+// CouchDBDef contains parameters
+type CouchDBDef struct {
+	URL      string
+	Username string
+	Password string
+}
 
 //IsCouchDBEnabled exposes the useCouchDB variable
 func IsCouchDBEnabled() bool {
-	return useCouchDB
+	stateDatabase = viper.GetString("ledger.state.stateDatabase")
+	if stateDatabase == "CouchDB" {
+		return true
+	}
+	return false
+}
+
+//GetCouchDBDefinition exposes the useCouchDB variable
+func GetCouchDBDefinition() *CouchDBDef {
+
+	couchDBAddress = viper.GetString("ledger.state.couchDBConfig.couchDBAddress")
+	username = viper.GetString("ledger.state.couchDBConfig.username")
+	password = viper.GetString("ledger.state.couchDBConfig.password")
+
+	return &CouchDBDef{couchDBAddress, username, password}
 }

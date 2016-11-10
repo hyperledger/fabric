@@ -82,14 +82,13 @@ type CouchConnection struct {
 }
 
 // NewCouchDBTxMgr constructs a `CouchDBTxMgr`
-func NewCouchDBTxMgr(conf *Conf, host string, port int, dbName string, id string, pw string) *CouchDBTxMgr {
+func NewCouchDBTxMgr(conf *Conf, couchDBConnectURL string, dbName string, id string, pw string) *CouchDBTxMgr {
 
 	// TODO cleanup this RocksDB handle
 	db := db.CreateDB(&db.Conf{DBPath: conf.DBPath})
 	db.Open()
 
-	couchDB, err := couchdb.CreateConnectionDefinition(host,
-		port,
+	couchDB, err := couchdb.CreateConnectionDefinition(couchDBConnectURL,
 		dbName,
 		id,
 		pw)

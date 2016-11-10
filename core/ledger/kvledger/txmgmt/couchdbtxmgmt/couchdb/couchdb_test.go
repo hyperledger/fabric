@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	kvledgerconfig "github.com/hyperledger/fabric/core/ledger/kvledger/kvledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/kvledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
@@ -34,8 +34,8 @@ type Asset struct {
 	Owner     string `json:"owner"`
 }
 
-var hostname = "localhost"
-var port = 5984
+var connectURL = "localhost:5984"
+var badConnectURL = "localhost:5990"
 var database = "testdb1"
 var username = ""
 var password = ""
@@ -44,8 +44,11 @@ var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owne
 
 func TestDBConnectionDef(t *testing.T) {
 
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../../../../peer")
+
 	//create a new connection
-	_, err := CreateConnectionDefinition("localhost", 5984, "database", "", "")
+	_, err := CreateConnectionDefinition(connectURL, "database", "", "")
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 }
@@ -53,7 +56,7 @@ func TestDBConnectionDef(t *testing.T) {
 func TestDBBadConnectionDef(t *testing.T) {
 
 	//create a new connection
-	_, err := CreateConnectionDefinition("^^^localhost", 5984, "database", "", "")
+	_, err := CreateConnectionDefinition("^^^localhost:5984", "database", "", "")
 	testutil.AssertError(t, err, fmt.Sprintf("Did not receive error when trying to create database connection definition with a bad hostname"))
 
 }
@@ -66,7 +69,7 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 		defer cleanup()
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		db, err := CreateConnectionDefinition(connectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//create a new database
@@ -85,7 +88,7 @@ func TestDBBadConnection(t *testing.T) {
 	if kvledgerconfig.IsCouchDBEnabled() == true {
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port+5, database, username, password)
+		db, err := CreateConnectionDefinition(badConnectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//create a new database
@@ -110,7 +113,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 		cleanup()
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		db, err := CreateConnectionDefinition(connectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//create a new database
@@ -177,7 +180,7 @@ func TestDBBadJSON(t *testing.T) {
 		cleanup()
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		db, err := CreateConnectionDefinition(connectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//create a new database
@@ -216,7 +219,7 @@ func TestDBSaveAttachment(t *testing.T) {
 		attachments = append(attachments, attachment)
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		db, err := CreateConnectionDefinition(connectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//create a new database
@@ -242,7 +245,7 @@ func TestDBRetrieveNonExistingDocument(t *testing.T) {
 		defer cleanup()
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		db, err := CreateConnectionDefinition(connectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//create a new database
@@ -264,7 +267,7 @@ func TestDBTestExistingDB(t *testing.T) {
 		defer cleanup()
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		db, err := CreateConnectionDefinition(connectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//create a new database
@@ -286,7 +289,7 @@ func TestDBTestDropNonExistDatabase(t *testing.T) {
 		defer cleanup()
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port, database, username, password)
+		db, err := CreateConnectionDefinition(connectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//Attempt to drop the database without creating first
@@ -304,7 +307,7 @@ func TestDBTestDropDatabaseBadConnection(t *testing.T) {
 		defer cleanup()
 
 		//create a new connection
-		db, err := CreateConnectionDefinition(hostname, port+4, database, username, password)
+		db, err := CreateConnectionDefinition(badConnectURL, database, username, password)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 		//Attempt to drop the database without creating first
@@ -317,7 +320,7 @@ func TestDBTestDropDatabaseBadConnection(t *testing.T) {
 func cleanup() {
 
 	//create a new connection
-	db, _ := CreateConnectionDefinition(hostname, port, database, username, password)
+	db, _ := CreateConnectionDefinition(connectURL, database, username, password)
 
 	//drop the test database
 	db.DropDatabase()

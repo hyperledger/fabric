@@ -23,10 +23,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
-
-	logging "github.com/op/go-logging"
-
+	"github.com/hyperledger/fabric/core/ledger/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	logging "github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("main")
@@ -46,6 +45,9 @@ func init() {
 	// Note, if subledgers are supported in the future,
 	// the various ledgers could be created/managed at this level
 	logger.Debugf("===COUCHDB=== Marble Example main init()")
+
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../../../peer")
 
 	os.RemoveAll(ledgerPath)
 	ledgerConf := kvledger.NewConf(ledgerPath, 0)
