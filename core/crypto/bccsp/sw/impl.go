@@ -26,6 +26,8 @@ import (
 
 	"crypto/rsa"
 
+	"hash"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/utils"
@@ -463,12 +465,27 @@ func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
 // Hash hashes messages msg using options opts.
 func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error) {
 	if opts == nil {
-		return nil, errors.New("Invalid Opts parameter. It must not be nil.")
+		return primitives.Hash(msg), nil
 	}
 
 	switch opts.Algorithm() {
-	case bccsp.SHA:
+	case bccsp.DefaultHash, bccsp.SHA:
 		return primitives.Hash(msg), nil
+	default:
+		return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
+	}
+}
+
+// GetHash returns and instance of hash.Hash using options opts.
+// If opts is nil then the default hash function is returned.
+func (csp *impl) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
+	if opts == nil {
+		return primitives.NewHash(), nil
+	}
+
+	switch opts.Algorithm() {
+	case bccsp.SHA, bccsp.DefaultHash:
+		return primitives.NewHash(), nil
 	default:
 		return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
 	}

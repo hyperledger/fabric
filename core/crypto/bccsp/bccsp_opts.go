@@ -45,6 +45,9 @@ const (
 
 	// X509Certificate Label for X509 certificate realted operation
 	X509Certificate = "X509Certificate"
+
+	// DefaultHash is the identifier for the default hash function (see primitives package)
+	DefaultHash = "DEFAULT_HASH"
 )
 
 // ECDSAKeyGenOpts contains options for ECDSA key generation.
