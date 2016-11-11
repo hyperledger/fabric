@@ -20,7 +20,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/testutil"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestKVLedgerBlockStorage(t *testing.T) {
@@ -30,7 +31,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &protos.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
@@ -44,9 +45,9 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	ledger.Commit()
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	serBlock1, _ := protos.ConstructSerBlock2(block1)
+	serBlock1, _ := pb.ConstructSerBlock2(block1)
 	block1Hash := serBlock1.ComputeHash()
-	testutil.AssertEquals(t, bcInfo, &protos.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 
 	simulator, _ = ledger.NewTxSimulator()
@@ -60,9 +61,9 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	ledger.Commit()
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	serBlock2, _ := protos.ConstructSerBlock2(block2)
+	serBlock2, _ := pb.ConstructSerBlock2(block2)
 	block2Hash := serBlock2.ComputeHash()
-	testutil.AssertEquals(t, bcInfo, &protos.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: []byte{}})
 
 	b1, _ := ledger.GetBlockByHash(block1Hash)

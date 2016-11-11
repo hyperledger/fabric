@@ -24,7 +24,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/events/producer"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //Execute - execute transaction or a query

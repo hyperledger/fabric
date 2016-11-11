@@ -22,8 +22,9 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
-	"github.com/hyperledger/fabric/protos"
 	"github.com/stretchr/testify/assert"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestKVLedgerBlockStorage(t *testing.T) {
@@ -42,7 +43,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.NoError(t, err)
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &protos.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
@@ -66,8 +67,8 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.NoError(t, err)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	serBlock1, _ := protos.ConstructSerBlock2(block1)
+	serBlock1, _ := pb.ConstructSerBlock2(block1)
 	block1Hash := serBlock1.ComputeHash()
-	testutil.AssertEquals(t, bcInfo, &protos.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 }

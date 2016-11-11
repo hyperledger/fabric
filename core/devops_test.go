@@ -21,7 +21,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestDevops_Build_NilSpec(t *testing.T) {

@@ -27,7 +27,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
 

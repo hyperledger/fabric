@@ -23,7 +23,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/util"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var something = "c29tZXRoaW5n"
@@ -122,11 +123,11 @@ func TestQueryGetTranExisting(t *testing.T) {
 type mockLedger struct {
 }
 
-func (ml mockLedger) GetTransactionByID(txID string) (*protos.Transaction, error) {
+func (ml mockLedger) GetTransactionByID(txID string) (*pb.Transaction, error) {
 	if txID == "noSuchTX" {
 		return nil, fmt.Errorf("Some error")
 	}
-	newCCIS := &protos.ChaincodeInvocationSpec{ChaincodeSpec: &protos.ChaincodeSpec{CtorMsg: &protos.ChaincodeInput{Args: util.ToChaincodeArgs("execute", something)}}}
+	newCCIS := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("execute", something)}}}
 	pl, _ := proto.Marshal(newCCIS)
-	return &protos.Transaction{Payload: pl}, nil
+	return &pb.Transaction{Payload: pl}, nil
 }

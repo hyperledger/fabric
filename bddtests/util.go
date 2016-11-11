@@ -17,7 +17,7 @@ limitations under the License.
 package bddtests
 
 import (
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // KeyedProposalResponse the response for an endorsement for internal usage in maps

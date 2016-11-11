@@ -38,7 +38,7 @@ import (
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/discovery"
 	"github.com/hyperledger/fabric/core/util"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Peer provides interface for a peer

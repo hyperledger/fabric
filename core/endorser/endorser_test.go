@@ -34,7 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"

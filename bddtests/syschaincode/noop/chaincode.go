@@ -21,13 +21,14 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = shim.NewLogger("noop")
 
 type ledgerHandler interface {
-	GetTransactionByID(txID string) (*protos.Transaction, error)
+	GetTransactionByID(txID string) (*pb.Transaction, error)
 }
 
 // SystemChaincode is type representing the chaincode
@@ -78,7 +79,7 @@ func (t *SystemChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error
 		if nil != txerr || nil == tx {
 			return nil, txerr
 		}
-		newCCIS := &protos.ChaincodeInvocationSpec{}
+		newCCIS := &pb.ChaincodeInvocationSpec{}
 		var merr = proto.Unmarshal(tx.Payload, newCCIS)
 		if nil != merr {
 			return nil, merr

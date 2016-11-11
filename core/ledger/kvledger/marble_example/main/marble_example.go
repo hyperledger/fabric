@@ -23,8 +23,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
-	"github.com/hyperledger/fabric/protos"
+
 	logging "github.com/op/go-logging"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = logging.MustGetLogger("main")
@@ -91,7 +93,7 @@ func transferMarble() {
 	printBlocksInfo(rawBlock, finalBlock, invalidTx)
 }
 
-func printBlocksInfo(rawBlock *protos.Block2, finalBlock *protos.Block2, invalidTxs []*protos.InvalidTransaction) {
+func printBlocksInfo(rawBlock *pb.Block2, finalBlock *pb.Block2, invalidTxs []*pb.InvalidTransaction) {
 	fmt.Printf("Num txs in rawBlock = [%d], num txs in final block = [%d], num invalidTxs = [%d]\n",
 		len(rawBlock.Transactions), len(finalBlock.Transactions), len(invalidTxs))
 }

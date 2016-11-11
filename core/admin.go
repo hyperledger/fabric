@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/flogging"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var log = logging.MustGetLogger("server")

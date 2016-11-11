@@ -23,7 +23,7 @@ import (
 	"os"
 	"path/filepath"
 
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Platform for chaincodes written in Go

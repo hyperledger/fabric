@@ -21,7 +21,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -37,7 +38,7 @@ func ConstructAppInstance(ledger ledger.ValidatedLedger) *App {
 }
 
 // Init simulates init transaction
-func (app *App) Init(initialBalances map[string]int) (*protos.Transaction2, error) {
+func (app *App) Init(initialBalances map[string]int) (*pb.Transaction2, error) {
 	var txSimulator ledger.TxSimulator
 	var err error
 	if txSimulator, err = app.ledger.NewTxSimulator(); err != nil {
@@ -56,7 +57,7 @@ func (app *App) Init(initialBalances map[string]int) (*protos.Transaction2, erro
 }
 
 // TransferFunds simulates a transaction for transferring fund from fromAccount to toAccount
-func (app *App) TransferFunds(fromAccount string, toAccount string, transferAmt int) (*protos.Transaction2, error) {
+func (app *App) TransferFunds(fromAccount string, toAccount string, transferAmt int) (*pb.Transaction2, error) {
 
 	// act as endorsing peer shim code to simulate a transaction on behalf of chaincode
 	var txSimulator ledger.TxSimulator
@@ -111,8 +112,8 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 	return balances, nil
 }
 
-func constructTransaction(simulationResults []byte) *protos.Transaction2 {
-	tx, _ := putils.CreateTx(protos.Header_CHAINCODE, nil, nil, simulationResults, []*protos.Endorsement{})
+func constructTransaction(simulationResults []byte) *pb.Transaction2 {
+	tx, _ := putils.CreateTx(pb.Header_CHAINCODE, nil, nil, simulationResults, []*pb.Endorsement{})
 	return tx
 }
 

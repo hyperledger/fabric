@@ -21,7 +21,8 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // BlockHolder holds block bytes
@@ -30,8 +31,8 @@ type BlockHolder struct {
 }
 
 // GetBlock serializes Block from block bytes
-func (bh *BlockHolder) GetBlock() *protos.Block2 {
-	serBlock := protos.NewSerBlock2(bh.blockBytes)
+func (bh *BlockHolder) GetBlock() *pb.Block2 {
+	serBlock := pb.NewSerBlock2(bh.blockBytes)
 	block, err := serBlock.ToBlock2()
 	if err != nil {
 		panic(fmt.Errorf("Problem in deserialzing block: %s", err))

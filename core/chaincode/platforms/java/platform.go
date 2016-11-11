@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"os"
 
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	//	"path/filepath"
 )
 

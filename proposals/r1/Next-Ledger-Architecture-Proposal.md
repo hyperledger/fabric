@@ -30,7 +30,7 @@ Proposed API in Go pseudocode
 ```
 package ledger
 
-import "github.com/hyperledger/fabric/protos"
+import "github.com/hyperledger/fabric/protos/peer"
 
 // Encryptor is an interface that a ledger implementation can use for Encrypt/Decrypt the chaincode state
 type Encryptor interface {

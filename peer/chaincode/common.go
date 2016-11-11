@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

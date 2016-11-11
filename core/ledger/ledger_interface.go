@@ -17,15 +17,15 @@ limitations under the License.
 package ledger
 
 import (
-	"github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Ledger captures the methods that are common across the 'raw ledger' and the 'final ledger'
 type Ledger interface {
 	// GetBlockchainInfo returns basic info about blockchain
-	GetBlockchainInfo() (*protos.BlockchainInfo, error)
+	GetBlockchainInfo() (*pb.BlockchainInfo, error)
 	// GetBlockchainInfo returns block at a given height
-	GetBlockByNumber(blockNumber uint64) (*protos.Block2, error)
+	GetBlockByNumber(blockNumber uint64) (*pb.Block2, error)
 	// GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
 	// The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 	// ResultsIterator contains type BlockHolder
@@ -40,7 +40,7 @@ type Ledger interface {
 type RawLedger interface {
 	Ledger
 	// CommitBlock adds a new block
-	CommitBlock(block *protos.Block2) error
+	CommitBlock(block *pb.Block2) error
 }
 
 // ValidatedLedger represents the 'final ledger'. In addition to implement the methods inherited from the Ledger,
@@ -48,9 +48,9 @@ type RawLedger interface {
 type ValidatedLedger interface {
 	Ledger
 	// GetTransactionByID retrieves a transaction by id
-	GetTransactionByID(txID string) (*protos.Transaction2, error)
+	GetTransactionByID(txID string) (*pb.Transaction2, error)
 	// GetBlockByHash returns a block given it's hash
-	GetBlockByHash(blockHash []byte) (*protos.Block2, error)
+	GetBlockByHash(blockHash []byte) (*pb.Block2, error)
 	// NewTxSimulator gives handle to a transaction simulator.
 	// A client can obtain more than one 'TxSimulator's for parallel execution.
 	// Any snapshoting/synchronization should be performed at the implementation level if required
@@ -61,7 +61,7 @@ type ValidatedLedger interface {
 	NewQueryExecutor() (QueryExecutor, error)
 	// RemoveInvalidTransactions validates all the transactions in the given block
 	// and returns a block that contains only valid transactions and a list of transactions that are invalid
-	RemoveInvalidTransactionsAndPrepare(block *protos.Block2) (*protos.Block2, []*protos.InvalidTransaction, error)
+	RemoveInvalidTransactionsAndPrepare(block *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error)
 	// Commit commits the changes prepared in the method RemoveInvalidTransactionsAndPrepare.
 	// Commits both the valid block and related state changes
 	Commit() error
@@ -137,7 +137,7 @@ type KV struct {
 // BlockHolder holds block returned by the iterator in GetBlocksIterator.
 // The sole purpose of this holder is to avoid desrialization if block is desired in raw bytes form (e.g., for transfer)
 type BlockHolder interface {
-	GetBlock() *protos.Block2
+	GetBlock() *pb.Block2
 	GetBlockBytes() []byte
 }
 

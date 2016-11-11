@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt/couchdb"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
-	"github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
@@ -120,18 +120,18 @@ func (txmgr *CouchDBTxMgr) NewTxSimulator() (ledger.TxSimulator, error) {
 }
 
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
-func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *protos.Block2) (*protos.Block2, []*protos.InvalidTransaction, error) {
+func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error) {
 	logger.Debugf("===COUCHDB=== Entering CouchDBTxMgr.ValidateAndPrepare()")
-	validatedBlock := &protos.Block2{}
+	validatedBlock := &pb.Block2{}
 	//TODO pull PreviousBlockHash from db
 	validatedBlock.PreviousBlockHash = block.PreviousBlockHash
-	invalidTxs := []*protos.InvalidTransaction{}
+	invalidTxs := []*pb.InvalidTransaction{}
 	var valid bool
 	var err error
 	txmgr.updateSet = newUpdateSet()
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Transactions))
 	for _, txBytes := range block.Transactions {
-		tx := &protos.Transaction2{}
+		tx := &pb.Transaction2{}
 		err = proto.Unmarshal(txBytes, tx)
 		if err != nil {
 			return nil, nil, err
@@ -180,8 +180,8 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *protos.Block2) (*protos.Blo
 			}
 			validatedBlock.Transactions = append(validatedBlock.Transactions, txBytes)
 		} else {
-			invalidTxs = append(invalidTxs, &protos.InvalidTransaction{
-				Transaction: tx, Cause: protos.InvalidTransaction_RWConflictDuringCommit})
+			invalidTxs = append(invalidTxs, &pb.InvalidTransaction{
+				Transaction: tx, Cause: pb.InvalidTransaction_RWConflictDuringCommit})
 		}
 	}
 	logger.Debugf("===COUCHDB=== Exiting CouchDBTxMgr.ValidateAndPrepare()")

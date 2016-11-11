@@ -20,15 +20,15 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-func createCIS() *protos.ChaincodeInvocationSpec {
-	return &protos.ChaincodeInvocationSpec{
-		ChaincodeSpec: &protos.ChaincodeSpec{
-			Type:        protos.ChaincodeSpec_GOLANG,
-			ChaincodeID: &protos.ChaincodeID{Name: "chaincode_name"},
-			CtorMsg:     &protos.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
+func createCIS() *pb.ChaincodeInvocationSpec {
+	return &pb.ChaincodeInvocationSpec{
+		ChaincodeSpec: &pb.ChaincodeSpec{
+			Type:        pb.ChaincodeSpec_GOLANG,
+			ChaincodeID: &pb.ChaincodeID{Name: "chaincode_name"},
+			CtorMsg:     &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
 
 func TestProposal(t *testing.T) {
@@ -46,7 +46,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// sanity check on header
-	if hdr.Type != protos.Header_CHAINCODE ||
+	if hdr.Type != pb.Header_CHAINCODE ||
 		hdr.Nonce == nil ||
 		string(hdr.Creator) != "creator" {
 		t.Fatalf("Invalid header after unmarshalling\n")
@@ -74,7 +74,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// sanity check on cis
-	if cis.ChaincodeSpec.Type != protos.ChaincodeSpec_GOLANG ||
+	if cis.ChaincodeSpec.Type != pb.ChaincodeSpec_GOLANG ||
 		cis.ChaincodeSpec.ChaincodeID.Name != "chaincode_name" ||
 		len(cis.ChaincodeSpec.CtorMsg.Args) != 2 ||
 		string(cis.ChaincodeSpec.CtorMsg.Args[0]) != "arg1" ||
@@ -85,7 +85,7 @@ func TestProposal(t *testing.T) {
 }
 
 func TestProposalResponse(t *testing.T) {
-	events := &protos.ChaincodeEvent{
+	events := &pb.ChaincodeEvent{
 		ChaincodeID: "ccid",
 		EventName:   "EventName",
 		Payload:     []byte("EventPayload"),
@@ -135,7 +135,7 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// create a proposal response
-	prBytes, err := GetBytesProposalResponse(prpBytes, &protos.Endorsement{Endorser: []byte("endorser"), Signature: []byte("signature")})
+	prBytes, err := GetBytesProposalResponse(prpBytes, &pb.Endorsement{Endorser: []byte("endorser"), Signature: []byte("signature")})
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponse")
 		return

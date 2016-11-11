@@ -17,7 +17,7 @@ limitations under the License.
 package consumer
 
 import (
-	ehpb "github.com/hyperledger/fabric/protos"
+	ehpb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //EventAdapter is the interface by which a openchain event client registers interested events and

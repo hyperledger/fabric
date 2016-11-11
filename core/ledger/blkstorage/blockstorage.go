@@ -20,7 +20,8 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // IndexableAttr represents an indexable attribute
@@ -49,11 +50,11 @@ var (
 // An implementation of this interface is expected to take an argument
 // of type `IndexConfig` which configures the block store on what items should be indexed
 type BlockStore interface {
-	AddBlock(block *protos.Block2) error
-	GetBlockchainInfo() (*protos.BlockchainInfo, error)
+	AddBlock(block *pb.Block2) error
+	GetBlockchainInfo() (*pb.BlockchainInfo, error)
 	RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error)
-	RetrieveBlockByHash(blockHash []byte) (*protos.Block2, error)
-	RetrieveBlockByNumber(blockNum uint64) (*protos.Block2, error)
-	RetrieveTxByID(txID string) (*protos.Transaction2, error)
+	RetrieveBlockByHash(blockHash []byte) (*pb.Block2, error)
+	RetrieveBlockByNumber(blockNum uint64) (*pb.Block2, error)
+	RetrieveTxByID(txID string) (*pb.Transaction2, error)
 	Shutdown()
 }

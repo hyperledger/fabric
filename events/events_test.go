@@ -26,7 +26,7 @@ import (
 
 	"github.com/hyperledger/fabric/events/consumer"
 	"github.com/hyperledger/fabric/events/producer"
-	ehpb "github.com/hyperledger/fabric/protos"
+	ehpb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

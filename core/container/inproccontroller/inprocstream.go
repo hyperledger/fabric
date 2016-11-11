@@ -17,7 +17,7 @@ limitations under the License.
 package inproccontroller
 
 import (
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // PeerChaincodeStream interface for stream between Peer and chaincode instance.

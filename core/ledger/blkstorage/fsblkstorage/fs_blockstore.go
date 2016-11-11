@@ -19,7 +19,8 @@ package fsblkstorage
 import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // FsBlockStore - filesystem based implementation for `BlockStore`
@@ -33,12 +34,12 @@ func NewFsBlockStore(conf *Conf, indexConfig *blkstorage.IndexConfig) *FsBlockSt
 }
 
 // AddBlock adds a new block
-func (store *FsBlockStore) AddBlock(block *protos.Block2) error {
+func (store *FsBlockStore) AddBlock(block *pb.Block2) error {
 	return store.fileMgr.addBlock(block)
 }
 
 // GetBlockchainInfo returns the current info about blockchain
-func (store *FsBlockStore) GetBlockchainInfo() (*protos.BlockchainInfo, error) {
+func (store *FsBlockStore) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 	return store.fileMgr.getBlockchainInfo(), nil
 }
 
@@ -53,17 +54,17 @@ func (store *FsBlockStore) RetrieveBlocks(startNum uint64) (ledger.ResultsIterat
 }
 
 // RetrieveBlockByHash returns the block for given block-hash
-func (store *FsBlockStore) RetrieveBlockByHash(blockHash []byte) (*protos.Block2, error) {
+func (store *FsBlockStore) RetrieveBlockByHash(blockHash []byte) (*pb.Block2, error) {
 	return store.fileMgr.retrieveBlockByHash(blockHash)
 }
 
 // RetrieveBlockByNumber returns the block at a given blockchain height
-func (store *FsBlockStore) RetrieveBlockByNumber(blockNum uint64) (*protos.Block2, error) {
+func (store *FsBlockStore) RetrieveBlockByNumber(blockNum uint64) (*pb.Block2, error) {
 	return store.fileMgr.retrieveBlockByNumber(blockNum)
 }
 
 // RetrieveTxByID returns a transaction for given transaction id
-func (store *FsBlockStore) RetrieveTxByID(txID string) (*protos.Transaction2, error) {
+func (store *FsBlockStore) RetrieveTxByID(txID string) (*pb.Transaction2, error) {
 	return store.fileMgr.retrieveTransactionByID(txID)
 }
 

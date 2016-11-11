@@ -25,8 +25,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
-	"github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = logging.MustGetLogger("kvledger")
@@ -87,7 +88,7 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 	mgr.syncIndex()
 
 	// init BlockchainInfo
-	bcInfo := &protos.BlockchainInfo{
+	bcInfo := &pb.BlockchainInfo{
 		Height:            0,
 		CurrentBlockHash:  nil,
 		PreviousBlockHash: nil}
@@ -102,7 +103,7 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 		if err != nil {
 			panic(fmt.Sprintf("Error in decoding block: %s", err))
 		}
-		bcInfo = &protos.BlockchainInfo{
+		bcInfo = &pb.BlockchainInfo{
 			Height:            cpInfo.lastBlockNumber,
 			CurrentBlockHash:  lastBlockHash,
 			PreviousBlockHash: previousBlockHash}
@@ -175,8 +176,8 @@ func (mgr *blockfileMgr) moveToNextFile() {
 	mgr.updateCheckpoint(cpInfo)
 }
 
-func (mgr *blockfileMgr) addBlock(block *protos.Block2) error {
-	serBlock, err := protos.ConstructSerBlock2(block)
+func (mgr *blockfileMgr) addBlock(block *pb.Block2) error {
+	serBlock, err := pb.ConstructSerBlock2(block)
 	if err != nil {
 		return fmt.Errorf("Error while serializing block: %s", err)
 	}
@@ -269,7 +270,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 		if blockBytes == nil {
 			break
 		}
-		serBlock2 := protos.NewSerBlock2(blockBytes)
+		serBlock2 := pb.NewSerBlock2(blockBytes)
 		var txOffsets []int
 		if txOffsets, err = serBlock2.GetTxOffsets(); err != nil {
 			return err
@@ -291,8 +292,8 @@ func (mgr *blockfileMgr) syncIndex() error {
 	return nil
 }
 
-func (mgr *blockfileMgr) getBlockchainInfo() *protos.BlockchainInfo {
-	return mgr.bcInfo.Load().(*protos.BlockchainInfo)
+func (mgr *blockfileMgr) getBlockchainInfo() *pb.BlockchainInfo {
+	return mgr.bcInfo.Load().(*pb.BlockchainInfo)
 }
 
 func (mgr *blockfileMgr) updateCheckpoint(cpInfo *checkpointInfo) {
@@ -303,9 +304,9 @@ func (mgr *blockfileMgr) updateCheckpoint(cpInfo *checkpointInfo) {
 	mgr.cpInfoCond.Broadcast()
 }
 
-func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *protos.Block2) {
+func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *pb.Block2) {
 	currentBCInfo := mgr.getBlockchainInfo()
-	newBCInfo := &protos.BlockchainInfo{
+	newBCInfo := &pb.BlockchainInfo{
 		Height:            currentBCInfo.Height + 1,
 		CurrentBlockHash:  latestBlockHash,
 		PreviousBlockHash: latestBlock.PreviousBlockHash}
@@ -313,7 +314,7 @@ func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBloc
 	mgr.bcInfo.Store(newBCInfo)
 }
 
-func (mgr *blockfileMgr) retrieveBlockByHash(blockHash []byte) (*protos.Block2, error) {
+func (mgr *blockfileMgr) retrieveBlockByHash(blockHash []byte) (*pb.Block2, error) {
 	logger.Debugf("retrieveBlockByHash() - blockHash = [%#v]", blockHash)
 	loc, err := mgr.index.getBlockLocByHash(blockHash)
 	if err != nil {
@@ -322,7 +323,7 @@ func (mgr *blockfileMgr) retrieveBlockByHash(blockHash []byte) (*protos.Block2, 
 	return mgr.fetchBlock(loc)
 }
 
-func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*protos.Block2, error) {
+func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*pb.Block2, error) {
 	logger.Debugf("retrieveBlockByNumber() - blockNum = [%d]", blockNum)
 	loc, err := mgr.index.getBlockLocByBlockNum(blockNum)
 	if err != nil {
@@ -331,7 +332,7 @@ func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*protos.Block2,
 	return mgr.fetchBlock(loc)
 }
 
-func (mgr *blockfileMgr) retrieveSerBlockByNumber(blockNum uint64) (*protos.SerBlock2, error) {
+func (mgr *blockfileMgr) retrieveSerBlockByNumber(blockNum uint64) (*pb.SerBlock2, error) {
 	logger.Debugf("retrieveSerBlockByNumber() - blockNum = [%d]", blockNum)
 	loc, err := mgr.index.getBlockLocByBlockNum(blockNum)
 	if err != nil {
@@ -344,7 +345,7 @@ func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*BlocksItr, error) {
 	return newBlockItr(mgr, startNum), nil
 }
 
-func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*protos.Transaction2, error) {
+func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*pb.Transaction2, error) {
 	logger.Debugf("retrieveTransactionByID() - txId = [%s]", txID)
 	loc, err := mgr.index.getTxLoc(txID)
 	if err != nil {
@@ -353,7 +354,7 @@ func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*protos.Transacti
 	return mgr.fetchTransaction(loc)
 }
 
-func (mgr *blockfileMgr) fetchBlock(lp *fileLocPointer) (*protos.Block2, error) {
+func (mgr *blockfileMgr) fetchBlock(lp *fileLocPointer) (*pb.Block2, error) {
 	serBlock, err := mgr.fetchSerBlock(lp)
 	if err != nil {
 		return nil, err
@@ -365,20 +366,20 @@ func (mgr *blockfileMgr) fetchBlock(lp *fileLocPointer) (*protos.Block2, error) 
 	return block, nil
 }
 
-func (mgr *blockfileMgr) fetchSerBlock(lp *fileLocPointer) (*protos.SerBlock2, error) {
+func (mgr *blockfileMgr) fetchSerBlock(lp *fileLocPointer) (*pb.SerBlock2, error) {
 	blockBytes, err := mgr.fetchBlockBytes(lp)
 	if err != nil {
 		return nil, err
 	}
-	return protos.NewSerBlock2(blockBytes), nil
+	return pb.NewSerBlock2(blockBytes), nil
 }
 
-func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*protos.Transaction2, error) {
+func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*pb.Transaction2, error) {
 	txBytes, err := mgr.fetchRawBytes(lp)
 	if err != nil {
 		return nil, err
 	}
-	tx := &protos.Transaction2{}
+	tx := &pb.Transaction2{}
 	err = proto.Unmarshal(txBytes, tx)
 	if err != nil {
 		return nil, err

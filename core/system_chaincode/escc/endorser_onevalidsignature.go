@@ -22,9 +22,10 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/protos"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = logging.MustGetLogger("escc")
@@ -134,7 +135,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	signature := []byte("here_goes_the_signature_of_prpBytes_under_the_endorsers_key")
 
 	// marshall the proposal response so that we return its bytes
-	prBytes, err := utils.GetBytesProposalResponse(prpBytes, &protos.Endorsement{Signature: signature, Endorser: endorser})
+	prBytes, err := utils.GetBytesProposalResponse(prpBytes, &pb.Endorsement{Signature: signature, Endorser: endorser})
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshall ProposalResponse: err %s", err)
 	}

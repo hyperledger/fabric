@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/crypto"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )

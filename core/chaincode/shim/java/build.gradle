@@ -84,7 +84,7 @@ task copyToLib(type: Copy) {
 
 task copyProtos(type:Copy){
 
- from ("${rootDir}/protos"){
+ from ("${rootDir}/protos/peer"){
 	 include '**/chaincodeevent.proto'
 	 include '**/chaincode.proto'
  }
@@ -93,7 +93,7 @@ task copyProtos(type:Copy){
 		include '**/table.proto'
 		exclude 'java'
 	}
-	into "${projectDir}/src/main/proto"
+	into "${projectDir}/src/main/proto/peer"
 
 }
 

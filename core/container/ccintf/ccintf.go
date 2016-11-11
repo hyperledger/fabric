@@ -21,7 +21,7 @@ package ccintf
 //Currently inproccontroller uses it. dockercontroller does not.
 
 import (
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"golang.org/x/net/context"
 )
 

@@ -25,7 +25,7 @@ import (
 	"github.com/looplab/fsm"
 	"github.com/spf13/viper"
 
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Handler peer handler implementation.

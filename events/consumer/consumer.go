@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/hyperledger/fabric/core/comm"
-	ehpb "github.com/hyperledger/fabric/protos"
+	ehpb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //EventsClient holds the stream and adapter for consumer to work with
