@@ -222,7 +222,7 @@ func DERToPublicKey(derBytes []byte) (pub interface{}, err error) {
 }
 */
 
-// PublicKeyToPEM marshals a public key to the pem forma
+// PublicKeyToPEM marshals a public key to the pem format
 func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 	if len(pwd) != 0 {
 		return PublicKeyToEncryptedPEM(publicKey, pwd)
@@ -241,6 +241,22 @@ func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 				Bytes: PubASN1,
 			},
 		), nil
+
+	default:
+		return nil, utils.ErrInvalidKey
+	}
+}
+
+// PublicKeyToDER marshals a public key to the der format
+func PublicKeyToDER(publicKey interface{}) ([]byte, error) {
+	switch x := publicKey.(type) {
+	case *ecdsa.PublicKey:
+		PubASN1, err := x509.MarshalPKIXPublicKey(x)
+		if err != nil {
+			return nil, err
+		}
+
+		return PubASN1, nil
 
 	default:
 		return nil, utils.ErrInvalidKey

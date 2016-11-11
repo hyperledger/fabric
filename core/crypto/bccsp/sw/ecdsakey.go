@@ -28,7 +28,7 @@ type ecdsaPrivateKey struct {
 	k *ecdsa.PrivateKey
 }
 
-// ToByte converts this key to its byte representation,
+// Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *ecdsaPrivateKey) Bytes() (raw []byte, err error) {
 	return
@@ -64,7 +64,7 @@ type ecdsaPublicKey struct {
 	k *ecdsa.PublicKey
 }
 
-// ToByte converts this key to its byte representation,
+// Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {
 	raw, err = x509.MarshalPKIXPublicKey(k.k)
