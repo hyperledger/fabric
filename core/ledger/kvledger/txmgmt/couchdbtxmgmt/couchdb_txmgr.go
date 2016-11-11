@@ -195,16 +195,6 @@ func (txmgr *CouchDBTxMgr) Shutdown() {
 
 func (txmgr *CouchDBTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, error) {
 
-	// trace the first 2000 characters of RWSet only, in case it is huge
-	if logger.IsEnabledFor(logging.DEBUG) {
-		txRWSetString := txRWSet.String()
-		if len(txRWSetString) < 2000 {
-			logger.Debugf("Validating txRWSet:%s", txRWSetString)
-		} else {
-			logger.Debugf("Validating txRWSet:%s...", txRWSetString[0:2000])
-		}
-	}
-
 	var err error
 	var currentVersion uint64
 
@@ -326,27 +316,20 @@ func (txmgr *CouchDBTxMgr) getCommitedVersion(ns string, key string) (uint64, er
 func (txmgr *CouchDBTxMgr) getCommittedValueAndVersion(ns string, key string) ([]byte, uint64, error) {
 
 	compositeKey := constructCompositeKey(ns, key)
-	/* Don't get from RocksDB since we are using CouchDB here
-	var encodedValue []byte
-	var err error
-	if encodedValue, err = txmgr.db.Get(txmgr.stateIndexCF, compositeKey); err != nil {
-		return nil, 0, err
-	}
-	if encodedValue == nil {
-		return nil, 0, nil
-	}
-	value, version := decodeValue(encodedValue)
-	*/
 
-	jsonBytes, _, _ := txmgr.couchDB.ReadDoc(string(compositeKey)) // TODO add error handling
+	docBytes, _, _ := txmgr.couchDB.ReadDoc(string(compositeKey)) // TODO add error handling
 
-	if jsonBytes != nil {
-		jsonString := string(jsonBytes[:])
-		logger.Debugf("===COUCHDB=== getCommittedValueAndVersion() Read jsonString:\n   %s", jsonString)
+	// trace the first 200 bytes of value only, in case it is huge
+	if docBytes != nil && logger.IsEnabledFor(logging.DEBUG) {
+		if len(docBytes) < 200 {
+			logger.Debugf("===COUCHDB=== getCommittedValueAndVersion() Read docBytes %s", docBytes)
+		} else {
+			logger.Debugf("===COUCHDB=== getCommittedValueAndVersion() Read docBytes %s...", docBytes[0:200])
+		}
 	}
-	value := jsonBytes
+
 	var version uint64 = 1 //TODO - version hardcoded to 1 is a temporary value for the prototype
-	return value, version, nil
+	return docBytes, version, nil
 }
 
 func encodeValue(value []byte, version uint64) []byte {
