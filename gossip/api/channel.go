@@ -44,18 +44,18 @@ type JoinChannelMessage interface {
 	// GetTimestamp returns the timestamp of the message's creation
 	GetTimestamp() time.Time
 
-	// PeerList returns all the peers that are in the channel
-	PeerList() []RemotePeer
+	// Members returns all the peers that are in the channel
+	Members() []ChannelMember
 }
 
 // ChainID defines the identity representation of a chain
 type ChainID []byte
 
-// RemotePeer is a peer's certificate and endpoint (host:port)
-type RemotePeer struct {
-	cert PeerCert
-	host string
-	port int
+// ChannelMember is a peer's certificate and endpoint (host:port)
+type ChannelMember struct {
+	Cert PeerCert // Cert defines the certificate of the remote peer
+	Host string   // Host is the hostname/ip address of the remote peer
+	Port int      // Port is the port the remote peer is listening on
 }
 
 // PeerCert defines the cryptographic identity of a peer
