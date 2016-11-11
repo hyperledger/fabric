@@ -23,7 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/peer/common"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
 )
 

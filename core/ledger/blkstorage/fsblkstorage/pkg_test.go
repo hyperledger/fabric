@@ -23,7 +23,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type testEnv struct {
@@ -59,14 +60,14 @@ func newTestBlockfileWrapper(t testing.TB, env *testEnv) *testBlockfileMgrWrappe
 	return &testBlockfileMgrWrapper{t, newBlockfileMgr(env.conf, env.indexConfig)}
 }
 
-func (w *testBlockfileMgrWrapper) addBlocks(blocks []*protos.Block2) {
+func (w *testBlockfileMgrWrapper) addBlocks(blocks []*pb.Block2) {
 	for _, blk := range blocks {
 		err := w.blockfileMgr.addBlock(blk)
 		testutil.AssertNoError(w.t, err, "Error while adding block to blockfileMgr")
 	}
 }
 
-func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*protos.Block2) {
+func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*pb.Block2) {
 	for i, block := range blocks {
 		hash := testutil.ComputeBlockHash(w.t, block)
 		b, err := w.blockfileMgr.retrieveBlockByHash(hash)
@@ -75,7 +76,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*protos.Block2) {
 	}
 }
 
-func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*protos.Block2, startingNum uint64) {
+func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*pb.Block2, startingNum uint64) {
 	for i := 0; i < len(blocks); i++ {
 		b, err := w.blockfileMgr.retrieveBlockByNumber(startingNum + uint64(i))
 		testutil.AssertNoError(w.t, err, fmt.Sprintf("Error while retrieving [%d]th block from blockfileMgr", i))

@@ -19,7 +19,7 @@ package peer
 import (
 	"fmt"
 
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // DuplicateHandlerError returned if attempt to register same chaincodeID while a stream already exists.

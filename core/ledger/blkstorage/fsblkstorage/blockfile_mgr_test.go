@@ -22,7 +22,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestBlockfileMgrBlockReadWrite(t *testing.T) {
@@ -83,7 +84,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	blkfileMgrWrapper.addBlocks(blocksAfterRestart)
 
 	// itrerate for all blocks
-	allBlocks := []*protos.Block2{}
+	allBlocks := []*pb.Block2{}
 	allBlocks = append(allBlocks, blocksBeforeCP...)
 	allBlocks = append(allBlocks, blocksAfterCP...)
 	allBlocks = append(allBlocks, blocksAfterRestart...)
@@ -102,7 +103,7 @@ func TestBlockfileMgrBlockIterator(t *testing.T) {
 }
 
 func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
-	firstBlockNum int, lastBlockNum int, expectedBlocks []*protos.Block2) {
+	firstBlockNum int, lastBlockNum int, expectedBlocks []*pb.Block2) {
 	itr, err := blockfileMgr.retrieveBlocks(uint64(firstBlockNum))
 	defer itr.Close()
 	testutil.AssertNoError(t, err, "Error while getting blocks iterator")
@@ -126,7 +127,7 @@ func TestBlockfileMgrBlockchainInfo(t *testing.T) {
 	defer blkfileMgrWrapper.close()
 
 	bcInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &protos.BlockchainInfo{Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
@@ -147,7 +148,7 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 			txID := constructTxID(uint64(i+1), j)
 			txFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)
 			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
-			tx := &protos.Transaction2{}
+			tx := &pb.Transaction2{}
 			err = proto.Unmarshal(txBytes, tx)
 			testutil.AssertNoError(t, err, "Error while unmarshalling tx")
 			testutil.AssertEquals(t, txFromFileMgr, tx)
@@ -174,7 +175,7 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 100)
 	size := 0
 	for _, block := range blocks {
-		serBlock, err := protos.ConstructSerBlock2(block)
+		serBlock, err := pb.ConstructSerBlock2(block)
 		testutil.AssertNoError(t, err, "Error while getting bytes from block")
 		by := serBlock.GetBytes()
 		blockBytesSize := len(by)

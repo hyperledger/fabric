@@ -17,7 +17,7 @@ limitations under the License.
 package producer
 
 import (
-	ehpb "github.com/hyperledger/fabric/protos"
+	ehpb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //CreateBlockEvent creates a Event from a Block

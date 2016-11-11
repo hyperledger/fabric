@@ -20,13 +20,14 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
 // ConstructBlockForSimulationResults constructs a block that includes a number of transactions - one per simulationResults
-func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte) *protos.Block2 {
-	txs := []*protos.Transaction2{}
+func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte) *pb.Block2 {
+	txs := []*pb.Transaction2{}
 	for i := 0; i < len(simulationResults); i++ {
 		tx := ConstructTestTransaction(t, simulationResults[i])
 		txs = append(txs, tx)
@@ -35,8 +36,8 @@ func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte
 }
 
 // ConstructTestBlocks constructs 'numBlocks' number of blocks for testing
-func ConstructTestBlocks(t *testing.T, numBlocks int) []*protos.Block2 {
-	blocks := []*protos.Block2{}
+func ConstructTestBlocks(t *testing.T, numBlocks int) []*pb.Block2 {
+	blocks := []*pb.Block2{}
 	for i := 0; i < numBlocks; i++ {
 		blocks = append(blocks, ConstructTestBlock(t, 10, 100, i*10))
 	}
@@ -44,30 +45,30 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*protos.Block2 {
 }
 
 // ConstructTestBlock constructs a block with 'numTx' number of transactions for testing
-func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *protos.Block2 {
-	txs := []*protos.Transaction2{}
+func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *pb.Block2 {
+	txs := []*pb.Transaction2{}
 	for i := startingTxID; i < numTx+startingTxID; i++ {
-		tx, _ := putils.CreateTx(protos.Header_CHAINCODE, []byte{}, []byte{}, ConstructRandomBytes(t, txSize), []*protos.Endorsement{})
+		tx, _ := putils.CreateTx(pb.Header_CHAINCODE, []byte{}, []byte{}, ConstructRandomBytes(t, txSize), []*pb.Endorsement{})
 		txs = append(txs, tx)
 	}
 	return newBlock(txs)
 }
 
 // ConstructTestTransaction constructs a transaction for testing
-func ConstructTestTransaction(t *testing.T, simulationResults []byte) *protos.Transaction2 {
-	tx, _ := putils.CreateTx(protos.Header_CHAINCODE, []byte{}, []byte{}, simulationResults, []*protos.Endorsement{})
+func ConstructTestTransaction(t *testing.T, simulationResults []byte) *pb.Transaction2 {
+	tx, _ := putils.CreateTx(pb.Header_CHAINCODE, []byte{}, []byte{}, simulationResults, []*pb.Endorsement{})
 	return tx
 }
 
 // ComputeBlockHash computes the crypto-hash of a block
-func ComputeBlockHash(t testing.TB, block *protos.Block2) []byte {
-	serBlock, err := protos.ConstructSerBlock2(block)
+func ComputeBlockHash(t testing.TB, block *pb.Block2) []byte {
+	serBlock, err := pb.ConstructSerBlock2(block)
 	AssertNoError(t, err, "Error while getting hash from block")
 	return serBlock.ComputeHash()
 }
 
-func newBlock(txs []*protos.Transaction2) *protos.Block2 {
-	block := &protos.Block2{}
+func newBlock(txs []*pb.Transaction2) *pb.Block2 {
+	block := &pb.Block2{}
 	block.PreviousBlockHash = []byte{}
 	for i := 0; i < len(txs); i++ {
 		txBytes, _ := proto.Marshal(txs[i])

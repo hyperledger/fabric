@@ -27,7 +27,7 @@ import (
 	"time"
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func download(path string) (string, error) {

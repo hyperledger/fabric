@@ -18,7 +18,8 @@ package example
 
 import (
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Committer a toy committer
@@ -32,9 +33,9 @@ func ConstructCommitter(ledger ledger.ValidatedLedger) *Committer {
 }
 
 // CommitBlock commits the block
-func (c *Committer) CommitBlock(rawBlock *protos.Block2) (*protos.Block2, []*protos.InvalidTransaction, error) {
-	var validBlock *protos.Block2
-	var invalidTxs []*protos.InvalidTransaction
+func (c *Committer) CommitBlock(rawBlock *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error) {
+	var validBlock *pb.Block2
+	var invalidTxs []*pb.InvalidTransaction
 	var err error
 	logger.Debugf("Committer validating the block...")
 	if validBlock, invalidTxs, err = c.ledger.RemoveInvalidTransactionsAndPrepare(rawBlock); err != nil {

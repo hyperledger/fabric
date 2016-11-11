@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/protos"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -32,6 +31,8 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger *logging.Logger // package-level logger
@@ -122,7 +123,7 @@ func (d *DeliverService) readUntilClose() {
 			}
 			fmt.Println("Got error ", t)
 		case *orderer.DeliverResponse_Block:
-			block := &protos.Block2{}
+			block := &pb.Block2{}
 			for _, d := range t.Block.Data.Data {
 				if d != nil {
 					if tx, err := putils.GetEndorserTxFromBlock(d); err != nil {

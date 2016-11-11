@@ -18,7 +18,8 @@ package example
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Consenter - a toy Consenter
@@ -31,9 +32,9 @@ func ConstructConsenter() *Consenter {
 }
 
 // ConstructBlock constructs a block from a list of transactions
-func (c *Consenter) ConstructBlock(transactions ...*protos.Transaction2) *protos.Block2 {
+func (c *Consenter) ConstructBlock(transactions ...*pb.Transaction2) *pb.Block2 {
 	logger.Debugf("Construct a block based on the transactions")
-	block := &protos.Block2{}
+	block := &pb.Block2{}
 	for _, tx := range transactions {
 		txBytes, _ := proto.Marshal(tx)
 		block.Transactions = append(block.Transactions, txBytes)

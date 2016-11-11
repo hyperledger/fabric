@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/hyperledger/fabric/core/util"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //hashFilesInDir computes h=hash(h,file bytes) for each file in a directory

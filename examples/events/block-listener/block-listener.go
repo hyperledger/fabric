@@ -25,7 +25,7 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/events/consumer"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type adapter struct {

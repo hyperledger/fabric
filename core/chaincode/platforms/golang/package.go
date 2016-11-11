@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/viper"
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //tw is expected to have the chaincode in it from GenerateHashcode. This method

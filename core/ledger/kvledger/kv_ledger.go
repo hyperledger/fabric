@@ -28,8 +28,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/lockbasedtxmgmt"
-	"github.com/hyperledger/fabric/protos"
+
 	logging "github.com/op/go-logging"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = logging.MustGetLogger("kvledger")
@@ -57,7 +59,7 @@ func NewConf(filesystemPath string, maxBlockfileSize int) *Conf {
 type KVLedger struct {
 	blockStore           blkstorage.BlockStore
 	txtmgmt              txmgmt.TxMgr
-	pendingBlockToCommit *protos.Block2
+	pendingBlockToCommit *pb.Block2
 }
 
 // NewKVLedger constructs new `KVLedger`
@@ -94,17 +96,17 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 }
 
 // GetTransactionByID retrieves a transaction by id
-func (l *KVLedger) GetTransactionByID(txID string) (*protos.Transaction2, error) {
+func (l *KVLedger) GetTransactionByID(txID string) (*pb.Transaction2, error) {
 	return l.blockStore.RetrieveTxByID(txID)
 }
 
 // GetBlockchainInfo returns basic info about blockchain
-func (l *KVLedger) GetBlockchainInfo() (*protos.BlockchainInfo, error) {
+func (l *KVLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 	return l.blockStore.GetBlockchainInfo()
 }
 
 // GetBlockByNumber returns block at a given height
-func (l *KVLedger) GetBlockByNumber(blockNumber uint64) (*protos.Block2, error) {
+func (l *KVLedger) GetBlockByNumber(blockNumber uint64) (*pb.Block2, error) {
 	return l.blockStore.RetrieveBlockByNumber(blockNumber)
 
 }
@@ -118,7 +120,7 @@ func (l *KVLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIte
 }
 
 // GetBlockByHash returns a block given it's hash
-func (l *KVLedger) GetBlockByHash(blockHash []byte) (*protos.Block2, error) {
+func (l *KVLedger) GetBlockByHash(blockHash []byte) (*pb.Block2, error) {
 	return l.blockStore.RetrieveBlockByHash(blockHash)
 }
 
@@ -141,9 +143,9 @@ func (l *KVLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 
 // RemoveInvalidTransactionsAndPrepare validates all the transactions in the given block
 // and returns a block that contains only valid transactions and a list of transactions that are invalid
-func (l *KVLedger) RemoveInvalidTransactionsAndPrepare(block *protos.Block2) (*protos.Block2, []*protos.InvalidTransaction, error) {
-	var validBlock *protos.Block2
-	var invalidTxs []*protos.InvalidTransaction
+func (l *KVLedger) RemoveInvalidTransactionsAndPrepare(block *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error) {
+	var validBlock *pb.Block2
+	var invalidTxs []*pb.InvalidTransaction
 	var err error
 	validBlock, invalidTxs, err = l.txtmgmt.ValidateAndPrepare(block)
 	if err == nil {

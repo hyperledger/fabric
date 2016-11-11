@@ -25,9 +25,10 @@ import (
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var sysccLogger = logging.MustGetLogger("sysccapi")
@@ -70,8 +71,8 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 		}
 	}
 
-	chaincodeID := &protos.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := protos.ChaincodeSpec{Type: protos.ChaincodeSpec_Type(protos.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &protos.ChaincodeInput{Args: syscc.InitArgs}}
+	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
+	spec := pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	//PDMP - use default chain to get the simulator
 	//Note that we are just colleting simulation though
@@ -100,8 +101,8 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 
 // deregisterSysCC stops the system chaincode and deregisters it from inproccontroller
 func deregisterSysCC(syscc *SystemChaincode) error {
-	chaincodeID := &protos.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &protos.ChaincodeSpec{Type: protos.ChaincodeSpec_Type(protos.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &protos.ChaincodeInput{Args: syscc.InitArgs}}
+	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	ctx := context.Background()
 	// First build and get the deployment spec
@@ -121,14 +122,14 @@ func deregisterSysCC(syscc *SystemChaincode) error {
 }
 
 // buildLocal builds a given chaincode code
-func buildSysCC(context context.Context, spec *protos.ChaincodeSpec) (*protos.ChaincodeDeploymentSpec, error) {
+func buildSysCC(context context.Context, spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
 	var codePackageBytes []byte
-	chaincodeDeploymentSpec := &protos.ChaincodeDeploymentSpec{ExecEnv: protos.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec, CodePackage: codePackageBytes}
+	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec, CodePackage: codePackageBytes}
 	return chaincodeDeploymentSpec, nil
 }
 
 // DeploySysCC deploys the supplied system chaincode to the local peer
-func DeploySysCC(ctx context.Context, spec *protos.ChaincodeSpec) error {
+func DeploySysCC(ctx context.Context, spec *pb.ChaincodeSpec) error {
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec, err := buildSysCC(ctx, spec)
 
@@ -137,7 +138,7 @@ func DeploySysCC(ctx context.Context, spec *protos.ChaincodeSpec) error {
 		return err
 	}
 
-	transaction, err := protos.NewChaincodeDeployTransaction(chaincodeDeploymentSpec, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name)
+	transaction, err := pb.NewChaincodeDeployTransaction(chaincodeDeploymentSpec, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name)
 	if err != nil {
 		return fmt.Errorf("Error deploying chaincode: %s ", err)
 	}

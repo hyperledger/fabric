@@ -22,7 +22,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
-	"github.com/hyperledger/fabric/protos"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 const (
@@ -46,12 +47,12 @@ func NewFSBasedRawLedger(filesystemPath string) *FSBasedRawLedger {
 }
 
 // GetBlockchainInfo returns basic info about blockchain
-func (rl *FSBasedRawLedger) GetBlockchainInfo() (*protos.BlockchainInfo, error) {
+func (rl *FSBasedRawLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 	return rl.blockStore.GetBlockchainInfo()
 }
 
 // GetBlockByNumber returns block at a given height
-func (rl *FSBasedRawLedger) GetBlockByNumber(blockNumber uint64) (*protos.Block2, error) {
+func (rl *FSBasedRawLedger) GetBlockByNumber(blockNumber uint64) (*pb.Block2, error) {
 	return rl.blockStore.RetrieveBlockByNumber(blockNumber)
 }
 
@@ -73,6 +74,6 @@ func (rl *FSBasedRawLedger) Close() {
 }
 
 // CommitBlock adds a new block
-func (rl *FSBasedRawLedger) CommitBlock(block *protos.Block2) error {
+func (rl *FSBasedRawLedger) CommitBlock(block *pb.Block2) error {
 	return rl.blockStore.AddBlock(block)
 }

@@ -22,25 +22,25 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
-	"github.com/hyperledger/fabric/protos"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 //GetChaincodeInvocationSpec get the ChaincodeInvocationSpec from the proposal
-func GetChaincodeInvocationSpec(prop *protos.Proposal) (*protos.ChaincodeInvocationSpec, error) {
-	txhdr := &protos.Header{}
+func GetChaincodeInvocationSpec(prop *peer.Proposal) (*peer.ChaincodeInvocationSpec, error) {
+	txhdr := &peer.Header{}
 	err := proto.Unmarshal(prop.Header, txhdr)
 	if err != nil {
 		return nil, err
 	}
-	if txhdr.Type != protos.Header_CHAINCODE {
+	if txhdr.Type != peer.Header_CHAINCODE {
 		return nil, fmt.Errorf("only CHAINCODE Type proposals supported")
 	}
-	ccPropPayload := &protos.ChaincodeProposalPayload{}
+	ccPropPayload := &peer.ChaincodeProposalPayload{}
 	err = proto.Unmarshal(prop.Payload, ccPropPayload)
 	if err != nil {
 		return nil, err
 	}
-	cis := &protos.ChaincodeInvocationSpec{}
+	cis := &peer.ChaincodeInvocationSpec{}
 	err = proto.Unmarshal(ccPropPayload.Input, cis)
 	if err != nil {
 		return nil, err
@@ -48,8 +48,8 @@ func GetChaincodeInvocationSpec(prop *protos.Proposal) (*protos.ChaincodeInvocat
 	return cis, nil
 }
 
-func GetHeader(prop *protos.Proposal) (*protos.Header, error) {
-	hdr := &protos.Header{}
+func GetHeader(prop *peer.Proposal) (*peer.Header, error) {
+	hdr := &peer.Header{}
 	err := proto.Unmarshal(prop.Header, hdr)
 	if err != nil {
 		return nil, err
@@ -58,8 +58,8 @@ func GetHeader(prop *protos.Proposal) (*protos.Header, error) {
 	return hdr, nil
 }
 
-func GetChaincodeHeaderExtension(hdr *protos.Header) (*protos.ChaincodeHeaderExtension, error) {
-	chaincodeHdrExt := &protos.ChaincodeHeaderExtension{}
+func GetChaincodeHeaderExtension(hdr *peer.Header) (*peer.ChaincodeHeaderExtension, error) {
+	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
 	err := proto.Unmarshal(hdr.Extensions, chaincodeHdrExt)
 	if err != nil {
 		return nil, err
@@ -68,8 +68,8 @@ func GetChaincodeHeaderExtension(hdr *protos.Header) (*protos.ChaincodeHeaderExt
 	return chaincodeHdrExt, nil
 }
 
-func GetProposalResponse(prBytes []byte) (*protos.ProposalResponse, error) {
-	proposalResponse := &protos.ProposalResponse{}
+func GetProposalResponse(prBytes []byte) (*peer.ProposalResponse, error) {
+	proposalResponse := &peer.ProposalResponse{}
 	err := proto.Unmarshal(prBytes, proposalResponse)
 	if err != nil {
 		return nil, err
@@ -79,8 +79,8 @@ func GetProposalResponse(prBytes []byte) (*protos.ProposalResponse, error) {
 }
 
 //getChaincodeDeploymentSpec returns a ChaincodeDeploymentSpec given args
-func GetChaincodeDeploymentSpec(code []byte) (*protos.ChaincodeDeploymentSpec, error) {
-	cds := &protos.ChaincodeDeploymentSpec{}
+func GetChaincodeDeploymentSpec(code []byte) (*peer.ChaincodeDeploymentSpec, error) {
+	cds := &peer.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(code, cds)
 	if err != nil {
 		return nil, err
@@ -89,8 +89,8 @@ func GetChaincodeDeploymentSpec(code []byte) (*protos.ChaincodeDeploymentSpec, e
 	return cds, nil
 }
 
-func GetChaincodeAction(caBytes []byte) (*protos.ChaincodeAction, error) {
-	chaincodeAction := &protos.ChaincodeAction{}
+func GetChaincodeAction(caBytes []byte) (*peer.ChaincodeAction, error) {
+	chaincodeAction := &peer.ChaincodeAction{}
 	err := proto.Unmarshal(caBytes, chaincodeAction)
 	if err != nil {
 		return nil, err
@@ -99,8 +99,8 @@ func GetChaincodeAction(caBytes []byte) (*protos.ChaincodeAction, error) {
 	return chaincodeAction, nil
 }
 
-func GetProposalResponsePayload(prpBytes []byte) (*protos.ProposalResponsePayload, error) {
-	prp := &protos.ProposalResponsePayload{}
+func GetProposalResponsePayload(prpBytes []byte) (*peer.ProposalResponsePayload, error) {
+	prp := &peer.ProposalResponsePayload{}
 	err := proto.Unmarshal(prpBytes, prp)
 	if err != nil {
 		return nil, err
@@ -110,8 +110,8 @@ func GetProposalResponsePayload(prpBytes []byte) (*protos.ProposalResponsePayloa
 }
 
 // CreateChaincodeProposal creates a proposal from given input
-func CreateChaincodeProposal(cis *protos.ChaincodeInvocationSpec, creator []byte) (*protos.Proposal, error) {
-	ccHdrExt := &protos.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
+func CreateChaincodeProposal(cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
+	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func CreateChaincodeProposal(cis *protos.ChaincodeInvocationSpec, creator []byte
 		return nil, err
 	}
 
-	ccPropPayload := &protos.ChaincodeProposalPayload{Input: cisBytes}
+	ccPropPayload := &peer.ChaincodeProposalPayload{Input: cisBytes}
 	ccPropPayloadBytes, err := proto.Marshal(ccPropPayload)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func CreateChaincodeProposal(cis *protos.ChaincodeInvocationSpec, creator []byte
 		return nil, err
 	}
 
-	hdr := &protos.Header{Type: protos.Header_CHAINCODE,
+	hdr := &peer.Header{Type: peer.Header_CHAINCODE,
 		Extensions: ccHdrExtBytes,
 		Nonce:      nonce,
 		Creator:    creator}
@@ -143,17 +143,17 @@ func CreateChaincodeProposal(cis *protos.ChaincodeInvocationSpec, creator []byte
 		return nil, err
 	}
 
-	return &protos.Proposal{Header: hdrBytes, Payload: ccPropPayloadBytes}, nil
+	return &peer.Proposal{Header: hdrBytes, Payload: ccPropPayloadBytes}, nil
 }
 
 func GetBytesProposalResponsePayload(hash []byte, epoch []byte, result []byte, event []byte) ([]byte, error) {
-	cAct := &protos.ChaincodeAction{Events: event, Results: result}
+	cAct := &peer.ChaincodeAction{Events: event, Results: result}
 	cActBytes, err := proto.Marshal(cAct)
 	if err != nil {
 		return nil, err
 	}
 
-	prp := &protos.ProposalResponsePayload{Epoch: epoch, Extension: cActBytes, ProposalHash: hash}
+	prp := &peer.ProposalResponsePayload{Epoch: epoch, Extension: cActBytes, ProposalHash: hash}
 	prpBytes, err := proto.Marshal(prp)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func GetBytesProposalResponsePayload(hash []byte, epoch []byte, result []byte, e
 	return prpBytes, nil
 }
 
-func GetBytesChaincodeProposalPayload(cpp *protos.ChaincodeProposalPayload) ([]byte, error) {
+func GetBytesChaincodeProposalPayload(cpp *peer.ChaincodeProposalPayload) ([]byte, error) {
 	cppBytes, err := proto.Marshal(cpp)
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func GetBytesChaincodeProposalPayload(cpp *protos.ChaincodeProposalPayload) ([]b
 	return cppBytes, nil
 }
 
-func GetBytesChaincodeEvent(event *protos.ChaincodeEvent) ([]byte, error) {
+func GetBytesChaincodeEvent(event *peer.ChaincodeEvent) ([]byte, error) {
 	eventBytes, err := proto.Marshal(event)
 	if err != nil {
 		return nil, err
@@ -180,13 +180,13 @@ func GetBytesChaincodeEvent(event *protos.ChaincodeEvent) ([]byte, error) {
 	return eventBytes, nil
 }
 
-func GetBytesProposalResponse(prpBytes []byte, endorsement *protos.Endorsement) ([]byte, error) {
-	resp := &protos.ProposalResponse{
+func GetBytesProposalResponse(prpBytes []byte, endorsement *peer.Endorsement) ([]byte, error) {
+	resp := &peer.ProposalResponse{
 		// Timestamp: TODO!
 		Version:     1, // TODO: pick right version number
 		Endorsement: endorsement,
 		Payload:     prpBytes,
-		Response:    &protos.Response2{Status: 200, Message: "OK"}}
+		Response:    &peer.Response2{Status: 200, Message: "OK"}}
 	respBytes, err := proto.Marshal(resp)
 	if err != nil {
 		return nil, err
@@ -197,14 +197,14 @@ func GetBytesProposalResponse(prpBytes []byte, endorsement *protos.Endorsement) 
 
 func GetProposalHash(header []byte, ccPropPayl []byte, visibility []byte) ([]byte, error) {
 	// unmarshal the chaincode proposal payload
-	cpp := &protos.ChaincodeProposalPayload{}
+	cpp := &peer.ChaincodeProposalPayload{}
 	err := proto.Unmarshal(ccPropPayl, cpp)
 	if err != nil {
 		return nil, errors.New("Failure while unmarshalling the ChaincodeProposalPayload!")
 	}
 
 	// strip the transient bytes off the payload - this needs to be done no matter the visibility mode
-	cppNoTransient := &protos.ChaincodeProposalPayload{Input: cpp.Input, Transient: nil}
+	cppNoTransient := &peer.ChaincodeProposalPayload{Input: cpp.Input, Transient: nil}
 	cppBytes, err := GetBytesChaincodeProposalPayload(cppNoTransient)
 	if err != nil {
 		return nil, errors.New("Failure while marshalling the ChaincodeProposalPayload!")

@@ -23,7 +23,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	pb "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var (

@@ -17,7 +17,7 @@ limitations under the License.
 package committer
 
 import (
-	"github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Committer is the interface supported by committers
@@ -30,11 +30,11 @@ import (
 type Committer interface {
 
 	// Commit block to the ledger
-	CommitBlock(block *protos.Block2) error
+	CommitBlock(block *pb.Block2) error
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
 
 	// Gets blocks with sequence numbers provided in the slice
-	GetBlocks(blockSeqs []uint64) []*protos.Block2
+	GetBlocks(blockSeqs []uint64) []*pb.Block2
 }

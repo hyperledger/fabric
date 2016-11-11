@@ -17,7 +17,7 @@ limitations under the License.
 package crypto
 
 import (
-	obc "github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Public Interfaces
@@ -49,16 +49,16 @@ type Client interface {
 	Node
 
 	// NewChaincodeDeployTransaction is used to deploy chaincode.
-	NewChaincodeDeployTransaction(chaincodeDeploymentSpec *obc.ChaincodeDeploymentSpec, uuid string, attributes ...string) (*obc.Transaction, error)
+	NewChaincodeDeployTransaction(chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec, uuid string, attributes ...string) (*pb.Transaction, error)
 
 	// NewChaincodeExecute is used to execute chaincode's functions.
-	NewChaincodeExecute(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributes ...string) (*obc.Transaction, error)
+	NewChaincodeExecute(chaincodeInvocation *pb.ChaincodeInvocationSpec, uuid string, attributes ...string) (*pb.Transaction, error)
 
 	// NewChaincodeQuery is used to query chaincode's functions.
-	NewChaincodeQuery(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributes ...string) (*obc.Transaction, error)
+	NewChaincodeQuery(chaincodeInvocation *pb.ChaincodeInvocationSpec, uuid string, attributes ...string) (*pb.Transaction, error)
 
 	// DecryptQueryResult is used to decrypt the result of a query transaction
-	DecryptQueryResult(queryTx *obc.Transaction, result []byte) ([]byte, error)
+	DecryptQueryResult(queryTx *pb.Transaction, result []byte) ([]byte, error)
 }
 
 // Peer is an entity able to verify transactions
@@ -74,14 +74,14 @@ type Peer interface {
 	// TransactionPreValidation verifies that the transaction is
 	// well formed with the respect to the security layer
 	// prescriptions (i.e. signature verification).
-	TransactionPreValidation(tx *obc.Transaction) (*obc.Transaction, error)
+	TransactionPreValidation(tx *pb.Transaction) (*pb.Transaction, error)
 
 	// TransactionPreExecution verifies that the transaction is
 	// well formed with the respect to the security layer
 	// prescriptions (i.e. signature verification). If this is the case,
 	// the method prepares the transaction to be executed.
 	// TransactionPreExecution returns a clone of tx.
-	TransactionPreExecution(tx *obc.Transaction) (*obc.Transaction, error)
+	TransactionPreExecution(tx *pb.Transaction) (*pb.Transaction, error)
 
 	// Sign signs msg with this validator's signing key and outputs
 	// the signature if no error occurred.
@@ -95,9 +95,9 @@ type Peer interface {
 	// GetStateEncryptor returns a StateEncryptor linked to pair defined by
 	// the deploy transaction and the execute transaction. Notice that,
 	// executeTx can also correspond to a deploy transaction.
-	GetStateEncryptor(deployTx, executeTx *obc.Transaction) (StateEncryptor, error)
+	GetStateEncryptor(deployTx, executeTx *pb.Transaction) (StateEncryptor, error)
 
-	GetTransactionBinding(tx *obc.Transaction) ([]byte, error)
+	GetTransactionBinding(tx *pb.Transaction) ([]byte, error)
 }
 
 // StateEncryptor is used to encrypt chaincode's state
@@ -138,11 +138,11 @@ type TransactionHandler interface {
 	GetBinding() ([]byte, error)
 
 	// NewChaincodeDeployTransaction is used to deploy chaincode
-	NewChaincodeDeployTransaction(chaincodeDeploymentSpec *obc.ChaincodeDeploymentSpec, uuid string, attributeNames ...string) (*obc.Transaction, error)
+	NewChaincodeDeployTransaction(chaincodeDeploymentSpec *pb.ChaincodeDeploymentSpec, uuid string, attributeNames ...string) (*pb.Transaction, error)
 
 	// NewChaincodeExecute is used to execute chaincode's functions
-	NewChaincodeExecute(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributeNames ...string) (*obc.Transaction, error)
+	NewChaincodeExecute(chaincodeInvocation *pb.ChaincodeInvocationSpec, uuid string, attributeNames ...string) (*pb.Transaction, error)
 
 	// NewChaincodeQuery is used to query chaincode's functions
-	NewChaincodeQuery(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributeNames ...string) (*obc.Transaction, error)
+	NewChaincodeQuery(chaincodeInvocation *pb.ChaincodeInvocationSpec, uuid string, attributeNames ...string) (*pb.Transaction, error)
 }

@@ -18,14 +18,14 @@ package txmgmt
 
 import (
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // TxMgr - an interface that a transaction manager should implement
 type TxMgr interface {
 	NewQueryExecutor() (ledger.QueryExecutor, error)
 	NewTxSimulator() (ledger.TxSimulator, error)
-	ValidateAndPrepare(block *protos.Block2) (*protos.Block2, []*protos.InvalidTransaction, error)
+	ValidateAndPrepare(block *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error)
 	Commit() error
 	Rollback()
 	Shutdown()
