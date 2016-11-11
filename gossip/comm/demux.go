@@ -20,7 +20,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/gossip/common"
 )
 
 // ChannelDeMultiplexer is a struct that can receive channel registrations (AddChannel)
@@ -42,7 +42,7 @@ func NewChannelDemultiplexer() *ChannelDeMultiplexer {
 }
 
 type channel struct {
-	pred util.MessageAcceptor
+	pred common.MessageAcceptor
 	ch   chan interface{}
 }
 
@@ -66,7 +66,7 @@ func (m *ChannelDeMultiplexer) Close() {
 }
 
 // AddChannel registers a channel with a certain predicate
-func (m *ChannelDeMultiplexer) AddChannel(predicate util.MessageAcceptor) chan interface{} {
+func (m *ChannelDeMultiplexer) AddChannel(predicate common.MessageAcceptor) chan interface{} {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	ch := &channel{ch: make(chan interface{}, 10), pred: predicate}

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/comm"
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -31,7 +32,7 @@ import (
 )
 
 type gossipServiceImpl struct {
-	presumedDead chan discovery.PKIidType
+	presumedDead chan common.PKIidType
 	disc         discovery.Discovery
 	comm         comm.Comm
 	*comm.ChannelDeMultiplexer
@@ -50,7 +51,7 @@ type gossipServiceImpl struct {
 // NewGossipService creates a new gossip instance
 func NewGossipService(conf *Config, c comm.Comm, crypto discovery.CryptoService) Gossip {
 	g := &gossipServiceImpl{
-		presumedDead:         make(chan discovery.PKIidType, 100),
+		presumedDead:         make(chan common.PKIidType, 100),
 		disc:                 nil,
 		comm:                 c,
 		conf:                 conf,
@@ -69,7 +70,7 @@ func NewGossipService(conf *Config, c comm.Comm, crypto discovery.CryptoService)
 	g.discAdapter = g.newDiscoveryAdapter()
 
 	g.disc = discovery.NewDiscoveryService(conf.BootstrapPeers, discovery.NetworkMember{
-		Endpoint: conf.SelfEndpoint, PKIid: discovery.PKIidType(g.comm.GetPKIid()), Metadata: []byte{},
+		Endpoint: conf.SelfEndpoint, PKIid: g.comm.GetPKIid(), Metadata: []byte{},
 	}, g.discAdapter, crypto)
 
 	g.pushPull = algo.NewPullEngine(g, conf.PullInterval)
@@ -156,7 +157,7 @@ func (g *gossipServiceImpl) handlePresumedDead() {
 			g.toDieChan <- s
 			return
 		case deadEndpoint := <-g.comm.PresumedDead():
-			g.presumedDead <- discovery.PKIidType(deadEndpoint)
+			g.presumedDead <- deadEndpoint
 			break
 		}
 	}
@@ -441,7 +442,7 @@ func (g *gossipServiceImpl) UpdateMetadata(md []byte) {
 	g.disc.UpdateMetadata(md)
 }
 
-func (g *gossipServiceImpl) Accept(acceptor util.MessageAcceptor) <-chan *proto.GossipMessage {
+func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor) <-chan *proto.GossipMessage {
 	inCh := g.AddChannel(acceptor)
 	outCh := make(chan *proto.GossipMessage, 100)
 	go func() {
@@ -493,7 +494,7 @@ func (g *gossipServiceImpl) newDiscoveryAdapter() *discoveryAdapter {
 type discoveryAdapter struct {
 	stopping     int32
 	c            comm.Comm
-	presumedDead chan discovery.PKIidType
+	presumedDead chan common.PKIidType
 	incChan      chan *proto.GossipMessage
 	gossipFunc   func(*proto.GossipMessage)
 }
@@ -515,26 +516,26 @@ func (da *discoveryAdapter) SendToPeer(peer *discovery.NetworkMember, msg *proto
 	if da.toDie() {
 		return
 	}
-	da.c.Send(msg, &comm.RemotePeer{PKIID: comm.PKIidType(peer.PKIid), Endpoint: peer.Endpoint})
+	da.c.Send(msg, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.Endpoint})
 }
 
 func (da *discoveryAdapter) Ping(peer *discovery.NetworkMember) bool {
-	return da.c.Probe(peer.Endpoint, comm.PKIidType(peer.PKIid)) == nil
+	return da.c.Probe(peer.Endpoint, peer.PKIid) == nil
 }
 
 func (da *discoveryAdapter) Accept() <-chan *proto.GossipMessage {
 	return da.incChan
 }
 
-func (da *discoveryAdapter) PresumedDead() <-chan discovery.PKIidType {
+func (da *discoveryAdapter) PresumedDead() <-chan common.PKIidType {
 	return da.presumedDead
 }
 
 func (da *discoveryAdapter) CloseConn(peer *discovery.NetworkMember) {
-	da.c.CloseConn(&comm.RemotePeer{Endpoint: peer.Endpoint, PKIID: comm.PKIidType(peer.PKIid)})
+	da.c.CloseConn(&comm.RemotePeer{Endpoint: peer.Endpoint, PKIID: peer.PKIid})
 }
 
-func equalPKIIds(a, b comm.PKIidType) bool {
+func equalPKIIds(a, b common.PKIidType) bool {
 	return bytes.Equal(a, b)
 }
 
@@ -543,7 +544,7 @@ func (g *gossipServiceImpl) peersWithEndpoints(endpoints ...string) []*comm.Remo
 	for _, member := range g.disc.GetMembership() {
 		for _, endpoint := range endpoints {
 			if member.Endpoint == endpoint {
-				peers = append(peers, &comm.RemotePeer{Endpoint: member.Endpoint, PKIID: comm.PKIidType(member.PKIid)})
+				peers = append(peers, &comm.RemotePeer{Endpoint: member.Endpoint, PKIID: member.PKIid})
 			}
 		}
 	}

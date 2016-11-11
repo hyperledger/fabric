@@ -40,8 +40,6 @@ func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	return -1
 }
 
-type MessageAcceptor func(interface{}) bool
-
 func numbericEqual(a interface{}, b interface{}) bool {
 	return a.(int) == b.(int)
 }

@@ -19,8 +19,8 @@ package comm
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/gossip/util"
 )
 
 // Comm is an object that enables to communicate with other peers
@@ -28,20 +28,20 @@ import (
 type Comm interface {
 
 	// GetPKIid returns this instance's PKI id
-	GetPKIid() PKIidType
+	GetPKIid() common.PKIidType
 
 	// Send sends a message to remote peers
 	Send(msg *proto.GossipMessage, peers ...*RemotePeer)
 
 	// Probe probes a remote node and returns nil if its responsive
-	Probe(endpoint string, pkiID PKIidType) error
+	Probe(endpoint string, pkiID common.PKIidType) error
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// Each message from the channel can be used to send a reply back to the sender
-	Accept(util.MessageAcceptor) <-chan ReceivedMessage
+	Accept(common.MessageAcceptor) <-chan ReceivedMessage
 
 	// PresumedDead returns a read-only channel for node endpoints that are suspected to be offline
-	PresumedDead() <-chan PKIidType
+	PresumedDead() <-chan common.PKIidType
 
 	// CloseConn closes a connection to a certain endpoint
 	CloseConn(peer *RemotePeer)
@@ -50,17 +50,13 @@ type Comm interface {
 	Stop()
 
 	// BlackListPKIid prohibits the module communicating with the given PKIid
-	BlackListPKIid(PKIid PKIidType)
+	BlackListPKIid(PKIid common.PKIidType)
 }
-
-// PKIidType defines the type that holds the PKI-id
-// which is the security identifier of a peer
-type PKIidType []byte
 
 // RemotePeer defines a peer's endpoint and its PKIid
 type RemotePeer struct {
 	Endpoint string
-	PKIID    PKIidType
+	PKIID    common.PKIidType
 }
 
 // String converts a RemotePeer to a string

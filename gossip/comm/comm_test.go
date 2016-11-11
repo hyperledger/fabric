@@ -31,6 +31,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"github.com/hyperledger/fabric/gossip/common"
 )
 
 func init() {
@@ -91,7 +92,7 @@ func TestHandshake(t *testing.T) {
 	clientTLSUnique := ExtractTLSUnique(stream.Context())
 	sig, err := naiveSec.Sign(clientTLSUnique)
 	assert.NoError(t, err, "%v", err)
-	msg := createConnectionMsg(PKIidType("localhost:9610"), sig)
+	msg := createConnectionMsg(common.PKIidType("localhost:9610"), sig)
 	stream.Send(msg)
 	msg, err = stream.Recv()
 	assert.NoError(t, err, "%v", err)
@@ -150,7 +151,7 @@ func TestHandshake(t *testing.T) {
 	} else {
 		sig[0] = 0
 	}
-	msg = createConnectionMsg(PKIidType("localhost:9612"), sig)
+	msg = createConnectionMsg(common.PKIidType("localhost:9612"), sig)
 	stream.Send(msg)
 	msg, err = stream.Recv()
 	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiID)

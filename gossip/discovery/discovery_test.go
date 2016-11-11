@@ -30,13 +30,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"github.com/hyperledger/fabric/gossip/common"
 )
 
 var timeout = time.Second * time.Duration(15)
 
 type dummyCommModule struct {
 	id           string
-	presumeDead  chan PKIidType
+	presumeDead  chan common.PKIidType
 	detectedDead chan string
 	streams      map[string]proto.Gossip_GossipStreamClient
 	conns        map[string]*grpc.ClientConn
@@ -125,7 +126,7 @@ func (comm *dummyCommModule) Accept() <-chan *proto.GossipMessage {
 	return comm.incMsgs
 }
 
-func (comm *dummyCommModule) PresumedDead() <-chan PKIidType {
+func (comm *dummyCommModule) PresumedDead() <-chan common.PKIidType {
 	return comm.presumeDead
 }
 
@@ -221,7 +222,7 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 		conns:        make(map[string]*grpc.ClientConn),
 		streams:      make(map[string]proto.Gossip_GossipStreamClient),
 		incMsgs:      make(chan *proto.GossipMessage, 1000),
-		presumeDead:  make(chan PKIidType, 10000),
+		presumeDead:  make(chan common.PKIidType, 10000),
 		id:           id,
 		detectedDead: make(chan string, 10000),
 		lock:         &sync.RWMutex{},

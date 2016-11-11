@@ -19,9 +19,9 @@ package gossip
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/gossip/util"
 )
 
 // Gossip is the interface of the gossip component
@@ -37,7 +37,7 @@ type Gossip interface {
 	Gossip(msg *proto.GossipMessage)
 
 	// Accept returns a channel that outputs messages from other peers
-	Accept(util.MessageAcceptor) <-chan *proto.GossipMessage
+	Accept(common.MessageAcceptor) <-chan *proto.GossipMessage
 
 	// Stop stops the gossip component
 	Stop()
@@ -45,18 +45,18 @@ type Gossip interface {
 
 // Config is the configuration of the gossip component
 type Config struct {
-	BindPort                   int
-	ID                         string
-	SelfEndpoint               string
-	BootstrapPeers             []string
-	PropagateIterations        int
-	PropagatePeerNum           int
+	BindPort            int
+	ID                  string
+	SelfEndpoint        string
+	BootstrapPeers      []string
+	PropagateIterations int
+	PropagatePeerNum    int
 
-	MaxMessageCountToStore     int
+	MaxMessageCountToStore int
 
 	MaxPropagationBurstSize    int
 	MaxPropagationBurstLatency time.Duration
 
-	PullInterval               time.Duration
-	PullPeerNum                int
+	PullInterval time.Duration
+	PullPeerNum  int
 }

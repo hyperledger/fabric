@@ -16,7 +16,10 @@ limitations under the License.
 
 package discovery
 
-import "github.com/hyperledger/fabric/gossip/proto"
+import (
+	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/gossip/common"
+)
 
 // CryptoService is an interface that the discovery expects to be implemented and passed on creation
 type CryptoService interface {
@@ -43,20 +46,17 @@ type CommService interface {
 	Accept() <-chan *proto.GossipMessage
 
 	// PresumedDead returns a read-only channel for peers that are presumed to be dead
-	PresumedDead() <-chan PKIidType
+	PresumedDead() <-chan common.PKIidType
 
 	// CloseConn orders to close the connection with a certain peer
 	CloseConn(peer *NetworkMember)
 }
 
-// PKIidType represents a peer's security identity
-type PKIidType []byte
-
 // NetworkMember is a peer's representation
 type NetworkMember struct {
 	Endpoint string
 	Metadata []byte
-	PKIid    PKIidType
+	PKIid    common.PKIidType
 }
 
 // Discovery is the interface that represents a discovery module

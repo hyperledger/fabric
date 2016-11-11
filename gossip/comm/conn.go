@@ -24,17 +24,18 @@ import (
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
 	"google.golang.org/grpc"
+	"github.com/hyperledger/fabric/gossip/common"
 )
 
 type handler func(*proto.GossipMessage)
 
 type connFactory interface {
-	createConnection(endpoint string, pkiID PKIidType) (*connection, error)
+	createConnection(endpoint string, pkiID common.PKIidType) (*connection, error)
 }
 
 type connectionStore struct {
 	logger           *util.Logger             // logger
-	selfPKIid        PKIidType                // pkiID of this peer
+	selfPKIid        common.PKIidType                // pkiID of this peer
 	isClosing        bool                     // whether this connection store is shutting down
 	connFactory      connFactory              // creates a connection to remote peer
 	sync.RWMutex                              // synchronize access to shared variables
@@ -43,7 +44,7 @@ type connectionStore struct {
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
-func newConnStore(connFactory connFactory, pkiID PKIidType, logger *util.Logger) *connectionStore {
+func newConnStore(connFactory connFactory, pkiID common.PKIidType, logger *util.Logger) *connectionStore {
 	return &connectionStore{
 		connFactory:      connFactory,
 		isClosing:        false,
@@ -154,7 +155,7 @@ func (cs *connectionStore) shutdown() {
 	wg.Wait()
 }
 
-func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer, pkiID PKIidType) *connection {
+func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer, pkiID common.PKIidType) *connection {
 	cs.Lock()
 	defer cs.Unlock()
 
@@ -165,7 +166,7 @@ func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamSer
 	return cs.registerConn(pkiID, serverStream)
 }
 
-func (cs *connectionStore) registerConn(pkiID PKIidType, serverStream proto.Gossip_GossipStreamServer) *connection {
+func (cs *connectionStore) registerConn(pkiID common.PKIidType, serverStream proto.Gossip_GossipStreamServer) *connection {
 	conn := newConnection(nil, nil, nil, serverStream)
 	conn.pkiID = pkiID
 	conn.logger = cs.logger
@@ -173,7 +174,7 @@ func (cs *connectionStore) registerConn(pkiID PKIidType, serverStream proto.Goss
 	return conn
 }
 
-func (cs *connectionStore) closeByPKIid(pkiID PKIidType) {
+func (cs *connectionStore) closeByPKIid(pkiID common.PKIidType) {
 	cs.Lock()
 	defer cs.Unlock()
 	if conn, exists := cs.pki2Conn[string(pkiID)]; exists {
@@ -199,7 +200,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 type connection struct {
 	outBuff      chan *msgSending
 	logger       *util.Logger                    // logger
-	pkiID        PKIidType                       // pkiID of the remote endpoint
+	pkiID        common.PKIidType                       // pkiID of the remote endpoint
 	handler      handler                         // function to invoke upon a message reception
 	conn         *grpc.ClientConn                // gRPC connection to remote endpoint
 	cl           proto.GossipClient              // gRPC stub of remote endpoint

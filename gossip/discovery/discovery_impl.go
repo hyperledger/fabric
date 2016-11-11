@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/gossip/common"
 )
 
 const defaultHelloInterval = time.Duration(5) * time.Second
@@ -70,7 +71,7 @@ func (ts *timestamp) String() string {
 }
 
 type gossipDiscoveryImpl struct {
-	pkiID    PKIidType
+	pkiID    common.PKIidType
 	endpoint string
 	incTime  uint64
 	metadata []byte
@@ -189,7 +190,7 @@ func (d *gossipDiscoveryImpl) handlePresumedDeadPeers() {
 		select {
 		case deadPeer := <-d.comm.PresumedDead():
 			if d.isAlive(deadPeer) {
-				d.expireDeadMembers([]PKIidType{deadPeer})
+				d.expireDeadMembers([]common.PKIidType{deadPeer})
 			}
 			break
 		case s := <-d.toDieChan:
@@ -199,7 +200,7 @@ func (d *gossipDiscoveryImpl) handlePresumedDeadPeers() {
 	}
 }
 
-func (d *gossipDiscoveryImpl) isAlive(pkiID PKIidType) bool {
+func (d *gossipDiscoveryImpl) isAlive(pkiID common.PKIidType) bool {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	_, alive := d.aliveLastTS[string(pkiID)]
@@ -467,7 +468,7 @@ func (d *gossipDiscoveryImpl) getKnownPeers() [][]byte {
 
 	peers := [][]byte{}
 	for id := range d.id2Member {
-		peers = append(peers, PKIidType(id))
+		peers = append(peers, common.PKIidType(id))
 	}
 	return peers
 }
@@ -496,7 +497,7 @@ func (d *gossipDiscoveryImpl) periodicalCheckAlive() {
 	}
 }
 
-func (d *gossipDiscoveryImpl) expireDeadMembers(dead []PKIidType) {
+func (d *gossipDiscoveryImpl) expireDeadMembers(dead []common.PKIidType) {
 	d.logger.Warning("Entering", dead)
 	defer d.logger.Warning("Exiting")
 
@@ -536,16 +537,16 @@ func (d *gossipDiscoveryImpl) expireDeadMembers(dead []PKIidType) {
 	}
 }
 
-func (d *gossipDiscoveryImpl) getDeadMembers() []PKIidType {
+func (d *gossipDiscoveryImpl) getDeadMembers() []common.PKIidType {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 
-	dead := []PKIidType{}
+	dead := []common.PKIidType{}
 	for id, last := range d.aliveLastTS {
 		elapsedNonAliveTime := time.Since(last.lastSeen)
 		if elapsedNonAliveTime.Nanoseconds() > aliveExpirationTimeout.Nanoseconds() {
 			d.logger.Warning("Haven't heard from", id, "for", elapsedNonAliveTime)
-			dead = append(dead, PKIidType(id))
+			dead = append(dead, common.PKIidType(id))
 		}
 	}
 	return dead
@@ -730,7 +731,7 @@ func (d *gossipDiscoveryImpl) Stop() {
 	d.toDieChan <- struct{}{}
 }
 
-func equalPKIid(a, b PKIidType) bool {
+func equalPKIid(a, b common.PKIidType) bool {
 	return bytes.Equal(a, b)
 }
 

@@ -28,6 +28,7 @@ import (
 	"crypto/tls"
 	"os"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/op/go-logging"
@@ -62,7 +63,7 @@ func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
 }
 
 // NewCommInstanceWithServer creates a comm instance that creates an underlying gRPC server
-func NewCommInstanceWithServer(port int, sec SecurityProvider, pkID PKIidType, dialOpts ...grpc.DialOption) (Comm, error) {
+func NewCommInstanceWithServer(port int, sec SecurityProvider, pkID common.PKIidType, dialOpts ...grpc.DialOption) (Comm, error) {
 	var ll net.Listener
 	var s *grpc.Server
 	var secOpt grpc.DialOption
@@ -86,11 +87,11 @@ func NewCommInstanceWithServer(port int, sec SecurityProvider, pkID PKIidType, d
 		gSrv:              s,
 		msgPublisher:      NewChannelDemultiplexer(),
 		lock:              &sync.RWMutex{},
-		deadEndpoints:     make(chan PKIidType, 100),
+		deadEndpoints:     make(chan common.PKIidType, 100),
 		stopping:          int32(0),
 		exitChan:          make(chan struct{}, 1),
 		subscriptions:     make([]chan ReceivedMessage, 0),
-		blackListedPKIIDs: make([]PKIidType, 0),
+		blackListedPKIIDs: make([]common.PKIidType, 0),
 	}
 	commInst.connStore = newConnStore(commInst, pkID, commInst.logger)
 
@@ -112,7 +113,7 @@ func NewCommInstanceWithServer(port int, sec SecurityProvider, pkID PKIidType, d
 }
 
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
-func NewCommInstance(s *grpc.Server, sec SecurityProvider, PKIID PKIidType, dialOpts ...grpc.DialOption) (Comm, error) {
+func NewCommInstance(s *grpc.Server, sec SecurityProvider, PKIID common.PKIidType, dialOpts ...grpc.DialOption) (Comm, error) {
 	commInst, err := NewCommInstanceWithServer(-1, sec, PKIID)
 	if err != nil {
 		return nil, err
@@ -128,7 +129,7 @@ type commImpl struct {
 	connStore         *connectionStore
 	PKIID             []byte
 	port              int
-	deadEndpoints     chan PKIidType
+	deadEndpoints     chan common.PKIidType
 	msgPublisher      *ChannelDeMultiplexer
 	lock              *sync.RWMutex
 	lsnr              net.Listener
@@ -137,10 +138,10 @@ type commImpl struct {
 	stopping          int32
 	stopWG            sync.WaitGroup
 	subscriptions     []chan ReceivedMessage
-	blackListedPKIIDs []PKIidType
+	blackListedPKIIDs []common.PKIidType
 }
 
-func (c *commImpl) createConnection(endpoint string, expectedPKIID PKIidType) (*connection, error) {
+func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
 	c.logger.Debug("Entering", endpoint, expectedPKIID)
 	defer c.logger.Debug("Exiting")
 	if c.isStopping() {
@@ -204,7 +205,7 @@ func (c *commImpl) Send(msg *proto.GossipMessage, peers ...*RemotePeer) {
 	}
 }
 
-func (c *commImpl) BlackListPKIid(PKIID PKIidType) {
+func (c *commImpl) BlackListPKIid(PKIID common.PKIidType) {
 	c.logger.Info("Entering", PKIID)
 	defer c.logger.Info("Exiting")
 	c.lock.Lock()
@@ -213,7 +214,7 @@ func (c *commImpl) BlackListPKIid(PKIID PKIidType) {
 	c.blackListedPKIIDs = append(c.blackListedPKIIDs, PKIID)
 }
 
-func (c *commImpl) isPKIblackListed(p PKIidType) bool {
+func (c *commImpl) isPKIblackListed(p common.PKIidType) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	for _, pki := range c.blackListedPKIIDs {
@@ -251,7 +252,7 @@ func (c *commImpl) isStopping() bool {
 	return atomic.LoadInt32(&c.stopping) == int32(1)
 }
 
-func (c *commImpl) Probe(endpoint string, pkiID PKIidType) error {
+func (c *commImpl) Probe(endpoint string, pkiID common.PKIidType) error {
 	if c.isStopping() {
 		return fmt.Errorf("Stopping!")
 	}
@@ -274,7 +275,7 @@ func (c *commImpl) Probe(endpoint string, pkiID PKIidType) error {
 	return err
 }
 
-func (c *commImpl) Accept(acceptor util.MessageAcceptor) <-chan ReceivedMessage {
+func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan ReceivedMessage {
 	genericChan := c.msgPublisher.AddChannel(acceptor)
 	specificChan := make(chan ReceivedMessage, 10)
 
@@ -311,7 +312,7 @@ func (c *commImpl) Accept(acceptor util.MessageAcceptor) <-chan ReceivedMessage 
 	return specificChan
 }
 
-func (c *commImpl) PresumedDead() <-chan PKIidType {
+func (c *commImpl) PresumedDead() <-chan common.PKIidType {
 	return c.deadEndpoints
 }
 
@@ -351,7 +352,7 @@ func (c *commImpl) Stop() {
 	c.stopWG.Wait()
 }
 
-func (c *commImpl) GetPKIid() PKIidType {
+func (c *commImpl) GetPKIid() common.PKIidType {
 	return c.PKIID
 }
 
@@ -366,7 +367,7 @@ func extractRemoteAddress(stream stream) string {
 	return remoteAddress
 }
 
-func (c *commImpl) authenticateRemotePeer(stream stream) (PKIidType, error) {
+func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, error) {
 	ctx := stream.Context()
 	remoteAddress := extractRemoteAddress(stream)
 	tlsUnique := ExtractTLSUnique(ctx)
@@ -455,7 +456,7 @@ func (c *commImpl) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
 	return &proto.Empty{}, nil
 }
 
-func (c *commImpl) disconnect(pkiID PKIidType) {
+func (c *commImpl) disconnect(pkiID common.PKIidType) {
 	if c.isStopping() {
 		return
 	}
@@ -485,7 +486,7 @@ func readWithTimeout(stream interface{}, timeout time.Duration) *proto.GossipMes
 	}
 }
 
-func createConnectionMsg(pkiID PKIidType, sig []byte) *proto.GossipMessage {
+func createConnectionMsg(pkiID common.PKIidType, sig []byte) *proto.GossipMessage {
 	return &proto.GossipMessage{
 		Nonce: 0,
 		Content: &proto.GossipMessage_Conn{
