@@ -314,15 +314,17 @@ func TestDissemination(t *testing.T) {
 	n := 20
 	msgsCount2Send := 10
 	boot := newGossipInstance(0, 100)
-	time.Sleep(time.Duration(2) * time.Second)
+
 	peers := make([]Gossip, n)
 	receivedMessages := make([]int, n)
 	wg := sync.WaitGroup{}
+
 	for i := 1; i <= n; i++ {
 		pI := newGossipInstance(i, 100, 0)
 		peers[i - 1] = pI
+
+		wg.Add(1)
 		go func(index int, ch <-chan *proto.GossipMessage) {
-			wg.Add(1)
 			defer wg.Done()
 			for j := 0; j < msgsCount2Send; j++ {
 				<-ch
@@ -331,7 +333,7 @@ func TestDissemination(t *testing.T) {
 		}(i - 1, pI.Accept(acceptData))
 	}
 
-	time.Sleep(time.Duration(10) * time.Second)
+	waitUntilOrFail(t, checkPeersMembership(peers, n))
 
 	for i := 1; i <= msgsCount2Send; i++ {
 		boot.Gossip(createDataMsg(uint64(i), []byte{}, ""))
@@ -618,7 +620,6 @@ func waitUntilOrFailBlocking(t *testing.T, f func()) {
 	assert.Fail(t, "Timeout expired!")
 }
 
-
 func searchInStackTrace(searchTerm string, stack []string) bool {
 	for _, ste := range stack {
 		if strings.Index(ste, searchTerm) != -1 {
@@ -626,4 +627,15 @@ func searchInStackTrace(searchTerm string, stack []string) bool {
 		}
 	}
 	return false
+}
+
+func checkPeersMembership(peers []Gossip, n int) func() bool {
+	return func() bool {
+		for _, peer := range peers {
+			if len(peer.GetPeers()) != n {
+				return false
+			}
+		}
+		return true
+	}
 }
