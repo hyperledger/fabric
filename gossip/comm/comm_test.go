@@ -257,7 +257,7 @@ func TestParallelSend(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	messages2Send := 20
+	messages2Send := defRecvBuffSize
 
 	wg := sync.WaitGroup{}
 	go func() {
@@ -360,7 +360,7 @@ func TestAccept(t *testing.T) {
 	go readIntoSlice(&evenResults, evenNONCES)
 	go readIntoSlice(&oddResults, oddNONCES)
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < defRecvBuffSize; i++ {
 		comm2.Send(createGossipMsg(), &RemotePeer{Endpoint: "localhost:7611", PKIID: []byte("localhost:7611")})
 	}
 
