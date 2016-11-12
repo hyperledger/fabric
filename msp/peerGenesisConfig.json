@@ -1,0 +1,95 @@
+{
+  "BlOCKCHAIN-NET-SETUP": {
+    "identifier":"OurBC",
+    "PeerMSPManager": {
+      "name": "peerMSPMgr",
+      "msplist": {
+        "names": "peermsp1,peermsp2,orderermsp",
+        "peermsp1": {
+          "identifier": "FABRIC-MSP-1",
+          "type": "FABRIC",
+          "config": {
+            "rootoftrust": {
+              "members": "identity1",
+              "identity1": "identity1bytes"
+            },
+            "idvalidationpolicy":
+            {
+              "issuer": "rootoftrust",
+              "type":"or"
+            },
+            "mspsignpolicy": {
+              "signer": "rootoftrust",
+              "type": "percentage",
+              "percentage": "50",
+              "min": "1"
+            },
+            "revokedmembers": {
+              "num": "0"
+            }
+          }
+        },
+        "peermsp2": {
+          "identifier": "FABRIC-MSP-2",
+          "type": "FABRIC",
+          "config": {
+            "rootoftrust": {
+              "members": "cert21,cert22",
+              "cert1": "cert21contentbytes",
+              "cert2": "cert22contentbytes"
+            },
+            "idvalidationpolicy":
+            {
+              "issuer": "rootoftrust",
+              "type":"or"
+            },
+            "mspsignpolicy": {
+              "signer": "rootoftrust",
+              "type": "percentage",
+              "percentage": "50",
+              "min": "1"
+            },
+            "revokedmembers": {
+              "num": "0"
+            }
+          }
+        },
+        "orderermsp": {
+          "identifier": "ORDERER-MSP",
+          "type": "FABRIC",
+          "config": {
+            "rootoftrust": {
+              "members": "oidentity1,oidentity1,oidentity1",
+              "oidentity1": "oidentity1bytes",
+              "oidentity2": "oidentity2bytes",
+              "oidentity3": "oidentity3bytes"
+            },
+            "idvalidationpolicy":
+            {
+              "issuer": "rootoftrust",
+              "type":"or"
+            },
+            "mspsignpolicy": {
+              "signer":"rootoftrust",
+              "type": "percentage",
+              "percentage": "50",
+              "min": "1"
+            },
+            "revokedmembers": {
+              "num": "0"
+            }
+          }
+        }
+      }
+    },
+    "channelPolicy": {
+      "purpose:" :"channelCreationPerms",
+      "participants": "FABRIC-MSP-1,FABRIC-MSP-2",
+      "min": "1"
+    },
+    "upgradePolicy": {
+     "participants":"FABRIC-MSP-1,FABRIC-MSP-2",
+     "min":"2"
+    }
+  }
+}

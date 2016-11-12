@@ -24,5 +24,5 @@ import "peer/fabric_proposal.proto";
 import "peer/fabric_proposal_response.proto";
 
 service Endorser {
-	rpc ProcessProposal(Proposal) returns (ProposalResponse) {}
+	rpc ProcessProposal(SignedProposal) returns (ProposalResponse) {}
 }

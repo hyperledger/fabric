@@ -1,0 +1,32 @@
+{
+  "FABRIC-MSP": {
+    "identifier":"FABRIC-MSP",
+    "type":"FABRIC",
+    "importedIds": "escc1id,escc2id",
+    "escc1id": {
+      "enrollpub":"escc1certificatebytes",
+      "enrollsecref":"escc1keyRef",
+    },
+    "escc2id": {
+      "enrollpub":"escc2certificatebytes",
+      "enrollsecref":"escc2keyRef"
+    },
+    "policy": {
+      "rootoftrust": {
+        "type": "or",
+        "members": "cert1,cert2,cert3",
+        "cert1": "cert1contentbytes",
+        "cert2": "cert2contentbytes",
+        "cert3": "cert3contentbytes",
+      },
+      "update": {
+        "type": "percentage",
+        "percentage": "50",
+        "min": "1",
+      },
+      "revokedmembers":{
+        "num":"0"
+      }
+    }
+  }
+}

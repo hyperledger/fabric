@@ -28,6 +28,11 @@ type ecdsaPrivateKey struct {
 	k *ecdsa.PrivateKey
 }
 
+// FIXME: remove as soon as there's a way to import the key more properly
+func NewEcdsaPrivateKey(k *ecdsa.PrivateKey) bccsp.Key {
+	return &ecdsaPrivateKey{k: k}
+}
+
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *ecdsaPrivateKey) Bytes() (raw []byte, err error) {
@@ -62,6 +67,11 @@ func (k *ecdsaPrivateKey) PublicKey() (bccsp.Key, error) {
 
 type ecdsaPublicKey struct {
 	k *ecdsa.PublicKey
+}
+
+// FIXME: remove as soon as there's a way to import the key more properly
+func NewEcdsaPublicKey(k *ecdsa.PublicKey) bccsp.Key {
+	return &ecdsaPublicKey{k: k}
 }
 
 // Bytes converts this key to its byte representation,

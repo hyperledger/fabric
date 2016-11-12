@@ -119,6 +119,17 @@ func GetProposalResponsePayload(prpBytes []byte) (*peer.ProposalResponsePayload,
 	return prp, nil
 }
 
+// GetProposal returns a Proposal message from its bytes
+func GetProposal(propBytes []byte) (*peer.Proposal, error) {
+	prop := &peer.Proposal{}
+	err := proto.Unmarshal(propBytes, prop)
+	if err != nil {
+		return nil, err
+	}
+
+	return prop, nil
+}
+
 // CreateChaincodeProposal creates a proposal from given input
 func CreateChaincodeProposal(cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
@@ -208,6 +219,16 @@ func GetBytesProposalResponse(prpBytes []byte, endorsement *peer.Endorsement) ([
 	}
 
 	return respBytes, nil
+}
+
+// GetBytesProposal returns the bytes of a proposal message
+func GetBytesProposal(prop *peer.Proposal) ([]byte, error) {
+	propBytes, err := proto.Marshal(prop)
+	if err != nil {
+		return nil, err
+	}
+
+	return propBytes, nil
 }
 
 // GetProposalHash gets the proposal hash

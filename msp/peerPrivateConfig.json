@@ -1,0 +1,31 @@
+{
+  "PeerPrivate": {
+    "PeerMSPManager": {
+      "name": "peerMSPMgr",
+      "importedKeys": "escc1id,escc2id",
+      "escc1id": {
+        "mspid": "FABRIC-MSP-1",
+        "enrollpub": "escc1identitybytes",
+        "enrollsecref": "escc1keyRef"
+      },
+      "escc1id": {
+        "mspid": "FABRIC-MSP-2",
+        "enrollpub": "escc1identitybytes",
+        "enrollsecref": "escc1keyRef"
+      }
+    },
+    "ESCC-ids": "escc1,escc2",
+    "escc1": {
+      "signingIdentityRef":{
+        "MSPIdentifier": "FABRIC-MSP-1",
+        "identityIdentifier": "escc1id"
+      }
+    },
+    "escc2": {
+      "signingIdentityRef":{
+        "MSPIdentifier": "FABRIC-MSP-2",
+        "identityIdentifier": "escc2id"
+      }
+    }
+  }
+}

@@ -30,7 +30,9 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/flogging"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/clilogging"
 	"github.com/hyperledger/fabric/peer/network"
@@ -115,6 +117,15 @@ func main() {
 
 	// Init the crypto layer
 	//TODO: integrate new crypto / idp code
+	primitives.SetSecurityLevel("SHA2", 256)
+
+	// Init the MSP
+	// TODO: determine the location of this config file
+	mspMgrConfigFile := os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/peer-config.json"
+	err = msp.GetManager().Setup(mspMgrConfigFile)
+	if err != nil {
+		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigFile, err))
+	}
 
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status
