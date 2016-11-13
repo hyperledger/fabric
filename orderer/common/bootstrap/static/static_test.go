@@ -20,11 +20,11 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/golang/protobuf/proto"
 )
 
 func TestGenesisBlockCreation(t *testing.T) {
@@ -49,13 +49,19 @@ func TestGenesisBlockHeader(t *testing.T) {
 }
 
 func TestGenesisBlockData(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("OrPanicked unexpectedly: %s", r)
+		}
+	}()
+
 	expectedBlockDataLength := 1
 	expectedPayloadChainHeaderType := int32(cb.HeaderType_CONFIGURATION_TRANSACTION)
-	expectedChainHeaderVersion := int32(1)
+	expectedChainHeaderVersion := msgVersion
 	expectedChainHeaderEpoch := uint64(0)
 	expectedConfigEnvelopeItemsLength := 1
 	expectedConfigurationItemChainHeaderType := int32(cb.HeaderType_CONFIGURATION_ITEM)
-	expectedConfigurationItemChainHeaderVersion := int32(1)
+	expectedConfigurationItemChainHeaderVersion := msgVersion
 	expectedConfigurationItemType := cb.ConfigurationItem_Policy
 	expectedConfigEnvelopeSequence := uint64(0)
 	expectedConfigurationItemModificationPolicy := configtx.DefaultModificationPolicyID
@@ -67,22 +73,14 @@ func TestGenesisBlockData(t *testing.T) {
 		t.Fatalf("Expected genesis block data length %d, got %d", expectedBlockDataLength, len(genesisBlock.Data.Data))
 	}
 
-	marshaledEnvelope := genesisBlock.Data.Data[0]
-	envelope := &cb.Envelope{}
-	if err := proto.Unmarshal(marshaledEnvelope, envelope); err != nil {
-		t.Fatalf("Expected genesis block to carry an Envelope")
-	}
+	envelope := util.ExtractEnvelopeOrPanic(genesisBlock, 0)
 
 	envelopeSignature := envelope.Signature
 	if !bytes.Equal(envelopeSignature, nil) {
 		t.Fatalf("Expected envelope signature to be nil, got %x", envelopeSignature)
 	}
 
-	marshaledPayload := envelope.Payload
-	payload := &cb.Payload{}
-	if err := proto.Unmarshal(marshaledPayload, payload); err != nil {
-		t.Fatalf("Expected genesis block to carry a Payload")
-	}
+	payload := util.ExtractPayloadOrPanic(envelope)
 
 	signatureHeader := payload.Header.SignatureHeader
 	if !bytes.Equal(signatureHeader.Creator, nil) {
@@ -100,7 +98,7 @@ func TestGenesisBlockData(t *testing.T) {
 		t.Fatalf("Expected payload chain header version %d, got %d", expectedChainHeaderVersion, payloadChainHeader.Version)
 	}
 	if payloadChainHeader.Epoch != expectedChainHeaderEpoch {
-		t.Fatalf("Expected payload chain header epoch to be %d, got %d", expectedChainHeaderEpoch, payloadChainHeader.Epoch)
+		t.Fatalf("Expected payload chain header header epoch to be %d, got %d", expectedChainHeaderEpoch, payloadChainHeader.Epoch)
 	}
 
 	marshaledConfigurationEnvelope := payload.Data

@@ -33,6 +33,7 @@ import (
 	// "github.com/hyperledger/fabric/orderer/common/broadcastfilter/configfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/util"
 	"github.com/hyperledger/fabric/orderer/config"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	"github.com/hyperledger/fabric/orderer/rawledger"
@@ -104,12 +105,8 @@ func retrieveConfiguration(rl rawledger.Reader) *cb.ConfigurationEnvelope {
 			if len(block.Data.Data) != 1 {
 				continue
 			}
-			if err := proto.Unmarshal(block.Data.Data[0], envelope); err != nil {
-				panic(fmt.Errorf("Block doesn't carry a message envelope: %s", err))
-			}
-			if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
-				panic(fmt.Errorf("Message envelope doesn't carry a payload: %s", err))
-			}
+			envelope = util.ExtractEnvelopeOrPanic(block, 0)
+			payload = util.ExtractPayloadOrPanic(envelope)
 			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
 				continue
 			}
