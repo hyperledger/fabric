@@ -488,6 +488,7 @@ func readWithTimeout(stream interface{}, timeout time.Duration) *proto.GossipMes
 
 func createConnectionMsg(pkiID common.PKIidType, sig []byte) *proto.GossipMessage {
 	return &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_Conn{
 			Conn: &proto.ConnEstablish{

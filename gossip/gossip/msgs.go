@@ -16,28 +16,18 @@ limitations under the License.
 
 package gossip
 
-import "sync"
+import (
+	"sync"
 
-type invalidationResult int
-
-const (
-	messageNoAction = invalidationResult(0)
-	messageInvalidates = invalidationResult(1)
-	messageInvalidated = invalidationResult(2)
+	"github.com/hyperledger/fabric/gossip/common"
 )
-
-// Returns:
-// MESSAGE_INVALIDATES if this message invalidates that
-// MESSAGE_INVALIDATED if this message is invalidated by that
-// MESSAGE_NO_ACTION otherwise
-type messageReplacingPolicy func(this interface{}, that interface{}) invalidationResult
 
 // invalidationTrigger is invoked on each message that was invalidated because of a message addition
 // i.e: if add(0), add(1) was called one after the other, and the store has only {1} after the sequence of invocations
 // then the invalidation trigger on 0 was called when 1 was added.
 type invalidationTrigger func(message interface{})
 
-func newMessageStore(pol messageReplacingPolicy, trigger invalidationTrigger) messageStore {
+func newMessageStore(pol common.MessageReplacingPolicy, trigger invalidationTrigger) messageStore {
 	return &messageStoreImpl{pol: pol, lock: &sync.RWMutex{}, messages: make([]*msg, 0), invTrigger: trigger}
 }
 
@@ -60,7 +50,7 @@ type messageStore interface {
 }
 
 type messageStoreImpl struct {
-	pol        messageReplacingPolicy
+	pol        common.MessageReplacingPolicy
 	lock       *sync.RWMutex
 	messages   []*msg
 	invTrigger invalidationTrigger
@@ -79,9 +69,9 @@ func (s *messageStoreImpl) add(message interface{}) bool {
 	for i := 0; i < n; i++ {
 		m := s.messages[i]
 		switch s.pol(message, m.data) {
-		case messageInvalidated:
+		case common.MessageInvalidated:
 			return false
-		case messageInvalidates:
+		case common.MessageInvalidates:
 			s.invTrigger(m.data)
 			s.messages = append(s.messages[:i], s.messages[i+1:]...)
 			n--

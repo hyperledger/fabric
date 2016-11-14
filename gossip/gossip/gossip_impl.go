@@ -31,6 +31,11 @@ import (
 	"github.com/op/go-logging"
 )
 
+const (
+	presumedDeadChanSize = 100
+	acceptChanSize       = 100
+)
+
 type gossipServiceImpl struct {
 	presumedDead chan common.PKIidType
 	disc         discovery.Discovery
@@ -51,7 +56,7 @@ type gossipServiceImpl struct {
 // NewGossipService creates a new gossip instance
 func NewGossipService(conf *Config, c comm.Comm, crypto discovery.CryptoService) Gossip {
 	g := &gossipServiceImpl{
-		presumedDead:         make(chan common.PKIidType, 100),
+		presumedDead:         make(chan common.PKIidType, presumedDeadChanSize),
 		disc:                 nil,
 		comm:                 c,
 		conf:                 conf,
@@ -75,7 +80,7 @@ func NewGossipService(conf *Config, c comm.Comm, crypto discovery.CryptoService)
 
 	g.pushPull = algo.NewPullEngine(g, conf.PullInterval)
 
-	g.msgStore = newMessageStore(g.invalidationPolicy, func(m interface{}) {
+	g.msgStore = newMessageStore(proto.NewGossipMessageComparator(g.conf.MaxMessageCountToStore), func(m interface{}) {
 		if dataMsg, isDataMsg := m.(*proto.DataMessage); isDataMsg {
 			g.pushPull.Remove(dataMsg.Payload.SeqNum)
 		}
@@ -90,61 +95,6 @@ func NewGossipService(conf *Config, c comm.Comm, crypto discovery.CryptoService)
 
 func (g *gossipServiceImpl) toDie() bool {
 	return atomic.LoadInt32(&g.stopFlag) == int32(1)
-}
-
-func (g *gossipServiceImpl) invalidationPolicy(this interface{}, that interface{}) invalidationResult {
-	thisMsg := this.(*proto.GossipMessage)
-	thatMsg := that.(*proto.GossipMessage)
-	thisAliveMsg, thisIsAliveMessage := thisMsg.GetAliveMsg(), thisMsg.GetAliveMsg() != nil
-	thatAliveMsg, thatIsAliveMessage := thatMsg.GetAliveMsg(), thatMsg.GetAliveMsg() != nil
-
-	if thisIsAliveMessage && thatIsAliveMessage {
-		return aliveInvalidationPolicy(thisAliveMsg, thatAliveMsg)
-	}
-
-	thisDataMsg, thisIsDataMessage := thisMsg.GetDataMsg(), thisMsg.GetDataMsg() != nil
-	thatDataMsg, thatIsDataMessage := thatMsg.GetDataMsg(), thatMsg.GetDataMsg() != nil
-
-	if thisIsDataMessage && thatIsDataMessage {
-		if thisDataMsg.Payload.SeqNum == thatDataMsg.Payload.SeqNum {
-			if thisDataMsg.Payload.Hash == thatDataMsg.Payload.Hash {
-				return messageInvalidated
-			}
-			return messageNoAction
-		}
-
-		diff := util.Abs(thisDataMsg.Payload.SeqNum, thatDataMsg.Payload.SeqNum)
-		if diff <= uint64(g.conf.MaxMessageCountToStore) {
-			return messageNoAction
-		}
-
-		if thisDataMsg.Payload.SeqNum > thatDataMsg.Payload.SeqNum {
-			return messageInvalidates
-		}
-		return messageInvalidated
-	}
-	return messageNoAction
-}
-
-func aliveInvalidationPolicy(thisMsg *proto.AliveMessage, thatMsg *proto.AliveMessage) invalidationResult {
-	if !equalPKIIds(thisMsg.Membership.PkiID, thatMsg.Membership.PkiID) {
-		return messageNoAction
-	}
-
-	if thisMsg.Timestamp.IncNumber == thatMsg.Timestamp.IncNumber {
-		if thisMsg.Timestamp.SeqNum > thatMsg.Timestamp.SeqNum {
-			return messageInvalidates
-		}
-
-		if thisMsg.Timestamp.SeqNum < thatMsg.Timestamp.SeqNum {
-			return messageInvalidated
-		}
-		return messageInvalidated
-	}
-	if thisMsg.Timestamp.IncNumber < thatMsg.Timestamp.IncNumber {
-		return messageInvalidated
-	}
-	return messageInvalidates
 }
 
 func (g *gossipServiceImpl) handlePresumedDead() {
@@ -183,11 +133,10 @@ func (g *gossipServiceImpl) start() {
 			return false
 		}
 
-		isAck := gMsg.GetGossipMessage().GetAckMsg() != nil
 		isConn := gMsg.GetGossipMessage().GetConn() != nil
 		isEmpty := gMsg.GetGossipMessage().GetEmpty() != nil
 
-		return !(isAck || isConn || isEmpty)
+		return !(isConn || isEmpty)
 	}
 
 	incMsgs := g.comm.Accept(msgSelector)
@@ -224,6 +173,7 @@ func (g *gossipServiceImpl) SelectPeers() []string {
 
 func (g *gossipServiceImpl) Hello(dest string, nonce uint64) {
 	helloMsg := &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_Hello{
 			Hello: &proto.GossipHello{
@@ -239,6 +189,7 @@ func (g *gossipServiceImpl) Hello(dest string, nonce uint64) {
 
 func (g *gossipServiceImpl) SendDigest(digest []uint64, nonce uint64, context interface{}) {
 	digMsg := &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_DataDig{
 			DataDig: &proto.DataDigest{
@@ -253,6 +204,7 @@ func (g *gossipServiceImpl) SendDigest(digest []uint64, nonce uint64, context in
 
 func (g *gossipServiceImpl) SendReq(dest string, items []uint64, nonce uint64) {
 	req := &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_DataReq{
 			DataReq: &proto.DataRequest{
@@ -282,6 +234,7 @@ func (g *gossipServiceImpl) SendRes(requestedItems []uint64, context interface{}
 	}
 
 	returnedUpdate := &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_DataUpdate{
 			DataUpdate: &proto.DataUpdate{
@@ -355,6 +308,7 @@ func (g *gossipServiceImpl) handlePushPullMsg(msg comm.ReceivedMessage) {
 		items := make([]uint64, len(res.Data))
 		for i, data := range res.Data {
 			dataMsg := &proto.GossipMessage{
+				Tag: proto.GossipMessage_EMPTY,
 				Content: &proto.GossipMessage_DataMsg{
 					DataMsg: data,
 				},
@@ -444,7 +398,7 @@ func (g *gossipServiceImpl) UpdateMetadata(md []byte) {
 
 func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor) <-chan *proto.GossipMessage {
 	inCh := g.AddChannel(acceptor)
-	outCh := make(chan *proto.GossipMessage, 100)
+	outCh := make(chan *proto.GossipMessage, acceptChanSize)
 	go func() {
 		for {
 			select {

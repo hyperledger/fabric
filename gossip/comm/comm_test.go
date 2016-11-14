@@ -26,12 +26,12 @@ import (
 
 	"crypto/tls"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"github.com/hyperledger/fabric/gossip/common"
 )
 
 func init() {
@@ -465,6 +465,7 @@ func TestPresumedDead(t *testing.T) {
 
 func createGossipMsg() *proto.GossipMessage {
 	return &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: uint64(rand.Int()),
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{},

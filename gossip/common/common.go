@@ -35,3 +35,22 @@ type Payload struct {
 
 // ChainID defines the identity representation of a chain
 type ChainID []byte
+
+// MessageReplacingPolicy Returns:
+// MESSAGE_INVALIDATES if this message invalidates that
+// MESSAGE_INVALIDATED if this message is invalidated by that
+// MESSAGE_NO_ACTION otherwise
+type MessageReplacingPolicy func(this interface{}, that interface{}) InvalidationResult
+
+// InvalidationResult determines how a message affects another message
+// when it is put into gossip message store
+type InvalidationResult int
+
+const (
+	// MessageNoAction means messages have no relation
+	MessageNoAction = iota
+	// MessageInvalidates means message invalidates the other message
+	MessageInvalidates
+	// MessageInvalidated means message is invalidated by the other message
+	MessageInvalidated
+)

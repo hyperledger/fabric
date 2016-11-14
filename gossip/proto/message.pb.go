@@ -10,6 +10,8 @@ It is generated from these files:
 
 It has these top-level messages:
 	GossipMessage
+	StateInfo
+	ChannelCommand
 	ConnEstablish
 	DataRequest
 	GossipHello
@@ -17,15 +19,14 @@ It has these top-level messages:
 	DataDigest
 	DataMessage
 	Payload
-	AckMessage
 	AliveMessage
 	PeerTime
 	MembershipRequest
 	MembershipResponse
 	Member
+	Empty
 	RemoteStateRequest
 	RemoteStateResponse
-	Empty
 */
 package proto
 
@@ -49,38 +50,48 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto1.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type DataMessage_Type int32
+type GossipMessage_Tag int32
 
 const (
-	DataMessage_UNDEFINED DataMessage_Type = 0
-	DataMessage_BLOCK     DataMessage_Type = 1
-	DataMessage_VAL_REQ   DataMessage_Type = 2
-	DataMessage_VAL_RES   DataMessage_Type = 3
-	DataMessage_CERT      DataMessage_Type = 4
+	GossipMessage_UNDEFINED    GossipMessage_Tag = 0
+	GossipMessage_EMPTY        GossipMessage_Tag = 1
+	GossipMessage_ORG_ONLY     GossipMessage_Tag = 2
+	GossipMessage_CHAN_ONLY    GossipMessage_Tag = 3
+	GossipMessage_CHAN_AND_ORG GossipMessage_Tag = 4
 )
 
-var DataMessage_Type_name = map[int32]string{
+var GossipMessage_Tag_name = map[int32]string{
 	0: "UNDEFINED",
-	1: "BLOCK",
-	2: "VAL_REQ",
-	3: "VAL_RES",
-	4: "CERT",
+	1: "EMPTY",
+	2: "ORG_ONLY",
+	3: "CHAN_ONLY",
+	4: "CHAN_AND_ORG",
 }
-var DataMessage_Type_value = map[string]int32{
-	"UNDEFINED": 0,
-	"BLOCK":     1,
-	"VAL_REQ":   2,
-	"VAL_RES":   3,
-	"CERT":      4,
+var GossipMessage_Tag_value = map[string]int32{
+	"UNDEFINED":    0,
+	"EMPTY":        1,
+	"ORG_ONLY":     2,
+	"CHAN_ONLY":    3,
+	"CHAN_AND_ORG": 4,
 }
 
-func (x DataMessage_Type) String() string {
-	return proto1.EnumName(DataMessage_Type_name, int32(x))
+func (x GossipMessage_Tag) String() string {
+	return proto1.EnumName(GossipMessage_Tag_name, int32(x))
 }
-func (DataMessage_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{6, 0} }
+func (GossipMessage_Tag) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0} }
 
+// GossipMessage defines the message sent in a gossip network
 type GossipMessage struct {
+	// used mainly for testing, but will might be used in the future
+	// for ensuring message delivery by acking
 	Nonce uint64 `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
+	// The channel of the message.
+	// Some GossipMessages may set this to nil, because
+	// they are cross-channels but some may not
+	Channel []byte `protobuf:"bytes,2,opt,name=channel,proto3" json:"channel,omitempty"`
+	// determines to which peers it is allowed
+	// to forward the message
+	Tag GossipMessage_Tag `protobuf:"varint,3,opt,name=tag,enum=proto.GossipMessage_Tag" json:"tag,omitempty"`
 	// Types that are valid to be assigned to Content:
 	//	*GossipMessage_AliveMsg
 	//	*GossipMessage_MemReq
@@ -90,9 +101,10 @@ type GossipMessage struct {
 	//	*GossipMessage_DataDig
 	//	*GossipMessage_DataReq
 	//	*GossipMessage_DataUpdate
-	//	*GossipMessage_AckMsg
+	//	*GossipMessage_ChanCmd
 	//	*GossipMessage_Empty
 	//	*GossipMessage_Conn
+	//	*GossipMessage_StateInfo
 	//	*GossipMessage_StateRequest
 	//	*GossipMessage_StateResponse
 	Content isGossipMessage_Content `protobuf_oneof:"content"`
@@ -108,43 +120,46 @@ type isGossipMessage_Content interface {
 }
 
 type GossipMessage_AliveMsg struct {
-	AliveMsg *AliveMessage `protobuf:"bytes,2,opt,name=aliveMsg,oneof"`
+	AliveMsg *AliveMessage `protobuf:"bytes,4,opt,name=aliveMsg,oneof"`
 }
 type GossipMessage_MemReq struct {
-	MemReq *MembershipRequest `protobuf:"bytes,3,opt,name=memReq,oneof"`
+	MemReq *MembershipRequest `protobuf:"bytes,5,opt,name=memReq,oneof"`
 }
 type GossipMessage_MemRes struct {
-	MemRes *MembershipResponse `protobuf:"bytes,4,opt,name=memRes,oneof"`
+	MemRes *MembershipResponse `protobuf:"bytes,6,opt,name=memRes,oneof"`
 }
 type GossipMessage_DataMsg struct {
-	DataMsg *DataMessage `protobuf:"bytes,5,opt,name=dataMsg,oneof"`
+	DataMsg *DataMessage `protobuf:"bytes,7,opt,name=dataMsg,oneof"`
 }
 type GossipMessage_Hello struct {
-	Hello *GossipHello `protobuf:"bytes,6,opt,name=hello,oneof"`
+	Hello *GossipHello `protobuf:"bytes,87,opt,name=hello,oneof"`
 }
 type GossipMessage_DataDig struct {
-	DataDig *DataDigest `protobuf:"bytes,7,opt,name=dataDig,oneof"`
+	DataDig *DataDigest `protobuf:"bytes,9,opt,name=dataDig,oneof"`
 }
 type GossipMessage_DataReq struct {
-	DataReq *DataRequest `protobuf:"bytes,8,opt,name=dataReq,oneof"`
+	DataReq *DataRequest `protobuf:"bytes,10,opt,name=dataReq,oneof"`
 }
 type GossipMessage_DataUpdate struct {
-	DataUpdate *DataUpdate `protobuf:"bytes,9,opt,name=dataUpdate,oneof"`
+	DataUpdate *DataUpdate `protobuf:"bytes,11,opt,name=dataUpdate,oneof"`
 }
-type GossipMessage_AckMsg struct {
-	AckMsg *AckMessage `protobuf:"bytes,10,opt,name=ackMsg,oneof"`
+type GossipMessage_ChanCmd struct {
+	ChanCmd *ChannelCommand `protobuf:"bytes,12,opt,name=chanCmd,oneof"`
 }
 type GossipMessage_Empty struct {
-	Empty *Empty `protobuf:"bytes,11,opt,name=empty,oneof"`
+	Empty *Empty `protobuf:"bytes,13,opt,name=empty,oneof"`
 }
 type GossipMessage_Conn struct {
-	Conn *ConnEstablish `protobuf:"bytes,12,opt,name=conn,oneof"`
+	Conn *ConnEstablish `protobuf:"bytes,14,opt,name=conn,oneof"`
+}
+type GossipMessage_StateInfo struct {
+	StateInfo *StateInfo `protobuf:"bytes,15,opt,name=stateInfo,oneof"`
 }
 type GossipMessage_StateRequest struct {
-	StateRequest *RemoteStateRequest `protobuf:"bytes,14,opt,name=stateRequest,oneof"`
+	StateRequest *RemoteStateRequest `protobuf:"bytes,16,opt,name=stateRequest,oneof"`
 }
 type GossipMessage_StateResponse struct {
-	StateResponse *RemoteStateResponse `protobuf:"bytes,15,opt,name=stateResponse,oneof"`
+	StateResponse *RemoteStateResponse `protobuf:"bytes,17,opt,name=stateResponse,oneof"`
 }
 
 func (*GossipMessage_AliveMsg) isGossipMessage_Content()      {}
@@ -155,9 +170,10 @@ func (*GossipMessage_Hello) isGossipMessage_Content()         {}
 func (*GossipMessage_DataDig) isGossipMessage_Content()       {}
 func (*GossipMessage_DataReq) isGossipMessage_Content()       {}
 func (*GossipMessage_DataUpdate) isGossipMessage_Content()    {}
-func (*GossipMessage_AckMsg) isGossipMessage_Content()        {}
+func (*GossipMessage_ChanCmd) isGossipMessage_Content()       {}
 func (*GossipMessage_Empty) isGossipMessage_Content()         {}
 func (*GossipMessage_Conn) isGossipMessage_Content()          {}
+func (*GossipMessage_StateInfo) isGossipMessage_Content()     {}
 func (*GossipMessage_StateRequest) isGossipMessage_Content()  {}
 func (*GossipMessage_StateResponse) isGossipMessage_Content() {}
 
@@ -224,9 +240,9 @@ func (m *GossipMessage) GetDataUpdate() *DataUpdate {
 	return nil
 }
 
-func (m *GossipMessage) GetAckMsg() *AckMessage {
-	if x, ok := m.GetContent().(*GossipMessage_AckMsg); ok {
-		return x.AckMsg
+func (m *GossipMessage) GetChanCmd() *ChannelCommand {
+	if x, ok := m.GetContent().(*GossipMessage_ChanCmd); ok {
+		return x.ChanCmd
 	}
 	return nil
 }
@@ -241,6 +257,13 @@ func (m *GossipMessage) GetEmpty() *Empty {
 func (m *GossipMessage) GetConn() *ConnEstablish {
 	if x, ok := m.GetContent().(*GossipMessage_Conn); ok {
 		return x.Conn
+	}
+	return nil
+}
+
+func (m *GossipMessage) GetStateInfo() *StateInfo {
+	if x, ok := m.GetContent().(*GossipMessage_StateInfo); ok {
+		return x.StateInfo
 	}
 	return nil
 }
@@ -270,9 +293,10 @@ func (*GossipMessage) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffe
 		(*GossipMessage_DataDig)(nil),
 		(*GossipMessage_DataReq)(nil),
 		(*GossipMessage_DataUpdate)(nil),
-		(*GossipMessage_AckMsg)(nil),
+		(*GossipMessage_ChanCmd)(nil),
 		(*GossipMessage_Empty)(nil),
 		(*GossipMessage_Conn)(nil),
+		(*GossipMessage_StateInfo)(nil),
 		(*GossipMessage_StateRequest)(nil),
 		(*GossipMessage_StateResponse)(nil),
 	}
@@ -283,67 +307,72 @@ func _GossipMessage_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
 	// content
 	switch x := m.Content.(type) {
 	case *GossipMessage_AliveMsg:
-		b.EncodeVarint(2<<3 | proto1.WireBytes)
+		b.EncodeVarint(4<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.AliveMsg); err != nil {
 			return err
 		}
 	case *GossipMessage_MemReq:
-		b.EncodeVarint(3<<3 | proto1.WireBytes)
+		b.EncodeVarint(5<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.MemReq); err != nil {
 			return err
 		}
 	case *GossipMessage_MemRes:
-		b.EncodeVarint(4<<3 | proto1.WireBytes)
+		b.EncodeVarint(6<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.MemRes); err != nil {
 			return err
 		}
 	case *GossipMessage_DataMsg:
-		b.EncodeVarint(5<<3 | proto1.WireBytes)
+		b.EncodeVarint(7<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.DataMsg); err != nil {
 			return err
 		}
 	case *GossipMessage_Hello:
-		b.EncodeVarint(6<<3 | proto1.WireBytes)
+		b.EncodeVarint(87<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.Hello); err != nil {
 			return err
 		}
 	case *GossipMessage_DataDig:
-		b.EncodeVarint(7<<3 | proto1.WireBytes)
+		b.EncodeVarint(9<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.DataDig); err != nil {
 			return err
 		}
 	case *GossipMessage_DataReq:
-		b.EncodeVarint(8<<3 | proto1.WireBytes)
+		b.EncodeVarint(10<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.DataReq); err != nil {
 			return err
 		}
 	case *GossipMessage_DataUpdate:
-		b.EncodeVarint(9<<3 | proto1.WireBytes)
+		b.EncodeVarint(11<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.DataUpdate); err != nil {
 			return err
 		}
-	case *GossipMessage_AckMsg:
-		b.EncodeVarint(10<<3 | proto1.WireBytes)
-		if err := b.EncodeMessage(x.AckMsg); err != nil {
+	case *GossipMessage_ChanCmd:
+		b.EncodeVarint(12<<3 | proto1.WireBytes)
+		if err := b.EncodeMessage(x.ChanCmd); err != nil {
 			return err
 		}
 	case *GossipMessage_Empty:
-		b.EncodeVarint(11<<3 | proto1.WireBytes)
+		b.EncodeVarint(13<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.Empty); err != nil {
 			return err
 		}
 	case *GossipMessage_Conn:
-		b.EncodeVarint(12<<3 | proto1.WireBytes)
+		b.EncodeVarint(14<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.Conn); err != nil {
 			return err
 		}
+	case *GossipMessage_StateInfo:
+		b.EncodeVarint(15<<3 | proto1.WireBytes)
+		if err := b.EncodeMessage(x.StateInfo); err != nil {
+			return err
+		}
 	case *GossipMessage_StateRequest:
-		b.EncodeVarint(14<<3 | proto1.WireBytes)
+		b.EncodeVarint(16<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.StateRequest); err != nil {
 			return err
 		}
 	case *GossipMessage_StateResponse:
-		b.EncodeVarint(15<<3 | proto1.WireBytes)
+		b.EncodeVarint(17<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.StateResponse); err != nil {
 			return err
 		}
@@ -357,7 +386,7 @@ func _GossipMessage_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
 func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error) {
 	m := msg.(*GossipMessage)
 	switch tag {
-	case 2: // content.aliveMsg
+	case 4: // content.aliveMsg
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -365,7 +394,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_AliveMsg{msg}
 		return true, err
-	case 3: // content.memReq
+	case 5: // content.memReq
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -373,7 +402,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_MemReq{msg}
 		return true, err
-	case 4: // content.memRes
+	case 6: // content.memRes
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -381,7 +410,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_MemRes{msg}
 		return true, err
-	case 5: // content.dataMsg
+	case 7: // content.dataMsg
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -389,7 +418,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_DataMsg{msg}
 		return true, err
-	case 6: // content.hello
+	case 87: // content.hello
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -397,7 +426,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_Hello{msg}
 		return true, err
-	case 7: // content.dataDig
+	case 9: // content.dataDig
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -405,7 +434,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_DataDig{msg}
 		return true, err
-	case 8: // content.dataReq
+	case 10: // content.dataReq
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -413,7 +442,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_DataReq{msg}
 		return true, err
-	case 9: // content.dataUpdate
+	case 11: // content.dataUpdate
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -421,15 +450,15 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_DataUpdate{msg}
 		return true, err
-	case 10: // content.ackMsg
+	case 12: // content.chanCmd
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
-		msg := new(AckMessage)
+		msg := new(ChannelCommand)
 		err := b.DecodeMessage(msg)
-		m.Content = &GossipMessage_AckMsg{msg}
+		m.Content = &GossipMessage_ChanCmd{msg}
 		return true, err
-	case 11: // content.empty
+	case 13: // content.empty
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -437,7 +466,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_Empty{msg}
 		return true, err
-	case 12: // content.conn
+	case 14: // content.conn
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -445,7 +474,15 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_Conn{msg}
 		return true, err
-	case 14: // content.stateRequest
+	case 15: // content.stateInfo
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		msg := new(StateInfo)
+		err := b.DecodeMessage(msg)
+		m.Content = &GossipMessage_StateInfo{msg}
+		return true, err
+	case 16: // content.stateRequest
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -453,7 +490,7 @@ func _GossipMessage_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Content = &GossipMessage_StateRequest{msg}
 		return true, err
-	case 15: // content.stateResponse
+	case 17: // content.stateResponse
 		if wire != proto1.WireBytes {
 			return true, proto1.ErrInternalBadWireType
 		}
@@ -472,67 +509,72 @@ func _GossipMessage_OneofSizer(msg proto1.Message) (n int) {
 	switch x := m.Content.(type) {
 	case *GossipMessage_AliveMsg:
 		s := proto1.Size(x.AliveMsg)
-		n += proto1.SizeVarint(2<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(4<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_MemReq:
 		s := proto1.Size(x.MemReq)
-		n += proto1.SizeVarint(3<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(5<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_MemRes:
 		s := proto1.Size(x.MemRes)
-		n += proto1.SizeVarint(4<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(6<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_DataMsg:
 		s := proto1.Size(x.DataMsg)
-		n += proto1.SizeVarint(5<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(7<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_Hello:
 		s := proto1.Size(x.Hello)
-		n += proto1.SizeVarint(6<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(87<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_DataDig:
 		s := proto1.Size(x.DataDig)
-		n += proto1.SizeVarint(7<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(9<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_DataReq:
 		s := proto1.Size(x.DataReq)
-		n += proto1.SizeVarint(8<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(10<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_DataUpdate:
 		s := proto1.Size(x.DataUpdate)
-		n += proto1.SizeVarint(9<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(11<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
-	case *GossipMessage_AckMsg:
-		s := proto1.Size(x.AckMsg)
-		n += proto1.SizeVarint(10<<3 | proto1.WireBytes)
+	case *GossipMessage_ChanCmd:
+		s := proto1.Size(x.ChanCmd)
+		n += proto1.SizeVarint(12<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_Empty:
 		s := proto1.Size(x.Empty)
-		n += proto1.SizeVarint(11<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(13<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_Conn:
 		s := proto1.Size(x.Conn)
-		n += proto1.SizeVarint(12<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(14<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *GossipMessage_StateInfo:
+		s := proto1.Size(x.StateInfo)
+		n += proto1.SizeVarint(15<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_StateRequest:
 		s := proto1.Size(x.StateRequest)
-		n += proto1.SizeVarint(14<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(16<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case *GossipMessage_StateResponse:
 		s := proto1.Size(x.StateResponse)
-		n += proto1.SizeVarint(15<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(17<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -542,6 +584,41 @@ func _GossipMessage_OneofSizer(msg proto1.Message) (n int) {
 	return n
 }
 
+// StateInfo is used for a peer to relay its state information
+// to other peers
+type StateInfo struct {
+	Metadata  []byte    `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Timestamp *PeerTime `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
+	PkiID     []byte    `protobuf:"bytes,3,opt,name=pkiID,proto3" json:"pkiID,omitempty"`
+	Signature []byte    `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
+}
+
+func (m *StateInfo) Reset()                    { *m = StateInfo{} }
+func (m *StateInfo) String() string            { return proto1.CompactTextString(m) }
+func (*StateInfo) ProtoMessage()               {}
+func (*StateInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+func (m *StateInfo) GetTimestamp() *PeerTime {
+	if m != nil {
+		return m.Timestamp
+	}
+	return nil
+}
+
+// ChannelCommand is the message that contains a creation
+// or modification of a channel
+type ChannelCommand struct {
+	Payload []byte `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`
+}
+
+func (m *ChannelCommand) Reset()                    { *m = ChannelCommand{} }
+func (m *ChannelCommand) String() string            { return proto1.CompactTextString(m) }
+func (*ChannelCommand) ProtoMessage()               {}
+func (*ChannelCommand) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+// ConnEstablish is the message used for the gossip handshake
+// Whenever a peer connects to another peer, it handshakes
+// with it by sending this message that proves its identity
 type ConnEstablish struct {
 	Sig   []byte `protobuf:"bytes,1,opt,name=sig,proto3" json:"sig,omitempty"`
 	PkiID []byte `protobuf:"bytes,2,opt,name=pkiID,proto3" json:"pkiID,omitempty"`
@@ -550,8 +627,10 @@ type ConnEstablish struct {
 func (m *ConnEstablish) Reset()                    { *m = ConnEstablish{} }
 func (m *ConnEstablish) String() string            { return proto1.CompactTextString(m) }
 func (*ConnEstablish) ProtoMessage()               {}
-func (*ConnEstablish) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*ConnEstablish) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
+// DataRequest is a message used for a peer to request
+// certain data blocks from a remote peer
 type DataRequest struct {
 	Nonce  uint64   `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
 	SeqMap []uint64 `protobuf:"varint,2,rep,packed,name=seqMap" json:"seqMap,omitempty"`
@@ -560,8 +639,10 @@ type DataRequest struct {
 func (m *DataRequest) Reset()                    { *m = DataRequest{} }
 func (m *DataRequest) String() string            { return proto1.CompactTextString(m) }
 func (*DataRequest) ProtoMessage()               {}
-func (*DataRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*DataRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
+// GossipHello is the message that is used for the peer to initiate
+// a pull round with another peer
 type GossipHello struct {
 	Nonce uint64 `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
 }
@@ -569,8 +650,10 @@ type GossipHello struct {
 func (m *GossipHello) Reset()                    { *m = GossipHello{} }
 func (m *GossipHello) String() string            { return proto1.CompactTextString(m) }
 func (*GossipHello) ProtoMessage()               {}
-func (*GossipHello) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*GossipHello) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
+// DataUpdate is the the final message in the pull phase
+// sent from the receiver to the initiator
 type DataUpdate struct {
 	Nonce uint64         `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
 	Data  []*DataMessage `protobuf:"bytes,2,rep,name=data" json:"data,omitempty"`
@@ -579,7 +662,7 @@ type DataUpdate struct {
 func (m *DataUpdate) Reset()                    { *m = DataUpdate{} }
 func (m *DataUpdate) String() string            { return proto1.CompactTextString(m) }
 func (*DataUpdate) ProtoMessage()               {}
-func (*DataUpdate) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*DataUpdate) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 func (m *DataUpdate) GetData() []*DataMessage {
 	if m != nil {
@@ -588,6 +671,8 @@ func (m *DataUpdate) GetData() []*DataMessage {
 	return nil
 }
 
+// DataDigest is the message sent from the receiver peer
+// to the initator peer and contains the data items it has
 type DataDigest struct {
 	Nonce  uint64   `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
 	SeqMap []uint64 `protobuf:"varint,2,rep,packed,name=seqMap" json:"seqMap,omitempty"`
@@ -596,17 +681,17 @@ type DataDigest struct {
 func (m *DataDigest) Reset()                    { *m = DataDigest{} }
 func (m *DataDigest) String() string            { return proto1.CompactTextString(m) }
 func (*DataDigest) ProtoMessage()               {}
-func (*DataDigest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*DataDigest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
+// DataMessage is the message that contains a block
 type DataMessage struct {
-	Type    DataMessage_Type `protobuf:"varint,1,opt,name=type,enum=proto.DataMessage_Type" json:"type,omitempty"`
-	Payload *Payload         `protobuf:"bytes,2,opt,name=payload" json:"payload,omitempty"`
+	Payload *Payload `protobuf:"bytes,1,opt,name=payload" json:"payload,omitempty"`
 }
 
 func (m *DataMessage) Reset()                    { *m = DataMessage{} }
 func (m *DataMessage) String() string            { return proto1.CompactTextString(m) }
 func (*DataMessage) ProtoMessage()               {}
-func (*DataMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (*DataMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 func (m *DataMessage) GetPayload() *Payload {
 	if m != nil {
@@ -615,6 +700,7 @@ func (m *DataMessage) GetPayload() *Payload {
 	return nil
 }
 
+// Payload contains a block
 type Payload struct {
 	SeqNum uint64 `protobuf:"varint,1,opt,name=seqNum" json:"seqNum,omitempty"`
 	Hash   string `protobuf:"bytes,2,opt,name=hash" json:"hash,omitempty"`
@@ -624,17 +710,10 @@ type Payload struct {
 func (m *Payload) Reset()                    { *m = Payload{} }
 func (m *Payload) String() string            { return proto1.CompactTextString(m) }
 func (*Payload) ProtoMessage()               {}
-func (*Payload) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*Payload) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
-type AckMessage struct {
-	Nonce uint64 `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
-}
-
-func (m *AckMessage) Reset()                    { *m = AckMessage{} }
-func (m *AckMessage) String() string            { return proto1.CompactTextString(m) }
-func (*AckMessage) ProtoMessage()               {}
-func (*AckMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
-
+// AliveMessage is sent to inform remote peers
+// of a peer's existence and activity
 type AliveMessage struct {
 	Membership *Member   `protobuf:"bytes,1,opt,name=membership" json:"membership,omitempty"`
 	Timestamp  *PeerTime `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
@@ -644,7 +723,7 @@ type AliveMessage struct {
 func (m *AliveMessage) Reset()                    { *m = AliveMessage{} }
 func (m *AliveMessage) String() string            { return proto1.CompactTextString(m) }
 func (*AliveMessage) ProtoMessage()               {}
-func (*AliveMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (*AliveMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 func (m *AliveMessage) GetMembership() *Member {
 	if m != nil {
@@ -660,6 +739,7 @@ func (m *AliveMessage) GetTimestamp() *PeerTime {
 	return nil
 }
 
+// PeerTime defines the logical time of a peer's life
 type PeerTime struct {
 	IncNumber uint64 `protobuf:"varint,1,opt,name=inc_number,json=incNumber" json:"inc_number,omitempty"`
 	SeqNum    uint64 `protobuf:"varint,2,opt,name=seqNum" json:"seqNum,omitempty"`
@@ -668,8 +748,10 @@ type PeerTime struct {
 func (m *PeerTime) Reset()                    { *m = PeerTime{} }
 func (m *PeerTime) String() string            { return proto1.CompactTextString(m) }
 func (*PeerTime) ProtoMessage()               {}
-func (*PeerTime) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*PeerTime) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
+// MembershipRequest is used to ask membership information
+// from a remote peer
 type MembershipRequest struct {
 	SelfInformation *AliveMessage `protobuf:"bytes,1,opt,name=selfInformation" json:"selfInformation,omitempty"`
 	Known           [][]byte      `protobuf:"bytes,2,rep,name=known,proto3" json:"known,omitempty"`
@@ -678,7 +760,7 @@ type MembershipRequest struct {
 func (m *MembershipRequest) Reset()                    { *m = MembershipRequest{} }
 func (m *MembershipRequest) String() string            { return proto1.CompactTextString(m) }
 func (*MembershipRequest) ProtoMessage()               {}
-func (*MembershipRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (*MembershipRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
 func (m *MembershipRequest) GetSelfInformation() *AliveMessage {
 	if m != nil {
@@ -687,6 +769,7 @@ func (m *MembershipRequest) GetSelfInformation() *AliveMessage {
 	return nil
 }
 
+// MembershipResponse is used for replying to MembershipRequests
 type MembershipResponse struct {
 	Alive []*AliveMessage `protobuf:"bytes,1,rep,name=alive" json:"alive,omitempty"`
 	Dead  []*AliveMessage `protobuf:"bytes,2,rep,name=dead" json:"dead,omitempty"`
@@ -695,7 +778,7 @@ type MembershipResponse struct {
 func (m *MembershipResponse) Reset()                    { *m = MembershipResponse{} }
 func (m *MembershipResponse) String() string            { return proto1.CompactTextString(m) }
 func (*MembershipResponse) ProtoMessage()               {}
-func (*MembershipResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+func (*MembershipResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
 func (m *MembershipResponse) GetAlive() []*AliveMessage {
 	if m != nil {
@@ -711,6 +794,8 @@ func (m *MembershipResponse) GetDead() []*AliveMessage {
 	return nil
 }
 
+// Member holds membership-related information
+// about a peer
 type Member struct {
 	Endpoint string `protobuf:"bytes,1,opt,name=endpoint" json:"endpoint,omitempty"`
 	Metadata []byte `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
@@ -720,8 +805,19 @@ type Member struct {
 func (m *Member) Reset()                    { *m = Member{} }
 func (m *Member) String() string            { return proto1.CompactTextString(m) }
 func (*Member) ProtoMessage()               {}
-func (*Member) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
+func (*Member) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
 
+// Empty is used for pinging and in tests
+type Empty struct {
+}
+
+func (m *Empty) Reset()                    { *m = Empty{} }
+func (m *Empty) String() string            { return proto1.CompactTextString(m) }
+func (*Empty) ProtoMessage()               {}
+func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
+
+// RemoteStateRequest is used to ask a set of blocks
+// from a remote peer
 type RemoteStateRequest struct {
 	SeqNums []uint64 `protobuf:"varint,1,rep,packed,name=seqNums" json:"seqNums,omitempty"`
 }
@@ -729,8 +825,10 @@ type RemoteStateRequest struct {
 func (m *RemoteStateRequest) Reset()                    { *m = RemoteStateRequest{} }
 func (m *RemoteStateRequest) String() string            { return proto1.CompactTextString(m) }
 func (*RemoteStateRequest) ProtoMessage()               {}
-func (*RemoteStateRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
+func (*RemoteStateRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
 
+// RemoteStateResponse is used to send a set of blocks
+// to a remote peer
 type RemoteStateResponse struct {
 	Payloads []*Payload `protobuf:"bytes,1,rep,name=payloads" json:"payloads,omitempty"`
 }
@@ -738,7 +836,7 @@ type RemoteStateResponse struct {
 func (m *RemoteStateResponse) Reset()                    { *m = RemoteStateResponse{} }
 func (m *RemoteStateResponse) String() string            { return proto1.CompactTextString(m) }
 func (*RemoteStateResponse) ProtoMessage()               {}
-func (*RemoteStateResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
+func (*RemoteStateResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
 
 func (m *RemoteStateResponse) GetPayloads() []*Payload {
 	if m != nil {
@@ -747,16 +845,10 @@ func (m *RemoteStateResponse) GetPayloads() []*Payload {
 	return nil
 }
 
-type Empty struct {
-}
-
-func (m *Empty) Reset()                    { *m = Empty{} }
-func (m *Empty) String() string            { return proto1.CompactTextString(m) }
-func (*Empty) ProtoMessage()               {}
-func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
-
 func init() {
 	proto1.RegisterType((*GossipMessage)(nil), "proto.GossipMessage")
+	proto1.RegisterType((*StateInfo)(nil), "proto.StateInfo")
+	proto1.RegisterType((*ChannelCommand)(nil), "proto.ChannelCommand")
 	proto1.RegisterType((*ConnEstablish)(nil), "proto.ConnEstablish")
 	proto1.RegisterType((*DataRequest)(nil), "proto.DataRequest")
 	proto1.RegisterType((*GossipHello)(nil), "proto.GossipHello")
@@ -764,16 +856,15 @@ func init() {
 	proto1.RegisterType((*DataDigest)(nil), "proto.DataDigest")
 	proto1.RegisterType((*DataMessage)(nil), "proto.DataMessage")
 	proto1.RegisterType((*Payload)(nil), "proto.Payload")
-	proto1.RegisterType((*AckMessage)(nil), "proto.AckMessage")
 	proto1.RegisterType((*AliveMessage)(nil), "proto.AliveMessage")
 	proto1.RegisterType((*PeerTime)(nil), "proto.PeerTime")
 	proto1.RegisterType((*MembershipRequest)(nil), "proto.MembershipRequest")
 	proto1.RegisterType((*MembershipResponse)(nil), "proto.MembershipResponse")
 	proto1.RegisterType((*Member)(nil), "proto.Member")
+	proto1.RegisterType((*Empty)(nil), "proto.Empty")
 	proto1.RegisterType((*RemoteStateRequest)(nil), "proto.RemoteStateRequest")
 	proto1.RegisterType((*RemoteStateResponse)(nil), "proto.RemoteStateResponse")
-	proto1.RegisterType((*Empty)(nil), "proto.Empty")
-	proto1.RegisterEnum("proto.DataMessage_Type", DataMessage_Type_name, DataMessage_Type_value)
+	proto1.RegisterEnum("proto.GossipMessage_Tag", GossipMessage_Tag_name, GossipMessage_Tag_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -787,7 +878,9 @@ const _ = grpc.SupportPackageIsVersion3
 // Client API for Gossip service
 
 type GossipClient interface {
+	// GossipStream is the gRPC stream used for sending and receiving messages
 	GossipStream(ctx context.Context, opts ...grpc.CallOption) (Gossip_GossipStreamClient, error)
+	// Ping is used to probe a remote peer's aliveness
 	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 }
 
@@ -842,7 +935,9 @@ func (c *gossipClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOpt
 // Server API for Gossip service
 
 type GossipServer interface {
+	// GossipStream is the gRPC stream used for sending and receiving messages
 	GossipStream(Gossip_GossipStreamServer) error
+	// Ping is used to probe a remote peer's aliveness
 	Ping(context.Context, *Empty) (*Empty, error)
 }
 
@@ -917,63 +1012,68 @@ var _Gossip_serviceDesc = grpc.ServiceDesc{
 func init() { proto1.RegisterFile("message.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 918 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x55, 0x5f, 0x6f, 0xe3, 0x44,
-	0x10, 0x4f, 0x1a, 0xe7, 0xdf, 0x24, 0x69, 0x73, 0x73, 0x15, 0x98, 0x0a, 0xa4, 0xca, 0x9c, 0x20,
-	0xf4, 0x68, 0x0a, 0xe9, 0x03, 0x12, 0x08, 0x41, 0xda, 0x04, 0x52, 0xb8, 0x96, 0x63, 0xdb, 0xbb,
-	0x07, 0x5e, 0x4e, 0x9b, 0x64, 0x6b, 0xaf, 0x1a, 0xaf, 0x5d, 0xef, 0x06, 0x94, 0xaf, 0xc0, 0x47,
-	0xe1, 0x53, 0xf0, 0xd1, 0x90, 0x77, 0xd7, 0x89, 0x7d, 0x49, 0x1f, 0x78, 0xf2, 0xce, 0xcc, 0xef,
-	0x37, 0x3b, 0xff, 0x76, 0x0c, 0x9d, 0x90, 0x49, 0x49, 0x7d, 0xd6, 0x8f, 0x93, 0x48, 0x45, 0x58,
-	0xd5, 0x1f, 0xef, 0xdf, 0x2a, 0x74, 0x7e, 0x8e, 0xa4, 0xe4, 0xf1, 0xb5, 0x31, 0xe3, 0x21, 0x54,
-	0x45, 0x24, 0x66, 0xcc, 0x2d, 0x1f, 0x97, 0x7b, 0x0e, 0x31, 0x02, 0x7e, 0x0d, 0x0d, 0xba, 0xe0,
-	0x7f, 0xb2, 0x6b, 0xe9, 0xbb, 0x7b, 0xc7, 0xe5, 0x5e, 0x6b, 0xf0, 0xdc, 0x38, 0xea, 0x0f, 0xb5,
-	0xda, 0x90, 0x27, 0x25, 0xb2, 0x86, 0xe1, 0x00, 0x6a, 0x21, 0x0b, 0x09, 0x7b, 0x74, 0x2b, 0x9a,
-	0xe0, 0x5a, 0xc2, 0x35, 0x0b, 0xa7, 0x2c, 0x91, 0x01, 0x8f, 0x09, 0x7b, 0x5c, 0x32, 0xa9, 0x26,
-	0x25, 0x62, 0x91, 0x78, 0x6e, 0x39, 0xd2, 0x75, 0x34, 0xe7, 0xa3, 0x1d, 0x1c, 0x19, 0x47, 0x42,
-	0xb2, 0x35, 0x49, 0x62, 0x1f, 0xea, 0x73, 0xaa, 0x68, 0x1a, 0x5a, 0x55, 0xb3, 0xd0, 0xb2, 0x46,
-	0xa9, 0x76, 0x1d, 0x59, 0x06, 0xc2, 0x13, 0xa8, 0x06, 0x6c, 0xb1, 0x88, 0xdc, 0x5a, 0x01, 0x6d,
-	0xca, 0x30, 0x49, 0x2d, 0x93, 0x12, 0x31, 0x10, 0x3c, 0x35, 0xbe, 0x47, 0xdc, 0x77, 0xeb, 0x1a,
-	0xfd, 0x2c, 0xe7, 0x7b, 0xc4, 0x7d, 0x13, 0x7e, 0x86, 0xc9, 0x42, 0x49, 0x93, 0x6e, 0x6c, 0x85,
-	0xb2, 0x49, 0x37, 0x03, 0xe1, 0x39, 0x40, 0x7a, 0x7c, 0x13, 0xcf, 0xa9, 0x62, 0x6e, 0x73, 0xeb,
-	0x06, 0x63, 0x98, 0x94, 0x48, 0x0e, 0x86, 0x2f, 0xa1, 0x46, 0x67, 0x0f, 0x69, 0xba, 0x50, 0x20,
-	0x0c, 0x67, 0x0f, 0x9b, 0x6c, 0x2d, 0x04, 0x5f, 0x40, 0x95, 0x85, 0xb1, 0x5a, 0xb9, 0x2d, 0x8d,
-	0x6d, 0x5b, 0xec, 0x38, 0xd5, 0xa5, 0x69, 0x6a, 0x23, 0x9e, 0x80, 0x33, 0x8b, 0x84, 0x70, 0xdb,
-	0x1a, 0x74, 0x68, 0x41, 0x97, 0x91, 0x10, 0x63, 0xa9, 0xe8, 0x74, 0xc1, 0x65, 0x30, 0x29, 0x11,
-	0x8d, 0xc1, 0x1f, 0xa0, 0x2d, 0x15, 0x55, 0xcc, 0xa6, 0xe3, 0xee, 0x17, 0x3a, 0x45, 0x58, 0x18,
-	0x29, 0x76, 0x9b, 0x03, 0x4c, 0x4a, 0xa4, 0x40, 0xc0, 0x0b, 0xe8, 0x58, 0xd9, 0xb4, 0xd2, 0x3d,
-	0xd0, 0x1e, 0x8e, 0x76, 0x79, 0x58, 0x37, 0xbb, 0x48, 0xb9, 0x68, 0x42, 0x7d, 0x16, 0x09, 0xc5,
-	0x84, 0xf2, 0xbe, 0x81, 0x4e, 0x21, 0x50, 0xec, 0x42, 0x45, 0x72, 0x5f, 0xcf, 0x6f, 0x9b, 0xa4,
-	0xc7, 0x74, 0xa6, 0xe3, 0x07, 0x7e, 0x35, 0xd2, 0xa3, 0xdb, 0x26, 0x46, 0xf0, 0xbe, 0x83, 0x56,
-	0xae, 0x2d, 0x4f, 0x0c, 0xfe, 0x07, 0x50, 0x93, 0xec, 0xf1, 0x9a, 0xc6, 0xee, 0xde, 0x71, 0xa5,
-	0xe7, 0x10, 0x2b, 0x79, 0x9f, 0x42, 0x2b, 0x37, 0x30, 0xbb, 0xc9, 0xde, 0x2f, 0x00, 0x9b, 0x2e,
-	0x3e, 0x71, 0xc1, 0x67, 0xe0, 0xa4, 0xbd, 0xd5, 0xee, 0x77, 0x8e, 0x2e, 0xd1, 0x76, 0xef, 0x5b,
-	0xe3, 0xcb, 0xcc, 0xdc, 0xff, 0x0c, 0xf6, 0x9f, 0xb2, 0x49, 0x35, 0x7b, 0xe3, 0x2f, 0xc1, 0x51,
-	0xab, 0xd8, 0x90, 0xf7, 0x07, 0x1f, 0x6e, 0xdf, 0xd9, 0xbf, 0x5b, 0xc5, 0x8c, 0x68, 0x10, 0xf6,
-	0xa0, 0x1e, 0xd3, 0xd5, 0x22, 0xa2, 0x73, 0xfb, 0xf2, 0xf7, 0x2d, 0xfe, 0xb5, 0xd1, 0x92, 0xcc,
-	0xec, 0x8d, 0xc0, 0x49, 0x79, 0xd8, 0x81, 0xe6, 0x9b, 0x9b, 0xd1, 0xf8, 0xa7, 0xab, 0x9b, 0xf1,
-	0xa8, 0x5b, 0xc2, 0x26, 0x54, 0x2f, 0x5e, 0xfd, 0x76, 0xf9, 0x6b, 0xb7, 0x8c, 0x2d, 0xa8, 0xbf,
-	0x1d, 0xbe, 0x7a, 0x47, 0xc6, 0xbf, 0x77, 0xf7, 0x36, 0xc2, 0x6d, 0xb7, 0x82, 0x0d, 0x70, 0x2e,
-	0xc7, 0xe4, 0xae, 0xeb, 0x78, 0x57, 0x50, 0xb7, 0x9e, 0x6d, 0x3e, 0x37, 0xcb, 0xd0, 0xa6, 0x69,
-	0x25, 0x44, 0x70, 0x02, 0x2a, 0x03, 0x1d, 0x4f, 0x93, 0xe8, 0x73, 0xaa, 0xd3, 0x75, 0xac, 0xe8,
-	0x16, 0x9b, 0x9a, 0x79, 0x00, 0x9b, 0x47, 0xf1, 0x44, 0x8f, 0xfe, 0x2e, 0x43, 0x3b, 0xbf, 0xc3,
-	0xf0, 0x14, 0x20, 0x5c, 0xaf, 0x1b, 0x8d, 0x6d, 0x0d, 0x3a, 0x85, 0x3d, 0x44, 0x72, 0x00, 0x3c,
-	0x85, 0xa6, 0xe2, 0x21, 0x93, 0x8a, 0x86, 0xb1, 0x2d, 0xd0, 0x41, 0x56, 0x20, 0xc6, 0x92, 0x3b,
-	0x1e, 0x32, 0xb2, 0x41, 0xe0, 0xc7, 0xd0, 0x94, 0xdc, 0x17, 0x54, 0x2d, 0x13, 0x66, 0x63, 0xdd,
-	0x28, 0xbc, 0x21, 0x34, 0x32, 0x12, 0x7e, 0x02, 0xc0, 0xc5, 0xec, 0x9d, 0x58, 0xa6, 0x57, 0xd9,
-	0x98, 0x9b, 0x5c, 0xcc, 0x6e, 0xb4, 0x22, 0x57, 0x9b, 0xbd, 0x7c, 0x6d, 0xbc, 0x00, 0x9e, 0x6d,
-	0x6d, 0x58, 0xfc, 0x1e, 0x0e, 0x24, 0x5b, 0xdc, 0x5f, 0x89, 0xfb, 0x28, 0x09, 0xa9, 0xe2, 0x91,
-	0xb0, 0x89, 0xed, 0xda, 0xe2, 0xe4, 0x7d, 0x6c, 0x5a, 0xb9, 0x07, 0x11, 0xfd, 0x25, 0xf4, 0x58,
-	0xb5, 0x89, 0x11, 0xbc, 0x00, 0x70, 0x7b, 0x2f, 0xe3, 0x17, 0x50, 0xd5, 0xbf, 0x00, 0xb7, 0xac,
-	0x07, 0x7a, 0xe7, 0x05, 0x06, 0x81, 0x9f, 0x83, 0x33, 0x67, 0x7a, 0xac, 0x9e, 0x44, 0x6a, 0x80,
-	0xf7, 0x16, 0x6a, 0xe6, 0x26, 0x3c, 0x82, 0x06, 0x13, 0xf3, 0x38, 0xe2, 0x42, 0xe9, 0x0c, 0x9a,
-	0x64, 0x2d, 0xa7, 0xb6, 0x90, 0x29, 0x6a, 0x5f, 0x53, 0x5a, 0xd9, 0xb5, 0xbc, 0xd9, 0x00, 0x95,
-	0xfc, 0x06, 0xe8, 0x03, 0x6e, 0xef, 0x2b, 0x74, 0xa1, 0x6e, 0x6a, 0x29, 0x75, 0x0e, 0x0e, 0xc9,
-	0x44, 0x6f, 0x08, 0xcf, 0x77, 0x6c, 0x27, 0x3c, 0x81, 0x86, 0x7d, 0x02, 0xd2, 0x66, 0xfd, 0xfe,
-	0x13, 0x59, 0xdb, 0xbd, 0x3a, 0x54, 0xf5, 0xee, 0x1d, 0xc4, 0x50, 0x33, 0x0b, 0x04, 0x7f, 0x84,
-	0xb6, 0x39, 0xdd, 0xaa, 0x84, 0xd1, 0x10, 0x0f, 0x0b, 0x3f, 0x24, 0x5b, 0x89, 0xa3, 0x9d, 0x5a,
-	0xaf, 0xd4, 0x2b, 0x7f, 0x55, 0xc6, 0x17, 0xe0, 0xbc, 0xe6, 0xc2, 0xc7, 0xc2, 0x76, 0x3f, 0x2a,
-	0x48, 0x5e, 0xe9, 0xe2, 0xcb, 0x3f, 0x4e, 0x7c, 0xae, 0x82, 0xe5, 0xb4, 0x3f, 0x8b, 0xc2, 0xb3,
-	0x60, 0x15, 0xb3, 0x64, 0xc1, 0xe6, 0x3e, 0x4b, 0xce, 0xee, 0xe9, 0x34, 0xe1, 0xb3, 0x33, 0x5f,
-	0xbb, 0x3e, 0xd3, 0xac, 0x69, 0x4d, 0x7f, 0xce, 0xff, 0x0b, 0x00, 0x00, 0xff, 0xff, 0x29, 0x47,
-	0x99, 0xdf, 0x38, 0x08, 0x00, 0x00,
+	// 994 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x56, 0x5b, 0x4f, 0xe3, 0x46,
+	0x14, 0x8e, 0xc9, 0x0d, 0x9f, 0x38, 0x10, 0xce, 0xd2, 0xca, 0x45, 0xad, 0x84, 0xdc, 0x55, 0x9b,
+	0x46, 0x25, 0xec, 0x86, 0x87, 0x95, 0x5a, 0x55, 0x2d, 0x10, 0x4a, 0xa8, 0x4a, 0x40, 0x03, 0xdb,
+	0x6a, 0xfb, 0x82, 0x86, 0x64, 0x70, 0xac, 0x8d, 0xc7, 0x26, 0x33, 0xb4, 0xe2, 0x2f, 0xec, 0x43,
+	0x7f, 0xf3, 0x6a, 0x2e, 0x4e, 0x6c, 0xf0, 0x3e, 0xec, 0x53, 0x7c, 0xce, 0x7c, 0xdf, 0xb9, 0xcc,
+	0xb9, 0x4c, 0xa0, 0x1d, 0x33, 0x21, 0x68, 0xc8, 0xfa, 0xe9, 0x22, 0x91, 0x09, 0xd6, 0xf5, 0x4f,
+	0xf0, 0x7f, 0x13, 0xda, 0xa7, 0x89, 0x10, 0x51, 0x7a, 0x6e, 0x8e, 0x71, 0x1b, 0xea, 0x3c, 0xe1,
+	0x13, 0xe6, 0x3b, 0xbb, 0x4e, 0xb7, 0x46, 0x8c, 0x80, 0x3e, 0x34, 0x27, 0x33, 0xca, 0x39, 0x9b,
+	0xfb, 0x6b, 0xbb, 0x4e, 0xd7, 0x23, 0x99, 0x88, 0x3d, 0xa8, 0x4a, 0x1a, 0xfa, 0xd5, 0x5d, 0xa7,
+	0xbb, 0x31, 0xf0, 0x8d, 0xf5, 0x7e, 0xc1, 0x64, 0xff, 0x9a, 0x86, 0x44, 0x81, 0xf0, 0x35, 0xac,
+	0xd3, 0x79, 0xf4, 0x2f, 0x3b, 0x17, 0xa1, 0x5f, 0xdb, 0x75, 0xba, 0xad, 0xc1, 0x0b, 0x4b, 0x38,
+	0xd4, 0x6a, 0x83, 0x1f, 0x55, 0xc8, 0x12, 0x86, 0x03, 0x68, 0xc4, 0x2c, 0x26, 0xec, 0xde, 0xaf,
+	0x6b, 0x42, 0xe6, 0xe1, 0x9c, 0xc5, 0xb7, 0x6c, 0x21, 0x66, 0x51, 0x4a, 0xd8, 0xfd, 0x03, 0x13,
+	0x72, 0x54, 0x21, 0x16, 0x89, 0x07, 0x96, 0x23, 0xfc, 0x86, 0xe6, 0x7c, 0x55, 0xc2, 0x11, 0x69,
+	0xc2, 0x05, 0x5b, 0x92, 0x04, 0xf6, 0xa1, 0x39, 0xa5, 0x92, 0xaa, 0xd0, 0x9a, 0x9a, 0x85, 0x96,
+	0x35, 0x54, 0xda, 0x65, 0x64, 0x19, 0x08, 0x7b, 0x50, 0x9f, 0xb1, 0xf9, 0x3c, 0xf1, 0xff, 0x2e,
+	0xa0, 0x4d, 0xe6, 0x23, 0x75, 0x32, 0xaa, 0x10, 0x03, 0xc1, 0x3d, 0x63, 0x7b, 0x18, 0x85, 0xbe,
+	0xab, 0xd1, 0x5b, 0x39, 0xdb, 0xc3, 0x28, 0x34, 0xe1, 0x67, 0x98, 0x2c, 0x14, 0x95, 0x34, 0x3c,
+	0x0b, 0x65, 0x95, 0x6e, 0x06, 0xc2, 0x03, 0x00, 0xf5, 0xf9, 0x36, 0x9d, 0x52, 0xc9, 0xfc, 0xd6,
+	0x33, 0x0f, 0xe6, 0x60, 0x54, 0x21, 0x39, 0x18, 0xbe, 0x36, 0x15, 0x3d, 0x8e, 0xa7, 0xbe, 0xa7,
+	0x19, 0x5f, 0x58, 0xc6, 0xb1, 0x29, 0xec, 0x71, 0x12, 0xc7, 0x94, 0x4f, 0x95, 0x1f, 0x8b, 0xc3,
+	0x97, 0x50, 0x67, 0x71, 0x2a, 0x1f, 0xfd, 0xb6, 0x26, 0x78, 0x96, 0x70, 0xa2, 0x74, 0x2a, 0x59,
+	0x7d, 0x88, 0x3d, 0xa8, 0x4d, 0x12, 0xce, 0xfd, 0x0d, 0x0d, 0xda, 0xce, 0xac, 0x26, 0x9c, 0x9f,
+	0x08, 0x49, 0x6f, 0xe7, 0x91, 0x98, 0x8d, 0x2a, 0x44, 0x63, 0xf0, 0x15, 0xb8, 0x42, 0x52, 0xc9,
+	0xce, 0xf8, 0x5d, 0xe2, 0x6f, 0x6a, 0x42, 0xc7, 0x12, 0xae, 0x32, 0xfd, 0xa8, 0x42, 0x56, 0x20,
+	0xfc, 0x15, 0x3c, 0x2d, 0xd8, 0x6b, 0xf0, 0x3b, 0x85, 0x0a, 0x13, 0x16, 0x27, 0x92, 0x5d, 0xe5,
+	0x00, 0xa3, 0x0a, 0x29, 0x10, 0xf0, 0x08, 0xda, 0x56, 0x36, 0x2d, 0xe0, 0x6f, 0x69, 0x0b, 0x3b,
+	0x65, 0x16, 0x96, 0x4d, 0x52, 0xa4, 0x04, 0x63, 0xa8, 0x5e, 0xd3, 0x10, 0xdb, 0xe0, 0xbe, 0x1d,
+	0x0f, 0x4f, 0x7e, 0x3f, 0x1b, 0x9f, 0x0c, 0x3b, 0x15, 0x74, 0xa1, 0x7e, 0x72, 0x7e, 0x79, 0xfd,
+	0xae, 0xe3, 0xa0, 0x07, 0xeb, 0x17, 0xe4, 0xf4, 0xe6, 0x62, 0xfc, 0xe7, 0xbb, 0xce, 0x9a, 0xc2,
+	0x1d, 0x8f, 0x0e, 0xc7, 0x46, 0xac, 0x62, 0x07, 0x3c, 0x2d, 0x1e, 0x8e, 0x87, 0x37, 0x17, 0xe4,
+	0xb4, 0x53, 0x3b, 0x72, 0xa1, 0x39, 0x49, 0xb8, 0x64, 0x5c, 0x06, 0x1f, 0x1c, 0x70, 0x97, 0xa9,
+	0xe3, 0x0e, 0xac, 0xc7, 0x4c, 0x52, 0x55, 0x36, 0x3d, 0x8f, 0x1e, 0x59, 0xca, 0xb8, 0x07, 0xae,
+	0x8c, 0x62, 0x26, 0x24, 0x8d, 0x53, 0x3d, 0x94, 0xad, 0xc1, 0xa6, 0x4d, 0xe2, 0x92, 0xb1, 0xc5,
+	0x75, 0x14, 0x33, 0xb2, 0x42, 0xa8, 0xb9, 0x4e, 0xdf, 0x47, 0x67, 0x43, 0x3d, 0xa9, 0x1e, 0x31,
+	0x02, 0x7e, 0x0d, 0xae, 0x88, 0x42, 0x4e, 0xe5, 0xc3, 0x82, 0xe9, 0x91, 0xf4, 0xc8, 0x4a, 0x11,
+	0xf4, 0x60, 0xa3, 0xd8, 0x0d, 0x6a, 0x0f, 0xa4, 0xf4, 0x71, 0x9e, 0xd0, 0xa9, 0x8d, 0x27, 0x13,
+	0x83, 0x37, 0xd0, 0x2e, 0xd4, 0x18, 0x3b, 0x50, 0x15, 0x51, 0x68, 0x61, 0xea, 0x73, 0x15, 0xc2,
+	0x5a, 0x2e, 0x84, 0xe0, 0x67, 0x68, 0xe5, 0xfa, 0xfa, 0x13, 0xfb, 0xe7, 0x4b, 0x68, 0x08, 0x76,
+	0x7f, 0x4e, 0x55, 0xa6, 0xd5, 0x6e, 0x8d, 0x58, 0x29, 0xf8, 0x16, 0x5a, 0xb9, 0x89, 0x2b, 0x27,
+	0x07, 0x7f, 0x00, 0xac, 0xc6, 0xe0, 0x13, 0x0e, 0xbe, 0x83, 0x9a, 0xbe, 0x65, 0x65, 0xbe, 0x74,
+	0xf6, 0x89, 0x3e, 0x0f, 0x7e, 0x32, 0xb6, 0xcc, 0xd0, 0x7e, 0x66, 0xb0, 0x6f, 0x4c, 0xa6, 0xd9,
+	0xa6, 0xed, 0x16, 0xef, 0xb2, 0x35, 0xd8, 0xc8, 0xca, 0x67, 0xb4, 0xab, 0xbb, 0x3d, 0x83, 0xa6,
+	0xd5, 0x59, 0xdb, 0xe3, 0x87, 0xd8, 0xba, 0xb4, 0x12, 0x22, 0xd4, 0x66, 0x54, 0xcc, 0xf4, 0xd5,
+	0xba, 0x44, 0x7f, 0x2b, 0x9d, 0xce, 0xc9, 0x54, 0xdc, 0xc4, 0xff, 0xc1, 0x01, 0x2f, 0xbf, 0x6c,
+	0x71, 0x0f, 0x20, 0x5e, 0xee, 0x45, 0x1b, 0x48, 0xbb, 0xb0, 0x30, 0x49, 0x0e, 0xf0, 0xb9, 0x5d,
+	0x57, 0xe8, 0xaf, 0xea, 0xd3, 0xfe, 0x3a, 0x84, 0xf5, 0x8c, 0x84, 0xdf, 0x00, 0x44, 0x7c, 0x72,
+	0xc3, 0x1f, 0x94, 0x2b, 0x9b, 0x9c, 0x1b, 0xf1, 0xc9, 0x58, 0x2b, 0x72, 0x79, 0xaf, 0xe5, 0xf3,
+	0x0e, 0x66, 0xb0, 0xf5, 0xec, 0x29, 0xc0, 0x5f, 0x60, 0x53, 0xb0, 0xf9, 0x9d, 0x1a, 0xa1, 0x45,
+	0x4c, 0x65, 0x94, 0x70, 0x9b, 0x58, 0xd9, 0x73, 0x43, 0x9e, 0x62, 0x55, 0x55, 0xdf, 0xf3, 0xe4,
+	0x3f, 0xae, 0xcb, 0xe7, 0x11, 0x23, 0x04, 0x33, 0xc0, 0xe7, 0x0f, 0x08, 0xfe, 0x00, 0x75, 0xfd,
+	0x56, 0xf9, 0x8e, 0x6e, 0x9c, 0x52, 0x07, 0x06, 0x81, 0xdf, 0x43, 0x6d, 0xca, 0xe8, 0xd4, 0xb6,
+	0x58, 0x29, 0x52, 0x03, 0x82, 0xbf, 0xa0, 0x61, 0x3c, 0xa9, 0xf9, 0x67, 0x7c, 0x9a, 0x26, 0x11,
+	0x97, 0x3a, 0x03, 0x97, 0x2c, 0xe5, 0xc2, 0x6e, 0x58, 0x7b, 0xb2, 0x1b, 0x4a, 0x87, 0x3d, 0x68,
+	0x42, 0x5d, 0xef, 0xea, 0xa0, 0x0f, 0xf8, 0x7c, 0x53, 0xaa, 0xd9, 0x36, 0x97, 0x2a, 0x74, 0x32,
+	0x35, 0x92, 0x89, 0xc1, 0x21, 0xbc, 0x28, 0xd9, 0x8b, 0xd8, 0x83, 0x75, 0xdb, 0xa1, 0xc2, 0xa6,
+	0xff, 0xb4, 0x83, 0x97, 0xe7, 0x83, 0x14, 0x1a, 0x66, 0x50, 0xf1, 0x37, 0xf0, 0xcc, 0xd7, 0x95,
+	0x5c, 0x30, 0x1a, 0xe3, 0x76, 0xd9, 0x7f, 0x86, 0x9d, 0x52, 0x6d, 0x50, 0xe9, 0x3a, 0xaf, 0x1c,
+	0x7c, 0x09, 0xb5, 0xcb, 0x88, 0x87, 0x58, 0x78, 0x80, 0x76, 0x0a, 0x52, 0x50, 0x39, 0xfa, 0xf1,
+	0x9f, 0x5e, 0x18, 0xc9, 0xd9, 0xc3, 0x6d, 0x7f, 0x92, 0xc4, 0xfb, 0xb3, 0xc7, 0x94, 0x2d, 0xe6,
+	0x6c, 0x1a, 0xb2, 0xc5, 0xfe, 0x1d, 0xbd, 0x5d, 0x44, 0x93, 0xfd, 0x50, 0x9b, 0xde, 0xd7, 0xac,
+	0xdb, 0x86, 0xfe, 0x39, 0xf8, 0x18, 0x00, 0x00, 0xff, 0xff, 0x54, 0x9e, 0xcc, 0xd3, 0x27, 0x09,
+	0x00, 0x00,
 }

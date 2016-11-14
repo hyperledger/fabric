@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,25 +30,25 @@ func init() {
 	rand.Seed(42)
 }
 
-func alwaysNoAction(this interface{}, that interface{}) invalidationResult {
-	return messageNoAction
+func alwaysNoAction(this interface{}, that interface{}) common.InvalidationResult {
+	return common.MessageNoAction
 }
 
 func noopTrigger(m interface{}) {
 
 }
 
-func compareInts(this interface{}, that interface{}) invalidationResult {
+func compareInts(this interface{}, that interface{}) common.InvalidationResult {
 	a := this.(int)
 	b := that.(int)
 	if a == b {
-		return messageNoAction
+		return common.MessageNoAction
 	}
 	if a > b {
-		return messageInvalidates
+		return common.MessageInvalidates
 	}
 
-	return messageInvalidated
+	return common.MessageInvalidated
 }
 
 func TestSize(t *testing.T) {

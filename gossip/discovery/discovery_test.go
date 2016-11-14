@@ -25,12 +25,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"github.com/hyperledger/fabric/gossip/common"
 )
 
 var timeout = time.Second * time.Duration(15)

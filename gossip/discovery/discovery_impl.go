@@ -23,10 +23,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/op/go-logging"
-	"github.com/hyperledger/fabric/gossip/common"
 )
 
 const defaultHelloInterval = time.Duration(5) * time.Second
@@ -285,6 +285,7 @@ func (d *gossipDiscoveryImpl) sendMemResponse(member *proto.Member, known [][]by
 		Metadata: member.Metadata,
 		PKIid:    member.PkiID,
 	}, &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: uint64(0),
 		Content: &proto.GossipMessage_MemRes{
 			MemRes: memResp,
@@ -455,6 +456,7 @@ func (d *gossipDiscoveryImpl) createMembershipRequest() *proto.GossipMessage {
 		Known:           d.getKnownPeers(),
 	}
 	return &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: uint64(0),
 		Content: &proto.GossipMessage_MemReq{
 			MemReq: req,
@@ -559,6 +561,7 @@ func (d *gossipDiscoveryImpl) periodicalSendAlive() {
 		d.logger.Debug("Sleeping", aliveTimeInterval)
 		time.Sleep(aliveTimeInterval)
 		msg2Gossip := &proto.GossipMessage{
+			Tag:     proto.GossipMessage_EMPTY,
 			Content: &proto.GossipMessage_AliveMsg{AliveMsg: d.createAliveMessage()},
 		}
 		d.comm.Gossip(msg2Gossip)

@@ -21,10 +21,10 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
 	"google.golang.org/grpc"
-	"github.com/hyperledger/fabric/gossip/common"
 )
 
 type handler func(*proto.GossipMessage)
@@ -35,7 +35,7 @@ type connFactory interface {
 
 type connectionStore struct {
 	logger           *util.Logger             // logger
-	selfPKIid        common.PKIidType                // pkiID of this peer
+	selfPKIid        common.PKIidType         // pkiID of this peer
 	isClosing        bool                     // whether this connection store is shutting down
 	connFactory      connFactory              // creates a connection to remote peer
 	sync.RWMutex                              // synchronize access to shared variables
@@ -200,7 +200,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 type connection struct {
 	outBuff      chan *msgSending
 	logger       *util.Logger                    // logger
-	pkiID        common.PKIidType                       // pkiID of the remote endpoint
+	pkiID        common.PKIidType                // pkiID of the remote endpoint
 	handler      handler                         // function to invoke upon a message reception
 	conn         *grpc.ClientConn                // gRPC connection to remote endpoint
 	cl           proto.GossipClient              // gRPC stub of remote endpoint

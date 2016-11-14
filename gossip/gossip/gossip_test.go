@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package gossip
 
 import (
@@ -38,7 +37,7 @@ import (
 )
 
 var individualTimeout = time.Second * time.Duration(60)
-var perTestTimeout    = time.Second * time.Duration(180)
+var perTestTimeout = time.Second * time.Duration(180)
 
 func init() {
 	aliveTimeInterval := time.Duration(1000) * time.Millisecond
@@ -87,7 +86,7 @@ func (*naiveCryptoService) Verify(vkID, signature, message []byte) error {
 func bootPeers(ids ...int) []string {
 	peers := []string{}
 	for _, id := range ids {
-		peers = append(peers, fmt.Sprintf("localhost:%d", (id + portPrefix)))
+		peers = append(peers, fmt.Sprintf("localhost:%d", (id+portPrefix)))
 	}
 	return peers
 }
@@ -168,7 +167,7 @@ func TestPull(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			pI := newGossipInstanceWithOnlyPull(i, 100, 0)
-			peers[i - 1] = pI
+			peers[i-1] = pI
 			wg.Done()
 		}(i)
 	}
@@ -176,7 +175,7 @@ func TestPull(t *testing.T) {
 
 	knowAll := func() bool {
 		for i := 1; i <= n; i++ {
-			neighborCount := len(peers[i - 1].GetPeers())
+			neighborCount := len(peers[i-1].GetPeers())
 			if n != neighborCount {
 				return false
 			}
@@ -197,7 +196,7 @@ func TestPull(t *testing.T) {
 					<-ch
 					receivedMessages[index]++
 				}
-			}(i - 1, peers[i - 1].Accept(acceptData))
+			}(i-1, peers[i-1].Accept(acceptData))
 		}(i)
 	}
 
@@ -250,7 +249,7 @@ func TestMembership(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			pI := newGossipInstance(i, 100, 0)
-			peers[i - 1] = pI
+			peers[i-1] = pI
 			wg.Done()
 		}(i)
 	}
@@ -259,7 +258,7 @@ func TestMembership(t *testing.T) {
 
 	seeAllNeighbors := func() bool {
 		for i := 1; i <= n; i++ {
-			neighborCount := len(peers[i - 1].GetPeers())
+			neighborCount := len(peers[i-1].GetPeers())
 			if neighborCount != n {
 				return false
 			}
@@ -272,13 +271,13 @@ func TestMembership(t *testing.T) {
 	fmt.Println("Updating metadata...")
 
 	// Change metadata in last node
-	peers[len(peers) - 1].UpdateMetadata([]byte("bla bla"))
+	peers[len(peers)-1].UpdateMetadata([]byte("bla bla"))
 
 	metaDataUpdated := func() bool {
 		if "bla bla" != string(metadataOfPeer(boot.GetPeers(), lastPeer)) {
 			return false
 		}
-		for i := 0; i < n - 1; i++ {
+		for i := 0; i < n-1; i++ {
 			if "bla bla" != string(metadataOfPeer(peers[i].GetPeers(), lastPeer)) {
 				return false
 			}
@@ -321,7 +320,7 @@ func TestDissemination(t *testing.T) {
 
 	for i := 1; i <= n; i++ {
 		pI := newGossipInstance(i, 100, 0)
-		peers[i - 1] = pI
+		peers[i-1] = pI
 
 		wg.Add(1)
 		go func(index int, ch <-chan *proto.GossipMessage) {
@@ -330,7 +329,7 @@ func TestDissemination(t *testing.T) {
 				<-ch
 				receivedMessages[index]++
 			}
-		}(i - 1, pI.Accept(acceptData))
+		}(i-1, pI.Accept(acceptData))
 	}
 
 	waitUntilOrFail(t, checkPeersMembership(peers, n))
@@ -386,7 +385,7 @@ func TestMembershipConvergence(t *testing.T) {
 	// 1: {4, 7, 10, 13}
 	// 2: {5, 8, 11, 14}
 	for i := 3; i < 15; i++ {
-		pI := newGossipInstance(i, 100, i % 3)
+		pI := newGossipInstance(i, 100, i%3)
 		peers = append(peers, pI)
 	}
 	time.Sleep(time.Duration(3) * time.Second)
@@ -461,6 +460,7 @@ func TestMembershipConvergence(t *testing.T) {
 
 func createDataMsg(seqnum uint64, data []byte, hash string) *proto.GossipMessage {
 	return &proto.GossipMessage{
+		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{
@@ -491,11 +491,11 @@ var clientConn = func(g goroutine) bool {
 }
 
 var testingg = func(g goroutine) bool {
-	return strings.Index(g.stack[len(g.stack) - 1], "testing.go") != -1
+	return strings.Index(g.stack[len(g.stack)-1], "testing.go") != -1
 }
 
 func shouldNotBeRunningAtEnd(gr goroutine) bool {
-	return !runTests(gr) && !goExit(gr) && ! testingg(gr) && !clientConn(gr) && !waitForTestCompl(gr)
+	return !runTests(gr) && !goExit(gr) && !testingg(gr) && !clientConn(gr) && !waitForTestCompl(gr)
 }
 
 func ensureGoroutineExit(t *testing.T) {
@@ -514,7 +514,7 @@ func ensureGoroutineExit(t *testing.T) {
 					for _, ste := range gr2.stack {
 						t.Log(ste)
 					}
-					t.Log()
+					t.Log("")
 				}
 				break
 			}
@@ -558,7 +558,7 @@ func stopPeers(peers []Gossip) {
 }
 
 func getGoroutineRawText() string {
-	buf := make([]byte, 1 << 16)
+	buf := make([]byte, 1<<16)
 	runtime.Stack(buf, true)
 	return string(buf)
 }
