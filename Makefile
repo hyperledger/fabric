@@ -20,16 +20,17 @@
 #
 #   - all (default) - builds all targets and runs all tests/checks
 #   - checks - runs all tests/checks
-#   - peer - builds the fabric peer binary
-#   - orderer - builds the fabric orderer binary
+#   - peer - builds a native fabric peer binary
+#   - orderer - builds a native fabric orderer binary
 #   - unit-test - runs the go-test based unit tests
 #   - behave - runs the behave test
 #   - behave-deps - ensures pre-requisites are availble for running behave manually
 #   - gotools - installs go tools like golint
 #   - linter - runs all code checks
-#   - images[-clean] - ensures all docker images are available[/cleaned]
-#   - peer-image[-clean] - ensures the peer-image is available[/cleaned] (for behave, etc)
-#   - orderer-image[-clean] - ensures the orderer-image is available[/cleaned] (for behave, etc)
+#   - native - ensures all native binaries are available
+#   - docker[-clean] - ensures all docker images are available[/cleaned]
+#   - peer-docker[-clean] - ensures the peer container is available[/cleaned]
+#   - orderer-docker[-clean] - ensures the orderer container is available[/cleaned]
 #   - protos - generate all protobuf artifacts based on .proto files
 #   - clean - cleans the build area
 #   - dist-clean - superset of 'clean' that also removes persistent state
@@ -78,7 +79,7 @@ pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
 pkgmap.block-listener := $(PKGNAME)/examples/events/block-listener
 
-all: peer orderer checks
+all: native docker checks
 
 checks: linter unit-test behave
 
@@ -90,26 +91,27 @@ gotools:
 gotools-clean:
 	cd gotools && $(MAKE) clean
 
+# This is a legacy target left to satisfy existing CI scripts
 membersrvc-image:
 	@echo "membersrvc has been removed from this build"
 
 .PHONY: peer
 peer: build/bin/peer
-peer-image: build/image/peer/.dummy
+peer-docker: build/image/peer/.dummy
 
 .PHONY: orderer
 orderer: build/bin/orderer
-orderer-image: build/image/orderer/.dummy
+orderer-docker: build/image/orderer/.dummy
 
-unit-test: peer-image gotools
+unit-test: peer-docker gotools
 	@./scripts/goUnitTests.sh $(DOCKER_TAG) "$(GO_LDFLAGS)"
 
 unit-tests: unit-test
 
-.PHONY: images
-images: $(patsubst %,build/image/%/.dummy, $(IMAGES))
+docker: $(patsubst %,build/image/%/.dummy, $(IMAGES))
+native: peer orderer
 
-behave-deps: images peer build/bin/block-listener
+behave-deps: docker peer build/bin/block-listener
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
@@ -157,7 +159,7 @@ build/docker/bin/%: $(PROJECT_FILES)
 build/bin:
 	mkdir -p $@
 
-# Both peer and peer-image depend on ccenv-image and javaenv-image (all docker env images it supports)
+# Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports)
 build/bin/peer: build/image/ccenv/.dummy build/image/javaenv/.dummy
 build/image/peer/.dummy: build/image/ccenv/.dummy build/image/javaenv/.dummy
 
@@ -211,15 +213,15 @@ build/%.tar.bz2:
 protos: gotools
 	./scripts/compile_protos.sh
 
-%-image-clean:
-	$(eval TARGET = ${patsubst %-image-clean,%,${@}})
+%-docker-clean:
+	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
 	-docker images -q $(PROJECT_NAME)-$(TARGET) | xargs docker rmi -f
 	-@rm -rf build/image/$(TARGET) ||:
 
-images-clean: $(patsubst %,%-image-clean, $(IMAGES))
+docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
 
 .PHONY: clean
-clean: images-clean
+clean: docker-clean
 	-@rm -rf build ||:
 
 .PHONY: dist-clean
