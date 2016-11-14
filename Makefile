@@ -124,15 +124,11 @@ linter: testenv
 	@echo "LINT: Running code checks.."
 	@$(DRUN) hyperledger/fabric-testenv:$(DOCKER_TAG) ./scripts/golinter.sh
 
-build/bin/chaintool: Makefile
+%/chaintool: Makefile
 	@echo "Installing chaintool"
 	@mkdir -p $(@D)
 	curl -L https://github.com/hyperledger/fabric-chaintool/releases/download/$(CHAINTOOL_RELEASE)/chaintool > $@
 	chmod +x $@
-
-%/bin/chaintool: build/bin/chaintool
-	@mkdir -p $(@D)
-	@cp $^ $@
 
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
