@@ -10,3 +10,5 @@ tags=~@issue_767
 			~@preV1
 
 			~@FAB-314
+
+name=^((?!1 Kafka Orderer and 3 Kafka Brokers).)*$

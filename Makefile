@@ -140,7 +140,13 @@ unit-tests: unit-test
 docker: $(patsubst %,build/image/%/.dummy, $(IMAGES))
 native: peer orderer
 
-behave-deps: docker peer build/bin/block-listener
+BEHAVE_ENVIRONMENTS = kafka orderer-1-kafka-1 orderer-1-kafka-3
+.PHONY: behave-environments $(BEHAVE_ENVIRONMENTS)
+behave-environments: $(BEHAVE_ENVIRONMENTS)
+$(BEHAVE_ENVIRONMENTS):
+	@docker-compose --file bddtests/environments/$@/docker-compose.yml build
+
+behave-deps: docker peer build/bin/block-listener behave-environments
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)

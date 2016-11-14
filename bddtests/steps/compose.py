@@ -17,6 +17,7 @@ import os
 import uuid
 import bdd_test_util
 import peer_basic_impl
+import json
 
 class Composition:
 
@@ -30,7 +31,7 @@ class Composition:
         self.issueCommand(["up", "--force-recreate", "-d"])
 
     def parseComposeFilesArg(self, composeFileArgs):
-        args = [arg for sublist in [["-f", file] for file in composeFileArgs.split()] for arg in sublist]
+        args = [arg for sublist in [["-f", file] for file in [file if not os.path.isdir(file) else os.path.join(file, 'docker-compose.yml') for file in composeFileArgs.split()]] for arg in sublist]
         return args
 
     def getFileArgs(self):
@@ -59,30 +60,28 @@ class Composition:
     def rebuildContainerData(self):
         self.containerDataList = []
         for containerID in self.refreshContainerIDs():
-            output, error, returncode = \
-                bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .Name }}", containerID], expect_success=True)
-            containerName = output.splitlines()[0][1:]
-            #print("container has address = {0}".format(containerName))
-            ipAddress = output.splitlines()[0]
 
-            output, error, returncode = \
-                bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .NetworkSettings.IPAddress }}", containerID], expect_success=True)
-            #print("container {0} has address = {1}".format(containerName, output.splitlines()[0]))
-            ipAddress = output.splitlines()[0]
+            # get container metadata
+            container = json.loads(bdd_test_util.cli_call(["docker", "inspect", containerID], expect_success=True)[0])[0]
 
-            # Get the environment array
-            output, error, returncode = \
-                bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .Config.Env }}", containerID], expect_success=True)
-            env = output.splitlines()[0][1:-1].split()
+            # container name
+            container_name = container['Name'][1:]
 
-            # Get the Labels to access the com.docker.compose.service value
-            output, error, returncode = \
-                bdd_test_util.cli_call(["docker", "inspect", "--format",  "{{ .Config.Labels }}", containerID], expect_success=True)
-            labels = output.splitlines()[0][4:-1].split()
-            dockerComposeService = [unicode(composeService[27:]) for composeService in labels if composeService.startswith("com.docker.compose.service:")][0]
-            #print("dockerComposeService = {0}".format(dockerComposeService))
-            #print("container {0} has env = {1}".format(containerName, env))
-            self.containerDataList.append(peer_basic_impl.ContainerData(containerName, ipAddress, env, dockerComposeService))
+            # container ip address (only if container is running)
+            container_ipaddress = None
+            if container['State']['Running']:
+                container_ipaddress = container['NetworkSettings']['IPAddress']
+                if not container_ipaddress:
+                    # ipaddress not found at the old location, try the new location
+                    container_ipaddress = container['NetworkSettings']['Networks'].values()[0]['IPAddress']
+
+            # container environment
+            container_env = container['Config']['Env']
+
+            # container docker-compose service
+            container_compose_service = container['Config']['Labels']['com.docker.compose.service']
+
+            self.containerDataList.append(peer_basic_impl.ContainerData(container_name, container_ipaddress, container_env, container_compose_service))
 
     def decompose(self):
         self.issueCommand(["unpause"])
@@ -95,4 +94,3 @@ class Composition:
         for containerId in output.splitlines():
             output, error, returncode = \
                 bdd_test_util.cli_call(["docker"] + ["rm", "-f", containerId], expect_success=True, env=self.getEnv())
-

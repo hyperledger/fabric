@@ -1,0 +1,21 @@
+version: '2'
+services:
+  zookeeper:
+    # Offical Apache ZooKeeper image. See https://hub.docker.com/_/zookeeper/
+    image: zookeeper:3.4.9
+
+  orderer:
+    build: ./orderer
+    environment:
+      - ORDERER_GENERAL_ORDERERTYPE=kafka
+    depends_on:
+      - zookeeper
+      - kafka
+    command: -loglevel debug -verbose true
+
+  kafka:
+    build: ../kafka
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    depends_on:
+      - zookeeper
