@@ -65,11 +65,10 @@ func makeChainHeader(headerType cb.HeaderType, version int32, chainID []byte) *c
 	}
 }
 
-func makeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte, epoch uint64) *cb.SignatureHeader {
+func makeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte) *cb.SignatureHeader {
 	return &cb.SignatureHeader{
 		Creator: serializedCreatorCertChain,
 		Nonce:   nonce,
-		Epoch:   epoch,
 	}
 }
 
@@ -103,7 +102,7 @@ func (b *bootstrapper) makeEnvelope(configurationEnvelope *cb.ConfigurationEnvel
 	marshaledPayload := errorlessMarshal(&cb.Payload{
 		Header: &cb.Header{
 			ChainHeader:     makeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, 1, b.chainID),
-			SignatureHeader: makeSignatureHeader(nil, nonce, 0),
+			SignatureHeader: makeSignatureHeader(nil, nonce),
 		},
 		Data: errorlessMarshal(configurationEnvelope),
 	})

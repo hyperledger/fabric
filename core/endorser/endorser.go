@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
@@ -237,7 +238,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, proposal *pb.Proposal, s
 
 // FIXME: this method might be of general interest, should we package it somewhere else?
 // validateChaincodeProposalMessage checks the validity of a CHAINCODE Proposal message
-func (e *Endorser) validateChaincodeProposalMessage(prop *pb.Proposal, hdr *pb.Header) (*pb.ChaincodeHeaderExtension, error) {
+func (e *Endorser) validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*pb.ChaincodeHeaderExtension, error) {
 	devopsLogger.Infof("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
 
 	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
@@ -263,7 +264,7 @@ func (e *Endorser) validateChaincodeProposalMessage(prop *pb.Proposal, hdr *pb.H
 // validateProposalMessage checks the validity of a generic Proposal message
 // this function returns Header and ChaincodeHeaderExtension messages since they
 // have been unmarshalled and validated
-func (e *Endorser) validateProposalMessage(prop *pb.Proposal) (*pb.Header, *pb.ChaincodeHeaderExtension, error) {
+func (e *Endorser) validateProposalMessage(prop *pb.Proposal) (*common.Header, *pb.ChaincodeHeaderExtension, error) {
 	devopsLogger.Infof("validateProposalMessage starts for proposal %p", prop)
 
 	// 1) look at the ProposalHeader
@@ -273,17 +274,17 @@ func (e *Endorser) validateProposalMessage(prop *pb.Proposal) (*pb.Header, *pb.C
 	}
 
 	//    - validate the type
-	if hdr.Type != pb.Header_CHAINCODE {
-		return nil, nil, fmt.Errorf("Invalid proposal type %d", hdr.Type)
+	if hdr.ChainHeader.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) {
+		return nil, nil, fmt.Errorf("Invalid proposal type %d", hdr.ChainHeader.Type)
 	}
 
-	devopsLogger.Infof("validateProposalMessage info: proposal type %d", hdr.Type)
+	devopsLogger.Infof("validateProposalMessage info: proposal type %d", hdr.ChainHeader.Type)
 
 	//    - ensure that there is a nonce and a creator
-	if hdr.Nonce == nil || len(hdr.Nonce) == 0 {
+	if hdr.SignatureHeader.Nonce == nil || len(hdr.SignatureHeader.Nonce) == 0 {
 		return nil, nil, fmt.Errorf("Invalid nonce specified in the header")
 	}
-	if hdr.Creator == nil || len(hdr.Creator) == 0 {
+	if hdr.SignatureHeader.Creator == nil || len(hdr.SignatureHeader.Creator) == 0 {
 		return nil, nil, fmt.Errorf("Invalid creator specified in the header")
 	}
 

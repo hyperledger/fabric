@@ -58,6 +58,18 @@ message ChainHeader {
 
     // Identifier of the chain this message is bound for
     bytes chainID = 4;
+
+    // The epoch in which this header was generated, where epoch is defined based on block height
+    // Epoch in which the response has been generated. This field identifies a
+    // logical window of time. A proposal response is accepted by a peer only if
+    // two conditions hold:
+    // 1. the epoch specified in the message is the current epoch
+    // 2. this message has been only seen once during this epoch (i.e. it hasn't
+    //    been replayed)
+    uint64 epoch = 5;
+
+    // Extension that may be attached based on the header type
+    bytes extension = 6;
 }
 
 message SignatureHeader {
@@ -66,9 +78,6 @@ message SignatureHeader {
 
     // Arbitrary number that may only be used once. Can be used to detect replay attacks.
     bytes nonce = 2;
-
-    // The epoch in which this header was generated, where epoch is defined based on block height
-    uint64 epoch = 3;
 }
 
 // Payload is the message contents (and header to allow for signing)

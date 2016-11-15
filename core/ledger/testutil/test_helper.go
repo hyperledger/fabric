@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
@@ -48,7 +49,7 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*pb.Block2 {
 func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *pb.Block2 {
 	txs := []*pb.Transaction2{}
 	for i := startingTxID; i < numTx+startingTxID; i++ {
-		tx, _ := putils.CreateTx(pb.Header_CHAINCODE, []byte{}, []byte{}, ConstructRandomBytes(t, txSize), []*pb.Endorsement{})
+		tx, _ := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, []byte{}, []byte{}, ConstructRandomBytes(t, txSize), []*pb.Endorsement{})
 		txs = append(txs, tx)
 	}
 	return newBlock(txs)
@@ -56,7 +57,7 @@ func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *
 
 // ConstructTestTransaction constructs a transaction for testing
 func ConstructTestTransaction(t *testing.T, simulationResults []byte) *pb.Transaction2 {
-	tx, _ := putils.CreateTx(pb.Header_CHAINCODE, []byte{}, []byte{}, simulationResults, []*pb.Endorsement{})
+	tx, _ := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, []byte{}, []byte{}, simulationResults, []*pb.Endorsement{})
 	return tx
 }
 

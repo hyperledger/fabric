@@ -74,25 +74,25 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	var hdr []byte
 	if args[1] == nil {
 		return nil, errors.New("serialized Header object is null")
-	} else {
-		hdr = args[1]
 	}
+
+	hdr = args[1]
 
 	// handle the proposal payload
 	var payl []byte
 	if args[2] == nil {
 		return nil, errors.New("serialized ChaincodeProposalPayload object is null")
-	} else {
-		payl = args[2]
 	}
+
+	payl = args[2]
 
 	// handle simulation results
 	var results []byte
 	if args[3] == nil {
 		return nil, errors.New("simulation results are null")
-	} else {
-		results = args[3]
 	}
+
+	results = args[3]
 
 	// Handle serialized events if they have been provided
 	// they might be nil in case there's no events but there
@@ -107,9 +107,8 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	if len(args) > 5 {
 		if args[5] == nil {
 			return nil, errors.New("serialized events are null")
-		} else {
-			visibility = args[5]
 		}
+		visibility = args[5]
 	}
 
 	// obtain the proposal hash given proposal header, payload and the requested visibility
@@ -118,12 +117,12 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 		return nil, fmt.Errorf("Could not compute proposal hash: err %s", err)
 	}
 
-	// TODO: obtain current epoch
+	// TODO: obtain current epoch and set it on header
 	epoch := []byte("current_epoch")
 	logger.Infof("using epoch %s", string(epoch))
 
 	// get the bytes of the proposal response payload - we need to sign them
-	prpBytes, err := utils.GetBytesProposalResponsePayload(pHashBytes, epoch, results, events)
+	prpBytes, err := utils.GetBytesProposalResponsePayload(pHashBytes, results, events)
 	if err != nil {
 		return nil, errors.New("Failure while unmarshalling the ProposalResponsePayload")
 	}

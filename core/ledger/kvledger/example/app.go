@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
@@ -113,7 +114,7 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 }
 
 func constructTransaction(simulationResults []byte) *pb.Transaction2 {
-	tx, _ := putils.CreateTx(pb.Header_CHAINCODE, nil, nil, simulationResults, []*pb.Endorsement{})
+	tx, _ := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, nil, nil, simulationResults, []*pb.Endorsement{})
 	return tx
 }
 

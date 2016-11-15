@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 
@@ -138,7 +139,7 @@ func endTxSimulation(txsim ledger.TxSimulator, payload []byte, commit bool) erro
 			if txSimulationResults, err = txsim.GetTxSimulationResults(); err != nil {
 				return err
 			}
-			tx, err := putils.CreateTx(pb.Header_CHAINCODE, util.ComputeCryptoHash([]byte("dummyProposal")), []byte("dummyCCEvents"), txSimulationResults, []*pb.Endorsement{&pb.Endorsement{}})
+			tx, err := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, util.ComputeCryptoHash([]byte("dummyProposal")), []byte("dummyCCEvents"), txSimulationResults, []*pb.Endorsement{&pb.Endorsement{}})
 			if err != nil {
 				return err
 			}

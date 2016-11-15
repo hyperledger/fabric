@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -46,9 +47,9 @@ func TestProposal(t *testing.T) {
 	}
 
 	// sanity check on header
-	if hdr.Type != pb.Header_CHAINCODE ||
-		hdr.Nonce == nil ||
-		string(hdr.Creator) != "creator" {
+	if hdr.ChainHeader.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) ||
+		hdr.SignatureHeader.Nonce == nil ||
+		string(hdr.SignatureHeader.Creator) != "creator" {
 		t.Fatalf("Invalid header after unmarshalling\n")
 		return
 	}
@@ -92,7 +93,6 @@ func TestProposalResponse(t *testing.T) {
 		TxID:        "TxID"}
 
 	pHashBytes := []byte("proposal_hash")
-	epoch := []byte("epoch")
 	results := []byte("results")
 	eventBytes, err := GetBytesChaincodeEvent(events)
 	if err != nil {
@@ -101,7 +101,7 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// get the bytes of the ProposalResponsePayload
-	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, epoch, results, eventBytes)
+	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, results, eventBytes)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 		return
@@ -111,13 +111,6 @@ func TestProposalResponse(t *testing.T) {
 	prp, err := GetProposalResponsePayload(prpBytes)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ProposalResponsePayload")
-		return
-	}
-
-	// sanity check on prp
-	if string(prp.Epoch) != "epoch" ||
-		string(prp.ProposalHash) != "proposal_hash" {
-		t.Fatalf("Invalid ProposalResponsePayload after unmarshalling")
 		return
 	}
 

@@ -19,7 +19,6 @@ It is generated from these files:
 	peer/fabric_proposal_response.proto
 	peer/fabric.proto
 	peer/fabric_service.proto
-	peer/fabric_transaction_header.proto
 	peer/fabric_transaction.proto
 	peer/server_admin.proto
 
@@ -86,7 +85,6 @@ It has these top-level messages:
 	SyncStateSnapshot
 	SyncStateDeltasRequest
 	SyncStateDeltas
-	Header
 	SignedTransaction
 	InvalidTransaction
 	Transaction2

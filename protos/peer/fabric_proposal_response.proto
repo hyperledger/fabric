@@ -89,20 +89,12 @@ message ProposalResponsePayload {
 	// "visible" in the sense that was just explained.
 	bytes proposalHash = 1;
 
-	// Epoch in which the response has been generated. This field identifies a
-	// logical window of time. A proposal response is accepted by a peer only if
-	// two conditions hold:
-	// 1. the epoch specified in the message is the current epoch
-	// 2. this message has been only seen once during this epoch (i.e. it hasn't
-	//    been replayed)
-	bytes epoch = 2;
-
 	// Extension should be unmarshaled to a type-specific message. The type of
 	// the extension in any proposal response depends on the type of the proposal
 	// that the client selected when the proposal was initially sent out.  In
 	// particular, this information is stored in the type field of a Header.  For
 	// chaincode, it's a ChaincodeAction message
-	bytes extension = 3;
+	bytes extension = 2;
 }
 
 // An endorsement is a signature of an endorser over a proposal response.  By

@@ -26,14 +26,14 @@ import (
 
 // GetPayloads get's the underlying payload objects in a TransactionAction
 func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayload, *peer.ChaincodeAction, error) {
-	txhdr := &peer.Header{}
+	txhdr := &common.Header{}
 	err := proto.Unmarshal(txActions.Header, txhdr)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	switch txhdr.Type {
-	case peer.Header_CHAINCODE:
+	switch common.HeaderType(txhdr.ChainHeader.Type) {
+	case common.HeaderType_ENDORSER_TRANSACTION:
 		ccPayload := &peer.ChaincodeActionPayload{}
 		err = proto.Unmarshal(txActions.Payload, ccPayload)
 		if err != nil {
@@ -66,8 +66,8 @@ func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayloa
 }
 
 // CreateTx creates a Transaction2 from given inputs
-func CreateTx(typ peer.Header_Type, ccPropPayload []byte, ccEvents []byte, simulationResults []byte, endorsements []*peer.Endorsement) (*peer.Transaction2, error) {
-	if typ != peer.Header_CHAINCODE {
+func CreateTx(typ common.HeaderType, ccPropPayload []byte, ccEvents []byte, simulationResults []byte, endorsements []*peer.Endorsement) (*peer.Transaction2, error) {
+	if typ != common.HeaderType_ENDORSER_TRANSACTION {
 		panic("-----Only CHAINCODE Type is supported-----")
 	}
 
@@ -77,10 +77,7 @@ func CreateTx(typ peer.Header_Type, ccPropPayload []byte, ccEvents []byte, simul
 		return nil, err
 	}
 
-	//TODO - compute epoch
-	var epoch []byte
-
-	pRespPayload := &peer.ProposalResponsePayload{ProposalHash: ccPropPayload, Epoch: epoch, Extension: extBytes}
+	pRespPayload := &peer.ProposalResponsePayload{ProposalHash: ccPropPayload, Extension: extBytes}
 	pRespPayloadBytes, err := proto.Marshal(pRespPayload)
 	if err != nil {
 		return nil, err
@@ -93,7 +90,7 @@ func CreateTx(typ peer.Header_Type, ccPropPayload []byte, ccEvents []byte, simul
 		return nil, err
 	}
 
-	hdr := &peer.Header{Type: typ}
+	hdr := &common.Header{ChainHeader: &common.ChainHeader{Type: int32(common.HeaderType_ENDORSER_TRANSACTION)}}
 	hdrBytes, err := proto.Marshal(hdr)
 	if err != nil {
 		return nil, err
@@ -117,7 +114,7 @@ func CreateTxFromProposalResponse(pResp *peer.ProposalResponse) (*peer.Transacti
 	if err != nil {
 		return nil, err
 	}
-	return CreateTx(peer.Header_CHAINCODE, pRespPayload.ProposalHash, ccAction.Events, ccAction.Results, []*peer.Endorsement{pResp.Endorsement})
+	return CreateTx(common.HeaderType_ENDORSER_TRANSACTION, pRespPayload.ProposalHash, ccAction.Events, ccAction.Results, []*peer.Endorsement{pResp.Endorsement})
 }
 
 // GetEndorserTxFromBlock gets Transaction2 from Block.Data.Data
