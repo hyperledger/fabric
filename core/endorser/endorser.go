@@ -343,7 +343,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, prop *pb.Proposal) (*pb.
 	//1 -- simulate
 	//TODO what do we do with response ? We need it for Invoke responses for sure
 	//Which field in PayloadResponse will carry return value ?
-	_, simulationResult, ccevent, err := e.simulateProposal(ctx, prop, hdrExt.ChaincodeID, txsim)
+	result, simulationResult, ccevent, err := e.simulateProposal(ctx, prop, hdrExt.ChaincodeID, txsim)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
 	}
@@ -360,6 +360,11 @@ func (e *Endorser) ProcessProposal(ctx context.Context, prop *pb.Proposal) (*pb.
 	if err != nil {
 		return nil, err
 	}
+
+	// Set the proposal response payload - it
+	// contains the "return value" from the
+	// chaincode invocation
+	pResp.Response.Payload = result
 
 	return pResp, nil
 }
