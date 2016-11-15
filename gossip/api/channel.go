@@ -16,7 +16,11 @@ limitations under the License.
 
 package api
 
-import "time"
+import (
+	"time"
+
+	"github.com/hyperledger/fabric/gossip/common"
+)
 
 // SecurityAdvisor defines an external auxiliary object
 // that provides security and identity related capabilities
@@ -33,7 +37,7 @@ type SecurityAdvisor interface {
 // ChannelNotifier is implemented by the gossip component and is used for the peer
 // layer to notify the gossip component of a JoinChannel event
 type ChannelNotifier interface {
-	JoinChannel(joinMsg JoinChannelMessage, chainID ChainID)
+	JoinChannel(joinMsg JoinChannelMessage, chainID common.ChainID)
 }
 
 // JoinChannelMessage is the message that asserts a creation or mutation
@@ -47,9 +51,6 @@ type JoinChannelMessage interface {
 	// Members returns all the peers that are in the channel
 	Members() []ChannelMember
 }
-
-// ChainID defines the identity representation of a chain
-type ChainID []byte
 
 // ChannelMember is a peer's certificate and endpoint (host:port)
 type ChannelMember struct {

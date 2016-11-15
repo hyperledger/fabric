@@ -16,8 +16,6 @@ limitations under the License.
 
 package common
 
-import "github.com/hyperledger/fabric/gossip/api"
-
 // PKIidType defines the type that holds the PKI-id
 // which is the security identifier of a peer
 type PKIidType []byte
@@ -29,8 +27,11 @@ type MessageAcceptor func(interface{}) bool
 
 // Payload defines an object that contains a ledger block
 type Payload struct {
-	ChainID api.ChainID // The channel's ID of the block
-	Data    []byte      // The content of the message, possibly encrypted or signed
-	Hash    string      // The message hash
-	SeqNum  uint64      // The message sequence number
+	ChainID ChainID // The channel's ID of the block
+	Data    []byte  // The content of the message, possibly encrypted or signed
+	Hash    string  // The message hash
+	SeqNum  uint64  // The message sequence number
 }
+
+// ChainID defines the identity representation of a chain
+type ChainID []byte
