@@ -33,6 +33,9 @@ func init() {
 	logger = logging.MustGetLogger("committer")
 }
 
+// LedgerCommitter is the implementation of  Committer interface
+// it keeps the reference to the ledger to commit blocks and retreive
+// chain information
 type LedgerCommitter struct {
 	ledger ledger.ValidatedLedger
 }
@@ -67,17 +70,22 @@ func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
 
 // GetBlocks used to retrieve blocks with sequence numbers provided in the slice
 func (lc *LedgerCommitter) GetBlocks(blockSeqs []uint64) []*pb.Block2 {
-	blocks := make([]*pb.Block2, 0)
+	var blocks []*pb.Block2
 
 	for _, seqNum := range blockSeqs {
-		var block *pb.Block2
-		var err error
-		if block, err = lc.ledger.GetBlockByNumber(seqNum); err != nil {
-			logger.Errorf("Could not able to acquire block num %d, from the ledger skipping...\n", seqNum)
+		if blck, err := lc.ledger.GetBlockByNumber(seqNum); err != nil {
+			logger.Errorf("Not able to acquire block num %d, from the ledger skipping...\n", seqNum)
 			continue
+		} else {
+			logger.Debug("Appending next ", blck, " to the resulting set")
+			blocks = append(blocks, blck)
 		}
-		blocks = append(blocks, block)
 	}
 
 	return blocks
+}
+
+// Close the ledger
+func (lc *LedgerCommitter) Close() {
+	lc.ledger.Close()
 }

@@ -37,4 +37,7 @@ type Committer interface {
 
 	// Gets blocks with sequence numbers provided in the slice
 	GetBlocks(blockSeqs []uint64) []*pb.Block2
+
+	// Closes committing service
+	Close()
 }
