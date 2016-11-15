@@ -38,6 +38,9 @@ message GossipMessage {
 
         // ConnEstablish, used for establishing a connection
         ConnEstablish conn = 12;
+
+        RemoteStateRequest stateRequest = 14;
+        RemoteStateResponse stateResponse = 15;
     }
 }
 
@@ -116,6 +119,14 @@ message Member {
     string endpoint = 1;
     bytes  metadata = 2;
     bytes pkiID     = 3;
+}
+
+message RemoteStateRequest {
+    repeated uint64 seqNums = 1;
+}
+
+message RemoteStateResponse {
+    repeated Payload payloads = 1;
 }
 
 message Empty {}
