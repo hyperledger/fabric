@@ -18,10 +18,12 @@ package state
 
 import (
 	"fmt"
-	"github.com/hyperledger/fabric/gossip/proto"
 	"strconv"
 	"sync"
 	"sync/atomic"
+
+	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/op/go-logging"
 )
 
 // PayloadsBuffer is used to store payloads into which used to
@@ -41,35 +43,35 @@ type PayloadsBuffer interface {
 	// Get current buffer size
 	Size() int
 
-	// Minimum available seq number
-	MinAvail() (uint64, error)
-
 	// Channel to indicate event when new payload pushed with sequence
 	// number equal to the next expected value.
 	Ready() chan struct{}
+
+	Close()
 }
 
 // PayloadsBufferImpl structure to implement PayloadsBuffer interface
 // store inner state of available payloads and sequence numbers
 type PayloadsBufferImpl struct {
-	buf       map[uint64]*proto.Payload
+	buf map[uint64]*proto.Payload
 
-	minQueue  []uint64
-
-	next      uint64
+	next uint64
 
 	readyChan chan struct{}
 
-	mutex     sync.RWMutex
+	mutex sync.RWMutex
+
+	logger *logging.Logger
 }
 
 // NewPayloadsBuffer is factory function to create new payloads buffer
 func NewPayloadsBuffer(next uint64) PayloadsBuffer {
+	logger, _ := logging.GetLogger("GossipStateProvider")
 	return &PayloadsBufferImpl{
 		buf:       make(map[uint64]*proto.Payload),
-		minQueue:  make([]uint64, 0),
-		readyChan: make(chan struct{}),
+		readyChan: make(chan struct{}, 0),
 		next:      next,
+		logger:    logger,
 	}
 }
 
@@ -95,18 +97,6 @@ func (b *PayloadsBufferImpl) Push(payload *proto.Payload) error {
 	}
 
 	b.buf[seqNum] = payload
-
-	lenMinQueue := len(b.minQueue)
-	if lenMinQueue == 0 {
-		// New element to insert
-		b.minQueue = append(b.minQueue, seqNum)
-	} else {
-		if b.minQueue[lenMinQueue - 1] > seqNum {
-			// in case new sequence number is lower than
-			// available one add it to the queue
-			b.minQueue = append(b.minQueue, seqNum)
-		}
-	}
 
 	// Send notification that next sequence has arrived
 	if seqNum == b.next {
@@ -135,7 +125,6 @@ func (b *PayloadsBufferImpl) Pop() *proto.Payload {
 	if result != nil {
 		// If there is such sequence in the buffer need to delete it
 		delete(b.buf, b.Next())
-		b.minQueue = b.minQueue[:len(b.minQueue) - 1]
 		// Increment next expect block index
 		atomic.AddUint64(&b.next, 1)
 	}
@@ -149,15 +138,7 @@ func (b *PayloadsBufferImpl) Size() int {
 	return len(b.buf)
 }
 
-// MinAvail returns minimum available payload sequence number, if no payloads
-// within buffer results with error "Empty buffer".
-func (b *PayloadsBufferImpl) MinAvail() (uint64, error) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
-	if len(b.buf) == 0 {
-		return ^uint64(0), fmt.Errorf("Empty buffer")
-	}
-
-	return b.minQueue[len(b.minQueue) - 1], nil
+// Close cleanups resources and channels in maintained
+func (b *PayloadsBufferImpl) Close() {
+	close(b.readyChan)
 }

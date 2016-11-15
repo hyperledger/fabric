@@ -19,12 +19,13 @@ package state
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 	"sync"
 	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/stretchr/testify/assert"
 )
 
 func uuid() (string, error) {
@@ -33,9 +34,9 @@ func uuid() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	uuid[8] = uuid[8] &^ 0xc0 | 0x80
+	uuid[8] = uuid[8]&^0xc0 | 0x80
 
-	uuid[6] = uuid[6] &^ 0xf0 | 0x40
+	uuid[6] = uuid[6]&^0xf0 | 0x40
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
@@ -102,7 +103,7 @@ func TestPayloadsBufferImpl_Ready(t *testing.T) {
 		fin <- struct{}{}
 	}()
 
-	time.AfterFunc(100 * time.Millisecond, func() {
+	time.AfterFunc(100*time.Millisecond, func() {
 		payload, err := randomPayloadWithSeqNum(1)
 
 		if err != nil {
@@ -118,85 +119,6 @@ func TestPayloadsBufferImpl_Ready(t *testing.T) {
 	case <-time.After(500 * time.Millisecond):
 		t.Fail()
 	}
-}
-
-func TestPayloadsBufferImpl_MinAvail(t *testing.T) {
-	buffer := NewPayloadsBuffer(1)
-
-	assert.Equal(t, buffer.Next(), uint64(1))
-
-	// Buffer is empty no messages expected,
-	// hence no min shoyld be value available
-	_, err := buffer.MinAvail()
-	assert.Error(t, err)
-
-	pushNewRandomPayload(t, buffer, 10)
-
-	min, err := buffer.MinAvail()
-	assert.NoError(t, err)
-	assert.Equal(t, min, uint64(10))
-
-	pushNewRandomPayload(t, buffer, 17)
-
-	// Presence of payload w/ sequence number 17 should not affect the minimum available block
-	min, err = buffer.MinAvail()
-	assert.NoError(t, err)
-	assert.Equal(t, min, uint64(10))
-
-	// Add new block w/ lower sequence number
-	pushNewRandomPayload(t, buffer, 6)
-
-	min, err = buffer.MinAvail()
-	assert.NoError(t, err)
-	// New sequence number now should be the minimum
-	assert.Equal(t, min, uint64(6))
-}
-
-func TestPayloadsBufferImpl_MinAvail2(t *testing.T) {
-	buffer := NewPayloadsBuffer(1)
-
-	assert.Equal(t, buffer.Next(), uint64(1))
-
-	_, err := buffer.MinAvail()
-	assert.Error(t, err)
-
-	pushNewRandomPayload(t, buffer, 3)
-	min, err := buffer.MinAvail()
-	assert.NoError(t, err)
-	assert.Equal(t, min, uint64(3))
-
-	pushNewRandomPayload(t, buffer, 1)
-	min, err = buffer.MinAvail()
-	assert.NoError(t, err)
-	assert.Equal(t, min, uint64(1))
-
-	done := sync.WaitGroup{}
-	done.Add(1)
-
-	go func() {
-		select {
-		case <-buffer.Ready():
-			{
-				// Once payload is ready extract it
-				assert.Equal(t, buffer.Next(), uint64(1))
-				payload := buffer.Pop()
-				assert.Equal(t, payload.SeqNum, uint64(1))
-
-				// Next min sequence number has to be 3
-				min, err = buffer.MinAvail()
-				assert.NoError(t, err)
-				assert.Equal(t, min, uint64(3))
-			}
-		case <-time.After(500 * time.Millisecond):
-			{
-				t.Fatalf("Expected to receive notification with next payload")
-			}
-		}
-		done.Done()
-	}()
-
-	// Wait to make sure that payload was extracted
-	done.Wait()
 }
 
 // Test to push several concurrent blocks into the buffer
@@ -220,7 +142,7 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 	payload, err := randomPayloadWithSeqNum(nextSeqNum)
 	assert.NoError(t, err)
 
-	errors := make([]error, 0)
+	var errors []error
 
 	ready := int32(0)
 	go func() {
@@ -235,7 +157,7 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 			startWG.Wait()
 			errors = append(errors, buffer.Push(payload))
 			finishWG.Done()
-		}();
+		}()
 	}
 	startWG.Done()
 	finishWG.Wait()
@@ -245,7 +167,7 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 	// Only one push attempt expected to succeed
 	for _, err := range errors {
 		if err == nil {
-			success ++
+			success++
 		}
 	}
 
@@ -253,12 +175,4 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 	assert.Equal(t, 1, success)
 	// Buffer size has to be only one
 	assert.Equal(t, 1, buffer.Size())
-}
-
-func pushNewRandomPayload(t *testing.T, b PayloadsBuffer, seqNum uint64) {
-	// Add new block w/ lower sequence number
-	payload, err := randomPayloadWithSeqNum(seqNum);
-	assert.NoError(t, err)
-	err = b.Push(payload)
-	assert.NoError(t, err)
 }
