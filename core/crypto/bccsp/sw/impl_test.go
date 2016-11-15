@@ -23,7 +23,18 @@ import (
 	"crypto"
 	"crypto/rsa"
 
+	"crypto/ecdsa"
+
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
+	"math/big"
+	"net"
+	"time"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/spf13/viper"
 )
@@ -291,6 +302,303 @@ func TestECDSAKeyDeriv(t *testing.T) {
 	}
 
 	valid, err := csp.Verify(reRandomizedKey, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
+	}
+}
+
+func TestECDSAKeyImportFromExportedKey(t *testing.T) {
+	csp := getBCCSP(t)
+
+	// Generate an ECDSA key
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA key [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting ECDSA public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
+	}
+
+	// Import the exported public key
+	pk2, err := csp.KeyImport(pkRaw, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed importing ECDSA public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing ECDSA public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := csp.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA signature [%s]", err)
+	}
+
+	valid, err := csp.Verify(pk2, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
+	}
+}
+
+func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
+	csp := getBCCSP(t)
+
+	// Generate an ECDSA key
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA key [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting ECDSA public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
+	}
+
+	pub, err := primitives.DERToPublicKey(pkRaw)
+	if err != nil {
+		t.Fatalf("Failed converting raw to ecdsa.PublicKey [%s]", err)
+	}
+
+	// Import the ecdsa.PublicKey
+	pk2, err := csp.KeyImport(pkRaw, &bccsp.ECDSAGoPublicKeyImportOpts{Temporary: true, PK: pub.(*ecdsa.PublicKey)})
+	if err != nil {
+		t.Fatalf("Failed importing ECDSA public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing ECDSA public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := csp.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA signature [%s]", err)
+	}
+
+	valid, err := csp.Verify(pk2, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
+	}
+}
+
+func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
+	csp := getBCCSP(t)
+
+	// Generate an ECDSA key
+	key, err := primitives.NewECDSAKey()
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA key [%s]", err)
+	}
+
+	// Import the ecdsa.PrivateKey
+	priv, err := primitives.PrivateKeyToDER(key)
+	if err != nil {
+		t.Fatalf("Failed converting raw to ecdsa.PrivateKey [%s]", err)
+	}
+
+	sk, err := csp.KeyImport(priv, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed importing ECDSA private key [%s]", err)
+	}
+	if sk == nil {
+		t.Fatal("Failed importing ECDSA private key. Return BCCSP key cannot be nil.")
+	}
+
+	// Import the ecdsa.PublicKey
+	pub, err := primitives.PublicKeyToDER(&key.PublicKey)
+	if err != nil {
+		t.Fatalf("Failed converting raw to ecdsa.PublicKey [%s]", err)
+	}
+
+	pk, err := csp.KeyImport(pub, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: true})
+
+	if err != nil {
+		t.Fatalf("Failed importing ECDSA public key [%s]", err)
+	}
+	if pk == nil {
+		t.Fatal("Failed importing ECDSA public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := csp.Sign(sk, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA signature [%s]", err)
+	}
+
+	valid, err := csp.Verify(pk, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
+	}
+}
+
+func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
+	csp := getBCCSP(t)
+
+	// Generate an ECDSA key
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA key [%s]", err)
+	}
+
+	// Generate a self-signed certificate
+	testExtKeyUsage := []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}
+	testUnknownExtKeyUsage := []asn1.ObjectIdentifier{[]int{1, 2, 3}, []int{2, 59, 1}}
+	extraExtensionData := []byte("extra extension")
+	commonName := "test.example.com"
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			CommonName:   commonName,
+			Organization: []string{"Σ Acme Co"},
+			Country:      []string{"US"},
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{
+					Type:  []int{2, 5, 4, 42},
+					Value: "Gopher",
+				},
+				// This should override the Country, above.
+				{
+					Type:  []int{2, 5, 4, 6},
+					Value: "NL",
+				},
+			},
+		},
+		NotBefore: time.Now().Add(-1 * time.Hour),
+		NotAfter:  time.Now().Add(1 * time.Hour),
+
+		SignatureAlgorithm: x509.ECDSAWithSHA256,
+
+		SubjectKeyId: []byte{1, 2, 3, 4},
+		KeyUsage:     x509.KeyUsageCertSign,
+
+		ExtKeyUsage:        testExtKeyUsage,
+		UnknownExtKeyUsage: testUnknownExtKeyUsage,
+
+		BasicConstraintsValid: true,
+		IsCA: true,
+
+		OCSPServer:            []string{"http://ocsp.example.com"},
+		IssuingCertificateURL: []string{"http://crt.example.com/ca1.crt"},
+
+		DNSNames:       []string{"test.example.com"},
+		EmailAddresses: []string{"gopher@golang.org"},
+		IPAddresses:    []net.IP{net.IPv4(127, 0, 0, 1).To4(), net.ParseIP("2001:4860:0:2001::68")},
+
+		PolicyIdentifiers:   []asn1.ObjectIdentifier{[]int{1, 2, 3}},
+		PermittedDNSDomains: []string{".example.com", "example.com"},
+
+		CRLDistributionPoints: []string{"http://crl1.example.com/ca1.crl", "http://crl2.example.com/ca1.crl"},
+
+		ExtraExtensions: []pkix.Extension{
+			{
+				Id:    []int{1, 2, 3, 4},
+				Value: extraExtensionData,
+			},
+		},
+	}
+
+	signer := &signer.CryptoSigner{}
+	err = signer.Init(csp, k)
+	if err != nil {
+		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting ECDSA public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
+	}
+
+	pub, err := primitives.DERToPublicKey(pkRaw)
+	if err != nil {
+		t.Fatalf("Failed converting raw to ECDSA.PublicKey [%s]", err)
+	}
+
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, signer)
+	if err != nil {
+		t.Fatalf("Failed generating self-signed certificate [%s]", err)
+	}
+
+	cert, err := primitives.DERToX509Certificate(certRaw)
+	if err != nil {
+		t.Fatalf("Failed generating X509 certificate object from raw [%s]", err)
+	}
+
+	// Import the certificate's public key
+	pk2, err := csp.KeyImport(nil, &bccsp.X509PublicKeyImportOpts{Temporary: true, Cert: cert})
+
+	if err != nil {
+		t.Fatalf("Failed importing ECDSA public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing ECDSA public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := csp.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA signature [%s]", err)
+	}
+
+	valid, err := csp.Verify(pk2, signature, digest, nil)
 	if err != nil {
 		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
 	}
@@ -744,6 +1052,192 @@ func TestRSAVerify(t *testing.T) {
 	}
 
 	valid, err := csp.Verify(k, signature, digest, &rsa.PSSOptions{SaltLength: 32, Hash: crypto.SHA256})
+	if err != nil {
+		t.Fatalf("Failed verifying RSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying RSA signature. Signature not valid.")
+	}
+}
+
+func TestRSAKeyImportFromRSAPublicKey(t *testing.T) {
+	csp := getBCCSP(t)
+
+	// Generate an RSA key
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting RSA public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting RSA raw public key [%s]", err)
+	}
+
+	pub, err := primitives.DERToPublicKey(pkRaw)
+	if err != nil {
+		t.Fatalf("Failed converting raw to RSA.PublicKey [%s]", err)
+	}
+
+	// Import the RSA.PublicKey
+	pk2, err := csp.KeyImport(pkRaw, &bccsp.RSAGoPublicKeyImportOpts{Temporary: true, PK: pub.(*rsa.PublicKey)})
+	if err != nil {
+		t.Fatalf("Failed importing RSA public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing RSA public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := csp.Sign(k, digest, &rsa.PSSOptions{SaltLength: 32, Hash: crypto.SHA256})
+	if err != nil {
+		t.Fatalf("Failed generating RSA signature [%s]", err)
+	}
+
+	valid, err := csp.Verify(pk2, signature, digest, &rsa.PSSOptions{SaltLength: 32, Hash: crypto.SHA256})
+	if err != nil {
+		t.Fatalf("Failed verifying RSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying RSA signature. Signature not valid.")
+	}
+}
+
+func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
+	csp := getBCCSP(t)
+
+	// Generate an RSA key
+	k, err := csp.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	// Generate a self-signed certificate
+	testExtKeyUsage := []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}
+	testUnknownExtKeyUsage := []asn1.ObjectIdentifier{[]int{1, 2, 3}, []int{2, 59, 1}}
+	extraExtensionData := []byte("extra extension")
+	commonName := "test.example.com"
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			CommonName:   commonName,
+			Organization: []string{"Σ Acme Co"},
+			Country:      []string{"US"},
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{
+					Type:  []int{2, 5, 4, 42},
+					Value: "Gopher",
+				},
+				// This should override the Country, above.
+				{
+					Type:  []int{2, 5, 4, 6},
+					Value: "NL",
+				},
+			},
+		},
+		NotBefore: time.Now().Add(-1 * time.Hour),
+		NotAfter:  time.Now().Add(1 * time.Hour),
+
+		SignatureAlgorithm: x509.SHA256WithRSA,
+
+		SubjectKeyId: []byte{1, 2, 3, 4},
+		KeyUsage:     x509.KeyUsageCertSign,
+
+		ExtKeyUsage:        testExtKeyUsage,
+		UnknownExtKeyUsage: testUnknownExtKeyUsage,
+
+		BasicConstraintsValid: true,
+		IsCA: true,
+
+		OCSPServer:            []string{"http://ocsp.example.com"},
+		IssuingCertificateURL: []string{"http://crt.example.com/ca1.crt"},
+
+		DNSNames:       []string{"test.example.com"},
+		EmailAddresses: []string{"gopher@golang.org"},
+		IPAddresses:    []net.IP{net.IPv4(127, 0, 0, 1).To4(), net.ParseIP("2001:4860:0:2001::68")},
+
+		PolicyIdentifiers:   []asn1.ObjectIdentifier{[]int{1, 2, 3}},
+		PermittedDNSDomains: []string{".example.com", "example.com"},
+
+		CRLDistributionPoints: []string{"http://crl1.example.com/ca1.crl", "http://crl2.example.com/ca1.crl"},
+
+		ExtraExtensions: []pkix.Extension{
+			{
+				Id:    []int{1, 2, 3, 4},
+				Value: extraExtensionData,
+			},
+		},
+	}
+
+	signer := &signer.CryptoSigner{}
+	err = signer.Init(csp, k)
+	if err != nil {
+		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting RSA public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting RSA raw public key [%s]", err)
+	}
+
+	pub, err := primitives.DERToPublicKey(pkRaw)
+	if err != nil {
+		t.Fatalf("Failed converting raw to RSA.PublicKey [%s]", err)
+	}
+
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, signer)
+	if err != nil {
+		t.Fatalf("Failed generating self-signed certificate [%s]", err)
+	}
+
+	cert, err := primitives.DERToX509Certificate(certRaw)
+	if err != nil {
+		t.Fatalf("Failed generating X509 certificate object from raw [%s]", err)
+	}
+
+	// Import the certificate's public key
+	pk2, err := csp.KeyImport(nil, &bccsp.X509PublicKeyImportOpts{Temporary: true, Cert: cert})
+
+	if err != nil {
+		t.Fatalf("Failed importing RSA public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing RSA public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := csp.Sign(k, digest, &rsa.PSSOptions{SaltLength: 32, Hash: crypto.SHA256})
+	if err != nil {
+		t.Fatalf("Failed generating RSA signature [%s]", err)
+	}
+
+	valid, err := csp.Verify(pk2, signature, digest, &rsa.PSSOptions{SaltLength: 32, Hash: crypto.SHA256})
 	if err != nil {
 		t.Fatalf("Failed verifying RSA signature [%s]", err)
 	}

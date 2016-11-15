@@ -256,18 +256,16 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 // The opts argument should be appropriate for the primitive used.
 func (csp *impl) KeyImport(raw []byte, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	// Validate arguments
-	if len(raw) == 0 {
-		return nil, errors.New("Invalid raw. Zero length.")
-	}
 	if opts == nil {
 		return nil, errors.New("Invalid Opts parameter. It must not be nil.")
 	}
 
 	switch opts.(type) {
+
 	case *bccsp.AES256ImportKeyOpts:
 
 		if len(raw) != 32 {
-			return nil, fmt.Errorf("Invalid Key Length [%d]. Must be 32 bytes", len(raw))
+			return nil, fmt.Errorf("[AES256ImportKeyOpts] Invalid Key Length [%d]. Must be 32 bytes", len(raw))
 		}
 
 		aesK := &aesPrivateKey{utils.Clone(raw), false}
@@ -282,8 +280,13 @@ func (csp *impl) KeyImport(raw []byte, opts bccsp.KeyImportOpts) (k bccsp.Key, e
 		}
 
 		return aesK, nil
+
 	case *bccsp.HMACImportKeyOpts:
 
+		if len(raw) == 0 {
+			return nil, errors.New("[HMACImportKeyOpts] Invalid raw. It must not be nil.")
+		}
+
 		aesK := &aesPrivateKey{utils.Clone(raw), false}
 
 		// If the key is not Ephemeral, store it.
@@ -296,6 +299,123 @@ func (csp *impl) KeyImport(raw []byte, opts bccsp.KeyImportOpts) (k bccsp.Key, e
 		}
 
 		return aesK, nil
+
+	case *bccsp.ECDSAPKIXPublicKeyImportOpts:
+
+		if len(raw) == 0 {
+			return nil, errors.New("[ECDSAPKIXPublicKeyImportOpts] Invalid raw. It must not be nil.")
+		}
+
+		lowLevelKey, err := primitives.DERToPublicKey(raw)
+		if err != nil {
+			return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
+		}
+
+		ecdsaPK, ok := lowLevelKey.(*ecdsa.PublicKey)
+		if !ok {
+			return nil, errors.New("Failed casting to ECDSA public key. Invalid raw material.")
+		}
+
+		k = &ecdsaPublicKey{ecdsaPK}
+
+		// If the key is not Ephemeral, store it.
+		if !opts.Ephemeral() {
+			// Store the key
+			err = csp.ks.storePublicKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			if err != nil {
+				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
+			}
+		}
+
+		return k, nil
+
+	case *bccsp.ECDSAPrivateKeyImportOpts:
+
+		if len(raw) == 0 {
+			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw. It must not be nil.")
+		}
+
+		lowLevelKey, err := primitives.DERToPrivateKey(raw)
+		if err != nil {
+			return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
+		}
+
+		ecdsaSK, ok := lowLevelKey.(*ecdsa.PrivateKey)
+		if !ok {
+			return nil, errors.New("Failed casting to ECDSA public key. Invalid raw material.")
+		}
+
+		k = &ecdsaPrivateKey{ecdsaSK}
+
+		// If the key is not Ephemeral, store it.
+		if !opts.Ephemeral() {
+			// Store the key
+			err = csp.ks.storePrivateKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			if err != nil {
+				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
+			}
+		}
+
+		return k, nil
+
+	case *bccsp.ECDSAGoPublicKeyImportOpts:
+
+		lowLevelKey := opts.(*bccsp.ECDSAGoPublicKeyImportOpts).PublicKey()
+		if lowLevelKey == nil {
+			return nil, errors.New("Invalid Opts. ECDSA Public key cannot be nil")
+		}
+
+		k = &ecdsaPublicKey{lowLevelKey}
+
+		// If the key is not Ephemeral, store it.
+		if !opts.Ephemeral() {
+			// Store the key
+			err = csp.ks.storePublicKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			if err != nil {
+				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
+			}
+		}
+
+		return k, nil
+
+	case *bccsp.RSAGoPublicKeyImportOpts:
+
+		lowLevelKey := opts.(*bccsp.RSAGoPublicKeyImportOpts).PublicKey()
+		if lowLevelKey == nil {
+			return nil, errors.New("Invalid Opts. ECDSA Public key cannot be nil")
+		}
+
+		k = &rsaPublicKey{lowLevelKey}
+
+		// If the key is not Ephemeral, store it.
+		if !opts.Ephemeral() {
+			// Store the key
+			err = csp.ks.storePublicKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			if err != nil {
+				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
+			}
+		}
+
+		return k, nil
+
+	case *bccsp.X509PublicKeyImportOpts:
+
+		x509Cert := opts.(*bccsp.X509PublicKeyImportOpts).Certificate()
+		if x509Cert == nil {
+			return nil, errors.New("Invalid Opts. X509 certificate cannot be nil")
+		}
+
+		pk := x509Cert.PublicKey
+
+		switch pk.(type) {
+		case *ecdsa.PublicKey:
+			return csp.KeyImport(nil, &bccsp.ECDSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral(), PK: pk.(*ecdsa.PublicKey)})
+		case *rsa.PublicKey:
+			return csp.KeyImport(nil, &bccsp.RSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral(), PK: pk.(*rsa.PublicKey)})
+		default:
+			return nil, errors.New("Certificate public key type not recognized. Supported keys: [ECDSA, RSA]")
+		}
+
 	default:
 		return nil, errors.New("Import Key Options not recognized")
 	}
@@ -407,13 +527,35 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 		}
 
 		return ecdsa.Verify(&(k.(*ecdsaPrivateKey).k.PublicKey), digest, ecdsaSignature.R, ecdsaSignature.S), nil
+	case *ecdsaPublicKey:
+		ecdsaSignature := new(primitives.ECDSASignature)
+		_, err := asn1.Unmarshal(signature, ecdsaSignature)
+		if err != nil {
+			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
+		}
+
+		return ecdsa.Verify(k.(*ecdsaPublicKey).k, digest, ecdsaSignature.R, ecdsaSignature.S), nil
 	case *rsaPrivateKey:
 		if opts == nil {
-			return false, errors.New("Invalid options. Nil.")
+			return false, errors.New("Invalid options. It must not be nil.")
 		}
 		switch opts.(type) {
 		case *rsa.PSSOptions:
 			err := rsa.VerifyPSS(&(k.(*rsaPrivateKey).k.PublicKey),
+				(opts.(*rsa.PSSOptions)).Hash,
+				digest, signature, opts.(*rsa.PSSOptions))
+
+			return err == nil, err
+		default:
+			return false, fmt.Errorf("Opts type not recognized [%s]", opts)
+		}
+	case *rsaPublicKey:
+		if opts == nil {
+			return false, errors.New("Invalid options. It must not be nil.")
+		}
+		switch opts.(type) {
+		case *rsa.PSSOptions:
+			err := rsa.VerifyPSS(k.(*rsaPublicKey).k,
 				(opts.(*rsa.PSSOptions)).Hash,
 				digest, signature, opts.(*rsa.PSSOptions))
 
