@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -40,17 +40,15 @@ var nodeStatusCmd = &cobra.Command{
 }
 
 func status() (err error) {
-	clientConn, err := peer.NewPeerClientConnection()
+
+	adminClient, err := common.GetAdminClient()
 	if err != nil {
-		logger.Infof("Error trying to connect to local peer: %s", err)
-		err = fmt.Errorf("Error trying to connect to local peer: %s", err)
+		logger.Warningf("%s", err)
 		fmt.Println(&pb.ServerStatus{Status: pb.ServerStatus_UNKNOWN})
 		return err
 	}
 
-	serverClient := pb.NewAdminClient(clientConn)
-
-	status, err := serverClient.GetStatus(context.Background(), &empty.Empty{})
+	status, err := adminClient.GetStatus(context.Background(), &empty.Empty{})
 	if err != nil {
 		logger.Infof("Error trying to get status from local peer: %s", err)
 		err = fmt.Errorf("Error trying to connect to local peer: %s", err)

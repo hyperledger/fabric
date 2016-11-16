@@ -17,8 +17,7 @@ limitations under the License.
 package common
 
 import (
-	"fmt"
-
+	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -33,10 +32,22 @@ const UndefinedParamValue = ""
 func GetEndorserClient(cmd *cobra.Command) (pb.EndorserClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
-		return nil, fmt.Errorf("Error trying to connect to local peer: %s", err)
+		err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
+		return nil, err
 	}
 	endorserClient := pb.NewEndorserClient(clientConn)
 	return endorserClient, nil
+}
+
+// GetAdminClient returns a new admin client connection for this peer
+func GetAdminClient() (pb.AdminClient, error) {
+	clientConn, err := peer.NewPeerClientConnection()
+	if err != nil {
+		err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
+		return nil, err
+	}
+	adminClient := pb.NewAdminClient(clientConn)
+	return adminClient, nil
 }
 
 // SetErrorLoggingLevel sets the 'error' module's logger to the value in

@@ -17,13 +17,11 @@ limitations under the License.
 package clilogging
 
 import (
-	"fmt"
-
 	"golang.org/x/net/context"
 
-	"github.com/hyperledger/fabric/core/errors"
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+
 	"github.com/spf13/cobra"
 )
 
@@ -46,17 +44,13 @@ func setLevel(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		logger.Warningf("Error: %s", err)
 	} else {
-		clientConn, err := peer.NewPeerClientConnection()
+		adminClient, err := common.GetAdminClient()
 		if err != nil {
-			err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
 			logger.Warningf("%s", err)
-			fmt.Println(&pb.ServerStatus{Status: pb.ServerStatus_UNKNOWN})
 			return err
 		}
 
-		serverClient := pb.NewAdminClient(clientConn)
-
-		logResponse, err := serverClient.SetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: args[0], LogLevel: args[1]})
+		logResponse, err := adminClient.SetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: args[0], LogLevel: args[1]})
 
 		if err != nil {
 			logger.Warningf("%s", err)
