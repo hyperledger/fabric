@@ -321,29 +321,22 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 }
 
 func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Duration) {
-	ch := make(chan interface{})
-	defer close(ch)
-	done := false
+	ch := make(chan struct{})
 	go func () {
 		logger.Debug("[@@@@@]: Started to spin off, until predicate will be satisfied.")
-		for !done {
-			if !predicate() {
-				time.Sleep(1 * time.Second)
-				continue
-			}
-			ch <- struct {}{}
-			break
+		for !predicate() {
+			time.Sleep(1 * time.Second)
 		}
+		ch <- struct {}{}
 		logger.Debug("[@@@@@]: Done.")
 	}()
 
 	select {
-	case <-ch:  { }
+	case <-ch:
+		break
 	case <-time.After(timeout):
-		{
-			t.Fatal("Timeout has expired")
-		}
+		t.Fatal("Timeout has expired")
+		break
 	}
-	done = true
 	logger.Debug("[>>>>>] Stop wainting until timeout or true")
 }
