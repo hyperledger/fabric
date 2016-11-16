@@ -60,7 +60,7 @@ func (s *SBFT) maybeSendNextBatch() {
 		return
 	}
 
-	if !s.cur.executed {
+	if !s.cur.checkpointDone {
 		return
 	}
 
