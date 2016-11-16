@@ -352,6 +352,7 @@ func TestRestart(t *testing.T) {
 	for _, r := range repls {
 		r.sendViewChange()
 	}
+	sys.Run()
 
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
@@ -429,6 +430,7 @@ func TestRestartAfterPrepare(t *testing.T) {
 	for _, r := range repls {
 		r.sendViewChange()
 	}
+	sys.Run()
 
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
@@ -497,6 +499,7 @@ func TestRestartAfterCommit(t *testing.T) {
 	for _, r := range repls {
 		r.sendViewChange()
 	}
+	sys.Run()
 
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
@@ -565,6 +568,7 @@ func TestRestartAfterCheckpoint(t *testing.T) {
 	for _, r := range repls {
 		r.sendViewChange()
 	}
+	sys.Run()
 
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
@@ -653,6 +657,7 @@ func TestErroneousViewChange(t *testing.T) {
 	for _, r := range repls {
 		r.sendViewChange()
 	}
+	sys.Run()
 
 	r1 := []byte{1, 2, 3}
 	repls[0].Request(r1)
@@ -717,6 +722,7 @@ func TestRestartMissedViewChange(t *testing.T) {
 			r.sendViewChange()
 		}
 	}
+	sys.Run()
 
 	r2 := []byte{3, 1, 2}
 	repls[1].Request(r2)
