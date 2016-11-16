@@ -88,10 +88,10 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 			return
 		}
 
-		if s.view < h.NewView.View {
+		if s.view <= h.NewView.View {
 			s.view = h.NewView.View
+			s.activeView = true
 		}
-		s.activeView = true
 	}
 
 	s.replicaState[src].hello = h
