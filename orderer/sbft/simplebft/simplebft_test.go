@@ -787,3 +787,96 @@ func TestFullBacklog(t *testing.T) {
 		}
 	}
 }
+
+func TestViewChangeTimer(t *testing.T) {
+	t.Skip()
+	N := uint64(4)
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	phase := 1
+
+	// network outage after prepares are received
+	sys.filterFn = func(e testElem) (testElem, bool) {
+		if msg, ok := e.ev.(*testMsgEvent); ok {
+			if msg.dst == msg.src {
+				return e, true
+			} else if msg.src == 1 && phase == 2 {
+				return e, false
+			}
+			testLog.Debugf("passing msg from %d to %d, phase %d", msg.src, msg.dst, phase)
+		}
+
+		return e, true
+	}
+
+	connectAll(sys)
+	r1 := []byte{1, 2, 3}
+	repls[0].Request(r1)
+
+	repls[3].sendViewChange()
+
+	sys.enqueue(10*time.Minute, &testTimer{id: 999, tf: func() {
+		if repls[3].view != 1 {
+			t.Fatalf("expected view not to advance past 1, we are in %d", repls[3].view)
+		}
+	}})
+
+	sys.enqueue(11*time.Minute, &testTimer{id: 999, tf: func() {
+		phase = 2
+		repls[2].sendViewChange()
+	}})
+
+	sys.enqueue(12*time.Minute, &testTimer{id: 999, tf: func() {
+		if repls[3].view != 2 {
+			t.Fatalf("expected view not to advance past 2, 3 is in %d", repls[3].view)
+		}
+	}})
+
+	sys.enqueue(20*time.Minute, &testTimer{id: 999, tf: func() {
+		for _, r := range repls {
+			if r.view > 4 {
+				t.Fatalf("expected view not to advance too much, we are in %d", r.view)
+			}
+		}
+	}})
+
+	sys.Run()
+	r2 := []byte{3, 1, 2}
+	r3 := []byte{3, 5, 2}
+	repls[2].Request(r2)
+	repls[2].Request(r3)
+	sys.Run()
+	for _, a := range adapters {
+		offs := 0
+		if a.id != 3 {
+			if len(a.batches) != 3 {
+				t.Fatalf("%d: expected execution of 3 batches: %v", a.id, a.batches)
+			}
+			if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
+				t.Errorf("%d: wrong request executed (1): %v", a.id, a.batches)
+			}
+		} else {
+			offs = -1
+			if len(a.batches) != 2 {
+				t.Fatalf("%d: expected execution of 3 batches: %v", a.id, a.batches)
+			}
+		}
+		if len(a.batches[1+offs].Payloads) != 0 {
+			t.Errorf("%d: not a null request: %v", a.id, a.batches[1])
+		}
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2+offs].Payloads) {
+			t.Errorf("%d: wrong request executed (2): %v", a.id, a.batches)
+		}
+	}
+}

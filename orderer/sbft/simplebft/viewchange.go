@@ -46,11 +46,7 @@ func (s *SBFT) sendViewChange() {
 	}
 	svc := s.sign(vc)
 	s.viewChangeTimer.Cancel()
-	s.viewChangeTimer = s.sys.Timer(s.viewChangeTimeout, func() {
-		s.viewChangeTimeout *= 2
-		log.Notice("view change timed out, sending next")
-		s.sendViewChange()
-	})
+	s.cur.timeout.Cancel()
 	s.broadcast(&Msg{&Msg_ViewChange{svc}})
 
 	s.processNewView()
@@ -100,6 +96,15 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 			s.sendViewChange()
 			return
 		}
+	}
+
+	if quorum == s.noFaultyQuorum() {
+		log.Notice("received 2f+1 view change messages, starting view change timer")
+		s.viewChangeTimer = s.sys.Timer(s.viewChangeTimeout, func() {
+			s.viewChangeTimeout *= 2
+			log.Notice("view change timed out, sending next")
+			s.sendViewChange()
+		})
 	}
 
 	if s.isPrimary() {
