@@ -65,6 +65,9 @@ JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = src ccenv peer javaenv orderer
 
+pkgmap.peer           := $(PKGNAME)/peer
+pkgmap.orderer        := $(PKGNAME)/orderer
+pkgmap.block-listener := $(PKGNAME)/examples/events/block-listener
 
 all: peer orderer checks
 
@@ -144,7 +147,8 @@ build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
 		--user=$(UID) \
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/pkg):/opt/gopath/pkg \
-		hyperledger/fabric-src:$(DOCKER_TAG) go install -ldflags "$(GO_LDFLAGS)" $(PKGNAME)/$(TARGET)
+		hyperledger/fabric-src:$(DOCKER_TAG) \
+		go install -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
 
 build/bin:
@@ -154,16 +158,10 @@ build/bin:
 build/bin/peer: build/image/ccenv/.dummy build/image/javaenv/.dummy
 build/image/peer/.dummy: build/image/ccenv/.dummy build/image/javaenv/.dummy
 
-build/bin/block-listener:
-	@mkdir -p $(@D)
-	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install $(PKGNAME)/examples/events/block-listener
-	@echo "Binary available as $@"
-	@touch $@
-
 build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
-	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -ldflags "$(GO_LDFLAGS)" $(PKGNAME)/$(@F)
+	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 	@echo "Binary available as $@"
 	@touch $@
 
