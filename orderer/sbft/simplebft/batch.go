@@ -41,7 +41,7 @@ func (s *SBFT) makeBatch(seq uint64, prevHash []byte, data [][]byte) *Batch {
 	}
 }
 
-func (s *SBFT) checkBatch(b *Batch, checkData bool) (*BatchHeader, error) {
+func (s *SBFT) checkBatch(b *Batch, checkData bool, needSigs bool) (*BatchHeader, error) {
 	batchheader := &BatchHeader{}
 	err := proto.Unmarshal(b.Header, batchheader)
 	if err != nil {
@@ -52,6 +52,14 @@ func (s *SBFT) checkBatch(b *Batch, checkData bool) (*BatchHeader, error) {
 		datahash := merkleHashData(b.Payloads)
 		if !reflect.DeepEqual(datahash, batchheader.DataHash) {
 			return nil, fmt.Errorf("malformed batch: invalid hash")
+		}
+	}
+
+	if batchheader.PrevHash == nil {
+		// TODO check against root hash, which should be part of constructor
+	} else if needSigs {
+		if len(b.Signatures) < s.oneCorrectQuorum() {
+			return nil, fmt.Errorf("insufficient number of signatures on batch: need %d, got %d", s.oneCorrectQuorum(), len(b.Signatures))
 		}
 	}
 

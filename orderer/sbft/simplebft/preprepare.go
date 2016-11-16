@@ -59,9 +59,9 @@ func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
 		return
 	}
 
-	batchheader, err := s.checkBatch(pp.Batch, true)
+	batchheader, err := s.checkBatch(pp.Batch, true, false)
 	if err != nil || batchheader.Seq != pp.Seq.Seq {
-		log.Infof("preprepare %v batch head inconsistent from %d", pp.Seq, src)
+		log.Infof("preprepare %v batch head inconsistent from %d: %s", pp.Seq, src, err)
 		return
 	}
 
