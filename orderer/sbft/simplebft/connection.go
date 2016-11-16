@@ -29,6 +29,11 @@ func (s *SBFT) Connection(replica uint64) {
 	}
 	s.sys.Send(&Msg{&Msg_Hello{hello}}, replica)
 
+	svc := s.replicaState[s.id].signedViewchange
+	if svc != nil {
+		s.sys.Send(&Msg{&Msg_ViewChange{svc}}, replica)
+	}
+
 	// A reconnecting replica can play forward its blockchain to
 	// the batch listed in the hello message.  However, the
 	// currently in-flight batch will not be reflected in the
