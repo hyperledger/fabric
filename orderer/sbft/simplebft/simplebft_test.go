@@ -789,7 +789,6 @@ func TestFullBacklog(t *testing.T) {
 }
 
 func TestViewChangeTimer(t *testing.T) {
-	t.Skip()
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT

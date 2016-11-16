@@ -18,12 +18,15 @@ package simplebft
 
 import "reflect"
 
-func (s *SBFT) makeXset(vcs []*ViewChange) (*Subject, bool) {
+// makeXset returns a request subject that should be proposed as batch
+// for new-view.  If there is no request to select (null request), it
+// will return nil for subject, and return a newBatch instead.
+func (s *SBFT) makeXset(vcs []*ViewChange) (*Subject, *Batch, bool) {
 	// first select base commit (equivalent to checkpoint/low water mark)
 	// 1. need weak quorum
 	quora := make(map[uint64]int)
 	for _, vc := range vcs {
-		quora[vc.Executed] += 1
+		quora[vc.Checkpoint.DecodeHeader().Seq] += 1
 	}
 	best := uint64(0)
 	found := false
@@ -47,7 +50,7 @@ func (s *SBFT) makeXset(vcs []*ViewChange) (*Subject, bool) {
 		}
 	}
 	if !found {
-		return nil, false
+		return nil, nil, false
 	}
 
 	log.Debugf("xset starts at commit %d", best)
@@ -76,7 +79,7 @@ nextm:
 		nextmp:
 			for _, mp := range vcs {
 				// "low watermark" is less than n
-				if mp.Executed > mtuple.Seq.Seq {
+				if mp.Checkpoint.DecodeHeader().Seq > mtuple.Seq.Seq {
 					continue
 				}
 				// and all <n,d',v'> in its Pset
@@ -139,16 +142,18 @@ nextm:
 		}
 	}
 	if emptycount >= s.noFaultyQuorum() {
-		log.Debugf("selecting null request for %d", next)
-		xset = &Subject{
-			Seq:    &SeqView{Seq: next, View: s.view},
-			Digest: nil,
+		log.Debugf("no pertinent requests found, creating null request for %d", next)
+		for _, vc := range vcs {
+			if vc.Checkpoint.DecodeHeader().Seq == best {
+				return nil, s.makeBatch(next, vc.Checkpoint.Hash(), nil), true
+			}
 		}
+		log.Errorf("did not find checkpoint for %d", best)
 	}
 
 	if xset == nil {
-		return nil, false
+		return nil, nil, false
 	}
 
-	return xset, true
+	return xset, nil, true
 }

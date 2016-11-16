@@ -76,7 +76,7 @@ message ViewChange {
         uint64 view = 1;
         repeated Subject pset = 2;
         repeated Subject qset = 3;
-        uint64 executed = 4;
+        Batch checkpoint = 4;
 };
 
 message Signed {

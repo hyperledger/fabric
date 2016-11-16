@@ -82,7 +82,7 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 			return
 		}
 
-		_, ok := s.makeXset(vcs)
+		_, _, ok := s.makeXset(vcs)
 		if !ok {
 			log.Warningf("invalid hello new view xset from %d", src)
 			return

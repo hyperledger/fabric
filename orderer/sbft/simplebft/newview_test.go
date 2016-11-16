@@ -29,24 +29,24 @@ func TestXsetNoByz(t *testing.T) {
 			Pset: nil,
 			Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
 				&Subject{&SeqView{2, 2}, []byte("val2")}},
-			Executed: 1,
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 		&ViewChange{
-			View:     3,
-			Pset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-			Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-			Executed: 1,
+			View:       3,
+			Pset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Qset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 		&ViewChange{
 			View: 3,
 			Pset: []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
 			Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
 				&Subject{&SeqView{2, 2}, []byte("val2")}},
-			Executed: 1,
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 	}
 
-	xset, ok := s.makeXset(vcs)
+	xset, _, ok := s.makeXset(vcs)
 	if !ok {
 		t.Fatal("no xset")
 	}
@@ -56,31 +56,66 @@ func TestXsetNoByz(t *testing.T) {
 	}
 }
 
+func TestXsetNoNew(t *testing.T) {
+	s := &SBFT{config: Config{N: 4, F: 1}, view: 3}
+	prev := s.makeBatch(2, []byte("prev"), nil)
+	vcs := []*ViewChange{
+		&ViewChange{
+			View:       3,
+			Pset:       []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Qset:       []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Checkpoint: prev,
+		},
+		&ViewChange{
+			View:       3,
+			Pset:       []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Qset:       []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Checkpoint: prev,
+		},
+		&ViewChange{
+			View:       3,
+			Pset:       []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Qset:       []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
+			Checkpoint: prev,
+		},
+	}
+
+	_, newBatch, ok := s.makeXset(vcs)
+	if !ok {
+		t.Fatal("no xset")
+	}
+
+	expect := s.makeBatch(3, prev.Hash(), nil)
+	if !reflect.DeepEqual(newBatch, expect) {
+		t.Errorf("batches don't match: %v, %v", newBatch.DecodeHeader(), expect.DecodeHeader())
+	}
+}
+
 func TestXsetByz0(t *testing.T) {
 	s := &SBFT{config: Config{N: 4, F: 1}, view: 3}
 	vcs := []*ViewChange{
 		&ViewChange{
-			View:     3,
-			Pset:     nil,
-			Qset:     nil,
-			Executed: 1,
+			View:       3,
+			Pset:       nil,
+			Qset:       nil,
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 		&ViewChange{
-			View:     3,
-			Pset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-			Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-			Executed: 1,
+			View:       3,
+			Pset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Qset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 		&ViewChange{
 			View: 3,
 			Pset: []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
 			Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
 				&Subject{&SeqView{2, 2}, []byte("val2")}},
-			Executed: 1,
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 	}
 
-	xset, ok := s.makeXset(vcs)
+	xset, _, ok := s.makeXset(vcs)
 	if ok {
 		t.Error("should not have received an xset")
 	}
@@ -90,10 +125,10 @@ func TestXsetByz0(t *testing.T) {
 		Pset: []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
 		Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
 			&Subject{&SeqView{2, 2}, []byte("val2")}},
-		Executed: 2,
+		Checkpoint: s.makeBatch(2, []byte("prev"), nil),
 	})
 
-	xset, ok = s.makeXset(vcs)
+	xset, _, ok = s.makeXset(vcs)
 	if !ok {
 		t.Error("no xset")
 	}
@@ -106,39 +141,39 @@ func TestXsetByz2(t *testing.T) {
 	s := &SBFT{config: Config{N: 4, F: 1}, view: 3}
 	vcs := []*ViewChange{
 		&ViewChange{
-			View:     3,
-			Pset:     nil,
-			Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-			Executed: 1,
+			View:       3,
+			Pset:       nil,
+			Qset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 		&ViewChange{
-			View:     3,
-			Pset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-			Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-			Executed: 1,
+			View:       3,
+			Pset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Qset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 		&ViewChange{
 			View: 3,
 			Pset: []*Subject{&Subject{&SeqView{2, 2}, []byte("val2")}},
 			Qset: []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")},
 				&Subject{&SeqView{2, 2}, []byte("val2")}},
-			Executed: 1,
+			Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 		},
 	}
 
-	xset, ok := s.makeXset(vcs)
+	xset, _, ok := s.makeXset(vcs)
 	if ok {
 		t.Error("should not have received an xset")
 	}
 
 	vcs = append(vcs, &ViewChange{
-		View:     3,
-		Pset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-		Qset:     []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-		Executed: 2,
+		View:       3,
+		Pset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+		Qset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
+		Checkpoint: s.makeBatch(2, []byte("prev"), nil),
 	})
 
-	xset, ok = s.makeXset(vcs)
+	xset, _, ok = s.makeXset(vcs)
 	if !ok {
 		t.Error("no xset")
 	}
