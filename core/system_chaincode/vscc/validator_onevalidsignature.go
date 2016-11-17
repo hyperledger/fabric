@@ -20,10 +20,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	//"github.com/hyperledger/fabric/core/crypto"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 // ValidatorOneValidSignature implements the default transaction validation policy,
@@ -46,10 +46,10 @@ func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) (
 // selecting which policy to use for validation using parameter function
 // @return serialized Block of valid and invalid transactions indentified
 // Note that Peer calls this function with 2 arguments, where args[0] is the
-// function name and args[1] is the block
+// function name and args[1] is the Envelope
 func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	// args[0] - function name (not used now)
-	// args[1] - serialized Block object, which contains orderred transactions
+	// args[1] - serialized Envelope
 	args := stub.GetArgs()
 	if len(args) < 2 {
 		return nil, errors.New("Incorrect number of arguments")
@@ -59,38 +59,65 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return nil, errors.New("No block to validate")
 	}
 
-	block := &pb.Block2{}
-	if err := proto.Unmarshal(args[1], block); err != nil {
-		return nil, fmt.Errorf("Could not unmarshal block: %s", err)
+	// get the envelope...
+	env, err := utils.GetEnvelope(args[1])
+	if err != nil {
+		return nil, err
 	}
 
-	// block.messages is an array, so we can deterministically iterate and
-	// validate each transaction in order
-	for _, v := range block.Transactions {
-		tx := &pb.Transaction{}
+	// ...and the payload...
+	payl, err := utils.GetPayload(env)
+	if err != nil {
+		return nil, err
+	}
 
-		// Note: for v1, we do not have encrypted blocks
+	// validate the payload type
+	if common.HeaderType(payl.Header.ChainHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION {
+		return nil, fmt.Errorf("Only Endorser Transactions are supported, provided type %d", payl.Header.ChainHeader.Type)
+	}
 
-		if err := proto.Unmarshal(v, tx); err != nil {
-			vscc.invalidate(tx)
-		} else {
-			vscc.validate(tx)
+	// ...and the transaction...
+	tx, err := utils.GetTransaction(payl.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	// loop through each of the actions within
+	for _, act := range tx.Actions {
+		cap, err := utils.GetChaincodeActionPayload(act.Payload)
+		if err != nil {
+			return nil, err
+		}
+
+		// this is what is being signed
+		prespBytes := cap.Action.ProposalResponsePayload
+
+		// loop through each of the endorsements
+		for _, endorsement := range cap.Action.Endorsements {
+			// extract the identity of the signer
+			end, err := msp.GetManager().DeserializeIdentity(endorsement.Endorser)
+			if err != nil {
+				return nil, err
+			}
+
+			// validate it
+			valid, err := end.Validate()
+			if err != nil || !valid {
+				return nil, fmt.Errorf("Invalid endorser, err %s, valid %t", err, valid)
+			}
+
+			// verify the signature
+			valid, err = end.Verify(append(prespBytes, endorsement.Endorser...), endorsement.Signature)
+			if err != nil || !valid {
+				return nil, fmt.Errorf("Invalid signature, err %s, valid %t", err, valid)
+			}
 		}
 	}
 
-	// TODO: fill in after we get the end-to-end v1 skeleton working. Mocked returned value for now
-	return args[1], nil
+	return nil, nil
 }
 
 // Query is here to satisfy the Chaincode interface. We don't need it for this system chaincode
 func (vscc *ValidatorOneValidSignature) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	return nil, nil
-}
-
-func (vscc *ValidatorOneValidSignature) validate(tx *pb.Transaction) {
-	// TODO: fill in after we get the end-to-end v1 skeleton working
-}
-
-func (vscc *ValidatorOneValidSignature) invalidate(tx *pb.Transaction) {
-	// TODO: fill in after we get the end-to-end v1 skeleton working
 }

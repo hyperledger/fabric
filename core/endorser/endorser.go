@@ -26,8 +26,8 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
@@ -234,116 +234,10 @@ func (e *Endorser) endorseProposal(ctx context.Context, proposal *pb.Proposal, s
 	return prBytes, nil
 }
 
-// FIXME: this method might be of general interest, should we package it somewhere else?
-// validateChaincodeProposalMessage checks the validity of a CHAINCODE Proposal message
-func (e *Endorser) validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*pb.ChaincodeHeaderExtension, error) {
-	endorserLogger.Infof("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
-
-	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
-	chaincodeHdrExt, err := putils.GetChaincodeHeaderExtension(hdr)
-	if err != nil {
-		return nil, fmt.Errorf("Invalid header extension for type CHAINCODE")
-	}
-
-	endorserLogger.Infof("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeID)
-
-	//    - ensure that the chaincodeID is correct (?)
-	// TODO: should we even do this? If so, using which interface?
-
-	//    - ensure that the visibility field has some value we understand
-	// TODO: we need to define visibility fields first
-
-	// TODO: should we check the payload as well?
-
-	return chaincodeHdrExt, nil
-}
-
-// FIXME: this method might be of general interest, should we package it somewhere else?
-// validateProposalMessage checks the validity of a generic Proposal message
-// this function returns Header and ChaincodeHeaderExtension messages since they
-// have been unmarshalled and validated
-func (e *Endorser) validateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *common.Header, *pb.ChaincodeHeaderExtension, error) {
-	endorserLogger.Infof("validateProposalMessage starts for signed proposal %p", signedProp)
-
-	// extract the Proposal message from signedProp
-	prop, err := putils.GetProposal(signedProp.ProposalBytes)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	// 1) look at the ProposalHeader
-	hdr, err := putils.GetHeader(prop)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	// TODO: validate the type
-
-	endorserLogger.Infof("validateProposalMessage info: proposal type %d", hdr.ChainHeader.Type)
-
-	//    - ensure that the version is what we expect
-	// TODO: Which is the right version?
-
-	//    - ensure that the chainID is valid
-	// TODO: which set of APIs is supposed to give us this info?
-
-	// ensure that there is a nonce and a creator
-	if hdr.SignatureHeader.Nonce == nil || len(hdr.SignatureHeader.Nonce) == 0 {
-		return nil, nil, nil, fmt.Errorf("Invalid nonce specified in the header")
-	}
-	if hdr.SignatureHeader.Creator == nil || len(hdr.SignatureHeader.Creator) == 0 {
-		return nil, nil, nil, fmt.Errorf("Invalid creator specified in the header")
-	}
-
-	// get the identity of the creator
-	creator, err := msp.GetManager().DeserializeIdentity(hdr.SignatureHeader.Creator)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Failed to deserialize creator identity, err %s", err)
-	}
-
-	// ensure that creator is a valid certificate
-	valid, err := creator.Validate()
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Could not determine whether the identity is valid, err %s", err)
-	} else if !valid {
-		return nil, nil, nil, fmt.Errorf("The creator certificate is not valid, aborting")
-	}
-
-	// get the identifier and log info on the creator
-	identifier := creator.Identifier()
-	endorserLogger.Infof("validateProposalMessage info: creator identity is %s", identifier)
-
-	//    - ensure that creator is trusted (signed by a trusted CA)
-	// TODO: We need MSP APIs for this
-
-	//    - ensure that creator can transact with us (some ACLs?)
-	// TODO: which set of APIs is supposed to give us this info?
-
-	// 2) validate the signature of creator on header and payload
-	verified, err := creator.Verify(signedProp.ProposalBytes, signedProp.Signature)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Could not determine whether the signature is valid, err %s", err)
-	} else if !verified {
-		return nil, nil, nil, fmt.Errorf("The creator's signature over the proposal is not valid, aborting")
-	}
-
-	// 3) perform a check against replay attacks
-	// TODO
-
-	// validation of the proposal message knowing it's of type CHAINCODE
-	chaincodeHdrExt, err := e.validateChaincodeProposalMessage(prop, hdr)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	return prop, hdr, chaincodeHdrExt, err
-}
-
 // ProcessProposal process the Proposal
 func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
 	// at first, we check whether the message is valid
-	// TODO: Do the checks performed by this function belong here or in the ESCC? From a security standpoint they should be performed as early as possible so here seems to be a good place
-	prop, _, hdrExt, err := e.validateProposalMessage(signedProp)
+	prop, _, hdrExt, err := peer.ValidateProposalMessage(signedProp)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
 	}
@@ -394,8 +288,8 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 // Only exposed for testing purposes - commit the tx simulation so that
 // a deploy transaction is persisted and that chaincode can be invoked.
 // This makes the endorser test self-sufficient
-func (e *Endorser) commitTxSimulation(pResp *pb.ProposalResponse) error {
-	tx, err := putils.CreateTxFromProposalResponse(pResp)
+func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, signer msp.SigningIdentity, pResp *pb.ProposalResponse) error {
+	tx, err := putils.CreateSignedTx(proposal, signer, pResp)
 	if err != nil {
 		return err
 	}

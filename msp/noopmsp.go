@@ -19,7 +19,7 @@ package msp
 type noopmsp struct {
 }
 
-func newNoopMsp() PeerMSP {
+func NewNoopMsp() PeerMSP {
 	mspLogger.Infof("Creating no-op MSP instance")
 	return &noopmsp{}
 }

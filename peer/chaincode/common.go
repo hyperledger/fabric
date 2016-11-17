@@ -24,7 +24,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -32,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
+	protcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
@@ -72,41 +72,6 @@ func getChaincodeBytes(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, err
 	}
 	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}
 	return chaincodeDeploymentSpec, nil
-}
-
-//getProposal gets the proposal for the chaincode invocation
-//Currently supported only for Invokes (Queries still go through devops client)
-func getProposal(cis *pb.ChaincodeInvocationSpec, creator []byte) (*pb.Proposal, error) {
-	return putils.CreateChaincodeProposal(cis, creator)
-}
-
-func getSignedProposal(prop *pb.Proposal, signer msp.SigningIdentity) (*pb.SignedProposal, error) {
-	propBytes, err := putils.GetBytesProposal(prop)
-	if err != nil {
-		return nil, err
-	}
-
-	signature, err := signer.Sign(propBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.SignedProposal{ProposalBytes: propBytes, Signature: signature}, nil
-}
-
-//getDeployProposal gets the proposal for the chaincode deployment
-//the payload is a ChaincodeDeploymentSpec
-func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, creator []byte) (*pb.Proposal, error) {
-	b, err := proto.Marshal(cds)
-	if err != nil {
-		return nil, err
-	}
-
-	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
-
-	//...and get the proposal for it
-	return getProposal(lcccSpec, creator)
 }
 
 func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
@@ -224,13 +189,13 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		}
 
 		var prop *pb.Proposal
-		prop, err = getProposal(invocation, creator)
+		prop, err = putils.CreateProposalFromCIS(invocation, creator)
 		if err != nil {
 			return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 		}
 
 		var signedProp *pb.SignedProposal
-		signedProp, err = getSignedProposal(prop, signer)
+		signedProp, err = putils.GetSignedProposal(prop, signer)
 		if err != nil {
 			return fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
 		}
@@ -242,7 +207,14 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		}
 
 		if proposalResp != nil {
-			if err = sendTransaction(proposalResp); err != nil {
+			// assemble a signed transaction (it's an Envelope message)
+			env, err := putils.CreateSignedTx(prop, signer, proposalResp)
+			if err != nil {
+				return fmt.Errorf("Could not assemble transaction, err %s", err)
+			}
+
+			// send the envelope for ordering
+			if err = sendTransaction(env); err != nil {
 				return fmt.Errorf("Error sending transaction %s: %s\n", chainFuncName, err)
 			}
 		}
@@ -296,9 +268,8 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	return nil
 }
 
-//sendTransactions converts a ProposalResponse and sends it as
-//a Transaction to the orderer
-func sendTransaction(presp *pb.ProposalResponse) error {
+//sendTransactions sends a serialize Envelop to the orderer
+func sendTransaction(env *protcommon.Envelope) error {
 	var orderer string
 	if viper.GetBool("peer.committer.enabled") {
 		orderer = viper.GetString("peer.committer.ledger.orderer")
@@ -308,22 +279,5 @@ func sendTransaction(presp *pb.ProposalResponse) error {
 		return nil
 	}
 
-	var err error
-	if presp != nil {
-		if presp.Response.Status != 200 {
-			return fmt.Errorf("Proposal response erred with status %d", presp.Response.Status)
-		}
-		if presp.Payload != nil {
-			tx, err := putils.CreateTxFromProposalResponse(presp)
-			b, err := proto.Marshal(tx)
-			if err != nil {
-				return err
-			}
-
-			if b != nil {
-				err = Send(orderer, b)
-			}
-		}
-	}
-	return err
+	return Send(orderer, env)
 }

@@ -32,6 +32,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -126,13 +127,25 @@ func (d *DeliverService) readUntilClose() {
 			block := &pb.Block2{}
 			for _, d := range t.Block.Data.Data {
 				if d != nil {
-					if tx, err := putils.GetEndorserTxFromBlock(d); err != nil {
+					if env, err := putils.GetEnvelopeFromBlock(d); err != nil {
 						fmt.Printf("Error getting tx from block(%s)\n", err)
-					} else if tx != nil {
-						if t, err := proto.Marshal(tx); err == nil {
-							block.Transactions = append(block.Transactions, t)
+					} else if env != nil {
+						// validate the transaction: here we check that the transaction
+						// is properly formed, properly signed and that the security
+						// chain binding proposal to endorsements to tx holds. We do
+						// NOT check the validity of endorsements, though. That's a
+						// job for VSCC below
+						_, err := peer.ValidateTransaction(env)
+						if err != nil {
+							// TODO: this code needs to receive a bit more attention and discussion: it's not clear what it means if a transaction which causes a failure in validation is just dropped on the floor
+							logger.Errorf("Invalid transaction, error %s", err)
 						} else {
-							fmt.Printf("Cannot marshal transactoins %s\n", err)
+							// TODO: call VSCC now
+							if t, err := proto.Marshal(env); err == nil {
+								block.Transactions = append(block.Transactions, t)
+							} else {
+								fmt.Printf("Cannot marshal transactoins %s\n", err)
+							}
 						}
 					} else {
 						fmt.Printf("Nil tx from block\n")

@@ -35,11 +35,12 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
-	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -127,7 +128,37 @@ func startTxSimulation(ctxt context.Context) (context.Context, ledger.TxSimulato
 	return ctxt, txsim, nil
 }
 
-func endTxSimulation(txsim ledger.TxSimulator, payload []byte, commit bool) error {
+func endTxSimulationCDS(txsim ledger.TxSimulator, payload []byte, commit bool, cds *pb.ChaincodeDeploymentSpec) error {
+	// get serialized version of the signer
+	ss, err := signer.Serialize()
+	if err != nil {
+		return err
+	}
+	// get a proposal - we need it to get a transaction
+	prop, err := putils.CreateProposalFromCDS(cds, ss)
+	if err != nil {
+		return err
+	}
+
+	return endTxSimulation(txsim, payload, commit, prop)
+}
+
+func endTxSimulationCIS(txsim ledger.TxSimulator, payload []byte, commit bool, cis *pb.ChaincodeInvocationSpec) error {
+	// get serialized version of the signer
+	ss, err := signer.Serialize()
+	if err != nil {
+		return err
+	}
+	// get a proposal - we need it to get a transaction
+	prop, err := putils.CreateProposalFromCIS(cis, ss)
+	if err != nil {
+		return err
+	}
+
+	return endTxSimulation(txsim, payload, commit, prop)
+}
+
+func endTxSimulation(txsim ledger.TxSimulator, payload []byte, commit bool, prop *pb.Proposal) error {
 	txsim.Done()
 	ledgername := string(DefaultChain)
 	if lgr := kvledger.GetLedger(ledgername); lgr != nil {
@@ -139,16 +170,26 @@ func endTxSimulation(txsim ledger.TxSimulator, payload []byte, commit bool) erro
 			if txSimulationResults, err = txsim.GetTxSimulationResults(); err != nil {
 				return err
 			}
-			tx, err := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, util.ComputeCryptoHash([]byte("dummyProposal")), []byte("dummyCCEvents"), txSimulationResults, []*pb.Endorsement{&pb.Endorsement{}})
+
+			// assemble a (signed) proposal response message
+			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, txSimulationResults, nil, nil, signer)
 			if err != nil {
 				return err
 			}
-			txBytes, err := proto.Marshal(tx)
+
+			// get the envelope
+			env, err := putils.CreateSignedTx(prop, signer, resp)
 			if err != nil {
 				return err
 			}
+
+			envBytes, err := putils.GetBytesEnvelope(env)
+			if err != nil {
+				return err
+			}
+
 			//create the block with 1 transaction
-			block := &pb.Block2{Transactions: [][]byte{txBytes}}
+			block := &pb.Block2{Transactions: [][]byte{envBytes}}
 			if _, _, err = lgr.RemoveInvalidTransactionsAndPrepare(block); err != nil {
 				return err
 			}
@@ -252,10 +293,10 @@ func deploy2(ctx context.Context, chaincodeDeploymentSpec *pb.ChaincodeDeploymen
 		//no error, lets try commit
 		if err == nil {
 			//capture returned error from commit
-			err = endTxSimulation(txsim, []byte("deployed"), true)
+			err = endTxSimulationCDS(txsim, []byte("deployed"), true, chaincodeDeploymentSpec)
 		} else {
 			//there was an error, just close simulation and return that
-			endTxSimulation(txsim, []byte("deployed"), false)
+			endTxSimulationCDS(txsim, []byte("deployed"), false, chaincodeDeploymentSpec)
 		}
 	}()
 
@@ -299,10 +340,10 @@ func invoke(ctx context.Context, spec *pb.ChaincodeSpec) (ccevt *pb.ChaincodeEve
 		//no error, lets try commit
 		if err == nil {
 			//capture returned error from commit
-			err = endTxSimulation(txsim, []byte("invoke"), true)
+			err = endTxSimulationCIS(txsim, []byte("invoke"), true, chaincodeInvocationSpec)
 		} else {
 			//there was an error, just close simulation and return that
-			endTxSimulation(txsim, []byte("invoke"), false)
+			endTxSimulationCIS(txsim, []byte("invoke"), false, chaincodeInvocationSpec)
 		}
 	}()
 
@@ -1112,7 +1153,25 @@ func TestGetEvent(t *testing.T) {
 	GetChain(DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
+var signer msp.SigningIdentity
+
 func TestMain(m *testing.M) {
+	var err error
+	primitives.SetSecurityLevel("SHA2", 256)
+
+	// setup the MSP manager so that we can sign/verify
+	mspMgrConfigFile := "../../msp/peer-config.json"
+	msp.GetManager().Setup(mspMgrConfigFile)
+	mspId := "DEFAULT"
+	id := "PEER"
+	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+	signer, err = msp.GetManager().GetSigningIdentity(signingIdentity)
+	if err != nil {
+		os.Exit(-1)
+		fmt.Printf("Could not initialize msp/signer")
+		return
+	}
+
 	SetupTestConfig()
 	os.Exit(m.Run())
 }

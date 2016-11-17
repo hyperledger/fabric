@@ -18,10 +18,32 @@ package vscc
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"fmt"
+	"os"
+
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
+
+func createTx() (*common.Envelope, error) {
+	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeID: &peer.ChaincodeID{Name: "foo"}}}
+
+	prop, err := utils.CreateProposalFromCIS(cis, sid)
+	if err != nil {
+		return nil, err
+	}
+
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, []byte("res"), nil, nil, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.CreateSignedTx(prop, id, presp)
+}
 
 func TestInit(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
@@ -39,24 +61,58 @@ func TestInvoke(t *testing.T) {
 	// Failed path: Invalid arguments
 	args := [][]byte{[]byte("dv")}
 	if _, err := stub.MockInvoke("1", args); err == nil {
-		t.Fatalf("vscc invoke should have returned incorrect number of args: %v", args)
+		t.Fatalf("vscc invoke should have failed")
+		return
 	}
 
 	args = [][]byte{[]byte("dv"), []byte("tx")}
 	args[1] = nil
 	if _, err := stub.MockInvoke("1", args); err == nil {
-		t.Fatalf("vscc invoke should have returned no block to validate. Input args: %v", args)
+		t.Fatalf("vscc invoke should have failed")
+		return
 	}
 
-	// Successful path
-	args = [][]byte{[]byte("dv"), mockBlock()}
+	tx, err := createTx()
+	if err != nil {
+		t.Fatalf("createTx returned err %s", err)
+		return
+	}
+
+	envBytes, err := utils.GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("GetBytesEnvelope returned err %s", err)
+		return
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes}
 	if _, err := stub.MockInvoke("1", args); err != nil {
-		t.Fatalf("vscc invoke failed with: %v", err)
+		t.Fatalf("vscc invoke returned err %s", err)
+		return
 	}
 }
 
-func mockBlock() []byte {
-	block := &pb.Block2{}
-	payload, _ := proto.Marshal(block)
-	return payload
+var id msp.SigningIdentity
+var sid []byte
+
+func TestMain(m *testing.M) {
+	var err error
+
+	primitives.InitSecurityLevel("SHA2", 256)
+	// setup the MSP manager so that we can sign/verify
+	mspMgrConfigFile := "../../../msp/peer-config.json"
+	msp.GetManager().Setup(mspMgrConfigFile)
+
+	id, err = msp.GetManager().GetSigningIdentity(&msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: "DEFAULT"}, Value: "PEER"})
+	if err != nil {
+		fmt.Printf("GetSigningIdentity failed with err %s", err)
+		os.Exit(-1)
+	}
+
+	sid, err = id.Serialize()
+	if err != nil {
+		fmt.Printf("Serialize failed with err %s", err)
+		os.Exit(-1)
+	}
+
+	os.Exit(m.Run())
 }

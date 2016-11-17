@@ -165,14 +165,14 @@ func getDeploymentSpec(context context.Context, spec *pb.ChaincodeSpec) (*pb.Cha
 	return chaincodeDeploymentSpec, nil
 }
 
-func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb.ChaincodeDeploymentSpec)) (*pb.ProposalResponse, error) {
+func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb.ChaincodeDeploymentSpec)) (*pb.ProposalResponse, *pb.Proposal, error) {
 	var err error
 	var depSpec *pb.ChaincodeDeploymentSpec
 
 	ctxt := context.Background()
 	depSpec, err = getDeploymentSpec(ctxt, spec)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if f != nil {
@@ -181,25 +181,25 @@ func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb
 
 	creator, err := signer.Serialize()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var prop *pb.Proposal
 	prop, err = getDeployProposal(depSpec, creator)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = getSignedProposal(prop, signer)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var resp *pb.ProposalResponse
 	resp, err = endorserServer.ProcessProposal(context.Background(), signedProp)
 
-	return resp, err
+	return resp, prop, err
 }
 
 func invoke(spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
@@ -239,7 +239,7 @@ func invoke(spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
 func TestDeploy(t *testing.T) {
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex01", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
-	_, err := deploy(endorserServer, spec, nil)
+	_, _, err := deploy(endorserServer, spec, nil)
 	if err != nil {
 		t.Fail()
 		t.Logf("Deploy-error in deploy %s", err)
@@ -254,7 +254,7 @@ func TestDeployBadArgs(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b")}}}
 
-	_, err := deploy(endorserServer, spec, nil)
+	_, _, err := deploy(endorserServer, spec, nil)
 	if err == nil {
 		t.Fail()
 		t.Log("DeployBadArgs-expected error in deploy but succeeded")
@@ -272,7 +272,7 @@ func TestDeployBadPayload(t *testing.T) {
 	f := func(cds *pb.ChaincodeDeploymentSpec) {
 		cds.CodePackage = nil
 	}
-	_, err := deploy(endorserServer, spec, f)
+	_, _, err := deploy(endorserServer, spec, f)
 	if err == nil {
 		t.Fail()
 		t.Log("DeployBadPayload-expected error in deploy but succeeded")
@@ -288,7 +288,7 @@ func TestRedeploy(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
-	_, err := deploy(endorserServer, spec, nil)
+	_, _, err := deploy(endorserServer, spec, nil)
 	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
@@ -297,7 +297,7 @@ func TestRedeploy(t *testing.T) {
 	}
 
 	//second time should not fail as we are just simulating
-	_, err = deploy(endorserServer, spec, nil)
+	_, _, err = deploy(endorserServer, spec, nil)
 	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
@@ -319,7 +319,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	f := "init"
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
-	resp, err := deploy(endorserServer, spec, nil)
+	resp, prop, err := deploy(endorserServer, spec, nil)
 	chaincodeID1 := spec.ChaincodeID.Name
 	if err != nil {
 		t.Fail()
@@ -327,7 +327,7 @@ func TestDeployAndInvoke(t *testing.T) {
 		return
 	}
 
-	err = endorserServer.(*Endorser).commitTxSimulation(resp)
+	err = endorserServer.(*Endorser).commitTxSimulation(prop, signer, resp)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error committing <%s>: %s", chaincodeID1, err)
