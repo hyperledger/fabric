@@ -1,39 +1,39 @@
-## Certificate Authority (CA) Setup
+## 证书授权安装（CA）
 
-The _Certificate Authority_ (CA) provides a number of certificate services to users of a blockchain. More specifically, these services relate to _user enrollment_, _transactions_ invoked on the blockchain, and _TLS_-secured connections between users or components of the blockchain.
+_证书授权_（CA）为区块链的用户提供了几个证书服务。更具体地说，这些服务涉及到区块链上的_用户注册_，_事务_调用和用户与区块链组件之间的_TLS_安全连接。
 
-This guide builds on either the [fabric developer's setup](../dev-setup/devenv.md) or the prerequisites articulated in the [fabric network setup](Network-setup.md) guide. If you have not already set up your environment with one of those guides, please do so before continuing.
+本文内容基于[fabric开发者设置](../dev-setup/devenv.md)或[fabric网络设置](Network-setup.md)。如果你尚未根据这两个文档中的任意一个设置过环境，请先完成设置之后再继续下文。
 
-### Enrollment Certificate Authority
+### 注册证书授权服务
 
-The _enrollment certificate authority_ (ECA) allows new users to register with the blockchain network and enables registered users to request an _enrollment certificate pair_. One certificate is for data signing, one is for data encryption. The public keys to be embedded in the certificates have to be of type ECDSA, whereby the key for data encryption is then converted by the user to be used in an [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme) (Elliptic Curve Integrated Encryption System) fashion.
+_注册证书授权服务_（ECA）允许新用户在区块链网络中注册，并让注册用户能请求_一对注册证书_。其中一个证书用于数据签名，一个用于数据加密。证书里的公钥必须是ECDSA类型的，这意味着，为了能在[ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme)（椭圆曲线集成加密系统）中使用，用户要转换数据加密私钥。
 
-### Transaction Certificate Authority
+### 事务证书授权服务
 
-Once a user is enrolled, he or she can also request _transaction certificates_ from the _transaction certificate authority_ (TCA). These certificates are to be used for deploying Chaincode and for invoking Chaincode transactions on the blockchain. Although a single _transaction certificate_ can be used for multiple transactions, for privacy reasons it is recommended that a new _transaction certificate_ be used for each transaction.
+用户注册成功之后，就可以向_事务证书授权服务(TCA)_请求_事务证书_了。这些证书将被用于在区块链上部署Chaincode事务和调用Chaincode事务。尽管一个_事务证书_能被用于多个事务，但出于隐私原因的考虑，建议每个事务都用一个新的_交易证书_。
 
-### TLS Certificate Authority
+### TLS证书授权服务
 
-In addition to _enrollment certificates_ and _transaction certificates_, users will need _TLS certificates_ to secure their communication channels. _TLS certificates_ can be requested from the _TLS certificate authority_ (TLSCA).
+除了_注册证书_和_事务证书_，用户还需要用_TLS证书_保护通信频道。_TLS证书_可以向_TLS证书授权服务_（TLSCA）请求。
 
-## Configuration
+## 配置
 
-All CA services are provided by a single process, which can be configured by setting parameters in the CA configuration file `membersrvc.yaml`, which is located in the same directory as the CA binary. More specifically, the following parameters can be set:
+所有的CA服务都是同一个进程提供的，可以通过设置`membersrvc.yaml`中的参数来配置，该文件和CA的二进制可执行文件放在同一个目录下。更具体点说，有以下可以设置的参数：
 
-- `server.gomaxprocs`: limits the number of operating system threads used by the CA.
-- `server.rootpath`: the root path of the directory where the CA stores its state.
-- `server.cadir`: the name of the directory where the CA stores its state.
-- `server.port`: the port at which all CA services listen (multiplexing of services over the same port is provided by [GRPC](http://www.grpc.io)).
+- `server.gomaxprocs`: 限制CA可以使用的操作系统线程数量。
+- `server.rootpath`: CA存储其状态的根目录。
+- `server.cadir`: CA存储其状态的目录的名称。
+- `server.port`: 所有的CA服务所监听的端口（membersrvc利用[GRPC](http://www.grpc.io)通过同一个端口对外提供多种CA服务）。
 
-Furthermore, logging levels can be enabled/disabled by adjusting the following settings:
+此外，通过调整下面的参数可以启用/禁用不同等级的日志：
 
-- `logging.trace` (off by default, useful for debugging the code only)
+- `logging.trace` (默认关闭，仅用于测试)
 - `logging.info`
 - `logging.warning`
 - `logging.error`
 - `logging.panic`
 
-Alternatively, these fields can be set via environment variables, which---if set---have precedence over entries in the yaml file. The corresponding environment variables are named as follows:
+这些字段也可以通过环境变量设置，环境变量的优先等级比yaml文件高。和yaml中对应的环境变量是：
 
 ```
     MEMBERSRVC_CA_SERVER_GOMAXPROCS
@@ -42,7 +42,7 @@ Alternatively, these fields can be set via environment variables, which---if set
     MEMBERSRVC_CA_SERVER_PORT
 ```
 
-In addition, the CA may be preloaded with registered users, where each user's name, roles, and password are specified:
+除此之外，CA能预加载一些注册用户，可以像下面一样指定用户名，角色和密码：
 
 ```
     eca:
@@ -50,7 +50,7 @@ In addition, the CA may be preloaded with registered users, where each user's na
     		alice: 2 DRJ20pEql15a
     		bob: 4 7avZQLwcUe9q
 ```
-The role value is simply a bitmask of the following:
+角色的值是简单的掩码：
 ```
     CLIENT = 1;
     PEER = 2;
@@ -58,17 +58,17 @@ The role value is simply a bitmask of the following:
     AUDITOR = 8;
 ```
 
-For example, a peer that is also a validator would have a role value of 6.
+比如，一个peer如果也是validator的话，角色值就是6。
 
-When the CA is started for the first time, it will generate all of its required state (e.g., internal databases, CA certificates, blockchain keys, etc.) and writes this state to the directory given in its configuration. The certificates for the CA services (i.e., for the ECA, TCA, and TLSCA) are self-signed as the current default. If those certificates shall be signed by some root CA, this can be done manually by using the `*.priv` and `*.pub` private and public keys in the CA state directory, and replacing the self-signed `*.cert` certificates with root-signed ones. The next time the CA is launched, it will read and use those root-signed certificates.
+CA第一次启动时，会生成所有必需的状态（比如内嵌数据库，CA证书，区块链密钥等），并将这些状态写入配置的目录下。CA服务（比如ECA，TCA和TLSCA）现在默认是自签名的。如果这些证书应该被某些根CA签名，可以手动的用CA状态目录下的`*.priv`（私钥）和`*.pub`（公钥）来做，然后用被某根CA签名过的证书替换自签名的证书`*.cert`。CA下次运行时，会读取并使用这些证书。
 
-## Operating the CA
+## CA运维
 
-You can either [build and run](#build-and-run) the CA from source. Or, you can use Docker Compose and work with the published images on DockerHub, or some other Docker registry. Using Docker Compose is by far the simplest approach.
+你可以通过源码[构建并运行](#build-and-run)CA，或者，也可以使用Docker Compose和发布在DockerHub或其他注册中心上的镜像。使用Docker Compose显然是最简单的方式。
 
 ### Docker Compose
 
-Here's a sample docker-compose.yml for the CA.
+这是一个CA的docker-compose.yml例子：
 
 ```
 membersrvc:
@@ -76,7 +76,7 @@ membersrvc:
   command: membersrvc
 ```
 
-The corresponding docker-compose.yml for running Docker on Mac or Windows natively looks like this:
+在Mac或Windows上原生的使用docker，docker-compose.yml要这么写：
 
 ```
 membersrvc:
@@ -86,7 +86,7 @@ membersrvc:
   command: membersrvc
 ```
 
-If you are launching one or more `peer` nodes in the same docker-compose.yml, then you will want to add a delay to the start of the peer to allow sufficient time for the CA to start, before the peer attempts to connect to it.
+如果在同一个docker-compose.yml中配置一个或多个`peer`节点，需要让peer延迟启动，因为peer会连接CA，所以需要留出足够的时间让CA先完成启动。
 
 ```
 membersrvc:
@@ -106,7 +106,7 @@ vp0:
   command: sh -c "sleep 5; peer node start"
 ```
 
-The corresponding docker-compose.yml for running Docker on Mac or Windows natively looks like this:
+在Mac或Windows上原生的使用docker，docker-compose.yml要这么写：
 
 ```
 membersrvc:
@@ -132,28 +132,29 @@ vp0:
   command: sh -c "sleep 5; peer node start"
 ```
 
-### Build and Run
+### 构建和运行
 
-The CA can be built with the following command executed in the `membersrvc` directory:
+在`membersrvc`目录中执行以下命令可以构建CA：
 
 ```
 cd $GOPATH/src/github.com/hyperledger/fabric
 make membersrvc
 ```
 
-The CA can be started with the following command:
+构建完成后运行下面的命令启动CA：
 
 ```
 build/bin/membersrvc
 ```
 
-**Note:** the CA must be started before any of the fabric peer nodes, to allow the CA to have initialized before any peer nodes attempt to connect to it.
+**注意：** CA必需要在任何fabric的peer节点之前启动，这样就可以保证CA完成初始化之后才有peer节点尝试连接它。
 
-The CA looks for an `membersrvc.yaml` configuration file in $GOPATH/src/github.com/hyperledger/fabric/membersrvc. If the CA is started for the first time, it creates all its required state (e.g., internal databases, CA certificates, blockchain keys, etc.) and writes that state to the directory given in the CA configuration.
+CA会在$GOPATH/src/github.com/hyperledger/fabric/membersrvc目录下找`membersrvc.yaml`配置文件。如果CA是第一次启动，它会创建所有必需的状态（比如，内嵌数据库，CA证书，区块链密钥等），并将这些状态写入配置的目录下。
 
-<!-- This needs some serious attention
+<!-- 这里要谨记：
 
-If starting the peer with security/privacy enabled, environment variables for security, CA address and peer's ID and password must be included. Additionally, the fabric-membersrvc container must be started before the peer(s) are launched. Hence we will need to insert a delay in launching the peer command. Here's the docker-compose.yml for a single peer with membership services running in a **Vagrant** environment:
+如果启动peer时启用了security/privacy设置，就必须添加如下环境变量：security，CA地址和peer的ID和密码。另外，fabric-membersrvc容器必须在所有的peer之前启动。所以我们要在执行peer命令之前添加一些延迟。下面是在**Vagrant**环境中运行单个peer和一个membership服务的docker-compose.yml：
+
 
 ```
 vp0:
@@ -178,5 +179,5 @@ membersrvc:
 docker run --rm -it -e CORE_VM_ENDPOINT=http://172.17.0.1:2375 -e CORE_PEER_ID=vp0 -e CORE_PEER_ADDRESSAUTODETECT=true -e CORE_SECURITY_ENABLED=true -e CORE_SECURITY_PRIVACY=true -e CORE_PEER_PKI_ECA_PADDR=172.17.0.1:7054 -e CORE_PEER_PKI_TCA_PADDR=172.17.0.1:7054 -e CORE_PEER_PKI_TLSCA_PADDR=172.17.0.1:7054 -e CORE_SECURITY_ENROLLID=vp0 -e CORE_SECURITY_ENROLLSECRET=vp0_secret  hyperledger/fabric-peer peer node start
 ```
 
-Additionally, the validating peer `enrollID` and `enrollSecret` (`vp0` and `vp0_secret`) has to be added to [membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml).
+另外，validating peer的`enrollID`和`enrollSecret`（`vp0`和`vp0_secret`）必须添加到[membersrvc.yaml](https://github.com/hyperledger/fabric/blob/master/membersrvc/membersrvc.yaml)。
 -->

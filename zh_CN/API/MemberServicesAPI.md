@@ -1,85 +1,85 @@
-# Certificate Authority API
+# 证书和授权 API
 
-Each of the CA services is split into two [GRPC](http://www.grpc.io) interfaces, namely a public one (indicated by a _P_ suffix) and an administrator one (indicated by an _A_ suffix).
+每个CA下的服务被拆分成两类[GRPC](http://www.grpc.io)接口，一类是以_P_结尾的公共接口，另一类是以_A_结尾的管理接口。
 
-## Enrollment Certificate Authority
+## ECA（Enrollment Certificate Authority － 注册CA）
 
-The administrator interface of the ECA provides the following functions:
+ECA的管理员接口提供了以下函数：
 
-	service ECAA { // admin
+	service ECAA { // 管理
 	    rpc RegisterUser(RegisterUserReq) returns (Token);
 	    rpc ReadUserSet(ReadUserSetReq) returns (UserSet);
-	    rpc RevokeCertificate(ECertRevokeReq) returns (CAStatus); // not yet implemented
-	    rpc PublishCRL(ECertCRLReq) returns (CAStatus); // not yet implemented
+	    rpc RevokeCertificate(ECertRevokeReq) returns (CAStatus); // 尚未实现
+	    rpc PublishCRL(ECertCRLReq) returns (CAStatus); // 尚未实现
 	}
 
-The `RegisterUser` function allows you to register a new user by specifiying their name and roles in the `RegisterUserReq` structure. If the user has not been registered before, the ECA registers the new user and returns a unique one-time password, which can be used by the user to request their enrollment certificate pair via the public interface of the ECA. Otherwise an error is returned.
+`RegisterUser`函数用于注册用户，接收一个`RegisterUserReq`结构体，该结构体中包含用户名和多个角色(角色id使用位码表示，一个数字可以代表多个角色)。如果该用户之前没有注册过，ECA就注册该用户并返回一个唯一的一次性的密码，用户可以使用该密码请求ECA的公共接口，获取自己的注册证书对（注册证书对包含一个签名证书和一个加密证书）。如果该用户已经注册过就返回一个错误。
 
-The `ReadUserSet` function allows only auditors to retrieve the list of users registered with the blockchain.
+`ReadUserSet`函数允许且只允许审计用户，获取该区块链上已注册用户列表。
 
-The public interface of the ECA provides the following functions:
+ECA的公共接口提供了以下函数：
 
-	service ECAP { // public
+	service ECAP { // 公共
 	    rpc ReadCACertificate(Empty) returns (Cert);
 	    rpc CreateCertificatePair(ECertCreateReq) returns (ECertCreateResp);
 	    rpc ReadCertificatePair(ECertReadReq) returns (CertPair);
 	    rpc ReadCertificateByHash(Hash) returns (Cert);
-	    rpc RevokeCertificatePair(ECertRevokeReq) returns (CAStatus); // not yet implemented
+	    rpc RevokeCertificatePair(ECertRevokeReq) returns (CAStatus); // 尚未实现
 	}
 
-The `ReadCACertificate` function returns the certificate of the ECA itself.
+`ReadCACertificate`函数返回了ECA自身的证书。
 
-The `CreateCertificatePair` function allows a user to create and read their enrollment certificate pair. For this, the user has to do two successive invocations of this function. Firstly, both the signature and encryption public keys have to be handed to the ECA together with the one-time password previously returned by the `RegisterUser` function invocation. The request has to be signed by the user's private signature key to demonstrate that the user is in possession of the private signature key. The ECA in return gives the user a challenge encrypted with the user's public encryption key. The user has to decrypt the challenge, thereby demonstrating that they are in possession of the private encryption key, and then re-issue the certificate creation request - this time with the decrypted challenge instead of the one-time password passed in the invocation. If the challenge has been decrypted correctly, the ECA issues and returns the enrollment certificate pair for the user.
+`CreateCertificatePair`函数用于用户创建，获取自己的证书对。为此，用户需要连续两次调用该函数。第一次，把签名公钥，加密公钥以及上面`RegisterUser`函数返回的一次性密码一起发送给ECA。用户要用自己的签名私钥签名本次请求，ECA会用用户的签名公钥验证签名是否正确，如果正确，就能证明用户拥有该签名私钥。接着，ECA会用该用户的加密公钥加密一个challenge，返回给用户。用户如果能正确解密challenge，就能证明其确实拥有该加密私钥。然后用户要用解密后的challenge替换掉一次性密码重新请求`CreateCertificatePair`。如果发现用户对challenge的解密是正确的，ECA就会为该用户发布并返回其注册证书对。(解释：证书中只包含公钥，不包含私钥，需要发布给其他用户。假设用户a是请求发送方，用户b是请求接收方。a用自己的签名私钥签名了一个请求，b需要用对应的签名公钥验证签名是否正确，如果正确就能证明该请求未被篡改，且一定是a发送的请求，因为别人没有a的私钥。如果a使用了其加密私钥对请求内容进行了加密，b可以使用对用的公钥进行解密。签名密钥对和加密密钥对本质上没有区别，在这里只是用途不同。a需要私钥证明请求是自己自己发送的，所以a必须要有私钥，私钥泄漏后，别人可以随意假装成a，所以a必须要对私钥严格保密。fabric的ECA要求用户生成密钥对（实际上是validating peer为用户生成的），且只在网络上传输公钥，并通过上述两轮请求验证用户确实拥有其签名私钥和加密私钥，这种做法是安全的。ECA确定了密钥的正确性后，将公钥发布，供任意其他用户读取。)
 
-The `ReadCertificatePair` function allows any user of the blockchain to read the certificate pair of any other user of the blockchain.
+`ReadCertificatePair`函数允许该区块链的任意用户读取任意其他用户的证书对。
 
-The `ReadCertificatePairByHash` function allows any user of the blockchain to read a certificate from the ECA matching a given hash.
+`ReadCertificatePairByHash`函数允许该区块链的任意用户从ECA上读取与给定的hash匹配的证书。（另一种翻译：用户得到一个hash，调用`ReadCertificatePairByHash`函数并传入该hash，ECA返回与该hash匹配的证书。）
 
-## Transaction Certificate Authority
+## TCA（Transaction Certificate Authority － 交易CA）
 
-The administrator interface of the TCA provides the following functions:
+TCA的管理员接口提供了以下函数：
 
-	service TCAA { // admin
-	    rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus); // not yet implemented
-	    rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus); // not yet implemented
-	    rpc PublishCRL(TCertCRLReq) returns (CAStatus); // not yet implemented
+	service TCAA { // 管理
+	    rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus); // 尚未实现
+	    rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus); // 尚未实现
+	    rpc PublishCRL(TCertCRLReq) returns (CAStatus); // 尚未实现
 	}
 
-The public interface of the TCA provides the following functions:
+TCA的公共接口提供了以下函数：
 
-	service TCAP { // public
+	service TCAP { // 公共
 	    rpc ReadCACertificate(Empty) returns (Cert);
 	    rpc CreateCertificate(TCertCreateReq) returns (TCertCreateResp);
 	    rpc CreateCertificateSet(TCertCreateSetReq) returns (TCertCreateSetResp);
-	    rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus); // not yet implemented
-	    rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus); // not yet implemented
+	    rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus); // 尚未实现
+	    rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus); // 尚未实现
 	}
 
-The `ReadCACertificate` function returns the certificate of the TCA itself.
+`ReadCACertificate`函数返回了TCA自身的证书。
 
-The `CreateCertificate` function allows a user to create and retrieve a new transaction certificate.
+`CreateCertificate`函数允许用户创建取回一个新的交易证书。
 
-The `CreateCertificateSet` function allows a user to create and retrieve a set of transaction certificates in a single call.
+`CreateCertificateSet`函数允许用户在一次调用中，创建取回一批交易证书。（一个交易证书可以给多笔交易用，但是fabric建议为每笔交易都创建一个新证书，所以才会提供该方法）
 
-## TLS Certificate Authority
+## TLSCA（TLS Certificate Authority － 安全传输层协议CA）
 
-The administrator interface of the TLSCA provides the following functions:
+TLSCA的管理员接口提供了以下函数：
 
-	service TLSCAA { // admin
-	    rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus); not yet implemented
+	service TLSCAA { // 管理
+	    rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus); // 尚未实现
 	}
 
-The public interface of the TLSCA provides the following functions:
+TLSCA的公共接口提供了以下函数：
 
-	service TLSCAP { // public
+	service TLSCAP { // 公共
 	    rpc ReadCACertificate(Empty) returns (Cert);
 	    rpc CreateCertificate(TLSCertCreateReq) returns (TLSCertCreateResp);
 	    rpc ReadCertificate(TLSCertReadReq) returns (Cert);
-	    rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus); // not yet implemented
+	    rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus); // 尚未实现
 	}
 
-The `ReadCACertificate` function returns the certificate of the TLSCA itself.
+`ReadCACertificate`函数返回了TLSCA自身的证书。
 
-The `CreateCertificate` function allows a user to create and retrieve a new TLS certificate.
+`CreateCertificate`函数允许用户创建获取一个新的TLS证书。
 
-The `ReadCertificate` function allows a user to retrieve a previously created TLS certificate.
+`ReadCertificate`函数允许用户获取之前已经创建号的TLS证书。
