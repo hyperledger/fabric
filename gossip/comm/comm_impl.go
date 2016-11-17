@@ -101,20 +101,18 @@ func NewCommInstanceWithServer(port int, sec SecurityProvider, pkID common.PKIid
 			defer commInst.stopWG.Done()
 			s.Serve(ll)
 		}()
+
+		proto.RegisterGossipServer(s, commInst)
 	}
 
-	proto.RegisterGossipServer(s, commInst)
-
 	commInst.logger.SetLevel(logging.WARNING)
-
-	time.Sleep(time.Duration(200) * time.Millisecond)
 
 	return commInst, nil
 }
 
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
 func NewCommInstance(s *grpc.Server, sec SecurityProvider, PKIID common.PKIidType, dialOpts ...grpc.DialOption) (Comm, error) {
-	commInst, err := NewCommInstanceWithServer(-1, sec, PKIID)
+	commInst, err := NewCommInstanceWithServer(-1, sec, PKIID, dialOpts ...)
 	if err != nil {
 		return nil, err
 	}
