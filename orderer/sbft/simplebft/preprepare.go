@@ -92,7 +92,6 @@ func (s *SBFT) acceptPreprepare(pp *Preprepare) {
 
 func (s *SBFT) handleCheckedPreprepare(pp *Preprepare) {
 	s.acceptPreprepare(pp)
-	s.cancelViewChangeTimer()
 	if !s.isPrimary() {
 		s.sendPrepare()
 	}

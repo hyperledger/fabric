@@ -48,5 +48,6 @@ func (s *SBFT) handleCommit(c *Subject, src uint64) {
 		return
 	}
 	s.cur.commit[src] = c
+	s.cancelViewChangeTimer()
 	s.maybeExecute()
 }
