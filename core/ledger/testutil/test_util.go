@@ -72,6 +72,19 @@ func SetupTestConfig() {
 	logging.SetFormatter(formatter)
 }
 
+// SetupCoreYAMLConfig sets up configurations for tetsing
+func SetupCoreYAMLConfig(coreYamlPath string) {
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	viper.AddConfigPath(coreYamlPath)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
+	if err != nil { // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+}
+
 // SetLogLevel sets up log level
 func SetLogLevel(level logging.Level, module string) {
 	logging.SetLevel(level, module)

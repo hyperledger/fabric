@@ -28,23 +28,27 @@ import (
 
 type testEnv struct {
 	conf              *Conf
-	couchHost         string
-	couchPort         int
+	couchDBAddress    string
 	couchDatabaseName string
 	couchUsername     string
 	couchPassword     string
 }
 
 func newTestEnv(t testing.TB) *testEnv {
+
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+
+	couchDBDef := kvledgerconfig.GetCouchDBDefinition()
+
 	conf := &Conf{"/tmp/tests/ledger/kvledger/txmgmt/couchdbtxmgmt"}
 	os.RemoveAll(conf.DBPath)
 	return &testEnv{
 		conf:              conf,
-		couchHost:         "127.0.0.1",
-		couchPort:         5984,
+		couchDBAddress:    couchDBDef.URL,
 		couchDatabaseName: "system_test",
-		couchUsername:     "",
-		couchPassword:     "",
+		couchUsername:     couchDBDef.Username,
+		couchPassword:     couchDBDef.Password,
 	}
 }
 
@@ -52,7 +56,7 @@ func (env *testEnv) Cleanup() {
 	os.RemoveAll(env.conf.DBPath)
 
 	//create a new connection
-	couchDB, _ := couchdb.CreateConnectionDefinition(env.couchHost, env.couchPort, env.couchDatabaseName, env.couchUsername, env.couchPassword)
+	couchDB, _ := couchdb.CreateConnectionDefinition(env.couchDBAddress, env.couchDatabaseName, env.couchUsername, env.couchPassword)
 
 	//drop the test database if it already existed
 	couchDB.DropDatabase()
@@ -72,8 +76,7 @@ func TestDatabaseAutoCreate(t *testing.T) {
 		defer env.Cleanup() //and cleanup at the end
 
 		txMgr := NewCouchDBTxMgr(env.conf,
-			env.couchHost,         //couchDB host
-			env.couchPort,         //couchDB port
+			env.couchDBAddress,    //couchDB Address
 			env.couchDatabaseName, //couchDB db name
 			env.couchUsername,     //enter couchDB id
 			env.couchPassword)     //enter couchDB pw
@@ -88,8 +91,7 @@ func TestDatabaseAutoCreate(t *testing.T) {
 
 		//Call NewCouchDBTxMgr again, this time the database will already exist from last time
 		txMgr2 := NewCouchDBTxMgr(env.conf,
-			env.couchHost,         //couchDB host
-			env.couchPort,         //couchDB port
+			env.couchDBAddress,    //couchDB Address
 			env.couchDatabaseName, //couchDB db name
 			env.couchUsername,     //enter couchDB id
 			env.couchPassword)     //enter couchDB pw

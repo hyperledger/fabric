@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
-
+	"github.com/hyperledger/fabric/core/ledger/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -39,6 +39,9 @@ var consenter *example.Consenter
 var accounts = []string{"account1", "account2", "account3", "account4"}
 
 func init() {
+
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../../../peer")
 
 	// Initialization will get a handle to the ledger at the specified path
 	// Note, if subledgers are supported in the future,

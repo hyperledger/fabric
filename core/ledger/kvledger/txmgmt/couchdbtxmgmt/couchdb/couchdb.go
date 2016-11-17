@@ -30,7 +30,6 @@ import (
 	"net/textproto"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 
 	logging "github.com/op/go-logging"
@@ -104,21 +103,14 @@ type FileDetails struct {
 }
 
 //CreateConnectionDefinition for a new client connection
-func CreateConnectionDefinition(host string, port int, databaseName, username, password string) (*CouchDBConnectionDef, error) {
+func CreateConnectionDefinition(couchDBAddress string, databaseName, username, password string) (*CouchDBConnectionDef, error) {
 
 	logger.Debugf("===COUCHDB=== Entering CreateConnectionDefinition()")
 
-	connectURI := []string{}
-	connectURI = append(connectURI, "http://")
-	connectURI = append(connectURI, host)
-	connectURI = append(connectURI, ":")
-
-	connectURI = append(connectURI, strconv.Itoa(port))
-
-	urlConcat := strings.Join(connectURI, "")
+	connectURL := fmt.Sprintf("%s//%s", "http:", couchDBAddress)
 
 	//parse the constructed URL to verify no errors
-	finalURL, err := url.Parse(urlConcat)
+	finalURL, err := url.Parse(connectURL)
 	if err != nil {
 		logger.Errorf("===COUCHDB=== URL parse error: %s", err.Error())
 		return nil, err
