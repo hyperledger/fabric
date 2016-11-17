@@ -22,6 +22,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
@@ -61,13 +62,34 @@ func deploy(cmd *cobra.Command) (*pb.ProposalResponse, error) {
 		return nil, fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 	}
 
-	// TODO: how should we get a cert from the command line?
-	prop, err := getDeployProposal(cds, []byte("cert"))
+	// TODO: how should we get signing ID from the command line?
+	mspId := "DEFAULT"
+	id := "PEER"
+	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+
+	// TODO: how should we obtain the config for the MSP from the command line? a hardcoded test config?
+	signer, err := msp.GetManager().GetSigningIdentity(signingIdentity)
+	if err != nil {
+		return nil, fmt.Errorf("Error obtaining signing identity for %s: %s\n", signingIdentity, err)
+	}
+
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("Error serializing identity for %s: %s\n", signingIdentity, err)
+	}
+
+	prop, err := getDeployProposal(cds, creator)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}
 
-	proposalResponse, err := endorserClient.ProcessProposal(ctxt, prop)
+	var signedProp *pb.SignedProposal
+	signedProp, err = getSignedProposal(prop, signer)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
+	}
+
+	proposalResponse, err := endorserClient.ProcessProposal(ctxt, signedProp)
 	if err != nil {
 		return nil, fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
 	}

@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"testing"
 
+	"reflect"
+
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -37,6 +39,24 @@ func TestProposal(t *testing.T) {
 	prop, err := CreateChaincodeProposal(createCIS(), []byte("creator"))
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
+		return
+	}
+
+	// serialize the proposal
+	pBytes, err := GetBytesProposal(prop)
+	if err != nil {
+		t.Fatalf("Could not serialize the chaincode proposal, err %s\n", err)
+		return
+	}
+
+	// deserialize it and expect it to be the same
+	propBack, err := GetProposal(pBytes)
+	if err != nil {
+		t.Fatalf("Could not deserialize the chaincode proposal, err %s\n", err)
+		return
+	}
+	if !reflect.DeepEqual(prop, propBack) {
+		t.Fatalf("Proposal and deserialized proposals don't match\n")
 		return
 	}
 

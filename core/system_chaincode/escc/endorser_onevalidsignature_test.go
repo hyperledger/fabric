@@ -21,18 +21,21 @@ import (
 
 	"bytes"
 
+	"os"
+
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestInit(t *testing.T) {
-	primitives.InitSecurityLevel("SHA2", 256)
 	e := new(EndorserOneValidSignature)
 	stub := shim.NewMockStub("endorseronevalidsignature", e)
 
-	if _, err := stub.MockInit("1", nil); err != nil {
+	args := [][]byte{[]byte("DEFAULT"), []byte("PEER")}
+	if _, err := stub.MockInit("1", args); err != nil {
 		fmt.Println("Init failed", err)
 		t.FailNow()
 	}
@@ -42,8 +45,15 @@ func TestInvoke(t *testing.T) {
 	e := new(EndorserOneValidSignature)
 	stub := shim.NewMockStub("endorseronevalidsignature", e)
 
+	// Initialize ESCC supplying the identity of the signer
+	args := [][]byte{[]byte("DEFAULT"), []byte("PEER")}
+	if _, err := stub.MockInit("1", args); err != nil {
+		fmt.Println("Init failed", err)
+		t.FailNow()
+	}
+
 	// Failed path: Not enough parameters
-	args := [][]byte{[]byte("test")}
+	args = [][]byte{[]byte("test")}
 	if _, err := stub.MockInvoke("1", args); err == nil {
 		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
 	}
@@ -206,6 +216,36 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 		return fmt.Errorf("events do not match")
 	}
 
-	// TODO: check the endorsement: pResp.Endorsement.Signature is supposed to be a signature of pResp.Payload with the key specified in pResp.Endorsement.Endorser
+	// get the identity of the endorser
+	endorser, err := msp.GetManager().DeserializeIdentity(pResp.Endorsement.Endorser)
+	if err != nil {
+		return fmt.Errorf("Failed to deserialize endorser identity, err %s", err)
+	}
+
+	// ensure that endorser has a valid certificate
+	valid, err := endorser.Validate()
+	if err != nil {
+		return fmt.Errorf("Could not determine whether the endorser identity is valid, err %s", err)
+	} else if !valid {
+		return fmt.Errorf("The endorser certificate is not valid, aborting")
+	}
+
+	verified, err := endorser.Verify(pResp.Payload, pResp.Endorsement.Signature)
+	if err != nil {
+		return fmt.Errorf("Could not determine whether the signature is valid, err %s", err)
+	} else if !verified {
+		return fmt.Errorf("The endorser's signature over the proposal response is not valid, aborting")
+	}
+
 	return nil
+}
+
+func TestMain(m *testing.M) {
+	primitives.InitSecurityLevel("SHA2", 256)
+	// setup the MSP manager so that we can sign/verify
+	// TODO: determine the config file for the MSP
+	mspMgrConfigFile := "../../../msp/peer-config.json"
+	msp.GetManager().Setup(mspMgrConfigFile)
+
+	os.Exit(m.Run())
 }

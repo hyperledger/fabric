@@ -1,0 +1,19 @@
+{
+  "PeerMSPManager": {
+    "name": "peerMSPMgr",
+    "updatepolicy":{
+      "_comment":"This is the policy that is to be respected each time a change in accepted membership service providers is advertised. In this example it is the MSP called FABRIC-MSP that needs to sign any additional messages to extend available MSPs.",
+      "stakeholders": "FABRIC-MSP",
+      "type": "percentage",
+      "percentage": "50",
+      "min": "1",
+      },
+    "msplist": {
+      "names": "msp1",
+      "msp1": {
+        "identifier": "FABRIC-MSP",
+        "configlocation": "FABRIC-MSPconfig.json"
+      }
+    }
+  }
+}

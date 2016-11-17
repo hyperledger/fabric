@@ -27,6 +27,7 @@ import (
 	"github.com/DATA-DOG/godog/gherkin"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -243,8 +244,16 @@ func (b *BDDContext) userSendsProposalToEndorsersWithTimeoutOfSeconds(enrollID, 
 			}
 			defer grpcClient.Close()
 
+			proposalBytes, err := utils.GetBytesProposal(proposal)
+			if err != nil {
+				respQueue <- &KeyedProposalResponse{endorser, nil, fmt.Errorf("Error serializing proposal bytes")}
+				return
+			}
+			// FIXME: the endorser needs to be given a signed proposal - who should sign?
+			signedProposal := &pb.SignedProposal{ProposalBytes: proposalBytes, Signature: []byte("signature")}
+
 			endorserClient := pb.NewEndorserClient(grpcClient)
-			if proposalResponse, localErr = endorserClient.ProcessProposal(ctx, proposal); localErr != nil {
+			if proposalResponse, localErr = endorserClient.ProcessProposal(ctx, signedProposal); localErr != nil {
 				respQueue <- &KeyedProposalResponse{endorser, nil, fmt.Errorf("Error calling endorser '%s':  %s", endorser, localErr)}
 				return
 			}

@@ -26,6 +26,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -39,6 +40,20 @@ import (
 //Currently supported only for Invokes (Queries still go through devops client)
 func getProposal(cis *pb.ChaincodeInvocationSpec, creator []byte) (*pb.Proposal, error) {
 	return putils.CreateChaincodeProposal(cis, creator)
+}
+
+func getSignedProposal(prop *pb.Proposal, signer msp.SigningIdentity) (*pb.SignedProposal, error) {
+	propBytes, err := putils.GetBytesProposal(prop)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := signer.Sign(propBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.SignedProposal{ProposalBytes: propBytes, Signature: signature}, nil
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment
@@ -154,15 +169,36 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 			return fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 		}
 
+		// TODO: how should we get signing ID from the command line?
+		mspId := "DEFAULT"
+		id := "PEER"
+		signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+
+		// TODO: how should we obtain the config for the MSP from the command line? a hardcoded test config?
+		signer, err := msp.GetManager().GetSigningIdentity(signingIdentity)
+		if err != nil {
+			return fmt.Errorf("Error obtaining signing identity for %s: %s\n", signingIdentity, err)
+		}
+
+		creator, err := signer.Serialize()
+		if err != nil {
+			return fmt.Errorf("Error serializing identity for %s: %s\n", signingIdentity, err)
+		}
+
 		var prop *pb.Proposal
-		// TODO: how should we get a cert from the command line?
-		prop, err = getProposal(invocation, []byte("cert"))
+		prop, err = getProposal(invocation, creator)
 		if err != nil {
 			return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 		}
 
+		var signedProp *pb.SignedProposal
+		signedProp, err = getSignedProposal(prop, signer)
+		if err != nil {
+			return fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
+		}
+
 		var proposalResp *pb.ProposalResponse
-		proposalResp, err = endorserClient.ProcessProposal(context.Background(), prop)
+		proposalResp, err = endorserClient.ProcessProposal(context.Background(), signedProp)
 		if err != nil {
 			return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
 		}

@@ -27,12 +27,13 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
-var devopsLogger = logging.MustGetLogger("endorser")
+var endorserLogger = logging.MustGetLogger("endorser")
 
 // The Jira issue that documents Endorser flow along with its relationship to
 // the lifecycle chaincode - https://jira.hyperledger.org/browse/FAB-181
@@ -175,7 +176,7 @@ func (e *Endorser) getCDSFromLCCC(ctx context.Context, chaincodeID string, txsim
 
 //endorse the proposal by calling the ESCC
 func (e *Endorser) endorseProposal(ctx context.Context, proposal *pb.Proposal, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, error) {
-	devopsLogger.Infof("endorseProposal starts for proposal %p, simRes %p event %p, visibility %p, ccid %s", proposal, simRes, event, visibility, ccid)
+	endorserLogger.Infof("endorseProposal starts for proposal %p, simRes %p event %p, visibility %p, ccid %s", proposal, simRes, event, visibility, ccid)
 
 	// 1) extract the chaincodeDeploymentSpec for the chaincode we are invoking; we need it to get the escc
 	var escc string
@@ -197,7 +198,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, proposal *pb.Proposal, s
 		escc = "escc"
 	}
 
-	devopsLogger.Infof("endorseProposal info: escc for cid %s is %s", ccid, escc)
+	endorserLogger.Infof("endorseProposal info: escc for cid %s is %s", ccid, escc)
 
 	// marshalling event bytes
 	var err error
@@ -239,7 +240,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, proposal *pb.Proposal, s
 // FIXME: this method might be of general interest, should we package it somewhere else?
 // validateChaincodeProposalMessage checks the validity of a CHAINCODE Proposal message
 func (e *Endorser) validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*pb.ChaincodeHeaderExtension, error) {
-	devopsLogger.Infof("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
+	endorserLogger.Infof("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
 
 	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
 	chaincodeHdrExt, err := putils.GetChaincodeHeaderExtension(hdr)
@@ -247,7 +248,7 @@ func (e *Endorser) validateChaincodeProposalMessage(prop *pb.Proposal, hdr *comm
 		return nil, fmt.Errorf("Invalid header extension for type CHAINCODE")
 	}
 
-	devopsLogger.Infof("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeID)
+	endorserLogger.Infof("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeID)
 
 	//    - ensure that the chaincodeID is correct (?)
 	// TODO: should we even do this? If so, using which interface?
@@ -264,38 +265,24 @@ func (e *Endorser) validateChaincodeProposalMessage(prop *pb.Proposal, hdr *comm
 // validateProposalMessage checks the validity of a generic Proposal message
 // this function returns Header and ChaincodeHeaderExtension messages since they
 // have been unmarshalled and validated
-func (e *Endorser) validateProposalMessage(prop *pb.Proposal) (*common.Header, *pb.ChaincodeHeaderExtension, error) {
-	devopsLogger.Infof("validateProposalMessage starts for proposal %p", prop)
+func (e *Endorser) validateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *common.Header, *pb.ChaincodeHeaderExtension, error) {
+	endorserLogger.Infof("validateProposalMessage starts for signed proposal %p", signedProp)
+
+	// extract the Proposal message from signedProp
+	prop, err := putils.GetProposal(signedProp.ProposalBytes)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	// 1) look at the ProposalHeader
 	hdr, err := putils.GetHeader(prop)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	//    - validate the type
-	if hdr.ChainHeader.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) {
-		return nil, nil, fmt.Errorf("Invalid proposal type %d", hdr.ChainHeader.Type)
-	}
+	// TODO: validate the type
 
-	devopsLogger.Infof("validateProposalMessage info: proposal type %d", hdr.ChainHeader.Type)
-
-	//    - ensure that there is a nonce and a creator
-	if hdr.SignatureHeader.Nonce == nil || len(hdr.SignatureHeader.Nonce) == 0 {
-		return nil, nil, fmt.Errorf("Invalid nonce specified in the header")
-	}
-	if hdr.SignatureHeader.Creator == nil || len(hdr.SignatureHeader.Creator) == 0 {
-		return nil, nil, fmt.Errorf("Invalid creator specified in the header")
-	}
-
-	//    - ensure that creator is a valid certificate (depends on membership svc)
-	// TODO: We need MSP APIs for this
-
-	//    - ensure that creator is trusted (signed by a trusted CA)
-	// TODO: We need MSP APIs for this
-
-	//    - ensure that creator can transact with us (some ACLs?)
-	// TODO: which set of APIs is supposed to give us this info?
+	endorserLogger.Infof("validateProposalMessage info: proposal type %d", hdr.ChainHeader.Type)
 
 	//    - ensure that the version is what we expect
 	// TODO: Which is the right version?
@@ -303,26 +290,63 @@ func (e *Endorser) validateProposalMessage(prop *pb.Proposal) (*common.Header, *
 	//    - ensure that the chainID is valid
 	// TODO: which set of APIs is supposed to give us this info?
 
-	// 2) perform a check against replay attacks
-	// TODO
+	// ensure that there is a nonce and a creator
+	if hdr.SignatureHeader.Nonce == nil || len(hdr.SignatureHeader.Nonce) == 0 {
+		return nil, nil, nil, fmt.Errorf("Invalid nonce specified in the header")
+	}
+	if hdr.SignatureHeader.Creator == nil || len(hdr.SignatureHeader.Creator) == 0 {
+		return nil, nil, nil, fmt.Errorf("Invalid creator specified in the header")
+	}
 
-	// 3) validate the signature of creator on header and payload
+	// get the identity of the creator
+	creator, err := msp.GetManager().DeserializeIdentity(hdr.SignatureHeader.Creator)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("Failed to deserialize creator identity, err %s", err)
+	}
+
+	// ensure that creator is a valid certificate
+	valid, err := creator.Validate()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("Could not determine whether the identity is valid, err %s", err)
+	} else if !valid {
+		return nil, nil, nil, fmt.Errorf("The creator certificate is not valid, aborting")
+	}
+
+	// get the identifier and log info on the creator
+	identifier := creator.Identifier()
+	endorserLogger.Infof("validateProposalMessage info: creator identity is %s", identifier)
+
+	//    - ensure that creator is trusted (signed by a trusted CA)
 	// TODO: We need MSP APIs for this
+
+	//    - ensure that creator can transact with us (some ACLs?)
+	// TODO: which set of APIs is supposed to give us this info?
+
+	// 2) validate the signature of creator on header and payload
+	verified, err := creator.Verify(signedProp.ProposalBytes, signedProp.Signature)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("Could not determine whether the signature is valid, err %s", err)
+	} else if !verified {
+		return nil, nil, nil, fmt.Errorf("The creator's signature over the proposal is not valid, aborting")
+	}
+
+	// 3) perform a check against replay attacks
+	// TODO
 
 	// validation of the proposal message knowing it's of type CHAINCODE
 	chaincodeHdrExt, err := e.validateChaincodeProposalMessage(prop, hdr)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return hdr, chaincodeHdrExt, err
+	return prop, hdr, chaincodeHdrExt, err
 }
 
 // ProcessProposal process the Proposal
-func (e *Endorser) ProcessProposal(ctx context.Context, prop *pb.Proposal) (*pb.ProposalResponse, error) {
+func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
 	// at first, we check whether the message is valid
 	// TODO: Do the checks performed by this function belong here or in the ESCC? From a security standpoint they should be performed as early as possible so here seems to be a good place
-	_, hdrExt, err := e.validateProposalMessage(prop)
+	prop, _, hdrExt, err := e.validateProposalMessage(signedProp)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
 	}

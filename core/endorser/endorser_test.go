@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
@@ -44,6 +45,8 @@ import (
 
 var testDBWrapper = db.NewTestDBWrapper()
 var endorserServer pb.EndorserServer
+var mspInstance msp.PeerMSP
+var signer msp.SigningIdentity
 
 //initialize peer and start up. If security==enabled, login as vp
 func initPeer() (net.Listener, error) {
@@ -120,13 +123,13 @@ func closeListenerAndSleep(l net.Listener) {
 
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
-func getProposal(cis *pb.ChaincodeInvocationSpec) (*pb.Proposal, error) {
-	return pbutils.CreateChaincodeProposal(cis, []byte("cert"))
+func getProposal(cis *pb.ChaincodeInvocationSpec, creator []byte) (*pb.Proposal, error) {
+	return pbutils.CreateChaincodeProposal(cis, creator)
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment
 //the payload is a ChaincodeDeploymentSpec
-func getDeployProposal(cds *pb.ChaincodeDeploymentSpec) (*pb.Proposal, error) {
+func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, creator []byte) (*pb.Proposal, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
@@ -136,7 +139,21 @@ func getDeployProposal(cds *pb.ChaincodeDeploymentSpec) (*pb.Proposal, error) {
 	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
 
 	//...and get the proposal for it
-	return getProposal(lcccSpec)
+	return getProposal(lcccSpec, creator)
+}
+
+func getSignedProposal(prop *pb.Proposal, signer msp.SigningIdentity) (*pb.SignedProposal, error) {
+	propBytes, err := pbutils.GetBytesProposal(prop)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := signer.Sign(propBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.SignedProposal{ProposalBytes: propBytes, Signature: signature}, nil
 }
 
 func getDeploymentSpec(context context.Context, spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
@@ -162,14 +179,25 @@ func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb
 		f(depSpec)
 	}
 
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
 	var prop *pb.Proposal
-	prop, err = getDeployProposal(depSpec)
+	prop, err = getDeployProposal(depSpec, creator)
+	if err != nil {
+		return nil, err
+	}
+
+	var signedProp *pb.SignedProposal
+	signedProp, err = getSignedProposal(prop, signer)
 	if err != nil {
 		return nil, err
 	}
 
 	var resp *pb.ProposalResponse
-	resp, err = endorserServer.ProcessProposal(context.Background(), prop)
+	resp, err = endorserServer.ProcessProposal(context.Background(), signedProp)
 
 	return resp, err
 }
@@ -177,13 +205,24 @@ func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb
 func invoke(spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
 	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
 	var prop *pb.Proposal
-	prop, err := getProposal(invocation)
+	prop, err = getProposal(invocation, creator)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", spec.ChaincodeID, err)
 	}
 
-	resp, err := endorserServer.ProcessProposal(context.Background(), prop)
+	var signedProp *pb.SignedProposal
+	signedProp, err = getSignedProposal(prop, signer)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := endorserServer.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
 		return nil, fmt.Errorf("Error endorsing %s: %s\n", spec.ChaincodeID, err)
 	}
@@ -324,6 +363,21 @@ func TestMain(m *testing.M) {
 	}
 
 	endorserServer = NewEndorserServer(nil)
+
+	// setup the MSP manager so that we can sign/verify
+	mspMgrConfigFile := "../../msp/peer-config.json"
+	msp.GetManager().Setup(mspMgrConfigFile)
+	mspId := "DEFAULT"
+	id := "PEER"
+	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+	signer, err = msp.GetManager().GetSigningIdentity(signingIdentity)
+	if err != nil {
+		os.Exit(-1)
+		fmt.Printf("Could not initialize msp/signer")
+		finitPeer(lis)
+		return
+	}
+
 	retVal := m.Run()
 
 	finitPeer(lis)
