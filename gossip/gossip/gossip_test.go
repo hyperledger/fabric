@@ -388,11 +388,8 @@ func TestMembershipConvergence(t *testing.T) {
 		pI := newGossipInstance(i, 100, i%3)
 		peers = append(peers, pI)
 	}
-	time.Sleep(time.Duration(3) * time.Second)
 
-	for i := 0; i < 15; i++ {
-		assert.Equal(t, 4, len(peers[i].GetPeers()))
-	}
+	waitUntilOrFail(t, checkPeersMembership(peers, 4))
 
 	connectorPeer := newGossipInstance(15, 100, 0, 1, 2)
 	connectorPeer.UpdateMetadata([]byte("Connector"))
@@ -460,8 +457,8 @@ func TestMembershipConvergence(t *testing.T) {
 
 func createDataMsg(seqnum uint64, data []byte, hash string) *proto.GossipMessage {
 	return &proto.GossipMessage{
-		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
+		Tag:   proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{
 				Payload: &proto.Payload{
