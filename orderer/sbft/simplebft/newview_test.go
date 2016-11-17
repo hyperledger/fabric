@@ -80,14 +80,17 @@ func TestXsetNoNew(t *testing.T) {
 		},
 	}
 
-	_, newBatch, ok := s.makeXset(vcs)
+	xset, prevBatch, ok := s.makeXset(vcs)
 	if !ok {
 		t.Fatal("no xset")
 	}
 
-	expect := s.makeBatch(3, prev.Hash(), nil)
-	if !reflect.DeepEqual(newBatch, expect) {
-		t.Errorf("batches don't match: %v, %v", newBatch.DecodeHeader(), expect.DecodeHeader())
+	if xset != nil {
+		t.Errorf("should have null request")
+	}
+
+	if !reflect.DeepEqual(prevBatch, prev) {
+		t.Errorf("batches don't match: %v, %v", prevBatch.DecodeHeader(), prev.DecodeHeader())
 	}
 }
 
@@ -132,8 +135,8 @@ func TestXsetByz0(t *testing.T) {
 	if !ok {
 		t.Error("no xset")
 	}
-	if !reflect.DeepEqual(xset, &Subject{&SeqView{3, 2}, []byte("val2")}) {
-		t.Error(xset)
+	if xset != nil {
+		t.Error("expected null request")
 	}
 }
 
@@ -170,7 +173,7 @@ func TestXsetByz2(t *testing.T) {
 		View:       3,
 		Pset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
 		Qset:       []*Subject{&Subject{&SeqView{1, 2}, []byte("val1")}},
-		Checkpoint: s.makeBatch(2, []byte("prev"), nil),
+		Checkpoint: s.makeBatch(1, []byte("prev"), nil),
 	})
 
 	xset, _, ok = s.makeXset(vcs)

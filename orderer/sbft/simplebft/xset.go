@@ -20,45 +20,29 @@ import "reflect"
 
 // makeXset returns a request subject that should be proposed as batch
 // for new-view.  If there is no request to select (null request), it
-// will return nil for subject, and return a newBatch instead.
+// will return nil for subject.  makeXset always returns a batch for
+// the most recent checkpoint.
 func (s *SBFT) makeXset(vcs []*ViewChange) (*Subject, *Batch, bool) {
 	// first select base commit (equivalent to checkpoint/low water mark)
-	// 1. need weak quorum
-	quora := make(map[uint64]int)
+	var best *Batch
 	for _, vc := range vcs {
-		quora[vc.Checkpoint.DecodeHeader().Seq] += 1
-	}
-	best := uint64(0)
-	found := false
-	for seq, count := range quora {
-		if count < s.oneCorrectQuorum() {
-			continue
-		}
-		// 2. need 2f+1 from S below (or equal to) seq
-		sum := 0
-		for seq2, count2 := range quora {
-			if seq2 <= seq {
-				sum += count2
-			}
-		}
-		if sum < s.noFaultyQuorum() {
-			continue
-		}
-		found = true
-		if seq > best {
-			best = seq
+		seq := vc.Checkpoint.DecodeHeader().Seq
+		if best == nil || seq > best.DecodeHeader().Seq {
+			best = vc.Checkpoint
 		}
 	}
-	if !found {
+
+	if best == nil {
 		return nil, nil, false
 	}
 
-	log.Debugf("xset starts at commit %d", best)
+	next := best.DecodeHeader().Seq + 1
+	log.Debugf("xset starts at commit %d", next)
 
 	// now determine which request could have executed for best+1
-	next := best + 1
 	var xset *Subject
 
+	// This is according to Castro's TOCS PBFT, Fig. 4
 	// find some message m in S,
 	emptycount := 0
 nextm:
@@ -141,19 +125,17 @@ nextm:
 			emptycount += 1
 		}
 	}
+
+	// B. otherwise select null request
+	// We actually don't select a null request, but report the most recent batch instead.
 	if emptycount >= s.noFaultyQuorum() {
-		log.Debugf("no pertinent requests found, creating null request for %d", next)
-		for _, vc := range vcs {
-			if vc.Checkpoint.DecodeHeader().Seq == best {
-				return nil, s.makeBatch(next, vc.Checkpoint.Hash(), nil), true
-			}
-		}
-		log.Errorf("did not find checkpoint for %d", best)
+		log.Debugf("no pertinent requests found for %d", next)
+		return nil, best, true
 	}
 
 	if xset == nil {
 		return nil, nil, false
 	}
 
-	return xset, nil, true
+	return xset, best, true
 }

@@ -320,13 +320,10 @@ func TestViewChangeXset(t *testing.T) {
 		if i == 3 {
 			continue
 		}
-		if len(a.batches) != 2 {
-			t.Fatal("expected execution of 1 null request + 1 batch")
+		if len(a.batches) != 1 {
+			t.Fatalf("expected execution of 1 batch: %v", a.batches)
 		}
-		if len(a.batches[0].Payloads) != 0 {
-			t.Error("not a null request")
-		}
-		if !reflect.DeepEqual([][]byte{r2}, a.batches[1].Payloads) {
+		if !reflect.DeepEqual([][]byte{r2}, a.batches[0].Payloads) {
 			t.Error("wrong request executed")
 		}
 	}
@@ -373,13 +370,13 @@ func TestRestart(t *testing.T) {
 	repls[1].Request(r3)
 	sys.Run()
 	for _, a := range adapters {
-		if len(a.batches) != 3 {
-			t.Fatalf("expected execution of 3 batches, %d got %v", a.id, a.batches)
+		if len(a.batches) != 2 {
+			t.Fatalf("expected execution of 2 batches, %d got %v", a.id, a.batches)
 		}
-		if !reflect.DeepEqual([][]byte{r1}, a.batches[1].Payloads) {
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
 			t.Error("wrong request executed (1)")
 		}
-		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2].Payloads) {
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[1].Payloads) {
 			t.Error("wrong request executed (2)")
 		}
 	}
@@ -442,13 +439,13 @@ func TestRestartAfterPrepare(t *testing.T) {
 	repls[1].Request(r3)
 	sys.Run()
 	for _, a := range adapters {
-		if len(a.batches) != 3 {
-			t.Fatal("expected execution of 3 batches")
+		if len(a.batches) != 2 {
+			t.Fatal("expected execution of 2 batches")
 		}
-		if !reflect.DeepEqual([][]byte{r1}, a.batches[1].Payloads) {
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
 			t.Error("wrong request executed (1)")
 		}
-		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2].Payloads) {
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[1].Payloads) {
 			t.Error("wrong request executed (2)")
 		}
 	}
@@ -511,13 +508,13 @@ func TestRestartAfterCommit(t *testing.T) {
 	repls[1].Request(r3)
 	sys.Run()
 	for _, a := range adapters {
-		if len(a.batches) != 3 {
-			t.Fatal("expected execution of 3 batches")
+		if len(a.batches) != 2 {
+			t.Fatal("expected execution of 2 batches")
 		}
-		if !reflect.DeepEqual([][]byte{r1}, a.batches[1].Payloads) {
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
 			t.Error("wrong request executed (1)")
 		}
-		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2].Payloads) {
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[1].Payloads) {
 			t.Error("wrong request executed (2)")
 		}
 	}
@@ -580,13 +577,13 @@ func TestRestartAfterCheckpoint(t *testing.T) {
 	repls[1].Request(r3)
 	sys.Run()
 	for _, a := range adapters {
-		if len(a.batches) != 3 {
-			t.Fatal("expected execution of 3 batches")
+		if len(a.batches) != 2 {
+			t.Fatal("expected execution of 2 batches")
 		}
-		if !reflect.DeepEqual([][]byte{r1}, a.batches[1].Payloads) {
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
 			t.Error("wrong request executed (1)")
 		}
-		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2].Payloads) {
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[1].Payloads) {
 			t.Error("wrong request executed (2)")
 		}
 	}
@@ -669,13 +666,13 @@ func TestErroneousViewChange(t *testing.T) {
 	repls[1].Request(r3)
 	sys.Run()
 	for _, a := range adapters {
-		if len(a.batches) != 3 {
-			t.Fatal("expected execution of 3 batches")
+		if len(a.batches) != 2 {
+			t.Fatal("expected execution of 2 batches")
 		}
-		if !reflect.DeepEqual([][]byte{r1}, a.batches[1].Payloads) {
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
 			t.Error("wrong request executed (1)")
 		}
-		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2].Payloads) {
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[1].Payloads) {
 			t.Error("wrong request executed (2)")
 		}
 	}
@@ -863,24 +860,15 @@ func TestViewChangeTimer(t *testing.T) {
 	repls[2].Request(r3)
 	sys.Run()
 	for _, a := range adapters {
-		offs := 0
+		if len(a.batches) != 2 {
+			t.Fatalf("%d: expected execution of 2 batches: %v", a.id, a.batches)
+		}
 		if a.id != 3 {
-			if len(a.batches) != 3 {
-				t.Fatalf("%d: expected execution of 3 batches: %v", a.id, a.batches)
-			}
 			if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
 				t.Errorf("%d: wrong request executed (1): %v", a.id, a.batches)
 			}
-		} else {
-			offs = -1
-			if len(a.batches) != 2 {
-				t.Fatalf("%d: expected execution of 3 batches: %v", a.id, a.batches)
-			}
 		}
-		if len(a.batches[1+offs].Payloads) != 0 {
-			t.Errorf("%d: not a null request: %v", a.id, a.batches[1])
-		}
-		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2+offs].Payloads) {
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[1].Payloads) {
 			t.Errorf("%d: wrong request executed (2): %v", a.id, a.batches)
 		}
 	}
@@ -933,13 +921,13 @@ func TestResendViewChange(t *testing.T) {
 	repls[1].Request(r3)
 	sys.Run()
 	for _, a := range adapters {
-		if len(a.batches) != 3 {
+		if len(a.batches) != 2 {
 			t.Fatal("expected execution of 2 batches")
 		}
-		if !reflect.DeepEqual([][]byte{r1}, a.batches[1].Payloads) {
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
 			t.Error("wrong request executed (1)")
 		}
-		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[2].Payloads) {
+		if !reflect.DeepEqual([][]byte{r2, r3}, a.batches[1].Payloads) {
 			t.Error("wrong request executed (2)")
 		}
 	}

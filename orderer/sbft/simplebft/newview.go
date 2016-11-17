@@ -37,15 +37,15 @@ func (s *SBFT) maybeSendNewView() {
 		}
 	}
 
-	xset, newBatch, ok := s.makeXset(vcs)
+	xset, _, ok := s.makeXset(vcs)
 	if !ok {
 		log.Debug("xset not yet sufficient")
 		return
 	}
 
 	var batch *Batch
-	if newBatch != nil {
-		batch = newBatch
+	if xset == nil {
+		// no need for batch, it is contained in the vset
 	} else if reflect.DeepEqual(s.cur.subject.Digest, xset.Digest) {
 		batch = s.cur.preprep.Batch
 	} else {
@@ -103,13 +103,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	if nv.Batch == nil {
-		log.Warningf("invalid new view from %d: no batch attached", src)
-		s.sendViewChange()
-		return
-	}
-
-	xset, newBatch, ok := s.makeXset(vcs)
+	xset, _, ok := s.makeXset(vcs)
 
 	if !ok || !reflect.DeepEqual(nv.Xset, xset) {
 		log.Warningf("invalid new view from %d: xset incorrect: %v, %v", src, nv.Xset, xset)
@@ -118,25 +112,26 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 	}
 
 	if nv.Xset == nil {
-		if !bytes.Equal(nv.Batch.Hash(), newBatch.Hash()) {
-			log.Warningf("invalid new view from %d: new batch for null request does not match: %x, %x, %v",
-				src, nv.Batch.Hash(), newBatch.Hash(), nv)
+		if nv.Batch != nil {
+			log.Warningf("invalid new view from %d: null request should come with null batch", src)
 			s.sendViewChange()
 			return
 		}
-	} else if !bytes.Equal(nv.Batch.Hash(), nv.Xset.Digest) {
+	} else if nv.Batch == nil || !bytes.Equal(nv.Batch.Hash(), nv.Xset.Digest) {
 		log.Warningf("invalid new view from %d: batch head hash does not match xset: %x, %x, %v",
 			src, hash(nv.Batch.Header), nv.Xset.Digest, nv)
 		s.sendViewChange()
 		return
 	}
 
-	_, err = s.checkBatch(nv.Batch, true, false)
-	if err != nil {
-		log.Warningf("invalid new view from %d: invalid batch, %s",
-			src, err)
-		s.sendViewChange()
-		return
+	if nv.Batch != nil {
+		_, err = s.checkBatch(nv.Batch, true, false)
+		if err != nil {
+			log.Warningf("invalid new view from %d: invalid batch, %s",
+				src, err)
+			s.sendViewChange()
+			return
+		}
 	}
 
 	s.replicaState[s.primaryIDView(nv.View)].newview = nv
@@ -162,12 +157,49 @@ func (s *SBFT) processNewView() {
 	s.activeView = true
 	s.discardBacklog(s.primaryID())
 
-	pp := &Preprepare{
-		Seq:   &SeqView{Seq: nv.Batch.DecodeHeader().Seq, View: s.view},
-		Batch: nv.Batch,
+	s.maybeDeliverUsingXset(nv)
+
+	// By now we cannot be waiting for any more outstanding
+	// messages.  after a new-view message, by definition all
+	// activity has acquiesced.  Prepare to accept a new request.
+	s.cur.checkpointDone = true
+	s.cur.subject.Seq.Seq = 0
+
+	log.Infof("replica %d now active in view %d; primary: %v", s.id, s.view, s.isPrimary())
+
+	if nv.Batch != nil {
+		pp := &Preprepare{
+			Seq:   &SeqView{Seq: nv.Batch.DecodeHeader().Seq, View: s.view},
+			Batch: nv.Batch,
+		}
+
+		s.handleCheckedPreprepare(pp)
+	} else {
+		log.Debugf("%+v", s)
+		s.cancelViewChangeTimer()
+		s.maybeSendNextBatch()
 	}
 
-	s.handleCheckedPreprepare(pp)
-
 	s.processBacklog()
+}
+
+func (s *SBFT) maybeDeliverUsingXset(nv *NewView) {
+	// TODO we could cache vcs in replicaState
+	vcs, err := s.checkNewViewSignatures(nv)
+	if err != nil {
+		panic(err)
+	}
+
+	_, prevBatch, ok := s.makeXset(vcs)
+	if !ok {
+		panic("invalid newview")
+	}
+	if s.sys.LastBatch().DecodeHeader().Seq < prevBatch.DecodeHeader().Seq {
+		if prevBatch.DecodeHeader().Seq == s.cur.subject.Seq.Seq {
+			// we just received a signature set for a request which we preprepared, but never delivered.
+			prevBatch.Payloads = s.cur.preprep.Batch.Payloads
+		}
+		s.cur.checkpointDone = true
+		s.sys.Deliver(prevBatch)
+	}
 }

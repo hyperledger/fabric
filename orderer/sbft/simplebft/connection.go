@@ -97,6 +97,8 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 			s.view = h.NewView.View
 			s.activeView = true
 		}
+
+		s.maybeDeliverUsingXset(h.NewView)
 	}
 
 	s.replicaState[src].hello = h
