@@ -141,6 +141,11 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 
 	s.replicaState[s.primaryIDView(nv.View)].newview = nv
 
+	if nv.View > s.view {
+		s.view = nv.View
+		s.activeView = false
+	}
+
 	s.processNewView()
 }
 
