@@ -1245,3 +1245,49 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 		t.Fatal("Failed verifying RSA signature. Signature not valid.")
 	}
 }
+
+func TestGetHashAndHashCompatibility(t *testing.T) {
+	csp := getBCCSP(t)
+
+	msg1 := []byte("abcd")
+	msg2 := []byte("efgh")
+	msg := []byte("abcdefgh")
+
+	digest1, err := csp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	digest2, err := csp.Hash(msg, nil)
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	if !bytes.Equal(digest1, digest2) {
+		t.Fatalf("Different hash computed. [%x][%x]", digest1, digest2)
+	}
+
+	h, err := csp.GetHash(nil)
+	if err != nil {
+		t.Fatalf("Failed getting hash.Hash instance [%s]", err)
+	}
+	h.Write(msg1)
+	h.Write(msg2)
+	digest3 := h.Sum(nil)
+
+	h2, err := csp.GetHash(&bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed getting SHA hash.Hash instance [%s]", err)
+	}
+	h2.Write(msg1)
+	h2.Write(msg2)
+	digest4 := h2.Sum(nil)
+
+	if !bytes.Equal(digest3, digest4) {
+		t.Fatalf("Different hash computed. [%x][%x]", digest3, digest4)
+	}
+
+	if !bytes.Equal(digest1, digest3) {
+		t.Fatalf("Different hash computed. [%x][%x]", digest1, digest3)
+	}
+}

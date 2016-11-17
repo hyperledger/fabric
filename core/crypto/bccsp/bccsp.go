@@ -16,7 +16,10 @@ limitations under the License.
 
 package bccsp
 
-import "crypto"
+import (
+	"crypto"
+	"hash"
+)
 
 // Key represents a cryptographic key
 type Key interface {
@@ -114,7 +117,12 @@ type BCCSP interface {
 	GetKey(ski []byte) (k Key, err error)
 
 	// Hash hashes messages msg using options opts.
+	// If opts is nil, the default hash function will be used.
 	Hash(msg []byte, opts HashOpts) (hash []byte, err error)
+
+	// GetHash returns and instance of hash.Hash using options opts.
+	// If opts is nil, the default hash function will be returned.
+	GetHash(opts HashOpts) (h hash.Hash, err error)
 
 	// Sign signs digest using key k.
 	// The opts argument should be appropriate for the algorithm used.
