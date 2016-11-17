@@ -39,7 +39,7 @@ func (s *SBFT) Connection(replica uint64) {
 	// commit, checkpoint so that the reconnecting replica can
 	// catch up on the in-flight batch.
 
-	batchheader, err := s.checkBatch(&batch, false)
+	batchheader, err := s.checkBatch(&batch, false, true)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +60,7 @@ func (s *SBFT) Connection(replica uint64) {
 }
 
 func (s *SBFT) handleHello(h *Hello, src uint64) {
-	bh, err := s.checkBatch(h.Batch, false)
+	bh, err := s.checkBatch(h.Batch, false, true)
 	if err != nil {
 		log.Warningf("invalid hello batch from %d: %s", src, err)
 		return

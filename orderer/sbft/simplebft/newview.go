@@ -128,7 +128,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	_, err = s.checkBatch(nv.Batch, true)
+	_, err = s.checkBatch(nv.Batch, true, false)
 	if err != nil {
 		log.Warningf("invalid new view from %d: invalid batch, %s",
 			src, err)

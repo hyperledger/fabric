@@ -170,7 +170,7 @@ func (t *testSystemAdapter) Restore(key string, out proto.Message) bool {
 
 func (t *testSystemAdapter) LastBatch() *Batch {
 	if len(t.batches) == 0 {
-		return t.receiver.(*SBFT).makeBatch(0, []byte("ROOTHASH"), nil)
+		return t.receiver.(*SBFT).makeBatch(0, nil, nil)
 	} else {
 		return t.batches[len(t.batches)-1]
 	}
