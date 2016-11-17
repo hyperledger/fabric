@@ -1,6 +1,6 @@
-### Steps to enable TLS for all sever (ECA , ACA , TLSCA , TCA) and between ACA client to server communications. 
+### 为所有CA服务以及ACA客户端和服务器之间的交互建立TLS的步骤：
 
-1. Go to **memebersrvc.yaml** file under the fabric/membersrvc directory and edit security section, that is: 
+1. 打开fabric/membersrvc目录下的**memebersrvc.yaml**文件，编辑security部分：
 ```
  security:
    serverhostoverride:
@@ -9,14 +9,14 @@
      cert:  
       file:
 ```
-To enable TLS between the ACA client and the rest of the CA Services set the `tls_enbabled` flag to `true`.
+把`tls_enbabled`设置为`true`可以在ACA客户端和CA服务的REST之间启用TLS。
 
-2. Next, set **serverhostoverride** field to match **CN** (Common Name) of TLS Server certificate. To extract the Common Name from TLS Server's certificate, for example using OpenSSL, you can use the following command:
+2. 下一步，把**serverhostoverride**设置为TLS服务端证书的**CN**（Common Name）。如果要从TLS服务端证书中获取Common Name，比如以使用OpenSSL的方式，可以执行下面的命令：
 
 ```
 openssl x509 -in <<certificate.crt -text -noout
 ```
-where `certficate.crt` is the Server Certificate. If you have openssl installed on the machine and everything went well, you should expect an output of the form:
+`certficate.crt`是服务端证书。如果你安装了openssl，而且能在电脑的任何位置执行openssl的话，那就可以得到如下格式的一个输出：
 
 ```
 Certificate:
@@ -61,6 +61,6 @@ Certificate:
         2e:a5:b1:23:10:65:81:96:b1:3b:79:d4:a6:12:fe:f2:69
 ```
 
-Now you can use that CN value (**www.example.com** above, for example) from the output and use it in the **serverhostoverride** field (under the security section of the membersrvc.yaml file)
+现在从输出中得到CN了（上例是**www.example.com**），把它设置成**serverhostoverride**的值。
 
-3. Last, make sure that path to the corresponding TLS Server Certificate is specified under `security.client.cert.file`
+3. 最后，确保`security.client.cert.file`正确的设置为TLS服务端证书的路径。
