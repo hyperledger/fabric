@@ -232,7 +232,7 @@ func TestNewGossipStateProvider_GossipingOneMessage(t *testing.T) {
 			return true
 		}
 		return false
-	}, defAntiEntropyInterval + 1 * time.Second)
+	}, 2 * defAntiEntropyInterval + 1 * time.Second)
 
 	block := peer.s.GetBlock(uint64(1))
 
