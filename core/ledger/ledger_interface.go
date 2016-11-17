@@ -79,7 +79,7 @@ type QueryExecutor interface {
 	GetState(namespace string, key string) ([]byte, error)
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
 	GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error)
-	// GetStateRangeScanIterator returns an iterator that contains all the key-values beteen given key ranges.
+	// GetStateRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
 	// The returned ResultsIterator contains results of type *KV
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
 	// GetTransactionsForKey returns an iterator that contains all the transactions that modified the given key.
@@ -87,6 +87,8 @@ type QueryExecutor interface {
 	GetTransactionsForKey(namespace string, key string) (ResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	ExecuteQuery(query string) (ResultsIterator, error)
+	// Done releases resources occupied by the QueryExecutor
+	Done()
 }
 
 // TxSimulator simulates a transaction on a consistent snapshot of the 'as recent state as possible'
@@ -101,10 +103,6 @@ type TxSimulator interface {
 	SetStateMultipleKeys(namespace string, kvs map[string][]byte) error
 	// ExecuteUpdate for supporting rich data model (see comments on QueryExecutor above)
 	ExecuteUpdate(query string) error
-	// CopyState copies the entire state in the sourceNamespace to the targetNamespace. This can be a large payload
-	CopyState(sourceNamespace string, targetNamespace string) error
-	// Done releases resources occupied by the TxSimulator
-	Done()
 	// GetTxSimulationResults encapsulates the results of the transaction simulation.
 	// This should contain enough detail for
 	// - The update in the state that would be caused if the transaction is to be committed
