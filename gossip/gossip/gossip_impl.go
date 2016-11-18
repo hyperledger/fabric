@@ -474,7 +474,7 @@ func (da *discoveryAdapter) SendToPeer(peer *discovery.NetworkMember, msg *proto
 }
 
 func (da *discoveryAdapter) Ping(peer *discovery.NetworkMember) bool {
-	return da.c.Probe(peer.Endpoint, peer.PKIid) == nil
+	return da.c.Probe(&comm.RemotePeer{Endpoint: peer.Endpoint, PKIID: peer.PKIid}) == nil
 }
 
 func (da *discoveryAdapter) Accept() <-chan *proto.GossipMessage {

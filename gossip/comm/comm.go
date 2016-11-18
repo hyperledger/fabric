@@ -34,7 +34,7 @@ type Comm interface {
 	Send(msg *proto.GossipMessage, peers ...*RemotePeer)
 
 	// Probe probes a remote node and returns nil if its responsive
-	Probe(endpoint string, pkiID common.PKIidType) error
+	Probe(peer *RemotePeer) error
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// Each message from the channel can be used to send a reply back to the sender

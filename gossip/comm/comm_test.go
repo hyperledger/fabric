@@ -429,16 +429,16 @@ func TestProbe(t *testing.T) {
 	defer comm1.Stop()
 	comm2, _ := newCommInstance(6612, naiveSec)
 	time.Sleep(time.Duration(1) * time.Second)
-	assert.NoError(t, comm1.Probe("localhost:6612", []byte("localhost:6612")))
-	assert.Error(t, comm1.Probe("localhost:9012", []byte("localhost:9012")))
+	assert.NoError(t, comm1.Probe(&RemotePeer{Endpoint: "localhost:6612", PKIID: []byte("localhost:6612")}))
+	assert.Error(t, comm1.Probe(&RemotePeer{Endpoint: "localhost:9012", PKIID: []byte("localhost:9012")}))
 	comm2.Stop()
 	time.Sleep(time.Second)
-	assert.Error(t, comm1.Probe("localhost:6612", []byte("localhost:6612")))
+	assert.Error(t, comm1.Probe(&RemotePeer{Endpoint: "localhost:6612", PKIID: []byte("localhost:6612")}))
 	comm2, _ = newCommInstance(6612, naiveSec)
 	defer comm2.Stop()
 	time.Sleep(time.Duration(1) * time.Second)
-	assert.NoError(t, comm2.Probe("localhost:6611", []byte("localhost:6611")))
-	assert.NoError(t, comm1.Probe("localhost:6612", []byte("localhost:6612")))
+	assert.NoError(t, comm2.Probe(&RemotePeer{Endpoint: "localhost:6611", PKIID: []byte("localhost:6611")}))
+	assert.NoError(t, comm1.Probe(&RemotePeer{Endpoint: "localhost:6612", PKIID: []byte("localhost:6612")}))
 }
 
 func TestPresumedDead(t *testing.T) {
