@@ -192,39 +192,4 @@ func TestReconfigureGoodPath(t *testing.T) {
 	if !cm.validated {
 		t.Errorf("ConfigTx should have been validated before processing")
 	}
-
-	if !cm.applied {
-		t.Errorf("ConfigTx should have been applied after processing")
-	}
-}
-
-func TestReconfigureFailToApply(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
-	cm.applyErr = fmt.Errorf("Fail to apply")
-	batchSize := 2
-	bs := newPlainConsenter(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
-	done := make(chan struct{})
-	go func() {
-		bs.main()
-		close(done)
-	}()
-
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg1")}
-	bs.sendChan <- &cb.Envelope{Payload: configTx}
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg2")}
-
-	bs.halt()
-	<-done
-	expected := uint64(2)
-	if bs.rl.(rawledger.Reader).Height() != expected {
-		t.Fatalf("Expected %d blocks but got %d", expected, bs.rl.(rawledger.Reader).Height())
-	}
-
-	if !cm.validated {
-		t.Errorf("ConfigTx should have been validated before processing")
-	}
-
-	if !cm.applied {
-		t.Errorf("ConfigTx should tried to apply")
-	}
 }
