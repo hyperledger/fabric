@@ -250,18 +250,18 @@ func (c *commImpl) isStopping() bool {
 	return atomic.LoadInt32(&c.stopping) == int32(1)
 }
 
-func (c *commImpl) Probe(endpoint string, pkiID common.PKIidType) error {
+func (c *commImpl) Probe(peer *RemotePeer) error {
 	if c.isStopping() {
 		return fmt.Errorf("Stopping!")
 	}
-	c.logger.Debug("Entering, endpoint:", endpoint, "PKIID:", pkiID)
+	c.logger.Debug("Entering, endpoint:", peer.Endpoint, "PKIID:", peer.PKIID)
 	var err error
 
 	opts := c.opts
 	if opts == nil {
 		opts = []grpc.DialOption{grpc.WithInsecure(), grpc.WithTimeout(dialTimeout)}
 	}
-	cc, err := grpc.Dial(endpoint, append(opts, grpc.WithBlock())...)
+	cc, err := grpc.Dial(peer.Endpoint, append(opts, grpc.WithBlock())...)
 	if err != nil {
 		c.logger.Debug("Returning", err)
 		return err
