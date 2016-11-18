@@ -20,6 +20,7 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	logging "github.com/op/go-logging"
 )
@@ -42,7 +43,6 @@ func newNsRWs() *nsRWs {
 type LockBasedTxSimulator struct {
 	RWLockQueryExecutor
 	rwMap map[string]*nsRWs
-	done  bool
 }
 
 func (s *LockBasedTxSimulator) getOrCreateNsRWHolder(ns string) *nsRWs {
@@ -57,6 +57,7 @@ func (s *LockBasedTxSimulator) getOrCreateNsRWHolder(ns string) *nsRWs {
 
 // GetState implements method in interface `ledger.TxSimulator`
 func (s *LockBasedTxSimulator) GetState(ns string, key string) ([]byte, error) {
+	s.checkDone()
 	logger.Debugf("Get state [%s:%s]", ns, key)
 	nsRWs := s.getOrCreateNsRWHolder(ns)
 	// check if it was written
@@ -106,11 +107,24 @@ func (s *LockBasedTxSimulator) GetState(ns string, key string) ([]byte, error) {
 	return value, nil
 }
 
+// GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
+// startKey is included in the results and endKey is excluded. An empty startKey refers to the first available key
+// and an empty endKey refers to the last available key. For scanning all the keys, both the startKey and the endKey
+// can be supplied as empty strings. However, a full scan shuold be used judiciously for performance reasons.
+// TODO: The range scan queries still do not support Read-Your_Write (RYW)
+// semantics as it is still not agreed upon whether we want RYW model or not.
+func (s *LockBasedTxSimulator) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
+	s.checkDone()
+	scanner, err := s.txmgr.getCommittedRangeScanner(namespace, startKey, endKey)
+	if err != nil {
+		return nil, err
+	}
+	return &sKVItr{scanner, s}, nil
+}
+
 // SetState implements method in interface `ledger.TxSimulator`
 func (s *LockBasedTxSimulator) SetState(ns string, key string, value []byte) error {
-	if s.done {
-		panic("This method should not be called after calling Done()")
-	}
+	s.checkDone()
 	nsRWs := s.getOrCreateNsRWHolder(ns)
 	kvWrite, ok := nsRWs.writeMap[key]
 	if ok {
@@ -124,12 +138,6 @@ func (s *LockBasedTxSimulator) SetState(ns string, key string, value []byte) err
 // DeleteState implements method in interface `ledger.TxSimulator`
 func (s *LockBasedTxSimulator) DeleteState(ns string, key string) error {
 	return s.SetState(ns, key, nil)
-}
-
-// Done implements method in interface `ledger.TxSimulator`
-func (s *LockBasedTxSimulator) Done() {
-	s.done = true
-	s.txmgr.commitRWLock.RUnlock()
 }
 
 func (s *LockBasedTxSimulator) getTxReadWriteSet() *txmgmt.TxReadWriteSet {
@@ -186,15 +194,43 @@ func (s *LockBasedTxSimulator) GetTxSimulationResults() ([]byte, error) {
 
 // SetStateMultipleKeys implements method in interface `ledger.TxSimulator`
 func (s *LockBasedTxSimulator) SetStateMultipleKeys(namespace string, kvs map[string][]byte) error {
-	return errors.New("Not yet implemented")
-}
-
-// CopyState implements method in interface `ledger.TxSimulator`
-func (s *LockBasedTxSimulator) CopyState(sourceNamespace string, targetNamespace string) error {
-	return errors.New("Not yet implemented")
+	for k, v := range kvs {
+		if err := s.SetState(namespace, k, v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ExecuteUpdate implements method in interface `ledger.TxSimulator`
 func (s *LockBasedTxSimulator) ExecuteUpdate(query string) error {
 	return errors.New("Not supported by KV data model")
+}
+
+type sKVItr struct {
+	scanner   *kvScanner
+	simulator *LockBasedTxSimulator
+}
+
+// Next implements Next() method in ledger.ResultsIterator
+func (itr *sKVItr) Next() (ledger.QueryResult, error) {
+	committedKV, err := itr.scanner.next()
+	if err != nil {
+		return nil, err
+	}
+	if committedKV == nil {
+		return nil, nil
+	}
+	if committedKV.isDelete() {
+		return itr.Next()
+	}
+	nsRWs := itr.simulator.getOrCreateNsRWHolder(itr.scanner.namespace)
+	nsRWs.readMap[committedKV.key] = &kvReadCache{
+		&txmgmt.KVRead{Key: committedKV.key, Version: committedKV.version}, committedKV.value}
+	return &ledger.KV{Key: committedKV.key, Value: committedKV.value}, nil
+}
+
+// Close implements Close() method in ledger.ResultsIterator
+func (itr *sKVItr) Close() {
+	itr.scanner.close()
 }

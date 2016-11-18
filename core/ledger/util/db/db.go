@@ -23,7 +23,9 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	goleveldbutil "github.com/syndtr/goleveldb/leveldb/util"
 )
 
 var logger = logging.MustGetLogger("kvledger.db")
@@ -144,6 +146,11 @@ func (dbInst *DB) Delete(key []byte, sync bool) error {
 		return err
 	}
 	return nil
+}
+
+// GetIterator returns an iterator over key-value store. The iterator should be released after the use
+func (dbInst *DB) GetIterator(startKey []byte, endKey []byte) iterator.Iterator {
+	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts)
 }
 
 // WriteBatch writes a batch

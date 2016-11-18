@@ -20,18 +20,15 @@ import (
 	"os"
 	"testing"
 
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
+const testDBPath = "/tmp/test/hyperledger/fabric/core/ledger/util/db"
+
 func TestDBBasicWriteAndReads(t *testing.T) {
-	testDBPath := "/tmp/test/hyperledger/fabric/core/ledger/util/db"
-	if err := os.RemoveAll(testDBPath); err != nil {
-		t.Fatalf("Error:%s", err)
-	}
-	dbConf := &Conf{testDBPath}
-	defer func() { os.RemoveAll(testDBPath) }()
-	db := CreateDB(dbConf)
-	db.Open()
+	db := createTestDB(t)
 	defer db.Close()
 	db.Put([]byte("key1"), []byte("value1"), false)
 	db.Put([]byte("key2"), []byte("value2"), false)
@@ -47,4 +44,47 @@ func TestDBBasicWriteAndReads(t *testing.T) {
 	val, err = db.Get([]byte("key3"))
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, val, []byte("value3"))
+}
+
+func TestIterator(t *testing.T) {
+	db := createTestDB(t)
+	defer db.Close()
+	for i := 0; i < 10; i++ {
+		db.Put(createTestKey(i), createTestValue(i), false)
+	}
+
+	startKey := 2
+	endKey := 7
+	itr := db.GetIterator(createTestKey(startKey), createTestKey(endKey))
+	defer itr.Release()
+	var count = 0
+	itr.Next()
+	for i := startKey; itr.Valid(); itr.Next() {
+		k := itr.Key()
+		v := itr.Value()
+		t.Logf("Key=%s, value=%s", string(k), string(v))
+		testutil.AssertEquals(t, k, createTestKey(i))
+		testutil.AssertEquals(t, v, createTestValue(i))
+		i++
+		count++
+	}
+	testutil.AssertEquals(t, count, endKey-startKey)
+}
+
+func createTestKey(i int) []byte {
+	return []byte(fmt.Sprintf("key_%d", i))
+}
+
+func createTestValue(i int) []byte {
+	return []byte(fmt.Sprintf("value_%d", i))
+}
+
+func createTestDB(t *testing.T) *DB {
+	if err := os.RemoveAll(testDBPath); err != nil {
+		t.Fatalf("Error:%s", err)
+	}
+	dbConf := &Conf{testDBPath}
+	db := CreateDB(dbConf)
+	db.Open()
+	return db
 }

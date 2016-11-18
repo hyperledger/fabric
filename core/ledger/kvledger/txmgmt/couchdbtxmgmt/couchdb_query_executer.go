@@ -56,3 +56,8 @@ func (q *CouchDBQueryExecutor) GetTransactionsForKey(namespace string, key strin
 func (q *CouchDBQueryExecutor) ExecuteQuery(query string) (ledger.ResultsIterator, error) {
 	return nil, errors.New("Not supported by KV data model")
 }
+
+// Done implements method in interface `ledger.QueryExecutor`
+func (q *CouchDBQueryExecutor) Done() {
+	//TODO - acquire lock when constructing and release the lock here
+}

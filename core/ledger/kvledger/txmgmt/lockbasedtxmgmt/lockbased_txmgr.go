@@ -17,6 +17,7 @@ limitations under the License.
 package lockbasedtxmgmt
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 
@@ -28,9 +29,12 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
 var logger = logging.MustGetLogger("lockbasedtxmgmt")
+
+var compositeKeySep = []byte{0x00}
 
 // Conf - configuration for `LockBasedTxMgr`
 type Conf struct {
@@ -80,12 +84,14 @@ func NewLockBasedTxMgr(conf *Conf) *LockBasedTxMgr {
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewQueryExecutor() (ledger.QueryExecutor, error) {
-	return &RWLockQueryExecutor{txmgr}, nil
+	qe := &RWLockQueryExecutor{txmgr, false}
+	qe.txmgr.commitRWLock.RLock()
+	return qe, nil
 }
 
 // NewTxSimulator implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewTxSimulator() (ledger.TxSimulator, error) {
-	s := &LockBasedTxSimulator{RWLockQueryExecutor{txmgr}, make(map[string]*nsRWs), false}
+	s := &LockBasedTxSimulator{RWLockQueryExecutor{txmgr, false}, make(map[string]*nsRWs)}
 	s.txmgr.commitRWLock.RLock()
 	return s, nil
 }
@@ -259,6 +265,20 @@ func (txmgr *LockBasedTxMgr) getCommittedValueAndVersion(ns string, key string) 
 	return value, version, nil
 }
 
+func (txmgr *LockBasedTxMgr) getCommittedRangeScanner(namespace string, startKey string, endKey string) (*kvScanner, error) {
+	var compositeStartKey []byte
+	var compositeEndKey []byte
+	if startKey != "" {
+		compositeStartKey = constructCompositeKey(namespace, startKey)
+	}
+	if endKey != "" {
+		compositeEndKey = constructCompositeKey(namespace, endKey)
+	}
+
+	dbItr := txmgr.db.GetIterator(compositeStartKey, compositeEndKey)
+	return newKVScanner(namespace, dbItr), nil
+}
+
 func encodeValue(value []byte, version uint64) []byte {
 	versionBytes := proto.EncodeVarint(version)
 	deleteMarker := 0
@@ -285,7 +305,44 @@ func decodeValue(encodedValue []byte) ([]byte, uint64) {
 
 func constructCompositeKey(ns string, key string) []byte {
 	compositeKey := []byte(ns)
-	compositeKey = append(compositeKey, byte(0))
+	compositeKey = append(compositeKey, compositeKeySep...)
 	compositeKey = append(compositeKey, []byte(key)...)
 	return compositeKey
+}
+
+func splitCompositeKey(compositeKey []byte) (string, string) {
+	split := bytes.SplitN(compositeKey, compositeKeySep, 2)
+	return string(split[0]), string(split[1])
+}
+
+type kvScanner struct {
+	namespace string
+	dbItr     iterator.Iterator
+}
+
+type committedKV struct {
+	key     string
+	version uint64
+	value   []byte
+}
+
+func (cKV *committedKV) isDelete() bool {
+	return cKV.value == nil
+}
+
+func newKVScanner(namespace string, dbItr iterator.Iterator) *kvScanner {
+	return &kvScanner{namespace, dbItr}
+}
+
+func (scanner *kvScanner) next() (*committedKV, error) {
+	if !scanner.dbItr.Next() {
+		return nil, nil
+	}
+	_, key := splitCompositeKey(scanner.dbItr.Key())
+	value, version := decodeValue(scanner.dbItr.Value())
+	return &committedKV{key, version, value}, nil
+}
+
+func (scanner *kvScanner) close() {
+	scanner.dbItr.Release()
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
@@ -191,4 +192,245 @@ func testValueAndVersionEncodeing(t *testing.T, value []byte, version uint64) {
 	val, ver := decodeValue(encodedValue)
 	testutil.AssertEquals(t, val, value)
 	testutil.AssertEquals(t, ver, version)
+}
+
+func TestIterator(t *testing.T) {
+	testIterator(t, 10, 2, 7)
+	testIterator(t, 10, 1, 11)
+	testIterator(t, 10, 0, 0)
+	testIterator(t, 10, 5, 0)
+	testIterator(t, 10, 0, 5)
+}
+
+func testIterator(t *testing.T, numKeys int, startKeyNum int, endKeyNum int) {
+	cID := "cID"
+	env := newTestEnv(t)
+	defer env.Cleanup()
+	txMgr := NewLockBasedTxMgr(env.conf)
+	defer txMgr.Shutdown()
+	s, _ := txMgr.NewTxSimulator()
+	for i := 1; i <= numKeys; i++ {
+		k := createTestKey(i)
+		v := createTestValue(i)
+		t.Logf("Adding k=[%s], v=[%s]", k, v)
+		s.SetState(cID, k, v)
+	}
+	s.Done()
+	// validate and commit RWset
+	txRWSet := s.(*LockBasedTxSimulator).getTxReadWriteSet()
+	isValid, err := txMgr.validateTx(txRWSet)
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertSame(t, isValid, true)
+	txMgr.addWriteSetToBatch(txRWSet)
+	err = txMgr.Commit()
+	testutil.AssertNoError(t, err, "")
+
+	var startKey string
+	var endKey string
+	var begin int
+	var end int
+
+	if startKeyNum != 0 {
+		begin = startKeyNum
+		startKey = createTestKey(startKeyNum)
+	} else {
+		begin = 1 //first key in the db
+		startKey = ""
+	}
+
+	if endKeyNum != 0 {
+		endKey = createTestKey(endKeyNum)
+		end = endKeyNum
+	} else {
+		endKey = ""
+		end = numKeys + 1 //last key in the db
+	}
+
+	expectedCount := end - begin
+
+	queryExecuter, _ := txMgr.NewQueryExecutor()
+	itr, _ := queryExecuter.GetStateRangeScanIterator(cID, startKey, endKey)
+	count := 0
+	for {
+		kv, _ := itr.Next()
+		if kv == nil {
+			break
+		}
+		keyNum := begin + count
+		k := kv.(*ledger.KV).Key
+		v := kv.(*ledger.KV).Value
+		t.Logf("Retrieved k=%s, v=%s", k, v)
+		testutil.AssertEquals(t, k, createTestKey(keyNum))
+		testutil.AssertEquals(t, v, createTestValue(keyNum))
+		count++
+	}
+	testutil.AssertEquals(t, count, expectedCount)
+}
+
+func TestIteratorWithDeletes(t *testing.T) {
+	cID := "cID"
+	env := newTestEnv(t)
+	defer env.Cleanup()
+	txMgr := NewLockBasedTxMgr(env.conf)
+	defer txMgr.Shutdown()
+	s, _ := txMgr.NewTxSimulator()
+	for i := 1; i <= 10; i++ {
+		k := createTestKey(i)
+		v := createTestValue(i)
+		t.Logf("Adding k=[%s], v=[%s]", k, v)
+		s.SetState(cID, k, v)
+	}
+	s.Done()
+	// validate and commit RWset
+	txRWSet := s.(*LockBasedTxSimulator).getTxReadWriteSet()
+	isValid, err := txMgr.validateTx(txRWSet)
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertSame(t, isValid, true)
+	txMgr.addWriteSetToBatch(txRWSet)
+	err = txMgr.Commit()
+	testutil.AssertNoError(t, err, "")
+
+	s, _ = txMgr.NewTxSimulator()
+	s.DeleteState(cID, createTestKey(4))
+	s.Done()
+	// validate and commit RWset
+	txRWSet = s.(*LockBasedTxSimulator).getTxReadWriteSet()
+	isValid, err = txMgr.validateTx(txRWSet)
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertSame(t, isValid, true)
+	txMgr.addWriteSetToBatch(txRWSet)
+	err = txMgr.Commit()
+	testutil.AssertNoError(t, err, "")
+
+	queryExecuter, _ := txMgr.NewQueryExecutor()
+	itr, _ := queryExecuter.GetStateRangeScanIterator(cID, createTestKey(3), createTestKey(6))
+	defer itr.Close()
+	kv, _ := itr.Next()
+	testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(3))
+	kv, _ = itr.Next()
+	testutil.AssertEquals(t, kv.(*ledger.KV).Key, createTestKey(5))
+}
+
+func TestTxValidationWithItr(t *testing.T) {
+	cID := "cID"
+	env := newTestEnv(t)
+	defer env.Cleanup()
+	txMgr := NewLockBasedTxMgr(env.conf)
+	defer txMgr.Shutdown()
+
+	// simulate tx1
+	s1, _ := txMgr.NewTxSimulator()
+	for i := 1; i <= 10; i++ {
+		k := createTestKey(i)
+		v := createTestValue(i)
+		t.Logf("Adding k=[%s], v=[%s]", k, v)
+		s1.SetState(cID, k, v)
+	}
+	s1.Done()
+	// validate and commit RWset
+	txRWSet := s1.(*LockBasedTxSimulator).getTxReadWriteSet()
+	isValid, err := txMgr.validateTx(txRWSet)
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertSame(t, isValid, true)
+	txMgr.addWriteSetToBatch(txRWSet)
+	err = txMgr.Commit()
+	testutil.AssertNoError(t, err, "")
+
+	// simulate tx2 that reads key_001 and key_002
+	s2, _ := txMgr.NewTxSimulator()
+	itr, _ := s2.GetStateRangeScanIterator(cID, createTestKey(1), createTestKey(5))
+	// read key_001 and key_002
+	itr.Next()
+	itr.Next()
+	itr.Close()
+	s2.Done()
+
+	// simulate tx3 that reads key_004 and key_005
+	s3, _ := txMgr.NewTxSimulator()
+	itr, _ = s3.GetStateRangeScanIterator(cID, createTestKey(4), createTestKey(6))
+	// read key_001 and key_002
+	itr.Next()
+	itr.Next()
+	itr.Close()
+	s3.Done()
+
+	// simulate tx4 before committing tx2 and tx3. Modifies a key read by tx3
+	s4, _ := txMgr.NewTxSimulator()
+	s4.DeleteState(cID, createTestKey(5))
+	s4.Done()
+
+	// validate and commit RWset for tx4
+	txRWSet = s4.(*LockBasedTxSimulator).getTxReadWriteSet()
+	isValid, err = txMgr.validateTx(txRWSet)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error in validateTx(): %s", err))
+	testutil.AssertSame(t, isValid, true)
+	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.Commit()
+
+	//RWSet tx3 should not be invalid now
+	isValid, err = txMgr.validateTx(s3.(*LockBasedTxSimulator).getTxReadWriteSet())
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error in validateTx(): %s", err))
+	testutil.AssertSame(t, isValid, false)
+
+	// tx2 should still be valid
+	isValid, _ = txMgr.validateTx(s2.(*LockBasedTxSimulator).getTxReadWriteSet())
+	testutil.AssertSame(t, isValid, true)
+}
+
+func TestGetSetMultipeKeys(t *testing.T) {
+	cID := "cID"
+	env := newTestEnv(t)
+	defer env.Cleanup()
+	txMgr := NewLockBasedTxMgr(env.conf)
+	defer txMgr.Shutdown()
+
+	// simulate tx1
+	s1, _ := txMgr.NewTxSimulator()
+	multipleKeyMap := make(map[string][]byte)
+	for i := 1; i <= 10; i++ {
+		k := createTestKey(i)
+		v := createTestValue(i)
+		multipleKeyMap[k] = v
+	}
+	s1.SetStateMultipleKeys(cID, multipleKeyMap)
+	s1.Done()
+	// validate and commit RWset
+	txRWSet := s1.(*LockBasedTxSimulator).getTxReadWriteSet()
+	isValid, err := txMgr.validateTx(txRWSet)
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertSame(t, isValid, true)
+	txMgr.addWriteSetToBatch(txRWSet)
+	err = txMgr.Commit()
+	testutil.AssertNoError(t, err, "")
+
+	qe, _ := txMgr.NewQueryExecutor()
+	defer qe.Done()
+	multipleKeys := []string{}
+	for k := range multipleKeyMap {
+		multipleKeys = append(multipleKeys, k)
+	}
+	values, _ := qe.GetStateMultipleKeys(cID, multipleKeys)
+	testutil.AssertEquals(t, len(values), 10)
+	for i, v := range values {
+		testutil.AssertEquals(t, v, multipleKeyMap[multipleKeys[i]])
+	}
+
+	s2, _ := txMgr.NewTxSimulator()
+	defer s2.Done()
+	values, _ = s2.GetStateMultipleKeys(cID, multipleKeys[5:7])
+	testutil.AssertEquals(t, len(values), 2)
+	for i, v := range values {
+		testutil.AssertEquals(t, v, multipleKeyMap[multipleKeys[i+5]])
+	}
+}
+
+func createTestKey(i int) string {
+	if i == 0 {
+		return ""
+	}
+	return fmt.Sprintf("key_%03d", i)
+}
+
+func createTestValue(i int) []byte {
+	return []byte(fmt.Sprintf("value_%03d", i))
 }
