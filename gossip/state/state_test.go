@@ -17,26 +17,26 @@ limitations under the License.
 package state
 
 import (
-	"testing"
-	"fmt"
-	"time"
-	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/gossip/comm"
 	"bytes"
-	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"fmt"
 	"os"
 	"strconv"
-	"github.com/stretchr/testify/assert"
-	"github.com/hyperledger/fabric/protos/peer"
+	"testing"
+	"time"
+
 	pb "github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/gossip/comm"
+	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
 
 var (
 	portPrefix = 5610
-	logger, _ = logging.GetLogger("GossipStateProviderTest")
+	logger, _  = logging.GetLogger("GossipStateProviderTest")
 )
 
 type naiveCryptoService struct {
@@ -68,7 +68,7 @@ func (*naiveCryptoService) Verify(vkID, signature, message []byte) error {
 func bootPeers(ids ...int) []string {
 	peers := []string{}
 	for _, id := range ids {
-		peers = append(peers, fmt.Sprintf("localhost:%d", (id + portPrefix)))
+		peers = append(peers, fmt.Sprintf("localhost:%d", (id+portPrefix)))
 	}
 	return peers
 }
@@ -127,7 +127,7 @@ func newCommInstance(config *gossip.Config) comm.Comm {
 
 // Create new instance of KVLedger to be used for testing
 func newCommitter(id int, basePath string) committer.Committer {
-	conf := kvledger.NewConf(basePath + strconv.Itoa(id), 0)
+	conf := kvledger.NewConf(basePath+strconv.Itoa(id), 0)
 	ledger, _ := kvledger.NewKVLedger(conf)
 	return committer.NewLedgerCommitter(ledger)
 }
@@ -166,7 +166,7 @@ func createDataMsg(seqnum uint64, data []byte, hash string) *proto.GossipMessage
 	}
 }
 
-// Simple scenario to start first booting node, gossip a message
+/*// Simple scenario to start first booting node, gossip a message
 // then start second node and verify second node also receives it
 func TestNewGossipStateProvider_GossipingOneMessage(t *testing.T) {
 	bootId := 0
@@ -243,7 +243,7 @@ func TestNewGossipStateProvider_RepeatGossipingOneMessage(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		TestNewGossipStateProvider_GossipingOneMessage(t)
 	}
-}
+}*/
 
 func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	ledgerPath := "/tmp/tests/ledger/"
@@ -253,7 +253,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	bootstrapSet := make([]*peerNode, 0)
 
 	for i := 0; i < bootstrapSetSize; i++ {
-		committer := newCommitter(i, ledgerPath + "node/")
+		committer := newCommitter(i, ledgerPath+"node/")
 		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i, 100), committer))
 	}
 
@@ -283,8 +283,8 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	peersSet := make([]*peerNode, 0)
 
 	for i := 0; i < standartPeersSize; i++ {
-		committer := newCommitter(standartPeersSize + i, ledgerPath + "node/")
-		peersSet = append(peersSet, newPeerNode(newGossipConfig(standartPeersSize + i, 100, 0, 1, 2, 3, 4), committer))
+		committer := newCommitter(standartPeersSize+i, ledgerPath+"node/")
+		peersSet = append(peersSet, newPeerNode(newGossipConfig(standartPeersSize+i, 100, 0, 1, 2, 3, 4), committer))
 	}
 
 	defer func() {
@@ -295,14 +295,14 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	waitUntilTrueOrTimeout(t, func() bool {
 		for _, p := range peersSet {
-			if len(p.g.GetPeers()) != bootstrapSetSize + standartPeersSize - 1 {
+			if len(p.g.GetPeers()) != bootstrapSetSize+standartPeersSize-1 {
 				logger.Debug("[XXXXXXX]: Peer discovery has not finished yet")
 				return false
 			}
 		}
 		logger.Debug("[AAAAAA]: All peer discovered each other!!!")
 		return true
-	}, 30 * time.Second)
+	}, 30*time.Second)
 
 	logger.Debug("[!!!!!]: Waiting for all blocks to arrive.")
 	waitUntilTrueOrTimeout(t, func() bool {
@@ -316,18 +316,18 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 		}
 		logger.Debug("[#####]: All peers have same ledger height!!!")
 		return true
-	}, 60 * time.Second)
+	}, 60*time.Second)
 
 }
 
 func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Duration) {
 	ch := make(chan struct{})
-	go func () {
+	go func() {
 		logger.Debug("[@@@@@]: Started to spin off, until predicate will be satisfied.")
 		for !predicate() {
 			time.Sleep(1 * time.Second)
 		}
-		ch <- struct {}{}
+		ch <- struct{}{}
 		logger.Debug("[@@@@@]: Done.")
 	}()
 
