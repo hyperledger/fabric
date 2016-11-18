@@ -106,7 +106,7 @@ func GetModuleLogLevel(module string) (string, error) {
 	// flogging/logging.go
 	level := logging.GetLevel(module).String()
 
-	loggingLogger.Infof("Module '%s' logger enabled for log level: %s", module, level)
+	loggingLogger.Debugf("Module '%s' logger enabled for log level: %s", module, level)
 
 	return level, nil
 }
@@ -121,7 +121,7 @@ func SetModuleLogLevel(module string, logLevel string) (string, error) {
 		loggingLogger.Warningf("Invalid logging level: %s - ignored", logLevel)
 	} else {
 		logging.SetLevel(logging.Level(level), module)
-		loggingLogger.Infof("Module '%s' logger enabled for log level: %s", module, level)
+		loggingLogger.Debugf("Module '%s' logger enabled for log level: %s", module, level)
 	}
 
 	logLevelString := level.String()
