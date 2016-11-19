@@ -21,11 +21,11 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
-
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -47,12 +47,17 @@ type broadcasterImpl struct {
 	prevHash   []byte
 }
 
+type broadcastSessionResponder struct {
+	queue chan *ab.BroadcastResponse
+}
+
 func newBroadcaster(conf *config.TopLevel) Broadcaster {
+	genesisBlock, _ := static.New().GenesisBlock()
 	return &broadcasterImpl{
 		producer:   newProducer(conf),
 		config:     conf,
 		batchChan:  make(chan *cb.Envelope, conf.General.BatchSize),
-		messages:   [][]byte{[]byte("genesis")},
+		messages:   genesisBlock.GetData().Data,
 		nextNumber: 0,
 	}
 }
@@ -98,7 +103,6 @@ func (b *broadcasterImpl) sendBlock() error {
 	b.prevHash = block.Header.Hash()
 
 	blockBytes, err := proto.Marshal(block)
-
 	if err != nil {
 		logger.Fatalf("Error marshaling block: %s", err)
 	}
@@ -152,10 +156,6 @@ func (b *broadcasterImpl) recvRequests(stream ab.AtomicBroadcast_BroadcastServer
 		bsr.reply(cb.Status_SUCCESS) // TODO This shouldn't always be a success
 
 	}
-}
-
-type broadcastSessionResponder struct {
-	queue chan *ab.BroadcastResponse
 }
 
 func newBroadcastSessionResponder(context context.Context, stream ab.AtomicBroadcast_BroadcastServer, queueSize uint) *broadcastSessionResponder {
