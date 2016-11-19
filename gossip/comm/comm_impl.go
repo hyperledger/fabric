@@ -112,7 +112,7 @@ func NewCommInstanceWithServer(port int, sec SecurityProvider, pkID common.PKIid
 
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
 func NewCommInstance(s *grpc.Server, sec SecurityProvider, PKIID common.PKIidType, dialOpts ...grpc.DialOption) (Comm, error) {
-	commInst, err := NewCommInstanceWithServer(-1, sec, PKIID, dialOpts ...)
+	commInst, err := NewCommInstanceWithServer(-1, sec, PKIID, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -162,12 +162,12 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 
 	if stream, err := cl.GossipStream(context.Background()); err == nil {
 		pkiID, err := c.authenticateRemotePeer(stream)
-		if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
-			// PKIID is nil when we don't know the remote PKI id's
-			c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
-			return nil, fmt.Errorf("Authentication failure")
-		}
 		if err == nil {
+			if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
+				// PKIID is nil when we don't know the remote PKI id's
+				c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
+				return nil, fmt.Errorf("Authentication failure")
+			}
 			conn := newConnection(cl, cc, stream, nil)
 			conn.pkiID = pkiID
 			conn.logger = c.logger
