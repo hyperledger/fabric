@@ -17,19 +17,47 @@ limitations under the License.
 package kafka
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 func mockNewBroadcaster(t *testing.T, conf *config.TopLevel, seek int64, disk chan []byte) Broadcaster {
+	genesisBlock, _ := static.New().GenesisBlock()
+	wait := make(chan struct{})
+
 	mb := &broadcasterImpl{
 		producer:   mockNewProducer(t, conf, seek, disk),
 		config:     conf,
 		batchChan:  make(chan *cb.Envelope, conf.General.BatchSize),
-		messages:   [][]byte{[]byte("checkpoint")},
+		messages:   genesisBlock.GetData().Data,
 		nextNumber: uint64(seek),
 	}
+
+	go func() {
+		rxBlockBytes := <-disk
+		rxBlock := &cb.Block{}
+		if err := proto.Unmarshal(rxBlockBytes, rxBlock); err != nil {
+			panic(err)
+		}
+		if !proto.Equal(rxBlock.GetData(), genesisBlock.GetData()) {
+			panic(fmt.Errorf("Broadcaster not functioning as expected"))
+		}
+		close(wait)
+	}()
+
+	mb.once.Do(func() {
+		// Send the genesis block to create the topic
+		// otherwise consumers will throw an exception.
+		mb.sendBlock()
+		// Spawn the goroutine that cuts blocks
+		go mb.cutBlock(mb.config.General.BatchTimeout, mb.config.General.BatchSize)
+	})
+	<-wait
+
 	return mb
 }

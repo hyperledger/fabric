@@ -46,25 +46,17 @@ type broadcasterImpl struct {
 	prevHash   []byte
 }
 
-type broadcastSessionResponder struct {
-	queue chan *ab.BroadcastResponse
-}
-
 func newBroadcaster(conf *config.TopLevel) Broadcaster {
 	genesisBlock, _ := static.New().GenesisBlock()
-	return &broadcasterImpl{
+
+	b := &broadcasterImpl{
 		producer:   newProducer(conf),
 		config:     conf,
 		batchChan:  make(chan *cb.Envelope, conf.General.BatchSize),
 		messages:   genesisBlock.GetData().Data,
 		nextNumber: 0,
 	}
-}
 
-// Broadcast receives ordering requests by clients and sends back an
-// acknowledgement for each received message in order, indicating
-// success or type of failure
-func (b *broadcasterImpl) Broadcast(stream ab.AtomicBroadcast_BroadcastServer) error {
 	b.once.Do(func() {
 		// Send the genesis block to create the topic
 		// otherwise consumers will throw an exception.
@@ -72,6 +64,14 @@ func (b *broadcasterImpl) Broadcast(stream ab.AtomicBroadcast_BroadcastServer) e
 		// Spawn the goroutine that cuts blocks
 		go b.cutBlock(b.config.General.BatchTimeout, b.config.General.BatchSize)
 	})
+
+	return b
+}
+
+// Broadcast receives ordering requests by clients and sends back an
+// acknowledgement for each received message in order, indicating
+// success or type of failure
+func (b *broadcasterImpl) Broadcast(stream ab.AtomicBroadcast_BroadcastServer) error {
 	return b.recvRequests(stream)
 }
 
