@@ -166,46 +166,46 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		invocation.IdGenerationAlg = customIDGenAlg
 	}
 
+	endorserClient, err := common.GetEndorserClient(cmd)
+	if err != nil {
+		return fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
+	}
+
+	// TODO: how should we get signing ID from the command line?
+	mspID := "DEFAULT"
+	id := "PEER"
+	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspID}, Value: id}
+
+	// TODO: how should we obtain the config for the MSP from the command line? a hardcoded test config?
+	signer, err := msp.GetManager().GetSigningIdentity(signingIdentity)
+	if err != nil {
+		return fmt.Errorf("Error obtaining signing identity for %s: %s\n", signingIdentity, err)
+	}
+
+	creator, err := signer.Serialize()
+	if err != nil {
+		return fmt.Errorf("Error serializing identity for %s: %s\n", signingIdentity, err)
+	}
+
+	var prop *pb.Proposal
+	prop, err = putils.CreateProposalFromCIS(invocation, creator)
+	if err != nil {
+		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
+	}
+
+	var signedProp *pb.SignedProposal
+	signedProp, err = putils.GetSignedProposal(prop, signer)
+	if err != nil {
+		return fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
+	}
+
+	var proposalResp *pb.ProposalResponse
+	proposalResp, err = endorserClient.ProcessProposal(context.Background(), signedProp)
+	if err != nil {
+		return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+	}
+
 	if invoke {
-		endorserClient, err := common.GetEndorserClient(cmd)
-		if err != nil {
-			return fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
-		}
-
-		// TODO: how should we get signing ID from the command line?
-		mspID := "DEFAULT"
-		id := "PEER"
-		signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspID}, Value: id}
-
-		// TODO: how should we obtain the config for the MSP from the command line? a hardcoded test config?
-		signer, err := msp.GetManager().GetSigningIdentity(signingIdentity)
-		if err != nil {
-			return fmt.Errorf("Error obtaining signing identity for %s: %s\n", signingIdentity, err)
-		}
-
-		creator, err := signer.Serialize()
-		if err != nil {
-			return fmt.Errorf("Error serializing identity for %s: %s\n", signingIdentity, err)
-		}
-
-		var prop *pb.Proposal
-		prop, err = putils.CreateProposalFromCIS(invocation, creator)
-		if err != nil {
-			return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
-		}
-
-		var signedProp *pb.SignedProposal
-		signedProp, err = putils.GetSignedProposal(prop, signer)
-		if err != nil {
-			return fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
-		}
-
-		var proposalResp *pb.ProposalResponse
-		proposalResp, err = endorserClient.ProcessProposal(context.Background(), signedProp)
-		if err != nil {
-			return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
-		}
-
 		if proposalResp != nil {
 			// assemble a signed transaction (it's an Envelope message)
 			env, err := putils.CreateSignedTx(prop, signer, proposalResp)
@@ -218,8 +218,26 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 				return fmt.Errorf("Error sending transaction %s: %s\n", chainFuncName, err)
 			}
 		}
-
 		logger.Infof("Invoke result: %v", proposalResp)
+	} else {
+		if proposalResp == nil {
+			return fmt.Errorf("Error query %s by endorsing: %s\n", chainFuncName, err)
+		}
+
+		if chaincodeQueryRaw {
+			if chaincodeQueryHex {
+				err = errors.New("Options --raw (-r) and --hex (-x) are not compatible\n")
+				return
+			}
+			fmt.Print("Query Result (Raw): ")
+			os.Stdout.Write(proposalResp.Response.Payload)
+		} else {
+			if chaincodeQueryHex {
+				fmt.Printf("Query Result: %x\n", proposalResp.Response.Payload)
+			} else {
+				fmt.Printf("Query Result: %s\n", string(proposalResp.Response.Payload))
+			}
+		}
 	}
 
 	return nil
