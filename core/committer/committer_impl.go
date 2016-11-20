@@ -77,7 +77,7 @@ func (lc *LedgerCommitter) GetBlocks(blockSeqs []uint64) []*pb.Block2 {
 			logger.Errorf("Not able to acquire block num %d, from the ledger skipping...\n", seqNum)
 			continue
 		} else {
-			logger.Debug("Appending next ", blck, " to the resulting set")
+			logger.Debug("Appending next block with seqNum = ", seqNum, " to the resulting set")
 			blocks = append(blocks, blck)
 		}
 	}

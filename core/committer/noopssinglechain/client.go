@@ -17,7 +17,6 @@ limitations under the License.
 package noopssinglechain
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -32,7 +31,13 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/integration"
+	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/gossip/state"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -40,6 +45,7 @@ var logger *logging.Logger // package-level logger
 
 func init() {
 	logger = logging.MustGetLogger("committer")
+	logging.SetLevel(logging.DEBUG, logger.Module)
 }
 
 // DeliverService used to communicate with orderers to obtain
@@ -49,53 +55,137 @@ type DeliverService struct {
 	windowSize     uint64
 	unAcknowledged uint64
 	committer      *committer.LedgerCommitter
+
+	stateProvider state.GossipStateProvider
+	gossip        gossip.Gossip
+	conn          *grpc.ClientConn
+
+	stopChan chan bool
+}
+
+// StopDeliveryService sends stop to the delivery service reference
+func StopDeliveryService(service *DeliverService) {
+	if service != nil {
+		service.Stop()
+	}
 }
 
 // NewDeliverService construction function to create and initilize
 // delivery service instance
-func NewDeliverService() *DeliverService {
+func NewDeliverService(address string, grpcServer *grpc.Server) *DeliverService {
 	if viper.GetBool("peer.committer.enabled") {
 		logger.Infof("Creating committer for single noops endorser")
 
-		var opts []grpc.DialOption
-		opts = append(opts, grpc.WithInsecure())
-		opts = append(opts, grpc.WithTimeout(3*time.Second))
-		opts = append(opts, grpc.WithBlock())
-		endpoint := viper.GetString("peer.committer.ledger.orderer")
-		conn, err := grpc.Dial(endpoint, opts...)
-		if err != nil {
-			logger.Errorf("Cannot dial to %s, because of %s", endpoint, err)
-			return nil
-		}
-		var abc orderer.AtomicBroadcast_DeliverClient
-		abc, err = orderer.NewAtomicBroadcastClient(conn).Deliver(context.TODO())
-		if err != nil {
-			logger.Errorf("Unable to initialize atomic broadcast, due to %s", err)
-			return nil
-		}
-
 		deliverService := &DeliverService{
-			// Atomic Broadcast Deliver Clienet
-			client: abc,
 			// Instance of RawLedger
 			committer:  committer.NewLedgerCommitter(kvledger.GetLedger(string(chaincode.DefaultChain))),
 			windowSize: 10,
+			stopChan:   make(chan bool),
 		}
+
+		deliverService.initStateProvider(address, grpcServer)
+
 		return deliverService
 	}
 	logger.Infof("Committer disabled")
 	return nil
 }
 
-// Start the delivery service to read the block via delivery
-// protocol from the orderers
-func (d *DeliverService) Start() error {
-	if err := d.seekOldest(); err != nil {
+func (d *DeliverService) startDeliver() error {
+	logger.Info("Starting deliver service client")
+	err := d.initDeliver()
+
+	if err != nil {
+		logger.Errorf("Can't initiate deliver protocol [%s]", err)
 		return err
 	}
 
+	height, err := d.committer.LedgerHeight()
+	if err != nil {
+		logger.Errorf("Can't get legder height from committer [%s]", err)
+		return err
+	}
+
+	if height > 0 {
+		logger.Debugf("Starting deliver with block [%d]", height)
+		if err := d.seekLatestFromCommitter(height); err != nil {
+			return err
+		}
+
+	} else {
+		logger.Debug("Starting deliver with olders block")
+		if err := d.seekOldest(); err != nil {
+			return err
+		}
+
+	}
+
 	d.readUntilClose()
+
 	return nil
+}
+
+func (d *DeliverService) initDeliver() error {
+	opts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
+	endpoint := viper.GetString("peer.committer.ledger.orderer")
+	conn, err := grpc.Dial(endpoint, opts...)
+	if err != nil {
+		logger.Errorf("Cannot dial to %s, because of %s", endpoint, err)
+		return err
+	}
+	var abc orderer.AtomicBroadcast_DeliverClient
+	abc, err = orderer.NewAtomicBroadcastClient(conn).Deliver(context.TODO())
+	if err != nil {
+		logger.Errorf("Unable to initialize atomic broadcast, due to %s", err)
+		return err
+	}
+
+	// Atomic Broadcast Deliver Client
+	d.client = abc
+	d.conn = conn
+	return nil
+
+}
+
+func (d *DeliverService) stopDeliver() {
+	if d.conn != nil {
+		d.conn.Close()
+	}
+}
+
+func (d *DeliverService) initStateProvider(address string, grpcServer *grpc.Server) error {
+	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
+	logger.Debug("Initializing state provideer, endpoint = ", address, " bootstrap set = ", bootstrap)
+
+	gossip, gossipComm := integration.NewGossipComponent(address, grpcServer, bootstrap...)
+
+	d.gossip = gossip
+	d.stateProvider = state.NewGossipStateProvider(gossip, gossipComm, d.committer)
+	return nil
+}
+
+// Start the delivery service to read the block via delivery
+// protocol from the orderers
+func (d *DeliverService) Start() {
+	go d.checkLeaderAndRunDeliver()
+}
+
+// Stop all service and release resources
+func (d *DeliverService) Stop() {
+	d.stopChan <- true
+	d.stateProvider.Stop()
+	d.gossip.Stop()
+}
+
+func (d *DeliverService) checkLeaderAndRunDeliver() {
+
+	isLeader := viper.GetBool("peer.gossip.orgLeader")
+
+	if isLeader {
+		d.startDeliver()
+	} else {
+		<-d.stopChan
+	}
 }
 
 func (d *DeliverService) seekOldest() error {
@@ -104,6 +194,18 @@ func (d *DeliverService) seekOldest() error {
 			Seek: &orderer.SeekInfo{
 				Start:      orderer.SeekInfo_OLDEST,
 				WindowSize: d.windowSize,
+			},
+		},
+	})
+}
+
+func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
+	return d.client.Send(&orderer.DeliverUpdate{
+		Type: &orderer.DeliverUpdate_Seek{
+			Seek: &orderer.SeekInfo{
+				Start:           orderer.SeekInfo_SPECIFIED,
+				WindowSize:      d.windowSize,
+				SpecifiedNumber: height,
 			},
 		},
 	})
@@ -119,12 +221,13 @@ func (d *DeliverService) readUntilClose() {
 		switch t := msg.Type.(type) {
 		case *orderer.DeliverResponse_Error:
 			if t.Error == common.Status_SUCCESS {
-				fmt.Println("ERROR! Received success in error field")
+				logger.Warning("ERROR! Received success in error field")
 				return
 			}
-			fmt.Println("Got error ", t)
+			logger.Warning("Got error ", t)
 		case *orderer.DeliverResponse_Block:
 			block := &pb.Block2{}
+			seqNum := t.Block.Header.Number
 			for _, d := range t.Block.Data.Data {
 				if d != nil {
 					if env, err := putils.GetEnvelopeFromBlock(d); err != nil {
@@ -137,7 +240,9 @@ func (d *DeliverService) readUntilClose() {
 						// job for VSCC below
 						_, err := peer.ValidateTransaction(env)
 						if err != nil {
-							// TODO: this code needs to receive a bit more attention and discussion: it's not clear what it means if a transaction which causes a failure in validation is just dropped on the floor
+							// TODO: this code needs to receive a bit more attention and discussion:
+							// it's not clear what it means if a transaction which causes a failure
+							// in validation is just dropped on the floor
 							logger.Errorf("Invalid transaction, error %s", err)
 						} else {
 							// TODO: call VSCC now
@@ -148,24 +253,30 @@ func (d *DeliverService) readUntilClose() {
 							}
 						}
 					} else {
-						fmt.Printf("Nil tx from block\n")
+						logger.Warning("Nil tx from block")
 					}
 				}
 			}
-			// Once block is constructed need to commit into the ledger
-			if err = d.committer.CommitBlock(block); err != nil {
-				fmt.Printf("Got error while committing(%s)\n", err)
-			} else {
-				fmt.Printf("Commit success, created a block!\n")
-			}
+
+			numberOfPeers := len(d.gossip.GetPeers())
+			// Create payload with a block received
+			payload := createPayload(seqNum, block)
+			// Use payload to create gossip message
+			gossipMsg := createGossipMsg(payload)
+			logger.Debugf("Adding payload locally, buffer seqNum = [%d], peers number [%d]", seqNum, numberOfPeers)
+			// Add payload to local state payloads buffer
+			d.stateProvider.AddPayload(payload)
+			// Gossip messages with other nodes
+			logger.Debugf("Gossiping block [%d], peers number [%d]", seqNum, numberOfPeers)
+			d.gossip.Gossip(gossipMsg)
 
 			d.unAcknowledged++
 			if d.unAcknowledged >= d.windowSize/2 {
-				fmt.Println("Sending acknowledgement")
+				logger.Warningf("Sending acknowledgement [%d]", t.Block.Header.Number)
 				err = d.client.Send(&orderer.DeliverUpdate{
 					Type: &orderer.DeliverUpdate_Acknowledgement{
 						Acknowledgement: &orderer.Acknowledgement{
-							Number: t.Block.Header.Number,
+							Number: seqNum,
 						},
 					},
 				})
@@ -175,8 +286,28 @@ func (d *DeliverService) readUntilClose() {
 				d.unAcknowledged = 0
 			}
 		default:
-			fmt.Println("Received unknown: ", t)
+			logger.Warning("Received unknown: ", t)
 			return
 		}
+	}
+}
+
+func createGossipMsg(payload *gossip_proto.Payload) *gossip_proto.GossipMessage {
+	gossipMsg := &gossip_proto.GossipMessage{
+		Nonce: 0,
+		Content: &gossip_proto.GossipMessage_DataMsg{
+			DataMsg: &gossip_proto.DataMessage{
+				Payload: payload,
+			},
+		},
+	}
+	return gossipMsg
+}
+
+func createPayload(seqNum uint64, block2 *pb.Block2) *gossip_proto.Payload {
+	marshaledBlock, _ := proto.Marshal(block2)
+	return &gossip_proto.Payload{
+		Data:   marshaledBlock,
+		SeqNum: seqNum,
 	}
 }

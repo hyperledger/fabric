@@ -258,7 +258,7 @@ func launchKafka(conf *config.TopLevel) {
 	signal.Notify(signalChan, os.Interrupt)
 
 	for range signalChan {
-		fmt.Println("Server shutting down")
+		logger.Info("Server shutting down")
 		return
 	}
 }
