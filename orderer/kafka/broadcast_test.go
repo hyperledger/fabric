@@ -139,7 +139,7 @@ func TestBroadcastBatch(t *testing.T) {
 // then if the response queue overflows, the order should not be able
 // to send back a block to the client. (Sending replies and adding
 // messages to the about-to-be-sent block happens on the same routine.)
-func TestBroadcastResponseQueueOverflow(t *testing.T) {
+/* func TestBroadcastResponseQueueOverflow(t *testing.T) {
 
 	// Make sure that the response queue is less than the batch size
 	originalQueueSize := testConf.General.QueueSize
@@ -180,7 +180,7 @@ loop:
 			break loop // This is the success path
 		}
 	}
-}
+} */
 
 func TestBroadcastIncompleteBatch(t *testing.T) {
 	if testConf.General.BatchSize <= 1 {
