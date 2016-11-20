@@ -30,12 +30,11 @@ func TestConsumerInitWrong(t *testing.T) {
 	}
 }
 
-/* Disabling this until the upgrade to Go 1.7 kicks in
 func TestConsumerRecv(t *testing.T) {
 	t.Run("oldest", testConsumerRecvFunc(oldestOffset, oldestOffset))
 	t.Run("in-between", testConsumerRecvFunc(middleOffset, middleOffset))
 	t.Run("newest", testConsumerRecvFunc(newestOffset-1, newestOffset-1))
-} */
+}
 
 func testConsumerRecvFunc(given, expected int64) func(t *testing.T) {
 	return func(t *testing.T) {
