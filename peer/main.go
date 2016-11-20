@@ -121,7 +121,14 @@ func main() {
 
 	// Init the MSP
 	// TODO: determine the location of this config file
-	mspMgrConfigFile := os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/peer-config.json"
+	var mspMgrConfigFile string
+	if alternativeCfgPath != "" {
+		mspMgrConfigFile = alternativeCfgPath + "/msp/peer-config.json"
+	} else if _, err := os.Stat("./peer-config.json"); err == nil {
+		mspMgrConfigFile = "./peer-config.json"
+	} else {
+		mspMgrConfigFile = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/peer-config.json"
+	}
 	err = msp.GetManager().Setup(mspMgrConfigFile)
 	if err != nil {
 		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigFile, err))
