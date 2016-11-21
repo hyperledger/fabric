@@ -149,7 +149,7 @@ func (fl *fileLedger) Height() uint64 {
 }
 
 // Append creates a new block and appends it to the ledger
-func (fl *fileLedger) Append(messages []*cb.Envelope, proof []byte) *cb.Block {
+func (fl *fileLedger) Append(messages []*cb.Envelope, metadata [][]byte) *cb.Block {
 	data := &cb.BlockData{
 		Data: make([][]byte, len(messages)),
 	}
@@ -170,7 +170,7 @@ func (fl *fileLedger) Append(messages []*cb.Envelope, proof []byte) *cb.Block {
 		},
 		Data: data,
 		Metadata: &cb.BlockMetadata{
-			Metadata: [][]byte{proof},
+			Metadata: metadata,
 		},
 	}
 	fl.writeBlock(block)
