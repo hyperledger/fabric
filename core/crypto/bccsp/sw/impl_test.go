@@ -23,8 +23,6 @@ import (
 	"crypto"
 	"crypto/rsa"
 
-	"crypto/ecdsa"
-
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -387,7 +385,7 @@ func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
 	}
 
 	// Import the ecdsa.PublicKey
-	pk2, err := csp.KeyImport(pkRaw, &bccsp.ECDSAGoPublicKeyImportOpts{Temporary: true, PK: pub.(*ecdsa.PublicKey)})
+	pk2, err := csp.KeyImport(pub, &bccsp.ECDSAGoPublicKeyImportOpts{Temporary: true})
 	if err != nil {
 		t.Fatalf("Failed importing ECDSA public key [%s]", err)
 	}
@@ -543,8 +541,8 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 		},
 	}
 
-	signer := &signer.CryptoSigner{}
-	err = signer.Init(csp, k)
+	cryptoSigner := &signer.CryptoSigner{}
+	err = cryptoSigner.Init(csp, k)
 	if err != nil {
 		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
 	}
@@ -565,7 +563,7 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed converting raw to ECDSA.PublicKey [%s]", err)
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, signer)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, cryptoSigner)
 	if err != nil {
 		t.Fatalf("Failed generating self-signed certificate [%s]", err)
 	}
@@ -576,7 +574,7 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 	}
 
 	// Import the certificate's public key
-	pk2, err := csp.KeyImport(nil, &bccsp.X509PublicKeyImportOpts{Temporary: true, Cert: cert})
+	pk2, err := csp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 
 	if err != nil {
 		t.Fatalf("Failed importing ECDSA public key [%s]", err)
@@ -1086,7 +1084,7 @@ func TestRSAKeyImportFromRSAPublicKey(t *testing.T) {
 	}
 
 	// Import the RSA.PublicKey
-	pk2, err := csp.KeyImport(pkRaw, &bccsp.RSAGoPublicKeyImportOpts{Temporary: true, PK: pub.(*rsa.PublicKey)})
+	pk2, err := csp.KeyImport(pub, &bccsp.RSAGoPublicKeyImportOpts{Temporary: true})
 	if err != nil {
 		t.Fatalf("Failed importing RSA public key [%s]", err)
 	}
@@ -1182,8 +1180,8 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 		},
 	}
 
-	signer := &signer.CryptoSigner{}
-	err = signer.Init(csp, k)
+	cryptoSigner := &signer.CryptoSigner{}
+	err = cryptoSigner.Init(csp, k)
 	if err != nil {
 		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
 	}
@@ -1204,7 +1202,7 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed converting raw to RSA.PublicKey [%s]", err)
 	}
 
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, signer)
+	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, cryptoSigner)
 	if err != nil {
 		t.Fatalf("Failed generating self-signed certificate [%s]", err)
 	}
@@ -1215,7 +1213,7 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 	}
 
 	// Import the certificate's public key
-	pk2, err := csp.KeyImport(nil, &bccsp.X509PublicKeyImportOpts{Temporary: true, Cert: cert})
+	pk2, err := csp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 
 	if err != nil {
 		t.Fatalf("Failed importing RSA public key [%s]", err)

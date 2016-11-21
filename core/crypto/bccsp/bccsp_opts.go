@@ -16,12 +16,6 @@ limitations under the License.
 
 package bccsp
 
-import (
-	"crypto/ecdsa"
-	"crypto/rsa"
-	"crypto/x509"
-)
-
 const (
 	// ECDSA Elliptic Curve Digital Signature Algorithm (key gen, import, sign, verify),
 	// at default security level (see primitives package).
@@ -105,7 +99,6 @@ func (opts *ECDSAPrivateKeyImportOpts) Ephemeral() bool {
 // ECDSAGoPublicKeyImportOpts contains options for ECDSA key importation from ecdsa.PublicKey
 type ECDSAGoPublicKeyImportOpts struct {
 	Temporary bool
-	PK        *ecdsa.PublicKey
 }
 
 // Algorithm returns an identifier for the algorithm to be used
@@ -118,11 +111,6 @@ func (opts *ECDSAGoPublicKeyImportOpts) Algorithm() string {
 // false otherwise.
 func (opts *ECDSAGoPublicKeyImportOpts) Ephemeral() bool {
 	return opts.Temporary
-}
-
-// PublicKey returns the ecdsa.PublicKey to be imported.
-func (opts *ECDSAGoPublicKeyImportOpts) PublicKey() *ecdsa.PublicKey {
-	return opts.PK
 }
 
 // ECDSAReRandKeyOpts contains options for ECDSA key re-randomization.
@@ -280,7 +268,6 @@ func (opts *RSAKeyGenOpts) Ephemeral() bool {
 // ECDSAGoPublicKeyImportOpts contains options for RSA key importation from rsa.PublicKey
 type RSAGoPublicKeyImportOpts struct {
 	Temporary bool
-	PK        *rsa.PublicKey
 }
 
 // Algorithm returns an identifier for the algorithm to be used
@@ -295,15 +282,9 @@ func (opts *RSAGoPublicKeyImportOpts) Ephemeral() bool {
 	return opts.Temporary
 }
 
-// PublicKey returns the ecdsa.PublicKey to be imported.
-func (opts *RSAGoPublicKeyImportOpts) PublicKey() *rsa.PublicKey {
-	return opts.PK
-}
-
 // X509PublicKeyImportOpts contains options for importing public keys from an x509 certificate
 type X509PublicKeyImportOpts struct {
 	Temporary bool
-	Cert      *x509.Certificate
 }
 
 // Algorithm returns an identifier for the algorithm to be used
@@ -316,9 +297,4 @@ func (opts *X509PublicKeyImportOpts) Algorithm() string {
 // false otherwise.
 func (opts *X509PublicKeyImportOpts) Ephemeral() bool {
 	return opts.Temporary
-}
-
-// PublicKey returns the ecdsa.PublicKey to be imported.
-func (opts *X509PublicKeyImportOpts) Certificate() *x509.Certificate {
-	return opts.Cert
 }

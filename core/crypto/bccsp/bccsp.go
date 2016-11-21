@@ -110,7 +110,7 @@ type BCCSP interface {
 
 	// KeyImport imports a key from its raw representation using opts.
 	// The opts argument should be appropriate for the primitive used.
-	KeyImport(raw []byte, opts KeyImportOpts) (k Key, err error)
+	KeyImport(raw interface{}, opts KeyImportOpts) (k Key, err error)
 
 	// GetKey returns the key this CSP associates to
 	// the Subject Key Identifier ski.
