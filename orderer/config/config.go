@@ -104,7 +104,7 @@ var defaults = TopLevel{
 		QueueSize:     1000,
 		MaxWindowSize: 1000,
 		ListenAddress: "127.0.0.1",
-		ListenPort:    5151,
+		ListenPort:    7050,
 		GenesisMethod: "static",
 		Profile: Profile{
 			Enabled: false,
@@ -203,6 +203,7 @@ func Load() *TopLevel {
 	config.AddConfigPath("../../.")
 	config.AddConfigPath("../orderer/")
 	config.AddConfigPath("../../orderer/")
+	config.AddConfigPath("/etc/hyperledger/fabric/")
 	// Path to look for the config file in based on GOPATH
 	gopath := os.Getenv("GOPATH")
 	for _, p := range filepath.SplitList(gopath) {

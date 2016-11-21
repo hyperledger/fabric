@@ -237,6 +237,6 @@ def generateBroadcastMessages(numToGenerate = 1, timeToHoldOpen = 1):
 
 
 def getGRPCChannel(ipAddress):
-    channel = implementations.insecure_channel(ipAddress, 5005)
+    channel = implementations.insecure_channel(ipAddress, 7050)
     print("Returning GRPC for address: {0}".format(ipAddress))
     return channel
