@@ -17,6 +17,7 @@ limitations under the License.
 package backend
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sort"
@@ -37,6 +38,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/asn1"
+	"encoding/gob"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/rawledger"
@@ -47,6 +49,10 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 )
+
+const headerIndex = 0
+const signaturesIndex = 1
+const metadataLen = 2
 
 var logger = logging.MustGetLogger("backend")
 
@@ -289,9 +295,6 @@ func (t *Backend) Timer(d time.Duration, tf func()) s.Canceller {
 
 // Deliver writes the ledger
 func (t *Backend) Deliver(batch *s.Batch) {
-	// TODO: proof
-	// TODO: header
-	// proof := batch.Signatures[0]
 	blockContents := make([]*cb.Envelope, 0, len(batch.Payloads))
 	for _, p := range batch.Payloads {
 		envelope := &cb.Envelope{}
@@ -302,7 +305,12 @@ func (t *Backend) Deliver(batch *s.Batch) {
 			logger.Warningf("Payload cannot be unmarshalled.")
 		}
 	}
-	t.ledger.Append(blockContents, nil)
+	// This a quick and dirty solution to make it work.
+	// SBFT needs to use Rawledger's structures and signatures over the Block.
+	metadata := make([][]byte, metadataLen)
+	metadata[headerIndex] = batch.Header
+	metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
+	t.ledger.Append(blockContents, metadata)
 }
 
 func (t *Backend) Persist(key string, data proto.Message) {
@@ -333,8 +341,8 @@ func (t *Backend) LastBatch() *s.Batch {
 	if status != cb.Status_SUCCESS {
 		panic("Fatal ledger error: unable to get last block.")
 	}
-	header := []byte{}
-	sgns := make(map[uint64][]byte)
+	header := getHeader(block.Metadata)
+	sgns := decodeSignatures(getEncodedSignatures(block.Metadata))
 	batch := s.Batch{Header: header, Payloads: data, Signatures: sgns}
 	return &batch
 }
@@ -403,4 +411,42 @@ func CheckSig(publicKey crypto.PublicKey, data []byte, sig []byte) error {
 	default:
 		return fmt.Errorf("Unsupported public key type.")
 	}
+}
+
+func getHeader(metadata *cb.BlockMetadata) []byte {
+	if metadata == nil || len(metadata.Metadata) < metadataLen {
+		return nil
+	}
+	return metadata.Metadata[headerIndex]
+}
+
+func getEncodedSignatures(metadata *cb.BlockMetadata) []byte {
+	if metadata == nil || len(metadata.Metadata) < metadataLen {
+		return nil
+	}
+	return metadata.Metadata[signaturesIndex]
+}
+
+func encodeSignatures(signatures map[uint64][]byte) []byte {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(signatures)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func decodeSignatures(encodedSignatures []byte) map[uint64][]byte {
+	if encodedSignatures == nil {
+		return nil
+	}
+	buf := bytes.NewBuffer(encodedSignatures)
+	var r map[uint64][]byte
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&r)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }
