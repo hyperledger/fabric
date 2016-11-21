@@ -62,8 +62,9 @@ K := $(foreach exec,$(EXECUTABLES),\
 
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | sort | uniq)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
+PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = src ccenv peer javaenv orderer
+IMAGES = peer orderer ccenv javaenv
 
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
@@ -132,14 +133,9 @@ build/bin/chaintool: Makefile
 	@mkdir -p $(@D)
 	@cp $^ $@
 
-# JIRA FAB-243 - Mark build/docker/bin artifacts explicitly as secondary
-#                since they are never referred to directly. This prevents
-#                the makefile from deleting them inadvertently.
-.SECONDARY: build/docker/bin/peer build/docker/bin/orderer
-
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
-build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
+build/docker/bin/%: $(PROJECT_FILES)
 	$(eval TARGET = ${patsubst build/docker/bin/%,%,${@}})
 	@echo "Building $@"
 	@mkdir -p build/docker/bin build/docker/pkg
@@ -147,7 +143,8 @@ build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
 		--user=$(UID) \
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/pkg):/opt/gopath/pkg \
-		hyperledger/fabric-src:$(DOCKER_TAG) \
+		-v $(abspath .):/opt/gopath/src/$(PKGNAME) \
+		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		go install -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
 
@@ -165,75 +162,48 @@ build/bin/%: $(PROJECT_FILES)
 	@echo "Binary available as $@"
 	@touch $@
 
-# Special override for src-image
-build/image/src/.dummy: $(PROJECT_FILES)
-	@echo "Building docker src-image"
-	@mkdir -p $(@D)
-	@cat images/src/Dockerfile.in \
-		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
-		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
-		> $(@D)/Dockerfile
-	@git ls-files | tar -jcT - > $(@D)/gopath.tar.bz2
-	docker build -t $(PROJECT_NAME)-src $(@D)
-	docker tag $(PROJECT_NAME)-src $(PROJECT_NAME)-src:$(DOCKER_TAG)
-	@touch $@
+# payload definitions'
+build/image/ccenv/payload:      build/docker/bin/protoc-gen-go \
+				build/bin/chaintool \
+				build/goshim.tar.bz2
+build/image/javaenv/payload:    build/javashim.tar.bz2 \
+				build/protos.tar.bz2 \
+				settings.gradle
+build/image/peer/payload:       build/docker/bin/peer \
+				peer/core.yaml \
+				msp/peer-config.json
+build/image/orderer/payload:    build/docker/bin/orderer \
+				orderer/orderer.yaml
 
-# Special override for ccenv-image (chaincode-environment)
-build/image/ccenv/.dummy: build/image/ccenv/bin/protoc-gen-go build/image/ccenv/bin/chaintool build/image/ccenv/goshim.tar.bz2 Makefile
-	@echo "Building docker ccenv-image"
-	@cat images/ccenv/Dockerfile.in \
-		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
-		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
-		> $(@D)/Dockerfile
-	docker build -t $(PROJECT_NAME)-ccenv $(@D)
-	docker tag $(PROJECT_NAME)-ccenv $(PROJECT_NAME)-ccenv:$(DOCKER_TAG)
-	@touch $@
+build/image/%/payload:
+	mkdir -p $@
+	cp $^ $@
 
-# Special override for java-image
-# Following items are packed and sent to docker context while building image
-# 1. Java shim layer source code
-# 2. Proto files used to generate java classes
-# 3. Gradle settings file
-build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
-	@echo "Building docker javaenv-image"
-	@mkdir -p $(@D)
-	@cat images/javaenv/Dockerfile.in \
-		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
-		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
-		> $(@D)/Dockerfile
-	# Following items are packed and sent to docker context while building image
-	# 1. Java shim layer source code
-	# 2. Proto files used to generate java classes
-	# 3. Gradle settings file
-	@git ls-files core/chaincode/shim/java | tar -jcT - > $(@D)/javashimsrc.tar.bz2
-	@git ls-files protos core/chaincode/shim/table.proto settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
-	docker build -t $(PROJECT_NAME)-javaenv $(@D)
-	docker tag $(PROJECT_NAME)-javaenv $(PROJECT_NAME)-javaenv:$(DOCKER_TAG)
-	@touch $@
-
-# Default rule for image creation
-build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
+build/image/%/.dummy: Makefile build/image/%/payload
 	$(eval TARGET = ${patsubst build/image/%/.dummy,%,${@}})
 	@echo "Building docker $(TARGET)-image"
-	@mkdir -p $(@D)/bin
-	@cat images/app/Dockerfile.in \
+	@cat images/$(TARGET)/Dockerfile.in \
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
-	cp build/docker/bin/$(TARGET) $(@D)/bin
 	docker build -t $(PROJECT_NAME)-$(TARGET) $(@D)
 	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
-%/goshim.tar.bz2: $(GOSHIM_DEPS) Makefile
+build/goshim.tar.bz2: $(GOSHIM_DEPS)
 	@echo "Creating $@"
 	@tar -jhc -C $(GOPATH)/src $(patsubst $(GOPATH)/src/%,%,$(GOSHIM_DEPS)) > $@
+
+build/javashim.tar.bz2: $(JAVASHIM_DEPS)
+build/protos.tar.bz2: $(PROTOS)
+
+build/%.tar.bz2:
+	@echo "Creating $@"
+	@tar -jc $^ > $@
 
 .PHONY: protos
 protos: gotools
 	./scripts/compile_protos.sh
-
-src-image-clean: ccenv-image-clean peer-image-clean orderer-image-clean
 
 %-image-clean:
 	$(eval TARGET = ${patsubst %-image-clean,%,${@}})

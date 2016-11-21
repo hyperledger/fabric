@@ -1,3 +1,3 @@
 FROM hyperledger/fabric-baseimage:_BASE_TAG_
-COPY bin/* /usr/local/bin/
-ADD goshim.tar.bz2 $GOPATH/src/
+COPY payload/chaintool payload/protoc-gen-go /usr/local/bin/
+ADD payload/goshim.tar.bz2 $GOPATH/src/
