@@ -342,10 +342,10 @@ func TestDeployAndInvoke(t *testing.T) {
 		t.Fail()
 		t.Logf("Error invoking transaction: %s", err)
 		return
-	} else {
-		fmt.Printf("Invoke test passed\n")
-		t.Logf("Invoke test passed")
 	}
+
+	fmt.Printf("Invoke test passed\n")
+	t.Logf("Invoke test passed")
 
 	chaincode.GetChain(chaincode.DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 }
@@ -362,14 +362,14 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	endorserServer = NewEndorserServer(nil)
+	endorserServer = NewEndorserServer()
 
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigFile := "../../msp/peer-config.json"
 	msp.GetManager().Setup(mspMgrConfigFile)
-	mspId := "DEFAULT"
+	mspID := "DEFAULT"
 	id := "PEER"
-	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspID}, Value: id}
 	signer, err = msp.GetManager().GetSigningIdentity(signingIdentity)
 	if err != nil {
 		os.Exit(-1)

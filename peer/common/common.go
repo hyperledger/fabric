@@ -27,16 +27,6 @@ import (
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
 const UndefinedParamValue = ""
 
-// GetDevopsClient returns a new client connection for this peer
-func GetDevopsClient(cmd *cobra.Command) (pb.DevopsClient, error) {
-	clientConn, err := peer.NewPeerClientConnection()
-	if err != nil {
-		return nil, fmt.Errorf("Error trying to connect to local peer: %s", err)
-	}
-	devopsClient := pb.NewDevopsClient(clientConn)
-	return devopsClient, nil
-}
-
 // GetEndorserClient returns a new endorser client connection for this peer
 func GetEndorserClient(cmd *cobra.Command) (pb.EndorserClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()

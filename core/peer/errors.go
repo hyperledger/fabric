@@ -30,11 +30,3 @@ type DuplicateHandlerError struct {
 func (d *DuplicateHandlerError) Error() string {
 	return fmt.Sprintf("Duplicate Handler error: %s", d.To)
 }
-
-func newDuplicateHandlerError(msgHandler MessageHandler) error {
-	to, err := msgHandler.To()
-	if err != nil {
-		return fmt.Errorf("Error creating Duplicate Handler error: %s", err)
-	}
-	return &DuplicateHandlerError{To: to}
-}

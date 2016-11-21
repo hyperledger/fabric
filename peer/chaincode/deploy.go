@@ -21,7 +21,6 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -50,9 +49,7 @@ func deploy(cmd *cobra.Command) (*pb.ProposalResponse, error) {
 		return nil, err
 	}
 
-	ctxt := context.Background()
-
-	cds, err := core.GetChaincodeBytes(ctxt, spec)
+	cds, err := getChaincodeBytes(spec)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
@@ -63,9 +60,9 @@ func deploy(cmd *cobra.Command) (*pb.ProposalResponse, error) {
 	}
 
 	// TODO: how should we get signing ID from the command line?
-	mspId := "DEFAULT"
+	mspID := "DEFAULT"
 	id := "PEER"
-	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspID}, Value: id}
 
 	// TODO: how should we obtain the config for the MSP from the command line? a hardcoded test config?
 	signer, err := msp.GetManager().GetSigningIdentity(signingIdentity)
@@ -89,7 +86,7 @@ func deploy(cmd *cobra.Command) (*pb.ProposalResponse, error) {
 		return nil, fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
 	}
 
-	proposalResponse, err := endorserClient.ProcessProposal(ctxt, signedProp)
+	proposalResponse, err := endorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
 		return nil, fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
 	}
