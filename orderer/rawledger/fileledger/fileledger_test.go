@@ -44,11 +44,12 @@ type testEnv struct {
 }
 
 func initialize(t *testing.T) (*testEnv, *fileLedger) {
-	name, err := ioutil.TempDir("", "hyperledger")
+	name, err := ioutil.TempDir("", "hyperledger_fabric")
 	if err != nil {
 		t.Fatalf("Error creating temp dir: %s", err)
 	}
-	return &testEnv{location: name, t: t}, New(name, genesisBlock).(*fileLedger)
+	_, fl := New(name, genesisBlock)
+	return &testEnv{location: name, t: t}, fl.(*fileLedger)
 }
 
 func (tev *testEnv) tearDown() {
@@ -77,7 +78,8 @@ func TestReinitialization(t *testing.T) {
 	tev, ofl := initialize(t)
 	defer tev.tearDown()
 	ofl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
-	fl := New(tev.location, genesisBlock).(*fileLedger)
+	_, flt := New(tev.location, genesisBlock)
+	fl := flt.(*fileLedger)
 	if fl.height != 2 {
 		t.Fatalf("Block height should be 2")
 	}

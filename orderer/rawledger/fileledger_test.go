@@ -39,35 +39,35 @@ func init() {
 	testables = append(testables, &fileLedgerTestEnv{})
 }
 
-type fileLedgerFactory struct {
+type fileLedgerTestFactory struct {
 	location string
 }
 
 type fileLedgerTestEnv struct {
 }
 
-func (env *fileLedgerTestEnv) Initialize() (ledgerFactory, error) {
+func (env *fileLedgerTestEnv) Initialize() (ledgerTestFactory, error) {
 	var err error
 	location, err := ioutil.TempDir("", "hyperledger")
 	if err != nil {
 		return nil, err
 	}
-	return &fileLedgerFactory{location: location}, nil
+	return &fileLedgerTestFactory{location: location}, nil
 }
 
 func (env *fileLedgerTestEnv) Name() string {
 	return "fileledger"
 }
 
-func (env *fileLedgerFactory) Destroy() error {
+func (env *fileLedgerTestFactory) Destroy() error {
 	err := os.RemoveAll(env.location)
 	return err
 }
 
-func (env *fileLedgerFactory) Persistent() bool {
+func (env *fileLedgerTestFactory) Persistent() bool {
 	return true
 }
 
-func (env *fileLedgerFactory) New() ReadWriter {
+func (env *fileLedgerTestFactory) New() (Factory, ReadWriter) {
 	return fileledger.New(env.location, genesisBlock)
 }
