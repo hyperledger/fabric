@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"sync"
 
-	"encoding/asn1"
-
 	"github.com/op/go-logging"
 )
 
@@ -139,6 +137,7 @@ func (mgr *peerMspManagerImpl) GetSigningIdentity(identifier *IdentityIdentifier
 }
 
 func (mgr *peerMspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, error) {
+	/*
 	// We first deserialize to a SerializedIdentity to get the MSP ID
 	sId := &SerializedIdentity{}
 	_, err := asn1.Unmarshal(serializedID, sId)
@@ -154,6 +153,8 @@ func (mgr *peerMspManagerImpl) DeserializeIdentity(serializedID []byte) (Identit
 
 	// if we have this MSP, we ask it to deserialize
 	return msp.DeserializeIdentity(sId.IdBytes)
+	*/
+	return mgr.mspsMap["DEFAULT"].DeserializeIdentity(serializedID) // FIXME!
 }
 
 func (mgr *peerMspManagerImpl) DeleteSigningIdentity(identifier string) (bool, error) {

@@ -21,8 +21,6 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"encoding/asn1"
-
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
@@ -80,6 +78,7 @@ func (id *identity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) (
 }
 
 func (id *identity) Serialize() ([]byte, error) {
+	/*
 	mspLogger.Infof("Serializing identity %s", id.id)
 
 	// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
@@ -90,6 +89,8 @@ func (id *identity) Serialize() ([]byte, error) {
 	}
 
 	return idBytes, nil
+	*/
+	return id.cert.Raw, nil
 }
 
 type signingidentity struct {
