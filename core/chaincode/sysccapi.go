@@ -95,7 +95,7 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 		return fmt.Errorf(errStr)
 	}
 
-	sysccLogger.Info("system chaincode %s(%s) registered", syscc.Name, syscc.Path)
+	sysccLogger.Infof("system chaincode %s(%s) registered", syscc.Name, syscc.Path)
 	return err
 }
 
