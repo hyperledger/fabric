@@ -16,13 +16,16 @@ limitations under the License.
 
 package kafka
 
-import "testing"
+import (
+	"testing"
 
-/* Disabling this until the upgrade to Go 1.7 kicks in
+	"github.com/Shopify/sarama"
+)
+
 func TestBrokerGetOffset(t *testing.T) {
 	t.Run("oldest", testBrokerGetOffsetFunc(sarama.OffsetOldest, oldestOffset))
 	t.Run("newest", testBrokerGetOffsetFunc(sarama.OffsetNewest, newestOffset))
-} */
+}
 
 func testBrokerGetOffsetFunc(given, expected int64) func(t *testing.T) {
 	return func(t *testing.T) {
