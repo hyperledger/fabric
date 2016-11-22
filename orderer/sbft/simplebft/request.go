@@ -24,7 +24,7 @@ func (s *SBFT) Request(req []byte) {
 }
 
 func (s *SBFT) handleRequest(req *Request, src uint64) {
-	if s.isPrimary() {
+	if s.isPrimary() && s.activeView {
 		s.batch = append(s.batch, req)
 		if s.batchSize() >= s.config.BatchSizeBytes {
 			s.maybeSendNextBatch()
@@ -56,11 +56,11 @@ func (s *SBFT) maybeSendNextBatch() {
 		s.batchTimer = nil
 	}
 
-	if !s.isPrimary() {
+	if !s.isPrimary() || !s.activeView {
 		return
 	}
 
-	if !s.cur.executed {
+	if !s.cur.checkpointDone {
 		return
 	}
 
