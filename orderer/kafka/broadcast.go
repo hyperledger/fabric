@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -142,9 +141,7 @@ func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint) {
 }
 
 func (b *broadcasterImpl) recvRequests(stream ab.AtomicBroadcast_BroadcastServer) error {
-	context, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	bsr := newBroadcastSessionResponder(context, stream, b.config.General.QueueSize)
+	reply := new(ab.BroadcastResponse)
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
@@ -153,33 +150,12 @@ func (b *broadcasterImpl) recvRequests(stream ab.AtomicBroadcast_BroadcastServer
 		}
 
 		b.batchChan <- msg
-		bsr.reply(cb.Status_SUCCESS) // TODO This shouldn't always be a success
+		reply.Status = cb.Status_SUCCESS // TODO This shouldn't always be a success
 
-	}
-}
-
-func newBroadcastSessionResponder(context context.Context, stream ab.AtomicBroadcast_BroadcastServer, queueSize uint) *broadcastSessionResponder {
-	bsr := &broadcastSessionResponder{
-		queue: make(chan *ab.BroadcastResponse, queueSize),
-	}
-	go bsr.sendReplies(context, stream)
-	return bsr
-}
-
-func (bsr *broadcastSessionResponder) reply(status cb.Status) {
-	bsr.queue <- &ab.BroadcastResponse{Status: status}
-}
-
-func (bsr *broadcastSessionResponder) sendReplies(context context.Context, stream ab.AtomicBroadcast_BroadcastServer) {
-	for {
-		select {
-		case reply := <-bsr.queue:
-			if err := stream.Send(reply); err != nil {
-				logger.Info("Cannot send broadcast reply to client")
-			}
-			logger.Debugf("Sent broadcast reply %v to client", reply.Status.String())
-		case <-context.Done():
-			return
+		if err := stream.Send(reply); err != nil {
+			logger.Info("Cannot send broadcast reply to client")
 		}
+		logger.Debugf("Sent broadcast reply %s to client", reply.Status.String())
+
 	}
 }
