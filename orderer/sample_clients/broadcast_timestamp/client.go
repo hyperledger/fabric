@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -38,7 +39,14 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient) *broadcastCli
 }
 
 func (s *broadcastClient) broadcast(transaction []byte) error {
-	payload, err := proto.Marshal(&cb.Payload{Data: transaction})
+	payload, err := proto.Marshal(&cb.Payload{
+		Header: &cb.Header{
+			ChainHeader: &cb.ChainHeader{
+				ChainID: static.TestChainID,
+			},
+		},
+		Data: transaction,
+	})
 	if err != nil {
 		panic(err)
 	}
