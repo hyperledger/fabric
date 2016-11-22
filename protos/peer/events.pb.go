@@ -43,7 +43,7 @@ var EventType_value = map[string]int32{
 func (x EventType) String() string {
 	return proto.EnumName(EventType_name, int32(x))
 }
-func (EventType) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (EventType) EnumDescriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 // ChaincodeReg is used for registering chaincode Interests
 // when EventType is CHAINCODE
@@ -55,7 +55,7 @@ type ChaincodeReg struct {
 func (m *ChaincodeReg) Reset()                    { *m = ChaincodeReg{} }
 func (m *ChaincodeReg) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeReg) ProtoMessage()               {}
-func (*ChaincodeReg) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*ChaincodeReg) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 type Interest struct {
 	EventType EventType `protobuf:"varint,1,opt,name=eventType,enum=protos.EventType" json:"eventType,omitempty"`
@@ -72,7 +72,7 @@ type Interest struct {
 func (m *Interest) Reset()                    { *m = Interest{} }
 func (m *Interest) String() string            { return proto.CompactTextString(m) }
 func (*Interest) ProtoMessage()               {}
-func (*Interest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
+func (*Interest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
 
 type isInterest_RegInfo interface {
 	isInterest_RegInfo()
@@ -163,7 +163,7 @@ type Register struct {
 func (m *Register) Reset()                    { *m = Register{} }
 func (m *Register) String() string            { return proto.CompactTextString(m) }
 func (*Register) ProtoMessage()               {}
-func (*Register) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
+func (*Register) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
 
 func (m *Register) GetEvents() []*Interest {
 	if m != nil {
@@ -182,7 +182,7 @@ type Rejection struct {
 func (m *Rejection) Reset()                    { *m = Rejection{} }
 func (m *Rejection) String() string            { return proto.CompactTextString(m) }
 func (*Rejection) ProtoMessage()               {}
-func (*Rejection) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{3} }
+func (*Rejection) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
 
 func (m *Rejection) GetTx() *Transaction {
 	if m != nil {
@@ -199,7 +199,7 @@ type Unregister struct {
 func (m *Unregister) Reset()                    { *m = Unregister{} }
 func (m *Unregister) String() string            { return proto.CompactTextString(m) }
 func (*Unregister) ProtoMessage()               {}
-func (*Unregister) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{4} }
+func (*Unregister) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{4} }
 
 func (m *Unregister) GetEvents() []*Interest {
 	if m != nil {
@@ -224,7 +224,7 @@ type Event struct {
 func (m *Event) Reset()                    { *m = Event{} }
 func (m *Event) String() string            { return proto.CompactTextString(m) }
 func (*Event) ProtoMessage()               {}
-func (*Event) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{5} }
+func (*Event) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{5} }
 
 type isEvent_Event interface {
 	isEvent_Event()
@@ -538,12 +538,12 @@ var _Events_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: fileDescriptor5,
+	Metadata: fileDescriptor4,
 }
 
-func init() { proto.RegisterFile("peer/events.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("peer/events.proto", fileDescriptor4) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor4 = []byte{
 	// 485 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x93, 0xc1, 0x8f, 0x93, 0x40,
 	0x18, 0xc5, 0x81, 0x6e, 0xbb, 0xf0, 0x75, 0xbb, 0xa1, 0x9f, 0xc6, 0x60, 0xe3, 0xa1, 0xc1, 0x98,

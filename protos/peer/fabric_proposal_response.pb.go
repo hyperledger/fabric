@@ -41,7 +41,7 @@ type ProposalResponse struct {
 func (m *ProposalResponse) Reset()                    { *m = ProposalResponse{} }
 func (m *ProposalResponse) String() string            { return proto.CompactTextString(m) }
 func (*ProposalResponse) ProtoMessage()               {}
-func (*ProposalResponse) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{0} }
+func (*ProposalResponse) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{0} }
 
 func (m *ProposalResponse) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -78,7 +78,7 @@ type Response2 struct {
 func (m *Response2) Reset()                    { *m = Response2{} }
 func (m *Response2) String() string            { return proto.CompactTextString(m) }
 func (*Response2) ProtoMessage()               {}
-func (*Response2) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{1} }
+func (*Response2) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{1} }
 
 // ProposalResponsePayload is the payload of a proposal response.  This message
 // is the "bridge" between the client's request and the endorser's action in
@@ -113,7 +113,7 @@ type ProposalResponsePayload struct {
 func (m *ProposalResponsePayload) Reset()                    { *m = ProposalResponsePayload{} }
 func (m *ProposalResponsePayload) String() string            { return proto.CompactTextString(m) }
 func (*ProposalResponsePayload) ProtoMessage()               {}
-func (*ProposalResponsePayload) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{2} }
+func (*ProposalResponsePayload) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{2} }
 
 // An endorsement is a signature of an endorser over a proposal response.  By
 // producing an endorsement message, an endorser implicitly "approves" that
@@ -135,7 +135,7 @@ type Endorsement struct {
 func (m *Endorsement) Reset()                    { *m = Endorsement{} }
 func (m *Endorsement) String() string            { return proto.CompactTextString(m) }
 func (*Endorsement) ProtoMessage()               {}
-func (*Endorsement) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{3} }
+func (*Endorsement) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{3} }
 
 func init() {
 	proto.RegisterType((*ProposalResponse)(nil), "protos.ProposalResponse")
@@ -144,9 +144,9 @@ func init() {
 	proto.RegisterType((*Endorsement)(nil), "protos.Endorsement")
 }
 
-func init() { proto.RegisterFile("peer/fabric_proposal_response.proto", fileDescriptor9) }
+func init() { proto.RegisterFile("peer/fabric_proposal_response.proto", fileDescriptor8) }
 
-var fileDescriptor9 = []byte{
+var fileDescriptor8 = []byte{
 	// 344 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x5c, 0x52, 0x41, 0x4b, 0xc3, 0x30,
 	0x18, 0xa5, 0xd3, 0xcd, 0x35, 0xdb, 0x41, 0x23, 0x68, 0x19, 0x82, 0xa3, 0x5e, 0x26, 0x62, 0x0b,

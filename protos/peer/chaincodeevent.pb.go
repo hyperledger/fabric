@@ -10,7 +10,6 @@ It is generated from these files:
 	peer/chaincode_proposal.proto
 	peer/chaincode.proto
 	peer/chaincode_transaction.proto
-	peer/devops.proto
 	peer/events.proto
 	peer/fabric_block.proto
 	peer/fabric_message.proto

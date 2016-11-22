@@ -17,6 +17,7 @@ limitations under the License.
 package bddtests
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -25,6 +26,8 @@ import (
 
 	"github.com/DATA-DOG/godog"
 	"github.com/DATA-DOG/godog/gherkin"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -32,6 +35,40 @@ import (
 	"google.golang.org/grpc"
 )
 
+// checkSpec to see if chaincode resides within current package capture for language.
+func (*BDDContext) checkSpec(spec *pb.ChaincodeSpec) error {
+	// Don't allow nil value
+	if spec == nil {
+		return errors.New("Expected chaincode specification, nil received")
+	}
+
+	platform, err := platforms.Find(spec.Type)
+	if err != nil {
+		return fmt.Errorf("Failed to determine platform type: %s", err)
+	}
+
+	return platform.ValidateSpec(spec)
+}
+
+// Build builds the supplied chaincode image
+func (b *BDDContext) build(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
+	var codePackageBytes []byte
+	if err := b.checkSpec(spec); err != nil {
+		return nil, err
+	}
+
+	vm, err := container.NewVM()
+	if err != nil {
+		return nil, fmt.Errorf("Error getting vm")
+	}
+
+	codePackageBytes, err = vm.BuildChaincodeContainer(spec)
+	if err != nil {
+		return nil, err
+	}
+	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}
+	return chaincodeDeploymentSpec, nil
+}
 func (b *BDDContext) weCompose(composeFiles string) error {
 	if b.composition != nil {
 		return fmt.Errorf("Already have composition in BDD context (%s)", b.composition.projectName)
@@ -118,6 +155,7 @@ func (b *BDDContext) userCreatesADeploymentSpecUsingChaincodeSpecAndDevopsOnPeer
 		return errRetFunc()
 	}
 
+	/****** Let us get the deployment spec directly from this machine like SDK would
 	// Now use the devops client to create the deployment spec
 	var grpcClient *grpc.ClientConn
 	if grpcClient, err = b.getGrpcClientForComposeService(devopsPeerComposeService); err != nil {
@@ -127,6 +165,11 @@ func (b *BDDContext) userCreatesADeploymentSpecUsingChaincodeSpecAndDevopsOnPeer
 	devopsClient := pb.NewDevopsClient(grpcClient)
 	var ccDeploymentSpec *pb.ChaincodeDeploymentSpec
 	if ccDeploymentSpec, err = devopsClient.Build(context.Background(), ccSpec); err != nil {
+		return errRetFunc()
+	}
+	********/
+	var ccDeploymentSpec *pb.ChaincodeDeploymentSpec
+	if ccDeploymentSpec, err = b.build(ccSpec); err != nil {
 		return errRetFunc()
 	}
 	// Now store the chaincode deployment spec

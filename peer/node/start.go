@@ -146,10 +146,6 @@ func serve(args []string) error {
 	// Register the Admin server
 	pb.RegisterAdminServer(grpcServer, core.NewAdminServer())
 
-	// Register Devops server
-	serverDevops := core.NewDevopsServer()
-	pb.RegisterDevopsServer(grpcServer, serverDevops)
-
 	// Register the Endorser server
 	serverEndorser := endorser.NewEndorserServer()
 	pb.RegisterEndorserServer(grpcServer, serverEndorser)

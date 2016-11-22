@@ -33,7 +33,7 @@ var InvalidTransaction_Cause_value = map[string]int32{
 func (x InvalidTransaction_Cause) String() string {
 	return proto.EnumName(InvalidTransaction_Cause_name, int32(x))
 }
-func (InvalidTransaction_Cause) EnumDescriptor() ([]byte, []int) { return fileDescriptor12, []int{1, 0} }
+func (InvalidTransaction_Cause) EnumDescriptor() ([]byte, []int) { return fileDescriptor11, []int{1, 0} }
 
 // This message is necessary to facilitate the verification of the signature
 // (in the signature field) over the bytes of the transaction (in the
@@ -51,7 +51,7 @@ type SignedTransaction struct {
 func (m *SignedTransaction) Reset()                    { *m = SignedTransaction{} }
 func (m *SignedTransaction) String() string            { return proto.CompactTextString(m) }
 func (*SignedTransaction) ProtoMessage()               {}
-func (*SignedTransaction) Descriptor() ([]byte, []int) { return fileDescriptor12, []int{0} }
+func (*SignedTransaction) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{0} }
 
 // This is used to wrap an invalid Transaction with the cause
 type InvalidTransaction struct {
@@ -62,7 +62,7 @@ type InvalidTransaction struct {
 func (m *InvalidTransaction) Reset()                    { *m = InvalidTransaction{} }
 func (m *InvalidTransaction) String() string            { return proto.CompactTextString(m) }
 func (*InvalidTransaction) ProtoMessage()               {}
-func (*InvalidTransaction) Descriptor() ([]byte, []int) { return fileDescriptor12, []int{1} }
+func (*InvalidTransaction) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{1} }
 
 func (m *InvalidTransaction) GetTransaction() *Transaction2 {
 	if m != nil {
@@ -97,7 +97,7 @@ type Transaction2 struct {
 func (m *Transaction2) Reset()                    { *m = Transaction2{} }
 func (m *Transaction2) String() string            { return proto.CompactTextString(m) }
 func (*Transaction2) ProtoMessage()               {}
-func (*Transaction2) Descriptor() ([]byte, []int) { return fileDescriptor12, []int{2} }
+func (*Transaction2) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{2} }
 
 func (m *Transaction2) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -126,7 +126,7 @@ type TransactionAction struct {
 func (m *TransactionAction) Reset()                    { *m = TransactionAction{} }
 func (m *TransactionAction) String() string            { return proto.CompactTextString(m) }
 func (*TransactionAction) ProtoMessage()               {}
-func (*TransactionAction) Descriptor() ([]byte, []int) { return fileDescriptor12, []int{3} }
+func (*TransactionAction) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{3} }
 
 func init() {
 	proto.RegisterType((*SignedTransaction)(nil), "protos.SignedTransaction")
@@ -136,9 +136,9 @@ func init() {
 	proto.RegisterEnum("protos.InvalidTransaction_Cause", InvalidTransaction_Cause_name, InvalidTransaction_Cause_value)
 }
 
-func init() { proto.RegisterFile("peer/fabric_transaction.proto", fileDescriptor12) }
+func init() { proto.RegisterFile("peer/fabric_transaction.proto", fileDescriptor11) }
 
-var fileDescriptor12 = []byte{
+var fileDescriptor11 = []byte{
 	// 373 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x92, 0xd1, 0x6a, 0xe2, 0x40,
 	0x18, 0x85, 0x37, 0x2b, 0x2a, 0xfe, 0x91, 0x45, 0x87, 0x5d, 0xc9, 0x4a, 0x4b, 0x25, 0x57, 0xb6,

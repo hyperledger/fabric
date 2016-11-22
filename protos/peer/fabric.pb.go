@@ -46,7 +46,7 @@ var Transaction_Type_value = map[string]int32{
 func (x Transaction_Type) String() string {
 	return proto.EnumName(Transaction_Type_name, int32(x))
 }
-func (Transaction_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor10, []int{0, 0} }
+func (Transaction_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor9, []int{0, 0} }
 
 type PeerEndpoint_Type int32
 
@@ -70,7 +70,7 @@ var PeerEndpoint_Type_value = map[string]int32{
 func (x PeerEndpoint_Type) String() string {
 	return proto.EnumName(PeerEndpoint_Type_name, int32(x))
 }
-func (PeerEndpoint_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor10, []int{8, 0} }
+func (PeerEndpoint_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor9, []int{8, 0} }
 
 // Transaction defines a function call to a contract.
 // `args` is an array of type string so that the chaincode writer can choose
@@ -96,7 +96,7 @@ type Transaction struct {
 func (m *Transaction) Reset()                    { *m = Transaction{} }
 func (m *Transaction) String() string            { return proto.CompactTextString(m) }
 func (*Transaction) ProtoMessage()               {}
-func (*Transaction) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{0} }
+func (*Transaction) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{0} }
 
 func (m *Transaction) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -113,7 +113,7 @@ type TransactionBlock struct {
 func (m *TransactionBlock) Reset()                    { *m = TransactionBlock{} }
 func (m *TransactionBlock) String() string            { return proto.CompactTextString(m) }
 func (*TransactionBlock) ProtoMessage()               {}
-func (*TransactionBlock) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{1} }
+func (*TransactionBlock) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{1} }
 
 func (m *TransactionBlock) GetTransactions() []*Transaction {
 	if m != nil {
@@ -140,7 +140,7 @@ type TransactionResult struct {
 func (m *TransactionResult) Reset()                    { *m = TransactionResult{} }
 func (m *TransactionResult) String() string            { return proto.CompactTextString(m) }
 func (*TransactionResult) ProtoMessage()               {}
-func (*TransactionResult) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{2} }
+func (*TransactionResult) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{2} }
 
 func (m *TransactionResult) GetChaincodeEvent() *ChaincodeEvent {
 	if m != nil {
@@ -174,7 +174,7 @@ type Block struct {
 func (m *Block) Reset()                    { *m = Block{} }
 func (m *Block) String() string            { return proto.CompactTextString(m) }
 func (*Block) ProtoMessage()               {}
-func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{3} }
+func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{3} }
 
 func (m *Block) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -208,7 +208,7 @@ type BlockchainInfo struct {
 func (m *BlockchainInfo) Reset()                    { *m = BlockchainInfo{} }
 func (m *BlockchainInfo) String() string            { return proto.CompactTextString(m) }
 func (*BlockchainInfo) ProtoMessage()               {}
-func (*BlockchainInfo) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{4} }
+func (*BlockchainInfo) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{4} }
 
 // NonHashData is data that is recorded on the block, but not included in
 // the block hash when verifying the blockchain.
@@ -224,7 +224,7 @@ type NonHashData struct {
 func (m *NonHashData) Reset()                    { *m = NonHashData{} }
 func (m *NonHashData) String() string            { return proto.CompactTextString(m) }
 func (*NonHashData) ProtoMessage()               {}
-func (*NonHashData) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{5} }
+func (*NonHashData) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{5} }
 
 func (m *NonHashData) GetLocalLedgerCommitTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -248,7 +248,7 @@ type PeerAddress struct {
 func (m *PeerAddress) Reset()                    { *m = PeerAddress{} }
 func (m *PeerAddress) String() string            { return proto.CompactTextString(m) }
 func (*PeerAddress) ProtoMessage()               {}
-func (*PeerAddress) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{6} }
+func (*PeerAddress) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{6} }
 
 type PeerID struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
@@ -257,7 +257,7 @@ type PeerID struct {
 func (m *PeerID) Reset()                    { *m = PeerID{} }
 func (m *PeerID) String() string            { return proto.CompactTextString(m) }
 func (*PeerID) ProtoMessage()               {}
-func (*PeerID) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{7} }
+func (*PeerID) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{7} }
 
 type PeerEndpoint struct {
 	ID      *PeerID           `protobuf:"bytes,1,opt,name=ID" json:"ID,omitempty"`
@@ -269,7 +269,7 @@ type PeerEndpoint struct {
 func (m *PeerEndpoint) Reset()                    { *m = PeerEndpoint{} }
 func (m *PeerEndpoint) String() string            { return proto.CompactTextString(m) }
 func (*PeerEndpoint) ProtoMessage()               {}
-func (*PeerEndpoint) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{8} }
+func (*PeerEndpoint) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{8} }
 
 func (m *PeerEndpoint) GetID() *PeerID {
 	if m != nil {
@@ -285,7 +285,7 @@ type PeersMessage struct {
 func (m *PeersMessage) Reset()                    { *m = PeersMessage{} }
 func (m *PeersMessage) String() string            { return proto.CompactTextString(m) }
 func (*PeersMessage) ProtoMessage()               {}
-func (*PeersMessage) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{9} }
+func (*PeersMessage) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{9} }
 
 func (m *PeersMessage) GetPeers() []*PeerEndpoint {
 	if m != nil {
@@ -301,7 +301,7 @@ type PeersAddresses struct {
 func (m *PeersAddresses) Reset()                    { *m = PeersAddresses{} }
 func (m *PeersAddresses) String() string            { return proto.CompactTextString(m) }
 func (*PeersAddresses) ProtoMessage()               {}
-func (*PeersAddresses) Descriptor() ([]byte, []int) { return fileDescriptor10, []int{10} }
+func (*PeersAddresses) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{10} }
 
 func init() {
 	proto.RegisterType((*Transaction)(nil), "protos.Transaction")
@@ -319,9 +319,9 @@ func init() {
 	proto.RegisterEnum("protos.PeerEndpoint_Type", PeerEndpoint_Type_name, PeerEndpoint_Type_value)
 }
 
-func init() { proto.RegisterFile("peer/fabric.proto", fileDescriptor10) }
+func init() { proto.RegisterFile("peer/fabric.proto", fileDescriptor9) }
 
-var fileDescriptor10 = []byte{
+var fileDescriptor9 = []byte{
 	// 917 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x55, 0xdd, 0x6e, 0xdb, 0x36,
 	0x14, 0x9e, 0xfc, 0x93, 0xd4, 0xc7, 0x49, 0xea, 0x30, 0x46, 0xa7, 0x1a, 0x41, 0x67, 0xe8, 0xca,

@@ -38,7 +38,7 @@ var Message2_Type_value = map[string]int32{
 func (x Message2_Type) String() string {
 	return proto.EnumName(Message2_Type_name, int32(x))
 }
-func (Message2_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor7, []int{0, 0} }
+func (Message2_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor6, []int{0, 0} }
 
 // A Message2 encapsulates a payload of the indicated type in this message.
 type Message2 struct {
@@ -54,16 +54,16 @@ type Message2 struct {
 func (m *Message2) Reset()                    { *m = Message2{} }
 func (m *Message2) String() string            { return proto.CompactTextString(m) }
 func (*Message2) ProtoMessage()               {}
-func (*Message2) Descriptor() ([]byte, []int) { return fileDescriptor7, []int{0} }
+func (*Message2) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 func init() {
 	proto.RegisterType((*Message2)(nil), "protos.Message2")
 	proto.RegisterEnum("protos.Message2_Type", Message2_Type_name, Message2_Type_value)
 }
 
-func init() { proto.RegisterFile("peer/fabric_message.proto", fileDescriptor7) }
+func init() { proto.RegisterFile("peer/fabric_message.proto", fileDescriptor6) }
 
-var fileDescriptor7 = []byte{
+var fileDescriptor6 = []byte{
 	// 213 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x92, 0x2c, 0x48, 0x4d, 0x2d,
 	0xd2, 0x4f, 0x4b, 0x4c, 0x2a, 0xca, 0x4c, 0x8e, 0xcf, 0x4d, 0x2d, 0x2e, 0x4e, 0x4c, 0x4f, 0xd5,
