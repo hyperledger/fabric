@@ -42,6 +42,10 @@ func (mcm *mockConfigManager) Apply(message *cb.ConfigurationEnvelope) error {
 	panic("Unimplemented")
 }
 
+func (mcm *mockConfigManager) ChainID() []byte {
+	panic("Unimplemented")
+}
+
 type mockConfigFilter struct {
 	manager configtx.Manager
 }

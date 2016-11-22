@@ -38,6 +38,10 @@ func (mcm *mockConfigManager) Apply(configtx *cb.ConfigurationEnvelope) error {
 	return mcm.err
 }
 
+func (mcm *mockConfigManager) ChainID() []byte {
+	panic("Unimplemented")
+}
+
 func TestForwardNonConfig(t *testing.T) {
 	cf := New(&mockConfigManager{})
 	result := cf.Apply(&cb.Envelope{

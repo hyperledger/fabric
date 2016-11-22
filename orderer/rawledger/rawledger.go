@@ -25,6 +25,9 @@ import (
 type Factory interface {
 	// GetOrCreate gets an existing ledger (if it exists) or creates it if it does not
 	GetOrCreate(chainID []byte) (ReadWriter, error)
+
+	// ChainIDs returns the chain IDs the Factory is aware of
+	ChainIDs() [][]byte
 }
 
 // Iterator is useful for a chain Reader to stream blocks as they are created
