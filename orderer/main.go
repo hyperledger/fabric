@@ -29,22 +29,16 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	// "github.com/hyperledger/fabric/orderer/common/broadcastfilter/configfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
-	"github.com/hyperledger/fabric/orderer/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/util"
 	"github.com/hyperledger/fabric/orderer/config"
 	"github.com/hyperledger/fabric/orderer/kafka"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/solo"
-	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/Shopify/sarama"
-	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
@@ -65,7 +59,7 @@ func main() {
 
 	switch conf.General.OrdererType {
 	case "solo":
-		launchSolo(conf)
+		launchGeneric(conf)
 	case "kafka":
 		launchKafka(conf)
 	default:
@@ -73,81 +67,11 @@ func main() {
 	}
 }
 
-// XXX This crypto helper is a stand in until we have a real crypto handler
-// it considers all signatures to be valid
-type xxxCryptoHelper struct{}
-
-func (xxx xxxCryptoHelper) VerifySignature(msg []byte, ids []byte, sigs []byte) bool {
-	return true
-}
-
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func retrieveConfiguration(rl rawledger.Reader) *cb.ConfigurationEnvelope {
-	var lastConfigTx *cb.ConfigurationEnvelope
-
-	envelope := new(cb.Envelope)
-	payload := new(cb.Payload)
-	configurationEnvelope := new(cb.ConfigurationEnvelope)
-
-	it, _ := rl.Iterator(ab.SeekInfo_OLDEST, 0)
-	// Iterate over the blockchain, looking for config transactions, track the most recent one encountered
-	// This will be the transaction which is returned
-	for {
-		select {
-		case <-it.ReadyChan():
-			block, status := it.Next()
-			if status != cb.Status_SUCCESS {
-				panic(fmt.Errorf("Error parsing blockchain at startup: %v", status))
-			}
-			if len(block.Data.Data) != 1 {
-				continue
-			}
-			envelope = util.ExtractEnvelopeOrPanic(block, 0)
-			payload = util.ExtractPayloadOrPanic(envelope)
-			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
-				continue
-			}
-			if err := proto.Unmarshal(payload.Data, configurationEnvelope); err == nil {
-				lastConfigTx = configurationEnvelope
-			}
-		default:
-			return lastConfigTx
-		}
-	}
-}
-
-func bootstrapConfigManager(lastConfigTx *cb.ConfigurationEnvelope) configtx.Manager {
-	policyManager := policies.NewManagerImpl(xxxCryptoHelper{})
-	configHandlerMap := make(map[cb.ConfigurationItem_ConfigurationType]configtx.Handler)
-	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
-		rtype := cb.ConfigurationItem_ConfigurationType(ctype)
-		switch rtype {
-		case cb.ConfigurationItem_Policy:
-			configHandlerMap[rtype] = policyManager
-		default:
-			configHandlerMap[rtype] = configtx.NewBytesHandler()
-		}
-	}
-
-	configManager, err := configtx.NewConfigurationManager(lastConfigTx, policyManager, configHandlerMap)
-	if err != nil {
-		panic(err)
-	}
-	return configManager
-}
-
-func createBroadcastRuleset(configManager configtx.Manager) *broadcastfilter.RuleSet {
-	return broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
-		broadcastfilter.EmptyRejectRule,
-		// configfilter.New(configManager),
-		broadcastfilter.AcceptRule,
-	})
-}
-
-func launchSolo(conf *config.TopLevel) {
+func launchGeneric(conf *config.TopLevel) {
 	grpcServer := grpc.NewServer()
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
@@ -174,7 +98,7 @@ func launchSolo(conf *config.TopLevel) {
 
 	// Stand in until real config
 	ledgerType := os.Getenv("ORDERER_LEDGER_TYPE")
-	var rawledger rawledger.ReadWriter
+	var lf rawledger.Factory
 	switch ledgerType {
 	case "file":
 		location := conf.FileLedger.Location
@@ -186,36 +110,22 @@ func launchSolo(conf *config.TopLevel) {
 			}
 		}
 
-		_, rawledger = fileledger.New(location, genesisBlock)
+		lf, _ = fileledger.New(location, genesisBlock)
 	case "ram":
 		fallthrough
 	default:
-		_, rawledger = ramledger.New(int(conf.RAMLedger.HistorySize), genesisBlock)
+		lf, _ = ramledger.New(int(conf.RAMLedger.HistorySize), genesisBlock)
 	}
 
-	lastConfigTx := retrieveConfiguration(rawledger)
-	if lastConfigTx == nil {
-		panic("No chain configuration found")
-	}
+	consenters := make(map[string]multichain.Consenter)
+	consenters["solo"] = solo.New(conf.General.BatchTimeout)
 
-	configManager := bootstrapConfigManager(lastConfigTx)
-	filters := createBroadcastRuleset(configManager)
-
-	soloConsenter := solo.NewConsenter(
-		int(conf.General.BatchSize),
-		conf.General.BatchTimeout,
-		rawledger,
-		filters,
-		configManager,
-	)
+	manager := multichain.NewManagerImpl(lf, consenters)
 
 	server := NewServer(
-		soloConsenter,
-		rawledger,
+		manager,
 		int(conf.General.QueueSize),
 		int(conf.General.MaxWindowSize),
-		filters,
-		configManager,
 	)
 
 	ab.RegisterAtomicBroadcastServer(grpcServer, server)

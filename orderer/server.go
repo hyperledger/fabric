@@ -18,10 +18,8 @@ package main
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
-	"github.com/hyperledger/fabric/orderer/rawledger"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
@@ -31,12 +29,12 @@ type server struct {
 }
 
 // NewServer creates a ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
-func NewServer(consenter broadcast.Target, rl rawledger.Reader, queueSize, maxWindowSize int, filters *broadcastfilter.RuleSet, configManager configtx.Manager) ab.AtomicBroadcastServer {
-	logger.Infof("Starting orderer with consenter=%T, and ledger=%T", consenter, rl)
+func NewServer(ml multichain.Manager, queueSize, maxWindowSize int) ab.AtomicBroadcastServer {
+	logger.Infof("Starting orderer")
 
 	s := &server{
-		dh: deliver.NewHandlerImpl(rl, maxWindowSize),
-		bh: broadcast.NewHandlerImpl(queueSize, consenter, filters, configManager),
+		dh: deliver.NewHandlerImpl(ml, maxWindowSize),
+		bh: broadcast.NewHandlerImpl(queueSize, ml),
 	}
 	return s
 }

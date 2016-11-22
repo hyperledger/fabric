@@ -17,6 +17,7 @@ limitations under the License.
 package deliver
 
 import (
+	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -35,13 +36,13 @@ type Handler interface {
 }
 
 type DeliverServer struct {
-	rl        rawledger.Reader
+	ml        multichain.Manager
 	maxWindow int
 }
 
-func NewHandlerImpl(rl rawledger.Reader, maxWindow int) Handler {
+func NewHandlerImpl(ml multichain.Manager, maxWindow int) Handler {
 	return &DeliverServer{
-		rl:        rl,
+		ml:        ml,
 		maxWindow: maxWindow,
 	}
 }
@@ -185,14 +186,21 @@ func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
 	}
 	logger.Debugf("Updating properties for client")
 
-	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) {
+	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) || update.ChainID == nil {
 		close(d.exitChan)
 		return d.sendErrorReply(cb.Status_BAD_REQUEST)
 	}
 
+	chain, ok := d.ds.ml.GetChain(update.ChainID)
+	if !ok {
+		return d.sendErrorReply(cb.Status_NOT_FOUND)
+	}
+
+	// XXX add deliver authorization checking
+
 	d.windowSize = update.WindowSize
 
-	d.cursor, d.nextBlockNumber = d.ds.rl.Iterator(update.Start, update.SpecifiedNumber)
+	d.cursor, d.nextBlockNumber = chain.Reader().Iterator(update.Start, update.SpecifiedNumber)
 	d.lastAck = d.nextBlockNumber - 1
 
 	return true

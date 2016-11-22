@@ -31,7 +31,7 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-// Target defines a sink for the ordered broadcast messages
+// Receiver defines a sink for the ordered broadcast messages
 type Receiver interface {
 	// Ordered should be invoked sequentially as messages are ordered
 	// If the message is a valid normal message and does not fill the batch, nil, true is returned
