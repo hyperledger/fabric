@@ -35,7 +35,7 @@ General:
     ListenAddress: 127.0.0.1
 
     # Listen port: The port on which to bind to listen
-    ListenPort: 5151
+    ListenPort: 7050
 
     # Genesis method: The method by which to retrieve/generate the genesis block
     GenesisMethod: static

@@ -44,7 +44,7 @@ var testConf = &config.TopLevel{
 		QueueSize:     100,
 		MaxWindowSize: 100,
 		ListenAddress: "127.0.0.1",
-		ListenPort:    5151,
+		ListenPort:    7050,
 	},
 	Kafka: config.Kafka{
 		Brokers:     []string{"127.0.0.1:9092"},

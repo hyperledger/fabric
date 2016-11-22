@@ -104,7 +104,7 @@ var defaults = TopLevel{
 		QueueSize:     1000,
 		MaxWindowSize: 1000,
 		ListenAddress: "127.0.0.1",
-		ListenPort:    5151,
+		ListenPort:    7050,
 		GenesisMethod: "static",
 		Profile: Profile{
 			Enabled: false,
@@ -192,23 +192,29 @@ func (c *TopLevel) completeInitialization() {
 func Load() *TopLevel {
 	config := viper.New()
 
+	config.SetConfigName("orderer")
+	alternativeCfgPath := os.Getenv("ORDERER_CFG_PATH")
+	if alternativeCfgPath != "" {
+		logger.Infof("User defined config file path: %s", alternativeCfgPath)
+		config.AddConfigPath(alternativeCfgPath) // Path to look for the config file in
+	} else {
+		config.AddConfigPath("./")
+		config.AddConfigPath("../../.")
+		config.AddConfigPath("../orderer/")
+		config.AddConfigPath("../../orderer/")
+		// Path to look for the config file in based on GOPATH
+		gopath := os.Getenv("GOPATH")
+		for _, p := range filepath.SplitList(gopath) {
+			ordererPath := filepath.Join(p, "src/github.com/hyperledger/fabric/orderer/")
+			config.AddConfigPath(ordererPath)
+		}
+	}
+
 	// for environment variables
 	config.SetEnvPrefix(Prefix)
 	config.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	config.SetEnvKeyReplacer(replacer)
-
-	config.SetConfigName("orderer")
-	config.AddConfigPath("./")
-	config.AddConfigPath("../../.")
-	config.AddConfigPath("../orderer/")
-	config.AddConfigPath("../../orderer/")
-	// Path to look for the config file in based on GOPATH
-	gopath := os.Getenv("GOPATH")
-	for _, p := range filepath.SplitList(gopath) {
-		ordererPath := filepath.Join(p, "src/github.com/hyperledger/fabric/orderer/")
-		config.AddConfigPath(ordererPath)
-	}
 
 	err := config.ReadInConfig()
 	if err != nil {
