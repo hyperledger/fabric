@@ -38,7 +38,6 @@ import (
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/rest"
 	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
@@ -140,57 +139,19 @@ func serve(args []string) error {
 		return err
 	}
 
-	secHelperFunc := func() crypto.Peer {
-		return secHelper
-	}
-
 	registerChaincodeSupport(chaincode.DefaultChain, grpcServer, secHelper)
 
-	var peerServer *peer.Impl
-
-	// Create the peerServer
-	if peer.ValidatorEnabled() {
-		logger.Debugf("Running as validating peer - installing consensus %s",
-			viper.GetString("peer.validator.consensus"))
-
-		peerServer, err = peer.NewPeerWithEngine(secHelperFunc, peer.GetEngine)
-	} else {
-		logger.Debug("Running as non-validating peer")
-		peerServer, err = peer.NewPeerWithHandler(secHelperFunc, peer.NewPeerHandler)
-	}
-
-	if err != nil {
-		logger.Fatalf("Failed creating new peer with handler %v", err)
-
-		return err
-	}
-
-	// Register the Peer server
-	pb.RegisterPeerServer(grpcServer, peerServer)
+	logger.Debugf("Running peer")
 
 	// Register the Admin server
 	pb.RegisterAdminServer(grpcServer, core.NewAdminServer())
 
 	// Register Devops server
-	serverDevops := core.NewDevopsServer(peerServer)
+	serverDevops := core.NewDevopsServer()
 	pb.RegisterDevopsServer(grpcServer, serverDevops)
 
-	// Register the ServerOpenchain server
-	serverOpenchain, err := rest.NewOpenchainServerWithPeerInfo(peerServer)
-	if err != nil {
-		err = fmt.Errorf("Error creating OpenchainServer: %s", err)
-		return err
-	}
-
-	pb.RegisterOpenchainServer(grpcServer, serverOpenchain)
-
-	// Create and register the REST service if configured
-	if viper.GetBool("rest.enabled") {
-		go rest.StartOpenchainRESTServer(serverOpenchain, serverDevops)
-	}
-
 	// Register the Endorser server
-	serverEndorser := endorser.NewEndorserServer(peerServer)
+	serverEndorser := endorser.NewEndorserServer()
 	pb.RegisterEndorserServer(grpcServer, serverEndorser)
 
 	// !!!IMPORTANT!!! - as mentioned in core.yaml, peer-orderer-committer

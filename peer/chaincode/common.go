@@ -26,6 +26,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
+	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
@@ -35,6 +38,41 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
+
+// checkSpec to see if chaincode resides within current package capture for language.
+func checkSpec(spec *pb.ChaincodeSpec) error {
+	// Don't allow nil value
+	if spec == nil {
+		return errors.New("Expected chaincode specification, nil received")
+	}
+
+	platform, err := platforms.Find(spec.Type)
+	if err != nil {
+		return fmt.Errorf("Failed to determine platform type: %s", err)
+	}
+
+	return platform.ValidateSpec(spec)
+}
+
+// getChaincodeBytes get chaincode deployment spec given the chaincode spec
+func getChaincodeBytes(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
+	mode := viper.GetString("chaincode.mode")
+	var codePackageBytes []byte
+	if mode != chaincode.DevModeUserRunsChaincode {
+		var err error
+		if err = checkSpec(spec); err != nil {
+			return nil, err
+		}
+
+		codePackageBytes, err = container.GetChaincodePackageBytes(spec)
+		if err != nil {
+			err = fmt.Errorf("Error getting chaincode package bytes: %s", err)
+			return nil, err
+		}
+	}
+	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}
+	return chaincodeDeploymentSpec, nil
+}
 
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
@@ -170,9 +208,9 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		}
 
 		// TODO: how should we get signing ID from the command line?
-		mspId := "DEFAULT"
+		mspID := "DEFAULT"
 		id := "PEER"
-		signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+		signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspID}, Value: id}
 
 		// TODO: how should we obtain the config for the MSP from the command line? a hardcoded test config?
 		signer, err := msp.GetManager().GetSigningIdentity(signingIdentity)
@@ -210,37 +248,6 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		}
 
 		logger.Infof("Invoke result: %v", proposalResp)
-	} else {
-		//for now let's continue to use Query with devops
-		//eventually query will go away
-		var devopsClient pb.DevopsClient
-		devopsClient, err = common.GetDevopsClient(cmd)
-		if err != nil {
-			return fmt.Errorf("Error building %s: %s", chainFuncName, err)
-		}
-
-		var resp *pb.Response
-		if resp, err = devopsClient.Query(context.Background(), invocation); err != nil {
-			return fmt.Errorf("Error querying %s: %s\n", chainFuncName, err)
-		}
-
-		logger.Infof("Successfully queried transaction: %s", invocation)
-		if resp != nil {
-			if chaincodeQueryRaw {
-				if chaincodeQueryHex {
-					err = errors.New("Options --raw (-r) and --hex (-x) are not compatible\n")
-					return
-				}
-				fmt.Print("Query Result (Raw): ")
-				os.Stdout.Write(resp.Msg)
-			} else {
-				if chaincodeQueryHex {
-					fmt.Printf("Query Result: %x\n", resp.Msg)
-				} else {
-					fmt.Printf("Query Result: %s\n", string(resp.Msg))
-				}
-			}
-		}
 	}
 
 	return nil

@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -40,13 +39,11 @@ var endorserLogger = logging.MustGetLogger("endorser")
 
 // Endorser provides the Endorser service ProcessProposal
 type Endorser struct {
-	coord peer.MessageHandlerCoordinator
 }
 
 // NewEndorserServer creates and returns a new Endorser server instance.
-func NewEndorserServer(coord peer.MessageHandlerCoordinator) pb.EndorserServer {
+func NewEndorserServer() pb.EndorserServer {
 	e := new(Endorser)
-	e.coord = coord
 	return e
 }
 
@@ -202,7 +199,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, proposal *pb.Proposal, s
 
 	// marshalling event bytes
 	var err error
-	var eventBytes []byte = nil
+	var eventBytes []byte
 	if event != nil {
 		eventBytes, err = putils.GetBytesChaincodeEvent(event)
 		if err != nil {
