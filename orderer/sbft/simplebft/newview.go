@@ -17,6 +17,7 @@ limitations under the License.
 package simplebft
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 )
@@ -36,23 +37,20 @@ func (s *SBFT) maybeSendNewView() {
 		}
 	}
 
-	xset, ok := s.makeXset(vcs)
+	xset, newBatch, ok := s.makeXset(vcs)
 	if !ok {
 		log.Debug("xset not yet sufficient")
 		return
 	}
 
 	var batch *Batch
-	if xset.Digest != nil {
-		if reflect.DeepEqual(s.cur.subject.Digest, xset.Digest) {
-			batch = s.cur.preprep.Batch
-		} else {
-			log.Warningf("forfeiting primary - do not have request in store for %d %x", xset.Seq.Seq, xset.Digest)
-			xset = nil
-		}
+	if newBatch != nil {
+		batch = newBatch
+	} else if reflect.DeepEqual(s.cur.subject.Digest, xset.Digest) {
+		batch = s.cur.preprep.Batch
 	} else {
-		batch = s.makeBatch(xset.Seq.Seq, s.sys.LastBatch().Hash(), nil)
-		xset.Digest = batch.Hash()
+		log.Warningf("forfeiting primary - do not have request in store for %d %x", xset.Seq.Seq, xset.Digest)
+		xset = nil
 	}
 
 	nv := &NewView{
@@ -73,12 +71,13 @@ func (s *SBFT) checkNewViewSignatures(nv *NewView) ([]*ViewChange, error) {
 		vc := &ViewChange{}
 		err := s.checkSig(svc, vcsrc, vc)
 		if err == nil {
+			_, err = s.checkBatch(vc.Checkpoint, false, true)
 			if vc.View != nv.View {
 				err = fmt.Errorf("view does not match")
 			}
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("viewchange from %d: %s", vcsrc, err)
 		}
 		vcs = append(vcs, vc)
 	}
@@ -101,13 +100,16 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 	if err != nil {
 		log.Warningf("invalid new view from %d: %s", src, err)
 		s.sendViewChange()
+		return
 	}
 
-	xset, ok := s.makeXset(vcs)
-	if xset.Digest == nil {
-		// null request special treatment
-		xset.Digest = s.makeBatch(nv.Xset.Seq.Seq, s.sys.LastBatch().Hash(), nil).Hash()
+	if nv.Batch == nil {
+		log.Warningf("invalid new view from %d: no batch attached", src)
+		s.sendViewChange()
+		return
 	}
+
+	xset, newBatch, ok := s.makeXset(vcs)
 
 	if !ok || !reflect.DeepEqual(nv.Xset, xset) {
 		log.Warningf("invalid new view from %d: xset incorrect: %v, %v", src, nv.Xset, xset)
@@ -115,13 +117,14 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	if nv.Batch == nil {
-		log.Warningf("invalid new view from %d: batch empty", src)
-		s.sendViewChange()
-		return
-	}
-
-	if !reflect.DeepEqual(hash(nv.Batch.Header), nv.Xset.Digest) {
+	if nv.Xset == nil {
+		if !bytes.Equal(nv.Batch.Hash(), newBatch.Hash()) {
+			log.Warningf("invalid new view from %d: new batch for null request does not match: %x, %x, %v",
+				src, nv.Batch.Hash(), newBatch.Hash(), nv)
+			s.sendViewChange()
+			return
+		}
+	} else if !bytes.Equal(nv.Batch.Hash(), nv.Xset.Digest) {
 		log.Warningf("invalid new view from %d: batch head hash does not match xset: %x, %x, %v",
 			src, hash(nv.Batch.Header), nv.Xset.Digest, nv)
 		s.sendViewChange()
@@ -151,17 +154,15 @@ func (s *SBFT) processNewView() {
 		return
 	}
 
-	nextSeq := s.nextSeq()
-	if *nv.Xset.Seq != nextSeq {
-		log.Infof("we are outdated")
-		return
-	}
+	s.activeView = true
+	s.discardBacklog(s.primaryID())
 
 	pp := &Preprepare{
-		Seq:   nv.Xset.Seq,
+		Seq:   &SeqView{Seq: nv.Batch.DecodeHeader().Seq, View: s.view},
 		Batch: nv.Batch,
 	}
 
-	s.activeView = true
 	s.handleCheckedPreprepare(pp)
+
+	s.processBacklog()
 }

@@ -38,11 +38,14 @@ func (s *SBFT) sendViewChange() {
 		q = append(q, &s.cur.subject)
 	}
 
+	checkpoint := *s.sys.LastBatch()
+	checkpoint.Payloads = nil // don't send the big payload
+
 	vc := &ViewChange{
-		View:     s.view,
-		Qset:     q,
-		Pset:     p,
-		Executed: s.seq(),
+		View:       s.view,
+		Qset:       q,
+		Pset:       p,
+		Checkpoint: &checkpoint,
 	}
 	svc := s.sign(vc)
 	s.viewChangeTimer.Cancel()
@@ -60,12 +63,15 @@ func (s *SBFT) cancelViewChangeTimer() {
 func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 	vc := &ViewChange{}
 	err := s.checkSig(svc, src, vc)
+	if err == nil {
+		_, err = s.checkBatch(vc.Checkpoint, false, true)
+	}
 	if err != nil {
 		log.Noticef("invalid viewchange: %s", err)
 		return
 	}
 	if vc.View < s.view {
-		log.Debugf("old view change from %s for view %d, we are in view %d", src, vc.View, s.view)
+		log.Debugf("old view change from %d for view %d, we are in view %d", src, vc.View, s.view)
 		return
 	}
 	if ovc := s.replicaState[src].viewchange; ovc != nil && vc.View <= ovc.View {
@@ -73,7 +79,7 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 		return
 	}
 
-	log.Infof("viewchange from %d for view %d", src, vc.View)
+	log.Infof("viewchange from %d: %v", src, vc)
 	s.replicaState[src].viewchange = vc
 	s.replicaState[src].signedViewchange = svc
 
