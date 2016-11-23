@@ -108,16 +108,6 @@ func (t *RBACChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error)
 		return t.addRole(stub, args)
 	case "write":
 		return t.write(stub, args)
-	}
-
-	return nil, fmt.Errorf("Received unknown function invocation [%s]", function)
-}
-
-// Query callback representing the query of a chaincode
-func (t *RBACChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
-	// Handle different functions
-	switch function {
 	case "read":
 		return t.read(stub, args)
 	}

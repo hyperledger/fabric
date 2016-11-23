@@ -700,8 +700,9 @@ func chaincodeInvokeChaincode(t *testing.T, user string) (err error) {
 
 	// Invoke second chaincode passing the first chaincode's name as first param,
 	// which will inturn invoke the first chaincode
-	f = spec1.ChaincodeID.Name
-	args = util.ToChaincodeArgs(f, "e", "1")
+	f = "invoke"
+	cid := spec1.ChaincodeID.Name
+	args = util.ToChaincodeArgs(f, cid, "e", "1")
 
 	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 	// Invoke chaincode
@@ -890,7 +891,7 @@ func TestGetEvent(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	args := util.ToChaincodeArgs("", "i", "am", "satoshi")
+	args := util.ToChaincodeArgs("invoke", "i", "am", "satoshi")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: args}}
 

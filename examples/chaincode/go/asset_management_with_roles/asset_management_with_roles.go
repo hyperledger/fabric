@@ -228,18 +228,15 @@ func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]b
 	} else if function == "transfer" {
 		// Transfer ownership
 		return t.transfer(stub, args)
+	} else if function == "query" {
+		// Query asset
+		return t.query(stub, args)
 	}
 
 	return nil, errors.New("Received unknown function invocation")
 }
 
-// Query callback representing the query of a chaincode
-func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
-	if function != "query" {
-		return nil, errors.New("Invalid query function name. Expecting 'query' but found '" + function + "'")
-	}
-
+func (t *AssetManagementChaincode) query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 
 	if len(args) != 1 {

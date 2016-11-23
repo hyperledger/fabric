@@ -58,15 +58,15 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error)
 
 // Invoke is a no-op
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
+	function, args := stub.GetFunctionAndParameters()
+	if function == "query" {
+		return t.query(stub, args)
+	}
+
+	return nil, errors.New("Invalid invoke function name. Expecting \"query\"")
 }
 
-// Query callback representing the query of a chaincode
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
-	if function != "query" {
-		return nil, errors.New("Invalid query function name. Expecting \"query\"")
-	}
+func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var A string // Entity
 	var Aval int // Asset holding
 	var err error

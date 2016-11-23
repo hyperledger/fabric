@@ -71,18 +71,24 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error)
 	return nil, nil
 }
 
-// Transaction makes payment of X units from A to B
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	function, args := stub.GetFunctionAndParameters()
-	if function == "delete" {
+	if function == "invoke" {
+		// Make payment of X units from A to B
+		return t.invoke(stub, args)
+	} else if function == "delete" {
 		// Deletes an entity from its state
 		return t.delete(stub, args)
-	}
-	if function == "query" {
+	} else if function == "query" {
 		// the old "Query" is now implemtned in invoke
 		return t.query(stub, args)
 	}
 
+	return nil, errors.New("Invalid invoke function name. Expecting \"invoke\" \"delete\" \"query\"")
+}
+
+// Transaction makes payment of X units from A to B
+func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var A, B string    // Entities
 	var Aval, Bval int // Asset holdings
 	var X int          // Transaction value

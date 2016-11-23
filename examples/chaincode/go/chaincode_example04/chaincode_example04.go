@@ -58,25 +58,18 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error)
 }
 
 // Invoke invokes another chaincode - chaincode_example02, upon receipt of an event and changes event state
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var event string // Event entity
 	var eventVal int // State of event
 	var err error
 
-	function, args := stub.GetFunctionAndParameters()
-
-	if function == "query" {
-		return t.query(stub, args)
+	if len(args) != 3 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 3")
 	}
 
-	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 2")
-	}
-
-	chainCodeToCall := function
-
-	event = args[0]
-	eventVal, err = strconv.Atoi(args[1])
+	chainCodeToCall := args[0]
+	event = args[1]
+	eventVal, err = strconv.Atoi(args[2])
 	if err != nil {
 		return nil, errors.New("Expected integer value for event state change")
 	}
@@ -106,7 +99,6 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 	return nil, nil
 }
 
-// query callback representing the query of a chaincode
 func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var event string // Event entity
 	var err error
@@ -132,6 +124,17 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
 	jsonResp := "{\"Name\":\"" + event + "\",\"Amount\":\"" + string(eventValbytes) + "\"}"
 	fmt.Printf("Query Response:%s\n", jsonResp)
 	return []byte(jsonResp), nil
+}
+
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
+	if function == "invoke" {
+		return t.invoke(stub, args)
+	} else if function == "query" {
+		return t.query(stub, args)
+	}
+
+	return nil, errors.New("Invalid invoke function name. Expecting \"invoke\" \"query\"")
 }
 
 func main() {

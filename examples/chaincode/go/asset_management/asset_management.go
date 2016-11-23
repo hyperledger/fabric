@@ -252,23 +252,18 @@ func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]b
 	} else if function == "transfer" {
 		// Transfer ownership
 		return t.transfer(stub, args)
+	} else if function == "query" {
+		// Query owner
+		return t.query(stub, args)
 	}
 
 	return nil, errors.New("Received unknown function invocation")
 }
 
-// Query callback representing the query of a chaincode
 // Supported functions are the following:
 // "query(asset)": returns the owner of the asset.
 // Anyone can invoke this function.
-func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
-	myLogger.Debugf("Query [%s]", function)
-
-	if function != "query" {
-		return nil, errors.New("Invalid query function name. Expecting 'query' but found '" + function + "'")
-	}
-
+func (t *AssetManagementChaincode) query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 
 	if len(args) != 1 {
@@ -279,7 +274,7 @@ func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface) ([]by
 	// Who is the owner of the asset?
 	asset := args[0]
 
-	myLogger.Debugf("Arg [%s]", string(asset))
+	myLogger.Debugf("Query [%s]", string(asset))
 
 	var columns []shim.Column
 	col1 := shim.Column{Value: &shim.Column_String_{String_: asset}}
