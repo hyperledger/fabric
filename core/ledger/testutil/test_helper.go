@@ -21,19 +21,23 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
 
 // ConstructBlockForSimulationResults constructs a block that includes a number of transactions - one per simulationResults
-func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte) *pb.Block2 {
-	txs := []*pb.Transaction2{}
+func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte, signer msp.SigningIdentity) *pb.Block2 {
+	envs := []*common.Envelope{}
 	for i := 0; i < len(simulationResults); i++ {
-		tx := ConstructTestTransaction(t, simulationResults[i])
-		txs = append(txs, tx)
+		env, err := ConstructTestTransaction(t, simulationResults[i], signer)
+		if err != nil {
+			t.Fatalf("ConstructTestTransaction failed, err %s", err)
+		}
+		envs = append(envs, env)
 	}
-	return newBlock(txs)
+	return newBlockEnv(envs)
 }
 
 // ConstructTestBlocks constructs 'numBlocks' number of blocks for testing
@@ -56,9 +60,28 @@ func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *
 }
 
 // ConstructTestTransaction constructs a transaction for testing
-func ConstructTestTransaction(t *testing.T, simulationResults []byte) *pb.Transaction2 {
-	tx, _ := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, []byte{}, []byte{}, simulationResults, []*pb.Endorsement{})
-	return tx
+func ConstructTestTransaction(t *testing.T, simulationResults []byte, signer msp.SigningIdentity) (*common.Envelope, error) {
+	ss, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	prop, err := putils.CreateChaincodeProposal(&pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: "foo"}}}, ss)
+	if err != nil {
+		return nil, err
+	}
+
+	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, simulationResults, nil, nil, signer)
+	if err != nil {
+		return nil, err
+	}
+
+	env, err := putils.CreateSignedTx(prop, signer, presp)
+	if err != nil {
+		return nil, err
+	}
+
+	return env, nil
 }
 
 // ComputeBlockHash computes the crypto-hash of a block
@@ -73,6 +96,16 @@ func newBlock(txs []*pb.Transaction2) *pb.Block2 {
 	block.PreviousBlockHash = []byte{}
 	for i := 0; i < len(txs); i++ {
 		txBytes, _ := proto.Marshal(txs[i])
+		block.Transactions = append(block.Transactions, txBytes)
+	}
+	return block
+}
+
+func newBlockEnv(env []*common.Envelope) *pb.Block2 {
+	block := &pb.Block2{}
+	block.PreviousBlockHash = []byte{}
+	for i := 0; i < len(env); i++ {
+		txBytes, _ := proto.Marshal(env[i])
 		block.Transactions = append(block.Transactions, txBytes)
 	}
 	return block

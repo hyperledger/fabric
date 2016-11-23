@@ -17,7 +17,6 @@ limitations under the License.
 package utils
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -26,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
-//GetChaincodeInvocationSpec get the ChaincodeInvocationSpec from the proposal
+// GetChaincodeInvocationSpec get the ChaincodeInvocationSpec from the proposal
 func GetChaincodeInvocationSpec(prop *peer.Proposal) (*peer.ChaincodeInvocationSpec, error) {
 	txhdr := &common.Header{}
 	err := proto.Unmarshal(prop.Header, txhdr)
@@ -49,10 +48,10 @@ func GetChaincodeInvocationSpec(prop *peer.Proposal) (*peer.ChaincodeInvocationS
 	return cis, nil
 }
 
-// GetHeader from proposal
-func GetHeader(prop *peer.Proposal) (*common.Header, error) {
+// GetHeader Get Header from bytes
+func GetHeader(bytes []byte) (*common.Header, error) {
 	hdr := &common.Header{}
-	err := proto.Unmarshal(prop.Header, hdr)
+	err := proto.Unmarshal(bytes, hdr)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,7 @@ func GetProposalResponse(prBytes []byte) (*peer.ProposalResponse, error) {
 	return proposalResponse, nil
 }
 
-//GetChaincodeDeploymentSpec returns a ChaincodeDeploymentSpec given args
+// GetChaincodeDeploymentSpec returns a ChaincodeDeploymentSpec given args
 func GetChaincodeDeploymentSpec(code []byte) (*peer.ChaincodeDeploymentSpec, error) {
 	cds := &peer.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(code, cds)
@@ -130,6 +129,72 @@ func GetProposal(propBytes []byte) (*peer.Proposal, error) {
 	return prop, nil
 }
 
+// GetPayload Get Payload from Envelope message
+func GetPayload(e *common.Envelope) (*common.Payload, error) {
+	payload := &common.Payload{}
+	err := proto.Unmarshal(e.Payload, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return payload, nil
+}
+
+// GetTransaction Get Transaction from bytes
+func GetTransaction(txBytes []byte) (*peer.Transaction2, error) {
+	tx := &peer.Transaction2{}
+	err := proto.Unmarshal(txBytes, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+// GetChaincodeActionPayload Get ChaincodeActionPayload from bytes
+func GetChaincodeActionPayload(capBytes []byte) (*peer.ChaincodeActionPayload, error) {
+	cap := &peer.ChaincodeActionPayload{}
+	err := proto.Unmarshal(capBytes, cap)
+	if err != nil {
+		return nil, err
+	}
+
+	return cap, nil
+}
+
+// GetChaincodeProposalPayload Get ChaincodeProposalPayload from bytes
+func GetChaincodeProposalPayload(bytes []byte) (*peer.ChaincodeProposalPayload, error) {
+	cpp := &peer.ChaincodeProposalPayload{}
+	err := proto.Unmarshal(bytes, cpp)
+	if err != nil {
+		return nil, err
+	}
+
+	return cpp, nil
+}
+
+// GetSignatureHeader Get SignatureHeader from bytes
+func GetSignatureHeader(bytes []byte) (*common.SignatureHeader, error) {
+	sh := &common.SignatureHeader{}
+	err := proto.Unmarshal(bytes, sh)
+	if err != nil {
+		return nil, err
+	}
+
+	return sh, nil
+}
+
+// GetEnvelope Get Envelope from bytes
+func GetEnvelope(bytes []byte) (*common.Envelope, error) {
+	env := &common.Envelope{}
+	err := proto.Unmarshal(bytes, env)
+	if err != nil {
+		return nil, err
+	}
+
+	return env, nil
+}
+
 // CreateChaincodeProposal creates a proposal from given input
 func CreateChaincodeProposal(cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
@@ -157,8 +222,7 @@ func CreateChaincodeProposal(cis *peer.ChaincodeInvocationSpec, creator []byte) 
 
 	hdr := &common.Header{ChainHeader: &common.ChainHeader{Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
 		Extension: ccHdrExtBytes},
-		SignatureHeader: &common.SignatureHeader{Nonce: nonce,
-			Creator: creator}}
+		SignatureHeader: &common.SignatureHeader{Nonce: nonce, Creator: creator}}
 
 	hdrBytes, err := proto.Marshal(hdr)
 	if err != nil {
@@ -205,15 +269,19 @@ func GetBytesChaincodeEvent(event *peer.ChaincodeEvent) ([]byte, error) {
 	return eventBytes, nil
 }
 
+// GetBytesChaincodeActionPayload get the bytes of ChaincodeActionPayload from the message
+func GetBytesChaincodeActionPayload(cap *peer.ChaincodeActionPayload) ([]byte, error) {
+	capBytes, err := proto.Marshal(cap)
+	if err != nil {
+		return nil, err
+	}
+
+	return capBytes, nil
+}
+
 // GetBytesProposalResponse gets propoal bytes response
-func GetBytesProposalResponse(prpBytes []byte, endorsement *peer.Endorsement) ([]byte, error) {
-	resp := &peer.ProposalResponse{
-		// Timestamp: TODO!
-		Version:     1, // TODO: pick right version number
-		Endorsement: endorsement,
-		Payload:     prpBytes,
-		Response:    &peer.Response2{Status: 200, Message: "OK"}}
-	respBytes, err := proto.Marshal(resp)
+func GetBytesProposalResponse(pr *peer.ProposalResponse) ([]byte, error) {
+	respBytes, err := proto.Marshal(pr)
 	if err != nil {
 		return nil, err
 	}
@@ -231,32 +299,96 @@ func GetBytesProposal(prop *peer.Proposal) ([]byte, error) {
 	return propBytes, nil
 }
 
-// GetProposalHash gets the proposal hash
-func GetProposalHash(header []byte, ccPropPayl []byte, visibility []byte) ([]byte, error) {
-	// unmarshal the chaincode proposal payload
-	cpp := &peer.ChaincodeProposalPayload{}
-	err := proto.Unmarshal(ccPropPayl, cpp)
+// GetBytesHeader get the bytes of Header from the message
+func GetBytesHeader(hdr *common.Header) ([]byte, error) {
+	bytes, err := proto.Marshal(hdr)
 	if err != nil {
-		return nil, errors.New("Failure while unmarshalling the ChaincodeProposalPayload!")
+		return nil, err
 	}
 
-	// strip the transient bytes off the payload - this needs to be done no matter the visibility mode
-	cppNoTransient := &peer.ChaincodeProposalPayload{Input: cpp.Input, Transient: nil}
-	cppBytes, err := GetBytesChaincodeProposalPayload(cppNoTransient)
+	return bytes, nil
+}
+
+// GetBytesSignatureHeader get the bytes of SignatureHeader from the message
+func GetBytesSignatureHeader(hdr *common.SignatureHeader) ([]byte, error) {
+	bytes, err := proto.Marshal(hdr)
 	if err != nil {
-		return nil, errors.New("Failure while marshalling the ChaincodeProposalPayload!")
+		return nil, err
 	}
 
-	// TODO: handle payload visibility - it needs to be defined first!
-	// here, as an example, I'll code the visibility policy that allows the
-	// full header but only the hash of the payload
+	return bytes, nil
+}
 
-	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash1 := primitives.GetDefaultHash()()
-	hash1.Write(cppBytes) // hash the serialized ChaincodeProposalPayload object (stripped of the transient bytes)
-	hash2 := primitives.GetDefaultHash()()
-	hash2.Write(header)         // hash the serialized Header object
-	hash2.Write(hash1.Sum(nil)) // hash the hash of the serialized ChaincodeProposalPayload object
+// GetBytesTransaction get the bytes of Transaction from the message
+func GetBytesTransaction(tx *peer.Transaction2) ([]byte, error) {
+	bytes, err := proto.Marshal(tx)
+	if err != nil {
+		return nil, err
+	}
 
-	return hash2.Sum(nil), nil
+	return bytes, nil
+}
+
+// GetBytesPayload get the bytes of Payload from the message
+func GetBytesPayload(payl *common.Payload) ([]byte, error) {
+	bytes, err := proto.Marshal(payl)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes, nil
+}
+
+// GetBytesEnvelope get the bytes of Envelope from the message
+func GetBytesEnvelope(env *common.Envelope) ([]byte, error) {
+	bytes, err := proto.Marshal(env)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes, nil
+}
+
+// GetActionFromEnvelope extracts a ChaincodeAction message from a serialized Envelope
+func GetActionFromEnvelope(envBytes []byte) (*peer.ChaincodeAction, error) {
+	env, err := GetEnvelope(envBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	payl, err := GetPayload(env)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := GetTransaction(payl.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	_, respPayload, err := GetPayloads(tx.Actions[0])
+	return respPayload, err
+}
+
+// CreateProposalFromCIS returns a proposal given a serialized identity and a ChaincodeInvocationSpec
+func CreateProposalFromCIS(cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
+	return CreateChaincodeProposal(cis, creator)
+}
+
+// CreateProposalFromCDS returns a proposal given a serialized identity and a ChaincodeDeploymentSpec
+func CreateProposalFromCDS(cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
+	b, err := proto.Marshal(cds)
+	if err != nil {
+		return nil, err
+	}
+
+	//wrap the deployment in an invocation spec to lccc...
+	lcccSpec := &peer.ChaincodeInvocationSpec{
+		ChaincodeSpec: &peer.ChaincodeSpec{
+			Type:        peer.ChaincodeSpec_GOLANG,
+			ChaincodeID: &peer.ChaincodeID{Name: "lccc"},
+			CtorMsg:     &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
+
+	//...and get the proposal for it
+	return CreateProposalFromCIS(lcccSpec, creator)
 }

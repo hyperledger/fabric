@@ -25,6 +25,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -99,7 +100,21 @@ func TestInvoke(t *testing.T) {
 
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: cs}
 
-	proposal, err := putils.CreateChaincodeProposal(cis, []byte("creator_tcert"))
+	sId, err := msp.GetManager().GetSigningIdentity(&msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: "DEFAULT"}, Value: "PEER"})
+	if err != nil {
+		t.Fail()
+		t.Fatalf("couldn't obtain identity: err %s", err)
+		return
+	}
+
+	sIdBytes, err := sId.Serialize()
+	if err != nil {
+		t.Fail()
+		t.Fatalf("couldn't serialize identity: err %s", err)
+		return
+	}
+
+	proposal, err := putils.CreateChaincodeProposal(cis, sIdBytes)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("couldn't generate chaincode proposal: err %s", err)
@@ -142,7 +157,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	// success test 3: invocation with mandatory args + events
+	// success test 3: invocation with mandatory args + events and visibility
 	visibility := []byte("visibility")
 
 	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes, events, visibility}
@@ -190,7 +205,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	// TODO: validate the epoch
 
 	// recompute proposal hash
-	pHash, err := putils.GetProposalHash(proposal.Header, proposal.Payload, visibility)
+	pHash, err := putils.GetProposalHash1(proposal.Header, proposal.Payload, visibility)
 	if err != nil {
 		return fmt.Errorf("could not obtain proposalHash: err %s", err)
 	}
@@ -230,11 +245,31 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 		return fmt.Errorf("The endorser certificate is not valid, aborting")
 	}
 
-	verified, err := endorser.Verify(pResp.Payload, pResp.Endorsement.Signature)
+	verified, err := endorser.Verify(append(pResp.Payload, pResp.Endorsement.Endorser...), pResp.Endorsement.Signature)
 	if err != nil {
 		return fmt.Errorf("Could not determine whether the signature is valid, err %s", err)
 	} else if !verified {
 		return fmt.Errorf("The endorser's signature over the proposal response is not valid, aborting")
+	}
+
+	// as extra, we assemble a transaction, sign it and then validate it
+
+	// obtain signer for the transaction
+	sId, err := msp.GetManager().GetSigningIdentity(&msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: "DEFAULT"}, Value: "PEER"})
+	if err != nil {
+		return fmt.Errorf("couldn't obtain identity: err %s", err)
+	}
+
+	// generate a transaction
+	tx, err := putils.CreateSignedTx(proposal, sId, pResp)
+	if err != nil {
+		return err
+	}
+
+	// validate the transaction
+	_, err = peer.ValidateTransaction(tx)
+	if err != nil {
+		return err
 	}
 
 	return nil

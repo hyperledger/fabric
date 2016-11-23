@@ -22,8 +22,14 @@ import (
 
 	"reflect"
 
+	"fmt"
+	"os"
+
+	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/assert"
 )
 
 func createCIS() *pb.ChaincodeInvocationSpec {
@@ -61,9 +67,19 @@ func TestProposal(t *testing.T) {
 	}
 
 	// get back the header
-	hdr, err := GetHeader(prop)
+	hdr, err := GetHeader(prop.Header)
 	if err != nil {
 		t.Fatalf("Could not extract the header from the proposal, err %s\n", err)
+	}
+
+	hdrBytes, err := GetBytesHeader(hdr)
+	if err != nil {
+		t.Fatalf("Could not marshal the header, err %s\n", err)
+	}
+
+	hdr, err = GetHeader(hdrBytes)
+	if err != nil {
+		t.Fatalf("Could not unmarshal the header, err %s\n", err)
 	}
 
 	// sanity check on header
@@ -147,26 +163,159 @@ func TestProposalResponse(t *testing.T) {
 		return
 	}
 
+	pr := &pb.ProposalResponse{
+		Payload:     prpBytes,
+		Endorsement: &pb.Endorsement{Endorser: []byte("endorser"), Signature: []byte("signature")},
+		Version:     1, // TODO: pick right version number
+		Response:    &pb.Response2{Status: 200, Message: "OK"}}
+
 	// create a proposal response
-	prBytes, err := GetBytesProposalResponse(prpBytes, &pb.Endorsement{Endorser: []byte("endorser"), Signature: []byte("signature")})
+	prBytes, err := GetBytesProposalResponse(pr)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponse")
 		return
 	}
 
 	// get the proposal response message back
-	pr, err := GetProposalResponse(prBytes)
+	prBack, err := GetProposalResponse(prBytes)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ProposalResponse")
 		return
 	}
 
 	// sanity check on pr
-	if pr.Response.Status != 200 ||
-		string(pr.Endorsement.Signature) != "signature" ||
-		string(pr.Endorsement.Endorser) != "endorser" ||
-		bytes.Compare(pr.Payload, prpBytes) != 0 {
+	if prBack.Response.Status != 200 ||
+		string(prBack.Endorsement.Signature) != "signature" ||
+		string(prBack.Endorsement.Endorser) != "endorser" ||
+		bytes.Compare(prBack.Payload, prpBytes) != 0 {
 		t.Fatalf("Invalid ProposalResponse after unmarshalling")
 		return
 	}
+}
+
+func TestEnvelope(t *testing.T) {
+	// create a proposal from a ChaincodeInvocationSpec
+	prop, err := CreateChaincodeProposal(createCIS(), signerSerialized)
+	if err != nil {
+		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
+		return
+	}
+
+	res := []byte("res")
+
+	presp, err := CreateProposalResponse(prop.Header, prop.Payload, res, nil, nil, signer)
+	if err != nil {
+		t.Fatalf("Could not create proposal response, err %s\n", err)
+		return
+	}
+
+	tx, err := CreateSignedTx(prop, signer, presp)
+	if err != nil {
+		t.Fatalf("Could not create signed tx, err %s\n", err)
+		return
+	}
+
+	envBytes, err := GetBytesEnvelope(tx)
+	if err != nil {
+		t.Fatalf("Could not marshal envelope, err %s\n", err)
+		return
+	}
+
+	tx, err = GetEnvelope(envBytes)
+	if err != nil {
+		t.Fatalf("Could not unmarshal envelope, err %s\n", err)
+		return
+	}
+
+	act2, err := GetActionFromEnvelope(envBytes)
+	if err != nil {
+		t.Fatalf("Could not extract actions from envelop, err %s\n", err)
+		return
+	}
+
+	if bytes.Compare(act2.Results, res) != 0 {
+		t.Fatalf("results don't match")
+		return
+	}
+
+	txpayl, err := GetPayload(tx)
+	if err != nil {
+		t.Fatalf("Could not unmarshal payload, err %s\n", err)
+		return
+	}
+
+	tx2, err := GetTransaction(txpayl.Data)
+	if err != nil {
+		t.Fatalf("Could not unmarshal Transaction2, err %s\n", err)
+		return
+	}
+
+	sh, err := GetSignatureHeader(tx2.Actions[0].Header)
+	if err != nil {
+		t.Fatalf("Could not unmarshal SignatureHeader, err %s\n", err)
+		return
+	}
+
+	if bytes.Compare(sh.Creator, signerSerialized) != 0 {
+		t.Fatalf("creator does not match")
+		return
+	}
+
+	cap, err := GetChaincodeActionPayload(tx2.Actions[0].Payload)
+	if err != nil {
+		t.Fatalf("Could not unmarshal ChaincodeActionPayload, err %s\n", err)
+		return
+	}
+	assert.NotNil(t, cap)
+
+	prp, err := GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+	if err != nil {
+		t.Fatalf("Could not unmarshal ProposalResponsePayload, err %s\n", err)
+		return
+	}
+
+	ca, err := GetChaincodeAction(prp.Extension)
+	if err != nil {
+		t.Fatalf("Could not unmarshal ChaincodeAction, err %s\n", err)
+		return
+	}
+
+	if bytes.Compare(ca.Results, res) != 0 {
+		t.Fatalf("results don't match")
+		return
+	}
+}
+
+var signer msp.SigningIdentity
+var signerSerialized []byte
+
+func TestMain(m *testing.M) {
+	// setup crypto algorithms
+	primitives.SetSecurityLevel("SHA2", 256)
+	// setup the MSP manager so that we can sign/verify
+	mspMgrConfigFile := "../../msp/peer-config.json"
+	err := msp.GetManager().Setup(mspMgrConfigFile)
+	if err != nil {
+		os.Exit(-1)
+		fmt.Printf("Could not initialize msp")
+		return
+	}
+	mspId := "DEFAULT"
+	id := "PEER"
+	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+	signer, err = msp.GetManager().GetSigningIdentity(signingIdentity)
+	if err != nil {
+		os.Exit(-1)
+		fmt.Printf("Could not get signer")
+		return
+	}
+
+	signerSerialized, err = signer.Serialize()
+	if err != nil {
+		os.Exit(-1)
+		fmt.Printf("Could not serialize identity")
+		return
+	}
+
+	os.Exit(m.Run())
 }

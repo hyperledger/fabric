@@ -68,6 +68,7 @@ logging:
     network:   warning
     chaincode: warning
     version: warning
+    protoutils: debug
 
 ###############################################################################
 #

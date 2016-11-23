@@ -21,10 +21,30 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 
+	"fmt"
+	"os"
+
+	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestKVLedgerBlockStorage(t *testing.T) {
+	primitives.SetSecurityLevel("SHA2", 256)
+
+	// setup the MSP manager so that we can sign/verify
+	mspMgrConfigFile := "../../../msp/peer-config.json"
+	msp.GetManager().Setup(mspMgrConfigFile)
+	mspId := "DEFAULT"
+	id := "PEER"
+	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspId}, Value: id}
+	signer, err := msp.GetManager().GetSigningIdentity(signingIdentity)
+	if err != nil {
+		os.Exit(-1)
+		fmt.Printf("Could not initialize msp/signer")
+		return
+	}
+
 	env := newTestEnv(t)
 	defer env.cleanup()
 	ledger, _ := NewKVLedger(env.conf)
@@ -40,7 +60,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.SetState("ns1", "key3", []byte("value3"))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
-	block1 := testutil.ConstructBlockForSimulationResults(t, [][]byte{simRes})
+	block1 := testutil.ConstructBlockForSimulationResults(t, [][]byte{simRes}, signer)
 	ledger.RemoveInvalidTransactionsAndPrepare(block1)
 	ledger.Commit()
 
@@ -56,7 +76,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.SetState("ns1", "key3", []byte("value6"))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
-	block2 := testutil.ConstructBlockForSimulationResults(t, [][]byte{simRes})
+	block2 := testutil.ConstructBlockForSimulationResults(t, [][]byte{simRes}, signer)
 	ledger.RemoveInvalidTransactionsAndPrepare(block2)
 	ledger.Commit()
 

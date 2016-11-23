@@ -18,7 +18,6 @@ package lockbasedtxmgmt
 
 import (
 	"bytes"
-	"fmt"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -103,32 +102,17 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *pb.Block2) (*pb.Block2, [
 	validatedBlock.PreviousBlockHash = block.PreviousBlockHash
 	invalidTxs := []*pb.InvalidTransaction{}
 	var valid bool
-	var err error
 	txmgr.updateSet = newUpdateSet()
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Transactions))
-	for _, txBytes := range block.Transactions {
-		tx := &pb.Transaction2{}
-		err = proto.Unmarshal(txBytes, tx)
+	for _, envBytes := range block.Transactions {
+		// extract actions from the envelope message
+		respPayload, err := putils.GetActionFromEnvelope(envBytes)
 		if err != nil {
 			return nil, nil, err
-		}
-		numEndorsements := len(tx.Actions)
-		if numEndorsements == 0 {
-			return nil, nil, fmt.Errorf("Tx contains no TransactionActions")
-		}
-
-		// Eventually we'll want to support multiple TransactionActions in a tran, see FAB-445
-		// But for now, we'll return an error if there are multiple TransactionActions
-		if numEndorsements > 1 {
-			return nil, nil, fmt.Errorf("Tx contains more than one [%d] TransactionActions", numEndorsements)
 		}
 
 		//preparation for extracting RWSet from transaction
 		txRWSet := &txmgmt.TxReadWriteSet{}
-
-		//----- NOTE: should Ledger be in the biz of
-		//understanding payload type ?
-		_, respPayload, err := putils.GetPayloads(tx.Actions[0])
 
 		// Get the Result from the Action
 		// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
@@ -154,10 +138,10 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *pb.Block2) (*pb.Block2, [
 			if err := txmgr.addWriteSetToBatch(txRWSet); err != nil {
 				return nil, nil, err
 			}
-			validatedBlock.Transactions = append(validatedBlock.Transactions, txBytes)
+			validatedBlock.Transactions = append(validatedBlock.Transactions, envBytes)
 		} else {
 			invalidTxs = append(invalidTxs, &pb.InvalidTransaction{
-				Transaction: tx, Cause: pb.InvalidTransaction_RWConflictDuringCommit})
+				Transaction: &pb.Transaction2{ /* FIXME */ }, Cause: pb.InvalidTransaction_RWConflictDuringCommit})
 		}
 	}
 	return validatedBlock, invalidTxs, nil

@@ -26,7 +26,6 @@ import (
 	"github.com/op/go-logging"
 
 	"github.com/hyperledger/fabric/msp"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = logging.MustGetLogger("escc")
@@ -128,22 +127,6 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 		visibility = args[5]
 	}
 
-	// obtain the proposal hash given proposal header, payload and the requested visibility
-	pHashBytes, err := utils.GetProposalHash(hdr, payl, visibility)
-	if err != nil {
-		return nil, fmt.Errorf("Could not compute proposal hash: err %s", err)
-	}
-
-	// TODO: obtain current epoch and set it on header
-	epoch := []byte("current_epoch")
-	logger.Infof("using epoch %s", string(epoch))
-
-	// get the bytes of the proposal response payload - we need to sign them
-	prpBytes, err := utils.GetBytesProposalResponsePayload(pHashBytes, results, events)
-	if err != nil {
-		return nil, errors.New("Failure while unmarshalling the ProposalResponsePayload")
-	}
-
 	// obtain the identity that will sign this proposal response
 	// NOTE: we must obtain it every time: while e.signerId remains
 	// constant, the corresponding cert might (and will) change
@@ -155,20 +138,14 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 		return nil, fmt.Errorf("Could not obtain the signing identity for %s, err %s", e.signerId, err)
 	}
 
-	// serialize the signing identity
-	endorser, err := signingEndorser.Serialize()
+	// obtain a proposal response
+	presp, err := utils.CreateProposalResponse(hdr, payl, results, events, visibility, signingEndorser)
 	if err != nil {
-		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", e.signerId, err)
-	}
-
-	// sign prpBytes with this endorser's key
-	signature, err := signingEndorser.Sign(prpBytes)
-	if err != nil {
-		return nil, fmt.Errorf("Could not sign the proposal response payload, err %s", err)
+		return nil, err
 	}
 
 	// marshall the proposal response so that we return its bytes
-	prBytes, err := utils.GetBytesProposalResponse(prpBytes, &pb.Endorsement{Signature: signature, Endorser: endorser})
+	prBytes, err := utils.GetBytesProposalResponse(presp)
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshall ProposalResponse: err %s", err)
 	}
