@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/deliver"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -38,14 +39,14 @@ func init() {
 type server struct {
 	bh broadcast.Handler
 	bs *broadcastServer
-	ds *DeliverServer
+	ds deliver.Handler
 }
 
 // New creates a ab.AtomicBroadcastServer based on the solo orderer implementation
 func New(queueSize, batchSize, maxWindowSize int, batchTimeout time.Duration, rl rawledger.ReadWriter, grpcServer *grpc.Server, filters *broadcastfilter.RuleSet, configManager configtx.Manager) ab.AtomicBroadcastServer {
 	logger.Infof("Starting solo with queueSize=%d, batchSize=%d batchTimeout=%v and ledger=%T", queueSize, batchSize, batchTimeout, rl)
 	bs := newBroadcastServer(batchSize, batchTimeout, rl, filters, configManager)
-	ds := NewDeliverServer(rl, maxWindowSize)
+	ds := deliver.NewHandlerImpl(rl, maxWindowSize)
 	bh := broadcast.NewHandlerImpl(queueSize, bs, filters, configManager)
 
 	s := &server{
@@ -65,5 +66,5 @@ func (s *server) Broadcast(srv ab.AtomicBroadcast_BroadcastServer) error {
 // Deliver sends a stream of blocks to a client after ordering
 func (s *server) Deliver(srv ab.AtomicBroadcast_DeliverServer) error {
 	logger.Debugf("Starting new Deliver loop")
-	return s.ds.HandleDeliver(srv)
+	return s.ds.Handle(srv)
 }
