@@ -52,20 +52,28 @@ func (f *SWFactory) Get(opts Opts) (bccsp.BCCSP, error) {
 		return nil, fmt.Errorf("Invalid Provider Name [%s]. Opts must refer to [%s].", opts.FactoryName(), f.Name())
 	}
 
+	swOpts, ok := opts.(*SwOpts)
+	if !ok {
+		return nil, errors.New("Invalid opts. They must be of type SwOpts.")
+	}
+
 	if !opts.Ephemeral() {
 		f.initOnce.Do(func() {
-			f.bccsp, f.err = sw.NewDefaultSecurityLevel()
+			f.bccsp, f.err = sw.New(swOpts.SecLevel, swOpts.HashFamily, swOpts.KeyStore)
 			return
 		})
 		return f.bccsp, f.err
 	}
 
-	return sw.NewDefaultSecurityLevel()
+	return sw.New(swOpts.SecLevel, swOpts.HashFamily, swOpts.KeyStore)
 }
 
 // SwOpts contains options for the SWFactory
 type SwOpts struct {
-	EphemeralFlag bool
+	Ephemeral_ bool
+	SecLevel   int
+	HashFamily string
+	KeyStore   bccsp.KeyStore
 }
 
 // FactoryName returns the name of the provider
@@ -75,5 +83,5 @@ func (o *SwOpts) FactoryName() string {
 
 // Ephemeral returns true if the CSP has to be ephemeral, false otherwise
 func (o *SwOpts) Ephemeral() bool {
-	return o.EphemeralFlag
+	return o.Ephemeral_
 }

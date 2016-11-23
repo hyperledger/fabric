@@ -15,7 +15,12 @@ limitations under the License.
 */
 package factory
 
-import "testing"
+import (
+	"os"
+	"testing"
+
+	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
+)
 
 func TestGetDefault(t *testing.T) {
 	bccsp, err := GetDefault()
@@ -28,12 +33,17 @@ func TestGetDefault(t *testing.T) {
 }
 
 func TestGetBCCPEphemeral(t *testing.T) {
-	bccsp1, err := GetBCCSP(&SwOpts{EphemeralFlag: true})
+	ks := &sw.FileBasedKeyStore{}
+	if err := ks.Init(nil, os.TempDir(), false); err != nil {
+		t.Fatalf("Failed initializing key store [%s]", err)
+	}
+
+	bccsp1, err := GetBCCSP(&SwOpts{Ephemeral_: true, SecLevel: 256, HashFamily: "SHA2", KeyStore: ks})
 	if err != nil {
 		t.Fatalf("Failed getting ephemeral software-based BCCSP [%s]", err)
 	}
 
-	bccsp2, err := GetBCCSP(&SwOpts{EphemeralFlag: true})
+	bccsp2, err := GetBCCSP(&SwOpts{Ephemeral_: true, SecLevel: 256, HashFamily: "SHA2", KeyStore: ks})
 	if err != nil {
 		t.Fatalf("Failed getting ephemeral software-based BCCSP [%s]", err)
 	}
@@ -44,12 +54,17 @@ func TestGetBCCPEphemeral(t *testing.T) {
 }
 
 func TestGetBCCP2Ephemeral(t *testing.T) {
-	bccsp1, err := GetBCCSP(&SwOpts{EphemeralFlag: false})
+	ks := &sw.FileBasedKeyStore{}
+	if err := ks.Init(nil, os.TempDir(), false); err != nil {
+		t.Fatalf("Failed initializing key store [%s]", err)
+	}
+
+	bccsp1, err := GetBCCSP(&SwOpts{Ephemeral_: false, SecLevel: 256, HashFamily: "SHA2", KeyStore: ks})
 	if err != nil {
 		t.Fatalf("Failed getting non-ephemeral software-based BCCSP [%s]", err)
 	}
 
-	bccsp2, err := GetBCCSP(&SwOpts{EphemeralFlag: false})
+	bccsp2, err := GetBCCSP(&SwOpts{Ephemeral_: false, SecLevel: 256, HashFamily: "SHA2", KeyStore: ks})
 	if err != nil {
 		t.Fatalf("Failed getting non-ephemeral software-based BCCSP [%s]", err)
 	}

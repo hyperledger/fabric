@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"sync"
 
+	"os"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/spf13/viper"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
 )
 
 var (
@@ -104,12 +106,7 @@ func initFactoriesMap() error {
 }
 
 func createDefaultBCCSP() (bccsp.BCCSP, error) {
-	defaultBCCSPFactoryName := viper.GetString("bccsp.default")
-	if defaultBCCSPFactoryName == "" {
-		defaultBCCSPFactoryName = SoftwareBasedFactoryName
-	}
-
-	return getBCCSPInternal(&DefaultOpts{defaultBCCSPFactoryName, false})
+	return sw.NewDefaultSecurityLevel(os.TempDir())
 }
 
 func getBCCSPInternal(opts Opts) (bccsp.BCCSP, error) {
