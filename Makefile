@@ -215,8 +215,8 @@ build/%.tar.bz2:
 	@tar -jc $^ > $@
 
 .PHONY: protos
-protos: gotools
-	./scripts/compile_protos.sh
+protos: testenv
+	@$(DRUN) hyperledger/fabric-testenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
