@@ -38,7 +38,6 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -47,12 +46,10 @@ var (
 
 func getBCCSP(t *testing.T) bccsp.BCCSP {
 	if swBCCSPInstance == nil {
-		viper.Set("security.bccsp.default.keyStorePath", os.TempDir())
-
 		var err error
-		swBCCSPInstance, err = NewDefaultSecurityLevel()
+		swBCCSPInstance, err = NewDefaultSecurityLevel(os.TempDir())
 		if err != nil {
-			t.Fatalf("Failed initializing key store [%s]", err)
+			t.Fatalf("Failed initializing KeyStore [%s]", err)
 		}
 	}
 

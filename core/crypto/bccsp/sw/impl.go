@@ -19,7 +19,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/asn1"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -43,25 +42,32 @@ var (
 )
 
 // NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
-// at security level 256 and hash family SHA2
-func NewDefaultSecurityLevel() (bccsp.BCCSP, error) {
-	return New(256, "SHA2")
+// at security level 256, hash family SHA2 and using FolderBasedKeyStore as keystore.
+func NewDefaultSecurityLevel(keyStorePath string) (bccsp.BCCSP, error) {
+	ks := &FileBasedKeyStore{}
+	if err := ks.Init(nil, keyStorePath, false); err != nil {
+		return nil, fmt.Errorf("Failed initializing key store [%s]", err)
+	}
+
+	return New(256, "SHA2", ks)
 }
 
 // New returns a new instance of the software-based BCCSP
-// set at the passed security level and hash family.
-func New(securityLevel int, hashFamily string) (bccsp.BCCSP, error) {
+// set at the passed security level, hash family and keystore.
+func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
+	// Init config
 	conf := &config{}
-	err := conf.init(securityLevel, hashFamily)
+	err := conf.setSecurityLevel(securityLevel, hashFamily)
 	if err != nil {
 		return nil, fmt.Errorf("Failed initializing configuration [%s]", err)
 	}
 
-	ks := &keyStore{}
-	if err := ks.init(nil, conf); err != nil {
-		return nil, fmt.Errorf("Failed initializing key store [%s]", err)
+	// Check keystore
+	if keyStore == nil {
+		return nil, errors.New("Invalid bccsp.KeyStore instance. It must be different from nil.")
 	}
-	return &impl{conf, ks}, nil
+
+	return &impl{conf, keyStore}, nil
 }
 
 // SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
@@ -70,7 +76,7 @@ func New(securityLevel int, hashFamily string) (bccsp.BCCSP, error) {
 // It can be configured via viper.
 type impl struct {
 	conf *config
-	ks   *keyStore
+	ks   bccsp.KeyStore
 }
 
 // KeyGen generates a key using opts.
@@ -93,7 +99,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storePrivateKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			err = csp.ks.StoreKey(k)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
 			}
@@ -112,7 +118,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storeKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			err = csp.ks.StoreKey(k)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
 			}
@@ -131,7 +137,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storePrivateKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			err = csp.ks.StoreKey(k)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
 			}
@@ -203,7 +209,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 			// If the key is not Ephemeral, store it.
 			if !opts.Ephemeral() {
 				// Store the key
-				err = csp.ks.storePrivateKey(hex.EncodeToString(reRandomizedKey.SKI()), tempSK)
+				err = csp.ks.StoreKey(reRandomizedKey)
 				if err != nil {
 					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
 				}
@@ -234,7 +240,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 			// If the key is not Ephemeral, store it.
 			if !opts.Ephemeral() {
 				// Store the key
-				err = csp.ks.storeKey(hex.EncodeToString(hmacedKey.SKI()), hmacedKey.k)
+				err = csp.ks.StoreKey(hmacedKey)
 				if err != nil {
 					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
 				}
@@ -253,7 +259,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 			// If the key is not Ephemeral, store it.
 			if !opts.Ephemeral() {
 				// Store the key
-				err = csp.ks.storeKey(hex.EncodeToString(hmacedKey.SKI()), hmacedKey.k)
+				err = csp.ks.StoreKey(hmacedKey)
 				if err != nil {
 					return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
 				}
@@ -300,7 +306,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storeKey(hex.EncodeToString(aesK.SKI()), aesK.k)
+			err = csp.ks.StoreKey(aesK)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
 			}
@@ -323,7 +329,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storeKey(hex.EncodeToString(aesK.SKI()), aesK.k)
+			err = csp.ks.StoreKey(aesK)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
 			}
@@ -356,7 +362,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storePublicKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			err = csp.ks.StoreKey(k)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
 			}
@@ -389,7 +395,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storePrivateKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			err = csp.ks.StoreKey(k)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
 			}
@@ -408,7 +414,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storePublicKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			err = csp.ks.StoreKey(k)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
 			}
@@ -427,7 +433,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 		// If the key is not Ephemeral, store it.
 		if !opts.Ephemeral() {
 			// Store the key
-			err = csp.ks.storePublicKey(hex.EncodeToString(k.SKI()), lowLevelKey)
+			err = csp.ks.StoreKey(k)
 			if err != nil {
 				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
 			}
@@ -460,40 +466,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 // GetKey returns the key this CSP associates to
 // the Subject Key Identifier ski.
 func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
-	// Validate arguments
-	if len(ski) == 0 {
-		return nil, errors.New("Invalid SKI. Cannot be of zero length.")
-	}
-
-	suffix := csp.ks.getSuffix(hex.EncodeToString(ski))
-
-	switch suffix {
-	case "key":
-		// Load the key
-		key, err := csp.ks.loadKey(hex.EncodeToString(ski))
-		if err != nil {
-			return nil, fmt.Errorf("Failed loading key [%x] [%s]", ski, err)
-		}
-
-		return &aesPrivateKey{key, false}, nil
-	case "sk":
-		// Load the private key
-		key, err := csp.ks.loadPrivateKey(hex.EncodeToString(ski))
-		if err != nil {
-			return nil, fmt.Errorf("Failed loading key [%x] [%s]", ski, err)
-		}
-
-		switch key.(type) {
-		case *ecdsa.PrivateKey:
-			return &ecdsaPrivateKey{key.(*ecdsa.PrivateKey)}, nil
-		case *rsa.PrivateKey:
-			return &rsaPrivateKey{key.(*rsa.PrivateKey)}, nil
-		default:
-			return nil, errors.New("Key type not recognized")
-		}
-	default:
-		return nil, errors.New("Key not recognized")
-	}
+	return csp.ks.GetKey(ski)
 }
 
 // Hash hashes messages msg using options opts.
