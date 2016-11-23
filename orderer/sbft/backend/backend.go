@@ -302,7 +302,7 @@ func (t *Backend) Deliver(batch *s.Batch) {
 			logger.Warningf("Payload cannot be unmarshalled.")
 		}
 	}
-	t.ledger.Append(blockContents, []byte{})
+	t.ledger.Append(blockContents, nil)
 }
 
 func (t *Backend) Persist(key string, data proto.Message) {

@@ -133,7 +133,7 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 }
 
 // Append creates a new block and appends it to the ledger
-func (rl *ramLedger) Append(messages []*cb.Envelope, proof []byte) *cb.Block {
+func (rl *ramLedger) Append(messages []*cb.Envelope, metadata [][]byte) *cb.Block {
 	data := &cb.BlockData{
 		Data: make([][]byte, len(messages)),
 	}
@@ -154,7 +154,7 @@ func (rl *ramLedger) Append(messages []*cb.Envelope, proof []byte) *cb.Block {
 		},
 		Data: data,
 		Metadata: &cb.BlockMetadata{
-			Metadata: [][]byte{proof},
+			Metadata: metadata,
 		},
 	}
 	rl.appendBlock(block)
