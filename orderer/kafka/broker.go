@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/config"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
 // Broker allows the caller to get info on the orderer's stream

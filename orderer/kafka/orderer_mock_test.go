@@ -19,7 +19,7 @@ package kafka
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/config"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"google.golang.org/grpc"

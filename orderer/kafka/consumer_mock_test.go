@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/config"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/Shopify/sarama"
