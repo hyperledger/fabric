@@ -121,81 +121,9 @@ func (m *mockB) Recv() (*cb.Envelope, error) {
 	return msg, nil
 }
 
-func TestQueueOverflow(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
-	bs := newPlainBroadcastServer(2, 1, time.Second, nil, filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
-	m := newMockB()
-	b := newBroadcaster(bs)
-	go b.queueEnvelopes(m)
-	defer close(m.recvChan)
-
-	bs.halt()
-
-	for i := 0; i < 2; i++ {
-		m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
-		reply := <-m.sendChan
-		if reply.Status != cb.Status_SUCCESS {
-			t.Fatalf("Should have successfully queued the message")
-		}
-	}
-
-	m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
-	reply := <-m.sendChan
-	if reply.Status != cb.Status_SERVICE_UNAVAILABLE {
-		t.Fatalf("Should not have successfully queued the message")
-	}
-
-}
-
-func TestMultiQueueOverflow(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
-	bs := newPlainBroadcastServer(2, 1, time.Second, nil, filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
-	// m := newMockB()
-	ms := []*mockB{newMockB(), newMockB(), newMockB()}
-
-	for _, m := range ms {
-		b := newBroadcaster(bs)
-		go b.queueEnvelopes(m)
-		defer close(m.recvChan)
-	}
-
-	for _, m := range ms {
-		for i := 0; i < 2; i++ {
-			m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
-			reply := <-m.sendChan
-			if reply.Status != cb.Status_SUCCESS {
-				t.Fatalf("Should have successfully queued the message")
-			}
-		}
-	}
-
-	for _, m := range ms {
-		m.recvChan <- &cb.Envelope{Payload: []byte("Some bytes")}
-		reply := <-m.sendChan
-		if reply.Status != cb.Status_SERVICE_UNAVAILABLE {
-			t.Fatalf("Should not have successfully queued the message")
-		}
-	}
-}
-
-func TestEmptyEnvelope(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
-	bs := newPlainBroadcastServer(2, 1, time.Second, nil, filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
-	m := newMockB()
-	defer close(m.recvChan)
-	go bs.handleBroadcast(m)
-
-	m.recvChan <- &cb.Envelope{}
-	reply := <-m.sendChan
-	if reply.Status != cb.Status_BAD_REQUEST {
-		t.Fatalf("Should have rejected the null message")
-	}
-
-}
-
 func TestEmptyBatch(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
-	bs := newPlainBroadcastServer(2, 1, time.Millisecond, ramledger.New(10, genesisBlock), filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
+	bs := newPlainBroadcastServer(1, time.Millisecond, ramledger.New(10, genesisBlock), filters, cm)
 	if bs.rl.(rawledger.Reader).Height() != 1 {
 		t.Fatalf("Expected no new blocks created")
 	}
@@ -205,7 +133,7 @@ func TestBatchTimer(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	batchSize := 2
 	rl := ramledger.New(10, genesisBlock)
-	bs := newBroadcastServer(0, batchSize, time.Millisecond, rl, filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
+	bs := newBroadcastServer(batchSize, time.Millisecond, rl, filters, cm)
 	defer bs.halt()
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
 
@@ -222,7 +150,7 @@ func TestFilledBatch(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	batchSize := 2
 	messages := 10
-	bs := newPlainBroadcastServer(0, batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
+	bs := newPlainBroadcastServer(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
 	done := make(chan struct{})
 	go func() {
 		bs.main()
@@ -242,7 +170,7 @@ func TestFilledBatch(t *testing.T) {
 func TestReconfigureGoodPath(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	batchSize := 2
-	bs := newPlainBroadcastServer(0, batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
+	bs := newPlainBroadcastServer(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
 	done := make(chan struct{})
 	go func() {
 		bs.main()
@@ -270,42 +198,11 @@ func TestReconfigureGoodPath(t *testing.T) {
 	}
 }
 
-func TestReconfigureFailToValidate(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
-	cm.validateErr = fmt.Errorf("Fail to validate")
-	batchSize := 2
-	bs := newPlainBroadcastServer(0, batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
-	done := make(chan struct{})
-	go func() {
-		bs.main()
-		close(done)
-	}()
-
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg1")}
-	bs.sendChan <- &cb.Envelope{Payload: configTx}
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg2")}
-
-	bs.halt()
-	<-done
-	expected := uint64(2)
-	if bs.rl.(rawledger.Reader).Height() != expected {
-		t.Fatalf("Expected %d blocks but got %d", expected, bs.rl.(rawledger.Reader).Height())
-	}
-
-	if !cm.validated {
-		t.Errorf("ConfigTx should have been validated before processing")
-	}
-
-	if cm.applied {
-		t.Errorf("ConfigTx should not have been applied")
-	}
-}
-
 func TestReconfigureFailToApply(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	cm.applyErr = fmt.Errorf("Fail to apply")
 	batchSize := 2
-	bs := newPlainBroadcastServer(0, batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm) // queueSize, batchSize (unused), batchTimeout (unused), ramLedger (unused), filters, configManager
+	bs := newPlainBroadcastServer(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
 	done := make(chan struct{})
 	go func() {
 		bs.main()
