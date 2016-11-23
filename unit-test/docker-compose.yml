@@ -1,0 +1,21 @@
+vp:
+  image: hyperledger/fabric-peer
+  expose:
+    - 7051
+  environment:
+    - CORE_PEER_ADDRESSAUTODETECT=true
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+
+unit-tests:
+  image: hyperledger/fabric-testenv
+  links:
+    - vp
+  environment:
+    - UNIT_TEST_PEER_IP=vp
+    - GO_LDFLAGS
+    - OUTPUT
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ${GOPATH}/src/github.com/hyperledger/fabric:/opt/gopath/src/github.com/hyperledger/fabric
+  command: ./unit-test/run.sh
