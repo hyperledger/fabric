@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/op/go-logging"
 )
 
@@ -88,6 +87,9 @@ func (bs *consenter) main() {
 				bs.rl.Append(batch, nil)
 			}
 		case <-timer:
+			//clear the timer
+			timer = nil
+
 			batch := bs.cutter.Cut()
 			if len(batch) == 0 {
 				logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
