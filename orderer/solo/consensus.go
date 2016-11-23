@@ -25,9 +25,16 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/op/go-logging"
 )
 
-type broadcastServer struct {
+var logger = logging.MustGetLogger("orderer/solo")
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
+
+type consenter struct {
 	batchSize     int
 	batchTimeout  time.Duration
 	rl            rawledger.Writer
@@ -37,14 +44,14 @@ type broadcastServer struct {
 	exitChan      chan struct{}
 }
 
-func newBroadcastServer(batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *broadcastServer {
-	bs := newPlainBroadcastServer(batchSize, batchTimeout, rl, filters, configManager)
+func NewConsenter(batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *consenter {
+	bs := newPlainConsenter(batchSize, batchTimeout, rl, filters, configManager)
 	go bs.main()
 	return bs
 }
 
-func newPlainBroadcastServer(batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *broadcastServer {
-	bs := &broadcastServer{
+func newPlainConsenter(batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *consenter {
+	bs := &consenter{
 		batchSize:     batchSize,
 		batchTimeout:  batchTimeout,
 		rl:            rl,
@@ -56,12 +63,12 @@ func newPlainBroadcastServer(batchSize int, batchTimeout time.Duration, rl rawle
 	return bs
 }
 
-func (bs *broadcastServer) halt() {
+func (bs *consenter) halt() {
 	close(bs.exitChan)
 }
 
 // Enqueue accepts a message and returns true on acceptance, or false on shutdown
-func (bs *broadcastServer) Enqueue(env *cb.Envelope) bool {
+func (bs *consenter) Enqueue(env *cb.Envelope) bool {
 	select {
 	case bs.sendChan <- env:
 		return true
@@ -70,7 +77,7 @@ func (bs *broadcastServer) Enqueue(env *cb.Envelope) bool {
 	}
 }
 
-func (bs *broadcastServer) main() {
+func (bs *consenter) main() {
 	var curBatch []*cb.Envelope
 	var timer <-chan time.Time
 

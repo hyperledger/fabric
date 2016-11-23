@@ -123,7 +123,7 @@ func (m *mockB) Recv() (*cb.Envelope, error) {
 
 func TestEmptyBatch(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
-	bs := newPlainBroadcastServer(1, time.Millisecond, ramledger.New(10, genesisBlock), filters, cm)
+	bs := newPlainConsenter(1, time.Millisecond, ramledger.New(10, genesisBlock), filters, cm)
 	if bs.rl.(rawledger.Reader).Height() != 1 {
 		t.Fatalf("Expected no new blocks created")
 	}
@@ -133,7 +133,7 @@ func TestBatchTimer(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	batchSize := 2
 	rl := ramledger.New(10, genesisBlock)
-	bs := newBroadcastServer(batchSize, time.Millisecond, rl, filters, cm)
+	bs := NewConsenter(batchSize, time.Millisecond, rl, filters, cm)
 	defer bs.halt()
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
 
@@ -150,7 +150,7 @@ func TestFilledBatch(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	batchSize := 2
 	messages := 10
-	bs := newPlainBroadcastServer(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
+	bs := newPlainConsenter(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
 	done := make(chan struct{})
 	go func() {
 		bs.main()
@@ -170,7 +170,7 @@ func TestFilledBatch(t *testing.T) {
 func TestReconfigureGoodPath(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	batchSize := 2
-	bs := newPlainBroadcastServer(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
+	bs := newPlainConsenter(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
 	done := make(chan struct{})
 	go func() {
 		bs.main()
@@ -202,7 +202,7 @@ func TestReconfigureFailToApply(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	cm.applyErr = fmt.Errorf("Fail to apply")
 	batchSize := 2
-	bs := newPlainBroadcastServer(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
+	bs := newPlainConsenter(batchSize, time.Hour, ramledger.New(10, genesisBlock), filters, cm)
 	done := make(chan struct{})
 	go func() {
 		bs.main()
