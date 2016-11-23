@@ -49,6 +49,7 @@ endif
 PKGNAME = github.com/$(PROJECT_NAME)
 GO_LDFLAGS = -X $(PKGNAME)/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" "
+GO_DOCKER_FLAGS= -ldflags "$(GO_LDFLAGS) -linkmode external -extldflags '-static -lpthread'"
 ARCH=$(shell uname -m)
 OS=$(shell uname)
 CHAINTOOL_RELEASE=v0.10.0
@@ -100,7 +101,7 @@ GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | 
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv testenv
+IMAGES = peer orderer ccenv javaenv testenv runtime
 
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
@@ -160,12 +161,12 @@ linter: testenv
 build/docker/bin/%: $(PROJECT_FILES)
 	$(eval TARGET = ${patsubst build/docker/bin/%,%,${@}})
 	@echo "Building $@"
-	@mkdir -p build/docker/bin build/docker/pkg
+	@mkdir -p build/docker/bin build/docker/$(TARGET)/pkg
 	@$(DRUN) \
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
-		-v $(abspath build/docker/pkg):/opt/gopath/pkg \
+		-v $(abspath build/docker/$(TARGET)/pkg):/opt/gopath/pkg \
 		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		go install -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
+		go install $(GO_DOCKER_FLAGS) $(pkgmap.$(@F))
 	@touch $@
 
 build/bin:
@@ -181,9 +182,18 @@ build/docker/gotools: gotools/Makefile
 		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		make install BINDIR=/opt/gotools/bin OBJDIR=/opt/gotools/obj
 
-# Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports)
+build/docker/busybox:
+	@$(DRUN) \
+		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
+		make -f busybox/Makefile install BINDIR=$(@D)
+
+# Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
 build/bin/peer: build/image/ccenv/.dummy build/image/javaenv/.dummy
 build/image/peer/.dummy: build/image/ccenv/.dummy build/image/javaenv/.dummy
+
+# Both peer-docker and orderer-docker depend on the runtime image
+build/image/peer/.dummy: build/image/runtime/.dummy
+build/image/orderer/.dummy: build/image/runtime/.dummy
 
 build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
@@ -205,6 +215,7 @@ build/image/peer/payload:       build/docker/bin/peer \
 build/image/orderer/payload:    build/docker/bin/orderer \
 				orderer/orderer.yaml
 build/image/testenv/payload:    build/gotools.tar.bz2
+build/image/runtime/payload:    build/docker/busybox
 
 build/image/%/payload:
 	mkdir -p $@
