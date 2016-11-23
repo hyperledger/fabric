@@ -30,6 +30,8 @@ import (
 
 	"crypto/x509"
 
+	"crypto/hmac"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/utils"
@@ -40,10 +42,17 @@ var (
 	logger = logging.MustGetLogger("SW_BCCSP")
 )
 
-// New returns a new instance of the software-based BCCSP.
-func New() (bccsp.BCCSP, error) {
+// NewDefaultSecurityLevel returns a new instance of the software-based BCCSP
+// at security level 256 and hash family SHA2
+func NewDefaultSecurityLevel() (bccsp.BCCSP, error) {
+	return New(256, "SHA2")
+}
+
+// New returns a new instance of the software-based BCCSP
+// set at the passed security level and hash family.
+func New(securityLevel int, hashFamily string) (bccsp.BCCSP, error) {
 	conf := &config{}
-	err := conf.init()
+	err := conf.init(securityLevel, hashFamily)
 	if err != nil {
 		return nil, fmt.Errorf("Failed initializing configuration [%s]", err)
 	}
@@ -52,14 +61,16 @@ func New() (bccsp.BCCSP, error) {
 	if err := ks.init(nil, conf); err != nil {
 		return nil, fmt.Errorf("Failed initializing key store [%s]", err)
 	}
-	return &impl{ks}, nil
+	return &impl{conf, ks}, nil
 }
 
 // SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
-// It is based on code used in the primitives package.
+// It uses util code in the primitives package but does not depend on the
+// initialization of that package.
 // It can be configured via viper.
 type impl struct {
-	ks *keyStore
+	conf *config
+	ks   *keyStore
 }
 
 // KeyGen generates a key using opts.
@@ -72,7 +83,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	// Parse algorithm
 	switch opts.Algorithm() {
 	case bccsp.ECDSA:
-		lowLevelKey, err := primitives.NewECDSAKey()
+		lowLevelKey, err := ecdsa.GenerateKey(csp.conf.ellipticCurve, rand.Reader)
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating ECDSA key [%s]", err)
 		}
@@ -90,7 +101,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 
 		return k, nil
 	case bccsp.AES:
-		lowLevelKey, err := primitives.GenAESKey()
+		lowLevelKey, err := primitives.GetRandomBytes(csp.conf.aesBitLength)
 
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating AES key [%s]", err)
@@ -109,7 +120,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 
 		return k, nil
 	case bccsp.RSA:
-		lowLevelKey, err := primitives.NewRSAKey()
+		lowLevelKey, err := rsa.GenerateKey(rand.Reader, csp.conf.rsaBitLength)
 
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating RSA (2048) key [%s]", err)
@@ -216,7 +227,9 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 		case *bccsp.HMACTruncated256AESDeriveKeyOpts:
 			hmacOpts := opts.(*bccsp.HMACTruncated256AESDeriveKeyOpts)
 
-			hmacedKey := &aesPrivateKey{primitives.HMACAESTruncated(aesK.k, hmacOpts.Argument()), false}
+			mac := hmac.New(csp.conf.hashFunction, aesK.k)
+			mac.Write(hmacOpts.Argument())
+			hmacedKey := &aesPrivateKey{mac.Sum(nil)[:csp.conf.aesBitLength], false}
 
 			// If the key is not Ephemeral, store it.
 			if !opts.Ephemeral() {
@@ -233,7 +246,9 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 			hmacOpts := opts.(*bccsp.HMACDeriveKeyOpts)
 
-			hmacedKey := &aesPrivateKey{primitives.HMAC(aesK.k, hmacOpts.Argument()), true}
+			mac := hmac.New(csp.conf.hashFunction, aesK.k)
+			mac.Write(hmacOpts.Argument())
+			hmacedKey := &aesPrivateKey{mac.Sum(nil), true}
 
 			// If the key is not Ephemeral, store it.
 			if !opts.Ephemeral() {
@@ -484,12 +499,16 @@ func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
 // Hash hashes messages msg using options opts.
 func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error) {
 	if opts == nil {
-		return primitives.Hash(msg), nil
+		hash := csp.conf.hashFunction()
+		hash.Write(msg)
+		return hash.Sum(nil), nil
 	}
 
 	switch opts.Algorithm() {
 	case bccsp.DefaultHash, bccsp.SHA:
-		return primitives.Hash(msg), nil
+		hash := csp.conf.hashFunction()
+		hash.Write(msg)
+		return hash.Sum(nil), nil
 	default:
 		return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
 	}
@@ -499,12 +518,12 @@ func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error) 
 // If opts is nil then the default hash function is returned.
 func (csp *impl) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
 	if opts == nil {
-		return primitives.NewHash(), nil
+		return csp.conf.hashFunction(), nil
 	}
 
 	switch opts.Algorithm() {
 	case bccsp.SHA, bccsp.DefaultHash:
-		return primitives.NewHash(), nil
+		return csp.conf.hashFunction(), nil
 	default:
 		return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
 	}

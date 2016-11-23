@@ -21,16 +21,35 @@ import (
 
 	"os"
 
+	"crypto/elliptic"
+	"crypto/sha256"
+	"crypto/sha512"
+	"fmt"
+	"hash"
+
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/sha3"
 )
 
 type config struct {
-	keystorePath string
+	keystorePath  string
+	securityLevel int
+	hashFamily    string
 
 	configurationPathProperty string
+	ellipticCurve             elliptic.Curve
+	hashFunction              func() hash.Hash
+	aesBitLength              int
+	rsaBitLength              int
 }
 
-func (conf *config) init() error {
+func (conf *config) init(securityLevel int, hashFamily string) error {
+	// Set security level
+	err := conf.setSecurityLevel(securityLevel, hashFamily)
+	if err != nil {
+		return fmt.Errorf("Failed initliazing security level [%s]", err)
+	}
+	// Set ks path
 	conf.configurationPathProperty = "security.bccsp.default.keyStorePath"
 
 	// Check mandatory fields
@@ -45,10 +64,57 @@ func (conf *config) init() error {
 	// Set configuration path
 	rootPath = filepath.Join(rootPath, "crypto")
 
-	// Set ks path
 	conf.keystorePath = filepath.Join(rootPath, "ks")
 
 	return nil
+}
+
+func (conf *config) setSecurityLevel(securityLevel int, hashFamily string) (err error) {
+	switch hashFamily {
+	case "SHA2":
+		err = conf.setSecurityLevelSHA2(securityLevel)
+	case "SHA3":
+		err = conf.setSecurityLevelSHA3(securityLevel)
+	default:
+		err = fmt.Errorf("Hash Family not supported [%s]", hashFamily)
+	}
+	return
+}
+
+func (conf *config) setSecurityLevelSHA2(level int) (err error) {
+	switch level {
+	case 256:
+		conf.ellipticCurve = elliptic.P256()
+		conf.hashFunction = sha256.New
+		conf.rsaBitLength = 2048
+		conf.aesBitLength = 32
+	case 384:
+		conf.ellipticCurve = elliptic.P384()
+		conf.hashFunction = sha512.New384
+		conf.rsaBitLength = 3072
+		conf.aesBitLength = 32
+	default:
+		err = fmt.Errorf("Security level not supported [%d]", level)
+	}
+	return
+}
+
+func (conf *config) setSecurityLevelSHA3(level int) (err error) {
+	switch level {
+	case 256:
+		conf.ellipticCurve = elliptic.P256()
+		conf.hashFunction = sha3.New256
+		conf.rsaBitLength = 2048
+		conf.aesBitLength = 32
+	case 384:
+		conf.ellipticCurve = elliptic.P384()
+		conf.hashFunction = sha3.New384
+		conf.rsaBitLength = 3072
+		conf.aesBitLength = 32
+	default:
+		err = fmt.Errorf("Security level not supported [%d]", level)
+	}
+	return
 }
 
 func (conf *config) checkProperty(property string) error {

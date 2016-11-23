@@ -31,6 +31,10 @@ import (
 	"net"
 	"time"
 
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/sha256"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
@@ -43,11 +47,10 @@ var (
 
 func getBCCSP(t *testing.T) bccsp.BCCSP {
 	if swBCCSPInstance == nil {
-		primitives.InitSecurityLevel("SHA2", 256)
 		viper.Set("security.bccsp.default.keyStorePath", os.TempDir())
 
 		var err error
-		swBCCSPInstance, err = New()
+		swBCCSPInstance, err = NewDefaultSecurityLevel()
 		if err != nil {
 			t.Fatalf("Failed initializing key store [%s]", err)
 		}
@@ -418,8 +421,8 @@ func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
 func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 	csp := getBCCSP(t)
 
-	// Generate an ECDSA key
-	key, err := primitives.NewECDSAKey()
+	// Generate an ECDSA key, default is P256
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatalf("Failed generating ECDSA key [%s]", err)
 	}
@@ -752,7 +755,7 @@ func TestHMACKeyDerivOverAES256Key(t *testing.T) {
 func TestAES256KeyImport(t *testing.T) {
 	csp := getBCCSP(t)
 
-	raw, err := primitives.GenAESKey()
+	raw, err := primitives.GetRandomBytes(32)
 	if err != nil {
 		t.Fatalf("Failed generating AES key [%s]", err)
 	}
@@ -855,7 +858,10 @@ func TestSHA(t *testing.T) {
 			t.Fatalf("Failed computing SHA [%s]", err)
 		}
 
-		h2 := primitives.Hash(b[:])
+		// Default HASH is SHA2 256
+		hash := sha256.New()
+		hash.Write(b)
+		h2 := hash.Sum(nil)
 
 		if !bytes.Equal(h1, h2) {
 			t.Fatalf("Discrempancy found in HASH result [%x], [%x]!=[%x]", b, h1, h2)

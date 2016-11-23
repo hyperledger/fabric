@@ -22,7 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/spf13/viper"
 )
 
@@ -32,11 +31,10 @@ var (
 
 func getBCCSP(t *testing.T) bccsp.BCCSP {
 	if swBCCSPInstance == nil {
-		primitives.InitSecurityLevel("SHA2", 256)
 		viper.Set("security.bccsp.default.keyStorePath", os.TempDir())
 
 		var err error
-		swBCCSPInstance, err = sw.New()
+		swBCCSPInstance, err = sw.NewDefaultSecurityLevel()
 		if err != nil {
 			t.Fatalf("Failed initializing key store [%s]", err)
 		}
@@ -95,12 +93,18 @@ func TestSign(t *testing.T) {
 	}
 
 	msg := []byte("Hello World")
-	signature, err := signer.Sign(rand.Reader, primitives.Hash(msg), nil)
+
+	digest, err := csp.Hash(msg, nil)
+	if err != nil {
+		t.Fatalf("Failed generating digest [%s]", err)
+	}
+
+	signature, err := signer.Sign(rand.Reader, digest, nil)
 	if err != nil {
 		t.Fatalf("Failed generating ECDSA signature [%s]", err)
 	}
 
-	valid, err := csp.Verify(k, signature, primitives.Hash(msg), nil)
+	valid, err := csp.Verify(k, signature, digest, nil)
 	if err != nil {
 		t.Fatalf("Failed verifying ECDSA signature [%s]", err)
 	}

@@ -18,8 +18,9 @@ package sw
 import (
 	"errors"
 
+	"crypto/sha256"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
 type aesPrivateKey struct {
@@ -39,7 +40,9 @@ func (k *aesPrivateKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *aesPrivateKey) SKI() (ski []byte) {
-	return primitives.Hash(k.k)
+	hash := sha256.New()
+	hash.Write(k.k)
+	return hash.Sum(nil)
 }
 
 // Symmetric returns true if this key is a symmetric key,

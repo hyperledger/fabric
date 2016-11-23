@@ -54,13 +54,13 @@ func (f *SWFactory) Get(opts Opts) (bccsp.BCCSP, error) {
 
 	if !opts.Ephemeral() {
 		f.initOnce.Do(func() {
-			f.bccsp, f.err = sw.New()
+			f.bccsp, f.err = sw.NewDefaultSecurityLevel()
 			return
 		})
 		return f.bccsp, f.err
 	}
 
-	return sw.New()
+	return sw.NewDefaultSecurityLevel()
 }
 
 // SwOpts contains options for the SWFactory

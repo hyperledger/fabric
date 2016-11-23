@@ -20,6 +20,8 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"crypto/sha256"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
@@ -38,7 +40,9 @@ func (k *rsaPrivateKey) Bytes() (raw []byte, err error) {
 func (k *rsaPrivateKey) SKI() (ski []byte) {
 	raw := x509.MarshalPKCS1PrivateKey(k.k)
 
-	return primitives.Hash(raw)
+	hash := sha256.New()
+	hash.Write(raw)
+	return hash.Sum(nil)
 }
 
 // Symmetric returns true if this key is a symmetric key,
@@ -78,7 +82,9 @@ func (k *rsaPublicKey) SKI() (ski []byte) {
 	raw, _ := primitives.PublicKeyToPEM(k.k, nil)
 	// TODO: Error should not be thrown. Anyway, move the marshalling at initialization.
 
-	return primitives.Hash(raw)
+	hash := sha256.New()
+	hash.Write(raw)
+	return hash.Sum(nil)
 }
 
 // Symmetric returns true if this key is a symmetric key,
