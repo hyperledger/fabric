@@ -166,7 +166,7 @@ peer:
         enabled: true
         ledger:
             # orderer to talk to
-            orderer: 0.0.0.0:5151
+            orderer: 0.0.0.0:7050
 
     # TLS Settings for p2p communications
     tls:
