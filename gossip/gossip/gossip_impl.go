@@ -382,14 +382,20 @@ func (g *gossipServiceImpl) Stop() {
 	}
 	atomic.StoreInt32((&g.stopFlag), int32(1))
 	g.logger.Info("Stopping gossip")
-	go g.comm.Stop()
+	comWG := sync.WaitGroup{}
+	comWG.Add(1)
+	go func() {
+		defer comWG.Done()
+		g.comm.Stop()
+	}()
 	g.discAdapter.close()
-	go g.disc.Stop()
-	go g.pushPull.Stop()
+	g.disc.Stop()
+	g.pushPull.Stop()
 	g.toDieChan <- struct{}{}
 	g.emitter.Stop()
 	g.ChannelDeMultiplexer.Close()
 	g.stopSignal.Wait()
+	comWG.Wait()
 }
 
 func (g *gossipServiceImpl) UpdateMetadata(md []byte) {
