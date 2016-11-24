@@ -24,7 +24,7 @@ import (
 )
 
 type aesPrivateKey struct {
-	k          []byte
+	privKey    []byte
 	exportable bool
 }
 
@@ -32,7 +32,7 @@ type aesPrivateKey struct {
 // if this operation is allowed.
 func (k *aesPrivateKey) Bytes() (raw []byte, err error) {
 	if k.exportable {
-		return k.k, nil
+		return k.privKey, nil
 	}
 
 	return nil, errors.New("Not supported.")
@@ -41,7 +41,7 @@ func (k *aesPrivateKey) Bytes() (raw []byte, err error) {
 // SKI returns the subject key identifier of this key.
 func (k *aesPrivateKey) SKI() (ski []byte) {
 	hash := sha256.New()
-	hash.Write(k.k)
+	hash.Write(k.privKey)
 	return hash.Sum(nil)
 }
 

@@ -174,7 +174,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 			reRandOpts := opts.(*bccsp.ECDSAReRandKeyOpts)
 			tempSK := &ecdsa.PrivateKey{
 				PublicKey: ecdsa.PublicKey{
-					Curve: ecdsaK.k.Curve,
+					Curve: ecdsaK.privKey.Curve,
 					X:     new(big.Int),
 					Y:     new(big.Int),
 				},
@@ -183,18 +183,18 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 			var k = new(big.Int).SetBytes(reRandOpts.ExpansionValue())
 			var one = new(big.Int).SetInt64(1)
-			n := new(big.Int).Sub(ecdsaK.k.Params().N, one)
+			n := new(big.Int).Sub(ecdsaK.privKey.Params().N, one)
 			k.Mod(k, n)
 			k.Add(k, one)
 
-			tempSK.D.Add(ecdsaK.k.D, k)
-			tempSK.D.Mod(tempSK.D, ecdsaK.k.PublicKey.Params().N)
+			tempSK.D.Add(ecdsaK.privKey.D, k)
+			tempSK.D.Mod(tempSK.D, ecdsaK.privKey.PublicKey.Params().N)
 
 			// Compute temporary public key
-			tempX, tempY := ecdsaK.k.PublicKey.ScalarBaseMult(k.Bytes())
+			tempX, tempY := ecdsaK.privKey.PublicKey.ScalarBaseMult(k.Bytes())
 			tempSK.PublicKey.X, tempSK.PublicKey.Y =
 				tempSK.PublicKey.Add(
-					ecdsaK.k.PublicKey.X, ecdsaK.k.PublicKey.Y,
+					ecdsaK.privKey.PublicKey.X, ecdsaK.privKey.PublicKey.Y,
 					tempX, tempY,
 				)
 
@@ -233,7 +233,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 		case *bccsp.HMACTruncated256AESDeriveKeyOpts:
 			hmacOpts := opts.(*bccsp.HMACTruncated256AESDeriveKeyOpts)
 
-			mac := hmac.New(csp.conf.hashFunction, aesK.k)
+			mac := hmac.New(csp.conf.hashFunction, aesK.privKey)
 			mac.Write(hmacOpts.Argument())
 			hmacedKey := &aesPrivateKey{mac.Sum(nil)[:csp.conf.aesBitLength], false}
 
@@ -252,7 +252,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 
 			hmacOpts := opts.(*bccsp.HMACDeriveKeyOpts)
 
-			mac := hmac.New(csp.conf.hashFunction, aesK.k)
+			mac := hmac.New(csp.conf.hashFunction, aesK.privKey)
 			mac.Write(hmacOpts.Argument())
 			hmacedKey := &aesPrivateKey{mac.Sum(nil), true}
 
@@ -435,7 +435,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			// Store the key
 			err = csp.ks.StoreKey(k)
 			if err != nil {
-				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
+				return nil, fmt.Errorf("Failed storing RSA publi key [%s]", err)
 			}
 		}
 
@@ -520,13 +520,13 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		return k.(*ecdsaPrivateKey).k.Sign(rand.Reader, digest, nil)
+		return k.(*ecdsaPrivateKey).privKey.Sign(rand.Reader, digest, nil)
 	case *rsaPrivateKey:
 		if opts == nil {
 			return nil, errors.New("Invalid options. Nil.")
 		}
 
-		return k.(*rsaPrivateKey).k.Sign(rand.Reader, digest, opts)
+		return k.(*rsaPrivateKey).privKey.Sign(rand.Reader, digest, opts)
 	default:
 		return nil, fmt.Errorf("Key type not recognized [%s]", k)
 	}
@@ -554,7 +554,7 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
 		}
 
-		return ecdsa.Verify(&(k.(*ecdsaPrivateKey).k.PublicKey), digest, ecdsaSignature.R, ecdsaSignature.S), nil
+		return ecdsa.Verify(&(k.(*ecdsaPrivateKey).privKey.PublicKey), digest, ecdsaSignature.R, ecdsaSignature.S), nil
 	case *ecdsaPublicKey:
 		ecdsaSignature := new(primitives.ECDSASignature)
 		_, err := asn1.Unmarshal(signature, ecdsaSignature)
@@ -562,14 +562,14 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
 		}
 
-		return ecdsa.Verify(k.(*ecdsaPublicKey).k, digest, ecdsaSignature.R, ecdsaSignature.S), nil
+		return ecdsa.Verify(k.(*ecdsaPublicKey).pubKey, digest, ecdsaSignature.R, ecdsaSignature.S), nil
 	case *rsaPrivateKey:
 		if opts == nil {
 			return false, errors.New("Invalid options. It must not be nil.")
 		}
 		switch opts.(type) {
 		case *rsa.PSSOptions:
-			err := rsa.VerifyPSS(&(k.(*rsaPrivateKey).k.PublicKey),
+			err := rsa.VerifyPSS(&(k.(*rsaPrivateKey).privKey.PublicKey),
 				(opts.(*rsa.PSSOptions)).Hash,
 				digest, signature, opts.(*rsa.PSSOptions))
 
@@ -583,7 +583,7 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 		}
 		switch opts.(type) {
 		case *rsa.PSSOptions:
-			err := rsa.VerifyPSS(k.(*rsaPublicKey).k,
+			err := rsa.VerifyPSS(k.(*rsaPublicKey).pubKey,
 				(opts.(*rsa.PSSOptions)).Hash,
 				digest, signature, opts.(*rsa.PSSOptions))
 
@@ -611,7 +611,7 @@ func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts
 		switch opts.(type) {
 		case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
 			// AES in CBC mode with PKCS7 padding
-			return primitives.CBCPKCS7Encrypt(k.(*aesPrivateKey).k, plaintext)
+			return primitives.CBCPKCS7Encrypt(k.(*aesPrivateKey).privKey, plaintext)
 		default:
 			return nil, fmt.Errorf("Mode not recognized [%s]", opts)
 		}
@@ -635,7 +635,7 @@ func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpt
 		switch opts.(type) {
 		case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
 			// AES in CBC mode with PKCS7 padding
-			return primitives.CBCPKCS7Decrypt(k.(*aesPrivateKey).k, ciphertext)
+			return primitives.CBCPKCS7Decrypt(k.(*aesPrivateKey).privKey, ciphertext)
 		default:
 			return nil, fmt.Errorf("Mode not recognized [%s]", opts)
 		}
