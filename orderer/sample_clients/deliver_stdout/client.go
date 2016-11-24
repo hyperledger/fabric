@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -42,6 +43,7 @@ func (r *deliverClient) seekOldest() error {
 			Seek: &ab.SeekInfo{
 				Start:      ab.SeekInfo_OLDEST,
 				WindowSize: r.windowSize,
+				ChainID:    static.TestChainID,
 			},
 		},
 	})
@@ -53,6 +55,7 @@ func (r *deliverClient) seekNewest() error {
 			Seek: &ab.SeekInfo{
 				Start:      ab.SeekInfo_NEWEST,
 				WindowSize: r.windowSize,
+				ChainID:    static.TestChainID,
 			},
 		},
 	})
@@ -65,6 +68,7 @@ func (r *deliverClient) seek(blockNumber uint64) error {
 				Start:           ab.SeekInfo_SPECIFIED,
 				SpecifiedNumber: blockNumber,
 				WindowSize:      r.windowSize,
+				ChainID:         static.TestChainID,
 			},
 		},
 	})

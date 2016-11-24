@@ -17,15 +17,14 @@ limitations under the License.
 package static
 
 import (
-	"fmt"
-
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
+
+var TestChainID = []byte("**TEST_CHAINID**")
 
 const msgVersion = int32(1)
 
@@ -35,11 +34,7 @@ type bootstrapper struct {
 
 // New returns a new static bootstrap helper.
 func New() bootstrap.Helper {
-	chainID, err := primitives.GetRandomBytes(16)
-	if err != nil {
-		panic(fmt.Errorf("Cannot generate random chain ID: %s", err))
-	}
-	return &bootstrapper{chainID}
+	return &bootstrapper{chainID: TestChainID}
 }
 
 // GenesisBlock returns the genesis block to be used for bootstrapping

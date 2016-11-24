@@ -21,9 +21,11 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"github.com/golang/protobuf/proto"
 	context "golang.org/x/net/context"
 )
 
@@ -49,7 +51,14 @@ func (c *clientImpl) broadcast() {
 			logger.Info("Client shutting down")
 			return
 		case tokenChan <- struct{}{}:
-			payload, err := proto.Marshal(&cb.Payload{Data: []byte(strconv.Itoa(count))})
+			payload, err := proto.Marshal(&cb.Payload{
+				Header: &cb.Header{
+					ChainHeader: &cb.ChainHeader{
+						ChainID: static.TestChainID,
+					},
+				},
+				Data: []byte(strconv.Itoa(count)),
+			})
 			if err != nil {
 				panic(err)
 			}

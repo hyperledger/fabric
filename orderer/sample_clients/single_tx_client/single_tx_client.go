@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -96,7 +98,7 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 		errorch <- fmt.Errorf("Failed to get Deliver stream: %s", err)
 		return
 	}
-	dstream.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{Start: ab.SeekInfo_NEWEST, WindowSize: 10}}})
+	dstream.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{Start: ab.SeekInfo_NEWEST, WindowSize: 10, ChainID: static.TestChainID}}})
 	logger.Info("{Update Receiver} Listening to ledger updates.")
 	for i := 0; i < 2; i++ {
 		m, inerr := dstream.Recv()
@@ -129,7 +131,14 @@ func broadcastSender(resultch chan byte, errorch chan error, client ab.AtomicBro
 		return
 	}
 	bs := []byte{0, 1, 2, 3}
-	pl := &cb.Payload{Data: bs}
+	pl := &cb.Payload{
+		Header: &cb.Header{
+			ChainHeader: &cb.ChainHeader{
+				ChainID: static.TestChainID,
+			},
+		},
+		Data: bs,
+	}
 	mpl, err := proto.Marshal(pl)
 	if err != nil {
 		panic("Failed to marshal payload.")
