@@ -21,6 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -115,9 +116,9 @@ func NewManagerImpl(ledgerFactory rawledger.Factory, consenters map[string]Conse
 		if configTx == nil {
 			logger.Fatalf("Could not find configuration transaction for chain %s", chainID)
 		}
-		configManager, policyManager, backingLedger := ml.newResources(configTx)
+		configManager, policyManager, backingLedger, sharedConfigManager := ml.newResources(configTx)
 		chainID := configManager.ChainID()
-		ml.chains[chainID] = newChainSupport(configManager, policyManager, backingLedger, consenters)
+		ml.chains[chainID] = newChainSupport(configManager, policyManager, backingLedger, sharedConfigManager, consenters)
 	}
 
 	for _, cs := range ml.chains {
@@ -133,14 +134,17 @@ func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
 	return cs, ok
 }
 
-func (ml *multiLedger) newResources(configTx *cb.Envelope) (configtx.Manager, policies.Manager, rawledger.ReadWriter) {
+func (ml *multiLedger) newResources(configTx *cb.Envelope) (configtx.Manager, policies.Manager, rawledger.ReadWriter, sharedconfig.Manager) {
 	policyManager := policies.NewManagerImpl(xxxCryptoHelper{})
+	sharedConfigManager := sharedconfig.NewManagerImpl()
 	configHandlerMap := make(map[cb.ConfigurationItem_ConfigurationType]configtx.Handler)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
 		rtype := cb.ConfigurationItem_ConfigurationType(ctype)
 		switch rtype {
 		case cb.ConfigurationItem_Policy:
 			configHandlerMap[rtype] = policyManager
+		case cb.ConfigurationItem_Orderer:
+			configHandlerMap[rtype] = sharedConfigManager
 		default:
 			configHandlerMap[rtype] = configtx.NewBytesHandler()
 		}
@@ -170,5 +174,5 @@ func (ml *multiLedger) newResources(configTx *cb.Envelope) (configtx.Manager, po
 		logger.Fatalf("Error getting ledger for %s", chainID)
 	}
 
-	return configManager, policyManager, ledger
+	return configManager, policyManager, ledger, sharedConfigManager
 }

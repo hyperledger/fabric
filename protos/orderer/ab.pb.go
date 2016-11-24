@@ -7,6 +7,7 @@ Package orderer is a generated protocol buffer package.
 
 It is generated from these files:
 	orderer/ab.proto
+	orderer/configuration.proto
 
 It has these top-level messages:
 	BroadcastResponse
@@ -14,6 +15,8 @@ It has these top-level messages:
 	Acknowledgement
 	DeliverUpdate
 	DeliverResponse
+	ConsensusType
+	BatchSize
 */
 package orderer
 

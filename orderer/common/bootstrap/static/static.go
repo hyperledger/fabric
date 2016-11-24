@@ -20,8 +20,10 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 var TestChainID = "**TEST_CHAINID**"
@@ -29,29 +31,63 @@ var TestChainID = "**TEST_CHAINID**"
 const msgVersion = int32(1)
 
 type bootstrapper struct {
-	chainID string
+	chainID       string
+	lastModified  uint64
+	epoch         uint64
+	consensusType string
+	batchSize     int32
 }
 
 // New returns a new static bootstrap helper.
 func New() bootstrap.Helper {
-	return &bootstrapper{chainID: TestChainID}
+	return &bootstrapper{
+		chainID:       TestChainID,
+		consensusType: "solo",
+		batchSize:     10,
+	}
 }
 
-// GenesisBlock returns the genesis block to be used for bootstrapping
-func (b *bootstrapper) GenesisBlock() (*cb.Block, error) {
+func (b *bootstrapper) encodeConsensusType() *cb.SignedConfigurationItem {
+	configItemKey := sharedconfig.ConsensusTypeKey
+	configItemValue := util.MarshalOrPanic(&ab.ConsensusType{Type: b.consensusType})
+	modPolicy := configtx.DefaultModificationPolicyID
+
+	configItemChainHeader := util.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, b.chainID, b.epoch)
+	configItem := util.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Orderer, b.lastModified, modPolicy, configItemKey, configItemValue)
+	return &cb.SignedConfigurationItem{ConfigurationItem: util.MarshalOrPanic(configItem), Signatures: nil}
+}
+
+func (b *bootstrapper) encodeBatchSize() *cb.SignedConfigurationItem {
+	configItemKey := sharedconfig.BatchSizeKey
+	configItemValue := util.MarshalOrPanic(&ab.BatchSize{Messages: b.batchSize})
+	modPolicy := configtx.DefaultModificationPolicyID
+
+	configItemChainHeader := util.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, b.chainID, b.epoch)
+	configItem := util.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Orderer, b.lastModified, modPolicy, configItemKey, configItemValue)
+	return &cb.SignedConfigurationItem{ConfigurationItem: util.MarshalOrPanic(configItem), Signatures: nil}
+}
+
+func (b *bootstrapper) lockDefaultModificationPolicy() *cb.SignedConfigurationItem {
 	// Lock down the default modification policy to prevent any further policy modifications
 	configItemKey := configtx.DefaultModificationPolicyID
 	configItemValue := util.MarshalOrPanic(util.MakePolicyOrPanic(cauthdsl.RejectAllPolicy))
 	modPolicy := configtx.DefaultModificationPolicyID
 
-	lastModified := uint64(0)
-	epoch := uint64(0)
-	configItemChainHeader := util.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, b.chainID, epoch)
-	configItem := util.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Policy, lastModified, modPolicy, configItemKey, configItemValue)
-	signedConfigItem := &cb.SignedConfigurationItem{ConfigurationItem: util.MarshalOrPanic(configItem), Signatures: nil}
+	configItemChainHeader := util.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, b.chainID, b.epoch)
+	configItem := util.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Policy, b.lastModified, modPolicy, configItemKey, configItemValue)
+	return &cb.SignedConfigurationItem{ConfigurationItem: util.MarshalOrPanic(configItem), Signatures: nil}
+}
 
-	configEnvelope := util.MakeConfigurationEnvelope(signedConfigItem)
-	payloadChainHeader := util.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, configItemChainHeader.Version, b.chainID, epoch)
+// GenesisBlock returns the genesis block to be used for bootstrapping
+func (b *bootstrapper) GenesisBlock() (*cb.Block, error) {
+	configItemChainHeader := util.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, b.chainID, b.epoch)
+
+	configEnvelope := util.MakeConfigurationEnvelope(
+		b.encodeConsensusType(),
+		b.encodeBatchSize(),
+		b.lockDefaultModificationPolicy(),
+	)
+	payloadChainHeader := util.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, configItemChainHeader.Version, b.chainID, b.epoch)
 	payloadSignatureHeader := util.MakeSignatureHeader(nil, util.CreateNonceOrPanic())
 	payloadHeader := util.MakePayloadHeader(payloadChainHeader, payloadSignatureHeader)
 	payload := &cb.Payload{Header: payloadHeader, Data: util.MarshalOrPanic(configEnvelope)}

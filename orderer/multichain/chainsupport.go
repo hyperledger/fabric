@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -81,11 +82,11 @@ type chainSupport struct {
 	filters       *broadcastfilter.RuleSet
 }
 
-func newChainSupport(configManager configtx.Manager, policyManager policies.Manager, backing rawledger.ReadWriter, consenters map[string]Consenter) *chainSupport {
-	batchSize := XXXBatchSize // XXX Pull this from chain config
+func newChainSupport(configManager configtx.Manager, policyManager policies.Manager, backing rawledger.ReadWriter, sharedConfigManager sharedconfig.Manager, consenters map[string]Consenter) *chainSupport {
+	batchSize := sharedConfigManager.BatchSize()
 	filters := createBroadcastRuleset(configManager)
 	cutter := blockcutter.NewReceiverImpl(batchSize, filters, configManager)
-	consenterType := "solo" // XXX retrieve this from the chain config
+	consenterType := sharedConfigManager.ConsensusType()
 	consenter, ok := consenters[consenterType]
 	if !ok {
 		logger.Fatalf("Error retrieving consenter of type: %s", consenterType)
