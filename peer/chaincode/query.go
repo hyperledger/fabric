@@ -42,5 +42,5 @@ var chaincodeQueryCmd = &cobra.Command{
 }
 
 func chaincodeQuery(cmd *cobra.Command, args []string) error {
-	return fmt.Errorf("chaincode query is deprecated and should not be used")
+	return chaincodeInvokeOrQuery(cmd, args, false)
 }
