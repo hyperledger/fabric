@@ -18,6 +18,7 @@ package rawledger_test
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	. "github.com/hyperledger/fabric/orderer/rawledger"
@@ -26,12 +27,12 @@ import (
 )
 
 type ledgerTestable interface {
-	Initialize() (ledgerFactory, error)
+	Initialize() (ledgerTestFactory, error)
 	Name() string
 }
 
-type ledgerFactory interface {
-	New() ReadWriter
+type ledgerTestFactory interface {
+	New() (Factory, ReadWriter)
 	Destroy() error
 	Persistent() bool
 }
@@ -52,7 +53,7 @@ func getBlock(number uint64, li ReadWriter) *cb.Block {
 	}
 }
 
-func allTest(t *testing.T, test func(ledgerFactory, *testing.T)) {
+func allTest(t *testing.T, test func(ledgerTestFactory, *testing.T)) {
 	for _, lt := range testables {
 
 		t.Log("Running test for", lt.Name())
@@ -77,8 +78,8 @@ func TestInitialization(t *testing.T) {
 	allTest(t, testInitialization)
 }
 
-func testInitialization(lf ledgerFactory, t *testing.T) {
-	li := lf.New()
+func testInitialization(lf ledgerTestFactory, t *testing.T) {
+	_, li := lf.New()
 	if li.Height() != 1 {
 		t.Fatalf("Block height should be 1")
 	}
@@ -92,14 +93,14 @@ func TestReinitialization(t *testing.T) {
 	allTest(t, testReinitialization)
 }
 
-func testReinitialization(lf ledgerFactory, t *testing.T) {
+func testReinitialization(lf ledgerTestFactory, t *testing.T) {
 	if !lf.Persistent() {
 		t.Log("Skipping test as persistence is not available for this ledger type")
 		return
 	}
-	oli := lf.New()
+	_, oli := lf.New()
 	aBlock := oli.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
-	li := lf.New()
+	_, li := lf.New()
 	if li.Height() != 2 {
 		t.Fatalf("Block height should be 2")
 	}
@@ -116,8 +117,8 @@ func TestAddition(t *testing.T) {
 	allTest(t, testAddition)
 }
 
-func testAddition(lf ledgerFactory, t *testing.T) {
-	li := lf.New()
+func testAddition(lf ledgerTestFactory, t *testing.T) {
+	_, li := lf.New()
 	genesis := getBlock(0, li)
 	if genesis == nil {
 		t.Fatalf("Could not retrieve genesis block")
@@ -141,8 +142,8 @@ func TestRetrieval(t *testing.T) {
 	allTest(t, testRetrieval)
 }
 
-func testRetrieval(lf ledgerFactory, t *testing.T) {
-	li := lf.New()
+func testRetrieval(lf ledgerTestFactory, t *testing.T) {
+	_, li := lf.New()
 	li.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
 	it, num := li.Iterator(ab.SeekInfo_OLDEST, 99)
 	if num != 0 {
@@ -180,8 +181,8 @@ func TestBlockedRetrieval(t *testing.T) {
 	allTest(t, testBlockedRetrieval)
 }
 
-func testBlockedRetrieval(lf ledgerFactory, t *testing.T) {
-	li := lf.New()
+func testBlockedRetrieval(lf ledgerTestFactory, t *testing.T) {
+	_, li := lf.New()
 	it, num := li.Iterator(ab.SeekInfo_SPECIFIED, 1)
 	if num != 1 {
 		t.Fatalf("Expected block iterator at 1, but got %d", num)
@@ -204,5 +205,60 @@ func testBlockedRetrieval(lf ledgerFactory, t *testing.T) {
 	}
 	if block.Header.Number != 1 {
 		t.Fatalf("Expected to successfully retrieve the second block")
+	}
+}
+
+func TestMultichain(t *testing.T) {
+	allTest(t, testMultichain)
+}
+
+func testMultichain(lf ledgerTestFactory, t *testing.T) {
+	f, _ := lf.New()
+	chain1 := []byte("chain1")
+	chain2 := []byte("chain2")
+
+	c1p1 := []byte("c1 payload1")
+	c1p2 := []byte("c1 payload2")
+
+	c2p1 := []byte("c2 payload1")
+
+	c1, err := f.GetOrCreate(chain1)
+	if err != nil {
+		t.Fatalf("Error creating chain1: %s", err)
+	}
+
+	c1.Append([]*cb.Envelope{&cb.Envelope{Payload: c1p1}}, nil)
+	c1b1 := c1.Append([]*cb.Envelope{&cb.Envelope{Payload: c1p2}}, nil)
+
+	if c1.Height() != 2 {
+		t.Fatalf("Block height for c1 should be 2")
+	}
+
+	c2, err := f.GetOrCreate(chain2)
+	if err != nil {
+		t.Fatalf("Error creating chain2: %s", err)
+	}
+	c2b0 := c2.Append([]*cb.Envelope{&cb.Envelope{Payload: c2p1}}, nil)
+
+	if c2.Height() != 1 {
+		t.Fatalf("Block height for c2 should be 1")
+	}
+
+	c1, err = f.GetOrCreate(chain1)
+	if err != nil {
+		t.Fatalf("Error retrieving chain1: %s", err)
+	}
+
+	if b := getBlock(1, c1); !reflect.DeepEqual(c1b1, b) {
+		t.Fatalf("Did not properly store block 1 on chain 1:")
+	}
+
+	c2, err = f.GetOrCreate(chain1)
+	if err != nil {
+		t.Fatalf("Error retrieving chain2: %s", err)
+	}
+
+	if b := getBlock(0, c2); reflect.DeepEqual(c2b0, b) {
+		t.Fatalf("Did not properly store block 1 on chain 1")
 	}
 }

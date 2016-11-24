@@ -186,11 +186,11 @@ func launchSolo(conf *config.TopLevel) {
 			}
 		}
 
-		rawledger = fileledger.New(location, genesisBlock)
+		_, rawledger = fileledger.New(location, genesisBlock)
 	case "ram":
 		fallthrough
 	default:
-		rawledger = ramledger.New(int(conf.RAMLedger.HistorySize), genesisBlock)
+		_, rawledger = ramledger.New(int(conf.RAMLedger.HistorySize), genesisBlock)
 	}
 
 	lastConfigTx := retrieveConfiguration(rawledger)

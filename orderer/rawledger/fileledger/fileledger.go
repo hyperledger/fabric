@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
+	"sync"
 
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -55,20 +57,91 @@ type fileLedger struct {
 	marshaler      *jsonpb.Marshaler
 }
 
-// New creates a new instance of the file ledger
-func New(directory string, genesisBlock *cb.Block) rawledger.ReadWriter {
+type fileLedgerFactory struct {
+	directory string
+	ledgers   map[string]rawledger.ReadWriter
+	mutex     sync.Mutex
+}
+
+func New(directory string, systemGenesis *cb.Block) (rawledger.Factory, rawledger.ReadWriter) {
+	env := &cb.Envelope{}
+	err := proto.Unmarshal(systemGenesis.Data.Data[0], env)
+	if err != nil {
+		logger.Fatalf("Bad envelope in genesis block: %s", err)
+	}
+
+	payload := &cb.Payload{}
+	err = proto.Unmarshal(env.Payload, payload)
+	if err != nil {
+		logger.Fatalf("Bad payload in genesis block: %s", err)
+	}
+
 	logger.Debugf("Initializing fileLedger at '%s'", directory)
 	if err := os.MkdirAll(directory, 0700); err != nil {
-		panic(err)
+		logger.Fatalf("Could not create directory %s: %s", directory, err)
 	}
+
+	flf := &fileLedgerFactory{
+		directory: directory,
+		ledgers:   make(map[string]rawledger.ReadWriter),
+	}
+
+	flt, err := flf.GetOrCreate(payload.Header.ChainHeader.ChainID)
+	if err != nil {
+		logger.Fatalf("Error getting orderer system chain dir: %s", err)
+	}
+
+	fl := flt.(*fileLedger)
+
+	if fl.height > 0 {
+		block, ok := fl.readBlock(0)
+		if !ok {
+			logger.Fatalf("Error reading genesis block for chain of height %d", fl.height)
+		}
+		if !reflect.DeepEqual(block, systemGenesis) {
+			logger.Fatalf("Attempted to reconfigure an existing ordering system chain with new genesis block")
+		}
+	} else {
+		fl.writeBlock(systemGenesis)
+		fl.height = 1
+		fl.lastHash = systemGenesis.Header.Hash()
+	}
+
+	return flf, fl
+}
+
+func (flf *fileLedgerFactory) GetOrCreate(chainID []byte) (rawledger.ReadWriter, error) {
+	flf.mutex.Lock()
+	defer flf.mutex.Unlock()
+
+	key := string(chainID)
+
+	// Check a second time with the lock held
+	l, ok := flf.ledgers[key]
+	if ok {
+		return l, nil
+	}
+
+	directory := fmt.Sprintf("%s/%x", flf.directory, chainID)
+
+	logger.Debugf("Initializing chain at '%s'", directory)
+
+	if err := os.MkdirAll(directory, 0700); err != nil {
+		return nil, err
+	}
+
+	ch := newChain(directory)
+	flf.ledgers[key] = ch
+	return ch, nil
+}
+
+// newChain creates a new chain backed by a file ledger
+func newChain(directory string) rawledger.ReadWriter {
 	fl := &fileLedger{
 		directory:      directory,
 		fqFormatString: directory + "/" + blockFileFormatString,
 		signal:         make(chan struct{}),
 		marshaler:      &jsonpb.Marshaler{Indent: "  "},
-	}
-	if _, err := os.Stat(fl.blockFilename(genesisBlock.Header.Number)); os.IsNotExist(err) {
-		fl.writeBlock(genesisBlock)
 	}
 	fl.initializeBlockHeight()
 	logger.Debugf("Initialized to block height %d with hash %x", fl.height-1, fl.lastHash)
@@ -97,6 +170,9 @@ func (fl *fileLedger) initializeBlockHeight() {
 		nextNumber++
 	}
 	fl.height = nextNumber
+	if fl.height == 0 {
+		return
+	}
 	block, found := fl.readBlock(fl.height - 1)
 	if !found {
 		panic(fmt.Errorf("Block %d was in directory listing but error reading", fl.height-1))

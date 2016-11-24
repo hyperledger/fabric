@@ -25,27 +25,27 @@ func init() {
 	testables = append(testables, &ramLedgerTestEnv{})
 }
 
-type ramLedgerFactory struct{}
+type ramledgerTestFactory struct{}
 
 type ramLedgerTestEnv struct{}
 
-func (env *ramLedgerTestEnv) Initialize() (ledgerFactory, error) {
-	return &ramLedgerFactory{}, nil
+func (env *ramLedgerTestEnv) Initialize() (ledgerTestFactory, error) {
+	return &ramledgerTestFactory{}, nil
 }
 
 func (env *ramLedgerTestEnv) Name() string {
 	return "ramledger"
 }
 
-func (env *ramLedgerFactory) Destroy() error {
+func (env *ramledgerTestFactory) Destroy() error {
 	return nil
 }
 
-func (env *ramLedgerFactory) Persistent() bool {
+func (env *ramledgerTestFactory) Persistent() bool {
 	return false
 }
 
-func (env *ramLedgerFactory) New() ReadWriter {
+func (env *ramledgerTestFactory) New() (Factory, ReadWriter) {
 	historySize := 10
 	return ramledger.New(historySize, genesisBlock)
 }

@@ -17,6 +17,8 @@ limitations under the License.
 package ramledger
 
 import (
+	"sync"
+
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -48,14 +50,65 @@ type ramLedger struct {
 	newest  *simpleList
 }
 
-// New creates a new instance of the ram ledger
-func New(maxSize int, genesis *cb.Block) rawledger.ReadWriter {
+type ramLedgerFactory struct {
+	maxSize int
+	ledgers map[string]rawledger.ReadWriter
+	mutex   sync.Mutex
+}
+
+func New(maxSize int, systemGenesis *cb.Block) (rawledger.Factory, rawledger.ReadWriter) {
+	rlf := &ramLedgerFactory{
+		maxSize: maxSize,
+		ledgers: make(map[string]rawledger.ReadWriter),
+	}
+	env := &cb.Envelope{}
+	err := proto.Unmarshal(systemGenesis.Data.Data[0], env)
+	if err != nil {
+		logger.Fatalf("Bad envelope in genesis block: %s", err)
+	}
+
+	payload := &cb.Payload{}
+	err = proto.Unmarshal(env.Payload, payload)
+	if err != nil {
+		logger.Fatalf("Bad payload in genesis block: %s", err)
+	}
+
+	rl, _ := rlf.GetOrCreate(payload.Header.ChainHeader.ChainID)
+	rl.(*ramLedger).appendBlock(systemGenesis)
+	return rlf, rl
+}
+
+func (rlf *ramLedgerFactory) GetOrCreate(chainID []byte) (rawledger.ReadWriter, error) {
+	rlf.mutex.Lock()
+	defer rlf.mutex.Unlock()
+
+	key := string(chainID)
+
+	// Check a second time with the lock held
+	l, ok := rlf.ledgers[key]
+	if ok {
+		return l, nil
+	}
+
+	ch := newChain(rlf.maxSize)
+	rlf.ledgers[key] = ch
+	return ch, nil
+}
+
+// newChain creates a new instance of the ram ledger for a chain
+func newChain(maxSize int) rawledger.ReadWriter {
+	preGenesis := &cb.Block{
+		Header: &cb.BlockHeader{
+			Number: ^uint64(0),
+		},
+	}
+
 	rl := &ramLedger{
 		maxSize: maxSize,
 		size:    1,
 		oldest: &simpleList{
 			signal: make(chan struct{}),
-			block:  genesis,
+			block:  preGenesis,
 		},
 	}
 	rl.newest = rl.oldest
@@ -88,8 +141,10 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 		}
 		close(list.signal)
 	case ab.SeekInfo_SPECIFIED:
+		logger.Debugf("Attempting to return block %d", specified)
 		oldest := rl.oldest
-		if specified < oldest.block.Header.Number || specified > rl.newest.block.Header.Number+1 {
+		// Note the two +1's here is to accomodate the 'preGenesis' block of ^uint64(0)
+		if specified+1 < oldest.block.Header.Number+1 || specified > rl.newest.block.Header.Number+1 {
 			return &rawledger.NotFoundErrorIterator{}, 0
 		}
 
@@ -111,7 +166,16 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 			list = list.next // No need for nil check, because of range check above
 		}
 	}
-	return &cursor{list: list}, list.block.Header.Number + 1
+	cursor := &cursor{list: list}
+	blockNum := list.block.Header.Number + 1
+
+	// If the cursor is for pre-genesis, skip it, the block number wraps
+	if blockNum == ^uint64(0) {
+		cursor.Next()
+		blockNum++
+	}
+
+	return cursor, blockNum
 }
 
 // Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
@@ -175,6 +239,7 @@ func (rl *ramLedger) appendBlock(block *cb.Block) {
 	rl.size++
 
 	if rl.size > rl.maxSize {
+		logger.Debugf("RAM ledger max size about to be exceeded, removing oldest item: %d", rl.oldest.block.Header.Number)
 		rl.oldest = rl.oldest.next
 		rl.size--
 	}

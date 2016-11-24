@@ -21,6 +21,12 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
+// Factory retrieves or creates new ledgers by chainID
+type Factory interface {
+	// GetOrCreate gets an existing ledger (if it exists) or creates it if it does not
+	GetOrCreate(chainID []byte) (ReadWriter, error)
+}
+
 // Iterator is useful for a chain Reader to stream blocks as they are created
 type Iterator interface {
 	// Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
