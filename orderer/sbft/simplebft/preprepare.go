@@ -38,9 +38,14 @@ func (s *SBFT) sendPreprepare(batch []*Request) {
 
 	s.sys.Persist("preprepare", m)
 	s.broadcast(&Msg{&Msg_Preprepare{m}})
+	s.handleCheckedPreprepare(m)
 }
 
 func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
+	if src == s.id {
+		log.Infof("Ignoring preprepare from self: %d", src)
+		return
+	}
 	if src != s.primaryID() {
 		log.Infof("preprepare from non-primary %d", src)
 		return
