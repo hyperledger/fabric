@@ -86,6 +86,9 @@ func (bs *consenter) main() {
 			for _, batch := range batches {
 				bs.rl.Append(batch, nil)
 			}
+			if len(batches) > 0 {
+				timer = nil
+			}
 		case <-timer:
 			//clear the timer
 			timer = nil

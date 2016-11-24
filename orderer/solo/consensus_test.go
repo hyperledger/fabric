@@ -141,8 +141,45 @@ func TestBatchTimer(t *testing.T) {
 
 	select {
 	case <-it.ReadyChan():
+		it.Next()
 	case <-time.After(time.Second):
 		t.Fatalf("Expected a block to be cut because of batch timer expiration but did not")
+	}
+
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
+	select {
+	case <-it.ReadyChan():
+	case <-time.After(time.Second):
+		t.Fatalf("Did not create the second batch, indicating that the timer was not appopriately reset")
+	}
+}
+
+func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
+	filters, cm := getFiltersAndConfig()
+	batchSize := 2
+	rl := ramledger.New(10, genesisBlock)
+	bs := NewConsenter(batchSize, time.Hour, rl, filters, cm)
+	defer bs.halt()
+	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
+
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
+
+	select {
+	case <-it.ReadyChan():
+		it.Next()
+	case <-time.After(time.Second):
+		t.Fatalf("Expected a block to be cut because the batch was filled, but did not")
+	}
+
+	// Change the batch timeout to be near instant
+	bs.batchTimeout = time.Millisecond
+
+	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
+	select {
+	case <-it.ReadyChan():
+	case <-time.After(time.Second):
+		t.Fatalf("Did not create the second batch, indicating that the old timer was still running")
 	}
 }
 
