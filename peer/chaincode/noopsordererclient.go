@@ -24,6 +24,7 @@ package chaincode
 //-------------------------------------------------------------
 import (
 	"fmt"
+	"time"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -40,9 +41,25 @@ func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient) *broadcastCli
 	return &broadcastClient{client: client}
 }
 
+func (s *broadcastClient) getAck() error {
+	msg, err := s.client.Recv()
+	if err != nil {
+		return err
+	}
+	if msg.Status != cb.Status_SUCCESS {
+		return fmt.Errorf("Got unexpected status: %v", msg.Status)
+	}
+	return nil
+}
+
 //Send data to solo orderer
 func Send(serverAddr string, env *cb.Envelope) error {
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithTimeout(3*time.Second))
+	opts = append(opts, grpc.WithBlock())
+
+	conn, err := grpc.Dial(serverAddr, opts...)
 	defer conn.Close()
 	if err != nil {
 		return fmt.Errorf("Error connecting: %s", err)
@@ -53,7 +70,11 @@ func Send(serverAddr string, env *cb.Envelope) error {
 	}
 
 	s := newBroadcastClient(client)
-	s.client.Send(env)
+	if err = s.client.Send(env); err != nil {
+		return fmt.Errorf("Could not send :%s)", err)
+	}
 
-	return nil
+	err = s.getAck()
+
+	return err
 }
