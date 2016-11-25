@@ -125,7 +125,7 @@ func (ks *FileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 		// Load the private key
 		key, err := ks.loadPrivateKey(hex.EncodeToString(ski))
 		if err != nil {
-			return nil, fmt.Errorf("Failed loading key [%x] [%s]", ski, err)
+			return nil, fmt.Errorf("Failed loading secret key [%x] [%s]", ski, err)
 		}
 
 		switch key.(type) {
@@ -134,10 +134,25 @@ func (ks *FileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 		case *rsa.PrivateKey:
 			return &rsaPrivateKey{key.(*rsa.PrivateKey)}, nil
 		default:
-			return nil, errors.New("Key type not recognized")
+			return nil, errors.New("Secret key type not recognized")
+		}
+	case "pk":
+		// Load the public key
+		key, err := ks.loadPublicKey(hex.EncodeToString(ski))
+		if err != nil {
+			return nil, fmt.Errorf("Failed loading public key [%x] [%s]", ski, err)
+		}
+
+		switch key.(type) {
+		case *ecdsa.PublicKey:
+			return &ecdsaPublicKey{key.(*ecdsa.PublicKey)}, nil
+		case *rsa.PublicKey:
+			return &rsaPublicKey{key.(*rsa.PublicKey)}, nil
+		default:
+			return nil, errors.New("Public key type not recognized")
 		}
 	default:
-		return nil, errors.New("Key not recognized")
+		return nil, errors.New("Key type not recognized")
 	}
 }
 
@@ -155,7 +170,7 @@ func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	case *ecdsaPrivateKey:
 		kk := k.(*ecdsaPrivateKey)
 
-		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.k)
+		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
 		if err != nil {
 			return fmt.Errorf("Failed storing ECDSA private key [%s]", err)
 		}
@@ -163,7 +178,7 @@ func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	case *ecdsaPublicKey:
 		kk := k.(*ecdsaPublicKey)
 
-		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.k)
+		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
 		if err != nil {
 			return fmt.Errorf("Failed storing ECDSA public key [%s]", err)
 		}
@@ -171,7 +186,7 @@ func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	case *rsaPrivateKey:
 		kk := k.(*rsaPrivateKey)
 
-		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.k)
+		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
 		if err != nil {
 			return fmt.Errorf("Failed storing RSA private key [%s]", err)
 		}
@@ -179,7 +194,7 @@ func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	case *rsaPublicKey:
 		kk := k.(*rsaPublicKey)
 
-		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.k)
+		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
 		if err != nil {
 			return fmt.Errorf("Failed storing RSA public key [%s]", err)
 		}
@@ -187,7 +202,7 @@ func (ks *FileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	case *aesPrivateKey:
 		kk := k.(*aesPrivateKey)
 
-		err = ks.storeKey(hex.EncodeToString(k.SKI()), kk.k)
+		err = ks.storeKey(hex.EncodeToString(k.SKI()), kk.privKey)
 		if err != nil {
 			return fmt.Errorf("Failed storing AES key [%s]", err)
 		}
@@ -219,10 +234,6 @@ func (ks *FileBasedKeyStore) getSuffix(alias string) string {
 }
 
 func (ks *FileBasedKeyStore) storePrivateKey(alias string, privateKey interface{}) error {
-	if ks.readOnly {
-		return errors.New("Read only KeyStore.")
-	}
-
 	rawKey, err := primitives.PrivateKeyToPEM(privateKey, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting private key to PEM [%s]: [%s]", alias, err)
@@ -239,10 +250,6 @@ func (ks *FileBasedKeyStore) storePrivateKey(alias string, privateKey interface{
 }
 
 func (ks *FileBasedKeyStore) storePublicKey(alias string, publicKey interface{}) error {
-	if ks.readOnly {
-		return errors.New("Read only KeyStore.")
-	}
-
 	rawKey, err := primitives.PublicKeyToPEM(publicKey, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting public key to PEM [%s]: [%s]", alias, err)
@@ -259,10 +266,6 @@ func (ks *FileBasedKeyStore) storePublicKey(alias string, publicKey interface{})
 }
 
 func (ks *FileBasedKeyStore) storeKey(alias string, key []byte) error {
-	if ks.readOnly {
-		return errors.New("Read only KeyStore.")
-	}
-
 	pem, err := primitives.AEStoEncryptedPEM(key, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting key to PEM [%s]: [%s]", alias, err)

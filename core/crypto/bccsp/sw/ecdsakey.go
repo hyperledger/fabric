@@ -22,28 +22,30 @@ import (
 
 	"crypto/sha256"
 
+	"errors"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
 type ecdsaPrivateKey struct {
-	k *ecdsa.PrivateKey
+	privKey *ecdsa.PrivateKey
 }
 
 // FIXME: remove as soon as there's a way to import the key more properly
 func NewEcdsaPrivateKey(k *ecdsa.PrivateKey) bccsp.Key {
-	return &ecdsaPrivateKey{k: k}
+	return &ecdsaPrivateKey{privKey: k}
 }
 
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *ecdsaPrivateKey) Bytes() (raw []byte, err error) {
-	return
+	return nil, errors.New("Not supported.")
 }
 
 // SKI returns the subject key identifier of this key.
 func (k *ecdsaPrivateKey) SKI() (ski []byte) {
-	raw, _ := primitives.PrivateKeyToDER(k.k)
+	raw, _ := primitives.PrivateKeyToDER(k.privKey)
 	// TODO: Error should not be thrown. Anyway, move the marshalling at initialization.
 
 	hash := sha256.New()
@@ -66,22 +68,22 @@ func (k *ecdsaPrivateKey) Private() bool {
 // PublicKey returns the corresponding public key part of an asymmetric public/private key pair.
 // This method returns an error in symmetric key schemes.
 func (k *ecdsaPrivateKey) PublicKey() (bccsp.Key, error) {
-	return &ecdsaPublicKey{&k.k.PublicKey}, nil
+	return &ecdsaPublicKey{&k.privKey.PublicKey}, nil
 }
 
 type ecdsaPublicKey struct {
-	k *ecdsa.PublicKey
+	pubKey *ecdsa.PublicKey
 }
 
 // FIXME: remove as soon as there's a way to import the key more properly
 func NewEcdsaPublicKey(k *ecdsa.PublicKey) bccsp.Key {
-	return &ecdsaPublicKey{k: k}
+	return &ecdsaPublicKey{pubKey: k}
 }
 
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {
-	raw, err = x509.MarshalPKIXPublicKey(k.k)
+	raw, err = x509.MarshalPKIXPublicKey(k.pubKey)
 	if err != nil {
 		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
 	}
@@ -90,7 +92,7 @@ func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *ecdsaPublicKey) SKI() (ski []byte) {
-	raw, _ := primitives.PublicKeyToPEM(k.k, nil)
+	raw, _ := primitives.PublicKeyToPEM(k.pubKey, nil)
 	// TODO: Error should not be thrown. Anyway, move the marshalling at initialization.
 
 	hash := sha256.New()

@@ -22,23 +22,29 @@ import (
 
 	"crypto/sha256"
 
+	"errors"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
 type rsaPrivateKey struct {
-	k *rsa.PrivateKey
+	privKey *rsa.PrivateKey
 }
 
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *rsaPrivateKey) Bytes() (raw []byte, err error) {
-	return
+	return nil, errors.New("Not supported.")
 }
 
 // SKI returns the subject key identifier of this key.
-func (k *rsaPrivateKey) SKI() (ski []byte) {
-	raw := x509.MarshalPKCS1PrivateKey(k.k)
+func (k *rsaPrivateKey) SKI() (gski []byte) {
+	if k.privKey == nil {
+		return nil
+	}
+
+	raw := x509.MarshalPKCS1PrivateKey(k.privKey)
 
 	hash := sha256.New()
 	hash.Write(raw)
@@ -60,17 +66,20 @@ func (k *rsaPrivateKey) Private() bool {
 // PublicKey returns the corresponding public key part of an asymmetric public/private key pair.
 // This method returns an error in symmetric key schemes.
 func (k *rsaPrivateKey) PublicKey() (bccsp.Key, error) {
-	return &rsaPublicKey{&k.k.PublicKey}, nil
+	return &rsaPublicKey{&k.privKey.PublicKey}, nil
 }
 
 type rsaPublicKey struct {
-	k *rsa.PublicKey
+	pubKey *rsa.PublicKey
 }
 
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *rsaPublicKey) Bytes() (raw []byte, err error) {
-	raw, err = x509.MarshalPKIXPublicKey(k.k)
+	if k.pubKey == nil {
+		return nil, errors.New("Failed marshalling key. Key is nil.")
+	}
+	raw, err = x509.MarshalPKIXPublicKey(k.pubKey)
 	if err != nil {
 		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
 	}
@@ -79,7 +88,7 @@ func (k *rsaPublicKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *rsaPublicKey) SKI() (ski []byte) {
-	raw, _ := primitives.PublicKeyToPEM(k.k, nil)
+	raw, _ := primitives.PublicKeyToPEM(k.pubKey, nil)
 	// TODO: Error should not be thrown. Anyway, move the marshalling at initialization.
 
 	hash := sha256.New()
