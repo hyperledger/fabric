@@ -149,6 +149,292 @@ func TestInvalidSKI(t *testing.T) {
 	}
 }
 
+func TestKeyGenECDSAOpts(t *testing.T) {
+	// Curve P256
+	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA P256 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating ECDSA P256 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating ECDSA P256 key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating ECDSA P256 key. Key should be asymmetric")
+	}
+
+	ecdsaKey := k.(*ecdsaPrivateKey).privKey
+	if !elliptic.P256().IsOnCurve(ecdsaKey.X, ecdsaKey.Y) {
+		t.Fatal("P256 generated key in invalid. The public key must be on the P256 curve.")
+	}
+	if elliptic.P256() != ecdsaKey.Curve {
+		t.Fatal("P256 generated key in invalid. The curve must be P256.")
+	}
+	if ecdsaKey.D.Cmp(big.NewInt(0)) == 0 {
+		t.Fatal("P256 generated key in invalid. Private key must be different from 0.")
+	}
+
+	// Curve P384
+	k, err = currentBCCSP.KeyGen(&bccsp.ECDSAP384KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating ECDSA P384 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating ECDSA P384 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating ECDSA P384 key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating ECDSA P384 key. Key should be asymmetric")
+	}
+
+	ecdsaKey = k.(*ecdsaPrivateKey).privKey
+	if !elliptic.P384().IsOnCurve(ecdsaKey.X, ecdsaKey.Y) {
+		t.Fatal("P256 generated key in invalid. The public key must be on the P384 curve.")
+	}
+	if elliptic.P384() != ecdsaKey.Curve {
+		t.Fatal("P256 generated key in invalid. The curve must be P384.")
+	}
+	if ecdsaKey.D.Cmp(big.NewInt(0)) == 0 {
+		t.Fatal("P256 generated key in invalid. Private key must be different from 0.")
+	}
+
+}
+
+func TestKeyGenRSAOpts(t *testing.T) {
+	// 1024
+	k, err := currentBCCSP.KeyGen(&bccsp.RSA1024KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA 1024 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating RSA 1024 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating RSA 1024 key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating RSA 1024 key. Key should be asymmetric")
+	}
+
+	rsaKey := k.(*rsaPrivateKey).privKey
+	if rsaKey.N.BitLen() != 1024 {
+		t.Fatal("1024 RSA generated key in invalid. Modulus be of length 1024.")
+	}
+	if rsaKey.D.Cmp(big.NewInt(0)) == 0 {
+		t.Fatal("1024 RSA generated key in invalid. Private key must be different from 0.")
+	}
+	if rsaKey.E < 3 {
+		t.Fatal("1024 RSA generated key in invalid. Private key must be different from 0.")
+	}
+
+	// 2048
+	k, err = currentBCCSP.KeyGen(&bccsp.RSA2048KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA 2048 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating RSA 2048 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating RSA 2048 key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating RSA 2048 key. Key should be asymmetric")
+	}
+
+	rsaKey = k.(*rsaPrivateKey).privKey
+	if rsaKey.N.BitLen() != 2048 {
+		t.Fatal("2048 RSA generated key in invalid. Modulus be of length 2048.")
+	}
+	if rsaKey.D.Cmp(big.NewInt(0)) == 0 {
+		t.Fatal("2048 RSA generated key in invalid. Private key must be different from 0.")
+	}
+	if rsaKey.E < 3 {
+		t.Fatal("2048 RSA generated key in invalid. Private key must be different from 0.")
+	}
+
+	/*
+		// Skipping these tests because they take too much time to run.
+		// 3072
+		k, err = currentBCCSP.KeyGen(&bccsp.RSA3072KeyGenOpts{Temporary: false})
+		if err != nil {
+			t.Fatalf("Failed generating RSA 3072 key [%s]", err)
+		}
+		if k == nil {
+			t.Fatal("Failed generating RSA 3072 key. Key must be different from nil")
+		}
+		if !k.Private() {
+			t.Fatal("Failed generating RSA 3072 key. Key should be private")
+		}
+		if k.Symmetric() {
+			t.Fatal("Failed generating RSA 3072 key. Key should be asymmetric")
+		}
+
+		rsaKey = k.(*rsaPrivateKey).privKey
+		if rsaKey.N.BitLen() != 3072 {
+			t.Fatal("3072 RSA generated key in invalid. Modulus be of length 3072.")
+		}
+		if rsaKey.D.Cmp(big.NewInt(0)) == 0 {
+			t.Fatal("3072 RSA generated key in invalid. Private key must be different from 0.")
+		}
+		if rsaKey.E < 3 {
+			t.Fatal("3072 RSA generated key in invalid. Private key must be different from 0.")
+		}
+
+		// 4096
+		k, err = currentBCCSP.KeyGen(&bccsp.RSA4096KeyGenOpts{Temporary: false})
+		if err != nil {
+			t.Fatalf("Failed generating RSA 4096 key [%s]", err)
+		}
+		if k == nil {
+			t.Fatal("Failed generating RSA 4096 key. Key must be different from nil")
+		}
+		if !k.Private() {
+			t.Fatal("Failed generating RSA 4096 key. Key should be private")
+		}
+		if k.Symmetric() {
+			t.Fatal("Failed generating RSA 4096 key. Key should be asymmetric")
+		}
+
+		rsaKey = k.(*rsaPrivateKey).privKey
+		if rsaKey.N.BitLen() != 4096 {
+			t.Fatal("4096 RSA generated key in invalid. Modulus be of length 4096.")
+		}
+		if rsaKey.D.Cmp(big.NewInt(0)) == 0 {
+			t.Fatal("4096 RSA generated key in invalid. Private key must be different from 0.")
+		}
+		if rsaKey.E < 3 {
+			t.Fatal("4096 RSA generated key in invalid. Private key must be different from 0.")
+		}
+	*/
+}
+
+func TestKeyGenAESOpts(t *testing.T) {
+	// AES 128
+	k, err := currentBCCSP.KeyGen(&bccsp.AES128KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating AES 128 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating AES 128 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating AES 128 key. Key should be private")
+	}
+	if !k.Symmetric() {
+		t.Fatal("Failed generating AES 128 key. Key should be symmetric")
+	}
+
+	aesKey := k.(*aesPrivateKey).privKey
+	if len(aesKey) != 16 {
+		t.Fatal("AES Key generated key in invalid. The key must have length 16.")
+	}
+
+	// AES 192
+	k, err = currentBCCSP.KeyGen(&bccsp.AES192KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating AES 192 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating AES 192 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating AES 192 key. Key should be private")
+	}
+	if !k.Symmetric() {
+		t.Fatal("Failed generating AES 192 key. Key should be symmetric")
+	}
+
+	aesKey = k.(*aesPrivateKey).privKey
+	if len(aesKey) != 24 {
+		t.Fatal("AES Key generated key in invalid. The key must have length 16.")
+	}
+
+	// AES 256
+	k, err = currentBCCSP.KeyGen(&bccsp.AES256KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating AES 256 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating AES 256 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating AES 256 key. Key should be private")
+	}
+	if !k.Symmetric() {
+		t.Fatal("Failed generating AES 256 key. Key should be symmetric")
+	}
+
+	aesKey = k.(*aesPrivateKey).privKey
+	if len(aesKey) != 32 {
+		t.Fatal("AES Key generated key in invalid. The key must have length 16.")
+	}
+}
+
+func TestHashOpts(t *testing.T) {
+	msg := []byte("abcd")
+
+	// SHA256
+	digest1, err := currentBCCSP.Hash(msg, &bccsp.SHA256Opts{})
+	if err != nil {
+		t.Fatalf("Failed computing SHA256 [%s]", err)
+	}
+
+	h := sha256.New()
+	h.Write(msg)
+	digest2 := h.Sum(nil)
+
+	if !bytes.Equal(digest1, digest2) {
+		t.Fatalf("Different SHA256 computed. [%x][%x]", digest1, digest2)
+	}
+
+	// SHA384
+	digest1, err = currentBCCSP.Hash(msg, &bccsp.SHA384Opts{})
+	if err != nil {
+		t.Fatalf("Failed computing SHA384 [%s]", err)
+	}
+
+	h = sha512.New384()
+	h.Write(msg)
+	digest2 = h.Sum(nil)
+
+	if !bytes.Equal(digest1, digest2) {
+		t.Fatalf("Different SHA384 computed. [%x][%x]", digest1, digest2)
+	}
+
+	// SHA3_256O
+	digest1, err = currentBCCSP.Hash(msg, &bccsp.SHA3_256Opts{})
+	if err != nil {
+		t.Fatalf("Failed computing SHA3_256 [%s]", err)
+	}
+
+	h = sha3.New256()
+	h.Write(msg)
+	digest2 = h.Sum(nil)
+
+	if !bytes.Equal(digest1, digest2) {
+		t.Fatalf("Different SHA3_256 computed. [%x][%x]", digest1, digest2)
+	}
+
+	// SHA3_384
+	digest1, err = currentBCCSP.Hash(msg, &bccsp.SHA3_384Opts{})
+	if err != nil {
+		t.Fatalf("Failed computing SHA3_384 [%s]", err)
+	}
+
+	h = sha3.New384()
+	h.Write(msg)
+	digest2 = h.Sum(nil)
+
+	if !bytes.Equal(digest1, digest2) {
+		t.Fatalf("Different SHA3_384 computed. [%x][%x]", digest1, digest2)
+	}
+}
+
 func TestECDSAKeyGenEphemeral(t *testing.T) {
 	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: true})
 	if err != nil {

@@ -31,10 +31,15 @@ import (
 
 	"crypto/hmac"
 
+	"crypto/elliptic"
+	"crypto/sha256"
+	"crypto/sha512"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/utils"
 	"github.com/op/go-logging"
+	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -87,8 +92,8 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	}
 
 	// Parse algorithm
-	switch opts.Algorithm() {
-	case bccsp.ECDSA:
+	switch opts.(type) {
+	case *bccsp.ECDSAKeyGenOpts:
 		lowLevelKey, err := ecdsa.GenerateKey(csp.conf.ellipticCurve, rand.Reader)
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating ECDSA key [%s]", err)
@@ -96,17 +101,23 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 
 		k = &ecdsaPrivateKey{lowLevelKey}
 
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing ECDSA key [%s]", err)
-			}
+	case *bccsp.ECDSAP256KeyGenOpts:
+		lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating ECDSA P256 key [%s]", err)
 		}
 
-		return k, nil
-	case bccsp.AES:
+		k = &ecdsaPrivateKey{lowLevelKey}
+
+	case *bccsp.ECDSAP384KeyGenOpts:
+		lowLevelKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating ECDSA P384 key [%s]", err)
+		}
+
+		k = &ecdsaPrivateKey{lowLevelKey}
+
+	case *bccsp.AESKeyGenOpts:
 		lowLevelKey, err := primitives.GetRandomBytes(csp.conf.aesBitLength)
 
 		if err != nil {
@@ -115,38 +126,92 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 
 		k = &aesPrivateKey{lowLevelKey, false}
 
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
-			}
+	case *bccsp.AES256KeyGenOpts:
+		lowLevelKey, err := primitives.GetRandomBytes(32)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating AES 256 key [%s]", err)
 		}
 
-		return k, nil
-	case bccsp.RSA:
+		k = &aesPrivateKey{lowLevelKey, false}
+
+	case *bccsp.AES192KeyGenOpts:
+		lowLevelKey, err := primitives.GetRandomBytes(24)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating AES 192 key [%s]", err)
+		}
+
+		k = &aesPrivateKey{lowLevelKey, false}
+
+	case *bccsp.AES128KeyGenOpts:
+		lowLevelKey, err := primitives.GetRandomBytes(16)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating AES 128 key [%s]", err)
+		}
+
+		k = &aesPrivateKey{lowLevelKey, false}
+
+	case *bccsp.RSAKeyGenOpts:
 		lowLevelKey, err := rsa.GenerateKey(rand.Reader, csp.conf.rsaBitLength)
 
 		if err != nil {
-			return nil, fmt.Errorf("Failed generating RSA (2048) key [%s]", err)
+			return nil, fmt.Errorf("Failed generating RSA key [%s]", err)
 		}
 
 		k = &rsaPrivateKey{lowLevelKey}
 
-		// If the key is not Ephemeral, store it.
-		if !opts.Ephemeral() {
-			// Store the key
-			err = csp.ks.StoreKey(k)
-			if err != nil {
-				return nil, fmt.Errorf("Failed storing AES key [%s]", err)
-			}
+	case *bccsp.RSA1024KeyGenOpts:
+		lowLevelKey, err := rsa.GenerateKey(rand.Reader, 1024)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating RSA 1024 key [%s]", err)
 		}
 
-		return k, nil
+		k = &rsaPrivateKey{lowLevelKey}
+
+	case *bccsp.RSA2048KeyGenOpts:
+		lowLevelKey, err := rsa.GenerateKey(rand.Reader, 2048)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating RSA 2048 key [%s]", err)
+		}
+
+		k = &rsaPrivateKey{lowLevelKey}
+
+	case *bccsp.RSA3072KeyGenOpts:
+		lowLevelKey, err := rsa.GenerateKey(rand.Reader, 3072)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating RSA 3072 key [%s]", err)
+		}
+
+		k = &rsaPrivateKey{lowLevelKey}
+
+	case *bccsp.RSA4096KeyGenOpts:
+		lowLevelKey, err := rsa.GenerateKey(rand.Reader, 4096)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed generating RSA 4096 key [%s]", err)
+		}
+
+		k = &rsaPrivateKey{lowLevelKey}
+
 	default:
-		return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
+		return nil, fmt.Errorf("Unrecognized KeyGenOpts provided [%s]", opts.Algorithm())
 	}
+
+	// If the key is not Ephemeral, store it.
+	if !opts.Ephemeral() {
+		// Store the key
+		err = csp.ks.StoreKey(k)
+		if err != nil {
+			return nil, fmt.Errorf("Failed storing key [%s]. [%s]", opts.Algorithm(), err)
+		}
+	}
+
+	return k, nil
 }
 
 // KeyDeriv derives a key from k using opts.
@@ -218,7 +283,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 			return reRandomizedKey, nil
 
 		default:
-			return nil, errors.New("Opts not supported")
+			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
 
 		}
 	case *aesPrivateKey:
@@ -268,7 +333,7 @@ func (csp *impl) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, e
 			return hmacedKey, nil
 
 		default:
-			return nil, errors.New("Opts not supported")
+			return nil, fmt.Errorf("Unrecognized KeyDerivOpts provided [%s]", opts.Algorithm())
 
 		}
 
@@ -470,21 +535,29 @@ func (csp *impl) GetKey(ski []byte) (k bccsp.Key, err error) {
 }
 
 // Hash hashes messages msg using options opts.
-func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error) {
+func (csp *impl) Hash(msg []byte, opts bccsp.HashOpts) (digest []byte, err error) {
+	var h hash.Hash
 	if opts == nil {
-		hash := csp.conf.hashFunction()
-		hash.Write(msg)
-		return hash.Sum(nil), nil
+		h = csp.conf.hashFunction()
+	} else {
+		switch opts.(type) {
+		case *bccsp.SHAOpts:
+			h = csp.conf.hashFunction()
+		case *bccsp.SHA256Opts:
+			h = sha256.New()
+		case *bccsp.SHA384Opts:
+			h = sha512.New384()
+		case *bccsp.SHA3_256Opts:
+			h = sha3.New256()
+		case *bccsp.SHA3_384Opts:
+			h = sha3.New384()
+		default:
+			return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
+		}
 	}
 
-	switch opts.Algorithm() {
-	case bccsp.DefaultHash, bccsp.SHA:
-		hash := csp.conf.hashFunction()
-		hash.Write(msg)
-		return hash.Sum(nil), nil
-	default:
-		return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
-	}
+	h.Write(msg)
+	return h.Sum(nil), nil
 }
 
 // GetHash returns and instance of hash.Hash using options opts.
@@ -494,9 +567,17 @@ func (csp *impl) GetHash(opts bccsp.HashOpts) (h hash.Hash, err error) {
 		return csp.conf.hashFunction(), nil
 	}
 
-	switch opts.Algorithm() {
-	case bccsp.SHA, bccsp.DefaultHash:
+	switch opts.(type) {
+	case *bccsp.SHAOpts:
 		return csp.conf.hashFunction(), nil
+	case *bccsp.SHA256Opts:
+		return sha256.New(), nil
+	case *bccsp.SHA384Opts:
+		return sha512.New384(), nil
+	case *bccsp.SHA3_256Opts:
+		return sha3.New256(), nil
+	case *bccsp.SHA3_384Opts:
+		return sha3.New384(), nil
 	default:
 		return nil, fmt.Errorf("Algorithm not recognized [%s]", opts.Algorithm())
 	}
