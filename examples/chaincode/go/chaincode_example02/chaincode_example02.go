@@ -71,6 +71,26 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error)
 	return nil, nil
 }
 
+func (t *SimpleChaincode) write(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+    var key, value string	
+    var err error
+    fmt.Println("Storing the health parameters in hyperledger fabric...")
+
+    if len(args) != 2 {
+        return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the key and value to set")
+    }
+
+    key = args[0]                            //rename for fun
+    value = args[1]
+    err = stub.PutState(key, []byte(value))  //write the variable into the chaincode state
+    if err != nil {
+        return nil, err
+    }
+	
+		
+    return nil, nil
+}
+
 // Transaction makes payment of X units from A to B
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	function, args := stub.GetFunctionAndParameters()
@@ -78,7 +98,12 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 		// Deletes an entity from its state
 		return t.delete(stub, args)
 	}
-
+	
+	if function == "write" {
+		fmt.Println("Calling write()")
+        	return t.write(stub, args)
+    	}
+	
 	var A, B string    // Entities
 	var Aval, Bval int // Asset holdings
 	var X int          // Transaction value
