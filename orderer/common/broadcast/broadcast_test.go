@@ -24,9 +24,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
-	"github.com/hyperledger/fabric/orderer/common/policies"
-	"github.com/hyperledger/fabric/orderer/multichain"
-	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -108,65 +105,46 @@ func (m *mockB) Recv() (*cb.Envelope, error) {
 	return msg, nil
 }
 
-type mockMultichainManager struct {
-	chains map[string]*mockChainSupport
+type mockSupportManager struct {
+	chains map[string]*mockSupport
 }
 
-func (mm *mockMultichainManager) GetChain(chainID string) (multichain.ChainSupport, bool) {
+func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 	chain, ok := mm.chains[chainID]
 	return chain, ok
 }
 
-func (mm *mockMultichainManager) halt() {
+func (mm *mockSupportManager) halt() {
 	for _, chain := range mm.chains {
-		chain.mockChain.Halt()
+		chain.halt()
 	}
 }
 
-type mockChainSupport struct {
+type mockSupport struct {
 	configManager *mockConfigManager
 	filters       *broadcastfilter.RuleSet
-	mockChain     *mockChain
+	queue         chan *cb.Envelope
+	done          bool
 }
 
-func (mcs *mockChainSupport) ConfigManager() configtx.Manager {
-	return mcs.configManager
+func (ms *mockSupport) ConfigManager() configtx.Manager {
+	return ms.configManager
 }
 
-func (mcs *mockChainSupport) PolicyManager() policies.Manager {
-	panic("Unimplemented")
+func (ms *mockSupport) Filters() *broadcastfilter.RuleSet {
+	return ms.filters
 }
 
-func (mcs *mockChainSupport) Filters() *broadcastfilter.RuleSet {
-	return mcs.filters
+// Enqueue sends a message for ordering
+func (ms *mockSupport) Enqueue(env *cb.Envelope) bool {
+	ms.queue <- env
+	return !ms.done
 }
 
-func (mcs *mockChainSupport) Reader() rawledger.Reader {
-	panic("Unimplemented")
-}
-
-func (mcs *mockChainSupport) Chain() multichain.Chain {
-	return mcs.mockChain
-}
-
-type mockChain struct {
-	queue chan *cb.Envelope
-	done  bool
-}
-
-func (mc *mockChain) Enqueue(env *cb.Envelope) bool {
-	mc.queue <- env
-	return !mc.done
-}
-
-func (mc *mockChain) Start() {
-	panic("Unimplemented")
-}
-
-func (mc *mockChain) Halt() {
-	mc.done = true
+func (ms *mockSupport) halt() {
+	ms.done = true
 	select {
-	case <-mc.queue:
+	case <-ms.queue:
 	default:
 	}
 }
@@ -190,21 +168,20 @@ func makeMessage(chainID string, data []byte) *cb.Envelope {
 	return env
 }
 
-func getMultichainManager() *mockMultichainManager {
+func getMultichainManager() *mockSupportManager {
 	cm := &mockConfigManager{}
 	filters := broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
 		broadcastfilter.EmptyRejectRule,
 		&mockConfigFilter{cm},
 		broadcastfilter.AcceptRule,
 	})
-	mc := &mockChain{queue: make(chan *cb.Envelope)}
-	mm := &mockMultichainManager{
-		chains: make(map[string]*mockChainSupport),
+	mm := &mockSupportManager{
+		chains: make(map[string]*mockSupport),
 	}
-	mm.chains[string(systemChain)] = &mockChainSupport{
+	mm.chains[string(systemChain)] = &mockSupport{
 		filters:       filters,
 		configManager: cm,
-		mockChain:     mc,
+		queue:         make(chan *cb.Envelope),
 	}
 	return mm
 }
@@ -212,7 +189,7 @@ func getMultichainManager() *mockMultichainManager {
 func TestQueueOverflow(t *testing.T) {
 	mm := getMultichainManager()
 	defer mm.halt()
-	bh := NewHandlerImpl(2, mm)
+	bh := NewHandlerImpl(mm, 2)
 	m := newMockB()
 	defer close(m.recvChan)
 	b := newBroadcaster(bh.(*handlerImpl))
@@ -237,7 +214,7 @@ func TestQueueOverflow(t *testing.T) {
 func TestMultiQueueOverflow(t *testing.T) {
 	mm := getMultichainManager()
 	defer mm.halt()
-	bh := NewHandlerImpl(2, mm)
+	bh := NewHandlerImpl(mm, 2)
 	ms := []*mockB{newMockB(), newMockB(), newMockB()}
 
 	for _, m := range ms {
@@ -268,7 +245,7 @@ func TestMultiQueueOverflow(t *testing.T) {
 func TestEmptyEnvelope(t *testing.T) {
 	mm := getMultichainManager()
 	defer mm.halt()
-	bh := NewHandlerImpl(2, mm)
+	bh := NewHandlerImpl(mm, 2)
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)
@@ -284,7 +261,7 @@ func TestEmptyEnvelope(t *testing.T) {
 func TestReconfigureAccept(t *testing.T) {
 	mm := getMultichainManager()
 	defer mm.halt()
-	bh := NewHandlerImpl(2, mm)
+	bh := NewHandlerImpl(mm, 2)
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)
@@ -305,7 +282,7 @@ func TestReconfigureReject(t *testing.T) {
 	mm := getMultichainManager()
 	mm.chains[string(systemChain)].configManager.validateErr = fmt.Errorf("Fail to validate")
 	defer mm.halt()
-	bh := NewHandlerImpl(2, mm)
+	bh := NewHandlerImpl(mm, 2)
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)

@@ -28,6 +28,7 @@ type configFilter struct {
 	configManager configtx.Manager
 }
 
+// New creates a new configfilter Rule based on the given configtx.Manager
 func New(manager configtx.Manager) broadcastfilter.Rule {
 	return &configFilter{
 		configManager: manager,

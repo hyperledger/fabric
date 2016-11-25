@@ -18,7 +18,6 @@ package multichain
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -26,12 +25,12 @@ import (
 type mockConsenter struct {
 }
 
-func (mc *mockConsenter) HandleChain(configManager configtx.Manager, cutter blockcutter.Receiver, rl rawledger.Writer, metadata []byte) Chain {
+func (mc *mockConsenter) HandleChain(support ConsenterSupport) (Chain, error) {
 	return &mockChain{
 		queue:  make(chan *cb.Envelope),
-		ledger: rl,
-		cutter: cutter,
-	}
+		ledger: support.Writer(),
+		cutter: support.BlockCutter(),
+	}, nil
 }
 
 type mockChain struct {

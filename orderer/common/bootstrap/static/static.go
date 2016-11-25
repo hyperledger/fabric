@@ -26,7 +26,10 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
-var TestChainID = "**TEST_CHAINID**"
+// TestChainID is the default chain ID which is used by all statically bootstrapped networks
+// This is necessary to allow test clients to connect without being rejected for targetting
+// a chain which does not exist
+const TestChainID = "**TEST_CHAINID**"
 
 const msgVersion = int32(1)
 
@@ -38,12 +41,20 @@ type bootstrapper struct {
 	batchSize     int32
 }
 
+const (
+	// DefaultBatchSize is the default value of BatchSizeKey
+	DefaultBatchSize = 10
+
+	// DefaultConsensusType is the default value of ConsensusTypeKey
+	DefaultConsensusType = "solo"
+)
+
 // New returns a new static bootstrap helper.
 func New() bootstrap.Helper {
 	return &bootstrapper{
 		chainID:       TestChainID,
-		consensusType: "solo",
-		batchSize:     10,
+		consensusType: DefaultConsensusType,
+		batchSize:     DefaultBatchSize,
 	}
 }
 

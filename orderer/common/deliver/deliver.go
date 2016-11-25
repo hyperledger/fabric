@@ -17,7 +17,7 @@ limitations under the License.
 package deliver
 
 import (
-	"github.com/hyperledger/fabric/orderer/multichain"
+	"github.com/hyperledger/fabric/orderer/common/policies"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -30,23 +30,39 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
+// Handler defines an interface which handles Deliver requests
 type Handler interface {
 	Handle(srv ab.AtomicBroadcast_DeliverServer) error
 }
 
-type DeliverServer struct {
-	ml        multichain.Manager
+// SupportManager provides a way for the Handler to look up the Support for a chain
+type SupportManager interface {
+	GetChain(chainID string) (Support, bool)
+}
+
+// Support provides the backing resources needed to support deliver on a chain
+type Support interface {
+	// PolicyManager returns the current policy manager as specified by the chain configuration
+	PolicyManager() policies.Manager
+
+	// Reader returns the chain Reader for the chain
+	Reader() rawledger.Reader
+}
+
+type deliverServer struct {
+	sm        SupportManager
 	maxWindow int
 }
 
-func NewHandlerImpl(ml multichain.Manager, maxWindow int) Handler {
-	return &DeliverServer{
-		ml:        ml,
+// NewHandlerImpl creates an implementation of the Handler interface
+func NewHandlerImpl(sm SupportManager, maxWindow int) Handler {
+	return &deliverServer{
+		sm:        sm,
 		maxWindow: maxWindow,
 	}
 }
 
-func (ds *DeliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
+func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 	logger.Debugf("Starting new Deliver loop")
 	d := newDeliverer(ds, srv)
 	return d.recv()
@@ -54,7 +70,7 @@ func (ds *DeliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 }
 
 type deliverer struct {
-	ds              *DeliverServer
+	ds              *deliverServer
 	srv             ab.AtomicBroadcast_DeliverServer
 	cursor          rawledger.Iterator
 	nextBlockNumber uint64
@@ -64,7 +80,7 @@ type deliverer struct {
 	exitChan        chan struct{}
 }
 
-func newDeliverer(ds *DeliverServer, srv ab.AtomicBroadcast_DeliverServer) *deliverer {
+func newDeliverer(ds *deliverServer, srv ab.AtomicBroadcast_DeliverServer) *deliverer {
 	d := &deliverer{
 		ds:       ds,
 		srv:      srv,
@@ -146,7 +162,7 @@ func (d *deliverer) recv() error {
 		case <-d.exitChan:
 			return nil // something has gone wrong enough we want to disconnect
 		case d.recvChan <- msg:
-			logger.Debugf("Sent update")
+			logger.Debugf("Passed message to main thread")
 		}
 	}
 }
@@ -180,9 +196,7 @@ func (d *deliverer) sendBlockReply(block *cb.Block) bool {
 }
 
 func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
-	if d.cursor != nil {
-		d.cursor = nil
-	}
+	d.cursor = nil // Even if the seek fails early, we should stop sending blocks from the last request
 	logger.Debugf("Updating properties for client")
 
 	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) || update.ChainID == "" {
@@ -190,7 +204,7 @@ func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
 		return d.sendErrorReply(cb.Status_BAD_REQUEST)
 	}
 
-	chain, ok := d.ds.ml.GetChain(update.ChainID)
+	chain, ok := d.ds.sm.GetChain(update.ChainID)
 	if !ok {
 		return d.sendErrorReply(cb.Status_NOT_FOUND)
 	}
