@@ -158,7 +158,7 @@ func TestBatchTimer(t *testing.T) {
 func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	filters, cm := getFiltersAndConfig()
 	batchSize := 2
-	rl := ramledger.New(10, genesisBlock)
+	_, rl := ramledger.New(10, genesisBlock)
 	bs := NewConsenter(batchSize, time.Hour, rl, filters, cm)
 	defer bs.halt()
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
