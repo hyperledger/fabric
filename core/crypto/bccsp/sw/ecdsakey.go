@@ -75,11 +75,6 @@ type ecdsaPublicKey struct {
 	pubKey *ecdsa.PublicKey
 }
 
-// FIXME: remove as soon as there's a way to import the key more properly
-func NewEcdsaPublicKey(k *ecdsa.PublicKey) bccsp.Key {
-	return &ecdsaPublicKey{pubKey: k}
-}
-
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {

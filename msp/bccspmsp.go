@@ -17,7 +17,6 @@ limitations under the License.
 package msp
 
 import (
-	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
 	"time"
@@ -30,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
 )
 
 // This is an instantiation of an MSP that
@@ -127,19 +125,22 @@ func (msp *bccspmsp) Setup(configFile string) error {
 		return fmt.Errorf("Failed to parse x509 cert, err %s", err)
 	}
 
-	// Extract the keypair
-	pemKey, _ := pem.Decode(id.PublicSigner.Key)
-	key, err := x509.ParseECPrivateKey(pemKey.Bytes)
+	// Get public key
+	pub, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 	if err != nil {
-		return fmt.Errorf("Failed to parse keypair, err %s", err)
+		return fmt.Errorf("Failed to import certificate's public key, err %s", err)
 	}
 
-	// get the keypair in the right format
-	pub := sw.NewEcdsaPublicKey(cert.PublicKey.(*ecdsa.PublicKey))
+	// Get secret key
+	pemKey, _ := pem.Decode(id.PublicSigner.Key)
+	key, err := msp.bccsp.KeyImport(pemKey.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
+	if err != nil {
+		return fmt.Errorf("Failed to import EC private key, err %s", err)
+	}
 
 	// get the peer signer
 	peerSigner := &signer.CryptoSigner{}
-	err = peerSigner.Init(msp.bccsp, sw.NewEcdsaPrivateKey(key))
+	err = peerSigner.Init(msp.bccsp, key)
 	if err != nil {
 		return fmt.Errorf("Failed initializing CryptoSigner, err %s", err)
 	}
@@ -158,7 +159,10 @@ func (msp *bccspmsp) Setup(configFile string) error {
 	}
 
 	// get the CA keypair in the right format
-	CAPub := sw.NewEcdsaPublicKey(CACert.PublicKey.(*ecdsa.PublicKey))
+	CAPub, err := msp.bccsp.KeyImport(CACert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
+	if err != nil {
+		return fmt.Errorf("Failed to import certitifacate's public key [%s]", err)
+	}
 
 	// Set the trusted identity related to the ROOT CA
 	rootCaIdentity := newIdentity(&IdentityIdentifier{Mspid: MSPID, Value: "ROOTCA"}, CACert, CAPub)
@@ -256,7 +260,12 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 	id := &IdentityIdentifier{Mspid: ProviderIdentifier{Value: msp.id.Value},
 		Value: "PEER"} // TODO: where should this identifier be obtained from?
 
-	return newIdentity(id, cert, sw.NewEcdsaPublicKey(cert.PublicKey.(*ecdsa.PublicKey))), nil
+	pub, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to import certitifacateś public key [%s]", err)
+	}
+
+	return newIdentity(id, cert, pub), nil
 }
 
 func (msp *bccspmsp) DeleteSigningIdentity(identifier string) (bool, error) {
