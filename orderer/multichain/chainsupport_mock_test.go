@@ -62,3 +62,28 @@ func (mch *mockChain) Start() {
 func (mch *mockChain) Halt() {
 	close(mch.queue)
 }
+
+type mockConfigtxManager struct {
+	config *cb.ConfigurationEnvelope
+}
+
+func (mcm *mockConfigtxManager) Apply(configtx *cb.ConfigurationEnvelope) error {
+	mcm.config = configtx
+	return nil
+}
+
+func (mcm *mockConfigtxManager) Validate(configtx *cb.ConfigurationEnvelope) error {
+	panic("Unimplemented")
+}
+
+func (mcm *mockConfigtxManager) ChainID() string {
+	panic("Unimplemented")
+}
+
+type mockLedgerWriter struct {
+}
+
+func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]byte) *cb.Block {
+	logger.Debugf("Committed block")
+	return nil
+}

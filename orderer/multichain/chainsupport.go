@@ -20,12 +20,15 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"github.com/hyperledger/fabric/orderer/common/broadcastfilter/configfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
 	"github.com/hyperledger/fabric/orderer/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // Consenter defines the backing ordering mechanism
@@ -112,7 +115,7 @@ func newChainSupport(configManager configtx.Manager, policyManager policies.Mana
 func createBroadcastRuleset(configManager configtx.Manager) *broadcastfilter.RuleSet {
 	return broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
 		broadcastfilter.EmptyRejectRule,
-		// configfilter.New(configManager),
+		configfilter.New(configManager),
 		broadcastfilter.AcceptRule,
 	})
 }
@@ -153,17 +156,44 @@ func (cs *chainSupport) Enqueue(env *cb.Envelope) bool {
 	return cs.chain.Enqueue(env)
 }
 
+// writeInterceptor performs 'execution/processing' of blockContents before committing them to the normal passive ledger
+// This is intended to support reconfiguration transactions, and ultimately chain creation
 type writeInterceptor struct {
-	backing rawledger.Writer
+	configtxManager configtx.Manager
+	backing         rawledger.Writer
 }
 
-// TODO ultimately set write interception policy by config
-func newWriteInterceptor(configManager configtx.Manager, backing rawledger.Writer) *writeInterceptor {
+func newWriteInterceptor(configtxManager configtx.Manager, backing rawledger.Writer) *writeInterceptor {
 	return &writeInterceptor{
-		backing: backing,
+		backing:         backing,
+		configtxManager: configtxManager,
 	}
 }
 
 func (wi *writeInterceptor) Append(blockContents []*cb.Envelope, metadata [][]byte) *cb.Block {
+	// Note that in general any errors encountered in this path are fatal.
+	// The previous layers (broadcastfilters, blockcutter) should have scrubbed any invalid
+	// 'executable' transactions like config before committing via Append
+
+	if len(blockContents) == 1 {
+		payload := &cb.Payload{}
+		err := proto.Unmarshal(blockContents[0].Payload, payload)
+		if err != nil {
+			logger.Fatalf("Asked to write a malformed envelope to the chain: %s", err)
+		}
+
+		if payload.Header.ChainHeader.Type == int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
+			configEnvelope := &cb.ConfigurationEnvelope{}
+			err = proto.Unmarshal(payload.Data, configEnvelope)
+			if err != nil {
+				logger.Fatalf("Configuration envelope was malformed: %s", err)
+			}
+
+			err = wi.configtxManager.Apply(configEnvelope)
+			if err != nil {
+				logger.Fatalf("Error applying configuration transaction which was already validated: %s", err)
+			}
+		}
+	}
 	return wi.backing.Append(blockContents, metadata)
 }
