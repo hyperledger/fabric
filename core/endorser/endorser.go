@@ -63,24 +63,17 @@ func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
 }
 
 //deploy the chaincode after call to the system chaincode is successful
-func (e *Endorser) deploy(ctxt context.Context, chainname string, cds *pb.ChaincodeDeploymentSpec, cid *pb.ChaincodeID) error {
-	//TODO : this needs to be converted to another data structure to be handled
-	//       by the chaincode framework (which currently handles "Transaction")
-	t, err := pb.NewChaincodeDeployTransaction(cds, cid.Name)
-	if err != nil {
-		return err
-	}
-
+func (e *Endorser) deploy(ctxt context.Context, txid string, proposal *pb.Proposal, chainname string, cds *pb.ChaincodeDeploymentSpec, cid *pb.ChaincodeID) error {
 	//TODO - create chaincode support for chainname, for now use DefaultChain
 	chaincodeSupport := chaincode.GetChain(chaincode.ChainName(chainname))
 
-	_, err = chaincodeSupport.Deploy(ctxt, t)
+	_, err := chaincodeSupport.Deploy(ctxt, cds)
 	if err != nil {
 		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 	}
 
 	//launch and wait for ready
-	_, _, err = chaincodeSupport.Launch(ctxt, t)
+	_, _, err = chaincodeSupport.Launch(ctxt, txid, proposal, cds)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
@@ -92,7 +85,7 @@ func (e *Endorser) deploy(ctxt context.Context, chainname string, cds *pb.Chainc
 }
 
 //call specified chaincode (system or user)
-func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocationSpec, cid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, *pb.ChaincodeEvent, error) {
+func (e *Endorser) callChaincode(ctxt context.Context, txid string, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec, cid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
 	var b []byte
 	var ccevent *pb.ChaincodeEvent
@@ -101,7 +94,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocati
 	chainName := string(chaincode.DefaultChain)
 
 	ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
-	b, ccevent, err = chaincode.ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, chainName, cid.Name, cis.ChaincodeSpec.CtorMsg.Args)
+	b, ccevent, err = chaincode.ExecuteChaincode(ctxt, txid, prop, chainName, cid.Name, cis.ChaincodeSpec.CtorMsg.Args)
 
 	if err != nil {
 		return nil, nil, err
@@ -121,7 +114,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocati
 		if err != nil {
 			return nil, nil, err
 		}
-		err = e.deploy(ctxt, chainName, cds, cid)
+		err = e.deploy(ctxt, txid, prop, chainName, cds, cid)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -132,7 +125,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, cis *pb.ChaincodeInvocati
 }
 
 //simulate the proposal by calling the chaincode
-func (e *Endorser) simulateProposal(ctx context.Context, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, []byte, *pb.ChaincodeEvent, error) {
+func (e *Endorser) simulateProposal(ctx context.Context, txid string, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, []byte, *pb.ChaincodeEvent, error) {
 	//we do expect the payload to be a ChaincodeInvocationSpec
 	//if we are supporting other payloads in future, this be glaringly point
 	//as something that should change
@@ -154,7 +147,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, prop *pb.Proposal, cid 
 	var simResult []byte
 	var resp []byte
 	var ccevent *pb.ChaincodeEvent
-	resp, ccevent, err = e.callChaincode(ctx, cis, cid, txsim)
+	resp, ccevent, err = e.callChaincode(ctx, txid, prop, cis, cid, txsim)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -166,19 +159,19 @@ func (e *Endorser) simulateProposal(ctx context.Context, prop *pb.Proposal, cid 
 	return resp, simResult, ccevent, nil
 }
 
-func (e *Endorser) getCDSFromLCCC(ctx context.Context, chaincodeID string, txsim ledger.TxSimulator) ([]byte, error) {
+func (e *Endorser) getCDSFromLCCC(ctx context.Context, txid string, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) ([]byte, error) {
 	ctxt := context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
-	return chaincode.GetCDSFromLCCC(ctxt, string(chaincode.DefaultChain), chaincodeID)
+	return chaincode.GetCDSFromLCCC(ctxt, txid, prop, string(chaincode.DefaultChain), chaincodeID)
 }
 
 //endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(ctx context.Context, proposal *pb.Proposal, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, error) {
+func (e *Endorser) endorseProposal(ctx context.Context, txid string, proposal *pb.Proposal, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, error) {
 	endorserLogger.Infof("endorseProposal starts for proposal %p, simRes %p event %p, visibility %p, ccid %s", proposal, simRes, event, visibility, ccid)
 
 	// 1) extract the chaincodeDeploymentSpec for the chaincode we are invoking; we need it to get the escc
 	var escc string
 	if ccid.Name != "lccc" {
-		depPayload, err := e.getCDSFromLCCC(ctx, ccid.Name, txsim)
+		depPayload, err := e.getCDSFromLCCC(ctx, txid, proposal, ccid.Name, txsim)
 		if err != nil {
 			return nil, fmt.Errorf("failed to obtain cds for %s - %s", ccid, err)
 		}
@@ -217,7 +210,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, proposal *pb.Proposal, s
 	// args[5] - payloadVisibility
 	args := [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes, eventBytes, visibility}
 	ecccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: escc}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
-	prBytes, _, err := e.callChaincode(ctx, ecccis, &pb.ChaincodeID{Name: escc}, txsim)
+	prBytes, _, err := e.callChaincode(ctx, txid, proposal, ecccis, &pb.ChaincodeID{Name: escc}, txsim)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +232,20 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// at first, we check whether the message is valid
 	prop, _, hdrExt, err := peer.ValidateProposalMessage(signedProp)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	}
+
+	hdr, err := putils.GetHeader(prop.Header)
+	if err != nil {
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	}
+
+	//TODO check for uniqueness of prop.TxID with ledger
+
+	txid := hdr.ChainHeader.TxID
+	if txid == "" {
+		err = fmt.Errorf("Invalid txID")
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
 	// obtaining once the tx simulator for this proposal
@@ -247,7 +253,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	//TODO - get chainname from the proposal when defined
 	chainName := string(chaincode.DefaultChain)
 	if txsim, err = e.getTxSimulator(chainName); err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 	defer txsim.Done()
 
@@ -259,16 +265,16 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	//1 -- simulate
 	//TODO what do we do with response ? We need it for Invoke responses for sure
 	//Which field in PayloadResponse will carry return value ?
-	result, simulationResult, ccevent, err := e.simulateProposal(ctx, prop, hdrExt.ChaincodeID, txsim)
+	result, simulationResult, ccevent, err := e.simulateProposal(ctx, txid, prop, hdrExt.ChaincodeID, txsim)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
 	//2 -- endorse and get a marshalled ProposalResponse message
 	//TODO what do we do with response ? We need it for Invoke responses for sure
-	prBytes, err := e.endorseProposal(ctx, prop, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeID, txsim)
+	prBytes, err := e.endorseProposal(ctx, txid, prop, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeID, txsim)
 	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response2{Status: 500, Message: err.Error()}}, err
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
 	//3 -- respond

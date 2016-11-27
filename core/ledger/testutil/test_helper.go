@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -51,7 +52,7 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*pb.Block2 {
 
 // ConstructTestBlock constructs a block with 'numTx' number of transactions for testing
 func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *pb.Block2 {
-	txs := []*pb.Transaction2{}
+	txs := []*pb.Transaction{}
 	for i := startingTxID; i < numTx+startingTxID; i++ {
 		tx, _ := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, []byte{}, []byte{}, ConstructRandomBytes(t, txSize), []*pb.Endorsement{})
 		txs = append(txs, tx)
@@ -66,7 +67,8 @@ func ConstructTestTransaction(t *testing.T, simulationResults []byte, signer msp
 		return nil, err
 	}
 
-	prop, err := putils.CreateChaincodeProposal(&pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: "foo"}}}, ss)
+	uuid := util.GenerateUUID()
+	prop, err := putils.CreateChaincodeProposal(uuid, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: "foo"}}}, ss)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +93,7 @@ func ComputeBlockHash(t testing.TB, block *pb.Block2) []byte {
 	return serBlock.ComputeHash()
 }
 
-func newBlock(txs []*pb.Transaction2) *pb.Block2 {
+func newBlock(txs []*pb.Transaction) *pb.Block2 {
 	block := &pb.Block2{}
 	block.PreviousBlockHash = []byte{}
 	for i := 0; i < len(txs); i++ {

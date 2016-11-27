@@ -43,7 +43,7 @@ message InvalidTransaction {
 		TxIdAlreadyExists = 0;
 		RWConflictDuringCommit = 1;
 	}
-	Transaction2 transaction = 1;
+	Transaction transaction = 1;
 	Cause cause = 2;
 }
 
@@ -59,7 +59,7 @@ message InvalidTransaction {
 // (ProposalResponsePayload) with one signature per Endorser. Any number of
 // independent proposals (and their action) might be included in a transaction
 // to ensure that they are treated atomically.
-message Transaction2 {
+message Transaction {
 
 	// Version indicates message protocol version.
 	int32 version = 1;

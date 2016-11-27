@@ -24,9 +24,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt/couchdb"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
+	"github.com/op/go-logging"
+
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
-	"github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("couchdbtxmgmt")
@@ -164,7 +165,7 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *pb.Block2) (*pb.Block2, []*
 			validatedBlock.Transactions = append(validatedBlock.Transactions, envBytes)
 		} else {
 			invalidTxs = append(invalidTxs, &pb.InvalidTransaction{
-				Transaction: &pb.Transaction2{ /* FIXME */ }, Cause: pb.InvalidTransaction_RWConflictDuringCommit})
+				Transaction: &pb.Transaction{ /* FIXME */ }, Cause: pb.InvalidTransaction_RWConflictDuringCommit})
 		}
 	}
 	logger.Debugf("===COUCHDB=== Exiting CouchDBTxMgr.ValidateAndPrepare()")

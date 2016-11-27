@@ -21,7 +21,7 @@ import (
 )
 
 //CreateBlockEvent creates a Event from a Block
-func CreateBlockEvent(te *ehpb.Block) *ehpb.Event {
+func CreateBlockEvent(te *ehpb.Block2) *ehpb.Event {
 	return &ehpb.Event{Event: &ehpb.Event_Block{Block: te}}
 }
 

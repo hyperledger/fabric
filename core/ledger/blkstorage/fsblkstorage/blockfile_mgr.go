@@ -436,7 +436,7 @@ func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*BlocksItr, error) {
 	return newBlockItr(mgr, startNum), nil
 }
 
-func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*pb.Transaction2, error) {
+func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*pb.Transaction, error) {
 	logger.Debugf("retrieveTransactionByID() - txId = [%s]", txID)
 	loc, err := mgr.index.getTxLoc(txID)
 	if err != nil {
@@ -465,12 +465,12 @@ func (mgr *blockfileMgr) fetchSerBlock(lp *fileLocPointer) (*pb.SerBlock2, error
 	return pb.NewSerBlock2(blockBytes), nil
 }
 
-func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*pb.Transaction2, error) {
+func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*pb.Transaction, error) {
 	txBytes, err := mgr.fetchRawBytes(lp)
 	if err != nil {
 		return nil, err
 	}
-	tx := &pb.Transaction2{}
+	tx := &pb.Transaction{}
 	err = proto.Unmarshal(txBytes, tx)
 	if err != nil {
 		return nil, err

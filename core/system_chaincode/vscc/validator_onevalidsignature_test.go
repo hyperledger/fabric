@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -32,7 +33,9 @@ import (
 func createTx() (*common.Envelope, error) {
 	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeID: &peer.ChaincodeID{Name: "foo"}}}
 
-	prop, err := utils.CreateProposalFromCIS(cis, sid)
+	uuid := util.GenerateUUID()
+
+	prop, err := utils.CreateProposalFromCIS(uuid, cis, sid)
 	if err != nil {
 		return nil, err
 	}

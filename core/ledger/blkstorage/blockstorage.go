@@ -55,6 +55,6 @@ type BlockStore interface {
 	RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error)
 	RetrieveBlockByHash(blockHash []byte) (*pb.Block2, error)
 	RetrieveBlockByNumber(blockNum uint64) (*pb.Block2, error)
-	RetrieveTxByID(txID string) (*pb.Transaction2, error)
+	RetrieveTxByID(txID string) (*pb.Transaction, error)
 	Shutdown()
 }

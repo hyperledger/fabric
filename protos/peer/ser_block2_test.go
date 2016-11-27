@@ -24,7 +24,7 @@ import (
 )
 
 func TestSerBlock2(t *testing.T) {
-	tx1 := &Transaction2{}
+	tx1 := &Transaction{}
 	tx1.Actions = []*TransactionAction{
 		&TransactionAction{Header: []byte("action1"), Payload: []byte("payload1")},
 		&TransactionAction{Header: []byte("action2"), Payload: []byte("payload2")}}
@@ -34,7 +34,7 @@ func TestSerBlock2(t *testing.T) {
 		t.Fatalf("Error:%s", err)
 	}
 
-	tx2 := &Transaction2{}
+	tx2 := &Transaction{}
 	tx2.Actions = []*TransactionAction{
 		&TransactionAction{Header: []byte("action1"), Payload: []byte("payload1")},
 		&TransactionAction{Header: []byte("action2"), Payload: []byte("payload2")}}

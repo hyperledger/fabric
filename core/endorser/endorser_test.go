@@ -28,7 +28,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
@@ -82,7 +81,6 @@ func initPeer() (net.Listener, error) {
 	}
 
 	// Install security object for peer
-	var secHelper crypto.Peer
 	if viper.GetBool("security.enabled") {
 		//TODO:  integrate new crypto / idp
 		securityLevel := viper.GetInt("security.level")
@@ -95,7 +93,7 @@ func initPeer() (net.Listener, error) {
 	}
 
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(chaincode.DefaultChain, getPeerEndpoint, false, ccStartupTimeout, secHelper))
+	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(chaincode.DefaultChain, getPeerEndpoint, false, ccStartupTimeout))
 
 	chaincode.RegisterSysCCs()
 
@@ -124,7 +122,8 @@ func closeListenerAndSleep(l net.Listener) {
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
 func getProposal(cis *pb.ChaincodeInvocationSpec, creator []byte) (*pb.Proposal, error) {
-	return pbutils.CreateChaincodeProposal(cis, creator)
+	uuid := util.GenerateUUID()
+	return pbutils.CreateChaincodeProposal(uuid, cis, creator)
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment

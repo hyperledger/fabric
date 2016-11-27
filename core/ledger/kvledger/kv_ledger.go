@@ -98,7 +98,7 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 }
 
 // GetTransactionByID retrieves a transaction by id
-func (l *KVLedger) GetTransactionByID(txID string) (*pb.Transaction2, error) {
+func (l *KVLedger) GetTransactionByID(txID string) (*pb.Transaction, error) {
 	return l.blockStore.RetrieveTxByID(txID)
 }
 

@@ -148,7 +148,7 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 			txID := constructTxID(uint64(i+1), j)
 			txFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)
 			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
-			tx := &pb.Transaction2{}
+			tx := &pb.Transaction{}
 			err = proto.Unmarshal(txBytes, tx)
 			testutil.AssertNoError(t, err, "Error while unmarshalling tx")
 			testutil.AssertEquals(t, txFromFileMgr, tx)

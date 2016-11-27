@@ -106,20 +106,6 @@ message ChaincodeInvocationSpec {
     string idGenerationAlg = 2;
 }
 
-// This structure contain transaction data that we send to the chaincode
-// container shim and allow the chaincode to access through the shim interface.
-// TODO: Consider remove this message and just pass the transaction object
-// to the shim and/or allow the chaincode to query transactions.
-message ChaincodeSecurityContext {
-    bytes callerCert = 1;
-    bytes callerSign = 2;
-    bytes payload = 3;
-    bytes binding = 4;
-    bytes metadata = 5;
-    bytes parentMetadata = 6;
-    google.protobuf.Timestamp txTimestamp = 7; // transaction timestamp
-}
-
 message ChaincodeMessage {
 
     enum Type {
@@ -135,22 +121,17 @@ message ChaincodeMessage {
         PUT_STATE = 9;
         DEL_STATE = 10;
         INVOKE_CHAINCODE = 11;
-        INVOKE_QUERY = 12;
         RESPONSE = 13;
-        QUERY = 14;
-        QUERY_COMPLETED = 15;
-        QUERY_ERROR = 16;
-        RANGE_QUERY_STATE = 17;
-        RANGE_QUERY_STATE_NEXT = 18;
-        RANGE_QUERY_STATE_CLOSE = 19;
-        KEEPALIVE = 20;
+        RANGE_QUERY_STATE = 14;
+        RANGE_QUERY_STATE_NEXT = 15;
+        RANGE_QUERY_STATE_CLOSE = 16;
+        KEEPALIVE = 17;
     }
 
     Type type = 1;
     google.protobuf.Timestamp timestamp = 2;
     bytes payload = 3;
     string txid = 4;
-    ChaincodeSecurityContext securityContext = 5;
 
     //event emmited by chaincode. Used only with Init or Invoke.
     // This event is then stored (currently)

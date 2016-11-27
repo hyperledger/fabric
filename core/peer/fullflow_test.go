@@ -25,6 +25,7 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -36,7 +37,9 @@ func getProposal() (*peer.Proposal, error) {
 			ChaincodeID: &peer.ChaincodeID{Name: "foo"},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	return utils.CreateProposalFromCIS(cis, signerSerialized)
+	uuid := util.GenerateUUID()
+
+	return utils.CreateProposalFromCIS(uuid, cis, signerSerialized)
 }
 
 func TestGoodPath(t *testing.T) {

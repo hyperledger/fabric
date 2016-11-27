@@ -47,11 +47,10 @@ var chaincodeLogger = logging.MustGetLogger("shim")
 // ChaincodeStub is an object passed to chaincode for shim side handling of
 // APIs.
 type ChaincodeStub struct {
-	TxID            string
-	securityContext *pb.ChaincodeSecurityContext
-	chaincodeEvent  *pb.ChaincodeEvent
-	args            [][]byte
-	handler         *Handler
+	TxID           string
+	chaincodeEvent *pb.ChaincodeEvent
+	args           [][]byte
+	handler        *Handler
 }
 
 // Peer address derived from command line or env var
@@ -259,26 +258,17 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 // -- init stub ---
 // ChaincodeInvocation functionality
 
-func (stub *ChaincodeStub) init(handler *Handler, txid string, secContext *pb.ChaincodeSecurityContext) {
+func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput) {
 	stub.TxID = txid
-	stub.securityContext = secContext
-	stub.args = [][]byte{}
-	newCI := pb.ChaincodeInput{}
-	err := proto.Unmarshal(secContext.Payload, &newCI)
-	if err == nil {
-		stub.args = newCI.Args
-	} else {
-		panic("Arguments cannot be unmarshalled.")
-	}
+	stub.args = input.Args
 	stub.handler = handler
 }
 
 func InitTestStub(funargs ...string) *ChaincodeStub {
 	stub := ChaincodeStub{}
 	allargs := util.ToChaincodeArgs(funargs...)
-	newCI := pb.ChaincodeInput{Args: allargs}
-	pl, _ := proto.Marshal(&newCI)
-	stub.init(&Handler{}, "TEST-txid", &pb.ChaincodeSecurityContext{Payload: pl})
+	newCI := &pb.ChaincodeInput{Args: allargs}
+	stub.init(&Handler{}, "TEST-txid", newCI)
 	return &stub
 }
 
@@ -296,13 +286,6 @@ func (stub *ChaincodeStub) GetTxID() string {
 // create a new transaction message.
 func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
 	return stub.handler.handleInvokeChaincode(chaincodeName, args, stub.TxID)
-}
-
-// QueryChaincode locally calls the specified chaincode `Query` using the
-// same transaction context; that is, chaincode calling chaincode doesn't
-// create a new transaction message.
-func (stub *ChaincodeStub) QueryChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
-	return stub.handler.handleQueryChaincode(chaincodeName, args, stub.TxID)
 }
 
 // --------- State functions ----------
@@ -707,30 +690,30 @@ func (stub *ChaincodeStub) VerifySignature(certificate, signature, message []byt
 
 // GetCallerCertificate returns caller certificate
 func (stub *ChaincodeStub) GetCallerCertificate() ([]byte, error) {
-	return stub.securityContext.CallerCert, nil
+	return nil, nil
 }
 
 // GetCallerMetadata returns caller metadata
 func (stub *ChaincodeStub) GetCallerMetadata() ([]byte, error) {
-	return stub.securityContext.Metadata, nil
+	return nil, nil
 }
 
 // GetBinding returns the transaction binding
 func (stub *ChaincodeStub) GetBinding() ([]byte, error) {
-	return stub.securityContext.Binding, nil
+	return nil, nil
 }
 
 // GetPayload returns transaction payload, which is a `ChaincodeSpec` defined
 // in fabric/protos/chaincode.proto
 func (stub *ChaincodeStub) GetPayload() ([]byte, error) {
-	return stub.securityContext.Payload, nil
+	return nil, nil
 }
 
 // GetTxTimestamp returns transaction created timestamp, which is currently
 // taken from the peer receiving the transaction. Note that this timestamp
 // may not be the same with the other peers' time.
 func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
-	return stub.securityContext.TxTimestamp, nil
+	return nil, nil
 }
 
 func getTable(stub ChaincodeStubInterface, tableName string) (*Table, error) {

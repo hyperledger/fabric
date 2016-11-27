@@ -141,8 +141,8 @@ func GetPayload(e *common.Envelope) (*common.Payload, error) {
 }
 
 // GetTransaction Get Transaction from bytes
-func GetTransaction(txBytes []byte) (*peer.Transaction2, error) {
-	tx := &peer.Transaction2{}
+func GetTransaction(txBytes []byte) (*peer.Transaction, error) {
+	tx := &peer.Transaction{}
 	err := proto.Unmarshal(txBytes, tx)
 	if err != nil {
 		return nil, err
@@ -196,7 +196,7 @@ func GetEnvelope(bytes []byte) (*common.Envelope, error) {
 }
 
 // CreateChaincodeProposal creates a proposal from given input
-func CreateChaincodeProposal(cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
+func CreateChaincodeProposal(txid string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
@@ -221,6 +221,7 @@ func CreateChaincodeProposal(cis *peer.ChaincodeInvocationSpec, creator []byte) 
 	}
 
 	hdr := &common.Header{ChainHeader: &common.ChainHeader{Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
+		TxID:      txid,
 		Extension: ccHdrExtBytes},
 		SignatureHeader: &common.SignatureHeader{Nonce: nonce, Creator: creator}}
 
@@ -320,7 +321,7 @@ func GetBytesSignatureHeader(hdr *common.SignatureHeader) ([]byte, error) {
 }
 
 // GetBytesTransaction get the bytes of Transaction from the message
-func GetBytesTransaction(tx *peer.Transaction2) ([]byte, error) {
+func GetBytesTransaction(tx *peer.Transaction) ([]byte, error) {
 	bytes, err := proto.Marshal(tx)
 	if err != nil {
 		return nil, err
@@ -371,12 +372,12 @@ func GetActionFromEnvelope(envBytes []byte) (*peer.ChaincodeAction, error) {
 }
 
 // CreateProposalFromCIS returns a proposal given a serialized identity and a ChaincodeInvocationSpec
-func CreateProposalFromCIS(cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
-	return CreateChaincodeProposal(cis, creator)
+func CreateProposalFromCIS(txid string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
+	return CreateChaincodeProposal(txid, cis, creator)
 }
 
 // CreateProposalFromCDS returns a proposal given a serialized identity and a ChaincodeDeploymentSpec
-func CreateProposalFromCDS(cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
+func CreateProposalFromCDS(txid string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
@@ -390,5 +391,5 @@ func CreateProposalFromCDS(cds *peer.ChaincodeDeploymentSpec, creator []byte) (*
 			CtorMsg:     &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
 
 	//...and get the proposal for it
-	return CreateProposalFromCIS(lcccSpec, creator)
+	return CreateProposalFromCIS(txid, lcccSpec, creator)
 }

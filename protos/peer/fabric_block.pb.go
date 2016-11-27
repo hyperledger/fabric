@@ -23,15 +23,15 @@ type Block2 struct {
 func (m *Block2) Reset()                    { *m = Block2{} }
 func (m *Block2) String() string            { return proto.CompactTextString(m) }
 func (*Block2) ProtoMessage()               {}
-func (*Block2) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*Block2) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 func init() {
 	proto.RegisterType((*Block2)(nil), "protos.Block2")
 }
 
-func init() { proto.RegisterFile("peer/fabric_block.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("peer/fabric_block.proto", fileDescriptor6) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor6 = []byte{
 	// 150 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x12, 0x2f, 0x48, 0x4d, 0x2d,
 	0xd2, 0x4f, 0x4b, 0x4c, 0x2a, 0xca, 0x4c, 0x8e, 0x4f, 0xca, 0xc9, 0x4f, 0xce, 0xd6, 0x2b, 0x28,

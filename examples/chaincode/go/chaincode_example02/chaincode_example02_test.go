@@ -43,7 +43,7 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 }
 
 func checkQuery(t *testing.T, stub *shim.MockStub, name string, value string) {
-	bytes, err := stub.MockQuery([][]byte{[]byte("query"), []byte(name)})
+	bytes, err := stub.MockInvoke("1", [][]byte{[]byte("query"), []byte(name)})
 	if err != nil {
 		fmt.Println("Query", name, "failed", err)
 		t.FailNow()

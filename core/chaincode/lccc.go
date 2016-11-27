@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"
@@ -255,13 +256,6 @@ func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodename string) bool {
 
 //deploy the chaincode on to the chain
 func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec) error {
-	//TODO : this needs to be converted to another data structure to be handled
-	//       by the chaincode framework (which currently handles "Transaction")
-	t, err := lccc.toTransaction(cds)
-	if err != nil {
-		return fmt.Errorf("could not convert proposal to transaction %s", err)
-	}
-
 	//if unit testing, just return..we cannot do the actual deploy
 	if _, ismock := stub.(*shim.MockStub); ismock {
 		//we got this far just stop short of actual deploy for test purposes
@@ -280,6 +274,7 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 	lgr := kvledger.GetLedger(chainname)
 
 	var dummytxsim ledger.TxSimulator
+	var err error
 
 	if dummytxsim, err = lgr.NewTxSimulator(); err != nil {
 		return fmt.Errorf("Could not get simulator for %s", chainname)
@@ -290,13 +285,16 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 	//TODO - create chaincode support for chainname, for now use DefaultChain
 	chaincodeSupport := GetChain(ChainName(chainname))
 
-	_, err = chaincodeSupport.Deploy(ctxt, t)
+	_, err = chaincodeSupport.Deploy(ctxt, cds)
 	if err != nil {
 		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 	}
 
+	//we don't need the original txid (in fact we need a new one)
+	txid := util.GenerateUUID()
+
 	//launch and wait for ready
-	_, _, err = chaincodeSupport.Launch(ctxt, t)
+	_, _, err = chaincodeSupport.Launch(ctxt, txid, nil, cds)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
@@ -348,11 +346,6 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name, code)
 
 	return err
-}
-
-//TODO - this is temporary till we use Transaction in chaincode code
-func (lccc *LifeCycleSysCC) toTransaction(cds *pb.ChaincodeDeploymentSpec) (*pb.Transaction, error) {
-	return pb.NewChaincodeDeployTransaction(cds, cds.ChaincodeSpec.ChaincodeID.Name)
 }
 
 //-------------- the chaincode stub interface implementation ----------

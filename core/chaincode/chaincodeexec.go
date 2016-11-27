@@ -21,37 +21,34 @@ import (
 
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-//create a Transactions - this has to change to Proposal when we move chaincode to use Proposals
-func createTx(typ pb.Transaction_Type, ccname string, args [][]byte) (*pb.Transaction, error) {
-	var tx *pb.Transaction
+//create a chaincode invocation spec
+func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error) {
 	var err error
-	uuid := util.GenerateUUID()
 	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: ccname}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
-	tx, err = pb.NewChaincodeExecute(spec, uuid, typ)
 	if nil != err {
 		return nil, err
 	}
-	return tx, nil
+	return spec, nil
 }
 
-func GetCDSFromLCCC(ctxt context.Context, chainID string, chaincodeID string) ([]byte, error) {
-	payload, _, err := ExecuteChaincode(ctxt, pb.Transaction_CHAINCODE_INVOKE, string(DefaultChain), "lccc", [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+// GetCDSFromLCCC gets chaincode deployment spec from LCCC
+func GetCDSFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
+	payload, _, err := ExecuteChaincode(ctxt, txid, prop, string(DefaultChain), "lccc", [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
 	return payload, err
 }
 
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments
-func ExecuteChaincode(ctxt context.Context, typ pb.Transaction_Type, chainname string, ccname string, args [][]byte) ([]byte, *pb.ChaincodeEvent, error) {
-	var tx *pb.Transaction
+func ExecuteChaincode(ctxt context.Context, txid string, prop *pb.Proposal, chainname string, ccname string, args [][]byte) ([]byte, *pb.ChaincodeEvent, error) {
+	var spec *pb.ChaincodeInvocationSpec
 	var err error
 	var b []byte
 	var ccevent *pb.ChaincodeEvent
 
-	tx, err = createTx(typ, ccname, args)
-	b, ccevent, err = Execute(ctxt, GetChain(ChainName(chainname)), tx)
+	spec, err = createCIS(ccname, args)
+	b, ccevent, err = Execute(ctxt, GetChain(ChainName(chainname)), txid, prop, spec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error deploying chaincode: %s", err)
 	}

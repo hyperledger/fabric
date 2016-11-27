@@ -81,7 +81,7 @@ func (a *Adapter) Disconnected(err error) {
 }
 
 func createTestBlock() *ehpb.Event {
-	emsg := producer.CreateBlockEvent(&ehpb.Block{Transactions: []*ehpb.Transaction{}})
+	emsg := producer.CreateBlockEvent(&ehpb.Block2{Transactions: [][]byte{[]byte("tx1"), []byte("tx2")}})
 	return emsg
 }
 

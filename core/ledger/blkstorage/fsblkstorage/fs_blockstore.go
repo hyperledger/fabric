@@ -64,7 +64,7 @@ func (store *FsBlockStore) RetrieveBlockByNumber(blockNum uint64) (*pb.Block2, e
 }
 
 // RetrieveTxByID returns a transaction for given transaction id
-func (store *FsBlockStore) RetrieveTxByID(txID string) (*pb.Transaction2, error) {
+func (store *FsBlockStore) RetrieveTxByID(txID string) (*pb.Transaction, error) {
 	return store.fileMgr.retrieveTransactionByID(txID)
 }
 

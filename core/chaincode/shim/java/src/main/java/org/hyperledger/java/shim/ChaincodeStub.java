@@ -120,16 +120,6 @@ public class ChaincodeStub {
         return handler.handleInvokeChaincode(chaincodeName, function, args, uuid).toStringUtf8();
     }
 
-    /**
-     * @param chaincodeName
-     * @param function
-     * @param args
-     * @return
-     */
-    public String queryChaincode(String chaincodeName, String function, List<ByteString> args) {
-        return handler.handleQueryChaincode(chaincodeName, function, args, uuid).toStringUtf8();
-    }
-
     //------RAW CALLS------
 
     /**
@@ -158,16 +148,6 @@ public class ChaincodeStub {
 //	public RangeQueryStateResponse rangeQueryRawState(String startKey, String endKey, int limit) {
 //		return handler.handleRangeQueryState(startKey, endKey, limit, uuid);
 //	}
-
-    /**
-     * @param chaincodeName
-     * @param function
-     * @param args
-     * @return
-     */
-    public ByteString queryRawChaincode(String chaincodeName, String function, List<ByteString> args) {
-        return handler.handleQueryChaincode(chaincodeName, function, args, uuid);
-    }
 
     /**
      * Invokes the provided chaincode with the given function and arguments, and returns the

@@ -41,7 +41,7 @@ message ProposalResponse {
 
 	// A response message indicating whether the
 	// endorsement of the action was successful
-	Response2 response = 4;
+	Response response = 4;
 
 	// The payload of response. It is the bytes of ProposalResponsePayload
 	bytes payload = 5;
@@ -53,7 +53,7 @@ message ProposalResponse {
 
 // A response with a representation similar to an HTTP response that can
 // be used within another message.
-message Response2 {
+message Response {
 
 	// A status code that should follow the HTTP status codes.
 	int32 status = 1;

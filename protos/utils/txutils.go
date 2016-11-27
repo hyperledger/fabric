@@ -59,8 +59,8 @@ func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayloa
 	return ccPayload, respPayload, nil
 }
 
-// CreateTx creates a Transaction2 from given inputs
-func CreateTx(typ common.HeaderType, ccPropPayload []byte, ccEvents []byte, simulationResults []byte, endorsements []*peer.Endorsement) (*peer.Transaction2, error) {
+// CreateTx creates a Transaction from given inputs
+func CreateTx(typ common.HeaderType, ccPropPayload []byte, ccEvents []byte, simulationResults []byte, endorsements []*peer.Endorsement) (*peer.Transaction, error) {
 	if typ != common.HeaderType_ENDORSER_TRANSACTION {
 		panic("-----Only CHAINCODE Type is supported-----")
 	}
@@ -90,13 +90,13 @@ func CreateTx(typ common.HeaderType, ccPropPayload []byte, ccEvents []byte, simu
 		return nil, err
 	}
 
-	tx := &peer.Transaction2{}
+	tx := &peer.Transaction{}
 	tx.Actions = []*peer.TransactionAction{&peer.TransactionAction{Header: hdrBytes, Payload: actionBytes}}
 
 	return tx, nil
 }
 
-// GetEndorserTxFromBlock gets Transaction2 from Block.Data.Data
+// GetEndorserTxFromBlock gets Transaction from Block.Data.Data
 func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	//Block always begins with an envelope
 	var err error
@@ -193,7 +193,7 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 	taa := &peer.TransactionAction{Header: sHdrBytes, Payload: capBytes}
 	taas := make([]*peer.TransactionAction, 1)
 	taas[0] = taa
-	tx := &peer.Transaction2{Actions: taas}
+	tx := &peer.Transaction{Actions: taas}
 
 	// serialize the tx
 	txBytes, err := GetBytesTransaction(tx)
@@ -248,7 +248,7 @@ func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []by
 		Version:     1, // TODO: pick right version number
 		Endorsement: &peer.Endorsement{Signature: signature, Endorser: endorser},
 		Payload:     prpBytes,
-		Response:    &peer.Response2{Status: 200, Message: "OK"}}
+		Response:    &peer.Response{Status: 200, Message: "OK"}}
 
 	return resp, nil
 }

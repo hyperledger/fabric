@@ -21,6 +21,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	protcommon "github.com/hyperledger/fabric/protos/common"
@@ -77,7 +78,9 @@ func deploy(cmd *cobra.Command) (*protcommon.Envelope, error) {
 		return nil, fmt.Errorf("Error serializing identity for %s: %s\n", signingIdentity, err)
 	}
 
-	prop, err := utils.CreateProposalFromCDS(cds, creator)
+	uuid := util.GenerateUUID()
+
+	prop, err := utils.CreateProposalFromCDS(uuid, cds, creator)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}

@@ -20,8 +20,8 @@ option go_package = "github.com/hyperledger/fabric/protos/peer";
 
 package protos;
 
-// A Message2 encapsulates a payload of the indicated type in this message.
-message Message2 {
+// A Message encapsulates a payload of the indicated type in this message.
+message Message {
 
 	enum Type {
 

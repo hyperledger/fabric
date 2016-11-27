@@ -62,10 +62,18 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 	var event string // Event entity
 	var eventVal int // State of event
 	var err error
-	chainCodeToCall, args := stub.GetFunctionAndParameters()
+
+	function, args := stub.GetFunctionAndParameters()
+
+	if function == "query" {
+		return t.query(stub, args)
+	}
+
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
+
+	chainCodeToCall := function
 
 	event = args[0]
 	eventVal, err = strconv.Atoi(args[1])
@@ -98,12 +106,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 	return nil, nil
 }
 
-// Query callback representing the query of a chaincode
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
-	if function != "query" {
-		return nil, errors.New("Invalid query function name. Expecting \"query\"")
-	}
+// query callback representing the query of a chaincode
+func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var event string // Event entity
 	var err error
 

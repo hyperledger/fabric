@@ -53,7 +53,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 	}
 
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(DefaultChain, getPeerEndpoint, false, ccStartupTimeout, nil))
+	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(DefaultChain, getPeerEndpoint, false, ccStartupTimeout))
 
 	go grpcServer.Serve(lis)
 

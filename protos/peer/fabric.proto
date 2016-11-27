@@ -18,107 +18,6 @@ syntax = "proto3";
 option go_package = "github.com/hyperledger/fabric/protos/peer";
 
 package protos;
-import "peer/chaincode.proto";
-import "peer/chaincodeevent.proto";
-import "google/protobuf/timestamp.proto";
-
-
-// Transaction defines a function call to a contract.
-// `args` is an array of type string so that the chaincode writer can choose
-// whatever format they wish for the arguments for their chaincode.
-// For example, they may wish to use JSON, XML, or a custom format.
-// TODO: Defined remaining fields.
-message Transaction {
-    enum Type {
-        UNDEFINED = 0;
-        // deploy a chaincode to the network and call `Init` function
-        CHAINCODE_DEPLOY = 1;
-        // call a chaincode `Invoke` function as a transaction
-        CHAINCODE_INVOKE = 2;
-        // call a chaincode `query` function
-        CHAINCODE_QUERY = 3;
-        // terminate a chaincode; not implemented yet
-        CHAINCODE_TERMINATE = 4;
-    }
-    Type type = 1;
-    //store ChaincodeID as bytes so its encrypted value can be stored
-    bytes chaincodeID = 2;
-    bytes payload = 3;
-    bytes metadata = 4;
-    string txid = 5;
-    google.protobuf.Timestamp timestamp = 6;
-
-    ConfidentialityLevel confidentialityLevel = 7;
-    string confidentialityProtocolVersion = 8;
-    bytes nonce = 9;
-
-    bytes toValidators = 10;
-    bytes cert = 11;
-    bytes signature = 12;
-}
-
-// TransactionBlock carries a batch of transactions.
-message TransactionBlock {
-    repeated Transaction transactions = 1;
-}
-
-// TransactionResult contains the return value of a transaction. It does
-// not track potential state changes that were a result of the transaction.
-// txid - The unique identifier of this transaction.
-// result - The return value of the transaction.
-// errorCode - An error code. 5xx will be logged as a failure in the dashboard.
-// error - An error string for logging an issue.
-// chaincodeEvent - any event emitted by a transaction
-message TransactionResult {
-  string txid = 1;
-  bytes result = 2;
-  uint32 errorCode = 3;
-  string error = 4;
-  ChaincodeEvent chaincodeEvent = 5;
-}
-
-// Block carries The data that describes a block in the blockchain.
-// version - Version used to track any protocol changes.
-// timestamp - The time at which the block or transaction order
-// was proposed. This may not be used by all consensus modules.
-// transactions - The ordered list of transactions in the block.
-// stateHash - The state hash after running transactions in this block.
-// previousBlockHash - The hash of the previous block in the chain.
-// consensusMetadata - Consensus modules may optionally store any
-// additional metadata in this field.
-// nonHashData - Data stored with the block, but not included in the blocks
-// hash. This allows this data to be different per peer or discarded without
-// impacting the blockchain.
-message Block {
-    uint32 version = 1;
-    google.protobuf.Timestamp timestamp = 2;
-    repeated Transaction transactions = 3;
-    bytes stateHash = 4;
-    bytes previousBlockHash = 5;
-    bytes consensusMetadata = 6;
-    NonHashData nonHashData = 7;
-}
-
-// Contains information about the blockchain ledger such as height, current
-// block hash, and previous block hash.
-message BlockchainInfo {
-
-    uint64 height = 1;
-    bytes currentBlockHash = 2;
-    bytes previousBlockHash = 3;
-
-}
-
-// NonHashData is data that is recorded on the block, but not included in
-// the block hash when verifying the blockchain.
-// localLedgerCommitTimestamp - The time at which the block was added
-// to the ledger on the local peer.
-// chaincodeEvent - is an array ChaincodeEvents, one per transaction in the
-// block
-message NonHashData {
-    google.protobuf.Timestamp localLedgerCommitTimestamp = 1;
-    repeated ChaincodeEvent chaincodeEvents = 2;
-}
 
 message PeerAddress {
     string host = 1;
@@ -147,4 +46,14 @@ message PeersMessage {
 
 message PeersAddresses {
     repeated string addresses = 1;
+}
+
+// Contains information about the blockchain ledger such as height, current
+// block hash, and previous block hash.
+message BlockchainInfo {
+
+    uint64 height = 1;
+    bytes currentBlockHash = 2;
+    bytes previousBlockHash = 3;
+
 }

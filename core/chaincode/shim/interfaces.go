@@ -32,10 +32,6 @@ type Chaincode interface {
 	// Invoke is called for every Invoke transactions. The chaincode may change
 	// its state variables
 	Invoke(stub ChaincodeStubInterface) ([]byte, error)
-
-	// Query is called for Query transactions. The chaincode may only read
-	// (but not modify) its state variables and return the result
-	Query(stub ChaincodeStubInterface) ([]byte, error)
 }
 
 // ChaincodeStubInterface is used by deployable chaincode apps to access and modify their ledgers
@@ -57,11 +53,6 @@ type ChaincodeStubInterface interface {
 	// same transaction context; that is, chaincode calling chaincode doesn't
 	// create a new transaction message.
 	InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error)
-
-	// QueryChaincode locally calls the specified chaincode `Query` using the
-	// same transaction context; that is, chaincode calling chaincode doesn't
-	// create a new transaction message.
-	QueryChaincode(chaincodeName string, args [][]byte) ([]byte, error)
 
 	// GetState returns the byte array value specified by the `key`.
 	GetState(key string) ([]byte, error)

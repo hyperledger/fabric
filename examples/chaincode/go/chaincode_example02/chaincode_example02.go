@@ -78,6 +78,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 		// Deletes an entity from its state
 		return t.delete(stub, args)
 	}
+	if function == "query" {
+		// the old "Query" is now implemtned in invoke
+		return t.query(stub, args)
+	}
 
 	var A, B string    // Entities
 	var Aval, Bval int // Asset holdings
@@ -151,12 +155,8 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 	return nil, nil
 }
 
-// Query callback representing the query of a chaincode
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
-	if function != "query" {
-		return nil, errors.New("Invalid query function name. Expecting \"query\"")
-	}
+// query callback representing the query of a chaincode
+func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var A string // Entities
 	var err error
 

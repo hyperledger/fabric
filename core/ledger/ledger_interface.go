@@ -48,7 +48,7 @@ type RawLedger interface {
 type ValidatedLedger interface {
 	Ledger
 	// GetTransactionByID retrieves a transaction by id
-	GetTransactionByID(txID string) (*pb.Transaction2, error)
+	GetTransactionByID(txID string) (*pb.Transaction, error)
 	// GetBlockByHash returns a block given it's hash
 	GetBlockByHash(blockHash []byte) (*pb.Block2, error)
 	// NewTxSimulator gives handle to a transaction simulator.

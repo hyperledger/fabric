@@ -134,12 +134,7 @@ func serve(args []string) error {
 
 	grpcServer := grpc.NewServer(opts...)
 
-	secHelper, err := getSecHelper()
-	if err != nil {
-		return err
-	}
-
-	registerChaincodeSupport(chaincode.DefaultChain, grpcServer, secHelper)
+	registerChaincodeSupport(chaincode.DefaultChain, grpcServer)
 
 	logger.Debugf("Running peer")
 
@@ -212,9 +207,7 @@ func serve(args []string) error {
 	return <-serve
 }
 
-func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Server,
-	secHelper crypto.Peer) {
-
+func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Server) {
 	//get user mode
 	userRunsCC := false
 	if viper.GetString("chaincode.mode") == chaincode.DevModeUserRunsChaincode {
@@ -229,8 +222,7 @@ func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Se
 	}
 	ccStartupTimeout := time.Duration(tOut) * time.Millisecond
 
-	ccSrv := chaincode.NewChaincodeSupport(chainname, peer.GetPeerEndpoint, userRunsCC,
-		ccStartupTimeout, secHelper)
+	ccSrv := chaincode.NewChaincodeSupport(chainname, peer.GetPeerEndpoint, userRunsCC, ccStartupTimeout)
 
 	//Now that chaincode is initialized, register all system chaincodes.
 	chaincode.RegisterSysCCs()

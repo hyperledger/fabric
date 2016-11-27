@@ -26,6 +26,7 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -41,8 +42,9 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 }
 
 func TestProposal(t *testing.T) {
+	uuid := util.GenerateUUID()
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, err := CreateChaincodeProposal(createCIS(), []byte("creator"))
+	prop, err := CreateChaincodeProposal(uuid, createCIS(), []byte("creator"))
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return
@@ -167,7 +169,7 @@ func TestProposalResponse(t *testing.T) {
 		Payload:     prpBytes,
 		Endorsement: &pb.Endorsement{Endorser: []byte("endorser"), Signature: []byte("signature")},
 		Version:     1, // TODO: pick right version number
-		Response:    &pb.Response2{Status: 200, Message: "OK"}}
+		Response:    &pb.Response{Status: 200, Message: "OK"}}
 
 	// create a proposal response
 	prBytes, err := GetBytesProposalResponse(pr)
@@ -195,7 +197,8 @@ func TestProposalResponse(t *testing.T) {
 
 func TestEnvelope(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, err := CreateChaincodeProposal(createCIS(), signerSerialized)
+	uuid := util.GenerateUUID()
+	prop, err := CreateChaincodeProposal(uuid, createCIS(), signerSerialized)
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return
@@ -246,7 +249,7 @@ func TestEnvelope(t *testing.T) {
 
 	tx2, err := GetTransaction(txpayl.Data)
 	if err != nil {
-		t.Fatalf("Could not unmarshal Transaction2, err %s\n", err)
+		t.Fatalf("Could not unmarshal Transaction, err %s\n", err)
 		return
 	}
 

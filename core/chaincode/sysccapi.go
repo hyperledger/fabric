@@ -138,12 +138,8 @@ func DeploySysCC(ctx context.Context, spec *pb.ChaincodeSpec) error {
 		return err
 	}
 
-	transaction, err := pb.NewChaincodeDeployTransaction(chaincodeDeploymentSpec, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name)
-	if err != nil {
-		return fmt.Errorf("Error deploying chaincode: %s ", err)
-	}
-
-	_, _, err = Execute(ctx, GetChain(DefaultChain), transaction)
+	txid := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
+	_, _, err = Execute(ctx, GetChain(DefaultChain), txid, nil, chaincodeDeploymentSpec)
 
 	return err
 }

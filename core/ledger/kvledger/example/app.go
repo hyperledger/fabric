@@ -39,7 +39,7 @@ func ConstructAppInstance(ledger ledger.ValidatedLedger) *App {
 }
 
 // Init simulates init transaction
-func (app *App) Init(initialBalances map[string]int) (*pb.Transaction2, error) {
+func (app *App) Init(initialBalances map[string]int) (*pb.Transaction, error) {
 	var txSimulator ledger.TxSimulator
 	var err error
 	if txSimulator, err = app.ledger.NewTxSimulator(); err != nil {
@@ -58,7 +58,7 @@ func (app *App) Init(initialBalances map[string]int) (*pb.Transaction2, error) {
 }
 
 // TransferFunds simulates a transaction for transferring fund from fromAccount to toAccount
-func (app *App) TransferFunds(fromAccount string, toAccount string, transferAmt int) (*pb.Transaction2, error) {
+func (app *App) TransferFunds(fromAccount string, toAccount string, transferAmt int) (*pb.Transaction, error) {
 
 	// act as endorsing peer shim code to simulate a transaction on behalf of chaincode
 	var txSimulator ledger.TxSimulator
@@ -113,7 +113,7 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 	return balances, nil
 }
 
-func constructTransaction(simulationResults []byte) *pb.Transaction2 {
+func constructTransaction(simulationResults []byte) *pb.Transaction {
 	tx, _ := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, nil, nil, simulationResults, []*pb.Endorsement{})
 	return tx
 }

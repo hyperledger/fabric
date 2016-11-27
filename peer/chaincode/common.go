@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container"
+	cutil "github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
@@ -187,8 +188,10 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		return fmt.Errorf("Error serializing identity for %s: %s\n", signingIdentity, err)
 	}
 
+	uuid := cutil.GenerateUUID()
+
 	var prop *pb.Proposal
-	prop, err = putils.CreateProposalFromCIS(invocation, creator)
+	prop, err = putils.CreateProposalFromCIS(uuid, invocation, creator)
 	if err != nil {
 		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}

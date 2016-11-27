@@ -32,7 +32,7 @@ func ConstructConsenter() *Consenter {
 }
 
 // ConstructBlock constructs a block from a list of transactions
-func (c *Consenter) ConstructBlock(transactions ...*pb.Transaction2) *pb.Block2 {
+func (c *Consenter) ConstructBlock(transactions ...*pb.Transaction) *pb.Block2 {
 	logger.Debugf("Construct a block based on the transactions")
 	block := &pb.Block2{}
 	for _, tx := range transactions {
