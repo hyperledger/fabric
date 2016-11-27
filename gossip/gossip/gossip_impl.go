@@ -18,6 +18,7 @@ package gossip
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -82,7 +83,7 @@ func NewGossipService(conf *Config, c comm.Comm, crypto discovery.CryptoService)
 
 	g.msgStore = newMessageStore(proto.NewGossipMessageComparator(g.conf.MaxMessageCountToStore), func(m interface{}) {
 		if dataMsg, isDataMsg := m.(*proto.DataMessage); isDataMsg {
-			g.pushPull.Remove(dataMsg.Payload.SeqNum)
+			g.pushPull.Remove(fmt.Sprintf("%d", dataMsg.Payload.SeqNum))
 		}
 	})
 
@@ -177,7 +178,9 @@ func (g *gossipServiceImpl) Hello(dest string, nonce uint64) {
 		Nonce: 0,
 		Content: &proto.GossipMessage_Hello{
 			Hello: &proto.GossipHello{
-				Nonce: nonce,
+				Nonce:    nonce,
+				Metadata: nil,
+				MsgType:  proto.MsgType_BlockMessage,
 			},
 		},
 	}
@@ -187,29 +190,31 @@ func (g *gossipServiceImpl) Hello(dest string, nonce uint64) {
 
 }
 
-func (g *gossipServiceImpl) SendDigest(digest []uint64, nonce uint64, context interface{}) {
+func (g *gossipServiceImpl) SendDigest(digest []string, nonce uint64, context interface{}) {
 	digMsg := &proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_DataDig{
 			DataDig: &proto.DataDigest{
-				Nonce:  nonce,
-				SeqMap: digest,
+				MsgType: proto.MsgType_BlockMessage,
+				Nonce:   nonce,
+				Digests: digest,
 			},
 		},
 	}
-	g.logger.Debug("Sending digest", digMsg.GetDataDig().SeqMap)
+	g.logger.Debug("Sending digest", digMsg.GetDataDig().Digests)
 	context.(comm.ReceivedMessage).Respond(digMsg)
 }
 
-func (g *gossipServiceImpl) SendReq(dest string, items []uint64, nonce uint64) {
+func (g *gossipServiceImpl) SendReq(dest string, items []string, nonce uint64) {
 	req := &proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_DataReq{
 			DataReq: &proto.DataRequest{
-				Nonce:  nonce,
-				SeqMap: items,
+				MsgType: proto.MsgType_BlockMessage,
+				Nonce:   nonce,
+				Digests: items,
 			},
 		},
 	}
@@ -217,15 +222,15 @@ func (g *gossipServiceImpl) SendReq(dest string, items []uint64, nonce uint64) {
 	g.comm.Send(req, g.peersWithEndpoints(dest)...)
 }
 
-func (g *gossipServiceImpl) SendRes(requestedItems []uint64, context interface{}, nonce uint64) {
-	itemMap := make(map[uint64]*proto.DataMessage)
+func (g *gossipServiceImpl) SendRes(requestedItems []string, context interface{}, nonce uint64) {
+	itemMap := make(map[string]*proto.GossipMessage)
 	for _, msg := range g.msgStore.get() {
 		if dataMsg := msg.(*proto.GossipMessage).GetDataMsg(); dataMsg != nil {
-			itemMap[dataMsg.Payload.SeqNum] = dataMsg
+			itemMap[fmt.Sprintf("%d", dataMsg.Payload.SeqNum)] = msg.(*proto.GossipMessage)
 		}
 	}
 
-	dataMsgs := []*proto.DataMessage{}
+	dataMsgs := []*proto.GossipMessage{}
 
 	for _, item := range requestedItems {
 		if dataMsg, exists := itemMap[item]; exists {
@@ -238,8 +243,9 @@ func (g *gossipServiceImpl) SendRes(requestedItems []uint64, context interface{}
 		Nonce: 0,
 		Content: &proto.GossipMessage_DataUpdate{
 			DataUpdate: &proto.DataUpdate{
-				Nonce: nonce,
-				Data:  dataMsgs,
+				MsgType: proto.MsgType_BlockMessage,
+				Nonce:   nonce,
+				Data:    dataMsgs,
 			},
 		},
 	}
@@ -274,7 +280,7 @@ func (g *gossipServiceImpl) handleMessage(msg comm.ReceivedMessage) {
 
 		if dataMsg := msg.GetGossipMessage().GetDataMsg(); dataMsg != nil {
 			g.DeMultiplex(msg.GetGossipMessage())
-			g.pushPull.Add(dataMsg.Payload.SeqNum)
+			g.pushPull.Add(fmt.Sprintf("%d", dataMsg.Payload.SeqNum))
 		}
 
 		return
@@ -296,32 +302,28 @@ func (g *gossipServiceImpl) forwardDiscoveryMsg(msg comm.ReceivedMessage) {
 func (g *gossipServiceImpl) handlePushPullMsg(msg comm.ReceivedMessage) {
 	g.logger.Debug(msg)
 	if helloMsg := msg.GetGossipMessage().GetHello(); helloMsg != nil {
+		if helloMsg.MsgType != proto.MsgType_BlockMessage {
+			return
+		}
 		g.pushPull.OnHello(helloMsg.Nonce, msg)
 	}
 	if digest := msg.GetGossipMessage().GetDataDig(); digest != nil {
-		g.pushPull.OnDigest(digest.SeqMap, digest.Nonce, msg)
+		g.pushPull.OnDigest(digest.Digests, digest.Nonce, msg)
 	}
 	if req := msg.GetGossipMessage().GetDataReq(); req != nil {
-		g.pushPull.OnReq(req.SeqMap, req.Nonce, msg)
+		g.pushPull.OnReq(req.Digests, req.Nonce, msg)
 	}
 	if res := msg.GetGossipMessage().GetDataUpdate(); res != nil {
-		items := make([]uint64, len(res.Data))
+		items := make([]string, len(res.Data))
 		for i, data := range res.Data {
-			dataMsg := &proto.GossipMessage{
-				Tag: proto.GossipMessage_EMPTY,
-				Content: &proto.GossipMessage_DataMsg{
-					DataMsg: data,
-				},
-				Nonce: msg.GetGossipMessage().Nonce,
-			}
-			added := g.msgStore.add(dataMsg)
+			added := g.msgStore.add(data)
 			// if we can't add the message to the msgStore,
 			// no point in disseminating it to others...
 			if !added {
 				continue
 			}
-			g.DeMultiplex(dataMsg)
-			items[i] = data.Payload.SeqNum
+			g.DeMultiplex(data)
+			items[i] = fmt.Sprintf("%d", data.GetDataMsg().Payload.SeqNum)
 		}
 		g.pushPull.OnRes(items, res.Nonce)
 	}
@@ -363,7 +365,7 @@ func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	g.logger.Info(msg)
 	if dataMsg := msg.GetDataMsg(); dataMsg != nil {
 		g.msgStore.add(msg)
-		g.pushPull.Add(dataMsg.Payload.SeqNum)
+		g.pushPull.Add(fmt.Sprintf("%d", dataMsg.Payload.SeqNum))
 	}
 	g.emitter.Add(msg)
 }
