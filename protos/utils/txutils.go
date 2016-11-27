@@ -59,44 +59,7 @@ func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayloa
 	return ccPayload, respPayload, nil
 }
 
-// CreateTx creates a Transaction from given inputs
-func CreateTx(typ common.HeaderType, ccPropPayload []byte, ccEvents []byte, simulationResults []byte, endorsements []*peer.Endorsement) (*peer.Transaction, error) {
-	if typ != common.HeaderType_ENDORSER_TRANSACTION {
-		panic("-----Only CHAINCODE Type is supported-----")
-	}
-
-	ext := &peer.ChaincodeAction{Results: simulationResults, Events: ccEvents}
-	extBytes, err := proto.Marshal(ext)
-	if err != nil {
-		return nil, err
-	}
-
-	pRespPayload := &peer.ProposalResponsePayload{ProposalHash: ccPropPayload, Extension: extBytes}
-	pRespPayloadBytes, err := proto.Marshal(pRespPayload)
-	if err != nil {
-		return nil, err
-	}
-
-	ceAction := &peer.ChaincodeEndorsedAction{ProposalResponsePayload: pRespPayloadBytes, Endorsements: endorsements}
-	caPayload := &peer.ChaincodeActionPayload{ChaincodeProposalPayload: []byte("marshalled payload here"), Action: ceAction}
-	actionBytes, err := proto.Marshal(caPayload)
-	if err != nil {
-		return nil, err
-	}
-
-	hdr := &common.Header{ChainHeader: &common.ChainHeader{Type: int32(common.HeaderType_ENDORSER_TRANSACTION)}}
-	hdrBytes, err := proto.Marshal(hdr)
-	if err != nil {
-		return nil, err
-	}
-
-	tx := &peer.Transaction{}
-	tx.Actions = []*peer.TransactionAction{&peer.TransactionAction{Header: hdrBytes, Payload: actionBytes}}
-
-	return tx, nil
-}
-
-// GetEndorserTxFromBlock gets Transaction from Block.Data.Data
+// GetEndorserTxFromBlock gets Transaction2 from Block.Data.Data
 func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	//Block always begins with an envelope
 	var err error
@@ -108,10 +71,42 @@ func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	return env, nil
 }
 
-// assemble an Envelope message from proposal, endorsements and a signer.
+// CreateSignedTx assembles an Envelope message from proposal, endorsements and a signer.
 // This function should be called by a client when it has collected enough endorsements
 // for a proposal to create a transaction and submit it to peers for ordering
 func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps ...*peer.ProposalResponse) (*common.Envelope, error) {
+	// the original header
+	hdr, err := GetHeader(proposal.Header)
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal the proposal header")
+	}
+	// check that the signer is the same that is referenced in the header
+	// TODO: maybe worth removing?
+	signerBytes, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	if bytes.Compare(signerBytes, hdr.SignatureHeader.Creator) != 0 {
+		return nil, fmt.Errorf("The signer needs to be the same as the one referenced in the header")
+	}
+
+	// create the payload
+	txEnvelope, err := ConstructUnsignedTxEnvelope(proposal, resps...)
+	if err != nil {
+		return nil, err
+	}
+	// sign the payload
+	sig, err := signer.Sign(txEnvelope.Payload)
+	if err != nil {
+		return nil, err
+	}
+	txEnvelope.Signature = sig
+	return txEnvelope, nil
+}
+
+// ConstructUnsignedTxEnvelope constructs payload for the transaction from proposal and endorsements.
+func ConstructUnsignedTxEnvelope(proposal *peer.Proposal, resps ...*peer.ProposalResponse) (*common.Envelope, error) {
 	if len(resps) == 0 {
 		return nil, fmt.Errorf("At least one proposal response is necessary")
 	}
@@ -126,17 +121,6 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 	pPayl, err := GetChaincodeProposalPayload(proposal.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal the proposal payload")
-	}
-
-	// check that the signer is the same that is referenced in the header
-	// TODO: maybe worth removing?
-	signerBytes, err := signer.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	if bytes.Compare(signerBytes, hdr.SignatureHeader.Creator) != 0 {
-		return nil, fmt.Errorf("The signer needs to be the same as the one referenced in the header")
 	}
 
 	// get header extensions so we have the visibility field
@@ -200,25 +184,40 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 	if err != nil {
 		return nil, err
 	}
-
-	// create the payload
 	payl := &common.Payload{Header: hdr, Data: txBytes}
 	paylBytes, err := GetBytesPayload(payl)
 	if err != nil {
 		return nil, err
 	}
 
-	// sign the payload
-	sig, err := signer.Sign(paylBytes)
+	// here's the envelope
+	return &common.Envelope{Payload: paylBytes, Signature: nil}, nil
+}
+
+// CreateProposalResponse creates the proposal response and endorses the payload
+func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
+	resp, err := ConstructUnsignedProposalResponse(hdr, payl, results, events, visibility)
 	if err != nil {
 		return nil, err
 	}
+	// serialize the signing identity
+	endorser, err := signingEndorser.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", signingEndorser.Identifier(), err)
+	}
 
-	// here's the envelope
-	return &common.Envelope{Payload: paylBytes, Signature: sig}, nil
+	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
+	signature, err := signingEndorser.Sign(append(resp.Payload, endorser...))
+	if err != nil {
+		return nil, fmt.Errorf("Could not sign the proposal response payload, err %s", err)
+	}
+	resp.Endorsement.Endorser = endorser
+	resp.Endorsement.Signature = signature
+	return resp, nil
 }
 
-func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
+// ConstructUnsignedProposalResponse constructs the proposal response structure only
+func ConstructUnsignedProposalResponse(hdr []byte, payl []byte, results []byte, events []byte, visibility []byte) (*peer.ProposalResponse, error) {
 	// obtain the proposal hash given proposal header, payload and the requested visibility
 	pHashBytes, err := GetProposalHash1(hdr, payl, visibility)
 	if err != nil {
@@ -230,23 +229,10 @@ func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []by
 	if err != nil {
 		return nil, errors.New("Failure while unmarshalling the ProposalResponsePayload")
 	}
-
-	// serialize the signing identity
-	endorser, err := signingEndorser.Serialize()
-	if err != nil {
-		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", signingEndorser.Identifier(), err)
-	}
-
-	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
-	signature, err := signingEndorser.Sign(append(prpBytes, endorser...))
-	if err != nil {
-		return nil, fmt.Errorf("Could not sign the proposal response payload, err %s", err)
-	}
-
 	resp := &peer.ProposalResponse{
 		// Timestamp: TODO!
 		Version:     1, // TODO: pick right version number
-		Endorsement: &peer.Endorsement{Signature: signature, Endorser: endorser},
+		Endorsement: &peer.Endorsement{Signature: nil, Endorser: nil},
 		Payload:     prpBytes,
 		Response:    &peer.Response{Status: 200, Message: "OK"}}
 
@@ -299,7 +285,7 @@ func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibi
 	return hash.Sum(nil), nil
 }
 
-// GetProposalHash gets the proposal hash - this version
+// GetProposalHash2 gets the proposal hash - this version
 // is called by the committer where the visibility policy
 // has already been enforced and so we already get what
 // we have to get in ccPropPayl
@@ -317,7 +303,7 @@ func GetProposalHash2(header []byte, ccPropPayl []byte) ([]byte, error) {
 	return hash.Sum(nil), nil
 }
 
-// GetProposalHash gets the proposal hash bytes after sanitizing the
+// GetProposalHash1 gets the proposal hash bytes after sanitizing the
 // chaincode proposal payload according to the rules of visibility
 func GetProposalHash1(header []byte, ccPropPayl []byte, visibility []byte) ([]byte, error) {
 	// check for nil argument

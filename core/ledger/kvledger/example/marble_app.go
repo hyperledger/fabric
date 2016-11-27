@@ -24,8 +24,7 @@ import (
 
 	ledger "github.com/hyperledger/fabric/core/ledger"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
-
+	"github.com/hyperledger/fabric/protos/common"
 	logging "github.com/op/go-logging"
 )
 
@@ -55,7 +54,7 @@ type Marble struct {
 }
 
 // CreateMarble simulates init transaction
-func (marbleApp *MarbleApp) CreateMarble(args []string) (*pb.Transaction, error) {
+func (marbleApp *MarbleApp) CreateMarble(args []string) (*common.Envelope, error) {
 	//   0       1       2     3
 	// "asdf", "blue", "35", "bob"
 	logger.Debugf("===COUCHDB=== Entering ----------CreateMarble()----------")
@@ -126,8 +125,7 @@ func init_marble(args []string) ([]byte, error) {
 }
 
 // TransferMarble simulates transfer transaction
-func (marbleApp *MarbleApp) TransferMarble(args []string) (*pb.Transaction, error) {
-
+func (marbleApp *MarbleApp) TransferMarble(args []string) (*common.Envelope, error) {
 	//   0       1
 	// "name", "bob"
 	if len(args) < 2 {

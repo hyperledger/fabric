@@ -25,9 +25,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
-	"github.com/op/go-logging"
-
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	putil "github.com/hyperledger/fabric/protos/utils"
+	"github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("kvledger")
@@ -466,16 +467,12 @@ func (mgr *blockfileMgr) fetchSerBlock(lp *fileLocPointer) (*pb.SerBlock2, error
 }
 
 func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*pb.Transaction, error) {
-	txBytes, err := mgr.fetchRawBytes(lp)
-	if err != nil {
+	var err error
+	var txEnvelopeBytes []byte
+	if txEnvelopeBytes, err = mgr.fetchRawBytes(lp); err != nil {
 		return nil, err
 	}
-	tx := &pb.Transaction{}
-	err = proto.Unmarshal(txBytes, tx)
-	if err != nil {
-		return nil, err
-	}
-	return tx, nil
+	return extractTransaction(txEnvelopeBytes)
 }
 
 func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {
@@ -558,6 +555,24 @@ func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64)
 	}
 	logger.Debugf("scanForLastCompleteBlock(): last complete block ends at offset=[%d]", blockStream.currentOffset)
 	return blockStream.currentOffset, numBlocks, errRead
+}
+
+func extractTransaction(txEnvelopeBytes []byte) (*pb.Transaction, error) {
+	var err error
+	var txEnvelope *common.Envelope
+	var txPayload *common.Payload
+	var tx *pb.Transaction
+
+	if txEnvelope, err = putil.GetEnvelope(txEnvelopeBytes); err != nil {
+		return nil, err
+	}
+	if txPayload, err = putil.GetPayload(txEnvelope); err != nil {
+		return nil, err
+	}
+	if tx, err = putil.GetTransaction(txPayload.Data); err != nil {
+		return nil, err
+	}
+	return tx, nil
 }
 
 // checkpointInfo

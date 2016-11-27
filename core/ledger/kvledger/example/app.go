@@ -22,9 +22,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 )
 
 // App - a sample fund transfer app
@@ -39,7 +39,7 @@ func ConstructAppInstance(ledger ledger.ValidatedLedger) *App {
 }
 
 // Init simulates init transaction
-func (app *App) Init(initialBalances map[string]int) (*pb.Transaction, error) {
+func (app *App) Init(initialBalances map[string]int) (*common.Envelope, error) {
 	var txSimulator ledger.TxSimulator
 	var err error
 	if txSimulator, err = app.ledger.NewTxSimulator(); err != nil {
@@ -58,8 +58,7 @@ func (app *App) Init(initialBalances map[string]int) (*pb.Transaction, error) {
 }
 
 // TransferFunds simulates a transaction for transferring fund from fromAccount to toAccount
-func (app *App) TransferFunds(fromAccount string, toAccount string, transferAmt int) (*pb.Transaction, error) {
-
+func (app *App) TransferFunds(fromAccount string, toAccount string, transferAmt int) (*common.Envelope, error) {
 	// act as endorsing peer shim code to simulate a transaction on behalf of chaincode
 	var txSimulator ledger.TxSimulator
 	var err error
@@ -102,6 +101,7 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 	if queryExecutor, err = app.ledger.NewQueryExecutor(); err != nil {
 		return nil, err
 	}
+	defer queryExecutor.Done()
 	balances := make([]int, len(accounts))
 	for i := 0; i < len(accounts); i++ {
 		var balBytes []byte
@@ -113,9 +113,9 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 	return balances, nil
 }
 
-func constructTransaction(simulationResults []byte) *pb.Transaction {
-	tx, _ := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, nil, nil, simulationResults, []*pb.Endorsement{})
-	return tx
+func constructTransaction(simulationResults []byte) *common.Envelope {
+	txEnv, _ := ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GenerateUUID(), "foo", simulationResults, nil, nil)
+	return txEnv
 }
 
 func toBytes(balance int) []byte {
