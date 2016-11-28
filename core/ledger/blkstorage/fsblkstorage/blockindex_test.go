@@ -20,11 +20,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
-
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 type noopIndex struct {
@@ -144,8 +141,8 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 	tx, err := blockfileMgr.retrieveTransactionByID(constructTxID(1, 0))
 	if testutil.Contains(indexItems, blkstorage.IndexableAttrTxID) {
 		testutil.AssertNoError(t, err, "Error while retrieving tx by id")
-		txOrig := &pb.Transaction{}
-		proto.Unmarshal(blocks[0].Transactions[0], txOrig)
+		txOrig, err := extractTransaction(blocks[0].Transactions[0])
+		testutil.AssertNoError(t, err, "")
 		testutil.AssertEquals(t, tx, txOrig)
 	} else {
 		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)

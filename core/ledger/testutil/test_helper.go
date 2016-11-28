@@ -20,19 +20,17 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-
 	"github.com/hyperledger/fabric/core/util"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	putils "github.com/hyperledger/fabric/protos/utils"
+	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 )
 
 // ConstructBlockForSimulationResults constructs a block that includes a number of transactions - one per simulationResults
-func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte, signer msp.SigningIdentity) *pb.Block2 {
+func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte, sign bool) *pb.Block2 {
 	envs := []*common.Envelope{}
 	for i := 0; i < len(simulationResults); i++ {
-		env, err := ConstructTestTransaction(t, simulationResults[i], signer)
+		env, err := ConstructTestTransaction(t, simulationResults[i], sign)
 		if err != nil {
 			t.Fatalf("ConstructTestTransaction failed, err %s", err)
 		}
@@ -52,38 +50,22 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*pb.Block2 {
 
 // ConstructTestBlock constructs a block with 'numTx' number of transactions for testing
 func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *pb.Block2 {
-	txs := []*pb.Transaction{}
+	txEnvs := []*common.Envelope{}
 	for i := startingTxID; i < numTx+startingTxID; i++ {
-		tx, _ := putils.CreateTx(common.HeaderType_ENDORSER_TRANSACTION, []byte{}, []byte{}, ConstructRandomBytes(t, txSize), []*pb.Endorsement{})
-		txs = append(txs, tx)
+		txEnv, _ := ConstructTestTransaction(t, ConstructRandomBytes(t, txSize), false)
+		txEnvs = append(txEnvs, txEnv)
 	}
-	return newBlock(txs)
+	return newBlockEnv(txEnvs)
 }
 
 // ConstructTestTransaction constructs a transaction for testing
-func ConstructTestTransaction(t *testing.T, simulationResults []byte, signer msp.SigningIdentity) (*common.Envelope, error) {
-	ss, err := signer.Serialize()
-	if err != nil {
-		return nil, err
+func ConstructTestTransaction(t *testing.T, simulationResults []byte, sign bool) (*common.Envelope, error) {
+	ccName := "foo"
+	txID := util.GenerateUUID()
+	if sign {
+		return ptestutils.ConstructSingedTxEnvWithDefaultSigner(txID, ccName, simulationResults, nil, nil)
 	}
-
-	uuid := util.GenerateUUID()
-	prop, err := putils.CreateChaincodeProposal(uuid, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: "foo"}}}, ss)
-	if err != nil {
-		return nil, err
-	}
-
-	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, simulationResults, nil, nil, signer)
-	if err != nil {
-		return nil, err
-	}
-
-	env, err := putils.CreateSignedTx(prop, signer, presp)
-	if err != nil {
-		return nil, err
-	}
-
-	return env, nil
+	return ptestutils.ConstructUnsingedTxEnv(txID, ccName, simulationResults, nil, nil)
 }
 
 // ComputeBlockHash computes the crypto-hash of a block
@@ -91,16 +73,6 @@ func ComputeBlockHash(t testing.TB, block *pb.Block2) []byte {
 	serBlock, err := pb.ConstructSerBlock2(block)
 	AssertNoError(t, err, "Error while getting hash from block")
 	return serBlock.ComputeHash()
-}
-
-func newBlock(txs []*pb.Transaction) *pb.Block2 {
-	block := &pb.Block2{}
-	block.PreviousBlockHash = []byte{}
-	for i := 0; i < len(txs); i++ {
-		txBytes, _ := proto.Marshal(txs[i])
-		block.Transactions = append(block.Transactions, txBytes)
-	}
-	return block
 }
 
 func newBlockEnv(env []*common.Envelope) *pb.Block2 {
