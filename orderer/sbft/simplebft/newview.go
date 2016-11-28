@@ -200,6 +200,6 @@ func (s *SBFT) maybeDeliverUsingXset(nv *NewView) {
 			prevBatch.Payloads = s.cur.preprep.Batch.Payloads
 		}
 		s.cur.checkpointDone = true
-		s.sys.Deliver(prevBatch)
+		s.deliverBatch(prevBatch)
 	}
 }

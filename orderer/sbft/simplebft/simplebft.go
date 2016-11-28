@@ -66,6 +66,7 @@ type SBFT struct {
 	viewChangeTimeout time.Duration
 	viewChangeTimer   Canceller
 	replicaState      []replicaInfo
+	pending           map[string]*Request
 }
 
 type reqInfo struct {
@@ -106,6 +107,7 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 		id:              id,
 		viewChangeTimer: dummyCanceller{},
 		replicaState:    make([]replicaInfo, config.N),
+		pending:         make(map[string]*Request),
 	}
 	s.sys.SetReceiver(s)
 
@@ -225,4 +227,14 @@ func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
 	}
 
 	log.Warningf("received invalid message from %d", src)
+}
+
+func (s *SBFT) deliverBatch(batch *Batch) {
+	s.sys.Deliver(batch)
+
+	for _, req := range batch.Payloads {
+		key := hash2str(hash(req))
+		log.Infof("replica %d attempting to remove %x from pending", s.id, key)
+		delete(s.pending, key)
+	}
 }

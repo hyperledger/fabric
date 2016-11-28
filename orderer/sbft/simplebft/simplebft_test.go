@@ -208,11 +208,14 @@ func TestByzPrimary(t *testing.T) {
 	repls[0].Request(r1)
 	sys.Run()
 	for _, a := range adapters {
-		if len(a.batches) != 1 {
-			t.Fatal("expected execution of 1 batch")
+		if len(a.batches) != 2 {
+			t.Fatal("expected execution of 2 batches")
 		}
 		if !reflect.DeepEqual([][]byte{r2}, a.batches[0].Payloads) {
-			t.Error("wrong request executed")
+			t.Error("wrong request executed first")
+		}
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[1].Payloads) {
+			t.Error("wrong request executed second")
 		}
 	}
 }
@@ -236,6 +239,45 @@ func TestViewChange(t *testing.T) {
 	sys.filterFn = func(e testElem) (testElem, bool) {
 		if msg, ok := e.ev.(*testMsgEvent); ok {
 			if c := msg.msg.GetCommit(); c != nil && c.Seq.View == 0 {
+				return e, false
+			}
+		}
+		return e, true
+	}
+
+	connectAll(sys)
+	r1 := []byte{1, 2, 3}
+	repls[0].Request(r1)
+	sys.Run()
+	for _, a := range adapters {
+		if len(a.batches) != 1 {
+			t.Fatal("expected execution of 1 batch")
+		}
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
+			t.Error("wrong request executed (1)")
+		}
+	}
+}
+
+func TestViewChangeWithRetransmission(t *testing.T) {
+	N := uint64(4)
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 1, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	// network outage after prepares are received
+	sys.filterFn = func(e testElem) (testElem, bool) {
+		if msg, ok := e.ev.(*testMsgEvent); ok {
+			if c := msg.msg.GetPrepare(); c != nil && c.Seq.View == 0 {
 				return e, false
 			}
 		}
@@ -320,11 +362,14 @@ func TestViewChangeXset(t *testing.T) {
 		if i == 3 {
 			continue
 		}
-		if len(a.batches) != 1 {
+		if len(a.batches) != 2 {
 			t.Fatalf("expected execution of 1 batch: %v", a.batches)
 		}
-		if !reflect.DeepEqual([][]byte{r2}, a.batches[0].Payloads) {
-			t.Error("wrong request executed")
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
+			t.Error("wrong request executed first")
+		}
+		if !reflect.DeepEqual([][]byte{r2}, a.batches[1].Payloads) {
+			t.Error("wrong request executed second")
 		}
 	}
 }

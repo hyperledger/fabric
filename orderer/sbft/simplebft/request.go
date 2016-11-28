@@ -24,6 +24,9 @@ func (s *SBFT) Request(req []byte) {
 }
 
 func (s *SBFT) handleRequest(req *Request, src uint64) {
+	key := hash2str(hash(req.Payload))
+	log.Infof("replica %d inserting %x into pending", s.id, key)
+	s.pending[key] = req
 	if s.isPrimary() && s.activeView {
 		s.batch = append(s.batch, req)
 		if s.batchSize() >= s.config.BatchSizeBytes {
@@ -65,7 +68,12 @@ func (s *SBFT) maybeSendNextBatch() {
 	}
 
 	if len(s.batch) == 0 {
-		return
+		for _, req := range s.pending {
+			s.batch = append(s.batch, req)
+		}
+		if len(s.batch) == 0 {
+			return
+		}
 	}
 
 	batch := s.batch

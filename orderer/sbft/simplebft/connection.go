@@ -72,7 +72,7 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 	}
 
 	if s.sys.LastBatch().DecodeHeader().Seq < bh.Seq {
-		s.sys.Deliver(h.Batch)
+		s.deliverBatch(h.Batch)
 	}
 
 	if h.NewView != nil {
