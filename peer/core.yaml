@@ -103,7 +103,7 @@ peer:
 
     # Gossip related configuration
     gossip:
-        boostrap: 0.0.0.0:7051
+        bootstrap: 0.0.0.0:7051
         # For debug - is peer is its org leader and should pass blocks from orderer to other peers in org
         orgLeader: true
 
