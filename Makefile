@@ -63,6 +63,31 @@ ifneq ($(OS),Darwin)
 DOCKER_FLAGS=--user=$(shell id -u)
 endif
 
+ifneq ($(http_proxy),)
+DOCKER_ARGS_PROXY+=--build-arg http_proxy=$(http_proxy)
+DOCKER_FLAGS+=-e http_proxy=$(http_proxy)
+endif
+ifneq ($(https_proxy),)
+DOCKER_ARGS_PROXY+=--build-arg https_proxy=$(https_proxy)
+DOCKER_FLAGS+=-e https_proxy=$(https_proxy)
+endif
+ifneq ($(HTTP_PROXY),)
+DOCKER_ARGS_PROXY+=--build-arg HTTP_PROXY=$(HTTP_PROXY)
+DOCKER_FLAGS+=-e HTTP_PROXY=$(HTTP_PROXY)
+endif
+ifneq ($(HTTPS_PROXY),)
+DOCKER_ARGS_PROXY+=--build-arg HTTPS_PROXY=$(HTTPS_PROXY)
+DOCKER_FLAGS+=-e HTTPS_PROXY=$(HTTPS_PROXY)
+endif
+ifneq ($(no_proxy),)
+DOCKER_ARGS_PROXY+=--build-arg no_proxy=$(no_proxy)
+DOCKER_FLAGS+=-e no_proxy=$(no_proxy)
+endif
+ifneq ($(NO_PROXY),)
+DOCKER_ARGS_PROXY+=--build-arg NO_PROXY=$(NO_PROXY)
+DOCKER_FLAGS+=-e NO_PROXY=$(NO_PROXY)
+endif
+
 DRUN = docker run -i --rm $(DOCKER_FLAGS) \
 	-v $(abspath .):/opt/gopath/src/$(PKGNAME) \
 	-w /opt/gopath/src/$(PKGNAME)
@@ -196,7 +221,7 @@ build/image/%/.dummy: Makefile build/image/%/payload
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
-	docker build -t $(PROJECT_NAME)-$(TARGET) $(@D)
+	docker build $(DOCKER_ARGS_PROXY) -t $(PROJECT_NAME)-$(TARGET) $(@D)
 	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 

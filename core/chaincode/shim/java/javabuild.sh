@@ -19,6 +19,21 @@
 set -e
 PARENTDIR=$(pwd)	
 
+function getProxyHost {
+  ADDR=${1#*://}
+  echo ${ADDR%:*}
+}
+
+function getProxyPort {
+  ADDR=${1#*://}
+  echo ${ADDR#*:}
+}
+
+[ -n "$http_proxy" ] && JAVA_OPTS="$JAVA_OPTS -Dhttp.proxyHost=$(getProxyHost $http_proxy) -Dhttp.proxyPort=$(getProxyPort $http_proxy)"
+[ -n "$https_proxy" ] && JAVA_OPTS="$JAVA_OPTS -Dhttps.proxyHost=$(getProxyHost $https_proxy) -Dhttps.proxyPort=$(getProxyPort $https_proxy)"
+[ -n "$HTTP_PROXY" ] && JAVA_OPTS="$JAVA_OPTS -Dhttp.proxyHost=$(getProxyHost $HTTP_PROXY) -Dhttp.proxyPort=$(getProxyPort $HTTP_PROXY)"
+[ -n "$HTTPS_PROXY" ] && JAVA_OPTS="$JAVA_OPTS -Dhttps.proxyHost=$(getProxyHost $HTTPS_PROXY) -Dhttps.proxyPort=$(getProxyPort $HTTPS_PROXY)"
+export JAVA_OPTS
 
 gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle clean
 gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle build
