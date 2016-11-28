@@ -91,7 +91,7 @@ func DefaultLoggingLevel() logging.Level {
 func init() {
 
 	format := logging.MustStringFormatter(
-		"%{color}%{time:15:04:05.000} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
+		"%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
 	)
 
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
