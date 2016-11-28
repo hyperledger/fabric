@@ -977,3 +977,36 @@ func TestResendViewChange(t *testing.T) {
 		}
 	}
 }
+
+func TestTenReplicasBombedWithRequests(t *testing.T) {
+	N := uint64(10)
+	requestNumber := 11
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 3, BatchDurationNsec: 2000000000, BatchSizeBytes: 3, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	connectAll(sys)
+	for i := 0; i < requestNumber; i++ {
+		r := []byte{byte(i), 2, 3}
+		repls[2].Request(r)
+	}
+	sys.Run()
+	for _, a := range adapters {
+		i := 0
+		for _, b := range a.batches {
+			i = i + len(b.Payloads)
+		}
+		if i != requestNumber {
+			t.Fatalf("expected execution of %d requests but: %d", requestNumber, i)
+		}
+	}
+}
