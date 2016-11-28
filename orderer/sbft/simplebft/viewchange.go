@@ -28,7 +28,7 @@ func (s *SBFT) sendViewChange() {
 			state.viewchange = nil
 		}
 	}
-	log.Noticef("sending viewchange for view %d", s.view)
+	log.Noticef("replica %d: sending viewchange for view %d", s.id, s.view)
 
 	var q, p []*Subject
 	if s.cur.sentCommit {
@@ -67,19 +67,19 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 		_, err = s.checkBatch(vc.Checkpoint, false, true)
 	}
 	if err != nil {
-		log.Noticef("invalid viewchange: %s", err)
+		log.Noticef("replica %d: invalid viewchange: %s", s.id, err)
 		return
 	}
 	if vc.View < s.view {
-		log.Debugf("old view change from %d for view %d, we are in view %d", src, vc.View, s.view)
+		log.Debugf("replica %d: old view change from %d for view %d, we are in view %d", s.id, src, vc.View, s.view)
 		return
 	}
 	if ovc := s.replicaState[src].viewchange; ovc != nil && vc.View <= ovc.View {
-		log.Noticef("duplicate view change for %d from %d", vc.View, src)
+		log.Noticef("replica %d: duplicate view change for %d from %d", s.id, vc.View, src)
 		return
 	}
 
-	log.Infof("viewchange from %d: %v", src, vc)
+	log.Infof("replica %d: viewchange from %d: %v", s.id, src, vc)
 	s.replicaState[src].viewchange = vc
 	s.replicaState[src].signedViewchange = svc
 
@@ -97,7 +97,7 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 	if quorum == s.oneCorrectQuorum() {
 		// catch up to the minimum view
 		if s.view < min {
-			log.Notice("we are behind on view change, resending for newer view")
+			log.Noticef("replica %d: we are behind on view change, resending for newer view", s.id)
 			s.view = min - 1
 			s.sendViewChange()
 			return
@@ -105,10 +105,10 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 	}
 
 	if quorum == s.noFaultyQuorum() {
-		log.Notice("received 2f+1 view change messages, starting view change timer")
+		log.Noticef("replica %d: received 2f+1 view change messages, starting view change timer", s.id)
 		s.viewChangeTimer = s.sys.Timer(s.viewChangeTimeout, func() {
 			s.viewChangeTimeout *= 2
-			log.Notice("view change timed out, sending next")
+			log.Noticef("replica %d: view change timed out, sending next", s.id)
 			s.sendViewChange()
 		})
 	}

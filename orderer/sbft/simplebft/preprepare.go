@@ -43,36 +43,36 @@ func (s *SBFT) sendPreprepare(batch []*Request) {
 
 func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
 	if src == s.id {
-		log.Infof("Ignoring preprepare from self: %d", src)
+		log.Infof("replica %d: ignoring preprepare from self: %d", s.id, src)
 		return
 	}
 	if src != s.primaryID() {
-		log.Infof("preprepare from non-primary %d", src)
+		log.Infof("replica %d: preprepare from non-primary %d", s.id, src)
 		return
 	}
 	nextSeq := s.nextSeq()
 	if *pp.Seq != nextSeq {
-		log.Infof("preprepare does not match expected %v, got %v", nextSeq, *pp.Seq)
+		log.Infof("replica %d: preprepare does not match expected %v, got %v", s.id, nextSeq, *pp.Seq)
 		return
 	}
 	if s.cur.subject.Seq.Seq == pp.Seq.Seq {
-		log.Infof("duplicate preprepare for %v", *pp.Seq)
+		log.Infof("replica %d: duplicate preprepare for %v", s.id, *pp.Seq)
 		return
 	}
 	if pp.Batch == nil {
-		log.Infof("preprepare without batch")
+		log.Infof("replica %d: preprepare without batch", s.id)
 		return
 	}
 
 	batchheader, err := s.checkBatch(pp.Batch, true, false)
 	if err != nil || batchheader.Seq != pp.Seq.Seq {
-		log.Infof("preprepare %v batch head inconsistent from %d: %s", pp.Seq, src, err)
+		log.Infof("replica %d: preprepare %v batch head inconsistent from %d: %s", s.id, pp.Seq, src, err)
 		return
 	}
 
 	prevhash := s.sys.LastBatch().Hash()
 	if !bytes.Equal(batchheader.PrevHash, prevhash) {
-		log.Infof("preprepare batch prev hash does not match expected %s, got %s", hash2str(batchheader.PrevHash), hash2str(prevhash))
+		log.Infof("replica %d: preprepare batch prev hash does not match expected %s, got %s", s.id, hash2str(batchheader.PrevHash), hash2str(prevhash))
 		return
 	}
 
@@ -82,7 +82,7 @@ func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
 func (s *SBFT) acceptPreprepare(pp *Preprepare) {
 	sub := Subject{Seq: pp.Seq, Digest: pp.Batch.Hash()}
 
-	log.Infof("accepting preprepare for %v, %x", sub.Seq, sub.Digest)
+	log.Infof("replica %d: accepting preprepare for %v, %x", s.id, sub.Seq, sub.Digest)
 	s.sys.Persist("preprepare", pp)
 
 	s.cur = reqInfo{
@@ -107,6 +107,6 @@ func (s *SBFT) handleCheckedPreprepare(pp *Preprepare) {
 ////////////////////////////////////////////////
 
 func (s *SBFT) requestTimeout() {
-	log.Infof("request timed out: %s", s.cur.subject.Seq)
+	log.Infof("replica %d: request timed out: %s", s.id, s.cur.subject.Seq)
 	s.sendViewChange()
 }

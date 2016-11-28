@@ -67,7 +67,7 @@ func (s *SBFT) Connection(replica uint64) {
 func (s *SBFT) handleHello(h *Hello, src uint64) {
 	bh, err := s.checkBatch(h.Batch, false, true)
 	if err != nil {
-		log.Warningf("invalid hello batch from %d: %s", src, err)
+		log.Warningf("replica %d: invalid hello batch from %d: %s", s.id, src, err)
 		return
 	}
 
@@ -77,19 +77,19 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 
 	if h.NewView != nil {
 		if s.primaryIDView(h.NewView.View) != src {
-			log.Warningf("invalid hello with new view from non-primary %d", src)
+			log.Warningf("replica %d: invalid hello with new view from non-primary %d", s.id, src)
 			return
 		}
 
 		vcs, err := s.checkNewViewSignatures(h.NewView)
 		if err != nil {
-			log.Warningf("invalid hello new view from %d: %s", src, err)
+			log.Warningf("replica %d: invalid hello new view from %d: %s", s.id, src, err)
 			return
 		}
 
 		_, _, ok := s.makeXset(vcs)
 		if !ok {
-			log.Warningf("invalid hello new view xset from %d", src)
+			log.Warningf("replica %d: invalid hello new view xset from %d", s.id, src)
 			return
 		}
 

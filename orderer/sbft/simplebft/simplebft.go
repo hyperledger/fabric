@@ -186,7 +186,7 @@ func (s *SBFT) broadcast(m *Msg) {
 
 // Receive is the ingress method for SBFT messages.
 func (s *SBFT) Receive(m *Msg, src uint64) {
-	log.Debugf("received message from %d: %s", src, m)
+	log.Debugf("replica %d: received message from %d: %s", s.id, src, m)
 
 	if h := m.GetHello(); h != nil {
 		s.handleHello(h, src)
@@ -203,7 +203,7 @@ func (s *SBFT) Receive(m *Msg, src uint64) {
 	}
 
 	if s.testBacklog(m, src) {
-		log.Debugf("message for future seq, storing for later")
+		log.Debugf("replica %d: message for future seq, storing for later", s.id)
 		s.recordBacklogMsg(m, src)
 		return
 	}
@@ -226,7 +226,7 @@ func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
 		return
 	}
 
-	log.Warningf("received invalid message from %d", src)
+	log.Warningf("replica %d: received invalid message from %d", s.id, src)
 }
 
 func (s *SBFT) deliverBatch(batch *Batch) {
@@ -234,7 +234,7 @@ func (s *SBFT) deliverBatch(batch *Batch) {
 
 	for _, req := range batch.Payloads {
 		key := hash2str(hash(req))
-		log.Infof("replica %d attempting to remove %x from pending", s.id, key)
+		log.Infof("replica %d: attempting to remove %x from pending", s.id, key)
 		delete(s.pending, key)
 	}
 }

@@ -25,7 +25,7 @@ func (s *SBFT) Request(req []byte) {
 
 func (s *SBFT) handleRequest(req *Request, src uint64) {
 	key := hash2str(hash(req.Payload))
-	log.Infof("replica %d inserting %x into pending", s.id, key)
+	log.Infof("replica %d: inserting %x into pending", s.id, key)
 	s.pending[key] = req
 	if s.isPrimary() && s.activeView {
 		s.batch = append(s.batch, req)
