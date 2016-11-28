@@ -17,8 +17,10 @@
 package chaincode
 
 import (
+	"encoding/json"
 	"testing"
 
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -75,4 +77,53 @@ func TestCheckChaincodeCmdParamsEmptyCtor(t *testing.T) {
 	result := checkChaincodeCmdParams(nil)
 
 	require.Error(result)
+}
+
+func TestCheckValidJSON(t *testing.T) {
+	validJSON := `{"Args":["a","b","c"]}`
+	input := &pb.ChaincodeInput{}
+	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		return
+	}
+
+	validJSON = `{"Function":"f", "Args":["a","b","c"]}`
+	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		return
+	}
+
+	validJSON = `{"Function":"f", "Args":[]}`
+	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		return
+	}
+
+	validJSON = `{"Function":"f"}`
+	if err := json.Unmarshal([]byte(validJSON), &input); err != nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		return
+	}
+}
+
+func TestCheckInvalidJSON(t *testing.T) {
+	invalidJSON := `{["a","b","c"]}`
+	input := &pb.ChaincodeInput{}
+	if err := json.Unmarshal([]byte(invalidJSON), &input); err == nil {
+		t.Fail()
+		t.Logf("Bar argument error should have been caught: %s", invalidJSON)
+		return
+	}
+
+	invalidJSON = `{"Function":}`
+	if err := json.Unmarshal([]byte(invalidJSON), &input); err == nil {
+		t.Fail()
+		t.Logf("Chaincode argument error: %s", err)
+		t.Logf("Bar argument error should have been caught: %s", invalidJSON)
+		return
+	}
 }

@@ -636,8 +636,7 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 			if qresult == nil {
 				break
 			}
-			//PDMP - let it panic if not KV
-			kv := qresult.(ledger.KV)
+			kv := qresult.(*ledger.KV)
 			keyAndValue := pb.RangeQueryStateKeyValue{Key: kv.Key, Value: kv.Value}
 			keysAndValues = append(keysAndValues, &keyAndValue)
 		}
@@ -735,8 +734,7 @@ func (handler *Handler) handleRangeQueryStateNext(msg *pb.ChaincodeMessage) {
 			if qresult != nil {
 				break
 			}
-			//PDMP - let it panic if not KV
-			kv := qresult.(ledger.KV)
+			kv := qresult.(*ledger.KV)
 			keyAndValue := pb.RangeQueryStateKeyValue{Key: kv.Key, Value: kv.Value}
 			keysAndValues = append(keysAndValues, &keyAndValue)
 		}
