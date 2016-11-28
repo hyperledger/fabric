@@ -18,16 +18,18 @@ package configtx
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 )
 
 type mockConfigManager struct {
-	err error
+	applied *cb.ConfigurationEnvelope
+	err     error
 }
 
 func (mcm *mockConfigManager) Validate(configtx *cb.ConfigurationEnvelope) error {
@@ -35,6 +37,7 @@ func (mcm *mockConfigManager) Validate(configtx *cb.ConfigurationEnvelope) error
 }
 
 func (mcm *mockConfigManager) Apply(configtx *cb.ConfigurationEnvelope) error {
+	mcm.applied = configtx
 	return mcm.err
 }
 
@@ -44,23 +47,36 @@ func (mcm *mockConfigManager) ChainID() string {
 
 func TestForwardNonConfig(t *testing.T) {
 	cf := NewFilter(&mockConfigManager{})
-	result := cf.Apply(&cb.Envelope{
+	result, _ := cf.Apply(&cb.Envelope{
 		Payload: []byte("Opaque"),
 	})
-	if result != broadcastfilter.Forward {
+	if result != filter.Forward {
 		t.Fatalf("Should have forwarded opaque message")
 	}
 }
 
 func TestAcceptGoodConfig(t *testing.T) {
-	cf := NewFilter(&mockConfigManager{})
-	config, _ := proto.Marshal(&cb.ConfigurationEnvelope{})
+	mcm := &mockConfigManager{}
+	cf := NewFilter(mcm)
+	configEnv := &cb.ConfigurationEnvelope{}
+	config, _ := proto.Marshal(configEnv)
 	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
-	result := cf.Apply(&cb.Envelope{
+	configEnvelope := &cb.Envelope{
 		Payload: configBytes,
-	})
-	if result != broadcastfilter.Reconfigure {
-		t.Fatalf("Should have indiated a good config message causes a reconfiguration")
+	}
+	result, committer := cf.Apply(configEnvelope)
+	if result != filter.Accept {
+		t.Fatalf("Should have indicated a good config message causes a reconfiguration")
+	}
+
+	if !committer.Isolated() {
+		t.Fatalf("Configuration transactions should be isolated to their own block")
+	}
+
+	committer.Commit()
+
+	if !reflect.DeepEqual(mcm.applied, configEnv) {
+		t.Fatalf("Should have applied new configuration on commit got %v and %v", mcm.applied, configEnv)
 	}
 }
 
@@ -68,10 +84,10 @@ func TestRejectBadConfig(t *testing.T) {
 	cf := NewFilter(&mockConfigManager{err: fmt.Errorf("Error")})
 	config, _ := proto.Marshal(&cb.ConfigurationEnvelope{})
 	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
-	result := cf.Apply(&cb.Envelope{
+	result, _ := cf.Apply(&cb.Envelope{
 		Payload: configBytes,
 	})
-	if result != broadcastfilter.Reject {
+	if result != filter.Reject {
 		t.Fatalf("Should have rejected bad config message")
 	}
 }

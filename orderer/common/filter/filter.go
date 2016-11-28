@@ -14,9 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package broadcastfilter
+package filter
 
 import (
+	"fmt"
+
 	ab "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -26,8 +28,6 @@ type Action int
 const (
 	// Accept indicates that the message should be processed
 	Accept = iota
-	// Reconfigure indicates that this message modifies this rule, and should therefore be processed in a batch by itself
-	Reconfigure
 	// Reject indicates that the message should not be processed
 	Reject
 	// Forward indicates that the rule could not determine the correct course of action
@@ -37,19 +37,37 @@ const (
 // Rule defines a filter function which accepts, rejects, or forwards (to the next rule) a Envelope
 type Rule interface {
 	// Apply applies the rule to the given Envelope, replying with the Action to take for the message
-	Apply(message *ab.Envelope) Action
+	// If the filter Accepts a message, it should provide a committer to use when writing the message to the chain
+	Apply(message *ab.Envelope) (Action, Committer)
 }
+
+// Committer is returned by postfiltering and should be invoked once the message has been written to the blockchain
+type Committer interface {
+	// Commit performs whatever action should be performed upon commiting of a message
+	Commit()
+
+	// Isolated returns whether this transaction should have a block to itself or may be mixed with other transactions
+	Isolated() bool
+}
+
+type noopCommitter struct{}
+
+func (nc noopCommitter) Commit()        {}
+func (nc noopCommitter) Isolated() bool { return false }
+
+// NoopCommitter does nothing on commit and is not isolate
+var NoopCommitter = Committer(noopCommitter{})
 
 // EmptyRejectRule rejects empty messages
 var EmptyRejectRule = Rule(emptyRejectRule{})
 
 type emptyRejectRule struct{}
 
-func (a emptyRejectRule) Apply(message *ab.Envelope) Action {
+func (a emptyRejectRule) Apply(message *ab.Envelope) (Action, Committer) {
 	if message.Payload == nil {
-		return Reject
+		return Reject, nil
 	}
-	return Forward
+	return Forward, nil
 }
 
 // AcceptRule always returns Accept as a result for Apply
@@ -57,8 +75,8 @@ var AcceptRule = Rule(acceptRule{})
 
 type acceptRule struct{}
 
-func (a acceptRule) Apply(message *ab.Envelope) Action {
-	return Accept
+func (a acceptRule) Apply(message *ab.Envelope) (Action, Committer) {
+	return Accept, NoopCommitter
 }
 
 // RuleSet is used to apply a collection of rules
@@ -73,17 +91,17 @@ func NewRuleSet(rules []Rule) *RuleSet {
 	}
 }
 
-// Apply applies the rules given for this set in order, returning the first non-Forward result and the Rule which generated it
-// or returning Forward, nil if no rules accept or reject it
-func (rs *RuleSet) Apply(message *ab.Envelope) (Action, Rule) {
+// Filter applies the rules given for this set in order, returning the committer, nil on valid, or nil, err on invalid
+func (rs *RuleSet) Apply(message *ab.Envelope) (Committer, error) {
 	for _, rule := range rs.rules {
-		action := rule.Apply(message)
+		action, committer := rule.Apply(message)
 		switch action {
-		case Forward:
-			continue
+		case Accept:
+			return committer, nil
+		case Reject:
+			return nil, fmt.Errorf("Rejected by rule: %T", rule)
 		default:
-			return action, rule
 		}
 	}
-	return Forward, nil
+	return nil, fmt.Errorf("No matching filter found")
 }

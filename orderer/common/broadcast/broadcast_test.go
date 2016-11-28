@@ -17,13 +17,11 @@ limitations under the License.
 package broadcast
 
 import (
-	"bytes"
 	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -31,53 +29,6 @@ import (
 )
 
 var systemChain = "systemChain"
-
-var configTx []byte
-
-func init() {
-	var err error
-	configTx, err = proto.Marshal(&cb.ConfigurationEnvelope{})
-	if err != nil {
-		panic("Error marshaling empty config tx")
-	}
-}
-
-type mockConfigManager struct {
-	validated   bool
-	validateErr error
-}
-
-func (mcm *mockConfigManager) Validate(configtx *cb.ConfigurationEnvelope) error {
-	mcm.validated = true
-	return mcm.validateErr
-}
-
-func (mcm *mockConfigManager) Apply(message *cb.ConfigurationEnvelope) error {
-	panic("Unimplemented")
-}
-
-func (mcm *mockConfigManager) ChainID() string {
-	panic("Unimplemented")
-}
-
-type mockConfigFilter struct {
-	manager configtx.Manager
-}
-
-func (mcf *mockConfigFilter) Apply(msg *cb.Envelope) broadcastfilter.Action {
-	payload := &cb.Payload{}
-	err := proto.Unmarshal(msg.Payload, payload)
-	if err != nil {
-		panic(err)
-	}
-	if bytes.Equal(payload.Data, configTx) {
-		if mcf.manager == nil || mcf.manager.Validate(nil) != nil {
-			return broadcastfilter.Reject
-		}
-		return broadcastfilter.Reconfigure
-	}
-	return broadcastfilter.Forward
-}
 
 type mockB struct {
 	grpc.ServerStream
@@ -121,17 +72,12 @@ func (mm *mockSupportManager) halt() {
 }
 
 type mockSupport struct {
-	configManager *mockConfigManager
-	filters       *broadcastfilter.RuleSet
-	queue         chan *cb.Envelope
-	done          bool
+	filters *filter.RuleSet
+	queue   chan *cb.Envelope
+	done    bool
 }
 
-func (ms *mockSupport) ConfigManager() configtx.Manager {
-	return ms.configManager
-}
-
-func (ms *mockSupport) Filters() *broadcastfilter.RuleSet {
+func (ms *mockSupport) Filters() *filter.RuleSet {
 	return ms.filters
 }
 
@@ -169,19 +115,16 @@ func makeMessage(chainID string, data []byte) *cb.Envelope {
 }
 
 func getMultichainManager() *mockSupportManager {
-	cm := &mockConfigManager{}
-	filters := broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
-		broadcastfilter.EmptyRejectRule,
-		&mockConfigFilter{cm},
-		broadcastfilter.AcceptRule,
+	filters := filter.NewRuleSet([]filter.Rule{
+		filter.EmptyRejectRule,
+		filter.AcceptRule,
 	})
 	mm := &mockSupportManager{
 		chains: make(map[string]*mockSupport),
 	}
 	mm.chains[string(systemChain)] = &mockSupport{
-		filters:       filters,
-		configManager: cm,
-		queue:         make(chan *cb.Envelope),
+		filters: filters,
+		queue:   make(chan *cb.Envelope),
 	}
 	return mm
 }
@@ -256,41 +199,4 @@ func TestEmptyEnvelope(t *testing.T) {
 		t.Fatalf("Should have rejected the null message")
 	}
 
-}
-
-func TestReconfigureAccept(t *testing.T) {
-	mm := getMultichainManager()
-	defer mm.halt()
-	bh := NewHandlerImpl(mm, 2)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- makeMessage(systemChain, configTx)
-
-	reply := <-m.sendChan
-	if reply.Status != cb.Status_SUCCESS {
-		t.Fatalf("Should have successfully queued the message")
-	}
-
-	if !mm.chains[string(systemChain)].configManager.validated {
-		t.Errorf("ConfigTx should have been validated before processing")
-	}
-}
-
-func TestReconfigureReject(t *testing.T) {
-	mm := getMultichainManager()
-	mm.chains[string(systemChain)].configManager.validateErr = fmt.Errorf("Fail to validate")
-	defer mm.halt()
-	bh := NewHandlerImpl(mm, 2)
-	m := newMockB()
-	defer close(m.recvChan)
-	go bh.Handle(m)
-
-	m.recvChan <- makeMessage(systemChain, configTx)
-
-	reply := <-m.sendChan
-	if reply.Status != cb.Status_BAD_REQUEST {
-		t.Fatalf("Should have failed to queue the message because it was invalid config")
-	}
 }

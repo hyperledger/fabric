@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package broadcastfilter
+package filter
 
 import (
 	"testing"
@@ -26,28 +26,24 @@ var RejectRule = Rule(rejectRule{})
 
 type rejectRule struct{}
 
-func (r rejectRule) Apply(message *cb.Envelope) Action {
-	return Reject
+func (r rejectRule) Apply(message *cb.Envelope) (Action, Committer) {
+	return Reject, nil
 }
 
 var ForwardRule = Rule(forwardRule{})
 
 type forwardRule struct{}
 
-func (r forwardRule) Apply(message *cb.Envelope) Action {
-	return Forward
+func (r forwardRule) Apply(message *cb.Envelope) (Action, Committer) {
+	return Forward, nil
 }
 
 func TestEmptyRejectRule(t *testing.T) {
-	rs := NewRuleSet([]Rule{EmptyRejectRule})
-	result, rule := rs.Apply(&cb.Envelope{})
+	result, _ := EmptyRejectRule.Apply(&cb.Envelope{})
 	if result != Reject {
 		t.Fatalf("Should have rejected")
 	}
-	if rule != EmptyRejectRule {
-		t.Fatalf("Rejected but not for the right rule")
-	}
-	result, _ = rs.Apply(&cb.Envelope{Payload: []byte("fakedata")})
+	result, _ = EmptyRejectRule.Apply(&cb.Envelope{Payload: []byte("fakedata")})
 	if result != Forward {
 		t.Fatalf("Should have forwarded")
 	}
@@ -55,55 +51,40 @@ func TestEmptyRejectRule(t *testing.T) {
 
 func TestAcceptReject(t *testing.T) {
 	rs := NewRuleSet([]Rule{AcceptRule, RejectRule})
-	result, rule := rs.Apply(&cb.Envelope{})
-	if result != Accept {
-		t.Fatalf("Should have accepted")
-	}
-	if rule != AcceptRule {
-		t.Fatalf("Accepted but not for the right rule")
+	_, err := rs.Apply(&cb.Envelope{})
+	if err != nil {
+		t.Fatalf("Should have accepted: %s", err)
 	}
 }
 
 func TestRejectAccept(t *testing.T) {
 	rs := NewRuleSet([]Rule{RejectRule, AcceptRule})
-	result, rule := rs.Apply(&cb.Envelope{})
-	if result != Reject {
+	_, err := rs.Apply(&cb.Envelope{})
+	if err == nil {
 		t.Fatalf("Should have rejected")
-	}
-	if rule != RejectRule {
-		t.Fatalf("Rejected but not for the right rule")
 	}
 }
 
 func TestForwardAccept(t *testing.T) {
 	rs := NewRuleSet([]Rule{ForwardRule, AcceptRule})
-	result, rule := rs.Apply(&cb.Envelope{})
-	if result != Accept {
-		t.Fatalf("Should have accepted")
-	}
-	if rule != AcceptRule {
-		t.Fatalf("Accepted but not for the right rule")
+	_, err := rs.Apply(&cb.Envelope{})
+	if err != nil {
+		t.Fatalf("Should have accepted: %s ", err)
 	}
 }
 
 func TestForward(t *testing.T) {
 	rs := NewRuleSet([]Rule{ForwardRule})
-	result, rule := rs.Apply(&cb.Envelope{})
-	if result != Forward {
-		t.Fatalf("Should have forwarded")
-	}
-	if rule != nil {
-		t.Fatalf("Forwarded but rule is set")
+	_, err := rs.Apply(&cb.Envelope{})
+	if err == nil {
+		t.Fatalf("Should have rejected")
 	}
 }
 
 func TestNoRule(t *testing.T) {
 	rs := NewRuleSet([]Rule{})
-	result, rule := rs.Apply(&cb.Envelope{})
-	if result != Forward {
-		t.Fatalf("Should have forwarded")
-	}
-	if rule != nil {
-		t.Fatalf("Forwarded but rule is set")
+	_, err := rs.Apply(&cb.Envelope{})
+	if err == nil {
+		t.Fatalf("Should have rejected")
 	}
 }

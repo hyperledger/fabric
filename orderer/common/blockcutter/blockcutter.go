@@ -17,11 +17,9 @@ limitations under the License.
 package blockcutter
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
 
@@ -34,98 +32,79 @@ func init() {
 // Receiver defines a sink for the ordered broadcast messages
 type Receiver interface {
 	// Ordered should be invoked sequentially as messages are ordered
-	// If the message is a valid normal message and does not fill the batch, nil, true is returned
-	// If the message is a valid normal message and fills a batch, the batch, true is returned
+	// If the message is a valid normal message and does not fill the batch, nil, nil, true is returned
+	// If the message is a valid normal message and fills a batch, the batch, committers, true is returned
 	// If the message is a valid special message (like a config message) it terminates the current batch
-	// and returns the current batch (if it is not empty), plus a second batch containing the special transaction and true
-	// If the ordered message is determined to be invalid, then nil, false is returned
-	Ordered(msg *cb.Envelope) ([][]*cb.Envelope, bool)
+	// and returns the current batch and committers (if it is not empty), plus a second batch containing the special transaction and commiter, and true
+	// If the ordered message is determined to be invalid, then nil, nil, false is returned
+	Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool)
 
 	// Cut returns the current batch and starts a new one
-	Cut() []*cb.Envelope
+	Cut() ([]*cb.Envelope, []filter.Committer)
 }
 
 type receiver struct {
-	batchSize     int
-	filters       *broadcastfilter.RuleSet
-	configManager configtx.Manager
-	curBatch      []*cb.Envelope
+	batchSize int
+	filters   *filter.RuleSet
+	curBatch  []*cb.Envelope
+	batchComs []filter.Committer
 }
 
 // NewReceiverImpl creates a Receiver implementation based on the given batchsize, filters, and configtx manager
-func NewReceiverImpl(batchSize int, filters *broadcastfilter.RuleSet, configManager configtx.Manager) Receiver {
+func NewReceiverImpl(batchSize int, filters *filter.RuleSet) Receiver {
 	return &receiver{
-		batchSize:     batchSize,
-		filters:       filters,
-		configManager: configManager,
+		batchSize: batchSize,
+		filters:   filters,
 	}
 }
 
 // Ordered should be invoked sequentially as messages are ordered
-// If the message is a valid normal message and does not fill the batch, nil, true is returned
-// If the message is a valid normal message and fills a batch, the batch, true is returned
+// If the message is a valid normal message and does not fill the batch, nil, nil, true is returned
+// If the message is a valid normal message and fills a batch, the batch, committers, true is returned
 // If the message is a valid special message (like a config message) it terminates the current batch
-// and returns the current batch (if it is not empty), plus a second batch containing the special transaction and true
-// If the ordered message is determined to be invalid, then nil, false is returned
-func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, bool) {
+// and returns the current batch and committers (if it is not empty), plus a second batch containing the special transaction and commiter, and true
+// If the ordered message is determined to be invalid, then nil, nil, false is returned
+func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool) {
 	// The messages must be filtered a second time in case configuration has changed since the message was received
-	action, _ := r.filters.Apply(msg)
-	switch action {
-	case broadcastfilter.Accept:
-		logger.Debugf("Enqueuing message into batch")
-		r.curBatch = append(r.curBatch, msg)
-
-		if len(r.curBatch) < r.batchSize {
-			return nil, true
-		}
-
-		logger.Debugf("Batch size met, creating block")
-		newBatch := r.curBatch
-		r.curBatch = nil
-		return [][]*cb.Envelope{newBatch}, true
-	case broadcastfilter.Reconfigure:
-		// TODO, this is unmarshaling for a second time, we need a cleaner interface, maybe Apply returns a second arg with thing to put in the batch
-		payload := &cb.Payload{}
-		if err := proto.Unmarshal(msg.Payload, payload); err != nil {
-			logger.Errorf("A change was flagged as configuration, but could not be unmarshaled: %v", err)
-			return nil, false
-		}
-		newConfig := &cb.ConfigurationEnvelope{}
-		if err := proto.Unmarshal(payload.Data, newConfig); err != nil {
-			logger.Errorf("A change was flagged as configuration, but could not be unmarshaled: %v", err)
-			return nil, false
-		}
-		err := r.configManager.Validate(newConfig)
-		if err != nil {
-			logger.Warningf("A configuration change made it through the ingress filter but could not be included in a batch: %v", err)
-			return nil, false
-		}
-
-		logger.Debugf("Configuration change applied successfully, committing previous block and configuration block")
-		firstBatch := r.curBatch
-		r.curBatch = nil
-		secondBatch := []*cb.Envelope{msg}
-		if firstBatch == nil {
-			return [][]*cb.Envelope{secondBatch}, true
-		}
-		return [][]*cb.Envelope{firstBatch, secondBatch}, true
-	case broadcastfilter.Reject:
-		logger.Debugf("Rejecting message")
-		return nil, false
-	case broadcastfilter.Forward:
-		logger.Debugf("Ignoring message because it was not accepted by a filter")
-		return nil, false
-	default:
-		logger.Fatalf("Received an unknown rule response: %v", action)
+	committer, err := r.filters.Apply(msg)
+	if err != nil {
+		logger.Debugf("Rejecting message: %s", err)
+		return nil, nil, false
 	}
 
-	return nil, false // Unreachable
+	if committer.Isolated() {
+		logger.Debugf("Found message which requested to be isolated, cutting into its own block")
+		firstBatch := r.curBatch
+		r.curBatch = nil
+		firstComs := r.batchComs
+		r.batchComs = nil
+		secondBatch := []*cb.Envelope{msg}
+		if firstBatch == nil {
+			return [][]*cb.Envelope{secondBatch}, [][]filter.Committer{[]filter.Committer{committer}}, true
+		}
+		return [][]*cb.Envelope{firstBatch, secondBatch}, [][]filter.Committer{firstComs, []filter.Committer{committer}}, true
+	}
 
+	logger.Debugf("Enqueuing message into batch")
+	r.curBatch = append(r.curBatch, msg)
+	r.batchComs = append(r.batchComs, committer)
+
+	if len(r.curBatch) < r.batchSize {
+		return nil, nil, true
+	}
+
+	logger.Debugf("Batch size met, creating block")
+	newBatch := r.curBatch
+	newComs := r.batchComs
+	r.curBatch = nil
+	return [][]*cb.Envelope{newBatch}, [][]filter.Committer{newComs}, true
 }
 
 // Cut returns the current batch and starts a new one
-func (r *receiver) Cut() []*cb.Envelope {
+func (r *receiver) Cut() ([]*cb.Envelope, []filter.Committer) {
 	batch := r.curBatch
 	r.curBatch = nil
-	return batch
+	committers := r.batchComs
+	r.batchComs = nil
+	return batch, committers
 }
