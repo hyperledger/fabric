@@ -23,6 +23,7 @@ import (
 
 	"github.com/DATA-DOG/godog"
 	"github.com/DATA-DOG/godog/gherkin"
+	"github.com/hyperledger/fabric/core/util"
 )
 
 // BDDContext represents the current context for the executing scenario.  Commensurate concept of 'context' from behave testing.
@@ -87,4 +88,41 @@ func (b *BDDContext) GetArgsForUser(cells []*gherkin.TableCell, userRegistration
 		args = append(args, arg)
 	}
 	return args, nil
+}
+
+func (b *BDDContext) weCompose(composeFiles string) error {
+	if b.composition != nil {
+		return fmt.Errorf("Already have composition in BDD context (%s)", b.composition.projectName)
+	}
+	// Need a unique name, but docker does not allow '-' in names
+	composeProjectName := strings.Replace(util.GenerateUUID(), "-", "", -1)
+	newComposition, err := NewComposition(composeProjectName, composeFiles)
+	if err != nil {
+		return fmt.Errorf("Error composing system in BDD context:  %s", err)
+	}
+	b.composition = newComposition
+	return nil
+}
+
+func (b *BDDContext) beforeScenario(scenarioOrScenarioOutline interface{}) {
+	b.scenarioOrScenarioOutline = scenarioOrScenarioOutline
+	//switch t := scenarioOrScenarioOutline.(type) {
+	//case *gherkin.Scenario:
+	//	fmt.Printf("Scenario recieved %v", t)
+	//case *gherkin.ScenarioOutline:
+	//	fmt.Printf("ScenarioOutline recieved %v", t)
+	//}
+}
+
+func (b *BDDContext) afterScenarioDecompose(interface{}, error) {
+	if b.hasTag("@doNotDecompose") == true {
+		fmt.Printf("Not decomposing:  %s", b.getScenarioDefinition().Name)
+	} else {
+		if b.composition != nil {
+			b.composition.Decompose()
+		}
+	}
+	// Now clear the users
+	b.composition = nil
+	b.users = make(map[string]*UserRegistration)
 }

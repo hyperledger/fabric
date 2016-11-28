@@ -19,15 +19,52 @@ import bdd_test_util
 import peer_basic_impl
 import json
 
+from abc import ABCMeta, abstractmethod
+
+class CompositionCallback:
+    __metaclass__ = ABCMeta
+    @abstractmethod
+    def composing(self, composition, context):
+        pass
+    @abstractmethod
+    def decomposing(self, composition, context):
+        pass
+    @abstractmethod
+    def getEnv(self, composition, context, env):
+        pass
+
+class Test(CompositionCallback):
+    def composing(self, composition, context):
+        pass
+    def decomposing(self, composition, context):
+        pass
+    def getEnv(self, composition, context, env):
+        pass
+
 class Composition:
+
+    @classmethod
+    def RegisterCallbackInContext(cls, context, callback):
+        if not isinstance(callback, CompositionCallback):
+            raise TypeError("Expected type to be {0}, instead received {1}".format(CompositionCallback, type(callback)))
+        Composition.GetCompositionCallbacksFromContext(context).append(callback)
+
+    @classmethod
+    def GetCompositionCallbacksFromContext(cls, context):
+        if not "compositionCallbacks" in context:
+            context.compositionCallbacks = []
+        return context.compositionCallbacks
+
 
     def GetUUID():
         return str(uuid.uuid1()).replace('-','')
 
-    def __init__(self, composeFilesYaml, projectName = GetUUID()):
+    def __init__(self, context, composeFilesYaml, projectName = GetUUID()):
         self.projectName = projectName
+        self.context = context
         self.containerDataList = []
         self.composeFilesYaml = composeFilesYaml
+        [callback.composing(self, context) for callback in Composition.GetCompositionCallbacksFromContext(context)]
         self.issueCommand(["up", "--force-recreate", "-d"])
 
     def parseComposeFilesArg(self, composeFileArgs):
@@ -41,6 +78,8 @@ class Composition:
         myEnv = os.environ.copy()
         myEnv["COMPOSE_PROJECT_NAME"] = self.projectName
         myEnv["CORE_PEER_NETWORKID"] = self.projectName
+        # Invoke callbacks
+        [callback.getEnv(self, self.context, myEnv) for callback in Composition.GetCompositionCallbacksFromContext(self.context)]
         return myEnv
 
     def refreshContainerIDs(self):
@@ -87,10 +126,21 @@ class Composition:
         self.issueCommand(["unpause"])
         self.issueCommand(["kill"])
         self.issueCommand(["rm", "-f"])
+
         # Now remove associated chaincode containers if any
-        #c.dockerHelper.RemoveContainersWithNamePrefix(c.projectName)
         output, error, returncode = \
             bdd_test_util.cli_call(["docker"] + ["ps", "-qa", "--filter", "name={0}".format(self.projectName)], expect_success=True, env=self.getEnv())
         for containerId in output.splitlines():
             output, error, returncode = \
                 bdd_test_util.cli_call(["docker"] + ["rm", "-f", containerId], expect_success=True, env=self.getEnv())
+
+        # Remove the associated network
+        output, error, returncode = \
+            bdd_test_util.cli_call(["docker"] + ["network", "ls", "-q", "--filter", "name={0}".format(self.projectName)], expect_success=True, env=self.getEnv())
+        for networkId in output.splitlines():
+            output, error, returncode = \
+                bdd_test_util.cli_call(["docker"] + ["network", "rm", networkId], expect_success=True, env=self.getEnv())
+
+        # Invoke callbacks
+        [callback.decomposing(self, self.context) for callback in Composition.GetCompositionCallbacksFromContext(self.context)]
+
