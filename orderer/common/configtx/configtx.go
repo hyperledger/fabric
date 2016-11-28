@@ -48,6 +48,9 @@ type Manager interface {
 
 	// Validate attempts to validate a new configtx against the current config state
 	Validate(configtx *cb.ConfigurationEnvelope) error
+
+	// ChainID retrieves the chain ID associated with this manager
+	ChainID() []byte
 }
 
 // DefaultModificationPolicyID is the ID of the policy used when no other policy can be resolved, for instance when attempting to create a new config item
@@ -81,7 +84,7 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) ([]byte, uint
 		item := &cb.ConfigurationItem{}
 		err := proto.Unmarshal(signedItem.ConfigurationItem, item)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("Error unmarshaling signedItem.ConfigurationItem: %s", err)
 		}
 
 		if item.LastModified > m {
@@ -294,4 +297,9 @@ func (cm *configurationManager) Apply(configtx *cb.ConfigurationEnvelope) error 
 	cm.sequence++
 	cm.commitHandlers()
 	return nil
+}
+
+// ChainID retrieves the chain ID associated with this manager
+func (cm *configurationManager) ChainID() []byte {
+	return cm.chainID
 }

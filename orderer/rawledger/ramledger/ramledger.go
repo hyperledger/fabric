@@ -95,6 +95,20 @@ func (rlf *ramLedgerFactory) GetOrCreate(chainID []byte) (rawledger.ReadWriter, 
 	return ch, nil
 }
 
+func (rlf *ramLedgerFactory) ChainIDs() [][]byte {
+	rlf.mutex.Lock()
+	defer rlf.mutex.Unlock()
+	ids := make([][]byte, len(rlf.ledgers))
+
+	i := 0
+	for key := range rlf.ledgers {
+		ids[i] = []byte(key)
+		i++
+	}
+
+	return ids
+}
+
 // newChain creates a new instance of the ram ledger for a chain
 func newChain(maxSize int) rawledger.ReadWriter {
 	preGenesis := &cb.Block{
@@ -145,6 +159,7 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 		oldest := rl.oldest
 		// Note the two +1's here is to accomodate the 'preGenesis' block of ^uint64(0)
 		if specified+1 < oldest.block.Header.Number+1 || specified > rl.newest.block.Header.Number+1 {
+			logger.Debugf("Returning error iterator because specified seek was %d with oldest %d and newest %d", specified, rl.oldest.block.Header.Number, rl.newest.block.Header.Number)
 			return &rawledger.NotFoundErrorIterator{}, 0
 		}
 

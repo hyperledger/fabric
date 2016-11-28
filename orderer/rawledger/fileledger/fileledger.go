@@ -110,6 +110,20 @@ func New(directory string, systemGenesis *cb.Block) (rawledger.Factory, rawledge
 	return flf, fl
 }
 
+func (flf *fileLedgerFactory) ChainIDs() [][]byte {
+	flf.mutex.Lock()
+	defer flf.mutex.Unlock()
+	ids := make([][]byte, len(flf.ledgers))
+
+	i := 0
+	for key := range flf.ledgers {
+		ids[i] = []byte(key)
+		i++
+	}
+
+	return ids
+}
+
 func (flf *fileLedgerFactory) GetOrCreate(chainID []byte) (rawledger.ReadWriter, error) {
 	flf.mutex.Lock()
 	defer flf.mutex.Unlock()
