@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter/configfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
 	"github.com/hyperledger/fabric/orderer/common/policies"
@@ -115,7 +114,7 @@ func newChainSupport(configManager configtx.Manager, policyManager policies.Mana
 func createBroadcastRuleset(configManager configtx.Manager) *broadcastfilter.RuleSet {
 	return broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
 		broadcastfilter.EmptyRejectRule,
-		configfilter.New(configManager),
+		configtx.NewFilter(configManager),
 		broadcastfilter.AcceptRule,
 	})
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configfilter
+package configtx
 
 import (
 	"fmt"
@@ -43,7 +43,7 @@ func (mcm *mockConfigManager) ChainID() string {
 }
 
 func TestForwardNonConfig(t *testing.T) {
-	cf := New(&mockConfigManager{})
+	cf := NewFilter(&mockConfigManager{})
 	result := cf.Apply(&cb.Envelope{
 		Payload: []byte("Opaque"),
 	})
@@ -53,7 +53,7 @@ func TestForwardNonConfig(t *testing.T) {
 }
 
 func TestAcceptGoodConfig(t *testing.T) {
-	cf := New(&mockConfigManager{})
+	cf := NewFilter(&mockConfigManager{})
 	config, _ := proto.Marshal(&cb.ConfigurationEnvelope{})
 	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	result := cf.Apply(&cb.Envelope{
@@ -65,7 +65,7 @@ func TestAcceptGoodConfig(t *testing.T) {
 }
 
 func TestRejectBadConfig(t *testing.T) {
-	cf := New(&mockConfigManager{err: fmt.Errorf("Error")})
+	cf := NewFilter(&mockConfigManager{err: fmt.Errorf("Error")})
 	config, _ := proto.Marshal(&cb.ConfigurationEnvelope{})
 	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	result := cf.Apply(&cb.Envelope{
