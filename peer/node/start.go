@@ -145,17 +145,13 @@ func serve(args []string) error {
 	serverEndorser := endorser.NewEndorserServer()
 	pb.RegisterEndorserServer(grpcServer, serverEndorser)
 
-	// !!!IMPORTANT!!! - as mentioned in core.yaml, peer-orderer-committer
-	// interaction is closely tied to bootstrapping. This is to be viewed
-	// as temporary implementation to test the end-to-end flows in the
-	// system outside of multi-ledger, multi-channel work
-	if deliverService := noopssinglechain.NewDeliverService(); deliverService != nil {
-		go func() {
-			if err := deliverService.Start(); err != nil {
-				fmt.Printf("Could not start solo committer(%s), continuing without committer\n", err)
-			}
-		}()
+	deliverService := noopssinglechain.NewDeliverService(peerEndpoint.Address, grpcServer)
+
+	if deliverService != nil {
+		deliverService.Start()
 	}
+
+	defer noopssinglechain.StopDeliveryService(deliverService)
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s, rootnodes=%v, validator=%v",
 		peerEndpoint.ID, viper.GetString("peer.networkId"), peerEndpoint.Address,

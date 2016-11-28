@@ -17,17 +17,18 @@ limitations under the License.
 package state
 
 import (
-	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/gossip/proto"
-	pb "github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/gossip/comm"
-	"github.com/op/go-logging"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
-	"math/rand"
-	"github.com/hyperledger/fabric/protos/peer"
+
+	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/gossip/comm"
+	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/op/go-logging"
 )
 
 // GossipStateProvider is the interface to acquire sequences of the ledger blocks
@@ -49,7 +50,7 @@ var logFormat = logging.MustStringFormatter(
 )
 
 const (
-	defPollingPeriod = 200 * time.Millisecond
+	defPollingPeriod       = 200 * time.Millisecond
 	defAntiEntropyInterval = 10 * time.Second
 )
 
@@ -58,33 +59,34 @@ const (
 // new ledger block to be acquired by hyper ledger
 type GossipStateProviderImpl struct {
 	// The gossiping service
-	gossip     gossip.Gossip;
+	gossip gossip.Gossip
 
 	// Channel to read gossip messages from
-	gossipChan <- chan *proto.GossipMessage;
+	gossipChan <-chan *proto.GossipMessage
 
-	commChan   <- chan comm.ReceivedMessage;
+	commChan <-chan comm.ReceivedMessage
 
 	// Flag which signals for termination
-	stopFlag   int32;
+	stopFlag int32
 
-	mutex      sync.RWMutex;
+	mutex sync.RWMutex
 
 	// Queue of payloads which wasn't acquired yet
-	payloads   PayloadsBuffer;
+	payloads PayloadsBuffer
 
-	comm       comm.Comm;
+	comm comm.Comm
 
-	committer  committer.Committer;
+	committer committer.Committer
 
-	logger     *logging.Logger;
+	logger *logging.Logger
 
-	done       sync.WaitGroup;
+	done sync.WaitGroup
 }
 
 // NewGossipStateProvider creates initialized instance of gossip state provider
 func NewGossipStateProvider(g gossip.Gossip, c comm.Comm, committer committer.Committer) GossipStateProvider {
 	logger, _ := logging.GetLogger("GossipStateProvider")
+	logging.SetLevel(logging.DEBUG, logger.Module)
 
 	gossipChan := g.Accept(func(message interface{}) bool {
 		// Get only data messages
@@ -108,7 +110,7 @@ func NewGossipStateProvider(g gossip.Gossip, c comm.Comm, committer committer.Co
 
 	s := &GossipStateProviderImpl{
 		// Instance of the gossip
-		gossip : g,
+		gossip: g,
 
 		// Channel to read new messages from
 		gossipChan: gossipChan,
@@ -120,7 +122,7 @@ func NewGossipStateProvider(g gossip.Gossip, c comm.Comm, committer committer.Co
 		// Create a queue for payload received
 		payloads: NewPayloadsBuffer(height + 1),
 
-		comm : c,
+		comm: c,
 
 		committer: committer,
 
@@ -156,28 +158,27 @@ func (s *GossipStateProviderImpl) listen() {
 		// Do not block on waiting message from channel
 		// check each 500ms whenever is done indicates to
 		// finish
-		next:
-			select {
-			case msg := <-s.gossipChan:
-				{
-					s.logger.Debug("Received new message via gossip channel")
-					go s.queueNewMessage(msg)
-				}
-			case msg := <-s.commChan:
-				{
-					s.logger.Debug("Direct message ", msg)
-					go s.directMessage(msg)
-				}
-			case <-time.After(defPollingPeriod):
-				break next
+	next:
+		select {
+		case msg := <-s.gossipChan:
+			{
+				s.logger.Debug("Received new message via gossip channel")
+				go s.queueNewMessage(msg)
 			}
+		case msg := <-s.commChan:
+			{
+				go s.directMessage(msg)
+			}
+		case <-time.After(defPollingPeriod):
+			break next
+		}
 	}
 	s.logger.Debug("[XXX]: Stop listening for new messages")
 	s.done.Done()
 }
 
 func (s *GossipStateProviderImpl) directMessage(msg comm.ReceivedMessage) {
-	s.logger.Debugf("[ENTER] -> directMessage, ", msg)
+	s.logger.Debug("[ENTER] -> directMessage")
 	defer s.logger.Debug("[EXIT] ->  directMessage")
 
 	if msg == nil {
@@ -196,7 +197,7 @@ func (s *GossipStateProviderImpl) directMessage(msg comm.ReceivedMessage) {
 
 func (s *GossipStateProviderImpl) handleStateRequest(msg comm.ReceivedMessage) {
 	request := msg.GetGossipMessage().GetStateRequest()
-	response := &proto.RemoteStateResponse{Payloads:make([]*proto.Payload, 0)}
+	response := &proto.RemoteStateResponse{Payloads: make([]*proto.Payload, 0)}
 	for _, seqNum := range request.SeqNums {
 		s.logger.Debug("Reading block ", seqNum, " from the committer service")
 		blocks := s.committer.GetBlocks([]uint64{seqNum})
@@ -217,7 +218,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg comm.ReceivedMessage) {
 
 		response.Payloads = append(response.Payloads, &proto.Payload{
 			SeqNum: seqNum,
-			Data: blockBytes,
+			Data:   blockBytes,
 			// TODO: Check hash generation for given block from the ledger
 			Hash: "",
 		})
@@ -249,12 +250,13 @@ func (s *GossipStateProviderImpl) isDone() bool {
 func (s *GossipStateProviderImpl) Stop() {
 	atomic.StoreInt32(&s.stopFlag, 1)
 	s.done.Wait()
+	s.committer.Close()
 }
 
 // New message notification/handler
 func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
 	dataMsg := msg.GetDataMsg()
-	if (dataMsg != nil) {
+	if dataMsg != nil {
 		// Add new payload to ordered set
 		s.logger.Debugf("Received new payload with sequence number = [%d]", dataMsg.Payload.SeqNum)
 		s.payloads.Push(dataMsg.GetPayload())
@@ -265,29 +267,29 @@ func (s *GossipStateProviderImpl) queueNewMessage(msg *proto.GossipMessage) {
 
 func (s *GossipStateProviderImpl) deliverPayloads() {
 	for !s.isDone() {
-		next:
-			select {
-			// Wait for notification that next seq has arrived
-			case <-s.payloads.Ready():
-				{
-					s.logger.Debugf("Ready to transfer payloads to the ledger, next sequence number is = [%d]", s.payloads.Next())
-					// Collect all subsequent payloads
-					for payload := s.payloads.Pop(); payload != nil; payload = s.payloads.Pop() {
-						rawblock := &peer.Block2{}
-						if err := pb.Unmarshal(payload.Data, rawblock); err != nil {
-							s.logger.Errorf("Error getting block with seqNum = %d due to (%s)...dropping block\n", payload.SeqNum, err)
-							continue
-						}
-						s.logger.Debug("New block with sequence number ", payload.SeqNum, " is ", rawblock)
-
-						s.commitBlock(rawblock, payload.SeqNum)
+	next:
+		select {
+		// Wait for notification that next seq has arrived
+		case <-s.payloads.Ready():
+			{
+				s.logger.Debugf("Ready to transfer payloads to the ledger, next sequence number is = [%d]", s.payloads.Next())
+				// Collect all subsequent payloads
+				for payload := s.payloads.Pop(); payload != nil; payload = s.payloads.Pop() {
+					rawblock := &peer.Block2{}
+					if err := pb.Unmarshal(payload.Data, rawblock); err != nil {
+						s.logger.Errorf("Error getting block with seqNum = %d due to (%s)...dropping block\n", payload.SeqNum, err)
+						continue
 					}
-				}
-			case <-time.After(defPollingPeriod):
-				{
-					break next
+					s.logger.Debug("New block with sequence number ", payload.SeqNum, " transactions num ", len(rawblock.Transactions))
+
+					s.commitBlock(rawblock, payload.SeqNum)
 				}
 			}
+		case <-time.After(defPollingPeriod):
+			{
+				break next
+			}
+		}
 	}
 	s.logger.Debug("State provider has been stoped, finishing to push new blocks.")
 	s.done.Done()
@@ -295,7 +297,7 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 
 func (s *GossipStateProviderImpl) antiEntropy() {
 	checkPoint := time.Now()
-	for (!s.isDone()) {
+	for !s.isDone() {
 		time.Sleep(defPollingPeriod)
 		if time.Since(checkPoint).Nanoseconds() <= defAntiEntropyInterval.Nanoseconds() {
 			continue
@@ -306,21 +308,21 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 		max, _ := s.committer.LedgerHeight()
 
 		for _, p := range s.gossip.GetPeers() {
-			if state, err:= FromBytes(p.Metadata); err == nil {
+			if state, err := FromBytes(p.Metadata); err == nil {
 				if max < state.LedgerHeight {
 					max = state.LedgerHeight
 				}
 			}
 		}
 
-		if  current == max {
+		if current == max {
 			// No messages in the buffer or there are no gaps
 			s.logger.Debugf("Current ledger height is the same as ledger height on other peers.")
 			continue
 		}
 
-		s.logger.Debugf("Requesting new blocks in range [%d...%d].", current + 1, max)
-		s.requestBlocksInRange(uint64(current + 1), uint64(max))
+		s.logger.Debugf("Requesting new blocks in range [%d...%d].", current+1, max)
+		s.requestBlocksInRange(uint64(current+1), uint64(max))
 	}
 	s.logger.Debug("[XXX]: Stateprovider stopped, stoping anti entropy procedure.")
 	s.done.Done()
@@ -335,7 +337,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 		nodeMetadata, err := FromBytes(value.Metadata)
 		if err == nil {
 			if nodeMetadata.LedgerHeight >= end {
-				peers = append(peers, &comm.RemotePeer{Endpoint: value.Endpoint, PKIID:value.PKIid})
+				peers = append(peers, &comm.RemotePeer{Endpoint: value.Endpoint, PKIID: value.PKIid})
 			}
 		} else {
 			s.logger.Errorf("Unable to de-serialize node meta state, error = %s", err)
@@ -343,7 +345,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 	}
 
 	n := len(peers)
-	if (n == 0) {
+	if n == 0 {
 		s.logger.Warningf("There is not peer nodes to ask for missing blocks in range [%d, %d)", start, end)
 		return
 	}
@@ -356,7 +358,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 	}
 
 	for i := start; i <= end; i++ {
-		request.SeqNums = append(request.SeqNums, uint64(i));
+		request.SeqNums = append(request.SeqNums, uint64(i))
 	}
 
 	s.logger.Debug("[$$$$$$$$$$$$$$$$]: Sending direct request to complete missing blocks, ", request)

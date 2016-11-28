@@ -1,5 +1,6 @@
 ###############################################################################
 #
+#
 #    CLI section
 #
 ###############################################################################
@@ -99,6 +100,12 @@ peer:
     # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
     gomaxprocs: -1
     workers: 2
+
+    # Gossip related configuration
+    gossip:
+        boostrap: 0.0.0.0:7051
+        # For debug - is peer is its org leader and should pass blocks from orderer to other peers in org
+        orgLeader: true
 
     # Sync related configuration
     sync:
