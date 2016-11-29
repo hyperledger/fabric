@@ -77,6 +77,7 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 	blockStorageConf := fsblkstorage.NewConf(conf.blockStorageDir, conf.maxBlockfileSize)
 	blockStore := fsblkstorage.NewFsBlockStore(blockStorageConf, indexConfig)
 
+	var txmgmt txmgmt.TxMgr
 	if ledgerconfig.IsCouchDBEnabled() == true {
 		//By default we can talk to CouchDB with empty id and pw (""), or you can add your own id and password to talk to a secured CouchDB
 		logger.Debugf("===COUCHDB=== NewKVLedger() Using CouchDB instead of RocksDB...hardcoding and passing connection config for now")
@@ -84,18 +85,64 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 		couchDBDef := ledgerconfig.GetCouchDBDefinition()
 
 		//create new transaction manager based on couchDB
-		txmgmt := couchdbtxmgmt.NewCouchDBTxMgr(&couchdbtxmgmt.Conf{DBPath: conf.txMgrDBPath},
+		txmgmt = couchdbtxmgmt.NewCouchDBTxMgr(&couchdbtxmgmt.Conf{DBPath: conf.txMgrDBPath},
 			couchDBDef.URL,      //couchDB connection URL
 			"system",            //couchDB db name matches ledger name, TODO for now use system ledger, eventually allow passing in subledger name
 			couchDBDef.Username, //enter couchDB id here
 			couchDBDef.Password) //enter couchDB pw here
-		return &KVLedger{blockStore, txmgmt, nil}, nil
+	} else {
+		// Fall back to using RocksDB lockbased transaction manager
+		txmgmt = lockbasedtxmgmt.NewLockBasedTxMgr(&lockbasedtxmgmt.Conf{DBPath: conf.txMgrDBPath})
+	}
+	l := &KVLedger{blockStore, txmgmt, nil}
+
+	if err := recoverStateDB(l); err != nil {
+		panic(fmt.Errorf(`Error during state DB recovery:%s`, err))
 	}
 
-	// Fall back to using RocksDB lockbased transaction manager
-	txmgmt := lockbasedtxmgmt.NewLockBasedTxMgr(&lockbasedtxmgmt.Conf{DBPath: conf.txMgrDBPath})
-	return &KVLedger{blockStore, txmgmt, nil}, nil
+	return l, nil
 
+}
+
+//Recover the state database by recommitting last valid blocks
+func recoverStateDB(l *KVLedger) error {
+	//If there is no block in blockstorage, nothing to recover.
+	info, _ := l.blockStore.GetBlockchainInfo()
+	if info.Height == 0 {
+		return nil
+	}
+
+	//Getting savepointValue stored in the state DB
+	var err error
+	var savepointValue uint64
+	if savepointValue, err = l.txtmgmt.GetBlockNumFromSavepoint(); err != nil {
+		return err
+	}
+
+	//Checking whether the savepointValue is in sync with block storage height
+	if savepointValue == info.Height {
+		return nil
+	} else if savepointValue > info.Height {
+		return errors.New("BlockStorage height is behind savepoint by %d blocks. Recovery the BlockStore first")
+	}
+
+	//Compute updateSet for each missing savepoint and commit to state DB
+	for blockNumber := savepointValue + 1; blockNumber <= info.Height; blockNumber++ {
+		if l.pendingBlockToCommit, err = l.GetBlockByNumber(blockNumber); err != nil {
+			return err
+		}
+		logger.Debugf("Constructing updateSet for the block %d", blockNumber)
+		if _, _, err = l.txtmgmt.ValidateAndPrepare(l.pendingBlockToCommit, false); err != nil {
+			return err
+		}
+		logger.Debugf("Committing block %d to state database", blockNumber)
+		if err = l.txtmgmt.Commit(); err != nil {
+			return err
+		}
+	}
+	l.pendingBlockToCommit = nil
+
+	return nil
 }
 
 // GetTransactionByID retrieves a transaction by id
@@ -150,7 +197,7 @@ func (l *KVLedger) RemoveInvalidTransactionsAndPrepare(block *common.Block) (*co
 	var validBlock *common.Block
 	var invalidTxs []*pb.InvalidTransaction
 	var err error
-	validBlock, invalidTxs, err = l.txtmgmt.ValidateAndPrepare(block)
+	validBlock, invalidTxs, err = l.txtmgmt.ValidateAndPrepare(block, true)
 	if err == nil {
 		l.pendingBlockToCommit = validBlock
 	}

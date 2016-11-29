@@ -103,14 +103,23 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator() (ledger.TxSimulator, error) {
 }
 
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
-func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block) (*common.Block, []*pb.InvalidTransaction, error) {
-	logger.Debugf("New block arrived for validation:%#v", block)
+func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block, doMVCCValidation bool) (*common.Block, []*pb.InvalidTransaction, error) {
+	if doMVCCValidation == true {
+		logger.Debugf("New block arrived for validation:%#v", block)
+		logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
+	} else {
+		logger.Debugf("New block arrived for write set computation:%#v", block)
+		logger.Debugf("Computing write set for a block with [%d] transactions", len(block.Data.Data))
+	}
 	invalidTxs := []*pb.InvalidTransaction{}
 	var valid bool
 	txmgr.updateSet = newUpdateSet()
 	txmgr.blockNum = block.Header.Number
-	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
+
 	for txIndex, envBytes := range block.Data.Data {
+		//TODO: Process valid txs bitmap in block.BlockMetadata.Metadata and skip
+		//this transaction if found invalid.
+
 		// extract actions from the envelope message
 		respPayload, err := putils.GetActionFromEnvelope(envBytes)
 		if err != nil {
@@ -129,16 +138,24 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block) (*common.Bl
 		// trace the first 2000 characters of RWSet only, in case it is huge
 		if logger.IsEnabledFor(logging.DEBUG) {
 			txRWSetString := txRWSet.String()
+			operation := "validating"
+			if doMVCCValidation == false {
+				operation = "computing write set from"
+			}
 			if len(txRWSetString) < 2000 {
-				logger.Debugf("validating txRWSet:[%s]", txRWSetString)
+				logger.Debugf(operation+" txRWSet:[%s]", txRWSetString)
 			} else {
-				logger.Debugf("validating txRWSet:[%s...]", txRWSetString[0:2000])
+				logger.Debugf(operation+" txRWSet:[%s...]", txRWSetString[0:2000])
 			}
 		}
-
-		if valid, err = txmgr.validateTx(txRWSet); err != nil {
-			return nil, nil, err
+		if doMVCCValidation == true {
+			if valid, err = txmgr.validateTx(txRWSet); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			valid = true
 		}
+
 		//TODO add the validation info to the bitmap in the metadata of the block
 		if valid {
 			committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex+1))

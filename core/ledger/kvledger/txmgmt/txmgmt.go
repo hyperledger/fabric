@@ -26,7 +26,8 @@ import (
 type TxMgr interface {
 	NewQueryExecutor() (ledger.QueryExecutor, error)
 	NewTxSimulator() (ledger.TxSimulator, error)
-	ValidateAndPrepare(block *common.Block) (*common.Block, []*pb.InvalidTransaction, error)
+	ValidateAndPrepare(block *common.Block, doMVCCValidation bool) (*common.Block, []*pb.InvalidTransaction, error)
+	GetBlockNumFromSavepoint() (uint64, error)
 	Commit() error
 	Rollback()
 	Shutdown()
