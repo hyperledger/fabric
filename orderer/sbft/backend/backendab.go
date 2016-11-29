@@ -17,11 +17,55 @@ limitations under the License.
 package backend
 
 import (
-	"github.com/golang/protobuf/proto"
+	"bytes"
+
+	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
+	"github.com/hyperledger/fabric/orderer/common/policies"
+	"github.com/hyperledger/fabric/orderer/multichain"
+	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"github.com/golang/protobuf/proto"
 )
+
+type xxxMultichain struct {
+	chainID      []byte
+	chainSupport *xxxChainSupport
+}
+
+func (xxx *xxxMultichain) GetChain(id []byte) (multichain.ChainSupport, bool) {
+	if !bytes.Equal(id, xxx.chainID) {
+		return nil, false
+	}
+	return xxx.chainSupport, true
+}
+
+type xxxChainSupport struct {
+	reader rawledger.Reader
+}
+
+func (xxx *xxxChainSupport) ConfigManager() configtx.Manager {
+	panic("Unimplemented")
+}
+
+func (xxx *xxxChainSupport) PolicyManager() policies.Manager {
+	panic("Unimplemented")
+}
+
+func (xxx *xxxChainSupport) Filters() *broadcastfilter.RuleSet {
+	panic("Unimplemented")
+}
+
+func (xxx *xxxChainSupport) Reader() rawledger.Reader {
+	return xxx.reader
+}
+
+func (xxx *xxxChainSupport) Chain() multichain.Chain {
+	panic("Unimplemented")
+}
 
 type BackendAB struct {
 	backend       *Backend
@@ -29,9 +73,34 @@ type BackendAB struct {
 }
 
 func NewBackendAB(backend *Backend) *BackendAB {
+
+	// XXX All the code below is a hacky shim until sbft can be adapter to the new multichain interface
+	it, _ := backend.ledger.Iterator(ab.SeekInfo_OLDEST, 0)
+	block, status := it.Next()
+	if status != cb.Status_SUCCESS {
+		panic("Error getting a block from the ledger")
+	}
+	env := &cb.Envelope{}
+	err := proto.Unmarshal(block.Data.Data[0], env)
+	if err != nil {
+		panic(err)
+	}
+
+	payload := &cb.Payload{}
+	err = proto.Unmarshal(env.Payload, payload)
+	if err != nil {
+		panic(err)
+	}
+
+	manager := &xxxMultichain{
+		chainID:      payload.Header.ChainHeader.ChainID,
+		chainSupport: &xxxChainSupport{reader: backend.ledger},
+	}
+	// XXX End hackiness
+
 	bab := &BackendAB{
 		backend:       backend,
-		deliverserver: deliver.NewHandlerImpl(backend.ledger, 1000),
+		deliverserver: deliver.NewHandlerImpl(manager, 1000),
 	}
 	return bab
 }

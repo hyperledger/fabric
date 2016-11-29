@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
@@ -35,56 +35,68 @@ func init() {
 
 type consenter struct {
 	batchTimeout time.Duration
-	cutter       blockcutter.Receiver
+}
+
+type chain struct {
+	batchTimeout time.Duration
 	rl           rawledger.Writer
+	cutter       blockcutter.Receiver
 	sendChan     chan *cb.Envelope
 	exitChan     chan struct{}
 }
 
-func NewConsenter(batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *consenter {
-	bs := newPlainConsenter(batchSize, batchTimeout, rl, filters, configManager)
-	go bs.main()
-	return bs
+func New(batchTimeout time.Duration) multichain.Consenter {
+	return &consenter{
+		// TODO, ultimately this should come from the configManager at HandleChain
+		batchTimeout: batchTimeout,
+	}
 }
 
-func newPlainConsenter(batchSize int, batchTimeout time.Duration, rl rawledger.Writer, filters *broadcastfilter.RuleSet, configManager configtx.Manager) *consenter {
-	bs := &consenter{
-		cutter:       blockcutter.NewReceiverImpl(batchSize, filters, configManager),
+func (solo *consenter) HandleChain(configManager configtx.Manager, cutter blockcutter.Receiver, rl rawledger.Writer, metadata []byte) multichain.Chain {
+	return newChain(solo.batchTimeout, configManager, cutter, rl, metadata)
+}
+
+func newChain(batchTimeout time.Duration, configManager configtx.Manager, cutter blockcutter.Receiver, rl rawledger.Writer, metadata []byte) *chain {
+	return &chain{
 		batchTimeout: batchTimeout,
 		rl:           rl,
+		cutter:       cutter,
 		sendChan:     make(chan *cb.Envelope),
 		exitChan:     make(chan struct{}),
 	}
-	return bs
 }
 
-func (bs *consenter) halt() {
-	close(bs.exitChan)
+func (ch *chain) Start() {
+	go ch.main()
+}
+
+func (ch *chain) Halt() {
+	close(ch.exitChan)
 }
 
 // Enqueue accepts a message and returns true on acceptance, or false on shutdown
-func (bs *consenter) Enqueue(env *cb.Envelope) bool {
+func (ch *chain) Enqueue(env *cb.Envelope) bool {
 	select {
-	case bs.sendChan <- env:
+	case ch.sendChan <- env:
 		return true
-	case <-bs.exitChan:
+	case <-ch.exitChan:
 		return false
 	}
 }
 
-func (bs *consenter) main() {
+func (ch *chain) main() {
 	var timer <-chan time.Time
 
 	for {
 		select {
-		case msg := <-bs.sendChan:
-			batches, ok := bs.cutter.Ordered(msg)
+		case msg := <-ch.sendChan:
+			batches, ok := ch.cutter.Ordered(msg)
 			if ok && len(batches) == 0 && timer == nil {
-				timer = time.After(bs.batchTimeout)
+				timer = time.After(ch.batchTimeout)
 				continue
 			}
 			for _, batch := range batches {
-				bs.rl.Append(batch, nil)
+				ch.rl.Append(batch, nil)
 			}
 			if len(batches) > 0 {
 				timer = nil
@@ -93,14 +105,14 @@ func (bs *consenter) main() {
 			//clear the timer
 			timer = nil
 
-			batch := bs.cutter.Cut()
+			batch := ch.cutter.Cut()
 			if len(batch) == 0 {
 				logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
 				continue
 			}
 			logger.Debugf("Batch timer expired, creating block")
-			bs.rl.Append(batch, nil)
-		case <-bs.exitChan:
+			ch.rl.Append(batch, nil)
+		case <-ch.exitChan:
 			logger.Debugf("Exiting")
 			return
 		}

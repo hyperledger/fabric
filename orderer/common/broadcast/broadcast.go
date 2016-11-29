@@ -18,10 +18,11 @@ package broadcast
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
 
@@ -31,12 +32,6 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-// Target defines an interface which the broadcast handler will direct broadcasts to
-type Target interface {
-	// Enqueue accepts a message and returns true on acceptance, or false on shutdown
-	Enqueue(env *cb.Envelope) bool
-}
-
 // Handler defines an interface which handles broadcasts
 type Handler interface {
 	// Handle starts a service thread for a given gRPC connection and services the broadcast connection
@@ -44,21 +39,17 @@ type Handler interface {
 }
 
 type handlerImpl struct {
-	queueSize     int
-	target        Target
-	filters       *broadcastfilter.RuleSet
-	configManager configtx.Manager
-	exitChan      chan struct{}
+	queueSize int
+	ml        multichain.Manager
+	exitChan  chan struct{}
 }
 
 // NewHandlerImpl constructs a new implementation of the Handler interface
-func NewHandlerImpl(queueSize int, target Target, filters *broadcastfilter.RuleSet, configManager configtx.Manager) Handler {
+func NewHandlerImpl(queueSize int, ml multichain.Manager) Handler {
 	return &handlerImpl{
-		queueSize:     queueSize,
-		filters:       filters,
-		configManager: configManager,
-		target:        target,
-		exitChan:      make(chan struct{}),
+		queueSize: queueSize,
+		ml:        ml,
+		exitChan:  make(chan struct{}),
 	}
 }
 
@@ -70,15 +61,20 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 	return b.queueEnvelopes(srv)
 }
 
+type msgAndChainSupport struct {
+	msg          *cb.Envelope
+	chainSupport multichain.ChainSupport
+}
+
 type broadcaster struct {
 	bs    *handlerImpl
-	queue chan *cb.Envelope
+	queue chan *msgAndChainSupport
 }
 
 func newBroadcaster(bs *handlerImpl) *broadcaster {
 	b := &broadcaster{
 		bs:    bs,
-		queue: make(chan *cb.Envelope, bs.queueSize),
+		queue: make(chan *msgAndChainSupport, bs.queueSize),
 	}
 	return b
 }
@@ -86,9 +82,9 @@ func newBroadcaster(bs *handlerImpl) *broadcaster {
 func (b *broadcaster) drainQueue() {
 	for {
 		select {
-		case msg, ok := <-b.queue:
+		case msgAndChainSupport, ok := <-b.queue:
 			if ok {
-				if !b.bs.target.Enqueue(msg) {
+				if !msgAndChainSupport.chainSupport.Chain().Enqueue(msgAndChainSupport.msg) {
 					return
 				}
 			} else {
@@ -108,14 +104,27 @@ func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) err
 			return err
 		}
 
-		action, _ := b.bs.filters.Apply(msg)
+		payload := &cb.Payload{}
+		err = proto.Unmarshal(msg.Payload, payload)
+		if payload.Header == nil || payload.Header.ChainHeader == nil || payload.Header.ChainHeader.ChainID == nil {
+			logger.Debugf("Received malformed message, dropping connection")
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+		}
+
+		chainSupport, ok := b.bs.ml.GetChain(payload.Header.ChainHeader.ChainID)
+		if !ok {
+			// XXX Hook in chain creation logic here
+			panic("Unimplemented")
+		}
+
+		action, _ := chainSupport.Filters().Apply(msg)
 
 		switch action {
 		case broadcastfilter.Reconfigure:
 			fallthrough
 		case broadcastfilter.Accept:
 			select {
-			case b.queue <- msg:
+			case b.queue <- &msgAndChainSupport{msg: msg, chainSupport: chainSupport}:
 				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
 			default:
 				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})

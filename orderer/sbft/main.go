@@ -126,6 +126,7 @@ func serve(c flags) {
 	if err != nil {
 		panic(err)
 	}
+
 	_, ledger := fileledger.New(c.dataDir, genesisBlock)
 	s.backend, err = backend.NewBackend(config.Peers, conn, ledger, persist)
 	if err != nil {

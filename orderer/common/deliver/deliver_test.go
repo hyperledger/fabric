@@ -22,6 +22,11 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/policies"
+	"github.com/hyperledger/fabric/orderer/multichain"
+	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -30,6 +35,10 @@ import (
 )
 
 var genesisBlock *cb.Block
+
+var systemChainID = []byte("systemChain")
+
+const ledgerSize = 10
 
 func init() {
 	bootstrapper := static.New()
@@ -69,20 +78,63 @@ func (m *mockD) Recv() (*ab.DeliverUpdate, error) {
 	return msg, nil
 }
 
-func TestOldestSeek(t *testing.T) {
-	ledgerSize := 5
+type mockMultichainManager struct {
+	chains map[string]*mockChainSupport
+}
+
+func (mm *mockMultichainManager) GetChain(chainID []byte) (multichain.ChainSupport, bool) {
+	cs, ok := mm.chains[string(chainID)]
+	return cs, ok
+}
+
+type mockChainSupport struct {
+	ledger rawledger.ReadWriter
+}
+
+func (mcs *mockChainSupport) ConfigManager() configtx.Manager {
+	panic("Unimplemented")
+}
+
+func (mcs *mockChainSupport) PolicyManager() policies.Manager {
+	panic("Unimplemented")
+}
+
+func (mcs *mockChainSupport) Filters() *broadcastfilter.RuleSet {
+	panic("Unimplemented")
+}
+
+func (mcs *mockChainSupport) Reader() rawledger.Reader {
+	return mcs.ledger
+}
+
+func (mcs *mockChainSupport) Chain() multichain.Chain {
+	panic("Unimplemented")
+}
+
+func newMockMultichainManager() *mockMultichainManager {
 	_, rl := ramledger.New(ledgerSize, genesisBlock)
+	mm := &mockMultichainManager{
+		chains: make(map[string]*mockChainSupport),
+	}
+	mm.chains[string(systemChainID)] = &mockChainSupport{
+		ledger: rl,
+	}
+	return mm
+}
+
+func TestOldestSeek(t *testing.T) {
+	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(mm, MagicLargestWindow)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_OLDEST}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_OLDEST, ChainID: systemChainID}}}
 
 	count := 0
 	for {
@@ -102,19 +154,18 @@ func TestOldestSeek(t *testing.T) {
 }
 
 func TestNewestSeek(t *testing.T) {
-	ledgerSize := 5
-	_, rl := ramledger.New(ledgerSize, genesisBlock)
+	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(mm, MagicLargestWindow)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_NEWEST}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_NEWEST, ChainID: systemChainID}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -131,18 +182,18 @@ func TestNewestSeek(t *testing.T) {
 }
 
 func TestSpecificSeek(t *testing.T) {
-	ledgerSize := 5
-	_, rl := ramledger.New(ledgerSize, genesisBlock)
+	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
-	ds := NewHandlerImpl(rl, MagicLargestWindow)
+	defer close(m.recvChan)
+	ds := NewHandlerImpl(mm, MagicLargestWindow)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_NEWEST, ChainID: systemChainID}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -151,7 +202,7 @@ func TestSpecificSeek(t *testing.T) {
 		}
 
 		if blockReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
-			t.Fatalf("Expected only to get block 4")
+			t.Fatalf("Expected only the most recent block")
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -159,19 +210,18 @@ func TestSpecificSeek(t *testing.T) {
 }
 
 func TestBadSeek(t *testing.T) {
-	ledgerSize := 5
-	_, rl := ramledger.New(ledgerSize, genesisBlock)
+	mm := newMockMultichainManager()
 	for i := 1; i < 2*ledgerSize; i++ {
-		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(mm, MagicLargestWindow)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1)}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1), ChainID: systemChainID}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -182,7 +232,7 @@ func TestBadSeek(t *testing.T) {
 		t.Fatalf("Timed out waiting to get all blocks")
 	}
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(3 * ledgerSize)}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(3 * ledgerSize), ChainID: systemChainID}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -195,16 +245,15 @@ func TestBadSeek(t *testing.T) {
 }
 
 func TestBadWindow(t *testing.T) {
-	ledgerSize := 5
-	_, rl := ramledger.New(ledgerSize, genesisBlock)
+	mm := newMockMultichainManager()
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(mm, MagicLargestWindow)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow) * 2, Start: ab.SeekInfo_OLDEST}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow) * 2, Start: ab.SeekInfo_OLDEST, ChainID: systemChainID}}}
 
 	select {
 	case blockReply := <-m.sendChan:
@@ -217,20 +266,19 @@ func TestBadWindow(t *testing.T) {
 }
 
 func TestAck(t *testing.T) {
-	ledgerSize := 10
+	mm := newMockMultichainManager()
 	windowSize := uint64(2)
-	_, rl := ramledger.New(ledgerSize, genesisBlock)
 	for i := 1; i < ledgerSize; i++ {
-		rl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(rl, MagicLargestWindow)
+	ds := NewHandlerImpl(mm, MagicLargestWindow)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: windowSize, Start: ab.SeekInfo_OLDEST}}}
+	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: windowSize, Start: ab.SeekInfo_OLDEST, ChainID: systemChainID}}}
 
 	count := uint64(0)
 	for {

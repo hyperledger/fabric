@@ -24,6 +24,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
@@ -70,14 +71,16 @@ func (mcf *mockConfigFilter) Apply(msg *cb.Envelope) broadcastfilter.Action {
 	return broadcastfilter.Forward
 }
 
-func getFiltersAndConfig() (*broadcastfilter.RuleSet, *mockConfigManager) {
+func getEverything(batchSize int) (*mockConfigManager, blockcutter.Receiver, rawledger.ReadWriter) {
 	cm := &mockConfigManager{}
 	filters := broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
 		broadcastfilter.EmptyRejectRule,
 		&mockConfigFilter{cm},
 		broadcastfilter.AcceptRule,
 	})
-	return filters, cm
+	cutter := blockcutter.NewReceiverImpl(batchSize, filters, cm)
+	_, rl := ramledger.New(10, genesisBlock)
+	return cm, cutter, rl
 
 }
 
@@ -126,20 +129,19 @@ func (m *mockB) Recv() (*cb.Envelope, error) {
 }
 
 func TestEmptyBatch(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
-	_, rl := ramledger.New(10, genesisBlock)
-	bs := newPlainConsenter(1, time.Millisecond, rl, filters, cm)
+	cm, cutter, rl := getEverything(1)
+	bs := newChain(time.Millisecond, cm, cutter, rl, nil)
 	if bs.rl.(rawledger.Reader).Height() != 1 {
 		t.Fatalf("Expected no new blocks created")
 	}
 }
 
 func TestBatchTimer(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
 	batchSize := 2
-	_, rl := ramledger.New(10, genesisBlock)
-	bs := NewConsenter(batchSize, time.Millisecond, rl, filters, cm)
-	defer bs.halt()
+	cm, cutter, rl := getEverything(batchSize)
+	bs := newChain(time.Millisecond, cm, cutter, rl, nil)
+	bs.Start()
+	defer bs.Halt()
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
 
 	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
@@ -160,11 +162,11 @@ func TestBatchTimer(t *testing.T) {
 }
 
 func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
 	batchSize := 2
-	_, rl := ramledger.New(10, genesisBlock)
-	bs := NewConsenter(batchSize, time.Hour, rl, filters, cm)
-	defer bs.halt()
+	cm, cutter, rl := getEverything(batchSize)
+	bs := newChain(time.Millisecond, cm, cutter, rl, nil)
+	bs.Start()
+	defer bs.Halt()
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
 
 	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
@@ -189,11 +191,10 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 }
 
 func TestFilledBatch(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
 	batchSize := 2
+	cm, cutter, rl := getEverything(batchSize)
+	bs := newChain(time.Hour, cm, cutter, rl, nil)
 	messages := 10
-	_, rl := ramledger.New(10, genesisBlock)
-	bs := newPlainConsenter(batchSize, time.Hour, rl, filters, cm)
 	done := make(chan struct{})
 	go func() {
 		bs.main()
@@ -202,7 +203,7 @@ func TestFilledBatch(t *testing.T) {
 	for i := 0; i < messages; i++ {
 		bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
 	}
-	bs.halt()
+	bs.Halt()
 	<-done
 	expected := uint64(1 + messages/batchSize)
 	if bs.rl.(rawledger.Reader).Height() != expected {
@@ -211,10 +212,9 @@ func TestFilledBatch(t *testing.T) {
 }
 
 func TestReconfigureGoodPath(t *testing.T) {
-	filters, cm := getFiltersAndConfig()
 	batchSize := 2
-	_, rl := ramledger.New(10, genesisBlock)
-	bs := newPlainConsenter(batchSize, time.Hour, rl, filters, cm)
+	cm, cutter, rl := getEverything(batchSize)
+	bs := newChain(time.Hour, cm, cutter, rl, nil)
 	done := make(chan struct{})
 	go func() {
 		bs.main()
@@ -226,7 +226,7 @@ func TestReconfigureGoodPath(t *testing.T) {
 	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg2")}
 	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg3")}
 
-	bs.halt()
+	bs.Halt()
 	<-done
 	expected := uint64(4)
 	if bs.rl.(rawledger.Reader).Height() != expected {
