@@ -26,4 +26,5 @@ func (s *SBFT) maybeExecute() {
 	s.sys.Persist("execute", &s.cur.subject)
 
 	s.sendCheckpoint()
+	s.processBacklog()
 }

@@ -99,6 +99,7 @@ func (s *SBFT) handleCheckedPreprepare(pp *Preprepare) {
 	s.acceptPreprepare(pp)
 	if !s.isPrimary() {
 		s.sendPrepare()
+		s.processBacklog()
 	}
 
 	s.maybeSendCommit()
