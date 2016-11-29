@@ -86,8 +86,3 @@ func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
 		return nil, errors.New(jsonResp)
 	}
 }
-
-// Query is a noop
-func (t *SampleSysCC) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
-}

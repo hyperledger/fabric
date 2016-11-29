@@ -227,7 +227,7 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 		// Duplicate, return error
 		return newDuplicateChaincodeHandlerError(chaincodehandler)
 	}
-	//a placeholder, unregistered handler will be setup by query or transaction processing that comes
+	//a placeholder, unregistered handler will be setup by transaction processing that comes
 	//through via consensus. In this case we swap the handler and give it the notify channel
 	if chrte2 != nil {
 		chaincodehandler.readyNotify = chrte2.handler.readyNotify
@@ -241,7 +241,6 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 	//now we are ready to receive messages and send back responses
 	chaincodehandler.txCtxs = make(map[string]*transactionContext)
 	chaincodehandler.txidMap = make(map[string]bool)
-	chaincodehandler.isTransaction = make(map[string]bool)
 
 	chaincodeLogger.Debugf("registered handler complete for chaincode %s", key)
 
@@ -626,7 +625,7 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincod
 	if !ok {
 		chaincodeSupport.runningChaincodes.Unlock()
 		chaincodeLogger.Debugf("cannot execute-chaincode is not running: %s", chaincode)
-		return nil, fmt.Errorf("Cannot execute transaction or query for %s", chaincode)
+		return nil, fmt.Errorf("Cannot execute transaction for %s", chaincode)
 	}
 	chaincodeSupport.runningChaincodes.Unlock()
 

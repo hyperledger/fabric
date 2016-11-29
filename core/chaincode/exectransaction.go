@@ -27,7 +27,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-//Execute - execute transaction or a query
+//Execute - execute proposal
 func Execute(ctxt context.Context, chain *ChaincodeSupport, txid string, prop *pb.Proposal, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
 	var cds *pb.ChaincodeDeploymentSpec
@@ -78,7 +78,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, txid string, prop *p
 		resp, err := chain.Execute(ctxt, chaincode, ccMsg, timeout, prop)
 		if err != nil {
 			// Rollback transaction
-			return nil, nil, fmt.Errorf("Failed to execute transaction or query(%s)", err)
+			return nil, nil, fmt.Errorf("Failed to execute transaction (%s)", err)
 		} else if resp == nil {
 			// Rollback transaction
 			return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", txid)
@@ -93,7 +93,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, txid string, prop *p
 				return resp.Payload, resp.ChaincodeEvent, nil
 			} else if resp.Type == pb.ChaincodeMessage_ERROR {
 				// Rollback transaction
-				return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction or query returned with failure: %s", string(resp.Payload))
+				return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction returned with failure: %s", string(resp.Payload))
 			}
 			return resp.Payload, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", txid, resp.Type)
 		}

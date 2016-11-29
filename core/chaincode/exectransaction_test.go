@@ -46,7 +46,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// attributes to request in the batch of tcerts while deploying, invoking or querying
+// attributes to request in the batch of tcerts while deploying, invoking
 var attributes = []string{"company", "position"}
 
 func getNowMillis() int64 {
@@ -269,7 +269,7 @@ func deploy2(ctx context.Context, chaincodeDeploymentSpec *pb.ChaincodeDeploymen
 	return b, nil
 }
 
-// Invoke or query a chaincode.
+// Invoke a chaincode.
 func invoke(ctx context.Context, spec *pb.ChaincodeSpec) (ccevt *pb.ChaincodeEvent, uuid string, retval []byte, err error) {
 	chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 

@@ -79,14 +79,11 @@ type Handler struct {
 	chaincodeSupport *ChaincodeSupport
 	registered       bool
 	readyNotify      chan bool
-	// Map of tx txid to either invoke or query tx. Each tx will be
+	// Map of tx txid to either invoke tx. Each tx will be
 	// added prior to execute and remove when done execute
 	txCtxs map[string]*transactionContext
 
 	txidMap map[string]bool
-
-	// Track which TXIDs are queries; Although the shim maintains this, it cannot be trusted.
-	isTransaction map[string]bool
 
 	// used to do Send after making sure the state transition is complete
 	nextState chan *nextStateInfo
@@ -159,8 +156,8 @@ func (handler *Handler) deleteRangeQueryIterator(txContext *transactionContext, 
 	delete(txContext.rangeQueryIteratorMap, txid)
 }
 
-//THIS CAN BE REMOVED ONCE WE FULL SUPPORT (Invoke and Query) CONFIDENTIALITY WITH CC-CALLING-CC
-//Only invocation are allowed, not queries
+//THIS CAN BE REMOVED ONCE WE FULL SUPPORT (Invoke) CONFIDENTIALITY WITH CC-CALLING-CC
+//Only invocation are allowed
 func (handler *Handler) canCallChaincode(txid string, isQuery bool) *pb.ChaincodeMessage {
 	var errMsg string
 	txctx := handler.getTxContext(txid)
@@ -392,34 +389,6 @@ func (handler *Handler) deleteTXIDEntry(txid string) {
 	}
 }
 
-// markIsTransaction marks a TXID as a transaction or a query; true = transaction, false = query
-func (handler *Handler) markIsTransaction(txid string, isTrans bool) bool {
-	handler.Lock()
-	defer handler.Unlock()
-	if handler.isTransaction == nil {
-		return false
-	}
-	handler.isTransaction[txid] = isTrans
-	return true
-}
-
-func (handler *Handler) getIsTransaction(txid string) bool {
-	handler.Lock()
-	defer handler.Unlock()
-	if handler.isTransaction == nil {
-		return false
-	}
-	return handler.isTransaction[txid]
-}
-
-func (handler *Handler) deleteIsTransaction(txid string) {
-	handler.Lock()
-	defer handler.Unlock()
-	if handler.isTransaction != nil {
-		delete(handler.isTransaction, txid)
-	}
-}
-
 func (handler *Handler) notifyDuringStartup(val bool) {
 	//if USER_RUNS_CC readyNotify will be nil
 	if handler.readyNotify != nil {
@@ -479,7 +448,7 @@ func (handler *Handler) notify(msg *pb.ChaincodeMessage) {
 	}
 }
 
-// beforeCompletedEvent is invoked when chaincode has completed execution of init, invoke or query.
+// beforeCompletedEvent is invoked when chaincode has completed execution of init, invoke.
 func (handler *Handler) beforeCompletedEvent(e *fsm.Event, state string) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
@@ -872,14 +841,6 @@ func (handler *Handler) afterInvokeChaincode(e *fsm.Event, state string) {
 func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 	go func() {
 		msg, _ := e.Args[0].(*pb.ChaincodeMessage)
-		// First check if this TXID is a transaction; error otherwise
-		if !handler.getIsTransaction(msg.Txid) {
-			payload := []byte(fmt.Sprintf("Cannot handle %s in query context", msg.Type.String()))
-			chaincodeLogger.Debugf("[%s]Cannot handle %s in query context. Sending %s", shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_ERROR)
-			errMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
-			handler.triggerNextState(errMsg, true)
-			return
-		}
 
 		chaincodeLogger.Debugf("[%s]state is %s", shorttxid(msg.Txid), state)
 		// Check if this is the unique request from this chaincode txid
@@ -1001,8 +962,6 @@ func (handler *Handler) enterInitState(e *fsm.Event, state string) {
 	chaincodeLogger.Debugf("[%s]Entered state %s", shorttxid(ccMsg.Txid), state)
 	//very first time entering init state from established, send message to chaincode
 	if ccMsg.Type == pb.ChaincodeMessage_INIT {
-		// Mark isTransaction to allow put/del state and invoke other chaincodes
-		handler.markIsTransaction(ccMsg.Txid, true)
 		if err := handler.serialSend(ccMsg); err != nil {
 			errMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(fmt.Sprintf("Error sending %s: %s", pb.ChaincodeMessage_INIT, err)), Txid: ccMsg.Txid}
 			handler.notify(errMsg)
@@ -1013,7 +972,6 @@ func (handler *Handler) enterInitState(e *fsm.Event, state string) {
 func (handler *Handler) enterReadyState(e *fsm.Event, state string) {
 	// Now notify
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
-	handler.deleteIsTransaction(msg.Txid)
 	if !ok {
 		e.Cancel(fmt.Errorf("Received unexpected message type"))
 		return
@@ -1026,7 +984,6 @@ func (handler *Handler) enterEndState(e *fsm.Event, state string) {
 	defer handler.deregister()
 	// Now notify
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
-	handler.deleteIsTransaction(msg.Txid)
 	if !ok {
 		e.Cancel(fmt.Errorf("Received unexpected message type"))
 		return
@@ -1083,107 +1040,11 @@ func (handler *Handler) initOrReady(ctxt context.Context, txid string, prop *pb.
 	return notfy, nil
 }
 
-// Handles request to query another chaincode
-func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
-	go func() {
-		// Check if this is the unique request from this chaincode txid
-		uniqueReq := handler.createTXIDEntry(msg.Txid)
-		if !uniqueReq {
-			// Drop this request
-			chaincodeLogger.Debugf("[%s]Another request pending for this Txid. Cannot process.", shorttxid(msg.Txid))
-			return
-		}
-
-		var serialSendMsg *pb.ChaincodeMessage
-
-		defer func() {
-			handler.deleteTXIDEntry(msg.Txid)
-			handler.serialSend(serialSendMsg)
-		}()
-
-		//check and prohibit C-call-C for CONFIDENTIAL txs
-		if serialSendMsg = handler.canCallChaincode(msg.Txid, true); serialSendMsg != nil {
-			return
-		}
-
-		chaincodeSpec := &pb.ChaincodeSpec{}
-		unmarshalErr := proto.Unmarshal(msg.Payload, chaincodeSpec)
-		if unmarshalErr != nil {
-			payload := []byte(unmarshalErr.Error())
-			chaincodeLogger.Debugf("[%s]Unable to decipher payload. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
-			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
-			return
-		}
-
-		// Get the chaincodeID to invoke
-		newChaincodeID := chaincodeSpec.ChaincodeID.Name
-
-		// Create the invocation spec
-		chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
-
-		txContext := handler.getTxContext(msg.Txid)
-		ctxt := context.Background()
-		ctxt = context.WithValue(ctxt, TXSimulatorKey, txContext.txsimulator)
-
-		// Launch the new chaincode if not already running
-		_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, msg.Txid, txContext.proposal, chaincodeInvocationSpec)
-		if launchErr != nil {
-			payload := []byte(launchErr.Error())
-			chaincodeLogger.Debugf("[%s]Failed to launch invoked chaincode. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
-			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
-			return
-		}
-
-		// TODO: Need to handle timeout correctly
-		timeout := time.Duration(30000) * time.Millisecond
-
-		//queries are all invokes
-		ccMsg, _ := createTransactionMessage(msg.Txid, chaincodeInput)
-
-		// Query the chaincode
-		//NOTE: when confidential C-call-C is understood, transaction should have the correct sec context for enc/dec
-		response, execErr := handler.chaincodeSupport.Execute(ctxt, newChaincodeID, ccMsg, timeout, txContext.proposal)
-
-		if execErr != nil {
-			// Send error msg back to chaincode and trigger event
-			payload := []byte(execErr.Error())
-			chaincodeLogger.Debugf("[%s]Failed to handle %s. Sending %s", shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_ERROR)
-			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
-			return
-		}
-
-		// Send response msg back to chaincode.
-
-		//this is need to send the payload directly to calling chaincode without
-		//interpreting (in particular, don't look for errors)
-		if respBytes, err := proto.Marshal(response); err != nil {
-			chaincodeLogger.Errorf("[%s]Error marshaling response. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
-			payload := []byte(execErr.Error())
-			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
-		} else {
-			chaincodeLogger.Debugf("[%s]Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_RESPONSE)
-			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: respBytes, Txid: msg.Txid}
-		}
-	}()
-}
-
 // HandleMessage implementation of MessageHandler interface.  Peer's handling of Chaincode messages.
 func (handler *Handler) HandleMessage(msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debugf("[%s]Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 
 	if handler.FSM.Cannot(msg.Type.String()) {
-		// Check if this is a request from validator in query context
-		if msg.Type.String() == pb.ChaincodeMessage_PUT_STATE.String() || msg.Type.String() == pb.ChaincodeMessage_DEL_STATE.String() || msg.Type.String() == pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
-			// Check if this TXID is a transaction
-			if !handler.getIsTransaction(msg.Txid) {
-				payload := []byte(fmt.Sprintf("[%s]Cannot handle %s in query context", msg.Txid, msg.Type.String()))
-				chaincodeLogger.Errorf("[%s]Cannot handle %s in query context. Sending %s", msg.Txid, msg.Type.String(), pb.ChaincodeMessage_ERROR)
-				errMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
-				handler.serialSend(errMsg)
-				return fmt.Errorf("Cannot handle %s in query context", msg.Type.String())
-			}
-		}
-
 		// Other errors
 		return fmt.Errorf("[%s]Chaincode handler validator FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type.String(), len(msg.Payload), handler.FSM.Current())
 	}
@@ -1223,9 +1084,7 @@ func (handler *Handler) sendExecuteMessage(ctxt context.Context, msg *pb.Chainco
 		return nil, err
 	}
 
-	// Mark TXID as either transaction or query
 	chaincodeLogger.Debugf("[%s]Inside sendExecuteMessage. Message %s", shorttxid(msg.Txid), msg.Type.String())
-	handler.markIsTransaction(msg.Txid, true)
 
 	//if security is disabled the context elements will just be nil
 	if err := handler.setChaincodeProposal(prop, msg); err != nil {
