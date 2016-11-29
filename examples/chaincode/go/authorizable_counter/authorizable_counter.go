@@ -35,12 +35,8 @@ func (t *AuthorizableCounterChaincode) Init(stub shim.ChaincodeStubInterface) ([
 	return nil, err
 }
 
-//Invoke Transaction makes increment counter
-func (t *AuthorizableCounterChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, _ := stub.GetFunctionAndParameters()
-	if function != "increment" {
-		return nil, errors.New("Invalid invoke function name. Expecting \"increment\"")
-	}
+//Invoke makes increment counter
+func (t *AuthorizableCounterChaincode) increment(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	val, err := stub.ReadCertAttribute("position")
 	fmt.Printf("Position => %v error %v \n", string(val), err)
 	isOk, _ := stub.VerifyAttribute("position", []byte("Software Engineer")) // Here the ABAC API is called to verify the attribute, just if the value is verified the counter will be incremented.
@@ -62,12 +58,7 @@ func (t *AuthorizableCounterChaincode) Invoke(stub shim.ChaincodeStubInterface) 
 
 }
 
-// Query callback representing the query of a chaincode
-func (t *AuthorizableCounterChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, _ := stub.GetFunctionAndParameters()
-	if function != "read" {
-		return nil, errors.New("Invalid query function name. Expecting \"read\"")
-	}
+func (t *AuthorizableCounterChaincode) read(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 
 	// Get the state from the ledger
@@ -85,6 +76,20 @@ func (t *AuthorizableCounterChaincode) Query(stub shim.ChaincodeStubInterface) (
 	jsonResp := "{\"Name\":\"counter\",\"Amount\":\"" + string(Avalbytes) + "\"}"
 	fmt.Printf("Query Response:%s\n", jsonResp)
 	return Avalbytes, nil
+}
+
+// Invoke  method is the interceptor of all invocation transactions, its job is to direct
+// invocation transactions to intended APIs
+func (t *AuthorizableCounterChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+	function, args := stub.GetFunctionAndParameters()
+
+	//	 Handle different functions
+	if function == "increment" {
+		return t.increment(stub, args)
+	} else if function == "read" {
+		return t.read(stub, args)
+	}
+	return nil, errors.New("Received unknown function invocation, Expecting \"increment\" \"read\"")
 }
 
 func main() {

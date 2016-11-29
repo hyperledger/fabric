@@ -106,13 +106,13 @@ func TestExample04_Invoke(t *testing.T) {
 	checkInit(t, stub, [][]byte{[]byte("init"), []byte("Event"), []byte("1")})
 
 	// Invoke A->B for 10 via Example04's chaincode
-	checkInvoke(t, stub, [][]byte{[]byte(chaincodeToInvoke), []byte("Event"), []byte("1")})
+	checkInvoke(t, stub, [][]byte{[]byte("invoke"), []byte(chaincodeToInvoke), []byte("Event"), []byte("1")})
 	checkQuery(t, stub, "Event", eventResponse)
 	checkQuery(t, stubEx2, "a", "101")
 	checkQuery(t, stubEx2, "b", "232")
 
 	// Invoke A->B for 10 via Example04's chaincode
-	checkInvoke(t, stub, [][]byte{[]byte(chaincodeToInvoke), []byte("Event"), []byte("1")})
+	checkInvoke(t, stub, [][]byte{[]byte("invoke"), []byte(chaincodeToInvoke), []byte("Event"), []byte("1")})
 	checkQuery(t, stub, "Event", eventResponse)
 	checkQuery(t, stubEx2, "a", "91")
 	checkQuery(t, stubEx2, "b", "242")

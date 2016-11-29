@@ -73,17 +73,6 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 
 		return nil, nil
 
-	default:
-		return nil, errors.New("Unsupported operation")
-	}
-
-}
-
-// Query callback representing the query of a chaincode
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
-	switch function {
-
 	case "getTran":
 
 		if len(args) < 1 {

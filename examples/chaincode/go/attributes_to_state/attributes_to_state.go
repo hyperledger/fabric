@@ -58,21 +58,17 @@ func (t *Attributes2State) Init(stub shim.ChaincodeStubInterface) ([]byte, error
 	return nil, nil
 }
 
-// Invoke takes two arguements, a key and value, and stores these in the state
 func (t *Attributes2State) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	function, args := stub.GetFunctionAndParameters()
 	if function == "delete" {
 		return nil, t.delete(stub, args)
+	} else if function == "submit" {
+		return nil, t.setStateToAttributes(stub, args)
+	} else if function == "read" {
+		return t.query(stub, args)
 	}
 
-	if function != "submit" {
-		return nil, errors.New("Invalid invoke function name. Expecting either \"delete\" or \"submit\"")
-	}
-	err := t.setStateToAttributes(stub, args)
-	if err != nil {
-		return nil, err
-	}
-	return nil, nil
+	return nil, errors.New("Invalid invoke function name. Expecting either \"delete\" or \"submit\" or \"read\"")
 }
 
 // delete Deletes an entity from the state, returning error if the entity was not found in the state.
@@ -106,12 +102,7 @@ func (t *Attributes2State) delete(stub shim.ChaincodeStubInterface, args []strin
 	return nil
 }
 
-// Query callback representing the query of a chaincode
-func (t *Attributes2State) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	function, args := stub.GetFunctionAndParameters()
-	if function != "read" {
-		return nil, errors.New("Invalid query function name. Expecting \"read\"")
-	}
+func (t *Attributes2State) query(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var attributeName string // Name of the attributeName to query.
 	var err error
 

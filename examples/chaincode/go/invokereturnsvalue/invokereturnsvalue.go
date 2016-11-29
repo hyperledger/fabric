@@ -131,11 +131,6 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 	return []byte(fmt.Sprintf("{%d,%d}", Aval, Bval)), nil
 }
 
-// Query callback representing the query of a chaincode. Not used in 1.0 (remove when interface is removed)
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
-}
-
 func main() {
 	err := shim.Start(new(SimpleChaincode))
 	if err != nil {
