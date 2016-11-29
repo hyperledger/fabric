@@ -17,6 +17,8 @@ It has these top-level messages:
 	DeliverResponse
 	ConsensusType
 	BatchSize
+	CreationPolicy
+	ChainCreators
 */
 package orderer
 

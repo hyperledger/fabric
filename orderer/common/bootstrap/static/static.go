@@ -47,6 +47,14 @@ const (
 
 	// DefaultConsensusType is the default value of ConsensusTypeKey
 	DefaultConsensusType = "solo"
+
+	// AcceptAllPolicyKey is the key of the AcceptAllPolicy
+	AcceptAllPolicyKey = "AcceptAllPolicy"
+)
+
+var (
+	// DefaultChainCreators is the default value of ChainCreatorsKey
+	DefaultChainCreators = []string{AcceptAllPolicyKey}
 )
 
 // New returns a new static bootstrap helper.
@@ -78,6 +86,26 @@ func (b *bootstrapper) encodeBatchSize() *cb.SignedConfigurationItem {
 	return &cb.SignedConfigurationItem{ConfigurationItem: utils.MarshalOrPanic(configItem), Signatures: nil}
 }
 
+func (b *bootstrapper) encodeChainCreators() *cb.SignedConfigurationItem {
+	configItemKey := sharedconfig.ChainCreatorsKey
+	configItemValue := utils.MarshalOrPanic(&ab.ChainCreators{Policies: DefaultChainCreators})
+	modPolicy := configtx.DefaultModificationPolicyID
+
+	configItemChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, b.chainID, b.epoch)
+	configItem := utils.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Orderer, b.lastModified, modPolicy, configItemKey, configItemValue)
+	return &cb.SignedConfigurationItem{ConfigurationItem: utils.MarshalOrPanic(configItem), Signatures: nil}
+}
+
+func (b *bootstrapper) encodeAcceptAllPolicy() *cb.SignedConfigurationItem {
+	configItemKey := AcceptAllPolicyKey
+	configItemValue := utils.MarshalOrPanic(utils.MakePolicyOrPanic(cauthdsl.AcceptAllPolicy))
+	modPolicy := configtx.DefaultModificationPolicyID
+
+	configItemChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, b.chainID, b.epoch)
+	configItem := utils.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Policy, b.lastModified, modPolicy, configItemKey, configItemValue)
+	return &cb.SignedConfigurationItem{ConfigurationItem: utils.MarshalOrPanic(configItem), Signatures: nil}
+}
+
 func (b *bootstrapper) lockDefaultModificationPolicy() *cb.SignedConfigurationItem {
 	// Lock down the default modification policy to prevent any further policy modifications
 	configItemKey := configtx.DefaultModificationPolicyID
@@ -96,6 +124,8 @@ func (b *bootstrapper) GenesisBlock() (*cb.Block, error) {
 	configEnvelope := utils.MakeConfigurationEnvelope(
 		b.encodeConsensusType(),
 		b.encodeBatchSize(),
+		b.encodeChainCreators(),
+		b.encodeAcceptAllPolicy(),
 		b.lockDefaultModificationPolicy(),
 	)
 	payloadChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, configItemChainHeader.Version, b.chainID, b.epoch)
