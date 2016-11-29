@@ -18,30 +18,65 @@ package bccsp
 
 const (
 	// ECDSA Elliptic Curve Digital Signature Algorithm (key gen, import, sign, verify),
-	// at default security level (see primitives package).
+	// at default security level.
+	// Each BCCSP may or may not support default security level. If not supported than
+	// an error will be returned.
 	ECDSA = "ECDSA"
+
+	// ECDSA Elliptic Curve Digital Signature Algorithm over P-256 curve
+	ECDSAP256 = "ECDSAP256"
+
+	// ECDSA Elliptic Curve Digital Signature Algorithm over P-384 curve
+	ECDSAP384 = "ECDSAP384"
+
 	// ECDSAReRand ECDSA key re-randomization
 	ECDSAReRand = "ECDSA_RERAND"
 
-	// RSA at default security level (see primitives package)
+	// RSA at the default security level.
+	// Each BCCSP may or may not support default security level. If not supported than
+	// an error will be returned.
 	RSA = "RSA"
+	// RSA at 1024 bit security level.
+	RSA1024 = "RSA1024"
+	// RSA at 2048 bit security level.
+	RSA2048 = "RSA2048"
+	// RSA at 3072 bit security level.
+	RSA3072 = "RSA3072"
+	// RSA at 4096 bit security level.
+	RSA4096 = "RSA4096"
 
-	// AES Advanced Encryption Standard at default security level (see primitives package)
+	// AES Advanced Encryption Standard at the default security level.
+	// Each BCCSP may or may not support default security level. If not supported than
+	// an error will be returned.
 	AES = "AES"
+	// AES Advanced Encryption Standard at 128 bit security level
+	AES128 = "AES128"
+	// AES Advanced Encryption Standard at 192 bit security level
+	AES192 = "AES192"
+	// AES Advanced Encryption Standard at 256 bit security level
+	AES256 = "AES256"
 
 	// HMAC keyed-hash message authentication code
 	HMAC = "HMAC"
 	// HMACTruncated256 HMAC truncated at 256 bits.
 	HMACTruncated256 = "HMAC_TRUNCATED_256"
 
-	// SHA Secure Hash Algorithm using default family (see primitives package)
+	// SHA Secure Hash Algorithm using default family.
+	// Each BCCSP may or may not support default security level. If not supported than
+	// an error will be returned.
 	SHA = "SHA"
 
-	// X509Certificate Label for X509 certificate realted operation
-	X509Certificate = "X509Certificate"
+	// SHA256
+	SHA256 = "SHA256"
+	// SHA384
+	SHA384 = "SHA384"
+	// SHA3_256
+	SHA3_256 = "SHA3_256"
+	// SHA3_384
+	SHA3_384 = "SHA3_384"
 
-	// DefaultHash is the identifier for the default hash function (see primitives package)
-	DefaultHash = "DEFAULT_HASH"
+	// X509Certificate Label for X509 certificate related operation
+	X509Certificate = "X509Certificate"
 )
 
 // ECDSAKeyGenOpts contains options for ECDSA key generation.
@@ -49,8 +84,7 @@ type ECDSAKeyGenOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key generation algorithm identifier (to be used).
 func (opts *ECDSAKeyGenOpts) Algorithm() string {
 	return ECDSA
 }
@@ -66,8 +100,7 @@ type ECDSAPKIXPublicKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key importation algorithm identifier (to be used).
 func (opts *ECDSAPKIXPublicKeyImportOpts) Algorithm() string {
 	return ECDSA
 }
@@ -84,8 +117,7 @@ type ECDSAPrivateKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key importation algorithm identifier (to be used).
 func (opts *ECDSAPrivateKeyImportOpts) Algorithm() string {
 	return ECDSA
 }
@@ -101,8 +133,7 @@ type ECDSAGoPublicKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key importation algorithm identifier (to be used).
 func (opts *ECDSAGoPublicKeyImportOpts) Algorithm() string {
 	return ECDSA
 }
@@ -119,8 +150,7 @@ type ECDSAReRandKeyOpts struct {
 	Expansion []byte
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key derivation algorithm identifier (to be used).
 func (opts *ECDSAReRandKeyOpts) Algorithm() string {
 	return ECDSAReRand
 }
@@ -136,13 +166,12 @@ func (opts *ECDSAReRandKeyOpts) ExpansionValue() []byte {
 	return opts.Expansion
 }
 
-// AES256KeyGenOpts contains options for AES256 key generation.
+// AESKeyGenOpts contains options for AES key generation at default security level
 type AESKeyGenOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key generation algorithm identifier (to be used).
 func (opts *AESKeyGenOpts) Algorithm() string {
 	return AES
 }
@@ -164,8 +193,7 @@ type HMACTruncated256AESDeriveKeyOpts struct {
 	Arg       []byte
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key derivation algorithm identifier (to be used).
 func (opts *HMACTruncated256AESDeriveKeyOpts) Algorithm() string {
 	return HMACTruncated256
 }
@@ -187,8 +215,7 @@ type HMACDeriveKeyOpts struct {
 	Arg       []byte
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key derivation algorithm identifier (to be used).
 func (opts *HMACDeriveKeyOpts) Algorithm() string {
 	return HMAC
 }
@@ -209,8 +236,7 @@ type AES256ImportKeyOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to import the raw material of a key.
+// Algorithm returns the key importation algorithm identifier (to be used).
 func (opts *AES256ImportKeyOpts) Algorithm() string {
 	return AES
 }
@@ -226,8 +252,7 @@ type HMACImportKeyOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to import the raw material of a key.
+// Algorithm returns the key importation algorithm identifier (to be used).
 func (opts *HMACImportKeyOpts) Algorithm() string {
 	return HMAC
 }
@@ -242,8 +267,7 @@ func (opts *HMACImportKeyOpts) Ephemeral() bool {
 type SHAOpts struct {
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to hash.
+// Algorithm returns the hash algorithm identifier (to be used).
 func (opts *SHAOpts) Algorithm() string {
 	return SHA
 }
@@ -253,8 +277,7 @@ type RSAKeyGenOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key generation algorithm identifier (to be used).
 func (opts *RSAKeyGenOpts) Algorithm() string {
 	return RSA
 }
@@ -270,8 +293,7 @@ type RSAGoPublicKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key importation algorithm identifier (to be used).
 func (opts *RSAGoPublicKeyImportOpts) Algorithm() string {
 	return RSA
 }
@@ -287,8 +309,7 @@ type X509PublicKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns an identifier for the algorithm to be used
-// to generate a key.
+// Algorithm returns the key importation algorithm identifier (to be used).
 func (opts *X509PublicKeyImportOpts) Algorithm() string {
 	return X509Certificate
 }
