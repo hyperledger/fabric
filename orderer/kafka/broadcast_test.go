@@ -17,45 +17,14 @@ limitations under the License.
 package kafka
 
 import (
-	"bytes"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
-
-func TestBroadcastInit(t *testing.T) {
-	disk := make(chan []byte)
-
-	mb := mockNewBroadcaster(t, testConf, oldestOffset, disk)
-	defer testClose(t, mb)
-
-	mbs := newMockBroadcastStream(t)
-	go func() {
-		if err := mb.Broadcast(mbs); err != nil {
-			t.Fatal("Broadcast error:", err)
-		}
-	}()
-
-	for {
-		select {
-		case in := <-disk:
-			block := new(cb.Block)
-			err := proto.Unmarshal(in, block)
-			if err != nil {
-				t.Fatal("Expected a block on the broker's disk")
-			}
-			if !(bytes.Equal(block.Data.Data[0], []byte("checkpoint"))) {
-				t.Fatal("Expected first block to be a checkpoint")
-			}
-			return
-		case <-time.After(500 * time.Millisecond):
-			t.Fatal("Should have received the initialization block by now")
-		}
-	}
-}
 
 func TestBroadcastResponse(t *testing.T) {
 	disk := make(chan []byte)
@@ -69,8 +38,6 @@ func TestBroadcastResponse(t *testing.T) {
 			t.Fatal("Broadcast error:", err)
 		}
 	}()
-
-	<-disk // We tested the checkpoint block in a previous test, so we can ignore it now
 
 	// Send a message to the orderer
 	go func() {
@@ -102,8 +69,6 @@ func TestBroadcastBatch(t *testing.T) {
 			t.Fatal("Broadcast error:", err)
 		}
 	}()
-
-	<-disk // We tested the checkpoint block in a previous test, so we can ignore it now
 
 	// Pump a batch's worth of messages into the system
 	go func() {
@@ -158,8 +123,6 @@ func TestBroadcastBatch(t *testing.T) {
 		}
 	}()
 
-	<-disk // We tested the checkpoint block in a previous test, so we can ignore it now
-
 	// Force the response queue to overflow by blocking the broadcast stream's Send() method
 	mbs.closed = true
 	defer func() { mbs.closed = false }()
@@ -201,8 +164,6 @@ func TestBroadcastIncompleteBatch(t *testing.T) {
 		}
 	}()
 
-	<-disk // We tested the checkpoint block in a previous test, so we can ignore it now
-
 	// Pump less than batchSize messages into the system
 	go func() {
 		for i := 0; i < messageCount; i++ {
@@ -239,6 +200,8 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 		t.Skip("Skipping test as it requires a batchsize > 1")
 	}
 
+	var once sync.Once
+
 	messageCount := int(testConf.General.BatchSize) - 1
 
 	disk := make(chan []byte)
@@ -254,8 +217,6 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 	}()
 
 	for i := 0; i < 2; i++ {
-		<-disk // Checkpoint block in first pass, first incomplete block in second pass -- both tested elsewhere
-
 		// Pump less than batchSize messages into the system
 		go func() {
 			for i := 0; i < messageCount; i++ {
@@ -268,6 +229,10 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 		for i := 0; i < messageCount; i++ {
 			<-mbs.outgoing
 		}
+
+		once.Do(func() {
+			<-disk // First incomplete block, tested elsewhere
+		})
 	}
 
 	for {
@@ -300,8 +265,6 @@ func TestBroadcastBatchAndQuitEarly(t *testing.T) {
 			t.Fatal("Broadcast error:", err)
 		}
 	}()
-
-	<-disk // We tested the checkpoint block in a previous test, so we can ignore it now
 
 	// Pump a batch's worth of messages into the system
 	go func() {
