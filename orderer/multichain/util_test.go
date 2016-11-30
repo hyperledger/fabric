@@ -17,8 +17,11 @@ limitations under the License.
 package multichain
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 type mockConsenter struct {
@@ -62,27 +65,40 @@ func (mch *mockChain) Halt() {
 	close(mch.queue)
 }
 
-type mockConfigtxManager struct {
-	config *cb.ConfigurationEnvelope
-}
-
-func (mcm *mockConfigtxManager) Apply(configtx *cb.ConfigurationEnvelope) error {
-	mcm.config = configtx
-	return nil
-}
-
-func (mcm *mockConfigtxManager) Validate(configtx *cb.ConfigurationEnvelope) error {
-	panic("Unimplemented")
-}
-
-func (mcm *mockConfigtxManager) ChainID() string {
-	panic("Unimplemented")
-}
-
 type mockLedgerWriter struct {
 }
 
 func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]byte) *cb.Block {
 	logger.Debugf("Committed block")
 	return nil
+}
+
+func makeConfigTx(chainID string, i int) *cb.Envelope {
+	return makeConfigTxWithItems(chainID, &cb.ConfigurationItem{
+		Value: []byte(fmt.Sprintf("%d", i)),
+	})
+}
+
+func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.Envelope {
+	signedItems := make([]*cb.SignedConfigurationItem, len(items))
+	for i, item := range items {
+		signedItems[i] = &cb.SignedConfigurationItem{
+			ConfigurationItem: utils.MarshalOrPanic(item),
+		}
+	}
+
+	payload := &cb.Payload{
+		Header: &cb.Header{
+			ChainHeader: &cb.ChainHeader{
+				Type:    int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
+				ChainID: chainID,
+			},
+		},
+		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
+			Items: signedItems,
+		}),
+	}
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(payload),
+	}
 }
