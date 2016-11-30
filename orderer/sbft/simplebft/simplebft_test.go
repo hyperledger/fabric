@@ -311,6 +311,58 @@ func TestMsgReordering(t *testing.T) {
 	}
 }
 
+func TestBacklogReordering(t *testing.T) {
+	N := uint64(4)
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 1, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	var preprep *testMsgEvent
+
+	// forcing pre-prepare from primary 0 to reach replica 1 after some delay
+	// effectivelly delivering pre-prepare instead of checkpoint
+	sys.filterFn = func(e testElem) (testElem, bool) {
+		if msg, ok := e.ev.(*testMsgEvent); ok {
+			if msg.src == 0 && msg.dst == 1 {
+				c := msg.msg.GetPreprepare()
+				if c != nil && c.Seq.View == 0 {
+					preprep = msg   //memorizing pre-prepare
+					return e, false // but dropping it
+				}
+				d := msg.msg.GetCheckpoint()
+				if d != nil {
+					msg.msg = &Msg{&Msg_Preprepare{preprep.msg.GetPreprepare()}}
+					return e, true //and delivering it
+				}
+				return e, true //letting prepare and commit from 0 to 1 pass
+			}
+		}
+		return e, true
+	}
+
+	connectAll(sys)
+	r1 := []byte{1, 2, 3}
+	repls[0].Request(r1)
+	sys.Run()
+	for _, a := range adapters {
+		if len(a.batches) != 1 {
+			t.Fatal("expected execution of 1 batch")
+		}
+		if !reflect.DeepEqual([][]byte{r1}, a.batches[0].Payloads) {
+			t.Error("wrong request executed (1)")
+		}
+	}
+}
+
 func TestViewChangeWithRetransmission(t *testing.T) {
 	N := uint64(4)
 	sys := newTestSystem(N)

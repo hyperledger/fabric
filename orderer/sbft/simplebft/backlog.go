@@ -21,14 +21,6 @@ import "fmt"
 const maxBacklogSeq = 4
 const msgPerSeq = 3 // (pre)prepare, commit, checkpoint
 
-func (s *SBFT) testBacklog(m *Msg, src uint64) bool {
-	if len(s.replicaState[src].backLog) > 0 {
-		return true
-	}
-
-	return s.testBacklogMessage(m, src)
-}
-
 func (s *SBFT) testBacklogMessage(m *Msg, src uint64) bool {
 	record := func(seq *SeqView) bool {
 		if !s.activeView {
