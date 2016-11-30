@@ -191,7 +191,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 	uuid := cutil.GenerateUUID()
 
 	var prop *pb.Proposal
-	prop, err = putils.CreateProposalFromCIS(uuid, invocation, creator)
+	prop, err = putils.CreateProposalFromCIS(uuid, chainID, invocation, creator)
 	if err != nil {
 		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}

@@ -117,7 +117,7 @@ func TestInvoke(t *testing.T) {
 
 	uuid := util.GenerateUUID()
 
-	proposal, err := putils.CreateChaincodeProposal(uuid, cis, sIdBytes)
+	proposal, err := putils.CreateChaincodeProposal(uuid, util.GetTestChainID(), cis, sIdBytes)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("couldn't generate chaincode proposal: err %s", err)

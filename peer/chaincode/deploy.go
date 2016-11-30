@@ -80,7 +80,7 @@ func deploy(cmd *cobra.Command) (*protcommon.Envelope, error) {
 
 	uuid := util.GenerateUUID()
 
-	prop, err := utils.CreateProposalFromCDS(uuid, cds, creator)
+	prop, err := utils.CreateProposalFromCDS(uuid, chainID, cds, creator)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}

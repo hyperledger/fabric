@@ -79,18 +79,18 @@ func getMSPMgrConfigFile() (string, error) {
 
 // ConstructSingedTxEnvWithDefaultSigner constructs a transaction envelop for tests with a default signer.
 // This method helps other modules to construct a transaction with supplied parameters
-func ConstructSingedTxEnvWithDefaultSigner(txid string, ccName string, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
-	return ConstructSingedTxEnv(txid, ccName, simulationResults, events, visibility, signer)
+func ConstructSingedTxEnvWithDefaultSigner(txid string, chainID, ccName string, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
+	return ConstructSingedTxEnv(txid, chainID, ccName, simulationResults, events, visibility, signer)
 }
 
 // ConstructSingedTxEnv constructs a transaction envelop for tests
-func ConstructSingedTxEnv(txid string, ccName string, simulationResults []byte, events []byte, visibility []byte, signer msp.SigningIdentity) (*common.Envelope, error) {
+func ConstructSingedTxEnv(txid string, chainID string, ccName string, simulationResults []byte, events []byte, visibility []byte, signer msp.SigningIdentity) (*common.Envelope, error) {
 	ss, err := signer.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
-	prop, err := putils.CreateChaincodeProposal(txid, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: ccName}}}, ss)
+	prop, err := putils.CreateChaincodeProposal(txid, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: ccName}}}, ss)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +108,8 @@ func ConstructSingedTxEnv(txid string, ccName string, simulationResults []byte, 
 }
 
 // ConstructUnsingedTxEnv creates a Transaction envelope from given inputs
-func ConstructUnsingedTxEnv(txid string, ccName string, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
-	prop, err := putils.CreateChaincodeProposal(txid, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: ccName}}}, nil)
+func ConstructUnsingedTxEnv(txid string, chainID string, ccName string, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
+	prop, err := putils.CreateChaincodeProposal(txid, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: ccName}}}, nil)
 	if err != nil {
 		return nil, err
 	}

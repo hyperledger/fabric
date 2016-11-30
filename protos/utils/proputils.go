@@ -196,7 +196,7 @@ func GetEnvelope(bytes []byte) (*common.Envelope, error) {
 }
 
 // CreateChaincodeProposal creates a proposal from given input
-func CreateChaincodeProposal(txid string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
+func CreateChaincodeProposal(txid string, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
@@ -222,6 +222,7 @@ func CreateChaincodeProposal(txid string, cis *peer.ChaincodeInvocationSpec, cre
 
 	hdr := &common.Header{ChainHeader: &common.ChainHeader{Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
 		TxID:      txid,
+		ChainID:   []byte(chainID),
 		Extension: ccHdrExtBytes},
 		SignatureHeader: &common.SignatureHeader{Nonce: nonce, Creator: creator}}
 
@@ -372,12 +373,12 @@ func GetActionFromEnvelope(envBytes []byte) (*peer.ChaincodeAction, error) {
 }
 
 // CreateProposalFromCIS returns a proposal given a serialized identity and a ChaincodeInvocationSpec
-func CreateProposalFromCIS(txid string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
-	return CreateChaincodeProposal(txid, cis, creator)
+func CreateProposalFromCIS(txid string, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
+	return CreateChaincodeProposal(txid, chainID, cis, creator)
 }
 
 // CreateProposalFromCDS returns a proposal given a serialized identity and a ChaincodeDeploymentSpec
-func CreateProposalFromCDS(txid string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
+func CreateProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
@@ -391,5 +392,5 @@ func CreateProposalFromCDS(txid string, cds *peer.ChaincodeDeploymentSpec, creat
 			CtorMsg:     &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
 
 	//...and get the proposal for it
-	return CreateProposalFromCIS(txid, lcccSpec, creator)
+	return CreateProposalFromCIS(txid, chainID, lcccSpec, creator)
 }

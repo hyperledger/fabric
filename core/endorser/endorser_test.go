@@ -123,7 +123,7 @@ func closeListenerAndSleep(l net.Listener) {
 //Currently supported only for Invokes (Queries still go through devops client)
 func getProposal(cis *pb.ChaincodeInvocationSpec, creator []byte) (*pb.Proposal, error) {
 	uuid := util.GenerateUUID()
-	return pbutils.CreateChaincodeProposal(uuid, cis, creator)
+	return pbutils.CreateChaincodeProposal(uuid, util.GetTestChainID(), cis, creator)
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment

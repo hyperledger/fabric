@@ -140,3 +140,10 @@ func ArrayToChaincodeArgs(args []string) [][]byte {
 	}
 	return bargs
 }
+
+const testchainid = "**TEST_CHAINID**"
+
+//GetTestChainID returns the CHAINID constant in use by orderer
+func GetTestChainID() string {
+	return testchainid
+}

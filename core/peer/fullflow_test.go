@@ -39,7 +39,7 @@ func getProposal() (*peer.Proposal, error) {
 
 	uuid := util.GenerateUUID()
 
-	return utils.CreateProposalFromCIS(uuid, cis, signerSerialized)
+	return utils.CreateProposalFromCIS(uuid, util.GetTestChainID(), cis, signerSerialized)
 }
 
 func TestGoodPath(t *testing.T) {
