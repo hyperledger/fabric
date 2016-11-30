@@ -202,7 +202,7 @@ func (s *SBFT) Receive(m *Msg, src uint64) {
 		return
 	}
 
-	if s.testBacklog(m, src) {
+	if s.testBacklogMessage(m, src) {
 		log.Debugf("replica %d: message for future seq, storing for later", s.id)
 		s.recordBacklogMsg(m, src)
 		return
