@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package couchdbtxmgmt
+package history
 
 import (
 	"fmt"
@@ -26,82 +26,76 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
-type testEnv struct {
-	conf              *Conf
+//Complex setup to test the use of couch in ledger
+type testEnvCouch struct {
+	couchDBPath       string
 	couchDBAddress    string
 	couchDatabaseName string
 	couchUsername     string
 	couchPassword     string
 }
 
-func newTestEnv(t testing.TB) *testEnv {
-
-	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+func newTestEnvCouch(t testing.TB, dbPath string, dbName string) *testEnvCouch {
 
 	couchDBDef := ledgerconfig.GetCouchDBDefinition()
+	os.RemoveAll(dbPath)
 
-	conf := &Conf{"/tmp/tests/ledger/kvledger/txmgmt/couchdbtxmgmt"}
-	os.RemoveAll(conf.DBPath)
-	return &testEnv{
-		conf:              conf,
+	return &testEnvCouch{
+		couchDBPath:       dbPath,
 		couchDBAddress:    couchDBDef.URL,
-		couchDatabaseName: "system_test",
+		couchDatabaseName: dbName,
 		couchUsername:     couchDBDef.Username,
 		couchPassword:     couchDBDef.Password,
 	}
 }
 
-func (env *testEnv) Cleanup() {
-	os.RemoveAll(env.conf.DBPath)
-
+func (env *testEnvCouch) cleanup() {
+	os.RemoveAll(env.couchDBPath)
 	//create a new connection
 	couchDB, _ := couchdb.CreateConnectionDefinition(env.couchDBAddress, env.couchDatabaseName, env.couchUsername, env.couchPassword)
-
 	//drop the test database if it already existed
 	couchDB.DropDatabase()
 }
 
-// couchdb_test.go tests couchdb functions already.  This test just tests that a CouchDB state database is auto-created
-// upon creating a new ledger transaction manager
-func TestDatabaseAutoCreate(t *testing.T) {
+// couchdb_test.go tests couchdb functions already.  This test just tests that a CouchDB history database is auto-created
+// upon creating a new history transaction manager
+func TestHistoryDatabaseAutoCreate(t *testing.T) {
+
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../peer")
 
 	//Only run the tests if CouchDB is explitily enabled in the code,
 	//otherwise CouchDB may not be installed and all the tests would fail
 	//TODO replace this with external config property rather than config within the code
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		env := newTestEnv(t)
-		env.Cleanup()       //cleanup at the beginning to ensure the database doesn't exist already
-		defer env.Cleanup() //and cleanup at the end
+		env := newTestEnvCouch(t, "/tmp/tests/ledger/history", "history-test")
+		env.cleanup()       //cleanup at the beginning to ensure the database doesn't exist already
+		defer env.cleanup() //and cleanup at the end
 
-		txMgr := NewCouchDBTxMgr(env.conf,
+		histMgr := NewCouchDBHistMgr(
 			env.couchDBAddress,    //couchDB Address
 			env.couchDatabaseName, //couchDB db name
 			env.couchUsername,     //enter couchDB id
 			env.couchPassword)     //enter couchDB pw
 
-		//NewCouchDBTxMgr should have automatically created the database, let's make sure it has been created
+		//NewCouchDBhistMgr should have automatically created the database, let's make sure it has been created
 		//Retrieve the info for the new database and make sure the name matches
-		dbResp, _, errdb := txMgr.couchDB.GetDatabaseInfo()
+		dbResp, _, errdb := histMgr.couchDB.GetDatabaseInfo()
 		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve database information"))
 		testutil.AssertEquals(t, dbResp.DbName, env.couchDatabaseName)
 
-		txMgr.Shutdown()
-
-		//Call NewCouchDBTxMgr again, this time the database will already exist from last time
-		txMgr2 := NewCouchDBTxMgr(env.conf,
+		//Call NewCouchDBhistMgr again, this time the database will already exist from last time
+		histMgr2 := NewCouchDBHistMgr(
 			env.couchDBAddress,    //couchDB Address
 			env.couchDatabaseName, //couchDB db name
 			env.couchUsername,     //enter couchDB id
 			env.couchPassword)     //enter couchDB pw
 
 		//Retrieve the info for the database again, and make sure the name still matches
-		dbResp2, _, errdb2 := txMgr2.couchDB.GetDatabaseInfo()
+		dbResp2, _, errdb2 := histMgr2.couchDB.GetDatabaseInfo()
 		testutil.AssertNoError(t, errdb2, fmt.Sprintf("Error when trying to retrieve database information"))
 		testutil.AssertEquals(t, dbResp2.DbName, env.couchDatabaseName)
-
-		txMgr2.Shutdown()
 
 	}
 

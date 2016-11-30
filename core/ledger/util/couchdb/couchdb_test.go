@@ -25,6 +25,20 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
+//Basic setup to test couch
+var connectURL = "localhost:5984"
+var badConnectURL = "localhost:5990"
+var database = "testdb1"
+var username = ""
+var password = ""
+
+func cleanup() {
+	//create a new connection
+	db, _ := CreateConnectionDefinition(connectURL, database, username, password)
+	//drop the test database
+	db.DropDatabase()
+}
+
 type Asset struct {
 	ID        string `json:"_id"`
 	Rev       string `json:"_rev"`
@@ -34,18 +48,12 @@ type Asset struct {
 	Owner     string `json:"owner"`
 }
 
-var connectURL = "localhost:5984"
-var badConnectURL = "localhost:5990"
-var database = "testdb1"
-var username = ""
-var password = ""
-
 var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
 
 func TestDBConnectionDef(t *testing.T) {
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../../../peer")
+	testutil.SetupCoreYAMLConfig("./../../../../peer")
 
 	//create a new connection
 	_, err := CreateConnectionDefinition(connectURL, "database", "", "")
@@ -315,15 +323,5 @@ func TestDBTestDropDatabaseBadConnection(t *testing.T) {
 		_, errdbdrop := db.DropDatabase()
 		testutil.AssertError(t, errdbdrop, fmt.Sprintf("Error should have been reported for attempting to drop a database before creation"))
 	}
-
-}
-
-func cleanup() {
-
-	//create a new connection
-	db, _ := CreateConnectionDefinition(connectURL, database, username, password)
-
-	//drop the test database
-	db.DropDatabase()
 
 }

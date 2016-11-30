@@ -25,6 +25,14 @@ import (
 
 func TestIsCouchDBEnabledDefault(t *testing.T) {
 	setUpCoreYAMLConfig()
+	// During a build the default values should be false.
+
+	// If the  ledger test are run with CouchDb enabled, need to provide a mechanism
+	// To let this test run but still test default values.
+	if IsCouchDBEnabled() == true {
+		testutil.ResetConfigToDefaultValues()
+		defer viper.Set("ledger.state.stateDatabase", "CouchDB")
+	}
 	defaultValue := IsCouchDBEnabled()
 	testutil.AssertEquals(t, defaultValue, false) //test default config is false
 }

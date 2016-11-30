@@ -22,7 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt/couchdb"
+	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
 	"github.com/op/go-logging"
 
@@ -74,6 +74,7 @@ type CouchDBTxMgr struct {
 }
 
 // CouchConnection provides connection info for CouchDB
+//TODO not currently used
 type CouchConnection struct {
 	host   string
 	port   int
@@ -89,18 +90,10 @@ func NewCouchDBTxMgr(conf *Conf, couchDBConnectURL string, dbName string, id str
 	db := db.CreateDB(&db.Conf{DBPath: conf.DBPath})
 	db.Open()
 
-	couchDB, err := couchdb.CreateConnectionDefinition(couchDBConnectURL,
-		dbName,
-		id,
-		pw)
+	couchDB, err := couchdb.CreateCouchDBConnectionAndDB(couchDBConnectURL, dbName, id, pw)
 	if err != nil {
-		logger.Errorf("===COUCHDB=== Error during CreateConnectionDefinition(): %s\n", err.Error())
-	}
-
-	// Create CouchDB database upon ledger startup, if it doesn't already exist
-	_, err = couchDB.CreateDatabaseIfNotExist()
-	if err != nil {
-		logger.Errorf("===COUCHDB=== Error during CreateDatabaseIfNotExist(): %s\n", err.Error())
+		logger.Errorf("Error during NewCouchDBTxMgr(): %s\n", err.Error())
+		return nil
 	}
 
 	// db and stateIndexCF will not be used for CouchDB. TODO to cleanup
