@@ -23,6 +23,7 @@ func (s *SBFT) maybeSendCommit() {
 		return
 	}
 	s.sendCommit()
+	s.processBacklog()
 }
 
 func (s *SBFT) sendCommit() {
