@@ -16,6 +16,8 @@ limitations under the License.
 
 package simplebft
 
+import "fmt"
+
 const maxBacklogSeq = 4
 const msgPerSeq = 3 // (pre)prepare, commit, checkpoint
 
@@ -53,7 +55,7 @@ func (s *SBFT) testBacklogMessage(m *Msg, src uint64) bool {
 
 func (s *SBFT) recordBacklogMsg(m *Msg, src uint64) {
 	if src == s.id {
-		panic("should never have to backlog my own message")
+		panic(fmt.Sprintf("should never have to backlog my own message (replica ID: %d)", src))
 	}
 
 	s.replicaState[src].backLog = append(s.replicaState[src].backLog, m)
@@ -86,7 +88,7 @@ func (s *SBFT) processBacklog() {
 				}
 				state.backLog = rest
 
-				log.Debugf("processing stored message from %d: %s", src, m)
+				log.Debugf("replica %d: processing stored message from %d: %s", s.id, src, m)
 
 				s.handleQueueableMessage(m, src)
 				processed = true

@@ -37,7 +37,7 @@ func (s *SBFT) makeXset(vcs []*ViewChange) (*Subject, *Batch, bool) {
 	}
 
 	next := best.DecodeHeader().Seq + 1
-	log.Debugf("xset starts at commit %d", next)
+	log.Debugf("replica %d: xset starts at commit %d", s.id, next)
 
 	// now determine which request could have executed for best+1
 	var xset *Subject
@@ -50,7 +50,7 @@ nextm:
 		notfound := true
 		// which has <n,d,v> in its Pset
 		for _, mtuple := range m.Pset {
-			log.Debugf("trying %v", mtuple)
+			log.Debugf("replica %d: trying %v", s.id, mtuple)
 			if mtuple.Seq.Seq < next {
 				continue
 			}
@@ -68,7 +68,7 @@ nextm:
 				}
 				// and all <n,d',v'> in its Pset
 				for _, mptuple := range mp.Pset {
-					log.Debugf("  matching %v", mptuple)
+					log.Debugf("replica %d: matching %v", s.id, mptuple)
 					if mptuple.Seq.Seq != mtuple.Seq.Seq {
 						continue
 					}
@@ -86,7 +86,7 @@ nextm:
 			if count < s.noFaultyQuorum() {
 				continue
 			}
-			log.Debugf("found %d replicas for Pset %d/%d", count, mtuple.Seq.Seq, mtuple.Seq.View)
+			log.Debugf("replica %d: found %d replicas for Pset %d/%d", s.id, count, mtuple.Seq.Seq, mtuple.Seq.View)
 
 			// A2. f+1 messages mp from S
 			count = 0
@@ -111,9 +111,9 @@ nextm:
 			if count < s.oneCorrectQuorum() {
 				continue
 			}
-			log.Debugf("found %d replicas for Qset %d", count, mtuple.Seq.Seq)
+			log.Debugf("replica %d: found %d replicas for Qset %d", s.id, count, mtuple.Seq.Seq)
 
-			log.Debugf("selecting %d with %x", next, mtuple.Digest)
+			log.Debugf("replica %d: selecting %d with %x", s.id, next, mtuple.Digest)
 			xset = &Subject{
 				Seq:    &SeqView{Seq: next, View: s.view},
 				Digest: mtuple.Digest,
@@ -129,7 +129,7 @@ nextm:
 	// B. otherwise select null request
 	// We actually don't select a null request, but report the most recent batch instead.
 	if emptycount >= s.noFaultyQuorum() {
-		log.Debugf("no pertinent requests found for %d", next)
+		log.Debugf("replica %d: no pertinent requests found for %d", s.id, next)
 		return nil, best, true
 	}
 

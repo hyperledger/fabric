@@ -47,17 +47,17 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 
 	err := s.checkBytesSig(c.Digest, src, c.Signature)
 	if err != nil {
-		log.Infof("checkpoint signature invalid for %d from %d", c.Seq, src)
+		log.Infof("replica %d: checkpoint signature invalid for %d from %d", s.id, c.Seq, src)
 		return
 	}
 
 	// TODO should we always accept checkpoints?
 	if c.Seq != s.cur.subject.Seq.Seq {
-		log.Infof("checkpoint does not match expected subject %v, got %v", &s.cur.subject, c)
+		log.Infof("replica %d: checkpoint does not match expected subject %v, got %v", s.id, &s.cur.subject, c)
 		return
 	}
 	if _, ok := s.cur.checkpoint[src]; ok {
-		log.Infof("duplicate checkpoint for %d from %d", c.Seq, src)
+		log.Infof("replica %d: duplicate checkpoint for %d from %d", s.id, c.Seq, src)
 	}
 	s.cur.checkpoint[src] = c
 
@@ -89,8 +89,8 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 	c = s.cur.checkpoint[replicas[0]]
 
 	if !reflect.DeepEqual(c.Digest, s.cur.subject.Digest) {
-		log.Fatalf("weak checkpoint %x does not match our state %x",
-			c.Digest, s.cur.subject.Digest)
+		log.Fatalf("replica %d: weak checkpoint %x does not match our state %x",
+			s.id, c.Digest, s.cur.subject.Digest)
 		// NOT REACHED
 	}
 
@@ -100,7 +100,7 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 	s.deliverBatch(&batch)
 
 	s.cur.timeout.Cancel()
-	log.Infof("request %s %s completed on %d", s.cur.subject.Seq, hash2str(s.cur.subject.Digest), s.id)
+	log.Infof("replica %d: request %s %s completed on %d", s.id, s.cur.subject.Seq, hash2str(s.cur.subject.Digest), s.id)
 
 	s.maybeSendNextBatch()
 	s.processBacklog()

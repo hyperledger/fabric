@@ -39,7 +39,7 @@ func (s *SBFT) maybeSendNewView() {
 
 	xset, _, ok := s.makeXset(vcs)
 	if !ok {
-		log.Debug("xset not yet sufficient")
+		log.Debugf("replica %d: xset not yet sufficient", s.id)
 		return
 	}
 
@@ -49,7 +49,7 @@ func (s *SBFT) maybeSendNewView() {
 	} else if reflect.DeepEqual(s.cur.subject.Digest, xset.Digest) {
 		batch = s.cur.preprep.Batch
 	} else {
-		log.Warningf("forfeiting primary - do not have request in store for %d %x", xset.Seq.Seq, xset.Digest)
+		log.Warningf("replica %d: forfeiting primary - do not have request in store for %d %x", s.id, xset.Seq.Seq, xset.Digest)
 		xset = nil
 	}
 
@@ -60,7 +60,7 @@ func (s *SBFT) maybeSendNewView() {
 		Batch: batch,
 	}
 
-	log.Noticef("sending new view for %d", nv.View)
+	log.Noticef("replica %d: sending new view for %d", s.id, nv.View)
 	s.lastNewViewSent = nv
 	s.broadcast(&Msg{&Msg_NewView{nv}})
 }
@@ -87,18 +87,18 @@ func (s *SBFT) checkNewViewSignatures(nv *NewView) ([]*ViewChange, error) {
 
 func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 	if src != s.primaryIDView(nv.View) {
-		log.Warningf("invalid new view from %d for %d", src, nv.View)
+		log.Warningf("replica %d: invalid new view from %d for %d", s.id, src, nv.View)
 		return
 	}
 
 	if onv := s.replicaState[s.primaryIDView(nv.View)].newview; onv != nil && onv.View >= nv.View {
-		log.Debugf("discarding duplicate new view for %d", nv.View)
+		log.Debugf("replica %d: discarding duplicate new view for %d", s.id, nv.View)
 		return
 	}
 
 	vcs, err := s.checkNewViewSignatures(nv)
 	if err != nil {
-		log.Warningf("invalid new view from %d: %s", src, err)
+		log.Warningf("replica %d: invalid new view from %d: %s", s.id, src, err)
 		s.sendViewChange()
 		return
 	}
@@ -106,20 +106,20 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 	xset, _, ok := s.makeXset(vcs)
 
 	if !ok || !reflect.DeepEqual(nv.Xset, xset) {
-		log.Warningf("invalid new view from %d: xset incorrect: %v, %v", src, nv.Xset, xset)
+		log.Warningf("replica %d: invalid new view from %d: xset incorrect: %v, %v", s.id, src, nv.Xset, xset)
 		s.sendViewChange()
 		return
 	}
 
 	if nv.Xset == nil {
 		if nv.Batch != nil {
-			log.Warningf("invalid new view from %d: null request should come with null batch", src)
+			log.Warningf("replica %d: invalid new view from %d: null request should come with null batch", s.id, src)
 			s.sendViewChange()
 			return
 		}
 	} else if nv.Batch == nil || !bytes.Equal(nv.Batch.Hash(), nv.Xset.Digest) {
-		log.Warningf("invalid new view from %d: batch head hash does not match xset: %x, %x, %v",
-			src, hash(nv.Batch.Header), nv.Xset.Digest, nv)
+		log.Warningf("replica %d: invalid new view from %d: batch head hash does not match xset: %x, %x, %v",
+			s.id, src, hash(nv.Batch.Header), nv.Xset.Digest, nv)
 		s.sendViewChange()
 		return
 	}
@@ -127,8 +127,8 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 	if nv.Batch != nil {
 		_, err = s.checkBatch(nv.Batch, true, false)
 		if err != nil {
-			log.Warningf("invalid new view from %d: invalid batch, %s",
-				src, err)
+			log.Warningf("replica %d: invalid new view from %d: invalid batch, %s",
+				s.id, src, err)
 			s.sendViewChange()
 			return
 		}
@@ -175,7 +175,7 @@ func (s *SBFT) processNewView() {
 
 		s.handleCheckedPreprepare(pp)
 	} else {
-		log.Debugf("%+v", s)
+		log.Debugf("replica %d: %+v", s.id, s)
 		s.cancelViewChangeTimer()
 		s.maybeSendNextBatch()
 	}

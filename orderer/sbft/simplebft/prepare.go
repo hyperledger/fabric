@@ -30,11 +30,11 @@ func (s *SBFT) handlePrepare(p *Subject, src uint64) {
 	}
 
 	if !reflect.DeepEqual(p, &s.cur.subject) {
-		log.Infof("prepare does not match expected subject %v, got %v", &s.cur.subject, p)
+		log.Infof("replica %d: prepare does not match expected subject %v, got %v", s.id, &s.cur.subject, p)
 		return
 	}
 	if _, ok := s.cur.prep[src]; ok {
-		log.Infof("duplicate prepare for %v from %d", *p.Seq, src)
+		log.Infof("replica %d: duplicate prepare for %v from %d", s.id, *p.Seq, src)
 		return
 	}
 	s.cur.prep[src] = p
