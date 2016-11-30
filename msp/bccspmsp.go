@@ -252,7 +252,11 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 	mspLogger.Infof("Obtaining identity")
 
 	// This MSP will always deserialize certs this way
-	cert, err := x509.ParseCertificate(serializedID)
+	bl, _ := pem.Decode(serializedID)
+	if bl == nil {
+		return nil, fmt.Errorf("Could not decode the PEM structure")
+	}
+	cert, err := x509.ParseCertificate(bl.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("ParseCertificate failed %s", err)
 	}

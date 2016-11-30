@@ -21,6 +21,8 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"encoding/pem"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
@@ -79,18 +81,23 @@ func (id *identity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) (
 
 func (id *identity) Serialize() ([]byte, error) {
 	/*
-	mspLogger.Infof("Serializing identity %s", id.id)
+		mspLogger.Infof("Serializing identity %s", id.id)
 
-	// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
-	sId := SerializedIdentity{Mspid: id.id.Mspid, IdBytes: id.cert.Raw}
-	idBytes, err := asn1.Marshal(sId)
-	if err != nil {
-		return nil, fmt.Errorf("Could not marshal a SerializedIdentity structure for identity %s, err %s", id.id, err)
-	}
+		// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
+		sId := SerializedIdentity{Mspid: id.id.Mspid, IdBytes: id.cert.Raw}
+		idBytes, err := asn1.Marshal(sId)
+		if err != nil {
+			return nil, fmt.Errorf("Could not marshal a SerializedIdentity structure for identity %s, err %s", id.id, err)
+		}
 
-	return idBytes, nil
+		return idBytes, nil
 	*/
-	return id.cert.Raw, nil
+	pb := &pem.Block{Bytes: id.cert.Raw}
+	pemBytes := pem.EncodeToMemory(pb)
+	if pemBytes == nil {
+		return nil, fmt.Errorf("Encoding of identitiy failed")
+	}
+	return pemBytes, nil
 }
 
 type signingidentity struct {
