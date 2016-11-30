@@ -27,7 +27,7 @@ import (
 type SecurityAdvisor interface {
 	// IsInMyOrg returns whether the given peer's certificate represents
 	// a peer in the invoker's organization
-	IsInMyOrg(PeerCert) bool
+	IsInMyOrg(PeerIdentityType) bool
 
 	// Verify verifies a JoinChannelMessage, returns nil on success,
 	// and an error on failure
@@ -54,10 +54,7 @@ type JoinChannelMessage interface {
 
 // ChannelMember is a peer's certificate and endpoint (host:port)
 type ChannelMember struct {
-	Cert PeerCert // Cert defines the certificate of the remote peer
-	Host string   // Host is the hostname/ip address of the remote peer
-	Port int      // Port is the port the remote peer is listening on
+	Cert PeerIdentityType // PeerIdentityType defines the certificate of the remote peer
+	Host string           // Host is the hostname/ip address of the remote peer
+	Port int              // Port is the port the remote peer is listening on
 }
-
-// PeerCert defines the cryptographic identity of a peer
-type PeerCert []byte

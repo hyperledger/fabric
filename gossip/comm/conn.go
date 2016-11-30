@@ -35,7 +35,6 @@ type connFactory interface {
 
 type connectionStore struct {
 	logger           *util.Logger             // logger
-	selfPKIid        common.PKIidType         // pkiID of this peer
 	isClosing        bool                     // whether this connection store is shutting down
 	connFactory      connFactory              // creates a connection to remote peer
 	sync.RWMutex                              // synchronize access to shared variables
@@ -44,12 +43,11 @@ type connectionStore struct {
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
-func newConnStore(connFactory connFactory, pkiID common.PKIidType, logger *util.Logger) *connectionStore {
+func newConnStore(connFactory connFactory, logger *util.Logger) *connectionStore {
 	return &connectionStore{
 		connFactory:      connFactory,
 		isClosing:        false,
 		pki2Conn:         make(map[string]*connection),
-		selfPKIid:        pkiID,
 		destinationLocks: make(map[string]*sync.RWMutex),
 		logger:           logger,
 	}

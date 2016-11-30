@@ -39,6 +39,11 @@ type MessageCryptoService interface {
 	// If the verification succeeded, Verify returns nil meaning no error occurred.
 	// If peerCert is nil, then the signature is verified against this peer's verification key.
 	Verify(peerIdentity PeerIdentityType, signature, message []byte) error
+
+	// ValidateIdentity validates the identity of a remote peer.
+	// If the identity is invalid, revoked, expired it returns an error.
+	// Else, returns nil
+	ValidateIdentity(peerIdentity PeerIdentityType) error
 }
 
 // PeerIdentityType is the peer's certificate

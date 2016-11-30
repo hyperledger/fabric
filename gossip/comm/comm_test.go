@@ -18,15 +18,16 @@ package comm
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
-	"crypto/tls"
-
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -48,121 +49,115 @@ var naiveSec = &naiveSecProvider{}
 type naiveSecProvider struct {
 }
 
-func (*naiveSecProvider) IsEnabled() bool {
-	return true
+func (*naiveSecProvider) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	return nil
 }
 
+// GetPKIidOfCert returns the PKI-ID of a peer's identity
+func (*naiveSecProvider) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
+	return common.PKIidType(peerIdentity)
+}
+
+// VerifyBlock returns nil if the block is properly signed,
+// else returns error
+func (*naiveSecProvider) VerifyBlock(signedBlock api.SignedBlock) error {
+	return nil
+}
+
+// Sign signs msg with this peer's signing key and outputs
+// the signature if no error occurred.
 func (*naiveSecProvider) Sign(msg []byte) ([]byte, error) {
 	return msg, nil
 }
 
-func (*naiveSecProvider) Verify(vkID, signature, message []byte) error {
-	if bytes.Equal(signature, message) {
-		return nil
+// Verify checks that signature is a valid signature of message under a peer's verification key.
+// If the verification succeeded, Verify returns nil meaning no error occurred.
+// If peerCert is nil, then the signature is verified against this peer's verification key.
+func (*naiveSecProvider) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	equal := bytes.Equal(signature, message)
+	if !equal {
+		return fmt.Errorf("Wrong certificate:%v, %v", signature, message)
 	}
-	return fmt.Errorf("Failed verifying")
+	return nil
 }
 
-func newCommInstance(port int, sec SecurityProvider) (Comm, error) {
+func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
-	inst, err := NewCommInstanceWithServer(port, sec, []byte(endpoint))
+	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec), []byte(endpoint))
 	return inst, err
 }
 
-func TestHandshake(t *testing.T) {
-	t.Parallel()
-	comm1, _ := newCommInstance(9611, naiveSec)
-	defer comm1.Stop()
-
+func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte) <-chan ReceivedMessage {
 	ta := credentials.NewTLS(&tls.Config{
 		InsecureSkipVerify: true,
 	})
+	acceptChan := comm.Accept(acceptAll)
 	conn, err := grpc.Dial("localhost:9611", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
 	assert.NoError(t, err, "%v", err)
 	if err != nil {
-		return
+		return nil
 	}
 	cl := proto.NewGossipClient(conn)
 	stream, err := cl.GossipStream(context.Background())
 	assert.NoError(t, err, "%v", err)
 	if err != nil {
-		return
+		return nil
 	}
-
-	// happy path
 	clientTLSUnique := ExtractTLSUnique(stream.Context())
 	sig, err := naiveSec.Sign(clientTLSUnique)
+	if sigMutator != nil {
+		sig = sigMutator(sig)
+	}
+	pkiID := common.PKIidType(endpoint)
+	if pkiIDmutator != nil {
+		pkiID = common.PKIidType(pkiIDmutator([]byte(endpoint)))
+	}
+
 	assert.NoError(t, err, "%v", err)
-	msg := createConnectionMsg(common.PKIidType("localhost:9610"), sig)
+	msg := createConnectionMsg(pkiID, sig, []byte(endpoint))
 	stream.Send(msg)
 	msg, err = stream.Recv()
 	assert.NoError(t, err, "%v", err)
-	assert.Equal(t, clientTLSUnique, msg.GetConn().Sig)
+	if sigMutator == nil {
+		assert.Equal(t, clientTLSUnique, msg.GetConn().Sig)
+	}
 	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiID)
-	time.Sleep(time.Second)
 	msg2Send := createGossipMsg()
 	nonce := uint64(rand.Int())
 	msg2Send.Nonce = nonce
-	rcvChan := make(chan *proto.GossipMessage, 1)
-	go func() {
-		m := <-comm1.Accept(acceptAll)
-		rcvChan <- m.GetGossipMessage()
-	}()
-	time.Sleep(time.Second)
 	go stream.Send(msg2Send)
-	time.Sleep(time.Second)
-	assert.Equal(t, 1, len(rcvChan))
-	var receivedMsg *proto.GossipMessage
-	select {
-	case receivedMsg = <-rcvChan:
-		break
-	case <-time.NewTicker(time.Duration(time.Second * 2)).C:
-		assert.Fail(t, "Timed out waiting for received message")
-		break
-	}
+	return acceptChan
+}
 
-	assert.Equal(t, nonce, receivedMsg.Nonce)
+func TestHandshake(t *testing.T) {
+	t.Parallel()
+	comm, _ := newCommInstance(9611, naiveSec)
+	defer comm.Stop()
+
+	acceptChan := handshaker("localhost:9610", comm, t, nil, nil)
+	time.Sleep(2 * time.Second)
+	assert.Equal(t, 1, len(acceptChan))
 
 	// negative path, nothing should be read from the channel because the signature is wrong
-	rcvChan = make(chan *proto.GossipMessage, 1)
-	go func() {
-		m := <-comm1.Accept(acceptAll)
-		if m == nil {
-			return
+	mutateSig := func(b []byte) []byte {
+		if b[0] == 0 {
+			b[0] = 1
+		} else {
+			b[0] = 0
 		}
-		rcvChan <- m.GetGossipMessage()
-	}()
-	conn, err = grpc.Dial("localhost:9611", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
-	assert.NoError(t, err, "%v", err)
-	if err != nil {
-		return
+		return b
 	}
-	cl = proto.NewGossipClient(conn)
-	stream, err = cl.GossipStream(context.Background())
-	assert.NoError(t, err, "%v", err)
-	if err != nil {
-		return
-	}
-	clientTLSUnique = ExtractTLSUnique(stream.Context())
-	sig, err = naiveSec.Sign(clientTLSUnique)
-	assert.NoError(t, err, "%v", err)
-	// ruin the signature
-	if sig[0] == 0 {
-		sig[0] = 1
-	} else {
-		sig[0] = 0
-	}
-	msg = createConnectionMsg(common.PKIidType("localhost:9612"), sig)
-	stream.Send(msg)
-	msg, err = stream.Recv()
-	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiID)
-	assert.NoError(t, err, "%v", err)
-	msg2Send = createGossipMsg()
-	nonce = uint64(rand.Int())
-	msg2Send.Nonce = nonce
-	stream.Send(msg2Send)
+	acceptChan = handshaker("localhost:9612", comm, t, mutateSig, nil)
 	time.Sleep(time.Second)
-	assert.Equal(t, 0, len(rcvChan))
+	assert.Equal(t, 0, len(acceptChan))
+
+	// negative path, nothing should be read from the channel because the PKIid doesn't match the identity
+	mutateEndpoint := func(b []byte) []byte {
+		return []byte("localhost:9650")
+	}
+	acceptChan = handshaker("localhost:9613", comm, t, nil, mutateEndpoint)
+	time.Sleep(time.Second)
+	assert.Equal(t, 0, len(acceptChan))
 }
 
 func TestBasic(t *testing.T) {

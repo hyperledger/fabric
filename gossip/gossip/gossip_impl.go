@@ -23,14 +23,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	prot "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
+	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/op/go-logging"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -39,10 +42,13 @@ const (
 )
 
 type gossipServiceImpl struct {
-	certStore    *certStore
-	presumedDead chan common.PKIidType
-	disc         discovery.Discovery
-	comm         comm.Comm
+	selfIdentity          api.PeerIdentityType
+	includeIdentityPeriod time.Time
+	certStore             *certStore
+	idMapper              identity.Mapper
+	presumedDead          chan common.PKIidType
+	disc                  discovery.Discovery
+	comm                  comm.Comm
 	*comm.ChannelDeMultiplexer
 	logger       *util.Logger
 	stopSignal   *sync.WaitGroup
@@ -50,44 +56,65 @@ type gossipServiceImpl struct {
 	toDieChan    chan struct{}
 	stopFlag     int32
 	msgStore     messageStore
-	blocksPuller pull.Mediator
 	emitter      batchingEmitter
 	goRoutines   []uint64
 	discAdapter  *discoveryAdapter
+	disSecAdap   *discoverySecurityAdapter
+	mcs          api.MessageCryptoService
+	blocksPuller pull.Mediator
 }
 
-// NewGossipService creates a new gossip instance
-func NewGossipService(conf *Config, c comm.Comm, mcs api.MessageCryptoService, crypto discovery.CryptoService, selfID api.PeerIdentityType) Gossip {
+// NewGossipService creates a gossip instance attached to a gRPC server
+func NewGossipService(conf *Config, s *grpc.Server, mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType, dialOpts ...grpc.DialOption) Gossip {
+	var c comm.Comm
+	var err error
+	idMapper := identity.NewIdentityMapper(mcs)
+	lgr := util.GetLogger(util.LOGGING_GOSSIP_MODULE, conf.ID)
+	if s == nil {
+		c, err = createCommWithServer(conf.BindPort, idMapper, selfIdentity)
+	} else {
+		c, err = createCommWithoutServer(s, idMapper, selfIdentity, dialOpts...)
+	}
+
+	if err != nil {
+		lgr.Error("Failed instntiating communication layer:", err)
+		return nil
+	}
+
 	g := &gossipServiceImpl{
-		presumedDead:         make(chan common.PKIidType, presumedDeadChanSize),
-		disc:                 nil,
-		comm:                 c,
-		conf:                 conf,
-		ChannelDeMultiplexer: comm.NewChannelDemultiplexer(),
-		logger:               util.GetLogger(util.LOGGING_GOSSIP_MODULE, conf.ID),
-		toDieChan:            make(chan struct{}, 1),
-		stopFlag:             int32(0),
-		stopSignal:           &sync.WaitGroup{},
-		goRoutines:           make([]uint64, 0),
+		selfIdentity:          selfIdentity,
+		presumedDead:          make(chan common.PKIidType, presumedDeadChanSize),
+		idMapper:              idMapper,
+		disc:                  nil,
+		mcs:                   mcs,
+		comm:                  c,
+		conf:                  conf,
+		ChannelDeMultiplexer:  comm.NewChannelDemultiplexer(),
+		logger:                lgr,
+		toDieChan:             make(chan struct{}, 1),
+		stopFlag:              int32(0),
+		stopSignal:            &sync.WaitGroup{},
+		goRoutines:            make([]uint64, 0),
+		includeIdentityPeriod: time.Now().Add(conf.PublishCertPeriod),
 	}
 
 	g.emitter = newBatchingEmitter(conf.PropagateIterations,
 		conf.MaxPropagationBurstSize, conf.MaxPropagationBurstLatency,
 		g.sendGossipBatch)
 
-	g.discAdapter = g.newDiscoveryAdapter()
-
+	g.discAdapter = g.newDiscoveryAdapter(selfIdentity)
+	g.disSecAdap = newDiscoverySecurityAdapter(idMapper, mcs, c, g.logger)
 	g.disc = discovery.NewDiscoveryService(conf.BootstrapPeers, discovery.NetworkMember{
 		Endpoint: conf.SelfEndpoint, PKIid: g.comm.GetPKIid(), Metadata: []byte{},
-	}, g.discAdapter, crypto)
+	}, g.discAdapter, g.disSecAdap)
 
 	g.msgStore = newMessageStore(proto.NewGossipMessageComparator(g.conf.MaxMessageCountToStore), func(m interface{}) {
 		g.blocksPuller.Remove(m.(*proto.GossipMessage))
 	})
 
-	g.blocksPuller = g.createPull()
+	g.blocksPuller = g.createBlockPuller()
 
-	g.certStore = newCertStore(mcs, selfID, g.createPull())
+	g.certStore = newCertStore(g.createCertStorePuller(), idMapper, selfIdentity, mcs)
 
 	g.logger.SetLevel(logging.WARNING)
 
@@ -96,14 +123,13 @@ func NewGossipService(conf *Config, c comm.Comm, mcs api.MessageCryptoService, c
 	return g
 }
 
-func (g *gossipServiceImpl) createPull() pull.Mediator {
-	gConf := g.conf
+func (g *gossipServiceImpl) createBlockPuller() pull.Mediator {
 	conf := pull.PullConfig{
-		MsgType:           proto.MsgType_BlockMessage,
+		MsgType:           proto.PullMsgType_BlockMessage,
 		Channel:           []byte(""),
-		Id:                gConf.SelfEndpoint,
-		PeerCountToSelect: gConf.PullPeerNum,
-		PullInterval:      gConf.PullInterval,
+		Id:                g.conf.SelfEndpoint,
+		PeerCountToSelect: g.conf.PullPeerNum,
+		PullInterval:      g.conf.PullInterval,
 		Tag:               proto.GossipMessage_EMPTY,
 	}
 	seqNumFromMsg := func(msg *proto.GossipMessage) string {
@@ -116,6 +142,7 @@ func (g *gossipServiceImpl) createPull() pull.Mediator {
 	blockConsumer := func(msg *proto.GossipMessage) {
 		dataMsg := msg.GetDataMsg()
 		if dataMsg == nil || dataMsg.Payload == nil {
+			g.logger.Warning("Invalid DataMessage:", dataMsg)
 			return
 		}
 		added := g.msgStore.add(msg)
@@ -127,6 +154,19 @@ func (g *gossipServiceImpl) createPull() pull.Mediator {
 		g.DeMultiplex(msg)
 	}
 	return pull.NewPullMediator(conf, g.comm, g.disc, seqNumFromMsg, blockConsumer)
+}
+
+// NewGossipServiceWithServer creates a new gossip instance with a gRPC server
+func NewGossipServiceWithServer(conf *Config, mcs api.MessageCryptoService, identity api.PeerIdentityType) Gossip {
+	return NewGossipService(conf, nil, mcs, identity)
+}
+
+func createCommWithServer(port int, idStore identity.Mapper, identity api.PeerIdentityType) (comm.Comm, error) {
+	return comm.NewCommInstanceWithServer(port, idStore, identity)
+}
+
+func createCommWithoutServer(s *grpc.Server, idStore identity.Mapper, identity api.PeerIdentityType, dialOpts ...grpc.DialOption) (comm.Comm, error) {
+	return comm.NewCommInstance(s, idStore, identity, dialOpts...)
 }
 
 func (g *gossipServiceImpl) toDie() bool {
@@ -198,41 +238,75 @@ func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan comm.ReceivedMessage) 
 	}
 }
 
-func (g *gossipServiceImpl) handleMessage(msg comm.ReceivedMessage) {
+func (g *gossipServiceImpl) handleMessage(m comm.ReceivedMessage) {
 	if g.toDie() {
 		return
 	}
-	g.logger.Info("Entering,", msg)
+	g.logger.Info("Entering,", m)
 	defer g.logger.Info("Exiting")
-
-	if msg == nil || msg.GetGossipMessage() == nil {
+	if m == nil || m.GetGossipMessage() == nil {
 		return
 	}
 
-	if selectOnlyDiscoveryMessages(msg) {
-		g.forwardDiscoveryMsg(msg)
-	}
+	msg := m.GetGossipMessage()
 
-	// TODO: add only validated alive messages!
-	if msg.GetGossipMessage().GetAliveMsg() != nil || msg.GetGossipMessage().GetDataMsg() != nil {
-		added := g.msgStore.add(msg.GetGossipMessage())
-		if !added {
-			g.logger.Debug("Didn't add", msg, "to store")
-			return
+	if msg.IsAliveMsg() || msg.IsDataMsg() {
+		if msg.IsAliveMsg() {
+			if !g.disSecAdap.ValidateAliveMsg(msg.GetAliveMsg()) {
+				g.logger.Warning("AliveMessage", m.GetGossipMessage(), "isn't authentic. Discarding it")
+				return
+			}
+
+			am := msg.GetAliveMsg()
+			storedIdentity, _ := g.idMapper.Get(common.PKIidType(am.Membership.PkiID))
+			// If peer's certificate is included inside AliveMessage, and we don't have a mapping between
+			// its PKI-ID and certificate, create a mapping for it now.
+			if identity := am.Identity; identity != nil && storedIdentity == nil {
+				err := g.idMapper.Put(common.PKIidType(am.Membership.PkiID), api.PeerIdentityType(identity))
+				if err != nil {
+					g.logger.Warning("Failed adding identity of", am, "into identity store:", err)
+					return
+				}
+				g.logger.Info("Learned identity of", am.Membership.PkiID)
+			}
 		}
 
-		g.emitter.Add(msg.GetGossipMessage())
-
-		if dataMsg := msg.GetGossipMessage().GetDataMsg(); dataMsg != nil {
-			g.DeMultiplex(msg.GetGossipMessage())
-			g.blocksPuller.Add(msg.GetGossipMessage())
+		if msg.IsDataMsg() {
+			blockMsg := msg.GetDataMsg()
+			if blockMsg.Payload == nil {
+				g.logger.Warning("Empty block! Discarding it")
+				return
+			}
+			if err := g.mcs.VerifyBlock(blockMsg); err != nil {
+				g.logger.Warning("Could not verify block", blockMsg.Payload.SeqNum, "Discarding it")
+				return
+			}
 		}
 
-		return
+		added := g.msgStore.add(msg)
+		if added {
+			g.emitter.Add(msg)
+			if dataMsg := m.GetGossipMessage().GetDataMsg(); dataMsg != nil {
+				g.blocksPuller.Add(msg)
+				g.DeMultiplex(msg)
+			}
+
+		}
 	}
 
-	if msg.GetGossipMessage().IsPullMsg() {
-		g.blocksPuller.HandleMessage(msg)
+	if selectOnlyDiscoveryMessages(m) {
+		g.forwardDiscoveryMsg(m)
+	}
+
+	if msg.IsPullMsg() {
+		switch msgType := msg.GetPullMsgType(); msgType {
+		case proto.PullMsgType_BlockMessage:
+			g.blocksPuller.HandleMessage(m)
+		case proto.PullMsgType_IdentityMsg:
+			g.certStore.handleMessage(m)
+		default:
+			g.logger.Warning("Got invalid pull message type:", msgType)
+		}
 	}
 }
 
@@ -262,6 +336,7 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*proto.GossipMessage) {
 	}
 }
 
+// Gossip sends a message to other peers to the network
 func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	g.logger.Info(msg)
 	if dataMsg := msg.GetDataMsg(); dataMsg != nil {
@@ -271,6 +346,12 @@ func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	g.emitter.Add(msg)
 }
 
+// Send sends a message to remote peers
+func (g *gossipServiceImpl) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+	g.comm.Send(msg, peers...)
+}
+
+// GetPeers returns a mapping of endpoint --> []discovery.NetworkMember
 func (g *gossipServiceImpl) GetPeers() []discovery.NetworkMember {
 	s := []discovery.NetworkMember{}
 	for _, member := range g.disc.GetMembership() {
@@ -279,6 +360,7 @@ func (g *gossipServiceImpl) GetPeers() []discovery.NetworkMember {
 	return s
 }
 
+// Stop stops the gossip component
 func (g *gossipServiceImpl) Stop() {
 	if g.toDie() {
 		return
@@ -302,11 +384,20 @@ func (g *gossipServiceImpl) Stop() {
 	comWG.Wait()
 }
 
+// UpdateMetadata updates the self metadata of the discovery layer
 func (g *gossipServiceImpl) UpdateMetadata(md []byte) {
 	g.disc.UpdateMetadata(md)
 }
 
-func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor) <-chan *proto.GossipMessage {
+// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
+// If passThrough is false, the messages are processed by the gossip layer beforehand.
+// If passThrough is true, the gossip layer doesn't intervene and the messages
+// can be used to send a reply back to the sender
+
+func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage) {
+	if passThrough {
+		return nil, g.comm.Accept(acceptor)
+	}
 	inCh := g.AddChannel(acceptor)
 	outCh := make(chan *proto.GossipMessage, acceptChanSize)
 	go func() {
@@ -324,7 +415,7 @@ func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor) <-chan *prot
 			}
 		}
 	}()
-	return outCh
+	return outCh, nil
 }
 
 func selectOnlyDiscoveryMessages(m interface{}) bool {
@@ -341,8 +432,10 @@ func selectOnlyDiscoveryMessages(m interface{}) bool {
 	return selected
 }
 
-func (g *gossipServiceImpl) newDiscoveryAdapter() *discoveryAdapter {
+func (g *gossipServiceImpl) newDiscoveryAdapter(identity api.PeerIdentityType) *discoveryAdapter {
 	return &discoveryAdapter{
+		identity:              identity,
+		includeIdentityPeriod: g.includeIdentityPeriod,
 		c:        g.comm,
 		stopping: int32(0),
 		gossipFunc: func(msg *proto.GossipMessage) {
@@ -356,11 +449,14 @@ func (g *gossipServiceImpl) newDiscoveryAdapter() *discoveryAdapter {
 // discoveryAdapter is used to supply the discovery module with needed abilities
 // that the comm interface in the discovery module declares
 type discoveryAdapter struct {
-	stopping     int32
-	c            comm.Comm
-	presumedDead chan common.PKIidType
-	incChan      chan *proto.GossipMessage
-	gossipFunc   func(*proto.GossipMessage)
+	includeIdentityPeriod time.Time
+	identity              api.PeerIdentityType
+	mcs                   api.MessageCryptoService
+	stopping              int32
+	c                     comm.Comm
+	presumedDead          chan common.PKIidType
+	incChan               chan *proto.GossipMessage
+	gossipFunc            func(*proto.GossipMessage)
 }
 
 func (da *discoveryAdapter) close() {
@@ -373,6 +469,9 @@ func (da *discoveryAdapter) toDie() bool {
 }
 
 func (da *discoveryAdapter) Gossip(msg *proto.GossipMessage) {
+	if msg.IsAliveMsg() && time.Now().Before(da.includeIdentityPeriod) {
+		msg.GetAliveMsg().Identity = da.identity
+	}
 	da.gossipFunc(msg)
 }
 
@@ -399,8 +498,90 @@ func (da *discoveryAdapter) CloseConn(peer *discovery.NetworkMember) {
 	da.c.CloseConn(&comm.RemotePeer{Endpoint: peer.Endpoint, PKIID: peer.PKIid})
 }
 
-func equalPKIIds(a, b common.PKIidType) bool {
-	return bytes.Equal(a, b)
+type discoverySecurityAdapter struct {
+	idMapper identity.Mapper
+	mcs      api.MessageCryptoService
+	c        comm.Comm
+	logger   *util.Logger
+}
+
+func newDiscoverySecurityAdapter(idMapper identity.Mapper, mcs api.MessageCryptoService, c comm.Comm, logger *util.Logger) *discoverySecurityAdapter {
+	return &discoverySecurityAdapter{
+		idMapper: idMapper,
+		mcs:      mcs,
+		c:        c,
+		logger:   logger,
+	}
+}
+
+// validateAliveMsg validates that an Alive message is authentic
+func (sa *discoverySecurityAdapter) ValidateAliveMsg(am *proto.AliveMessage) bool {
+	if am == nil || am.Membership == nil || am.Membership.PkiID == nil || am.Signature == nil {
+		sa.logger.Warning("Invalid alive message:", am)
+		return false
+	}
+
+	var identity api.PeerIdentityType
+
+	// If signature is included inside AliveMessage
+	if am.Identity != nil {
+		identity = api.PeerIdentityType(am.Identity)
+		err := sa.mcs.ValidateIdentity(api.PeerIdentityType(identity))
+		if err != nil {
+			sa.logger.Warning("Failed validating identity of", am, "reason:", err)
+			return false
+		}
+	} else {
+		identity, _ = sa.idMapper.Get(am.Membership.PkiID)
+		if identity != nil {
+			sa.logger.Debug("Fetched identity of", am.Membership.PkiID, "from identity store")
+		}
+	}
+
+	if identity == nil {
+		sa.logger.Warning("Don't have certificate for", am)
+		return false
+	}
+
+	// At this point we got the certificate of the peer, proceed to verifying the AliveMessage
+
+	sig := am.Signature
+	am.Signature = nil
+	amIdentity := am.Identity
+	am.Identity = nil
+	b, err := prot.Marshal(am)
+	am.Signature = sig
+	am.Identity = amIdentity
+	if err != nil {
+		sa.logger.Error("Failed marshalling", am, ":", err)
+		return false
+	}
+	err = sa.mcs.Verify(identity, sig, b)
+	if err != nil {
+		sa.logger.Warning("Failed verifying:", am, ":", err)
+		return false
+	}
+	return true
+}
+
+// SignMessage signs an AliveMessage and updates its signature field
+func (sa *discoverySecurityAdapter) SignMessage(am *proto.AliveMessage) *proto.AliveMessage {
+	am.Signature = nil
+	identity := am.Identity
+	am.Identity = nil
+	b, err := prot.Marshal(am)
+	if err != nil {
+		sa.logger.Error("Failed marshalling", am, ":", err)
+		return am
+	}
+	b, err = sa.mcs.Sign(b)
+	if err != nil {
+		sa.logger.Error("Failed signing", am, ":", err)
+		return am
+	}
+	am.Signature = b
+	am.Identity = identity
+	return am
 }
 
 func (g *gossipServiceImpl) peersWithEndpoints(endpoints ...string) []*comm.RemotePeer {
@@ -413,4 +594,59 @@ func (g *gossipServiceImpl) peersWithEndpoints(endpoints ...string) []*comm.Remo
 		}
 	}
 	return peers
+}
+
+func (g *gossipServiceImpl) validateIdentityMsg(msg *proto.GossipMessage) error {
+	if msg.GetPeerIdentity() == nil {
+		return fmt.Errorf("Identity empty")
+	}
+	idMsg := msg.GetPeerIdentity()
+	pkiID := idMsg.PkiID
+	cert := idMsg.Cert
+	sig := idMsg.Sig
+	if bytes.Equal(g.idMapper.GetPKIidOfCert(api.PeerIdentityType(cert)), common.PKIidType(pkiID)) {
+		return fmt.Errorf("Calculated pkiID doesn't match identity")
+	}
+	idMsg.Sig = nil
+	b, err := prot.Marshal(idMsg)
+	if err != nil {
+		return fmt.Errorf("Failed marshalling: %v", err)
+	}
+	err = g.mcs.Verify(api.PeerIdentityType(cert), sig, b)
+	if err != nil {
+		return fmt.Errorf("Failed verifying message: %v", err)
+	}
+	idMsg.Sig = sig
+	return nil
+}
+
+func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
+	conf := pull.PullConfig{
+		MsgType:           proto.PullMsgType_IdentityMsg,
+		Channel:           []byte(""),
+		Id:                g.conf.SelfEndpoint,
+		PeerCountToSelect: g.conf.PullPeerNum,
+		PullInterval:      g.conf.PullInterval,
+		Tag:               proto.GossipMessage_EMPTY,
+	}
+	pkiIDFromMsg := func(msg *proto.GossipMessage) string {
+		identityMsg := msg.GetPeerIdentity()
+		if identityMsg == nil || identityMsg.PkiID == nil {
+			return ""
+		}
+		return fmt.Sprintf("%s", string(identityMsg.PkiID))
+	}
+	certConsumer := func(msg *proto.GossipMessage) {
+		idMsg := msg.GetPeerIdentity()
+		if idMsg == nil || idMsg.Cert == nil || idMsg.PkiID == nil {
+			g.logger.Warning("Invalid PeerIdentity:", idMsg)
+			return
+		}
+		err := g.idMapper.Put(common.PKIidType(idMsg.PkiID), api.PeerIdentityType(idMsg.Cert))
+		if err != nil {
+			g.logger.Warning("Failed associating PKI-ID with certificate:", err)
+		}
+
+	}
+	return pull.NewPullMediator(conf, g.comm, g.disc, pkiIDFromMsg, certConsumer)
 }

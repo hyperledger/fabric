@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
+	"fmt"
 )
 
 // certStore supports pull dissemination of identity messages
@@ -36,16 +37,24 @@ type certStore struct {
 	idMapper     identity.Mapper
 	pull         pull.Mediator
 	logger       *util.Logger
+	mcs api.MessageCryptoService
 }
 
-func newCertStore(mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType, pullMed pull.Mediator) *certStore {
-	certStore := &certStore{
-		idMapper:     identity.NewIdentityMapper(mcs),
-		selfIdentity: selfIdentity,
-		pull:         pullMed,
+func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity api.PeerIdentityType, mcs api.MessageCryptoService) *certStore {
+	selfPKIID := idMapper.GetPKIidOfCert(selfIdentity)
+	logger := util.GetLogger("certStore", string(selfPKIID))
+	if err := idMapper.Put(selfPKIID, selfIdentity); err != nil {
+		logger.Error("Failed associating self PKIID to cert:", err)
+		panic(fmt.Errorf("Failed associating self PKIID to cert: %v", err))
 	}
 
-	selfPKIID := certStore.idMapper.GetPKIidOfCert(selfIdentity)
+	certStore := &certStore{
+		mcs: mcs,
+		pull:         puller,
+		idMapper:     idMapper,
+		selfIdentity: selfIdentity,
+		logger:       logger,
+	}
 
 	certStore.logger = util.GetLogger("certStore", string(selfPKIID))
 
@@ -53,9 +62,9 @@ func newCertStore(mcs api.MessageCryptoService, selfIdentity api.PeerIdentityTyp
 		certStore.logger.Panic("Failed associating self PKIID to cert:", err)
 	}
 
-	pullMed.Add(certStore.createIdentityMessage())
+	puller.Add(certStore.createIdentityMessage())
 
-	pullMed.RegisterMsgHook(pull.ResponseMsgType, func(_ []string, msgs []*proto.GossipMessage, _ comm.ReceivedMessage) {
+	puller.RegisterMsgHook(pull.ResponseMsgType, func(_ []string, msgs []*proto.GossipMessage, _ comm.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiID)
 			cert := api.PeerIdentityType(msg.GetPeerIdentity().Cert)
@@ -65,7 +74,27 @@ func newCertStore(mcs api.MessageCryptoService, selfIdentity api.PeerIdentityTyp
 		}
 	})
 
+	puller.Add(certStore.createIdentityMessage())
+
 	return certStore
+}
+
+func (cs *certStore) handleMessage(msg comm.ReceivedMessage) {
+	if update := msg.GetGossipMessage().GetDataUpdate(); update != nil {
+		for _, m := range update.Data {
+			if ! m.IsIdentityMsg() {
+				cs.logger.Warning("Got a non-identity message:", m, "aborting")
+				return
+			}
+			idMsg := m.GetPeerIdentity()
+			if err := cs.mcs.ValidateIdentity(api.PeerIdentityType(idMsg.Cert)); err != nil {
+				cs.logger.Warning("Got invalid certificate:", err)
+				return
+			}
+
+		}
+	}
+	cs.pull.HandleMessage(msg)
 }
 
 func (cs *certStore) createIdentityMessage() *proto.GossipMessage {

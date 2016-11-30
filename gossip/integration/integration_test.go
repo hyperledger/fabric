@@ -39,12 +39,12 @@ func TestNewGossipCryptoService(t *testing.T) {
 	endpoint2 := "localhost:5612"
 	endpoint3 := "localhost:5613"
 
-	g1, _ := NewGossipComponent(endpoint1, s1)
-	g2, _ := NewGossipComponent(endpoint2, s2, "localhost:5611")
-	g3, _ := NewGossipComponent(endpoint3, s3, "localhost:5611")
+	g1 := NewGossipComponent(endpoint1, s1, []grpc.DialOption{grpc.WithInsecure()})
+	g2 := NewGossipComponent(endpoint2, s2, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
+	g3 := NewGossipComponent(endpoint3, s3, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
 	go s1.Serve(ll1)
 	go s2.Serve(ll2)
-	go s2.Serve(ll3)
+	go s3.Serve(ll3)
 
 	time.Sleep(time.Second * 5)
 	fmt.Println(g1.GetPeers())
