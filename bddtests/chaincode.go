@@ -52,5 +52,5 @@ func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymen
 	uuid := createPropsalID()
 
 	// make proposal
-	return putils.CreateChaincodeProposal(uuid, lcChaincodeInvocationSpec, creator)
+	return putils.CreateChaincodeProposal(uuid, util.GetTestChainID(), lcChaincodeInvocationSpec, creator)
 }

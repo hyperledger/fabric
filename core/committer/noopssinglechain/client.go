@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -194,6 +195,7 @@ func (d *DeliverService) seekOldest() error {
 			Seek: &orderer.SeekInfo{
 				Start:      orderer.SeekInfo_OLDEST,
 				WindowSize: d.windowSize,
+				ChainID:    []byte(util.GetTestChainID()),
 			},
 		},
 	})
@@ -206,6 +208,7 @@ func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
 				Start:           orderer.SeekInfo_SPECIFIED,
 				WindowSize:      d.windowSize,
 				SpecifiedNumber: height,
+				ChainID:         []byte(util.GetTestChainID()),
 			},
 		},
 	})

@@ -128,7 +128,7 @@ func endTxSimulationCDS(txid string, txsim ledger.TxSimulator, payload []byte, c
 		return err
 	}
 	// get a proposal - we need it to get a transaction
-	prop, err := putils.CreateProposalFromCDS(txid, cds, ss)
+	prop, err := putils.CreateProposalFromCDS(txid, util.GetTestChainID(), cds, ss)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func endTxSimulationCIS(txid string, txsim ledger.TxSimulator, payload []byte, c
 		return err
 	}
 	// get a proposal - we need it to get a transaction
-	prop, err := putils.CreateProposalFromCIS(txid, cis, ss)
+	prop, err := putils.CreateProposalFromCIS(txid, util.GetTestChainID(), cis, ss)
 	if err != nil {
 		return err
 	}

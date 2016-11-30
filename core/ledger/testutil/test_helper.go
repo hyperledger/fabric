@@ -63,9 +63,9 @@ func ConstructTestTransaction(t *testing.T, simulationResults []byte, sign bool)
 	ccName := "foo"
 	txID := util.GenerateUUID()
 	if sign {
-		return ptestutils.ConstructSingedTxEnvWithDefaultSigner(txID, ccName, simulationResults, nil, nil)
+		return ptestutils.ConstructSingedTxEnvWithDefaultSigner(txID, util.GetTestChainID(), ccName, simulationResults, nil, nil)
 	}
-	return ptestutils.ConstructUnsingedTxEnv(txID, ccName, simulationResults, nil, nil)
+	return ptestutils.ConstructUnsingedTxEnv(txID, util.GetTestChainID(), ccName, simulationResults, nil, nil)
 }
 
 // ComputeBlockHash computes the crypto-hash of a block
