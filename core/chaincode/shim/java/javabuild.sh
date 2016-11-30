@@ -18,7 +18,17 @@
 #
 set -e
 PARENTDIR=$(pwd)
+ARCH=`uname -m`
 
-gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle clean
-gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle build
-cp -r ${PARENTDIR}/core/chaincode/shim/java/build/libs /root/
+if [ x$ARCH != xx86_64 ]
+then
+    apt-get update && apt-get install openjdk-8-jdk -y
+    echo "FIXME: Java Shim code needs work on ppc64le. Commenting it for now."
+else
+    add-apt-repository ppa:openjdk-r/ppa -y
+    apt-get update && apt-get install openjdk-8-jdk -y
+    update-java-alternatives -s java-1.8.0-openjdk-amd64
+    gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle clean
+    gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle build
+    cp -r ${PARENTDIR}/core/chaincode/shim/java/build/libs /root/
+fi
