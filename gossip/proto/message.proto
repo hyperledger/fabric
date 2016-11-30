@@ -77,6 +77,9 @@ message GossipMessage {
 
         // Used to indicate intent of peer to become leader
         LeadershipMessage leadershipMsg = 18;
+
+        // Used to learn of a peer's certificate
+        PeerIdentity peerIdentity = 19;
     }
 }
 
@@ -102,13 +105,25 @@ message ChannelCommand {
 message ConnEstablish {
     bytes sig = 1;
     bytes pkiID = 2;
+    bytes cert  = 3;
+}
+
+// PeerIdentity defines the identity of the peer
+// Used to make other peers learn of the identity
+// of a certain peer
+message PeerIdentity {
+    bytes sig   = 1;
+    bytes pkiID = 2;
+    bytes cert  = 3;
+    bytes metadata = 4;
 }
 
 // Messages related to pull mechanism
 
 enum MsgType {
-    UNDEFINED    = 0;
+    UNDEFINED     = 0;
     BlockMessage  = 1;
+    IdentityMsg   = 2;
 }
 
 // DataRequest is a message used for a peer to request
@@ -167,6 +182,7 @@ message AliveMessage {
     Member membership  = 1;
     PeerTime timestamp = 2;
     bytes signature    = 3;
+    bytes identity     = 4;
 }
 
 // Leadership Message is sent during leader election to inform

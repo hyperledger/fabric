@@ -173,7 +173,7 @@ func TestBasic(t *testing.T) {
 	m2 := comm2.Accept(acceptAll)
 	out := make(chan uint64, 2)
 	reader := func(ch <-chan ReceivedMessage) {
-		m := <- ch
+		m := <-ch
 		out <- m.GetGossipMessage().Nonce
 	}
 	go reader(m1)

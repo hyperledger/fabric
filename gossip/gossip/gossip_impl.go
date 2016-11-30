@@ -23,10 +23,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/gossip/gossip/algo"
+	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/op/go-logging"
@@ -38,24 +39,25 @@ const (
 )
 
 type gossipServiceImpl struct {
+	certStore    *certStore
 	presumedDead chan common.PKIidType
 	disc         discovery.Discovery
 	comm         comm.Comm
 	*comm.ChannelDeMultiplexer
-	logger      *util.Logger
-	stopSignal  *sync.WaitGroup
-	conf        *Config
-	toDieChan   chan struct{}
-	stopFlag    int32
-	msgStore    messageStore
-	emitter     batchingEmitter
-	pushPull    *algo.PullEngine
-	goRoutines  []uint64
-	discAdapter *discoveryAdapter
+	logger       *util.Logger
+	stopSignal   *sync.WaitGroup
+	conf         *Config
+	toDieChan    chan struct{}
+	stopFlag     int32
+	msgStore     messageStore
+	blocksPuller pull.Mediator
+	emitter      batchingEmitter
+	goRoutines   []uint64
+	discAdapter  *discoveryAdapter
 }
 
 // NewGossipService creates a new gossip instance
-func NewGossipService(conf *Config, c comm.Comm, crypto discovery.CryptoService) Gossip {
+func NewGossipService(conf *Config, c comm.Comm, mcs api.MessageCryptoService, crypto discovery.CryptoService, selfID api.PeerIdentityType) Gossip {
 	g := &gossipServiceImpl{
 		presumedDead:         make(chan common.PKIidType, presumedDeadChanSize),
 		disc:                 nil,
@@ -79,19 +81,52 @@ func NewGossipService(conf *Config, c comm.Comm, crypto discovery.CryptoService)
 		Endpoint: conf.SelfEndpoint, PKIid: g.comm.GetPKIid(), Metadata: []byte{},
 	}, g.discAdapter, crypto)
 
-	g.pushPull = algo.NewPullEngine(g, conf.PullInterval)
-
 	g.msgStore = newMessageStore(proto.NewGossipMessageComparator(g.conf.MaxMessageCountToStore), func(m interface{}) {
-		if dataMsg, isDataMsg := m.(*proto.DataMessage); isDataMsg {
-			g.pushPull.Remove(fmt.Sprintf("%d", dataMsg.Payload.SeqNum))
-		}
+		g.blocksPuller.Remove(m.(*proto.GossipMessage))
 	})
+
+	g.blocksPuller = g.createPull()
+
+	g.certStore = newCertStore(mcs, selfID, g.createPull())
 
 	g.logger.SetLevel(logging.WARNING)
 
 	go g.start()
 
 	return g
+}
+
+func (g *gossipServiceImpl) createPull() pull.Mediator {
+	gConf := g.conf
+	conf := pull.PullConfig{
+		MsgType:           proto.MsgType_BlockMessage,
+		Channel:           []byte(""),
+		Id:                gConf.SelfEndpoint,
+		PeerCountToSelect: gConf.PullPeerNum,
+		PullInterval:      gConf.PullInterval,
+		Tag:               proto.GossipMessage_EMPTY,
+	}
+	seqNumFromMsg := func(msg *proto.GossipMessage) string {
+		dataMsg := msg.GetDataMsg()
+		if dataMsg == nil || dataMsg.Payload == nil {
+			return ""
+		}
+		return fmt.Sprintf("%d", dataMsg.Payload.SeqNum)
+	}
+	blockConsumer := func(msg *proto.GossipMessage) {
+		dataMsg := msg.GetDataMsg()
+		if dataMsg == nil || dataMsg.Payload == nil {
+			return
+		}
+		added := g.msgStore.add(msg)
+		// if we can't add the message to the msgStore,
+		// no point in disseminating it to others...
+		if !added {
+			return
+		}
+		g.DeMultiplex(msg)
+	}
+	return pull.NewPullMediator(conf, g.comm, g.disc, seqNumFromMsg, blockConsumer)
 }
 
 func (g *gossipServiceImpl) toDie() bool {
@@ -163,104 +198,14 @@ func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan comm.ReceivedMessage) 
 	}
 }
 
-func (g *gossipServiceImpl) SelectPeers() []string {
-	if g.disc == nil {
-		return []string{}
-	}
-	peers := selectEndpoints(g.conf.PullPeerNum, g.disc.GetMembership())
-	g.logger.Debug("Selected", len(peers), "peers")
-	return peers
-}
-
-func (g *gossipServiceImpl) Hello(dest string, nonce uint64) {
-	helloMsg := &proto.GossipMessage{
-		Tag:   proto.GossipMessage_EMPTY,
-		Nonce: 0,
-		Content: &proto.GossipMessage_Hello{
-			Hello: &proto.GossipHello{
-				Nonce:    nonce,
-				Metadata: nil,
-				MsgType:  proto.MsgType_BlockMessage,
-			},
-		},
-	}
-
-	g.logger.Debug("Sending hello to", dest)
-	g.comm.Send(helloMsg, g.peersWithEndpoints(dest)...)
-
-}
-
-func (g *gossipServiceImpl) SendDigest(digest []string, nonce uint64, context interface{}) {
-	digMsg := &proto.GossipMessage{
-		Tag:   proto.GossipMessage_EMPTY,
-		Nonce: 0,
-		Content: &proto.GossipMessage_DataDig{
-			DataDig: &proto.DataDigest{
-				MsgType: proto.MsgType_BlockMessage,
-				Nonce:   nonce,
-				Digests: digest,
-			},
-		},
-	}
-	g.logger.Debug("Sending digest", digMsg.GetDataDig().Digests)
-	context.(comm.ReceivedMessage).Respond(digMsg)
-}
-
-func (g *gossipServiceImpl) SendReq(dest string, items []string, nonce uint64) {
-	req := &proto.GossipMessage{
-		Tag:   proto.GossipMessage_EMPTY,
-		Nonce: 0,
-		Content: &proto.GossipMessage_DataReq{
-			DataReq: &proto.DataRequest{
-				MsgType: proto.MsgType_BlockMessage,
-				Nonce:   nonce,
-				Digests: items,
-			},
-		},
-	}
-	g.logger.Debug("Sending", req, "to", dest)
-	g.comm.Send(req, g.peersWithEndpoints(dest)...)
-}
-
-func (g *gossipServiceImpl) SendRes(requestedItems []string, context interface{}, nonce uint64) {
-	itemMap := make(map[string]*proto.GossipMessage)
-	for _, msg := range g.msgStore.get() {
-		if dataMsg := msg.(*proto.GossipMessage).GetDataMsg(); dataMsg != nil {
-			itemMap[fmt.Sprintf("%d", dataMsg.Payload.SeqNum)] = msg.(*proto.GossipMessage)
-		}
-	}
-
-	dataMsgs := []*proto.GossipMessage{}
-
-	for _, item := range requestedItems {
-		if dataMsg, exists := itemMap[item]; exists {
-			dataMsgs = append(dataMsgs, dataMsg)
-		}
-	}
-
-	returnedUpdate := &proto.GossipMessage{
-		Tag:   proto.GossipMessage_EMPTY,
-		Nonce: 0,
-		Content: &proto.GossipMessage_DataUpdate{
-			DataUpdate: &proto.DataUpdate{
-				MsgType: proto.MsgType_BlockMessage,
-				Nonce:   nonce,
-				Data:    dataMsgs,
-			},
-		},
-	}
-
-	g.logger.Debug("Sending response", returnedUpdate.GetDataUpdate().Data)
-	context.(comm.ReceivedMessage).Respond(returnedUpdate)
-}
-
 func (g *gossipServiceImpl) handleMessage(msg comm.ReceivedMessage) {
 	if g.toDie() {
 		return
 	}
 	g.logger.Info("Entering,", msg)
 	defer g.logger.Info("Exiting")
-	if msg == nil {
+
+	if msg == nil || msg.GetGossipMessage() == nil {
 		return
 	}
 
@@ -280,15 +225,14 @@ func (g *gossipServiceImpl) handleMessage(msg comm.ReceivedMessage) {
 
 		if dataMsg := msg.GetGossipMessage().GetDataMsg(); dataMsg != nil {
 			g.DeMultiplex(msg.GetGossipMessage())
-			g.pushPull.Add(fmt.Sprintf("%d", dataMsg.Payload.SeqNum))
+			g.blocksPuller.Add(msg.GetGossipMessage())
 		}
 
 		return
 	}
 
-	if msg.GetGossipMessage().GetDataReq() != nil || msg.GetGossipMessage().GetDataUpdate() != nil ||
-		msg.GetGossipMessage().GetHello() != nil || msg.GetGossipMessage().GetDataDig() != nil {
-		g.handlePushPullMsg(msg)
+	if msg.GetGossipMessage().IsPullMsg() {
+		g.blocksPuller.HandleMessage(msg)
 	}
 }
 
@@ -297,36 +241,6 @@ func (g *gossipServiceImpl) forwardDiscoveryMsg(msg comm.ReceivedMessage) {
 		recover()
 	}()
 	g.discAdapter.incChan <- msg.GetGossipMessage()
-}
-
-func (g *gossipServiceImpl) handlePushPullMsg(msg comm.ReceivedMessage) {
-	g.logger.Debug(msg)
-	if helloMsg := msg.GetGossipMessage().GetHello(); helloMsg != nil {
-		if helloMsg.MsgType != proto.MsgType_BlockMessage {
-			return
-		}
-		g.pushPull.OnHello(helloMsg.Nonce, msg)
-	}
-	if digest := msg.GetGossipMessage().GetDataDig(); digest != nil {
-		g.pushPull.OnDigest(digest.Digests, digest.Nonce, msg)
-	}
-	if req := msg.GetGossipMessage().GetDataReq(); req != nil {
-		g.pushPull.OnReq(req.Digests, req.Nonce, msg)
-	}
-	if res := msg.GetGossipMessage().GetDataUpdate(); res != nil {
-		items := make([]string, len(res.Data))
-		for i, data := range res.Data {
-			added := g.msgStore.add(data)
-			// if we can't add the message to the msgStore,
-			// no point in disseminating it to others...
-			if !added {
-				continue
-			}
-			g.DeMultiplex(data)
-			items[i] = fmt.Sprintf("%d", data.GetDataMsg().Payload.SeqNum)
-		}
-		g.pushPull.OnRes(items, res.Nonce)
-	}
 }
 
 func (g *gossipServiceImpl) sendGossipBatch(a []interface{}) {
@@ -342,30 +256,17 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*proto.GossipMessage) {
 		g.logger.Error("Discovery has not been initialized yet, aborting!")
 		return
 	}
-	peers2Send := selectEndpoints(g.conf.PropagatePeerNum, g.disc.GetMembership())
+	peers2Send := pull.SelectEndpoints(g.conf.PropagatePeerNum, g.disc.GetMembership())
 	for _, msg := range msgs {
-		g.comm.Send(msg, g.peersWithEndpoints(peers2Send...)...)
+		g.comm.Send(msg, peers2Send...)
 	}
-}
-
-func selectEndpoints(k int, peerPool []discovery.NetworkMember) []string {
-	if len(peerPool) < k {
-		k = len(peerPool)
-	}
-
-	indices := util.GetRandomIndices(k, len(peerPool)-1)
-	endpoints := make([]string, len(indices))
-	for i, j := range indices {
-		endpoints[i] = peerPool[j].Endpoint
-	}
-	return endpoints
 }
 
 func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	g.logger.Info(msg)
 	if dataMsg := msg.GetDataMsg(); dataMsg != nil {
 		g.msgStore.add(msg)
-		g.pushPull.Add(fmt.Sprintf("%d", dataMsg.Payload.SeqNum))
+		g.blocksPuller.Add(msg)
 	}
 	g.emitter.Add(msg)
 }
@@ -392,7 +293,8 @@ func (g *gossipServiceImpl) Stop() {
 	}()
 	g.discAdapter.close()
 	g.disc.Stop()
-	g.pushPull.Stop()
+	g.blocksPuller.Stop()
+	g.certStore.stop()
 	g.toDieChan <- struct{}{}
 	g.emitter.Stop()
 	g.ChannelDeMultiplexer.Close()

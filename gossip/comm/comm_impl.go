@@ -254,7 +254,7 @@ func (c *commImpl) isStopping() bool {
 
 func (c *commImpl) Probe(peer *RemotePeer) error {
 	if c.isStopping() {
-		return fmt.Errorf("Stopping!")
+		return fmt.Errorf("Stopping")
 	}
 	c.logger.Debug("Entering, endpoint:", peer.Endpoint, "PKIID:", peer.PKIID)
 	var err error

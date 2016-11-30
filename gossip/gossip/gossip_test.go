@@ -28,7 +28,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -57,6 +59,24 @@ func acceptData(m interface{}) bool {
 	return false
 }
 
+type naiveSecProvider struct {
+}
+
+func (*naiveSecProvider) IsEnabled() bool {
+	return true
+}
+
+func (*naiveSecProvider) Sign(msg []byte) ([]byte, error) {
+	return msg, nil
+}
+
+func (*naiveSecProvider) Verify(vkID, signature, message []byte) error {
+	if bytes.Equal(signature, message) {
+		return nil
+	}
+	return fmt.Errorf("Failed verifying")
+}
+
 type naiveCryptoService struct {
 }
 
@@ -72,15 +92,36 @@ func (*naiveCryptoService) IsEnabled() bool {
 	return true
 }
 
+func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	return nil
+}
+
+// GetPKIidOfCert returns the PKI-ID of a peer's identity
+func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
+	return common.PKIidType(peerIdentity)
+}
+
+// VerifyBlock returns nil if the block is properly signed,
+// else returns error
+func (*naiveCryptoService) VerifyBlock(signedBlock api.SignedBlock) error {
+	return nil
+}
+
+// Sign signs msg with this peer's signing key and outputs
+// the signature if no error occurred.
 func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {
 	return msg, nil
 }
 
-func (*naiveCryptoService) Verify(vkID, signature, message []byte) error {
-	if bytes.Equal(signature, message) {
-		return nil
+// Verify checks that signature is a valid signature of message under a peer's verification key.
+// If the verification succeeded, Verify returns nil meaning no error occurred.
+// If peerCert is nil, then the signature is verified against this peer's verification key.
+func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	equal := bytes.Equal(signature, message)
+	if !equal {
+		return fmt.Errorf("Wrong signature:%v, %v", signature, message)
 	}
-	return fmt.Errorf("Failed verifying")
+	return nil
 }
 
 func bootPeers(ids ...int) []string {
@@ -106,11 +147,11 @@ func newGossipInstance(id int, maxMsgCount int, boot ...int) Gossip {
 		PullPeerNum:                5,
 		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
 	}
-	comm, err := comm.NewCommInstanceWithServer(port, &naiveCryptoService{}, []byte(conf.SelfEndpoint))
+	comm, err := comm.NewCommInstanceWithServer(port, &naiveSecProvider{}, []byte(conf.SelfEndpoint))
 	if err != nil {
 		panic(err)
 	}
-	return NewGossipService(conf, comm, &naiveCryptoService{})
+	return NewGossipService(conf, comm, &naiveCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(conf.ID))
 }
 
 func newGossipInstanceWithOnlyPull(id int, maxMsgCount int, boot ...int) Gossip {
@@ -128,11 +169,11 @@ func newGossipInstanceWithOnlyPull(id int, maxMsgCount int, boot ...int) Gossip 
 		PullPeerNum:                20,
 		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
 	}
-	comm, err := comm.NewCommInstanceWithServer(port, &naiveCryptoService{}, []byte(conf.SelfEndpoint))
+	comm, err := comm.NewCommInstanceWithServer(port, &naiveSecProvider{}, []byte(conf.SelfEndpoint))
 	if err != nil {
 		panic(err)
 	}
-	return NewGossipService(conf, comm, &naiveCryptoService{})
+	return NewGossipService(conf, comm, &naiveCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(conf.ID))
 }
 
 func TestPull(t *testing.T) {
