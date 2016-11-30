@@ -17,6 +17,7 @@ limitations under the License.
 package noopssinglechain
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -60,6 +61,7 @@ type DeliverService struct {
 	gossip        gossip.Gossip
 	conn          *grpc.ClientConn
 
+	stopFlag int32
 	stopChan chan bool
 }
 
@@ -172,6 +174,8 @@ func (d *DeliverService) Start() {
 
 // Stop all service and release resources
 func (d *DeliverService) Stop() {
+	atomic.StoreInt32(&d.stopFlag, 1)
+	d.stopDeliver()
 	d.stopChan <- true
 	d.stateProvider.Stop()
 	d.gossip.Stop()
@@ -211,13 +215,23 @@ func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
 	})
 }
 
+// Internal function to check whenever we need to finish listening
+// for new messages to arrive
+func (d *DeliverService) isDone() bool {
+
+	return atomic.LoadInt32(&d.stopFlag) == 1
+}
+
 func (d *DeliverService) readUntilClose() {
 	for {
 		msg, err := d.client.Recv()
 		if err != nil {
+			logger.Warningf("Receive error: %s", err.Error())
+			if d.isDone() {
+				<-d.stopChan
+			}
 			return
 		}
-
 		switch t := msg.Type.(type) {
 		case *orderer.DeliverResponse_Error:
 			if t.Error == common.Status_SUCCESS {
