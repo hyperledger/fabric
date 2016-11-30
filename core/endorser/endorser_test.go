@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
-	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
@@ -42,7 +41,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-var testDBWrapper = db.NewTestDBWrapper()
 var endorserServer pb.EndorserServer
 var mspInstance msp.PeerMSP
 var signer msp.SigningIdentity
@@ -351,7 +349,6 @@ func TestDeployAndInvoke(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	SetupTestConfig()
-	testDBWrapper.CleanDB(nil)
 	viper.Set("peer.fileSystemPath", filepath.Join(os.TempDir(), "hyperledger", "production"))
 	lis, err := initPeer()
 	if err != nil {

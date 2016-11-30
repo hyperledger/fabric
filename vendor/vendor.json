@@ -454,11 +454,6 @@
 			"revisionTime": "2016-10-11T05:00:08Z"
 		},
 		{
-			"path": "github.com/tecbot/gorocksdb",
-			"revision": "e39123302f971c5539db303771dbea0503be59cb",
-			"revisionTime": "2016-01-29T22:06:01+01:00"
-		},
-		{
 			"path": "golang.org/x/crypto/hkdf",
 			"revision": "c8b9e6388ef638d5a8a9d865c634befdc46a6784",
 			"revisionTime": "2015-06-18T17:47:17-07:00"

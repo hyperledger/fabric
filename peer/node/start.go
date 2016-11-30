@@ -35,7 +35,6 @@ import (
 	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
-	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/events/producer"
@@ -118,8 +117,6 @@ func serve(args []string) error {
 	} else {
 		logger.Infof("Privacy enabled status: false")
 	}
-
-	db.Start()
 
 	var opts []grpc.ServerOption
 	if comm.TLSEnabled() {

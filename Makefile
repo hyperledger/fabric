@@ -48,7 +48,7 @@ endif
 
 PKGNAME = github.com/$(PROJECT_NAME)
 GO_LDFLAGS = -X $(PKGNAME)/metadata.Version=$(PROJECT_VERSION)
-CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
+CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell uname -m)
 OS=$(shell uname)
 CHAINTOOL_RELEASE=v0.10.0
