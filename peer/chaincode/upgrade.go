@@ -28,25 +28,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var chaincodeDeployCmd *cobra.Command
+var chaincodeUpgradeCmd *cobra.Command
 
-// deployCmd returns the cobra command for Chaincode Deploy
-func deployCmd(cf *ChaincodeCmdFactory) *cobra.Command {
-	chaincodeDeployCmd = &cobra.Command{
-		Use:       "deploy",
-		Short:     fmt.Sprintf("Deploy the specified chaincode to the network."),
-		Long:      fmt.Sprintf(`Deploy the specified chaincode to the network.`),
+// upgradeCmd returns the cobra command for Chaincode Upgrade
+func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
+	chaincodeUpgradeCmd = &cobra.Command{
+		Use:       "upgrade",
+		Short:     fmt.Sprintf("Upgrade chaincode."),
+		Long:      fmt.Sprintf(`Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.`),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return chaincodeDeploy(cmd, args, cf)
+			return chaincodeUpgrade(cmd, args, cf)
 		},
 	}
 
-	return chaincodeDeployCmd
+	return chaincodeUpgradeCmd
 }
 
-//deploy the command via Endorser
-func deploy(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
+//upgrade the command via Endorser
+func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
 		return nil, err
@@ -64,10 +64,11 @@ func deploy(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, 
 
 	uuid := util.GenerateUUID()
 
-	prop, err := utils.CreateDeployProposalFromCDS(uuid, chainID, cds, creator)
+	prop, err := utils.CreateUpgradeProposalFromCDS(uuid, chainID, cds, creator)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error creating proposal %s: %s\n", chainFuncName, err)
 	}
+	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeID)
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
@@ -79,6 +80,7 @@ func deploy(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, 
 	if err != nil {
 		return nil, fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
 	}
+	logger.Debugf("endorse upgrade proposal, get response <%v>", proposalResponse.Response)
 
 	if proposalResponse != nil {
 		// assemble a signed transaction (it's an Envelope message)
@@ -86,17 +88,16 @@ func deploy(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, 
 		if err != nil {
 			return nil, fmt.Errorf("Could not assemble transaction, err %s", err)
 		}
-
+		logger.Debug("Get Signed envelope")
 		return env, nil
 	}
 
 	return nil, nil
 }
 
-// chaincodeDeploy deploys the chaincode. On success, the chaincode name
-// (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
-// commands.
-func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
+// chaincodeUpgrade upgrades the chaincode. On success, the new chaincode
+// version is printed to STDOUT
+func chaincodeUpgrade(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	var err error
 	if cf == nil {
 		cf, err = InitCmdFactory()
@@ -105,14 +106,17 @@ func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory)
 		}
 	}
 	defer cf.BroadcastClient.Close()
-	env, err := deploy(cmd, cf)
+
+	env, err := upgrade(cmd, cf)
 	if err != nil {
 		return err
 	}
 
 	if env != nil {
+		logger.Debug("Send signed envelope to orderer")
 		err = cf.BroadcastClient.Send(env)
+		return err
 	}
 
-	return err
+	return nil
 }

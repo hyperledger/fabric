@@ -17,11 +17,13 @@ limitations under the License.
 package common
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/flogging"
+	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
@@ -29,7 +31,7 @@ import (
 const UndefinedParamValue = ""
 
 // GetEndorserClient returns a new endorser client connection for this peer
-func GetEndorserClient(cmd *cobra.Command) (pb.EndorserClient, error) {
+func GetEndorserClient() (pb.EndorserClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
 		err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
@@ -57,4 +59,14 @@ func SetErrorLoggingLevel() error {
 	_, err := flogging.SetModuleLogLevel("error", viperErrorLoggingLevel)
 
 	return err
+}
+
+// GetDefaultSigner return a default Signer(Default/PERR) for cli
+func GetDefaultSigner() (msp.SigningIdentity, error) {
+	signer, err := msp.GetLocalMSP().GetDefaultSigningIdentity()
+	if err != nil {
+		return nil, fmt.Errorf("Error obtaining the default signing identity, err %s", err)
+	}
+
+	return signer, err
 }

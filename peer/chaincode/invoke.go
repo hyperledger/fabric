@@ -22,20 +22,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func invokeCmd() *cobra.Command {
+var chaincodeInvokeCmd *cobra.Command
+
+// invokeCmd returns the cobra command for Chaincode Invoke
+func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
+	chaincodeInvokeCmd = &cobra.Command{
+		Use:       "invoke",
+		Short:     fmt.Sprintf("Invoke the specified %s.", chainFuncName),
+		Long:      fmt.Sprintf(`Invoke the specified %s.`, chainFuncName),
+		ValidArgs: []string{"1"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return chaincodeInvoke(cmd, args, cf)
+		},
+	}
+
 	return chaincodeInvokeCmd
 }
 
-var chaincodeInvokeCmd = &cobra.Command{
-	Use:       "invoke",
-	Short:     fmt.Sprintf("Invoke the specified %s.", chainFuncName),
-	Long:      fmt.Sprintf(`Invoke the specified %s.`, chainFuncName),
-	ValidArgs: []string{"1"},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return chaincodeInvoke(cmd, args)
-	},
-}
+func chaincodeInvoke(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
+	var err error
+	if cf == nil {
+		cf, err = InitCmdFactory()
+		if err != nil {
+			return err
+		}
+	}
+	defer cf.BroadcastClient.Close()
 
-func chaincodeInvoke(cmd *cobra.Command, args []string) error {
-	return chaincodeInvokeOrQuery(cmd, args, true)
+	return chaincodeInvokeOrQuery(cmd, args, true, cf)
 }

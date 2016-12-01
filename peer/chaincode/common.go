@@ -32,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/util"
-	protcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
@@ -155,7 +154,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 //
 // NOTE - Query will likely go away as all interactions with the endorser are
 // Proposal and ProposalResponses
-func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err error) {
+func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *ChaincodeCmdFactory) (err error) {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
 		return err
@@ -167,19 +166,9 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		invocation.IdGenerationAlg = customIDGenAlg
 	}
 
-	endorserClient, err := common.GetEndorserClient(cmd)
+	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
-	}
-
-	signer, err := msp.GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		return fmt.Errorf("Error obtaining the default signing identity, err %s", err)
-	}
-
-	creator, err := signer.Serialize()
-	if err != nil {
-		return fmt.Errorf("Error serializing the default signing identity, err %s", err)
+		return fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.Identifier(), err)
 	}
 
 	uuid := cutil.GenerateUUID()
@@ -191,13 +180,13 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 	}
 
 	var signedProp *pb.SignedProposal
-	signedProp, err = putils.GetSignedProposal(prop, signer)
+	signedProp, err = putils.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
 		return fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
 	}
 
 	var proposalResp *pb.ProposalResponse
-	proposalResp, err = endorserClient.ProcessProposal(context.Background(), signedProp)
+	proposalResp, err = cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
 		return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
 	}
@@ -205,13 +194,13 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 	if invoke {
 		if proposalResp != nil {
 			// assemble a signed transaction (it's an Envelope message)
-			env, err := putils.CreateSignedTx(prop, signer, proposalResp)
+			env, err := putils.CreateSignedTx(prop, cf.Signer, proposalResp)
 			if err != nil {
 				return fmt.Errorf("Could not assemble transaction, err %s", err)
 			}
 
 			// send the envelope for ordering
-			if err = sendTransaction(env); err != nil {
+			if err = cf.BroadcastClient.Send(env); err != nil {
 				return fmt.Errorf("Error sending transaction %s: %s\n", chainFuncName, err)
 			}
 		}
@@ -241,7 +230,6 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 }
 
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
-
 	//we need chaincode name for everything, including deploy
 	if chaincodeName == common.UndefinedParamValue {
 		return fmt.Errorf("Must supply value for %s name parameter.\n", chainFuncName)
@@ -283,16 +271,33 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	return nil
 }
 
-//sendTransactions sends a serialize Envelop to the orderer
-func sendTransaction(env *protcommon.Envelope) error {
-	var orderer string
-	if viper.GetBool("peer.committer.enabled") {
-		orderer = viper.GetString("peer.committer.ledger.orderer")
+// ChaincodeCmdFactory holds the clients used by ChaincodeCmd
+type ChaincodeCmdFactory struct {
+	EndorserClient  pb.EndorserClient
+	Signer          msp.SigningIdentity
+	BroadcastClient common.BroadcastClient
+}
+
+// InitCmdFactory init the ChaincodeCmdFactory with default clients
+func InitCmdFactory() (*ChaincodeCmdFactory, error) {
+	endorserClient, err := common.GetEndorserClient()
+	if err != nil {
+		return nil, fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 	}
 
-	if orderer == "" {
-		return nil
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		return nil, fmt.Errorf("Error getting default signer: %s", err)
 	}
 
-	return Send(orderer, env)
+	broadcastClient, err := common.GetBroadcastClient()
+	if err != nil {
+		return nil, fmt.Errorf("Error getting broadcast client: %s", err)
+	}
+
+	return &ChaincodeCmdFactory{
+		EndorserClient:  endorserClient,
+		Signer:          signer,
+		BroadcastClient: broadcastClient,
+	}, nil
 }

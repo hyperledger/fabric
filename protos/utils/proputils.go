@@ -377,19 +377,35 @@ func CreateProposalFromCIS(txid string, chainID string, cis *peer.ChaincodeInvoc
 	return CreateChaincodeProposal(txid, chainID, cis, creator)
 }
 
-// CreateProposalFromCDS returns a proposal given a serialized identity and a ChaincodeDeploymentSpec
-func CreateProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
+// CreateDeployProposalFromCDS returns a deploy proposal given a serialized identity and a ChaincodeDeploymentSpec
+func CreateDeployProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
+	return createProposalFromCDS(txid, chainID, cds, creator, true)
+}
+
+// CreateUpgradeProposalFromCDS returns a upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec
+func CreateUpgradeProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
+	return createProposalFromCDS(txid, chainID, cds, creator, false)
+}
+
+// createProposalFromCDS returns a deploy or upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec
+func createProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, deploy bool) (*peer.Proposal, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
 	}
 
+	var propType string
+	if deploy {
+		propType = "deploy"
+	} else {
+		propType = "upgrade"
+	}
 	//wrap the deployment in an invocation spec to lccc...
 	lcccSpec := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			Type:        peer.ChaincodeSpec_GOLANG,
 			ChaincodeID: &peer.ChaincodeID{Name: "lccc"},
-			CtorMsg:     &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
+			CtorMsg:     &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b}}}}
 
 	//...and get the proposal for it
 	return CreateProposalFromCIS(txid, chainID, lcccSpec, creator)
