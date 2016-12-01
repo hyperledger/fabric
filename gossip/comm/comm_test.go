@@ -70,6 +70,7 @@ func newCommInstance(port int, sec SecurityProvider) (Comm, error) {
 }
 
 func TestHandshake(t *testing.T) {
+	t.Parallel()
 	comm1, _ := newCommInstance(9611, naiveSec)
 	defer comm1.Stop()
 
@@ -246,8 +247,8 @@ func TestBlackListPKIid(t *testing.T) {
 
 func TestParallelSend(t *testing.T) {
 	t.Parallel()
-	comm1, _ := newCommInstance(5611, naiveSec)
-	comm2, _ := newCommInstance(5612, naiveSec)
+	comm1, _ := newCommInstance(5411, naiveSec)
+	comm2, _ := newCommInstance(5412, naiveSec)
 	defer comm1.Stop()
 	defer comm2.Stop()
 
@@ -260,7 +261,7 @@ func TestParallelSend(t *testing.T) {
 			emptyMsg := createGossipMsg()
 			go func() {
 				defer wg.Done()
-				comm1.Send(emptyMsg, remotePeer(5612))
+				comm1.Send(emptyMsg, remotePeer(5412))
 			}()
 		}
 		wg.Wait()
