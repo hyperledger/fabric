@@ -107,22 +107,15 @@ func ConstructSingedTxEnv(txid string, chainID string, ccName string, simulation
 	return env, nil
 }
 
+var mspLcl msp.PeerMSP
+var sigId msp.SigningIdentity
+
 // ConstructUnsingedTxEnv creates a Transaction envelope from given inputs
 func ConstructUnsingedTxEnv(txid string, chainID string, ccName string, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
-	prop, err := putils.CreateChaincodeProposal(txid, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: ccName}}}, nil)
-	if err != nil {
-		return nil, err
+	if mspLcl == nil {
+		mspLcl = msp.NewNoopMsp()
+		sigId, _ = mspLcl.GetSigningIdentity(nil)
 	}
 
-	presp, err := putils.ConstructUnsignedProposalResponse(prop.Header, prop.Payload, simulationResults, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	env, err := putils.ConstructUnsignedTxEnvelope(prop, presp)
-	if err != nil {
-		return nil, err
-	}
-	return env, nil
-
+	return ConstructSingedTxEnv(txid, chainID, ccName, simulationResults, events, visibility, sigId)
 }

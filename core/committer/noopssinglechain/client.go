@@ -35,11 +35,13 @@ import (
 
 	"fmt"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/integration"
 	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/state"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger *logging.Logger // package-level logger
@@ -224,6 +226,49 @@ func (d *DeliverService) isDone() bool {
 	return atomic.LoadInt32(&d.stopFlag) == 1
 }
 
+func isTxValidForVscc(envBytes []byte) error {
+	// TODO: Extract the VSCC/policy from LCCC as soon as this is ready
+	vscc := "vscc"
+
+	// TODO - get chainname from the envelope
+	chainName := string(chaincode.DefaultChain)
+
+	txid := "N/A" // FIXME: is that appropriate?
+
+	// build arguments for VSCC invocation
+	// args[0] - function name (not used now)
+	// args[1] - serialized Envelope
+	args := [][]byte{[]byte(""), envBytes}
+
+	// create VSCC invocation proposal
+	vsccCis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: vscc}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
+	prop, err := putils.CreateProposalFromCIS(txid, util.GetTestChainID(), vsccCis, []byte(""))
+	if err != nil {
+		logger.Errorf("Cannot create a proposal to invoke VSCC, err %s\n", err)
+		return err
+	}
+
+	// get context for the chaincode execution
+	var txsim ledger.TxSimulator
+	lgr := kvledger.GetLedger(chainName)
+	txsim, err = lgr.NewTxSimulator()
+	if err != nil {
+		logger.Errorf("Cannot obtain tx simulator, err %s\n", err)
+		return err
+	}
+	defer txsim.Done()
+	ctxt := context.WithValue(context.Background(), chaincode.TXSimulatorKey, txsim)
+
+	// invoke VSCC
+	_, _, err = chaincode.ExecuteChaincode(ctxt, txid, prop, chainName, vscc, args)
+	if err != nil {
+		logger.Errorf("VSCC check failed for transaction, error %s", err)
+		return err
+	}
+
+	return nil
+}
+
 func (d *DeliverService) readUntilClose() {
 	for {
 		msg, err := d.client.Recv()
@@ -264,7 +309,15 @@ func (d *DeliverService) readUntilClose() {
 							// in validation is just dropped on the floor
 							logger.Errorf("Invalid transaction, error %s", err)
 						} else {
-							// TODO: call VSCC now
+							err = isTxValidForVscc(d)
+							if err != nil {
+								// TODO: this code needs to receive a bit more attention and discussion:
+								// it's not clear what it means if a transaction which causes a failure
+								// in validation is just dropped on the floor
+								logger.Errorf("isTxValidForVscc returned error %s", err)
+								continue
+							}
+
 							if t, err := proto.Marshal(env); err == nil {
 								block.Data.Data = append(block.Data.Data, t)
 							} else {

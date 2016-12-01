@@ -24,7 +24,10 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("vscc")
 
 // ValidatorOneValidSignature implements the default transaction validation policy,
 // which is to check the correctness of the read-write set and the endorsement
@@ -59,26 +62,32 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return nil, errors.New("No block to validate")
 	}
 
+	logger.Infof("VSCC invoked")
+
 	// get the envelope...
 	env, err := utils.GetEnvelope(args[1])
 	if err != nil {
+		logger.Errorf("VSCC error: GetEnvelope failed, err %s", err)
 		return nil, err
 	}
 
 	// ...and the payload...
 	payl, err := utils.GetPayload(env)
 	if err != nil {
+		logger.Errorf("VSCC error: GetPayload failed, err %s", err)
 		return nil, err
 	}
 
 	// validate the payload type
 	if common.HeaderType(payl.Header.ChainHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION {
+		logger.Errorf("Only Endorser Transactions are supported, provided type %d", payl.Header.ChainHeader.Type)
 		return nil, fmt.Errorf("Only Endorser Transactions are supported, provided type %d", payl.Header.ChainHeader.Type)
 	}
 
 	// ...and the transaction...
 	tx, err := utils.GetTransaction(payl.Data)
 	if err != nil {
+		logger.Errorf("VSCC error: GetTransaction failed, err %s", err)
 		return nil, err
 	}
 
@@ -86,6 +95,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 	for _, act := range tx.Actions {
 		cap, err := utils.GetChaincodeActionPayload(act.Payload)
 		if err != nil {
+			logger.Errorf("VSCC error: GetChaincodeActionPayload failed, err %s", err)
 			return nil, err
 		}
 
@@ -97,22 +107,27 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 			// extract the identity of the signer
 			end, err := msp.GetManager().DeserializeIdentity(endorsement.Endorser)
 			if err != nil {
+				logger.Errorf("VSCC error: DeserializeIdentity failed, err %s", err)
 				return nil, err
 			}
 
 			// validate it
 			valid, err := end.Validate()
 			if err != nil || !valid {
+				logger.Errorf("Invalid endorser, err %s, valid %t", err, valid)
 				return nil, fmt.Errorf("Invalid endorser, err %s, valid %t", err, valid)
 			}
 
 			// verify the signature
 			valid, err = end.Verify(append(prespBytes, endorsement.Endorser...), endorsement.Signature)
 			if err != nil || !valid {
+				logger.Errorf("Invalid signature, err %s, valid %t", err, valid)
 				return nil, fmt.Errorf("Invalid signature, err %s, valid %t", err, valid)
 			}
 		}
 	}
+
+	logger.Infof("VSCC exists successfully")
 
 	return nil, nil
 }

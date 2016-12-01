@@ -59,7 +59,7 @@ func GetPayloads(txActions *peer.TransactionAction) (*peer.ChaincodeActionPayloa
 	return ccPayload, respPayload, nil
 }
 
-// GetEndorserTxFromBlock gets Transaction2 from Block.Data.Data
+// GetEndorserTxFromBlock gets Transaction from Block.Data.Data
 func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	//Block always begins with an envelope
 	var err error
@@ -71,42 +71,10 @@ func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	return env, nil
 }
 
-// CreateSignedTx assembles an Envelope message from proposal, endorsements and a signer.
+// assemble an Envelope message from proposal, endorsements and a signer.
 // This function should be called by a client when it has collected enough endorsements
 // for a proposal to create a transaction and submit it to peers for ordering
 func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps ...*peer.ProposalResponse) (*common.Envelope, error) {
-	// the original header
-	hdr, err := GetHeader(proposal.Header)
-	if err != nil {
-		return nil, fmt.Errorf("Could not unmarshal the proposal header")
-	}
-	// check that the signer is the same that is referenced in the header
-	// TODO: maybe worth removing?
-	signerBytes, err := signer.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	if bytes.Compare(signerBytes, hdr.SignatureHeader.Creator) != 0 {
-		return nil, fmt.Errorf("The signer needs to be the same as the one referenced in the header")
-	}
-
-	// create the payload
-	txEnvelope, err := ConstructUnsignedTxEnvelope(proposal, resps...)
-	if err != nil {
-		return nil, err
-	}
-	// sign the payload
-	sig, err := signer.Sign(txEnvelope.Payload)
-	if err != nil {
-		return nil, err
-	}
-	txEnvelope.Signature = sig
-	return txEnvelope, nil
-}
-
-// ConstructUnsignedTxEnvelope constructs payload for the transaction from proposal and endorsements.
-func ConstructUnsignedTxEnvelope(proposal *peer.Proposal, resps ...*peer.ProposalResponse) (*common.Envelope, error) {
 	if len(resps) == 0 {
 		return nil, fmt.Errorf("At least one proposal response is necessary")
 	}
@@ -121,6 +89,17 @@ func ConstructUnsignedTxEnvelope(proposal *peer.Proposal, resps ...*peer.Proposa
 	pPayl, err := GetChaincodeProposalPayload(proposal.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal the proposal payload")
+	}
+
+	// check that the signer is the same that is referenced in the header
+	// TODO: maybe worth removing?
+	signerBytes, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	if bytes.Compare(signerBytes, hdr.SignatureHeader.Creator) != 0 {
+		return nil, fmt.Errorf("The signer needs to be the same as the one referenced in the header")
 	}
 
 	// get header extensions so we have the visibility field
@@ -184,40 +163,25 @@ func ConstructUnsignedTxEnvelope(proposal *peer.Proposal, resps ...*peer.Proposa
 	if err != nil {
 		return nil, err
 	}
+
+	// create the payload
 	payl := &common.Payload{Header: hdr, Data: txBytes}
 	paylBytes, err := GetBytesPayload(payl)
 	if err != nil {
 		return nil, err
 	}
 
-	// here's the envelope
-	return &common.Envelope{Payload: paylBytes, Signature: nil}, nil
-}
-
-// CreateProposalResponse creates the proposal response and endorses the payload
-func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
-	resp, err := ConstructUnsignedProposalResponse(hdr, payl, results, events, visibility)
+	// sign the payload
+	sig, err := signer.Sign(paylBytes)
 	if err != nil {
 		return nil, err
 	}
-	// serialize the signing identity
-	endorser, err := signingEndorser.Serialize()
-	if err != nil {
-		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", signingEndorser.Identifier(), err)
-	}
 
-	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
-	signature, err := signingEndorser.Sign(append(resp.Payload, endorser...))
-	if err != nil {
-		return nil, fmt.Errorf("Could not sign the proposal response payload, err %s", err)
-	}
-	resp.Endorsement.Endorser = endorser
-	resp.Endorsement.Signature = signature
-	return resp, nil
+	// here's the envelope
+	return &common.Envelope{Payload: paylBytes, Signature: sig}, nil
 }
 
-// ConstructUnsignedProposalResponse constructs the proposal response structure only
-func ConstructUnsignedProposalResponse(hdr []byte, payl []byte, results []byte, events []byte, visibility []byte) (*peer.ProposalResponse, error) {
+func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
 	// obtain the proposal hash given proposal header, payload and the requested visibility
 	pHashBytes, err := GetProposalHash1(hdr, payl, visibility)
 	if err != nil {
@@ -229,10 +193,23 @@ func ConstructUnsignedProposalResponse(hdr []byte, payl []byte, results []byte, 
 	if err != nil {
 		return nil, errors.New("Failure while unmarshalling the ProposalResponsePayload")
 	}
+
+	// serialize the signing identity
+	endorser, err := signingEndorser.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", signingEndorser.Identifier(), err)
+	}
+
+	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key
+	signature, err := signingEndorser.Sign(append(prpBytes, endorser...))
+	if err != nil {
+		return nil, fmt.Errorf("Could not sign the proposal response payload, err %s", err)
+	}
+
 	resp := &peer.ProposalResponse{
 		// Timestamp: TODO!
 		Version:     1, // TODO: pick right version number
-		Endorsement: &peer.Endorsement{Signature: nil, Endorser: nil},
+		Endorsement: &peer.Endorsement{Signature: signature, Endorser: endorser},
 		Payload:     prpBytes,
 		Response:    &peer.Response{Status: 200, Message: "OK"}}
 
