@@ -21,8 +21,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/ledger/testutil"
-
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 func TestBlocksItrBlockingNext(t *testing.T) {
@@ -53,7 +52,7 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 	<-doneChan
 }
 
-func testIterateAndVerify(t *testing.T, itr *BlocksItr, blocks []*pb.Block2, doneChan chan bool) {
+func testIterateAndVerify(t *testing.T, itr *BlocksItr, blocks []*common.Block, doneChan chan bool) {
 	blocksIterated := 0
 	for {
 		blockHolder, err := itr.Next()
@@ -67,6 +66,6 @@ func testIterateAndVerify(t *testing.T, itr *BlocksItr, blocks []*pb.Block2, don
 	doneChan <- true
 }
 
-func testAppendBlocks(blkfileMgrWrapper *testBlockfileMgrWrapper, blocks []*pb.Block2) {
+func testAppendBlocks(blkfileMgrWrapper *testBlockfileMgrWrapper, blocks []*common.Block) {
 	blkfileMgrWrapper.addBlocks(blocks)
 }

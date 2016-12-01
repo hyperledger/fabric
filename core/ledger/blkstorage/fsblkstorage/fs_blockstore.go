@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -34,7 +35,7 @@ func NewFsBlockStore(conf *Conf, indexConfig *blkstorage.IndexConfig) *FsBlockSt
 }
 
 // AddBlock adds a new block
-func (store *FsBlockStore) AddBlock(block *pb.Block2) error {
+func (store *FsBlockStore) AddBlock(block *common.Block) error {
 	return store.fileMgr.addBlock(block)
 }
 
@@ -54,12 +55,12 @@ func (store *FsBlockStore) RetrieveBlocks(startNum uint64) (ledger.ResultsIterat
 }
 
 // RetrieveBlockByHash returns the block for given block-hash
-func (store *FsBlockStore) RetrieveBlockByHash(blockHash []byte) (*pb.Block2, error) {
+func (store *FsBlockStore) RetrieveBlockByHash(blockHash []byte) (*common.Block, error) {
 	return store.fileMgr.retrieveBlockByHash(blockHash)
 }
 
 // RetrieveBlockByNumber returns the block at a given blockchain height
-func (store *FsBlockStore) RetrieveBlockByNumber(blockNum uint64) (*pb.Block2, error) {
+func (store *FsBlockStore) RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
 	return store.fileMgr.retrieveBlockByNumber(blockNum)
 }
 

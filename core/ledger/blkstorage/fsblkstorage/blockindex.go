@@ -47,7 +47,7 @@ type blockIdxInfo struct {
 	blockNum  uint64
 	blockHash []byte
 	flp       *fileLocPointer
-	txOffsets []int
+	txOffsets map[string]*locPointer
 }
 
 type blockIndex struct {
@@ -98,19 +98,16 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	}
 
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; ok {
-		for i := 0; i < len(txOffsets)-1; i++ {
-			txID := constructTxID(blockIdxInfo.blockNum, i)
-			txBytesLength := txOffsets[i+1] - txOffsets[i]
-			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, &locPointer{txOffsets[i], txBytesLength})
-			logger.Debugf("Adding txLoc [%s] for tx [%s] to index", txFlp, txID)
+		for txid, txoffset := range txOffsets {
+			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset)
+			logger.Debugf("Adding txLoc [%s] for tx [%s] to index", txFlp, txid)
 			txFlpBytes, marshalErr := txFlp.marshal()
 			if marshalErr != nil {
 				return marshalErr
 			}
-			batch.Put(constructTxIDKey(txID), txFlpBytes)
+			batch.Put(constructTxIDKey(txid), txFlpBytes)
 		}
 	}
-
 	batch.Put(indexCheckpointKey, encodeBlockNum(blockIdxInfo.blockNum))
 	if err := index.db.WriteBatch(batch, false); err != nil {
 		return err

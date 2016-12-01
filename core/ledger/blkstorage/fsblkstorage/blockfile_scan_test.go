@@ -23,17 +23,18 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 func TestBlockFileScanSmallTxOnly(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(t, env)
-	blocks := []*pb.Block2{}
-	blocks = append(blocks, testutil.ConstructTestBlock(t, 0, 0, 0))
-	blocks = append(blocks, testutil.ConstructTestBlock(t, 0, 0, 0))
-	blocks = append(blocks, testutil.ConstructTestBlock(t, 0, 0, 0))
+	bg := testutil.NewBlockGenerator(t)
+	blocks := []*common.Block{}
+	blocks = append(blocks, bg.NextTestBlock(0, 0))
+	blocks = append(blocks, bg.NextTestBlock(0, 0))
+	blocks = append(blocks, bg.NextTestBlock(0, 0))
 	blkfileMgrWrapper.addBlocks(blocks)
 	blkfileMgrWrapper.close()
 
@@ -51,10 +52,11 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(t, env)
-	blocks := []*pb.Block2{}
-	blocks = append(blocks, testutil.ConstructTestBlock(t, 0, 0, 0))
-	blocks = append(blocks, testutil.ConstructTestBlock(t, 0, 0, 0))
-	blocks = append(blocks, testutil.ConstructTestBlock(t, 0, 0, 0))
+	bg := testutil.NewBlockGenerator(t)
+	blocks := []*common.Block{}
+	blocks = append(blocks, bg.NextTestBlock(0, 0))
+	blocks = append(blocks, bg.NextTestBlock(0, 0))
+	blocks = append(blocks, bg.NextTestBlock(0, 0))
 	blkfileMgrWrapper.addBlocks(blocks)
 	blkfileMgrWrapper.close()
 

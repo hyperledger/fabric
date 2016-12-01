@@ -18,6 +18,7 @@ package committer
 
 import (
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
@@ -46,7 +47,7 @@ func NewLedgerCommitter(ledger ledger.ValidatedLedger) *LedgerCommitter {
 }
 
 // CommitBlock commits block to into the ledger
-func (lc *LedgerCommitter) CommitBlock(block *pb.Block2) error {
+func (lc *LedgerCommitter) CommitBlock(block *common.Block) error {
 	if _, _, err := lc.ledger.RemoveInvalidTransactionsAndPrepare(block); err != nil {
 		return err
 	}
@@ -69,8 +70,8 @@ func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
 }
 
 // GetBlocks used to retrieve blocks with sequence numbers provided in the slice
-func (lc *LedgerCommitter) GetBlocks(blockSeqs []uint64) []*pb.Block2 {
-	var blocks []*pb.Block2
+func (lc *LedgerCommitter) GetBlocks(blockSeqs []uint64) []*common.Block {
+	var blocks []*common.Block
 
 	for _, seqNum := range blockSeqs {
 		if blck, err := lc.ledger.GetBlockByNumber(seqNum); err != nil {

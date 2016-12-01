@@ -30,7 +30,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/protos/peer"
+	pcomm "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
 )
 
@@ -266,11 +266,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	msgCount := 10
 
 	for i := 1; i <= msgCount; i++ {
-		rawblock := &peer.Block2{}
-		if err := pb.Unmarshal([]byte{}, rawblock); err != nil {
-			t.Fail()
-		}
-
+		rawblock := pcomm.NewBlock(uint64(i), []byte{})
 		if bytes, err := pb.Marshal(rawblock); err == nil {
 			payload := &proto.Payload{uint64(i), "", bytes}
 			bootstrapSet[0].s.AddPayload(payload)

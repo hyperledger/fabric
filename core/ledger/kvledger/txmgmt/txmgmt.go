@@ -18,6 +18,7 @@ package txmgmt
 
 import (
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -25,7 +26,7 @@ import (
 type TxMgr interface {
 	NewQueryExecutor() (ledger.QueryExecutor, error)
 	NewTxSimulator() (ledger.TxSimulator, error)
-	ValidateAndPrepare(block *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error)
+	ValidateAndPrepare(block *common.Block) (*common.Block, []*pb.InvalidTransaction, error)
 	Commit() error
 	Rollback()
 	Shutdown()

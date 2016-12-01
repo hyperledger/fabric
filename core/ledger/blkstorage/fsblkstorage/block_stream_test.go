@@ -34,7 +34,6 @@ func testBlockfileStream(t *testing.T, numBlocks int) {
 	defer env.Cleanup()
 	w := newTestBlockfileWrapper(t, env)
 	blockfileMgr := w.blockfileMgr
-
 	blocks := testutil.ConstructTestBlocks(t, numBlocks)
 	w.addBlocks(blocks)
 	w.close()
@@ -108,8 +107,9 @@ func testBlockStream(t *testing.T, numFiles int) {
 	blockfileMgr := w.blockfileMgr
 
 	numBlocksInEachFile := 10
+	bg := testutil.NewBlockGenerator(t)
 	for i := 0; i < numFiles; i++ {
-		blocks := testutil.ConstructTestBlocks(t, numBlocksInEachFile)
+		blocks := bg.NextTestBlocks(numBlocksInEachFile)
 		w.addBlocks(blocks)
 		blockfileMgr.moveToNextFile()
 	}

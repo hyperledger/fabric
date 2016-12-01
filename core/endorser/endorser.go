@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
@@ -310,7 +311,9 @@ func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, signer msp.SigningI
 	if err != nil {
 		return err
 	}
-	block := &pb.Block2{Transactions: [][]byte{txBytes}}
+	block := common.NewBlock(1, []byte{})
+	block.Data.Data = [][]byte{txBytes}
+	block.Header.DataHash = block.Data.Hash()
 	if _, _, err = lgr.RemoveInvalidTransactionsAndPrepare(block); err != nil {
 		return err
 	}

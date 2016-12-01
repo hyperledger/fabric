@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
 )
 
@@ -37,7 +37,7 @@ import (
 type GossipStateProvider interface {
 
 	// Retrieve block with sequence number equal to index
-	GetBlock(index uint64) *peer.Block2
+	GetBlock(index uint64) *common.Block
 
 	AddPayload(payload *proto.Payload) error
 
@@ -167,6 +167,7 @@ func (s *GossipStateProviderImpl) listen() {
 			}
 		case msg := <-s.commChan:
 			{
+				s.logger.Debug("Direct message ", msg)
 				go s.directMessage(msg)
 			}
 		case <-time.After(defPollingPeriod):
@@ -275,13 +276,12 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 				s.logger.Debugf("Ready to transfer payloads to the ledger, next sequence number is = [%d]", s.payloads.Next())
 				// Collect all subsequent payloads
 				for payload := s.payloads.Pop(); payload != nil; payload = s.payloads.Pop() {
-					rawblock := &peer.Block2{}
+					rawblock := &common.Block{}
 					if err := pb.Unmarshal(payload.Data, rawblock); err != nil {
 						s.logger.Errorf("Error getting block with seqNum = %d due to (%s)...dropping block\n", payload.SeqNum, err)
 						continue
 					}
-					s.logger.Debug("New block with sequence number ", payload.SeqNum, " transactions num ", len(rawblock.Transactions))
-
+					s.logger.Debug("New block with sequence number ", payload.SeqNum, " transactions num ", len(rawblock.Data.Data))
 					s.commitBlock(rawblock, payload.SeqNum)
 				}
 			}
@@ -367,7 +367,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 	}, peer)
 }
 
-func (s *GossipStateProviderImpl) GetBlock(index uint64) *peer.Block2 {
+func (s *GossipStateProviderImpl) GetBlock(index uint64) *common.Block {
 	// Try to read missing block from the ledger, should return no nil with
 	// content including at least one block
 	if blocks := s.committer.GetBlocks([]uint64{index}); blocks != nil && len(blocks) > 0 {
@@ -381,7 +381,7 @@ func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 	return s.payloads.Push(payload)
 }
 
-func (s *GossipStateProviderImpl) commitBlock(block *peer.Block2, seqNum uint64) error {
+func (s *GossipStateProviderImpl) commitBlock(block *common.Block, seqNum uint64) error {
 	if err := s.committer.CommitBlock(block); err != nil {
 		s.logger.Errorf("Got error while committing(%s)\n", err)
 		return err

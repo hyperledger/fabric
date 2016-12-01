@@ -31,6 +31,7 @@ import (
 
 	logging "github.com/op/go-logging"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -59,7 +60,7 @@ func NewConf(filesystemPath string, maxBlockfileSize int) *Conf {
 type KVLedger struct {
 	blockStore           blkstorage.BlockStore
 	txtmgmt              txmgmt.TxMgr
-	pendingBlockToCommit *pb.Block2
+	pendingBlockToCommit *common.Block
 }
 
 // NewKVLedger constructs new `KVLedger`
@@ -108,7 +109,7 @@ func (l *KVLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 }
 
 // GetBlockByNumber returns block at a given height
-func (l *KVLedger) GetBlockByNumber(blockNumber uint64) (*pb.Block2, error) {
+func (l *KVLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 	return l.blockStore.RetrieveBlockByNumber(blockNumber)
 
 }
@@ -122,7 +123,7 @@ func (l *KVLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIte
 }
 
 // GetBlockByHash returns a block given it's hash
-func (l *KVLedger) GetBlockByHash(blockHash []byte) (*pb.Block2, error) {
+func (l *KVLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
 	return l.blockStore.RetrieveBlockByHash(blockHash)
 }
 
@@ -145,8 +146,8 @@ func (l *KVLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 
 // RemoveInvalidTransactionsAndPrepare validates all the transactions in the given block
 // and returns a block that contains only valid transactions and a list of transactions that are invalid
-func (l *KVLedger) RemoveInvalidTransactionsAndPrepare(block *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error) {
-	var validBlock *pb.Block2
+func (l *KVLedger) RemoveInvalidTransactionsAndPrepare(block *common.Block) (*common.Block, []*pb.InvalidTransaction, error) {
+	var validBlock *common.Block
 	var invalidTxs []*pb.InvalidTransaction
 	var err error
 	validBlock, invalidTxs, err = l.txtmgmt.ValidateAndPrepare(block)

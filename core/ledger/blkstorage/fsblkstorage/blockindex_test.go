@@ -120,7 +120,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 
 	// if index has been configured for an indexItem then the item should be indexed else not
 	// test 'retrieveBlockByHash'
-	block, err := blockfileMgr.retrieveBlockByHash(testutil.ComputeBlockHash(t, blocks[0]))
+	block, err := blockfileMgr.retrieveBlockByHash(blocks[0].Header.Hash())
 	if testutil.Contains(indexItems, blkstorage.IndexableAttrBlockHash) {
 		testutil.AssertNoError(t, err, "Error while retrieving block by hash")
 		testutil.AssertEquals(t, block, blocks[0])
@@ -138,10 +138,12 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 	}
 
 	// test 'retrieveTransactionByID'
-	tx, err := blockfileMgr.retrieveTransactionByID(constructTxID(1, 0))
+	txid, err := extractTxID(blocks[0].Data.Data[0])
+	testutil.AssertNoError(t, err, "")
+	tx, err := blockfileMgr.retrieveTransactionByID(txid)
 	if testutil.Contains(indexItems, blkstorage.IndexableAttrTxID) {
 		testutil.AssertNoError(t, err, "Error while retrieving tx by id")
-		txOrig, err := extractTransaction(blocks[0].Transactions[0])
+		txOrig, err := extractTransaction(blocks[0].Data.Data[0])
 		testutil.AssertNoError(t, err, "")
 		testutil.AssertEquals(t, tx, txOrig)
 	} else {

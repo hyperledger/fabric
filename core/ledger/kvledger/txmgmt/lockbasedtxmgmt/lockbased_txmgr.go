@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util/db"
 	"github.com/op/go-logging"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -97,15 +98,13 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator() (ledger.TxSimulator, error) {
 }
 
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
-func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error) {
-	validatedBlock := &pb.Block2{}
-	//TODO pull PreviousBlockHash from db
-	validatedBlock.PreviousBlockHash = block.PreviousBlockHash
+func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block) (*common.Block, []*pb.InvalidTransaction, error) {
+	logger.Debugf("New block arrived for validation:%#v", block)
 	invalidTxs := []*pb.InvalidTransaction{}
 	var valid bool
 	txmgr.updateSet = newUpdateSet()
-	logger.Debugf("Validating a block with [%d] transactions", len(block.Transactions))
-	for _, envBytes := range block.Transactions {
+	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
+	for _, envBytes := range block.Data.Data {
 		// extract actions from the envelope message
 		respPayload, err := putils.GetActionFromEnvelope(envBytes)
 		if err != nil {
@@ -134,18 +133,17 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *pb.Block2) (*pb.Block2, [
 		if valid, err = txmgr.validateTx(txRWSet); err != nil {
 			return nil, nil, err
 		}
-
+		//TODO add the validation info to the bitmap in the metadata of the block
 		if valid {
 			if err := txmgr.addWriteSetToBatch(txRWSet); err != nil {
 				return nil, nil, err
 			}
-			validatedBlock.Transactions = append(validatedBlock.Transactions, envBytes)
 		} else {
 			invalidTxs = append(invalidTxs, &pb.InvalidTransaction{
 				Transaction: &pb.Transaction{ /* FIXME */ }, Cause: pb.InvalidTransaction_RWConflictDuringCommit})
 		}
 	}
-	return validatedBlock, invalidTxs, nil
+	return block, invalidTxs, nil
 }
 
 // Shutdown implements method in interface `txmgmt.TxMgr`

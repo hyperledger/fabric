@@ -51,7 +51,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.Done()
 
 	simRes, _ := simulator.GetTxSimulationResults()
-	block1 := testutil.ConstructBlockForSimulationResults(t, [][]byte{simRes}, true)
+	block1 := testutil.ConstructBlock(t, [][]byte{simRes}, true)
 
 	err = committer.CommitBlock(block1)
 	assert.NoError(t, err)
@@ -65,8 +65,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.NoError(t, err)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	serBlock1, _ := pb.ConstructSerBlock2(block1)
-	block1Hash := serBlock1.ComputeHash()
+	block1Hash := block1.Header.Hash()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 }

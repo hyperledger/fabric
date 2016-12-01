@@ -116,7 +116,7 @@ func main() {
 			fmt.Printf("\n")
 			fmt.Printf("Received block\n")
 			fmt.Printf("--------------\n")
-			for _, r := range b.Block.Transactions {
+			for _, r := range b.Block.Data.Data {
 				fmt.Printf("Transaction:\n\t[%v]\n", r)
 			}
 		case r := <-a.rejected:

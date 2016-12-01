@@ -16,9 +16,7 @@ limitations under the License.
 
 package committer
 
-import (
-	pb "github.com/hyperledger/fabric/protos/peer"
-)
+import "github.com/hyperledger/fabric/protos/common"
 
 // Committer is the interface supported by committers
 // The only committer is noopssinglechain committer.
@@ -30,13 +28,13 @@ import (
 type Committer interface {
 
 	// Commit block to the ledger
-	CommitBlock(block *pb.Block2) error
+	CommitBlock(block *common.Block) error
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)
 
 	// Gets blocks with sequence numbers provided in the slice
-	GetBlocks(blockSeqs []uint64) []*pb.Block2
+	GetBlocks(blockSeqs []uint64) []*common.Block
 
 	// Closes committing service
 	Close()

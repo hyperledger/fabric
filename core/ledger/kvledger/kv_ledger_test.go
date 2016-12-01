@@ -39,13 +39,13 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.SetState("ns1", "key3", []byte("value3"))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
-	block1 := testutil.ConstructBlockForSimulationResults(t, [][]byte{simRes}, false)
+	bg := testutil.NewBlockGenerator(t)
+	block1 := bg.NextBlock([][]byte{simRes}, false)
 	ledger.RemoveInvalidTransactionsAndPrepare(block1)
 	ledger.Commit()
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	serBlock1, _ := pb.ConstructSerBlock2(block1)
-	block1Hash := serBlock1.ComputeHash()
+	block1Hash := block1.Header.Hash()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 
@@ -55,15 +55,14 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.SetState("ns1", "key3", []byte("value6"))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
-	block2 := testutil.ConstructBlockForSimulationResults(t, [][]byte{simRes}, false)
+	block2 := bg.NextBlock([][]byte{simRes}, false)
 	ledger.RemoveInvalidTransactionsAndPrepare(block2)
 	ledger.Commit()
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	serBlock2, _ := pb.ConstructSerBlock2(block2)
-	block2Hash := serBlock2.ComputeHash()
+	block2Hash := block2.Header.Hash()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
-		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: []byte{}})
+		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
 
 	b1, _ := ledger.GetBlockByHash(block1Hash)
 	testutil.AssertEquals(t, b1, block1)

@@ -157,15 +157,12 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 
 	//If start up is a restart of an existing storage, update BlockchainInfo for external API's
 	if cpInfo.lastBlockNumber > 0 {
-		lastBlock, err := mgr.retrieveSerBlockByNumber(cpInfo.lastBlockNumber)
+		lastBlockHeader, err := mgr.retrieveBlockHeaderByNumber(cpInfo.lastBlockNumber)
 		if err != nil {
-			panic(fmt.Sprintf("Could not retrieve last block form file: %s", err))
+			panic(fmt.Sprintf("Could not retrieve header of the last block form file: %s", err))
 		}
-		lastBlockHash := lastBlock.ComputeHash()
-		previousBlockHash, err := lastBlock.GetPreviousBlockHash()
-		if err != nil {
-			panic(fmt.Sprintf("Error in decoding block: %s", err))
-		}
+		lastBlockHash := lastBlockHeader.Hash()
+		previousBlockHash := lastBlockHeader.PreviousHash
 		bcInfo = &pb.BlockchainInfo{
 			Height:            cpInfo.lastBlockNumber,
 			CurrentBlockHash:  lastBlockHash,
@@ -250,15 +247,14 @@ func (mgr *blockfileMgr) moveToNextFile() {
 	mgr.updateCheckpoint(cpInfo)
 }
 
-func (mgr *blockfileMgr) addBlock(block *pb.Block2) error {
-	serBlock, err := pb.ConstructSerBlock2(block)
+func (mgr *blockfileMgr) addBlock(block *common.Block) error {
+	blockBytes, info, err := serializeBlock(block)
 	if err != nil {
 		return fmt.Errorf("Error while serializing block: %s", err)
 	}
-	blockBytes := serBlock.GetBytes()
-	blockHash := serBlock.ComputeHash()
+	blockHash := block.Header.Hash()
 	//Get the location / offset where each transaction starts in the block and where the block ends
-	txOffsets, err := serBlock.GetTxOffsets()
+	txOffsets := info.txOffsets
 	currentOffset := mgr.cpInfo.latestFileChunksize
 	if err != nil {
 		return fmt.Errorf("Error while serializing block: %s", err)
@@ -292,7 +288,7 @@ func (mgr *blockfileMgr) addBlock(block *pb.Block2) error {
 	newCPInfo := &checkpointInfo{
 		latestFileChunkSuffixNum: currentCPInfo.latestFileChunkSuffixNum,
 		latestFileChunksize:      currentCPInfo.latestFileChunksize + totalBytesToAppend,
-		lastBlockNumber:          currentCPInfo.lastBlockNumber + 1}
+		lastBlockNumber:          block.Header.Number}
 	//save the checkpoint information in the database
 	if err = mgr.saveCurrentInfo(newCPInfo, false); err != nil {
 		truncateErr := mgr.currentFileWriter.truncateFile(currentCPInfo.latestFileChunksize)
@@ -306,12 +302,12 @@ func (mgr *blockfileMgr) addBlock(block *pb.Block2) error {
 	blockFLP := &fileLocPointer{fileSuffixNum: newCPInfo.latestFileChunkSuffixNum}
 	blockFLP.offset = currentOffset
 	// shift the txoffset because we prepend length of bytes before block bytes
-	for i := 0; i < len(txOffsets); i++ {
-		txOffsets[i] += len(blockBytesEncodedLen)
+	for _, txOffset := range txOffsets {
+		txOffset.offset += len(blockBytesEncodedLen)
 	}
 	//save the index in the database
 	mgr.index.indexBlock(&blockIdxInfo{
-		blockNum: newCPInfo.lastBlockNumber, blockHash: blockHash,
+		blockNum: block.Header.Number, blockHash: blockHash,
 		flp: blockFLP, txOffsets: txOffsets})
 
 	//update the checkpoint info (for storage) and the blockchain info (for APIs) in the manager
@@ -361,21 +357,20 @@ func (mgr *blockfileMgr) syncIndex() error {
 		if blockBytes == nil {
 			break
 		}
-		serBlock2 := pb.NewSerBlock2(blockBytes)
-		var txOffsets []int
-		if txOffsets, err = serBlock2.GetTxOffsets(); err != nil {
+		info, err := extractSerializedBlockInfo(blockBytes)
+		if err != nil {
 			return err
 		}
-		for i := 0; i < len(txOffsets); i++ {
-			txOffsets[i] += int(blockPlacementInfo.blockBytesOffset)
+		for _, offset := range info.txOffsets {
+			offset.offset += int(blockPlacementInfo.blockBytesOffset)
 		}
 		//Update the blockIndexInfo with what was actually stored in file system
 		blockIdxInfo := &blockIdxInfo{}
-		blockIdxInfo.blockHash = serBlock2.ComputeHash()
-		blockIdxInfo.blockNum = blockNum
+		blockIdxInfo.blockHash = info.blockHeader.Hash()
+		blockIdxInfo.blockNum = info.blockHeader.Number
 		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
 			locPointer: locPointer{offset: int(blockPlacementInfo.blockStartOffset)}}
-		blockIdxInfo.txOffsets = txOffsets
+		blockIdxInfo.txOffsets = info.txOffsets
 		if err = mgr.index.indexBlock(blockIdxInfo); err != nil {
 			return err
 		}
@@ -396,17 +391,17 @@ func (mgr *blockfileMgr) updateCheckpoint(cpInfo *checkpointInfo) {
 	mgr.cpInfoCond.Broadcast()
 }
 
-func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *pb.Block2) {
+func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *common.Block) {
 	currentBCInfo := mgr.getBlockchainInfo()
 	newBCInfo := &pb.BlockchainInfo{
 		Height:            currentBCInfo.Height + 1,
 		CurrentBlockHash:  latestBlockHash,
-		PreviousBlockHash: latestBlock.PreviousBlockHash}
+		PreviousBlockHash: latestBlock.Header.PreviousHash}
 
 	mgr.bcInfo.Store(newBCInfo)
 }
 
-func (mgr *blockfileMgr) retrieveBlockByHash(blockHash []byte) (*pb.Block2, error) {
+func (mgr *blockfileMgr) retrieveBlockByHash(blockHash []byte) (*common.Block, error) {
 	logger.Debugf("retrieveBlockByHash() - blockHash = [%#v]", blockHash)
 	loc, err := mgr.index.getBlockLocByHash(blockHash)
 	if err != nil {
@@ -415,7 +410,7 @@ func (mgr *blockfileMgr) retrieveBlockByHash(blockHash []byte) (*pb.Block2, erro
 	return mgr.fetchBlock(loc)
 }
 
-func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*pb.Block2, error) {
+func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
 	logger.Debugf("retrieveBlockByNumber() - blockNum = [%d]", blockNum)
 	loc, err := mgr.index.getBlockLocByBlockNum(blockNum)
 	if err != nil {
@@ -424,13 +419,21 @@ func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*pb.Block2, err
 	return mgr.fetchBlock(loc)
 }
 
-func (mgr *blockfileMgr) retrieveSerBlockByNumber(blockNum uint64) (*pb.SerBlock2, error) {
-	logger.Debugf("retrieveSerBlockByNumber() - blockNum = [%d]", blockNum)
+func (mgr *blockfileMgr) retrieveBlockHeaderByNumber(blockNum uint64) (*common.BlockHeader, error) {
+	logger.Debugf("retrieveBlockHeaderByNumber() - blockNum = [%d]", blockNum)
 	loc, err := mgr.index.getBlockLocByBlockNum(blockNum)
 	if err != nil {
 		return nil, err
 	}
-	return mgr.fetchSerBlock(loc)
+	blockBytes, err := mgr.fetchBlockBytes(loc)
+	if err != nil {
+		return nil, err
+	}
+	info, err := extractSerializedBlockInfo(blockBytes)
+	if err != nil {
+		return nil, err
+	}
+	return info.blockHeader, nil
 }
 
 func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*BlocksItr, error) {
@@ -446,24 +449,16 @@ func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*pb.Transaction, 
 	return mgr.fetchTransaction(loc)
 }
 
-func (mgr *blockfileMgr) fetchBlock(lp *fileLocPointer) (*pb.Block2, error) {
-	serBlock, err := mgr.fetchSerBlock(lp)
-	if err != nil {
-		return nil, err
-	}
-	block, err := serBlock.ToBlock2()
-	if err != nil {
-		return nil, err
-	}
-	return block, nil
-}
-
-func (mgr *blockfileMgr) fetchSerBlock(lp *fileLocPointer) (*pb.SerBlock2, error) {
+func (mgr *blockfileMgr) fetchBlock(lp *fileLocPointer) (*common.Block, error) {
 	blockBytes, err := mgr.fetchBlockBytes(lp)
 	if err != nil {
 		return nil, err
 	}
-	return pb.NewSerBlock2(blockBytes), nil
+	block, err := deserializeBlock(blockBytes)
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
 }
 
 func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*pb.Transaction, error) {
@@ -472,7 +467,8 @@ func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*pb.Transaction, 
 	if txEnvelopeBytes, err = mgr.fetchRawBytes(lp); err != nil {
 		return nil, err
 	}
-	return extractTransaction(txEnvelopeBytes)
+	_, n := proto.DecodeVarint(txEnvelopeBytes)
+	return extractTransaction(txEnvelopeBytes[n:])
 }
 
 func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {

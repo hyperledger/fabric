@@ -23,6 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -49,7 +50,8 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	env := newTestEnv(t)
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(t, env)
-	blocksBeforeCP := testutil.ConstructTestBlocks(t, numBlocksBeforeCheckpoint)
+	bg := testutil.NewBlockGenerator(t)
+	blocksBeforeCP := bg.NextTestBlocks(numBlocksBeforeCheckpoint)
 	blkfileMgrWrapper.addBlocks(blocksBeforeCP)
 	currentCPInfo := blkfileMgrWrapper.blockfileMgr.cpInfo
 	cpInfo1 := &checkpointInfo{
@@ -57,7 +59,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 		currentCPInfo.latestFileChunksize,
 		currentCPInfo.lastBlockNumber}
 
-	blocksAfterCP := testutil.ConstructTestBlocks(t, numBlocksAfterCheckpoint)
+	blocksAfterCP := bg.NextTestBlocks(numBlocksAfterCheckpoint)
 	blkfileMgrWrapper.addBlocks(blocksAfterCP)
 	cpInfo2 := blkfileMgrWrapper.blockfileMgr.cpInfo
 
@@ -79,17 +81,13 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	testutil.AssertEquals(t, cpInfo3, cpInfo2)
 
 	// add fresh blocks after restart
-	numBlocksAfterRestart := 2
-	blocksAfterRestart := testutil.ConstructTestBlocks(t, numBlocksAfterRestart)
+	blocksAfterRestart := bg.NextTestBlocks(2)
 	blkfileMgrWrapper.addBlocks(blocksAfterRestart)
-
-	// itrerate for all blocks
-	allBlocks := []*pb.Block2{}
+	allBlocks := []*common.Block{}
 	allBlocks = append(allBlocks, blocksBeforeCP...)
 	allBlocks = append(allBlocks, blocksAfterCP...)
 	allBlocks = append(allBlocks, blocksAfterRestart...)
-	numTotalBlocks := len(allBlocks)
-	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 1, numTotalBlocks, allBlocks)
+	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 1, len(allBlocks), allBlocks)
 }
 
 func TestBlockfileMgrBlockIterator(t *testing.T) {
@@ -103,7 +101,7 @@ func TestBlockfileMgrBlockIterator(t *testing.T) {
 }
 
 func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
-	firstBlockNum int, lastBlockNum int, expectedBlocks []*pb.Block2) {
+	firstBlockNum int, lastBlockNum int, expectedBlocks []*common.Block) {
 	itr, err := blockfileMgr.retrieveBlocks(uint64(firstBlockNum))
 	defer itr.Close()
 	testutil.AssertNoError(t, err, "Error while getting blocks iterator")
@@ -142,10 +140,11 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 	defer blkfileMgrWrapper.close()
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
-	for i, blk := range blocks {
-		for j, txEnvelopeBytes := range blk.Transactions {
+	for _, blk := range blocks {
+		for j, txEnvelopeBytes := range blk.Data.Data {
 			// blockNum starts with 1
-			txID := constructTxID(uint64(i+1), j)
+			txID, err := extractTxID(blk.Data.Data[j])
+			testutil.AssertNoError(t, err, "")
 			txFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)
 			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
 			tx, err := extractTransaction(txEnvelopeBytes)
@@ -174,9 +173,8 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 100)
 	size := 0
 	for _, block := range blocks {
-		serBlock, err := pb.ConstructSerBlock2(block)
-		testutil.AssertNoError(t, err, "Error while getting bytes from block")
-		by := serBlock.GetBytes()
+		by, _, err := serializeBlock(block)
+		testutil.AssertNoError(t, err, "Error while serializing block")
 		blockBytesSize := len(by)
 		encodedLen := proto.EncodeVarint(uint64(blockBytesSize))
 		size += blockBytesSize + len(encodedLen)

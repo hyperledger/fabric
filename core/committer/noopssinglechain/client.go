@@ -40,7 +40,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/integration"
 	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/state"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger *logging.Logger // package-level logger
@@ -243,8 +242,11 @@ func (d *DeliverService) readUntilClose() {
 			}
 			logger.Warning("Got error ", t)
 		case *orderer.DeliverResponse_Block:
-			block := &pb.Block2{}
 			seqNum := t.Block.Header.Number
+			block := &common.Block{}
+			block.Header = t.Block.Header
+			block.Metadata = t.Block.Metadata
+			block.Data = &common.BlockData{}
 			for _, d := range t.Block.Data.Data {
 				if d != nil {
 					if env, err := putils.GetEnvelopeFromBlock(d); err != nil {
@@ -264,7 +266,7 @@ func (d *DeliverService) readUntilClose() {
 						} else {
 							// TODO: call VSCC now
 							if t, err := proto.Marshal(env); err == nil {
-								block.Transactions = append(block.Transactions, t)
+								block.Data.Data = append(block.Data.Data, t)
 							} else {
 								fmt.Printf("Cannot marshal transactoins %s\n", err)
 							}
@@ -321,8 +323,8 @@ func createGossipMsg(payload *gossip_proto.Payload) *gossip_proto.GossipMessage 
 	return gossipMsg
 }
 
-func createPayload(seqNum uint64, block2 *pb.Block2) *gossip_proto.Payload {
-	marshaledBlock, _ := proto.Marshal(block2)
+func createPayload(seqNum uint64, block *common.Block) *gossip_proto.Payload {
+	marshaledBlock, _ := proto.Marshal(block)
 	return &gossip_proto.Payload{
 		Data:   marshaledBlock,
 		SeqNum: seqNum,

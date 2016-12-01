@@ -21,6 +21,17 @@ import (
 	"github.com/hyperledger/fabric/core/util"
 )
 
+// NewBlock construct a block with no data and no metadata
+func NewBlock(seqNum uint64, previousHash []byte) *Block {
+	block := &Block{}
+	block.Header = &BlockHeader{}
+	block.Header.Number = seqNum
+	block.Header.PreviousHash = previousHash
+	block.Data = &BlockData{}
+	block.Metadata = &BlockMetadata{}
+	return block
+}
+
 func (b *BlockHeader) Hash() []byte {
 	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash
 	if err != nil {

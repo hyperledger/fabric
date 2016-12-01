@@ -26,6 +26,7 @@ import (
 
 	"github.com/hyperledger/fabric/events/consumer"
 	"github.com/hyperledger/fabric/events/producer"
+	"github.com/hyperledger/fabric/protos/common"
 	ehpb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -81,7 +82,10 @@ func (a *Adapter) Disconnected(err error) {
 }
 
 func createTestBlock() *ehpb.Event {
-	emsg := producer.CreateBlockEvent(&ehpb.Block2{Transactions: [][]byte{[]byte("tx1"), []byte("tx2")}})
+	block := common.NewBlock(1, []byte{})
+	block.Data.Data = [][]byte{[]byte("tx1"), []byte("tx2")}
+	block.Header.DataHash = block.Data.Hash()
+	emsg := producer.CreateBlockEvent(block)
 	return emsg
 }
 

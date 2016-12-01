@@ -22,65 +22,93 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 )
 
-// ConstructBlockForSimulationResults constructs a block that includes a number of transactions - one per simulationResults
-func ConstructBlockForSimulationResults(t *testing.T, simulationResults [][]byte, sign bool) *pb.Block2 {
+//BlockGenerator generates a series of blocks for testing
+type BlockGenerator struct {
+	blockNum     uint64
+	previousHash []byte
+	t            *testing.T
+}
+
+// NewBlockGenerator instantiates new BlockGenerator for testing
+func NewBlockGenerator(t *testing.T) *BlockGenerator {
+	return &BlockGenerator{1, []byte{}, t}
+}
+
+// NextBlock constructs next block in sequence that includes a number of transactions - one per simulationResults
+func (bg *BlockGenerator) NextBlock(simulationResults [][]byte, sign bool) *common.Block {
 	envs := []*common.Envelope{}
 	for i := 0; i < len(simulationResults); i++ {
-		env, err := ConstructTestTransaction(t, simulationResults[i], sign)
+		env, _, err := ConstructTransaction(bg.t, simulationResults[i], sign)
 		if err != nil {
-			t.Fatalf("ConstructTestTransaction failed, err %s", err)
+			bg.t.Fatalf("ConstructTestTransaction failed, err %s", err)
 		}
 		envs = append(envs, env)
 	}
-	return newBlockEnv(envs)
+	block := newBlock(envs, bg.blockNum, bg.previousHash)
+	bg.blockNum++
+	bg.previousHash = block.Header.Hash()
+	return block
 }
 
-// ConstructTestBlocks constructs 'numBlocks' number of blocks for testing
-func ConstructTestBlocks(t *testing.T, numBlocks int) []*pb.Block2 {
-	blocks := []*pb.Block2{}
+// NextTestBlock constructs next block in sequence block with 'numTx' number of transactions for testing
+func (bg *BlockGenerator) NextTestBlock(numTx int, txSize int) *common.Block {
+	simulationResults := [][]byte{}
+	for i := 0; i < numTx; i++ {
+		simulationResults = append(simulationResults, ConstructRandomBytes(bg.t, txSize))
+	}
+	return bg.NextBlock(simulationResults, false)
+}
+
+// NextTestBlocks constructs 'numBlocks' number of blocks for testing
+func (bg *BlockGenerator) NextTestBlocks(numBlocks int) []*common.Block {
+	blocks := []*common.Block{}
 	for i := 0; i < numBlocks; i++ {
-		blocks = append(blocks, ConstructTestBlock(t, 10, 100, i*10))
+		blocks = append(blocks, bg.NextTestBlock(10, 100))
 	}
 	return blocks
 }
 
-// ConstructTestBlock constructs a block with 'numTx' number of transactions for testing
-func ConstructTestBlock(t *testing.T, numTx int, txSize int, startingTxID int) *pb.Block2 {
-	txEnvs := []*common.Envelope{}
-	for i := startingTxID; i < numTx+startingTxID; i++ {
-		txEnv, _ := ConstructTestTransaction(t, ConstructRandomBytes(t, txSize), false)
-		txEnvs = append(txEnvs, txEnv)
-	}
-	return newBlockEnv(txEnvs)
+// ConstructBlock constructs a single block with blockNum=1
+func ConstructBlock(t *testing.T, simulationResults [][]byte, sign bool) *common.Block {
+	bg := NewBlockGenerator(t)
+	return bg.NextBlock(simulationResults, sign)
 }
 
-// ConstructTestTransaction constructs a transaction for testing
-func ConstructTestTransaction(t *testing.T, simulationResults []byte, sign bool) (*common.Envelope, error) {
+// ConstructTestBlock constructs a single block with blocknum=1
+func ConstructTestBlock(t *testing.T, numTx int, txSize int) *common.Block {
+	bg := NewBlockGenerator(t)
+	return bg.NextTestBlock(numTx, txSize)
+}
+
+// ConstructTestBlocks returns a series of blocks starting with blockNum=1
+func ConstructTestBlocks(t *testing.T, numBlocks int) []*common.Block {
+	bg := NewBlockGenerator(t)
+	return bg.NextTestBlocks(numBlocks)
+}
+
+// ConstructTransaction constructs a transaction for testing
+func ConstructTransaction(t *testing.T, simulationResults []byte, sign bool) (*common.Envelope, string, error) {
 	ccName := "foo"
 	txID := util.GenerateUUID()
+	var txEnv *common.Envelope
+	var err error
 	if sign {
-		return ptestutils.ConstructSingedTxEnvWithDefaultSigner(txID, util.GetTestChainID(), ccName, simulationResults, nil, nil)
+		txEnv, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(txID, util.GetTestChainID(), ccName, simulationResults, nil, nil)
+	} else {
+		txEnv, err = ptestutils.ConstructUnsingedTxEnv(txID, util.GetTestChainID(), ccName, simulationResults, nil, nil)
 	}
-	return ptestutils.ConstructUnsingedTxEnv(txID, util.GetTestChainID(), ccName, simulationResults, nil, nil)
+	return txEnv, txID, err
 }
 
-// ComputeBlockHash computes the crypto-hash of a block
-func ComputeBlockHash(t testing.TB, block *pb.Block2) []byte {
-	serBlock, err := pb.ConstructSerBlock2(block)
-	AssertNoError(t, err, "Error while getting hash from block")
-	return serBlock.ComputeHash()
-}
-
-func newBlockEnv(env []*common.Envelope) *pb.Block2 {
-	block := &pb.Block2{}
-	block.PreviousBlockHash = []byte{}
+func newBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *common.Block {
+	block := common.NewBlock(blockNum, previousHash)
 	for i := 0; i < len(env); i++ {
-		txBytes, _ := proto.Marshal(env[i])
-		block.Transactions = append(block.Transactions, txBytes)
+		txEnvBytes, _ := proto.Marshal(env[i])
+		block.Data.Data = append(block.Data.Data, txEnvBytes)
 	}
+	block.Header.DataHash = block.Data.Hash()
 	return block
 }

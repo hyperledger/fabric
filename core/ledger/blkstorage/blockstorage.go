@@ -21,6 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -50,11 +51,11 @@ var (
 // An implementation of this interface is expected to take an argument
 // of type `IndexConfig` which configures the block store on what items should be indexed
 type BlockStore interface {
-	AddBlock(block *pb.Block2) error
+	AddBlock(block *common.Block) error
 	GetBlockchainInfo() (*pb.BlockchainInfo, error)
 	RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error)
-	RetrieveBlockByHash(blockHash []byte) (*pb.Block2, error)
-	RetrieveBlockByNumber(blockNum uint64) (*pb.Block2, error)
+	RetrieveBlockByHash(blockHash []byte) (*common.Block, error)
+	RetrieveBlockByNumber(blockNum uint64) (*common.Block, error)
 	RetrieveTxByID(txID string) (*pb.Transaction, error)
 	Shutdown()
 }

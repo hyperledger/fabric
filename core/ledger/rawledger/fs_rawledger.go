@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -52,7 +53,7 @@ func (rl *FSBasedRawLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 }
 
 // GetBlockByNumber returns block at a given height
-func (rl *FSBasedRawLedger) GetBlockByNumber(blockNumber uint64) (*pb.Block2, error) {
+func (rl *FSBasedRawLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 	return rl.blockStore.RetrieveBlockByNumber(blockNumber)
 }
 
@@ -74,6 +75,6 @@ func (rl *FSBasedRawLedger) Close() {
 }
 
 // CommitBlock adds a new block
-func (rl *FSBasedRawLedger) CommitBlock(block *pb.Block2) error {
+func (rl *FSBasedRawLedger) CommitBlock(block *common.Block) error {
 	return rl.blockStore.AddBlock(block)
 }

@@ -16,9 +16,9 @@ limitations under the License.
 
 syntax = "proto3";
 
+import "common/common.proto";
 import "peer/chaincodeevent.proto";
 import "peer/fabric_transaction.proto";
-import "peer/fabric_block.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/peer";
 
@@ -82,7 +82,7 @@ message Event {
         Register register = 1;
 
         //producer events
-        Block2 block = 2;
+        common.Block block = 2;
         ChaincodeEvent chaincodeEvent = 3;
         Rejection rejection = 4;
 

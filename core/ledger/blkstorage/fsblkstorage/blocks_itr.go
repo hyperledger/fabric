@@ -22,7 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 // BlockHolder holds block bytes
@@ -31,9 +31,8 @@ type BlockHolder struct {
 }
 
 // GetBlock serializes Block from block bytes
-func (bh *BlockHolder) GetBlock() *pb.Block2 {
-	serBlock := pb.NewSerBlock2(bh.blockBytes)
-	block, err := serBlock.ToBlock2()
+func (bh *BlockHolder) GetBlock() *common.Block {
+	block, err := deserializeBlock(bh.blockBytes)
 	if err != nil {
 		panic(fmt.Errorf("Problem in deserialzing block: %s", err))
 	}

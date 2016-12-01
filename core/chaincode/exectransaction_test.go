@@ -40,6 +40,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -182,7 +183,8 @@ func endTxSimulation(txsim ledger.TxSimulator, payload []byte, commit bool, prop
 			}
 
 			//create the block with 1 transaction
-			block := &pb.Block2{Transactions: [][]byte{envBytes}}
+			block := common.NewBlock(1, []byte{})
+			block.Data.Data = [][]byte{envBytes}
 			if _, _, err = lgr.RemoveInvalidTransactionsAndPrepare(block); err != nil {
 				return err
 			}

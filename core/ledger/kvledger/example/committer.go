@@ -19,6 +19,7 @@ package example
 import (
 	"github.com/hyperledger/fabric/core/ledger"
 
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -33,8 +34,8 @@ func ConstructCommitter(ledger ledger.ValidatedLedger) *Committer {
 }
 
 // CommitBlock commits the block
-func (c *Committer) CommitBlock(rawBlock *pb.Block2) (*pb.Block2, []*pb.InvalidTransaction, error) {
-	var validBlock *pb.Block2
+func (c *Committer) CommitBlock(rawBlock *common.Block) (*common.Block, []*pb.InvalidTransaction, error) {
+	var validBlock *common.Block
 	var invalidTxs []*pb.InvalidTransaction
 	var err error
 	logger.Debugf("Committer validating the block...")
