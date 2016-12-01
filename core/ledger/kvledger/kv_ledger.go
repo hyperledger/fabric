@@ -24,10 +24,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/kvledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/lockbasedtxmgmt"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 
 	logging "github.com/op/go-logging"
 
@@ -77,11 +77,11 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 	blockStorageConf := fsblkstorage.NewConf(conf.blockStorageDir, conf.maxBlockfileSize)
 	blockStore := fsblkstorage.NewFsBlockStore(blockStorageConf, indexConfig)
 
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 		//By default we can talk to CouchDB with empty id and pw (""), or you can add your own id and password to talk to a secured CouchDB
 		logger.Debugf("===COUCHDB=== NewKVLedger() Using CouchDB instead of RocksDB...hardcoding and passing connection config for now")
 
-		couchDBDef := kvledgerconfig.GetCouchDBDefinition()
+		couchDBDef := ledgerconfig.GetCouchDBDefinition()
 
 		//create new transaction manager based on couchDB
 		txmgmt := couchdbtxmgmt.NewCouchDBTxMgr(&couchdbtxmgmt.Conf{DBPath: conf.txMgrDBPath},

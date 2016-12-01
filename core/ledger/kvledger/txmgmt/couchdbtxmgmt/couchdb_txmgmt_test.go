@@ -21,8 +21,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/kvledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt/couchdb"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
@@ -39,7 +39,7 @@ func newTestEnv(t testing.TB) *testEnv {
 	//call a helper method to load the core.yaml
 	testutil.SetupCoreYAMLConfig("./../../../../../peer")
 
-	couchDBDef := kvledgerconfig.GetCouchDBDefinition()
+	couchDBDef := ledgerconfig.GetCouchDBDefinition()
 
 	conf := &Conf{"/tmp/tests/ledger/kvledger/txmgmt/couchdbtxmgmt"}
 	os.RemoveAll(conf.DBPath)
@@ -69,7 +69,7 @@ func TestDatabaseAutoCreate(t *testing.T) {
 	//Only run the tests if CouchDB is explitily enabled in the code,
 	//otherwise CouchDB may not be installed and all the tests would fail
 	//TODO replace this with external config property rather than config within the code
-	if kvledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := newTestEnv(t)
 		env.Cleanup()       //cleanup at the beginning to ensure the database doesn't exist already
