@@ -32,7 +32,7 @@ import (
 var mockLogger = logging.MustGetLogger("mock")
 
 // MockStub is an implementation of ChaincodeStubInterface for unit testing chaincode.
-// Use this instead of ChaincodeStub in your chaincode's unit test calls to Init, Query or Invoke.
+// Use this instead of ChaincodeStub in your chaincode's unit test calls to Init or Invoke.
 type MockStub struct {
 	// arguments the stub was called with
 	args [][]byte

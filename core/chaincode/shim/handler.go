@@ -54,9 +54,7 @@ type Handler struct {
 	// Multiple queries (and one transaction) with different txids can be executing in parallel for this chaincode
 	// responseChannel is the channel on which responses are communicated by the shim to the chaincodeStub.
 	responseChannel map[string]chan pb.ChaincodeMessage
-	// Track which TXIDs are transactions and which are queries, to decide whether get/put state and invoke chaincode are allowed.
-	isTransaction map[string]bool
-	nextState     chan *nextStateInfo
+	nextState       chan *nextStateInfo
 }
 
 func shorttxid(txid string) string {
@@ -120,25 +118,6 @@ func (handler *Handler) deleteChannel(txid string) {
 	}
 }
 
-// markIsTransaction marks a TXID as a transaction or a query; true = transaction, false = query
-func (handler *Handler) markIsTransaction(txid string, isTrans bool) bool {
-	if handler.isTransaction == nil {
-		return false
-	}
-	handler.Lock()
-	defer handler.Unlock()
-	handler.isTransaction[txid] = isTrans
-	return true
-}
-
-func (handler *Handler) deleteIsTransaction(txid string) {
-	handler.Lock()
-	if handler.isTransaction != nil {
-		delete(handler.isTransaction, txid)
-	}
-	handler.Unlock()
-}
-
 // NewChaincodeHandler returns a new instance of the shim side handler.
 func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode) *Handler {
 	v := &Handler{
@@ -146,7 +125,6 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 		cc:         chaincode,
 	}
 	v.responseChannel = make(map[string]chan pb.ChaincodeMessage)
-	v.isTransaction = make(map[string]bool)
 	v.nextState = make(chan *nextStateInfo)
 
 	// Create the shim side FSM
@@ -210,17 +188,11 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 			return
 		}
 
-		// Mark as a transaction (allow put/del state)
-		handler.markIsTransaction(msg.Txid, true)
-
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
 		stub.init(handler, msg.Txid, input)
 		res, err := handler.cc.Init(stub)
-
-		// delete isTransaction entry
-		handler.deleteIsTransaction(msg.Txid)
 
 		if err != nil {
 			payload := []byte(err.Error())
@@ -277,17 +249,11 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 			return
 		}
 
-		// Mark as a transaction (allow put/del state)
-		handler.markIsTransaction(msg.Txid, true)
-
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
 		stub.init(handler, msg.Txid, input)
 		res, err := handler.cc.Invoke(stub)
-
-		// delete isTransaction entry
-		handler.deleteIsTransaction(msg.Txid)
 
 		if err != nil {
 			payload := []byte(err.Error())
@@ -412,11 +378,7 @@ func (handler *Handler) handleGetState(key string, txid string) ([]byte, error) 
 // handlePutState communicates with the validator to put state information into the ledger.
 func (handler *Handler) handlePutState(key string, value []byte, txid string) error {
 	// Check if this is a transaction
-	chaincodeLogger.Debugf("[%s]Inside putstate, isTransaction = %t", shorttxid(txid), handler.isTransaction[txid])
-	if !handler.isTransaction[txid] {
-		return errors.New("Cannot put state in query context")
-	}
-
+	chaincodeLogger.Debugf("[%s]Inside putstate", shorttxid(txid))
 	payload := &pb.PutStateInfo{Key: key, Value: value}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
@@ -466,11 +428,6 @@ func (handler *Handler) handlePutState(key string, value []byte, txid string) er
 
 // handleDelState communicates with the validator to delete a key from the state in the ledger.
 func (handler *Handler) handleDelState(key string, txid string) error {
-	// Check if this is a transaction
-	if !handler.isTransaction[txid] {
-		return errors.New("Cannot del state in query context")
-	}
-
 	// Create the channel on which to communicate the response from validating peer
 	respChan, uniqueReqErr := handler.createChannel(txid)
 	if uniqueReqErr != nil {
@@ -676,11 +633,6 @@ func (handler *Handler) handleRangeQueryStateClose(id, txid string) (*pb.RangeQu
 
 // handleInvokeChaincode communicates with the validator to invoke another chaincode.
 func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, txid string) ([]byte, error) {
-	// Check if this is a transaction
-	if !handler.isTransaction[txid] {
-		return nil, errors.New("Cannot invoke chaincode in query context")
-	}
-
 	chaincodeID := &pb.ChaincodeID{Name: chaincodeName}
 	input := &pb.ChaincodeInput{Args: args}
 	payload := &pb.ChaincodeSpec{ChaincodeID: chaincodeID, CtorMsg: input}

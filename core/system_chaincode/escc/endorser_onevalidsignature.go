@@ -153,8 +153,3 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	logger.Infof("ESCC exits successfully")
 	return prBytes, nil
 }
-
-// Query is here to satisfy the Chaincode interface. We don't need it for this system chaincode
-func (e *EndorserOneValidSignature) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
-}

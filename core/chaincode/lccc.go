@@ -48,8 +48,6 @@ const (
 	//DEPLOY deploy command
 	DEPLOY = "deploy"
 
-	//chaincode query commands
-
 	//GETCCINFO get chaincode
 	GETCCINFO = "getid"
 
@@ -410,9 +408,4 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 	}
 
 	return nil, InvalidFunctionErr(function)
-}
-
-// Query is no longer implemented. Will be removed
-func (lccc *LifeCycleSysCC) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
 }
