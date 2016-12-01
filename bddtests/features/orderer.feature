@@ -20,14 +20,23 @@ Feature: Orderer
             | SPECIFIED |        1         |       10        |
         Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "<BatchTimeout>" seconds
 
-    Examples: Orderer Options
+    Examples: Solo Orderer
         |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
         |   docker-compose-orderer-solo.yml    |     true     |        20              |         2          |       10       |     .5     |
         |   docker-compose-orderer-solo.yml    |     true     |        40              |         4          |       10       |     .5     |
         |   docker-compose-orderer-solo.yml    |     true     |        60              |         6          |       10       |     .5     |
-        |   docker-compose-orderer-kafka.yml   |     true     |        20              |         2          |       10       |      5     |
-        |   docker-compose-orderer-kafka.yml   |     true     |        40              |         4          |       10       |      5     |
-        |   docker-compose-orderer-kafka.yml   |     true     |        60              |         6          |       10       |      5     |
+
+    Examples: 1 Kafka Orderer and 1 Kafka Broker
+        |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
+        |   environments/orderer-1-kafka-1     |     true     |        20              |         2          |       10       |      5     |
+        |   environments/orderer-1-kafka-1     |     true     |        40              |         4          |       10       |      5     |
+        |   environments/orderer-1-kafka-1     |     true     |        60              |         6          |       10       |      5     |
+
+    Examples: 1 Kafka Orderer and 3 Kafka Brokers
+        |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
+        |   environments/orderer-1-kafka-3     |     true     |        20              |         2          |       10       |      5     |
+        |   environments/orderer-1-kafka-3     |     true     |        40              |         4          |       10       |      5     |
+        |   environments/orderer-1-kafka-3     |     true     |        60              |         6          |       10       |      5     |
 
 #    @doNotDecompose
     Scenario Outline: Basic seek orderer function (Utilizing properties for atomic broadcast)
@@ -43,14 +52,23 @@ Feature: Orderer
         When user "binhn" seeks to block "1" on deliver function on "orderer0"
         Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "1" seconds
 
-    Examples: Orderer Options
+    Examples: Solo Orderer
         |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
         |   docker-compose-orderer-solo.yml    |     true     |        20              |         2          |       10       |     .5     |
         |   docker-compose-orderer-solo.yml    |     true     |        40              |         4          |       10       |     .5     |
         |   docker-compose-orderer-solo.yml    |     true     |        60              |         6          |       10       |     .5     |
-        |   docker-compose-orderer-kafka.yml   |     true     |        20              |         2          |       10       |      5     |
-        |   docker-compose-orderer-kafka.yml   |     true     |        40              |         4          |       10       |      5     |
-        |   docker-compose-orderer-kafka.yml   |     true     |        60              |         6          |       10       |      5     |
+
+    Examples: 1 Kafka Orderer and 1 Kafka Broker
+        |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
+        |   environments/orderer-1-kafka-1     |     true     |        20              |         2          |       10       |      5     |
+        |   environments/orderer-1-kafka-1     |     true     |        40              |         4          |       10       |      5     |
+        |   environments/orderer-1-kafka-1     |     true     |        60              |         6          |       10       |      5     |
+
+    Examples: 1 Kafka Orderer and 3 Kafka Brokers
+        |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
+        |   environments/orderer-1-kafka-3     |     true     |        20              |         2          |       10       |      5     |
+        |   environments/orderer-1-kafka-3     |     true     |        40              |         4          |       10       |      5     |
+        |   environments/orderer-1-kafka-3     |     true     |        60              |         6          |       10       |      5     |
 
 
 #    @doNotDecompose
@@ -65,9 +83,17 @@ Feature: Orderer
             | SPECIFIED |        1         |       1         |
         Then user "binhn" should get a delivery from "orderer0" of "<ExpectedBlocks>" blocks with "<NumMsgsToBroadcast>" messages within "<BatchTimeout>" seconds
 
-    Examples: Orderer Options
+    Examples: Solo Orderer
         |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
         |   docker-compose-orderer-solo.yml    |     false    |        20              |         1          |       10       |     .5     |
         |   docker-compose-orderer-solo.yml    |     true     |        20              |         2          |       10       |     .5     |
-        |   docker-compose-orderer-kafka.yml   |     false    |        20              |         1          |       10       |      5     |
-        |   docker-compose-orderer-kafka.yml   |     true     |        20              |         2          |       10       |      5     |
+
+    Examples: 1 Kafka Orderer and 1 Kafka Broker
+        |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
+        |   environments/orderer-1-kafka-1     |     false    |        20              |         1          |       10       |      5     |
+        |   environments/orderer-1-kafka-1     |     true     |        20              |         2          |       10       |      5     |
+
+    Examples: 1 Kafka Orderer and 3 Kafka Brokers
+        |          ComposeFile                 |    SendAck   |    NumMsgsToBroadcast  |  ExpectedBlocks    |  BatchTimeout  |  BootTime  |
+        |   environments/orderer-1-kafka-3     |     false    |        20              |         1          |       10       |      5     |
+        |   environments/orderer-1-kafka-3     |     true     |        20              |         2          |       10       |      5     |

@@ -1,0 +1,29 @@
+version: '2'
+services:
+  zookeeper:
+    # Offical Apache ZooKeeper image. See https://hub.docker.com/_/zookeeper/
+    image: zookeeper:3.4.9
+
+  orderer0:
+    image: hyperledger/fabric-orderer
+    environment:
+        - ORDERER_GENERAL_LEDGERTYPE=ram
+        - ORDERER_GENERAL_BATCHTIMEOUT=10s
+        - ORDERER_GENERAL_BATCHSIZE=10
+        - ORDERER_GENERAL_MAXWINDOWSIZE=1000
+        - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+        - ORDERER_RAMLEDGER_HISTORY_SIZE=100
+        - ORDERER_GENERAL_ORDERERTYPE=kafka
+        - ORDERER_KAFKA_BROKERS=[kafka0:9092]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+    command: orderer -loglevel debug -verbose true
+    depends_on:
+      - kafka0
+
+  kafka0:
+    build: ../kafka
+    environment:
+      KAFKA_BROKER_ID: 0
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    depends_on:
+      - zookeeper
