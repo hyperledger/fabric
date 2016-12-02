@@ -2,7 +2,7 @@
 The hyperledger fabric ordering service is intended to provide an atomic broadcast ordering service for consumption by the peers.  This means that many clients may submit messages for ordering, and all clients are delivered the same series of ordered batches in response.
 
 ## Protocol definition
-The atomic broadcast ordering protocol for hyperledger fabric is described in `hyperledger/fabric/orderer/atomicbroadcast/ab.proto`.  There are two services, the `Broadcast` service for injecting messages into the system, and the `Deliver` service for receiving ordered batches from the service.  Sometimes, the service will reside over the network, while othertimes, the service may be bound locally into a peer process.  The service may be bound locally for single process development deployments, or when the underlying ordering service has its own backing network protocol and the proto serves only as a wrapper.
+The atomic broadcast ordering protocol for hyperledger fabric is described in `hyperledger/fabric/protos/orderer/ab.proto`.  There are two services, the `Broadcast` service for injecting messages into the system, and the `Deliver` service for receiving ordered batches from the service.  Sometimes, the service will reside over the network, while othertimes, the service may be bound locally into a peer process.  The service may be bound locally for single process development deployments, or when the underlying ordering service has its own backing network protocol and the proto serves only as a wrapper.
 
 ## Service types
 * Solo Orderer:
