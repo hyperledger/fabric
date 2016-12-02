@@ -49,7 +49,7 @@ endif
 PKGNAME = github.com/$(PROJECT_NAME)
 GO_LDFLAGS = -X $(PKGNAME)/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" "
-GO_DOCKER_FLAGS= -ldflags "$(GO_LDFLAGS) -linkmode external -extldflags '-static -lpthread'"
+DOCKER_GO_LDFLAGS= $(GO_LDFLAGS) -linkmode external -extldflags '-static -lpthread'
 ARCH=$(shell uname -m)
 OS=$(shell uname)
 CHAINTOOL_RELEASE=v0.10.0
@@ -61,37 +61,39 @@ DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
 BASE_DOCKER_TAG=$(ARCH)-$(BASEIMAGE_RELEASE)
 
 ifneq ($(OS),Darwin)
-DOCKER_FLAGS=--user=$(shell id -u)
+DOCKER_RUN_FLAGS=--user=$(shell id -u)
 endif
 
 ifneq ($(http_proxy),)
-DOCKER_ARGS_PROXY+=--build-arg http_proxy=$(http_proxy)
-DOCKER_FLAGS+=-e http_proxy=$(http_proxy)
+DOCKER_BUILD_FLAGS+=--build-arg http_proxy=$(http_proxy)
+DOCKER_RUN_FLAGS+=-e http_proxy=$(http_proxy)
 endif
 ifneq ($(https_proxy),)
-DOCKER_ARGS_PROXY+=--build-arg https_proxy=$(https_proxy)
-DOCKER_FLAGS+=-e https_proxy=$(https_proxy)
+DOCKER_BUILD_FLAGS+=--build-arg https_proxy=$(https_proxy)
+DOCKER_RUN_FLAGS+=-e https_proxy=$(https_proxy)
 endif
 ifneq ($(HTTP_PROXY),)
-DOCKER_ARGS_PROXY+=--build-arg HTTP_PROXY=$(HTTP_PROXY)
-DOCKER_FLAGS+=-e HTTP_PROXY=$(HTTP_PROXY)
+DOCKER_BUILD_FLAGS+=--build-arg HTTP_PROXY=$(HTTP_PROXY)
+DOCKER_RUN_FLAGS+=-e HTTP_PROXY=$(HTTP_PROXY)
 endif
 ifneq ($(HTTPS_PROXY),)
-DOCKER_ARGS_PROXY+=--build-arg HTTPS_PROXY=$(HTTPS_PROXY)
-DOCKER_FLAGS+=-e HTTPS_PROXY=$(HTTPS_PROXY)
+DOCKER_BUILD_FLAGS+=--build-arg HTTPS_PROXY=$(HTTPS_PROXY)
+DOCKER_RUN_FLAGS+=-e HTTPS_PROXY=$(HTTPS_PROXY)
 endif
 ifneq ($(no_proxy),)
-DOCKER_ARGS_PROXY+=--build-arg no_proxy=$(no_proxy)
-DOCKER_FLAGS+=-e no_proxy=$(no_proxy)
+DOCKER_BUILD_FLAGS+=--build-arg no_proxy=$(no_proxy)
+DOCKER_RUN_FLAGS+=-e no_proxy=$(no_proxy)
 endif
 ifneq ($(NO_PROXY),)
-DOCKER_ARGS_PROXY+=--build-arg NO_PROXY=$(NO_PROXY)
-DOCKER_FLAGS+=-e NO_PROXY=$(NO_PROXY)
+DOCKER_BUILD_FLAGS+=--build-arg NO_PROXY=$(NO_PROXY)
+DOCKER_RUN_FLAGS+=-e NO_PROXY=$(NO_PROXY)
 endif
 
-DRUN = docker run -i --rm $(DOCKER_FLAGS) \
+DRUN = docker run -i --rm $(DOCKER_RUN_FLAGS) \
 	-v $(abspath .):/opt/gopath/src/$(PKGNAME) \
 	-w /opt/gopath/src/$(PKGNAME)
+
+DBUILD = docker build $(DOCKER_BUILD_FLAGS)
 
 EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
@@ -172,7 +174,7 @@ build/docker/bin/%: $(PROJECT_FILES)
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/$(TARGET)/pkg):/opt/gopath/pkg \
 		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		go install $(GO_DOCKER_FLAGS) $(pkgmap.$(@F))
+		go install -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
 
 build/bin:
@@ -234,7 +236,7 @@ build/image/%/.dummy: Makefile build/image/%/payload
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
-	docker build $(DOCKER_ARGS_PROXY) -t $(PROJECT_NAME)-$(TARGET) $(@D)
+	$(DBUILD) -t $(PROJECT_NAME)-$(TARGET) $(@D)
 	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
