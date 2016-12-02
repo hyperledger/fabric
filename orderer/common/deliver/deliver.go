@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-
 	"github.com/op/go-logging"
 )
 
@@ -186,7 +185,7 @@ func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
 	}
 	logger.Debugf("Updating properties for client")
 
-	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) || update.ChainID == nil {
+	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) || update.ChainID == "" {
 		close(d.exitChan)
 		return d.sendErrorReply(cb.Status_BAD_REQUEST)
 	}

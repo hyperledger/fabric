@@ -39,7 +39,7 @@ func init() {
 	}
 }
 
-func makeNormalTx(chainID []byte, i int) *cb.Envelope {
+func makeNormalTx(chainID string, i int) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
@@ -54,7 +54,7 @@ func makeNormalTx(chainID []byte, i int) *cb.Envelope {
 	}
 }
 
-func makeConfigTx(chainID []byte, i int) *cb.Envelope {
+func makeConfigTx(chainID string, i int) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
@@ -119,7 +119,7 @@ func TestManagerImpl(t *testing.T) {
 
 	manager := NewManagerImpl(lf, consenters)
 
-	_, ok := manager.GetChain([]byte("Fake"))
+	_, ok := manager.GetChain("Fake")
 	if ok {
 		t.Errorf("Should not have found a chain that was not created")
 	}

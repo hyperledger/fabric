@@ -26,7 +26,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-var defaultChain = []byte("DefaultChainID")
+var defaultChain = "DefaultChainID"
 
 func defaultHandlers() map[cb.ConfigurationItem_ConfigurationType]Handler {
 	handlers := make(map[cb.ConfigurationItem_ConfigurationType]Handler)
@@ -57,7 +57,7 @@ func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 	return mpm.policy, (mpm.policy != nil)
 }
 
-func makeConfigurationItem(id, modificationPolicy string, lastModified uint64, data []byte, chainID []byte) *cb.ConfigurationItem {
+func makeConfigurationItem(id, modificationPolicy string, lastModified uint64, data []byte, chainID string) *cb.ConfigurationItem {
 	return &cb.ConfigurationItem{
 		Header:             &cb.ChainHeader{ChainID: chainID},
 		ModificationPolicy: modificationPolicy,
@@ -67,7 +67,7 @@ func makeConfigurationItem(id, modificationPolicy string, lastModified uint64, d
 	}
 }
 
-func makeSignedConfigurationItem(id, modificationPolicy string, lastModified uint64, data []byte, chainID []byte) *cb.SignedConfigurationItem {
+func makeSignedConfigurationItem(id, modificationPolicy string, lastModified uint64, data []byte, chainID string) *cb.SignedConfigurationItem {
 	config := makeConfigurationItem(id, modificationPolicy, lastModified, data, chainID)
 	marshaledConfig, err := proto.Marshal(config)
 	if err != nil {
@@ -100,7 +100,7 @@ func TestWrongChainID(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigurationEnvelope{
-		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), []byte("wrongChain"))},
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), "wrongChain")},
 	}
 
 	err = cm.Validate(newConfig)
@@ -421,7 +421,7 @@ func TestMissingHeader(t *testing.T) {
 func TestMissingChainID(t *testing.T) {
 	handlers := defaultHandlers()
 	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
-		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), nil)},
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), "")},
 	}, &mockPolicyManager{&mockPolicy{}}, handlers)
 
 	if err == nil {
@@ -434,8 +434,8 @@ func TestMismatchedChainID(t *testing.T) {
 	handlers := defaultHandlers()
 	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{
-			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), []byte("chain1")),
-			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), []byte("chain2")),
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), "chain1"),
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), "chain2"),
 		},
 	}, &mockPolicyManager{&mockPolicy{}}, handlers)
 

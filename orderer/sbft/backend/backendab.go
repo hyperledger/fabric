@@ -17,8 +17,6 @@ limitations under the License.
 package backend
 
 import (
-	"bytes"
-
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
@@ -32,12 +30,12 @@ import (
 )
 
 type xxxMultichain struct {
-	chainID      []byte
+	chainID      string
 	chainSupport *xxxChainSupport
 }
 
-func (xxx *xxxMultichain) GetChain(id []byte) (multichain.ChainSupport, bool) {
-	if !bytes.Equal(id, xxx.chainID) {
+func (xxx *xxxMultichain) GetChain(id string) (multichain.ChainSupport, bool) {
+	if id != xxx.chainID {
 		return nil, false
 	}
 	return xxx.chainSupport, true

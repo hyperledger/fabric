@@ -33,7 +33,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var systemChain = []byte("systemChain")
+var systemChain = "systemChain"
 
 var configTx []byte
 
@@ -59,7 +59,7 @@ func (mcm *mockConfigManager) Apply(message *cb.ConfigurationEnvelope) error {
 	panic("Unimplemented")
 }
 
-func (mcm *mockConfigManager) ChainID() []byte {
+func (mcm *mockConfigManager) ChainID() string {
 	panic("Unimplemented")
 }
 
@@ -112,8 +112,8 @@ type mockMultichainManager struct {
 	chains map[string]*mockChainSupport
 }
 
-func (mm *mockMultichainManager) GetChain(chainID []byte) (multichain.ChainSupport, bool) {
-	chain, ok := mm.chains[string(chainID)]
+func (mm *mockMultichainManager) GetChain(chainID string) (multichain.ChainSupport, bool) {
+	chain, ok := mm.chains[chainID]
 	return chain, ok
 }
 
@@ -171,7 +171,7 @@ func (mc *mockChain) Halt() {
 	}
 }
 
-func makeMessage(chainID []byte, data []byte) *cb.Envelope {
+func makeMessage(chainID string, data []byte) *cb.Envelope {
 	payload := &cb.Payload{
 		Data: data,
 		Header: &cb.Header{

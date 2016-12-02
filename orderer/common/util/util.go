@@ -107,7 +107,7 @@ func ExtractPayload(envelope *cb.Envelope) (*cb.Payload, error) {
 }
 
 // MakeChainHeader creates a ChainHeader.
-func MakeChainHeader(headerType cb.HeaderType, version int32, chainID []byte, epoch uint64) *cb.ChainHeader {
+func MakeChainHeader(headerType cb.HeaderType, version int32, chainID string, epoch uint64) *cb.ChainHeader {
 	return &cb.ChainHeader{
 		Type:    int32(headerType),
 		Version: version,

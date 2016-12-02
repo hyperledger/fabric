@@ -39,7 +39,7 @@ message SeekInfo {
     StartType Start = 1;
     uint64 SpecifiedNumber = 2; // Only used when start = SPECIFIED
     uint64 WindowSize = 3; // The window size is the maximum number of blocks that will be sent without Acknowledgement, the base of the window moves to the most recently received acknowledgment
-    bytes ChainID = 4; // The chain to seek within
+    string ChainID = 4; // The chain to seek within
 }
 
 message Acknowledgement {

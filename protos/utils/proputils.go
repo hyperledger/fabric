@@ -222,7 +222,7 @@ func CreateChaincodeProposal(txid string, chainID string, cis *peer.ChaincodeInv
 
 	hdr := &common.Header{ChainHeader: &common.ChainHeader{Type: int32(common.HeaderType_ENDORSER_TRANSACTION),
 		TxID:      txid,
-		ChainID:   []byte(chainID),
+		ChainID:   chainID,
 		Extension: ccHdrExtBytes},
 		SignatureHeader: &common.SignatureHeader{Nonce: nonce, Creator: creator}}
 

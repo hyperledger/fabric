@@ -21,9 +21,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("orderer/common/broadcast")
@@ -106,7 +106,7 @@ func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) err
 
 		payload := &cb.Payload{}
 		err = proto.Unmarshal(msg.Payload, payload)
-		if payload.Header == nil || payload.Header.ChainHeader == nil || payload.Header.ChainHeader.ChainID == nil {
+		if payload.Header == nil || payload.Header.ChainHeader == nil || payload.Header.ChainHeader.ChainID == "" {
 			logger.Debugf("Received malformed message, dropping connection")
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}

@@ -200,7 +200,7 @@ func (d *DeliverService) seekOldest() error {
 			Seek: &orderer.SeekInfo{
 				Start:      orderer.SeekInfo_OLDEST,
 				WindowSize: d.windowSize,
-				ChainID:    []byte(util.GetTestChainID()),
+				ChainID:    util.GetTestChainID(),
 			},
 		},
 	})
@@ -213,7 +213,7 @@ func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
 				Start:           orderer.SeekInfo_SPECIFIED,
 				WindowSize:      d.windowSize,
 				SpecifiedNumber: height,
-				ChainID:         []byte(util.GetTestChainID()),
+				ChainID:         util.GetTestChainID(),
 			},
 		},
 	})

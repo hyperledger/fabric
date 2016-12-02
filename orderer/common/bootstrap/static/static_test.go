@@ -124,7 +124,7 @@ func TestGenesisBlockData(t *testing.T) {
 	if configurationItemChainHeader.Version != expectedConfigurationItemChainHeaderVersion {
 		t.Fatalf("Expected configuration item chain header version %d, got %d", expectedConfigurationItemChainHeaderVersion, configurationItemChainHeader.Version)
 	}
-	if !bytes.Equal(configurationItemChainHeader.ChainID, payloadChainHeader.ChainID) {
+	if configurationItemChainHeader.ChainID != payloadChainHeader.ChainID {
 		t.Fatalf("Expected chain ID in chain headers of configuration item and payload to match, got %x and %x respectively", configurationItemChainHeader.ChainID, payloadChainHeader.ChainID)
 	}
 	if configurationItemChainHeader.Epoch != payloadChainHeader.Epoch {

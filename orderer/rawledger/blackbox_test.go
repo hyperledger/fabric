@@ -214,8 +214,8 @@ func TestMultichain(t *testing.T) {
 
 func testMultichain(lf ledgerTestFactory, t *testing.T) {
 	f, _ := lf.New()
-	chain1 := []byte("chain1")
-	chain2 := []byte("chain2")
+	chain1 := "chain1"
+	chain2 := "chain2"
 
 	c1p1 := []byte("c1 payload1")
 	c1p2 := []byte("c1 payload2")

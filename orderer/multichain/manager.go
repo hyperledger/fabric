@@ -24,9 +24,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("orderer/multichain")
@@ -46,7 +46,7 @@ func init() {
 // Manager coordinates the creation and access of chains
 type Manager interface {
 	// GetChain retrieves the chain support for a chain (and whether it exists)
-	GetChain(chainID []byte) (ChainSupport, bool)
+	GetChain(chainID string) (ChainSupport, bool)
 }
 
 type multiLedger struct {
@@ -109,15 +109,15 @@ func NewManagerImpl(ledgerFactory rawledger.Factory, consenters map[string]Conse
 	for _, chainID := range existingChains {
 		rl, err := ledgerFactory.GetOrCreate(chainID)
 		if err != nil {
-			logger.Fatalf("Ledger factory reported chainID %x but could not retrieve it: %s", chainID, err)
+			logger.Fatalf("Ledger factory reported chainID %s but could not retrieve it: %s", chainID, err)
 		}
 		configTx := getConfigTx(rl)
 		if configTx == nil {
-			logger.Fatalf("Could not find configuration transaction for chain %x", chainID)
+			logger.Fatalf("Could not find configuration transaction for chain %s", chainID)
 		}
 		configManager, policyManager, backingLedger := ml.newResources(configTx)
 		chainID := configManager.ChainID()
-		ml.chains[string(chainID)] = newChainSupport(configManager, policyManager, backingLedger, consenters)
+		ml.chains[chainID] = newChainSupport(configManager, policyManager, backingLedger, consenters)
 	}
 
 	for _, cs := range ml.chains {
@@ -128,8 +128,8 @@ func NewManagerImpl(ledgerFactory rawledger.Factory, consenters map[string]Conse
 }
 
 // GetChain retrieves the chain support for a chain (and whether it exists)
-func (ml *multiLedger) GetChain(chainID []byte) (ChainSupport, bool) {
-	cs, ok := ml.chains[string(chainID)]
+func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
+	cs, ok := ml.chains[chainID]
 	return cs, ok
 }
 
@@ -167,7 +167,7 @@ func (ml *multiLedger) newResources(configTx *cb.Envelope) (configtx.Manager, po
 
 	ledger, err := ml.ledgerFactory.GetOrCreate(chainID)
 	if err != nil {
-		logger.Fatalf("Error getting ledger for %x", chainID)
+		logger.Fatalf("Error getting ledger for %s", chainID)
 	}
 
 	return configManager, policyManager, ledger

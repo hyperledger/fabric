@@ -26,10 +26,10 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("rawledger/fileledger")
@@ -110,25 +110,25 @@ func New(directory string, systemGenesis *cb.Block) (rawledger.Factory, rawledge
 	return flf, fl
 }
 
-func (flf *fileLedgerFactory) ChainIDs() [][]byte {
+func (flf *fileLedgerFactory) ChainIDs() []string {
 	flf.mutex.Lock()
 	defer flf.mutex.Unlock()
-	ids := make([][]byte, len(flf.ledgers))
+	ids := make([]string, len(flf.ledgers))
 
 	i := 0
 	for key := range flf.ledgers {
-		ids[i] = []byte(key)
+		ids[i] = key
 		i++
 	}
 
 	return ids
 }
 
-func (flf *fileLedgerFactory) GetOrCreate(chainID []byte) (rawledger.ReadWriter, error) {
+func (flf *fileLedgerFactory) GetOrCreate(chainID string) (rawledger.ReadWriter, error) {
 	flf.mutex.Lock()
 	defer flf.mutex.Unlock()
 
-	key := string(chainID)
+	key := chainID
 
 	// Check a second time with the lock held
 	l, ok := flf.ledgers[key]
@@ -136,7 +136,7 @@ func (flf *fileLedgerFactory) GetOrCreate(chainID []byte) (rawledger.ReadWriter,
 		return l, nil
 	}
 
-	directory := fmt.Sprintf("%s/%x", flf.directory, chainID)
+	directory := fmt.Sprintf("%s/%s", flf.directory, chainID)
 
 	logger.Debugf("Initializing chain at '%s'", directory)
 

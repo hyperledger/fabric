@@ -24,12 +24,12 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-var TestChainID = []byte("**TEST_CHAINID**")
+var TestChainID = "**TEST_CHAINID**"
 
 const msgVersion = int32(1)
 
 type bootstrapper struct {
-	chainID []byte
+	chainID string
 }
 
 // New returns a new static bootstrap helper.

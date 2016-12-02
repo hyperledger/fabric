@@ -38,7 +38,7 @@ func (mcm *mockConfigManager) Apply(configtx *cb.ConfigurationEnvelope) error {
 	return mcm.err
 }
 
-func (mcm *mockConfigManager) ChainID() []byte {
+func (mcm *mockConfigManager) ChainID() string {
 	panic("Unimplemented")
 }
 

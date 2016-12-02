@@ -36,7 +36,7 @@ import (
 
 var genesisBlock *cb.Block
 
-var systemChainID = []byte("systemChain")
+var systemChainID = "systemChain"
 
 const ledgerSize = 10
 
@@ -82,8 +82,8 @@ type mockMultichainManager struct {
 	chains map[string]*mockChainSupport
 }
 
-func (mm *mockMultichainManager) GetChain(chainID []byte) (multichain.ChainSupport, bool) {
-	cs, ok := mm.chains[string(chainID)]
+func (mm *mockMultichainManager) GetChain(chainID string) (multichain.ChainSupport, bool) {
+	cs, ok := mm.chains[chainID]
 	return cs, ok
 }
 

@@ -50,7 +50,7 @@ type Manager interface {
 	Validate(configtx *cb.ConfigurationEnvelope) error
 
 	// ChainID retrieves the chain ID associated with this manager
-	ChainID() []byte
+	ChainID() string
 }
 
 // DefaultModificationPolicyID is the ID of the policy used when no other policy can be resolved, for instance when attempting to create a new config item
@@ -64,7 +64,7 @@ func (ap *acceptAllPolicy) Evaluate(headers [][]byte, payload []byte, identities
 
 type configurationManager struct {
 	sequence      uint64
-	chainID       []byte
+	chainID       string
 	pm            policies.Manager
 	configuration map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem
 	handlers      map[cb.ConfigurationItem_ConfigurationType]Handler
@@ -72,19 +72,19 @@ type configurationManager struct {
 
 // computeChainIDAndSequence returns the chain id and the sequence number for a configuration envelope
 // or an error if there is a problem with the configuration envelope
-func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) ([]byte, uint64, error) {
+func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint64, error) {
 	if len(configtx.Items) == 0 {
-		return nil, 0, fmt.Errorf("Empty envelope unsupported")
+		return "", 0, fmt.Errorf("Empty envelope unsupported")
 	}
 
 	m := uint64(0)     //configtx.Items[0].LastModified
-	var chainID []byte //:= configtx.Items[0].Header.ChainID
+	var chainID string //:= configtx.Items[0].Header.ChainID
 
 	for _, signedItem := range configtx.Items {
 		item := &cb.ConfigurationItem{}
 		err := proto.Unmarshal(signedItem.ConfigurationItem, item)
 		if err != nil {
-			return nil, 0, fmt.Errorf("Error unmarshaling signedItem.ConfigurationItem: %s", err)
+			return "", 0, fmt.Errorf("Error unmarshaling signedItem.ConfigurationItem: %s", err)
 		}
 
 		if item.LastModified > m {
@@ -92,18 +92,18 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) ([]byte, uint
 		}
 
 		if item.Header == nil {
-			return nil, 0, fmt.Errorf("Header not set: %v", item)
+			return "", 0, fmt.Errorf("Header not set: %v", item)
 		}
 
-		if item.Header.ChainID == nil {
-			return nil, 0, fmt.Errorf("Header chainID was nil: %v", item)
+		if item.Header.ChainID == "" {
+			return "", 0, fmt.Errorf("Header chainID was not set: %v", item)
 		}
 
-		if chainID == nil {
+		if chainID == "" {
 			chainID = item.Header.ChainID
 		} else {
-			if !bytes.Equal(chainID, item.Header.ChainID) {
-				return nil, 0, fmt.Errorf("Mismatched chainIDs in envelope %x != %x", chainID, item.Header.ChainID)
+			if chainID != item.Header.ChainID {
+				return "", 0, fmt.Errorf("Mismatched chainIDs in envelope %s != %s", chainID, item.Header.ChainID)
 			}
 		}
 	}
@@ -179,8 +179,8 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 	}
 
 	// Verify config is intended for this globally unique chain ID
-	if !bytes.Equal(chainID, cm.chainID) {
-		return nil, fmt.Errorf("Config is for the wrong chain, expected %x, got %x", cm.chainID, chainID)
+	if chainID != cm.chainID {
+		return nil, fmt.Errorf("Config is for the wrong chain, expected %s, got %s", cm.chainID, chainID)
 	}
 
 	defaultModificationPolicy, defaultPolicySet := cm.pm.GetPolicy(DefaultModificationPolicyID)
@@ -300,6 +300,6 @@ func (cm *configurationManager) Apply(configtx *cb.ConfigurationEnvelope) error 
 }
 
 // ChainID retrieves the chain ID associated with this manager
-func (cm *configurationManager) ChainID() []byte {
+func (cm *configurationManager) ChainID() string {
 	return cm.chainID
 }

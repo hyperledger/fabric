@@ -22,9 +22,9 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("rawledger/ramledger")
@@ -78,11 +78,11 @@ func New(maxSize int, systemGenesis *cb.Block) (rawledger.Factory, rawledger.Rea
 	return rlf, rl
 }
 
-func (rlf *ramLedgerFactory) GetOrCreate(chainID []byte) (rawledger.ReadWriter, error) {
+func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (rawledger.ReadWriter, error) {
 	rlf.mutex.Lock()
 	defer rlf.mutex.Unlock()
 
-	key := string(chainID)
+	key := chainID
 
 	// Check a second time with the lock held
 	l, ok := rlf.ledgers[key]
@@ -95,14 +95,14 @@ func (rlf *ramLedgerFactory) GetOrCreate(chainID []byte) (rawledger.ReadWriter, 
 	return ch, nil
 }
 
-func (rlf *ramLedgerFactory) ChainIDs() [][]byte {
+func (rlf *ramLedgerFactory) ChainIDs() []string {
 	rlf.mutex.Lock()
 	defer rlf.mutex.Unlock()
-	ids := make([][]byte, len(rlf.ledgers))
+	ids := make([]string, len(rlf.ledgers))
 
 	i := 0
 	for key := range rlf.ledgers {
-		ids[i] = []byte(key)
+		ids[i] = key
 		i++
 	}
 

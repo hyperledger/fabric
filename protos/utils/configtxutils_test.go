@@ -43,7 +43,7 @@ func TestBreakOutBlockData(t *testing.T) {
 	if len(payloads) != 1 {
 		t.Errorf("TestBreakOutBlock did not unmarshall to array of 1 payloads\n")
 	}
-	if payloads[0].Header.ChainHeader.Version != 1 || payloads[0].Header.ChainHeader.Type != int32(pb.HeaderType_CONFIGURATION_TRANSACTION) || !bytes.Equal(payloads[0].Header.ChainHeader.ChainID, []byte("test")) {
+	if payloads[0].Header.ChainHeader.Version != 1 || payloads[0].Header.ChainHeader.Type != int32(pb.HeaderType_CONFIGURATION_TRANSACTION) || payloads[0].Header.ChainHeader.ChainID != "test" {
 		t.Errorf("TestBreakOutBlockData payload header is %+v . Expected type is %v and Version == 1\n", payloads[0].Header.ChainHeader, int32(pb.HeaderType_CONFIGURATION_TRANSACTION))
 	}
 	if !bytes.Equal(payloads[0].Data, []byte("test")) {
@@ -98,7 +98,7 @@ func TestBreakOutConfigEnvelopeToConfigItems(t *testing.T) {
 	if len(configItems) != 1 {
 		t.Errorf("TestBreakOutPayloadDataToConfigurationEnvelope did not return array of 1 config item\n")
 	}
-	if configItems[0].Header.Type != int32(pb.HeaderType_CONFIGURATION_TRANSACTION) || !bytes.Equal(configItems[0].Header.ChainID, []byte("test")) {
+	if configItems[0].Header.Type != int32(pb.HeaderType_CONFIGURATION_TRANSACTION) || configItems[0].Header.ChainID != "test" {
 		t.Errorf("TestBreakOutConfigEnvelopeToConfigItems, configItem header does not match original %+v . Expected config_transaction and chainid 'test'\n", configItems[0].Header)
 	}
 	if configItems[0].Type != pb.ConfigurationItem_Orderer || configItems[0].Key != "abc" || !bytes.Equal(configItems[0].Value, []byte("test")) {
@@ -139,7 +139,7 @@ func testChainHeader() *pb.ChainHeader {
 			Seconds: time.Now().Unix(),
 			Nanos:   0,
 		},
-		ChainID: []byte("test"),
+		ChainID: "test",
 	}
 }
 
