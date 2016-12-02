@@ -18,6 +18,7 @@ package lockbasedtxmgmt
 
 import (
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger"
@@ -67,8 +68,12 @@ func TestTxSimulatorWithExistingData(t *testing.T) {
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error in validateTx(): %s", err))
 	testutil.AssertSame(t, isValid, true)
 	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(1, 1))
+	txMgr.blockNum = math.MaxUint64
 	err = txMgr.Commit()
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error while calling commit(): %s", err))
+
+	blockNum, err := txMgr.GetBlockNumFromSavepoint()
+	testutil.AssertEquals(t, blockNum, txMgr.blockNum)
 
 	// simulate tx2 that make changes to existing data
 	s2, _ := txMgr.NewTxSimulator()
@@ -258,7 +263,7 @@ func testIterator(t *testing.T, numKeys int, startKeyNum int, endKeyNum int) {
 		keyNum := begin + count
 		k := kv.(*ledger.KV).Key
 		v := kv.(*ledger.KV).Value
-		t.Logf("Retrieved k=%s, v=%s", k, v)
+		t.Logf("Retrieved k=%s, v=%s at count=%d start=%s end=%s", k, v, count, startKey, endKey)
 		testutil.AssertEquals(t, k, createTestKey(keyNum))
 		testutil.AssertEquals(t, v, createTestValue(keyNum))
 		count++

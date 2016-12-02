@@ -18,6 +18,8 @@ package lockbasedtxmgmt
 
 import (
 	"bytes"
+	"encoding/binary"
+	"reflect"
 	"sync"
 
 	"github.com/hyperledger/fabric/core/ledger"
@@ -50,6 +52,9 @@ type updateSet struct {
 	m map[string]*versionedValue
 }
 
+// savepoint key
+const savepointKey = "savepoint"
+
 func newUpdateSet() *updateSet {
 	return &updateSet{make(map[string]*versionedValue)}
 }
@@ -73,6 +78,7 @@ type LockBasedTxMgr struct {
 	db           *db.DB
 	updateSet    *updateSet
 	commitRWLock sync.RWMutex
+	blockNum     uint64
 }
 
 // NewLockBasedTxMgr constructs a `LockBasedTxMgr`
@@ -102,6 +108,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block) (*common.Bl
 	invalidTxs := []*pb.InvalidTransaction{}
 	var valid bool
 	txmgr.updateSet = newUpdateSet()
+	txmgr.blockNum = block.Header.Number
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
 	for txIndex, envBytes := range block.Data.Data {
 		// extract actions from the envelope message
@@ -203,6 +210,15 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 			batch.Put([]byte(k), encodeValue(v.value, v.version))
 		}
 	}
+
+	// record the savepoint along with batch
+	if txmgr.blockNum != 0 {
+		savepointValue := make([]byte, reflect.TypeOf(txmgr.blockNum).Size())
+		binary.LittleEndian.PutUint64(savepointValue, txmgr.blockNum)
+		// Need a composite key for iterator to function correctly - use separator itself as special/hidden namespace
+		batch.Put(constructCompositeKey(string(compositeKeySep), savepointKey), savepointValue)
+	}
+
 	txmgr.commitRWLock.Lock()
 	defer txmgr.commitRWLock.Unlock()
 	defer func() { txmgr.updateSet = nil }()
@@ -212,9 +228,24 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 	return nil
 }
 
+// GetBlockNumFromSavepoint returns the block num recorded in savepoint,
+// returns 0 if NO savepoint is found
+func (txmgr *LockBasedTxMgr) GetBlockNumFromSavepoint() (uint64, error) {
+	var blockNum uint64
+	savepointValue, err := txmgr.db.Get(constructCompositeKey(string(compositeKeySep), savepointKey))
+	if err != nil {
+		return 0, err
+	}
+
+	// savepointValue is not encoded with version
+	blockNum = binary.LittleEndian.Uint64(savepointValue)
+	return blockNum, nil
+}
+
 // Rollback implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Rollback() {
 	txmgr.updateSet = nil
+	txmgr.blockNum = 0
 }
 
 func (txmgr *LockBasedTxMgr) getCommitedVersion(ns string, key string) (*version.Height, error) {

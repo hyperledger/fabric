@@ -106,3 +106,33 @@ func TestDatabaseAutoCreate(t *testing.T) {
 	}
 
 }
+
+//TestSavepoint tests the recordSavepoint and GetBlockNumfromSavepoint methods for recording and reading a savepoint document
+func TestSavepoint(t *testing.T) {
+
+	//Only run the tests if CouchDB is explitily enabled in the code,
+	//otherwise CouchDB may not be installed and all the tests would fail
+	//TODO replace this with external config property rather than config within the code
+	if ledgerconfig.IsCouchDBEnabled() == true {
+
+		env := newTestEnv(t)
+
+		txMgr := NewCouchDBTxMgr(env.conf,
+			env.couchDBAddress,    //couchDB Address
+			env.couchDatabaseName, //couchDB db name
+			env.couchUsername,     //enter couchDB id
+			env.couchPassword)     //enter couchDB pw
+
+		// record savepoint
+		txMgr.blockNum = 5
+		err := txMgr.recordSavepoint()
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when saving recordpoint data"))
+
+		// read the savepoint
+		blockNum, err := txMgr.GetBlockNumFromSavepoint()
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when saving recordpoint data"))
+		testutil.AssertEquals(t, txMgr.blockNum, blockNum)
+
+		txMgr.Shutdown()
+	}
+}
