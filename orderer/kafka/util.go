@@ -31,6 +31,9 @@ func newBrokerConfig(conf *config.TopLevel) *sarama.Config {
 	brokerConfig := sarama.NewConfig()
 	brokerConfig.Version = conf.Kafka.Version
 	brokerConfig.Producer.Partitioner = newStaticPartitioner(conf.Kafka.PartitionID)
+	// set equivalent of kafka producer config max.request.bytes to the deafult
+	// value of a kafka server's socket.request.max.bytes property (100MiB).
+	brokerConfig.Producer.MaxMessageBytes = int(sarama.MaxRequestSize)
 	return brokerConfig
 }
 
