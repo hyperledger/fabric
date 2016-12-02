@@ -105,7 +105,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, txid stri
 	//
 	//NOTE that if there's an error all simulation, including the chaincode
 	//table changes in lccc will be thrown away
-	if cid.Name == "lccc" && len(cis.ChaincodeSpec.CtorMsg.Args) == 3 && string(cis.ChaincodeSpec.CtorMsg.Args[0]) == "deploy" {
+	if cid.Name == "lccc" && len(cis.ChaincodeSpec.CtorMsg.Args) == 3 && (string(cis.ChaincodeSpec.CtorMsg.Args[0]) == "deploy" || string(cis.ChaincodeSpec.CtorMsg.Args[0]) == "upgrade") {
 		var cds *pb.ChaincodeDeploymentSpec
 		cds, err = putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.CtorMsg.Args[2])
 		if err != nil {

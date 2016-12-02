@@ -33,7 +33,7 @@ import (
 //define the datastructure for chaincodes to be serialized by proto
 type chaincodeData struct {
 	name    string `protobuf:"bytes,1,opt,name=name"`
-	version int32  `protobuf:"bytes,2,opt,name=version,proto3"`
+	version int32  `protobuf:"varint,2,opt,name=version,proto3"`
 	depSpec []byte `protobuf:"bytes,3,opt,name=depSpec,proto3"`
 	escc    string `protobuf:"bytes,4,opt,name=escc"`
 	vscc    string `protobuf:"bytes,5,opt,name=vscc"`
@@ -63,6 +63,9 @@ const (
 	//DEPLOY deploy command
 	DEPLOY = "deploy"
 
+	//UPGRADE upgrade chaincode
+	UPGRADE = "upgrade"
+
 	//GETCCINFO get chaincode
 	GETCCINFO = "getid"
 
@@ -71,6 +74,9 @@ const (
 
 	//characters used in chaincodenamespace
 	specialChars = "/:[]${}"
+
+	// chaincode version when deploy
+	startVersion = 0
 )
 
 //---------- the LCCC -----------------
@@ -137,6 +143,12 @@ func (t ExistsErr) Error() string {
 	return fmt.Sprintf("Chaincode exists %s", string(t))
 }
 
+type ChaincodeNotFoundErr string
+
+func (t ChaincodeNotFoundErr) Error() string {
+	return fmt.Sprintf("chaincode not found %s", string(t))
+}
+
 //InvalidChainNameErr invalid chain name error
 type InvalidChainNameErr string
 
@@ -161,7 +173,17 @@ func (m MarshallErr) Error() string {
 //-------------- helper functions ------------------
 //create the chaincode on the given chain
 func (lccc *LifeCycleSysCC) createChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string, cccode []byte) (*chaincodeData, error) {
-	cd := &chaincodeData{name: ccname, depSpec: cccode}
+	return lccc.putChaincodeData(stub, chainname, ccname, startVersion, cccode)
+}
+
+//upgrade the chaincode on the given chain
+func (lccc *LifeCycleSysCC) upgradeChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string, version int32, cccode []byte) (*chaincodeData, error) {
+	return lccc.putChaincodeData(stub, chainname, ccname, version, cccode)
+}
+
+//create the chaincode on the given chain
+func (lccc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, chainname string, ccname string, version int32, cccode []byte) (*chaincodeData, error) {
+	cd := &chaincodeData{name: ccname, version: version, depSpec: cccode}
 	cdbytes, err := proto.Marshal(cd)
 	if err != nil {
 		return nil, err
@@ -319,6 +341,39 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 	return err
 }
 
+//this implements "upgrade" Invoke transaction
+func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, chainName string, code []byte) ([]byte, error) {
+	cds, err := lccc.getChaincodeDeploymentSpec(code)
+	if err != nil {
+		return nil, err
+	}
+
+	chaincodeName := cds.ChaincodeSpec.ChaincodeID.Name
+	if !lccc.isValidChaincodeName(chaincodeName) {
+		return nil, InvalidChaincodeNameErr(chaincodeName)
+	}
+
+	// check for existence of chaincode
+	cd, err := lccc.getChaincode(stub, chainName, chaincodeName)
+	if cd == nil {
+		return nil, ChaincodeNotFoundErr(chainName)
+	}
+
+	if err = lccc.acl(stub, chainName, cds); err != nil {
+		return nil, err
+	}
+
+	// replace the ChaincodeDeploymentSpec
+	newVersion := cd.version + 1
+	newCD, err := lccc.upgradeChaincode(stub, chainName, chaincodeName, newVersion, code)
+	if err != nil {
+		return nil, err
+	}
+
+	strVer := fmt.Sprint(newCD.version)
+	return []byte(strVer), nil
+}
+
 //-------------- the chaincode stub interface implementation ----------
 
 //Init does nothing
@@ -359,6 +414,18 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 		err := lccc.executeDeploy(stub, chainname, code)
 
 		return nil, err
+	case UPGRADE:
+		if len(args) != 3 {
+			return nil, InvalidArgsLenErr(len(args))
+		}
+
+		chainname := string(args[1])
+		if !lccc.isValidChainName(chainname) {
+			return nil, InvalidChainNameErr(chainname)
+		}
+
+		code := args[2]
+		return lccc.executeUpgrade(stub, chainname, code)
 	case GETCCINFO, GETDEPSPEC:
 		if len(args) != 3 {
 			return nil, InvalidArgsLenErr(len(args))

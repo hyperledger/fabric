@@ -248,3 +248,71 @@ func TestRetryFailedDeploy(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+//TestUpgrade tests the upgrade function
+func TestUpgrade(t *testing.T) {
+	initialize()
+
+	scc := new(LifeCycleSysCC)
+	stub := shim.NewMockStub("lccc", scc)
+
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	var b []byte
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.Fatalf("Marshal DeploymentSpec failed")
+	}
+
+	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	if _, err := stub.MockInvoke("1", args); err != nil {
+		t.Fatalf("Deploy chaincode error: %v", err)
+	}
+
+	newCds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	var newb []byte
+	if newb, err = proto.Marshal(newCds); err != nil || newb == nil {
+		t.Fatalf("Marshal DeploymentSpec failed")
+	}
+
+	args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
+	version, err := stub.MockInvoke("1", args)
+	if err != nil {
+		t.Fatalf("Upgrade chaincode error: %v", err)
+	}
+
+	expectVer := "1"
+	newVer := string(version)
+	if newVer != expectVer {
+		t.Fatalf("Upgrade chaincode version error, expected %s, got %s", expectVer, newVer)
+	}
+}
+
+//TestUpgradeNonExistChaincode tests upgrade non exist chaincode
+func TestUpgradeNonExistChaincode(t *testing.T) {
+	initialize()
+
+	scc := new(LifeCycleSysCC)
+	stub := shim.NewMockStub("lccc", scc)
+
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	var b []byte
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.Fatalf("Marshal DeploymentSpec failed")
+	}
+
+	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	if _, err := stub.MockInvoke("1", args); err != nil {
+		t.Fatalf("Deploy chaincode error: %v", err)
+	}
+
+	newCds, err := constructDeploymentSpec("example03", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	var newb []byte
+	if newb, err = proto.Marshal(newCds); err != nil || newb == nil {
+		t.Fatalf("Marshal DeploymentSpec failed")
+	}
+
+	args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
+	_, err = stub.MockInvoke("1", args)
+	if _, ok := err.(ChaincodeNotFoundErr); !ok {
+		t.FailNow()
+	}
+}
