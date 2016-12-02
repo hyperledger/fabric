@@ -89,20 +89,20 @@ membersrvc-image:
 
 .PHONY: peer
 peer: build/bin/peer
-peer-docker: build/image/peer/.dummy
+peer-docker: build/image/peer/$(DUMMY)
 
 .PHONY: orderer
 orderer: build/bin/orderer
-orderer-docker: build/image/orderer/.dummy
+orderer-docker: build/image/orderer/$(DUMMY)
 
-testenv: build/image/testenv/.dummy
+testenv: build/image/testenv/$(DUMMY)
 
 unit-test: peer-docker testenv
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
 
-docker: $(patsubst %,build/image/%/.dummy, $(IMAGES))
+docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer
 
 BEHAVE_ENVIRONMENTS = kafka orderer-1-kafka-1 orderer-1-kafka-3
@@ -158,12 +158,12 @@ build/docker/busybox:
 		make -f busybox/Makefile install BINDIR=$(@D)
 
 # Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
-build/bin/peer: build/image/ccenv/.dummy build/image/javaenv/.dummy
-build/image/peer/.dummy: build/image/ccenv/.dummy build/image/javaenv/.dummy
+build/bin/peer: build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMMY)
+build/image/peer/$(DUMMY): build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMMY)
 
 # Both peer-docker and orderer-docker depend on the runtime image
-build/image/peer/.dummy: build/image/runtime/.dummy
-build/image/orderer/.dummy: build/image/runtime/.dummy
+build/image/peer/$(DUMMY): build/image/runtime/$(DUMMY)
+build/image/orderer/$(DUMMY): build/image/runtime/$(DUMMY)
 
 build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
@@ -191,8 +191,8 @@ build/image/%/payload:
 	mkdir -p $@
 	cp $^ $@
 
-build/image/%/.dummy: Makefile build/image/%/payload
-	$(eval TARGET = ${patsubst build/image/%/.dummy,%,${@}})
+build/image/%/$(DUMMY): Makefile build/image/%/payload
+	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
 	@echo "Building docker $(TARGET)-image"
 	@cat images/$(TARGET)/Dockerfile.in \
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
