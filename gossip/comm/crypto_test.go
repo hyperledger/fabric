@@ -78,7 +78,7 @@ func TestCertificateGeneration(t *testing.T) {
 		return
 	}
 	s := grpc.NewServer(grpc.Creds(creds))
-	ll, err = net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
+	ll, err = net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5511))
 	assert.NoError(t, err, "%v", err)
 	if err != nil {
 		return
@@ -98,7 +98,7 @@ func TestCertificateGeneration(t *testing.T) {
 	if err != nil {
 		return
 	}
-	conn, err := grpc.Dial("localhost:5611", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	conn, err := grpc.Dial("localhost:5511", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
 	assert.NoError(t, err, "%v", err)
 	if err != nil {
 		return

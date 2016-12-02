@@ -259,6 +259,7 @@ func bootPeer(port int) string {
 }
 
 func TestUpdate(t *testing.T) {
+	t.Parallel()
 	nodeNum := 5
 	bootPeers := []string{bootPeer(6611), bootPeer(6612)}
 	instances := []*gossipInstance{}
@@ -308,6 +309,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestInitiateSync(t *testing.T) {
+	t.Parallel()
 	nodeNum := 10
 	bootPeers := []string{bootPeer(3611), bootPeer(3612)}
 	instances := []*gossipInstance{}
@@ -334,6 +336,7 @@ func TestInitiateSync(t *testing.T) {
 }
 
 func TestExpiration(t *testing.T) {
+	t.Parallel()
 	nodeNum := 5
 	bootPeers := []string{bootPeer(2611), bootPeer(2612)}
 	instances := []*gossipInstance{}
@@ -373,19 +376,20 @@ func TestExpiration(t *testing.T) {
 }
 
 func TestGetFullMembership(t *testing.T) {
+	t.Parallel()
 	nodeNum := 15
-	bootPeers := []string{bootPeer(5611), bootPeer(5612)}
+	bootPeers := []string{bootPeer(5511), bootPeer(5512)}
 	instances := []*gossipInstance{}
 
-	inst := createDiscoveryInstance(5611, "d1", bootPeers)
+	inst := createDiscoveryInstance(5511, "d1", bootPeers)
 	instances = append(instances, inst)
 
-	inst = createDiscoveryInstance(5612, "d2", bootPeers)
+	inst = createDiscoveryInstance(5512, "d2", bootPeers)
 	instances = append(instances, inst)
 
 	for i := 3; i <= nodeNum; i++ {
 		id := fmt.Sprintf("d%d", i)
-		inst = createDiscoveryInstance(5610+i, id, bootPeers)
+		inst = createDiscoveryInstance(5510+i, id, bootPeers)
 		instances = append(instances, inst)
 	}
 
@@ -394,6 +398,7 @@ func TestGetFullMembership(t *testing.T) {
 }
 
 func TestGossipDiscoveryStopping(t *testing.T) {
+	t.Parallel()
 	inst := createDiscoveryInstance(9611, "d1", []string{bootPeer(9611)})
 	time.Sleep(time.Second)
 	waitUntilOrFailBlocking(t, inst.Stop)
@@ -401,6 +406,7 @@ func TestGossipDiscoveryStopping(t *testing.T) {
 }
 
 func TestConvergence(t *testing.T) {
+	t.Parallel()
 	// scenario:
 	// {boot peer: [peer list]}
 	// {d1: d2, d3, d4}
