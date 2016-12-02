@@ -19,21 +19,38 @@ package txmgmt
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/kvledger/version"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
+
+func TestNilTxRWSet(t *testing.T) {
+	txRW := &TxReadWriteSet{}
+	nsRW1 := &NsReadWriteSet{"ns1",
+		[]*KVRead{&KVRead{"key1", nil}},
+		[]*KVWrite{&KVWrite{"key1", false, []byte("value1")}}}
+	txRW.NsRWs = append(txRW.NsRWs, nsRW1)
+	b, err := txRW.Marshal()
+	testutil.AssertNoError(t, err, "Error while marshalling changeset")
+
+	deserializedRWSet := &TxReadWriteSet{}
+	err = deserializedRWSet.Unmarshal(b)
+	testutil.AssertNoError(t, err, "Error while unmarshalling changeset")
+	t.Logf("Unmarshalled changeset = %#+v", deserializedRWSet.NsRWs[0].Writes[0].IsDelete)
+	testutil.AssertEquals(t, deserializedRWSet, txRW)
+}
 
 func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	txRW := &TxReadWriteSet{}
 	nsRW1 := &NsReadWriteSet{"ns1",
-		[]*KVRead{&KVRead{"key1", uint64(1)}},
+		[]*KVRead{&KVRead{"key1", version.NewHeight(1, 1)}},
 		[]*KVWrite{&KVWrite{"key2", false, []byte("value2")}}}
 
 	nsRW2 := &NsReadWriteSet{"ns2",
-		[]*KVRead{&KVRead{"key3", uint64(1)}},
+		[]*KVRead{&KVRead{"key3", version.NewHeight(1, 2)}},
 		[]*KVWrite{&KVWrite{"key4", true, nil}}}
 
 	nsRW3 := &NsReadWriteSet{"ns3",
-		[]*KVRead{&KVRead{"key5", uint64(1)}},
+		[]*KVRead{&KVRead{"key5", version.NewHeight(1, 3)}},
 		[]*KVWrite{&KVWrite{"key6", false, []byte("value6")}, &KVWrite{"key7", false, []byte("value7")}}}
 
 	txRW.NsRWs = append(txRW.NsRWs, nsRW1, nsRW2, nsRW3)
@@ -46,5 +63,4 @@ func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	testutil.AssertNoError(t, err, "Error while unmarshalling changeset")
 	t.Logf("Unmarshalled changeset = %#+v", deserializedRWSet.NsRWs[0].Writes[0].IsDelete)
 	testutil.AssertEquals(t, deserializedRWSet, txRW)
-
 }

@@ -111,6 +111,7 @@ func (dbInst *DB) isOpen() bool {
 func (dbInst *DB) Get(key []byte) ([]byte, error) {
 	value, err := dbInst.db.Get(key, dbInst.readOpts)
 	if err == leveldb.ErrNotFound {
+		value = nil
 		err = nil
 	}
 	if err != nil {
