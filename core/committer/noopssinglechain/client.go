@@ -76,13 +76,13 @@ func StopDeliveryService(service *DeliverService) {
 
 // NewDeliverService construction function to create and initilize
 // delivery service instance
-func NewDeliverService(address string, grpcServer *grpc.Server) *DeliverService {
+func NewDeliverService(chainID string, address string, grpcServer *grpc.Server) *DeliverService {
 	if viper.GetBool("peer.committer.enabled") {
 		logger.Infof("Creating committer for single noops endorser")
 
 		deliverService := &DeliverService{
 			// Instance of RawLedger
-			committer:  committer.NewLedgerCommitter(kvledger.GetLedger(string(chaincode.DefaultChain))),
+			committer:  committer.NewLedgerCommitter(kvledger.GetLedger(chainID)),
 			windowSize: 10,
 			stopChan:   make(chan bool),
 		}
@@ -226,12 +226,16 @@ func (d *DeliverService) isDone() bool {
 	return atomic.LoadInt32(&d.stopFlag) == 1
 }
 
-func isTxValidForVscc(envBytes []byte) error {
+func isTxValidForVscc(payload *common.Payload, envBytes []byte) error {
 	// TODO: Extract the VSCC/policy from LCCC as soon as this is ready
 	vscc := "vscc"
 
-	// TODO - get chainname from the envelope
-	chainName := string(chaincode.DefaultChain)
+	chainName := payload.Header.ChainHeader.ChainID
+	if chainName == "" {
+		err := fmt.Errorf("transaction header does not contain an chain ID")
+		logger.Errorf("%s", err)
+		return err
+	}
 
 	txid := "N/A" // FIXME: is that appropriate?
 
@@ -242,7 +246,7 @@ func isTxValidForVscc(envBytes []byte) error {
 
 	// create VSCC invocation proposal
 	vsccCis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: vscc}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
-	prop, err := putils.CreateProposalFromCIS(txid, util.GetTestChainID(), vsccCis, []byte(""))
+	prop, err := putils.CreateProposalFromCIS(txid, chainName, vsccCis, []byte(""))
 	if err != nil {
 		logger.Errorf("Cannot create a proposal to invoke VSCC, err %s\n", err)
 		return err
@@ -260,7 +264,7 @@ func isTxValidForVscc(envBytes []byte) error {
 	ctxt := context.WithValue(context.Background(), chaincode.TXSimulatorKey, txsim)
 
 	// invoke VSCC
-	_, _, err = chaincode.ExecuteChaincode(ctxt, txid, prop, chainName, vscc, args)
+	_, _, err = chaincode.ExecuteChaincode(ctxt, chainName, txid, prop, vscc, args)
 	if err != nil {
 		logger.Errorf("VSCC check failed for transaction, error %s", err)
 		return err
@@ -302,14 +306,15 @@ func (d *DeliverService) readUntilClose() {
 						// chain binding proposal to endorsements to tx holds. We do
 						// NOT check the validity of endorsements, though. That's a
 						// job for VSCC below
-						_, err := peer.ValidateTransaction(env)
+						payload, _, err := peer.ValidateTransaction(env)
 						if err != nil {
 							// TODO: this code needs to receive a bit more attention and discussion:
 							// it's not clear what it means if a transaction which causes a failure
 							// in validation is just dropped on the floor
 							logger.Errorf("Invalid transaction, error %s", err)
 						} else {
-							err = isTxValidForVscc(d)
+							//the payload is used to get headers
+							err = isTxValidForVscc(payload, d)
 							if err != nil {
 								// TODO: this code needs to receive a bit more attention and discussion:
 								// it's not clear what it means if a transaction which causes a failure

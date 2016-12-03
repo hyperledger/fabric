@@ -110,6 +110,11 @@ func (lMgr *ledgerManager) create(name string) (*KVLedger, error) {
 //GetLedger returns a kvledger, creating one if necessary
 //the call will panic if it cannot create a ledger
 func GetLedger(name string) *KVLedger {
+	//We should never have an empty ledgername when we do multichannel
+	if name == "" {
+		panic("empty naame")
+	}
+
 	lgr, err := lManager.create(name)
 
 	if lgr == nil {

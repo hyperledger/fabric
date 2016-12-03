@@ -28,7 +28,7 @@ import (
 )
 
 //Execute - execute proposal
-func Execute(ctxt context.Context, chain *ChaincodeSupport, txid string, prop *pb.Proposal, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+func Execute(ctxt context.Context, chainID string, txid string, prop *pb.Proposal, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
 	var cds *pb.ChaincodeDeploymentSpec
 	var ci *pb.ChaincodeInvocationSpec
@@ -39,18 +39,18 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, txid string, prop *p
 	}
 
 	if cds != nil {
-		_, err := chain.Deploy(ctxt, cds)
+		_, err := theChaincodeSupport.Deploy(ctxt, cds)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 		}
 
-		_, _, err = chain.Launch(ctxt, txid, prop, cds)
+		_, _, err = theChaincodeSupport.Launch(ctxt, chainID, txid, prop, cds)
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s", err)
 		}
 	} else {
 		//will launch if necessary (and wait for ready)
-		cID, cMsg, err := chain.Launch(ctxt, txid, prop, ci)
+		cID, cMsg, err := theChaincodeSupport.Launch(ctxt, chainID, txid, prop, ci)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to launch chaincode spec(%s)", err)
 		}
@@ -75,7 +75,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, txid string, prop *p
 			return nil, nil, fmt.Errorf("Failed to transaction message(%s)", err)
 		}
 
-		resp, err := chain.Execute(ctxt, chaincode, ccMsg, timeout, prop)
+		resp, err := theChaincodeSupport.Execute(ctxt, chainID, chaincode, ccMsg, timeout, prop)
 		if err != nil {
 			// Rollback transaction
 			return nil, nil, fmt.Errorf("Failed to execute transaction (%s)", err)

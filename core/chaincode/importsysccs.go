@@ -48,9 +48,9 @@ var systemChaincodes = []*SystemChaincode{
 
 //RegisterSysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric
 //note the chaincode must still be deployed and launched like a user chaincode will be
-func RegisterSysCCs() {
+func RegisterSysCCs(chainID string) {
 	for _, sysCC := range systemChaincodes {
-		RegisterSysCC(sysCC)
+		RegisterSysCC(chainID, sysCC)
 	}
 }
 

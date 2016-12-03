@@ -224,7 +224,7 @@ func (lccc *LifeCycleSysCC) getChaincodeDeploymentSpec(code []byte) (*pb.Chainco
 }
 
 //do access control
-func (lccc *LifeCycleSysCC) acl(stub shim.ChaincodeStubInterface, chainname ChainName, cds *pb.ChaincodeDeploymentSpec) error {
+func (lccc *LifeCycleSysCC) acl(stub shim.ChaincodeStubInterface, chainname string, cds *pb.ChaincodeDeploymentSpec) error {
 	return nil
 }
 
@@ -280,10 +280,7 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 
 	ctxt = context.WithValue(ctxt, TXSimulatorKey, dummytxsim)
 
-	//TODO - create chaincode support for chainname, for now use DefaultChain
-	chaincodeSupport := GetChain(ChainName(chainname))
-
-	_, err = chaincodeSupport.Deploy(ctxt, cds)
+	_, err = theChaincodeSupport.Deploy(ctxt, cds)
 	if err != nil {
 		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 	}
@@ -292,13 +289,13 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 	txid := util.GenerateUUID()
 
 	//launch and wait for ready
-	_, _, err = chaincodeSupport.Launch(ctxt, txid, nil, cds)
+	_, _, err = theChaincodeSupport.Launch(ctxt, chainname, txid, nil, cds)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
 	//stop now that we are done
-	chaincodeSupport.Stop(ctxt, cds)
+	theChaincodeSupport.Stop(ctxt, cds)
 
 	return nil
 }
@@ -324,7 +321,7 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return InvalidChaincodeNameErr(cds.ChaincodeSpec.ChaincodeID.Name)
 	}
 
-	if err = lccc.acl(stub, DefaultChain, cds); err != nil {
+	if err = lccc.acl(stub, chainname, cds); err != nil {
 		return err
 	}
 

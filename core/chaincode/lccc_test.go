@@ -58,7 +58,7 @@ func initialize() {
 	}
 
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(DefaultChain, getPeerEndpoint, false, ccStartupTimeout))
+	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
 }
 
 //TestDeploy tests the deploy function (stops short of actually running the chaincode)

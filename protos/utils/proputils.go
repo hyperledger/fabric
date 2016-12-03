@@ -389,7 +389,7 @@ func CreateProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeplo
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			Type:        peer.ChaincodeSpec_GOLANG,
 			ChaincodeID: &peer.ChaincodeID{Name: "lccc"},
-			CtorMsg:     &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
+			CtorMsg:     &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
 
 	//...and get the proposal for it
 	return CreateProposalFromCIS(txid, chainID, lcccSpec, creator)

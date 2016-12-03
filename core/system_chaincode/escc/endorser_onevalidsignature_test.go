@@ -270,7 +270,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	}
 
 	// validate the transaction
-	_, err = peer.ValidateTransaction(tx)
+	_, _, err = peer.ValidateTransaction(tx)
 	if err != nil {
 		return err
 	}

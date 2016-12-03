@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
@@ -131,7 +132,10 @@ func serve(args []string) error {
 
 	grpcServer := grpc.NewServer(opts...)
 
-	registerChaincodeSupport(chaincode.DefaultChain, grpcServer)
+	/******this will go away when we implement join command*****/
+	chainID := util.GetTestChainID()
+
+	registerChaincodeSupport(chainID, grpcServer)
 
 	logger.Debugf("Running peer")
 
@@ -142,7 +146,10 @@ func serve(args []string) error {
 	serverEndorser := endorser.NewEndorserServer()
 	pb.RegisterEndorserServer(grpcServer, serverEndorser)
 
-	deliverService := noopssinglechain.NewDeliverService(peerEndpoint.Address, grpcServer)
+	//this shoul not need the chainID. Delivery should be
+	//split up into network part and chain part. This should
+	//only init the network part...TBD, part of Join work
+	deliverService := noopssinglechain.NewDeliverService(chainID, peerEndpoint.Address, grpcServer)
 
 	if deliverService != nil {
 		deliverService.Start()
@@ -200,7 +207,10 @@ func serve(args []string) error {
 	return <-serve
 }
 
-func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Server) {
+//NOTE - when we implment JOIN we will no longer pass the chainID as param
+//The chaincode support will come up without registering system chaincodes
+//which will be registered only during join phase.
+func registerChaincodeSupport(chainID string, grpcServer *grpc.Server) {
 	//get user mode
 	userRunsCC := false
 	if viper.GetString("chaincode.mode") == chaincode.DevModeUserRunsChaincode {
@@ -215,10 +225,10 @@ func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Se
 	}
 	ccStartupTimeout := time.Duration(tOut) * time.Millisecond
 
-	ccSrv := chaincode.NewChaincodeSupport(chainname, peer.GetPeerEndpoint, userRunsCC, ccStartupTimeout)
+	ccSrv := chaincode.NewChaincodeSupport(peer.GetPeerEndpoint, userRunsCC, ccStartupTimeout)
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	chaincode.RegisterSysCCs()
+	chaincode.RegisterSysCCs(chainID)
 
 	pb.RegisterChaincodeSupportServer(grpcServer, ccSrv)
 }

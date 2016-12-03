@@ -55,7 +55,7 @@ type SystemChaincode struct {
 }
 
 // RegisterSysCC registers the given system chaincode with the peer
-func RegisterSysCC(syscc *SystemChaincode) error {
+func RegisterSysCC(chainID string, syscc *SystemChaincode) error {
 	if !syscc.Enabled || !isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name, syscc.Path))
 		return nil
@@ -74,13 +74,7 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
 	spec := pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
-	//PDMP - use default chain to get the simulator
-	//Note that we are just colleting simulation though
-	//we will not submit transactions. We *COULD* commit
-	//transactions ourselves
-	chainName := string(DefaultChain)
-
-	lgr := kvledger.GetLedger(chainName)
+	lgr := kvledger.GetLedger(chainID)
 	var txsim ledger.TxSimulator
 	if txsim, err = lgr.NewTxSimulator(); err != nil {
 		return err
@@ -89,7 +83,7 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 	defer txsim.Done()
 
 	ctxt := context.WithValue(context.Background(), TXSimulatorKey, txsim)
-	if deployErr := DeploySysCC(ctxt, &spec); deployErr != nil {
+	if deployErr := DeploySysCC(ctxt, chainID, &spec); deployErr != nil {
 		errStr := fmt.Sprintf("deploy chaincode failed: %s", deployErr)
 		sysccLogger.Error(errStr)
 		return fmt.Errorf(errStr)
@@ -113,7 +107,7 @@ func deregisterSysCC(syscc *SystemChaincode) error {
 		return err
 	}
 
-	chaincodeSupport := GetChain(DefaultChain)
+	chaincodeSupport := GetChain()
 	if chaincodeSupport != nil {
 		err = chaincodeSupport.Stop(ctx, chaincodeDeploymentSpec)
 	}
@@ -129,7 +123,7 @@ func buildSysCC(context context.Context, spec *pb.ChaincodeSpec) (*pb.ChaincodeD
 }
 
 // DeploySysCC deploys the supplied system chaincode to the local peer
-func DeploySysCC(ctx context.Context, spec *pb.ChaincodeSpec) error {
+func DeploySysCC(ctx context.Context, chainID string, spec *pb.ChaincodeSpec) error {
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec, err := buildSysCC(ctx, spec)
 
@@ -139,7 +133,7 @@ func DeploySysCC(ctx context.Context, spec *pb.ChaincodeSpec) error {
 	}
 
 	txid := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
-	_, _, err = Execute(ctx, GetChain(DefaultChain), txid, nil, chaincodeDeploymentSpec)
+	_, _, err = Execute(ctx, chainID, txid, nil, chaincodeDeploymentSpec)
 
 	return err
 }

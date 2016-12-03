@@ -53,6 +53,7 @@ type MessageHandler interface {
 }
 
 type transactionContext struct {
+	chainID          string
 	proposal         *pb.Proposal
 	responseNotifier chan *pb.ChaincodeMessage
 
@@ -106,7 +107,7 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
-func (handler *Handler) createTxContext(ctxt context.Context, txid string, prop *pb.Proposal) (*transactionContext, error) {
+func (handler *Handler) createTxContext(ctxt context.Context, chainID string, txid string, prop *pb.Proposal) (*transactionContext, error) {
 	if handler.txCtxs == nil {
 		return nil, fmt.Errorf("cannot create notifier for txid:%s", txid)
 	}
@@ -115,7 +116,7 @@ func (handler *Handler) createTxContext(ctxt context.Context, txid string, prop 
 	if handler.txCtxs[txid] != nil {
 		return nil, fmt.Errorf("txid:%s exists", txid)
 	}
-	txctx := &transactionContext{proposal: prop, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
+	txctx := &transactionContext{chainID: chainID, proposal: prop, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
 		rangeQueryIteratorMap: make(map[string]ledger.ResultsIterator)}
 	handler.txCtxs[txid] = txctx
 	txctx.txsimulator = getTxSimulator(ctxt)
@@ -909,7 +910,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 
 			// Launch the new chaincode if not already running
-			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, msg.Txid, txContext.proposal, chaincodeInvocationSpec)
+			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, txContext.chainID, msg.Txid, txContext.proposal, chaincodeInvocationSpec)
 			if launchErr != nil {
 				payload := []byte(launchErr.Error())
 				chaincodeLogger.Debugf("[%s]Failed to launch invoked chaincode. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
@@ -923,7 +924,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			ccMsg, _ := createTransactionMessage(msg.Txid, chaincodeInput)
 
 			// Execute the chaincode
-			response, execErr := handler.chaincodeSupport.Execute(ctxt, newChaincodeID, ccMsg, timeout, txContext.proposal)
+			response, execErr := handler.chaincodeSupport.Execute(ctxt, txContext.chainID, newChaincodeID, ccMsg, timeout, txContext.proposal)
 
 			//payload is marshalled and send to the calling chaincode's shim which unmarshals and
 			//sends it to chaincode
@@ -1003,11 +1004,11 @@ func (handler *Handler) setChaincodeProposal(prop *pb.Proposal, msg *pb.Chaincod
 
 //if initArgs is set (should be for "deploy" only) move to Init
 //else move to ready
-func (handler *Handler) initOrReady(ctxt context.Context, txid string, prop *pb.Proposal, initArgs [][]byte) (chan *pb.ChaincodeMessage, error) {
+func (handler *Handler) initOrReady(ctxt context.Context, chainID string, txid string, prop *pb.Proposal, initArgs [][]byte) (chan *pb.ChaincodeMessage, error) {
 	var ccMsg *pb.ChaincodeMessage
 	var send bool
 
-	txctx, funcErr := handler.createTxContext(ctxt, txid, prop)
+	txctx, funcErr := handler.createTxContext(ctxt, chainID, txid, prop)
 	if funcErr != nil {
 		return nil, funcErr
 	}
@@ -1078,8 +1079,8 @@ func filterError(errFromFSMEvent error) error {
 	return nil
 }
 
-func (handler *Handler) sendExecuteMessage(ctxt context.Context, msg *pb.ChaincodeMessage, prop *pb.Proposal) (chan *pb.ChaincodeMessage, error) {
-	txctx, err := handler.createTxContext(ctxt, msg.Txid, prop)
+func (handler *Handler) sendExecuteMessage(ctxt context.Context, chainID string, msg *pb.ChaincodeMessage, prop *pb.Proposal) (chan *pb.ChaincodeMessage, error) {
+	txctx, err := handler.createTxContext(ctxt, chainID, msg.Txid, prop)
 	if err != nil {
 		return nil, err
 	}

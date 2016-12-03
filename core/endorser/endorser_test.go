@@ -46,7 +46,7 @@ var mspInstance msp.PeerMSP
 var signer msp.SigningIdentity
 
 //initialize peer and start up. If security==enabled, login as vp
-func initPeer() (net.Listener, error) {
+func initPeer(chainID string) (net.Listener, error) {
 	//start clean
 	finitPeer(nil)
 	var opts []grpc.ServerOption
@@ -91,14 +91,14 @@ func initPeer() (net.Listener, error) {
 	}
 
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(chaincode.DefaultChain, getPeerEndpoint, false, ccStartupTimeout))
+	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
 
-	chaincode.RegisterSysCCs()
+	chaincode.RegisterSysCCs(chainID)
 
 	chaincodeID := &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/core/chaincode/lccc", Name: "lccc"}
 	spec := pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}
 
-	chaincode.DeploySysCC(context.Background(), &spec)
+	chaincode.DeploySysCC(context.Background(), chainID, &spec)
 
 	go grpcServer.Serve(lis)
 
@@ -119,24 +119,24 @@ func closeListenerAndSleep(l net.Listener) {
 
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
-func getProposal(cis *pb.ChaincodeInvocationSpec, creator []byte) (*pb.Proposal, error) {
+func getProposal(cis *pb.ChaincodeInvocationSpec, chainID string, creator []byte) (*pb.Proposal, error) {
 	uuid := util.GenerateUUID()
-	return pbutils.CreateChaincodeProposal(uuid, util.GetTestChainID(), cis, creator)
+	return pbutils.CreateChaincodeProposal(uuid, chainID, cis, creator)
 }
 
 //getDeployProposal gets the proposal for the chaincode deployment
 //the payload is a ChaincodeDeploymentSpec
-func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, creator []byte) (*pb.Proposal, error) {
+func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator []byte) (*pb.Proposal, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
 	}
 
 	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), b}}}}
+	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
 
 	//...and get the proposal for it
-	return getProposal(lcccSpec, creator)
+	return getProposal(lcccSpec, chainID, creator)
 }
 
 func getSignedProposal(prop *pb.Proposal, signer msp.SigningIdentity) (*pb.SignedProposal, error) {
@@ -162,7 +162,7 @@ func getDeploymentSpec(context context.Context, spec *pb.ChaincodeSpec) (*pb.Cha
 	return chaincodeDeploymentSpec, nil
 }
 
-func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb.ChaincodeDeploymentSpec)) (*pb.ProposalResponse, *pb.Proposal, error) {
+func deploy(endorserServer pb.EndorserServer, chainID string, spec *pb.ChaincodeSpec, f func(*pb.ChaincodeDeploymentSpec)) (*pb.ProposalResponse, *pb.Proposal, error) {
 	var err error
 	var depSpec *pb.ChaincodeDeploymentSpec
 
@@ -182,7 +182,7 @@ func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb
 	}
 
 	var prop *pb.Proposal
-	prop, err = getDeployProposal(depSpec, creator)
+	prop, err = getDeployProposal(depSpec, chainID, creator)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -199,7 +199,7 @@ func deploy(endorserServer pb.EndorserServer, spec *pb.ChaincodeSpec, f func(*pb
 	return resp, prop, err
 }
 
-func invoke(spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
+func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
 	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 
 	creator, err := signer.Serialize()
@@ -208,7 +208,7 @@ func invoke(spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
 	}
 
 	var prop *pb.Proposal
-	prop, err = getProposal(invocation, creator)
+	prop, err = getProposal(invocation, chainID, creator)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", spec.ChaincodeID, err)
 	}
@@ -234,78 +234,83 @@ func invoke(spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
 
 //TestDeploy deploy chaincode example01
 func TestDeploy(t *testing.T) {
+	chainID := util.GetTestChainID()
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex01", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
-	_, _, err := deploy(endorserServer, spec, nil)
+	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
 		t.Fail()
 		t.Logf("Deploy-error in deploy %s", err)
-		chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestDeployBadArgs sets bad args on deploy. It should fail, and example02 should not be deployed
 func TestDeployBadArgs(t *testing.T) {
+	chainID := util.GetTestChainID()
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b")}}}
 
-	_, _, err := deploy(endorserServer, spec, nil)
+	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err == nil {
 		t.Fail()
 		t.Log("DeployBadArgs-expected error in deploy but succeeded")
-		chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestDeployBadPayload set payload to nil and do a deploy. It should fail and example02 should not be deployed
 func TestDeployBadPayload(t *testing.T) {
+	chainID := util.GetTestChainID()
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
 	f := func(cds *pb.ChaincodeDeploymentSpec) {
 		cds.CodePackage = nil
 	}
-	_, _, err := deploy(endorserServer, spec, f)
+	_, _, err := deploy(endorserServer, chainID, spec, f)
 	if err == nil {
 		t.Fail()
 		t.Log("DeployBadPayload-expected error in deploy but succeeded")
-		chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestRedeploy - deploy two times, second time should fail but example02 should remain deployed
 func TestRedeploy(t *testing.T) {
+	chainID := util.GetTestChainID()
 
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
-	_, _, err := deploy(endorserServer, spec, nil)
+	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
-		chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
 	//second time should not fail as we are just simulating
-	_, _, err = deploy(endorserServer, spec, nil)
+	_, _, err = deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
-		chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain(chaincode.DefaultChain).Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 // TestDeployAndInvoke deploys and invokes chaincode_example01
 func TestDeployAndInvoke(t *testing.T) {
+	chainID := util.GetTestChainID()
 	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
@@ -316,7 +321,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	f := "init"
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
-	resp, prop, err := deploy(endorserServer, spec, nil)
+	resp, prop, err := deploy(endorserServer, chainID, spec, nil)
 	chaincodeID1 := spec.ChaincodeID.Name
 	if err != nil {
 		t.Fail()
@@ -324,7 +329,7 @@ func TestDeployAndInvoke(t *testing.T) {
 		return
 	}
 
-	err = endorserServer.(*Endorser).commitTxSimulation(prop, signer, resp)
+	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error committing <%s>: %s", chaincodeID1, err)
@@ -334,7 +339,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	f = "invoke"
 	invokeArgs := append([]string{f}, args...)
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
-	resp, err = invoke(spec)
+	resp, err = invoke(chainID, spec)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking transaction: %s", err)
@@ -344,13 +349,15 @@ func TestDeployAndInvoke(t *testing.T) {
 	fmt.Printf("Invoke test passed\n")
 	t.Logf("Invoke test passed")
 
-	chaincode.GetChain(chaincode.DefaultChain).Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
+	chaincode.GetChain().Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 }
 
 func TestMain(m *testing.M) {
 	SetupTestConfig()
 	viper.Set("peer.fileSystemPath", filepath.Join(os.TempDir(), "hyperledger", "production"))
-	lis, err := initPeer()
+
+	chainID := util.GetTestChainID()
+	lis, err := initPeer(chainID)
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize tests")

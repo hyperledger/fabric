@@ -298,18 +298,18 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) ([]*pb.Transac
 }
 
 // ValidateTransaction checks that the transaction envelope is properly formed
-func ValidateTransaction(e *common.Envelope) ([]*pb.TransactionAction, error) {
+func ValidateTransaction(e *common.Envelope) (*common.Payload, []*pb.TransactionAction, error) {
 	putilsLogger.Infof("ValidateTransactionEnvelope starts for envelope %p", e)
 
 	// check for nil argument
 	if e == nil {
-		return nil, fmt.Errorf("Nil Envelope")
+		return nil, nil, fmt.Errorf("Nil Envelope")
 	}
 
 	// get the payload from the envelope
 	payload, err := utils.GetPayload(e)
 	if err != nil {
-		return nil, fmt.Errorf("Could not extract payload from envelope, err %s", err)
+		return nil, nil, fmt.Errorf("Could not extract payload from envelope, err %s", err)
 	}
 
 	putilsLogger.Infof("Header is %s", payload.Header)
@@ -317,13 +317,13 @@ func ValidateTransaction(e *common.Envelope) ([]*pb.TransactionAction, error) {
 	// validate the header
 	err = validateCommonHeader(payload.Header)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// validate the signature in the envelope
 	err = checkSignatureFromCreator(payload.Header.SignatureHeader.Creator, e.Signature, e.Payload)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// TODO: ensure that creator can transact with us (some ACLs?) which set of APIs is supposed to give us this info?
@@ -335,8 +335,8 @@ func ValidateTransaction(e *common.Envelope) ([]*pb.TransactionAction, error) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
 		rv, err := validateEndorserTransaction(payload.Data, payload.Header)
 		putilsLogger.Infof("ValidateTransactionEnvelope returns %p, err %s", rv, err)
-		return rv, err
+		return payload, rv, err
 	default:
-		return nil, fmt.Errorf("Unsupported transaction payload type %d", common.HeaderType(payload.Header.ChainHeader.Type))
+		return nil, nil, fmt.Errorf("Unsupported transaction payload type %d", common.HeaderType(payload.Header.ChainHeader.Type))
 	}
 }

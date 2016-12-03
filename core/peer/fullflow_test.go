@@ -81,7 +81,7 @@ func TestGoodPath(t *testing.T) {
 	}
 
 	// validate the transaction
-	act, err := ValidateTransaction(tx)
+	_, act, err := ValidateTransaction(tx)
 	if err != nil {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -209,7 +209,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Payload)
 
 	// validate the transaction it should fail
-	_, err = ValidateTransaction(tx)
+	_, _, err = ValidateTransaction(tx)
 	if err == nil {
 		t.Fatalf("ValidateTransaction should have failed")
 		return
@@ -226,7 +226,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Signature)
 
 	// validate the transaction it should fail
-	_, err = ValidateTransaction(tx)
+	_, _, err = ValidateTransaction(tx)
 	if err == nil {
 		t.Fatalf("ValidateTransaction should have failed")
 		return
@@ -267,7 +267,7 @@ func Test2EndorsersAgree(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, err = ValidateTransaction(tx)
+	_, _, err = ValidateTransaction(tx)
 	if err != nil {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return

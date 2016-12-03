@@ -53,7 +53,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 	}
 
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(DefaultChain, getPeerEndpoint, false, ccStartupTimeout))
+	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
 
 	go grpcServer.Serve(lis)
 
@@ -72,14 +72,17 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 	// System chaincode has to be enabled
 	viper.Set("chaincode.system", map[string]string{"sample_syscc": "true"})
-	RegisterSysCCs()
+
+	chainID := util.GetTestChainID()
+
+	RegisterSysCCs(chainID)
 
 	url := "github.com/hyperledger/fabric/core/system_chaincode/sample_syscc"
 	f := "putval"
 	args := util.ToChaincodeArgs(f, "greeting", "hey there")
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, spec)
+	_, _, _, err = invoke(ctxt, chainID, spec)
 	if err != nil {
 		closeListenerAndSleep(lis)
 		t.Fail()
@@ -90,7 +93,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 	f = "getval"
 	args = util.ToChaincodeArgs(f, "greeting")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, spec)
+	_, _, _, err = invoke(ctxt, chainID, spec)
 	if err != nil {
 		closeListenerAndSleep(lis)
 		t.Fail()
@@ -100,7 +103,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 	cds := &pb.ChaincodeDeploymentSpec{ExecEnv: 1, ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
 
-	GetChain(DefaultChain).Stop(ctxt, cds)
+	theChaincodeSupport.Stop(ctxt, cds)
 
 	closeListenerAndSleep(lis)
 }
