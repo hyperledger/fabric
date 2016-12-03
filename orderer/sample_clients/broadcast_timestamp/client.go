@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"fmt"
 	"time"
 
@@ -30,19 +31,20 @@ import (
 )
 
 type broadcastClient struct {
-	client ab.AtomicBroadcast_BroadcastClient
+	client  ab.AtomicBroadcast_BroadcastClient
+	chainID string
 }
 
 // newBroadcastClient creates a simple instance of the broadcastClient interface
-func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient) *broadcastClient {
-	return &broadcastClient{client: client}
+func newBroadcastClient(client ab.AtomicBroadcast_BroadcastClient, chainID string) *broadcastClient {
+	return &broadcastClient{client: client, chainID: chainID}
 }
 
 func (s *broadcastClient) broadcast(transaction []byte) error {
 	payload, err := proto.Marshal(&cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
-				ChainID: static.TestChainID,
+				ChainID: s.chainID,
 			},
 		},
 		Data: transaction,
@@ -66,7 +68,16 @@ func (s *broadcastClient) getAck() error {
 
 func main() {
 	config := config.Load()
-	serverAddr := fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort)
+
+	var chainID string
+	var serverAddr string
+	var messages uint64
+
+	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
+	flag.StringVar(&chainID, "chainID", static.TestChainID, "The chain ID to broadcast to.")
+	flag.Uint64Var(&messages, "messages", 1, "The number of messages to braodcast.")
+	flag.Parse()
+
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	defer conn.Close()
 	if err != nil {
@@ -79,9 +90,11 @@ func main() {
 		return
 	}
 
-	s := newBroadcastClient(client)
-	s.broadcast([]byte(fmt.Sprintf("Testing %v", time.Now())))
-	err = s.getAck()
+	s := newBroadcastClient(client, chainID)
+	for i := uint64(0); i < messages; i++ {
+		s.broadcast([]byte(fmt.Sprintf("Testing %v", time.Now())))
+		err = s.getAck()
+	}
 	if err != nil {
 		fmt.Printf("\nError: %v\n", err)
 	}

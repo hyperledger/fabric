@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
@@ -29,12 +30,13 @@ import (
 
 type deliverClient struct {
 	client         ab.AtomicBroadcast_DeliverClient
+	chainID        string
 	windowSize     uint64
 	unAcknowledged uint64
 }
 
-func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, windowSize uint64) *deliverClient {
-	return &deliverClient{client: client, windowSize: windowSize}
+func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, chainID string, windowSize uint64) *deliverClient {
+	return &deliverClient{client: client, chainID: chainID, windowSize: windowSize}
 }
 
 func (r *deliverClient) seekOldest() error {
@@ -43,7 +45,7 @@ func (r *deliverClient) seekOldest() error {
 			Seek: &ab.SeekInfo{
 				Start:      ab.SeekInfo_OLDEST,
 				WindowSize: r.windowSize,
-				ChainID:    static.TestChainID,
+				ChainID:    r.chainID,
 			},
 		},
 	})
@@ -55,7 +57,7 @@ func (r *deliverClient) seekNewest() error {
 			Seek: &ab.SeekInfo{
 				Start:      ab.SeekInfo_NEWEST,
 				WindowSize: r.windowSize,
-				ChainID:    static.TestChainID,
+				ChainID:    r.chainID,
 			},
 		},
 	})
@@ -68,7 +70,7 @@ func (r *deliverClient) seek(blockNumber uint64) error {
 				Start:           ab.SeekInfo_SPECIFIED,
 				SpecifiedNumber: blockNumber,
 				WindowSize:      r.windowSize,
-				ChainID:         static.TestChainID,
+				ChainID:         r.chainID,
 			},
 		},
 	})
@@ -109,7 +111,16 @@ func (r *deliverClient) readUntilClose() {
 
 func main() {
 	config := config.Load()
-	serverAddr := fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort)
+
+	var chainID string
+	var serverAddr string
+	var windowSize uint64
+
+	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
+	flag.StringVar(&chainID, "chainID", static.TestChainID, "The chain ID to deliver from.")
+	flag.Uint64Var(&windowSize, "windowSize", 10, "The window size for the deliver.")
+	flag.Parse()
+
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
 		fmt.Println("Error connecting:", err)
@@ -121,7 +132,7 @@ func main() {
 		return
 	}
 
-	s := newDeliverClient(client, 10)
+	s := newDeliverClient(client, chainID, windowSize)
 	s.seekOldest()
 	s.readUntilClose()
 

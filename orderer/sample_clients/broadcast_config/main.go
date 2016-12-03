@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"os"
-	"os/signal"
 	"strings"
 
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -27,25 +26,38 @@ import (
 	"google.golang.org/grpc"
 )
 
-const pkgName = "orderer/bd_counter"
+const pkgName = "orderer/broadcast_config"
 
 var logger *logging.Logger
 
+// Include here all the possible arguments for a command
+type argsImpl struct {
+	creationPolicy string
+	chainID        string
+}
+
+// This holds the command and its arguments
+type cmdImpl struct {
+	cmd  string
+	args argsImpl
+}
+
 type configImpl struct {
-	logLevel                 logging.Level
-	rpc, server              string
-	count, seek, window, ack int
+	logLevel logging.Level
+	server   string
+	cmd      cmdImpl
 }
 
 type clientImpl struct {
-	config     configImpl
-	rpc        ab.AtomicBroadcastClient
-	signalChan chan os.Signal
+	config   configImpl
+	rpc      ab.AtomicBroadcastClient
+	doneChan chan struct{}
 }
 
 func main() {
 	var loglevel string
-	client := &clientImpl{}
+
+	client := &clientImpl{doneChan: make(chan struct{})}
 
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
 	logging.SetBackend(backend)
@@ -53,30 +65,20 @@ func main() {
 	logging.SetFormatter(formatter)
 	logger = logging.MustGetLogger(pkgName)
 
-	flag.StringVar(&client.config.rpc, "rpc", "broadcast",
-		"The RPC that this client is requesting.")
-	flag.StringVar(&client.config.server, "server",
-		"127.0.0.1:7050", "The RPC server to connect to.")
-	flag.IntVar(&client.config.count, "count", 100,
-		"When in broadcast mode, how many messages to send.")
 	flag.StringVar(&loglevel, "loglevel", "info",
 		"The logging level. (Suggested values: info, debug)")
-	flag.IntVar(&client.config.seek, "seek", -2,
-		"When in deliver mode, the number of the first block that should be delivered (-2 for oldest available, -1 for newest).")
-	flag.IntVar(&client.config.window, "window", 10,
-		"When in deliver mode, how many blocks can the server send without acknowledgement.")
-	flag.IntVar(&client.config.ack, "ack", 7,
-		"When in deliver mode, send acknowledgment per this many blocks received.")
-	flag.Parse() // TODO Validate user input (e.g. ack should be =< window)
+	flag.StringVar(&client.config.server, "server",
+		"127.0.0.1:7050", "The RPC server to connect to.")
+	flag.StringVar(&client.config.cmd.cmd, "cmd", "new-chain",
+		"The action that this client is requesting via the config transaction.")
+	flag.StringVar(&client.config.cmd.args.creationPolicy, "creationPolicy", "AcceptAllPolicy",
+		"In case of a new-chain command, the chain createion policy this request should be validated against.")
+	flag.StringVar(&client.config.cmd.args.chainID, "chainID", "NewChainID",
+		"In case of a new-chain command, the chain ID to create.")
+	flag.Parse()
 
 	client.config.logLevel, _ = logging.LogLevel(strings.ToUpper(loglevel))
 	logging.SetLevel(client.config.logLevel, logger.Module)
-
-	// Trap SIGINT to trigger a shutdown
-	// We must use a buffered channel or risk missing the signal
-	// if we're not ready to receive when the signal is sent.
-	client.signalChan = make(chan os.Signal, 1)
-	signal.Notify(client.signalChan, os.Interrupt)
 
 	conn, err := grpc.Dial(client.config.server, grpc.WithInsecure())
 	if err != nil {
@@ -85,10 +87,12 @@ func main() {
 	defer conn.Close()
 	client.rpc = ab.NewAtomicBroadcastClient(conn)
 
-	switch client.config.rpc {
-	case "broadcast":
-		client.broadcast()
-	case "deliver":
-		client.deliver()
+	switch client.config.cmd.cmd {
+	case "new-chain":
+		envelope := newChainRequest(client.config.cmd.args.creationPolicy, client.config.cmd.args.chainID)
+		logger.Infof("Requesting the creation of chain \"%s\"", client.config.cmd.args.chainID)
+		client.broadcast(envelope)
+	default:
+		panic("Invalid cmd given")
 	}
 }
