@@ -187,11 +187,15 @@ func (c *Backend) connectWorker(peer *PeerInfo) {
 }
 
 func (b *Backend) enqueueConnection(peerid uint64) {
-	b.queue <- &connectionEvent{peerid: peerid}
+	go func() {
+		b.queue <- &connectionEvent{peerid: peerid}
+	}()
 }
 
 func (b *Backend) enqueueRequest(request []byte) {
-	b.queue <- &requestEvent{req: request}
+	go func() {
+		b.queue <- &requestEvent{req: request}
+	}()
 }
 
 func (b *Backend) enqueueForReceive(msg *s.Msg, src uint64) {
