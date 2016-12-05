@@ -59,7 +59,7 @@ func TestGenesisBlockData(t *testing.T) {
 	expectedPayloadChainHeaderType := int32(cb.HeaderType_CONFIGURATION_TRANSACTION)
 	expectedChainHeaderVersion := msgVersion
 	expectedChainHeaderEpoch := uint64(0)
-	expectedConfigEnvelopeItemsLength := 1
+	expectedConfigEnvelopeItemsLength := 3
 	expectedConfigurationItemChainHeaderType := int32(cb.HeaderType_CONFIGURATION_ITEM)
 	expectedConfigurationItemChainHeaderVersion := msgVersion
 	expectedConfigurationItemType := cb.ConfigurationItem_Policy
@@ -110,7 +110,7 @@ func TestGenesisBlockData(t *testing.T) {
 		t.Fatalf("Expected configuration envelope to have %d configuration item(s), got %d", expectedConfigEnvelopeItemsLength, len(configurationEnvelope.Items))
 	}
 
-	signedConfigurationItem := configurationEnvelope.Items[0]
+	signedConfigurationItem := configurationEnvelope.Items[2]
 	marshaledConfigurationItem := signedConfigurationItem.ConfigurationItem
 	configurationItem := &cb.ConfigurationItem{}
 	if err := proto.Unmarshal(marshaledConfigurationItem, configurationItem); err != nil {
