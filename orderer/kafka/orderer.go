@@ -17,7 +17,7 @@ limitations under the License.
 package kafka
 
 import (
-	"github.com/hyperledger/fabric/orderer/config"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 

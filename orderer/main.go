@@ -29,8 +29,8 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
-	"github.com/hyperledger/fabric/orderer/config"
 	"github.com/hyperledger/fabric/orderer/kafka"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"

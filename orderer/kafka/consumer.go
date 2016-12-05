@@ -18,7 +18,7 @@ package kafka
 
 import (
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/config"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
 // Consumer allows the caller to receive a stream of messages from the orderer

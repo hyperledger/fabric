@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama/mocks"
-	"github.com/hyperledger/fabric/orderer/config"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
 type mockProducerImpl struct {

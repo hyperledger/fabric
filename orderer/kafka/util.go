@@ -18,7 +18,7 @@ package kafka
 
 import (
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/config"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
 const (
