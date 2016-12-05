@@ -18,7 +18,6 @@ package sw
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/asn1"
 	"errors"
 	"fmt"
 	"math/big"
@@ -603,7 +602,7 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signat
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		return k.(*ecdsaPrivateKey).privKey.Sign(rand.Reader, digest, nil)
+		return csp.signECDSA(k.(*ecdsaPrivateKey).privKey, digest, opts)
 	case *rsaPrivateKey:
 		if opts == nil {
 			return nil, errors.New("Invalid options. Nil.")
@@ -631,21 +630,9 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		ecdsaSignature := new(ecdsaSignature)
-		_, err := asn1.Unmarshal(signature, ecdsaSignature)
-		if err != nil {
-			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
-		}
-
-		return ecdsa.Verify(&(k.(*ecdsaPrivateKey).privKey.PublicKey), digest, ecdsaSignature.R, ecdsaSignature.S), nil
+		return csp.verifyECDSA(&(k.(*ecdsaPrivateKey).privKey.PublicKey), signature, digest, opts)
 	case *ecdsaPublicKey:
-		ecdsaSignature := new(ecdsaSignature)
-		_, err := asn1.Unmarshal(signature, ecdsaSignature)
-		if err != nil {
-			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
-		}
-
-		return ecdsa.Verify(k.(*ecdsaPublicKey).pubKey, digest, ecdsaSignature.R, ecdsaSignature.S), nil
+		return csp.verifyECDSA(k.(*ecdsaPublicKey).pubKey, signature, digest, opts)
 	case *rsaPrivateKey:
 		if opts == nil {
 			return false, errors.New("Invalid options. It must not be nil.")
