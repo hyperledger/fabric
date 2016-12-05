@@ -42,7 +42,7 @@ Full details of how to contribute to this project are documented [here](http://h
 
 [Hyperledger Wiki](https://github.com/hyperledger/hyperledger/wiki)
 
-[Hyperledger Code of Conduct](https://github.com/hyperledger/hyperledger/wiki/Hyperledger-Project-Code-of-Conduct)
+[Hyperledger Code of Conduct](https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct)
 
 [Community Calendar](https://github.com/hyperledger/hyperledger/wiki/PublicMeetingCalendar)
 
