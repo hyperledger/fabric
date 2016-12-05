@@ -41,6 +41,47 @@ func TestStaticPartitioner(t *testing.T) {
 	}
 }
 
+func TestProducerConfigMessageMaxBytes(t *testing.T) {
+
+	topic := testConf.Kafka.Topic
+
+	broker := sarama.NewMockBroker(t, 1000)
+	broker.SetHandlerByMap(map[string]sarama.MockResponse{
+		"MetadataRequest": sarama.NewMockMetadataResponse(t).
+			SetBroker(broker.Addr(), broker.BrokerID()).
+			SetLeader(topic, 0, broker.BrokerID()),
+		"ProduceRequest": sarama.NewMockProduceResponse(t),
+	})
+
+	config := newBrokerConfig(testConf)
+	producer, err := sarama.NewSyncProducer([]string{broker.Addr()}, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := []struct {
+		name string
+		size int
+		err  error
+	}{
+		{"TypicalDeploy", 8 * 1024 * 1024, nil},
+		{"TooBig", 100*1024*1024 + 1, sarama.ErrMessageSizeTooLarge},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err = producer.SendMessage(&sarama.ProducerMessage{Topic: topic, Value: sarama.ByteEncoder(make([]byte, tc.size))})
+			if err != tc.err {
+				t.Fatal(err)
+			}
+		})
+
+	}
+
+	producer.Close()
+	broker.Close()
+}
+
 func TestNewBrokerConfig(t *testing.T) {
 
 	topic := testConf.Kafka.Topic
