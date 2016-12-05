@@ -17,6 +17,7 @@ limitations under the License.
 package couchdbtxmgmt
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"sync"
@@ -35,6 +36,8 @@ import (
 )
 
 var logger = logging.MustGetLogger("couchdbtxmgmt")
+
+var compositeKeySep = []byte{0x00}
 
 // Conf - configuration for `CouchDBTxMgr`
 type Conf struct {
@@ -383,6 +386,22 @@ func (txmgr *CouchDBTxMgr) getCommittedValueAndVersion(ns string, key string) ([
 	return docBytes, ver, nil
 }
 
+//getCommittedRangeScanner contructs composite start and end keys based on the namespace then calls the CouchDB range scanner
+func (txmgr *CouchDBTxMgr) getCommittedRangeScanner(namespace string, startKey string, endKey string) (*kvScanner, error) {
+	var compositeStartKey []byte
+	var compositeEndKey []byte
+	if startKey != "" {
+		compositeStartKey = constructCompositeKey(namespace, startKey)
+	}
+	if endKey != "" {
+		compositeEndKey = constructCompositeKey(namespace, endKey)
+	}
+
+	queryResult, _ := txmgr.couchDB.ReadDocRange(string(compositeStartKey), string(compositeEndKey), 1000, 0)
+
+	return newKVScanner(namespace, *queryResult), nil
+}
+
 func encodeValue(value []byte, version uint64) []byte {
 	versionBytes := proto.EncodeVarint(version)
 	deleteMarker := 0
@@ -409,7 +428,50 @@ func decodeValue(encodedValue []byte) ([]byte, uint64) {
 
 func constructCompositeKey(ns string, key string) []byte {
 	compositeKey := []byte(ns)
-	compositeKey = append(compositeKey, byte(0))
+	compositeKey = append(compositeKey, compositeKeySep...)
 	compositeKey = append(compositeKey, []byte(key)...)
 	return compositeKey
+}
+
+func splitCompositeKey(compositeKey []byte) (string, string) {
+	split := bytes.SplitN(compositeKey, compositeKeySep, 2)
+	return string(split[0]), string(split[1])
+}
+
+type kvScanner struct {
+	cursor    int
+	namespace string
+	results   []couchdb.QueryResult
+}
+
+type committedKV struct {
+	key     string
+	version *version.Height
+	value   []byte
+}
+
+func newKVScanner(namespace string, queryResults []couchdb.QueryResult) *kvScanner {
+	return &kvScanner{-1, namespace, queryResults}
+}
+
+func (scanner *kvScanner) next() (*committedKV, error) {
+
+	scanner.cursor++
+
+	if scanner.cursor >= len(scanner.results) {
+		return nil, nil
+	}
+
+	selectedValue := scanner.results[scanner.cursor]
+
+	_, key := splitCompositeKey([]byte(selectedValue.ID))
+
+	//TODO - change hardcoded version when version support is available in CouchDB
+	return &committedKV{key, version.NewHeight(1, 1), selectedValue.Value}, nil
+
+}
+
+func (scanner *kvScanner) close() {
+
+	scanner = nil
 }

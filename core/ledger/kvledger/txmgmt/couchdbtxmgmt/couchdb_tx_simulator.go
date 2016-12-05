@@ -20,6 +20,7 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	logging "github.com/op/go-logging"
 )
@@ -108,6 +109,16 @@ func (s *CouchDBTxSimulator) GetState(ns string, key string) ([]byte, error) {
 	return value, nil
 }
 
+// GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
+func (s *CouchDBTxSimulator) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
+	//s.checkDone()
+	scanner, err := s.txmgr.getCommittedRangeScanner(namespace, startKey, endKey)
+	if err != nil {
+		return nil, err
+	}
+	return &sKVItr{scanner, s}, nil
+}
+
 // SetState implements method in interface `ledger.TxSimulator`
 func (s *CouchDBTxSimulator) SetState(ns string, key string, value []byte) error {
 	logger.Debugf("===COUCHDB=== Entering CouchDBTxSimulator.SetState()")
@@ -190,7 +201,12 @@ func (s *CouchDBTxSimulator) GetTxSimulationResults() ([]byte, error) {
 
 // SetStateMultipleKeys implements method in interface `ledger.TxSimulator`
 func (s *CouchDBTxSimulator) SetStateMultipleKeys(namespace string, kvs map[string][]byte) error {
-	return errors.New("Not yet implemented")
+	for k, v := range kvs {
+		if err := s.SetState(namespace, k, v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // CopyState implements method in interface `ledger.TxSimulator`
@@ -201,4 +217,35 @@ func (s *CouchDBTxSimulator) CopyState(sourceNamespace string, targetNamespace s
 // ExecuteUpdate implements method in interface `ledger.TxSimulator`
 func (s *CouchDBTxSimulator) ExecuteUpdate(query string) error {
 	return errors.New("Not supported by KV data model")
+}
+
+type sKVItr struct {
+	scanner   *kvScanner
+	simulator *CouchDBTxSimulator
+}
+
+// Next implements Next() method in ledger.ResultsIterator
+// Returns the next item in the result set. The `QueryResult` is expected to be nil when
+// the iterator gets exhausted
+func (itr *sKVItr) Next() (ledger.QueryResult, error) {
+	committedKV, err := itr.scanner.next()
+	if err != nil {
+		return nil, err
+	}
+	if committedKV == nil {
+		return nil, nil
+	}
+
+	// Get existing cache for RW at the namespace of the result set if it exists.  If none exists, then create it.
+	nsRWs := itr.simulator.getOrCreateNsRWHolder(itr.scanner.namespace)
+	nsRWs.readMap[committedKV.key] = &kvReadCache{
+		&txmgmt.KVRead{Key: committedKV.key, Version: committedKV.version}, committedKV.value}
+
+	return &ledger.KV{Key: committedKV.key, Value: committedKV.value}, nil
+}
+
+// Close implements Close() method in ledger.ResultsIterator
+// which releases resources occupied by the iterator.
+func (itr *sKVItr) Close() {
+	itr.scanner.close()
 }

@@ -39,12 +39,27 @@ func (q *CouchDBQueryExecutor) GetState(ns string, key string) ([]byte, error) {
 
 // GetStateMultipleKeys implements method in interface `ledger.QueryExecutor`
 func (q *CouchDBQueryExecutor) GetStateMultipleKeys(namespace string, keys []string) ([][]byte, error) {
-	return nil, errors.New("Not yet implemented")
+	var results [][]byte
+	var value []byte
+	var err error
+	for _, key := range keys {
+		value, err = q.GetState(namespace, key)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, value)
+	}
+	return results, nil
 }
 
 // GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
 func (q *CouchDBQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
-	return nil, errors.New("Not yet implemented")
+	//q.checkDone()
+	scanner, err := q.txmgr.getCommittedRangeScanner(namespace, startKey, endKey)
+	if err != nil {
+		return nil, err
+	}
+	return &qKVItr{scanner}, nil
 }
 
 // GetTransactionsForKey - implements method in interface `ledger.QueryExecutor`
@@ -60,4 +75,26 @@ func (q *CouchDBQueryExecutor) ExecuteQuery(query string) (ledger.ResultsIterato
 // Done implements method in interface `ledger.QueryExecutor`
 func (q *CouchDBQueryExecutor) Done() {
 	//TODO - acquire lock when constructing and release the lock here
+}
+
+type qKVItr struct {
+	s *kvScanner
+}
+
+// Next implements Next() method in ledger.ResultsIterator
+func (itr *qKVItr) Next() (ledger.QueryResult, error) {
+	committedKV, err := itr.s.next()
+	if err != nil {
+		return nil, err
+	}
+	if committedKV == nil {
+		return nil, nil
+	}
+
+	return &ledger.KV{Key: committedKV.key, Value: committedKV.value}, nil
+}
+
+// Close implements Close() method in ledger.ResultsIterator
+func (itr *qKVItr) Close() {
+	itr.s.close()
 }
