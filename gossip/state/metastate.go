@@ -21,7 +21,7 @@ import (
 	"encoding/binary"
 )
 
-// Metadata information to store the information about current
+// NodeMetastate information to store the information about current
 // height of the ledger (last accepted block sequence number).
 type NodeMetastate struct {
 
@@ -29,12 +29,12 @@ type NodeMetastate struct {
 	LedgerHeight uint64
 }
 
-// Create new meta data with given ledger height148.69
+// NewNodeMetastate creates new meta data with given ledger height148.69
 func NewNodeMetastate(height uint64) *NodeMetastate {
 	return &NodeMetastate{height}
 }
 
-// Decodes meta state into byte array for serialization
+// Bytes decodes meta state into byte array for serialization
 func (n *NodeMetastate) Bytes() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 	// Explicitly specify byte order for write into the buffer
@@ -47,7 +47,7 @@ func (n *NodeMetastate) Bytes() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-// Get ledger height from the state
+// Height returns ledger height from the state
 func (n *NodeMetastate) Height() uint64 {
 	return n.LedgerHeight
 }
@@ -57,7 +57,7 @@ func (n *NodeMetastate) Update(height uint64) {
 	n.LedgerHeight = height
 }
 
-// Encode from byte array into meta data structure
+// FromBytes - encode from byte array into meta data structure
 func FromBytes(buf []byte) (*NodeMetastate, error) {
 	state  := NodeMetastate{}
 	reader := bytes.NewReader(buf)
