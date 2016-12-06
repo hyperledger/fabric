@@ -20,15 +20,14 @@ import (
 	"bytes"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/version"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
-	"github.com/op/go-logging"
-
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
@@ -44,7 +43,7 @@ type Conf struct {
 
 type versionedValue struct {
 	value   []byte
-	version uint64
+	version *version.Height
 }
 
 type updateSet struct {
@@ -104,7 +103,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block) (*common.Bl
 	var valid bool
 	txmgr.updateSet = newUpdateSet()
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
-	for _, envBytes := range block.Data.Data {
+	for txIndex, envBytes := range block.Data.Data {
 		// extract actions from the envelope message
 		respPayload, err := putils.GetActionFromEnvelope(envBytes)
 		if err != nil {
@@ -135,7 +134,8 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block) (*common.Bl
 		}
 		//TODO add the validation info to the bitmap in the metadata of the block
 		if valid {
-			if err := txmgr.addWriteSetToBatch(txRWSet); err != nil {
+			committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex+1))
+			if err := txmgr.addWriteSetToBatch(txRWSet, committingTxHeight); err != nil {
 				return nil, nil, err
 			}
 		} else {
@@ -154,7 +154,7 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 func (txmgr *LockBasedTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, error) {
 
 	var err error
-	var currentVersion uint64
+	var currentVersion *version.Height
 
 	for _, nsRWSet := range txRWSet.NsRWs {
 		ns := nsRWSet.NameSpace
@@ -166,7 +166,7 @@ func (txmgr *LockBasedTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, e
 			if currentVersion, err = txmgr.getCommitedVersion(ns, kvRead.Key); err != nil {
 				return false, err
 			}
-			if currentVersion != kvRead.Version {
+			if !version.AreSame(currentVersion, kvRead.Version) {
 				logger.Debugf("Version mismatch for key [%s:%s]. Current version = [%d], Version in readSet [%d]",
 					ns, kvRead.Key, currentVersion, kvRead.Version)
 				return false, nil
@@ -176,10 +176,7 @@ func (txmgr *LockBasedTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, e
 	return true, nil
 }
 
-func (txmgr *LockBasedTxMgr) addWriteSetToBatch(txRWSet *txmgmt.TxReadWriteSet) error {
-	var err error
-	var currentVersion uint64
-
+func (txmgr *LockBasedTxMgr) addWriteSetToBatch(txRWSet *txmgmt.TxReadWriteSet, txHeight *version.Height) error {
 	if txmgr.updateSet == nil {
 		txmgr.updateSet = newUpdateSet()
 	}
@@ -187,16 +184,7 @@ func (txmgr *LockBasedTxMgr) addWriteSetToBatch(txRWSet *txmgmt.TxReadWriteSet) 
 		ns := nsRWSet.NameSpace
 		for _, kvWrite := range nsRWSet.Writes {
 			compositeKey := constructCompositeKey(ns, kvWrite.Key)
-			versionedVal := txmgr.updateSet.get(compositeKey)
-			if versionedVal != nil {
-				currentVersion = versionedVal.version
-			} else {
-				currentVersion, err = txmgr.getCommitedVersion(ns, kvWrite.Key)
-				if err != nil {
-					return err
-				}
-			}
-			txmgr.updateSet.add(compositeKey, &versionedValue{kvWrite.Value, currentVersion + 1})
+			txmgr.updateSet.add(compositeKey, &versionedValue{kvWrite.Value, txHeight})
 		}
 	}
 	return nil
@@ -209,7 +197,11 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
 	for k, v := range txmgr.updateSet.m {
-		batch.Put([]byte(k), encodeValue(v.value, v.version))
+		if v.value == nil {
+			batch.Delete([]byte(k))
+		} else {
+			batch.Put([]byte(k), encodeValue(v.value, v.version))
+		}
 	}
 	txmgr.commitRWLock.Lock()
 	defer txmgr.commitRWLock.Unlock()
@@ -225,24 +217,24 @@ func (txmgr *LockBasedTxMgr) Rollback() {
 	txmgr.updateSet = nil
 }
 
-func (txmgr *LockBasedTxMgr) getCommitedVersion(ns string, key string) (uint64, error) {
+func (txmgr *LockBasedTxMgr) getCommitedVersion(ns string, key string) (*version.Height, error) {
 	var err error
-	var version uint64
+	var version *version.Height
 	if _, version, err = txmgr.getCommittedValueAndVersion(ns, key); err != nil {
-		return 0, err
+		return nil, err
 	}
 	return version, nil
 }
 
-func (txmgr *LockBasedTxMgr) getCommittedValueAndVersion(ns string, key string) ([]byte, uint64, error) {
+func (txmgr *LockBasedTxMgr) getCommittedValueAndVersion(ns string, key string) ([]byte, *version.Height, error) {
 	compositeKey := constructCompositeKey(ns, key)
 	var encodedValue []byte
 	var err error
 	if encodedValue, err = txmgr.db.Get(compositeKey); err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 	if encodedValue == nil {
-		return nil, 0, nil
+		return nil, nil, nil
 	}
 	value, version := decodeValue(encodedValue)
 	return value, version, nil
@@ -262,27 +254,17 @@ func (txmgr *LockBasedTxMgr) getCommittedRangeScanner(namespace string, startKey
 	return newKVScanner(namespace, dbItr), nil
 }
 
-func encodeValue(value []byte, version uint64) []byte {
-	versionBytes := proto.EncodeVarint(version)
-	deleteMarker := 0
-	if value == nil {
-		deleteMarker = 1
-	}
-	deleteMarkerBytes := proto.EncodeVarint(uint64(deleteMarker))
-	encodedValue := append(versionBytes, deleteMarkerBytes...)
+func encodeValue(value []byte, version *version.Height) []byte {
+	encodedValue := version.ToBytes()
 	if value != nil {
 		encodedValue = append(encodedValue, value...)
 	}
 	return encodedValue
 }
 
-func decodeValue(encodedValue []byte) ([]byte, uint64) {
-	version, len1 := proto.DecodeVarint(encodedValue)
-	deleteMarker, len2 := proto.DecodeVarint(encodedValue[len1:])
-	if deleteMarker == 1 {
-		return nil, version
-	}
-	value := encodedValue[len1+len2:]
+func decodeValue(encodedValue []byte) ([]byte, *version.Height) {
+	version, n := version.NewHeightFromBytes(encodedValue)
+	value := encodedValue[n:]
 	return value, version
 }
 
@@ -305,7 +287,7 @@ type kvScanner struct {
 
 type committedKV struct {
 	key     string
-	version uint64
+	version *version.Height
 	value   []byte
 }
 

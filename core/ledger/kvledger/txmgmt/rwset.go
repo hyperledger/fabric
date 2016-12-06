@@ -21,16 +21,17 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/version"
 )
 
 // KVRead - a tuple of key and its version at the time of transaction simulation
 type KVRead struct {
 	Key     string
-	Version uint64
+	Version *version.Height
 }
 
 // NewKVRead constructs a new `KVRead`
-func NewKVRead(key string, version uint64) *KVRead {
+func NewKVRead(key string, version *version.Height) *KVRead {
 	return &KVRead{key, version}
 }
 
@@ -70,7 +71,11 @@ func (r *KVRead) Marshal(buf *proto.Buffer) error {
 	if err := buf.EncodeStringBytes(r.Key); err != nil {
 		return err
 	}
-	if err := buf.EncodeVarint(r.Version); err != nil {
+	versionBytes := []byte{}
+	if r.Version != nil {
+		versionBytes = r.Version.ToBytes()
+	}
+	if err := buf.EncodeRawBytes(versionBytes); err != nil {
 		return err
 	}
 	return nil
@@ -79,11 +84,15 @@ func (r *KVRead) Marshal(buf *proto.Buffer) error {
 // Unmarshal deserializes a `KVRead`
 func (r *KVRead) Unmarshal(buf *proto.Buffer) error {
 	var err error
+	var versionBytes []byte
 	if r.Key, err = buf.DecodeStringBytes(); err != nil {
 		return err
 	}
-	if r.Version, err = buf.DecodeVarint(); err != nil {
+	if versionBytes, err = buf.DecodeRawBytes(false); err != nil {
 		return err
+	}
+	if len(versionBytes) > 0 {
+		r.Version, _ = version.NewHeightFromBytes(versionBytes)
 	}
 	return nil
 }

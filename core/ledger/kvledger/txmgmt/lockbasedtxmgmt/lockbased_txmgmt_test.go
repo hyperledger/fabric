@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/version"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
@@ -65,7 +66,7 @@ func TestTxSimulatorWithExistingData(t *testing.T) {
 	isValid, err := txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error in validateTx(): %s", err))
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(1, 1))
 	err = txMgr.Commit()
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error while calling commit(): %s", err))
 
@@ -82,7 +83,7 @@ func TestTxSimulatorWithExistingData(t *testing.T) {
 	txRWSet = s2.(*LockBasedTxSimulator).getTxReadWriteSet()
 	isValid, err = txMgr.validateTx(txRWSet)
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(2, 1))
 	txMgr.Commit()
 
 	// simulate tx3
@@ -95,11 +96,9 @@ func TestTxSimulatorWithExistingData(t *testing.T) {
 
 	// verify the versions of keys in persistence
 	ver, _ := txMgr.getCommitedVersion("ns1", "key1")
-	testutil.AssertEquals(t, ver, uint64(2))
+	testutil.AssertEquals(t, ver, version.NewHeight(2, 1))
 	ver, _ = txMgr.getCommitedVersion("ns1", "key2")
-	testutil.AssertEquals(t, ver, uint64(1))
-	ver, _ = txMgr.getCommitedVersion("ns2", "key3")
-	testutil.AssertEquals(t, ver, uint64(2))
+	testutil.AssertEquals(t, ver, version.NewHeight(1, 1))
 }
 
 func TestTxValidation(t *testing.T) {
@@ -120,7 +119,7 @@ func TestTxValidation(t *testing.T) {
 	isValid, err := txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error in validateTx(): %s", err))
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(1, 1))
 	err = txMgr.Commit()
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error while calling commit(): %s", err))
 
@@ -161,7 +160,7 @@ func TestTxValidation(t *testing.T) {
 	isValid, err = txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error in validateTx(): %s", err))
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(2, 1))
 	txMgr.Commit()
 
 	//RWSet for tx3 and tx4 should not be invalid now
@@ -183,11 +182,11 @@ func TestTxValidation(t *testing.T) {
 }
 
 func TestEncodeDecodeValueAndVersion(t *testing.T) {
-	testValueAndVersionEncodeing(t, []byte("value1"), uint64(1))
-	testValueAndVersionEncodeing(t, nil, uint64(2))
+	testValueAndVersionEncodeing(t, []byte("value1"), version.NewHeight(1, 2))
+	testValueAndVersionEncodeing(t, []byte{}, version.NewHeight(50, 50))
 }
 
-func testValueAndVersionEncodeing(t *testing.T, value []byte, version uint64) {
+func testValueAndVersionEncodeing(t *testing.T, value []byte, version *version.Height) {
 	encodedValue := encodeValue(value, version)
 	val, ver := decodeValue(encodedValue)
 	testutil.AssertEquals(t, val, value)
@@ -221,7 +220,7 @@ func testIterator(t *testing.T, numKeys int, startKeyNum int, endKeyNum int) {
 	isValid, err := txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(1, 1))
 	err = txMgr.Commit()
 	testutil.AssertNoError(t, err, "")
 
@@ -286,7 +285,7 @@ func TestIteratorWithDeletes(t *testing.T) {
 	isValid, err := txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(1, 1))
 	err = txMgr.Commit()
 	testutil.AssertNoError(t, err, "")
 
@@ -298,7 +297,7 @@ func TestIteratorWithDeletes(t *testing.T) {
 	isValid, err = txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(2, 1))
 	err = txMgr.Commit()
 	testutil.AssertNoError(t, err, "")
 
@@ -332,7 +331,7 @@ func TestTxValidationWithItr(t *testing.T) {
 	isValid, err := txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(1, 1))
 	err = txMgr.Commit()
 	testutil.AssertNoError(t, err, "")
 
@@ -364,7 +363,7 @@ func TestTxValidationWithItr(t *testing.T) {
 	isValid, err = txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error in validateTx(): %s", err))
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(2, 1))
 	txMgr.Commit()
 
 	//RWSet tx3 should not be invalid now
@@ -399,7 +398,7 @@ func TestGetSetMultipeKeys(t *testing.T) {
 	isValid, err := txMgr.validateTx(txRWSet)
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertSame(t, isValid, true)
-	txMgr.addWriteSetToBatch(txRWSet)
+	txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(1, 1))
 	err = txMgr.Commit()
 	testutil.AssertNoError(t, err, "")
 

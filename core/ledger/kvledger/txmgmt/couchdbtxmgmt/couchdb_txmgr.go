@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util/db"
 	"github.com/op/go-logging"
 
+	"github.com/hyperledger/fabric/core/ledger/kvledger/version"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -40,7 +41,7 @@ type Conf struct {
 
 type versionedValue struct {
 	value   []byte
-	version uint64
+	version *version.Height
 }
 
 type updateSet struct {
@@ -119,7 +120,7 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *common.Block) (*common.Bloc
 	var valid bool
 	txmgr.updateSet = newUpdateSet()
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
-	for _, envBytes := range block.Data.Data {
+	for txIndex, envBytes := range block.Data.Data {
 		// extract actions from the envelope message
 		respPayload, err := putils.GetActionFromEnvelope(envBytes)
 		if err != nil {
@@ -150,7 +151,7 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *common.Block) (*common.Bloc
 		}
 
 		if valid {
-			if err := txmgr.addWriteSetToBatch(txRWSet); err != nil {
+			if err := txmgr.addWriteSetToBatch(txRWSet, version.NewHeight(block.Header.Number, uint64(txIndex+1))); err != nil {
 				return nil, nil, err
 			}
 		} else {
@@ -170,7 +171,7 @@ func (txmgr *CouchDBTxMgr) Shutdown() {
 func (txmgr *CouchDBTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, error) {
 
 	var err error
-	var currentVersion uint64
+	var currentVersion *version.Height
 
 	for _, nsRWSet := range txRWSet.NsRWs {
 		ns := nsRWSet.NameSpace
@@ -182,7 +183,7 @@ func (txmgr *CouchDBTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, err
 			if currentVersion, err = txmgr.getCommitedVersion(ns, kvRead.Key); err != nil {
 				return false, err
 			}
-			if currentVersion != kvRead.Version {
+			if !version.AreSame(currentVersion, kvRead.Version) {
 				logger.Debugf("Version mismatch for key [%s:%s]. Current version = [%d], Version in readSet [%d]",
 					ns, kvRead.Key, currentVersion, kvRead.Version)
 				return false, nil
@@ -192,10 +193,7 @@ func (txmgr *CouchDBTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, err
 	return true, nil
 }
 
-func (txmgr *CouchDBTxMgr) addWriteSetToBatch(txRWSet *txmgmt.TxReadWriteSet) error {
-	var err error
-	var currentVersion uint64
-
+func (txmgr *CouchDBTxMgr) addWriteSetToBatch(txRWSet *txmgmt.TxReadWriteSet, txHeight *version.Height) error {
 	if txmgr.updateSet == nil {
 		txmgr.updateSet = newUpdateSet()
 	}
@@ -203,16 +201,7 @@ func (txmgr *CouchDBTxMgr) addWriteSetToBatch(txRWSet *txmgmt.TxReadWriteSet) er
 		ns := nsRWSet.NameSpace
 		for _, kvWrite := range nsRWSet.Writes {
 			compositeKey := constructCompositeKey(ns, kvWrite.Key)
-			versionedVal := txmgr.updateSet.get(compositeKey)
-			if versionedVal != nil {
-				currentVersion = versionedVal.version
-			} else {
-				currentVersion, err = txmgr.getCommitedVersion(ns, kvWrite.Key)
-				if err != nil {
-					return err
-				}
-			}
-			txmgr.updateSet.add(compositeKey, &versionedValue{kvWrite.Value, currentVersion + 1})
+			txmgr.updateSet.add(compositeKey, &versionedValue{kvWrite.Value, txHeight})
 		}
 	}
 	return nil
@@ -278,16 +267,16 @@ func (txmgr *CouchDBTxMgr) Rollback() {
 	txmgr.updateSet = nil
 }
 
-func (txmgr *CouchDBTxMgr) getCommitedVersion(ns string, key string) (uint64, error) {
+func (txmgr *CouchDBTxMgr) getCommitedVersion(ns string, key string) (*version.Height, error) {
 	var err error
-	var version uint64
+	var version *version.Height
 	if _, version, err = txmgr.getCommittedValueAndVersion(ns, key); err != nil {
-		return 0, err
+		return nil, err
 	}
 	return version, nil
 }
 
-func (txmgr *CouchDBTxMgr) getCommittedValueAndVersion(ns string, key string) ([]byte, uint64, error) {
+func (txmgr *CouchDBTxMgr) getCommittedValueAndVersion(ns string, key string) ([]byte, *version.Height, error) {
 
 	compositeKey := constructCompositeKey(ns, key)
 
@@ -302,8 +291,8 @@ func (txmgr *CouchDBTxMgr) getCommittedValueAndVersion(ns string, key string) ([
 		}
 	}
 
-	var version uint64 = 1 //TODO - version hardcoded to 1 is a temporary value for the prototype
-	return docBytes, version, nil
+	ver := version.NewHeight(1, 1) //TODO - version hardcoded to 1 is a temporary value for the prototype
+	return docBytes, ver, nil
 }
 
 func encodeValue(value []byte, version uint64) []byte {
