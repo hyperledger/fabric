@@ -25,7 +25,7 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
 )
 
 type ecdsaPrivateKey struct {
@@ -40,7 +40,7 @@ func (k *ecdsaPrivateKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *ecdsaPrivateKey) SKI() (ski []byte) {
-	raw, _ := primitives.PrivateKeyToDER(k.privKey)
+	raw, _ := utils.PrivateKeyToDER(k.privKey)
 	// TODO: Error should not be thrown. Anyway, move the marshalling at initialization.
 
 	hash := sha256.New()
@@ -82,7 +82,7 @@ func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *ecdsaPublicKey) SKI() (ski []byte) {
-	raw, _ := primitives.PublicKeyToPEM(k.pubKey, nil)
+	raw, _ := utils.PublicKeyToPEM(k.pubKey, nil)
 	// TODO: Error should not be thrown. Anyway, move the marshalling at initialization.
 
 	hash := sha256.New()

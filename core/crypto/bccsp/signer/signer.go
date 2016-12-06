@@ -22,7 +22,7 @@ import (
 	"io"
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
 )
 
 // CryptoSigner is the BCCSP-based implementation of a crypto.Signer
@@ -56,7 +56,7 @@ func (s *CryptoSigner) Init(csp bccsp.BCCSP, key bccsp.Key) error {
 		return fmt.Errorf("Failed marshalling public key [%s]", err)
 	}
 
-	pk, err := primitives.DERToPublicKey(raw)
+	pk, err := utils.DERToPublicKey(raw)
 	if err != nil {
 		return fmt.Errorf("Failed marshalling public key [%s]", err)
 	}

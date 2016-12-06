@@ -25,7 +25,7 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
 )
 
 type rsaPrivateKey struct {
@@ -88,7 +88,7 @@ func (k *rsaPublicKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *rsaPublicKey) SKI() (ski []byte) {
-	raw, _ := primitives.PublicKeyToPEM(k.pubKey, nil)
+	raw, _ := utils.PublicKeyToPEM(k.pubKey, nil)
 	// TODO: Error should not be thrown. Anyway, move the marshalling at initialization.
 
 	hash := sha256.New()
