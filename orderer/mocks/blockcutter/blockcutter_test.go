@@ -19,9 +19,9 @@ package mocks
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
+	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 )
 
-func TestSharedConfigInterface(t *testing.T) {
-	_ = sharedconfig.Manager(&SharedConfigManager{})
+func TestBlockCutterInterface(t *testing.T) {
+	_ = blockcutter.Receiver(NewReceiver())
 }
