@@ -19,7 +19,7 @@ package policies
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
