@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package txmgmt
+package rwset
 
 import (
 	"bytes"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 )
 
 // KVRead - a tuple of key and its version at the time of transaction simulation

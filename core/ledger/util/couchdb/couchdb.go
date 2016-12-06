@@ -34,7 +34,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	logging "github.com/op/go-logging"
 )
 

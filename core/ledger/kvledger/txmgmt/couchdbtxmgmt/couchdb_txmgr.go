@@ -19,17 +19,18 @@ package couchdbtxmgmt
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
 	"github.com/op/go-logging"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/version"
+	"fmt"
+
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -153,7 +154,7 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *common.Block, doMVCCValidat
 		}
 
 		//preparation for extracting RWSet from transaction
-		txRWSet := &txmgmt.TxReadWriteSet{}
+		txRWSet := &rwset.TxReadWriteSet{}
 
 		// Get the Result from the Action
 		// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
@@ -201,7 +202,7 @@ func (txmgr *CouchDBTxMgr) Shutdown() {
 	txmgr.db.Close()
 }
 
-func (txmgr *CouchDBTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, error) {
+func (txmgr *CouchDBTxMgr) validateTx(txRWSet *rwset.TxReadWriteSet) (bool, error) {
 
 	var err error
 	var currentVersion *version.Height
@@ -226,7 +227,7 @@ func (txmgr *CouchDBTxMgr) validateTx(txRWSet *txmgmt.TxReadWriteSet) (bool, err
 	return true, nil
 }
 
-func (txmgr *CouchDBTxMgr) addWriteSetToBatch(txRWSet *txmgmt.TxReadWriteSet, txHeight *version.Height) error {
+func (txmgr *CouchDBTxMgr) addWriteSetToBatch(txRWSet *rwset.TxReadWriteSet, txHeight *version.Height) error {
 	if txmgr.updateSet == nil {
 		txmgr.updateSet = newUpdateSet()
 	}
@@ -259,7 +260,7 @@ func (txmgr *CouchDBTxMgr) Commit() error {
 			// SaveDoc using couchdb client and use JSON format
 			rev, err := txmgr.couchDB.SaveDoc(k, "", v.value, nil)
 			if err != nil {
-				logger.Errorf("===COUCHDB=== Error during Commit(): %s\n", err.Error())
+				logger.Debugf("===COUCHDB=== Error during Commit(): %s\n", err)
 				return err
 			}
 			if rev != "" {
@@ -280,7 +281,7 @@ func (txmgr *CouchDBTxMgr) Commit() error {
 			// SaveDoc using couchdb client and use attachment
 			rev, err := txmgr.couchDB.SaveDoc(k, "", nil, attachments)
 			if err != nil {
-				logger.Errorf("===COUCHDB=== Error during Commit(): %s\n", err.Error())
+				logger.Debugf("===COUCHDB=== Error during Commit(): %s\n", err)
 				return err
 			}
 			if rev != "" {
@@ -294,7 +295,7 @@ func (txmgr *CouchDBTxMgr) Commit() error {
 	// Record a savepoint
 	err := txmgr.recordSavepoint()
 	if err != nil {
-		logger.Errorf("===COUCHDB=== Error during recordSavepoint: %s\n", err.Error())
+		logger.Debugf("===COUCHDB=== Error during recordSavepoint: %s\n", err)
 		return err
 	}
 
@@ -312,15 +313,15 @@ func (txmgr *CouchDBTxMgr) recordSavepoint() error {
 	// ensure full commit to flush all changes until now to disk
 	dbResponse, err := txmgr.couchDB.EnsureFullCommit()
 	if err != nil || dbResponse.Ok != true {
-		logger.Errorf("====COUCHDB==== Failed to perform full commit\n")
-		return errors.New("Failed to perform full commit")
+		logger.Debugf("====COUCHDB==== Failed to perform full commit\n")
+		return fmt.Errorf("Failed to perform full commit. Err: %s", err)
 	}
 
 	// construct savepoint document
 	// UpdateSeq would be useful if we want to get all db changes since a logical savepoint
 	dbInfo, _, err := txmgr.couchDB.GetDatabaseInfo()
 	if err != nil {
-		logger.Errorf("====COUCHDB==== Failed to get DB info %s\n", err.Error())
+		logger.Debugf("====COUCHDB==== Failed to get DB info %s\n", err)
 		return err
 	}
 	savepointDoc.BlockNum = txmgr.blockNum
@@ -328,21 +329,21 @@ func (txmgr *CouchDBTxMgr) recordSavepoint() error {
 
 	savepointDocJSON, err := json.Marshal(savepointDoc)
 	if err != nil {
-		logger.Errorf("====COUCHDB==== Failed to create savepoint data %s\n", err.Error())
+		logger.Debugf("====COUCHDB==== Failed to create savepoint data %s\n", err)
 		return err
 	}
 
 	// SaveDoc using couchdb client and use JSON format
 	_, err = txmgr.couchDB.SaveDoc(savepointDocID, "", savepointDocJSON, nil)
 	if err != nil {
-		logger.Errorf("====CouchDB==== Failed to save the savepoint to DB %s\n", err.Error())
+		logger.Debugf("====CouchDB==== Failed to save the savepoint to DB %s\n", err)
 	}
 
 	// ensure full commit to flush savepoint to disk
 	dbResponse, err = txmgr.couchDB.EnsureFullCommit()
 	if err != nil || dbResponse.Ok != true {
-		logger.Errorf("====COUCHDB==== Failed to perform full commit\n")
-		return errors.New("Failed to perform full commit")
+		logger.Debugf("====COUCHDB==== Failed to perform full commit\n")
+		return fmt.Errorf("Failed to perform full commit. Err:%s", err)
 	}
 	return nil
 }
@@ -354,14 +355,14 @@ func (txmgr *CouchDBTxMgr) GetBlockNumFromSavepoint() (uint64, error) {
 	savepointJSON, _, err := txmgr.couchDB.ReadDoc(savepointDocID)
 	if err != nil {
 		// TODO: differentiate between 404 and some other error code
-		logger.Errorf("====COUCHDB==== Failed to read savepoint data %s\n", err.Error())
+		logger.Debugf("====COUCHDB==== Failed to read savepoint data %s\n", err)
 		return 0, err
 	}
 
 	savepointDoc := &couchSavepointData{}
 	err = json.Unmarshal(savepointJSON, &savepointDoc)
 	if err != nil {
-		logger.Errorf("====COUCHDB==== Failed to read savepoint data %s\n", err.Error())
+		logger.Debugf("====COUCHDB==== Failed to read savepoint data %s\n", err)
 		return 0, err
 	}
 

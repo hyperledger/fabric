@@ -14,23 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package lockbasedtxmgmt
+package txmgr
 
 import (
-	"os"
-	"testing"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-type testEnv struct {
-	conf *Conf
-}
-
-func newTestEnv(t testing.TB) *testEnv {
-	conf := &Conf{"/tmp/tests/ledger/kvledger/txmgmt/lockbasedtxmgmt"}
-	os.RemoveAll(conf.DBPath)
-	return &testEnv{conf}
-}
-
-func (env *testEnv) Cleanup() {
-	os.RemoveAll(env.conf.DBPath)
+// TxMgr - an interface that a transaction manager should implement
+type TxMgr interface {
+	NewQueryExecutor() (ledger.QueryExecutor, error)
+	NewTxSimulator() (ledger.TxSimulator, error)
+	ValidateAndPrepare(block *common.Block, doMVCCValidation bool) (*common.Block, []*pb.InvalidTransaction, error)
+	GetBlockNumFromSavepoint() (uint64, error)
+	Commit() error
+	Rollback()
+	Shutdown()
 }

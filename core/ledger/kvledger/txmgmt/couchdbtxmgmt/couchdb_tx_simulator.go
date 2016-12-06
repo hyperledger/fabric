@@ -21,22 +21,22 @@ import (
 	"reflect"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
 	logging "github.com/op/go-logging"
 )
 
 type kvReadCache struct {
-	kvRead      *txmgmt.KVRead
+	kvRead      *rwset.KVRead
 	cachedValue []byte
 }
 
 type nsRWs struct {
 	readMap  map[string]*kvReadCache
-	writeMap map[string]*txmgmt.KVWrite
+	writeMap map[string]*rwset.KVWrite
 }
 
 func newNsRWs() *nsRWs {
-	return &nsRWs{make(map[string]*kvReadCache), make(map[string]*txmgmt.KVWrite)}
+	return &nsRWs{make(map[string]*kvReadCache), make(map[string]*rwset.KVWrite)}
 }
 
 // CouchDBTxSimulator is a transaction simulator used in `CouchDBTxMgr`
@@ -104,7 +104,7 @@ func (s *CouchDBTxSimulator) GetState(ns string, key string) ([]byte, error) {
 		}
 	}
 
-	nsRWs.readMap[key] = &kvReadCache{txmgmt.NewKVRead(key, version), value}
+	nsRWs.readMap[key] = &kvReadCache{rwset.NewKVRead(key, version), value}
 	logger.Debugf("===COUCHDB=== Exiting CouchDBTxSimulator.GetState()")
 	return value, nil
 }
@@ -131,7 +131,7 @@ func (s *CouchDBTxSimulator) SetState(ns string, key string, value []byte) error
 		kvWrite.SetValue(value)
 		return nil
 	}
-	nsRWs.writeMap[key] = txmgmt.NewKVWrite(key, value)
+	nsRWs.writeMap[key] = rwset.NewKVWrite(key, value)
 	logger.Debugf("===COUCHDB=== Exiting CouchDBTxSimulator.SetState()")
 	return nil
 }
@@ -147,26 +147,26 @@ func (s *CouchDBTxSimulator) Done() {
 	s.txmgr.commitRWLock.RUnlock()
 }
 
-func (s *CouchDBTxSimulator) getTxReadWriteSet() *txmgmt.TxReadWriteSet {
-	txRWSet := &txmgmt.TxReadWriteSet{}
+func (s *CouchDBTxSimulator) getTxReadWriteSet() *rwset.TxReadWriteSet {
+	txRWSet := &rwset.TxReadWriteSet{}
 	sortedNamespaces := getSortedKeys(s.rwMap)
 	for _, ns := range sortedNamespaces {
 		//Get namespace specific read-writes
 		nsReadWriteMap := s.rwMap[ns]
 		//add read set
-		reads := []*txmgmt.KVRead{}
+		reads := []*rwset.KVRead{}
 		sortedReadKeys := getSortedKeys(nsReadWriteMap.readMap)
 		for _, key := range sortedReadKeys {
 			reads = append(reads, nsReadWriteMap.readMap[key].kvRead)
 		}
 
 		//add write set
-		writes := []*txmgmt.KVWrite{}
+		writes := []*rwset.KVWrite{}
 		sortedWriteKeys := getSortedKeys(nsReadWriteMap.writeMap)
 		for _, key := range sortedWriteKeys {
 			writes = append(writes, nsReadWriteMap.writeMap[key])
 		}
-		nsRWs := &txmgmt.NsReadWriteSet{NameSpace: ns, Reads: reads, Writes: writes}
+		nsRWs := &rwset.NsReadWriteSet{NameSpace: ns, Reads: reads, Writes: writes}
 		txRWSet.NsRWs = append(txRWSet.NsRWs, nsRWs)
 	}
 
@@ -239,7 +239,7 @@ func (itr *sKVItr) Next() (ledger.QueryResult, error) {
 	// Get existing cache for RW at the namespace of the result set if it exists.  If none exists, then create it.
 	nsRWs := itr.simulator.getOrCreateNsRWHolder(itr.scanner.namespace)
 	nsRWs.readMap[committedKV.key] = &kvReadCache{
-		&txmgmt.KVRead{Key: committedKV.key, Version: committedKV.version}, committedKV.value}
+		&rwset.KVRead{Key: committedKV.key, Version: committedKV.version}, committedKV.value}
 
 	return &ledger.KV{Key: committedKV.key, Value: committedKV.value}, nil
 }

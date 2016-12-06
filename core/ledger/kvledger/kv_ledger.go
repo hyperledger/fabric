@@ -25,13 +25,14 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger/history"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/lockbasedtxmgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 
 	logging "github.com/op/go-logging"
 
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -60,7 +61,7 @@ func NewConf(filesystemPath string, maxBlockfileSize int) *Conf {
 // This implementation provides a key-value based data model
 type KVLedger struct {
 	blockStore           blkstorage.BlockStore
-	txtmgmt              txmgmt.TxMgr
+	txtmgmt              txmgr.TxMgr
 	historymgmt          history.HistMgr
 	pendingBlockToCommit *common.Block
 }
@@ -81,7 +82,7 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 	blockStore := fsblkstorage.NewFsBlockStore(blockStorageConf, indexConfig)
 
 	//State and History database managers
-	var txmgmt txmgmt.TxMgr
+	var txmgmt txmgr.TxMgr
 	var historymgmt history.HistMgr
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
@@ -97,8 +98,9 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 			couchDBDef.Username, //enter couchDB id here
 			couchDBDef.Password) //enter couchDB pw here
 	} else {
-		// Fall back to using RocksDB lockbased transaction manager
-		txmgmt = lockbasedtxmgmt.NewLockBasedTxMgr(&lockbasedtxmgmt.Conf{DBPath: conf.txMgrDBPath})
+		// Fall back to using goleveldb lockbased transaction manager
+		db := stateleveldb.NewVersionedDBProvider(&stateleveldb.Conf{DBPath: conf.txMgrDBPath}).GetDBHandle("Default")
+		txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(db)
 	}
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
@@ -112,13 +114,10 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 			couchDBDef.Username, //enter couchDB id here
 			couchDBDef.Password) //enter couchDB pw here
 	}
-
 	l := &KVLedger{blockStore, txmgmt, historymgmt, nil}
-
 	if err := recoverStateDB(l); err != nil {
 		panic(fmt.Errorf(`Error during state DB recovery:%s`, err))
 	}
-
 	return l, nil
 }
 
@@ -136,7 +135,7 @@ func recoverStateDB(l *KVLedger) error {
 	if savepointValue, err = l.txtmgmt.GetBlockNumFromSavepoint(); err != nil {
 		return err
 	}
-
+	logger.Debugf("savepointValue=%d, info.Height=%d", savepointValue, info.Height)
 	//Checking whether the savepointValue is in sync with block storage height
 	if savepointValue == info.Height {
 		return nil
@@ -159,7 +158,6 @@ func recoverStateDB(l *KVLedger) error {
 		}
 	}
 	l.pendingBlockToCommit = nil
-
 	return nil
 }
 
