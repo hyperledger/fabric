@@ -140,7 +140,7 @@ func TestRedeploy(t *testing.T) {
 	//this should fail with exists error
 	args = [][]byte{[]byte(DEPLOY), []byte("test"), b}
 	_, err = stub.MockInvoke("1", args)
-	if _, ok := err.(ChaincodeExistsErr); !ok {
+	if _, ok := err.(ExistsErr); !ok {
 		t.FailNow()
 	}
 }

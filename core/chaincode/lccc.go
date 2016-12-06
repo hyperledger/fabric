@@ -30,6 +30,21 @@ import (
 	"golang.org/x/net/context"
 )
 
+//define the datastructure for chaincodes to be serialized by proto
+type chaincodeData struct {
+	name    string `protobuf:"bytes,1,opt,name=name"`
+	version int32  `protobuf:"bytes,2,opt,name=version,proto3"`
+	depSpec []byte `protobuf:"bytes,3,opt,name=depSpec,proto3"`
+	escc    string `protobuf:"bytes,4,opt,name=escc"`
+	vscc    string `protobuf:"bytes,5,opt,name=vscc"`
+	policy  []byte `protobuf:"bytes,6,opt,name=policy"`
+}
+
+//implement functions needed from proto.Message for proto's mar/unmarshal functions
+func (cd *chaincodeData) Reset()         { *cd = chaincodeData{} }
+func (cd *chaincodeData) String() string { return proto.CompactTextString(cd) }
+func (*chaincodeData) ProtoMessage()     {}
+
 //The life cycle system chaincode manages chaincodes deployed
 //on this peer. It manages chaincodes via Invoke proposals.
 //     "Args":["deploy",<ChaincodeDeploymentSpec>]
@@ -115,10 +130,10 @@ func (f InvalidDeploymentSpecErr) Error() string {
 	return fmt.Sprintf("Invalid deployment spec : %s", string(f))
 }
 
-//ChaincodeExistsErr chaincode exists error
-type ChaincodeExistsErr string
+//ExistsErr chaincode exists error
+type ExistsErr string
 
-func (t ChaincodeExistsErr) Error() string {
+func (t ExistsErr) Error() string {
 	return fmt.Sprintf("Chaincode exists %s", string(t))
 }
 
@@ -136,79 +151,49 @@ func (f InvalidChaincodeNameErr) Error() string {
 	return fmt.Sprintf("invalid chain code name %s", string(f))
 }
 
+//MarshallErr error marshaling/unmarshalling
+type MarshallErr string
+
+func (m MarshallErr) Error() string {
+	return fmt.Sprintf("error while marshalling %s", string(m))
+}
+
 //-------------- helper functions ------------------
-//create the table to maintain list of chaincodes maintained in this
-//blockchain.
-func (lccc *LifeCycleSysCC) createChaincodeTable(stub shim.ChaincodeStubInterface, cctable string) error {
-	// Create table one
-	var colDefs []*shim.ColumnDefinition
-	nameColDef := shim.ColumnDefinition{Name: "name",
-		Type: shim.ColumnDefinition_STRING, Key: true}
-	versColDef := shim.ColumnDefinition{Name: "version",
-		Type: shim.ColumnDefinition_INT32, Key: false}
-
-	//QUESTION - Should code be separately maintained ?
-	codeDef := shim.ColumnDefinition{Name: "code",
-		Type: shim.ColumnDefinition_BYTES, Key: false}
-	colDefs = append(colDefs, &nameColDef)
-	colDefs = append(colDefs, &versColDef)
-	colDefs = append(colDefs, &codeDef)
-	return stub.CreateTable(cctable, colDefs)
-}
-
-//register create the chaincode table. name can be used to different
-//tables of chaincodes. This would provide the way to associate chaincodes
-//with chains(and ledgers)
-func (lccc *LifeCycleSysCC) register(stub shim.ChaincodeStubInterface, name string) error {
-	ccname := CHAINCODETABLE + "-" + name
-
-	row, err := stub.GetTable(ccname)
-	if err == nil && row != nil { //table exists, do nothing
-		return AlreadyRegisteredErr(name)
-	}
-
-	//there may be other err's but assume "not exists". Anything
-	//more serious than that bound to show up
-	err = lccc.createChaincodeTable(stub, ccname)
-
-	return err
-}
-
 //create the chaincode on the given chain
-func (lccc *LifeCycleSysCC) createChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string, cccode []byte) (*shim.Row, error) {
-	var columns []*shim.Column
-
-	nameCol := shim.Column{Value: &shim.Column_String_{String_: ccname}}
-	versCol := shim.Column{Value: &shim.Column_Int32{Int32: 0}}
-	codeCol := shim.Column{Value: &shim.Column_Bytes{Bytes: cccode}}
-
-	columns = append(columns, &nameCol)
-	columns = append(columns, &versCol)
-	columns = append(columns, &codeCol)
-
-	row := &shim.Row{Columns: columns}
-	_, err := stub.InsertRow(CHAINCODETABLE+"-"+chainname, *row)
+func (lccc *LifeCycleSysCC) createChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string, cccode []byte) (*chaincodeData, error) {
+	cd := &chaincodeData{name: ccname, depSpec: cccode}
+	cdbytes, err := proto.Marshal(cd)
 	if err != nil {
-		return nil, fmt.Errorf("insertion of chaincode failed. %s", err)
+		return nil, err
 	}
-	return row, nil
+
+	if cdbytes == nil {
+		return nil, MarshallErr(ccname)
+	}
+
+	err = stub.PutState(ccname, cdbytes)
+
+	return cd, err
 }
 
 //checks for existence of chaincode on the given chain
-func (lccc *LifeCycleSysCC) getChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string) (shim.Row, bool, error) {
-	var columns []shim.Column
-	nameCol := shim.Column{Value: &shim.Column_String_{String_: ccname}}
-	columns = append(columns, nameCol)
-
-	row, err := stub.GetRow(CHAINCODETABLE+"-"+chainname, columns)
+func (lccc *LifeCycleSysCC) getChaincode(stub shim.ChaincodeStubInterface, chainname string, ccname string) (*chaincodeData, error) {
+	cdbytes, err := stub.GetState(ccname)
 	if err != nil {
-		return shim.Row{}, false, err
+		return nil, err
 	}
 
-	if len(row.Columns) > 0 {
-		return row, true, nil
+	if cdbytes != nil {
+		cd := &chaincodeData{}
+		err = proto.Unmarshal(cdbytes, cd)
+		if err != nil {
+			return nil, MarshallErr(ccname)
+		}
+
+		return cd, nil
 	}
-	return row, false, nil
+
+	return nil, nil
 }
 
 //getChaincodeDeploymentSpec returns a ChaincodeDeploymentSpec given args
@@ -302,15 +287,6 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 
 //this implements "deploy" Invoke transaction
 func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chainname string, code []byte) error {
-	//lazy creation of chaincode table for chainname...its possible
-	//there are chains without chaincodes
-	if err := lccc.register(stub, chainname); err != nil {
-		//if its already registered, ok... proceed
-		if _, ok := err.(AlreadyRegisteredErr); !ok {
-			return err
-		}
-	}
-
 	cds, err := lccc.getChaincodeDeploymentSpec(code)
 
 	if err != nil {
@@ -325,9 +301,9 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return err
 	}
 
-	_, exists, err := lccc.getChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name)
-	if exists {
-		return ChaincodeExistsErr(cds.ChaincodeSpec.ChaincodeID.Name)
+	cd, err := lccc.getChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name)
+	if cd != nil {
+		return ExistsErr(cds.ChaincodeSpec.ChaincodeID.Name)
 	}
 
 	/**TODO - this is done in the endorser service for now so we can
@@ -392,16 +368,16 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 		ccname := string(args[2])
 		//get chaincode given <chain, name>
 
-		ccrow, exists, _ := lccc.getChaincode(stub, chain, ccname)
-		if !exists {
+		cd, _ := lccc.getChaincode(stub, chain, ccname)
+		if cd == nil {
 			logger.Debug("ChaincodeID [%s/%s] does not exist", chain, ccname)
 			return nil, TXNotFoundErr(chain + "/" + ccname)
 		}
 
 		if function == GETCCINFO {
-			return []byte(ccrow.Columns[1].GetString_()), nil
+			return []byte(cd.name), nil
 		}
-		return ccrow.Columns[2].GetBytes(), nil
+		return cd.depSpec, nil
 	}
 
 	return nil, InvalidFunctionErr(function)
