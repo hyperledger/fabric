@@ -70,6 +70,7 @@ logging:
     chaincode: warning
     version: warning
     protoutils: debug
+    error:     warning
 
 ###############################################################################
 #

@@ -20,8 +20,10 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
@@ -35,4 +37,13 @@ func GetEndorserClient(cmd *cobra.Command) (pb.EndorserClient, error) {
 	}
 	endorserClient := pb.NewEndorserClient(clientConn)
 	return endorserClient, nil
+}
+
+// SetErrorLoggingLevel sets the 'error' module's logger to the value in
+// core.yaml
+func SetErrorLoggingLevel() error {
+	viperErrorLoggingLevel := viper.GetString("logging.error")
+	_, err := flogging.SetModuleLogLevel("error", viperErrorLoggingLevel)
+
+	return err
 }

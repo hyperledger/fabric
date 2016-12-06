@@ -39,7 +39,9 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
+	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -202,6 +204,11 @@ func serve(args []string) error {
 			}
 		}()
 	}
+
+	// sets the logging level for the 'error' module to the default value from
+	// core.yaml. it can also be updated dynamically using
+	// "peer logging setlevel error <log-level>"
+	common.SetErrorLoggingLevel()
 
 	// Block until grpc server exits
 	return <-serve

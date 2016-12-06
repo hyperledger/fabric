@@ -21,28 +21,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+
+	"github.com/hyperledger/fabric/flogging"
+	logging "github.com/op/go-logging"
 )
 
 // MaxCallStackLength is the maximum length of the stored call stack
 const MaxCallStackLength = 30
 
 // ComponentCode shows the originating component/module
-type ComponentCode uint
+type ComponentCode string
 
 // ReasonCode for low level error description
-type ReasonCode uint
+type ReasonCode string
 
-// Return codes
-const (
-	Utility ComponentCode = iota
-)
-
-// Result codes
-const (
-	// Placeholders
-	UnknownError ReasonCode = iota
-	ErrorWithArg ReasonCode = 1
-)
+var errorLogger = logging.MustGetLogger("error")
 
 // CallStackError is a general interface for
 // Fabric errors
@@ -67,7 +60,7 @@ func init() {
 }
 
 func initErrors() {
-	e := json.Unmarshal([]byte(errorCodes), &emap)
+	e := json.Unmarshal([]byte(errorMapping), &emap)
 	if e != nil {
 		panic(e)
 	}
@@ -98,7 +91,7 @@ func newHLError(debug bool) *hlError {
 
 func setupHLError(e *hlError, debug bool) {
 	e.componentcode = Utility
-	e.reasoncode = UnknownError
+	e.reasoncode = UtilityUnknownError
 	if !debug {
 		e.stackGetter = noopGetStack
 		return
@@ -132,7 +125,7 @@ func (h *hlError) GetReasonCode() ReasonCode {
 
 // GetErrorCode returns a formatted error code string
 func (h *hlError) GetErrorCode() string {
-	return fmt.Sprintf("%d-%d", h.componentcode, h.reasoncode)
+	return fmt.Sprintf("%s-%s", h.componentcode, h.reasoncode)
 }
 
 // Message returns the corresponding error message for this error in default
@@ -140,12 +133,20 @@ func (h *hlError) GetErrorCode() string {
 // TODO - figure out the best way to read in system language instead of using
 // hard-coded default language
 func (h *hlError) Message() string {
-	return fmt.Sprintf(emap[fmt.Sprintf("%d", h.componentcode)][fmt.Sprintf("%d", h.reasoncode)][language], h.args...)
+	// initialize logging level for errors from core.yaml. it can also be set
+	// for code running on the peer dynamically via CLI using
+	// "peer logging setlevel error <log-level>"
+	errorLogLevelString, _ := flogging.GetModuleLogLevel("error")
+	if errorLogLevelString == logging.DEBUG.String() {
+		messageWithCallStack := fmt.Sprintf(emap[fmt.Sprintf("%s", h.componentcode)][fmt.Sprintf("%s", h.reasoncode)][language], h.args...) + "\n" + h.GetStack()
+		return messageWithCallStack
+	}
+	return fmt.Sprintf(emap[fmt.Sprintf("%s", h.componentcode)][fmt.Sprintf("%s", h.reasoncode)][language], h.args...)
 }
 
 // MessageIn returns the corresponding error message for this error in 'language'
 func (h *hlError) MessageIn(language string) string {
-	return fmt.Sprintf(emap[fmt.Sprintf("%d", h.componentcode)][fmt.Sprintf("%d", h.reasoncode)][language], h.args...)
+	return fmt.Sprintf(emap[fmt.Sprintf("%s", h.componentcode)][fmt.Sprintf("%s", h.reasoncode)][language], h.args...)
 }
 
 // Error creates a CallStackError using a specific Component Code and
@@ -174,6 +175,10 @@ func getStack(stack callstack) string {
 	if stack == nil {
 		return fmt.Sprintf("No call stack available")
 	}
+	// this removes the core/errors module calls from the callstack because they
+	// are not useful for debugging
+	const firstNonErrorModuleCall int = 2
+	stack = stack[firstNonErrorModuleCall:]
 	for _, pc := range stack {
 		f := runtime.FuncForPC(pc)
 		file, line := f.FileLine(pc)

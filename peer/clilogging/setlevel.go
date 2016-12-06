@@ -21,6 +21,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
@@ -47,8 +48,8 @@ func setLevel(cmd *cobra.Command, args []string) (err error) {
 	} else {
 		clientConn, err := peer.NewPeerClientConnection()
 		if err != nil {
-			logger.Infof("Error trying to connect to local peer: %s", err)
-			err = fmt.Errorf("Error trying to connect to local peer: %s", err)
+			err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
+			logger.Warningf("%s", err)
 			fmt.Println(&pb.ServerStatus{Status: pb.ServerStatus_UNKNOWN})
 			return err
 		}
@@ -58,10 +59,10 @@ func setLevel(cmd *cobra.Command, args []string) (err error) {
 		logResponse, err := serverClient.SetModuleLogLevel(context.Background(), &pb.LogLevelRequest{LogModule: args[0], LogLevel: args[1]})
 
 		if err != nil {
-			logger.Warningf("Invalid log level: %s", args[1])
+			logger.Warningf("%s", err)
 			return err
 		}
-		logger.Infof("Log level set for module '%s': %s", logResponse.LogModule, logResponse.LogLevel)
+		logger.Infof("Log level set for peer module '%s': %s", logResponse.LogModule, logResponse.LogLevel)
 	}
 	return err
 }
