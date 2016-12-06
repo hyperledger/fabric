@@ -12,7 +12,7 @@ services:
       - ORDERER_GENERAL_MAXWINDOWSIZE=1000
       - ORDERER_GENERAL_ORDERERTYPE=solo
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
-      - ORDERER_GENERAL_LISTENPORT=5005
+      - ORDERER_GENERAL_LISTENPORT=7050
       - ORDERER_RAMLEDGER_HISTORY_SIZE=100
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
     command: orderer
@@ -29,7 +29,7 @@ services:
       - CORE_NEXT=true
       - CORE_PEER_ENDORSER_ENABLED=true
       - CORE_PEER_COMMITTER_ENABLED=true
-      - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005
+      - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
     volumes:
         - /var/run/:/host/var/run/
     networks:
@@ -67,7 +67,7 @@ services:
     environment:
       - CORE_PEER_ID=vp2
       - CORE_PEER_PROFILE_ENABLED=true
-      - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005
+      - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_GOSSIP_BOOTSTRAP=vp0:10000
       - CORE_PEER_GOSSIP_ORGLEADER=false
     command: peer node start

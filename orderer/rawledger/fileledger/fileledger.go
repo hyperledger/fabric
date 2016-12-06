@@ -63,6 +63,7 @@ type fileLedgerFactory struct {
 	mutex     sync.Mutex
 }
 
+// New creates a new fileledger Factory and the ordering system chain specified by the systemGenesis block (if it does not already exist)
 func New(directory string, systemGenesis *cb.Block) (rawledger.Factory, rawledger.ReadWriter) {
 	env := &cb.Envelope{}
 	err := proto.Unmarshal(systemGenesis.Data.Data[0], env)

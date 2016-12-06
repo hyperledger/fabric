@@ -17,223 +17,240 @@ limitations under the License.
 package solo
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/rawledger"
-	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-
-	"github.com/golang/protobuf/proto"
 )
 
-type mockConfigManager struct {
-	validated   bool
-	applied     bool
-	validateErr error
-	applyErr    error
+type mockBlockCutter struct {
+	queueNext bool // Ordered returns nil false when not set to true
+	configTx  bool // Ordered returns [][]{curBatch, []{newTx}}, true when set to true
+	cutNext   bool // Ordered returns [][]{append(curBatch, newTx)}, true when set to true
+	curBatch  []*cb.Envelope
+	block     chan struct{}
 }
 
-func (mcm *mockConfigManager) Validate(configtx *cb.ConfigurationEnvelope) error {
-	mcm.validated = true
-	return mcm.validateErr
-}
-
-func (mcm *mockConfigManager) Apply(message *cb.ConfigurationEnvelope) error {
-	mcm.applied = true
-	return mcm.applyErr
-}
-
-func (mcm *mockConfigManager) ChainID() string {
-	panic("Unimplemented")
-}
-
-type mockConfigFilter struct {
-	manager configtx.Manager
-}
-
-func (mcf *mockConfigFilter) Apply(msg *cb.Envelope) broadcastfilter.Action {
-	if bytes.Equal(msg.Payload, configTx) {
-		if mcf.manager == nil || mcf.manager.Validate(nil) != nil {
-			return broadcastfilter.Reject
-		}
-		return broadcastfilter.Reconfigure
-	}
-	return broadcastfilter.Forward
-}
-
-func getEverything(batchSize int) (*mockConfigManager, blockcutter.Receiver, rawledger.ReadWriter) {
-	cm := &mockConfigManager{}
-	filters := broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
-		broadcastfilter.EmptyRejectRule,
-		&mockConfigFilter{cm},
-		broadcastfilter.AcceptRule,
-	})
-	cutter := blockcutter.NewReceiverImpl(batchSize, filters, cm)
-	_, rl := ramledger.New(10, genesisBlock)
-	return cm, cutter, rl
-
-}
-
-var genesisBlock *cb.Block
-
-var configTx []byte
-
-func init() {
-	bootstrapper := static.New()
-	var err error
-	genesisBlock, err = bootstrapper.GenesisBlock()
-	if err != nil {
-		panic("Error intializing static bootstrap genesis block")
-	}
-
-	configTx, err = proto.Marshal(&cb.ConfigurationEnvelope{})
-	if err != nil {
-		panic("Error marshaling empty config tx")
+func newMockBlockCutter() *mockBlockCutter {
+	return &mockBlockCutter{
+		queueNext: true,
+		configTx:  false,
+		cutNext:   false,
+		block:     make(chan struct{}),
 	}
 }
 
-type mockB struct {
-	grpc.ServerStream
-	recvChan chan *cb.Envelope
-	sendChan chan *ab.BroadcastResponse
-}
+func (mbc *mockBlockCutter) Ordered(env *cb.Envelope) ([][]*cb.Envelope, bool) {
+	defer func() {
+		<-mbc.block
+	}()
 
-func newMockB() *mockB {
-	return &mockB{
-		recvChan: make(chan *cb.Envelope),
-		sendChan: make(chan *ab.BroadcastResponse),
+	if !mbc.queueNext {
+		logger.Debugf("mockBlockCutter: Not queueing message")
+		return nil, false
 	}
+
+	if mbc.configTx {
+		logger.Debugf("mockBlockCutter: Returning dual batch")
+		res := [][]*cb.Envelope{mbc.curBatch, []*cb.Envelope{env}}
+		mbc.curBatch = nil
+		return res, true
+	}
+
+	mbc.curBatch = append(mbc.curBatch, env)
+
+	if mbc.cutNext {
+		logger.Debugf("mockBlockCutter: Returning regular batch")
+		res := [][]*cb.Envelope{mbc.curBatch}
+		mbc.curBatch = nil
+		return res, true
+	}
+
+	logger.Debugf("mockBlockCutter: Appending to batch")
+	return nil, true
 }
 
-func (m *mockB) Send(br *ab.BroadcastResponse) error {
-	m.sendChan <- br
+func (mbc *mockBlockCutter) Cut() []*cb.Envelope {
+	logger.Debugf("mockBlockCutter: Cutting batch")
+	res := mbc.curBatch
+	mbc.curBatch = nil
+	return res
+}
+
+type mockWriter struct {
+	batches chan []*cb.Envelope
+}
+
+func (mw *mockWriter) Append(data []*cb.Envelope, metadata [][]byte) *cb.Block {
+	logger.Debugf("mockWriter: attempting to write batch")
+	mw.batches <- data
 	return nil
 }
 
-func (m *mockB) Recv() (*cb.Envelope, error) {
-	msg, ok := <-m.recvChan
-	if !ok {
-		return msg, fmt.Errorf("Channel closed")
+type mockConsenterSupport struct {
+	cutter *mockBlockCutter
+	writer *mockWriter
+}
+
+func (mcs *mockConsenterSupport) BlockCutter() blockcutter.Receiver {
+	return mcs.cutter
+}
+func (mcs *mockConsenterSupport) SharedConfig() sharedconfig.Manager {
+	panic("Unimplemented")
+}
+func (mcs *mockConsenterSupport) Writer() rawledger.Writer {
+	return mcs.writer
+}
+
+var testMessage = &cb.Envelope{Payload: []byte("TEST_MESSAGE")}
+
+func syncQueueMessage(msg *cb.Envelope, chain multichain.Chain, bc *mockBlockCutter) {
+	chain.Enqueue(msg)
+	bc.block <- struct{}{}
+}
+
+type waitableGo struct {
+	done chan struct{}
+}
+
+func goWithWait(target func()) *waitableGo {
+	wg := &waitableGo{
+		done: make(chan struct{}),
 	}
-	return msg, nil
+	go func() {
+		target()
+		close(wg.done)
+	}()
+	return wg
 }
 
 func TestEmptyBatch(t *testing.T) {
-	cm, cutter, rl := getEverything(1)
-	bs := newChain(time.Millisecond, cm, cutter, rl, nil)
-	if bs.rl.(rawledger.Reader).Height() != 1 {
-		t.Fatalf("Expected no new blocks created")
+	support := &mockConsenterSupport{
+		writer: &mockWriter{batches: make(chan []*cb.Envelope)},
+		cutter: newMockBlockCutter(),
+	}
+	defer close(support.cutter.block)
+	bs := newChain(time.Millisecond, support)
+	wg := goWithWait(bs.main)
+	defer bs.Halt()
+
+	syncQueueMessage(testMessage, bs, support.cutter)
+	bs.Halt()
+	select {
+	case <-support.writer.batches:
+		t.Fatalf("Expected no invocations of Append")
+	case <-wg.done:
 	}
 }
 
 func TestBatchTimer(t *testing.T) {
-	batchSize := 2
-	cm, cutter, rl := getEverything(batchSize)
-	bs := newChain(time.Millisecond, cm, cutter, rl, nil)
-	bs.Start()
+	support := &mockConsenterSupport{
+		writer: &mockWriter{batches: make(chan []*cb.Envelope)},
+		cutter: newMockBlockCutter(),
+	}
+	defer close(support.cutter.block)
+	bs := newChain(time.Millisecond, support)
+	wg := goWithWait(bs.main)
 	defer bs.Halt()
-	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
 
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
+	syncQueueMessage(testMessage, bs, support.cutter)
 
 	select {
-	case <-it.ReadyChan():
-		it.Next()
+	case <-support.writer.batches:
 	case <-time.After(time.Second):
 		t.Fatalf("Expected a block to be cut because of batch timer expiration but did not")
 	}
 
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
+	syncQueueMessage(testMessage, bs, support.cutter)
 	select {
-	case <-it.ReadyChan():
+	case <-support.writer.batches:
 	case <-time.After(time.Second):
 		t.Fatalf("Did not create the second batch, indicating that the timer was not appopriately reset")
+	}
+
+	bs.Halt()
+	select {
+	case <-support.writer.batches:
+		t.Fatalf("Expected no invocations of Append")
+	case <-wg.done:
 	}
 }
 
 func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
-	batchSize := 2
-	cm, cutter, rl := getEverything(batchSize)
-	bs := newChain(time.Millisecond, cm, cutter, rl, nil)
-	bs.Start()
-	defer bs.Halt()
-	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
+	support := &mockConsenterSupport{
+		writer: &mockWriter{batches: make(chan []*cb.Envelope)},
+		cutter: newMockBlockCutter(),
+	}
+	defer close(support.cutter.block)
 
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
+	bs := newChain(time.Hour, support)
+	wg := goWithWait(bs.main)
+	defer bs.Halt()
+
+	syncQueueMessage(testMessage, bs, support.cutter)
+	support.cutter.cutNext = true
+	syncQueueMessage(testMessage, bs, support.cutter)
 
 	select {
-	case <-it.ReadyChan():
-		it.Next()
+	case <-support.writer.batches:
 	case <-time.After(time.Second):
 		t.Fatalf("Expected a block to be cut because the batch was filled, but did not")
 	}
 
-	// Change the batch timeout to be near instant
+	// Change the batch timeout to be near instant, if the timer was not reset, it will still be waiting an hour
 	bs.batchTimeout = time.Millisecond
 
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
+	support.cutter.cutNext = false
+	syncQueueMessage(testMessage, bs, support.cutter)
+
 	select {
-	case <-it.ReadyChan():
+	case <-support.writer.batches:
 	case <-time.After(time.Second):
 		t.Fatalf("Did not create the second batch, indicating that the old timer was still running")
 	}
-}
 
-func TestFilledBatch(t *testing.T) {
-	batchSize := 2
-	cm, cutter, rl := getEverything(batchSize)
-	bs := newChain(time.Hour, cm, cutter, rl, nil)
-	messages := 10
-	done := make(chan struct{})
-	go func() {
-		bs.main()
-		close(done)
-	}()
-	for i := 0; i < messages; i++ {
-		bs.sendChan <- &cb.Envelope{Payload: []byte("Some bytes")}
-	}
 	bs.Halt()
-	<-done
-	expected := uint64(1 + messages/batchSize)
-	if bs.rl.(rawledger.Reader).Height() != expected {
-		t.Fatalf("Expected %d blocks but got %d", expected, bs.rl.(rawledger.Reader).Height())
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Should have exited")
+	case <-wg.done:
 	}
 }
 
-func TestReconfigureGoodPath(t *testing.T) {
-	batchSize := 2
-	cm, cutter, rl := getEverything(batchSize)
-	bs := newChain(time.Hour, cm, cutter, rl, nil)
-	done := make(chan struct{})
-	go func() {
-		bs.main()
-		close(done)
-	}()
+func TestConfigStyleMultiBatch(t *testing.T) {
+	support := &mockConsenterSupport{
+		writer: &mockWriter{batches: make(chan []*cb.Envelope)},
+		cutter: newMockBlockCutter(),
+	}
+	defer close(support.cutter.block)
+	bs := newChain(time.Hour, support)
+	wg := goWithWait(bs.main)
+	defer bs.Halt()
 
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg1")}
-	bs.sendChan <- &cb.Envelope{Payload: configTx}
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg2")}
-	bs.sendChan <- &cb.Envelope{Payload: []byte("Msg3")}
+	syncQueueMessage(testMessage, bs, support.cutter)
+	support.cutter.configTx = true
+	syncQueueMessage(testMessage, bs, support.cutter)
 
-	bs.Halt()
-	<-done
-	expected := uint64(4)
-	if bs.rl.(rawledger.Reader).Height() != expected {
-		t.Fatalf("Expected %d blocks but got %d", expected, bs.rl.(rawledger.Reader).Height())
+	select {
+	case <-support.writer.batches:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected two blocks to be cut but never got the first")
 	}
 
-	if !cm.validated {
-		t.Errorf("ConfigTx should have been validated before processing")
+	select {
+	case <-support.writer.batches:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected the config type tx to create two blocks, but only go the first")
+	}
+
+	bs.Halt()
+	select {
+	case <-time.After(time.Second):
+		t.Fatalf("Should have exited")
+	case <-wg.done:
 	}
 }

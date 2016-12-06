@@ -17,11 +17,8 @@ limitations under the License.
 package backend
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
 	"github.com/hyperledger/fabric/orderer/common/policies"
-	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -29,40 +26,28 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-type xxxMultichain struct {
-	chainID      string
-	chainSupport *xxxChainSupport
+type xxxSupportManager struct {
+	chainID string
+	support *xxxSupport
 }
 
-func (xxx *xxxMultichain) GetChain(id string) (multichain.ChainSupport, bool) {
+func (xxx *xxxSupportManager) GetChain(id string) (deliver.Support, bool) {
 	if id != xxx.chainID {
 		return nil, false
 	}
-	return xxx.chainSupport, true
+	return xxx.support, true
 }
 
-type xxxChainSupport struct {
+type xxxSupport struct {
 	reader rawledger.Reader
 }
 
-func (xxx *xxxChainSupport) ConfigManager() configtx.Manager {
+func (xxx *xxxSupport) PolicyManager() policies.Manager {
 	panic("Unimplemented")
 }
 
-func (xxx *xxxChainSupport) PolicyManager() policies.Manager {
-	panic("Unimplemented")
-}
-
-func (xxx *xxxChainSupport) Filters() *broadcastfilter.RuleSet {
-	panic("Unimplemented")
-}
-
-func (xxx *xxxChainSupport) Reader() rawledger.Reader {
+func (xxx *xxxSupport) Reader() rawledger.Reader {
 	return xxx.reader
-}
-
-func (xxx *xxxChainSupport) Chain() multichain.Chain {
-	panic("Unimplemented")
 }
 
 type BackendAB struct {
@@ -90,9 +75,9 @@ func NewBackendAB(backend *Backend) *BackendAB {
 		panic(err)
 	}
 
-	manager := &xxxMultichain{
-		chainID:      payload.Header.ChainHeader.ChainID,
-		chainSupport: &xxxChainSupport{reader: backend.ledger},
+	manager := &xxxSupportManager{
+		chainID: payload.Header.ChainHeader.ChainID,
+		support: &xxxSupport{reader: backend.ledger},
 	}
 	// XXX End hackiness
 

@@ -115,7 +115,7 @@ func TestManagerImpl(t *testing.T) {
 	lf, rl := ramledger.New(10, genesisBlock)
 
 	consenters := make(map[string]Consenter)
-	consenters["solo"] = &mockConsenter{}
+	consenters[static.DefaultConsensusType] = &mockConsenter{}
 
 	manager := NewManagerImpl(lf, consenters)
 
@@ -130,13 +130,13 @@ func TestManagerImpl(t *testing.T) {
 		t.Fatalf("Should have gotten chain which was initialized by ramledger")
 	}
 
-	messages := make([]*cb.Envelope, XXXBatchSize)
-	for i := 0; i < XXXBatchSize; i++ {
+	messages := make([]*cb.Envelope, static.DefaultBatchSize)
+	for i := 0; i < static.DefaultBatchSize; i++ {
 		messages[i] = makeNormalTx(static.TestChainID, i)
 	}
 
 	for _, message := range messages {
-		chainSupport.Chain().Enqueue(message)
+		chainSupport.Enqueue(message)
 	}
 
 	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
@@ -146,7 +146,7 @@ func TestManagerImpl(t *testing.T) {
 		if status != cb.Status_SUCCESS {
 			t.Fatalf("Could not retrieve block")
 		}
-		for i := 0; i < XXXBatchSize; i++ {
+		for i := 0; i < static.DefaultBatchSize; i++ {
 			if !reflect.DeepEqual(util.ExtractEnvelopeOrPanic(block, i), messages[i]) {
 				t.Errorf("Block contents wrong at index %d", i)
 			}

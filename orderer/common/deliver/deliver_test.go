@@ -22,10 +22,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/policies"
-	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -78,45 +75,33 @@ func (m *mockD) Recv() (*ab.DeliverUpdate, error) {
 	return msg, nil
 }
 
-type mockMultichainManager struct {
-	chains map[string]*mockChainSupport
+type mockSupportManager struct {
+	chains map[string]*mockSupport
 }
 
-func (mm *mockMultichainManager) GetChain(chainID string) (multichain.ChainSupport, bool) {
+func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 	cs, ok := mm.chains[chainID]
 	return cs, ok
 }
 
-type mockChainSupport struct {
+type mockSupport struct {
 	ledger rawledger.ReadWriter
 }
 
-func (mcs *mockChainSupport) ConfigManager() configtx.Manager {
+func (mcs *mockSupport) PolicyManager() policies.Manager {
 	panic("Unimplemented")
 }
 
-func (mcs *mockChainSupport) PolicyManager() policies.Manager {
-	panic("Unimplemented")
-}
-
-func (mcs *mockChainSupport) Filters() *broadcastfilter.RuleSet {
-	panic("Unimplemented")
-}
-
-func (mcs *mockChainSupport) Reader() rawledger.Reader {
+func (mcs *mockSupport) Reader() rawledger.Reader {
 	return mcs.ledger
 }
 
-func (mcs *mockChainSupport) Chain() multichain.Chain {
-	panic("Unimplemented")
-}
-
-func newMockMultichainManager() *mockMultichainManager {
+func newMockMultichainManager() *mockSupportManager {
 	_, rl := ramledger.New(ledgerSize, genesisBlock)
-	mm := &mockMultichainManager{
-		chains: make(map[string]*mockChainSupport),
+	mm := &mockSupportManager{
+		chains: make(map[string]*mockSupport),
 	}
-	mm.chains[string(systemChainID)] = &mockChainSupport{
+	mm.chains[string(systemChainID)] = &mockSupport{
 		ledger: rl,
 	}
 	return mm

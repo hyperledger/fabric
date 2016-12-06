@@ -188,6 +188,8 @@ class UserRegistration:
 		self.atomicBroadcastStubsDict[composeService] = newABStub
 		return newABStub
 
+# The default chain ID when the system is statically bootstrapped for testing
+TEST_CHAIN_ID = "**TEST_CHAINID**".encode()
 
 # Registerses a user on a specific composeService
 def registerUser(context, secretMsg, composeService):
@@ -217,7 +219,7 @@ def getUserRegistration(context, enrollId):
 def createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize):
     seek = ab_pb2.SeekInfo()
     startVal = seek.__getattribute__(Start)
-    seekInfo = ab_pb2.SeekInfo(Start = startVal, SpecifiedNumber = SpecifiedNumber, WindowSize = WindowSize)
+    seekInfo = ab_pb2.SeekInfo(Start = startVal, SpecifiedNumber = SpecifiedNumber, WindowSize = WindowSize, ChainID = TEST_CHAIN_ID)
     deliverUpdateMsg = ab_pb2.DeliverUpdate(Seek = seekInfo)
     return deliverUpdateMsg
 
@@ -227,7 +229,8 @@ def generateBroadcastMessages(numToGenerate = 1, timeToHoldOpen = 1):
     for i in range(0, numToGenerate):
         envelope = common_pb2.Envelope()
         payload = common_pb2.Payload(header = common_pb2.Header(chainHeader = common_pb2.ChainHeader()))
-        # TODO, appropriately set the header type
+        payload.header.chainHeader.chainID = TEST_CHAIN_ID
+        payload.header.chainHeader.type = common_pb2.ENDORSER_TRANSACTION
         payload.data = str("BDD test: {0}".format(datetime.datetime.utcnow()))
         envelope.payload = payload.SerializeToString()
         messages.append(envelope)

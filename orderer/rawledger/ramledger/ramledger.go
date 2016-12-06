@@ -56,6 +56,8 @@ type ramLedgerFactory struct {
 	mutex   sync.Mutex
 }
 
+// New creates a new ramledger factory and system ordering chain based on the given systemGenesis block,
+// because there is no persistence, the new ReadWriter will have only the genesis block contained
 func New(maxSize int, systemGenesis *cb.Block) (rawledger.Factory, rawledger.ReadWriter) {
 	rlf := &ramLedgerFactory{
 		maxSize: maxSize,
@@ -84,7 +86,6 @@ func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (rawledger.ReadWriter, 
 
 	key := chainID
 
-	// Check a second time with the lock held
 	l, ok := rlf.ledgers[key]
 	if ok {
 		return l, nil

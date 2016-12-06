@@ -23,6 +23,22 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
+type broadcastSupport struct {
+	multichain.Manager
+}
+
+func (bs broadcastSupport) GetChain(chainID string) (broadcast.Support, bool) {
+	return bs.Manager.GetChain(chainID)
+}
+
+type deliverSupport struct {
+	multichain.Manager
+}
+
+func (bs deliverSupport) GetChain(chainID string) (deliver.Support, bool) {
+	return bs.Manager.GetChain(chainID)
+}
+
 type server struct {
 	bh broadcast.Handler
 	dh deliver.Handler
@@ -33,8 +49,8 @@ func NewServer(ml multichain.Manager, queueSize, maxWindowSize int) ab.AtomicBro
 	logger.Infof("Starting orderer")
 
 	s := &server{
-		dh: deliver.NewHandlerImpl(ml, maxWindowSize),
-		bh: broadcast.NewHandlerImpl(queueSize, ml),
+		dh: deliver.NewHandlerImpl(deliverSupport{ml}, maxWindowSize),
+		bh: broadcast.NewHandlerImpl(broadcastSupport{ml}, queueSize),
 	}
 	return s
 }

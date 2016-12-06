@@ -18,22 +18,22 @@ package multichain
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
+	"github.com/hyperledger/fabric/orderer/common/deliver"
 	"github.com/hyperledger/fabric/orderer/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-const XXXBatchSize = 10 // XXX
-
 // Consenter defines the backing ordering mechanism
 type Consenter interface {
 	// HandleChain should create a return a reference to a Chain for the given set of resources
-	// It will only be invoked for a given chain once per process.  See the description of Chain
-	// for more details
-	HandleChain(configManager configtx.Manager, cutter blockcutter.Receiver, rl rawledger.Writer, metadata []byte) Chain
+	// It will only be invoked for a given chain once per process.  In general, errors will be treated
+	// as irrecoverable and cause system shutdown.  See the description of Chain for more details
+	HandleChain(support ConsenterSupport) (Chain, error)
 }
 
 // Chain defines a way to inject messages for ordering
@@ -55,31 +55,29 @@ type Chain interface {
 	Halt()
 }
 
+// ConsenterSupport provides the resources available to a Consenter implementation
+type ConsenterSupport interface {
+	BlockCutter() blockcutter.Receiver
+	SharedConfig() sharedconfig.Manager
+	Writer() rawledger.Writer
+}
+
 // ChainSupport provides a wrapper for the resources backing a chain
 type ChainSupport interface {
-	// ConfigManager returns the current config for the chain
-	ConfigManager() configtx.Manager
-
-	// PolicyManager returns the current policy manager as specified by the chain configuration
-	PolicyManager() policies.Manager
-
-	// Filters returns the set of broadcast filters for this chain
-	Filters() *broadcastfilter.RuleSet
-
-	// Reader returns the chain Reader for the chain
-	Reader() rawledger.Reader
-
-	// Chain returns the consenter backed chain
-	Chain() Chain
+	broadcast.Support
+	deliver.Support
+	ConsenterSupport
 }
 
 type chainSupport struct {
-	chain         Chain
-	configManager configtx.Manager
-	policyManager policies.Manager
-	reader        rawledger.Reader
-	writer        rawledger.Writer
-	filters       *broadcastfilter.RuleSet
+	chain               Chain
+	cutter              blockcutter.Receiver
+	configManager       configtx.Manager
+	policyManager       policies.Manager
+	sharedConfigManager sharedconfig.Manager
+	reader              rawledger.Reader
+	writer              rawledger.Writer
+	filters             *broadcastfilter.RuleSet
 }
 
 func newChainSupport(configManager configtx.Manager, policyManager policies.Manager, backing rawledger.ReadWriter, sharedConfigManager sharedconfig.Manager, consenters map[string]Consenter) *chainSupport {
@@ -93,14 +91,20 @@ func newChainSupport(configManager configtx.Manager, policyManager policies.Mana
 	}
 
 	cs := &chainSupport{
-		configManager: configManager,
-		policyManager: policyManager,
-		filters:       filters,
-		reader:        backing,
-		writer:        newWriteInterceptor(configManager, backing),
+		configManager:       configManager,
+		policyManager:       policyManager,
+		sharedConfigManager: sharedConfigManager,
+		cutter:              cutter,
+		filters:             filters,
+		reader:              backing,
+		writer:              newWriteInterceptor(configManager, backing),
 	}
 
-	cs.chain = consenter.HandleChain(configManager, cutter, cs.writer, nil)
+	var err error
+	cs.chain, err = consenter.HandleChain(cs)
+	if err != nil {
+		logger.Fatalf("Error creating consenter for chain %x: %s", configManager.ChainID(), err)
+	}
 
 	return cs
 }
@@ -117,6 +121,10 @@ func (cs *chainSupport) start() {
 	cs.chain.Start()
 }
 
+func (cs *chainSupport) SharedConfig() sharedconfig.Manager {
+	return cs.sharedConfigManager
+}
+
 func (cs *chainSupport) ConfigManager() configtx.Manager {
 	return cs.configManager
 }
@@ -129,12 +137,20 @@ func (cs *chainSupport) Filters() *broadcastfilter.RuleSet {
 	return cs.filters
 }
 
+func (cs *chainSupport) BlockCutter() blockcutter.Receiver {
+	return cs.cutter
+}
+
 func (cs *chainSupport) Reader() rawledger.Reader {
 	return cs.reader
 }
 
-func (cs *chainSupport) Chain() Chain {
-	return cs.chain
+func (cs *chainSupport) Writer() rawledger.Writer {
+	return cs.writer
+}
+
+func (cs *chainSupport) Enqueue(env *cb.Envelope) bool {
+	return cs.chain.Enqueue(env)
 }
 
 type writeInterceptor struct {

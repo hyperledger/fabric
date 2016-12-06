@@ -19,10 +19,7 @@ package solo
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/multichain"
-	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
 )
@@ -38,13 +35,16 @@ type consenter struct {
 }
 
 type chain struct {
+	support      multichain.ConsenterSupport
 	batchTimeout time.Duration
-	rl           rawledger.Writer
-	cutter       blockcutter.Receiver
 	sendChan     chan *cb.Envelope
 	exitChan     chan struct{}
 }
 
+// New creates a new consenter for the solo consensus scheme.
+// The solo consensus scheme is very simple, and allows only one consenter for a given chain (this process).
+// It accepts messages being delivered via Enqueue, orders them, and then uses the blockcutter to form the messages
+// into blocks before writing to the given ledger
 func New(batchTimeout time.Duration) multichain.Consenter {
 	return &consenter{
 		// TODO, ultimately this should come from the configManager at HandleChain
@@ -52,15 +52,14 @@ func New(batchTimeout time.Duration) multichain.Consenter {
 	}
 }
 
-func (solo *consenter) HandleChain(configManager configtx.Manager, cutter blockcutter.Receiver, rl rawledger.Writer, metadata []byte) multichain.Chain {
-	return newChain(solo.batchTimeout, configManager, cutter, rl, metadata)
+func (solo *consenter) HandleChain(support multichain.ConsenterSupport) (multichain.Chain, error) {
+	return newChain(solo.batchTimeout, support), nil
 }
 
-func newChain(batchTimeout time.Duration, configManager configtx.Manager, cutter blockcutter.Receiver, rl rawledger.Writer, metadata []byte) *chain {
+func newChain(batchTimeout time.Duration, support multichain.ConsenterSupport) *chain {
 	return &chain{
 		batchTimeout: batchTimeout,
-		rl:           rl,
-		cutter:       cutter,
+		support:      support,
 		sendChan:     make(chan *cb.Envelope),
 		exitChan:     make(chan struct{}),
 	}
@@ -71,7 +70,12 @@ func (ch *chain) Start() {
 }
 
 func (ch *chain) Halt() {
-	close(ch.exitChan)
+	select {
+	case <-ch.exitChan:
+		// Allow multiple halts without panic
+	default:
+		close(ch.exitChan)
+	}
 }
 
 // Enqueue accepts a message and returns true on acceptance, or false on shutdown
@@ -90,13 +94,13 @@ func (ch *chain) main() {
 	for {
 		select {
 		case msg := <-ch.sendChan:
-			batches, ok := ch.cutter.Ordered(msg)
+			batches, ok := ch.support.BlockCutter().Ordered(msg)
 			if ok && len(batches) == 0 && timer == nil {
 				timer = time.After(ch.batchTimeout)
 				continue
 			}
 			for _, batch := range batches {
-				ch.rl.Append(batch, nil)
+				ch.support.Writer().Append(batch, nil)
 			}
 			if len(batches) > 0 {
 				timer = nil
@@ -105,13 +109,13 @@ func (ch *chain) main() {
 			//clear the timer
 			timer = nil
 
-			batch := ch.cutter.Cut()
+			batch := ch.support.BlockCutter().Cut()
 			if len(batch) == 0 {
 				logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
 				continue
 			}
 			logger.Debugf("Batch timer expired, creating block")
-			ch.rl.Append(batch, nil)
+			ch.support.Writer().Append(batch, nil)
 		case <-ch.exitChan:
 			logger.Debugf("Exiting")
 			return

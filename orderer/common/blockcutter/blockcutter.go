@@ -52,6 +52,7 @@ type receiver struct {
 	curBatch      []*cb.Envelope
 }
 
+// NewReceiverImpl creates a Receiver implementation based on the given batchsize, filters, and configtx manager
 func NewReceiverImpl(batchSize int, filters *broadcastfilter.RuleSet, configManager configtx.Manager) Receiver {
 	return &receiver{
 		batchSize:     batchSize,
@@ -106,9 +107,8 @@ func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, bool) {
 		secondBatch := []*cb.Envelope{msg}
 		if firstBatch == nil {
 			return [][]*cb.Envelope{secondBatch}, true
-		} else {
-			return [][]*cb.Envelope{firstBatch, secondBatch}, true
 		}
+		return [][]*cb.Envelope{firstBatch, secondBatch}, true
 	case broadcastfilter.Reject:
 		logger.Debugf("Rejecting message")
 		return nil, false
