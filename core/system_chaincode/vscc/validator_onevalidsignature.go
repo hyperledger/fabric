@@ -105,7 +105,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		// loop through each of the endorsements
 		for _, endorsement := range cap.Action.Endorsements {
 			// extract the identity of the signer
-			end, err := msp.GetManager().DeserializeIdentity(endorsement.Endorser)
+			end, err := msp.GetManagerForChain(payl.Header.ChainHeader.ChainID).DeserializeIdentity(endorsement.Endorser)
 			if err != nil {
 				logger.Errorf("VSCC error: DeserializeIdentity failed, err %s", err)
 				return nil, err

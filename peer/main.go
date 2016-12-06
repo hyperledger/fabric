@@ -30,9 +30,9 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/flogging"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/clilogging"
 	"github.com/hyperledger/fabric/peer/node"
@@ -127,7 +127,14 @@ func main() {
 	} else {
 		mspMgrConfigFile = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/peer-config.json"
 	}
-	err = msp.GetManager().Setup(mspMgrConfigFile)
+
+	// FIXME: when this peer joins a chain, it should get the
+	// config for that chain with the list of MSPs that the
+	// chain uses; however this is not yet implemented.
+	// Additionally, we might always want to have an MSP for
+	// the local test chain so that we can run tests with the
+	// peer CLI. This is why we create this fake setup here for now
+	err = config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
 	if err != nil {
 		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigFile, err))
 	}

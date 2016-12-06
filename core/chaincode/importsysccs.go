@@ -35,7 +35,7 @@ var systemChaincodes = []*SystemChaincode{
 		Enabled:   true,
 		Name:      "escc",
 		Path:      "github.com/hyperledger/fabric/core/system_chaincode/escc",
-		InitArgs:  [][]byte{[]byte("DEFAULT"), []byte("PEER")}, // TODO: retrieve these aruments properly
+		InitArgs:  [][]byte{[]byte("")},
 		Chaincode: &escc.EndorserOneValidSignature{},
 	},
 	{

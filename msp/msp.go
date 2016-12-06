@@ -69,7 +69,7 @@ type Identity interface {
 	//    CA used by organization "Organization 1", could be provided in the clear
 	//    as part of that tcert structure that this call would be able to return.
 	// TODO: check if we need a dedicated type for participantID properly namespaced by the associated provider identifier.
-	ParticipantID() string
+	OrganizationUnits() string
 
 	// TODO: Discuss GetOU() further.
 
@@ -116,7 +116,7 @@ type SigningIdentity interface {
 type ImportRequest struct {
 
 	// IdentityProvider to enroll with
-	Idp ProviderIdentifier
+	Idp string
 
 	// The certificate to import
 	IdentityDesc []byte
@@ -159,25 +159,16 @@ type AttributeProofSpec struct {
 // Structures defining the identifiers for identity providers and members
 // and members that belong to them.
 
-// ProviderIdentifier is a holder for an identity provider identifier
-// that should be subjected to certain structure conventions.
-type ProviderIdentifier struct {
-	// Returns the identifier for an identity provider
-	Value string
-}
-
 // IdentityIdentifier is a holder for the identifier of a specific
 // identity, naturally namespaced, by its provider identifier.
 type IdentityIdentifier struct {
-	// The identifier of the associated membership service provider
-	Mspid ProviderIdentifier
-	// Returns the identifier for an identity within a provider
-	Value string
-}
 
-//func toStringMemberIdentifier(mi MemberIdentifier) string {
-//	return "alice"
-//}
+	// The identifier of the associated membership service provider
+	Mspid string
+
+	// The identifier for an identity within a provider
+	Id string
+}
 
 // ProviderType indicates the type of an identity provider
 type ProviderType int
@@ -193,7 +184,7 @@ const (
 // to serialize it and deserialize it
 type SerializedIdentity struct {
 	// The identifier of the associated membership service provider
-	Mspid ProviderIdentifier
+	Mspid string
 
 	// the Identity, serialized according to the rules of its MPS
 	IdBytes []byte

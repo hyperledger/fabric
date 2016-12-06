@@ -21,10 +21,11 @@ import (
 	"fmt"
 	"time"
 
-	"encoding/json"
-	"io/ioutil"
-
 	"encoding/pem"
+
+	"encoding/json"
+
+	"encoding/asn1"
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
@@ -35,190 +36,202 @@ import (
 // uses BCCSP for its cryptographic primitives.
 type bccspmsp struct {
 	// list of certs we trust
-	trustedCerts map[string]Identity
+	trustedCerts []Identity
 
 	// list of signing identities
-	signers map[string]SigningIdentity
+	signer SigningIdentity
+
+	// list of admin identities
+	admins []Identity
 
 	// the crypto provider
 	bccsp bccsp.BCCSP
 
 	// the provider identifier for this MSP
-	id ProviderIdentifier
+	name string
 }
 
 func newBccspMsp() (PeerMSP, error) {
 	mspLogger.Infof("Creating BCCSP-based MSP instance")
 
+	/* TODO: is the default BCCSP okay here?*/
 	bccsp, err := factory.GetDefault()
 	if err != nil {
+		mspLogger.Errorf("Failed getting default BCCSP [%s]", err)
 		return nil, fmt.Errorf("Failed getting default BCCSP [%s]", err)
 	} else if bccsp == nil {
+		mspLogger.Errorf("Failed getting default BCCSP. Nil instance.")
 		return nil, fmt.Errorf("Failed getting default BCCSP. Nil instance.")
 	}
 
 	theMsp := &bccspmsp{}
 	theMsp.bccsp = bccsp
-	theMsp.trustedCerts = make(map[string]Identity)
-	theMsp.signers = make(map[string]SigningIdentity)
-	theMsp.id.Value = "DEFAULT"
 
 	return theMsp, nil
 }
 
-// FIXME: these structs are used for now to parse
-// the json config file - we need to consolidate
-// them with the COP team and put their definition
-// somewhere where it makes sense
-/***********************************************************************/
-/****************BEGIN OF CODE TAKEN FROM THE COP TREE******************/
-/***********************************************************************/
-type Identity1 struct {
-	client       *Client
-	Name         string          `json:"name"`
-	PublicSigner *TemporalSigner `json:"publicSigner"`
-}
-type Client struct {
-	ServerAddr string `json:"serverAddr"`
-}
-type TemporalSigner struct {
-	Signer1
-}
-type Signer1 struct {
-	Verifier
-	Key []byte `json:"key"`
-}
-type Verifier struct {
-	Cert []byte `json:"cert"`
-}
-
-/***********************************************************************/
-/******************END OF CODE TAKEN FROM THE COP TREE******************/
-/***********************************************************************/
-
-func (msp *bccspmsp) Setup(configFile string) error {
-	mspLogger.Infof("Setting up MSP instance from file %s", configFile)
-
-	// FIXME: extract the MSP ID from the config
-	MSPID := ProviderIdentifier{Value: "DEFAULT"}
-
-	// FIXME: this code just assumes a simple structure of the config file with a single keypair and a single cert
-
-	// read out the config file
-	file, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return fmt.Errorf("Could not read file %s, err %s", configFile, err)
+func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, error) {
+	if idBytes == nil {
+		mspLogger.Errorf("getIdentityFromBytes error: nil idBytes")
+		return nil, fmt.Errorf("getIdentityFromBytes error: nil idBytes")
 	}
 
-	// Parse the content of the json file
-	var id Identity1
-	err = json.Unmarshal(file, &id)
-	if err != nil {
-		return fmt.Errorf("Unmarshalling error: %s", err)
+	// Decode the pem bytes
+	pemCert, _ := pem.Decode(idBytes)
+	if pemCert == nil {
+		mspLogger.Errorf("getIdentityFromBytes error: could not decode pem bytes")
+		return nil, fmt.Errorf("getIdentityFromBytes error: could not decode pem bytes")
 	}
 
-	// Extract the certificate of the identity
+	// get a cert
 	var cert *x509.Certificate
-	pemCert, _ := pem.Decode(id.PublicSigner.Cert)
-	cert, err = x509.ParseCertificate(pemCert.Bytes)
+	cert, err := x509.ParseCertificate(pemCert.Bytes)
 	if err != nil {
-		return fmt.Errorf("Failed to parse x509 cert, err %s", err)
+		mspLogger.Errorf("getIdentityFromBytes error: failed to parse x509 cert, err %s", err)
+		return nil, fmt.Errorf("getIdentityFromBytes error: failed to parse x509 cert, err %s", err)
 	}
 
-	// Get public key
-	pub, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
+	// get the public key in the right format
+	certPubK, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 	if err != nil {
-		return fmt.Errorf("Failed to import certificate's public key, err %s", err)
+		mspLogger.Errorf("getIdentityFromBytes error: failed to import certitifacate's public key [%s]", err)
+		return nil, fmt.Errorf("getIdentityFromBytes error: failed to import certitifacate's public key [%s]", err)
+	}
+
+	return newIdentity(&IdentityIdentifier{
+		Mspid: msp.name,
+		Id:    "IDENTITY"}, /* FIXME: not clear where we would get the identifier for this identity */
+		cert, certPubK, msp), nil
+}
+
+func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *SigningIdentityInfo) (SigningIdentity, error) {
+	if sidInfo == nil {
+		mspLogger.Errorf("getIdentityFromBytes error: nil sidInfo")
+		return nil, fmt.Errorf("getIdentityFromBytes error: nil sidInfo")
+	}
+
+	// extract the public part of the identity
+	idPub, err := msp.getIdentityFromConf(sidInfo.PublicSigner)
+	if err != nil {
+		return nil, err
 	}
 
 	// Get secret key
-	pemKey, _ := pem.Decode(id.PublicSigner.Key)
+	pemKey, _ := pem.Decode(sidInfo.PrivateSigner.KeyMaterial)
 	key, err := msp.bccsp.KeyImport(pemKey.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
 	if err != nil {
-		return fmt.Errorf("Failed to import EC private key, err %s", err)
+		mspLogger.Errorf("getIdentityFromBytes error: Failed to import EC private key, err %s", err)
+		return nil, fmt.Errorf("getIdentityFromBytes error: Failed to import EC private key, err %s", err)
 	}
 
 	// get the peer signer
 	peerSigner := &signer.CryptoSigner{}
 	err = peerSigner.Init(msp.bccsp, key)
 	if err != nil {
-		return fmt.Errorf("Failed initializing CryptoSigner, err %s", err)
+		mspLogger.Errorf("getIdentityFromBytes error: Failed initializing CryptoSigner, err %s", err)
+		return nil, fmt.Errorf("getIdentityFromBytes error: Failed initializing CryptoSigner, err %s", err)
 	}
 
-	// extract the root CAs from the genesys block via CSCC
-	rootCAPem, err := getRootCACertFromCSCC()
+	return newSigningIdentity(&IdentityIdentifier{
+		Mspid: msp.name,
+		Id:    "DEFAULT"}, /* FIXME: not clear where we would get the identifier for this identity */
+		idPub.(*identity).cert, idPub.(*identity).pk, peerSigner, msp), nil
+}
+
+func (msp *bccspmsp) Setup(conf1 *MSPConfig) error {
+	if conf1 == nil {
+		mspLogger.Errorf("Setup error: nil conf reference")
+		return fmt.Errorf("Setup error: nil conf reference")
+	}
+
+	// given that it's an msp of type fabric, extract the MSPConfig instance
+	var conf FabricMSPConfig
+	err := json.Unmarshal(conf1.Config, &conf)
 	if err != nil {
-		return fmt.Errorf("Failed to retrieve root CAs, err %s", err)
+		mspLogger.Errorf("Failed unmarshalling fabric msp config, err %s", err)
+		return fmt.Errorf("Failed unmarshalling fabric msp config, err %s", err)
 	}
 
-	// decode the root CA
-	pemCACert, _ := pem.Decode([]byte(rootCAPem))
-	CACert, err := x509.ParseCertificate(pemCACert.Bytes)
-	if err != nil {
-		return fmt.Errorf("Failed to parse x509 cert, err %s", err)
+	// set the name for this msp
+	msp.name = conf.Name
+	mspLogger.Infof("Setting up MSP instance %s", msp.name)
+
+	// make and fill the set of admin certs
+	msp.admins = make([]Identity, len(conf.Admins))
+	for i, admCert := range conf.Admins {
+		id, err := msp.getIdentityFromConf(admCert)
+		if err != nil {
+			return err
+		}
+
+		msp.admins[i] = id
 	}
 
-	// get the CA keypair in the right format
-	CAPub, err := msp.bccsp.KeyImport(CACert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
-	if err != nil {
-		return fmt.Errorf("Failed to import certitifacate's public key [%s]", err)
+	// make and fill the set of CA certs
+	msp.trustedCerts = make([]Identity, len(conf.RootCerts))
+	for i, trustedCert := range conf.RootCerts {
+		id, err := msp.getIdentityFromConf(trustedCert)
+		if err != nil {
+			return err
+		}
+
+		msp.trustedCerts[i] = id
 	}
 
-	// Set the trusted identity related to the ROOT CA
-	rootCaIdentity := newIdentity(&IdentityIdentifier{Mspid: MSPID, Value: "ROOTCA"}, CACert, CAPub)
-	msp.trustedCerts["ROOT"] = rootCaIdentity
+	// setup the signer (if present)
+	if conf.SigningIdentity != nil {
+		sid, err := msp.getSigningIdentityFromConf(conf.SigningIdentity)
+		if err != nil {
+			return err
+		}
 
-	// Set the signing identity related to the peer
-	peerSigningIdentity := newSigningIdentity(&IdentityIdentifier{Mspid: MSPID, Value: id.Name}, cert, pub, peerSigner)
-	msp.signers["PEER"] = peerSigningIdentity
+		msp.signer = sid
+	}
 
 	return nil
 }
 
-func (msp *bccspmsp) Reconfig(reconfigMessage string) error {
+func (msp *bccspmsp) Reconfig(config []byte) error {
 	// TODO
 	return nil
 }
 
 func (msp *bccspmsp) Type() ProviderType {
-	// TODO
-	return 0
+	return FABRIC
 }
 
-func (msp *bccspmsp) Identifier() (*ProviderIdentifier, error) {
-	return &msp.id, nil
+func (msp *bccspmsp) Identifier() (string, error) {
+	return msp.name, nil
 }
 
 func (msp *bccspmsp) Policy() string {
-	// TODO
+	// FIXME: can we remove this function?
 	return ""
 }
 
 func (msp *bccspmsp) ImportSigningIdentity(req *ImportRequest) (SigningIdentity, error) {
+	// FIXME: can we remove this function?
+	return nil, nil
+}
+
+func (msp *bccspmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
+	mspLogger.Infof("Obtaining default signing identity")
+
+	if msp.signer == nil {
+		mspLogger.Warningf("This MSP does not possess a valid default signing identity")
+		return nil, fmt.Errorf("This MSP does not possess a valid default signing identity")
+	}
+
+	return msp.signer, nil
+}
+
+func (msp *bccspmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
 	// TODO
 	return nil, nil
 }
 
-func (msp *bccspmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
-	mspLogger.Infof("Obtaining signing identity for %s", identifier)
-	if identifier.Mspid.Value != msp.id.Value {
-		return nil, fmt.Errorf("Invalid MSP identifier, expected %s got %s", msp.id.Value, identifier.Mspid)
-	}
-
-	signer := msp.signers[identifier.Value]
-	if signer == nil {
-		return nil, fmt.Errorf("Signing identity for identifier %s could not be found", identifier)
-	}
-
-	return signer, nil
-}
-
-func (msp *bccspmsp) getTrustedIdentities() (map[string]Identity, error) {
-	return msp.trustedCerts, nil
-}
-
 func (msp *bccspmsp) IsValid(id Identity) (bool, error) {
-	mspLogger.Infof("MSP %s validating identity", msp.id)
+	mspLogger.Infof("MSP %s validating identity", msp.name)
 
 	switch id.(type) {
 	// If this identity is of this specific type,
@@ -251,8 +264,22 @@ func (msp *bccspmsp) IsValid(id Identity) (bool, error) {
 func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	mspLogger.Infof("Obtaining identity")
 
+	// FIXME: this is not ideal, because the manager already does this
+	// unmarshalling if we go through it; however the local MSP does
+	// not have a manager and in case it has to deserialize an identity,
+	// it will have to do the whole thing by itself; for now I've left
+	// it this way but we can introduce a local MSP manager and fix it
+	// more nicely
+
+	// We first deserialize to a SerializedIdentity to get the MSP ID
+	sId := &SerializedIdentity{}
+	_, err := asn1.Unmarshal(serializedID, sId)
+	if err != nil {
+		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
+	}
+
 	// This MSP will always deserialize certs this way
-	bl, _ := pem.Decode(serializedID)
+	bl, _ := pem.Decode(sId.IdBytes)
 	if bl == nil {
 		return nil, fmt.Errorf("Could not decode the PEM structure")
 	}
@@ -261,39 +288,28 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 		return nil, fmt.Errorf("ParseCertificate failed %s", err)
 	}
 
-	id := &IdentityIdentifier{Mspid: ProviderIdentifier{Value: msp.id.Value},
-		Value: "PEER"} // TODO: where should this identifier be obtained from?
+	// Now we have the certificate; make sure that its fields
+	// (e.g. the Issuer.OU or the Subject.OU) match with the
+	// MSP id that this MSP has; otherwise it might be an attack
+	// TODO!
+	// TODO!
+	// TODO!
+	// TODO!
+	// We can't do it yet because there is no standardized way
+	// (yet) to encode the MSP ID into the x.509 body of a cert
+
+	id := &IdentityIdentifier{Mspid: msp.name,
+		Id: "DEFAULT"} // TODO: where should this identifier be obtained from?
 
 	pub, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to import certitifacateś public key [%s]", err)
 	}
 
-	return newIdentity(id, cert, pub), nil
+	return newIdentity(id, cert, pub, msp), nil
 }
 
 func (msp *bccspmsp) DeleteSigningIdentity(identifier string) (bool, error) {
-	// TODO
+	// FIXME: can we remove this function?
 	return true, nil
-}
-
-func getRootCACertFromCSCC() (string, error) {
-	// FIXME: the root CA cert is hardcoded for now because we don't have a genesys block to read it from
-	rootCAPem := "-----BEGIN CERTIFICATE-----\n" +
-		"MIICYjCCAgmgAwIBAgIUB3CTDOU47sUC5K4kn/Caqnh114YwCgYIKoZIzj0EAwIw\n" +
-		"fzELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNh\n" +
-		"biBGcmFuY2lzY28xHzAdBgNVBAoTFkludGVybmV0IFdpZGdldHMsIEluYy4xDDAK\n" +
-		"BgNVBAsTA1dXVzEUMBIGA1UEAxMLZXhhbXBsZS5jb20wHhcNMTYxMDEyMTkzMTAw\n" +
-		"WhcNMjExMDExMTkzMTAwWjB/MQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZv\n" +
-		"cm5pYTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEfMB0GA1UEChMWSW50ZXJuZXQg\n" +
-		"V2lkZ2V0cywgSW5jLjEMMAoGA1UECxMDV1dXMRQwEgYDVQQDEwtleGFtcGxlLmNv\n" +
-		"bTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABKIH5b2JaSmqiQXHyqC+cmknICcF\n" +
-		"i5AddVjsQizDV6uZ4v6s+PWiJyzfA/rTtMvYAPq/yeEHpBUB1j053mxnpMujYzBh\n" +
-		"MA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQXZ0I9\n" +
-		"qp6CP8TFHZ9bw5nRtZxIEDAfBgNVHSMEGDAWgBQXZ0I9qp6CP8TFHZ9bw5nRtZxI\n" +
-		"EDAKBggqhkjOPQQDAgNHADBEAiAHp5Rbp9Em1G/UmKn8WsCbqDfWecVbZPQj3RK4\n" +
-		"oG5kQQIgQAe4OOKYhJdh3f7URaKfGTf492/nmRmtK+ySKjpHSrU=\n" +
-		"-----END CERTIFICATE-----"
-
-	return rootCAPem, nil
 }

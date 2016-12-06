@@ -22,6 +22,11 @@ import (
 	"runtime"
 	"strings"
 
+	"encoding/json"
+	"io/ioutil"
+
+	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
@@ -74,4 +79,60 @@ func SetupTestConfig(pathToOpenchainYaml string) {
 	var numProcsDesired = viper.GetInt("peer.gomaxprocs")
 	configLogger.Debugf("setting Number of procs to %d, was %d\n", numProcsDesired, runtime.GOMAXPROCS(2))
 
+}
+
+func getPeerConfFromFile(configFile string) (*msp.NodeLocalConfig, error) {
+	file, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("Could not read file %s, err %s", configFile, err)
+	}
+
+	var localConf msp.NodeLocalConfig
+	err = json.Unmarshal(file, &localConf)
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal config, err %s", err)
+	}
+
+	return &localConf, nil
+}
+
+func LoadLocalMSPConfig(configFile string) error {
+	localConf, err := getPeerConfFromFile(configFile)
+	if err != nil {
+		return err
+	}
+
+	if localConf.LocalMSP == nil {
+		return fmt.Errorf("nil LocalMSP")
+	}
+
+	err = msp.GetLocalMSP().Setup(localConf.LocalMSP)
+	if err != nil {
+		return fmt.Errorf("Could not setup local msp, err %s", err)
+	}
+
+	// TODO: setup BCCSP here using localConf.BCCSP
+
+	return nil
+}
+
+func SetupFakeMSPInfrastructureForTests(configFile string) error {
+	err := LoadLocalMSPConfig(configFile)
+	if err != nil {
+		return err
+	}
+
+	localConf, err := getPeerConfFromFile(configFile)
+	if err != nil {
+		return err
+	}
+
+	mgrconf := &msp.MSPManagerConfig{MspList: []*msp.MSPConfig{localConf.LocalMSP}, Name: "MGRFORTESTCHAIN"}
+
+	err = msp.GetManagerForChain(util.GetTestChainID()).Setup(mgrconf)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

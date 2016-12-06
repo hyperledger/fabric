@@ -23,6 +23,8 @@ import (
 
 	"encoding/pem"
 
+	"encoding/asn1"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
@@ -30,14 +32,15 @@ import (
 )
 
 type identity struct {
-	id   *IdentityIdentifier
-	cert *x509.Certificate
-	pk   bccsp.Key
+	id    *IdentityIdentifier
+	cert  *x509.Certificate
+	pk    bccsp.Key
+	myMsp PeerMSP
 }
 
-func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key) Identity {
+func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, myMsp PeerMSP) Identity {
 	mspLogger.Infof("Creating identity instance for ID %s", id)
-	return &identity{id: id, cert: cert, pk: pk}
+	return &identity{id: id, cert: cert, pk: pk, myMsp: myMsp}
 }
 
 func (id *identity) Identifier() *IdentityIdentifier {
@@ -45,14 +48,14 @@ func (id *identity) Identifier() *IdentityIdentifier {
 }
 
 func (id *identity) GetMSPIdentifier() string {
-	return id.id.Mspid.Value
+	return id.id.Mspid
 }
 
 func (id *identity) Validate() (bool, error) {
-	return GetManager().IsValid(id, &id.id.Mspid)
+	return id.myMsp.IsValid(id)
 }
 
-func (id *identity) ParticipantID() string {
+func (id *identity) OrganizationUnits() string {
 	// TODO
 	return "dunno"
 }
@@ -80,24 +83,22 @@ func (id *identity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) (
 }
 
 func (id *identity) Serialize() ([]byte, error) {
-	/*
-		mspLogger.Infof("Serializing identity %s", id.id)
+	mspLogger.Infof("Serializing identity %s", id.id)
 
-		// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
-		sId := SerializedIdentity{Mspid: id.id.Mspid, IdBytes: id.cert.Raw}
-		idBytes, err := asn1.Marshal(sId)
-		if err != nil {
-			return nil, fmt.Errorf("Could not marshal a SerializedIdentity structure for identity %s, err %s", id.id, err)
-		}
-
-		return idBytes, nil
-	*/
 	pb := &pem.Block{Bytes: id.cert.Raw}
 	pemBytes := pem.EncodeToMemory(pb)
 	if pemBytes == nil {
 		return nil, fmt.Errorf("Encoding of identitiy failed")
 	}
-	return pemBytes, nil
+
+	// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
+	sId := SerializedIdentity{Mspid: id.id.Mspid, IdBytes: pemBytes}
+	idBytes, err := asn1.Marshal(sId)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal a SerializedIdentity structure for identity %s, err %s", id.id, err)
+	}
+
+	return idBytes, nil
 }
 
 type signingidentity struct {
@@ -105,9 +106,9 @@ type signingidentity struct {
 	signer *signer.CryptoSigner
 }
 
-func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner) SigningIdentity {
+func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner, myMsp PeerMSP) SigningIdentity {
 	mspLogger.Infof("Creating signing identity instance for ID %s", id)
-	return &signingidentity{identity{id: id, cert: cert, pk: pk}, signer}
+	return &signingidentity{identity{id: id, cert: cert, pk: pk, myMsp: myMsp}, signer}
 }
 
 func (id *signingidentity) Identity() {
