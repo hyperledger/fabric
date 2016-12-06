@@ -74,6 +74,9 @@ message GossipMessage {
 
         // Used to send a set of blocks to a remote peer
         RemoteStateResponse stateResponse = 17;
+
+        // Used to indicate intent of peer to become leader
+        LeadershipMessage leadershipMsg = 18;
     }
 }
 
@@ -161,6 +164,14 @@ message Payload {
 // AliveMessage is sent to inform remote peers
 // of a peer's existence and activity
 message AliveMessage {
+    Member membership  = 1;
+    PeerTime timestamp = 2;
+    bytes signature    = 3;
+}
+
+// Leadership Message is sent during leader election to inform
+// remote peers about intent of peer to proclaim itself as leader
+message LeadershipMessage {
     Member membership  = 1;
     PeerTime timestamp = 2;
     bytes signature    = 3;
