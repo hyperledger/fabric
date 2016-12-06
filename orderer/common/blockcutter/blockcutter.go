@@ -18,6 +18,7 @@ package blockcutter
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/op/go-logging"
@@ -44,17 +45,17 @@ type Receiver interface {
 }
 
 type receiver struct {
-	batchSize int
-	filters   *filter.RuleSet
-	curBatch  []*cb.Envelope
-	batchComs []filter.Committer
+	sharedConfigManager sharedconfig.Manager
+	filters             *filter.RuleSet
+	curBatch            []*cb.Envelope
+	batchComs           []filter.Committer
 }
 
-// NewReceiverImpl creates a Receiver implementation based on the given batchsize, filters, and configtx manager
-func NewReceiverImpl(batchSize int, filters *filter.RuleSet) Receiver {
+// NewReceiverImpl creates a Receiver implementation based on the given sharedconfig manager and filters
+func NewReceiverImpl(sharedConfigManager sharedconfig.Manager, filters *filter.RuleSet) Receiver {
 	return &receiver{
-		batchSize: batchSize,
-		filters:   filters,
+		sharedConfigManager: sharedConfigManager,
+		filters:             filters,
 	}
 }
 
@@ -89,7 +90,7 @@ func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Commi
 	r.curBatch = append(r.curBatch, msg)
 	r.batchComs = append(r.batchComs, committer)
 
-	if len(r.curBatch) < r.batchSize {
+	if len(r.curBatch) < r.sharedConfigManager.BatchSize() {
 		return nil, nil, true
 	}
 
