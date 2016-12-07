@@ -66,6 +66,9 @@ func (env *testEnv) Cleanup() {
 // upon creating a new ledger transaction manager
 func TestDatabaseAutoCreate(t *testing.T) {
 
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+
 	//Only run the tests if CouchDB is explitily enabled in the code,
 	//otherwise CouchDB may not be installed and all the tests would fail
 	//TODO replace this with external config property rather than config within the code

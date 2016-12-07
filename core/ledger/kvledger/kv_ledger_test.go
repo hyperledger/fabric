@@ -19,6 +19,7 @@ package kvledger
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -156,4 +157,74 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	testutil.AssertEquals(t, value, []byte("value6"))
 	simulator.Done()
 	ledger.Close()
+}
+
+func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
+
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../peer")
+
+	logger.Debugf("TestLedgerWithCouchDbEnabledWithBinaryAndJSONData  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
+		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())
+
+	env := newTestEnv(t)
+	defer env.cleanup()
+	ledger, _ := NewKVLedger(env.conf)
+	defer ledger.Close()
+
+	bcInfo, _ := ledger.GetBlockchainInfo()
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+
+	simulator, _ := ledger.NewTxSimulator()
+	simulator.SetState("ns1", "key4", []byte("value1"))
+	simulator.SetState("ns1", "key5", []byte("value2"))
+	simulator.SetState("ns1", "key6", []byte("{\"shipmentID\":\"161003PKC7300\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
+	simulator.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"AIR MAYBE\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
+	simulator.Done()
+	simRes, _ := simulator.GetTxSimulationResults()
+	bg := testutil.NewBlockGenerator(t)
+	block1 := bg.NextBlock([][]byte{simRes}, false)
+
+	ledger.RemoveInvalidTransactionsAndPrepare(block1)
+	ledger.Commit()
+
+	bcInfo, _ = ledger.GetBlockchainInfo()
+	block1Hash := block1.Header.Hash()
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
+
+	//Note key 4 and 6 are updates but key 7 is new.  I.E. should see history for key 4 and 6 if history is enabled
+	simulator, _ = ledger.NewTxSimulator()
+	simulator.SetState("ns1", "key4", []byte("value3"))
+	simulator.SetState("ns1", "key5", []byte("{\"shipmentID\":\"161003PKC7500\",\"customsInvoice\":{\"methodOfTransport\":\"AIR FREIGHT\",\"invoiceNumber\":\"00091623\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
+	simulator.SetState("ns1", "key6", []byte("value4"))
+	simulator.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
+	simulator.SetState("ns1", "key8", []byte("{\"shipmentID\":\"161003PKC7700\",\"customsInvoice\":{\"methodOfTransport\":\"SHIP\",\"invoiceNumber\":\"00091625\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
+	simulator.Done()
+	simRes, _ = simulator.GetTxSimulationResults()
+	block2 := bg.NextBlock([][]byte{simRes}, false)
+	ledger.RemoveInvalidTransactionsAndPrepare(block2)
+	ledger.Commit()
+
+	bcInfo, _ = ledger.GetBlockchainInfo()
+	block2Hash := block2.Header.Hash()
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
+
+	b1, _ := ledger.GetBlockByHash(block1Hash)
+	testutil.AssertEquals(t, b1, block1)
+
+	b2, _ := ledger.GetBlockByHash(block2Hash)
+	testutil.AssertEquals(t, b2, block2)
+
+	b1, _ = ledger.GetBlockByNumber(1)
+	testutil.AssertEquals(t, b1, block1)
+
+	b2, _ = ledger.GetBlockByNumber(2)
+	testutil.AssertEquals(t, b2, block2)
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		//TODO history specific test
+	}
 }

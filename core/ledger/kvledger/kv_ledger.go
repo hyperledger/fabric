@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/core/ledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/lockbasedtxmgmt"
@@ -60,6 +61,7 @@ func NewConf(filesystemPath string, maxBlockfileSize int) *Conf {
 type KVLedger struct {
 	blockStore           blkstorage.BlockStore
 	txtmgmt              txmgmt.TxMgr
+	historymgmt          history.HistMgr
 	pendingBlockToCommit *common.Block
 }
 
@@ -77,7 +79,10 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 	blockStorageConf := fsblkstorage.NewConf(conf.blockStorageDir, conf.maxBlockfileSize)
 	blockStore := fsblkstorage.NewFsBlockStore(blockStorageConf, indexConfig)
 
+	//State and History database managers
 	var txmgmt txmgmt.TxMgr
+	var historymgmt history.HistMgr
+
 	if ledgerconfig.IsCouchDBEnabled() == true {
 		//By default we can talk to CouchDB with empty id and pw (""), or you can add your own id and password to talk to a secured CouchDB
 		logger.Debugf("===COUCHDB=== NewKVLedger() Using CouchDB instead of RocksDB...hardcoding and passing connection config for now")
@@ -94,14 +99,26 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 		// Fall back to using RocksDB lockbased transaction manager
 		txmgmt = lockbasedtxmgmt.NewLockBasedTxMgr(&lockbasedtxmgmt.Conf{DBPath: conf.txMgrDBPath})
 	}
-	l := &KVLedger{blockStore, txmgmt, nil}
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		logger.Debugf("===HISTORYDB=== NewKVLedger() Using CouchDB for transaction history database")
+
+		couchDBDef := ledgerconfig.GetCouchDBDefinition()
+
+		historymgmt = history.NewCouchDBHistMgr(
+			couchDBDef.URL,      //couchDB connection URL
+			"system_history",    //couchDB db name matches ledger name, TODO for now use system_history ledger, eventually allow passing in subledger name
+			couchDBDef.Username, //enter couchDB id here
+			couchDBDef.Password) //enter couchDB pw here
+	}
+
+	l := &KVLedger{blockStore, txmgmt, historymgmt, nil}
 
 	if err := recoverStateDB(l); err != nil {
 		panic(fmt.Errorf(`Error during state DB recovery:%s`, err))
 	}
 
 	return l, nil
-
 }
 
 //Recover the state database by recommitting last valid blocks
@@ -220,6 +237,16 @@ func (l *KVLedger) Commit() error {
 	if err := l.txtmgmt.Commit(); err != nil {
 		panic(fmt.Errorf(`Error during commit to txmgr:%s`, err))
 	}
+
+	//TODO future will want to run async with state db writes.  History needs to wait for chain (FSBlock) to write but not the state db
+	logger.Debugf("===HISTORYDB=== Commit() will write to hisotry if enabled else will be by-passed if not enabled: vledgerconfig.IsHistoryDBEnabled(): %v\n", ledgerconfig.IsHistoryDBEnabled())
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		logger.Debugf("Committing transactions to history database")
+		if err := l.historymgmt.Commit(l.pendingBlockToCommit); err != nil {
+			panic(fmt.Errorf(`Error during commit to txthistory:%s`, err))
+		}
+	}
+
 	l.pendingBlockToCommit = nil
 	return nil
 }
