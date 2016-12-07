@@ -367,6 +367,8 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 	}, peer)
 }
 
+
+// GetBlock return ledger block given its sequence number as a parameter
 func (s *GossipStateProviderImpl) GetBlock(index uint64) *common.Block {
 	// Try to read missing block from the ledger, should return no nil with
 	// content including at least one block
@@ -377,6 +379,7 @@ func (s *GossipStateProviderImpl) GetBlock(index uint64) *common.Block {
 	return nil
 }
 
+// AddPayload add new payload into state
 func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 	return s.payloads.Push(payload)
 }
