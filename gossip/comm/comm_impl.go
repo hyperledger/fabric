@@ -18,15 +18,14 @@ package comm
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"math/rand"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"crypto/tls"
-	"os"
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -140,32 +139,36 @@ type commImpl struct {
 }
 
 func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidType) (*connection, error) {
+	var err error
+	var cc *grpc.ClientConn
+	var stream proto.Gossip_GossipStreamClient
+	var pkiID common.PKIidType
+
 	c.logger.Debug("Entering", endpoint, expectedPKIID)
 	defer c.logger.Debug("Exiting")
+
 	if c.isStopping() {
 		return nil, fmt.Errorf("Stopping")
 	}
-	cc, err := grpc.Dial(endpoint, append(c.opts, grpc.WithBlock())...)
+	cc, err = grpc.Dial(endpoint, append(c.opts, grpc.WithBlock())...)
 	if err != nil {
-		if cc != nil {
-			cc.Close()
-		}
 		return nil, err
 	}
 
 	cl := proto.NewGossipClient(cc)
 
-	if _, err := cl.Ping(context.Background(), &proto.Empty{}); err != nil {
+	if _, err = cl.Ping(context.Background(), &proto.Empty{}); err != nil {
 		cc.Close()
 		return nil, err
 	}
 
-	if stream, err := cl.GossipStream(context.Background()); err == nil {
-		pkiID, err := c.authenticateRemotePeer(stream)
+	if stream, err = cl.GossipStream(context.Background()); err == nil {
+		pkiID, err = c.authenticateRemotePeer(stream)
 		if err == nil {
 			if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
 				// PKIID is nil when we don't know the remote PKI id's
 				c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
+				cc.Close()
 				return nil, fmt.Errorf("Authentication failure")
 			}
 			conn := newConnection(cl, cc, stream, nil)
@@ -183,7 +186,6 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			conn.handler = h
 			return conn, nil
 		}
-		return nil, fmt.Errorf("Authentication failure")
 	}
 	cc.Close()
 	return nil, err
