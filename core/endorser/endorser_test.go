@@ -241,10 +241,10 @@ func TestDeploy(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Deploy-error in deploy %s", err)
-		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestDeployBadArgs sets bad args on deploy. It should fail, and example02 should not be deployed
@@ -257,10 +257,10 @@ func TestDeployBadArgs(t *testing.T) {
 	if err == nil {
 		t.Fail()
 		t.Log("DeployBadArgs-expected error in deploy but succeeded")
-		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestDeployBadPayload set payload to nil and do a deploy. It should fail and example02 should not be deployed
@@ -276,10 +276,10 @@ func TestDeployBadPayload(t *testing.T) {
 	if err == nil {
 		t.Fail()
 		t.Log("DeployBadPayload-expected error in deploy but succeeded")
-		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestRedeploy - deploy two times, second time should fail but example02 should remain deployed
@@ -293,7 +293,7 @@ func TestRedeploy(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
-		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -302,10 +302,10 @@ func TestRedeploy(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
-		chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain().Stop(context.Background(), &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 // TestDeployAndInvoke deploys and invokes chaincode_example01
@@ -349,7 +349,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	fmt.Printf("Invoke test passed\n")
 	t.Logf("Invoke test passed")
 
-	chaincode.GetChain().Stop(ctxt, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
+	chaincode.GetChain().Stop(ctxt, chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 }
 
 func TestMain(m *testing.M) {

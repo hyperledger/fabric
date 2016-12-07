@@ -94,7 +94,7 @@ func RegisterSysCC(chainID string, syscc *SystemChaincode) error {
 }
 
 // deregisterSysCC stops the system chaincode and deregisters it from inproccontroller
-func deregisterSysCC(syscc *SystemChaincode) error {
+func deregisterSysCC(chainID string, syscc *SystemChaincode) error {
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
@@ -109,7 +109,7 @@ func deregisterSysCC(syscc *SystemChaincode) error {
 
 	chaincodeSupport := GetChain()
 	if chaincodeSupport != nil {
-		err = chaincodeSupport.Stop(ctx, chaincodeDeploymentSpec)
+		err = chaincodeSupport.Stop(ctx, chainID, chaincodeDeploymentSpec)
 	}
 
 	return err

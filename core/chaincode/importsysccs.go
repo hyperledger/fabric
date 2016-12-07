@@ -57,8 +57,8 @@ func RegisterSysCCs(chainID string) {
 //this is used in unit tests to stop and remove the system chaincodes before
 //restarting them in the same process. This allows clean start of the system
 //in the same process
-func deRegisterSysCCs() {
+func deRegisterSysCCs(chainID string) {
 	for _, sysCC := range systemChaincodes {
-		deregisterSysCC(sysCC)
+		deregisterSysCC(chainID, sysCC)
 	}
 }

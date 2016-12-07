@@ -267,11 +267,13 @@ func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, 
 //GetVMName generates the docker image from peer information given the hashcode. This is needed to
 //keep image name's unique in a single host, multi-peer environment (such as a development environment)
 func (vm *DockerVM) GetVMName(ccid ccintf.CCID) (string, error) {
+	name := ccid.GetName()
+
 	if ccid.NetworkID != "" {
-		return fmt.Sprintf("%s-%s-%s", ccid.NetworkID, ccid.PeerID, ccid.ChaincodeSpec.ChaincodeID.Name), nil
+		return fmt.Sprintf("%s-%s-%s", ccid.NetworkID, ccid.PeerID, name), nil
 	} else if ccid.PeerID != "" {
-		return fmt.Sprintf("%s-%s", ccid.PeerID, ccid.ChaincodeSpec.ChaincodeID.Name), nil
+		return fmt.Sprintf("%s-%s", ccid.PeerID, name), nil
 	} else {
-		return ccid.ChaincodeSpec.ChaincodeID.Name, nil
+		return name, nil
 	}
 }

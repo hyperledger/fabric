@@ -67,7 +67,7 @@ func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
 func (e *Endorser) deploy(ctxt context.Context, txid string, proposal *pb.Proposal, chainname string, cds *pb.ChaincodeDeploymentSpec, cid *pb.ChaincodeID) error {
 	chaincodeSupport := chaincode.GetChain()
 
-	_, err := chaincodeSupport.Deploy(ctxt, cds)
+	_, err := chaincodeSupport.Deploy(ctxt, chainname, cds)
 	if err != nil {
 		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 	}
@@ -79,7 +79,7 @@ func (e *Endorser) deploy(ctxt context.Context, txid string, proposal *pb.Propos
 	}
 
 	//stop now that we are done
-	chaincodeSupport.Stop(ctxt, cds)
+	chaincodeSupport.Stop(ctxt, chainname, cds)
 
 	return nil
 }

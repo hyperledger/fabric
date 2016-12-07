@@ -103,7 +103,7 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 	cds := &pb.ChaincodeDeploymentSpec{ExecEnv: 1, ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
 
-	theChaincodeSupport.Stop(ctxt, cds)
+	theChaincodeSupport.Stop(ctxt, chainID, cds)
 
 	closeListenerAndSleep(lis)
 }

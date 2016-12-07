@@ -21,6 +21,9 @@ package ccintf
 //Currently inproccontroller uses it. dockercontroller does not.
 
 import (
+	"encoding/hex"
+
+	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"golang.org/x/net/context"
 )
@@ -47,4 +50,21 @@ type CCID struct {
 	ChaincodeSpec *pb.ChaincodeSpec
 	NetworkID     string
 	PeerID        string
+	ChainID       string
+}
+
+//GetName returns canonical chaincode name based on chain name
+func (ccid *CCID) GetName() string {
+	if ccid.ChaincodeSpec == nil {
+		panic("nil chaincode spec")
+	}
+	if ccid.ChainID == "" {
+		panic("chain id not specified")
+	}
+
+	hash := util.ComputeCryptoHash([]byte(ccid.ChainID))
+
+	hexstr := hex.EncodeToString(hash[:])
+
+	return ccid.ChaincodeSpec.ChaincodeID.Name + "-" + hexstr
 }

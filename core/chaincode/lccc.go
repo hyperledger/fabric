@@ -265,7 +265,7 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 
 	ctxt = context.WithValue(ctxt, TXSimulatorKey, dummytxsim)
 
-	_, err = theChaincodeSupport.Deploy(ctxt, cds)
+	_, err = theChaincodeSupport.Deploy(ctxt, chainname, cds)
 	if err != nil {
 		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 	}
@@ -280,7 +280,7 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 	}
 
 	//stop now that we are done
-	theChaincodeSupport.Stop(ctxt, cds)
+	theChaincodeSupport.Stop(ctxt, chainname, cds)
 
 	return nil
 }
@@ -371,7 +371,7 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 		cd, _ := lccc.getChaincode(stub, chain, ccname)
 		if cd == nil {
 			logger.Debug("ChaincodeID [%s/%s] does not exist", chain, ccname)
-			return nil, TXNotFoundErr(chain + "/" + ccname)
+			return nil, TXNotFoundErr(ccname + "/" + chain)
 		}
 
 		if function == GETCCINFO {

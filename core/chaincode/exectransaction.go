@@ -39,7 +39,7 @@ func Execute(ctxt context.Context, chainID string, txid string, prop *pb.Proposa
 	}
 
 	if cds != nil {
-		_, err := theChaincodeSupport.Deploy(ctxt, cds)
+		_, err := theChaincodeSupport.Deploy(ctxt, chainID, cds)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 		}
