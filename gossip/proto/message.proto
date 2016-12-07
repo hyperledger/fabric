@@ -103,31 +103,41 @@ message ConnEstablish {
 
 // Messages related to pull mechanism
 
+enum MsgType {
+    UNDEFINED    = 0;
+    BlockMessage  = 1;
+}
+
 // DataRequest is a message used for a peer to request
 // certain data blocks from a remote peer
 message DataRequest {
-    uint64 nonce            = 1;
-    repeated uint64 seqMap  = 2; // Maybe change this to bitmap later on
+    uint64 nonce             = 1;
+    repeated string digests  = 2;
+    MsgType msgType          = 3;
 }
 
 // GossipHello is the message that is used for the peer to initiate
 // a pull round with another peer
 message GossipHello {
-    uint64 nonce  = 1;
+    uint64 nonce    = 1;
+    bytes metadata  = 2;
+    MsgType msgType = 3;
 }
 
 // DataUpdate is the the final message in the pull phase
 // sent from the receiver to the initiator
 message DataUpdate {
     uint64 nonce = 1;
-    repeated DataMessage data = 2;
+    repeated GossipMessage data = 2;
+    MsgType msgType = 3;
 }
 
 // DataDigest is the message sent from the receiver peer
 // to the initator peer and contains the data items it has
 message DataDigest {
     uint64 nonce     = 1;
-    repeated uint64 seqMap  = 2; // Maybe change this to bitmap later on
+    repeated string digests  = 2; // Maybe change this to bitmap later on
+    MsgType msgType = 3;
 }
 
 
