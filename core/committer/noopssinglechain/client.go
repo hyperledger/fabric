@@ -17,7 +17,6 @@ limitations under the License.
 package noopssinglechain
 
 import (
-	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -62,9 +61,6 @@ type DeliverService struct {
 	stateProvider state.GossipStateProvider
 	gossip        gossip.Gossip
 	conn          *grpc.ClientConn
-
-	stopFlag int32
-	stopChan chan bool
 }
 
 // StopDeliveryService sends stop to the delivery service reference
@@ -84,7 +80,6 @@ func NewDeliverService(chainID string, address string, grpcServer *grpc.Server) 
 			// Instance of RawLedger
 			committer:  committer.NewLedgerCommitter(kvledger.GetLedger(chainID)),
 			windowSize: 10,
-			stopChan:   make(chan bool),
 		}
 
 		deliverService.initStateProvider(address, grpcServer)
@@ -176,9 +171,7 @@ func (d *DeliverService) Start() {
 
 // Stop all service and release resources
 func (d *DeliverService) Stop() {
-	atomic.StoreInt32(&d.stopFlag, 1)
 	d.stopDeliver()
-	d.stopChan <- true
 	d.stateProvider.Stop()
 	d.gossip.Stop()
 }
@@ -189,8 +182,6 @@ func (d *DeliverService) checkLeaderAndRunDeliver() {
 
 	if isLeader {
 		d.startDeliver()
-	} else {
-		<-d.stopChan
 	}
 }
 
@@ -217,13 +208,6 @@ func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
 			},
 		},
 	})
-}
-
-// Internal function to check whenever we need to finish listening
-// for new messages to arrive
-func (d *DeliverService) isDone() bool {
-
-	return atomic.LoadInt32(&d.stopFlag) == 1
 }
 
 func isTxValidForVscc(payload *common.Payload, envBytes []byte) error {
@@ -278,9 +262,6 @@ func (d *DeliverService) readUntilClose() {
 		msg, err := d.client.Recv()
 		if err != nil {
 			logger.Warningf("Receive error: %s", err.Error())
-			if d.isDone() {
-				<-d.stopChan
-			}
 			return
 		}
 		switch t := msg.Type.(type) {
