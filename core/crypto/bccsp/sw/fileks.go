@@ -20,8 +20,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/crypto/utils"
-
 	"errors"
 	"strings"
 
@@ -32,7 +30,7 @@ import (
 	"path/filepath"
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
 )
 
 // FileBasedKeyStore is a folder-based KeyStore.
@@ -234,7 +232,7 @@ func (ks *FileBasedKeyStore) getSuffix(alias string) string {
 }
 
 func (ks *FileBasedKeyStore) storePrivateKey(alias string, privateKey interface{}) error {
-	rawKey, err := primitives.PrivateKeyToPEM(privateKey, ks.pwd)
+	rawKey, err := utils.PrivateKeyToPEM(privateKey, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting private key to PEM [%s]: [%s]", alias, err)
 		return err
@@ -250,7 +248,7 @@ func (ks *FileBasedKeyStore) storePrivateKey(alias string, privateKey interface{
 }
 
 func (ks *FileBasedKeyStore) storePublicKey(alias string, publicKey interface{}) error {
-	rawKey, err := primitives.PublicKeyToPEM(publicKey, ks.pwd)
+	rawKey, err := utils.PublicKeyToPEM(publicKey, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting public key to PEM [%s]: [%s]", alias, err)
 		return err
@@ -266,7 +264,7 @@ func (ks *FileBasedKeyStore) storePublicKey(alias string, publicKey interface{})
 }
 
 func (ks *FileBasedKeyStore) storeKey(alias string, key []byte) error {
-	pem, err := primitives.AEStoEncryptedPEM(key, ks.pwd)
+	pem, err := utils.AEStoEncryptedPEM(key, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting key to PEM [%s]: [%s]", alias, err)
 		return err
@@ -292,7 +290,7 @@ func (ks *FileBasedKeyStore) loadPrivateKey(alias string) (interface{}, error) {
 		return nil, err
 	}
 
-	privateKey, err := primitives.PEMtoPrivateKey(raw, ks.pwd)
+	privateKey, err := utils.PEMtoPrivateKey(raw, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed parsing private key [%s]: [%s].", alias, err.Error())
 
@@ -313,7 +311,7 @@ func (ks *FileBasedKeyStore) loadPublicKey(alias string) (interface{}, error) {
 		return nil, err
 	}
 
-	privateKey, err := primitives.PEMtoPublicKey(raw, ks.pwd)
+	privateKey, err := utils.PEMtoPublicKey(raw, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed parsing private key [%s]: [%s].", alias, err.Error())
 
@@ -334,7 +332,7 @@ func (ks *FileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 		return nil, err
 	}
 
-	key, err := primitives.PEMtoAES(pem, ks.pwd)
+	key, err := utils.PEMtoAES(pem, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed parsing key [%s]: [%s]", alias, err)
 

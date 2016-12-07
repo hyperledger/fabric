@@ -42,7 +42,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -790,7 +790,7 @@ func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
 	}
 
-	pub, err := primitives.DERToPublicKey(pkRaw)
+	pub, err := utils.DERToPublicKey(pkRaw)
 	if err != nil {
 		t.Fatalf("Failed converting raw to ecdsa.PublicKey [%s]", err)
 	}
@@ -835,7 +835,7 @@ func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 	}
 
 	// Import the ecdsa.PrivateKey
-	priv, err := primitives.PrivateKeyToDER(key)
+	priv, err := utils.PrivateKeyToDER(key)
 	if err != nil {
 		t.Fatalf("Failed converting raw to ecdsa.PrivateKey [%s]", err)
 	}
@@ -849,7 +849,7 @@ func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 	}
 
 	// Import the ecdsa.PublicKey
-	pub, err := primitives.PublicKeyToDER(&key.PublicKey)
+	pub, err := utils.PublicKeyToDER(&key.PublicKey)
 	if err != nil {
 		t.Fatalf("Failed converting raw to ecdsa.PublicKey [%s]", err)
 	}
@@ -967,7 +967,7 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
 	}
 
-	pub, err := primitives.DERToPublicKey(pkRaw)
+	pub, err := utils.DERToPublicKey(pkRaw)
 	if err != nil {
 		t.Fatalf("Failed converting raw to ECDSA.PublicKey [%s]", err)
 	}
@@ -977,7 +977,7 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed generating self-signed certificate [%s]", err)
 	}
 
-	cert, err := primitives.DERToX509Certificate(certRaw)
+	cert, err := utils.DERToX509Certificate(certRaw)
 	if err != nil {
 		t.Fatalf("Failed generating X509 certificate object from raw [%s]", err)
 	}
@@ -1163,7 +1163,7 @@ func TestHMACKeyDerivOverAES256Key(t *testing.T) {
 
 func TestAES256KeyImport(t *testing.T) {
 
-	raw, err := primitives.GetRandomBytes(32)
+	raw, err := GetRandomBytes(32)
 	if err != nil {
 		t.Fatalf("Failed generating AES key [%s]", err)
 	}
@@ -1253,7 +1253,7 @@ func TestAES256KeyGenSKI(t *testing.T) {
 func TestSHA(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
-		b, err := primitives.GetRandomBytes(i)
+		b, err := GetRandomBytes(i)
 		if err != nil {
 			t.Fatalf("Failed getting random bytes [%s]", err)
 		}
@@ -1560,7 +1560,7 @@ func TestRSAKeyImportFromRSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed getting RSA raw public key [%s]", err)
 	}
 
-	pub, err := primitives.DERToPublicKey(pkRaw)
+	pub, err := utils.DERToPublicKey(pkRaw)
 	if err != nil {
 		t.Fatalf("Failed converting raw to RSA.PublicKey [%s]", err)
 	}
@@ -1678,7 +1678,7 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed getting RSA raw public key [%s]", err)
 	}
 
-	pub, err := primitives.DERToPublicKey(pkRaw)
+	pub, err := utils.DERToPublicKey(pkRaw)
 	if err != nil {
 		t.Fatalf("Failed converting raw to RSA.PublicKey [%s]", err)
 	}
@@ -1688,7 +1688,7 @@ func TestKeyImportFromX509RSAPublicKey(t *testing.T) {
 		t.Fatalf("Failed generating self-signed certificate [%s]", err)
 	}
 
-	cert, err := primitives.DERToX509Certificate(certRaw)
+	cert, err := utils.DERToX509Certificate(certRaw)
 	if err != nil {
 		t.Fatalf("Failed generating X509 certificate object from raw [%s]", err)
 	}

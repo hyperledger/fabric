@@ -36,8 +36,7 @@ import (
 	"crypto/sha512"
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
-	"github.com/hyperledger/fabric/core/crypto/utils"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
 	"github.com/op/go-logging"
 	"golang.org/x/crypto/sha3"
 )
@@ -76,9 +75,6 @@ func New(securityLevel int, hashFamily string, keyStore bccsp.KeyStore) (bccsp.B
 }
 
 // SoftwareBasedBCCSP is the software-based implementation of the BCCSP.
-// It uses util code in the primitives package but does not depend on the
-// initialization of that package.
-// It can be configured via viper.
 type impl struct {
 	conf *config
 	ks   bccsp.KeyStore
@@ -118,7 +114,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		k = &ecdsaPrivateKey{lowLevelKey}
 
 	case *bccsp.AESKeyGenOpts:
-		lowLevelKey, err := primitives.GetRandomBytes(csp.conf.aesBitLength)
+		lowLevelKey, err := GetRandomBytes(csp.conf.aesBitLength)
 
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating AES key [%s]", err)
@@ -127,7 +123,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		k = &aesPrivateKey{lowLevelKey, false}
 
 	case *bccsp.AES256KeyGenOpts:
-		lowLevelKey, err := primitives.GetRandomBytes(32)
+		lowLevelKey, err := GetRandomBytes(32)
 
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating AES 256 key [%s]", err)
@@ -136,7 +132,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		k = &aesPrivateKey{lowLevelKey, false}
 
 	case *bccsp.AES192KeyGenOpts:
-		lowLevelKey, err := primitives.GetRandomBytes(24)
+		lowLevelKey, err := GetRandomBytes(24)
 
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating AES 192 key [%s]", err)
@@ -145,7 +141,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		k = &aesPrivateKey{lowLevelKey, false}
 
 	case *bccsp.AES128KeyGenOpts:
-		lowLevelKey, err := primitives.GetRandomBytes(16)
+		lowLevelKey, err := GetRandomBytes(16)
 
 		if err != nil {
 			return nil, fmt.Errorf("Failed generating AES 128 key [%s]", err)
@@ -412,7 +408,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			return nil, errors.New("[ECDSAPKIXPublicKeyImportOpts] Invalid raw. It must not be nil.")
 		}
 
-		lowLevelKey, err := primitives.DERToPublicKey(der)
+		lowLevelKey, err := utils.DERToPublicKey(der)
 		if err != nil {
 			return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
 		}
@@ -445,7 +441,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 			return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw. It must not be nil.")
 		}
 
-		lowLevelKey, err := primitives.DERToPrivateKey(der)
+		lowLevelKey, err := utils.DERToPrivateKey(der)
 		if err != nil {
 			return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
 		}
@@ -629,7 +625,7 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 	// Check key type
 	switch k.(type) {
 	case *ecdsaPrivateKey:
-		ecdsaSignature := new(primitives.ECDSASignature)
+		ecdsaSignature := new(ecdsaSignature)
 		_, err := asn1.Unmarshal(signature, ecdsaSignature)
 		if err != nil {
 			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
@@ -637,7 +633,7 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 
 		return ecdsa.Verify(&(k.(*ecdsaPrivateKey).privKey.PublicKey), digest, ecdsaSignature.R, ecdsaSignature.S), nil
 	case *ecdsaPublicKey:
-		ecdsaSignature := new(primitives.ECDSASignature)
+		ecdsaSignature := new(ecdsaSignature)
 		_, err := asn1.Unmarshal(signature, ecdsaSignature)
 		if err != nil {
 			return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
@@ -692,7 +688,7 @@ func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts
 		switch opts.(type) {
 		case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
 			// AES in CBC mode with PKCS7 padding
-			return primitives.CBCPKCS7Encrypt(k.(*aesPrivateKey).privKey, plaintext)
+			return AESCBCPKCS7Encrypt(k.(*aesPrivateKey).privKey, plaintext)
 		default:
 			return nil, fmt.Errorf("Mode not recognized [%s]", opts)
 		}
@@ -716,7 +712,7 @@ func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpt
 		switch opts.(type) {
 		case *bccsp.AESCBCPKCS7ModeOpts, bccsp.AESCBCPKCS7ModeOpts:
 			// AES in CBC mode with PKCS7 padding
-			return primitives.CBCPKCS7Decrypt(k.(*aesPrivateKey).privKey, ciphertext)
+			return AESCBCPKCS7Decrypt(k.(*aesPrivateKey).privKey, ciphertext)
 		default:
 			return nil, fmt.Errorf("Mode not recognized [%s]", opts)
 		}
