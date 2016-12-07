@@ -17,7 +17,6 @@ limitations under the License.
 package peer
 
 import (
-	"fmt"
 	"net"
 
 	"google.golang.org/grpc"
@@ -26,7 +25,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/core/crypto"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -65,40 +63,4 @@ func NewPeerClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn, e
 		return comm.NewClientConnectionWithAddress(peerAddress, true, true, comm.InitTLSForPeer())
 	}
 	return comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
-}
-
-// Impl implements peer
-type Impl struct {
-	secHelper crypto.Peer
-}
-
-// NewPeer returns a Peer implementation
-func NewPeer(secHelperFunc func() crypto.Peer) (*Impl, error) {
-	peer := new(Impl)
-
-	peer.secHelper = secHelperFunc()
-
-	// Install security object for peer
-	if SecurityEnabled() {
-		if peer.secHelper == nil {
-			return nil, fmt.Errorf("Security helper not provided")
-		}
-	}
-
-	return peer, nil
-}
-
-// GetPeerEndpoint returns the endpoint for this peer
-func (p *Impl) GetPeerEndpoint() (*pb.PeerEndpoint, error) {
-	ep, err := GetPeerEndpoint()
-	if err == nil && SecurityEnabled() {
-		// Set the PkiID on the PeerEndpoint if security is enabled
-		ep.PkiID = p.GetSecHelper().GetID()
-	}
-	return ep, err
-}
-
-// GetSecHelper returns the crypto.Peer
-func (p *Impl) GetSecHelper() crypto.Peer {
-	return p.secHelper
 }

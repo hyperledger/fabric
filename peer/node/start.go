@@ -25,7 +25,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
@@ -33,8 +32,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
-	"github.com/hyperledger/fabric/core/crypto"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
@@ -308,17 +305,4 @@ func writePid(fileName string, pid int) error {
 		return fmt.Errorf("can't release lock '%s', lock is held", fd.Name())
 	}
 	return nil
-}
-
-var once sync.Once
-
-//this should be called exactly once and the result cached
-//NOTE- this crypto func might rightly belong in a crypto package
-//and universally accessed
-func getSecHelper() (crypto.Peer, error) {
-	//TODO:  integrated new crypto / idp code
-	once.Do(func() {
-		primitives.SetSecurityLevel("SHA2", 256)
-	})
-	return nil, nil
 }
