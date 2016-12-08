@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -327,6 +328,9 @@ func (d *DeliverService) readUntilClose() {
 			// Gossip messages with other nodes
 			logger.Debugf("Gossiping block [%d], peers number [%d]", seqNum, numberOfPeers)
 			d.gossip.Gossip(gossipMsg)
+			if err = producer.SendProducerBlockEvent(block); err != nil {
+				logger.Errorf("Error sending block event %s", err)
+			}
 
 			d.unAcknowledged++
 			if d.unAcknowledged >= d.windowSize/2 {
