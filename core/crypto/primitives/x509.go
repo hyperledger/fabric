@@ -17,13 +17,10 @@ limitations under the License.
 package primitives
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/pem"
 	"errors"
 	"math/big"
 	"net"
@@ -51,68 +48,6 @@ var (
 // DERToX509Certificate converts der to x509
 func DERToX509Certificate(asn1Data []byte) (*x509.Certificate, error) {
 	return x509.ParseCertificate(asn1Data)
-}
-
-// PEMtoCertificate converts pem to x509
-func PEMtoCertificate(raw []byte) (*x509.Certificate, error) {
-	block, _ := pem.Decode(raw)
-	if block == nil {
-		return nil, errors.New("No PEM block available")
-	}
-
-	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
-		return nil, errors.New("Not a valid CERTIFICATE PEM block")
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return cert, nil
-}
-
-// PEMtoDER converts pem to der
-func PEMtoDER(raw []byte) ([]byte, error) {
-	block, _ := pem.Decode(raw)
-	if block == nil {
-		return nil, errors.New("No PEM block available")
-	}
-
-	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
-		return nil, errors.New("Not a valid CERTIFICATE PEM block")
-	}
-
-	return block.Bytes, nil
-}
-
-// PEMtoCertificateAndDER converts pem to x509 and der
-func PEMtoCertificateAndDER(raw []byte) (*x509.Certificate, []byte, error) {
-	block, _ := pem.Decode(raw)
-	if block == nil {
-		return nil, nil, errors.New("No PEM block available")
-	}
-
-	if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
-		return nil, nil, errors.New("Not a valid CERTIFICATE PEM block")
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return cert, block.Bytes, nil
-}
-
-// DERCertToPEM converts der to pem
-func DERCertToPEM(der []byte) []byte {
-	return pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: der,
-		},
-	)
 }
 
 // GetCriticalExtension returns a requested critical extension. It also remove it from the list
@@ -204,54 +139,4 @@ func NewSelfSignedCert() ([]byte, interface{}, error) {
 	}
 
 	return cert, privKey, nil
-}
-
-// CheckCertPKAgainstSK checks certificate's publickey against the passed secret key
-func CheckCertPKAgainstSK(x509Cert *x509.Certificate, privateKey interface{}) error {
-	switch pub := x509Cert.PublicKey.(type) {
-	case *rsa.PublicKey:
-		priv, ok := privateKey.(*rsa.PrivateKey)
-		if !ok {
-			return errors.New("Private key type does not match public key type")
-		}
-		if pub.N.Cmp(priv.N) != 0 {
-			return errors.New("Private key does not match public key")
-		}
-	case *ecdsa.PublicKey:
-		priv, ok := privateKey.(*ecdsa.PrivateKey)
-		if !ok {
-			return errors.New("Private key type does not match public key type")
-
-		}
-		if pub.X.Cmp(priv.X) != 0 || pub.Y.Cmp(priv.Y) != 0 {
-			return errors.New("Private key does not match public key")
-		}
-	default:
-		return errors.New("Unknown public key algorithm")
-	}
-
-	return nil
-}
-
-// CheckCertAgainRoot check the validity of the passed certificate against the passed certPool
-func CheckCertAgainRoot(x509Cert *x509.Certificate, certPool *x509.CertPool) ([][]*x509.Certificate, error) {
-	opts := x509.VerifyOptions{
-		// TODO		DNSName: "test.example.com",
-		Roots: certPool,
-	}
-
-	return x509Cert.Verify(opts)
-}
-
-// CheckCertAgainstSKAndRoot checks the passed certificate against the passed secretkey and certPool
-func CheckCertAgainstSKAndRoot(x509Cert *x509.Certificate, privateKey interface{}, certPool *x509.CertPool) error {
-	if err := CheckCertPKAgainstSK(x509Cert, privateKey); err != nil {
-		return err
-	}
-
-	if _, err := CheckCertAgainRoot(x509Cert, certPool); err != nil {
-		return err
-	}
-
-	return nil
 }
