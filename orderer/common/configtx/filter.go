@@ -14,22 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configfilter
+package configtx
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
-	"github.com/hyperledger/fabric/orderer/common/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 )
 
 type configFilter struct {
-	configManager configtx.Manager
+	configManager Manager
 }
 
-// New creates a new configfilter Rule based on the given configtx.Manager
-func New(manager configtx.Manager) broadcastfilter.Rule {
+// New creates a new configfilter Rule based on the given Manager
+func NewFilter(manager Manager) broadcastfilter.Rule {
 	return &configFilter{
 		configManager: manager,
 	}
