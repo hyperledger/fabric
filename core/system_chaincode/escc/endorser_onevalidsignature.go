@@ -33,26 +33,11 @@ var logger = logging.MustGetLogger("escc")
 // EndorserOneValidSignature implements the default endorsement policy, which is to
 // sign the proposal hash and the read-write set
 type EndorserOneValidSignature struct {
-	signerId *msp.IdentityIdentifier
 }
 
 // Init is called once when the chaincode started the first time
-// There are 2 mandatory arguments
-// args[0] the msp identifier for the ESCC's signer
-// args[1] the identifier for the ESCC's signer within the msp
 func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	// Obtain the identifier of the identity that will be used to sign
-	// Note that we cache this identity once and for all. If there is
-	// the need to change the signing identity, there are several options:
-	// 1) pass the desired signing identity as an optional argument to ESCC
-	// 2) expose an ESCC Invoke function that changes the siging identity
-	args := stub.GetArgs()
-	if len(args) != 2 {
-		return nil, fmt.Errorf("Incorrect number of arguments (expected 2, provided %d)", len(args))
-	}
-	e.signerId = &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: string(args[0])}, Value: string(args[1])}
-
-	logger.Infof("Successfully initialized ESCC with identity: %s", e.signerId)
+	logger.Infof("Successfully initialized ESCC")
 
 	return nil, nil
 }
@@ -127,15 +112,15 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 		visibility = args[5]
 	}
 
-	// obtain the identity that will sign this proposal response
-	// NOTE: we must obtain it every time: while e.signerId remains
-	// constant, the corresponding cert might (and will) change
-	// and so we cannot cache the result of this call; GetSigningIdentity
-	// on the other hand will cache the identity as long as it
-	// doesn't change
-	signingEndorser, err := msp.GetManager().GetSigningIdentity(e.signerId)
+	// obtain the default signing identity for this peer; it will be used to sign this proposal response
+	localMsp := msp.GetLocalMSP()
+	if localMsp == nil {
+		return nil, fmt.Errorf("Nil local MSP manager")
+	}
+
+	signingEndorser, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		return nil, fmt.Errorf("Could not obtain the signing identity for %s, err %s", e.signerId, err)
+		return nil, fmt.Errorf("Could not obtain the default signing identity, err %s", err)
 	}
 
 	// obtain a proposal response

@@ -24,11 +24,11 @@ func NewNoopMsp() PeerMSP {
 	return &noopmsp{}
 }
 
-func (msp *noopmsp) Setup(configFile string) error {
+func (msp *noopmsp) Setup(*MSPConfig) error {
 	return nil
 }
 
-func (msp *noopmsp) Reconfig(reconfigMessage string) error {
+func (msp *noopmsp) Reconfig(reconfigMessage []byte) error {
 	return nil
 }
 
@@ -36,8 +36,8 @@ func (msp *noopmsp) Type() ProviderType {
 	return 0
 }
 
-func (msp *noopmsp) Identifier() (*ProviderIdentifier, error) {
-	return &ProviderIdentifier{}, nil
+func (msp *noopmsp) Identifier() (string, error) {
+	return "NOOP", nil
 }
 
 func (msp *noopmsp) Policy() string {
@@ -50,6 +50,12 @@ func (msp *noopmsp) ImportSigningIdentity(req *ImportRequest) (SigningIdentity, 
 
 func (msp *noopmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
 	mspLogger.Infof("Obtaining signing identity for %s", identifier)
+	id, _ := newNoopSigningIdentity()
+	return id, nil
+}
+
+func (msp *noopmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
+	mspLogger.Infof("Obtaining default signing identity")
 	id, _ := newNoopSigningIdentity()
 	return id, nil
 }
@@ -77,7 +83,7 @@ func newNoopIdentity() (Identity, error) {
 }
 
 func (id *noopidentity) Identifier() *IdentityIdentifier {
-	return &IdentityIdentifier{Mspid: ProviderIdentifier{Value: "NOOP"}, Value: "Bob"}
+	return &IdentityIdentifier{Mspid: "NOOP", Id: "Bob"}
 }
 
 func (id *noopidentity) GetMSPIdentifier() string {
@@ -89,7 +95,7 @@ func (id *noopidentity) Validate() (bool, error) {
 	return true, nil
 }
 
-func (id *noopidentity) ParticipantID() string {
+func (id *noopidentity) OrganizationUnits() string {
 	return "dunno"
 }
 

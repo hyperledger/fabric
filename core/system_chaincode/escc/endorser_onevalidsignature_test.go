@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
@@ -101,7 +102,7 @@ func TestInvoke(t *testing.T) {
 
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: cs}
 
-	sId, err := msp.GetManager().GetSigningIdentity(&msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: "DEFAULT"}, Value: "PEER"})
+	sId, err := msp.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fail()
 		t.Fatalf("couldn't obtain identity: err %s", err)
@@ -235,7 +236,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	}
 
 	// get the identity of the endorser
-	endorser, err := msp.GetManager().DeserializeIdentity(pResp.Endorsement.Endorser)
+	endorser, err := msp.GetManagerForChain(util.GetTestChainID()).DeserializeIdentity(pResp.Endorsement.Endorser)
 	if err != nil {
 		return fmt.Errorf("Failed to deserialize endorser identity, err %s", err)
 	}
@@ -258,7 +259,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	// as extra, we assemble a transaction, sign it and then validate it
 
 	// obtain signer for the transaction
-	sId, err := msp.GetManager().GetSigningIdentity(&msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: "DEFAULT"}, Value: "PEER"})
+	sId, err := msp.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		return fmt.Errorf("couldn't obtain identity: err %s", err)
 	}
@@ -283,7 +284,7 @@ func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify
 	// TODO: determine the config file for the MSP
 	mspMgrConfigFile := "../../../msp/peer-config.json"
-	msp.GetManager().Setup(mspMgrConfigFile)
+	config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
 
 	os.Exit(m.Run())
 }

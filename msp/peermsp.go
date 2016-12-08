@@ -41,22 +41,17 @@ package msp
 type PeerMSPManager interface {
 
 	// Setup the MSP manager instance according to configuration information
-	Setup(configFile string) error
+	Setup(config *MSPManagerConfig) error
 
 	// Process reconfiguration messages (coming e.g., from Blockchain). This
 	// should take into consideration certain policies related to how, e.g.,
 	// a certain certificate should be considered valid, what constitutes the
 	// chain of trust, and who is authorized to change that.
 	// @param reconfigMessage The message containing the reconfiguration information.
-	Reconfig(reconfigMessage string) error
+	Reconfig(config []byte) error
 
 	// Name of the MSP manager
 	Name() string
-
-	// Policy included in the MSPManager-config.json and passed at setup time to
-	// PeerMSPManager to reflect the policy in which in the given blockchain new
-	// membership service providers are added.
-	Policy() string
 
 	// Provides a list of Membership Service providers
 	EnlistedMSPs() (map[string]PeerMSP, error)
@@ -77,9 +72,6 @@ type PeerMSPManager interface {
 	// @param req The import request
 	ImportSigningIdentity(req *ImportRequest) (SigningIdentity, error)
 
-	// GetMember returns the member object corresponding to the provided identifier
-	GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error)
-
 	// DeserializeIdentity deserializes an identity
 	DeserializeIdentity([]byte) (Identity, error)
 
@@ -87,9 +79,6 @@ type PeerMSPManager interface {
 	DeleteSigningIdentity(identifier string) (bool, error)
 
 	// VerifyMSPSignature()
-
-	// isValid checks whether the supplied identity is valid
-	IsValid(Identity, *ProviderIdentifier) (bool, error)
 }
 
 // PeerMSP is the minimal Membership Service Provider Interface to be implemented
@@ -97,17 +86,17 @@ type PeerMSPManager interface {
 type PeerMSP interface {
 
 	// Setup the MSP instance according to configuration information
-	Setup(configFile string) error
+	Setup(config *MSPConfig) error
 
 	// Process reconfiguration messages coming from the blockchain
 	// @param reconfigMessage The message containing the reconfiguration command.
-	Reconfig(reconfigMessage string) error
+	Reconfig(config []byte) error
 
 	// Get provider type
 	Type() ProviderType
 
 	// Get provider identifier
-	Identifier() (*ProviderIdentifier, error)
+	Identifier() (string, error)
 
 	// Obtain the policy to govern changes; this can be
 	// having a json format.
@@ -120,6 +109,9 @@ type PeerMSP interface {
 
 	// GetSingingIdentity returns a signing identity corresponding to the provided identifier
 	GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error)
+
+	// GetDefaultSigningIdentity returns the default signing identity
+	GetDefaultSigningIdentity() (SigningIdentity, error)
 
 	// DeserializeIdentity deserializes an identity
 	DeserializeIdentity([]byte) (Identity, error)

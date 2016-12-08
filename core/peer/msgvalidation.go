@@ -78,7 +78,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	}
 
 	// validate the signature
-	err = checkSignatureFromCreator(hdr.SignatureHeader.Creator, signedProp.Signature, signedProp.ProposalBytes)
+	err = checkSignatureFromCreator(hdr.SignatureHeader.Creator, signedProp.Signature, signedProp.ProposalBytes, hdr.ChainHeader.ChainID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -105,7 +105,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 // given a creator, a message and a signature,
 // this function returns nil if the creator
 // is a valid cert and the signature is valid
-func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte) error {
+func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, ChainID string) error {
 	putilsLogger.Infof("checkSignatureFromCreator starts")
 
 	// check for nil argument
@@ -114,7 +114,7 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte) erro
 	}
 
 	// get the identity of the creator
-	creator, err := msp.GetManager().DeserializeIdentity(creatorBytes)
+	creator, err := msp.GetManagerForChain(ChainID).DeserializeIdentity(creatorBytes)
 	if err != nil {
 		return fmt.Errorf("Failed to deserialize creator identity, err %s", err)
 	}
@@ -321,7 +321,7 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, []*pb.Transaction
 	}
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(payload.Header.SignatureHeader.Creator, e.Signature, e.Payload)
+	err = checkSignatureFromCreator(payload.Header.SignatureHeader.Creator, e.Signature, e.Payload, payload.Header.ChainHeader.ChainID)
 	if err != nil {
 		return nil, nil, err
 	}

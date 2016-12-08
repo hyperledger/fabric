@@ -27,6 +27,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
@@ -369,11 +370,8 @@ func TestMain(m *testing.M) {
 
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigFile := "../../msp/peer-config.json"
-	msp.GetManager().Setup(mspMgrConfigFile)
-	mspID := "DEFAULT"
-	id := "PEER"
-	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspID}, Value: id}
-	signer, err = msp.GetManager().GetSigningIdentity(signingIdentity)
+	config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
+	signer, err = msp.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize msp/signer")

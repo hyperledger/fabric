@@ -172,20 +172,14 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		return fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
 	}
 
-	// TODO: how should we get signing ID from the command line?
-	mspID := "DEFAULT"
-	id := "PEER"
-	signingIdentity := &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspID}, Value: id}
-
-	// TODO: how should we obtain the config for the MSP from the command line? a hardcoded test config?
-	signer, err := msp.GetManager().GetSigningIdentity(signingIdentity)
+	signer, err := msp.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
-		return fmt.Errorf("Error obtaining signing identity for %s: %s\n", signingIdentity, err)
+		return fmt.Errorf("Error obtaining the default signing identity, err %s", err)
 	}
 
 	creator, err := signer.Serialize()
 	if err != nil {
-		return fmt.Errorf("Error serializing identity for %s: %s\n", signingIdentity, err)
+		return fmt.Errorf("Error serializing the default signing identity, err %s", err)
 	}
 
 	uuid := cutil.GenerateUUID()

@@ -22,6 +22,7 @@ import (
 
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -30,8 +31,7 @@ import (
 )
 
 var (
-	signingIdentity *msp.IdentityIdentifier
-	signer          msp.SigningIdentity
+	signer msp.SigningIdentity
 )
 
 func init() {
@@ -44,11 +44,8 @@ func init() {
 		fmt.Printf("Could not get location of msp manager config file")
 		return
 	}
-	msp.GetManager().Setup(mspMgrConfigFile)
-	mspID := "DEFAULT"
-	id := "PEER"
-	signingIdentity = &msp.IdentityIdentifier{Mspid: msp.ProviderIdentifier{Value: mspID}, Value: id}
-	signer, err = msp.GetManager().GetSigningIdentity(signingIdentity)
+	config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
+	signer, err = msp.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize msp/signer")
@@ -114,7 +111,7 @@ var sigId msp.SigningIdentity
 func ConstructUnsingedTxEnv(txid string, chainID string, ccName string, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
 	if mspLcl == nil {
 		mspLcl = msp.NewNoopMsp()
-		sigId, _ = mspLcl.GetSigningIdentity(nil)
+		sigId, _ = mspLcl.GetDefaultSigningIdentity()
 	}
 
 	return ConstructSingedTxEnv(txid, chainID, ccName, simulationResults, events, visibility, sigId)
