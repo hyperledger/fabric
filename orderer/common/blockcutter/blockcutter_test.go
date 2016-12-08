@@ -73,7 +73,7 @@ var unmatchedTx = &cb.Envelope{Payload: []byte("UNMATCHED")}
 
 func TestNormalBatch(t *testing.T) {
 	filters := getFilters()
-	batchSize := 2
+	batchSize := uint32(2)
 	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: batchSize}, filters)
 
 	batches, committers, ok := r.Ordered(goodTx)
@@ -100,7 +100,7 @@ func TestNormalBatch(t *testing.T) {
 
 func TestBadMessageInBatch(t *testing.T) {
 	filters := getFilters()
-	batchSize := 2
+	batchSize := uint32(2)
 	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: batchSize}, filters)
 
 	batches, committers, ok := r.Ordered(badTx)
@@ -136,7 +136,7 @@ func TestBadMessageInBatch(t *testing.T) {
 
 func TestUnmatchedMessageInBatch(t *testing.T) {
 	filters := getFilters()
-	batchSize := 2
+	batchSize := uint32(2)
 	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: batchSize}, filters)
 
 	batches, committers, ok := r.Ordered(unmatchedTx)
@@ -172,7 +172,7 @@ func TestUnmatchedMessageInBatch(t *testing.T) {
 
 func TestIsolatedEmptyBatch(t *testing.T) {
 	filters := getFilters()
-	batchSize := 2
+	batchSize := uint32(2)
 	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: batchSize}, filters)
 
 	batches, committers, ok := r.Ordered(isolatedTx)
@@ -196,7 +196,7 @@ func TestIsolatedEmptyBatch(t *testing.T) {
 
 func TestIsolatedPartialBatch(t *testing.T) {
 	filters := getFilters()
-	batchSize := 2
+	batchSize := uint32(2)
 	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: batchSize}, filters)
 
 	batches, committers, ok := r.Ordered(goodTx)

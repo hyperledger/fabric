@@ -38,7 +38,7 @@ type bootstrapper struct {
 	lastModified  uint64
 	epoch         uint64
 	consensusType string
-	batchSize     int32
+	batchSize     uint32
 }
 
 const (

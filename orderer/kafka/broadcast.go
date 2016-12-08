@@ -109,7 +109,7 @@ func (b *broadcasterImpl) sendBlock() error {
 	return b.producer.Send(blockBytes)
 }
 
-func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint) {
+func (b *broadcasterImpl) cutBlock(period time.Duration, maxSize uint32) {
 	timer := time.NewTimer(period)
 
 	for {

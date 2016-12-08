@@ -50,7 +50,7 @@ type Manager interface {
 	ConsensusType() string
 
 	// BatchSize returns the maximum number of messages to include in a block
-	BatchSize() int
+	BatchSize() uint32
 
 	// ChainCreators returns the policy names which are allowed for chain creation
 	// This field is only set for the system ordering chain
@@ -59,7 +59,7 @@ type Manager interface {
 
 type ordererConfig struct {
 	consensusType string
-	batchSize     int
+	batchSize     uint32
 	chainCreators []string
 }
 
@@ -83,7 +83,7 @@ func (pm *ManagerImpl) ConsensusType() string {
 }
 
 // BatchSize returns the maximum number of messages to include in a block
-func (pm *ManagerImpl) BatchSize() int {
+func (pm *ManagerImpl) BatchSize() uint32 {
 	return pm.config.batchSize
 }
 
@@ -148,7 +148,7 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 			return fmt.Errorf("Attempted to set the batch size to %d which is less than or equal to  0", batchSize.Messages)
 		}
 
-		pm.pendingConfig.batchSize = int(batchSize.Messages)
+		pm.pendingConfig.batchSize = batchSize.Messages
 	case ChainCreatorsKey:
 		chainCreators := &ab.ChainCreators{}
 		err := proto.Unmarshal(configItem.Value, chainCreators)

@@ -127,7 +127,7 @@ func TestConsensusType(t *testing.T) {
 }
 
 func TestBatchSize(t *testing.T) {
-	endBatchSize := 10
+	endBatchSize := uint32(10)
 	invalidMessage :=
 		&cb.ConfigurationItem{
 			Type:  cb.ConfigurationItem_Orderer,
@@ -139,15 +139,10 @@ func TestBatchSize(t *testing.T) {
 		Key:   BatchSizeKey,
 		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: 0}),
 	}
-	negativeBatchSize := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   BatchSizeKey,
-		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: -1}),
-	}
 	validMessage := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   BatchSizeKey,
-		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: int32(endBatchSize)}),
+		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: endBatchSize}),
 	}
 	m := NewManagerImpl()
 	m.BeginConfig()
@@ -165,11 +160,6 @@ func TestBatchSize(t *testing.T) {
 	err = m.ProposeConfig(zeroBatchSize)
 	if err == nil {
 		t.Fatalf("Should have rejected batch size of 0")
-	}
-
-	err = m.ProposeConfig(negativeBatchSize)
-	if err == nil {
-		t.Fatalf("Should have rejected negative batch size")
 	}
 
 	m.CommitConfig()

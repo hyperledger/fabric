@@ -42,9 +42,9 @@ type General struct {
 	OrdererType   string
 	LedgerType    string
 	BatchTimeout  time.Duration
-	BatchSize     uint
-	QueueSize     uint
-	MaxWindowSize uint
+	BatchSize     uint32
+	QueueSize     uint32
+	MaxWindowSize uint32
 	ListenAddress string
 	ListenPort    uint16
 	GenesisMethod string

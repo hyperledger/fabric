@@ -21,7 +21,7 @@ type Manager struct {
 	// ConsensusTypeVal is returned as the result of ConsensusType()
 	ConsensusTypeVal string
 	// BatchSizeVal is returned as the result of BatchSize()
-	BatchSizeVal int
+	BatchSizeVal uint32
 	// ChainCreatorsVal is returned as the result of ChainCreators()
 	ChainCreatorsVal []string
 }
@@ -32,7 +32,7 @@ func (scm *Manager) ConsensusType() string {
 }
 
 // BatchSize returns the BatchSizeVal
-func (scm *Manager) BatchSize() int {
+func (scm *Manager) BatchSize() uint32 {
 	return scm.BatchSizeVal
 }
 
