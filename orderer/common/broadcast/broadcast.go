@@ -17,7 +17,7 @@ limitations under the License.
 package broadcast
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
@@ -48,7 +48,7 @@ type Support interface {
 	Enqueue(env *cb.Envelope) bool
 
 	// Filters returns the set of broadcast filters for this chain
-	Filters() *broadcastfilter.RuleSet
+	Filters() *filter.RuleSet
 }
 
 type handlerImpl struct {
@@ -129,24 +129,18 @@ func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) err
 			panic("Unimplemented")
 		}
 
-		action, _ := support.Filters().Apply(msg)
+		_, filterErr := support.Filters().Apply(msg)
 
-		switch action {
-		case broadcastfilter.Reconfigure:
-			fallthrough
-		case broadcastfilter.Accept:
+		if filterErr != nil {
+			logger.Debugf("Rejecting broadcast message")
+			err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+		} else {
 			select {
 			case b.queue <- &msgAndSupport{msg: msg, support: support}:
 				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
 			default:
 				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
 			}
-		case broadcastfilter.Forward:
-			fallthrough
-		case broadcastfilter.Reject:
-			err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
-		default:
-			logger.Fatalf("Unknown filter action :%v", action)
 		}
 
 		if err != nil {

@@ -17,7 +17,9 @@ limitations under the License.
 package configtx
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
+	"fmt"
+
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
@@ -28,35 +30,54 @@ type configFilter struct {
 }
 
 // New creates a new configfilter Rule based on the given Manager
-func NewFilter(manager Manager) broadcastfilter.Rule {
+func NewFilter(manager Manager) filter.Rule {
 	return &configFilter{
 		configManager: manager,
 	}
 }
 
+type configCommitter struct {
+	manager        Manager
+	configEnvelope *cb.ConfigurationEnvelope
+}
+
+func (cc *configCommitter) Commit() {
+	err := cc.manager.Apply(cc.configEnvelope)
+	if err != nil {
+		panic(fmt.Errorf("Could not apply configuration transaction which should have already been validated: %s", err))
+	}
+}
+
+func (cc *configCommitter) Isolated() bool {
+	return true
+}
+
 // Apply applies the rule to the given Envelope, replying with the Action to take for the message
-func (cf *configFilter) Apply(message *cb.Envelope) broadcastfilter.Action {
+func (cf *configFilter) Apply(message *cb.Envelope) (filter.Action, filter.Committer) {
 	msgData := &cb.Payload{}
 
 	err := proto.Unmarshal(message.Payload, msgData)
 	if err != nil {
-		return broadcastfilter.Forward
+		return filter.Forward, nil
 	}
 
 	if msgData.Header == nil || msgData.Header.ChainHeader == nil || msgData.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
-		return broadcastfilter.Forward
+		return filter.Forward, nil
 	}
 
 	config := &cb.ConfigurationEnvelope{}
 	err = proto.Unmarshal(msgData.Data, config)
 	if err != nil {
-		return broadcastfilter.Reject
+		return filter.Reject, nil
 	}
 
 	err = cf.configManager.Validate(config)
 	if err != nil {
-		return broadcastfilter.Reject
+		return filter.Reject, nil
 	}
 
-	return broadcastfilter.Reconfigure
+	return filter.Accept, &configCommitter{
+		manager:        cf.configManager,
+		configEnvelope: config,
+	}
 }

@@ -19,15 +19,13 @@ package multichain
 import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
-	"github.com/hyperledger/fabric/orderer/common/broadcastfilter"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/golang/protobuf/proto"
 )
 
 // Consenter defines the backing ordering mechanism
@@ -61,7 +59,7 @@ type Chain interface {
 type ConsenterSupport interface {
 	BlockCutter() blockcutter.Receiver
 	SharedConfig() sharedconfig.Manager
-	Writer() rawledger.Writer
+	WriteBlock(data []*cb.Envelope, metadata [][]byte, committers []filter.Committer)
 }
 
 // ChainSupport provides a wrapper for the resources backing a chain
@@ -77,15 +75,14 @@ type chainSupport struct {
 	configManager       configtx.Manager
 	policyManager       policies.Manager
 	sharedConfigManager sharedconfig.Manager
-	reader              rawledger.Reader
-	writer              rawledger.Writer
-	filters             *broadcastfilter.RuleSet
+	ledger              rawledger.ReadWriter
+	filters             *filter.RuleSet
 }
 
 func newChainSupport(configManager configtx.Manager, policyManager policies.Manager, backing rawledger.ReadWriter, sharedConfigManager sharedconfig.Manager, consenters map[string]Consenter) *chainSupport {
-	batchSize := sharedConfigManager.BatchSize()
+	batchSize := sharedConfigManager.BatchSize() // XXX this needs to be pushed deeper so that the blockcutter queries it after each write for reconfiguration support
 	filters := createBroadcastRuleset(configManager)
-	cutter := blockcutter.NewReceiverImpl(batchSize, filters, configManager)
+	cutter := blockcutter.NewReceiverImpl(batchSize, filters)
 	consenterType := sharedConfigManager.ConsensusType()
 	consenter, ok := consenters[consenterType]
 	if !ok {
@@ -98,8 +95,7 @@ func newChainSupport(configManager configtx.Manager, policyManager policies.Mana
 		sharedConfigManager: sharedConfigManager,
 		cutter:              cutter,
 		filters:             filters,
-		reader:              backing,
-		writer:              newWriteInterceptor(configManager, backing),
+		ledger:              backing,
 	}
 
 	var err error
@@ -111,11 +107,11 @@ func newChainSupport(configManager configtx.Manager, policyManager policies.Mana
 	return cs
 }
 
-func createBroadcastRuleset(configManager configtx.Manager) *broadcastfilter.RuleSet {
-	return broadcastfilter.NewRuleSet([]broadcastfilter.Rule{
-		broadcastfilter.EmptyRejectRule,
+func createBroadcastRuleset(configManager configtx.Manager) *filter.RuleSet {
+	return filter.NewRuleSet([]filter.Rule{
+		filter.EmptyRejectRule,
 		configtx.NewFilter(configManager),
-		broadcastfilter.AcceptRule,
+		filter.AcceptRule,
 	})
 }
 
@@ -135,7 +131,7 @@ func (cs *chainSupport) PolicyManager() policies.Manager {
 	return cs.policyManager
 }
 
-func (cs *chainSupport) Filters() *broadcastfilter.RuleSet {
+func (cs *chainSupport) Filters() *filter.RuleSet {
 	return cs.filters
 }
 
@@ -144,55 +140,17 @@ func (cs *chainSupport) BlockCutter() blockcutter.Receiver {
 }
 
 func (cs *chainSupport) Reader() rawledger.Reader {
-	return cs.reader
-}
-
-func (cs *chainSupport) Writer() rawledger.Writer {
-	return cs.writer
+	return cs.ledger
 }
 
 func (cs *chainSupport) Enqueue(env *cb.Envelope) bool {
 	return cs.chain.Enqueue(env)
 }
 
-// writeInterceptor performs 'execution/processing' of blockContents before committing them to the normal passive ledger
-// This is intended to support reconfiguration transactions, and ultimately chain creation
-type writeInterceptor struct {
-	configtxManager configtx.Manager
-	backing         rawledger.Writer
-}
-
-func newWriteInterceptor(configtxManager configtx.Manager, backing rawledger.Writer) *writeInterceptor {
-	return &writeInterceptor{
-		backing:         backing,
-		configtxManager: configtxManager,
+func (cs *chainSupport) WriteBlock(data []*cb.Envelope, metadata [][]byte, committers []filter.Committer) {
+	for _, committer := range committers {
+		committer.Commit()
 	}
-}
 
-func (wi *writeInterceptor) Append(blockContents []*cb.Envelope, metadata [][]byte) *cb.Block {
-	// Note that in general any errors encountered in this path are fatal.
-	// The previous layers (broadcastfilters, blockcutter) should have scrubbed any invalid
-	// 'executable' transactions like config before committing via Append
-
-	if len(blockContents) == 1 {
-		payload := &cb.Payload{}
-		err := proto.Unmarshal(blockContents[0].Payload, payload)
-		if err != nil {
-			logger.Fatalf("Asked to write a malformed envelope to the chain: %s", err)
-		}
-
-		if payload.Header.ChainHeader.Type == int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
-			configEnvelope := &cb.ConfigurationEnvelope{}
-			err = proto.Unmarshal(payload.Data, configEnvelope)
-			if err != nil {
-				logger.Fatalf("Configuration envelope was malformed: %s", err)
-			}
-
-			err = wi.configtxManager.Apply(configEnvelope)
-			if err != nil {
-				logger.Fatalf("Error applying configuration transaction which was already validated: %s", err)
-			}
-		}
-	}
-	return wi.backing.Append(blockContents, metadata)
+	cs.ledger.Append(data, metadata)
 }

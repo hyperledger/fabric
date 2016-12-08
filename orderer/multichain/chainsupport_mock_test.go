@@ -18,7 +18,6 @@ package multichain
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -27,16 +26,16 @@ type mockConsenter struct {
 
 func (mc *mockConsenter) HandleChain(support ConsenterSupport) (Chain, error) {
 	return &mockChain{
-		queue:  make(chan *cb.Envelope),
-		ledger: support.Writer(),
-		cutter: support.BlockCutter(),
+		queue:   make(chan *cb.Envelope),
+		cutter:  support.BlockCutter(),
+		support: support,
 	}, nil
 }
 
 type mockChain struct {
-	queue  chan *cb.Envelope
-	ledger rawledger.Writer
-	cutter blockcutter.Receiver
+	queue   chan *cb.Envelope
+	support ConsenterSupport
+	cutter  blockcutter.Receiver
 }
 
 func (mch *mockChain) Enqueue(env *cb.Envelope) bool {
@@ -51,9 +50,9 @@ func (mch *mockChain) Start() {
 			if !ok {
 				return
 			}
-			batches, _ := mch.cutter.Ordered(msg)
-			for _, batch := range batches {
-				mch.ledger.Append(batch, nil)
+			batches, committers, _ := mch.cutter.Ordered(msg)
+			for i, batch := range batches {
+				mch.support.WriteBlock(batch, nil, committers[i])
 			}
 		}
 	}()

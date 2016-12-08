@@ -94,13 +94,13 @@ func (ch *chain) main() {
 	for {
 		select {
 		case msg := <-ch.sendChan:
-			batches, ok := ch.support.BlockCutter().Ordered(msg)
+			batches, committers, ok := ch.support.BlockCutter().Ordered(msg)
 			if ok && len(batches) == 0 && timer == nil {
 				timer = time.After(ch.batchTimeout)
 				continue
 			}
-			for _, batch := range batches {
-				ch.support.Writer().Append(batch, nil)
+			for i, batch := range batches {
+				ch.support.WriteBlock(batch, nil, committers[i])
 			}
 			if len(batches) > 0 {
 				timer = nil
@@ -109,13 +109,13 @@ func (ch *chain) main() {
 			//clear the timer
 			timer = nil
 
-			batch := ch.support.BlockCutter().Cut()
+			batch, committers := ch.support.BlockCutter().Cut()
 			if len(batch) == 0 {
 				logger.Warningf("Batch timer expired with no pending requests, this might indicate a bug")
 				continue
 			}
 			logger.Debugf("Batch timer expired, creating block")
-			ch.support.Writer().Append(batch, nil)
+			ch.support.WriteBlock(batch, nil, committers)
 		case <-ch.exitChan:
 			logger.Debugf("Exiting")
 			return
