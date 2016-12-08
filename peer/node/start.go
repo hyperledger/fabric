@@ -33,6 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
 	"github.com/hyperledger/fabric/core/endorser"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
@@ -64,6 +65,20 @@ var nodeStartCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return serve(args)
 	},
+}
+
+//!!!!!----IMPORTANT----IMPORTANT---IMPORTANT------!!!!
+//This is a place holder for multichain work. Currently
+//user to create a single chain and initialize it
+func createChain(chainID string) {
+	//create the ledger. Without this all GetLedger
+	//calls will panic now
+	kvledger.CreateLedger(chainID)
+	logger.Infof("Created default ledger %s", chainID)
+
+	//deploy the system chaincodes on the chainID
+	chaincode.DeploySysCCs(chainID)
+	logger.Infof("Deployed system chaincodes on %s", chainID)
 }
 
 func serve(args []string) error {
@@ -131,10 +146,7 @@ func serve(args []string) error {
 
 	grpcServer := grpc.NewServer(opts...)
 
-	/******this will go away when we implement join command*****/
-	chainID := util.GetTestChainID()
-
-	registerChaincodeSupport(chainID, grpcServer)
+	registerChaincodeSupport(grpcServer)
 
 	logger.Debugf("Running peer")
 
@@ -144,6 +156,12 @@ func serve(args []string) error {
 	// Register the Endorser server
 	serverEndorser := endorser.NewEndorserServer()
 	pb.RegisterEndorserServer(grpcServer, serverEndorser)
+
+	/******this will go away when we implement join command*****/
+	chainID := util.GetTestChainID()
+
+	//create the default chain (pending join)
+	createChain(chainID)
 
 	//this shoul not need the chainID. Delivery should be
 	//split up into network part and chain part. This should
@@ -214,7 +232,7 @@ func serve(args []string) error {
 //NOTE - when we implment JOIN we will no longer pass the chainID as param
 //The chaincode support will come up without registering system chaincodes
 //which will be registered only during join phase.
-func registerChaincodeSupport(chainID string, grpcServer *grpc.Server) {
+func registerChaincodeSupport(grpcServer *grpc.Server) {
 	//get user mode
 	userRunsCC := false
 	if viper.GetString("chaincode.mode") == chaincode.DevModeUserRunsChaincode {
@@ -232,7 +250,7 @@ func registerChaincodeSupport(chainID string, grpcServer *grpc.Server) {
 	ccSrv := chaincode.NewChaincodeSupport(peer.GetPeerEndpoint, userRunsCC, ccStartupTimeout)
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	chaincode.RegisterSysCCs(chainID)
+	chaincode.RegisterSysCCs()
 
 	pb.RegisterChaincodeSupportServer(grpcServer, ccSrv)
 }

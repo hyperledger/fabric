@@ -94,12 +94,11 @@ func initPeer(chainID string) (net.Listener, error) {
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
 
-	chaincode.RegisterSysCCs(chainID)
+	chaincode.RegisterSysCCs()
 
-	chaincodeID := &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/core/chaincode/lccc", Name: "lccc"}
-	spec := pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}
+	kvledger.CreateLedger(chainID)
 
-	chaincode.DeploySysCC(context.Background(), chainID, &spec)
+	chaincode.DeploySysCCs(chainID)
 
 	go grpcServer.Serve(lis)
 

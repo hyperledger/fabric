@@ -55,7 +55,7 @@ type SystemChaincode struct {
 }
 
 // RegisterSysCC registers the given system chaincode with the peer
-func RegisterSysCC(chainID string, syscc *SystemChaincode) error {
+func RegisterSysCC(syscc *SystemChaincode) error {
 	if !syscc.Enabled || !isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name, syscc.Path))
 		return nil
@@ -71,8 +71,18 @@ func RegisterSysCC(chainID string, syscc *SystemChaincode) error {
 		}
 	}
 
-	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+	sysccLogger.Infof("system chaincode %s(%s) registered", syscc.Name, syscc.Path)
+	return err
+}
+
+// DeploySysCC deploys the given system chaincode on a chain
+func DeploySysCC(chainID string, syscc *SystemChaincode) error {
+	if !syscc.Enabled || !isWhitelisted(syscc) {
+		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name, syscc.Path))
+		return nil
+	}
+
+	var err error
 
 	lgr := kvledger.GetLedger(chainID)
 	var txsim ledger.TxSimulator
@@ -82,14 +92,24 @@ func RegisterSysCC(chainID string, syscc *SystemChaincode) error {
 
 	defer txsim.Done()
 
+	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+
 	ctxt := context.WithValue(context.Background(), TXSimulatorKey, txsim)
-	if deployErr := DeploySysCC(ctxt, chainID, &spec); deployErr != nil {
-		errStr := fmt.Sprintf("deploy chaincode failed: %s", deployErr)
-		sysccLogger.Error(errStr)
-		return fmt.Errorf(errStr)
+
+	// First build and get the deployment spec
+	chaincodeDeploymentSpec, err := buildSysCC(ctxt, spec)
+
+	if err != nil {
+		sysccLogger.Error(fmt.Sprintf("Error deploying chaincode spec: %v\n\n error: %s", spec, err))
+		return err
 	}
 
-	sysccLogger.Infof("system chaincode %s(%s) registered", syscc.Name, syscc.Path)
+	txid := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
+	_, _, err = Execute(ctxt, chainID, txid, nil, chaincodeDeploymentSpec)
+
+	sysccLogger.Infof("system chaincode %s/%s(%s) deployed", syscc.Name, chainID, syscc.Path)
+
 	return err
 }
 
@@ -120,22 +140,6 @@ func buildSysCC(context context.Context, spec *pb.ChaincodeSpec) (*pb.ChaincodeD
 	var codePackageBytes []byte
 	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ExecEnv: pb.ChaincodeDeploymentSpec_SYSTEM, ChaincodeSpec: spec, CodePackage: codePackageBytes}
 	return chaincodeDeploymentSpec, nil
-}
-
-// DeploySysCC deploys the supplied system chaincode to the local peer
-func DeploySysCC(ctx context.Context, chainID string, spec *pb.ChaincodeSpec) error {
-	// First build and get the deployment spec
-	chaincodeDeploymentSpec, err := buildSysCC(ctx, spec)
-
-	if err != nil {
-		sysccLogger.Error(fmt.Sprintf("Error deploying chaincode spec: %v\n\n error: %s", spec, err))
-		return err
-	}
-
-	txid := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
-	_, _, err = Execute(ctx, chainID, txid, nil, chaincodeDeploymentSpec)
-
-	return err
 }
 
 func isWhitelisted(syscc *SystemChaincode) bool {
