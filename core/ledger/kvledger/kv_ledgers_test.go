@@ -28,8 +28,23 @@ func TestCreate(t *testing.T) {
 	//init
 	Initialize(lpath)
 
-	//create once
-	if lgr := GetLedger("test"); lgr == nil {
+	defer os.RemoveAll(lpath)
+
+	func() {
+		defer func() {
+			//we expect a panic
+			if r := recover(); r == nil {
+				t.FailNow()
+			}
+		}()
+		//create once
+		if lgr := GetLedger("test"); lgr == nil {
+			t.FailNow()
+		}
+	}()
+
+	//create it
+	if lgr, _ := CreateLedger("test"); lgr == nil {
 		t.FailNow()
 	}
 

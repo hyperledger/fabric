@@ -56,9 +56,9 @@ func getNowMillis() int64 {
 }
 
 //initialize peer and start up. If security==enabled, login as vp
-func initPeer(chainID string) (net.Listener, error) {
+func initPeer(chainIDs ...string) (net.Listener, error) {
 	//start clean
-	finitPeer(nil, chainID)
+	finitPeer(nil, chainIDs...)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -89,21 +89,29 @@ func initPeer(chainID string) (net.Listener, error) {
 	ccStartupTimeout := time.Duration(chaincodeStartupTimeoutDefault) * time.Millisecond
 	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
 
-	RegisterSysCCs(chainID)
+	RegisterSysCCs()
+
+	for _, id := range chainIDs {
+		kvledger.CreateLedger(id)
+		DeploySysCCs(id)
+	}
 
 	go grpcServer.Serve(lis)
 
 	return lis, nil
 }
 
-func finitPeer(lis net.Listener, chainID string) {
+func finitPeer(lis net.Listener, chainIDs ...string) {
 	if lis != nil {
-		deRegisterSysCCs(chainID)
-		if lgr := kvledger.GetLedger(chainID); lgr != nil {
-			lgr.Close()
+		for _, c := range chainIDs {
+			deRegisterSysCCs(c)
+			if lgr := kvledger.GetLedger(c); lgr != nil {
+				lgr.Close()
+			}
 		}
 		closeListenerAndSleep(lis)
 	}
+
 	ledgerPath := viper.GetString("peer.fileSystemPath")
 	os.RemoveAll(ledgerPath)
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))

@@ -84,13 +84,13 @@ type ledgerManager struct {
 	ledgers    map[string]*KVLedger
 }
 
-//create a ledger if one does not exist
-func (lMgr *ledgerManager) create(name string) (*KVLedger, error) {
-	lMgr.Lock()
-	defer lMgr.Unlock()
+//CreateLedger creates a ledger if one does not exist
+func CreateLedger(name string) (*KVLedger, error) {
+	lManager.Lock()
+	defer lManager.Unlock()
 
-	lPath := lMgr.ledgerPath + name
-	lgr, _ := lMgr.ledgers[lPath]
+	lPath := lManager.ledgerPath + name
+	lgr, _ := lManager.ledgers[lPath]
 	if lgr != nil {
 		return lgr, LedgerExistsErr(name)
 	}
@@ -102,23 +102,27 @@ func (lMgr *ledgerManager) create(name string) (*KVLedger, error) {
 		return nil, LedgerCreateErr(name)
 	}
 
-	lMgr.ledgers[lPath] = lgr
+	lManager.ledgers[lPath] = lgr
 
 	return lgr, nil
 }
 
-//GetLedger returns a kvledger, creating one if necessary
-//the call will panic if it cannot create a ledger
+//GetLedger returns a kvledger
+//it will panic if ledger does not exist
 func GetLedger(name string) *KVLedger {
 	//We should never have an empty ledgername when we do multichannel
 	if name == "" {
 		panic("empty naame")
 	}
 
-	lgr, err := lManager.create(name)
+	lManager.Lock()
+	defer lManager.Unlock()
 
+	lPath := lManager.ledgerPath + name
+	lgr, _ := lManager.ledgers[lPath]
 	if lgr == nil {
-		panic("Cannot get ledger " + name + "(" + err.Error() + ")")
+		panic("ledger " + name + " does not exist")
 	}
+
 	return lgr
 }
