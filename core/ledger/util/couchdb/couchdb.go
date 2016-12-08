@@ -230,6 +230,38 @@ func (dbclient *CouchDBConnectionDef) DropDatabase() (*DBOperationResponse, erro
 
 }
 
+// EnsureFullCommit calls _ensure_full_commit for explicit fsync
+func (dbclient *CouchDBConnectionDef) EnsureFullCommit() (*DBOperationResponse, error) {
+
+	logger.Debugf("===COUCHDB=== Entering EnsureFullCommit()")
+
+	url := fmt.Sprintf("%s/%s/_ensure_full_commit", dbclient.URL, dbclient.Database)
+
+	resp, _, err := dbclient.handleRequest(http.MethodPost, url, nil, "", "")
+	if err != nil {
+		logger.Errorf("====COUCHDB==== Failed to invoke _ensure_full_commit Error: %s\n", err.Error())
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	dbResponse := &DBOperationResponse{}
+	json.NewDecoder(resp.Body).Decode(&dbResponse)
+
+	if dbResponse.Ok == true {
+		logger.Debugf("===COUCHDB=== _ensure_full_commit database %s ", dbclient.Database)
+	}
+
+	logger.Debugf("===COUCHDB=== Exiting EnsureFullCommit()")
+
+	if dbResponse.Ok == true {
+
+		return dbResponse, nil
+
+	}
+
+	return dbResponse, fmt.Errorf("Error syncing database")
+}
+
 //SaveDoc method provides a function to save a document, id and byte array
 func (dbclient *CouchDBConnectionDef) SaveDoc(id string, rev string, bytesDoc []byte, attachments []Attachment) (string, error) {
 
@@ -497,7 +529,7 @@ func (dbclient *CouchDBConnectionDef) handleRequest(method, url string, data io.
 	}
 
 	//add content header for PUT
-	if method == http.MethodPut {
+	if method == http.MethodPut || method == http.MethodPost {
 
 		//If the multipartBoundary is not set, then this is a JSON and content-type should be set
 		//to application/json.   Else, this is contains an attachment and needs to be multipart
@@ -514,7 +546,7 @@ func (dbclient *CouchDBConnectionDef) handleRequest(method, url string, data io.
 	}
 
 	//add content header for PUT
-	if method == http.MethodPut {
+	if method == http.MethodPut || method == http.MethodPost {
 		req.Header.Set("Accept", "application/json")
 	}
 

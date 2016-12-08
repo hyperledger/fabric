@@ -17,6 +17,8 @@ limitations under the License.
 package couchdbtxmgmt
 
 import (
+	"encoding/json"
+	"errors"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -48,6 +50,15 @@ type updateSet struct {
 	m map[string]*versionedValue
 }
 
+// Savepoint docid (key) for couchdb
+const savepointDocID = "statedb_savepoint"
+
+// Savepoint data for couchdb
+type couchSavepointData struct {
+	BlockNum  uint64 `json:"BlockNum"`
+	UpdateSeq string `json:"UpdateSeq"`
+}
+
 func newUpdateSet() *updateSet {
 	return &updateSet{make(map[string]*versionedValue)}
 }
@@ -72,6 +83,7 @@ type CouchDBTxMgr struct {
 	updateSet    *updateSet
 	commitRWLock sync.RWMutex
 	couchDB      *couchdb.CouchDBConnectionDef // COUCHDB new properties for CouchDB
+	blockNum     uint64                        // block number corresponding to updateSet
 }
 
 // CouchConnection provides connection info for CouchDB
@@ -119,6 +131,7 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *common.Block) (*common.Bloc
 	invalidTxs := []*pb.InvalidTransaction{}
 	var valid bool
 	txmgr.updateSet = newUpdateSet()
+	txmgr.blockNum = block.Header.Number
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
 	for txIndex, envBytes := range block.Data.Data {
 		// extract actions from the envelope message
@@ -159,6 +172,7 @@ func (txmgr *CouchDBTxMgr) ValidateAndPrepare(block *common.Block) (*common.Bloc
 				Transaction: &pb.Transaction{ /* FIXME */ }, Cause: pb.InvalidTransaction_RWConflictDuringCommit})
 		}
 	}
+
 	logger.Debugf("===COUCHDB=== Exiting CouchDBTxMgr.ValidateAndPrepare()")
 	return block, invalidTxs, nil
 }
@@ -258,13 +272,87 @@ func (txmgr *CouchDBTxMgr) Commit() error {
 
 	}
 
+	// Record a savepoint
+	err := txmgr.recordSavepoint()
+	if err != nil {
+		logger.Errorf("===COUCHDB=== Error during recordSavepoint: %s\n", err.Error())
+		return err
+	}
+
 	logger.Debugf("===COUCHDB=== Exiting CouchDBTxMgr.Commit()")
 	return nil
+}
+
+// recordSavepoint Record a savepoint in statedb.
+// Couch parallelizes writes in cluster or sharded setup and ordering is not guaranteed.
+// Hence we need to fence the savepoint with sync. So ensure_full_commit is called before AND after writing savepoint document
+// TODO: Optimization - merge 2nd ensure_full_commit with savepoint by using X-Couch-Full-Commit header
+func (txmgr *CouchDBTxMgr) recordSavepoint() error {
+	var err error
+	var savepointDoc couchSavepointData
+	// ensure full commit to flush all changes until now to disk
+	dbResponse, err := txmgr.couchDB.EnsureFullCommit()
+	if err != nil || dbResponse.Ok != true {
+		logger.Errorf("====COUCHDB==== Failed to perform full commit\n")
+		return errors.New("Failed to perform full commit")
+	}
+
+	// construct savepoint document
+	// UpdateSeq would be useful if we want to get all db changes since a logical savepoint
+	dbInfo, _, err := txmgr.couchDB.GetDatabaseInfo()
+	if err != nil {
+		logger.Errorf("====COUCHDB==== Failed to get DB info %s\n", err.Error())
+		return err
+	}
+	savepointDoc.BlockNum = txmgr.blockNum
+	savepointDoc.UpdateSeq = dbInfo.UpdateSeq
+
+	savepointDocJSON, err := json.Marshal(savepointDoc)
+	if err != nil {
+		logger.Errorf("====COUCHDB==== Failed to create savepoint data %s\n", err.Error())
+		return err
+	}
+
+	// SaveDoc using couchdb client and use JSON format
+	_, err = txmgr.couchDB.SaveDoc(savepointDocID, "", savepointDocJSON, nil)
+	if err != nil {
+		logger.Errorf("====CouchDB==== Failed to save the savepoint to DB %s\n", err.Error())
+	}
+
+	// ensure full commit to flush savepoint to disk
+	dbResponse, err = txmgr.couchDB.EnsureFullCommit()
+	if err != nil || dbResponse.Ok != true {
+		logger.Errorf("====COUCHDB==== Failed to perform full commit\n")
+		return errors.New("Failed to perform full commit")
+	}
+	return nil
+}
+
+// GetBlockNumFromSavepoint Reads the savepoint from database and returns the corresponding block number.
+// If no savepoint is found, it returns 0
+func (txmgr *CouchDBTxMgr) GetBlockNumFromSavepoint() (uint64, error) {
+	var err error
+	savepointJSON, _, err := txmgr.couchDB.ReadDoc(savepointDocID)
+	if err != nil {
+		// TODO: differentiate between 404 and some other error code
+		logger.Errorf("====COUCHDB==== Failed to read savepoint data %s\n", err.Error())
+		return 0, err
+	}
+
+	savepointDoc := &couchSavepointData{}
+	err = json.Unmarshal(savepointJSON, &savepointDoc)
+	if err != nil {
+		logger.Errorf("====COUCHDB==== Failed to read savepoint data %s\n", err.Error())
+		return 0, err
+	}
+
+	return savepointDoc.BlockNum, nil
 }
 
 // Rollback implements method in interface `txmgmt.TxMgr`
 func (txmgr *CouchDBTxMgr) Rollback() {
 	txmgr.updateSet = nil
+	txmgr.blockNum = 0
 }
 
 func (txmgr *CouchDBTxMgr) getCommitedVersion(ns string, key string) (*version.Height, error) {
