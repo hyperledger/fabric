@@ -43,7 +43,7 @@ func mockNewProducer(t *testing.T, conf *config.TopLevel, seek int64, disk chan 
 		producedOffset: 0,
 		t:              t,
 	}
-	if seek >= oldestOffset && seek <= (newestOffset-1) {
+	if seek >= testOldestOffset && seek <= (testNewestOffset-1) {
 		mp.testFillWithBlocks(seek - 1) // Prepare the producer so that the next Send gives you block "seek"
 	} else {
 		panic(fmt.Errorf("Out of range seek number given to producer"))

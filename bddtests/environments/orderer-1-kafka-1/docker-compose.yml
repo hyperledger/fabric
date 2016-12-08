@@ -16,7 +16,7 @@ services:
         - ORDERER_GENERAL_ORDERERTYPE=kafka
         - ORDERER_KAFKA_BROKERS=[kafka0:9092]
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
-    command: orderer -loglevel debug -verbose true
+    command: orderer
     depends_on:
       - kafka0
 

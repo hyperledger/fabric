@@ -64,7 +64,7 @@ func mockNewConsumer(t *testing.T, conf *config.TopLevel, seek int64) (Consumer,
 		t:              t,
 	}
 	// Stop-gap hack until #745 is resolved:
-	if seek >= oldestOffset && seek <= (newestOffset-1) {
+	if seek >= testOldestOffset && seek <= (testNewestOffset-1) {
 		mc.testFillWithBlocks(seek - 1) // Prepare the consumer so that the next Recv gives you block "seek"
 	} else {
 		err = fmt.Errorf("Out of range seek number given to consumer")
@@ -73,7 +73,7 @@ func mockNewConsumer(t *testing.T, conf *config.TopLevel, seek int64) (Consumer,
 }
 
 func (mc *mockConsumerImpl) Recv() <-chan *sarama.ConsumerMessage {
-	if mc.consumedOffset >= newestOffset-1 {
+	if mc.consumedOffset >= testNewestOffset-1 {
 		return nil
 	}
 	mc.consumedOffset++

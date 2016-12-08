@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -136,17 +135,7 @@ func launchKafka(conf *config.TopLevel) {
 	var kafkaVersion = sarama.V0_9_0_1 // TODO Ideally we'd set this in the YAML file but its type makes this impossible
 	conf.Kafka.Version = kafkaVersion
 
-	var loglevel string
-	var verbose bool
-
-	flag.StringVar(&loglevel, "loglevel", "info",
-		"Set the logging level for the orderer. (Suggested values: info, debug)")
-	flag.BoolVar(&verbose, "verbose", false,
-		"Turn on logging for the Kafka library. (Default: \"false\")")
-	flag.Parse()
-
-	kafka.SetLogLevel(loglevel)
-	if verbose {
+	if conf.Kafka.Verbose {
 		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
 	}
 

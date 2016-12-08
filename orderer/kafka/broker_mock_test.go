@@ -31,18 +31,18 @@ type mockBrockerImpl struct {
 }
 
 func mockNewBroker(t *testing.T, conf *config.TopLevel) Broker {
-	mockBroker := sarama.NewMockBroker(t, brokerID)
+	mockBroker := sarama.NewMockBroker(t, testBrokerID)
 	handlerMap := make(map[string]sarama.MockResponse)
 	// The sarama mock package doesn't allow us to return an error
 	// for invalid offset requests, so we return an offset of -1.
 	// Note that the mock offset responses below imply a broker with
-	// newestOffset-1 blocks available. Therefore, if you are using this
+	// testNewestOffset-1 blocks available. Therefore, if you are using this
 	// broker as part of a bigger test where you intend to consume blocks,
 	// make sure that the mockConsumer has been initialized accordingly
-	// (Set the 'seek' parameter to newestOffset-1.)
+	// (Set the 'seek' parameter to testNewestOffset-1.)
 	handlerMap["OffsetRequest"] = sarama.NewMockOffsetResponse(t).
-		SetOffset(conf.Kafka.Topic, conf.Kafka.PartitionID, sarama.OffsetOldest, oldestOffset).
-		SetOffset(conf.Kafka.Topic, conf.Kafka.PartitionID, sarama.OffsetNewest, newestOffset)
+		SetOffset(conf.Kafka.Topic, conf.Kafka.PartitionID, sarama.OffsetOldest, testOldestOffset).
+		SetOffset(conf.Kafka.Topic, conf.Kafka.PartitionID, sarama.OffsetNewest, testNewestOffset)
 	mockBroker.SetHandlerByMap(handlerMap)
 
 	broker := sarama.NewBroker(mockBroker.Addr())

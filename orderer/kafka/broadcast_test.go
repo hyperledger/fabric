@@ -29,7 +29,7 @@ import (
 func TestBroadcastResponse(t *testing.T) {
 	disk := make(chan []byte)
 
-	mb := mockNewBroadcaster(t, testConf, oldestOffset, disk)
+	mb := mockNewBroadcaster(t, testConf, testOldestOffset, disk)
 	defer testClose(t, mb)
 
 	mbs := newMockBroadcastStream(t)
@@ -60,7 +60,7 @@ func TestBroadcastResponse(t *testing.T) {
 func TestBroadcastBatch(t *testing.T) {
 	disk := make(chan []byte)
 
-	mb := mockNewBroadcaster(t, testConf, oldestOffset, disk)
+	mb := mockNewBroadcaster(t, testConf, testOldestOffset, disk)
 	defer testClose(t, mb)
 
 	mbs := newMockBroadcastStream(t)
@@ -113,7 +113,7 @@ func TestBroadcastBatch(t *testing.T) {
 
 	disk := make(chan []byte)
 
-	mb := mockNewBroadcaster(t, testConf, oldestOffset, disk)
+	mb := mockNewBroadcaster(t, testConf, testOldestOffset, disk)
 	defer testClose(t, mb)
 
 	mbs := newMockBroadcastStream(t)
@@ -139,7 +139,7 @@ loop:
 		select {
 		case <-mbs.outgoing:
 			t.Fatal("Client shouldn't have received anything from the orderer")
-		case <-time.After(testConf.General.BatchTimeout + timePadding):
+		case <-time.After(testConf.General.BatchTimeout + testTimePadding):
 			break loop // This is the success path
 		}
 	}
@@ -154,7 +154,7 @@ func TestBroadcastIncompleteBatch(t *testing.T) {
 
 	disk := make(chan []byte)
 
-	mb := mockNewBroadcaster(t, testConf, oldestOffset, disk)
+	mb := mockNewBroadcaster(t, testConf, testOldestOffset, disk)
 	defer testClose(t, mb)
 
 	mbs := newMockBroadcastStream(t)
@@ -189,7 +189,7 @@ func TestBroadcastIncompleteBatch(t *testing.T) {
 				t.Fatalf("Expected block to have %d messages instead of %d", messageCount, len(block.Data.Data))
 			}
 			return
-		case <-time.After(testConf.General.BatchTimeout + timePadding):
+		case <-time.After(testConf.General.BatchTimeout + testTimePadding):
 			t.Fatal("Should have received a block by now")
 		}
 	}
@@ -206,7 +206,7 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 
 	disk := make(chan []byte)
 
-	mb := mockNewBroadcaster(t, testConf, oldestOffset, disk)
+	mb := mockNewBroadcaster(t, testConf, testOldestOffset, disk)
 	defer testClose(t, mb)
 
 	mbs := newMockBroadcastStream(t)
@@ -247,7 +247,7 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 				t.Fatalf("Expected block to have %d messages instead of %d", messageCount, len(block.Data.Data))
 			}
 			return
-		case <-time.After(testConf.General.BatchTimeout + timePadding):
+		case <-time.After(testConf.General.BatchTimeout + testTimePadding):
 			t.Fatal("Should have received a block by now")
 		}
 	}
@@ -256,7 +256,7 @@ func TestBroadcastConsecutiveIncompleteBatches(t *testing.T) {
 func TestBroadcastBatchAndQuitEarly(t *testing.T) {
 	disk := make(chan []byte)
 
-	mb := mockNewBroadcaster(t, testConf, oldestOffset, disk)
+	mb := mockNewBroadcaster(t, testConf, testOldestOffset, disk)
 	defer testClose(t, mb)
 
 	mbs := newMockBroadcastStream(t)
@@ -301,7 +301,7 @@ func TestBroadcastBatchAndQuitEarly(t *testing.T) {
 func TestBroadcastClose(t *testing.T) {
 	errChan := make(chan error)
 
-	mb := mockNewBroadcaster(t, testConf, oldestOffset, make(chan []byte))
+	mb := mockNewBroadcaster(t, testConf, testOldestOffset, make(chan []byte))
 	mbs := newMockBroadcastStream(t)
 	go func() {
 		if err := mb.Broadcast(mbs); err != nil {

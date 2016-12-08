@@ -70,11 +70,12 @@ type FileLedger struct {
 
 // Kafka contains config for the Kafka orderer
 type Kafka struct {
-	Brokers     []string
+	Brokers     []string // TODO This should be deprecated and this information should be stored in the config block
 	Topic       string
 	PartitionID int32
 	Retry       Retry
-	Version     sarama.KafkaVersion // TODO For now set this in code
+	Verbose     bool
+	Version     sarama.KafkaVersion
 }
 
 // Retry contains config for the reconnection attempts to the Kafka brokers

@@ -19,7 +19,7 @@ package kafka
 import "testing"
 
 func TestConsumerInitWrong(t *testing.T) {
-	cases := []int64{oldestOffset - 1, newestOffset}
+	cases := []int64{testOldestOffset - 1, testNewestOffset}
 
 	for _, seek := range cases {
 		mc, err := mockNewConsumer(t, testConf, seek)
@@ -31,9 +31,9 @@ func TestConsumerInitWrong(t *testing.T) {
 }
 
 func TestConsumerRecv(t *testing.T) {
-	t.Run("oldest", testConsumerRecvFunc(oldestOffset, oldestOffset))
-	t.Run("in-between", testConsumerRecvFunc(middleOffset, middleOffset))
-	t.Run("newest", testConsumerRecvFunc(newestOffset-1, newestOffset-1))
+	t.Run("oldest", testConsumerRecvFunc(testOldestOffset, testOldestOffset))
+	t.Run("in-between", testConsumerRecvFunc(testMiddleOffset, testMiddleOffset))
+	t.Run("newest", testConsumerRecvFunc(testNewestOffset-1, testNewestOffset-1))
 }
 
 func testConsumerRecvFunc(given, expected int64) func(t *testing.T) {

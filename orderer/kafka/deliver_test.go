@@ -27,7 +27,7 @@ func TestDeliverMultipleClients(t *testing.T) {
 		start        string
 		seek, window uint64
 	}{
-		{"oldest", 0, 10}, {"newest", 0, 10}, {"specific", uint64(middleOffset), 10},
+		{"oldest", 0, 10}, {"newest", 0, 10}, {"specific", uint64(testMiddleOffset), 10},
 	}
 	expected := 21 // 10 + 1 + 10
 

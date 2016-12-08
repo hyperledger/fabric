@@ -23,8 +23,8 @@ import (
 )
 
 func TestBrokerGetOffset(t *testing.T) {
-	t.Run("oldest", testBrokerGetOffsetFunc(sarama.OffsetOldest, oldestOffset))
-	t.Run("newest", testBrokerGetOffsetFunc(sarama.OffsetNewest, newestOffset))
+	t.Run("oldest", testBrokerGetOffsetFunc(sarama.OffsetOldest, testOldestOffset))
+	t.Run("newest", testBrokerGetOffsetFunc(sarama.OffsetNewest, testNewestOffset))
 }
 
 func testBrokerGetOffsetFunc(given, expected int64) func(t *testing.T) {

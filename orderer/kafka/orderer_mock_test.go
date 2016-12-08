@@ -27,7 +27,7 @@ import (
 
 func mockNew(t *testing.T, conf *config.TopLevel, disk chan []byte) Orderer {
 	return &serverImpl{
-		broadcaster: mockNewBroadcaster(t, conf, oldestOffset, disk),
+		broadcaster: mockNewBroadcaster(t, conf, testOldestOffset, disk),
 		deliverer:   mockNewDeliverer(t, conf),
 	}
 }
