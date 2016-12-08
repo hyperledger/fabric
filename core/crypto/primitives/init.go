@@ -36,11 +36,9 @@ func initSHA2(level int) (err error) {
 	case 256:
 		defaultCurve = elliptic.P256()
 		defaultHash = sha256.New
-		defaultRSABitSize = 2048
 	case 384:
 		defaultCurve = elliptic.P384()
 		defaultHash = sha512.New384
-		defaultRSABitSize = 3072
 	default:
 		err = fmt.Errorf("Security level not supported [%d]", level)
 	}
@@ -53,11 +51,9 @@ func initSHA3(level int) (err error) {
 	case 256:
 		defaultCurve = elliptic.P256()
 		defaultHash = sha3.New256
-		defaultRSABitSize = 2048
 	case 384:
 		defaultCurve = elliptic.P384()
 		defaultHash = sha3.New384
-		defaultRSABitSize = 3072
 	default:
 		err = fmt.Errorf("Security level not supported [%d]", level)
 	}
