@@ -18,6 +18,7 @@ package errors
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/flogging"
@@ -55,6 +56,27 @@ func TestErrorWithCallstackAndArg(t *testing.T) {
 	s := e.GetStack()
 	if s == "" {
 		t.Fatalf("No error stack was recorded.")
+	}
+}
+
+// TestErrorWithCallstackMessage tests the output for a logging error where
+// and an invalid log level has been provided and the stack trace should be
+// displayed with the error message
+func TestErrorWithCallstackMessage(t *testing.T) {
+	// when the 'error' module is set to debug, the callstack will be appended
+	// to the error message
+	flogging.SetModuleLogLevel("error", "debug")
+
+	e := ErrorWithCallstack(Utility, UtilityUnknownError)
+	s := e.GetStack()
+	if s == "" {
+		t.Fatalf("No error stack was recorded.")
+	}
+
+	// check that the error message contains this part of the stack trace, which
+	// is non-platform specific
+	if !strings.Contains(e.Error(), "github.com/hyperledger/fabric/core/errors.TestErrorWithCallstackMessage") {
+		t.Fatalf("Error message does not have stack trace appended.")
 	}
 }
 
@@ -130,47 +152,6 @@ func ExampleLoggingInvalidLogLevel() {
 		// Logging
 		// LoggingInvalidLogLevel
 		// Invalid log level provided - invalid
-		// Invalid log level provided - invalid
-	}
-}
-
-// ExampleLoggingInvalidLogLevel tests the output for a logging error where
-// and an invalid log level has been provided and the stack trace should be
-// displayed with the error message
-func ExampleLoggingInvalidLogLevel_withCallstack() {
-	// when the 'error' module is set to debug, the callstack will be appended
-	// to the error message
-	flogging.SetModuleLogLevel("error", "debug")
-
-	err := ErrorWithCallstack(Logging, LoggingInvalidLogLevel, "invalid")
-
-	if err != nil {
-		fmt.Printf("%s", err.Error())
-		fmt.Printf("%s\n", err.GetErrorCode())
-		fmt.Printf("%s\n", err.GetComponentCode())
-		fmt.Printf("%s\n", err.GetReasonCode())
-		fmt.Printf("%s", err.Message())
-		fmt.Printf("%s\n", err.MessageIn("en"))
-		// Output:
-		// Invalid log level provided - invalid
-		// /opt/gopath/src/github.com/hyperledger/fabric/core/errors/errors_test.go:145 github.com/hyperledger/fabric/core/errors.ExampleLoggingInvalidLogLevel_withCallstack
-		// /opt/go/src/testing/example.go:115 testing.runExample
-		// /opt/go/src/testing/example.go:38 testing.RunExamples
-		// /opt/go/src/testing/testing.go:744 testing.(*M).Run
-		// github.com/hyperledger/fabric/core/errors/_test/_testmain.go:116 main.main
-		// /opt/go/src/runtime/proc.go:192 runtime.main
-		// /opt/go/src/runtime/asm_amd64.s:2087 runtime.goexit
-		// Logging-LoggingInvalidLogLevel
-		// Logging
-		// LoggingInvalidLogLevel
-		// Invalid log level provided - invalid
-		// /opt/gopath/src/github.com/hyperledger/fabric/core/errors/errors_test.go:145 github.com/hyperledger/fabric/core/errors.ExampleLoggingInvalidLogLevel_withCallstack
-		// /opt/go/src/testing/example.go:115 testing.runExample
-		// /opt/go/src/testing/example.go:38 testing.RunExamples
-		// /opt/go/src/testing/testing.go:744 testing.(*M).Run
-		// github.com/hyperledger/fabric/core/errors/_test/_testmain.go:116 main.main
-		// /opt/go/src/runtime/proc.go:192 runtime.main
-		// /opt/go/src/runtime/asm_amd64.s:2087 runtime.goexit
 		// Invalid log level provided - invalid
 	}
 }
