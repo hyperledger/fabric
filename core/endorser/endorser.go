@@ -163,7 +163,7 @@ func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid stri
 
 //endorse the proposal by calling the ESCC
 func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, proposal *pb.Proposal, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, error) {
-	endorserLogger.Infof("endorseProposal starts for proposal %p, chainID %s, simRes %p event %p, visibility %p, ccid %s", chainID, proposal, simRes, event, visibility, ccid)
+	endorserLogger.Infof("endorseProposal starts for chainID %s, ccid %s", chainID, ccid)
 
 	// 1) extract the chaincodeDeploymentSpec for the chaincode we are invoking; we need it to get the escc
 	var escc string
