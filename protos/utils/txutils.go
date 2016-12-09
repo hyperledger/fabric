@@ -197,7 +197,7 @@ func CreateProposalResponse(hdr []byte, payl []byte, results []byte, events []by
 	// serialize the signing identity
 	endorser, err := signingEndorser.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", signingEndorser.Identifier(), err)
+		return nil, fmt.Errorf("Could not serialize the signing identity for %s, err %s", signingEndorser.GetIdentifier(), err)
 	}
 
 	// sign the concatenation of the proposal response and the serialized endorser identity with this endorser's key

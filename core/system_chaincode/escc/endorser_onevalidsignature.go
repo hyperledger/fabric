@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/core/peer/msp"
 )
 
 var logger = logging.MustGetLogger("escc")
@@ -113,7 +113,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	}
 
 	// obtain the default signing identity for this peer; it will be used to sign this proposal response
-	localMsp := msp.GetLocalMSP()
+	localMsp := mspmgmt.GetLocalMSP()
 	if localMsp == nil {
 		return nil, fmt.Errorf("Nil local MSP manager")
 	}

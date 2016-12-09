@@ -5,105 +5,15 @@ import (
 	"reflect"
 	"testing"
 
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
-func getPeerConfFromFile(configFile string) (*NodeLocalConfig, error) {
-	file, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return nil, fmt.Errorf("Could not read file %s, err %s", configFile, err)
-	}
+var localMsp MSP
 
-	var localConf NodeLocalConfig
-	err = json.Unmarshal(file, &localConf)
-	if err != nil {
-		return nil, fmt.Errorf("Could not unmarshal config, err %s", err)
-	}
+func TestNoopMSP(t *testing.T) {
+	noopmsp := NewNoopMsp()
 
-	return &localConf, nil
-}
-
-func LoadLocalMSPConfig(configFile string) error {
-	localConf, err := getPeerConfFromFile(configFile)
-	if err != nil {
-		return err
-	}
-
-	if localConf.LocalMSP == nil {
-		return fmt.Errorf("nil LocalMSP")
-	}
-
-	err = GetLocalMSP().Setup(localConf.LocalMSP)
-	if err != nil {
-		return fmt.Errorf("Could not setup local msp, err %s", err)
-	}
-
-	// TODO: setup BCCSP here using localConf.BCCSP
-
-	return nil
-}
-
-func TestMSPSetupBad(t *testing.T) {
-	err := LoadLocalMSPConfig("barf")
-	if err == nil {
-		t.Fatalf("Setup should have failed on an invalid config file")
-		return
-	}
-}
-
-func TestMSPSetupGood(t *testing.T) {
-	err := LoadLocalMSPConfig("peer-config.json")
-	if err != nil {
-		t.Fatalf("Setup should have succeeded, got err %s instead", err)
-		return
-	}
-}
-
-func TestGetIdentities(t *testing.T) {
-	_, err := GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatalf("GetDefaultSigningIdentity failed with err %s", err)
-		return
-	}
-}
-
-func TestSerializeIdentities(t *testing.T) {
-	id, err := GetLocalMSP().GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
-		return
-	}
-
-	serializedID, err := id.Serialize()
-	if err != nil {
-		t.Fatalf("Serialize should have succeeded, got err %s", err)
-		return
-	}
-
-	idBack, err := GetLocalMSP().DeserializeIdentity(serializedID)
-	if err != nil {
-		t.Fatalf("DeserializeIdentity should have succeeded, got err %s", err)
-		return
-	}
-
-	valid, err := GetLocalMSP().IsValid(idBack)
-	if err != nil || !valid {
-		t.Fatalf("The identity should be valid, got err %s", err)
-		return
-	}
-
-	if !reflect.DeepEqual(id.GetPublicVersion(), idBack) {
-		t.Fatalf("Identities should be equal (%s) (%s)", id, idBack)
-		return
-	}
-}
-
-func TestSignAndVerify(t *testing.T) {
-	id, err := GetLocalMSP().GetDefaultSigningIdentity()
+	id, err := noopmsp.GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fatalf("GetSigningIdentity should have succeeded")
 		return
@@ -115,7 +25,7 @@ func TestSignAndVerify(t *testing.T) {
 		return
 	}
 
-	idBack, err := GetLocalMSP().DeserializeIdentity(serializedID)
+	idBack, err := noopmsp.DeserializeIdentity(serializedID)
 	if err != nil {
 		t.Fatalf("DeserializeIdentity should have succeeded")
 		return
@@ -128,14 +38,120 @@ func TestSignAndVerify(t *testing.T) {
 		return
 	}
 
-	valid, err := id.Verify(msg, sig)
-	if err != nil || !valid {
+	err = id.Verify(msg, sig)
+	if err != nil {
 		t.Fatalf("The signature should be valid")
 		return
 	}
 
-	valid, err = idBack.Verify(msg, sig)
-	if err != nil || !valid {
+	err = idBack.Verify(msg, sig)
+	if err != nil {
+		t.Fatalf("The signature should be valid")
+		return
+	}
+}
+
+func TestMSPSetupBad(t *testing.T) {
+	_, err := GetLocalMspConfig("barf")
+	if err == nil {
+		t.Fatalf("Setup should have failed on an invalid config file")
+		return
+	}
+}
+
+func TestMSPSetupGood(t *testing.T) {
+	conf, err := GetLocalMspConfig("./sampleconfig/")
+	if err != nil {
+		t.Fatalf("Setup should have succeeded, got err %s instead", err)
+		return
+	}
+
+	localMsp, err = NewBccspMsp()
+	if err != nil {
+		t.Fatalf("Constructor for msp should have succeeded, got err %s instead", err)
+		return
+	}
+
+	err = localMsp.Setup(conf)
+	if err != nil {
+		t.Fatalf("Setup for msp should have succeeded, got err %s instead", err)
+		return
+	}
+}
+
+func TestGetIdentities(t *testing.T) {
+	_, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetDefaultSigningIdentity failed with err %s", err)
+		return
+	}
+}
+
+func TestSerializeIdentities(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		return
+	}
+
+	serializedID, err := id.Serialize()
+	if err != nil {
+		t.Fatalf("Serialize should have succeeded, got err %s", err)
+		return
+	}
+
+	idBack, err := localMsp.DeserializeIdentity(serializedID)
+	if err != nil {
+		t.Fatalf("DeserializeIdentity should have succeeded, got err %s", err)
+		return
+	}
+
+	err = localMsp.Validate(idBack)
+	if err != nil {
+		t.Fatalf("The identity should be valid, got err %s", err)
+		return
+	}
+
+	if !reflect.DeepEqual(id.GetPublicVersion(), idBack) {
+		t.Fatalf("Identities should be equal (%s) (%s)", id, idBack)
+		return
+	}
+}
+
+func TestSignAndVerify(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded")
+		return
+	}
+
+	serializedID, err := id.Serialize()
+	if err != nil {
+		t.Fatalf("Serialize should have succeeded")
+		return
+	}
+
+	idBack, err := localMsp.DeserializeIdentity(serializedID)
+	if err != nil {
+		t.Fatalf("DeserializeIdentity should have succeeded")
+		return
+	}
+
+	msg := []byte("foo")
+	sig, err := id.Sign(msg)
+	if err != nil {
+		t.Fatalf("Sign should have succeeded")
+		return
+	}
+
+	err = id.Verify(msg, sig)
+	if err != nil {
+		t.Fatalf("The signature should be valid")
+		return
+	}
+
+	err = idBack.Verify(msg, sig)
+	if err != nil {
 		t.Fatalf("The signature should be valid")
 		return
 	}

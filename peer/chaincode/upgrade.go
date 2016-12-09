@@ -59,7 +59,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.Identifier(), err)
+		return nil, fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
 	}
 
 	uuid := util.GenerateUUID()

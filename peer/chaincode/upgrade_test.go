@@ -22,11 +22,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	//	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/peer/msp"
 )
 
 var once sync.Once
@@ -39,18 +39,18 @@ func InitMSP() {
 func initMSP() {
 	// TODO: determine the location of this config file
 	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
-	var mspMgrConfigFile string
+	var mspMgrConfigDir string
 	if alternativeCfgPath != "" {
-		mspMgrConfigFile = alternativeCfgPath + "/msp/peer-config.json"
-	} else if _, err := os.Stat("./peer-config.json"); err == nil {
-		mspMgrConfigFile = "./peer-config.json"
+		mspMgrConfigDir = alternativeCfgPath + "/msp/sampleconfig/"
+	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
+		mspMgrConfigDir = "./msp/sampleconfig/"
 	} else {
-		mspMgrConfigFile = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/peer-config.json"
+		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
 	}
 
-	err := config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
+	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
 	if err != nil {
-		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigFile, err))
+		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigDir, err))
 	}
 }
 

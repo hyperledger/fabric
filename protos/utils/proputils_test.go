@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -297,14 +297,14 @@ func TestMain(m *testing.M) {
 	// setup crypto algorithms
 	primitives.SetSecurityLevel("SHA2", 256)
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigFile := "../../msp/peer-config.json"
-	err := config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
+	mspMgrConfigFile := "../../msp/sampleconfig/"
+	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigFile)
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize msp")
 		return
 	}
-	signer, err = msp.GetLocalMSP().GetDefaultSigningIdentity()
+	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not get signer")

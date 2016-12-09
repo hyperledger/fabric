@@ -21,7 +21,7 @@ import (
 
 	"bytes"
 
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -114,29 +114,25 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 	}
 
 	// get the identity of the creator
-	creator, err := msp.GetManagerForChain(ChainID).DeserializeIdentity(creatorBytes)
+	creator, err := mspmgmt.GetManagerForChain(ChainID).DeserializeIdentity(creatorBytes)
 	if err != nil {
 		return fmt.Errorf("Failed to deserialize creator identity, err %s", err)
 	}
 
-	putilsLogger.Infof("checkSignatureFromCreator info: creator is %s", creator.Identifier())
+	putilsLogger.Infof("checkSignatureFromCreator info: creator is %s", creator.GetIdentifier())
 
 	// ensure that creator is a valid certificate
-	valid, err := creator.Validate()
+	err = creator.IsValid()
 	if err != nil {
-		return fmt.Errorf("Could not determine whether the identity is valid, err %s", err)
-	} else if !valid {
-		return fmt.Errorf("The creator certificate is not valid, aborting")
+		return fmt.Errorf("The creator certificate is not valid, err %s", err)
 	}
 
 	putilsLogger.Infof("checkSignatureFromCreator info: creator is valid")
 
 	// validate the signature
-	verified, err := creator.Verify(msg, sig)
+	err = creator.Verify(msg, sig)
 	if err != nil {
-		return fmt.Errorf("Could not determine whether the signature is valid, err %s", err)
-	} else if !verified {
-		return fmt.Errorf("The creator's signature over the proposal is not valid, aborting")
+		return fmt.Errorf("The creator's signature over the proposal is not valid, err %s", err)
 	}
 
 	putilsLogger.Infof("checkSignatureFromCreator exists successfully")

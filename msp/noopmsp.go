@@ -19,7 +19,7 @@ package msp
 type noopmsp struct {
 }
 
-func NewNoopMsp() PeerMSP {
+func NewNoopMsp() MSP {
 	mspLogger.Infof("Creating no-op MSP instance")
 	return &noopmsp{}
 }
@@ -32,20 +32,16 @@ func (msp *noopmsp) Reconfig(reconfigMessage []byte) error {
 	return nil
 }
 
-func (msp *noopmsp) Type() ProviderType {
+func (msp *noopmsp) GetType() ProviderType {
 	return 0
 }
 
-func (msp *noopmsp) Identifier() (string, error) {
+func (msp *noopmsp) GetIdentifier() (string, error) {
 	return "NOOP", nil
 }
 
-func (msp *noopmsp) Policy() string {
+func (msp *noopmsp) GetPolicy() string {
 	return ""
-}
-
-func (msp *noopmsp) ImportSigningIdentity(req *ImportRequest) (SigningIdentity, error) {
-	return nil, nil
 }
 
 func (msp *noopmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
@@ -66,12 +62,8 @@ func (msp *noopmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	return id, nil
 }
 
-func (msp *noopmsp) DeleteSigningIdentity(identifier string) (bool, error) {
-	return true, nil
-}
-
-func (msp *noopmsp) IsValid(id Identity) (bool, error) {
-	return true, nil
+func (msp *noopmsp) Validate(id Identity) error {
+	return nil
 }
 
 type noopidentity struct {
@@ -82,7 +74,7 @@ func newNoopIdentity() (Identity, error) {
 	return &noopidentity{}, nil
 }
 
-func (id *noopidentity) Identifier() *IdentityIdentifier {
+func (id *noopidentity) GetIdentifier() *IdentityIdentifier {
 	return &IdentityIdentifier{Mspid: "NOOP", Id: "Bob"}
 }
 
@@ -90,26 +82,26 @@ func (id *noopidentity) GetMSPIdentifier() string {
 	return "MSPID"
 }
 
-func (id *noopidentity) Validate() (bool, error) {
+func (id *noopidentity) IsValid() error {
 	mspLogger.Infof("Identity is valid")
-	return true, nil
+	return nil
 }
 
-func (id *noopidentity) OrganizationUnits() string {
+func (id *noopidentity) GetOrganizationUnits() string {
 	return "dunno"
 }
 
-func (id *noopidentity) Verify(msg []byte, sig []byte) (bool, error) {
+func (id *noopidentity) Verify(msg []byte, sig []byte) error {
 	mspLogger.Infof("Signature is valid")
-	return true, nil
+	return nil
 }
 
-func (id *noopidentity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) (bool, error) {
-	return true, nil
+func (id *noopidentity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error {
+	return nil
 }
 
-func (id *noopidentity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) (bool, error) {
-	return true, nil
+func (id *noopidentity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) error {
+	return nil
 }
 
 func (id *noopidentity) Serialize() ([]byte, error) {
@@ -124,10 +116,6 @@ type noopsigningidentity struct {
 func newNoopSigningIdentity() (SigningIdentity, error) {
 	mspLogger.Infof("Creating no-op signing identity instance")
 	return &noopsigningidentity{}, nil
-}
-
-func (id *noopsigningidentity) Identity() {
-
 }
 
 func (id *noopsigningidentity) Sign(msg []byte) ([]byte, error) {
