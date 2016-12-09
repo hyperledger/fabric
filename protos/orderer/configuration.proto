@@ -25,7 +25,7 @@ package orderer;
 
 // The orderer config is specified by the following convention:
 //   For a configuration item with key "Key"
-//   the encoded value is a a proto message o type "Key"
+//   the encoded value is a a proto message of type "Key"
 //   For example, for the configuration item of name "ConsensusType"
 //   the encoded value is the proto message "ConsensusType"
 
@@ -34,17 +34,21 @@ message ConsensusType {
 }
 
 message BatchSize {
-    // Simply specified as messages for now, in the future we may want to allow this to be specified by size in bytes
+    // Simply specified as messages for now, in the future we may want to allow
+    // this to be specified by size in bytes
     uint32 messages = 1;
 }
 
-// When submitting a new chain configuration transaction to create a new chain, the first configuration
-// item must be of type Orderer with Key CreationPolicy and contents of a Marshaled CreationPolicy. The
-// policy should be set to the policy which was supplied by the ordering service for the client's chain
-// creation. The digest should be the hash of the concatenation of the remaining ConfigurationItem bytes.
-// The signatures of the configuration item should satisfy the policy for chain creation.
+// When submitting a new chain configuration transaction to create a new chain,
+// the first configuration item must be of type Orderer with Key CreationPolicy
+// and contents of a Marshaled CreationPolicy. The policy should be set to the
+// policy which was supplied by the ordering service for the client's chain
+// creation. The digest should be the hash of the concatenation of the remaining
+// ConfigurationItem bytes. The signatures of the configuration item should
+// satisfy the policy for chain creation.
 message CreationPolicy {
-    // The name of the policy which should be used to validate the creation of this chain
+    // The name of the policy which should be used to validate the creation of
+    // this chain
     string policy = 1;
 
     // The hash of the concatenation of remaining configuration item bytes
@@ -52,6 +56,15 @@ message CreationPolicy {
 }
 
 message ChainCreators {
-    // A list of policies, any of which may be specified as the chain creation policy in a chain creation request
+    // A list of policies, any of which may be specified as the chain creation
+    // policy in a chain creation request
     repeated string policies = 1;
+}
+
+// Carries a list of bootstrap brokers, i.e. this is not the exclusive set of
+// brokers an ordering service
+message KafkaBrokers {
+    // Each broker here should be identified using the (IP|host):port notation,
+    // e.g. 127.0.0.1:7050, or localhost:7050 are valid entries
+    repeated string brokers = 1;
 }

@@ -62,6 +62,10 @@ func (msc *mockSharedConfig) ChainCreators() []string {
 	return msc.chainCreators
 }
 
+func (msc *mockSharedConfig) KafkaBrokers() []string {
+	panic("Unimplemented")
+}
+
 type mockSupport struct {
 	mpm     *mockPolicyManager
 	msc     *mockSharedConfig

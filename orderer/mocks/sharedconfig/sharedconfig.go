@@ -24,6 +24,8 @@ type Manager struct {
 	BatchSizeVal uint32
 	// ChainCreatorsVal is returned as the result of ChainCreators()
 	ChainCreatorsVal []string
+	// KafkaBrokersVal is returned as the result of KafkaBrokers()
+	KafkaBrokersVal []string
 }
 
 // ConsensusType returns the ConsensusTypeVal
@@ -39,4 +41,9 @@ func (scm *Manager) BatchSize() uint32 {
 // ChainCreators returns the ChainCreatorsVal
 func (scm *Manager) ChainCreators() []string {
 	return scm.ChainCreatorsVal
+}
+
+// KafkaBrokers returns the KafkaBrokersVal
+func (scm *Manager) KafkaBrokers() []string {
+	return scm.KafkaBrokersVal
 }
