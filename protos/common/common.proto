@@ -41,6 +41,13 @@ enum HeaderType {
         ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
 }
 
+// This enum enlist indexes of the block metadata array
+enum BlockMetadataIndex {
+    SIGNATURES = 0;             // Block metadata array position for block signatures
+    LAST_CONFIGURATION = 1;     // Block metadata array poistion to store last configuration block sequence number
+    TRANSACTIONS_FILTER = 2;    // Block metadata array poistion to store serialized bit array filter of invalid transactions
+}
+
 message Header {
     ChainHeader chainHeader = 1;
     SignatureHeader signatureHeader = 2;

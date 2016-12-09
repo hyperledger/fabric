@@ -28,7 +28,9 @@ func NewBlock(seqNum uint64, previousHash []byte) *Block {
 	block.Header.Number = seqNum
 	block.Header.PreviousHash = previousHash
 	block.Data = &BlockData{}
-	block.Metadata = &BlockMetadata{}
+	block.Metadata = &BlockMetadata{
+		Metadata: [][]byte{[]byte{}, []byte{}, []byte{}},
+	}
 	return block
 }
 
