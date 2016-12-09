@@ -22,25 +22,6 @@ import (
 	"github.com/Shopify/sarama"
 )
 
-func TestStaticPartitioner(t *testing.T) {
-
-	var partition int32 = 3
-	var numberOfPartitions int32 = 6
-
-	partitionerConstructor := newStaticPartitioner(partition)
-	partitioner := partitionerConstructor(testConf.Kafka.Topic)
-
-	for i := 0; i < 10; i++ {
-		assignedPartition, err := partitioner.Partition(new(sarama.ProducerMessage), numberOfPartitions)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if assignedPartition != partition {
-			t.Fatalf("Expected: %v. Actual: %v", partition, assignedPartition)
-		}
-	}
-}
-
 func TestProducerConfigMessageMaxBytes(t *testing.T) {
 
 	topic := testConf.Kafka.Topic
