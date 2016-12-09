@@ -50,12 +50,16 @@ func TestSerializedBlockInfo(t *testing.T) {
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, infoFromBB, info)
 	testutil.AssertEquals(t, len(info.txOffsets), len(block.Data.Data))
-	for _, txEnvBytes := range block.Data.Data {
+	for txIndex, txEnvBytes := range block.Data.Data {
 		txid, err := extractTxID(txEnvBytes)
 		testutil.AssertNoError(t, err, "")
-		offset, ok := info.txOffsets[txid]
-		testutil.AssertEquals(t, ok, true)
-		b := bb[offset.offset:]
+
+		indexInfo := info.txOffsets[txIndex]
+		indexTxID := indexInfo.txID
+		indexOffset := indexInfo.loc
+
+		testutil.AssertEquals(t, txid, indexTxID)
+		b := bb[indexOffset.offset:]
 		len, num := proto.DecodeVarint(b)
 		txEnvBytesFromBB := b[num : num+int(len)]
 		testutil.AssertEquals(t, txEnvBytesFromBB, txEnvBytes)

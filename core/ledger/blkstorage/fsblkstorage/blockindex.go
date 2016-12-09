@@ -27,10 +27,11 @@ import (
 )
 
 const (
-	blockNumIdxKeyPrefix  = 'n'
-	blockHashIdxKeyPrefix = 'h'
-	txIDIdxKeyPrefix      = 't'
-	indexCheckpointKeyStr = "indexCheckpointKey"
+	blockNumIdxKeyPrefix        = 'n'
+	blockHashIdxKeyPrefix       = 'h'
+	txIDIdxKeyPrefix            = 't'
+	blockNumTranNumIdxKeyPrefix = 'a'
+	indexCheckpointKeyStr       = "indexCheckpointKey"
 )
 
 var indexCheckpointKey = []byte(indexCheckpointKeyStr)
@@ -41,13 +42,14 @@ type index interface {
 	getBlockLocByHash(blockHash []byte) (*fileLocPointer, error)
 	getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error)
 	getTxLoc(txID string) (*fileLocPointer, error)
+	getTXLocForBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error)
 }
 
 type blockIdxInfo struct {
 	blockNum  uint64
 	blockHash []byte
 	flp       *fileLocPointer
-	txOffsets map[string]*locPointer
+	txOffsets []*txindexInfo
 }
 
 type blockIndex struct {
@@ -89,25 +91,42 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		return err
 	}
 
+	//Index1
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockHash]; ok {
 		batch.Put(constructBlockHashKey(blockIdxInfo.blockHash), flpBytes)
 	}
 
+	//Index2
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNum]; ok {
 		batch.Put(constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
 	}
 
+	//Index3 Used to find a transactin by it's transaction id
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; ok {
-		for txid, txoffset := range txOffsets {
-			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset)
-			logger.Debugf("Adding txLoc [%s] for tx [%s] to index", txFlp, txid)
+		for _, txoffset := range txOffsets {
+			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
+			logger.Debugf("Adding txLoc [%s] for tx ID: [%s] to index", txFlp, txoffset.txID)
 			txFlpBytes, marshalErr := txFlp.marshal()
 			if marshalErr != nil {
 				return marshalErr
 			}
-			batch.Put(constructTxIDKey(txid), txFlpBytes)
+			batch.Put(constructTxIDKey(txoffset.txID), txFlpBytes)
 		}
 	}
+
+	//Index4 - Store BlockNumTranNum will be used to query history data
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNumTranNum]; ok {
+		for txIterator, txoffset := range txOffsets {
+			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
+			logger.Debugf("Adding txLoc [%s] for tx number:[%d] ID: [%s] to blockNumTranNum index", txFlp, txIterator+1, txoffset.txID)
+			txFlpBytes, marshalErr := txFlp.marshal()
+			if marshalErr != nil {
+				return marshalErr
+			}
+			batch.Put(constructBlockNumTranNumKey(blockIdxInfo.blockNum, uint64(txIterator+1)), txFlpBytes)
+		}
+	}
+
 	batch.Put(indexCheckpointKey, encodeBlockNum(blockIdxInfo.blockNum))
 	if err := index.db.WriteBatch(batch, false); err != nil {
 		return err
@@ -163,6 +182,22 @@ func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 	return txFLP, nil
 }
 
+func (index *blockIndex) getTXLocForBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNumTranNum]; !ok {
+		return nil, blkstorage.ErrAttrNotIndexed
+	}
+	b, err := index.db.Get(constructBlockNumTranNumKey(blockNum, tranNum))
+	if err != nil {
+		return nil, err
+	}
+	if b == nil {
+		return nil, blkstorage.ErrNotFoundInIndex
+	}
+	txFLP := &fileLocPointer{}
+	txFLP.unmarshal(b)
+	return txFLP, nil
+}
+
 func constructBlockNumKey(blockNum uint64) []byte {
 	blkNumBytes := util.EncodeOrderPreservingVarUint64(blockNum)
 	return append([]byte{blockNumIdxKeyPrefix}, blkNumBytes...)
@@ -174,6 +209,13 @@ func constructBlockHashKey(blockHash []byte) []byte {
 
 func constructTxIDKey(txID string) []byte {
 	return append([]byte{txIDIdxKeyPrefix}, []byte(txID)...)
+}
+
+func constructBlockNumTranNumKey(blockNum uint64, txNum uint64) []byte {
+	blkNumBytes := util.EncodeOrderPreservingVarUint64(blockNum)
+	tranNumBytes := util.EncodeOrderPreservingVarUint64(txNum)
+	key := append(blkNumBytes, tranNumBytes...)
+	return append([]byte{blockNumTranNumIdxKeyPrefix}, key...)
 }
 
 func constructTxID(blockNum uint64, txNum int) string {

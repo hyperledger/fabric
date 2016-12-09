@@ -304,7 +304,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 	blockFLP.offset = currentOffset
 	// shift the txoffset because we prepend length of bytes before block bytes
 	for _, txOffset := range txOffsets {
-		txOffset.offset += len(blockBytesEncodedLen)
+		txOffset.loc.offset += len(blockBytesEncodedLen)
 	}
 	//save the index in the database
 	mgr.index.indexBlock(&blockIdxInfo{
@@ -363,7 +363,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 			return err
 		}
 		for _, offset := range info.txOffsets {
-			offset.offset += int(blockPlacementInfo.blockBytesOffset)
+			offset.loc.offset += int(blockPlacementInfo.blockBytesOffset)
 		}
 		//Update the blockIndexInfo with what was actually stored in file system
 		blockIdxInfo := &blockIdxInfo{}
@@ -450,6 +450,15 @@ func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*BlocksItr, error) {
 func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*pb.Transaction, error) {
 	logger.Debugf("retrieveTransactionByID() - txId = [%s]", txID)
 	loc, err := mgr.index.getTxLoc(txID)
+	if err != nil {
+		return nil, err
+	}
+	return mgr.fetchTransaction(loc)
+}
+
+func (mgr *blockfileMgr) retrieveTransactionForBlockNumTranNum(blockNum uint64, tranNum uint64) (*pb.Transaction, error) {
+	logger.Debugf("retrieveTransactionForBlockNumTranNum() - blockNum = [%d], tranNum = [%d]", blockNum, tranNum)
+	loc, err := mgr.index.getTXLocForBlockNumTranNum(blockNum, tranNum)
 	if err != nil {
 		return nil, err
 	}

@@ -39,6 +39,7 @@ func newTestEnv(t testing.TB) *testEnv {
 		blkstorage.IndexableAttrBlockHash,
 		blkstorage.IndexableAttrBlockNum,
 		blkstorage.IndexableAttrTxID,
+		blkstorage.IndexableAttrBlockNumTranNum,
 	}
 	os.RemoveAll(conf.dbPath)
 	os.RemoveAll(conf.blockfilesDir)
