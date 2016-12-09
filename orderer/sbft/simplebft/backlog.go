@@ -22,7 +22,7 @@ const maxBacklogSeq = 4
 const msgPerSeq = 3 // (pre)prepare, commit, checkpoint
 
 func (s *SBFT) testBacklogMessage(m *Msg, src uint64) bool {
-	record := func(seq *SeqView) bool {
+	test := func(seq *SeqView) bool {
 		if !s.activeView {
 			return true
 		}
@@ -33,14 +33,13 @@ func (s *SBFT) testBacklogMessage(m *Msg, src uint64) bool {
 	}
 
 	if pp := m.GetPreprepare(); pp != nil {
-		return record(pp.Seq) && !s.cur.checkpointDone
+		return test(pp.Seq) && !s.cur.checkpointDone
 	} else if p := m.GetPrepare(); p != nil {
-		return record(p.Seq)
+		return test(p.Seq)
 	} else if c := m.GetCommit(); c != nil {
-		return record(c.Seq)
-	} else if cs := m.GetCheckpoint(); cs != nil {
-		c := &Checkpoint{}
-		return record(&SeqView{Seq: c.Seq})
+		return test(c.Seq)
+	} else if chk := m.GetCheckpoint(); chk != nil {
+		return test(&SeqView{Seq: chk.Seq})
 	}
 	return false
 }
@@ -53,6 +52,7 @@ func (s *SBFT) recordBacklogMsg(m *Msg, src uint64) {
 	s.replicaState[src].backLog = append(s.replicaState[src].backLog, m)
 
 	if len(s.replicaState[src].backLog) > maxBacklogSeq*msgPerSeq {
+		log.Debugf("replica %d: backlog for %d full, discarding and reconnecting", s.id, src)
 		s.discardBacklog(src)
 		s.sys.Reconnect(src)
 	}
@@ -64,7 +64,6 @@ func (s *SBFT) discardBacklog(src uint64) {
 
 func (s *SBFT) processBacklog() {
 	processed := true
-	notReady := uint64(0)
 
 	for processed {
 		processed = false
@@ -75,7 +74,6 @@ func (s *SBFT) processBacklog() {
 			for len(state.backLog) > 0 {
 				m, rest := state.backLog[0], state.backLog[1:]
 				if s.testBacklogMessage(m, src) {
-					notReady++
 					break
 				}
 				state.backLog = rest
