@@ -119,24 +119,38 @@ func closeListenerAndSleep(l net.Listener) {
 
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
-func getProposal(cis *pb.ChaincodeInvocationSpec, chainID string, creator []byte) (*pb.Proposal, error) {
+func getInvokeProposal(cis *pb.ChaincodeInvocationSpec, chainID string, creator []byte) (*pb.Proposal, error) {
 	uuid := util.GenerateUUID()
 	return pbutils.CreateChaincodeProposal(uuid, chainID, cis, creator)
 }
 
-//getDeployProposal gets the proposal for the chaincode deployment
-//the payload is a ChaincodeDeploymentSpec
 func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator []byte) (*pb.Proposal, error) {
+	return getDeployOrUpgradeProposal(cds, chainID, creator, false)
+}
+
+func getUpgradeProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator []byte) (*pb.Proposal, error) {
+	return getDeployOrUpgradeProposal(cds, chainID, creator, true)
+}
+
+//getDeployOrUpgradeProposal gets the proposal for the chaincode deploy or upgrade
+//the payload is a ChaincodeDeploymentSpec
+func getDeployOrUpgradeProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator []byte, upgrade bool) (*pb.Proposal, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
 	}
 
+	var propType string
+	if upgrade {
+		propType = "upgrade"
+	} else {
+		propType = "deploy"
+	}
 	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
+	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b}}}}
 
 	//...and get the proposal for it
-	return getProposal(lcccSpec, chainID, creator)
+	return getInvokeProposal(lcccSpec, chainID, creator)
 }
 
 func getSignedProposal(prop *pb.Proposal, signer msp.SigningIdentity) (*pb.SignedProposal, error) {
@@ -163,6 +177,14 @@ func getDeploymentSpec(context context.Context, spec *pb.ChaincodeSpec) (*pb.Cha
 }
 
 func deploy(endorserServer pb.EndorserServer, chainID string, spec *pb.ChaincodeSpec, f func(*pb.ChaincodeDeploymentSpec)) (*pb.ProposalResponse, *pb.Proposal, error) {
+	return deployOrUpgrade(endorserServer, chainID, spec, f, false)
+}
+
+func upgrade(endorserServer pb.EndorserServer, chainID string, spec *pb.ChaincodeSpec, f func(*pb.ChaincodeDeploymentSpec)) (*pb.ProposalResponse, *pb.Proposal, error) {
+	return deployOrUpgrade(endorserServer, chainID, spec, f, true)
+}
+
+func deployOrUpgrade(endorserServer pb.EndorserServer, chainID string, spec *pb.ChaincodeSpec, f func(*pb.ChaincodeDeploymentSpec), upgrade bool) (*pb.ProposalResponse, *pb.Proposal, error) {
 	var err error
 	var depSpec *pb.ChaincodeDeploymentSpec
 
@@ -182,7 +204,11 @@ func deploy(endorserServer pb.EndorserServer, chainID string, spec *pb.Chaincode
 	}
 
 	var prop *pb.Proposal
-	prop, err = getDeployProposal(depSpec, chainID, creator)
+	if upgrade {
+		prop, err = getUpgradeProposal(depSpec, chainID, creator)
+	} else {
+		prop, err = getDeployProposal(depSpec, chainID, creator)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -208,7 +234,7 @@ func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error
 	}
 
 	var prop *pb.Proposal
-	prop, err = getProposal(invocation, chainID, creator)
+	prop, err = getInvokeProposal(invocation, chainID, creator)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", spec.ChaincodeID, err)
 	}
@@ -350,6 +376,49 @@ func TestDeployAndInvoke(t *testing.T) {
 	t.Logf("Invoke test passed")
 
 	chaincode.GetChain().Stop(ctxt, chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
+}
+
+// TestUpgradeAndInvoke deploys chaincode_example01, upgrade it with chaincode_example02, then invoke it
+func TestDeployAndUpgrade(t *testing.T) {
+	chainID := util.GetTestChainID()
+	var ctxt = context.Background()
+
+	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
+	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	chaincodeID1 := &pb.ChaincodeID{Path: url1, Name: "upgradeex01"}
+	chaincodeID2 := &pb.ChaincodeID{Path: url2, Name: "upgradeex01"}
+
+	f := "init"
+	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID1, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
+	resp, prop, err := deploy(endorserServer, chainID, spec, nil)
+	chaincodeName := spec.ChaincodeID.Name
+	if err != nil {
+		t.Fail()
+		t.Logf("Error deploying <%s>: %s", chaincodeName, err)
+		return
+	}
+
+	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp)
+	if err != nil {
+		t.Fail()
+		t.Logf("Error committing <%s>: %s", chaincodeName, err)
+		return
+	}
+
+	argsUpgrade := util.ToChaincodeArgs(f, "a", "150", "b", "300")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID2, CtorMsg: &pb.ChaincodeInput{Args: argsUpgrade}}
+	resp, prop, err = upgrade(endorserServer, chainID, spec, nil)
+	if err != nil {
+		t.Fail()
+		t.Logf("Error upgrading <%s>: %s", chaincodeName, err)
+		return
+	}
+
+	fmt.Printf("Upgrade test passed\n")
+	t.Logf("Upgrade test passed")
+
+	chaincode.GetChain().Stop(ctxt, chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID2}})
 }
 
 func TestMain(m *testing.M) {
