@@ -127,10 +127,13 @@ class Composition:
             # container environment
             container_env = container['Config']['Env']
 
+            # container exposed ports
+            container_ports = container['NetworkSettings']['Ports']
+
             # container docker-compose service
             container_compose_service = container['Config']['Labels']['com.docker.compose.service']
 
-            self.containerDataList.append(peer_basic_impl.ContainerData(container_name, container_ipaddress, container_env, container_compose_service))
+            self.containerDataList.append(peer_basic_impl.ContainerData(container_name, container_ipaddress, container_env, container_compose_service, container_ports))
 
     def decompose(self):
         self.issueCommand(["unpause"])

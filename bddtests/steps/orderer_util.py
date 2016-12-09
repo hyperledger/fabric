@@ -170,8 +170,7 @@ class UserRegistration:
 		if composeService in self.atomicBroadcastStubsDict:
 			return self.atomicBroadcastStubsDict[composeService]
 		# Get the IP address of the server that the user registered on
-		ipAddress = bdd_test_util.ipFromContainerNamePart(composeService, context.compose_containers)
-		channel = getGRPCChannel(ipAddress)
+		channel = getGRPCChannel(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
 		newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
 		self.atomicBroadcastStubsDict[composeService] = newABStub
 		return newABStub
@@ -246,7 +245,7 @@ def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 1, timeTo
     time.sleep(timeToHoldOpen)
 
 
-def getGRPCChannel(ipAddress):
-    channel = implementations.insecure_channel(ipAddress, 7050)
-    print("Returning GRPC for address: {0}".format(ipAddress))
+def getGRPCChannel(host='localhost', port=7050):
+    channel = implementations.insecure_channel(host, port)
+    print("Returning GRPC for address: {0}:{1}".format(host,port))
     return channel

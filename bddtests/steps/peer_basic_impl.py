@@ -33,11 +33,12 @@ CORE_REST_PORT = 7050
 JSONRPC_VERSION = "2.0"
 
 class ContainerData:
-    def __init__(self, containerName, ipAddress, envFromInspect, composeService):
+    def __init__(self, containerName, ipAddress, envFromInspect, composeService, ports):
         self.containerName = containerName
         self.ipAddress = ipAddress
         self.envFromInspect = envFromInspect
         self.composeService = composeService
+        self.ports = ports
 
     def getEnv(self, key):
         envValue = None
