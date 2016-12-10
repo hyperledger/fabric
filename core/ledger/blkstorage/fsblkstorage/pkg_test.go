@@ -18,6 +18,7 @@ package fsblkstorage
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"testing"
 
@@ -82,6 +83,11 @@ func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, s
 		testutil.AssertNoError(w.t, err, fmt.Sprintf("Error while retrieving [%d]th block from blockfileMgr", i))
 		testutil.AssertEquals(w.t, b, blocks[i])
 	}
+	// test getting the last block
+	b, err := w.blockfileMgr.retrieveBlockByNumber(math.MaxUint64)
+	iLastBlock := len(blocks) - 1
+	testutil.AssertNoError(w.t, err, fmt.Sprintf("Error while retrieving last block from blockfileMgr"))
+	testutil.AssertEquals(w.t, b, blocks[iLastBlock])
 }
 
 func (w *testBlockfileMgrWrapper) close() {
