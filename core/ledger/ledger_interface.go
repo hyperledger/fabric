@@ -25,7 +25,8 @@ import (
 type Ledger interface {
 	// GetBlockchainInfo returns basic info about blockchain
 	GetBlockchainInfo() (*pb.BlockchainInfo, error)
-	// GetBlockchainInfo returns block at a given height
+	// GetBlockByNumber returns block at a given height
+	// blockNumber of  math.MaxUint64 will return last block
 	GetBlockByNumber(blockNumber uint64) (*common.Block, error)
 	// GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
 	// The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger

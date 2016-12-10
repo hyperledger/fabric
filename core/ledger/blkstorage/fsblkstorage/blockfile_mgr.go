@@ -18,6 +18,7 @@ package fsblkstorage
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 
@@ -412,6 +413,12 @@ func (mgr *blockfileMgr) retrieveBlockByHash(blockHash []byte) (*common.Block, e
 
 func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
 	logger.Debugf("retrieveBlockByNumber() - blockNum = [%d]", blockNum)
+
+	// interpret math.MaxUint64 as a request for last block
+	if blockNum == math.MaxUint64 {
+		blockNum = mgr.getBlockchainInfo().Height
+	}
+
 	loc, err := mgr.index.getBlockLocByBlockNum(blockNum)
 	if err != nil {
 		return nil, err

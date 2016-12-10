@@ -109,6 +109,7 @@ func (l *KVLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 }
 
 // GetBlockByNumber returns block at a given height
+// blockNumber of  math.MaxUint64 will return last block
 func (l *KVLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 	return l.blockStore.RetrieveBlockByNumber(blockNumber)
 
