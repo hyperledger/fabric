@@ -23,8 +23,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/common/cauthdsl"
 	"github.com/hyperledger/fabric/orderer/common/configtx"
-	"github.com/hyperledger/fabric/orderer/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestGenesisBlockCreation(t *testing.T) {
@@ -73,14 +73,14 @@ func TestGenesisBlockData(t *testing.T) {
 		t.Fatalf("Expected genesis block data length %d, got %d", expectedBlockDataLength, len(genesisBlock.Data.Data))
 	}
 
-	envelope := util.ExtractEnvelopeOrPanic(genesisBlock, 0)
+	envelope := utils.ExtractEnvelopeOrPanic(genesisBlock, 0)
 
 	envelopeSignature := envelope.Signature
 	if !bytes.Equal(envelopeSignature, nil) {
 		t.Fatalf("Expected envelope signature to be nil, got %x", envelopeSignature)
 	}
 
-	payload := util.ExtractPayloadOrPanic(envelope)
+	payload := utils.ExtractPayloadOrPanic(envelope)
 
 	signatureHeader := payload.Header.SignatureHeader
 	if !bytes.Equal(signatureHeader.Creator, nil) {

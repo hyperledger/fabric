@@ -43,7 +43,7 @@ func TestBreakOutBlockData(t *testing.T) {
 	if len(payloads) != 1 {
 		t.Errorf("TestBreakOutBlock did not unmarshall to array of 1 payloads\n")
 	}
-	if payloads[0].Header.ChainHeader.Version != 1 || payloads[0].Header.ChainHeader.Type != int32(pb.HeaderType_CONFIGURATION_TRANSACTION) || payloads[0].Header.ChainHeader.ChainID != "test" {
+	if payloads[0].Header.ChainHeader.Version != 1 || payloads[0].Header.ChainHeader.ChainID != "test" {
 		t.Errorf("TestBreakOutBlockData payload header is %+v . Expected type is %v and Version == 1\n", payloads[0].Header.ChainHeader, int32(pb.HeaderType_CONFIGURATION_TRANSACTION))
 	}
 	if !bytes.Equal(payloads[0].Data, []byte("test")) {
@@ -150,6 +150,7 @@ func testPayloadHeader() *pb.Header {
 	}
 }
 
+/*
 func testPayload() *pb.Payload {
 	return &pb.Payload{
 		Header: testPayloadHeader(),
@@ -162,6 +163,17 @@ func testEnvelope() *pb.Envelope {
 	payloadBytes, _ := proto.Marshal(testPayload())
 	return &pb.Envelope{Payload: payloadBytes}
 }
+
+func testBlock() *pb.Block {
+	// No need to set the block's Header, or Metadata
+	envelopeBytes, _ := proto.Marshal(testEnvelope())
+	return &pb.Block{
+		Data: &pb.BlockData{
+			Data: [][]byte{envelopeBytes},
+		},
+	}
+}
+*/
 
 func testPayloadConfigEnvelope() *pb.Payload {
 	data, _ := proto.Marshal(testConfigurationEnvelope())
@@ -191,16 +203,6 @@ func testConfigurationEnvelope() *pb.ConfigurationEnvelope {
 	signedConfigItem, _ := makeSignedConfigurationItem(configItem, nil)
 	return makeConfigurationEnvelope(signedConfigItem)
 } // testConfigurationEnvelope
-
-func testBlock() *pb.Block {
-	// No need to set the block's Header, or Metadata
-	envelopeBytes, _ := proto.Marshal(testEnvelope())
-	return &pb.Block{
-		Data: &pb.BlockData{
-			Data: [][]byte{envelopeBytes},
-		},
-	}
-}
 
 func makeConfigurationItem(ch *pb.ChainHeader, configItemType pb.ConfigurationItem_ConfigurationType, lastModified uint64, modPolicyID string, key string, value []byte) *pb.ConfigurationItem {
 	return &pb.ConfigurationItem{

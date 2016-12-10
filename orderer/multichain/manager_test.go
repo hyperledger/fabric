@@ -23,10 +23,10 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
-	"github.com/hyperledger/fabric/orderer/common/util"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var genesisBlock *cb.Block
@@ -50,7 +50,7 @@ func makeNormalTx(chainID string, i int) *cb.Envelope {
 		Data: []byte(fmt.Sprintf("%d", i)),
 	}
 	return &cb.Envelope{
-		Payload: util.MarshalOrPanic(payload),
+		Payload: utils.MarshalOrPanic(payload),
 	}
 }
 
@@ -62,16 +62,16 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 				ChainID: chainID,
 			},
 		},
-		Data: util.MarshalOrPanic(&cb.ConfigurationEnvelope{
+		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
 			Items: []*cb.SignedConfigurationItem{&cb.SignedConfigurationItem{
-				ConfigurationItem: util.MarshalOrPanic(&cb.ConfigurationItem{
+				ConfigurationItem: utils.MarshalOrPanic(&cb.ConfigurationItem{
 					Value: []byte(fmt.Sprintf("%d", i)),
 				}),
 			}},
 		}),
 	}
 	return &cb.Envelope{
-		Payload: util.MarshalOrPanic(payload),
+		Payload: utils.MarshalOrPanic(payload),
 	}
 }
 
@@ -147,7 +147,7 @@ func TestManagerImpl(t *testing.T) {
 			t.Fatalf("Could not retrieve block")
 		}
 		for i := 0; i < static.DefaultBatchSize; i++ {
-			if !reflect.DeepEqual(util.ExtractEnvelopeOrPanic(block, i), messages[i]) {
+			if !reflect.DeepEqual(utils.ExtractEnvelopeOrPanic(block, i), messages[i]) {
 				t.Errorf("Block contents wrong at index %d", i)
 			}
 		}

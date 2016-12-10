@@ -21,9 +21,9 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func doesFuncCrash(crasher func(), test string) bool {
@@ -85,12 +85,12 @@ func TestConsensusType(t *testing.T) {
 	validMessage := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   ConsensusTypeKey,
-		Value: util.MarshalOrPanic(&ab.ConsensusType{Type: endType}),
+		Value: utils.MarshalOrPanic(&ab.ConsensusType{Type: endType}),
 	}
 	otherValidMessage := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   ConsensusTypeKey,
-		Value: util.MarshalOrPanic(&ab.ConsensusType{Type: "bar"}),
+		Value: utils.MarshalOrPanic(&ab.ConsensusType{Type: "bar"}),
 	}
 	m := NewManagerImpl()
 	m.BeginConfig()
@@ -137,17 +137,17 @@ func TestBatchSize(t *testing.T) {
 	zeroBatchSize := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   BatchSizeKey,
-		Value: util.MarshalOrPanic(&ab.BatchSize{Messages: 0}),
+		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: 0}),
 	}
 	negativeBatchSize := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   BatchSizeKey,
-		Value: util.MarshalOrPanic(&ab.BatchSize{Messages: -1}),
+		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: -1}),
 	}
 	validMessage := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   BatchSizeKey,
-		Value: util.MarshalOrPanic(&ab.BatchSize{Messages: int32(endBatchSize)}),
+		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: int32(endBatchSize)}),
 	}
 	m := NewManagerImpl()
 	m.BeginConfig()
