@@ -22,8 +22,8 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -103,10 +103,10 @@ func TestMain(m *testing.M) {
 
 	primitives.InitSecurityLevel("SHA2", 256)
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigFile := "../../../msp/peer-config.json"
-	config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
+	mspMgrConfigDir := "../../../msp/sampleconfig/"
+	mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
 
-	id, err = msp.GetLocalMSP().GetDefaultSigningIdentity()
+	id, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Printf("GetSigningIdentity failed with err %s", err)
 		os.Exit(-1)

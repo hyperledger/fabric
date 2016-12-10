@@ -26,9 +26,9 @@ import (
 
 var mspLogger = logging.MustGetLogger("msp")
 
-type peerMspManagerImpl struct {
+type mspManagerImpl struct {
 	// map that contains all MSPs that we have setup or otherwise added
-	mspsMap map[string]PeerMSP
+	mspsMap map[string]MSP
 
 	// name of this manager
 	mgrName string
@@ -37,14 +37,21 @@ type peerMspManagerImpl struct {
 	up bool
 }
 
-func (mgr *peerMspManagerImpl) Setup(config *MSPManagerConfig) error {
+// NewMSPManager returns a new MSP manager instance;
+// note that this instance is not initialized until
+// the Setup method is called
+func NewMSPManager() MSPManager {
+	return &mspManagerImpl{}
+}
+
+// Setup initializes the internal data structures of this manager and creates MSPs
+func (mgr *mspManagerImpl) Setup(config *MSPManagerConfig) error {
 	if mgr.up {
-		mspLogger.Warningf("MSP manager already up")
+		mspLogger.Infof("MSP manager already up")
 		return nil
 	}
 
 	if config == nil {
-		mspLogger.Errorf("Setup error: nil config object")
 		return fmt.Errorf("Setup error: nil config object")
 	}
 
@@ -52,35 +59,31 @@ func (mgr *peerMspManagerImpl) Setup(config *MSPManagerConfig) error {
 	mgr.mgrName = config.Name
 
 	// create the map that assigns MSP IDs to their manager instance - once
-	mgr.mspsMap = make(map[string]PeerMSP)
+	mgr.mspsMap = make(map[string]MSP)
 
 	for _, mspConf := range config.MspList {
 		// check that the type for that MSP is supported
 		if mspConf.Type != FABRIC {
-			mspLogger.Errorf("Setup error: unsupported msp type %d", mspConf.Type)
 			return fmt.Errorf("Setup error: unsupported msp type %d", mspConf.Type)
 		}
 
 		mspLogger.Infof("Setting up MSP")
 
 		// create the msp instance
-		msp, err := newBccspMsp()
+		msp, err := NewBccspMsp()
 		if err != nil {
-			mspLogger.Errorf("Creating the MSP manager failed, err %s", err)
 			return fmt.Errorf("Creating the MSP manager failed, err %s", err)
 		}
 
 		// set it up
 		err = msp.Setup(mspConf)
 		if err != nil {
-			mspLogger.Errorf("Setting up the MSP manager failed, err %s", err)
 			return fmt.Errorf("Setting up the MSP manager failed, err %s", err)
 		}
 
 		// add the MSP to the map of active MSPs
-		mspID, err := msp.Identifier()
+		mspID, err := msp.GetIdentifier()
 		if err != nil {
-			mspLogger.Errorf("Could not extract msp identifier, err %s", err)
 			return fmt.Errorf("Could not extract msp identifier, err %s", err)
 		}
 		mgr.mspsMap[mspID] = msp
@@ -93,35 +96,24 @@ func (mgr *peerMspManagerImpl) Setup(config *MSPManagerConfig) error {
 	return nil
 }
 
-func (mgr *peerMspManagerImpl) Reconfig(config []byte) error {
+// Reconfig refreshes the configuration of this MSP
+func (mgr *mspManagerImpl) Reconfig(config []byte) error {
 	// TODO
 	return nil
 }
 
-func (mgr *peerMspManagerImpl) Name() string {
+// GetName returns the name of this MSP manager
+func (mgr *mspManagerImpl) GetName() string {
 	return mgr.mgrName
 }
 
-func (mgr *peerMspManagerImpl) EnlistedMSPs() (map[string]PeerMSP, error) {
+// GetMSPs returns the MSPs that are managed by this manager
+func (mgr *mspManagerImpl) GetMSPs() (map[string]MSP, error) {
 	return mgr.mspsMap, nil
 }
 
-func (mgr *peerMspManagerImpl) AddMSP(configFile string) (string, error) {
-	// TODO
-	return "", nil
-}
-
-func (mgr *peerMspManagerImpl) RemoveMSP(identifier string) (string, error) {
-	// TODO
-	return "", nil
-}
-
-func (mgr *peerMspManagerImpl) ImportSigningIdentity(req *ImportRequest) (SigningIdentity, error) {
-	// TODO
-	return nil, nil
-}
-
-func (mgr *peerMspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, error) {
+// DeserializeIdentity returns an identity given its serialized version supplied as argument
+func (mgr *mspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	// We first deserialize to a SerializedIdentity to get the MSP ID
 	sId := &SerializedIdentity{}
 	_, err := asn1.Unmarshal(serializedID, sId)
@@ -137,20 +129,4 @@ func (mgr *peerMspManagerImpl) DeserializeIdentity(serializedID []byte) (Identit
 
 	// if we have this MSP, we ask it to deserialize
 	return msp.DeserializeIdentity(serializedID)
-}
-
-func (mgr *peerMspManagerImpl) DeleteSigningIdentity(identifier string) (bool, error) {
-	// TODO
-	return true, nil
-}
-
-// isValid checks whether the supplied identity is valid
-func (mgr *peerMspManagerImpl) IsValid(id Identity, mspId string) (bool, error) {
-	mspLogger.Infof("Looking up MSP with ID %s", mspId)
-	msp := mgr.mspsMap[mspId]
-	if msp == nil {
-		return false, fmt.Errorf("No MSP registered for MSP ID %s", mspId)
-	}
-
-	return msp.IsValid(id)
 }

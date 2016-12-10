@@ -21,6 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/flogging"
 	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -63,7 +64,7 @@ func SetErrorLoggingLevel() error {
 
 // GetDefaultSigner return a default Signer(Default/PERR) for cli
 func GetDefaultSigner() (msp.SigningIdentity, error) {
-	signer, err := msp.GetLocalMSP().GetDefaultSigningIdentity()
+	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		return nil, fmt.Errorf("Error obtaining the default signing identity, err %s", err)
 	}

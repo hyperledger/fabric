@@ -30,8 +30,8 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hyperledger/fabric/core"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/flogging"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/clilogging"
@@ -119,13 +119,13 @@ func main() {
 
 	// Init the MSP
 	// TODO: determine the location of this config file
-	var mspMgrConfigFile string
+	var mspMgrConfigDir string
 	if alternativeCfgPath != "" {
-		mspMgrConfigFile = alternativeCfgPath + "/msp/peer-config.json"
-	} else if _, err := os.Stat("./peer-config.json"); err == nil {
-		mspMgrConfigFile = "./peer-config.json"
+		mspMgrConfigDir = alternativeCfgPath + "/msp/sampleconfig/"
+	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
+		mspMgrConfigDir = "./msp/sampleconfig/"
 	} else {
-		mspMgrConfigFile = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/peer-config.json"
+		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
 	}
 
 	// FIXME: when this peer joins a chain, it should get the
@@ -134,9 +134,9 @@ func main() {
 	// Additionally, we might always want to have an MSP for
 	// the local test chain so that we can run tests with the
 	// peer CLI. This is why we create this fake setup here for now
-	err = config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
+	err = mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
 	if err != nil {
-		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigFile, err))
+		panic(fmt.Errorf("Fatal error when setting up MSP from directory %s: err %s\n", mspMgrConfigDir, err))
 	}
 
 	// On failure Cobra prints the usage message and error string, so we only

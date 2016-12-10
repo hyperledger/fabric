@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -105,24 +105,22 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		// loop through each of the endorsements
 		for _, endorsement := range cap.Action.Endorsements {
 			// extract the identity of the signer
-			end, err := msp.GetManagerForChain(payl.Header.ChainHeader.ChainID).DeserializeIdentity(endorsement.Endorser)
+			end, err := mspmgmt.GetManagerForChain(payl.Header.ChainHeader.ChainID).DeserializeIdentity(endorsement.Endorser)
 			if err != nil {
 				logger.Errorf("VSCC error: DeserializeIdentity failed, err %s", err)
 				return nil, err
 			}
 
 			// validate it
-			valid, err := end.Validate()
-			if err != nil || !valid {
-				logger.Errorf("Invalid endorser, err %s, valid %t", err, valid)
-				return nil, fmt.Errorf("Invalid endorser, err %s, valid %t", err, valid)
+			err = end.IsValid()
+			if err != nil {
+				return nil, fmt.Errorf("Invalid endorser identity, err %s", err)
 			}
 
 			// verify the signature
-			valid, err = end.Verify(append(prespBytes, endorsement.Endorser...), endorsement.Signature)
-			if err != nil || !valid {
-				logger.Errorf("Invalid signature, err %s, valid %t", err, valid)
-				return nil, fmt.Errorf("Invalid signature, err %s, valid %t", err, valid)
+			err = end.Verify(append(prespBytes, endorsement.Endorser...), endorsement.Signature)
+			if err != nil {
+				return nil, fmt.Errorf("Invalid signature, err %s", err)
 			}
 		}
 	}

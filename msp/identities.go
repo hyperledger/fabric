@@ -32,56 +32,78 @@ import (
 )
 
 type identity struct {
-	id    *IdentityIdentifier
-	cert  *x509.Certificate
-	pk    bccsp.Key
-	myMsp PeerMSP
+	// id contains the identifier (MSPID and identity identifier) for this instance
+	id *IdentityIdentifier
+
+	// cert contains the x.509 certificate that signs the public key of this instance
+	cert *x509.Certificate
+
+	// this is the public key of this instance
+	pk bccsp.Key
+
+	// reference to the MSP that "owns" this identity
+	myMsp MSP
 }
 
-func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, myMsp PeerMSP) Identity {
+func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, myMsp MSP) Identity {
 	mspLogger.Infof("Creating identity instance for ID %s", id)
 	return &identity{id: id, cert: cert, pk: pk, myMsp: myMsp}
 }
 
-func (id *identity) Identifier() *IdentityIdentifier {
+// GetIdentifier returns the identifier (MSPID/IDID) for this instance
+func (id *identity) GetIdentifier() *IdentityIdentifier {
 	return id.id
 }
 
+// GetMSPIdentifier returns the MSP identifier for this instance
 func (id *identity) GetMSPIdentifier() string {
 	return id.id.Mspid
 }
 
-func (id *identity) Validate() (bool, error) {
-	return id.myMsp.IsValid(id)
+// IsValid returns nil if this instance is a valid identity or an error otherwise
+func (id *identity) IsValid() error {
+	return id.myMsp.Validate(id)
 }
 
-func (id *identity) OrganizationUnits() string {
+// GetOrganizationUnits returns the OU for this instance
+func (id *identity) GetOrganizationUnits() string {
 	// TODO
 	return "dunno"
 }
 
-func (id *identity) Verify(msg []byte, sig []byte) (bool, error) {
+// Verify checks against a signature and a message
+// to determine whether this identity produced the
+// signature; it returns nil if so or an error otherwise
+func (id *identity) Verify(msg []byte, sig []byte) error {
 	mspLogger.Infof("Verifying signature")
 	bccsp, err := factory.GetDefault()
 	if err != nil {
-		return false, fmt.Errorf("Failed getting default BCCSP [%s]", err)
+		return fmt.Errorf("Failed getting default BCCSP [%s]", err)
 	} else if bccsp == nil {
-		return false, fmt.Errorf("Failed getting default BCCSP. Nil instance.")
+		return fmt.Errorf("Failed getting default BCCSP. Nil instance.")
 	}
 
-	return bccsp.Verify(id.pk, sig, primitives.Hash(msg), nil)
+	valid, err := bccsp.Verify(id.pk, sig, primitives.Hash(msg), nil)
+	if err != nil {
+		return fmt.Errorf("Could not determine the validity of the signature, err %s", err)
+	} else if !valid {
+		return fmt.Errorf("The signature is invalid")
+	} else {
+		return nil
+	}
 }
 
-func (id *identity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) (bool, error) {
+func (id *identity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error {
 	// TODO
-	return true, nil
+	return nil
 }
 
-func (id *identity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) (bool, error) {
+func (id *identity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) error {
 	// TODO
-	return true, nil
+	return nil
 }
 
+// Serialize returns a byte array representation of this identity
 func (id *identity) Serialize() ([]byte, error) {
 	mspLogger.Infof("Serializing identity %s", id.id)
 
@@ -102,19 +124,19 @@ func (id *identity) Serialize() ([]byte, error) {
 }
 
 type signingidentity struct {
+	// we embed everything from a base identity
 	identity
+
+	// signer corresponds to the object that can produce signatures from this identity
 	signer *signer.CryptoSigner
 }
 
-func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner, myMsp PeerMSP) SigningIdentity {
+func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner, myMsp MSP) SigningIdentity {
 	mspLogger.Infof("Creating signing identity instance for ID %s", id)
 	return &signingidentity{identity{id: id, cert: cert, pk: pk, myMsp: myMsp}, signer}
 }
 
-func (id *signingidentity) Identity() {
-	// TODO
-}
-
+// Sign produces a signature over msg, signed by this instance
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	mspLogger.Infof("Signing message")
 	return id.signer.Sign(rand.Reader, primitives.Hash(msg), nil)

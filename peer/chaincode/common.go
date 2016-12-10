@@ -168,7 +168,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.Identifier(), err)
+		return fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
 	}
 
 	uuid := cutil.GenerateUUID()

@@ -24,11 +24,10 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
-	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
@@ -102,7 +101,7 @@ func TestInvoke(t *testing.T) {
 
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: cs}
 
-	sId, err := msp.GetLocalMSP().GetDefaultSigningIdentity()
+	sId, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fail()
 		t.Fatalf("couldn't obtain identity: err %s", err)
@@ -236,30 +235,26 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	}
 
 	// get the identity of the endorser
-	endorser, err := msp.GetManagerForChain(util.GetTestChainID()).DeserializeIdentity(pResp.Endorsement.Endorser)
+	endorser, err := mspmgmt.GetManagerForChain(util.GetTestChainID()).DeserializeIdentity(pResp.Endorsement.Endorser)
 	if err != nil {
 		return fmt.Errorf("Failed to deserialize endorser identity, err %s", err)
 	}
 
 	// ensure that endorser has a valid certificate
-	valid, err := endorser.Validate()
+	err = endorser.IsValid()
 	if err != nil {
-		return fmt.Errorf("Could not determine whether the endorser identity is valid, err %s", err)
-	} else if !valid {
-		return fmt.Errorf("The endorser certificate is not valid, aborting")
+		return fmt.Errorf("The endorser certificate is not valid, err %s", err)
 	}
 
-	verified, err := endorser.Verify(append(pResp.Payload, pResp.Endorsement.Endorser...), pResp.Endorsement.Signature)
+	err = endorser.Verify(append(pResp.Payload, pResp.Endorsement.Endorser...), pResp.Endorsement.Signature)
 	if err != nil {
-		return fmt.Errorf("Could not determine whether the signature is valid, err %s", err)
-	} else if !verified {
-		return fmt.Errorf("The endorser's signature over the proposal response is not valid, aborting")
+		return fmt.Errorf("The endorser's signature over the proposal response is not valid, err %s", err)
 	}
 
 	// as extra, we assemble a transaction, sign it and then validate it
 
 	// obtain signer for the transaction
-	sId, err := msp.GetLocalMSP().GetDefaultSigningIdentity()
+	sId, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		return fmt.Errorf("couldn't obtain identity: err %s", err)
 	}
@@ -283,8 +278,8 @@ func TestMain(m *testing.M) {
 	primitives.InitSecurityLevel("SHA2", 256)
 	// setup the MSP manager so that we can sign/verify
 	// TODO: determine the config file for the MSP
-	mspMgrConfigFile := "../../../msp/peer-config.json"
-	config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
+	mspMgrConfigDir := "../../../msp/sampleconfig/"
+	mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
 
 	os.Exit(m.Run())
 }

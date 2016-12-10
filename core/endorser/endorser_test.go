@@ -27,11 +27,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -43,7 +43,7 @@ import (
 )
 
 var endorserServer pb.EndorserServer
-var mspInstance msp.PeerMSP
+var mspInstance msp.MSP
 var signer msp.SigningIdentity
 
 //initialize peer and start up. If security==enabled, login as vp
@@ -437,12 +437,18 @@ func TestMain(m *testing.M) {
 	endorserServer = NewEndorserServer()
 
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigFile := "../../msp/peer-config.json"
-	config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
-	signer, err = msp.GetLocalMSP().GetDefaultSigningIdentity()
+	mspMgrConfigDir := "../../msp/sampleconfig/"
+	err = mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
 	if err != nil {
+		fmt.Printf("Could not initialize msp/signer, err %s", err)
 		os.Exit(-1)
+		finitPeer(lis)
+		return
+	}
+	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	if err != nil {
 		fmt.Printf("Could not initialize msp/signer")
+		os.Exit(-1)
 		finitPeer(lis)
 		return
 	}

@@ -51,16 +51,18 @@ type bccspmsp struct {
 	name string
 }
 
-func newBccspMsp() (PeerMSP, error) {
+// NewBccspMsp returns an MSP instance backed up by a BCCSP
+// crypto provider. It handles x.509 certificates and can
+// generate identities and signing identities backed by
+// certificates and keypairs
+func NewBccspMsp() (MSP, error) {
 	mspLogger.Infof("Creating BCCSP-based MSP instance")
 
 	/* TODO: is the default BCCSP okay here?*/
 	bccsp, err := factory.GetDefault()
 	if err != nil {
-		mspLogger.Errorf("Failed getting default BCCSP [%s]", err)
 		return nil, fmt.Errorf("Failed getting default BCCSP [%s]", err)
 	} else if bccsp == nil {
-		mspLogger.Errorf("Failed getting default BCCSP. Nil instance.")
 		return nil, fmt.Errorf("Failed getting default BCCSP. Nil instance.")
 	}
 
@@ -72,14 +74,12 @@ func newBccspMsp() (PeerMSP, error) {
 
 func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, error) {
 	if idBytes == nil {
-		mspLogger.Errorf("getIdentityFromBytes error: nil idBytes")
 		return nil, fmt.Errorf("getIdentityFromBytes error: nil idBytes")
 	}
 
 	// Decode the pem bytes
 	pemCert, _ := pem.Decode(idBytes)
 	if pemCert == nil {
-		mspLogger.Errorf("getIdentityFromBytes error: could not decode pem bytes")
 		return nil, fmt.Errorf("getIdentityFromBytes error: could not decode pem bytes")
 	}
 
@@ -87,14 +87,12 @@ func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, error) {
 	var cert *x509.Certificate
 	cert, err := x509.ParseCertificate(pemCert.Bytes)
 	if err != nil {
-		mspLogger.Errorf("getIdentityFromBytes error: failed to parse x509 cert, err %s", err)
 		return nil, fmt.Errorf("getIdentityFromBytes error: failed to parse x509 cert, err %s", err)
 	}
 
 	// get the public key in the right format
 	certPubK, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 	if err != nil {
-		mspLogger.Errorf("getIdentityFromBytes error: failed to import certitifacate's public key [%s]", err)
 		return nil, fmt.Errorf("getIdentityFromBytes error: failed to import certitifacate's public key [%s]", err)
 	}
 
@@ -106,7 +104,6 @@ func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, error) {
 
 func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *SigningIdentityInfo) (SigningIdentity, error) {
 	if sidInfo == nil {
-		mspLogger.Errorf("getIdentityFromBytes error: nil sidInfo")
 		return nil, fmt.Errorf("getIdentityFromBytes error: nil sidInfo")
 	}
 
@@ -120,7 +117,6 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *SigningIdentityInfo) (S
 	pemKey, _ := pem.Decode(sidInfo.PrivateSigner.KeyMaterial)
 	key, err := msp.bccsp.KeyImport(pemKey.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
 	if err != nil {
-		mspLogger.Errorf("getIdentityFromBytes error: Failed to import EC private key, err %s", err)
 		return nil, fmt.Errorf("getIdentityFromBytes error: Failed to import EC private key, err %s", err)
 	}
 
@@ -128,7 +124,6 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *SigningIdentityInfo) (S
 	peerSigner := &signer.CryptoSigner{}
 	err = peerSigner.Init(msp.bccsp, key)
 	if err != nil {
-		mspLogger.Errorf("getIdentityFromBytes error: Failed initializing CryptoSigner, err %s", err)
 		return nil, fmt.Errorf("getIdentityFromBytes error: Failed initializing CryptoSigner, err %s", err)
 	}
 
@@ -138,9 +133,11 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *SigningIdentityInfo) (S
 		idPub.(*identity).cert, idPub.(*identity).pk, peerSigner, msp), nil
 }
 
+// Setup sets up the internal data structures
+// for this MSP, given an MSPConfig ref; it
+// returns nil in case of success or an error otherwise
 func (msp *bccspmsp) Setup(conf1 *MSPConfig) error {
 	if conf1 == nil {
-		mspLogger.Errorf("Setup error: nil conf reference")
 		return fmt.Errorf("Setup error: nil conf reference")
 	}
 
@@ -148,7 +145,6 @@ func (msp *bccspmsp) Setup(conf1 *MSPConfig) error {
 	var conf FabricMSPConfig
 	err := json.Unmarshal(conf1.Config, &conf)
 	if err != nil {
-		mspLogger.Errorf("Failed unmarshalling fabric msp config, err %s", err)
 		return fmt.Errorf("Failed unmarshalling fabric msp config, err %s", err)
 	}
 
@@ -191,46 +187,54 @@ func (msp *bccspmsp) Setup(conf1 *MSPConfig) error {
 	return nil
 }
 
+// Reconfig refreshes this MSP's configuration given
+// an opaque message that needs to be parsed appropriately
 func (msp *bccspmsp) Reconfig(config []byte) error {
 	// TODO
 	return nil
 }
 
-func (msp *bccspmsp) Type() ProviderType {
+// GetType returns the type for this MSP
+func (msp *bccspmsp) GetType() ProviderType {
 	return FABRIC
 }
 
-func (msp *bccspmsp) Identifier() (string, error) {
+// GetIdentifier returns the MSP identifier for this instance
+func (msp *bccspmsp) GetIdentifier() (string, error) {
 	return msp.name, nil
 }
 
-func (msp *bccspmsp) Policy() string {
+// GetPolicy returns the policies that govern this MSP
+func (msp *bccspmsp) GetPolicy() string {
 	// FIXME: can we remove this function?
 	return ""
 }
 
-func (msp *bccspmsp) ImportSigningIdentity(req *ImportRequest) (SigningIdentity, error) {
-	// FIXME: can we remove this function?
-	return nil, nil
-}
-
+// GetDefaultSigningIdentity returns the
+// default signing identity for this MSP (if any)
 func (msp *bccspmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	mspLogger.Infof("Obtaining default signing identity")
 
 	if msp.signer == nil {
-		mspLogger.Warningf("This MSP does not possess a valid default signing identity")
 		return nil, fmt.Errorf("This MSP does not possess a valid default signing identity")
 	}
 
 	return msp.signer, nil
 }
 
+// GetSigningIdentity returns a specific signing
+// identity identified by the supplied identifier
 func (msp *bccspmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
 	// TODO
 	return nil, nil
 }
 
-func (msp *bccspmsp) IsValid(id Identity) (bool, error) {
+// Validate attempts to determine whether
+// the supplied identity is valid according
+// to this MSP's roots of trust; it returns
+// nil in case the identity is valid or an
+// error otherwise
+func (msp *bccspmsp) Validate(id Identity) error {
 	mspLogger.Infof("MSP %s validating identity", msp.name)
 
 	switch id.(type) {
@@ -248,19 +252,18 @@ func (msp *bccspmsp) IsValid(id Identity) (bool, error) {
 		}
 
 		_, err := id.(*identity).cert.Verify(opts)
-		mspLogger.Infof("Verify returned %s", err)
-		if err == nil {
-			mspLogger.Infof("Identity is valid")
-			return true, nil
+		if err != nil {
+			return fmt.Errorf("The supplied identity is not valid, Verify() returned %s", err)
 		} else {
-			mspLogger.Infof("Identity is not valid")
-			return false, err
+			return nil
 		}
 	default:
-		return false, fmt.Errorf("Identity type not recognized")
+		return fmt.Errorf("Identity type not recognized")
 	}
 }
 
+// DeserializeIdentity returns an Identity
+// instance that was marshalled to the supplied byte array
 func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	mspLogger.Infof("Obtaining identity")
 
@@ -307,9 +310,4 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 	}
 
 	return newIdentity(id, cert, pub, msp), nil
-}
-
-func (msp *bccspmsp) DeleteSigningIdentity(identifier string) (bool, error) {
-	// FIXME: can we remove this function?
-	return true, nil
 }

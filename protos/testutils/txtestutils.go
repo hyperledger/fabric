@@ -22,8 +22,8 @@ import (
 
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -38,14 +38,19 @@ func init() {
 	var err error
 	primitives.SetSecurityLevel("SHA2", 256)
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigFile, err := getMSPMgrConfigFile()
+	mspMgrConfigDir, err := getMSPMgrConfigDir()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not get location of msp manager config file")
+		os.Exit(-1)
 		return
 	}
-	config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
-	signer, err = msp.GetLocalMSP().GetDefaultSigningIdentity()
+	err = mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	if err != nil {
+		fmt.Printf("Could not load msp config, err %s", err)
+		os.Exit(-1)
+		return
+	}
+	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize msp/signer")
@@ -53,7 +58,7 @@ func init() {
 	}
 }
 
-func getMSPMgrConfigFile() (string, error) {
+func getMSPMgrConfigDir() (string, error) {
 	var pwd string
 	var err error
 	if pwd, err = os.Getwd(); err != nil {
@@ -69,7 +74,7 @@ func getMSPMgrConfigFile() (string, error) {
 			break
 		}
 	}
-	filePath := filepath.Join(path, "fabric/msp/peer-config.json")
+	filePath := filepath.Join(path, "fabric/msp/sampleconfig/")
 	fmt.Printf("filePath=%s\n", filePath)
 	return filePath, nil
 }
@@ -104,7 +109,7 @@ func ConstructSingedTxEnv(txid string, chainID string, ccName string, simulation
 	return env, nil
 }
 
-var mspLcl msp.PeerMSP
+var mspLcl msp.MSP
 var sigId msp.SigningIdentity
 
 // ConstructUnsingedTxEnv creates a Transaction envelope from given inputs

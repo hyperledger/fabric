@@ -38,8 +38,8 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
@@ -1070,9 +1070,9 @@ func TestMain(m *testing.M) {
 	primitives.SetSecurityLevel("SHA2", 256)
 
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigFile := "../../msp/peer-config.json"
-	config.SetupFakeMSPInfrastructureForTests(mspMgrConfigFile)
-	signer, err = msp.GetLocalMSP().GetDefaultSigningIdentity()
+	mspMgrConfigDir := "../../msp/sampleconfig/"
+	mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize msp/signer")
