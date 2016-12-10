@@ -21,6 +21,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFilterBitArrayFixed(t *testing.T) {
@@ -99,4 +101,40 @@ func TestFilterBitArrayIO(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestFilterBitArrayRangeFuncs(t *testing.T) {
+	ba := NewFilterBitArray(12)
+
+	// 1111 1110 0111 1111 ==> { 254, 127 }
+	ba.SetRange(1, 14)
+	assert.True(t, bytes.Equal(ba.ToBytes(), []byte{254, 127}))
+
+	// 0111 1110 0111 1110 ==> { 126, 126 }
+	ba.UnsetRange(7, 8)
+	assert.True(t, bytes.Equal(ba.ToBytes(), []byte{126, 126}))
+
+	if !ba.IsSet(11) {
+		t.FailNow()
+	}
+
+	if !ba.IsSet(1) {
+		t.FailNow()
+	}
+
+	// 1100 0000  0111 1110 0111 1110 ==> { 126, 126, 192 }
+	ba.SetRange(22, 23)
+	assert.Equal(t, ba.ToBytes(), []byte{126, 126, 192})
+
+	if ba.IsSet(15) {
+		t.FailNow()
+	}
+
+	if ba.IsSet(20) {
+		t.FailNow()
+	}
+
+	// 1100 0000 0111 1110 0000 1110  ==> { 198, 127, 192 }
+	ba.UnsetRange(4, 6)
+	assert.Equal(t, ba.ToBytes(), []byte{14, 126, 192})
 }
