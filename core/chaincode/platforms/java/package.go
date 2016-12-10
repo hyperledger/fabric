@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"os"
+
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
@@ -16,17 +18,20 @@ import (
 func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 
 	var urlLocation string
-	if strings.HasPrefix(spec.ChaincodeID.Path, "http://") {
-		urlLocation = spec.ChaincodeID.Path[7:]
-	} else if strings.HasPrefix(spec.ChaincodeID.Path, "https://") {
-		urlLocation = spec.ChaincodeID.Path[8:]
+	var err error
+
+	if strings.HasPrefix(spec.ChaincodeID.Path, "http://") ||
+		strings.HasPrefix(spec.ChaincodeID.Path, "https://") {
+
+		urlLocation, err = getCodeFromHTTP(spec.ChaincodeID.Path)
+		defer func() {
+			os.RemoveAll(urlLocation)
+		}()
+		if err != nil {
+			return err
+		}
 	} else {
 		urlLocation = spec.ChaincodeID.Path
-		//		if !strings.HasPrefix(urlLocation, "/") {
-		//			wd := ""
-		//			wd, _ = os.Getwd()
-		//			urlLocation = wd + "/" + urlLocation
-		//		}
 	}
 
 	if urlLocation == "" {
@@ -36,7 +41,6 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 	if strings.LastIndex(urlLocation, "/") == len(urlLocation)-1 {
 		urlLocation = urlLocation[:len(urlLocation)-1]
 	}
-	urlLocation = urlLocation[strings.LastIndex(urlLocation, "/")+1:]
 
 	var dockerFileContents string
 	var buf []string
@@ -58,7 +62,7 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 	var zeroTime time.Time
 	tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: dockerFileSize, ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime})
 	tw.Write([]byte(dockerFileContents))
-	err := cutil.WriteJavaProjectToPackage(tw, spec.ChaincodeID.Path)
+	err = cutil.WriteJavaProjectToPackage(tw, urlLocation)
 	if err != nil {
 		return fmt.Errorf("Error writing Chaincode package contents: %s", err)
 	}
