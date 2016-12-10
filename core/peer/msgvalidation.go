@@ -21,7 +21,7 @@ import (
 
 	"bytes"
 
-	"github.com/hyperledger/fabric/core/peer/msp"
+	mspmgmt "github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"

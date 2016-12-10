@@ -88,32 +88,34 @@ type CCContext struct {
 	Proposal *pb.Proposal
 
 	//this is not set but computed (note that this is not exported. use GetCanonicalName)
-	canName string
+	canonicalName string
 }
 
 //NewCCContext just construct a new struct with whatever args
 func NewCCContext(cid, name, version, txid string, syscc bool, prop *pb.Proposal) *CCContext {
-	var canName string
-	if version != "" {
-		canName = name + ":" + version + "/" + cid
-	} else {
-		canName = name + "/" + cid
+	//version CANNOT be empty. The chaincode namespace has to use version and chain name.
+	//All system chaincodes share the same version given by utils.GetSysCCVersion. Note
+	//that neither Chain Name or Version are stored in a chaincodes state on the ledger
+	if version == "" {
+		panic(fmt.Sprintf("---empty version---(chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p", cid, name, version, txid, syscc, prop))
 	}
+
+	canName := name + ":" + version + "/" + cid
 
 	cccid := &CCContext{cid, name, version, txid, syscc, prop, canName}
 
-	chaincodeLogger.Infof("NewCCCC (chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p,canname=%s", cid, name, version, txid, syscc, prop, cccid.canName)
+	chaincodeLogger.Infof("NewCCCC (chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p,canname=%s", cid, name, version, txid, syscc, prop, cccid.canonicalName)
 
 	return cccid
 }
 
 //GetCanonicalName returns the canonical name associated with the proposal context
 func (cccid *CCContext) GetCanonicalName() string {
-	if cccid.canName == "" {
+	if cccid.canonicalName == "" {
 		panic(fmt.Sprintf("cccid not constructed using NewCCContext(chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t)", cccid.ChainID, cccid.Name, cccid.Version, cccid.TxID, cccid.Syscc))
 	}
 
-	return cccid.canName
+	return cccid.canonicalName
 }
 
 //
@@ -425,7 +427,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 
 	vmtype, _ := chaincodeSupport.getVMType(cds)
 
-	sir := container.StartImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID}, Reader: targz, Args: args, Env: env}
+	sir := container.StartImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID, Version: cccid.Version}, Reader: targz, Args: args, Env: env}
 
 	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), chaincodeSupport)
 
@@ -468,7 +470,7 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cccid *C
 	}
 
 	//stop the chaincode
-	sir := container.StopImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID}, Timeout: 0}
+	sir := container.StopImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID, Version: cccid.Version}, Timeout: 0}
 
 	vmtype, _ := chaincodeSupport.getVMType(cds)
 
@@ -548,9 +550,6 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 			chaincodeLogger.Error("You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?")
 		}
 
-		//PDMP - panic if not using simulator path
-		_ = getTxSimulator(context)
-
 		var depPayload []byte
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
@@ -563,11 +562,13 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		}
 
 		cds = &pb.ChaincodeDeploymentSpec{}
+
 		//Get lang from original deployment
 		err = proto.Unmarshal(depPayload, cds)
 		if err != nil {
 			return cID, cMsg, fmt.Errorf("failed to unmarshal deployment transactions for %s - %s", canName, err)
 		}
+
 		cLang = cds.ChaincodeSpec.Type
 	}
 
@@ -636,7 +637,7 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, cccid 
 	}
 
 	var targz io.Reader = bytes.NewBuffer(cds.CodePackage)
-	cir := &container.CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID}, Args: args, Reader: targz, Env: envs}
+	cir := &container.CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID, Version: cccid.Version}, Args: args, Reader: targz, Env: envs}
 
 	vmtype, _ := chaincodeSupport.getVMType(cds)
 

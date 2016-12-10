@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
+
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
@@ -62,7 +63,7 @@ type SystemChaincode struct {
 // RegisterSysCC registers the given system chaincode with the peer
 func RegisterSysCC(syscc *SystemChaincode) error {
 	if !syscc.Enabled || !isWhitelisted(syscc) {
-		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name, syscc.Path))
+		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s,%t) disabled", syscc.Name, syscc.Path, syscc.Enabled))
 		return nil
 	}
 
@@ -121,7 +122,8 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	txid := util.GenerateUUID()
 
-	cccid := NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name, "", txid, true, nil)
+	version := util.GetSysCCVersion()
+	cccid := NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name, version, txid, true, nil)
 
 	_, _, err = Execute(ctxt, cccid, chaincodeDeploymentSpec)
 
@@ -130,8 +132,8 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 	return err
 }
 
-// deregisterSysCC stops the system chaincode and deregisters it from inproccontroller
-func deregisterSysCC(chainID string, syscc *SystemChaincode) error {
+// deDeploySysCC stops the system chaincode and deregisters it from inproccontroller
+func deDeploySysCC(chainID string, syscc *SystemChaincode) error {
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
@@ -146,7 +148,8 @@ func deregisterSysCC(chainID string, syscc *SystemChaincode) error {
 
 	chaincodeSupport := GetChain()
 	if chaincodeSupport != nil {
-		cccid := NewCCContext(chainID, syscc.Name, "", "", true, nil)
+		version := util.GetSysCCVersion()
+		cccid := NewCCContext(chainID, syscc.Name, version, "", true, nil)
 		err = chaincodeSupport.Stop(ctx, cccid, chaincodeDeploymentSpec)
 	}
 

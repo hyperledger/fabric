@@ -51,6 +51,7 @@ type CCID struct {
 	NetworkID     string
 	PeerID        string
 	ChainID       string
+	Version       string
 }
 
 //GetName returns canonical chaincode name based on chain name
@@ -59,12 +60,17 @@ func (ccid *CCID) GetName() string {
 		panic("nil chaincode spec")
 	}
 
+	name := ccid.ChaincodeSpec.ChaincodeID.Name
+	if ccid.Version != "" {
+		name = name + "-" + ccid.Version
+	}
+
 	//this better be chainless system chaincode!
 	if ccid.ChainID != "" {
 		hash := util.ComputeCryptoHash([]byte(ccid.ChainID))
 		hexstr := hex.EncodeToString(hash[:])
-		return ccid.ChaincodeSpec.ChaincodeID.Name + "-" + hexstr
+		name = name + "-" + hexstr
 	}
 
-	return ccid.ChaincodeSpec.ChaincodeID.Name
+	return name
 }

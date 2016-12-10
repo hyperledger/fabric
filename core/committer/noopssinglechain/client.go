@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -214,7 +215,8 @@ func isTxValidForVscc(payload *common.Payload, envBytes []byte) error {
 	defer txsim.Done()
 	ctxt := context.WithValue(context.Background(), chaincode.TXSimulatorKey, txsim)
 
-	cccid := chaincode.NewCCContext(chainName, vscc, "", txid, true, prop)
+	version := util.GetSysCCVersion()
+	cccid := chaincode.NewCCContext(chainName, vscc, version, txid, true, prop)
 
 	// invoke VSCC
 	_, _, err = chaincode.ExecuteChaincode(ctxt, cccid, args)
