@@ -21,7 +21,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	context "golang.org/x/net/context"
 )
@@ -31,7 +31,7 @@ func (c *clientImpl) deliver() {
 		Type: &ab.DeliverUpdate_Seek{
 			Seek: &ab.SeekInfo{
 				WindowSize: uint64(c.config.window),
-				ChainID:    static.TestChainID,
+				ChainID:    provisional.TestChainID,
 			},
 		},
 	}

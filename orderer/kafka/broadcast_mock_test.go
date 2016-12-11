@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -28,7 +28,7 @@ import (
 )
 
 func mockNewBroadcaster(t *testing.T, conf *config.TopLevel, seek int64, disk chan []byte) Broadcaster {
-	genesisBlock, _ := static.New().GenesisBlock()
+	genesisBlock := provisional.New(conf).GenesisBlock()
 	wait := make(chan struct{})
 
 	mb := &broadcasterImpl{

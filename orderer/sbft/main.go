@@ -23,7 +23,8 @@ import (
 	_ "net/http/pprof"
 	"os"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	localconfig "github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/sbft/backend"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
@@ -122,10 +123,10 @@ func serve(c flags) {
 	s := &consensusStack{
 		persist: nil,
 	}
-	genesisBlock, err := static.New().GenesisBlock()
-	if err != nil {
-		panic(err)
-	}
+
+	localConf := localconfig.Load()
+	localConf.General.OrdererType = provisional.ConsensusTypeSbft
+	genesisBlock := provisional.New(localConf).GenesisBlock()
 
 	_, ledger := fileledger.New(c.dataDir, genesisBlock)
 	s.backend, err = backend.NewBackend(config.Peers, conn, ledger, persist)

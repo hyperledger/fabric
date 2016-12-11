@@ -22,7 +22,8 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -38,12 +39,7 @@ var systemChainID = "systemChain"
 const ledgerSize = 10
 
 func init() {
-	bootstrapper := static.New()
-	var err error
-	genesisBlock, err = bootstrapper.GenesisBlock()
-	if err != nil {
-		panic("Error intializing static bootstrap genesis block")
-	}
+	genesisBlock = provisional.New(config.Load()).GenesisBlock()
 }
 
 // MagicLargestWindow is used as the default max window size for initializing the deliver service

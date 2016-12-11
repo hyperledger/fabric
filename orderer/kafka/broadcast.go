@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -47,13 +47,11 @@ type broadcasterImpl struct {
 }
 
 func newBroadcaster(conf *config.TopLevel) Broadcaster {
-	genesisBlock, _ := static.New().GenesisBlock()
-
 	b := &broadcasterImpl{
 		producer:   newProducer(conf),
 		config:     conf,
 		batchChan:  make(chan *cb.Envelope, conf.General.BatchSize),
-		messages:   genesisBlock.GetData().Data,
+		messages:   provisional.New(conf).GenesisBlock().GetData().Data,
 		nextNumber: 0,
 	}
 

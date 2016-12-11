@@ -20,8 +20,9 @@ import (
 	ab "github.com/hyperledger/fabric/protos/common"
 )
 
-// Helper defines the functions a bootstrapping implementation to provide
+// Helper defines the functions a bootstrapping implementation should provide.
 type Helper interface {
-	// GenesisBlock should return the genesis block required to bootstrap the ledger (be it reading from the filesystem, generating it, etc.)
-	GenesisBlock() (*ab.Block, error)
+	// GenesisBlock should return the genesis block required to bootstrap
+	// the ledger (be it reading from the filesystem, generating it, etc.)
+	GenesisBlock() *ab.Block
 }

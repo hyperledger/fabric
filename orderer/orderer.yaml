@@ -39,7 +39,7 @@ General:
     ListenPort: 7050
 
     # Genesis method: The method by which to retrieve/generate the genesis block
-    GenesisMethod: static
+    GenesisMethod: provisional
 
     # Enable an HTTP service for Go "pprof" profiling as documented at
     # https://golang.org/pkg/net/http/pprof

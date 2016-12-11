@@ -22,7 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/policies"
 	coreutil "github.com/hyperledger/fabric/core/util"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -106,7 +106,7 @@ type mockChainCreator struct {
 
 func newMockChainCreator() *mockChainCreator {
 	mcc := &mockChainCreator{
-		ms: newMockSupport(static.TestChainID),
+		ms: newMockSupport(provisional.TestChainID),
 	}
 	mcc.sysChain = newSystemChain(mcc.ms)
 	return mcc
@@ -124,7 +124,7 @@ func TestGoodProposal(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.chainCreators = []string{static.AcceptAllPolicyKey}
+	mcc.ms.msc.chainCreators = []string{provisional.AcceptAllPolicyKey}
 	mcc.ms.mpm.mp = &mockPolicy{}
 
 	chainCreateTx := &cb.ConfigurationItem{
@@ -135,7 +135,7 @@ func TestGoodProposal(t *testing.T) {
 		Key:  utils.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: static.AcceptAllPolicyKey,
+			Policy: provisional.AcceptAllPolicyKey,
 			Digest: coreutil.ComputeCryptoHash([]byte{}),
 		}),
 	}
@@ -172,9 +172,8 @@ func TestGoodProposal(t *testing.T) {
 	}
 
 	committer.Commit()
-	expected = 1
 	if len(mcc.newChains) != 1 {
-		t.Fatalf("Proposal should only have created one new chain")
+		t.Fatalf("Proposal should only have created 1 new chain")
 	}
 
 	if !reflect.DeepEqual(mcc.newChains[0], ingressTx) {
@@ -191,8 +190,9 @@ func TestProposalWithBadPolicy(t *testing.T) {
 	chainCreateTx := &cb.ConfigurationItem{
 		Key:  utils.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
+
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: static.AcceptAllPolicyKey,
+			Policy: provisional.AcceptAllPolicyKey,
 			Digest: coreutil.ComputeCryptoHash([]byte{}),
 		}),
 	}
@@ -209,13 +209,13 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.chainCreators = []string{static.AcceptAllPolicyKey}
+	mcc.ms.msc.chainCreators = []string{provisional.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
 		Key:  utils.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: static.AcceptAllPolicyKey,
+			Policy: provisional.AcceptAllPolicyKey,
 			Digest: coreutil.ComputeCryptoHash([]byte{}),
 		}),
 	}
@@ -233,13 +233,13 @@ func TestProposalWithBadDigest(t *testing.T) {
 
 	mcc := newMockChainCreator()
 	mcc.ms.mpm.mp = &mockPolicy{}
-	mcc.ms.msc.chainCreators = []string{static.AcceptAllPolicyKey}
+	mcc.ms.msc.chainCreators = []string{provisional.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
 		Key:  utils.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: static.AcceptAllPolicyKey,
+			Policy: provisional.AcceptAllPolicyKey,
 			Digest: coreutil.ComputeCryptoHash([]byte("BAD_DIGEST")),
 		}),
 	}

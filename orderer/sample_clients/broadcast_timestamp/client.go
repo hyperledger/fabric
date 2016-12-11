@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -74,12 +74,14 @@ func main() {
 	var messages uint64
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
-	flag.StringVar(&chainID, "chainID", static.TestChainID, "The chain ID to broadcast to.")
+	flag.StringVar(&chainID, "chainID", provisional.TestChainID, "The chain ID to broadcast to.")
 	flag.Uint64Var(&messages, "messages", 1, "The number of messages to braodcast.")
 	flag.Parse()
 
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	if err != nil {
 		fmt.Println("Error connecting:", err)
 		return

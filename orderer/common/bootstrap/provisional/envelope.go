@@ -14,25 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package provisional
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
-	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var genesisBlock *cb.Block
-
-func init() {
-	genesisBlock = provisional.New(config.Load()).GenesisBlock()
+func (cbs *commonBootstrapper) makeGenesisConfigEnvelope() *cb.ConfigurationEnvelope {
+	return utils.MakeConfigurationEnvelope(
+		cbs.encodeConsensusType(),
+		cbs.encodeBatchSize(),
+		cbs.encodeChainCreators(),
+		cbs.encodeAcceptAllPolicy(),
+		cbs.lockDefaultModificationPolicy(),
+	)
 }
 
-func newChainRequest(creationPolicy, newChainID string) *cb.Envelope {
-	oldGenesisTx := utils.ExtractEnvelopeOrPanic(genesisBlock, 0)
-	oldGenesisTxPayload := utils.ExtractPayloadOrPanic(oldGenesisTx)
-	oldConfigEnv := utils.UnmarshalConfigurationEnvelopeOrPanic(oldGenesisTxPayload.Data)
-
-	return utils.ChainCreationConfigurationTransaction(provisional.AcceptAllPolicyKey, newChainID, oldConfigEnv)
+func (kbs *kafkaBootstrapper) makeGenesisConfigEnvelope() *cb.ConfigurationEnvelope {
+	return utils.MakeConfigurationEnvelope(
+		kbs.encodeConsensusType(),
+		kbs.encodeBatchSize(),
+		kbs.encodeKafkaBrokers(),
+		kbs.encodeChainCreators(),
+		kbs.encodeAcceptAllPolicy(),
+		kbs.lockDefaultModificationPolicy(),
+	)
 }

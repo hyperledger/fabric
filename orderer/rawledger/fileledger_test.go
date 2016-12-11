@@ -20,7 +20,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 	. "github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -29,13 +30,7 @@ import (
 var genesisBlock *cb.Block
 
 func init() {
-	bootstrapper := static.New()
-	var err error
-	genesisBlock, err = bootstrapper.GenesisBlock()
-	if err != nil {
-		panic("Error intializing static bootstrap genesis block")
-	}
-
+	genesisBlock = provisional.New(config.Load()).GenesisBlock()
 	testables = append(testables, &fileLedgerTestEnv{})
 }
 

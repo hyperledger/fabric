@@ -106,7 +106,7 @@ var defaults = TopLevel{
 		MaxWindowSize: 1000,
 		ListenAddress: "127.0.0.1",
 		ListenPort:    7050,
-		GenesisMethod: "static",
+		GenesisMethod: "provisional",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",

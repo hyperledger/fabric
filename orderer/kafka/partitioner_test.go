@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 )
 
 func TestStaticPartitioner(t *testing.T) {
@@ -28,7 +28,7 @@ func TestStaticPartitioner(t *testing.T) {
 	var numberOfPartitions int32 = 6
 
 	partitionerConstructor := newStaticPartitioner(partition)
-	partitioner := partitionerConstructor(static.TestChainID)
+	partitioner := partitionerConstructor(provisional.TestChainID)
 
 	for i := 0; i < 10; i++ {
 		assignedPartition, err := partitioner.Partition(new(sarama.ProducerMessage), numberOfPartitions)
