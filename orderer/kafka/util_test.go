@@ -20,25 +20,31 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 )
 
 func TestProducerConfigMessageMaxBytes(t *testing.T) {
+	cp := newChainPartition(provisional.TestChainID, rawPartition)
 
-	topic := testConf.Kafka.Topic
-
-	broker := sarama.NewMockBroker(t, 1000)
+	broker := sarama.NewMockBroker(t, 1)
+	defer func() {
+		broker.Close()
+	}()
 	broker.SetHandlerByMap(map[string]sarama.MockResponse{
 		"MetadataRequest": sarama.NewMockMetadataResponse(t).
 			SetBroker(broker.Addr(), broker.BrokerID()).
-			SetLeader(topic, 0, broker.BrokerID()),
+			SetLeader(cp.Topic(), cp.Partition(), broker.BrokerID()),
 		"ProduceRequest": sarama.NewMockProduceResponse(t),
 	})
 
-	config := newBrokerConfig(testConf)
+	config := newBrokerConfig(testConf.Kafka.Version, rawPartition)
 	producer, err := sarama.NewSyncProducer([]string{broker.Addr()}, config)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		producer.Close()
+	}()
 
 	testCases := []struct {
 		name string
@@ -51,56 +57,53 @@ func TestProducerConfigMessageMaxBytes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err = producer.SendMessage(&sarama.ProducerMessage{Topic: topic, Value: sarama.ByteEncoder(make([]byte, tc.size))})
+			_, _, err = producer.SendMessage(&sarama.ProducerMessage{
+				Topic: cp.Topic(),
+				Value: sarama.ByteEncoder(make([]byte, tc.size)),
+			})
 			if err != tc.err {
 				t.Fatal(err)
 			}
 		})
 
 	}
-
-	producer.Close()
-	broker.Close()
 }
 
 func TestNewBrokerConfig(t *testing.T) {
+	// Use a partition ID that is not the 'default' (rawPartition)
+	var differentPartition int32 = 2
+	cp = newChainPartition(provisional.TestChainID, differentPartition)
 
-	topic := testConf.Kafka.Topic
-
-	// use a partition id that is not the 'default' 0
-	var partition int32 = 2
-	originalPartitionID := testConf.Kafka.PartitionID
+	// Setup a mock broker that reports that it has 3 partitions for the topic
+	broker := sarama.NewMockBroker(t, 1)
 	defer func() {
-		testConf.Kafka.PartitionID = originalPartitionID
+		broker.Close()
 	}()
-	testConf.Kafka.PartitionID = partition
-
-	// setup a mock broker that reports that it has 3 partitions for the topic
-	broker := sarama.NewMockBroker(t, 1000)
 	broker.SetHandlerByMap(map[string]sarama.MockResponse{
 		"MetadataRequest": sarama.NewMockMetadataResponse(t).
 			SetBroker(broker.Addr(), broker.BrokerID()).
-			SetLeader(topic, 0, broker.BrokerID()).
-			SetLeader(topic, 1, broker.BrokerID()).
-			SetLeader(topic, 2, broker.BrokerID()),
+			SetLeader(cp.Topic(), 0, broker.BrokerID()).
+			SetLeader(cp.Topic(), 1, broker.BrokerID()).
+			SetLeader(cp.Topic(), 2, broker.BrokerID()),
 		"ProduceRequest": sarama.NewMockProduceResponse(t),
 	})
 
-	config := newBrokerConfig(testConf)
+	config := newBrokerConfig(testConf.Kafka.Version, differentPartition)
 	producer, err := sarama.NewSyncProducer([]string{broker.Addr()}, config)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("Failed to create producer:", err)
 	}
+	defer func() {
+		producer.Close()
+	}()
 
 	for i := 0; i < 10; i++ {
-		assignedPartition, _, err := producer.SendMessage(&sarama.ProducerMessage{Topic: topic})
+		assignedPartition, _, err := producer.SendMessage(&sarama.ProducerMessage{Topic: cp.Topic()})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal("Failed to send message:", err)
 		}
-		if assignedPartition != partition {
-			t.Fatalf("Expected: %v. Actual: %v", partition, assignedPartition)
+		if assignedPartition != differentPartition {
+			t.Fatalf("Message wasn't posted to the right partition - expected: %d, got %v", differentPartition, assignedPartition)
 		}
 	}
-	producer.Close()
-	broker.Close()
 }

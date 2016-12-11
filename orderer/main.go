@@ -24,8 +24,8 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"os/signal"
 
+	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	"github.com/hyperledger/fabric/orderer/localconfig"
@@ -37,18 +37,21 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
-	"github.com/Shopify/sarama"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
 var logger = logging.MustGetLogger("orderer/main")
 
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
+
 func main() {
 	conf := config.Load()
 
-	// Start the profiling service if enabled. The ListenAndServe()
-	// call does not return unless an error occurs.
+	// Start the profiling service if enabled.
+	// The ListenAndServe() call does not return unless an error occurs.
 	if conf.General.Profile.Enabled {
 		go func() {
 			logger.Infof("Starting Go pprof profiling service on %s", conf.General.Profile.Address)
@@ -56,21 +59,6 @@ func main() {
 		}()
 	}
 
-	switch conf.General.OrdererType {
-	case "solo":
-		launchGeneric(conf)
-	case "kafka":
-		launchKafka(conf)
-	default:
-		panic("Invalid orderer type specified in config")
-	}
-}
-
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
-func launchGeneric(conf *config.TopLevel) {
 	grpcServer := grpc.NewServer()
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
@@ -100,7 +88,6 @@ func launchGeneric(conf *config.TopLevel) {
 				panic(fmt.Errorf("Error creating temp dir: %s", err))
 			}
 		}
-
 		lf, _ = fileledger.New(location, genesisBlock)
 	case "ram":
 		fallthrough
@@ -108,8 +95,13 @@ func launchGeneric(conf *config.TopLevel) {
 		lf, _ = ramledger.New(int(conf.RAMLedger.HistorySize), genesisBlock)
 	}
 
+	if conf.Kafka.Verbose {
+		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
+	}
+
 	consenters := make(map[string]multichain.Consenter)
 	consenters["solo"] = solo.New(conf.General.BatchTimeout)
+	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry)
 
 	manager := multichain.NewManagerImpl(lf, consenters)
 
@@ -121,35 +113,4 @@ func launchGeneric(conf *config.TopLevel) {
 
 	ab.RegisterAtomicBroadcastServer(grpcServer, server)
 	grpcServer.Serve(lis)
-}
-
-func launchKafka(conf *config.TopLevel) {
-	var kafkaVersion = sarama.V0_9_0_1 // TODO Ideally we'd set this in the YAML file but its type makes this impossible
-	conf.Kafka.Version = kafkaVersion
-
-	if conf.Kafka.Verbose {
-		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
-	}
-
-	ordererSrv := kafka.New(conf)
-	defer ordererSrv.Teardown()
-
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
-	if err != nil {
-		panic(err)
-	}
-	rpcSrv := grpc.NewServer() // TODO Add TLS support
-	ab.RegisterAtomicBroadcastServer(rpcSrv, ordererSrv)
-	go rpcSrv.Serve(lis)
-
-	// Trap SIGINT to trigger a shutdown
-	// We must use a buffered channel or risk missing the signal
-	// if we're not ready to receive when the signal is sent.
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-
-	for range signalChan {
-		logger.Info("Server shutting down")
-		return
-	}
 }

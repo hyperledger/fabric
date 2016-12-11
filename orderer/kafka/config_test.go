@@ -23,7 +23,6 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 var (
@@ -69,36 +68,4 @@ func testClose(t *testing.T, x Closeable) {
 
 func newTestEnvelope(content string) *cb.Envelope {
 	return &cb.Envelope{Payload: []byte(content)}
-}
-
-func testNewSeekMessage(startLabel string, seekNo, windowNo uint64) *ab.DeliverUpdate {
-	var startVal ab.SeekInfo_StartType
-	switch startLabel {
-	case "oldest":
-		startVal = ab.SeekInfo_OLDEST
-	case "newest":
-		startVal = ab.SeekInfo_NEWEST
-	default:
-		startVal = ab.SeekInfo_SPECIFIED
-
-	}
-	return &ab.DeliverUpdate{
-		Type: &ab.DeliverUpdate_Seek{
-			Seek: &ab.SeekInfo{
-				Start:           startVal,
-				SpecifiedNumber: seekNo,
-				WindowSize:      windowNo,
-			},
-		},
-	}
-}
-
-func testNewAckMessage(ackNo uint64) *ab.DeliverUpdate {
-	return &ab.DeliverUpdate{
-		Type: &ab.DeliverUpdate_Acknowledgement{
-			Acknowledgement: &ab.Acknowledgement{
-				Number: ackNo,
-			},
-		},
-	}
 }

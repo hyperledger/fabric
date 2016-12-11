@@ -16,9 +16,24 @@ limitations under the License.
 
 package kafka
 
-import "testing"
+import (
+	"testing"
 
-func TestProducer(t *testing.T) {
-	mp := mockNewProducer(t, testConf, testMiddleOffset, make(chan []byte))
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
+)
+
+func TestProducerSend(t *testing.T) {
+	cp := newChainPartition(provisional.TestChainID, rawPartition)
+	mp := mockNewProducer(t, cp, testMiddleOffset, make(chan *ab.KafkaMessage))
 	defer testClose(t, mp)
+
+	go func() {
+		<-mp.(*mockProducerImpl).disk // Retrieve the message that we'll be sending below
+	}()
+
+	if err := mp.Send(cp, utils.MarshalOrPanic(newRegularMessage([]byte("foo")))); err != nil {
+		t.Fatalf("Mock producer was not initialized correctly: %s", err)
+	}
 }

@@ -24,24 +24,23 @@ import (
 	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
-// Producer allows the caller to send blocks to the orderer
+// Producer allows the caller to post blobs to a chain partition on the Kafka cluster.
 type Producer interface {
-	Send(payload []byte) error
+	Send(cp ChainPartition, payload []byte) error
 	Closeable
 }
 
 type producerImpl struct {
 	producer sarama.SyncProducer
-	topic    string
 }
 
-func newProducer(conf *config.TopLevel) Producer {
-	brokerConfig := newBrokerConfig(conf)
+func newProducer(brokers []string, kafkaVersion sarama.KafkaVersion, retryOptions config.Retry) Producer {
 	var p sarama.SyncProducer
 	var err error
+	brokerConfig := newBrokerConfig(kafkaVersion, rawPartition)
 
-	repeatTick := time.NewTicker(conf.Kafka.Retry.Period)
-	panicTick := time.NewTicker(conf.Kafka.Retry.Stop)
+	repeatTick := time.NewTicker(retryOptions.Period)
+	panicTick := time.NewTicker(retryOptions.Stop)
 	defer repeatTick.Stop()
 	defer panicTick.Stop()
 
@@ -51,28 +50,34 @@ loop:
 		case <-panicTick.C:
 			panic(fmt.Errorf("Failed to create Kafka producer: %v", err))
 		case <-repeatTick.C:
-			logger.Debug("Connecting to Kafka brokers:", conf.Kafka.Brokers)
-			p, err = sarama.NewSyncProducer(conf.Kafka.Brokers, brokerConfig)
+			logger.Debug("Connecting to Kafka cluster:", brokers)
+			p, err = sarama.NewSyncProducer(brokers, brokerConfig)
 			if err == nil {
 				break loop
 			}
 		}
 	}
 
-	logger.Debug("Connected to Kafka brokers")
-	return &producerImpl{producer: p, topic: conf.Kafka.Topic}
+	logger.Debug("Connected to the Kafka cluster")
+	return &producerImpl{producer: p}
 }
 
+// Close shuts down the Producer component of the orderer.
 func (p *producerImpl) Close() error {
 	return p.producer.Close()
 }
 
-func (p *producerImpl) Send(payload []byte) error {
-	_, offset, err := p.producer.SendMessage(newMsg(payload, p.topic))
+// Send posts a blob to a chain partition on the Kafka cluster.
+func (p *producerImpl) Send(cp ChainPartition, payload []byte) error {
+	prt, ofs, err := p.producer.SendMessage(newProducerMessage(cp, payload))
+	if prt != cp.Partition() {
+		// If this happens, something's up with the partitioner
+		logger.Warningf("Blob destined for partition %d, but posted to %d instead", cp.Partition(), prt)
+	}
 	if err == nil {
-		logger.Debugf("Forwarded block %v to ordering service", offset)
+		logger.Debugf("Forwarded blob with offset number %d to chain partition %s on the Kafka cluster", ofs, cp)
 	} else {
-		logger.Info("Failed to send to Kafka brokers:", err)
+		logger.Infof("Failed to send message to chain partition %s on the Kafka cluster: %s", cp, err)
 	}
 	return err
 }

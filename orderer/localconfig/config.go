@@ -70,12 +70,10 @@ type FileLedger struct {
 
 // Kafka contains config for the Kafka orderer
 type Kafka struct {
-	Brokers     []string // TODO This should be deprecated and this information should be stored in the config block
-	Topic       string
-	PartitionID int32
-	Retry       Retry
-	Verbose     bool
-	Version     sarama.KafkaVersion
+	Brokers []string // TODO This should be deprecated and this information should be stored in the config block
+	Retry   Retry
+	Verbose bool
+	Version sarama.KafkaVersion
 }
 
 // Retry contains config for the reconnection attempts to the Kafka brokers
@@ -120,14 +118,13 @@ var defaults = TopLevel{
 		Prefix:   "hyperledger-fabric-rawledger",
 	},
 	Kafka: Kafka{
-		Brokers:     []string{"127.0.0.1:9092"},
-		Topic:       "test",
-		PartitionID: 0,
-		Version:     sarama.V0_9_0_1,
+		Brokers: []string{"127.0.0.1:9092"},
 		Retry: Retry{
 			Period: 3 * time.Second,
 			Stop:   60 * time.Second,
 		},
+		Verbose: false,
+		Version: sarama.V0_9_0_1,
 	},
 }
 
@@ -171,9 +168,6 @@ func (c *TopLevel) completeInitialization() {
 		case c.Kafka.Brokers == nil:
 			logger.Infof("Kafka.Brokers unset, setting to %v", defaults.Kafka.Brokers)
 			c.Kafka.Brokers = defaults.Kafka.Brokers
-		case c.Kafka.Topic == "":
-			logger.Infof("Kafka.Topic unset, setting to %v", defaults.Kafka.Topic)
-			c.Kafka.Topic = defaults.Kafka.Topic
 		case c.Kafka.Retry.Period == 0*time.Second:
 			logger.Infof("Kafka.Retry.Period unset, setting to %v", defaults.Kafka.Retry.Period)
 			c.Kafka.Retry.Period = defaults.Kafka.Retry.Period
