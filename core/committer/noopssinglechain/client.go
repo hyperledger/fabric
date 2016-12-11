@@ -17,13 +17,13 @@ limitations under the License.
 package noopssinglechain
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -33,14 +33,10 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"fmt"
-
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/gossip/integration"
 	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/gossip/state"
+	"github.com/hyperledger/fabric/gossip/service"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -57,11 +53,9 @@ type DeliverService struct {
 	client         orderer.AtomicBroadcast_DeliverClient
 	windowSize     uint64
 	unAcknowledged uint64
-	committer      *committer.LedgerCommitter
 
-	stateProvider state.GossipStateProvider
-	gossip        gossip.Gossip
-	conn          *grpc.ClientConn
+	chainID string
+	conn    *grpc.ClientConn
 }
 
 // StopDeliveryService sends stop to the delivery service reference
@@ -73,17 +67,14 @@ func StopDeliveryService(service *DeliverService) {
 
 // NewDeliverService construction function to create and initilize
 // delivery service instance
-func NewDeliverService(chainID string, address string, grpcServer *grpc.Server) *DeliverService {
+func NewDeliverService(chainID string) *DeliverService {
 	if viper.GetBool("peer.committer.enabled") {
 		logger.Infof("Creating committer for single noops endorser")
-
 		deliverService := &DeliverService{
 			// Instance of RawLedger
-			committer:  committer.NewLedgerCommitter(kvledger.GetLedger(chainID)),
+			chainID:    chainID,
 			windowSize: 10,
 		}
-
-		deliverService.initStateProvider(address, grpcServer)
 
 		return deliverService
 	}
@@ -91,7 +82,7 @@ func NewDeliverService(chainID string, address string, grpcServer *grpc.Server) 
 	return nil
 }
 
-func (d *DeliverService) startDeliver() error {
+func (d *DeliverService) startDeliver(committer committer.Committer) error {
 	logger.Info("Starting deliver service client")
 	err := d.initDeliver()
 
@@ -100,7 +91,7 @@ func (d *DeliverService) startDeliver() error {
 		return err
 	}
 
-	height, err := d.committer.LedgerHeight()
+	height, err := committer.LedgerHeight()
 	if err != nil {
 		logger.Errorf("Can't get legder height from committer [%s]", err)
 		return err
@@ -153,36 +144,24 @@ func (d *DeliverService) stopDeliver() {
 	}
 }
 
-func (d *DeliverService) initStateProvider(address string, grpcServer *grpc.Server) error {
-	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
-	logger.Debug("Initializing state provideer, endpoint = ", address, " bootstrap set = ", bootstrap)
-
-	gossip, gossipComm := integration.NewGossipComponent(address, grpcServer, bootstrap...)
-
-	d.gossip = gossip
-	d.stateProvider = state.NewGossipStateProvider(gossip, gossipComm, d.committer)
-	return nil
-}
-
-// Start the delivery service to read the block via delivery
-// protocol from the orderers
-func (d *DeliverService) Start() {
-	go d.checkLeaderAndRunDeliver()
-}
-
 // Stop all service and release resources
 func (d *DeliverService) Stop() {
 	d.stopDeliver()
-	d.stateProvider.Stop()
-	d.gossip.Stop()
 }
 
-func (d *DeliverService) checkLeaderAndRunDeliver() {
+func (d *DeliverService) JoinChannel(committer committer.Committer, configBlock *common.Block) {
+	if err := service.GetGossipService().JoinChannel(committer, configBlock); err != nil {
+		panic("Cannot join channel, exiting")
+	}
 
+	go d.checkLeaderAndRunDeliver(committer)
+}
+
+func (d *DeliverService) checkLeaderAndRunDeliver(committer committer.Committer) {
 	isLeader := viper.GetBool("peer.gossip.orgLeader")
 
 	if isLeader {
-		d.startDeliver()
+		d.startDeliver(committer)
 	}
 }
 
@@ -192,7 +171,7 @@ func (d *DeliverService) seekOldest() error {
 			Seek: &orderer.SeekInfo{
 				Start:      orderer.SeekInfo_OLDEST,
 				WindowSize: d.windowSize,
-				ChainID:    util.GetTestChainID(),
+				ChainID:    d.chainID,
 			},
 		},
 	})
@@ -205,7 +184,7 @@ func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
 				Start:           orderer.SeekInfo_SPECIFIED,
 				WindowSize:      d.windowSize,
 				SpecifiedNumber: height,
-				ChainID:         util.GetTestChainID(),
+				ChainID:         d.chainID,
 			},
 		},
 	})
@@ -317,17 +296,17 @@ func (d *DeliverService) readUntilClose() {
 				}
 			}
 
-			numberOfPeers := len(d.gossip.GetPeers())
+			numberOfPeers := len(service.GetGossipService().GetPeers())
 			// Create payload with a block received
 			payload := createPayload(seqNum, block)
 			// Use payload to create gossip message
 			gossipMsg := createGossipMsg(payload)
 			logger.Debugf("Adding payload locally, buffer seqNum = [%d], peers number [%d]", seqNum, numberOfPeers)
 			// Add payload to local state payloads buffer
-			d.stateProvider.AddPayload(payload)
+			service.GetGossipService().AddPayload(d.chainID, payload)
 			// Gossip messages with other nodes
 			logger.Debugf("Gossiping block [%d], peers number [%d]", seqNum, numberOfPeers)
-			d.gossip.Gossip(gossipMsg)
+			service.GetGossipService().Gossip(gossipMsg)
 			if err = producer.SendProducerBlockEvent(block); err != nil {
 				logger.Errorf("Error sending block event %s", err)
 			}
