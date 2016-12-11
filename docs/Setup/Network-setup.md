@@ -142,7 +142,7 @@ If you want to take advantage of security (authentication and authorization), pr
 #### Start up additional validating peers:
 
 Following the pattern we established [above](#assigning-a-value-for-core_peer_id) we'll use `vp1` as the ID for the second validating peer. If using Docker Compose, we can simply link the two peer nodes.
-Here's the docker-compse.yml for a **Vagrant** environment with two peer nodes - vp0 and vp1:
+Here's the docker-compose.yml for a **Vagrant** environment with two peer nodes - vp0 and vp1:
 ```
 vp0:
   image: hyperledger/fabric-peer
