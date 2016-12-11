@@ -24,7 +24,7 @@ pages:
 
 - API's:
   - Chaincode APIs: API/ChaincodeAPI.md
-  - Core API: API/CoreAPI.md
+  - Command Line Interface: API/CLI.md
   - CA API: API/MemberServicesAPI.md
 
 - Fabric Developer:
