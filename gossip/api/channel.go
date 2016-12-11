@@ -25,13 +25,15 @@ import (
 // SecurityAdvisor defines an external auxiliary object
 // that provides security and identity related capabilities
 type SecurityAdvisor interface {
-	// IsInMyOrg returns whether the given peer's certificate represents
-	// a peer in the invoker's organization
-	IsInMyOrg(PeerIdentityType) bool
+	// OrgByPeerIdentity returns the OrgIdentityType
+	// of a given peer identity
+	OrgByPeerIdentity(PeerIdentityType) OrgIdentityType
 
 	// Verify verifies a JoinChannelMessage, returns nil on success,
 	// and an error on failure
 	Verify(JoinChannelMessage) error
+
+
 }
 
 // ChannelNotifier is implemented by the gossip component and is used for the peer
@@ -48,13 +50,16 @@ type JoinChannelMessage interface {
 	// GetTimestamp returns the timestamp of the message's creation
 	GetTimestamp() time.Time
 
-	// Members returns all the peers that are in the channel
-	Members() []ChannelMember
+	// AnchorPeers returns all the anchor peers that are in the channel
+	AnchorPeers() []AnchorPeer
 }
 
-// ChannelMember is a peer's certificate and endpoint (host:port)
-type ChannelMember struct {
-	Cert PeerIdentityType // PeerIdentityType defines the certificate of the remote peer
+// AnchorPeer is an anchor peer's certificate and endpoint (host:port)
+type AnchorPeer struct {
+	Cert PeerIdentityType // Cert defines the certificate of the remote peer
 	Host string           // Host is the hostname/ip address of the remote peer
 	Port int              // Port is the port the remote peer is listening on
 }
+
+// OrgIdentityType defines the identity of an organization
+type OrgIdentityType []byte
