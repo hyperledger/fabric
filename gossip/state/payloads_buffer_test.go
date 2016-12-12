@@ -145,11 +145,13 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 	var errors []error
 
 	ready := int32(0)
+	readyWG := sync.WaitGroup{}
+	readyWG.Add(1)
 	go func() {
-
 		// Wait for next expected block to arrive
 		<-buffer.Ready()
 		atomic.AddInt32(&ready, 1)
+		readyWG.Done()
 	}()
 
 	for i := 0; i < concurrency; i++ {
@@ -171,6 +173,7 @@ func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
 		}
 	}
 
+	readyWG.Wait()
 	assert.Equal(t, int32(1), atomic.LoadInt32(&ready))
 	assert.Equal(t, 1, success)
 	// Buffer size has to be only one
