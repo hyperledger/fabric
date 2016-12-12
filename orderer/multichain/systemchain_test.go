@@ -20,10 +20,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/policies"
 	coreutil "github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"

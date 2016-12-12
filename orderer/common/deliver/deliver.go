@@ -17,7 +17,7 @@ limitations under the License.
 package deliver
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/policies"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
