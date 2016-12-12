@@ -150,7 +150,7 @@ func TestNewChain(t *testing.T) {
 	oldConfigEnv := utils.UnmarshalConfigurationEnvelopeOrPanic(oldGenesisTxPayload.Data)
 
 	newChainID := "TestNewChain"
-	newChainMessage := ab.ChainCreationConfigurationTransaction(static.AcceptAllPolicyKey, newChainID, oldConfigEnv)
+	newChainMessage := utils.ChainCreationConfigurationTransaction(static.AcceptAllPolicyKey, newChainID, oldConfigEnv)
 
 	status := manager.ProposeChain(newChainMessage)
 

@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package orderer
+package utils
 
 import (
 	cu "github.com/hyperledger/fabric/core/util"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 const CreationPolicyKey = "CreationPolicy"
@@ -34,10 +34,10 @@ func ChainCreationConfiguration(creationPolicy, newChainID string, template *cb.
 	var hashBytes []byte
 
 	for i, item := range template.Items {
-		configItem := utils.UnmarshalConfigurationItemOrPanic(item.ConfigurationItem)
+		configItem := UnmarshalConfigurationItemOrPanic(item.ConfigurationItem)
 		configItem.Header.ChainID = newChainID
 		newConfigItems[i] = &cb.SignedConfigurationItem{
-			ConfigurationItem: utils.MarshalOrPanic(configItem),
+			ConfigurationItem: MarshalOrPanic(configItem),
 		}
 		hashBytes = append(hashBytes, newConfigItems[i].ConfigurationItem...)
 	}
@@ -45,14 +45,14 @@ func ChainCreationConfiguration(creationPolicy, newChainID string, template *cb.
 	digest := cu.ComputeCryptoHash(hashBytes)
 
 	authorizeItem := &cb.SignedConfigurationItem{
-		ConfigurationItem: utils.MarshalOrPanic(&cb.ConfigurationItem{
+		ConfigurationItem: MarshalOrPanic(&cb.ConfigurationItem{
 			Header: &cb.ChainHeader{
 				ChainID: newChainID,
 				Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
 			},
 			Type: cb.ConfigurationItem_Orderer,
 			Key:  CreationPolicyKey,
-			Value: utils.MarshalOrPanic(&CreationPolicy{
+			Value: MarshalOrPanic(&ab.CreationPolicy{
 				Policy: creationPolicy,
 				Digest: digest,
 			}),
@@ -73,14 +73,14 @@ func ChainCreationConfigurationTransaction(creationPolicy, newChainID string, te
 	configurationEnvelope := ChainCreationConfiguration(creationPolicy, newChainID, template)
 
 	newGenesisTx := &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
+		Payload: MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
 				ChainHeader: &cb.ChainHeader{
 					Type:    int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
 					ChainID: newChainID,
 				},
 			},
-			Data: utils.MarshalOrPanic(configurationEnvelope),
+			Data: MarshalOrPanic(configurationEnvelope),
 		}),
 	}
 

@@ -128,7 +128,7 @@ func TestGoodProposal(t *testing.T) {
 			ChainID: newChainID,
 			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
 		},
-		Key:  ab.CreationPolicyKey,
+		Key:  utils.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: static.AcceptAllPolicyKey,
@@ -185,7 +185,7 @@ func TestProposalWithBadPolicy(t *testing.T) {
 	mcc.ms.mpm.mp = &mockPolicy{}
 
 	chainCreateTx := &cb.ConfigurationItem{
-		Key:  ab.CreationPolicyKey,
+		Key:  utils.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: static.AcceptAllPolicyKey,
@@ -208,7 +208,7 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	mcc.ms.msc.chainCreators = []string{static.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
-		Key:  ab.CreationPolicyKey,
+		Key:  utils.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: static.AcceptAllPolicyKey,
@@ -232,7 +232,7 @@ func TestProposalWithBadDigest(t *testing.T) {
 	mcc.ms.msc.chainCreators = []string{static.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
-		Key:  ab.CreationPolicyKey,
+		Key:  utils.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: static.AcceptAllPolicyKey,

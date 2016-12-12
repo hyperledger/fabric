@@ -19,7 +19,6 @@ package main
 import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -39,5 +38,5 @@ func newChainRequest(creationPolicy, newChainID string) *cb.Envelope {
 	oldGenesisTxPayload := utils.ExtractPayloadOrPanic(oldGenesisTx)
 	oldConfigEnv := utils.UnmarshalConfigurationEnvelopeOrPanic(oldGenesisTxPayload.Data)
 
-	return ab.ChainCreationConfigurationTransaction(static.AcceptAllPolicyKey, newChainID, oldConfigEnv)
+	return utils.ChainCreationConfigurationTransaction(static.AcceptAllPolicyKey, newChainID, oldConfigEnv)
 }
