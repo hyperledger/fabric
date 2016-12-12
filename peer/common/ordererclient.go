@@ -56,12 +56,12 @@ func GetBroadcastClient() (BroadcastClient, error) {
 
 	conn, err := grpc.Dial(orderer, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("Error connecting: %s", err)
+		return nil, fmt.Errorf("Error connecting to %s due to %s", orderer, err)
 	}
 	client, err := ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("Error connecting: %s", err)
+		return nil, fmt.Errorf("Error connecting to %s due to %s", orderer, err)
 	}
 
 	return &broadcastClient{conn: conn, client: client}, nil

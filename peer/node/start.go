@@ -31,15 +31,17 @@ import (
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
+	"github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -163,14 +165,24 @@ func serve(args []string) error {
 	//create the default chain (pending join)
 	createChain(chainID)
 
+	// Initialize gossip component
+	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
+	service.InitGossipService(peerEndpoint.Address, grpcServer, bootstrap...)
+	defer service.GetGossipService().Stop()
+
 	//this shoul not need the chainID. Delivery should be
 	//split up into network part and chain part. This should
 	//only init the network part...TBD, part of Join work
-	deliverService := noopssinglechain.NewDeliverService(chainID, peerEndpoint.Address, grpcServer)
+	deliverService := noopssinglechain.NewDeliverService(chainID)
+	commit := committer.NewLedgerCommitter(kvledger.GetLedger(chainID))
 
-	if deliverService != nil {
-		deliverService.Start()
+	// TODO: Should real configuration block
+	block, err := static.New().GenesisBlock()
+
+	if nil != err {
+		panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
 	}
+	deliverService.JoinChannel(commit, block)
 
 	defer noopssinglechain.StopDeliveryService(deliverService)
 
