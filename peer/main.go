@@ -42,7 +42,6 @@ import (
 var logger = logging.MustGetLogger("main")
 
 // Constants go here.
-const fabric = "hyperledger"
 const cmdRoot = "core"
 
 // The main command describes the service and
