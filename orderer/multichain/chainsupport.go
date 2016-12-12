@@ -94,8 +94,7 @@ func newChainSupport(
 	consenters map[string]Consenter,
 ) *chainSupport {
 
-	batchSize := sharedConfigManager.BatchSize() // XXX this needs to be pushed deeper so that the blockcutter queries it after each write for reconfiguration support
-	cutter := blockcutter.NewReceiverImpl(batchSize, filters)
+	cutter := blockcutter.NewReceiverImpl(sharedConfigManager, filters)
 	consenterType := sharedConfigManager.ConsensusType()
 	consenter, ok := consenters[consenterType]
 	if !ok {
