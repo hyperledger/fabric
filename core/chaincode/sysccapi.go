@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
@@ -105,8 +106,11 @@ func DeploySysCC(chainID string, syscc *SystemChaincode) error {
 		return err
 	}
 
-	txid := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
-	_, _, err = Execute(ctxt, chainID, txid, nil, chaincodeDeploymentSpec)
+	txid := util.GenerateUUID()
+
+	cccid := NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name, "", txid, true, nil)
+
+	_, _, err = Execute(ctxt, cccid, chaincodeDeploymentSpec)
 
 	sysccLogger.Infof("system chaincode %s/%s(%s) deployed", syscc.Name, chainID, syscc.Path)
 
@@ -129,7 +133,8 @@ func deregisterSysCC(chainID string, syscc *SystemChaincode) error {
 
 	chaincodeSupport := GetChain()
 	if chaincodeSupport != nil {
-		err = chaincodeSupport.Stop(ctx, chainID, chaincodeDeploymentSpec)
+		cccid := NewCCContext(chainID, syscc.Name, "", "", true, nil)
+		err = chaincodeSupport.Stop(ctx, cccid, chaincodeDeploymentSpec)
 	}
 
 	return err

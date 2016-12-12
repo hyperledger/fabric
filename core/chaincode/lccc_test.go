@@ -312,7 +312,7 @@ func TestUpgradeNonExistChaincode(t *testing.T) {
 
 	args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
 	_, err = stub.MockInvoke("1", args)
-	if _, ok := err.(ChaincodeNotFoundErr); !ok {
+	if _, ok := err.(NotFoundErr); !ok {
 		t.FailNow()
 	}
 }

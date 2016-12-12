@@ -41,14 +41,15 @@ func TestExecuteInvokeOnManyChains(t *testing.T) {
 
 	args := []string{"a", "b", "10"}
 	for _, c := range chains {
-		err = invokeExample02Transaction(ctxt, c, chaincodeID, args, true)
+		cccid := NewCCContext(c, "example02", "", "", false, nil)
+		err = invokeExample02Transaction(ctxt, cccid, chaincodeID, args, false)
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking transaction: %s", err)
 		} else {
 			t.Logf("Invoke test passed for chain %s", c)
 		}
-		theChaincodeSupport.Stop(ctxt, c, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 	}
 
 }
