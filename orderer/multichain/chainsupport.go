@@ -67,6 +67,12 @@ type ChainSupport interface {
 	broadcast.Support
 	deliver.Support
 	ConsenterSupport
+
+	// ChainID returns the ChainID for this chain support
+	ChainID() string
+
+	// ConfigTxManager returns the corresponding configtx.Manager for this chain
+	ConfigTxManager() configtx.Manager
 }
 
 type chainSupport struct {
@@ -79,9 +85,16 @@ type chainSupport struct {
 	filters             *filter.RuleSet
 }
 
-func newChainSupport(configManager configtx.Manager, policyManager policies.Manager, backing rawledger.ReadWriter, sharedConfigManager sharedconfig.Manager, consenters map[string]Consenter) *chainSupport {
+func newChainSupport(
+	filters *filter.RuleSet,
+	configManager configtx.Manager,
+	policyManager policies.Manager,
+	backing rawledger.ReadWriter,
+	sharedConfigManager sharedconfig.Manager,
+	consenters map[string]Consenter,
+) *chainSupport {
+
 	batchSize := sharedConfigManager.BatchSize() // XXX this needs to be pushed deeper so that the blockcutter queries it after each write for reconfiguration support
-	filters := createBroadcastRuleset(configManager)
 	cutter := blockcutter.NewReceiverImpl(batchSize, filters)
 	consenterType := sharedConfigManager.ConsensusType()
 	consenter, ok := consenters[consenterType]
@@ -107,9 +120,21 @@ func newChainSupport(configManager configtx.Manager, policyManager policies.Mana
 	return cs
 }
 
-func createBroadcastRuleset(configManager configtx.Manager) *filter.RuleSet {
+// createStandardFilters creates the set of filters for a normal (non-system) chain
+func createStandardFilters(configManager configtx.Manager) *filter.RuleSet {
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
+		configtx.NewFilter(configManager),
+		filter.AcceptRule,
+	})
+
+}
+
+// createSystemChainFilters creates the set of filters for the ordering system chain
+func createSystemChainFilters(ml *multiLedger, configManager configtx.Manager) *filter.RuleSet {
+	return filter.NewRuleSet([]filter.Rule{
+		filter.EmptyRejectRule,
+		newSystemChainFilter(ml),
 		configtx.NewFilter(configManager),
 		filter.AcceptRule,
 	})
@@ -123,8 +148,12 @@ func (cs *chainSupport) SharedConfig() sharedconfig.Manager {
 	return cs.sharedConfigManager
 }
 
-func (cs *chainSupport) ConfigManager() configtx.Manager {
+func (cs *chainSupport) ConfigTxManager() configtx.Manager {
 	return cs.configManager
+}
+
+func (cs *chainSupport) ChainID() string {
+	return cs.configManager.ChainID()
 }
 
 func (cs *chainSupport) PolicyManager() policies.Manager {

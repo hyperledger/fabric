@@ -156,3 +156,41 @@ func BreakOutBlockToConfigurationEnvelope(block *pb.Block) (*pb.ConfigurationEnv
 
 	return configEnvelope, envelopeSignatures[0], nil
 } // BreakOutPayloadToConfigurationEnvelope
+
+// UnmarshalConfigurationItemOrPanic unmarshals bytes to a ConfigurationItem or panics on error
+func UnmarshalConfigurationItemOrPanic(encoded []byte) *pb.ConfigurationItem {
+	configItem, err := UnmarshalConfigurationItem(encoded)
+	if err != nil {
+		panic(fmt.Errorf("Error unmarshaling data to ConfigurationItem: %s", err))
+	}
+	return configItem
+}
+
+// UnmarshalConfigurationItem unmarshals bytes to a ConfigurationItem
+func UnmarshalConfigurationItem(encoded []byte) (*pb.ConfigurationItem, error) {
+	configItem := &pb.ConfigurationItem{}
+	err := proto.Unmarshal(encoded, configItem)
+	if err != nil {
+		return nil, err
+	}
+	return configItem, nil
+}
+
+// UnmarshalConfigurationEnvelopeOrPanic unmarshals bytes to a ConfigurationEnvelope or panics on error
+func UnmarshalConfigurationEnvelopeOrPanic(encoded []byte) *pb.ConfigurationEnvelope {
+	configEnvelope, err := UnmarshalConfigurationEnvelope(encoded)
+	if err != nil {
+		panic(fmt.Errorf("Error unmarshaling data to ConfigurationEnvelope: %s", err))
+	}
+	return configEnvelope
+}
+
+// UnmarshalConfigurationEnvelope unmarshals bytes to a ConfigurationEnvelope
+func UnmarshalConfigurationEnvelope(encoded []byte) (*pb.ConfigurationEnvelope, error) {
+	configEnvelope := &pb.ConfigurationEnvelope{}
+	err := proto.Unmarshal(encoded, configEnvelope)
+	if err != nil {
+		return nil, err
+	}
+	return configEnvelope, nil
+}

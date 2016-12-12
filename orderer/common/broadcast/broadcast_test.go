@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"google.golang.org/grpc"
 )
@@ -65,6 +65,19 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 	return chain, ok
 }
 
+func (mm *mockSupportManager) ProposeChain(configTx *cb.Envelope) cb.Status {
+	payload := utils.ExtractPayloadOrPanic(configTx)
+
+	mm.chains[string(payload.Header.ChainHeader.ChainID)] = &mockSupport{
+		filters: filter.NewRuleSet([]filter.Rule{
+			filter.EmptyRejectRule,
+			filter.AcceptRule,
+		}),
+		queue: make(chan *cb.Envelope),
+	}
+	return cb.Status_SUCCESS
+}
+
 func (mm *mockSupportManager) halt() {
 	for _, chain := range mm.chains {
 		chain.halt()
@@ -95,6 +108,21 @@ func (ms *mockSupport) halt() {
 	}
 }
 
+func makeConfigMessage(chainID string) *cb.Envelope {
+	payload := &cb.Payload{
+		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{}),
+		Header: &cb.Header{
+			ChainHeader: &cb.ChainHeader{
+				ChainID: chainID,
+				Type:    int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
+			},
+		},
+	}
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(payload),
+	}
+}
+
 func makeMessage(chainID string, data []byte) *cb.Envelope {
 	payload := &cb.Payload{
 		Data: data,
@@ -104,14 +132,9 @@ func makeMessage(chainID string, data []byte) *cb.Envelope {
 			},
 		},
 	}
-	data, err := proto.Marshal(payload)
-	if err != nil {
-		panic(err)
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(payload),
 	}
-	env := &cb.Envelope{
-		Payload: data,
-	}
-	return env
 }
 
 func getMultichainManager() *mockSupportManager {
@@ -199,4 +222,45 @@ func TestEmptyEnvelope(t *testing.T) {
 		t.Fatalf("Should have rejected the null message")
 	}
 
+}
+
+func TestBadChainID(t *testing.T) {
+	mm := getMultichainManager()
+	defer mm.halt()
+	bh := NewHandlerImpl(mm, 2)
+	m := newMockB()
+	defer close(m.recvChan)
+	go bh.Handle(m)
+
+	m.recvChan <- makeMessage("Wrong chain", []byte("Some bytes"))
+	reply := <-m.sendChan
+	if reply.Status != cb.Status_NOT_FOUND {
+		t.Fatalf("Should have rejected message to a chain which does not exist")
+	}
+
+}
+
+func TestNewChainID(t *testing.T) {
+	mm := getMultichainManager()
+	defer mm.halt()
+	bh := NewHandlerImpl(mm, 2)
+	m := newMockB()
+	defer close(m.recvChan)
+	go bh.Handle(m)
+
+	m.recvChan <- makeConfigMessage("New chain")
+	reply := <-m.sendChan
+	if reply.Status != cb.Status_SUCCESS {
+		t.Fatalf("Should have created a new chain, got %d", reply.Status)
+	}
+
+	if len(mm.chains) != 2 {
+		t.Fatalf("Should have created a new chain")
+	}
+
+	m.recvChan <- makeMessage("New chain", []byte("Some bytes"))
+	reply = <-m.sendChan
+	if reply.Status != cb.Status_SUCCESS {
+		t.Fatalf("Should have successfully sent message to new chain")
+	}
 }

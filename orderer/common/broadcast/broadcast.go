@@ -39,7 +39,13 @@ type Handler interface {
 
 // SupportManager provides a way for the Handler to look up the Support for a chain
 type SupportManager interface {
+	// GetChain gets the chain support for a given ChainID
 	GetChain(chainID string) (Support, bool)
+
+	// ProposeChain accepts a configuration transaction for a chain which does not already exists
+	// The status returned is whether the proposal is accepted for consideration, only after consensus
+	// occurs will the proposal be committed or rejected
+	ProposeChain(env *cb.Envelope) cb.Status
 }
 
 // Support provides the backing resources needed to support broadcast on a chain
@@ -125,21 +131,27 @@ func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) err
 
 		support, ok := b.bs.sm.GetChain(payload.Header.ChainHeader.ChainID)
 		if !ok {
-			// XXX Hook in chain creation logic here
-			panic("Unimplemented")
-		}
-
-		_, filterErr := support.Filters().Apply(msg)
-
-		if filterErr != nil {
-			logger.Debugf("Rejecting broadcast message")
-			err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+			// Chain not found, maybe create one?
+			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
+				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
+			} else {
+				logger.Debugf("Proposing new chain")
+				err = srv.Send(&ab.BroadcastResponse{Status: b.bs.sm.ProposeChain(msg)})
+			}
 		} else {
-			select {
-			case b.queue <- &msgAndSupport{msg: msg, support: support}:
-				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
-			default:
-				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
+			// Normal transaction for existing chain
+			_, filterErr := support.Filters().Apply(msg)
+
+			if filterErr != nil {
+				logger.Debugf("Rejecting broadcast message")
+				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+			} else {
+				select {
+				case b.queue <- &msgAndSupport{msg: msg, support: support}:
+					err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
+				default:
+					err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
+				}
 			}
 		}
 

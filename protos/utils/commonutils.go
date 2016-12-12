@@ -60,6 +60,44 @@ func CreateNonce() ([]byte, error) {
 	return nonce, nil
 }
 
+// UnmarshalPayloadOrPanic unmarshals bytes to a Payload structure or panics on error
+func UnmarshalPayloadOrPanic(encoded []byte) *cb.Payload {
+	payload, err := UnmarshalPayload(encoded)
+	if err != nil {
+		panic(fmt.Errorf("Error unmarshaling data to payload: %s", err))
+	}
+	return payload
+}
+
+// UnmarshalPayload unmarshals bytes to a Payload structure
+func UnmarshalPayload(encoded []byte) (*cb.Payload, error) {
+	payload := &cb.Payload{}
+	err := proto.Unmarshal(encoded, payload)
+	if err != nil {
+		return nil, err
+	}
+	return payload, err
+}
+
+// UnmarshalEnvelopeOrPanic unmarshals bytes to an Envelope structure or panics on error
+func UnmarshalEnvelopeOrPanic(encoded []byte) *cb.Envelope {
+	envelope, err := UnmarshalEnvelope(encoded)
+	if err != nil {
+		panic(fmt.Errorf("Error unmarshaling data to envelope: %s", err))
+	}
+	return envelope
+}
+
+// UnmarshalEnvelope unmarshals bytes to an Envelope structure
+func UnmarshalEnvelope(encoded []byte) (*cb.Envelope, error) {
+	envelope := &cb.Envelope{}
+	err := proto.Unmarshal(encoded, envelope)
+	if err != nil {
+		return nil, err
+	}
+	return envelope, err
+}
+
 // ExtractEnvelopeOrPanic retrieves the requested envelope from a given block and unmarshals it -- it panics if either of these operation fail.
 func ExtractEnvelopeOrPanic(block *cb.Block, index int) *cb.Envelope {
 	envelopeCount := len(block.Data.Data)
