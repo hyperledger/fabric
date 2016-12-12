@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/hyperledger/fabric/flogging"
+	"github.com/hyperledger/fabric/core/flogging"
 	logging "github.com/op/go-logging"
 )
 

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/flogging"
+	"github.com/hyperledger/fabric/core/flogging"
 )
 
 func TestError(t *testing.T) {
