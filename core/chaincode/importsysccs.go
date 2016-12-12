@@ -70,3 +70,14 @@ func deRegisterSysCCs(chainID string) {
 		deregisterSysCC(chainID, sysCC)
 	}
 }
+
+//IsSysCC returns true if the name matches a system chaincode's
+//system chaincode names are system, chain wide
+func IsSysCC(name string) bool {
+	for _, sysCC := range systemChaincodes {
+		if sysCC.Name == name {
+			return true
+		}
+	}
+	return false
+}

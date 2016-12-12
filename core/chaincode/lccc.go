@@ -143,9 +143,10 @@ func (t ExistsErr) Error() string {
 	return fmt.Sprintf("Chaincode exists %s", string(t))
 }
 
-type ChaincodeNotFoundErr string
+//NotFoundErr chaincode not registered with LCCC error
+type NotFoundErr string
 
-func (t ChaincodeNotFoundErr) Error() string {
+func (t NotFoundErr) Error() string {
 	return fmt.Sprintf("chaincode not found %s", string(t))
 }
 
@@ -287,22 +288,26 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 
 	ctxt = context.WithValue(ctxt, TXSimulatorKey, dummytxsim)
 
-	_, err = theChaincodeSupport.Deploy(ctxt, chainname, cds)
+	//TODO-if/when we use this deploy() func make sure to use the
+	//TXID of the calling proposal
+	txid := util.GenerateUUID()
+
+	//deploy does not need a version
+	cccid := NewCCContext(chainname, cds.ChaincodeSpec.ChaincodeID.Name, "", txid, false, nil)
+
+	_, err = theChaincodeSupport.Deploy(ctxt, cccid, cds)
 	if err != nil {
 		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 	}
 
-	//we don't need the original txid (in fact we need a new one)
-	txid := util.GenerateUUID()
-
 	//launch and wait for ready
-	_, _, err = theChaincodeSupport.Launch(ctxt, chainname, txid, nil, cds)
+	_, _, err = theChaincodeSupport.Launch(ctxt, cccid, cds)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
 	//stop now that we are done
-	theChaincodeSupport.Stop(ctxt, chainname, cds)
+	theChaincodeSupport.Stop(ctxt, cccid, cds)
 
 	return nil
 }
@@ -356,7 +361,7 @@ func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	// check for existence of chaincode
 	cd, err := lccc.getChaincode(stub, chainName, chaincodeName)
 	if cd == nil {
-		return nil, ChaincodeNotFoundErr(chainName)
+		return nil, NotFoundErr(chainName)
 	}
 
 	if err = lccc.acl(stub, chainName, cds); err != nil {

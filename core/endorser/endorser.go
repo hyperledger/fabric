@@ -64,22 +64,22 @@ func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
 }
 
 //deploy the chaincode after call to the system chaincode is successful
-func (e *Endorser) deploy(ctxt context.Context, txid string, proposal *pb.Proposal, chainname string, cds *pb.ChaincodeDeploymentSpec, cid *pb.ChaincodeID) error {
+func (e *Endorser) deploy(ctxt context.Context, cccid *chaincode.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	chaincodeSupport := chaincode.GetChain()
 
-	_, err := chaincodeSupport.Deploy(ctxt, chainname, cds)
+	_, err := chaincodeSupport.Deploy(ctxt, cccid, cds)
 	if err != nil {
 		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 	}
 
 	//launch and wait for ready
-	_, _, err = chaincodeSupport.Launch(ctxt, chainname, txid, proposal, cds)
+	_, _, err = chaincodeSupport.Launch(ctxt, cccid, cds)
 	if err != nil {
 		return fmt.Errorf("%s", err)
 	}
 
 	//stop now that we are done
-	chaincodeSupport.Stop(ctxt, chainname, cds)
+	chaincodeSupport.Stop(ctxt, cccid, cds)
 
 	return nil
 }
@@ -91,7 +91,13 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, txid stri
 	var ccevent *pb.ChaincodeEvent
 
 	ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
-	b, ccevent, err = chaincode.ExecuteChaincode(ctxt, chainID, txid, prop, cid.Name, cis.ChaincodeSpec.CtorMsg.Args)
+
+	//is this a system chaincode
+	syscc := chaincode.IsSysCC(cid.Name)
+
+	cccid := chaincode.NewCCContext(chainID, cid.Name, "", txid, syscc, prop)
+
+	b, ccevent, err = chaincode.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.CtorMsg.Args)
 
 	if err != nil {
 		return nil, nil, err
@@ -111,7 +117,15 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, txid stri
 		if err != nil {
 			return nil, nil, err
 		}
-		err = e.deploy(ctxt, txid, prop, chainID, cds, cid)
+
+		//this should not be a system chaincode
+		if chaincode.IsSysCC(cds.ChaincodeSpec.ChaincodeID.Name) {
+			return nil, nil, fmt.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeID.Name, chainID)
+		}
+
+		cccid = chaincode.NewCCContext(chainID, cds.ChaincodeSpec.ChaincodeID.Name, "", txid, false, prop)
+
+		err = e.deploy(ctxt, cccid, cds)
 		if err != nil {
 			return nil, nil, err
 		}

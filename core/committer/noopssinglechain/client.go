@@ -227,8 +227,10 @@ func isTxValidForVscc(payload *common.Payload, envBytes []byte) error {
 	defer txsim.Done()
 	ctxt := context.WithValue(context.Background(), chaincode.TXSimulatorKey, txsim)
 
+	cccid := chaincode.NewCCContext(chainName, vscc, "", txid, true, prop)
+
 	// invoke VSCC
-	_, _, err = chaincode.ExecuteChaincode(ctxt, chainName, txid, prop, vscc, args)
+	_, _, err = chaincode.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
 		logger.Errorf("VSCC check failed for transaction, error %s", err)
 		return err

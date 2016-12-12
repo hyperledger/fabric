@@ -28,7 +28,7 @@ import (
 )
 
 //Execute - execute proposal
-func Execute(ctxt context.Context, chainID string, txid string, prop *pb.Proposal, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+func Execute(ctxt context.Context, cccid *CCContext, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
 	var cds *pb.ChaincodeDeploymentSpec
 	var ci *pb.ChaincodeInvocationSpec
@@ -39,18 +39,18 @@ func Execute(ctxt context.Context, chainID string, txid string, prop *pb.Proposa
 	}
 
 	if cds != nil {
-		_, err := theChaincodeSupport.Deploy(ctxt, chainID, cds)
+		_, err := theChaincodeSupport.Deploy(ctxt, cccid, cds)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 		}
 
-		_, _, err = theChaincodeSupport.Launch(ctxt, chainID, txid, prop, cds)
+		_, _, err = theChaincodeSupport.Launch(ctxt, cccid, cds)
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s", err)
 		}
 	} else {
 		//will launch if necessary (and wait for ready)
-		cID, cMsg, err := theChaincodeSupport.Launch(ctxt, chainID, txid, prop, ci)
+		cID, cMsg, err := theChaincodeSupport.Launch(ctxt, cccid, ci)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to launch chaincode spec(%s)", err)
 		}
@@ -70,22 +70,22 @@ func Execute(ctxt context.Context, chainID string, txid string, prop *pb.Proposa
 		}
 
 		var ccMsg *pb.ChaincodeMessage
-		ccMsg, err = createTransactionMessage(txid, cMsg)
+		ccMsg, err = createTransactionMessage(cccid.TxID, cMsg)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to transaction message(%s)", err)
 		}
 
-		resp, err := theChaincodeSupport.Execute(ctxt, chainID, chaincode, ccMsg, timeout, prop)
+		resp, err := theChaincodeSupport.Execute(ctxt, cccid, ccMsg, timeout)
 		if err != nil {
 			// Rollback transaction
 			return nil, nil, fmt.Errorf("Failed to execute transaction (%s)", err)
 		} else if resp == nil {
 			// Rollback transaction
-			return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", txid)
+			return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", cccid.TxID)
 		} else {
 			if resp.ChaincodeEvent != nil {
-				resp.ChaincodeEvent.ChaincodeID = chaincode
-				resp.ChaincodeEvent.TxID = txid
+				resp.ChaincodeEvent.ChaincodeID = cccid.Name
+				resp.ChaincodeEvent.TxID = cccid.TxID
 			}
 
 			if resp.Type == pb.ChaincodeMessage_COMPLETED {
@@ -95,7 +95,7 @@ func Execute(ctxt context.Context, chainID string, txid string, prop *pb.Proposa
 				// Rollback transaction
 				return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction returned with failure: %s", string(resp.Payload))
 			}
-			return resp.Payload, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", txid, resp.Type)
+			return resp.Payload, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", cccid.TxID, resp.Type)
 		}
 
 	}

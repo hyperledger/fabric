@@ -909,8 +909,11 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			// Create the invocation spec
 			chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 
+			//Get the latest version of newChaincodeID
+			cccid := NewCCContext(txContext.chainID, newChaincodeID, "", msg.Txid, false, txContext.proposal)
+
 			// Launch the new chaincode if not already running
-			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, txContext.chainID, msg.Txid, txContext.proposal, chaincodeInvocationSpec)
+			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, cccid, chaincodeInvocationSpec)
 			if launchErr != nil {
 				payload := []byte(launchErr.Error())
 				chaincodeLogger.Debugf("[%s]Failed to launch invoked chaincode. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
@@ -924,7 +927,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			ccMsg, _ := createTransactionMessage(msg.Txid, chaincodeInput)
 
 			// Execute the chaincode
-			response, execErr := handler.chaincodeSupport.Execute(ctxt, txContext.chainID, newChaincodeID, ccMsg, timeout, txContext.proposal)
+			response, execErr := handler.chaincodeSupport.Execute(ctxt, cccid, ccMsg, timeout)
 
 			//payload is marshalled and send to the calling chaincode's shim which unmarshals and
 			//sends it to chaincode

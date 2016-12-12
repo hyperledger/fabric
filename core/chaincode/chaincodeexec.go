@@ -36,19 +36,20 @@ func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error
 
 // GetCDSFromLCCC gets chaincode deployment spec from LCCC
 func GetCDSFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
-	payload, _, err := ExecuteChaincode(ctxt, chainID, txid, prop, "lccc", [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
+	cccid := NewCCContext(chainID, "lccc", "", txid, true, prop)
+	payload, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
 	return payload, err
 }
 
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments
-func ExecuteChaincode(ctxt context.Context, chainID string, txid string, prop *pb.Proposal, ccname string, args [][]byte) ([]byte, *pb.ChaincodeEvent, error) {
+func ExecuteChaincode(ctxt context.Context, cccid *CCContext, args [][]byte) ([]byte, *pb.ChaincodeEvent, error) {
 	var spec *pb.ChaincodeInvocationSpec
 	var err error
 	var b []byte
 	var ccevent *pb.ChaincodeEvent
 
-	spec, err = createCIS(ccname, args)
-	b, ccevent, err = Execute(ctxt, chainID, txid, prop, spec)
+	spec, err = createCIS(cccid.Name, args)
+	b, ccevent, err = Execute(ctxt, cccid, spec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error deploying chaincode: %s", err)
 	}

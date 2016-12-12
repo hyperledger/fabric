@@ -263,14 +263,16 @@ func TestDeploy(t *testing.T) {
 	chainID := util.GetTestChainID()
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex01", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
+	cccid := chaincode.NewCCContext(chainID, "ex01", "", "", false, nil)
+
 	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
 		t.Fail()
 		t.Logf("Deploy-error in deploy %s", err)
-		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestDeployBadArgs sets bad args on deploy. It should fail, and example02 should not be deployed
@@ -279,14 +281,16 @@ func TestDeployBadArgs(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b")}}}
 
+	cccid := chaincode.NewCCContext(chainID, "ex02", "", "", false, nil)
+
 	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err == nil {
 		t.Fail()
 		t.Log("DeployBadArgs-expected error in deploy but succeeded")
-		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestDeployBadPayload set payload to nil and do a deploy. It should fail and example02 should not be deployed
@@ -295,6 +299,8 @@ func TestDeployBadPayload(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
+	cccid := chaincode.NewCCContext(chainID, "ex02", "", "", false, nil)
+
 	f := func(cds *pb.ChaincodeDeploymentSpec) {
 		cds.CodePackage = nil
 	}
@@ -302,10 +308,10 @@ func TestDeployBadPayload(t *testing.T) {
 	if err == nil {
 		t.Fail()
 		t.Log("DeployBadPayload-expected error in deploy but succeeded")
-		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 //TestRedeploy - deploy two times, second time should fail but example02 should remain deployed
@@ -315,11 +321,13 @@ func TestRedeploy(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
+	cccid := chaincode.NewCCContext(chainID, "ex02", "", "", false, nil)
+
 	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
-		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
@@ -328,10 +336,10 @@ func TestRedeploy(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("error in endorserServer.ProcessProposal %s", err)
-		chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
-	chaincode.GetChain().Stop(context.Background(), chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
 // TestDeployAndInvoke deploys and invokes chaincode_example01
@@ -347,11 +355,15 @@ func TestDeployAndInvoke(t *testing.T) {
 	f := "init"
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
+
+	cccid := chaincode.NewCCContext(chainID, "ex01", "", "", false, nil)
+
 	resp, prop, err := deploy(endorserServer, chainID, spec, nil)
 	chaincodeID1 := spec.ChaincodeID.Name
 	if err != nil {
 		t.Fail()
 		t.Logf("Error deploying <%s>: %s", chaincodeID1, err)
+		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 		return
 	}
 
@@ -359,6 +371,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error committing <%s>: %s", chaincodeID1, err)
+		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 		return
 	}
 
@@ -369,13 +382,14 @@ func TestDeployAndInvoke(t *testing.T) {
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking transaction: %s", err)
+		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 		return
 	}
 
 	fmt.Printf("Invoke test passed\n")
 	t.Logf("Invoke test passed")
 
-	chaincode.GetChain().Stop(ctxt, chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
+	chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
 }
 
 // TestUpgradeAndInvoke deploys chaincode_example01, upgrade it with chaincode_example02, then invoke it
@@ -391,10 +405,17 @@ func TestDeployAndUpgrade(t *testing.T) {
 	f := "init"
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID1, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
+
+	cccid1 := chaincode.NewCCContext(chainID, "upgradeex01", "", "", false, nil)
+	cccid2 := chaincode.NewCCContext(chainID, "upgradeex02", "", "", false, nil)
+
 	resp, prop, err := deploy(endorserServer, chainID, spec, nil)
+
 	chaincodeName := spec.ChaincodeID.Name
 	if err != nil {
 		t.Fail()
+		chaincode.GetChain().Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID1}})
+		chaincode.GetChain().Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID2}})
 		t.Logf("Error deploying <%s>: %s", chaincodeName, err)
 		return
 	}
@@ -402,6 +423,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp)
 	if err != nil {
 		t.Fail()
+		chaincode.GetChain().Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID1}})
+		chaincode.GetChain().Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID2}})
 		t.Logf("Error committing <%s>: %s", chaincodeName, err)
 		return
 	}
@@ -411,6 +434,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 	resp, prop, err = upgrade(endorserServer, chainID, spec, nil)
 	if err != nil {
 		t.Fail()
+		chaincode.GetChain().Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID1}})
+		chaincode.GetChain().Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID2}})
 		t.Logf("Error upgrading <%s>: %s", chaincodeName, err)
 		return
 	}
@@ -418,7 +443,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 	fmt.Printf("Upgrade test passed\n")
 	t.Logf("Upgrade test passed")
 
-	chaincode.GetChain().Stop(ctxt, chainID, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID2}})
+	chaincode.GetChain().Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID1}})
+	chaincode.GetChain().Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID2}})
 }
 
 func TestMain(m *testing.M) {
