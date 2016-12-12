@@ -173,7 +173,7 @@ peer:
     networkId: dev
 
     Dockerfile:  |
-        from golang:1.6
+        from golang:1.7
         # Install RocksDB
         RUN cd /opt  && git clone --branch v4.1 --single-branch --depth 1 https://github.com/facebook/rocksdb.git && cd rocksdb
         WORKDIR /opt/rocksdb
@@ -367,7 +367,7 @@ chaincode:
         # This is the basis for the Golang Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
         Dockerfile:  |
-            from golang:1.6
+            from golang:1.7
             COPY src $GOPATH/src
             WORKDIR $GOPATH
 
