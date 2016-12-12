@@ -66,12 +66,15 @@ func (s *SBFT) Connection(replica uint64) {
 
 func (s *SBFT) handleHello(h *Hello, src uint64) {
 	bh, err := s.checkBatch(h.Batch, false, true)
+	log.Debugf("replica %d: got hello for batch %d from replica %d", s.id, bh.Seq, src)
+
 	if err != nil {
 		log.Warningf("replica %d: invalid hello batch from %d: %s", s.id, src, err)
 		return
 	}
 
 	if s.sys.LastBatch().DecodeHeader().Seq < bh.Seq {
+		log.Debugf("replica %d: delivering batch %d after hello from replica %d", s.id, bh.Seq, src)
 		s.deliverBatch(h.Batch)
 	}
 

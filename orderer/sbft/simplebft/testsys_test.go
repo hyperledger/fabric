@@ -139,7 +139,9 @@ func (t *testTimer) String() string {
 
 func (t *testSystemAdapter) Timer(d time.Duration, tf func()) Canceller {
 	tt := &testTimer{id: t.id, tf: tf}
-	t.sys.enqueue(d, tt)
+	if !t.sys.disableTimers {
+		t.sys.enqueue(d, tt)
+	}
 	return tt
 }
 
@@ -171,9 +173,8 @@ func (t *testSystemAdapter) Restore(key string, out proto.Message) bool {
 func (t *testSystemAdapter) LastBatch() *Batch {
 	if len(t.batches) == 0 {
 		return t.receiver.(*SBFT).makeBatch(0, nil, nil)
-	} else {
-		return t.batches[len(t.batches)-1]
 	}
+	return t.batches[len(t.batches)-1]
 }
 
 func (t *testSystemAdapter) Sign(data []byte) []byte {
@@ -233,11 +234,12 @@ type testEvent interface {
 // ==============================================
 
 type testSystem struct {
-	rand     *rand.Rand
-	now      time.Duration
-	queue    *calendarQueue
-	adapters map[uint64]*testSystemAdapter
-	filterFn func(testElem) (testElem, bool)
+	rand          *rand.Rand
+	now           time.Duration
+	queue         *calendarQueue
+	adapters      map[uint64]*testSystemAdapter
+	filterFn      func(testElem) (testElem, bool)
+	disableTimers bool
 }
 
 type testElem struct {
@@ -254,6 +256,15 @@ func newTestSystem(n uint64) *testSystem {
 		rand:     rand.New(rand.NewSource(0)),
 		adapters: make(map[uint64]*testSystemAdapter),
 		queue:    newCalendarQueue(time.Millisecond/time.Duration(n*n), int(n*n)),
+	}
+}
+
+func newTestSystemWOTimers(n uint64) *testSystem {
+	return &testSystem{
+		rand:          rand.New(rand.NewSource(0)),
+		adapters:      make(map[uint64]*testSystemAdapter),
+		queue:         newCalendarQueue(time.Millisecond/time.Duration(n*n), int(n*n)),
+		disableTimers: true,
 	}
 }
 
