@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -153,7 +154,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 		return cb.Status_BAD_REQUEST
 	}
 
-	if creationConfigItem.Key != ab.CreationPolicyKey {
+	if creationConfigItem.Key != utils.CreationPolicyKey {
 		logger.Debugf("Failing to validate chain creation because first configuration item was not the CreationPolicy")
 		return cb.Status_BAD_REQUEST
 	}
