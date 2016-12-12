@@ -32,6 +32,9 @@ const ConsensusTypeKey = "ConsensusType"
 // BatchSizeKey is the cb.ConfigurationItem type key name for the BatchSize message
 const BatchSizeKey = "BatchSize"
 
+// ChainCreatorsKey is the cb.ConfigurationItem type key name for the ChainCreators message
+const ChainCreatorsKey = "ChainCreators"
+
 var logger = logging.MustGetLogger("orderer/common/sharedconfig")
 
 func init() {
@@ -48,11 +51,16 @@ type Manager interface {
 
 	// BatchSize returns the maximum number of messages to include in a block
 	BatchSize() int
+
+	// ChainCreators returns the policy names which are allowed for chain creation
+	// This field is only set for the system ordering chain
+	ChainCreators() []string
 }
 
 type ordererConfig struct {
 	consensusType string
 	batchSize     int
+	chainCreators []string
 }
 
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
@@ -77,6 +85,12 @@ func (pm *ManagerImpl) ConsensusType() string {
 // BatchSize returns the maximum number of messages to include in a block
 func (pm *ManagerImpl) BatchSize() int {
 	return pm.config.batchSize
+}
+
+// ChainCreators returns the policy names which are allowed for chain creation
+// This field is only set for the system ordering chain
+func (pm *ManagerImpl) ChainCreators() []string {
+	return pm.config.chainCreators
 }
 
 // BeginConfig is used to start a new configuration proposal
@@ -135,6 +149,14 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 		}
 
 		pm.pendingConfig.batchSize = int(batchSize.Messages)
+	case ChainCreatorsKey:
+		chainCreators := &ab.ChainCreators{}
+		err := proto.Unmarshal(configItem.Value, chainCreators)
+		if err != nil {
+			return fmt.Errorf("Unmarshaling error for ChainCreator: %s", err)
+		}
+
+		pm.pendingConfig.chainCreators = chainCreators.Policies
 	}
 
 	return nil

@@ -37,3 +37,21 @@ message BatchSize {
     // Simply specified as messages for now, in the future we may want to allow this to be specified by size in bytes
     int32 messages = 1;
 }
+
+// When submitting a new chain configuration transaction to create a new chain, the first configuration
+// item must be of type Orderer with Key CreationPolicy and contents of a Marshaled CreationPolicy. The
+// policy should be set to the policy which was supplied by the ordering service for the client's chain
+// creation. The digest should be the hash of the concatenation of the remaining ConfigurationItem bytes.
+// The signatures of the configuration item should satisfy the policy for chain creation.
+message CreationPolicy {
+    // The name of the policy which should be used to validate the creation of this chain
+    string policy = 1;
+
+    // The hash of the concatenation of remaining configuration item bytes
+    bytes digest = 2;
+}
+
+message ChainCreators {
+    // A list of policies, any of which may be specified as the chain creation policy in a chain creation request
+    repeated string policies = 1;
+}
