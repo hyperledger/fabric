@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mocks
+package sharedconfig
 
-// MockSharedConfigManager is a mock implementation of sharedconfig.Manager
-type SharedConfigManager struct {
+// Manager is a mock implementation of sharedconfig.Manager
+type Manager struct {
 	// ConsensusTypeVal is returned as the result of ConsensusType()
 	ConsensusTypeVal string
 	// BatchSizeVal is returned as the result of BatchSize()
@@ -26,18 +26,17 @@ type SharedConfigManager struct {
 	ChainCreatorsVal []string
 }
 
-// ConsensusType returns the configured consensus type
-func (scm *SharedConfigManager) ConsensusType() string {
+// ConsensusType returns the ConsensusTypeVal
+func (scm *Manager) ConsensusType() string {
 	return scm.ConsensusTypeVal
 }
 
-// BatchSize returns the maximum number of messages to include in a block
-func (scm *SharedConfigManager) BatchSize() int {
+// BatchSize returns the BatchSizeVal
+func (scm *Manager) BatchSize() int {
 	return scm.BatchSizeVal
 }
 
-// ChainCreators returns the policy names which are allowed for chain creation
-// This field is only set for the system ordering chain
-func (scm *SharedConfigManager) ChainCreators() []string {
+// ChainCreators returns the ChainCreatorsVal
+func (scm *Manager) ChainCreators() []string {
 	return scm.ChainCreatorsVal
 }
