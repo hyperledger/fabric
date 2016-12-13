@@ -61,7 +61,7 @@ func (*naiveSecProvider) GetPKIidOfCert(peerIdentity api.PeerIdentityType) commo
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveSecProvider) VerifyBlock(signedBlock api.SignedBlock) error {
+func (*naiveSecProvider) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
 	return nil
 }
 

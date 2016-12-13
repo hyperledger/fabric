@@ -82,7 +82,7 @@ func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) com
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveCryptoService) VerifyBlock(signedBlock api.SignedBlock) error {
+func (*naiveCryptoService) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
 	return nil
 }
 

@@ -24,12 +24,11 @@ import (
 // that provides security and identity related capabilities
 type SecurityAdvisor interface {
 	// OrgByPeerIdentity returns the OrgIdentityType
-	// of a given peer identity
+	// of a given peer identity.
+	// If any error occurs, nil is returned.
+	// This method does not validate peerIdentity.
+	// This validation is supposed to be done appropriately during the execution flow.
 	OrgByPeerIdentity(PeerIdentityType) OrgIdentityType
-
-	// Verify verifies a JoinChannelMessage, returns nil on success,
-	// and an error on failure
-	Verify(JoinChannelMessage) error
 }
 
 // ChannelNotifier is implemented by the gossip component and is used for the peer

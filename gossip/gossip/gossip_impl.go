@@ -153,10 +153,7 @@ func (g *gossipServiceImpl) toDie() bool {
 }
 
 func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID) {
-	if err := g.secAdvisor.Verify(joinMsg); err != nil {
-		g.logger.Error("Failed verifying join channel message", joinMsg, "error:", err)
-		return
-	}
+	// joinMsg is supposed to have been already verified
 	g.chanState.joinChannel(joinMsg, chainID)
 
 	selfPkiID := g.mcs.GetPKIidOfCert(g.selfIdentity)
@@ -343,7 +340,7 @@ func (g *gossipServiceImpl) validateMsg(msg comm.ReceivedMessage) bool {
 			return true
 		}
 
-		if err := g.mcs.VerifyBlock(blockMsg); err != nil {
+		if err := g.mcs.VerifyBlock(msg.GetGossipMessage().Channel, blockMsg); err != nil {
 			g.logger.Warning("Could not verify block", blockMsg.Payload.SeqNum, ":", err)
 			return false
 		}

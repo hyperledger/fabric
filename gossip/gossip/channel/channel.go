@@ -461,7 +461,7 @@ func (gc *gossipChannel) verifyBlock(msg *proto.GossipMessage, sender common.PKI
 		gc.logger.Warning("Received empty payload from", sender)
 		return false
 	}
-	err := gc.mcs.VerifyBlock(msg.GetDataMsg().Payload)
+	err := gc.mcs.VerifyBlock(msg.Channel, msg.GetDataMsg().Payload)
 	if err != nil {
 		gc.logger.Warning("Received fabricated block from", sender, "in DataUpdate:", err)
 		return false

@@ -269,6 +269,8 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
 	}
 
+	// TODO: check that sId.Mspid is equal to this msp'id as per contract of the interface.
+
 	// This MSP will always deserialize certs this way
 	bl, _ := pem.Decode(sId.IdBytes)
 	if bl == nil {

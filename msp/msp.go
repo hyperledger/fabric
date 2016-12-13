@@ -27,7 +27,10 @@ import (
 
 //Common is implemented by both MSPManger and MSP
 type Common interface {
-	// DeserializeIdentity deserializes an identity
+	// DeserializeIdentity deserializes an identity.
+	// Deserialization will fail if the identity is associated to
+	// an msp that is different from this one that is performing
+	// the deserialization.
 	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 }
 
