@@ -78,7 +78,7 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 		s.deliverBatch(h.Batch)
 	}
 
-	if h.NewView != nil {
+	if h.NewView != nil && s.view <= h.NewView.View {
 		if s.primaryIDView(h.NewView.View) != src {
 			log.Warningf("replica %d: invalid hello with new view from non-primary %d", s.id, src)
 			return
@@ -96,10 +96,8 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 			return
 		}
 
-		if s.view <= h.NewView.View {
-			s.view = h.NewView.View
-			s.activeView = true
-		}
+		s.view = h.NewView.View
+		s.activeView = true
 
 		s.maybeDeliverUsingXset(h.NewView)
 	}

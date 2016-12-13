@@ -86,13 +86,18 @@ func (s *SBFT) checkNewViewSignatures(nv *NewView) ([]*ViewChange, error) {
 }
 
 func (s *SBFT) handleNewView(nv *NewView, src uint64) {
-	if src != s.primaryIDView(nv.View) {
-		log.Warningf("replica %d: invalid new view from %d for %d", s.id, src, nv.View)
+	if nv.View < s.view {
+		log.Debugf("replica %d: discarding old new view from %d for %d, we are in %d", s.id, src, nv.View, s.view)
 		return
 	}
 
-	if onv := s.replicaState[s.primaryIDView(nv.View)].newview; onv != nil && onv.View >= nv.View {
-		log.Debugf("replica %d: discarding duplicate new view for %d", s.id, nv.View)
+	if nv.View == s.view && s.activeView {
+		log.Debugf("replica %d: discarding new view from %d for %d, we are already active in %d", s.id, src, nv.View, s.view)
+		return
+	}
+
+	if src != s.primaryIDView(nv.View) {
+		log.Warningf("replica %d: invalid new view from %d for %d", s.id, src, nv.View)
 		return
 	}
 
@@ -135,11 +140,8 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 	}
 
 	s.replicaState[s.primaryIDView(nv.View)].newview = nv
-
-	if nv.View > s.view {
-		s.view = nv.View
-		s.activeView = false
-	}
+	s.view = nv.View
+	s.activeView = false
 
 	s.processNewView()
 }
