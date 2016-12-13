@@ -49,8 +49,8 @@ func NewServer(ml multichain.Manager, queueSize, maxWindowSize int) ab.AtomicBro
 	logger.Infof("Starting orderer")
 
 	s := &server{
-		bh: broadcast.NewHandlerImpl(broadcastSupport{ml}, queueSize),
 		dh: deliver.NewHandlerImpl(deliverSupport{ml}),
+		bh: broadcast.NewHandlerImpl(broadcastSupport{ml}),
 	}
 	return s
 }
