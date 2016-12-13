@@ -18,6 +18,7 @@ package noopssinglechain
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -49,9 +50,7 @@ func init() {
 // DeliverService used to communicate with orderers to obtain
 // new block and send the to the committer service
 type DeliverService struct {
-	client         orderer.AtomicBroadcast_DeliverClient
-	windowSize     uint64
-	unAcknowledged uint64
+	client orderer.AtomicBroadcast_DeliverClient
 
 	chainID string
 	conn    *grpc.ClientConn
@@ -71,8 +70,7 @@ func NewDeliverService(chainID string) *DeliverService {
 		logger.Infof("Creating committer for single noops endorser")
 		deliverService := &DeliverService{
 			// Instance of RawLedger
-			chainID:    chainID,
-			windowSize: 10,
+			chainID: chainID,
 		}
 
 		return deliverService
@@ -162,27 +160,20 @@ func (d *DeliverService) checkLeaderAndRunDeliver(committer committer.Committer)
 }
 
 func (d *DeliverService) seekOldest() error {
-	return d.client.Send(&orderer.DeliverUpdate{
-		Type: &orderer.DeliverUpdate_Seek{
-			Seek: &orderer.SeekInfo{
-				Start:      orderer.SeekInfo_OLDEST,
-				WindowSize: d.windowSize,
-				ChainID:    d.chainID,
-			},
-		},
+	return d.client.Send(&orderer.SeekInfo{
+		ChainID:  d.chainID,
+		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Oldest{Oldest: &orderer.SeekOldest{}}},
+		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
 	})
 }
 
 func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
-	return d.client.Send(&orderer.DeliverUpdate{
-		Type: &orderer.DeliverUpdate_Seek{
-			Seek: &orderer.SeekInfo{
-				Start:           orderer.SeekInfo_SPECIFIED,
-				WindowSize:      d.windowSize,
-				SpecifiedNumber: height,
-				ChainID:         d.chainID,
-			},
-		},
+	return d.client.Send(&orderer.SeekInfo{
+		ChainID:  d.chainID,
+		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: height}}},
+		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
 	})
 }
 
@@ -243,9 +234,9 @@ func (d *DeliverService) readUntilClose() {
 			return
 		}
 		switch t := msg.Type.(type) {
-		case *orderer.DeliverResponse_Error:
-			if t.Error == common.Status_SUCCESS {
-				logger.Warning("ERROR! Received success in error field")
+		case *orderer.DeliverResponse_Status:
+			if t.Status == common.Status_SUCCESS {
+				logger.Warning("ERROR! Received success for a seek that should never complete")
 				return
 			}
 			logger.Warning("Got error ", t)
@@ -311,21 +302,6 @@ func (d *DeliverService) readUntilClose() {
 				logger.Errorf("Error sending block event %s", err)
 			}
 
-			d.unAcknowledged++
-			if d.unAcknowledged >= d.windowSize/2 {
-				logger.Warningf("Sending acknowledgement [%d]", t.Block.Header.Number)
-				err = d.client.Send(&orderer.DeliverUpdate{
-					Type: &orderer.DeliverUpdate_Acknowledgement{
-						Acknowledgement: &orderer.Acknowledgement{
-							Number: seqNum,
-						},
-					},
-				})
-				if err != nil {
-					return
-				}
-				d.unAcknowledged = 0
-			}
 		default:
 			logger.Warning("Received unknown: ", t)
 			return

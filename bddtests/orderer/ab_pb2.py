@@ -20,38 +20,34 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/ab.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x10orderer/ab.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"3\n\x11\x42roadcastResponse\x12\x1e\n\x06Status\x18\x01 \x01(\x0e\x32\x0e.common.Status\"\xa8\x01\n\x08SeekInfo\x12*\n\x05Start\x18\x01 \x01(\x0e\x32\x1b.orderer.SeekInfo.StartType\x12\x17\n\x0fSpecifiedNumber\x18\x02 \x01(\x04\x12\x12\n\nWindowSize\x18\x03 \x01(\x04\x12\x0f\n\x07\x43hainID\x18\x04 \x01(\x0c\"2\n\tStartType\x12\n\n\x06NEWEST\x10\x00\x12\n\n\x06OLDEST\x10\x01\x12\r\n\tSPECIFIED\x10\x02\"!\n\x0f\x41\x63knowledgement\x12\x0e\n\x06Number\x18\x01 \x01(\x04\"o\n\rDeliverUpdate\x12\x33\n\x0f\x41\x63knowledgement\x18\x01 \x01(\x0b\x32\x18.orderer.AcknowledgementH\x00\x12!\n\x04Seek\x18\x02 \x01(\x0b\x32\x11.orderer.SeekInfoH\x00\x42\x06\n\x04Type\"Z\n\x0f\x44\x65liverResponse\x12\x1f\n\x05\x45rror\x18\x01 \x01(\x0e\x32\x0e.common.StatusH\x00\x12\x1e\n\x05\x42lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x42\x06\n\x04Type2\x95\x01\n\x0f\x41tomicBroadcast\x12?\n\tBroadcast\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x01\x30\x01\x12\x41\n\x07\x44\x65liver\x12\x16.orderer.DeliverUpdate\x1a\x18.orderer.DeliverResponse\"\x00(\x01\x30\x01\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+  serialized_pb=_b('\n\x10orderer/ab.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"3\n\x11\x42roadcastResponse\x12\x1e\n\x06status\x18\x01 \x01(\x0e\x32\x0e.common.Status\"\x0c\n\nSeekNewest\"\x0c\n\nSeekOldest\"\x1f\n\rSeekSpecified\x12\x0e\n\x06number\x18\x01 \x01(\x04\"\x91\x01\n\x0cSeekPosition\x12%\n\x06newest\x18\x01 \x01(\x0b\x32\x13.orderer.SeekNewestH\x00\x12%\n\x06oldest\x18\x02 \x01(\x0b\x32\x13.orderer.SeekOldestH\x00\x12+\n\tspecified\x18\x03 \x01(\x0b\x32\x16.orderer.SeekSpecifiedH\x00\x42\x06\n\x04Type\"\xd6\x01\n\x08SeekInfo\x12\x0f\n\x07\x63hainID\x18\x01 \x01(\t\x12$\n\x05start\x18\x02 \x01(\x0b\x32\x15.orderer.SeekPosition\x12#\n\x04stop\x18\x03 \x01(\x0b\x32\x15.orderer.SeekPosition\x12\x30\n\x08\x62\x65havior\x18\x04 \x01(\x0e\x32\x1e.orderer.SeekInfo.SeekBehavior\"<\n\x0cSeekBehavior\x12\x15\n\x11\x42LOCK_UNTIL_READY\x10\x00\x12\x15\n\x11\x46\x41IL_IF_NOT_READY\x10\x01\"[\n\x0f\x44\x65liverResponse\x12 \n\x06status\x18\x01 \x01(\x0e\x32\x0e.common.StatusH\x00\x12\x1e\n\x05\x62lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x42\x06\n\x04Type2\x90\x01\n\x0f\x41tomicBroadcast\x12?\n\tBroadcast\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x01\x30\x01\x12<\n\x07\x44\x65liver\x12\x11.orderer.SeekInfo\x1a\x18.orderer.DeliverResponse\"\x00(\x01\x30\x01\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
   ,
   dependencies=[common_dot_common__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
-_SEEKINFO_STARTTYPE = _descriptor.EnumDescriptor(
-  name='StartType',
-  full_name='orderer.SeekInfo.StartType',
+_SEEKINFO_SEEKBEHAVIOR = _descriptor.EnumDescriptor(
+  name='SeekBehavior',
+  full_name='orderer.SeekInfo.SeekBehavior',
   filename=None,
   file=DESCRIPTOR,
   values=[
     _descriptor.EnumValueDescriptor(
-      name='NEWEST', index=0, number=0,
+      name='BLOCK_UNTIL_READY', index=0, number=0,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='OLDEST', index=1, number=1,
-      options=None,
-      type=None),
-    _descriptor.EnumValueDescriptor(
-      name='SPECIFIED', index=2, number=2,
+      name='FAIL_IF_NOT_READY', index=1, number=1,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=222,
-  serialized_end=272,
+  serialized_start=467,
+  serialized_end=527,
 )
-_sym_db.RegisterEnumDescriptor(_SEEKINFO_STARTTYPE)
+_sym_db.RegisterEnumDescriptor(_SEEKINFO_SEEKBEHAVIOR)
 
 
 _BROADCASTRESPONSE = _descriptor.Descriptor(
@@ -62,7 +58,7 @@ _BROADCASTRESPONSE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Status', full_name='orderer.BroadcastResponse.Status', index=0,
+      name='status', full_name='orderer.BroadcastResponse.status', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -85,47 +81,18 @@ _BROADCASTRESPONSE = _descriptor.Descriptor(
 )
 
 
-_SEEKINFO = _descriptor.Descriptor(
-  name='SeekInfo',
-  full_name='orderer.SeekInfo',
+_SEEKNEWEST = _descriptor.Descriptor(
+  name='SeekNewest',
+  full_name='orderer.SeekNewest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
-    _descriptor.FieldDescriptor(
-      name='Start', full_name='orderer.SeekInfo.Start', index=0,
-      number=1, type=14, cpp_type=8, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='SpecifiedNumber', full_name='orderer.SeekInfo.SpecifiedNumber', index=1,
-      number=2, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='WindowSize', full_name='orderer.SeekInfo.WindowSize', index=2,
-      number=3, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='ChainID', full_name='orderer.SeekInfo.ChainID', index=3,
-      number=4, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
-    _SEEKINFO_STARTTYPE,
   ],
   options=None,
   is_extendable=False,
@@ -133,20 +100,44 @@ _SEEKINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=104,
-  serialized_end=272,
+  serialized_start=103,
+  serialized_end=115,
 )
 
 
-_ACKNOWLEDGEMENT = _descriptor.Descriptor(
-  name='Acknowledgement',
-  full_name='orderer.Acknowledgement',
+_SEEKOLDEST = _descriptor.Descriptor(
+  name='SeekOldest',
+  full_name='orderer.SeekOldest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=117,
+  serialized_end=129,
+)
+
+
+_SEEKSPECIFIED = _descriptor.Descriptor(
+  name='SeekSpecified',
+  full_name='orderer.SeekSpecified',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Number', full_name='orderer.Acknowledgement.Number', index=0,
+      name='number', full_name='orderer.SeekSpecified.number', index=0,
       number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -164,28 +155,35 @@ _ACKNOWLEDGEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=274,
-  serialized_end=307,
+  serialized_start=131,
+  serialized_end=162,
 )
 
 
-_DELIVERUPDATE = _descriptor.Descriptor(
-  name='DeliverUpdate',
-  full_name='orderer.DeliverUpdate',
+_SEEKPOSITION = _descriptor.Descriptor(
+  name='SeekPosition',
+  full_name='orderer.SeekPosition',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Acknowledgement', full_name='orderer.DeliverUpdate.Acknowledgement', index=0,
+      name='newest', full_name='orderer.SeekPosition.newest', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Seek', full_name='orderer.DeliverUpdate.Seek', index=1,
+      name='oldest', full_name='orderer.SeekPosition.oldest', index=1,
       number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='specified', full_name='orderer.SeekPosition.specified', index=2,
+      number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -202,11 +200,64 @@ _DELIVERUPDATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='Type', full_name='orderer.DeliverUpdate.Type',
+      name='Type', full_name='orderer.SeekPosition.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=309,
-  serialized_end=420,
+  serialized_start=165,
+  serialized_end=310,
+)
+
+
+_SEEKINFO = _descriptor.Descriptor(
+  name='SeekInfo',
+  full_name='orderer.SeekInfo',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='chainID', full_name='orderer.SeekInfo.chainID', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='start', full_name='orderer.SeekInfo.start', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='stop', full_name='orderer.SeekInfo.stop', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='behavior', full_name='orderer.SeekInfo.behavior', index=3,
+      number=4, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _SEEKINFO_SEEKBEHAVIOR,
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=313,
+  serialized_end=527,
 )
 
 
@@ -218,14 +269,14 @@ _DELIVERRESPONSE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Error', full_name='orderer.DeliverResponse.Error', index=0,
+      name='status', full_name='orderer.DeliverResponse.status', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Block', full_name='orderer.DeliverResponse.Block', index=1,
+      name='block', full_name='orderer.DeliverResponse.block', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -246,33 +297,41 @@ _DELIVERRESPONSE = _descriptor.Descriptor(
       name='Type', full_name='orderer.DeliverResponse.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=422,
-  serialized_end=512,
+  serialized_start=529,
+  serialized_end=620,
 )
 
-_BROADCASTRESPONSE.fields_by_name['Status'].enum_type = common_dot_common__pb2._STATUS
-_SEEKINFO.fields_by_name['Start'].enum_type = _SEEKINFO_STARTTYPE
-_SEEKINFO_STARTTYPE.containing_type = _SEEKINFO
-_DELIVERUPDATE.fields_by_name['Acknowledgement'].message_type = _ACKNOWLEDGEMENT
-_DELIVERUPDATE.fields_by_name['Seek'].message_type = _SEEKINFO
-_DELIVERUPDATE.oneofs_by_name['Type'].fields.append(
-  _DELIVERUPDATE.fields_by_name['Acknowledgement'])
-_DELIVERUPDATE.fields_by_name['Acknowledgement'].containing_oneof = _DELIVERUPDATE.oneofs_by_name['Type']
-_DELIVERUPDATE.oneofs_by_name['Type'].fields.append(
-  _DELIVERUPDATE.fields_by_name['Seek'])
-_DELIVERUPDATE.fields_by_name['Seek'].containing_oneof = _DELIVERUPDATE.oneofs_by_name['Type']
-_DELIVERRESPONSE.fields_by_name['Error'].enum_type = common_dot_common__pb2._STATUS
-_DELIVERRESPONSE.fields_by_name['Block'].message_type = common_dot_common__pb2._BLOCK
+_BROADCASTRESPONSE.fields_by_name['status'].enum_type = common_dot_common__pb2._STATUS
+_SEEKPOSITION.fields_by_name['newest'].message_type = _SEEKNEWEST
+_SEEKPOSITION.fields_by_name['oldest'].message_type = _SEEKOLDEST
+_SEEKPOSITION.fields_by_name['specified'].message_type = _SEEKSPECIFIED
+_SEEKPOSITION.oneofs_by_name['Type'].fields.append(
+  _SEEKPOSITION.fields_by_name['newest'])
+_SEEKPOSITION.fields_by_name['newest'].containing_oneof = _SEEKPOSITION.oneofs_by_name['Type']
+_SEEKPOSITION.oneofs_by_name['Type'].fields.append(
+  _SEEKPOSITION.fields_by_name['oldest'])
+_SEEKPOSITION.fields_by_name['oldest'].containing_oneof = _SEEKPOSITION.oneofs_by_name['Type']
+_SEEKPOSITION.oneofs_by_name['Type'].fields.append(
+  _SEEKPOSITION.fields_by_name['specified'])
+_SEEKPOSITION.fields_by_name['specified'].containing_oneof = _SEEKPOSITION.oneofs_by_name['Type']
+_SEEKINFO.fields_by_name['start'].message_type = _SEEKPOSITION
+_SEEKINFO.fields_by_name['stop'].message_type = _SEEKPOSITION
+_SEEKINFO.fields_by_name['behavior'].enum_type = _SEEKINFO_SEEKBEHAVIOR
+_SEEKINFO_SEEKBEHAVIOR.containing_type = _SEEKINFO
+_DELIVERRESPONSE.fields_by_name['status'].enum_type = common_dot_common__pb2._STATUS
+_DELIVERRESPONSE.fields_by_name['block'].message_type = common_dot_common__pb2._BLOCK
 _DELIVERRESPONSE.oneofs_by_name['Type'].fields.append(
-  _DELIVERRESPONSE.fields_by_name['Error'])
-_DELIVERRESPONSE.fields_by_name['Error'].containing_oneof = _DELIVERRESPONSE.oneofs_by_name['Type']
+  _DELIVERRESPONSE.fields_by_name['status'])
+_DELIVERRESPONSE.fields_by_name['status'].containing_oneof = _DELIVERRESPONSE.oneofs_by_name['Type']
 _DELIVERRESPONSE.oneofs_by_name['Type'].fields.append(
-  _DELIVERRESPONSE.fields_by_name['Block'])
-_DELIVERRESPONSE.fields_by_name['Block'].containing_oneof = _DELIVERRESPONSE.oneofs_by_name['Type']
+  _DELIVERRESPONSE.fields_by_name['block'])
+_DELIVERRESPONSE.fields_by_name['block'].containing_oneof = _DELIVERRESPONSE.oneofs_by_name['Type']
 DESCRIPTOR.message_types_by_name['BroadcastResponse'] = _BROADCASTRESPONSE
+DESCRIPTOR.message_types_by_name['SeekNewest'] = _SEEKNEWEST
+DESCRIPTOR.message_types_by_name['SeekOldest'] = _SEEKOLDEST
+DESCRIPTOR.message_types_by_name['SeekSpecified'] = _SEEKSPECIFIED
+DESCRIPTOR.message_types_by_name['SeekPosition'] = _SEEKPOSITION
 DESCRIPTOR.message_types_by_name['SeekInfo'] = _SEEKINFO
-DESCRIPTOR.message_types_by_name['Acknowledgement'] = _ACKNOWLEDGEMENT
-DESCRIPTOR.message_types_by_name['DeliverUpdate'] = _DELIVERUPDATE
 DESCRIPTOR.message_types_by_name['DeliverResponse'] = _DELIVERRESPONSE
 
 BroadcastResponse = _reflection.GeneratedProtocolMessageType('BroadcastResponse', (_message.Message,), dict(
@@ -282,26 +341,40 @@ BroadcastResponse = _reflection.GeneratedProtocolMessageType('BroadcastResponse'
   ))
 _sym_db.RegisterMessage(BroadcastResponse)
 
+SeekNewest = _reflection.GeneratedProtocolMessageType('SeekNewest', (_message.Message,), dict(
+  DESCRIPTOR = _SEEKNEWEST,
+  __module__ = 'orderer.ab_pb2'
+  # @@protoc_insertion_point(class_scope:orderer.SeekNewest)
+  ))
+_sym_db.RegisterMessage(SeekNewest)
+
+SeekOldest = _reflection.GeneratedProtocolMessageType('SeekOldest', (_message.Message,), dict(
+  DESCRIPTOR = _SEEKOLDEST,
+  __module__ = 'orderer.ab_pb2'
+  # @@protoc_insertion_point(class_scope:orderer.SeekOldest)
+  ))
+_sym_db.RegisterMessage(SeekOldest)
+
+SeekSpecified = _reflection.GeneratedProtocolMessageType('SeekSpecified', (_message.Message,), dict(
+  DESCRIPTOR = _SEEKSPECIFIED,
+  __module__ = 'orderer.ab_pb2'
+  # @@protoc_insertion_point(class_scope:orderer.SeekSpecified)
+  ))
+_sym_db.RegisterMessage(SeekSpecified)
+
+SeekPosition = _reflection.GeneratedProtocolMessageType('SeekPosition', (_message.Message,), dict(
+  DESCRIPTOR = _SEEKPOSITION,
+  __module__ = 'orderer.ab_pb2'
+  # @@protoc_insertion_point(class_scope:orderer.SeekPosition)
+  ))
+_sym_db.RegisterMessage(SeekPosition)
+
 SeekInfo = _reflection.GeneratedProtocolMessageType('SeekInfo', (_message.Message,), dict(
   DESCRIPTOR = _SEEKINFO,
   __module__ = 'orderer.ab_pb2'
   # @@protoc_insertion_point(class_scope:orderer.SeekInfo)
   ))
 _sym_db.RegisterMessage(SeekInfo)
-
-Acknowledgement = _reflection.GeneratedProtocolMessageType('Acknowledgement', (_message.Message,), dict(
-  DESCRIPTOR = _ACKNOWLEDGEMENT,
-  __module__ = 'orderer.ab_pb2'
-  # @@protoc_insertion_point(class_scope:orderer.Acknowledgement)
-  ))
-_sym_db.RegisterMessage(Acknowledgement)
-
-DeliverUpdate = _reflection.GeneratedProtocolMessageType('DeliverUpdate', (_message.Message,), dict(
-  DESCRIPTOR = _DELIVERUPDATE,
-  __module__ = 'orderer.ab_pb2'
-  # @@protoc_insertion_point(class_scope:orderer.DeliverUpdate)
-  ))
-_sym_db.RegisterMessage(DeliverUpdate)
 
 DeliverResponse = _reflection.GeneratedProtocolMessageType('DeliverResponse', (_message.Message,), dict(
   DESCRIPTOR = _DELIVERRESPONSE,
@@ -335,7 +408,7 @@ class AtomicBroadcastStub(object):
         )
     self.Deliver = channel.stream_stream(
         '/orderer.AtomicBroadcast/Deliver',
-        request_serializer=DeliverUpdate.SerializeToString,
+        request_serializer=SeekInfo.SerializeToString,
         response_deserializer=DeliverResponse.FromString,
         )
 
@@ -351,8 +424,6 @@ class AtomicBroadcastServicer(object):
 
   def Deliver(self, request_iterator, context):
     """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
-    To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -368,7 +439,7 @@ def add_AtomicBroadcastServicer_to_server(servicer, server):
       ),
       'Deliver': grpc.stream_stream_rpc_method_handler(
           servicer.Deliver,
-          request_deserializer=DeliverUpdate.FromString,
+          request_deserializer=SeekInfo.FromString,
           response_serializer=DeliverResponse.SerializeToString,
       ),
   }
@@ -384,8 +455,6 @@ class BetaAtomicBroadcastServicer(object):
     context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
   def Deliver(self, request_iterator, context):
     """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
-    To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
     """
     context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
 
@@ -397,8 +466,6 @@ class BetaAtomicBroadcastStub(object):
     raise NotImplementedError()
   def Deliver(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
     """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
-    To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
     """
     raise NotImplementedError()
 
@@ -406,7 +473,7 @@ class BetaAtomicBroadcastStub(object):
 def beta_create_AtomicBroadcast_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
   request_deserializers = {
     ('orderer.AtomicBroadcast', 'Broadcast'): common_dot_common__pb2.Envelope.FromString,
-    ('orderer.AtomicBroadcast', 'Deliver'): DeliverUpdate.FromString,
+    ('orderer.AtomicBroadcast', 'Deliver'): SeekInfo.FromString,
   }
   response_serializers = {
     ('orderer.AtomicBroadcast', 'Broadcast'): BroadcastResponse.SerializeToString,
@@ -423,7 +490,7 @@ def beta_create_AtomicBroadcast_server(servicer, pool=None, pool_size=None, defa
 def beta_create_AtomicBroadcast_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
   request_serializers = {
     ('orderer.AtomicBroadcast', 'Broadcast'): common_dot_common__pb2.Envelope.SerializeToString,
-    ('orderer.AtomicBroadcast', 'Deliver'): DeliverUpdate.SerializeToString,
+    ('orderer.AtomicBroadcast', 'Deliver'): SeekInfo.SerializeToString,
   }
   response_deserializers = {
     ('orderer.AtomicBroadcast', 'Broadcast'): BroadcastResponse.FromString,

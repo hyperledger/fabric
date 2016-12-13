@@ -316,8 +316,12 @@ func Receive(p *peer) (*receiver, error) {
 	if err != nil {
 		return nil, err
 	}
-	cid := provisional.TestChainID
-	dstream.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{Start: ab.SeekInfo_NEWEST, WindowSize: 10, ChainID: string(cid)}}})
+	dstream.Send(&ab.SeekInfo{
+		ChainID:  provisional.TestChainID,
+		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
+		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+	})
 
 	go func() {
 		num := uint64(0)
@@ -341,7 +345,6 @@ func Receive(p *peer) (*receiver, error) {
 					if merr1 == nil && merr2 == nil {
 						retch <- tx
 						num++
-						dstream.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Acknowledgement{Acknowledgement: &ab.Acknowledgement{Number: num}}})
 					}
 				}
 			}

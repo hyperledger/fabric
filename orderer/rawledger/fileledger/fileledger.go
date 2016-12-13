@@ -272,18 +272,18 @@ func (fl *fileLedger) Append(messages []*cb.Envelope, metadata [][]byte) *cb.Blo
 }
 
 // Iterator implements the rawledger.Reader definition
-func (fl *fileLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64) (rawledger.Iterator, uint64) {
-	switch startType {
-	case ab.SeekInfo_OLDEST:
+func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (rawledger.Iterator, uint64) {
+	switch start := startPosition.Type.(type) {
+	case *ab.SeekPosition_Oldest:
 		return &cursor{fl: fl, blockNumber: 0}, 0
-	case ab.SeekInfo_NEWEST:
+	case *ab.SeekPosition_Newest:
 		high := fl.height - 1
 		return &cursor{fl: fl, blockNumber: high}, high
-	case ab.SeekInfo_SPECIFIED:
-		if specified > fl.height {
+	case *ab.SeekPosition_Specified:
+		if start.Specified.Number > fl.height {
 			return &rawledger.NotFoundErrorIterator{}, 0
 		}
-		return &cursor{fl: fl, blockNumber: specified}, specified
+		return &cursor{fl: fl, blockNumber: start.Specified.Number}, start.Specified.Number
 	}
 
 	// This line should be unreachable, but the compiler requires it

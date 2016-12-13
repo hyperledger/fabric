@@ -37,7 +37,7 @@ func (mlw *mockLedgerReadWriter) Append(data []*cb.Envelope, metadata [][]byte) 
 	return nil
 }
 
-func (mlw *mockLedgerReadWriter) Iterator(startType ab.SeekInfo_StartType, specified uint64) (rawledger.Iterator, uint64) {
+func (mlw *mockLedgerReadWriter) Iterator(startType *ab.SeekPosition) (rawledger.Iterator, uint64) {
 	panic("Unimplemented")
 }
 

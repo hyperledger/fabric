@@ -41,7 +41,7 @@ type Iterator interface {
 // Reader allows the caller to inspect the raw ledger
 type Reader interface {
 	// Iterator retrieves an Iterator, as specified by an cb.SeekInfo message, returning an iterator, and its starting block number
-	Iterator(startType ab.SeekInfo_StartType, specified uint64) (Iterator, uint64)
+	Iterator(startType *ab.SeekPosition) (Iterator, uint64)
 	// Height returns the highest block number in the chain, plus one
 	Height() uint64
 }

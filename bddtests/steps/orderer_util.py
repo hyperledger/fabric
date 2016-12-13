@@ -35,12 +35,13 @@ from grpc.framework.interfaces.face.face import AbortionError
 from grpc.beta.interfaces import StatusCode
 from common.common_pb2 import Payload
 
+# The default chain ID when the system is statically bootstrapped for testing
+TEST_CHAIN_ID = "**TEST_CHAINID**"
 
 class StreamHelper:
 
-    def __init__(self, ordererStub):
+    def __init__(self):
         self.streamClosed = False
-        self.ordererStub = ordererStub
         self.sendQueue = Queue.Queue()
         self.receivedMessages = []
         self.replyGenerator = None
@@ -49,8 +50,7 @@ class StreamHelper:
         assert self.replyGenerator == None, "reply generator already set!!"
         self.replyGenerator = replyGenerator
 
-    def createSendGenerator(self, firstMsg, timeout = 2):
-      yield firstMsg
+    def createSendGenerator(self, timeout = 2):
       while True:
         try:
             nextMsg = self.sendQueue.get(True, timeout)
@@ -62,13 +62,18 @@ class StreamHelper:
         except Queue.Empty:
             return
 
+    def readMessage(self):
+        for reply in self.readMessages(1):
+            return reply
+        assert False, "Received no messages"
+
     def readMessages(self, expectedCount):
         msgsReceived = []
         counter = 0
         try:
             for reply in self.replyGenerator:
                 counter += 1
-                print("{0} received reply: {1}, counter = {2}".format("DeliverStreamHelper", reply, counter))
+                print("received reply: {0}, counter = {1}".format(reply, counter))
                 msgsReceived.append(reply)
                 if counter == int(expectedCount):
                     break
@@ -87,52 +92,34 @@ class StreamHelper:
 
 class DeliverStreamHelper(StreamHelper):
 
-    def __init__(self, ordererStub, sendAck, Start, SpecifiedNumber, WindowSize, timeout = 1):
-        StreamHelper.__init__(self, ordererStub)
-        #Set the ack flag
-        trueOptions = ['true', 'True','yes','Yes']
-        falseOptions = ['false', 'False', 'no', 'No']
-        assert sendAck in trueOptions + falseOptions, "sendAck of '{0}' not recognized, expected one of '{1}'".format(sendAck, trueOptions + falseOptions)
-        self.sendAck = sendAck in trueOptions
+    def __init__(self, ordererStub, timeout = 1):
+        StreamHelper.__init__(self)
         # Set the UpdateMessage and start the stream
-        self.deliverUpdateMsg = createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize)
-        sendGenerator = self.createSendGenerator(self.deliverUpdateMsg, timeout)
-        replyGenerator = ordererStub.Deliver(sendGenerator, timeout + 1)
-        self.replyGenerator = replyGenerator
+        sendGenerator = self.createSendGenerator(timeout)
+        self.replyGenerator = ordererStub.Deliver(sendGenerator, timeout + 1)
 
-    def seekToBlock(self, blockNum):
-        deliverUpdateMsg = ab_pb2.DeliverUpdate()
-        deliverUpdateMsg.CopyFrom(self.deliverUpdateMsg)
-        deliverUpdateMsg.Seek.SpecifiedNumber = blockNum
-        self.sendQueue.put(deliverUpdateMsg)
+    def seekToRange(self, chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest'):
+        self.sendQueue.put(createSeekInfo(start = start))
 
-    def sendAcknowledgment(self, blockNum):
-        deliverUpdateMsg = ab_pb2.DeliverUpdate(Acknowledgement = ab_pb2.Acknowledgement(Number = blockNum))
-        self.sendQueue.put(deliverUpdateMsg)
-
-    def getWindowSize(self):
-        return self.deliverUpdateMsg.Seek.WindowSize
-
-    def readDeliveredMessages(self, expectedCount):
-        'Read the expected number of messages, being sure to supply the ACK if sendAck is True'
-        if not self.sendAck:
-            return self.readMessages(expectedCount)
-        else:
-            # This block assumes the expectedCount is a multiple of the windowSize
-            msgsRead = []
-            while len(msgsRead) < expectedCount and self.streamClosed == False:
-                numToRead = self.getWindowSize() if self.getWindowSize() < expectedCount else expectedCount
-                msgsRead.extend(self.readMessages(numToRead))
-                # send the ack
-                self.sendAcknowledgment(msgsRead[-1].Block.Header.Number)
-                print('SentACK!!')
-                print('')
-            return msgsRead
-
+    def getBlocks(self):
+        blocks = []
+        try:
+            while True:
+                reply = self.readMessage()
+                if reply.HasField("block"):
+                    blocks.append(reply.block)
+                    print("received reply: {0}, len(blocks) = {1}".format(reply, len(blocks)))
+                else:
+                    if reply.status != common_pb2.SUCCESS:
+                        print("Got error: {0}".format(reply.status))
+                    print("Done receiving blocks")
+                    break
+        except Exception as e:
+            print("getBlocks got error: {0}".format(e) )
+        return blocks
 
 
 class UserRegistration:
-
 
     def __init__(self, secretMsg, composeService):
         self.enrollId = secretMsg['enrollId']
@@ -148,10 +135,10 @@ class UserRegistration:
         return self.secretMsg['enrollId']
 
 
-    def connectToDeliverFunction(self, context, sendAck, start, SpecifiedNumber, WindowSize, composeService):
+    def connectToDeliverFunction(self, context, composeService):
         'Connect to the deliver function and drain messages to associated orderer queue'
         assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
-        streamHelper = DeliverStreamHelper(self.getABStubForComposeService(context, composeService), sendAck, start, SpecifiedNumber, WindowSize)
+        streamHelper = DeliverStreamHelper(self.getABStubForComposeService(context, composeService))
         self.abDeliversStreamHelperDict[composeService] = streamHelper
         return streamHelper
 
@@ -161,9 +148,10 @@ class UserRegistration:
         return self.abDeliversStreamHelperDict[composeService]
 
 
+
     def broadcastMessages(self, context, numMsgsToBroadcast, composeService):
 		abStub = self.getABStubForComposeService(context, composeService)
-		replyGenerator = abStub.Broadcast(generateBroadcastMessages(int(numMsgsToBroadcast)),2)
+		replyGenerator = abStub.Broadcast(generateBroadcastMessages(numToGenerate = int(numMsgsToBroadcast)), 2)
 		counter = 0
 		try:
 			for reply in replyGenerator:
@@ -187,9 +175,6 @@ class UserRegistration:
 		newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
 		self.atomicBroadcastStubsDict[composeService] = newABStub
 		return newABStub
-
-# The default chain ID when the system is statically bootstrapped for testing
-TEST_CHAIN_ID = "**TEST_CHAINID**".encode()
 
 # Registerses a user on a specific composeService
 def registerUser(context, secretMsg, composeService):
@@ -216,23 +201,37 @@ def getUserRegistration(context, enrollId):
         raise Exception("Orderer user has not been registered: {0}".format(enrollId))
     return userRegistration
 
-def createDeliverUpdateMsg(Start, SpecifiedNumber, WindowSize):
-    seek = ab_pb2.SeekInfo()
-    startVal = seek.__getattribute__(Start)
-    seekInfo = ab_pb2.SeekInfo(Start = startVal, SpecifiedNumber = SpecifiedNumber, WindowSize = WindowSize, ChainID = TEST_CHAIN_ID)
-    deliverUpdateMsg = ab_pb2.DeliverUpdate(Seek = seekInfo)
-    return deliverUpdateMsg
+def seekPosition(position):
+    if position == 'Oldest':
+        return ab_pb2.SeekPosition(oldest = ab_pb2.SeekOldest())
+    elif  position == 'Newest':
+        return ab_pb2.SeekPosition(newest = ab_pb2.SeekNewest())
+    else:
+        return ab_pb2.SeekPosition(specified = ab_pb2.SeekSpecified(number = position))
 
+def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  behavior = 'FAIL_IF_NOT_READY'):
+    return ab_pb2.SeekInfo(
+        chainID = chainID,
+        start = seekPosition(start),
+        stop = seekPosition(end),
+        behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
+    )
 
-def generateBroadcastMessages(numToGenerate = 1, timeToHoldOpen = 1):
+def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 1, timeToHoldOpen = 1):
     messages = []
     for i in range(0, numToGenerate):
-        envelope = common_pb2.Envelope()
-        payload = common_pb2.Payload(header = common_pb2.Header(chainHeader = common_pb2.ChainHeader()))
-        payload.header.chainHeader.chainID = TEST_CHAIN_ID
-        payload.header.chainHeader.type = common_pb2.ENDORSER_TRANSACTION
-        payload.data = str("BDD test: {0}".format(datetime.datetime.utcnow()))
-        envelope.payload = payload.SerializeToString()
+        payload = common_pb2.Payload(
+            header = common_pb2.Header(
+                chainHeader = common_pb2.ChainHeader(
+                    chainID = chainID,
+                    type = common_pb2.ENDORSER_TRANSACTION,
+                )
+            ),
+            data = str("BDD test: {0}".format(datetime.datetime.utcnow())),
+        )
+        envelope = common_pb2.Envelope(
+            payload = payload.SerializeToString()
+        )
         messages.append(envelope)
     for msg in messages:
         yield msg

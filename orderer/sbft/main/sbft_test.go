@@ -131,10 +131,20 @@ func updateReceiver(t *testing.T, resultch chan byte, errorch chan error, client
 		errorch <- fmt.Errorf("Failed to get Deliver stream: %s", err)
 		return
 	}
-	dstream.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{Start: ab.SeekInfo_NEWEST, WindowSize: 10, ChainID: provisional.TestChainID}}})
+	err = dstream.Send(&ab.SeekInfo{
+		ChainID:  provisional.TestChainID,
+		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
+		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: ^uint64(0)}}},
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+	})
+	if err != nil {
+		errorch <- fmt.Errorf("Failed to send to Deliver stream: %s", err)
+		return
+	}
 	logger.Info("{Update Receiver} Listening to ledger updates.")
 	for i := 0; i < 2; i++ {
 		m, inerr := dstream.Recv()
+		logger.Info("{Update Receiver} Got message: ", m, "err:", inerr)
 		if inerr != nil {
 			errorch <- fmt.Errorf("Failed to receive consensus: %s", inerr)
 			return

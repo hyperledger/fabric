@@ -19,60 +19,48 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math"
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 type deliverClient struct {
-	client         ab.AtomicBroadcast_DeliverClient
-	chainID        string
-	windowSize     uint64
-	unAcknowledged uint64
+	client  ab.AtomicBroadcast_DeliverClient
+	chainID string
 }
 
-func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, chainID string, windowSize uint64) *deliverClient {
-	return &deliverClient{client: client, chainID: chainID, windowSize: windowSize}
+func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, chainID string) *deliverClient {
+	return &deliverClient{client: client, chainID: chainID}
 }
 
 func (r *deliverClient) seekOldest() error {
-	return r.client.Send(&ab.DeliverUpdate{
-		Type: &ab.DeliverUpdate_Seek{
-			Seek: &ab.SeekInfo{
-				Start:      ab.SeekInfo_OLDEST,
-				WindowSize: r.windowSize,
-				ChainID:    r.chainID,
-			},
-		},
+	return r.client.Send(&ab.SeekInfo{
+		ChainID:  r.chainID,
+		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
+		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	})
 }
 
 func (r *deliverClient) seekNewest() error {
-	return r.client.Send(&ab.DeliverUpdate{
-		Type: &ab.DeliverUpdate_Seek{
-			Seek: &ab.SeekInfo{
-				Start:      ab.SeekInfo_NEWEST,
-				WindowSize: r.windowSize,
-				ChainID:    r.chainID,
-			},
-		},
+	return r.client.Send(&ab.SeekInfo{
+		ChainID:  r.chainID,
+		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
+		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	})
 }
 
 func (r *deliverClient) seek(blockNumber uint64) error {
-	return r.client.Send(&ab.DeliverUpdate{
-		Type: &ab.DeliverUpdate_Seek{
-			Seek: &ab.SeekInfo{
-				Start:           ab.SeekInfo_SPECIFIED,
-				SpecifiedNumber: blockNumber,
-				WindowSize:      r.windowSize,
-				ChainID:         r.chainID,
-			},
-		},
+	return r.client.Send(&ab.SeekInfo{
+		ChainID:  r.chainID,
+		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}},
+		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 	})
 }
 
@@ -85,26 +73,11 @@ func (r *deliverClient) readUntilClose() {
 		}
 
 		switch t := msg.Type.(type) {
-		case *ab.DeliverResponse_Error:
-			if t.Error == cb.Status_SUCCESS {
-				fmt.Println("ERROR! Received success in error field")
-				return
-			}
-			fmt.Println("Got error ", t)
+		case *ab.DeliverResponse_Status:
+			fmt.Println("Got status ", t)
+			return
 		case *ab.DeliverResponse_Block:
 			fmt.Println("Received block: ", t.Block)
-			r.unAcknowledged++
-			if r.unAcknowledged >= r.windowSize/2 {
-				fmt.Println("Sending acknowledgement")
-				err = r.client.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Acknowledgement{Acknowledgement: &ab.Acknowledgement{Number: t.Block.Header.Number}}})
-				if err != nil {
-					return
-				}
-				r.unAcknowledged = 0
-			}
-		default:
-			fmt.Println("Received unknock: ", t)
-			return
 		}
 	}
 }
@@ -114,11 +87,9 @@ func main() {
 
 	var chainID string
 	var serverAddr string
-	var windowSize uint64
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
 	flag.StringVar(&chainID, "chainID", provisional.TestChainID, "The chain ID to deliver from.")
-	flag.Uint64Var(&windowSize, "windowSize", 10, "The window size for the deliver.")
 	flag.Parse()
 
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
@@ -132,8 +103,11 @@ func main() {
 		return
 	}
 
-	s := newDeliverClient(client, chainID, windowSize)
-	s.seekOldest()
-	s.readUntilClose()
+	s := newDeliverClient(client, chainID)
+	err = s.seekOldest()
+	if err != nil {
+		fmt.Println("Received error:", err)
+	}
 
+	s.readUntilClose()
 }

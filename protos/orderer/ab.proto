@@ -23,41 +23,48 @@ option go_package = "github.com/hyperledger/fabric/protos/orderer";
 package orderer;
 
 message BroadcastResponse {
-    common.Status Status = 1;
+    common.Status status = 1;
 }
 
-message SeekInfo {
-    // Start may be specified to a specific block number, or may be request from the newest or oldest available
-    // The start location is always inclusive, so the first reply from NEWEST will contain the newest block at the time
-    // of reception, it will must not wait until a new block is created.  Similarly, when SPECIFIED, and SpecifiedNumber = 10
-    // The first block received must be block 10, not block 11
-    enum StartType {
-        NEWEST = 0;
-        OLDEST = 1;
-        SPECIFIED = 2;
-    }
-    StartType Start = 1;
-    uint64 SpecifiedNumber = 2; // Only used when start = SPECIFIED
-    uint64 WindowSize = 3; // The window size is the maximum number of blocks that will be sent without Acknowledgement, the base of the window moves to the most recently received acknowledgment
-    string ChainID = 4; // The chain to seek within
+message SeekNewest { } 
+
+message SeekOldest { }
+
+message SeekSpecified {
+    uint64 number = 1;
 }
 
-message Acknowledgement {
-    uint64 Number = 1;
-}
-
-// The update message either causes a seek to a new stream start with a new window, or acknowledges a received block and advances the base of the window
-message DeliverUpdate {
+message SeekPosition {
     oneof Type {
-        Acknowledgement Acknowledgement = 1; // Acknowledgement should be sent monotonically and only for a block which has been received, Acknowledgements received non-monotonically has undefined behavior
-        SeekInfo Seek = 2; // When set, SeekInfo causes a seek and potential reconfiguration of the window size
+        SeekNewest newest = 1;
+        SeekOldest oldest = 2;
+        SeekSpecified specified = 3;
     }
+}
+
+// SeekInfo specifies the range of requested blocks to return
+// If the start position is not found, an error is immediately returned
+// Otherwise, blocks are returned until a missing block is encountered, then behavior is dictated
+// by the SeekBehavior specified.  If BLOCK_UNTIL_READY is specified, the reply will block until
+// the requested blocks are available, if FAIL_IF_NOT_READY is specified, the reply will return an
+// error indicating that the block is not found.  To request that all blocks be returned indefinitely
+// as they are created, behavior should be set to BLOCK_UNTIL_READY and the stop should be set to
+// specified with a number of MAX_UINT64
+message SeekInfo {
+    enum SeekBehavior {
+        BLOCK_UNTIL_READY = 0;
+        FAIL_IF_NOT_READY = 1;
+    }
+    string chainID = 1;        // The chain to seek within
+    SeekPosition start = 2;    // The position to start the deliver from
+    SeekPosition stop = 3;     // The position to stop the deliver
+    SeekBehavior behavior = 4; // The behavior when a missing block is encountered
 }
 
 message DeliverResponse {
     oneof Type {
-        common.Status Error = 1;
-        common.Block Block = 2;
+        common.Status status = 1;
+        common.Block block = 2;
     }
 }
 
@@ -66,7 +73,5 @@ service AtomicBroadcast {
     rpc Broadcast(stream common.Envelope) returns (stream BroadcastResponse) {}
 
     // deliver first requires an update containing a seek message, then a stream of block replies is received.
-    // The receiver may choose to send an Acknowledgement for any block number it receives, however Acknowledgements must never be more than WindowSize apart
-    // To avoid latency, clients will likely acknowledge before the WindowSize has been exhausted, preventing the server from stopping and waiting for an Acknowledgement
-    rpc Deliver(stream DeliverUpdate) returns (stream DeliverResponse) {}
+    rpc Deliver(stream SeekInfo) returns (stream DeliverResponse) {}
 }

@@ -136,10 +136,10 @@ func (rl *ramLedger) Height() uint64 {
 }
 
 // Iterator implements the rawledger.Reader definition
-func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64) (rawledger.Iterator, uint64) {
+func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (rawledger.Iterator, uint64) {
 	var list *simpleList
-	switch startType {
-	case ab.SeekInfo_OLDEST:
+	switch start := startPosition.Type.(type) {
+	case *ab.SeekPosition_Oldest:
 		oldest := rl.oldest
 		list = &simpleList{
 			block:  &cb.Block{Header: &cb.BlockHeader{Number: oldest.block.Header.Number - 1}},
@@ -147,7 +147,7 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 			signal: make(chan struct{}),
 		}
 		close(list.signal)
-	case ab.SeekInfo_NEWEST:
+	case *ab.SeekPosition_Newest:
 		newest := rl.newest
 		list = &simpleList{
 			block:  &cb.Block{Header: &cb.BlockHeader{Number: newest.block.Header.Number - 1}},
@@ -155,9 +155,11 @@ func (rl *ramLedger) Iterator(startType ab.SeekInfo_StartType, specified uint64)
 			signal: make(chan struct{}),
 		}
 		close(list.signal)
-	case ab.SeekInfo_SPECIFIED:
-		logger.Debugf("Attempting to return block %d", specified)
+	case *ab.SeekPosition_Specified:
 		oldest := rl.oldest
+		specified := start.Specified.Number
+		logger.Debugf("Attempting to return block %d", specified)
+
 		// Note the two +1's here is to accomodate the 'preGenesis' block of ^uint64(0)
 		if specified+1 < oldest.block.Header.Number+1 || specified > rl.newest.block.Header.Number+1 {
 			logger.Debugf("Returning error iterator because specified seek was %d with oldest %d and newest %d", specified, rl.oldest.block.Header.Number, rl.newest.block.Header.Number)
