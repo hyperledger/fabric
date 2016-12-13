@@ -42,6 +42,9 @@ func (i *noopIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, err
 func (i *noopIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 	return nil, nil
 }
+func (i *noopIndex) getTXLocForBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
+	return nil, nil
+}
 
 func TestBlockIndexSync(t *testing.T) {
 	testBlockIndexSync(t, 10, 5, false)
@@ -103,7 +106,9 @@ func TestBlockIndexSelectiveIndexing(t *testing.T) {
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockHash})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxID})
+	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNumTranNum})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockHash, blkstorage.IndexableAttrBlockNum})
+	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxID, blkstorage.IndexableAttrBlockNumTranNum})
 }
 
 func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.IndexableAttr) {
@@ -146,6 +151,17 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		txOrig, err := extractTransaction(blocks[0].Data.Data[0])
 		testutil.AssertNoError(t, err, "")
 		testutil.AssertEquals(t, tx, txOrig)
+	} else {
+		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
+	}
+
+	//test 'retrieveTrasnactionsByBlockNumTranNum
+	tx2, err := blockfileMgr.retrieveTransactionForBlockNumTranNum(1, 1)
+	if testutil.Contains(indexItems, blkstorage.IndexableAttrBlockNumTranNum) {
+		testutil.AssertNoError(t, err, "Error while retrieving tx by blockNum and tranNum")
+		txOrig2, err2 := extractTransaction(blocks[0].Data.Data[0])
+		testutil.AssertNoError(t, err2, "")
+		testutil.AssertEquals(t, tx2, txOrig2)
 	} else {
 		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
 	}

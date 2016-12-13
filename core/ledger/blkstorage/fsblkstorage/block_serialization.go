@@ -27,7 +27,13 @@ import (
 
 type serializedBlockInfo struct {
 	blockHeader *common.BlockHeader
-	txOffsets   map[string]*locPointer
+	txOffsets   []*txindexInfo
+}
+
+//The order of the transactions must be maintained for history
+type txindexInfo struct {
+	txID string
+	loc  *locPointer
 }
 
 func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {
@@ -94,8 +100,9 @@ func addHeaderBytes(blockHeader *common.BlockHeader, buf *proto.Buffer) error {
 	return nil
 }
 
-func addDataBytes(blockData *common.BlockData, buf *proto.Buffer) (map[string]*locPointer, error) {
-	txOffsets := make(map[string]*locPointer)
+func addDataBytes(blockData *common.BlockData, buf *proto.Buffer) ([]*txindexInfo, error) {
+	var txOffsets []*txindexInfo
+
 	if err := buf.EncodeVarint(uint64(len(blockData.Data))); err != nil {
 		return nil, err
 	}
@@ -108,7 +115,8 @@ func addDataBytes(blockData *common.BlockData, buf *proto.Buffer) (map[string]*l
 		if err := buf.EncodeRawBytes(txEnvelopeBytes); err != nil {
 			return nil, err
 		}
-		txOffsets[txid] = &locPointer{offset, len(buf.Bytes()) - offset}
+		idxInfo := &txindexInfo{txid, &locPointer{offset, len(buf.Bytes()) - offset}}
+		txOffsets = append(txOffsets, idxInfo)
 	}
 	return txOffsets, nil
 }
@@ -147,9 +155,9 @@ func extractHeader(buf *ledgerutil.Buffer) (*common.BlockHeader, error) {
 	return header, nil
 }
 
-func extractData(buf *ledgerutil.Buffer) (*common.BlockData, map[string]*locPointer, error) {
+func extractData(buf *ledgerutil.Buffer) (*common.BlockData, []*txindexInfo, error) {
 	data := &common.BlockData{}
-	txOffsets := make(map[string]*locPointer)
+	var txOffsets []*txindexInfo
 	var numItems uint64
 	var err error
 
@@ -167,7 +175,8 @@ func extractData(buf *ledgerutil.Buffer) (*common.BlockData, map[string]*locPoin
 			return nil, nil, err
 		}
 		data.Data = append(data.Data, txEnvBytes)
-		txOffsets[txid] = &locPointer{txOffset, buf.GetBytesConsumed() - txOffset}
+		idxInfo := &txindexInfo{txid, &locPointer{txOffset, buf.GetBytesConsumed() - txOffset}}
+		txOffsets = append(txOffsets, idxInfo)
 	}
 	return data, txOffsets, nil
 }

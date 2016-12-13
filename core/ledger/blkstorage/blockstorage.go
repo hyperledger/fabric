@@ -30,9 +30,10 @@ type IndexableAttr string
 
 // constants for indexable attributes
 const (
-	IndexableAttrBlockNum  = IndexableAttr("BlockNum")
-	IndexableAttrBlockHash = IndexableAttr("BlockHash")
-	IndexableAttrTxID      = IndexableAttr("TxID")
+	IndexableAttrBlockNum        = IndexableAttr("BlockNum")
+	IndexableAttrBlockHash       = IndexableAttr("BlockHash")
+	IndexableAttrTxID            = IndexableAttr("TxID")
+	IndexableAttrBlockNumTranNum = IndexableAttr("BlockNumTranNum")
 )
 
 // IndexConfig - a configuration that includes a list of attributes that should be indexed
