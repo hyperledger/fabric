@@ -18,6 +18,7 @@ package chaincode
 
 import (
 	//import system chain codes here
+	"github.com/hyperledger/fabric/core/system_chaincode/cscc"
 	"github.com/hyperledger/fabric/core/system_chaincode/escc"
 	"github.com/hyperledger/fabric/core/system_chaincode/vscc"
 )
@@ -44,6 +45,13 @@ var systemChaincodes = []*SystemChaincode{
 		Path:      "github.com/hyperledger/fabric/core/system_chaincode/vscc",
 		InitArgs:  [][]byte{[]byte("")},
 		Chaincode: &vscc.ValidatorOneValidSignature{},
+	},
+	{
+		Enabled:   true,
+		Name:      "cscc",
+		Path:      "github.com/hyperledger/fabric/core/system_chaincode/cscc",
+		InitArgs:  [][]byte{[]byte("")},
+		Chaincode: &cscc.PeerConfiger{},
 	}}
 
 //RegisterSysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric
