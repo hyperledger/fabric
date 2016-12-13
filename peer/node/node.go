@@ -19,11 +19,8 @@ package node
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/op/go-logging"
-
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 const nodeFuncName = "node"
@@ -35,13 +32,10 @@ var logger = logging.MustGetLogger("nodeCmd")
 
 // Cmd returns the cobra command for Node
 func Cmd() *cobra.Command {
-	//initialize the ledger sub-system
-	lpath := viper.GetString("peer.fileSystemPath")
-	kvledger.Initialize(lpath)
-
 	nodeCmd.AddCommand(startCmd())
 	nodeCmd.AddCommand(statusCmd())
 	nodeCmd.AddCommand(stopCmd())
+	nodeCmd.AddCommand(joinCmd())
 
 	return nodeCmd
 }

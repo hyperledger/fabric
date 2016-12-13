@@ -22,6 +22,12 @@ import "github.com/hyperledger/fabric/protos/msp"
 // FIXME: we need better comments on the interfaces!!
 // FIXME: we need better comments on the interfaces!!
 
+//Common is implemented by both MSPManger and MSP
+type Common interface {
+	// DeserializeIdentity deserializes an identity
+	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
+}
+
 // Membership service provider APIs for Hyperledger Fabric:
 //
 // By "membership service provider" we refer to an abstract component of the
@@ -43,19 +49,22 @@ import "github.com/hyperledger/fabric/protos/msp"
 // This object is immutable, it is initialized once and never changed.
 type MSPManager interface {
 
+	// Common interface needs to be implemented by MSPManager
+	Common
+
 	// Setup the MSP manager instance according to configuration information
 	Setup(msps []*msp.MSPConfig) error
 
 	// GetMSPs Provides a list of Membership Service providers
 	GetMSPs() (map[string]MSP, error)
-
-	// DeserializeIdentity deserializes an identity
-	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 }
 
 // MSP is the minimal Membership Service Provider Interface to be implemented
 // to accommodate peer functionality
 type MSP interface {
+
+	// Common interface needs to be implemented by MSP
+	Common
 
 	// Setup the MSP instance according to configuration information
 	Setup(config *msp.MSPConfig) error
@@ -71,9 +80,6 @@ type MSP interface {
 
 	// GetDefaultSigningIdentity returns the default signing identity
 	GetDefaultSigningIdentity() (SigningIdentity, error)
-
-	// DeserializeIdentity deserializes an identity
-	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 
 	// Validate checks whether the supplied identity is valid
 	Validate(id Identity) error

@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -38,6 +38,10 @@ var sysccLogger = logging.MustGetLogger("sysccapi")
 // when the fabric comes up. SystemChaincodes are installed by adding an
 // entry in importsysccs.go
 type SystemChaincode struct {
+	//Global, once only not tied to chains. Such chaincodes cannot
+	//save state in the ledger. CSCC is an example
+	ChainlessCC bool
+
 	// Enabled a convenient switch to enable/disable system chaincode without
 	// having to remove entry from importsysccs.go
 	Enabled bool
@@ -76,27 +80,36 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 	return err
 }
 
-// DeploySysCC deploys the given system chaincode on a chain
-func DeploySysCC(chainID string, syscc *SystemChaincode) error {
+// deploySysCC deploys the given system chaincode on a chain
+func deploySysCC(chainID string, syscc *SystemChaincode) error {
 	if !syscc.Enabled || !isWhitelisted(syscc) {
 		sysccLogger.Info(fmt.Sprintf("system chaincode (%s,%s) disabled", syscc.Name, syscc.Path))
 		return nil
 	}
 
-	var err error
-
-	lgr := kvledger.GetLedger(chainID)
-	var txsim ledger.TxSimulator
-	if txsim, err = lgr.NewTxSimulator(); err != nil {
-		return err
+	if chainID == "" && !syscc.ChainlessCC {
+		return fmt.Errorf("cannot deploy system chaincode %s without chain id", syscc.Name)
+	} else if chainID != "" && syscc.ChainlessCC {
+		return fmt.Errorf("cannot deploy chainless system chaincode %s with chain id %s", syscc.Name, chainID)
 	}
 
-	defer txsim.Done()
+	var err error
+
+	ctxt := context.Background()
+	if !syscc.ChainlessCC {
+		lgr := peer.GetLedger(chainID)
+		var txsim ledger.TxSimulator
+		if txsim, err = lgr.NewTxSimulator(); err != nil {
+			return err
+		}
+
+		ctxt = context.WithValue(ctxt, TXSimulatorKey, txsim)
+
+		defer txsim.Done()
+	}
 
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
-
-	ctxt := context.WithValue(context.Background(), TXSimulatorKey, txsim)
 
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec, err := buildSysCC(ctxt, spec)

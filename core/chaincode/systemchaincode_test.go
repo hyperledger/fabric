@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/system_chaincode/samplesyscc"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -70,8 +70,9 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/tmpdb")
-	kvledger.Initialize("/var/hyperledger/test/tmpdb")
 	defer os.RemoveAll("/var/hyperledger/test/tmpdb")
+
+	peer.MockInitialize()
 
 	//use a different address than what we usually use for "peer"
 	//we override the peerAddress set in chaincode_support.go
@@ -115,7 +116,10 @@ func TestExecuteDeploySysChaincode(t *testing.T) {
 
 	/////^^^ system initialization completed ^^^
 
-	kvledger.CreateLedger(chainID)
+	if err = peer.MockCreateChain(chainID); err != nil {
+		closeListenerAndSleep(lis)
+		return
+	}
 
 	err = deploySampleSysCC(t, ctxt, chainID)
 	if err != nil {
@@ -132,8 +136,9 @@ func TestMultichains(t *testing.T) {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/tmpdb")
-	kvledger.Initialize("/var/hyperledger/test/tmpdb")
 	defer os.RemoveAll("/var/hyperledger/test/tmpdb")
+
+	peer.MockInitialize()
 
 	//use a different address than what we usually use for "peer"
 	//we override the peerAddress set in chaincode_support.go
@@ -177,7 +182,10 @@ func TestMultichains(t *testing.T) {
 
 	chainID := "chain1"
 
-	kvledger.CreateLedger(chainID)
+	if err = peer.MockCreateChain(chainID); err != nil {
+		closeListenerAndSleep(lis)
+		return
+	}
 
 	err = deploySampleSysCC(t, ctxt, chainID)
 	if err != nil {
@@ -188,7 +196,10 @@ func TestMultichains(t *testing.T) {
 
 	chainID = "chain2"
 
-	kvledger.CreateLedger(chainID)
+	if err = peer.MockCreateChain(chainID); err != nil {
+		closeListenerAndSleep(lis)
+		return
+	}
 
 	err = deploySampleSysCC(t, ctxt, chainID)
 	if err != nil {

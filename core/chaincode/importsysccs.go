@@ -26,32 +26,36 @@ import (
 //see systemchaincode_test.go for an example using "sample_syscc"
 var systemChaincodes = []*SystemChaincode{
 	{
-		Enabled:   true,
-		Name:      "lccc",
-		Path:      "github.com/hyperledger/fabric/core/chaincode",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &LifeCycleSysCC{},
+		ChainlessCC: true,
+		Enabled:     true,
+		Name:        "cscc",
+		Path:        "github.com/hyperledger/fabric/core/system_chaincode/cscc",
+		InitArgs:    [][]byte{[]byte("")},
+		Chaincode:   &cscc.PeerConfiger{},
 	},
 	{
-		Enabled:   true,
-		Name:      "escc",
-		Path:      "github.com/hyperledger/fabric/core/system_chaincode/escc",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &escc.EndorserOneValidSignature{},
+		ChainlessCC: false,
+		Enabled:     true,
+		Name:        "lccc",
+		Path:        "github.com/hyperledger/fabric/core/chaincode",
+		InitArgs:    [][]byte{[]byte("")},
+		Chaincode:   &LifeCycleSysCC{},
 	},
 	{
-		Enabled:   true,
-		Name:      "vscc",
-		Path:      "github.com/hyperledger/fabric/core/system_chaincode/vscc",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &vscc.ValidatorOneValidSignature{},
+		ChainlessCC: false,
+		Enabled:     true,
+		Name:        "escc",
+		Path:        "github.com/hyperledger/fabric/core/system_chaincode/escc",
+		InitArgs:    [][]byte{[]byte("")},
+		Chaincode:   &escc.EndorserOneValidSignature{},
 	},
 	{
-		Enabled:   true,
-		Name:      "cscc",
-		Path:      "github.com/hyperledger/fabric/core/system_chaincode/cscc",
-		InitArgs:  [][]byte{[]byte("")},
-		Chaincode: &cscc.PeerConfiger{},
+		ChainlessCC: false,
+		Enabled:     true,
+		Name:        "vscc",
+		Path:        "github.com/hyperledger/fabric/core/system_chaincode/vscc",
+		InitArgs:    [][]byte{[]byte("")},
+		Chaincode:   &vscc.ValidatorOneValidSignature{},
 	}}
 
 //RegisterSysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric
@@ -66,7 +70,19 @@ func RegisterSysCCs() {
 //note the chaincode must still be deployed and launched like a user chaincode will be
 func DeploySysCCs(chainID string) {
 	for _, sysCC := range systemChaincodes {
-		DeploySysCC(chainID, sysCC)
+		if !sysCC.ChainlessCC {
+			deploySysCC(chainID, sysCC)
+		}
+	}
+}
+
+//DeployChainlessSysCCs is the hook for deploying chainless system chaincodes
+//these chaincodes cannot make any ledger calls
+func DeployChainlessSysCCs() {
+	for _, sysCC := range systemChaincodes {
+		if sysCC.ChainlessCC {
+			deploySysCC("", sysCC)
+		}
 	}
 }
 
@@ -75,7 +91,9 @@ func DeploySysCCs(chainID string) {
 //in the same process
 func deRegisterSysCCs(chainID string) {
 	for _, sysCC := range systemChaincodes {
-		deregisterSysCC(chainID, sysCC)
+		if !sysCC.ChainlessCC {
+			deregisterSysCC(chainID, sysCC)
+		}
 	}
 }
 
@@ -84,6 +102,17 @@ func deRegisterSysCCs(chainID string) {
 func IsSysCC(name string) bool {
 	for _, sysCC := range systemChaincodes {
 		if sysCC.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+//IsChainlessSysCC returns true if the name matches a chainless system chaincode's
+//system chaincode names are system, chain wide
+func IsChainlessSysCC(name string) bool {
+	for _, sysCC := range systemChaincodes {
+		if sysCC.Name == name && sysCC.ChainlessCC {
 			return true
 		}
 	}

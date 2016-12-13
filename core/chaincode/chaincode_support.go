@@ -61,7 +61,8 @@ func getTxSimulator(context context.Context) ledger.TxSimulator {
 	if txsim, ok := context.Value(TXSimulatorKey).(ledger.TxSimulator); ok {
 		return txsim
 	}
-	panic("!!!---Not Using ledgernext---!!!")
+	//chaincode will not allow state operations
+	return nil
 }
 
 //CCContext pass this around instead of string of args

@@ -25,7 +25,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -59,7 +58,10 @@ func (*Endorser) checkEsccAndVscc(prop *pb.Proposal) error {
 }
 
 func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
-	lgr := kvledger.GetLedger(ledgername)
+	lgr := peer.GetLedger(ledgername)
+	if lgr == nil {
+		return nil, fmt.Errorf("chain does not exist(%s)", ledgername)
+	}
 	return lgr.NewTxSimulator()
 }
 
@@ -90,7 +92,9 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, txid stri
 	var b []byte
 	var ccevent *pb.ChaincodeEvent
 
-	ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
+	if txsim != nil {
+		ctxt = context.WithValue(ctxt, chaincode.TXSimulatorKey, txsim)
+	}
 
 	//is this a system chaincode
 	syscc := chaincode.IsSysCC(cid.Name)
@@ -163,25 +167,31 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		return nil, nil, nil, err
 	}
 
-	if simResult, err = txsim.GetTxSimulationResults(); err != nil {
-		return nil, nil, nil, err
+	if txsim != nil {
+		if simResult, err = txsim.GetTxSimulationResults(); err != nil {
+			return nil, nil, nil, err
+		}
 	}
 
 	return resp, simResult, ccevent, nil
 }
 
 func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid string, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) ([]byte, error) {
-	ctxt := context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
+	ctxt := ctx
+	if txsim != nil {
+		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
+	}
+
 	return chaincode.GetCDSFromLCCC(ctxt, txid, prop, chainID, chaincodeID)
 }
 
 //endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, proposal *pb.Proposal, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator) ([]byte, error) {
+func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, proposal *pb.Proposal, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator) (*pb.ProposalResponse, error) {
 	endorserLogger.Infof("endorseProposal starts for chainID %s, ccid %s", chainID, ccid)
 
 	// 1) extract the chaincodeDeploymentSpec for the chaincode we are invoking; we need it to get the escc
 	var escc string
-	if ccid.Name != "lccc" {
+	if !chaincode.IsSysCC(ccid.Name) {
 		depPayload, err := e.getCDSFromLCCC(ctx, chainID, txid, proposal, ccid.Name, txsim)
 		if err != nil {
 			return nil, fmt.Errorf("failed to obtain cds for %s - %s", ccid, err)
@@ -235,7 +245,13 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 	// from other ESCCs, which would stand in the way of the
 	// endorsement process.
 
-	return prBytes, nil
+	//3 -- respond
+	pResp, err := putils.GetProposalResponse(prBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return pResp, nil
 }
 
 // ProcessProposal process the Proposal
@@ -252,15 +268,19 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}
 
 	chainID := hdr.ChainHeader.ChainID
-	if chainID == "" {
-		err = fmt.Errorf("chainID not provided")
+
+	//chainless MSPs have "" chain name
+	ischainless := chaincode.IsChainlessSysCC(hdrExt.ChaincodeID.Name)
+
+	//chainID should be empty for chainless SysCC (such as CSCC for Join proposal) and for
+	//nothing else
+	if chainID == "" && !ischainless {
+		err = fmt.Errorf("chainID not provided for chaincode %s", hdrExt.ChaincodeID.Name)
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	} else if chainID != "" && ischainless {
+		err = fmt.Errorf("chainID %s provided for a chainless syscc", hdrExt.ChaincodeID.Name)
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
-
-	//TODO check join call checks go here
-
-	//OK... this is not a join proposal, just a regular one...the chain is there and the peer has joined
-	//lets proceed with the proposal processing
 
 	//TODO check for uniqueness of prop.TxID with ledger
 
@@ -270,14 +290,16 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
-	// obtaining once the tx simulator for this proposal
+	// obtaining once the tx simulator for this proposal. This will be nil
+	// for chainless proposals
 	var txsim ledger.TxSimulator
-	//TODO - get chainname from the proposal when defined
-	chainName := hdr.ChainHeader.ChainID
-	if txsim, err = e.getTxSimulator(chainName); err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	if chainID != "" {
+		if txsim, err = e.getTxSimulator(chainID); err != nil {
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		}
+		defer txsim.Done()
 	}
-	defer txsim.Done()
+	//this could be a request to a chainless SysCC
 
 	// TODO: if the proposal has an extension, it will be of type ChaincodeAction;
 	//       if it's present it means that no simulation is to be performed because
@@ -293,18 +315,20 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}
 
 	//2 -- endorse and get a marshalled ProposalResponse message
+	var pResp *pb.ProposalResponse
+
+	//TODO till we implement global ESCC, CSCC for system chaincodes
+	//chainless proposals (such as CSCC) don't have to be endorsed
+	if ischainless {
+		pResp = &pb.ProposalResponse{Response: &pb.Response{}}
+	} else {
+		pResp, err = e.endorseProposal(ctx, chainID, txid, prop, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeID, txsim)
+		if err != nil {
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		}
+	}
+
 	//TODO what do we do with response ? We need it for Invoke responses for sure
-	prBytes, err := e.endorseProposal(ctx, chainID, txid, prop, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeID, txsim)
-	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
-	}
-
-	//3 -- respond
-	pResp, err := putils.GetProposalResponse(prBytes)
-	if err != nil {
-		return nil, err
-	}
-
 	// Set the proposal response payload - it
 	// contains the "return value" from the
 	// chaincode invocation
@@ -322,7 +346,7 @@ func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, chainID string, sig
 		return err
 	}
 
-	lgr := kvledger.GetLedger(chainID)
+	lgr := peer.GetLedger(chainID)
 	if lgr == nil {
 		return fmt.Errorf("failure while looking up the ledger")
 	}
