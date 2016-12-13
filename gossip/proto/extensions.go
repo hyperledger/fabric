@@ -53,6 +53,10 @@ func (mc *msgComparator) invalidationPolicy(this interface{}, that interface{}) 
 		return mc.stateInvalidationPolicy(thisMsg.GetStateInfo(), thatMsg.GetStateInfo())
 	}
 
+	if thisMsg.IsIdentityMsg() && thatMsg.IsIdentityMsg() {
+		return mc.identityInvalidationPolicy(thisMsg.GetPeerIdentity(), thatMsg.GetPeerIdentity())
+	}
+
 	return common.MessageNoAction
 }
 
@@ -61,6 +65,14 @@ func (mc *msgComparator) stateInvalidationPolicy(thisStateMsg *StateInfo, thatSt
 		return common.MessageNoAction
 	}
 	return compareTimestamps(thisStateMsg.Timestamp, thatStateMsg.Timestamp)
+}
+
+func (mc *msgComparator) identityInvalidationPolicy(thisIdentityMsg *PeerIdentity, thatIdentityMsg *PeerIdentity) common.InvalidationResult {
+	if bytes.Equal(thisIdentityMsg.PkiID, thatIdentityMsg.PkiID) {
+		return common.MessageInvalidated
+	}
+
+	return common.MessageNoAction
 }
 
 func (mc *msgComparator) dataInvalidationPolicy(thisDataMsg *DataMessage, thatDataMsg *DataMessage) common.InvalidationResult {
@@ -115,3 +127,18 @@ func (m *GossipMessage) IsDataMsg() bool {
 func (m *GossipMessage) IsStateInfoMsg() bool {
 	return m.GetStateInfo() != nil
 }
+
+func (m *GossipMessage) IsIdentityMsg() bool {
+	return m.GetPeerIdentity() != nil
+}
+
+func (m *GossipMessage) IsPullMsg() bool {
+	return m.GetDataReq() != nil || m.GetDataUpdate() != nil ||
+		m.GetHello() != nil || m.GetDataDig() != nil
+}
+
+// MsgConsumer invokes code given a GossipMessage
+type MsgConsumer func(*GossipMessage)
+
+// IdentifierExtractor extracts from a GossipMessage an identifier
+type IdentifierExtractor func(*GossipMessage) string

@@ -27,6 +27,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"google.golang.org/grpc"
+	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/common"
 )
 
 // This file is used to bootstrap a gossip instance for integration/demo purposes ONLY
@@ -63,7 +65,7 @@ func newComm(selfEndpoint string, s *grpc.Server, dialOpts ...grpc.DialOption) c
 func NewGossipComponent(endpoint string, s *grpc.Server, bootPeers ...string) (gossip.Gossip, comm.Comm) {
 	conf := newConfig(endpoint, bootPeers...)
 	comm := newComm(endpoint, s, grpc.WithInsecure())
-	return gossip.NewGossipService(conf, comm, NewGossipCryptoService()), comm
+	return gossip.NewGossipService(conf, comm, &naiveCryptoService{}, NewGossipCryptoService(), api.PeerIdentityType(conf.ID)), comm
 }
 
 // GossipCryptoService is an interface that conforms to both
@@ -102,6 +104,13 @@ func (cs *naiveCryptoServiceImpl) ValidateAliveMsg(*proto.AliveMessage) bool {
 	return true
 }
 
+func (cs *naiveCryptoServiceImpl) Verify(vkID, signature, message []byte) error {
+	if ! bytes.Equal(signature, message) {
+		return fmt.Errorf("Wrong signature")
+	}
+	return nil
+}
+
 // SignMessage signs an AliveMessage and updates its signature field
 func (cs *naiveCryptoServiceImpl) SignMessage(msg *proto.AliveMessage) *proto.AliveMessage {
 	return msg
@@ -117,10 +126,49 @@ func (cs *naiveCryptoServiceImpl) Sign(msg []byte) ([]byte, error) {
 	return msg, nil
 }
 
-// Verify verifies a signature on a message that came from a peer with a certain vkID
-func (cs *naiveCryptoServiceImpl) Verify(vkID, signature, message []byte) error {
-	if !bytes.Equal(signature, message) {
-		return fmt.Errorf("Invalid signature!")
+// Verify checks that signature is a valid signature of message under a peer's verification key.
+// If the verification succeeded, Verify returns nil meaning no error occurred.
+// If peerCert is nil, then the signature is verified against this peer's verification key.
+func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	equal := bytes.Equal(signature, message)
+	if !equal {
+		return fmt.Errorf("Wrong signature:%v, %v", signature, message)
 	}
 	return nil
+}
+
+type naiveCryptoService struct {
+}
+
+func (*naiveCryptoService) ValidateAliveMsg(am *proto.AliveMessage) bool {
+	return true
+}
+
+func (*naiveCryptoService) SignMessage(am *proto.AliveMessage) *proto.AliveMessage {
+	return am
+}
+
+func (*naiveCryptoService) IsEnabled() bool {
+	return true
+}
+
+func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	return nil
+}
+
+// GetPKIidOfCert returns the PKI-ID of a peer's identity
+func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
+	return common.PKIidType(peerIdentity)
+}
+
+// VerifyBlock returns nil if the block is properly signed,
+// else returns error
+func (*naiveCryptoService) VerifyBlock(signedBlock api.SignedBlock) error {
+	return nil
+}
+
+// Sign signs msg with this peer's signing key and outputs
+// the signature if no error occurred.
+func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {
+	return msg, nil
 }
