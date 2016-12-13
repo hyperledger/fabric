@@ -48,6 +48,7 @@ type General struct {
 	ListenPort    uint16
 	GenesisMethod string
 	BatchSize     BatchSize
+	GenesisFile   string
 	Profile       Profile
 }
 
@@ -112,6 +113,7 @@ var defaults = TopLevel{
 		BatchSize: BatchSize{
 			MaxMessageCount: 10,
 		},
+		GenesisFile: "./genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
@@ -166,6 +168,8 @@ func (c *TopLevel) completeInitialization() {
 			c.General.ListenPort = defaults.General.ListenPort
 		case c.General.GenesisMethod == "":
 			c.General.GenesisMethod = defaults.General.GenesisMethod
+		case c.General.GenesisFile == "":
+			c.General.GenesisFile = defaults.General.GenesisFile
 		case c.General.Profile.Enabled && (c.General.Profile.Address == ""):
 			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", defaults.General.Profile.Address)
 			c.General.Profile.Address = defaults.General.Profile.Address

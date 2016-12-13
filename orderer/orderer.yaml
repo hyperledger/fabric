@@ -40,8 +40,11 @@ General:
     # Listen port: The port on which to bind to listen
     ListenPort: 7050
 
-    # Genesis method: The method by which to retrieve/generate the genesis block
+    # Genesis method: The method by which to retrieve/generate the genesis block. Available values are "provisional", "file"
     GenesisMethod: provisional
+
+    # Genesis file: The file containing the genesis block. Used by the orderer when GenesisMethod is set to "file"
+    GenesisFile: ./genesisblock
 
     # Enable an HTTP service for Go "pprof" profiling as documented at
     # https://golang.org/pkg/net/http/pprof
