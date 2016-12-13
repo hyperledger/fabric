@@ -24,8 +24,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	logging "github.com/op/go-logging"
 )
 
@@ -81,9 +81,9 @@ func initApp() {
 	tx, err := marbleApp.CreateMarble(marble)
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx)
-	finalBlock, invalidTx, err := committer.CommitBlock(rawBlock)
+	err = committer.CommitBlock(rawBlock)
 	handleError(err, true)
-	printBlocksInfo(rawBlock, finalBlock, invalidTx)
+	printBlocksInfo(rawBlock)
 }
 
 func transferMarble() {
@@ -91,14 +91,23 @@ func transferMarble() {
 	tx1, err := marbleApp.TransferMarble([]string{"marble1", "jerry"})
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx1)
-	finalBlock, invalidTx, err := committer.CommitBlock(rawBlock)
+	err = committer.CommitBlock(rawBlock)
 	handleError(err, true)
-	printBlocksInfo(rawBlock, finalBlock, invalidTx)
+	printBlocksInfo(rawBlock)
 }
 
-func printBlocksInfo(rawBlock *common.Block, finalBlock *common.Block, invalidTxs []*pb.InvalidTransaction) {
+func printBlocksInfo(block *common.Block) {
+	// Read invalid transactions filter
+	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	numOfInvalid := 0
+	// Count how many transaction indeed invalid
+	for i := 0; i < len(block.Data.Data); i++ {
+		if txsFltr.IsSet(uint(i)) {
+			numOfInvalid++
+		}
+	}
 	fmt.Printf("Num txs in rawBlock = [%d], num invalidTxs = [%d]\n",
-		len(rawBlock.Data.Data), len(invalidTxs))
+		len(block.Data.Data), numOfInvalid)
 }
 
 func handleError(err error, quit bool) {

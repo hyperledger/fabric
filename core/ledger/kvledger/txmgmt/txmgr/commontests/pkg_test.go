@@ -24,6 +24,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 type testEnv interface {
@@ -78,16 +80,30 @@ func newTxMgrTestHelper(t *testing.T, txMgr txmgr.TxMgr) *txMgrTestHelper {
 
 func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet []byte) {
 	block := h.bg.NextBlock([][]byte{txRWSet}, false)
-	_, invalidTx, err := h.txMgr.ValidateAndPrepare(block, true)
+	err := h.txMgr.ValidateAndPrepare(block, true)
 	testutil.AssertNoError(h.t, err, "")
-	testutil.AssertEquals(h.t, len(invalidTx), 0)
+	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	invalidTxNum := 0
+	for i := 0; i < len(block.Data.Data); i++ {
+		if txsFltr.IsSet(uint(i)) {
+			invalidTxNum++
+		}
+	}
+	testutil.AssertEquals(h.t, invalidTxNum, 0)
 	err = h.txMgr.Commit()
 	testutil.AssertNoError(h.t, err, "")
 }
 
 func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet []byte) {
 	block := h.bg.NextBlock([][]byte{txRWSet}, false)
-	_, invalidTx, err := h.txMgr.ValidateAndPrepare(block, true)
+	err := h.txMgr.ValidateAndPrepare(block, true)
 	testutil.AssertNoError(h.t, err, "")
-	testutil.AssertEquals(h.t, len(invalidTx), 1)
+	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	invalidTxNum := 0
+	for i := 0; i < len(block.Data.Data); i++ {
+		if txsFltr.IsSet(uint(i)) {
+			invalidTxNum++
+		}
+	}
+	testutil.AssertEquals(h.t, invalidTxNum, 1)
 }

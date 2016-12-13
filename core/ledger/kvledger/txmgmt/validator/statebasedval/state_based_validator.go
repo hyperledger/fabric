@@ -20,8 +20,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
 )
@@ -40,18 +40,23 @@ func NewValidator(db statedb.VersionedDB) *Validator {
 }
 
 // ValidateAndPrepareBatch implements method in Validator interface
-func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidation bool) (
-	*common.Block, []*pb.InvalidTransaction, *statedb.UpdateBatch, error) {
+func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidation bool) (*statedb.UpdateBatch, error) {
 	logger.Debugf("New block arrived for validation:%#v, doMVCCValidation=%t", block, doMVCCValidation)
-	invalidTxs := []*pb.InvalidTransaction{}
 	var valid bool
 	updates := statedb.NewUpdateBatch()
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
+	txsFilter := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for txIndex, envBytes := range block.Data.Data {
+		if txsFilter.IsSet(uint(txIndex)) {
+			// Skiping invalid transaction
+			logger.Debug("Skipping transaction marked as invalid, txIndex=", txIndex)
+			continue
+		}
+
 		// extract actions from the envelope message
 		respPayload, err := putils.GetActionFromEnvelope(envBytes)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, err
 		}
 
 		//preparation for extracting RWSet from transaction
@@ -60,7 +65,7 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 		// Get the Result from the Action
 		// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
 		if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
-			return nil, nil, nil, err
+			return nil, err
 		}
 
 		// trace the first 2000 characters of RWSet only, in case it is huge
@@ -76,18 +81,19 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 		if !doMVCCValidation {
 			valid = true
 		} else if valid, err = v.validateTx(txRWSet, updates); err != nil {
-			return nil, nil, nil, err
+			return nil, err
 		}
-		//TODO add the validation info to the bitmap in the metadata of the block
+
 		if valid {
 			committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex+1))
 			addWriteSetToBatch(txRWSet, committingTxHeight, updates)
 		} else {
-			invalidTxs = append(invalidTxs, &pb.InvalidTransaction{
-				Transaction: &pb.Transaction{ /* FIXME */ }, Cause: pb.InvalidTransaction_RWConflictDuringCommit})
+			// Unset bit in byte array corresponded to the invalid transaction
+			txsFilter.Set(uint(txIndex))
 		}
 	}
-	return block, invalidTxs, updates, nil
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter.ToBytes()
+	return updates, nil
 }
 
 func addWriteSetToBatch(txRWSet *rwset.TxReadWriteSet, txHeight *version.Height, batch *statedb.UpdateBatch) {

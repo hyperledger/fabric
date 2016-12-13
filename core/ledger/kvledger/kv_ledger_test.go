@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKVLedgerBlockStorage(t *testing.T) {
@@ -41,8 +42,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	bg := testutil.NewBlockGenerator(t)
 	block1 := bg.NextBlock([][]byte{simRes}, false)
-	ledger.RemoveInvalidTransactionsAndPrepare(block1)
-	ledger.Commit()
+	ledger.Commit(block1)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
@@ -56,8 +56,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
 	block2 := bg.NextBlock([][]byte{simRes}, false)
-	ledger.RemoveInvalidTransactionsAndPrepare(block2)
-	ledger.Commit()
+	ledger.Commit(block2)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
@@ -99,9 +98,7 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	bg := testutil.NewBlockGenerator(t)
 	block1 := bg.NextBlock([][]byte{simRes}, false)
 	//performing validation of read and write set to find valid transactions
-	ledger.RemoveInvalidTransactionsAndPrepare(block1)
-	//writing the validated block to block storage and committing the transaction to state DB
-	ledger.Commit()
+	ledger.Commit(block1)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
@@ -119,10 +116,11 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	//generating a block based on the simulation result
 	block2 := bg.NextBlock([][]byte{simRes}, false)
 	//performing validation of read and write set to find valid transactions
-	ledger.RemoveInvalidTransactionsAndPrepare(block2)
+	ledger.txtmgmt.ValidateAndPrepare(block2, true)
 	//writing the validated block to block storage but not committing the transaction to state DB
-	ledger.blockStore.AddBlock(ledger.pendingBlockToCommit)
+	err := ledger.blockStore.AddBlock(block2)
 	//assume that peer fails here before committing the transaction
+	assert.NoError(t, err)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
@@ -186,8 +184,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	bg := testutil.NewBlockGenerator(t)
 	block1 := bg.NextBlock([][]byte{simRes}, false)
 
-	ledger.RemoveInvalidTransactionsAndPrepare(block1)
-	ledger.Commit()
+	ledger.Commit(block1)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
@@ -214,8 +211,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	simulationResults = append(simulationResults, simRes2)
 
 	block2 := bg.NextBlock(simulationResults, false)
-	ledger.RemoveInvalidTransactionsAndPrepare(block2)
-	ledger.Commit()
+	ledger.Commit(block2)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()

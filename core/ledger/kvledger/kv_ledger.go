@@ -27,12 +27,12 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 
 	logging "github.com/op/go-logging"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -60,10 +60,9 @@ func NewConf(filesystemPath string, maxBlockfileSize int) *Conf {
 // KVLedger provides an implementation of `ledger.ValidatedLedger`.
 // This implementation provides a key-value based data model
 type KVLedger struct {
-	blockStore           blkstorage.BlockStore
-	txtmgmt              txmgr.TxMgr
-	historymgmt          history.HistMgr
-	pendingBlockToCommit *common.Block
+	blockStore  blkstorage.BlockStore
+	txtmgmt     txmgr.TxMgr
+	historymgmt history.HistMgr
 }
 
 // NewKVLedger constructs new `KVLedger`
@@ -114,10 +113,13 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 			couchDBDef.Username, //enter couchDB id here
 			couchDBDef.Password) //enter couchDB pw here
 	}
-	l := &KVLedger{blockStore, txmgmt, historymgmt, nil}
+
+	l := &KVLedger{blockStore, txmgmt, historymgmt}
+
 	if err := recoverStateDB(l); err != nil {
 		panic(fmt.Errorf(`Error during state DB recovery:%s`, err))
 	}
+
 	return l, nil
 }
 
@@ -135,7 +137,7 @@ func recoverStateDB(l *KVLedger) error {
 	if savepointValue, err = l.txtmgmt.GetBlockNumFromSavepoint(); err != nil {
 		return err
 	}
-	logger.Debugf("savepointValue=%d, info.Height=%d", savepointValue, info.Height)
+
 	//Checking whether the savepointValue is in sync with block storage height
 	if savepointValue == info.Height {
 		return nil
@@ -145,11 +147,12 @@ func recoverStateDB(l *KVLedger) error {
 
 	//Compute updateSet for each missing savepoint and commit to state DB
 	for blockNumber := savepointValue + 1; blockNumber <= info.Height; blockNumber++ {
-		if l.pendingBlockToCommit, err = l.GetBlockByNumber(blockNumber); err != nil {
+		var block *common.Block
+		if block, err = l.GetBlockByNumber(blockNumber); err != nil {
 			return err
 		}
 		logger.Debugf("Constructing updateSet for the block %d", blockNumber)
-		if _, _, err = l.txtmgmt.ValidateAndPrepare(l.pendingBlockToCommit, false); err != nil {
+		if err = l.txtmgmt.ValidateAndPrepare(block, false); err != nil {
 			return err
 		}
 		logger.Debugf("Committing block %d to state database", blockNumber)
@@ -157,7 +160,7 @@ func recoverStateDB(l *KVLedger) error {
 			return err
 		}
 	}
-	l.pendingBlockToCommit = nil
+
 	return nil
 }
 
@@ -208,32 +211,23 @@ func (l *KVLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 	return l.txtmgmt.NewQueryExecutor()
 }
 
-// RemoveInvalidTransactionsAndPrepare validates all the transactions in the given block
-// and returns a block that contains only valid transactions and a list of transactions that are invalid
-func (l *KVLedger) RemoveInvalidTransactionsAndPrepare(block *common.Block) (*common.Block, []*pb.InvalidTransaction, error) {
-	var validBlock *common.Block
-	var invalidTxs []*pb.InvalidTransaction
-	var err error
-	validBlock, invalidTxs, err = l.txtmgmt.ValidateAndPrepare(block, true)
-	if err == nil {
-		l.pendingBlockToCommit = validBlock
-	}
-	return validBlock, invalidTxs, err
-}
-
 // Commit commits the valid block (returned in the method RemoveInvalidTransactionsAndPrepare) and related state changes
-func (l *KVLedger) Commit() error {
-	if l.pendingBlockToCommit == nil {
-		panic(fmt.Errorf(`Nothing to commit. RemoveInvalidTransactionsAndPrepare() method should have been called and should not have thrown error`))
+func (l *KVLedger) Commit(block *common.Block) error {
+	var err error
+
+	logger.Debugf("Validating block")
+	err = l.txtmgmt.ValidateAndPrepare(block, true)
+	if err != nil {
+		return err
 	}
 
 	logger.Debugf("Committing block to storage")
-	if err := l.blockStore.AddBlock(l.pendingBlockToCommit); err != nil {
+	if err = l.blockStore.AddBlock(block); err != nil {
 		return err
 	}
 
 	logger.Debugf("Committing block to state database")
-	if err := l.txtmgmt.Commit(); err != nil {
+	if err = l.txtmgmt.Commit(); err != nil {
 		panic(fmt.Errorf(`Error during commit to txmgr:%s`, err))
 	}
 
@@ -241,19 +235,12 @@ func (l *KVLedger) Commit() error {
 	logger.Debugf("===HISTORYDB=== Commit() will write to hisotry if enabled else will be by-passed if not enabled: vledgerconfig.IsHistoryDBEnabled(): %v\n", ledgerconfig.IsHistoryDBEnabled())
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		logger.Debugf("Committing transactions to history database")
-		if err := l.historymgmt.Commit(l.pendingBlockToCommit); err != nil {
+		if err := l.historymgmt.Commit(block); err != nil {
 			panic(fmt.Errorf(`Error during commit to txthistory:%s`, err))
 		}
 	}
 
-	l.pendingBlockToCommit = nil
 	return nil
-}
-
-// Rollback rollbacks the changes caused by the last invocation to method `RemoveInvalidTransactionsAndPrepare`
-func (l *KVLedger) Rollback() {
-	l.txtmgmt.Rollback()
-	l.pendingBlockToCommit = nil
 }
 
 // Close closes `KVLedger`

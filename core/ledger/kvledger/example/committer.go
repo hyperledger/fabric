@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Committer a toy committer
@@ -34,17 +33,10 @@ func ConstructCommitter(ledger ledger.ValidatedLedger) *Committer {
 }
 
 // CommitBlock commits the block
-func (c *Committer) CommitBlock(rawBlock *common.Block) (*common.Block, []*pb.InvalidTransaction, error) {
-	var validBlock *common.Block
-	var invalidTxs []*pb.InvalidTransaction
-	var err error
+func (c *Committer) CommitBlock(rawBlock *common.Block) error {
 	logger.Debugf("Committer validating the block...")
-	if validBlock, invalidTxs, err = c.ledger.RemoveInvalidTransactionsAndPrepare(rawBlock); err != nil {
-		return nil, nil, err
+	if err := c.ledger.Commit(rawBlock); err != nil {
+		return err
 	}
-	logger.Debugf("Committer committing the block...")
-	if err = c.ledger.Commit(); err != nil {
-		return nil, nil, err
-	}
-	return validBlock, invalidTxs, err
+	return nil
 }

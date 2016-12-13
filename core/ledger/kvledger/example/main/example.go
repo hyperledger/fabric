@@ -24,8 +24,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 const (
@@ -97,9 +97,9 @@ func initApp() {
 		accounts[3]: 100})
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx)
-	finalBlock, invalidTx, err := committer.CommitBlock(rawBlock)
+	err = committer.CommitBlock(rawBlock)
 	handleError(err, true)
-	printBlocksInfo(rawBlock, finalBlock, invalidTx)
+	printBlocksInfo(rawBlock)
 }
 
 func transferFunds() {
@@ -112,9 +112,9 @@ func transferFunds() {
 	rawBlock := consenter.ConstructBlock(tx1, tx2)
 
 	// act as committing peer to commit the Raw Block
-	finalBlock, invalidTx, err := committer.CommitBlock(rawBlock)
+	err = committer.CommitBlock(rawBlock)
 	handleError(err, true)
-	printBlocksInfo(rawBlock, finalBlock, invalidTx)
+	printBlocksInfo(rawBlock)
 }
 
 func tryInvalidTransfer() {
@@ -128,14 +128,23 @@ func tryDoubleSpend() {
 	tx2, err := app.TransferFunds("account1", "account4", 50)
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx1, tx2)
-	finalBlock, invalidTx, err := committer.CommitBlock(rawBlock)
+	err = committer.CommitBlock(rawBlock)
 	handleError(err, true)
-	printBlocksInfo(rawBlock, finalBlock, invalidTx)
+	printBlocksInfo(rawBlock)
 }
 
-func printBlocksInfo(rawBlock *common.Block, finalBlock *common.Block, invalidTxs []*pb.InvalidTransaction) {
+func printBlocksInfo(block *common.Block) {
+	// Read invalid transactions filter
+	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	numOfInvalid := 0
+	// Count how many transaction indeed invalid
+	for i := 0; i < len(block.Data.Data); i++ {
+		if txsFltr.IsSet(uint(i)) {
+			numOfInvalid++
+		}
+	}
 	fmt.Printf("Num txs in rawBlock = [%d], num invalidTxs = [%d]\n",
-		len(rawBlock.Data.Data), len(invalidTxs))
+		len(block.Data.Data), numOfInvalid)
 }
 
 func printBalances() {

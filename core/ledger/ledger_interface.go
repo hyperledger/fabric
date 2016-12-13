@@ -57,18 +57,12 @@ type ValidatedLedger interface {
 	// A client can obtain more than one 'TxSimulator's for parallel execution.
 	// Any snapshoting/synchronization should be performed at the implementation level if required
 	NewTxSimulator() (TxSimulator, error)
-	// NewQueryExecuter gives handle to a query executer.
+	// NewQueryExecuter gives handle to a query executor.
 	// A client can obtain more than one 'QueryExecutor's for parallel execution.
 	// Any synchronization should be performed at the implementation level if required
 	NewQueryExecutor() (QueryExecutor, error)
-	// RemoveInvalidTransactions validates all the transactions in the given block
-	// and returns a block that contains only valid transactions and a list of transactions that are invalid
-	RemoveInvalidTransactionsAndPrepare(block *common.Block) (*common.Block, []*pb.InvalidTransaction, error)
-	// Commit commits the changes prepared in the method RemoveInvalidTransactionsAndPrepare.
-	// Commits both the valid block and related state changes
-	Commit() error
-	// Rollback rollbacks the changes prepared in the method RemoveInvalidTransactionsAndPrepare
-	Rollback()
+	// Commits block into the ledger
+	Commit(block *common.Block) error
 }
 
 // QueryExecutor executes the queries

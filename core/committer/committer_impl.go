@@ -48,10 +48,7 @@ func NewLedgerCommitter(ledger ledger.ValidatedLedger) *LedgerCommitter {
 
 // CommitBlock commits block to into the ledger
 func (lc *LedgerCommitter) CommitBlock(block *common.Block) error {
-	if _, _, err := lc.ledger.RemoveInvalidTransactionsAndPrepare(block); err != nil {
-		return err
-	}
-	if err := lc.ledger.Commit(); err != nil {
+	if err := lc.ledger.Commit(block); err != nil {
 		return err
 	}
 	return nil

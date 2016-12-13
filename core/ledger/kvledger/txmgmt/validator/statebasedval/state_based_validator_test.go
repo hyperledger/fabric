@@ -24,6 +24,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 var testDBPath = "/tmp/fabric/core/ledger/kvledger/txmgmt/validator/statebasedval"
@@ -77,8 +79,16 @@ func checkValidation(t *testing.T, validator *Validator, rwsets []*rwset.RWSet, 
 		simulationResults = append(simulationResults, sr)
 	}
 	block := testutil.ConstructBlock(t, simulationResults, false)
-	block, invalidTx, _, err := validator.ValidateAndPrepareBatch(block, true)
+	_, err := validator.ValidateAndPrepareBatch(block, true)
+	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	invalidTxNum := 0
+	for i := 0; i < len(block.Data.Data); i++ {
+		if txsFltr.IsSet(uint(i)) {
+			invalidTxNum++
+		}
+	}
+
 	testutil.AssertNoError(t, err, "")
-	testutil.AssertEquals(t, len(invalidTx), len(invalidTxIndexes))
+	testutil.AssertEquals(t, invalidTxNum, len(invalidTxIndexes))
 	//TODO Add the check for exact txnum that is marked invlid when bitarray is in place
 }

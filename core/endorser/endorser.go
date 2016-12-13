@@ -334,11 +334,7 @@ func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, chainID string, sig
 	block := common.NewBlock(1, []byte{})
 	block.Data.Data = [][]byte{txBytes}
 	block.Header.DataHash = block.Data.Hash()
-	if _, _, err = lgr.RemoveInvalidTransactionsAndPrepare(block); err != nil {
-		return err
-	}
-
-	if err = lgr.Commit(); err != nil {
+	if err = lgr.Commit(block); err != nil {
 		return err
 	}
 

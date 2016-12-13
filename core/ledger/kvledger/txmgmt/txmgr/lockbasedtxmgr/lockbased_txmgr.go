@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/statebasedval"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
 
@@ -73,15 +72,15 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator() (ledger.TxSimulator, error) {
 }
 
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
-func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block, doMVCCValidation bool) (*common.Block, []*pb.InvalidTransaction, error) {
+func (txmgr *LockBasedTxMgr) ValidateAndPrepare(block *common.Block, doMVCCValidation bool) error {
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
-	block, invalidTxs, batch, err := txmgr.validator.ValidateAndPrepareBatch(block, doMVCCValidation)
+	batch, err := txmgr.validator.ValidateAndPrepareBatch(block, doMVCCValidation)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	txmgr.currentBlock = block
 	txmgr.batch = batch
-	return block, invalidTxs, err
+	return err
 }
 
 // Shutdown implements method in interface `txmgmt.TxMgr`

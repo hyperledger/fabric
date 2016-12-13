@@ -19,10 +19,9 @@ package validator
 import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Validator validates a rwset
 type Validator interface {
-	ValidateAndPrepareBatch(block *common.Block, doMVCCValidation bool) (*common.Block, []*pb.InvalidTransaction, *statedb.UpdateBatch, error)
+	ValidateAndPrepareBatch(block *common.Block, doMVCCValidation bool) (*statedb.UpdateBatch, error)
 }

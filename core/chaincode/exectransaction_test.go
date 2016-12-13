@@ -191,11 +191,8 @@ func endTxSimulation(chainID string, txsim ledger.TxSimulator, payload []byte, c
 			//create the block with 1 transaction
 			block := common.NewBlock(1, []byte{})
 			block.Data.Data = [][]byte{envBytes}
-			if _, _, err = lgr.RemoveInvalidTransactionsAndPrepare(block); err != nil {
-				return err
-			}
 			//commit the block
-			if err := lgr.Commit(); err != nil {
+			if err := lgr.Commit(block); err != nil {
 				return err
 			}
 		}
