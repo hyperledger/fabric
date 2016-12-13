@@ -18,60 +18,34 @@ package history
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 )
 
-//Complex setup to test the use of couch in ledger
-type testEnvCouch struct {
-	couchDBPath       string
-	couchDBAddress    string
-	couchDatabaseName string
-	couchUsername     string
-	couchPassword     string
-}
+/*
+Note that these test are only run if HistoryDB is explitily enabled
+otherwise HistoryDB may not be installed and all the tests would fail
+*/
 
-func newTestEnvCouch(t testing.TB, dbPath string, dbName string) *testEnvCouch {
-
-	couchDBDef := ledgerconfig.GetCouchDBDefinition()
-	os.RemoveAll(dbPath)
-
-	return &testEnvCouch{
-		couchDBPath:       dbPath,
-		couchDBAddress:    couchDBDef.URL,
-		couchDatabaseName: dbName,
-		couchUsername:     couchDBDef.Username,
-		couchPassword:     couchDBDef.Password,
-	}
-}
-
-func (env *testEnvCouch) cleanup() {
-	os.RemoveAll(env.couchDBPath)
-	//create a new connection
-	couchDB, _ := couchdb.CreateConnectionDefinition(env.couchDBAddress, env.couchDatabaseName, env.couchUsername, env.couchPassword)
-	//drop the test database if it already existed
-	couchDB.DropDatabase()
-}
-
-// couchdb_test.go tests couchdb functions already.  This test just tests that a CouchDB history database is auto-created
-// upon creating a new history transaction manager
+// Note that the couchdb_test.go tests couchdb functions already.  This test just tests that a
+// CouchDB history database is auto-created upon creating a new history manager
 func TestHistoryDatabaseAutoCreate(t *testing.T) {
 
 	//call a helper method to load the core.yaml
 	testutil.SetupCoreYAMLConfig("./../../../peer")
+	logger.Debugf("===HISTORYDB=== TestHistoryDatabaseAutoCreate  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
+		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())
 
-	//Only run the tests if CouchDB is explitily enabled in the code,
-	//otherwise CouchDB may not be installed and all the tests would fail
-	//TODO replace this with external config property rather than config within the code
-	if ledgerconfig.IsCouchDBEnabled() == true {
+	if ledgerconfig.IsHistoryDBEnabled() == true {
 
-		env := newTestEnvCouch(t, "/tmp/tests/ledger/history", "history-test")
+		env := newTestEnvHistoryCouchDB(t, "history-test")
 		env.cleanup()       //cleanup at the beginning to ensure the database doesn't exist already
 		defer env.cleanup() //and cleanup at the end
+
+		logger.Debugf("===HISTORYDB=== env.couchDBAddress: %v , env.couchDatabaseName: %v env.couchUsername: %v env.couchPassword: %v\n",
+			env.couchDBAddress, env.couchDatabaseName, env.couchUsername, env.couchPassword)
 
 		histMgr := NewCouchDBHistMgr(
 			env.couchDBAddress,    //couchDB Address
@@ -98,5 +72,13 @@ func TestHistoryDatabaseAutoCreate(t *testing.T) {
 		testutil.AssertEquals(t, dbResp2.DbName, env.couchDatabaseName)
 
 	}
+}
 
+func TestConstructCompositeKey(t *testing.T) {
+	compositeKey := constructCompositeKey("ns1", "key1", 1, 1)
+
+	var compositeKeySep = []byte{0x00}
+	var strKeySep = string(compositeKeySep)
+
+	testutil.AssertEquals(t, compositeKey, "ns1"+strKeySep+"key1"+strKeySep+"1"+strKeySep+"1")
 }

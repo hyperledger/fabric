@@ -18,7 +18,7 @@ package history
 
 import "github.com/hyperledger/fabric/protos/common"
 
-// TxHistMgr - an interface that a transaction history manager should implement
-type TxHistMgr interface {
+// HistMgr - an interface that a history manager should implement
+type HistMgr interface {
 	Commit(block *common.Block) error
 }
