@@ -28,7 +28,6 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	defer env.cleanup()
 	ledger, _ := NewKVLedger(env.conf)
 	defer ledger.Close()
-
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
@@ -75,4 +74,86 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	b2, _ = ledger.GetBlockByNumber(2)
 	testutil.AssertEquals(t, b2, block2)
+}
+
+func TestKVLedgerStateDBRecovery(t *testing.T) {
+	env := newTestEnv(t)
+	defer env.cleanup()
+	ledger, _ := NewKVLedger(env.conf)
+	defer ledger.Close()
+
+	bcInfo, _ := ledger.GetBlockchainInfo()
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+
+	//creating and committing the first block
+	simulator, _ := ledger.NewTxSimulator()
+	//simulating a transaction
+	simulator.SetState("ns1", "key1", []byte("value1"))
+	simulator.SetState("ns1", "key2", []byte("value2"))
+	simulator.SetState("ns1", "key3", []byte("value3"))
+	simulator.Done()
+	simRes, _ := simulator.GetTxSimulationResults()
+	//generating a block based on the simulation result
+	bg := testutil.NewBlockGenerator(t)
+	block1 := bg.NextBlock([][]byte{simRes}, false)
+	//performing validation of read and write set to find valid transactions
+	ledger.RemoveInvalidTransactionsAndPrepare(block1)
+	//writing the validated block to block storage and committing the transaction to state DB
+	ledger.Commit()
+
+	bcInfo, _ = ledger.GetBlockchainInfo()
+	block1Hash := block1.Header.Hash()
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
+
+	//creating the second block but peer fails before committing the transaction to state DB
+	simulator, _ = ledger.NewTxSimulator()
+	//simulating transaction
+	simulator.SetState("ns1", "key1", []byte("value4"))
+	simulator.SetState("ns1", "key2", []byte("value5"))
+	simulator.SetState("ns1", "key3", []byte("value6"))
+	simulator.Done()
+	simRes, _ = simulator.GetTxSimulationResults()
+	//generating a block based on the simulation result
+	block2 := bg.NextBlock([][]byte{simRes}, false)
+	//performing validation of read and write set to find valid transactions
+	ledger.RemoveInvalidTransactionsAndPrepare(block2)
+	//writing the validated block to block storage but not committing the transaction to state DB
+	ledger.blockStore.AddBlock(ledger.pendingBlockToCommit)
+	//assume that peer fails here before committing the transaction
+
+	bcInfo, _ = ledger.GetBlockchainInfo()
+	block2Hash := block2.Header.Hash()
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
+
+	simulator, _ = ledger.NewTxSimulator()
+	value, _ := simulator.GetState("ns1", "key1")
+	//value for 'key1' should be 'value1' as the last commit failed
+	testutil.AssertEquals(t, value, []byte("value1"))
+	value, _ = simulator.GetState("ns1", "key2")
+	//value for 'key2' should be 'value2' as the last commit failed
+	testutil.AssertEquals(t, value, []byte("value2"))
+	value, _ = simulator.GetState("ns1", "key3")
+	//value for 'key3' should be 'value3' as the last commit failed
+	testutil.AssertEquals(t, value, []byte("value3"))
+	simulator.Done()
+	ledger.Close()
+
+	//we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
+	//State DB should be recovered before returning from NewKVLedger call
+	ledger, _ = NewKVLedger(env.conf)
+	simulator, _ = ledger.NewTxSimulator()
+	value, _ = simulator.GetState("ns1", "key1")
+	//value for 'key1' should be 'value4' after recovery
+	testutil.AssertEquals(t, value, []byte("value4"))
+	value, _ = simulator.GetState("ns1", "key2")
+	//value for 'key2' should be 'value5' after recovery
+	testutil.AssertEquals(t, value, []byte("value5"))
+	value, _ = simulator.GetState("ns1", "key3")
+	//value for 'key3' should be 'value6' after recovery
+	testutil.AssertEquals(t, value, []byte("value6"))
+	simulator.Done()
+	ledger.Close()
 }
