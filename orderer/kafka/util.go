@@ -29,11 +29,15 @@ const (
 
 func newBrokerConfig(conf *config.TopLevel) *sarama.Config {
 	brokerConfig := sarama.NewConfig()
+
 	brokerConfig.Version = conf.Kafka.Version
+	// A partitioner is actually not needed the way we do things now,
+	// but we're adding it now to allow for flexibility in the future.
 	brokerConfig.Producer.Partitioner = newStaticPartitioner(conf.Kafka.PartitionID)
-	// set equivalent of kafka producer config max.request.bytes to the deafult
-	// value of a kafka server's socket.request.max.bytes property (100MiB).
+	// Set equivalent of kafka producer config max.request.bytes to the deafult
+	// value of a Kafka broker's socket.request.max.bytes property (100 MiB).
 	brokerConfig.Producer.MaxMessageBytes = int(sarama.MaxRequestSize)
+
 	return brokerConfig
 }
 
@@ -53,24 +57,4 @@ func newOffsetReq(conf *config.TopLevel, seek int64) *sarama.OffsetRequest {
 	// https://mail-archives.apache.org/mod_mbox/kafka-users/201411.mbox/%3Cc159383825e04129b77253ffd6c448aa@BY2PR02MB505.namprd02.prod.outlook.com%3E
 	req.AddBlock(conf.Kafka.Topic, conf.Kafka.PartitionID, seek, 1)
 	return req
-}
-
-// newStaticPartitioner returns a PartitionerConstructor that returns a Partitioner
-// that always chooses the specified partition.
-func newStaticPartitioner(partition int32) sarama.PartitionerConstructor {
-	return func(topic string) sarama.Partitioner {
-		return &staticPartitioner{partition}
-	}
-}
-
-type staticPartitioner struct {
-	partitionID int32
-}
-
-func (p *staticPartitioner) Partition(message *sarama.ProducerMessage, numPartitions int32) (int32, error) {
-	return p.partitionID, nil
-}
-
-func (p *staticPartitioner) RequiresConsistency() bool {
-	return true
 }
