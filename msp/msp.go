@@ -16,6 +16,12 @@ limitations under the License.
 
 package msp
 
+import "github.com/hyperledger/fabric/protos/msp"
+
+// FIXME: we need better comments on the interfaces!!
+// FIXME: we need better comments on the interfaces!!
+// FIXME: we need better comments on the interfaces!!
+
 // Membership service provider APIs for Hyperledger Fabric:
 //
 // By "membership service provider" we refer to an abstract component of the
@@ -34,25 +40,13 @@ package msp
 // MSPManager is an interface defining a manager of one or more MSPs. This
 // essentially acts as a mediator to MSP calls and routes MSP related calls
 // to the appropriate MSP.
-// This object is initialized (once) by calling Setup. Its
-// internal configuration may be changed later by calling
-// Reconfig. It is otherwise immutable.
+// This object is immutable, it is initialized once and never changed.
 type MSPManager interface {
 
 	// Setup the MSP manager instance according to configuration information
-	Setup(config *MSPManagerConfig) error
+	Setup(msps []*msp.MSPConfig) error
 
-	// Process reconfiguration messages (coming e.g., from Blockchain). This
-	// should take into consideration certain policies related to how, e.g.,
-	// a certain certificate should be considered valid, what constitutes the
-	// chain of trust, and who is authorized to change that.
-	// @param reconfigMessage The message containing the reconfiguration information.
-	Reconfig(config []byte) error
-
-	// Name of the MSP manager
-	GetName() string
-
-	// Provides a list of Membership Service providers
+	// GetMSPs Provides a list of Membership Service providers
 	GetMSPs() (map[string]MSP, error)
 
 	// DeserializeIdentity deserializes an identity
@@ -64,24 +58,15 @@ type MSPManager interface {
 type MSP interface {
 
 	// Setup the MSP instance according to configuration information
-	Setup(config *MSPConfig) error
+	Setup(config *msp.MSPConfig) error
 
-	// Process reconfiguration messages coming from the blockchain
-	// @param reconfigMessage The message containing the reconfiguration command.
-	Reconfig(config []byte) error
-
-	// Get provider type
+	// GetType returns the provider type
 	GetType() ProviderType
 
-	// Get provider identifier
+	// GetIdentifier returns the provider identifier
 	GetIdentifier() (string, error)
 
-	// Obtain the policy to govern changes; this can be
-	// having a json format.
-	// Note: THIS CAN WAIT!
-	GetPolicy() string
-
-	// GetSingingIdentity returns a signing identity corresponding to the provided identifier
+	// GetSigningIdentity returns a signing identity corresponding to the provided identifier
 	GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error)
 
 	// GetDefaultSigningIdentity returns the default signing identity
@@ -90,7 +75,7 @@ type MSP interface {
 	// DeserializeIdentity deserializes an identity
 	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 
-	// isValid checks whether the supplied identity is valid
+	// Validate checks whether the supplied identity is valid
 	Validate(id Identity) error
 }
 
@@ -104,21 +89,20 @@ type MSP interface {
 // with, and verifying signatures that correspond to these certificates.///
 type Identity interface {
 
-	// Identifier returns the identifier of that identity
+	// GetIdentifier returns the identifier of that identity
 	GetIdentifier() *IdentityIdentifier
 
-	// Retrieve the provider identifier this identity belongs to
-	// from the previous field
+	// GetMSPIdentifier returns the MSP Id for this instance
 	GetMSPIdentifier() string
 
-	// This uses the rules that govern this identity to validate it.
+	// Validate uses the rules that govern this identity to validate it.
 	// E.g., if it is a fabric TCert implemented as identity, validate
 	// will check the TCert signature against the assumed root certificate
 	// authority.
-	IsValid() error
+	Validate() error
 
 	// TODO: Fix this comment
-	// ParticipantID would return the participant this identity is related to
+	// GetOrganizationUnits returns the participant this identity is related to
 	// as long as this is public information. In certain implementations
 	// this could be implemented by certain attributes that are publicly
 	// associated to that identity, or the identifier of the root certificate
@@ -162,7 +146,7 @@ type SigningIdentity interface {
 	// SignOpts the message with options
 	SignOpts(msg []byte, opts SignatureOpts) ([]byte, error)
 
-	// NewAttributeProof creates a proof for an attribute
+	// GetAttributeProof creates a proof for an attribute
 	GetAttributeProof(spec *AttributeProofSpec) (proof []byte, err error)
 
 	// GetPublicVersion returns the public parts of this identity

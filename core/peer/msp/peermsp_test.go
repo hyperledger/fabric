@@ -4,7 +4,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/util"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/msp/testutils"
 )
 
 func TestLocalMSP(t *testing.T) {
@@ -41,14 +42,18 @@ func TestFakeSetup(t *testing.T) {
 	}
 }
 
-// TODO: as soon as proper per-chain MSP support is developed, this test will have to be changed
 func TestGetMSPManagerFromBlock(t *testing.T) {
-	err := LoadLocalMsp("../../../msp/sampleconfig/")
+	conf, err := msp.GetLocalMspConfig("../../../msp/sampleconfig/")
 	if err != nil {
-		t.Fatalf("LoadLocalMsp failed, err %s", err)
+		t.Fatalf("GetLocalMspConfig failed, err %s", err)
 	}
 
-	mgr, err := GetMSPManagerFromBlock(&common.Block{ /* TODO: FILLME! */ })
+	block, err := msptestutils.GetTestBlockFromMspConfig(conf)
+	if err != nil {
+		t.Fatalf("getTestBlockFromMspConfig failed, err %s", err)
+	}
+
+	mgr, err := GetMSPManagerFromBlock(block)
 	if err != nil {
 		t.Fatalf("GetMSPManagerFromBlock failed, err %s", err)
 	} else if mgr == nil {

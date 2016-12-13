@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
+	m "github.com/hyperledger/fabric/protos/msp"
 )
 
 // This is an instantiation of an MSP that
@@ -101,7 +102,7 @@ func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, error) {
 		cert, certPubK, msp), nil
 }
 
-func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *SigningIdentityInfo) (SigningIdentity, error) {
+func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) (SigningIdentity, error) {
 	if sidInfo == nil {
 		return nil, fmt.Errorf("getIdentityFromBytes error: nil sidInfo")
 	}
@@ -135,13 +136,13 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *SigningIdentityInfo) (S
 // Setup sets up the internal data structures
 // for this MSP, given an MSPConfig ref; it
 // returns nil in case of success or an error otherwise
-func (msp *bccspmsp) Setup(conf1 *MSPConfig) error {
+func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	if conf1 == nil {
 		return fmt.Errorf("Setup error: nil conf reference")
 	}
 
 	// given that it's an msp of type fabric, extract the MSPConfig instance
-	var conf FabricMSPConfig
+	var conf m.FabricMSPConfig
 	err := json.Unmarshal(conf1.Config, &conf)
 	if err != nil {
 		return fmt.Errorf("Failed unmarshalling fabric msp config, err %s", err)
@@ -186,13 +187,6 @@ func (msp *bccspmsp) Setup(conf1 *MSPConfig) error {
 	return nil
 }
 
-// Reconfig refreshes this MSP's configuration given
-// an opaque message that needs to be parsed appropriately
-func (msp *bccspmsp) Reconfig(config []byte) error {
-	// TODO
-	return nil
-}
-
 // GetType returns the type for this MSP
 func (msp *bccspmsp) GetType() ProviderType {
 	return FABRIC
@@ -201,12 +195,6 @@ func (msp *bccspmsp) GetType() ProviderType {
 // GetIdentifier returns the MSP identifier for this instance
 func (msp *bccspmsp) GetIdentifier() (string, error) {
 	return msp.name, nil
-}
-
-// GetPolicy returns the policies that govern this MSP
-func (msp *bccspmsp) GetPolicy() string {
-	// FIXME: can we remove this function?
-	return ""
 }
 
 // GetDefaultSigningIdentity returns the

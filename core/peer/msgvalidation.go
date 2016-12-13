@@ -122,7 +122,7 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 	putilsLogger.Infof("checkSignatureFromCreator info: creator is %s", creator.GetIdentifier())
 
 	// ensure that creator is a valid certificate
-	err = creator.IsValid()
+	err = creator.Validate()
 	if err != nil {
 		return fmt.Errorf("The creator certificate is not valid, err %s", err)
 	}
