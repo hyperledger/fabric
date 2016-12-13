@@ -25,10 +25,10 @@ import (
 
 	"encoding/asn1"
 
+	"errors"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
 type identity struct {
@@ -42,12 +42,12 @@ type identity struct {
 	pk bccsp.Key
 
 	// reference to the MSP that "owns" this identity
-	myMsp MSP
+	msp *bccspmsp
 }
 
-func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, myMsp MSP) Identity {
+func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) Identity {
 	mspLogger.Infof("Creating identity instance for ID %s", id)
-	return &identity{id: id, cert: cert, pk: pk, myMsp: myMsp}
+	return &identity{id: id, cert: cert, pk: pk, msp: msp}
 }
 
 // GetIdentifier returns the identifier (MSPID/IDID) for this instance
@@ -62,7 +62,7 @@ func (id *identity) GetMSPIdentifier() string {
 
 // IsValid returns nil if this instance is a valid identity or an error otherwise
 func (id *identity) IsValid() error {
-	return id.myMsp.Validate(id)
+	return id.msp.Validate(id)
 }
 
 // GetOrganizationUnits returns the OU for this instance
@@ -76,21 +76,22 @@ func (id *identity) GetOrganizationUnits() string {
 // signature; it returns nil if so or an error otherwise
 func (id *identity) Verify(msg []byte, sig []byte) error {
 	mspLogger.Infof("Verifying signature")
-	bccsp, err := factory.GetDefault()
+
+	// Compute Hash
+	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHAOpts{})
 	if err != nil {
-		return fmt.Errorf("Failed getting default BCCSP [%s]", err)
-	} else if bccsp == nil {
-		return fmt.Errorf("Failed getting default BCCSP. Nil instance.")
+		return fmt.Errorf("Failed computing digest [%s]", err)
 	}
 
-	valid, err := bccsp.Verify(id.pk, sig, primitives.Hash(msg), nil)
+	// Verify signature
+	valid, err := id.msp.bccsp.Verify(id.pk, sig, digest, nil)
 	if err != nil {
 		return fmt.Errorf("Could not determine the validity of the signature, err %s", err)
 	} else if !valid {
-		return fmt.Errorf("The signature is invalid")
-	} else {
-		return nil
+		return errors.New("The signature is invalid")
 	}
+
+	return nil
 }
 
 func (id *identity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error {
@@ -131,15 +132,23 @@ type signingidentity struct {
 	signer *signer.CryptoSigner
 }
 
-func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner, myMsp MSP) SigningIdentity {
+func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner, msp *bccspmsp) SigningIdentity {
 	mspLogger.Infof("Creating signing identity instance for ID %s", id)
-	return &signingidentity{identity{id: id, cert: cert, pk: pk, myMsp: myMsp}, signer}
+	return &signingidentity{identity{id: id, cert: cert, pk: pk, msp: msp}, signer}
 }
 
 // Sign produces a signature over msg, signed by this instance
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 	mspLogger.Infof("Signing message")
-	return id.signer.Sign(rand.Reader, primitives.Hash(msg), nil)
+
+	// Compute Hash
+	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed computing digest [%s]", err)
+	}
+
+	// Sign
+	return id.signer.Sign(rand.Reader, digest, nil)
 }
 
 func (id *signingidentity) SignOpts(msg []byte, opts SignatureOpts) ([]byte, error) {

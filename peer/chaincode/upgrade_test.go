@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	//	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/peer/msp"
 )
 
@@ -55,7 +54,6 @@ func initMSP() {
 }
 
 func TestUpgradeCmd(t *testing.T) {
-	primitives.SetSecurityLevel("SHA2", 256)
 	InitMSP()
 
 	signer, err := common.GetDefaultSigner()
@@ -90,7 +88,6 @@ func TestUpgradeCmd(t *testing.T) {
 }
 
 func TestUpgradeCmdEndorseFail(t *testing.T) {
-	primitives.SetSecurityLevel("SHA2", 256)
 	InitMSP()
 
 	signer, err := common.GetDefaultSigner()
@@ -129,7 +126,6 @@ func TestUpgradeCmdEndorseFail(t *testing.T) {
 }
 
 func TestUpgradeCmdSendTXFail(t *testing.T) {
-	primitives.SetSecurityLevel("SHA2", 256)
 	InitMSP()
 
 	signer, err := common.GetDefaultSigner()
