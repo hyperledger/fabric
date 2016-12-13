@@ -117,25 +117,35 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 	s.cur.executed = true
 	s.cur.checkpointDone = true
 	s.cur.timeout = dummyCanceller{}
+	s.activeView = true
+
+	svc := &Signed{}
+	if s.sys.Restore("viewchange", svc) {
+		vc := &ViewChange{}
+		err := proto.Unmarshal(svc.Data, vc)
+		if err != nil {
+			return nil, err
+		}
+		s.view = vc.View
+		s.replicaState[s.id].signedViewchange = svc
+		s.activeView = false
+	}
 
 	pp := &Preprepare{}
-	if s.sys.Restore("preprepare", pp) {
+	if s.sys.Restore("preprepare", pp) && pp.Seq.View >= s.view {
 		s.view = pp.Seq.View
+		s.activeView = true
 		if pp.Seq.Seq > s.seq() {
 			s.acceptPreprepare(pp)
 		}
 	}
 	c := &Subject{}
-	if s.sys.Restore("commit", c) && reflect.DeepEqual(c, &s.cur.subject) {
+	if s.sys.Restore("commit", c) && reflect.DeepEqual(c, &s.cur.subject) && c.Seq.View >= s.view {
 		s.cur.sentCommit = true
 	}
 	ex := &Subject{}
-	if s.sys.Restore("execute", ex) && reflect.DeepEqual(c, &s.cur.subject) {
+	if s.sys.Restore("execute", ex) && reflect.DeepEqual(c, &s.cur.subject) && ex.Seq.View >= s.view {
 		s.cur.executed = true
-	}
-
-	if s.seq() == 0 {
-		s.activeView = true
 	}
 
 	s.cancelViewChangeTimer()

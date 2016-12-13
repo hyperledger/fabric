@@ -50,6 +50,8 @@ func (s *SBFT) sendViewChange() {
 	svc := s.sign(vc)
 	s.viewChangeTimer.Cancel()
 	s.cur.timeout.Cancel()
+
+	s.sys.Persist("viewchange", svc)
 	s.broadcast(&Msg{&Msg_ViewChange{svc}})
 
 	s.processNewView()
