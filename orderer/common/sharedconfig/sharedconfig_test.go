@@ -62,7 +62,6 @@ func TestCommitWithoutBegin(t *testing.T) {
 	if !crashes {
 		t.Fatalf("Should have crashed on multiple begin configs")
 	}
-
 }
 
 func TestRollback(t *testing.T) {
@@ -123,17 +122,15 @@ func TestConsensusType(t *testing.T) {
 	if nowType := m.ConsensusType(); nowType != endType {
 		t.Fatalf("Consensus type should have ended as %s but was %s", endType, nowType)
 	}
-
 }
 
 func TestBatchSize(t *testing.T) {
 	endBatchSize := uint32(10)
-	invalidMessage :=
-		&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   BatchSizeKey,
-			Value: []byte("Garbage Data"),
-		}
+	invalidMessage := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   BatchSizeKey,
+		Value: []byte("Garbage Data"),
+	}
 	zeroBatchSize := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   BatchSizeKey,
@@ -167,5 +164,72 @@ func TestBatchSize(t *testing.T) {
 	if nowBatchSize := m.BatchSize(); nowBatchSize != endBatchSize {
 		t.Fatalf("Got batch size of %d when expecting batch size of %d", nowBatchSize, endBatchSize)
 	}
+}
 
+func TestKafkaBrokers(t *testing.T) {
+	endList := []string{"127.0.0.1:9092", "foo.bar:9092"}
+
+	invalidMessage := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   KafkaBrokersKey,
+		Value: []byte("Garbage Data"),
+	}
+
+	zeroBrokers := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   KafkaBrokersKey,
+		Value: utils.MarshalOrPanic(&ab.KafkaBrokers{}),
+	}
+
+	badList := []string{"127.0.0.1", "foo.bar", "127.0.0.1:-1", "localhost:65536", "foo.bar.:9092", ".127.0.0.1:9092", "-foo.bar:9092"}
+	badMessages := []*cb.ConfigurationItem{}
+	for _, badAddress := range badList {
+		msg := &cb.ConfigurationItem{
+			Type:  cb.ConfigurationItem_Orderer,
+			Key:   KafkaBrokersKey,
+			Value: utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: []string{badAddress}}),
+		}
+		badMessages = append(badMessages, msg)
+	}
+
+	validMessage := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   KafkaBrokersKey,
+		Value: utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: endList}),
+	}
+
+	m := NewManagerImpl()
+	m.BeginConfig()
+
+	err := m.ProposeConfig(validMessage)
+	if err != nil {
+		t.Fatalf("Error applying valid config: %s", err)
+	}
+
+	err = m.ProposeConfig(invalidMessage)
+	if err == nil {
+		t.Fatalf("Should have failed on invalid message")
+	}
+
+	err = m.ProposeConfig(zeroBrokers)
+	if err == nil {
+		t.Fatalf("Should have rejected empty brokers list")
+	}
+
+	for i := range badMessages {
+		err = m.ProposeConfig(badMessages[i])
+		if err == nil {
+			t.Fatalf("Should have rejected broker address which is obviously malformed")
+		}
+	}
+
+	m.CommitConfig()
+
+	nowList := m.KafkaBrokers()
+	switch {
+	case len(nowList) != len(endList), nowList[0] != endList[0]:
+		t.Fatalf("Got brokers list %s when expecting brokers list %s", nowList, endList)
+	default:
+		return
+	}
 }

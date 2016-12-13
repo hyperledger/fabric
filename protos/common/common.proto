@@ -35,11 +35,11 @@ enum Status {
 }
 
 enum HeaderType {
-        MESSAGE = 0;                   // Used for messages which are signed but opaque
-        CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain
-        CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
-        ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
-        ORDERER_TRANSACTION = 4;       // Used internally by the orderer for management
+    MESSAGE = 0;                   // Used for messages which are signed but opaque
+    CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain
+    CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
+    ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
+    ORDERER_TRANSACTION = 4;       // Used internally by the orderer for management
 }
 
 // This enum enlist indexes of the block metadata array

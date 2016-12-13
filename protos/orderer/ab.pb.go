@@ -19,6 +19,7 @@ It has these top-level messages:
 	BatchSize
 	CreationPolicy
 	ChainCreators
+	KafkaBrokers
 */
 package orderer
 
