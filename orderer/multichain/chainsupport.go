@@ -60,6 +60,7 @@ type ConsenterSupport interface {
 	BlockCutter() blockcutter.Receiver
 	SharedConfig() sharedconfig.Manager
 	WriteBlock(data []*cb.Envelope, metadata [][]byte, committers []filter.Committer)
+	ChainID() string // ChainID returns the chain ID this specific consenter instance is associated with
 }
 
 // ChainSupport provides a wrapper for the resources backing a chain
@@ -67,9 +68,6 @@ type ChainSupport interface {
 	broadcast.Support
 	deliver.Support
 	ConsenterSupport
-
-	// ChainID returns the ChainID for this chain support
-	ChainID() string
 
 	// ConfigTxManager returns the corresponding configtx.Manager for this chain
 	ConfigTxManager() configtx.Manager

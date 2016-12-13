@@ -40,6 +40,9 @@ type ConsenterSupport struct {
 
 	// Batches is the channel which WriteBlock writes data to
 	Batches chan []*cb.Envelope
+
+	// ChainIDVal is the value returned by ChainID()
+	ChainIDVal string
 }
 
 // BlockCutter returns BlockCutterVal
@@ -56,4 +59,9 @@ func (mcs *ConsenterSupport) SharedConfig() sharedconfig.Manager {
 func (mcs *ConsenterSupport) WriteBlock(data []*cb.Envelope, metadata [][]byte, committers []filter.Committer) {
 	logger.Debugf("mockWriter: attempting to write batch")
 	mcs.Batches <- data
+}
+
+// ChainID returns the chain ID this specific consenter instance is associated with
+func (mcs *ConsenterSupport) ChainID() string {
+	return mcs.ChainIDVal
 }
