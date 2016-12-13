@@ -119,6 +119,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
+		defer cleanup()
 
 		//create a new connection
 		db, err := CreateConnectionDefinition(connectURL, database, username, password)
@@ -322,6 +323,115 @@ func TestDBTestDropDatabaseBadConnection(t *testing.T) {
 		//Attempt to drop the database without creating first
 		_, errdbdrop := db.DropDatabase()
 		testutil.AssertError(t, errdbdrop, fmt.Sprintf("Error should have been reported for attempting to drop a database before creation"))
+	}
+
+}
+
+func TestDBReadDocumentRange(t *testing.T) {
+
+	if ledgerconfig.IsCouchDBEnabled() == true {
+
+		cleanup()
+		defer cleanup()
+
+		var assetJSON1 = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
+		var assetJSON2 = []byte(`{"asset_name":"marble2","color":"blue","size":"35","owner":"jerry"}`)
+		var assetJSON3 = []byte(`{"asset_name":"marble3","color":"blue","size":"35","owner":"jerry"}`)
+		var assetJSON4 = []byte(`{"asset_name":"marble4","color":"blue","size":"35","owner":"jerry"}`)
+
+		var textString1 = []byte("This is a test. iteration 1")
+		var textString2 = []byte("This is a test. iteration 2")
+		var textString3 = []byte("This is a test. iteration 3")
+		var textString4 = []byte("This is a test. iteration 4")
+
+		attachment1 := Attachment{}
+		attachment1.AttachmentBytes = textString1
+		attachment1.ContentType = "text/plain"
+		attachment1.Name = "valueBytes"
+
+		attachments1 := []Attachment{}
+		attachments1 = append(attachments1, attachment1)
+
+		attachment2 := Attachment{}
+		attachment2.AttachmentBytes = textString2
+		attachment2.ContentType = "text/plain"
+		attachment2.Name = "valueBytes"
+
+		attachments2 := []Attachment{}
+		attachments2 = append(attachments2, attachment2)
+
+		attachment3 := Attachment{}
+		attachment3.AttachmentBytes = textString3
+		attachment3.ContentType = "text/plain"
+		attachment3.Name = "valueBytes"
+
+		attachments3 := []Attachment{}
+		attachments3 = append(attachments3, attachment3)
+
+		attachment4 := Attachment{}
+		attachment4.AttachmentBytes = textString4
+		attachment4.ContentType = "text/plain"
+		attachment4.Name = "valueBytes"
+
+		attachments4 := []Attachment{}
+		attachments4 = append(attachments4, attachment4)
+
+		//create a new connection
+		db, err := CreateConnectionDefinition(connectURL, database, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+
+		//create a new database
+		_, errdb := db.CreateDatabaseIfNotExist()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+		//Retrieve the info for the new database and make sure the name matches
+		dbResp, _, errdb := db.GetDatabaseInfo()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve database information"))
+		testutil.AssertEquals(t, dbResp.DbName, database)
+
+		//Save the test document
+		_, saveerr1 := db.SaveDoc("1", "", assetJSON1, nil)
+		testutil.AssertNoError(t, saveerr1, fmt.Sprintf("Error when trying to save a document"))
+
+		//Save the test document
+		_, saveerr2 := db.SaveDoc("2", "", assetJSON2, nil)
+		testutil.AssertNoError(t, saveerr2, fmt.Sprintf("Error when trying to save a document"))
+
+		//Save the test document
+		_, saveerr3 := db.SaveDoc("3", "", assetJSON3, nil)
+		testutil.AssertNoError(t, saveerr3, fmt.Sprintf("Error when trying to save a document"))
+
+		//Save the test document
+		_, saveerr4 := db.SaveDoc("4", "", assetJSON4, nil)
+		testutil.AssertNoError(t, saveerr4, fmt.Sprintf("Error when trying to save a document"))
+
+		//Save the test document
+		_, saveerr5 := db.SaveDoc("11", "", nil, attachments1)
+		testutil.AssertNoError(t, saveerr5, fmt.Sprintf("Error when trying to save a document"))
+
+		//Save the test document
+		_, saveerr6 := db.SaveDoc("12", "", nil, attachments2)
+		testutil.AssertNoError(t, saveerr6, fmt.Sprintf("Error when trying to save a document"))
+
+		//Save the test document
+		_, saveerr7 := db.SaveDoc("13", "", nil, attachments3)
+		testutil.AssertNoError(t, saveerr7, fmt.Sprintf("Error when trying to save a document"))
+
+		//Save the test document
+		_, saveerr8 := db.SaveDoc("5", "", nil, attachments4)
+		testutil.AssertNoError(t, saveerr8, fmt.Sprintf("Error when trying to save a document"))
+
+		queryResp, _ := db.ReadDocRange("1", "12", 1000, 0)
+
+		//Ensure the query returns 3 documents
+		testutil.AssertEquals(t, len(*queryResp), 3)
+
+		/*
+			for item, _ := range *queryResp {
+				item.
+			}
+		*/
+
 	}
 
 }
