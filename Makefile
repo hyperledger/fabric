@@ -62,6 +62,7 @@ K := $(foreach exec,$(EXECUTABLES),\
 GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | sort | uniq)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
+MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = peer orderer ccenv javaenv testenv runtime
 
@@ -180,7 +181,8 @@ build/image/javaenv/payload:    build/javashim.tar.bz2 \
 				build/protos.tar.bz2 \
 				settings.gradle
 build/image/peer/payload:       build/docker/bin/peer \
-				peer/core.yaml
+				peer/core.yaml \
+				build/msp-sampleconfig.tar.bz2
 build/image/orderer/payload:    build/docker/bin/orderer \
 				orderer/orderer.yaml
 build/image/testenv/payload:    build/gotools.tar.bz2
@@ -190,25 +192,7 @@ build/image/%/payload:
 	mkdir -p $@
 	cp $^ $@
 
-# the target below is required to produce a valid
-# local MSP config when we build the container; there
-# might be a better way of structuring it, but we'll
-# leave as a TODO for now
-.PHONY: mspconfig
-mspconfig: 	msp/sampleconfig/signcerts/peer.pem \
-		msp/sampleconfig/admincerts/admincert.pem \
-		msp/sampleconfig/keystore/key.pem \
-		msp/sampleconfig/cacerts/cacert.pem
-		mkdir -p build/image/peer/payload/msp/sampleconfig/signcerts
-		cp msp/sampleconfig/signcerts/peer.pem build/image/peer/payload/msp/sampleconfig/signcerts
-		mkdir -p build/image/peer/payload/msp/sampleconfig/admincerts
-		cp msp/sampleconfig/admincerts/admincert.pem build/image/peer/payload/msp/sampleconfig/admincerts
-		mkdir -p build/image/peer/payload/msp/sampleconfig/keystore
-		cp msp/sampleconfig/keystore/key.pem build/image/peer/payload/msp/sampleconfig/keystore
-		mkdir -p build/image/peer/payload/msp/sampleconfig/cacerts
-		cp msp/sampleconfig/cacerts/cacert.pem build/image/peer/payload/msp/sampleconfig/cacerts
-
-build/image/%/$(DUMMY): Makefile build/image/%/payload mspconfig
+build/image/%/$(DUMMY): Makefile build/image/%/payload
 	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
 	@echo "Building docker $(TARGET)-image"
 	@cat images/$(TARGET)/Dockerfile.in \
@@ -228,6 +212,7 @@ build/goshim.tar.bz2: $(GOSHIM_DEPS)
 
 build/javashim.tar.bz2: $(JAVASHIM_DEPS)
 build/protos.tar.bz2: $(PROTOS)
+build/msp-sampleconfig.tar.bz2: $(MSP_SAMPLECONFIG)
 
 build/%.tar.bz2:
 	@echo "Creating $@"
