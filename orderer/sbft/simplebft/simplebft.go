@@ -230,6 +230,8 @@ func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
 }
 
 func (s *SBFT) deliverBatch(batch *Batch) {
+	s.cur.checkpointDone = true
+	s.cur.timeout.Cancel()
 	s.sys.Deliver(batch)
 
 	for _, req := range batch.Payloads {

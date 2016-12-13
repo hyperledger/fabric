@@ -199,7 +199,6 @@ func (s *SBFT) maybeDeliverUsingXset(nv *NewView) {
 			// we just received a signature set for a request which we preprepared, but never delivered.
 			prevBatch.Payloads = s.cur.preprep.Batch.Payloads
 		}
-		s.cur.checkpointDone = true
 		s.deliverBatch(prevBatch)
 	}
 }

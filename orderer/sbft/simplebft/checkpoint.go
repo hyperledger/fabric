@@ -84,7 +84,6 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 		cp := s.cur.checkpoint[r]
 		cpset[r] = cp.Signature
 	}
-	s.cur.checkpointDone = true
 
 	c = s.cur.checkpoint[replicas[0]]
 
@@ -98,10 +97,7 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 	batch := *s.cur.preprep.Batch
 	batch.Signatures = cpset
 	s.deliverBatch(&batch)
-
-	s.cur.timeout.Cancel()
-	log.Infof("replica %d: request %s %s completed on %d", s.id, s.cur.subject.Seq, hash2str(s.cur.subject.Digest), s.id)
-
+	log.Infof("replica %d: request %s %s delivered on %d (completed common case)", s.id, s.cur.subject.Seq, hash2str(s.cur.subject.Digest), s.id)
 	s.maybeSendNextBatch()
 	s.processBacklog()
 }

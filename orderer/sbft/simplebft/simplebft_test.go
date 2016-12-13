@@ -940,6 +940,72 @@ func TestFullBacklog(t *testing.T) {
 	}
 }
 
+func TestHelloMsg(t *testing.T) {
+	N := uint64(4)
+	sys := newTestSystemWOTimers(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 1, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	phase := 1
+
+	// We are going to deliver only pre-prepare of the first request to replica 1
+	// other messages pertaining to first request, destined to 1 will be dropped
+	sys.filterFn = func(e testElem) (testElem, bool) {
+		if msg, ok := e.ev.(*testMsgEvent); ok {
+			if msg.dst == 1 {
+				c := msg.msg.GetPreprepare()
+				if c != nil && c.Seq.View == 0 && phase == 1 {
+					return e, true // letting the first pre-prepare be delivered to 1
+				}
+				if phase > 1 {
+					return e, true //letting msgs outside phase 1 through
+				}
+				return e, false //dropping other phase 1 msgs
+			}
+		}
+		return e, true
+	}
+
+	connectAll(sys)
+	r1 := []byte{1, 2, 3}
+	repls[0].Request(r1)
+	sys.Run()
+
+	phase = 2 //start delivering msgs to replica 1
+
+	testLog.Notice("restarting replica 1")
+	repls[1], _ = New(1, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[1])
+	for _, a := range adapters {
+		if a.id != 1 {
+			a.receiver.Connection(1)
+			adapters[1].receiver.Connection(a.id)
+		}
+	}
+
+	sys.Run()
+
+	phase = 3
+
+	r3 := []byte{3, 5, 2}
+	repls[1].Request(r3)
+	sys.Run()
+
+	for _, a := range adapters {
+		if len(a.batches) != 2 {
+			t.Fatal("expected execution of 2 batches")
+		}
+	}
+}
+
 func TestViewChangeTimer(t *testing.T) {
 	N := uint64(4)
 	sys := newTestSystem(N)
