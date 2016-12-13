@@ -28,8 +28,8 @@ import (
 	"encoding/asn1"
 
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
 )
 
 // This is an instantiation of an MSP that
@@ -58,12 +58,11 @@ type bccspmsp struct {
 func NewBccspMsp() (MSP, error) {
 	mspLogger.Infof("Creating BCCSP-based MSP instance")
 
-	/* TODO: is the default BCCSP okay here?*/
-	bccsp, err := factory.GetDefault()
+	// TODO: security level, hash family and keystore should
+	// be probably set in the appropriate way.
+	bccsp, err := sw.NewDefaultSecurityLevelWithKeystore(&sw.DummyKeyStore{})
 	if err != nil {
-		return nil, fmt.Errorf("Failed getting default BCCSP [%s]", err)
-	} else if bccsp == nil {
-		return nil, fmt.Errorf("Failed getting default BCCSP. Nil instance.")
+		return nil, fmt.Errorf("Failed initiliazing BCCSP [%s]", err)
 	}
 
 	theMsp := &bccspmsp{}

@@ -23,7 +23,8 @@ import (
 	"bytes"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/crypto/bccsp"
+	"github.com/hyperledger/fabric/core/crypto/bccsp/factory"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -255,11 +256,11 @@ func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibi
 	// here, as an example, I'll code the visibility policy that allows the
 	// full header but only the hash of the payload
 
-	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash := primitives.GetDefaultHash()()
-	hash.Write(cppBytes) // hash the serialized ChaincodeProposalPayload object (stripped of the transient bytes)
-
-	return hash.Sum(nil), nil
+	digest, err := factory.GetDefaultOrPanic().Hash(cppBytes, &bccsp.SHAOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed computing digest [%s]", err)
+	}
+	return digest, nil
 }
 
 // GetProposalHash2 gets the proposal hash - this version
@@ -272,8 +273,10 @@ func GetProposalHash2(header []byte, ccPropPayl []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
-	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash := primitives.GetDefaultHash()()
+	hash, err := factory.GetDefaultOrPanic().GetHash(&bccsp.SHAOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
+	}
 	hash.Write(header)     // hash the serialized Header object
 	hash.Write(ccPropPayl) // hash the bytes of the chaincode proposal payload that we are given
 
@@ -301,7 +304,10 @@ func GetProposalHash1(header []byte, ccPropPayl []byte, visibility []byte) ([]by
 	}
 
 	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash2 := primitives.GetDefaultHash()()
+	hash2, err := factory.GetDefaultOrPanic().GetHash(&bccsp.SHAOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
+	}
 	hash2.Write(header)  // hash the serialized Header object
 	hash2.Write(ppBytes) // hash of the part of the chaincode proposal payload that will go to the tx
 

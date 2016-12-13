@@ -4,8 +4,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
 var localMsp MSP
@@ -158,8 +156,6 @@ func TestSignAndVerify(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	primitives.SetSecurityLevel("SHA2", 256)
-
 	retVal := m.Run()
 	os.Exit(retVal)
 }
