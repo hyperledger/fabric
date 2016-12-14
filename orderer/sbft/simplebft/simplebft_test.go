@@ -166,6 +166,41 @@ func TestN1(t *testing.T) {
 	}
 }
 
+func TestMonotonicViews(t *testing.T) {
+	N := uint64(4)
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	repls[0].sendViewChange()
+	sys.Run()
+
+	view := repls[0].view
+	testLog.Notice("TEST: Replica 0 is in view ", view)
+	testLog.Notice("TEST: restarting replica 0")
+	repls[0], _ = New(0, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[0])
+	for _, a := range adapters {
+		if a.id != 0 {
+			a.receiver.Connection(0)
+			adapters[0].receiver.Connection(a.id)
+		}
+	}
+	sys.Run()
+
+	if repls[0].view != view {
+		t.Fatalf("Replica 0 must be in view %d, but is in view %d", view, repls[0].view)
+	}
+}
+
 func TestByzPrimary(t *testing.T) {
 	N := uint64(4)
 	sys := newTestSystem(N)
