@@ -16,12 +16,14 @@ limitations under the License.
 
 package sharedconfig
 
+import ab "github.com/hyperledger/fabric/protos/orderer"
+
 // Manager is a mock implementation of sharedconfig.Manager
 type Manager struct {
 	// ConsensusTypeVal is returned as the result of ConsensusType()
 	ConsensusTypeVal string
 	// BatchSizeVal is returned as the result of BatchSize()
-	BatchSizeVal uint32
+	BatchSizeVal *ab.BatchSize
 	// ChainCreatorsVal is returned as the result of ChainCreators()
 	ChainCreatorsVal []string
 	// KafkaBrokersVal is returned as the result of KafkaBrokers()
@@ -34,7 +36,7 @@ func (scm *Manager) ConsensusType() string {
 }
 
 // BatchSize returns the BatchSizeVal
-func (scm *Manager) BatchSize() uint32 {
+func (scm *Manager) BatchSize() *ab.BatchSize {
 	return scm.BatchSizeVal
 }
 

@@ -132,7 +132,7 @@ func encodeConsensusType(testChainID string) *cb.SignedConfigurationItem {
 func encodeBatchSize(testChainID string) *cb.SignedConfigurationItem {
 	return createSignedConfigItem(testChainID,
 		batchSizeKey,
-		MarshalOrPanic(&ab.BatchSize{Messages: batchSize}),
+		MarshalOrPanic(&ab.BatchSize{MaxMessageCount: batchSize}),
 		configtx.DefaultModificationPolicyID)
 }
 

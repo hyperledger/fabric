@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -55,7 +56,7 @@ var DefaultChainCreators = []string{AcceptAllPolicyKey}
 type commonBootstrapper struct {
 	chainID       string
 	consensusType string
-	batchSize     uint32
+	batchSize     *ab.BatchSize
 }
 
 type soloBootstrapper struct {
@@ -72,7 +73,9 @@ func New(conf *config.TopLevel) bootstrap.Helper {
 	cbs := &commonBootstrapper{
 		chainID:       TestChainID,
 		consensusType: conf.General.OrdererType,
-		batchSize:     conf.General.BatchSize,
+		batchSize: &ab.BatchSize{
+			MaxMessageCount: conf.General.BatchSize.MaxMessageCount,
+		},
 	}
 
 	switch conf.General.OrdererType {

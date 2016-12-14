@@ -58,7 +58,7 @@ type Manager interface {
 	ConsensusType() string
 
 	// BatchSize returns the maximum number of messages to include in a block
-	BatchSize() uint32
+	BatchSize() *ab.BatchSize
 
 	// ChainCreators returns the policy names which are allowed for chain creation
 	// This field is only set for the system ordering chain
@@ -72,7 +72,7 @@ type Manager interface {
 
 type ordererConfig struct {
 	consensusType string
-	batchSize     uint32
+	batchSize     *ab.BatchSize
 	chainCreators []string
 	kafkaBrokers  []string
 }
@@ -97,7 +97,7 @@ func (pm *ManagerImpl) ConsensusType() string {
 }
 
 // BatchSize returns the maximum number of messages to include in a block
-func (pm *ManagerImpl) BatchSize() uint32 {
+func (pm *ManagerImpl) BatchSize() *ab.BatchSize {
 	return pm.config.batchSize
 }
 
@@ -164,10 +164,10 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 			return fmt.Errorf("Unmarshaling error for BatchSize: %s", err)
 		}
 
-		if batchSize.Messages <= 0 {
-			return fmt.Errorf("Attempted to set the batch size to %d which is less than or equal to  0", batchSize.Messages)
+		if batchSize.MaxMessageCount <= 0 {
+			return fmt.Errorf("Attempted to set the batch size max message count to %d which is less than or equal to 0", batchSize.MaxMessageCount)
 		}
-		pm.pendingConfig.batchSize = batchSize.Messages
+		pm.pendingConfig.batchSize = batchSize
 	case ChainCreatorsKey:
 		chainCreators := &ab.ChainCreators{}
 		err := proto.Unmarshal(configItem.Value, chainCreators)

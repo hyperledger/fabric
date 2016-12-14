@@ -37,7 +37,7 @@ func (cbs *commonBootstrapper) encodeConsensusType() *cb.SignedConfigurationItem
 
 func (cbs *commonBootstrapper) encodeBatchSize() *cb.SignedConfigurationItem {
 	configItemKey := sharedconfig.BatchSizeKey
-	configItemValue := utils.MarshalOrPanic(&ab.BatchSize{Messages: cbs.batchSize})
+	configItemValue := utils.MarshalOrPanic(cbs.batchSize)
 	modPolicy := configtx.DefaultModificationPolicyID
 
 	configItemChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, cbs.chainID, epoch)

@@ -42,12 +42,14 @@ var testConf = &config.TopLevel{
 		OrdererType:   "kafka",
 		LedgerType:    "ram",
 		BatchTimeout:  500 * time.Millisecond,
-		BatchSize:     100,
 		QueueSize:     100,
 		MaxWindowSize: 100,
 		ListenAddress: "127.0.0.1",
 		ListenPort:    7050,
 		GenesisMethod: "provisional",
+		BatchSize: config.BatchSize{
+			MaxMessageCount: 100,
+		},
 	},
 	Kafka: config.Kafka{
 		Brokers: []string{"127.0.0.1:9092"},
