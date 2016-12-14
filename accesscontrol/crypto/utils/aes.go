@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package primitives
+package utils
 
 import (
 	"bytes"
@@ -24,6 +24,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
 const (
@@ -36,7 +38,7 @@ const (
 
 // GenAESKey returns a random AES key of length AESKeyLength
 func GenAESKey() ([]byte, error) {
-	return GetRandomBytes(AESKeyLength)
+	return primitives.GetRandomBytes(AESKeyLength)
 }
 
 // PKCS7Padding pads as prescribed by the PKCS7 standard

@@ -18,6 +18,11 @@ package primitives
 
 import "crypto/rand"
 
+const (
+	// NonceSize is the default NonceSize
+	NonceSize = 24
+)
+
 // GetRandomBytes returns len random looking bytes
 func GetRandomBytes(len int) ([]byte, error) {
 	key := make([]byte, len)

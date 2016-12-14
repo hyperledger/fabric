@@ -28,7 +28,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	pb "github.com/hyperledger/fabric/core/crypto/attributes/proto"
+	pb "github.com/hyperledger/fabric/accesscontrol/attributes/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 

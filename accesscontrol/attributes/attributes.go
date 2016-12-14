@@ -25,10 +25,11 @@ import (
 	"strconv"
 	"strings"
 
-	pb "github.com/hyperledger/fabric/core/crypto/attributes/proto"
+	pb "github.com/hyperledger/fabric/accesscontrol/attributes/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/accesscontrol/crypto/utils"
 )
 
 var (
@@ -80,7 +81,7 @@ func ReadAttributeHeader(tcert *x509.Certificate, headerKey []byte) (map[string]
 	var err error
 	var headerRaw []byte
 	encrypted := false
-	if headerRaw, err = primitives.GetCriticalExtension(tcert, TCertAttributesHeaders); err != nil {
+	if headerRaw, err = utils.GetCriticalExtension(tcert, TCertAttributesHeaders); err != nil {
 		return nil, encrypted, err
 	}
 	headerStr := string(headerRaw)
@@ -112,7 +113,7 @@ func ReadTCertAttributeByPosition(tcert *x509.Certificate, position int) ([]byte
 	}
 
 	oid := asn1.ObjectIdentifier{1, 2, 3, 4, 5, 6, 9 + position}
-	value, err := primitives.GetCriticalExtension(tcert, oid)
+	value, err := utils.GetCriticalExtension(tcert, oid)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +140,7 @@ func ReadTCertAttribute(tcert *x509.Certificate, attributeName string, headerKey
 //EncryptAttributeValue encrypts "attributeValue" using "attributeKey"
 func EncryptAttributeValue(attributeKey []byte, attributeValue []byte) ([]byte, error) {
 	value := append(attributeValue, padding...)
-	return primitives.CBCPKCS7Encrypt(attributeKey, value)
+	return utils.CBCPKCS7Encrypt(attributeKey, value)
 }
 
 //getAttributeKey returns the attributeKey derived from the preK0 to the attributeName.
@@ -155,7 +156,7 @@ func EncryptAttributeValuePK0(preK0 []byte, attributeName string, attributeValue
 
 //DecryptAttributeValue decrypts "encryptedValue" using "attributeKey" and return the decrypted value.
 func DecryptAttributeValue(attributeKey []byte, encryptedValue []byte) ([]byte, error) {
-	value, err := primitives.CBCPKCS7Decrypt(attributeKey, encryptedValue)
+	value, err := utils.CBCPKCS7Decrypt(attributeKey, encryptedValue)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +239,7 @@ func CreateAttributesMetadataFromCert(cert *x509.Certificate, metadata []byte, p
 
 //CreateAttributesMetadata create the AttributesMetadata from the original metadata
 func CreateAttributesMetadata(raw []byte, metadata []byte, preK0 []byte, attributeKeys []string) ([]byte, error) {
-	cert, err := primitives.DERToX509Certificate(raw)
+	cert, err := utils.DERToX509Certificate(raw)
 	if err != nil {
 		return nil, err
 	}
