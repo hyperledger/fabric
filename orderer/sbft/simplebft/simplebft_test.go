@@ -196,8 +196,8 @@ func TestMonotonicViews(t *testing.T) {
 	}
 	sys.Run()
 
-	if repls[0].view != view {
-		t.Fatalf("Replica 0 must be in view %d, but is in view %d", view, repls[0].view)
+	if repls[0].view < view {
+		t.Fatalf("Replica 0 must be at least in view %d, but is in view %d", view, repls[0].view)
 	}
 }
 
