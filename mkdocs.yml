@@ -29,6 +29,7 @@ pages:
 
 - Fabric Developer:
   - v1.0 Preview: abstract_v1.md
+  - Navigating Jira: jira_navigation.md
   - Contributing: CONTRIBUTING.md
   - Maintainers: MAINTAINERS.md
   - Fabric Developer Setup: dev-setup/devenv.md
