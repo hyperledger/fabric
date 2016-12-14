@@ -4,6 +4,8 @@ import (
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
+	"github.com/hyperledger/fabric/protos/msp/utils"
 )
 
 func LoadLocalMsp(dir string) error {
@@ -30,7 +32,7 @@ func LoadFakeSetupWithLocalMspAndTestChainMsp(dir string) error {
 		return err
 	}
 
-	fakeConfig = &msp.MSPManagerConfig{MspList: []*msp.MSPConfig{conf}, Name: "MGRFORTESTCHAIN"}
+	fakeConfig := []*mspprotos.MSPConfig{conf}
 
 	err = GetManagerForChain(util.GetTestChainID()).Setup(fakeConfig)
 	if err != nil {
@@ -40,39 +42,18 @@ func LoadFakeSetupWithLocalMspAndTestChainMsp(dir string) error {
 	return nil
 }
 
-// FIXME! Every chain needs an MSP config but for now,
-// we don't have support for that; we get around it
-// temporarily by storing the config the peer loaded
-// and using it every time we're asked to get an MSP
-// manager via LoadMSPManagerFromBlock
-var fakeConfig *msp.MSPManagerConfig
-
+// GetMSPManagerFromBlock returns a new MSP manager from a ConfigurationEnvelope
 func GetMSPManagerFromBlock(b *common.Block) (msp.MSPManager, error) {
-	// FIXME! We need to extract the config item
-	// that relates to MSP from the contig tx
-	// inside this block, unmarshal it to extract
-	// an *MSPManagerConfig that we can then pass
-	// to the Setup method; for now we wing it by
-	// passing the same config we got for the
-	// local manager; this way chain creation tests
-	// can proceed without being block by this
-
-	// this hack is required to give us some configuration
-	// so that we can return a valid MSP manager when
-	// someone calls this function; it should work, provided
-	// that this call occurs after the peer has started
-	// and called LoadFakeSetupWithLocalMspAndTestChainMsp.
-	// Notice that this happens very early in the peer
-	// startup and so the assumption should be safe
-	if fakeConfig == nil {
-		panic("fakeConfig is nil")
+	mgrConfig, err := msputils.GetMSPManagerConfigFromBlock(b)
+	if err != nil {
+		return nil, err
 	}
 
 	mgr := msp.NewMSPManager()
-	err := mgr.Setup(fakeConfig)
+	err = mgr.Setup(mgrConfig)
 	if err != nil {
 		return nil, err
-	} else {
-		return mgr, nil
 	}
+
+	return mgr, nil
 }

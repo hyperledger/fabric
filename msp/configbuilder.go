@@ -7,6 +7,8 @@ import (
 
 	"encoding/pem"
 	"path/filepath"
+
+	"github.com/hyperledger/fabric/protos/msp"
 )
 
 func readFile(file string) ([]byte, error) {
@@ -46,7 +48,7 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 			continue
 		}
 
-		fullName := dir + string(filepath.Separator) + f.Name()
+		fullName := filepath.Join(dir, string(filepath.Separator), f.Name())
 		mspLogger.Infof("Inspecting file %s", fullName)
 
 		item, err := readPemFile(fullName)
@@ -67,7 +69,7 @@ const (
 	keystore   = "keystore"
 )
 
-func GetLocalMspConfig(dir string) (*MSPConfig, error) {
+func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
 	cacertDir := dir + string(filepath.Separator) + cacerts
 	signcertDir := dir + string(filepath.Separator) + signcerts
 	admincertDir := dir + string(filepath.Separator) + admincerts
@@ -98,15 +100,15 @@ func GetLocalMspConfig(dir string) (*MSPConfig, error) {
 	// 2) there is exactly one signing key
 	// 3) the cert and the key match
 
-	keyinfo := &KeyInfo{KeyIdentifier: "PEER", KeyMaterial: keys[0]}
+	keyinfo := &msp.KeyInfo{KeyIdentifier: "PEER", KeyMaterial: keys[0]}
 
-	sigid := &SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: keyinfo}
+	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: keyinfo}
 
-	fmspconf := FabricMSPConfig{Admins: admincert, RootCerts: cacerts, SigningIdentity: sigid, Name: "DEFAULT"}
+	fmspconf := msp.FabricMSPConfig{Admins: admincert, RootCerts: cacerts, SigningIdentity: sigid, Name: "DEFAULT"}
 
 	fmpsjs, _ := json.Marshal(fmspconf)
 
-	mspconf := &MSPConfig{Config: fmpsjs, Type: FABRIC}
+	mspconf := &msp.MSPConfig{Config: fmpsjs, Type: int32(FABRIC)}
 
 	return mspconf, nil
 }

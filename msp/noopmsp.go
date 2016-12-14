@@ -16,6 +16,8 @@ limitations under the License.
 
 package msp
 
+import "github.com/hyperledger/fabric/protos/msp"
+
 type noopmsp struct {
 }
 
@@ -24,11 +26,7 @@ func NewNoopMsp() MSP {
 	return &noopmsp{}
 }
 
-func (msp *noopmsp) Setup(*MSPConfig) error {
-	return nil
-}
-
-func (msp *noopmsp) Reconfig(reconfigMessage []byte) error {
+func (msp *noopmsp) Setup(*msp.MSPConfig) error {
 	return nil
 }
 
@@ -38,10 +36,6 @@ func (msp *noopmsp) GetType() ProviderType {
 
 func (msp *noopmsp) GetIdentifier() (string, error) {
 	return "NOOP", nil
-}
-
-func (msp *noopmsp) GetPolicy() string {
-	return ""
 }
 
 func (msp *noopmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
@@ -82,7 +76,7 @@ func (id *noopidentity) GetMSPIdentifier() string {
 	return "MSPID"
 }
 
-func (id *noopidentity) IsValid() error {
+func (id *noopidentity) Validate() error {
 	mspLogger.Infof("Identity is valid")
 	return nil
 }

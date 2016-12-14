@@ -61,7 +61,7 @@ func (id *identity) GetMSPIdentifier() string {
 }
 
 // IsValid returns nil if this instance is a valid identity or an error otherwise
-func (id *identity) IsValid() error {
+func (id *identity) Validate() error {
 	return id.msp.Validate(id)
 }
 

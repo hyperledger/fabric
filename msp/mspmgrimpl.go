@@ -21,6 +21,7 @@ import (
 
 	"encoding/asn1"
 
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/op/go-logging"
 )
 
@@ -29,9 +30,6 @@ var mspLogger = logging.MustGetLogger("msp")
 type mspManagerImpl struct {
 	// map that contains all MSPs that we have setup or otherwise added
 	mspsMap map[string]MSP
-
-	// name of this manager
-	mgrName string
 
 	// error that might have occurred at startup
 	up bool
@@ -45,25 +43,28 @@ func NewMSPManager() MSPManager {
 }
 
 // Setup initializes the internal data structures of this manager and creates MSPs
-func (mgr *mspManagerImpl) Setup(config *MSPManagerConfig) error {
+func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
 	if mgr.up {
 		mspLogger.Infof("MSP manager already up")
 		return nil
 	}
 
-	if config == nil {
+	if msps == nil {
 		return fmt.Errorf("Setup error: nil config object")
 	}
 
-	mspLogger.Infof("Setting up the MSP manager %s", config.Name)
-	mgr.mgrName = config.Name
+	if len(msps) == 0 {
+		return fmt.Errorf("Setup error: at least one MSP configuration item is required")
+	}
+
+	mspLogger.Infof("Setting up the MSP manager (%d msps)", len(msps))
 
 	// create the map that assigns MSP IDs to their manager instance - once
 	mgr.mspsMap = make(map[string]MSP)
 
-	for _, mspConf := range config.MspList {
+	for _, mspConf := range msps {
 		// check that the type for that MSP is supported
-		if mspConf.Type != FABRIC {
+		if mspConf.Type != int32(FABRIC) {
 			return fmt.Errorf("Setup error: unsupported msp type %d", mspConf.Type)
 		}
 
@@ -91,20 +92,9 @@ func (mgr *mspManagerImpl) Setup(config *MSPManagerConfig) error {
 
 	mgr.up = true
 
-	mspLogger.Infof("MSP manager setup complete, setup %d msps", len(config.MspList))
+	mspLogger.Infof("MSP manager setup complete, setup %d msps", len(msps))
 
 	return nil
-}
-
-// Reconfig refreshes the configuration of this MSP
-func (mgr *mspManagerImpl) Reconfig(config []byte) error {
-	// TODO
-	return nil
-}
-
-// GetName returns the name of this MSP manager
-func (mgr *mspManagerImpl) GetName() string {
-	return mgr.mgrName
 }
 
 // GetMSPs returns the MSPs that are managed by this manager

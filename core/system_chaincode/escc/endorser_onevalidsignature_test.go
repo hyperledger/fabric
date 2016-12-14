@@ -241,7 +241,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	}
 
 	// ensure that endorser has a valid certificate
-	err = endorser.IsValid()
+	err = endorser.Validate()
 	if err != nil {
 		return fmt.Errorf("The endorser certificate is not valid, err %s", err)
 	}

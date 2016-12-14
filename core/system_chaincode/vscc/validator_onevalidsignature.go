@@ -112,7 +112,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 			}
 
 			// validate it
-			err = end.IsValid()
+			err = end.Validate()
 			if err != nil {
 				return nil, fmt.Errorf("Invalid endorser identity, err %s", err)
 			}
