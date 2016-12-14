@@ -34,7 +34,7 @@ func createChaincodeSpec(ccType string, path string, args [][]byte) *pb.Chaincod
 
 }
 
-func createPropsalID() string {
+func createProposalID() string {
 	return util.GenerateUUID()
 }
 
@@ -49,7 +49,7 @@ func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymen
 		CtorMsg:     &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), ccDeploymentSpecBytes}}}
 	lcChaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: lcChaincodeSpec}
 
-	uuid := createPropsalID()
+	uuid := createProposalID()
 
 	// make proposal
 	return putils.CreateChaincodeProposal(uuid, util.GetTestChainID(), lcChaincodeInvocationSpec, creator)
