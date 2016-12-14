@@ -83,6 +83,7 @@ type QueryExecutor interface {
 	// The returned ResultsIterator contains results of type *KV
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
+	// Only used for state databases that support query
 	ExecuteQuery(query string) (ResultsIterator, error)
 	// Done releases resources occupied by the QueryExecutor
 	Done()
@@ -140,6 +141,14 @@ type KeyModification struct {
 	TxID        string
 	Value       []byte
 	Transaction *pb.Transaction
+}
+
+// QueryRecord - Result structure for query records. Holds a namespace, key and record.
+// Only used for state databases that support query
+type QueryRecord struct {
+	Namespace string
+	Key       string
+	Record    []byte
 }
 
 // BlockHolder holds block returned by the iterator in GetBlocksIterator.

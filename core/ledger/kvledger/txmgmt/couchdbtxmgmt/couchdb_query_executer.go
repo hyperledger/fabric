@@ -17,8 +17,6 @@ limitations under the License.
 package couchdbtxmgmt
 
 import (
-	"errors"
-
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
@@ -55,7 +53,7 @@ func (q *CouchDBQueryExecutor) GetStateMultipleKeys(namespace string, keys []str
 // GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
 func (q *CouchDBQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
 	//q.checkDone()
-	scanner, err := q.txmgr.getCommittedRangeScanner(namespace, startKey, endKey)
+	scanner, err := q.txmgr.getRangeScanner(namespace, startKey, endKey)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +62,11 @@ func (q *CouchDBQueryExecutor) GetStateRangeScanIterator(namespace string, start
 
 // ExecuteQuery implements method in interface `ledger.QueryExecutor`
 func (q *CouchDBQueryExecutor) ExecuteQuery(query string) (ledger.ResultsIterator, error) {
-	return nil, errors.New("Not supported by KV data model")
+	scanner, err := q.txmgr.getQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	return &qQueryItr{scanner}, nil
 }
 
 // Done implements method in interface `ledger.QueryExecutor`
@@ -76,20 +78,42 @@ type qKVItr struct {
 	s *kvScanner
 }
 
+type qQueryItr struct {
+	s *queryScanner
+}
+
 // Next implements Next() method in ledger.ResultsIterator
 func (itr *qKVItr) Next() (ledger.QueryResult, error) {
-	committedKV, err := itr.s.next()
+	KV, err := itr.s.next()
 	if err != nil {
 		return nil, err
 	}
-	if committedKV == nil {
+	if KV == nil {
 		return nil, nil
 	}
 
-	return &ledger.KV{Key: committedKV.key, Value: committedKV.value}, nil
+	return &ledger.KV{Key: KV.key, Value: KV.value}, nil
 }
 
 // Close implements Close() method in ledger.ResultsIterator
 func (itr *qKVItr) Close() {
+	itr.s.close()
+}
+
+// Next implements Next() method in ledger.ResultsIterator
+func (itr *qQueryItr) Next() (ledger.QueryResult, error) {
+	queryRecord, err := itr.s.next()
+	if err != nil {
+		return nil, err
+	}
+	if queryRecord == nil {
+		return nil, nil
+	}
+
+	return &ledger.QueryRecord{Namespace: queryRecord.namespace, Key: queryRecord.key, Record: queryRecord.record}, nil
+}
+
+// Close implements Close() method in ledger.ResultsIterator
+func (itr *qQueryItr) Close() {
 	itr.s.close()
 }

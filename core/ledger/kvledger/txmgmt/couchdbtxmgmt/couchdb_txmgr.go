@@ -406,8 +406,9 @@ func (txmgr *CouchDBTxMgr) getCommittedValueAndVersion(ns string, key string) ([
 	return docBytes, ver, nil
 }
 
-//getCommittedRangeScanner contructs composite start and end keys based on the namespace then calls the CouchDB range scanner
-func (txmgr *CouchDBTxMgr) getCommittedRangeScanner(namespace string, startKey string, endKey string) (*kvScanner, error) {
+//getRangeScanner contructs composite start and end keys based on the namespace then calls the CouchDB range scanner
+//TODO the limit and offset are currently hard coded.  The limit should eventually be a config option
+func (txmgr *CouchDBTxMgr) getRangeScanner(namespace string, startKey string, endKey string) (*kvScanner, error) {
 	var compositeStartKey []byte
 	var compositeEndKey []byte
 	if startKey != "" {
@@ -420,6 +421,17 @@ func (txmgr *CouchDBTxMgr) getCommittedRangeScanner(namespace string, startKey s
 	queryResult, _ := txmgr.couchDB.ReadDocRange(string(compositeStartKey), string(compositeEndKey), 1000, 0)
 
 	return newKVScanner(namespace, *queryResult), nil
+}
+
+//getQuery calls the CouchDB query documents method (CouchDB _find API)
+//TODO the limit and offset are currently hard coded.  The limit should eventually be a config option
+func (txmgr *CouchDBTxMgr) getQuery(query string) (*queryScanner, error) {
+
+	//TODO - limit is currently set at 1000,  eventually this will need to be changed
+	//to reflect a config option and potentially return an exception if the threshold is exceeded
+	queryResult, _ := txmgr.couchDB.QueryDocuments(query, 1000, 0)
+
+	return newQueryScanner(*queryResult), nil
 }
 
 func encodeValue(value []byte, version uint64) []byte {
@@ -492,6 +504,44 @@ func (scanner *kvScanner) next() (*committedKV, error) {
 }
 
 func (scanner *kvScanner) close() {
+
+	scanner = nil
+}
+
+type queryScanner struct {
+	cursor  int
+	results []couchdb.QueryResult
+}
+
+type queryRecord struct {
+	namespace string
+	key       string
+	version   *version.Height
+	record    []byte
+}
+
+func newQueryScanner(queryResults []couchdb.QueryResult) *queryScanner {
+	return &queryScanner{-1, queryResults}
+}
+
+func (scanner *queryScanner) next() (*queryRecord, error) {
+
+	scanner.cursor++
+
+	if scanner.cursor >= len(scanner.results) {
+		return nil, nil
+	}
+
+	selectedValue := scanner.results[scanner.cursor]
+
+	namespace, key := splitCompositeKey([]byte(selectedValue.ID))
+
+	//TODO - change hardcoded version when version support is available in CouchDB
+	return &queryRecord{namespace, key, version.NewHeight(1, 1), selectedValue.Value}, nil
+
+}
+
+func (scanner *queryScanner) close() {
 
 	scanner = nil
 }

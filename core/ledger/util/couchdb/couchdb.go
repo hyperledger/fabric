@@ -69,8 +69,8 @@ type DBInfo struct {
 	InstanceStartTime string `json:"instance_start_time"`
 }
 
-//QueryResponse is used for processing REST query responses from CouchDB
-type QueryResponse struct {
+//RangeQueryResponse is used for processing REST range query responses from CouchDB
+type RangeQueryResponse struct {
 	TotalRows int `json:"total_rows"`
 	Offset    int `json:"offset"`
 	Rows      []struct {
@@ -83,11 +83,22 @@ type QueryResponse struct {
 	} `json:"rows"`
 }
 
+//QueryResponse is used for processing REST query responses from CouchDB
+type QueryResponse struct {
+	Warning string            `json:"warning"`
+	Docs    []json.RawMessage `json:"docs"`
+}
+
 //Doc is used for capturing if attachments are return in the query from CouchDB
 type Doc struct {
 	ID          string          `json:"_id"`
 	Rev         string          `json:"_rev"`
 	Attachments json.RawMessage `json:"_attachments"`
+}
+
+//DocID is a minimal structure for capturing the ID from a query result
+type DocID struct {
+	ID string `json:"_id"`
 }
 
 //QueryResult is used for returning query results from CouchDB
@@ -601,22 +612,22 @@ func (dbclient *CouchDBConnectionDef) ReadDocRange(startKey, endKey string, limi
 	}
 	rangeURL.Path = dbclient.Database + "/_all_docs"
 
-	query := rangeURL.Query()
-	query.Set("limit", strconv.Itoa(limit))
-	query.Add("skip", strconv.Itoa(skip))
-	query.Add("include_docs", "true")
+	queryParms := rangeURL.Query()
+	queryParms.Set("limit", strconv.Itoa(limit))
+	queryParms.Add("skip", strconv.Itoa(skip))
+	queryParms.Add("include_docs", "true")
 
 	//Append the startKey if provided
 	if startKey != "" {
-		query.Add("startkey", strings.Replace(strconv.QuoteToGraphic(startKey), "\\x00", "\\u0000", 1))
+		queryParms.Add("startkey", strings.Replace(strconv.QuoteToGraphic(startKey), "\\x00", "\\u0000", 1))
 	}
 
 	//Append the endKey if provided
 	if endKey != "" {
-		query.Add("endkey", strings.Replace(strconv.QuoteToGraphic(endKey), "\\x00", "\\u0000", 1))
+		queryParms.Add("endkey", strings.Replace(strconv.QuoteToGraphic(endKey), "\\x00", "\\u0000", 1))
 	}
 
-	rangeURL.RawQuery = query.Encode()
+	rangeURL.RawQuery = queryParms.Encode()
 
 	resp, _, err := dbclient.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "")
 	if err != nil {
@@ -638,7 +649,7 @@ func (dbclient *CouchDBConnectionDef) ReadDocRange(startKey, endKey string, limi
 		return nil, err
 	}
 
-	var jsonResponse = &QueryResponse{}
+	var jsonResponse = &RangeQueryResponse{}
 	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
 	if err2 != nil {
 		return nil, err2
@@ -648,7 +659,6 @@ func (dbclient *CouchDBConnectionDef) ReadDocRange(startKey, endKey string, limi
 
 	for _, row := range jsonResponse.Rows {
 
-		//logger.Debugf("row: %s", value.Doc)
 		var jsonDoc = &Doc{}
 		err3 := json.Unmarshal(row.Doc, &jsonDoc)
 		if err3 != nil {
@@ -681,6 +691,82 @@ func (dbclient *CouchDBConnectionDef) ReadDocRange(startKey, endKey string, limi
 	}
 
 	logger.Debugf("===COUCHDB=== Exiting ReadDocRange()")
+
+	return &results, nil
+
+}
+
+//QueryDocuments method provides function for processing a query
+func (dbclient *CouchDBConnectionDef) QueryDocuments(query string, limit, skip int) (*[]QueryResult, error) {
+
+	logger.Debugf("===COUCHDB=== Entering QueryDocuments()  query=%s", query)
+
+	var results []QueryResult
+
+	queryURL, err := url.Parse(dbclient.URL)
+	if err != nil {
+		logger.Errorf("===COUCHDB=== URL parse error: %s", err.Error())
+		return nil, err
+	}
+
+	queryURL.Path = dbclient.Database + "/_find"
+
+	queryParms := queryURL.Query()
+	queryParms.Set("limit", strconv.Itoa(limit))
+	queryParms.Add("skip", strconv.Itoa(skip))
+
+	queryURL.RawQuery = queryParms.Encode()
+
+	//Set up a buffer for the data to be pushed to couchdb
+	data := new(bytes.Buffer)
+
+	data.ReadFrom(bytes.NewReader([]byte(query)))
+
+	resp, _, err := dbclient.handleRequest(http.MethodPost, queryURL.String(), data, "", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if logger.IsEnabledFor(logging.DEBUG) {
+		dump, err2 := httputil.DumpResponse(resp, true)
+		if err2 != nil {
+			log.Fatal(err2)
+		}
+		logger.Debugf("%s", dump)
+	}
+
+	//handle as JSON document
+	jsonResponseRaw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonResponse = &QueryResponse{}
+
+	err2 := json.Unmarshal(jsonResponseRaw, &jsonResponse)
+	if err2 != nil {
+		return nil, err2
+	}
+
+	for _, row := range jsonResponse.Docs {
+
+		var jsonDoc = &DocID{}
+		err3 := json.Unmarshal(row, &jsonDoc)
+		if err3 != nil {
+			return nil, err3
+		}
+
+		logger.Debugf("===COUCHDB=== Adding row to resultset: %s", row)
+
+		//TODO Replace the temporary NewHeight version when available
+		var addDocument = &QueryResult{jsonDoc.ID, version.NewHeight(1, 1), row}
+
+		results = append(results, *addDocument)
+
+	}
+
+	logger.Debugf("===COUCHDB=== Exiting QueryDocuments()")
 
 	return &results, nil
 
@@ -722,7 +808,6 @@ func (dbclient *CouchDBConnectionDef) handleRequest(method, connectURL string, d
 	//add content header for GET
 	if method == http.MethodGet {
 		req.Header.Set("Accept", "multipart/related")
-		req.Header.Set("Accept", "application/json")
 	}
 
 	//If username and password are set the use basic auth
