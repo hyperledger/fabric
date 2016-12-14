@@ -23,4 +23,5 @@ import "github.com/hyperledger/fabric/core/ledger"
 type HistMgr interface {
 	NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error)
 	Commit(block *common.Block) error
+	GetBlockNumFromSavepoint() (uint64, error)
 }
