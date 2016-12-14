@@ -566,6 +566,64 @@ func TestRestart(t *testing.T) {
 	}
 }
 
+func TestAbdicatingPrimary(t *testing.T) {
+	N := uint64(4)
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	phase := 1
+	// Dropping all phase 1 msgs except requests and viewchange to 0
+	// (preprepare to primary 0 is automatically delivered)
+	sys.filterFn = func(e testElem) (testElem, bool) {
+		if phase == 1 {
+			if msg, ok := e.ev.(*testMsgEvent); ok {
+				if c := msg.msg.GetRequest(); c != nil {
+					return e, true
+				}
+				if c := msg.msg.GetViewChange(); c != nil && msg.dst == 0 {
+					return e, true
+				}
+				return e, false
+			}
+			return e, true
+		}
+		return e, true
+	}
+
+	connectAll(sys)
+
+	r1 := []byte{1, 2, 3}
+	repls[0].Request(r1)
+	sys.Run()
+
+	phase = 2
+
+	testLog.Notice("TEST: restarting connections from 0")
+	for _, a := range adapters {
+		if a.id != 0 {
+			a.receiver.Connection(0)
+			adapters[0].receiver.Connection(a.id)
+		}
+	}
+
+	sys.Run()
+	for _, a := range adapters {
+		if len(a.batches) != 1 {
+			t.Fatalf("expected execution of 1 batch, %d got %v", a.id, a.batches)
+		}
+	}
+}
+
 func TestRestartAfterPrepare(t *testing.T) {
 	N := uint64(4)
 	sys := newTestSystem(N)

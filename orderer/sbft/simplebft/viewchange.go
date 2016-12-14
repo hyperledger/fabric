@@ -86,6 +86,13 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 	s.replicaState[src].signedViewchange = svc
 
 	min := vc.View
+
+	//amplify current primary abdication
+	if s.view == min-1 && s.primaryID() == src {
+		s.sendViewChange()
+		return
+	}
+
 	quorum := 0
 	for _, state := range s.replicaState {
 		if state.viewchange != nil {
