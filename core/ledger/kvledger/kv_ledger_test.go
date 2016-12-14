@@ -17,6 +17,7 @@ limitations under the License.
 package kvledger
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -170,6 +171,8 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	ledger, _ := NewKVLedger(env.conf)
 	defer ledger.Close()
 
+	//testNs := "ns1"
+
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
@@ -204,6 +207,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	simulationResults = append(simulationResults, simRes)
 	//add a 2nd transaction
 	simulator2, _ := ledger.NewTxSimulator()
+	simulator2.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"TRAIN\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
 	simulator2.SetState("ns1", "key9", []byte("value5"))
 	simulator2.SetState("ns1", "key10", []byte("{\"shipmentID\":\"261003PKC8000\",\"customsInvoice\":{\"methodOfTransport\":\"DONKEY\",\"invoiceNumber\":\"00091626\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
 	simulator2.Done()
@@ -230,7 +234,27 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	b2, _ = ledger.GetBlockByNumber(2)
 	testutil.AssertEquals(t, b2, block2)
 
+	//TODO move this test to history.
 	if ledgerconfig.IsHistoryDBEnabled() == true {
-		//TODO history specific test once the query api's are in and we can validate content
+		qhistory, err := ledger.NewHistoryQueryExecutor()
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to retrieve history database executor"))
+
+		itr, err2 := qhistory.GetTransactionsForKey("ns1", "key7", true, false)
+		testutil.AssertNoError(t, err2, fmt.Sprintf("Error when trying to retrieve history database executor"))
+
+		count := 0
+		for {
+			kmod, _ := itr.Next()
+			if kmod == nil {
+				break
+			}
+			//TODO TEST CONTENT - need to point to ledger import and not the KVledger
+			//TODO MOVE TEST TO HISTORY
+			//bt := kmod.(*ledger.KeyModification).TxID
+			//v := kmod.(*ledger.KeyModification).Value
+			//t.Logf("Retrieved for ns=%s, key=key7  : k=%s, v=%s at count=%d start=%s end=%s", testNs, bt, v, count)
+			count++
+		}
+		testutil.AssertEquals(t, count, 3)
 	}
 }

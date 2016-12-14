@@ -62,11 +62,6 @@ func (q *CouchDBQueryExecutor) GetStateRangeScanIterator(namespace string, start
 	return &qKVItr{scanner}, nil
 }
 
-// GetTransactionsForKey - implements method in interface `ledger.QueryExecutor`
-func (q *CouchDBQueryExecutor) GetTransactionsForKey(namespace string, key string) (ledger.ResultsIterator, error) {
-	return nil, errors.New("Not yet implemented")
-}
-
 // ExecuteQuery implements method in interface `ledger.QueryExecutor`
 func (q *CouchDBQueryExecutor) ExecuteQuery(query string) (ledger.ResultsIterator, error) {
 	return nil, errors.New("Not supported by KV data model")

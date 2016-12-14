@@ -204,11 +204,18 @@ func (l *KVLedger) NewTxSimulator() (ledger.TxSimulator, error) {
 	return l.txtmgmt.NewTxSimulator()
 }
 
-// NewQueryExecutor gives handle to a query executer.
+// NewQueryExecutor gives handle to a query executor.
 // A client can obtain more than one 'QueryExecutor's for parallel execution.
 // Any synchronization should be performed at the implementation level if required
 func (l *KVLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 	return l.txtmgmt.NewQueryExecutor()
+}
+
+// NewHistoryQueryExecutor gives handle to a history query executor.
+// A client can obtain more than one 'HistoryQueryExecutor's for parallel execution.
+// Any synchronization should be performed at the implementation level if required
+func (l *KVLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
+	return l.historymgmt.NewHistoryQueryExecutor()
 }
 
 // Commit commits the valid block (returned in the method RemoveInvalidTransactionsAndPrepare) and related state changes
@@ -231,8 +238,10 @@ func (l *KVLedger) Commit(block *common.Block) error {
 		panic(fmt.Errorf(`Error during commit to txmgr:%s`, err))
 	}
 
-	//TODO future will want to run async with state db writes.  History needs to wait for chain (FSBlock) to write but not the state db
-	logger.Debugf("===HISTORYDB=== Commit() will write to hisotry if enabled else will be by-passed if not enabled: vledgerconfig.IsHistoryDBEnabled(): %v\n", ledgerconfig.IsHistoryDBEnabled())
+	//TODO There are still some decisions to be made regarding how consistent history
+	//needs to stay with the state.  At min will want this to run async with state db writes.
+	//(History needs to wait for the block (FSBlock) to write but not the state db)
+	logger.Debugf("===HISTORYDB=== Commit() will write to history if enabled else will be by-passed if not enabled: vledgerconfig.IsHistoryDBEnabled(): %v\n", ledgerconfig.IsHistoryDBEnabled())
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		logger.Debugf("Committing transactions to history database")
 		if err := l.historymgmt.Commit(block); err != nil {

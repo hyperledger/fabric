@@ -35,7 +35,7 @@ func TestHistoryDatabaseAutoCreate(t *testing.T) {
 
 	//call a helper method to load the core.yaml
 	testutil.SetupCoreYAMLConfig("./../../../peer")
-	logger.Debugf("===HISTORYDB=== TestHistoryDatabaseAutoCreate  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
+	logger.Debugf("===HISTORYDB=== TestHistoryDatabaseAutoCreate IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
 		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
@@ -81,4 +81,18 @@ func TestConstructCompositeKey(t *testing.T) {
 	var strKeySep = string(compositeKeySep)
 
 	testutil.AssertEquals(t, compositeKey, "ns1"+strKeySep+"key1"+strKeySep+"1"+strKeySep+"1")
+}
+
+//History Database commit and read is being tested with kv_ledger_test.go.
+//This test will push some of the testing down into history itself
+func TestHistoryDatabaseCommit(t *testing.T) {
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../peer")
+	logger.Debugf("===HISTORYDB=== TestHistoryDatabaseCommit  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
+		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		//TODO Build the necessary infrastructure so that history can be tested iwthout ledger
+
+	}
 }

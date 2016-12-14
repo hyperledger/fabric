@@ -17,8 +17,10 @@ limitations under the License.
 package history
 
 import "github.com/hyperledger/fabric/protos/common"
+import "github.com/hyperledger/fabric/core/ledger"
 
 // HistMgr - an interface that a history manager should implement
 type HistMgr interface {
+	NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error)
 	Commit(block *common.Block) error
 }

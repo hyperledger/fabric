@@ -17,8 +17,6 @@ limitations under the License.
 package lockbasedtxmgr
 
 import (
-	"errors"
-
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/util"
 )
@@ -52,11 +50,6 @@ func (q *lockBasedQueryExecutor) GetStateMultipleKeys(namespace string, keys []s
 // can be supplied as empty strings. However, a full scan shuold be used judiciously for performance reasons.
 func (q *lockBasedQueryExecutor) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
 	return q.helper.getStateRangeScanIterator(namespace, startKey, endKey)
-}
-
-// GetTransactionsForKey - implements method in interface `ledger.QueryExecutor`
-func (q *lockBasedQueryExecutor) GetTransactionsForKey(namespace string, key string) (ledger.ResultsIterator, error) {
-	return nil, errors.New("Not yet implemented")
 }
 
 // ExecuteQuery implements method in interface `ledger.QueryExecutor`
