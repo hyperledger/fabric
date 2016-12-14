@@ -23,10 +23,9 @@ import (
 
 	"encoding/pem"
 
-	"encoding/asn1"
-
 	"errors"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
 )
@@ -115,8 +114,8 @@ func (id *identity) Serialize() ([]byte, error) {
 	}
 
 	// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
-	sId := SerializedIdentity{Mspid: id.id.Mspid, IdBytes: pemBytes}
-	idBytes, err := asn1.Marshal(sId)
+	sId := &SerializedIdentity{Mspid: id.id.Mspid, IdBytes: pemBytes}
+	idBytes, err := proto.Marshal(sId)
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshal a SerializedIdentity structure for identity %s, err %s", id.id, err)
 	}
