@@ -14,21 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package txmgmt
+package validator
 
 import (
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-// TxMgr - an interface that a transaction manager should implement
-type TxMgr interface {
-	NewQueryExecutor() (ledger.QueryExecutor, error)
-	NewTxSimulator() (ledger.TxSimulator, error)
-	ValidateAndPrepare(block *common.Block, doMVCCValidation bool) (*common.Block, []*pb.InvalidTransaction, error)
-	GetBlockNumFromSavepoint() (uint64, error)
-	Commit() error
-	Rollback()
-	Shutdown()
+// Validator validates a rwset
+type Validator interface {
+	ValidateAndPrepareBatch(block *common.Block, doMVCCValidation bool) (*common.Block, []*pb.InvalidTransaction, *statedb.UpdateBatch, error)
 }

@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"strconv"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/protos/common"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -72,7 +72,7 @@ func (histmgr *CouchDBHistMgr) Commit(block *common.Block) error {
 		}
 
 		//preparation for extracting RWSet from transaction
-		txRWSet := &txmgmt.TxReadWriteSet{}
+		txRWSet := &rwset.TxReadWriteSet{}
 
 		// Get the Result from the Action and then Unmarshal
 		// it into a TxReadWriteSet using custom unmarshalling

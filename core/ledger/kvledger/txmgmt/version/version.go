@@ -22,8 +22,8 @@ import (
 
 // Height represents the height of a transaction in blockchain
 type Height struct {
-	blockNum uint64
-	txNum    uint64
+	BlockNum uint64
+	TxNum    uint64
 }
 
 // NewHeight constructs a new instance of Height
@@ -40,8 +40,8 @@ func NewHeightFromBytes(b []byte) (*Height, int) {
 
 // ToBytes serializes the Height
 func (h *Height) ToBytes() []byte {
-	blockNumBytes := util.EncodeOrderPreservingVarUint64(h.blockNum)
-	txNumBytes := util.EncodeOrderPreservingVarUint64(h.txNum)
+	blockNumBytes := util.EncodeOrderPreservingVarUint64(h.BlockNum)
+	txNumBytes := util.EncodeOrderPreservingVarUint64(h.TxNum)
 	return append(blockNumBytes, txNumBytes...)
 }
 
@@ -50,11 +50,11 @@ func (h *Height) ToBytes() []byte {
 func (h *Height) Compare(h1 *Height) int {
 	res := 0
 	switch {
-	case h.blockNum != h1.blockNum:
-		res = int(h.blockNum - h1.blockNum)
+	case h.BlockNum != h1.BlockNum:
+		res = int(h.BlockNum - h1.BlockNum)
 		break
-	case h.txNum != h1.txNum:
-		res = int(h.txNum - h1.txNum)
+	case h.TxNum != h1.TxNum:
+		res = int(h.TxNum - h1.TxNum)
 		break
 	default:
 		return 0
