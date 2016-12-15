@@ -26,8 +26,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
@@ -35,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/solo"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/Shopify/sarama"
@@ -79,26 +79,18 @@ func launchGeneric(conf *config.TopLevel) {
 		return
 	}
 
-	var bootstrapper bootstrap.Helper
+	var genesisBlock *cb.Block
 
 	// Select the bootstrapping mechanism
 	switch conf.General.GenesisMethod {
-	case "static":
-		bootstrapper = static.New()
+	case "provisional":
+		genesisBlock = provisional.New(conf).GenesisBlock()
 	default:
 		panic(fmt.Errorf("Unknown genesis method %s", conf.General.GenesisMethod))
 	}
 
-	genesisBlock, err := bootstrapper.GenesisBlock()
-
-	if err != nil {
-		panic(fmt.Errorf("Error retrieving the genesis block %s", err))
-	}
-
-	// Stand in until real config
-	ledgerType := os.Getenv("ORDERER_LEDGER_TYPE")
 	var lf rawledger.Factory
-	switch ledgerType {
+	switch conf.General.LedgerType {
 	case "file":
 		location := conf.FileLedger.Location
 		if location == "" {

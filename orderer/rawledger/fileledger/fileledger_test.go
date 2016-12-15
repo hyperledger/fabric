@@ -22,7 +22,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
@@ -30,12 +31,7 @@ import (
 var genesisBlock *cb.Block
 
 func init() {
-	bootstrapper := static.New()
-	var err error
-	genesisBlock, err = bootstrapper.GenesisBlock()
-	if err != nil {
-		panic("Error intializing static bootstrap genesis block")
-	}
+	genesisBlock = provisional.New(config.Load()).GenesisBlock()
 }
 
 type testEnv struct {

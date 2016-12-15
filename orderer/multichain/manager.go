@@ -90,7 +90,9 @@ func getConfigTx(reader rawledger.Reader) *cb.Envelope {
 			}
 
 			payload := &cb.Payload{}
-			err = proto.Unmarshal(maybeConfigTx.Payload, payload)
+			if err = proto.Unmarshal(maybeConfigTx.Payload, payload); err != nil {
+				logger.Fatalf("Unable to unmarshal transaction payload: %s", err)
+			}
 
 			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
 				continue

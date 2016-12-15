@@ -21,7 +21,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -54,7 +54,7 @@ func (c *clientImpl) broadcast() {
 			payload, err := proto.Marshal(&cb.Payload{
 				Header: &cb.Header{
 					ChainHeader: &cb.ChainHeader{
-						ChainID: static.TestChainID,
+						ChainID: provisional.TestChainID,
 					},
 				},
 				Data: []byte(strconv.Itoa(count)),

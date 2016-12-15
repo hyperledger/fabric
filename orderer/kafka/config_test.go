@@ -48,7 +48,7 @@ var testConf = &config.TopLevel{
 		MaxWindowSize: 100,
 		ListenAddress: "127.0.0.1",
 		ListenPort:    7050,
-		GenesisMethod: "static",
+		GenesisMethod: "provisional",
 	},
 	Kafka: config.Kafka{
 		Brokers: []string{"127.0.0.1:9092"},

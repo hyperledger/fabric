@@ -21,13 +21,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 )
 
 func TestChainPartition(t *testing.T) {
-	cp := newChainPartition(static.TestChainID, rawPartition)
+	cp := newChainPartition(provisional.TestChainID, rawPartition)
 
-	expectedTopic := fmt.Sprintf("%x", static.TestChainID)
+	expectedTopic := fmt.Sprintf("%x", provisional.TestChainID)
 	actualTopic := cp.Topic()
 	if strings.Compare(expectedTopic, actualTopic) != 0 {
 		t.Fatalf("Got the wrong topic, expected %s, got %s instead", expectedTopic, actualTopic)

@@ -20,7 +20,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -117,7 +117,7 @@ func main() {
 	var windowSize uint64
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
-	flag.StringVar(&chainID, "chainID", static.TestChainID, "The chain ID to deliver from.")
+	flag.StringVar(&chainID, "chainID", provisional.TestChainID, "The chain ID to deliver from.")
 	flag.Uint64Var(&windowSize, "windowSize", 10, "The window size for the deliver.")
 	flag.Parse()
 

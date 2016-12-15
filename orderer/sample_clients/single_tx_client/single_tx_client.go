@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -98,7 +98,7 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 		errorch <- fmt.Errorf("Failed to get Deliver stream: %s", err)
 		return
 	}
-	dstream.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{Start: ab.SeekInfo_NEWEST, WindowSize: 10, ChainID: static.TestChainID}}})
+	dstream.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{Start: ab.SeekInfo_NEWEST, WindowSize: 10, ChainID: provisional.TestChainID}}})
 	logger.Info("{Update Receiver} Listening to ledger updates.")
 	for i := 0; i < 2; i++ {
 		m, inerr := dstream.Recv()
@@ -134,7 +134,7 @@ func broadcastSender(resultch chan byte, errorch chan error, client ab.AtomicBro
 	pl := &cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
-				ChainID: static.TestChainID,
+				ChainID: provisional.TestChainID,
 			},
 		},
 		Data: bs,

@@ -25,7 +25,8 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	localconfig "github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/sbft/simplebft"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -68,10 +69,9 @@ func TestSignAndVerifyEcdsa(t *testing.T) {
 }
 
 func TestLedgerReadWrite(t *testing.T) {
-	genesis, err := static.New().GenesisBlock()
-	if err != nil {
-		panic("Failed to generate genesis block.")
-	}
+	localConf := localconfig.Load()
+	localConf.General.OrdererType = provisional.ConsensusTypeSbft
+	genesis := provisional.New(localConf).GenesisBlock()
 	_, rl := ramledger.New(10, genesis)
 	b := Backend{ledger: rl}
 
