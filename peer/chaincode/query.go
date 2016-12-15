@@ -29,7 +29,7 @@ func queryCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeQueryCmd = &cobra.Command{
 		Use:       "query",
 		Short:     fmt.Sprintf("Query using the specified %s.", chainFuncName),
-		Long:      fmt.Sprintf(`Query using the specified %s.`, chainFuncName),
+		Long:      fmt.Sprintf(`Get endorsed result of %s function call and print it. It won't generate transaction.`, chainFuncName),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeQuery(cmd, args, cf)
