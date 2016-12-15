@@ -18,18 +18,13 @@ package main
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
-	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var genesisBlock *cb.Block
-
-func init() {
-	genesisBlock = provisional.New(config.Load()).GenesisBlock()
-}
-
-func newChainRequest(creationPolicy, newChainID string) *cb.Envelope {
+func newChainRequest(consensusType, creationPolicy, newChainID string) *cb.Envelope {
+	conf.General.OrdererType = consensusType
+	genesisBlock := provisional.New(conf).GenesisBlock()
 	oldGenesisTx := utils.ExtractEnvelopeOrPanic(genesisBlock, 0)
 	oldGenesisTxPayload := utils.ExtractPayloadOrPanic(oldGenesisTx)
 	oldConfigEnv := utils.UnmarshalConfigurationEnvelopeOrPanic(oldGenesisTxPayload.Data)
