@@ -39,9 +39,9 @@ import (
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/gossip/service"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/static"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -177,7 +177,7 @@ func serve(args []string) error {
 	commit := committer.NewLedgerCommitter(kvledger.GetLedger(chainID))
 
 	// TODO: Should real configuration block
-	block, err := static.New().GenesisBlock()
+	block, err := utils.MakeConfigurationBlock(util.GetTestChainID())
 
 	if nil != err {
 		panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
