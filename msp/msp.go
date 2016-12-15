@@ -223,14 +223,3 @@ const (
 	FABRIC ProviderType = iota // MSP is of FABRIC type
 	OTHER                      // MSP is of OTHER TYPE
 )
-
-// This struct represents an Identity
-// (with its MSP identifier) to be used
-// to serialize it and deserialize it
-type SerializedIdentity struct {
-	// The identifier of the associated membership service provider
-	Mspid string
-
-	// the Identity, serialized according to the rules of its MPS
-	IdBytes []byte
-}

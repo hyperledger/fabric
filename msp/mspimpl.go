@@ -25,8 +25,7 @@ import (
 
 	"encoding/json"
 
-	"encoding/asn1"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
 	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
@@ -263,7 +262,7 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 
 	// We first deserialize to a SerializedIdentity to get the MSP ID
 	sId := &SerializedIdentity{}
-	_, err := asn1.Unmarshal(serializedID, sId)
+	err := proto.Unmarshal(serializedID, sId)
 	if err != nil {
 		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
 	}
