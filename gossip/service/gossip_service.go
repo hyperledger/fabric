@@ -18,9 +18,7 @@ package service
 
 import (
 	"sync"
-	"fmt"
 
-	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/gossip/comm"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
@@ -30,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"google.golang.org/grpc"
 )
 
@@ -79,26 +78,13 @@ func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *com
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	if block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
-		return fmt.Errorf("Cannot join channel, configuration block is empty")
-	}
-
-	envelope := &common.Envelope{}
-	if err := pb.Unmarshal(block.Data.Data[0], envelope); err != nil {
+	if chainID, err := utils.GetChainIDFromBlock(block); err != nil {
 		return err
+	} else {
+		// Initialize new state provider for given committer
+		g.chains[chainID] = state.NewGossipStateProvider(g.gossip, g.comm, commiter)
 	}
 
-	payload := &common.Payload{}
-	if err := pb.Unmarshal(envelope.Payload, payload); err != nil {
-		return err
-	}
-
-	chainID := payload.Header.ChainHeader.ChainID
-	if len(chainID) == 0 {
-		return fmt.Errorf("Cannot join channel, with empty chainID")
-	}
-	// Initialize new state provider for given committer
-	g.chains[chainID] = state.NewGossipStateProvider(g.gossip, g.comm, commiter)
 	return nil
 }
 
