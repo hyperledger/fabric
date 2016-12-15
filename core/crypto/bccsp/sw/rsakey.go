@@ -24,9 +24,17 @@ import (
 
 	"errors"
 
+	"encoding/asn1"
+	"math/big"
+
 	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
 )
+
+// rsaPublicKey reflects the ASN.1 structure of a PKCS#1 public key.
+type rsaPublicKeyASN struct {
+	N *big.Int
+	E int
+}
 
 type rsaPrivateKey struct {
 	privKey *rsa.PrivateKey
@@ -39,13 +47,18 @@ func (k *rsaPrivateKey) Bytes() (raw []byte, err error) {
 }
 
 // SKI returns the subject key identifier of this key.
-func (k *rsaPrivateKey) SKI() (gski []byte) {
+func (k *rsaPrivateKey) SKI() (ski []byte) {
 	if k.privKey == nil {
 		return nil
 	}
 
-	raw := x509.MarshalPKCS1PrivateKey(k.privKey)
+	// Marshall the public key
+	raw, _ := asn1.Marshal(rsaPublicKeyASN{
+		N: k.privKey.N,
+		E: k.privKey.E,
+	})
 
+	// Hash it
 	hash := sha256.New()
 	hash.Write(raw)
 	return hash.Sum(nil)
@@ -88,9 +101,17 @@ func (k *rsaPublicKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *rsaPublicKey) SKI() (ski []byte) {
-	raw, _ := utils.PublicKeyToPEM(k.pubKey, nil)
-	// TODO: Error should not be thrown. Anyway, move the marshalling at initialization.
+	if k.pubKey == nil {
+		return nil
+	}
 
+	// Marshall the public key
+	raw, _ := asn1.Marshal(rsaPublicKeyASN{
+		N: k.pubKey.N,
+		E: k.pubKey.E,
+	})
+
+	// Hash it
 	hash := sha256.New()
 	hash.Write(raw)
 	return hash.Sum(nil)
