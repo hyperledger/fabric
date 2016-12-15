@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/metadata"
+	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/spf13/viper"
 )
 
