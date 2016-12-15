@@ -20,6 +20,8 @@ import (
 	"fmt"
 
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // MakeConfigurationItem makes a ConfigurationItem.
@@ -40,18 +42,12 @@ func MakeConfigurationEnvelope(items ...*cb.SignedConfigurationItem) *cb.Configu
 }
 
 // MakePolicyOrPanic creates a Policy proto message out of a SignaturePolicyEnvelope, and panics if this operation fails.
-// NOTE Expand this as more policy types as supported.
 func MakePolicyOrPanic(policyEnvelope interface{}) *cb.Policy {
-	switch pe := policyEnvelope.(type) {
-	case *cb.SignaturePolicyEnvelope:
-		return &cb.Policy{
-			Type: &cb.Policy_SignaturePolicy{
-				SignaturePolicy: pe,
-			},
-		}
-	default:
-		panic("Unknown policy envelope type given")
+	policy, err := MakePolicy(policyEnvelope)
+	if err != nil {
+		panic(err)
 	}
+	return policy
 }
 
 // MakePolicy creates a Policy proto message out of a SignaturePolicyEnvelope.
@@ -59,10 +55,13 @@ func MakePolicyOrPanic(policyEnvelope interface{}) *cb.Policy {
 func MakePolicy(policyEnvelope interface{}) (*cb.Policy, error) {
 	switch pe := policyEnvelope.(type) {
 	case *cb.SignaturePolicyEnvelope:
+		m, err := proto.Marshal(pe)
+		if err != nil {
+			return nil, err
+		}
 		return &cb.Policy{
-			Type: &cb.Policy_SignaturePolicy{
-				SignaturePolicy: pe,
-			},
+			Type:   int32(cb.Policy_SIGNATURE),
+			Policy: m,
 		}, nil
 	default:
 		return nil, fmt.Errorf("Unknown policy envelope type given")

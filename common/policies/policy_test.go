@@ -17,6 +17,7 @@ limitations under the License.
 package policies
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -39,6 +40,15 @@ func init() {
 	rejectAllPolicy = makePolicySource(false)
 }
 
+// The proto utils has become a dumping ground of cyclic imports, it's easier to define this locally
+func marshalOrPanic(msg proto.Message) []byte {
+	data, err := proto.Marshal(msg)
+	if err != nil {
+		panic(fmt.Errorf("Error marshaling messages: %s, %s", msg, err))
+	}
+	return data
+}
+
 func makePolicySource(policyResult bool) []byte {
 	var policyData *cb.SignaturePolicyEnvelope
 	if policyResult {
@@ -46,14 +56,10 @@ func makePolicySource(policyResult bool) []byte {
 	} else {
 		policyData = cauthdsl.RejectAllPolicy
 	}
-	marshaledPolicy, err := proto.Marshal(&cb.Policy{
-		Type: &cb.Policy_SignaturePolicy{
-			SignaturePolicy: policyData,
-		},
+	marshaledPolicy := marshalOrPanic(&cb.Policy{
+		Type:   int32(cb.Policy_SIGNATURE),
+		Policy: marshalOrPanic(policyData),
 	})
-	if err != nil {
-		panic("Error marshaling policy")
-	}
 	return marshaledPolicy
 }
 

@@ -73,12 +73,18 @@ message ConfigurationSignature {
     bytes signature = 2; // Signature over the concatenation of configurationItem bytes and signatureHeader bytes
 }
 
+// 
+
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
 // multiple policy engines, this is typed as a oneof for now
 message Policy {
-    oneof Type {
-        SignaturePolicyEnvelope SignaturePolicy = 1;
+    enum PolicyType {
+        UNKNOWN = 0; // Reserved to check for proper initialization
+        SIGNATURE = 1;
+        MSP = 2;
     }
+    int32 type = 1; // For outside implementors, consider the first 1000 types reserved, otherwise one of PolicyType
+    bytes policy = 2;
 }
 
 // SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements

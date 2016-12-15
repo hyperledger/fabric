@@ -20,6 +20,7 @@ It has these top-level messages:
 	DeliverResponse
 	ConsensusType
 	BatchSize
+	BatchTimeout
 	CreationPolicy
 	ChainCreators
 	KafkaBrokers

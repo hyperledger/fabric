@@ -22,8 +22,8 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"github.com/golang/protobuf/proto"
 	"errors"
+	"github.com/golang/protobuf/proto"
 )
 
 // Policy is used to determine if a signature is valid
@@ -46,17 +46,14 @@ type policy struct {
 }
 
 func newPolicy(policySource *cb.Policy, ch cauthdsl.CryptoHelper) (*policy, error) {
-	envelopeWrapper, ok := policySource.Type.(*cb.Policy_SignaturePolicy)
-
-	if !ok {
-		return nil, fmt.Errorf("Unknown policy type: %T", policySource.Type)
+	if policySource.Type != int32(cb.Policy_SIGNATURE) {
+		return nil, fmt.Errorf("Unknown policy type: %v", policySource.Type)
 	}
 
-	if envelopeWrapper.SignaturePolicy == nil {
-		return nil, errors.New("Nil signature policy received")
+	sigPolicy := &cb.SignaturePolicyEnvelope{}
+	if err := proto.Unmarshal(policySource.Policy, sigPolicy); err != nil {
+		return nil, fmt.Errorf("Error unmarshaling to SignaturePolicy: %s", err)
 	}
-
-	sigPolicy := envelopeWrapper.SignaturePolicy
 
 	evaluator, err := cauthdsl.NewSignaturePolicyEvaluator(sigPolicy, ch)
 	if err != nil {
