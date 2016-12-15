@@ -257,7 +257,9 @@ func (d *DeliverService) readUntilClose() {
 			seqNum := t.Block.Header.Number
 			block := &common.Block{}
 			block.Header = t.Block.Header
-			block.Metadata = t.Block.Metadata
+
+			// Copy and initialize peer metadata
+			putils.CopyBlockMetadata(t.Block, block)
 			block.Data = &common.BlockData{}
 			for _, d := range t.Block.Data.Data {
 				if d != nil {

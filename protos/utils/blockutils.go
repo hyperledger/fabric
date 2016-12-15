@@ -52,6 +52,18 @@ func GetBlockFromBlockBytes(blockBytes []byte) (*cb.Block, error) {
 	return block, err
 }
 
+// CopyBlockMetadata copies metadata from one block into another
+func CopyBlockMetadata(src *cb.Block, dst *cb.Block) {
+	dst.Metadata = src.Metadata
+	if dst.Metadata == nil {
+		dst.Metadata = &cb.BlockMetadata{Metadata: [][]byte{[]byte{}, []byte{}, []byte{}}}
+	} else if len(dst.Metadata.Metadata) < int(cb.BlockMetadataIndex_TRANSACTIONS_FILTER+1) {
+		for i := int(len(dst.Metadata.Metadata)); i <= int(cb.BlockMetadataIndex_TRANSACTIONS_FILTER); i++ {
+			dst.Metadata.Metadata = append(dst.Metadata.Metadata, []byte{})
+		}
+	}
+}
+
 // MakeConfigurationBlock creates a mock configuration block for testing in
 // various modules. This is a convenient function rather than every test
 // implements its own
