@@ -42,7 +42,7 @@ type mockPolicy struct {
 	policyResult error
 }
 
-func (mp *mockPolicy) Evaluate(headers [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error {
+func (mp *mockPolicy) Evaluate(signedData []*cb.SignedData) error {
 	if mp == nil {
 		return errors.New("Invoked nil policy")
 	}

@@ -18,6 +18,7 @@ package cauthdsl
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -27,31 +28,47 @@ import (
 var invalidSignature = []byte("badsigned")
 var validSignature = []byte("signed")
 var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+var msgs = [][]byte{nil, nil}
 
 type mockCryptoHelper struct {
 }
 
-func (mch *mockCryptoHelper) VerifySignature(msg []byte, id []byte, signature []byte) bool {
-	return bytes.Equal(signature, validSignature)
+func (mch *mockCryptoHelper) VerifySignature(sd *cb.SignedData) error {
+	if !bytes.Equal(sd.Signature, validSignature) {
+		return fmt.Errorf("Bad signature")
+	}
+	return nil
+}
+
+func toSignedData(data [][]byte, identities [][]byte, signatures [][]byte) []*cb.SignedData {
+	signedData := make([]*cb.SignedData, len(data))
+	for i := range signedData {
+		signedData[i] = &cb.SignedData{
+			Data:      data[i],
+			Identity:  identities[i],
+			Signature: signatures[i],
+		}
+	}
+	return signedData
 }
 
 func TestSimpleSignature(t *testing.T) {
 	mch := &mockCryptoHelper{}
 	policy := Envelope(SignedBy(0), signers)
 
-	spe, err := NewSignaturePolicyEvaluator(policy, mch)
+	spe, err := compile(policy.Policy, policy.Identities, mch)
 	if err != nil {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
 
-	if !spe.Authenticate(nil, [][]byte{signers[0]}, [][]byte{validSignature}) {
-		t.Error("Expected authentication to succeed with  valid signatures")
+	if !spe([]*cb.SignedData{&cb.SignedData{Identity: signers[0], Signature: validSignature}}) {
+		t.Errorf("Expected authentication to succeed with  valid signatures")
 	}
-	if spe.Authenticate(nil, [][]byte{signers[0]}, [][]byte{invalidSignature}) {
-		t.Error("Expected authentication to fail given the invalid signature")
+	if spe([]*cb.SignedData{&cb.SignedData{Identity: signers[0], Signature: invalidSignature}}) {
+		t.Errorf("Expected authentication to fail given the invalid signature")
 	}
-	if spe.Authenticate(nil, [][]byte{signers[1]}, [][]byte{validSignature}) {
-		t.Error("Expected authentication to fail because signers[1] is not authorized in the policy, despite his valid signature")
+	if spe([]*cb.SignedData{&cb.SignedData{Identity: signers[1], Signature: validSignature}}) {
+		t.Errorf("Expected authentication to fail because signers[1] is not authorized in the policy, despite his valid signature")
 	}
 }
 
@@ -59,19 +76,19 @@ func TestMultipleSignature(t *testing.T) {
 	mch := &mockCryptoHelper{}
 	policy := Envelope(And(SignedBy(0), SignedBy(1)), signers)
 
-	spe, err := NewSignaturePolicyEvaluator(policy, mch)
+	spe, err := compile(policy.Policy, policy.Identities, mch)
 	if err != nil {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
 
-	if !spe.Authenticate(nil, signers, [][]byte{validSignature, validSignature}) {
-		t.Error("Expected authentication to succeed with  valid signatures")
+	if !spe(toSignedData(msgs, signers, [][]byte{validSignature, validSignature})) {
+		t.Errorf("Expected authentication to succeed with  valid signatures")
 	}
-	if spe.Authenticate(nil, signers, [][]byte{validSignature, invalidSignature}) {
-		t.Error("Expected authentication to fail given one of two invalid signatures")
+	if spe(toSignedData(msgs, signers, [][]byte{validSignature, invalidSignature})) {
+		t.Errorf("Expected authentication to fail given one of two invalid signatures")
 	}
-	if spe.Authenticate(nil, [][]byte{signers[0], signers[0]}, [][]byte{validSignature, validSignature}) {
-		t.Error("Expected authentication to fail because although there were two valid signatures, one was duplicated")
+	if spe(toSignedData(msgs, [][]byte{signers[0], signers[0]}, [][]byte{validSignature, validSignature})) {
+		t.Errorf("Expected authentication to fail because although there were two valid signatures, one was duplicated")
 	}
 }
 
@@ -79,19 +96,19 @@ func TestComplexNestedSignature(t *testing.T) {
 	mch := &mockCryptoHelper{}
 	policy := Envelope(And(Or(And(SignedBy(0), SignedBy(1)), And(SignedBy(0), SignedBy(0))), SignedBy(0)), signers)
 
-	spe, err := NewSignaturePolicyEvaluator(policy, mch)
+	spe, err := compile(policy.Policy, policy.Identities, mch)
 	if err != nil {
 		t.Fatalf("Could not create a new SignaturePolicyEvaluator using the given policy, crypto-helper: %s", err)
 	}
 
-	if !spe.Authenticate(nil, signers, [][]byte{validSignature, validSignature}) {
-		t.Error("Expected authentication to succeed with valid signatures")
+	if !spe(toSignedData(msgs, signers, [][]byte{validSignature, validSignature})) {
+		t.Errorf("Expected authentication to succeed with valid signatures")
 	}
-	if spe.Authenticate(nil, signers, [][]byte{invalidSignature, validSignature}) {
-		t.Error("Expected authentication failure as only the signature of signer[1] was valid")
+	if spe(toSignedData(msgs, signers, [][]byte{invalidSignature, validSignature})) {
+		t.Errorf("Expected authentication failure as only the signature of signer[1] was valid")
 	}
-	if !spe.Authenticate(nil, [][]byte{signers[0], signers[0]}, [][]byte{validSignature, validSignature}) {
-		t.Error("Expected authentication to succeed because the rule allows duplicated signatures for signer[0]")
+	if !spe(toSignedData(msgs, [][]byte{signers[0], signers[0]}, [][]byte{validSignature, validSignature})) {
+		t.Errorf("Expected authentication to succeed because the rule allows duplicated signatures for signer[0]")
 	}
 }
 
@@ -102,7 +119,7 @@ func TestNegatively(t *testing.T) {
 	b, _ := proto.Marshal(rpolicy)
 	policy := &cb.SignaturePolicyEnvelope{}
 	_ = proto.Unmarshal(b, policy)
-	_, err := NewSignaturePolicyEvaluator(policy, mch)
+	_, err := compile(policy.Policy, policy.Identities, mch)
 	if err == nil {
 		t.Fatal("Should have errored compiling because the Type field was nil")
 	}

@@ -35,7 +35,7 @@ type mockPolicy struct {
 	err error
 }
 
-func (mp *mockPolicy) Evaluate(header [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error {
+func (mp *mockPolicy) Evaluate(sd []*cb.SignedData) error {
 	return mp.err
 }
 

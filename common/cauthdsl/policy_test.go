@@ -14,23 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package policies
+package cauthdsl
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 )
-
-type mockCryptoHelper struct{}
-
-func (mch *mockCryptoHelper) VerifySignature(msg []byte, identity []byte, signature []byte) bool {
-	return true
-}
 
 var acceptAllPolicy []byte
 var rejectAllPolicy []byte
@@ -52,9 +46,9 @@ func marshalOrPanic(msg proto.Message) []byte {
 func makePolicySource(policyResult bool) []byte {
 	var policyData *cb.SignaturePolicyEnvelope
 	if policyResult {
-		policyData = cauthdsl.AcceptAllPolicy
+		policyData = AcceptAllPolicy
 	} else {
-		policyData = cauthdsl.RejectAllPolicy
+		policyData = RejectAllPolicy
 	}
 	marshaledPolicy := marshalOrPanic(&cb.Policy{
 		Type:   int32(cb.Policy_SIGNATURE),
@@ -63,7 +57,7 @@ func makePolicySource(policyResult bool) []byte {
 	return marshaledPolicy
 }
 
-func addPolicy(manager *ManagerImpl, id string, policy []byte) {
+func addPolicy(manager *policies.ManagerImpl, id string, policy []byte) {
 	manager.BeginConfig()
 	err := manager.ProposeConfig(&cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Policy,
@@ -76,16 +70,21 @@ func addPolicy(manager *ManagerImpl, id string, policy []byte) {
 	manager.CommitConfig()
 }
 
+func providerMap() map[int32]policies.Provider {
+	r := make(map[int32]policies.Provider)
+	r[int32(cb.Policy_SIGNATURE)] = NewPolicyProvider(&mockCryptoHelper{})
+	return r
+}
+
 func TestAccept(t *testing.T) {
 	policyID := "policyID"
-	m := NewManagerImpl(&mockCryptoHelper{})
-	t.Logf("%p %x %v", acceptAllPolicy, acceptAllPolicy, acceptAllPolicy)
+	m := policies.NewManagerImpl(providerMap())
 	addPolicy(m, policyID, acceptAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {
 		t.Error("Should have found policy which was just added, but did not")
 	}
-	err := policy.Evaluate(nil, nil, nil, nil)
+	err := policy.Evaluate([]*cb.SignedData{})
 	if err != nil {
 		t.Fatalf("Should not have errored evaluating an acceptAll policy: %s", err)
 	}
@@ -93,25 +92,25 @@ func TestAccept(t *testing.T) {
 
 func TestReject(t *testing.T) {
 	policyID := "policyID"
-	m := NewManagerImpl(&mockCryptoHelper{})
+	m := policies.NewManagerImpl(providerMap())
 	addPolicy(m, policyID, rejectAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {
 		t.Error("Should have found policy which was just added, but did not")
 	}
-	err := policy.Evaluate(nil, nil, nil, nil)
+	err := policy.Evaluate([]*cb.SignedData{})
 	if err == nil {
 		t.Fatal("Should have errored evaluating the rejectAll policy")
 	}
 }
 
 func TestRejectOnUnknown(t *testing.T) {
-	m := NewManagerImpl(&mockCryptoHelper{})
+	m := policies.NewManagerImpl(providerMap())
 	policy, ok := m.GetPolicy("FakePolicyID")
 	if ok {
 		t.Error("Should not have found policy which was never added, but did")
 	}
-	err := policy.Evaluate(nil, nil, nil, nil)
+	err := policy.Evaluate([]*cb.SignedData{})
 	if err == nil {
 		t.Fatal("Should have errored evaluating the default policy")
 	}

@@ -19,17 +19,15 @@ package policies
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"errors"
 	"github.com/golang/protobuf/proto"
 )
 
 // Policy is used to determine if a signature is valid
 type Policy interface {
-	// Evaluate returns nil if a digest is properly signed by sigs, or an error indicating why it failed
-	Evaluate(header [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error
+	// Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
+	Evaluate(signatureSet []*cb.SignedData) error
 }
 
 // Manager is intended to be the primary accessor of ManagerImpl
@@ -40,68 +38,41 @@ type Manager interface {
 	GetPolicy(id string) (Policy, bool)
 }
 
-type policy struct {
-	source    *cb.Policy
-	evaluator *cauthdsl.SignaturePolicyEvaluator
-}
-
-func newPolicy(policySource *cb.Policy, ch cauthdsl.CryptoHelper) (*policy, error) {
-	if policySource.Type != int32(cb.Policy_SIGNATURE) {
-		return nil, fmt.Errorf("Unknown policy type: %v", policySource.Type)
-	}
-
-	sigPolicy := &cb.SignaturePolicyEnvelope{}
-	if err := proto.Unmarshal(policySource.Policy, sigPolicy); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling to SignaturePolicy: %s", err)
-	}
-
-	evaluator, err := cauthdsl.NewSignaturePolicyEvaluator(sigPolicy, ch)
-	if err != nil {
-		return nil, err
-	}
-
-	return &policy{
-		evaluator: evaluator,
-		source:    policySource,
-	}, nil
-}
-
-// Evaluate returns nil if a msg is properly signed by sigs, or an error indicating why it failed
-// For each identity, it concatenates the corresponding header and the payload together, then
-// verifies the corresponding signature.
-func (p *policy) Evaluate(header [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error {
-	if p == nil {
-		return errors.New("Evaluated default policy, results in reject")
-	}
-
-	// XXX This is wrong, as the signatures are over the payload envelope, not the message, fix either here, or in cauthdsl once transaction is finalized
-	if !p.evaluator.Authenticate(payload, identities, signatures) {
-		return errors.New("Failed to authenticate policy")
-	}
-	return nil
+// Provider provides the backing implementation of a policy
+type Provider interface {
+	// NewPolicy creates a new policy based on the policy bytes
+	NewPolicy(data []byte) (Policy, error)
 }
 
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.ConfigManager
 type ManagerImpl struct {
-	policies        map[string]*policy
-	pendingPolicies map[string]*policy
-	ch              cauthdsl.CryptoHelper
+	providers       map[int32]Provider
+	policies        map[string]Policy
+	pendingPolicies map[string]Policy
 }
 
 // NewManagerImpl creates a new ManagerImpl with the given CryptoHelper
-func NewManagerImpl(ch cauthdsl.CryptoHelper) *ManagerImpl {
+func NewManagerImpl(providers map[int32]Provider) *ManagerImpl {
 	return &ManagerImpl{
-		ch:       ch,
-		policies: make(map[string]*policy),
+		providers: providers,
+		policies:  make(map[string]Policy),
 	}
 }
 
-// GetPolicy returns a policy and true if it was the policy requested, or false if it is the default policy
+type rejectPolicy string
+
+func (rp rejectPolicy) Evaluate(signedData []*cb.SignedData) error {
+	return fmt.Errorf("No such policy type: %s", rp)
+}
+
+// GetPolicy returns a policy and true if it was the policy requested, or false if it is the default reject policy
 func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 	policy, ok := pm.policies[id]
-	// Note the nil policy evaluates fine
-	return policy, ok
+	if !ok {
+		return rejectPolicy(id), false
+	}
+	return policy, true
 }
 
 // BeginConfig is used to start a new configuration proposal
@@ -109,7 +80,7 @@ func (pm *ManagerImpl) BeginConfig() {
 	if pm.pendingPolicies != nil {
 		panic("Programming error, cannot call begin in the middle of a proposal")
 	}
-	pm.pendingPolicies = make(map[string]*policy)
+	pm.pendingPolicies = make(map[string]Policy)
 }
 
 // RollbackConfig is used to abandon a new configuration proposal
@@ -138,7 +109,12 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 		return err
 	}
 
-	cPolicy, err := newPolicy(policy, pm.ch)
+	provider, ok := pm.providers[int32(policy.Type)]
+	if !ok {
+		return fmt.Errorf("Unknown policy type: %v", policy.Type)
+	}
+
+	cPolicy, err := provider.NewPolicy(policy.Policy)
 	if err != nil {
 		return err
 	}
