@@ -18,57 +18,70 @@ package kafka
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
+	"time"
 
-	"github.com/hyperledger/fabric/orderer/localconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/Shopify/sarama"
 	"github.com/Shopify/sarama/mocks"
-	"github.com/golang/protobuf/proto"
 )
 
 type mockConsumerImpl struct {
 	consumedOffset int64
-	parent         *mocks.Consumer
-	partMgr        *mocks.PartitionConsumer
-	partition      sarama.PartitionConsumer
-	topic          string
-	t              *testing.T
+	chainPartition ChainPartition
+
+	parentConsumer         *mocks.Consumer
+	chainPartitionManager  *mocks.PartitionConsumer
+	chainPartitionConsumer sarama.PartitionConsumer
+	disk                   chan *ab.KafkaMessage
+	isSetup                chan struct{}
+	t                      *testing.T
 }
 
-func mockNewConsumer(t *testing.T, conf *config.TopLevel, seek int64) (Consumer, error) {
+func mockNewConsumer(t *testing.T, cp ChainPartition, offset int64, disk chan *ab.KafkaMessage) (Consumer, error) {
 	var err error
-	parent := mocks.NewConsumer(t, nil)
+	parentConsumer := mocks.NewConsumer(t, nil)
 	// NOTE The seek flag seems to be useless here.
 	// The mock partition will have its highWatermarkOffset
 	// initialized to 0 no matter what. I've opened up an issue
 	// in the sarama repo: https://github.com/Shopify/sarama/issues/745
 	// Until this is resolved, use the testFillWithBlocks() hack below.
-	partMgr := parent.ExpectConsumePartition(conf.Kafka.Topic, conf.Kafka.PartitionID, seek)
-	partition, err := parent.ConsumePartition(conf.Kafka.Topic, conf.Kafka.PartitionID, seek)
+	cpManager := parentConsumer.ExpectConsumePartition(cp.Topic(), cp.Partition(), offset)
+	cpConsumer, err := parentConsumer.ConsumePartition(cp.Topic(), cp.Partition(), offset)
 	// mockNewConsumer is basically a helper function when testing.
 	// Any errors it generates internally, should result in panic
 	// and not get propagated further; checking its errors in the
 	// calling functions (i.e. the actual tests) increases boilerplate.
 	if err != nil {
-		t.Fatal("Cannot create partition consumer:", err)
+		t.Fatal("Cannot create mock partition consumer:", err)
 	}
 	mc := &mockConsumerImpl{
 		consumedOffset: 0,
-		parent:         parent,
-		partMgr:        partMgr,
-		partition:      partition,
-		topic:          conf.Kafka.Topic,
-		t:              t,
+		chainPartition: cp,
+
+		parentConsumer:         parentConsumer,
+		chainPartitionManager:  cpManager,
+		chainPartitionConsumer: cpConsumer,
+		disk:    disk,
+		isSetup: make(chan struct{}),
+		t:       t,
 	}
-	// Stop-gap hack until #745 is resolved:
-	if seek >= testOldestOffset && seek <= (testNewestOffset-1) {
-		mc.testFillWithBlocks(seek - 1) // Prepare the consumer so that the next Recv gives you block "seek"
+	// Stop-gap hack until sarama issue #745 is resolved:
+	if offset >= testOldestOffset && offset <= (testNewestOffset-1) {
+		mc.testFillWithBlocks(offset - 1) // Prepare the consumer so that the next Recv gives you blob #offset
 	} else {
-		err = fmt.Errorf("Out of range seek number given to consumer")
+		err = fmt.Errorf("Out of range offset (seek number) given to consumer: %d", offset)
+		return mc, err
 	}
+
+	if mc.consumedOffset == offset-1 {
+		close(mc.isSetup)
+	} else {
+		mc.t.Fatal("Mock consumer failed to initialize itself properly")
+	}
+
 	return mc, err
 }
 
@@ -76,42 +89,46 @@ func (mc *mockConsumerImpl) Recv() <-chan *sarama.ConsumerMessage {
 	if mc.consumedOffset >= testNewestOffset-1 {
 		return nil
 	}
-	mc.consumedOffset++
-	mc.partMgr.YieldMessage(testNewConsumerMessage(mc.consumedOffset, mc.topic))
-	return mc.partition.Messages()
+
+	// This is useful in cases where we want to <-Recv() in a for/select loop in
+	// a non-blocking manner. Without the timeout, the Go runtime will always
+	// execute the body of the Recv() method. If there in no outgoing message
+	// available, it will block while waiting on mc.disk. All the other cases in
+	// the original for/select loop then won't be evaluated until we unblock on
+	// <-mc.disk (which may never happen).
+	select {
+	case <-time.After(testTimePadding / 2):
+	case outgoingMsg := <-mc.disk:
+		mc.consumedOffset++
+		mc.chainPartitionManager.YieldMessage(testNewConsumerMessage(mc.chainPartition, mc.consumedOffset, outgoingMsg))
+		return mc.chainPartitionConsumer.Messages()
+	}
+
+	return nil
 }
 
 func (mc *mockConsumerImpl) Close() error {
-	if err := mc.partition.Close(); err != nil {
+	if err := mc.chainPartitionManager.Close(); err != nil {
 		return err
 	}
-	return mc.parent.Close()
+	return mc.parentConsumer.Close()
 }
 
-func (mc *mockConsumerImpl) testFillWithBlocks(seek int64) {
-	for i := int64(1); i <= seek; i++ {
+func (mc *mockConsumerImpl) testFillWithBlocks(offset int64) {
+	for i := int64(1); i <= offset; i++ {
+		go func() {
+			mc.disk <- newRegularMessage(utils.MarshalOrPanic(newTestEnvelope(fmt.Sprintf("consumer fill-in %d", i))))
+		}()
 		<-mc.Recv()
 	}
+	return
 }
 
-func testNewConsumerMessage(offset int64, topic string) *sarama.ConsumerMessage {
-	blockData := &cb.BlockData{
-		Data: [][]byte{[]byte(strconv.FormatInt(offset, 10))},
-	}
-	block := &cb.Block{
-		Header: &cb.BlockHeader{
-			Number: uint64(offset),
-		},
-		Data: blockData,
-	}
-
-	data, err := proto.Marshal(block)
-	if err != nil {
-		panic("Error marshaling block")
-	}
-
+func testNewConsumerMessage(cp ChainPartition, offset int64, kafkaMessage *ab.KafkaMessage) *sarama.ConsumerMessage {
 	return &sarama.ConsumerMessage{
-		Value: sarama.ByteEncoder(data),
-		Topic: topic,
+		Value:     sarama.ByteEncoder(utils.MarshalOrPanic(kafkaMessage)),
+		Topic:     cp.Topic(),
+		Partition: cp.Partition(),
+		Offset:    offset,
 	}
 }

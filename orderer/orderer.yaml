@@ -14,8 +14,7 @@ General:
     OrdererType: solo
 
     # Ledger Type: The ledger type to provide to the orderer (if needed)
-    # Available types are "ram", "file". When "kafka" is chosen as the
-    # OrdererType, this option is ignored.
+    # Available types are "ram", "file".
     LedgerType: ram
 
     # Batch Timeout: The amount of time to wait before creating a batch
@@ -25,7 +24,7 @@ General:
     BatchSize: 10
 
     # Queue Size: The maximum number of messages to allow pending from a gRPC
-    # client. This option is currently ignored for the Kafka OrdererType.
+    # client.
     QueueSize: 10
 
     # Max Window Size: The maximum number of messages to for the orderer Deliver
@@ -92,13 +91,6 @@ Kafka:
     Brokers:
         - 127.0.0.1:9092
 
-    # Topic: The Kafka topic the orderer writes to/reads from
-    Topic: test
-
-    # Partition ID: The partition of the Kafka topic the orderer writes to/reads
-    # from
-    PartitionID: 0
-
     # Retry: What to do if none of the Kafka brokers are available
     Retry:
         # The producer should attempt to reconnect every <Period>
@@ -106,5 +98,6 @@ Kafka:
         # Panic if <Stop> has elapsed and no connection has been established
         Stop: 60s
 
-    # Verbose: Turn on logging for the Kafka library
+    # Verbose: Turn on logging for sarama, the client library that we use to
+    # interact with the Kafka cluster
     Verbose: false

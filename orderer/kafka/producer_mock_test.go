@@ -21,46 +21,59 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama/mocks"
-	"github.com/hyperledger/fabric/orderer/localconfig"
+	"github.com/golang/protobuf/proto"
+	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 type mockProducerImpl struct {
-	config   *config.TopLevel
 	producer *mocks.SyncProducer
+	checker  mocks.ValueChecker
 
-	checker        mocks.ValueChecker
-	disk           chan []byte // This simulates the broker's "disk" where the producer's messages eventually end up
+	// This simulates the broker's "disk" where the producer's
+	// blobs for a certain chain partition eventually end up.
+	disk           chan *ab.KafkaMessage
 	producedOffset int64
+	isSetup        chan struct{}
 	t              *testing.T
 }
 
-func mockNewProducer(t *testing.T, conf *config.TopLevel, seek int64, disk chan []byte) Producer {
+// Create a new producer whose next "Send" on ChainPartition gives you blob #offset.
+func mockNewProducer(t *testing.T, cp ChainPartition, offset int64, disk chan *ab.KafkaMessage) Producer {
 	mp := &mockProducerImpl{
-		config:         conf,
 		producer:       mocks.NewSyncProducer(t, nil),
 		checker:        nil,
 		disk:           disk,
 		producedOffset: 0,
+		isSetup:        make(chan struct{}),
 		t:              t,
 	}
-	if seek >= testOldestOffset && seek <= (testNewestOffset-1) {
-		mp.testFillWithBlocks(seek - 1) // Prepare the producer so that the next Send gives you block "seek"
+	mp.init(cp, offset)
+
+	if mp.producedOffset == offset-1 {
+		close(mp.isSetup)
 	} else {
-		panic(fmt.Errorf("Out of range seek number given to producer"))
+		mp.t.Fatal("Mock producer failed to initialize itself properly")
 	}
+
 	return mp
 }
 
-func (mp *mockProducerImpl) Send(payload []byte) error {
+func (mp *mockProducerImpl) Send(cp ChainPartition, payload []byte) error {
 	mp.producer.ExpectSendMessageWithCheckerFunctionAndSucceed(mp.checker)
-	mp.producedOffset++
-	prt, ofs, err := mp.producer.SendMessage(newMsg(payload, mp.config.Kafka.Topic))
-	if err != nil ||
-		prt != mp.config.Kafka.PartitionID ||
-		ofs != mp.producedOffset {
-		mp.t.Fatal("Producer not functioning as expected")
+	mp.producedOffset++ // This is the offset that will be assigned to the sent message
+	_, ofs, err := mp.producer.SendMessage(newProducerMessage(cp, payload))
+	// We do NOT check the assigned partition because the mock
+	// producer always posts to partition 0 no matter what.
+	// This is a deficiency of the Kafka library that we use.
+	if err != nil || ofs != mp.producedOffset {
+		mp.t.Fatal("Mock producer not functioning as expected")
 	}
-	mp.disk <- payload // Reaches the broker's disk
+	msg := new(ab.KafkaMessage)
+	if err := proto.Unmarshal(payload, msg); err != nil {
+		mp.t.Fatalf("Failed to unmarshal message that reached producer's disk: %s", err)
+	}
+	mp.disk <- msg // Reaches the cluster's disk for that chain partition
 	return err
 }
 
@@ -68,26 +81,38 @@ func (mp *mockProducerImpl) Close() error {
 	return mp.producer.Close()
 }
 
-func (mp *mockProducerImpl) testFillWithBlocks(seek int64) {
-	dyingChan := make(chan struct{})
+// Initializes the mock producer by setting up the offsets.
+func (mp *mockProducerImpl) init(cp ChainPartition, offset int64) {
+	if offset >= testOldestOffset && offset <= (testNewestOffset-1) {
+		// Prepare the producer so that the next Send
+		// on that chain partition gives you blob #offset.
+		mp.testFillWithBlocks(cp, offset-1)
+	} else {
+		panic(fmt.Errorf("Out of range offset (seek number) given to producer: %d", offset))
+	}
+}
+
+func (mp *mockProducerImpl) testFillWithBlocks(cp ChainPartition, offset int64) {
+	dieChan := make(chan struct{})
 	deadChan := make(chan struct{})
 
 	go func() { // This goroutine is meant to read only the "fill-in" blocks
 		for {
 			select {
 			case <-mp.disk:
-			case <-dyingChan:
+			case <-dieChan:
 				close(deadChan)
 				return
 			}
 		}
 	}()
 
-	for i := int64(1); i <= seek; i++ {
-		mp.Send([]byte("fill-in"))
+	for i := int64(1); i <= offset; i++ {
+		mp.Send(cp, utils.MarshalOrPanic(newRegularMessage(utils.MarshalOrPanic(newTestEnvelope(fmt.Sprintf("producer fill-in %d", i))))))
 	}
 
-	close(dyingChan)
+	close(dieChan)
 	<-deadChan
+
 	return
 }

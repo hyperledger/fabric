@@ -20,90 +20,88 @@ import (
 	"fmt"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
-// Broker allows the caller to get info on the orderer's stream
+// Broker allows the caller to get info on the cluster's partitions
 type Broker interface {
-	GetOffset(req *sarama.OffsetRequest) (int64, error)
+	GetOffset(cp ChainPartition, req *sarama.OffsetRequest) (int64, error)
 	Closeable
 }
 
 type brokerImpl struct {
 	broker *sarama.Broker
-	config *config.TopLevel
 }
 
-func newBroker(conf *config.TopLevel) Broker {
+// Connects to the broker that handles all produce and consume
+// requests for the given chain (Partition Leader Replica)
+func newBroker(brokers []string, cp ChainPartition) (Broker, error) {
+	var candidateBroker, connectedBroker, leaderBroker *sarama.Broker
 
-	// connect to one of the bootstrap servers
-	var bootstrapServer *sarama.Broker
-	for _, hostPort := range conf.Kafka.Brokers {
-		broker := sarama.NewBroker(hostPort)
-		if err := broker.Open(nil); err != nil {
-			logger.Warningf("Failed to connect to bootstrap server at %s: %v.", hostPort, err)
+	// Connect to one of the given brokers
+	for _, hostPort := range brokers {
+		candidateBroker = sarama.NewBroker(hostPort)
+		if err := candidateBroker.Open(nil); err != nil {
+			logger.Warningf("Failed to connect to broker %s: %s", hostPort, err)
 			continue
 		}
-		if connected, err := broker.Connected(); !connected {
-			logger.Warningf("Failed to connect to bootstrap server at %s: %v.", hostPort, err)
+		if connected, err := candidateBroker.Connected(); !connected {
+			logger.Warningf("Failed to connect to broker %s: %s", hostPort, err)
 			continue
 		}
-		bootstrapServer = broker
+		connectedBroker = candidateBroker
 		break
 	}
-	if bootstrapServer == nil {
-		panic(fmt.Errorf("Failed to connect to any of the bootstrap servers (%v) for metadata request.", conf.Kafka.Brokers))
-	}
-	logger.Debugf("Connected to bootstrap server at %s.", bootstrapServer.Addr())
 
-	// get metadata for topic
-	topic := conf.Kafka.Topic
-	metadata, err := bootstrapServer.GetMetadata(&sarama.MetadataRequest{Topics: []string{topic}})
+	if connectedBroker == nil {
+		return nil, fmt.Errorf("Failed to connect to any of the given brokers (%v) for metadata request", brokers)
+	}
+	logger.Debugf("Connected to broker %s", connectedBroker.Addr())
+
+	// Get metadata for the topic that corresponds to this chain
+	metadata, err := connectedBroker.GetMetadata(&sarama.MetadataRequest{Topics: []string{cp.Topic()}})
 	if err != nil {
-		panic(fmt.Errorf("GetMetadata failed for topic %s: %v", topic, err))
+		return nil, fmt.Errorf("Failed to get metadata for topic %s: %s", cp, err)
 	}
 
-	// get leader broker for given topic/partition
-	var broker *sarama.Broker
-	partitionID := conf.Kafka.PartitionID
-	if (partitionID >= 0) && (partitionID < int32(len(metadata.Topics[0].Partitions))) {
-		leader := metadata.Topics[0].Partitions[partitionID].Leader
-		logger.Debugf("Leading broker for topic %s/partition %d is broker ID %d", topic, partitionID, leader)
-		for _, b := range metadata.Brokers {
-			if b.ID() == leader {
-				broker = b
+	// Get the leader broker for this chain partition
+	if (cp.Partition() >= 0) && (cp.Partition() < int32(len(metadata.Topics[0].Partitions))) {
+		leaderBrokerID := metadata.Topics[0].Partitions[cp.Partition()].Leader
+		logger.Debugf("Leading broker for chain %s is broker ID %d", cp, leaderBrokerID)
+		for _, availableBroker := range metadata.Brokers {
+			if availableBroker.ID() == leaderBrokerID {
+				leaderBroker = availableBroker
 				break
 			}
 		}
 	}
-	if broker == nil {
-		panic(fmt.Errorf("Can't find leader for topic %s/partition %d", topic, partitionID))
+
+	if leaderBroker == nil {
+		return nil, fmt.Errorf("Can't find leader for chain %s", cp)
 	}
 
-	// connect to broker
-	if err := broker.Open(nil); err != nil {
-		panic(fmt.Errorf("Failed to open Kafka broker: %v", err))
+	// Connect to broker
+	if err := leaderBroker.Open(nil); err != nil {
+		return nil, fmt.Errorf("Failed to connect ho Kafka broker: %s", err)
 	}
-	if connected, err := broker.Connected(); !connected {
-		panic(fmt.Errorf("Failed to open Kafka broker: %v", err))
+	if connected, err := leaderBroker.Connected(); !connected {
+		return nil, fmt.Errorf("Failed to connect to Kafka broker: %s", err)
 	}
 
-	return &brokerImpl{
-		broker: broker,
-		config: conf,
-	}
+	return &brokerImpl{broker: leaderBroker}, nil
 }
 
-// GetOffset retrieves the offset number that corresponds to the requested position in the log
-func (b *brokerImpl) GetOffset(req *sarama.OffsetRequest) (int64, error) {
+// GetOffset retrieves the offset number that corresponds
+// to the requested position in the log.
+func (b *brokerImpl) GetOffset(cp ChainPartition, req *sarama.OffsetRequest) (int64, error) {
 	resp, err := b.broker.GetAvailableOffsets(req)
 	if err != nil {
 		return int64(-1), err
 	}
-	return resp.GetBlock(b.config.Kafka.Topic, b.config.Kafka.PartitionID).Offsets[0], nil
+	return resp.GetBlock(cp.Topic(), cp.Partition()).Offsets[0], nil
 }
 
-// Close terminates the broker
+// Close terminates the broker.
+// This is invoked by the session deliverer's getOffset method.
 func (b *brokerImpl) Close() error {
 	return b.broker.Close()
 }

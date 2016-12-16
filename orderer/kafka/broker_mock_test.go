@@ -17,10 +17,10 @@ limitations under the License.
 package kafka
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
 type mockBrockerImpl struct {
@@ -30,34 +30,33 @@ type mockBrockerImpl struct {
 	handlerMap map[string]sarama.MockResponse
 }
 
-func mockNewBroker(t *testing.T, conf *config.TopLevel) Broker {
+func mockNewBroker(t *testing.T, cp ChainPartition) (Broker, error) {
 	mockBroker := sarama.NewMockBroker(t, testBrokerID)
 	handlerMap := make(map[string]sarama.MockResponse)
 	// The sarama mock package doesn't allow us to return an error
 	// for invalid offset requests, so we return an offset of -1.
 	// Note that the mock offset responses below imply a broker with
-	// testNewestOffset-1 blocks available. Therefore, if you are using this
+	// newestOffset-1 blocks available. Therefore, if you are using this
 	// broker as part of a bigger test where you intend to consume blocks,
 	// make sure that the mockConsumer has been initialized accordingly
-	// (Set the 'seek' parameter to testNewestOffset-1.)
+	// (Set the 'offset' parameter to newestOffset-1.)
 	handlerMap["OffsetRequest"] = sarama.NewMockOffsetResponse(t).
-		SetOffset(conf.Kafka.Topic, conf.Kafka.PartitionID, sarama.OffsetOldest, testOldestOffset).
-		SetOffset(conf.Kafka.Topic, conf.Kafka.PartitionID, sarama.OffsetNewest, testNewestOffset)
+		SetOffset(cp.Topic(), cp.Partition(), sarama.OffsetOldest, testOldestOffset).
+		SetOffset(cp.Topic(), cp.Partition(), sarama.OffsetNewest, testNewestOffset)
 	mockBroker.SetHandlerByMap(handlerMap)
 
 	broker := sarama.NewBroker(mockBroker.Addr())
 	if err := broker.Open(nil); err != nil {
-		t.Fatal("Cannot connect to mock broker:", err)
+		return nil, fmt.Errorf("Cannot connect to mock broker: %s", err)
 	}
 
 	return &mockBrockerImpl{
 		brokerImpl: brokerImpl{
 			broker: broker,
-			config: conf,
 		},
 		mockBroker: mockBroker,
 		handlerMap: handlerMap,
-	}
+	}, nil
 }
 
 func (mb *mockBrockerImpl) Close() error {
