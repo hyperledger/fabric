@@ -22,8 +22,8 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/accesscontrol"
-	"github.com/hyperledger/fabric/core/crypto/attributes"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/accesscontrol/attributes"
+	"github.com/hyperledger/fabric/accesscontrol/crypto/utils"
 )
 
 // chaincodeHolder is the struct that hold the certificate and the metadata. An implementation is ChaincodeStub
@@ -107,7 +107,7 @@ func NewAttributesHandlerImpl(holder chaincodeHolder) (*AttributesHandlerImpl, e
 		return nil, errors.New("The certificate can't be nil.")
 	}
 	var tcert *x509.Certificate
-	tcert, err = primitives.DERToX509Certificate(certRaw)
+	tcert, err = utils.DERToX509Certificate(certRaw)
 	if err != nil {
 		return nil, err
 	}

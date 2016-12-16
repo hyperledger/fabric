@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package primitives
+package utils
 
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/asn1"
 	"math/big"
+
+	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
 // ECDSASignature represents an ECDSA signature
@@ -30,13 +32,13 @@ type ECDSASignature struct {
 
 // NewECDSAKey generates a new ECDSA Key
 func NewECDSAKey() (*ecdsa.PrivateKey, error) {
-	return ecdsa.GenerateKey(GetDefaultCurve(), rand.Reader)
+	return ecdsa.GenerateKey(primitives.GetDefaultCurve(), rand.Reader)
 }
 
 // ECDSASign signs
 func ECDSASign(signKey interface{}, msg []byte) ([]byte, error) {
 	temp := signKey.(*ecdsa.PrivateKey)
-	h := Hash(msg)
+	h := primitives.Hash(msg)
 	r, s, err := ecdsa.Sign(rand.Reader, temp, h)
 	if err != nil {
 		return nil, err

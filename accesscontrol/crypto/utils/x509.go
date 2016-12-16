@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package primitives
+package utils
 
 import (
 	"crypto/rand"
@@ -25,8 +25,6 @@ import (
 	"math/big"
 	"net"
 	"time"
-
-	"github.com/hyperledger/fabric/core/crypto/utils"
 )
 
 var (
@@ -54,7 +52,7 @@ func DERToX509Certificate(asn1Data []byte) (*x509.Certificate, error) {
 // of unhandled critical extensions
 func GetCriticalExtension(cert *x509.Certificate, oid asn1.ObjectIdentifier) ([]byte, error) {
 	for i, ext := range cert.UnhandledCriticalExtensions {
-		if utils.IntArrayEquals(ext, oid) {
+		if IntArrayEquals(ext, oid) {
 			cert.UnhandledCriticalExtensions = append(cert.UnhandledCriticalExtensions[:i], cert.UnhandledCriticalExtensions[i+1:]...)
 
 			break
@@ -62,7 +60,7 @@ func GetCriticalExtension(cert *x509.Certificate, oid asn1.ObjectIdentifier) ([]
 	}
 
 	for _, ext := range cert.Extensions {
-		if utils.IntArrayEquals(ext.Id, oid) {
+		if IntArrayEquals(ext.Id, oid) {
 			return ext.Value, nil
 		}
 	}
