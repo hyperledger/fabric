@@ -19,6 +19,7 @@ package kafka
 import (
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/orderer/localconfig"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 const (
@@ -39,6 +40,36 @@ func newBrokerConfig(conf *config.TopLevel) *sarama.Config {
 	brokerConfig.Producer.MaxMessageBytes = int(sarama.MaxRequestSize)
 
 	return brokerConfig
+}
+
+func newConnectMessage() *ab.KafkaMessage {
+	return &ab.KafkaMessage{
+		Type: &ab.KafkaMessage_Connect{
+			Connect: &ab.KafkaMessageConnect{
+				Payload: nil,
+			},
+		},
+	}
+}
+
+func newRegularMessage(payload []byte) *ab.KafkaMessage {
+	return &ab.KafkaMessage{
+		Type: &ab.KafkaMessage_Regular{
+			Regular: &ab.KafkaMessageRegular{
+				Payload: payload,
+			},
+		},
+	}
+}
+
+func newTimeToCutMessage(blockNumber uint64) *ab.KafkaMessage {
+	return &ab.KafkaMessage{
+		Type: &ab.KafkaMessage_TimeToCut{
+			TimeToCut: &ab.KafkaMessageTimeToCut{
+				BlockNumber: blockNumber,
+			},
+		},
+	}
 }
 
 func newMsg(payload []byte, topic string) *sarama.ProducerMessage {

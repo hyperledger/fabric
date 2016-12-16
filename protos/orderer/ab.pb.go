@@ -8,6 +8,7 @@ Package orderer is a generated protocol buffer package.
 It is generated from these files:
 	orderer/ab.proto
 	orderer/configuration.proto
+	orderer/kafka.proto
 
 It has these top-level messages:
 	BroadcastResponse
@@ -20,6 +21,10 @@ It has these top-level messages:
 	CreationPolicy
 	ChainCreators
 	KafkaBrokers
+	KafkaMessage
+	KafkaMessageRegular
+	KafkaMessageTimeToCut
+	KafkaMessageConnect
 */
 package orderer
 

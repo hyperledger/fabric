@@ -24,7 +24,8 @@ func (*ConsensusType) ProtoMessage()               {}
 func (*ConsensusType) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
 type BatchSize struct {
-	// Simply specified as messages for now, in the future we may want to allow this to be specified by size in bytes
+	// Simply specified as messages for now, in the future we may want to allow
+	// this to be specified by size in bytes
 	Messages uint32 `protobuf:"varint,1,opt,name=messages" json:"messages,omitempty"`
 }
 
@@ -33,12 +34,16 @@ func (m *BatchSize) String() string            { return proto.CompactTextString(
 func (*BatchSize) ProtoMessage()               {}
 func (*BatchSize) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
 
-// When submitting a new chain configuration transaction to create a new chain, the first configuration item must of of type
-// Orderer with Key CreationPolicy and contents of a Marshaled CreationPolicy.  The policy should be set to the policy which
-// was supplied by the ordering service for the client's chain creation.  The digest should be the hash of the concatenation
-// of the remaining ConfigurationItem bytes.  The signatures of the configuration item should satisfy the policy for chain creation
+// When submitting a new chain configuration transaction to create a new chain,
+// the first configuration item must be of type Orderer with Key CreationPolicy
+// and contents of a Marshaled CreationPolicy. The policy should be set to the
+// policy which was supplied by the ordering service for the client's chain
+// creation. The digest should be the hash of the concatenation of the remaining
+// ConfigurationItem bytes. The signatures of the configuration item should
+// satisfy the policy for chain creation.
 type CreationPolicy struct {
-	// The name of the policy which should be used to validate the creation of this chain
+	// The name of the policy which should be used to validate the creation of
+	// this chain
 	Policy string `protobuf:"bytes,1,opt,name=policy" json:"policy,omitempty"`
 	// The hash of the concatenation of remaining configuration item bytes
 	Digest []byte `protobuf:"bytes,2,opt,name=digest,proto3" json:"digest,omitempty"`
@@ -50,7 +55,8 @@ func (*CreationPolicy) ProtoMessage()               {}
 func (*CreationPolicy) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
 
 type ChainCreators struct {
-	// A list of policies, any of which may be specified as the chain creation policy in a chain creation request
+	// A list of policies, any of which may be specified as the chain creation
+	// policy in a chain creation request
 	Policies []string `protobuf:"bytes,1,rep,name=policies" json:"policies,omitempty"`
 }
 
@@ -59,7 +65,11 @@ func (m *ChainCreators) String() string            { return proto.CompactTextStr
 func (*ChainCreators) ProtoMessage()               {}
 func (*ChainCreators) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
 
+// Carries a list of bootstrap brokers, i.e. this is not the exclusive set of
+// brokers an ordering service
 type KafkaBrokers struct {
+	// Each broker here should be identified using the (IP|host):port notation,
+	// e.g. 127.0.0.1:7050, or localhost:7050 are valid entries
 	Brokers []string `protobuf:"bytes,1,rep,name=brokers" json:"brokers,omitempty"`
 }
 
