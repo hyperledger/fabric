@@ -16,7 +16,10 @@ limitations under the License.
 
 package msp
 
-import "github.com/hyperledger/fabric/protos/msp"
+import (
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
+)
 
 type noopmsp struct {
 }
@@ -60,12 +63,20 @@ func (msp *noopmsp) Validate(id Identity) error {
 	return nil
 }
 
+func (msp *noopmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error {
+	return nil
+}
+
 type noopidentity struct {
 }
 
 func newNoopIdentity() (Identity, error) {
 	mspLogger.Infof("Creating no-op identity instance")
 	return &noopidentity{}, nil
+}
+
+func (id *noopidentity) SatisfiesPrincipal(*common.MSPPrincipal) error {
+	return nil
 }
 
 func (id *noopidentity) GetIdentifier() *IdentityIdentifier {

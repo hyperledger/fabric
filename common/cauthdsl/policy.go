@@ -24,16 +24,17 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/msp"
 )
 
 type provider struct {
-	helper CryptoHelper
+	deserializer msp.Common
 }
 
 // NewProviderImpl provides a policy generator for cauthdsl type policies
-func NewPolicyProvider(helper CryptoHelper) policies.Provider {
+func NewPolicyProvider(deserializer msp.Common) policies.Provider {
 	return &provider{
-		helper: helper,
+		deserializer: deserializer,
 	}
 }
 
@@ -48,7 +49,7 @@ func (pr *provider) NewPolicy(data []byte) (policies.Policy, error) {
 		return nil, fmt.Errorf("This evaluator only understands messages of version 0, but version was %d", sigPolicy.Version)
 	}
 
-	compiled, err := compile(sigPolicy.Policy, sigPolicy.Identities, pr.helper)
+	compiled, err := compile(sigPolicy.Policy, sigPolicy.Identities, pr.deserializer)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +61,7 @@ func (pr *provider) NewPolicy(data []byte) (policies.Policy, error) {
 }
 
 type policy struct {
-	evaluator func([]*cb.SignedData) bool
+	evaluator func([]*cb.SignedData, []bool) bool
 }
 
 // Evaluate takes a set of SignedData and evaluates whether this set of signatures satisfies the policy
@@ -69,7 +70,7 @@ func (p *policy) Evaluate(signatureSet []*cb.SignedData) error {
 		return fmt.Errorf("No such policy")
 	}
 
-	ok := p.evaluator(signatureSet)
+	ok := p.evaluator(signatureSet, make([]bool, len(signatureSet)))
 	if !ok {
 		return errors.New("Failed to authenticate policy")
 	}

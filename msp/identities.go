@@ -28,6 +28,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 type identity struct {
@@ -47,6 +48,11 @@ type identity struct {
 func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) Identity {
 	mspLogger.Infof("Creating identity instance for ID %s", id)
 	return &identity{id: id, cert: cert, pk: pk, msp: msp}
+}
+
+// SatisfiesPrincipal returns null if this instance matches the supplied principal or an error otherwise
+func (id *identity) SatisfiesPrincipal(principal *common.MSPPrincipal) error {
+	return id.msp.SatisfiesPrincipal(id, principal)
 }
 
 // GetIdentifier returns the identifier (MSPID/IDID) for this instance

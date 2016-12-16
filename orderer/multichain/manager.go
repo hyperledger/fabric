@@ -166,7 +166,8 @@ func newConfigTxManagerAndHandlers(configEnvelope *cb.ConfigurationEnvelope) (co
 		case cb.Policy_UNKNOWN:
 			// Do not register a handler
 		case cb.Policy_SIGNATURE:
-			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(xxxCryptoHelper{})
+			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(
+				cauthdsl.NewMockDeserializer()) // FIXME: here we should pass in the orderer MSP as soon as it's ready
 		case cb.Policy_MSP:
 			// Add hook for MSP Handler here
 		}

@@ -17,37 +17,49 @@ limitations under the License.
 package cauthdsl
 
 import (
-	"bytes"
 	"fmt"
 
+	"bytes"
+
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/op/go-logging"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
-// CryptoHelper is used to provide a plugin point for different signature validation types
-type CryptoHelper interface {
-	VerifySignature(signedData *cb.SignedData) error
-}
+var cauthdslLogger = logging.MustGetLogger("cauthdsl")
 
 // compile recursively builds a go evaluatable function corresponding to the policy specified
-func compile(policy *cb.SignaturePolicy, identities [][]byte, ch CryptoHelper) (func([]*cb.SignedData) bool, error) {
+func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserializer msp.Common) (func([]*cb.SignedData, []bool) bool, error) {
 	switch t := policy.Type.(type) {
 	case *cb.SignaturePolicy_From:
-		policies := make([]func([]*cb.SignedData) bool, len(t.From.Policies))
+		policies := make([]func([]*cb.SignedData, []bool) bool, len(t.From.Policies))
 		for i, policy := range t.From.Policies {
-			compiledPolicy, err := compile(policy, identities, ch)
+			compiledPolicy, err := compile(policy, identities, deserializer)
 			if err != nil {
 				return nil, err
 			}
 			policies[i] = compiledPolicy
 
 		}
-		return func(signedData []*cb.SignedData) bool {
+		return func(signedData []*cb.SignedData, used []bool) bool {
+			cauthdslLogger.Debug("Gate evaluation starts: (%s)", t)
 			verified := int32(0)
+			_used := make([]bool, len(used))
 			for _, policy := range policies {
-				if policy(signedData) {
+				copy(_used, used)
+				if policy(signedData, _used) {
 					verified++
+					copy(used, _used)
 				}
 			}
+
+			if verified >= t.From.N {
+				cauthdslLogger.Debug("Gate evaluation succeeds: (%s)", t)
+			} else {
+				cauthdslLogger.Debug("Gate evaluation fails: (%s)", t)
+			}
+
 			return verified >= t.From.N
 		}, nil
 	case *cb.SignaturePolicy_SignedBy:
@@ -55,15 +67,102 @@ func compile(policy *cb.SignaturePolicy, identities [][]byte, ch CryptoHelper) (
 			return nil, fmt.Errorf("Identity index out of range, requested %d, but identies length is %d", t.SignedBy, len(identities))
 		}
 		signedByID := identities[t.SignedBy]
-		return func(signedData []*cb.SignedData) bool {
-			for _, sd := range signedData {
-				if bytes.Equal(sd.Identity, signedByID) {
-					return ch.VerifySignature(sd) == nil
+		return func(signedData []*cb.SignedData, used []bool) bool {
+			cauthdslLogger.Debug("Principal evaluation starts: (%s) (used %s)", t, used)
+			for i, sd := range signedData {
+				if used[i] {
+					continue
+				}
+				// FIXME: what should I do with the error below?
+				identity, _ := deserializer.DeserializeIdentity(sd.Identity)
+				err := identity.SatisfiesPrincipal(signedByID)
+				if err == nil {
+					err := identity.Verify(sd.Data, sd.Signature)
+					if err == nil {
+						cauthdslLogger.Debug("Principal evaluation succeeds: (%s)", t, used)
+						used[i] = true
+						return true
+					}
 				}
 			}
+			cauthdslLogger.Debug("Principal evaluation fails: (%s)", t, used)
 			return false
 		}, nil
 	default:
 		return nil, fmt.Errorf("Unknown type: %T:%v", t, t)
 	}
+}
+
+// FIXME: remove the code below as soon as we can use MSP from the policy manager code
+var invalidSignature = []byte("badsigned")
+
+type mockIdentity struct {
+	idBytes []byte
+}
+
+func (id *mockIdentity) SatisfiesPrincipal(p *cb.MSPPrincipal) error {
+	if bytes.Compare(id.idBytes, p.Principal) == 0 {
+		return nil
+	} else {
+		return errors.New("Principals do not match")
+	}
+}
+
+func (id *mockIdentity) GetIdentifier() *msp.IdentityIdentifier {
+	return &msp.IdentityIdentifier{Mspid: "Mock", Id: "Bob"}
+}
+
+func (id *mockIdentity) GetMSPIdentifier() string {
+	return "Mock"
+}
+
+func (id *mockIdentity) Validate() error {
+	return nil
+}
+
+func (id *mockIdentity) GetOrganizationUnits() string {
+	return "dunno"
+}
+
+func (id *mockIdentity) Verify(msg []byte, sig []byte) error {
+	if bytes.Compare(sig, invalidSignature) == 0 {
+		return errors.New("Invalid signature")
+	} else {
+		return nil
+	}
+}
+
+func (id *mockIdentity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpts) error {
+	return nil
+}
+
+func (id *mockIdentity) VerifyAttributes(proof [][]byte, spec *msp.AttributeProofSpec) error {
+	return nil
+}
+
+func (id *mockIdentity) Serialize() ([]byte, error) {
+	return id.idBytes, nil
+}
+
+func toSignedData(data [][]byte, identities [][]byte, signatures [][]byte) ([]*cb.SignedData, []bool) {
+	signedData := make([]*cb.SignedData, len(data))
+	for i := range signedData {
+		signedData[i] = &cb.SignedData{
+			Data:      data[i],
+			Identity:  identities[i],
+			Signature: signatures[i],
+		}
+	}
+	return signedData, make([]bool, len(signedData))
+}
+
+type mockDeserializer struct {
+}
+
+func NewMockDeserializer() msp.Common {
+	return &mockDeserializer{}
+}
+
+func (md *mockDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
+	return &mockIdentity{idBytes: serializedIdentity}, nil
 }

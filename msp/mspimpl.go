@@ -25,11 +25,15 @@ import (
 
 	"encoding/json"
 
+	"bytes"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/protos/common"
 	m "github.com/hyperledger/fabric/protos/msp"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 // This is an instantiation of an MSP that
@@ -296,4 +300,55 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 	}
 
 	return newIdentity(id, cert, pub, msp), nil
+}
+
+// SatisfiesPrincipal returns null if the identity matches the principal or an error otherwise
+func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error {
+	switch principal.PrincipalClassification {
+	// in this case, we have to check whether the
+	// identity has a role in the msp - member or admin
+	case common.MSPPrincipal_ByMSPRole:
+		// Principal contains the msp role
+		mspRole := &common.MSPRole{}
+		err := proto.Unmarshal(principal.Principal, mspRole)
+		if err != nil {
+			return fmt.Errorf("Could not unmarshal MSPRole from principal, err %s", err)
+		}
+
+		// at first, we check whether the MSP
+		// identifier is the same as that of the identity
+		if mspRole.MSPIdentifier != msp.name {
+			return fmt.Errorf("The identity is a member of a different MSP (expected %s, got %s)", mspRole.MSPIdentifier, id.GetMSPIdentifier())
+		}
+
+		// now we validate the different msp roles
+		switch mspRole.Role {
+		// in the case of member, we simply check
+		// whether this identity is valid for the MSP
+		case common.MSPRole_Member:
+			return msp.Validate(id)
+		case common.MSPRole_Admin:
+			panic("Not yet implemented")
+		default:
+			return fmt.Errorf("Invalid MSP role type %d", int32(mspRole.Role))
+		}
+	// in this case we have to serialize this instance
+	// and compare it byte-by-byte with Principal
+	case common.MSPPrincipal_ByIdentity:
+		idBytes, err := id.Serialize()
+		if err != nil {
+			return fmt.Errorf("Could not serialize this identity instance, err %s", err)
+		}
+
+		rv := bytes.Compare(idBytes, principal.Principal)
+		if rv == 0 {
+			return nil
+		} else {
+			return errors.New("The identities do not match")
+		}
+	case common.MSPPrincipal_ByOrganizationUnit:
+		panic("Not yet implemented")
+	default:
+		return fmt.Errorf("Invalid principal type %d", int32(principal.PrincipalClassification))
+	}
 }
