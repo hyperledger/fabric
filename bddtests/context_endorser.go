@@ -22,8 +22,6 @@ import (
 	"strconv"
 	"time"
 
-	"strings"
-
 	"github.com/DATA-DOG/godog"
 	"github.com/DATA-DOG/godog/gherkin"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -68,19 +66,6 @@ func (b *BDDContext) build(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec,
 	}
 	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}
 	return chaincodeDeploymentSpec, nil
-}
-func (b *BDDContext) weCompose(composeFiles string) error {
-	if b.composition != nil {
-		return fmt.Errorf("Already have composition in BDD context (%s)", b.composition.projectName)
-	}
-	// Need a unique name, but docker does not allow '-' in names
-	composeProjectName := strings.Replace(util.GenerateUUID(), "-", "", -1)
-	newComposition, err := NewComposition(composeProjectName, composeFiles)
-	if err != nil {
-		return fmt.Errorf("Error composing system in BDD context:  %s", err)
-	}
-	b.composition = newComposition
-	return nil
 }
 
 func (b *BDDContext) requestingFrom(arg1, arg2 string) error {
@@ -367,48 +352,4 @@ func (b *BDDContext) userSetsESCCToForChaincodeSpec(arg1, arg2, arg3 string) err
 
 func (b *BDDContext) userSetsVSCCToForChaincodeSpec(arg1, arg2, arg3 string) error {
 	return godog.ErrPending
-}
-
-func (b *BDDContext) beforeScenario(scenarioOrScenarioOutline interface{}) {
-	b.scenarioOrScenarioOutline = scenarioOrScenarioOutline
-	//switch t := scenarioOrScenarioOutline.(type) {
-	//case *gherkin.Scenario:
-	//	fmt.Printf("Scenario recieved %v", t)
-	//case *gherkin.ScenarioOutline:
-	//	fmt.Printf("ScenarioOutline recieved %v", t)
-	//}
-}
-
-func (b *BDDContext) afterScenarioDecompose(interface{}, error) {
-	if b.hasTag("@doNotDecompose") == true {
-		fmt.Printf("Not decomposing:  %s", b.getScenarioDefinition().Name)
-	} else {
-		b.composition.Decompose()
-	}
-	// Now clear the users
-	b.composition = nil
-	b.users = make(map[string]*UserRegistration)
-}
-
-func FeatureContext(s *godog.Suite) {
-	bddCtx := &BDDContext{godogSuite: s, users: make(map[string]*UserRegistration), grpcClientPort: 7051}
-
-	s.BeforeScenario(bddCtx.beforeScenario)
-	s.AfterScenario(bddCtx.afterScenarioDecompose)
-	s.Step(`^we compose "([^"]*)"$`, bddCtx.weCompose)
-	s.Step(`^requesting "([^"]*)" from "([^"]*)"$`, bddCtx.requestingFrom)
-	s.Step(`^I should get a JSON response with array "([^"]*)" contains "([^"]*)" elements$`, bddCtx.iShouldGetAJSONResponseWithArrayContainsElements)
-	s.Step(`^I wait "([^"]*)" seconds$`, bddCtx.iWaitSeconds)
-	s.Step(`^I register with CA supplying username "([^"]*)" and secret "([^"]*)" on peers:$`, bddCtx.iRegisterWithCASupplyingUsernameAndSecretOnPeers)
-	s.Step(`^user "([^"]*)" creates a chaincode spec "([^"]*)" of type "([^"]*)" for chaincode "([^"]*)" with args$`, bddCtx.userCreatesAChaincodeSpecOfTypeForChaincodeWithArgs)
-
-	s.Step(`^user "([^"]*)" creates a deployment spec "([^"]*)" using chaincode spec "([^"]*)" and devops on peer "([^"]*)"$`, bddCtx.userCreatesADeploymentSpecUsingChaincodeSpecAndDevopsOnPeer)
-	//s.Step(`^user "([^"]*)" creates a deployment spec "([^"]*)" using chaincode spec "([^"]*)"$`, bddCtx.userCreatesADeploymentSpecUsingChaincodeSpec)
-
-	s.Step(`^user "([^"]*)" creates a deployment proposal "([^"]*)" using chaincode deployment spec "([^"]*)"$`, bddCtx.userCreatesADeploymentProposalUsingChaincodeDeploymentSpec)
-	s.Step(`^user "([^"]*)" sends proposal "([^"]*)" to endorsers with timeout of "([^"]*)" seconds:$`, bddCtx.userSendsProposalToEndorsersWithTimeoutOfSeconds)
-	s.Step(`^user "([^"]*)" stores their last result as "([^"]*)"$`, bddCtx.userStoresTheirLastResultAs)
-	s.Step(`^user "([^"]*)" expects proposal responses "([^"]*)" with status "([^"]*)" from endorsers:$`, bddCtx.userExpectsProposalResponsesWithStatusFromEndorsers)
-	s.Step(`^user "([^"]*)" sets ESCC to "([^"]*)" for chaincode spec "([^"]*)"$`, bddCtx.userSetsESCCToForChaincodeSpec)
-	s.Step(`^user "([^"]*)" sets VSCC to "([^"]*)" for chaincode spec "([^"]*)"$`, bddCtx.userSetsVSCCToForChaincodeSpec)
 }
