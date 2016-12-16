@@ -31,7 +31,7 @@ func (s *SBFT) sendViewChange() {
 	log.Noticef("replica %d: sending viewchange for view %d", s.id, s.view)
 
 	var q, p []*Subject
-	if s.cur.sentCommit {
+	if s.cur.prepared {
 		p = append(p, &s.cur.subject)
 	}
 	if s.cur.preprep != nil {
@@ -51,10 +51,8 @@ func (s *SBFT) sendViewChange() {
 	s.viewChangeTimer.Cancel()
 	s.cur.timeout.Cancel()
 
-	s.sys.Persist("viewchange", svc)
+	s.sys.Persist(viewchange, svc)
 	s.broadcast(&Msg{&Msg_ViewChange{svc}})
-
-	s.processNewView()
 }
 
 func (s *SBFT) cancelViewChangeTimer() {

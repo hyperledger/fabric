@@ -25,6 +25,11 @@ import (
 	"github.com/op/go-logging"
 )
 
+const preprepared string = "preprepared"
+const prepared string = "prepared"
+const committed string = "committed"
+const viewchange string = "viewchange"
+
 // Receiver defines the API that is exposed by SBFT to the system.
 type Receiver interface {
 	Receive(msg *Msg, src uint64)
@@ -75,9 +80,9 @@ type reqInfo struct {
 	preprep        *Preprepare
 	prep           map[uint64]*Subject
 	commit         map[uint64]*Subject
-	sentCommit     bool
-	executed       bool
 	checkpoint     map[uint64]*Checkpoint
+	prepared       bool
+	committed      bool
 	checkpointDone bool
 }
 
@@ -86,7 +91,6 @@ type replicaInfo struct {
 	hello            *Hello
 	signedViewchange *Signed
 	viewchange       *ViewChange
-	newview          *NewView
 }
 
 var log = logging.MustGetLogger("sbft")
@@ -113,14 +117,14 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 
 	s.view = 0
 	s.cur.subject.Seq = &SeqView{}
-	s.cur.sentCommit = true
-	s.cur.executed = true
+	s.cur.prepared = true
+	s.cur.committed = true
 	s.cur.checkpointDone = true
 	s.cur.timeout = dummyCanceller{}
 	s.activeView = true
 
 	svc := &Signed{}
-	if s.sys.Restore("viewchange", svc) {
+	if s.sys.Restore(viewchange, svc) {
 		vc := &ViewChange{}
 		err := proto.Unmarshal(svc.Data, vc)
 		if err != nil {
@@ -132,7 +136,7 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 	}
 
 	pp := &Preprepare{}
-	if s.sys.Restore("preprepare", pp) && pp.Seq.View >= s.view {
+	if s.sys.Restore(preprepared, pp) && pp.Seq.View >= s.view {
 		s.view = pp.Seq.View
 		s.activeView = true
 		if pp.Seq.Seq > s.seq() {
@@ -140,12 +144,12 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 		}
 	}
 	c := &Subject{}
-	if s.sys.Restore("commit", c) && reflect.DeepEqual(c, &s.cur.subject) && c.Seq.View >= s.view {
-		s.cur.sentCommit = true
+	if s.sys.Restore(prepared, c) && reflect.DeepEqual(c, &s.cur.subject) && c.Seq.View >= s.view {
+		s.cur.prepared = true
 	}
 	ex := &Subject{}
-	if s.sys.Restore("execute", ex) && reflect.DeepEqual(c, &s.cur.subject) && ex.Seq.View >= s.view {
-		s.cur.executed = true
+	if s.sys.Restore(committed, ex) && reflect.DeepEqual(c, &s.cur.subject) && ex.Seq.View >= s.view {
+		s.cur.committed = true
 	}
 
 	s.cancelViewChangeTimer()

@@ -55,10 +55,10 @@ func (s *SBFT) Connection(replica uint64) {
 		} else {
 			s.sys.Send(&Msg{&Msg_Prepare{&s.cur.subject}}, replica)
 		}
-		if s.cur.sentCommit {
+		if s.cur.prepared {
 			s.sys.Send(&Msg{&Msg_Commit{&s.cur.subject}}, replica)
 		}
-		if s.cur.executed {
+		if s.cur.committed {
 			s.sys.Send(&Msg{&Msg_Checkpoint{s.makeCheckpoint()}}, replica)
 		}
 	}
@@ -78,32 +78,9 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 		s.deliverBatch(h.Batch)
 	}
 
-	if h.NewView != nil && s.view <= h.NewView.View {
-		if s.primaryIDView(h.NewView.View) != src {
-			log.Warningf("replica %d: invalid hello with new view from non-primary %d", s.id, src)
-			return
-		}
-
-		vcs, err := s.checkNewViewSignatures(h.NewView)
-		if err != nil {
-			log.Warningf("replica %d: invalid hello new view from %d: %s", s.id, src, err)
-			return
-		}
-
-		_, _, ok := s.makeXset(vcs)
-		if !ok {
-			log.Warningf("replica %d: invalid hello new view xset from %d", s.id, src)
-			return
-		}
-
-		s.view = h.NewView.View
-		s.activeView = true
-
-		s.maybeDeliverUsingXset(h.NewView)
-	}
+	s.handleNewView(h.NewView, src)
 
 	s.replicaState[src].hello = h
-
 	s.discardBacklog(src)
 	s.processBacklog()
 }

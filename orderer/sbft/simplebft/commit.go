@@ -19,7 +19,7 @@ package simplebft
 import "reflect"
 
 func (s *SBFT) maybeSendCommit() {
-	if s.cur.sentCommit || len(s.cur.prep) < s.noFaultyQuorum()-1 {
+	if s.cur.prepared || len(s.cur.prep) < s.noFaultyQuorum()-1 {
 		return
 	}
 	s.sendCommit()
@@ -27,9 +27,9 @@ func (s *SBFT) maybeSendCommit() {
 }
 
 func (s *SBFT) sendCommit() {
-	s.cur.sentCommit = true
+	s.cur.prepared = true
 	c := s.cur.subject
-	s.sys.Persist("commit", &c)
+	s.sys.Persist(prepared, &c)
 	s.broadcast(&Msg{&Msg_Commit{&c}})
 }
 
@@ -50,5 +50,16 @@ func (s *SBFT) handleCommit(c *Subject, src uint64) {
 	}
 	s.cur.commit[src] = c
 	s.cancelViewChangeTimer()
-	s.maybeExecute()
+
+	//maybe mark as comitted
+	if s.cur.committed || len(s.cur.commit) < s.noFaultyQuorum() {
+		return
+	}
+	s.cur.committed = true
+	log.Noticef("replica %d: executing %v %x", s.id, s.cur.subject.Seq, s.cur.subject.Digest)
+
+	s.sys.Persist(committed, &s.cur.subject)
+
+	s.sendCheckpoint()
+	s.processBacklog()
 }

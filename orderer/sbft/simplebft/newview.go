@@ -86,6 +86,10 @@ func (s *SBFT) checkNewViewSignatures(nv *NewView) ([]*ViewChange, error) {
 }
 
 func (s *SBFT) handleNewView(nv *NewView, src uint64) {
+	if nv == nil {
+		return
+	}
+
 	if nv.View < s.view {
 		log.Debugf("replica %d: discarding old new view from %d for %d, we are in %d", s.id, src, nv.View, s.view)
 		return
@@ -108,7 +112,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		return
 	}
 
-	xset, _, ok := s.makeXset(vcs)
+	xset, prevBatch, ok := s.makeXset(vcs)
 
 	if !ok || !reflect.DeepEqual(nv.Xset, xset) {
 		log.Warningf("replica %d: invalid new view from %d: xset incorrect: %v, %v", s.id, src, nv.Xset, xset)
@@ -139,36 +143,26 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 		}
 	}
 
-	s.replicaState[s.primaryIDView(nv.View)].newview = nv
 	s.view = nv.View
-	s.activeView = false
-
-	s.processNewView()
-}
-
-func (s *SBFT) processNewView() {
-	if s.activeView {
-		return
-	}
-
-	nv := s.replicaState[s.primaryIDView(s.view)].newview
-	if nv == nil || nv.View != s.view {
-		return
-	}
-
-	s.activeView = true
 	s.discardBacklog(s.primaryID())
 
-	s.maybeDeliverUsingXset(nv)
+	// maybe deliver using xset
+	if s.sys.LastBatch().DecodeHeader().Seq < prevBatch.DecodeHeader().Seq {
+		if prevBatch.DecodeHeader().Seq == s.cur.subject.Seq.Seq {
+			// we just received a signature set for a request which we preprepared, but never delivered.
+			prevBatch.Payloads = s.cur.preprep.Batch.Payloads
+		}
+		s.deliverBatch(prevBatch)
+	}
 
-	// By now we cannot be waiting for any more outstanding
-	// messages.  after a new-view message, by definition all
-	// activity has acquiesced.  Prepare to accept a new request.
+	// after a new-view message, prepare to accept new requests.
+	s.activeView = true
 	s.cur.checkpointDone = true
 	s.cur.subject.Seq.Seq = 0
 
 	log.Infof("replica %d now active in view %d; primary: %v", s.id, s.view, s.isPrimary())
 
+	//process pre-prepare if piggybacked to new-view
 	if nv.Batch != nil {
 		pp := &Preprepare{
 			Seq:   &SeqView{Seq: nv.Batch.DecodeHeader().Seq, View: s.view},
@@ -183,24 +177,4 @@ func (s *SBFT) processNewView() {
 	}
 
 	s.processBacklog()
-}
-
-func (s *SBFT) maybeDeliverUsingXset(nv *NewView) {
-	// TODO we could cache vcs in replicaState
-	vcs, err := s.checkNewViewSignatures(nv)
-	if err != nil {
-		panic(err)
-	}
-
-	_, prevBatch, ok := s.makeXset(vcs)
-	if !ok {
-		panic("invalid newview")
-	}
-	if s.sys.LastBatch().DecodeHeader().Seq < prevBatch.DecodeHeader().Seq {
-		if prevBatch.DecodeHeader().Seq == s.cur.subject.Seq.Seq {
-			// we just received a signature set for a request which we preprepared, but never delivered.
-			prevBatch.Payloads = s.cur.preprep.Batch.Payloads
-		}
-		s.deliverBatch(prevBatch)
-	}
 }
