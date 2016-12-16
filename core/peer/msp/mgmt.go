@@ -71,3 +71,12 @@ func GetLocalMSP() msp.MSP {
 
 	return lclMsp
 }
+
+//GetMSPCommon returns the common interface
+func GetMSPCommon(chainID string) msp.Common {
+	if chainID == "" {
+		return GetLocalMSP()
+	}
+
+	return GetManagerForChain(chainID)
+}

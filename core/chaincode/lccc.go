@@ -23,7 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
@@ -277,7 +277,7 @@ func (lccc *LifeCycleSysCC) deploy(stub shim.ChaincodeStubInterface, chainname s
 	//    1) don't allow state initialization on deploy
 	//    2) combine both LCCC and the called chaincodes into one RW set
 	//    3) just drop the second
-	lgr := kvledger.GetLedger(chainname)
+	lgr := peer.GetLedger(chainname)
 
 	var dummytxsim ledger.TxSimulator
 	var err error

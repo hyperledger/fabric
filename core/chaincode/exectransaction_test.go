@@ -31,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -60,6 +59,9 @@ func getNowMillis() int64 {
 func initPeer(chainIDs ...string) (net.Listener, error) {
 	//start clean
 	finitPeer(nil, chainIDs...)
+
+	peer.MockInitialize()
+
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -69,10 +71,6 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
 	grpcServer := grpc.NewServer(opts...)
-
-	ledgerPath := viper.GetString("peer.fileSystemPath")
-
-	kvledger.Initialize(ledgerPath)
 
 	peerAddress, err := peer.GetLocalAddress()
 	if err != nil {
@@ -93,7 +91,10 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 	RegisterSysCCs()
 
 	for _, id := range chainIDs {
-		kvledger.CreateLedger(id)
+		if err = peer.MockCreateChain(id); err != nil {
+			closeListenerAndSleep(lis)
+			return nil, err
+		}
 		DeploySysCCs(id)
 	}
 
@@ -106,7 +107,7 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 	if lis != nil {
 		for _, c := range chainIDs {
 			deRegisterSysCCs(c)
-			if lgr := kvledger.GetLedger(c); lgr != nil {
+			if lgr := peer.GetLedger(c); lgr != nil {
 				lgr.Close()
 			}
 		}
@@ -119,7 +120,7 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 }
 
 func startTxSimulation(ctxt context.Context, chainID string) (context.Context, ledger.TxSimulator, error) {
-	lgr := kvledger.GetLedger(chainID)
+	lgr := peer.GetLedger(chainID)
 	txsim, err := lgr.NewTxSimulator()
 	if err != nil {
 		return nil, nil, err
@@ -161,7 +162,7 @@ func endTxSimulationCIS(chainID string, txid string, txsim ledger.TxSimulator, p
 
 func endTxSimulation(chainID string, txsim ledger.TxSimulator, payload []byte, commit bool, prop *pb.Proposal) error {
 	txsim.Done()
-	if lgr := kvledger.GetLedger(chainID); lgr != nil {
+	if lgr := peer.GetLedger(chainID); lgr != nil {
 		if commit {
 			var txSimulationResults []byte
 			var err error

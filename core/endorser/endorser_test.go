@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
@@ -72,8 +71,7 @@ func initPeer(chainID string) (net.Listener, error) {
 	}
 
 	//initialize ledger
-	lpath := viper.GetString("peer.fileSystemPath")
-	kvledger.Initialize(lpath)
+	peer.MockInitialize()
 
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
 		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
@@ -96,7 +94,10 @@ func initPeer(chainID string) (net.Listener, error) {
 
 	chaincode.RegisterSysCCs()
 
-	kvledger.CreateLedger(chainID)
+	if err = peer.MockCreateChain(chainID); err != nil {
+		closeListenerAndSleep(lis)
+		return nil, err
+	}
 
 	chaincode.DeploySysCCs(chainID)
 

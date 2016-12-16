@@ -56,11 +56,19 @@ var chains = struct {
 	list map[string]*chain
 }{list: make(map[string]*chain)}
 
+//MockInitialize resets chains for test env
+func MockInitialize() {
+	chains.list = nil
+	chains.list = make(map[string]*chain)
+}
+
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
 func Initialize() {
+	//Till JoinChain works, we continue to use default chain
 	path := getLedgerPath("")
+
 	peerLogger.Infof("Init peer by loading chains from %s", path)
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -164,6 +172,22 @@ func CreateChainFromBlock(cb *common.Block) error {
 	return createChain(cid, ledger, cb)
 }
 
+// MockCreateChain used for creating a ledger for a chain for tests
+// without havin to join
+func MockCreateChain(cid string) error {
+	var ledger *kvledger.KVLedger
+	var err error
+	if ledger, err = createLedger(cid); err != nil {
+		return err
+	}
+
+	chains.Lock()
+	defer chains.Unlock()
+	chains.list[cid] = &chain{ledger: ledger}
+
+	return nil
+}
+
 // GetLedger returns the ledger of the chain with chain ID. Note that this
 // call returns nil if chain cid has not been created.
 func GetLedger(cid string) *kvledger.KVLedger {
@@ -171,6 +195,17 @@ func GetLedger(cid string) *kvledger.KVLedger {
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
 		return c.ledger
+	}
+	return nil
+}
+
+// GetCommitter returns the committer of the chain with chain ID. Note that this
+// call returns nil if chain cid has not been created.
+func GetCommitter(cid string) committer.Committer {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.committer
 	}
 	return nil
 }

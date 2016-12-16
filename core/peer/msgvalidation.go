@@ -53,7 +53,7 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*p
 	return chaincodeHdrExt, nil
 }
 
-// validateProposalMessage checks the validity of a SignedProposal message
+// ValidateProposalMessage checks the validity of a SignedProposal message
 // this function returns Header and ChaincodeHeaderExtension messages since they
 // have been unmarshalled and validated
 func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *common.Header, *pb.ChaincodeHeaderExtension, error) {
@@ -113,8 +113,13 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return fmt.Errorf("Nil arguments")
 	}
 
+	mspObj := mspmgmt.GetMSPCommon(ChainID)
+	if mspObj == nil {
+		return fmt.Errorf("could not get msp for chain [%s]", ChainID)
+	}
+
 	// get the identity of the creator
-	creator, err := mspmgmt.GetManagerForChain(ChainID).DeserializeIdentity(creatorBytes)
+	creator, err := mspObj.DeserializeIdentity(creatorBytes)
 	if err != nil {
 		return fmt.Errorf("Failed to deserialize creator identity, err %s", err)
 	}

@@ -58,13 +58,13 @@ func (ccid *CCID) GetName() string {
 	if ccid.ChaincodeSpec == nil {
 		panic("nil chaincode spec")
 	}
-	if ccid.ChainID == "" {
-		panic("chain id not specified")
+
+	//this better be chainless system chaincode!
+	if ccid.ChainID != "" {
+		hash := util.ComputeCryptoHash([]byte(ccid.ChainID))
+		hexstr := hex.EncodeToString(hash[:])
+		return ccid.ChaincodeSpec.ChaincodeID.Name + "-" + hexstr
 	}
 
-	hash := util.ComputeCryptoHash([]byte(ccid.ChainID))
-
-	hexstr := hex.EncodeToString(hash[:])
-
-	return ccid.ChaincodeSpec.ChaincodeID.Name + "-" + hexstr
+	return ccid.ChaincodeSpec.ChaincodeID.Name
 }

@@ -31,17 +31,15 @@ import (
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
 	"github.com/hyperledger/fabric/core/endorser"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
+	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -50,12 +48,15 @@ import (
 )
 
 var chaincodeDevMode bool
+var peerDefaultChain bool
 
 func startCmd() *cobra.Command {
 	// Set the flags on the node start command.
 	flags := nodeStartCmd.Flags()
 	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false,
 		"Whether peer in chaincode development mode")
+	flags.BoolVarP(&peerDefaultChain, "peer-defaultchain", "", true,
+		"Whether to start peer with chain **TEST_CHAINID**")
 
 	return nodeStartCmd
 }
@@ -72,15 +73,10 @@ var nodeStartCmd = &cobra.Command{
 //!!!!!----IMPORTANT----IMPORTANT---IMPORTANT------!!!!
 //This is a place holder for multichain work. Currently
 //user to create a single chain and initialize it
-func createChain(chainID string) {
-	//create the ledger. Without this all GetLedger
-	//calls will panic now
-	kvledger.CreateLedger(chainID)
-	logger.Infof("Created default ledger %s", chainID)
-
-	//deploy the system chaincodes on the chainID
-	chaincode.DeploySysCCs(chainID)
-	logger.Infof("Deployed system chaincodes on %s", chainID)
+func initChainless() {
+	//deploy the chainless system chaincodes
+	chaincode.DeployChainlessSysCCs()
+	logger.Infof("Deployed chainless system chaincodess")
 }
 
 func serve(args []string) error {
@@ -159,32 +155,45 @@ func serve(args []string) error {
 	serverEndorser := endorser.NewEndorserServer()
 	pb.RegisterEndorserServer(grpcServer, serverEndorser)
 
-	/******this will go away when we implement join command*****/
-	chainID := util.GetTestChainID()
-
-	//create the default chain (pending join)
-	createChain(chainID)
-
 	// Initialize gossip component
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 	service.InitGossipService(peerEndpoint.Address, grpcServer, bootstrap...)
 	defer service.GetGossipService().Stop()
 
-	//this shoul not need the chainID. Delivery should be
-	//split up into network part and chain part. This should
-	//only init the network part...TBD, part of Join work
-	deliverService := noopssinglechain.NewDeliverService(chainID)
-	commit := committer.NewLedgerCommitter(kvledger.GetLedger(chainID))
+	//initialize the env for chainless startup
+	initChainless()
 
-	// TODO: Should real configuration block
-	block, err := utils.MakeConfigurationBlock(util.GetTestChainID())
+	// Begin startup of default chain
+	if peerDefaultChain {
+		chainID := util.GetTestChainID()
 
-	if nil != err {
-		panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
+		block, err := pbutils.MakeConfigurationBlock(chainID)
+		if nil != err {
+			panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
+		}
+
+		//this creates block and calls JoinChannel on gossip service
+		if err = peer.CreateChainFromBlock(block); err != nil {
+			panic(fmt.Sprintf("Unable to create chain block for [%s] due to [%s]", chainID, err))
+		}
+
+		chaincode.DeploySysCCs(chainID)
+		logger.Infof("Deployed system chaincodes on %s", chainID)
+
+		commit := peer.GetCommitter(chainID)
+		if commit == nil {
+			panic(fmt.Sprintf("Unable to get committer for [%s]", chainID))
+		}
+
+		//this shoul not need the chainID. Delivery should be
+		//split up into network part and chain part. This should
+		//only init the network part...TBD, part of Join work
+		deliverService := noopssinglechain.NewDeliverService(chainID)
+
+		deliverService.Start(commit)
+
+		defer noopssinglechain.StopDeliveryService(deliverService)
 	}
-	deliverService.JoinChannel(commit, block)
-
-	defer noopssinglechain.StopDeliveryService(deliverService)
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s, rootnodes=%v, validator=%v",
 		peerEndpoint.ID, viper.GetString("peer.networkId"), peerEndpoint.Address,

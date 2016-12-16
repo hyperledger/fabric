@@ -23,7 +23,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -149,11 +148,8 @@ func (d *DeliverService) Stop() {
 	d.stopDeliver()
 }
 
-func (d *DeliverService) JoinChannel(committer committer.Committer, configBlock *common.Block) {
-	if err := service.GetGossipService().JoinChannel(committer, configBlock); err != nil {
-		panic("Cannot join channel, exiting")
-	}
-
+// Start delivery service
+func (d *DeliverService) Start(committer committer.Committer) {
 	go d.checkLeaderAndRunDeliver(committer)
 }
 
@@ -218,7 +214,7 @@ func isTxValidForVscc(payload *common.Payload, envBytes []byte) error {
 
 	// get context for the chaincode execution
 	var txsim ledger.TxSimulator
-	lgr := kvledger.GetLedger(chainName)
+	lgr := peer.GetLedger(chainName)
 	txsim, err = lgr.NewTxSimulator()
 	if err != nil {
 		logger.Errorf("Cannot obtain tx simulator, err %s\n", err)
