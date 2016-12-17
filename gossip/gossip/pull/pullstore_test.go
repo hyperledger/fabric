@@ -31,7 +31,7 @@ import (
 )
 
 var pullInterval time.Duration
-var timeoutInterval = 10 * time.Second
+var timeoutInterval = 20 * time.Second
 
 func init() {
 	pullInterval = time.Duration(500) * time.Millisecond
@@ -222,11 +222,17 @@ func TestHandleMessage(t *testing.T) {
 	inst1ReceivedResponse := int32(0)
 
 	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.GossipMessage, _ comm.ReceivedMessage) {
+		if atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) {
+			return
+		}
 		atomic.StoreInt32(&inst1ReceivedDigest, int32(1))
 		assert.True(t, len(itemIds) == 3)
 	})
 
 	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.GossipMessage, _ comm.ReceivedMessage) {
+		if atomic.LoadInt32(&inst1ReceivedResponse) == int32(1) {
+			return
+		}
 		atomic.StoreInt32(&inst1ReceivedResponse, int32(1))
 		assert.True(t, len(items) == 3)
 	})
