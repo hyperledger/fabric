@@ -17,10 +17,13 @@ limitations under the License.
 package couchdbtxmgmt
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
@@ -138,4 +141,94 @@ func TestSavepoint(t *testing.T) {
 
 		txMgr.Shutdown()
 	}
+}
+
+func TestDatabaseQuery(t *testing.T) {
+
+	//call a helper method to load the core.yaml
+	testutil.SetupCoreYAMLConfig("./../../../../../peer")
+
+	//Only run the tests if CouchDB is explitily enabled in the code,
+	//otherwise CouchDB may not be installed and all the tests would fail
+	//TODO replace this with external config property rather than config within the code
+	if ledgerconfig.IsCouchDBEnabled() == true {
+
+		env := newTestEnv(t)
+		//env.Cleanup() //cleanup at the beginning to ensure the database doesn't exist already
+		//defer env.Cleanup() //and cleanup at the end
+
+		txMgr := NewCouchDBTxMgr(env.conf,
+			env.couchDBAddress,    //couchDB Address
+			env.couchDatabaseName, //couchDB db name
+			env.couchUsername,     //enter couchDB id
+			env.couchPassword)     //enter couchDB pw
+
+		type Asset struct {
+			ID        string `json:"_id"`
+			Rev       string `json:"_rev"`
+			AssetName string `json:"asset_name"`
+			Color     string `json:"color"`
+			Size      string `json:"size"`
+			Owner     string `json:"owner"`
+		}
+
+		s1, _ := txMgr.NewTxSimulator()
+
+		s1.SetState("ns1", "key1", []byte("value1"))
+		s1.SetState("ns1", "key2", []byte("value2"))
+		s1.SetState("ns1", "key3", []byte("value3"))
+		s1.SetState("ns1", "key4", []byte("value4"))
+		s1.SetState("ns1", "key5", []byte("value5"))
+		s1.SetState("ns1", "key6", []byte("value6"))
+		s1.SetState("ns1", "key7", []byte("value7"))
+		s1.SetState("ns1", "key8", []byte("value8"))
+
+		s1.SetState("ns1", "key9", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
+		s1.SetState("ns1", "key10", []byte(`{"asset_name":"marble2","color":"blue","size":"10","owner":"bob"}`))
+		s1.SetState("ns1", "key11", []byte(`{"asset_name":"marble3","color":"blue","size":"35","owner":"jerry"}`))
+		s1.SetState("ns1", "key12", []byte(`{"asset_name":"marble4","color":"green","size":"15","owner":"bob"}`))
+		s1.SetState("ns1", "key13", []byte(`{"asset_name":"marble5","color":"red","size":"35","owner":"jerry"}`))
+		s1.SetState("ns1", "key14", []byte(`{"asset_name":"marble6","color":"blue","size":"25","owner":"bob"}`))
+
+		s1.Done()
+
+		// validate and commit RWset
+		txRWSet := s1.(*CouchDBTxSimulator).getTxReadWriteSet()
+		isValid, err := txMgr.validateTx(txRWSet)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error in validateTx(): %s", err))
+		testutil.AssertSame(t, isValid, true)
+		txMgr.addWriteSetToBatch(txRWSet, version.NewHeight(1, 1))
+		err = txMgr.Commit()
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error while calling commit(): %s", err))
+
+		queryExecuter, _ := txMgr.NewQueryExecutor()
+		queryString := "{\"selector\":{\"owner\": {\"$eq\": \"bob\"}},\"limit\": 10,\"skip\": 0}"
+
+		itr, _ := queryExecuter.ExecuteQuery(queryString)
+
+		counter := 0
+		for {
+			queryRecord, _ := itr.Next()
+			if queryRecord == nil {
+				break
+			}
+
+			//Unmarshal the document to Asset structure
+			assetResp := &Asset{}
+			json.Unmarshal(queryRecord.(*ledger.QueryRecord).Record, &assetResp)
+
+			//Verify the owner retrieved matches
+			testutil.AssertEquals(t, assetResp.Owner, "bob")
+
+			counter++
+
+		}
+
+		//Ensure the query returns 3 documents
+		testutil.AssertEquals(t, counter, 3)
+
+		txMgr.Shutdown()
+
+	}
+
 }

@@ -112,11 +112,20 @@ func (s *CouchDBTxSimulator) GetState(ns string, key string) ([]byte, error) {
 // GetStateRangeScanIterator implements method in interface `ledger.QueryExecutor`
 func (s *CouchDBTxSimulator) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
 	//s.checkDone()
-	scanner, err := s.txmgr.getCommittedRangeScanner(namespace, startKey, endKey)
+	scanner, err := s.txmgr.getRangeScanner(namespace, startKey, endKey)
 	if err != nil {
 		return nil, err
 	}
 	return &sKVItr{scanner, s}, nil
+}
+
+// ExecuteQuery implements method in interface `ledger.QueryExecutor`
+func (s *CouchDBTxSimulator) ExecuteQuery(query string) (ledger.ResultsIterator, error) {
+	scanner, err := s.txmgr.getQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	return &sQueryItr{scanner, s}, nil
 }
 
 // SetState implements method in interface `ledger.TxSimulator`
@@ -224,28 +233,56 @@ type sKVItr struct {
 	simulator *CouchDBTxSimulator
 }
 
+type sQueryItr struct {
+	scanner   *queryScanner
+	simulator *CouchDBTxSimulator
+}
+
 // Next implements Next() method in ledger.ResultsIterator
 // Returns the next item in the result set. The `QueryResult` is expected to be nil when
 // the iterator gets exhausted
 func (itr *sKVItr) Next() (ledger.QueryResult, error) {
-	committedKV, err := itr.scanner.next()
+	kv, err := itr.scanner.next()
 	if err != nil {
 		return nil, err
 	}
-	if committedKV == nil {
+	if kv == nil {
 		return nil, nil
 	}
 
 	// Get existing cache for RW at the namespace of the result set if it exists.  If none exists, then create it.
 	nsRWs := itr.simulator.getOrCreateNsRWHolder(itr.scanner.namespace)
-	nsRWs.readMap[committedKV.key] = &kvReadCache{
-		&rwset.KVRead{Key: committedKV.key, Version: committedKV.version}, committedKV.value}
+	nsRWs.readMap[kv.key] = &kvReadCache{
+		&rwset.KVRead{Key: kv.key, Version: kv.version}, kv.value}
 
-	return &ledger.KV{Key: committedKV.key, Value: committedKV.value}, nil
+	return &ledger.KV{Key: kv.key, Value: kv.value}, nil
 }
 
 // Close implements Close() method in ledger.ResultsIterator
 // which releases resources occupied by the iterator.
 func (itr *sKVItr) Close() {
+	itr.scanner.close()
+}
+
+// Next implements Next() method in ledger.ResultsIterator
+func (itr *sQueryItr) Next() (ledger.QueryResult, error) {
+	queryRecord, err := itr.scanner.next()
+	if err != nil {
+		return nil, err
+	}
+	if queryRecord == nil {
+		return nil, nil
+	}
+
+	// Get existing cache for RW at the namespace of the result set if it exists.  If none exists, then create it.
+	nsRWs := itr.simulator.getOrCreateNsRWHolder(queryRecord.namespace)
+	nsRWs.readMap[queryRecord.key] = &kvReadCache{
+		&rwset.KVRead{Key: queryRecord.key, Version: queryRecord.version}, queryRecord.record}
+
+	return &ledger.QueryRecord{Namespace: queryRecord.namespace, Key: queryRecord.key, Record: queryRecord.record}, nil
+}
+
+// Close implements Close() method in ledger.ResultsIterator
+func (itr *sQueryItr) Close() {
 	itr.scanner.close()
 }

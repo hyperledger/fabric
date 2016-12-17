@@ -241,8 +241,11 @@ func TestDBSaveAttachment(t *testing.T) {
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 		//Attempt to retrieve the updated test document with attachments
-		_, _, geterr2 := db.ReadDoc("10")
+		returnDoc, _, geterr2 := db.ReadDoc("10")
 		testutil.AssertNoError(t, geterr2, fmt.Sprintf("Error when trying to retrieve a document with attachment"))
+
+		//Test to see that the result from CouchDB matches the initial text
+		testutil.AssertEquals(t, string(returnDoc), string(byteText))
 
 	}
 }
@@ -335,9 +338,9 @@ func TestDBReadDocumentRange(t *testing.T) {
 		defer cleanup()
 
 		var assetJSON1 = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
-		var assetJSON2 = []byte(`{"asset_name":"marble2","color":"blue","size":"35","owner":"jerry"}`)
-		var assetJSON3 = []byte(`{"asset_name":"marble3","color":"blue","size":"35","owner":"jerry"}`)
-		var assetJSON4 = []byte(`{"asset_name":"marble4","color":"blue","size":"35","owner":"jerry"}`)
+		var assetJSON2 = []byte(`{"asset_name":"marble2","color":"green","size":"25","owner":"jerry"}`)
+		var assetJSON3 = []byte(`{"asset_name":"marble3","color":"green","size":"15","owner":"bob"}`)
+		var assetJSON4 = []byte(`{"asset_name":"marble4","color":"red","size":"25","owner":"bob"}`)
 
 		var textString1 = []byte("This is a test. iteration 1")
 		var textString2 = []byte("This is a test. iteration 2")
@@ -426,11 +429,48 @@ func TestDBReadDocumentRange(t *testing.T) {
 		//Ensure the query returns 3 documents
 		testutil.AssertEquals(t, len(*queryResp), 3)
 
-		/*
-			for item, _ := range *queryResp {
-				item.
+		for _, item := range *queryResp {
+
+			if item.ID == "1" {
+
+				//Unmarshal the document to Asset structure
+				assetResp := &Asset{}
+				json.Unmarshal(item.Value, &assetResp)
+
+				//Verify the owner retrieved matches
+				testutil.AssertEquals(t, assetResp.Owner, "jerry")
+
+				//Verify the size retrieved matches
+				testutil.AssertEquals(t, assetResp.Size, "35")
 			}
-		*/
+
+			if item.ID == "11" {
+				testutil.AssertEquals(t, string(item.Value), string(textString1))
+			}
+
+			if item.ID == "12" {
+				testutil.AssertEquals(t, string(item.Value), string(textString2))
+			}
+
+		}
+
+		queryString := "{\"selector\":{\"owner\": {\"$eq\": \"bob\"}},\"fields\": [\"_id\", \"_rev\", \"owner\", \"asset_name\", \"color\", \"size\"],\"limit\": 10,\"skip\": 0}"
+
+		queryResult, _ := db.QueryDocuments(queryString, 1000, 0)
+
+		//Ensure the query returns 2 documents
+		testutil.AssertEquals(t, len(*queryResult), 2)
+
+		for _, item := range *queryResult {
+
+			//Unmarshal the document to Asset structure
+			assetResp := &Asset{}
+			json.Unmarshal(item.Value, &assetResp)
+
+			//Verify the owner retrieved matches
+			testutil.AssertEquals(t, assetResp.Owner, "bob")
+
+		}
 
 	}
 
