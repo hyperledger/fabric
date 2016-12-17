@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"strconv"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/protos/common"
@@ -28,6 +29,8 @@ import (
 )
 
 var logger = logging.MustGetLogger("history")
+
+var compositeKeySep = []byte{0x00}
 
 // CouchDBHistMgr a simple implementation of interface `histmgmt.HistMgr'.
 // TODO This implementation does not currently use a lock but may need one to ensure query's are consistent
@@ -49,8 +52,14 @@ func NewCouchDBHistMgr(couchDBConnectURL string, dbName string, id string, pw st
 	return &CouchDBHistMgr{couchDB: couchDB}
 }
 
+// NewHistoryQueryExecutor implements method in interface `histmgmt.HistMgr'.
+func (histmgr *CouchDBHistMgr) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
+	return &CouchDBHistQueryExecutor{histmgr}, nil
+}
+
 // Commit implements method in interface `histmgmt.HistMgr`
 // This writes to a separate history database.
+// TODO dpending on how invalid transactions are handled may need to filter what history commits.
 func (histmgr *CouchDBHistMgr) Commit(block *common.Block) error {
 	logger.Debugf("===HISTORYDB=== Entering CouchDBHistMgr.Commit()")
 
@@ -124,6 +133,22 @@ func (histmgr *CouchDBHistMgr) Commit(block *common.Block) error {
 	return nil
 }
 
+//getTransactionsForNsKey contructs composite start and end keys based on the namespace and key then calls the CouchDB range scanner
+func (histmgr *CouchDBHistMgr) getTransactionsForNsKey(namespace string, key string, includeValues bool) (*histScanner, error) {
+	var compositeStartKey []byte
+	var compositeEndKey []byte
+	if key != "" {
+		compositeStartKey = constructPartialCompositeKey(namespace, key, false)
+		compositeEndKey = constructPartialCompositeKey(namespace, key, true)
+	}
+
+	//TODO the limit should not be hardcoded.  Need the config.
+	//TODO Implement includeValues so that values are not returned in the readDocRange
+	queryResult, _ := histmgr.couchDB.ReadDocRange(string(compositeStartKey), string(compositeEndKey), 1000, 0)
+
+	return newHistScanner(compositeStartKey, *queryResult), nil
+}
+
 func constructCompositeKey(ns string, key string, blocknum uint64, trannum uint64) string {
 	//History Key is:  "namespace key blocknum trannum"", with namespace being the chaincode id
 
@@ -138,4 +163,54 @@ func constructCompositeKey(ns string, key string, blocknum uint64, trannum uint6
 	buffer.WriteString(strconv.Itoa(int(trannum)))
 
 	return buffer.String()
+}
+
+func constructPartialCompositeKey(ns string, key string, endkey bool) []byte {
+	compositeKey := []byte(ns)
+	compositeKey = append(compositeKey, compositeKeySep...)
+	compositeKey = append(compositeKey, []byte(key)...)
+	if endkey {
+		compositeKey = append(compositeKey, []byte("1")...)
+	}
+	return compositeKey
+}
+
+func splitCompositeKey(compositePartialKey []byte, compositeKey []byte) (string, string) {
+	split := bytes.SplitN(compositeKey, compositePartialKey, 2)
+	return string(split[0]), string(split[1])
+}
+
+type histScanner struct {
+	cursor              int
+	compositePartialKey []byte
+	results             []couchdb.QueryResult
+}
+
+type historicValue struct {
+	blockNumTranNum string
+	value           []byte
+}
+
+func newHistScanner(compositePartialKey []byte, queryResults []couchdb.QueryResult) *histScanner {
+	return &histScanner{-1, compositePartialKey, queryResults}
+}
+
+func (scanner *histScanner) next() (*historicValue, error) {
+
+	scanner.cursor++
+
+	if scanner.cursor >= len(scanner.results) {
+		return nil, nil
+	}
+
+	selectedValue := scanner.results[scanner.cursor]
+
+	_, blockNumTranNum := splitCompositeKey(scanner.compositePartialKey, []byte(selectedValue.ID))
+
+	return &historicValue{blockNumTranNum, selectedValue.Value}, nil
+
+}
+
+func (scanner *histScanner) close() {
+	scanner = nil
 }

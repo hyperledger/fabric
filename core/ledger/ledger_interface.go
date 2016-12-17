@@ -57,10 +57,14 @@ type ValidatedLedger interface {
 	// A client can obtain more than one 'TxSimulator's for parallel execution.
 	// Any snapshoting/synchronization should be performed at the implementation level if required
 	NewTxSimulator() (TxSimulator, error)
-	// NewQueryExecuter gives handle to a query executor.
+	// NewQueryExecutor gives handle to a query executor.
 	// A client can obtain more than one 'QueryExecutor's for parallel execution.
 	// Any synchronization should be performed at the implementation level if required
 	NewQueryExecutor() (QueryExecutor, error)
+	// NewHistoryQueryExecutor gives handle to a history query executor.
+	// A client can obtain more than one 'HistoryQueryExecutor's for parallel execution.
+	// Any synchronization should be performed at the implementation level if required
+	NewHistoryQueryExecutor() (HistoryQueryExecutor, error)
 	// Commits block into the ledger
 	Commit(block *common.Block) error
 }
@@ -78,13 +82,16 @@ type QueryExecutor interface {
 	// GetStateRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
 	// The returned ResultsIterator contains results of type *KV
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
-	// GetTransactionsForKey returns an iterator that contains all the transactions that modified the given key.
-	// The returned ResultsIterator contains results of type *msgs.Transaction
-	GetTransactionsForKey(namespace string, key string) (ResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	ExecuteQuery(query string) (ResultsIterator, error)
 	// Done releases resources occupied by the QueryExecutor
 	Done()
+}
+
+// HistoryQueryExecutor executes the history queries
+type HistoryQueryExecutor interface {
+	// GetTransactionsForKey retrieves the set of transactons that updated this key by doing a key range query.
+	GetTransactionsForKey(namespace string, key string, includeValues bool, includeTransactions bool) (ResultsIterator, error)
 }
 
 // TxSimulator simulates a transaction on a consistent snapshot of the 'as recent state as possible'
@@ -126,6 +133,13 @@ type QueryResult interface{}
 type KV struct {
 	Key   string
 	Value []byte
+}
+
+// KeyModification - QueryResult for History.
+type KeyModification struct {
+	TxID        string
+	Value       []byte
+	Transaction *pb.Transaction
 }
 
 // BlockHolder holds block returned by the iterator in GetBlocksIterator.
