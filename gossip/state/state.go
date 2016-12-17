@@ -74,8 +74,6 @@ type GossipStateProviderImpl struct {
 	// Queue of payloads which wasn't acquired yet
 	payloads PayloadsBuffer
 
-	comm comm.Comm
-
 	committer committer.Committer
 
 	logger *logging.Logger
@@ -84,20 +82,20 @@ type GossipStateProviderImpl struct {
 }
 
 // NewGossipStateProvider creates initialized instance of gossip state provider
-func NewGossipStateProvider(g gossip.Gossip, c comm.Comm, committer committer.Committer) GossipStateProvider {
+func NewGossipStateProvider(g gossip.Gossip, committer committer.Committer) GossipStateProvider {
 	logger, _ := logging.GetLogger("GossipStateProvider")
 	logging.SetLevel(logging.DEBUG, logger.Module)
 
-	gossipChan := g.Accept(func(message interface{}) bool {
+	gossipChan, _ := g.Accept(func(message interface{}) bool {
 		// Get only data messages
 		return message.(*proto.GossipMessage).GetDataMsg() != nil
-	})
+	}, false)
 
 	// Filter message which are only relevant for state transfer
-	commChan := c.Accept(func(message interface{}) bool {
+	_, commChan := g.Accept(func(message interface{}) bool {
 		return message.(comm.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
 			message.(comm.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
-	})
+	}, true)
 
 	height, err := committer.LedgerHeight()
 
@@ -121,8 +119,6 @@ func NewGossipStateProvider(g gossip.Gossip, c comm.Comm, committer committer.Co
 		stopFlag: 0,
 		// Create a queue for payload received
 		payloads: NewPayloadsBuffer(height + 1),
-
-		comm: c,
 
 		committer: committer,
 
@@ -362,7 +358,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 	}
 
 	s.logger.Debug("[$$$$$$$$$$$$$$$$]: Sending direct request to complete missing blocks, ", request)
-	s.comm.Send(&proto.GossipMessage{
+	s.gossip.Send(&proto.GossipMessage{
 		Content: &proto.GossipMessage_StateRequest{request},
 	}, peer)
 }

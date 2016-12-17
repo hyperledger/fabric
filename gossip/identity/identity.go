@@ -72,6 +72,10 @@ func (is *identityMapperImpl) Put(pkiID common.PKIidType, identity api.PeerIdent
 		return fmt.Errorf("identity is nil")
 	}
 
+	if err := is.mcs.ValidateIdentity(identity); err != nil {
+		return err
+	}
+
 	id := is.mcs.GetPKIidOfCert(identity)
 	if !bytes.Equal(pkiID, id) {
 		return fmt.Errorf("Identity doesn't match the computed pkiID")

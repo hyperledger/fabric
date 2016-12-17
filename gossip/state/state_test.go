@@ -17,19 +17,17 @@ limitations under the License.
 package state
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strconv"
 	"testing"
 	"time"
 
-	"bytes"
-
 	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -42,41 +40,7 @@ var (
 	logger, _  = logging.GetLogger("GossipStateProviderTest")
 )
 
-type naiveSecProvider struct {
-}
-
-func (*naiveSecProvider) IsEnabled() bool {
-	return true
-}
-
-func (*naiveSecProvider) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
-}
-
-func (*naiveSecProvider) Verify(vkID, signature, message []byte) error {
-	if bytes.Equal(signature, message) {
-		return nil
-	}
-	return fmt.Errorf("Failed verifying")
-}
-
 type naiveCryptoService struct {
-}
-
-func (*naiveCryptoService) ValidateAliveMsg(am *proto.AliveMessage) bool {
-	return true
-}
-
-func (*naiveCryptoService) SignMessage(am *proto.AliveMessage) *proto.AliveMessage {
-	return am
-}
-
-func (*naiveCryptoService) IsEnabled() bool {
-	return true
-}
-
-func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
-	return nil
 }
 
 // GetPKIidOfCert returns the PKI-ID of a peer's identity
@@ -107,6 +71,10 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 	return nil
 }
 
+func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	return nil
+}
+
 func bootPeers(ids ...int) []string {
 	peers := []string{}
 	for _, id := range ids {
@@ -118,7 +86,6 @@ func bootPeers(ids ...int) []string {
 // Simple presentation of peer which includes only
 // communication module, gossip and state transfer
 type peerNode struct {
-	c comm.Comm
 	g gossip.Gossip
 	s GossipStateProvider
 
@@ -128,7 +95,6 @@ type peerNode struct {
 // Shutting down all modules used
 func (node *peerNode) shutdown() {
 	node.s.Stop()
-	node.c.Stop()
 	node.g.Stop()
 }
 
@@ -147,24 +113,13 @@ func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
 		PullInterval:               time.Duration(4) * time.Second,
 		PullPeerNum:                5,
 		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
+		PublishCertPeriod:          10 * time.Second,
 	}
 }
 
 // Create gossip instance
-func newGossipInstance(config *gossip.Config, comm comm.Comm) gossip.Gossip {
-	return gossip.NewGossipService(config, comm, &naiveCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(config.ID))
-}
-
-// Setup and create basic communication module
-// need to be used for peer-to-peer communication
-// between peers and state transfer
-func newCommInstance(config *gossip.Config) comm.Comm {
-	comm, err := comm.NewCommInstanceWithServer(config.BindPort, &naiveSecProvider{}, []byte(config.SelfEndpoint))
-	if err != nil {
-		panic(err)
-	}
-
-	return comm
+func newGossipInstance(config *gossip.Config) gossip.Gossip {
+	return gossip.NewGossipServiceWithServer(config, &naiveCryptoService{}, []byte(config.SelfEndpoint))
 }
 
 // Create new instance of KVLedger to be used for testing
@@ -177,34 +132,16 @@ func newCommitter(id int, basePath string) committer.Committer {
 // Constructing pseudo peer node, simulating only gossip and state transfer part
 func newPeerNode(config *gossip.Config, committer committer.Committer) *peerNode {
 
-	// Create communication module instance
-	comm := newCommInstance(config)
 	// Gossip component based on configuration provided and communication module
-	gossip := newGossipInstance(config, comm)
+	gossip := newGossipInstance(config)
 
 	// Initialize pseudo peer simulator, which has only three
 	// basic parts
 	return &peerNode{
-		c: comm,
 		g: gossip,
-		s: NewGossipStateProvider(gossip, comm, committer),
+		s: NewGossipStateProvider(gossip, committer),
 
 		commit: committer,
-	}
-}
-
-func createDataMsg(seqnum uint64, data []byte, hash string) *proto.GossipMessage {
-	return &proto.GossipMessage{
-		Nonce: 0,
-		Content: &proto.GossipMessage_DataMsg{
-			DataMsg: &proto.DataMessage{
-				Payload: &proto.Payload{
-					Data:   data,
-					Hash:   hash,
-					SeqNum: seqnum,
-				},
-			},
-		},
 	}
 }
 

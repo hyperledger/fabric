@@ -64,23 +64,6 @@ func (p *RemotePeer) String() string {
 	return fmt.Sprintf("%s, PKIid:%v", p.Endpoint, p.PKIID)
 }
 
-// SecurityProvider enables the communication module to perform
-// a handshake that authenticates the client to the server and vice versa
-type SecurityProvider interface {
-
-	// isEnabled returns whether this
-	IsEnabled() bool
-
-	// Sign signs msg with this peers signing key and outputs
-	// the signature if no error occurred.
-	Sign(msg []byte) ([]byte, error)
-
-	// Verify checks that signature if a valid signature of message under vkID's verification key.
-	// If the verification succeeded, Verify returns nil meaning no error occurred.
-	// If vkID is nil, then the signature is verified against this validator's verification key.
-	Verify(vkID, signature, message []byte) error
-}
-
 // ReceivedMessage is a GossipMessage wrapper that
 // enables the user to send a message to the origin from which
 // the ReceivedMessage was sent from

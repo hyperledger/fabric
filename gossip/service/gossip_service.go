@@ -50,7 +50,6 @@ type GossipService interface {
 }
 
 type gossipServiceImpl struct {
-	comm   comm.Comm
 	gossip gossip.Gossip
 	chains map[string]state.GossipStateProvider
 	lock   sync.RWMutex
@@ -59,10 +58,9 @@ type gossipServiceImpl struct {
 // InitGossipService initialize gossip service
 func InitGossipService(endpoint string, s *grpc.Server, bootPeers ...string) {
 	once.Do(func() {
-		gossip, communication := integration.NewGossipComponent(endpoint, s, bootPeers...)
+		gossip := integration.NewGossipComponent(endpoint, s, []grpc.DialOption{}, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
 			gossip: gossip,
-			comm:   communication,
 			chains: make(map[string]state.GossipStateProvider),
 		}
 	})
@@ -71,6 +69,11 @@ func InitGossipService(endpoint string, s *grpc.Server, bootPeers ...string) {
 // GetGossipService returns an instance of gossip service
 func GetGossipService() GossipService {
 	return gossipServiceInstance
+}
+
+// Send sends a message to remote peers
+func (g *gossipServiceImpl) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+	g.gossip.Send(msg, peers...)
 }
 
 // JoinChannel joins the channel and initialize gossip state with given committer
@@ -82,7 +85,7 @@ func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *com
 		return err
 	} else {
 		// Initialize new state provider for given committer
-		g.chains[chainID] = state.NewGossipStateProvider(g.gossip, g.comm, commiter)
+		g.chains[chainID] = state.NewGossipStateProvider(g.gossip, commiter)
 	}
 
 	return nil
@@ -104,8 +107,8 @@ func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 }
 
 // Accept returns a channel that outputs messages from other peers
-func (g *gossipServiceImpl) Accept(acceptor gossipCommon.MessageAcceptor) <-chan *proto.GossipMessage {
-	return g.gossip.Accept(acceptor)
+func (g *gossipServiceImpl) Accept(acceptor gossipCommon.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage) {
+	return g.gossip.Accept(acceptor, false)
 }
 
 // GetBlock returns block for given chain

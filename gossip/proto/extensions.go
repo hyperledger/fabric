@@ -128,13 +128,33 @@ func (m *GossipMessage) IsStateInfoMsg() bool {
 	return m.GetStateInfo() != nil
 }
 
-func (m *GossipMessage) IsIdentityMsg() bool {
-	return m.GetPeerIdentity() != nil
-}
-
 func (m *GossipMessage) IsPullMsg() bool {
 	return m.GetDataReq() != nil || m.GetDataUpdate() != nil ||
 		m.GetHello() != nil || m.GetDataDig() != nil
+}
+
+func (m *GossipMessage) GetPullMsgType() PullMsgType {
+	if helloMsg := m.GetHello(); helloMsg != nil {
+		return helloMsg.MsgType
+	}
+
+	if digMsg := m.GetDataDig(); digMsg != nil {
+		return digMsg.MsgType
+	}
+
+	if reqMsg := m.GetDataReq(); reqMsg != nil {
+		return reqMsg.MsgType
+	}
+
+	if resMsg := m.GetDataUpdate(); resMsg != nil {
+		return resMsg.MsgType
+	}
+
+	return PullMsgType_Undefined
+}
+
+func (m *GossipMessage) IsIdentityMsg() bool {
+	return m.GetPeerIdentity() != nil
 }
 
 // MsgConsumer invokes code given a GossipMessage

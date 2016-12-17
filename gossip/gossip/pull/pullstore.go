@@ -59,7 +59,7 @@ type PullConfig struct {
 	PeerCountToSelect int           // Number of peers to initiate pull with
 	Tag               proto.GossipMessage_Tag
 	Channel           common.ChainID
-	MsgType           proto.MsgType
+	MsgType           proto.PullMsgType
 }
 
 // Mediator is a component wrap a PullEngine and provides the methods
@@ -119,6 +119,12 @@ func (p *pullMediatorImpl) HandleMessage(m comm.ReceivedMessage) {
 		return
 	}
 	msg := m.GetGossipMessage()
+
+	msgType := msg.GetPullMsgType()
+	if msgType != p.config.MsgType {
+		return
+	}
+
 	p.logger.Debug(msg)
 
 	itemIds := []string{}
@@ -126,32 +132,20 @@ func (p *pullMediatorImpl) HandleMessage(m comm.ReceivedMessage) {
 	var pullMsgType PullMsgType
 
 	if helloMsg := msg.GetHello(); helloMsg != nil {
-		if helloMsg.MsgType != p.config.MsgType {
-			return
-		}
 		pullMsgType = HelloMsgType
 		p.engine.OnHello(helloMsg.Nonce, m)
 	}
 	if digest := msg.GetDataDig(); digest != nil {
-		if digest.MsgType != p.config.MsgType {
-			return
-		}
 		itemIds = digest.Digests
 		pullMsgType = DigestMsgType
 		p.engine.OnDigest(digest.Digests, digest.Nonce, m)
 	}
 	if req := msg.GetDataReq(); req != nil {
-		if req.MsgType != p.config.MsgType {
-			return
-		}
 		itemIds = req.Digests
 		pullMsgType = RequestMsgType
 		p.engine.OnReq(req.Digests, req.Nonce, m)
 	}
 	if res := msg.GetDataUpdate(); res != nil {
-		if res.MsgType != p.config.MsgType {
-			return
-		}
 		itemIds = make([]string, len(res.Data))
 		items = make([]*proto.GossipMessage, len(res.Data))
 		pullMsgType = ResponseMsgType
@@ -159,6 +153,9 @@ func (p *pullMediatorImpl) HandleMessage(m comm.ReceivedMessage) {
 			p.msgCons(pulledMsg)
 			itemIds[i] = p.idExtractor(pulledMsg)
 			items[i] = pulledMsg
+			p.Lock()
+			p.itemId2msg[itemIds[i]] = pulledMsg
+			p.Unlock()
 		}
 		p.engine.OnRes(itemIds, res.Nonce)
 	}

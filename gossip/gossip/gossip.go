@@ -19,6 +19,7 @@ package gossip
 import (
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -26,6 +27,9 @@ import (
 
 // Gossip is the interface of the gossip component
 type Gossip interface {
+
+	// Send sends a message to remote peers
+	Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
 
 	// GetPeers returns a mapping of endpoint --> []discovery.NetworkMember
 	GetPeers() []discovery.NetworkMember
@@ -36,8 +40,11 @@ type Gossip interface {
 	// Gossip sends a message to other peers to the network
 	Gossip(msg *proto.GossipMessage)
 
-	// Accept returns a channel that outputs messages from other peers
-	Accept(common.MessageAcceptor) <-chan *proto.GossipMessage
+	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
+	// If passThrough is false, the messages are processed by the gossip layer beforehand.
+	// If passThrough is true, the gossip layer doesn't intervene and the messages
+	// can be used to send a reply back to the sender
+	Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage)
 
 	// Stop stops the gossip component
 	Stop()
@@ -59,4 +66,6 @@ type Config struct {
 
 	PullInterval time.Duration
 	PullPeerNum  int
+
+	PublishCertPeriod time.Duration
 }

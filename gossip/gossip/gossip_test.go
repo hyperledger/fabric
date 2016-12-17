@@ -17,19 +17,17 @@ limitations under the License.
 package gossip
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"bytes"
-	"strconv"
-	"strings"
-
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
@@ -59,37 +57,7 @@ func acceptData(m interface{}) bool {
 	return false
 }
 
-type naiveSecProvider struct {
-}
-
-func (*naiveSecProvider) IsEnabled() bool {
-	return true
-}
-
-func (*naiveSecProvider) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
-}
-
-func (*naiveSecProvider) Verify(vkID, signature, message []byte) error {
-	if bytes.Equal(signature, message) {
-		return nil
-	}
-	return fmt.Errorf("Failed verifying")
-}
-
 type naiveCryptoService struct {
-}
-
-func (*naiveCryptoService) ValidateAliveMsg(am *proto.AliveMessage) bool {
-	return true
-}
-
-func (*naiveCryptoService) SignMessage(am *proto.AliveMessage) *proto.AliveMessage {
-	return am
-}
-
-func (*naiveCryptoService) IsEnabled() bool {
-	return true
 }
 
 func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
@@ -146,12 +114,9 @@ func newGossipInstance(id int, maxMsgCount int, boot ...int) Gossip {
 		PullInterval:               time.Duration(4) * time.Second,
 		PullPeerNum:                5,
 		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
+		PublishCertPeriod:          time.Duration(4) * time.Second,
 	}
-	comm, err := comm.NewCommInstanceWithServer(port, &naiveSecProvider{}, []byte(conf.SelfEndpoint))
-	if err != nil {
-		panic(err)
-	}
-	return NewGossipService(conf, comm, &naiveCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(conf.ID))
+	return NewGossipServiceWithServer(conf, &naiveCryptoService{}, api.PeerIdentityType(conf.SelfEndpoint))
 }
 
 func newGossipInstanceWithOnlyPull(id int, maxMsgCount int, boot ...int) Gossip {
@@ -168,12 +133,9 @@ func newGossipInstanceWithOnlyPull(id int, maxMsgCount int, boot ...int) Gossip 
 		PullInterval:               time.Duration(1000) * time.Millisecond,
 		PullPeerNum:                20,
 		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
+		PublishCertPeriod:          time.Duration(0) * time.Second,
 	}
-	comm, err := comm.NewCommInstanceWithServer(port, &naiveSecProvider{}, []byte(conf.SelfEndpoint))
-	if err != nil {
-		panic(err)
-	}
-	return NewGossipService(conf, comm, &naiveCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(conf.ID))
+	return NewGossipServiceWithServer(conf, &naiveCryptoService{}, api.PeerIdentityType(conf.SelfEndpoint))
 }
 
 func TestPull(t *testing.T) {
@@ -230,6 +192,7 @@ func TestPull(t *testing.T) {
 	wg = sync.WaitGroup{}
 	for i := 1; i <= n; i++ {
 		go func(i int) {
+			acceptChan, _ := peers[i-1].Accept(acceptData, false)
 			go func(index int, ch <-chan *proto.GossipMessage) {
 				wg.Add(1)
 				defer wg.Done()
@@ -237,7 +200,7 @@ func TestPull(t *testing.T) {
 					<-ch
 					receivedMessages[index]++
 				}
-			}(i-1, peers[i-1].Accept(acceptData))
+			}(i-1, acceptChan)
 		}(i)
 	}
 
@@ -351,7 +314,7 @@ func TestDissemination(t *testing.T) {
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
 
-	n := 20
+	n := 10
 	msgsCount2Send := 10
 	boot := newGossipInstance(0, 100)
 
@@ -362,15 +325,15 @@ func TestDissemination(t *testing.T) {
 	for i := 1; i <= n; i++ {
 		pI := newGossipInstance(i, 100, 0)
 		peers[i-1] = pI
-
 		wg.Add(1)
+		acceptChan, _ := pI.Accept(acceptData, false)
 		go func(index int, ch <-chan *proto.GossipMessage) {
 			defer wg.Done()
 			for j := 0; j < msgsCount2Send; j++ {
 				<-ch
 				receivedMessages[index]++
 			}
-		}(i-1, pI.Accept(acceptData))
+		}(i-1, acceptChan)
 	}
 
 	waitUntilOrFail(t, checkPeersMembership(peers, n))
@@ -418,8 +381,6 @@ func TestMembershipConvergence(t *testing.T) {
 	boot0 := newGossipInstance(0, 100)
 	boot1 := newGossipInstance(1, 100)
 	boot2 := newGossipInstance(2, 100)
-
-	time.Sleep(time.Duration(4) * time.Second)
 
 	peers := []Gossip{boot0, boot1, boot2}
 	// 0: {3, 6, 9, 12}
