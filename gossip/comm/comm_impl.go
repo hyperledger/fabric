@@ -72,17 +72,19 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 	var ll net.Listener
 	var s *grpc.Server
 	var secOpt grpc.DialOption
+	var certHash []byte
 
 	if len(dialOpts) == 0 {
 		dialOpts = []grpc.DialOption{grpc.WithTimeout(dialTimeout)}
 	}
 
 	if port > 0 {
-		s, ll, secOpt = createGRPCLayer(port)
+		s, ll, secOpt, certHash = createGRPCLayer(port)
 		dialOpts = append(dialOpts, secOpt)
 	}
 
 	commInst := &commImpl{
+		selfCertHash:      certHash,
 		PKIID:             idMapper.GetPKIidOfCert(peerIdentity),
 		idMapper:          idMapper,
 		logger:            util.GetLogger(util.LOGGING_COMM_MODULE, fmt.Sprintf("%d", port)),
@@ -117,16 +119,28 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 }
 
 // NewCommInstance creates a new comm instance that binds itself to the given gRPC server
-func NewCommInstance(s *grpc.Server, idStore identity.Mapper, peerIdentity api.PeerIdentityType, dialOpts ...grpc.DialOption) (Comm, error) {
+func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Mapper, peerIdentity api.PeerIdentityType, dialOpts ...grpc.DialOption) (Comm, error) {
 	commInst, err := NewCommInstanceWithServer(-1, idStore, peerIdentity, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
+
+	if cert != nil {
+		inst := commInst.(*commImpl)
+		if len(cert.Certificate) == 0 {
+			inst.logger.Panic("Certificate supplied but certificate chain is empty")
+		} else {
+			inst.selfCertHash = certHashFromRawCert(cert.Certificate[0])
+		}
+	}
+
 	proto.RegisterGossipServer(s, commInst.(*commImpl))
+
 	return commInst, nil
 }
 
 type commImpl struct {
+	selfCertHash      []byte
 	peerIdentity      api.PeerIdentityType
 	idMapper          identity.Mapper
 	logger            *util.Logger
@@ -373,13 +387,16 @@ func extractRemoteAddress(stream stream) string {
 func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, error) {
 	ctx := stream.Context()
 	remoteAddress := extractRemoteAddress(stream)
-	tlsUnique := ExtractTLSUnique(ctx)
+	remoteCertHash := extractCertificateHashFromContext(ctx)
 	var sig []byte
 	var err error
-	if tlsUnique != nil {
-		sig, err = c.idMapper.Sign(tlsUnique)
+
+	// If TLS is detected, sign the hash of our cert to bind our TLS cert
+	// to the gRPC session
+	if remoteCertHash != nil && c.selfCertHash != nil {
+		sig, err = c.idMapper.Sign(c.selfCertHash)
 		if err != nil {
-			c.logger.Error("Failed signing TLS-Unique:", err)
+			c.logger.Error("Failed signing self certificate hash:", err)
 			return nil, err
 		}
 	}
@@ -414,8 +431,9 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 		return nil, err
 	}
 
-	if tlsUnique != nil {
-		err = c.idMapper.Verify(receivedMsg.PkiID, receivedMsg.Sig, tlsUnique)
+	// if TLS is detected, verify remote peer
+	if remoteCertHash != nil && c.selfCertHash != nil {
+		err = c.idMapper.Verify(receivedMsg.PkiID, receivedMsg.Sig, remoteCertHash)
 		if err != nil {
 			c.logger.Error("Failed verifying signature from", remoteAddress, ":", err)
 			return nil, err
@@ -424,7 +442,6 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 
 	c.logger.Debug("Authenticated", remoteAddress)
 	return receivedMsg.PkiID, nil
-
 }
 
 func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
@@ -518,7 +535,8 @@ type stream interface {
 	grpc.Stream
 }
 
-func createGRPCLayer(port int) (*grpc.Server, net.Listener, grpc.DialOption) {
+func createGRPCLayer(port int) (*grpc.Server, net.Listener, grpc.DialOption, []byte) {
+	var returnedCertHash []byte
 	var s *grpc.Server
 	var ll net.Listener
 	var err error
@@ -533,10 +551,25 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, grpc.DialOption) {
 
 	err = generateCertificates(keyFileName, certFileName)
 	if err == nil {
-		var creds credentials.TransportCredentials
-		creds, err = credentials.NewServerTLSFromFile(certFileName, keyFileName)
-		serverOpts = append(serverOpts, grpc.Creds(creds))
+		cert, err := tls.LoadX509KeyPair(certFileName, keyFileName)
+		if err != nil {
+			panic(err)
+		}
+
+		if len(cert.Certificate) == 0 {
+			panic(fmt.Errorf("Certificate chain is nil"))
+		}
+
+		returnedCertHash = certHashFromRawCert(cert.Certificate[0])
+
+		tlsConf := &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			ClientAuth:         tls.RequestClientCert,
+			InsecureSkipVerify: true,
+		}
+		serverOpts = append(serverOpts, grpc.Creds(credentials.NewTLS(tlsConf)))
 		ta := credentials.NewTLS(&tls.Config{
+			Certificates:       []tls.Certificate{cert},
 			InsecureSkipVerify: true,
 		})
 		dialOpts = grpc.WithTransportCredentials(&authCreds{tlsCreds: ta})
@@ -551,5 +584,5 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, grpc.DialOption) {
 	}
 
 	s = grpc.NewServer(serverOpts...)
-	return s, ll, dialOpts
+	return s, ll, dialOpts, returnedCertHash
 }

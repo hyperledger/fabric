@@ -18,6 +18,7 @@ package gossip
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -73,7 +74,7 @@ func NewGossipService(conf *Config, s *grpc.Server, mcs api.MessageCryptoService
 	if s == nil {
 		c, err = createCommWithServer(conf.BindPort, idMapper, selfIdentity)
 	} else {
-		c, err = createCommWithoutServer(s, idMapper, selfIdentity, dialOpts...)
+		c, err = createCommWithoutServer(s, conf.TLSServerCert, idMapper, selfIdentity, dialOpts...)
 	}
 
 	if err != nil {
@@ -165,8 +166,8 @@ func createCommWithServer(port int, idStore identity.Mapper, identity api.PeerId
 	return comm.NewCommInstanceWithServer(port, idStore, identity)
 }
 
-func createCommWithoutServer(s *grpc.Server, idStore identity.Mapper, identity api.PeerIdentityType, dialOpts ...grpc.DialOption) (comm.Comm, error) {
-	return comm.NewCommInstance(s, idStore, identity, dialOpts...)
+func createCommWithoutServer(s *grpc.Server, cert *tls.Certificate, idStore identity.Mapper, identity api.PeerIdentityType, dialOpts ...grpc.DialOption) (comm.Comm, error) {
+	return comm.NewCommInstance(s, cert, idStore, identity, dialOpts...)
 }
 
 func (g *gossipServiceImpl) toDie() bool {

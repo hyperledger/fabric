@@ -17,6 +17,7 @@ limitations under the License.
 package gossip
 
 import (
+	"crypto/tls"
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -68,4 +69,6 @@ type Config struct {
 	PullPeerNum  int
 
 	PublishCertPeriod time.Duration
+
+	TLSServerCert *tls.Certificate
 }
