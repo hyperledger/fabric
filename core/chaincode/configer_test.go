@@ -13,13 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cscc
+package chaincode
 
 import (
 	"fmt"
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -27,12 +28,14 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-func TestInit(t *testing.T) {
+func TestConfigerInit(t *testing.T) {
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
@@ -42,13 +45,31 @@ func TestInit(t *testing.T) {
 	}
 }
 
-func TestInvokeJoinChainMissingParams(t *testing.T) {
+func setupEndpoint(t *testing.T) {
+	peerAddress := peer.GetLocalIP()
+	if peerAddress == "" {
+		peerAddress = "0.0.0.0"
+	}
+	peerAddress = peerAddress + ":21213"
+	t.Logf("Local peer IP address: %s", peerAddress)
+	var opts []grpc.ServerOption
+	grpcServer := grpc.NewServer(opts...)
+	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
+		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "cscctestpeer"}, Address: peerAddress}, nil
+	}
+	ccStartupTimeout := time.Duration(30000) * time.Millisecond
+	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
+}
+
+func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
+	//t.Skip("Test CI build")
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
 	defer os.RemoveAll("/var/hyperledger/test/")
 
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
+	setupEndpoint(t)
 	// Failed path: Not enough parameters
 	args := [][]byte{[]byte("JoinChain")}
 	if _, err := stub.MockInvoke("1", args); err == nil {
@@ -56,12 +77,15 @@ func TestInvokeJoinChainMissingParams(t *testing.T) {
 	}
 }
 
-func TestInvokeJoinChainWrongParams(t *testing.T) {
+func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
+	//t.Skip("Test CI build")
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
 	defer os.RemoveAll("/var/hyperledger/test/")
 
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
+
+	setupEndpoint(t)
 
 	// Failed path: wrong parameter type
 	args := [][]byte{[]byte("JoinChain"), []byte("action")}
@@ -71,12 +95,15 @@ func TestInvokeJoinChainWrongParams(t *testing.T) {
 	}
 }
 
-func TestInvokeJoinChainCorrectParams(t *testing.T) {
+func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
+	//t.Skip("Test CI build")
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
 	defer os.RemoveAll("/var/hyperledger/test/")
 
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
+
+	setupEndpoint(t)
 
 	// Initialize gossip service
 	grpcServer := grpc.NewServer()
@@ -92,7 +119,7 @@ func TestInvokeJoinChainCorrectParams(t *testing.T) {
 		t.Fatalf("cscc invoke JoinChain failed because invalid block")
 	}
 	args := [][]byte{[]byte("JoinChain"), blockBytes}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if _, err = stub.MockInvoke("1", args); err != nil {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", err)
 	}
 
@@ -103,14 +130,17 @@ func TestInvokeJoinChainCorrectParams(t *testing.T) {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", err)
 	}
 	args = [][]byte{[]byte("GetConfigBlock"), []byte(chainID)}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if _, err = stub.MockInvoke("1", args); err != nil {
 		t.Fatalf("cscc invoke GetConfigBlock failed with: %v", err)
 	}
 }
 
-func TestInvokeUpdateConfigBlock(t *testing.T) {
+func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
+	//t.Skip("Test CI build")
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
+
+	setupEndpoint(t)
 
 	// Failed path: Not enough parameters
 	args := [][]byte{[]byte("UpdateConfigBlock")}

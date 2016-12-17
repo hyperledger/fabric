@@ -56,7 +56,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 
 	err = CreateChainFromBlock(block)
 	if err != nil {
-		t.Fatalf("failed to create chain")
+		t.Fatalf("failed to create chain %s", err)
 	}
 
 	// Correct ledger

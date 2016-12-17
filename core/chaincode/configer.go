@@ -14,18 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package cscc (configuration system chaincode) provides functions to manage
+// Package chaincode configer provides functions to manage
 // configuration transactions as the network is being reconfigured. The
 // configuration transactions arrive from the ordering service to the committer
 // who calls this chaincode. The chaincode also provides peer configuration
 // services such as joining a chain or getting configuration data.
-package cscc
+package chaincode
 
 import (
 	"errors"
 	"fmt"
 
-	//	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -39,7 +38,7 @@ import (
 type PeerConfiger struct {
 }
 
-var logger = logging.MustGetLogger("cscc")
+var cnflogger = logging.MustGetLogger("chaincode")
 
 // These are function names from Invoke first parameter
 const (
@@ -52,7 +51,7 @@ const (
 // This allows the chaincode to initialize any variables on the ledger prior
 // to any transaction execution on the chain.
 func (e *PeerConfiger) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	logger.Info("Init CSCC")
+	cnflogger.Info("Init CSCC")
 
 	return nil, nil
 }
@@ -75,7 +74,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) 
 	}
 	fname := string(args[0])
 
-	logger.Debugf("Invoke function: %s", fname)
+	cnflogger.Debugf("Invoke function: %s", fname)
 
 	// TODO: Handle ACL
 
@@ -103,11 +102,20 @@ func joinChain(blockBytes []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Failed to reconstruct the genesis block, %s", err)
 	}
 
-	if err := peer.CreateChainFromBlock(block); err != nil {
+	if err = peer.CreateChainFromBlock(block); err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	chainID, err := utils.GetChainIDFromBlock(block)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get the chain ID from the configuration block, %s", err)
+	}
+
+	// Initialize all system chainodes on this chain
+	// TODO: Fix this code to initialize instead of deploy chaincodes
+	DeploySysCCs(chainID)
+
+	return []byte("200"), nil
 }
 
 func updateConfigBlock(blockBytes []byte) ([]byte, error) {
@@ -127,9 +135,7 @@ func updateConfigBlock(blockBytes []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// TODO: would committer get ledger and update ?
-
-	return nil, nil
+	return []byte("200"), nil
 }
 
 // Return the current configuration block for the specified chainID. If the

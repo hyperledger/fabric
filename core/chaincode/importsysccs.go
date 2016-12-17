@@ -18,7 +18,6 @@ package chaincode
 
 import (
 	//import system chain codes here
-	"github.com/hyperledger/fabric/core/system_chaincode/cscc"
 	"github.com/hyperledger/fabric/core/system_chaincode/escc"
 	"github.com/hyperledger/fabric/core/system_chaincode/vscc"
 )
@@ -29,15 +28,15 @@ var systemChaincodes = []*SystemChaincode{
 		ChainlessCC: true,
 		Enabled:     true,
 		Name:        "cscc",
-		Path:        "github.com/hyperledger/fabric/core/system_chaincode/cscc",
+		Path:        "github.com/hyperledger/fabric/core/chaincode/cscc",
 		InitArgs:    [][]byte{[]byte("")},
-		Chaincode:   &cscc.PeerConfiger{},
+		Chaincode:   &PeerConfiger{},
 	},
 	{
 		ChainlessCC: false,
 		Enabled:     true,
 		Name:        "lccc",
-		Path:        "github.com/hyperledger/fabric/core/chaincode",
+		Path:        "github.com/hyperledger/fabric/core/chaincode/lscc",
 		InitArgs:    [][]byte{[]byte("")},
 		Chaincode:   &LifeCycleSysCC{},
 	},

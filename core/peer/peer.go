@@ -29,11 +29,10 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
-	// "github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	// "github.com/hyperledger/fabric/core/peer/msp"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -139,22 +138,18 @@ func getCurrConfigBlockFromLedger(ledger *kvledger.KVLedger) (*common.Block, err
 func createChain(cid string, ledger *kvledger.KVLedger, cb *common.Block) error {
 	c := committer.NewLedgerCommitter(ledger)
 
-	// TODO: Call MSP to load from config block
-	// mgr, err := mspmgmt.GetMSPManagerFromBlock(cb)
-	// if err != nil {
-	// 	return err
-	// }
+	mgr, err := mspmgmt.GetMSPManagerFromBlock(cb)
+	if err != nil {
+		return err
+	}
 
 	if err := service.GetGossipService().JoinChannel(c, cb); err != nil {
 		return err
 	}
 
-	// Initialize all system chaincodes on this chain
-	// chaincode.DeploySysCCs(cid)
-
 	chains.Lock()
 	defer chains.Unlock()
-	chains.list[cid] = &chain{cb: cb, ledger: ledger, mspmgr: nil, committer: c}
+	chains.list[cid] = &chain{cb: cb, ledger: ledger, mspmgr: mgr, committer: c}
 	return nil
 }
 

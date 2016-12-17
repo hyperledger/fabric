@@ -18,11 +18,14 @@ package utils
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/golang/protobuf/proto"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
@@ -82,6 +85,7 @@ func MakeConfigurationBlock(testChainID string) (*cb.Block, error) {
 		encodeConsensusType(testChainID),
 		encodeBatchSize(testChainID),
 		lockDefaultModificationPolicy(testChainID),
+		encodeMSP(testChainID),
 	)
 	payloadChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION,
 		configItemChainHeader.Version, testChainID, epoch)
@@ -111,6 +115,7 @@ const (
 	lastModified     = uint64(0)
 	consensusTypeKey = "ConsensusType"
 	batchSizeKey     = "BatchSize"
+	mspKey           = "MSP"
 )
 
 func createSignedConfigItem(chainID string,
@@ -147,5 +152,29 @@ func lockDefaultModificationPolicy(testChainID string) *cb.SignedConfigurationIt
 	return createSignedConfigItem(testChainID,
 		configtx.DefaultModificationPolicyID,
 		MarshalOrPanic(MakePolicyOrPanic(cauthdsl.RejectAllPolicy)),
+		configtx.DefaultModificationPolicyID)
+}
+
+// This function is needed to locate the MSP test configuration when running
+// in CI build env or local with "make unit-test". A better way to manage this
+// is to define a config path in yaml that may point to test or production
+// location of the config
+func getTESTMSPConfigPath() string {
+	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
+	if _, err := ioutil.ReadDir(cfgPath); err != nil {
+		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
+	}
+	return cfgPath
+}
+
+func encodeMSP(testChainID string) *cb.SignedConfigurationItem {
+	cfgPath := getTESTMSPConfigPath()
+	conf, err := msp.GetLocalMspConfig(cfgPath)
+	if err != nil {
+		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
+	}
+	return createSignedConfigItem(testChainID,
+		mspKey,
+		MarshalOrPanic(conf),
 		configtx.DefaultModificationPolicyID)
 }

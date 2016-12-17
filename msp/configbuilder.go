@@ -70,10 +70,10 @@ const (
 )
 
 func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
-	cacertDir := dir + string(filepath.Separator) + cacerts
-	signcertDir := dir + string(filepath.Separator) + signcerts
-	admincertDir := dir + string(filepath.Separator) + admincerts
-	keystoreDir := dir + string(filepath.Separator) + keystore
+	cacertDir := filepath.Join(dir, cacerts)
+	signcertDir := filepath.Join(dir, signcerts)
+	admincertDir := filepath.Join(dir, admincerts)
+	keystoreDir := filepath.Join(dir, keystore)
 
 	cacerts, err := getPemMaterialFromDir(cacertDir)
 	if err != nil || len(cacerts) == 0 {
