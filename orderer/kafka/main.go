@@ -17,6 +17,8 @@ limitations under the License.
 package kafka
 
 import (
+	"time"
+
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/localconfig"
@@ -93,6 +95,7 @@ func newChain(consenter testableConsenter, support multichain.ConsenterSupport) 
 		consenter:     consenter,
 		support:       support,
 		partition:     newChainPartition(support.ChainID(), rawPartition),
+		batchTimeout:  support.SharedConfig().BatchTimeout(),
 		lastProcessed: sarama.OffsetOldest - 1, // TODO This should be retrieved by ConsenterSupport; also see note in loop() below
 		producer:      consenter.prodFunc()(support.SharedConfig().KafkaBrokers(), consenter.kafkaVersion(), consenter.retryOptions()),
 		halted:        false, // Redundant as the default value for booleans is false but added for readability
@@ -123,7 +126,9 @@ type chainImpl struct {
 	support   multichain.ConsenterSupport
 
 	partition     ChainPartition
+	batchTimeout  time.Duration
 	lastProcessed int64
+	lastCutBlock  uint64
 
 	producer Producer
 	consumer Consumer
@@ -199,46 +204,82 @@ func (ch *chainImpl) Enqueue(env *cb.Envelope) bool {
 
 func (ch *chainImpl) loop() {
 	msg := new(ab.KafkaMessage)
+	var timer <-chan time.Time
+	var ttcNumber uint64
 
 	defer close(ch.haltedChan)
 	defer ch.producer.Close()
 	defer func() { ch.halted = true }()
 	defer ch.consumer.Close()
 
-	// TODO Add support for time-based block cutting
-
 	for {
 		select {
 		case in := <-ch.consumer.Recv():
-			logger.Debug("Received:", in)
 			if err := proto.Unmarshal(in.Value, msg); err != nil {
 				// This shouldn't happen, it should be filtered at ingress
 				logger.Critical("Unable to unmarshal consumed message:", err)
 			}
-			logger.Debug("Unmarshaled to:", msg)
+			logger.Debug("Received:", msg)
 			switch msg.Type.(type) {
-			case *ab.KafkaMessage_Connect, *ab.KafkaMessage_TimeToCut:
-				logger.Debugf("Ignoring message")
+			case *ab.KafkaMessage_Connect:
+				logger.Debug("It's a connect message - ignoring")
 				continue
+			case *ab.KafkaMessage_TimeToCut:
+				ttcNumber = msg.GetTimeToCut().BlockNumber
+				logger.Debug("It's a time-to-cut message for block", ttcNumber)
+				if ttcNumber == ch.lastCutBlock+1 {
+					timer = nil
+					logger.Debug("Nil'd the timer")
+					batch, committers := ch.support.BlockCutter().Cut()
+					if len(batch) == 0 {
+						logger.Warningf("Got right time-to-cut message (%d) but no pending requests - this might indicate a bug", ch.lastCutBlock)
+						logger.Infof("Consenter for chain %s exiting", ch.partition.Topic())
+						return
+					}
+					block := ch.support.CreateNextBlock(batch)
+					ch.support.WriteBlock(block, committers)
+					ch.lastCutBlock++
+					logger.Debug("Proper time-to-cut received, just cut block", ch.lastCutBlock)
+					continue
+				} else if ttcNumber > ch.lastCutBlock+1 {
+					logger.Warningf("Got larger time-to-cut message (%d) than allowed (%d) - this might indicate a bug", ttcNumber, ch.lastCutBlock+1)
+					logger.Infof("Consenter for chain %s exiting", ch.partition.Topic())
+					return
+				}
+				logger.Debug("Ignoring stale time-to-cut-message for", ch.lastCutBlock)
 			case *ab.KafkaMessage_Regular:
 				env := new(cb.Envelope)
 				if err := proto.Unmarshal(msg.GetRegular().Payload, env); err != nil {
 					// This shouldn't happen, it should be filtered at ingress
-					logger.Critical("Unable to unmarshal consumed message:", err)
+					logger.Critical("Unable to unmarshal consumed regular message:", err)
 					continue
 				}
 				batches, committers, ok := ch.support.BlockCutter().Ordered(env)
 				logger.Debugf("Ordering results: batches: %v, ok: %v", batches, ok)
-				if ok && len(batches) == 0 {
+				if ok && len(batches) == 0 && timer == nil {
+					timer = time.After(ch.batchTimeout)
+					logger.Debugf("Just began %s batch timer", ch.batchTimeout.String())
 					continue
 				}
 				// If !ok, batches == nil, so this will be skipped
 				for i, batch := range batches {
 					block := ch.support.CreateNextBlock(batch)
 					ch.support.WriteBlock(block, committers[i])
+					ch.lastCutBlock++
+					logger.Debug("Batch filled, just cut block", ch.lastCutBlock)
+				}
+				if len(batches) > 0 {
+					timer = nil
 				}
 			}
-		case <-ch.exitChan: // when Halt() is called
+		case <-timer:
+			logger.Debugf("Time-to-cut block %d timer expired", ch.lastCutBlock+1)
+			timer = nil
+			if err := ch.producer.Send(ch.partition, utils.MarshalOrPanic(newTimeToCutMessage(ch.lastCutBlock+1))); err != nil {
+				logger.Errorf("Couldn't post to %s: %s", ch.partition, err)
+				// Do not exit
+			}
+		case <-ch.exitChan: // When Halt() is called
 			logger.Infof("Consenter for chain %s exiting", ch.partition.Topic())
 			return
 		}
