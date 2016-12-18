@@ -60,6 +60,10 @@ func SetDialTimeout(timeout time.Duration) {
 }
 
 func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
+	if len(opts) == 0 {
+		c.logger.Warning("Given an empty set of grpc.DialOption, aborting")
+		return
+	}
 	c.opts = opts
 }
 
@@ -262,13 +266,7 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 		return fmt.Errorf("Stopping")
 	}
 	c.logger.Debug("Entering, endpoint:", endpoint, "PKIID:", pkiID)
-	var err error
-
-	opts := c.opts
-	if opts == nil {
-		opts = []grpc.DialOption{grpc.WithInsecure(), grpc.WithTimeout(dialTimeout)}
-	}
-	cc, err := grpc.Dial(endpoint, append(opts, grpc.WithBlock())...)
+	cc, err := grpc.Dial(remotePeer.Endpoint, append(c.opts, grpc.WithBlock())...)
 	if err != nil {
 		c.logger.Debug("Returning", err)
 		return err
