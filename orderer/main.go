@@ -100,7 +100,7 @@ func main() {
 	}
 
 	consenters := make(map[string]multichain.Consenter)
-	consenters["solo"] = solo.New(conf.General.BatchTimeout)
+	consenters["solo"] = solo.New()
 	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry)
 
 	manager := multichain.NewManagerImpl(lf, consenters)

@@ -22,6 +22,7 @@ import (
 
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
 	mockmultichain "github.com/hyperledger/fabric/orderer/mocks/multichain"
+	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -48,12 +49,14 @@ func goWithWait(target func()) *waitableGo {
 }
 
 func TestEmptyBatch(t *testing.T) {
+	batchTimeout, _ := time.ParseDuration("1ms")
 	support := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope),
-		BlockCutterVal: mockblockcutter.NewReceiver(),
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
-	bs := newChain(time.Millisecond, support)
+	bs := newChain(support)
 	wg := goWithWait(bs.main)
 	defer bs.Halt()
 
@@ -67,12 +70,14 @@ func TestEmptyBatch(t *testing.T) {
 }
 
 func TestBatchTimer(t *testing.T) {
+	batchTimeout, _ := time.ParseDuration("1ms")
 	support := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope),
-		BlockCutterVal: mockblockcutter.NewReceiver(),
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
-	bs := newChain(time.Millisecond, support)
+	bs := newChain(support)
 	wg := goWithWait(bs.main)
 	defer bs.Halt()
 
@@ -100,13 +105,15 @@ func TestBatchTimer(t *testing.T) {
 }
 
 func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
+	batchTimeout, _ := time.ParseDuration("1h")
 	support := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope),
-		BlockCutterVal: mockblockcutter.NewReceiver(),
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 
-	bs := newChain(time.Hour, support)
+	bs := newChain(support)
 	wg := goWithWait(bs.main)
 	defer bs.Halt()
 
@@ -141,12 +148,14 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 }
 
 func TestConfigStyleMultiBatch(t *testing.T) {
+	batchTimeout, _ := time.ParseDuration("1h")
 	support := &mockmultichain.ConsenterSupport{
-		Batches:        make(chan []*cb.Envelope),
-		BlockCutterVal: mockblockcutter.NewReceiver(),
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
-	bs := newChain(time.Hour, support)
+	bs := newChain(support)
 	wg := goWithWait(bs.main)
 	defer bs.Halt()
 

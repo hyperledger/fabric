@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -169,6 +170,58 @@ func TestBatchSize(t *testing.T) {
 
 	if nowBatchSize.MaxMessageCount != endBatchSize.MaxMessageCount {
 		t.Fatalf("Got batch size max message count of %d. Expected: %d", nowBatchSize.MaxMessageCount, endBatchSize.MaxMessageCount)
+	}
+}
+
+func TestBatchTimeout(t *testing.T) {
+	endBatchTimeout, _ := time.ParseDuration("1s")
+	invalidMessage := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   BatchTimeoutKey,
+		Value: []byte("Garbage Data"),
+	}
+	negativeBatchTimeout := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   BatchTimeoutKey,
+		Value: utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: "-1s"}),
+	}
+	zeroBatchTimeout := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   BatchTimeoutKey,
+		Value: utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: "0s"}),
+	}
+	validMessage := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   BatchTimeoutKey,
+		Value: utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: endBatchTimeout.String()}),
+	}
+	m := NewManagerImpl()
+	m.BeginConfig()
+
+	err := m.ProposeConfig(validMessage)
+	if err != nil {
+		t.Fatalf("Error applying valid config: %s", err)
+	}
+
+	err = m.ProposeConfig(invalidMessage)
+	if err == nil {
+		t.Fatalf("Should have failed on invalid message")
+	}
+
+	err = m.ProposeConfig(negativeBatchTimeout)
+	if err == nil {
+		t.Fatalf("Should have rejected negative batch timeout: %s", err)
+	}
+
+	err = m.ProposeConfig(zeroBatchTimeout)
+	if err == nil {
+		t.Fatalf("Should have rejected batch timeout of 0")
+	}
+
+	m.CommitConfig()
+
+	if nowBatchTimeout := m.BatchTimeout(); nowBatchTimeout != endBatchTimeout {
+		t.Fatalf("Got batch timeout of %s when expecting batch size of %s", nowBatchTimeout.String(), endBatchTimeout.String())
 	}
 }
 

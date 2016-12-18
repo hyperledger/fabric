@@ -30,9 +30,7 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-type consenter struct {
-	batchTimeout time.Duration
-}
+type consenter struct{}
 
 type chain struct {
 	support      multichain.ConsenterSupport
@@ -45,20 +43,17 @@ type chain struct {
 // The solo consensus scheme is very simple, and allows only one consenter for a given chain (this process).
 // It accepts messages being delivered via Enqueue, orders them, and then uses the blockcutter to form the messages
 // into blocks before writing to the given ledger
-func New(batchTimeout time.Duration) multichain.Consenter {
-	return &consenter{
-		// TODO, ultimately this should come from the configManager at HandleChain
-		batchTimeout: batchTimeout,
-	}
+func New() multichain.Consenter {
+	return &consenter{}
 }
 
 func (solo *consenter) HandleChain(support multichain.ConsenterSupport) (multichain.Chain, error) {
-	return newChain(solo.batchTimeout, support), nil
+	return newChain(support), nil
 }
 
-func newChain(batchTimeout time.Duration, support multichain.ConsenterSupport) *chain {
+func newChain(support multichain.ConsenterSupport) *chain {
 	return &chain{
-		batchTimeout: batchTimeout,
+		batchTimeout: support.SharedConfig().BatchTimeout(),
 		support:      support,
 		sendChan:     make(chan *cb.Envelope),
 		exitChan:     make(chan struct{}),

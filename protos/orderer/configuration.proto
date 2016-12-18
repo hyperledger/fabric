@@ -34,9 +34,15 @@ message ConsensusType {
 }
 
 message BatchSize {
-    // Simply specified as messages for now, in the future we may want to allow
-    // this to be specified by size in bytes
+    // Simply specified as number of messages for now, in the future
+    // we may want to allow this to be specified by size in bytes
     uint32 maxMessageCount = 1;
+}
+
+message BatchTimeout {
+    // Any duration string parseable by ParseDuration():
+    // https://golang.org/pkg/time/#ParseDuration
+    string timeout = 1;
 }
 
 // When submitting a new chain configuration transaction to create a new chain,

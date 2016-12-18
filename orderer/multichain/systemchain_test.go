@@ -19,6 +19,7 @@ package multichain
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/common/policies"
 	coreutil "github.com/hyperledger/fabric/core/util"
@@ -55,6 +56,10 @@ func (msc *mockSharedConfig) ConsensusType() string {
 }
 
 func (msc *mockSharedConfig) BatchSize() *ab.BatchSize {
+	panic("Unimplemented")
+}
+
+func (msc *mockSharedConfig) BatchTimeout() time.Duration {
 	panic("Unimplemented")
 }
 
