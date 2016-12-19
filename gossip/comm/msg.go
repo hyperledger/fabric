@@ -19,6 +19,7 @@ package comm
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
 )
 
@@ -37,4 +38,10 @@ func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
 // GetGossipMessage returns the inner GossipMessage
 func (m *ReceivedMessageImpl) GetGossipMessage() *proto.GossipMessage {
 	return m.GossipMessage
+}
+
+// GetPKIID returns the PKI-ID of the remote peer
+// that sent the message
+func (m *ReceivedMessageImpl) GetPKIID() common.PKIidType {
+	return m.conn.pkiID
 }

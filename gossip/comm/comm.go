@@ -66,7 +66,8 @@ func (p *RemotePeer) String() string {
 
 // ReceivedMessage is a GossipMessage wrapper that
 // enables the user to send a message to the origin from which
-// the ReceivedMessage was sent from
+// the ReceivedMessage was sent from.
+// It also allows to know the identity of the sender
 type ReceivedMessage interface {
 
 	// Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
@@ -74,4 +75,8 @@ type ReceivedMessage interface {
 
 	// GetGossipMessage returns the underlying GossipMessage
 	GetGossipMessage() *proto.GossipMessage
+
+	// GetPKIID returns the PKI-ID of the remote peer
+	// that sent the message
+	GetPKIID() common.PKIidType
 }

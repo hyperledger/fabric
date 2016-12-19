@@ -164,6 +164,8 @@ func TestBasic(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(2000, naiveSec)
 	comm2, _ := newCommInstance(3000, naiveSec)
+	defer comm1.Stop()
+	defer comm2.Stop()
 	m1 := comm1.Accept(acceptAll)
 	m2 := comm2.Accept(acceptAll)
 	out := make(chan uint64, 2)
@@ -177,6 +179,22 @@ func TestBasic(t *testing.T) {
 	time.Sleep(time.Second)
 	comm2.Send(createGossipMsg(), remotePeer(2000))
 	waitForMessages(t, out, 2, "Didn't receive 2 messages")
+}
+
+func TestGetPKIID(t *testing.T) {
+	t.Parallel()
+	comm1, _ := newCommInstance(6000, naiveSec)
+	comm2, _ := newCommInstance(7000, naiveSec)
+	defer comm1.Stop()
+	defer comm2.Stop()
+	m1 := comm1.Accept(acceptAll)
+	comm2.Send(createGossipMsg(), remotePeer(6000))
+	select {
+	case <-time.After(time.Second * 10):
+		t.Fatal("Didn't receive a message in time")
+	case msg := <-m1:
+		assert.Equal(t, comm2.GetPKIid(), msg.GetPKIID())
+	}
 }
 
 func TestBlackListPKIid(t *testing.T) {

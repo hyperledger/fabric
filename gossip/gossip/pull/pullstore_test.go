@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/comm"
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -54,6 +55,10 @@ func (pm *pullMsg) Respond(msg *proto.GossipMessage) {
 
 func (pm *pullMsg) GetGossipMessage() *proto.GossipMessage {
 	return pm.msg
+}
+
+func (pm *pullMsg) GetPKIID() common.PKIidType {
+	return nil
 }
 
 type pullInstance struct {

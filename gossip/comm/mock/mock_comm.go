@@ -101,6 +101,10 @@ func (packet *packetMock) GetGossipMessage() *proto.GossipMessage {
 	return packet.msg.(*proto.GossipMessage)
 }
 
+func (packet *packetMock) GetPKIID() common.PKIidType {
+	return nil
+}
+
 func (mock *commMock) start() {
 	logger.Debug("Starting communication mock module...")
 	for {
