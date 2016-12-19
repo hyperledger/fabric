@@ -36,7 +36,7 @@ func (s *SBFT) sendPreprepare(batch []*Request) {
 		Batch: s.makeBatch(seq.Seq, lasthash, data),
 	}
 
-	s.sys.Persist("preprepare", m)
+	s.sys.Persist(preprepared, m)
 	s.broadcast(&Msg{&Msg_Preprepare{m}})
 	s.handleCheckedPreprepare(m)
 }
@@ -83,7 +83,7 @@ func (s *SBFT) acceptPreprepare(pp *Preprepare) {
 	sub := Subject{Seq: pp.Seq, Digest: pp.Batch.Hash()}
 
 	log.Infof("replica %d: accepting preprepare for %v, %x", s.id, sub.Seq, sub.Digest)
-	s.sys.Persist("preprepare", pp)
+	s.sys.Persist(preprepared, pp)
 
 	s.cur = reqInfo{
 		subject:    sub,
