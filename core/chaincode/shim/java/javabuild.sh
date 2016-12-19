@@ -40,6 +40,7 @@ if [ x$ARCH == xx86_64 ]
 then
     gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle clean
     gradle -q -b ${PARENTDIR}/core/chaincode/shim/java/build.gradle build
+    cp -r ${PARENTDIR}/core/chaincode/shim/java/build/libs /root/
 else
     echo "FIXME: Java Shim code needs work on ppc64le and s390x."
     echo "Commenting it for now."
