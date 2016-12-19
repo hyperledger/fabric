@@ -21,13 +21,13 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.6'
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.0'
     }
 }
 
 plugins {
     id "java"
-    id "com.google.protobuf" version "0.7.6"
+    id "com.google.protobuf" version "0.8.0"
     id "eclipse"
     id "maven-publish"
 
@@ -52,10 +52,14 @@ repositories {
     mavenCentral()
 }
 
+apply plugin: "com.google.osdetector"
+
+def tcnative_classifier = osdetector.classifier;
+
 protobuf {
     generatedFilesBaseDir = "$projectDir/src"
     protoc {
-        artifact = 'com.google.protobuf:protoc:3.0.0-beta-2'
+        artifact = 'com.google.protobuf:protoc:3.0.0'
     }
     plugins {
         grpc {
@@ -105,9 +109,10 @@ build.finalizedBy(copyToLib)
 build.finalizedBy(publishToMavenLocal)
 
 dependencies {
-    compile 'com.google.protobuf:protobuf-java:3.0.0-beta-2'
+    compile 'com.google.protobuf:protobuf-java:3.0.0'
     compile 'io.grpc:grpc-all:0.13.2'
     compile 'commons-cli:commons-cli:1.3.1'
+    compile 'io.netty:netty-tcnative-boringssl-static:1.1.33.Fork21:' + tcnative_classifier
 }
 
 publishing {

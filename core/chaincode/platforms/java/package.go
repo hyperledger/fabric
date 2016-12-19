@@ -91,14 +91,18 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 	var dockerFileContents string
 	var buf []string
 
-	if viper.GetBool("security.enabled") {
-		//todo
-	} else {
-		buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.java.Dockerfile"))
-		buf = append(buf, "COPY src /root/chaincode")
-		buf = append(buf, "RUN  cd /root/chaincode && "+buildCmd)
-		buf = append(buf, "RUN  cp /root/chaincode/build/chaincode.jar /root")
-		buf = append(buf, "RUN  cp /root/chaincode/build/libs/* /root/libs")
+	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.java.Dockerfile"))
+	buf = append(buf, "COPY src /root/chaincode")
+	buf = append(buf, "RUN  cd /root/chaincode && "+buildCmd)
+	buf = append(buf, "RUN  cp /root/chaincode/build/chaincode.jar /root")
+	buf = append(buf, "RUN  cp /root/chaincode/build/libs/* /root/libs")
+
+	// Add COPY command to Dockerfile when it is a self-signed cert and rootcert.pem
+	// is specified in the peer.tls.rootcert.file configuration. It is made available
+	// in the docker context tar file in writer.go
+
+	if viper.GetBool("peer.tls.enabled") && viper.GetString("peer.tls.rootcert.file") != "" {
+		buf = append(buf, "COPY src/certs/rootcert.pem /root/certs/rootcert.pem")
 	}
 
 	dockerFileContents = strings.Join(buf, "\n")
