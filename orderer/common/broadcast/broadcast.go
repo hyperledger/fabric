@@ -22,6 +22,8 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 
+	"io"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -118,6 +120,9 @@ func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) err
 		default:
 		}
 		msg, err := srv.Recv()
+		if err == io.EOF {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
