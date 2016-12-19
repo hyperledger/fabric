@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sbft
+package main
 
 import (
 	"fmt"
@@ -53,11 +53,12 @@ func TestSbftPeer(t *testing.T) {
 		os.RemoveAll(tempDir)
 	}()
 	c := flags{init: "testdata/config.json",
-		listenAddr: ":6101",
-		grpcAddr:   ":7101",
-		certFile:   "testdata/cert1.pem",
-		keyFile:    "testdata/key.pem",
-		dataDir:    tempDir}
+		genesisFile: fmt.Sprintf("%s_%s", tempDir, "genesis"),
+		listenAddr:  ":6101",
+		grpcAddr:    ":7101",
+		certFile:    "testdata/cert1.pem",
+		keyFile:     "testdata/key.pem",
+		dataDir:     tempDir}
 
 	logger.Info("Initialization of instance.")
 	err = initInstance(c)

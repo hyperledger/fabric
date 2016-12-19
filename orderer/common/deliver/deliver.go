@@ -197,7 +197,7 @@ func (d *deliverer) sendBlockReply(block *cb.Block) bool {
 
 func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
 	d.cursor = nil // Even if the seek fails early, we should stop sending blocks from the last request
-	logger.Debugf("Updating properties for client")
+	logger.Debugf("Updating properties for client: %v", update)
 
 	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) || update.ChainID == "" {
 		close(d.exitChan)

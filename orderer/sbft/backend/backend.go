@@ -25,14 +25,13 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/transport"
 
 	"crypto/ecdsa"
 	crand "crypto/rand"
 	"math/big"
-
-	"golang.org/x/net/context"
 
 	"crypto"
 	"crypto/rsa"

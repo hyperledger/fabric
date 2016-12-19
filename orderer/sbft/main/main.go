@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sbft
+package main
 
 import (
 	"flag"
@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	localconfig "github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
+	"github.com/hyperledger/fabric/orderer/sbft"
 	"github.com/hyperledger/fabric/orderer/sbft/backend"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
@@ -47,6 +48,7 @@ type flags struct {
 	certFile      string
 	keyFile       string
 	dataDir       string
+	genesisFile   string
 	verbose       string
 	init          string
 }
@@ -61,6 +63,7 @@ func main() {
 	flag.StringVar(&c.certFile, "cert", "", "certificate `file`")
 	flag.StringVar(&c.keyFile, "key", "", "key `file`")
 	flag.StringVar(&c.dataDir, "data-dir", "", "data `dir`ectory")
+	flag.StringVar(&c.genesisFile, "genesis-file", "", "`gen`esis block file")
 	flag.StringVar(&c.verbose, "verbose", "info", "set verbosity `level` (critical, error, warning, notice, info, debug)")
 
 	flag.Parse()
@@ -83,7 +86,7 @@ func main() {
 }
 
 func initInstance(c flags) error {
-	config, err := ReadJsonConfig(c.init)
+	config, err := sbft.ReadJsonConfig(c.init)
 	if err != nil {
 		return err
 	}
@@ -94,12 +97,12 @@ func initInstance(c flags) error {
 	}
 
 	p := persist.New(c.dataDir)
-	err = SaveConfig(p, config)
+	err = sbft.SaveConfig(p, config)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("initialized new peer")
+	fmt.Println(fmt.Sprintf("initialized new peer: listening at %v GRPC at %v", c.listenAddr, c.grpcAddr))
 	return nil
 }
 
@@ -110,7 +113,7 @@ func serve(c flags) {
 	}
 
 	persist := persist.New(c.dataDir)
-	config, err := RestoreConfig(persist)
+	config, err := sbft.RestoreConfig(persist)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +148,4 @@ func serve(c flags) {
 	broadcastab := backend.NewBackendAB(s.backend)
 	ab.RegisterAtomicBroadcastServer(grpcServer, broadcastab)
 	grpcServer.Serve(lis)
-
-	// block forever
-	select {}
 }
