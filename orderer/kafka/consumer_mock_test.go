@@ -35,9 +35,11 @@ type mockConsumerImpl struct {
 	parentConsumer         *mocks.Consumer
 	chainPartitionManager  *mocks.PartitionConsumer
 	chainPartitionConsumer sarama.PartitionConsumer
-	disk                   chan *ab.KafkaMessage
-	isSetup                chan struct{}
-	t                      *testing.T
+
+	disk         chan *ab.KafkaMessage
+	isSetup      chan struct{}
+	targetOffset int64
+	t            *testing.T
 }
 
 func mockNewConsumer(t *testing.T, cp ChainPartition, offset int64, disk chan *ab.KafkaMessage) (Consumer, error) {
@@ -59,6 +61,7 @@ func mockNewConsumer(t *testing.T, cp ChainPartition, offset int64, disk chan *a
 	}
 	mc := &mockConsumerImpl{
 		consumedOffset: 0,
+		targetOffset:   offset,
 		chainPartition: cp,
 
 		parentConsumer:         parentConsumer,
@@ -69,17 +72,11 @@ func mockNewConsumer(t *testing.T, cp ChainPartition, offset int64, disk chan *a
 		t:       t,
 	}
 	// Stop-gap hack until sarama issue #745 is resolved:
-	if offset >= testOldestOffset && offset <= (testNewestOffset-1) {
-		mc.testFillWithBlocks(offset - 1) // Prepare the consumer so that the next Recv gives you blob #offset
+	if mc.targetOffset >= testOldestOffset && mc.targetOffset <= (testNewestOffset-1) {
+		mc.testFillWithBlocks(mc.targetOffset - 1) // Prepare the consumer so that the next Recv gives you blob #targetOffset
 	} else {
 		err = fmt.Errorf("Out of range offset (seek number) given to consumer: %d", offset)
 		return mc, err
-	}
-
-	if mc.consumedOffset == offset-1 {
-		close(mc.isSetup)
-	} else {
-		mc.t.Fatal("Mock consumer failed to initialize itself properly")
 	}
 
 	return mc, err
@@ -101,6 +98,9 @@ func (mc *mockConsumerImpl) Recv() <-chan *sarama.ConsumerMessage {
 	case outgoingMsg := <-mc.disk:
 		mc.consumedOffset++
 		mc.chainPartitionManager.YieldMessage(testNewConsumerMessage(mc.chainPartition, mc.consumedOffset, outgoingMsg))
+		if mc.consumedOffset == mc.targetOffset-1 {
+			close(mc.isSetup) // Hook for callers
+		}
 		return mc.chainPartitionConsumer.Messages()
 	}
 

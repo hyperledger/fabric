@@ -98,6 +98,7 @@ func newChain(consenter testableConsenter, support multichain.ConsenterSupport) 
 		halted:        false, // Redundant as the default value for booleans is false but added for readability
 		exitChan:      make(chan struct{}),
 		haltedChan:    make(chan struct{}),
+		setupChan:     make(chan struct{}),
 	}
 }
 
@@ -130,7 +131,9 @@ type chainImpl struct {
 	halted   bool          // For the Enqueue() calls
 	exitChan chan struct{} // For the Chain's Halt() method
 
-	haltedChan chan struct{} // Hook for testing
+	// Hooks for testing
+	haltedChan chan struct{}
+	setupChan  chan struct{}
 }
 
 // Start allocates the necessary resources for staying up to date with this Chain.
@@ -158,6 +161,7 @@ func (ch *chainImpl) Start() {
 		return
 	}
 	ch.consumer = consumer
+	close(ch.setupChan)
 
 	// 3. Set the loop the keep up to date with the chain.
 	go ch.loop()

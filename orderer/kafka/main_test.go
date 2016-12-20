@@ -108,6 +108,12 @@ func TestKafkaConsenterEmptyBatch(t *testing.T) {
 		case <-time.After(testTimePadding):
 			t.Fatal("Mock producer not setup in time")
 		}
+		// Same for the mock consumer
+		select {
+		case <-ch.setupChan:
+		case <-time.After(testTimePadding):
+			t.Fatal("Mock consumer not setup in time")
+		}
 	}()
 	wg.Wait()
 
@@ -165,6 +171,12 @@ func TestKafkaConsenterConfigStyleMultiBatch(t *testing.T) {
 			<-co.prodDisk
 		case <-time.After(testTimePadding):
 			t.Fatal("Mock producer not setup in time")
+		}
+		// Same for the mock consumer
+		select {
+		case <-ch.setupChan:
+		case <-time.After(testTimePadding):
+			t.Fatal("Mock consumer not setup in time")
 		}
 	}()
 	wg.Wait()
