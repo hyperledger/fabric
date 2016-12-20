@@ -17,6 +17,7 @@ limitations under the License.
 package flogging_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/flogging"
@@ -184,6 +185,36 @@ func TestSetModuleLoggingLevelInvalid(t *testing.T) {
 
 	// ensure that the log level didn't change after invalid log level specified
 	assertModuleLoggingLevel(t, "peer", logging.WARNING)
+}
+
+func ExampleSetLoggingFormat() {
+	// initializes logging backend for testing and sets
+	// time to 1970-01-01 00:00:00.000 UTC
+	logging.InitForTesting(flogging.DefaultLoggingLevel())
+
+	logFormat := "%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x} %{message}"
+	flogging.SetLoggingFormat(logFormat, os.Stdout)
+
+	logger := logging.MustGetLogger("floggingTest")
+	logger.Infof("test")
+
+	// Output:
+	// 1970-01-01 00:00:00.000 UTC [floggingTest] ExampleSetLoggingFormat -> INFO 001 test
+}
+
+func ExampleSetLoggingFormat_second() {
+	// initializes logging backend for testing and sets
+	// time to 1970-01-01 00:00:00.000 UTC
+	logging.InitForTesting(flogging.DefaultLoggingLevel())
+
+	logFormat := "%{time:15:04:05.000} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x} %{message}"
+	flogging.SetLoggingFormat(logFormat, os.Stdout)
+
+	logger := logging.MustGetLogger("floggingTest")
+	logger.Infof("test")
+
+	// Output:
+	// 00:00:00.000 [floggingTest] ExampleSetLoggingFormat_second -> INFO 001 test
 }
 
 func assertDefaultLoggingLevel(t *testing.T, expectedLevel logging.Level) {

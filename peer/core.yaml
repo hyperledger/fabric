@@ -72,6 +72,8 @@ logging:
     protoutils: debug
     error:     warning
 
+    format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
 ###############################################################################
 #
 #    Peer section
@@ -417,9 +419,9 @@ ledger:
        username:
        password:
     # historyDatabase - options are true or false
-    # Indicates if the transaction history should be stored in 
+    # Indicates if the transaction history should be stored in
     # a querable database such as "CouchDB".
-    # The stateDatabase must be also stored in CouchDB for 
+    # The stateDatabase must be also stored in CouchDB for
     # history to be enabled.
     historyDatabase: false
 
