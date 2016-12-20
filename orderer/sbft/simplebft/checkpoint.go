@@ -88,9 +88,10 @@ func (s *SBFT) handleCheckpoint(c *Checkpoint, src uint64) {
 	c = s.cur.checkpoint[replicas[0]]
 
 	if !reflect.DeepEqual(c.Digest, s.cur.subject.Digest) {
-		log.Fatalf("replica %d: weak checkpoint %x does not match our state %x",
-			s.id, c.Digest, s.cur.subject.Digest)
-		// NOT REACHED
+		log.Warningf("replica %d: weak checkpoint %x does not match our state %x --- primary %d of view %d is probably Byzantine, sending view change",
+			s.id, c.Digest, s.cur.subject.Digest, s.primaryID(), s.view)
+		s.sendViewChange()
+		return
 	}
 
 	// ignore null requests
