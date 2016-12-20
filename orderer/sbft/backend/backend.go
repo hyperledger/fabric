@@ -338,7 +338,7 @@ func (t *Backend) Restore(key string, out proto.Message) bool {
 }
 
 func (t *Backend) LastBatch() *s.Batch {
-	it, _ := t.ledger.Iterator(ab.SeekInfo_NEWEST, 0)
+	it, _ := t.ledger.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Newest{}})
 	block, status := it.Next()
 	data := block.Data.Data
 	if status != cb.Status_SUCCESS {

@@ -118,7 +118,7 @@ func TestManagerImpl(t *testing.T) {
 		chainSupport.Enqueue(message)
 	}
 
-	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
+	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 	select {
 	case <-it.ReadyChan():
 		block, status := it.Next()
@@ -158,7 +158,7 @@ func TestNewChain(t *testing.T) {
 		t.Fatalf("Error submitting chain creation request")
 	}
 
-	it, _ := rl.Iterator(ab.SeekInfo_SPECIFIED, 1)
+	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 	select {
 	case <-it.ReadyChan():
 		block, status := it.Next()
@@ -191,7 +191,7 @@ func TestNewChain(t *testing.T) {
 		chainSupport.Enqueue(message)
 	}
 
-	it, _ = chainSupport.Reader().Iterator(ab.SeekInfo_SPECIFIED, 0)
+	it, _ = chainSupport.Reader().Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 0}}})
 	select {
 	case <-it.ReadyChan():
 		block, status := it.Next()

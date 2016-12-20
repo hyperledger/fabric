@@ -109,7 +109,7 @@ func TestRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
 	fl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
-	it, num := fl.Iterator(ab.SeekInfo_OLDEST, 99)
+	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
 	}
@@ -144,7 +144,7 @@ func TestRetrieval(t *testing.T) {
 func TestBlockedRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	it, num := fl.Iterator(ab.SeekInfo_SPECIFIED, 1)
+	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 	if num != 1 {
 		t.Fatalf("Expected block iterator at 1, but got %d", num)
 	}

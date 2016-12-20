@@ -50,171 +50,88 @@ type Support interface {
 }
 
 type deliverServer struct {
-	sm        SupportManager
-	maxWindow int
+	sm SupportManager
 }
 
 // NewHandlerImpl creates an implementation of the Handler interface
-func NewHandlerImpl(sm SupportManager, maxWindow int) Handler {
+func NewHandlerImpl(sm SupportManager) Handler {
 	return &deliverServer{
-		sm:        sm,
-		maxWindow: maxWindow,
+		sm: sm,
 	}
 }
 
 func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
-	logger.Debugf("Starting new Deliver loop")
-	d := newDeliverer(ds, srv)
-	return d.recv()
-
-}
-
-type deliverer struct {
-	ds              *deliverServer
-	srv             ab.AtomicBroadcast_DeliverServer
-	cursor          rawledger.Iterator
-	nextBlockNumber uint64
-	windowSize      uint64
-	lastAck         uint64
-	recvChan        chan *ab.DeliverUpdate
-	exitChan        chan struct{}
-}
-
-func newDeliverer(ds *deliverServer, srv ab.AtomicBroadcast_DeliverServer) *deliverer {
-	d := &deliverer{
-		ds:       ds,
-		srv:      srv,
-		exitChan: make(chan struct{}),
-		recvChan: make(chan *ab.DeliverUpdate),
-	}
-	go d.main()
-	return d
-}
-
-func (d *deliverer) halt() {
-	close(d.exitChan)
-}
-
-func (d *deliverer) main() {
-	var signal <-chan struct{}
+	logger.Debugf("Starting new deliver loop")
 	for {
-		select {
-		case update := <-d.recvChan:
-			logger.Debugf("Receiving message %v", update)
-			switch t := update.Type.(type) {
-			case *ab.DeliverUpdate_Acknowledgement:
-				logger.Debugf("Received acknowledgement from client")
-				d.lastAck = t.Acknowledgement.Number
-			case *ab.DeliverUpdate_Seek:
-				if !d.processUpdate(t.Seek) {
-					return
-				}
-			case nil:
-				logger.Errorf("Nil update")
-				close(d.exitChan)
-				return
-			default:
-				logger.Errorf("Unknown type: %T:%v", t, t)
-				close(d.exitChan)
-				return
-			}
-		case <-signal:
-			block, status := d.cursor.Next()
-			if status != cb.Status_SUCCESS {
-				logger.Errorf("Error reading from channel, cause was: %v", status)
-				if !d.sendErrorReply(status) {
-					return
-				}
-				d.cursor = nil
-			} else {
-				d.nextBlockNumber = block.Header.Number + 1
-				if !d.sendBlockReply(block) {
-					return
-				}
-			}
-		case <-d.exitChan:
-			return
-		}
-
-		if d.cursor == nil {
-			signal = nil
-			continue
-		}
-
-		if d.lastAck+d.windowSize < d.nextBlockNumber {
-			signal = nil
-			continue
-		}
-
-		logger.Debugf("Room for more blocks, activating channel")
-		signal = d.cursor.ReadyChan()
-	}
-}
-
-func (d *deliverer) recv() error {
-	for {
-		msg, err := d.srv.Recv()
+		logger.Debugf("Attempting to read seek info message")
+		seekInfo, err := srv.Recv()
 		if err != nil {
+			logger.Errorf("Error reading from stream: %s", err)
 			return err
 		}
-		logger.Debugf("Received message %v", msg)
-		select {
-		case <-d.exitChan:
-			return nil // something has gone wrong enough we want to disconnect
-		case d.recvChan <- msg:
-			logger.Debugf("Passed message to main thread")
+		logger.Debugf("Received message %v", seekInfo)
+
+		chain, ok := ds.sm.GetChain(seekInfo.ChainID)
+		if !ok {
+			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
+
+		// XXX add deliver authorization checking
+
+		cursor, number := chain.Reader().Iterator(seekInfo.Start)
+		var stopNum uint64
+		switch stop := seekInfo.Stop.Type.(type) {
+		case *ab.SeekPosition_Oldest:
+			stopNum = number
+		case *ab.SeekPosition_Newest:
+			stopNum = chain.Reader().Height() - 1
+		case *ab.SeekPosition_Specified:
+			stopNum = stop.Specified.Number
+		}
+
+		for {
+			if seekInfo.Behavior == ab.SeekInfo_BLOCK_UNTIL_READY {
+				<-cursor.ReadyChan()
+			} else {
+				select {
+				case <-cursor.ReadyChan():
+				default:
+					return sendStatusReply(srv, cb.Status_NOT_FOUND)
+				}
+			}
+
+			block, status := cursor.Next()
+			if status != cb.Status_SUCCESS {
+				logger.Errorf("Error reading from channel, cause was: %v", status)
+				return sendStatusReply(srv, status)
+			}
+
+			logger.Debugf("Delivering block")
+			if err := sendBlockReply(srv, block); err != nil {
+				return err
+			}
+
+			if stopNum == block.Header.Number {
+				break
+			}
+		}
+
+		if err := sendStatusReply(srv, cb.Status_SUCCESS); err != nil {
+			return err
+		}
+		logger.Debugf("Done delivering, waiting for new SeekInfo")
 	}
 }
 
-func (d *deliverer) sendErrorReply(status cb.Status) bool {
-	err := d.srv.Send(&ab.DeliverResponse{
-		Type: &ab.DeliverResponse_Error{Error: status},
+func sendStatusReply(srv ab.AtomicBroadcast_DeliverServer, status cb.Status) error {
+	return srv.Send(&ab.DeliverResponse{
+		Type: &ab.DeliverResponse_Status{Status: status},
 	})
 
-	if err != nil {
-		close(d.exitChan)
-		return false
-	}
-
-	return true
-
 }
 
-func (d *deliverer) sendBlockReply(block *cb.Block) bool {
-	err := d.srv.Send(&ab.DeliverResponse{
+func sendBlockReply(srv ab.AtomicBroadcast_DeliverServer, block *cb.Block) error {
+	return srv.Send(&ab.DeliverResponse{
 		Type: &ab.DeliverResponse_Block{Block: block},
 	})
-
-	if err != nil {
-		close(d.exitChan)
-		return false
-	}
-
-	return true
-
-}
-
-func (d *deliverer) processUpdate(update *ab.SeekInfo) bool {
-	d.cursor = nil // Even if the seek fails early, we should stop sending blocks from the last request
-	logger.Debugf("Updating properties for client: %v", update)
-
-	if update == nil || update.WindowSize == 0 || update.WindowSize > uint64(d.ds.maxWindow) || update.ChainID == "" {
-		close(d.exitChan)
-		return d.sendErrorReply(cb.Status_BAD_REQUEST)
-	}
-
-	chain, ok := d.ds.sm.GetChain(update.ChainID)
-	if !ok {
-		return d.sendErrorReply(cb.Status_NOT_FOUND)
-	}
-
-	// XXX add deliver authorization checking
-
-	d.windowSize = update.WindowSize
-
-	d.cursor, d.nextBlockNumber = chain.Reader().Iterator(update.Start, update.SpecifiedNumber)
-	d.lastAck = d.nextBlockNumber - 1
-
-	return true
 }

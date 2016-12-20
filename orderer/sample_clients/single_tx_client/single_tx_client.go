@@ -98,7 +98,12 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 		errorch <- fmt.Errorf("Failed to get Deliver stream: %s", err)
 		return
 	}
-	dstream.Send(&ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{Start: ab.SeekInfo_NEWEST, WindowSize: 10, ChainID: provisional.TestChainID}}})
+	dstream.Send(&ab.SeekInfo{
+		ChainID:  provisional.TestChainID,
+		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
+		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
+		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+	})
 	logger.Info("{Update Receiver} Listening to ledger updates.")
 	for i := 0; i < 2; i++ {
 		m, inerr := dstream.Recv()

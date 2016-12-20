@@ -58,7 +58,7 @@ type BackendAB struct {
 func NewBackendAB(backend *Backend) *BackendAB {
 
 	// XXX All the code below is a hacky shim until sbft can be adapter to the new multichain interface
-	it, _ := backend.ledger.Iterator(ab.SeekInfo_OLDEST, 0)
+	it, _ := backend.ledger.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	block, status := it.Next()
 	if status != cb.Status_SUCCESS {
 		panic("Error getting a block from the ledger")
@@ -83,7 +83,7 @@ func NewBackendAB(backend *Backend) *BackendAB {
 
 	bab := &BackendAB{
 		backend:       backend,
-		deliverserver: deliver.NewHandlerImpl(manager, 1000),
+		deliverserver: deliver.NewHandlerImpl(manager),
 	}
 	return bab
 }

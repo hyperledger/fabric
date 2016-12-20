@@ -42,29 +42,34 @@ def step_impl(context, enrollId, numMsgsToBroadcast, composeService):
 	userRegistration.broadcastMessages(context, numMsgsToBroadcast, composeService)
 
 
-@when(u'user "{enrollId}" connects to deliver function on "{composeService}" with Ack of "{sendAck}" and properties')
-def step_impl(context, enrollId, composeService, sendAck):
+@when(u'user "{enrollId}" connects to deliver function on "{composeService}"')
+def step_impl(context, enrollId, composeService):
 	# First get the properties
-	assert 'table' in context, "table (Start | SpecifiedNumber| WindowSize) not found in context"
-	row = context.table.rows[0]
-	start, SpecifiedNumber, WindowSize = row['Start'], int(row['SpecifiedNumber']), int(row['WindowSize'])
-
+	assert 'table' in context, "table (Start | End) not found in context"
 	userRegistration = orderer_util.getUserRegistration(context, enrollId)
-	userRegistration.connectToDeliverFunction(context, sendAck, start, SpecifiedNumber, WindowSize, composeService)	
+	streamHelper = userRegistration.connectToDeliverFunction(context, composeService)
 
 
 @then(u'user "{enrollId}" should get a delivery from "{composeService}" of "{expectedBlocks}" blocks with "{numMsgsToBroadcast}" messages within "{batchTimeout}" seconds')
 def step_impl(context, enrollId, expectedBlocks, numMsgsToBroadcast, batchTimeout, composeService):
 	userRegistration = orderer_util.getUserRegistration(context, enrollId)
 	streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
-	delivererQueue = streamHelper.readDeliveredMessages(long(expectedBlocks))
+	blocks = streamHelper.getBlocks()
 	# Verify block count
-	blocks = [msg.Block for msg in delivererQueue if msg.Block]	
 	assert len(blocks) == int(expectedBlocks), "Expected {0} blocks, received {1}".format(expectedBlocks, len(blocks))
 
 
-@when(u'user "{enrollId}" seeks to block "{blockToSeekTo}" on deliver function on "{composeService}"')
-def step_impl(context, enrollId, blockToSeekTo, composeService):
+def convertSeek(utfString):
+	try:
+		return int(utfString)
+	except ValueError:
+		return str(utfString)
+
+@when(u'user "{enrollId}" sends deliver a seek request on "{composeService}" with properties')
+def step_impl(context, enrollId, composeService):
+	row = context.table.rows[0]
+	start, end, = convertSeek(row['Start']), convertSeek(row['End'])
+
 	userRegistration = orderer_util.getUserRegistration(context, enrollId)
 	streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
-	streamHelper.seekToBlock(long(blockToSeekTo))
+        streamHelper.seekToRange(start = start, end = end)

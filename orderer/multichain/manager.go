@@ -66,7 +66,7 @@ type multiLedger struct {
 func getConfigTx(reader rawledger.Reader) *cb.Envelope {
 	var lastConfigTx *cb.Envelope
 
-	it, _ := reader.Iterator(ab.SeekInfo_OLDEST, 0)
+	it, _ := reader.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	// Iterate over the blockchain, looking for config transactions, track the most recent one encountered
 	// this will be the transaction which is returned
 	for {

@@ -42,18 +42,15 @@ func init() {
 	genesisBlock = provisional.New(config.Load()).GenesisBlock()
 }
 
-// MagicLargestWindow is used as the default max window size for initializing the deliver service
-const MagicLargestWindow int = 1000
-
 type mockD struct {
 	grpc.ServerStream
-	recvChan chan *ab.DeliverUpdate
+	recvChan chan *ab.SeekInfo
 	sendChan chan *ab.DeliverResponse
 }
 
 func newMockD() *mockD {
 	return &mockD{
-		recvChan: make(chan *ab.DeliverUpdate),
+		recvChan: make(chan *ab.SeekInfo),
 		sendChan: make(chan *ab.DeliverResponse),
 	}
 }
@@ -63,7 +60,7 @@ func (m *mockD) Send(br *ab.DeliverResponse) error {
 	return nil
 }
 
-func (m *mockD) Recv() (*ab.DeliverUpdate, error) {
+func (m *mockD) Recv() (*ab.SeekInfo, error) {
 	msg, ok := <-m.recvChan
 	if !ok {
 		return msg, fmt.Errorf("Channel closed")
@@ -93,7 +90,7 @@ func (mcs *mockSupport) Reader() rawledger.Reader {
 }
 
 func newMockMultichainManager() *mockSupportManager {
-	_, rl := ramledger.New(ledgerSize, genesisBlock)
+	_, rl := ramledger.New(ledgerSize+1, genesisBlock)
 	mm := &mockSupportManager{
 		chains: make(map[string]*mockSupport),
 	}
@@ -101,6 +98,13 @@ func newMockMultichainManager() *mockSupportManager {
 		ledger: rl,
 	}
 	return mm
+}
+
+var seekOldest = &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}}
+var seekNewest = &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}}
+
+func seekSpecified(number uint64) *ab.SeekPosition {
+	return &ab.SeekPosition{Type: &ab.SeekPosition_Specified{&ab.SeekSpecified{Number: number}}}
 }
 
 func TestOldestSeek(t *testing.T) {
@@ -111,26 +115,33 @@ func TestOldestSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, MagicLargestWindow)
+	ds := NewHandlerImpl(mm)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_OLDEST, ChainID: systemChainID}}}
+	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekOldest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
 
-	count := 0
+	count := uint64(0)
 	for {
 		select {
 		case deliverReply := <-m.sendChan:
 			if deliverReply.GetBlock() == nil {
-				t.Fatalf("Received an error on the reply channel")
+				if deliverReply.GetStatus() != cb.Status_SUCCESS {
+					t.Fatalf("Received an error on the reply channel")
+				}
+				if count != ledgerSize {
+					t.Fatalf("Expected %d blocks but got %d", ledgerSize, count)
+				}
+				return
+			} else {
+				if deliverReply.GetBlock().Header.Number != count {
+					t.Fatalf("Expected block %d but got block %d", count, deliverReply.GetBlock().Header.Number)
+				}
 			}
 		case <-time.After(time.Second):
 			t.Fatalf("Timed out waiting to get all blocks")
 		}
 		count++
-		if count == ledgerSize {
-			break
-		}
 	}
 }
 
@@ -142,20 +153,23 @@ func TestNewestSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, MagicLargestWindow)
+	ds := NewHandlerImpl(mm)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_NEWEST, ChainID: systemChainID}}}
+	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
 
 	select {
-	case blockReply := <-m.sendChan:
-		if blockReply.GetBlock() == nil {
-			t.Fatalf("Received an error on the reply channel")
-		}
-
-		if blockReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
-			t.Fatalf("Expected only the most recent block")
+	case deliverReply := <-m.sendChan:
+		if deliverReply.GetBlock() == nil {
+			if deliverReply.GetStatus() != cb.Status_SUCCESS {
+				t.Fatalf("Received an error on the reply channel")
+			}
+			return
+		} else {
+			if deliverReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
+				t.Fatalf("Expected only the most recent block")
+			}
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -170,122 +184,138 @@ func TestSpecificSeek(t *testing.T) {
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, MagicLargestWindow)
+	ds := NewHandlerImpl(mm)
+	specifiedStart := uint64(3)
+	specifiedStop := uint64(7)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_NEWEST, ChainID: systemChainID}}}
+	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekSpecified(specifiedStart), Stop: seekSpecified(specifiedStop), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
 
-	select {
-	case blockReply := <-m.sendChan:
-		if blockReply.GetBlock() == nil {
-			t.Fatalf("Received an error on the reply channel")
+	count := uint64(0)
+	for {
+		select {
+		case deliverReply := <-m.sendChan:
+			if deliverReply.GetBlock() == nil {
+				if deliverReply.GetStatus() != cb.Status_SUCCESS {
+					t.Fatalf("Received an error on the reply channel")
+				}
+				return
+			} else {
+				if expected := specifiedStart + count; deliverReply.GetBlock().Header.Number != expected {
+					t.Fatalf("Expected block %d but got block %d", expected, deliverReply.GetBlock().Header.Number)
+				}
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("Timed out waiting to get all blocks")
 		}
-
-		if blockReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
-			t.Fatalf("Expected only the most recent block")
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("Timed out waiting to get all blocks")
+		count++
 	}
 }
 
 func TestBadSeek(t *testing.T) {
 	mm := newMockMultichainManager()
-	for i := 1; i < 2*ledgerSize; i++ {
-		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
-	}
-
-	m := newMockD()
-	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, MagicLargestWindow)
-
-	go ds.Handle(m)
-
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(ledgerSize - 1), ChainID: systemChainID}}}
-
-	select {
-	case blockReply := <-m.sendChan:
-		if blockReply.GetError() != cb.Status_NOT_FOUND {
-			t.Fatalf("Received wrong error on the reply channel")
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("Timed out waiting to get all blocks")
-	}
-
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow), Start: ab.SeekInfo_SPECIFIED, SpecifiedNumber: uint64(3 * ledgerSize), ChainID: systemChainID}}}
-
-	select {
-	case blockReply := <-m.sendChan:
-		if blockReply.GetError() != cb.Status_NOT_FOUND {
-			t.Fatalf("Received wrong error on the reply channel")
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("Timed out waiting to get all blocks")
-	}
-}
-
-func TestBadWindow(t *testing.T) {
-	mm := newMockMultichainManager()
-
-	m := newMockD()
-	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, MagicLargestWindow)
-
-	go ds.Handle(m)
-
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: uint64(MagicLargestWindow) * 2, Start: ab.SeekInfo_OLDEST, ChainID: systemChainID}}}
-
-	select {
-	case blockReply := <-m.sendChan:
-		if blockReply.GetError() != cb.Status_BAD_REQUEST {
-			t.Fatalf("Received wrong error on the reply channel")
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("Timed out waiting to get all blocks")
-	}
-}
-
-func TestAck(t *testing.T) {
-	mm := newMockMultichainManager()
-	windowSize := uint64(2)
 	for i := 1; i < ledgerSize; i++ {
 		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
 	}
 
 	m := newMockD()
 	defer close(m.recvChan)
-	ds := NewHandlerImpl(mm, MagicLargestWindow)
+	ds := NewHandlerImpl(mm)
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Seek{Seek: &ab.SeekInfo{WindowSize: windowSize, Start: ab.SeekInfo_OLDEST, ChainID: systemChainID}}}
+	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekSpecified(uint64(3 * ledgerSize)), Stop: seekSpecified(uint64(3 * ledgerSize)), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
 
-	count := uint64(0)
-	for {
-		select {
-		case blockReply := <-m.sendChan:
-			if blockReply.GetBlock() == nil {
-				t.Fatalf("Received an error on the reply channel")
-			}
-		case <-time.After(time.Second):
-			t.Fatalf("Timed out waiting to get all blocks")
+	select {
+	case deliverReply := <-m.sendChan:
+		if deliverReply.GetStatus() != cb.Status_NOT_FOUND {
+			t.Fatalf("Received wrong error on the reply channel")
 		}
-		count++
-		if count == windowSize {
-			select {
-			case <-m.sendChan:
-				t.Fatalf("Window size exceeded")
-			default:
-			}
-		}
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
 
-		if count%windowSize == 0 {
-			m.recvChan <- &ab.DeliverUpdate{Type: &ab.DeliverUpdate_Acknowledgement{Acknowledgement: &ab.Acknowledgement{Number: count}}}
-		}
+func TestFailFastSeek(t *testing.T) {
+	mm := newMockMultichainManager()
+	for i := 1; i < ledgerSize; i++ {
+		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+	}
 
-		if count == uint64(ledgerSize) {
-			break
+	m := newMockD()
+	defer close(m.recvChan)
+	ds := NewHandlerImpl(mm)
+
+	go ds.Handle(m)
+
+	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_FAIL_IF_NOT_READY}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		if deliverReply.GetBlock() == nil {
+			t.Fatalf("Expected to receive first block")
 		}
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		if deliverReply.GetStatus() != cb.Status_NOT_FOUND {
+			t.Fatalf("Expected to receive failure for second block")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
+	}
+}
+
+func TestBlockingSeek(t *testing.T) {
+	mm := newMockMultichainManager()
+	for i := 1; i < ledgerSize; i++ {
+		mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}, nil)
+	}
+
+	m := newMockD()
+	defer close(m.recvChan)
+	ds := NewHandlerImpl(mm)
+
+	go ds.Handle(m)
+
+	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		if deliverReply.GetBlock() == nil {
+			t.Fatalf("Expected to receive first block")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get first block")
+	}
+
+	select {
+	case <-m.sendChan:
+		t.Fatalf("Should not have delivered an error or second block")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	mm.chains[string(systemChainID)].ledger.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", ledgerSize+1))}}, nil)
+
+	select {
+	case deliverReply := <-m.sendChan:
+		if deliverReply.GetBlock() == nil {
+			t.Fatalf("Expected to receive new block")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get new block")
+	}
+
+	select {
+	case deliverReply := <-m.sendChan:
+		if deliverReply.GetStatus() != cb.Status_SUCCESS {
+			t.Fatalf("Expected delivery to complete")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("Timed out waiting to get all blocks")
 	}
 }
