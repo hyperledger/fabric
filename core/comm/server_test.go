@@ -19,7 +19,9 @@ package comm_test
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"io/ioutil"
 	"net"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -61,7 +63,7 @@ zA85vv7JhfMkvZYGPELC7I2K8V7ZAiEA9KcthV3HtDXKNDsA6ULT+qUkyoHRzCzr
 A4QaL2VU6i4=
 -----END CERTIFICATE-----
 `
-var timeout = time.Second * 10
+var timeout = time.Second * 3
 
 type testServiceServer struct{}
 
@@ -133,12 +135,8 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 
 	//bad hostname
 	_, err = comm.NewGRPCServer("hostdoesnotexist.localdomain:9050", nil, nil, nil, nil)
-	//check for error
-	msg = "no such host"
-	if assert.Error(t, err, "%s error expected", msg) {
-		assert.Contains(t, err.Error(), msg) //use contains here as error message inconsistent
-	}
-
+	//check for error only - there are a few possibilities depending on DNS resolution but will get an error
+	assert.Error(t, err, "%s error expected", msg)
 	if err != nil {
 		t.Log(err.Error())
 	}
@@ -225,9 +223,8 @@ func TestNewGRPCServer(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
 	if err != nil {
-		t.Logf("GRPC client failed to invoke the EmptyCall service on %s: %v",
+		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
 			testAddress, err)
-		t.Fatalf(err.Error())
 	} else {
 		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
 	}
@@ -277,9 +274,8 @@ func TestNewGRPCServerFromListener(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
 	if err != nil {
-		t.Logf("GRPC client failed to invoke the EmptyCall service on %s: %v",
+		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
 			testAddress, err)
-		t.Fatalf(err.Error())
 	} else {
 		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
 	}
@@ -336,7 +332,7 @@ func TestNewSecureGRPCServer(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
 	if err != nil {
-		t.Logf("GRPC client failed to invoke the EmptyCall service on %s: %v",
+		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
 			testAddress, err)
 	} else {
 		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
@@ -401,8 +397,167 @@ func TestNewSecureGRPCServerFromListener(t *testing.T) {
 	_, err = invokeEmptyCall(testAddress, dialOptions)
 
 	if err != nil {
-		t.Logf("GRPC client failed to invoke the EmptyCall service on %s: %v",
+		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
 			testAddress, err)
+	} else {
+		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
+	}
+}
+
+//prior tests used self-signed certficates loaded by the GRPCServer and the test client
+//here we'll use certificates signed by certificate authorities
+func TestWithSignedRootCertificates(t *testing.T) {
+
+	//use Org1 testdata
+	fileBase := "Org1"
+	certPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-cert.pem"))
+	keyPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-server1-key.pem"))
+	caPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-cert.pem"))
+
+	if err != nil {
+		t.Fatalf("Failed to load test certificates: %v", err)
+	}
+	testAddress := "localhost:9057"
+	//create our listener
+	lis, err := net.Listen("tcp", testAddress)
+
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+
+	srv, err := comm.NewGRPCServerFromListener(lis, keyPEMBlock,
+		certPEMBlock, nil, nil)
+	//check for error
+	if err != nil {
+		t.Fatalf("Failed to return new GRPC server: %v", err)
+	}
+
+	//register the GRPC test server
+	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
+
+	//start the server
+	go srv.Start()
+
+	defer srv.Stop()
+	//should not be needed
+	time.Sleep(10 * time.Millisecond)
+
+	//create the client credentials
+	certPoolServer := x509.NewCertPool()
+
+	//use the server certificate only
+	if !certPoolServer.AppendCertsFromPEM(certPEMBlock) {
+		t.Fatal("Failed to append certificate to client credentials")
+	}
+
+	creds := credentials.NewClientTLSFromCert(certPoolServer, "")
+
+	//GRPC client options
+	var dialOptions []grpc.DialOption
+	dialOptions = append(dialOptions, grpc.WithTransportCredentials(creds))
+
+	//invoke the EmptyCall service
+	_, err = invokeEmptyCall(testAddress, dialOptions)
+
+	//client should not be able to connect
+	//for now we can only test that we get a timeout error
+	assert.EqualError(t, err, grpc.ErrClientConnTimeout.Error())
+	t.Logf("assert.EqualError: %s", err.Error())
+
+	//now use the CA certificate
+	certPoolCA := x509.NewCertPool()
+	if !certPoolCA.AppendCertsFromPEM(caPEMBlock) {
+		t.Fatal("Failed to append certificate to client credentials")
+	}
+	creds = credentials.NewClientTLSFromCert(certPoolCA, "")
+	var dialOptionsCA []grpc.DialOption
+	dialOptionsCA = append(dialOptionsCA, grpc.WithTransportCredentials(creds))
+
+	//invoke the EmptyCall service
+	_, err2 := invokeEmptyCall(testAddress, dialOptionsCA)
+
+	if err2 != nil {
+		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
+			testAddress, err2)
+	} else {
+		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
+	}
+}
+
+//here we'll use certificates signed by intermediate certificate authorities
+func TestWithSignedIntermediateCertificates(t *testing.T) {
+
+	//use Org1 testdata
+	fileBase := "Org1"
+	certPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-cert.pem"))
+	keyPEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-server1-key.pem"))
+	intermediatePEMBlock, err := ioutil.ReadFile(filepath.Join("testdata", "certs", fileBase+"-child1-cert.pem"))
+
+	if err != nil {
+		t.Fatalf("Failed to load test certificates: %v", err)
+	}
+	testAddress := "localhost:9058"
+	//create our listener
+	lis, err := net.Listen("tcp", testAddress)
+
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+
+	srv, err := comm.NewGRPCServerFromListener(lis, keyPEMBlock,
+		certPEMBlock, nil, nil)
+	//check for error
+	if err != nil {
+		t.Fatalf("Failed to return new GRPC server: %v", err)
+	}
+
+	//register the GRPC test server
+	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
+
+	//start the server
+	go srv.Start()
+
+	defer srv.Stop()
+	//should not be needed
+	time.Sleep(10 * time.Millisecond)
+
+	//create the client credentials
+	certPoolServer := x509.NewCertPool()
+
+	//use the server certificate only
+	if !certPoolServer.AppendCertsFromPEM(certPEMBlock) {
+		t.Fatal("Failed to append certificate to client credentials")
+	}
+
+	creds := credentials.NewClientTLSFromCert(certPoolServer, "")
+
+	//GRPC client options
+	var dialOptions []grpc.DialOption
+	dialOptions = append(dialOptions, grpc.WithTransportCredentials(creds))
+
+	//invoke the EmptyCall service
+	_, err = invokeEmptyCall(testAddress, dialOptions)
+
+	//client should not be able to connect
+	//for now we can only test that we get a timeout error
+	assert.EqualError(t, err, grpc.ErrClientConnTimeout.Error())
+	t.Logf("assert.EqualError: %s", err.Error())
+
+	//now use the CA certificate
+	certPoolCA := x509.NewCertPool()
+	if !certPoolCA.AppendCertsFromPEM(intermediatePEMBlock) {
+		t.Fatal("Failed to append certificate to client credentials")
+	}
+	creds = credentials.NewClientTLSFromCert(certPoolCA, "")
+	var dialOptionsCA []grpc.DialOption
+	dialOptionsCA = append(dialOptionsCA, grpc.WithTransportCredentials(creds))
+
+	//invoke the EmptyCall service
+	_, err2 := invokeEmptyCall(testAddress, dialOptionsCA)
+
+	if err2 != nil {
+		t.Fatalf("GRPC client failed to invoke the EmptyCall service on %s: %v",
+			testAddress, err2)
 	} else {
 		t.Log("GRPC client successfully invoked the EmptyCall service: " + testAddress)
 	}
