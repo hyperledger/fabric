@@ -60,6 +60,12 @@ type receiver struct {
 	signals chan bool
 }
 
+func skipInShortMode(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode.")
+	}
+}
+
 func build() {
 	buildcmd := exec.Command("go", "build", maindir)
 	buildcmd.Stdout = os.Stdout
@@ -82,6 +88,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestTwoReplicasBroadcastAndDeliverUsingTheSame(t *testing.T) {
+	skipInShortMode(t)
 	peers := InitPeers(2)
 	StartPeers(peers)
 	r, err := Receive(peers[1])
@@ -100,6 +107,7 @@ func TestTwoReplicasBroadcastAndDeliverUsingTheSame(t *testing.T) {
 }
 
 func TestTenReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
+	skipInShortMode(t)
 	peers := InitPeers(10)
 	StartPeers(peers)
 	r, err := Receive(peers[9])
@@ -118,6 +126,7 @@ func TestTenReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
 }
 
 func TestFourReplicasBombedWithBroadcasts(t *testing.T) {
+	skipInShortMode(t)
 	// Add for debug mode:
 	// logging.SetLevel(logging.DEBUG, "sbft")
 	broadcastCount := 15
@@ -142,6 +151,7 @@ func TestFourReplicasBombedWithBroadcasts(t *testing.T) {
 }
 
 func TestTenReplicasBombedWithBroadcasts(t *testing.T) {
+	skipInShortMode(t)
 	broadcastCount := 15
 	peers := InitPeers(10)
 	StartPeers(peers)
@@ -164,6 +174,7 @@ func TestTenReplicasBombedWithBroadcasts(t *testing.T) {
 }
 
 func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
+	skipInShortMode(t)
 	broadcastCount := 15
 	peers := InitPeers(10)
 	StartPeers(peers)

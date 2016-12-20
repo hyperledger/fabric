@@ -33,6 +33,12 @@ func init() {
 	//logging.SetLevel(logging.DEBUG, "sbft")
 }
 
+func skipInShortMode(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode.")
+	}
+}
+
 func connectAll(sys *testSystem) {
 	// map iteration is non-deterministic, so use linear iteration instead
 	max := uint64(0)
@@ -62,6 +68,7 @@ func connectAll(sys *testSystem) {
 }
 
 func TestSBFT(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -98,6 +105,7 @@ func TestSBFT(t *testing.T) {
 }
 
 func TestSBFTDelayed(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -139,6 +147,7 @@ func TestSBFTDelayed(t *testing.T) {
 }
 
 func TestN1(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(1)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -167,6 +176,7 @@ func TestN1(t *testing.T) {
 }
 
 func TestMonotonicViews(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -202,6 +212,7 @@ func TestMonotonicViews(t *testing.T) {
 }
 
 func TestByzPrimary(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -256,6 +267,7 @@ func TestByzPrimary(t *testing.T) {
 }
 
 func TestViewChange(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -295,6 +307,7 @@ func TestViewChange(t *testing.T) {
 }
 
 func TestMsgReordering(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -347,6 +360,7 @@ func TestMsgReordering(t *testing.T) {
 }
 
 func TestBacklogReordering(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -399,6 +413,7 @@ func TestBacklogReordering(t *testing.T) {
 }
 
 func TestViewChangeWithRetransmission(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -438,6 +453,7 @@ func TestViewChangeWithRetransmission(t *testing.T) {
 }
 
 func TestViewChangeXset(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -514,6 +530,7 @@ func TestViewChangeXset(t *testing.T) {
 }
 
 func TestRestart(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -567,6 +584,7 @@ func TestRestart(t *testing.T) {
 }
 
 func TestAbdicatingPrimary(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -625,6 +643,7 @@ func TestAbdicatingPrimary(t *testing.T) {
 }
 
 func TestRestartAfterPrepare(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -694,6 +713,7 @@ func TestRestartAfterPrepare(t *testing.T) {
 }
 
 func TestRestartAfterCommit(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -763,6 +783,7 @@ func TestRestartAfterCommit(t *testing.T) {
 }
 
 func TestRestartAfterCheckpoint(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -832,6 +853,7 @@ func TestRestartAfterCheckpoint(t *testing.T) {
 }
 
 func TestErroneousViewChange(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -921,6 +943,7 @@ func TestErroneousViewChange(t *testing.T) {
 }
 
 func TestRestartMissedViewChange(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -993,6 +1016,7 @@ func TestRestartMissedViewChange(t *testing.T) {
 }
 
 func TestFullBacklog(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -1034,6 +1058,7 @@ func TestFullBacklog(t *testing.T) {
 }
 
 func TestHelloMsg(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystemWOTimers(N)
 	var repls []*SBFT
@@ -1100,6 +1125,7 @@ func TestHelloMsg(t *testing.T) {
 }
 
 func TestViewChangeTimer(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -1183,6 +1209,7 @@ func TestViewChangeTimer(t *testing.T) {
 }
 
 func TestResendViewChange(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
 	var repls []*SBFT
@@ -1242,6 +1269,7 @@ func TestResendViewChange(t *testing.T) {
 }
 
 func TestTenReplicasBombedWithRequests(t *testing.T) {
+	skipInShortMode(t)
 	N := uint64(10)
 	requestNumber := 11
 	sys := newTestSystem(N)
