@@ -125,7 +125,9 @@ func TestConsensusType(t *testing.T) {
 }
 
 func TestBatchSize(t *testing.T) {
-	endBatchSize := uint32(10)
+	endBatchSize := struct{ MaxMessageCount uint32 }{
+		MaxMessageCount: uint32(10),
+	}
 	invalidMessage := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   BatchSizeKey,
@@ -134,12 +136,12 @@ func TestBatchSize(t *testing.T) {
 	zeroBatchSize := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   BatchSizeKey,
-		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: 0}),
+		Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: 0}),
 	}
 	validMessage := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
 		Key:   BatchSizeKey,
-		Value: utils.MarshalOrPanic(&ab.BatchSize{Messages: endBatchSize}),
+		Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: endBatchSize.MaxMessageCount}),
 	}
 	m := NewManagerImpl()
 	m.BeginConfig()
@@ -161,8 +163,12 @@ func TestBatchSize(t *testing.T) {
 
 	m.CommitConfig()
 
-	if nowBatchSize := m.BatchSize(); nowBatchSize != endBatchSize {
-		t.Fatalf("Got batch size of %d when expecting batch size of %d", nowBatchSize, endBatchSize)
+	nowBatchSize := struct{ MaxMessageCount uint32 }{
+		MaxMessageCount: m.BatchSize().MaxMessageCount,
+	}
+
+	if nowBatchSize.MaxMessageCount != endBatchSize.MaxMessageCount {
+		t.Fatalf("Got batch size max message count of %d. Expected: %d", nowBatchSize.MaxMessageCount, endBatchSize.MaxMessageCount)
 	}
 }
 

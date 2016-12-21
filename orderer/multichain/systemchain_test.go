@@ -54,7 +54,7 @@ func (msc *mockSharedConfig) ConsensusType() string {
 	panic("Unimplemented")
 }
 
-func (msc *mockSharedConfig) BatchSize() uint32 {
+func (msc *mockSharedConfig) BatchSize() *ab.BatchSize {
 	panic("Unimplemented")
 }
 

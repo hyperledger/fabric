@@ -20,8 +20,11 @@ General:
     # Batch Timeout: The amount of time to wait before creating a batch
     BatchTimeout: 10s
 
-    # Batch Size: The maximum number of messages to permit in a batch
-    BatchSize: 10
+    # Batch Size: Controls the number of messages batched into a block
+    BatchSize:
+
+        # Max Message Count: The maximum number of messages to permit in a batch
+        MaxMessageCount: 10
 
     # Queue Size: The maximum number of messages to allow pending from a gRPC
     # client.

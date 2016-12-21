@@ -42,13 +42,18 @@ type General struct {
 	OrdererType   string
 	LedgerType    string
 	BatchTimeout  time.Duration
-	BatchSize     uint32
 	QueueSize     uint32
 	MaxWindowSize uint32
 	ListenAddress string
 	ListenPort    uint16
 	GenesisMethod string
+	BatchSize     BatchSize
 	Profile       Profile
+}
+
+// BatchSize contains configuration affecting the size of batches
+type BatchSize struct {
+	MaxMessageCount uint32
 }
 
 // Profile contains configuration for Go pprof profiling
@@ -99,12 +104,14 @@ var defaults = TopLevel{
 		OrdererType:   "solo",
 		LedgerType:    "ram",
 		BatchTimeout:  10 * time.Second,
-		BatchSize:     10,
 		QueueSize:     1000,
 		MaxWindowSize: 1000,
 		ListenAddress: "127.0.0.1",
 		ListenPort:    7050,
 		GenesisMethod: "provisional",
+		BatchSize: BatchSize{
+			MaxMessageCount: 10,
+		},
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
@@ -142,9 +149,9 @@ func (c *TopLevel) completeInitialization() {
 		case c.General.BatchTimeout == 0:
 			logger.Infof("General.BatchTimeout unset, setting to %s", defaults.General.BatchTimeout)
 			c.General.BatchTimeout = defaults.General.BatchTimeout
-		case c.General.BatchSize == 0:
-			logger.Infof("General.BatchSize unset, setting to %s", defaults.General.BatchSize)
-			c.General.BatchSize = defaults.General.BatchSize
+		case c.General.BatchSize.MaxMessageCount == 0:
+			logger.Infof("General.BatchSize.MaxMessageCount unset, setting to %s", defaults.General.BatchSize.MaxMessageCount)
+			c.General.BatchSize.MaxMessageCount = defaults.General.BatchSize.MaxMessageCount
 		case c.General.QueueSize == 0:
 			logger.Infof("General.QueueSize unset, setting to %s", defaults.General.QueueSize)
 			c.General.QueueSize = defaults.General.QueueSize

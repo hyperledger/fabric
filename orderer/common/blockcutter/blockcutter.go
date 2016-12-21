@@ -90,7 +90,7 @@ func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Commi
 	r.curBatch = append(r.curBatch, msg)
 	r.batchComs = append(r.batchComs, committer)
 
-	if uint32(len(r.curBatch)) < r.sharedConfigManager.BatchSize() {
+	if uint32(len(r.curBatch)) < r.sharedConfigManager.BatchSize().MaxMessageCount {
 		return nil, nil, true
 	}
 
