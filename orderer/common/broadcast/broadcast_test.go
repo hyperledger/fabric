@@ -19,6 +19,7 @@ package broadcast
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -73,21 +74,13 @@ func (mm *mockSupportManager) ProposeChain(configTx *cb.Envelope) cb.Status {
 			filter.EmptyRejectRule,
 			filter.AcceptRule,
 		}),
-		queue: make(chan *cb.Envelope),
 	}
 	return cb.Status_SUCCESS
 }
 
-func (mm *mockSupportManager) halt() {
-	for _, chain := range mm.chains {
-		chain.halt()
-	}
-}
-
 type mockSupport struct {
-	filters *filter.RuleSet
-	queue   chan *cb.Envelope
-	done    bool
+	filters       *filter.RuleSet
+	rejectEnqueue bool
 }
 
 func (ms *mockSupport) Filters() *filter.RuleSet {
@@ -96,16 +89,7 @@ func (ms *mockSupport) Filters() *filter.RuleSet {
 
 // Enqueue sends a message for ordering
 func (ms *mockSupport) Enqueue(env *cb.Envelope) bool {
-	ms.queue <- env
-	return !ms.done
-}
-
-func (ms *mockSupport) halt() {
-	ms.done = true
-	select {
-	case <-ms.queue:
-	default:
-	}
+	return !ms.rejectEnqueue
 }
 
 func makeConfigMessage(chainID string) *cb.Envelope {
@@ -137,7 +121,7 @@ func makeMessage(chainID string, data []byte) *cb.Envelope {
 	}
 }
 
-func getMultichainManager() *mockSupportManager {
+func getMockSupportManager() (*mockSupportManager, *mockSupport) {
 	filters := filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
 		filter.AcceptRule,
@@ -145,21 +129,23 @@ func getMultichainManager() *mockSupportManager {
 	mm := &mockSupportManager{
 		chains: make(map[string]*mockSupport),
 	}
-	mm.chains[string(systemChain)] = &mockSupport{
+	mSysChain := &mockSupport{
 		filters: filters,
-		queue:   make(chan *cb.Envelope),
 	}
-	return mm
+	mm.chains[string(systemChain)] = mSysChain
+	return mm, mSysChain
 }
 
-func TestQueueOverflow(t *testing.T) {
-	mm := getMultichainManager()
-	defer mm.halt()
-	bh := NewHandlerImpl(mm, 2)
+func TestEnqueueFailure(t *testing.T) {
+	mm, mSysChain := getMockSupportManager()
+	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
-	b := newBroadcaster(bh.(*handlerImpl))
-	go b.queueEnvelopes(m)
+	done := make(chan struct{})
+	go func() {
+		bh.Handle(m)
+		close(done)
+	}()
 
 	for i := 0; i < 2; i++ {
 		m.recvChan <- makeMessage(systemChain, []byte("Some bytes"))
@@ -169,52 +155,30 @@ func TestQueueOverflow(t *testing.T) {
 		}
 	}
 
+	mSysChain.rejectEnqueue = true
 	m.recvChan <- makeMessage(systemChain, []byte("Some bytes"))
 	reply := <-m.sendChan
 	if reply.Status != cb.Status_SERVICE_UNAVAILABLE {
 		t.Fatalf("Should not have successfully queued the message")
 	}
 
-}
-
-func TestMultiQueueOverflow(t *testing.T) {
-	mm := getMultichainManager()
-	defer mm.halt()
-	bh := NewHandlerImpl(mm, 2)
-	ms := []*mockB{newMockB(), newMockB(), newMockB()}
-
-	for _, m := range ms {
-		defer close(m.recvChan)
-		b := newBroadcaster(bh.(*handlerImpl))
-		go b.queueEnvelopes(m)
-	}
-
-	for _, m := range ms {
-		for i := 0; i < 2; i++ {
-			m.recvChan <- makeMessage(systemChain, []byte("Some bytes"))
-			reply := <-m.sendChan
-			if reply.Status != cb.Status_SUCCESS {
-				t.Fatalf("Should have successfully queued the message")
-			}
-		}
-	}
-
-	for _, m := range ms {
-		m.recvChan <- makeMessage(systemChain, []byte("Some bytes"))
-		reply := <-m.sendChan
-		if reply.Status != cb.Status_SERVICE_UNAVAILABLE {
-			t.Fatalf("Should not have successfully queued the message")
-		}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("Should have terminated the stream")
 	}
 }
 
 func TestEmptyEnvelope(t *testing.T) {
-	mm := getMultichainManager()
-	defer mm.halt()
-	bh := NewHandlerImpl(mm, 2)
+	mm, _ := getMockSupportManager()
+	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
-	go bh.Handle(m)
+	done := make(chan struct{})
+	go func() {
+		bh.Handle(m)
+		close(done)
+	}()
 
 	m.recvChan <- &cb.Envelope{}
 	reply := <-m.sendChan
@@ -222,15 +186,23 @@ func TestEmptyEnvelope(t *testing.T) {
 		t.Fatalf("Should have rejected the null message")
 	}
 
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("Should have terminated the stream")
+	}
 }
 
 func TestBadChainID(t *testing.T) {
-	mm := getMultichainManager()
-	defer mm.halt()
-	bh := NewHandlerImpl(mm, 2)
+	mm, _ := getMockSupportManager()
+	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
-	go bh.Handle(m)
+	done := make(chan struct{})
+	go func() {
+		bh.Handle(m)
+		close(done)
+	}()
 
 	m.recvChan <- makeMessage("Wrong chain", []byte("Some bytes"))
 	reply := <-m.sendChan
@@ -238,17 +210,22 @@ func TestBadChainID(t *testing.T) {
 		t.Fatalf("Should have rejected message to a chain which does not exist")
 	}
 
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("Should have terminated the stream")
+	}
 }
 
 func TestNewChainID(t *testing.T) {
-	mm := getMultichainManager()
-	defer mm.halt()
-	bh := NewHandlerImpl(mm, 2)
+	mm, _ := getMockSupportManager()
+	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
 	go bh.Handle(m)
+	newChainID := "New Chain"
 
-	m.recvChan <- makeConfigMessage("New chain")
+	m.recvChan <- makeConfigMessage(newChainID)
 	reply := <-m.sendChan
 	if reply.Status != cb.Status_SUCCESS {
 		t.Fatalf("Should have created a new chain, got %d", reply.Status)
@@ -258,9 +235,9 @@ func TestNewChainID(t *testing.T) {
 		t.Fatalf("Should have created a new chain")
 	}
 
-	m.recvChan <- makeMessage("New chain", []byte("Some bytes"))
+	m.recvChan <- makeMessage(newChainID, []byte("Some bytes"))
 	reply = <-m.sendChan
 	if reply.Status != cb.Status_SUCCESS {
-		t.Fatalf("Should have successfully sent message to new chain")
+		t.Fatalf("Should have successfully sent message to new chain, got %v", reply)
 	}
 }

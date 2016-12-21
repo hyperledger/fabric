@@ -58,65 +58,19 @@ type Support interface {
 }
 
 type handlerImpl struct {
-	queueSize int
-	sm        SupportManager
+	sm SupportManager
 }
 
 // NewHandlerImpl constructs a new implementation of the Handler interface
-func NewHandlerImpl(sm SupportManager, queueSize int) Handler {
+func NewHandlerImpl(sm SupportManager) Handler {
 	return &handlerImpl{
-		queueSize: queueSize,
-		sm:        sm,
+		sm: sm,
 	}
 }
 
 // Handle starts a service thread for a given gRPC connection and services the broadcast connection
 func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
-	b := newBroadcaster(bh)
-	defer close(b.queue)
-	go b.drainQueue()
-	return b.queueEnvelopes(srv)
-}
-
-type msgAndSupport struct {
-	msg     *cb.Envelope
-	support Support
-}
-
-type broadcaster struct {
-	bs       *handlerImpl
-	queue    chan *msgAndSupport
-	exitChan chan struct{}
-}
-
-func newBroadcaster(bs *handlerImpl) *broadcaster {
-	b := &broadcaster{
-		bs:       bs,
-		queue:    make(chan *msgAndSupport, bs.queueSize),
-		exitChan: make(chan struct{}),
-	}
-	return b
-}
-
-func (b *broadcaster) drainQueue() {
-	defer close(b.exitChan)
-	for msgAndSupport := range b.queue {
-		if !msgAndSupport.support.Enqueue(msgAndSupport.msg) {
-			logger.Debugf("Consenter instructed us to shut down")
-			return
-		}
-	}
-	logger.Debugf("Exiting because the queue channel closed")
-}
-
-func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) error {
-
 	for {
-		select {
-		case <-b.exitChan:
-			return nil
-		default:
-		}
 		msg, err := srv.Recv()
 		if err != nil {
 			return err
@@ -129,31 +83,35 @@ func (b *broadcaster) queueEnvelopes(srv ab.AtomicBroadcast_BroadcastServer) err
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
-		support, ok := b.bs.sm.GetChain(payload.Header.ChainHeader.ChainID)
+		support, ok := bh.sm.GetChain(payload.Header.ChainHeader.ChainID)
 		if !ok {
 			// Chain not found, maybe create one?
 			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
-				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
-			} else {
-				logger.Debugf("Proposing new chain")
-				err = srv.Send(&ab.BroadcastResponse{Status: b.bs.sm.ProposeChain(msg)})
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
 			}
-		} else {
-			// Normal transaction for existing chain
-			_, filterErr := support.Filters().Apply(msg)
 
-			if filterErr != nil {
-				logger.Debugf("Rejecting broadcast message")
-				err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
-			} else {
-				select {
-				case b.queue <- &msgAndSupport{msg: msg, support: support}:
-					err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
-				default:
-					err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
-				}
+			logger.Debugf("Proposing new chain")
+			err = srv.Send(&ab.BroadcastResponse{Status: bh.sm.ProposeChain(msg)})
+			if err != nil {
+				return err
 			}
+			continue
 		}
+
+		// Normal transaction for existing chain
+		_, filterErr := support.Filters().Apply(msg)
+
+		if filterErr != nil {
+			logger.Debugf("Rejecting broadcast message")
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+		}
+
+		if !support.Enqueue(msg) {
+			logger.Debugf("Consenter instructed us to shut down")
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
+		}
+
+		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
 
 		if err != nil {
 			return err
