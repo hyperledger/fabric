@@ -525,8 +525,9 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, grpc.DialOption) {
 	var serverOpts []grpc.ServerOption
 	var dialOpts grpc.DialOption
 
-	keyFileName := fmt.Sprintf("key.%d.pem", time.Now().UnixNano())
-	certFileName := fmt.Sprintf("cert.%d.pem", time.Now().UnixNano())
+
+	keyFileName := fmt.Sprintf("key.%d.pem", rand.Int63())
+	certFileName := fmt.Sprintf("cert.%d.pem", rand.Int63())
 
 	defer os.Remove(keyFileName)
 	defer os.Remove(certFileName)

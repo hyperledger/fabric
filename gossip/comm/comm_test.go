@@ -420,21 +420,19 @@ func TestReConnections(t *testing.T) {
 
 	// comm1 connects to comm2
 	comm1.Send(createGossipMsg(), remotePeer(3612))
-	time.Sleep(100 * time.Millisecond)
+	waitForMessages(t, out2 , 1, "Comm2 didn't receive a message from comm1 in a timely manner")
+	time.Sleep(time.Second)
 	// comm2 sends to comm1
 	comm2.Send(createGossipMsg(), remotePeer(3611))
-	time.Sleep(100 * time.Millisecond)
-
-	assert.Equal(t, 1, len(out2))
-	assert.Equal(t, 1, len(out1))
+	waitForMessages(t, out1 , 1, "Comm1 didn't receive a message from comm2 in a timely manner")
 
 	comm1.Stop()
 	comm1, _ = newCommInstance(3611, naiveSec)
+	time.Sleep(time.Second)
+	out1 = make(chan uint64, 1)
 	go reader(out1, comm1.Accept(acceptAll))
-	time.Sleep(300 * time.Millisecond)
 	comm2.Send(createGossipMsg(), remotePeer(3611))
-	time.Sleep(100 * time.Millisecond)
-	assert.Equal(t, 2, len(out1))
+	waitForMessages(t, out1 , 1, "Comm1 didn't receive a message from comm2 in a timely manner")
 }
 
 func TestProbe(t *testing.T) {
@@ -498,7 +496,7 @@ func remotePeer(port int) *RemotePeer {
 func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string) {
 	c := 0
 	waiting := true
-	ticker := time.NewTicker(time.Duration(5) * time.Second)
+	ticker := time.NewTicker(time.Duration(10) * time.Second)
 	for waiting {
 		select {
 		case <-msgChan:
