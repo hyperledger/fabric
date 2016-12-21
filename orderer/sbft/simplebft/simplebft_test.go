@@ -266,6 +266,58 @@ func TestByzPrimary(t *testing.T) {
 	}
 }
 
+func TestNewPrimaryHandlingViewChange(t *testing.T) {
+	skipInShortMode(t)
+	N := uint64(7)
+	sys := newTestSystem(N)
+	var repls []*SBFT
+	var adapters []*testSystemAdapter
+	for i := uint64(0); i < N; i++ {
+		a := sys.NewAdapter(i)
+		s, err := New(i, &Config{N: N, F: 2, BatchDurationNsec: 2000000000, BatchSizeBytes: 1, RequestTimeoutNsec: 20000000000}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repls = append(repls, s)
+		adapters = append(adapters, a)
+	}
+
+	r1 := []byte{1, 2, 3}
+	r2 := []byte{5, 6, 7}
+
+	// change preprepare to 2-6
+	sys.filterFn = func(e testElem) (testElem, bool) {
+		if msg, ok := e.ev.(*testMsgEvent); ok {
+			if pp := msg.msg.GetPreprepare(); pp != nil && msg.src == 0 && msg.dst >= 2 {
+				pp := *pp
+				batch := *pp.Batch
+				batch.Payloads = [][]byte{r2}
+				pp.Batch = &batch
+				h := merkleHashData(batch.Payloads)
+				bh := &BatchHeader{}
+				proto.Unmarshal(pp.Batch.Header, bh)
+				bh.DataHash = h
+				bhraw, _ := proto.Marshal(bh)
+				pp.Batch.Header = bhraw
+				msg.msg = &Msg{&Msg_Preprepare{&pp}}
+			}
+		}
+		return e, true
+	}
+
+	connectAll(sys)
+	repls[0].Request(r1)
+	sys.Run()
+	for _, a := range adapters {
+		if len(a.batches) < 1 {
+			t.Fatal("expected execution of at least one batch")
+		}
+		if a.batches[0].Payloads != nil && !reflect.DeepEqual(adapters[2].batches[0].Payloads, a.batches[0].Payloads) {
+			t.Error("consensus violated on first batch at replica", a.id)
+		}
+	}
+}
+
 func TestByzPrimaryBullyingSingleReplica(t *testing.T) {
 	skipInShortMode(t)
 	N := uint64(10)
