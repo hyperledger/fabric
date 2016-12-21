@@ -70,7 +70,7 @@ func computeHash(msg []byte, bitsize int) ([]byte, error) {
 	case "SHA3":
 		hash, err = getHashSHA3(bitsize)
 	default:
-		return nil, fmt.Errorf("Invalid hash algorithm " + primitives.GetHashAlgorithm())
+		return nil, fmt.Errorf("Invalid hash algorithm %s", primitives.GetHashAlgorithm())
 	}
 
 	if err != nil {

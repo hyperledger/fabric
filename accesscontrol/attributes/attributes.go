@@ -43,10 +43,10 @@ var (
 
 	padding = []byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}
 
-	//headerPrefix is the prefix used in the header exteion of the certificate.
+	//headerPrefix is the prefix used in the header extension of the certificate.
 	headerPrefix = "00HEAD"
 
-	//HeaderAttributeName is the name used to derivate the K used to encrypt/decrypt the header.
+	//HeaderAttributeName is the name used to derive the K used to encrypt/decrypt the header.
 	HeaderAttributeName = "attributeHeader"
 )
 
