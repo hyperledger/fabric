@@ -17,7 +17,7 @@ limitations under the License.
 // +build ignore
 
 //go:generate -command gencerts go run $GOPATH/src/github.com/hyperledger/fabric/core/comm/testdata/certs/generate.go
-//go:generate gencerts -orgs 2 -child-orgs 2 -servers 2 -clients 1
+//go:generate gencerts -orgs 2 -child-orgs 2 -servers 2 -clients 2
 
 package main
 
@@ -133,7 +133,8 @@ func genServerCertificateECDSA(name string, signKey *ecdsa.PrivateKey, signCert 
 	//set the organization for the subject
 	subject := subjectTemplate()
 	subject.Organization = []string{name}
-	subject.CommonName = "localhost" //hardcode to localhost for hostname verification
+	//hardcode to localhost for hostname verification
+	subject.CommonName = "localhost"
 
 	template.Subject = subject
 
@@ -174,7 +175,8 @@ func genClientCertificateECDSA(name string, signKey *ecdsa.PrivateKey, signCert 
 	return nil
 }
 
-//generate an EC certificate signing(CA) key pair and output as PEM-encoded files
+//generate an EC certificate signing(CA) key pair and output as
+//PEM-encoded files
 func genCertificateAuthorityECDSA(name string) (*ecdsa.PrivateKey, *x509.Certificate, error) {
 
 	key, err := genKeyECDSA(name)
@@ -187,7 +189,7 @@ func genCertificateAuthorityECDSA(name string) (*ecdsa.PrivateKey, *x509.Certifi
 	//this is a CA
 	template.IsCA = true
 	template.KeyUsage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
 
 	//set the organization for the subject
 	subject := subjectTemplate()
@@ -219,7 +221,7 @@ func genIntermediateCertificateAuthorityECDSA(name string, signKey *ecdsa.Privat
 	//this is a CA
 	template.IsCA = true
 	template.KeyUsage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
 
 	//set the organization for the subject
 	subject := subjectTemplate()
@@ -286,7 +288,7 @@ func main() {
 			}
 			//generate client certificates for the child org
 			for p := 1; p <= *numClientCerts; p++ {
-				err := genServerCertificateECDSA(fmt.Sprintf(baseOrgName+"%d-child%d-client%d", i, m, p),
+				err := genClientCertificateECDSA(fmt.Sprintf(baseOrgName+"%d-child%d-client%d", i, m, p),
 					childSignKey, childSignCert)
 				if err != nil {
 					fmt.Printf("error generating server certificate for %s%d-child%d-client%d : %s\n",
