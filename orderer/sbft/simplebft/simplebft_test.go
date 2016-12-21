@@ -21,9 +21,14 @@ import (
 	"testing"
 	"time"
 
+	"math"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
+
+const lowN uint64 = 4   //keep lowN greater or equal to 4
+const highN uint64 = 10 //keep highN greater or equal to 10
 
 var testLog = logging.MustGetLogger("test")
 
@@ -69,7 +74,7 @@ func connectAll(sys *testSystem) {
 
 func TestSBFT(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -104,9 +109,47 @@ func TestSBFT(t *testing.T) {
 	}
 }
 
+func TestQuorumSizes(t *testing.T) {
+	for N := uint64(1); N < 100; N++ {
+		for f := uint64(0); f <= uint64(math.Floor(float64(N-1)/float64(3))); f++ {
+			sys := newTestSystem(N)
+			a := sys.NewAdapter(0)
+			s, err := New(0, &Config{N: N, F: f, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, a)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if uint64(2*s.commonCaseQuorum())-N < f+1 {
+				t.Fatal("insufficient intersection of two common case quorums", "N = ", N, " F = ", f)
+			}
+			if uint64(s.commonCaseQuorum()+s.viewChangeQuorum())-N < f+1 {
+				t.Fatal("insufficient intersection of common case and view change quorums", "N = ", N, " F = ", f)
+			}
+			if f < uint64(math.Floor(float64(N-1)/float64(3))) {
+				//end test for unoptimized f
+				continue
+			}
+			//test additionally when f is optimized
+			switch int(math.Mod(float64(N), float64(3))) {
+			case 1:
+				if s.commonCaseQuorum() != int(N-f) || s.viewChangeQuorum() != int(N-f) {
+					t.Fatal("quorum sizes are wrong in default case N mod 3 == 1")
+				}
+			case 2:
+				if s.viewChangeQuorum() >= s.commonCaseQuorum() || s.viewChangeQuorum() >= int(N-f) {
+					t.Fatal("view change quorums size not optimized when N mod 3 == 2")
+				}
+			case 3:
+				if s.commonCaseQuorum() >= int(N-f) || s.viewChangeQuorum() >= int(N-f) {
+					t.Fatal("quorum sizes not optimized when N mod 3 == 3")
+				}
+			}
+		}
+	}
+}
+
 func TestSBFTDelayed(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -177,7 +220,7 @@ func TestN1(t *testing.T) {
 
 func TestMonotonicViews(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -211,7 +254,7 @@ func TestMonotonicViews(t *testing.T) {
 	}
 }
 
-func TestByzPrimary(t *testing.T) {
+func TestByzPrimaryN4(t *testing.T) {
 	skipInShortMode(t)
 	N := uint64(4)
 	sys := newTestSystem(N)
@@ -320,7 +363,7 @@ func TestNewPrimaryHandlingViewChange(t *testing.T) {
 
 func TestByzPrimaryBullyingSingleReplica(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(10)
+	N := highN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -369,7 +412,7 @@ func TestByzPrimaryBullyingSingleReplica(t *testing.T) {
 
 func TestViewChange(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -409,7 +452,7 @@ func TestViewChange(t *testing.T) {
 
 func TestMsgReordering(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -462,7 +505,7 @@ func TestMsgReordering(t *testing.T) {
 
 func TestBacklogReordering(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -515,7 +558,7 @@ func TestBacklogReordering(t *testing.T) {
 
 func TestViewChangeWithRetransmission(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -555,7 +598,7 @@ func TestViewChangeWithRetransmission(t *testing.T) {
 
 func TestViewChangeXset(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -632,7 +675,7 @@ func TestViewChangeXset(t *testing.T) {
 
 func TestRestart(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -686,7 +729,7 @@ func TestRestart(t *testing.T) {
 
 func TestAbdicatingPrimary(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -745,7 +788,7 @@ func TestAbdicatingPrimary(t *testing.T) {
 
 func TestRestartAfterPrepare(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -815,7 +858,7 @@ func TestRestartAfterPrepare(t *testing.T) {
 
 func TestRestartAfterCommit(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -885,7 +928,7 @@ func TestRestartAfterCommit(t *testing.T) {
 
 func TestRestartAfterCheckpoint(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -955,7 +998,7 @@ func TestRestartAfterCheckpoint(t *testing.T) {
 
 func TestErroneousViewChange(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -1045,7 +1088,7 @@ func TestErroneousViewChange(t *testing.T) {
 
 func TestRestartMissedViewChange(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -1118,7 +1161,7 @@ func TestRestartMissedViewChange(t *testing.T) {
 
 func TestFullBacklog(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -1160,7 +1203,7 @@ func TestFullBacklog(t *testing.T) {
 
 func TestHelloMsg(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystemWOTimers(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -1227,7 +1270,7 @@ func TestHelloMsg(t *testing.T) {
 
 func TestViewChangeTimer(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -1311,7 +1354,7 @@ func TestViewChangeTimer(t *testing.T) {
 
 func TestResendViewChange(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(4)
+	N := lowN
 	sys := newTestSystem(N)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
@@ -1371,7 +1414,7 @@ func TestResendViewChange(t *testing.T) {
 
 func TestTenReplicasBombedWithRequests(t *testing.T) {
 	skipInShortMode(t)
-	N := uint64(10)
+	N := highN
 	requestNumber := 11
 	sys := newTestSystem(N)
 	var repls []*SBFT

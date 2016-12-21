@@ -18,6 +18,7 @@ package simplebft
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"time"
 
@@ -182,8 +183,18 @@ func (s *SBFT) nextView() uint64 {
 	return s.view + 1
 }
 
-func (s *SBFT) noFaultyQuorum() int {
-	return int(s.config.N - s.config.F)
+func (s *SBFT) commonCaseQuorum() int {
+	//When N=3F+1 this should be 2F+1 (N-F)
+	//More generally, we need every two common case quorums of size X to intersect in at least F+1 orderers,
+	//hence 2X>=N+F+1, or X is:
+	return int(math.Ceil(float64(s.config.N+s.config.F+1) / float64(2)))
+}
+
+func (s *SBFT) viewChangeQuorum() int {
+	//When N=3F+1 this should be 2F+1 (N-F)
+	//More generally, we need every view change quorum to intersect with every common case quorum at least F+1 orderers, hence:
+	//Y >= N-X+F+1
+	return int(s.config.N+s.config.F+1) - s.commonCaseQuorum()
 }
 
 func (s *SBFT) oneCorrectQuorum() int {
