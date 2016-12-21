@@ -146,11 +146,17 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 	s.view = nv.View
 	s.discardBacklog(s.primaryID())
 
-	// maybe deliver using xset
+	// maybe deliver previous batch
 	if s.sys.LastBatch().DecodeHeader().Seq < prevBatch.DecodeHeader().Seq {
 		if prevBatch.DecodeHeader().Seq == s.cur.subject.Seq.Seq {
 			// we just received a signature set for a request which we preprepared, but never delivered.
-			prevBatch.Payloads = s.cur.preprep.Batch.Payloads
+			// check first if the locally preprepared request matches the signature set
+			if !reflect.DeepEqual(prevBatch.DecodeHeader().DataHash, s.cur.preprep.Batch.DecodeHeader().DataHash) {
+				log.Warningf("replica %d: [seq %d] request checkpointed in a previous view does not match locally preprepared one, delivering batch without payload", s.id, s.cur.subject.Seq.Seq)
+			} else {
+				log.Debugf("replica %d: [seq %d] request checkpointed in a previous view with matching preprepare, completing and delivering the batch with payload", s.id, s.cur.subject.Seq.Seq)
+				prevBatch.Payloads = s.cur.preprep.Batch.Payloads
+			}
 		}
 		s.deliverBatch(prevBatch)
 	}
