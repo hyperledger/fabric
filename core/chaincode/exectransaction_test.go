@@ -91,6 +91,7 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 	RegisterSysCCs()
 
 	for _, id := range chainIDs {
+		deDeploySysCCs(id)
 		if err = peer.MockCreateChain(id); err != nil {
 			closeListenerAndSleep(lis)
 			return nil, err
@@ -106,7 +107,7 @@ func initPeer(chainIDs ...string) (net.Listener, error) {
 func finitPeer(lis net.Listener, chainIDs ...string) {
 	if lis != nil {
 		for _, c := range chainIDs {
-			deRegisterSysCCs(c)
+			deDeploySysCCs(c)
 			if lgr := peer.GetLedger(c); lgr != nil {
 				lgr.Close()
 			}
@@ -263,7 +264,8 @@ func deploy2(ctx context.Context, cccid *CCContext, chaincodeDeploymentSpec *pb.
 		}
 	}()
 
-	lcccid := NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeID.Name, "", uuid, true, nil)
+	sysCCVers := util.GetSysCCVersion()
+	lcccid := NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeID.Name, sysCCVers, uuid, true, nil)
 
 	//write to lccc
 	if _, _, err = Execute(ctx, lcccid, cis); err != nil {
@@ -279,6 +281,11 @@ func deploy2(ctx context.Context, cccid *CCContext, chaincodeDeploymentSpec *pb.
 
 // Invoke a chaincode.
 func invoke(ctx context.Context, chainID string, spec *pb.ChaincodeSpec) (ccevt *pb.ChaincodeEvent, uuid string, retval []byte, err error) {
+	return invokeWithVersion(ctx, chainID, "0", spec)
+}
+
+// Invoke a chaincode with version (needed for upgrade)
+func invokeWithVersion(ctx context.Context, chainID string, version string, spec *pb.ChaincodeSpec) (ccevt *pb.ChaincodeEvent, uuid string, retval []byte, err error) {
 	chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 
 	// Now create the Transactions message and send to Peer.
@@ -301,7 +308,7 @@ func invoke(ctx context.Context, chainID string, spec *pb.ChaincodeSpec) (ccevt 
 		}
 	}()
 
-	cccid := NewCCContext(chainID, chaincodeInvocationSpec.ChaincodeSpec.ChaincodeID.Name, "", uuid, false, nil)
+	cccid := NewCCContext(chainID, chaincodeInvocationSpec.ChaincodeSpec.ChaincodeID.Name, version, uuid, false, nil)
 	retval, ccevt, err = Execute(ctx, cccid, chaincodeInvocationSpec)
 	if err != nil {
 		return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s ", err)
@@ -332,7 +339,7 @@ func executeDeployTransaction(t *testing.T, chainID string, name string, url str
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: name, Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
-	cccid := NewCCContext(chainID, name, "", "", false, nil)
+	cccid := NewCCContext(chainID, name, "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid, spec)
 
@@ -359,7 +366,7 @@ func chaincodeQueryChaincode(chainID string, user string) error {
 
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 
-	cccid1 := NewCCContext(chainID, "example02", "", "", false, nil)
+	cccid1 := NewCCContext(chainID, "example02", "0", "", false, nil)
 
 	_, err := deploy(ctxt, cccid1, spec1)
 
@@ -380,7 +387,7 @@ func chaincodeQueryChaincode(chainID string, user string) error {
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 
-	cccid2 := NewCCContext(chainID, "example05", "", "", false, nil)
+	cccid2 := NewCCContext(chainID, "example05", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid2, spec2)
 	chaincodeID2 := spec2.ChaincodeID.Name
@@ -479,32 +486,33 @@ func checkFinalState(cccid *CCContext) error {
 
 	defer txsim.Done()
 
-	canName := cccid.GetCanonicalName()
+	cName := cccid.GetCanonicalName()
+
 	// Invoke ledger to get state
 	var Aval, Bval int
-	resbytes, resErr := txsim.GetState(canName, "a")
+	resbytes, resErr := txsim.GetState(cccid.Name, "a")
 	if resErr != nil {
-		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", canName, resErr)
+		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", cName, resErr)
 	}
 	fmt.Printf("Got string: %s\n", string(resbytes))
 	Aval, resErr = strconv.Atoi(string(resbytes))
 	if resErr != nil {
-		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", canName, resErr)
+		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", cName, resErr)
 	}
 	if Aval != 90 {
-		return fmt.Errorf("Incorrect result. Aval is wrong for <%s>", canName)
+		return fmt.Errorf("Incorrect result. Aval is wrong for <%s>", cName)
 	}
 
-	resbytes, resErr = txsim.GetState(canName, "b")
+	resbytes, resErr = txsim.GetState(cccid.Name, "b")
 	if resErr != nil {
-		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", canName, resErr)
+		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", cName, resErr)
 	}
 	Bval, resErr = strconv.Atoi(string(resbytes))
 	if resErr != nil {
-		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", canName, resErr)
+		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", cName, resErr)
 	}
 	if Bval != 210 {
-		return fmt.Errorf("Incorrect result. Bval is wrong for <%s>", canName)
+		return fmt.Errorf("Incorrect result. Bval is wrong for <%s>", cName)
 	}
 
 	// Success
@@ -576,7 +584,7 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 
 	var ctxt = context.Background()
 
-	cccid := NewCCContext(chainID, "example02", "", "", false, nil)
+	cccid := NewCCContext(chainID, "example02", "0", "", false, nil)
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url}
 
@@ -642,7 +650,7 @@ func TestExecuteInvokeInvalidTransaction(t *testing.T) {
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url}
 
-	cccid := NewCCContext(chainID, "example02", "", "", false, nil)
+	cccid := NewCCContext(chainID, "example02", "0", "", false, nil)
 
 	//FAIL, FAIL!
 	args := []string{"x", "-1"}
@@ -699,7 +707,7 @@ func chaincodeInvokeChaincode(t *testing.T, chainID string, user string) (err er
 
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 
-	cccid1 := NewCCContext(chainID, "example02", "", "", false, nil)
+	cccid1 := NewCCContext(chainID, "example02", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid1, spec1)
 	chaincodeID1 := spec1.ChaincodeID.Name
@@ -723,7 +731,7 @@ func chaincodeInvokeChaincode(t *testing.T, chainID string, user string) (err er
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
 
-	cccid2 := NewCCContext(chainID, "example04", "", "", false, nil)
+	cccid2 := NewCCContext(chainID, "example04", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid2, spec2)
 	chaincodeID2 := spec2.ChaincodeID.Name
@@ -798,7 +806,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
-	cccid1 := NewCCContext(chainID, "example02", "", "", false, nil)
+	cccid1 := NewCCContext(chainID, "example02", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid1, spec1)
 	chaincodeID1 := spec1.ChaincodeID.Name
@@ -820,7 +828,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
-	cccid2 := NewCCContext(chainID, "pthru", "", "", false, nil)
+	cccid2 := NewCCContext(chainID, "pthru", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid2, spec2)
 	chaincodeID2 := spec2.ChaincodeID.Name
@@ -887,7 +895,7 @@ func TestRangeQuery(t *testing.T) {
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
-	cccid := NewCCContext(chainID, "tmap", "", "", false, nil)
+	cccid := NewCCContext(chainID, "tmap", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid, spec)
 	chaincodeID := spec.ChaincodeID.Name
@@ -933,7 +941,7 @@ func TestGetEvent(t *testing.T) {
 	f := "init"
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(f)}}
 
-	cccid := NewCCContext(chainID, "esender", "", "", false, nil)
+	cccid := NewCCContext(chainID, "esender", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid, spec)
 	chaincodeID := spec.ChaincodeID.Name
@@ -1002,7 +1010,7 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 
 	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
-	cccid1 := NewCCContext(chainID, "example02", "", "", false, nil)
+	cccid1 := NewCCContext(chainID, "example02", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid1, spec1)
 	chaincodeID1 := spec1.ChaincodeID.Name
@@ -1024,7 +1032,7 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 
 	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
-	cccid2 := NewCCContext(chainID, "example05", "", "", false, nil)
+	cccid2 := NewCCContext(chainID, "example05", "0", "", false, nil)
 
 	_, err = deploy(ctxt, cccid2, spec2)
 	chaincodeID2 := spec2.ChaincodeID.Name

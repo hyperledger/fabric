@@ -264,7 +264,7 @@ func TestDeploy(t *testing.T) {
 	chainID := util.GetTestChainID()
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex01", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
-	cccid := chaincode.NewCCContext(chainID, "ex01", "", "", false, nil)
+	cccid := chaincode.NewCCContext(chainID, "ex01", "0", "", false, nil)
 
 	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
@@ -282,7 +282,7 @@ func TestDeployBadArgs(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b")}}}
 
-	cccid := chaincode.NewCCContext(chainID, "ex02", "", "", false, nil)
+	cccid := chaincode.NewCCContext(chainID, "ex02", "0", "", false, nil)
 
 	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err == nil {
@@ -300,7 +300,7 @@ func TestDeployBadPayload(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
-	cccid := chaincode.NewCCContext(chainID, "ex02", "", "", false, nil)
+	cccid := chaincode.NewCCContext(chainID, "ex02", "0", "", false, nil)
 
 	f := func(cds *pb.ChaincodeDeploymentSpec) {
 		cds.CodePackage = nil
@@ -322,7 +322,7 @@ func TestRedeploy(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
-	cccid := chaincode.NewCCContext(chainID, "ex02", "", "", false, nil)
+	cccid := chaincode.NewCCContext(chainID, "ex02", "0", "", false, nil)
 
 	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
@@ -357,7 +357,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
 
-	cccid := chaincode.NewCCContext(chainID, "ex01", "", "", false, nil)
+	cccid := chaincode.NewCCContext(chainID, "ex01", "0", "", false, nil)
 
 	resp, prop, err := deploy(endorserServer, chainID, spec, nil)
 	chaincodeID1 := spec.ChaincodeID.Name
@@ -407,8 +407,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID1, CtorMsg: &pb.ChaincodeInput{Args: argsDeploy}}
 
-	cccid1 := chaincode.NewCCContext(chainID, "upgradeex01", "", "", false, nil)
-	cccid2 := chaincode.NewCCContext(chainID, "upgradeex02", "", "", false, nil)
+	cccid1 := chaincode.NewCCContext(chainID, "upgradeex01", "0", "", false, nil)
+	cccid2 := chaincode.NewCCContext(chainID, "upgradeex01", "1", "", false, nil)
 
 	resp, prop, err := deploy(endorserServer, chainID, spec, nil)
 

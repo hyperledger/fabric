@@ -17,6 +17,7 @@ limitations under the License.
 package chaincode
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sync"
@@ -28,7 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/looplab/fsm"
-	"github.com/op/go-logging"
+	logging "github.com/op/go-logging"
 	"golang.org/x/net/context"
 )
 
@@ -68,6 +69,14 @@ type nextStateInfo struct {
 	sendToCC bool
 }
 
+//chaincode registered name is of the form
+//    <name>:<version>/<suffix>
+type ccParts struct {
+	name    string //the main name of the chaincode
+	version string //the version param if any (used for upgrade)
+	suffix  string //for now just the chain name
+}
+
 // Handler responsbile for management of Peer's side of chaincode stream
 type Handler struct {
 	sync.RWMutex
@@ -76,6 +85,7 @@ type Handler struct {
 	ChatStream  ccintf.ChaincodeStream
 	FSM         *fsm.FSM
 	ChaincodeID *pb.ChaincodeID
+	ccCompParts *ccParts
 
 	chaincodeSupport *ChaincodeSupport
 	registered       bool
@@ -95,6 +105,44 @@ func shorttxid(txid string) string {
 		return txid
 	}
 	return txid[0:8]
+}
+
+//gets component parts from the canonical name of the chaincode.
+//Called exactly once per chaincode when registering chaincode.
+//This is needed for the "one-instance-per-chain" model when
+//starting up the chaincode for each chain. It will still
+//work for the "one-instance-for-all-chains" as the version
+//and suffix will just be absent (also note that LCCC reserves
+//"/:[]${}" as special chars mainly for such namespace uses)
+func (handler *Handler) decomposeRegisteredName(cid *pb.ChaincodeID) {
+	handler.ccCompParts = &ccParts{}
+	b := []byte(cid.Name)
+
+	//compute suffix (ie, chain name)
+	i := bytes.IndexByte(b, '/')
+	if i >= 0 {
+		if i < len(b)-1 {
+			handler.ccCompParts.suffix = string(b[i+1:])
+		}
+		b = b[:i]
+	}
+
+	//compute version
+	i = bytes.IndexByte(b, ':')
+	if i >= 0 {
+		if i < len(b)-1 {
+			handler.ccCompParts.version = string(b[i+1:])
+		}
+		b = b[:i]
+	}
+
+	handler.ccCompParts.name = string(b)
+
+	return
+}
+
+func (handler *Handler) getCCRootName() string {
+	return handler.ccCompParts.name
 }
 
 func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
@@ -424,6 +472,10 @@ func (handler *Handler) beforeRegisterEvent(e *fsm.Event, state string) {
 		return
 	}
 
+	//get the component parts so we can use the root chaincode
+	//name in keys
+	handler.decomposeRegisteredName(handler.ChaincodeID)
+
 	chaincodeLogger.Debugf("Got %s for chaincodeID = %s, sending back %s", e.Event, chaincodeID, pb.ChaincodeMessage_REGISTERED)
 	if err := handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTERED}); err != nil {
 		e.Cancel(fmt.Errorf("Error sending %s: %s", pb.ChaincodeMessage_REGISTERED, err))
@@ -517,7 +569,7 @@ func (handler *Handler) handleGetState(msg *pb.ChaincodeMessage) {
 		key := string(msg.Payload)
 
 		// Invoke ledger to get state
-		chaincodeID := handler.ChaincodeID.Name
+		chaincodeID := handler.getCCRootName()
 
 		var res []byte
 		var err error
@@ -603,7 +655,7 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 		if txContext == nil {
 			return
 		}
-		chaincodeID := handler.ChaincodeID.Name
+		chaincodeID := handler.getCCRootName()
 
 		rangeIter, err := txContext.txsimulator.GetStateRangeScanIterator(chaincodeID, rangeQueryState.StartKey, rangeQueryState.EndKey)
 		if err != nil {
@@ -882,7 +934,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			handler.triggerNextState(triggerNextStateMsg, true)
 		}()
 
-		chaincodeID := handler.ChaincodeID.Name
+		chaincodeID := handler.getCCRootName()
 		var err error
 		var res []byte
 
@@ -925,8 +977,8 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			}
 
 			// Get the chaincodeID to invoke
-			newChaincodeID := chaincodeSpec.ChaincodeID.Name
-			chaincodeLogger.Debugf("[%s] C-call-C %s", shorttxid(msg.Txid), newChaincodeID)
+			calledCCName := chaincodeSpec.ChaincodeID.Name
+			chaincodeLogger.Debugf("[%s] C-call-C %s", shorttxid(msg.Txid), calledCCName)
 
 			ctxt := context.Background()
 			ctxt = context.WithValue(ctxt, TXSimulatorKey, txContext.txsimulator)
@@ -934,8 +986,15 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			// Create the invocation spec
 			chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 
-			//Get the latest version of newChaincodeID
-			cccid := NewCCContext(txContext.chainID, newChaincodeID, "", msg.Txid, false, txContext.proposal)
+			//Get the latest version of calledCCName
+			cd, err := GetChaincodeDataFromLCCC(ctxt, msg.Txid, txContext.proposal, txContext.chainID, calledCCName)
+			if err != nil {
+				payload := []byte(err.Error())
+				chaincodeLogger.Debugf("[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
+				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+				return
+			}
+			cccid := NewCCContext(txContext.chainID, calledCCName, cd.Version, msg.Txid, false, txContext.proposal)
 
 			// Launch the new chaincode if not already running
 			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, cccid, chaincodeInvocationSpec)

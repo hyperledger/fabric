@@ -21,6 +21,8 @@ import (
 
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -36,9 +38,27 @@ func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error
 
 // GetCDSFromLCCC gets chaincode deployment spec from LCCC
 func GetCDSFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
-	cccid := NewCCContext(chainID, "lccc", "", txid, true, prop)
+	version := util.GetSysCCVersion()
+	cccid := NewCCContext(chainID, "lccc", version, txid, true, prop)
 	payload, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
 	return payload, err
+}
+
+// GetChaincodeDataFromLCCC gets chaincode data from LCCC given name
+func GetChaincodeDataFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (*ChaincodeData, error) {
+	version := util.GetSysCCVersion()
+	cccid := NewCCContext(chainID, "lccc", version, txid, true, prop)
+	payload, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
+	if err == nil {
+		cd := &ChaincodeData{}
+		err = proto.Unmarshal(payload, cd)
+		if err != nil {
+			return nil, err
+		}
+		return cd, nil
+	}
+
+	return nil, err
 }
 
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments

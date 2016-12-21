@@ -89,10 +89,10 @@ func DeployChainlessSysCCs() {
 //this is used in unit tests to stop and remove the system chaincodes before
 //restarting them in the same process. This allows clean start of the system
 //in the same process
-func deRegisterSysCCs(chainID string) {
+func deDeploySysCCs(chainID string) {
 	for _, sysCC := range systemChaincodes {
 		if !sysCC.ChainlessCC {
-			deregisterSysCC(chainID, sysCC)
+			deDeploySysCC(chainID, sysCC)
 		}
 	}
 }
