@@ -20,7 +20,10 @@ import "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 
 // VersionedDBProvider provides an instance of an versioned DB
 type VersionedDBProvider interface {
+	// GetDBHandle returns a handle to a VersionedDB
 	GetDBHandle(id string) VersionedDB
+	// Close closes all the VersionedDB instances and releases any resources held by VersionedDBProvider
+	Close()
 }
 
 // VersionedDB lists methods that a db is supposed to implement

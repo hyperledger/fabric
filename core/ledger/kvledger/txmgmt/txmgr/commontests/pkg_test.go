@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/spf13/viper"
 )
 
 type testEnv interface {
@@ -40,6 +41,7 @@ var testEnvs = []testEnv{&levelDBLockBasedEnv{}}
 
 type levelDBLockBasedEnv struct {
 	testDBEnv *stateleveldb.TestVDBEnv
+	testDB    statedb.VersionedDB
 	txmgr     txmgr.TxMgr
 }
 
@@ -48,10 +50,12 @@ func (env *levelDBLockBasedEnv) getName() string {
 }
 
 func (env *levelDBLockBasedEnv) init(t *testing.T) {
-	testDBPath := "/tmp/fabric/core/ledger/kvledger/txmgmt/lockbasedtxmgmt"
-	testDBEnv := stateleveldb.NewTestVDBEnv(t, testDBPath)
-	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDBEnv.DB)
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
+	testDBEnv := stateleveldb.NewTestVDBEnv(t)
+	testDB := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
 	env.testDBEnv = testDBEnv
+	env.testDB = testDB
 	env.txmgr = txMgr
 }
 
@@ -60,7 +64,7 @@ func (env *levelDBLockBasedEnv) getTxMgr() txmgr.TxMgr {
 }
 
 func (env *levelDBLockBasedEnv) getVDB() statedb.VersionedDB {
-	return env.testDBEnv.DB
+	return env.testDB
 }
 
 func (env *levelDBLockBasedEnv) cleanup() {

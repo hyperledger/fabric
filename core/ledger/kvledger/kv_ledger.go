@@ -19,14 +19,13 @@ package kvledger
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -39,37 +38,18 @@ import (
 
 var logger = logging.MustGetLogger("kvledger")
 
-// Conf captures `KVLedger` configurations
-type Conf struct {
-	blockStorageDir  string
-	maxBlockfileSize int
-	txMgrDBPath      string
-}
-
-// NewConf constructs new `Conf`.
-// filesystemPath is the top level directory under which `KVLedger` manages its data
-func NewConf(filesystemPath string, maxBlockfileSize int) *Conf {
-	if !strings.HasSuffix(filesystemPath, "/") {
-		filesystemPath = filesystemPath + "/"
-	}
-	blocksStorageDir := filesystemPath + "blocks"
-	txMgrDBPath := filesystemPath + "txMgmgt/db"
-	return &Conf{blocksStorageDir, maxBlockfileSize, txMgrDBPath}
-}
-
 // KVLedger provides an implementation of `ledger.ValidatedLedger`.
 // This implementation provides a key-value based data model
 type KVLedger struct {
+	ledgerID    string
 	blockStore  blkstorage.BlockStore
 	txtmgmt     txmgr.TxMgr
 	historymgmt history.HistMgr
 }
 
 // NewKVLedger constructs new `KVLedger`
-func NewKVLedger(conf *Conf) (*KVLedger, error) {
-
-	logger.Debugf("Creating KVLedger using config: ", conf)
-
+func NewKVLedger(versionedDBProvider statedb.VersionedDBProvider, ledgerID string) (*KVLedger, error) {
+	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockHash,
 		blkstorage.IndexableAttrBlockNum,
@@ -77,7 +57,9 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 		blkstorage.IndexableAttrBlockNumTranNum,
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	blockStorageConf := fsblkstorage.NewConf(conf.blockStorageDir, conf.maxBlockfileSize)
+
+	blockStorageDir := ledgerconfig.GetBlockStoragePath(ledgerID)
+	blockStorageConf := fsblkstorage.NewConf(blockStorageDir, ledgerconfig.GetMaxBlockfileSize())
 	blockStore := fsblkstorage.NewFsBlockStore(blockStorageConf, indexConfig)
 
 	//State and History database managers
@@ -91,14 +73,14 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 		couchDBDef := ledgerconfig.GetCouchDBDefinition()
 
 		//create new transaction manager based on couchDB
-		txmgmt = couchdbtxmgmt.NewCouchDBTxMgr(&couchdbtxmgmt.Conf{DBPath: conf.txMgrDBPath},
+		txmgmt = couchdbtxmgmt.NewCouchDBTxMgr(&couchdbtxmgmt.Conf{DBPath: ""},
 			couchDBDef.URL,      //couchDB connection URL
 			"system",            //couchDB db name matches ledger name, TODO for now use system ledger, eventually allow passing in subledger name
 			couchDBDef.Username, //enter couchDB id here
 			couchDBDef.Password) //enter couchDB pw here
 	} else {
 		// Fall back to using goleveldb lockbased transaction manager
-		db := stateleveldb.NewVersionedDBProvider(&stateleveldb.Conf{DBPath: conf.txMgrDBPath}).GetDBHandle("Default")
+		db := versionedDBProvider.GetDBHandle(ledgerID)
 		txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(db)
 	}
 
@@ -114,7 +96,7 @@ func NewKVLedger(conf *Conf) (*KVLedger, error) {
 			couchDBDef.Password) //enter couchDB pw here
 	}
 
-	l := &KVLedger{blockStore, txmgmt, historymgmt}
+	l := &KVLedger{ledgerID, blockStore, txmgmt, historymgmt}
 
 	if err := recoverStateDB(l); err != nil {
 		panic(fmt.Errorf(`Error during state DB recovery:%s`, err))

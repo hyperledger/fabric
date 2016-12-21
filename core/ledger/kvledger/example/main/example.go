@@ -21,15 +21,16 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/example"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
 const (
-	ledgerPath = "/tmp/test/ledger/kvledger/example"
+	ledgerID = "Default"
 )
 
 var finalLedger ledger.ValidatedLedger
@@ -47,10 +48,10 @@ func init() {
 	// Initialization will get a handle to the ledger at the specified path
 	// Note, if subledgers are supported in the future,
 	// the various ledgers could be created/managed at this level
-	os.RemoveAll(ledgerPath)
-	ledgerConf := kvledger.NewConf(ledgerPath, 0)
+	cleanup()
+	ledgermgmt.Initialize()
 	var err error
-	finalLedger, err = kvledger.NewKVLedger(ledgerConf)
+	finalLedger, err = ledgermgmt.CreateLedger(ledgerID)
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
@@ -60,7 +61,7 @@ func init() {
 }
 
 func main() {
-	defer finalLedger.Close()
+	defer ledgermgmt.Close()
 
 	// Each of the functions here will emulate endorser, orderer,
 	// and committer by calling ledger APIs to similate the proposal,
@@ -163,4 +164,9 @@ func handleError(err error, quit bool) {
 			fmt.Printf("Error: %s\n", err)
 		}
 	}
+}
+
+func cleanup() {
+	ledgerRootPath := ledgerconfig.GetRootPath()
+	os.RemoveAll(ledgerRootPath)
 }

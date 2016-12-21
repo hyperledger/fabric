@@ -17,14 +17,14 @@ limitations under the License.
 package txvalidator
 
 import (
-	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,10 +36,10 @@ func (v *mockVsccValidator) VSCCValidateTx(payload *common.Payload, envBytes []b
 }
 
 func TestKVLedgerBlockStorage(t *testing.T) {
-	conf := kvledger.NewConf("/tmp/tests/ledger/", 0)
-	defer os.RemoveAll("/tmp/tests/ledger/")
-
-	ledger, _ := kvledger.NewKVLedger(conf)
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
+	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
 	defer ledger.Close()
 
 	validator := &txValidator{ledger, &mockVsccValidator{}}

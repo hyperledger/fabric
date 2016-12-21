@@ -19,20 +19,20 @@ package state
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
 	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/proto"
 	pcomm "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -123,9 +123,8 @@ func newGossipInstance(config *gossip.Config) gossip.Gossip {
 }
 
 // Create new instance of KVLedger to be used for testing
-func newCommitter(id int, basePath string) committer.Committer {
-	conf := kvledger.NewConf(basePath+strconv.Itoa(id), 0)
-	ledger, _ := kvledger.NewKVLedger(conf)
+func newCommitter(id int) committer.Committer {
+	ledger, _ := ledgermgmt.CreateLedger(strconv.Itoa(id))
 	return committer.NewLedgerCommitter(ledger)
 }
 
@@ -225,14 +224,15 @@ func TestNewGossipStateProvider_RepeatGossipingOneMessage(t *testing.T) {
 }*/
 
 func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
-	ledgerPath := "/tmp/tests/ledger/"
-	defer os.RemoveAll(ledgerPath)
+	viper.Set("peer.fileSystemPath", "/tmp/tests/ledger/node")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
 
 	bootstrapSetSize := 5
 	bootstrapSet := make([]*peerNode, 0)
 
 	for i := 0; i < bootstrapSetSize; i++ {
-		committer := newCommitter(i, ledgerPath+"node/")
+		committer := newCommitter(i)
 		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i, 100), committer))
 	}
 
@@ -258,7 +258,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	peersSet := make([]*peerNode, 0)
 
 	for i := 0; i < standartPeersSize; i++ {
-		committer := newCommitter(standartPeersSize+i, ledgerPath+"node/")
+		committer := newCommitter(standartPeersSize + i)
 		peersSet = append(peersSet, newPeerNode(newGossipConfig(standartPeersSize+i, 100, 0, 1, 2, 3, 4), committer))
 	}
 

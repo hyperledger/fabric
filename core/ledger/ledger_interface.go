@@ -45,6 +45,20 @@ type RawLedger interface {
 	CommitBlock(block *common.Block) error
 }
 
+// ValidatedLedgerProvider provides handle to ledger instances
+type ValidatedLedgerProvider interface {
+	// CreateLedger creates a new ledger with a given unique id
+	Create(ledgerID string) (ValidatedLedger, error)
+	// OpenLedger opens an already created ledger
+	Open(ledgerID string) (ValidatedLedger, error)
+	// Exists tells whether the ledger with given id exits
+	Exists(ledgerID string) (bool, error)
+	// List lists the ids of the existing ledgers
+	List() ([]string, error)
+	// Close closes the ValidatedLedgerProvider
+	Close()
+}
+
 // ValidatedLedger represents the 'final ledger'. In addition to implement the methods inherited from the Ledger,
 // it provides the handle to objects for querying the state and executing transactions.
 type ValidatedLedger interface {

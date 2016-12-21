@@ -38,6 +38,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -114,7 +115,7 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 		}
 		closeListenerAndSleep(lis)
 	}
-
+	ledgermgmt.CleanupTestEnv()
 	ledgerPath := viper.GetString("peer.fileSystemPath")
 	os.RemoveAll(ledgerPath)
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))

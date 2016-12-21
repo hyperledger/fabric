@@ -18,10 +18,8 @@ package peer
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net"
-	"path/filepath"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -31,7 +29,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
@@ -44,7 +43,7 @@ var peerLogger = logging.MustGetLogger("peer")
 // chain is a local struct to manage objects in a chain
 type chain struct {
 	cb        *common.Block
-	ledger    *kvledger.KVLedger
+	ledger    ledger.ValidatedLedger
 	committer committer.Committer
 	mspmgr    msp.MSPManager
 }
@@ -57,6 +56,7 @@ var chains = struct {
 
 //MockInitialize resets chains for test env
 func MockInitialize() {
+	ledgermgmt.InitializeTestEnv()
 	chains.list = nil
 	chains.list = make(map[string]*chain)
 }
@@ -66,25 +66,16 @@ func MockInitialize() {
 // ready
 func Initialize() {
 	//Till JoinChain works, we continue to use default chain
-	path := getLedgerPath("")
-
-	peerLogger.Infof("Init peer by loading chains from %s", path)
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		peerLogger.Debug("Must be no chains created yet, err %s", err)
-
-		// We just continue. The ledger will create the directory later
-		return
-	}
-
-	// File name is the name of the chain that we will use to initialize
 	var cb *common.Block
-	var cid string
-	var ledger *kvledger.KVLedger
-	for _, file := range files {
-		cid = file.Name()
+	var ledger ledger.ValidatedLedger
+	ledgermgmt.Initialize()
+	ledgerIds, err := ledgermgmt.GetLedgerIDs()
+	if err != nil {
+		panic(fmt.Errorf("Error in initializing ledgermgmt: %s", err))
+	}
+	for _, cid := range ledgerIds {
 		peerLogger.Infof("Loading chain %s", cid)
-		if ledger, err = createLedger(cid); err != nil {
+		if ledger, err = ledgermgmt.OpenLedger(cid); err != nil {
 			peerLogger.Warning("Failed to load ledger %s", cid)
 			peerLogger.Debug("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
@@ -102,7 +93,7 @@ func Initialize() {
 	}
 }
 
-func getCurrConfigBlockFromLedger(ledger *kvledger.KVLedger) (*common.Block, error) {
+func getCurrConfigBlockFromLedger(ledger ledger.ValidatedLedger) (*common.Block, error) {
 	// Configuration blocks contain only 1 transaction, so we look for 1-tx
 	// blocks and check the transaction type
 	var envelope *common.Envelope
@@ -135,7 +126,7 @@ func getCurrConfigBlockFromLedger(ledger *kvledger.KVLedger) (*common.Block, err
 }
 
 // createChain creates a new chain object and insert it into the chains
-func createChain(cid string, ledger *kvledger.KVLedger, cb *common.Block) error {
+func createChain(cid string, ledger ledger.ValidatedLedger, cb *common.Block) error {
 	c := committer.NewLedgerCommitter(ledger)
 
 	mgr, err := mspmgmt.GetMSPManagerFromBlock(cb)
@@ -159,7 +150,7 @@ func CreateChainFromBlock(cb *common.Block) error {
 	if err != nil {
 		return err
 	}
-	var ledger *kvledger.KVLedger
+	var ledger ledger.ValidatedLedger
 	if ledger, err = createLedger(cid); err != nil {
 		return err
 	}
@@ -170,7 +161,7 @@ func CreateChainFromBlock(cb *common.Block) error {
 // MockCreateChain used for creating a ledger for a chain for tests
 // without havin to join
 func MockCreateChain(cid string) error {
-	var ledger *kvledger.KVLedger
+	var ledger ledger.ValidatedLedger
 	var err error
 	if ledger, err = createLedger(cid); err != nil {
 		return err
@@ -185,7 +176,7 @@ func MockCreateChain(cid string) error {
 
 // GetLedger returns the ledger of the chain with chain ID. Note that this
 // call returns nil if chain cid has not been created.
-func GetLedger(cid string) *kvledger.KVLedger {
+func GetLedger(cid string) ledger.ValidatedLedger {
 	chains.RLock()
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
@@ -232,27 +223,12 @@ func SetCurrConfigBlock(block *common.Block, cid string) error {
 }
 
 // All ledgers are located under `peer.fileSystemPath`
-func createLedger(cid string) (*kvledger.KVLedger, error) {
-	var ledger *kvledger.KVLedger
-	var err error
+func createLedger(cid string) (ledger.ValidatedLedger, error) {
+	var ledger ledger.ValidatedLedger
 	if ledger = GetLedger(cid); ledger != nil {
 		return ledger, nil
 	}
-	loc := getLedgerPath(cid)
-	if ledger, err = kvledger.NewKVLedger(kvledger.NewConf(loc, 0)); err != nil {
-		// hmm let's try 1 more time
-		if ledger, err = kvledger.NewKVLedger(kvledger.NewConf(loc, 0)); err != nil {
-			// this peer is no longer reliable, so we exit with error
-			return nil, fmt.Errorf("Failed to create ledger for chain %s with error %s", cid, err)
-		}
-	}
-	return ledger, nil
-}
-
-// Ledger path is system path with "ledgers/" appended
-func getLedgerPath(cid string) string {
-	sysPath := viper.GetString("peer.fileSystemPath")
-	return filepath.Join(sysPath, "ledgers", cid)
+	return ledgermgmt.CreateLedger(cid)
 }
 
 // NewPeerClientConnection Returns a new grpc.ClientConn to the configured local PEER.

@@ -81,7 +81,7 @@ func (dbInst *DB) Open() {
 	var err error
 	var dirEmpty bool
 	if dirEmpty, err = util.CreateDirIfMissing(dbPath); err != nil {
-		panic(fmt.Sprintf("Error while trying to open DB: %s", err))
+		panic(fmt.Sprintf("Error while trying to create dir if missing: %s", err))
 	}
 	dbOpts.ErrorIfMissing = !dirEmpty
 	if dbInst.db, err = leveldb.OpenFile(dbPath, dbOpts); err != nil {
@@ -97,7 +97,9 @@ func (dbInst *DB) Close() {
 	if dbInst.dbState == closed {
 		return
 	}
-	dbInst.db.Close()
+	if err := dbInst.db.Close(); err != nil {
+		logger.Errorf("Error while closing DB: %s", err)
+	}
 	dbInst.dbState = closed
 }
 

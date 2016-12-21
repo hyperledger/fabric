@@ -34,11 +34,13 @@ func CreateDirIfMissing(dirPath string) (bool, error) {
 		dirPath = dirPath + "/"
 	}
 	logger.Debugf("CreateDirIfMissing [%s]", dirPath)
+	logDirStatus("Before creating dir", dirPath)
 	err := os.MkdirAll(path.Dir(dirPath), 0755)
 	if err != nil {
 		logger.Debugf("Error while creating dir [%s]", dirPath)
 		return false, err
 	}
+	logDirStatus("After creating dir", dirPath)
 	return DirEmpty(dirPath)
 }
 
@@ -66,4 +68,16 @@ func FileExists(filePath string) (bool, int64, error) {
 		return false, 0, nil
 	}
 	return true, fileInfo.Size(), err
+}
+
+func logDirStatus(msg string, dirPath string) {
+	exists, _, err := FileExists(dirPath)
+	if err != nil {
+		logger.Errorf("Error while checking for dir existance")
+	}
+	if exists {
+		logger.Debugf("%s - [%s] exists", msg, dirPath)
+	} else {
+		logger.Debugf("%s - [%s] does not exist", msg, dirPath)
+	}
 }

@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
 	"github.com/hyperledger/fabric/core/endorser"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
@@ -79,6 +80,7 @@ func initChainless() {
 }
 
 func serve(args []string) error {
+	ledgermgmt.Initialize()
 	// Parameter overrides must be processed before any paramaters are
 	// cached. Failures to cache cause the server to terminate immediately.
 	if chaincodeDevMode {

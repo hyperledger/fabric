@@ -29,8 +29,11 @@ import (
 func TestKVLedgerBlockStorage(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
-	ledger, _ := NewKVLedger(env.conf)
+	provider, _ := NewProvider()
+	defer provider.Close()
+	ledger, _ := provider.Create("testLedger")
 	defer ledger.Close()
+
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
@@ -80,7 +83,9 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 func TestKVLedgerStateDBRecovery(t *testing.T) {
 	env := newTestEnv(t)
 	defer env.cleanup()
-	ledger, _ := NewKVLedger(env.conf)
+	provider, _ := NewProvider()
+	defer provider.Close()
+	ledger, _ := provider.Create("testLedger")
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -117,9 +122,9 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	//generating a block based on the simulation result
 	block2 := bg.NextBlock([][]byte{simRes}, false)
 	//performing validation of read and write set to find valid transactions
-	ledger.txtmgmt.ValidateAndPrepare(block2, true)
+	ledger.(*KVLedger).txtmgmt.ValidateAndPrepare(block2, true)
 	//writing the validated block to block storage but not committing the transaction to state DB
-	err := ledger.blockStore.AddBlock(block2)
+	err := ledger.(*KVLedger).blockStore.AddBlock(block2)
 	//assume that peer fails here before committing the transaction
 	assert.NoError(t, err)
 
@@ -140,10 +145,12 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	testutil.AssertEquals(t, value, []byte("value3"))
 	simulator.Done()
 	ledger.Close()
+	provider.Close()
 
 	//we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
 	//State DB should be recovered before returning from NewKVLedger call
-	ledger, _ = NewKVLedger(env.conf)
+	provider, _ = NewProvider()
+	ledger, _ = provider.Open("testLedger")
 	simulator, _ = ledger.NewTxSimulator()
 	value, _ = simulator.GetState("ns1", "key1")
 	//value for 'key1' should be 'value4' after recovery
@@ -155,7 +162,6 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	//value for 'key3' should be 'value6' after recovery
 	testutil.AssertEquals(t, value, []byte("value6"))
 	simulator.Done()
-	ledger.Close()
 }
 
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
@@ -168,7 +174,9 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	env := newTestEnv(t)
 	defer env.cleanup()
-	ledger, _ := NewKVLedger(env.conf)
+	provider, _ := NewProvider()
+	defer provider.Close()
+	ledger, _ := provider.Create("testLedger")
 	defer ledger.Close()
 
 	//testNs := "ns1"

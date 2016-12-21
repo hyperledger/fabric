@@ -14,28 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kvledger
+package ledgermgmt
 
 import (
 	"os"
-	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/spf13/viper"
 )
 
-type testEnv struct {
-	t testing.TB
+// InitializeTestEnv initializes ledgermgmt for tests
+func InitializeTestEnv() {
+	remove()
+	initialize()
 }
 
-func newTestEnv(t testing.TB) *testEnv {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
-	env := &testEnv{t}
-	env.cleanup()
-	return env
+// CleanupTestEnv closes the ledgermagmt and removes the store directory
+func CleanupTestEnv() {
+	Close()
+	remove()
 }
 
-func (env *testEnv) cleanup() {
+func remove() {
 	path := ledgerconfig.GetRootPath()
-	os.RemoveAll(path)
+	err := os.RemoveAll(path)
+	if err != nil {
+		logger.Errorf("Error: %s", err)
+	}
 }

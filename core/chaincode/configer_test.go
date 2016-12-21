@@ -28,6 +28,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/protos/common"
@@ -98,6 +99,8 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	//t.Skip("Test CI build")
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
 	defer os.RemoveAll("/var/hyperledger/test/")
 
 	e := new(PeerConfiger)

@@ -25,9 +25,8 @@ import (
 )
 
 // TestBasicRW tests basic read-write
-func TestBasicRW(t *testing.T, db statedb.VersionedDB) {
-	db.Open()
-	defer db.Close()
+func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db := dbProvider.GetDBHandle("TestDB")
 	val, err := db.GetState("ns", "key1")
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertNil(t, val)
@@ -55,10 +54,46 @@ func TestBasicRW(t *testing.T, db statedb.VersionedDB) {
 	testutil.AssertEquals(t, sp, savePoint)
 }
 
+// TestMultiDBBasicRW tests basic read-write on multiple dbs
+func TestMultiDBBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db1 := dbProvider.GetDBHandle("TestDB1")
+	db2 := dbProvider.GetDBHandle("TestDB2")
+
+	batch1 := statedb.NewUpdateBatch()
+	vv1 := statedb.VersionedValue{Value: []byte("value1_db1"), Version: version.NewHeight(1, 1)}
+	vv2 := statedb.VersionedValue{Value: []byte("value2_db1"), Version: version.NewHeight(1, 2)}
+	batch1.Put("ns1", "key1", vv1.Value, vv1.Version)
+	batch1.Put("ns1", "key2", vv2.Value, vv2.Version)
+	savePoint1 := version.NewHeight(1, 2)
+	db1.ApplyUpdates(batch1, savePoint1)
+
+	batch2 := statedb.NewUpdateBatch()
+	vv3 := statedb.VersionedValue{Value: []byte("value1_db2"), Version: version.NewHeight(1, 4)}
+	vv4 := statedb.VersionedValue{Value: []byte("value2_db2"), Version: version.NewHeight(1, 5)}
+	batch2.Put("ns1", "key1", vv3.Value, vv3.Version)
+	batch2.Put("ns1", "key2", vv4.Value, vv4.Version)
+	savePoint2 := version.NewHeight(1, 5)
+	db2.ApplyUpdates(batch2, savePoint2)
+
+	vv, _ := db1.GetState("ns1", "key1")
+	testutil.AssertEquals(t, vv, &vv1)
+
+	sp, err := db1.GetLatestSavePoint()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertEquals(t, sp, savePoint1)
+
+	vv, _ = db2.GetState("ns1", "key1")
+	testutil.AssertEquals(t, vv, &vv3)
+
+	sp, err = db2.GetLatestSavePoint()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertEquals(t, sp, savePoint2)
+}
+
 // TestDeletes tests deteles
-func TestDeletes(t *testing.T, db statedb.VersionedDB) {
-	db.Open()
-	defer db.Close()
+func TestDeletes(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db := dbProvider.GetDBHandle("TestDB")
+
 	batch := statedb.NewUpdateBatch()
 	vv1 := statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
 	vv2 := statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
@@ -90,7 +125,8 @@ func TestDeletes(t *testing.T, db statedb.VersionedDB) {
 }
 
 // TestIterator tests the iterator
-func TestIterator(t *testing.T, db statedb.VersionedDB) {
+func TestIterator(t *testing.T, dbProvider statedb.VersionedDBProvider) {
+	db := dbProvider.GetDBHandle("TestDB")
 	db.Open()
 	defer db.Close()
 	batch := statedb.NewUpdateBatch()

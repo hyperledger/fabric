@@ -17,6 +17,7 @@ limitations under the License.
 package statebasedval
 
 import (
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
@@ -26,15 +27,19 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/spf13/viper"
 )
 
-var testDBPath = "/tmp/fabric/core/ledger/kvledger/txmgmt/validator/statebasedval"
+func TestMain(m *testing.M) {
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
+	os.Exit(m.Run())
+}
 
 func TestValidator(t *testing.T) {
-	testDBEnv := stateleveldb.NewTestVDBEnv(t, testDBPath)
+	testDBEnv := stateleveldb.NewTestVDBEnv(t)
 	defer testDBEnv.Cleanup()
 
-	db := testDBEnv.DB
+	db := testDBEnv.DBProvider.GetDBHandle("TestDB")
 	//populate db with initial data
 	batch := statedb.NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))

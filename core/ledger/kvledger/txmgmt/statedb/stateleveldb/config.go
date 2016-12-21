@@ -14,28 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kvledger
+package stateleveldb
 
 import (
-	"os"
-	"testing"
+	"path/filepath"
 
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/spf13/viper"
 )
 
-type testEnv struct {
-	t testing.TB
-}
-
-func newTestEnv(t testing.TB) *testEnv {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
-	env := &testEnv{t}
-	env.cleanup()
-	return env
-}
-
-func (env *testEnv) cleanup() {
-	path := ledgerconfig.GetRootPath()
-	os.RemoveAll(path)
+func getDBPath() string {
+	return filepath.Join(ledgerconfig.GetRootPath(), "stateleveldb")
 }

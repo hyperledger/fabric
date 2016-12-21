@@ -25,20 +25,30 @@ import (
 
 // TestVDBEnv provides a level db backed versioned db for testing
 type TestVDBEnv struct {
-	DBPath string
-	DB     statedb.VersionedDB
+	t          testing.TB
+	DBProvider statedb.VersionedDBProvider
 }
 
 // NewTestVDBEnv instantiates and new level db backed TestVDB
-func NewTestVDBEnv(t testing.TB, dbPath string) *TestVDBEnv {
-	os.RemoveAll(dbPath)
-	db := NewVersionedDBProvider(&Conf{DBPath: dbPath}).GetDBHandle("testDB")
-	db.Open()
-	return &TestVDBEnv{dbPath, db}
+func NewTestVDBEnv(t testing.TB) *TestVDBEnv {
+	t.Logf("Creating new TestVDBEnv")
+	removeDBPath(t, "NewTestVDBEnv")
+	dbProvider := NewVersionedDBProvider()
+	return &TestVDBEnv{t, dbProvider}
 }
 
 // Cleanup closes the db and removes the db folder
 func (env *TestVDBEnv) Cleanup() {
-	env.DB.Close()
-	os.RemoveAll(env.DBPath)
+	env.t.Logf("Cleaningup TestVDBEnv")
+	env.DBProvider.Close()
+	removeDBPath(env.t, "Cleanup")
+}
+
+func removeDBPath(t testing.TB, caller string) {
+	dbPath := getDBPath()
+	if err := os.RemoveAll(dbPath); err != nil {
+		t.Fatalf("Err: %s", err)
+		t.FailNow()
+	}
+	logger.Debugf("Removed folder [%s] for test environment for %s", dbPath, caller)
 }

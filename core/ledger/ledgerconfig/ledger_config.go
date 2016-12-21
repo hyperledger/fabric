@@ -16,7 +16,11 @@ limitations under the License.
 
 package ledgerconfig
 
-import "github.com/spf13/viper"
+import (
+	"path/filepath"
+
+	"github.com/spf13/viper"
+)
 
 var stateDatabase = "goleveldb"
 var couchDBAddress = "127.0.0.1:5984"
@@ -38,6 +42,39 @@ func IsCouchDBEnabled() bool {
 		return true
 	}
 	return false
+}
+
+// GetRootPath returns the filesystem path.
+// All ledger related contents are expected to be stored under this path
+func GetRootPath() string {
+	sysPath := viper.GetString("peer.fileSystemPath")
+	return filepath.Join(sysPath, "ledgersData")
+}
+
+// GetLedgersPath returns the filesystem path that further contains sub-directories.
+// Each sub-directory for each specific ledger and the name of the sub-directory is the ledgerid
+func GetLedgersPath() string {
+	return filepath.Join(GetRootPath(), "ledgers")
+}
+
+// GetLedgerPath returns the filesystem path for stroing ledger specific contents
+func GetLedgerPath(ledgerID string) string {
+	return filepath.Join(GetLedgersPath(), ledgerID)
+}
+
+// GetBlockStoragePath returns the path for storing blocks for a specific ledger
+func GetBlockStoragePath(ledgerID string) string {
+	return filepath.Join(GetLedgerPath(ledgerID), "blocks")
+}
+
+// GetLedgerProviderPath returns the filesystem path for stroing ledger ledgerProvider contents
+func GetLedgerProviderPath() string {
+	return filepath.Join(GetRootPath(), "ledgerProvider")
+}
+
+// GetMaxBlockfileSize returns the maximum size of the block file
+func GetMaxBlockfileSize() int {
+	return 0
 }
 
 //GetCouchDBDefinition exposes the useCouchDB variable

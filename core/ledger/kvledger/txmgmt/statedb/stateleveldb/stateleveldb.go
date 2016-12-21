@@ -19,6 +19,8 @@ package stateleveldb
 import (
 	"bytes"
 
+	"sync"
+
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
@@ -27,59 +29,73 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
-var logger = logging.MustGetLogger("store.level")
+var logger = logging.MustGetLogger("stateleveldb")
 
 var compositeKeySep = []byte{0x00}
 var lastKeyIndicator = byte(0x01)
 var savePointKey = []byte{0x00}
 
-// Conf for leveldb backed VersionedDB implementation
-type Conf struct {
-	DBPath string
-}
-
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
-	conf *Conf
+	db         *db.DB
+	databases  map[string]*VersionedDB
+	mux        sync.Mutex
+	openCounts uint64
 }
 
 // NewVersionedDBProvider instantiates VersionedDBProvider
-func NewVersionedDBProvider(conf *Conf) *VersionedDBProvider {
-	return &VersionedDBProvider{conf}
+func NewVersionedDBProvider() *VersionedDBProvider {
+	dbPath := getDBPath()
+	logger.Debugf("constructing VersionedDBProvider dbPath=%s", dbPath)
+	db := db.CreateDB(&db.Conf{DBPath: dbPath})
+	db.Open()
+	logger.Debugf("Opened db dbPath=%s", dbPath)
+	return &VersionedDBProvider{db, make(map[string]*VersionedDB), sync.Mutex{}, 0}
 }
 
 // GetDBHandle gets the handle to a named database
-func (provider *VersionedDBProvider) GetDBHandle(dbName string) *VersionedDB {
-	return newVersionedDB(provider.conf, dbName)
+func (provider *VersionedDBProvider) GetDBHandle(dbName string) statedb.VersionedDB {
+	provider.mux.Lock()
+	defer provider.mux.Unlock()
+	vdb := provider.databases[dbName]
+	if vdb == nil {
+		vdb = newVersionedDB(provider.db, dbName)
+		provider.databases[dbName] = vdb
+	}
+	return vdb
+}
+
+// Close closes the underlying db
+func (provider *VersionedDBProvider) Close() {
+	provider.db.Close()
 }
 
 // VersionedDB implements VersionedDB interface
 type VersionedDB struct {
-	conf *Conf
-	db   *db.DB
+	db     *db.DB
+	dbName string
 }
 
 // newVersionedDB constructs an instance of VersionedDB
-func newVersionedDB(conf *Conf, dbName string) *VersionedDB {
-	db := db.CreateDB(&db.Conf{DBPath: conf.DBPath + "/" + dbName})
-	return &VersionedDB{conf, db}
+func newVersionedDB(db *db.DB, dbName string) *VersionedDB {
+	return &VersionedDB{db, dbName}
 }
 
 // Open implements method in VersionedDB interface
 func (vdb *VersionedDB) Open() error {
-	vdb.db.Open()
+	// do nothing because shared db is used
 	return nil
 }
 
 // Close implements method in VersionedDB interface
 func (vdb *VersionedDB) Close() {
-	vdb.db.Close()
+	// do nothing because shared db is used
 }
 
 // GetState implements method in VersionedDB interface
 func (vdb *VersionedDB) GetState(namespace string, key string) (*statedb.VersionedValue, error) {
 	logger.Debugf("GetState(). ns=%s, key=%s", namespace, key)
-	compositeKey := constructCompositeKey(namespace, key)
+	compositeKey := constructCompositeKey(vdb.dbName, namespace, key)
 	dbVal, err := vdb.db.Get(compositeKey)
 	if err != nil {
 		return nil, err
@@ -106,8 +122,8 @@ func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 
 // GetStateRangeScanIterator implements method in VersionedDB interface
 func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
-	compositeStartKey := constructCompositeKey(namespace, startKey)
-	compositeEndKey := constructCompositeKey(namespace, endKey)
+	compositeStartKey := constructCompositeKey(vdb.dbName, namespace, startKey)
+	compositeEndKey := constructCompositeKey(vdb.dbName, namespace, endKey)
 	if endKey == "" {
 		compositeEndKey[len(compositeEndKey)-1] = lastKeyIndicator
 	}
@@ -124,7 +140,7 @@ func (vdb *VersionedDB) ExecuteQuery(query string) (statedb.ResultsIterator, err
 func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
 	levelBatch := &leveldb.Batch{}
 	for ck, vv := range batch.KVs {
-		compositeKey := constructCompositeKey(ck.Namespace, ck.Key)
+		compositeKey := constructCompositeKey(vdb.dbName, ck.Namespace, ck.Key)
 		logger.Debugf("processing key=%#v, versionedValue=%#v", ck, vv)
 		if vv.Value == nil {
 			levelBatch.Delete(compositeKey)
@@ -132,7 +148,7 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 			levelBatch.Put(compositeKey, encodeValue(vv.Value, vv.Version))
 		}
 	}
-	levelBatch.Put(savePointKey, height.ToBytes())
+	levelBatch.Put(constructSavepointKey(vdb.dbName), height.ToBytes())
 	if err := vdb.db.WriteBatch(levelBatch, false); err != nil {
 		return err
 	}
@@ -141,7 +157,7 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 
 // GetLatestSavePoint implements method in VersionedDB interface
 func (vdb *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
-	versionBytes, err := vdb.db.Get(savePointKey)
+	versionBytes, err := vdb.db.Get(constructSavepointKey(vdb.dbName))
 	if err != nil {
 		return nil, err
 	}
@@ -163,16 +179,23 @@ func decodeValue(encodedValue []byte) ([]byte, *version.Height) {
 	return value, version
 }
 
-func constructCompositeKey(ns string, key string) []byte {
-	compositeKey := []byte(ns)
+func constructCompositeKey(dbName string, ns string, key string) []byte {
+	compositeKey := []byte(dbName)
+	compositeKey = append(compositeKey, compositeKeySep...)
+	compositeKey = append(compositeKey, []byte(ns)...)
 	compositeKey = append(compositeKey, compositeKeySep...)
 	compositeKey = append(compositeKey, []byte(key)...)
 	return compositeKey
 }
 
-func splitCompositeKey(compositeKey []byte) (string, string) {
-	split := bytes.SplitN(compositeKey, compositeKeySep, 2)
-	return string(split[0]), string(split[1])
+func splitCompositeKey(compositeKey []byte) (string, string, string) {
+	split := bytes.SplitN(compositeKey, compositeKeySep, 3)
+	return string(split[0]), string(split[1]), string(split[2])
+}
+
+func constructSavepointKey(dbName string) []byte {
+	key := savePointKey
+	return append(key, []byte(dbName)...)
 }
 
 type kvScanner struct {
@@ -188,7 +211,7 @@ func (scanner *kvScanner) Next() (*statedb.VersionedKV, error) {
 	if !scanner.dbItr.Next() {
 		return nil, nil
 	}
-	_, key := splitCompositeKey(scanner.dbItr.Key())
+	_, _, key := splitCompositeKey(scanner.dbItr.Key())
 	value, version := decodeValue(scanner.dbItr.Value())
 	return &statedb.VersionedKV{
 		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},

@@ -17,25 +17,25 @@ limitations under the License.
 package committer
 
 import (
-	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestKVLedgerBlockStorage(t *testing.T) {
-	conf := kvledger.NewConf("/tmp/tests/ledger/", 0)
-	defer os.RemoveAll("/tmp/tests/ledger/")
-
-	ledger, _ := kvledger.NewKVLedger(conf)
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/committertest")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
+	ledger, err := ledgermgmt.CreateLedger("TestLedger")
+	assert.NoError(t, err, "Error while creating ledger: %s", err)
 	defer ledger.Close()
 
 	committer := NewLedgerCommitter(ledger)
-
 	height, err := committer.LedgerHeight()
 	assert.Equal(t, uint64(0), height)
 	assert.NoError(t, err)
