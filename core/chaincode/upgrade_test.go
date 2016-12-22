@@ -83,7 +83,7 @@ func upgrade2(ctx context.Context, cccid *CCContext, chaincodeDeploymentSpec *pb
 
 	var versionBytes []byte
 	//write to lccc
-	if versionBytes, _, err = Execute(ctx, lcccid, cis); err != nil {
+	if versionBytes, _, err = ExecuteWithErrorFilter(ctx, lcccid, cis); err != nil {
 		return nil, fmt.Errorf("Error executing LCCC for upgrade: %s", err)
 	}
 
@@ -98,7 +98,7 @@ func upgrade2(ctx context.Context, cccid *CCContext, chaincodeDeploymentSpec *pb
 
 	newcccid := NewCCContext(cccid.ChainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name, newVersion, uuid, false, nil)
 
-	if _, _, err = Execute(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
+	if _, _, err = ExecuteWithErrorFilter(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode for upgrade: %s", err)
 	}
 

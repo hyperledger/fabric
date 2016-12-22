@@ -407,8 +407,8 @@ func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 //-------------- the chaincode stub interface implementation ----------
 
 //Init does nothing
-func (lccc *LifeCycleSysCC) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
+func (lccc *LifeCycleSysCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
+	return shim.Success(nil)
 }
 
 // Invoke implements lifecycle functions "deploy", "start", "stop", "upgrade".
@@ -416,10 +416,10 @@ func (lccc *LifeCycleSysCC) Init(stub shim.ChaincodeStubInterface) ([]byte, erro
 //
 // Invoke also implements some query-like functions
 // Get chaincode arguments -  {[]byte("getid"), []byte(<chainname>), []byte(<chaincodename>)}
-func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
 	if len(args) < 1 {
-		return nil, InvalidArgsLenErr(len(args))
+		return shim.Error(InvalidArgsLenErr(len(args)).Error())
 	}
 
 	function := string(args[0])
@@ -427,7 +427,7 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 	switch function {
 	case DEPLOY:
 		if len(args) != 3 {
-			return nil, InvalidArgsLenErr(len(args))
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
 		//chain the chaincode shoud be associated with. It
@@ -435,30 +435,36 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 		chainname := string(args[1])
 
 		if !lccc.isValidChainName(chainname) {
-			return nil, InvalidChainNameErr(chainname)
+			return shim.Error(InvalidChainNameErr(chainname).Error())
 		}
 
 		//bytes corresponding to deployment spec
 		code := args[2]
 
 		err := lccc.executeDeploy(stub, chainname, code)
-
-		return nil, err
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success(nil)
 	case UPGRADE:
 		if len(args) != 3 {
-			return nil, InvalidArgsLenErr(len(args))
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
 		chainname := string(args[1])
 		if !lccc.isValidChainName(chainname) {
-			return nil, InvalidChainNameErr(chainname)
+			return shim.Error(InvalidChainNameErr(chainname).Error())
 		}
 
 		code := args[2]
-		return lccc.executeUpgrade(stub, chainname, code)
+		verBytes, err := lccc.executeUpgrade(stub, chainname, code)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success(verBytes)
 	case GETCCINFO, GETDEPSPEC, GETCCDATA:
 		if len(args) != 3 {
-			return nil, InvalidArgsLenErr(len(args))
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 
 		chain := string(args[1])
@@ -468,16 +474,16 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, er
 		cd, cdbytes, _ := lccc.getChaincode(stub, chain, ccname)
 		if cd == nil || cdbytes == nil {
 			logger.Debug("ChaincodeID [%s/%s] does not exist", chain, ccname)
-			return nil, TXNotFoundErr(ccname + "/" + chain)
+			return shim.Error(TXNotFoundErr(ccname + "/" + chain).Error())
 		}
 
 		if function == GETCCINFO {
-			return []byte(cd.Name), nil
+			return shim.Success([]byte(cd.Name))
 		} else if function == GETCCDATA {
-			return cdbytes, nil
+			return shim.Success(cdbytes)
 		}
-		return cd.DepSpec, nil
+		return shim.Success(cd.DepSpec)
 	}
 
-	return nil, InvalidFunctionErr(function)
+	return shim.Error(InvalidFunctionErr(function).Error())
 }

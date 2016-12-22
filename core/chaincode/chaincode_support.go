@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -339,6 +340,15 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 		case ccMsg := <-notfy:
 			if ccMsg.Type == pb.ChaincodeMessage_ERROR {
 				err = fmt.Errorf("Error initializing container %s: %s", canName, string(ccMsg.Payload))
+			}
+			if ccMsg.Type == pb.ChaincodeMessage_COMPLETED {
+				res := &pb.Response{}
+				_ = proto.Unmarshal(ccMsg.Payload, res)
+				if res.Status != shim.OK {
+					err = fmt.Errorf("Error initializing container %s: %s", canName, string(res.Message))
+				}
+				// TODO
+				// return res so that endorser can anylyze it.
 			}
 		case <-time.After(timeout):
 			err = fmt.Errorf("Timeout expired while executing send init message")

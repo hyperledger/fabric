@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -53,10 +54,10 @@ const (
 // Init is called once per chain when the chain is created.
 // This allows the chaincode to initialize any variables on the ledger prior
 // to any transaction execution on the chain.
-func (e *LedgerQuerier) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (e *LedgerQuerier) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	qscclogger.Info("Init QSCC")
 
-	return nil, nil
+	return shim.Success(nil)
 }
 
 // Invoke is called with args[0] contains the query function name, args[1]
@@ -71,22 +72,22 @@ func (e *LedgerQuerier) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
 // supports it. The result is a JSON array in a byte array. Note that error
 // may be returned together with a valid partial result as error might occur
 // during accummulating records from the ledger
-func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
 
 	if len(args) < 2 {
-		return nil, fmt.Errorf("Incorrect number of arguments, %d", len(args))
+		return shim.Error(fmt.Sprintf("Incorrect number of arguments, %d", len(args)))
 	}
 	fname := string(args[0])
 	cid := string(args[1])
 
 	if fname != GetChainInfo && len(args) < 3 {
-		return nil, fmt.Errorf("missing 3rd argument for %s", fname)
+		return shim.Error(fmt.Sprintf("missing 3rd argument for %s", fname))
 	}
 
 	targetLedger := peer.GetLedger(cid)
 	if targetLedger == nil {
-		return nil, fmt.Errorf("Invalid chain ID, %s", cid)
+		return shim.Error(fmt.Sprintf("Invalid chain ID, %s", cid))
 	}
 	if qscclogger.IsEnabledFor(logging.DEBUG) {
 		qscclogger.Debugf("Invoke function: %s on chain: %s", fname, cid)
@@ -107,17 +108,18 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error)
 		return getChainInfo(targetLedger)
 	}
 
-	return nil, fmt.Errorf("Requested function %s not found.", fname)
+	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
 }
 
 // Execute the specified query string
-func getQueryResult(vledger ledger.PeerLedger, query []byte) (ret []byte, err error) {
+func getQueryResult(vledger ledger.PeerLedger, query []byte) (res pb.Response) {
 	if query == nil {
-		return nil, fmt.Errorf("Query string must not be nil.")
+		return shim.Error("Query string must not be nil.")
 	}
 	qstring := string(query)
 	var qexe ledger.QueryExecutor
 	var ri ledger.ResultsIterator
+	var err error
 
 	// We install a recover() to gain control in 2 cases
 	// 1) bytes.Buffer panics, which happens when out of memory
@@ -129,15 +131,15 @@ func getQueryResult(vledger ledger.PeerLedger, query []byte) (ret []byte, err er
 			if qscclogger.IsEnabledFor(logging.DEBUG) {
 				qscclogger.Debugf("Recovering panic: %s", panicValue)
 			}
-			err = fmt.Errorf("Error recovery: %s", panicValue)
+			res = shim.Error(fmt.Sprintf("Error recovery: %s", panicValue))
 		}
 	}()
 
 	if qexe, err = vledger.NewQueryExecutor(); err != nil {
-		return nil, err
+		return shim.Error(err.Error())
 	}
 	if ri, err = qexe.ExecuteQuery(qstring); err != nil {
-		return nil, err
+		return shim.Error(err.Error())
 	}
 	defer ri.Close()
 
@@ -159,8 +161,8 @@ func getQueryResult(vledger ledger.PeerLedger, query []byte) (ret []byte, err er
 	buffer.WriteString("]")
 
 	// Return what we have accummulated
-	ret = buffer.Bytes()
-	return ret, err
+	ret := buffer.Bytes()
+	return shim.Success(ret)
 }
 
 // Append QueryRecord into buffer as a JSON record of the form {namespace, key, record}
@@ -186,53 +188,73 @@ func collectRecord(buffer *bytes.Buffer, rec *ledger.QueryRecord) {
 	buffer.WriteString("}")
 }
 
-func getTransactionByID(vledger ledger.PeerLedger, tid []byte) ([]byte, error) {
+func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
 	if tid == nil {
-		return nil, fmt.Errorf("Transaction ID must not be nil.")
+		return shim.Error("Transaction ID must not be nil.")
 	}
 	tx, err := vledger.GetTransactionByID(string(tid))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get transaction with id %s, error %s", string(tid), err)
+		return shim.Error(fmt.Sprintf("Failed to get transaction with id %s, error %s", string(tid), err))
 	}
 	// TODO: tx is *pb.Transaction, what should we return?
 
-	return utils.Marshal(tx)
+	bytes, err := utils.Marshal(tx)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(bytes)
 }
 
-func getBlockByNumber(vledger ledger.PeerLedger, number []byte) ([]byte, error) {
+func getBlockByNumber(vledger ledger.PeerLedger, number []byte) pb.Response {
 	if number == nil {
-		return nil, fmt.Errorf("Block number must not be nil.")
+		return shim.Error("Block number must not be nil.")
 	}
 	bnum, err := strconv.ParseUint(string(number), 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse block number with error %s", err)
+		return shim.Error(fmt.Sprintf("Failed to parse block number with error %s", err))
 	}
 	block, err := vledger.GetBlockByNumber(bnum)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get block number %d, error %s", bnum, err)
+		return shim.Error(fmt.Sprintf("Failed to get block number %d, error %s", bnum, err))
 	}
 	// TODO: consider trim block content before returning
 
-	return utils.Marshal(block)
+	bytes, err := utils.Marshal(block)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(bytes)
 }
 
-func getBlockByHash(vledger ledger.PeerLedger, hash []byte) ([]byte, error) {
+func getBlockByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 	if hash == nil {
-		return nil, fmt.Errorf("Block hash must not be nil.")
+		return shim.Error("Block hash must not be nil.")
 	}
 	block, err := vledger.GetBlockByHash(hash)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get block hash %s, error %s", string(hash), err)
+		return shim.Error(fmt.Sprintf("Failed to get block hash %s, error %s", string(hash), err))
 	}
 	// TODO: consider trim block content before returning
 
-	return utils.Marshal(block)
+	bytes, err := utils.Marshal(block)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(bytes)
 }
 
-func getChainInfo(vledger ledger.PeerLedger) ([]byte, error) {
+func getChainInfo(vledger ledger.PeerLedger) pb.Response {
 	binfo, err := vledger.GetBlockchainInfo()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get block info with error %s", err)
+		return shim.Error(fmt.Sprintf("Failed to get block info with error %s", err))
 	}
-	return utils.Marshal(binfo)
+	bytes, err := utils.Marshal(binfo)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(bytes)
 }

@@ -35,8 +35,8 @@ func TestInit(t *testing.T) {
 	e := new(LedgerQuerier)
 	stub := shim.NewMockStub("LedgerQuerier", e)
 
-	if _, err := stub.MockInit("1", nil); err != nil {
-		fmt.Println("Init failed", err)
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
 }
@@ -51,8 +51,8 @@ func TestQueryGetChainInfo(t *testing.T) {
 	stub := shim.NewMockStub("LedgerQuerier", e)
 
 	args := [][]byte{[]byte(GetChainInfo), []byte("mytestchainid2")}
-	if _, err := stub.MockInvoke("1", args); err != nil {
-		t.Fatalf("qscc GetChainInfo failed with err: %s", err)
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.Fatalf("qscc GetChainInfo failed with err: %s", res.Message)
 	}
 }
 
@@ -66,7 +66,7 @@ func TestQueryGetTransactionByID(t *testing.T) {
 	stub := shim.NewMockStub("LedgerQuerier", e)
 
 	args := [][]byte{[]byte(GetTransactionByID), []byte("mytestchainid3"), []byte("1")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("qscc getTransactionByID should have failed with invalid txid: 1")
 	}
 }
@@ -82,7 +82,7 @@ func TestQueryWithWrongParameters(t *testing.T) {
 
 	// Test with wrong number of parameters
 	args := [][]byte{[]byte(GetTransactionByID), []byte("mytestchainid4")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("qscc getTransactionByID should have failed with invalid txid: 1")
 	}
 }
@@ -98,7 +98,7 @@ func TestQueryGetBlockByNumber(t *testing.T) {
 	stub := shim.NewMockStub("LedgerQuerier", e)
 
 	args := [][]byte{[]byte(GetBlockByNumber), []byte("mytestchainid5"), []byte("0")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("qscc GetBlockByNumber should have failed with invalid number: 0")
 	}
 }
@@ -113,7 +113,7 @@ func TestQueryGetBlockByHash(t *testing.T) {
 	stub := shim.NewMockStub("LedgerQuerier", e)
 
 	args := [][]byte{[]byte(GetBlockByHash), []byte("mytestchainid6"), []byte("0")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("qscc GetBlockByHash should have failed with invalid hash: 0")
 	}
 }
@@ -128,7 +128,7 @@ func TestQueryGetQueryResult(t *testing.T) {
 	stub := shim.NewMockStub("LedgerQuerier", e)
 	qstring := "{\"selector\":{\"key\":\"value\"}}"
 	args := [][]byte{[]byte(GetQueryResult), []byte("mytestchainid7"), []byte(qstring)}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("qscc GetQueryResult should have failed with invalid query: abc")
 	}
 }

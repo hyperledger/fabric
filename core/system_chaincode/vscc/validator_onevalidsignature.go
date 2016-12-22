@@ -17,13 +17,13 @@ limitations under the License.
 package vscc
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
@@ -37,9 +37,9 @@ type ValidatorOneValidSignature struct {
 }
 
 // Init is called once when the chaincode started the first time
-func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	// best practice to do nothing (or very little) in Init
-	return nil, nil
+	return shim.Success(nil)
 }
 
 // Invoke is called to validate the specified block of transactions
@@ -51,22 +51,22 @@ func (vscc *ValidatorOneValidSignature) Init(stub shim.ChaincodeStubInterface) (
 // @return serialized Block of valid and invalid transactions indentified
 // Note that Peer calls this function with 3 arguments, where args[0] is the
 // function name, args[1] is the Envelope and args[2] is the validation policy
-func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	// TODO: document the argument in some white paper or design document
 	// args[0] - function name (not used now)
 	// args[1] - serialized Envelope
 	// args[2] - serialized policy
 	args := stub.GetArgs()
 	if len(args) < 3 {
-		return nil, errors.New("Incorrect number of arguments")
+		return shim.Error("Incorrect number of arguments")
 	}
 
 	if args[1] == nil {
-		return nil, errors.New("No block to validate")
+		return shim.Error("No block to validate")
 	}
 
 	if args[2] == nil {
-		return nil, errors.New("No policy supplied")
+		return shim.Error("No policy supplied")
 	}
 
 	logger.Infof("VSCC invoked")
@@ -75,14 +75,14 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 	env, err := utils.GetEnvelopeFromBlock(args[1])
 	if err != nil {
 		logger.Errorf("VSCC error: GetEnvelope failed, err %s", err)
-		return nil, err
+		return shim.Error(err.Error())
 	}
 
 	// ...and the payload...
 	payl, err := utils.GetPayload(env)
 	if err != nil {
 		logger.Errorf("VSCC error: GetPayload failed, err %s", err)
-		return nil, err
+		return shim.Error(err.Error())
 	}
 
 	// get the policy
@@ -91,20 +91,20 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 	policy, err := pProvider.NewPolicy(args[2])
 	if err != nil {
 		logger.Errorf("VSCC error: pProvider.NewPolicy failed, err %s", err)
-		return nil, err
+		return shim.Error(err.Error())
 	}
 
 	// validate the payload type
 	if common.HeaderType(payl.Header.ChainHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION {
 		logger.Errorf("Only Endorser Transactions are supported, provided type %d", payl.Header.ChainHeader.Type)
-		return nil, fmt.Errorf("Only Endorser Transactions are supported, provided type %d", payl.Header.ChainHeader.Type)
+		return shim.Error(fmt.Sprintf("Only Endorser Transactions are supported, provided type %d", payl.Header.ChainHeader.Type))
 	}
 
 	// ...and the transaction...
 	tx, err := utils.GetTransaction(payl.Data)
 	if err != nil {
 		logger.Errorf("VSCC error: GetTransaction failed, err %s", err)
-		return nil, err
+		return shim.Error(err.Error())
 	}
 
 	// loop through each of the actions within
@@ -112,12 +112,11 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		cap, err := utils.GetChaincodeActionPayload(act.Payload)
 		if err != nil {
 			logger.Errorf("VSCC error: GetChaincodeActionPayload failed, err %s", err)
-			return nil, err
+			return shim.Error(err.Error())
 		}
 
 		// this is the first part of the signed message
 		prespBytes := cap.Action.ProposalResponsePayload
-
 		// build the signature set for the evaluation
 		signatureSet := make([]*common.SignedData, len(cap.Action.Endorsements))
 
@@ -136,12 +135,11 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		// evaluate the signature set against the policy
 		err = policy.Evaluate(signatureSet)
 		if err != nil {
-			logger.Errorf("VSCC error: policy evaluation failed, err %s", err)
-			return nil, err
+			return shim.Error(fmt.Sprintf("VSCC error: policy evaluation failed, err %s", err))
 		}
 	}
 
 	logger.Infof("VSCC exists successfully")
 
-	return nil, nil
+	return shim.Success(nil)
 }

@@ -16,6 +16,7 @@ limitations under the License.
 package chaincode
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -28,8 +29,8 @@ import (
 
 func register(stub *shim.MockStub, ccname string) error {
 	args := [][]byte{[]byte("register"), []byte(ccname)}
-	if _, err := stub.MockInvoke("1", args); err != nil {
-		return err
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		return fmt.Errorf(string(res.Message))
 	}
 	return nil
 }
@@ -75,7 +76,7 @@ func TestDeploy(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 }
@@ -89,8 +90,10 @@ func TestInvalidCodeDeploy(t *testing.T) {
 
 	baddepspec := []byte("bad deploy spec")
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), baddepspec}
-	_, err := stub.MockInvoke("1", args)
-	if _, ok := err.(InvalidDeploymentSpecErr); !ok {
+	res := stub.MockInvoke("1", args)
+	expectErr := InvalidDeploymentSpecErr("unexpected EOF")
+	if string(res.Message) != expectErr.Error() {
+		t.Logf("get result: %+v", res)
 		t.FailNow()
 	}
 }
@@ -113,8 +116,9 @@ func TestInvalidChaincodeName(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	_, err = stub.MockInvoke("1", args)
-	if _, ok := err.(InvalidChaincodeNameErr); !ok {
+	res := stub.MockInvoke("1", args)
+	if string(res.Message) != InvalidChaincodeNameErr("").Error() {
+		t.Logf("Get error: %s", res.Message)
 		t.FailNow()
 	}
 }
@@ -133,14 +137,14 @@ func TestRedeploy(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 
 	//this should fail with exists error
 	args = [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	_, err = stub.MockInvoke("1", args)
-	if _, ok := err.(ExistsErr); !ok {
+	res := stub.MockInvoke("1", args)
+	if string(res.Message) != ExistsErr("example02").Error() {
 		t.FailNow()
 	}
 }
@@ -159,12 +163,12 @@ func TestCheckCC(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 
 	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 }
@@ -184,12 +188,12 @@ func TestMultipleDeploy(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 
 	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 
@@ -200,12 +204,12 @@ func TestMultipleDeploy(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 
 	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 }
@@ -226,25 +230,26 @@ func TestRetryFailedDeploy(t *testing.T) {
 
 	//send invalid chain name name that should fail
 	args := [][]byte{[]byte(DEPLOY), []byte(""), b}
-	if _, err = stub.MockInvoke("1", args); err == nil {
+	res := stub.MockInvoke("1", args)
+	if res.Status == shim.OK {
 		//expected error but got success
 		t.FailNow()
 	}
 
-	if _, ok := err.(InvalidChainNameErr); !ok {
+	if string(res.Message) != InvalidChainNameErr("").Error() {
 		//expected invalid chain name
 		t.FailNow()
 	}
 
 	//deploy correctly now
 	args = [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
 
 	//get the deploymentspec
 	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
-	if depspec, err := stub.MockInvoke("1", args); err != nil || depspec == nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK || res.Payload == nil {
 		t.FailNow()
 	}
 }
@@ -263,7 +268,7 @@ func TestUpgrade(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.Fatalf("Deploy chaincode error: %v", err)
 	}
 
@@ -274,13 +279,13 @@ func TestUpgrade(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
-	version, err := stub.MockInvoke("1", args)
-	if err != nil {
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
 		t.Fatalf("Upgrade chaincode error: %v", err)
 	}
 
 	expectVer := "1"
-	newVer := string(version)
+	newVer := string(res.Payload)
 	if newVer != expectVer {
 		t.Fatalf("Upgrade chaincode version error, expected %s, got %s", expectVer, newVer)
 	}
@@ -300,8 +305,8 @@ func TestUpgradeNonExistChaincode(t *testing.T) {
 	}
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
-	if _, err := stub.MockInvoke("1", args); err != nil {
-		t.Fatalf("Deploy chaincode error: %v", err)
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.Fatalf("Deploy chaincode error: %s", res.Message)
 	}
 
 	newCds, err := constructDeploymentSpec("example03", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
@@ -311,8 +316,8 @@ func TestUpgradeNonExistChaincode(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte(UPGRADE), []byte("test"), newb}
-	_, err = stub.MockInvoke("1", args)
-	if _, ok := err.(NotFoundErr); !ok {
+	res := stub.MockInvoke("1", args)
+	if string(res.Message) != NotFoundErr("test").Error() {
 		t.FailNow()
 	}
 }

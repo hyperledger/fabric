@@ -21,14 +21,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-//Execute - execute proposal
-func Execute(ctxt context.Context, cccid *CCContext, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+//Execute - execute proposal, return original response of chaincode
+func Execute(ctxt context.Context, cccid *CCContext, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var err error
 	var cds *pb.ChaincodeDeploymentSpec
 	var ci *pb.ChaincodeInvocationSpec
@@ -82,6 +84,11 @@ func Execute(ctxt context.Context, cccid *CCContext, spec interface{}) ([]byte, 
 		} else if resp == nil {
 			// Rollback transaction
 			return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", cccid.TxID)
+		}
+		res := &pb.Response{}
+		unmarshalErr := proto.Unmarshal(resp.Payload, res)
+		if unmarshalErr != nil {
+			return nil, nil, fmt.Errorf("Failed to unmarshal response for (%s): %s", cccid.TxID, unmarshalErr)
 		} else {
 			if resp.ChaincodeEvent != nil {
 				resp.ChaincodeEvent.ChaincodeID = cccid.Name
@@ -90,16 +97,37 @@ func Execute(ctxt context.Context, cccid *CCContext, spec interface{}) ([]byte, 
 
 			if resp.Type == pb.ChaincodeMessage_COMPLETED {
 				// Success
-				return resp.Payload, resp.ChaincodeEvent, nil
+				return res, resp.ChaincodeEvent, nil
 			} else if resp.Type == pb.ChaincodeMessage_ERROR {
 				// Rollback transaction
 				return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction returned with failure: %s", string(resp.Payload))
 			}
-			return resp.Payload, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", cccid.TxID, resp.Type)
+			return res, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", cccid.TxID, resp.Type)
 		}
 
 	}
-	return nil, nil, err
+	return &pb.Response{Status: shim.OK, Payload: nil}, nil, err
+}
+
+// ExecuteWithErrorFilter is similar to Execute, but filters error contained in chaincode response and returns Payload of response only.
+// Mostly used by unit-test.
+func ExecuteWithErrorFilter(ctxt context.Context, cccid *CCContext, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+	res, event, err := Execute(ctxt, cccid, spec)
+	if err != nil {
+		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s error: %s", cccid.Name, err)
+		return nil, nil, err
+	}
+
+	if res == nil {
+		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s get nil response without error", cccid.Name)
+		return nil, nil, err
+	}
+
+	if res.Status != shim.OK {
+		return nil, nil, fmt.Errorf("%s", res.Message)
+	}
+
+	return res.Payload, event, nil
 }
 
 // GetSecureContext returns the security context from the context object or error

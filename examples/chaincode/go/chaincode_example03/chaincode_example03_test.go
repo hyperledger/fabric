@@ -23,9 +23,9 @@ import (
 )
 
 func checkInit(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args [][]byte) {
-	_, err := stub.MockInit("1", args)
-	if err != nil {
-		fmt.Println("Init failed", err)
+	res := stub.MockInit("1", args)
+	if res.Status != shim.OK {
+		fmt.Println("Init failed", res.Message)
 		t.FailNow()
 	}
 }
@@ -42,30 +42,10 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 	}
 }
 
-func checkQuery(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args [][]byte) {
-	_, err := stub.MockInit("1", args)
-	bytes, err := scc.Invoke(stub)
-	if err != nil {
-		// expected failure
-		fmt.Println("Query below is expected to fail")
-		fmt.Println("Query failed", err)
-		fmt.Println("Query above is expected to fail")
-
-		if err.Error() != "{\"Error\":\"Cannot put state within chaincode query\"}" {
-			fmt.Println("Failure was not the expected \"Cannot put state within chaincode query\" : ", err)
-			t.FailNow()
-		}
-
-	} else {
-		fmt.Println("Query did not fail as expected (PutState within Query)!", bytes, err)
-		t.FailNow()
-	}
-}
-
 func checkInvoke(t *testing.T, scc *SimpleChaincode, stub *shim.MockStub, args [][]byte) {
-	_, err := stub.MockInvoke("1", args)
-	if err != nil {
-		fmt.Println("Invoke", args, "failed", err)
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		fmt.Println("Query failed", string(res.Message))
 		t.FailNow()
 	}
 }
@@ -80,17 +60,13 @@ func TestExample03_Init(t *testing.T) {
 	checkState(t, stub, "A", "123")
 }
 
-func TestExample03_Query(t *testing.T) {
+func TestExample03_Invoke(t *testing.T) {
 	scc := new(SimpleChaincode)
 	stub := shim.NewMockStub("ex03", scc)
 
 	// Init A=345 B=456
 	checkInit(t, scc, stub, [][]byte{[]byte("init"), []byte("A"), []byte("345")})
 
-	// Query A
-	checkQuery(t, scc, stub, [][]byte{[]byte("query"), []byte("A"), []byte("345")})
-}
-
-func TestExample03_Invoke(t *testing.T) {
-	// Example03 does not implement Invoke()
+	// Invoke "query"
+	checkInvoke(t, scc, stub, [][]byte{[]byte("query"), []byte("A"), []byte("345")})
 }

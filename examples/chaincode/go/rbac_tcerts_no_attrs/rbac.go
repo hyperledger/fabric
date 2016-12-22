@@ -26,6 +26,7 @@ import (
 
 	"github.com/hyperledger/fabric/accesscontrol/impl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
 
@@ -42,12 +43,8 @@ type RBACChaincode struct {
 }
 
 // Init method will be called during deployment
-func (t *RBACChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-
+func (t *RBACChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	myLogger.Info("Init")
-	// if len(args) != 0 {
-	// 	return nil, errors.New("Incorrect number of arguments. Expecting 0")
-	// }
 
 	myLogger.Debug("Creating RBAC Table...")
 
@@ -57,7 +54,7 @@ func (t *RBACChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
 		&shim.ColumnDefinition{Name: "Roles", Type: shim.ColumnDefinition_STRING, Key: false},
 	})
 	if err != nil {
-		return nil, errors.New("Failed creating RBAC table.")
+		return shim.Error("Failed creating RBAC table.")
 	}
 
 	myLogger.Debug("Assign 'admin' role...")
@@ -65,10 +62,10 @@ func (t *RBACChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
 	// Give to the deployer the role 'admin'
 	deployer, err := stub.GetCallerMetadata()
 	if err != nil {
-		return nil, errors.New("Failed getting metadata.")
+		return shim.Error("Failed getting metadata.")
 	}
 	if len(deployer) == 0 {
-		return nil, errors.New("Invalid admin certificate. Empty.")
+		return shim.Error("Invalid admin certificate. Empty.")
 	}
 
 	myLogger.Debug("Add admin [% x][%s]", deployer, "admin")
@@ -79,19 +76,19 @@ func (t *RBACChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
 		},
 	})
 	if !ok && err == nil {
-		return nil, fmt.Errorf("Failed initiliazing RBAC entries.")
+		return shim.Error("Failed initiliazing RBAC entries.")
 	}
 	if err != nil {
-		return nil, fmt.Errorf("Failed initiliazing RBAC entries [%s]", err)
+		return shim.Error(fmt.Sprintf("Failed initiliazing RBAC entries [%s]", err))
 	}
 
 	myLogger.Debug("Done.")
 
-	return nil, nil
+	return shim.Success(nil)
 }
 
 // Invoke Run callback representing the invocation of a chaincode
-func (t *RBACChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *RBACChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	// Handle different functions
 	switch function {
@@ -103,16 +100,16 @@ func (t *RBACChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error)
 		return t.read(stub, args)
 	}
 
-	return nil, fmt.Errorf("Received unknown function invocation [%s]", function)
+	return shim.Error(fmt.Sprintf("Received unknown function invocation [%s]", function))
 }
 
-func (t *RBACChaincode) addRole(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *RBACChaincode) addRole(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 2")
+		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 	id, err := base64.StdEncoding.DecodeString(args[0])
 	if err != nil {
-		return nil, fmt.Errorf("Failed decoding tcert:  %s", err)
+		return shim.Error(fmt.Sprintf("Failed decoding tcert:  %s", err))
 	}
 	//id := []byte(args[0])
 	role := args[1]
@@ -122,10 +119,10 @@ func (t *RBACChaincode) addRole(stub shim.ChaincodeStubInterface, args []string)
 	// Verify that the invoker has the 'admin' role
 	ok, _, err := t.hasInvokerRole(stub, "admin")
 	if err != nil {
-		return nil, fmt.Errorf("Failed checking role [%s]", err)
+		return shim.Error(fmt.Sprintf("Failed checking role [%s]", err))
 	}
 	if !ok {
-		return nil, errors.New("The invoker does not have the required roles.")
+		return shim.Error("The invoker does not have the required roles.")
 	}
 
 	// Add role to id
@@ -137,7 +134,7 @@ func (t *RBACChaincode) addRole(stub shim.ChaincodeStubInterface, args []string)
 	columns = append(columns, idCol)
 	row, err := stub.GetRow("RBAC", columns)
 	if err != nil {
-		return nil, fmt.Errorf("Failed retriving associated row [%s]", err)
+		return shim.Error(fmt.Sprintf("Failed retriving associated row [%s]", err))
 	}
 	if len(row.Columns) == 0 {
 		// Insert row
@@ -148,10 +145,10 @@ func (t *RBACChaincode) addRole(stub shim.ChaincodeStubInterface, args []string)
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("Failed inserting row [%s]", err)
+			return shim.Error(fmt.Sprintf("Failed inserting row [%s]", err))
 		}
 		if !ok {
-			return nil, errors.New("Failed inserting row.")
+			return shim.Error("Failed inserting row.")
 		}
 
 	} else {
@@ -163,44 +160,44 @@ func (t *RBACChaincode) addRole(stub shim.ChaincodeStubInterface, args []string)
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("Failed replacing row [%s]", err)
+			return shim.Error(fmt.Sprintf("Failed replacing row [%s]", err))
 		}
 		if !ok {
-			return nil, errors.New("Failed replacing row.")
+			return shim.Error("Failed replacing row.")
 		}
 	}
 
-	return nil, err
+	return shim.Success(nil)
 }
 
-func (t *RBACChaincode) read(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *RBACChaincode) read(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	if len(args) != 0 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 0")
+		return shim.Error("Incorrect number of arguments. Expecting 0")
 	}
 	myLogger.Debug("Read...")
 
 	// Verify that the invoker has the 'reader' role
 	ok, _, err := t.hasInvokerRole(stub, "reader")
 	if err != nil {
-		return nil, fmt.Errorf("Failed checking role [%s]", err)
+		return shim.Error(fmt.Sprintf("Failed checking role [%s]", err))
 	}
 	if !ok {
-		return nil, fmt.Errorf("The invoker does not have the required roles")
+		return shim.Error("The invoker does not have the required roles")
 	}
 
 	res, err := stub.GetState("state")
 	if err != nil {
-		return nil, fmt.Errorf("Failed getting state [%s]", err)
+		return shim.Error(fmt.Sprintf("Failed getting state [%s]", err))
 	}
 
 	myLogger.Debug("State [%s]", string(res))
 
-	return res, nil
+	return shim.Success(res)
 }
 
-func (t *RBACChaincode) write(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *RBACChaincode) write(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 1")
+		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
 
 	value := args[0]
@@ -210,13 +207,18 @@ func (t *RBACChaincode) write(stub shim.ChaincodeStubInterface, args []string) (
 	// Verify that the invoker has the 'writer' role
 	ok, _, err := t.hasInvokerRole(stub, "writer")
 	if err != nil {
-		return nil, fmt.Errorf("Failed checking role [%s]", err)
+		return shim.Error(fmt.Sprintf("Failed checking role [%s]", err))
 	}
 	if !ok {
-		return nil, errors.New("The invoker does not have the required roles.")
+		return shim.Error("The invoker does not have the required roles.")
 	}
 
-	return nil, stub.PutState("state", []byte(value))
+	err = stub.PutState("state", []byte(value))
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
 }
 
 func (t *RBACChaincode) hasInvokerRole(stub shim.ChaincodeStubInterface, role string) (bool, []byte, error) {

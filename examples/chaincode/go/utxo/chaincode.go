@@ -37,12 +37,12 @@ type SimpleChaincode struct {
 }
 
 // Init does nothing in the UTXO chaincode
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	return nil, nil
 }
 
 // Invoke callback representing the invocation of a chaincode
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	switch function {
 
