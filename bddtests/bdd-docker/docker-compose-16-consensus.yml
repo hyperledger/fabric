@@ -1,0 +1,212 @@
+membersrvc0:
+  extends:
+    file: compose-defaults.yml
+    service: membersrvc
+
+vp0:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp0
+    - CORE_SECURITY_ENROLLID=test_vp0
+    - CORE_SECURITY_ENROLLSECRET=MwYpmSRjupbT
+  links:
+    - membersrvc0
+  ports:
+    - 7050:6060
+
+vp1:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp1
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp1
+    - CORE_SECURITY_ENROLLSECRET=5wgHK9qqYaPy
+  links:
+    - membersrvc0
+    - vp0
+
+vp2:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp2
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp2
+    - CORE_SECURITY_ENROLLSECRET=vQelbRvja7cJ
+  links:
+    - membersrvc0
+    - vp0
+
+vp3:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp3
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp3
+    - CORE_SECURITY_ENROLLSECRET=9LKqKH5peurL
+  links:
+    - membersrvc0
+    - vp0
+
+vp4:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp4
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp4
+    - CORE_SECURITY_ENROLLSECRET=Pqh90CEW5juZ
+  links:
+    - membersrvc0
+    - vp0
+
+vp5:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp5
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp5
+    - CORE_SECURITY_ENROLLSECRET=FfdvDkAdY81P
+  links:
+    - membersrvc0
+    - vp0
+
+vp6:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp6
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp6
+    - CORE_SECURITY_ENROLLSECRET=QiXJgHyV4t7A
+  links:
+    - membersrvc0
+    - vp0
+
+vp7:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp7
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp7
+    - CORE_SECURITY_ENROLLSECRET=twoKZouEyLyB
+  links:
+    - membersrvc0
+    - vp0
+
+vp8:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp8
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp8
+    - CORE_SECURITY_ENROLLSECRET=BxP7QNh778gI
+  links:
+    - membersrvc0
+    - vp0
+
+vp9:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp9
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp9
+    - CORE_SECURITY_ENROLLSECRET=wu3F1EwJWHvQ
+  links:
+    - membersrvc0
+    - vp0
+
+vp10:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp10
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp10
+    - CORE_SECURITY_ENROLLSECRET=hNeS24SKJtMD
+  links:
+    - membersrvc0
+    - vp0
+
+vp11:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp11
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp11
+    - CORE_SECURITY_ENROLLSECRET=ezTbMAUccdLy
+  links:
+    - membersrvc0
+    - vp0
+
+vp12:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp12
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp12
+    - CORE_SECURITY_ENROLLSECRET=MSDr2juOIooZ
+  links:
+    - membersrvc0
+    - vp0
+
+vp13:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp13
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp13
+    - CORE_SECURITY_ENROLLSECRET=DfPHFoFKj2jl
+  links:
+    - membersrvc0
+    - vp0
+
+vp14:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp14
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp14
+    - CORE_SECURITY_ENROLLSECRET=NyxEfwjy7vPL
+  links:
+    - membersrvc0
+    - vp0
+
+vp15:
+  extends:
+    file: docker-compose-16-consensus-base.yml
+    service: vpBatch
+  environment:
+    - CORE_PEER_ID=vp15
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp15
+    - CORE_SECURITY_ENROLLSECRET=sTHJYI3ndQH+
+  links:
+    - membersrvc0
+    - vp0

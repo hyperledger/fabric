@@ -1,0 +1,26 @@
+vpBase:
+  extends:
+    file: compose-defaults.yml
+    service: vp
+  environment:
+    - CORE_SECURITY_ENABLED=true
+    - CORE_PEER_PKI_ECA_PADDR=membersrvc0:7054
+    - CORE_PEER_PKI_TCA_PADDR=membersrvc0:7054
+    - CORE_PEER_PKI_TLSCA_PADDR=membersrvc0:7054
+    - CORE_PEER_PKI_TLS_ROOTCERT_FILE=./bddtests/tlsca.cert
+    # TODO: Currently required due to issue reading obcca configuration location
+    - CORE_PBFT_GENERAL_N=16
+    # You must set this or consensus will not halt as expected when N is greater than 4
+    - CORE_PBFT_GENERAL_F=5
+    # The checkpoint interval in sequence numbers
+    - CORE_PBFT_GENERAL_K=2
+
+vpBatch:
+  extends:
+    service: vpBase
+  environment:
+    - CORE_PEER_VALIDATOR_CONSENSUS_PLUGIN=pbft
+    - CORE_PBFT_GENERAL_TIMEOUT_REQUEST=10s
+    - CORE_PBFT_GENERAL_MODE=batch
+    # TODO: This is used for testing as to assure deployment goes through to block
+    - CORE_PBFT_GENERAL_BATCHSIZE=1

@@ -1,0 +1,66 @@
+membersrvc0:
+  extends:
+    file: compose-defaults.yml
+    service: membersrvc
+  volumes_from:
+    - bdddocker_dbstore_membersrvc0_1
+
+vp0:
+  extends:
+    file: docker-compose-4-consensus-base.yml
+    service: vpBase
+  volumes_from:
+    - bdddocker_dbstore_vp0_1
+  environment:
+    - CORE_PEER_ID=vp0
+    - CORE_SECURITY_ENROLLID=test_vp0
+    - CORE_SECURITY_ENROLLSECRET=MwYpmSRjupbT
+  links:
+    - membersrvc0
+  ports:
+    - 7050:6060
+
+vp1:
+  extends:
+    file: docker-compose-4-consensus-base.yml
+    service: vpBase
+  volumes_from:
+    - bdddocker_dbstore_vp1_1
+  environment:
+    - CORE_PEER_ID=vp1
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp1
+    - CORE_SECURITY_ENROLLSECRET=5wgHK9qqYaPy
+  links:
+    - membersrvc0
+    - vp0
+
+vp2:
+  extends:
+    file: docker-compose-4-consensus-base.yml
+    service: vpBase
+  volumes_from:
+    - bdddocker_dbstore_vp2_1
+  environment:
+    - CORE_PEER_ID=vp2
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp2
+    - CORE_SECURITY_ENROLLSECRET=vQelbRvja7cJ
+  links:
+    - membersrvc0
+    - vp0
+
+vp3:
+  extends:
+    file: docker-compose-4-consensus-base.yml
+    service: vpBase
+  volumes_from:
+    - bdddocker_dbstore_vp3_1
+  environment:
+    - CORE_PEER_ID=vp3
+    - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp3
+    - CORE_SECURITY_ENROLLSECRET=9LKqKH5peurL
+  links:
+    - membersrvc0
+    - vp0

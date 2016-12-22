@@ -11,6 +11,7 @@ Feature: Network of Peers
     I want to run a network of peers
 
 #    @wip
+@smoke
   Scenario: Peers list test, single peer issue #827
     Given we compose "docker-compose-1.yml"
       When requesting "/network/peers" from "vp0"
@@ -390,6 +391,7 @@ Feature: Network of Peers
 
 #    @doNotDecompose
 #    @wip
+@smoke
 	Scenario: chaincode example 02 single peer
 	    Given we compose "docker-compose-1.yml"
 	    When requesting "/chain" from "vp0"
@@ -460,6 +462,8 @@ Feature: Network of Peers
 
 #    @doNotDecompose
 #    @wip
+@scat
+@smoke
     @issue_567
     Scenario Outline: chaincode example02 with 4 peers and 1 membersrvc, issue #567
 
@@ -480,7 +484,7 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 | vp3 |
@@ -492,7 +496,7 @@ Feature: Network of Peers
             | a  | b  | 20 |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 | vp3 |
@@ -505,11 +509,11 @@ Feature: Network of Peers
         |   docker-compose-4-consensus-batch.yml   |      60      |
 
 
-    #@doNotDecompose
-    #@wip
+@scat
     @issue_680
     @fab380
     Scenario Outline: chaincode example02 with 4 peers and 1 membersrvc, issue #680 (State transfer)
+
         Given we compose "<ComposeFile>"
         And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
             | vp0  |
@@ -530,7 +534,7 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         # Build up a sizable blockchain, that vp3 will need to validate at startup
         When I invoke chaincode "example2" function name "invoke" on "vp0" "30" times
@@ -538,14 +542,13 @@ Feature: Network of Peers
             | b  | a  | 1  |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 | vp3 |
         Then I should get a JSON response from peers with "result.message" = "130"
             | vp0  | vp1 | vp2 | vp3 |
 
-        # STOPPING vp3!!!!!!!!!!!!!!!!!!!!!!!!!!
         Given I stop peers:
             | vp3 |
 
@@ -555,7 +558,7 @@ Feature: Network of Peers
             | a  | b  | 10 |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0 | vp1 | vp2 |
+            | vp1 | vp2 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0 | vp1 | vp2 |
@@ -572,7 +575,7 @@ Feature: Network of Peers
             | a  | b  | 10 |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 | vp3 |
         Then I should get a JSON response from peers with "result.message" = "20"
@@ -585,6 +588,8 @@ Feature: Network of Peers
         |   docker-compose-4-consensus-batch.yml docker-compose-4-consensus-batch-nosnapshotbuffer.yml    |      60      |
 
 
+#    @doNotDecompose
+@scat
     @issue_724
     Scenario Outline: chaincode example02 with 4 peers and 1 membersrvc, issue #724
 
@@ -605,7 +610,7 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
@@ -641,6 +646,8 @@ Feature: Network of Peers
         Then I should get a JSON response with "height" = "1"
 
 
+@scat
+@smoke
     Scenario Outline: 4 peers and 1 membersrvc, consensus still works if one backup replica fails
 
         Given we compose "<ComposeFile>"
@@ -662,7 +669,7 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         # get things started. All peers up and executing Txs
         When I invoke chaincode "example2" function name "invoke" on "vp0" "5" times
@@ -670,7 +677,7 @@ Feature: Network of Peers
             | a  | b  | 1  |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 | vp3 |
@@ -687,7 +694,7 @@ Feature: Network of Peers
             | a  | b  | 1 |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp3 |
+            | vp1 | vp3 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp3 |
@@ -698,6 +705,7 @@ Feature: Network of Peers
         |          ComposeFile                       |   WaitTime   |
         |   docker-compose-4-consensus-batch.yml     |      60      |
 
+@scat
     Scenario Outline: 4 peers and 1 membersrvc, consensus fails if 2 backup replicas fail
 
         Given we compose "<ComposeFile>"
@@ -719,7 +727,7 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         # get things started. All peers up and executing Txs
         When I invoke chaincode "example2" function name "invoke" on "vp0" "5" times
@@ -727,14 +735,13 @@ Feature: Network of Peers
             | a  | b  | 1  |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 | vp3 |
         Then I should get a JSON response from peers with "result.message" = "95"
             | vp0  | vp1 | vp2 | vp3 |
 
-        # STOP vp2
         Given I stop peers:
             | vp1  | vp2 |
 
@@ -777,14 +784,14 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
           Then I should have received a chaincode name
           Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 |
+            | vp1 | vp2 |
 
          When I invoke chaincode "example2" function name "invoke" on "vp0" "50" times
               |arg1|arg2|arg3|
               | a  | b  | 1  |
           Then I should have received a transactionID
           Then I wait up to "60" seconds for transaction to be committed to peers:
-              | vp0  | vp1 | vp2 |
+              | vp1 | vp2 |
 
          When I query chaincode "example2" function name "query" with value "a" on peers:
               | vp0  | vp1 | vp2 |
@@ -821,12 +828,13 @@ Feature: Network of Peers
                     |  a   |  100  |  b   |  200 |
       Then I should have received a chaincode name
       Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-                 | vp0  | vp1 | vp2 |
+                 | vp1 | vp2 |
 
     Examples: Consensus Options
         |          ComposeFile                                                       |   WaitTime   |
         |   docker-compose-4-consensus-batch.yml docker-compose-4-consensus-nvp0.yml |      60      |
 
+@scat
     @issue_1000
     Scenario Outline: chaincode example02 with 4 peers and 1 membersrvc, test crash fault
 
@@ -849,7 +857,7 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         # Build up a sizable blockchain, to advance the sequence number
         When I invoke chaincode "example2" function name "invoke" on "vp0" "30" times
@@ -857,14 +865,13 @@ Feature: Network of Peers
             | b  | a  | 1  |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
-            | vp0  | vp1 | vp2 | vp3 |
+|
         Then I should get a JSON response from peers with "result.message" = "130"
             | vp0  | vp1 | vp2 | vp3 |
 
-        # Stop vp1, vp2, vp3
         Given I stop peers:
             | vp1 | vp2 | vp3 |
 
@@ -878,7 +885,7 @@ Feature: Network of Peers
             | a  | b  | 10 |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 |
+            | vp1 | vp2 |
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 |
 	    Then I should get a JSON response from peers with "result.message" = "120"
@@ -891,6 +898,7 @@ Feature: Network of Peers
 
 
 
+@scat
     @issue_1091
     @doNotDecompose
     Scenario Outline: chaincode example02 with 4 peers and 1 membersrvc, issue #1091 (out of date peer)
@@ -914,9 +922,8 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 |
+            | vp1 | vp2 |
 
-        # STOPPING vp3!!!!!!!!!!!!!!!!!!!!!!!!!!
         Given I stop peers:
             | vp3  |
 
@@ -926,14 +933,13 @@ Feature: Network of Peers
             | b  | a  | 1  |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 |
+            | vp1 | vp2 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 |
         Then I should get a JSON response from peers with "result.message" = "101"
             | vp0  | vp1 | vp2 |
 
-        # Now start vp3 again
         Given I start peers, waiting up to "15" seconds for them to be ready:
             | vp3  |
 
@@ -943,9 +949,8 @@ Feature: Network of Peers
             | a  | b  | 10 |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 |
+            | vp1 | vp2 |
         When I query chaincode "example2" function name "query" with value "a" on peers:
-            | vp0  | vp1 | vp2 |
             | vp0  | vp1 | vp2 |
         Then I should get a JSON response from peers with "result.message" = "21"
 
@@ -985,7 +990,7 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "60" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 |
+            | vp1 | vp2 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 |
@@ -997,7 +1002,7 @@ Feature: Network of Peers
             | a  | b  |  1 |
         Then I should have received a transactionID
         Then I wait up to "20" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 |
+            | vp1 | vp2 |
 
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp0  | vp1 | vp2 |
@@ -1025,12 +1030,11 @@ Feature: Network of Peers
             |  a   |  100  |  b   |  200 |
         Then I should have received a chaincode name
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp0  | vp1 | vp2 | vp3 |
+            | vp1 | vp2 | vp3 |
 
         When requesting "/chain" from "vp0"
         Then I should get a JSON response with "height" = "2"
 
-        # STOP vp0
         Given I stop peers:
             | vp0  |
 
@@ -1042,7 +1046,7 @@ Feature: Network of Peers
             | a  | b  | 1 |
         Then I should have received a transactionID
         Then I wait up to "<WaitTime>" seconds for transaction to be committed to peers:
-            | vp1 | vp2 | vp3 |
+            | vp2 | vp3 |
         When I query chaincode "example2" function name "query" with value "a" on peers:
             | vp1 | vp2 | vp3 |
         Then I should get a JSON response from peers with "result.message" = "95"
@@ -1075,7 +1079,9 @@ Feature: Network of Peers
         |   docker-compose-2.yml   |
 
 
+@scat
 @issue_1942
+# @doNotDecompose
 Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
     Given we compose "docker-compose-4-consensus-batch.yml"
     And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
@@ -1095,7 +1101,7 @@ Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
                           |  a   |  1000 |  b   |   0  |
     Then I should have received a chaincode name
     Then I wait up to "60" seconds for transaction to be committed to peers:
-                          | vp0  | vp1 | vp2 | vp3 |
+                          | vp1 | vp2 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
                           | vp0 | vp1  | vp2 | vp3 |
@@ -1111,8 +1117,8 @@ Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
                           |arg1|arg2|arg3|
                           | a  | b  | 1  |
     Then I should have received a transactionID
-    Then I wait up to "60" seconds for transaction to be committed to peers:
-                          | vp0 | vp1 | vp3 |
+    Then I wait up to "180" seconds for transaction to be committed to peers:
+                          | vp1 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
                           | vp0  | vp1 | vp3 |
@@ -1127,14 +1133,15 @@ Scenario: chaincode example02 with 4 peers, stop and start alternates, reverse
     When I invoke chaincode "example2" function name "invoke" on "vp3" "20" times
                           |arg1|arg2|arg3|
                           | a  | b  | 1  |
-    Then I wait up to "60" seconds for transactions to be committed to peers:
-                          | vp0  | vp2 | vp3 |
+    Then I wait up to "180" seconds for transactions to be committed to peers:
+                          | vp2 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
                           | vp0  | vp2 | vp3 |
     Then I should get a JSON response from peers with "result.message" = "977"
                           | vp0  | vp2 | vp3 |
 
+@scat
 @issue_1874a
 #@doNotDecompose
 Scenario: chaincode example02 with 4 peers, two stopped
@@ -1156,7 +1163,7 @@ Scenario: chaincode example02 with 4 peers, two stopped
         |  a   |  100  |  b   |  200 |
     Then I should have received a chaincode name
     Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0 | vp1 | vp2 | vp3 |
+        | vp1 | vp2 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
         | vp0 | vp1 | vp2 | vp3 |
@@ -1176,7 +1183,8 @@ Scenario: chaincode example02 with 4 peers, two stopped
 
     # Make sure vp3 catches up first
     Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0 | vp1 | vp3 |
+        #| vp0 | vp1 | vp3 |
+        | vp1 | vp3 |
     When I query chaincode "example2" function name "query" with value "a" on peers:
         | vp0 | vp1 | vp3 |
     Then I should get a JSON response from peers with "result.message" = "90"
@@ -1187,14 +1195,17 @@ Scenario: chaincode example02 with 4 peers, two stopped
         | a  | b  | 10 |
     Then I should have received a transactionID
     Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0 | vp1 | vp3 |
+        #| vp0 | vp1 | vp3 |
+        | vp1 | vp3 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
         | vp0 | vp1 | vp3 |
     Then I should get a JSON response from peers with "result.message" = "0"
         | vp0 | vp1 | vp3 |
 
+@scat
 @issue_1874b
+#@doNotDecompose
 Scenario: chaincode example02 with 4 peers, two stopped, bring back vp0
     Given we compose "docker-compose-4-consensus-batch.yml"
     And I register with CA supplying username "binhn" and secret "7avZQLwcUe9q" on peers:
@@ -1214,7 +1225,7 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back vp0
         |  a   |  100  |  b   |  200 |
     Then I should have received a chaincode name
     Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0  | vp1 | vp2 |
+        | vp1 | vp2 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
         | vp0  | vp1 | vp2 | vp3 |
@@ -1243,22 +1254,19 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back vp0
     Given I start peers, waiting up to "15" seconds for them to be ready:
         | vp0  |
 
-    # Ensure transaction committed while vp0 was down is part of the ledger
-    Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0  | vp1 | vp2 |
-
     When I invoke chaincode "example2" function name "invoke" on "vp1" "8" times
         |arg1|arg2|arg3|
         | a  | b  | 10 |
     Then I should have received a transactionID
-    Then I wait up to "60" seconds for transactions to be committed to peers:
-        | vp0  | vp1 | vp2 |
+    Then I wait up to "60" seconds for transaction to be committed to peers:
+        | vp1 | vp2 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
         | vp0  | vp1 | vp2 |
     Then I should get a JSON response from peers with "result.message" = "0"
         | vp0  | vp1 | vp2 |
 
+@scat
 @issue_1874c
 Scenario: chaincode example02 with 4 peers, two stopped, bring back both
     Given we compose "docker-compose-4-consensus-batch.yml"
@@ -1279,7 +1287,7 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back both
         |  a   |  100  |  b   |  200 |
     Then I should have received a chaincode name
     Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0  | vp1 | vp2 |
+        | vp1 | vp2 |
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
         | vp0  | vp1 | vp2 | vp3 |
@@ -1302,7 +1310,7 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back both
         | a  | b  | 10 |
     Then I should have received a transactionID
     Then I wait up to "60" seconds for transaction to be committed to peers:
-        | vp0  | vp1 | vp2 | vp3 |
+        | vp1 | vp2 | vp3 |
     Then I wait "30" seconds
 
     When I query chaincode "example2" function name "query" with value "a" on peers:
@@ -1310,6 +1318,7 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back both
     Then I should get a JSON response from peers with "result.message" = "10"
         | vp0  | vp1 | vp2 | vp3 |
 
+@scat
     @issue_2116
     #@doNotDecompose
     Scenario Outline: chaincode authorizable_counter with 4 peers, two stopped, bring back both
@@ -1331,7 +1340,7 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back both
                 | 0    |
         Then I should have received a chaincode name
         Then I wait up to "60" seconds for transaction to be committed to peers:
-                | vp0  | vp1 | vp2 |
+                | vp1 | vp2 |
 
         When I query chaincode "authorizable_counter" function name "read" on "vp0":
                 |arg1|
@@ -1348,7 +1357,7 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back both
                 | a  | b  | 10 |
         Then I should have received a transactionID
         Then I wait up to "30" seconds for transaction to be committed to peers:
-                | vp0  | vp1 | vp2 | vp3 |
+                | vp1 | vp2 | vp3 |
 
         When I query chaincode "authorizable_counter" function name "read" with value "a" on peers:
                 | vp0  | vp1 | vp2 | vp3 |
@@ -1365,7 +1374,7 @@ Scenario: chaincode example02 with 4 peers, two stopped, bring back both
                 | a  |
 
         Then I wait up to "15" seconds for transaction to be committed to peers:
-                | vp0  | vp1 | vp2 | vp3 |
+                | vp1 | vp2 | vp3 |
 
         When I query chaincode "authorizable_counter" function name "read" with value "a" on peers:
                 | vp0  | vp1 | vp2 | vp3 |
