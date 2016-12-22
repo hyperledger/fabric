@@ -95,7 +95,7 @@ sudo chown -R vagrant:vagrant $GOPATH
 # Update limits.conf to increase nofiles for RocksDB
 sudo cp /hyperledger/devenv/limits.conf /etc/security/limits.conf
 
-# configure vagrant specific environment
+# Configure vagrant specific environment
 cat <<EOF >/etc/profile.d/vagrant-devenv.sh
 # Expose the devenv/tools in the $PATH
 export PATH=\$PATH:/hyperledger/devenv/tools:/hyperledger/build/bin
@@ -105,7 +105,11 @@ export CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 EOF
 
 # Set our shell prompt to something less ugly than the default from packer
-echo "PS1=\"\u@hyperledger-devenv:v$BASEIMAGE_RELEASE-$DEVENV_REVISION:\w$ \"" >> /home/vagrant/.bashrc
+# Also make it so that it cd's the user to the fabric dir upon logging in
+cat <<EOF >> /home/vagrant/.bashrc
+PS1="\u@hyperledger-devenv:v$BASEIMAGE_RELEASE-$DEVENV_REVISION:\w$ "
+cd $GOPATH/src/github.com/hyperledger/fabric/
+EOF
 
 # finally, remove our warning so the user knows this was successful
 rm /etc/motd
