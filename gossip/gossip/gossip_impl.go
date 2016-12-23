@@ -523,9 +523,15 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(am *proto.AliveMessage) boo
 
 	var identity api.PeerIdentityType
 
-	// If signature is included inside AliveMessage
+	// If identity is included inside AliveMessage
 	if am.Identity != nil {
 		identity = api.PeerIdentityType(am.Identity)
+		calculatedPKIID := sa.mcs.GetPKIidOfCert(identity)
+		claimedPKIID := am.Membership.PkiID
+		if !bytes.Equal(calculatedPKIID, claimedPKIID) {
+			sa.logger.Warning("Calculated pkiID doesn't match identity:", calculatedPKIID, claimedPKIID)
+			return false
+		}
 		err := sa.mcs.ValidateIdentity(api.PeerIdentityType(identity))
 		if err != nil {
 			sa.logger.Warning("Failed validating identity of", am, "reason:", err)
@@ -594,30 +600,6 @@ func (g *gossipServiceImpl) peersWithEndpoints(endpoints ...string) []*comm.Remo
 		}
 	}
 	return peers
-}
-
-func (g *gossipServiceImpl) validateIdentityMsg(msg *proto.GossipMessage) error {
-	if msg.GetPeerIdentity() == nil {
-		return fmt.Errorf("Identity empty")
-	}
-	idMsg := msg.GetPeerIdentity()
-	pkiID := idMsg.PkiID
-	cert := idMsg.Cert
-	sig := idMsg.Sig
-	if bytes.Equal(g.idMapper.GetPKIidOfCert(api.PeerIdentityType(cert)), common.PKIidType(pkiID)) {
-		return fmt.Errorf("Calculated pkiID doesn't match identity")
-	}
-	idMsg.Sig = nil
-	b, err := prot.Marshal(idMsg)
-	if err != nil {
-		return fmt.Errorf("Failed marshalling: %v", err)
-	}
-	err = g.mcs.Verify(api.PeerIdentityType(cert), sig, b)
-	if err != nil {
-		return fmt.Errorf("Failed verifying message: %v", err)
-	}
-	idMsg.Sig = sig
-	return nil
 }
 
 func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {

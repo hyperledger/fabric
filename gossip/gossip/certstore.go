@@ -17,6 +17,8 @@ limitations under the License.
 package gossip
 
 import (
+	"bytes"
+	"fmt"
 	"sync"
 
 	prot "github.com/golang/protobuf/proto"
@@ -27,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
-	"fmt"
 )
 
 // certStore supports pull dissemination of identity messages
@@ -37,7 +38,7 @@ type certStore struct {
 	idMapper     identity.Mapper
 	pull         pull.Mediator
 	logger       *util.Logger
-	mcs api.MessageCryptoService
+	mcs          api.MessageCryptoService
 }
 
 func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity api.PeerIdentityType, mcs api.MessageCryptoService) *certStore {
@@ -49,7 +50,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 	}
 
 	certStore := &certStore{
-		mcs: mcs,
+		mcs:          mcs,
 		pull:         puller,
 		idMapper:     idMapper,
 		selfIdentity: selfIdentity,
@@ -82,19 +83,45 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 func (cs *certStore) handleMessage(msg comm.ReceivedMessage) {
 	if update := msg.GetGossipMessage().GetDataUpdate(); update != nil {
 		for _, m := range update.Data {
-			if ! m.IsIdentityMsg() {
+			if !m.IsIdentityMsg() {
 				cs.logger.Warning("Got a non-identity message:", m, "aborting")
 				return
 			}
-			idMsg := m.GetPeerIdentity()
-			if err := cs.mcs.ValidateIdentity(api.PeerIdentityType(idMsg.Cert)); err != nil {
-				cs.logger.Warning("Got invalid certificate:", err)
+			if err := cs.validateIdentityMsg(m); err != nil {
+				cs.logger.Warning("Failed validating identity message:", err)
 				return
 			}
-
 		}
 	}
 	cs.pull.HandleMessage(msg)
+}
+
+func (cs *certStore) validateIdentityMsg(msg *proto.GossipMessage) error {
+	idMsg := msg.GetPeerIdentity()
+	if idMsg == nil {
+		return fmt.Errorf("Identity empty:", msg)
+	}
+	pkiID := idMsg.PkiID
+	cert := idMsg.Cert
+	sig := idMsg.Sig
+	calculatedPKIID := cs.mcs.GetPKIidOfCert(api.PeerIdentityType(cert))
+	claimedPKIID := common.PKIidType(pkiID)
+	if !bytes.Equal(calculatedPKIID, claimedPKIID) {
+		return fmt.Errorf("Calculated pkiID doesn't match identity: calculated: %v, claimedPKI-ID: %v", calculatedPKIID, claimedPKIID)
+	}
+
+	idMsg.Sig = nil
+	b, err := prot.Marshal(idMsg)
+	if err != nil {
+		return fmt.Errorf("Failed marshalling: %v", err)
+	}
+	err = cs.mcs.Verify(api.PeerIdentityType(cert), sig, b)
+	if err != nil {
+		return fmt.Errorf("Failed verifying message: %v", err)
+	}
+	idMsg.Sig = sig
+
+	return cs.mcs.ValidateIdentity(api.PeerIdentityType(idMsg.Cert))
 }
 
 func (cs *certStore) createIdentityMessage() *proto.GossipMessage {
