@@ -19,7 +19,7 @@ package simplebft
 import "reflect"
 
 func (s *SBFT) maybeSendCommit() {
-	if s.cur.prepared || len(s.cur.prep) < s.noFaultyQuorum()-1 {
+	if s.cur.prepared || len(s.cur.prep) < s.commonCaseQuorum()-1 {
 		return
 	}
 	s.sendCommit()
@@ -52,7 +52,7 @@ func (s *SBFT) handleCommit(c *Subject, src uint64) {
 	s.cancelViewChangeTimer()
 
 	//maybe mark as comitted
-	if s.cur.committed || len(s.cur.commit) < s.noFaultyQuorum() {
+	if s.cur.committed || len(s.cur.commit) < s.commonCaseQuorum() {
 		return
 	}
 	s.cur.committed = true

@@ -83,7 +83,7 @@ nextm:
 				}
 				count += 1
 			}
-			if count < s.noFaultyQuorum() {
+			if count < s.viewChangeQuorum() {
 				continue
 			}
 			log.Debugf("replica %d: found %d replicas for Pset %d/%d", s.id, count, mtuple.Seq.Seq, mtuple.Seq.View)
@@ -128,7 +128,7 @@ nextm:
 
 	// B. otherwise select null request
 	// We actually don't select a null request, but report the most recent batch instead.
-	if emptycount >= s.noFaultyQuorum() {
+	if emptycount >= s.viewChangeQuorum() {
 		log.Debugf("replica %d: no pertinent requests found for %d", s.id, next)
 		return nil, best, true
 	}

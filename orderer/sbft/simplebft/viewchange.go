@@ -111,8 +111,8 @@ func (s *SBFT) handleViewChange(svc *Signed, src uint64) {
 		}
 	}
 
-	if quorum == s.noFaultyQuorum() {
-		log.Noticef("replica %d: received 2f+1 view change messages, starting view change timer", s.id)
+	if quorum == s.viewChangeQuorum() {
+		log.Noticef("replica %d: received view change quorum, starting view change timer", s.id)
 		s.viewChangeTimer = s.sys.Timer(s.viewChangeTimeout, func() {
 			s.viewChangeTimeout *= 2
 			log.Noticef("replica %d: view change timed out, sending next", s.id)
