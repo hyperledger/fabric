@@ -476,6 +476,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	defer func() {
 		c.logger.Info("Client", extractRemoteAddress(stream), " disconnected")
 		c.connStore.closeByPKIid(PKIID)
+		conn.close()
 	}()
 
 	return conn.serviceConnection()
