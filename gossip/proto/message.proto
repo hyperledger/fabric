@@ -35,6 +35,7 @@ message GossipMessage {
         ORG_ONLY     = 2;
         CHAN_ONLY    = 3;
         CHAN_AND_ORG = 4;
+        CHAN_OR_ORG  = 5;
     }
 
     // determines to which peers it is allowed
@@ -56,30 +57,33 @@ message GossipMessage {
         DataRequest dataReq = 10;
         DataUpdate  dataUpdate = 11;
 
-        // Used for creating or modifying a channel
-        ChannelCommand chanCmd = 12;
-
         // Empty message, used for pinging
-        Empty empty = 13;
+        Empty empty = 12;
 
         // ConnEstablish, used for establishing a connection
-        ConnEstablish conn = 14;
+        ConnEstablish conn = 13;
 
         // Used for relaying information
         // about state
-        StateInfo stateInfo = 15;
+        StateInfo stateInfo = 14;
+
+        // Used for sending sets of StateInfo messages
+        StateInfoSnapshot stateSnapshot = 15;
+
+        // Used for asking for StateInfoSnapshots
+        StateInfoPullRequest stateInfoPullReq = 16;
 
         //  Used to ask from a remote peer a set of blocks
-        RemoteStateRequest stateRequest = 16;
+        RemoteStateRequest stateRequest = 17;
 
         // Used to send a set of blocks to a remote peer
-        RemoteStateResponse stateResponse = 17;
+        RemoteStateResponse stateResponse = 18;
 
         // Used to indicate intent of peer to become leader
-        LeadershipMessage leadershipMsg = 18;
+        LeadershipMessage leadershipMsg = 19;
 
         // Used to learn of a peer's certificate
-        PeerIdentity peerIdentity = 19;
+        PeerIdentity peerIdentity = 20;
     }
 }
 
@@ -92,12 +96,16 @@ message StateInfo {
     bytes signature    = 4;
 }
 
-// ChannelCommand is the message that contains a creation
-// or modification of a channel
-message ChannelCommand {
-    bytes payload = 1;
+// StateInfoSnapshot is an aggregation of StateInfo messages
+message StateInfoSnapshot {
+    repeated GossipMessage elements = 1;
 }
 
+// StateInfoPullRequest is used to fetch a StateInfoSnapshot
+// from a remote peer
+message StateInfoPullRequest {
+
+}
 
 // ConnEstablish is the message used for the gossip handshake
 // Whenever a peer connects to another peer, it handshakes
