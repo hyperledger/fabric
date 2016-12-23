@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -55,7 +56,7 @@ type gossipServiceImpl struct {
 	conf         *Config
 	toDieChan    chan struct{}
 	stopFlag     int32
-	msgStore     messageStore
+	msgStore     msgstore.MessageStore
 	emitter      batchingEmitter
 	goRoutines   []uint64
 	discAdapter  *discoveryAdapter
@@ -108,7 +109,7 @@ func NewGossipService(conf *Config, s *grpc.Server, mcs api.MessageCryptoService
 		Endpoint: conf.SelfEndpoint, PKIid: g.comm.GetPKIid(), Metadata: []byte{},
 	}, g.discAdapter, g.disSecAdap)
 
-	g.msgStore = newMessageStore(proto.NewGossipMessageComparator(g.conf.MaxMessageCountToStore), func(m interface{}) {
+	g.msgStore = msgstore.NewMessageStore(proto.NewGossipMessageComparator(g.conf.MaxMessageCountToStore), func(m interface{}) {
 		g.blocksPuller.Remove(m.(*proto.GossipMessage))
 	})
 
@@ -145,7 +146,7 @@ func (g *gossipServiceImpl) createBlockPuller() pull.Mediator {
 			g.logger.Warning("Invalid DataMessage:", dataMsg)
 			return
 		}
-		added := g.msgStore.add(msg)
+		added := g.msgStore.Add(msg)
 		// if we can't add the message to the msgStore,
 		// no point in disseminating it to others...
 		if !added {
@@ -283,7 +284,7 @@ func (g *gossipServiceImpl) handleMessage(m comm.ReceivedMessage) {
 			}
 		}
 
-		added := g.msgStore.add(msg)
+		added := g.msgStore.Add(msg)
 		if added {
 			g.emitter.Add(msg)
 			if dataMsg := m.GetGossipMessage().GetDataMsg(); dataMsg != nil {
@@ -340,7 +341,7 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*proto.GossipMessage) {
 func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
 	g.logger.Info(msg)
 	if dataMsg := msg.GetDataMsg(); dataMsg != nil {
-		g.msgStore.add(msg)
+		g.msgStore.Add(msg)
 		g.blocksPuller.Add(msg)
 	}
 	g.emitter.Add(msg)

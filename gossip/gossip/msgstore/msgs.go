@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gossip
+package msgstore
 
 import (
 	"sync"
@@ -27,26 +27,26 @@ import (
 // then the invalidation trigger on 0 was called when 1 was added.
 type invalidationTrigger func(message interface{})
 
-func newMessageStore(pol common.MessageReplacingPolicy, trigger invalidationTrigger) messageStore {
+func NewMessageStore(pol common.MessageReplacingPolicy, trigger invalidationTrigger) MessageStore {
 	return &messageStoreImpl{pol: pol, lock: &sync.RWMutex{}, messages: make([]*msg, 0), invTrigger: trigger}
 }
 
-// messageStore adds messages to an internal buffer.
+// MessageStore adds messages to an internal buffer.
 // When a message is received, it might:
 // 	- Be added to the buffer
 //	- Discarded because of some message already in the buffer (invalidated)
 //	- Make a message already in the buffer to be discarded (invalidates)
 // When a message is invalidated, the invalidationTrigger is invoked on that message.
-type messageStore interface {
+type MessageStore interface {
 	// add adds a message to the store
 	// returns true or false whether the message was added to the store
-	add(msg interface{}) bool
+	Add(msg interface{}) bool
 
 	// size returns the amount of messages in the store
-	size() int
+	Size() int
 
 	// get returns all messages in the store
-	get() []interface{}
+	Get() []interface{}
 }
 
 type messageStoreImpl struct {
@@ -61,7 +61,7 @@ type msg struct {
 }
 
 // add adds a message to the store
-func (s *messageStoreImpl) add(message interface{}) bool {
+func (s *messageStoreImpl) Add(message interface{}) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -87,14 +87,14 @@ func (s *messageStoreImpl) add(message interface{}) bool {
 }
 
 // size returns the amount of messages in the store
-func (s *messageStoreImpl) size() int {
+func (s *messageStoreImpl) Size() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return len(s.messages)
 }
 
 // get returns all messages in the store
-func (s *messageStoreImpl) get() []interface{} {
+func (s *messageStoreImpl) Get() []interface{} {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
