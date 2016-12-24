@@ -18,7 +18,6 @@ package gossip
 
 import (
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -132,15 +131,21 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.Receive
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	sentHello := int32(0)
+	sentHello := false
+	sentDataReq := false
+	l := sync.Mutex{}
 	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*proto.GossipMessage)
-		if hello := msg.GetHello(); hello != nil && atomic.LoadInt32(&sentHello) == int32(0) {
-			atomic.StoreInt32(&sentHello, int32(1))
+		l.Lock()
+		defer l.Unlock()
+
+		if hello := msg.GetHello(); hello != nil && !sentHello {
+			sentHello = true
 			go certStore.handleMessage(createDigest(hello.Nonce))
 		}
 
-		if dataReq := msg.GetDataReq(); dataReq != nil {
+		if dataReq := msg.GetDataReq(); dataReq != nil && !sentDataReq {
+			sentDataReq = true
 			certStore.handleMessage(updateFactory(dataReq.Nonce))
 			wg.Done()
 		}
