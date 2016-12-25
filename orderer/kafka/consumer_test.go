@@ -50,6 +50,7 @@ func testConsumerRecvFunc(given, expected int64) func(t *testing.T) {
 			testClose(t, mc)
 			t.Fatal("Consumer should have proceeded normally:", err)
 		}
+		<-mc.(*mockConsumerImpl).isSetup
 		go func() {
 			disk <- newRegularMessage([]byte("foo"))
 		}()
