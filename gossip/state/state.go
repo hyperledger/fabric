@@ -84,7 +84,6 @@ type GossipStateProviderImpl struct {
 // NewGossipStateProvider creates initialized instance of gossip state provider
 func NewGossipStateProvider(g gossip.Gossip, committer committer.Committer) GossipStateProvider {
 	logger, _ := logging.GetLogger("GossipStateProvider")
-	logging.SetLevel(logging.DEBUG, logger.Module)
 
 	gossipChan, _ := g.Accept(func(message interface{}) bool {
 		// Get only data messages
