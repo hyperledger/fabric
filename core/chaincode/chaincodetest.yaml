@@ -301,7 +301,7 @@ peer:
         touchMaxNodes: 100
 
     # Path on the file system where peer will store data
-    fileSystemPath: /var/hyperledger/test/tmpdb
+    fileSystemPath: /tmp/hyperledger/test/tmpdb
 
 
     profile:

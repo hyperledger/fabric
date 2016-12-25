@@ -1107,6 +1107,7 @@ var signer msp.SigningIdentity
 
 func TestMain(m *testing.M) {
 	var err error
+
 	primitives.SetSecurityLevel("SHA2", 256)
 
 	// setup the MSP manager so that we can sign/verify
