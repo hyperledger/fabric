@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -35,6 +36,9 @@ const (
 
 	// BatchSizeKey is the cb.ConfigurationItem type key name for the BatchSize message
 	BatchSizeKey = "BatchSize"
+
+	// BatchTimeoutKey is the cb.ConfigurationItem type key name for the BatchTimeout message
+	BatchTimeoutKey = "BatchTimeout"
 
 	// ChainCreatorsKey is the cb.ConfigurationItem type key name for the ChainCreators message
 	ChainCreatorsKey = "ChainCreators"
@@ -60,6 +64,9 @@ type Manager interface {
 	// BatchSize returns the maximum number of messages to include in a block
 	BatchSize() *ab.BatchSize
 
+	// BatchTimeout returns the amount of time to wait before creating a batch
+	BatchTimeout() time.Duration
+
 	// ChainCreators returns the policy names which are allowed for chain creation
 	// This field is only set for the system ordering chain
 	ChainCreators() []string
@@ -73,6 +80,7 @@ type Manager interface {
 type ordererConfig struct {
 	consensusType string
 	batchSize     *ab.BatchSize
+	batchTimeout  time.Duration
 	chainCreators []string
 	kafkaBrokers  []string
 }
@@ -99,6 +107,11 @@ func (pm *ManagerImpl) ConsensusType() string {
 // BatchSize returns the maximum number of messages to include in a block
 func (pm *ManagerImpl) BatchSize() *ab.BatchSize {
 	return pm.config.batchSize
+}
+
+// BatchTimeout returns the amount of time to wait before creating a batch
+func (pm *ManagerImpl) BatchTimeout() time.Duration {
+	return pm.config.batchTimeout
 }
 
 // ChainCreators returns the policy names which are allowed for chain creation
@@ -145,8 +158,7 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 	switch configItem.Key {
 	case ConsensusTypeKey:
 		consensusType := &ab.ConsensusType{}
-		err := proto.Unmarshal(configItem.Value, consensusType)
-		if err != nil {
+		if err := proto.Unmarshal(configItem.Value, consensusType); err != nil {
 			return fmt.Errorf("Unmarshaling error for ConsensusType: %s", err)
 		}
 		if pm.config.consensusType == "" {
@@ -159,26 +171,36 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 		pm.pendingConfig.consensusType = consensusType.Type
 	case BatchSizeKey:
 		batchSize := &ab.BatchSize{}
-		err := proto.Unmarshal(configItem.Value, batchSize)
-		if err != nil {
+		if err := proto.Unmarshal(configItem.Value, batchSize); err != nil {
 			return fmt.Errorf("Unmarshaling error for BatchSize: %s", err)
 		}
-
 		if batchSize.MaxMessageCount <= 0 {
 			return fmt.Errorf("Attempted to set the batch size max message count to %d which is less than or equal to 0", batchSize.MaxMessageCount)
 		}
 		pm.pendingConfig.batchSize = batchSize
+	case BatchTimeoutKey:
+		var timeoutValue time.Duration
+		var err error
+		batchTimeout := &ab.BatchTimeout{}
+		if err = proto.Unmarshal(configItem.Value, batchTimeout); err != nil {
+			return fmt.Errorf("Unmarshaling error for BatchTimeout: %s", err)
+		}
+		if timeoutValue, err = time.ParseDuration(batchTimeout.Timeout); err != nil {
+			return fmt.Errorf("Attempted to set the batch timeout to a invalid value: %s", err)
+		}
+		if timeoutValue <= 0 {
+			return fmt.Errorf("Attempted to set the batch timeout to a non-positive value: %s", timeoutValue.String())
+		}
+		pm.pendingConfig.batchTimeout = timeoutValue
 	case ChainCreatorsKey:
 		chainCreators := &ab.ChainCreators{}
-		err := proto.Unmarshal(configItem.Value, chainCreators)
-		if err != nil {
+		if err := proto.Unmarshal(configItem.Value, chainCreators); err != nil {
 			return fmt.Errorf("Unmarshaling error for ChainCreator: %s", err)
 		}
 		pm.pendingConfig.chainCreators = chainCreators.Policies
 	case KafkaBrokersKey:
 		kafkaBrokers := &ab.KafkaBrokers{}
-		err := proto.Unmarshal(configItem.Value, kafkaBrokers)
-		if err != nil {
+		if err := proto.Unmarshal(configItem.Value, kafkaBrokers); err != nil {
 			return fmt.Errorf("Unmarshaling error for KafkaBrokers: %s", err)
 		}
 		if len(kafkaBrokers.Brokers) == 0 {
