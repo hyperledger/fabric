@@ -19,6 +19,12 @@ ifneq ($(shell uname),Darwin)
 DOCKER_RUN_FLAGS=--user=$(shell id -u)
 endif
 
+ifeq ($(shell uname -m),s390x)
+ifneq ($(shell id -u),0)
+DOCKER_RUN_FLAGS+=-v /etc/passwd:/etc/passwd:ro
+endif
+endif
+
 ifneq ($(http_proxy),)
 DOCKER_BUILD_FLAGS+=--build-arg http_proxy=$(http_proxy)
 DOCKER_RUN_FLAGS+=-e http_proxy=$(http_proxy)
@@ -82,6 +88,3 @@ DOCKER_GO_LDFLAGS += -linkmode external -extldflags '-static -lpthread'
 # file to differentiate different tags to fix FAB-1145
 #
 DUMMY = .dummy-$(DOCKER_TAG)
-
-
-
