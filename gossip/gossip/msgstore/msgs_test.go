@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gossip
+package msgstore
 
 import (
 	"math/rand"
@@ -52,24 +52,24 @@ func compareInts(this interface{}, that interface{}) common.InvalidationResult {
 }
 
 func TestSize(t *testing.T) {
-	msgStore := newMessageStore(alwaysNoAction, noopTrigger)
-	msgStore.add(0)
-	msgStore.add(1)
-	msgStore.add(2)
-	assert.Equal(t, 3, msgStore.size())
+	msgStore := NewMessageStore(alwaysNoAction, noopTrigger)
+	msgStore.Add(0)
+	msgStore.Add(1)
+	msgStore.Add(2)
+	assert.Equal(t, 3, msgStore.Size())
 }
 
 func TestNewMessagesInvalidates(t *testing.T) {
 	invalidated := make([]int, 9)
-	msgStore := newMessageStore(compareInts, func(m interface{}) {
+	msgStore := NewMessageStore(compareInts, func(m interface{}) {
 		invalidated = append(invalidated, m.(int))
 	})
-	assert.True(t, msgStore.add(0))
+	assert.True(t, msgStore.Add(0))
 	for i := 1; i < 10; i++ {
-		assert.True(t, msgStore.add(i))
+		assert.True(t, msgStore.Add(i))
 		assert.Equal(t, i-1, invalidated[len(invalidated)-1])
-		assert.Equal(t, 1, msgStore.size())
-		assert.Equal(t, i, msgStore.get()[0].(int))
+		assert.Equal(t, 1, msgStore.Size())
+		assert.Equal(t, i, msgStore.Get()[0].(int))
 	}
 }
 
@@ -83,33 +83,33 @@ func TestMessagesGet(t *testing.T) {
 		return false
 	}
 
-	msgStore := newMessageStore(alwaysNoAction, noopTrigger)
+	msgStore := NewMessageStore(alwaysNoAction, noopTrigger)
 	expected := []int{}
 	for i := 0; i < 2; i++ {
 		n := rand.Int()
 		expected = append(expected, n)
-		msgStore.add(n)
+		msgStore.Add(n)
 	}
 
 	for _, num2Search := range expected {
-		assert.True(t, contains(msgStore.get(), num2Search), "Value %v not found in array", num2Search)
+		assert.True(t, contains(msgStore.Get(), num2Search), "Value %v not found in array", num2Search)
 	}
 
 }
 
 func TestNewMessagesInvalidated(t *testing.T) {
-	msgStore := newMessageStore(compareInts, noopTrigger)
-	assert.True(t, msgStore.add(10))
+	msgStore := NewMessageStore(compareInts, noopTrigger)
+	assert.True(t, msgStore.Add(10))
 	for i := 9; i >= 0; i-- {
-		assert.False(t, msgStore.add(i))
-		assert.Equal(t, 1, msgStore.size())
-		assert.Equal(t, 10, msgStore.get()[0].(int))
+		assert.False(t, msgStore.Add(i))
+		assert.Equal(t, 1, msgStore.Size())
+		assert.Equal(t, 10, msgStore.Get()[0].(int))
 	}
 }
 
 func TestConcurrency(t *testing.T) {
 	stopFlag := int32(0)
-	msgStore := newMessageStore(compareInts, noopTrigger)
+	msgStore := NewMessageStore(compareInts, noopTrigger)
 	looper := func(f func()) func() {
 		return func() {
 			for {
@@ -122,15 +122,15 @@ func TestConcurrency(t *testing.T) {
 	}
 
 	addProcess := looper(func() {
-		msgStore.add(rand.Int())
+		msgStore.Add(rand.Int())
 	})
 
 	getProcess := looper(func() {
-		msgStore.get()
+		msgStore.Get()
 	})
 
 	sizeProcess := looper(func() {
-		msgStore.size()
+		msgStore.Size()
 	})
 
 	go addProcess()
