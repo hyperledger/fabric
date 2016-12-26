@@ -19,6 +19,7 @@ package service
 import (
 	"sync"
 
+	peerComm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/gossip/comm"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
@@ -29,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -55,10 +57,20 @@ type gossipServiceImpl struct {
 	lock   sync.RWMutex
 }
 
+var logger = logging.MustGetLogger("gossipService")
+
 // InitGossipService initialize gossip service
 func InitGossipService(endpoint string, s *grpc.Server, bootPeers ...string) {
 	once.Do(func() {
-		gossip := integration.NewGossipComponent(endpoint, s, []grpc.DialOption{}, bootPeers...)
+		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
+		dialOpts := []grpc.DialOption{}
+		if peerComm.TLSEnabled() {
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(peerComm.InitTLSForPeer()))
+		} else {
+			dialOpts = append(dialOpts, grpc.WithInsecure())
+		}
+
+		gossip := integration.NewGossipComponent(endpoint, s, dialOpts, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
 			gossip: gossip,
 			chains: make(map[string]state.GossipStateProvider),
@@ -85,6 +97,7 @@ func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *com
 		return err
 	} else {
 		// Initialize new state provider for given committer
+		logger.Debug("Creating state provider for chainID", chainID)
 		g.chains[chainID] = state.NewGossipStateProvider(g.gossip, commiter)
 	}
 
