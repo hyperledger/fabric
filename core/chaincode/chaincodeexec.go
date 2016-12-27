@@ -71,7 +71,7 @@ func ExecuteChaincode(ctxt context.Context, cccid *CCContext, args [][]byte) ([]
 	spec, err = createCIS(cccid.Name, args)
 	b, ccevent, err = Execute(ctxt, cccid, spec)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error deploying chaincode: %s", err)
+		return nil, nil, fmt.Errorf("Error executing chaincode: %s", err)
 	}
 	return b, ccevent, err
 }
