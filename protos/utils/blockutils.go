@@ -55,11 +55,18 @@ func GetBlockFromBlockBytes(blockBytes []byte) (*cb.Block, error) {
 // CopyBlockMetadata copies metadata from one block into another
 func CopyBlockMetadata(src *cb.Block, dst *cb.Block) {
 	dst.Metadata = src.Metadata
-	if dst.Metadata == nil {
-		dst.Metadata = &cb.BlockMetadata{Metadata: [][]byte{[]byte{}, []byte{}, []byte{}}}
-	} else if len(dst.Metadata.Metadata) < int(cb.BlockMetadataIndex_TRANSACTIONS_FILTER+1) {
-		for i := int(len(dst.Metadata.Metadata)); i <= int(cb.BlockMetadataIndex_TRANSACTIONS_FILTER); i++ {
-			dst.Metadata.Metadata = append(dst.Metadata.Metadata, []byte{})
+	// Once copied initialize with rest of the
+	// required metadata positions.
+	InitBlockMetadata(dst)
+}
+
+// CopyBlockMetadata copies metadata from one block into another
+func InitBlockMetadata(block *cb.Block) {
+	if block.Metadata == nil {
+		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{[]byte{}, []byte{}, []byte{}}}
+	} else if len(block.Metadata.Metadata) < int(cb.BlockMetadataIndex_TRANSACTIONS_FILTER+1) {
+		for i := int(len(block.Metadata.Metadata)); i <= int(cb.BlockMetadataIndex_TRANSACTIONS_FILTER); i++ {
+			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
 }
