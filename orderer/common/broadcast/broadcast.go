@@ -22,6 +22,8 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 
+	"io"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -72,6 +74,9 @@ func NewHandlerImpl(sm SupportManager) Handler {
 func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 	for {
 		msg, err := srv.Recv()
+		if err == io.EOF {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
