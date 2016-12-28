@@ -41,6 +41,7 @@ var NEEDED_UPDATES = 2
 var NEEDED_SENT = 1
 
 func TestSbftPeer(t *testing.T) {
+	t.Parallel()
 	skipInShortMode(t)
 	tempDir, err := ioutil.TempDir("", "sbft_test")
 	if err != nil {
