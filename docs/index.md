@@ -115,7 +115,7 @@ applications.
 - [Node.js SDK](http://fabric-sdk-node.readthedocs.io/en/latest/node-sdk-guide):
 working with the Node.js SDK.
 - Java SDK (coming soon).
-- Python SDK (coming soon).
+- [Python SDK](https://wiki.hyperledger.org/projects/fabric-sdk-py.md): working with the Python SDK.
 - [Writing, Building, and Running Chaincode](Setup/Chaincode-setup.md):
 a step-by-step guide to developing and testing Chaincode.
 - [Chaincode FAQ](FAQ/chaincode_FAQ.md): a FAQ for all of your burning questions
