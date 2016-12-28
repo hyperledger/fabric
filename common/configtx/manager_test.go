@@ -24,6 +24,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"errors"
 )
 
 var defaultChain = "DefaultChainID"
@@ -43,7 +44,7 @@ type mockPolicy struct {
 
 func (mp *mockPolicy) Evaluate(headers [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error {
 	if mp == nil {
-		return fmt.Errorf("Invoked nil policy")
+		return errors.New("Invoked nil policy")
 	}
 	return mp.policyResult
 }
@@ -85,7 +86,7 @@ func TestOmittedHandler(t *testing.T) {
 	}, &mockPolicyManager{&mockPolicy{}}, map[cb.ConfigurationItem_ConfigurationType]Handler{})
 
 	if err == nil {
-		t.Fatalf("Should have failed to construct manager because handlers were missing")
+		t.Fatal("Should have failed to construct manager because handlers were missing")
 	}
 }
 
@@ -105,12 +106,12 @@ func TestWrongChainID(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored when validating a new configuration set the wrong chain ID")
+		t.Error("Should have errored when validating a new configuration set the wrong chain ID")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored when applying a new configuration with the wrong chain ID")
+		t.Error("Should have errored when applying a new configuration with the wrong chain ID")
 	}
 }
 
@@ -130,12 +131,12 @@ func TestOldConfigReplay(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored when validating a configuration that is not a newer sequence number")
+		t.Error("Should have errored when validating a configuration that is not a newer sequence number")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored when applying a configuration that is not a newer sequence number")
+		t.Error("Should have errored when applying a configuration that is not a newer sequence number")
 	}
 }
 
@@ -148,7 +149,7 @@ func TestInvalidInitialConfigByStructure(t *testing.T) {
 	}, &mockPolicyManager{&mockPolicy{}}, defaultHandlers())
 
 	if err == nil {
-		t.Fatalf("Should have failed to construct configuration by policy")
+		t.Fatal("Should have failed to construct configuration by policy")
 	}
 }
 
@@ -197,12 +198,12 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored validating config because foo's sequence number regressed")
+		t.Error("Should have errored validating config because foo's sequence number regressed")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored applying config because foo's sequence number regressed")
+		t.Error("Should have errored applying config because foo's sequence number regressed")
 	}
 }
 
@@ -226,12 +227,12 @@ func TestConfigChangeOldSequence(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored validating config because bar was new but its sequence number was old")
+		t.Error("Should have errored validating config because bar was new but its sequence number was old")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored applying config because bar was new but its sequence number was old")
+		t.Error("Should have errored applying config because bar was new but its sequence number was old")
 	}
 }
 
@@ -257,12 +258,12 @@ func TestConfigImplicitDelete(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored validating config because foo was implicitly deleted")
+		t.Error("Should have errored validating config because foo was implicitly deleted")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored applying config because foo was implicitly deleted")
+		t.Error("Should have errored applying config because foo was implicitly deleted")
 	}
 }
 
@@ -280,12 +281,12 @@ func TestEmptyConfigUpdate(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should not errored validating config because new config is empty")
+		t.Error("Should not errored validating config because new config is empty")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should not errored applying config because new config is empty")
+		t.Error("Should not errored applying config because new config is empty")
 	}
 }
 
@@ -313,12 +314,12 @@ func TestSilentConfigModification(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should not errored validating config because foo was silently modified (despite modification allowed by policy)")
+		t.Error("Should not errored validating config because foo was silently modified (despite modification allowed by policy)")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should not errored applying config because foo was silently modified (despite modification allowed by policy)")
+		t.Error("Should not errored applying config because foo was silently modified (despite modification allowed by policy)")
 	}
 }
 
@@ -331,7 +332,7 @@ func TestInvalidInitialConfigByPolicy(t *testing.T) {
 	// mockPolicyManager will return non-validating defualt policy
 
 	if err == nil {
-		t.Fatalf("Should have failed to construct configuration by policy")
+		t.Fatal("Should have failed to construct configuration by policy")
 	}
 }
 
@@ -355,12 +356,12 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored validating config because policy rejected modification")
+		t.Error("Should have errored validating config because policy rejected modification")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored applying config because policy rejected modification")
+		t.Error("Should have errored applying config because policy rejected modification")
 	}
 }
 
@@ -370,7 +371,7 @@ func (fh failHandler) BeginConfig()    {}
 func (fh failHandler) RollbackConfig() {}
 func (fh failHandler) CommitConfig()   {}
 func (fh failHandler) ProposeConfig(item *cb.ConfigurationItem) error {
-	return fmt.Errorf("Fail")
+	return errors.New("Fail")
 }
 
 // TestInvalidProposal checks that even if the policy allows the transaction and the sequence etc. is well formed,
@@ -393,12 +394,12 @@ func TestInvalidProposal(t *testing.T) {
 
 	err = cm.Validate(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored validating config because the handler rejected it")
+		t.Error("Should have errored validating config because the handler rejected it")
 	}
 
 	err = cm.Apply(newConfig)
 	if err == nil {
-		t.Errorf("Should have errored applying config because the handler rejected it")
+		t.Error("Should have errored applying config because the handler rejected it")
 	}
 }
 
@@ -413,7 +414,7 @@ func TestMissingHeader(t *testing.T) {
 	}, &mockPolicyManager{&mockPolicy{}}, handlers)
 
 	if err == nil {
-		t.Errorf("Should have errored creating the configuration manager because of the missing header")
+		t.Error("Should have errored creating the configuration manager because of the missing header")
 	}
 }
 
@@ -425,7 +426,7 @@ func TestMissingChainID(t *testing.T) {
 	}, &mockPolicyManager{&mockPolicy{}}, handlers)
 
 	if err == nil {
-		t.Errorf("Should have errored creating the configuration manager because of the missing header")
+		t.Error("Should have errored creating the configuration manager because of the missing header")
 	}
 }
 
@@ -440,6 +441,6 @@ func TestMismatchedChainID(t *testing.T) {
 	}, &mockPolicyManager{&mockPolicy{}}, handlers)
 
 	if err == nil {
-		t.Errorf("Should have errored creating the configuration manager because of the missing header")
+		t.Error("Should have errored creating the configuration manager because of the missing header")
 	}
 }

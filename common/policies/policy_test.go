@@ -77,7 +77,7 @@ func TestAccept(t *testing.T) {
 	addPolicy(m, policyID, acceptAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {
-		t.Errorf("Should have found policy which was just added, but did not")
+		t.Error("Should have found policy which was just added, but did not")
 	}
 	err := policy.Evaluate(nil, nil, nil, nil)
 	if err != nil {
@@ -91,11 +91,11 @@ func TestReject(t *testing.T) {
 	addPolicy(m, policyID, rejectAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {
-		t.Errorf("Should have found policy which was just added, but did not")
+		t.Error("Should have found policy which was just added, but did not")
 	}
 	err := policy.Evaluate(nil, nil, nil, nil)
 	if err == nil {
-		t.Fatalf("Should have errored evaluating the rejectAll policy")
+		t.Fatal("Should have errored evaluating the rejectAll policy")
 	}
 }
 
@@ -103,10 +103,10 @@ func TestRejectOnUnknown(t *testing.T) {
 	m := NewManagerImpl(&mockCryptoHelper{})
 	policy, ok := m.GetPolicy("FakePolicyID")
 	if ok {
-		t.Errorf("Should not have found policy which was never added, but did")
+		t.Error("Should not have found policy which was never added, but did")
 	}
 	err := policy.Evaluate(nil, nil, nil, nil)
 	if err == nil {
-		t.Fatalf("Should have errored evaluating the default policy")
+		t.Fatal("Should have errored evaluating the default policy")
 	}
 }

@@ -51,7 +51,7 @@ func TestForwardNonConfig(t *testing.T) {
 		Payload: []byte("Opaque"),
 	})
 	if result != filter.Forward {
-		t.Fatalf("Should have forwarded opaque message")
+		t.Fatal("Should have forwarded opaque message")
 	}
 }
 
@@ -66,11 +66,11 @@ func TestAcceptGoodConfig(t *testing.T) {
 	}
 	result, committer := cf.Apply(configEnvelope)
 	if result != filter.Accept {
-		t.Fatalf("Should have indicated a good config message causes a reconfiguration")
+		t.Fatal("Should have indicated a good config message causes a reconfiguration")
 	}
 
 	if !committer.Isolated() {
-		t.Fatalf("Configuration transactions should be isolated to their own block")
+		t.Fatal("Configuration transactions should be isolated to their own block")
 	}
 
 	committer.Commit()
@@ -88,6 +88,6 @@ func TestRejectBadConfig(t *testing.T) {
 		Payload: configBytes,
 	})
 	if result != filter.Reject {
-		t.Fatalf("Should have rejected bad config message")
+		t.Fatal("Should have rejected bad config message")
 	}
 }

@@ -24,6 +24,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"errors"
 )
 
 // Handler provides a hook which allows other pieces of code to participate in config proposals
@@ -74,7 +75,7 @@ type configurationManager struct {
 // or an error if there is a problem with the configuration envelope
 func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint64, error) {
 	if len(configtx.Items) == 0 {
-		return "", 0, fmt.Errorf("Empty envelope unsupported")
+		return "", 0, errors.New("Empty envelope unsupported")
 	}
 
 	m := uint64(0)     //configtx.Items[0].LastModified
@@ -115,7 +116,7 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint
 func NewConfigurationManager(configtx *cb.ConfigurationEnvelope, pm policies.Manager, handlers map[cb.ConfigurationItem_ConfigurationType]Handler) (Manager, error) {
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
 		if _, ok := handlers[cb.ConfigurationItem_ConfigurationType(ctype)]; !ok {
-			return nil, fmt.Errorf("Must supply a handler for all known types")
+			return nil, errors.New("Must supply a handler for all known types")
 		}
 	}
 
