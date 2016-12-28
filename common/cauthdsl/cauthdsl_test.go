@@ -45,13 +45,13 @@ func TestSimpleSignature(t *testing.T) {
 	}
 
 	if !spe.Authenticate(nil, [][]byte{signers[0]}, [][]byte{validSignature}) {
-		t.Errorf("Expected authentication to succeed with  valid signatures")
+		t.Error("Expected authentication to succeed with  valid signatures")
 	}
 	if spe.Authenticate(nil, [][]byte{signers[0]}, [][]byte{invalidSignature}) {
-		t.Errorf("Expected authentication to fail given the invalid signature")
+		t.Error("Expected authentication to fail given the invalid signature")
 	}
 	if spe.Authenticate(nil, [][]byte{signers[1]}, [][]byte{validSignature}) {
-		t.Errorf("Expected authentication to fail because signers[1] is not authorized in the policy, despite his valid signature")
+		t.Error("Expected authentication to fail because signers[1] is not authorized in the policy, despite his valid signature")
 	}
 }
 
@@ -65,13 +65,13 @@ func TestMultipleSignature(t *testing.T) {
 	}
 
 	if !spe.Authenticate(nil, signers, [][]byte{validSignature, validSignature}) {
-		t.Errorf("Expected authentication to succeed with  valid signatures")
+		t.Error("Expected authentication to succeed with  valid signatures")
 	}
 	if spe.Authenticate(nil, signers, [][]byte{validSignature, invalidSignature}) {
-		t.Errorf("Expected authentication to fail given one of two invalid signatures")
+		t.Error("Expected authentication to fail given one of two invalid signatures")
 	}
 	if spe.Authenticate(nil, [][]byte{signers[0], signers[0]}, [][]byte{validSignature, validSignature}) {
-		t.Errorf("Expected authentication to fail because although there were two valid signatures, one was duplicated")
+		t.Error("Expected authentication to fail because although there were two valid signatures, one was duplicated")
 	}
 }
 
@@ -85,13 +85,13 @@ func TestComplexNestedSignature(t *testing.T) {
 	}
 
 	if !spe.Authenticate(nil, signers, [][]byte{validSignature, validSignature}) {
-		t.Errorf("Expected authentication to succeed with valid signatures")
+		t.Error("Expected authentication to succeed with valid signatures")
 	}
 	if spe.Authenticate(nil, signers, [][]byte{invalidSignature, validSignature}) {
-		t.Errorf("Expected authentication failure as only the signature of signer[1] was valid")
+		t.Error("Expected authentication failure as only the signature of signer[1] was valid")
 	}
 	if !spe.Authenticate(nil, [][]byte{signers[0], signers[0]}, [][]byte{validSignature, validSignature}) {
-		t.Errorf("Expected authentication to succeed because the rule allows duplicated signatures for signer[0]")
+		t.Error("Expected authentication to succeed because the rule allows duplicated signatures for signer[0]")
 	}
 }
 
@@ -104,6 +104,6 @@ func TestNegatively(t *testing.T) {
 	_ = proto.Unmarshal(b, policy)
 	_, err := NewSignaturePolicyEvaluator(policy, mch)
 	if err == nil {
-		t.Fatalf("Should have errored compiling because the Type field was nil")
+		t.Fatal("Should have errored compiling because the Type field was nil")
 	}
 }

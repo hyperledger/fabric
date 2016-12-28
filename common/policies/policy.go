@@ -23,6 +23,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"errors"
 )
 
 // Policy is used to determine if a signature is valid
@@ -52,7 +53,7 @@ func newPolicy(policySource *cb.Policy, ch cauthdsl.CryptoHelper) (*policy, erro
 	}
 
 	if envelopeWrapper.SignaturePolicy == nil {
-		return nil, fmt.Errorf("Nil signature policy received")
+		return nil, errors.New("Nil signature policy received")
 	}
 
 	sigPolicy := envelopeWrapper.SignaturePolicy
@@ -73,12 +74,12 @@ func newPolicy(policySource *cb.Policy, ch cauthdsl.CryptoHelper) (*policy, erro
 // verifies the corresponding signature.
 func (p *policy) Evaluate(header [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error {
 	if p == nil {
-		return fmt.Errorf("Evaluated default policy, results in reject")
+		return errors.New("Evaluated default policy, results in reject")
 	}
 
 	// XXX This is wrong, as the signatures are over the payload envelope, not the message, fix either here, or in cauthdsl once transaction is finalized
 	if !p.evaluator.Authenticate(payload, identities, signatures) {
-		return fmt.Errorf("Failed to authenticate policy")
+		return errors.New("Failed to authenticate policy")
 	}
 	return nil
 }

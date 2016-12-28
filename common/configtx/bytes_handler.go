@@ -20,7 +20,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-// BytesHandler is a trivial ConfigHandler which simpy tracks the bytes stores in a config
+// BytesHandler is a trivial ConfigHandler which simply tracks the bytes stores in a config
 type BytesHandler struct {
 	config   map[string][]byte
 	proposed map[string][]byte
