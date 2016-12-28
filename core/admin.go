@@ -25,7 +25,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/hyperledger/fabric/flogging"
+	"github.com/hyperledger/fabric/core/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 

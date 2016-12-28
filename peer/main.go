@@ -31,8 +31,8 @@ import (
 
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/core/flogging"
 	"github.com/hyperledger/fabric/core/peer/msp"
-	"github.com/hyperledger/fabric/flogging"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/clilogging"
 	"github.com/hyperledger/fabric/peer/node"

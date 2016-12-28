@@ -20,9 +20,9 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/errors"
+	"github.com/hyperledger/fabric/core/flogging"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/peer/msp"
-	"github.com/hyperledger/fabric/flogging"
 	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
