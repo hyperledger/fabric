@@ -129,8 +129,3 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 
 	return nil, nil
 }
-
-// Query is here to satisfy the Chaincode interface. We don't need it for this system chaincode
-func (vscc *ValidatorOneValidSignature) Query(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
-}
