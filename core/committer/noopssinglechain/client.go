@@ -17,28 +17,22 @@ limitations under the License.
 package noopssinglechain
 
 import (
-	"fmt"
 	"math"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/events/producer"
+	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
-	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/peer"
-	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/gossip/service"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger *logging.Logger // package-level logger
@@ -178,56 +172,6 @@ func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
 	})
 }
 
-func isTxValidForVscc(payload *common.Payload, envBytes []byte) error {
-	// TODO: Extract the VSCC/policy from LCCC as soon as this is ready
-	vscc := "vscc"
-
-	chainName := payload.Header.ChainHeader.ChainID
-	if chainName == "" {
-		err := fmt.Errorf("transaction header does not contain an chain ID")
-		logger.Errorf("%s", err)
-		return err
-	}
-
-	txid := "N/A" // FIXME: is that appropriate?
-
-	// build arguments for VSCC invocation
-	// args[0] - function name (not used now)
-	// args[1] - serialized Envelope
-	args := [][]byte{[]byte(""), envBytes}
-
-	// create VSCC invocation proposal
-	vsccCis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: vscc}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
-	prop, err := putils.CreateProposalFromCIS(txid, chainName, vsccCis, []byte(""))
-	if err != nil {
-		logger.Errorf("Cannot create a proposal to invoke VSCC, err %s\n", err)
-		return err
-	}
-
-	// get context for the chaincode execution
-	var txsim ledger.TxSimulator
-	lgr := peer.GetLedger(chainName)
-	txsim, err = lgr.NewTxSimulator()
-	if err != nil {
-		logger.Errorf("Cannot obtain tx simulator, err %s\n", err)
-		return err
-	}
-	defer txsim.Done()
-	ctxt := context.WithValue(context.Background(), chaincode.TXSimulatorKey, txsim)
-
-	version := util.GetSysCCVersion()
-	cccid := chaincode.NewCCContext(chainName, vscc, version, txid, true, prop)
-
-	// invoke VSCC
-	_, _, err = chaincode.ExecuteChaincode(ctxt, cccid, args)
-	if err != nil {
-		logger.Errorf("VSCC check failed for transaction, error %s", err)
-		return err
-	}
-
-	return nil
-}
-
 func (d *DeliverService) readUntilClose() {
 	for {
 		msg, err := d.client.Recv()
@@ -244,63 +188,26 @@ func (d *DeliverService) readUntilClose() {
 			logger.Warning("Got error ", t)
 		case *orderer.DeliverResponse_Block:
 			seqNum := t.Block.Header.Number
-			block := &common.Block{}
-			block.Header = t.Block.Header
 
-			// Copy and initialize peer metadata
-			putils.CopyBlockMetadata(t.Block, block)
-			block.Data = &common.BlockData{}
-			for _, d := range t.Block.Data.Data {
-				if d != nil {
-					if env, err := putils.GetEnvelopeFromBlock(d); err != nil {
-						fmt.Printf("Error getting tx from block(%s)\n", err)
-					} else if env != nil {
-						// validate the transaction: here we check that the transaction
-						// is properly formed, properly signed and that the security
-						// chain binding proposal to endorsements to tx holds. We do
-						// NOT check the validity of endorsements, though. That's a
-						// job for VSCC below
-						payload, _, err := peer.ValidateTransaction(env)
-						if err != nil {
-							// TODO: this code needs to receive a bit more attention and discussion:
-							// it's not clear what it means if a transaction which causes a failure
-							// in validation is just dropped on the floor
-							logger.Errorf("Invalid transaction, error %s", err)
-						} else {
-							//the payload is used to get headers
-							err = isTxValidForVscc(payload, d)
-							if err != nil {
-								// TODO: this code needs to receive a bit more attention and discussion:
-								// it's not clear what it means if a transaction which causes a failure
-								// in validation is just dropped on the floor
-								logger.Errorf("isTxValidForVscc returned error %s", err)
-								continue
-							}
-
-							if t, err := proto.Marshal(env); err == nil {
-								block.Data.Data = append(block.Data.Data, t)
-							} else {
-								fmt.Printf("Cannot marshal transactoins %s\n", err)
-							}
-						}
-					} else {
-						logger.Warning("Nil tx from block")
-					}
-				}
-			}
+			// Create new transactions validator
+			validator := txvalidator.NewTxValidator(peer.GetLedger(d.chainID))
+			// Validate and mark invalid transactions
+			validator.Validate(t.Block)
 
 			numberOfPeers := len(service.GetGossipService().GetPeers())
 			// Create payload with a block received
-			payload := createPayload(seqNum, block)
+			payload := createPayload(seqNum, t.Block)
 			// Use payload to create gossip message
 			gossipMsg := createGossipMsg(payload)
+
 			logger.Debugf("Adding payload locally, buffer seqNum = [%d], peers number [%d]", seqNum, numberOfPeers)
 			// Add payload to local state payloads buffer
 			service.GetGossipService().AddPayload(d.chainID, payload)
+
 			// Gossip messages with other nodes
 			logger.Debugf("Gossiping block [%d], peers number [%d]", seqNum, numberOfPeers)
 			service.GetGossipService().Gossip(gossipMsg)
-			if err = producer.SendProducerBlockEvent(block); err != nil {
+			if err = producer.SendProducerBlockEvent(t.Block); err != nil {
 				logger.Errorf("Error sending block event %s", err)
 			}
 
@@ -319,6 +226,7 @@ func createGossipMsg(payload *gossip_proto.Payload) *gossip_proto.GossipMessage 
 				Payload: payload,
 			},
 		},
+		Tag: gossip_proto.GossipMessage_EMPTY,
 	}
 	return gossipMsg
 }
