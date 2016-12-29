@@ -19,7 +19,7 @@ package util
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/metadata"
+	"github.com/hyperledger/fabric/common/metadata"
 )
 
 func TestUtil_DockerfileTemplateParser(t *testing.T) {

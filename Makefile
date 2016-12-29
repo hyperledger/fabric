@@ -47,7 +47,7 @@ PROJECT_VERSION=$(BASE_VERSION)
 endif
 
 PKGNAME = github.com/$(PROJECT_NAME)
-GO_LDFLAGS = -X $(PKGNAME)/metadata.Version=$(PROJECT_VERSION)
+GO_LDFLAGS = -X $(PKGNAME)/common/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell uname -m)
 CHAINTOOL_RELEASE=v0.10.0
