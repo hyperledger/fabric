@@ -161,6 +161,16 @@ func endTxSimulationCIS(chainID string, txid string, txsim ledger.TxSimulator, p
 	return endTxSimulation(chainID, txsim, payload, commit, prop)
 }
 
+//getting a crash from ledger.Commit when doing concurrent invokes
+//It is likely intentional that ledger.Commit is serial (ie, the real
+//Committer will invoke this serially on each block). Mimic that here
+//by forcing serialization of the ledger.Commit call.
+//
+//NOTE-this should NOT have any effect on the older serial tests.
+//This affects only the tests in concurrent_test.go which call these
+//concurrently (100 concurrent invokes followed by 100 concurrent queries)
+var _commitLock_ sync.Mutex
+
 func endTxSimulation(chainID string, txsim ledger.TxSimulator, payload []byte, commit bool, prop *pb.Proposal) error {
 	txsim.Done()
 	if lgr := peer.GetLedger(chainID); lgr != nil {
@@ -194,6 +204,10 @@ func endTxSimulation(chainID string, txsim ledger.TxSimulator, payload []byte, c
 			block := common.NewBlock(1, []byte{})
 			block.Data.Data = [][]byte{envBytes}
 			//commit the block
+
+			//see comment on _commitLock_
+			_commitLock_.Lock()
+			defer _commitLock_.Unlock()
 			if err := lgr.Commit(block); err != nil {
 				return err
 			}
@@ -599,38 +613,6 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 	}
 
 	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
-}
-
-// Execute multiple transactions and queries.
-func exec(ctxt context.Context, chainID string, chaincodeID string, numTrans int, numQueries int) []error {
-	var wg sync.WaitGroup
-	errs := make([]error, numTrans+numQueries)
-
-	e := func(qnum int) {
-		defer wg.Done()
-		var spec *pb.ChaincodeSpec
-		args := util.ToChaincodeArgs("invoke", "a", "b", "10")
-
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: chaincodeID}, CtorMsg: &pb.ChaincodeInput{Args: args}}
-
-		_, _, _, err := invoke(ctxt, chainID, spec)
-
-		if err != nil {
-			errs[qnum] = fmt.Errorf("Error executing <%s>: %s", chaincodeID, err)
-			return
-		}
-	}
-	wg.Add(numTrans + numQueries)
-
-	//execute transactions sequentially..
-	go func() {
-		for i := 0; i < numTrans; i++ {
-			e(i)
-		}
-	}()
-
-	wg.Wait()
-	return errs
 }
 
 // Test the execution of an invalid transaction.

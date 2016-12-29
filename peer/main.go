@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -30,11 +29,10 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hyperledger/fabric/core"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/flogging"
-	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/clilogging"
+	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/node"
 	"github.com/hyperledger/fabric/peer/version"
 )
@@ -83,26 +81,9 @@ func main() {
 	testCoverProfile := ""
 	mainFlags.StringVarP(&testCoverProfile, "test.coverprofile", "", "coverage.cov", "Done")
 
-	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
-	if alternativeCfgPath != "" {
-		logger.Infof("User defined config file path: %s", alternativeCfgPath)
-		viper.AddConfigPath(alternativeCfgPath) // Path to look for the config file in
-	} else {
-		viper.AddConfigPath("./") // Path to look for the config file in
-		// Path to look for the config file in based on GOPATH
-		gopath := os.Getenv("GOPATH")
-		for _, p := range filepath.SplitList(gopath) {
-			peerpath := filepath.Join(p, "src/github.com/hyperledger/fabric/peer")
-			viper.AddConfigPath(peerpath)
-		}
-	}
-
-	// Now set the configuration file.
-	viper.SetConfigName(cmdRoot) // Name of config file (without extension)
-
-	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil {             // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error when reading %s config file: %s\n", cmdRoot, err))
+	err := common.InitConfig(cmdRoot)
+	if err != nil { // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error when initializing %s config : %s\n", cmdRoot, err))
 	}
 
 	mainCmd.AddCommand(version.Cmd())
@@ -112,13 +93,10 @@ func main() {
 
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 
-	// Init the crypto layer
-	//TODO: integrate new crypto / idp code
-	primitives.SetSecurityLevel("SHA2", 256)
-
 	// Init the MSP
 	// TODO: determine the location of this config file
 	var mspMgrConfigDir string
+	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
 	if alternativeCfgPath != "" {
 		mspMgrConfigDir = alternativeCfgPath + "/msp/sampleconfig/"
 	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
@@ -127,17 +105,10 @@ func main() {
 		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
 	}
 
-	// FIXME: when this peer joins a chain, it should get the
-	// config for that chain with the list of MSPs that the
-	// chain uses; however this is not yet implemented.
-	// Additionally, we might always want to have an MSP for
-	// the local test chain so that we can run tests with the
-	// peer CLI. This is why we create this fake setup here for now
-	err = mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
-	if err != nil {
-		panic(fmt.Errorf("Fatal error when setting up MSP from directory %s: err %s\n", mspMgrConfigDir, err))
+	err = common.InitCrypto(mspMgrConfigDir)
+	if err != nil { // Handle errors reading the config file
+		panic(err.Error())
 	}
-
 	// On failure Cobra prints the usage message and error string, so we only
 	// need to exit with a non-0 status
 	if mainCmd.Execute() != nil {

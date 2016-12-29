@@ -145,65 +145,18 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	return spec, nil
 }
 
-// chaincodeInvokeOrQuery invokes or queries the chaincode. If successful, the
-// INVOKE form prints the ProposalResponse to STDOUT, and the QUERY form prints
-// the query result on STDOUT. A command-line flag (-r, --raw) determines
-// whether the query result is output as raw bytes, or as a printable string.
-// The printable form is optionally (-x, --hex) a hexadecimal representation
-// of the query response. If the query response is NIL, nothing is output.
-//
-// NOTE - Query will likely go away as all interactions with the endorser are
-// Proposal and ProposalResponses
 func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *ChaincodeCmdFactory) (err error) {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
 		return err
 	}
 
-	// Build the ChaincodeInvocationSpec message
-	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
-	if customIDGenAlg != common.UndefinedParamValue {
-		invocation.IdGenerationAlg = customIDGenAlg
-	}
-
-	creator, err := cf.Signer.Serialize()
+	proposalResp, err := ChaincodeInvokeOrQuery(spec, chainID, invoke, cf.Signer, cf.EndorserClient, cf.BroadcastClient)
 	if err != nil {
-		return fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
-	}
-
-	uuid := cutil.GenerateUUID()
-
-	var prop *pb.Proposal
-	prop, err = putils.CreateProposalFromCIS(uuid, chainID, invocation, creator)
-	if err != nil {
-		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
-	}
-
-	var signedProp *pb.SignedProposal
-	signedProp, err = putils.GetSignedProposal(prop, cf.Signer)
-	if err != nil {
-		return fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
-	}
-
-	var proposalResp *pb.ProposalResponse
-	proposalResp, err = cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
-	if err != nil {
-		return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+		return err
 	}
 
 	if invoke {
-		if proposalResp != nil {
-			// assemble a signed transaction (it's an Envelope message)
-			env, err := putils.CreateSignedTx(prop, cf.Signer, proposalResp)
-			if err != nil {
-				return fmt.Errorf("Could not assemble transaction, err %s", err)
-			}
-
-			// send the envelope for ordering
-			if err = cf.BroadcastClient.Send(env); err != nil {
-				return fmt.Errorf("Error sending transaction %s: %s\n", chainFuncName, err)
-			}
-		}
 		logger.Infof("Invoke result: %v", proposalResp)
 	} else {
 		if proposalResp == nil {
@@ -225,8 +178,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 			}
 		}
 	}
-
-	return nil
+	return err
 }
 
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
@@ -300,4 +252,68 @@ func InitCmdFactory() (*ChaincodeCmdFactory, error) {
 		Signer:          signer,
 		BroadcastClient: broadcastClient,
 	}, nil
+}
+
+// ChaincodeInvokeOrQuery invokes or queries the chaincode. If successful, the
+// INVOKE form prints the ProposalResponse to STDOUT, and the QUERY form prints
+// the query result on STDOUT. A command-line flag (-r, --raw) determines
+// whether the query result is output as raw bytes, or as a printable string.
+// The printable form is optionally (-x, --hex) a hexadecimal representation
+// of the query response. If the query response is NIL, nothing is output.
+//
+// NOTE - Query will likely go away as all interactions with the endorser are
+// Proposal and ProposalResponses
+func ChaincodeInvokeOrQuery(spec *pb.ChaincodeSpec, cID string, invoke bool, signer msp.SigningIdentity, endorserClient pb.EndorserClient, bc common.BroadcastClient) (*pb.ProposalResponse, error) {
+	// Build the ChaincodeInvocationSpec message
+	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
+	if customIDGenAlg != common.UndefinedParamValue {
+		invocation.IdGenerationAlg = customIDGenAlg
+	}
+
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("Error serializing identity for %s: %s", signer.GetIdentifier(), err)
+	}
+
+	uuid := cutil.GenerateUUID()
+
+	funcName := "invoke"
+	if !invoke {
+		funcName = "query"
+	}
+
+	var prop *pb.Proposal
+	prop, err = putils.CreateProposalFromCIS(uuid, cID, invocation, creator)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating proposal  %s: %s", funcName, err)
+	}
+
+	var signedProp *pb.SignedProposal
+	signedProp, err = putils.GetSignedProposal(prop, signer)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating signed proposal  %s: %s", funcName, err)
+	}
+
+	var proposalResp *pb.ProposalResponse
+	proposalResp, err = endorserClient.ProcessProposal(context.Background(), signedProp)
+	if err != nil {
+		return nil, fmt.Errorf("Error endorsing %s: %s", funcName, err)
+	}
+
+	if invoke {
+		if proposalResp != nil {
+			// assemble a signed transaction (it's an Envelope message)
+			env, err := putils.CreateSignedTx(prop, signer, proposalResp)
+			if err != nil {
+				return proposalResp, fmt.Errorf("Could not assemble transaction, err %s", err)
+			}
+
+			// send the envelope for ordering
+			if err = bc.Send(env); err != nil {
+				return proposalResp, fmt.Errorf("Error sending transaction %s: %s", funcName, err)
+			}
+		}
+	}
+
+	return proposalResp, nil
 }

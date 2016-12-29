@@ -38,9 +38,6 @@ const (
 	establishedstate = "established" //in: CREATED, rcv:  REGISTER, send: REGISTERED, INIT
 	initstate        = "init"        //in:ESTABLISHED, rcv:-, send: INIT
 	readystate       = "ready"       //in:ESTABLISHED,TRANSACTION, rcv:COMPLETED
-	transactionstate = "transaction" //in:READY, rcv: xact from consensus, send: TRANSACTION
-	busyinitstate    = "busyinit"    //in:INIT, rcv: PUT_STATE, DEL_STATE, INVOKE_CHAINCODE
-	busyxactstate    = "busyxact"    //in:TRANSACION, rcv: PUT_STATE, DEL_STATE, INVOKE_CHAINCODE
 	endstate         = "end"         //in:INIT,ESTABLISHED, rcv: error, terminate container
 
 )
@@ -145,14 +142,31 @@ func (handler *Handler) getCCRootName() string {
 	return handler.ccCompParts.name
 }
 
+//serialSend serializes msgs so gRPC will be happy
 func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	handler.serialLock.Lock()
 	defer handler.serialLock.Unlock()
-	if err := handler.ChatStream.Send(msg); err != nil {
-		chaincodeLogger.Errorf("Error sending %s: %s", msg.Type.String(), err)
-		return fmt.Errorf("Error sending %s: %s", msg.Type.String(), err)
+
+	var err error
+	if err = handler.ChatStream.Send(msg); err != nil {
+		err = fmt.Errorf("[%s]Error sending %s: %s", shorttxid(msg.Txid), msg.Type.String(), err)
+		chaincodeLogger.Errorf("%s", err)
 	}
-	return nil
+	return err
+}
+
+//serialSendAsync serves the same purpose as serialSend (serializ msgs so gRPC will
+//be happy). In addition, it is also asynchronous so send-remoterecv--localrecv loop
+//can be nonblocking. Only errors need to be handled and these are handled by
+//communication on supplied error channel. A typical use will be a non-blocking or
+//nil channel
+func (handler *Handler) serialSendAsync(msg *pb.ChaincodeMessage, errc chan error) {
+	go func() {
+		err := handler.serialSend(msg)
+		if errc != nil {
+			errc <- err
+		}
+	}()
 }
 
 func (handler *Handler) createTxContext(ctxt context.Context, chainID string, txid string, prop *pb.Proposal) (*transactionContext, error) {
@@ -253,6 +267,9 @@ func (handler *Handler) processStream() error {
 	//recv is used to spin Recv routine after previous received msg
 	//has been processed
 	recv := true
+
+	//catch send errors and bail now that sends aren't synchronous
+	errc := make(chan error, 1)
 	for {
 		in = nil
 		err = nil
@@ -266,6 +283,12 @@ func (handler *Handler) processStream() error {
 			}()
 		}
 		select {
+		case sendErr := <-errc:
+			if sendErr != nil {
+				return sendErr
+			}
+			//send was successful, just continue
+			continue
 		case in = <-msgAvail:
 			// Defer the deregistering of the this handler.
 			if err == io.EOF {
@@ -307,14 +330,9 @@ func (handler *Handler) processStream() error {
 				continue
 			}
 
-			//TODO we could use this to hook into container lifecycle (kill the chaincode if not in use, etc)
-			kaerr := handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
-			if kaerr != nil {
-				chaincodeLogger.Errorf("Error sending keepalive, err=%s", kaerr)
-			} else {
-				chaincodeLogger.Debug("Sent KEEPALIVE request")
-			}
-			//keepalive message kicked in. just continue
+			//if no error message from serialSend, KEEPALIVE happy, and don't care about error
+			//(maybe it'll work later)
+			handler.serialSendAsync(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE}, nil)
 			continue
 		}
 
@@ -326,10 +344,8 @@ func (handler *Handler) processStream() error {
 
 		if nsInfo != nil && nsInfo.sendToCC {
 			chaincodeLogger.Debugf("[%s]sending state message %s", shorttxid(in.Txid), in.Type.String())
-			if err = handler.serialSend(in); err != nil {
-				chaincodeLogger.Debugf("[%s]serial sending received error %s", shorttxid(in.Txid), err)
-				return fmt.Errorf("[%s]serial sending received error %s", shorttxid(in.Txid), err)
-			}
+			//if error bail in select
+			handler.serialSendAsync(in, errc)
 		}
 	}
 }
@@ -357,40 +373,26 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 			{Name: pb.ChaincodeMessage_REGISTER.String(), Src: []string{createdstate}, Dst: establishedstate},
 			{Name: pb.ChaincodeMessage_INIT.String(), Src: []string{establishedstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_READY.String(), Src: []string{establishedstate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_TRANSACTION.String(), Src: []string{readystate}, Dst: transactionstate},
-			{Name: pb.ChaincodeMessage_PUT_STATE.String(), Src: []string{transactionstate}, Dst: busyxactstate},
-			{Name: pb.ChaincodeMessage_DEL_STATE.String(), Src: []string{transactionstate}, Dst: busyxactstate},
-			{Name: pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), Src: []string{transactionstate}, Dst: busyxactstate},
-			{Name: pb.ChaincodeMessage_PUT_STATE.String(), Src: []string{initstate}, Dst: busyinitstate},
-			{Name: pb.ChaincodeMessage_DEL_STATE.String(), Src: []string{initstate}, Dst: busyinitstate},
-			{Name: pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), Src: []string{initstate}, Dst: busyinitstate},
-			{Name: pb.ChaincodeMessage_COMPLETED.String(), Src: []string{initstate, readystate, transactionstate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_PUT_STATE.String(), Src: []string{initstate}, Dst: initstate},
+			{Name: pb.ChaincodeMessage_PUT_STATE.String(), Src: []string{readystate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_DEL_STATE.String(), Src: []string{initstate}, Dst: initstate},
+			{Name: pb.ChaincodeMessage_DEL_STATE.String(), Src: []string{readystate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), Src: []string{initstate}, Dst: initstate},
+			{Name: pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), Src: []string{readystate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_COMPLETED.String(), Src: []string{initstate, readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_GET_STATE.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_GET_STATE.String(), Src: []string{initstate}, Dst: initstate},
-			{Name: pb.ChaincodeMessage_GET_STATE.String(), Src: []string{busyinitstate}, Dst: busyinitstate},
-			{Name: pb.ChaincodeMessage_GET_STATE.String(), Src: []string{transactionstate}, Dst: transactionstate},
-			{Name: pb.ChaincodeMessage_GET_STATE.String(), Src: []string{busyxactstate}, Dst: busyxactstate},
 			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE.String(), Src: []string{initstate}, Dst: initstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE.String(), Src: []string{busyinitstate}, Dst: busyinitstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE.String(), Src: []string{transactionstate}, Dst: transactionstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE.String(), Src: []string{busyxactstate}, Dst: busyxactstate},
 			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT.String(), Src: []string{initstate}, Dst: initstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT.String(), Src: []string{busyinitstate}, Dst: busyinitstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT.String(), Src: []string{transactionstate}, Dst: transactionstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT.String(), Src: []string{busyxactstate}, Dst: busyxactstate},
 			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE.String(), Src: []string{initstate}, Dst: initstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE.String(), Src: []string{busyinitstate}, Dst: busyinitstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE.String(), Src: []string{transactionstate}, Dst: transactionstate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE.String(), Src: []string{busyxactstate}, Dst: busyxactstate},
 			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{initstate}, Dst: endstate},
-			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{transactionstate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{busyinitstate}, Dst: initstate},
-			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{busyxactstate}, Dst: transactionstate},
-			{Name: pb.ChaincodeMessage_RESPONSE.String(), Src: []string{busyinitstate}, Dst: initstate},
-			{Name: pb.ChaincodeMessage_RESPONSE.String(), Src: []string{busyxactstate}, Dst: transactionstate},
+			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{readystate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_RESPONSE.String(), Src: []string{initstate}, Dst: initstate},
+			{Name: pb.ChaincodeMessage_RESPONSE.String(), Src: []string{readystate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_TRANSACTION.String(), Src: []string{readystate}, Dst: readystate},
 		},
 		fsm.Callbacks{
 			"before_" + pb.ChaincodeMessage_REGISTER.String():               func(e *fsm.Event) { v.beforeRegisterEvent(e, v.FSM.Current()) },
@@ -400,14 +402,12 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 			"after_" + pb.ChaincodeMessage_RANGE_QUERY_STATE.String():       func(e *fsm.Event) { v.afterRangeQueryState(e, v.FSM.Current()) },
 			"after_" + pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT.String():  func(e *fsm.Event) { v.afterRangeQueryStateNext(e, v.FSM.Current()) },
 			"after_" + pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE.String(): func(e *fsm.Event) { v.afterRangeQueryStateClose(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_PUT_STATE.String():               func(e *fsm.Event) { v.afterPutState(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_DEL_STATE.String():               func(e *fsm.Event) { v.afterDelState(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_INVOKE_CHAINCODE.String():        func(e *fsm.Event) { v.afterInvokeChaincode(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_PUT_STATE.String():               func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_DEL_STATE.String():               func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_INVOKE_CHAINCODE.String():        func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
 			"enter_" + establishedstate:                                     func(e *fsm.Event) { v.enterEstablishedState(e, v.FSM.Current()) },
 			"enter_" + initstate:                                            func(e *fsm.Event) { v.enterInitState(e, v.FSM.Current()) },
 			"enter_" + readystate:                                           func(e *fsm.Event) { v.enterReadyState(e, v.FSM.Current()) },
-			"enter_" + busyinitstate:                                        func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
-			"enter_" + busyxactstate:                                        func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
 			"enter_" + endstate:                                             func(e *fsm.Event) { v.enterEndState(e, v.FSM.Current()) },
 		},
 	)
@@ -563,7 +563,7 @@ func (handler *Handler) handleGetState(msg *pb.ChaincodeMessage) {
 		defer func() {
 			handler.deleteTXIDEntry(msg.Txid)
 			chaincodeLogger.Debugf("[%s]handleGetState serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
-			handler.serialSend(serialSendMsg)
+			handler.serialSendAsync(serialSendMsg, nil)
 		}()
 
 		key := string(msg.Payload)
@@ -635,7 +635,7 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 		defer func() {
 			handler.deleteTXIDEntry(msg.Txid)
 			chaincodeLogger.Debugf("[%s]handleRangeQueryState serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
-			handler.serialSend(serialSendMsg)
+			handler.serialSendAsync(serialSendMsg, nil)
 		}()
 
 		rangeQueryState := &pb.RangeQueryState{}
@@ -742,7 +742,7 @@ func (handler *Handler) handleRangeQueryStateNext(msg *pb.ChaincodeMessage) {
 		defer func() {
 			handler.deleteTXIDEntry(msg.Txid)
 			chaincodeLogger.Debugf("[%s]handleRangeQueryState serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
-			handler.serialSend(serialSendMsg)
+			handler.serialSendAsync(serialSendMsg, nil)
 		}()
 
 		rangeQueryStateNext := &pb.RangeQueryStateNext{}
@@ -840,7 +840,7 @@ func (handler *Handler) handleRangeQueryStateClose(msg *pb.ChaincodeMessage) {
 		defer func() {
 			handler.deleteTXIDEntry(msg.Txid)
 			chaincodeLogger.Debugf("[%s]handleRangeQueryState serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
-			handler.serialSend(serialSendMsg)
+			handler.serialSendAsync(serialSendMsg, nil)
 		}()
 
 		rangeQueryStateClose := &pb.RangeQueryStateClose{}
@@ -1132,6 +1132,11 @@ func (handler *Handler) initOrReady(ctxt context.Context, chainID string, txid s
 func (handler *Handler) HandleMessage(msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debugf("[%s]Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 
+	if (msg.Type == pb.ChaincodeMessage_COMPLETED || msg.Type == pb.ChaincodeMessage_ERROR) && handler.FSM.Current() == "ready" {
+		chaincodeLogger.Debugf("[%s]HandleMessage- COMPLETED. Notify", msg.Txid)
+		handler.notify(msg)
+		return nil
+	}
 	if handler.FSM.Cannot(msg.Type.String()) {
 		// Other errors
 		return fmt.Errorf("[%s]Chaincode handler validator FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type.String(), len(msg.Payload), handler.FSM.Current())
@@ -1207,27 +1212,3 @@ func (handler *Handler) isRunning() bool {
 		return true
 	}
 }
-
-/****************
-func (handler *Handler) initEvent() (chan *pb.ChaincodeMessage, error) {
-	if handler.responseNotifiers == nil {
-		return nil,fmt.Errorf("SendMessage called before registration for Txid:%s", msg.Txid)
-	}
-	var notfy chan *pb.ChaincodeMessage
-	handler.Lock()
-	if handler.responseNotifiers[msg.Txid] != nil {
-		handler.Unlock()
-		return nil, fmt.Errorf("SendMessage Txid:%s exists", msg.Txid)
-	}
-	//note the explicit use of buffer 1. We won't block if the receiver times outi and does not wait
-	//for our response
-	handler.responseNotifiers[msg.Txid] = make(chan *pb.ChaincodeMessage, 1)
-	handler.Unlock()
-
-	if err := c.serialSend(msg); err != nil {
-		deleteNotifier(msg.Txid)
-		return nil, fmt.Errorf("SendMessage error sending %s(%s)", msg.Txid, err)
-	}
-	return notfy, nil
-}
-*******************/
