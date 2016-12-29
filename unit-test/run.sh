@@ -3,9 +3,12 @@
 set -e
 ARCH=`uname -m`
 
-echo -n "Obtaining list of tests to run.."
+#check to see if TEST_PKGS is set else use default (all packages)
+TEST_PKGS=${TEST_PKGS:-github.com/hyperledger/fabric/...}
+echo -n "Obtaining list of tests to run for the following packages: ${TEST_PKGS}"
+
 # Some examples don't play nice with `go test`
-PKGS=`go list github.com/hyperledger/fabric/... 2> /dev/null | \
+PKGS=`go list ${TEST_PKGS} 2> /dev/null | \
                                                   grep -v /vendor/ | \
                                                   grep -v /build/ | \
 	                                          grep -v /examples/chaincode/chaintool/ | \
