@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric/metadata"
+	"github.com/hyperledger/fabric/common/metadata"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/crypto/sha3"
