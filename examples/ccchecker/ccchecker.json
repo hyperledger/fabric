@@ -1,0 +1,17 @@
+{"Chaincodes":
+  [
+       {"Name": "mycc",
+        "Path": "github.com/hyperledger/fabric/examples/ccchecker/chaincodes/newkeyperinvoke",
+	"NumFinalQueryAttempts": 10,
+	"NumberOfIterations": 10,
+	"DelayBetweenInvokeMs": 1,
+	"DelayBetweenQueryMs": 10,
+	"TimeoutToAbortSecs": 60,
+	"Lang": "GOLANG",
+	"WaitAfterInvokeMs": 10000,
+	"Concurrency": 10
+       }
+   ],
+ "TimeoutToAbortSecs": 60,
+ "ChainName": "**TEST_CHAINID**"
+}

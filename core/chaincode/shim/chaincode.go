@@ -187,8 +187,11 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 	}
 	// Register on the stream
 	chaincodeLogger.Debugf("Registering.. sending %s", pb.ChaincodeMessage_REGISTER)
-	handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: payload})
+	if err = handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: payload}); err != nil {
+		return fmt.Errorf("Error sending chaincode REGISTER: %s", err)
+	}
 	waitc := make(chan struct{})
+	errc := make(chan error)
 	go func() {
 		defer close(waitc)
 		msgAvail := make(chan *pb.ChaincodeMessage)
@@ -208,6 +211,14 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 				}()
 			}
 			select {
+			case sendErr := <-errc:
+				//serialSendAsync successful?
+				if sendErr == nil {
+					continue
+				}
+				//no, bail
+				err = fmt.Errorf("Error sending %s: %s", in.Type.String(), sendErr)
+				return
 			case in = <-msgAvail:
 				if err == io.EOF {
 					chaincodeLogger.Debugf("Received EOF, ending chaincode stream, %s", err)
@@ -241,12 +252,11 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			if (nsInfo != nil && nsInfo.sendToCC) || (in.Type == pb.ChaincodeMessage_KEEPALIVE) {
 				if in.Type == pb.ChaincodeMessage_KEEPALIVE {
 					chaincodeLogger.Debug("Sending KEEPALIVE response")
+					//ignore any errors, maybe next KEEPALIVE will work
+					handler.serialSendAsync(in, nil)
 				} else {
 					chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
-				}
-				if err = handler.serialSend(in); err != nil {
-					err = fmt.Errorf("Error sending %s: %s", in.Type.String(), err)
-					return
+					handler.serialSendAsync(in, errc)
 				}
 			}
 		}

@@ -397,22 +397,21 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *CCContext, cLang 
 }
 
 // launchAndWaitForRegister will launch container if not already running. Use the targz to create the image if not found
-func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *CCContext, cds *pb.ChaincodeDeploymentSpec, cLang pb.ChaincodeSpec_Type, targz io.Reader) (bool, error) {
+func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *CCContext, cds *pb.ChaincodeDeploymentSpec, cLang pb.ChaincodeSpec_Type, targz io.Reader) error {
 	canName := cccid.GetCanonicalName()
 	if canName == "" {
-		return false, fmt.Errorf("chaincode name not set")
+		return fmt.Errorf("chaincode name not set")
 	}
 
 	chaincodeSupport.runningChaincodes.Lock()
-	var ok bool
-	//if its in the map, there must be a connected stream...nothing to do
-	if _, ok = chaincodeSupport.chaincodeHasBeenLaunched(canName); ok {
-		chaincodeLogger.Debugf("chaincode is running and ready: %s", canName)
+	//if its in the map, its either up or being launched. Either case break the
+	//multiple launch by failing
+	if _, hasBeenLaunched := chaincodeSupport.chaincodeHasBeenLaunched(canName); hasBeenLaunched {
 		chaincodeSupport.runningChaincodes.Unlock()
-		return true, nil
+		return fmt.Errorf("Error chaincode is being launched: %s", canName)
 	}
-	alreadyRunning := false
 
+	//chaincodeHasBeenLaunch false... its not in the map, add it and proceed to launch
 	notfy := chaincodeSupport.preLaunchSetup(canName)
 	chaincodeSupport.runningChaincodes.Unlock()
 
@@ -420,7 +419,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 
 	args, env, err := chaincodeSupport.getArgsAndEnv(cccid, cLang)
 	if err != nil {
-		return alreadyRunning, err
+		return err
 	}
 
 	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", canName, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID)
@@ -440,7 +439,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 		chaincodeSupport.runningChaincodes.Lock()
 		delete(chaincodeSupport.runningChaincodes.chaincodeMap, canName)
 		chaincodeSupport.runningChaincodes.Unlock()
-		return alreadyRunning, err
+		return err
 	}
 
 	//wait for REGISTER state
@@ -459,7 +458,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 			chaincodeLogger.Debugf("error on stop %s(%s)", errIgnore, err)
 		}
 	}
-	return alreadyRunning, err
+	return err
 }
 
 //Stop stops a chaincode if running
@@ -577,7 +576,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 	//launch container if it is a System container or not in dev mode
 	if (!chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) && (chrte == nil || chrte.handler == nil) {
 		var targz io.Reader = bytes.NewBuffer(cds.CodePackage)
-		_, err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, cLang, targz)
+		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, cLang, targz)
 		if err != nil {
 			chaincodeLogger.Errorf("launchAndWaitForRegister failed %s", err)
 			return cID, cMsg, err

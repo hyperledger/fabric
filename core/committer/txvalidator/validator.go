@@ -88,7 +88,7 @@ func (v *txValidator) Validate(block *common.Block) {
 					// TODO: this code needs to receive a bit more attention and discussion:
 					// it's not clear what it means if a transaction which causes a failure
 					// in validation is just dropped on the floor
-					logger.Errorf("Invalid transaction with index %s, error %s", tIdx, err)
+					logger.Errorf("Invalid transaction with index %d, error %s", tIdx, err)
 					txsfltr.Set(uint(tIdx))
 				} else {
 					//the payload is used to get headers
@@ -153,9 +153,13 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	defer txsim.Done()
 	ctxt := context.WithValue(context.Background(), chaincode.TXSimulatorKey, txsim)
 
+	//generate an internal txid for executing system chaincode calls below on behalf
+	//of original txid
+	vscctxid := coreUtil.GenerateUUID()
+
 	// Extracting vscc from lccc
 	/*
-		data, err := chaincode.GetChaincodeDataFromLCCC(ctxt, txid, nil, chainID, "vscc")
+		data, err := chaincode.GetChaincodeDataFromLCCC(ctxt, vscctxid, nil, chainID, "vscc")
 		if err != nil {
 			logger.Errorf("Unable to get chaincode data from LCCC for txid %s, due to %s", txid, err)
 			return err
@@ -164,7 +168,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 
 	// Get chaincode version
 	version := coreUtil.GetSysCCVersion()
-	cccid := chaincode.NewCCContext(chainID, "vscc", version, txid, true, nil)
+	cccid := chaincode.NewCCContext(chainID, "vscc", version, vscctxid, true, nil)
 
 	// invoke VSCC
 	_, _, err = chaincode.ExecuteChaincode(ctxt, cccid, args)

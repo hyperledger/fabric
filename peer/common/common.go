@@ -18,7 +18,10 @@ package common
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/flogging"
 	"github.com/hyperledger/fabric/core/peer"
@@ -30,6 +33,52 @@ import (
 
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
 const UndefinedParamValue = ""
+
+//InitConfig initializes viper config
+func InitConfig(cmdRoot string) error {
+	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
+	if alternativeCfgPath != "" {
+		viper.AddConfigPath(alternativeCfgPath) // Path to look for the config file in
+	} else {
+		viper.AddConfigPath("./") // Path to look for the config file in
+		// Path to look for the config file in based on GOPATH
+		gopath := os.Getenv("GOPATH")
+		for _, p := range filepath.SplitList(gopath) {
+			peerpath := filepath.Join(p, "src/github.com/hyperledger/fabric/peer")
+			viper.AddConfigPath(peerpath)
+		}
+	}
+
+	// Now set the configuration file.
+	viper.SetConfigName(cmdRoot) // Name of config file (without extension)
+
+	err := viper.ReadInConfig() // Find and read the config file
+	if err != nil {             // Handle errors reading the config file
+		return fmt.Errorf("Fatal error when reading %s config file: %s\n", cmdRoot, err)
+	}
+
+	return nil
+}
+
+//InitCrypto initializes crypto for this peer
+func InitCrypto(mspMgrConfigDir string) error {
+	// Init the crypto layer
+	//TODO: integrate new crypto / idp code
+	primitives.SetSecurityLevel("SHA2", 256)
+
+	// FIXME: when this peer joins a chain, it should get the
+	// config for that chain with the list of MSPs that the
+	// chain uses; however this is not yet implemented.
+	// Additionally, we might always want to have an MSP for
+	// the local test chain so that we can run tests with the
+	// peer CLI. This is why we create this fake setup here for now
+	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	if err != nil {
+		return fmt.Errorf("Fatal error when setting up MSP from directory %s: err %s\n", mspMgrConfigDir, err)
+	}
+
+	return nil
+}
 
 // GetEndorserClient returns a new endorser client connection for this peer
 func GetEndorserClient() (pb.EndorserClient, error) {
