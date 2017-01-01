@@ -45,7 +45,8 @@ import (
 
 const keyfile = "testdata/key.pem"
 const maindir = "github.com/hyperledger/fabric/orderer/sbft/main"
-const mainexe = "main"
+
+var mainexe = os.TempDir() + "/" + "sbft"
 
 type peer struct {
 	id     uint64
@@ -67,10 +68,14 @@ func skipInShortMode(t *testing.T) {
 }
 
 func build() {
-	buildcmd := exec.Command("go", "build", maindir)
+	buildcmd := exec.Command("go", "build", "-o", mainexe, maindir)
 	buildcmd.Stdout = os.Stdout
 	buildcmd.Stderr = os.Stderr
 	panicOnError(buildcmd.Run())
+}
+
+func deleteExe() {
+	panicOnError(os.Remove(mainexe))
 }
 
 func install() {
@@ -82,8 +87,8 @@ func install() {
 
 func TestMain(m *testing.M) {
 	build()
-	install()
 	code := m.Run()
+	deleteExe()
 	os.Exit(code)
 }
 
