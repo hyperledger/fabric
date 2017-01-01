@@ -36,7 +36,7 @@ var ccchecker *CCChecker
 //CCChecker encapsulates ccchecker properties and runtime
 type CCChecker struct {
 	//Chaincodes to do ccchecker over (see ccchecker.json for defaults)
-	Chaincodes []*chaincodes.CC
+	Chaincodes []*chaincodes.CCClient
 	//TimeoutToAbortSecs abort deadline
 	TimeoutToAbortSecs int
 	//ChainName name of the chain
@@ -62,7 +62,7 @@ func LoadCCCheckerParams(file string) error {
 		//concurrency <=0 will be dropped
 		if scc.Concurrency > 0 {
 			for i := 0; i < scc.Concurrency; i++ {
-				tmp := &chaincodes.CC{}
+				tmp := &chaincodes.CCClient{}
 				*tmp = *scc
 				tmp.ID = id
 				id = id + 1
@@ -77,14 +77,14 @@ func LoadCCCheckerParams(file string) error {
 	return nil
 }
 
-//CCCheckerInit assigns shadow chaincode to each of the CC from registered shadow chaincodes
+//CCCheckerInit assigns shadow chaincode to each of the CCClient from registered shadow chaincodes
 func CCCheckerInit() {
 	if ccchecker == nil {
 		fmt.Printf("LoadCCCheckerParams needs to be called before init\n")
 		os.Exit(1)
 	}
 
-	if err := chaincodes.RegisterCCs(ccchecker.Chaincodes); err != nil {
+	if err := chaincodes.RegisterCCClients(ccchecker.Chaincodes); err != nil {
 		panic(fmt.Sprintf("%s", err))
 	}
 }
@@ -119,16 +119,16 @@ func CCCheckerRun(report bool, verbose bool) error {
 	//an anonymous struct to hold failures
 	var failures struct {
 		sync.Mutex
-		failedCCs int
+		failedCCClients int
 	}
 
 	//run the invokes
 	ccerrs := make([]error, len(ccchecker.Chaincodes))
 	for _, cc := range ccchecker.Chaincodes {
-		go func(cc2 *chaincodes.CC) {
+		go func(cc2 *chaincodes.CCClient) {
 			if ccerrs[cc2.ID] = cc2.Run(ctxt, ccchecker.ChainName, bc, ec, signer, &ccsWG); ccerrs[cc2.ID] != nil {
 				failures.Lock()
-				failures.failedCCs = failures.failedCCs + 1
+				failures.failedCCClients = failures.failedCCClients + 1
 				failures.Unlock()
 			}
 		}(cc)
@@ -138,11 +138,11 @@ func CCCheckerRun(report bool, verbose bool) error {
 	err = ccchecker.wait(&ccsWG)
 
 	//verify results
-	if err == nil && failures.failedCCs < len(ccchecker.Chaincodes) {
+	if err == nil && failures.failedCCClients < len(ccchecker.Chaincodes) {
 		ccsWG = sync.WaitGroup{}
-		ccsWG.Add(len(ccchecker.Chaincodes) - failures.failedCCs)
+		ccsWG.Add(len(ccchecker.Chaincodes) - failures.failedCCClients)
 		for _, cc := range ccchecker.Chaincodes {
-			go func(cc2 *chaincodes.CC) {
+			go func(cc2 *chaincodes.CCClient) {
 				if ccerrs[cc2.ID] == nil {
 					ccerrs[cc2.ID] = cc2.Validate(ctxt, ccchecker.ChainName, bc, ec, signer, &ccsWG)
 				} else {

@@ -32,7 +32,7 @@ import (
 //ShadowCCIntf interfaces to be implemented by shadow chaincodes
 type ShadowCCIntf interface {
 	//InitShadowCC initializes the shadow chaincode (will be called once for each chaincode)
-	InitShadowCC()
+	InitShadowCC(initArgs []string)
 
 	//GetInvokeArgs gets invoke arguments from shadow
 	GetInvokeArgs(ccnum int, iter int) [][]byte
@@ -45,13 +45,22 @@ type ShadowCCIntf interface {
 
 	//Validate the results against the query arguments
 	Validate(args [][]byte, value []byte) error
+
+	//GetNumQueries returns number of queries to perform
+	GetNumQueries(numSuccessfulInvokes int) int
+
+	//OverrideNumInvokes overrides the users number of invoke request
+	OverrideNumInvokes(numInvokesPlanned int) int
 }
 
-//CC chaincode properties, config and runtime
-type CC struct {
+//CCClient chaincode properties, config and runtime
+type CCClient struct {
 	//-------------config properties ------------
 	//Name of the chaincode
 	Name string
+
+	//InitArgs used for deploying the chaincode
+	InitArgs []string
 
 	//Path to the chaincode
 	Path string
@@ -59,8 +68,8 @@ type CC struct {
 	//NumFinalQueryAttempts number of times to try final query before giving up
 	NumFinalQueryAttempts int
 
-	//NumberOfInvokeIterations number of iterations to do invoke on
-	NumberOfIterations int
+	//NumberOfInvokes number of iterations to do invoke on
+	NumberOfInvokes int
 
 	//DelayBetweenInvokeMs delay between each invoke
 	DelayBetweenInvokeMs int
@@ -87,14 +96,22 @@ type CC struct {
 	//shadow CC where the chaincode stats is maintained
 	shadowCC ShadowCCIntf
 
+	//number of iterations a shadow cc actually wants
+	//this could be different from NumberOfInvokes
+	overriddenNumInvokes int
+
+	//numer of queries to perform
+	//retrieved from the shadow CC
+	numQueries int
+
 	//current iteration of invoke
 	currentInvokeIter int
 
 	//start of invokes in epoch seconds
-	invokeStartTime int
+	invokeStartTime int64
 
 	//end of invokes in epoch seconds
-	invokeEndTime int
+	invokeEndTime int64
 
 	//error that stopped invoke iterations
 	invokeErr error
@@ -109,7 +126,7 @@ type CC struct {
 	queryErrs []error
 }
 
-func (cc *CC) getChaincodeSpec(args [][]byte) *pb.ChaincodeSpec {
+func (cc *CCClient) getChaincodeSpec(args [][]byte) *pb.ChaincodeSpec {
 	return &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[cc.Lang]),
 		ChaincodeID: &pb.ChaincodeID{Path: cc.Path, Name: cc.Name},
@@ -120,12 +137,15 @@ func (cc *CC) getChaincodeSpec(args [][]byte) *pb.ChaincodeSpec {
 //doInvokes calls invoke for each iteration for the chaincode
 //Stops at the first invoke with error
 //currentInvokeIter contains the number of successful iterations
-func (cc *CC) doInvokes(ctxt context.Context, chainID string,
+func (cc *CCClient) doInvokes(ctxt context.Context, chainID string,
 	bc common.BroadcastClient, ec pb.EndorserClient, signer msp.SigningIdentity,
 	wg *sync.WaitGroup, quit func() bool) error {
 
+	//perhaps the shadow CC wants to override the number of iterations
+	cc.overriddenNumInvokes = cc.shadowCC.OverrideNumInvokes(cc.NumberOfInvokes)
+
 	var err error
-	for cc.currentInvokeIter = 0; cc.currentInvokeIter < cc.NumberOfIterations; cc.currentInvokeIter++ {
+	for cc.currentInvokeIter = 0; cc.currentInvokeIter < cc.overriddenNumInvokes; cc.currentInvokeIter++ {
 		if quit() {
 			break
 		}
@@ -154,7 +174,7 @@ func (cc *CC) doInvokes(ctxt context.Context, chainID string,
 		}
 
 		//don't sleep for the last iter
-		if cc.DelayBetweenInvokeMs > 0 && cc.currentInvokeIter < (cc.NumberOfIterations-1) {
+		if cc.DelayBetweenInvokeMs > 0 && cc.currentInvokeIter < (cc.overriddenNumInvokes-1) {
 			time.Sleep(time.Duration(cc.DelayBetweenInvokeMs) * time.Millisecond)
 		}
 	}
@@ -165,7 +185,7 @@ func (cc *CC) doInvokes(ctxt context.Context, chainID string,
 //Run test over given number of iterations
 //  i will be unique across chaincodes and can be used as a key
 //    this is useful if chaincode occurs multiple times in the array of chaincodes
-func (cc *CC) Run(ctxt context.Context, chainID string, bc common.BroadcastClient, ec pb.EndorserClient, signer msp.SigningIdentity, wg *sync.WaitGroup) error {
+func (cc *CCClient) Run(ctxt context.Context, chainID string, bc common.BroadcastClient, ec pb.EndorserClient, signer msp.SigningIdentity, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	var (
@@ -181,12 +201,12 @@ func (cc *CC) Run(ctxt context.Context, chainID string, bc common.BroadcastClien
 		quitF := func() bool { return quit }
 
 		//start of invokes
-		cc.invokeStartTime = time.Now().Second()
+		cc.invokeStartTime = time.Now().UnixNano() / 1000000
 
 		err = cc.doInvokes(ctxt, chainID, bc, ec, signer, wg, quitF)
 
 		//end of invokes
-		cc.invokeEndTime = time.Now().Second()
+		cc.invokeEndTime = time.Now().UnixNano() / 1000000
 	}()
 
 	//we could be done or cancelled or timedout
@@ -203,7 +223,7 @@ func (cc *CC) Run(ctxt context.Context, chainID string, bc common.BroadcastClien
 }
 
 //validates the invoke iteration for this chaincode
-func (cc *CC) validateIter(ctxt context.Context, iter int, chainID string, bc common.BroadcastClient, ec pb.EndorserClient, signer msp.SigningIdentity, wg *sync.WaitGroup, quit func() bool) {
+func (cc *CCClient) validateIter(ctxt context.Context, iter int, chainID string, bc common.BroadcastClient, ec pb.EndorserClient, signer msp.SigningIdentity, wg *sync.WaitGroup, quit func() bool) {
 	defer wg.Done()
 	args := cc.shadowCC.GetQueryArgs(cc.ID, iter)
 
@@ -253,7 +273,7 @@ func (cc *CC) validateIter(ctxt context.Context, iter int, chainID string, bc co
 }
 
 //Validate test that was Run. Each successful iteration in the run is validated against
-func (cc *CC) Validate(ctxt context.Context, chainID string, bc common.BroadcastClient, ec pb.EndorserClient, signer msp.SigningIdentity, wg *sync.WaitGroup) error {
+func (cc *CCClient) Validate(ctxt context.Context, chainID string, bc common.BroadcastClient, ec pb.EndorserClient, signer msp.SigningIdentity, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	//this will signal inner validators to get out via
@@ -280,8 +300,10 @@ func (cc *CC) Validate(ctxt context.Context, chainID string, bc common.Broadcast
 		//return the quit closure for validation within validateIter
 		quitF := func() bool { return quit }
 
+		cc.numQueries = cc.shadowCC.GetNumQueries(cc.currentInvokeIter)
+
 		//try only till successful invoke iterations
-		for i := 0; i < cc.currentInvokeIter; i++ {
+		for i := 0; i < cc.numQueries; i++ {
 			go func(iter int) {
 				cc.validateIter(ctxt, iter, chainID, bc, ec, signer, &innerwg, quitF)
 			}(i)
@@ -317,22 +339,22 @@ func (cc *CC) Validate(ctxt context.Context, chainID string, bc common.Broadcast
 }
 
 //Report reports chaincode test execution, iter by iter
-func (cc *CC) Report(verbose bool, chainID string) {
+func (cc *CCClient) Report(verbose bool, chainID string) {
 	fmt.Printf("%s/%s(%d)\n", cc.Name, chainID, cc.ID)
-	fmt.Printf("\tNum successful invokes: %d(%d)\n", cc.currentInvokeIter, cc.NumberOfIterations)
+	fmt.Printf("\tNum successful invokes: %d(%d,%d)\n", cc.currentInvokeIter, cc.NumberOfInvokes, cc.overriddenNumInvokes)
 	if cc.invokeErr != nil {
 		fmt.Printf("\tError on invoke: %s\n", cc.invokeErr)
 	}
 	//test to see if validate was called (validate alloc the arrays, one of which is queryWorked)
 	if cc.queryWorked != nil {
-		for i := 0; i < cc.currentInvokeIter; i++ {
+		for i := 0; i < cc.numQueries; i++ {
 			fmt.Printf("\tQuery(%d) : succeeded-%t, num trials-%d(%d), error if any(%s)\n", i, cc.queryWorked[i], cc.currQueryIter[i], cc.NumFinalQueryAttempts, cc.queryErrs[i])
 		}
 	} else {
 		fmt.Printf("\tQuery validation appears not have been performed(#invokes-%d). timed out ?\n", cc.currentInvokeIter)
 	}
 	//total actual time for cc.currentInvokeIter
-	invokeTime := (cc.invokeEndTime-cc.invokeStartTime)*1000 - (cc.DelayBetweenInvokeMs * (cc.currentInvokeIter - 1))
+	invokeTime := cc.invokeEndTime - cc.invokeStartTime - int64(cc.DelayBetweenInvokeMs*(cc.currentInvokeIter-1))
 	fmt.Printf("\tTime for invokes(ms): %d\n", invokeTime)
 
 	fmt.Printf("\tFinal query worked ? %t\n", cc.queryWorked)
