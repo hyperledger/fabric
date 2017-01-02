@@ -1,0 +1,10 @@
+{
+    "name": "hyperledger/fabric-baseimage",
+    "versions": [{
+        "version": "0.2.2",   //注意替换成你的版本
+        "providers": [{
+            "name": "virtualbox",
+            "url": "file://virtualbox.box"   //注意替换成你的box的文件名
+        }]
+    }]
+}
