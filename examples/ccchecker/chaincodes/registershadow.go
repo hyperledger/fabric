@@ -28,25 +28,39 @@ var shadowCCs = map[string]ShadowCCIntf{
 	"github.com/hyperledger/fabric/examples/ccchecker/chaincodes/newkeyperinvoke": &nkpi.NewKeyPerInvoke{},
 }
 
-//RegisterCCs registers all possible chaincodes that can be used in test
-func RegisterCCs(ccs []*CC) error {
-	inUse := make(map[string]ShadowCCIntf)
+type shadowCCArgs struct {
+	initArgs []string
+}
+
+//For each chaincode that's deployed corresdponds a shadowCC. Not all
+//shadows in shadowCCs maybe used in a run using the input JSON.  And each
+//chaincode maybe used multiple times (either because Concurrency is > 1 or
+//the chaincode is used multiple times in the JSON with different CCChecker
+//parameters). inUseShadowCCs keeps a set of all shadow CCs in use
+var inUseShadowCCs map[ShadowCCIntf]*shadowCCArgs
+
+//RegisterCCClients registers and maps chaincode clients to their shadows
+func RegisterCCClients(ccs []*CCClient) error {
+	inUseShadowCCs = make(map[ShadowCCIntf]*shadowCCArgs)
 	for _, cc := range ccs {
 		scc, ok := shadowCCs[cc.Path]
 		if !ok || scc == nil {
 			return fmt.Errorf("%s not a registered chaincode", cc.Path)
 		}
-		if _, ok := inUse[cc.Path]; !ok {
-			inUse[cc.Path] = scc
-		}
+
 		//setup the shadow chaincode to plug into the ccchecker framework
 		cc.shadowCC = scc
+
+		//add cc to the list in shadow cc
+		if _, ok := inUseShadowCCs[scc]; !ok {
+			inUseShadowCCs[scc] = &shadowCCArgs{cc.InitArgs}
+		}
 	}
 
 	//initialize a shadow chaincode just once. A chaincode may be used
 	//multiple times in test run
-	for _, cc := range inUse {
-		cc.InitShadowCC()
+	for scc, sccArgs := range inUseShadowCCs {
+		scc.InitShadowCC(sccArgs.initArgs)
 	}
 
 	return nil
