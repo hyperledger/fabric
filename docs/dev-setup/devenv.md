@@ -19,7 +19,7 @@ builds, below.
 
 ### Prerequisites
 * [Git client](https://git-scm.com/downloads)
-* [Go](https://golang.org/) - 1.6 or later
+* [Go](https://golang.org/) - 1.7 or later (for releases before v1.0, 1.6 or later)
 * For MacOSX, [Xcode](https://itunes.apple.com/us/app/xcode/id497799835?mt=12)
 must be installed
 * [Docker](https://www.docker.com/products/overview) - 1.12 or later
