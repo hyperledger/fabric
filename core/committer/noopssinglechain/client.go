@@ -192,6 +192,7 @@ func (d *DeliverService) readUntilClose() {
 			// Create new transactions validator
 			validator := txvalidator.NewTxValidator(peer.GetLedger(d.chainID))
 			// Validate and mark invalid transactions
+			logger.Debug("Validating block, chainID", d.chainID)
 			validator.Validate(t.Block)
 
 			numberOfPeers := len(service.GetGossipService().GetPeers())
@@ -199,6 +200,7 @@ func (d *DeliverService) readUntilClose() {
 			payload := createPayload(seqNum, t.Block)
 			// Use payload to create gossip message
 			gossipMsg := createGossipMsg(payload)
+			logger.Debug("Creating gossip message", gossipMsg)
 
 			logger.Debugf("Adding payload locally, buffer seqNum = [%d], peers number [%d]", seqNum, numberOfPeers)
 			// Add payload to local state payloads buffer

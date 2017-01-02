@@ -73,38 +73,35 @@ func NewTxValidator(ledger ledger.ValidatedLedger) Validator {
 }
 
 func (v *txValidator) Validate(block *common.Block) {
+	logger.Debug("START Block Validation")
+	defer logger.Debug("END Block Validation")
 	txsfltr := ledgerUtil.NewFilterBitArray(uint(len(block.Data.Data)))
 	for tIdx, d := range block.Data.Data {
 		if d != nil {
 			if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
 				logger.Warningf("Error getting tx from block(%s)", err)
+				txsfltr.Set(uint(tIdx))
 			} else if env != nil {
 				// validate the transaction: here we check that the transaction
 				// is properly formed, properly signed and that the security
 				// chain binding proposal to endorsements to tx holds. We do
 				// NOT check the validity of endorsements, though. That's a
 				// job for VSCC below
+				logger.Debug("Validating transaction peer.ValidateTransaction()")
 				if payload, _, err := peer.ValidateTransaction(env); err != nil {
-					// TODO: this code needs to receive a bit more attention and discussion:
-					// it's not clear what it means if a transaction which causes a failure
-					// in validation is just dropped on the floor
 					logger.Errorf("Invalid transaction with index %d, error %s", tIdx, err)
 					txsfltr.Set(uint(tIdx))
 				} else {
 					//the payload is used to get headers
+					logger.Debug("Validating transaction vscc tx validate")
 					if err = v.vscc.VSCCValidateTx(payload, d); err != nil {
-						// TODO: this code needs to receive a bit more attention and discussion:
-						// it's not clear what it means if a transaction which causes a failure
-						// in validation is just dropped on the floor
 						txID := payload.Header.ChainHeader.TxID
-						logger.Errorf("isTxValidForVscc for transaction txId = %s returned error %s", txID, err)
+						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 						txsfltr.Set(uint(tIdx))
 						continue
 					}
 
-					if t, err := proto.Marshal(env); err == nil {
-						block.Data.Data = append(block.Data.Data, t)
-					} else {
+					if _, err := proto.Marshal(env); err != nil {
 						logger.Warningf("Cannot marshal transactoins %s", err)
 						txsfltr.Set(uint(tIdx))
 					}
@@ -132,6 +129,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 
 	// Get transaction id
 	txid := payload.Header.ChainHeader.TxID
+	logger.Info("[XXX remove me XXX] Transaction type,", common.HeaderType(payload.Header.ChainHeader.Type))
 	if txid == "" {
 		err := fmt.Errorf("transaction header does not contain transaction ID")
 		logger.Errorf("%s", err)
@@ -153,24 +151,40 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	defer txsim.Done()
 	ctxt := context.WithValue(context.Background(), chaincode.TXSimulatorKey, txsim)
 
-	//generate an internal txid for executing system chaincode calls below on behalf
-	//of original txid
-	vscctxid := coreUtil.GenerateUUID()
+	// get header extensions so we have the visibility field
+	hdrExt, err := utils.GetChaincodeHeaderExtension(payload.Header)
+	if err != nil {
+		return err
+	}
 
-	// Extracting vscc from lccc
-	/*
-		data, err := chaincode.GetChaincodeDataFromLCCC(ctxt, vscctxid, nil, chainID, "vscc")
+	// TODO: Temporary solution until FAB-1422 get resolved
+	// Explanation: we actually deploying chaincode transaction,
+	// hence no lccc yet to query for the data, therefore currently
+	// introducing a workaround to skip obtaining LCCC data.
+	var data *chaincode.ChaincodeData
+	if hdrExt.ChaincodeID.Name != "lccc" {
+		// Extracting vscc from lccc
+		logger.Info("Extracting chaincode data from LCCC txid = ", txid, "chainID", chainID, "chaincode name", hdrExt.ChaincodeID.Name)
+		data, err = chaincode.GetChaincodeDataFromLCCC(ctxt, txid, nil, chainID, hdrExt.ChaincodeID.Name)
 		if err != nil {
 			logger.Errorf("Unable to get chaincode data from LCCC for txid %s, due to %s", txid, err)
 			return err
 		}
-	*/
+	}
 
+	vscc := "vscc"
+	// Check whenever VSCC defined for chaincode data
+	if data != nil && data.Vscc != "" {
+		vscc = data.Vscc
+	}
+
+	vscctxid := coreUtil.GenerateUUID()
 	// Get chaincode version
 	version := coreUtil.GetSysCCVersion()
-	cccid := chaincode.NewCCContext(chainID, "vscc", version, vscctxid, true, nil)
+	cccid := chaincode.NewCCContext(chainID, vscc, version, vscctxid, true, nil)
 
 	// invoke VSCC
+	logger.Info("Invoking VSCC txid", txid, "chaindID", chainID)
 	_, _, err = chaincode.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
 		logger.Errorf("VSCC check failed for transaction txid=%s, error %s", txid, err)
