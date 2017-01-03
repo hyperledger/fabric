@@ -26,11 +26,14 @@ import (
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	logging "github.com/op/go-logging"
 )
 
 var genesisBlock *cb.Block
 
 func init() {
+	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(config.Load()).GenesisBlock()
 }
 

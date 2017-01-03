@@ -29,10 +29,6 @@ import (
 
 var logger = logging.MustGetLogger("orderer/common/broadcast")
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
 // Handler defines an interface which handles broadcasts
 type Handler interface {
 	// Handle starts a service thread for a given gRPC connection and services the broadcast connection

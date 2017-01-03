@@ -26,10 +26,6 @@ import (
 
 var logger = logging.MustGetLogger("orderer/common/blockcutter")
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
 // Receiver defines a sink for the ordered broadcast messages
 type Receiver interface {
 	// Ordered should be invoked sequentially as messages are ordered

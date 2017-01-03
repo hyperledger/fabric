@@ -31,7 +31,7 @@ import (
 var logger = logging.MustGetLogger("orderer/config")
 
 func init() {
-	logging.SetLevel(logging.DEBUG, "")
+	logging.SetLevel(logging.ERROR, "")
 }
 
 // Prefix is the default config prefix for the orderer
@@ -50,6 +50,7 @@ type General struct {
 	BatchSize     BatchSize
 	GenesisFile   string
 	Profile       Profile
+	LogLevel      string
 }
 
 // BatchSize contains configuration affecting the size of batches
@@ -118,6 +119,7 @@ var defaults = TopLevel{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
 		},
+		LogLevel: "INFO",
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,
@@ -166,6 +168,9 @@ func (c *TopLevel) completeInitialization() {
 		case c.General.ListenPort == 0:
 			logger.Infof("General.ListenPort unset, setting to %s", defaults.General.ListenPort)
 			c.General.ListenPort = defaults.General.ListenPort
+		case c.General.LogLevel == "":
+			logger.Infof("General.LogLevel unset, setting to %s", defaults.General.LogLevel)
+			c.General.LogLevel = defaults.General.LogLevel
 		case c.General.GenesisMethod == "":
 			c.General.GenesisMethod = defaults.General.GenesisMethod
 		case c.General.GenesisFile == "":

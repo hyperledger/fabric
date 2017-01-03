@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/flogging"
+	"github.com/hyperledger/fabric/common/flogging"
 )
 
 func TestError(t *testing.T) {
@@ -65,7 +65,7 @@ func TestErrorWithCallstackAndArg(t *testing.T) {
 func TestErrorWithCallstackMessage(t *testing.T) {
 	// when the 'error' module is set to debug, the callstack will be appended
 	// to the error message
-	flogging.SetModuleLogLevel("error", "debug")
+	flogging.SetModuleLevel("error", "debug")
 
 	e := ErrorWithCallstack(Utility, UtilityUnknownError)
 	s := e.GetStack()
@@ -83,7 +83,7 @@ func TestErrorWithCallstackMessage(t *testing.T) {
 func ExampleError() {
 	// when the 'error' module is set to anything but debug, the callstack will
 	// not be appended to the error message
-	flogging.SetModuleLogLevel("error", "warning")
+	flogging.SetModuleLevel("error", "warning")
 
 	err := ErrorWithCallstack(Utility, UtilityUnknownError)
 
@@ -109,7 +109,7 @@ func ExampleError() {
 func ExampleUtilityErrorWithArg() {
 	// when the 'error' module is set to anything but debug, the callstack will
 	// not be appended to the error message
-	flogging.SetModuleLogLevel("error", "warning")
+	flogging.SetModuleLevel("error", "warning")
 
 	err := ErrorWithCallstack(Utility, UtilityErrorWithArg, "arg1")
 
@@ -135,7 +135,7 @@ func ExampleUtilityErrorWithArg() {
 func ExampleLoggingInvalidLogLevel() {
 	// when the 'error' module is set to anything but debug, the callstack will
 	// not be appended to the error message
-	flogging.SetModuleLogLevel("error", "warning")
+	flogging.SetModuleLevel("error", "warning")
 
 	err := ErrorWithCallstack(Logging, LoggingInvalidLogLevel, "invalid")
 

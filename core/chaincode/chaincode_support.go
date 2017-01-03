@@ -31,9 +31,9 @@ import (
 
 	"strings"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
-	"github.com/hyperledger/fabric/core/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -218,8 +218,8 @@ func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userr
 	if err == nil {
 		theChaincodeSupport.chaincodeLogLevel = chaincodeLogLevel.String()
 	} else {
-		chaincodeLogger.Warningf("Chaincode logging level %s is invalid; defaulting to %s", chaincodeLogLevelString, flogging.DefaultLoggingLevel().String())
-		theChaincodeSupport.chaincodeLogLevel = flogging.DefaultLoggingLevel().String()
+		chaincodeLogger.Warningf("Chaincode logging level %s is invalid; defaulting to %s", chaincodeLogLevelString, flogging.DefaultLevel().String())
+		theChaincodeSupport.chaincodeLogLevel = flogging.DefaultLevel().String()
 	}
 
 	return theChaincodeSupport

@@ -26,8 +26,13 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
+	logging "github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
 
 var systemChain = "systemChain"
 

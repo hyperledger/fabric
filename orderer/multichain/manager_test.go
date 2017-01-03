@@ -28,6 +28,8 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	logging "github.com/op/go-logging"
 )
 
 var conf *config.TopLevel
@@ -35,6 +37,7 @@ var genesisBlock *cb.Block
 
 func init() {
 	conf = config.Load()
+	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(conf).GenesisBlock()
 }
 

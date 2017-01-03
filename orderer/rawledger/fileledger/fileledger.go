@@ -36,7 +36,6 @@ var logger = logging.MustGetLogger("rawledger/fileledger")
 var closedChan chan struct{}
 
 func init() {
-	logging.SetLevel(logging.DEBUG, "")
 	closedChan = make(chan struct{})
 	close(closedChan)
 }

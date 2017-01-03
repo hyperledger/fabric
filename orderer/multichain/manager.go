@@ -40,10 +40,6 @@ func (xxx xxxCryptoHelper) VerifySignature(msg []byte, ids []byte, sigs []byte) 
 	return true
 }
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
 // Manager coordinates the creation and access of chains
 type Manager interface {
 	// GetChain retrieves the chain support for a chain (and whether it exists)

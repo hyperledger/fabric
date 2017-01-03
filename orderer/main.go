@@ -25,7 +25,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 
-	"github.com/Shopify/sarama"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/kafka"
@@ -37,6 +37,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"github.com/Shopify/sarama"
 	"github.com/op/go-logging"
 
 	"google.golang.org/grpc"
@@ -44,12 +46,9 @@ import (
 
 var logger = logging.MustGetLogger("orderer/main")
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
 func main() {
 	conf := config.Load()
+	flogging.InitFromSpec(conf.General.LogLevel)
 
 	// Start the profiling service if enabled.
 	// The ListenAndServe() call does not return unless an error occurs.
