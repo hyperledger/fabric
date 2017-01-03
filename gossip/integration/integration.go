@@ -41,20 +41,22 @@ func newConfig(selfEndpoint string, bootPeers ...string) *gossip.Config {
 	if err != nil {
 		panic(err)
 	}
+
 	return &gossip.Config{
-		BindPort:       int(port),
-		BootstrapPeers: bootPeers,
-		ID:             selfEndpoint,
-		MaxBlockCountToStore:     100,
-		MaxPropagationBurstLatency: time.Millisecond * 50,
-		MaxPropagationBurstSize:    3,
+		BindPort:                   int(port),
+		BootstrapPeers:             bootPeers,
+		ID:                         selfEndpoint,
+		MaxBlockCountToStore:       100,
+		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
+		MaxPropagationBurstSize:    10,
 		PropagateIterations:        1,
 		PropagatePeerNum:           3,
-		PullInterval:               time.Second * 5,
+		PullInterval:               time.Duration(4) * time.Second,
 		PullPeerNum:                3,
 		SelfEndpoint:               selfEndpoint,
-		PublishCertPeriod:          time.Duration(4) * time.Second,
-		RequestStateInfoInterval:   time.Duration(4) * time.Second,
+		PublishCertPeriod:          10 * time.Second,
+		RequestStateInfoInterval:   4 * time.Second,
+		PublishStateInfoInterval:   4 * time.Second,
 	}
 }
 

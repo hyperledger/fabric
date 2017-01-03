@@ -25,9 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric/common/metadata"
-
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/hyperledger/fabric/common/metadata"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -38,7 +37,7 @@ type alg struct {
 const defaultAlg = "sha256"
 
 var availableIDgenAlgs = map[string]alg{
-	defaultAlg: alg{GenerateIDfromTxSHAHash},
+	defaultAlg: {GenerateIDfromTxSHAHash},
 }
 
 // ComputeCryptoHash should be used in openchain code so that we can change the actual algo used for crypto-hash at one place
@@ -146,10 +145,16 @@ func ArrayToChaincodeArgs(args []string) [][]byte {
 }
 
 const testchainid = "**TEST_CHAINID**"
+const testorgid = "**TEST_ORGID**"
 
 //GetTestChainID returns the CHAINID constant in use by orderer
 func GetTestChainID() string {
 	return testchainid
+}
+
+//GetTestOrgID returns the ORGID constant in use by gossip join message
+func GetTestOrgID() string {
+	return testorgid
 }
 
 //GetSysCCVersion returns the version of all system chaincodes
