@@ -22,8 +22,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -65,7 +67,48 @@ zA85vv7JhfMkvZYGPELC7I2K8V7ZAiEA9KcthV3HtDXKNDsA6ULT+qUkyoHRzCzr
 A4QaL2VU6i4=
 -----END CERTIFICATE-----
 `
+
+var badPEM = `-----BEGIN CERTIFICATE-----
+MIICRDCCAemgAwIBAgIJALwW//dz2ZBvMAoGCCqGSM49BAMCMH4xCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2Nv
+MRgwFgYDVQQKDA9MaW51eEZvdW5kYXRpb24xFDASBgNVBAsMC0h5cGVybGVkZ2Vy
+MRIwEAYDVQQDDAlsb2NhbGhvc3QwHhcNMTYxMjA0MjIzMDE4WhcNMjYxMjAyMjIz
+MDE4WjB+MQswCQYDVQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UE
+BwwNU2FuIEZyYW5jaXNjbzEYMBYGA1UECgwPTGludXhGb3VuZGF0aW9uMRQwEgYD
+VQQLDAtIeXBlcmxlZGdlcjESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0C
+-----END CERTIFICATE-----
+`
+
+var pemNoCertificateHeader = `-----BEGIN NOCERT-----
+MIICRDCCAemgAwIBAgIJALwW//dz2ZBvMAoGCCqGSM49BAMCMH4xCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2Nv
+MRgwFgYDVQQKDA9MaW51eEZvdW5kYXRpb24xFDASBgNVBAsMC0h5cGVybGVkZ2Vy
+MRIwEAYDVQQDDAlsb2NhbGhvc3QwHhcNMTYxMjA0MjIzMDE4WhcNMjYxMjAyMjIz
+MDE4WjB+MQswCQYDVQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UE
+BwwNU2FuIEZyYW5jaXNjbzEYMBYGA1UECgwPTGludXhGb3VuZGF0aW9uMRQwEgYD
+VQQLDAtIeXBlcmxlZGdlcjESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0C
+AQYIKoZIzj0DAQcDQgAEu2FEZVSr30Afey6dwcypeg5P+BuYx5JSYdG0/KJIBjWK
+nzYo7FEmgMir7GbNh4pqA8KFrJZkPuxMgnEJBZTv+6NQME4wHQYDVR0OBBYEFAWO
+4bfTEr2R6VYzQYrGk/2VWmtYMB8GA1UdIwQYMBaAFAWO4bfTEr2R6VYzQYrGk/2V
+WmtYMAwGA1UdEwQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAIelqGdxPMHmQqRF
+zA85vv7JhfMkvZYGPELC7I2K8V7ZAiEA9KcthV3HtDXKNDsA6ULT+qUkyoHRzCzr
+A4QaL2VU6i4=
+-----END NOCERT-----
+`
+
 var timeout = time.Second * 1
+var testOrgs = []testOrg{}
+
+func init() {
+	//load up crypto material for test orgs
+	for i := 1; i <= numOrgs; i++ {
+		testOrg, err := loadOrg(i)
+		if err != nil {
+			log.Fatalf("Failed to load test organizations due to error: %s", err.Error())
+		}
+		testOrgs = append(testOrgs, testOrg)
+	}
+}
 
 //test server to be registered with the GRPCServer
 type testServiceServer struct{}
@@ -398,6 +441,22 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 			ServerKey:         []byte(selfSignedKeyPEM)})
 	//check for error
 	msg = "tls: failed to find any PEM data in certificate input"
+	assert.EqualError(t, err, msg)
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	//bad clientRootCAs
+	_, err = comm.NewGRPCServer(":9045",
+		comm.SecureServerConfig{
+			UseTLS:            true,
+			ServerCertificate: []byte(selfSignedCertPEM),
+			ServerKey:         []byte(selfSignedKeyPEM),
+			RequireClientCert: true,
+			ClientRootCAs:     [][]byte{[]byte(pemNoCertificateHeader)}})
+	//check for error
+	msg = "Failed to append client root certificate(s): " +
+		"No client root certificates found"
 	assert.EqualError(t, err, msg)
 	if err != nil {
 		t.Log(err.Error())
@@ -838,9 +897,8 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 		//loop through all the untrusted clients
 		for k := 0; k < len(unTrustedClients); k++ {
 			//invoke the EmptyCall service
-			_, err = invokeEmptyCall(servers[i].address,
-				[]grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(unTrustedClients[k]))})
-			//we expect failure from trusted clients
+			_, err = invokeEmptyCall(servers[i].address, []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(unTrustedClients[k]))})
+			//we expect failure from untrusted clients
 			if err != nil {
 				t.Logf("Untrusted client%d was correctly rejected by %s", k, servers[i].address)
 			} else {
@@ -855,16 +913,7 @@ func runMutualAuth(t *testing.T, servers []testServer, trustedClients, unTrusted
 
 func TestMutualAuth(t *testing.T) {
 
-	//load up crypto material for test orgs
-	var testOrgs = []testOrg{}
-	for i := 1; i <= numOrgs; i++ {
-		testOrg, err := loadOrg(i)
-		if err != nil {
-			t.Fatalf("Failed to load test organizations due to error: %s", err.Error())
-		}
-		testOrgs = append(testOrgs, testOrg)
-	}
-
+	t.Parallel()
 	var tests = []struct {
 		name             string
 		servers          []testServer
@@ -917,5 +966,244 @@ func TestMutualAuth(t *testing.T) {
 			}
 		})
 	}
+
+}
+
+func TestAppendRemoveWithInvalidBytes(t *testing.T) {
+
+	t.Parallel()
+
+	noPEMData := [][]byte{[]byte("badcert1"), []byte("badCert2")}
+
+	//get the config for one of our Org1 test servers
+	serverConfig := testOrgs[0].testServers(9200, [][]byte{})[0].config
+	address := testOrgs[0].testServers(9200, [][]byte{})[0].address
+
+	//create a GRPCServer
+	srv, err := comm.NewGRPCServer(address, serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
+	}
+
+	//append/remove nonPEMData
+	noCertsFound := "No client root certificates found"
+	err = srv.AppendClientRootCAs(noPEMData)
+	if err == nil {
+		t.Fatalf("Expected error: %s", noCertsFound)
+	}
+	err = srv.RemoveClientRootCAs(noPEMData)
+	if err == nil {
+		t.Fatalf("Expected error: %s", noCertsFound)
+	}
+
+	//apend/remove PEM without CERTIFICATE header
+	err = srv.AppendClientRootCAs([][]byte{[]byte(pemNoCertificateHeader)})
+	if err == nil {
+		t.Fatalf("Expected error: %s", noCertsFound)
+	}
+
+	err = srv.RemoveClientRootCAs([][]byte{[]byte(pemNoCertificateHeader)})
+	if err == nil {
+		t.Fatalf("Expected error: %s", noCertsFound)
+	}
+
+	//append/remove bad PEM data
+	err = srv.AppendClientRootCAs([][]byte{[]byte(badPEM)})
+	if err == nil {
+		t.Fatalf("Expected error parsing bad PEM data")
+	}
+
+	err = srv.RemoveClientRootCAs([][]byte{[]byte(badPEM)})
+	if err == nil {
+		t.Fatalf("Expected error parsing bad PEM data")
+	}
+
+}
+
+func TestAppendClientRootCAs(t *testing.T) {
+
+	t.Parallel()
+	//get the config for one of our Org1 test servers
+	serverConfig := testOrgs[0].testServers(9300, [][]byte{})[0].config
+	address := testOrgs[0].testServers(9300, [][]byte{})[0].address
+
+	//create a GRPCServer
+	srv, err := comm.NewGRPCServer(address, serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
+	}
+
+	//register the GRPC test server and start the GRPCServer
+	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
+	go srv.Start()
+	defer srv.Stop()
+	//should not be needed but just in case
+	time.Sleep(10 * time.Millisecond)
+
+	//try to connect with untrusted clients from Org2 children
+	clientConfig1 := testOrgs[1].childOrgs[0].trustedClients([][]byte{testOrgs[0].rootCA})[0]
+	clientConfig2 := testOrgs[1].childOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA})[0]
+	clientConfigs := []*tls.Config{clientConfig1, clientConfig2}
+
+	for i, clientConfig := range clientConfigs {
+		//invoke the EmptyCall service
+		_, err = invokeEmptyCall(address, []grpc.DialOption{
+			grpc.WithTransportCredentials(credentials.NewTLS(clientConfig))})
+		//we expect failure as these are currently not trusted clients
+		if err != nil {
+			t.Logf("Untrusted client%d was correctly rejected by %s", i, address)
+		} else {
+			t.Fatalf("Untrusted client %d should not have been able to connect to %s", i,
+				address)
+		}
+	}
+
+	//now append the root CAs for the untrusted clients
+	err = srv.AppendClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA,
+		testOrgs[1].childOrgs[1].rootCA})
+	if err != nil {
+		t.Fatal("Failed to append client root CAs")
+	}
+
+	//now try to connect again
+	for j, clientConfig := range clientConfigs {
+		//invoke the EmptyCall service
+		_, err = invokeEmptyCall(address, []grpc.DialOption{
+			grpc.WithTransportCredentials(credentials.NewTLS(clientConfig))})
+		//we expect success as these are now trusted clients
+		if err != nil {
+			t.Fatalf("Now trusted client%d failed to connect to %s with error: %s",
+				j, address, err.Error())
+		} else {
+			t.Logf("Now trusted client%d successfully connected to %s", j, address)
+		}
+	}
+
+}
+
+func TestRemoveClientRootCAs(t *testing.T) {
+
+	t.Parallel()
+	//get the config for one of our Org1 test servers and include client CAs from
+	//Org2 child orgs
+	serverConfig := testOrgs[0].testServers(9301,
+		[][]byte{testOrgs[1].childOrgs[0].rootCA,
+			testOrgs[1].childOrgs[1].rootCA})[0].config
+	address := testOrgs[0].testServers(9301, [][]byte{})[0].address
+
+	//create a GRPCServer
+	srv, err := comm.NewGRPCServer(address, serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
+	}
+
+	//register the GRPC test server and start the GRPCServer
+	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
+	go srv.Start()
+	defer srv.Stop()
+	//should not be needed but just in case
+	time.Sleep(10 * time.Millisecond)
+
+	//try to connect with trusted clients from Org2 children
+	clientConfig1 := testOrgs[1].childOrgs[0].trustedClients([][]byte{testOrgs[0].rootCA})[0]
+	clientConfig2 := testOrgs[1].childOrgs[1].trustedClients([][]byte{testOrgs[0].rootCA})[0]
+	clientConfigs := []*tls.Config{clientConfig1, clientConfig2}
+
+	for i, clientConfig := range clientConfigs {
+		//invoke the EmptyCall service
+		_, err = invokeEmptyCall(address, []grpc.DialOption{
+			grpc.WithTransportCredentials(credentials.NewTLS(clientConfig))})
+
+		//we expect success as these are trusted clients
+		if err != nil {
+			t.Fatalf("Trusted client%d failed to connect to %s with error: %s",
+				i, address, err.Error())
+		} else {
+			t.Logf("Trusted client%d successfully connected to %s", i, address)
+		}
+	}
+
+	//now remove the root CAs for the untrusted clients
+	err = srv.RemoveClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA,
+		testOrgs[1].childOrgs[1].rootCA})
+	if err != nil {
+		t.Fatal("Failed to remove client root CAs")
+	}
+
+	//now try to connect again
+	for j, clientConfig := range clientConfigs {
+		//invoke the EmptyCall service
+		_, err = invokeEmptyCall(address, []grpc.DialOption{
+			grpc.WithTransportCredentials(credentials.NewTLS(clientConfig))})
+		//we expect failure as these are now untrusted clients
+		if err != nil {
+			t.Logf("Now untrusted client%d was correctly rejected by %s", j, address)
+		} else {
+			t.Fatalf("Now untrusted client %d should not have been able to connect to %s", j,
+				address)
+		}
+	}
+
+}
+
+//test for race conditions - test locally using "go test -race -run TestConcurrentAppendRemove"
+func TestConcurrentAppendRemove(t *testing.T) {
+
+	t.Parallel()
+	//get the config for one of our Org1 test servers and include client CAs from
+	//Org2 child orgs
+	serverConfig := testOrgs[0].testServers(9302,
+		[][]byte{testOrgs[1].childOrgs[0].rootCA,
+			testOrgs[1].childOrgs[1].rootCA})[0].config
+	address := testOrgs[0].testServers(9302, [][]byte{})[0].address
+
+	//create a GRPCServer
+	srv, err := comm.NewGRPCServer(address, serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to create GRPCServer due to: %s", err.Error())
+	}
+
+	//register the GRPC test server and start the GRPCServer
+	testpb.RegisterTestServiceServer(srv.Server(), &testServiceServer{})
+	go srv.Start()
+	defer srv.Stop()
+
+	//need to wait for the following go routines to finish
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		//now remove the root CAs for the untrusted clients
+		err := srv.RemoveClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA,
+			testOrgs[1].childOrgs[1].rootCA})
+		if err != nil {
+			t.Fatal("Failed to remove client root CAs")
+		}
+
+	}()
+
+	//TODO: enable this after creating a custom type for grpc.TransportCredentials
+	/*
+		clientConfig := testOrgs[1].childOrgs[0].trustedClients([][]byte{testOrgs[0].rootCA})[0]
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = invokeEmptyCall(address, []grpc.DialOption{
+				grpc.WithTransportCredentials(credentials.NewTLS(clientConfig))})
+		}()
+	*/
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		//now append the root CAs for the untrusted clients
+		err := srv.AppendClientRootCAs([][]byte{testOrgs[1].childOrgs[0].rootCA,
+			testOrgs[1].childOrgs[1].rootCA})
+		if err != nil {
+			t.Fatal("Failed to append client root CAs")
+		}
+	}()
+
+	wg.Wait()
 
 }
