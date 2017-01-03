@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -88,8 +89,13 @@ func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 }
 
 func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte) <-chan ReceivedMessage {
+	err := generateCertificates("key.pem", "cert.pem")
+	defer os.Remove("cert.pem")
+	defer os.Remove("key.pem")
+	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 	ta := credentials.NewTLS(&tls.Config{
 		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{cert},
 	})
 	acceptChan := comm.Accept(acceptAll)
 	conn, err := grpc.Dial("localhost:9611", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
@@ -103,8 +109,8 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	if err != nil {
 		return nil
 	}
-	clientTLSUnique := ExtractTLSUnique(stream.Context())
-	sig, err := naiveSec.Sign(clientTLSUnique)
+	clientCertHash := certHashFromRawCert(cert.Certificate[0])
+	sig, err := naiveSec.Sign(clientCertHash)
 	if sigMutator != nil {
 		sig = sigMutator(sig)
 	}
@@ -119,7 +125,7 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	msg, err = stream.Recv()
 	assert.NoError(t, err, "%v", err)
 	if sigMutator == nil {
-		assert.Equal(t, clientTLSUnique, msg.GetConn().Sig)
+		assert.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().Sig)
 	}
 	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiID)
 	msg2Send := createGossipMsg()
@@ -152,10 +158,10 @@ func TestHandshake(t *testing.T) {
 	assert.Equal(t, 0, len(acceptChan))
 
 	// negative path, nothing should be read from the channel because the PKIid doesn't match the identity
-	mutateEndpoint := func(b []byte) []byte {
+	mutatePKIID := func(b []byte) []byte {
 		return []byte("localhost:9650")
 	}
-	acceptChan = handshaker("localhost:9613", comm, t, nil, mutateEndpoint)
+	acceptChan = handshaker("localhost:9613", comm, t, nil, mutatePKIID)
 	time.Sleep(time.Second)
 	assert.Equal(t, 0, len(acceptChan))
 }
