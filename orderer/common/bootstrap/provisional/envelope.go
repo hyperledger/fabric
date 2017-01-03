@@ -25,6 +25,7 @@ func (cbs *commonBootstrapper) makeGenesisConfigEnvelope() *cb.ConfigurationEnve
 	return utils.MakeConfigurationEnvelope(
 		cbs.encodeConsensusType(),
 		cbs.encodeBatchSize(),
+		cbs.encodeBatchTimeout(),
 		cbs.encodeChainCreators(),
 		cbs.encodeAcceptAllPolicy(),
 		cbs.lockDefaultModificationPolicy(),
@@ -35,6 +36,7 @@ func (kbs *kafkaBootstrapper) makeGenesisConfigEnvelope() *cb.ConfigurationEnvel
 	return utils.MakeConfigurationEnvelope(
 		kbs.encodeConsensusType(),
 		kbs.encodeBatchSize(),
+		kbs.encodeBatchTimeout(),
 		kbs.encodeKafkaBrokers(),
 		kbs.encodeChainCreators(),
 		kbs.encodeAcceptAllPolicy(),

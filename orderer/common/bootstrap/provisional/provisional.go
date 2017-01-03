@@ -57,6 +57,7 @@ type commonBootstrapper struct {
 	chainID       string
 	consensusType string
 	batchSize     *ab.BatchSize
+	batchTimeout  string
 }
 
 type soloBootstrapper struct {
@@ -76,6 +77,7 @@ func New(conf *config.TopLevel) bootstrap.Helper {
 		batchSize: &ab.BatchSize{
 			MaxMessageCount: conf.General.BatchSize.MaxMessageCount,
 		},
+		batchTimeout: conf.General.BatchTimeout.String(),
 	}
 
 	switch conf.General.OrdererType {
