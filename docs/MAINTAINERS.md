@@ -14,3 +14,4 @@
 | Srinivasan Muralidharan | muralisrini | muralisr | muralisr@us.ibm.com
 | Gari Singh | mastersingh24 | mastersingh24 | gari.r.singh@gmail.com
 | Jason Yellick | jyellick | jyellick | jyellick@us.ibm.com
+| Yacov Manevich | yacovm | yacovm | yacovm@il.ibm.com
