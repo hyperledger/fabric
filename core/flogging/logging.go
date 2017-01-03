@@ -17,6 +17,7 @@ limitations under the License.
 package flogging
 
 import (
+	"io"
 	"os"
 	"strings"
 
@@ -26,6 +27,9 @@ import (
 
 // A logger to log logging logs!
 var loggingLogger = logging.MustGetLogger("logging")
+
+var loggingDefaultFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
+var loggingDefaultOutput = os.Stderr
 
 // The default logging level, in force until LoggingInit() is called or in
 // case of configuration errors.
@@ -87,15 +91,26 @@ func DefaultLoggingLevel() logging.Level {
 	return loggingDefaultLevel
 }
 
-// Initiate 'leveled' logging to stderr.
+// Initiate 'leveled' logging using the default format and output location
 func init() {
+	SetLoggingFormat(loggingDefaultFormat, loggingDefaultOutput)
+}
 
-	format := logging.MustStringFormatter(
-		"%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}",
-	)
+// SetLoggingFormat sets the logging format and the location of the log output
+func SetLoggingFormat(formatString string, output io.Writer) {
+	if formatString == "" {
+		formatString = loggingDefaultFormat
+	}
+	format := logging.MustStringFormatter(formatString)
 
-	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	backendFormatter := logging.NewBackendFormatter(backend, format)
+	initLoggingBackend(format, output)
+}
+
+// initialize the logging backend based on the provided logging formatter
+// and I/O writer
+func initLoggingBackend(logFormatter logging.Formatter, output io.Writer) {
+	backend := logging.NewLogBackend(output, "", 0)
+	backendFormatter := logging.NewBackendFormatter(backend, logFormatter)
 	logging.SetBackend(backendFormatter).SetLevel(loggingDefaultLevel, "")
 }
 

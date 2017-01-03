@@ -29,6 +29,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/flogging"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/clilogging"
@@ -38,6 +39,7 @@ import (
 )
 
 var logger = logging.MustGetLogger("main")
+var logOutput = os.Stderr
 
 // Constants go here.
 const cmdRoot = "core"
@@ -92,6 +94,13 @@ func main() {
 	mainCmd.AddCommand(clilogging.Cmd())
 
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
+
+	// initialize logging format from core.yaml
+	flogging.SetLoggingFormat(viper.GetString("logging.format"), logOutput)
+
+	// Init the crypto layer
+	//TODO: integrate new crypto / idp code
+	primitives.SetSecurityLevel("SHA2", 256)
 
 	// Init the MSP
 	// TODO: determine the location of this config file
