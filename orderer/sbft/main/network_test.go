@@ -17,11 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/gob"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -77,13 +75,6 @@ func deleteExe() {
 	panicOnError(os.Remove(mainexe))
 }
 
-func install() {
-	installcmd := exec.Command("go", "install", maindir)
-	installcmd.Stdout = os.Stdout
-	installcmd.Stderr = os.Stderr
-	panicOnError(installcmd.Run())
-}
-
 func TestMain(m *testing.M) {
 	build()
 	code := m.Run()
@@ -107,7 +98,9 @@ func TestTwoReplicasBroadcastAndDeliverUsingTheSame(t *testing.T) {
 	if berr := Broadcast(peers[0], startingPort, []byte{0, 1, 2, 3, 4}); berr != nil {
 		t.Errorf("Failed to broadcast message: %s", berr)
 	}
-	if !AssertWithTimeout(func() bool { return r.Received() == 2 }, 30) {
+	if !AssertWithTimeout(func() bool {
+		return r.Received() == 2
+	}, 30) {
 		t.Errorf("Failed to receive some messages. (Received %d)", r.Received())
 	}
 }
@@ -128,7 +121,9 @@ func TestTenReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
 	if berr := Broadcast(peers[1], startingPort, []byte{0, 1, 2, 3, 4}); berr != nil {
 		t.Errorf("Failed to broadcast message: %s", berr)
 	}
-	if !AssertWithTimeout(func() bool { return r.Received() == 2 }, 30) {
+	if !AssertWithTimeout(func() bool {
+		return r.Received() == 2
+	}, 30) {
 		t.Errorf("Failed to receive some messages. (Received %d)", r.Received())
 	}
 }
@@ -155,7 +150,9 @@ func TestFourReplicasBombedWithBroadcasts(t *testing.T) {
 		}
 		time.Sleep(time.Second)
 	}
-	if !AssertWithTimeout(func() bool { return r.Received() == broadcastCount+1 }, 30) {
+	if !AssertWithTimeout(func() bool {
+		return r.Received() == broadcastCount+1
+	}, 30) {
 		t.Errorf("Failed to receive some messages. (Received %d)", r.Received())
 	}
 }
@@ -180,7 +177,9 @@ func TestTenReplicasBombedWithBroadcasts(t *testing.T) {
 		}
 		time.Sleep(time.Second)
 	}
-	if !AssertWithTimeout(func() bool { return r.Received() == broadcastCount+1 }, 60) {
+	if !AssertWithTimeout(func() bool {
+		return r.Received() == broadcastCount+1
+	}, 60) {
 		t.Errorf("Failed to receive some messages. (Received %d)", r.Received())
 	}
 }
@@ -213,7 +212,9 @@ func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
 
 	for i := 0; i < len(receivers); i++ {
 		r := receivers[i]
-		if !AssertWithTimeout(func() bool { return r.Received() == broadcastCount+1 }, 60) {
+		if !AssertWithTimeout(func() bool {
+			return r.Received() == broadcastCount+1
+		}, 60) {
 			t.Errorf("Failed to receive some messages. (Received %d)", r.Received())
 		}
 	}
@@ -439,27 +440,6 @@ func generateCertificate(id uint64, keyFile string) string {
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	certOut.Close()
 	return certPath
-}
-
-func readGenesisBlockChainID(path string) string {
-	dat, err := ioutil.ReadFile(path)
-	panicOnError(err)
-
-	buf := bytes.NewBuffer(dat)
-	block := &cb.Block{}
-	dec := gob.NewDecoder(buf)
-	err = dec.Decode(block)
-	panicOnError(err)
-
-	env := &cb.Envelope{}
-	err = proto.Unmarshal(block.Data.Data[0], env)
-	panicOnError(err)
-
-	payload := &cb.Payload{}
-	err = proto.Unmarshal(env.Payload, payload)
-	panicOnError(err)
-
-	return payload.Header.ChainHeader.ChainID
 }
 
 func panicOnError(err error) {
