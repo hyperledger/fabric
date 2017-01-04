@@ -35,7 +35,7 @@ var PeerEndpoint_Type_value = map[string]int32{
 func (x PeerEndpoint_Type) String() string {
 	return proto.EnumName(PeerEndpoint_Type_name, int32(x))
 }
-func (PeerEndpoint_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{2, 0} }
+func (PeerEndpoint_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor8, []int{2, 0} }
 
 type PeerAddress struct {
 	Host string `protobuf:"bytes,1,opt,name=host" json:"host,omitempty"`
@@ -45,7 +45,7 @@ type PeerAddress struct {
 func (m *PeerAddress) Reset()                    { *m = PeerAddress{} }
 func (m *PeerAddress) String() string            { return proto.CompactTextString(m) }
 func (*PeerAddress) ProtoMessage()               {}
-func (*PeerAddress) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*PeerAddress) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{0} }
 
 type PeerID struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
@@ -54,7 +54,7 @@ type PeerID struct {
 func (m *PeerID) Reset()                    { *m = PeerID{} }
 func (m *PeerID) String() string            { return proto.CompactTextString(m) }
 func (*PeerID) ProtoMessage()               {}
-func (*PeerID) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
+func (*PeerID) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{1} }
 
 type PeerEndpoint struct {
 	ID      *PeerID           `protobuf:"bytes,1,opt,name=ID" json:"ID,omitempty"`
@@ -66,7 +66,7 @@ type PeerEndpoint struct {
 func (m *PeerEndpoint) Reset()                    { *m = PeerEndpoint{} }
 func (m *PeerEndpoint) String() string            { return proto.CompactTextString(m) }
 func (*PeerEndpoint) ProtoMessage()               {}
-func (*PeerEndpoint) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
+func (*PeerEndpoint) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{2} }
 
 func (m *PeerEndpoint) GetID() *PeerID {
 	if m != nil {
@@ -82,7 +82,7 @@ type PeersMessage struct {
 func (m *PeersMessage) Reset()                    { *m = PeersMessage{} }
 func (m *PeersMessage) String() string            { return proto.CompactTextString(m) }
 func (*PeersMessage) ProtoMessage()               {}
-func (*PeersMessage) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{3} }
+func (*PeersMessage) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{3} }
 
 func (m *PeersMessage) GetPeers() []*PeerEndpoint {
 	if m != nil {
@@ -98,7 +98,7 @@ type PeersAddresses struct {
 func (m *PeersAddresses) Reset()                    { *m = PeersAddresses{} }
 func (m *PeersAddresses) String() string            { return proto.CompactTextString(m) }
 func (*PeersAddresses) ProtoMessage()               {}
-func (*PeersAddresses) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{4} }
+func (*PeersAddresses) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{4} }
 
 // Contains information about the blockchain ledger such as height, current
 // block hash, and previous block hash.
@@ -111,7 +111,7 @@ type BlockchainInfo struct {
 func (m *BlockchainInfo) Reset()                    { *m = BlockchainInfo{} }
 func (m *BlockchainInfo) String() string            { return proto.CompactTextString(m) }
 func (*BlockchainInfo) ProtoMessage()               {}
-func (*BlockchainInfo) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{5} }
+func (*BlockchainInfo) Descriptor() ([]byte, []int) { return fileDescriptor8, []int{5} }
 
 func init() {
 	proto.RegisterType((*PeerAddress)(nil), "protos.PeerAddress")
@@ -123,9 +123,9 @@ func init() {
 	proto.RegisterEnum("protos.PeerEndpoint_Type", PeerEndpoint_Type_name, PeerEndpoint_Type_value)
 }
 
-func init() { proto.RegisterFile("peer/fabric.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("peer/fabric.proto", fileDescriptor8) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor8 = []byte{
 	// 398 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x52, 0x51, 0x6b, 0xd4, 0x40,
 	0x10, 0x76, 0x73, 0xb9, 0x93, 0xcc, 0x5d, 0xc3, 0xdd, 0x52, 0x24, 0x42, 0x91, 0x90, 0xa7, 0x58,

@@ -49,7 +49,7 @@ type SignedProposal struct {
 func (m *SignedProposal) Reset()                    { *m = SignedProposal{} }
 func (m *SignedProposal) String() string            { return proto.CompactTextString(m) }
 func (*SignedProposal) ProtoMessage()               {}
-func (*SignedProposal) Descriptor() ([]byte, []int) { return fileDescriptor7, []int{0} }
+func (*SignedProposal) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 // A Proposal is sent to an endorser for endorsement.  The proposal contains:
 // 1. A header which should be unmarshaled to a Header message.  Note that
@@ -85,16 +85,16 @@ type Proposal struct {
 func (m *Proposal) Reset()                    { *m = Proposal{} }
 func (m *Proposal) String() string            { return proto.CompactTextString(m) }
 func (*Proposal) ProtoMessage()               {}
-func (*Proposal) Descriptor() ([]byte, []int) { return fileDescriptor7, []int{1} }
+func (*Proposal) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{1} }
 
 func init() {
 	proto.RegisterType((*SignedProposal)(nil), "protos.SignedProposal")
 	proto.RegisterType((*Proposal)(nil), "protos.Proposal")
 }
 
-func init() { proto.RegisterFile("peer/fabric_proposal.proto", fileDescriptor7) }
+func init() { proto.RegisterFile("peer/fabric_proposal.proto", fileDescriptor6) }
 
-var fileDescriptor7 = []byte{
+var fileDescriptor6 = []byte{
 	// 196 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x92, 0x2a, 0x48, 0x4d, 0x2d,
 	0xd2, 0x4f, 0x4b, 0x4c, 0x2a, 0xca, 0x4c, 0x8e, 0x2f, 0x28, 0xca, 0x2f, 0xc8, 0x2f, 0x4e, 0xcc,

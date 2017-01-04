@@ -106,7 +106,7 @@ func CacheConfiguration() (err error) {
 	syncBlocksChannelSize = viper.GetInt("peer.sync.blocks.channelSize")
 	validatorEnabled = viper.GetBool("peer.validator.enabled")
 
-	securityEnabled = viper.GetBool("security.enabled")
+	securityEnabled = true
 
 	configurationCached = true
 

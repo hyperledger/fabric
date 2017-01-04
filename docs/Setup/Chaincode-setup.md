@@ -40,8 +40,6 @@ Running the above commands builds and runs the CA server with the default setup,
 
 ### Running the validating peer
 
-**Note:** To run with security enabled, first modify the [core.yaml](https://github.com/hyperledger/fabric/blob/master/peer/core.yaml) configuration file to set the `security.enabled` value to `true` before building the peer executable. Alternatively, you can enable security by running the peer with the following environment variable: `CORE_SECURITY_ENABLED=true`. To enable privacy and confidentiality of transactions (which requires security to also be enabled), modify the [core.yaml](https://github.com/hyperledger/fabric/blob/master/peer/core.yaml) configuration file to set the `security.privacy` value to `true` as well. Alternatively, you can enable privacy by running the peer with the following environment variable: `CORE_SECURITY_PRIVACY=true`. If you are enabling security and privacy on the peer process with environment variables, it is important to include these environment variables in the command when executing all subsequent peer operations (e.g. deploy, invoke, or query).
-
 In a **new** terminal window, from the `devenv` subdirectory of your fabric workspace environment, `ssh` into Vagrant:
 
 ```
@@ -49,7 +47,7 @@ cd $GOPATH/src/github.com/hyperledger/fabric/devenv
 vagrant ssh
 ```
 
-Build and run the peer process to enable security and privacy after setting `security.enabled` and `security.privacy` settings to `true`.
+Build and run the peer process.
 
 ```
 cd $GOPATH/src/github.com/hyperledger/fabric

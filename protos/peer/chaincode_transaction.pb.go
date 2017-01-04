@@ -34,7 +34,7 @@ type ChaincodeActionPayload struct {
 func (m *ChaincodeActionPayload) Reset()                    { *m = ChaincodeActionPayload{} }
 func (m *ChaincodeActionPayload) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeActionPayload) ProtoMessage()               {}
-func (*ChaincodeActionPayload) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
+func (*ChaincodeActionPayload) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
 
 func (m *ChaincodeActionPayload) GetAction() *ChaincodeEndorsedAction {
 	if m != nil {
@@ -58,7 +58,7 @@ type ChaincodeEndorsedAction struct {
 func (m *ChaincodeEndorsedAction) Reset()                    { *m = ChaincodeEndorsedAction{} }
 func (m *ChaincodeEndorsedAction) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeEndorsedAction) ProtoMessage()               {}
-func (*ChaincodeEndorsedAction) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{1} }
+func (*ChaincodeEndorsedAction) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
 
 func (m *ChaincodeEndorsedAction) GetEndorsements() []*Endorsement {
 	if m != nil {
@@ -72,9 +72,9 @@ func init() {
 	proto.RegisterType((*ChaincodeEndorsedAction)(nil), "protos.ChaincodeEndorsedAction")
 }
 
-func init() { proto.RegisterFile("peer/chaincode_transaction.proto", fileDescriptor2) }
+func init() { proto.RegisterFile("peer/chaincode_transaction.proto", fileDescriptor3) }
 
-var fileDescriptor2 = []byte{
+var fileDescriptor3 = []byte{
 	// 248 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x74, 0x90, 0x31, 0x4f, 0xc3, 0x30,
 	0x14, 0x84, 0xe5, 0x22, 0x75, 0x70, 0x3b, 0x19, 0x89, 0x46, 0x2c, 0x44, 0x65, 0x09, 0x42, 0x4a,

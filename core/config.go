@@ -16,10 +16,7 @@ limitations under the License.
 
 package core
 
-import (
-	"github.com/op/go-logging"
-	"github.com/spf13/viper"
-)
+import "github.com/op/go-logging"
 
 // See fabric/core/peer/config.go for comments on the configuration caching
 // methodology.
@@ -32,7 +29,7 @@ var securityEnabled bool
 // CacheConfiguration caches configuration settings so that reading the yaml
 // file can be avoided on future requests
 func CacheConfiguration() error {
-	securityEnabled = viper.GetBool("security.enabled")
+	securityEnabled = true
 	configurationCached = true
 	return nil
 }
