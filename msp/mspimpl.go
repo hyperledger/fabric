@@ -26,9 +26,9 @@ import (
 	"encoding/json"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/signer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	m "github.com/hyperledger/fabric/protos/msp"
 )
 

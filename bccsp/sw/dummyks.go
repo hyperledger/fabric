@@ -3,7 +3,7 @@ package sw
 import (
 	"errors"
 
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
+	"github.com/hyperledger/fabric/bccsp"
 )
 
 // DummyKeyStore is a read-only KeyStore that neither loads nor stores keys.

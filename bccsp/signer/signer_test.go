@@ -20,8 +20,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/sw"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/sw"
 )
 
 var (

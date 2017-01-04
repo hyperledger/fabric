@@ -22,7 +22,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
+	"github.com/hyperledger/fabric/bccsp/utils"
 )
 
 // TestCBCPKCS7EncryptCBCPKCS7Decrypt encrypts using CBCPKCS7Encrypt and decrypts using CBCPKCS7Decrypt.

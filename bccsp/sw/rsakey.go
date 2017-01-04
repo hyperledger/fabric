@@ -16,7 +16,7 @@ limitations under the License.
 package sw
 
 import (
-	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 
@@ -24,29 +24,39 @@ import (
 
 	"errors"
 
-	"crypto/elliptic"
+	"encoding/asn1"
+	"math/big"
 
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
+	"github.com/hyperledger/fabric/bccsp"
 )
 
-type ecdsaPrivateKey struct {
-	privKey *ecdsa.PrivateKey
+// rsaPublicKey reflects the ASN.1 structure of a PKCS#1 public key.
+type rsaPublicKeyASN struct {
+	N *big.Int
+	E int
+}
+
+type rsaPrivateKey struct {
+	privKey *rsa.PrivateKey
 }
 
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
-func (k *ecdsaPrivateKey) Bytes() (raw []byte, err error) {
+func (k *rsaPrivateKey) Bytes() (raw []byte, err error) {
 	return nil, errors.New("Not supported.")
 }
 
 // SKI returns the subject key identifier of this key.
-func (k *ecdsaPrivateKey) SKI() (ski []byte) {
+func (k *rsaPrivateKey) SKI() (ski []byte) {
 	if k.privKey == nil {
 		return nil
 	}
 
 	// Marshall the public key
-	raw := elliptic.Marshal(k.privKey.Curve, k.privKey.PublicKey.X, k.privKey.PublicKey.Y)
+	raw, _ := asn1.Marshal(rsaPublicKeyASN{
+		N: k.privKey.N,
+		E: k.privKey.E,
+	})
 
 	// Hash it
 	hash := sha256.New()
@@ -55,30 +65,33 @@ func (k *ecdsaPrivateKey) SKI() (ski []byte) {
 }
 
 // Symmetric returns true if this key is a symmetric key,
-// false if this key is asymmetric
-func (k *ecdsaPrivateKey) Symmetric() bool {
+// false is this key is asymmetric
+func (k *rsaPrivateKey) Symmetric() bool {
 	return false
 }
 
-// Private returns true if this key is a private key,
+// Private returns true if this key is an asymmetric private key,
 // false otherwise.
-func (k *ecdsaPrivateKey) Private() bool {
+func (k *rsaPrivateKey) Private() bool {
 	return true
 }
 
 // PublicKey returns the corresponding public key part of an asymmetric public/private key pair.
 // This method returns an error in symmetric key schemes.
-func (k *ecdsaPrivateKey) PublicKey() (bccsp.Key, error) {
-	return &ecdsaPublicKey{&k.privKey.PublicKey}, nil
+func (k *rsaPrivateKey) PublicKey() (bccsp.Key, error) {
+	return &rsaPublicKey{&k.privKey.PublicKey}, nil
 }
 
-type ecdsaPublicKey struct {
-	pubKey *ecdsa.PublicKey
+type rsaPublicKey struct {
+	pubKey *rsa.PublicKey
 }
 
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
-func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {
+func (k *rsaPublicKey) Bytes() (raw []byte, err error) {
+	if k.pubKey == nil {
+		return nil, errors.New("Failed marshalling key. Key is nil.")
+	}
 	raw, err = x509.MarshalPKIXPublicKey(k.pubKey)
 	if err != nil {
 		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
@@ -87,13 +100,16 @@ func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {
 }
 
 // SKI returns the subject key identifier of this key.
-func (k *ecdsaPublicKey) SKI() (ski []byte) {
+func (k *rsaPublicKey) SKI() (ski []byte) {
 	if k.pubKey == nil {
 		return nil
 	}
 
 	// Marshall the public key
-	raw := elliptic.Marshal(k.pubKey.Curve, k.pubKey.X, k.pubKey.Y)
+	raw, _ := asn1.Marshal(rsaPublicKeyASN{
+		N: k.pubKey.N,
+		E: k.pubKey.E,
+	})
 
 	// Hash it
 	hash := sha256.New()
@@ -102,19 +118,19 @@ func (k *ecdsaPublicKey) SKI() (ski []byte) {
 }
 
 // Symmetric returns true if this key is a symmetric key,
-// false if this key is asymmetric
-func (k *ecdsaPublicKey) Symmetric() bool {
+// false is this key is asymmetric
+func (k *rsaPublicKey) Symmetric() bool {
 	return false
 }
 
-// Private returns true if this key is a private key,
+// Private returns true if this key is an asymmetric private key,
 // false otherwise.
-func (k *ecdsaPublicKey) Private() bool {
+func (k *rsaPublicKey) Private() bool {
 	return false
 }
 
 // PublicKey returns the corresponding public key part of an asymmetric public/private key pair.
 // This method returns an error in symmetric key schemes.
-func (k *ecdsaPublicKey) PublicKey() (bccsp.Key, error) {
+func (k *rsaPublicKey) PublicKey() (bccsp.Key, error) {
 	return k, nil
 }

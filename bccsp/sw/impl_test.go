@@ -40,9 +40,9 @@ import (
 	"crypto/sha512"
 	"hash"
 
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/signer"
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -26,8 +26,8 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/signer"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/signer"
 )
 
 type identity struct {

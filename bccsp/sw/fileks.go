@@ -29,8 +29,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/utils"
 )
 
 // FileBasedKeyStore is a folder-based KeyStore.

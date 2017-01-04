@@ -35,8 +35,8 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 
-	"github.com/hyperledger/fabric/core/crypto/bccsp"
-	"github.com/hyperledger/fabric/core/crypto/bccsp/utils"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/op/go-logging"
 	"golang.org/x/crypto/sha3"
 )
