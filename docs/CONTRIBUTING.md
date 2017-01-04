@@ -82,19 +82,20 @@ smoother review.
 
 ### Becoming a maintainer
 
-This project is managed under open governance model as described in our
+This project is managed under an open governance model as described in our
 [charter](https://www.hyperledger.org/about/charter). Projects or sub-projects
-will be lead by a set of maintainers. New projects can designate an initial set
-of maintainers that will be approved by the Technical Steering Committee when
-the project is first approved. The project's maintainers will, from
-time-to-time, consider adding or removing a maintainer. An existing maintainer
-will post a patchset to the [MAINTAINERS.md](MAINTAINERS.md) file. If a
-majority of the maintainers concur in the comments, the pull request is then
-merged and the individual becomes a (or is removed as a) maintainer. Note that
-removing a maintainer should not be taken lightly, but occasionally, people do
-move on - hence the bar should be some period of inactivity, an explicit
-resignation, some infraction of the code of conduct or consistently
-demonstrating poor judgement.
+will be lead by a set of maintainers. New sub-projects can designate an initial
+set of maintainers that will be approved by the top-level project's existing
+maintainers when the project is first approved. The project's maintainers will,
+from time-to-time, consider adding or removing a maintainer. An existing
+maintainer can submit a change set to the [MAINTAINERS.md](MAINTAINERS.md) file.
+If there are less than eight maintainers, a majority of the existing maintainers
+on that project are required to merge the change set. If there are more than
+eight existing maintainers, then if five or more of the maintainers concur with
+the proposal, the change set is then merged and the individual is added to
+(or alternatively, removed from) the maintainers group. explicit resignation,
+some infraction of the [code of conduct](https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct)
+or consistently demonstrating poor judgement.
 
 ## Legal stuff
 
@@ -104,7 +105,8 @@ License 2.0. A template of that header can be found [here](https://github.com/hy
 We have tried to make it as easy as possible to make contributions. This
 applies to how we handle the legal aspects of contribution. We use the same
 approach&mdash;the [Developer's Certificate of Origin 1.1 (DCO)](docs/biz/DCO1.1.txt)&mdash;that
-the Linux&reg; Kernel [community](http://elinux.org/Developer_Certificate_Of_Origin) uses to manage code contributions.
+the Linux&reg; Kernel [community](http://elinux.org/Developer_Certificate_Of_Origin)
+uses to manage code contributions.
 
 We simply ask that when submitting a patch for review, the developer must include
 a sign-off statement in the commit message.
