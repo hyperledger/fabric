@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"net"
 	_ "net/http/pprof"
 	"os"
@@ -53,6 +52,13 @@ type flags struct {
 	init          string
 }
 
+var logger = logging.MustGetLogger("orderer/main")
+
+// TODO move to_test after integration with common components
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
+
 func main() {
 	var c flags
 
@@ -70,14 +76,14 @@ func main() {
 
 	level, err := logging.LogLevel(c.verbose)
 	if err != nil {
-		panic(err)
+		logger.Panicf("Failed to set loglevel: %s", err)
 	}
 	logging.SetLevel(level, "")
 
 	if c.init != "" {
 		err = initInstance(c)
 		if err != nil {
-			panic(err)
+			logger.Panicf("Failed to initialize SBFT instance: %s", err)
 		}
 		return
 	}
@@ -102,26 +108,24 @@ func initInstance(c flags) error {
 		return err
 	}
 
-	fmt.Println(fmt.Sprintf("initialized new peer: listening at %v GRPC at %v", c.listenAddr, c.grpcAddr))
+	logger.Infof("Initialized new peer: listening at %v GRPC at %v", c.listenAddr, c.grpcAddr)
 	return nil
 }
 
 func serve(c flags) {
 	if c.dataDir == "" {
-		fmt.Fprintln(os.Stderr, "need data directory")
-		os.Exit(1)
+		logger.Panic("No data directory was given.")
 	}
 
 	persist := persist.New(c.dataDir)
 	config, err := sbft.RestoreConfig(persist)
 	if err != nil {
-		panic(err)
+		logger.Panicf("Failed to restore configuration: %s", err)
 	}
 
 	conn, err := connection.New(c.listenAddr, c.certFile, c.keyFile)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Connection error.")
-		panic(err)
+		logger.Panicf("Error when trying to connect: %s", err)
 	}
 	s := &consensusStack{
 		persist: nil,
@@ -134,7 +138,7 @@ func serve(c flags) {
 	_, ledger := fileledger.New(c.dataDir, genesisBlock)
 	s.backend, err = backend.NewBackend(config.Peers, conn, ledger, persist)
 	if err != nil {
-		panic(err)
+		logger.Panicf("Failed to create a new backend instance: %s", err)
 	}
 
 	sbft, _ := pb.New(s.backend.GetMyId(), config.Consensus, s.backend)
@@ -143,7 +147,7 @@ func serve(c flags) {
 	grpcServer := grpc.NewServer()
 	lis, err := net.Listen("tcp", c.grpcAddr)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to listen: %s", err))
+		logger.Panicf("Failed to listen: %s", err)
 	}
 	broadcastab := backend.NewBackendAB(s.backend)
 	ab.RegisterAtomicBroadcastServer(grpcServer, broadcastab)

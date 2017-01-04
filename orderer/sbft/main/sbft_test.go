@@ -32,8 +32,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-var logger = logging.MustGetLogger("sbft_test")
-
 const update byte = 0
 const sent byte = 1
 
