@@ -35,6 +35,10 @@ import (
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
+	"github.com/hyperledger/fabric/orderer/sbft"
+	"github.com/hyperledger/fabric/orderer/sbft/backend"
+	sbftcrypto "github.com/hyperledger/fabric/orderer/sbft/crypto"
+	"github.com/hyperledger/fabric/orderer/sbft/simplebft"
 	"github.com/hyperledger/fabric/orderer/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -144,6 +148,7 @@ func main() {
 	consenters := make(map[string]multichain.Consenter)
 	consenters["solo"] = solo.New()
 	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry)
+	consenters["sbft"] = sbft.New(makeSbftConsensusConfig(conf), makeSbftStackConfig(conf))
 
 	manager := multichain.NewManagerImpl(lf, consenters, localmsp.NewSigner())
 
@@ -156,4 +161,22 @@ func main() {
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Infof("Beginning to serve requests")
 	grpcServer.Start()
+}
+
+func makeSbftConsensusConfig(conf *config.TopLevel) *sbft.ConsensusConfig {
+	cfg := simplebft.Config{N: conf.Sbft.N, F: conf.Sbft.F, BatchDurationNsec: conf.Sbft.BatchDurationNsec,
+		BatchSizeBytes:     conf.Sbft.BatchSizeBytes,
+		RequestTimeoutNsec: conf.Sbft.RequestTimeoutNsec}
+	peers := make(map[string][]byte)
+	for addr, cert := range conf.Sbft.Peers {
+		peers[addr], _ = sbftcrypto.ParseCertPEM(cert)
+	}
+	return &sbft.ConsensusConfig{Consensus: &cfg, Peers: peers}
+}
+
+func makeSbftStackConfig(conf *config.TopLevel) *backend.StackConfig {
+	return &backend.StackConfig{ListenAddr: conf.Sbft.PeerCommAddr,
+		CertFile: conf.Sbft.CertFile,
+		KeyFile:  conf.Sbft.KeyFile,
+		DataDir:  conf.Sbft.DataDir}
 }

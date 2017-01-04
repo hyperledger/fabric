@@ -21,17 +21,17 @@ package simplebft
 // On connection, we send our latest (weak) checkpoint, and we expect
 // to receive one from replica.
 func (s *SBFT) Connection(replica uint64) {
-	batch := *s.sys.LastBatch()
+	batch := *s.sys.LastBatch(s.chainId)
 	batch.Payloads = nil // don't send the big payload
 	hello := &Hello{Batch: &batch}
 	if s.isPrimary() && s.activeView && s.lastNewViewSent != nil {
 		hello.NewView = s.lastNewViewSent
 	}
-	s.sys.Send(&Msg{&Msg_Hello{hello}}, replica)
+	s.sys.Send(s.chainId, &Msg{&Msg_Hello{hello}}, replica)
 
 	svc := s.replicaState[s.id].signedViewchange
 	if svc != nil {
-		s.sys.Send(&Msg{&Msg_ViewChange{svc}}, replica)
+		s.sys.Send(s.chainId, &Msg{&Msg_ViewChange{svc}}, replica)
 	}
 
 	// A reconnecting replica can play forward its blockchain to
@@ -51,15 +51,15 @@ func (s *SBFT) Connection(replica uint64) {
 
 	if s.cur.subject.Seq.Seq > batchheader.Seq && s.activeView {
 		if s.isPrimary() {
-			s.sys.Send(&Msg{&Msg_Preprepare{s.cur.preprep}}, replica)
+			s.sys.Send(s.chainId, &Msg{&Msg_Preprepare{s.cur.preprep}}, replica)
 		} else {
-			s.sys.Send(&Msg{&Msg_Prepare{&s.cur.subject}}, replica)
+			s.sys.Send(s.chainId, &Msg{&Msg_Prepare{&s.cur.subject}}, replica)
 		}
 		if s.cur.prepared {
-			s.sys.Send(&Msg{&Msg_Commit{&s.cur.subject}}, replica)
+			s.sys.Send(s.chainId, &Msg{&Msg_Commit{&s.cur.subject}}, replica)
 		}
 		if s.cur.committed {
-			s.sys.Send(&Msg{&Msg_Checkpoint{s.makeCheckpoint()}}, replica)
+			s.sys.Send(s.chainId, &Msg{&Msg_Checkpoint{s.makeCheckpoint()}}, replica)
 		}
 	}
 }
@@ -73,7 +73,7 @@ func (s *SBFT) handleHello(h *Hello, src uint64) {
 		return
 	}
 
-	if s.sys.LastBatch().DecodeHeader().Seq < bh.Seq {
+	if s.sys.LastBatch(s.chainId).DecodeHeader().Seq < bh.Seq {
 		log.Debugf("replica %d: delivering batch %d after hello from replica %d", s.id, bh.Seq, src)
 		s.deliverBatch(h.Batch)
 	}

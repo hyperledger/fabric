@@ -147,7 +147,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 	s.discardBacklog(s.primaryID())
 
 	// maybe deliver previous batch
-	if s.sys.LastBatch().DecodeHeader().Seq < prevBatch.DecodeHeader().Seq {
+	if s.sys.LastBatch(s.chainId).DecodeHeader().Seq < prevBatch.DecodeHeader().Seq {
 		if prevBatch.DecodeHeader().Seq == s.cur.subject.Seq.Seq {
 			// we just received a signature set for a request which we preprepared, but never delivered.
 			// check first if the locally preprepared request matches the signature set

@@ -101,6 +101,20 @@ type Kafka struct {
 	Version sarama.KafkaVersion
 }
 
+// Sbft contains config for the SBFT orderer
+type Sbft struct {
+	PeerCommAddr       string
+	CertFile           string
+	KeyFile            string
+	DataDir            string
+	N                  uint64
+	F                  uint64
+	BatchDurationNsec  uint64
+	BatchSizeBytes     uint64
+	RequestTimeoutNsec uint64
+	Peers              map[string]string // Address to Cert mapping
+}
+
 // Retry contains config for the reconnection attempts to the Kafka brokers
 type Retry struct {
 	Period time.Duration
@@ -118,6 +132,7 @@ type TopLevel struct {
 	FileLedger FileLedger
 	Kafka      Kafka
 	Genesis    Genesis
+	Sbft       Sbft
 }
 
 var defaults = TopLevel{
@@ -160,6 +175,20 @@ var defaults = TopLevel{
 			AbsoluteMaxBytes:  100000000,
 			PreferredMaxBytes: 512 * 1024,
 		},
+	},
+	// TODO move the appropriate parts to Genesis
+	// and use BatchSizeMaxBytes
+	Sbft: Sbft{
+		PeerCommAddr:       ":6101",
+		CertFile:           "sbft/testdata/cert1.pem",
+		KeyFile:            "sbft/testdata/key.pem",
+		DataDir:            "/tmp",
+		N:                  1,
+		F:                  0,
+		BatchDurationNsec:  1000,
+		BatchSizeBytes:     1000000000,
+		RequestTimeoutNsec: 1000000000,
+		Peers:              map[string]string{":6101": "sbft/testdata/cert1.pem"},
 	},
 }
 

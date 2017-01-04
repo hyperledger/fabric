@@ -20,7 +20,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -31,20 +30,35 @@ import (
 	"testing"
 	"time"
 
+	"encoding/json"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
-	pb "github.com/hyperledger/fabric/orderer/sbft/simplebft"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
-const keyfile = "testdata/key.pem"
-const maindir = "github.com/hyperledger/fabric/orderer/sbft/main"
+const keyfile = "sbft/testdata/key.pem"
+const maindir = "github.com/hyperledger/fabric/orderer"
 
-var mainexe = os.TempDir() + "/" + "sbft"
+var ordererDir string
+var mainexe string
+
+type flags struct {
+	listenAddr    string
+	grpcAddr      string
+	telemetryAddr string
+	certFile      string
+	keyFile       string
+	dataDir       string
+	genesisFile   string
+	verbose       string
+	init          string
+}
 
 type Peer struct {
 	id     uint64
@@ -77,6 +91,13 @@ func deleteExe() {
 }
 
 func TestMain(m *testing.M) {
+	var err error
+	ordererDir, err = os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	mainexe = os.TempDir() + "/" + "orderer"
+
 	build()
 	code := m.Run()
 	deleteExe()
@@ -86,6 +107,30 @@ func TestMain(m *testing.M) {
 func TestTwoReplicasBroadcastAndDeliverUsingTheSame(t *testing.T) {
 	t.Parallel()
 	startingPort := 2000
+	skipInShortMode(t)
+	peers := InitPeers(2, startingPort)
+	StartPeers(peers)
+	r, err := Receive(peers[0], startingPort)
+	defer r.Stop()
+	defer StopPeers(peers)
+	if err != nil {
+		t.Errorf("Failed to start up receiver: %s", err)
+	}
+	WaitForConnection(peers)
+	if berr := Broadcast(peers[0], startingPort, []byte{0, 1, 2, 3, 4}); berr != nil {
+		t.Errorf("Failed to broadcast message: %s", berr)
+	}
+	if !AssertWithTimeout(func() bool {
+		return r.Received() == 2
+	}, 30) {
+		t.Errorf("Failed to receive some messages. (Received %d)", r.Received())
+	}
+}
+
+func TestTwoReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
+	t.Parallel()
+	logging.SetLevel(logging.DEBUG, "sbft")
+	startingPort := 2500
 	skipInShortMode(t)
 	peers := InitPeers(2, startingPort)
 	StartPeers(peers)
@@ -227,12 +272,18 @@ func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
 func InitPeers(num uint64, startingPort int) []*Peer {
 	peers := make([]*Peer, 0, num)
 	certFiles := make([]string, 0, num)
+	peersWithCerts := map[string]string{}
 	for i := uint64(0); i < num; i++ {
-		certFiles = append(certFiles, generateCertificate(i, keyfile))
+		certFile := generateCertificate(i, keyfile)
+		certFiles = append(certFiles, certFile)
+		peerCommPort := listenAddress(i, startingPort)
+		peersWithCerts[peerCommPort] = certFile
 	}
-	configFile := generateConfig(num, startingPort, certFiles)
 	for i := uint64(0); i < num; i++ {
-		peers = append(peers, initPeer(i, startingPort, configFile, certFiles[i]))
+		peerCommPort := listenAddress(i, startingPort)
+		grpcPort := grpcPort(i, startingPort)
+		configEnv := generateConfigEnv(num, grpcPort, peerCommPort, certFiles[i], peersWithCerts)
+		peers = append(peers, initPeer(i, configEnv))
 	}
 	return peers
 }
@@ -249,51 +300,34 @@ func StopPeers(peers []*Peer) {
 	}
 }
 
-func generateConfig(peerNum uint64, startingPort int, certFiles []string) string {
+func generateConfigEnv(peerNum uint64, grpcPort int, peerCommPort string, certFile string, peersWithCerts map[string]string) []string {
 	tempDir, err := ioutil.TempDir("", "sbft_test_config")
 	panicOnError(err)
-	c := pb.Config{
-		N:                  peerNum,
-		F:                  (peerNum - 1) / 3,
-		BatchDurationNsec:  1000,
-		BatchSizeBytes:     1000000000,
-		RequestTimeoutNsec: 1000000000}
-	peerconfigs := make([]map[string]string, 0, peerNum)
-	for i := uint64(0); i < peerNum; i++ {
-		pc := make(map[string]string)
-		pc["Id"] = fmt.Sprintf("%d", i)
-		pc["Address"] = listenAddress(i, startingPort)
-		pc["Cert"] = certFiles[i]
-		peerconfigs = append(peerconfigs, pc)
-	}
-	consconfig := make(map[string]interface{})
-	consconfig["consensus"] = c
-	consconfig["peers"] = peerconfigs
-	stringconf, err := json.Marshal(consconfig)
-	panicOnError(err)
-	conffilepath := tempDir + "/jsonconfig"
-	ioutil.WriteFile(conffilepath, []byte(stringconf), 0644)
-	return conffilepath
+	envs := []string{}
+	envs = append(envs, fmt.Sprintf("ORDERER_CFG_PATH=%s", ordererDir))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_ORDERERTYPE=%s", "sbft"))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", grpcPort))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_PEERCOMMADDR=%s", peerCommPort))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_CERTFILE=%s", certFile))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_KEYFILE=%s", keyfile))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_DATADIR=%s", tempDir))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_BATCHDURATIONNSEC=%d", 1000))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_BATCHSIZEBYTES=%d", 1000000000))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_REQUESTTIMEOUTNSEC=%d", 1000000000))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_N=%d", peerNum))
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_F=%d", (peerNum-1)/3))
+	js, _ := json.Marshal(peersWithCerts)
+	envs = append(envs, fmt.Sprintf("ORDERER_SBFT_PEERS=%s", js))
+	return envs
 }
 
-func initPeer(uid uint64, startingPort int, configFile string, certFile string) (p *Peer) {
-	tempDir, err := ioutil.TempDir("", "sbft_test")
-	panicOnError(err)
-	os.RemoveAll(tempDir)
-	c := flags{init: configFile,
-		listenAddr: listenAddress(uid, startingPort),
-		grpcAddr:   grpcAddress(uid, startingPort),
-		certFile:   certFile,
-		keyFile:    keyfile,
-		dataDir:    tempDir}
+func initPeer(uid uint64, configEnv []string) (p *Peer) {
 	ctx, cancel := context.WithCancel(context.Background())
-	p = &Peer{id: uid, cancel: cancel, config: c}
-	err = initInstance(c)
-	panicOnError(err)
-	p.cmd = exec.CommandContext(ctx, mainexe, "-addr", p.config.listenAddr, "-gaddr", p.config.grpcAddr, "-cert", p.config.certFile, "-key",
-		p.config.keyFile, "-data-dir", p.config.dataDir, "-verbose", "debug")
+	p = &Peer{id: uid, cancel: cancel}
+	p.cmd = exec.CommandContext(ctx, mainexe)
 	p.cmd.Stdout = os.Stdout
 	p.cmd.Stderr = os.Stderr
+	p.cmd.Env = append(configEnv, os.Environ()...)
 	return
 }
 
@@ -308,10 +342,12 @@ func (p *Peer) stop() {
 }
 
 func Broadcast(p *Peer, startingPort int, bytes []byte) error {
-	timeout := 10 * time.Second
+	timeout := 5 * time.Second
 	grpcAddress := grpcAddress(p.id, startingPort)
+	logger.Warningf("Broadcast - dialing: %s", grpcAddress)
 	clientconn, err := grpc.Dial(grpcAddress, grpc.WithBlock(), grpc.WithTimeout(timeout), grpc.WithInsecure())
 	if err != nil {
+		logger.Warning("Broadcast - failure")
 		return err
 	}
 	defer clientconn.Close()
@@ -320,14 +356,17 @@ func Broadcast(p *Peer, startingPort int, bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	pl := &cb.Payload{Data: bytes}
+	h := &cb.Header{ChainHeader: &cb.ChainHeader{ChainID: provisional.TestChainID}, SignatureHeader: &cb.SignatureHeader{}}
+	pl := &cb.Payload{Data: bytes, Header: h}
 	mpl, err := proto.Marshal(pl)
 	panicOnError(err)
+	logger.Warningf("Broadcast - sending: %s", grpcAddress)
 	if e := bstream.Send(&cb.Envelope{Payload: mpl}); e != nil {
 		return e
 	}
 	_, err = bstream.Recv()
 	panicOnError(err)
+	logger.Warningf("Broadcast - done: %s", grpcAddress)
 	return nil
 }
 
@@ -336,6 +375,7 @@ func Receive(p *Peer, startingPort int) (*Receiver, error) {
 	signals := make(chan bool, 100)
 	timeout := 4 * time.Second
 	grpcAddress := grpcAddress(p.id, startingPort)
+	logger.Warning("Receiver - dial")
 	clientconn, err := grpc.Dial(grpcAddress, grpc.WithBlock(), grpc.WithTimeout(timeout), grpc.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -375,13 +415,17 @@ func Receive(p *Peer, startingPort int) (*Receiver, error) {
 					clientconn.Close()
 					return
 				}
-				b := m.Type.(*ab.DeliverResponse_Block)
+				b, ok := m.Type.(*ab.DeliverResponse_Block)
+				if !ok {
+					continue
+				}
 				for _, tx := range b.Block.Data.Data {
 					pl := &cb.Payload{}
 					e := &cb.Envelope{}
 					merr1 := proto.Unmarshal(tx, e)
 					merr2 := proto.Unmarshal(e.Payload, pl)
 					if merr1 == nil && merr2 == nil {
+						logger.Warning("Receiver - received a message")
 						retch <- tx
 						num++
 					}
@@ -418,7 +462,11 @@ func listenAddress(id uint64, startingPort int) string {
 }
 
 func grpcAddress(id uint64, startingPort int) string {
-	return fmt.Sprintf(":%d", startingPort+1+2*int(id))
+	return fmt.Sprintf(":%d", grpcPort(id, startingPort))
+}
+
+func grpcPort(id uint64, startingPort int) int {
+	return startingPort + 1 + 2*int(id)
 }
 
 func generateCertificate(id uint64, keyFile string) string {

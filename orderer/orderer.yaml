@@ -113,6 +113,32 @@ Kafka:
     # NOTE: Use IP:port notation
     Brokers:
         - 127.0.0.1:9092
+
+################################################################################
+#
+#   SECTION: Sbft
+#
+#   - This section applies to the configuration of the Sbft-backed orderer
+#
+################################################################################
+Sbft:
+    # Address to use for SBFT internal communication
+    PeerCommAddr: ":6101"
+    CertFile: "sbft/testdata/cert1.pem"
+    KeyFile: "sbft/testdata/key.pem"
+    # Directory for SBFT data (persistence)
+    DataDir: "/tmp"
+    # Number of peers
+    "N": 1
+    # Fault tolerance
+    F: 0
+    BatchDurationNsec: 1000
+    BatchSizeBytes: 1000000000
+    RequestTimeoutNsec: 1000000000
+    # Peers (PeerCommAddr) with the path of their cert
+    Peers:
+        ":6101": "sbft/testdata/cert1.pem"
+
 ################################################################################
 #
 #   SECTION: Genesis

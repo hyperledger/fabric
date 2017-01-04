@@ -36,20 +36,21 @@ type Receiver interface {
 	Receive(msg *Msg, src uint64)
 	Request(req []byte)
 	Connection(replica uint64)
+	GetChainId() string
 }
 
 // System defines the API that needs to be provided for SBFT.
 type System interface {
-	Send(msg *Msg, dest uint64)
+	Send(chainId string, msg *Msg, dest uint64)
 	Timer(d time.Duration, f func()) Canceller
-	Deliver(batch *Batch)
-	SetReceiver(receiver Receiver)
-	Persist(key string, data proto.Message)
-	Restore(key string, out proto.Message) bool
-	LastBatch() *Batch
+	Deliver(chainId string, batch *Batch)
+	AddReceiver(chainId string, receiver Receiver)
+	Persist(chainId string, key string, data proto.Message)
+	Restore(chainId string, key string, out proto.Message) bool
+	LastBatch(chainId string) *Batch
 	Sign(data []byte) []byte
 	CheckSig(data []byte, src uint64, sig []byte) error
-	Reconnect(replica uint64)
+	Reconnect(chainId string, replica uint64)
 }
 
 // Canceller allows cancelling of a scheduled timer event.
@@ -73,6 +74,7 @@ type SBFT struct {
 	viewChangeTimer   Canceller
 	replicaState      []replicaInfo
 	pending           map[string]*Request
+	chainId           string
 }
 
 type reqInfo struct {
@@ -101,20 +103,21 @@ type dummyCanceller struct{}
 func (d dummyCanceller) Cancel() {}
 
 // New creates a new SBFT instance.
-func New(id uint64, config *Config, sys System) (*SBFT, error) {
+func New(id uint64, chainID string, config *Config, sys System) (*SBFT, error) {
 	if config.F*3+1 > config.N {
-		return nil, fmt.Errorf("invalid combination of N and F")
+		return nil, fmt.Errorf("invalid combination of N (%d) and F (%d)", config.N, config.F)
 	}
 
 	s := &SBFT{
 		config:          *config,
 		sys:             sys,
 		id:              id,
+		chainId:         chainID,
 		viewChangeTimer: dummyCanceller{},
 		replicaState:    make([]replicaInfo, config.N),
 		pending:         make(map[string]*Request),
 	}
-	s.sys.SetReceiver(s)
+	s.sys.AddReceiver(chainID, s)
 
 	s.view = 0
 	s.cur.subject.Seq = &SeqView{}
@@ -125,7 +128,7 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 	s.activeView = true
 
 	svc := &Signed{}
-	if s.sys.Restore(viewchange, svc) {
+	if s.sys.Restore(s.chainId, viewchange, svc) {
 		vc := &ViewChange{}
 		err := proto.Unmarshal(svc.Data, vc)
 		if err != nil {
@@ -137,7 +140,7 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 	}
 
 	pp := &Preprepare{}
-	if s.sys.Restore(preprepared, pp) && pp.Seq.View >= s.view {
+	if s.sys.Restore(s.chainId, preprepared, pp) && pp.Seq.View >= s.view {
 		s.view = pp.Seq.View
 		s.activeView = true
 		if pp.Seq.Seq > s.seq() {
@@ -145,11 +148,11 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 		}
 	}
 	c := &Subject{}
-	if s.sys.Restore(prepared, c) && reflect.DeepEqual(c, &s.cur.subject) && c.Seq.View >= s.view {
+	if s.sys.Restore(s.chainId, prepared, c) && reflect.DeepEqual(c, &s.cur.subject) && c.Seq.View >= s.view {
 		s.cur.prepared = true
 	}
 	ex := &Subject{}
-	if s.sys.Restore(committed, ex) && reflect.DeepEqual(c, &s.cur.subject) && ex.Seq.View >= s.view {
+	if s.sys.Restore(s.chainId, committed, ex) && reflect.DeepEqual(c, &s.cur.subject) && ex.Seq.View >= s.view {
 		s.cur.committed = true
 	}
 
@@ -158,6 +161,10 @@ func New(id uint64, config *Config, sys System) (*SBFT, error) {
 }
 
 ////////////////////////////////////////////////
+
+func (s *SBFT) GetChainId() string {
+	return s.chainId
+}
 
 func (s *SBFT) primaryIDView(v uint64) uint64 {
 	return v % s.config.N
@@ -172,7 +179,7 @@ func (s *SBFT) isPrimary() bool {
 }
 
 func (s *SBFT) seq() uint64 {
-	return s.sys.LastBatch().DecodeHeader().Seq
+	return s.sys.LastBatch(s.chainId).DecodeHeader().Seq
 }
 
 func (s *SBFT) nextSeq() SeqView {
@@ -203,7 +210,7 @@ func (s *SBFT) oneCorrectQuorum() int {
 
 func (s *SBFT) broadcast(m *Msg) {
 	for i := uint64(0); i < s.config.N; i++ {
-		s.sys.Send(m, i)
+		s.sys.Send(s.chainId, m, i)
 	}
 }
 
@@ -257,7 +264,7 @@ func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
 func (s *SBFT) deliverBatch(batch *Batch) {
 	s.cur.checkpointDone = true
 	s.cur.timeout.Cancel()
-	s.sys.Deliver(batch)
+	s.sys.Deliver(s.chainId, batch)
 
 	for _, req := range batch.Payloads {
 		key := hash2str(hash(req))

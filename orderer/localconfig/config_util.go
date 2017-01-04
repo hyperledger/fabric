@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -48,12 +50,30 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 		} else if m, ok := val.(map[string]interface{}); ok {
 			logger.Debugf("Found map[string]interface{} value for %s", fqKey)
 			result[key] = getKeysRecursively(fqKey+".", v, m)
+		} else if m, ok := unmarshalJson(val); ok {
+			logger.Debugf("Found real value for %s setting to map[string]string %v", fqKey, m)
+			result[key] = m
 		} else {
 			logger.Debugf("Found real value for %s setting to %T %v", fqKey, val, val)
 			result[key] = val
 		}
 	}
 	return result
+}
+
+func unmarshalJson(val interface{}) (map[string]string, bool) {
+	mp := map[string]string{}
+	s, ok := val.(string)
+	if !ok {
+		logger.Debugf("Unmarshal JSON: value is not a string: %v", val)
+		return nil, false
+	}
+	err := json.Unmarshal([]byte(s), &mp)
+	if err != nil {
+		logger.Debugf("Unmarshal JSON: value cannot be unmarshalled: %s", err)
+		return nil, false
+	}
+	return mp, true
 }
 
 // customDecodeHook adds the additional functions of parsing durations from strings

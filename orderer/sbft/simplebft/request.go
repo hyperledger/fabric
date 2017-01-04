@@ -20,6 +20,7 @@ import "time"
 
 // Request proposes a new request to the BFT network.
 func (s *SBFT) Request(req []byte) {
+	log.Debugf("replica %d: broadcasting a request", s.id)
 	s.broadcast(&Msg{&Msg_Request{&Request{req}}})
 }
 

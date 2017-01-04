@@ -29,14 +29,14 @@ func (s *SBFT) sendPreprepare(batch []*Request) {
 		data[i] = req.Payload
 	}
 
-	lasthash := hash(s.sys.LastBatch().Header)
+	lasthash := hash(s.sys.LastBatch(s.chainId).Header)
 
 	m := &Preprepare{
 		Seq:   &seq,
 		Batch: s.makeBatch(seq.Seq, lasthash, data),
 	}
 
-	s.sys.Persist(preprepared, m)
+	s.sys.Persist(s.chainId, preprepared, m)
 	s.broadcast(&Msg{&Msg_Preprepare{m}})
 	s.handleCheckedPreprepare(m)
 }
@@ -70,7 +70,7 @@ func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
 		return
 	}
 
-	prevhash := s.sys.LastBatch().Hash()
+	prevhash := s.sys.LastBatch(s.chainId).Hash()
 	if !bytes.Equal(batchheader.PrevHash, prevhash) {
 		log.Infof("replica %d: preprepare batch prev hash does not match expected %s, got %s", s.id, hash2str(batchheader.PrevHash), hash2str(prevhash))
 		return
@@ -83,7 +83,7 @@ func (s *SBFT) acceptPreprepare(pp *Preprepare) {
 	sub := Subject{Seq: pp.Seq, Digest: pp.Batch.Hash()}
 
 	log.Infof("replica %d: accepting preprepare for %v, %x", s.id, sub.Seq, sub.Digest)
-	s.sys.Persist(preprepared, pp)
+	s.sys.Persist(s.chainId, preprepared, pp)
 
 	s.cur = reqInfo{
 		subject:    sub,

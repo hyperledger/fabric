@@ -83,7 +83,9 @@ func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Co
 		umtxs[i] = utils.UnmarshalEnvelopeOrPanic(block.Data.Data[i])
 	}
 	mcs.Batches <- umtxs
-	block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
+	if encodedMetadataValue != nil {
+		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
+	}
 	mcs.WriteBlockVal = block
 	return block
 }
