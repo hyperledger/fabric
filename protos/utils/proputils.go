@@ -184,17 +184,6 @@ func GetSignatureHeader(bytes []byte) (*common.SignatureHeader, error) {
 	return sh, nil
 }
 
-// GetEnvelope Get Envelope from bytes
-func GetEnvelope(bytes []byte) (*common.Envelope, error) {
-	env := &common.Envelope{}
-	err := proto.Unmarshal(bytes, env)
-	if err != nil {
-		return nil, err
-	}
-
-	return env, nil
-}
-
 // CreateChaincodeProposal creates a proposal from given input
 func CreateChaincodeProposal(txid string, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
@@ -353,7 +342,7 @@ func GetBytesEnvelope(env *common.Envelope) ([]byte, error) {
 
 // GetActionFromEnvelope extracts a ChaincodeAction message from a serialized Envelope
 func GetActionFromEnvelope(envBytes []byte) (*peer.ChaincodeAction, error) {
-	env, err := GetEnvelope(envBytes)
+	env, err := GetEnvelopeFromBlock(envBytes)
 	if err != nil {
 		return nil, err
 	}

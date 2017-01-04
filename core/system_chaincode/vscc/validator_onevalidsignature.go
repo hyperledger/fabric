@@ -65,7 +65,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 	logger.Infof("VSCC invoked")
 
 	// get the envelope...
-	env, err := utils.GetEnvelope(args[1])
+	env, err := utils.GetEnvelopeFromBlock(args[1])
 	if err != nil {
 		logger.Errorf("VSCC error: GetEnvelope failed, err %s", err)
 		return nil, err

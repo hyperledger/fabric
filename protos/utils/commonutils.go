@@ -119,8 +119,8 @@ func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
 		return nil, fmt.Errorf("Envelope index out of bounds")
 	}
 	marshaledEnvelope := block.Data.Data[index]
-	envelope := &cb.Envelope{}
-	if err := proto.Unmarshal(marshaledEnvelope, envelope); err != nil {
+	envelope, err := GetEnvelopeFromBlock(marshaledEnvelope)
+	if err != nil {
 		return nil, fmt.Errorf("Block data does not carry an envelope at index %d: %s", index, err)
 	}
 	return envelope, nil

@@ -575,7 +575,7 @@ func extractTransaction(txEnvelopeBytes []byte) (*pb.Transaction, error) {
 	var txPayload *common.Payload
 	var tx *pb.Transaction
 
-	if txEnvelope, err = putil.GetEnvelope(txEnvelopeBytes); err != nil {
+	if txEnvelope, err = putil.GetEnvelopeFromBlock(txEnvelopeBytes); err != nil {
 		return nil, err
 	}
 	if txPayload, err = putil.GetPayload(txEnvelope); err != nil {

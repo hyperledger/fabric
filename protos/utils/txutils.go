@@ -66,7 +66,7 @@ func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	var err error
 	env := &common.Envelope{}
 	if err = proto.Unmarshal(data, env); err != nil {
-		return nil, fmt.Errorf("Error getting envelope(%s)\n", err)
+		return nil, fmt.Errorf("Error getting envelope(%s)", err)
 	}
 
 	return env, nil

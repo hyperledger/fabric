@@ -225,7 +225,7 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	tx, err = GetEnvelope(envBytes)
+	tx, err = GetEnvelopeFromBlock(envBytes)
 	if err != nil {
 		t.Fatalf("Could not unmarshal envelope, err %s\n", err)
 		return

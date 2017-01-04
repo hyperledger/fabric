@@ -199,7 +199,7 @@ func extractMetadata(buf *ledgerutil.Buffer) (*common.BlockMetadata, error) {
 }
 
 func extractTxID(txEnvelopBytes []byte) (string, error) {
-	txEnvelope, err := utils.GetEnvelope(txEnvelopBytes)
+	txEnvelope, err := utils.GetEnvelopeFromBlock(txEnvelopBytes)
 	if err != nil {
 		return "", err
 	}
