@@ -103,7 +103,7 @@ cd ../..
 GRPC_PYTHON_BUILD_WITH_CYTHON=1 pip install .
 
 # updater-server, update-engine, and update-service-common dependencies (for running locally)
-pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3
+pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3 pyOpenSSL==16.2.0 sha3==0.2.1
 cat >> ~/.bashrc <<HEREDOC
       export PATH=$HOME/go/bin:$PATH
       export GOROOT=$HOME/go
