@@ -190,60 +190,20 @@ func (stub *MockStub) RangeQueryState(startKey, endKey string) (StateRangeQueryI
 	return NewMockStateRangeQueryIterator(stub, startKey, endKey), nil
 }
 
-// CreateTable creates a new table given the table name and column definitions
-func (stub *MockStub) CreateTable(name string, columnDefinitions []*ColumnDefinition) error {
-	return createTableInternal(stub, name, columnDefinitions)
+//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+//state based on a given partial composite key. This function returns an
+//iterator which can be used to iterate over all composite keys whose prefix
+//matches the given partial composite key. This function should be used only for
+//a partial composite key. For a full composite key, an iter with empty response
+//would be returned.
+func (stub *MockStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+	return partialCompositeKeyQuery(stub, objectType, attributes)
 }
 
-// GetTable returns the table for the specified table name or ErrTableNotFound
-// if the table does not exist.
-func (stub *MockStub) GetTable(tableName string) (*Table, error) {
-	return getTable(stub, tableName)
-}
-
-// DeleteTable deletes an entire table and all associated rows.
-func (stub *MockStub) DeleteTable(tableName string) error {
-	return deleteTableInternal(stub, tableName)
-}
-
-// InsertRow inserts a new row into the specified table.
-// Returns -
-// true and no error if the row is successfully inserted.
-// false and no error if a row already exists for the given key.
-// false and a TableNotFoundError if the specified table name does not exist.
-// false and an error if there is an unexpected error condition.
-func (stub *MockStub) InsertRow(tableName string, row Row) (bool, error) {
-	return insertRowInternal(stub, tableName, row, false)
-}
-
-// ReplaceRow updates the row in the specified table.
-// Returns -
-// true and no error if the row is successfully updated.
-// false and no error if a row does not exist the given key.
-// flase and a TableNotFoundError if the specified table name does not exist.
-// false and an error if there is an unexpected error condition.
-func (stub *MockStub) ReplaceRow(tableName string, row Row) (bool, error) {
-	return insertRowInternal(stub, tableName, row, true)
-}
-
-// GetRow fetches a row from the specified table for the given key.
-func (stub *MockStub) GetRow(tableName string, key []Column) (Row, error) {
-	return getRowInternal(stub, tableName, key)
-}
-
-// GetRows returns multiple rows based on a partial key. For example, given table
-// | A | B | C | D |
-// where A, C and D are keys, GetRows can be called with [A, C] to return
-// all rows that have A, C and any value for D as their key. GetRows could
-// also be called with A only to return all rows that have A and any value
-// for C and D as their key.
-func (stub *MockStub) GetRows(tableName string, key []Column) (<-chan Row, error) {
-	return getRowsInternal(stub, tableName, key)
-}
-
-// DeleteRow deletes the row for the given key from the specified table.
-func (stub *MockStub) DeleteRow(tableName string, key []Column) error {
-	return deleteRowInternal(stub, tableName, key)
+//Given a list of attributes, createCompositeKey function combines these attributes
+//to form a composite key.
+func (stub *MockStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
+	return createCompositeKey(stub, objectType, attributes)
 }
 
 // Invokes a peered chaincode.
@@ -329,20 +289,26 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 		return false
 	}
 
-	if iter.Current.Next() == nil {
-		// we've reached the end of the underlying values
-		mockLogger.Debug("HasNext() but no next")
-		return false
+	current := iter.Current
+	for current != nil {
+		comp1 := strings.Compare(current.Value.(string), iter.StartKey)
+		comp2 := strings.Compare(current.Value.(string), iter.EndKey)
+		if comp1 >= 0 {
+			if comp2 <= 0 {
+				mockLogger.Debug("HasNext() got next")
+				return true
+			} else {
+				mockLogger.Debug("HasNext() but no next")
+				return false
+
+			}
+		}
+		current = current.Next()
 	}
 
-	if iter.EndKey == iter.Current.Value {
-		// we've reached the end of the specified range
-		mockLogger.Debug("HasNext() at end of specified range")
-		return false
-	}
-
-	mockLogger.Debug("HasNext() got next")
-	return true
+	// we've reached the end of the underlying values
+	mockLogger.Debug("HasNext() but no next")
+	return false
 }
 
 // Next returns the next key and value in the range query iterator.
@@ -357,15 +323,19 @@ func (iter *MockStateRangeQueryIterator) Next() (string, []byte, error) {
 		return "", nil, errors.New("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
 	}
 
-	iter.Current = iter.Current.Next()
-
-	if iter.Current == nil {
-		mockLogger.Error("MockStateRangeQueryIterator.Next() went past end of range")
-		return "", nil, errors.New("MockStateRangeQueryIterator.Next() went past end of range")
+	for iter.Current != nil {
+		comp1 := strings.Compare(iter.Current.Value.(string), iter.StartKey)
+		comp2 := strings.Compare(iter.Current.Value.(string), iter.EndKey)
+		if comp1 >= 0 && comp2 <= 0 {
+			key := iter.Current.Value.(string)
+			value, err := iter.Stub.GetState(key)
+			iter.Current = iter.Current.Next()
+			return key, value, err
+		}
+		iter.Current = iter.Current.Next()
 	}
-	key := iter.Current.Value.(string)
-	value, err := iter.Stub.GetState(key)
-	return key, value, err
+	mockLogger.Error("MockStateRangeQueryIterator.Next() went past end of range")
+	return "", nil, errors.New("MockStateRangeQueryIterator.Next() went past end of range")
 }
 
 // Close closes the range query iterator. This should be called when done

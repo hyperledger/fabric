@@ -69,45 +69,17 @@ type ChaincodeStubInterface interface {
 	// returned by the iterator is random.
 	RangeQueryState(startKey, endKey string) (StateRangeQueryIteratorInterface, error)
 
-	// CreateTable creates a new table given the table name and column definitions
-	CreateTable(name string, columnDefinitions []*ColumnDefinition) error
+	//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+	//state based on a given partial composite key. This function returns an
+	//iterator which can be used to iterate over all composite keys whose prefix
+	//matches the given partial composite key. This function should be used only for
+	//a partial composite key. For a full composite key, an iter with empty response
+	//would be returned.
+	PartialCompositeKeyQuery(objectType string, keys []string) (StateRangeQueryIteratorInterface, error)
 
-	// GetTable returns the table for the specified table name or ErrTableNotFound
-	// if the table does not exist.
-	GetTable(tableName string) (*Table, error)
-
-	// DeleteTable deletes an entire table and all associated rows.
-	DeleteTable(tableName string) error
-
-	// InsertRow inserts a new row into the specified table.
-	// Returns -
-	// true and no error if the row is successfully inserted.
-	// false and no error if a row already exists for the given key.
-	// false and a TableNotFoundError if the specified table name does not exist.
-	// false and an error if there is an unexpected error condition.
-	InsertRow(tableName string, row Row) (bool, error)
-
-	// ReplaceRow updates the row in the specified table.
-	// Returns -
-	// true and no error if the row is successfully updated.
-	// false and no error if a row does not exist the given key.
-	// flase and a TableNotFoundError if the specified table name does not exist.
-	// false and an error if there is an unexpected error condition.
-	ReplaceRow(tableName string, row Row) (bool, error)
-
-	// GetRow fetches a row from the specified table for the given key.
-	GetRow(tableName string, key []Column) (Row, error)
-
-	// GetRows returns multiple rows based on a partial key. For example, given table
-	// | A | B | C | D |
-	// where A, C and D are keys, GetRows can be called with [A, C] to return
-	// all rows that have A, C and any value for D as their key. GetRows could
-	// also be called with A only to return all rows that have A and any value
-	// for C and D as their key.
-	GetRows(tableName string, key []Column) (<-chan Row, error)
-
-	// DeleteRow deletes the row for the given key from the specified table.
-	DeleteRow(tableName string, key []Column) error
+	//Given a list of attributes, createCompundKey function combines these attributes
+	//to form a composite key.
+	CreateCompositeKey(objectType string, attributes []string) (string, error)
 
 	// GetCallerCertificate returns caller certificate
 	GetCallerCertificate() ([]byte, error)
