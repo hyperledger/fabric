@@ -45,6 +45,16 @@ func (cbs *commonBootstrapper) encodeBatchSize() *cb.SignedConfigurationItem {
 	return &cb.SignedConfigurationItem{ConfigurationItem: utils.MarshalOrPanic(configItem), Signatures: nil}
 }
 
+func (cbs *commonBootstrapper) encodeBatchTimeout() *cb.SignedConfigurationItem {
+	configItemKey := sharedconfig.BatchTimeoutKey
+	configItemValue := utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: cbs.batchTimeout})
+	modPolicy := configtx.DefaultModificationPolicyID
+
+	configItemChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, cbs.chainID, epoch)
+	configItem := utils.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Orderer, lastModified, modPolicy, configItemKey, configItemValue)
+	return &cb.SignedConfigurationItem{ConfigurationItem: utils.MarshalOrPanic(configItem), Signatures: nil}
+}
+
 func (cbs *commonBootstrapper) encodeChainCreators() *cb.SignedConfigurationItem {
 	configItemKey := sharedconfig.ChainCreatorsKey
 	configItemValue := utils.MarshalOrPanic(&ab.ChainCreators{Policies: DefaultChainCreators})
