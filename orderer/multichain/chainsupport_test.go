@@ -17,6 +17,7 @@ limitations under the License.
 package multichain
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 
@@ -64,7 +65,7 @@ func (mc *mockCommitter) Commit() {
 func TestCommitConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledger: ml, configManager: cm}
+	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
 	txs := []*cb.Envelope{makeNormalTx("foo", 0), makeNormalTx("bar", 1)}
 	committers := []filter.Committer{&mockCommitter{}, &mockCommitter{}}
 	block := cs.CreateNextBlock(txs)
@@ -86,10 +87,40 @@ func TestCommitConfig(t *testing.T) {
 	}
 }
 
+func TestMetadataSignatureBytes(t *testing.T) {
+	value := []byte("Value")
+	signatureHeader := []byte("SignatureHeader")
+	blockHeader := []byte("BlockHeader")
+
+	sigBytes := metadataSignatureBytes(value, signatureHeader, blockHeader)
+	expected := []byte("ValueSignatureHeaderBlockHeader")
+	if !bytes.Equal(sigBytes, expected) {
+		t.Errorf("Did not compute first signature bytes correctly, expected %s, got %s", expected, sigBytes)
+	}
+}
+
+func TestWriteBlockSignatures(t *testing.T) {
+	ml := &mockLedgerReadWriter{}
+	cm := &mockconfigtx.Manager{}
+	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
+
+	blockMetadata := func(block *cb.Block) *cb.Metadata {
+		metadata, err := utils.GetMetadataFromBlock(block, cb.BlockMetadataIndex_SIGNATURES)
+		if err != nil {
+			panic(err)
+		}
+		return metadata
+	}
+
+	if blockMetadata(cs.WriteBlock(cb.NewBlock(0, nil), nil)) == nil {
+		t.Fatalf("Block should have block signature")
+	}
+}
+
 func TestWriteLastConfiguration(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledger: ml, configManager: cm}
+	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
 
 	lastConfig := func(block *cb.Block) uint64 {
 		index, err := utils.GetLastConfigurationIndexFromBlock(block)

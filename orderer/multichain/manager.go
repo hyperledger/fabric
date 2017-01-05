@@ -41,6 +41,23 @@ func (xxx xxxCryptoHelper) VerifySignature(sd *cb.SignedData) error {
 	return nil
 }
 
+func (xxx xxxCryptoHelper) NewSignatureHeader() *cb.SignatureHeader {
+	return &cb.SignatureHeader{}
+}
+
+func (xxx xxxCryptoHelper) Sign(message []byte) []byte {
+	return message
+}
+
+// Signer is a temporary stub interface which will be implemented by the local MSP
+type Signer interface {
+	// NewSignatureHeader creates a SignatureHeader with the correct signing identity and a valid nonce
+	NewSignatureHeader() *cb.SignatureHeader
+
+	// Sign a message which should embed a signature header created by NewSignatureHeader
+	Sign(message []byte) []byte
+}
+
 // Manager coordinates the creation and access of chains
 type Manager interface {
 	// GetChain retrieves the chain support for a chain (and whether it exists)
@@ -99,14 +116,14 @@ func NewManagerImpl(ledgerFactory rawledger.Factory, consenters map[string]Conse
 				logger.Fatalf("There appear to be two system chains %s and %s", ml.sysChain.support.ChainID(), chainID)
 			}
 			logger.Debugf("Starting with system chain: %s", chainID)
-			chain := newChainSupport(createSystemChainFilters(ml, configManager), configManager, policyManager, backingLedger, sharedConfigManager, consenters)
+			chain := newChainSupport(createSystemChainFilters(ml, configManager), configManager, policyManager, backingLedger, sharedConfigManager, consenters, &xxxCryptoHelper{})
 			ml.chains[string(chainID)] = chain
 			ml.sysChain = newSystemChain(chain)
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
 			defer chain.start()
 		} else {
 			logger.Debugf("Starting chain: %s", chainID)
-			chain := newChainSupport(createStandardFilters(configManager), configManager, policyManager, backingLedger, sharedConfigManager, consenters)
+			chain := newChainSupport(createStandardFilters(configManager), configManager, policyManager, backingLedger, sharedConfigManager, consenters, &xxxCryptoHelper{})
 			ml.chains[string(chainID)] = chain
 			chain.start()
 		}
@@ -208,7 +225,7 @@ func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 		newChains[key] = value
 	}
 
-	cs := newChainSupport(createStandardFilters(configManager), configManager, policyManager, backingLedger, sharedConfig, ml.consenters)
+	cs := newChainSupport(createStandardFilters(configManager), configManager, policyManager, backingLedger, sharedConfig, ml.consenters, &xxxCryptoHelper{})
 	chainID := configManager.ChainID()
 
 	logger.Debugf("Created and starting new chain %s", chainID)

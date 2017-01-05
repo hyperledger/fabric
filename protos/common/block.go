@@ -34,13 +34,16 @@ func NewBlock(seqNum uint64, previousHash []byte) *Block {
 	return block
 }
 
-func (b *BlockHeader) Hash() []byte {
+func (b *BlockHeader) Bytes() []byte {
 	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash
 	if err != nil {
 		panic("This should never fail and is generally irrecoverable")
 	}
+	return data
+}
 
-	return util.ComputeCryptoHash(data)
+func (b *BlockHeader) Hash() []byte {
+	return util.ComputeCryptoHash(b.Bytes())
 }
 
 func (b *BlockData) Hash() []byte {
