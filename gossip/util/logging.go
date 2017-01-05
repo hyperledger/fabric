@@ -24,7 +24,6 @@ import (
 	"sync"
 
 	"github.com/op/go-logging"
-
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -50,7 +49,7 @@ func init() {
 }
 
 type Logger struct {
-	logger logging.Logger
+	logging.Logger
 	module string
 }
 
@@ -86,105 +85,8 @@ func GetLogger(module string, peerId string) *Logger {
 	}
 	logging.SetLevel(lvl, module)
 	lgr := &Logger{}
-	lgr.logger = *logging.MustGetLogger(module)
-	lgr.logger.ExtraCalldepth++
+	lgr.Logger = *logging.MustGetLogger(module)
 	lgr.module = module
 	loggersByModules[module] = lgr
 	return lgr
-}
-
-func (l *Logger) Fatal(args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Fatal(args)
-}
-
-func (l *Logger) Fatalf(format string, args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Fatalf(format, args)
-}
-
-func (l *Logger) Panic(args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Panic(args)
-}
-
-func (l *Logger) Panicf(format string, args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Panicf(format, args)
-}
-
-func (l *Logger) Critical(args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Critical(args)
-}
-
-func (l *Logger) Criticalf(format string, args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Criticalf(format, args)
-}
-
-func (l *Logger) Error(args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Error(args)
-}
-
-func (l *Logger) Errorf(format string, args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Errorf(format, args)
-}
-
-func (l *Logger) Warning(args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Warning(args)
-}
-
-func (l *Logger) Warningf(format string, args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Warningf(format, args)
-}
-
-func (l *Logger) Notice(args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Notice(args)
-}
-
-func (l *Logger) Noticef(format string, args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Noticef(format, args)
-}
-
-func (l *Logger) Info(args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Info(args)
-}
-
-func (l *Logger) Infof(format string, args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Infof(format, args)
-}
-
-func (l *Logger) Debug(args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Debug(args)
-}
-
-func (l *Logger) Debugf(format string, args ...interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	l.logger.Debugf(format, args)
 }
