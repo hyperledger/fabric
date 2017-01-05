@@ -41,6 +41,7 @@ func (k *aesPrivateKey) Bytes() (raw []byte, err error) {
 // SKI returns the subject key identifier of this key.
 func (k *aesPrivateKey) SKI() (ski []byte) {
 	hash := sha256.New()
+	hash.Write([]byte{0x01})
 	hash.Write(k.privKey)
 	return hash.Sum(nil)
 }
