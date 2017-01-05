@@ -37,10 +37,10 @@ import (
 	"github.com/hyperledger/fabric/orderer/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/Shopify/sarama"
-	"github.com/op/go-logging"
-
+	logging "github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -67,18 +67,6 @@ func main() {
 		return
 	}
 
-	var genesisBlock *cb.Block
-
-	// Select the bootstrapping mechanism
-	switch conf.General.GenesisMethod {
-	case "provisional":
-		genesisBlock = provisional.New(conf).GenesisBlock()
-	case "file":
-		genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
-	default:
-		panic(fmt.Errorf("Unknown genesis method %s", conf.General.GenesisMethod))
-	}
-
 	var lf rawledger.Factory
 	switch conf.General.LedgerType {
 	case "file":
@@ -90,11 +78,47 @@ func main() {
 				panic(fmt.Errorf("Error creating temp dir: %s", err))
 			}
 		}
-		lf, _ = fileledger.New(location, genesisBlock)
+		lf = fileledger.New(location)
 	case "ram":
 		fallthrough
 	default:
-		lf, _ = ramledger.New(int(conf.RAMLedger.HistorySize), genesisBlock)
+		lf = ramledger.New(int(conf.RAMLedger.HistorySize))
+	}
+
+	// Are we bootstrapping
+	if len(lf.ChainIDs()) == 0 {
+		var genesisBlock *cb.Block
+
+		// Select the bootstrapping mechanism
+		switch conf.General.GenesisMethod {
+		case "provisional":
+			genesisBlock = provisional.New(conf).GenesisBlock()
+		case "file":
+			genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
+		default:
+			panic(fmt.Errorf("Unknown genesis method %s", conf.General.GenesisMethod))
+		}
+
+		chainID, err := utils.GetChainIDFromBlock(genesisBlock)
+		if err != nil {
+			logger.Errorf("Failed to parse chain ID from genesis block: %s", err)
+			return
+		}
+		gl, err := lf.GetOrCreate(chainID)
+		if err != nil {
+			logger.Errorf("Failed to create the genesis chain: %s", err)
+			return
+		}
+
+		err = gl.Append(genesisBlock)
+		if err != nil {
+			logger.Errorf("Could not write genesis block to ledger: %s", err)
+			return
+		}
+	} else {
+		logger.Infof("Not bootstrapping because of existing chains")
+		logger.Warningf("XXXXXXX RESTART IS NOT CURRENTLY SUPPORTED XXXXXXXXX")
+		// XXX Remove this once restart is supported
 	}
 
 	if conf.Kafka.Verbose {

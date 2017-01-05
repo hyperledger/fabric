@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
+	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -47,7 +48,13 @@ func initialize(t *testing.T) (*testEnv, *fileLedger) {
 	if err != nil {
 		t.Fatalf("Error creating temp dir: %s", err)
 	}
-	_, fl := New(name, genesisBlock)
+	flf := New(name).(*fileLedgerFactory)
+	fl, err := flf.GetOrCreate(provisional.TestChainID)
+	if err != nil {
+		panic(err)
+	}
+
+	fl.Append(genesisBlock)
 	return &testEnv{location: name, t: t}, fl.(*fileLedger)
 }
 
@@ -76,9 +83,19 @@ func TestInitialization(t *testing.T) {
 func TestReinitialization(t *testing.T) {
 	tev, ofl := initialize(t)
 	defer tev.tearDown()
-	ofl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
-	_, flt := New(tev.location, genesisBlock)
-	fl := flt.(*fileLedger)
+	ofl.Append(rawledger.CreateNextBlock(ofl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil))
+	flf := New(tev.location)
+	chains := flf.ChainIDs()
+	if len(chains) != 1 {
+		t.Fatalf("Should have recovered the chain")
+	}
+
+	tfl, err := flf.GetOrCreate(chains[0])
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	fl := tfl.(*fileLedger)
 	if fl.height != 2 {
 		t.Fatalf("Block height should be 2")
 	}
@@ -91,11 +108,33 @@ func TestReinitialization(t *testing.T) {
 	}
 }
 
+func TestMultiReinitialization(t *testing.T) {
+	tev, _ := initialize(t)
+	defer tev.tearDown()
+	flf := New(tev.location)
+
+	_, err := flf.GetOrCreate("foo")
+	if err != nil {
+		t.Fatalf("Error creating chain")
+	}
+
+	_, err = flf.GetOrCreate("bar")
+	if err != nil {
+		t.Fatalf("Error creating chain")
+	}
+
+	flf = New(tev.location)
+	chains := flf.ChainIDs()
+	if len(chains) != 3 {
+		t.Fatalf("Should have recovered the chains")
+	}
+}
+
 func TestAddition(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
 	prevHash := fl.lastHash
-	fl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
+	fl.Append(rawledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil))
 	if fl.height != 2 {
 		t.Fatalf("Block height should be 2")
 	}
@@ -111,7 +150,7 @@ func TestAddition(t *testing.T) {
 func TestRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	fl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
+	fl.Append(rawledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil))
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
@@ -157,7 +196,7 @@ func TestBlockedRetrieval(t *testing.T) {
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	fl.Append([]*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
+	fl.Append(rawledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil))
 	select {
 	case <-signal:
 	default:

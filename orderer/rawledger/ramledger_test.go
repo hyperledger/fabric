@@ -17,6 +17,7 @@ limitations under the License.
 package rawledger_test
 
 import (
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	. "github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 )
@@ -47,5 +48,14 @@ func (env *ramledgerTestFactory) Persistent() bool {
 
 func (env *ramledgerTestFactory) New() (Factory, ReadWriter) {
 	historySize := 10
-	return ramledger.New(historySize, genesisBlock)
+	rlf := ramledger.New(historySize)
+	rl, err := rlf.GetOrCreate(provisional.TestChainID)
+	if err != nil {
+		panic(err)
+	}
+	err = rl.Append(genesisBlock)
+	if err != nil {
+		panic(err)
+	}
+	return rlf, rl
 }

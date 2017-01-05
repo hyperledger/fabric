@@ -230,7 +230,7 @@ func (ml *multiLedger) systemChain() *systemChain {
 
 func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 	configManager, policyManager, backingLedger, sharedConfig := ml.newResources(configtx)
-	backingLedger.Append([]*cb.Envelope{configtx}, nil)
+	backingLedger.Append(rawledger.CreateNextBlock(backingLedger, []*cb.Envelope{configtx}, nil))
 
 	// Copy the map to allow concurrent reads from broadcast/deliver while the new chainSupport is
 	newChains := make(map[string]*chainSupport)
