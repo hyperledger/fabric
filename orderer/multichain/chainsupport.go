@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 // Consenter defines the backing ordering mechanism
@@ -59,7 +60,8 @@ type Chain interface {
 type ConsenterSupport interface {
 	BlockCutter() blockcutter.Receiver
 	SharedConfig() sharedconfig.Manager
-	WriteBlock(data []*cb.Envelope, metadata [][]byte, committers []filter.Committer)
+	CreateNextBlock(messages []*cb.Envelope) *cb.Block
+	WriteBlock(block *cb.Block, committers []filter.Committer) *cb.Block
 	ChainID() string // ChainID returns the chain ID this specific consenter instance is associated with
 }
 
@@ -81,6 +83,8 @@ type chainSupport struct {
 	sharedConfigManager sharedconfig.Manager
 	ledger              rawledger.ReadWriter
 	filters             *filter.RuleSet
+	lastConfiguration   uint64
+	lastConfigSeq       uint64
 }
 
 func newChainSupport(
@@ -173,10 +177,29 @@ func (cs *chainSupport) Enqueue(env *cb.Envelope) bool {
 	return cs.chain.Enqueue(env)
 }
 
-func (cs *chainSupport) WriteBlock(data []*cb.Envelope, metadata [][]byte, committers []filter.Committer) {
+func (cs *chainSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
+	return rawledger.CreateNextBlock(cs.ledger, messages)
+}
+
+func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committer) *cb.Block {
 	for _, committer := range committers {
 		committer.Commit()
 	}
 
-	cs.ledger.Append(rawledger.CreateNextBlock(cs.ledger, data, metadata))
+	configSeq := cs.configManager.Sequence()
+	if configSeq > cs.lastConfigSeq {
+		cs.lastConfiguration = block.Header.Number
+		cs.lastConfigSeq = configSeq
+	}
+
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{
+		Value: utils.MarshalOrPanic(&cb.LastConfiguration{Index: cs.lastConfiguration}),
+		// XXX Add signature once signing is available
+	})
+
+	err := cs.ledger.Append(block)
+	if err != nil {
+		logger.Panicf("Could not append block: %s", err)
+	}
+	return block
 }

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/localconfig"
+	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 var confSolo, confKafka *config.TopLevel
@@ -50,8 +51,12 @@ func TestGenesisBlockHeader(t *testing.T) {
 func TestGenesisMetadata(t *testing.T) {
 	for _, tc := range testCases {
 		genesisBlock := New(tc).GenesisBlock()
-		if genesisBlock.Metadata != nil {
-			t.Fatalf("Expected metadata nil, got %x", genesisBlock.Metadata)
+		if genesisBlock.Metadata == nil {
+			t.Fatalf("Expected non-nil metadata")
+		}
+
+		if genesisBlock.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] == nil {
+			t.Fatalf("Should have last config set")
 		}
 	}
 }
