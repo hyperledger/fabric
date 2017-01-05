@@ -48,6 +48,21 @@ func GetChainIDFromBlock(block *cb.Block) (string, error) {
 	return payload.Header.ChainHeader.ChainID, nil
 }
 
+// GetLastConfigurationIndexFromBlock retrieves the index of the last configuration block as encoded in the block metadata
+func GetLastConfigurationIndexFromBlock(block *cb.Block) (uint64, error) {
+	md := &cb.Metadata{}
+	err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION], md)
+	if err != nil {
+		return 0, err
+	}
+	lc := &cb.LastConfiguration{}
+	err = proto.Unmarshal(md.Value, lc)
+	if err != nil {
+		return 0, err
+	}
+	return lc.Index, nil
+}
+
 // GetBlockFromBlockBytes marshals the bytes into Block
 func GetBlockFromBlockBytes(blockBytes []byte) (*cb.Block, error) {
 	block := &cb.Block{}

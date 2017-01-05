@@ -95,3 +95,18 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 
 	return block
 }
+
+// GetBlock is a utility method for retrieving a single block
+func GetBlock(rl Reader, index uint64) *cb.Block {
+	i, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: index}}})
+	select {
+	case <-i.ReadyChan():
+		block, status := i.Next()
+		if status != cb.Status_SUCCESS {
+			return nil
+		}
+		return block
+	default:
+		return nil
+	}
+}

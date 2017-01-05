@@ -22,24 +22,32 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
-const CreationPolicyKey = "CreationPolicy"
+const (
+	CreationPolicyKey = "CreationPolicy"
+	ChainCreatorsKey  = "ChainCreators"
+)
 
 // ChainCreationConfiguration creates a new chain creation configuration envelope from
 // the supplied creationPolicy, new chainID, and a template configuration envelope
 // The template configuration envelope will have the correct chainID set on all items,
 // and the first item will be a CreationPolicy which is ready for the signatures as
-// required by the policy
+// required by the policy, it also strips out the ChainCreators item as this is invalid
+// for the ordering system chain
 func ChainCreationConfiguration(creationPolicy, newChainID string, template *cb.ConfigurationEnvelope) *cb.ConfigurationEnvelope {
-	newConfigItems := make([]*cb.SignedConfigurationItem, len(template.Items))
+	var newConfigItems []*cb.SignedConfigurationItem
 	var hashBytes []byte
 
-	for i, item := range template.Items {
+	for _, item := range template.Items {
 		configItem := UnmarshalConfigurationItemOrPanic(item.ConfigurationItem)
+		if configItem.Type == cb.ConfigurationItem_Orderer && configItem.Key == ChainCreatorsKey {
+			continue
+		}
 		configItem.Header.ChainID = newChainID
-		newConfigItems[i] = &cb.SignedConfigurationItem{
+		newConfigItem := &cb.SignedConfigurationItem{
 			ConfigurationItem: MarshalOrPanic(configItem),
 		}
-		hashBytes = append(hashBytes, newConfigItems[i].ConfigurationItem...)
+		newConfigItems = append(newConfigItems, newConfigItem)
+		hashBytes = append(hashBytes, newConfigItem.ConfigurationItem...)
 	}
 
 	digest := cu.ComputeCryptoHash(hashBytes)
