@@ -165,6 +165,18 @@ func TestProposalResponse(t *testing.T) {
 		return
 	}
 
+	event, err := GetChaincodeEvents(act.Events)
+	if err != nil {
+		t.Fatalf("Failure while unmarshalling the ChainCodeEvents")
+		return
+	}
+
+	// sanity check on the event
+	if string(event.ChaincodeID) != "ccid" {
+		t.Fatalf("Invalid actions after unmarshalling")
+		return
+	}
+
 	pr := &pb.ProposalResponse{
 		Payload:     prpBytes,
 		Endorsement: &pb.Endorsement{Endorser: []byte("endorser"), Signature: []byte("signature")},

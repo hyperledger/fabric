@@ -98,6 +98,17 @@ func GetChaincodeAction(caBytes []byte) (*peer.ChaincodeAction, error) {
 	return chaincodeAction, nil
 }
 
+// GetChaincodeEvents gets the ChaincodeEvents given chaicnode event bytes
+func GetChaincodeEvents(eBytes []byte) (*peer.ChaincodeEvent, error) {
+	chaincodeEvent := &peer.ChaincodeEvent{}
+	err := proto.Unmarshal(eBytes, chaincodeEvent)
+	if err != nil {
+		return nil, err
+	}
+
+	return chaincodeEvent, nil
+}
+
 // GetProposalResponsePayload gets the proposal response payload
 func GetProposalResponsePayload(prpBytes []byte) (*peer.ProposalResponsePayload, error) {
 	prp := &peer.ProposalResponsePayload{}
