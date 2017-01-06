@@ -27,8 +27,8 @@ import (
 	"encoding/base64"
 	"strings"
 
+	"github.com/hyperledger/fabric/accesscontrol/impl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/op/go-logging"
 )
 
@@ -46,12 +46,6 @@ type RBACChaincode struct {
 
 // Init method will be called during deployment
 func (t *RBACChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-
-	function, args := stub.GetFunctionAndParameters()
-	// Init the crypto layer
-	if err := crypto.Init(); err != nil {
-		panic(fmt.Errorf("Failed initializing the crypto layer [%s]", err))
-	}
 
 	myLogger.Info("Init")
 	// if len(args) != 0 {
@@ -263,7 +257,7 @@ func (t *RBACChaincode) hasInvokerRole(stub shim.ChaincodeStubInterface, role st
 	myLogger.Debug("passed payload [% x]", payload)
 	myLogger.Debug("passed binding [% x]", binding)
 
-	ok, err := stub.VerifySignature(
+	ok, err := impl.NewAccessControlShim(stub).VerifySignature(
 		rbacMetadata.Cert,
 		rbacMetadata.Sigma,
 		append(rbacMetadata.Cert, append(payload, binding...)...),

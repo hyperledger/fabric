@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hyperledger/fabric/accesscontrol/impl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
@@ -37,9 +38,9 @@ func (t *AuthorizableCounterChaincode) Init(stub shim.ChaincodeStubInterface) ([
 
 //Invoke makes increment counter
 func (t *AuthorizableCounterChaincode) increment(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	val, err := stub.ReadCertAttribute("position")
+	val, err := impl.NewAccessControlShim(stub).ReadCertAttribute("position")
 	fmt.Printf("Position => %v error %v \n", string(val), err)
-	isOk, _ := stub.VerifyAttribute("position", []byte("Software Engineer")) // Here the ABAC API is called to verify the attribute, just if the value is verified the counter will be incremented.
+	isOk, _ := impl.NewAccessControlShim(stub).VerifyAttribute("position", []byte("Software Engineer")) // Here the ABAC API is called to verify the attribute, just if the value is verified the counter will be incremented.
 	if isOk {
 		counter, err := stub.GetState("counter")
 		if err != nil {

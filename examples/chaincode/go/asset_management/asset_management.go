@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/accesscontrol/impl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/op/go-logging"
@@ -218,7 +219,7 @@ func (t *AssetManagementChaincode) isCaller(stub shim.ChaincodeStubInterface, ce
 	myLogger.Debugf("passed payload [% x]", payload)
 	myLogger.Debugf("passed binding [% x]", binding)
 
-	ok, err := stub.VerifySignature(
+	ok, err := impl.NewAccessControlShim(stub).VerifySignature(
 		certificate,
 		sigma,
 		append(payload, binding...),

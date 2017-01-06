@@ -19,7 +19,6 @@ package shim
 
 import (
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 )
 
 // Chaincode interface must be implemented by all chaincodes. The fabric runs
@@ -109,29 +108,6 @@ type ChaincodeStubInterface interface {
 
 	// DeleteRow deletes the row for the given key from the specified table.
 	DeleteRow(tableName string, key []Column) error
-
-	// ReadCertAttribute is used to read an specific attribute from the transaction certificate,
-	// *attributeName* is passed as input parameter to this function.
-	// Example:
-	//  attrValue,error:=stub.ReadCertAttribute("position")
-	ReadCertAttribute(attributeName string) ([]byte, error)
-
-	// VerifyAttribute is used to verify if the transaction certificate has an attribute
-	// with name *attributeName* and value *attributeValue* which are the input parameters
-	// received by this function.
-	// Example:
-	//    containsAttr, error := stub.VerifyAttribute("position", "Software Engineer")
-	VerifyAttribute(attributeName string, attributeValue []byte) (bool, error)
-
-	// VerifyAttributes does the same as VerifyAttribute but it checks for a list of
-	// attributes and their respective values instead of a single attribute/value pair
-	// Example:
-	//    containsAttrs, error:= stub.VerifyAttributes(&attr.Attribute{"position",  "Software Engineer"}, &attr.Attribute{"company", "ACompany"})
-	VerifyAttributes(attrs ...*attr.Attribute) (bool, error)
-
-	// VerifySignature verifies the transaction signature and returns `true` if
-	// correct and `false` otherwise
-	VerifySignature(certificate, signature, message []byte) (bool, error)
 
 	// GetCallerCertificate returns caller certificate
 	GetCallerCertificate() ([]byte, error)
