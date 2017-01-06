@@ -24,6 +24,8 @@ import (
 
 	"github.com/spf13/viper"
 
+	"errors"
+
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -42,7 +44,7 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 	}
 
 	if urlLocation == "" {
-		return fmt.Errorf("empty url location")
+		return errors.New("ChaincodeSpec's path/URL cannot be empty")
 	}
 
 	if strings.LastIndex(urlLocation, "/") == len(urlLocation)-1 {

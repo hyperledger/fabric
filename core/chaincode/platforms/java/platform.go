@@ -31,8 +31,8 @@ type Platform struct {
 
 //ValidateSpec validates the java chaincode specs
 func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	url, err := url.Parse(spec.ChaincodeID.Path)
-	if err != nil || url == nil {
+	path, err := url.Parse(spec.ChaincodeID.Path)
+	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
 

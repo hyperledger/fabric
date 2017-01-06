@@ -58,7 +58,7 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 		}
 	}
 	if origgopath == "" {
-		err = fmt.Errorf("GOPATH not defined")
+		err = errors.New("GOPATH not defined")
 		return
 	}
 	// Only take the first element of GOPATH
@@ -126,7 +126,7 @@ func getCodeFromFS(path string) (codegopath string, err error) {
 	logger.Debugf("getCodeFromFS %s", path)
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
-		err = fmt.Errorf("GOPATH not defined")
+		err = errors.New("GOPATH not defined")
 		return
 	}
 	// Only take the first element of GOPATH
@@ -143,17 +143,17 @@ func getCodeFromFS(path string) (codegopath string, err error) {
 //with the same (name, ctor, args)
 func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if spec == nil {
-		return "", fmt.Errorf("Cannot collect files from nil spec")
+		return "", errors.New("Cannot collect files from nil spec")
 	}
 
 	chaincodeID := spec.ChaincodeID
 	if chaincodeID == nil || chaincodeID.Path == "" {
-		return "", fmt.Errorf("Cannot collect files from empty chaincode path")
+		return "", errors.New("Cannot collect files from empty chaincode path")
 	}
 
 	ctor := spec.CtorMsg
 	if ctor == nil || len(ctor.Args) == 0 {
-		return "", fmt.Errorf("Cannot collect files from empty ctor")
+		return "", errors.New("Cannot collect files from empty ctor")
 	}
 
 	//code root will point to the directory where the code exists
