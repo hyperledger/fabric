@@ -30,7 +30,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/peer/chaincode"
 	"github.com/hyperledger/fabric/peer/clilogging"
 	"github.com/hyperledger/fabric/peer/common"
@@ -97,10 +96,6 @@ func main() {
 
 	// initialize logging format from core.yaml
 	flogging.SetLoggingFormat(viper.GetString("logging.format"), logOutput)
-
-	// Init the crypto layer
-	//TODO: integrate new crypto / idp code
-	primitives.SetSecurityLevel("SHA2", 256)
 
 	// Init the MSP
 	// TODO: determine the location of this config file
