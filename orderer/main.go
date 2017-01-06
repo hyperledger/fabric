@@ -26,6 +26,7 @@ import (
 	"os"
 
 	"github.com/Shopify/sarama"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	"github.com/hyperledger/fabric/orderer/localconfig"
@@ -36,8 +37,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-
 	"github.com/op/go-logging"
+
 	"google.golang.org/grpc"
 )
 
@@ -73,6 +74,8 @@ func main() {
 	switch conf.General.GenesisMethod {
 	case "provisional":
 		genesisBlock = provisional.New(conf).GenesisBlock()
+	case "file":
+		genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 	default:
 		panic(fmt.Errorf("Unknown genesis method %s", conf.General.GenesisMethod))
 	}
