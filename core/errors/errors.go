@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/hyperledger/fabric/core/flogging"
+	"github.com/hyperledger/fabric/common/flogging"
 	logging "github.com/op/go-logging"
 )
 
@@ -136,7 +136,7 @@ func (h *hlError) Message() string {
 	// initialize logging level for errors from core.yaml. it can also be set
 	// for code running on the peer dynamically via CLI using
 	// "peer logging setlevel error <log-level>"
-	errorLogLevelString, _ := flogging.GetModuleLogLevel("error")
+	errorLogLevelString, _ := flogging.GetModuleLevel("error")
 	if errorLogLevelString == logging.DEBUG.String() {
 		messageWithCallStack := fmt.Sprintf(emap[fmt.Sprintf("%s", h.componentcode)][fmt.Sprintf("%s", h.reasoncode)][language], h.args...) + "\n" + h.GetStack()
 		return messageWithCallStack

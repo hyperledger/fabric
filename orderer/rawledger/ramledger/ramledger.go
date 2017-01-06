@@ -29,10 +29,6 @@ import (
 
 var logger = logging.MustGetLogger("rawledger/ramledger")
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
 type cursor struct {
 	list *simpleList
 }

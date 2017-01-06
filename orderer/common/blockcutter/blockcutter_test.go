@@ -24,7 +24,12 @@ import (
 	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	logging "github.com/op/go-logging"
 )
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
 
 type isolatedCommitter struct{}
 

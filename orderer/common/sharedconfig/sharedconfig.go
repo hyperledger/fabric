@@ -49,10 +49,6 @@ const (
 
 var logger = logging.MustGetLogger("orderer/common/sharedconfig")
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
 // Manager stores the common shared orderer configuration
 // It is intended to be the primary accessor of ManagerImpl
 // It is intended to discourage use of the other exported ManagerImpl methods

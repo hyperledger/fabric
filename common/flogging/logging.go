@@ -26,31 +26,41 @@ import (
 )
 
 // A logger to log logging logs!
-var loggingLogger = logging.MustGetLogger("logging")
+var logger = logging.MustGetLogger("logging")
 
-var loggingDefaultFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
-var loggingDefaultOutput = os.Stderr
+var defaultFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
+var defaultOutput = os.Stderr
 
 // The default logging level, in force until LoggingInit() is called or in
 // case of configuration errors.
-var loggingDefaultLevel = logging.INFO
+var fallbackDefaultLevel = logging.INFO
 
-// LoggingInit is a 'hook' called at the beginning of command processing to
+// LoggingInitFromViper is a 'hook' called at the beginning of command processing to
 // parse logging-related options specified either on the command-line or in
 // config files.  Command-line options take precedence over config file
 // options, and can also be passed as suitably-named environment variables. To
 // change module logging levels at runtime call `logging.SetLevel(level,
 // module)`.  To debug this routine include logging=debug as the first
 // term of the logging specification.
-func LoggingInit(command string) {
-	// Parse the logging specification in the form
-	//     [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
-	defaultLevel := loggingDefaultLevel
-	var err error
+// TODO this initialization is specific to the peer config format.  The viper
+// references should be removed, and this path should be moved into the peer
+func InitFromViper(command string) {
 	spec := viper.GetString("logging_level")
 	if spec == "" {
 		spec = viper.GetString("logging." + command)
 	}
+	defaultLevel := InitFromSpec(spec)
+	logger.Debugf("Setting default logging level to %s for command '%s'", defaultLevel, command)
+}
+
+// LoggingInit initializes the logging based on the supplied spec, it is exposed externally
+// so that consumers of the flogging package who do not wish to use the default config structure
+// may parse their own logging specification
+func InitFromSpec(spec string) logging.Level {
+	// Parse the logging specification in the form
+	//     [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
+	defaultLevel := fallbackDefaultLevel
+	var err error
 	if spec != "" {
 		fields := strings.Split(spec, ":")
 		for _, field := range fields {
@@ -60,46 +70,46 @@ func LoggingInit(command string) {
 				// Default level
 				defaultLevel, err = logging.LogLevel(field)
 				if err != nil {
-					loggingLogger.Warningf("Logging level '%s' not recognized, defaulting to %s : %s", field, loggingDefaultLevel, err)
-					defaultLevel = loggingDefaultLevel // NB - 'defaultLevel' was overwritten
+					logger.Warningf("Logging level '%s' not recognized, defaulting to %s : %s", field, defaultLevel, err)
+					defaultLevel = fallbackDefaultLevel // NB - 'defaultLevel' was overwritten
 				}
 			case 2:
 				// <module>[,<module>...]=<level>
 				if level, err := logging.LogLevel(split[1]); err != nil {
-					loggingLogger.Warningf("Invalid logging level in '%s' ignored", field)
+					logger.Warningf("Invalid logging level in '%s' ignored", field)
 				} else if split[0] == "" {
-					loggingLogger.Warningf("Invalid logging override specification '%s' ignored - no module specified", field)
+					logger.Warningf("Invalid logging override specification '%s' ignored - no module specified", field)
 				} else {
 					modules := strings.Split(split[0], ",")
 					for _, module := range modules {
 						logging.SetLevel(level, module)
-						loggingLogger.Debugf("Setting logging level for module '%s' to %s", module, level)
+						logger.Debugf("Setting logging level for module '%s' to %s", module, level)
 					}
 				}
 			default:
-				loggingLogger.Warningf("Invalid logging override '%s' ignored; Missing ':' ?", field)
+				logger.Warningf("Invalid logging override '%s' ignored; Missing ':' ?", field)
 			}
 		}
 	}
 	// Set the default logging level for all modules
 	logging.SetLevel(defaultLevel, "")
-	loggingLogger.Debugf("Setting default logging level to %s for command '%s'", defaultLevel, command)
+	return defaultLevel
 }
 
-// DefaultLoggingLevel returns the fallback value for loggers to use if parsing fails
-func DefaultLoggingLevel() logging.Level {
-	return loggingDefaultLevel
+// DefaultLevel returns the fallback value for loggers to use if parsing fails
+func DefaultLevel() logging.Level {
+	return fallbackDefaultLevel
 }
 
 // Initiate 'leveled' logging using the default format and output location
 func init() {
-	SetLoggingFormat(loggingDefaultFormat, loggingDefaultOutput)
+	SetLoggingFormat(defaultFormat, defaultOutput)
 }
 
 // SetLoggingFormat sets the logging format and the location of the log output
 func SetLoggingFormat(formatString string, output io.Writer) {
 	if formatString == "" {
-		formatString = loggingDefaultFormat
+		formatString = defaultFormat
 	}
 	format := logging.MustStringFormatter(formatString)
 
@@ -111,32 +121,32 @@ func SetLoggingFormat(formatString string, output io.Writer) {
 func initLoggingBackend(logFormatter logging.Formatter, output io.Writer) {
 	backend := logging.NewLogBackend(output, "", 0)
 	backendFormatter := logging.NewBackendFormatter(backend, logFormatter)
-	logging.SetBackend(backendFormatter).SetLevel(loggingDefaultLevel, "")
+	logging.SetBackend(backendFormatter).SetLevel(fallbackDefaultLevel, "")
 }
 
-// GetModuleLogLevel gets the current logging level for the specified module
-func GetModuleLogLevel(module string) (string, error) {
+// GetModuleLevel gets the current logging level for the specified module
+func GetModuleLevel(module string) (string, error) {
 	// logging.GetLevel() returns the logging level for the module, if defined.
 	// otherwise, it returns the default logging level, as set by
 	// flogging/logging.go
 	level := logging.GetLevel(module).String()
 
-	loggingLogger.Debugf("Module '%s' logger enabled for log level: %s", module, level)
+	logger.Debugf("Module '%s' logger enabled for log level: %s", module, level)
 
 	return level, nil
 }
 
-// SetModuleLogLevel sets the logging level for the specified module. This is
+// SetModuleLevel sets the logging level for the specified module. This is
 // currently only called from admin.go but can be called from anywhere in the
 // code on a running peer to dynamically change the log level for the module.
-func SetModuleLogLevel(module string, logLevel string) (string, error) {
+func SetModuleLevel(module string, logLevel string) (string, error) {
 	level, err := logging.LogLevel(logLevel)
 
 	if err != nil {
-		loggingLogger.Warningf("Invalid logging level: %s - ignored", logLevel)
+		logger.Warningf("Invalid logging level: %s - ignored", logLevel)
 	} else {
 		logging.SetLevel(logging.Level(level), module)
-		loggingLogger.Debugf("Module '%s' logger enabled for log level: %s", module, level)
+		logger.Debugf("Module '%s' logger enabled for log level: %s", module, level)
 	}
 
 	logLevelString := level.String()

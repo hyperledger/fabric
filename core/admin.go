@@ -25,7 +25,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/hyperledger/fabric/core/flogging"
+	"github.com/hyperledger/fabric/common/flogging"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -82,7 +82,7 @@ func (*ServerAdmin) StopServer(context.Context, *empty.Empty) (*pb.ServerStatus,
 
 // GetModuleLogLevel gets the current logging level for the specified module
 func (*ServerAdmin) GetModuleLogLevel(ctx context.Context, request *pb.LogLevelRequest) (*pb.LogLevelResponse, error) {
-	logLevelString, err := flogging.GetModuleLogLevel(request.LogModule)
+	logLevelString, err := flogging.GetModuleLevel(request.LogModule)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
 
 	return logResponse, err
@@ -90,7 +90,7 @@ func (*ServerAdmin) GetModuleLogLevel(ctx context.Context, request *pb.LogLevelR
 
 // SetModuleLogLevel sets the logging level for the specified module
 func (*ServerAdmin) SetModuleLogLevel(ctx context.Context, request *pb.LogLevelRequest) (*pb.LogLevelResponse, error) {
-	logLevelString, err := flogging.SetModuleLogLevel(request.LogModule, request.LogLevel)
+	logLevelString, err := flogging.SetModuleLevel(request.LogModule, request.LogLevel)
 	logResponse := &pb.LogLevelResponse{LogModule: request.LogModule, LogLevel: logLevelString}
 
 	return logResponse, err

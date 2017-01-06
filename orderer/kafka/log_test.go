@@ -20,4 +20,6 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("orderer/kafka")
+func init() {
+	logging.SetLevel(logging.INFO, "") // Silence debug-level outputs when testing
+}

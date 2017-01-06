@@ -26,10 +26,6 @@ import (
 
 var logger = logging.MustGetLogger("orderer/solo")
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
 type consenter struct{}
 
 type chain struct {

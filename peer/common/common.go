@@ -21,9 +21,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/errors"
-	"github.com/hyperledger/fabric/core/flogging"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
@@ -106,7 +106,7 @@ func GetAdminClient() (pb.AdminClient, error) {
 // core.yaml
 func SetErrorLoggingLevel() error {
 	viperErrorLoggingLevel := viper.GetString("logging.error")
-	_, err := flogging.SetModuleLogLevel("error", viperErrorLoggingLevel)
+	_, err := flogging.SetModuleLevel("error", viperErrorLoggingLevel)
 
 	return err
 }

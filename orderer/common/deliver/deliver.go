@@ -26,10 +26,6 @@ import (
 
 var logger = logging.MustGetLogger("orderer/common/deliver")
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
 // Handler defines an interface which handles Deliver requests
 type Handler interface {
 	Handle(srv ab.AtomicBroadcast_DeliverServer) error

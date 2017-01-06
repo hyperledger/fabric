@@ -24,7 +24,13 @@ import (
 	mockmultichain "github.com/hyperledger/fabric/orderer/mocks/multichain"
 	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	logging "github.com/op/go-logging"
 )
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
 
 var testMessage = &cb.Envelope{Payload: []byte("TEST_MESSAGE")}
 

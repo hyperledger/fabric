@@ -29,6 +29,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
+	logging "github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -39,6 +40,7 @@ var systemChainID = "systemChain"
 const ledgerSize = 10
 
 func init() {
+	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(config.Load()).GenesisBlock()
 }
 

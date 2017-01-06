@@ -25,7 +25,13 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	logging "github.com/op/go-logging"
 )
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
 
 func doesFuncCrash(crasher func(), test string) bool {
 	// Adapted from https://talks.golang.org/2014/testing.slide#23 to test os.Exit() functionality
