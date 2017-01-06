@@ -378,7 +378,7 @@ func chaincodeQueryChaincode(chainID string, user string) error {
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
-	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
 	cccid1 := NewCCContext(chainID, "example02", "0", "", false, nil)
 
@@ -399,7 +399,7 @@ func chaincodeQueryChaincode(chainID string, user string) error {
 	f = "init"
 	args = util.ToChaincodeArgs(f, "sum", "0")
 
-	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
 	cccid2 := NewCCContext(chainID, "example05", "0", "", false, nil)
 
@@ -417,7 +417,7 @@ func chaincodeQueryChaincode(chainID string, user string) error {
 	f = "invoke"
 	args = util.ToChaincodeArgs(f, chaincodeID1, "sum")
 
-	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
 	var retVal []byte
 	_, _, retVal, err = invoke(ctxt, chainID, spec2)
@@ -440,7 +440,7 @@ func chaincodeQueryChaincode(chainID string, user string) error {
 	f = "query"
 	args = util.ToChaincodeArgs(f, chaincodeID1, "sum")
 
-	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
 	_, _, retVal, err = invoke(ctxt, chainID, spec2)
 
@@ -687,7 +687,7 @@ func chaincodeInvokeChaincode(t *testing.T, chainID string, user string) (err er
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
-	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec1 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID1, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
 	cccid1 := NewCCContext(chainID, "example02", "0", "", false, nil)
 
@@ -711,7 +711,7 @@ func chaincodeInvokeChaincode(t *testing.T, chainID string, user string) (err er
 	f = "init"
 	args = util.ToChaincodeArgs(f, "e", "0")
 
-	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec2 := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 
 	cccid2 := NewCCContext(chainID, "example04", "0", "", false, nil)
 
@@ -733,7 +733,7 @@ func chaincodeInvokeChaincode(t *testing.T, chainID string, user string) (err er
 	cid := spec1.ChaincodeID.Name
 	args = util.ToChaincodeArgs(f, cid, "e", "1")
 
-	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}, SecureContext: user}
+	spec2 = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID2, CtorMsg: &pb.ChaincodeInput{Args: args}}
 	// Invoke chaincode
 	var uuid string
 	_, uuid, _, err = invoke(ctxt, chainID, spec2)

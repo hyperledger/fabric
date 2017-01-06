@@ -78,16 +78,10 @@ func initPeer(chainID string) (net.Listener, error) {
 	}
 
 	// Install security object for peer
-	if viper.GetBool("security.enabled") {
-		//TODO:  integrate new crypto / idp
-		securityLevel := viper.GetInt("security.level")
-		hashAlgorithm := viper.GetString("security.hashAlgorithm")
-		primitives.SetSecurityLevel(hashAlgorithm, securityLevel)
-	} else {
-		// the primitives need to be instantiated no matter what. Otherwise
-		// the escc code won't have a hash algorithm available to hash the proposal
-		primitives.SetSecurityLevel("SHA2", 256)
-	}
+	//TODO:  integrate new crypto / idp
+	securityLevel := viper.GetInt("security.level")
+	hashAlgorithm := viper.GetString("security.hashAlgorithm")
+	primitives.SetSecurityLevel(hashAlgorithm, securityLevel)
 
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))

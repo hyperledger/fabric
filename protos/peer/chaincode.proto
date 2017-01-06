@@ -69,10 +69,9 @@ message ChaincodeSpec {
     ChaincodeID chaincodeID = 2;
     ChaincodeInput ctorMsg = 3;
     int32 timeout = 4;
-    string secureContext = 5;
-    ConfidentialityLevel confidentialityLevel = 6;
-    bytes metadata = 7;
-    repeated string attributes = 8;
+    ConfidentialityLevel confidentialityLevel = 5;
+    bytes metadata = 6;
+    repeated string attributes = 7;
 }
 
 // Specify the deployment of a chaincode.

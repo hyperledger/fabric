@@ -17,7 +17,6 @@ limitations under the License.
 package node
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -121,15 +120,6 @@ func serve(args []string) error {
 	}
 
 	logger.Infof("Security enabled status: %t", core.SecurityEnabled())
-	if viper.GetBool("security.privacy") {
-		if core.SecurityEnabled() {
-			logger.Infof("Privacy enabled status: true")
-		} else {
-			panic(errors.New("Privacy cannot be enabled as requested because security is disabled"))
-		}
-	} else {
-		logger.Infof("Privacy enabled status: false")
-	}
 
 	var opts []grpc.ServerOption
 	if comm.TLSEnabled() {
