@@ -19,8 +19,11 @@ package comm
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"net"
+	"sync"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -62,6 +65,12 @@ type GRPCServer interface {
 	//TLSEnabled is a flag indicating whether or not TLS is enabled for this
 	//GRPCServer instance
 	TLSEnabled() bool
+	//AppendClientRootCAs appends PEM-encoded X509 certificate authorities to
+	//the list of authorities used to verify client certificates
+	AppendClientRootCAs(clientRoots [][]byte) error
+	//RemoveClientRootCAs removes PEM-encoded X509 certificate authorities from
+	//the list of authorities used to verify client certificates
+	RemoveClientRootCAs(clientRoots [][]byte) error
 }
 
 type grpcServerImpl struct {
@@ -78,9 +87,13 @@ type grpcServerImpl struct {
 	//List of certificate authorities to optionally pass to the client during
 	//the TLS handshake
 	serverRootCAs []tls.Certificate
-	//List of certificate authorities to be used to authenticate clients if
-	//client authentication is required
-	clientRootCAs *x509.CertPool
+	//lock to protect concurrent access to append / remove
+	lock *sync.Mutex
+	//Set of PEM-encoded X509 certificate authorities used to populate
+	//the tlsConfig.ClientCAs indexed by subject
+	clientRootCAs map[string]*x509.Certificate
+	//TLS configuration used by the grpc server
+	tlsConfig *tls.Config
 	//Is TLS enabled?
 	tlsEnabled bool
 }
@@ -110,6 +123,7 @@ func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerC
 	grpcServer := &grpcServerImpl{
 		address:  listener.Addr().String(),
 		listener: listener,
+		lock:     &sync.Mutex{},
 	}
 
 	//set up our server options
@@ -130,27 +144,29 @@ func NewGRPCServerFromListener(listener net.Listener, secureConfig SecureServerC
 
 			//base server certificate
 			certificates := []tls.Certificate{grpcServer.serverCertificate}
-			tlsConfig := &tls.Config{
-				Certificates: certificates,
+			grpcServer.tlsConfig = &tls.Config{
+				Certificates:           certificates,
+				SessionTicketsDisabled: true,
 			}
 			//checkif client authentication is required
 			if secureConfig.RequireClientCert {
 				//require TLS client auth
-				tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+				grpcServer.tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 				//if we have client root CAs, create a certPool
 				if len(secureConfig.ClientRootCAs) > 0 {
-					grpcServer.clientRootCAs = x509.NewCertPool()
+					grpcServer.clientRootCAs = make(map[string]*x509.Certificate)
+					grpcServer.tlsConfig.ClientCAs = x509.NewCertPool()
 					for _, clientRootCA := range secureConfig.ClientRootCAs {
-						if !grpcServer.clientRootCAs.AppendCertsFromPEM(clientRootCA) {
-							return nil, errors.New("Failed to load client root certificates")
+						err = grpcServer.appendClientRootCA(clientRootCA)
+						if err != nil {
+							return nil, err
 						}
 					}
-					tlsConfig.ClientCAs = grpcServer.clientRootCAs
 				}
 			}
 
 			//create credentials
-			creds := credentials.NewTLS(tlsConfig)
+			creds := credentials.NewTLS(grpcServer.tlsConfig)
 
 			//add to server options
 			serverOpts = append(serverOpts, grpc.Creds(creds))
@@ -199,4 +215,117 @@ func (gServer *grpcServerImpl) Start() error {
 //Stop stops the underlying grpc.Server
 func (gServer *grpcServerImpl) Stop() {
 	gServer.server.Stop()
+}
+
+//AppendClientRootCAs appends PEM-encoded X509 certificate authorities to
+//the list of authorities used to verify client certificates
+func (gServer *grpcServerImpl) AppendClientRootCAs(clientRoots [][]byte) error {
+	gServer.lock.Lock()
+	defer gServer.lock.Unlock()
+	for _, clientRoot := range clientRoots {
+		err := gServer.appendClientRootCA(clientRoot)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+//internal function to add a PEM-encoded clientRootCA
+func (gServer *grpcServerImpl) appendClientRootCA(clientRoot []byte) error {
+
+	errMsg := "Failed to append client root certificate(s): %s"
+	//convert to x509
+	certs, subjects, err := pemToX509Certs(clientRoot)
+	if err != nil {
+		return fmt.Errorf(errMsg, err.Error())
+	}
+
+	if len(certs) < 1 {
+		return fmt.Errorf(errMsg, "No client root certificates found")
+	}
+
+	for i, cert := range certs {
+		//first add to the ClientCAs
+		gServer.tlsConfig.ClientCAs.AddCert(cert)
+		//add it to our clientRootCAs map using subject as key
+		gServer.clientRootCAs[subjects[i]] = cert
+	}
+	return nil
+}
+
+//RemoveClientRootCAs removes PEM-encoded X509 certificate authorities from
+//the list of authorities used to verify client certificates
+func (gServer *grpcServerImpl) RemoveClientRootCAs(clientRoots [][]byte) error {
+	gServer.lock.Lock()
+	defer gServer.lock.Unlock()
+	//remove from internal map
+	for _, clientRoot := range clientRoots {
+		err := gServer.removeClientRootCA(clientRoot)
+		if err != nil {
+			return err
+		}
+	}
+
+	//create a new CertPool and populate with current clientRootCAs
+	certPool := x509.NewCertPool()
+	for _, clientRoot := range gServer.clientRootCAs {
+		certPool.AddCert(clientRoot)
+	}
+
+	//replace the current ClientCAs pool
+	gServer.tlsConfig.ClientCAs = certPool
+	return nil
+}
+
+//internal function to remove a PEM-encoded clientRootCA
+func (gServer *grpcServerImpl) removeClientRootCA(clientRoot []byte) error {
+
+	errMsg := "Failed to remove client root certificate(s): %s"
+	//convert to x509
+	certs, subjects, err := pemToX509Certs(clientRoot)
+	if err != nil {
+		return fmt.Errorf(errMsg, err.Error())
+	}
+
+	if len(certs) < 1 {
+		return fmt.Errorf(errMsg, "No client root certificates found")
+	}
+
+	for i, subject := range subjects {
+		//remove it from our clientRootCAs map using subject as key
+		//check to see if we have match
+		if certs[i].Equal(gServer.clientRootCAs[subject]) {
+			delete(gServer.clientRootCAs, subject)
+		}
+	}
+	return nil
+}
+
+//utility function to parse PEM-encoded certs
+func pemToX509Certs(pemCerts []byte) ([]*x509.Certificate, []string, error) {
+
+	//it's possible that multiple certs are encoded
+	certs := []*x509.Certificate{}
+	subjects := []string{}
+	for len(pemCerts) > 0 {
+		var block *pem.Block
+		block, pemCerts = pem.Decode(pemCerts)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+			continue
+		}
+
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, subjects, err
+		} else {
+			certs = append(certs, cert)
+			//extract and append the subject
+			subjects = append(subjects, string(cert.RawSubject))
+		}
+	}
+	return certs, subjects, nil
 }
