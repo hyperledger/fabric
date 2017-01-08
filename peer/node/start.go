@@ -83,11 +83,8 @@ func serve(args []string) error {
 	// cached. Failures to cache cause the server to terminate immediately.
 	if chaincodeDevMode {
 		logger.Info("Running in chaincode development mode")
-		logger.Info("Set consensus to NOOPS and user starts chaincode")
 		logger.Info("Disable loading validity system chaincode")
 
-		viper.Set("peer.validator.enabled", "true")
-		viper.Set("peer.validator.consensus", "noops")
 		viper.Set("chaincode.mode", chaincode.DevModeUserRunsChaincode)
 
 	}
@@ -185,9 +182,8 @@ func serve(args []string) error {
 		defer noopssinglechain.StopDeliveryService(deliverService)
 	}
 
-	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s, rootnodes=%v, validator=%v",
-		peerEndpoint.ID, viper.GetString("peer.networkId"), peerEndpoint.Address,
-		viper.GetString("peer.discovery.rootnode"), peer.ValidatorEnabled())
+	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s",
+		peerEndpoint.ID, viper.GetString("peer.networkId"), peerEndpoint.Address)
 
 	// Start the grpc server. Done in a goroutine so we can deploy the
 	// genesis block if needed.
@@ -221,6 +217,7 @@ func serve(args []string) error {
 		go ehubGrpcServer.Serve(ehubLis)
 	}
 
+	// Start profiling http endpoint if enabled
 	if viper.GetBool("peer.profile.enabled") {
 		go func() {
 			profileListenAddress := viper.GetString("peer.profile.listenAddress")
@@ -270,32 +267,30 @@ func createEventHubServer() (net.Listener, *grpc.Server, error) {
 	var lis net.Listener
 	var grpcServer *grpc.Server
 	var err error
-	if peer.ValidatorEnabled() {
-		lis, err = net.Listen("tcp", viper.GetString("peer.validator.events.address"))
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to listen: %v", err)
-		}
-
-		//TODO - do we need different SSL material for events ?
-		var opts []grpc.ServerOption
-		if comm.TLSEnabled() {
-			creds, err := credentials.NewServerTLSFromFile(
-				viper.GetString("peer.tls.cert.file"),
-				viper.GetString("peer.tls.key.file"))
-
-			if err != nil {
-				return nil, nil, fmt.Errorf("Failed to generate credentials %v", err)
-			}
-			opts = []grpc.ServerOption{grpc.Creds(creds)}
-		}
-
-		grpcServer = grpc.NewServer(opts...)
-		ehServer := producer.NewEventsServer(
-			uint(viper.GetInt("peer.validator.events.buffersize")),
-			viper.GetInt("peer.validator.events.timeout"))
-
-		pb.RegisterEventsServer(grpcServer, ehServer)
+	lis, err = net.Listen("tcp", viper.GetString("peer.events.address"))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to listen: %v", err)
 	}
+
+	//TODO - do we need different SSL material for events ?
+	var opts []grpc.ServerOption
+	if comm.TLSEnabled() {
+		creds, err := credentials.NewServerTLSFromFile(
+			viper.GetString("peer.tls.cert.file"),
+			viper.GetString("peer.tls.key.file"))
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to generate credentials %v", err)
+		}
+		opts = []grpc.ServerOption{grpc.Creds(creds)}
+	}
+
+	grpcServer = grpc.NewServer(opts...)
+	ehServer := producer.NewEventsServer(
+		uint(viper.GetInt("peer.events.buffersize")),
+		viper.GetInt("peer.events.timeout"))
+
+	pb.RegisterEventsServer(grpcServer, ehServer)
 	return lis, grpcServer, err
 }
 
