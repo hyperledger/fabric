@@ -21,9 +21,8 @@ import (
 
 	peerComm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/gossip/comm"
+	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/integration"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -39,6 +38,8 @@ var (
 	once                  sync.Once
 )
 
+type gossipSvc gossip.Gossip
+
 // GossipService encapsulates gossip and state capabilities into single interface
 type GossipService interface {
 	gossip.Gossip
@@ -52,9 +53,14 @@ type GossipService interface {
 }
 
 type gossipServiceImpl struct {
-	gossip gossip.Gossip
+	gossipSvc
 	chains map[string]state.GossipStateProvider
 	lock   sync.RWMutex
+}
+
+// JoinChan makes the Gossip instance join a channel
+func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID gossipCommon.ChainID) {
+	// TODO: eventually we'll have only 1 JoinChannel method
 }
 
 var logger = logging.MustGetLogger("gossipService")
@@ -72,8 +78,8 @@ func InitGossipService(endpoint string, s *grpc.Server, bootPeers ...string) {
 
 		gossip := integration.NewGossipComponent(endpoint, s, dialOpts, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
-			gossip: gossip,
-			chains: make(map[string]state.GossipStateProvider),
+			gossipSvc: gossip,
+			chains:    make(map[string]state.GossipStateProvider),
 		}
 	})
 }
@@ -81,11 +87,6 @@ func InitGossipService(endpoint string, s *grpc.Server, bootPeers ...string) {
 // GetGossipService returns an instance of gossip service
 func GetGossipService() GossipService {
 	return gossipServiceInstance
-}
-
-// Send sends a message to remote peers
-func (g *gossipServiceImpl) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
-	g.gossip.Send(msg, peers...)
 }
 
 // JoinChannel joins the channel and initialize gossip state with given committer
@@ -98,30 +99,10 @@ func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *com
 	} else {
 		// Initialize new state provider for given committer
 		logger.Debug("Creating state provider for chainID", chainID)
-		g.chains[chainID] = state.NewGossipStateProvider(g.gossip, commiter)
+		g.chains[chainID] = state.NewGossipStateProvider(g, commiter)
 	}
 
 	return nil
-}
-
-// GetPeers returns a mapping of endpoint --> []discovery.NetworkMember
-func (g *gossipServiceImpl) GetPeers() []discovery.NetworkMember {
-	return g.gossip.GetPeers()
-}
-
-// UpdateMetadata updates the self metadata of the discovery layer
-func (g *gossipServiceImpl) UpdateMetadata(data []byte) {
-	g.gossip.UpdateMetadata(data)
-}
-
-// Gossip sends a message to other peers to the network
-func (g *gossipServiceImpl) Gossip(msg *proto.GossipMessage) {
-	g.gossip.Gossip(msg)
-}
-
-// Accept returns a channel that outputs messages from other peers
-func (g *gossipServiceImpl) Accept(acceptor gossipCommon.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage) {
-	return g.gossip.Accept(acceptor, false)
 }
 
 // GetBlock returns block for given chain
@@ -141,7 +122,8 @@ func (g *gossipServiceImpl) AddPayload(chainID string, payload *proto.Payload) e
 // Stop stops the gossip component
 func (g *gossipServiceImpl) Stop() {
 	for _, ch := range g.chains {
+		logger.Info("Stopping chain", ch)
 		ch.Stop()
 	}
-	g.gossip.Stop()
+	g.gossipSvc.Stop()
 }

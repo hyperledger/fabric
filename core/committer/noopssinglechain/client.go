@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/events/producer"
+	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/protos/common"
@@ -195,7 +196,7 @@ func (d *DeliverService) readUntilClose() {
 			logger.Debug("Validating block, chainID", d.chainID)
 			validator.Validate(t.Block)
 
-			numberOfPeers := len(service.GetGossipService().GetPeers())
+			numberOfPeers := len(service.GetGossipService().PeersOfChannel(gossipcommon.ChainID(d.chainID)))
 			// Create payload with a block received
 			payload := createPayload(seqNum, t.Block)
 			// Use payload to create gossip message

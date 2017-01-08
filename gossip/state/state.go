@@ -302,7 +302,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 		current, _ := s.committer.LedgerHeight()
 		max, _ := s.committer.LedgerHeight()
 
-		for _, p := range s.gossip.GetPeers() {
+		for _, p := range s.gossip.Peers() {
 			if state, err := FromBytes(p.Metadata); err == nil {
 				if max < state.LedgerHeight {
 					max = state.LedgerHeight
@@ -328,7 +328,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64) {
 	var peers []*comm.RemotePeer
 	// Filtering peers which might have relevant blocks
-	for _, value := range s.gossip.GetPeers() {
+	for _, value := range s.gossip.Peers() {
 		nodeMetadata, err := FromBytes(value.Metadata)
 		if err == nil {
 			if nodeMetadata.LedgerHeight >= end {

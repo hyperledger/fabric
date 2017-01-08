@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/filter"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/proto"
@@ -163,7 +164,7 @@ func NewGossipChannel(mcs api.MessageCryptoService, chainID common.ChainID, adap
 		gc.blocksPuller.Remove(m.(*proto.GossipMessage))
 	})
 
-	gc.stateInfoMsgStore = msgstore.NewMessageStore(comparator, func(m interface{}) {})
+	gc.stateInfoMsgStore = NewStateInfoMessageStore()
 	gc.blocksPuller = gc.createBlockPuller()
 
 	gc.ConfigureChannel(joinMsg)
@@ -219,7 +220,10 @@ func (gc *gossipChannel) GetPeers() []discovery.NetworkMember {
 
 func (gc *gossipChannel) requestStateInfo() {
 	req := gc.createStateInfoRequest()
-	endpoints := selectPeers(gc.GetConf().PullPeerNum, gc.GetMembership(), gc.IsMemberInChan)
+	endpoints := filter.SelectPeers(gc.GetConf().PullPeerNum, gc.GetMembership(), gc.IsSubscribed)
+	if len(endpoints) == 0 {
+		endpoints = filter.SelectPeers(gc.GetConf().PullPeerNum, gc.GetMembership(), gc.IsMemberInChan)
+	}
 	gc.Send(req, endpoints...)
 }
 
@@ -531,31 +535,7 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.GossipMessage) {
 	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(1))
 }
 
-// selectPeers returns a slice of peers that match a list of routing filters
-func selectPeers(k int, peerPool []discovery.NetworkMember, filters ...func(discovery.NetworkMember) bool) []*comm.RemotePeer {
-	var indices []int
-	if len(peerPool) < k {
-		indices = make([]int, len(peerPool))
-		for i := 0; i < len(peerPool); i++ {
-			indices[i] = i
-		}
-	} else {
-		indices = util.GetRandomIndices(k, len(peerPool)-1)
-	}
-
-	var remotePeers []*comm.RemotePeer
-	for _, index := range indices {
-		peer := peerPool[index]
-		passesFilters := true
-		for _, filter := range filters {
-			if !filter(peer) {
-				passesFilters = false
-			}
-		}
-		if passesFilters {
-			remotePeers = append(remotePeers, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.Endpoint})
-		}
-
-	}
-	return remotePeers
+// NewStateInfoMessageStore returns a MessageStore
+func NewStateInfoMessageStore() msgstore.MessageStore {
+	return msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {})
 }

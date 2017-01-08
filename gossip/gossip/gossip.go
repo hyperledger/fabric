@@ -17,9 +17,10 @@ limitations under the License.
 package gossip
 
 import (
-	"crypto/tls"
 	"time"
 
+	"crypto/tls"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
@@ -32,11 +33,20 @@ type Gossip interface {
 	// Send sends a message to remote peers
 	Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
 
-	// GetPeers returns a mapping of endpoint --> []discovery.NetworkMember
-	GetPeers() []discovery.NetworkMember
+	// GetPeers returns the NetworkMembers considered alive
+	Peers() []discovery.NetworkMember
+
+	// PeersOfChannel returns the NetworkMembers considered alive
+	// and also subscribed to the channel given
+	PeersOfChannel(common.ChainID) []discovery.NetworkMember
 
 	// UpdateMetadata updates the self metadata of the discovery layer
-	UpdateMetadata([]byte)
+	// the peer publishes to other peers
+	UpdateMetadata(metadata []byte)
+
+	// UpdateChannelMetadata updates the self metadata the peer
+	// publishes to other peers about its channel-related state
+	UpdateChannelMetadata(metadata []byte, chainID common.ChainID)
 
 	// Gossip sends a message to other peers to the network
 	Gossip(msg *proto.GossipMessage)
@@ -47,28 +57,35 @@ type Gossip interface {
 	// can be used to send a reply back to the sender
 	Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage)
 
+	// JoinChan makes the Gossip instance join a channel
+	JoinChan(joinMsg api.JoinChannelMessage, chainID common.ChainID)
+
 	// Stop stops the gossip component
 	Stop()
 }
 
 // Config is the configuration of the gossip component
 type Config struct {
-	BindPort            int
-	ID                  string
-	SelfEndpoint        string
-	BootstrapPeers      []string
-	PropagateIterations int
-	PropagatePeerNum    int
+	BindPort            int      // Port we bind to, used only for tests
+	ID                  string   // ID of this instance
+	SelfEndpoint        string   // Endpoint we publish to remote peers
+	BootstrapPeers      []string // Peers we connect to at startup
+	PropagateIterations int      // Number of times a message is pushed to remote peers
+	PropagatePeerNum    int      // Number of peers selected to push messages to
 
-	MaxMessageCountToStore int
+	MaxBlockCountToStore       int           // Maximum count of blocks we store in memory
+	StateInfoRetentionInterval time.Duration // TODO: this would be a maximum time a stateInfo message is kept until expired
 
-	MaxPropagationBurstSize    int
-	MaxPropagationBurstLatency time.Duration
+	MaxPropagationBurstSize    int           // Max number of messages stored until it triggers a push to remote peers
+	MaxPropagationBurstLatency time.Duration // Max time between consecutive message pushes
 
-	PullInterval time.Duration
-	PullPeerNum  int
+	PullInterval time.Duration // Determines frequency of pull phases
+	PullPeerNum  int           // Number of peers to pull from
 
-	PublishCertPeriod time.Duration
+	SkipBlockVerification bool // Should we skip verifying block messages or not
 
-	TLSServerCert *tls.Certificate
+	PublishCertPeriod        time.Duration    // Time from startup certificates are included in Alive messages
+	PublishStateInfoInterval time.Duration    // Determines frequency of pushing state info messages to peers
+	RequestStateInfoInterval time.Duration    // Determines frequency of pulling state info messages from peers
+	TLSServerCert            *tls.Certificate // TLS certificate of the peer
 }

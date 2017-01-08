@@ -47,8 +47,8 @@ func TestNewGossipCryptoService(t *testing.T) {
 	go s3.Serve(ll3)
 
 	time.Sleep(time.Second * 5)
-	fmt.Println(g1.GetPeers())
-	fmt.Println(g2.GetPeers())
-	fmt.Println(g3.GetPeers())
+	fmt.Println(g1.Peers())
+	fmt.Println(g2.Peers())
+	fmt.Println(g3.Peers())
 	time.Sleep(time.Second)
 }

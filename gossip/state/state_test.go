@@ -40,6 +40,24 @@ var (
 	logger, _  = logging.GetLogger("GossipStateProviderTest")
 )
 
+var orgId = []byte("ORG1")
+
+type orgCryptoService struct {
+
+}
+
+// OrgByPeerIdentity returns the OrgIdentityType
+// of a given peer identity
+func (*orgCryptoService) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
+	return orgId
+}
+
+// Verify verifies a JoinChannelMessage, returns nil on success,
+// and an error on failure
+func (*orgCryptoService) Verify(joinChanMsg api.JoinChannelMessage) error {
+	return nil
+}
+
 type naiveCryptoService struct {
 }
 
@@ -105,7 +123,7 @@ func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
 		BindPort:       port,
 		BootstrapPeers: bootPeers(boot...),
 		ID:             fmt.Sprintf("p%d", id),
-		MaxMessageCountToStore:     maxMsgCount,
+		MaxBlockCountToStore:     maxMsgCount,
 		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
 		MaxPropagationBurstSize:    10,
 		PropagateIterations:        1,
@@ -114,12 +132,14 @@ func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
 		PullPeerNum:                5,
 		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
 		PublishCertPeriod:          10 * time.Second,
+		RequestStateInfoInterval:   4  * time.Second,
+		PublishStateInfoInterval:   4  * time.Second,
 	}
 }
 
 // Create gossip instance
 func newGossipInstance(config *gossip.Config) gossip.Gossip {
-	return gossip.NewGossipServiceWithServer(config, &naiveCryptoService{}, []byte(config.SelfEndpoint))
+	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, &naiveCryptoService{}, []byte(config.SelfEndpoint))
 }
 
 // Create new instance of KVLedger to be used for testing
@@ -270,7 +290,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	waitUntilTrueOrTimeout(t, func() bool {
 		for _, p := range peersSet {
-			if len(p.g.GetPeers()) != bootstrapSetSize+standartPeersSize-1 {
+			if len(p.g.Peers()) != bootstrapSetSize+standartPeersSize-1 {
 				logger.Debug("[XXXXXXX]: Peer discovery has not finished yet")
 				return false
 			}

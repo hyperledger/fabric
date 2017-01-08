@@ -143,7 +143,7 @@ func (m *GossipMessage) IsStateInfoMsg() bool {
 	return m.GetStateInfo() != nil
 }
 
-// IsPullMsg returns whether this GossipMessage is a message that has belongs
+// IsPullMsg returns whether this GossipMessage is a message that belongs
 // to the pull mechanism
 func (m *GossipMessage) IsPullMsg() bool {
 	return m.GetDataReq() != nil || m.GetDataUpdate() != nil ||

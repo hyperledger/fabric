@@ -81,7 +81,6 @@ func (m *membershipSvcMock) GetMembership() []discovery.NetworkMember {
 }
 
 func TestCertStoreBadSignature(t *testing.T) {
-	t.Parallel()
 	badSignature := func(nonce uint64) comm.ReceivedMessage {
 		return createUpdateMessage(nonce, createBadlySignedUpdateMessage())
 	}
@@ -90,7 +89,6 @@ func TestCertStoreBadSignature(t *testing.T) {
 }
 
 func TestCertStoreMismatchedIdentity(t *testing.T) {
-	t.Parallel()
 	mismatchedIdentity := func(nonce uint64) comm.ReceivedMessage {
 		return createUpdateMessage(nonce, createMismatchedUpdateMessage())
 	}
@@ -99,7 +97,6 @@ func TestCertStoreMismatchedIdentity(t *testing.T) {
 }
 
 func TestCertStoreShouldSucceed(t *testing.T) {
-	t.Parallel()
 	totallyFineIdentity := func(nonce uint64) comm.ReceivedMessage {
 		return createUpdateMessage(nonce, createValidUpdateMessage())
 	}
@@ -128,6 +125,8 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.Receive
 	certStore := newCertStore(&pullerMock{
 		Mediator: pullMediator,
 	}, identity.NewIdentityMapper(&naiveCryptoService{}), api.PeerIdentityType("SELF"), &naiveCryptoService{})
+
+	defer pullMediator.Stop()
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)

@@ -17,6 +17,7 @@ limitations under the License.
 package gossip
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -44,6 +45,10 @@ type batchingEmitter interface {
 // latency: the maximum delay that each message can be stored without being forwarded
 // cb: a callback that is called in order for the forwarding to take place
 func newBatchingEmitter(iterations, burstSize int, latency time.Duration, cb emitBatchCallback) batchingEmitter {
+	if iterations < 0 {
+		panic(fmt.Errorf("Got a negative iterations number"))
+	}
+
 	p := &batchingEmitterImpl{
 		cb:         cb,
 		delay:      latency,
@@ -54,7 +59,10 @@ func newBatchingEmitter(iterations, burstSize int, latency time.Duration, cb emi
 		stopFlag:   int32(0),
 	}
 
-	go p.periodicEmit()
+	if iterations != 0 {
+		go p.periodicEmit()
+	}
+
 	return p
 }
 
@@ -126,6 +134,9 @@ func (p *batchingEmitterImpl) Size() int {
 }
 
 func (p *batchingEmitterImpl) Add(message interface{}) {
+	if p.iterations == 0 {
+		return
+	}
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
