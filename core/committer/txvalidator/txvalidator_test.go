@@ -19,11 +19,14 @@ package txvalidator
 import (
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	util2 "github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -64,4 +67,66 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.True(t, !txsfltr.IsSet(uint(0)))
 	assert.True(t, !txsfltr.IsSet(uint(1)))
 	assert.True(t, !txsfltr.IsSet(uint(2)))
+}
+
+func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
+	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
+	defer ledger.Close()
+
+	validator := &txValidator{ledger, &mockVsccValidator{}}
+
+	// Create simeple endorsement transaction
+	payload := &common.Payload{
+		Header: &common.Header{
+			ChainHeader: &common.ChainHeader{
+				TxID:    "simple_txID", // Fake txID
+				Type:    int32(common.HeaderType_ENDORSER_TRANSACTION),
+				ChainID: util2.GetTestChainID(),
+			},
+		},
+		Data: []byte("test"),
+	}
+
+	payloadBytes, err := proto.Marshal(payload)
+
+	// Check marshaling didn't fail
+	assert.NoError(t, err)
+
+	// Envelope the payload
+	envelope := &common.Envelope{
+		Payload: payloadBytes,
+	}
+
+	envelopeBytes, err := proto.Marshal(envelope)
+
+	// Check marshaling didn't fail
+	assert.NoError(t, err)
+
+	block := &common.Block{
+		Data: &common.BlockData{
+			// Enconde transactions
+			Data: [][]byte{envelopeBytes},
+		},
+	}
+
+	block.Header = &common.BlockHeader{
+		Number:   1,
+		DataHash: block.Data.Hash(),
+	}
+
+	// Initialize metadata
+	utils.InitBlockMetadata(block)
+	// Commit block to the ledger
+	ledger.Commit(block)
+
+	// Validation should invalidate transaction,
+	// because it's already committed
+	validator.Validate(block)
+
+	txsfltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+
+	assert.True(t, txsfltr.IsSet(0))
 }

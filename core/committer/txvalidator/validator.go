@@ -77,10 +77,12 @@ func (v *txValidator) Validate(block *common.Block) {
 	defer logger.Debug("END Block Validation")
 	txsfltr := ledgerUtil.NewFilterBitArray(uint(len(block.Data.Data)))
 	for tIdx, d := range block.Data.Data {
+		// Start by marking transaction as invalid, before
+		// doing any validation checks.
+		txsfltr.Set(uint(tIdx))
 		if d != nil {
 			if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
 				logger.Warningf("Error getting tx from block(%s)", err)
-				txsfltr.Set(uint(tIdx))
 			} else if env != nil {
 				// validate the transaction: here we check that the transaction
 				// is properly formed, properly signed and that the security
@@ -90,25 +92,32 @@ func (v *txValidator) Validate(block *common.Block) {
 				logger.Debug("Validating transaction peer.ValidateTransaction()")
 				if payload, _, err := peer.ValidateTransaction(env); err != nil {
 					logger.Errorf("Invalid transaction with index %d, error %s", tIdx, err)
-					txsfltr.Set(uint(tIdx))
 				} else {
+					// Check duplicate transactions
+					txID := payload.Header.ChainHeader.TxID
+					if _, err := v.ledger.GetTransactionByID(txID); err == nil {
+						logger.Warning("Duplicate transaction found, ", txID, ", skipping")
+						continue
+					}
+
 					//the payload is used to get headers
 					logger.Debug("Validating transaction vscc tx validate")
 					if err = v.vscc.VSCCValidateTx(payload, d); err != nil {
-						txID := payload.Header.ChainHeader.TxID
+						txID := txID
 						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
-						txsfltr.Set(uint(tIdx))
 						continue
 					}
 
 					if _, err := proto.Marshal(env); err != nil {
-						logger.Warningf("Cannot marshal transactoins %s", err)
-						txsfltr.Set(uint(tIdx))
+						logger.Warningf("Cannot marshal transaction due to %s", err)
+						continue
 					}
+					// Succeeded to pass down here, transaction is valid,
+					// just unset the filter bit array flag.
+					txsfltr.Unset(uint(tIdx))
 				}
 			} else {
 				logger.Warning("Nil tx from block")
-				txsfltr.Set(uint(tIdx))
 			}
 		}
 	}
