@@ -19,6 +19,7 @@ package multichain
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
@@ -36,8 +37,8 @@ var logger = logging.MustGetLogger("orderer/multichain")
 // it considers all signatures to be valid
 type xxxCryptoHelper struct{}
 
-func (xxx xxxCryptoHelper) VerifySignature(msg []byte, ids []byte, sigs []byte) bool {
-	return true
+func (xxx xxxCryptoHelper) VerifySignature(sd *cb.SignedData) error {
+	return nil
 }
 
 // Manager coordinates the creation and access of chains
@@ -159,7 +160,19 @@ func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
 }
 
 func newConfigTxManagerAndHandlers(configEnvelope *cb.ConfigurationEnvelope) (configtx.Manager, policies.Manager, sharedconfig.Manager, error) {
-	policyManager := policies.NewManagerImpl(xxxCryptoHelper{})
+	policyProviderMap := make(map[int32]policies.Provider)
+	for pType := range cb.Policy_PolicyType_name {
+		rtype := cb.Policy_PolicyType(pType)
+		switch rtype {
+		case cb.Policy_UNKNOWN:
+			// Do not register a handler
+		case cb.Policy_SIGNATURE:
+			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(xxxCryptoHelper{})
+		case cb.Policy_MSP:
+			// Add hook for MSP Handler here
+		}
+	}
+	policyManager := policies.NewManagerImpl(policyProviderMap)
 	sharedConfigManager := sharedconfig.NewManagerImpl()
 	configHandlerMap := make(map[cb.ConfigurationItem_ConfigurationType]configtx.Handler)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {

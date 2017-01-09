@@ -50,7 +50,7 @@ message ConfigurationEnvelope {
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message SignedConfigurationItem {
     bytes ConfigurationItem = 1;
-    repeated ConfigurationSignature Signatures = 2; // Signatures over the hash of ConfigurationItem
+    repeated ConfigurationSignature Signatures = 2;
 }
 
 message ConfigurationItem {
@@ -69,11 +69,9 @@ message ConfigurationItem {
 }
 
 message ConfigurationSignature {
-    bytes signatureHeader = 1;
-    bytes signature = 2; // Signature over the concatenation of configurationItem bytes and signatureHeader bytes
+    bytes signatureHeader = 1; // A marshaled SignatureHeader
+    bytes signature = 2;       // Signature over the concatenation of configurationItem bytes and signatureHeader bytes
 }
-
-// 
 
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
 // multiple policy engines, this is typed as a oneof for now

@@ -59,7 +59,7 @@ const DefaultModificationPolicyID = "DefaultModificationPolicy"
 
 type acceptAllPolicy struct{}
 
-func (ap *acceptAllPolicy) Evaluate(headers [][]byte, payload []byte, identities [][]byte, signatures [][]byte) error {
+func (ap *acceptAllPolicy) Evaluate(signedData []*cb.SignedData) error {
 	return nil
 }
 
@@ -212,23 +212,14 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 			policy = defaultModificationPolicy
 		}
 
-		headers := make([][]byte, len(entry.Signatures))
-		signatures := make([][]byte, len(entry.Signatures))
-		identities := make([][]byte, len(entry.Signatures))
-
-		for i, configSig := range entry.Signatures {
-			headers[i] = configSig.Signature
-			signatures[i] = configSig.SignatureHeader
-			sigHeader := &cb.SignatureHeader{}
-			err := proto.Unmarshal(configSig.SignatureHeader, sigHeader)
-			if err != nil {
-				return nil, err
-			}
-			identities[i] = sigHeader.Creator
+		// Get signatures
+		signedData, err := entry.AsSignedData()
+		if err != nil {
+			return nil, err
 		}
 
 		// Ensure the policy is satisfied
-		if err = policy.Evaluate(headers, entry.ConfigurationItem, identities, signatures); err != nil {
+		if err = policy.Evaluate(signedData); err != nil {
 			return nil, err
 		}
 
