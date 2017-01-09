@@ -33,6 +33,8 @@ type Manager struct {
 	KafkaBrokersVal []string
 	// IngressPolicyVal is returned as the result of IngressPolicy()
 	IngressPolicyVal string
+	// EgressPolicyVal is returned as the result of EgressPolicy()
+	EgressPolicyVal string
 }
 
 // ConsensusType returns the ConsensusTypeVal
@@ -63,4 +65,9 @@ func (scm *Manager) KafkaBrokers() []string {
 // IngressPolicy returns the IngressPolicyVal
 func (scm *Manager) IngressPolicy() string {
 	return scm.IngressPolicyVal
+}
+
+// EgressPolicy returns the EgressPolicyVal
+func (scm *Manager) EgressPolicy() string {
+	return scm.EgressPolicyVal
 }

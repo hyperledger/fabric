@@ -23,6 +23,7 @@ It has these top-level messages:
 	BatchTimeout
 	CreationPolicy
 	IngressPolicy
+	EgressPolicy
 	ChainCreators
 	KafkaBrokers
 	KafkaMessage

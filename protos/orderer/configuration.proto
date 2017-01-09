@@ -66,6 +66,11 @@ message IngressPolicy {
     string name = 1;
 }
 
+// EgressPolicy is the name of the policy which incoming Deliver messages are filtered against
+message EgressPolicy {
+    string name = 1;
+}
+
 message ChainCreators {
     // A list of policies, any of which may be specified as the chain creation
     // policy in a chain creation request

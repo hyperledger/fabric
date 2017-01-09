@@ -229,6 +229,7 @@ class BootstrapHelper:
     KEY_CHAIN_CREATORS = "ChainCreators"
     KEY_ACCEPT_ALL_POLICY = "AcceptAllPolicy"
     KEY_INGRESS_POLICY = "IngressPolicy"
+    KEY_EGRESS_POLICY = "EgressPolicy"
     KEY_BATCH_SIZE = "BatchSize"
 
     DEFAULT_MODIFICATION_POLICY_ID = "DefaultModificationPolicy"
@@ -294,6 +295,13 @@ class BootstrapHelper:
             commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Orderer"),
             key=BootstrapHelper.KEY_CHAIN_CREATORS,
             value=orderer_dot_configuration_pb2.ChainCreators(policies=BootstrapHelper.DEFAULT_CHAIN_CREATORS).SerializeToString())
+        return self.signConfigItem(configItem)
+
+    def  encodeEgressPolicy(self):
+        configItem = self.getConfigItem(
+            commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Orderer"),
+            key=BootstrapHelper.KEY_EGRESS_POLICY,
+            value=orderer_dot_configuration_pb2.EgressPolicy(name=BootstrapHelper.KEY_ACCEPT_ALL_POLICY).SerializeToString())
         return self.signConfigItem(configItem)
 
     def  encodeIngressPolicy(self):

@@ -85,6 +85,16 @@ func (cbs *commonBootstrapper) encodeIngressPolicy() *cb.SignedConfigurationItem
 	return &cb.SignedConfigurationItem{ConfigurationItem: utils.MarshalOrPanic(configItem), Signatures: nil}
 }
 
+func (cbs *commonBootstrapper) encodeEgressPolicy() *cb.SignedConfigurationItem {
+	configItemKey := sharedconfig.EgressPolicyKey
+	configItemValue := utils.MarshalOrPanic(&ab.EgressPolicy{Name: AcceptAllPolicyKey})
+	modPolicy := configtx.DefaultModificationPolicyID
+
+	configItemChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, cbs.chainID, epoch)
+	configItem := utils.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Orderer, lastModified, modPolicy, configItemKey, configItemValue)
+	return &cb.SignedConfigurationItem{ConfigurationItem: utils.MarshalOrPanic(configItem), Signatures: nil}
+}
+
 func (cbs *commonBootstrapper) lockDefaultModificationPolicy() *cb.SignedConfigurationItem {
 	// Lock down the default modification policy to prevent any further policy modifications
 	configItemKey := configtx.DefaultModificationPolicyID

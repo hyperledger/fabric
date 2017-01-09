@@ -339,3 +339,44 @@ func TestIngressPolicy(t *testing.T) {
 		t.Fatalf("IngressPolicy should have ended as %s but was %s", endPolicy, nowPolicy)
 	}
 }
+
+func TestEgressPolicy(t *testing.T) {
+	endPolicy := "foo"
+	invalidMessage :=
+		&cb.ConfigurationItem{
+			Type:  cb.ConfigurationItem_Orderer,
+			Key:   EgressPolicyKey,
+			Value: []byte("Garbage Data"),
+		}
+	validMessage := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   EgressPolicyKey,
+		Value: utils.MarshalOrPanic(&ab.EgressPolicy{Name: endPolicy}),
+	}
+	m := NewManagerImpl()
+	m.BeginConfig()
+
+	err := m.ProposeConfig(validMessage)
+	if err != nil {
+		t.Fatalf("Error applying valid config: %s", err)
+	}
+
+	m.CommitConfig()
+	m.BeginConfig()
+
+	err = m.ProposeConfig(invalidMessage)
+	if err == nil {
+		t.Fatalf("Should have failed on invalid message")
+	}
+
+	err = m.ProposeConfig(validMessage)
+	if err != nil {
+		t.Fatalf("Error re-applying valid config: %s", err)
+	}
+
+	m.CommitConfig()
+
+	if nowPolicy := m.EgressPolicy(); nowPolicy != endPolicy {
+		t.Fatalf("EgressPolicy should have ended as %s but was %s", endPolicy, nowPolicy)
+	}
+}
