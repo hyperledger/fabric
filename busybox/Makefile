@@ -1,7 +1,7 @@
 BUSYBOX_VER=1.25.1
 BUSYBOX_URL=https://www.busybox.net/downloads/busybox-$(BUSYBOX_VER).tar.bz2
 
-OBJDIR=build/busybox-$(BUSYBOX_VER)
+OBJDIR=/tmp/busybox-$(BUSYBOX_VER)
 
 all: $(OBJDIR)/busybox
 
