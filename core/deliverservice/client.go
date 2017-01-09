@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -155,20 +156,38 @@ func (d *DeliverService) checkLeaderAndRunDeliver(committer committer.Committer)
 }
 
 func (d *DeliverService) seekOldest() error {
-	return d.client.Send(&orderer.SeekInfo{
-		ChainID:  d.chainID,
-		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Oldest{Oldest: &orderer.SeekOldest{}}},
-		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+	return d.client.Send(&common.Envelope{
+		Payload: utils.MarshalOrPanic(&common.Payload{
+			Header: &common.Header{
+				ChainHeader: &common.ChainHeader{
+					ChainID: d.chainID,
+				},
+				SignatureHeader: &common.SignatureHeader{},
+			},
+			Data: utils.MarshalOrPanic(&orderer.SeekInfo{
+				Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Oldest{Oldest: &orderer.SeekOldest{}}},
+				Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+				Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
 	})
 }
 
 func (d *DeliverService) seekLatestFromCommitter(height uint64) error {
-	return d.client.Send(&orderer.SeekInfo{
-		ChainID:  d.chainID,
-		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: height}}},
-		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+	return d.client.Send(&common.Envelope{
+		Payload: utils.MarshalOrPanic(&common.Payload{
+			Header: &common.Header{
+				ChainHeader: &common.ChainHeader{
+					ChainID: d.chainID,
+				},
+				SignatureHeader: &common.SignatureHeader{},
+			},
+			Data: utils.MarshalOrPanic(&orderer.SeekInfo{
+				Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: height}}},
+				Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+				Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
 	})
 }
 

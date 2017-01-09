@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 	"google.golang.org/grpc"
@@ -46,13 +47,13 @@ func init() {
 
 type mockD struct {
 	grpc.ServerStream
-	recvChan chan *ab.SeekInfo
+	recvChan chan *cb.Envelope
 	sendChan chan *ab.DeliverResponse
 }
 
 func newMockD() *mockD {
 	return &mockD{
-		recvChan: make(chan *ab.SeekInfo),
+		recvChan: make(chan *cb.Envelope),
 		sendChan: make(chan *ab.DeliverResponse),
 	}
 }
@@ -62,7 +63,7 @@ func (m *mockD) Send(br *ab.DeliverResponse) error {
 	return nil
 }
 
-func (m *mockD) Recv() (*ab.SeekInfo, error) {
+func (m *mockD) Recv() (*cb.Envelope, error) {
 	msg, ok := <-m.recvChan
 	if !ok {
 		return msg, fmt.Errorf("Channel closed")
@@ -109,11 +110,25 @@ func newMockMultichainManager() *mockSupportManager {
 	return mm
 }
 
-var seekOldest = &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}}
-var seekNewest = &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}}
+var seekOldest = &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{&ab.SeekOldest{}}}
+var seekNewest = &ab.SeekPosition{Type: &ab.SeekPosition_Newest{&ab.SeekNewest{}}}
 
 func seekSpecified(number uint64) *ab.SeekPosition {
 	return &ab.SeekPosition{Type: &ab.SeekPosition_Specified{&ab.SeekSpecified{Number: number}}}
+}
+
+func makeSeek(chainID string, seekInfo *ab.SeekInfo) *cb.Envelope {
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChainHeader: &cb.ChainHeader{
+					ChainID: chainID,
+				},
+				SignatureHeader: &cb.SignatureHeader{},
+			},
+			Data: utils.MarshalOrPanic(seekInfo),
+		}),
+	}
 }
 
 func TestOldestSeek(t *testing.T) {
@@ -129,7 +144,7 @@ func TestOldestSeek(t *testing.T) {
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekOldest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekOldest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	count := uint64(0)
 	for {
@@ -168,7 +183,7 @@ func TestNewestSeek(t *testing.T) {
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekNewest, Stop: seekNewest, Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
 	case deliverReply := <-m.sendChan:
@@ -202,7 +217,7 @@ func TestSpecificSeek(t *testing.T) {
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekSpecified(specifiedStart), Stop: seekSpecified(specifiedStop), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(specifiedStart), Stop: seekSpecified(specifiedStop), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	count := uint64(0)
 	for {
@@ -238,7 +253,7 @@ func TestBadSeek(t *testing.T) {
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekSpecified(uint64(3 * ledgerSize)), Stop: seekSpecified(uint64(3 * ledgerSize)), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(3 * ledgerSize)), Stop: seekSpecified(uint64(3 * ledgerSize)), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
 	case deliverReply := <-m.sendChan:
@@ -263,7 +278,7 @@ func TestFailFastSeek(t *testing.T) {
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_FAIL_IF_NOT_READY}
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_FAIL_IF_NOT_READY})
 
 	select {
 	case deliverReply := <-m.sendChan:
@@ -297,7 +312,7 @@ func TestBlockingSeek(t *testing.T) {
 
 	go ds.Handle(m)
 
-	m.recvChan <- &ab.SeekInfo{ChainID: systemChainID, Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY}
+	m.recvChan <- makeSeek(systemChainID, &ab.SeekInfo{Start: seekSpecified(uint64(ledgerSize - 1)), Stop: seekSpecified(ledgerSize), Behavior: ab.SeekInfo_BLOCK_UNTIL_READY})
 
 	select {
 	case deliverReply := <-m.sendChan:

@@ -17,11 +17,15 @@ limitations under the License.
 package deliver
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var logger = logging.MustGetLogger("orderer/common/deliver")
@@ -60,19 +64,37 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 	logger.Debugf("Starting new deliver loop")
 	for {
 		logger.Debugf("Attempting to read seek info message")
-		seekInfo, err := srv.Recv()
+		envelope, err := srv.Recv()
 		if err != nil {
 			logger.Errorf("Error reading from stream: %s", err)
 			return err
 		}
-		logger.Debugf("Received message %v", seekInfo)
+		payload := &cb.Payload{}
+		if err = proto.Unmarshal(envelope.Payload, payload); err != nil {
+			logger.Errorf("Received an envelope with no payload: %s", err)
+			return err
+		}
 
-		chain, ok := ds.sm.GetChain(seekInfo.ChainID)
+		if payload.Header == nil || payload.Header.ChainHeader == nil {
+			err := fmt.Errorf("Malformed envelope recieved with bad header")
+			logger.Error(err)
+			return err
+		}
+
+		chain, ok := ds.sm.GetChain(payload.Header.ChainHeader.ChainID)
 		if !ok {
 			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
 
 		// XXX add deliver authorization checking
+
+		seekInfo := &ab.SeekInfo{}
+		if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {
+			logger.Errorf("Received a signed deliver request with malformed seekInfo payload: %s", err)
+			return err
+		}
+
+		logger.Debugf("Received seekInfo %v", seekInfo)
 
 		cursor, number := chain.Reader().Iterator(seekInfo.Start)
 		var stopNum uint64

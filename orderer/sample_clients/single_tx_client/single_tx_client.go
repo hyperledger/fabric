@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
@@ -98,12 +99,22 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 		errorch <- fmt.Errorf("Failed to get Deliver stream: %s", err)
 		return
 	}
-	dstream.Send(&ab.SeekInfo{
-		ChainID:  provisional.TestChainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+	dstream.Send(&cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChainHeader: &cb.ChainHeader{
+					ChainID: provisional.TestChainID,
+				},
+				SignatureHeader: &cb.SignatureHeader{},
+			},
+			Data: utils.MarshalOrPanic(&ab.SeekInfo{
+				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
+				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Newest{}},
+				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
 	})
+
 	logger.Info("{Update Receiver} Listening to ledger updates.")
 	for i := 0; i < 2; i++ {
 		m, inerr := dstream.Recv()

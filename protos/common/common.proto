@@ -40,6 +40,7 @@ enum HeaderType {
     CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
     ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
     ORDERER_TRANSACTION = 4;       // Used internally by the orderer for management
+    DELIVER_SEEK_INFO = 5;         // Used as the type for Envelope messages submitted to instruct the Deliver API to seek
 }
 
 // This enum enlist indexes of the block metadata array

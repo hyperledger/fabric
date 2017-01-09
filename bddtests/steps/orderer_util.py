@@ -210,11 +210,18 @@ def seekPosition(position):
         return ab_pb2.SeekPosition(specified = ab_pb2.SeekSpecified(number = position))
 
 def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  behavior = 'FAIL_IF_NOT_READY'):
-    return ab_pb2.SeekInfo(
-        chainID = chainID,
-        start = seekPosition(start),
-        stop = seekPosition(end),
-        behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
+    return common_pb2.Envelope(
+        payload = common_pb2.Payload(
+            header = common_pb2.Header(
+                chainHeader = common_pb2.ChainHeader( chainID = chainID ),
+                signatureHeader = common_pb2.SignatureHeader(),
+            ),
+            data = ab_pb2.SeekInfo(
+                start = seekPosition(start),
+                stop = seekPosition(end),
+                behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
+            ).SerializeToString(),
+        ).SerializeToString(),
     )
 
 def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 1, timeToHoldOpen = 1):

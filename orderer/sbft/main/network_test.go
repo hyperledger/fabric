@@ -36,6 +36,7 @@ import (
 	pb "github.com/hyperledger/fabric/orderer/sbft/simplebft"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -344,11 +345,21 @@ func Receive(p *peer, startingPort int) (*receiver, error) {
 	if err != nil {
 		return nil, err
 	}
-	dstream.Send(&ab.SeekInfo{
-		ChainID:  provisional.TestChainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+	dstream.Send(&cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChainHeader: &cb.ChainHeader{
+					ChainID: provisional.TestChainID,
+				},
+				SignatureHeader: &cb.SignatureHeader{},
+			},
+
+			Data: utils.MarshalOrPanic(&ab.SeekInfo{
+				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
+				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
 	})
 
 	go func() {

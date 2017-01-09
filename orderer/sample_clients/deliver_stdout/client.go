@@ -23,7 +23,9 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -37,31 +39,35 @@ func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, chainID string) *
 	return &deliverClient{client: client, chainID: chainID}
 }
 
+func seekHelper(chainID string, start *ab.SeekPosition) *cb.Envelope {
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChainHeader: &cb.ChainHeader{
+					ChainID: chainID,
+				},
+				SignatureHeader: &cb.SignatureHeader{},
+			},
+
+			Data: utils.MarshalOrPanic(&ab.SeekInfo{
+				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
+				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
+				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
+	}
+}
+
 func (r *deliverClient) seekOldest() error {
-	return r.client.Send(&ab.SeekInfo{
-		ChainID:  r.chainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
-	})
+	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}}))
 }
 
 func (r *deliverClient) seekNewest() error {
-	return r.client.Send(&ab.SeekInfo{
-		ChainID:  r.chainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
-	})
+	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}}))
 }
 
 func (r *deliverClient) seek(blockNumber uint64) error {
-	return r.client.Send(&ab.SeekInfo{
-		ChainID:  r.chainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
-	})
+	return r.client.Send(seekHelper(r.chainID, &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}}))
 }
 
 func (r *deliverClient) readUntilClose() {

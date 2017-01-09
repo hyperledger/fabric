@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/ab.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x10orderer/ab.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"3\n\x11\x42roadcastResponse\x12\x1e\n\x06status\x18\x01 \x01(\x0e\x32\x0e.common.Status\"\x0c\n\nSeekNewest\"\x0c\n\nSeekOldest\"\x1f\n\rSeekSpecified\x12\x0e\n\x06number\x18\x01 \x01(\x04\"\x91\x01\n\x0cSeekPosition\x12%\n\x06newest\x18\x01 \x01(\x0b\x32\x13.orderer.SeekNewestH\x00\x12%\n\x06oldest\x18\x02 \x01(\x0b\x32\x13.orderer.SeekOldestH\x00\x12+\n\tspecified\x18\x03 \x01(\x0b\x32\x16.orderer.SeekSpecifiedH\x00\x42\x06\n\x04Type\"\xd6\x01\n\x08SeekInfo\x12\x0f\n\x07\x63hainID\x18\x01 \x01(\t\x12$\n\x05start\x18\x02 \x01(\x0b\x32\x15.orderer.SeekPosition\x12#\n\x04stop\x18\x03 \x01(\x0b\x32\x15.orderer.SeekPosition\x12\x30\n\x08\x62\x65havior\x18\x04 \x01(\x0e\x32\x1e.orderer.SeekInfo.SeekBehavior\"<\n\x0cSeekBehavior\x12\x15\n\x11\x42LOCK_UNTIL_READY\x10\x00\x12\x15\n\x11\x46\x41IL_IF_NOT_READY\x10\x01\"[\n\x0f\x44\x65liverResponse\x12 \n\x06status\x18\x01 \x01(\x0e\x32\x0e.common.StatusH\x00\x12\x1e\n\x05\x62lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x42\x06\n\x04Type2\x90\x01\n\x0f\x41tomicBroadcast\x12?\n\tBroadcast\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x01\x30\x01\x12<\n\x07\x44\x65liver\x12\x11.orderer.SeekInfo\x1a\x18.orderer.DeliverResponse\"\x00(\x01\x30\x01\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+  serialized_pb=_b('\n\x10orderer/ab.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"3\n\x11\x42roadcastResponse\x12\x1e\n\x06status\x18\x01 \x01(\x0e\x32\x0e.common.Status\"\x0c\n\nSeekNewest\"\x0c\n\nSeekOldest\"\x1f\n\rSeekSpecified\x12\x0e\n\x06number\x18\x01 \x01(\x04\"\x91\x01\n\x0cSeekPosition\x12%\n\x06newest\x18\x01 \x01(\x0b\x32\x13.orderer.SeekNewestH\x00\x12%\n\x06oldest\x18\x02 \x01(\x0b\x32\x13.orderer.SeekOldestH\x00\x12+\n\tspecified\x18\x03 \x01(\x0b\x32\x16.orderer.SeekSpecifiedH\x00\x42\x06\n\x04Type\"\xc5\x01\n\x08SeekInfo\x12$\n\x05start\x18\x01 \x01(\x0b\x32\x15.orderer.SeekPosition\x12#\n\x04stop\x18\x02 \x01(\x0b\x32\x15.orderer.SeekPosition\x12\x30\n\x08\x62\x65havior\x18\x03 \x01(\x0e\x32\x1e.orderer.SeekInfo.SeekBehavior\"<\n\x0cSeekBehavior\x12\x15\n\x11\x42LOCK_UNTIL_READY\x10\x00\x12\x15\n\x11\x46\x41IL_IF_NOT_READY\x10\x01\"[\n\x0f\x44\x65liverResponse\x12 \n\x06status\x18\x01 \x01(\x0e\x32\x0e.common.StatusH\x00\x12\x1e\n\x05\x62lock\x18\x02 \x01(\x0b\x32\r.common.BlockH\x00\x42\x06\n\x04Type2\x8f\x01\n\x0f\x41tomicBroadcast\x12?\n\tBroadcast\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x01\x30\x01\x12;\n\x07\x44\x65liver\x12\x10.common.Envelope\x1a\x18.orderer.DeliverResponse\"\x00(\x01\x30\x01\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
   ,
   dependencies=[common_dot_common__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -44,8 +44,8 @@ _SEEKINFO_SEEKBEHAVIOR = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=467,
-  serialized_end=527,
+  serialized_start=450,
+  serialized_end=510,
 )
 _sym_db.RegisterEnumDescriptor(_SEEKINFO_SEEKBEHAVIOR)
 
@@ -216,29 +216,22 @@ _SEEKINFO = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='chainID', full_name='orderer.SeekInfo.chainID', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
+      name='start', full_name='orderer.SeekInfo.start', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='start', full_name='orderer.SeekInfo.start', index=1,
+      name='stop', full_name='orderer.SeekInfo.stop', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='stop', full_name='orderer.SeekInfo.stop', index=2,
-      number=3, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='behavior', full_name='orderer.SeekInfo.behavior', index=3,
-      number=4, type=14, cpp_type=8, label=1,
+      name='behavior', full_name='orderer.SeekInfo.behavior', index=2,
+      number=3, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -257,7 +250,7 @@ _SEEKINFO = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=313,
-  serialized_end=527,
+  serialized_end=510,
 )
 
 
@@ -297,8 +290,8 @@ _DELIVERRESPONSE = _descriptor.Descriptor(
       name='Type', full_name='orderer.DeliverResponse.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=529,
-  serialized_end=620,
+  serialized_start=512,
+  serialized_end=603,
 )
 
 _BROADCASTRESPONSE.fields_by_name['status'].enum_type = common_dot_common__pb2._STATUS
@@ -411,7 +404,7 @@ try:
           )
       self.Deliver = channel.stream_stream(
           '/orderer.AtomicBroadcast/Deliver',
-          request_serializer=SeekInfo.SerializeToString,
+          request_serializer=common_dot_common__pb2.Envelope.SerializeToString,
           response_deserializer=DeliverResponse.FromString,
           )
 
@@ -426,7 +419,7 @@ try:
       raise NotImplementedError('Method not implemented!')
 
     def Deliver(self, request_iterator, context):
-      """deliver first requires an update containing a seek message, then a stream of block replies is received.
+      """deliver first requires an Envelope of type DELIVER_SEEK_INFO with Payload data as a mashaled SeekInfo message, then a stream of block replies is received.
       """
       context.set_code(grpc.StatusCode.UNIMPLEMENTED)
       context.set_details('Method not implemented!')
@@ -442,7 +435,7 @@ try:
         ),
         'Deliver': grpc.stream_stream_rpc_method_handler(
             servicer.Deliver,
-            request_deserializer=SeekInfo.FromString,
+            request_deserializer=common_dot_common__pb2.Envelope.FromString,
             response_serializer=DeliverResponse.SerializeToString,
         ),
     }
@@ -462,7 +455,7 @@ try:
       """
       context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
     def Deliver(self, request_iterator, context):
-      """deliver first requires an update containing a seek message, then a stream of block replies is received.
+      """deliver first requires an Envelope of type DELIVER_SEEK_INFO with Payload data as a mashaled SeekInfo message, then a stream of block replies is received.
       """
       context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
 
@@ -478,7 +471,7 @@ try:
       """
       raise NotImplementedError()
     def Deliver(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
-      """deliver first requires an update containing a seek message, then a stream of block replies is received.
+      """deliver first requires an Envelope of type DELIVER_SEEK_INFO with Payload data as a mashaled SeekInfo message, then a stream of block replies is received.
       """
       raise NotImplementedError()
 
@@ -491,7 +484,7 @@ try:
     generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
     request_deserializers = {
       ('orderer.AtomicBroadcast', 'Broadcast'): common_dot_common__pb2.Envelope.FromString,
-      ('orderer.AtomicBroadcast', 'Deliver'): SeekInfo.FromString,
+      ('orderer.AtomicBroadcast', 'Deliver'): common_dot_common__pb2.Envelope.FromString,
     }
     response_serializers = {
       ('orderer.AtomicBroadcast', 'Broadcast'): BroadcastResponse.SerializeToString,
@@ -513,7 +506,7 @@ try:
     generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
     request_serializers = {
       ('orderer.AtomicBroadcast', 'Broadcast'): common_dot_common__pb2.Envelope.SerializeToString,
-      ('orderer.AtomicBroadcast', 'Deliver'): SeekInfo.SerializeToString,
+      ('orderer.AtomicBroadcast', 'Deliver'): common_dot_common__pb2.Envelope.SerializeToString,
     }
     response_deserializers = {
       ('orderer.AtomicBroadcast', 'Broadcast'): BroadcastResponse.FromString,

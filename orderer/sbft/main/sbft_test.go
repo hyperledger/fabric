@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -133,11 +134,20 @@ func updateReceiver(t *testing.T, resultch chan byte, errorch chan error, client
 		errorch <- fmt.Errorf("Failed to get Deliver stream: %s", err)
 		return
 	}
-	err = dstream.Send(&ab.SeekInfo{
-		ChainID:  provisional.TestChainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: ^uint64(0)}}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+	err = dstream.Send(&cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChainHeader: &cb.ChainHeader{
+					ChainID: provisional.TestChainID,
+				},
+				SignatureHeader: &cb.SignatureHeader{},
+			},
+			Data: utils.MarshalOrPanic(&ab.SeekInfo{
+				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
+				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: ^uint64(0)}}},
+				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
 	})
 	if err != nil {
 		errorch <- fmt.Errorf("Failed to send to Deliver stream: %s", err)

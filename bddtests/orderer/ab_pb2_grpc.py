@@ -4,7 +4,7 @@ from grpc.framework.interfaces.face import utilities as face_utilities
 
 import common.common_pb2 as common_dot_common__pb2
 import orderer.ab_pb2 as orderer_dot_ab__pb2
-import orderer.ab_pb2 as orderer_dot_ab__pb2
+import common.common_pb2 as common_dot_common__pb2
 import orderer.ab_pb2 as orderer_dot_ab__pb2
 
 
@@ -23,7 +23,7 @@ class AtomicBroadcastStub(object):
         )
     self.Deliver = channel.stream_stream(
         '/orderer.AtomicBroadcast/Deliver',
-        request_serializer=orderer_dot_ab__pb2.SeekInfo.SerializeToString,
+        request_serializer=common_dot_common__pb2.Envelope.SerializeToString,
         response_deserializer=orderer_dot_ab__pb2.DeliverResponse.FromString,
         )
 
@@ -38,7 +38,7 @@ class AtomicBroadcastServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def Deliver(self, request_iterator, context):
-    """deliver first requires an update containing a seek message, then a stream of block replies is received.
+    """deliver first requires an Envelope of type DELIVER_SEEK_INFO with Payload data as a mashaled SeekInfo message, then a stream of block replies is received.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -54,7 +54,7 @@ def add_AtomicBroadcastServicer_to_server(servicer, server):
       ),
       'Deliver': grpc.stream_stream_rpc_method_handler(
           servicer.Deliver,
-          request_deserializer=orderer_dot_ab__pb2.SeekInfo.FromString,
+          request_deserializer=common_dot_common__pb2.Envelope.FromString,
           response_serializer=orderer_dot_ab__pb2.DeliverResponse.SerializeToString,
       ),
   }
