@@ -115,15 +115,27 @@ func NewManagerImpl(ledgerFactory rawledger.Factory, consenters map[string]Conse
 			if ml.sysChain != nil {
 				logger.Fatalf("There appear to be two system chains %s and %s", ml.sysChain.support.ChainID(), chainID)
 			}
-			logger.Debugf("Starting with system chain: %s", chainID)
-			chain := newChainSupport(createSystemChainFilters(ml, configManager), configManager, policyManager, backingLedger, sharedConfigManager, consenters, &xxxCryptoHelper{})
+			logger.Debugf("Starting with system chain: %x", chainID)
+			chain := newChainSupport(createSystemChainFilters(ml, configManager, policyManager, sharedConfigManager),
+				configManager,
+				policyManager,
+				backingLedger,
+				sharedConfigManager,
+				consenters,
+				&xxxCryptoHelper{})
 			ml.chains[string(chainID)] = chain
 			ml.sysChain = newSystemChain(chain)
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
 			defer chain.start()
 		} else {
-			logger.Debugf("Starting chain: %s", chainID)
-			chain := newChainSupport(createStandardFilters(configManager), configManager, policyManager, backingLedger, sharedConfigManager, consenters, &xxxCryptoHelper{})
+			logger.Debugf("Starting chain: %x", chainID)
+			chain := newChainSupport(createStandardFilters(configManager, policyManager, sharedConfigManager),
+				configManager,
+				policyManager,
+				backingLedger,
+				sharedConfigManager,
+				consenters,
+				&xxxCryptoHelper{})
 			ml.chains[string(chainID)] = chain
 			chain.start()
 		}
@@ -225,7 +237,7 @@ func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 		newChains[key] = value
 	}
 
-	cs := newChainSupport(createStandardFilters(configManager), configManager, policyManager, backingLedger, sharedConfig, ml.consenters, &xxxCryptoHelper{})
+	cs := newChainSupport(createStandardFilters(configManager, policyManager, sharedConfig), configManager, policyManager, backingLedger, sharedConfig, ml.consenters, &xxxCryptoHelper{})
 	chainID := configManager.ChainID()
 
 	logger.Debugf("Created and starting new chain %s", chainID)

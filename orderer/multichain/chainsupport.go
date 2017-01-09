@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/deliver"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
+	"github.com/hyperledger/fabric/orderer/common/sigfilter"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -127,9 +128,10 @@ func newChainSupport(
 }
 
 // createStandardFilters creates the set of filters for a normal (non-system) chain
-func createStandardFilters(configManager configtx.Manager) *filter.RuleSet {
+func createStandardFilters(configManager configtx.Manager, policyManager policies.Manager, sharedConfig sharedconfig.Manager) *filter.RuleSet {
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
+		sigfilter.New(sharedConfig.IngressPolicy, policyManager),
 		configtx.NewFilter(configManager),
 		filter.AcceptRule,
 	})
@@ -137,9 +139,10 @@ func createStandardFilters(configManager configtx.Manager) *filter.RuleSet {
 }
 
 // createSystemChainFilters creates the set of filters for the ordering system chain
-func createSystemChainFilters(ml *multiLedger, configManager configtx.Manager) *filter.RuleSet {
+func createSystemChainFilters(ml *multiLedger, configManager configtx.Manager, policyManager policies.Manager, sharedConfig sharedconfig.Manager) *filter.RuleSet {
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
+		sigfilter.New(sharedConfig.IngressPolicy, policyManager),
 		newSystemChainFilter(ml),
 		configtx.NewFilter(configManager),
 		filter.AcceptRule,

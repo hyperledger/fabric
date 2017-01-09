@@ -386,120 +386,145 @@ _sym_db.RegisterMessage(DeliverResponse)
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z,github.com/hyperledger/fabric/protos/orderer'))
-import grpc
-from grpc.beta import implementations as beta_implementations
-from grpc.beta import interfaces as beta_interfaces
-from grpc.framework.common import cardinality
-from grpc.framework.interfaces.face import utilities as face_utilities
+try:
+  # THESE ELEMENTS WILL BE DEPRECATED.
+  # Please use the generated *_pb2_grpc.py files instead.
+  import grpc
+  from grpc.framework.common import cardinality
+  from grpc.framework.interfaces.face import utilities as face_utilities
+  from grpc.beta import implementations as beta_implementations
+  from grpc.beta import interfaces as beta_interfaces
 
 
-class AtomicBroadcastStub(object):
+  class AtomicBroadcastStub(object):
 
-  def __init__(self, channel):
-    """Constructor.
+    def __init__(self, channel):
+      """Constructor.
 
-    Args:
-      channel: A grpc.Channel.
-    """
-    self.Broadcast = channel.stream_stream(
-        '/orderer.AtomicBroadcast/Broadcast',
-        request_serializer=common_dot_common__pb2.Envelope.SerializeToString,
-        response_deserializer=BroadcastResponse.FromString,
-        )
-    self.Deliver = channel.stream_stream(
-        '/orderer.AtomicBroadcast/Deliver',
-        request_serializer=SeekInfo.SerializeToString,
-        response_deserializer=DeliverResponse.FromString,
-        )
-
-
-class AtomicBroadcastServicer(object):
-
-  def Broadcast(self, request_iterator, context):
-    """broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
-
-  def Deliver(self, request_iterator, context):
-    """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+      Args:
+        channel: A grpc.Channel.
+      """
+      self.Broadcast = channel.stream_stream(
+          '/orderer.AtomicBroadcast/Broadcast',
+          request_serializer=common_dot_common__pb2.Envelope.SerializeToString,
+          response_deserializer=BroadcastResponse.FromString,
+          )
+      self.Deliver = channel.stream_stream(
+          '/orderer.AtomicBroadcast/Deliver',
+          request_serializer=SeekInfo.SerializeToString,
+          response_deserializer=DeliverResponse.FromString,
+          )
 
 
-def add_AtomicBroadcastServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'Broadcast': grpc.stream_stream_rpc_method_handler(
-          servicer.Broadcast,
-          request_deserializer=common_dot_common__pb2.Envelope.FromString,
-          response_serializer=BroadcastResponse.SerializeToString,
-      ),
-      'Deliver': grpc.stream_stream_rpc_method_handler(
-          servicer.Deliver,
-          request_deserializer=SeekInfo.FromString,
-          response_serializer=DeliverResponse.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'orderer.AtomicBroadcast', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+  class AtomicBroadcastServicer(object):
+
+    def Broadcast(self, request_iterator, context):
+      """broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
+      """
+      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+      context.set_details('Method not implemented!')
+      raise NotImplementedError('Method not implemented!')
+
+    def Deliver(self, request_iterator, context):
+      """deliver first requires an update containing a seek message, then a stream of block replies is received.
+      """
+      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+      context.set_details('Method not implemented!')
+      raise NotImplementedError('Method not implemented!')
 
 
-class BetaAtomicBroadcastServicer(object):
-  def Broadcast(self, request_iterator, context):
-    """broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
-    """
-    context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-  def Deliver(self, request_iterator, context):
-    """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    """
-    context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
+  def add_AtomicBroadcastServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+        'Broadcast': grpc.stream_stream_rpc_method_handler(
+            servicer.Broadcast,
+            request_deserializer=common_dot_common__pb2.Envelope.FromString,
+            response_serializer=BroadcastResponse.SerializeToString,
+        ),
+        'Deliver': grpc.stream_stream_rpc_method_handler(
+            servicer.Deliver,
+            request_deserializer=SeekInfo.FromString,
+            response_serializer=DeliverResponse.SerializeToString,
+        ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+        'orderer.AtomicBroadcast', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
 
 
-class BetaAtomicBroadcastStub(object):
-  def Broadcast(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
-    """broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
-    """
-    raise NotImplementedError()
-  def Deliver(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
-    """deliver first requires an update containing a seek message, then a stream of block replies is received.
-    """
-    raise NotImplementedError()
+  class BetaAtomicBroadcastServicer(object):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This class was generated
+    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
+    def Broadcast(self, request_iterator, context):
+      """broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
+      """
+      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
+    def Deliver(self, request_iterator, context):
+      """deliver first requires an update containing a seek message, then a stream of block replies is received.
+      """
+      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
 
 
-def beta_create_AtomicBroadcast_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
-  request_deserializers = {
-    ('orderer.AtomicBroadcast', 'Broadcast'): common_dot_common__pb2.Envelope.FromString,
-    ('orderer.AtomicBroadcast', 'Deliver'): SeekInfo.FromString,
-  }
-  response_serializers = {
-    ('orderer.AtomicBroadcast', 'Broadcast'): BroadcastResponse.SerializeToString,
-    ('orderer.AtomicBroadcast', 'Deliver'): DeliverResponse.SerializeToString,
-  }
-  method_implementations = {
-    ('orderer.AtomicBroadcast', 'Broadcast'): face_utilities.stream_stream_inline(servicer.Broadcast),
-    ('orderer.AtomicBroadcast', 'Deliver'): face_utilities.stream_stream_inline(servicer.Deliver),
-  }
-  server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
-  return beta_implementations.server(method_implementations, options=server_options)
+  class BetaAtomicBroadcastStub(object):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This class was generated
+    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
+    def Broadcast(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
+      """broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
+      """
+      raise NotImplementedError()
+    def Deliver(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
+      """deliver first requires an update containing a seek message, then a stream of block replies is received.
+      """
+      raise NotImplementedError()
 
 
-def beta_create_AtomicBroadcast_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
-  request_serializers = {
-    ('orderer.AtomicBroadcast', 'Broadcast'): common_dot_common__pb2.Envelope.SerializeToString,
-    ('orderer.AtomicBroadcast', 'Deliver'): SeekInfo.SerializeToString,
-  }
-  response_deserializers = {
-    ('orderer.AtomicBroadcast', 'Broadcast'): BroadcastResponse.FromString,
-    ('orderer.AtomicBroadcast', 'Deliver'): DeliverResponse.FromString,
-  }
-  cardinalities = {
-    'Broadcast': cardinality.Cardinality.STREAM_STREAM,
-    'Deliver': cardinality.Cardinality.STREAM_STREAM,
-  }
-  stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
-  return beta_implementations.dynamic_stub(channel, 'orderer.AtomicBroadcast', cardinalities, options=stub_options)
+  def beta_create_AtomicBroadcast_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This function was
+    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
+    request_deserializers = {
+      ('orderer.AtomicBroadcast', 'Broadcast'): common_dot_common__pb2.Envelope.FromString,
+      ('orderer.AtomicBroadcast', 'Deliver'): SeekInfo.FromString,
+    }
+    response_serializers = {
+      ('orderer.AtomicBroadcast', 'Broadcast'): BroadcastResponse.SerializeToString,
+      ('orderer.AtomicBroadcast', 'Deliver'): DeliverResponse.SerializeToString,
+    }
+    method_implementations = {
+      ('orderer.AtomicBroadcast', 'Broadcast'): face_utilities.stream_stream_inline(servicer.Broadcast),
+      ('orderer.AtomicBroadcast', 'Deliver'): face_utilities.stream_stream_inline(servicer.Deliver),
+    }
+    server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
+    return beta_implementations.server(method_implementations, options=server_options)
+
+
+  def beta_create_AtomicBroadcast_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This function was
+    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
+    request_serializers = {
+      ('orderer.AtomicBroadcast', 'Broadcast'): common_dot_common__pb2.Envelope.SerializeToString,
+      ('orderer.AtomicBroadcast', 'Deliver'): SeekInfo.SerializeToString,
+    }
+    response_deserializers = {
+      ('orderer.AtomicBroadcast', 'Broadcast'): BroadcastResponse.FromString,
+      ('orderer.AtomicBroadcast', 'Deliver'): DeliverResponse.FromString,
+    }
+    cardinalities = {
+      'Broadcast': cardinality.Cardinality.STREAM_STREAM,
+      'Deliver': cardinality.Cardinality.STREAM_STREAM,
+    }
+    stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
+    return beta_implementations.dynamic_stub(channel, 'orderer.AtomicBroadcast', cardinalities, options=stub_options)
+except ImportError:
+  pass
 # @@protoc_insertion_point(module_scope)

@@ -124,6 +124,9 @@ func (sc *systemChain) proposeChain(configTx *cb.Envelope) cb.Status {
 				ChainID: sc.support.ChainID(),
 				Type:    int32(cb.HeaderType_ORDERER_TRANSACTION),
 			},
+			SignatureHeader: &cb.SignatureHeader{
+			// XXX Appropriately set the signing identity and nonce here
+			},
 		},
 		Data: marshaledEnv,
 	}

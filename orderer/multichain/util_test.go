@@ -32,6 +32,7 @@ func (mc *mockConsenter) HandleChain(support ConsenterSupport) (Chain, error) {
 		queue:   make(chan *cb.Envelope),
 		cutter:  support.BlockCutter(),
 		support: support,
+		done:    make(chan struct{}),
 	}, nil
 }
 
@@ -39,6 +40,7 @@ type mockChain struct {
 	queue   chan *cb.Envelope
 	support ConsenterSupport
 	cutter  blockcutter.Receiver
+	done    chan struct{}
 }
 
 func (mch *mockChain) Enqueue(env *cb.Envelope) bool {
@@ -48,6 +50,7 @@ func (mch *mockChain) Enqueue(env *cb.Envelope) bool {
 
 func (mch *mockChain) Start() {
 	go func() {
+		defer close(mch.done)
 		for {
 			msg, ok := <-mch.queue
 			if !ok {
@@ -94,10 +97,42 @@ func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.E
 				Type:    int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
 				ChainID: chainID,
 			},
+			SignatureHeader: &cb.SignatureHeader{},
 		},
 		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
 			Items: signedItems,
 		}),
+	}
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(payload),
+	}
+}
+
+func makeNormalTx(chainID string, i int) *cb.Envelope {
+	payload := &cb.Payload{
+		Header: &cb.Header{
+			ChainHeader: &cb.ChainHeader{
+				Type:    int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				ChainID: chainID,
+			},
+			SignatureHeader: &cb.SignatureHeader{},
+		},
+		Data: []byte(fmt.Sprintf("%d", i)),
+	}
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(payload),
+	}
+}
+
+func makeSignaturelessTx(chainID string, i int) *cb.Envelope {
+	payload := &cb.Payload{
+		Header: &cb.Header{
+			ChainHeader: &cb.ChainHeader{
+				Type:    int32(cb.HeaderType_ENDORSER_TRANSACTION),
+				ChainID: chainID,
+			},
+		},
+		Data: []byte(fmt.Sprintf("%d", i)),
 	}
 	return &cb.Envelope{
 		Payload: utils.MarshalOrPanic(payload),

@@ -225,7 +225,8 @@ def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 1, timeTo
                 chainHeader = common_pb2.ChainHeader(
                     chainID = chainID,
                     type = common_pb2.ENDORSER_TRANSACTION,
-                )
+                ),
+                signatureHeader = common_pb2.SignatureHeader(),
             ),
             data = str("BDD test: {0}".format(datetime.datetime.utcnow())),
         )

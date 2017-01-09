@@ -17,7 +17,6 @@ limitations under the License.
 package multichain
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -40,22 +39,6 @@ func init() {
 	conf = config.Load()
 	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(conf).GenesisBlock()
-}
-
-// TODO move to util
-func makeNormalTx(chainID string, i int) *cb.Envelope {
-	payload := &cb.Payload{
-		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
-				Type:    int32(cb.HeaderType_ENDORSER_TRANSACTION),
-				ChainID: chainID,
-			},
-		},
-		Data: []byte(fmt.Sprintf("%d", i)),
-	}
-	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(payload),
-	}
 }
 
 func NewRAMLedgerAndFactory(maxSize int) (rawledger.Factory, rawledger.ReadWriter) {
@@ -159,6 +142,43 @@ func TestManagerImpl(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout")
+	}
+}
+
+// This test makes sure that the signature filter works
+func TestSignatureFilter(t *testing.T) {
+	lf, rl := NewRAMLedgerAndFactory(10)
+
+	consenters := make(map[string]Consenter)
+	consenters[conf.General.OrdererType] = &mockConsenter{}
+
+	manager := NewManagerImpl(lf, consenters)
+
+	cs, ok := manager.GetChain(provisional.TestChainID)
+
+	if !ok {
+		t.Fatalf("Should have gotten chain which was initialized by ramledger")
+	}
+
+	messages := make([]*cb.Envelope, conf.General.BatchSize.MaxMessageCount)
+	for i := 0; i < int(conf.General.BatchSize.MaxMessageCount); i++ {
+		messages[i] = makeSignaturelessTx(provisional.TestChainID, i)
+	}
+
+	for _, message := range messages {
+		cs.Enqueue(message)
+	}
+
+	// Causes the consenter thread to exit after it processes all messages
+	close(cs.(*chainSupport).chain.(*mockChain).queue)
+
+	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
+	select {
+	case <-it.ReadyChan():
+		// Will unblock if a block is created
+		t.Fatalf("Block 1 should not have been created")
+	case <-cs.(*chainSupport).chain.(*mockChain).done:
+		// Will unblock once the consenter thread has exited
 	}
 }
 

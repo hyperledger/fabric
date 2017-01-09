@@ -228,6 +228,7 @@ class BootstrapHelper:
     KEY_CONSENSUS_TYPE = "ConsensusType"
     KEY_CHAIN_CREATORS = "ChainCreators"
     KEY_ACCEPT_ALL_POLICY = "AcceptAllPolicy"
+    KEY_INGRESS_POLICY = "IngressPolicy"
     KEY_BATCH_SIZE = "BatchSize"
 
     DEFAULT_MODIFICATION_POLICY_ID = "DefaultModificationPolicy"
@@ -278,7 +279,7 @@ class BootstrapHelper:
         configItem = self.getConfigItem(
             commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Orderer"),
             key=BootstrapHelper.KEY_BATCH_SIZE,
-            value=orderer_dot_configuration_pb2.BatchSize(messages=self.batchSize).SerializeToString())
+            value=orderer_dot_configuration_pb2.BatchSize(maxMessageCount=self.batchSize).SerializeToString())
         return self.signConfigItem(configItem)
 
     def  encodeConsensusType(self):
@@ -295,21 +296,26 @@ class BootstrapHelper:
             value=orderer_dot_configuration_pb2.ChainCreators(policies=BootstrapHelper.DEFAULT_CHAIN_CREATORS).SerializeToString())
         return self.signConfigItem(configItem)
 
-
-    def _encodeSignaturePolicyEnvelope(self, signaturePolicyEnvelope):
+    def  encodeIngressPolicy(self):
         configItem = self.getConfigItem(
             commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Orderer"),
-            key=BootstrapHelper.DEFAULT_MODIFICATION_POLICY_ID,
-            value=signaturePolicyEnvelope.SerializeToString())
+            key=BootstrapHelper.KEY_INGRESS_POLICY,
+            value=orderer_dot_configuration_pb2.IngressPolicy(name=BootstrapHelper.KEY_ACCEPT_ALL_POLICY).SerializeToString())
         return self.signConfigItem(configItem)
 
     def encodeAcceptAllPolicy(self):
-        acceptAllPolicy =  AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(0,[]), identities=[])
-        return self._encodeSignaturePolicyEnvelope(acceptAllPolicy)
+        configItem = self.getConfigItem(
+            commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Policy"),
+            key=BootstrapHelper.KEY_ACCEPT_ALL_POLICY,
+            value=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(0,[]), identities=[]).SerializeToString())
+        return self.signConfigItem(configItem)
 
     def lockDefaultModificationPolicy(self):
-        rejectAllPolicy =  AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(1,[]), identities=[])
-        return self._encodeSignaturePolicyEnvelope(rejectAllPolicy)
+        configItem = self.getConfigItem(
+            commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Policy"),
+            key=BootstrapHelper.DEFAULT_MODIFICATION_POLICY_ID,
+            value=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(1,[]), identities=[]).SerializeToString())
+        return self.signConfigItem(configItem)
 
     def computeBlockDataHash(self, blockData):
         return computeCryptoHash(blockData.SerializeToString())
@@ -333,6 +339,7 @@ def createGenesisBlock(context, chainId, networkConfigPolicy, consensusType):
     configItems.append(bootstrapHelper.encodeConsensusType())
     configItems.append(bootstrapHelper.encodeChainCreators())
     configItems.append(bootstrapHelper.encodeAcceptAllPolicy())
+    configItems.append(bootstrapHelper.encodeIngressPolicy())
     configItems.append(bootstrapHelper.lockDefaultModificationPolicy())
     configEnvelope = common_dot_configuration_pb2.ConfigurationEnvelope(Items=configItems)
 
