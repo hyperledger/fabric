@@ -18,9 +18,11 @@ package service
 
 import (
 	"sync"
+	"time"
 
 	peerComm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
@@ -40,6 +42,23 @@ var (
 
 type gossipSvc gossip.Gossip
 
+// TODO: This is a temporary join channel struct, to be removed once
+// the structure of configuration block in terms of anchor peers will
+// be defined and coded. Currently need it to allow the end-to-end
+// skeleton to work, having gossip multi chain support.
+type joinChanMsg struct {
+}
+
+// GetTimestamp returns the timestamp of the message's creation
+func (*joinChanMsg) GetTimestamp() time.Time {
+	return time.Now()
+}
+
+// AnchorPeers returns all the anchor peers that are in the channel
+func (*joinChanMsg) AnchorPeers() []api.AnchorPeer {
+	return []api.AnchorPeer{{Cert: api.PeerIdentityType(util.GetTestOrgID())}}
+}
+
 // GossipService encapsulates gossip and state capabilities into single interface
 type GossipService interface {
 	gossip.Gossip
@@ -56,11 +75,6 @@ type gossipServiceImpl struct {
 	gossipSvc
 	chains map[string]state.GossipStateProvider
 	lock   sync.RWMutex
-}
-
-// JoinChan makes the Gossip instance join a channel
-func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID gossipCommon.ChainID) {
-	// TODO: eventually we'll have only 1 JoinChannel method
 }
 
 var logger = logging.MustGetLogger("gossipService")
@@ -99,7 +113,8 @@ func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *com
 	} else {
 		// Initialize new state provider for given committer
 		logger.Debug("Creating state provider for chainID", chainID)
-		g.chains[chainID] = state.NewGossipStateProvider(g, commiter)
+		g.chains[chainID] = state.NewGossipStateProvider(chainID, g, commiter)
+		g.JoinChan(&joinChanMsg{}, gossipCommon.ChainID(chainID))
 	}
 
 	return nil

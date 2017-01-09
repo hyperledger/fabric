@@ -26,6 +26,7 @@ import (
 	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
@@ -41,6 +42,20 @@ var (
 )
 
 var orgId = []byte("ORG1")
+var anchorPeerIdentity = api.PeerIdentityType("identityInOrg1")
+
+type joinChanMsg struct {
+}
+
+// GetTimestamp returns the timestamp of the message's creation
+func (*joinChanMsg) GetTimestamp() time.Time {
+	return time.Now()
+}
+
+// AnchorPeers returns all the anchor peers that are in the channel
+func (*joinChanMsg) AnchorPeers() []api.AnchorPeer {
+	return []api.AnchorPeer{{Cert: anchorPeerIdentity}}
+}
 
 type orgCryptoService struct {
 
@@ -120,10 +135,10 @@ func (node *peerNode) shutdown() {
 func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
 	port := id + portPrefix
 	return &gossip.Config{
-		BindPort:       port,
-		BootstrapPeers: bootPeers(boot...),
-		ID:             fmt.Sprintf("p%d", id),
-		MaxBlockCountToStore:     maxMsgCount,
+		BindPort:                   port,
+		BootstrapPeers:             bootPeers(boot...),
+		ID:                         fmt.Sprintf("p%d", id),
+		MaxBlockCountToStore:       maxMsgCount,
 		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
 		MaxPropagationBurstSize:    10,
 		PropagateIterations:        1,
@@ -132,8 +147,8 @@ func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
 		PullPeerNum:                5,
 		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
 		PublishCertPeriod:          10 * time.Second,
-		RequestStateInfoInterval:   4  * time.Second,
-		PublishStateInfoInterval:   4  * time.Second,
+		RequestStateInfoInterval:   4 * time.Second,
+		PublishStateInfoInterval:   4 * time.Second,
 	}
 }
 
@@ -154,11 +169,14 @@ func newPeerNode(config *gossip.Config, committer committer.Committer) *peerNode
 	// Gossip component based on configuration provided and communication module
 	gossip := newGossipInstance(config)
 
+	logger.Debug("Joinning channel", util.GetTestChainID())
+	gossip.JoinChan(&joinChanMsg{}, common.ChainID(util.GetTestChainID()))
+
 	// Initialize pseudo peer simulator, which has only three
 	// basic parts
 	return &peerNode{
 		g: gossip,
-		s: NewGossipStateProvider(gossip, committer),
+		s: NewGossipStateProvider(util.GetTestChainID(), gossip, committer),
 
 		commit: committer,
 	}
@@ -278,8 +296,8 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	peersSet := make([]*peerNode, 0)
 
 	for i := 0; i < standartPeersSize; i++ {
-		committer := newCommitter(standartPeersSize + i)
-		peersSet = append(peersSet, newPeerNode(newGossipConfig(standartPeersSize+i, 100, 0, 1, 2, 3, 4), committer))
+		committer := newCommitter(bootstrapSetSize + i)
+		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 100, 0, 1, 2, 3, 4), committer))
 	}
 
 	defer func() {
@@ -290,7 +308,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	waitUntilTrueOrTimeout(t, func() bool {
 		for _, p := range peersSet {
-			if len(p.g.Peers()) != bootstrapSetSize+standartPeersSize-1 {
+			if len(p.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != bootstrapSetSize+standartPeersSize-1 {
 				logger.Debug("[XXXXXXX]: Peer discovery has not finished yet")
 				return false
 			}
@@ -312,7 +330,6 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 		logger.Debug("[#####]: All peers have same ledger height!!!")
 		return true
 	}, 60*time.Second)
-
 }
 
 func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Duration) {

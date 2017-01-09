@@ -124,7 +124,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 
 	g.certStore = newCertStore(g.createCertStorePuller(), idMapper, selfIdentity, mcs)
 
-	g.logger.SetLevel(logging.WARNING)
+	g.logger.SetLevel(logging.DEBUG)
 
 	go g.start()
 
