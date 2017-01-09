@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,12 +29,14 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/proto"
 	pcomm "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -330,6 +333,70 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 		logger.Debug("[#####]: All peers have same ledger height!!!")
 		return true
 	}, 60*time.Second)
+}
+
+func TestGossipStateProvider_TestStateMessages(t *testing.T) {
+	viper.Set("peer.fileSystemPath", "/tmp/tests/ledger/node")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
+
+	bootPeer := newPeerNode(newGossipConfig(0, 100), newCommitter(0))
+	defer bootPeer.shutdown()
+
+	peer := newPeerNode(newGossipConfig(1, 100, 0), newCommitter(1))
+	defer peer.shutdown()
+
+	_, bootCh := bootPeer.g.Accept(remoteStateMsgFilter, true)
+	_, peerCh := peer.g.Accept(remoteStateMsgFilter, true)
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		msg := <-bootCh
+		logger.Info("Bootstrap node got message, ", msg)
+		assert.True(t, msg.GetGossipMessage().GetStateRequest() != nil)
+		msg.Respond(&proto.GossipMessage{
+			Content: &proto.GossipMessage_StateResponse{&proto.RemoteStateResponse{nil}},
+		})
+		wg.Done()
+	}()
+
+	go func() {
+		msg := <-peerCh
+		logger.Info("Peer node got an answer, ", msg)
+		assert.True(t, msg.GetGossipMessage().GetStateResponse() != nil)
+		wg.Done()
+
+	}()
+
+	readyCh := make(chan struct{})
+	go func() {
+		wg.Wait()
+		readyCh <- struct{}{}
+	}()
+
+	time.Sleep(time.Duration(5) * time.Second)
+	logger.Info("Sending gossip message with remote state request")
+
+	chainID := common.ChainID(util.GetTestChainID())
+
+	peer.g.Send(&proto.GossipMessage{
+		Content: &proto.GossipMessage_StateRequest{&proto.RemoteStateRequest{nil}},
+	}, &comm.RemotePeer{peer.g.PeersOfChannel(chainID)[0].Endpoint, peer.g.PeersOfChannel(chainID)[0].PKIid})
+	logger.Info("Waiting until peers exchange messages")
+
+	select {
+	case <-readyCh:
+		{
+			logger.Info("[XXX]: Done!!!")
+
+		}
+	case <-time.After(time.Duration(10) * time.Second):
+		{
+			t.Fail()
+		}
+	}
 }
 
 func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Duration) {

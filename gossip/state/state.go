@@ -51,6 +51,11 @@ var logFormat = logging.MustStringFormatter(
 	`%{color}%{level} %{longfunc}():%{color:reset}(%{module})%{message}`,
 )
 
+var remoteStateMsgFilter = func(message interface{}) bool {
+	return message.(comm.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
+}
+
+
 const (
 	defPollingPeriod       = 200 * time.Millisecond
 	defAntiEntropyInterval = 10 * time.Second
@@ -89,7 +94,6 @@ type GossipStateProviderImpl struct {
 // NewGossipStateProvider creates initialized instance of gossip state provider
 func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer.Committer) GossipStateProvider {
 	logger, _ := logging.GetLogger("GossipStateProvider")
-	logging.SetLevel(logging.DEBUG, logger.Module)
 
 	gossipChan, _ := g.Accept(func(message interface{}) bool {
 		// Get only data messages
@@ -98,9 +102,7 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 	}, false)
 
 	// Filter message which are only relevant for state transfer
-	_, commChan := g.Accept(func(message interface{}) bool {
-		return message.(comm.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage() 
-	}, true)
+	_, commChan := g.Accept(remoteStateMsgFilter, true)
 
 	height, err := committer.LedgerHeight()
 
@@ -139,7 +141,7 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 	s.logger.Infof("Updating node metadata information, current ledger sequence is at = %d, next expected block is = %d", state.LedgerHeight, s.payloads.Next())
 	bytes, err := state.Bytes()
 	if err == nil {
-		s.logger.Debug("[VVV]: Updating gossip metadate state", state)
+		s.logger.Debug("Updating gossip metadate state", state)
 		g.UpdateChannelMetadata(bytes, common2.ChainID(s.chainID))
 	} else {
 		s.logger.Errorf("Unable to serialize node meta state, error = %s", err)
