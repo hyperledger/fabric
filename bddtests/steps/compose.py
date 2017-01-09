@@ -64,8 +64,18 @@ class Composition:
         self.context = context
         self.containerDataList = []
         self.composeFilesYaml = composeFilesYaml
+        self.serviceNames = []
+        self.serviceNames = self._collectServiceNames()
         [callback.composing(self, context) for callback in Composition.GetCompositionCallbacksFromContext(context)]
         self.issueCommand(["up", "--force-recreate", "-d"])
+
+    def _collectServiceNames(self):
+        'First collect the services names.'
+        servicesList = [service for service in self.issueCommand(["config", "--services"]).splitlines() if "WARNING" not in service]
+        return servicesList
+
+    def getServiceNames(self):
+         return list(self.serviceNames)
 
     def parseComposeFilesArg(self, composeFileArgs):
         args = [arg for sublist in [["-f", file] for file in [file if not os.path.isdir(file) else os.path.join(file, 'docker-compose.yml') for file in composeFileArgs.split()]] for arg in sublist]
@@ -92,7 +102,7 @@ class Composition:
         output, error, returncode = \
             bdd_test_util.cli_call(["docker-compose"] + cmdArgs, expect_success=True, env=self.getEnv())
         # Don't rebuild if ps command
-        if args[0] !="ps":
+        if args[0] !="ps" and args[0] !="config":
             self.rebuildContainerData()
         return output
 

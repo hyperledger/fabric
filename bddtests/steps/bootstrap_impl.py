@@ -33,6 +33,13 @@ def step_impl(context):
     for row in context.table.rows:
         directory.registerOrdererAdminTuple(row['User'], row['Orderer'], row['Organization'])
 
+@given(u'user requests role for peer by creating a key and csr for peer and acquires signed certificate from organization')
+def step_impl(context):
+    assert 'table' in context, "Expected table with triplet of User/Peer/Organization"
+    directory = bootstrap_util.getDirectory(context)
+    for row in context.table.rows:
+        directory.registerOrdererAdminTuple(row['User'], row['Peer'], row['Organization'])
+
 @given(u'the peer network has organizations')
 def step_impl(context):
     assert 'table' in context, "Expected table of peer network organizations"
@@ -50,6 +57,7 @@ def step_impl(context):
 def step_impl(context, ordererSystemChainId, networkConfigPolicy, consensusType):
     genesisBlock = bootstrap_util.createGenesisBlock(context, ordererSystemChainId, networkConfigPolicy, consensusType)
     bootstrap_util.OrdererGensisBlockCompositionCallback(context, genesisBlock)
+    bootstrap_util.PeerCompositionCallback(context)
 
 @given(u'the orderer admins inspect and approve the genesis block for chain "{chainId}"')
 def step_impl(context, chainId):

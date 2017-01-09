@@ -25,7 +25,8 @@ Feature: Bootstrap
 #      | User           | Orderer  | Organization  |
 
     And the peer network has organizations:
-      |  peerOrg0  |
+      | Organization  |
+      |  peerOrg0     |
 
     And a ordererBootstrapAdmin is identified and given access to all public certificates and orderer node info
     # Order info includes orderer admin/orderer information and address (host:port) from previous steps
@@ -37,18 +38,17 @@ Feature: Bootstrap
 
     # to be used for setting the orderer genesis block path parameter in composition
     And the orderer admins use the genesis block for chain "<OrdererSystemChainId>" to configure orderers
+
+    # We now have an orderer network with NO peers.  Now need to configure and start the peer network
+    # This can be currently automated through folder creation of the proper form and placing PEMs.
+      And user requests role for peer by creating a key and csr for peer and acquires signed certificate from organization:
+        | User            | Peer     | Organization  |
+        | peer0Signer     | peer0    | peerOrg0      |
+        | peer1Signer     | peer1    | peerOrg0      |
+        | peer2Signer     | peer2    | peerOrg0      |
+        | peer3Signer     | peer3    | peerOrg0      |
+
     And we compose "<ComposeFile>"
-
-
-
-    # We now have an orderer network with NO peers.  Now need to configure and start the peer network
-    And user requests role of peer admin by creating a key and csr for peer and acquires signed certificate from organization:
-      | peer0Admin | peer0 | peerOrg0  |
-
-    # We now have an orderer network with NO peers.  Now need to configure and start the peer network
-    And user requests role of peer signer by creating a key and csr for peer and acquires signed certificate from organization:
-      | peer0Signer | peer0 | peerOrg0  |
-
 
     And peer admins get the genesis block for chain 'chain1' from chainBoostrapAdmin
     And the peer admins inspect and approve the genesis block for chain 'chain1'

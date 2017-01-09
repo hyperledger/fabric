@@ -13,7 +13,7 @@ services:
       service: orderer0
 
 
-  vp0:
+  peer0:
     extends:
       file: docker-compose-next.yml
       service: vpNext
@@ -21,8 +21,7 @@ services:
       - CORE_PEER_ID=vp0
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
-      - CORE_SECURITY_ENROLLID=test_vp0
-      - CORE_SECURITY_ENROLLSECRET=MwYpmSRjupbT
+      - CORE_PEER_MSPCONFIGPATH=${PEER0_CORE_PEER_MSPCFGPATH}
     depends_on:
       - membersrvc0
       - orderer0
@@ -30,47 +29,44 @@ services:
     #   - 7050:6060
 
 
-  vp1:
+  peer1:
     extends:
       file: docker-compose-next.yml
       service: vpNext
     environment:
       - CORE_PEER_ID=vp1
-      - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
-      - CORE_SECURITY_ENROLLID=test_vp1
-      - CORE_SECURITY_ENROLLSECRET=5wgHK9qqYaPy
+      - CORE_PEER_MSPCONFIGPATH=${PEER1_CORE_PEER_MSPCFGPATH}
     depends_on:
       - membersrvc0
       - orderer0
-      - vp0
+      - peer0
 
-  vp2:
+  peer2:
     extends:
       file: docker-compose-next.yml
       service: vpNext
     environment:
       - CORE_PEER_ID=vp2
-      - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
-      - CORE_SECURITY_ENROLLID=test_vp2
-      - CORE_SECURITY_ENROLLSECRET=vQelbRvja7cJ
+      - CORE_PEER_MSPCONFIGPATH=${PEER2_CORE_PEER_MSPCFGPATH}
     depends_on:
       - membersrvc0
       - orderer0
-      - vp0
+      - peer0
 
-  vp3:
+  peer3:
     extends:
       file: docker-compose-next.yml
       service: vpNext
     environment:
       - CORE_PEER_ID=vp3
-      - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
-      - CORE_SECURITY_ENROLLID=test_vp3
-      - CORE_SECURITY_ENROLLSECRET=9LKqKH5peurL
+      - CORE_PEER_MSPCONFIGPATH=${PEER3_CORE_PEER_MSPCFGPATH}
     depends_on:
       - membersrvc0
       - orderer0
-      - vp0
+      - peer0
