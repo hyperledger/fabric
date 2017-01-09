@@ -48,14 +48,6 @@ func Hash(msg []byte) []byte {
 	return h.Sum(nil)
 }
 
-// HMAC hmacs x using key key
-func HMAC(key, x []byte) []byte {
-	mac := hmac.New(GetDefaultHash(), key)
-	mac.Write(x)
-
-	return mac.Sum(nil)
-}
-
 // HMACTruncated hmacs x using key key and truncate to truncation
 func HMACTruncated(key, x []byte, truncation int) []byte {
 	mac := hmac.New(GetDefaultHash(), key)

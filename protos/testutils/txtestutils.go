@@ -22,7 +22,6 @@ import (
 
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
@@ -36,7 +35,6 @@ var (
 
 func init() {
 	var err error
-	primitives.SetSecurityLevel("SHA2", 256)
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigDir, err := getMSPMgrConfigDir()
 	if err != nil {

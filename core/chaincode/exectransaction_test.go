@@ -37,7 +37,6 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
@@ -1090,8 +1089,6 @@ var signer msp.SigningIdentity
 
 func TestMain(m *testing.M) {
 	var err error
-
-	primitives.SetSecurityLevel("SHA2", 256)
 
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigDir := "../../msp/sampleconfig/"

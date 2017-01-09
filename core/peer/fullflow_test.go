@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
@@ -314,7 +313,6 @@ var signerSerialized []byte
 
 func TestMain(m *testing.M) {
 	// setup crypto algorithms
-	primitives.SetSecurityLevel("SHA2", 256)
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigDir := "../../msp/sampleconfig/"
 	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)

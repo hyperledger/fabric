@@ -28,7 +28,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/container"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
@@ -76,12 +75,6 @@ func initPeer(chainID string) (net.Listener, error) {
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
 		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
 	}
-
-	// Install security object for peer
-	//TODO:  integrate new crypto / idp
-	securityLevel := viper.GetInt("security.level")
-	hashAlgorithm := viper.GetString("security.hashAlgorithm")
-	primitives.SetSecurityLevel(hashAlgorithm, securityLevel)
 
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))

@@ -22,7 +22,6 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
@@ -101,7 +100,6 @@ var sid []byte
 func TestMain(m *testing.M) {
 	var err error
 
-	primitives.InitSecurityLevel("SHA2", 256)
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigDir := "../../../msp/sampleconfig/"
 	mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)

@@ -24,7 +24,6 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/core/util"
@@ -275,9 +274,6 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 }
 
 func TestMain(m *testing.M) {
-	primitives.InitSecurityLevel("SHA2", 256)
-	// setup the MSP manager so that we can sign/verify
-	// TODO: determine the config file for the MSP
 	mspMgrConfigDir := "../../../msp/sampleconfig/"
 	mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
 
