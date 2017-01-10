@@ -19,13 +19,13 @@ package multichain
 import (
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/common/policies"
 	coreutil "github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
+	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -47,33 +47,9 @@ func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 	return mpm.mp, mpm.mp != nil
 }
 
-type mockSharedConfig struct {
-	chainCreators []string
-}
-
-func (msc *mockSharedConfig) ConsensusType() string {
-	panic("Unimplemented")
-}
-
-func (msc *mockSharedConfig) BatchSize() *ab.BatchSize {
-	panic("Unimplemented")
-}
-
-func (msc *mockSharedConfig) BatchTimeout() time.Duration {
-	panic("Unimplemented")
-}
-
-func (msc *mockSharedConfig) ChainCreators() []string {
-	return msc.chainCreators
-}
-
-func (msc *mockSharedConfig) KafkaBrokers() []string {
-	panic("Unimplemented")
-}
-
 type mockSupport struct {
 	mpm     *mockPolicyManager
-	msc     *mockSharedConfig
+	msc     *mocksharedconfig.Manager
 	chainID string
 	queue   []*cb.Envelope
 }
@@ -81,7 +57,7 @@ type mockSupport struct {
 func newMockSupport(chainID string) *mockSupport {
 	return &mockSupport{
 		mpm:     &mockPolicyManager{},
-		msc:     &mockSharedConfig{},
+		msc:     &mocksharedconfig.Manager{},
 		chainID: chainID,
 	}
 }
@@ -129,7 +105,7 @@ func TestGoodProposal(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.chainCreators = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.msc.ChainCreatorsVal = []string{provisional.AcceptAllPolicyKey}
 	mcc.ms.mpm.mp = &mockPolicy{}
 
 	chainCreateTx := &cb.ConfigurationItem{
@@ -214,7 +190,7 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.chainCreators = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.msc.ChainCreatorsVal = []string{provisional.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
 		Key:  utils.CreationPolicyKey,
@@ -238,7 +214,7 @@ func TestProposalWithBadDigest(t *testing.T) {
 
 	mcc := newMockChainCreator()
 	mcc.ms.mpm.mp = &mockPolicy{}
-	mcc.ms.msc.chainCreators = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.msc.ChainCreatorsVal = []string{provisional.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
 		Key:  utils.CreationPolicyKey,
