@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
-	"github.com/hyperledger/fabric/orderer/common/deliver"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
@@ -70,8 +69,16 @@ type ConsenterSupport interface {
 
 // ChainSupport provides a wrapper for the resources backing a chain
 type ChainSupport interface {
+	// This interface is actually the union with the deliver.Support but because of a golang
+	// limitation https://github.com/golang/go/issues/6977 the methods must be explicitly declared
+
+	// PolicyManager returns the current policy manager as specified by the chain configuration
+	PolicyManager() policies.Manager
+
+	// Reader returns the chain Reader for the chain
+	Reader() rawledger.Reader
+
 	broadcast.Support
-	deliver.Support
 	ConsenterSupport
 
 	// ConfigTxManager returns the corresponding configtx.Manager for this chain
