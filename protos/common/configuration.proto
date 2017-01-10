@@ -58,7 +58,7 @@ message ConfigurationItem {
         Policy = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
         Chain = 1;    // Marshaled format for this type is yet to be determined
         Orderer = 2;  // Marshaled format for this type is yet to be determined
-        Fabric = 3;   // Marshaled format for this type is yet to be determined
+        Peer = 3;   // Marshaled format for this type is yet to be determined
     }
     ChainHeader Header = 1;  // The header which ties this configuration to a particular chain
     ConfigurationType Type = 2;     // The type of configuration this is.

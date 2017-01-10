@@ -50,7 +50,7 @@ var ServerStatus_StatusCode_value = map[string]int32{
 func (x ServerStatus_StatusCode) String() string {
 	return proto.EnumName(ServerStatus_StatusCode_name, int32(x))
 }
-func (ServerStatus_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor11, []int{0, 0} }
+func (ServerStatus_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor12, []int{0, 0} }
 
 type ServerStatus struct {
 	Status ServerStatus_StatusCode `protobuf:"varint,1,opt,name=status,enum=protos.ServerStatus_StatusCode" json:"status,omitempty"`
@@ -59,7 +59,7 @@ type ServerStatus struct {
 func (m *ServerStatus) Reset()                    { *m = ServerStatus{} }
 func (m *ServerStatus) String() string            { return proto.CompactTextString(m) }
 func (*ServerStatus) ProtoMessage()               {}
-func (*ServerStatus) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{0} }
+func (*ServerStatus) Descriptor() ([]byte, []int) { return fileDescriptor12, []int{0} }
 
 type LogLevelRequest struct {
 	LogModule string `protobuf:"bytes,1,opt,name=logModule" json:"logModule,omitempty"`
@@ -69,7 +69,7 @@ type LogLevelRequest struct {
 func (m *LogLevelRequest) Reset()                    { *m = LogLevelRequest{} }
 func (m *LogLevelRequest) String() string            { return proto.CompactTextString(m) }
 func (*LogLevelRequest) ProtoMessage()               {}
-func (*LogLevelRequest) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{1} }
+func (*LogLevelRequest) Descriptor() ([]byte, []int) { return fileDescriptor12, []int{1} }
 
 type LogLevelResponse struct {
 	LogModule string `protobuf:"bytes,1,opt,name=logModule" json:"logModule,omitempty"`
@@ -79,7 +79,7 @@ type LogLevelResponse struct {
 func (m *LogLevelResponse) Reset()                    { *m = LogLevelResponse{} }
 func (m *LogLevelResponse) String() string            { return proto.CompactTextString(m) }
 func (*LogLevelResponse) ProtoMessage()               {}
-func (*LogLevelResponse) Descriptor() ([]byte, []int) { return fileDescriptor11, []int{2} }
+func (*LogLevelResponse) Descriptor() ([]byte, []int) { return fileDescriptor12, []int{2} }
 
 func init() {
 	proto.RegisterType((*ServerStatus)(nil), "protos.ServerStatus")
@@ -291,12 +291,12 @@ var _Admin_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptor11,
+	Metadata: fileDescriptor12,
 }
 
-func init() { proto.RegisterFile("peer/server_admin.proto", fileDescriptor11) }
+func init() { proto.RegisterFile("peer/server_admin.proto", fileDescriptor12) }
 
-var fileDescriptor11 = []byte{
+var fileDescriptor12 = []byte{
 	// 384 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xac, 0x92, 0xcf, 0x4e, 0xe2, 0x50,
 	0x14, 0xc6, 0x29, 0x33, 0x30, 0xd3, 0xc3, 0xfc, 0xe9, 0xdc, 0x4c, 0x06, 0xd2, 0x99, 0x64, 0x26,

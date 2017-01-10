@@ -10,6 +10,7 @@ It is generated from these files:
 	peer/chaincode_proposal.proto
 	peer/chaincode_transaction.proto
 	peer/chaincodeevent.proto
+	peer/configuration.proto
 	peer/events.proto
 	peer/fabric.proto
 	peer/fabric_message.proto
@@ -38,6 +39,8 @@ It has these top-level messages:
 	ChaincodeActionPayload
 	ChaincodeEndorsedAction
 	ChaincodeEvent
+	AnchorPeers
+	AnchorPeer
 	ChaincodeReg
 	Interest
 	Register
