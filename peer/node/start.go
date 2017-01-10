@@ -30,7 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/core/committer/noopssinglechain"
+	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -174,14 +174,14 @@ func serve(args []string) error {
 			panic(fmt.Sprintf("Unable to get committer for [%s]", chainID))
 		}
 
-		//this shoul not need the chainID. Delivery should be
+		//this should not need the chainID. Delivery should be
 		//split up into network part and chain part. This should
 		//only init the network part...TBD, part of Join work
-		deliverService := noopssinglechain.NewDeliverService(chainID)
+		deliver := deliverclient.NewDeliverService(chainID)
 
-		deliverService.Start(commit)
+		deliver.Start(commit)
 
-		defer noopssinglechain.StopDeliveryService(deliverService)
+		defer deliverclient.StopDeliveryService(deliver)
 	}
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s",
