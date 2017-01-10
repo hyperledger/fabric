@@ -3,7 +3,7 @@
 // DO NOT EDIT!
 
 /*
-Package test is a generated protocol buffer package.
+Package grpc is a generated protocol buffer package.
 
 It is generated from these files:
 	test.proto
@@ -11,7 +11,7 @@ It is generated from these files:
 It has these top-level messages:
 	Empty
 */
-package test
+package grpc
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
@@ -19,7 +19,7 @@ import math "math"
 
 import (
 	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
+	grpc1 "google.golang.org/grpc"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -47,29 +47,29 @@ func init() {
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
-var _ grpc.ClientConn
+var _ grpc1.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc1.SupportPackageIsVersion3
 
 // Client API for TestService service
 
 type TestServiceClient interface {
-	EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	EmptyCall(ctx context.Context, in *Empty, opts ...grpc1.CallOption) (*Empty, error)
 }
 
 type testServiceClient struct {
-	cc *grpc.ClientConn
+	cc *grpc1.ClientConn
 }
 
-func NewTestServiceClient(cc *grpc.ClientConn) TestServiceClient {
+func NewTestServiceClient(cc *grpc1.ClientConn) TestServiceClient {
 	return &testServiceClient{cc}
 }
 
-func (c *testServiceClient) EmptyCall(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+func (c *testServiceClient) EmptyCall(ctx context.Context, in *Empty, opts ...grpc1.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/TestService/EmptyCall", in, out, c.cc, opts...)
+	err := grpc1.Invoke(ctx, "/TestService/EmptyCall", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,11 +82,11 @@ type TestServiceServer interface {
 	EmptyCall(context.Context, *Empty) (*Empty, error)
 }
 
-func RegisterTestServiceServer(s *grpc.Server, srv TestServiceServer) {
+func RegisterTestServiceServer(s *grpc1.Server, srv TestServiceServer) {
 	s.RegisterService(&_TestService_serviceDesc, srv)
 }
 
-func _TestService_EmptyCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _TestService_EmptyCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func _TestService_EmptyCall_Handler(srv interface{}, ctx context.Context, dec fu
 	if interceptor == nil {
 		return srv.(TestServiceServer).EmptyCall(ctx, in)
 	}
-	info := &grpc.UnaryServerInfo{
+	info := &grpc1.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/TestService/EmptyCall",
 	}
@@ -104,27 +104,30 @@ func _TestService_EmptyCall_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-var _TestService_serviceDesc = grpc.ServiceDesc{
+var _TestService_serviceDesc = grpc1.ServiceDesc{
 	ServiceName: "TestService",
 	HandlerType: (*TestServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods: []grpc1.MethodDesc{
 		{
 			MethodName: "EmptyCall",
 			Handler:    _TestService_EmptyCall_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams:  []grpc1.StreamDesc{},
 	Metadata: fileDescriptor0,
 }
 
 func init() { proto.RegisterFile("test.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 81 bytes of a gzipped FileDescriptorProto
+	// 138 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2a, 0x49, 0x2d, 0x2e,
 	0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x57, 0x62, 0xe7, 0x62, 0x75, 0xcd, 0x2d, 0x28, 0xa9, 0x34,
-	0xd2, 0xe2, 0xe2, 0x0e, 0x01, 0x0a, 0x07, 0xa7, 0x16, 0x95, 0x65, 0x26, 0xa7, 0x0a, 0x49, 0x73,
-	0x71, 0x82, 0xc5, 0x9d, 0x13, 0x73, 0x72, 0x84, 0xd8, 0xf4, 0xc0, 0x6c, 0x29, 0x28, 0x9d, 0xc4,
-	0x06, 0xd6, 0x6b, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0xed, 0x32, 0x6a, 0x04, 0x49, 0x00, 0x00,
-	0x00,
+	0xd2, 0xe2, 0xe2, 0x0e, 0x49, 0x2d, 0x2e, 0x09, 0x4e, 0x2d, 0x2a, 0xcb, 0x4c, 0x4e, 0x15, 0x92,
+	0xe6, 0xe2, 0x04, 0x8b, 0x3b, 0x27, 0xe6, 0xe4, 0x08, 0xb1, 0xe9, 0x81, 0xd9, 0x52, 0x50, 0xda,
+	0xc9, 0x3c, 0xca, 0x34, 0x3d, 0xb3, 0x24, 0xa3, 0x34, 0x49, 0x2f, 0x39, 0x3f, 0x57, 0x3f, 0xa3,
+	0xb2, 0x20, 0xb5, 0x28, 0x27, 0x35, 0x25, 0x3d, 0xb5, 0x48, 0x3f, 0x2d, 0x31, 0xa9, 0x28, 0x33,
+	0x59, 0x3f, 0x39, 0xbf, 0x28, 0x55, 0x3f, 0x39, 0x3f, 0x37, 0x57, 0x1f, 0x64, 0x55, 0x4a, 0x62,
+	0x49, 0xa2, 0x7e, 0x7a, 0x51, 0x41, 0x72, 0x12, 0x1b, 0xd8, 0x52, 0x63, 0x40, 0x00, 0x00, 0x00,
+	0xff, 0xff, 0xd3, 0x15, 0xec, 0x45, 0x82, 0x00, 0x00, 0x00,
 }
