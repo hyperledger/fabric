@@ -8,7 +8,7 @@
 | Gari Singh | mastersingh24 | mastersingh24 | garisingh | gari.r.singh@gmail.com |
 | Greg Haskins | greg.haskins | ghaskins | ghaskins | ghaskins@lseg.com |
 | Jason Yellick | jyellick | jyellick | jyellick | jyellick@us.ibm.com |
-| Jim Zhang | jimthematrix | jzhang | jzhang | jim_the_matrix@hotmail.com |
+| Jim Zhang | jimthematrix | jimthematrix | jzhang | jim_the_matrix@hotmail.com |
 | Jonathan Levi | JonathanLevi | JonathanLevi | JonathanLevi | jonathan@levi.name |
 | Sheehan Anderson | sheehan | srderson | sheehan | sranderson@gmail.com |
 | Srinivasan Muralidharan | muralisr | muralisrini | muralisr | muralisr@us.ibm.com |
