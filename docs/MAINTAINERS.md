@@ -1,16 +1,16 @@
 ## Maintainers
 
-| Name | GitHub | Gerrit | email |
-|---|---|---|---|
-| Binh Nguyen | binhn | | binhn@us.ibm.com |
-| Sheehan Anderson | srderson | sheehan | sranderson@gmail.com
-| Tamas Blummer | tamasblummer ||  tamas@digitalasset.com
-| Greg Haskins | ghaskins || ghaskins@lseg.com
-| Jonathan Levi | JonathanLevi || jonathan@levi.name
-| Gabor Hosszu | gabre || gabor@digitalasset.com
-| Chris Ferris | christo4ferris | ChristopherFerris | chrisfer@us.ibm.com
-| Srinivasan Muralidharan | muralisrini | muralisr | muralisr@us.ibm.com
-| Gari Singh | mastersingh24 | mastersingh24 | gari.r.singh@gmail.com
-| Jason Yellick | jyellick | jyellick | jyellick@us.ibm.com
-| Yacov Manevich | yacovm | yacovm | yacovm@il.ibm.com
-| Jim Zhang | jzhang | jzhang | jzhang@us.ibm.com
+| Name | Gerrit | GitHub | Slack | email |
+|---|---|---|---|---|
+| Binh Nguyen | binhn | binhn | binhn | binhn@us.ibm.com |
+| Chris Ferris | ChristopherFerris | christo4ferris | cbf | chris.ferris@gmail.com |
+| Gabor Hosszu | hgabre | gabre | hgabor | gabor@digitalasset.com |
+| Gari Singh | mastersingh24 | mastersingh24 | garisingh | gari.r.singh@gmail.com |
+| Greg Haskins | greg.haskins | ghaskins | ghaskins | ghaskins@lseg.com |
+| Jason Yellick | jyellick | jyellick | jyellick | jyellick@us.ibm.com |
+| Jim Zhang | jimthematrix | jzhang | jzhang | jim_the_matrix@hotmail.com |
+| Jonathan Levi | JonathanLevi | JonathanLevi | JonathanLevi | jonathan@levi.name |
+| Sheehan Anderson | sheehan | srderson | sheehan | sranderson@gmail.com |
+| Srinivasan Muralidharan | muralisr | muralisrini | muralisr | muralisr@us.ibm.com |
+| Tamas Blummer | TamasBlummer | tamasblummer | tamas | tamas@digitalasset.com |
+| Yacov Manevich | yacovm | yacovm | yacovm | yacovm@il.ibm.com |
