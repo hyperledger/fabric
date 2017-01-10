@@ -20,7 +20,6 @@ import (
 	"archive/tar"
 	"fmt"
 	"net/url"
-	"os"
 
 	pb "github.com/hyperledger/fabric/protos/peer"
 	//	"path/filepath"
@@ -28,18 +27,6 @@ import (
 
 // Platform for java chaincodes in java
 type Platform struct {
-}
-
-// Returns whether the given file or directory exists or not
-func pathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return true, err
 }
 
 //ValidateSpec validates the java chaincode specs

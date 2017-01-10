@@ -27,65 +27,10 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	cutil "github.com/hyperledger/fabric/core/container/util"
+	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
-
-//hashFilesInDir computes h=hash(h,file bytes) for each file in a directory
-//Directory entries are traversed recursively. In the end a single
-//hash value is returned for the entire directory structure
-func hashFilesInDir(cutoff string, dir string, hash []byte, tw *tar.Writer) ([]byte, error) {
-	//ReadDir returns sorted list of files in dir
-	fis, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return hash, fmt.Errorf("ReadDir failed %s\n", err)
-	}
-	for _, fi := range fis {
-		name := fmt.Sprintf("%s/%s", dir, fi.Name())
-		if fi.IsDir() {
-			var err error
-			hash, err = hashFilesInDir(cutoff, name, hash, tw)
-			if err != nil {
-				return hash, err
-			}
-			continue
-		}
-		buf, err := ioutil.ReadFile(name)
-		if err != nil {
-			fmt.Printf("Error reading %s\n", err)
-			return hash, err
-		}
-
-		newSlice := make([]byte, len(hash)+len(buf))
-		copy(newSlice[len(buf):], hash[:])
-		//hash = md5.Sum(newSlice)
-		hash = util.ComputeCryptoHash(newSlice)
-
-		if tw != nil {
-			is := bytes.NewReader(buf)
-			if err = cutil.WriteStreamToPackage(is, name, name[len(cutoff):], tw); err != nil {
-				return hash, fmt.Errorf("Error adding file to tar %s", err)
-			}
-		}
-	}
-	return hash, nil
-}
-
-func isCodeExist(tmppath string) error {
-	file, err := os.Open(tmppath)
-	if err != nil {
-		return fmt.Errorf("Download failer %s", err)
-	}
-	fi, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("could not stat file %s", err)
-	}
-	if !fi.IsDir() {
-		return fmt.Errorf("file %s is not dir\n", file.Name())
-	}
-	return nil
-}
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
 
@@ -153,22 +98,17 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 		return "", fmt.Errorf("Error getting code %s", err)
 	}
 
-	if err = isCodeExist(codepath); err != nil {
+	if err = ccutil.IsCodeExist(codepath); err != nil {
 		return "", fmt.Errorf("code does not exist %s", err)
 	}
 
-	root := codepath
-	if strings.LastIndex(root, "/") == len(root)-1 {
-		root = root[:len(root)-1]
-	}
-	root = root[:strings.LastIndex(root, "/")+1]
 	ctorbytes, err := proto.Marshal(ctor)
 	if err != nil {
 		return "", fmt.Errorf("Error marshalling constructor: %s", err)
 	}
 	hash := util.GenerateHashFromSignature(codepath, ctorbytes)
 
-	hash, err = hashFilesInDir(root, codepath, hash, tw)
+	hash, err = ccutil.HashFilesInDir("", codepath, hash, tw)
 	if err != nil {
 		return "", fmt.Errorf("Could not get hashcode for %s - %s\n", codepath, err)
 	}
