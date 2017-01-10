@@ -10,6 +10,8 @@ services:
         # TODO:  This is currently required due to BUG in variant logic based upon log level.
         - CORE_LOGGING_LEVEL=DEBUG
         - CORE_PEER_NETWORKID=${CORE_PEER_NETWORKID}
+      volumes:
+          - ./volumes/peer:/var/hyperledger/bddtests/volumes/peer
       # Script will wait until membersrvc is up (if it exists) before starting
       # $$GOPATH (double dollar) required to prevent docker-compose doing its own
       # substitution before the value gets to the container
@@ -22,3 +24,7 @@ services:
     membersrvc:
        image: hyperledger/fabric-membersrvc
        command: membersrvc
+
+volumes:
+
+    peer:

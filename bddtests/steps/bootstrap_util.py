@@ -137,6 +137,9 @@ class Organization(Entity):
         # Which networks this organization belongs to
         self.networks = []
 
+    def getSelfSignedCert(self):
+        return self.signedCert
+
     def createCertificate(self, certReq):
         numYrs = 1
         return createCertificate(certReq, (self.signedCert, self.pKey), 1000, (0, 60*60*24*365*numYrs))
@@ -413,6 +416,66 @@ class OrdererGensisBlockCompositionCallback(compose.CompositionCallback):
         env["ORDERER_GENERAL_GENESISIFILE"]=self.getGenesisFilePath(composition, pathType=PathType.Container)
 
 
+class PeerCompositionCallback(compose.CompositionCallback):
+    'Responsible for setting up Peer nodes upon composition'
+
+    def __init__(self, context):
+        self.context = context
+        self.volumeRootPathInContainer="/var/hyperledger/bddtests"
+        compose.Composition.RegisterCallbackInContext(context, self)
+
+    def getVolumePath(self, composition, pathType=PathType.Local):
+        assert pathType in PathType, "Expected pathType of {0}".format(PathType)
+        basePath = "."
+        if pathType == PathType.Container:
+            basePath = self.volumeRootPathInContainer
+        return "{0}/volumes/peer/{1}".format(basePath, composition.projectName)
+
+    def getPeerList(self, composition):
+        return [serviceName for serviceName in composition.getServiceNames() if "peer" in serviceName]
+
+    def getLocalMspConfigPath(self, composition, peerService, pathType=PathType.Local):
+        return "{0}/{1}/localMspConfig".format(self.getVolumePath(composition, pathType), peerService)
+
+    def _createLocalMspConfigDirs(self, mspConfigPath):
+        os.makedirs("{0}/{1}".format(mspConfigPath, "signcerts"))
+        os.makedirs("{0}/{1}".format(mspConfigPath, "admincerts"))
+        os.makedirs("{0}/{1}".format(mspConfigPath, "cacerts"))
+        os.makedirs("{0}/{1}".format(mspConfigPath, "keystore"))
+
+
+    def composing(self, composition, context):
+        'Will copy local MSP info over at this point for each peer node'
+
+        directory = getDirectory(context)
+
+        for peerService in self.getPeerList(composition):
+            localMspConfigPath = self.getLocalMspConfigPath(composition, peerService)
+            self._createLocalMspConfigDirs(localMspConfigPath)
+            # Loop through directory and place Peer Organization Certs into cacerts folder
+            for peerOrg in [org for orgName,org in directory.organizations.items() if Network.Peer in org.networks]:
+                with open("{0}/cacerts/{1}.pem".format(localMspConfigPath, peerOrg.name), "w") as f:
+                    f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, peerOrg.getSelfSignedCert()))
+
+            # Find the peer signer Tuple for this peer and add to signcerts folder
+            for pnt, cert in [(peerNodeTuple,cert) for peerNodeTuple,cert in directory.ordererAdminTuples.items() if peerService in peerNodeTuple.user and "signer" in peerNodeTuple.user.lower()]:
+                # Put the PEM file in the signcerts folder
+                with open("{0}/signcerts/{1}.pem".format(localMspConfigPath, pnt.user), "w") as f:
+                    f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+                # Put the associated private key into the keystore folder
+                user = directory.getUser(pnt.user, shouldCreate=False)
+                with open("{0}/keystore/{1}.pem".format(localMspConfigPath, pnt.user), "w") as f:
+                    f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, user.pKey))
+
+
+    def decomposing(self, composition, context):
+        'Will remove the orderer volume path folder for the context'
+        shutil.rmtree(self.getVolumePath(composition))
+
+    def getEnv(self, composition, context, env):
+        for peerService in self.getPeerList(composition):
+            localMspConfigPath = self.getLocalMspConfigPath(composition, peerService, pathType=PathType.Container)
+            env["{0}_CORE_PEER_MSPCFGPATH".format(peerService.upper())]=localMspConfigPath
 
 def setOrdererBootstrapGenesisBlock(genesisBlock):
     'Responsible for setting the GensisBlock for the Orderer nodes upon composition'
