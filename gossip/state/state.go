@@ -38,7 +38,6 @@ import (
 // capable to full fill missing blocks by running state replication and
 // sending request to get missing block to other nodes
 type GossipStateProvider interface {
-
 	// Retrieve block with sequence number equal to index
 	GetBlock(index uint64) *common.Block
 
@@ -174,7 +173,7 @@ func (s *GossipStateProviderImpl) listen() {
 			break next
 		}
 	}
-	s.logger.Debug("[XXX]: Stop listening for new messages")
+	s.logger.Debug("Stop listening for new messages")
 	s.done.Done()
 }
 
@@ -288,7 +287,7 @@ func (s *GossipStateProviderImpl) deliverPayloads() {
 				for payload := s.payloads.Pop(); payload != nil; payload = s.payloads.Pop() {
 					rawblock := &common.Block{}
 					if err := pb.Unmarshal(payload.Data, rawblock); err != nil {
-						s.logger.Errorf("Error getting block with seqNum = %d due to (%s)...dropping block\n", payload.SeqNum, err)
+						s.logger.Errorf("Error getting block with seqNum = %d due to (%s)...dropping block", payload.SeqNum, err)
 						continue
 					}
 					s.logger.Debug("New block with sequence number ", payload.SeqNum, " transactions num ", len(rawblock.Data.Data))
@@ -331,6 +330,7 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 
 		s.requestBlocksInRange(uint64(current), uint64(max))
 	}
+	s.logger.Debug("Stateprovider stopped, stopping anti entropy procedure.")
 	s.done.Done()
 }
 
@@ -367,7 +367,7 @@ func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64)
 		request.SeqNums = append(request.SeqNums, uint64(i))
 	}
 
-	s.logger.Debug("[$$$$$$$$$$$$$$$$]: Sending direct request to complete missing blocks, ", request, "for chain", s.chainID)
+	s.logger.Debug("Sending direct request to complete missing blocks,", request, "for chain", s.chainID)
 	s.gossip.Send(&proto.GossipMessage{
 		Nonce:   0,
 		Tag:     proto.GossipMessage_CHAN_OR_ORG,
@@ -395,7 +395,7 @@ func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 
 func (s *GossipStateProviderImpl) commitBlock(block *common.Block, seqNum uint64) error {
 	if err := s.committer.Commit(block); err != nil {
-		s.logger.Errorf("Got error while committing(%s)\n", err)
+		s.logger.Errorf("Got error while committing(%s)", err)
 		return err
 	}
 
@@ -409,6 +409,6 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, seqNum uint64
 		s.logger.Errorf("Unable to serialize node meta state, error = %s", err)
 	}
 
-	s.logger.Debug("[XXX]: Commit success, created a block!")
+	s.logger.Debug("Commit success, created a block!")
 	return nil
 }
