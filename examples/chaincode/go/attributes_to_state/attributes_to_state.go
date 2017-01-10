@@ -20,8 +20,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/accesscontrol/crypto/attr"
+	"github.com/hyperledger/fabric/accesscontrol/impl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 )
 
 // Attributes2State demonstrates how to read attributes from TCerts.
@@ -88,7 +89,7 @@ func (t *Attributes2State) delete(stub shim.ChaincodeStubInterface, args []strin
 		return errors.New("Attribute '" + attributeName + "' not found.")
 	}
 
-	isOk, err := stub.VerifyAttribute(attributeName, valBytes)
+	isOk, err := impl.NewAccessControlShim(stub).VerifyAttribute(attributeName, valBytes)
 	if err != nil {
 		return err
 	}

@@ -30,8 +30,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/ecdsa"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -313,39 +311,6 @@ func (stub *ChaincodeStub) PutState(key string, value []byte) error {
 // DelState removes the specified `key` and its value from the ledger.
 func (stub *ChaincodeStub) DelState(key string) error {
 	return stub.handler.handleDelState(key, stub.TxID)
-}
-
-//ReadCertAttribute is used to read an specific attribute from the transaction certificate, *attributeName* is passed as input parameter to this function.
-// Example:
-//  attrValue,error:=stub.ReadCertAttribute("position")
-func (stub *ChaincodeStub) ReadCertAttribute(attributeName string) ([]byte, error) {
-	attributesHandler, err := attr.NewAttributesHandlerImpl(stub)
-	if err != nil {
-		return nil, err
-	}
-	return attributesHandler.GetValue(attributeName)
-}
-
-//VerifyAttribute is used to verify if the transaction certificate has an attribute with name *attributeName* and value *attributeValue* which are the input parameters received by this function.
-//Example:
-//    containsAttr, error := stub.VerifyAttribute("position", "Software Engineer")
-func (stub *ChaincodeStub) VerifyAttribute(attributeName string, attributeValue []byte) (bool, error) {
-	attributesHandler, err := attr.NewAttributesHandlerImpl(stub)
-	if err != nil {
-		return false, err
-	}
-	return attributesHandler.VerifyAttribute(attributeName, attributeValue)
-}
-
-//VerifyAttributes does the same as VerifyAttribute but it checks for a list of attributes and their respective values instead of a single attribute/value pair
-// Example:
-//    containsAttrs, error:= stub.VerifyAttributes(&attr.Attribute{"position",  "Software Engineer"}, &attr.Attribute{"company", "ACompany"})
-func (stub *ChaincodeStub) VerifyAttributes(attrs ...*attr.Attribute) (bool, error) {
-	attributesHandler, err := attr.NewAttributesHandlerImpl(stub)
-	if err != nil {
-		return false, err
-	}
-	return attributesHandler.VerifyAttributes(attrs...)
 }
 
 // StateRangeQueryIterator allows a chaincode to iterate over a range of
@@ -686,16 +651,6 @@ func deleteRowInternal(stub ChaincodeStubInterface, tableName string, key []Colu
 	}
 
 	return nil
-}
-
-// VerifySignature verifies the transaction signature and returns `true` if
-// correct and `false` otherwise
-func (stub *ChaincodeStub) VerifySignature(certificate, signature, message []byte) (bool, error) {
-	// Instantiate a new SignatureVerifier
-	sv := ecdsa.NewX509ECDSASignatureVerifier()
-
-	// Verify the signature
-	return sv.Verify(certificate, signature, message)
 }
 
 // GetCallerCertificate returns caller certificate

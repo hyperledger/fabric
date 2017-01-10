@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 	"github.com/op/go-logging"
 )
 
@@ -259,26 +258,6 @@ func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]by
 	bytes, err := otherStub.MockInvoke(stub.TxID, args)
 	mockLogger.Debug("MockStub", stub.Name, "Invoked peer chaincode", otherStub.Name, "got", bytes, err)
 	return bytes, err
-}
-
-// Not implemented
-func (stub *MockStub) ReadCertAttribute(attributeName string) ([]byte, error) {
-	return nil, nil
-}
-
-// Not implemented
-func (stub *MockStub) VerifyAttribute(attributeName string, attributeValue []byte) (bool, error) {
-	return false, nil
-}
-
-// Not implemented
-func (stub *MockStub) VerifyAttributes(attrs ...*attr.Attribute) (bool, error) {
-	return false, nil
-}
-
-// Not implemented
-func (stub *MockStub) VerifySignature(certificate, signature, message []byte) (bool, error) {
-	return false, nil
 }
 
 // Not implemented

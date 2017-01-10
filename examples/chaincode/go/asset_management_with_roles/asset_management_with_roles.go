@@ -22,8 +22,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/accesscontrol/crypto/attr"
+	"github.com/hyperledger/fabric/accesscontrol/impl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 	"github.com/op/go-logging"
 )
 
@@ -112,7 +113,7 @@ func (t *AssetManagementChaincode) assign(stub shim.ChaincodeStubInterface, args
 		return nil, errors.New("Failed fetching assigner role")
 	}
 
-	callerRole, err := stub.ReadCertAttribute("role")
+	callerRole, err := impl.NewAccessControlShim(stub).ReadCertAttribute("role")
 	if err != nil {
 		fmt.Printf("Error reading attribute 'role' [%v] \n", err)
 		return nil, fmt.Errorf("Failed fetching caller role. Error was [%v]", err)
@@ -180,7 +181,7 @@ func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, ar
 	}
 
 	// Verify ownership
-	callerAccount, err := stub.ReadCertAttribute("account")
+	callerAccount, err := impl.NewAccessControlShim(stub).ReadCertAttribute("account")
 	if err != nil {
 		return nil, fmt.Errorf("Failed fetching caller account. Error was [%v]", err)
 	}
