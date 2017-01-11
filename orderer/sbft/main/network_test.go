@@ -46,14 +46,14 @@ const maindir = "github.com/hyperledger/fabric/orderer/sbft/main"
 
 var mainexe = os.TempDir() + "/" + "sbft"
 
-type peer struct {
+type Peer struct {
 	id     uint64
 	config flags
 	cancel context.CancelFunc
 	cmd    *exec.Cmd
 }
 
-type receiver struct {
+type Receiver struct {
 	id      uint64
 	retch   chan []byte
 	signals chan bool
@@ -194,7 +194,7 @@ func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
 	StartPeers(peers)
 	defer StopPeers(peers)
 
-	receivers := make([]*receiver, 0, len(peers))
+	receivers := make([]*Receiver, 0, len(peers))
 	for i := 0; i < len(peers); i++ {
 		r, err := Receive(peers[i], startingPort)
 		if err != nil {
@@ -224,8 +224,8 @@ func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
 	}
 }
 
-func InitPeers(num uint64, startingPort int) []*peer {
-	peers := make([]*peer, 0, num)
+func InitPeers(num uint64, startingPort int) []*Peer {
+	peers := make([]*Peer, 0, num)
 	certFiles := make([]string, 0, num)
 	for i := uint64(0); i < num; i++ {
 		certFiles = append(certFiles, generateCertificate(i, keyfile))
@@ -237,13 +237,13 @@ func InitPeers(num uint64, startingPort int) []*peer {
 	return peers
 }
 
-func StartPeers(peers []*peer) {
+func StartPeers(peers []*Peer) {
 	for _, p := range peers {
 		p.start()
 	}
 }
 
-func StopPeers(peers []*peer) {
+func StopPeers(peers []*Peer) {
 	for _, p := range peers {
 		p.stop()
 	}
@@ -276,7 +276,7 @@ func generateConfig(peerNum uint64, startingPort int, certFiles []string) string
 	return conffilepath
 }
 
-func initPeer(uid uint64, startingPort int, configFile string, certFile string) (p *peer) {
+func initPeer(uid uint64, startingPort int, configFile string, certFile string) (p *Peer) {
 	tempDir, err := ioutil.TempDir("", "sbft_test")
 	panicOnError(err)
 	os.RemoveAll(tempDir)
@@ -287,7 +287,7 @@ func initPeer(uid uint64, startingPort int, configFile string, certFile string) 
 		keyFile:    keyfile,
 		dataDir:    tempDir}
 	ctx, cancel := context.WithCancel(context.Background())
-	p = &peer{id: uid, cancel: cancel, config: c}
+	p = &Peer{id: uid, cancel: cancel, config: c}
 	err = initInstance(c)
 	panicOnError(err)
 	p.cmd = exec.CommandContext(ctx, mainexe, "-addr", p.config.listenAddr, "-gaddr", p.config.grpcAddr, "-cert", p.config.certFile, "-key",
@@ -297,17 +297,17 @@ func initPeer(uid uint64, startingPort int, configFile string, certFile string) 
 	return
 }
 
-func (p *peer) start() {
+func (p *Peer) start() {
 	err := p.cmd.Start()
 	panicOnError(err)
 }
 
-func (p *peer) stop() {
+func (p *Peer) stop() {
 	p.cancel()
 	p.cmd.Wait()
 }
 
-func Broadcast(p *peer, startingPort int, bytes []byte) error {
+func Broadcast(p *Peer, startingPort int, bytes []byte) error {
 	timeout := 10 * time.Second
 	grpcAddress := grpcAddress(p.id, startingPort)
 	clientconn, err := grpc.Dial(grpcAddress, grpc.WithBlock(), grpc.WithTimeout(timeout), grpc.WithInsecure())
@@ -331,7 +331,7 @@ func Broadcast(p *peer, startingPort int, bytes []byte) error {
 	return nil
 }
 
-func Receive(p *peer, startingPort int) (*receiver, error) {
+func Receive(p *Peer, startingPort int) (*Receiver, error) {
 	retch := make(chan []byte, 100)
 	signals := make(chan bool, 100)
 	timeout := 4 * time.Second
@@ -389,14 +389,14 @@ func Receive(p *peer, startingPort int) (*receiver, error) {
 			}
 		}
 	}()
-	return &receiver{id: p.id, retch: retch, signals: signals}, nil
+	return &Receiver{id: p.id, retch: retch, signals: signals}, nil
 }
 
-func (r *receiver) Received() int {
+func (r *Receiver) Received() int {
 	return len(r.retch)
 }
 
-func (r *receiver) Stop() {
+func (r *Receiver) Stop() {
 	close(r.signals)
 }
 
@@ -407,7 +407,7 @@ func AssertWithTimeout(assertion func() bool, timeoutSec int) bool {
 	return assertion()
 }
 
-func WaitForConnection(peers []*peer) {
+func WaitForConnection(peers []*Peer) {
 	l := len(peers)
 	m := math.Max(float64(3), float64(l-3))
 	_ = <-time.After(time.Duration(m) * time.Second)
