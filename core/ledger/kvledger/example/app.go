@@ -22,7 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 )

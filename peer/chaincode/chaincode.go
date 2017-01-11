@@ -19,7 +19,7 @@ package chaincode
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"

@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
 	peerComm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"

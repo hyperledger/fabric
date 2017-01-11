@@ -26,11 +26,11 @@ import (
 	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/peer/msp"
-	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	pbutils "github.com/hyperledger/fabric/protos/utils"

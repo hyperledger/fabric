@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
@@ -34,7 +35,6 @@ import (
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/peer/common"

@@ -21,7 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"

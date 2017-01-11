@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/peer/msp"
-	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"

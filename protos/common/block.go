@@ -18,7 +18,7 @@ package common
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 )
 
 // NewBlock construct a block with no data and no metadata

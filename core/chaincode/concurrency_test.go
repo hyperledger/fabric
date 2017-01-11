@@ -21,7 +21,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"golang.org/x/net/context"

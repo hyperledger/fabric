@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/golang/protobuf/proto"

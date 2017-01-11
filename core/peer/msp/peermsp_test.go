@@ -3,7 +3,7 @@ package mspmgmt
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/msp/testutils"
 )

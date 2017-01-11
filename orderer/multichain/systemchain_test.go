@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/policies"
-	coreutil "github.com/hyperledger/fabric/core/util"
+	coreutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"

@@ -25,9 +25,9 @@ import (
 	"time"
 
 	pb "github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -61,7 +61,6 @@ func (*joinChanMsg) AnchorPeers() []api.AnchorPeer {
 }
 
 type orgCryptoService struct {
-
 }
 
 // OrgByPeerIdentity returns the OrgIdentityType

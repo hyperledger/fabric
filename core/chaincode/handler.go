@@ -24,9 +24,9 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/util"
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/looplab/fsm"
 	logging "github.com/op/go-logging"
