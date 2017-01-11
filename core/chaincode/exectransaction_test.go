@@ -153,7 +153,7 @@ func endTxSimulationCIS(chainID string, txid string, txsim ledger.TxSimulator, p
 		return err
 	}
 	// get a proposal - we need it to get a transaction
-	prop, err := putils.CreateProposalFromCIS(txid, chainID, cis, ss)
+	prop, err := putils.CreateProposalFromCIS(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, ss)
 	if err != nil {
 		return err
 	}

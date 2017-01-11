@@ -90,9 +90,14 @@ func (v *txValidator) Validate(block *common.Block) {
 				// NOT check the validity of endorsements, though. That's a
 				// job for VSCC below
 				logger.Debug("Validating transaction peer.ValidateTransaction()")
-				if payload, _, err := peer.ValidateTransaction(env); err != nil {
+				var payload *common.Payload
+				var err error
+				if payload, _, err = peer.ValidateTransaction(env); err != nil {
 					logger.Errorf("Invalid transaction with index %d, error %s", tIdx, err)
-				} else {
+					continue
+				}
+
+				if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 					// Check duplicate transactions
 					txID := payload.Header.ChainHeader.TxID
 					if _, err := v.ledger.GetTransactionByID(txID); err == nil {
@@ -107,15 +112,17 @@ func (v *txValidator) Validate(block *common.Block) {
 						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 						continue
 					}
-
-					if _, err := proto.Marshal(env); err != nil {
-						logger.Warningf("Cannot marshal transaction due to %s", err)
-						continue
-					}
-					// Succeeded to pass down here, transaction is valid,
-					// just unset the filter bit array flag.
-					txsfltr.Unset(uint(tIdx))
+				} else if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
+					logger.Warningf("Validation for common.HeaderType_CONFIGURATION_TRANSACTION %d pending JIRA-1639", tIdx)
 				}
+
+				if _, err := proto.Marshal(env); err != nil {
+					logger.Warningf("Cannot marshal transaction due to %s", err)
+					continue
+				}
+				// Succeeded to pass down here, transaction is valid,
+				// just unset the filter bit array flag.
+				txsfltr.Unset(uint(tIdx))
 			} else {
 				logger.Warning("Nil tx from block")
 			}

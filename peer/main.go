@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/peer/chaincode"
+	"github.com/hyperledger/fabric/peer/channel"
 	"github.com/hyperledger/fabric/peer/clilogging"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/node"
@@ -91,6 +92,7 @@ func main() {
 	mainCmd.AddCommand(node.Cmd())
 	mainCmd.AddCommand(chaincode.Cmd(nil))
 	mainCmd.AddCommand(clilogging.Cmd())
+	mainCmd.AddCommand(channel.Cmd(nil))
 
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 

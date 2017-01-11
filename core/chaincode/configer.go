@@ -111,9 +111,9 @@ func joinChain(blockBytes []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Failed to get the chain ID from the configuration block, %s", err)
 	}
 
-	// Initialize all system chainodes on this chain
-	// TODO: Fix this code to initialize instead of deploy chaincodes
-	DeploySysCCs(chainID)
+	if err = peer.CreateDeliveryService(chainID); err != nil {
+		return nil, err
+	}
 
 	return []byte("200"), nil
 }

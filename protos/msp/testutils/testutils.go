@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
+//GetTestBlockFromMspConfig gets a test block using provided conf with a config transaction in it
 func GetTestBlockFromMspConfig(conf *msp.MSPConfig) (*common.Block, error) {
 	confBytes, err := proto.Marshal(conf)
 	if err != nil {
@@ -45,7 +46,7 @@ func GetTestBlockFromMspConfig(conf *msp.MSPConfig) (*common.Block, error) {
 		return nil, fmt.Errorf("proto.Marshal failed for a ConfigurationEnvelope, err %s", err)
 	}
 
-	payl := &common.Payload{Data: ceBytes, Header: &common.Header{ /* I don't need much here */ }}
+	payl := &common.Payload{Data: ceBytes, Header: &common.Header{ChainHeader: &common.ChainHeader{Type: int32(common.HeaderType_CONFIGURATION_TRANSACTION), ChainID: "testchain"}}}
 	paylBytes, err := utils.GetBytesPayload(payl)
 	if err != nil {
 		return nil, fmt.Errorf("GetBytesPayload failed, err %s", err)

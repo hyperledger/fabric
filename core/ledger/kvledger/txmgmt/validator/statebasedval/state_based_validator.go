@@ -39,10 +39,53 @@ func NewValidator(db statedb.VersionedDB) *Validator {
 	return &Validator{db}
 }
 
+//validate endorser transaction
+func (v *Validator) validateEndorserTX(envBytes []byte, doMVCCValidation bool, updates *statedb.UpdateBatch) (*rwset.TxReadWriteSet, error) {
+	// extract actions from the envelope message
+	respPayload, err := putils.GetActionFromEnvelope(envBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	//preparation for extracting RWSet from transaction
+	txRWSet := &rwset.TxReadWriteSet{}
+
+	// Get the Result from the Action
+	// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
+	if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
+		return nil, err
+	}
+
+	// trace the first 2000 characters of RWSet only, in case it is huge
+	if logger.IsEnabledFor(logging.DEBUG) {
+		txRWSetString := txRWSet.String()
+		if len(txRWSetString) < 2000 {
+			logger.Debugf("validating txRWSet:[%s]", txRWSetString)
+		} else {
+			logger.Debugf("validating txRWSet:[%s...]", txRWSetString[0:2000])
+		}
+	}
+
+	//mvccvalidation, may invalidate transaction
+	if doMVCCValidation {
+		if valid, err := v.validateTx(txRWSet, updates); err != nil {
+			return nil, err
+		} else if !valid {
+			txRWSet = nil
+		}
+	}
+
+	return txRWSet, err
+}
+
+// TODO validate configuration transaction
+func (v *Validator) validateConfigTX(env *common.Envelope) (bool, error) {
+	return true, nil
+}
+
 // ValidateAndPrepareBatch implements method in Validator interface
 func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidation bool) (*statedb.UpdateBatch, error) {
 	logger.Debugf("New block arrived for validation:%#v, doMVCCValidation=%t", block, doMVCCValidation)
-	var valid bool
 	updates := statedb.NewUpdateBatch()
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
 	txsFilter := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
@@ -53,41 +96,39 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 			continue
 		}
 
-		// extract actions from the envelope message
-		respPayload, err := putils.GetActionFromEnvelope(envBytes)
+		env, err := putils.GetEnvelopeFromBlock(envBytes)
 		if err != nil {
 			return nil, err
 		}
 
-		//preparation for extracting RWSet from transaction
-		txRWSet := &rwset.TxReadWriteSet{}
-
-		// Get the Result from the Action
-		// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
-		if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
+		payload, err := putils.GetPayload(env)
+		if err != nil {
 			return nil, err
 		}
 
-		// trace the first 2000 characters of RWSet only, in case it is huge
-		if logger.IsEnabledFor(logging.DEBUG) {
-			txRWSetString := txRWSet.String()
-			if len(txRWSetString) < 2000 {
-				logger.Debugf("validating txRWSet:[%s]", txRWSetString)
-			} else {
-				logger.Debugf("validating txRWSet:[%s...]", txRWSetString[0:2000])
+		valid := false
+		if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+			txRWSet, err := v.validateEndorserTX(envBytes, doMVCCValidation, updates)
+			if err != nil {
+				return nil, err
 			}
-		}
-
-		if !doMVCCValidation {
-			valid = true
-		} else if valid, err = v.validateTx(txRWSet, updates); err != nil {
-			return nil, err
-		}
-
-		if valid {
-			committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex+1))
-			addWriteSetToBatch(txRWSet, committingTxHeight, updates)
+			//txRWSet != nil => t is valid
+			if txRWSet != nil {
+				committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex+1))
+				addWriteSetToBatch(txRWSet, committingTxHeight, updates)
+				valid = true
+			}
+		} else if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
+			valid, err = v.validateConfigTX(env)
+			if err != nil {
+				return nil, err
+			}
 		} else {
+			logger.Errorf("Skipping transaction %d that's not an endorsement or configuration %d", txIndex, payload.Header.ChainHeader.Type)
+			valid = false
+		}
+
+		if !valid {
 			// Unset bit in byte array corresponded to the invalid transaction
 			txsFilter.Set(uint(txIndex))
 		}

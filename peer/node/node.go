@@ -35,7 +35,6 @@ func Cmd() *cobra.Command {
 	nodeCmd.AddCommand(startCmd())
 	nodeCmd.AddCommand(statusCmd())
 	nodeCmd.AddCommand(stopCmd())
-	nodeCmd.AddCommand(joinCmd())
 
 	return nodeCmd
 }

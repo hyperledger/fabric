@@ -103,10 +103,10 @@ const (
 	XXX_DefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
 )
 
-func createSignedConfigItem(chainID string,
+func createConfigItem(chainID string,
 	configItemKey string,
 	configItemValue []byte,
-	modPolicy string) *cb.SignedConfigurationItem {
+	modPolicy string) *cb.ConfigurationItem {
 
 	ciChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM,
 		messageVersion, chainID, epoch)
@@ -114,6 +114,14 @@ func createSignedConfigItem(chainID string,
 		cb.ConfigurationItem_Orderer, lastModified, modPolicy,
 		configItemKey, configItemValue)
 
+	return configItem
+}
+
+func createSignedConfigItem(chainID string,
+	configItemKey string,
+	configItemValue []byte,
+	modPolicy string) *cb.SignedConfigurationItem {
+	configItem := createConfigItem(chainID, configItemKey, configItemValue, modPolicy)
 	return &cb.SignedConfigurationItem{
 		ConfigurationItem: MarshalOrPanic(configItem),
 		Signatures:        nil}
@@ -131,6 +139,20 @@ func getTESTMSPConfigPath() string {
 	return cfgPath
 }
 
+// EncodeMSPUnsigned gets the unsigned configuration item with the default MSP
+func EncodeMSPUnsigned(testChainID string) *cb.ConfigurationItem {
+	cfgPath := getTESTMSPConfigPath()
+	conf, err := msp.GetLocalMspConfig(cfgPath)
+	if err != nil {
+		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
+	}
+	return createConfigItem(testChainID,
+		mspKey,
+		MarshalOrPanic(conf),
+		XXX_DefaultModificationPolicyID)
+}
+
+// EncodeMSP gets the signed configuration item with the default MSP
 func EncodeMSP(testChainID string) *cb.SignedConfigurationItem {
 	cfgPath := getTESTMSPConfigPath()
 	conf, err := msp.GetLocalMspConfig(cfgPath)

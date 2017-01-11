@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,68 +14,49 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package node
+package channel
 
 import (
 	"fmt"
 	"io/ioutil"
 
 	cutil "github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
+	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
 
-// join-related variables.
-var (
-	genesisBlockPath string
-)
+const joinFuncName = "join"
 
-// JoinCmdFactory holds the clients used by JoinCmd
-type JoinCmdFactory struct {
-	EndorserClient pb.EndorserClient
-	Signer         msp.SigningIdentity
-}
+func joinCmd(cf *ChannelCmdFactory) *cobra.Command {
+	// Set the flags on the channel start command.
 
-// initCmdFactory init the ChaincodeCmdFactory with default clients
-func initCmdFactory() (*JoinCmdFactory, error) {
-	endorserClient, err := common.GetEndorserClient()
-	if err != nil {
-		return nil, fmt.Errorf("Error getting endorser client : %s", err)
+	channelJoinCmd := &cobra.Command{
+		Use:   "join",
+		Short: "Joins the peer to a chain.",
+		Long:  `Joins the peer to a chain.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return join(cmd, args, cf)
+		},
 	}
-
-	signer, err := common.GetDefaultSigner()
-	if err != nil {
-		return nil, fmt.Errorf("Error getting default signer: %s", err)
-	}
-
-	return &JoinCmdFactory{
-		EndorserClient: endorserClient,
-		Signer:         signer,
-	}, nil
+	return channelJoinCmd
 }
 
-func joinCmd() *cobra.Command {
-	// Set the flags on the node start command.
-	flags := nodeJoinCmd.Flags()
-	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false,
-		"Whether peer in chaincode development mode")
-	flags.StringVarP(&genesisBlockPath, "path", "b", common.UndefinedParamValue,
-		"Path to file containing genesis block")
+//GBFileNotFoundErr genesis block file not found
+type GBFileNotFoundErr string
 
-	return nodeJoinCmd
+func (e GBFileNotFoundErr) Error() string {
+	return fmt.Sprintf("genesis block file not found %s", string(e))
 }
 
-var nodeJoinCmd = &cobra.Command{
-	Use:   "join",
-	Short: "Joins the peer to a chain.",
-	Long:  `Joins the peer to a chain.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return join(args)
-	},
+//ProposalFailedErr proposal failed
+type ProposalFailedErr string
+
+func (e ProposalFailedErr) Error() string {
+	return fmt.Sprintf("proposal failed (err: %s)", string(e))
 }
 
 func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
@@ -85,7 +66,7 @@ func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
 
 	gb, err := ioutil.ReadFile(genesisBlockPath)
 	if err != nil {
-		return nil, err
+		return nil, GBFileNotFoundErr(err.Error())
 	}
 
 	spec := &pb.ChaincodeSpec{}
@@ -102,7 +83,7 @@ func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
 	return spec, nil
 }
 
-func executeJoin(cf *JoinCmdFactory) (err error) {
+func executeJoin(cf *ChannelCmdFactory) (err error) {
 	spec, err := getJoinCCSpec()
 	if err != nil {
 		return err
@@ -119,7 +100,7 @@ func executeJoin(cf *JoinCmdFactory) (err error) {
 	uuid := cutil.GenerateUUID()
 
 	var prop *pb.Proposal
-	prop, err = putils.CreateProposalFromCIS(uuid, "", invocation, creator)
+	prop, err = putils.CreateProposalFromCIS(uuid, pcommon.HeaderType_CONFIGURATION_TRANSACTION, "", invocation, creator)
 	if err != nil {
 		return fmt.Errorf("Error creating proposal for join %s\n", err)
 	}
@@ -133,11 +114,15 @@ func executeJoin(cf *JoinCmdFactory) (err error) {
 	var proposalResp *pb.ProposalResponse
 	proposalResp, err = cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return fmt.Errorf("Error endorsing %s\n", err)
+		return ProposalFailedErr(err.Error())
 	}
 
 	if proposalResp == nil {
-		return fmt.Errorf("Error on join by endorsing: %s\n", err)
+		return ProposalFailedErr("nil proposal response")
+	}
+
+	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
+		return ProposalFailedErr(fmt.Sprintf("bad proposal response %d", proposalResp.Response.Status))
 	}
 
 	fmt.Printf("Join Result: %s\n", string(proposalResp.Response.Payload))
@@ -145,19 +130,13 @@ func executeJoin(cf *JoinCmdFactory) (err error) {
 	return nil
 }
 
-func join(args []string) error {
-	// Parameter overrides must be processed before any paramaters are
-	// cached. Failures to cache cause the server to terminate immediately.
-	if chaincodeDevMode {
-		errStr := fmt.Sprintf("Chaincode development mode not implemented for join")
-		logger.Info(errStr)
-		return fmt.Errorf(errStr)
+func join(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
+	var err error
+	if cf == nil {
+		cf, err = InitCmdFactory(true)
+		if err != nil {
+			return err
+		}
 	}
-
-	cf, err := initCmdFactory()
-	if err != nil {
-		return err
-	}
-
 	return executeJoin(cf)
 }

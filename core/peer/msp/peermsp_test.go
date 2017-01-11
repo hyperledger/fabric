@@ -53,7 +53,7 @@ func TestGetMSPManagerFromBlock(t *testing.T) {
 		t.Fatalf("getTestBlockFromMspConfig failed, err %s", err)
 	}
 
-	mgr, err := GetMSPManagerFromBlock(block)
+	mgr, err := GetMSPManagerFromBlock("testchainid", block)
 	if err != nil {
 		t.Fatalf("GetMSPManagerFromBlock failed, err %s", err)
 	} else if mgr == nil {

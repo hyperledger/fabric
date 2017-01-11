@@ -89,6 +89,12 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 
 	// continue the validation in a way that depends on the type specified in the header
 	switch common.HeaderType(hdr.ChainHeader.Type) {
+	case common.HeaderType_CONFIGURATION_TRANSACTION:
+		//which the types are different the validation is the same
+		//viz, validate a proposal to a chaincode. If we need other
+		//special validation for confguration, we would have to implement
+		//special validation
+		fallthrough
 	case common.HeaderType_ENDORSER_TRANSACTION:
 		// validation of the proposal message knowing it's of type CHAINCODE
 		chaincodeHdrExt, err := validateChaincodeProposalMessage(prop, hdr)
@@ -98,6 +104,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 
 		return prop, hdr, chaincodeHdrExt, err
 	default:
+		//NOTE : we proably need a case
 		return nil, nil, nil, fmt.Errorf("Unsupported proposal type %d", common.HeaderType(hdr.ChainHeader.Type))
 	}
 }
@@ -314,6 +321,11 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, []*pb.Transaction
 	}
 
 	putilsLogger.Infof("Header is %s", payload.Header)
+
+	if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
+		putilsLogger.Warningf("Skipping common.HeaderType_CONFIGURATION_TRANSACTION validation pending JIRA-1639\n")
+		return payload, nil, nil
+	}
 
 	// validate the header
 	err = validateCommonHeader(payload.Header)
