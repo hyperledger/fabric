@@ -62,7 +62,7 @@ type ReadWriter interface {
 
 // CreateNextBlock provides a utility way to construct the next block from contents and metadata for a given ledger
 // XXX this will need to be modified to accept marshaled envelopes to accomodate non-deterministic marshaling
-func CreateNextBlock(rl Reader, messages []*cb.Envelope, metadata [][]byte) *cb.Block {
+func CreateNextBlock(rl Reader, messages []*cb.Envelope) *cb.Block {
 	var nextBlockNumber uint64
 	var previousBlockHash []byte
 
@@ -89,16 +89,9 @@ func CreateNextBlock(rl Reader, messages []*cb.Envelope, metadata [][]byte) *cb.
 		}
 	}
 
-	return &cb.Block{
-		Header: &cb.BlockHeader{
-			Number:       nextBlockNumber,
-			PreviousHash: previousBlockHash,
-			DataHash:     data.Hash(),
-		},
-		Data: data,
-		Metadata: &cb.BlockMetadata{
-			Metadata: metadata,
-		},
-	}
+	block := cb.NewBlock(nextBlockNumber, previousBlockHash)
+	block.Header.DataHash = data.Hash()
+	block.Data = data
 
+	return block
 }

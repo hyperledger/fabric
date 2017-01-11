@@ -308,12 +308,12 @@ func (t *Backend) Deliver(batch *s.Batch) {
 			logger.Warningf("Payload cannot be unmarshalled.")
 		}
 	}
+	block := rawledger.CreateNextBlock(t.ledger, blockContents)
 	// This a quick and dirty solution to make it work.
 	// SBFT needs to use Rawledger's structures and signatures over the Block.
-	metadata := make([][]byte, metadataLen)
-	metadata[headerIndex] = batch.Header
-	metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
-	t.ledger.Append(rawledger.CreateNextBlock(t.ledger, blockContents, metadata))
+	block.Metadata.Metadata[headerIndex] = batch.Header
+	block.Metadata.Metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
+	t.ledger.Append(block)
 }
 
 func (t *Backend) Persist(key string, data proto.Message) {
@@ -441,7 +441,7 @@ func encodeSignatures(signatures map[uint64][]byte) []byte {
 }
 
 func decodeSignatures(encodedSignatures []byte) map[uint64][]byte {
-	if encodedSignatures == nil {
+	if len(encodedSignatures) == 0 {
 		return nil
 	}
 	buf := bytes.NewBuffer(encodedSignatures)

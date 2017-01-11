@@ -91,7 +91,8 @@ func (ch *chain) main() {
 				continue
 			}
 			for i, batch := range batches {
-				ch.support.WriteBlock(batch, nil, committers[i])
+				block := ch.support.CreateNextBlock(batch)
+				ch.support.WriteBlock(block, committers[i])
 			}
 			if len(batches) > 0 {
 				timer = nil
@@ -106,7 +107,8 @@ func (ch *chain) main() {
 				continue
 			}
 			logger.Debugf("Batch timer expired, creating block")
-			ch.support.WriteBlock(batch, nil, committers)
+			block := ch.support.CreateNextBlock(batch)
+			ch.support.WriteBlock(block, committers)
 		case <-ch.exitChan:
 			logger.Debugf("Exiting")
 			return

@@ -14,6 +14,9 @@ It has these top-level messages:
 	MSPPrincipal
 	OrganizationUnit
 	MSPRole
+	LastConfiguration
+	Metadata
+	MetadataSignature
 	Header
 	ChainHeader
 	SignatureHeader

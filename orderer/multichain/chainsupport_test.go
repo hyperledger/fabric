@@ -21,10 +21,13 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/common/filter"
+	mockconfigtx "github.com/hyperledger/fabric/orderer/mocks/configtx"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type mockLedgerReadWriter struct {
@@ -62,11 +65,12 @@ func (mc *mockCommitter) Commit() {
 
 func TestCommitConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
-	cs := &chainSupport{ledger: ml}
+	cm := &mockconfigtx.Manager{}
+	cs := &chainSupport{ledger: ml, configManager: cm}
 	txs := []*cb.Envelope{makeNormalTx("foo", 0), makeNormalTx("bar", 1)}
-	md := [][]byte{[]byte("foometa"), []byte("barmeta")}
 	committers := []filter.Committer{&mockCommitter{}, &mockCommitter{}}
-	cs.WriteBlock(txs, md, committers)
+	block := cs.CreateNextBlock(txs)
+	cs.WriteBlock(block, committers)
 
 	blockTXs := make([]*cb.Envelope, len(ml.data))
 	for i := range ml.data {
@@ -77,13 +81,49 @@ func TestCommitConfig(t *testing.T) {
 		t.Errorf("Should have written input data to ledger but did not")
 	}
 
-	if !reflect.DeepEqual(ml.metadata, md) {
-		t.Errorf("Should have written input metadata to ledger but did not")
-	}
-
 	for _, c := range committers {
 		if c.(*mockCommitter).committed != 1 {
 			t.Errorf("Expected exactly 1 commits but got %d", c.(*mockCommitter).committed)
 		}
 	}
+}
+
+func TestWriteLastConfiguration(t *testing.T) {
+	ml := &mockLedgerReadWriter{}
+	cm := &mockconfigtx.Manager{}
+	cs := &chainSupport{ledger: ml, configManager: cm}
+
+	lastConfig := func(block *cb.Block) uint64 {
+		md := &cb.Metadata{}
+		err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION], md)
+		if err != nil {
+			panic(err)
+		}
+		lc := &cb.LastConfiguration{}
+		err = proto.Unmarshal(md.Value, lc)
+		if err != nil {
+			panic(err)
+		}
+		return lc.Index
+	}
+
+	expected := uint64(0)
+	if lc := lastConfig(cs.WriteBlock(cb.NewBlock(0, nil), nil)); lc != expected {
+		t.Fatalf("First block should have config block index of %d, but got %d", expected, lc)
+	}
+
+	if lc := lastConfig(cs.WriteBlock(cb.NewBlock(1, nil), nil)); lc != expected {
+		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
+	}
+
+	cm.SequenceVal = 1
+	expected = uint64(2)
+	if lc := lastConfig(cs.WriteBlock(cb.NewBlock(2, nil), nil)); lc != expected {
+		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
+	}
+
+	if lc := lastConfig(cs.WriteBlock(cb.NewBlock(3, nil), nil)); lc != expected {
+		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
+	}
+
 }

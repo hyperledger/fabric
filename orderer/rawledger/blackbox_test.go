@@ -99,7 +99,7 @@ func testReinitialization(lf ledgerTestFactory, t *testing.T) {
 		return
 	}
 	_, oli := lf.New()
-	aBlock := CreateNextBlock(oli, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil)
+	aBlock := CreateNextBlock(oli, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}})
 	err := oli.Append(aBlock)
 	if err != nil {
 		t.Fatalf("Error appending block: %s", err)
@@ -130,7 +130,7 @@ func testAddition(lf ledgerTestFactory, t *testing.T) {
 	}
 	prevHash := genesis.Header.Hash()
 
-	li.Append(CreateNextBlock(li, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil))
+	li.Append(CreateNextBlock(li, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	if li.Height() != 2 {
 		t.Fatalf("Block height should be 2")
 	}
@@ -149,7 +149,7 @@ func TestRetrieval(t *testing.T) {
 
 func testRetrieval(lf ledgerTestFactory, t *testing.T) {
 	_, li := lf.New()
-	li.Append(CreateNextBlock(li, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil))
+	li.Append(CreateNextBlock(li, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	it, num := li.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
@@ -198,7 +198,7 @@ func testBlockedRetrieval(lf ledgerTestFactory, t *testing.T) {
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	li.Append(CreateNextBlock(li, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}, nil))
+	li.Append(CreateNextBlock(li, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	select {
 	case <-signal:
 	default:
@@ -232,8 +232,8 @@ func testMultichain(lf ledgerTestFactory, t *testing.T) {
 		t.Fatalf("Error creating chain1: %s", err)
 	}
 
-	c1.Append(CreateNextBlock(c1, []*cb.Envelope{&cb.Envelope{Payload: c1p1}}, nil))
-	c1b1 := CreateNextBlock(c1, []*cb.Envelope{&cb.Envelope{Payload: c1p2}}, nil)
+	c1.Append(CreateNextBlock(c1, []*cb.Envelope{&cb.Envelope{Payload: c1p1}}))
+	c1b1 := CreateNextBlock(c1, []*cb.Envelope{&cb.Envelope{Payload: c1p2}})
 	c1.Append(c1b1)
 
 	if c1.Height() != 2 {
@@ -244,7 +244,7 @@ func testMultichain(lf ledgerTestFactory, t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating chain2: %s", err)
 	}
-	c2b0 := c2.Append(CreateNextBlock(c2, []*cb.Envelope{&cb.Envelope{Payload: c2p1}}, nil))
+	c2b0 := c2.Append(CreateNextBlock(c2, []*cb.Envelope{&cb.Envelope{Payload: c2p1}}))
 
 	if c2.Height() != 1 {
 		t.Fatalf("Block height for c2 should be 1")

@@ -113,15 +113,12 @@ func (cbs *commonBootstrapper) makeGenesisBlock(configEnvelope *cb.Configuration
 	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(configEnvelope)}
 	envelope := &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}
 
-	blockData := &cb.BlockData{Data: [][]byte{utils.MarshalOrPanic(envelope)}}
+	block := cb.NewBlock(0, nil)
+	block.Data = &cb.BlockData{Data: [][]byte{utils.MarshalOrPanic(envelope)}}
+	block.Header.DataHash = block.Data.Hash()
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{
+		Value: utils.MarshalOrPanic(&cb.LastConfiguration{Index: 0}),
+	})
 
-	return &cb.Block{
-		Header: &cb.BlockHeader{
-			Number:       0,
-			PreviousHash: nil,
-			DataHash:     blockData.Hash(),
-		},
-		Data:     blockData,
-		Metadata: nil,
-	}
+	return block
 }

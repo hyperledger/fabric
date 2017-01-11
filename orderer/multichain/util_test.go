@@ -55,7 +55,8 @@ func (mch *mockChain) Start() {
 			}
 			batches, committers, _ := mch.cutter.Ordered(msg)
 			for i, batch := range batches {
-				mch.support.WriteBlock(batch, nil, committers[i])
+				block := mch.support.CreateNextBlock(batch)
+				mch.support.WriteBlock(block, committers[i])
 			}
 		}
 	}()

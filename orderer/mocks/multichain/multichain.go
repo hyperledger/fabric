@@ -23,6 +23,7 @@ import (
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
 	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/op/go-logging"
 )
@@ -55,10 +56,27 @@ func (mcs *ConsenterSupport) SharedConfig() sharedconfig.Manager {
 	return mcs.SharedConfigVal
 }
 
+// CreateNextBlock creates a simple block structure with the given data
+func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
+	block := cb.NewBlock(0, nil)
+	mtxs := make([][]byte, len(data))
+	for i := range data {
+		mtxs[i] = utils.MarshalOrPanic(data[i])
+	}
+	block.Data = &cb.BlockData{Data: mtxs}
+	return block
+}
+
 // WriteBlock writes data to the Batches channel
-func (mcs *ConsenterSupport) WriteBlock(data []*cb.Envelope, metadata [][]byte, committers []filter.Committer) {
+// Note that _committers is ignored by this mock implementation
+func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Committer) *cb.Block {
 	logger.Debugf("mockWriter: attempting to write batch")
-	mcs.Batches <- data
+	umtxs := make([]*cb.Envelope, len(block.Data.Data))
+	for i := range block.Data.Data {
+		umtxs[i] = utils.UnmarshalEnvelopeOrPanic(block.Data.Data[i])
+	}
+	mcs.Batches <- umtxs
+	return block
 }
 
 // ChainID returns the chain ID this specific consenter instance is associated with

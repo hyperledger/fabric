@@ -45,6 +45,10 @@ func (mcm *mockConfigManager) ChainID() string {
 	panic("Unimplemented")
 }
 
+func (mcm *mockConfigManager) Sequence() uint64 {
+	panic("Unimplemented")
+}
+
 func TestForwardNonConfig(t *testing.T) {
 	cf := NewFilter(&mockConfigManager{})
 	result, _ := cf.Apply(&cb.Envelope{

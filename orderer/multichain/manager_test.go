@@ -80,12 +80,12 @@ func NewRAMLedger(maxSize int) rawledger.ReadWriter {
 func TestGetConfigTx(t *testing.T) {
 	rl := NewRAMLedger(10)
 	for i := 0; i < 5; i++ {
-		rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, i)}, nil))
+		rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, i)}))
 	}
-	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(provisional.TestChainID, 5)}, nil))
+	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(provisional.TestChainID, 5)}))
 	ctx := makeConfigTx(provisional.TestChainID, 6)
-	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{ctx}, nil))
-	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)}, nil))
+	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
+	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)}))
 
 	pctx := getConfigTx(rl)
 
@@ -101,9 +101,9 @@ func TestGetConfigTxFailure(t *testing.T) {
 		rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{
 			makeNormalTx(provisional.TestChainID, i),
 			makeConfigTx(provisional.TestChainID, i),
-		}, nil))
+		}))
 	}
-	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 11)}, nil))
+	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 11)}))
 	pctx := getConfigTx(rl)
 
 	if pctx != nil {

@@ -234,7 +234,8 @@ func (ch *chainImpl) loop() {
 				}
 				// If !ok, batches == nil, so this will be skipped
 				for i, batch := range batches {
-					ch.support.WriteBlock(batch, nil, committers[i])
+					block := ch.support.CreateNextBlock(batch)
+					ch.support.WriteBlock(block, committers[i])
 				}
 			}
 		case <-ch.exitChan: // when Halt() is called

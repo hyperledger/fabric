@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"github.com/golang/protobuf/proto"
 	"errors"
+	"github.com/golang/protobuf/proto"
 )
 
 // Handler provides a hook which allows other pieces of code to participate in config proposals
@@ -52,6 +52,9 @@ type Manager interface {
 
 	// ChainID retrieves the chain ID associated with this manager
 	ChainID() string
+
+	// Sequence returns the current sequence number of the configuration
+	Sequence() uint64
 }
 
 // DefaultModificationPolicyID is the ID of the policy used when no other policy can be resolved, for instance when attempting to create a new config item
@@ -294,4 +297,9 @@ func (cm *configurationManager) Apply(configtx *cb.ConfigurationEnvelope) error 
 // ChainID retrieves the chain ID associated with this manager
 func (cm *configurationManager) ChainID() string {
 	return cm.chainID
+}
+
+// Sequence returns the current sequence number of the configuration
+func (cm *configurationManager) Sequence() uint64 {
+	return cm.sequence
 }

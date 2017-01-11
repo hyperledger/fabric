@@ -49,6 +49,22 @@ enum BlockMetadataIndex {
     TRANSACTIONS_FILTER = 2;    // Block metadata array poistion to store serialized bit array filter of invalid transactions
 }
 
+// LastConfiguration is the encoded value for the Metadata message which is encoded in the LAST_CONFIGURATION block metadata index
+message LastConfiguration {
+	uint64 index  = 1;
+}
+
+// Metadata is a common structure to be used to encode block metadata
+message Metadata {
+    bytes value = 1;
+    repeated MetadataSignature signatures = 2;
+}
+
+message MetadataSignature {
+    bytes signatureHeader = 1; // An encoded SignatureHeader
+    bytes signature = 2;       // The signature over the concatenation of the Metadata value bytes, signatureHeader, and block header
+}
+
 message Header {
     ChainHeader chainHeader = 1;
     SignatureHeader signatureHeader = 2;
