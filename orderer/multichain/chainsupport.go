@@ -19,6 +19,7 @@ package multichain
 import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
@@ -193,19 +194,6 @@ func (cs *chainSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 	return rawledger.CreateNextBlock(cs.ledger, messages)
 }
 
-// TODO, factor this out into common util code
-func metadataSignatureBytes(value []byte, sigHeader []byte, blockHeader []byte) []byte {
-	result := make([]byte, len(value)+len(sigHeader)+len(blockHeader))
-	last := 0
-	for _, slice := range [][]byte{value, sigHeader, blockHeader} {
-		for i := range slice {
-			result[i+last] = slice[i]
-		}
-		last += len(slice)
-	}
-	return result
-}
-
 func (cs *chainSupport) addBlockSignature(block *cb.Block) {
 	logger.Debugf("%+v", cs)
 	logger.Debugf("%+v", cs.signer)
@@ -217,7 +205,7 @@ func (cs *chainSupport) addBlockSignature(block *cb.Block) {
 	// information required beyond the fact that the metadata item is signed.
 	blockSignatureValue := []byte(nil)
 
-	blockSignature.Signature = cs.signer.Sign(metadataSignatureBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
+	blockSignature.Signature = cs.signer.Sign(util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
 
 	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = utils.MarshalOrPanic(&cb.Metadata{
 		Value: blockSignatureValue,
@@ -240,7 +228,7 @@ func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 
 	lastConfigValue := utils.MarshalOrPanic(&cb.LastConfiguration{Index: cs.lastConfiguration})
 
-	lastConfigSignature.Signature = cs.signer.Sign(metadataSignatureBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
+	lastConfigSignature.Signature = cs.signer.Sign(util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
 
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{
 		Value: lastConfigValue,

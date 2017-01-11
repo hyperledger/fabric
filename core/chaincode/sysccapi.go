@@ -21,11 +21,11 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/util"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"

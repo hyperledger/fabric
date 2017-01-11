@@ -118,3 +118,27 @@ func TestConcurrencyNotFail(t *testing.T) {
 		logger.Info("")
 	}
 }
+
+func TestMetadataSignatureBytesNormal(t *testing.T) {
+	first := []byte("first")
+	second := []byte("second")
+	third := []byte("third")
+
+	result := ConcatenateBytes(first, second, third)
+	expected := []byte("firstsecondthird")
+	if !bytes.Equal(result, expected) {
+		t.Errorf("Did not concatenate bytes correctly, expected %s, got %s", expected, result)
+	}
+}
+
+func TestMetadataSignatureBytesNil(t *testing.T) {
+	first := []byte("first")
+	second := []byte(nil)
+	third := []byte("third")
+
+	result := ConcatenateBytes(first, second, third)
+	expected := []byte("firstthird")
+	if !bytes.Equal(result, expected) {
+		t.Errorf("Did not concatenate bytes correctly, expected %s, got %s", expected, result)
+	}
+}

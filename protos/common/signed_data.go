@@ -19,6 +19,8 @@ package common
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/util"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -53,7 +55,7 @@ func (sci *SignedConfigurationItem) AsSignedData() ([]*SignedData, error) {
 		}
 
 		result[i] = &SignedData{
-			Data:      append(sci.ConfigurationItem, configSig.SignatureHeader...),
+			Data:      util.ConcatenateBytes(sci.ConfigurationItem, configSig.SignatureHeader),
 			Identity:  sigHeader.Creator,
 			Signature: configSig.Signature,
 		}
