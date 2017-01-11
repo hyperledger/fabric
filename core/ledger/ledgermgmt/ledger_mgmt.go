@@ -121,7 +121,7 @@ func Close() {
 		return
 	}
 	for _, l := range openedLedgers {
-		l.(*ClosableLedger).closeWithoutLock()
+		l.(*closableLedger).closeWithoutLock()
 	}
 	ledgerProvider.Close()
 	openedLedgers = nil
@@ -129,23 +129,23 @@ func Close() {
 }
 
 func wrapLedger(id string, l ledger.PeerLedger) ledger.PeerLedger {
-	return &ClosableLedger{id, l}
+	return &closableLedger{id, l}
 }
 
-// ClosableLedger extends from actual validated ledger and overwrites the Close method
-type ClosableLedger struct {
+// closableLedger extends from actual validated ledger and overwrites the Close method
+type closableLedger struct {
 	id string
 	ledger.PeerLedger
 }
 
 // Close closes the actual ledger and removes the entries from opened ledgers map
-func (l *ClosableLedger) Close() {
+func (l *closableLedger) Close() {
 	lock.Lock()
 	defer lock.Unlock()
 	l.closeWithoutLock()
 }
 
-func (l *ClosableLedger) closeWithoutLock() {
+func (l *closableLedger) closeWithoutLock() {
 	l.PeerLedger.Close()
 	delete(openedLedgers, l.id)
 }

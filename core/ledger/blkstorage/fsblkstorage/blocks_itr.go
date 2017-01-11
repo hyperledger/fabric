@@ -25,13 +25,13 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 )
 
-// BlockHolder holds block bytes
-type BlockHolder struct {
+// blockHolder holds block bytes
+type blockHolder struct {
 	blockBytes []byte
 }
 
 // GetBlock serializes Block from block bytes
-func (bh *BlockHolder) GetBlock() *common.Block {
+func (bh *blockHolder) GetBlock() *common.Block {
 	block, err := deserializeBlock(bh.blockBytes)
 	if err != nil {
 		panic(fmt.Errorf("Problem in deserialzing block: %s", err))
@@ -40,12 +40,12 @@ func (bh *BlockHolder) GetBlock() *common.Block {
 }
 
 // GetBlockBytes returns block bytes
-func (bh *BlockHolder) GetBlockBytes() []byte {
+func (bh *blockHolder) GetBlockBytes() []byte {
 	return bh.blockBytes
 }
 
-// BlocksItr - an iterator for iterating over a sequence of blocks
-type BlocksItr struct {
+// blocksItr - an iterator for iterating over a sequence of blocks
+type blocksItr struct {
 	mgr                  *blockfileMgr
 	maxBlockNumAvailable uint64
 	blockNumToRetrieve   uint64
@@ -54,11 +54,11 @@ type BlocksItr struct {
 	closeMarkerLock      *sync.Mutex
 }
 
-func newBlockItr(mgr *blockfileMgr, startBlockNum uint64) *BlocksItr {
-	return &BlocksItr{mgr, mgr.cpInfo.lastBlockNumber, startBlockNum, nil, false, &sync.Mutex{}}
+func newBlockItr(mgr *blockfileMgr, startBlockNum uint64) *blocksItr {
+	return &blocksItr{mgr, mgr.cpInfo.lastBlockNumber, startBlockNum, nil, false, &sync.Mutex{}}
 }
 
-func (itr *BlocksItr) waitForBlock(blockNum uint64) uint64 {
+func (itr *blocksItr) waitForBlock(blockNum uint64) uint64 {
 	itr.mgr.cpInfoCond.L.Lock()
 	defer itr.mgr.cpInfoCond.L.Unlock()
 	for itr.mgr.cpInfo.lastBlockNumber < blockNum && !itr.shouldClose() {
@@ -70,7 +70,7 @@ func (itr *BlocksItr) waitForBlock(blockNum uint64) uint64 {
 	return itr.mgr.cpInfo.lastBlockNumber
 }
 
-func (itr *BlocksItr) initStream() error {
+func (itr *blocksItr) initStream() error {
 	var lp *fileLocPointer
 	var err error
 	if lp, err = itr.mgr.index.getBlockLocByBlockNum(itr.blockNumToRetrieve); err != nil {
@@ -82,14 +82,14 @@ func (itr *BlocksItr) initStream() error {
 	return nil
 }
 
-func (itr *BlocksItr) shouldClose() bool {
+func (itr *blocksItr) shouldClose() bool {
 	itr.closeMarkerLock.Lock()
 	defer itr.closeMarkerLock.Unlock()
 	return itr.closeMarker
 }
 
 // Next moves the cursor to next block and returns true iff the iterator is not exhausted
-func (itr *BlocksItr) Next() (ledger.QueryResult, error) {
+func (itr *blocksItr) Next() (ledger.QueryResult, error) {
 	if itr.maxBlockNumAvailable < itr.blockNumToRetrieve {
 		itr.maxBlockNumAvailable = itr.waitForBlock(itr.blockNumToRetrieve)
 	}
@@ -108,11 +108,11 @@ func (itr *BlocksItr) Next() (ledger.QueryResult, error) {
 		return nil, err
 	}
 	itr.blockNumToRetrieve++
-	return &BlockHolder{nextBlockBytes}, nil
+	return &blockHolder{nextBlockBytes}, nil
 }
 
 // Close releases any resources held by the iterator
-func (itr *BlocksItr) Close() {
+func (itr *blocksItr) Close() {
 	itr.closeMarkerLock.Lock()
 	defer itr.closeMarkerLock.Unlock()
 	itr.closeMarker = true

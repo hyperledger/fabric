@@ -28,29 +28,36 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 )
 
+var testPath = "/tmp/fabric/ledgertests"
+
 type testEnv struct {
-	conf        *Conf
-	indexConfig *blkstorage.IndexConfig
+	t        testing.TB
+	provider *FsBlockstoreProvider
 }
 
-func newTestEnv(t testing.TB) *testEnv {
-	conf := NewConf("/tmp/tests/ledger/blkstorage/fsblkstorage", 0)
+func newTestEnv(t testing.TB, conf *Conf) *testEnv {
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockHash,
 		blkstorage.IndexableAttrBlockNum,
 		blkstorage.IndexableAttrTxID,
 		blkstorage.IndexableAttrBlockNumTranNum,
 	}
-	os.RemoveAll(conf.dbPath)
-	os.RemoveAll(conf.blockfilesDir)
-	return &testEnv{
-		conf:        conf,
-		indexConfig: &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}}
+	return newTestEnvSelectiveIndexing(t, conf, attrsToIndex)
+}
+
+func newTestEnvSelectiveIndexing(t testing.TB, conf *Conf, attrsToIndex []blkstorage.IndexableAttr) *testEnv {
+	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
+	return &testEnv{t, NewProvider(conf, indexConfig).(*FsBlockstoreProvider)}
 }
 
 func (env *testEnv) Cleanup() {
-	os.RemoveAll(env.conf.dbPath)
-	os.RemoveAll(env.conf.blockfilesDir)
+	env.provider.Close()
+	env.removeFSPath()
+}
+
+func (env *testEnv) removeFSPath() {
+	fsPath := env.provider.conf.blockStorageDir
+	os.RemoveAll(fsPath)
 }
 
 type testBlockfileMgrWrapper struct {
@@ -58,8 +65,10 @@ type testBlockfileMgrWrapper struct {
 	blockfileMgr *blockfileMgr
 }
 
-func newTestBlockfileWrapper(t testing.TB, env *testEnv) *testBlockfileMgrWrapper {
-	return &testBlockfileMgrWrapper{t, newBlockfileMgr(env.conf, env.indexConfig)}
+func newTestBlockfileWrapper(env *testEnv, ledgerid string) *testBlockfileMgrWrapper {
+	blkStore, err := env.provider.OpenBlockStore(ledgerid)
+	testutil.AssertNoError(env.t, err, "")
+	return &testBlockfileMgrWrapper{env.t, blkStore.(*fsBlockStore).fileMgr}
 }
 
 func (w *testBlockfileMgrWrapper) addBlocks(blocks []*common.Block) {
@@ -93,5 +102,4 @@ func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, s
 
 func (w *testBlockfileMgrWrapper) close() {
 	w.blockfileMgr.close()
-	w.blockfileMgr.db.Close()
 }

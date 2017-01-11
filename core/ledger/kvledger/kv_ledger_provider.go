@@ -20,11 +20,13 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/blkstorage"
+	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/util/db"
+	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
 )
 
 var (
@@ -38,8 +40,9 @@ var (
 
 // Provider implements interface ledger.PeerLedgerProvider
 type Provider struct {
-	idStore     *idStore
-	vdbProvider statedb.VersionedDBProvider
+	idStore            *idStore
+	vdbProvider        statedb.VersionedDBProvider
+	blockStoreProvider blkstorage.BlockStoreProvider
 }
 
 // NewProvider instantiates a new Provider.
@@ -58,10 +61,20 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 			return nil, err
 		}
 	}
-	ledgerMgmtPath := ledgerconfig.GetLedgerProviderPath()
-	idStore := openIDStore(ledgerMgmtPath)
+	attrsToIndex := []blkstorage.IndexableAttr{
+		blkstorage.IndexableAttrBlockHash,
+		blkstorage.IndexableAttrBlockNum,
+		blkstorage.IndexableAttrTxID,
+		blkstorage.IndexableAttrBlockNumTranNum,
+	}
+	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
+	blockStoreProvider := fsblkstorage.NewProvider(
+		fsblkstorage.NewConf(ledgerconfig.GetBlockStorePath(), ledgerconfig.GetMaxBlockfileSize()),
+		indexConfig)
+
+	idStore := openIDStore(ledgerconfig.GetLedgerProviderPath())
 	logger.Info("ledger provider Initialized")
-	return &Provider{idStore, vdbProvider}, nil
+	return &Provider{idStore, vdbProvider, blockStoreProvider}, nil
 }
 
 // Create implements the corresponding method from interface ledger.PeerLedgerProvider
@@ -74,11 +87,7 @@ func (provider *Provider) Create(ledgerID string) (ledger.PeerLedger, error) {
 		return nil, ErrLedgerIDExists
 	}
 	provider.idStore.createLedgerID(ledgerID)
-	l, err := NewKVLedger(provider.vdbProvider, ledgerID)
-	if err != nil {
-		return nil, err
-	}
-	return l, nil
+	return provider.Open(ledgerID)
 }
 
 // Open implements the corresponding method from interface ledger.PeerLedgerProvider
@@ -90,7 +99,15 @@ func (provider *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 	if !exists {
 		return nil, ErrNonExistingLedgerID
 	}
-	l, err := NewKVLedger(provider.vdbProvider, ledgerID)
+	vDB, err := provider.vdbProvider.GetDBHandle(ledgerID)
+	if err != nil {
+		return nil, err
+	}
+	blockStore, err := provider.blockStoreProvider.OpenBlockStore(ledgerID)
+	if err != nil {
+		return nil, err
+	}
+	l, err := newKVLedger(ledgerID, blockStore, vDB)
 	if err != nil {
 		return nil, err
 	}
@@ -111,14 +128,15 @@ func (provider *Provider) List() ([]string, error) {
 func (provider *Provider) Close() {
 	provider.vdbProvider.Close()
 	provider.idStore.close()
+	provider.blockStoreProvider.Close()
 }
 
 type idStore struct {
-	db *db.DB
+	db *leveldbhelper.DB
 }
 
 func openIDStore(path string) *idStore {
-	db := db.CreateDB(&db.Conf{DBPath: path})
+	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: path})
 	db.Open()
 	return &idStore{db}
 }

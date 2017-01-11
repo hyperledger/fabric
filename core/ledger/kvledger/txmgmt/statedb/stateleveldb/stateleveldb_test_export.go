@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 )
 
 // TestVDBEnv provides a level db backed versioned db for testing
@@ -45,7 +46,7 @@ func (env *TestVDBEnv) Cleanup() {
 }
 
 func removeDBPath(t testing.TB, caller string) {
-	dbPath := getDBPath()
+	dbPath := ledgerconfig.GetStateLevelDBPath()
 	if err := os.RemoveAll(dbPath); err != nil {
 		t.Fatalf("Err: %s", err)
 		t.FailNow()

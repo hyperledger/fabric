@@ -27,9 +27,10 @@ import (
 )
 
 func TestBlockFileScanSmallTxOnly(t *testing.T) {
-	env := newTestEnv(t)
+	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
 	defer env.Cleanup()
-	blkfileMgrWrapper := newTestBlockfileWrapper(t, env)
+	ledgerid := "testLedger"
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	bg := testutil.NewBlockGenerator(t)
 	blocks := []*common.Block{}
 	blocks = append(blocks, bg.NextTestBlock(0, 0))
@@ -38,20 +39,21 @@ func TestBlockFileScanSmallTxOnly(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks)
 	blkfileMgrWrapper.close()
 
-	filePath := deriveBlockfilePath(env.conf.blockfilesDir, 0)
+	filePath := deriveBlockfilePath(env.provider.conf.getLedgerBlockDir(ledgerid), 0)
 	_, fileSize, err := util.FileExists(filePath)
 	testutil.AssertNoError(t, err, "")
 
-	endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(env.conf.blockfilesDir, 0, 0)
+	endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(env.provider.conf.getLedgerBlockDir(ledgerid), 0, 0)
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, numBlocks, len(blocks))
 	testutil.AssertEquals(t, endOffsetLastBlock, fileSize)
 }
 
 func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
-	env := newTestEnv(t)
+	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
 	defer env.Cleanup()
-	blkfileMgrWrapper := newTestBlockfileWrapper(t, env)
+	ledgerid := "testLedger"
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	bg := testutil.NewBlockGenerator(t)
 	blocks := []*common.Block{}
 	blocks = append(blocks, bg.NextTestBlock(0, 0))
@@ -60,7 +62,7 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks)
 	blkfileMgrWrapper.close()
 
-	filePath := deriveBlockfilePath(env.conf.blockfilesDir, 0)
+	filePath := deriveBlockfilePath(env.provider.conf.getLedgerBlockDir(ledgerid), 0)
 	_, fileSize, err := util.FileExists(filePath)
 	testutil.AssertNoError(t, err, "")
 
@@ -70,7 +72,7 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 	err = file.Truncate(fileSize - 1)
 	testutil.AssertNoError(t, err, "")
 
-	_, numBlocks, err := scanForLastCompleteBlock(env.conf.blockfilesDir, 0, 0)
+	_, numBlocks, err := scanForLastCompleteBlock(env.provider.conf.getLedgerBlockDir(ledgerid), 0, 0)
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, numBlocks, len(blocks)-1)
 }

@@ -18,6 +18,7 @@ package util
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -68,6 +69,21 @@ func FileExists(filePath string) (bool, int64, error) {
 		return false, 0, nil
 	}
 	return true, fileInfo.Size(), err
+}
+
+// ListSubdirs returns the subdirectories
+func ListSubdirs(dirPath string) ([]string, error) {
+	subdirs := []string{}
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range files {
+		if f.IsDir() {
+			subdirs = append(subdirs, f.Name())
+		}
+	}
+	return subdirs, nil
 }
 
 func logDirStatus(msg string, dirPath string) {

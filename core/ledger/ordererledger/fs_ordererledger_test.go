@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
@@ -29,10 +30,15 @@ const (
 )
 
 func TestOrdererLedger(t *testing.T) {
+	conf := fsblkstorage.NewConf(testFolder, 0)
 	cleanup(t)
-	ordererLedger := NewFSBasedOrdererLedger(testFolder)
-	defer ordererLedger.Close()
 	defer cleanup(t)
+
+	ordererLedgerProvider := NewFSBasedOrdererLedgerProvider(conf)
+	defer ordererLedgerProvider.Close()
+
+	ordererLedger, _ := ordererLedgerProvider.Create("testLedger")
+	defer ordererLedger.Close()
 
 	// Construct test blocks and add to orderer ledger
 	blocks := testutil.ConstructTestBlocks(t, 10)

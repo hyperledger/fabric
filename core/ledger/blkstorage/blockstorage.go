@@ -48,6 +48,15 @@ var (
 	ErrAttrNotIndexed = errors.New("Attribute not indexed")
 )
 
+// BlockStoreProvider provides an handle to a BlockStore
+type BlockStoreProvider interface {
+	CreateBlockStore(ledgerid string) (BlockStore, error)
+	OpenBlockStore(ledgerid string) (BlockStore, error)
+	Exists(ledgerid string) (bool, error)
+	List() ([]string, error)
+	Close()
+}
+
 // BlockStore - an interface for persisting and retrieving blocks
 // An implementation of this interface is expected to take an argument
 // of type `IndexConfig` which configures the block store on what items should be indexed

@@ -22,7 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
@@ -39,7 +38,7 @@ var logger = logging.MustGetLogger("kvledger")
 
 // KVLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
-type KVLedger struct {
+type kvLedger struct {
 	ledgerID    string
 	blockStore  blkstorage.BlockStore
 	txtmgmt     txmgr.TxMgr
@@ -47,29 +46,13 @@ type KVLedger struct {
 }
 
 // NewKVLedger constructs new `KVLedger`
-func NewKVLedger(versionedDBProvider statedb.VersionedDBProvider, ledgerID string) (*KVLedger, error) {
+func newKVLedger(ledgerID string, blockStore blkstorage.BlockStore, versionedDB statedb.VersionedDB) (*kvLedger, error) {
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
-	attrsToIndex := []blkstorage.IndexableAttr{
-		blkstorage.IndexableAttrBlockHash,
-		blkstorage.IndexableAttrBlockNum,
-		blkstorage.IndexableAttrTxID,
-		blkstorage.IndexableAttrBlockNumTranNum,
-	}
-	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-
-	blockStorageDir := ledgerconfig.GetBlockStoragePath(ledgerID)
-	blockStorageConf := fsblkstorage.NewConf(blockStorageDir, ledgerconfig.GetMaxBlockfileSize())
-	blockStore := fsblkstorage.NewFsBlockStore(blockStorageConf, indexConfig)
-
 	//State and History database managers
 	var txmgmt txmgr.TxMgr
 	var historymgmt history.HistMgr
 
-	db, err := versionedDBProvider.GetDBHandle(ledgerID)
-	if err != nil {
-		return nil, err
-	}
-	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(db)
+	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(versionedDB)
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		logger.Debugf("===HISTORYDB=== NewKVLedger() Using CouchDB for transaction history database")
@@ -83,7 +66,7 @@ func NewKVLedger(versionedDBProvider statedb.VersionedDBProvider, ledgerID strin
 			couchDBDef.Password) //enter couchDB pw here
 	}
 
-	l := &KVLedger{ledgerID, blockStore, txmgmt, historymgmt}
+	l := &kvLedger{ledgerID, blockStore, txmgmt, historymgmt}
 
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := recoverDB(l); err != nil {
@@ -95,7 +78,7 @@ func NewKVLedger(versionedDBProvider statedb.VersionedDBProvider, ledgerID strin
 
 //Recover the state database and history database (if exist)
 //by recommitting last valid blocks
-func recoverDB(l *KVLedger) error {
+func recoverDB(l *kvLedger) error {
 	//If there is no block in blockstorage, nothing to recover.
 	info, _ := l.blockStore.GetBlockchainInfo()
 	if info.Height == 0 {
@@ -197,7 +180,7 @@ func isRecoveryNeeded(savepoint uint64, blockHeight uint64) (bool, error) {
 
 //recommitLostBlocks retrieves blocks in specified range and commit the write set to either
 //state DB or history DB or both
-func recommitLostBlocks(l *KVLedger, savepoint uint64, blockHeight uint64, recoverStateDB bool, recoverHistoryDB bool) error {
+func recommitLostBlocks(l *kvLedger, savepoint uint64, blockHeight uint64, recoverStateDB bool, recoverHistoryDB bool) error {
 	//Compute updateSet for each missing savepoint and commit to state DB
 	var err error
 	var block *common.Block
@@ -226,18 +209,18 @@ func recommitLostBlocks(l *KVLedger, savepoint uint64, blockHeight uint64, recov
 }
 
 // GetTransactionByID retrieves a transaction by id
-func (l *KVLedger) GetTransactionByID(txID string) (*pb.Transaction, error) {
+func (l *kvLedger) GetTransactionByID(txID string) (*pb.Transaction, error) {
 	return l.blockStore.RetrieveTxByID(txID)
 }
 
 // GetBlockchainInfo returns basic info about blockchain
-func (l *KVLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
+func (l *kvLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 	return l.blockStore.GetBlockchainInfo()
 }
 
 // GetBlockByNumber returns block at a given height
 // blockNumber of  math.MaxUint64 will return last block
-func (l *KVLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
+func (l *kvLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 	return l.blockStore.RetrieveBlockByNumber(blockNumber)
 
 }
@@ -245,42 +228,42 @@ func (l *KVLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 // GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
 // The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 // ResultsIterator contains type BlockHolder
-func (l *KVLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIterator, error) {
+func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIterator, error) {
 	return l.blockStore.RetrieveBlocks(startBlockNumber)
 
 }
 
 // GetBlockByHash returns a block given it's hash
-func (l *KVLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
+func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
 	return l.blockStore.RetrieveBlockByHash(blockHash)
 }
 
 //Prune prunes the blocks/transactions that satisfy the given policy
-func (l *KVLedger) Prune(policy ledger.PrunePolicy) error {
+func (l *kvLedger) Prune(policy ledger.PrunePolicy) error {
 	return errors.New("Not yet implemented")
 }
 
 // NewTxSimulator returns new `ledger.TxSimulator`
-func (l *KVLedger) NewTxSimulator() (ledger.TxSimulator, error) {
+func (l *kvLedger) NewTxSimulator() (ledger.TxSimulator, error) {
 	return l.txtmgmt.NewTxSimulator()
 }
 
 // NewQueryExecutor gives handle to a query executor.
 // A client can obtain more than one 'QueryExecutor's for parallel execution.
 // Any synchronization should be performed at the implementation level if required
-func (l *KVLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
+func (l *kvLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 	return l.txtmgmt.NewQueryExecutor()
 }
 
 // NewHistoryQueryExecutor gives handle to a history query executor.
 // A client can obtain more than one 'HistoryQueryExecutor's for parallel execution.
 // Any synchronization should be performed at the implementation level if required
-func (l *KVLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
+func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
 	return l.historymgmt.NewHistoryQueryExecutor()
 }
 
 // Commit commits the valid block (returned in the method RemoveInvalidTransactionsAndPrepare) and related state changes
-func (l *KVLedger) Commit(block *common.Block) error {
+func (l *kvLedger) Commit(block *common.Block) error {
 	var err error
 
 	logger.Debugf("Validating block")
@@ -314,7 +297,7 @@ func (l *KVLedger) Commit(block *common.Block) error {
 }
 
 // Close closes `KVLedger`
-func (l *KVLedger) Close() {
+func (l *kvLedger) Close() {
 	l.blockStore.Shutdown()
 	l.txtmgmt.Shutdown()
 }

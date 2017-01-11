@@ -45,15 +45,29 @@ type OrdererLedger interface {
 
 // PeerLedgerProvider provides handle to ledger instances
 type PeerLedgerProvider interface {
-	// CreateLedger creates a new ledger with a given unique id
+	// Create creates a new ledger with a given unique id
 	Create(ledgerID string) (PeerLedger, error)
-	// OpenLedger opens an already created ledger
+	// Open opens an already created ledger
 	Open(ledgerID string) (PeerLedger, error)
 	// Exists tells whether the ledger with given id exits
 	Exists(ledgerID string) (bool, error)
 	// List lists the ids of the existing ledgers
 	List() ([]string, error)
 	// Close closes the PeerLedgerProvider
+	Close()
+}
+
+// OrdererLedgerProvider provides handle to raw ledger instances
+type OrdererLedgerProvider interface {
+	// Create creates a new ledger with a given unique id
+	Create(ledgerID string) (OrdererLedger, error)
+	// Open opens an already created ledger
+	Open(ledgerID string) (OrdererLedger, error)
+	// Exists tells whether the ledger with given id exits
+	Exists(ledgerID string) (bool, error)
+	// List lists the ids of the existing ledgers
+	List() ([]string, error)
+	// Close closes the ValidatedLedgerProvider
 	Close()
 }
 
