@@ -16,7 +16,7 @@ limitations under the License.
 
 syntax = "proto3";
 
-option go_package = "github.com/hyperledger/fabric/core/crypto/attributes/proto" ;
+option go_package = "github.com/hyperledger/fabric/accesscontrol/attributes/proto" ;
 
 package protos;
 
