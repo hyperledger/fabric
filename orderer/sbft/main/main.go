@@ -131,7 +131,9 @@ func serve(c flags) {
 	localConf.General.OrdererType = provisional.ConsensusTypeSbft
 	genesisBlock := provisional.New(localConf).GenesisBlock()
 
-	_, ledger := fileledger.New(c.dataDir, genesisBlock)
+	flf := fileledger.New(c.dataDir)
+	ledger, _ := flf.GetOrCreate(provisional.TestChainID)
+	ledger.Append(genesisBlock)
 	s.backend, err = backend.NewBackend(config.Peers, conn, ledger, persist)
 	if err != nil {
 		panic(err)

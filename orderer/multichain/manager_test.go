@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
+	"github.com/hyperledger/fabric/orderer/rawledger"
 	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -57,16 +58,34 @@ func makeNormalTx(chainID string, i int) *cb.Envelope {
 	}
 }
 
+func NewRAMLedgerAndFactory(maxSize int) (rawledger.Factory, rawledger.ReadWriter) {
+	rlf := ramledger.New(10)
+	rl, err := rlf.GetOrCreate(provisional.TestChainID)
+	if err != nil {
+		panic(err)
+	}
+	err = rl.Append(genesisBlock)
+	if err != nil {
+		panic(err)
+	}
+	return rlf, rl
+}
+
+func NewRAMLedger(maxSize int) rawledger.ReadWriter {
+	_, rl := NewRAMLedgerAndFactory(maxSize)
+	return rl
+}
+
 // Tests for a normal chain which contains 3 config transactions and other normal transactions to make sure the right one returned
 func TestGetConfigTx(t *testing.T) {
-	_, rl := ramledger.New(10, genesisBlock)
+	rl := NewRAMLedger(10)
 	for i := 0; i < 5; i++ {
-		rl.Append([]*cb.Envelope{makeNormalTx(provisional.TestChainID, i)}, nil)
+		rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, i)}, nil))
 	}
-	rl.Append([]*cb.Envelope{makeConfigTx(provisional.TestChainID, 5)}, nil)
+	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(provisional.TestChainID, 5)}, nil))
 	ctx := makeConfigTx(provisional.TestChainID, 6)
-	rl.Append([]*cb.Envelope{ctx}, nil)
-	rl.Append([]*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)}, nil)
+	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{ctx}, nil))
+	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)}, nil))
 
 	pctx := getConfigTx(rl)
 
@@ -77,14 +96,14 @@ func TestGetConfigTx(t *testing.T) {
 
 // Tests a chain which contains blocks with multi-transactions mixed with config txs, and a single tx which is not a config tx, none count as config blocks so nil should return
 func TestGetConfigTxFailure(t *testing.T) {
-	_, rl := ramledger.New(10, genesisBlock)
+	rl := NewRAMLedger(10)
 	for i := 0; i < 10; i++ {
-		rl.Append([]*cb.Envelope{
+		rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{
 			makeNormalTx(provisional.TestChainID, i),
 			makeConfigTx(provisional.TestChainID, i),
-		}, nil)
+		}, nil))
 	}
-	rl.Append([]*cb.Envelope{makeNormalTx(provisional.TestChainID, 11)}, nil)
+	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 11)}, nil))
 	pctx := getConfigTx(rl)
 
 	if pctx != nil {
@@ -94,7 +113,7 @@ func TestGetConfigTxFailure(t *testing.T) {
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate
 func TestManagerImpl(t *testing.T) {
-	lf, rl := ramledger.New(10, genesisBlock)
+	lf, rl := NewRAMLedgerAndFactory(10)
 
 	consenters := make(map[string]Consenter)
 	consenters[conf.General.OrdererType] = &mockConsenter{}
@@ -141,7 +160,7 @@ func TestManagerImpl(t *testing.T) {
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
 func TestNewChain(t *testing.T) {
 	conf := config.Load()
-	lf, rl := ramledger.New(10, genesisBlock)
+	lf, rl := NewRAMLedgerAndFactory(10)
 
 	consenters := make(map[string]Consenter)
 	consenters[conf.General.OrdererType] = &mockConsenter{}

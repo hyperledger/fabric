@@ -17,14 +17,14 @@ limitations under the License.
 package ramledger
 
 import (
+	"bytes"
+	"fmt"
 	"sync"
 
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
-
-	"github.com/golang/protobuf/proto"
 )
 
 var logger = logging.MustGetLogger("rawledger/ramledger")
@@ -54,26 +54,13 @@ type ramLedgerFactory struct {
 
 // New creates a new ramledger factory and system ordering chain based on the given systemGenesis block,
 // because there is no persistence, the new ReadWriter will have only the genesis block contained
-func New(maxSize int, systemGenesis *cb.Block) (rawledger.Factory, rawledger.ReadWriter) {
+func New(maxSize int) rawledger.Factory {
 	rlf := &ramLedgerFactory{
 		maxSize: maxSize,
 		ledgers: make(map[string]rawledger.ReadWriter),
 	}
-	env := &cb.Envelope{}
-	err := proto.Unmarshal(systemGenesis.Data.Data[0], env)
-	if err != nil {
-		logger.Fatalf("Bad envelope in genesis block: %s", err)
-	}
 
-	payload := &cb.Payload{}
-	err = proto.Unmarshal(env.Payload, payload)
-	if err != nil {
-		logger.Fatalf("Bad payload in genesis block: %s", err)
-	}
-
-	rl, _ := rlf.GetOrCreate(payload.Header.ChainHeader.ChainID)
-	rl.(*ramLedger).appendBlock(systemGenesis)
-	return rlf, rl
+	return rlf
 }
 
 func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (rawledger.ReadWriter, error) {
@@ -210,33 +197,20 @@ func (cu *cursor) ReadyChan() <-chan struct{} {
 	return cu.list.signal
 }
 
-// Append creates a new block and appends it to the ledger
-func (rl *ramLedger) Append(messages []*cb.Envelope, metadata [][]byte) *cb.Block {
-	data := &cb.BlockData{
-		Data: make([][]byte, len(messages)),
+// Append appends a new block to the ledger
+func (rl *ramLedger) Append(block *cb.Block) error {
+	if block.Header.Number != rl.newest.block.Header.Number+1 {
+		return fmt.Errorf("Block number should have been %d but was %d", rl.newest.block.Header.Number+1, block.Header.Number)
 	}
 
-	var err error
-	for i, msg := range messages {
-		data.Data[i], err = proto.Marshal(msg)
-		if err != nil {
-			logger.Fatalf("Error marshaling data which should be a valid proto: %s", err)
+	if rl.newest.block.Header.Number+1 != 0 { // Skip this check for genesis block insertion
+		if !bytes.Equal(block.Header.PreviousHash, rl.newest.block.Header.Hash()) {
+			return fmt.Errorf("Block should have had previous hash of %x but was %x", rl.newest.block.Header.Hash(), block.Header.PreviousHash)
 		}
 	}
 
-	block := &cb.Block{
-		Header: &cb.BlockHeader{
-			Number:       rl.newest.block.Header.Number + 1,
-			PreviousHash: rl.newest.block.Header.Hash(),
-			DataHash:     data.Hash(),
-		},
-		Data: data,
-		Metadata: &cb.BlockMetadata{
-			Metadata: metadata,
-		},
-	}
 	rl.appendBlock(block)
-	return block
+	return nil
 }
 
 func (rl *ramLedger) appendBlock(block *cb.Block) {

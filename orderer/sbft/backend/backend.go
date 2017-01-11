@@ -313,7 +313,7 @@ func (t *Backend) Deliver(batch *s.Batch) {
 	metadata := make([][]byte, metadataLen)
 	metadata[headerIndex] = batch.Header
 	metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
-	t.ledger.Append(blockContents, metadata)
+	t.ledger.Append(rawledger.CreateNextBlock(t.ledger, blockContents, metadata))
 }
 
 func (t *Backend) Persist(key string, data proto.Message) {

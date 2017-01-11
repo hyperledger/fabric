@@ -72,7 +72,9 @@ func TestLedgerReadWrite(t *testing.T) {
 	localConf := localconfig.Load()
 	localConf.General.OrdererType = provisional.ConsensusTypeSbft
 	genesis := provisional.New(localConf).GenesisBlock()
-	_, rl := ramledger.New(10, genesis)
+	rlf := ramledger.New(10)
+	rl, _ := rlf.GetOrCreate(provisional.TestChainID)
+	rl.Append(genesis)
 	b := Backend{ledger: rl}
 
 	header := []byte("header")

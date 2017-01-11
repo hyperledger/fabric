@@ -17,10 +17,10 @@ limitations under the License.
 package fileledger
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"sync"
 
 	"github.com/hyperledger/fabric/orderer/rawledger"
@@ -29,7 +29,6 @@ import (
 	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 )
 
 var logger = logging.MustGetLogger("rawledger/fileledger")
@@ -40,7 +39,10 @@ func init() {
 	close(closedChan)
 }
 
-const blockFileFormatString string = "block_%020d.json"
+const (
+	blockFileFormatString      = "block_%020d.json"
+	chainDirectoryFormatString = "chain_%s"
+)
 
 type cursor struct {
 	fl          *fileLedger
@@ -63,18 +65,7 @@ type fileLedgerFactory struct {
 }
 
 // New creates a new fileledger Factory and the ordering system chain specified by the systemGenesis block (if it does not already exist)
-func New(directory string, systemGenesis *cb.Block) (rawledger.Factory, rawledger.ReadWriter) {
-	env := &cb.Envelope{}
-	err := proto.Unmarshal(systemGenesis.Data.Data[0], env)
-	if err != nil {
-		logger.Fatalf("Bad envelope in genesis block: %s", err)
-	}
-
-	payload := &cb.Payload{}
-	err = proto.Unmarshal(env.Payload, payload)
-	if err != nil {
-		logger.Fatalf("Bad payload in genesis block: %s", err)
-	}
+func New(directory string) rawledger.Factory {
 
 	logger.Debugf("Initializing fileLedger at '%s'", directory)
 	if err := os.MkdirAll(directory, 0700); err != nil {
@@ -86,28 +77,29 @@ func New(directory string, systemGenesis *cb.Block) (rawledger.Factory, rawledge
 		ledgers:   make(map[string]rawledger.ReadWriter),
 	}
 
-	flt, err := flf.GetOrCreate(payload.Header.ChainHeader.ChainID)
+	infos, err := ioutil.ReadDir(flf.directory)
 	if err != nil {
-		logger.Fatalf("Error getting orderer system chain dir: %s", err)
+		logger.Panicf("Error reading from directory %s while initializing fileledger: %s", flf.directory, err)
 	}
 
-	fl := flt.(*fileLedger)
-
-	if fl.height > 0 {
-		block, ok := fl.readBlock(0)
-		if !ok {
-			logger.Fatalf("Error reading genesis block for chain of height %d", fl.height)
+	for _, info := range infos {
+		if !info.IsDir() {
+			continue
 		}
-		if !reflect.DeepEqual(block, systemGenesis) {
-			logger.Fatalf("Attempted to reconfigure an existing ordering system chain with new genesis block")
+		var chainID string
+		_, err := fmt.Sscanf(info.Name(), chainDirectoryFormatString, &chainID)
+		if err != nil {
+			continue
 		}
-	} else {
-		fl.writeBlock(systemGenesis)
-		fl.height = 1
-		fl.lastHash = systemGenesis.Header.Hash()
+		fl, err := flf.GetOrCreate(chainID)
+		if err != nil {
+			logger.Warningf("Failed to initialize chain from %s:", err)
+			continue
+		}
+		flf.ledgers[chainID] = fl
 	}
 
-	return flf, fl
+	return flf
 }
 
 func (flf *fileLedgerFactory) ChainIDs() []string {
@@ -130,13 +122,12 @@ func (flf *fileLedgerFactory) GetOrCreate(chainID string) (rawledger.ReadWriter,
 
 	key := chainID
 
-	// Check a second time with the lock held
 	l, ok := flf.ledgers[key]
 	if ok {
 		return l, nil
 	}
 
-	directory := fmt.Sprintf("%s/%s", flf.directory, chainID)
+	directory := fmt.Sprintf("%s/"+chainDirectoryFormatString, flf.directory, chainID)
 
 	logger.Debugf("Initializing chain at '%s'", directory)
 
@@ -238,36 +229,22 @@ func (fl *fileLedger) Height() uint64 {
 	return fl.height
 }
 
-// Append creates a new block and appends it to the ledger
-func (fl *fileLedger) Append(messages []*cb.Envelope, metadata [][]byte) *cb.Block {
-	data := &cb.BlockData{
-		Data: make([][]byte, len(messages)),
+// Append appends a new block to the ledger
+func (fl *fileLedger) Append(block *cb.Block) error {
+	if block.Header.Number != fl.height {
+		return fmt.Errorf("Block number should have been %d but was %d", fl.height, block.Header.Number)
 	}
 
-	var err error
-	for i, msg := range messages {
-		data.Data[i], err = proto.Marshal(msg)
-		if err != nil {
-			logger.Fatalf("Error marshaling what should be a valid proto message: %s", err)
-		}
+	if !bytes.Equal(block.Header.PreviousHash, fl.lastHash) {
+		return fmt.Errorf("Block should have had previous hash of %x but was %x", fl.lastHash, block.Header.PreviousHash)
 	}
 
-	block := &cb.Block{
-		Header: &cb.BlockHeader{
-			Number:       fl.height,
-			PreviousHash: fl.lastHash,
-			DataHash:     data.Hash(),
-		},
-		Data: data,
-		Metadata: &cb.BlockMetadata{
-			Metadata: metadata,
-		},
-	}
 	fl.writeBlock(block)
+	fl.lastHash = block.Header.Hash()
 	fl.height++
 	close(fl.signal)
 	fl.signal = make(chan struct{})
-	return block
+	return nil
 }
 
 // Iterator implements the rawledger.Reader definition

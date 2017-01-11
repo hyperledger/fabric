@@ -178,5 +178,5 @@ func (cs *chainSupport) WriteBlock(data []*cb.Envelope, metadata [][]byte, commi
 		committer.Commit()
 	}
 
-	cs.ledger.Append(data, metadata)
+	cs.ledger.Append(rawledger.CreateNextBlock(cs.ledger, data, metadata))
 }

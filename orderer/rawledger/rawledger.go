@@ -19,6 +19,8 @@ package rawledger
 import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // Factory retrieves or creates new ledgers by chainID
@@ -49,11 +51,54 @@ type Reader interface {
 // Writer allows the caller to modify the raw ledger
 type Writer interface {
 	// Append a new block to the ledger
-	Append(blockContents []*cb.Envelope, metadata [][]byte) *cb.Block
+	Append(block *cb.Block) error
 }
 
 // ReadWriter encapsulated both the reading and writing functions of the rawledger
 type ReadWriter interface {
 	Reader
 	Writer
+}
+
+// CreateNextBlock provides a utility way to construct the next block from contents and metadata for a given ledger
+// XXX this will need to be modified to accept marshaled envelopes to accomodate non-deterministic marshaling
+func CreateNextBlock(rl Reader, messages []*cb.Envelope, metadata [][]byte) *cb.Block {
+	var nextBlockNumber uint64
+	var previousBlockHash []byte
+
+	if rl.Height() > 0 {
+		it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Newest{&ab.SeekNewest{}}})
+		<-it.ReadyChan() // Should never block, but just in case
+		block, status := it.Next()
+		if status != cb.Status_SUCCESS {
+			panic("Error seeking to newest block for chain with non-zero height")
+		}
+		nextBlockNumber = block.Header.Number + 1
+		previousBlockHash = block.Header.Hash()
+	}
+
+	data := &cb.BlockData{
+		Data: make([][]byte, len(messages)),
+	}
+
+	var err error
+	for i, msg := range messages {
+		data.Data[i], err = proto.Marshal(msg)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return &cb.Block{
+		Header: &cb.BlockHeader{
+			Number:       nextBlockNumber,
+			PreviousHash: previousBlockHash,
+			DataHash:     data.Hash(),
+		},
+		Data: data,
+		Metadata: &cb.BlockMetadata{
+			Metadata: metadata,
+		},
+	}
+
 }

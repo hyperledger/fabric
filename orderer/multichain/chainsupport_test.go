@@ -24,16 +24,19 @@ import (
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 type mockLedgerReadWriter struct {
-	data     []*cb.Envelope
+	data     [][]byte
 	metadata [][]byte
+	height   uint64
 }
 
-func (mlw *mockLedgerReadWriter) Append(data []*cb.Envelope, metadata [][]byte) *cb.Block {
-	mlw.data = data
-	mlw.metadata = metadata
+func (mlw *mockLedgerReadWriter) Append(block *cb.Block) error {
+	mlw.data = block.Data.Data
+	mlw.metadata = block.Metadata.Metadata
+	mlw.height++
 	return nil
 }
 
@@ -42,7 +45,7 @@ func (mlw *mockLedgerReadWriter) Iterator(startType *ab.SeekPosition) (rawledger
 }
 
 func (mlw *mockLedgerReadWriter) Height() uint64 {
-	panic("Unimplemented")
+	return mlw.height
 }
 
 type mockCommitter struct {
@@ -65,7 +68,12 @@ func TestCommitConfig(t *testing.T) {
 	committers := []filter.Committer{&mockCommitter{}, &mockCommitter{}}
 	cs.WriteBlock(txs, md, committers)
 
-	if !reflect.DeepEqual(ml.data, txs) {
+	blockTXs := make([]*cb.Envelope, len(ml.data))
+	for i := range ml.data {
+		blockTXs[i] = utils.UnmarshalEnvelopeOrPanic(ml.data[i])
+	}
+
+	if !reflect.DeepEqual(blockTXs, txs) {
 		t.Errorf("Should have written input data to ledger but did not")
 	}
 
