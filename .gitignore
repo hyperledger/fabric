@@ -2,6 +2,7 @@
 node-cli/node-cli
 *.pyc
 /build/*
+/gotools/build/*
 /bin
 .idea
 *.iml
