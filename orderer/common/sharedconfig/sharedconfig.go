@@ -194,8 +194,11 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 		if err := proto.Unmarshal(configItem.Value, batchSize); err != nil {
 			return fmt.Errorf("Unmarshaling error for BatchSize: %s", err)
 		}
-		if batchSize.MaxMessageCount <= 0 {
-			return fmt.Errorf("Attempted to set the batch size max message count to %d which is less than or equal to 0", batchSize.MaxMessageCount)
+		if batchSize.MaxMessageCount == 0 {
+			return fmt.Errorf("Attempted to set the batch size max message count to an invalid value: 0")
+		}
+		if batchSize.AbsoluteMaxBytes == 0 {
+			return fmt.Errorf("Attempted to set the batch size absolute max bytes to an invalid value: 0")
 		}
 		pm.pendingConfig.batchSize = batchSize
 	case BatchTimeoutKey:

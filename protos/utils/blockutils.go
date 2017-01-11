@@ -84,7 +84,7 @@ func CopyBlockMetadata(src *cb.Block, dst *cb.Block) {
 	InitBlockMetadata(dst)
 }
 
-// CopyBlockMetadata copies metadata from one block into another
+// InitBlockMetadata copies metadata from one block into another
 func InitBlockMetadata(block *cb.Block) {
 	if block.Metadata == nil {
 		block.Metadata = &cb.BlockMetadata{Metadata: [][]byte{[]byte{}, []byte{}, []byte{}}}

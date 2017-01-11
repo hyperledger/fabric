@@ -37,6 +37,9 @@ message BatchSize {
     // Simply specified as number of messages for now, in the future
     // we may want to allow this to be specified by size in bytes
     uint32 maxMessageCount = 1;
+    // The byte count of the serialized messages in a batch cannot
+    // exceed this value.
+    uint32 absoluteMaxBytes = 2;
 }
 
 message BatchTimeout {
