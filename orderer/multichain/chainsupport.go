@@ -58,6 +58,7 @@ type Chain interface {
 
 // ConsenterSupport provides the resources available to a Consenter implementation
 type ConsenterSupport interface {
+	Signer
 	BlockCutter() blockcutter.Receiver
 	SharedConfig() sharedconfig.Manager
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
@@ -83,6 +84,7 @@ type chainSupport struct {
 	sharedConfigManager sharedconfig.Manager
 	ledger              rawledger.ReadWriter
 	filters             *filter.RuleSet
+	signer              Signer
 	lastConfiguration   uint64
 	lastConfigSeq       uint64
 }
@@ -94,6 +96,7 @@ func newChainSupport(
 	backing rawledger.ReadWriter,
 	sharedConfigManager sharedconfig.Manager,
 	consenters map[string]Consenter,
+	signer Signer,
 ) *chainSupport {
 
 	cutter := blockcutter.NewReceiverImpl(sharedConfigManager, filters)
@@ -110,6 +113,7 @@ func newChainSupport(
 		cutter:              cutter,
 		filters:             filters,
 		ledger:              backing,
+		signer:              signer,
 	}
 
 	var err error
@@ -143,6 +147,14 @@ func createSystemChainFilters(ml *multiLedger, configManager configtx.Manager) *
 
 func (cs *chainSupport) start() {
 	cs.chain.Start()
+}
+
+func (cs *chainSupport) NewSignatureHeader() *cb.SignatureHeader {
+	return cs.signer.NewSignatureHeader()
+}
+
+func (cs *chainSupport) Sign(message []byte) []byte {
+	return cs.signer.Sign(message)
 }
 
 func (cs *chainSupport) SharedConfig() sharedconfig.Manager {
@@ -181,21 +193,70 @@ func (cs *chainSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 	return rawledger.CreateNextBlock(cs.ledger, messages)
 }
 
-func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committer) *cb.Block {
-	for _, committer := range committers {
-		committer.Commit()
+// TODO, factor this out into common util code
+func metadataSignatureBytes(value []byte, sigHeader []byte, blockHeader []byte) []byte {
+	result := make([]byte, len(value)+len(sigHeader)+len(blockHeader))
+	last := 0
+	for _, slice := range [][]byte{value, sigHeader, blockHeader} {
+		for i := range slice {
+			result[i+last] = slice[i]
+		}
+		last += len(slice)
+	}
+	return result
+}
+
+func (cs *chainSupport) addBlockSignature(block *cb.Block) {
+	logger.Debugf("%+v", cs)
+	logger.Debugf("%+v", cs.signer)
+	blockSignature := &cb.MetadataSignature{
+		SignatureHeader: utils.MarshalOrPanic(cs.signer.NewSignatureHeader()),
 	}
 
+	// Note, this value is intentionally nil, as this metadata is only about the signature, there is no additional metadata
+	// information required beyond the fact that the metadata item is signed.
+	blockSignatureValue := []byte(nil)
+
+	blockSignature.Signature = cs.signer.Sign(metadataSignatureBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
+
+	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = utils.MarshalOrPanic(&cb.Metadata{
+		Value: blockSignatureValue,
+		Signatures: []*cb.MetadataSignature{
+			blockSignature,
+		},
+	})
+}
+
+func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 	configSeq := cs.configManager.Sequence()
 	if configSeq > cs.lastConfigSeq {
 		cs.lastConfiguration = block.Header.Number
 		cs.lastConfigSeq = configSeq
 	}
 
+	lastConfigSignature := &cb.MetadataSignature{
+		SignatureHeader: utils.MarshalOrPanic(cs.signer.NewSignatureHeader()),
+	}
+
+	lastConfigValue := utils.MarshalOrPanic(&cb.LastConfiguration{Index: cs.lastConfiguration})
+
+	lastConfigSignature.Signature = cs.signer.Sign(metadataSignatureBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
+
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{
-		Value: utils.MarshalOrPanic(&cb.LastConfiguration{Index: cs.lastConfiguration}),
-		// XXX Add signature once signing is available
+		Value: lastConfigValue,
+		Signatures: []*cb.MetadataSignature{
+			lastConfigSignature,
+		},
 	})
+}
+
+func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committer) *cb.Block {
+	for _, committer := range committers {
+		committer.Commit()
+	}
+
+	cs.addBlockSignature(block)
+	cs.addLastConfigSignature(block)
 
 	err := cs.ledger.Append(block)
 	if err != nil {

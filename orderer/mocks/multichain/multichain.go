@@ -83,3 +83,13 @@ func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Co
 func (mcs *ConsenterSupport) ChainID() string {
 	return mcs.ChainIDVal
 }
+
+// Sign returns the bytes passed in
+func (mcs *ConsenterSupport) Sign(message []byte) []byte {
+	return message
+}
+
+// NewSignatureHeader returns an empty signature header
+func (mcs *ConsenterSupport) NewSignatureHeader() *cb.SignatureHeader {
+	return &cb.SignatureHeader{}
+}
