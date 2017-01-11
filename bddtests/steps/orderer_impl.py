@@ -65,16 +65,10 @@ def step_impl(context, enrollId, expectedBlocks, numMsgsToBroadcast, batchTimeou
 	assert len(blocks) == int(expectedBlocks), "Expected {0} blocks, received {1}".format(expectedBlocks, len(blocks))
 
 
-def convertSeek(utfString):
-	try:
-		return int(utfString)
-	except ValueError:
-		return str(utfString)
-
 @when(u'user "{enrollId}" sends deliver a seek request on "{composeService}" with properties')
 def step_impl(context, enrollId, composeService):
 	row = context.table.rows[0]
-	start, end, = convertSeek(row['Start']), convertSeek(row['End'])
+	start, end, = orderer_util.convertSeek(row['Start']), orderer_util.convertSeek(row['End'])
 
 	userRegistration = orderer_util.getUserRegistration(context, enrollId)
 	streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)

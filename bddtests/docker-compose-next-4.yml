@@ -2,11 +2,6 @@ version: "2"
 
 services:
 
-  membersrvc0:
-    extends:
-      file: compose-defaults.yml
-      service: membersrvc
-
   orderer0:
     extends:
       file: docker-compose-orderer-solo.yml
@@ -23,7 +18,6 @@ services:
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_MSPCONFIGPATH=${PEER0_CORE_PEER_MSPCFGPATH}
     depends_on:
-      - membersrvc0
       - orderer0
     # ports:
     #   - 7050:6060
@@ -39,7 +33,6 @@ services:
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_MSPCONFIGPATH=${PEER1_CORE_PEER_MSPCFGPATH}
     depends_on:
-      - membersrvc0
       - orderer0
       - peer0
 
@@ -53,7 +46,6 @@ services:
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_MSPCONFIGPATH=${PEER2_CORE_PEER_MSPCFGPATH}
     depends_on:
-      - membersrvc0
       - orderer0
       - peer0
 
@@ -67,6 +59,5 @@ services:
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_MSPCONFIGPATH=${PEER3_CORE_PEER_MSPCFGPATH}
     depends_on:
-      - membersrvc0
       - orderer0
       - peer0

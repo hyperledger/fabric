@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/configuration.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x1borderer/configuration.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"\x1d\n\rConsensusType\x12\x0c\n\x04type\x18\x01 \x01(\t\"$\n\tBatchSize\x12\x17\n\x0fmaxMessageCount\x18\x01 \x01(\r\"\x1f\n\x0c\x42\x61tchTimeout\x12\x0f\n\x07timeout\x18\x01 \x01(\t\"0\n\x0e\x43reationPolicy\x12\x0e\n\x06policy\x18\x01 \x01(\t\x12\x0e\n\x06\x64igest\x18\x02 \x01(\x0c\"\x1d\n\rIngressPolicy\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x0c\x45gressPolicy\x12\x0c\n\x04name\x18\x01 \x01(\t\"!\n\rChainCreators\x12\x10\n\x08policies\x18\x01 \x03(\t\"\x1f\n\x0cKafkaBrokers\x12\x0f\n\x07\x62rokers\x18\x01 \x03(\tB.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+  serialized_pb=_b('\n\x1borderer/configuration.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"\x1d\n\rConsensusType\x12\x0c\n\x04type\x18\x01 \x01(\t\">\n\tBatchSize\x12\x17\n\x0fmaxMessageCount\x18\x01 \x01(\r\x12\x18\n\x10\x61\x62soluteMaxBytes\x18\x02 \x01(\r\"\x1f\n\x0c\x42\x61tchTimeout\x12\x0f\n\x07timeout\x18\x01 \x01(\t\"0\n\x0e\x43reationPolicy\x12\x0e\n\x06policy\x18\x01 \x01(\t\x12\x0e\n\x06\x64igest\x18\x02 \x01(\x0c\"\x1d\n\rIngressPolicy\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\x0c\x45gressPolicy\x12\x0c\n\x04name\x18\x01 \x01(\t\"!\n\rChainCreators\x12\x10\n\x08policies\x18\x01 \x03(\t\"\x1f\n\x0cKafkaBrokers\x12\x0f\n\x07\x62rokers\x18\x01 \x03(\tB.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
   ,
   dependencies=[common_dot_common__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -73,6 +73,13 @@ _BATCHSIZE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='absoluteMaxBytes', full_name='orderer.BatchSize.absoluteMaxBytes', index=1,
+      number=2, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -86,7 +93,7 @@ _BATCHSIZE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=92,
-  serialized_end=128,
+  serialized_end=154,
 )
 
 
@@ -116,8 +123,8 @@ _BATCHTIMEOUT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=130,
-  serialized_end=161,
+  serialized_start=156,
+  serialized_end=187,
 )
 
 
@@ -154,8 +161,8 @@ _CREATIONPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=163,
-  serialized_end=211,
+  serialized_start=189,
+  serialized_end=237,
 )
 
 
@@ -185,8 +192,8 @@ _INGRESSPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=213,
-  serialized_end=242,
+  serialized_start=239,
+  serialized_end=268,
 )
 
 
@@ -216,8 +223,8 @@ _EGRESSPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=244,
-  serialized_end=272,
+  serialized_start=270,
+  serialized_end=298,
 )
 
 
@@ -247,8 +254,8 @@ _CHAINCREATORS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=274,
-  serialized_end=307,
+  serialized_start=300,
+  serialized_end=333,
 )
 
 
@@ -278,8 +285,8 @@ _KAFKABROKERS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=309,
-  serialized_end=340,
+  serialized_start=335,
+  serialized_end=366,
 )
 
 DESCRIPTOR.message_types_by_name['ConsensusType'] = _CONSENSUSTYPE

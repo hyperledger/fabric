@@ -21,9 +21,6 @@ services:
       # Use these options if coverage desired for peers
       #image: hyperledger/fabric-peer-coverage
       #command: ./peer.test --test.coverprofile=coverage.cov node start
-    membersrvc:
-       image: hyperledger/fabric-membersrvc
-       command: membersrvc
 
 volumes:
 

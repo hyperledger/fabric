@@ -41,6 +41,9 @@ class Test(CompositionCallback):
     def getEnv(self, composition, context, env):
         pass
 
+def GetDockerSafeUUID():
+    return str(uuid.uuid1()).replace('-','')
+
 class Composition:
 
     @classmethod
@@ -56,10 +59,11 @@ class Composition:
         return context.compositionCallbacks
 
 
-    def GetUUID():
-        return str(uuid.uuid1()).replace('-','')
+    @classmethod
+    def GetUUID(cls):
+        return GetDockerSafeUUID()
 
-    def __init__(self, context, composeFilesYaml, projectName = GetUUID()):
+    def __init__(self, context, composeFilesYaml, projectName = GetDockerSafeUUID()):
         self.projectName = projectName
         self.context = context
         self.containerDataList = []

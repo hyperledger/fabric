@@ -38,6 +38,23 @@ from common.common_pb2 import Payload
 # The default chain ID when the system is statically bootstrapped for testing
 TEST_CHAIN_ID = "**TEST_CHAINID**"
 
+def _defaultDataFunction(index):
+    payload = common_pb2.Payload(
+        header = common_pb2.Header(
+            chainHeader = common_pb2.ChainHeader(
+                chainID = TEST_CHAIN_ID,
+                type = common_pb2.ENDORSER_TRANSACTION,
+            ),
+            signatureHeader = common_pb2.SignatureHeader(),
+        ),
+        data = str("BDD test: {0}".format(datetime.datetime.utcnow())),
+    )
+    envelope = common_pb2.Envelope(
+        payload = payload.SerializeToString()
+    )
+    return envelope
+
+
 class StreamHelper:
 
     def __init__(self):
@@ -99,7 +116,7 @@ class DeliverStreamHelper(StreamHelper):
         self.replyGenerator = ordererStub.Deliver(sendGenerator, timeout + 1)
 
     def seekToRange(self, chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest'):
-        self.sendQueue.put(createSeekInfo(start = start))
+        self.sendQueue.put(createSeekInfo(start = start, chainID = chainID))
 
     def getBlocks(self):
         blocks = []
@@ -121,10 +138,8 @@ class DeliverStreamHelper(StreamHelper):
 
 class UserRegistration:
 
-    def __init__(self, secretMsg, composeService):
-        self.enrollId = secretMsg['enrollId']
-        self.secretMsg = secretMsg
-        self.composeService = composeService
+    def __init__(self, userName):
+        self.userName= userName
         self.tags = {}
         # Dictionary of composeService->atomic broadcast grpc Stub
         self.atomicBroadcastStubsDict = {}
@@ -132,10 +147,10 @@ class UserRegistration:
         self.abDeliversStreamHelperDict = {}
 
     def getUserName(self):
-        return self.secretMsg['enrollId']
+        return self.userName
 
 
-    def connectToDeliverFunction(self, context, composeService):
+    def connectToDeliverFunction(self, context, composeService, timeout=1):
         'Connect to the deliver function and drain messages to associated orderer queue'
         assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
         streamHelper = DeliverStreamHelper(self.getABStubForComposeService(context, composeService))
@@ -149,14 +164,14 @@ class UserRegistration:
 
 
 
-    def broadcastMessages(self, context, numMsgsToBroadcast, composeService):
+    def broadcastMessages(self, context, numMsgsToBroadcast, composeService, chainID=TEST_CHAIN_ID, dataFunc=_defaultDataFunction, chainHeaderType=common_pb2.ENDORSER_TRANSACTION):
 		abStub = self.getABStubForComposeService(context, composeService)
-		replyGenerator = abStub.Broadcast(generateBroadcastMessages(numToGenerate = int(numMsgsToBroadcast)), 2)
+		replyGenerator = abStub.Broadcast(generateBroadcastMessages(chainID=chainID, numToGenerate = int(numMsgsToBroadcast), dataFunc=dataFunc, chainHeaderType=chainHeaderType), 2)
 		counter = 0
 		try:
 			for reply in replyGenerator:
 				counter += 1
-				print("{0} received reply: {1}, counter = {2}".format(self.enrollId, reply, counter))
+				print("{0} received reply: {1}, counter = {2}".format(self.getUserName(), reply, counter))
 				if counter == int(numMsgsToBroadcast):
 					break
 		except Exception as e:
@@ -184,7 +199,7 @@ def registerUser(context, secretMsg, composeService):
         context.ordererUsers = {}
     if userName in context.ordererUsers:
         raise Exception("Orderer user already registered: {0}".format(userName))
-    userRegistration = UserRegistration(secretMsg, composeService)
+    userRegistration = UserRegistration(secretMsg)
     context.ordererUsers[userName] = userRegistration
     return userRegistration
 
@@ -208,6 +223,12 @@ def seekPosition(position):
     else:
         return ab_pb2.SeekPosition(specified = ab_pb2.SeekSpecified(number = position))
 
+def convertSeek(utfString):
+    try:
+        return int(utfString)
+    except ValueError:
+        return str(utfString)
+
 def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  behavior = 'FAIL_IF_NOT_READY'):
     return common_pb2.Envelope(
         payload = common_pb2.Payload(
@@ -223,23 +244,12 @@ def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  b
         ).SerializeToString(),
     )
 
-def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 1, timeToHoldOpen = 1):
+
+
+def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 3, timeToHoldOpen = 1, dataFunc =_defaultDataFunction, chainHeaderType=common_pb2.ENDORSER_TRANSACTION ):
     messages = []
     for i in range(0, numToGenerate):
-        payload = common_pb2.Payload(
-            header = common_pb2.Header(
-                chainHeader = common_pb2.ChainHeader(
-                    chainID = chainID,
-                    type = common_pb2.ENDORSER_TRANSACTION,
-                ),
-                signatureHeader = common_pb2.SignatureHeader(),
-            ),
-            data = str("BDD test: {0}".format(datetime.datetime.utcnow())),
-        )
-        envelope = common_pb2.Envelope(
-            payload = payload.SerializeToString()
-        )
-        messages.append(envelope)
+        messages.append(dataFunc(i))
     for msg in messages:
         yield msg
     time.sleep(timeToHoldOpen)

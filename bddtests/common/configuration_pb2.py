@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common/configuration.proto',
   package='common',
   syntax='proto3',
-  serialized_pb=_b('\n\x1a\x63ommon/configuration.proto\x12\x06\x63ommon\x1a\x13\x63ommon/common.proto\"G\n\x15\x43onfigurationEnvelope\x12.\n\x05Items\x18\x01 \x03(\x0b\x32\x1f.common.SignedConfigurationItem\"h\n\x17SignedConfigurationItem\x12\x19\n\x11\x43onfigurationItem\x18\x01 \x01(\x0c\x12\x32\n\nSignatures\x18\x02 \x03(\x0b\x32\x1e.common.ConfigurationSignature\"\x86\x02\n\x11\x43onfigurationItem\x12#\n\x06Header\x18\x01 \x01(\x0b\x32\x13.common.ChainHeader\x12\x39\n\x04Type\x18\x02 \x01(\x0e\x32+.common.ConfigurationItem.ConfigurationType\x12\x14\n\x0cLastModified\x18\x03 \x01(\x04\x12\x1a\n\x12ModificationPolicy\x18\x04 \x01(\t\x12\x0b\n\x03Key\x18\x05 \x01(\t\x12\r\n\x05Value\x18\x06 \x01(\x0c\"C\n\x11\x43onfigurationType\x12\n\n\x06Policy\x10\x00\x12\t\n\x05\x43hain\x10\x01\x12\x0b\n\x07Orderer\x10\x02\x12\n\n\x06\x46\x61\x62ric\x10\x03\"D\n\x16\x43onfigurationSignature\x12\x17\n\x0fsignatureHeader\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\"\'\n\x0f\x43\x65rtificateList\x12\x14\n\x0c\x43\x65rtificates\x18\x01 \x03(\x0c\"L\n\x06Policy\x12:\n\x0fSignaturePolicy\x18\x01 \x01(\x0b\x32\x1f.common.SignaturePolicyEnvelopeH\x00\x42\x06\n\x04Type\"g\n\x17SignaturePolicyEnvelope\x12\x0f\n\x07Version\x18\x01 \x01(\x05\x12\'\n\x06Policy\x18\x02 \x01(\x0b\x32\x17.common.SignaturePolicy\x12\x12\n\nIdentities\x18\x03 \x03(\x0c\"\x9d\x01\n\x0fSignaturePolicy\x12\x12\n\x08SignedBy\x18\x01 \x01(\x05H\x00\x12.\n\x04\x46rom\x18\x02 \x01(\x0b\x32\x1e.common.SignaturePolicy.NOutOfH\x00\x1a>\n\x06NOutOf\x12\t\n\x01N\x18\x01 \x01(\x05\x12)\n\x08Policies\x18\x02 \x03(\x0b\x32\x17.common.SignaturePolicyB\x06\n\x04TypeB-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
+  serialized_pb=_b('\n\x1a\x63ommon/configuration.proto\x12\x06\x63ommon\x1a\x13\x63ommon/common.proto\"G\n\x15\x43onfigurationEnvelope\x12.\n\x05Items\x18\x01 \x03(\x0b\x32\x1f.common.SignedConfigurationItem\"h\n\x17SignedConfigurationItem\x12\x19\n\x11\x43onfigurationItem\x18\x01 \x01(\x0c\x12\x32\n\nSignatures\x18\x02 \x03(\x0b\x32\x1e.common.ConfigurationSignature\"\x84\x02\n\x11\x43onfigurationItem\x12#\n\x06Header\x18\x01 \x01(\x0b\x32\x13.common.ChainHeader\x12\x39\n\x04Type\x18\x02 \x01(\x0e\x32+.common.ConfigurationItem.ConfigurationType\x12\x14\n\x0cLastModified\x18\x03 \x01(\x04\x12\x1a\n\x12ModificationPolicy\x18\x04 \x01(\t\x12\x0b\n\x03Key\x18\x05 \x01(\t\x12\r\n\x05Value\x18\x06 \x01(\x0c\"A\n\x11\x43onfigurationType\x12\n\n\x06Policy\x10\x00\x12\t\n\x05\x43hain\x10\x01\x12\x0b\n\x07Orderer\x10\x02\x12\x08\n\x04Peer\x10\x03\"D\n\x16\x43onfigurationSignature\x12\x17\n\x0fsignatureHeader\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\"Y\n\x06Policy\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x0e\n\x06policy\x18\x02 \x01(\x0c\"1\n\nPolicyType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\r\n\tSIGNATURE\x10\x01\x12\x07\n\x03MSP\x10\x02\"g\n\x17SignaturePolicyEnvelope\x12\x0f\n\x07Version\x18\x01 \x01(\x05\x12\'\n\x06Policy\x18\x02 \x01(\x0b\x32\x17.common.SignaturePolicy\x12\x12\n\nIdentities\x18\x03 \x03(\x0c\"\x9d\x01\n\x0fSignaturePolicy\x12\x12\n\x08SignedBy\x18\x01 \x01(\x05H\x00\x12.\n\x04\x46rom\x18\x02 \x01(\x0b\x32\x1e.common.SignaturePolicy.NOutOfH\x00\x1a>\n\x06NOutOf\x12\t\n\x01N\x18\x01 \x01(\x05\x12)\n\x08Policies\x18\x02 \x03(\x0b\x32\x17.common.SignaturePolicyB\x06\n\x04TypeB-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
   ,
   dependencies=[common_dot_common__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -46,16 +46,42 @@ _CONFIGURATIONITEM_CONFIGURATIONTYPE = _descriptor.EnumDescriptor(
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='Fabric', index=3, number=3,
+      name='Peer', index=3, number=3,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
   serialized_start=434,
-  serialized_end=501,
+  serialized_end=499,
 )
 _sym_db.RegisterEnumDescriptor(_CONFIGURATIONITEM_CONFIGURATIONTYPE)
+
+_POLICY_POLICYTYPE = _descriptor.EnumDescriptor(
+  name='PolicyType',
+  full_name='common.Policy.PolicyType',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='UNKNOWN', index=0, number=0,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='SIGNATURE', index=1, number=1,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='MSP', index=2, number=2,
+      options=None,
+      type=None),
+  ],
+  containing_type=None,
+  options=None,
+  serialized_start=611,
+  serialized_end=660,
+)
+_sym_db.RegisterEnumDescriptor(_POLICY_POLICYTYPE)
 
 
 _CONFIGURATIONENVELOPE = _descriptor.Descriptor(
@@ -190,7 +216,7 @@ _CONFIGURATIONITEM = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=239,
-  serialized_end=501,
+  serialized_end=499,
 )
 
 
@@ -227,39 +253,8 @@ _CONFIGURATIONSIGNATURE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=503,
-  serialized_end=571,
-)
-
-
-_CERTIFICATELIST = _descriptor.Descriptor(
-  name='CertificateList',
-  full_name='common.CertificateList',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='Certificates', full_name='common.CertificateList.Certificates', index=0,
-      number=1, type=12, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=573,
-  serialized_end=612,
+  serialized_start=501,
+  serialized_end=569,
 )
 
 
@@ -271,9 +266,16 @@ _POLICY = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='SignaturePolicy', full_name='common.Policy.SignaturePolicy', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
+      name='type', full_name='common.Policy.type', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='policy', full_name='common.Policy.policy', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -282,18 +284,16 @@ _POLICY = _descriptor.Descriptor(
   ],
   nested_types=[],
   enum_types=[
+    _POLICY_POLICYTYPE,
   ],
   options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
-    _descriptor.OneofDescriptor(
-      name='Type', full_name='common.Policy.Type',
-      index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=614,
-  serialized_end=690,
+  serialized_start=571,
+  serialized_end=660,
 )
 
 
@@ -337,8 +337,8 @@ _SIGNATUREPOLICYENVELOPE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=692,
-  serialized_end=795,
+  serialized_start=662,
+  serialized_end=765,
 )
 
 
@@ -375,8 +375,8 @@ _SIGNATUREPOLICY_NOUTOF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=885,
-  serialized_end=947,
+  serialized_start=855,
+  serialized_end=917,
 )
 
 _SIGNATUREPOLICY = _descriptor.Descriptor(
@@ -415,8 +415,8 @@ _SIGNATUREPOLICY = _descriptor.Descriptor(
       name='Type', full_name='common.SignaturePolicy.Type',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=798,
-  serialized_end=955,
+  serialized_start=768,
+  serialized_end=925,
 )
 
 _CONFIGURATIONENVELOPE.fields_by_name['Items'].message_type = _SIGNEDCONFIGURATIONITEM
@@ -424,10 +424,7 @@ _SIGNEDCONFIGURATIONITEM.fields_by_name['Signatures'].message_type = _CONFIGURAT
 _CONFIGURATIONITEM.fields_by_name['Header'].message_type = common_dot_common__pb2._CHAINHEADER
 _CONFIGURATIONITEM.fields_by_name['Type'].enum_type = _CONFIGURATIONITEM_CONFIGURATIONTYPE
 _CONFIGURATIONITEM_CONFIGURATIONTYPE.containing_type = _CONFIGURATIONITEM
-_POLICY.fields_by_name['SignaturePolicy'].message_type = _SIGNATUREPOLICYENVELOPE
-_POLICY.oneofs_by_name['Type'].fields.append(
-  _POLICY.fields_by_name['SignaturePolicy'])
-_POLICY.fields_by_name['SignaturePolicy'].containing_oneof = _POLICY.oneofs_by_name['Type']
+_POLICY_POLICYTYPE.containing_type = _POLICY
 _SIGNATUREPOLICYENVELOPE.fields_by_name['Policy'].message_type = _SIGNATUREPOLICY
 _SIGNATUREPOLICY_NOUTOF.fields_by_name['Policies'].message_type = _SIGNATUREPOLICY
 _SIGNATUREPOLICY_NOUTOF.containing_type = _SIGNATUREPOLICY
@@ -442,7 +439,6 @@ DESCRIPTOR.message_types_by_name['ConfigurationEnvelope'] = _CONFIGURATIONENVELO
 DESCRIPTOR.message_types_by_name['SignedConfigurationItem'] = _SIGNEDCONFIGURATIONITEM
 DESCRIPTOR.message_types_by_name['ConfigurationItem'] = _CONFIGURATIONITEM
 DESCRIPTOR.message_types_by_name['ConfigurationSignature'] = _CONFIGURATIONSIGNATURE
-DESCRIPTOR.message_types_by_name['CertificateList'] = _CERTIFICATELIST
 DESCRIPTOR.message_types_by_name['Policy'] = _POLICY
 DESCRIPTOR.message_types_by_name['SignaturePolicyEnvelope'] = _SIGNATUREPOLICYENVELOPE
 DESCRIPTOR.message_types_by_name['SignaturePolicy'] = _SIGNATUREPOLICY
@@ -474,13 +470,6 @@ ConfigurationSignature = _reflection.GeneratedProtocolMessageType('Configuration
   # @@protoc_insertion_point(class_scope:common.ConfigurationSignature)
   ))
 _sym_db.RegisterMessage(ConfigurationSignature)
-
-CertificateList = _reflection.GeneratedProtocolMessageType('CertificateList', (_message.Message,), dict(
-  DESCRIPTOR = _CERTIFICATELIST,
-  __module__ = 'common.configuration_pb2'
-  # @@protoc_insertion_point(class_scope:common.CertificateList)
-  ))
-_sym_db.RegisterMessage(CertificateList)
 
 Policy = _reflection.GeneratedProtocolMessageType('Policy', (_message.Message,), dict(
   DESCRIPTOR = _POLICY,
@@ -514,9 +503,14 @@ _sym_db.RegisterMessage(SignaturePolicy.NOutOf)
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z+github.com/hyperledger/fabric/protos/common'))
-import grpc
-from grpc.beta import implementations as beta_implementations
-from grpc.beta import interfaces as beta_interfaces
-from grpc.framework.common import cardinality
-from grpc.framework.interfaces.face import utilities as face_utilities
+try:
+  # THESE ELEMENTS WILL BE DEPRECATED.
+  # Please use the generated *_pb2_grpc.py files instead.
+  import grpc
+  from grpc.framework.common import cardinality
+  from grpc.framework.interfaces.face import utilities as face_utilities
+  from grpc.beta import implementations as beta_implementations
+  from grpc.beta import interfaces as beta_interfaces
+except ImportError:
+  pass
 # @@protoc_insertion_point(module_scope)

@@ -7,6 +7,7 @@ services:
         environment:
             - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
             - ORDERER_GENERAL_LOGLEVEL=debug
+            - ORDERER_GENERAL_GENESISMETHOD=${ORDERER_GENERAL_GENESISMETHOD}
             - ORDERER_GENERAL_GENESISFILE=${ORDERER_GENERAL_GENESISFILE}
         volumes:
             - ./volumes/orderer:/var/hyperledger/bddtests/volumes/orderer

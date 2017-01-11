@@ -21,35 +21,53 @@ if sys.version_info < (3, 6):
 
 from OpenSSL import crypto
 from OpenSSL import rand
+from ecdsa import SigningKey, NIST384p, NIST256p
+
 from collections import namedtuple
 from enum import Enum
 
 from google.protobuf import timestamp_pb2
 from common import common_pb2 as common_dot_common_pb2
 from common import configuration_pb2 as common_dot_configuration_pb2
+from common import msp_principal_pb2
+
 # import orderer
 from orderer import configuration_pb2 as orderer_dot_configuration_pb2
+import orderer_util
 
 import os
 import shutil
 import compose
+import uuid
 
 # Type to represent tuple of user, nodeName, ogranization
 NodeAdminTuple = namedtuple("NodeAdminTuple", ['user', 'nodeName', 'organization'])
 
 
+def GetUUID():
+    return compose.Composition.GetUUID()
 
-def createKey():
+
+def createRSAKey():
     #Create RSA key, 2048 bit
     pk = crypto.PKey()
     pk.generate_key(crypto.TYPE_RSA,2048)
     assert pk.check()==True
     return pk
 
+def createECDSAKey(curve=NIST384p):
+    #Create ECDSA key
+    # sk = SigningKey.generate(curve=NIST384p)
+    sk = SigningKey.generate(curve=NIST256p)
+    return sk
+
+
 def computeCryptoHash(data):
-    s = hashlib.sha3_256()
+    ' This will currently return 128 hex characters'
+    # s = hashlib.sha3_256()
+    s = hashlib.shake_256()
     s.update(data)
-    return  s.hexdigest()
+    return  s.digest(64)
 
 
 def createCertRequest(pkey, digest="sha256", **name):
@@ -110,18 +128,24 @@ class Entity:
 
     def __init__(self, name):
         self.name = name
-        self.pKey = createKey()
+        #Create a ECDSA key, then a crypto pKey from the DER for usage with cert requests, etc.
+        self.ecdsaSigningKey = createECDSAKey()
+        self.pKey = crypto.load_privatekey(crypto.FILETYPE_ASN1, self.ecdsaSigningKey.to_der())
 
     def createCertRequest(self, nodeName):
         req = createCertRequest(self.pKey, CN=nodeName)
         print("request => {0}".format(crypto.dump_certificate_request(crypto.FILETYPE_PEM, req)))
         return req
 
+    def sign(self, dataAsBytearray):
+        return self.ecdsaSigningKey.sign(dataAsBytearray)
 
 
-class User(Entity):
+class User(Entity, orderer_util.UserRegistration):
     def __init__(self, name):
         Entity.__init__(self, name)
+        orderer_util.UserRegistration.__init__(self, name)
+        self.tags = {}
 
 class Network(Enum):
     Orderer = 1
@@ -231,22 +255,38 @@ class BootstrapHelper:
     KEY_INGRESS_POLICY = "IngressPolicy"
     KEY_EGRESS_POLICY = "EgressPolicy"
     KEY_BATCH_SIZE = "BatchSize"
+    KEY_CREATIONPOLICY = "CreationPolicy"
 
     DEFAULT_MODIFICATION_POLICY_ID = "DefaultModificationPolicy"
     DEFAULT_CHAIN_CREATORS = [KEY_ACCEPT_ALL_POLICY]
 
     DEFAULT_NONCE_SIZE = 24
 
-    def __init__(self, chainId = "TestChain", lastModified = 0, msgVersion = 1, epoch = 0, consensusType = "solo", batchSize = 10):
+    def __init__(self, chainId = "TestChain", lastModified = 0, msgVersion = 1, epoch = 0, consensusType = "solo", batchSize = 10, absoluteMaxBytes=100000000, signers=[]):
         self.chainId = str(chainId)
         self.lastModified = lastModified
         self.msgVersion = msgVersion
         self.epoch = epoch
         self.consensusType = consensusType
         self.batchSize = batchSize
+        self.absoluteMaxBytes = absoluteMaxBytes
+        self.signers = signers
 
-    def getNonce(self):
-        return rand.bytes(self.DEFAULT_NONCE_SIZE)
+    @classmethod
+    def getNonce(cls):
+        return rand.bytes(BootstrapHelper.DEFAULT_NONCE_SIZE)
+
+    @classmethod
+    def addSignatureToSignedConfigItem(cls, signedConfigItem, (signingKey, cert)):
+        sigHeader = common_dot_common_pb2.SignatureHeader(creator=crypto.dump_certificate(crypto.FILETYPE_ASN1,cert),nonce=BootstrapHelper.getNonce())
+        sigHeaderBytes = sigHeader.SerializeToString()
+        # Signature over the concatenation of configurationItem bytes and signatureHeader bytes
+        signature = signingKey.sign(signedConfigItem.ConfigurationItem + sigHeaderBytes)
+        # Now add new signature to Signatures repeated field
+        newConfigSig = signedConfigItem.Signatures.add()
+        newConfigSig.signatureHeader=sigHeaderBytes
+        newConfigSig.signature=signature
+
 
     def makeChainHeader(self, type = common_dot_common_pb2.HeaderType.Value("CONFIGURATION_ITEM"), version = 1,
                         timestamp = timestamp_pb2.Timestamp(seconds = int(time.time()), nanos = 0)):
@@ -280,7 +320,7 @@ class BootstrapHelper:
         configItem = self.getConfigItem(
             commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Orderer"),
             key=BootstrapHelper.KEY_BATCH_SIZE,
-            value=orderer_dot_configuration_pb2.BatchSize(maxMessageCount=self.batchSize).SerializeToString())
+            value=orderer_dot_configuration_pb2.BatchSize(maxMessageCount=self.batchSize, absoluteMaxBytes=self.absoluteMaxBytes).SerializeToString())
         return self.signConfigItem(configItem)
 
     def  encodeConsensusType(self):
@@ -290,12 +330,20 @@ class BootstrapHelper:
             value=orderer_dot_configuration_pb2.ConsensusType(type=self.consensusType).SerializeToString())
         return self.signConfigItem(configItem)
 
-    def  encodeChainCreators(self):
+    def  encodeChainCreators(self, ciValue = orderer_dot_configuration_pb2.ChainCreators(policies=DEFAULT_CHAIN_CREATORS).SerializeToString()):
         configItem = self.getConfigItem(
             commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Orderer"),
             key=BootstrapHelper.KEY_CHAIN_CREATORS,
-            value=orderer_dot_configuration_pb2.ChainCreators(policies=BootstrapHelper.DEFAULT_CHAIN_CREATORS).SerializeToString())
+            value=ciValue)
         return self.signConfigItem(configItem)
+
+    def encodePolicy(self, key, policy=common_dot_configuration_pb2.Policy(type=1, policy=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(0,[]), identities=[]).SerializeToString())):
+        configItem = self.getConfigItem(
+            commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Policy"),
+            key=key,
+            value=policy.SerializeToString())
+        return self.signConfigItem(configItem)
+
 
     def  encodeEgressPolicy(self):
         configItem = self.getConfigItem(
@@ -315,43 +363,71 @@ class BootstrapHelper:
         configItem = self.getConfigItem(
             commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Policy"),
             key=BootstrapHelper.KEY_ACCEPT_ALL_POLICY,
-            value=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(0,[]), identities=[]).SerializeToString())
+            value=common_dot_configuration_pb2.Policy(type=1, policy=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(0,[]), identities=[]).SerializeToString()).SerializeToString())
         return self.signConfigItem(configItem)
 
     def lockDefaultModificationPolicy(self):
         configItem = self.getConfigItem(
             commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Policy"),
             key=BootstrapHelper.DEFAULT_MODIFICATION_POLICY_ID,
-            value=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(1,[]), identities=[]).SerializeToString())
+            value=common_dot_configuration_pb2.Policy(type=1, policy=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(1,[]), identities=[]).SerializeToString()).SerializeToString())
         return self.signConfigItem(configItem)
 
     def computeBlockDataHash(self, blockData):
         return computeCryptoHash(blockData.SerializeToString())
 
-# Registerses a user on a specific composeService
+
+    def signInitialChainConfig(self, signedConfigItems, chainCreationPolicyName):
+        'Create a signedConfigItem using previous config items'
+        # Create byte array to store concatenated bytes
+        # concatenatedConfigItemsBytes = bytearray()
+        # for sci in signedConfigItems:
+        #     concatenatedConfigItemsBytes = concatenatedConfigItemsBytes + bytearray(sci.ConfigurationItem)
+        # hash = computeCryptoHash(concatenatedConfigItemsBytes)
+        data = ''
+        for sci in signedConfigItems:
+            data = data + sci.ConfigurationItem
+        # Compute hash over concatenated bytes
+        hash = computeCryptoHash(data)
+        configItem = self.getConfigItem(
+            commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Orderer"),
+            key=BootstrapHelper.KEY_CREATIONPOLICY,
+            value=orderer_dot_configuration_pb2.CreationPolicy(policy=chainCreationPolicyName, digest=hash).SerializeToString())
+        return [self.signConfigItem(configItem)] + signedConfigItems
+
+
+def signInitialChainConfig(signedConfigItems, chainId, chainCreationPolicyName):
+    bootstrapHelper = BootstrapHelper(chainId = chainId)
+    # Returns a list prepended with a signedConfiguration
+    signedConfigItems = bootstrapHelper.signInitialChainConfig(signedConfigItems, chainCreationPolicyName)
+    return common_dot_configuration_pb2.ConfigurationEnvelope(Items=signedConfigItems)
+
 def getDirectory(context):
     if 'bootstrapDirectory' not in context:
         context.bootstrapDirectory = Directory()
     return context.bootstrapDirectory
 
-
-def createGenesisBlock(context, chainId, networkConfigPolicy, consensusType):
-    'Generates the genesis block for starting the oderers and for use in the chain config transaction by peers'
-    #assert not "bootstrapGenesisBlock" in context,"Genesis block already created:\n{0}".format(context.bootstrapGenesisBlock)
+def getOrdererBootstrapAdmin(context, shouldCreate=False):
     directory = getDirectory(context)
-    assert len(directory.ordererAdminTuples) > 0, "No orderer admin tuples defined!!!"
+    ordererBootstrapAdmin = directory.getUser(userName="ordererBootstrapAdmin", shouldCreate=shouldCreate)
+    return ordererBootstrapAdmin
 
+def createSignedConfigItems(context, chainId, consensusType, signedConfigItems = []):
+    # directory = getDirectory(context)
+    # assert len(directory.ordererAdminTuples) > 0, "No orderer admin tuples defined!!!"
     bootstrapHelper = BootstrapHelper(chainId = chainId, consensusType=consensusType)
-    configItems = []
+    configItems = signedConfigItems
     configItems.append(bootstrapHelper.encodeBatchSize())
     configItems.append(bootstrapHelper.encodeConsensusType())
-    configItems.append(bootstrapHelper.encodeChainCreators())
     configItems.append(bootstrapHelper.encodeAcceptAllPolicy())
     configItems.append(bootstrapHelper.encodeIngressPolicy())
+    configItems.append(bootstrapHelper.encodeEgressPolicy())
     configItems.append(bootstrapHelper.lockDefaultModificationPolicy())
-    configEnvelope = common_dot_configuration_pb2.ConfigurationEnvelope(Items=configItems)
+    return configItems
 
 
+def createConfigTxEnvelope(chainId, signedConfigEnvelope):
+    bootstrapHelper = BootstrapHelper(chainId = chainId)
     payloadChainHeader = bootstrapHelper.makeChainHeader(type=common_dot_common_pb2.HeaderType.Value("CONFIGURATION_TRANSACTION"))
 
     #Now the SignatureHeader
@@ -366,8 +442,46 @@ def createGenesisBlock(context, chainId, networkConfigPolicy, consensusType):
         chainHeader=payloadChainHeader,
         signatureHeader=payloadSignatureHeader,
     )
-    payload = common_dot_common_pb2.Payload(header=payloadHeader, data=configEnvelope.SerializeToString())
+    payload = common_dot_common_pb2.Payload(header=payloadHeader, data=signedConfigEnvelope.SerializeToString())
     envelope = common_dot_common_pb2.Envelope(payload=payload.SerializeToString(), signature=None)
+    return envelope
+
+def createGenesisBlock(context, chainId, consensusType, signedConfigItems = []):
+    'Generates the genesis block for starting the oderers and for use in the chain config transaction by peers'
+    #assert not "bootstrapGenesisBlock" in context,"Genesis block already created:\n{0}".format(context.bootstrapGenesisBlock)
+    directory = getDirectory(context)
+    assert len(directory.ordererAdminTuples) > 0, "No orderer admin tuples defined!!!"
+
+    configItems = createSignedConfigItems(context, chainId, consensusType, signedConfigItems = signedConfigItems)
+
+    bootstrapHelper = BootstrapHelper(chainId = chainId, consensusType=consensusType)
+    # configItems = signedConfigItems
+    # configItems.append(bootstrapHelper.encodeBatchSize())
+    # configItems.append(bootstrapHelper.encodeConsensusType())
+    # configItems.append(bootstrapHelper.encodeAcceptAllPolicy())
+    # configItems.append(bootstrapHelper.encodeIngressPolicy())
+    # configItems.append(bootstrapHelper.encodeEgressPolicy())
+    # configItems.append(bootstrapHelper.lockDefaultModificationPolicy())
+    configEnvelope = common_dot_configuration_pb2.ConfigurationEnvelope(Items=configItems)
+
+
+    # payloadChainHeader = bootstrapHelper.makeChainHeader(type=common_dot_common_pb2.HeaderType.Value("CONFIGURATION_TRANSACTION"))
+    #
+    # #Now the SignatureHeader
+    # serializedCreatorCertChain = None
+    # nonce = None
+    # payloadSignatureHeader = common_dot_common_pb2.SignatureHeader(
+    #     creator=serializedCreatorCertChain,
+    #     nonce=bootstrapHelper.getNonce(),
+    # )
+    #
+    # payloadHeader = common_dot_common_pb2.Header(
+    #     chainHeader=payloadChainHeader,
+    #     signatureHeader=payloadSignatureHeader,
+    # )
+    # payload = common_dot_common_pb2.Payload(header=payloadHeader, data=configEnvelope.SerializeToString())
+    # envelope = common_dot_common_pb2.Envelope(payload=payload.SerializeToString(), signature=None)
+    envelope = createConfigTxEnvelope(chainId, configEnvelope)
 
     blockData = common_dot_common_pb2.BlockData(Data=[envelope.SerializeToString()])
 
@@ -379,7 +493,7 @@ def createGenesisBlock(context, chainId, networkConfigPolicy, consensusType):
             DataHash=bootstrapHelper.computeBlockDataHash(blockData),
         ),
         Data=blockData,
-        Metadata=None,
+        Metadata=common_dot_common_pb2.BlockMetadata(Metadata=("",common_dot_common_pb2.Metadata(value=common_dot_common_pb2.LastConfiguration(index=0).SerializeToString()).SerializeToString(),"")),
     )
 
     # Add this back once crypto certs are required
@@ -389,7 +503,7 @@ def createGenesisBlock(context, chainId, networkConfigPolicy, consensusType):
         # print("UserCert for orderer genesis:\n{0}\n".format(certAsPEM))
         # print("")
 
-    return block
+    return (block, envelope)
 
 class PathType(Enum):
     'Denotes whether Path relative to Local filesystem or Containers volume reference.'
@@ -428,6 +542,7 @@ class OrdererGensisBlockCompositionCallback(compose.CompositionCallback):
         shutil.rmtree(self.getVolumePath(composition))
 
     def getEnv(self, composition, context, env):
+        env["ORDERER_GENERAL_GENESISMETHOD"]="file"
         env["ORDERER_GENERAL_GENESISFILE"]=self.getGenesisFilePath(composition, pathType=PathType.Container)
 
 
@@ -480,7 +595,8 @@ class PeerCompositionCallback(compose.CompositionCallback):
                 # Put the associated private key into the keystore folder
                 user = directory.getUser(pnt.user, shouldCreate=False)
                 with open("{0}/keystore/{1}.pem".format(localMspConfigPath, pnt.user), "w") as f:
-                    f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, user.pKey))
+                    f.write(user.ecdsaSigningKey.to_pem())
+                    # f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, user.pKey))
 
 
     def decomposing(self, composition, context):
@@ -492,5 +608,32 @@ class PeerCompositionCallback(compose.CompositionCallback):
             localMspConfigPath = self.getLocalMspConfigPath(composition, peerService, pathType=PathType.Container)
             env["{0}_CORE_PEER_MSPCFGPATH".format(peerService.upper())]=localMspConfigPath
 
+def createChainCreatorsPolicy(context, chainCreatePolicyName, chaindId, orgNames):
+    'Creates the chain Creator Policy with name'
+    directory = getDirectory(context)
+    bootstrapHelper = BootstrapHelper(chainId = chaindId)
+    chainCreationPolicyNamesSignedConfigItem = bootstrapHelper.encodeChainCreators(ciValue = orderer_dot_configuration_pb2.ChainCreators(policies=[chainCreatePolicyName]).SerializeToString())
+
+
+
+    # This represents the domain of organization which can create channels for the orderer
+    # First create org MSPPrincicpal
+
+    # Collect the orgs from the table
+    mspPrincipalList = []
+    for org in [directory.getOrganization(orgName) for orgName in orgNames]:
+        mspPrincipalList.append(msp_principal_pb2.MSPPrincipal(PrincipalClassification=msp_principal_pb2.MSPPrincipal.Classification.Value("ByIdentity"),
+            Principal=crypto.dump_certificate(crypto.FILETYPE_ASN1, org.getSelfSignedCert())).SerializeToString())
+
+    chainCreatorsOrgsPolicySignedConfigItem = bootstrapHelper.encodePolicy(key=chainCreatePolicyName , policy=common_dot_configuration_pb2.Policy(type=1, policy=AuthDSLHelper.Envelope(signaturePolicy=AuthDSLHelper.NOutOf(0,[]), identities=mspPrincipalList).SerializeToString()))
+    print("signed Config Item:\n{0}\n".format(chainCreationPolicyNamesSignedConfigItem))
+    print("chain Creation orgs signed Config Item:\n{0}\n".format(chainCreatorsOrgsPolicySignedConfigItem))
+    return (chainCreationPolicyNamesSignedConfigItem, chainCreatorsOrgsPolicySignedConfigItem)
+
 def setOrdererBootstrapGenesisBlock(genesisBlock):
     'Responsible for setting the GensisBlock for the Orderer nodes upon composition'
+
+def broadcastCreateChannelConfigTx(context, composeService, chainId, configTxEnvelope, user):
+
+    dataFunc = lambda x: configTxEnvelope
+    user.broadcastMessages(context=context,numMsgsToBroadcast=1,composeService=composeService, chainID=chainId ,dataFunc=dataFunc, chainHeaderType=common_dot_common_pb2.CONFIGURATION_TRANSACTION)
