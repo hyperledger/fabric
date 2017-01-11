@@ -20,6 +20,9 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/orderer/common/filter"
+	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
+	"github.com/hyperledger/fabric/orderer/common/sigfilter"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -47,6 +50,9 @@ type Support interface {
 
 	// Reader returns the chain Reader for the chain
 	Reader() rawledger.Reader
+
+	// SharedConfig returns the shared config manager for this chain
+	SharedConfig() sharedconfig.Manager
 }
 
 type deliverServer struct {
@@ -86,7 +92,11 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
 
-		// XXX add deliver authorization checking
+		sf := sigfilter.New(chain.SharedConfig().EgressPolicy, chain.PolicyManager())
+		result, _ := sf.Apply(envelope)
+		if result != filter.Forward {
+			return sendStatusReply(srv, cb.Status_FORBIDDEN)
+		}
 
 		seekInfo := &ab.SeekInfo{}
 		if err = proto.Unmarshal(payload.Data, seekInfo); err != nil {

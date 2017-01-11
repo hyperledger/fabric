@@ -33,6 +33,9 @@ type sigFilter struct {
 
 // New creates a new signature filter, at every evaluation, the policySource is called
 // just before evaluation to get the policy name to use when evaluating the filter
+// In general, both the policy name and the policy itself are mutable, this is why
+// not only the policy is retrieved at each invocation, but also the name of which
+// policy to retrieve
 func New(policySource func() string, policyManager policies.Manager) filter.Rule {
 	return &sigFilter{
 		policySource:  policySource,
