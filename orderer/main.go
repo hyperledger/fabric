@@ -117,8 +117,6 @@ func main() {
 		}
 	} else {
 		logger.Infof("Not bootstrapping because of existing chains")
-		logger.Warningf("XXXXXXX RESTART IS NOT CURRENTLY SUPPORTED XXXXXXXXX")
-		// XXX Remove this once restart is supported
 	}
 
 	if conf.Kafka.Verbose {

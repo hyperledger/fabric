@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/proto"
@@ -59,48 +59,18 @@ type multiLedger struct {
 	sysChain      *systemChain
 }
 
-// getConfigTx, this should ultimately be done more intelligently, but for now, we search the whole chain for txs and pick the last config one
 func getConfigTx(reader rawledger.Reader) *cb.Envelope {
-	var lastConfigTx *cb.Envelope
-
-	it, _ := reader.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
-	// Iterate over the blockchain, looking for config transactions, track the most recent one encountered
-	// this will be the transaction which is returned
-	for {
-		select {
-		case <-it.ReadyChan():
-			block, status := it.Next()
-			if status != cb.Status_SUCCESS {
-				logger.Fatalf("Error parsing blockchain at startup: %v", status)
-			}
-			// ConfigTxs should always be by themselves
-			if len(block.Data.Data) != 1 {
-				continue
-			}
-
-			maybeConfigTx := &cb.Envelope{}
-
-			err := proto.Unmarshal(block.Data.Data[0], maybeConfigTx)
-
-			if err != nil {
-				logger.Fatalf("Found data which was not an envelope: %s", err)
-			}
-
-			payload := &cb.Payload{}
-			if err = proto.Unmarshal(maybeConfigTx.Payload, payload); err != nil {
-				logger.Fatalf("Unable to unmarshal transaction payload: %s", err)
-			}
-
-			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
-				continue
-			}
-
-			logger.Debugf("Found configuration transaction for chain %x at block %d", payload.Header.ChainHeader.ChainID, block.Header.Number)
-			lastConfigTx = maybeConfigTx
-		default:
-			return lastConfigTx
-		}
+	lastBlock := rawledger.GetBlock(reader, reader.Height()-1)
+	index, err := utils.GetLastConfigurationIndexFromBlock(lastBlock)
+	if err != nil {
+		logger.Panicf("Chain did not have appropriately encoded last configuration in its latest block: %s", err)
 	}
+	configBlock := rawledger.GetBlock(reader, index)
+	if configBlock == nil {
+		logger.Panicf("Configuration block does not exist")
+	}
+
+	return utils.ExtractEnvelopeOrPanic(configBlock, 0)
 }
 
 // NewManagerImpl produces an instance of a Manager
@@ -126,16 +96,16 @@ func NewManagerImpl(ledgerFactory rawledger.Factory, consenters map[string]Conse
 
 		if sharedConfigManager.ChainCreators() != nil {
 			if ml.sysChain != nil {
-				logger.Fatalf("There appear to be two system chains %x and %x", ml.sysChain.support.ChainID(), chainID)
+				logger.Fatalf("There appear to be two system chains %s and %s", ml.sysChain.support.ChainID(), chainID)
 			}
-			logger.Debugf("Starting with system chain: %x", chainID)
+			logger.Debugf("Starting with system chain: %s", chainID)
 			chain := newChainSupport(createSystemChainFilters(ml, configManager), configManager, policyManager, backingLedger, sharedConfigManager, consenters)
 			ml.chains[string(chainID)] = chain
 			ml.sysChain = newSystemChain(chain)
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
 			defer chain.start()
 		} else {
-			logger.Debugf("Starting chain: %x", chainID)
+			logger.Debugf("Starting chain: %s", chainID)
 			chain := newChainSupport(createStandardFilters(configManager), configManager, policyManager, backingLedger, sharedConfigManager, consenters)
 			ml.chains[string(chainID)] = chain
 			chain.start()

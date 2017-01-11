@@ -85,7 +85,10 @@ func TestGetConfigTx(t *testing.T) {
 	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(provisional.TestChainID, 5)}))
 	ctx := makeConfigTx(provisional.TestChainID, 6)
 	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
-	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)}))
+
+	block := rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)})
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{Value: utils.MarshalOrPanic(&cb.LastConfiguration{Index: 7})})
+	rl.Append(block)
 
 	pctx := getConfigTx(rl)
 
@@ -104,11 +107,13 @@ func TestGetConfigTxFailure(t *testing.T) {
 		}))
 	}
 	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 11)}))
-	pctx := getConfigTx(rl)
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("Should have panic-ed because there was no configuration tx")
+		}
+	}()
+	getConfigTx(rl)
 
-	if pctx != nil {
-		t.Fatalf("Should not have found a configuration tx")
-	}
 }
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate

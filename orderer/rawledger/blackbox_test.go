@@ -39,20 +39,6 @@ type ledgerTestFactory interface {
 
 var testables []ledgerTestable
 
-func getBlock(number uint64, li ReadWriter) *cb.Block {
-	i, _ := li.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: number}}})
-	select {
-	case <-i.ReadyChan():
-		block, status := i.Next()
-		if status != cb.Status_SUCCESS {
-			return nil
-		}
-		return block
-	default:
-		return nil
-	}
-}
-
 func allTest(t *testing.T, test func(ledgerTestFactory, *testing.T)) {
 	for _, lt := range testables {
 
@@ -83,7 +69,7 @@ func testInitialization(lf ledgerTestFactory, t *testing.T) {
 	if li.Height() != 1 {
 		t.Fatalf("Block height should be 1")
 	}
-	block := getBlock(0, li)
+	block := GetBlock(li, 0)
 	if block == nil {
 		t.Fatalf("Error retrieving genesis block")
 	}
@@ -109,7 +95,7 @@ func testReinitialization(lf ledgerTestFactory, t *testing.T) {
 	if li.Height() != 2 {
 		t.Fatalf("Block height should be 2")
 	}
-	block := getBlock(1, li)
+	block := GetBlock(li, 1)
 	if block == nil {
 		t.Fatalf("Error retrieving block 1")
 	}
@@ -124,7 +110,7 @@ func TestAddition(t *testing.T) {
 
 func testAddition(lf ledgerTestFactory, t *testing.T) {
 	_, li := lf.New()
-	genesis := getBlock(0, li)
+	genesis := GetBlock(li, 0)
 	if genesis == nil {
 		t.Fatalf("Could not retrieve genesis block")
 	}
@@ -134,7 +120,7 @@ func testAddition(lf ledgerTestFactory, t *testing.T) {
 	if li.Height() != 2 {
 		t.Fatalf("Block height should be 2")
 	}
-	block := getBlock(1, li)
+	block := GetBlock(li, 1)
 	if block == nil {
 		t.Fatalf("Error retrieving genesis block")
 	}
@@ -255,7 +241,7 @@ func testMultichain(lf ledgerTestFactory, t *testing.T) {
 		t.Fatalf("Error retrieving chain1: %s", err)
 	}
 
-	if b := getBlock(1, c1); !reflect.DeepEqual(c1b1, b) {
+	if b := GetBlock(c1, 1); !reflect.DeepEqual(c1b1, b) {
 		t.Fatalf("Did not properly store block 1 on chain 1:")
 	}
 
@@ -264,7 +250,7 @@ func testMultichain(lf ledgerTestFactory, t *testing.T) {
 		t.Fatalf("Error retrieving chain2: %s", err)
 	}
 
-	if b := getBlock(0, c2); reflect.DeepEqual(c2b0, b) {
+	if b := GetBlock(c2, 0); reflect.DeepEqual(c2b0, b) {
 		t.Fatalf("Did not properly store block 1 on chain 1")
 	}
 }

@@ -26,8 +26,6 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/golang/protobuf/proto"
 )
 
 type mockLedgerReadWriter struct {
@@ -94,17 +92,11 @@ func TestWriteLastConfiguration(t *testing.T) {
 	cs := &chainSupport{ledger: ml, configManager: cm}
 
 	lastConfig := func(block *cb.Block) uint64 {
-		md := &cb.Metadata{}
-		err := proto.Unmarshal(block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION], md)
+		index, err := utils.GetLastConfigurationIndexFromBlock(block)
 		if err != nil {
 			panic(err)
 		}
-		lc := &cb.LastConfiguration{}
-		err = proto.Unmarshal(md.Value, lc)
-		if err != nil {
-			panic(err)
-		}
-		return lc.Index
+		return index
 	}
 
 	expected := uint64(0)
