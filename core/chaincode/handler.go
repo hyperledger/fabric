@@ -28,6 +28,7 @@ import (
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/looplab/fsm"
 	logging "github.com/op/go-logging"
 	"golang.org/x/net/context"
@@ -1082,9 +1083,17 @@ func (handler *Handler) enterEndState(e *fsm.Event, state string) {
 }
 
 func (handler *Handler) setChaincodeProposal(prop *pb.Proposal, msg *pb.ChaincodeMessage) error {
-	chaincodeLogger.Debug("setting chaincode proposal...")
+	chaincodeLogger.Debug("Setting chaincode proposal context...")
 	if prop != nil {
-		chaincodeLogger.Debug("TODO pass Proposal to chaincode...")
+		chaincodeLogger.Debug("Proposal different from nil. Creating chaincode proposal context...")
+
+		proposalContext, err := utils.GetChaincodeProposalContext(prop)
+		if err != nil {
+			chaincodeLogger.Debug("Failed getting proposal context from proposal [%s]", err)
+			return fmt.Errorf("Failed getting proposal context from proposal [%s]", err)
+		}
+
+		msg.ProposalContext = proposalContext
 	}
 	return nil
 }

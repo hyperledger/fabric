@@ -227,7 +227,7 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		stub.init(handler, msg.Txid, input)
+		stub.init(handler, msg.Txid, input, msg.ProposalContext)
 		res, err := handler.cc.Init(stub)
 
 		if err != nil {
@@ -288,7 +288,7 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		stub.init(handler, msg.Txid, input)
+		stub.init(handler, msg.Txid, input, msg.ProposalContext)
 		res, err := handler.cc.Invoke(stub)
 
 		if err != nil {

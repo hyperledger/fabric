@@ -105,6 +105,21 @@ message ChaincodeInvocationSpec {
     string idGenerationAlg = 2;
 }
 
+// ChaincodeProposalContext contains proposal data that we send to the chaincode
+// container shim and allow the chaincode to access through the shim interface.
+message ChaincodeProposalContext {
+
+    // Creator corresponds to SignatureHeader.Creator
+    bytes creator = 1;
+
+    // Transient corresponds to ChaincodeProposalPayload.Transient
+    // TODO: The transient field is supposed to carry application-specific
+    // data. They might be realted to access-control, encryption and so on.
+    // To simply access to this data, replacing bytes with a map
+    // is the next step to be carried.
+    bytes transient = 2;
+}
+
 message ChaincodeMessage {
 
     enum Type {
@@ -131,6 +146,8 @@ message ChaincodeMessage {
     google.protobuf.Timestamp timestamp = 2;
     bytes payload = 3;
     string txid = 4;
+
+    ChaincodeProposalContext proposalContext = 5;
 
     //event emmited by chaincode. Used only with Init or Invoke.
     // This event is then stored (currently)
