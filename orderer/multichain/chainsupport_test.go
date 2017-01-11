@@ -17,7 +17,6 @@ limitations under the License.
 package multichain
 
 import (
-	"bytes"
 	"reflect"
 	"testing"
 
@@ -84,18 +83,6 @@ func TestCommitConfig(t *testing.T) {
 		if c.(*mockCommitter).committed != 1 {
 			t.Errorf("Expected exactly 1 commits but got %d", c.(*mockCommitter).committed)
 		}
-	}
-}
-
-func TestMetadataSignatureBytes(t *testing.T) {
-	value := []byte("Value")
-	signatureHeader := []byte("SignatureHeader")
-	blockHeader := []byte("BlockHeader")
-
-	sigBytes := metadataSignatureBytes(value, signatureHeader, blockHeader)
-	expected := []byte("ValueSignatureHeaderBlockHeader")
-	if !bytes.Equal(sigBytes, expected) {
-		t.Errorf("Did not compute first signature bytes correctly, expected %s, got %s", expected, sigBytes)
 	}
 }
 

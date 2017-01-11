@@ -194,7 +194,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 			// Do not include the creation policy
 			continue
 		}
-		remainingBytes = append(remainingBytes, item.ConfigurationItem...)
+		remainingBytes = util.ConcatenateBytes(remainingBytes, item.ConfigurationItem)
 	}
 
 	configHash := util.ComputeCryptoHash(remainingBytes)

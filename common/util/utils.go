@@ -164,3 +164,21 @@ func GetTestOrgID() string {
 func GetSysCCVersion() string {
 	return metadata.Version
 }
+
+// ConcatenateBytes is useful for combining multiple arrays of bytes, especially for
+// signatures or digests over multiple fields
+func ConcatenateBytes(data ...[]byte) []byte {
+	finalLength := 0
+	for _, slice := range data {
+		finalLength += len(slice)
+	}
+	result := make([]byte, finalLength)
+	last := 0
+	for _, slice := range data {
+		for i := range slice {
+			result[i+last] = slice[i]
+		}
+		last += len(slice)
+	}
+	return result
+}
