@@ -428,7 +428,7 @@ func (m *Batch) GetSignatures() map[uint64][]byte {
 
 type Preprepare struct {
 	Seq   *SeqView `protobuf:"bytes,1,opt,name=seq" json:"seq,omitempty"`
-	Batch *Batch   `protobuf:"bytes,2,opt,name=batch" json:"batch,omitempty"`
+	Batch *Batch   `protobuf:"bytes,2,opt,name=batches" json:"batches,omitempty"`
 }
 
 func (m *Preprepare) Reset()                    { *m = Preprepare{} }
@@ -514,7 +514,7 @@ type NewView struct {
 	View  uint64             `protobuf:"varint,1,opt,name=view" json:"view,omitempty"`
 	Vset  map[uint64]*Signed `protobuf:"bytes,2,rep,name=vset" json:"vset,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Xset  *Subject           `protobuf:"bytes,3,opt,name=xset" json:"xset,omitempty"`
-	Batch *Batch             `protobuf:"bytes,4,opt,name=batch" json:"batch,omitempty"`
+	Batch *Batch             `protobuf:"bytes,4,opt,name=batches" json:"batches,omitempty"`
 }
 
 func (m *NewView) Reset()                    { *m = NewView{} }
@@ -555,7 +555,7 @@ func (*Checkpoint) ProtoMessage()               {}
 func (*Checkpoint) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
 type Hello struct {
-	Batch   *Batch   `protobuf:"bytes,1,opt,name=batch" json:"batch,omitempty"`
+	Batch   *Batch   `protobuf:"bytes,1,opt,name=batches" json:"batches,omitempty"`
 	NewView *NewView `protobuf:"bytes,2,opt,name=new_view,json=newView" json:"new_view,omitempty"`
 }
 

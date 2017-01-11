@@ -30,7 +30,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 )
+
+const defaultMaxReqCount = uint64(5)
+
+var maxReqCount uint64
 
 type testSystemAdapter struct {
 	id  uint64
@@ -42,6 +47,7 @@ type testSystemAdapter struct {
 	persistence map[string][]byte
 
 	arrivals map[uint64]time.Duration
+	reqs     []*Request
 
 	key *ecdsa.PrivateKey
 }
@@ -152,7 +158,7 @@ func (t *testSystemAdapter) Timer(d time.Duration, tf func()) Canceller {
 	return tt
 }
 
-func (t *testSystemAdapter) Deliver(chainId string, batch *Batch) {
+func (t *testSystemAdapter) Deliver(chainId string, batch *Batch, committer []filter.Committer) {
 	if t.batches == nil {
 		t.batches = make(map[string][]*Batch)
 	}
@@ -160,6 +166,25 @@ func (t *testSystemAdapter) Deliver(chainId string, batch *Batch) {
 		t.batches[chainId] = make([]*Batch, 0, 1)
 	}
 	t.batches[chainId] = append(t.batches[chainId], batch)
+}
+
+func (t *testSystemAdapter) Ordered(chainID string, req *Request) ([][]*Request, [][]filter.Committer, bool) {
+	r := t.reqs
+	if t.reqs == nil || uint64(len(t.reqs)) == maxReqCount-uint64(1) {
+		t.reqs = make([]*Request, 0, maxReqCount-1)
+	}
+	if uint64(len(r)) == maxReqCount-uint64(1) {
+		c := [][]filter.Committer{{}}
+		return [][]*Request{append(r, req)}, c, true
+	}
+	t.reqs = append(t.reqs, req)
+	return nil, nil, true
+}
+
+func (t *testSystemAdapter) Cut(chainID string) ([]*Request, []filter.Committer) {
+	r := t.reqs
+	t.reqs = make([]*Request, 0, maxReqCount)
+	return r, []filter.Committer{}
 }
 
 func (t *testSystemAdapter) Persist(chainId string, key string, data proto.Message) {
@@ -267,19 +292,28 @@ func (t testElem) String() string {
 }
 
 func newTestSystem(n uint64) *testSystem {
-	return &testSystem{
-		rand:     rand.New(rand.NewSource(0)),
-		adapters: make(map[uint64]*testSystemAdapter),
-		queue:    newCalendarQueue(time.Millisecond/time.Duration(n*n), int(n*n)),
-	}
+	return newTestSystemWithBatchSize(n, defaultMaxReqCount)
+}
+
+func newTestSystemWithBatchSize(n uint64, batchSize uint64) *testSystem {
+	return newTestSystemWithParams(n, batchSize, false)
 }
 
 func newTestSystemWOTimers(n uint64) *testSystem {
+	return newTestSystemWithParams(n, defaultMaxReqCount, true)
+}
+
+func newTestSystemWOTimersWithBatchSize(n uint64, batchSize uint64) *testSystem {
+	return newTestSystemWithParams(n, batchSize, true)
+}
+
+func newTestSystemWithParams(n uint64, batchSize uint64, disableTimers bool) *testSystem {
+	maxReqCount = batchSize
 	return &testSystem{
 		rand:          rand.New(rand.NewSource(0)),
 		adapters:      make(map[uint64]*testSystemAdapter),
 		queue:         newCalendarQueue(time.Millisecond/time.Duration(n*n), int(n*n)),
-		disableTimers: true,
+		disableTimers: disableTimers,
 	}
 }
 

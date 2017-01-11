@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/op/go-logging"
 )
 
@@ -43,7 +44,7 @@ type Receiver interface {
 type System interface {
 	Send(chainId string, msg *Msg, dest uint64)
 	Timer(d time.Duration, f func()) Canceller
-	Deliver(chainId string, batch *Batch)
+	Deliver(chainId string, batch *Batch, committers []filter.Committer)
 	AddReceiver(chainId string, receiver Receiver)
 	Persist(chainId string, key string, data proto.Message)
 	Restore(chainId string, key string, out proto.Message) bool
@@ -51,6 +52,8 @@ type System interface {
 	Sign(data []byte) []byte
 	CheckSig(data []byte, src uint64, sig []byte) error
 	Reconnect(chainId string, replica uint64)
+	Ordered(chainID string, req *Request) ([][]*Request, [][]filter.Committer, bool)
+	Cut(chainID string) ([]*Request, []filter.Committer)
 }
 
 // Canceller allows cancelling of a scheduled timer event.
@@ -65,7 +68,7 @@ type SBFT struct {
 	config            Config
 	id                uint64
 	view              uint64
-	batch             []*Request
+	batches           [][]*Request
 	batchTimer        Canceller
 	cur               reqInfo
 	activeView        bool
@@ -74,7 +77,9 @@ type SBFT struct {
 	viewChangeTimer   Canceller
 	replicaState      []replicaInfo
 	pending           map[string]*Request
+	passedToBC        map[string]*Request
 	chainId           string
+	primarycommitters [][]filter.Committer
 }
 
 type reqInfo struct {
@@ -87,6 +92,7 @@ type reqInfo struct {
 	prepared       bool
 	committed      bool
 	checkpointDone bool
+	committers     []filter.Committer
 }
 
 type replicaInfo struct {
@@ -109,13 +115,16 @@ func New(id uint64, chainID string, config *Config, sys System) (*SBFT, error) {
 	}
 
 	s := &SBFT{
-		config:          *config,
-		sys:             sys,
-		id:              id,
-		chainId:         chainID,
-		viewChangeTimer: dummyCanceller{},
-		replicaState:    make([]replicaInfo, config.N),
-		pending:         make(map[string]*Request),
+		config:            *config,
+		sys:               sys,
+		id:                id,
+		chainId:           chainID,
+		viewChangeTimer:   dummyCanceller{},
+		replicaState:      make([]replicaInfo, config.N),
+		pending:           make(map[string]*Request),
+		passedToBC:        make(map[string]*Request),
+		batches:           make([][]*Request, 0, 3),
+		primarycommitters: make([][]filter.Committer, 0),
 	}
 	s.sys.AddReceiver(chainID, s)
 
@@ -134,6 +143,7 @@ func New(id uint64, chainID string, config *Config, sys System) (*SBFT, error) {
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(fmt.Sprintf("rep %d VIEW %d   %d", s.id, s.view, vc.View))
 		s.view = vc.View
 		s.replicaState[s.id].signedViewchange = svc
 		s.activeView = false
@@ -144,7 +154,9 @@ func New(id uint64, chainID string, config *Config, sys System) (*SBFT, error) {
 		s.view = pp.Seq.View
 		s.activeView = true
 		if pp.Seq.Seq > s.seq() {
-			s.acceptPreprepare(pp)
+			// TODO double add to BC?
+			_, committers := s.getCommittersFromBlockCutter(pp.Batch)
+			s.acceptPreprepare(pp, committers)
 		}
 	}
 	c := &Subject{}
@@ -261,14 +273,21 @@ func (s *SBFT) handleQueueableMessage(m *Msg, src uint64) {
 	log.Warningf("replica %d: received invalid message from %d", s.id, src)
 }
 
-func (s *SBFT) deliverBatch(batch *Batch) {
+func (s *SBFT) deliverBatch(batch *Batch, committers []filter.Committer) {
+	if committers == nil {
+		log.Warningf("replica %d: commiter is nil", s.id)
+		panic("Committer is nil.")
+	}
 	s.cur.checkpointDone = true
 	s.cur.timeout.Cancel()
-	s.sys.Deliver(s.chainId, batch)
+	// s.primarycommitters[0]
+	s.sys.Deliver(s.chainId, batch, committers)
+	// s.primarycommitters = s.primarycommitters[1:]
 
 	for _, req := range batch.Payloads {
 		key := hash2str(hash(req))
 		log.Infof("replica %d: attempting to remove %x from pending", s.id, key)
 		delete(s.pending, key)
+		delete(s.passedToBC, key)
 	}
 }

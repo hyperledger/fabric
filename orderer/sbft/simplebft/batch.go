@@ -51,7 +51,7 @@ func (s *SBFT) checkBatch(b *Batch, checkData bool, needSigs bool) (*BatchHeader
 	if checkData {
 		datahash := merkleHashData(b.Payloads)
 		if !reflect.DeepEqual(datahash, batchheader.DataHash) {
-			return nil, fmt.Errorf("malformed batch: invalid hash")
+			return nil, fmt.Errorf("malformed batches: invalid hash")
 		}
 	}
 
@@ -59,7 +59,7 @@ func (s *SBFT) checkBatch(b *Batch, checkData bool, needSigs bool) (*BatchHeader
 		// TODO check against root hash, which should be part of constructor
 	} else if needSigs {
 		if len(b.Signatures) < s.oneCorrectQuorum() {
-			return nil, fmt.Errorf("insufficient number of signatures on batch: need %d, got %d", s.oneCorrectQuorum(), len(b.Signatures))
+			return nil, fmt.Errorf("insufficient number of signatures on batches: need %d, got %d", s.oneCorrectQuorum(), len(b.Signatures))
 		}
 	}
 
