@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
+	"github.com/hyperledger/fabric/orderer/common/sizefilter"
 	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -138,6 +139,7 @@ func newChainSupport(
 func createStandardFilters(configManager configtx.Manager, policyManager policies.Manager, sharedConfig sharedconfig.Manager) *filter.RuleSet {
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
+		sizefilter.MaxBytesRule(sharedConfig.BatchSize().AbsoluteMaxBytes),
 		sigfilter.New(sharedConfig.IngressPolicy, policyManager),
 		configtx.NewFilter(configManager),
 		filter.AcceptRule,
@@ -149,6 +151,7 @@ func createStandardFilters(configManager configtx.Manager, policyManager policie
 func createSystemChainFilters(ml *multiLedger, configManager configtx.Manager, policyManager policies.Manager, sharedConfig sharedconfig.Manager) *filter.RuleSet {
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
+		sizefilter.MaxBytesRule(sharedConfig.BatchSize().AbsoluteMaxBytes),
 		sigfilter.New(sharedConfig.IngressPolicy, policyManager),
 		newSystemChainFilter(ml),
 		configtx.NewFilter(configManager),
