@@ -23,7 +23,7 @@ import (
 )
 
 func newChainRequest(consensusType, creationPolicy, newChainID string) *cb.Envelope {
-	conf.General.OrdererType = consensusType
+	conf.Genesis.OrdererType = consensusType
 	genesisBlock := provisional.New(conf).GenesisBlock()
 	oldGenesisTx := utils.ExtractEnvelopeOrPanic(genesisBlock, 0)
 	oldGenesisTxPayload := utils.ExtractPayloadOrPanic(oldGenesisTx)

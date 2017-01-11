@@ -39,18 +39,22 @@ const Prefix string = "ORDERER"
 
 // General contains config which should be common among all orderer types
 type General struct {
-	OrdererType   string
 	LedgerType    string
-	BatchTimeout  time.Duration
 	QueueSize     uint32
 	MaxWindowSize uint32
 	ListenAddress string
 	ListenPort    uint16
 	GenesisMethod string
-	BatchSize     BatchSize
 	GenesisFile   string
 	Profile       Profile
 	LogLevel      string
+}
+
+// Genesis contains config which is used by the provisional bootstrapper
+type Genesis struct {
+	OrdererType  string
+	BatchTimeout time.Duration
+	BatchSize    BatchSize
 }
 
 // BatchSize contains configuration affecting the size of batches
@@ -99,22 +103,18 @@ type TopLevel struct {
 	RAMLedger  RAMLedger
 	FileLedger FileLedger
 	Kafka      Kafka
+	Genesis    Genesis
 }
 
 var defaults = TopLevel{
 	General: General{
-		OrdererType:   "solo",
 		LedgerType:    "ram",
-		BatchTimeout:  10 * time.Second,
 		QueueSize:     1000,
 		MaxWindowSize: 1000,
 		ListenAddress: "127.0.0.1",
 		ListenPort:    7050,
 		GenesisMethod: "provisional",
-		BatchSize: BatchSize{
-			MaxMessageCount: 10,
-		},
-		GenesisFile: "./genesisblock",
+		GenesisFile:   "./genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
@@ -137,6 +137,13 @@ var defaults = TopLevel{
 		Verbose: false,
 		Version: sarama.V0_9_0_1,
 	},
+	Genesis: Genesis{
+		OrdererType:  "solo",
+		BatchTimeout: 10 * time.Second,
+		BatchSize: BatchSize{
+			MaxMessageCount: 10,
+		},
+	},
 }
 
 func (c *TopLevel) completeInitialization() {
@@ -144,18 +151,9 @@ func (c *TopLevel) completeInitialization() {
 
 	for {
 		switch {
-		case c.General.OrdererType == "":
-			logger.Infof("General.OrdererType unset, setting to %s", defaults.General.OrdererType)
-			c.General.OrdererType = defaults.General.OrdererType
 		case c.General.LedgerType == "":
 			logger.Infof("General.LedgerType unset, setting to %s", defaults.General.LedgerType)
 			c.General.LedgerType = defaults.General.LedgerType
-		case c.General.BatchTimeout == 0:
-			logger.Infof("General.BatchTimeout unset, setting to %s", defaults.General.BatchTimeout)
-			c.General.BatchTimeout = defaults.General.BatchTimeout
-		case c.General.BatchSize.MaxMessageCount == 0:
-			logger.Infof("General.BatchSize.MaxMessageCount unset, setting to %s", defaults.General.BatchSize.MaxMessageCount)
-			c.General.BatchSize.MaxMessageCount = defaults.General.BatchSize.MaxMessageCount
 		case c.General.QueueSize == 0:
 			logger.Infof("General.QueueSize unset, setting to %s", defaults.General.QueueSize)
 			c.General.QueueSize = defaults.General.QueueSize
@@ -190,6 +188,15 @@ func (c *TopLevel) completeInitialization() {
 		case c.Kafka.Retry.Stop == 0*time.Second:
 			logger.Infof("Kafka.Retry.Stop unset, setting to %v", defaults.Kafka.Retry.Stop)
 			c.Kafka.Retry.Stop = defaults.Kafka.Retry.Stop
+		case c.Genesis.OrdererType == "":
+			logger.Infof("Genesis.OrdererType unset, setting to %s", defaults.Genesis.OrdererType)
+			c.Genesis.OrdererType = defaults.Genesis.OrdererType
+		case c.Genesis.BatchTimeout == 0:
+			logger.Infof("Genesis.BatchTimeout unset, setting to %s", defaults.Genesis.BatchTimeout)
+			c.Genesis.BatchTimeout = defaults.Genesis.BatchTimeout
+		case c.Genesis.BatchSize.MaxMessageCount == 0:
+			logger.Infof("Genesis.BatchSize.MaxMessageCount unset, setting to %s", defaults.Genesis.BatchSize.MaxMessageCount)
+			c.Genesis.BatchSize.MaxMessageCount = defaults.Genesis.BatchSize.MaxMessageCount
 		default:
 			// A bit hacky, but its type makes it impossible to test for a nil value.
 			// This may be overwritten by the Kafka orderer upon instantiation.

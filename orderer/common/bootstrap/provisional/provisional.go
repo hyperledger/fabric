@@ -73,14 +73,14 @@ type kafkaBootstrapper struct {
 func New(conf *config.TopLevel) bootstrap.Helper {
 	cbs := &commonBootstrapper{
 		chainID:       TestChainID,
-		consensusType: conf.General.OrdererType,
+		consensusType: conf.Genesis.OrdererType,
 		batchSize: &ab.BatchSize{
-			MaxMessageCount: conf.General.BatchSize.MaxMessageCount,
+			MaxMessageCount: conf.Genesis.BatchSize.MaxMessageCount,
 		},
-		batchTimeout: conf.General.BatchTimeout.String(),
+		batchTimeout: conf.Genesis.BatchTimeout.String(),
 	}
 
-	switch conf.General.OrdererType {
+	switch conf.Genesis.OrdererType {
 	case ConsensusTypeSolo, ConsensusTypeSbft:
 		return &soloBootstrapper{
 			commonBootstrapper: *cbs,
@@ -91,7 +91,7 @@ func New(conf *config.TopLevel) bootstrap.Helper {
 			kafkaBrokers:       conf.Kafka.Brokers,
 		}
 	default:
-		panic(fmt.Errorf("Wrong consenter type value given: %s", conf.General.OrdererType))
+		panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Genesis.OrdererType))
 	}
 }
 

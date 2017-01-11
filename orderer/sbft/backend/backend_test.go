@@ -70,7 +70,7 @@ func TestSignAndVerifyEcdsa(t *testing.T) {
 
 func TestLedgerReadWrite(t *testing.T) {
 	localConf := localconfig.Load()
-	localConf.General.OrdererType = provisional.ConsensusTypeSbft
+	localConf.Genesis.OrdererType = provisional.ConsensusTypeSbft
 	genesis := provisional.New(localConf).GenesisBlock()
 	rlf := ramledger.New(10)
 	rl, _ := rlf.GetOrCreate(provisional.TestChainID)
