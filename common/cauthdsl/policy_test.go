@@ -72,7 +72,7 @@ func addPolicy(manager *policies.ManagerImpl, id string, policy []byte) {
 
 func providerMap() map[int32]policies.Provider {
 	r := make(map[int32]policies.Provider)
-	r[int32(cb.Policy_SIGNATURE)] = NewPolicyProvider(&mockCryptoHelper{})
+	r[int32(cb.Policy_SIGNATURE)] = NewPolicyProvider(&mockDeserializer{})
 	return r
 }
 

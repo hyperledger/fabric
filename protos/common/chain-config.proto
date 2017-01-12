@@ -89,7 +89,7 @@ message MSPPrincipal {
     // For the ByOrganizationUnit/ByIdentity values of Classification,
     // PolicyPrincipal acquires its value from an organization unit or
     // identity, respectively.
-    bytes Principal = 3;
+    bytes Principal = 2;
 }
 
 

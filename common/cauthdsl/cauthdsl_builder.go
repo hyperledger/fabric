@@ -52,10 +52,15 @@ func init() {
 
 // Envelope builds an envelope message embedding a SignaturePolicy
 func Envelope(policy *cb.SignaturePolicy, identities [][]byte) *cb.SignaturePolicyEnvelope {
+	ids := make([]*cb.MSPPrincipal, len(identities))
+	for i, _ := range ids {
+		ids[i] = &cb.MSPPrincipal{PrincipalClassification: cb.MSPPrincipal_ByIdentity, Principal: identities[i]}
+	}
+
 	return &cb.SignaturePolicyEnvelope{
 		Version:    0,
 		Policy:     policy,
-		Identities: identities,
+		Identities: ids,
 	}
 }
 

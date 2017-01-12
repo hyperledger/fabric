@@ -16,7 +16,10 @@ limitations under the License.
 
 package msp
 
-import "github.com/hyperledger/fabric/protos/msp"
+import (
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
+)
 
 // FIXME: we need better comments on the interfaces!!
 // FIXME: we need better comments on the interfaces!!
@@ -83,6 +86,12 @@ type MSP interface {
 
 	// Validate checks whether the supplied identity is valid
 	Validate(id Identity) error
+
+	// SatisfiesPrincipal checks whether the identity matches
+	// the description supplied in MSPPrincipal. The check may
+	// involve a byte-by-byte comparison (if the principal is
+	// a serialized identity) or may require MSP validation
+	SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error
 }
 
 // From this point on, there are interfaces that are shared within the peer and client API
@@ -135,6 +144,12 @@ type Identity interface {
 
 	// Serialize converts an identity to bytes
 	Serialize() ([]byte, error)
+
+	// SatisfiesPrincipal checks whether this instance matches
+	// the description supplied in MSPPrincipal. The check may
+	// involve a byte-by-byte comparison (if the principal is
+	// a serialized identity) or may require MSP validation
+	SatisfiesPrincipal(principal *common.MSPPrincipal) error
 }
 
 // SigningIdentity is an extension of Identity to cover signing capabilities.
