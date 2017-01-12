@@ -83,6 +83,40 @@ func TestConstructCompositeKey(t *testing.T) {
 	testutil.AssertEquals(t, compositeKey, "ns1"+strKeySep+"key1"+strKeySep+"1"+strKeySep+"1")
 }
 
+//TestSavepoint tests the recordSavepoint and GetBlockNumfromSavepoint methods for recording and reading a savepoint document
+func TestSavepoint(t *testing.T) {
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+
+		env := newTestEnvHistoryCouchDB(t, "history-test")
+		env.cleanup()       //cleanup at the beginning to ensure the database doesn't exist already
+		defer env.cleanup() //and cleanup at the end
+
+		logger.Debugf("===HISTORYDB=== env.couchDBAddress: %v , env.couchDatabaseName: %v env.couchUsername: %v env.couchPassword: %v\n",
+			env.couchDBAddress, env.couchDatabaseName, env.couchUsername, env.couchPassword)
+
+		histMgr := NewCouchDBHistMgr(
+			env.couchDBAddress,    //couchDB Address
+			env.couchDatabaseName, //couchDB db name
+			env.couchUsername,     //enter couchDB id
+			env.couchPassword)     //enter couchDB pw
+
+		// read the savepoint
+		blockNum, err := histMgr.GetBlockNumFromSavepoint()
+		testutil.AssertEquals(t, blockNum, 0)
+
+		// record savepoint
+		blockNo := uint64(5)
+		err = histMgr.recordSavepoint(blockNo)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when saving recordpoint data"))
+
+		// read the savepoint
+		blockNum, err = histMgr.GetBlockNumFromSavepoint()
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when saving recordpoint data"))
+		testutil.AssertEquals(t, blockNo, blockNum)
+	}
+}
+
 //History Database commit and read is being tested with kv_ledger_test.go.
 //This test will push some of the testing down into history itself
 func TestHistoryDatabaseCommit(t *testing.T) {

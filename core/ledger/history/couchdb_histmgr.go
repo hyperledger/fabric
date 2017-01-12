@@ -18,6 +18,8 @@ package history
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/ledger"
@@ -27,6 +29,15 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
 )
+
+// Savepoint docid (key) for couchdb
+const savepointDocID = "histdb_savepoint"
+
+// Savepoint data for couchdb
+type couchSavepointData struct {
+	BlockNum  uint64 `json:"BlockNum"`
+	UpdateSeq string `json:"UpdateSeq"`
+}
 
 var logger = logging.MustGetLogger("history")
 
@@ -125,10 +136,55 @@ func (histmgr *CouchDBHistMgr) Commit(block *common.Block) error {
 				if rev != "" {
 					logger.Debugf("===HISTORYDB=== Saved document revision number: %s\n", rev)
 				}
-
 			}
 		}
+	}
 
+	// Record a savepoint
+	err := histmgr.recordSavepoint(blockNo)
+	if err != nil {
+		logger.Debugf("===COUCHDB=== Error during recordSavepoint: %s\n", err)
+		return err
+	}
+
+	return nil
+}
+
+// recordSavepoint Record a savepoint in historydb.
+// Couch parallelizes writes in cluster or sharded setup and ordering is not guaranteed.
+// Hence we need to fence the savepoint with sync. So ensure_full_commit is called before AND after writing savepoint document
+// TODO: Optimization - merge 2nd ensure_full_commit with savepoint by using X-Couch-Full-Commit header
+func (txmgr *CouchDBHistMgr) recordSavepoint(blockNo uint64) error {
+	var err error
+	var savepointDoc couchSavepointData
+	// ensure full commit to flush all changes until now to disk
+	dbResponse, err := txmgr.couchDB.EnsureFullCommit()
+	if err != nil || dbResponse.Ok != true {
+		logger.Debugf("====COUCHDB==== Failed to perform full commit\n")
+		return fmt.Errorf("Failed to perform full commit. Err: %s", err)
+	}
+
+	// construct savepoint document
+	// UpdateSeq would be useful if we want to get all db changes since a logical savepoint
+	dbInfo, _, err := txmgr.couchDB.GetDatabaseInfo()
+	if err != nil {
+		logger.Debugf("====COUCHDB==== Failed to get DB info %s\n", err)
+		return err
+	}
+	savepointDoc.BlockNum = blockNo
+	savepointDoc.UpdateSeq = dbInfo.UpdateSeq
+
+	savepointDocJSON, err := json.Marshal(savepointDoc)
+	if err != nil {
+		logger.Debugf("====COUCHDB==== Failed to create savepoint data %s\n", err)
+		return err
+	}
+
+	// SaveDoc using couchdb client and use JSON format
+	_, err = txmgr.couchDB.SaveDoc(savepointDocID, "", savepointDocJSON, nil)
+	if err != nil {
+		logger.Debugf("====CouchDB==== Failed to save the savepoint to DB %s\n", err)
+		return err
 	}
 	return nil
 }
@@ -147,6 +203,27 @@ func (histmgr *CouchDBHistMgr) getTransactionsForNsKey(namespace string, key str
 	queryResult, _ := histmgr.couchDB.ReadDocRange(string(compositeStartKey), string(compositeEndKey), 1000, 0)
 
 	return newHistScanner(compositeStartKey, *queryResult), nil
+}
+
+// GetBlockNumFromSavepoint Reads the savepoint from database and returns the corresponding block number.
+// If no savepoint is found, it returns 0
+func (txmgr *CouchDBHistMgr) GetBlockNumFromSavepoint() (uint64, error) {
+	var err error
+	savepointJSON, _, err := txmgr.couchDB.ReadDoc(savepointDocID)
+	if err != nil {
+		// TODO: differentiate between 404 and some other error code
+		logger.Debugf("====COUCHDB==== Failed to read savepoint data %s\n", err)
+		return 0, err
+	}
+
+	savepointDoc := &couchSavepointData{}
+	err = json.Unmarshal(savepointJSON, &savepointDoc)
+	if err != nil {
+		logger.Debugf("====COUCHDB==== Failed to read savepoint data %s\n", err)
+		return 0, err
+	}
+
+	return savepointDoc.BlockNum, nil
 }
 
 func constructCompositeKey(ns string, key string, blocknum uint64, trannum uint64) string {
