@@ -25,6 +25,8 @@ import (
 
 	"os"
 
+	"errors"
+
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
@@ -35,7 +37,7 @@ var buildCmd = map[string]string{
 	"pom.xml":      "mvn -f pom.xml clean && mvn -f pom.xml package",
 }
 
-//return the type of build gradle/maven based on the file
+//getBuildCmd returns the type of build gradle/maven based on the file
 //found in java chaincode project root
 //build.gradle - gradle  - returns the first found build type
 //pom.xml - maven
@@ -51,7 +53,7 @@ func getBuildCmd(packagePath string) (string, error) {
 				}
 			}
 		}
-		return "", fmt.Errorf("Build file not found")
+		return "", errors.New("Build file not found")
 	}
 }
 
@@ -77,7 +79,7 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 	}
 
 	if urlLocation == "" {
-		return fmt.Errorf("empty url location")
+		return errors.New("ChaincodeSpec's path/URL cannot be empty")
 	}
 
 	if strings.LastIndex(urlLocation, "/") == len(urlLocation)-1 {

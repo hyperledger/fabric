@@ -26,6 +26,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"errors"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
@@ -34,22 +36,21 @@ import (
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
 
-	var tmp string
-	tmp, err = ioutil.TempDir("", "javachaincode")
+	codegopath, err = ioutil.TempDir("", "javachaincode")
 
 	if err != nil {
 		return "", fmt.Errorf("Error creating temporary file: %s", err)
 	}
 	var out bytes.Buffer
 
-	cmd := exec.Command("git", "clone", path, tmp)
+	cmd := exec.Command("git", "clone", path, codegopath)
 	cmd.Stderr = &out
 	cmderr := cmd.Run()
 	if cmderr != nil {
 		return "", fmt.Errorf("Error cloning git repository %s", cmderr)
 	}
 
-	return tmp, nil
+	return codegopath, nil
 
 }
 
@@ -61,17 +62,17 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 //with the same (name, ctor, args)
 func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if spec == nil {
-		return "", fmt.Errorf("Cannot collect chaincode files from nil spec")
+		return "", errors.New("Cannot collect chaincode files from nil spec")
 	}
 
 	chaincodeID := spec.ChaincodeID
 	if chaincodeID == nil || chaincodeID.Path == "" {
-		return "", fmt.Errorf("Cannot collect chaincode files from empty chaincode path")
+		return "", errors.New("Cannot collect chaincode files from empty chaincode path")
 	}
 
 	ctor := spec.CtorMsg
 	if ctor == nil || len(ctor.Args) == 0 {
-		return "", fmt.Errorf("Cannot collect chaincode files from empty ctor")
+		return "", errors.New("Cannot collect chaincode files from empty ctor")
 	}
 
 	codepath := chaincodeID.Path

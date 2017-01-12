@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"errors"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -36,7 +38,7 @@ func generateHashcode(spec *pb.ChaincodeSpec, path string) (string, error) {
 
 	ctor := spec.CtorMsg
 	if ctor == nil || len(ctor.Args) == 0 {
-		return "", fmt.Errorf("Cannot generate hashcode from empty ctor")
+		return "", errors.New("Cannot generate hashcode from empty ctor")
 	}
 	ctorbytes, err := proto.Marshal(ctor)
 	if err != nil {
