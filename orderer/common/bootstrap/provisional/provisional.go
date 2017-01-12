@@ -19,12 +19,21 @@ package provisional
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
 )
+
+// Generator can either create an orderer genesis block or configuration template
+type Generator interface {
+	bootstrap.Helper
+
+	// TemplateItems returns a set of configuration items which can be used to initialize a template
+	TemplateItems() []*cb.ConfigurationItem
+}
 
 const (
 	msgVersion = int32(1)
@@ -70,7 +79,7 @@ type kafkaBootstrapper struct {
 }
 
 // New returns a new provisional bootstrap helper.
-func New(conf *config.TopLevel) bootstrap.Helper {
+func New(conf *config.TopLevel) Generator {
 	cbs := &commonBootstrapper{
 		chainID:       TestChainID,
 		consensusType: conf.Genesis.OrdererType,
@@ -95,30 +104,26 @@ func New(conf *config.TopLevel) bootstrap.Helper {
 	}
 }
 
+func (cbs *commonBootstrapper) genesisBlock(minimalTemplateItems func() []*cb.ConfigurationItem) *cb.Block {
+	block, err := genesis.NewFactoryImpl(
+		configtx.NewCompositeTemplate(
+			configtx.NewSimpleTemplate(minimalTemplateItems()...),
+			configtx.NewSimpleTemplate(cbs.makeOrdererSystemChainConfig()...),
+		),
+	).Block(TestChainID)
+
+	if err != nil {
+		panic(err)
+	}
+	return block
+}
+
 // GenesisBlock returns the genesis block to be used for bootstrapping.
 func (cbs *commonBootstrapper) GenesisBlock() *cb.Block {
-	return cbs.makeGenesisBlock(cbs.makeGenesisConfigEnvelope())
+	return cbs.genesisBlock(cbs.TemplateItems)
 }
 
 // GenesisBlock returns the genesis block to be used for bootstrapping.
 func (kbs *kafkaBootstrapper) GenesisBlock() *cb.Block {
-	return kbs.makeGenesisBlock(kbs.makeGenesisConfigEnvelope())
-}
-
-func (cbs *commonBootstrapper) makeGenesisBlock(configEnvelope *cb.ConfigurationEnvelope) *cb.Block {
-	configItemChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, cbs.chainID, epoch)
-	payloadChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, configItemChainHeader.Version, cbs.chainID, epoch)
-	payloadSignatureHeader := utils.MakeSignatureHeader(nil, utils.CreateNonceOrPanic())
-	payloadHeader := utils.MakePayloadHeader(payloadChainHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(configEnvelope)}
-	envelope := &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}
-
-	block := cb.NewBlock(0, nil)
-	block.Data = &cb.BlockData{Data: [][]byte{utils.MarshalOrPanic(envelope)}}
-	block.Header.DataHash = block.Data.Hash()
-	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{
-		Value: utils.MarshalOrPanic(&cb.LastConfiguration{Index: 0}),
-	})
-
-	return block
+	return kbs.genesisBlock(kbs.TemplateItems)
 }
