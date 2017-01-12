@@ -24,7 +24,6 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -132,14 +131,15 @@ func MakeConfigurationBlock(testChainID string) (*cb.Block, error) {
 }
 
 const (
-	batchSize        = 10
-	consensusType    = "solo"
-	epoch            = uint64(0)
-	messageVersion   = int32(1)
-	lastModified     = uint64(0)
-	consensusTypeKey = "ConsensusType"
-	batchSizeKey     = "BatchSize"
-	mspKey           = "MSP"
+	batchSize                       = 10
+	consensusType                   = "solo"
+	epoch                           = uint64(0)
+	messageVersion                  = int32(1)
+	lastModified                    = uint64(0)
+	consensusTypeKey                = "ConsensusType"
+	batchSizeKey                    = "BatchSize"
+	mspKey                          = "MSP"
+	XXX_DefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
 )
 
 func createSignedConfigItem(chainID string,
@@ -162,21 +162,21 @@ func encodeConsensusType(testChainID string) *cb.SignedConfigurationItem {
 	return createSignedConfigItem(testChainID,
 		consensusTypeKey,
 		MarshalOrPanic(&ab.ConsensusType{Type: consensusType}),
-		configtx.DefaultModificationPolicyID)
+		XXX_DefaultModificationPolicyID)
 }
 
 func encodeBatchSize(testChainID string) *cb.SignedConfigurationItem {
 	return createSignedConfigItem(testChainID,
 		batchSizeKey,
 		MarshalOrPanic(&ab.BatchSize{MaxMessageCount: batchSize}),
-		configtx.DefaultModificationPolicyID)
+		XXX_DefaultModificationPolicyID)
 }
 
 func lockDefaultModificationPolicy(testChainID string) *cb.SignedConfigurationItem {
 	return createSignedConfigItem(testChainID,
-		configtx.DefaultModificationPolicyID,
+		XXX_DefaultModificationPolicyID,
 		MarshalOrPanic(MakePolicyOrPanic(cauthdsl.RejectAllPolicy)),
-		configtx.DefaultModificationPolicyID)
+		XXX_DefaultModificationPolicyID)
 }
 
 // This function is needed to locate the MSP test configuration when running
@@ -200,5 +200,5 @@ func encodeMSP(testChainID string) *cb.SignedConfigurationItem {
 	return createSignedConfigItem(testChainID,
 		mspKey,
 		MarshalOrPanic(conf),
-		configtx.DefaultModificationPolicyID)
+		XXX_DefaultModificationPolicyID)
 }
