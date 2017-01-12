@@ -9,7 +9,7 @@
 | Greg Haskins | greg.haskins | ghaskins | ghaskins | gregory.haskins@gmail.com |
 | Jason Yellick | jyellick | jyellick | jyellick | jyellick@us.ibm.com |
 | Jim Zhang | jimthematrix | jimthematrix | jzhang | jim_the_matrix@hotmail.com |
-| Jonathan Levi | JonathanLevi | JonathanLevi | JonathanLevi | jonathan@levi.name |
+| Jonathan Levi | JonathanLevi | JonathanLevi | JonathanLevi | jonathan@hacera.com |
 | Sheehan Anderson | sheehan | srderson | sheehan | sranderson@gmail.com |
 | Srinivasan Muralidharan | muralisr | muralisrini | muralisr | muralisr@us.ibm.com |
 | Tamas Blummer | TamasBlummer | tamasblummer | tamas | tamas@digitalasset.com |
