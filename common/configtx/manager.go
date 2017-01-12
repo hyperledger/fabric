@@ -125,7 +125,7 @@ func NewConfigurationManager(configtx *cb.ConfigurationEnvelope, pm policies.Man
 
 	chainID, seq, err := computeChainIDAndSequence(configtx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error computing chain ID and sequence: %s", err)
 	}
 
 	cm := &configurationManager{
@@ -139,7 +139,7 @@ func NewConfigurationManager(configtx *cb.ConfigurationEnvelope, pm policies.Man
 	err = cm.Apply(configtx)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error applying config transaction: %s", err)
 	}
 
 	return cm, nil
@@ -202,7 +202,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 		err = proto.Unmarshal(entry.ConfigurationItem, config)
 		if err != nil {
 			// Note that this is not reachable by test coverage because the unmarshal error would have already been found when computing the chainID and seqNo
-			return nil, err
+			return nil, fmt.Errorf("Error unmarshaling ConfigurationItem: %s", err)
 		}
 
 		// Get the modification policy for this config item if one was previously specified
@@ -249,7 +249,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 		// Ensure the type handler agrees the config is well formed
 		err = cm.handlers[config.Type].ProposeConfig(config)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Error proposing configuration item %s of type %d: %s", config.Key, config.Type, err)
 		}
 
 		configMap[config.Type][config.Key] = config

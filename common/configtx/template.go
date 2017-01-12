@@ -109,9 +109,10 @@ func (nct *newChainTemplate) Items(chainID string) ([]*cb.SignedConfigurationIte
 	creationPolicy := &cb.SignedConfigurationItem{
 		ConfigurationItem: utils.MarshalOrPanic(&cb.ConfigurationItem{
 			Header: utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, chainID, epoch),
+			Type:   cb.ConfigurationItem_Orderer,
 			Key:    CreationPolicyKey,
 			Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-				Policy: CreationPolicyKey,
+				Policy: nct.creationPolicy,
 				Digest: HashItems(items),
 			}),
 		}),
@@ -146,4 +147,19 @@ func join(sets ...[]*cb.SignedConfigurationItem) []*cb.SignedConfigurationItem {
 	}
 
 	return result
+}
+
+// MakeChainCreationTransaction is a handy utility function for creating new chain transactions using the underlying Template framework
+func MakeChainCreationTransaction(creationPolicy string, chainID string, templates ...Template) (*cb.Envelope, error) {
+	newChainTemplate := NewChainCreationTemplate(creationPolicy, NewCompositeTemplate(templates...))
+	signedConfigItems, err := newChainTemplate.Items(chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	payloadChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, msgVersion, chainID, epoch)
+	payloadSignatureHeader := utils.MakeSignatureHeader(nil, utils.CreateNonceOrPanic())
+	payloadHeader := utils.MakePayloadHeader(payloadChainHeader, payloadSignatureHeader)
+	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(utils.MakeConfigurationEnvelope(signedConfigItems...))}
+	return &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}, nil
 }

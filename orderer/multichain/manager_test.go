@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/rawledger"
@@ -192,12 +193,15 @@ func TestNewChain(t *testing.T) {
 
 	manager := NewManagerImpl(lf, consenters)
 
-	oldGenesisTx := utils.ExtractEnvelopeOrPanic(genesisBlock, 0)
-	oldGenesisTxPayload := utils.ExtractPayloadOrPanic(oldGenesisTx)
-	oldConfigEnv := utils.UnmarshalConfigurationEnvelopeOrPanic(oldGenesisTxPayload.Data)
+	generator := provisional.New(conf)
+	items := generator.TemplateItems()
+	simpleTemplate := configtx.NewSimpleTemplate(items...)
 
 	newChainID := "TestNewChain"
-	newChainMessage := utils.ChainCreationConfigurationTransaction(provisional.AcceptAllPolicyKey, newChainID, oldConfigEnv)
+	newChainMessage, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, newChainID, simpleTemplate)
+	if err != nil {
+		t.Fatalf("Error producing configuration transaction: %s", err)
+	}
 
 	status := manager.ProposeChain(newChainMessage)
 

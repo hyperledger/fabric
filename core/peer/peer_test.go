@@ -26,8 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/gossip/service"
-	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestInitialize(t *testing.T) {
@@ -40,7 +40,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
 	defer os.RemoveAll("/var/hyperledger/test/")
 	testChainID := "mytestchainid"
-	block, err := utils.MakeConfigurationBlock(testChainID)
+	block, err := configtxtest.MakeGenesisBlock(testChainID)
 	if err != nil {
 		fmt.Printf("Failed to create a config block, err %s\n", err)
 		t.FailNow()

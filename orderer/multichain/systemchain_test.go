@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	coreutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
@@ -113,7 +114,7 @@ func TestGoodProposal(t *testing.T) {
 			ChainID: newChainID,
 			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
 		},
-		Key:  utils.CreationPolicyKey,
+		Key:  configtx.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: provisional.AcceptAllPolicyKey,
@@ -169,7 +170,7 @@ func TestProposalWithBadPolicy(t *testing.T) {
 	mcc.ms.mpm.mp = &mockPolicy{}
 
 	chainCreateTx := &cb.ConfigurationItem{
-		Key:  utils.CreationPolicyKey,
+		Key:  configtx.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
@@ -193,7 +194,7 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	mcc.ms.msc.ChainCreatorsVal = []string{provisional.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
-		Key:  utils.CreationPolicyKey,
+		Key:  configtx.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: provisional.AcceptAllPolicyKey,
@@ -217,7 +218,7 @@ func TestProposalWithBadDigest(t *testing.T) {
 	mcc.ms.msc.ChainCreatorsVal = []string{provisional.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
-		Key:  utils.CreationPolicyKey,
+		Key:  configtx.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: provisional.AcceptAllPolicyKey,
