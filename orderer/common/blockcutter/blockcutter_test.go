@@ -80,7 +80,8 @@ var unmatchedTx = &cb.Envelope{Payload: []byte("UNMATCHED")}
 func TestNormalBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount}}, filters)
+	absoluteMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(goodTx)
 
@@ -107,7 +108,8 @@ func TestNormalBatch(t *testing.T) {
 func TestBadMessageInBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount}}, filters)
+	absoluteMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(badTx)
 
@@ -143,7 +145,8 @@ func TestBadMessageInBatch(t *testing.T) {
 func TestUnmatchedMessageInBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount}}, filters)
+	absoluteMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(unmatchedTx)
 
@@ -179,7 +182,8 @@ func TestUnmatchedMessageInBatch(t *testing.T) {
 func TestIsolatedEmptyBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount}}, filters)
+	absoluteMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(isolatedTx)
 
@@ -203,7 +207,8 @@ func TestIsolatedEmptyBatch(t *testing.T) {
 func TestIsolatedPartialBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount}}, filters)
+	absoluteMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(goodTx)
 
@@ -240,4 +245,59 @@ func TestIsolatedPartialBatch(t *testing.T) {
 	if !bytes.Equal(batches[1][0].Payload, isolatedTx.Payload) {
 		t.Fatalf("Should have had the isolated tx in the second batch")
 	}
+}
+
+func TestBatchSizeAbsoluteMaxBytesOverflow(t *testing.T) {
+	filters := getFilters()
+
+	goodTxBytes := messageSizeBytes(goodTx)
+
+	// set absolute max bytes such that 10 goodTx will not fit
+	absoluteMaxBytes := goodTxBytes*10 - 1
+
+	// set message count > 9
+	maxMessageCount := uint32(20)
+
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
+
+	// enqueue 9 messages
+	for i := 0; i < 9; i++ {
+		batches, committers, ok := r.Ordered(goodTx)
+		if batches != nil || committers != nil {
+			t.Fatalf("Should not have created batch")
+		}
+		if !ok {
+			t.Fatalf("Should have enqueued message into batch")
+		}
+	}
+
+	// next message should create batch
+	batches, committers, ok := r.Ordered(goodTx)
+
+	if batches == nil || committers == nil {
+		t.Fatalf("Should have created batch")
+	}
+
+	if len(batches) != 1 || len(committers) != 1 {
+		t.Fatalf("Should have created one batch, got %d and %d", len(batches), len(committers))
+	}
+
+	if len(batches[0]) != 9 || len(committers[0]) != 9 {
+		t.Fatalf("Should have had nine normal tx in the batch got %d and %d committers", len(batches[0]), len(committers[0]))
+	}
+	if !ok {
+		t.Fatalf("Should have enqueued the tenth message into batch")
+	}
+
+	// force a batch cut
+	messageBatch, committerBatch := r.Cut()
+
+	if messageBatch == nil || committerBatch == nil {
+		t.Fatalf("Should have created batch")
+	}
+
+	if len(messageBatch) != 1 || len(committerBatch) != 1 {
+		t.Fatalf("Should have had one tx in the batch, got %d and %d", len(batches), len(committers))
+	}
+
 }
