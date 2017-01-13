@@ -148,7 +148,7 @@ peer:
     # Path on the file system where peer will store data (eg ledger)
     fileSystemPath: /var/hyperledger/production
 
-    # Path on the file system where peer will find MSP local configurations 
+    # Path on the file system where peer will find MSP local configurations
     mspConfigPath: /var/hyperledger/msp
 
     # Used with Go profiling tools only in none production environment. In
@@ -265,12 +265,14 @@ chaincode:
     keepalive: 0
 
     # system chaincodes whitelist. To add system chaincode "myscc" to the
-    # whitelist, add "myscc: enable" to the list
+    # whitelist, add "myscc: enable" to the list below, and register in
+    # chaincode/importsysccs.go
     system:
         cscc: enable
         lccc: enable
         escc: enable
         vscc: enable
+        qscc: enable
 
 ###############################################################################
 #
@@ -291,6 +293,10 @@ ledger:
        couchDBAddress: 127.0.0.1:5984
        username:
        password:
+
+       # Limit on the number of records to return per query
+       queryLimit: 1000
+
     # historyDatabase - options are true or false
     # Indicates if the transaction history should be stored in
     # a querable database such as "CouchDB".

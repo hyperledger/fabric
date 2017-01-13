@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,7 +55,16 @@ var systemChaincodes = []*SystemChaincode{
 		Path:        "github.com/hyperledger/fabric/core/system_chaincode/vscc",
 		InitArgs:    [][]byte{[]byte("")},
 		Chaincode:   &vscc.ValidatorOneValidSignature{},
-	}}
+	},
+	{
+		ChainlessCC: true,
+		Enabled:     true,
+		Name:        "qscc",
+		Path:        "github.com/hyperledger/fabric/core/chaincode/qscc",
+		InitArgs:    [][]byte{[]byte("")},
+		Chaincode:   &LedgerQuerier{},
+	},
+}
 
 //RegisterSysCCs is the hook for system chaincodes where system chaincodes are registered with the fabric
 //note the chaincode must still be deployed and launched like a user chaincode will be
