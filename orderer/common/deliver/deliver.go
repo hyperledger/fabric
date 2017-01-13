@@ -92,7 +92,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
 
-		sf := sigfilter.New(chain.SharedConfig().EgressPolicy, chain.PolicyManager())
+		sf := sigfilter.New(chain.SharedConfig().EgressPolicyNames, chain.PolicyManager())
 		result, _ := sf.Apply(envelope)
 		if result != filter.Forward {
 			return sendStatusReply(srv, cb.Status_FORBIDDEN)

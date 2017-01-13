@@ -114,7 +114,7 @@ func newMockMultichainManager() *mockSupportManager {
 	}
 	mm.chains[systemChainID] = &mockSupport{
 		ledger:        rl,
-		sharedConfig:  &mocksharedconfig.Manager{},
+		sharedConfig:  &mocksharedconfig.Manager{EgressPolicyNamesVal: []string{"somePolicy"}},
 		policyManager: &mockpolicies.Manager{Policy: &mockpolicies.Policy{}},
 	}
 	return mm

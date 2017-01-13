@@ -19,6 +19,7 @@ package sharedconfig
 import (
 	"os"
 	"os/exec"
+	"reflect"
 	"testing"
 	"time"
 
@@ -329,18 +330,18 @@ func TestKafkaBrokers(t *testing.T) {
 	}
 }
 
-func TestIngressPolicy(t *testing.T) {
-	endPolicy := "foo"
+func TestIngressPolicyNames(t *testing.T) {
+	endPolicy := []string{"foo"}
 	invalidMessage :=
 		&cb.ConfigurationItem{
 			Type:  cb.ConfigurationItem_Orderer,
-			Key:   IngressPolicyKey,
+			Key:   IngressPolicyNamesKey,
 			Value: []byte("Garbage Data"),
 		}
 	validMessage := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
-		Key:   IngressPolicyKey,
-		Value: utils.MarshalOrPanic(&ab.IngressPolicy{Name: endPolicy}),
+		Key:   IngressPolicyNamesKey,
+		Value: utils.MarshalOrPanic(&ab.IngressPolicyNames{Names: endPolicy}),
 	}
 	m := NewManagerImpl()
 	m.BeginConfig()
@@ -365,23 +366,23 @@ func TestIngressPolicy(t *testing.T) {
 
 	m.CommitConfig()
 
-	if nowPolicy := m.IngressPolicy(); nowPolicy != endPolicy {
-		t.Fatalf("IngressPolicy should have ended as %s but was %s", endPolicy, nowPolicy)
+	if nowPolicy := m.IngressPolicyNames(); !reflect.DeepEqual(nowPolicy, endPolicy) {
+		t.Fatalf("IngressPolicyNames should have ended as %s but was %s", endPolicy, nowPolicy)
 	}
 }
 
-func TestEgressPolicy(t *testing.T) {
-	endPolicy := "foo"
+func TestEgressPolicyNames(t *testing.T) {
+	endPolicy := []string{"foo"}
 	invalidMessage :=
 		&cb.ConfigurationItem{
 			Type:  cb.ConfigurationItem_Orderer,
-			Key:   EgressPolicyKey,
+			Key:   EgressPolicyNamesKey,
 			Value: []byte("Garbage Data"),
 		}
 	validMessage := &cb.ConfigurationItem{
 		Type:  cb.ConfigurationItem_Orderer,
-		Key:   EgressPolicyKey,
-		Value: utils.MarshalOrPanic(&ab.EgressPolicy{Name: endPolicy}),
+		Key:   EgressPolicyNamesKey,
+		Value: utils.MarshalOrPanic(&ab.EgressPolicyNames{Names: endPolicy}),
 	}
 	m := NewManagerImpl()
 	m.BeginConfig()
@@ -406,7 +407,7 @@ func TestEgressPolicy(t *testing.T) {
 
 	m.CommitConfig()
 
-	if nowPolicy := m.EgressPolicy(); nowPolicy != endPolicy {
-		t.Fatalf("EgressPolicy should have ended as %s but was %s", endPolicy, nowPolicy)
+	if nowPolicy := m.EgressPolicyNames(); !reflect.DeepEqual(nowPolicy, endPolicy) {
+		t.Fatalf("EgressPolicyNames should have ended as %s but was %s", endPolicy, nowPolicy)
 	}
 }
