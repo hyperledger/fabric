@@ -21,7 +21,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -150,6 +149,10 @@ func (sc *systemChain) proposeChain(configTx *cb.Envelope) cb.Status {
 }
 
 func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.Status {
+	if len(configEnvelope.Items) == 0 {
+		return cb.Status_BAD_REQUEST
+	}
+
 	creationConfigItem := &cb.ConfigurationItem{}
 	err := proto.Unmarshal(configEnvelope.Items[0].ConfigurationItem, creationConfigItem)
 	if err != nil {
@@ -191,16 +194,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 	// XXX actually do policy signature validation
 	_ = policy
 
-	var remainingBytes []byte
-	for i, item := range configEnvelope.Items {
-		if i == 0 {
-			// Do not include the creation policy
-			continue
-		}
-		remainingBytes = util.ConcatenateBytes(remainingBytes, item.ConfigurationItem)
-	}
-
-	configHash := util.ComputeCryptoHash(remainingBytes)
+	configHash := configtx.HashItems(configEnvelope.Items[1:])
 
 	if !bytes.Equal(configHash, creationPolicy.Digest) {
 		logger.Debugf("Validly signed chain creation did not contain correct digest for remaining configuration %x vs. %x", configHash, creationPolicy.Digest)
