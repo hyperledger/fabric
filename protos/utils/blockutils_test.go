@@ -15,12 +15,14 @@ limitations under the License.
 */
 
 // This package provides unit tests for blocks
-package utils
+package utils_test
 
 import (
 	"testing"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestGetChainIDFromBlock(t *testing.T) {
@@ -30,11 +32,11 @@ func TestGetChainIDFromBlock(t *testing.T) {
 
 	testChainID := "myuniquetestchainid"
 
-	gb, err = MakeConfigurationBlock(testChainID)
+	gb, err = configtxtest.MakeGenesisBlock(testChainID)
 	if err != nil {
 		t.Fatalf("failed to create test configuration block: %s", err)
 	}
-	cid, err = GetChainIDFromBlock(gb)
+	cid, err = utils.GetChainIDFromBlock(gb)
 	if err != nil {
 		t.Fatalf("failed to get chain ID from block: %s", err)
 	}
@@ -44,7 +46,7 @@ func TestGetChainIDFromBlock(t *testing.T) {
 
 	badBlock := gb
 	badBlock.Data = nil
-	_, err = GetChainIDFromBlock(badBlock)
+	_, err = utils.GetChainIDFromBlock(badBlock)
 	// We should get error
 	if err == nil {
 		t.Fatalf("error is expected -- the block must not be marshallable")
@@ -53,15 +55,15 @@ func TestGetChainIDFromBlock(t *testing.T) {
 
 func TestGetBlockFromBlockBytes(t *testing.T) {
 	testChainID := "myuniquetestchainid"
-	gb, err := MakeConfigurationBlock(testChainID)
+	gb, err := configtxtest.MakeGenesisBlock(testChainID)
 	if err != nil {
 		t.Fatalf("failed to create test configuration block: %s", err)
 	}
-	blockBytes, err := Marshal(gb)
+	blockBytes, err := utils.Marshal(gb)
 	if err != nil {
 		t.Fatalf("failed to marshal block: %s", err)
 	}
-	_, err = GetBlockFromBlockBytes(blockBytes)
+	_, err = utils.GetBlockFromBlockBytes(blockBytes)
 	if err != nil {
 		t.Fatalf("failed to get block from block bytes: %s", err)
 	}

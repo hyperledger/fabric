@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/golang/protobuf/proto"
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -183,7 +184,7 @@ func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
 
 func mockConfigBlock() []byte {
 	var blockBytes []byte
-	block, err := utils.MakeConfigurationBlock("mytestchainid")
+	block, err := configtxtest.MakeGenesisBlock("mytestchainid")
 	if err != nil {
 		blockBytes = nil
 	} else {

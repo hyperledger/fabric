@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -39,7 +40,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -156,7 +156,7 @@ func serve(args []string) error {
 	if peerDefaultChain {
 		chainID := util.GetTestChainID()
 
-		block, err := pbutils.MakeConfigurationBlock(chainID)
+		block, err := configtxtest.MakeGenesisBlock(chainID)
 		if nil != err {
 			panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
 		}

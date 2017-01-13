@@ -17,17 +17,20 @@ limitations under the License.
 package main
 
 import (
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func newChainRequest(consensusType, creationPolicy, newChainID string) *cb.Envelope {
 	conf.Genesis.OrdererType = consensusType
-	genesisBlock := provisional.New(conf).GenesisBlock()
-	oldGenesisTx := utils.ExtractEnvelopeOrPanic(genesisBlock, 0)
-	oldGenesisTxPayload := utils.ExtractPayloadOrPanic(oldGenesisTx)
-	oldConfigEnv := utils.UnmarshalConfigurationEnvelopeOrPanic(oldGenesisTxPayload.Data)
+	generator := provisional.New(conf)
+	items := generator.TemplateItems()
+	simpleTemplate := configtx.NewSimpleTemplate(items...)
 
-	return utils.ChainCreationConfigurationTransaction(provisional.AcceptAllPolicyKey, newChainID, oldConfigEnv)
+	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChainID, simpleTemplate)
+	if err != nil {
+		panic(err)
+	}
+	return env
 }
