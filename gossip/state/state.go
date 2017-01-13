@@ -55,7 +55,6 @@ var remoteStateMsgFilter = func(message interface{}) bool {
 	return message.(comm.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
 }
 
-
 const (
 	defPollingPeriod       = 200 * time.Millisecond
 	defAntiEntropyInterval = 10 * time.Second
@@ -333,11 +332,11 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 
 		if current == max {
 			// No messages in the buffer or there are no gaps
-			s.logger.Debugf("Current ledger height is the same as ledger height on other peers.")
+			//s.logger.Debugf("Current ledger height is the same as ledger height on other peers.")
 			continue
 		}
 
-		s.logger.Debugf("Requesting new blocks in range [%d...%d].", current+1, max)
+		//s.logger.Debugf("Requesting new blocks in range [%d...%d].", current+1, max)
 		s.requestBlocksInRange(uint64(current+1), uint64(max))
 	}
 	s.logger.Debug("[XXX]: Stateprovider stopped, stoping anti entropy procedure.")

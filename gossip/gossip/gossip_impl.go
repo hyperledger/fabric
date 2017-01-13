@@ -36,7 +36,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -124,8 +123,6 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 
 	g.certStore = newCertStore(g.createCertStorePuller(), idMapper, selfIdentity, mcs)
 
-	g.logger.SetLevel(logging.DEBUG)
-
 	go g.start()
 
 	return g
@@ -181,11 +178,12 @@ func (g *gossipServiceImpl) handlePresumedDead() {
 }
 
 func (g *gossipServiceImpl) syncDiscovery() {
+	g.logger.Debugf("Entering discovery sync with interal %ds", g.conf.PullInterval)
 	defer g.logger.Debug("Exiting discovery sync loop")
 	for !g.toDie() {
-		g.logger.Debug("Intiating discovery sync")
+		//g.logger.Debug("Intiating discovery sync")
 		g.disc.InitiateSync(g.conf.PullPeerNum)
-		g.logger.Debug("Sleeping", g.conf.PullInterval)
+		//g.logger.Debug("Sleeping", g.conf.PullInterval)
 		time.Sleep(g.conf.PullInterval)
 	}
 }
