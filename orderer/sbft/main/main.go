@@ -24,12 +24,14 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	localconfig "github.com/hyperledger/fabric/orderer/localconfig"
+	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/sbft"
 	"github.com/hyperledger/fabric/orderer/sbft/backend"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
 	pb "github.com/hyperledger/fabric/orderer/sbft/simplebft"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
@@ -59,6 +61,55 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
+// Consenter interface implementation for new main application:
+// This part is Work In Progress
+
+type consenter struct{}
+
+type chain struct {
+	support multichain.ConsenterSupport
+}
+
+// New creates a new consenter for the SBFT consensus scheme.
+// It accepts messages being delivered via Enqueue, orders them, and then
+// uses the blockcutter to form the messages into blocks before writing to
+// the given ledger.
+func New() multichain.Consenter {
+	return &consenter{}
+}
+
+// HandleChain creates/returns a reference to a Chain for the given set of support resources.
+func (solo *consenter) HandleChain(support multichain.ConsenterSupport) (multichain.Chain, error) {
+	return newChain(support), nil
+}
+
+func newChain(support multichain.ConsenterSupport) *chain {
+	return &chain{
+		support: support,
+	}
+}
+
+// Chain interface implementation:
+
+// TODO
+// Start allocates whatever resources are needed for staying up to date with the chain
+func (ch *chain) Start() {
+
+}
+
+// TODO
+// Halt frees the resources which were allocated for this Chain
+func (ch *chain) Halt() {
+
+}
+
+// TODO
+// Enqueue accepts a message and returns true on acceptance, or false on shutdown
+func (ch *chain) Enqueue(env *cb.Envelope) bool {
+	return false
+}
+
+// The "old", SBFT only application:
 func main() {
 	var c flags
 
