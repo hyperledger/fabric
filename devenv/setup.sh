@@ -101,7 +101,6 @@ cat <<EOF >/etc/profile.d/vagrant-devenv.sh
 export PATH=\$PATH:/hyperledger/devenv/tools:/hyperledger/build/bin
 export VAGRANT=1
 export CGO_CFLAGS=" "
-export CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 EOF
 
 # Set our shell prompt to something less ugly than the default from packer
