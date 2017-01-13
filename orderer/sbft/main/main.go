@@ -132,7 +132,7 @@ func serve(c flags) {
 	}
 
 	localConf := localconfig.Load()
-	localConf.General.OrdererType = provisional.ConsensusTypeSbft
+	localConf.Genesis.OrdererType = provisional.ConsensusTypeSbft
 	genesisBlock := provisional.New(localConf).GenesisBlock()
 
 	flf := fileledger.New(c.dataDir)

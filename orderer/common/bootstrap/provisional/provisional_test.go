@@ -30,7 +30,7 @@ var testCases []*config.TopLevel
 func init() {
 	confSolo = config.Load()
 	confKafka = config.Load()
-	confKafka.General.OrdererType = ConsensusTypeKafka
+	confKafka.Genesis.OrdererType = ConsensusTypeKafka
 	testCases = []*config.TopLevel{confSolo, confKafka}
 }
 
@@ -40,10 +40,10 @@ func TestGenesisBlockHeader(t *testing.T) {
 	for _, tc := range testCases {
 		genesisBlock := New(tc).GenesisBlock()
 		if genesisBlock.Header.Number != expectedHeaderNumber {
-			t.Fatalf("Case %s: Expected header number %d, got %d", tc.General.OrdererType, expectedHeaderNumber, genesisBlock.Header.Number)
+			t.Fatalf("Case %s: Expected header number %d, got %d", tc.Genesis.OrdererType, expectedHeaderNumber, genesisBlock.Header.Number)
 		}
 		if !bytes.Equal(genesisBlock.Header.PreviousHash, nil) {
-			t.Fatalf("Case %s: Expected header previousHash to be nil, got %x", tc.General.OrdererType, genesisBlock.Header.PreviousHash)
+			t.Fatalf("Case %s: Expected header previousHash to be nil, got %x", tc.Genesis.OrdererType, genesisBlock.Header.PreviousHash)
 		}
 	}
 }
