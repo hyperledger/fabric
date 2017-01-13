@@ -18,32 +18,24 @@ package provisional
 
 import (
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 )
 
-func (cbs *commonBootstrapper) makeGenesisConfigEnvelope() *cb.ConfigurationEnvelope {
-	return utils.MakeConfigurationEnvelope(
+func (cbs *commonBootstrapper) makeOrdererSystemChainConfig() []*cb.ConfigurationItem {
+	return []*cb.ConfigurationItem{cbs.encodeChainCreators()}
+}
+
+func (cbs *commonBootstrapper) TemplateItems() []*cb.ConfigurationItem {
+	return []*cb.ConfigurationItem{
 		cbs.encodeConsensusType(),
 		cbs.encodeBatchSize(),
 		cbs.encodeBatchTimeout(),
-		cbs.encodeChainCreators(),
 		cbs.encodeAcceptAllPolicy(),
 		cbs.encodeIngressPolicy(),
 		cbs.encodeEgressPolicy(),
 		cbs.lockDefaultModificationPolicy(),
-	)
+	}
 }
 
-func (kbs *kafkaBootstrapper) makeGenesisConfigEnvelope() *cb.ConfigurationEnvelope {
-	return utils.MakeConfigurationEnvelope(
-		kbs.encodeConsensusType(),
-		kbs.encodeBatchSize(),
-		kbs.encodeBatchTimeout(),
-		kbs.encodeKafkaBrokers(),
-		kbs.encodeChainCreators(),
-		kbs.encodeAcceptAllPolicy(),
-		kbs.encodeIngressPolicy(),
-		kbs.encodeEgressPolicy(),
-		kbs.lockDefaultModificationPolicy(),
-	)
+func (kbs *kafkaBootstrapper) TemplateItems() []*cb.ConfigurationItem {
+	return append(kbs.commonBootstrapper.TemplateItems(), kbs.encodeKafkaBrokers())
 }
