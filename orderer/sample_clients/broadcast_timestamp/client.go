@@ -46,6 +46,7 @@ func (s *broadcastClient) broadcast(transaction []byte) error {
 			ChainHeader: &cb.ChainHeader{
 				ChainID: s.chainID,
 			},
+			SignatureHeader: &cb.SignatureHeader{},
 		},
 		Data: transaction,
 	})
