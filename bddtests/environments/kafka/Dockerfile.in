@@ -1,4 +1,4 @@
-FROM openjdk:8u111-jre
+FROM hyperledger/fabric-testenv:_DOCKER_TAG_
 
 ENV SCALA_VERSION=2.11 \
     KAFKA_VERSION=0.9.0.1 \
