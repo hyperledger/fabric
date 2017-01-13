@@ -45,7 +45,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
 	s "github.com/hyperledger/fabric/orderer/sbft/simplebft"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 )
 
@@ -69,6 +68,8 @@ type Backend struct {
 
 	persistence *persist.Persist
 	ledger      rawledger.ReadWriter
+
+	lastBatch *s.Batch
 }
 
 type consensusConn Backend
@@ -134,6 +135,7 @@ func NewBackend(peers map[string][]byte, conn *connection.Manager, rl rawledger.
 	}
 	RegisterConsensusServer(conn.Server, (*consensusConn)(c))
 	c.persistence = persist
+	c.lastBatch = &s.Batch{Header: nil, Signatures: nil, Payloads: [][]byte{}}
 	c.queue = make(chan Executable)
 	go c.run()
 	return c, nil
@@ -313,6 +315,7 @@ func (t *Backend) Deliver(batch *s.Batch) {
 	// SBFT needs to use Rawledger's structures and signatures over the Block.
 	block.Metadata.Metadata[headerIndex] = batch.Header
 	block.Metadata.Metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
+	t.lastBatch = batch
 	t.ledger.Append(block)
 }
 
@@ -338,16 +341,7 @@ func (t *Backend) Restore(key string, out proto.Message) bool {
 }
 
 func (t *Backend) LastBatch() *s.Batch {
-	it, _ := t.ledger.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Newest{}})
-	block, status := it.Next()
-	data := block.Data.Data
-	if status != cb.Status_SUCCESS {
-		panic("Fatal ledger error: unable to get last block.")
-	}
-	header := getHeader(block.Metadata)
-	sgns := decodeSignatures(getEncodedSignatures(block.Metadata))
-	batch := s.Batch{Header: header, Payloads: data, Signatures: sgns}
-	return &batch
+	return t.lastBatch
 }
 
 func (t *Backend) Sign(data []byte) []byte {
