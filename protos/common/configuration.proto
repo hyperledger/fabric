@@ -48,6 +48,13 @@ message ConfigurationEnvelope {
     repeated SignedConfigurationItem Items = 1;
 }
 
+// ConfigurationTemplate is used as a serialization format to share configuration templates
+// The orderer supplies a configuration template to the user to use when constructing a new
+// chain creation transaction, so this is used to facilitate that.
+message ConfigurationTemplate {
+    repeated ConfigurationItem Items = 1;
+}
+
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message SignedConfigurationItem {
     bytes ConfigurationItem = 1;

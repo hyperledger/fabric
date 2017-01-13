@@ -75,7 +75,7 @@ func (m *IngressPolicy) String() string            { return proto.CompactTextStr
 func (*IngressPolicy) ProtoMessage()               {}
 func (*IngressPolicy) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
 
-// IngressPolicy is the name of the policy which incoming Deliver messages are filtered against
+// EgressPolicy is the name of the policy which incoming Deliver messages are filtered against
 type EgressPolicy struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 }
