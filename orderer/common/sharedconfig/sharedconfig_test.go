@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -132,51 +134,63 @@ func TestConsensusType(t *testing.T) {
 }
 
 func TestBatchSize(t *testing.T) {
-	endBatchSize := struct{ MaxMessageCount uint32 }{
-		MaxMessageCount: uint32(10),
-	}
-	invalidMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   BatchSizeKey,
-		Value: []byte("Garbage Data"),
-	}
-	zeroBatchSize := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   BatchSizeKey,
-		Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: 0}),
-	}
-	validMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   BatchSizeKey,
-		Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: endBatchSize.MaxMessageCount}),
-	}
-	m := NewManagerImpl()
-	m.BeginConfig()
 
-	err := m.ProposeConfig(validMessage)
-	if err != nil {
-		t.Fatalf("Error applying valid config: %s", err)
-	}
+	validMaxMessageCount := uint32(10)
+	validAbsoluteMaxBytes := uint32(1000)
 
-	err = m.ProposeConfig(invalidMessage)
-	if err == nil {
-		t.Fatalf("Should have failed on invalid message")
-	}
+	t.Run("ValidConfiguration", func(t *testing.T) {
+		m := NewManagerImpl()
+		m.BeginConfig()
+		err := m.ProposeConfig(&cb.ConfigurationItem{
+			Type:  cb.ConfigurationItem_Orderer,
+			Key:   BatchSizeKey,
+			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes}),
+		})
+		assert.Nil(t, err, "Error applying valid config: %s", err)
+		m.CommitConfig()
+		if m.BatchSize().MaxMessageCount != validMaxMessageCount {
+			t.Fatalf("Got batch size max message count of %d. Expected: %d", m.BatchSize().MaxMessageCount, validMaxMessageCount)
+		}
+		if m.BatchSize().AbsoluteMaxBytes != validAbsoluteMaxBytes {
+			t.Fatalf("Got batch size absolute max bytes of %d. Expected: %d", m.BatchSize().AbsoluteMaxBytes, validAbsoluteMaxBytes)
+		}
+	})
 
-	err = m.ProposeConfig(zeroBatchSize)
-	if err == nil {
-		t.Fatalf("Should have rejected batch size of 0")
-	}
+	t.Run("UnserializableConfiguration", func(t *testing.T) {
+		m := NewManagerImpl()
+		m.BeginConfig()
+		err := m.ProposeConfig(&cb.ConfigurationItem{
+			Type:  cb.ConfigurationItem_Orderer,
+			Key:   BatchSizeKey,
+			Value: []byte("Garbage Data"),
+		})
+		assert.NotNil(t, err, "Should have failed on invalid message")
+		m.CommitConfig()
+	})
 
-	m.CommitConfig()
+	t.Run("ZeroMaxMessageCount", func(t *testing.T) {
+		m := NewManagerImpl()
+		m.BeginConfig()
+		err := m.ProposeConfig(&cb.ConfigurationItem{
+			Type:  cb.ConfigurationItem_Orderer,
+			Key:   BatchSizeKey,
+			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes}),
+		})
+		assert.NotNil(t, err, "Should have rejected batch size max message count of 0")
+		m.CommitConfig()
+	})
 
-	nowBatchSize := struct{ MaxMessageCount uint32 }{
-		MaxMessageCount: m.BatchSize().MaxMessageCount,
-	}
-
-	if nowBatchSize.MaxMessageCount != endBatchSize.MaxMessageCount {
-		t.Fatalf("Got batch size max message count of %d. Expected: %d", nowBatchSize.MaxMessageCount, endBatchSize.MaxMessageCount)
-	}
+	t.Run("ZeroAbsoluteMaxBytes", func(t *testing.T) {
+		m := NewManagerImpl()
+		m.BeginConfig()
+		err := m.ProposeConfig(&cb.ConfigurationItem{
+			Type:  cb.ConfigurationItem_Orderer,
+			Key:   BatchSizeKey,
+			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0}),
+		})
+		assert.NotNil(t, err, "Should have rejected batch size absolute max message bytes of 0")
+		m.CommitConfig()
+	})
 }
 
 func TestBatchTimeout(t *testing.T) {

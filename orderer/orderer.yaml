@@ -122,3 +122,6 @@ Genesis:
         # Max Message Count: The maximum number of messages to permit in a batch
         MaxMessageCount: 10
 
+        # Absolute Max Bytes: The absolute maximum number of bytes allowed for
+        # the serialized messages in a batch.
+        AbsoluteMaxBytes: 100000000

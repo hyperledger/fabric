@@ -59,7 +59,8 @@ type Genesis struct {
 
 // BatchSize contains configuration affecting the size of batches
 type BatchSize struct {
-	MaxMessageCount uint32
+	MaxMessageCount  uint32
+	AbsoluteMaxBytes uint32
 }
 
 // Profile contains configuration for Go pprof profiling
@@ -141,7 +142,8 @@ var defaults = TopLevel{
 		OrdererType:  "solo",
 		BatchTimeout: 10 * time.Second,
 		BatchSize: BatchSize{
-			MaxMessageCount: 10,
+			MaxMessageCount:  10,
+			AbsoluteMaxBytes: 100000000,
 		},
 	},
 }
@@ -197,6 +199,9 @@ func (c *TopLevel) completeInitialization() {
 		case c.Genesis.BatchSize.MaxMessageCount == 0:
 			logger.Infof("Genesis.BatchSize.MaxMessageCount unset, setting to %s", defaults.Genesis.BatchSize.MaxMessageCount)
 			c.Genesis.BatchSize.MaxMessageCount = defaults.Genesis.BatchSize.MaxMessageCount
+		case c.Genesis.BatchSize.AbsoluteMaxBytes == 0:
+			logger.Infof("Genesis.BatchSize.AbsoluteMaxBytes unset, setting to %s", defaults.Genesis.BatchSize.AbsoluteMaxBytes)
+			c.Genesis.BatchSize.AbsoluteMaxBytes = defaults.Genesis.BatchSize.AbsoluteMaxBytes
 		default:
 			// A bit hacky, but its type makes it impossible to test for a nil value.
 			// This may be overwritten by the Kafka orderer upon instantiation.
