@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/multichain"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var cp = newChainPartition(provisional.TestChainID, rawPartition)
@@ -81,12 +82,11 @@ func mockNewConsenter(t *testing.T, kafkaVersion sarama.KafkaVersion, retryOptio
 func TestKafkaConsenterEmptyBatch(t *testing.T) {
 	var wg sync.WaitGroup
 	defer wg.Wait()
-
 	cs := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: newMockSharedConfigManager(),
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: testTimePadding},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -97,25 +97,20 @@ func TestKafkaConsenterEmptyBatch(t *testing.T) {
 	go ch.Start()
 	defer ch.Halt()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// Wait until the mock producer is done before messing around with its disk
-		select {
-		case <-ch.producer.(*mockProducerImpl).isSetup:
-			// Dispense the CONNECT message that is posted with Start()
-			<-co.prodDisk
-		case <-time.After(testTimePadding):
-			t.Fatal("Mock producer not setup in time")
-		}
-		// Same for the mock consumer
-		select {
-		case <-ch.setupChan:
-		case <-time.After(testTimePadding):
-			t.Fatal("Mock consumer not setup in time")
-		}
-	}()
-	wg.Wait()
+	// Wait until the mock producer is done before messing around with its disk
+	select {
+	case <-ch.producer.(*mockProducerImpl).isSetup:
+		// Dispense with the CONNECT message that is posted with Start()
+		<-co.prodDisk
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock producer not setup in time")
+	}
+	// Same for the mock consumer
+	select {
+	case <-ch.setupChan:
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock consumer not setup in time")
+	}
 
 	wg.Add(1)
 	go func() {
@@ -142,15 +137,16 @@ func TestKafkaConsenterEmptyBatch(t *testing.T) {
 	}
 }
 
-func TestKafkaConsenterConfigStyleMultiBatch(t *testing.T) {
+func TestKafkaConsenterBatchTimer(t *testing.T) {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
+	batchTimeout, _ := time.ParseDuration("1ms")
 	cs := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
 		ChainIDVal:      provisional.TestChainID,
-		SharedConfigVal: newMockSharedConfigManager(),
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(cs.BlockCutterVal.Block)
 
@@ -161,25 +157,214 @@ func TestKafkaConsenterConfigStyleMultiBatch(t *testing.T) {
 	go ch.Start()
 	defer ch.Halt()
 
+	// Wait until the mock producer is done before messing around with its disk
+	select {
+	case <-ch.producer.(*mockProducerImpl).isSetup:
+		// Dispense with the CONNECT message that is posted with Start()
+		<-co.prodDisk
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock producer not setup in time")
+	}
+	// Same for the mock consumer
+	select {
+	case <-ch.setupChan:
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock consumer not setup in time")
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// Wait until the mock producer is done before messing around with its disk
-		select {
-		case <-ch.producer.(*mockProducerImpl).isSetup:
-			// Dispense the CONNECT message that is posted with Start()
-			<-co.prodDisk
-		case <-time.After(testTimePadding):
-			t.Fatal("Mock producer not setup in time")
-		}
-		// Same for the mock consumer
-		select {
-		case <-ch.setupChan:
-		case <-time.After(testTimePadding):
-			t.Fatal("Mock consumer not setup in time")
+		for i := 0; i < 2; i++ {
+			// First pass: Pick up the message that will be posted via the syncQueueMessage/Enqueue call below
+			// Second pass: Pick up the time-to-cut message that will be posted when the short timer expires
+			msg := <-co.prodDisk
+			// Place it to the right location so that the mockConsumer can read it
+			co.consDisk <- msg
 		}
 	}()
+
+	syncQueueMessage(newTestEnvelope("one"), ch, cs.BlockCutterVal)
+	// The message has already been moved to the consumer's disk,
+	// otherwise syncQueueMessage wouldn't return, so the Wait()
+	// here is unnecessary but let's be paranoid.
 	wg.Wait()
+
+	select {
+	case <-cs.Batches: // This is the success path
+	case <-time.After(testTimePadding):
+		t.Fatal("Expected block to be cut because batch timer expired")
+	}
+
+	// As above
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 2; i++ {
+			msg := <-co.prodDisk
+			co.consDisk <- msg
+		}
+	}()
+
+	syncQueueMessage(newTestEnvelope("two"), ch, cs.BlockCutterVal)
+	wg.Wait()
+
+	select {
+	case <-cs.Batches: // This is the success path
+	case <-time.After(testTimePadding):
+		t.Fatal("Expected second block to be cut, batch timer not reset")
+	}
+
+	// Stop the loop
+	ch.Halt()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Expected no invocations of Append")
+	case <-ch.haltedChan: // If we're here, we definitely had a chance to invoke Append but didn't (which is great)
+	}
+}
+
+func TestKafkaConsenterTimerHaltOnFilledBatch(t *testing.T) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	batchTimeout, _ := time.ParseDuration("1h")
+	cs := &mockmultichain.ConsenterSupport{
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		ChainIDVal:      provisional.TestChainID,
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+	}
+	defer close(cs.BlockCutterVal.Block)
+
+	co := mockNewConsenter(t, testConf.Kafka.Version, testConf.Kafka.Retry)
+	ch := newChain(co, cs)
+	ch.lastProcessed = testOldestOffset - 1
+
+	go ch.Start()
+	defer ch.Halt()
+
+	// Wait until the mock producer is done before messing around with its disk
+	select {
+	case <-ch.producer.(*mockProducerImpl).isSetup:
+		// Dispense with the CONNECT message that is posted with Start()
+		<-co.prodDisk
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock producer not setup in time")
+	}
+	// Same for the mock consumer
+	select {
+	case <-ch.setupChan:
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock consumer not setup in time")
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Pick up the message that will be posted via the syncQueueMessage/Enqueue call below
+		msg := <-co.prodDisk
+		// Place it to the right location so that the mockConsumer can read it
+		co.consDisk <- msg
+	}()
+
+	syncQueueMessage(newTestEnvelope("one"), ch, cs.BlockCutterVal)
+	// The message has already been moved to the consumer's disk,
+	// otherwise syncQueueMessage wouldn't return, so the Wait()
+	// here is unnecessary but let's be paranoid.
+	wg.Wait()
+
+	cs.BlockCutterVal.CutNext = true
+
+	// As above
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		msg := <-co.prodDisk
+		co.consDisk <- msg
+	}()
+
+	syncQueueMessage(newTestEnvelope("two"), ch, cs.BlockCutterVal)
+	wg.Wait()
+
+	select {
+	case <-cs.Batches:
+	case <-time.After(testTimePadding):
+		t.Fatal("Expected block to be cut because batch timer expired")
+	}
+
+	// Change the batch timeout to be near instant.
+	// If the timer was not reset, it will still be waiting an hour.
+	ch.batchTimeout = time.Millisecond
+
+	cs.BlockCutterVal.CutNext = false
+
+	// As above, but with a change because of the expect time-to-cut message, see below:
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 2; i++ {
+			// First pass: Pick up the message that will be posted via the syncQueueMessage/Enqueue call below
+			// Second pass: Pick up the time-to-cut message that will be posted when the short timer expires
+			msg := <-co.prodDisk
+			// Place it to the right location so that the mockConsumer can read it
+			co.consDisk <- msg
+		}
+	}()
+
+	syncQueueMessage(newTestEnvelope("three"), ch, cs.BlockCutterVal)
+	wg.Wait()
+
+	select {
+	case <-cs.Batches:
+	case <-time.After(testTimePadding):
+		t.Fatalf("Did not cut the second block, indicating that the old timer was still running")
+	}
+
+	// Stop the loop
+	ch.Halt()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Expected no invocations of Append")
+	case <-ch.haltedChan: // If we're here, we definitely had a chance to invoke Append but didn't (which is great)
+	}
+}
+
+func TestKafkaConsenterConfigStyleMultiBatch(t *testing.T) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	cs := &mockmultichain.ConsenterSupport{
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		ChainIDVal:      provisional.TestChainID,
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: testTimePadding},
+	}
+	defer close(cs.BlockCutterVal.Block)
+
+	co := mockNewConsenter(t, testConf.Kafka.Version, testConf.Kafka.Retry)
+	ch := newChain(co, cs)
+	ch.lastProcessed = testOldestOffset - 1
+
+	go ch.Start()
+	defer ch.Halt()
+
+	// Wait until the mock producer is done before messing around with its disk
+	select {
+	case <-ch.producer.(*mockProducerImpl).isSetup:
+		// Dispense with the CONNECT message that is posted with Start()
+		<-co.prodDisk
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock producer not setup in time")
+	}
+	// Same for the mock consumer
+	select {
+	case <-ch.setupChan:
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock consumer not setup in time")
+	}
 
 	wg.Add(1)
 	go func() {
@@ -223,5 +408,380 @@ func TestKafkaConsenterConfigStyleMultiBatch(t *testing.T) {
 	case <-time.After(testTimePadding):
 		t.Fatal("Should have exited")
 	case <-ch.haltedChan:
+	}
+}
+
+func TestKafkaConsenterTimeToCutForced(t *testing.T) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	batchTimeout, _ := time.ParseDuration("1h")
+	cs := &mockmultichain.ConsenterSupport{
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		ChainIDVal:      provisional.TestChainID,
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+	}
+	defer close(cs.BlockCutterVal.Block)
+
+	co := mockNewConsenter(t, testConf.Kafka.Version, testConf.Kafka.Retry)
+	ch := newChain(co, cs)
+	ch.lastProcessed = testOldestOffset - 1
+
+	go ch.Start()
+	defer ch.Halt()
+
+	// Wait until the mock producer is done before messing around with its disk
+	select {
+	case <-ch.producer.(*mockProducerImpl).isSetup:
+		// Dispense with the CONNECT message that is posted with Start()
+		<-co.prodDisk
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock producer not setup in time")
+	}
+	// Same for the mock consumer
+	select {
+	case <-ch.setupChan:
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock consumer not setup in time")
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Pick up the message that will be posted via the syncQueueMessage/Enqueue call below
+		msg := <-co.prodDisk
+		// Place it to the right location so that the mockConsumer can read it
+		co.consDisk <- msg
+	}()
+
+	syncQueueMessage(newTestEnvelope("one"), ch, cs.BlockCutterVal)
+	// The message has already been moved to the consumer's disk,
+	// otherwise syncQueueMessage wouldn't return, so the Wait()
+	// here is unnecessary but let's be paranoid.
+	wg.Wait()
+
+	cs.BlockCutterVal.CutNext = true
+
+	// As above
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		msg := <-co.prodDisk
+		co.consDisk <- msg
+	}()
+
+	if err := ch.producer.Send(ch.partition, utils.MarshalOrPanic(newTimeToCutMessage(ch.lastCutBlock+1))); err != nil {
+		t.Fatalf("Couldn't post to %s: %s", ch.partition, err)
+	}
+	wg.Wait()
+
+	select {
+	case <-cs.Batches:
+	case <-time.After(testTimePadding):
+		t.Fatal("Expected block to be cut because proper time-to-cut was sent")
+	}
+
+	// Stop the loop
+	ch.Halt()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Expected no invocations of Append")
+	case <-ch.haltedChan: // If we're here, we definitely had a chance to invoke Append but didn't (which is great)
+	}
+}
+
+func TestKafkaConsenterTimeToCutDuplicate(t *testing.T) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	batchTimeout, _ := time.ParseDuration("1h")
+	cs := &mockmultichain.ConsenterSupport{
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		ChainIDVal:      provisional.TestChainID,
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+	}
+	defer close(cs.BlockCutterVal.Block)
+
+	co := mockNewConsenter(t, testConf.Kafka.Version, testConf.Kafka.Retry)
+	ch := newChain(co, cs)
+	ch.lastProcessed = testOldestOffset - 1
+
+	go ch.Start()
+	defer ch.Halt()
+
+	// Wait until the mock producer is done before messing around with its disk
+	select {
+	case <-ch.producer.(*mockProducerImpl).isSetup:
+		// Dispense with the CONNECT message that is posted with Start()
+		<-co.prodDisk
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock producer not setup in time")
+	}
+	// Same for the mock consumer
+	select {
+	case <-ch.setupChan:
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock consumer not setup in time")
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Pick up the message that will be posted via the syncQueueMessage/Enqueue call below
+		msg := <-co.prodDisk
+		// Place it to the right location so that the mockConsumer can read it
+		co.consDisk <- msg
+	}()
+
+	syncQueueMessage(newTestEnvelope("one"), ch, cs.BlockCutterVal)
+	// The message has already been moved to the consumer's disk,
+	// otherwise syncQueueMessage wouldn't return, so the Wait()
+	// here is unnecessary but let's be paranoid.
+	wg.Wait()
+
+	cs.BlockCutterVal.CutNext = true
+
+	// As above
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		msg := <-co.prodDisk
+		co.consDisk <- msg
+	}()
+
+	// Send a proper time-to-cut message
+	if err := ch.producer.Send(ch.partition, utils.MarshalOrPanic(newTimeToCutMessage(ch.lastCutBlock+1))); err != nil {
+		t.Fatalf("Couldn't post to %s: %s", ch.partition, err)
+	}
+	wg.Wait()
+
+	select {
+	case <-cs.Batches:
+	case <-time.After(testTimePadding):
+		t.Fatal("Expected block to be cut because proper time-to-cut was sent")
+	}
+
+	cs.BlockCutterVal.CutNext = false
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		msg := <-co.prodDisk
+		co.consDisk <- msg
+	}()
+
+	syncQueueMessage(newTestEnvelope("two"), ch, cs.BlockCutterVal)
+	wg.Wait()
+
+	cs.BlockCutterVal.CutNext = true
+	// ATTN: We set `cs.BlockCutterVal.CutNext` to true on purpose
+	// If the logic works right, the orderer should discard the
+	// duplicate TTC message below and a call to the block cutter
+	// will only happen when the long, hour-long timer expires
+
+	// As above
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		msg := <-co.prodDisk
+		co.consDisk <- msg
+	}()
+
+	// Send a duplicate time-to-cut message
+	if err := ch.producer.Send(ch.partition, utils.MarshalOrPanic(newTimeToCutMessage(ch.lastCutBlock))); err != nil {
+		t.Fatalf("Couldn't post to %s: %s", ch.partition, err)
+	}
+	wg.Wait()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Should have discarded duplicate time-to-cut")
+	case <-time.After(testTimePadding):
+		// This is the success path
+	}
+
+	// Stop the loop
+	ch.Halt()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Expected no invocations of Append")
+	case <-ch.haltedChan: // If we're here, we definitely had a chance to invoke Append but didn't (which is great)
+	}
+}
+
+func TestKafkaConsenterTimeToCutStale(t *testing.T) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	batchTimeout, _ := time.ParseDuration("1h")
+	cs := &mockmultichain.ConsenterSupport{
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		ChainIDVal:      provisional.TestChainID,
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+	}
+	defer close(cs.BlockCutterVal.Block)
+
+	co := mockNewConsenter(t, testConf.Kafka.Version, testConf.Kafka.Retry)
+	ch := newChain(co, cs)
+	ch.lastProcessed = testOldestOffset - 1
+
+	go ch.Start()
+	defer ch.Halt()
+
+	// Wait until the mock producer is done before messing around with its disk
+	select {
+	case <-ch.producer.(*mockProducerImpl).isSetup:
+		// Dispense with the CONNECT message that is posted with Start()
+		<-co.prodDisk
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock producer not setup in time")
+	}
+	// Same for the mock consumer
+	select {
+	case <-ch.setupChan:
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock consumer not setup in time")
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Pick up the message that will be posted via the syncQueueMessage/Enqueue call below
+		msg := <-co.prodDisk
+		// Place it to the right location so that the mockConsumer can read it
+		co.consDisk <- msg
+	}()
+
+	syncQueueMessage(newTestEnvelope("one"), ch, cs.BlockCutterVal)
+	// The message has already been moved to the consumer's disk,
+	// otherwise syncQueueMessage wouldn't return, so the Wait()
+	// here is unnecessary but let's be paranoid.
+	wg.Wait()
+
+	cs.BlockCutterVal.CutNext = true
+
+	// As above
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		msg := <-co.prodDisk
+		co.consDisk <- msg
+	}()
+
+	// Send a stale time-to-cut message
+	if err := ch.producer.Send(ch.partition, utils.MarshalOrPanic(newTimeToCutMessage(ch.lastCutBlock))); err != nil {
+		t.Fatalf("Couldn't post to %s: %s", ch.partition, err)
+	}
+	wg.Wait()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Should have ignored stale time-to-cut")
+	case <-time.After(testTimePadding):
+		// This is the success path
+	}
+
+	// Stop the loop
+	ch.Halt()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Expected no invocations of Append")
+	case <-ch.haltedChan: // If we're here, we definitely had a chance to invoke Append but didn't (which is great)
+	}
+}
+
+func TestKafkaConsenterTimeToCutLarger(t *testing.T) {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	batchTimeout, _ := time.ParseDuration("1h")
+	cs := &mockmultichain.ConsenterSupport{
+		Batches:         make(chan []*cb.Envelope),
+		BlockCutterVal:  mockblockcutter.NewReceiver(),
+		ChainIDVal:      provisional.TestChainID,
+		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+	}
+	defer close(cs.BlockCutterVal.Block)
+
+	co := mockNewConsenter(t, testConf.Kafka.Version, testConf.Kafka.Retry)
+	ch := newChain(co, cs)
+	ch.lastProcessed = testOldestOffset - 1
+
+	go ch.Start()
+	defer ch.Halt()
+
+	// Wait until the mock producer is done before messing around with its disk
+	select {
+	case <-ch.producer.(*mockProducerImpl).isSetup:
+		// Dispense with the CONNECT message that is posted with Start()
+		<-co.prodDisk
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock producer not setup in time")
+	}
+	// Same for the mock consumer
+	select {
+	case <-ch.setupChan:
+	case <-time.After(testTimePadding):
+		t.Fatal("Mock consumer not setup in time")
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Pick up the message that will be posted via the syncQueueMessage/Enqueue call below
+		msg := <-co.prodDisk
+		// Place it to the right location so that the mockConsumer can read it
+		co.consDisk <- msg
+	}()
+
+	syncQueueMessage(newTestEnvelope("one"), ch, cs.BlockCutterVal)
+	// The message has already been moved to the consumer's disk,
+	// otherwise syncQueueMessage wouldn't return, so the Wait()
+	// here is unnecessary but let's be paranoid.
+	wg.Wait()
+
+	cs.BlockCutterVal.CutNext = true
+
+	// As above
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		msg := <-co.prodDisk
+		co.consDisk <- msg
+	}()
+
+	// Send a stale time-to-cut message
+	if err := ch.producer.Send(ch.partition, utils.MarshalOrPanic(newTimeToCutMessage(ch.lastCutBlock+2))); err != nil {
+		t.Fatalf("Couldn't post to %s: %s", ch.partition, err)
+	}
+	wg.Wait()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Should have ignored larger time-to-cut than expected")
+	case <-time.After(testTimePadding):
+		// This is the success path
+	}
+
+	// Loop is already stopped, but this is a good test to see
+	// if a second invokation of Halt() panicks. (It shouldn't.)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatal("Expected duplicate call to Halt to succeed")
+		}
+	}()
+
+	ch.Halt()
+
+	select {
+	case <-cs.Batches:
+		t.Fatal("Expected no invocations of Append")
+	case <-ch.haltedChan: // If we're here, we definitely had a chance to invoke Append but didn't (which is great)
 	}
 }
