@@ -109,6 +109,9 @@ BEHAVE_ENVIRONMENTS = kafka orderer-1-kafka-1 orderer-1-kafka-3
 .PHONY: behave-environments $(BEHAVE_ENVIRONMENTS)
 behave-environments: $(BEHAVE_ENVIRONMENTS)
 $(BEHAVE_ENVIRONMENTS):
+	@echo "# Generated from Dockerfile.in.  DO NOT EDIT!" > bddtests/environments/kafka/Dockerfile
+	@cat bddtests/environments/kafka/Dockerfile.in | \
+	sed -e "s|_DOCKER_TAG_|$(DOCKER_TAG)|" >> bddtests/environments/kafka/Dockerfile
 	@docker-compose --file bddtests/environments/$@/docker-compose.yml build
 
 behave-deps: docker peer build/bin/block-listener behave-environments
