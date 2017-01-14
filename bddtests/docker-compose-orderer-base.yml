@@ -18,6 +18,8 @@ services:
             - ./volumes/orderer:/var/hyperledger/bddtests/volumes/orderer
         working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
         command: orderer
+        ports:
+          - '7050'
 
 volumes:
 

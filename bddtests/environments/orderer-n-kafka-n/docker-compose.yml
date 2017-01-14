@@ -17,6 +17,8 @@ services:
       - ORDERER_GENERAL_LISTENPORT=7050
       - ORDERER_GENERAL_GENESISMETHOD=provisional
       - ORDERER_RAMLEDGER_HISTORY_SIZE=100
+    ports:
+      - '7050'
     depends_on:
       - zookeeper
       - kafka
