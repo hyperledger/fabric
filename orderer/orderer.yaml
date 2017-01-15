@@ -31,15 +31,18 @@ General:
     # per fabric/docs/Setup/logging-control.md
     LogLevel: info
 
-    # Genesis method: The method by which to retrieve/generate the genesis block. Available values are "provisional", "file"
-    # Provisional utilizes the parameters in the Genesis section to dynamically generate a new genesis block
-    # File uses the fil provided by GenesisFile as the genesis block
+    # Genesis method: The method by which to retrieve/generate the genesis
+    # block. Available values are "provisional", "file". Provisional utilizes
+    # the parameters in the Genesis section to dynamically generate a new
+    # genesis block. File uses the file provided by GenesisFile as the genesis
+    # block.
     GenesisMethod: provisional
 
-    # Genesis file: The file containing the genesis block. Used by the orderer when GenesisMethod is set to "file"
+    # Genesis file: The file containing the genesis block. Used by the orderer
+    # when GenesisMethod is set to "file".
     GenesisFile: ./genesisblock
 
-    # Enable an HTTP service for Go "pprof" profiling as documented at
+    # Enable an HTTP service for Go "pprof" profiling as documented at:
     # https://golang.org/pkg/net/http/pprof
     Profile:
         Enabled: false

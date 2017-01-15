@@ -428,7 +428,7 @@ class OrdererGensisBlockCompositionCallback(compose.CompositionCallback):
         shutil.rmtree(self.getVolumePath(composition))
 
     def getEnv(self, composition, context, env):
-        env["ORDERER_GENERAL_GENESISIFILE"]=self.getGenesisFilePath(composition, pathType=PathType.Container)
+        env["ORDERER_GENERAL_GENESISFILE"]=self.getGenesisFilePath(composition, pathType=PathType.Container)
 
 
 class PeerCompositionCallback(compose.CompositionCallback):
@@ -494,6 +494,3 @@ class PeerCompositionCallback(compose.CompositionCallback):
 
 def setOrdererBootstrapGenesisBlock(genesisBlock):
     'Responsible for setting the GensisBlock for the Orderer nodes upon composition'
-
-
-
