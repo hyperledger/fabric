@@ -736,6 +736,12 @@ func createDataMsg(seqnum uint64, data []byte, hash string, channel common.Chain
 	}
 }
 
+type goroutinePredicate func(g goroutine) bool
+
+var connectionLeak = func(g goroutine) bool {
+	return searchInStackTrace("comm.(*connection).writeToStream", g.stack)
+}
+
 var runTests = func(g goroutine) bool {
 	return searchInStackTrace("testing.RunTests", g.stack)
 }
@@ -760,8 +766,19 @@ var testingg = func(g goroutine) bool {
 	return strings.Index(g.stack[len(g.stack)-1], "testing.go") != -1
 }
 
+func anyOfPredicates(predicates ... goroutinePredicate) goroutinePredicate {
+	return func(g goroutine) bool {
+		for _, pred := range predicates {
+			if pred(g) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 func shouldNotBeRunningAtEnd(gr goroutine) bool {
-	return !runTests(gr) && !goExit(gr) && !testingg(gr) && !waitForTestCompl(gr) && !gossipTest(gr) && !clientConn(gr)
+	return ! anyOfPredicates(runTests, goExit, testingg, waitForTestCompl, gossipTest, clientConn, connectionLeak)(gr)
 }
 
 func ensureGoroutineExit(t *testing.T) {
