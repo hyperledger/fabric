@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -28,7 +29,12 @@ func newChainRequest(consensusType, creationPolicy, newChainID string) *cb.Envel
 	items := generator.TemplateItems()
 	simpleTemplate := configtx.NewSimpleTemplate(items...)
 
-	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChainID, simpleTemplate)
+	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
+	if err != nil {
+		panic(err)
+	}
+
+	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChainID, signer, simpleTemplate)
 	if err != nil {
 		panic(err)
 	}

@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -162,7 +163,7 @@ func newGossipInstance(config *gossip.Config) gossip.Gossip {
 // Create new instance of KVLedger to be used for testing
 func newCommitter(id int) committer.Committer {
 	ledger, _ := ledgermgmt.CreateLedger(strconv.Itoa(id))
-	return committer.NewLedgerCommitter(ledger)
+	return committer.NewLedgerCommitter(ledger, &validator.MockValidator{})
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part

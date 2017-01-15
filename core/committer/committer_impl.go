@@ -17,6 +17,7 @@ limitations under the License.
 package committer
 
 import (
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -38,16 +39,21 @@ func init() {
 // it keeps the reference to the ledger to commit blocks and retreive
 // chain information
 type LedgerCommitter struct {
-	ledger ledger.ValidatedLedger
+	ledger    ledger.ValidatedLedger
+	validator txvalidator.Validator
 }
 
 // NewLedgerCommitter is a factory function to create an instance of the committer
-func NewLedgerCommitter(ledger ledger.ValidatedLedger) *LedgerCommitter {
-	return &LedgerCommitter{ledger}
+func NewLedgerCommitter(ledger ledger.ValidatedLedger, validator txvalidator.Validator) *LedgerCommitter {
+	return &LedgerCommitter{ledger: ledger, validator: validator}
 }
 
 // CommitBlock commits block to into the ledger
 func (lc *LedgerCommitter) CommitBlock(block *common.Block) error {
+	// Validate and mark invalid transactions
+	logger.Debug("Validating block")
+	lc.validator.Validate(block)
+
 	if err := lc.ledger.Commit(block); err != nil {
 		return err
 	}

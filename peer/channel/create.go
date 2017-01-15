@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +52,12 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 
 	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspcfg)
 
-	chCrtEnv, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, chainID, chCrtTemp)
+	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
+	if err != nil {
+		return err
+	}
+
+	chCrtEnv, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, chainID, signer, chCrtTemp)
 
 	if err != nil {
 		return err

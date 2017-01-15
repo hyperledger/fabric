@@ -22,8 +22,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/committer/txvalidator"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/events/producer"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
@@ -207,12 +205,6 @@ func (d *DeliverService) readUntilClose() {
 			logger.Warning("Got error ", t)
 		case *orderer.DeliverResponse_Block:
 			seqNum := t.Block.Header.Number
-
-			// Create new transactions validator
-			validator := txvalidator.NewTxValidator(peer.GetLedger(d.chainID))
-			// Validate and mark invalid transactions
-			logger.Debug("Validating block, chainID", d.chainID)
-			validator.Validate(t.Block)
 
 			numberOfPeers := len(service.GetGossipService().PeersOfChannel(gossipcommon.ChainID(d.chainID)))
 			// Create payload with a block received

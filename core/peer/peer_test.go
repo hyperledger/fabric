@@ -27,11 +27,16 @@ import (
 	"google.golang.org/grpc"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/gossip/service"
 )
 
 func TestInitialize(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
+
+	// we mock this because we can't import the chaincode package lest we create an import cycle
+	ccp.RegisterChaincodeProviderFactory(&ccprovider.MockCcProviderFactory{})
 
 	Initialize(nil)
 }

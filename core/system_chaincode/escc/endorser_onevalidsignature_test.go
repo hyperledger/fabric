@@ -25,7 +25,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -266,7 +266,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	}
 
 	// validate the transaction
-	_, _, err = peer.ValidateTransaction(tx)
+	_, err = validation.ValidateTransaction(tx)
 	if err != nil {
 		return err
 	}

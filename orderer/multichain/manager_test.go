@@ -30,7 +30,9 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
+	"github.com/hyperledger/fabric/msp"
 	logging "github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 )
 
 var conf *config.TopLevel
@@ -197,8 +199,11 @@ func TestNewChain(t *testing.T) {
 	items := generator.TemplateItems()
 	simpleTemplate := configtx.NewSimpleTemplate(items...)
 
+	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
 	newChainID := "TestNewChain"
-	newChainMessage, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, newChainID, simpleTemplate)
+	newChainMessage, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, newChainID, signer, simpleTemplate)
 	if err != nil {
 		t.Fatalf("Error producing configuration transaction: %s", err)
 	}

@@ -24,19 +24,13 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
-
-type mockVsccValidator struct {
-}
-
-func (v *mockVsccValidator) VSCCValidateTx(payload *common.Payload, envBytes []byte) error {
-	return nil
-}
 
 func TestKVLedgerBlockStorage(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest")
@@ -45,7 +39,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
 	defer ledger.Close()
 
-	validator := &txValidator{ledger, &mockVsccValidator{}}
+	validator := &txValidator{ledger, &validator.MockVsccValidator{}}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
@@ -76,7 +70,7 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
 	defer ledger.Close()
 
-	validator := &txValidator{ledger, &mockVsccValidator{}}
+	validator := &txValidator{ledger, &validator.MockVsccValidator{}}
 
 	// Create simeple endorsement transaction
 	payload := &common.Payload{
