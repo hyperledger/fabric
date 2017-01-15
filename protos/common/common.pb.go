@@ -2,6 +2,39 @@
 // source: common/common.proto
 // DO NOT EDIT!
 
+/*
+Package common is a generated protocol buffer package.
+
+It is generated from these files:
+	common/common.proto
+	common/configuration.proto
+	common/msp_principal.proto
+
+It has these top-level messages:
+	LastConfiguration
+	Metadata
+	MetadataSignature
+	Header
+	ChainHeader
+	SignatureHeader
+	Payload
+	Envelope
+	Block
+	BlockHeader
+	BlockData
+	BlockMetadata
+	ConfigurationEnvelope
+	ConfigurationTemplate
+	SignedConfigurationItem
+	ConfigurationItem
+	ConfigurationSignature
+	Policy
+	SignaturePolicyEnvelope
+	SignaturePolicy
+	MSPPrincipal
+	OrganizationUnit
+	MSPRole
+*/
 package common
 
 import proto "github.com/golang/protobuf/proto"
@@ -13,6 +46,12 @@ import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // These status codes are intended to resemble selected HTTP status codes
 type Status int32
@@ -52,7 +91,7 @@ var Status_value = map[string]int32{
 func (x Status) String() string {
 	return proto.EnumName(Status_name, int32(x))
 }
-func (Status) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (Status) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type HeaderType int32
 
@@ -85,7 +124,7 @@ var HeaderType_value = map[string]int32{
 func (x HeaderType) String() string {
 	return proto.EnumName(HeaderType_name, int32(x))
 }
-func (HeaderType) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+func (HeaderType) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 // This enum enlist indexes of the block metadata array
 type BlockMetadataIndex int32
@@ -110,7 +149,7 @@ var BlockMetadataIndex_value = map[string]int32{
 func (x BlockMetadataIndex) String() string {
 	return proto.EnumName(BlockMetadataIndex_name, int32(x))
 }
-func (BlockMetadataIndex) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+func (BlockMetadataIndex) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 // LastConfiguration is the encoded value for the Metadata message which is encoded in the LAST_CONFIGURATION block metadata index
 type LastConfiguration struct {
@@ -120,7 +159,7 @@ type LastConfiguration struct {
 func (m *LastConfiguration) Reset()                    { *m = LastConfiguration{} }
 func (m *LastConfiguration) String() string            { return proto.CompactTextString(m) }
 func (*LastConfiguration) ProtoMessage()               {}
-func (*LastConfiguration) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (*LastConfiguration) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 // Metadata is a common structure to be used to encode block metadata
 type Metadata struct {
@@ -131,7 +170,7 @@ type Metadata struct {
 func (m *Metadata) Reset()                    { *m = Metadata{} }
 func (m *Metadata) String() string            { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()               {}
-func (*Metadata) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+func (*Metadata) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *Metadata) GetSignatures() []*MetadataSignature {
 	if m != nil {
@@ -148,7 +187,7 @@ type MetadataSignature struct {
 func (m *MetadataSignature) Reset()                    { *m = MetadataSignature{} }
 func (m *MetadataSignature) String() string            { return proto.CompactTextString(m) }
 func (*MetadataSignature) ProtoMessage()               {}
-func (*MetadataSignature) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+func (*MetadataSignature) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type Header struct {
 	ChainHeader     *ChainHeader     `protobuf:"bytes,1,opt,name=chainHeader" json:"chainHeader,omitempty"`
@@ -158,7 +197,7 @@ type Header struct {
 func (m *Header) Reset()                    { *m = Header{} }
 func (m *Header) String() string            { return proto.CompactTextString(m) }
 func (*Header) ProtoMessage()               {}
-func (*Header) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
+func (*Header) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 func (m *Header) GetChainHeader() *ChainHeader {
 	if m != nil {
@@ -206,7 +245,7 @@ type ChainHeader struct {
 func (m *ChainHeader) Reset()                    { *m = ChainHeader{} }
 func (m *ChainHeader) String() string            { return proto.CompactTextString(m) }
 func (*ChainHeader) ProtoMessage()               {}
-func (*ChainHeader) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
+func (*ChainHeader) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 func (m *ChainHeader) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {
@@ -225,7 +264,7 @@ type SignatureHeader struct {
 func (m *SignatureHeader) Reset()                    { *m = SignatureHeader{} }
 func (m *SignatureHeader) String() string            { return proto.CompactTextString(m) }
 func (*SignatureHeader) ProtoMessage()               {}
-func (*SignatureHeader) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
+func (*SignatureHeader) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 // Payload is the message contents (and header to allow for signing)
 type Payload struct {
@@ -238,7 +277,7 @@ type Payload struct {
 func (m *Payload) Reset()                    { *m = Payload{} }
 func (m *Payload) String() string            { return proto.CompactTextString(m) }
 func (*Payload) ProtoMessage()               {}
-func (*Payload) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{6} }
+func (*Payload) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 func (m *Payload) GetHeader() *Header {
 	if m != nil {
@@ -258,7 +297,7 @@ type Envelope struct {
 func (m *Envelope) Reset()                    { *m = Envelope{} }
 func (m *Envelope) String() string            { return proto.CompactTextString(m) }
 func (*Envelope) ProtoMessage()               {}
-func (*Envelope) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{7} }
+func (*Envelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 // This is finalized block structure to be shared among the orderer and peer
 // Note that the BlockHeader chains to the previous BlockHeader, and the BlockData hash is embedded
@@ -273,7 +312,7 @@ type Block struct {
 func (m *Block) Reset()                    { *m = Block{} }
 func (m *Block) String() string            { return proto.CompactTextString(m) }
 func (*Block) ProtoMessage()               {}
-func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{8} }
+func (*Block) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 func (m *Block) GetHeader() *BlockHeader {
 	if m != nil {
@@ -305,7 +344,7 @@ type BlockHeader struct {
 func (m *BlockHeader) Reset()                    { *m = BlockHeader{} }
 func (m *BlockHeader) String() string            { return proto.CompactTextString(m) }
 func (*BlockHeader) ProtoMessage()               {}
-func (*BlockHeader) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{9} }
+func (*BlockHeader) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 type BlockData struct {
 	Data [][]byte `protobuf:"bytes,1,rep,name=Data,proto3" json:"Data,omitempty"`
@@ -314,7 +353,7 @@ type BlockData struct {
 func (m *BlockData) Reset()                    { *m = BlockData{} }
 func (m *BlockData) String() string            { return proto.CompactTextString(m) }
 func (*BlockData) ProtoMessage()               {}
-func (*BlockData) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{10} }
+func (*BlockData) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 type BlockMetadata struct {
 	Metadata [][]byte `protobuf:"bytes,1,rep,name=Metadata,proto3" json:"Metadata,omitempty"`
@@ -323,7 +362,7 @@ type BlockMetadata struct {
 func (m *BlockMetadata) Reset()                    { *m = BlockMetadata{} }
 func (m *BlockMetadata) String() string            { return proto.CompactTextString(m) }
 func (*BlockMetadata) ProtoMessage()               {}
-func (*BlockMetadata) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{11} }
+func (*BlockMetadata) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 func init() {
 	proto.RegisterType((*LastConfiguration)(nil), "common.LastConfiguration")
@@ -343,9 +382,9 @@ func init() {
 	proto.RegisterEnum("common.BlockMetadataIndex", BlockMetadataIndex_name, BlockMetadataIndex_value)
 }
 
-func init() { proto.RegisterFile("common/common.proto", fileDescriptor1) }
+func init() { proto.RegisterFile("common/common.proto", fileDescriptor0) }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor0 = []byte{
 	// 866 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x55, 0xdd, 0x6e, 0xe3, 0x44,
 	0x14, 0xae, 0xe3, 0xfc, 0x34, 0x27, 0xa5, 0xeb, 0x4e, 0xb7, 0xbb, 0xde, 0x8a, 0xd5, 0x56, 0x96,

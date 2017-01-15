@@ -22,26 +22,11 @@ option go_package = "github.com/hyperledger/fabric/protos/common";
 package common;
 
 
-// chain-config.proto contains proto messages defining the schema of
-// a chain configuration structure. An example of how
-// this could be
-//  -- VerifierMSPlist carries information associated to MSPs governing
-//     the chain
-//  -- MSPPrincipal carries the information needed to define policies
-//     for reading/writing or managing the chain
-//
-// An example of chain configuration could set the following parameters:
-//  -- an array of msp.MSPConfig items to denote the list of MSPs that govern
-//     the chain
-//  -- readers: a list of MSPPrincipal assuming that by default ANY entity
-//     being part of this list is able to read transactions of that chain
-//  -- writers: a list of MSPPrincipal assuming that by default ANY entity
-//     being part of this list is able to submit transactions to that chain
-//  -- admins: a list of MSPPrincipal assuming that by default ANY entity
-//     being part of this list is able to modify the configuraiton of that
-//     chain.
-
-
+// msp_principal.proto contains proto messages defining the generalized
+// MSP notion of identity called an MSPPrincipal.  It is used as part of
+// the chain configuration, in particular as the identity parameters to
+// the configuration.proto file.  This does not represent the MSP
+// configuration for a chain, but is understood by MSPs
 
 // MSPPrincipal aims to represent an MSP-centric set of identities.
 // In particular, this structure allows for definition of
