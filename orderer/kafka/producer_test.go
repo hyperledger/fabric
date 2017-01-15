@@ -19,13 +19,11 @@ package kafka
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestProducerSend(t *testing.T) {
-	cp := newChainPartition(provisional.TestChainID, rawPartition)
 	mp := mockNewProducer(t, cp, testMiddleOffset, make(chan *ab.KafkaMessage))
 	defer testClose(t, mp)
 

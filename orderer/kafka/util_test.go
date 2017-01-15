@@ -24,8 +24,6 @@ import (
 )
 
 func TestProducerConfigMessageMaxBytes(t *testing.T) {
-	cp := newChainPartition(provisional.TestChainID, rawPartition)
-
 	broker := sarama.NewMockBroker(t, 1)
 	defer func() {
 		broker.Close()
