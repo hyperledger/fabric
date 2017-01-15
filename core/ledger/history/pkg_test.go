@@ -46,7 +46,8 @@ func newTestEnvHistoryCouchDB(t testing.TB, dbName string) *testEnvHistoryCouchD
 func (env *testEnvHistoryCouchDB) cleanup() {
 
 	//create a new connection
-	couchDB, err := couchdb.CreateConnectionDefinition(env.couchDBAddress, env.couchDatabaseName, env.couchUsername, env.couchPassword)
+	couchInstance, err := couchdb.CreateCouchInstance(env.couchDBAddress, env.couchUsername, env.couchPassword)
+	couchDB, err := couchdb.CreateCouchDatabase(*couchInstance, env.couchDatabaseName)
 	if err == nil {
 		//drop the test database if it already existed
 		couchDB.DropDatabase()

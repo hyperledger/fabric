@@ -21,6 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util/db"
@@ -50,7 +51,12 @@ func NewProvider() (ledger.ValidatedLedgerProvider, error) {
 		logger.Debugf("Constructing leveldb VersionedDBProvider")
 		vdbProvider = stateleveldb.NewVersionedDBProvider()
 	} else {
-		//TODO same for couchDB after refactoring of couchdb code
+		logger.Debugf("Constructing CouchDB VersionedDBProvider")
+		var err error
+		vdbProvider, err = statecouchdb.NewVersionedDBProvider()
+		if err != nil {
+			return nil, err
+		}
 	}
 	ledgerMgmtPath := ledgerconfig.GetLedgerProviderPath()
 	idStore := openIDStore(ledgerMgmtPath)

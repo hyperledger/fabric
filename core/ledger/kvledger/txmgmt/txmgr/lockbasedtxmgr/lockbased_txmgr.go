@@ -90,10 +90,10 @@ func (txmgr *LockBasedTxMgr) Shutdown() {
 
 // Commit implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) Commit() error {
-	logger.Debugf("Commiting block")
+	logger.Debugf("Committing updates to state database")
 	txmgr.commitRWLock.Lock()
 	defer txmgr.commitRWLock.Unlock()
-	logger.Debugf("Write lock aquired for commiting block")
+	logger.Debugf("Write lock aquired for committing updates to state database")
 	if txmgr.batch == nil {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
@@ -102,7 +102,7 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		version.NewHeight(txmgr.currentBlock.Header.Number, uint64(len(txmgr.currentBlock.Data.Data)))); err != nil {
 		return err
 	}
-	logger.Debugf("Block committed")
+	logger.Debugf("Updates committed to state database")
 	return nil
 }
 

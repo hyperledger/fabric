@@ -47,7 +47,7 @@ func init() {
 	// Initialization will get a handle to the ledger at the specified path
 	// Note, if subledgers are supported in the future,
 	// the various ledgers could be created/managed at this level
-	logger.Debugf("===COUCHDB=== Marble Example main init()")
+	logger.Debugf("Marble Example main init()")
 
 	//call a helper method to load the core.yaml
 	testutil.SetupCoreYAMLConfig("./../../../../../peer")
@@ -77,7 +77,7 @@ func main() {
 }
 
 func initApp() {
-	logger.Debugf("===COUCHDB=== Marble Example initApp() to create a marble")
+	logger.Debugf("Marble Example initApp() to create a marble")
 	marble := []string{"marble1", "blue", "35", "tom"}
 	tx, err := marbleApp.CreateMarble(marble)
 	handleError(err, true)
@@ -88,7 +88,7 @@ func initApp() {
 }
 
 func transferMarble() {
-	logger.Debugf("===COUCHDB=== Marble Example transferMarble()")
+	logger.Debugf("Marble Example transferMarble()")
 	tx1, err := marbleApp.TransferMarble([]string{"marble1", "jerry"})
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx1)

@@ -21,7 +21,7 @@ import "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 // VersionedDBProvider provides an instance of an versioned DB
 type VersionedDBProvider interface {
 	// GetDBHandle returns a handle to a VersionedDB
-	GetDBHandle(id string) VersionedDB
+	GetDBHandle(id string) (VersionedDB, error)
 	// Close closes all the VersionedDB instances and releases any resources held by VersionedDBProvider
 	Close()
 }
@@ -33,6 +33,8 @@ type VersionedDB interface {
 	// GetStateMultipleKeys gets the values for multiple keys in a single call
 	GetStateMultipleKeys(namespace string, keys []string) ([]*VersionedValue, error)
 	// GetStateRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
+	// startKey is inclusive
+	// endKey is exclusive
 	// The returned ResultsIterator contains results of type *VersionedKV
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (ResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type *VersionedKV.
@@ -68,11 +70,22 @@ type VersionedKV struct {
 	VersionedValue
 }
 
+// VersionedQueryRecord encloses a query record
+type VersionedQueryRecord struct {
+	Namespace string
+	Key       string
+	Version   *version.Height
+	Record    []byte
+}
+
 // ResultsIterator hepls in iterates over query results
 type ResultsIterator interface {
-	Next() (*VersionedKV, error)
+	Next() (QueryResult, error)
 	Close()
 }
+
+// QueryResult - a general interface for supporting different types of query results. Actual types differ for different queries
+type QueryResult interface{}
 
 // UpdateBatch encloses the details of multiple `updates`
 type UpdateBatch struct {
