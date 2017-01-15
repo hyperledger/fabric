@@ -35,7 +35,7 @@ func createTx() (*common.Envelope, error) {
 
 	uuid := util.GenerateUUID()
 
-	prop, err := utils.CreateProposalFromCIS(uuid, util.GetTestChainID(), cis, sid)
+	prop, err := utils.CreateProposalFromCIS(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
 	if err != nil {
 		return nil, err
 	}

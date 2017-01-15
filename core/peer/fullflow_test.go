@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -39,7 +40,7 @@ func getProposal() (*peer.Proposal, error) {
 
 	uuid := util.GenerateUUID()
 
-	return utils.CreateProposalFromCIS(uuid, util.GetTestChainID(), cis, signerSerialized)
+	return utils.CreateProposalFromCIS(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, signerSerialized)
 }
 
 func TestGoodPath(t *testing.T) {

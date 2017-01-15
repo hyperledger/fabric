@@ -33,7 +33,7 @@ import (
 func TestInitialize(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
 
-	Initialize()
+	Initialize(nil)
 }
 
 func TestCreateChainFromBlock(t *testing.T) {
@@ -84,7 +84,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	}
 
 	// Chaos monkey test
-	Initialize()
+	Initialize(nil)
 
 	SetCurrConfigBlock(block, testChainID)
 }

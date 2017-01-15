@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
@@ -52,5 +53,5 @@ func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymen
 	uuid := createProposalID()
 
 	// make proposal
-	return putils.CreateChaincodeProposal(uuid, util.GetTestChainID(), lcChaincodeInvocationSpec, creator)
+	return putils.CreateChaincodeProposal(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), lcChaincodeInvocationSpec, creator)
 }

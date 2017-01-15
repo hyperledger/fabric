@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/peer/msp"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 )
@@ -116,7 +117,7 @@ func TestInvoke(t *testing.T) {
 
 	uuid := util.GenerateUUID()
 
-	proposal, err := putils.CreateChaincodeProposal(uuid, util.GetTestChainID(), cis, sIdBytes)
+	proposal, err := putils.CreateChaincodeProposal(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sIdBytes)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("couldn't generate chaincode proposal: err %s", err)

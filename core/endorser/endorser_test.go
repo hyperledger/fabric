@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	pbutils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
@@ -109,7 +110,7 @@ func closeListenerAndSleep(l net.Listener) {
 //Currently supported only for Invokes (Queries still go through devops client)
 func getInvokeProposal(cis *pb.ChaincodeInvocationSpec, chainID string, creator []byte) (*pb.Proposal, error) {
 	uuid := util.GenerateUUID()
-	return pbutils.CreateChaincodeProposal(uuid, chainID, cis, creator)
+	return pbutils.CreateChaincodeProposal(uuid, common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, creator)
 }
 
 func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator []byte) (*pb.Proposal, error) {

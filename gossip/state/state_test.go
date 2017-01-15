@@ -284,7 +284,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	msgCount := 10
 
-	for i := 1; i <= msgCount; i++ {
+	for i := 0; i < msgCount; i++ {
 		rawblock := pcomm.NewBlock(uint64(i), []byte{})
 		if bytes, err := pb.Marshal(rawblock); err == nil {
 			payload := &proto.Payload{uint64(i), "", bytes}

@@ -63,3 +63,8 @@ func init() {
 func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 	return genesisFactory.Block(chainID)
 }
+
+// GetOrderererTemplate returns the test orderer template
+func GetOrdererTemplate() configtx.Template {
+	return template
+}

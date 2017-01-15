@@ -59,13 +59,17 @@ func MockInitialize() {
 	ledgermgmt.InitializeTestEnv()
 	chains.list = nil
 	chains.list = make(map[string]*chain)
+	deliveryServiceProvider = func(string) error { return nil }
 }
+
+var deliveryServiceProvider func(string) error
 
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
-func Initialize() {
-	//Till JoinChain works, we continue to use default chain
+func Initialize(dsProvider func(string) error) {
+	deliveryServiceProvider = dsProvider
+
 	var cb *common.Block
 	var ledger ledger.ValidatedLedger
 	ledgermgmt.Initialize()
@@ -76,12 +80,12 @@ func Initialize() {
 	for _, cid := range ledgerIds {
 		peerLogger.Infof("Loading chain %s", cid)
 		if ledger, err = ledgermgmt.OpenLedger(cid); err != nil {
-			peerLogger.Warning("Failed to load ledger %s", cid)
+			peerLogger.Warningf("Failed to load ledger %s(%s)", cid, err)
 			peerLogger.Debug("Error while loading ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
 		if cb, err = getCurrConfigBlockFromLedger(ledger); err != nil {
-			peerLogger.Warning("Failed to find configuration block on ledger %s", cid)
+			peerLogger.Warningf("Failed to find configuration block on ledger %s(%s)", cid, err)
 			peerLogger.Debug("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
@@ -90,7 +94,20 @@ func Initialize() {
 			peerLogger.Warning("Failed to load chain %s", cid)
 			peerLogger.Debug("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
 		}
+
+		// now create the delivery service for this chain
+		if err = deliveryServiceProvider(cid); err != nil {
+			peerLogger.Errorf("Error creating delivery service for %s(err - %s)", cid, err)
+		}
 	}
+}
+
+//CreateDeliveryService creates the delivery service for the chainID
+func CreateDeliveryService(chainID string) error {
+	if deliveryServiceProvider == nil {
+		return fmt.Errorf("delivery service provider not available")
+	}
+	return deliveryServiceProvider(chainID)
 }
 
 func getCurrConfigBlockFromLedger(ledger ledger.ValidatedLedger) (*common.Block, error) {
@@ -129,7 +146,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.ValidatedLedger) (*common.Block,
 func createChain(cid string, ledger ledger.ValidatedLedger, cb *common.Block) error {
 	c := committer.NewLedgerCommitter(ledger)
 
-	mgr, err := mspmgmt.GetMSPManagerFromBlock(cb)
+	mgr, err := mspmgmt.GetMSPManagerFromBlock(cid, cb)
 	if err != nil {
 		return err
 	}

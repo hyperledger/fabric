@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/peer/common"
+	pcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
@@ -236,7 +237,7 @@ func ChaincodeInvokeOrQuery(spec *pb.ChaincodeSpec, cID string, invoke bool, sig
 	}
 
 	var prop *pb.Proposal
-	prop, err = putils.CreateProposalFromCIS(uuid, cID, invocation, creator)
+	prop, err = putils.CreateProposalFromCIS(uuid, pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s", funcName, err)
 	}

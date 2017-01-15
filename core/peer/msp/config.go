@@ -43,13 +43,16 @@ func LoadFakeSetupWithLocalMspAndTestChainMsp(dir string) error {
 }
 
 // GetMSPManagerFromBlock returns a new MSP manager from a ConfigurationEnvelope
-func GetMSPManagerFromBlock(b *common.Block) (msp.MSPManager, error) {
+// Note that chainID should really be obtained from the block. Passing it for
+// two reasons (1) efficiency (2) getting chainID from block using protos/utils
+// will cause import cycles
+func GetMSPManagerFromBlock(cid string, b *common.Block) (msp.MSPManager, error) {
 	mgrConfig, err := msputils.GetMSPManagerConfigFromBlock(b)
 	if err != nil {
 		return nil, err
 	}
 
-	mgr := msp.NewMSPManager()
+	mgr := GetManagerForChain(cid)
 	err = mgr.Setup(mgrConfig)
 	if err != nil {
 		return nil, err

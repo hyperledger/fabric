@@ -79,6 +79,28 @@ func initChainless() {
 	logger.Infof("Deployed chainless system chaincodess")
 }
 
+//startDeliveryService is used by the peer to start a delivery service
+//when the peer joins a chain
+func startDeliveryService(chainID string) error {
+	// Initialize all system chainodes on this chain
+	// TODO: Fix this code to initialize instead of deploy chaincodes
+	chaincode.DeploySysCCs(chainID)
+
+	commit := peer.GetCommitter(chainID)
+	if commit == nil {
+		return fmt.Errorf("Unable to get committer for [%s]", chainID)
+	}
+
+	var deliverService *deliverclient.DeliverService
+	if deliverService = deliverclient.NewDeliverService(chainID); deliverService == nil {
+		return fmt.Errorf("Unable to created delivery service for [%s]", chainID)
+	}
+
+	deliverService.Start(commit)
+
+	return nil
+}
+
 func serve(args []string) error {
 	ledgermgmt.Initialize()
 	// Parameter overrides must be processed before any paramaters are
@@ -161,28 +183,22 @@ func serve(args []string) error {
 			panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
 		}
 
-		//this creates block and calls JoinChannel on gossip service
-		if err = peer.CreateChainFromBlock(block); err != nil {
-			panic(fmt.Sprintf("Unable to create chain block for [%s] due to [%s]", chainID, err))
+		//this creates **TEST_CHAINID**  and and sets up gossip
+		if err = peer.CreateChainFromBlock(block); err == nil {
+			fmt.Printf("create chain [%s]", chainID)
+			chaincode.DeploySysCCs(chainID)
+			logger.Infof("Deployed system chaincodes on %s", chainID)
+
+			if err = startDeliveryService(chainID); err != nil {
+				panic(fmt.Sprintf("%s", err))
+			}
+		} else {
+			fmt.Printf("create default chain [%s] failed with %s", chainID, err)
 		}
-
-		chaincode.DeploySysCCs(chainID)
-		logger.Infof("Deployed system chaincodes on %s", chainID)
-
-		commit := peer.GetCommitter(chainID)
-		if commit == nil {
-			panic(fmt.Sprintf("Unable to get committer for [%s]", chainID))
-		}
-
-		//this should not need the chainID. Delivery should be
-		//split up into network part and chain part. This should
-		//only init the network part...TBD, part of Join work
-		deliver := deliverclient.NewDeliverService(chainID)
-
-		deliver.Start(commit)
-
-		defer deliverclient.StopDeliveryService(deliver)
 	}
+
+	//this brings up all the chains (including **TEST_CHAINID**)
+	peer.Initialize(startDeliveryService)
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s",
 		peerEndpoint.ID, viper.GetString("peer.networkId"), peerEndpoint.Address)
