@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
 	"github.com/hyperledger/fabric/core/ledger/history"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/couchdbtxmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
@@ -66,23 +65,11 @@ func NewKVLedger(versionedDBProvider statedb.VersionedDBProvider, ledgerID strin
 	var txmgmt txmgr.TxMgr
 	var historymgmt history.HistMgr
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
-		//By default we can talk to CouchDB with empty id and pw (""), or you can add your own id and password to talk to a secured CouchDB
-		logger.Debugf("===COUCHDB=== NewKVLedger() Using CouchDB instead of RocksDB...hardcoding and passing connection config for now")
-
-		couchDBDef := ledgerconfig.GetCouchDBDefinition()
-
-		//create new transaction manager based on couchDB
-		txmgmt = couchdbtxmgmt.NewCouchDBTxMgr(&couchdbtxmgmt.Conf{DBPath: ""},
-			couchDBDef.URL,      //couchDB connection URL
-			"system",            //couchDB db name matches ledger name, TODO for now use system ledger, eventually allow passing in subledger name
-			couchDBDef.Username, //enter couchDB id here
-			couchDBDef.Password) //enter couchDB pw here
-	} else {
-		// Fall back to using goleveldb lockbased transaction manager
-		db := versionedDBProvider.GetDBHandle(ledgerID)
-		txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(db)
+	db, err := versionedDBProvider.GetDBHandle(ledgerID)
+	if err != nil {
+		return nil, err
 	}
+	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(db)
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		logger.Debugf("===HISTORYDB=== NewKVLedger() Using CouchDB for transaction history database")

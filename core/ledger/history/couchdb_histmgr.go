@@ -46,7 +46,7 @@ var compositeKeySep = []byte{0x00}
 // CouchDBHistMgr a simple implementation of interface `histmgmt.HistMgr'.
 // TODO This implementation does not currently use a lock but may need one to ensure query's are consistent
 type CouchDBHistMgr struct {
-	couchDB *couchdb.CouchDBConnectionDef // COUCHDB new properties for CouchDB
+	couchDB *couchdb.CouchDatabase // COUCHDB new properties for CouchDB
 }
 
 // NewCouchDBHistMgr constructs a new `CouchDB HistMgr`
@@ -54,7 +54,8 @@ func NewCouchDBHistMgr(couchDBConnectURL string, dbName string, id string, pw st
 
 	//TODO locking has not been implemented but may need some sort of locking to insure queries are valid data.
 
-	couchDB, err := couchdb.CreateCouchDBConnectionAndDB(couchDBConnectURL, dbName, id, pw)
+	couchInstance, err := couchdb.CreateCouchInstance(couchDBConnectURL, id, pw)
+	couchDB, err := couchdb.CreateCouchDatabase(*couchInstance, dbName)
 	if err != nil {
 		logger.Errorf("===HISTORYDB=== Error during NewCouchDBHistMgr(): %s\n", err.Error())
 		return nil

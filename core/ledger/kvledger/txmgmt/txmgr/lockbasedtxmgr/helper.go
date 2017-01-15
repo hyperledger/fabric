@@ -73,7 +73,7 @@ func (h *queryHelper) executeQuery(query string) (ledger.ResultsIterator, error)
 	if err != nil {
 		return nil, err
 	}
-	return &resultsItr{DBItr: dbItr, RWSet: h.rwset}, nil
+	return &queryResultsItr{DBItr: dbItr, RWSet: h.rwset}, nil
 }
 
 func (h *queryHelper) done() {
@@ -94,13 +94,15 @@ type resultsItr struct {
 
 // Next implements method in interface ledger.ResultsIterator
 func (itr *resultsItr) Next() (ledger.QueryResult, error) {
-	versionedKV, err := itr.DBItr.Next()
+
+	queryResult, err := itr.DBItr.Next()
 	if err != nil {
 		return nil, err
 	}
-	if versionedKV == nil {
+	if queryResult == nil {
 		return nil, nil
 	}
+	versionedKV := queryResult.(*statedb.VersionedKV)
 	if itr.RWSet != nil {
 		itr.RWSet.AddToReadSet(versionedKV.Namespace, versionedKV.Key, versionedKV.Version)
 	}
@@ -109,6 +111,35 @@ func (itr *resultsItr) Next() (ledger.QueryResult, error) {
 
 // Close implements method in interface ledger.ResultsIterator
 func (itr *resultsItr) Close() {
+	itr.DBItr.Close()
+}
+
+type queryResultsItr struct {
+	DBItr statedb.ResultsIterator
+	RWSet *rwset.RWSet
+}
+
+// Next implements method in interface ledger.ResultsIterator
+func (itr *queryResultsItr) Next() (ledger.QueryResult, error) {
+
+	queryResult, err := itr.DBItr.Next()
+	if err != nil {
+		return nil, err
+	}
+	if queryResult == nil {
+		return nil, nil
+	}
+	versionedQueryRecord := queryResult.(*statedb.VersionedQueryRecord)
+	logger.Debugf("queryResultsItr.Next() returned a record:%s", string(versionedQueryRecord.Record))
+
+	if itr.RWSet != nil {
+		itr.RWSet.AddToReadSet(versionedQueryRecord.Namespace, versionedQueryRecord.Key, versionedQueryRecord.Version)
+	}
+	return &ledger.QueryRecord{Namespace: versionedQueryRecord.Namespace, Key: versionedQueryRecord.Key, Record: versionedQueryRecord.Record}, nil
+}
+
+// Close implements method in interface ledger.ResultsIterator
+func (itr *queryResultsItr) Close() {
 	itr.DBItr.Close()
 }
 

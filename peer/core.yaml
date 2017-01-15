@@ -148,7 +148,7 @@ peer:
     # Path on the file system where peer will store data (eg ledger)
     fileSystemPath: /var/hyperledger/production
 
-    # Path on the file system where peer will find MSP local configurations 
+    # Path on the file system where peer will find MSP local configurations
     mspConfigPath: /var/hyperledger/msp
 
     # Used with Go profiling tools only in none production environment. In

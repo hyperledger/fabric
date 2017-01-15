@@ -27,7 +27,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	logging "github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("main")
 
 const (
 	ledgerID = "Default"
@@ -91,6 +94,7 @@ func main() {
 }
 
 func initApp() {
+	logger.Debug("Entering initApp()")
 	tx, err := app.Init(map[string]int{
 		accounts[0]: 100,
 		accounts[1]: 100,
@@ -101,9 +105,11 @@ func initApp() {
 	err = committer.CommitBlock(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
+	logger.Debug("Exiting initApp()")
 }
 
 func transferFunds() {
+	logger.Debug("Entering transferFunds()")
 	tx1, err := app.TransferFunds("account1", "account2", 50)
 	handleError(err, true)
 	tx2, err := app.TransferFunds("account3", "account4", 50)
@@ -116,14 +122,18 @@ func transferFunds() {
 	err = committer.CommitBlock(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
+	logger.Debug("Exiting transferFunds")
 }
 
 func tryInvalidTransfer() {
+	logger.Debug("Entering tryInvalidTransfer()")
 	_, err := app.TransferFunds("account1", "account2", 60)
 	handleError(err, false)
+	logger.Debug("Exiting tryInvalidTransfer()")
 }
 
 func tryDoubleSpend() {
+	logger.Debug("Entering tryDoubleSpend()")
 	tx1, err := app.TransferFunds("account1", "account2", 50)
 	handleError(err, true)
 	tx2, err := app.TransferFunds("account1", "account4", 50)
@@ -132,9 +142,11 @@ func tryDoubleSpend() {
 	err = committer.CommitBlock(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
+	logger.Debug("Exiting tryDoubleSpend()")
 }
 
 func printBlocksInfo(block *common.Block) {
+	logger.Debug("Entering printBlocksInfo()")
 	// Read invalid transactions filter
 	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numOfInvalid := 0
@@ -146,14 +158,17 @@ func printBlocksInfo(block *common.Block) {
 	}
 	fmt.Printf("Num txs in rawBlock = [%d], num invalidTxs = [%d]\n",
 		len(block.Data.Data), numOfInvalid)
+	logger.Debug("Exiting printBlocksInfo()")
 }
 
 func printBalances() {
+	logger.Debug("Entering printBalances()")
 	balances, err := app.QueryBalances(accounts)
 	handleError(err, true)
 	for i := 0; i < len(accounts); i++ {
 		fmt.Printf("[%s] = [%d]\n", accounts[i], balances[i])
 	}
+	logger.Debug("Exiting printBalances()")
 }
 
 func handleError(err error, quit bool) {

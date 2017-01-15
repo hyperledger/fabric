@@ -34,7 +34,8 @@ var password = ""
 
 func cleanup() {
 	//create a new connection
-	db, _ := CreateConnectionDefinition(connectURL, database, username, password)
+	couchInstance, _ := CreateCouchInstance(connectURL, username, password)
+	db, _ := CreateCouchDatabase(*couchInstance, database)
 	//drop the test database
 	db.DropDatabase()
 }
@@ -56,7 +57,7 @@ func TestDBConnectionDef(t *testing.T) {
 	testutil.SetupCoreYAMLConfig("./../../../../peer")
 
 	//create a new connection
-	_, err := CreateConnectionDefinition(connectURL, "database", "", "")
+	_, err := CreateConnectionDefinition(connectURL, "", "")
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
 
 }
@@ -64,7 +65,7 @@ func TestDBConnectionDef(t *testing.T) {
 func TestDBBadConnectionDef(t *testing.T) {
 
 	//create a new connection
-	_, err := CreateConnectionDefinition("^^^localhost:5984", "database", "", "")
+	_, err := CreateConnectionDefinition("^^^localhost:5984", "", "")
 	testutil.AssertError(t, err, fmt.Sprintf("Did not receive error when trying to create database connection definition with a bad hostname"))
 
 }
@@ -76,9 +77,10 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 		cleanup()
 		defer cleanup()
 
-		//create a new connection
-		db, err := CreateConnectionDefinition(connectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+		//create a new instance and database object
+		couchInstance, err := CreateCouchInstance(connectURL, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
 
 		//create a new database
 		_, errdb := db.CreateDatabaseIfNotExist()
@@ -95,9 +97,10 @@ func TestDBBadConnection(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		//create a new connection
-		db, err := CreateConnectionDefinition(badConnectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+		//create a new instance and database object
+		couchInstance, err := CreateCouchInstance(badConnectURL, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
 
 		//create a new database
 		_, errdb := db.CreateDatabaseIfNotExist()
@@ -121,9 +124,10 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 		cleanup()
 		defer cleanup()
 
-		//create a new connection
-		db, err := CreateConnectionDefinition(connectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+		//create a new instance and database object
+		couchInstance, err := CreateCouchInstance(connectURL, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
 
 		//create a new database
 		_, errdb := db.CreateDatabaseIfNotExist()
@@ -189,9 +193,10 @@ func TestDBBadJSON(t *testing.T) {
 		cleanup()
 		defer cleanup()
 
-		//create a new connection
-		db, err := CreateConnectionDefinition(connectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+		//create a new instance and database object
+		couchInstance, err := CreateCouchInstance(connectURL, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
 
 		//create a new database
 		_, errdb := db.CreateDatabaseIfNotExist()
@@ -228,9 +233,10 @@ func TestDBSaveAttachment(t *testing.T) {
 		attachments := []Attachment{}
 		attachments = append(attachments, attachment)
 
-		//create a new connection
-		db, err := CreateConnectionDefinition(connectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
+		//create a new instance and database object
+		couchInstance, err := CreateCouchInstance(connectURL, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
 
 		//create a new database
 		_, errdb := db.CreateDatabaseIfNotExist()
@@ -248,230 +254,4 @@ func TestDBSaveAttachment(t *testing.T) {
 		testutil.AssertEquals(t, string(returnDoc), string(byteText))
 
 	}
-}
-
-func TestDBRetrieveNonExistingDocument(t *testing.T) {
-
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		cleanup()
-		defer cleanup()
-
-		//create a new connection
-		db, err := CreateConnectionDefinition(connectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
-
-		//create a new database
-		_, errdb := db.CreateDatabaseIfNotExist()
-		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when attempting to create a database"))
-
-		//Attempt to retrieve the updated test document
-		_, _, geterr2 := db.ReadDoc("2")
-		testutil.AssertError(t, geterr2, fmt.Sprintf("Error should have been thrown while attempting to retrieve a nonexisting document"))
-
-	}
-}
-
-func TestDBTestExistingDB(t *testing.T) {
-
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		cleanup()
-		defer cleanup()
-
-		//create a new connection
-		db, err := CreateConnectionDefinition(connectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
-
-		//create a new database
-		_, errdb := db.CreateDatabaseIfNotExist()
-		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when attempting to create a database"))
-
-		//run the create if not exist again.  should not return an error
-		_, errdb = db.CreateDatabaseIfNotExist()
-		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when attempting to create a database"))
-
-	}
-}
-
-func TestDBTestDropNonExistDatabase(t *testing.T) {
-
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		cleanup()
-		defer cleanup()
-
-		//create a new connection
-		db, err := CreateConnectionDefinition(connectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
-
-		//Attempt to drop the database without creating first
-		_, errdbdrop := db.DropDatabase()
-		testutil.AssertError(t, errdbdrop, fmt.Sprintf("Error should have been reported for attempting to drop a database before creation"))
-	}
-
-}
-
-func TestDBTestDropDatabaseBadConnection(t *testing.T) {
-
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		cleanup()
-		defer cleanup()
-
-		//create a new connection
-		db, err := CreateConnectionDefinition(badConnectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
-
-		//Attempt to drop the database without creating first
-		_, errdbdrop := db.DropDatabase()
-		testutil.AssertError(t, errdbdrop, fmt.Sprintf("Error should have been reported for attempting to drop a database before creation"))
-	}
-
-}
-
-func TestDBReadDocumentRange(t *testing.T) {
-
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		cleanup()
-		defer cleanup()
-
-		var assetJSON1 = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
-		var assetJSON2 = []byte(`{"asset_name":"marble2","color":"green","size":"25","owner":"jerry"}`)
-		var assetJSON3 = []byte(`{"asset_name":"marble3","color":"green","size":"15","owner":"bob"}`)
-		var assetJSON4 = []byte(`{"asset_name":"marble4","color":"red","size":"25","owner":"bob"}`)
-
-		var textString1 = []byte("This is a test. iteration 1")
-		var textString2 = []byte("This is a test. iteration 2")
-		var textString3 = []byte("This is a test. iteration 3")
-		var textString4 = []byte("This is a test. iteration 4")
-
-		attachment1 := Attachment{}
-		attachment1.AttachmentBytes = textString1
-		attachment1.ContentType = "text/plain"
-		attachment1.Name = "valueBytes"
-
-		attachments1 := []Attachment{}
-		attachments1 = append(attachments1, attachment1)
-
-		attachment2 := Attachment{}
-		attachment2.AttachmentBytes = textString2
-		attachment2.ContentType = "text/plain"
-		attachment2.Name = "valueBytes"
-
-		attachments2 := []Attachment{}
-		attachments2 = append(attachments2, attachment2)
-
-		attachment3 := Attachment{}
-		attachment3.AttachmentBytes = textString3
-		attachment3.ContentType = "text/plain"
-		attachment3.Name = "valueBytes"
-
-		attachments3 := []Attachment{}
-		attachments3 = append(attachments3, attachment3)
-
-		attachment4 := Attachment{}
-		attachment4.AttachmentBytes = textString4
-		attachment4.ContentType = "text/plain"
-		attachment4.Name = "valueBytes"
-
-		attachments4 := []Attachment{}
-		attachments4 = append(attachments4, attachment4)
-
-		//create a new connection
-		db, err := CreateConnectionDefinition(connectURL, database, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create database connection definition"))
-
-		//create a new database
-		_, errdb := db.CreateDatabaseIfNotExist()
-		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
-
-		//Retrieve the info for the new database and make sure the name matches
-		dbResp, _, errdb := db.GetDatabaseInfo()
-		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve database information"))
-		testutil.AssertEquals(t, dbResp.DbName, database)
-
-		//Save the test document
-		_, saveerr1 := db.SaveDoc("1", "", assetJSON1, nil)
-		testutil.AssertNoError(t, saveerr1, fmt.Sprintf("Error when trying to save a document"))
-
-		//Save the test document
-		_, saveerr2 := db.SaveDoc("2", "", assetJSON2, nil)
-		testutil.AssertNoError(t, saveerr2, fmt.Sprintf("Error when trying to save a document"))
-
-		//Save the test document
-		_, saveerr3 := db.SaveDoc("3", "", assetJSON3, nil)
-		testutil.AssertNoError(t, saveerr3, fmt.Sprintf("Error when trying to save a document"))
-
-		//Save the test document
-		_, saveerr4 := db.SaveDoc("4", "", assetJSON4, nil)
-		testutil.AssertNoError(t, saveerr4, fmt.Sprintf("Error when trying to save a document"))
-
-		//Save the test document
-		_, saveerr5 := db.SaveDoc("11", "", nil, attachments1)
-		testutil.AssertNoError(t, saveerr5, fmt.Sprintf("Error when trying to save a document"))
-
-		//Save the test document
-		_, saveerr6 := db.SaveDoc("12", "", nil, attachments2)
-		testutil.AssertNoError(t, saveerr6, fmt.Sprintf("Error when trying to save a document"))
-
-		//Save the test document
-		_, saveerr7 := db.SaveDoc("13", "", nil, attachments3)
-		testutil.AssertNoError(t, saveerr7, fmt.Sprintf("Error when trying to save a document"))
-
-		//Save the test document
-		_, saveerr8 := db.SaveDoc("5", "", nil, attachments4)
-		testutil.AssertNoError(t, saveerr8, fmt.Sprintf("Error when trying to save a document"))
-
-		queryResp, _ := db.ReadDocRange("1", "12", 1000, 0)
-
-		//Ensure the query returns 3 documents
-		testutil.AssertEquals(t, len(*queryResp), 3)
-
-		for _, item := range *queryResp {
-
-			if item.ID == "1" {
-
-				//Unmarshal the document to Asset structure
-				assetResp := &Asset{}
-				json.Unmarshal(item.Value, &assetResp)
-
-				//Verify the owner retrieved matches
-				testutil.AssertEquals(t, assetResp.Owner, "jerry")
-
-				//Verify the size retrieved matches
-				testutil.AssertEquals(t, assetResp.Size, "35")
-			}
-
-			if item.ID == "11" {
-				testutil.AssertEquals(t, string(item.Value), string(textString1))
-			}
-
-			if item.ID == "12" {
-				testutil.AssertEquals(t, string(item.Value), string(textString2))
-			}
-
-		}
-
-		queryString := "{\"selector\":{\"owner\": {\"$eq\": \"bob\"}},\"fields\": [\"_id\", \"_rev\", \"owner\", \"asset_name\", \"color\", \"size\"],\"limit\": 10,\"skip\": 0}"
-
-		queryResult, _ := db.QueryDocuments(queryString, 1000, 0)
-
-		//Ensure the query returns 2 documents
-		testutil.AssertEquals(t, len(*queryResult), 2)
-
-		for _, item := range *queryResult {
-
-			//Unmarshal the document to Asset structure
-			assetResp := &Asset{}
-			json.Unmarshal(item.Value, &assetResp)
-
-			//Verify the owner retrieved matches
-			testutil.AssertEquals(t, assetResp.Owner, "bob")
-
-		}
-
-	}
-
 }

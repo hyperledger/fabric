@@ -39,7 +39,9 @@ func TestValidator(t *testing.T) {
 	testDBEnv := stateleveldb.NewTestVDBEnv(t)
 	defer testDBEnv.Cleanup()
 
-	db := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	db, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	testutil.AssertNoError(t, err, "")
+
 	//populate db with initial data
 	batch := statedb.NewUpdateBatch()
 	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))

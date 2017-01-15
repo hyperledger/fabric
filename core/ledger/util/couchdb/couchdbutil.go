@@ -16,24 +16,30 @@ limitations under the License.
 
 package couchdb
 
-//CreateCouchDBConnectionAndDB creates a CouchDB Connection and the database if it does not exist
-func CreateCouchDBConnectionAndDB(couchDBConnectURL string, dbName string, id string, pw string) (*CouchDBConnectionDef, error) {
-	couchDB, err := CreateConnectionDefinition(couchDBConnectURL,
-		dbName,
+//CreateCouchInstance creates a CouchDB instance
+func CreateCouchInstance(couchDBConnectURL string, id string, pw string) (*CouchInstance, error) {
+	couchConf, err := CreateConnectionDefinition(couchDBConnectURL,
 		id,
 		pw)
 	if err != nil {
-		logger.Errorf("Error during CouchDB CreateConnectionDefinition() to dbName: %s  error: %s\n", dbName, err.Error())
+		logger.Errorf("Error during CouchDB CreateConnectionDefinition(): %s\n", err.Error())
 		return nil, err
 	}
+
+	return &CouchInstance{conf: *couchConf}, nil
+}
+
+//CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
+func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchDatabase, error) {
+
+	couchDBDatabase := CouchDatabase{couchInstance: couchInstance, dbName: dbName}
 
 	// Create CouchDB database upon ledger startup, if it doesn't already exist
-	_, err = couchDB.CreateDatabaseIfNotExist()
+	_, err := couchDBDatabase.CreateDatabaseIfNotExist()
 	if err != nil {
-		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() to dbName: %s  error: %s\n", dbName, err.Error())
+		logger.Errorf("Error during CouchDB CreateDatabaseIfNotExist() for dbName: %s  error: %s\n", dbName, err.Error())
 		return nil, err
 	}
 
-	//return the couch db connection
-	return couchDB, nil
+	return &couchDBDatabase, nil
 }

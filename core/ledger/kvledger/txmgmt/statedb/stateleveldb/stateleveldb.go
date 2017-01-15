@@ -54,7 +54,7 @@ func NewVersionedDBProvider() *VersionedDBProvider {
 }
 
 // GetDBHandle gets the handle to a named database
-func (provider *VersionedDBProvider) GetDBHandle(dbName string) statedb.VersionedDB {
+func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.VersionedDB, error) {
 	provider.mux.Lock()
 	defer provider.mux.Unlock()
 	vdb := provider.databases[dbName]
@@ -62,7 +62,7 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string) statedb.Versione
 		vdb = newVersionedDB(provider.db, dbName)
 		provider.databases[dbName] = vdb
 	}
-	return vdb
+	return vdb, nil
 }
 
 // Close closes the underlying db
@@ -121,6 +121,8 @@ func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 }
 
 // GetStateRangeScanIterator implements method in VersionedDB interface
+// startKey is inclusive
+// endKey is exclusive
 func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
 	compositeStartKey := constructCompositeKey(vdb.dbName, namespace, startKey)
 	compositeEndKey := constructCompositeKey(vdb.dbName, namespace, endKey)
@@ -141,7 +143,7 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 	levelBatch := &leveldb.Batch{}
 	for ck, vv := range batch.KVs {
 		compositeKey := constructCompositeKey(vdb.dbName, ck.Namespace, ck.Key)
-		logger.Debugf("processing key=%#v, versionedValue=%#v", ck, vv)
+		logger.Debugf("applying key=%#v, versionedValue=%#v", ck, vv)
 		if vv.Value == nil {
 			levelBatch.Delete(compositeKey)
 		} else {
@@ -207,7 +209,7 @@ func newKVScanner(namespace string, dbItr iterator.Iterator) *kvScanner {
 	return &kvScanner{namespace, dbItr}
 }
 
-func (scanner *kvScanner) Next() (*statedb.VersionedKV, error) {
+func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
 	if !scanner.dbItr.Next() {
 		return nil, nil
 	}
