@@ -43,7 +43,7 @@ func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserial
 
 		}
 		return func(signedData []*cb.SignedData, used []bool) bool {
-			cauthdslLogger.Debug("Gate evaluation starts: (%s)", t)
+			cauthdslLogger.Debugf("Gate evaluation starts: (%s)", t)
 			verified := int32(0)
 			_used := make([]bool, len(used))
 			for _, policy := range policies {
@@ -55,9 +55,9 @@ func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserial
 			}
 
 			if verified >= t.From.N {
-				cauthdslLogger.Debug("Gate evaluation succeeds: (%s)", t)
+				cauthdslLogger.Debugf("Gate evaluation succeeds: (%s)", t)
 			} else {
-				cauthdslLogger.Debug("Gate evaluation fails: (%s)", t)
+				cauthdslLogger.Debugf("Gate evaluation fails: (%s)", t)
 			}
 
 			return verified >= t.From.N
@@ -68,7 +68,7 @@ func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserial
 		}
 		signedByID := identities[t.SignedBy]
 		return func(signedData []*cb.SignedData, used []bool) bool {
-			cauthdslLogger.Debug("Principal evaluation starts: (%s) (used %s)", t, used)
+			cauthdslLogger.Debugf("Principal evaluation starts: (%s) (used %s)", t, used)
 			for i, sd := range signedData {
 				if used[i] {
 					continue
@@ -79,13 +79,13 @@ func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserial
 				if err == nil {
 					err := identity.Verify(sd.Data, sd.Signature)
 					if err == nil {
-						cauthdslLogger.Debug("Principal evaluation succeeds: (%s)", t, used)
+						cauthdslLogger.Debugf("Principal evaluation succeeds: (%s)", t, used)
 						used[i] = true
 						return true
 					}
 				}
 			}
-			cauthdslLogger.Debug("Principal evaluation fails: (%s)", t, used)
+			cauthdslLogger.Debugf("Principal evaluation fails: (%s)", t, used)
 			return false
 		}, nil
 	default:

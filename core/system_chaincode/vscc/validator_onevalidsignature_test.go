@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer/msp"
@@ -57,6 +58,17 @@ func TestInit(t *testing.T) {
 	}
 }
 
+func getSignedByMSPMemberPolicy(mspID string) ([]byte, error) {
+	p := cauthdsl.SignedByMspMember(mspID)
+
+	b, err := utils.Marshal(p)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
+	}
+
+	return b, err
+}
+
 func TestInvoke(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
@@ -87,15 +99,37 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	args = [][]byte{[]byte("dv"), envBytes}
+	// good path: signed by the right MSP
+	policy, err := getSignedByMSPMemberPolicy(mspid)
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+		return
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes, policy}
 	if _, err := stub.MockInvoke("1", args); err != nil {
 		t.Fatalf("vscc invoke returned err %s", err)
+		return
+	}
+
+	// bad path: signed by the wrong MSP
+	policy, err = getSignedByMSPMemberPolicy("barf")
+	if err != nil {
+		t.Fatalf("failed getting policy, err %s", err)
+		return
+	}
+
+	args = [][]byte{[]byte("dv"), envBytes, policy}
+	if _, err := stub.MockInvoke("1", args); err == nil {
+		t.Fatalf("vscc invoke should have failed")
 		return
 	}
 }
 
 var id msp.SigningIdentity
 var sid []byte
+var mspid string
+var chainId string = util.GetTestChainID()
 
 func TestMain(m *testing.M) {
 	var err error
@@ -113,6 +147,28 @@ func TestMain(m *testing.M) {
 	sid, err = id.Serialize()
 	if err != nil {
 		fmt.Printf("Serialize failed with err %s", err)
+		os.Exit(-1)
+	}
+
+	// determine the MSP identifier for the first MSP in the default chain
+	var msp msp.MSP
+	mspMgr := mspmgmt.GetManagerForChain(chainId)
+	msps, err := mspMgr.GetMSPs()
+	if err != nil {
+		fmt.Printf("Could not retrieve the MSPs for the chain manager, err %s", err)
+		os.Exit(-1)
+	}
+	if len(msps) == 0 {
+		fmt.Printf("At least one MSP was expected")
+		os.Exit(-1)
+	}
+	for _, m := range msps {
+		msp = m
+		break
+	}
+	mspid, err = msp.GetIdentifier()
+	if err != nil {
+		fmt.Printf("Failure getting the msp identifier, err %s", err)
 		os.Exit(-1)
 	}
 
