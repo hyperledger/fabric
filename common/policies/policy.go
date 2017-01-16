@@ -22,7 +22,10 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	logging "github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("common/policies")
 
 // Policy is used to determine if a signature is valid
 type Policy interface {
@@ -70,7 +73,13 @@ func (rp rejectPolicy) Evaluate(signedData []*cb.SignedData) error {
 func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 	policy, ok := pm.policies[id]
 	if !ok {
+		if logger.IsEnabledFor(logging.DEBUG) {
+			logger.Debugf("Returning dummy reject all policy because %s could not be found", id)
+		}
 		return rejectPolicy(id), false
+	}
+	if logger.IsEnabledFor(logging.DEBUG) {
+		logger.Debugf("Returning policy %s for evaluation", id)
 	}
 	return policy, true
 }
@@ -78,7 +87,7 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 // BeginConfig is used to start a new configuration proposal
 func (pm *ManagerImpl) BeginConfig() {
 	if pm.pendingPolicies != nil {
-		panic("Programming error, cannot call begin in the middle of a proposal")
+		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	pm.pendingPolicies = make(map[string]Policy)
 }
@@ -91,7 +100,7 @@ func (pm *ManagerImpl) RollbackConfig() {
 // CommitConfig is used to commit a new configuration proposal
 func (pm *ManagerImpl) CommitConfig() {
 	if pm.pendingPolicies == nil {
-		panic("Programming error, cannot call commit without an existing proposal")
+		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}
 	pm.policies = pm.pendingPolicies
 	pm.pendingPolicies = nil
@@ -120,5 +129,7 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 	}
 
 	pm.pendingPolicies[configItem.Key] = cPolicy
+
+	logger.Debugf("Proposed new policy %s", configItem.Key)
 	return nil
 }

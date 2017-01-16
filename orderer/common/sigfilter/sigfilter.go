@@ -64,11 +64,14 @@ func (sf *sigFilter) Apply(message *cb.Envelope) (filter.Action, filter.Committe
 		err = policy.Evaluate(signedData)
 
 		if err == nil {
-			logger.Debugf("Accepting validly signed message")
+			logger.Debugf("Accepting validly signed message for policy %s", policy)
 			return filter.Forward, nil
 		}
+
 	}
 
-	logger.Debugf("Rejecting message which was not appropriately signed")
+	if logger.IsEnabledFor(logging.DEBUG) {
+		logger.Debugf("Rejecting message because it was not appropriately signed for any allowed policy among %s", sf.policySource())
+	}
 	return filter.Reject, nil
 }

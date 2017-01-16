@@ -136,5 +136,6 @@ func main() {
 	)
 
 	ab.RegisterAtomicBroadcastServer(grpcServer, server)
+	logger.Infof("Beginning to serve requests")
 	grpcServer.Serve(lis)
 }

@@ -25,7 +25,10 @@ import (
 
 	"errors"
 	"github.com/golang/protobuf/proto"
+	logging "github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("common/configtx")
 
 // Handler provides a hook which allows other pieces of code to participate in config proposals
 type Handler interface {
@@ -154,18 +157,21 @@ func makeConfigMap() map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.C
 }
 
 func (cm *configurationManager) beginHandlers() {
+	logger.Debugf("Beginning new configuration for chain %s", cm.chainID)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
 		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].BeginConfig()
 	}
 }
 
 func (cm *configurationManager) rollbackHandlers() {
+	logger.Debugf("Rolling back configuration for chain %s", cm.chainID)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
 		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].RollbackConfig()
 	}
 }
 
 func (cm *configurationManager) commitHandlers() {
+	logger.Debugf("Committing configuration for chain %s", cm.chainID)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
 		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].CommitConfig()
 	}
@@ -220,6 +226,8 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 
 		// If a config item was modified, its LastModified must be set correctly, and it must satisfy the modification policy
 		if isModified {
+			logger.Debugf("Proposed configuration item of type %v and key %t on chain %s has been modified", config.Type, config.Key, cm.chainID)
+
 			if config.LastModified != seq {
 				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", config.Key, config.Type, config.LastModified, seq)
 			}
@@ -247,9 +255,10 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 		}
 
 		// Ensure the type handler agrees the config is well formed
+		logger.Debugf("Proposing configuration item of type %v for key %s on chain %s", config.Type, config.Key, cm.chainID)
 		err = cm.handlers[config.Type].ProposeConfig(config)
 		if err != nil {
-			return nil, fmt.Errorf("Error proposing configuration item %s of type %d: %s", config.Key, config.Type, err)
+			return nil, fmt.Errorf("Error proposing configuration item of type %v for key %s on chain %s: %s", config.Type, config.Key, chainID, err)
 		}
 
 		configMap[config.Type][config.Key] = config

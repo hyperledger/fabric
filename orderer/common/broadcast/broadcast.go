@@ -99,6 +99,10 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			continue
 		}
 
+		if logger.IsEnabledFor(logging.DEBUG) {
+			logger.Debugf("Broadcast is filtering message for chain %s", payload.Header.ChainHeader.ChainID)
+		}
+
 		// Normal transaction for existing chain
 		_, filterErr := support.Filters().Apply(msg)
 
@@ -110,6 +114,10 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		if !support.Enqueue(msg) {
 			logger.Debugf("Consenter instructed us to shut down")
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
+		}
+
+		if logger.IsEnabledFor(logging.DEBUG) {
+			logger.Debugf("Broadcast is successfully enqueued message for chain %s", payload.Header.ChainHeader.ChainID)
 		}
 
 		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})

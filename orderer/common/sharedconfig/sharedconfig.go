@@ -167,6 +167,9 @@ func (pm *ManagerImpl) CommitConfig() {
 	}
 	pm.config = pm.pendingConfig
 	pm.pendingConfig = nil
+	if logger.IsEnabledFor(logging.DEBUG) {
+		logger.Debugf("Adopting new orderer shared config: %+v", pm.config)
+	}
 }
 
 // ProposeConfig is used to add new configuration to the configuration proposal
