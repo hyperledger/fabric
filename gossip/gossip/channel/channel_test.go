@@ -68,12 +68,14 @@ type joinChanMsg struct {
 	anchorPeers func() []api.AnchorPeer
 }
 
-// GetTimestamp returns the timestamp of the message's creation
-func (jcm *joinChanMsg) GetTimestamp() time.Time {
+// SequenceNumber returns the sequence number of the block
+// this joinChanMsg was derived from.
+// I use timestamps here just for the test.
+func (jcm *joinChanMsg) SequenceNumber() uint64 {
 	if jcm.getTS != nil {
-		return jcm.getTS()
+		return uint64(jcm.getTS().UnixNano())
 	}
-	return time.Now()
+	return uint64(time.Now().UnixNano())
 }
 
 // AnchorPeers returns all the anchor peers that are in the channel

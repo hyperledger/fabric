@@ -152,6 +152,9 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
+	// TODO This should be called from a configtx.Manager but it's not
+	// implemented yet. When it will be, this needs to move there,
+	// and the inner fields (AnchorPeers) only should be passed to this.
 	if err := service.GetGossipService().JoinChannel(c, cb); err != nil {
 		return err
 	}

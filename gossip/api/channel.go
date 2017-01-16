@@ -17,8 +17,6 @@ limitations under the License.
 package api
 
 import (
-	"time"
-
 	"github.com/hyperledger/fabric/gossip/common"
 )
 
@@ -47,8 +45,9 @@ type ChannelNotifier interface {
 // among the peers
 type JoinChannelMessage interface {
 
-	// GetTimestamp returns the timestamp of the message's creation
-	GetTimestamp() time.Time
+	// SequenceNumber returns the sequence number of the configuration block
+	// the JoinChannelMessage originated from
+	SequenceNumber() uint64
 
 	// AnchorPeers returns all the anchor peers that are in the channel
 	AnchorPeers() []AnchorPeer

@@ -25,6 +25,7 @@ import (
 
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 // GetChainIDFromBlock returns chain ID in the block
@@ -96,6 +97,7 @@ func InitBlockMetadata(block *cb.Block) {
 }
 
 const (
+	AnchorPeerConfItemKey          = "AnchorPeers"
 	epoch                          = uint64(0)
 	messageVersion                 = int32(1)
 	lastModified                   = uint64(0)
@@ -140,7 +142,7 @@ func getTESTMSPConfigPath() string {
 }
 
 // EncodeMSPUnsigned gets the unsigned configuration item with the default MSP
-func EncodeMSPUnsigned(testChainID string) *cb.ConfigurationItem {
+func EncodeMSPUnsigned(chainID string) *cb.ConfigurationItem {
 	cfgPath := getTESTMSPConfigPath()
 	conf, err := msp.GetLocalMspConfig(cfgPath)
 	if err != nil {
@@ -148,14 +150,14 @@ func EncodeMSPUnsigned(testChainID string) *cb.ConfigurationItem {
 	}
 	// TODO: once https://gerrit.hyperledger.org/r/#/c/3941 is merged, change this to MSP
 	// Right now we don't have an MSP type there
-	return createConfigItem(testChainID,
+	return createConfigItem(chainID,
 		mspKey,
 		MarshalOrPanic(conf),
 		xxxDefaultModificationPolicyID, cb.ConfigurationItem_Orderer)
 }
 
 // EncodeMSP gets the signed configuration item with the default MSP
-func EncodeMSP(testChainID string) *cb.SignedConfigurationItem {
+func EncodeMSP(chainID string) *cb.SignedConfigurationItem {
 	cfgPath := getTESTMSPConfigPath()
 	conf, err := msp.GetLocalMspConfig(cfgPath)
 	if err != nil {
@@ -163,8 +165,18 @@ func EncodeMSP(testChainID string) *cb.SignedConfigurationItem {
 	}
 	// TODO: once https://gerrit.hyperledger.org/r/#/c/3941 is merged, change this to MSP
 	// Right now we don't have an MSP type there
-	return createSignedConfigItem(testChainID,
+	return createSignedConfigItem(chainID,
 		mspKey,
 		MarshalOrPanic(conf),
 		xxxDefaultModificationPolicyID, cb.ConfigurationItem_Orderer)
+}
+
+// EncodeAnchorPeers returns a configuration item with anchor peers
+func EncodeAnchorPeers() *cb.ConfigurationItem {
+	anchorPeers := &peer.AnchorPeers{
+		AnchorPees: []*peer.AnchorPeer{{Cert: []byte("cert"), Host: "fakeHost", Port: int32(5611)}},
+	}
+	rawAnchorPeers := MarshalOrPanic(anchorPeers)
+	// We don't populate the chainID because that value is over-written later on anyway
+	return createConfigItem("", AnchorPeerConfItemKey, rawAnchorPeers, xxxDefaultModificationPolicyID, cb.ConfigurationItem_Peer)
 }

@@ -62,7 +62,8 @@ func init() {
 	}
 
 	template = configtx.NewSimpleTemplate(templateProto.Items...)
-	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(MSPTemplate{}, template))
+	gossTemplate := configtx.NewSimpleTemplate(utils.EncodeAnchorPeers())
+	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(MSPTemplate{}, template, gossTemplate))
 }
 
 func MakeGenesisBlock(chainID string) (*cb.Block, error) {

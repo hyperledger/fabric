@@ -329,8 +329,8 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 		gc.joinMsg = joinMsg
 	}
 
-	if gc.joinMsg.GetTimestamp().After(joinMsg.GetTimestamp()) {
-		gc.logger.Warning("Already have a more updated JoinChannel message(", gc.joinMsg.GetTimestamp(), ") than", gc.joinMsg.GetTimestamp())
+	if gc.joinMsg.SequenceNumber() > (joinMsg.SequenceNumber()) {
+		gc.logger.Warning("Already have a more updated JoinChannel message(", gc.joinMsg.SequenceNumber(), ") than", gc.joinMsg.SequenceNumber())
 		return
 	}
 	orgs := []api.OrgIdentityType{}

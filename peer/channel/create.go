@@ -47,10 +47,10 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	//TODO this is a temporary hack until `orderer.template` is supplied from the CLI
 	oTemplate := configtxtest.GetOrdererTemplate()
+	mspTemplate := configtx.NewSimpleTemplate(utils.EncodeMSPUnsigned(chainID))
+	gossTemplate := configtx.NewSimpleTemplate(utils.EncodeAnchorPeers())
 
-	mspcfg := configtx.NewSimpleTemplate(utils.EncodeMSPUnsigned(chainID))
-
-	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspcfg)
+	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspTemplate, gossTemplate)
 
 	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {

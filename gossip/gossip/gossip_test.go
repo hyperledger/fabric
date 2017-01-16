@@ -65,9 +65,10 @@ func acceptData(m interface{}) bool {
 type joinChanMsg struct {
 }
 
-// GetTimestamp returns the timestamp of the message's creation
-func (*joinChanMsg) GetTimestamp() time.Time {
-	return time.Now()
+// SequenceNumber returns the sequence number of the block this joinChanMsg
+// is derived from
+func (*joinChanMsg) SequenceNumber() uint64 {
+	return uint64(time.Now().UnixNano())
 }
 
 // AnchorPeers returns all the anchor peers that are in the channel
