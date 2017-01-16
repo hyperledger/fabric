@@ -17,15 +17,14 @@ limitations under the License.
 package txvalidator
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	coreUtil "github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -48,7 +47,8 @@ type vsccValidator interface {
 // vsccValidator implementation which used to call
 // vscc chaincode and validate block transactions
 type vsccValidatorImpl struct {
-	ledger ledger.ValidatedLedger
+	ledger     ledger.ValidatedLedger
+	ccprovider ccprovider.ChaincodeProvider
 }
 
 // implementation of Validator interface, keeps
@@ -69,7 +69,12 @@ func init() {
 // NewTxValidator creates new transactions validator
 func NewTxValidator(ledger ledger.ValidatedLedger) Validator {
 	// Encapsulates interface implementation
-	return &txValidator{ledger, &vsccValidatorImpl{ledger}}
+	return &txValidator{ledger, &vsccValidatorImpl{ledger: ledger, ccprovider: ccprovider.GetChaincodeProvider()}}
+}
+
+func (v *txValidator) chainExists(chain string) bool {
+	// TODO: implement this function!
+	return true
 }
 
 func (v *txValidator) Validate(block *common.Block) {
@@ -92,8 +97,16 @@ func (v *txValidator) Validate(block *common.Block) {
 				logger.Debug("Validating transaction peer.ValidateTransaction()")
 				var payload *common.Payload
 				var err error
-				if payload, _, err = peer.ValidateTransaction(env); err != nil {
+				if payload, err = validation.ValidateTransaction(env); err != nil {
 					logger.Errorf("Invalid transaction with index %d, error %s", tIdx, err)
+					continue
+				}
+
+				chain := payload.Header.ChainHeader.ChainID
+				logger.Debug("Transaction is for chain %s", chain)
+
+				if !v.chainExists(chain) {
+					logger.Errorf("Dropping transaction for non-existent chain %s", chain)
 					continue
 				}
 
@@ -113,7 +126,13 @@ func (v *txValidator) Validate(block *common.Block) {
 						continue
 					}
 				} else if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
-					logger.Warningf("Validation for common.HeaderType_CONFIGURATION_TRANSACTION %d pending JIRA-1639", tIdx)
+					// TODO: here we should call CSCC and pass it the config tx
+					// note that there is quite a bit more validation necessary
+					// on this tx, namely, validation that each config item has
+					// signature matching the policy required for the item from
+					// the existing configuration; this is taken care of nicely
+					// by configtx.Manager (see fabric/common/configtx).
+					logger.Debug("config transaction received for chain %s", chain)
 				}
 
 				if _, err := proto.Marshal(env); err != nil {
@@ -157,15 +176,12 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	// args[1] - serialized Envelope
 	args := [][]byte{[]byte(""), envBytes}
 
-	// get context for the chaincode execution
-	lgr := v.ledger
-	txsim, err := lgr.NewTxSimulator()
+	ctxt, err := v.ccprovider.GetContext(v.ledger)
 	if err != nil {
-		logger.Errorf("Cannot obtain tx simulator txid=%s, err %s", txid, err)
+		logger.Errorf("Cannot obtain context for txid=%s, err %s", txid, err)
 		return err
 	}
-	defer txsim.Done()
-	ctxt := context.WithValue(context.Background(), chaincode.TXSimulatorKey, txsim)
+	defer v.ccprovider.ReleaseContext()
 
 	// get header extensions so we have the visibility field
 	hdrExt, err := utils.GetChaincodeHeaderExtension(payload.Header)
@@ -177,31 +193,24 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	// Explanation: we actually deploying chaincode transaction,
 	// hence no lccc yet to query for the data, therefore currently
 	// introducing a workaround to skip obtaining LCCC data.
-	var data *chaincode.ChaincodeData
+	vscc := "vscc"
 	if hdrExt.ChaincodeID.Name != "lccc" {
 		// Extracting vscc from lccc
-		logger.Info("Extracting chaincode data from LCCC txid = ", txid, "chainID", chainID, "chaincode name", hdrExt.ChaincodeID.Name)
-		data, err = chaincode.GetChaincodeDataFromLCCC(ctxt, txid, nil, chainID, hdrExt.ChaincodeID.Name)
+		vscc, err = v.ccprovider.GetVSCCFromLCCC(ctxt, txid, nil, chainID, hdrExt.ChaincodeID.Name)
 		if err != nil {
 			logger.Errorf("Unable to get chaincode data from LCCC for txid %s, due to %s", txid, err)
 			return err
 		}
 	}
 
-	vscc := "vscc"
-	// Check whenever VSCC defined for chaincode data
-	if data != nil && data.Vscc != "" {
-		vscc = data.Vscc
-	}
-
 	vscctxid := coreUtil.GenerateUUID()
 	// Get chaincode version
 	version := coreUtil.GetSysCCVersion()
-	cccid := chaincode.NewCCContext(chainID, vscc, version, vscctxid, true, nil)
+	cccid := v.ccprovider.GetCCContext(chainID, vscc, version, vscctxid, true, nil)
 
 	// invoke VSCC
 	logger.Info("Invoking VSCC txid", txid, "chaindID", chainID)
-	_, _, err = chaincode.ExecuteChaincode(ctxt, cccid, args)
+	_, _, err = v.ccprovider.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
 		logger.Errorf("VSCC check failed for transaction txid=%s, error %s", txid, err)
 		return err

@@ -28,6 +28,11 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+const (
+	// AcceptAllPolicyKey is the key of the AcceptAllPolicy.
+	AcceptAllPolicyKey = "AcceptAllPolicy"
+)
+
 var template configtx.Template
 
 var genesisFactory genesis.Factory

@@ -25,6 +25,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
+	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/msp"
@@ -280,7 +281,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 // ProcessProposal process the Proposal
 func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
 	// at first, we check whether the message is valid
-	prop, _, hdrExt, err := peer.ValidateProposalMessage(signedProp)
+	prop, _, hdrExt, err := validation.ValidateProposalMessage(signedProp)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}

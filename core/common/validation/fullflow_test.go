@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package peer
+package validation
 
 import (
 	"math/rand"
@@ -82,11 +82,19 @@ func TestGoodPath(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, act, err := ValidateTransaction(tx)
+	payl, err := ValidateTransaction(tx)
 	if err != nil {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
 	}
+
+	txx, err := utils.GetTransaction(payl.Data)
+	if err != nil {
+		t.Fatalf("GetTransaction failed, err %s", err)
+		return
+	}
+
+	act := txx.Actions
 
 	// expect one single action
 	if len(act) != 1 {
@@ -210,7 +218,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Payload)
 
 	// validate the transaction it should fail
-	_, _, err = ValidateTransaction(tx)
+	_, err = ValidateTransaction(tx)
 	if err == nil {
 		t.Fatalf("ValidateTransaction should have failed")
 		return
@@ -227,7 +235,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Signature)
 
 	// validate the transaction it should fail
-	_, _, err = ValidateTransaction(tx)
+	_, err = ValidateTransaction(tx)
 	if err == nil {
 		t.Fatalf("ValidateTransaction should have failed")
 		return
@@ -268,7 +276,7 @@ func Test2EndorsersAgree(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, _, err = ValidateTransaction(tx)
+	_, err = ValidateTransaction(tx)
 	if err != nil {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -315,7 +323,7 @@ var signerSerialized []byte
 func TestMain(m *testing.M) {
 	// setup crypto algorithms
 	// setup the MSP manager so that we can sign/verify
-	mspMgrConfigDir := "../../msp/sampleconfig/"
+	mspMgrConfigDir := "../../../msp/sampleconfig/"
 	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
 	if err != nil {
 		fmt.Printf("Could not initialize msp, err %s", err)

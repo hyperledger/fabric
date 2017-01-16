@@ -131,6 +131,17 @@ func GetPayload(e *common.Envelope) (*common.Payload, error) {
 	return payload, nil
 }
 
+// GetConfigurationEnvelope returns a ConfigurationEnvelope from bytes
+func GetConfigurationEnvelope(bytes []byte) (*common.ConfigurationEnvelope, error) {
+	ce := &common.ConfigurationEnvelope{}
+	err := proto.Unmarshal(bytes, ce)
+	if err != nil {
+		return nil, err
+	}
+
+	return ce, nil
+}
+
 // GetTransaction Get Transaction from bytes
 func GetTransaction(txBytes []byte) (*peer.Transaction, error) {
 	tx := &peer.Transaction{}

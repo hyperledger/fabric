@@ -22,7 +22,10 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
+	"fmt"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/msp"
 )
 
 const (
@@ -150,16 +153,29 @@ func join(sets ...[]*cb.SignedConfigurationItem) []*cb.SignedConfigurationItem {
 }
 
 // MakeChainCreationTransaction is a handy utility function for creating new chain transactions using the underlying Template framework
-func MakeChainCreationTransaction(creationPolicy string, chainID string, templates ...Template) (*cb.Envelope, error) {
+func MakeChainCreationTransaction(creationPolicy string, chainID string, signer msp.SigningIdentity, templates ...Template) (*cb.Envelope, error) {
 	newChainTemplate := NewChainCreationTemplate(creationPolicy, NewCompositeTemplate(templates...))
 	signedConfigItems, err := newChainTemplate.Items(chainID)
 	if err != nil {
 		return nil, err
 	}
 
+	sSigner, err := signer.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("Serialization of identity failed, err %s", err)
+	}
+
 	payloadChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, msgVersion, chainID, epoch)
-	payloadSignatureHeader := utils.MakeSignatureHeader(nil, utils.CreateNonceOrPanic())
+	payloadSignatureHeader := utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
 	payloadHeader := utils.MakePayloadHeader(payloadChainHeader, payloadSignatureHeader)
 	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(utils.MakeConfigurationEnvelope(signedConfigItems...))}
-	return &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}, nil
+	paylBytes := utils.MarshalOrPanic(payload)
+
+	// sign the payload
+	sig, err := signer.Sign(paylBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cb.Envelope{Payload: paylBytes, Signature: sig}, nil
 }

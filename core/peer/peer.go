@@ -29,6 +29,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer/msp"
@@ -144,7 +145,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.ValidatedLedger) (*common.Block,
 
 // createChain creates a new chain object and insert it into the chains
 func createChain(cid string, ledger ledger.ValidatedLedger, cb *common.Block) error {
-	c := committer.NewLedgerCommitter(ledger)
+	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(ledger))
 
 	mgr, err := mspmgmt.GetMSPManagerFromBlock(cid, cb)
 	if err != nil {

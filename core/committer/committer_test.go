@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/mocks/validator"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -35,7 +36,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.NoError(t, err, "Error while creating ledger: %s", err)
 	defer ledger.Close()
 
-	committer := NewLedgerCommitter(ledger)
+	committer := NewLedgerCommitter(ledger, &validator.MockValidator{})
 	height, err := committer.LedgerHeight()
 	assert.Equal(t, uint64(0), height)
 	assert.NoError(t, err)
