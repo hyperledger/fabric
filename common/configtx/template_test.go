@@ -22,6 +22,7 @@ import (
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func verifyItemsResult(t *testing.T, template Template, count int) {
@@ -38,21 +39,22 @@ func verifyItemsResult(t *testing.T, template Template, count int) {
 
 	for i, signedItem := range result {
 		item := utils.UnmarshalConfigurationItemOrPanic(signedItem.ConfigurationItem)
-		if item.Header.ChainID != newChainID {
-			t.Errorf("Should have appropriately set new chainID")
-		}
-		if expected := fmt.Sprintf("%d", i); string(item.Value) != expected {
-			t.Errorf("Expected %s but got %s", expected, item.Value)
-		}
+		assert.Equal(t, newChainID, item.Header.ChainID, "Should have appropriately set new chainID")
+		expected := fmt.Sprintf("%d", i)
+		assert.Equal(t, expected, string(item.Value), "Expected %s but got %s", expected, item.Value)
+		assert.Equal(t, int32(cb.HeaderType_CONFIGURATION_ITEM), item.Header.Type)
 	}
 }
 
 func TestSimpleTemplate(t *testing.T) {
+	hdr := &cb.ChainHeader{
+		ChainID: "foo",
+		Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
+	}
 	simple := NewSimpleTemplate(
-		&cb.ConfigurationItem{Value: []byte("0")},
-		&cb.ConfigurationItem{Value: []byte("1")},
+		&cb.ConfigurationItem{Value: []byte("0"), Header: hdr},
+		&cb.ConfigurationItem{Value: []byte("1"), Header: hdr},
 	)
-
 	verifyItemsResult(t, simple, 2)
 }
 

@@ -53,7 +53,7 @@ func NewSimpleTemplate(items ...*cb.ConfigurationItem) Template {
 func (st *simpleTemplate) Items(chainID string) ([]*cb.SignedConfigurationItem, error) {
 	signedItems := make([]*cb.SignedConfigurationItem, len(st.items))
 	for i := range st.items {
-		st.items[i].Header = &cb.ChainHeader{ChainID: chainID}
+		st.items[i].Header = &cb.ChainHeader{ChainID: chainID, Type: int32(cb.HeaderType_CONFIGURATION_ITEM)}
 		mItem, err := proto.Marshal(st.items[i])
 		if err != nil {
 			return nil, err
