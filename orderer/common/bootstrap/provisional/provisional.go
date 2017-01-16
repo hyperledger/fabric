@@ -84,8 +84,9 @@ func New(conf *config.TopLevel) Generator {
 		chainID:       TestChainID,
 		consensusType: conf.Genesis.OrdererType,
 		batchSize: &ab.BatchSize{
-			MaxMessageCount:  conf.Genesis.BatchSize.MaxMessageCount,
-			AbsoluteMaxBytes: conf.Genesis.BatchSize.AbsoluteMaxBytes,
+			MaxMessageCount:   conf.Genesis.BatchSize.MaxMessageCount,
+			AbsoluteMaxBytes:  conf.Genesis.BatchSize.AbsoluteMaxBytes,
+			PreferredMaxBytes: conf.Genesis.BatchSize.PreferredMaxBytes,
 		},
 		batchTimeout: conf.Genesis.BatchTimeout.String(),
 	}

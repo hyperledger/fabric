@@ -59,8 +59,9 @@ var testConf = &config.TopLevel{
 		OrdererType:  "kafka",
 		BatchTimeout: 500 * time.Millisecond,
 		BatchSize: config.BatchSize{
-			MaxMessageCount:  100,
-			AbsoluteMaxBytes: 10 * 1024 * 1024,
+			MaxMessageCount:   100,
+			AbsoluteMaxBytes:  10 * 1024 * 1024,
+			PreferredMaxBytes: 512 * 1024,
 		},
 	},
 }

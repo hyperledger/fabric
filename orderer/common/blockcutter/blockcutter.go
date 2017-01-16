@@ -43,7 +43,7 @@ type Receiver interface {
 	//     * true (indicating ok).
 	// Otherwise, given a valid message, the pending batch, if not empty, will be cut and returned if:
 	//   - The current message needs to be isolated (as determined during filtering).
-	//   - The current message will cause the pending batch size in bytes to exceed BatchSize.AbsoluteMaxBytes.
+	//   - The current message will cause the pending batch size in bytes to exceed BatchSize.PreferredMaxBytes.
 	//   - After adding the current message to the pending batch, the message count has reached BatchSize.MaxMessageCount.
 	Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool)
 
@@ -82,7 +82,7 @@ func NewReceiverImpl(sharedConfigManager sharedconfig.Manager, filters *filter.R
 //     * true (indicating ok).
 // Otherwise, given a valid message, the pending batch, if not empty, will be cut and returned if:
 //   - The current message needs to be isolated (as determined during filtering).
-//   - The current message will cause the pending batch size in bytes to exceed BatchSize.AbsoluteMaxBytes.
+//   - The current message will cause the pending batch size in bytes to exceed BatchSize.PreferredMaxBytes.
 //   - After adding the current message to the pending batch, the message count has reached BatchSize.MaxMessageCount.
 func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Committer, bool) {
 	// The messages must be filtered a second time in case configuration has changed since the message was received
@@ -116,7 +116,7 @@ func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Commi
 	committerBatches := [][]filter.Committer{}
 
 	messageSizeBytes := messageSizeBytes(msg)
-	messageWillOverflowBatchSizeBytes := r.pendingBatchSizeBytes+messageSizeBytes > r.sharedConfigManager.BatchSize().AbsoluteMaxBytes
+	messageWillOverflowBatchSizeBytes := r.pendingBatchSizeBytes+messageSizeBytes > r.sharedConfigManager.BatchSize().PreferredMaxBytes
 
 	if messageWillOverflowBatchSizeBytes {
 		logger.Debugf("The current message, with %v bytes, will overflow the pending batch of %v bytes.", messageSizeBytes, r.pendingBatchSizeBytes)

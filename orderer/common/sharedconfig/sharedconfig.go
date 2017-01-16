@@ -200,6 +200,12 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 		if batchSize.AbsoluteMaxBytes == 0 {
 			return fmt.Errorf("Attempted to set the batch size absolute max bytes to an invalid value: 0")
 		}
+		if batchSize.PreferredMaxBytes == 0 {
+			return fmt.Errorf("Attempted to set the batch size absolute max bytes to an invalid value: 0")
+		}
+		if batchSize.PreferredMaxBytes > batchSize.AbsoluteMaxBytes {
+			return fmt.Errorf("Attempted to set the batch size preferred max bytes (%v) greater than the absolute max bytes (%v).", batchSize.PreferredMaxBytes, batchSize.AbsoluteMaxBytes)
+		}
 		pm.pendingConfig.batchSize = batchSize
 	case BatchTimeoutKey:
 		var timeoutValue time.Duration
