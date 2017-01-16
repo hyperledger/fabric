@@ -18,6 +18,7 @@ package stateleveldb
 
 import (
 	"bytes"
+	"fmt"
 
 	"sync"
 
@@ -143,7 +144,16 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 	levelBatch := &leveldb.Batch{}
 	for ck, vv := range batch.KVs {
 		compositeKey := constructCompositeKey(vdb.dbName, ck.Namespace, ck.Key)
-		logger.Debugf("applying key=%#v, versionedValue=%#v", ck, vv)
+
+		// trace the first 200 characters of versioned value only, in case it is huge
+		if logger.IsEnabledFor(logging.DEBUG) {
+			versionedValueDump := fmt.Sprintf("%#v", vv)
+			if len(versionedValueDump) > 200 {
+				versionedValueDump = versionedValueDump[0:200] + "..."
+			}
+			logger.Debugf("Applying key=%#v, versionedValue=%s", ck, versionedValueDump)
+		}
+
 		if vv.Value == nil {
 			levelBatch.Delete(compositeKey)
 		} else {
