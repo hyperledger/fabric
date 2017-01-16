@@ -23,7 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -34,7 +34,7 @@ type connFactory interface {
 }
 
 type connectionStore struct {
-	logger           *util.Logger             // logger
+	logger           *logging.Logger          // logger
 	isClosing        bool                     // whether this connection store is shutting down
 	connFactory      connFactory              // creates a connection to remote peer
 	sync.RWMutex                              // synchronize access to shared variables
@@ -43,7 +43,7 @@ type connectionStore struct {
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
-func newConnStore(connFactory connFactory, logger *util.Logger) *connectionStore {
+func newConnStore(connFactory connFactory, logger *logging.Logger) *connectionStore {
 	return &connectionStore{
 		connFactory:      connFactory,
 		isClosing:        false,
@@ -197,7 +197,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 
 type connection struct {
 	outBuff      chan *msgSending
-	logger       *util.Logger                    // logger
+	logger       *logging.Logger                 // logger
 	pkiID        common.PKIidType                // pkiID of the remote endpoint
 	handler      handler                         // function to invoke upon a message reception
 	conn         *grpc.ClientConn                // gRPC connection to remote endpoint

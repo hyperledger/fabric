@@ -143,7 +143,7 @@ func NewLeaderElectionService(adapter LeaderElectionAdapter, id string, callback
 		adapter:       adapter,
 		stopChan:      make(chan struct{}, 1),
 		interruptChan: make(chan struct{}, 1),
-		logger:        logging.MustGetLogger("LeaderElection"),
+		logger:        util.GetLogger(util.LoggingElectionModule, ""),
 		callback:      noopCallback,
 	}
 
@@ -151,8 +151,6 @@ func NewLeaderElectionService(adapter LeaderElectionAdapter, id string, callback
 		le.callback = callback
 	}
 
-	// TODO: This will be configured using the core.yaml when FAB-1217 (Integrate peer logging with gossip logging) is done
-	logging.SetLevel(logging.WARNING, "LeaderElection")
 	go le.start()
 	return le
 }

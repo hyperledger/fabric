@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/op/go-logging"
 )
 
 // certStore supports pull dissemination of identity messages
@@ -36,13 +37,13 @@ type certStore struct {
 	selfIdentity api.PeerIdentityType
 	idMapper     identity.Mapper
 	pull         pull.Mediator
-	logger       *util.Logger
+	logger       *logging.Logger
 	mcs          api.MessageCryptoService
 }
 
 func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity api.PeerIdentityType, mcs api.MessageCryptoService) *certStore {
 	selfPKIID := idMapper.GetPKIidOfCert(selfIdentity)
-	logger := util.GetLogger("certStore", string(selfPKIID))
+	logger := util.GetLogger(util.LoggingGossipModule, string(selfPKIID))
 	if err := idMapper.Put(selfPKIID, selfIdentity); err != nil {
 		logger.Error("Failed associating self PKIID to cert:", err)
 		panic(fmt.Errorf("Failed associating self PKIID to cert: %v", err))
@@ -55,8 +56,6 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 		selfIdentity: selfIdentity,
 		logger:       logger,
 	}
-
-	certStore.logger = util.GetLogger("certStore", string(selfPKIID))
 
 	if err := certStore.idMapper.Put(selfPKIID, selfIdentity); err != nil {
 		certStore.logger.Panic("Failed associating self PKIID to cert:", err)

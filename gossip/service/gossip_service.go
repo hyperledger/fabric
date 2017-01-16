@@ -28,8 +28,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/integration"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/state"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
 
@@ -90,7 +90,7 @@ func (jcm *joinChannelMessage) AnchorPeers() []api.AnchorPeer {
 	return jcm.anchorPeers
 }
 
-var logger = logging.MustGetLogger("gossipService")
+var logger = util.GetLogger(util.LoggingServiceModule, "")
 
 // InitGossipService initialize gossip service
 func InitGossipService(identity []byte, endpoint string, s *grpc.Server, bootPeers ...string) {

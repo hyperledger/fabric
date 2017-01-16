@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/op/go-logging"
 )
 
 // Config is a configuration item
@@ -122,7 +123,7 @@ type gossipChannel struct {
 	leaderMsgStore            msgstore.MessageStore
 	chainID                   common.ChainID
 	blocksPuller              pull.Mediator
-	logger                    *util.Logger
+	logger                    *logging.Logger
 	stateInfoPublishScheduler *time.Ticker
 	stateInfoRequestScheduler *time.Ticker
 	memFilter                 *membershipFilter
@@ -149,7 +150,7 @@ func NewGossipChannel(mcs api.MessageCryptoService, chainID common.ChainID, adap
 	gc := &gossipChannel{
 		mcs:                       mcs,
 		Adapter:                   adapter,
-		logger:                    util.GetLogger("channelState", adapter.GetConf().ID),
+		logger:                    util.GetLogger(util.LoggingChannelModule, adapter.GetConf().ID),
 		stopChan:                  make(chan struct{}, 1),
 		shouldGossipStateInfo:     int32(0),
 		stateInfoPublishScheduler: time.NewTicker(adapter.GetConf().PublishStateInfoInterval),

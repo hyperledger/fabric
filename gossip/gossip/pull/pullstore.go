@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/op/go-logging"
 )
 
 const (
@@ -91,7 +92,7 @@ type pullMediatorImpl struct {
 	idExtractor  proto.IdentifierExtractor
 	msgCons      proto.MsgConsumer
 	config       PullConfig
-	logger       *util.Logger
+	logger       *logging.Logger
 	sync.RWMutex
 	itemId2msg map[string]*proto.GossipMessage
 	Sender
@@ -105,7 +106,7 @@ func NewPullMediator(config PullConfig, sndr Sender, memSvc MembershipService, i
 		msgType2Hook: make(map[PullMsgType][]MessageHook),
 		idExtractor:  idExtractor,
 		config:       config,
-		logger:       util.GetLogger("Pull", config.Id),
+		logger:       util.GetLogger(util.LoggingPullModule, config.Id),
 		itemId2msg:   make(map[string]*proto.GossipMessage),
 		memBvc:       memSvc,
 		Sender:       sndr,
