@@ -33,6 +33,9 @@ const (
 
 	// BlockDataHashingStructureKey is the cb.ConfigurationItem type key name for the BlockDataHashingStructure message
 	BlockDataHashingStructureKey = "BlockDataHashingStructure"
+
+	// OrdererAddressesKey is the cb.ConfigurationItem type key name for the OrdererAddresses message
+	OrdererAddressesKey = "OrdererAddresses"
 )
 
 // Hashing algorithm types
@@ -55,11 +58,15 @@ type Descriptor interface {
 	// BlockDataHashingStructureWidth returns the width to use when constructing the
 	// Merkle tree to compute the BlockData hash
 	BlockDatahashingStructureWidth() int
+
+	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+	OrdererAddresses() []string
 }
 
 type chainConfig struct {
 	hashingAlgorithm               func(input []byte) []byte
 	blockDataHashingStructureWidth uint32
+	ordererAddresses               []string
 }
 
 // DescriptorImpl is an implementation of Manager and configtx.ConfigHandler
@@ -84,6 +91,11 @@ func (pm *DescriptorImpl) HashingAlgorithm() func(input []byte) []byte {
 // BlockDataHashingStructure returns the width to use when forming the block data hashing structure
 func (pm *DescriptorImpl) BlockDataHashingStructureWidth() uint32 {
 	return pm.config.blockDataHashingStructureWidth
+}
+
+// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+func (pm *DescriptorImpl) OrdererAddresses() []string {
+	return pm.config.ordererAddresses
 }
 
 // BeginConfig is used to start a new configuration proposal
@@ -137,6 +149,12 @@ func (pm *DescriptorImpl) ProposeConfig(configItem *cb.ConfigurationItem) error 
 		}
 
 		pm.pendingConfig.blockDataHashingStructureWidth = blockDataHashingStructure.Width
+	case OrdererAddressesKey:
+		ordererAddresses := &cb.OrdererAddresses{}
+		if err := proto.Unmarshal(configItem.Value, ordererAddresses); err != nil {
+			return fmt.Errorf("Unmarshaling error for HashingAlgorithm: %s", err)
+		}
+		pm.pendingConfig.ordererAddresses = ordererAddresses.Addresses
 	default:
 		logger.Warningf("Uknown Chain configuration item with key %s", configItem.Key)
 	}

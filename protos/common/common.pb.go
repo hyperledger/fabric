@@ -33,6 +33,7 @@ It has these top-level messages:
 	SignaturePolicy
 	HashingAlgorithm
 	BlockDataHashingStructure
+	OrdererAddresses
 	MSPPrincipal
 	OrganizationUnit
 	MSPRole

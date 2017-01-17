@@ -132,3 +132,9 @@ message BlockDataHashingStructure {
     // in order to replicate flat hashing, set this width to MAX_UINT32
     uint32 width  = 1;
 }
+
+// OrdererAddresses is encoded into the configuration transaction as a configuration item of type Chain
+// with a Key of "OrdererAddresses" and a Value of OrdererAddresses as marshaled protobuf bytes
+message OrdererAddresses {
+    repeated string addresses = 1;
+}
