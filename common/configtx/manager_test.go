@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"github.com/golang/protobuf/proto"
 	"errors"
+	"github.com/golang/protobuf/proto"
 )
 
 var defaultChain = "DefaultChainID"
@@ -40,12 +40,19 @@ func defaultHandlers() map[cb.ConfigurationItem_ConfigurationType]Handler {
 // mockPolicy always returns the error set as policyResult
 type mockPolicy struct {
 	policyResult error
+	// validReplies is the number of times to successfully validate before returning policyResult
+	// it is decremented at each invocation
+	validReplies int
 }
 
 func (mp *mockPolicy) Evaluate(signedData []*cb.SignedData) error {
 	if mp == nil {
 		return errors.New("Invoked nil policy")
 	}
+	if mp.validReplies > 0 {
+		return nil
+	}
+	mp.validReplies--
 	return mp.policyResult
 }
 
@@ -328,7 +335,7 @@ func TestSilentConfigModification(t *testing.T) {
 func TestInvalidInitialConfigByPolicy(t *testing.T) {
 	_, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockPolicyManager{&mockPolicy{fmt.Errorf("err")}}, defaultHandlers())
+	}, &mockPolicyManager{&mockPolicy{policyResult: fmt.Errorf("err")}}, defaultHandlers())
 	// mockPolicyManager will return non-validating defualt policy
 
 	if err == nil {
@@ -348,7 +355,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 		t.Fatalf("Error constructing configuration manager: %s", err)
 	}
 	// Set the mock policy to error
-	mpm.policy = &mockPolicy{fmt.Errorf("err")}
+	mpm.policy = &mockPolicy{policyResult: fmt.Errorf("err")}
 
 	newConfig := &cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), defaultChain)},
@@ -362,6 +369,41 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	err = cm.Apply(newConfig)
 	if err == nil {
 		t.Error("Should have errored applying config because policy rejected modification")
+	}
+}
+
+// TestUnchangedConfigViolatesPolicy checks to make sure that existing config items are not revalidated against their modification policies
+// as the policy may have changed, certs revoked, etc. since the config was adopted.
+func TestUnchangedConfigViolatesPolicy(t *testing.T) {
+	mpm := &mockPolicyManager{}
+	cm, err := NewConfigurationManager(&cb.ConfigurationEnvelope{
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
+	}, mpm, defaultHandlers())
+
+	if err != nil {
+		t.Fatalf("Error constructing configuration manager: %s", err)
+	}
+	// Set the mock policy to error
+	mpm.policy = &mockPolicy{
+		policyResult: fmt.Errorf("err"),
+		validReplies: 1,
+	}
+
+	newConfig := &cb.ConfigurationEnvelope{
+		Items: []*cb.SignedConfigurationItem{
+			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain),
+			makeSignedConfigurationItem("bar", "bar", 1, []byte("foo"), defaultChain),
+		},
+	}
+
+	err = cm.Validate(newConfig)
+	if err != nil {
+		t.Errorf("Should not have errored validating config, but got %s", err)
+	}
+
+	err = cm.Apply(newConfig)
+	if err != nil {
+		t.Errorf("Should not have errored applying config, but got %s", err)
 	}
 }
 

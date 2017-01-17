@@ -17,8 +17,8 @@ limitations under the License.
 package configtx
 
 import (
-	"bytes"
 	"fmt"
+	"reflect"
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -205,33 +205,12 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 			return nil, fmt.Errorf("Error unmarshaling ConfigurationItem: %s", err)
 		}
 
-		// Get the modification policy for this config item if one was previously specified
-		// or the default if this is a new config item
-		var policy policies.Policy
-		oldItem, ok := cm.configuration[config.Type][config.Key]
-		if ok {
-			policy, _ = cm.pm.GetPolicy(oldItem.ModificationPolicy)
-		} else {
-			policy = defaultModificationPolicy
-		}
-
-		// Get signatures
-		signedData, err := entry.AsSignedData()
-		if err != nil {
-			return nil, err
-		}
-
-		// Ensure the policy is satisfied
-		if err = policy.Evaluate(signedData); err != nil {
-			return nil, err
-		}
-
 		// Ensure the config sequence numbers are correct to prevent replay attacks
 		isModified := false
 
 		if val, ok := cm.configuration[config.Type][config.Key]; ok {
-			// Config was modified if the LastModified or the Data contents changed
-			isModified = (val.LastModified != config.LastModified) || !bytes.Equal(config.Value, val.Value)
+			// Config was modified if any of the contents changed
+			isModified = !reflect.DeepEqual(val, config)
 		} else {
 			if config.LastModified != seq {
 				return nil, fmt.Errorf("Key %v for type %v was new, but had an older Sequence %d set", config.Key, config.Type, config.LastModified)
@@ -239,10 +218,31 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 			isModified = true
 		}
 
-		// If a config item was modified, its LastModified must be set correctly
+		// If a config item was modified, its LastModified must be set correctly, and it must satisfy the modification policy
 		if isModified {
 			if config.LastModified != seq {
 				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", config.Key, config.Type, config.LastModified, seq)
+			}
+
+			// Get the modification policy for this config item if one was previously specified
+			// or the default if this is a new config item
+			var policy policies.Policy
+			oldItem, ok := cm.configuration[config.Type][config.Key]
+			if ok {
+				policy, _ = cm.pm.GetPolicy(oldItem.ModificationPolicy)
+			} else {
+				policy = defaultModificationPolicy
+			}
+
+			// Get signatures
+			signedData, err := entry.AsSignedData()
+			if err != nil {
+				return nil, err
+			}
+
+			// Ensure the policy is satisfied
+			if err = policy.Evaluate(signedData); err != nil {
+				return nil, err
 			}
 		}
 
