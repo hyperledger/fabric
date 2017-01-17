@@ -1,9 +1,10 @@
 package msp
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
+
+	"github.com/golang/protobuf/proto"
 
 	"encoding/pem"
 	"path/filepath"
@@ -104,9 +105,9 @@ func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
 
 	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: keyinfo}
 
-	fmspconf := msp.FabricMSPConfig{Admins: admincert, RootCerts: cacerts, SigningIdentity: sigid, Name: "DEFAULT"}
+	fmspconf := &msp.FabricMSPConfig{Admins: admincert, RootCerts: cacerts, SigningIdentity: sigid, Name: "DEFAULT"}
 
-	fmpsjs, _ := json.Marshal(fmspconf)
+	fmpsjs, _ := proto.Marshal(fmspconf)
 
 	mspconf := &msp.MSPConfig{Config: fmpsjs, Type: int32(FABRIC)}
 

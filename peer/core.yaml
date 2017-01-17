@@ -149,7 +149,7 @@ peer:
     fileSystemPath: /var/hyperledger/production
 
     # Path on the file system where peer will find MSP local configurations
-    mspConfigPath: /var/hyperledger/msp
+    mspConfigPath: /etc/hyperledger/fabric/msp/sampleconfig
 
     # Used with Go profiling tools only in none production environment. In
     # production, it should be disabled (eg enabled: false)

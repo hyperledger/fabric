@@ -22,10 +22,12 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/msp/testutils"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestLocalMSP(t *testing.T) {
-	err := LoadLocalMsp("../../../msp/sampleconfig/")
+	testMSPConfigPath := utils.GetTESTMSPConfigPath()
+	err := LoadLocalMsp(testMSPConfigPath)
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
 	}
@@ -38,7 +40,8 @@ func TestLocalMSP(t *testing.T) {
 
 // TODO: as soon as proper per-chain MSP support is developed, this test will no longer be required
 func TestFakeSetup(t *testing.T) {
-	err := LoadFakeSetupWithLocalMspAndTestChainMsp("../../../msp/sampleconfig/")
+	testMSPConfigPath := utils.GetTESTMSPConfigPath()
+	err := LoadFakeSetupWithLocalMspAndTestChainMsp(testMSPConfigPath)
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
 	}
@@ -59,7 +62,8 @@ func TestFakeSetup(t *testing.T) {
 }
 
 func TestGetMSPManagerFromBlock(t *testing.T) {
-	conf, err := msp.GetLocalMspConfig("../../../msp/sampleconfig/")
+	testMSPConfigPath := utils.GetTESTMSPConfigPath()
+	conf, err := msp.GetLocalMspConfig(testMSPConfigPath)
 	if err != nil {
 		t.Fatalf("GetLocalMspConfig failed, err %s", err)
 	}

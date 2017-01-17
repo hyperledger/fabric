@@ -66,7 +66,8 @@ func GetMSPManagerConfigFromBlock(b *common.Block) ([]*msp.MSPConfig, error) {
 			return nil, err
 		}
 
-		if ci.Key != MSPKey {
+		if ci.Type != common.ConfigurationItem_MSP {
+
 			continue
 		}
 

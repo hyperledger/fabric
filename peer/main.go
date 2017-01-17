@@ -101,15 +101,7 @@ func main() {
 
 	// Init the MSP
 	// TODO: determine the location of this config file
-	var mspMgrConfigDir string
-	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
-	if alternativeCfgPath != "" {
-		mspMgrConfigDir = alternativeCfgPath + "/msp/sampleconfig/"
-	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
-		mspMgrConfigDir = "./msp/sampleconfig/"
-	} else {
-		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
+	var mspMgrConfigDir = viper.GetString("peer.mspConfigPath")
 
 	err = common.InitCrypto(mspMgrConfigDir)
 	if err != nil { // Handle errors reading the config file

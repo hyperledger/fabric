@@ -11,7 +11,7 @@ Feature: Bootstrap
   As a blockchain entrepreneur
   I want to bootstrap a new blockchain network
 
-#    @doNotDecompose
+    @doNotDecompose
   Scenario Outline: Bootstrap a development network with 1 peer and 1 orderer, each having a single independent root of trust (No COP)
     #creates 1 self-signed key/cert pair per orderer organization
     Given the orderer network has organizations:
@@ -33,22 +33,39 @@ Feature: Bootstrap
     And the ordererBootstrapAdmin generates a GUUID to identify the orderer system chain and refer to it by name as "OrdererSystemChainId"
 
     # Actually creating proto ordere_dot_confoiguration.ChainCreators
+    # Creates SignedConfigItems
+    # Policy
     And the ordererBootstrapAdmin creates a chain creators policy "chainCreatePolicy1" (network name) for peer orgs who wish to form a network using orderer system chain "OrdererSystemChainId":
       | Organization  |
       |  peerOrg0     |
       |  peerOrg1     |
       |  peerOrg2     |
 
+    # Creates SignedConfigItems
+    And the ordererBoostrapAdmin creates the chain creation policy names "chainCreationPolicyNames" signedConfigurationItem for orderer system chain "OrdererSystemChainId" with policies:
+      |PolicyName                  |
+      |chainCreatePolicy1          |
+
+
+    # Creates SignedConfigItems
+    And the ordererBoostrapAdmin creates MSP Configuration Items "mspConfigItems1" for orderer system chain "OrdererSystemChainId" for every MSP referenced by the policies:
+      |PolicyName                  |
+      |chainCreatePolicy1          |
+
 
     # Order info includes orderer admin/orderer information and address (host:port) from previous steps
     # Only the peer organizations can vary.
-    And the ordererBootstrapAdmin creates the genesis block for chain "OrdererSystemChainId" for network config policy "<PolicyType>" and consensus "<ConsensusType>" using chain creators policy "chainCreatePolicy1"
+    And the ordererBootstrapAdmin creates the genesis block for chain "OrdererSystemChainId" for network config policy "<PolicyType>" and consensus "<ConsensusType>" using chain creators policies:
+      |  SignedConfigItemsName       |
+      |  chainCreatePolicy1          |
+      |  chainCreationPolicyNames    |
+      |  mspConfigItems1             |
 
 
-    And the orderer admins inspect and approve the genesis block for chain "<OrdererSystemChainId>"
+    And the orderer admins inspect and approve the genesis block for chain "OrdererSystemChainId"
 
     # to be used for setting the orderer genesis block path parameter in composition
-    And the orderer admins use the genesis block for chain "<OrdererSystemChainId>" to configure orderers
+    And the orderer admins use the genesis block for chain "OrdererSystemChainId" to configure orderers
 
     # We now have an orderer network with NO peers.  Now need to configure and start the peer network
     # This can be currently automated through folder creation of the proper form and placing PEMs.
@@ -56,8 +73,8 @@ Feature: Bootstrap
         | User            | Peer     | Organization  |
         | peer0Signer     | peer0    | peerOrg0      |
         | peer1Signer     | peer1    | peerOrg0      |
-        | peer2Signer     | peer2    | peerOrg0      |
-        | peer3Signer     | peer3    | peerOrg0      |
+        | peer2Signer     | peer2    | peerOrg1      |
+        | peer3Signer     | peer3    | peerOrg1      |
 
     And we compose "<ComposeFile>"
 
@@ -79,10 +96,15 @@ Feature: Bootstrap
       |  peerOrg0     |
       |  peerOrg1     |
 
+    And the user "dev0Org0" creates an peer anchor set "anchors1" for channel "com.acme.blockchain.jdoe.Channel1" for orgs:
+      | User            | Peer     | Organization  |
+      | peer0Signer     | peer0    | peerOrg0      |
+      | peer2Signer     | peer2    | peerOrg1      |
+
     # TODO: grab the peer orgs from template1 and put into Murali's MSP info SCIs.
     And the user "dev0Org0" creates a signedConfigEnvelope "createChannelSignedConfigEnvelope1"
-        | ChannelID                          | Template     | Chain Creation Policy Name  |
-        | com.acme.blockchain.jdoe.Channel1  | template1    | chainCreatePolicy1          |
+        | ChannelID                          | Template     | Chain Creation Policy Name  | Anchors  |
+        | com.acme.blockchain.jdoe.Channel1  | template1    | chainCreatePolicy1          | anchors1 |
 
     And the user "dev0Org0" collects signatures for signedConfigEnvelope "createChannelSignedConfigEnvelope1" from peer orgs:
       | Organization  |
@@ -98,25 +120,19 @@ Feature: Bootstrap
 
     When user "dev0Org0" connects to deliver function on orderer "orderer0"
     And user "dev0Org0" sends deliver a seek request on orderer "orderer0" with properties:
-      | ChainId                               | Start |  End    |  Retries  |   RetryWaitInSecs |
-      | com.acme.blockchain.jdoe.Channel1      |   0   |  0      |    3      |      1            |
+      | ChainId                               | Start |  End    |
+      | com.acme.blockchain.jdoe.Channel1     |   0   |  0      |
+
     Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannel" from "orderer0" of "1" blocks with "1" messages within "1" seconds
 
+    When user "dev0Org0" request to join channel using genesis block "genesisBlockForMyNewChannel" on peer "peer0" with result "joinChannelResult"
+      | Developer       | ChainCreationPolicyName     | Organization  |
+      | dev0Org0        | chainCreatePolicy1          |  peerOrg0     |
 
-    # This is really a CSCC chaincode invocation.  Expect 200 response
-    And channel admin creates a configTxProposal and asks for endorsement from "peer0"
-    And channel admin creates a configTxProposal and asks for endorsement from "peer1"
 
-    When channel admin
+    Then user "dev0Org0" expects result code for "joinChannelResult" of "200"
 
-    And peer admins get the genesis block for chain 'chain1' from chainBoostrapAdmin
-    And the peer admins inspect and approve the genesis block for chain 'chain1'
-
-    And the peer admins use the genesis block for chain 'chain1' to configure peers
-
-    And I wait "1" seconds
-    And user "binhn" registers with peer organization "peerOrg0"
-
+    # TODO: Add the channel name!!
     When user "binhn" creates a chaincode spec "cc_spec" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with args
       | funcName | arg1 |  arg2 | arg3 | arg4 |
       |   init   |  a   |  100  |  b   |  200 |
@@ -130,5 +146,5 @@ Feature: Bootstrap
 
 
     Examples: Orderer Options
-      |          ComposeFile                 |    Waittime   |       OrdererSystemChainId       |PolicyType    |   ConsensusType |
-      |   docker-compose-next-4.yml          |       60      |   test_chainid               |unanimous    |       solo      |
+      |          ComposeFile                 |    Waittime   | PolicyType    |   ConsensusType |
+      |   docker-compose-next-4.yml          |       60      | unanimous     |       solo      |

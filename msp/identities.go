@@ -19,6 +19,7 @@ package msp
 import (
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/hex"
 	"fmt"
 
 	"encoding/pem"
@@ -89,6 +90,10 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 	}
 
 	// Verify signature
+	mspLogger.Debugf("Verify: msg = %s", hex.Dump(msg))
+	mspLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
+	mspLogger.Debugf("Verify: sig = %s", hex.Dump(sig))
+
 	valid, err := id.msp.bccsp.Verify(id.pk, sig, digest, nil)
 	if err != nil {
 		return fmt.Errorf("Could not determine the validity of the signature, err %s", err)

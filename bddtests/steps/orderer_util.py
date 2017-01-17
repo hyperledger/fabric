@@ -90,7 +90,7 @@ class StreamHelper:
         try:
             for reply in self.replyGenerator:
                 counter += 1
-                print("received reply: {0}, counter = {1}".format(reply, counter))
+                #print("received reply: {0}, counter = {1}".format(reply, counter))
                 msgsReceived.append(reply)
                 if counter == int(expectedCount):
                     break
@@ -125,7 +125,7 @@ class DeliverStreamHelper(StreamHelper):
                 reply = self.readMessage()
                 if reply.HasField("block"):
                     blocks.append(reply.block)
-                    print("received reply: {0}, len(blocks) = {1}".format(reply, len(blocks)))
+                    #print("received reply: {0}, len(blocks) = {1}".format(reply, len(blocks)))
                 else:
                     if reply.status != common_pb2.SUCCESS:
                         print("Got error: {0}".format(reply.status))

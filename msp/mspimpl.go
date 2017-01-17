@@ -23,8 +23,6 @@ import (
 
 	"encoding/pem"
 
-	"encoding/json"
-
 	"bytes"
 
 	"github.com/golang/protobuf/proto"
@@ -146,7 +144,7 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 
 	// given that it's an msp of type fabric, extract the MSPConfig instance
 	var conf m.FabricMSPConfig
-	err := json.Unmarshal(conf1.Config, &conf)
+	err := proto.Unmarshal(conf1.Config, &conf)
 	if err != nil {
 		return fmt.Errorf("Failed unmarshalling fabric msp config, err %s", err)
 	}
