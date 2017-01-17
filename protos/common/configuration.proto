@@ -116,3 +116,11 @@ message SignaturePolicy {
         NOutOf From = 2;
     }
 }
+
+
+// HashingAlgorithm is encoded into the configuration transaction as  a configuration item of type CHAIN
+// with a Key of "HashingAlgorithm" as marshaled protobuf bytes
+message HashingAlgorithm {
+    // Currently supported algorithms are: SHAKE256
+    string name = 1;
+}

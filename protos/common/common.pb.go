@@ -31,6 +31,7 @@ It has these top-level messages:
 	Policy
 	SignaturePolicyEnvelope
 	SignaturePolicy
+	HashingAlgorithm
 	MSPPrincipal
 	OrganizationUnit
 	MSPRole
