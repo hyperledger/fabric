@@ -17,7 +17,11 @@ limitations under the License.
 package config
 
 import (
+	"fmt"
+	"math"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,6 +87,41 @@ func customDecodeHook() mapstructure.DecodeHookFunc {
 	}
 }
 
+func byteSizeDecodeHook() mapstructure.DecodeHookFunc {
+	return func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+		if f != reflect.String || t != reflect.Uint32 {
+			return data, nil
+		}
+		raw := data.(string)
+		if raw == "" {
+			return data, nil
+		}
+		var re = regexp.MustCompile(`^(?P<size>[0-9]+)\s*(?i)(?P<unit>(k|m|g))b?$`)
+		if re.MatchString(raw) {
+			size, err := strconv.ParseUint(re.ReplaceAllString(raw, "${size}"), 0, 64)
+			if err != nil {
+				return data, nil
+			}
+			unit := re.ReplaceAllString(raw, "${unit}")
+			switch strings.ToLower(unit) {
+			case "g":
+				size = size << 10
+				fallthrough
+			case "m":
+				size = size << 10
+				fallthrough
+			case "k":
+				size = size << 10
+			}
+			if size > math.MaxUint32 {
+				return size, fmt.Errorf("value '%s' overflows uint32", raw)
+			}
+			return size, nil
+		}
+		return data, nil
+	}
+}
+
 // ExactWithDateUnmarshal is intended to unmarshal a config file into a structure
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
@@ -96,7 +135,10 @@ func ExactWithDateUnmarshal(v *viper.Viper, output interface{}) error {
 		Metadata:         nil,
 		Result:           output,
 		WeaklyTypedInput: true,
-		DecodeHook:       customDecodeHook(),
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(
+			customDecodeHook(),
+			byteSizeDecodeHook(),
+		),
 	}
 
 	decoder, err := mapstructure.NewDecoder(config)
