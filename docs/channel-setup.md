@@ -1,4 +1,6 @@
-# Channel create/join chain support
+# Multichannel Setup
+
+This document describe the CLI for creating channels and directing peers to join channels. The CLI uses channel APIs that are also available in the SDK.
 
 The channel commands are
 * create - create a channel in the `orderer` and get back a genesis block for the channel
@@ -14,10 +16,59 @@ The commands are work in progress. In particular, there will be more configurati
     https://jira.hyperledger.org/browse/FAB-1639
     https://jira.hyperledger.org/browse/FAB-1580
 ```
-Assuming the orderer and peer have been built, and the executables are available in build/bin directory. Switch to build/bin directory.
 
-## Create a channel
-### Using CLI in Vagrant environment
+## Using docker
+Pull the latest images from https://github.com/rameshthoomu/
+
+### Create a channel
+Copy [`docker-compose-channel.yml`](docker-compose-channel.yml) to your current directory.
+
+_Bring up peer and orderer_
+```
+cd docs
+docker-compose -f docker-compose-channel.yml up
+```
+
+`docker ps` should show containers `orderer` and `peer0` running.
+
+_Ask orderer to create a channel_
+Start the CLI container.
+```
+docker-compose -f docker-compose-channel.yml run cli
+```
+In the above shell execute the create command
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005 peer channel create -c myc1
+```
+This will create a channel genesis block file `myc1.block` to issue join commands with.
+
+### Join a channel
+Execute the join command to peer0 in the CLI container.
+
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005 CORE_PEER_ADDRESS=peer0:7051 peer channel join -b myc1.block
+```
+
+### Use the channel to deploy and invoke chaincodes
+Run the deploy command
+```
+CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005 peer chaincode deploy -C myc1 -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a","100","b","200"]}'
+```
+
+Run the invoke command
+```
+CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005 peer chaincode invoke -C myc1 -n mycc -c '{"Args":["invoke","a","b","10"]}'
+```
+
+Run the query command
+```
+CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005 peer chaincode query -C myc1 -n mycc -c '{"Args":["query","a"]}'
+```
+
+## Using Vagrant
+Build the executables with `make orderer` and `make peer` commands. Switch to build/bin directory.
+
+### Create a channel
 _Vagrant window 1 - start orderer_
 
 ```
@@ -31,11 +82,7 @@ peer channel create -c myc1
 
 On successful creation, a genesis block myc1.block is saved in build/bin directory.
 
-### Using docker environment
-TODO
-
-## Join a channel
-### Using CLI in Vagrant environment
+### Join a channel
 _Vagrant window 3 - start the peer in a "chainless" mode_
 
 ```
@@ -59,12 +106,8 @@ peer channel join -b myc1.block
 
 where myc1.block is the block that was received from the `orderer` from the create channel command.
 
-### Using docker environment
-TODO
-
 At this point we can issue transactions.
-## Use the channel to deploy and invoke chaincodes
-### Using CLI in Vagrant environment
+### Use the channel to deploy and invoke chaincodes
 _Vagrant window 2 - deploy a chaincode to myc1_
 
 ```
@@ -88,7 +131,5 @@ _Vagrant window 2 - query chaincode_
 ```
 peer chaincode query -C myc1 -n mycc -c '{"Args":["query","a"]}'
 ```
-### Using docker environment
-TODO
 
 To reset, clear out the `fileSystemPath` directory (defined in core.yaml) and myc1.block.
