@@ -37,7 +37,7 @@ import (
 
 var logger = logging.MustGetLogger("kvledger")
 
-// KVLedger provides an implementation of `ledger.ValidatedLedger`.
+// KVLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type KVLedger struct {
 	ledgerID    string

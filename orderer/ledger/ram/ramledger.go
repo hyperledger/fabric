@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/orderer/rawledger"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("rawledger/ramledger")
+var logger = logging.MustGetLogger("ordererledger/ramledger")
 
 type cursor struct {
 	list *simpleList
@@ -48,22 +48,22 @@ type ramLedger struct {
 
 type ramLedgerFactory struct {
 	maxSize int
-	ledgers map[string]rawledger.ReadWriter
+	ledgers map[string]ordererledger.ReadWriter
 	mutex   sync.Mutex
 }
 
 // New creates a new ramledger factory and system ordering chain based on the given systemGenesis block,
 // because there is no persistence, the new ReadWriter will have only the genesis block contained
-func New(maxSize int) rawledger.Factory {
+func New(maxSize int) ordererledger.Factory {
 	rlf := &ramLedgerFactory{
 		maxSize: maxSize,
-		ledgers: make(map[string]rawledger.ReadWriter),
+		ledgers: make(map[string]ordererledger.ReadWriter),
 	}
 
 	return rlf
 }
 
-func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (rawledger.ReadWriter, error) {
+func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (ordererledger.ReadWriter, error) {
 	rlf.mutex.Lock()
 	defer rlf.mutex.Unlock()
 
@@ -94,7 +94,7 @@ func (rlf *ramLedgerFactory) ChainIDs() []string {
 }
 
 // newChain creates a new instance of the ram ledger for a chain
-func newChain(maxSize int) rawledger.ReadWriter {
+func newChain(maxSize int) ordererledger.ReadWriter {
 	preGenesis := &cb.Block{
 		Header: &cb.BlockHeader{
 			Number: ^uint64(0),
@@ -118,8 +118,8 @@ func (rl *ramLedger) Height() uint64 {
 	return rl.newest.block.Header.Number + 1
 }
 
-// Iterator implements the rawledger.Reader definition
-func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (rawledger.Iterator, uint64) {
+// Iterator implements the ordererledger.Reader definition
+func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.Iterator, uint64) {
 	var list *simpleList
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
@@ -146,7 +146,7 @@ func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (rawledger.Iterato
 		// Note the two +1's here is to accomodate the 'preGenesis' block of ^uint64(0)
 		if specified+1 < oldest.block.Header.Number+1 || specified > rl.newest.block.Header.Number+1 {
 			logger.Debugf("Returning error iterator because specified seek was %d with oldest %d and newest %d", specified, rl.oldest.block.Header.Number, rl.newest.block.Header.Number)
-			return &rawledger.NotFoundErrorIterator{}, 0
+			return &ordererledger.NotFoundErrorIterator{}, 0
 		}
 
 		if specified == oldest.block.Header.Number {

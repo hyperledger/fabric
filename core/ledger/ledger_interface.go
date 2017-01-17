@@ -21,7 +21,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-// Ledger captures the methods that are common across the 'raw ledger' and the 'final ledger'
+// Ledger captures the methods that are common across the 'PeerLedger', 'OrdererLedger', and 'ValidatedLedger'
 type Ledger interface {
 	// GetBlockchainInfo returns basic info about blockchain
 	GetBlockchainInfo() (*pb.BlockchainInfo, error)
@@ -32,36 +32,34 @@ type Ledger interface {
 	// The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 	// ResultsIterator contains type BlockHolder
 	GetBlocksIterator(startBlockNumber uint64) (ResultsIterator, error)
-	//Prune prunes the blocks/transactions that satisfy the given policy
-	Prune(policy PrunePolicy) error
 	// Close closes the ledger
 	Close()
 }
 
-// RawLedger implements methods required by 'raw ledger'
-type RawLedger interface {
+// OrdererLedger implements methods required by 'orderer ledger'
+type OrdererLedger interface {
 	Ledger
 	// CommitBlock adds a new block
 	CommitBlock(block *common.Block) error
 }
 
-// ValidatedLedgerProvider provides handle to ledger instances
-type ValidatedLedgerProvider interface {
+// PeerLedgerProvider provides handle to ledger instances
+type PeerLedgerProvider interface {
 	// CreateLedger creates a new ledger with a given unique id
-	Create(ledgerID string) (ValidatedLedger, error)
+	Create(ledgerID string) (PeerLedger, error)
 	// OpenLedger opens an already created ledger
-	Open(ledgerID string) (ValidatedLedger, error)
+	Open(ledgerID string) (PeerLedger, error)
 	// Exists tells whether the ledger with given id exits
 	Exists(ledgerID string) (bool, error)
 	// List lists the ids of the existing ledgers
 	List() ([]string, error)
-	// Close closes the ValidatedLedgerProvider
+	// Close closes the PeerLedgerProvider
 	Close()
 }
 
-// ValidatedLedger represents the 'final ledger'. In addition to implement the methods inherited from the Ledger,
-// it provides the handle to objects for querying the state and executing transactions.
-type ValidatedLedger interface {
+// PeerLedger differs from the OrdererLedger in that PeerLedger locally maintain a bitmask
+// that tells apart valid transactions from invalid ones
+type PeerLedger interface {
 	Ledger
 	// GetTransactionByID retrieves a transaction by id
 	GetTransactionByID(txID string) (*pb.Transaction, error)
@@ -81,6 +79,14 @@ type ValidatedLedger interface {
 	NewHistoryQueryExecutor() (HistoryQueryExecutor, error)
 	// Commits block into the ledger
 	Commit(block *common.Block) error
+	//Prune prunes the blocks/transactions that satisfy the given policy
+	Prune(policy PrunePolicy) error
+}
+
+// ValidatedLedger represents the 'final ledger' after filtering out invalid transactions from PeerLedger.
+// Post-v1
+type ValidatedLedger interface {
+	Ledger
 }
 
 // QueryExecutor executes the queries

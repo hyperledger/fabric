@@ -23,7 +23,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/hyperledger/fabric/orderer/rawledger"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
@@ -31,7 +31,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 )
 
-var logger = logging.MustGetLogger("rawledger/fileledger")
+var logger = logging.MustGetLogger("ordererledger/fileledger")
 var closedChan chan struct{}
 
 func init() {
@@ -60,12 +60,12 @@ type fileLedger struct {
 
 type fileLedgerFactory struct {
 	directory string
-	ledgers   map[string]rawledger.ReadWriter
+	ledgers   map[string]ordererledger.ReadWriter
 	mutex     sync.Mutex
 }
 
 // New creates a new fileledger Factory and the ordering system chain specified by the systemGenesis block (if it does not already exist)
-func New(directory string) rawledger.Factory {
+func New(directory string) ordererledger.Factory {
 
 	logger.Debugf("Initializing fileLedger at '%s'", directory)
 	if err := os.MkdirAll(directory, 0700); err != nil {
@@ -74,7 +74,7 @@ func New(directory string) rawledger.Factory {
 
 	flf := &fileLedgerFactory{
 		directory: directory,
-		ledgers:   make(map[string]rawledger.ReadWriter),
+		ledgers:   make(map[string]ordererledger.ReadWriter),
 	}
 
 	infos, err := ioutil.ReadDir(flf.directory)
@@ -116,7 +116,7 @@ func (flf *fileLedgerFactory) ChainIDs() []string {
 	return ids
 }
 
-func (flf *fileLedgerFactory) GetOrCreate(chainID string) (rawledger.ReadWriter, error) {
+func (flf *fileLedgerFactory) GetOrCreate(chainID string) (ordererledger.ReadWriter, error) {
 	flf.mutex.Lock()
 	defer flf.mutex.Unlock()
 
@@ -141,7 +141,7 @@ func (flf *fileLedgerFactory) GetOrCreate(chainID string) (rawledger.ReadWriter,
 }
 
 // newChain creates a new chain backed by a file ledger
-func newChain(directory string) rawledger.ReadWriter {
+func newChain(directory string) ordererledger.ReadWriter {
 	fl := &fileLedger{
 		directory:      directory,
 		fqFormatString: directory + "/" + blockFileFormatString,
@@ -247,8 +247,8 @@ func (fl *fileLedger) Append(block *cb.Block) error {
 	return nil
 }
 
-// Iterator implements the rawledger.Reader definition
-func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (rawledger.Iterator, uint64) {
+// Iterator implements the ordererledger.Reader definition
+func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.Iterator, uint64) {
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
 		return &cursor{fl: fl, blockNumber: 0}, 0
@@ -257,13 +257,13 @@ func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (rawledger.Iterat
 		return &cursor{fl: fl, blockNumber: high}, high
 	case *ab.SeekPosition_Specified:
 		if start.Specified.Number > fl.height {
-			return &rawledger.NotFoundErrorIterator{}, 0
+			return &ordererledger.NotFoundErrorIterator{}, 0
 		}
 		return &cursor{fl: fl, blockNumber: start.Specified.Number}, start.Specified.Number
 	}
 
 	// This line should be unreachable, but the compiler requires it
-	return &rawledger.NotFoundErrorIterator{}, 0
+	return &ordererledger.NotFoundErrorIterator{}, 0
 }
 
 // Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable

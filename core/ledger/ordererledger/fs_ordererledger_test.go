@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rawledger
+package ordererledger
 
 import (
 	"os"
@@ -25,33 +25,33 @@ import (
 )
 
 const (
-	testFolder = "/tmp/test/ledger/rawledger"
+	testFolder = "/tmp/test/ledger/ordererledger"
 )
 
-func TestRawLedger(t *testing.T) {
+func TestOrdererLedger(t *testing.T) {
 	cleanup(t)
-	rawLedger := NewFSBasedRawLedger(testFolder)
-	defer rawLedger.Close()
+	ordererLedger := NewFSBasedOrdererLedger(testFolder)
+	defer ordererLedger.Close()
 	defer cleanup(t)
 
-	// Construct test blocks and add to raw ledger
+	// Construct test blocks and add to orderer ledger
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	for _, block := range blocks {
-		rawLedger.CommitBlock(block)
+		ordererLedger.CommitBlock(block)
 	}
 
 	// test GetBlockchainInfo()
-	bcInfo, err := rawLedger.GetBlockchainInfo()
+	bcInfo, err := ordererLedger.GetBlockchainInfo()
 	testutil.AssertNoError(t, err, "Error in getting BlockchainInfo")
 	testutil.AssertEquals(t, bcInfo.Height, uint64(10))
 
 	// test GetBlockByNumber()
-	block, err := rawLedger.GetBlockByNumber(2)
+	block, err := ordererLedger.GetBlockByNumber(2)
 	testutil.AssertNoError(t, err, "Error in getting block by number")
 	testutil.AssertEquals(t, block, blocks[1])
 
 	// get blocks iterator for block number starting from 3
-	itr, err := rawLedger.GetBlocksIterator(3)
+	itr, err := ordererLedger.GetBlocksIterator(3)
 	testutil.AssertNoError(t, err, "Error in getting iterator")
 	blockHolder, err := itr.Next()
 	testutil.AssertNoError(t, err, "")

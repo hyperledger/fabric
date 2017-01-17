@@ -29,7 +29,7 @@ func TestLedgerMgmt(t *testing.T) {
 	defer CleanupTestEnv()
 
 	numLedgers := 10
-	ledgers := make([]ledger.ValidatedLedger, 10)
+	ledgers := make([]ledger.PeerLedger, 10)
 	for i := 0; i < numLedgers; i++ {
 		l, _ := CreateLedger(constructTestLedgerID(i))
 		ledgers[i] = l

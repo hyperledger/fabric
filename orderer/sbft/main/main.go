@@ -23,9 +23,9 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	fileledger "github.com/hyperledger/fabric/orderer/ledger/file"
 	localconfig "github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
-	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	"github.com/hyperledger/fabric/orderer/sbft"
 	"github.com/hyperledger/fabric/orderer/sbft/backend"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"

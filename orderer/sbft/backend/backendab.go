@@ -20,9 +20,9 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	mockpolicies "github.com/hyperledger/fabric/orderer/mocks/policies"
 	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
-	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -42,7 +42,7 @@ func (xxx *xxxSupportManager) GetChain(id string) (deliver.Support, bool) {
 }
 
 type xxxSupport struct {
-	reader        rawledger.Reader
+	reader        ordererledger.Reader
 	sharedConfig  sharedconfig.Manager
 	policyManager policies.Manager
 }
@@ -55,7 +55,7 @@ func (xxx *xxxSupport) SharedConfig() sharedconfig.Manager {
 	return xxx.sharedConfig
 }
 
-func (xxx *xxxSupport) Reader() rawledger.Reader {
+func (xxx *xxxSupport) Reader() ordererledger.Reader {
 	return xxx.reader
 }
 

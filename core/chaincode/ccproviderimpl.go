@@ -35,7 +35,7 @@ type ccProviderContextImpl struct {
 }
 
 // GetContext returns a context for the supplied ledger, with the appropriate tx simulator
-func (c *ccProviderImpl) GetContext(ledger ledger.ValidatedLedger) (context.Context, error) {
+func (c *ccProviderImpl) GetContext(ledger ledger.PeerLedger) (context.Context, error) {
 	var err error
 	// get context for the chaincode execution
 	c.txsim, err = ledger.NewTxSimulator()
