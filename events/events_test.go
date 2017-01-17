@@ -24,10 +24,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/events/consumer"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
 	ehpb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -81,9 +83,60 @@ func (a *Adapter) Disconnected(err error) {
 	}
 }
 
-func createTestBlock() *common.Block {
+func createTestBlock(t *testing.T) *common.Block {
+	chdr := &common.ChainHeader{
+		Type:    int32(common.HeaderType_ENDORSER_TRANSACTION),
+		Version: 1,
+		Timestamp: &timestamp.Timestamp{
+			Seconds: time.Now().Unix(),
+			Nanos:   0,
+		},
+		ChainID: "test"}
+	hdr := &common.Header{ChainHeader: chdr}
+	payload := &common.Payload{Header: hdr}
+	cea := &ehpb.ChaincodeEndorsedAction{}
+	ccaPayload := &ehpb.ChaincodeActionPayload{Action: cea}
+	env := &common.Envelope{}
+	taa := &ehpb.TransactionAction{}
+	taas := make([]*ehpb.TransactionAction, 1)
+	taas[0] = taa
+	tx := &ehpb.Transaction{Actions: taas}
+
+	events := &ehpb.ChaincodeEvent{
+		ChaincodeID: "ccid",
+		EventName:   "EventName",
+		Payload:     []byte("EventPayload"),
+		TxID:        "TxID"}
+
+	pHashBytes := []byte("proposal_hash")
+	results := []byte("results")
+	eventBytes, err := utils.GetBytesChaincodeEvent(events)
+	if err != nil {
+		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
+	}
+	ccaPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(pHashBytes, results, eventBytes)
+	if err != nil {
+		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
+	}
+	tx.Actions[0].Payload, err = utils.GetBytesChaincodeActionPayload(ccaPayload)
+	if err != nil {
+		t.Fatalf("Error marshalling tx action payload for block event: %s", err)
+	}
+	payload.Data, err = utils.GetBytesTransaction(tx)
+	if err != nil {
+		t.Fatalf("Failure while marshalling payload for block event: %s", err)
+	}
+	env.Payload, err = utils.GetBytesPayload(payload)
+	if err != nil {
+		t.Fatalf("Failure while marshalling tx envelope for block event: %s", err)
+	}
+	ebytes, err := utils.GetBytesEnvelope(env)
+	if err != nil {
+		t.Fatalf("Failure while marshalling transaction %s", err)
+	}
+
 	block := common.NewBlock(1, []byte{})
-	block.Data.Data = [][]byte{[]byte("tx1"), []byte("tx2")}
+	block.Data.Data = append(block.Data.Data, ebytes)
 	block.Header.DataHash = block.Data.Hash()
 	return block
 }
@@ -121,7 +174,7 @@ func TestReceiveAnyMessage(t *testing.T) {
 	var err error
 
 	adapter.count = 1
-	block := createTestBlock()
+	block := createTestBlock(t)
 	if err = producer.SendProducerBlockEvent(block); err != nil {
 		t.Fail()
 		t.Logf("Error sending message %s", err)
