@@ -80,7 +80,8 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	testutil.AssertEquals(t, b2, block2)
 }
 
-func TestKVLedgerStateDBRecovery(t *testing.T) {
+func TestKVLedgerDBRecovery(t *testing.T) {
+	testutil.SetupCoreYAMLConfig("./../../../peer")
 	env := newTestEnv(t)
 	defer env.cleanup()
 	provider, _ := NewProvider()
@@ -111,7 +112,10 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 
-	//creating the second block but peer fails before committing the transaction to state DB
+	//======================================================================================
+	//SCENARIO 1: peer fails before committing the second block to state DB
+	//and history DB (if exist)
+	//======================================================================================
 	simulator, _ = ledger.NewTxSimulator()
 	//simulating transaction
 	simulator.SetState("ns1", "key1", []byte("value4"))
@@ -123,7 +127,8 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	block2 := bg.NextBlock([][]byte{simRes}, false)
 	//performing validation of read and write set to find valid transactions
 	ledger.(*KVLedger).txtmgmt.ValidateAndPrepare(block2, true)
-	//writing the validated block to block storage but not committing the transaction to state DB
+	//writing the validated block to block storage but not committing the transaction
+	//to state DB and history DB (if exist)
 	err := ledger.(*KVLedger).blockStore.AddBlock(block2)
 	//assume that peer fails here before committing the transaction
 	assert.NoError(t, err)
@@ -143,6 +148,28 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	value, _ = simulator.GetState("ns1", "key3")
 	//value for 'key3' should be 'value3' as the last commit failed
 	testutil.AssertEquals(t, value, []byte("value3"))
+	//savepoint in state DB should 1 as the last commit failed
+	stateDBSavepoint, _ := ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint, uint64(1))
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		qhistory, _ := ledger.NewHistoryQueryExecutor()
+		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
+		//TODO: once the GetState() for CouchDB is updated to remove revID and other
+		//CouchDB related values, we can compare the values. For now, we just count
+		//the number of records.
+		count := 0
+		for {
+			if kmod, _ := itr.Next(); kmod == nil {
+				break
+			}
+			count++
+		}
+		testutil.AssertEquals(t, count, 1)
+		//savepoint in history DB should 1 as the last commit failed
+		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint, uint64(1))
+	}
 	simulator.Done()
 	ledger.Close()
 	provider.Close()
@@ -161,6 +188,198 @@ func TestKVLedgerStateDBRecovery(t *testing.T) {
 	value, _ = simulator.GetState("ns1", "key3")
 	//value for 'key3' should be 'value6' after recovery
 	testutil.AssertEquals(t, value, []byte("value6"))
+	//savepoint in state DB should 2 after recovery
+	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint, uint64(2))
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		qhistory, _ := ledger.NewHistoryQueryExecutor()
+		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
+		count := 0
+		for {
+			if kmod, _ := itr.Next(); kmod == nil {
+				break
+			}
+			count++
+		}
+		testutil.AssertEquals(t, count, 2)
+		//savepoint in history DB should 2 after recovery
+		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint, uint64(2))
+	}
+	simulator.Done()
+
+	//======================================================================================
+	//SCENARIO 2: peer fails after committing the third block to state DB
+	//but before committing to history DB (if exist)
+	//======================================================================================
+	simulator, _ = ledger.NewTxSimulator()
+	//simulating transaction
+	simulator.SetState("ns1", "key1", []byte("value7"))
+	simulator.SetState("ns1", "key2", []byte("value8"))
+	simulator.SetState("ns1", "key3", []byte("value9"))
+	simulator.Done()
+	simRes, _ = simulator.GetTxSimulationResults()
+	//generating a block based on the simulation result
+	block3 := bg.NextBlock([][]byte{simRes}, false)
+	//performing validation of read and write set to find valid transactions
+	ledger.(*KVLedger).txtmgmt.ValidateAndPrepare(block3, true)
+	//writing the validated block to block storage
+	err = ledger.(*KVLedger).blockStore.AddBlock(block3)
+	//committing the transaction to state DB
+	err = ledger.(*KVLedger).txtmgmt.Commit()
+	//assume that peer fails here after committing the transaction to state DB but before
+	//history DB
+	assert.NoError(t, err)
+
+	bcInfo, _ = ledger.GetBlockchainInfo()
+	block3Hash := block3.Header.Hash()
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+		Height: 3, CurrentBlockHash: block3Hash, PreviousBlockHash: block2.Header.Hash()})
+
+	simulator, _ = ledger.NewTxSimulator()
+	value, _ = simulator.GetState("ns1", "key1")
+	//value for 'key1' should be 'value7'
+	testutil.AssertEquals(t, value, []byte("value7"))
+	value, _ = simulator.GetState("ns1", "key2")
+	//value for 'key2' should be 'value8'
+	testutil.AssertEquals(t, value, []byte("value8"))
+	value, _ = simulator.GetState("ns1", "key3")
+	//value for 'key3' should be 'value9'
+	testutil.AssertEquals(t, value, []byte("value9"))
+	//savepoint in state DB should 3
+	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		qhistory, _ := ledger.NewHistoryQueryExecutor()
+		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
+		//TODO: once the GetState() for CouchDB is updated to remove revID and other
+		//CouchDB related values, we can compare the values. For now, we just count
+		//the number of records.
+		count := 0
+		for {
+			if kmod, _ := itr.Next(); kmod == nil {
+				break
+			}
+			count++
+		}
+		testutil.AssertEquals(t, count, 2)
+		//savepoint in history DB should 2 as the last commit failed
+		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint, uint64(2))
+	}
+	simulator.Done()
+	ledger.Close()
+	provider.Close()
+
+	//we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
+	//history DB should be recovered before returning from NewKVLedger call
+	provider, _ = NewProvider()
+	ledger, _ = provider.Open("testLedger")
+	simulator, _ = ledger.NewTxSimulator()
+	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		qhistory, _ := ledger.NewHistoryQueryExecutor()
+		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
+		count := 0
+		for {
+			if kmod, _ := itr.Next(); kmod == nil {
+				break
+			}
+			count++
+		}
+		testutil.AssertEquals(t, count, 3)
+		//savepoint in history DB should 3 after recovery
+		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint, uint64(3))
+	}
+	simulator.Done()
+
+	//Rare scenario
+	//======================================================================================
+	//SCENARIO 3: peer fails after committing the fourth block to history DB (if exist)
+	//but before committing to state DB
+	//======================================================================================
+	simulator, _ = ledger.NewTxSimulator()
+	//simulating transaction
+	simulator.SetState("ns1", "key1", []byte("value10"))
+	simulator.SetState("ns1", "key2", []byte("value11"))
+	simulator.SetState("ns1", "key3", []byte("value12"))
+	simulator.Done()
+	simRes, _ = simulator.GetTxSimulationResults()
+	//generating a block based on the simulation result
+	block4 := bg.NextBlock([][]byte{simRes}, false)
+	//performing validation of read and write set to find valid transactions
+	ledger.(*KVLedger).txtmgmt.ValidateAndPrepare(block4, true)
+	//writing the validated block to block storage but fails to commit to state DB but
+	//successfully commits to history DB (if exists)
+	err = ledger.(*KVLedger).blockStore.AddBlock(block4)
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		err = ledger.(*KVLedger).historymgmt.Commit(block4)
+	}
+	assert.NoError(t, err)
+
+	bcInfo, _ = ledger.GetBlockchainInfo()
+	block4Hash := block4.Header.Hash()
+	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+		Height: 4, CurrentBlockHash: block4Hash, PreviousBlockHash: block3.Header.Hash()})
+
+	simulator, _ = ledger.NewTxSimulator()
+	value, _ = simulator.GetState("ns1", "key1")
+	//value for 'key1' should be 'value7' as the last commit to State DB failed
+	testutil.AssertEquals(t, value, []byte("value7"))
+	value, _ = simulator.GetState("ns1", "key2")
+	//value for 'key2' should be 'value8' as the last commit to State DB failed
+	testutil.AssertEquals(t, value, []byte("value8"))
+	value, _ = simulator.GetState("ns1", "key3")
+	//value for 'key3' should be 'value9' as the last commit to State DB failed
+	testutil.AssertEquals(t, value, []byte("value9"))
+	//savepoint in state DB should 3 as the last commit failed
+	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+		qhistory, _ := ledger.NewHistoryQueryExecutor()
+		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
+		//TODO: once the GetState() for CouchDB is updated to remove revID and other
+		//CouchDB related values, we can compare the values. For now, we just count
+		//the number of records.
+		count := 0
+		for {
+			if kmod, _ := itr.Next(); kmod == nil {
+				break
+			}
+			count++
+		}
+		testutil.AssertEquals(t, count, 4)
+		//savepoint in history DB should 4
+		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		testutil.AssertEquals(t, historyDBSavepoint, uint64(4))
+	}
+	simulator.Done()
+	ledger.Close()
+	provider.Close()
+
+	//we assume here that the peer comes online and calls NewKVLedger to get a handler for the ledger
+	//state DB should be recovered before returning from NewKVLedger call
+	provider, _ = NewProvider()
+	ledger, _ = provider.Open("testLedger")
+	simulator, _ = ledger.NewTxSimulator()
+	value, _ = simulator.GetState("ns1", "key1")
+	//value for 'key1' should be 'value10' after state DB recovery
+	testutil.AssertEquals(t, value, []byte("value10"))
+	value, _ = simulator.GetState("ns1", "key2")
+	//value for 'key2' should be 'value11' after state DB recovery
+	testutil.AssertEquals(t, value, []byte("value11"))
+	value, _ = simulator.GetState("ns1", "key3")
+	//value for 'key3' should be 'value12' after state DB recovery
+	testutil.AssertEquals(t, value, []byte("value12"))
+	//savepoint in state DB should 4 after the recovery
+	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	testutil.AssertEquals(t, stateDBSavepoint, uint64(4))
 	simulator.Done()
 }
 
