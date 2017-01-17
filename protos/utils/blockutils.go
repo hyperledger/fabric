@@ -106,12 +106,12 @@ const (
 func createConfigItem(chainID string,
 	configItemKey string,
 	configItemValue []byte,
-	modPolicy string) *cb.ConfigurationItem {
+	modPolicy string, configItemType cb.ConfigurationItem_ConfigurationType) *cb.ConfigurationItem {
 
 	ciChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM,
 		messageVersion, chainID, epoch)
 	configItem := MakeConfigurationItem(ciChainHeader,
-		cb.ConfigurationItem_Orderer, lastModified, modPolicy,
+		configItemType, lastModified, modPolicy,
 		configItemKey, configItemValue)
 
 	return configItem
@@ -120,8 +120,8 @@ func createConfigItem(chainID string,
 func createSignedConfigItem(chainID string,
 	configItemKey string,
 	configItemValue []byte,
-	modPolicy string) *cb.SignedConfigurationItem {
-	configItem := createConfigItem(chainID, configItemKey, configItemValue, modPolicy)
+	modPolicy string, configItemType cb.ConfigurationItem_ConfigurationType) *cb.SignedConfigurationItem {
+	configItem := createConfigItem(chainID, configItemKey, configItemValue, modPolicy, configItemType)
 	return &cb.SignedConfigurationItem{
 		ConfigurationItem: MarshalOrPanic(configItem),
 		Signatures:        nil}
@@ -146,10 +146,12 @@ func EncodeMSPUnsigned(testChainID string) *cb.ConfigurationItem {
 	if err != nil {
 		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
 	}
+	// TODO: once https://gerrit.hyperledger.org/r/#/c/3941 is merged, change this to MSP
+	// Right now we don't have an MSP type there
 	return createConfigItem(testChainID,
 		mspKey,
 		MarshalOrPanic(conf),
-		XXX_DefaultModificationPolicyID)
+		XXX_DefaultModificationPolicyID, cb.ConfigurationItem_Orderer)
 }
 
 // EncodeMSP gets the signed configuration item with the default MSP
@@ -159,8 +161,10 @@ func EncodeMSP(testChainID string) *cb.SignedConfigurationItem {
 	if err != nil {
 		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
 	}
+	// TODO: once https://gerrit.hyperledger.org/r/#/c/3941 is merged, change this to MSP
+	// Right now we don't have an MSP type there
 	return createSignedConfigItem(testChainID,
 		mspKey,
 		MarshalOrPanic(conf),
-		XXX_DefaultModificationPolicyID)
+		XXX_DefaultModificationPolicyID, cb.ConfigurationItem_Orderer)
 }
