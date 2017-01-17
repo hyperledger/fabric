@@ -37,7 +37,7 @@ const (
 
 var logger = logging.MustGetLogger("main")
 
-var finalLedger ledger.ValidatedLedger
+var peerLedger ledger.PeerLedger
 var marbleApp *example.MarbleApp
 var committer *example.Committer
 var consenter *example.Consenter
@@ -55,12 +55,12 @@ func init() {
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	finalLedger, err = ledgermgmt.CreateLedger(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(ledgerID)
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
-	marbleApp = example.ConstructMarbleAppInstance(finalLedger)
-	committer = example.ConstructCommitter(finalLedger)
+	marbleApp = example.ConstructMarbleAppInstance(peerLedger)
+	committer = example.ConstructCommitter(peerLedger)
 	consenter = example.ConstructConsenter()
 }
 

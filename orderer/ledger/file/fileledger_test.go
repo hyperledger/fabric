@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	"github.com/hyperledger/fabric/orderer/localconfig"
-	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -83,7 +83,7 @@ func TestInitialization(t *testing.T) {
 func TestReinitialization(t *testing.T) {
 	tev, ofl := initialize(t)
 	defer tev.tearDown()
-	ofl.Append(rawledger.CreateNextBlock(ofl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	ofl.Append(ordererledger.CreateNextBlock(ofl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	flf := New(tev.location)
 	chains := flf.ChainIDs()
 	if len(chains) != 1 {
@@ -134,7 +134,7 @@ func TestAddition(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
 	prevHash := fl.lastHash
-	fl.Append(rawledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	fl.Append(ordererledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	if fl.height != 2 {
 		t.Fatalf("Block height should be 2")
 	}
@@ -150,7 +150,7 @@ func TestAddition(t *testing.T) {
 func TestRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	fl.Append(rawledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	fl.Append(ordererledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
@@ -196,7 +196,7 @@ func TestBlockedRetrieval(t *testing.T) {
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	fl.Append(rawledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	fl.Append(ordererledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	select {
 	case <-signal:
 	default:

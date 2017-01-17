@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rawledger
+package ordererledger
 
 import (
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -40,7 +40,7 @@ type Iterator interface {
 	ReadyChan() <-chan struct{}
 }
 
-// Reader allows the caller to inspect the raw ledger
+// Reader allows the caller to inspect the orderer ledger
 type Reader interface {
 	// Iterator retrieves an Iterator, as specified by an cb.SeekInfo message, returning an iterator, and its starting block number
 	Iterator(startType *ab.SeekPosition) (Iterator, uint64)
@@ -48,13 +48,13 @@ type Reader interface {
 	Height() uint64
 }
 
-// Writer allows the caller to modify the raw ledger
+// Writer allows the caller to modify the orderer ledger
 type Writer interface {
 	// Append a new block to the ledger
 	Append(block *cb.Block) error
 }
 
-// ReadWriter encapsulated both the reading and writing functions of the rawledger
+// ReadWriter encapsulated both the reading and writing functions of the ordererledger
 type ReadWriter interface {
 	Reader
 	Writer

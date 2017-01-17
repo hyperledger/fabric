@@ -33,11 +33,11 @@ var logger = logging.MustGetLogger("example")
 // App - a sample fund transfer app
 type MarbleApp struct {
 	name   string
-	ledger ledger.ValidatedLedger
+	ledger ledger.PeerLedger
 }
 
 // ConstructAppInstance constructs an instance of an app
-func ConstructMarbleAppInstance(ledger ledger.ValidatedLedger) *MarbleApp {
+func ConstructMarbleAppInstance(ledger ledger.PeerLedger) *MarbleApp {
 	return &MarbleApp{"marbles_app", ledger}
 }
 

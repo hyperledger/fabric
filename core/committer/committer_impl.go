@@ -39,12 +39,12 @@ func init() {
 // it keeps the reference to the ledger to commit blocks and retreive
 // chain information
 type LedgerCommitter struct {
-	ledger    ledger.ValidatedLedger
+	ledger    ledger.PeerLedger
 	validator txvalidator.Validator
 }
 
 // NewLedgerCommitter is a factory function to create an instance of the committer
-func NewLedgerCommitter(ledger ledger.ValidatedLedger, validator txvalidator.Validator) *LedgerCommitter {
+func NewLedgerCommitter(ledger ledger.PeerLedger, validator txvalidator.Validator) *LedgerCommitter {
 	return &LedgerCommitter{ledger: ledger, validator: validator}
 }
 

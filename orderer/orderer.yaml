@@ -4,7 +4,7 @@
 #   Orderer Configuration
 #
 #   - This controls the type and configuration for the orderer which is started
-#   - This controls the type and configuration for the rawledger if needed
+#   - This controls the type and configuration for the ordererledger if needed
 #
 ################################################################################
 General:
@@ -77,7 +77,7 @@ FileLedger:
 
     # The prefix to use when generating a ledger directory in temporary space
     # Otherwise, this value is ignored
-    Prefix: hyperledger-fabric-rawledger
+    Prefix: hyperledger-fabric-ordererledger
 
 ################################################################################
 #

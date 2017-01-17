@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rawledger
+package ordererledger
 
 import (
 	"errors"
@@ -31,50 +31,50 @@ const (
 	fileSegmentSize = 64 * 1024 * 1024
 )
 
-// FSBasedRawLedger - a raw ledger implementation that persists blocks on filesystem based store
-type FSBasedRawLedger struct {
+// FSBasedOrdererLedger - an orderer ledger implementation that persists blocks on filesystem based store
+type FSBasedOrdererLedger struct {
 	blockStore *fsblkstorage.FsBlockStore
 }
 
-// NewFSBasedRawLedger constructs an instance of `FSBasedRawLedger`
-func NewFSBasedRawLedger(filesystemPath string) *FSBasedRawLedger {
+// NewFSBasedOrdererLedger constructs an instance of `FSBasedOrdererLedger`
+func NewFSBasedOrdererLedger(filesystemPath string) *FSBasedOrdererLedger {
 	conf := fsblkstorage.NewConf(filesystemPath, fileSegmentSize)
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockNum,
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	blockStore := fsblkstorage.NewFsBlockStore(conf, indexConfig)
-	return &FSBasedRawLedger{blockStore}
+	return &FSBasedOrdererLedger{blockStore}
 }
 
 // GetBlockchainInfo returns basic info about blockchain
-func (rl *FSBasedRawLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
+func (rl *FSBasedOrdererLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 	return rl.blockStore.GetBlockchainInfo()
 }
 
 // GetBlockByNumber returns block at a given height
-func (rl *FSBasedRawLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
+func (rl *FSBasedOrdererLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 	return rl.blockStore.RetrieveBlockByNumber(blockNumber)
 }
 
 // GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
 // The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 // ResultsIterator contains type BlockHolder
-func (rl *FSBasedRawLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIterator, error) {
+func (rl *FSBasedOrdererLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIterator, error) {
 	return rl.blockStore.RetrieveBlocks(startBlockNumber)
 }
 
 //Prune prunes the blocks/transactions that satisfy the given policy
-func (rl *FSBasedRawLedger) Prune(policy ledger.PrunePolicy) error {
+func (rl *FSBasedOrdererLedger) Prune(policy ledger.PrunePolicy) error {
 	return errors.New("Not yet implemented")
 }
 
 // Close closes the ledger
-func (rl *FSBasedRawLedger) Close() {
+func (rl *FSBasedOrdererLedger) Close() {
 	rl.blockStore.Shutdown()
 }
 
 // CommitBlock adds a new block
-func (rl *FSBasedRawLedger) CommitBlock(block *common.Block) error {
+func (rl *FSBasedOrdererLedger) CommitBlock(block *common.Block) error {
 	return rl.blockStore.AddBlock(block)
 }

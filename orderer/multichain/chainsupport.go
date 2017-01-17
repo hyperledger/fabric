@@ -26,7 +26,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
 	"github.com/hyperledger/fabric/orderer/common/sizefilter"
-	"github.com/hyperledger/fabric/orderer/rawledger"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -77,7 +77,7 @@ type ChainSupport interface {
 	PolicyManager() policies.Manager
 
 	// Reader returns the chain Reader for the chain
-	Reader() rawledger.Reader
+	Reader() ordererledger.Reader
 
 	broadcast.Support
 	ConsenterSupport
@@ -92,7 +92,7 @@ type chainSupport struct {
 	configManager       configtx.Manager
 	policyManager       policies.Manager
 	sharedConfigManager sharedconfig.Manager
-	ledger              rawledger.ReadWriter
+	ledger              ordererledger.ReadWriter
 	filters             *filter.RuleSet
 	signer              Signer
 	lastConfiguration   uint64
@@ -103,7 +103,7 @@ func newChainSupport(
 	filters *filter.RuleSet,
 	configManager configtx.Manager,
 	policyManager policies.Manager,
-	backing rawledger.ReadWriter,
+	backing ordererledger.ReadWriter,
 	sharedConfigManager sharedconfig.Manager,
 	consenters map[string]Consenter,
 	signer Signer,
@@ -195,7 +195,7 @@ func (cs *chainSupport) BlockCutter() blockcutter.Receiver {
 	return cs.cutter
 }
 
-func (cs *chainSupport) Reader() rawledger.Reader {
+func (cs *chainSupport) Reader() ordererledger.Reader {
 	return cs.ledger
 }
 
@@ -204,7 +204,7 @@ func (cs *chainSupport) Enqueue(env *cb.Envelope) bool {
 }
 
 func (cs *chainSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
-	return rawledger.CreateNextBlock(cs.ledger, messages)
+	return ordererledger.CreateNextBlock(cs.ledger, messages)
 }
 
 func (cs *chainSupport) addBlockSignature(block *cb.Block) {

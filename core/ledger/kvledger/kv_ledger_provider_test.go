@@ -61,7 +61,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 	defer env.cleanup()
 	numLedgers := 10
 	provider, _ := NewProvider()
-	ledgers := make([]ledger.ValidatedLedger, numLedgers)
+	ledgers := make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		l, err := provider.Create(constructTestLedgerID(i))
 		testutil.AssertNoError(t, err, "")
@@ -85,7 +85,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 
 	provider, _ = NewProvider()
 	defer provider.Close()
-	ledgers = make([]ledger.ValidatedLedger, numLedgers)
+	ledgers = make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		l, err := provider.Open(constructTestLedgerID(i))
 		testutil.AssertNoError(t, err, "")

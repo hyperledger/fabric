@@ -36,7 +36,7 @@ const (
 	ledgerID = "Default"
 )
 
-var finalLedger ledger.ValidatedLedger
+var peerLedger ledger.PeerLedger
 var app *example.App
 var committer *example.Committer
 var consenter *example.Consenter
@@ -54,12 +54,12 @@ func init() {
 	cleanup()
 	ledgermgmt.Initialize()
 	var err error
-	finalLedger, err = ledgermgmt.CreateLedger(ledgerID)
+	peerLedger, err = ledgermgmt.CreateLedger(ledgerID)
 	if err != nil {
 		panic(fmt.Errorf("Error in NewKVLedger(): %s", err))
 	}
-	app = example.ConstructAppInstance(finalLedger)
-	committer = example.ConstructCommitter(finalLedger)
+	app = example.ConstructAppInstance(peerLedger)
+	committer = example.ConstructCommitter(peerLedger)
 	consenter = example.ConstructConsenter()
 }
 

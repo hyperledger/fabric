@@ -35,8 +35,8 @@ var ErrLedgerAlreadyOpened = errors.New("Ledger already opened")
 // ErrLedgerMgmtNotInitialized is thrown when ledger mgmt is used before initializing this
 var ErrLedgerMgmtNotInitialized = errors.New("ledger mgmt should be initialized before using")
 
-var openedLedgers map[string]ledger.ValidatedLedger
-var ledgerProvider ledger.ValidatedLedgerProvider
+var openedLedgers map[string]ledger.PeerLedger
+var ledgerProvider ledger.PeerLedgerProvider
 var lock sync.Mutex
 var initialized bool
 var once sync.Once
@@ -53,7 +53,7 @@ func initialize() {
 	lock.Lock()
 	defer lock.Unlock()
 	initialized = true
-	openedLedgers = make(map[string]ledger.ValidatedLedger)
+	openedLedgers = make(map[string]ledger.PeerLedger)
 	provider, err := kvledger.NewProvider()
 	if err != nil {
 		panic(fmt.Errorf("Error in instantiating ledger provider: %s", err))
@@ -63,7 +63,7 @@ func initialize() {
 }
 
 // CreateLedger creates a new ledger with the given id
-func CreateLedger(id string) (ledger.ValidatedLedger, error) {
+func CreateLedger(id string) (ledger.PeerLedger, error) {
 	logger.Infof("Creating leadger with id = %s", id)
 	lock.Lock()
 	defer lock.Unlock()
@@ -81,7 +81,7 @@ func CreateLedger(id string) (ledger.ValidatedLedger, error) {
 }
 
 // OpenLedger returns a ledger for the given id
-func OpenLedger(id string) (ledger.ValidatedLedger, error) {
+func OpenLedger(id string) (ledger.PeerLedger, error) {
 	logger.Infof("Opening leadger with id = %s", id)
 	lock.Lock()
 	defer lock.Unlock()
@@ -128,14 +128,14 @@ func Close() {
 	logger.Infof("ledger mgmt closed")
 }
 
-func wrapLedger(id string, l ledger.ValidatedLedger) ledger.ValidatedLedger {
+func wrapLedger(id string, l ledger.PeerLedger) ledger.PeerLedger {
 	return &ClosableLedger{id, l}
 }
 
 // ClosableLedger extends from actual validated ledger and overwrites the Close method
 type ClosableLedger struct {
 	id string
-	ledger.ValidatedLedger
+	ledger.PeerLedger
 }
 
 // Close closes the actual ledger and removes the entries from opened ledgers map
@@ -146,6 +146,6 @@ func (l *ClosableLedger) Close() {
 }
 
 func (l *ClosableLedger) closeWithoutLock() {
-	l.ValidatedLedger.Close()
+	l.PeerLedger.Close()
 	delete(openedLedgers, l.id)
 }

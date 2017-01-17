@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rawledger_test
+package ordererledger_test
 
 import (
 	"io/ioutil"
 	"os"
 
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	. "github.com/hyperledger/fabric/orderer/ledger"
+	fileledger "github.com/hyperledger/fabric/orderer/ledger/file"
 	"github.com/hyperledger/fabric/orderer/localconfig"
-	. "github.com/hyperledger/fabric/orderer/rawledger"
-	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 

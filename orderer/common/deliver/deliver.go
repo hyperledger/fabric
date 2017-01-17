@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
-	"github.com/hyperledger/fabric/orderer/rawledger"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
@@ -49,7 +49,7 @@ type Support interface {
 	PolicyManager() policies.Manager
 
 	// Reader returns the chain Reader for the chain
-	Reader() rawledger.Reader
+	Reader() ordererledger.Reader
 
 	// SharedConfig returns the shared config manager for this chain
 	SharedConfig() sharedconfig.Manager

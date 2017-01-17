@@ -24,15 +24,14 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	mockpolicies "github.com/hyperledger/fabric/orderer/mocks/policies"
 	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
-	"github.com/hyperledger/fabric/orderer/rawledger"
-	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
-
 	logging "github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
@@ -84,7 +83,7 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 }
 
 type mockSupport struct {
-	ledger        rawledger.ReadWriter
+	ledger        ordererledger.ReadWriter
 	sharedConfig  *mocksharedconfig.Manager
 	policyManager *mockpolicies.Manager
 }
@@ -93,11 +92,11 @@ func (mcs *mockSupport) PolicyManager() policies.Manager {
 	return mcs.policyManager
 }
 
-func (mcs *mockSupport) Reader() rawledger.Reader {
+func (mcs *mockSupport) Reader() ordererledger.Reader {
 	return mcs.ledger
 }
 
-func NewRAMLedger() rawledger.ReadWriter {
+func NewRAMLedger() ordererledger.ReadWriter {
 	rlf := ramledger.New(ledgerSize + 1)
 	rl, _ := rlf.GetOrCreate(provisional.TestChainID)
 	rl.Append(genesisBlock)
@@ -146,7 +145,7 @@ func TestOldestSeek(t *testing.T) {
 	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
 		ledger := mm.chains[systemChainID].ledger
-		ledger.Append(rawledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+		ledger.Append(ordererledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
 	m := newMockD()
@@ -185,7 +184,7 @@ func TestNewestSeek(t *testing.T) {
 	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
 		ledger := mm.chains[systemChainID].ledger
-		ledger.Append(rawledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+		ledger.Append(ordererledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
 	m := newMockD()
@@ -217,7 +216,7 @@ func TestSpecificSeek(t *testing.T) {
 	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
 		ledger := mm.chains[systemChainID].ledger
-		ledger.Append(rawledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+		ledger.Append(ordererledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
 	m := newMockD()
@@ -255,7 +254,7 @@ func TestUnauthorizedSeek(t *testing.T) {
 	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
 		ledger := mm.chains[systemChainID].ledger
-		ledger.Append(rawledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+		ledger.Append(ordererledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 	mm.chains[systemChainID].policyManager.Policy.Err = fmt.Errorf("Fail to evaluate policy")
 
@@ -281,7 +280,7 @@ func TestBadSeek(t *testing.T) {
 	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
 		ledger := mm.chains[systemChainID].ledger
-		ledger.Append(rawledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+		ledger.Append(ordererledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
 	m := newMockD()
@@ -306,7 +305,7 @@ func TestFailFastSeek(t *testing.T) {
 	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
 		ledger := mm.chains[systemChainID].ledger
-		ledger.Append(rawledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+		ledger.Append(ordererledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
 	m := newMockD()
@@ -340,7 +339,7 @@ func TestBlockingSeek(t *testing.T) {
 	mm := newMockMultichainManager()
 	for i := 1; i < ledgerSize; i++ {
 		ledger := mm.chains[systemChainID].ledger
-		ledger.Append(rawledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
+		ledger.Append(ordererledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", i))}}))
 	}
 
 	m := newMockD()
@@ -367,7 +366,7 @@ func TestBlockingSeek(t *testing.T) {
 	}
 
 	ledger := mm.chains[systemChainID].ledger
-	ledger.Append(rawledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", ledgerSize+1))}}))
+	ledger.Append(ordererledger.CreateNextBlock(ledger, []*cb.Envelope{&cb.Envelope{Payload: []byte(fmt.Sprintf("%d", ledgerSize+1))}}))
 
 	select {
 	case deliverReply := <-m.sendChan:

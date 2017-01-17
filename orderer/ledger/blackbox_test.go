@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rawledger_test
+package ordererledger_test
 
 import (
 	"bytes"
 	"reflect"
 	"testing"
 
-	. "github.com/hyperledger/fabric/orderer/rawledger"
+	. "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )

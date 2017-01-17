@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rawledger_test
+package ordererledger_test
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
-	. "github.com/hyperledger/fabric/orderer/rawledger"
-	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
+	. "github.com/hyperledger/fabric/orderer/ledger"
+	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 )
 
 func init() {

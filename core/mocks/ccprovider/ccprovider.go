@@ -42,7 +42,7 @@ type mockCcProviderContextImpl struct {
 }
 
 // GetContext does nothing
-func (c *mockCcProviderImpl) GetContext(ledger ledger.ValidatedLedger) (context.Context, error) {
+func (c *mockCcProviderImpl) GetContext(ledger ledger.PeerLedger) (context.Context, error) {
 	return nil, nil
 }
 

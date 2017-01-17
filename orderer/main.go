@@ -29,11 +29,11 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/kafka"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	fileledger "github.com/hyperledger/fabric/orderer/ledger/file"
+	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
-	"github.com/hyperledger/fabric/orderer/rawledger"
-	"github.com/hyperledger/fabric/orderer/rawledger/fileledger"
-	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	"github.com/hyperledger/fabric/orderer/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -67,7 +67,7 @@ func main() {
 		return
 	}
 
-	var lf rawledger.Factory
+	var lf ordererledger.Factory
 	switch conf.General.LedgerType {
 	case "file":
 		location := conf.FileLedger.Location

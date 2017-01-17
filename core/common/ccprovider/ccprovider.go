@@ -29,7 +29,7 @@ import (
 // should be added below if necessary
 type ChaincodeProvider interface {
 	// GetContext returns a ledger context
-	GetContext(ledger ledger.ValidatedLedger) (context.Context, error)
+	GetContext(ledger ledger.PeerLedger) (context.Context, error)
 	// GetCCContext returns an opaque chaincode context
 	GetCCContext(cid, name, version, txid string, syscc bool, prop *peer.Proposal) interface{}
 	// GetCCValidationInfoFromLCCC returns the VSCC and the policy listed by LCCC for the supplied chaincode

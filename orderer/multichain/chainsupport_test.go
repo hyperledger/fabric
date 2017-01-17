@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/common/filter"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	mockconfigtx "github.com/hyperledger/fabric/orderer/mocks/configtx"
-	"github.com/hyperledger/fabric/orderer/rawledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -41,7 +41,7 @@ func (mlw *mockLedgerReadWriter) Append(block *cb.Block) error {
 	return nil
 }
 
-func (mlw *mockLedgerReadWriter) Iterator(startType *ab.SeekPosition) (rawledger.Iterator, uint64) {
+func (mlw *mockLedgerReadWriter) Iterator(startType *ab.SeekPosition) (ordererledger.Iterator, uint64) {
 	panic("Unimplemented")
 }
 

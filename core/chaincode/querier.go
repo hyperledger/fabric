@@ -111,7 +111,7 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error)
 }
 
 // Execute the specified query string
-func getQueryResult(vledger ledger.ValidatedLedger, query []byte) (ret []byte, err error) {
+func getQueryResult(vledger ledger.PeerLedger, query []byte) (ret []byte, err error) {
 	if query == nil {
 		return nil, fmt.Errorf("Query string must not be nil.")
 	}
@@ -186,7 +186,7 @@ func collectRecord(buffer *bytes.Buffer, rec *ledger.QueryRecord) {
 	buffer.WriteString("}")
 }
 
-func getTransactionByID(vledger ledger.ValidatedLedger, tid []byte) ([]byte, error) {
+func getTransactionByID(vledger ledger.PeerLedger, tid []byte) ([]byte, error) {
 	if tid == nil {
 		return nil, fmt.Errorf("Transaction ID must not be nil.")
 	}
@@ -199,7 +199,7 @@ func getTransactionByID(vledger ledger.ValidatedLedger, tid []byte) ([]byte, err
 	return utils.Marshal(tx)
 }
 
-func getBlockByNumber(vledger ledger.ValidatedLedger, number []byte) ([]byte, error) {
+func getBlockByNumber(vledger ledger.PeerLedger, number []byte) ([]byte, error) {
 	if number == nil {
 		return nil, fmt.Errorf("Block number must not be nil.")
 	}
@@ -216,7 +216,7 @@ func getBlockByNumber(vledger ledger.ValidatedLedger, number []byte) ([]byte, er
 	return utils.Marshal(block)
 }
 
-func getBlockByHash(vledger ledger.ValidatedLedger, hash []byte) ([]byte, error) {
+func getBlockByHash(vledger ledger.PeerLedger, hash []byte) ([]byte, error) {
 	if hash == nil {
 		return nil, fmt.Errorf("Block hash must not be nil.")
 	}
@@ -229,7 +229,7 @@ func getBlockByHash(vledger ledger.ValidatedLedger, hash []byte) ([]byte, error)
 	return utils.Marshal(block)
 }
 
-func getChainInfo(vledger ledger.ValidatedLedger) ([]byte, error) {
+func getChainInfo(vledger ledger.PeerLedger) ([]byte, error) {
 	binfo, err := vledger.GetBlockchainInfo()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get block info with error %s", err)

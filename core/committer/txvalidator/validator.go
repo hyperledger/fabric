@@ -51,7 +51,7 @@ type vsccValidator interface {
 // vsccValidator implementation which used to call
 // vscc chaincode and validate block transactions
 type vsccValidatorImpl struct {
-	ledger     ledger.ValidatedLedger
+	ledger     ledger.PeerLedger
 	ccprovider ccprovider.ChaincodeProvider
 }
 
@@ -59,7 +59,7 @@ type vsccValidatorImpl struct {
 // reference to the ledger to enable tx simulation
 // and execution of vscc
 type txValidator struct {
-	ledger ledger.ValidatedLedger
+	ledger ledger.PeerLedger
 	vscc   vsccValidator
 }
 
@@ -71,7 +71,7 @@ func init() {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(ledger ledger.ValidatedLedger) Validator {
+func NewTxValidator(ledger ledger.PeerLedger) Validator {
 	// Encapsulates interface implementation
 	return &txValidator{ledger, &vsccValidatorImpl{ledger: ledger, ccprovider: ccprovider.GetChaincodeProvider()}}
 }

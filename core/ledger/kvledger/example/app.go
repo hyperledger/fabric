@@ -30,11 +30,11 @@ import (
 // App - a sample fund transfer app
 type App struct {
 	name   string
-	ledger ledger.ValidatedLedger
+	ledger ledger.PeerLedger
 }
 
 // ConstructAppInstance constructs an instance of an app
-func ConstructAppInstance(ledger ledger.ValidatedLedger) *App {
+func ConstructAppInstance(ledger ledger.PeerLedger) *App {
 	return &App{"PaymentApp", ledger}
 }
 

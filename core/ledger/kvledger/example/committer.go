@@ -24,11 +24,11 @@ import (
 
 // Committer a toy committer
 type Committer struct {
-	ledger ledger.ValidatedLedger
+	ledger ledger.PeerLedger
 }
 
 // ConstructCommitter constructs a committer for the example
-func ConstructCommitter(ledger ledger.ValidatedLedger) *Committer {
+func ConstructCommitter(ledger ledger.PeerLedger) *Committer {
 	return &Committer{ledger}
 }
 

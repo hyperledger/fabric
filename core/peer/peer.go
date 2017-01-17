@@ -44,7 +44,7 @@ var peerLogger = logging.MustGetLogger("peer")
 // chain is a local struct to manage objects in a chain
 type chain struct {
 	cb        *common.Block
-	ledger    ledger.ValidatedLedger
+	ledger    ledger.PeerLedger
 	committer committer.Committer
 	mspmgr    msp.MSPManager
 }
@@ -72,7 +72,7 @@ func Initialize(dsProvider func(string) error) {
 	deliveryServiceProvider = dsProvider
 
 	var cb *common.Block
-	var ledger ledger.ValidatedLedger
+	var ledger ledger.PeerLedger
 	ledgermgmt.Initialize()
 	ledgerIds, err := ledgermgmt.GetLedgerIDs()
 	if err != nil {
@@ -111,7 +111,7 @@ func CreateDeliveryService(chainID string) error {
 	return deliveryServiceProvider(chainID)
 }
 
-func getCurrConfigBlockFromLedger(ledger ledger.ValidatedLedger) (*common.Block, error) {
+func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
 	// Configuration blocks contain only 1 transaction, so we look for 1-tx
 	// blocks and check the transaction type
 	var envelope *common.Envelope
@@ -144,7 +144,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.ValidatedLedger) (*common.Block,
 }
 
 // createChain creates a new chain object and insert it into the chains
-func createChain(cid string, ledger ledger.ValidatedLedger, cb *common.Block) error {
+func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(ledger))
 
 	mgr, err := mspmgmt.GetMSPManagerFromBlock(cid, cb)
@@ -168,7 +168,7 @@ func CreateChainFromBlock(cb *common.Block) error {
 	if err != nil {
 		return err
 	}
-	var ledger ledger.ValidatedLedger
+	var ledger ledger.PeerLedger
 	if ledger, err = createLedger(cid); err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func CreateChainFromBlock(cb *common.Block) error {
 // MockCreateChain used for creating a ledger for a chain for tests
 // without havin to join
 func MockCreateChain(cid string) error {
-	var ledger ledger.ValidatedLedger
+	var ledger ledger.PeerLedger
 	var err error
 	if ledger, err = createLedger(cid); err != nil {
 		return err
@@ -194,7 +194,7 @@ func MockCreateChain(cid string) error {
 
 // GetLedger returns the ledger of the chain with chain ID. Note that this
 // call returns nil if chain cid has not been created.
-func GetLedger(cid string) ledger.ValidatedLedger {
+func GetLedger(cid string) ledger.PeerLedger {
 	chains.RLock()
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
@@ -241,8 +241,8 @@ func SetCurrConfigBlock(block *common.Block, cid string) error {
 }
 
 // All ledgers are located under `peer.fileSystemPath`
-func createLedger(cid string) (ledger.ValidatedLedger, error) {
-	var ledger ledger.ValidatedLedger
+func createLedger(cid string) (ledger.PeerLedger, error) {
+	var ledger ledger.PeerLedger
 	if ledger = GetLedger(cid); ledger != nil {
 		return ledger, nil
 	}

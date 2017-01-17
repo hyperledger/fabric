@@ -36,7 +36,7 @@ var (
 	ErrLedgerNotOpened = errors.New("Ledger is not opened yet")
 )
 
-// Provider implements interface ledger.ValidatedLedgerProvider
+// Provider implements interface ledger.PeerLedgerProvider
 type Provider struct {
 	idStore     *idStore
 	vdbProvider statedb.VersionedDBProvider
@@ -44,7 +44,7 @@ type Provider struct {
 
 // NewProvider instantiates a new Provider.
 // This is not thread-safe and assumed to be synchronized be the caller
-func NewProvider() (ledger.ValidatedLedgerProvider, error) {
+func NewProvider() (ledger.PeerLedgerProvider, error) {
 	logger.Info("Initializing ledger provider")
 	var vdbProvider statedb.VersionedDBProvider
 	if !ledgerconfig.IsCouchDBEnabled() {
@@ -64,8 +64,8 @@ func NewProvider() (ledger.ValidatedLedgerProvider, error) {
 	return &Provider{idStore, vdbProvider}, nil
 }
 
-// Create implements the corresponding method from interface ledger.ValidatedLedgerProvider
-func (provider *Provider) Create(ledgerID string) (ledger.ValidatedLedger, error) {
+// Create implements the corresponding method from interface ledger.PeerLedgerProvider
+func (provider *Provider) Create(ledgerID string) (ledger.PeerLedger, error) {
 	exists, err := provider.idStore.ledgerIDExists(ledgerID)
 	if err != nil {
 		return nil, err
@@ -81,8 +81,8 @@ func (provider *Provider) Create(ledgerID string) (ledger.ValidatedLedger, error
 	return l, nil
 }
 
-// Open implements the corresponding method from interface ledger.ValidatedLedgerProvider
-func (provider *Provider) Open(ledgerID string) (ledger.ValidatedLedger, error) {
+// Open implements the corresponding method from interface ledger.PeerLedgerProvider
+func (provider *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 	exists, err := provider.idStore.ledgerIDExists(ledgerID)
 	if err != nil {
 		return nil, err
@@ -97,17 +97,17 @@ func (provider *Provider) Open(ledgerID string) (ledger.ValidatedLedger, error) 
 	return l, nil
 }
 
-// Exists implements the corresponding method from interface ledger.ValidatedLedgerProvider
+// Exists implements the corresponding method from interface ledger.PeerLedgerProvider
 func (provider *Provider) Exists(ledgerID string) (bool, error) {
 	return provider.idStore.ledgerIDExists(ledgerID)
 }
 
-// List implements the corresponding method from interface ledger.ValidatedLedgerProvider
+// List implements the corresponding method from interface ledger.PeerLedgerProvider
 func (provider *Provider) List() ([]string, error) {
 	return provider.idStore.getAllLedgerIds()
 }
 
-// Close implements the corresponding method from interface ledger.ValidatedLedgerProvider
+// Close implements the corresponding method from interface ledger.PeerLedgerProvider
 func (provider *Provider) Close() {
 	provider.vdbProvider.Close()
 	provider.idStore.close()

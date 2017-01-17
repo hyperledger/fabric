@@ -40,7 +40,7 @@ import (
 	"encoding/gob"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/orderer/rawledger"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
 	"github.com/hyperledger/fabric/orderer/sbft/persist"
 	s "github.com/hyperledger/fabric/orderer/sbft/simplebft"
@@ -67,7 +67,7 @@ type Backend struct {
 	queue chan Executable
 
 	persistence *persist.Persist
-	ledger      rawledger.ReadWriter
+	ledger      ordererledger.ReadWriter
 
 	lastBatch *s.Batch
 }
@@ -93,7 +93,7 @@ func (pi peerInfoSlice) Swap(i, j int) {
 	pi[i], pi[j] = pi[j], pi[i]
 }
 
-func NewBackend(peers map[string][]byte, conn *connection.Manager, rl rawledger.ReadWriter, persist *persist.Persist) (*Backend, error) {
+func NewBackend(peers map[string][]byte, conn *connection.Manager, rl ordererledger.ReadWriter, persist *persist.Persist) (*Backend, error) {
 	c := &Backend{
 		conn:     conn,
 		peers:    make(map[uint64]chan<- *s.Msg),
@@ -310,9 +310,9 @@ func (t *Backend) Deliver(batch *s.Batch) {
 			logger.Warningf("Payload cannot be unmarshalled.")
 		}
 	}
-	block := rawledger.CreateNextBlock(t.ledger, blockContents)
+	block := ordererledger.CreateNextBlock(t.ledger, blockContents)
 	// This a quick and dirty solution to make it work.
-	// SBFT needs to use Rawledger's structures and signatures over the Block.
+	// SBFT needs to use Ordererledger's structures and signatures over the Block.
 	block.Metadata.Metadata[headerIndex] = batch.Header
 	block.Metadata.Metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
 	t.lastBatch = batch

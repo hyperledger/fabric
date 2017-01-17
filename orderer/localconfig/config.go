@@ -128,7 +128,7 @@ var defaults = TopLevel{
 	},
 	FileLedger: FileLedger{
 		Location: "",
-		Prefix:   "hyperledger-fabric-rawledger",
+		Prefix:   "hyperledger-fabric-ordererledger",
 	},
 	Kafka: Kafka{
 		Brokers: []string{"127.0.0.1:9092"},

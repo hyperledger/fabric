@@ -23,9 +23,9 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
-	"github.com/hyperledger/fabric/orderer/rawledger"
-	"github.com/hyperledger/fabric/orderer/rawledger/ramledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -44,7 +44,7 @@ func init() {
 	genesisBlock = provisional.New(conf).GenesisBlock()
 }
 
-func NewRAMLedgerAndFactory(maxSize int) (rawledger.Factory, rawledger.ReadWriter) {
+func NewRAMLedgerAndFactory(maxSize int) (ordererledger.Factory, ordererledger.ReadWriter) {
 	rlf := ramledger.New(10)
 	rl, err := rlf.GetOrCreate(provisional.TestChainID)
 	if err != nil {
@@ -57,7 +57,7 @@ func NewRAMLedgerAndFactory(maxSize int) (rawledger.Factory, rawledger.ReadWrite
 	return rlf, rl
 }
 
-func NewRAMLedger(maxSize int) rawledger.ReadWriter {
+func NewRAMLedger(maxSize int) ordererledger.ReadWriter {
 	_, rl := NewRAMLedgerAndFactory(maxSize)
 	return rl
 }
@@ -66,13 +66,13 @@ func NewRAMLedger(maxSize int) rawledger.ReadWriter {
 func TestGetConfigTx(t *testing.T) {
 	rl := NewRAMLedger(10)
 	for i := 0; i < 5; i++ {
-		rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, i)}))
+		rl.Append(ordererledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, i)}))
 	}
-	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(provisional.TestChainID, 5)}))
+	rl.Append(ordererledger.CreateNextBlock(rl, []*cb.Envelope{makeConfigTx(provisional.TestChainID, 5)}))
 	ctx := makeConfigTx(provisional.TestChainID, 6)
-	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
+	rl.Append(ordererledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
 
-	block := rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)})
+	block := ordererledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)})
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{Value: utils.MarshalOrPanic(&cb.LastConfiguration{Index: 7})})
 	rl.Append(block)
 
@@ -87,12 +87,12 @@ func TestGetConfigTx(t *testing.T) {
 func TestGetConfigTxFailure(t *testing.T) {
 	rl := NewRAMLedger(10)
 	for i := 0; i < 10; i++ {
-		rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{
+		rl.Append(ordererledger.CreateNextBlock(rl, []*cb.Envelope{
 			makeNormalTx(provisional.TestChainID, i),
 			makeConfigTx(provisional.TestChainID, i),
 		}))
 	}
-	rl.Append(rawledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 11)}))
+	rl.Append(ordererledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 11)}))
 	defer func() {
 		if recover() == nil {
 			t.Fatalf("Should have panic-ed because there was no configuration tx")
