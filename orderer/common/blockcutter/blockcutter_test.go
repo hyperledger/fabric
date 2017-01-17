@@ -80,8 +80,9 @@ var unmatchedTx = &cb.Envelope{Payload: []byte("UNMATCHED")}
 func TestNormalBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	absoluteMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
+	absoluteMaxBytes := uint32(1000)
+	preferredMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(goodTx)
 
@@ -108,8 +109,9 @@ func TestNormalBatch(t *testing.T) {
 func TestBadMessageInBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	absoluteMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
+	absoluteMaxBytes := uint32(1000)
+	preferredMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(badTx)
 
@@ -145,8 +147,9 @@ func TestBadMessageInBatch(t *testing.T) {
 func TestUnmatchedMessageInBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	absoluteMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
+	absoluteMaxBytes := uint32(1000)
+	preferredMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(unmatchedTx)
 
@@ -182,8 +185,9 @@ func TestUnmatchedMessageInBatch(t *testing.T) {
 func TestIsolatedEmptyBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	absoluteMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
+	absoluteMaxBytes := uint32(1000)
+	preferredMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(isolatedTx)
 
@@ -207,8 +211,9 @@ func TestIsolatedEmptyBatch(t *testing.T) {
 func TestIsolatedPartialBatch(t *testing.T) {
 	filters := getFilters()
 	maxMessageCount := uint32(2)
-	absoluteMaxBytes := uint32(100)
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
+	absoluteMaxBytes := uint32(1000)
+	preferredMaxBytes := uint32(100)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	batches, committers, ok := r.Ordered(goodTx)
 
@@ -247,18 +252,18 @@ func TestIsolatedPartialBatch(t *testing.T) {
 	}
 }
 
-func TestBatchSizeAbsoluteMaxBytesOverflow(t *testing.T) {
+func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
 	filters := getFilters()
 
 	goodTxBytes := messageSizeBytes(goodTx)
 
-	// set absolute max bytes such that 10 goodTx will not fit
-	absoluteMaxBytes := goodTxBytes*10 - 1
+	// set preferred max bytes such that 10 goodTx will not fit
+	preferredMaxBytes := goodTxBytes*10 - 1
 
 	// set message count > 9
 	maxMessageCount := uint32(20)
 
-	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: absoluteMaxBytes}}, filters)
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 2, PreferredMaxBytes: preferredMaxBytes}}, filters)
 
 	// enqueue 9 messages
 	for i := 0; i < 9; i++ {

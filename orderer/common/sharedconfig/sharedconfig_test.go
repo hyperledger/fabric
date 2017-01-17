@@ -137,6 +137,7 @@ func TestBatchSize(t *testing.T) {
 
 	validMaxMessageCount := uint32(10)
 	validAbsoluteMaxBytes := uint32(1000)
+	validPreferredMaxBytes := uint32(500)
 
 	t.Run("ValidConfiguration", func(t *testing.T) {
 		m := NewManagerImpl()
@@ -144,7 +145,7 @@ func TestBatchSize(t *testing.T) {
 		err := m.ProposeConfig(&cb.ConfigurationItem{
 			Type:  cb.ConfigurationItem_Orderer,
 			Key:   BatchSizeKey,
-			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes}),
+			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}),
 		})
 		assert.Nil(t, err, "Error applying valid config: %s", err)
 		m.CommitConfig()
@@ -153,6 +154,9 @@ func TestBatchSize(t *testing.T) {
 		}
 		if m.BatchSize().AbsoluteMaxBytes != validAbsoluteMaxBytes {
 			t.Fatalf("Got batch size absolute max bytes of %d. Expected: %d", m.BatchSize().AbsoluteMaxBytes, validAbsoluteMaxBytes)
+		}
+		if m.BatchSize().PreferredMaxBytes != validPreferredMaxBytes {
+			t.Fatalf("Got batch size preferred max bytes of %d. Expected: %d", m.BatchSize().PreferredMaxBytes, validPreferredMaxBytes)
 		}
 	})
 
@@ -174,7 +178,7 @@ func TestBatchSize(t *testing.T) {
 		err := m.ProposeConfig(&cb.ConfigurationItem{
 			Type:  cb.ConfigurationItem_Orderer,
 			Key:   BatchSizeKey,
-			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes}),
+			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}),
 		})
 		assert.NotNil(t, err, "Should have rejected batch size max message count of 0")
 		m.CommitConfig()
@@ -186,9 +190,21 @@ func TestBatchSize(t *testing.T) {
 		err := m.ProposeConfig(&cb.ConfigurationItem{
 			Type:  cb.ConfigurationItem_Orderer,
 			Key:   BatchSizeKey,
-			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0}),
+			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0, PreferredMaxBytes: validPreferredMaxBytes}),
 		})
 		assert.NotNil(t, err, "Should have rejected batch size absolute max message bytes of 0")
+		m.CommitConfig()
+	})
+
+	t.Run("TooLargePreferredMaxBytes", func(t *testing.T) {
+		m := NewManagerImpl()
+		m.BeginConfig()
+		err := m.ProposeConfig(&cb.ConfigurationItem{
+			Type:  cb.ConfigurationItem_Orderer,
+			Key:   BatchSizeKey,
+			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validAbsoluteMaxBytes + 1}),
+		})
+		assert.NotNil(t, err, "Should have rejected batch size preferred max message bytes greater than absolute max message bytes")
 		m.CommitConfig()
 	})
 }
