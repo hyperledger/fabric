@@ -118,9 +118,17 @@ message SignaturePolicy {
 }
 
 
-// HashingAlgorithm is encoded into the configuration transaction as  a configuration item of type CHAIN
-// with a Key of "HashingAlgorithm" as marshaled protobuf bytes
+// HashingAlgorithm is encoded into the configuration transaction as  a configuration item of type Chain
+// with a Key of "HashingAlgorithm" and a Value of  HashingAlgorithm as marshaled protobuf bytes
 message HashingAlgorithm {
     // Currently supported algorithms are: SHAKE256
     string name = 1;
+}
+
+// BlockDataHashingStructure is encoded into the configuration transaction as a configuration item of
+// type Chain with a Key of "BlockDataHashingStructure" and a Value of HashingAlgorithm as marshaled protobuf bytes
+message BlockDataHashingStructure {
+    // width specifies the width of the Merkle tree to use when computing the BlockDataHash
+    // in order to replicate flat hashing, set this width to MAX_UINT32
+    uint32 width  = 1;
 }

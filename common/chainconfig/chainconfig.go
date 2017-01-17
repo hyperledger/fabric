@@ -30,6 +30,9 @@ import (
 const (
 	// HashingAlgorithmKey is the cb.ConfigurationItem type key name for the HashingAlgorithm message
 	HashingAlgorithmKey = "HashingAlgorithm"
+
+	// BlockDataHashingStructureKey is the cb.ConfigurationItem type key name for the BlockDataHashingStructure message
+	BlockDataHashingStructureKey = "BlockDataHashingStructure"
 )
 
 // Hashing algorithm types
@@ -48,10 +51,15 @@ type Descriptor interface {
 	// HashingAlgorithm returns the default algorithm to be used when hashing
 	// such as computing block hashes, and CreationPolicy digests
 	HashingAlgorithm() func(input []byte) []byte
+
+	// BlockDataHashingStructureWidth returns the width to use when constructing the
+	// Merkle tree to compute the BlockData hash
+	BlockDatahashingStructureWidth() int
 }
 
 type chainConfig struct {
-	hashingAlgorithm func(input []byte) []byte
+	hashingAlgorithm               func(input []byte) []byte
+	blockDataHashingStructureWidth uint32
 }
 
 // DescriptorImpl is an implementation of Manager and configtx.ConfigHandler
@@ -71,6 +79,11 @@ func NewDescriptorImpl() *DescriptorImpl {
 // HashingAlgorithm returns a function pointer to the chain hashing algorihtm
 func (pm *DescriptorImpl) HashingAlgorithm() func(input []byte) []byte {
 	return pm.config.hashingAlgorithm
+}
+
+// BlockDataHashingStructure returns the width to use when forming the block data hashing structure
+func (pm *DescriptorImpl) BlockDataHashingStructureWidth() uint32 {
+	return pm.config.blockDataHashingStructureWidth
 }
 
 // BeginConfig is used to start a new configuration proposal
@@ -113,6 +126,17 @@ func (pm *DescriptorImpl) ProposeConfig(configItem *cb.ConfigurationItem) error 
 		default:
 			return fmt.Errorf("Unknown hashing algorithm type: %s", hashingAlgorithm.Name)
 		}
+	case BlockDataHashingStructureKey:
+		blockDataHashingStructure := &cb.BlockDataHashingStructure{}
+		if err := proto.Unmarshal(configItem.Value, blockDataHashingStructure); err != nil {
+			return fmt.Errorf("Unmarshaling error for BlockDataHashingStructure: %s", err)
+		}
+
+		if blockDataHashingStructure.Width == 0 {
+			return fmt.Errorf("BlockDataHashStructure width must not be zero")
+		}
+
+		pm.pendingConfig.blockDataHashingStructureWidth = blockDataHashingStructure.Width
 	default:
 		logger.Warningf("Uknown Chain configuration item with key %s", configItem.Key)
 	}

@@ -102,3 +102,46 @@ func TestHashingAlgorithm(t *testing.T) {
 		t.Fatalf("Should have set default hashing algorithm")
 	}
 }
+
+func TestBlockDataHashingStructure(t *testing.T) {
+	expectedWidth := uint32(7)
+	invalidMessage :=
+		&cb.ConfigurationItem{
+			Type:  cb.ConfigurationItem_Chain,
+			Key:   BlockDataHashingStructureKey,
+			Value: []byte("Garbage Data"),
+		}
+	invalidWidth := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Chain,
+		Key:   BlockDataHashingStructureKey,
+		Value: utils.MarshalOrPanic(&cb.BlockDataHashingStructure{Width: 0}),
+	}
+	validWidth := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Chain,
+		Key:   BlockDataHashingStructureKey,
+		Value: utils.MarshalOrPanic(&cb.BlockDataHashingStructure{Width: expectedWidth}),
+	}
+	m := NewDescriptorImpl()
+	m.BeginConfig()
+
+	err := m.ProposeConfig(invalidMessage)
+	if err == nil {
+		t.Fatalf("Should have failed on invalid message")
+	}
+
+	err = m.ProposeConfig(invalidWidth)
+	if err == nil {
+		t.Fatalf("Should have failed on invalid width")
+	}
+
+	err = m.ProposeConfig(validWidth)
+	if err != nil {
+		t.Fatalf("Error applying valid config: %s", err)
+	}
+
+	m.CommitConfig()
+
+	if newWidth := m.BlockDataHashingStructureWidth(); newWidth != expectedWidth {
+		t.Fatalf("Unexpected width, got %d expected %d", newWidth, expectedWidth)
+	}
+}
