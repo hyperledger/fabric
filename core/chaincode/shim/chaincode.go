@@ -335,6 +335,41 @@ func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateRangeQ
 	return &StateRangeQueryIterator{stub.handler, stub.TxID, response, 0}, nil
 }
 
+//Given a list of attributes, createCompositeKey function combines these attributes
+//to form a composite key.
+func (stub *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
+	return createCompositeKey(stub, objectType, attributes)
+}
+
+func createCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (string, error) {
+	var compositeKey bytes.Buffer
+	compositeKey.WriteString(objectType)
+	for _, attribute := range attributes {
+		compositeKey.WriteString(strconv.Itoa(len(attribute)))
+		compositeKey.WriteString(attribute)
+	}
+	return compositeKey.String(), nil
+}
+
+//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+//state based on a given partial composite key. This function returns an
+//iterator which can be used to iterate over all composite keys whose prefix
+//matches the given partial composite key. This function should be used only for
+//a partial composite key. For a full composite key, an iter with empty response
+//would be returned.
+func (stub *ChaincodeStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+	return partialCompositeKeyQuery(stub, objectType, attributes)
+}
+
+func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+	partialCompositeKey, _ := stub.CreateCompositeKey(objectType, attributes)
+	keysIter, err := stub.RangeQueryState(partialCompositeKey+"1", partialCompositeKey+":")
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching rows: %s", err)
+	}
+	return keysIter, nil
+}
+
 // HasNext returns true if the range query iterator contains additional keys
 // and values.
 func (iter *StateRangeQueryIterator) HasNext() bool {
@@ -399,260 +434,6 @@ func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params [
 	return
 }
 
-// TABLE FUNCTIONALITY
-// TODO More comments here with documentation
-
-// Table Errors
-var (
-	// ErrTableNotFound if the specified table cannot be found
-	ErrTableNotFound = errors.New("chaincode: Table not found")
-)
-
-// CreateTable creates a new table given the table name and column definitions
-func (stub *ChaincodeStub) CreateTable(name string, columnDefinitions []*ColumnDefinition) error {
-	return createTableInternal(stub, name, columnDefinitions)
-}
-
-func createTableInternal(stub ChaincodeStubInterface, name string, columnDefinitions []*ColumnDefinition) error {
-	_, err := getTable(stub, name)
-	if err == nil {
-		return fmt.Errorf("CreateTable operation failed. Table %s already exists.", name)
-	}
-	if err != ErrTableNotFound {
-		return fmt.Errorf("CreateTable operation failed. %s", err)
-	}
-
-	if columnDefinitions == nil || len(columnDefinitions) == 0 {
-		return errors.New("Invalid column definitions. Tables must contain at least one column.")
-	}
-
-	hasKey := false
-	nameMap := make(map[string]bool)
-	for i, definition := range columnDefinitions {
-
-		// Check name
-		if definition == nil {
-			return fmt.Errorf("Column definition %d is invalid. Definition must not be nil.", i)
-		}
-		if len(definition.Name) == 0 {
-			return fmt.Errorf("Column definition %d is invalid. Name must be 1 or more characters.", i)
-		}
-		if _, exists := nameMap[definition.Name]; exists {
-			return fmt.Errorf("Invalid table. Table contains duplicate column name '%s'.", definition.Name)
-		}
-		nameMap[definition.Name] = true
-
-		// Check type
-		switch definition.Type {
-		case ColumnDefinition_STRING:
-		case ColumnDefinition_INT32:
-		case ColumnDefinition_INT64:
-		case ColumnDefinition_UINT32:
-		case ColumnDefinition_UINT64:
-		case ColumnDefinition_BYTES:
-		case ColumnDefinition_BOOL:
-		default:
-			return fmt.Errorf("Column definition %s does not have a valid type.", definition.Name)
-		}
-
-		if definition.Key {
-			hasKey = true
-		}
-	}
-
-	if !hasKey {
-		return errors.New("Inavlid table. One or more columns must be a key.")
-	}
-
-	table := &Table{name, columnDefinitions}
-	tableBytes, err := proto.Marshal(table)
-	if err != nil {
-		return fmt.Errorf("Error marshalling table: %s", err)
-	}
-	tableNameKey, err := getTableNameKey(name)
-	if err != nil {
-		return fmt.Errorf("Error creating table key: %s", err)
-	}
-	err = stub.PutState(tableNameKey, tableBytes)
-	if err != nil {
-		return fmt.Errorf("Error inserting table in state: %s", err)
-	}
-	return nil
-}
-
-// GetTable returns the table for the specified table name or ErrTableNotFound
-// if the table does not exist.
-func (stub *ChaincodeStub) GetTable(tableName string) (*Table, error) {
-	return getTable(stub, tableName)
-}
-
-// DeleteTable deletes an entire table and all associated rows.
-func (stub *ChaincodeStub) DeleteTable(tableName string) error {
-	return deleteTableInternal(stub, tableName)
-}
-
-func deleteTableInternal(stub ChaincodeStubInterface, tableName string) error {
-	tableNameKey, err := getTableNameKey(tableName)
-	if err != nil {
-		return err
-	}
-
-	// Delete rows
-	iter, err := stub.RangeQueryState(tableNameKey+"1", tableNameKey+":")
-	if err != nil {
-		return fmt.Errorf("Error deleting table: %s", err)
-	}
-	defer iter.Close()
-	for iter.HasNext() {
-		key, _, err := iter.Next()
-		if err != nil {
-			return fmt.Errorf("Error deleting table: %s", err)
-		}
-		err = stub.DelState(key)
-		if err != nil {
-			return fmt.Errorf("Error deleting table: %s", err)
-		}
-	}
-
-	return stub.DelState(tableNameKey)
-}
-
-// InsertRow inserts a new row into the specified table.
-// Returns -
-// true and no error if the row is successfully inserted.
-// false and no error if a row already exists for the given key.
-// false and a TableNotFoundError if the specified table name does not exist.
-// false and an error if there is an unexpected error condition.
-func (stub *ChaincodeStub) InsertRow(tableName string, row Row) (bool, error) {
-	return insertRowInternal(stub, tableName, row, false)
-}
-
-// ReplaceRow updates the row in the specified table.
-// Returns -
-// true and no error if the row is successfully updated.
-// false and no error if a row does not exist the given key.
-// flase and a TableNotFoundError if the specified table name does not exist.
-// false and an error if there is an unexpected error condition.
-func (stub *ChaincodeStub) ReplaceRow(tableName string, row Row) (bool, error) {
-	return insertRowInternal(stub, tableName, row, true)
-}
-
-// GetRow fetches a row from the specified table for the given key.
-func (stub *ChaincodeStub) GetRow(tableName string, key []Column) (Row, error) {
-	return getRowInternal(stub, tableName, key)
-}
-
-func getRowInternal(stub ChaincodeStubInterface, tableName string, key []Column) (Row, error) {
-
-	var row Row
-
-	keyString, err := buildKeyString(tableName, key)
-	if err != nil {
-		return row, err
-	}
-
-	rowBytes, err := stub.GetState(keyString)
-	if err != nil {
-		return row, fmt.Errorf("Error fetching row from DB: %s", err)
-	}
-
-	err = proto.Unmarshal(rowBytes, &row)
-	if err != nil {
-		return row, fmt.Errorf("Error unmarshalling row: %s", err)
-	}
-
-	return row, nil
-
-}
-
-// GetRows returns multiple rows based on a partial key. For example, given table
-// | A | B | C | D |
-// where A, C and D are keys, GetRows can be called with [A, C] to return
-// all rows that have A, C and any value for D as their key. GetRows could
-// also be called with A only to return all rows that have A and any value
-// for C and D as their key.
-func (stub *ChaincodeStub) GetRows(tableName string, key []Column) (<-chan Row, error) {
-	return getRowsInternal(stub, tableName, key)
-}
-
-func getRowsInternal(stub ChaincodeStubInterface, tableName string, key []Column) (<-chan Row, error) {
-
-	keyString, err := buildKeyString(tableName, key)
-	if err != nil {
-		return nil, err
-	}
-
-	table, err := getTable(stub, tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Need to check for special case where table has a single column
-	if len(table.GetColumnDefinitions()) < 2 && len(key) > 0 {
-
-		row, err := stub.GetRow(tableName, key)
-		if err != nil {
-			return nil, err
-		}
-		rows := make(chan Row)
-		go func() {
-			rows <- row
-			close(rows)
-		}()
-		return rows, nil
-	}
-
-	iter, err := stub.RangeQueryState(keyString+"1", keyString+":")
-	if err != nil {
-		return nil, fmt.Errorf("Error fetching rows: %s", err)
-	}
-	defer iter.Close()
-
-	rows := make(chan Row)
-
-	go func() {
-		for iter.HasNext() {
-			_, rowBytes, err := iter.Next()
-			if err != nil {
-				close(rows)
-			}
-
-			var row Row
-			err = proto.Unmarshal(rowBytes, &row)
-			if err != nil {
-				close(rows)
-			}
-
-			rows <- row
-
-		}
-		close(rows)
-	}()
-
-	return rows, nil
-
-}
-
-// DeleteRow deletes the row for the given key from the specified table.
-func (stub *ChaincodeStub) DeleteRow(tableName string, key []Column) error {
-	return deleteRowInternal(stub, tableName, key)
-}
-
-func deleteRowInternal(stub ChaincodeStubInterface, tableName string, key []Column) error {
-
-	keyString, err := buildKeyString(tableName, key)
-	if err != nil {
-		return err
-	}
-
-	err = stub.DelState(keyString)
-	if err != nil {
-		return fmt.Errorf("DeleteRow operation error. Error deleting row: %s", err)
-	}
-
-	return nil
-}
-
 // GetCallerCertificate returns caller certificate
 func (stub *ChaincodeStub) GetCallerCertificate() ([]byte, error) {
 	return nil, nil
@@ -679,190 +460,6 @@ func (stub *ChaincodeStub) GetPayload() ([]byte, error) {
 // may not be the same with the other peers' time.
 func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 	return nil, nil
-}
-
-func getTable(stub ChaincodeStubInterface, tableName string) (*Table, error) {
-
-	tableName, err := getTableNameKey(tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	tableBytes, err := stub.GetState(tableName)
-	if tableBytes == nil {
-		return nil, ErrTableNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("Error fetching table: %s", err)
-	}
-	table := &Table{}
-	err = proto.Unmarshal(tableBytes, table)
-	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling table: %s", err)
-	}
-
-	return table, nil
-}
-
-func validateTableName(name string) error {
-	if len(name) == 0 {
-		return errors.New("Inavlid table name. Table name must be 1 or more characters.")
-	}
-
-	return nil
-}
-
-func getTableNameKey(name string) (string, error) {
-	err := validateTableName(name)
-	if err != nil {
-		return "", err
-	}
-
-	return strconv.Itoa(len(name)) + name, nil
-}
-
-func buildKeyString(tableName string, keys []Column) (string, error) {
-
-	var keyBuffer bytes.Buffer
-
-	tableNameKey, err := getTableNameKey(tableName)
-	if err != nil {
-		return "", err
-	}
-
-	keyBuffer.WriteString(tableNameKey)
-
-	for _, key := range keys {
-
-		var keyString string
-		switch key.Value.(type) {
-		case *Column_String_:
-			keyString = key.GetString_()
-		case *Column_Int32:
-			// b := make([]byte, 4)
-			// binary.LittleEndian.PutUint32(b, uint32(key.GetInt32()))
-			// keyBuffer.Write(b)
-			keyString = strconv.FormatInt(int64(key.GetInt32()), 10)
-		case *Column_Int64:
-			keyString = strconv.FormatInt(key.GetInt64(), 10)
-		case *Column_Uint32:
-			keyString = strconv.FormatUint(uint64(key.GetUint32()), 10)
-		case *Column_Uint64:
-			keyString = strconv.FormatUint(key.GetUint64(), 10)
-		case *Column_Bytes:
-			keyString = string(key.GetBytes())
-		case *Column_Bool:
-			keyString = strconv.FormatBool(key.GetBool())
-		}
-
-		keyBuffer.WriteString(strconv.Itoa(len(keyString)))
-		keyBuffer.WriteString(keyString)
-	}
-
-	return keyBuffer.String(), nil
-}
-
-func getKeyAndVerifyRow(table Table, row Row) ([]Column, error) {
-
-	var keys []Column
-
-	if row.Columns == nil || len(row.Columns) != len(table.ColumnDefinitions) {
-		return keys, fmt.Errorf("Table '%s' defines %d columns, but row has %d columns.",
-			table.Name, len(table.ColumnDefinitions), len(row.Columns))
-	}
-
-	for i, column := range row.Columns {
-
-		// Check types
-		var expectedType bool
-		switch column.Value.(type) {
-		case *Column_String_:
-			expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_STRING
-		case *Column_Int32:
-			expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_INT32
-		case *Column_Int64:
-			expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_INT64
-		case *Column_Uint32:
-			expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_UINT32
-		case *Column_Uint64:
-			expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_UINT64
-		case *Column_Bytes:
-			expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_BYTES
-		case *Column_Bool:
-			expectedType = table.ColumnDefinitions[i].Type == ColumnDefinition_BOOL
-		default:
-			expectedType = false
-		}
-		if !expectedType {
-			return keys, fmt.Errorf("The type for table '%s', column '%s' is '%s', but the column in the row does not match.",
-				table.Name, table.ColumnDefinitions[i].Name, table.ColumnDefinitions[i].Type)
-		}
-
-		if table.ColumnDefinitions[i].Key {
-			keys = append(keys, *column)
-		}
-
-	}
-
-	return keys, nil
-}
-
-func isRowPresent(stub ChaincodeStubInterface, tableName string, key []Column) (bool, error) {
-	keyString, err := buildKeyString(tableName, key)
-	if err != nil {
-		return false, err
-	}
-	rowBytes, err := stub.GetState(keyString)
-	if err != nil {
-		return false, fmt.Errorf("Error fetching row for key %s: %s", keyString, err)
-	}
-	if rowBytes != nil {
-		return true, nil
-	}
-	return false, nil
-}
-
-// insertRowInternal inserts a new row into the specified table.
-// Returns -
-// true and no error if the row is successfully inserted.
-// false and no error if a row already exists for the given key.
-// false and a TableNotFoundError if the specified table name does not exist.
-// false and an error if there is an unexpected error condition.
-func insertRowInternal(stub ChaincodeStubInterface, tableName string, row Row, update bool) (bool, error) {
-
-	table, err := getTable(stub, tableName)
-	if err != nil {
-		return false, err
-	}
-
-	key, err := getKeyAndVerifyRow(*table, row)
-	if err != nil {
-		return false, err
-	}
-
-	present, err := isRowPresent(stub, tableName, key)
-	if err != nil {
-		return false, err
-	}
-	if (present && !update) || (!present && update) {
-		return false, nil
-	}
-
-	rowBytes, err := proto.Marshal(&row)
-	if err != nil {
-		return false, fmt.Errorf("Error marshalling row: %s", err)
-	}
-
-	keyString, err := buildKeyString(tableName, key)
-	if err != nil {
-		return false, err
-	}
-	err = stub.PutState(keyString, rowBytes)
-	if err != nil {
-		return false, fmt.Errorf("Error inserting row in table %s: %s", tableName, err)
-	}
-
-	return true, nil
 }
 
 // ------------- ChaincodeEvent API ----------------------

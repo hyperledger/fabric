@@ -94,11 +94,6 @@ task copyProtos(type:Copy){
      include '**/chaincodeevent.proto'
      include '**/chaincode.proto'
  }
-    from ("../") {
-        duplicatesStrategy.EXCLUDE
-        include '**/table.proto'
-        exclude 'java'
-    }
     into "${projectDir}/src/main/proto/peer"
 
 }
