@@ -35,7 +35,6 @@ import (
 var logger = logging.MustGetLogger("kvledger")
 
 const (
-	blockIndexCF    = "blockIndexCF"
 	blockfilePrefix = "blockfile_"
 )
 

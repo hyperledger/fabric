@@ -76,7 +76,7 @@ func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
 }
 
 func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
-	// do not index anyting
+	// do not index anything
 	if len(index.indexItemsMap) == 0 {
 		logger.Debug("Not indexing block... as nothing to index")
 		return nil
@@ -100,7 +100,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		batch.Put(constructBlockNumKey(blockIdxInfo.blockNum), flpBytes)
 	}
 
-	//Index3 Used to find a transactin by it's transaction id
+	//Index3 Used to find a transaction by it's transaction id
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxID]; ok {
 		for _, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
@@ -217,10 +217,6 @@ func constructBlockNumTranNumKey(blockNum uint64, txNum uint64) []byte {
 	return append([]byte{blockNumTranNumIdxKeyPrefix}, key...)
 }
 
-func constructTxID(blockNum uint64, txNum int) string {
-	return fmt.Sprintf("%d:%d", blockNum, txNum)
-}
-
 func encodeBlockNum(blockNum uint64) []byte {
 	return proto.EncodeVarint(blockNum)
 }
@@ -246,9 +242,9 @@ type fileLocPointer struct {
 	locPointer
 }
 
-func newFileLocationPointer(fileSuffixNum int, begginingOffset int, relativeLP *locPointer) *fileLocPointer {
+func newFileLocationPointer(fileSuffixNum int, beginningOffset int, relativeLP *locPointer) *fileLocPointer {
 	flp := &fileLocPointer{fileSuffixNum: fileSuffixNum}
-	flp.offset = begginingOffset + relativeLP.offset
+	flp.offset = beginningOffset + relativeLP.offset
 	flp.bytesLength = relativeLP.bytesLength
 	return flp
 }

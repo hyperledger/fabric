@@ -96,7 +96,7 @@ func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, s
 	// test getting the last block
 	b, err := w.blockfileMgr.retrieveBlockByNumber(math.MaxUint64)
 	iLastBlock := len(blocks) - 1
-	testutil.AssertNoError(w.t, err, fmt.Sprintf("Error while retrieving last block from blockfileMgr"))
+	testutil.AssertNoError(w.t, err, "Error while retrieving last block from blockfileMgr")
 	testutil.AssertEquals(w.t, b, blocks[iLastBlock])
 }
 
