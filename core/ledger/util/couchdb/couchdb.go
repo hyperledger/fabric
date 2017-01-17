@@ -832,7 +832,14 @@ func (dbclient *CouchDatabase) handleRequest(method, connectURL string, data io.
 		if err2 != nil {
 			log.Fatal(err2)
 		}
-		logger.Debugf("%s", dump)
+		// trace the first 200 bytes of http request only, in case it is huge
+		if dump != nil {
+			if len(dump) <= 200 {
+				logger.Debugf("HTTP Request: %s", dump)
+			} else {
+				logger.Debugf("HTTP Request: %s...", dump[0:200])
+			}
+		}
 	}
 
 	//Create the http client

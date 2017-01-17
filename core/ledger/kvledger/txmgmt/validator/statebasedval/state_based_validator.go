@@ -56,13 +56,13 @@ func (v *Validator) validateEndorserTX(envBytes []byte, doMVCCValidation bool, u
 		return nil, err
 	}
 
-	// trace the first 2000 characters of RWSet only, in case it is huge
+	// trace the first 1000 characters of RWSet only, in case it is huge
 	if logger.IsEnabledFor(logging.DEBUG) {
 		txRWSetString := txRWSet.String()
-		if len(txRWSetString) < 2000 {
+		if len(txRWSetString) < 1000 {
 			logger.Debugf("validating txRWSet:[%s]", txRWSetString)
 		} else {
-			logger.Debugf("validating txRWSet:[%s...]", txRWSetString[0:2000])
+			logger.Debugf("validating txRWSet:[%s...]", txRWSetString[0:1000])
 		}
 	}
 
