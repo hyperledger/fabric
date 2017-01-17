@@ -45,10 +45,11 @@ var chaincodeLogger = logging.MustGetLogger("shim")
 // ChaincodeStub is an object passed to chaincode for shim side handling of
 // APIs.
 type ChaincodeStub struct {
-	TxID           string
-	chaincodeEvent *pb.ChaincodeEvent
-	args           [][]byte
-	handler        *Handler
+	TxID            string
+	proposalContext *pb.ChaincodeProposalContext
+	chaincodeEvent  *pb.ChaincodeEvent
+	args            [][]byte
+	handler         *Handler
 }
 
 // Peer address derived from command line or env var
@@ -266,17 +267,18 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 // -- init stub ---
 // ChaincodeInvocation functionality
 
-func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput) {
+func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput, proposalContext *pb.ChaincodeProposalContext) {
 	stub.TxID = txid
 	stub.args = input.Args
 	stub.handler = handler
+	stub.proposalContext = proposalContext
 }
 
 func InitTestStub(funargs ...string) *ChaincodeStub {
 	stub := ChaincodeStub{}
 	allargs := util.ToChaincodeArgs(funargs...)
 	newCI := &pb.ChaincodeInput{Args: allargs}
-	stub.init(&Handler{}, "TEST-txid", newCI)
+	stub.init(&Handler{}, "TEST-txid", newCI, nil) // TODO: add msg.ProposalContext
 	return &stub
 }
 
@@ -436,12 +438,20 @@ func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params [
 
 // GetCallerCertificate returns caller certificate
 func (stub *ChaincodeStub) GetCallerCertificate() ([]byte, error) {
-	return nil, nil
+	if stub.proposalContext != nil {
+		return stub.proposalContext.Transient, nil
+	}
+
+	return nil, errors.New("Creator field not set.")
 }
 
 // GetCallerMetadata returns caller metadata
 func (stub *ChaincodeStub) GetCallerMetadata() ([]byte, error) {
-	return nil, nil
+	if stub.proposalContext != nil {
+		return stub.proposalContext.Transient, nil
+	}
+
+	return nil, errors.New("Transient field not set.")
 }
 
 // GetBinding returns the transaction binding

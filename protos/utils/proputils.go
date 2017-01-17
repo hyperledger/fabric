@@ -17,6 +17,10 @@ limitations under the License.
 package utils
 
 import (
+	"fmt"
+
+	"errors"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/protos/common"
@@ -41,6 +45,34 @@ func GetChaincodeInvocationSpec(prop *peer.Proposal) (*peer.ChaincodeInvocationS
 		return nil, err
 	}
 	return cis, nil
+}
+
+// GetChaincodeProposalContext returns a ChaincodeProposalContext from a Proposal
+func GetChaincodeProposalContext(prop *peer.Proposal) (*peer.ChaincodeProposalContext, error) {
+	// get back the header
+	hdr, err := GetHeader(prop.Header)
+	if err != nil {
+		return nil, fmt.Errorf("Could not extract the header from the proposal, err %s\n", err)
+	}
+	if common.HeaderType(hdr.ChainHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
+		common.HeaderType(hdr.ChainHeader.Type) != common.HeaderType_CONFIGURATION_TRANSACTION {
+		return nil, fmt.Errorf("invalid proposal type expected ENDORSER_TRANSACTION or CONFIGURATION_TRANSACTION. Was [%s]", hdr.ChainHeader.Type)
+	}
+
+	if hdr.SignatureHeader == nil {
+		return nil, errors.New("invalid signature header. It must be different from nil")
+	}
+
+	ccPropPayload := &peer.ChaincodeProposalPayload{}
+	err = proto.Unmarshal(prop.Payload, ccPropPayload)
+	if err != nil {
+		return nil, err
+	}
+
+	return &peer.ChaincodeProposalContext{
+		Creator:   hdr.SignatureHeader.Creator,
+		Transient: ccPropPayload.Transient,
+	}, nil
 }
 
 // GetHeader Get Header from bytes
@@ -188,6 +220,11 @@ func GetSignatureHeader(bytes []byte) (*common.SignatureHeader, error) {
 
 // CreateChaincodeProposal creates a proposal from given input
 func CreateChaincodeProposal(txid string, typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
+	return CreateChaincodeProposalWithTransient(txid, typ, chainID, cis, creator, nil)
+}
+
+// CreateChaincodeProposalWithTransient creates a proposal from given input
+func CreateChaincodeProposalWithTransient(txid string, typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, transient []byte) (*peer.Proposal, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
@@ -199,7 +236,7 @@ func CreateChaincodeProposal(txid string, typ common.HeaderType, chainID string,
 		return nil, err
 	}
 
-	ccPropPayload := &peer.ChaincodeProposalPayload{Input: cisBytes}
+	ccPropPayload := &peer.ChaincodeProposalPayload{Input: cisBytes, Transient: transient}
 	ccPropPayloadBytes, err := proto.Marshal(ccPropPayload)
 	if err != nil {
 		return nil, err

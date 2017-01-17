@@ -44,7 +44,7 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 func TestProposal(t *testing.T) {
 	uuid := util.GenerateUUID()
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, err := CreateChaincodeProposal(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), []byte("creator"))
+	prop, err := CreateChaincodeProposalWithTransient(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), []byte("creator"), []byte("transient"))
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return
@@ -119,6 +119,19 @@ func TestProposal(t *testing.T) {
 		string(cis.ChaincodeSpec.CtorMsg.Args[0]) != "arg1" ||
 		string(cis.ChaincodeSpec.CtorMsg.Args[1]) != "arg2" {
 		t.Fatalf("Invalid chaincode invocation spec after unmarshalling\n")
+		return
+	}
+
+	porposalContexd, err := GetChaincodeProposalContext(prop)
+	if err != nil {
+		t.Fatalf("Failed getting chaincode proposal context [%s]", err)
+	}
+	if string(porposalContexd.Transient) != "transient" {
+		t.Fatalf("Failed checking Transient field. Invalid value, expectext 'transient', got [%s]", string(porposalContexd.Transient))
+		return
+	}
+	if string(porposalContexd.Creator) != "creator" {
+		t.Fatalf("Failed checking Creator field. Invalid value, expectext 'creator', got [%s]", string(porposalContexd.Creator))
 		return
 	}
 }
