@@ -20,14 +20,18 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/core/peer/msp"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 //Validator interface which defines API to validate block transactions
@@ -153,6 +157,42 @@ func (v *txValidator) Validate(block *common.Block) {
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr.ToBytes()
 }
 
+// getHardcodedPolicy returns a policy that requests
+// one valid signature from the first MSP in this
+// chain's MSP manager
+// FIXME: this needs to be removed as soon as we extract the policy from LCCC
+func getHardcodedPolicy(chainID string) ([]byte, error) {
+	// 1) determine the MSP identifier for the first MSP in this chain
+	var msp msp.MSP
+	mspMgr := mspmgmt.GetManagerForChain(chainID)
+	msps, err := mspMgr.GetMSPs()
+	if err != nil {
+		return nil, fmt.Errorf("Could not retrieve the MSPs for the chain manager, err %s", err)
+	}
+	if len(msps) == 0 {
+		return nil, errors.New("At least one MSP was expected")
+	}
+	for _, m := range msps {
+		msp = m
+		break
+	}
+	mspid, err := msp.GetIdentifier()
+	if err != nil {
+		return nil, fmt.Errorf("Failure getting the msp identifier, err %s", err)
+	}
+
+	// 2) get the policy
+	p := cauthdsl.SignedByMspMember(mspid)
+
+	// 3) marshal it and return it
+	b, err := proto.Marshal(p)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
+	}
+
+	return b, err
+}
+
 func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte) error {
 	// Chain ID
 	chainID := payload.Header.ChainHeader.ChainID
@@ -171,10 +211,20 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		return err
 	}
 
+	// TODO: temporary workaround until the policy is specified
+	// by the deployer and can be retrieved via LCCC: we create
+	// a policy that requests 1 valid signature from this chain's
+	// MSP
+	policy, err := getHardcodedPolicy(chainID)
+	if err != nil {
+		return err
+	}
+
 	// build arguments for VSCC invocation
 	// args[0] - function name (not used now)
 	// args[1] - serialized Envelope
-	args := [][]byte{[]byte(""), envBytes}
+	// args[2] - serialized policy
+	args := [][]byte{[]byte(""), envBytes, policy}
 
 	ctxt, err := v.ccprovider.GetContext(v.ledger)
 	if err != nil {
@@ -196,7 +246,8 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	vscc := "vscc"
 	if hdrExt.ChaincodeID.Name != "lccc" {
 		// Extracting vscc from lccc
-		vscc, err = v.ccprovider.GetVSCCFromLCCC(ctxt, txid, nil, chainID, hdrExt.ChaincodeID.Name)
+		// TODO: extract policy as well when available; it's the second argument returned by GetCCValidationInfoFromLCCC
+		vscc, _, err = v.ccprovider.GetCCValidationInfoFromLCCC(ctxt, txid, nil, chainID, hdrExt.ChaincodeID.Name)
 		if err != nil {
 			logger.Errorf("Unable to get chaincode data from LCCC for txid %s, due to %s", txid, err)
 			return err

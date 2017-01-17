@@ -20,6 +20,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 // AcceptAllPolicy always evaluates to true
@@ -71,6 +72,24 @@ func SignedBy(index int32) *cb.SignaturePolicy {
 			SignedBy: index,
 		},
 	}
+}
+
+// SignedByMspMember creates a SignaturePolicyEnvelope
+// requiring 1 signature from any member of the specified MSP
+func SignedByMspMember(mspId string) *cb.SignaturePolicyEnvelope {
+	// specify the principal: it's a member of the msp we just found
+	principal := &cb.MSPPrincipal{
+		PrincipalClassification: cb.MSPPrincipal_ByMSPRole,
+		Principal:               utils.MarshalOrPanic(&cb.MSPRole{Role: cb.MSPRole_Member, MSPIdentifier: mspId})}
+
+	// create the policy: it requires exactly 1 signature from the first (and only) principal
+	p := &cb.SignaturePolicyEnvelope{
+		Version:    0,
+		Policy:     NOutOf(1, []*cb.SignaturePolicy{SignedBy(0)}),
+		Identities: []*cb.MSPPrincipal{principal},
+	}
+
+	return p
 }
 
 // And is a convenience method which utilizes NOutOf to produce And equivalent behavior

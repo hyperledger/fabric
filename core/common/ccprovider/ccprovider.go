@@ -32,8 +32,8 @@ type ChaincodeProvider interface {
 	GetContext(ledger ledger.ValidatedLedger) (context.Context, error)
 	// GetCCContext returns an opaque chaincode context
 	GetCCContext(cid, name, version, txid string, syscc bool, prop *peer.Proposal) interface{}
-	// GetVSCCFromLCCC returns the VSCC listed by LCCC for the supplied chaincode
-	GetVSCCFromLCCC(ctxt context.Context, txid string, prop *peer.Proposal, chainID string, chaincodeID string) (string, error)
+	// GetCCValidationInfoFromLCCC returns the VSCC and the policy listed by LCCC for the supplied chaincode
+	GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error)
 	// ExecuteChaincode executes the chaincode given context and args
 	ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) ([]byte, *peer.ChaincodeEvent, error)
 	// ReleaseContext releases the context returned previously by GetContext
