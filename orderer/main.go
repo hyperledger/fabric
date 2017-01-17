@@ -40,6 +40,8 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/Shopify/sarama"
+	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/core/peer/msp"
 	logging "github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
@@ -47,6 +49,8 @@ import (
 var logger = logging.MustGetLogger("orderer/main")
 
 func main() {
+	// Temporarilly set logging level until config is read
+	logging.SetLevel(logging.INFO, "")
 	conf := config.Load()
 	flogging.InitFromSpec(conf.General.LogLevel)
 
@@ -65,6 +69,12 @@ func main() {
 	if err != nil {
 		fmt.Println("Failed to listen:", err)
 		return
+	}
+
+	// Load local MSP
+	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir)
+	if err != nil { // Handle errors reading the config file
+		panic(fmt.Errorf("Failed initializing crypto [%s]", err))
 	}
 
 	var lf ordererledger.Factory
@@ -127,7 +137,7 @@ func main() {
 	consenters["solo"] = solo.New()
 	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry)
 
-	manager := multichain.NewManagerImpl(lf, consenters)
+	manager := multichain.NewManagerImpl(lf, consenters, localmsp.NewSigner())
 
 	server := NewServer(
 		manager,

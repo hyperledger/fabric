@@ -85,11 +85,11 @@ func (mcs *ConsenterSupport) ChainID() string {
 }
 
 // Sign returns the bytes passed in
-func (mcs *ConsenterSupport) Sign(message []byte) []byte {
-	return message
+func (mcs *ConsenterSupport) Sign(message []byte) ([]byte, error) {
+	return message, nil
 }
 
 // NewSignatureHeader returns an empty signature header
-func (mcs *ConsenterSupport) NewSignatureHeader() *cb.SignatureHeader {
-	return &cb.SignatureHeader{}
+func (mcs *ConsenterSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
+	return &cb.SignatureHeader{}, nil
 }
