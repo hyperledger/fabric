@@ -39,12 +39,6 @@ func newLockBasedTxSimulator(txmgr *LockBasedTxMgr) *lockBasedTxSimulator {
 
 // GetState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetState(ns string, key string) ([]byte, error) {
-	// Remove RYWs when table APIs are removed
-	logger.Debugf("s.rwset=%s", s.rwset)
-	value, ok := s.rwset.GetFromWriteSet(ns, key)
-	if ok {
-		return value, nil
-	}
 	return s.helper.getState(ns, key)
 }
 

@@ -49,10 +49,6 @@ func testTxSimulatorWithNoExistingData(t *testing.T, env testEnv) {
 	s.SetState("ns2", "key4", []byte("value4"))
 
 	value, _ = s.GetState("ns2", "key3")
-	testutil.AssertEquals(t, value, []byte("value3"))
-
-	s.DeleteState("ns2", "key3")
-	value, _ = s.GetState("ns2", "key3")
 	testutil.AssertNil(t, value)
 }
 
@@ -86,7 +82,7 @@ func testTxSimulatorWithExistingData(t *testing.T, env testEnv) {
 	s2.SetState("ns1", "key1", []byte("value1_1"))
 	s2.DeleteState("ns2", "key3")
 	value, _ = s2.GetState("ns1", "key1")
-	testutil.AssertEquals(t, value, []byte("value1_1"))
+	testutil.AssertEquals(t, value, []byte("value1"))
 	s2.Done()
 	// validate and commit RWset for tx2
 	txRWSet2, _ := s2.GetTxSimulationResults()
