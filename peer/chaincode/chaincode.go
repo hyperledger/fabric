@@ -38,8 +38,6 @@ func AddFlags(cmd *cobra.Command) {
 		fmt.Sprintf("Language the %s is written in", chainFuncName))
 	flags.StringVarP(&chaincodeCtorJSON, "ctor", "c", "{}",
 		fmt.Sprintf("Constructor message for the %s in JSON format", chainFuncName))
-	flags.StringVarP(&chaincodeAttributesJSON, "attributes", "a", "[]",
-		fmt.Sprintf("User attributes for the %s in JSON format", chainFuncName))
 	flags.StringVarP(&chaincodePath, "path", "p", common.UndefinedParamValue,
 		fmt.Sprintf("Path to %s", chainFuncName))
 	flags.StringVarP(&chaincodeName, "name", "n", common.UndefinedParamValue,
@@ -66,16 +64,15 @@ func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 
 // Chaincode-related variables.
 var (
-	chaincodeLang           string
-	chaincodeCtorJSON       string
-	chaincodePath           string
-	chaincodeName           string
-	chaincodeUsr            string
-	chaincodeQueryRaw       bool
-	chaincodeQueryHex       bool
-	chaincodeAttributesJSON string
-	customIDGenAlg          string
-	chainID                 string
+	chaincodeLang     string
+	chaincodeCtorJSON string
+	chaincodePath     string
+	chaincodeName     string
+	chaincodeUsr      string
+	chaincodeQueryRaw bool
+	chaincodeQueryHex bool
+	customIDGenAlg    string
+	chainID           string
 )
 
 var chaincodeCmd = &cobra.Command{

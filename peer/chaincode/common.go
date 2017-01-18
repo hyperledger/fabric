@@ -84,17 +84,11 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
 
-	var attributes []string
-	if err := json.Unmarshal([]byte(chaincodeAttributesJSON), &attributes); err != nil {
-		return spec, fmt.Errorf("Chaincode argument error: %s", err)
-	}
-
 	chaincodeLang = strings.ToUpper(chaincodeLang)
 	spec = &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[chaincodeLang]),
 		ChaincodeID: &pb.ChaincodeID{Path: chaincodePath, Name: chaincodeName},
 		Input:       input,
-		Attributes:  attributes,
 	}
 	return spec, nil
 }
@@ -164,14 +158,6 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		}
 	} else {
 		return errors.New("Empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
-	}
-
-	if chaincodeAttributesJSON != "[]" {
-		var f interface{}
-		err := json.Unmarshal([]byte(chaincodeAttributesJSON), &f)
-		if err != nil {
-			return fmt.Errorf("Chaincode argument error: %s", err)
-		}
 	}
 
 	return nil

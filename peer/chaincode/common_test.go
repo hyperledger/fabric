@@ -25,7 +25,6 @@ import (
 )
 
 func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Args":["func", "param"] }`
 	chaincodePath = "some/path"
 	chaincodeName = "somename"
@@ -36,7 +35,6 @@ func TestCheckChaincodeCmdParamsWithNewCallingSchema(t *testing.T) {
 }
 
 func TestCheckChaincodeCmdParamsWithOldCallingSchema(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Function":"func", "Args":["param"] }`
 	chaincodePath = "some/path"
 	chaincodeName = "somename"
@@ -47,7 +45,6 @@ func TestCheckChaincodeCmdParamsWithOldCallingSchema(t *testing.T) {
 }
 
 func TestCheckChaincodeCmdParamsWithoutName(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Function":"func", "Args":["param"] }`
 	chaincodePath = "some/path"
 	chaincodeName = ""
@@ -58,7 +55,6 @@ func TestCheckChaincodeCmdParamsWithoutName(t *testing.T) {
 }
 
 func TestCheckChaincodeCmdParamsWithFunctionOnly(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{ "Function":"func" }`
 	chaincodePath = "some/path"
 	chaincodeName = "somename"
@@ -69,7 +65,6 @@ func TestCheckChaincodeCmdParamsWithFunctionOnly(t *testing.T) {
 }
 
 func TestCheckChaincodeCmdParamsEmptyCtor(t *testing.T) {
-	chaincodeAttributesJSON = "[]"
 	chaincodeCtorJSON = `{}`
 	chaincodePath = "some/path"
 	chaincodeName = "somename"

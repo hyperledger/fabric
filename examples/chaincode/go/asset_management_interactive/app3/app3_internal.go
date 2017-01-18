@@ -42,9 +42,8 @@ import (
 var (
 	confidentialityOn bool
 
-	confidentialityLevel pb.ConfidentialityLevel
-	chaincodeName        string
-	user                 string
+	chaincodeName string
+	user          string
 )
 
 func initNVP() (err error) {
@@ -183,12 +182,6 @@ func processTransaction(tx *pb.Transaction) (*pb.Response, error) {
 
 func confidentiality(enabled bool) {
 	confidentialityOn = enabled
-
-	if confidentialityOn {
-		confidentialityLevel = pb.ConfidentialityLevel_CONFIDENTIAL
-	} else {
-		confidentialityLevel = pb.ConfidentialityLevel_PUBLIC
-	}
 }
 
 func deployInternal(deployer crypto.Client, adminCert crypto.CertificateHandler) (resp *pb.Response, err error) {
@@ -197,9 +190,8 @@ func deployInternal(deployer crypto.Client, adminCert crypto.CertificateHandler)
 		Type:        1,
 		ChaincodeID: &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/examples/chaincode/go/asset_management"},
 		//ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		Input:                &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
-		Metadata:             adminCert.GetCertificate(),
-		ConfidentialityLevel: confidentialityLevel,
+		Input:    &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
+		Metadata: adminCert.GetCertificate(),
 	}
 
 	// First build the deployment spec
@@ -256,11 +248,10 @@ func assignOwnershipInternal(invoker crypto.Client, invokerCert crypto.Certifica
 
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
-		Type:                 1,
-		ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		Input:                chaincodeInput,
-		Metadata:             sigma, // Proof of identity
-		ConfidentialityLevel: confidentialityLevel,
+		Type:        1,
+		ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
+		Input:       chaincodeInput,
+		Metadata:    sigma, // Proof of identity
 	}
 
 	chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
@@ -307,11 +298,10 @@ func transferOwnershipInternal(owner crypto.Client, ownerCert crypto.Certificate
 
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
-		Type:                 1,
-		ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		Input:                chaincodeInput,
-		Metadata:             sigma, // Proof of identity
-		ConfidentialityLevel: confidentialityLevel,
+		Type:        1,
+		ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
+		Input:       chaincodeInput,
+		Metadata:    sigma, // Proof of identity
 	}
 
 	chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
@@ -331,10 +321,9 @@ func whoIsTheOwner(invoker crypto.Client, asset string) (transaction *pb.Transac
 
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
-		Type:                 1,
-		ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		Input:                chaincodeInput,
-		ConfidentialityLevel: confidentialityLevel,
+		Type:        1,
+		ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
+		Input:       chaincodeInput,
 	}
 
 	chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
