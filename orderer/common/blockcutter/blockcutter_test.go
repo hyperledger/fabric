@@ -74,6 +74,7 @@ func getFilters() *filter.RuleSet {
 
 var badTx = &cb.Envelope{Payload: []byte("BAD")}
 var goodTx = &cb.Envelope{Payload: []byte("GOOD")}
+var goodTxLarge = &cb.Envelope{Payload: []byte("GOOD"), Signature: make([]byte, 1000)}
 var isolatedTx = &cb.Envelope{Payload: []byte("ISOLATED")}
 var unmatchedTx = &cb.Envelope{Payload: []byte("UNMATCHED")}
 
@@ -303,6 +304,39 @@ func TestBatchSizePreferredMaxBytesOverflow(t *testing.T) {
 
 	if len(messageBatch) != 1 || len(committerBatch) != 1 {
 		t.Fatalf("Should have had one tx in the batch, got %d and %d", len(batches), len(committers))
+	}
+
+}
+
+func TestBatchSizePreferredMaxBytesOverflowNoPending(t *testing.T) {
+	filters := getFilters()
+
+	goodTxLargeBytes := messageSizeBytes(goodTxLarge)
+
+	// set preferred max bytes such that 1 goodTxLarge will not fit
+	preferredMaxBytes := goodTxLargeBytes - 1
+
+	// set message count > 1
+	maxMessageCount := uint32(20)
+
+	r := NewReceiverImpl(&mocksharedconfig.Manager{BatchSizeVal: &ab.BatchSize{MaxMessageCount: maxMessageCount, AbsoluteMaxBytes: preferredMaxBytes * 3, PreferredMaxBytes: preferredMaxBytes}}, filters)
+
+	// submit large message
+	batches, committers, ok := r.Ordered(goodTxLarge)
+
+	if batches == nil || committers == nil {
+		t.Fatalf("Should have created batch")
+	}
+
+	if len(batches) != 1 || len(committers) != 1 {
+		t.Fatalf("Should have created one batch, got %d and %d", len(batches), len(committers))
+	}
+
+	if len(batches[0]) != 1 || len(committers[0]) != 1 {
+		t.Fatalf("Should have had one normal tx in the batch got %d and %d committers", len(batches[0]), len(committers[0]))
+	}
+	if !ok {
+		t.Fatalf("Should have enqueued the message into batch")
 	}
 
 }
