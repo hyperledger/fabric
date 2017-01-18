@@ -94,11 +94,11 @@ func ExampleError() {
 		fmt.Printf("%s\n", err.GetReasonCode())
 		fmt.Printf("%s\n", err.Message())
 		// Output:
-		// An unknown error occurred.
-		// Utility-UnknownError
-		// Utility
-		// UnknownError
-		// An unknown error occurred.
+		// UTILITY_UNKNOWNERROR - An unknown error occurred.
+		// UTILITY_UNKNOWNERROR
+		// UTILITY
+		// UNKNOWNERROR
+		// UTILITY_UNKNOWNERROR - An unknown error occurred.
 	}
 }
 
@@ -118,11 +118,11 @@ func Example_utilityErrorWithArg() {
 		fmt.Printf("%s\n", err.GetReasonCode())
 		fmt.Printf("%s\n", err.Message())
 		// Output:
-		// An error occurred: arg1
-		// Utility-ErrorWithArg
-		// Utility
-		// ErrorWithArg
-		// An error occurred: arg1
+		// UTILITY_ERRORWITHARG - An error occurred: arg1
+		// UTILITY_ERRORWITHARG
+		// UTILITY
+		// ERRORWITHARG
+		// UTILITY_ERRORWITHARG - An error occurred: arg1
 	}
 }
 
@@ -142,10 +142,10 @@ func Example_loggingInvalidLevel() {
 		fmt.Printf("%s\n", err.GetReasonCode())
 		fmt.Printf("%s\n", err.Message())
 		// Output:
-		// Invalid log level provided - invalid
-		// Logging-InvalidLevel
-		// Logging
-		// InvalidLevel
-		// Invalid log level provided - invalid
+		// LOGGING_INVALIDLEVEL - Invalid log level provided - invalid
+		// LOGGING_INVALIDLEVEL
+		// LOGGING
+		// INVALIDLEVEL
+		// LOGGING_INVALIDLEVEL - Invalid log level provided - invalid
 	}
 }
