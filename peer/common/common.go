@@ -79,7 +79,7 @@ func InitCrypto(mspMgrConfigDir string) error {
 func GetEndorserClient() (pb.EndorserClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
-		err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
+		err = errors.ErrorWithCallstack("Peer", "ConnectionError", "Error trying to connect to local peer: %s", err.Error())
 		return nil, err
 	}
 	endorserClient := pb.NewEndorserClient(clientConn)
@@ -90,7 +90,7 @@ func GetEndorserClient() (pb.EndorserClient, error) {
 func GetAdminClient() (pb.AdminClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
-		err = errors.ErrorWithCallstack(errors.Peer, errors.PeerConnectionError, err.Error())
+		err = errors.ErrorWithCallstack("Peer", "ConnectionError", "Error trying to connect to local peer: %s", err.Error())
 		return nil, err
 	}
 	adminClient := pb.NewAdminClient(clientConn)

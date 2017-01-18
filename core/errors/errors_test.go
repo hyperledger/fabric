@@ -25,7 +25,7 @@ import (
 )
 
 func TestError(t *testing.T) {
-	e := Error(Utility, UtilityUnknownError)
+	e := Error("Utility", "ErrorWithArg", "An unknown error occurred.")
 	s := e.GetStack()
 	if s != "" {
 		t.Fatalf("No error stack should have been recorded.")
@@ -34,7 +34,7 @@ func TestError(t *testing.T) {
 
 // TestErrorWithArg tests creating an error with a message argument
 func TestErrorWithArg(t *testing.T) {
-	e := Error(Utility, UtilityErrorWithArg, "arg1")
+	e := Error("Utility", "ErrorWithArg", "An error occurred: %s", "arg1")
 	s := e.GetStack()
 	if s != "" {
 		t.Fatalf("No error stack should have been recorded.")
@@ -42,7 +42,7 @@ func TestErrorWithArg(t *testing.T) {
 }
 
 func TestErrorWithCallstack(t *testing.T) {
-	e := ErrorWithCallstack(Utility, UtilityUnknownError)
+	e := ErrorWithCallstack("Utility", "UnknownError", "An unknown error occurred.")
 	s := e.GetStack()
 	if s == "" {
 		t.Fatalf("No error stack was recorded.")
@@ -52,7 +52,7 @@ func TestErrorWithCallstack(t *testing.T) {
 // TestErrorWithCallstackAndArg tests creating an error with a callstack and
 // message argument
 func TestErrorWithCallstackAndArg(t *testing.T) {
-	e := ErrorWithCallstack(Utility, UtilityErrorWithArg, "arg1")
+	e := ErrorWithCallstack("Utility", "ErrorWithArg", "An error occurred: %s", "arg1")
 	s := e.GetStack()
 	if s == "" {
 		t.Fatalf("No error stack was recorded.")
@@ -67,7 +67,7 @@ func TestErrorWithCallstackMessage(t *testing.T) {
 	// to the error message
 	flogging.SetModuleLevel("error", "debug")
 
-	e := ErrorWithCallstack(Utility, UtilityUnknownError)
+	e := ErrorWithCallstack("Utility", "ErrorWithArg", "An unknown error occurred.")
 	s := e.GetStack()
 	if s == "" {
 		t.Fatalf("No error stack was recorded.")
@@ -85,7 +85,7 @@ func ExampleError() {
 	// not be appended to the error message
 	flogging.SetModuleLevel("error", "warning")
 
-	err := ErrorWithCallstack(Utility, UtilityUnknownError)
+	err := ErrorWithCallstack("Utility", "UnknownError", "An unknown error occurred.")
 
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
@@ -93,25 +93,23 @@ func ExampleError() {
 		fmt.Printf("%s\n", err.GetComponentCode())
 		fmt.Printf("%s\n", err.GetReasonCode())
 		fmt.Printf("%s\n", err.Message())
-		fmt.Printf("%s\n", err.MessageIn("en"))
 		// Output:
 		// An unknown error occurred.
-		// Utility-UtilityUnknownError
+		// Utility-UnknownError
 		// Utility
-		// UtilityUnknownError
-		// An unknown error occurred.
+		// UnknownError
 		// An unknown error occurred.
 	}
 }
 
 // ExampleErrorWithArg tests the output for a sample error with a message
 // argument
-func ExampleUtilityErrorWithArg() {
+func Example_utilityErrorWithArg() {
 	// when the 'error' module is set to anything but debug, the callstack will
 	// not be appended to the error message
 	flogging.SetModuleLevel("error", "warning")
 
-	err := ErrorWithCallstack(Utility, UtilityErrorWithArg, "arg1")
+	err := ErrorWithCallstack("Utility", "ErrorWithArg", "An error occurred: %s", "arg1")
 
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
@@ -119,25 +117,23 @@ func ExampleUtilityErrorWithArg() {
 		fmt.Printf("%s\n", err.GetComponentCode())
 		fmt.Printf("%s\n", err.GetReasonCode())
 		fmt.Printf("%s\n", err.Message())
-		fmt.Printf("%s\n", err.MessageIn("en"))
 		// Output:
 		// An error occurred: arg1
-		// Utility-UtilityErrorWithArg
+		// Utility-ErrorWithArg
 		// Utility
-		// UtilityErrorWithArg
-		// An error occurred: arg1
+		// ErrorWithArg
 		// An error occurred: arg1
 	}
 }
 
-// ExampleLoggingInvalidLogLevel tests the output for a logging error where
+// Example_loggingInvalidLevel tests the output for a logging error where
 // and an invalid log level has been provided
-func ExampleLoggingInvalidLogLevel() {
+func Example_loggingInvalidLevel() {
 	// when the 'error' module is set to anything but debug, the callstack will
 	// not be appended to the error message
 	flogging.SetModuleLevel("error", "warning")
 
-	err := ErrorWithCallstack(Logging, LoggingInvalidLogLevel, "invalid")
+	err := ErrorWithCallstack("Logging", "InvalidLevel", "Invalid log level provided - %s", "invalid")
 
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
@@ -145,13 +141,11 @@ func ExampleLoggingInvalidLogLevel() {
 		fmt.Printf("%s\n", err.GetComponentCode())
 		fmt.Printf("%s\n", err.GetReasonCode())
 		fmt.Printf("%s\n", err.Message())
-		fmt.Printf("%s\n", err.MessageIn("en"))
 		// Output:
 		// Invalid log level provided - invalid
-		// Logging-LoggingInvalidLogLevel
+		// Logging-InvalidLevel
 		// Logging
-		// LoggingInvalidLogLevel
-		// Invalid log level provided - invalid
+		// InvalidLevel
 		// Invalid log level provided - invalid
 	}
 }
