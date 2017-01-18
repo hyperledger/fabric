@@ -62,6 +62,13 @@ func acceptData(m interface{}) bool {
 	return false
 }
 
+func acceptLeadershp(message interface{}) bool {
+	validMsg := message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
+		message.(*proto.GossipMessage).IsLeadershipMsg()
+
+	return validMsg
+}
+
 type joinChanMsg struct {
 	anchorPeers []api.AnchorPeer
 }
@@ -489,6 +496,34 @@ func TestDissemination(t *testing.T) {
 	for i := 0; i < n; i++ {
 		assert.Equal(t, msgsCount2Send, receivedMessages[i])
 	}
+
+	//Sending leadership messages
+	receivedLeadershipMessages := make([]int, n)
+	wgLeadership := sync.WaitGroup{}
+	wgLeadership.Add(n)
+	for i := 1; i <= n; i++ {
+		leadershipChan, _ := peers[i-1].Accept(acceptLeadershp, false)
+		go func(index int, ch <-chan *proto.GossipMessage) {
+			defer wgLeadership.Done()
+			<-ch
+			receivedLeadershipMessages[index]++
+		}(i-1, leadershipChan)
+	}
+
+	seqNum := 0
+	incTime := uint64(time.Now().UnixNano())
+	t3 := time.Now()
+
+	leadershipMsg := createLeadershipMsg(true, common.ChainID("A"), incTime, uint64(seqNum), boot.(*gossipServiceImpl).conf.SelfEndpoint, boot.(*gossipServiceImpl).comm.GetPKIid())
+	boot.Gossip(leadershipMsg)
+
+	waitUntilOrFailBlocking(t, wgLeadership.Wait)
+	t.Log("Leadership message dissemination took", time.Since(t3))
+
+	for i := 0; i < n; i++ {
+		assert.Equal(t, 1, receivedLeadershipMessages[i])
+	}
+
 	t.Log("Stopping peers")
 
 	stop := func() {
@@ -784,6 +819,78 @@ func TestEndedGoroutines(t *testing.T) {
 	ensureGoroutineExit(t)
 }
 
+//func TestLeadershipMsgDissemination(t *testing.T) {
+//	t.Parallel()
+//	portPrefix := 3610
+//	t1 := time.Now()
+//	// Scenario: 20 nodes and a bootstrap node.
+//	// The bootstrap node sends 10 leadership messages and we count
+//	// that each node got 10 messages after a few seconds
+//
+//	stopped := int32(0)
+//	go waitForTestCompletion(&stopped, t)
+//
+//	n := 10
+//	msgsCount2Send := 10
+//	boot := newGossipInstance(portPrefix, 0, 100)
+//	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+//	boot.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+//
+//	peers := make([]Gossip, n)
+//	receivedMessages := make([]int, n)
+//	wg := sync.WaitGroup{}
+//	wg.Add(n)
+//	for i := 1; i <= n; i++ {
+//		pI := newGossipInstance(portPrefix, i, 100, 0)
+//		peers[i-1] = pI
+//		pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+//		pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+//		acceptChan, _ := pI.Accept(acceptLeadershp, false)
+//		go func(index int, ch <-chan *proto.GossipMessage) {
+//			defer wg.Done()
+//			for j := 0; j < msgsCount2Send; j++ {
+//				<-ch
+//				receivedMessages[index]++
+//			}
+//		}(i-1, acceptChan)
+//	}
+//
+//	membershipTime := time.Now()
+//	waitUntilOrFail(t, checkPeersMembership(peers, n))
+//	t.Log("Membership establishment took", time.Since(membershipTime))
+//
+//	seqNum := 0
+//	incTime := uint64(time.Now().UnixNano())
+//
+//	for i := 1; i <= msgsCount2Send; i++ {
+//		seqNum++
+//		leadershipMsg := createLeadershipMsg(true, common.ChainID("A"), incTime, uint64(seqNum), boot.(*gossipServiceImpl).conf.SelfEndpoint, boot.(*gossipServiceImpl).comm.GetPKIid())
+//		boot.Gossip(leadershipMsg)
+//		time.Sleep(time.Duration(500) * time.Millisecond)
+//	}
+//
+//	t2 := time.Now()
+//	waitUntilOrFailBlocking(t, wg.Wait)
+//	t.Log("Leadership message dissemination took", time.Since(t2))
+//
+//	for i := 0; i < n; i++ {
+//		assert.Equal(t, msgsCount2Send, receivedMessages[i])
+//	}
+//	t.Log("Stopping peers")
+//
+//	stop := func() {
+//		stopPeers(append(peers, boot))
+//	}
+//
+//	stopTime := time.Now()
+//	waitUntilOrFailBlocking(t, stop)
+//	t.Log("Stop took", time.Since(stopTime))
+//	t.Log("Took", time.Since(t1))
+//	atomic.StoreInt32(&stopped, int32(1))
+//	fmt.Println("<<<TestLeadershipMsgDissemination>>>")
+//	testWG.Done()
+//}
+
 func createDataMsg(seqnum uint64, data []byte, hash string, channel common.ChainID) *proto.GossipMessage {
 	return &proto.GossipMessage{
 		Channel: []byte(channel),
@@ -799,6 +906,32 @@ func createDataMsg(seqnum uint64, data []byte, hash string, channel common.Chain
 			},
 		},
 	}
+}
+
+func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uint64, seqNum uint64, endpoint string, pkiid []byte) *proto.GossipMessage {
+
+	metadata := []byte{}
+	metadata = strconv.AppendBool(metadata, isDeclaration)
+
+	leadershipMsg := &proto.LeadershipMessage{
+		Membership: &proto.Member{
+			PkiID:    pkiid,
+			Endpoint: endpoint,
+			Metadata: metadata,
+		},
+		Timestamp: &proto.PeerTime{
+			IncNumber: incTime,
+			SeqNum:    seqNum,
+		},
+	}
+
+	msg := &proto.GossipMessage{
+		Nonce:   0,
+		Tag:     proto.GossipMessage_CHAN_AND_ORG,
+		Content: &proto.GossipMessage_LeadershipMsg{LeadershipMsg: leadershipMsg},
+		Channel: channel,
+	}
+	return msg
 }
 
 type goroutinePredicate func(g goroutine) bool

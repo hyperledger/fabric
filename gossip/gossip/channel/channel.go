@@ -119,6 +119,7 @@ type gossipChannel struct {
 	joinMsg                   api.JoinChannelMessage
 	blockMsgStore             msgstore.MessageStore
 	stateInfoMsgStore         msgstore.MessageStore
+	leaderMsgStore            msgstore.MessageStore
 	chainID                   common.ChainID
 	blocksPuller              pull.Mediator
 	logger                    *util.Logger
@@ -166,6 +167,7 @@ func NewGossipChannel(mcs api.MessageCryptoService, chainID common.ChainID, adap
 
 	gc.stateInfoMsgStore = NewStateInfoMessageStore()
 	gc.blocksPuller = gc.createBlockPuller()
+	gc.leaderMsgStore = msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {})
 
 	gc.ConfigureChannel(joinMsg)
 
@@ -418,6 +420,15 @@ func (gc *gossipChannel) HandleMessage(msg comm.ReceivedMessage) {
 			}
 		}
 		gc.blocksPuller.HandleMessage(msg)
+	}
+
+	if m.IsLeadershipMsg() {
+		// Handling leadership message
+		added := gc.leaderMsgStore.Add(m)
+		if added {
+			gc.DeMultiplex(m)
+		}
+
 	}
 }
 

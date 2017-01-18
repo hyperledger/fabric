@@ -391,6 +391,7 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*proto.GossipMessage) {
 	var blocks []*proto.GossipMessage
 	var stateInfoMsgs []*proto.GossipMessage
 	var orgMsgs []*proto.GossipMessage
+	var leadershipMsgs []*proto.GossipMessage
 
 	isABlock := func(o interface{}) bool {
 		return o.(*proto.GossipMessage).IsDataMsg()
@@ -400,6 +401,9 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*proto.GossipMessage) {
 	}
 	isOrgRestricted := func(o interface{}) bool {
 		return o.(*proto.GossipMessage).IsOrgRestricted()
+	}
+	isLeadershipMsg := func(o interface{}) bool {
+		return o.(*proto.GossipMessage).IsLeadershipMsg()
 	}
 
 	// Gossip blocks
@@ -412,6 +416,12 @@ func (g *gossipServiceImpl) gossipBatch(msgs []*proto.GossipMessage) {
 	stateInfoMsgs, msgs = partitionMessages(isAStateInfoMsg, msgs)
 	g.gossipInChan(stateInfoMsgs, func(gc channel.GossipChannel) filter.RoutingFilter {
 		return gc.IsMemberInChan
+	})
+
+	//Gossip Leadership messages
+	leadershipMsgs, msgs = partitionMessages(isLeadershipMsg, msgs)
+	g.gossipInChan(leadershipMsgs, func(gc channel.GossipChannel) filter.RoutingFilter {
+		return filter.CombineRoutingFilters(gc.IsSubscribed, gc.IsMemberInChan, g.isInMyorg)
 	})
 
 	// Gossip messages restricted to our org
@@ -451,10 +461,17 @@ func (g *gossipServiceImpl) gossipInChan(messages []*proto.GossipMessage, chanRo
 			continue
 		}
 		// Select the peers to send the messages to
-		peers2Send := filter.SelectPeers(g.conf.PropagatePeerNum, g.disc.GetMembership(), chanRoutingFactory(gc))
+		// For leadership messages we will select all peers that pass routing factory - e.g. all peers in channel and org
+		membership := g.disc.GetMembership()
+		allPeersInCh := filter.SelectPeers(len(membership), membership, chanRoutingFactory(gc))
+		peers2Send := filter.SelectPeers(g.conf.PropagatePeerNum, membership, chanRoutingFactory(gc))
 		// Send the messages to the remote peers
 		for _, msg := range messagesOfChannel {
-			g.comm.Send(msg, peers2Send...)
+			if msg.IsLeadershipMsg() {
+				g.comm.Send(msg, allPeersInCh...)
+			} else {
+				g.comm.Send(msg, peers2Send...)
+			}
 		}
 	}
 }

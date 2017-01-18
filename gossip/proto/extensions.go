@@ -61,6 +61,10 @@ func (mc *msgComparator) invalidationPolicy(this interface{}, that interface{}) 
 		return mc.identityInvalidationPolicy(thisMsg.GetPeerIdentity(), thatMsg.GetPeerIdentity())
 	}
 
+	if thisMsg.IsLeadershipMsg() && thatMsg.IsLeadershipMsg() {
+		return leaderInvalidationPolicy(thisMsg.GetLeadershipMsg(), thatMsg.GetLeadershipMsg())
+	}
+
 	return common.MessageNoAction
 }
 
@@ -99,6 +103,14 @@ func (mc *msgComparator) dataInvalidationPolicy(thisDataMsg *DataMessage, thatDa
 }
 
 func aliveInvalidationPolicy(thisMsg *AliveMessage, thatMsg *AliveMessage) common.InvalidationResult {
+	if !bytes.Equal(thisMsg.Membership.PkiID, thatMsg.Membership.PkiID) {
+		return common.MessageNoAction
+	}
+
+	return compareTimestamps(thisMsg.Timestamp, thatMsg.Timestamp)
+}
+
+func leaderInvalidationPolicy(thisMsg *LeadershipMessage, thatMsg *LeadershipMessage) common.InvalidationResult {
 	if !bytes.Equal(thisMsg.Membership.PkiID, thatMsg.Membership.PkiID) {
 		return common.MessageNoAction
 	}
@@ -275,6 +287,13 @@ func (m *GossipMessage) IsTagLegal() error {
 	if m.IsStateInfoMsg() || m.IsStateInfoPullRequestMsg() || m.IsStateInfoSnapshot() || m.IsRemoteStateMessage() {
 		if m.Tag != GossipMessage_CHAN_OR_ORG {
 			return fmt.Errorf("Tag should be %s", GossipMessage_Tag_name[int32(GossipMessage_CHAN_OR_ORG)])
+		}
+		return nil
+	}
+
+	if m.IsLeadershipMsg() {
+		if m.Tag != GossipMessage_CHAN_AND_ORG {
+			return fmt.Errorf("Tag should be %s", GossipMessage_Tag_name[int32(GossipMessage_CHAN_AND_ORG)])
 		}
 		return nil
 	}
