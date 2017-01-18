@@ -67,6 +67,7 @@ func (s *lockBasedTxSimulator) SetStateMultipleKeys(namespace string, kvs map[st
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetTxSimulationResults() ([]byte, error) {
 	logger.Debugf("Simulation completed, getting simulation results")
+	s.Done()
 	return s.rwset.GetTxReadWriteSet().Marshal()
 }
 

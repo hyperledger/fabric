@@ -181,6 +181,75 @@ func testTxValidation(t *testing.T, env testEnv) {
 	*/
 }
 
+func TestTxPhantomValidation(t *testing.T) {
+	for _, testEnv := range testEnvs {
+		t.Logf("Running test for TestEnv = %s", testEnv.getName())
+		testEnv.init(t)
+		testTxPhantomValidation(t, testEnv)
+		testEnv.cleanup()
+	}
+}
+
+func testTxPhantomValidation(t *testing.T, env testEnv) {
+	txMgr := env.getTxMgr()
+	txMgrHelper := newTxMgrTestHelper(t, txMgr)
+	// simulate tx1
+	s1, _ := txMgr.NewTxSimulator()
+	s1.SetState("ns", "key1", []byte("value1"))
+	s1.SetState("ns", "key2", []byte("value2"))
+	s1.SetState("ns", "key3", []byte("value3"))
+	s1.SetState("ns", "key4", []byte("value4"))
+	s1.SetState("ns", "key5", []byte("value5"))
+	s1.SetState("ns", "key6", []byte("value6"))
+	s1.Done()
+	// validate and commit RWset
+	txRWSet1, _ := s1.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet1)
+
+	// simulate tx2
+	s2, _ := txMgr.NewTxSimulator()
+	itr2, _ := s2.GetStateRangeScanIterator("ns", "key2", "key5")
+	for {
+		if result, _ := itr2.Next(); result == nil {
+			break
+		}
+	}
+	s2.DeleteState("ns", "key3")
+	s2.Done()
+	txRWSet2, _ := s2.GetTxSimulationResults()
+
+	// simulate tx3
+	s3, _ := txMgr.NewTxSimulator()
+	itr3, _ := s3.GetStateRangeScanIterator("ns", "key2", "key5")
+	for {
+		if result, _ := itr3.Next(); result == nil {
+			break
+		}
+	}
+	s3.SetState("ns", "key3", []byte("value3_new"))
+	s3.Done()
+	txRWSet3, _ := s3.GetTxSimulationResults()
+
+	// simulate tx4
+	s4, _ := txMgr.NewTxSimulator()
+	itr4, _ := s4.GetStateRangeScanIterator("ns", "key4", "key6")
+	for {
+		if result, _ := itr4.Next(); result == nil {
+			break
+		}
+	}
+	s4.SetState("ns", "key3", []byte("value3_new"))
+	s4.Done()
+	txRWSet4, _ := s4.GetTxSimulationResults()
+
+	// txRWSet2 should be valid
+	txMgrHelper.validateAndCommitRWSet(txRWSet2)
+	// txRWSet2 makes txRWSet3 invalid as it deletes a key in the range
+	txMgrHelper.checkRWsetInvalid(txRWSet3)
+	// txRWSet4 should be valid as it iterates over a different range
+	txMgrHelper.validateAndCommitRWSet(txRWSet4)
+}
+
 func TestIterator(t *testing.T) {
 	for _, testEnv := range testEnvs {
 		t.Logf("Running test for TestEnv = %s", testEnv.getName())

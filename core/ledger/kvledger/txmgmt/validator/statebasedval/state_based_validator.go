@@ -153,24 +153,122 @@ func addWriteSetToBatch(txRWSet *rwset.TxReadWriteSet, txHeight *version.Height,
 func (v *Validator) validateTx(txRWSet *rwset.TxReadWriteSet, updates *statedb.UpdateBatch) (bool, error) {
 	for _, nsRWSet := range txRWSet.NsRWs {
 		ns := nsRWSet.NameSpace
-		for _, kvRead := range nsRWSet.Reads {
-			if updates.Exists(ns, kvRead.Key) {
-				return false, nil
-			}
-			versionedValue, err := v.db.GetState(ns, kvRead.Key)
-			if err != nil {
-				return false, nil
-			}
-			var committedVersion *version.Height
-			if versionedValue != nil {
-				committedVersion = versionedValue.Version
-			}
-			if !version.AreSame(committedVersion, kvRead.Version) {
-				logger.Debugf("Version mismatch for key [%s:%s]. Committed version = [%s], Version in readSet [%s]",
-					ns, kvRead.Key, committedVersion, kvRead.Version)
-				return false, nil
-			}
+		//TODO introduce different Error codes for different causes of validation failure
+		if valid, err := v.validateReadSet(ns, nsRWSet.Reads, updates); !valid || err != nil {
+			return valid, err
 		}
+		if valid, err := v.validateRangeQueries(ns, nsRWSet.RangeQueriesInfo, updates); !valid || err != nil {
+			return valid, err
+		}
+	}
+	return true, nil
+}
+
+func (v *Validator) validateReadSet(ns string, kvReads []*rwset.KVRead, updates *statedb.UpdateBatch) (bool, error) {
+	for _, kvRead := range kvReads {
+		if valid, err := v.validateKVRead(ns, kvRead, updates); !valid || err != nil {
+			return valid, err
+		}
+	}
+	return true, nil
+}
+
+// validateKVRead performs mvcc check for a key read during transaction simulation.
+// i.e., it checks whether a key/version combination is already updated in the statedb (by an already committed block)
+// or in the updates (by a preceding valid transaction in the current block)
+func (v *Validator) validateKVRead(ns string, kvRead *rwset.KVRead, updates *statedb.UpdateBatch) (bool, error) {
+	if updates.Exists(ns, kvRead.Key) {
+		return false, nil
+	}
+	versionedValue, err := v.db.GetState(ns, kvRead.Key)
+	if err != nil {
+		return false, nil
+	}
+	var committedVersion *version.Height
+	if versionedValue != nil {
+		committedVersion = versionedValue.Version
+	}
+	if !version.AreSame(committedVersion, kvRead.Version) {
+		logger.Debugf("Version mismatch for key [%s:%s]. Committed version = [%s], Version in readSet [%s]",
+			ns, kvRead.Key, committedVersion, kvRead.Version)
+		return false, nil
+	}
+	return true, nil
+}
+
+func (v *Validator) validateRangeQueries(ns string, rangeQueriesInfo []*rwset.RangeQueryInfo, updates *statedb.UpdateBatch) (bool, error) {
+	for _, rqi := range rangeQueriesInfo {
+		if valid, err := v.validateRangeQuery(ns, rqi, updates); !valid || err != nil {
+			return valid, err
+		}
+	}
+	return true, nil
+}
+
+// validateRangeQuery performs a phatom read check i.e., it
+// checks whether the results of the range query are still the same when executed on the
+// statedb (latest state as of last committed block) + updates (prepared by the writes of preceding valid transactions
+// in the current block and yet to be committed as part of group commit at the end of the validation of the block)
+func (v *Validator) validateRangeQuery(ns string, rangeQueryInfo *rwset.RangeQueryInfo, updates *statedb.UpdateBatch) (bool, error) {
+	logger.Debugf("validateRangeQuery: ns=%s, rangeQueryInfo=%s", ns, rangeQueryInfo)
+	var dbItr statedb.ResultsIterator
+	var updatesItr statedb.ResultsIterator
+	var combinedItr statedb.ResultsIterator
+	var err error
+	if dbItr, err = v.db.GetStateRangeScanIterator(ns, rangeQueryInfo.StartKey, rangeQueryInfo.EndKey); err != nil {
+		return false, err
+	}
+	updatesItr = updates.GetRangeScanIterator(ns, rangeQueryInfo.StartKey, rangeQueryInfo.EndKey)
+	if combinedItr, err = newCombinedIterator(ns, dbItr, updatesItr); err != nil {
+		return false, err
+	}
+	defer combinedItr.Close()
+	rqResults := rangeQueryInfo.GetResults()
+	lastIndexToVerify := len(rqResults) - 1
+
+	if !rangeQueryInfo.ItrExhausted {
+		// During simulation the caller had not exhausted the iterator so
+		// rangeQueryInfo.EndKey is not actual endKey given by the caller in the range query.
+		// Leveldb results exclude the endkey so just iterate one short of the results present
+		// in the rangeQueryInfo. Check for the last result explicitly
+		lastIndexToVerify--
+		logger.Debugf("Checking last result")
+		if valid, err := v.validateKVRead(ns, rqResults[len(rqResults)-1], updates); !valid || err != nil {
+			return valid, err
+		}
+	}
+
+	var queryResponse statedb.QueryResult
+	// Iterate over sorted results in the rangeQueryInfo and compare
+	// with the results retruned by the combined iterator and return false at first mismatch
+	for i := 0; i <= lastIndexToVerify; i++ {
+		kvRead := rqResults[i]
+		if queryResponse, err = combinedItr.Next(); err != nil {
+			return false, err
+		}
+		logger.Debugf("comparing kvRead=[%#v] to queryResponse=[%#v]", kvRead, queryResponse)
+		if queryResponse == nil {
+			logger.Debugf("Query response nil. Key [%s] got deleted", kvRead.Key)
+			return false, nil
+		}
+		versionedKV := queryResponse.(*statedb.VersionedKV)
+		if versionedKV.Key != kvRead.Key {
+			logger.Debugf("key name mismatch: Key in rwset = [%s], key in query results = [%s]", kvRead.Key, versionedKV.Key)
+			return false, nil
+		}
+		if !version.AreSame(versionedKV.Version, kvRead.Version) {
+			logger.Debugf(`Version mismatch for key [%s]: Version in rwset = [%#v], latest version = [%#v]`,
+				versionedKV.Key, versionedKV.Version, kvRead.Version)
+			return false, nil
+		}
+	}
+	if queryResponse, err = combinedItr.Next(); err != nil {
+		return false, err
+	}
+	if queryResponse != nil {
+		// iterator is not exhausted - which means that there are extra results in the given range
+		logger.Debugf("Extra result = [%#v]", queryResponse)
+		return false, nil
 	}
 	return true, nil
 }

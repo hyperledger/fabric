@@ -54,11 +54,38 @@ func (w *KVWrite) SetValue(value []byte) {
 	w.IsDelete = value == nil
 }
 
+// RangeQueryInfo captures a range query executed by a transaction
+// and the tuples <key,version> that are read by the transaction
+// This it to be used to perform a phantom-read validation during commit
+type RangeQueryInfo struct {
+	StartKey     string
+	EndKey       string
+	ItrExhausted bool
+	results      []*KVRead
+	resultHash   []byte
+}
+
+// AddResult appends the result
+func (rqi *RangeQueryInfo) AddResult(kvRead *KVRead) {
+	rqi.results = append(rqi.results, kvRead)
+}
+
+// GetResults returns the results of the range query
+func (rqi *RangeQueryInfo) GetResults() []*KVRead {
+	return rqi.results
+}
+
+// GetResultHash returns the resultHash
+func (rqi *RangeQueryInfo) GetResultHash() []byte {
+	return rqi.resultHash
+}
+
 // NsReadWriteSet - a collection of all the reads and writes that belong to a common namespace
 type NsReadWriteSet struct {
-	NameSpace string
-	Reads     []*KVRead
-	Writes    []*KVWrite
+	NameSpace        string
+	Reads            []*KVRead
+	Writes           []*KVWrite
+	RangeQueriesInfo []*RangeQueryInfo
 }
 
 // TxReadWriteSet - a collection of all the reads and writes collected as a result of a transaction simulation
@@ -93,6 +120,79 @@ func (r *KVRead) Unmarshal(buf *proto.Buffer) error {
 	}
 	if len(versionBytes) > 0 {
 		r.Version, _ = version.NewHeightFromBytes(versionBytes)
+	}
+	return nil
+}
+
+// Marshal serializes a `RangeQueryInfo`
+func (rqi *RangeQueryInfo) Marshal(buf *proto.Buffer) error {
+	if err := buf.EncodeStringBytes(rqi.StartKey); err != nil {
+		return err
+	}
+	if err := buf.EncodeStringBytes(rqi.EndKey); err != nil {
+		return err
+	}
+
+	itrExhausedMarker := 0 // iterator did not get exhausted
+	if rqi.ItrExhausted {
+		itrExhausedMarker = 1
+	}
+	if err := buf.EncodeVarint(uint64(itrExhausedMarker)); err != nil {
+		return err
+	}
+
+	if err := buf.EncodeVarint(uint64(len(rqi.results))); err != nil {
+		return err
+	}
+	for i := 0; i < len(rqi.results); i++ {
+		if err := rqi.results[i].Marshal(buf); err != nil {
+			return err
+		}
+	}
+	if err := buf.EncodeRawBytes(rqi.resultHash); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Unmarshal deserializes a `RangeQueryInfo`
+func (rqi *RangeQueryInfo) Unmarshal(buf *proto.Buffer) error {
+	var err error
+	var numResults uint64
+	var itrExhaustedMarker uint64
+
+	if rqi.StartKey, err = buf.DecodeStringBytes(); err != nil {
+		return err
+	}
+	if rqi.EndKey, err = buf.DecodeStringBytes(); err != nil {
+		return err
+	}
+	if itrExhaustedMarker, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	if itrExhaustedMarker == 1 {
+		rqi.ItrExhausted = true
+	} else {
+		rqi.ItrExhausted = false
+	}
+	if numResults, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	if numResults > 0 {
+		rqi.results = make([]*KVRead, int(numResults))
+	}
+	for i := 0; i < int(numResults); i++ {
+		kvRead := &KVRead{}
+		if err := kvRead.Unmarshal(buf); err != nil {
+			return err
+		}
+		rqi.results[i] = kvRead
+	}
+	if rqi.resultHash, err = buf.DecodeRawBytes(false); err != nil {
+		return err
+	}
+	if len(rqi.resultHash) == 0 {
+		rqi.resultHash = nil
 	}
 	return nil
 }
@@ -148,13 +248,25 @@ func (nsRW *NsReadWriteSet) Marshal(buf *proto.Buffer) error {
 		return err
 	}
 	for i := 0; i < len(nsRW.Reads); i++ {
-		nsRW.Reads[i].Marshal(buf)
+		if err = nsRW.Reads[i].Marshal(buf); err != nil {
+			return err
+		}
 	}
 	if err = buf.EncodeVarint(uint64(len(nsRW.Writes))); err != nil {
 		return err
 	}
 	for i := 0; i < len(nsRW.Writes); i++ {
-		nsRW.Writes[i].Marshal(buf)
+		if err = nsRW.Writes[i].Marshal(buf); err != nil {
+			return err
+		}
+	}
+	if err = buf.EncodeVarint(uint64(len(nsRW.RangeQueriesInfo))); err != nil {
+		return err
+	}
+	for i := 0; i < len(nsRW.RangeQueriesInfo); i++ {
+		if err = nsRW.RangeQueriesInfo[i].Marshal(buf); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -187,6 +299,18 @@ func (nsRW *NsReadWriteSet) Unmarshal(buf *proto.Buffer) error {
 			return err
 		}
 		nsRW.Writes = append(nsRW.Writes, w)
+	}
+
+	var numRangeQueriesInfo uint64
+	if numRangeQueriesInfo, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	for i := 0; i < int(numRangeQueriesInfo); i++ {
+		rqInfo := &RangeQueryInfo{}
+		if err = rqInfo.Unmarshal(buf); err != nil {
+			return err
+		}
+		nsRW.RangeQueriesInfo = append(nsRW.RangeQueriesInfo, rqInfo)
 	}
 	return nil
 }
@@ -234,18 +358,32 @@ func (w *KVWrite) String() string {
 	return fmt.Sprintf("%s=[%#v]", w.Key, w.Value)
 }
 
+// String prints a range query info
+func (rqi *RangeQueryInfo) String() string {
+	return fmt.Sprintf("StartKey=%s, EndKey=%s, ItrExhausted=%t, Results=%#v, Hash=%#v",
+		rqi.StartKey, rqi.EndKey, rqi.ItrExhausted, rqi.results, rqi.resultHash)
+}
+
 // String prints a `NsReadWriteSet`
 func (nsRW *NsReadWriteSet) String() string {
 	var buffer bytes.Buffer
-	buffer.WriteString("ReadSet~")
+	buffer.WriteString("ReadSet=\n")
 	for _, r := range nsRW.Reads {
+		buffer.WriteString("\t")
 		buffer.WriteString(r.String())
-		buffer.WriteString(",")
+		buffer.WriteString("\n")
 	}
-	buffer.WriteString("WriteSet~")
+	buffer.WriteString("WriteSet=\n")
 	for _, w := range nsRW.Writes {
+		buffer.WriteString("\t")
 		buffer.WriteString(w.String())
-		buffer.WriteString(",")
+		buffer.WriteString("\n")
+	}
+	buffer.WriteString("RangeQueriesInfo=\n")
+	for _, rqi := range nsRW.RangeQueriesInfo {
+		buffer.WriteString("\t")
+		buffer.WriteString(rqi.String())
+		buffer.WriteString("\n")
 	}
 	return buffer.String()
 }

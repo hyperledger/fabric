@@ -26,6 +26,7 @@ import (
 type queryHelper struct {
 	txmgr       *LockBasedTxMgr
 	rwset       *rwset.RWSet
+	itrs        []*resultsItr
 	doneInvoked bool
 }
 
@@ -61,11 +62,12 @@ func (h *queryHelper) getStateMultipleKeys(namespace string, keys []string) ([][
 
 func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
 	h.checkDone()
-	dbItr, err := h.txmgr.db.GetStateRangeScanIterator(namespace, startKey, endKey)
+	itr, err := newResultsItr(namespace, startKey, endKey, h.txmgr.db, h.rwset)
 	if err != nil {
 		return nil, err
 	}
-	return &resultsItr{DBItr: dbItr, RWSet: h.rwset}, nil
+	h.itrs = append(h.itrs, itr)
+	return itr, nil
 }
 
 func (h *queryHelper) executeQuery(query string) (ledger.ResultsIterator, error) {
@@ -77,8 +79,17 @@ func (h *queryHelper) executeQuery(query string) (ledger.ResultsIterator, error)
 }
 
 func (h *queryHelper) done() {
+	if h.doneInvoked {
+		return
+	}
+	defer h.txmgr.commitRWLock.RUnlock()
 	h.doneInvoked = true
-	h.txmgr.commitRWLock.RUnlock()
+	for _, itr := range h.itrs {
+		itr.Close()
+		if h.rwset != nil {
+			h.rwset.AddToRangeQuerySet(itr.ns, itr.rangeQueryInfo)
+		}
+	}
 }
 
 func (h *queryHelper) checkDone() {
@@ -87,31 +98,76 @@ func (h *queryHelper) checkDone() {
 	}
 }
 
+// resultsItr implements interface ledger.ResultsIterator
+// this wraps the actual db iterator and intercept the calls
+// to build rangeQueryInfo in the ReadWriteSet that is used
+// for performing phantom read validation during commit
 type resultsItr struct {
-	DBItr statedb.ResultsIterator
-	RWSet *rwset.RWSet
+	ns             string
+	endKey         string
+	dbItr          statedb.ResultsIterator
+	rwSet          *rwset.RWSet
+	rangeQueryInfo *rwset.RangeQueryInfo
 }
 
-// Next implements method in interface ledger.ResultsIterator
-func (itr *resultsItr) Next() (ledger.QueryResult, error) {
-
-	queryResult, err := itr.DBItr.Next()
+func newResultsItr(ns string, startKey string, endKey string, db statedb.VersionedDB, rwSet *rwset.RWSet) (*resultsItr, error) {
+	dbItr, err := db.GetStateRangeScanIterator(ns, startKey, endKey)
 	if err != nil {
 		return nil, err
 	}
+	// In the range query info, just set the StartKey.
+	// Set the EndKey later below in the Next() method.
+	rqInfo := &rwset.RangeQueryInfo{StartKey: startKey}
+	return &resultsItr{ns, endKey, dbItr, rwSet, rqInfo}, nil
+}
+
+// Next implements method in interface ledger.ResultsIterator
+// Before returning the next result, update the EndKey and ItrExhausted in rangeQueryInfo
+// If we set the EndKey in the constructor (as we do for the StartKey) to what is
+// supplied in the original query, we may be capturing the unnecessary longer range if the
+// caller decides to stop iterating at some intermidiate point. Alternatively, we could have
+// set the EndKey and ItrExhausted in the Close() function but it may not be desirable to change
+// transactional behaviour based on whether the Close() was invoked or not
+func (itr *resultsItr) Next() (ledger.QueryResult, error) {
+	queryResult, err := itr.dbItr.Next()
+	if err != nil {
+		return nil, err
+	}
+	itr.updateRangeQueryInfo(queryResult)
 	if queryResult == nil {
 		return nil, nil
 	}
 	versionedKV := queryResult.(*statedb.VersionedKV)
-	if itr.RWSet != nil {
-		itr.RWSet.AddToReadSet(versionedKV.Namespace, versionedKV.Key, versionedKV.Version)
-	}
 	return &ledger.KV{Key: versionedKV.Key, Value: versionedKV.Value}, nil
+}
+
+// updateRangeQueryInfo updates two attributes of the rangeQueryInfo
+// 1) The EndKey - set to either a) latest key that is to be returned to the caller (if the iterator is not exhausted)
+//                                  because, we do not know if the caller is again going to invoke Next() or not.
+//                            or b) the last key that was supplied in the original query (if the iterator is exhausted)
+// 2) The ItrExhausted - set to true if the iterator is going to return nil as a result of the Next() call
+func (itr *resultsItr) updateRangeQueryInfo(queryResult statedb.QueryResult) {
+	if itr.rwSet == nil {
+		return
+	}
+
+	if queryResult == nil {
+		// caller scanned till the iterator got exhausted.
+		// So, set the endKey to the actual endKey supplied in the query
+		itr.rangeQueryInfo.ItrExhausted = true
+		itr.rangeQueryInfo.EndKey = itr.endKey
+		return
+	}
+	versionedKV := queryResult.(*statedb.VersionedKV)
+	itr.rangeQueryInfo.AddResult(rwset.NewKVRead(versionedKV.Key, versionedKV.Version))
+	// Set the end key to the latest key retrieved by the caller.
+	// Because, the caller may actually not invoke the Next() function again
+	itr.rangeQueryInfo.EndKey = versionedKV.Key
 }
 
 // Close implements method in interface ledger.ResultsIterator
 func (itr *resultsItr) Close() {
-	itr.DBItr.Close()
+	itr.dbItr.Close()
 }
 
 type queryResultsItr struct {

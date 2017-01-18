@@ -19,6 +19,8 @@ package util
 import (
 	"encoding/binary"
 	"fmt"
+	"reflect"
+	"sort"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -59,4 +61,16 @@ func DecodeOrderPreservingVarUint64(bytes []byte) (uint64, int) {
 	copy(decodedBytes[8-size:], bytes[1:size+1])
 	numBytesConsumed := size + 1
 	return binary.BigEndian.Uint64(decodedBytes), numBytesConsumed
+}
+
+// GetSortedKeys returns the keys of the map in a sorted order. This function assumes that the keys are string
+func GetSortedKeys(m interface{}) []string {
+	mapVal := reflect.ValueOf(m)
+	keyVals := mapVal.MapKeys()
+	keys := []string{}
+	for _, keyVal := range keyVals {
+		keys = append(keys, keyVal.String())
+	}
+	sort.Strings(keys)
+	return keys
 }
