@@ -19,10 +19,8 @@ option go_package = "github.com/hyperledger/fabric/protos/peer";
 
 package protos;
 
-message PeerAddress {
-    string host = 1;
-    int32 port = 2;
-}
+import "peer/proposal.proto";
+import "peer/proposal_response.proto";
 
 message PeerID {
     string name = 1;
@@ -31,21 +29,6 @@ message PeerID {
 message PeerEndpoint {
     PeerID ID = 1;
     string address = 2;
-    enum Type {
-      UNDEFINED = 0;
-      VALIDATOR = 1;
-      NON_VALIDATOR = 2;
-    }
-    Type type = 3;
-    bytes pkiID = 4;
-}
-
-message PeersMessage {
-    repeated PeerEndpoint peers = 1;
-}
-
-message PeersAddresses {
-    repeated string addresses = 1;
 }
 
 // Contains information about the blockchain ledger such as height, current
@@ -56,4 +39,10 @@ message BlockchainInfo {
     bytes currentBlockHash = 2;
     bytes previousBlockHash = 3;
 
+}
+
+//-------- the Endorser service ------------
+
+service Endorser {
+	rpc ProcessProposal(SignedProposal) returns (ProposalResponse) {}
 }
