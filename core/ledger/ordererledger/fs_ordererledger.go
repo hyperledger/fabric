@@ -21,7 +21,6 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
 
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -31,50 +30,39 @@ const (
 	fileSegmentSize = 64 * 1024 * 1024
 )
 
-// FSBasedOrdererLedger - an orderer ledger implementation that persists blocks on filesystem based store
-type FSBasedOrdererLedger struct {
-	blockStore *fsblkstorage.FsBlockStore
-}
-
-// NewFSBasedOrdererLedger constructs an instance of `FSBasedOrdererLedger`
-func NewFSBasedOrdererLedger(filesystemPath string) *FSBasedOrdererLedger {
-	conf := fsblkstorage.NewConf(filesystemPath, fileSegmentSize)
-	attrsToIndex := []blkstorage.IndexableAttr{
-		blkstorage.IndexableAttrBlockNum,
-	}
-	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
-	blockStore := fsblkstorage.NewFsBlockStore(conf, indexConfig)
-	return &FSBasedOrdererLedger{blockStore}
+// fsBasedOrdererLedger - an orderer ledger implementation that persists blocks on filesystem based store
+type fsBasedOrdererLedger struct {
+	blockStore blkstorage.BlockStore
 }
 
 // GetBlockchainInfo returns basic info about blockchain
-func (rl *FSBasedOrdererLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
+func (rl *fsBasedOrdererLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 	return rl.blockStore.GetBlockchainInfo()
 }
 
 // GetBlockByNumber returns block at a given height
-func (rl *FSBasedOrdererLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
+func (rl *fsBasedOrdererLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 	return rl.blockStore.RetrieveBlockByNumber(blockNumber)
 }
 
 // GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
 // The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 // ResultsIterator contains type BlockHolder
-func (rl *FSBasedOrdererLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIterator, error) {
+func (rl *fsBasedOrdererLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIterator, error) {
 	return rl.blockStore.RetrieveBlocks(startBlockNumber)
 }
 
 //Prune prunes the blocks/transactions that satisfy the given policy
-func (rl *FSBasedOrdererLedger) Prune(policy ledger.PrunePolicy) error {
+func (rl *fsBasedOrdererLedger) Prune(policy ledger.PrunePolicy) error {
 	return errors.New("Not yet implemented")
 }
 
 // Close closes the ledger
-func (rl *FSBasedOrdererLedger) Close() {
+func (rl *fsBasedOrdererLedger) Close() {
 	rl.blockStore.Shutdown()
 }
 
 // CommitBlock adds a new block
-func (rl *FSBasedOrdererLedger) CommitBlock(block *common.Block) error {
+func (rl *fsBasedOrdererLedger) CommitBlock(block *common.Block) error {
 	return rl.blockStore.AddBlock(block)
 }

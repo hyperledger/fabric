@@ -16,7 +16,7 @@ limitations under the License.
 
 package fsblkstorage
 
-import "strings"
+import "path/filepath"
 
 const (
 	defaultMaxBlockfileSize = 64 * 1024 * 1024
@@ -24,19 +24,27 @@ const (
 
 // Conf encapsulates all the configurations for `FsBlockStore`
 type Conf struct {
-	blockfilesDir    string
-	dbPath           string
+	blockStorageDir  string
 	maxBlockfileSize int
 }
 
 // NewConf constructs new `Conf`.
-// filesystemPath is the top level folder under which `FsBlockStore` manages its data
-func NewConf(filesystemPath string, maxBlockfileSize int) *Conf {
-	if !strings.HasSuffix(filesystemPath, "/") {
-		filesystemPath = filesystemPath + "/"
-	}
+// blockStorageDir is the top level folder under which `FsBlockStore` manages its data
+func NewConf(blockStorageDir string, maxBlockfileSize int) *Conf {
 	if maxBlockfileSize <= 0 {
 		maxBlockfileSize = defaultMaxBlockfileSize
 	}
-	return &Conf{filesystemPath + "blocks", filesystemPath + "db", maxBlockfileSize}
+	return &Conf{blockStorageDir, maxBlockfileSize}
+}
+
+func (conf *Conf) getIndexDir() string {
+	return filepath.Join(conf.blockStorageDir, "index")
+}
+
+func (conf *Conf) getBlocksDir() string {
+	return filepath.Join(conf.blockStorageDir, "blocks")
+}
+
+func (conf *Conf) getLedgerBlockDir(ledgerid string) string {
+	return filepath.Join(conf.getBlocksDir(), ledgerid)
 }

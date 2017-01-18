@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package db
+package leveldbhelper
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ import (
 	goleveldbutil "github.com/syndtr/goleveldb/leveldb/util"
 )
 
-var logger = logging.MustGetLogger("kvledger.db")
+var logger = logging.MustGetLogger("leveldbhelper")
 
 type dbState int32
 
@@ -151,7 +151,9 @@ func (dbInst *DB) Delete(key []byte, sync bool) error {
 	return nil
 }
 
-// GetIterator returns an iterator over key-value store. The iterator should be released after the use
+// GetIterator returns an iterator over key-value store. The iterator should be released after the use.
+// The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
+// A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
 func (dbInst *DB) GetIterator(startKey []byte, endKey []byte) iterator.Iterator {
 	return dbInst.db.NewIterator(&goleveldbutil.Range{Start: startKey, Limit: endKey}, dbInst.readOpts)
 }

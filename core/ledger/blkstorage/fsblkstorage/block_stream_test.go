@@ -30,15 +30,15 @@ func TestBlockfileStream(t *testing.T) {
 }
 
 func testBlockfileStream(t *testing.T, numBlocks int) {
-	env := newTestEnv(t)
+	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
 	defer env.Cleanup()
-	w := newTestBlockfileWrapper(t, env)
-	blockfileMgr := w.blockfileMgr
+	ledgerid := "testledger"
+	w := newTestBlockfileWrapper(env, ledgerid)
 	blocks := testutil.ConstructTestBlocks(t, numBlocks)
 	w.addBlocks(blocks)
 	w.close()
 
-	s, err := newBlockfileStream(blockfileMgr.rootDir, 0, 0)
+	s, err := newBlockfileStream(w.blockfileMgr.rootDir, 0, 0)
 	defer s.close()
 	testutil.AssertNoError(t, err, "Error in constructing blockfile stream")
 
@@ -71,9 +71,9 @@ func TestBlockFileStreamUnexpectedEOF(t *testing.T) {
 }
 
 func testBlockFileStreamUnexpectedEOF(t *testing.T, numBlocks int, partialBlockBytes []byte) {
-	env := newTestEnv(t)
+	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
 	defer env.Cleanup()
-	w := newTestBlockfileWrapper(t, env)
+	w := newTestBlockfileWrapper(env, "testLedger")
 	blockfileMgr := w.blockfileMgr
 	blocks := testutil.ConstructTestBlocks(t, numBlocks)
 	w.addBlocks(blocks)
@@ -100,9 +100,9 @@ func TestBlockStream(t *testing.T) {
 }
 
 func testBlockStream(t *testing.T, numFiles int) {
-	env := newTestEnv(t)
+	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
 	defer env.Cleanup()
-	w := newTestBlockfileWrapper(t, env)
+	w := newTestBlockfileWrapper(env, "testLedger")
 	defer w.close()
 	blockfileMgr := w.blockfileMgr
 

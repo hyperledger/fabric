@@ -19,34 +19,38 @@ package fsblkstorage
 import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
+	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
 
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-// FsBlockStore - filesystem based implementation for `BlockStore`
-type FsBlockStore struct {
+// fsBlockStore - filesystem based implementation for `BlockStore`
+type fsBlockStore struct {
+	id      string
+	conf    *Conf
 	fileMgr *blockfileMgr
 }
 
 // NewFsBlockStore constructs a `FsBlockStore`
-func NewFsBlockStore(conf *Conf, indexConfig *blkstorage.IndexConfig) *FsBlockStore {
-	return &FsBlockStore{newBlockfileMgr(conf, indexConfig)}
+func newFsBlockStore(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
+	dbHandle *leveldbhelper.DBHandle) *fsBlockStore {
+	return &fsBlockStore{id, conf, newBlockfileMgr(id, conf, indexConfig, dbHandle)}
 }
 
 // AddBlock adds a new block
-func (store *FsBlockStore) AddBlock(block *common.Block) error {
+func (store *fsBlockStore) AddBlock(block *common.Block) error {
 	return store.fileMgr.addBlock(block)
 }
 
 // GetBlockchainInfo returns the current info about blockchain
-func (store *FsBlockStore) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
+func (store *fsBlockStore) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
 	return store.fileMgr.getBlockchainInfo(), nil
 }
 
 // RetrieveBlocks returns an iterator that can be used for iterating over a range of blocks
-func (store *FsBlockStore) RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error) {
-	var itr *BlocksItr
+func (store *fsBlockStore) RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error) {
+	var itr *blocksItr
 	var err error
 	if itr, err = store.fileMgr.retrieveBlocks(startNum); err != nil {
 		return nil, err
@@ -55,21 +59,22 @@ func (store *FsBlockStore) RetrieveBlocks(startNum uint64) (ledger.ResultsIterat
 }
 
 // RetrieveBlockByHash returns the block for given block-hash
-func (store *FsBlockStore) RetrieveBlockByHash(blockHash []byte) (*common.Block, error) {
+func (store *fsBlockStore) RetrieveBlockByHash(blockHash []byte) (*common.Block, error) {
 	return store.fileMgr.retrieveBlockByHash(blockHash)
 }
 
 // RetrieveBlockByNumber returns the block at a given blockchain height
-func (store *FsBlockStore) RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
+func (store *fsBlockStore) RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
 	return store.fileMgr.retrieveBlockByNumber(blockNum)
 }
 
 // RetrieveTxByID returns a transaction for given transaction id
-func (store *FsBlockStore) RetrieveTxByID(txID string) (*pb.Transaction, error) {
+func (store *fsBlockStore) RetrieveTxByID(txID string) (*pb.Transaction, error) {
 	return store.fileMgr.retrieveTransactionByID(txID)
 }
 
 // Shutdown shuts down the block store
-func (store *FsBlockStore) Shutdown() {
+func (store *fsBlockStore) Shutdown() {
+	logger.Debugf("closing fs blockStore:%s", store.id)
 	store.fileMgr.close()
 }

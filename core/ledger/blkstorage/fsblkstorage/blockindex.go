@@ -22,8 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger/util/db"
-	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
 )
 
 const (
@@ -54,10 +53,10 @@ type blockIdxInfo struct {
 
 type blockIndex struct {
 	indexItemsMap map[blkstorage.IndexableAttr]bool
-	db            *db.DB
+	db            *leveldbhelper.DBHandle
 }
 
-func newBlockIndex(indexConfig *blkstorage.IndexConfig, db *db.DB) *blockIndex {
+func newBlockIndex(indexConfig *blkstorage.IndexConfig, db *leveldbhelper.DBHandle) *blockIndex {
 	indexItems := indexConfig.AttrsToIndex
 	logger.Debugf("newBlockIndex() - indexItems:[%s]", indexItems)
 	indexItemsMap := make(map[blkstorage.IndexableAttr]bool)
@@ -85,7 +84,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	logger.Debugf("Indexing block [%s]", blockIdxInfo)
 	flp := blockIdxInfo.flp
 	txOffsets := blockIdxInfo.txOffsets
-	batch := &leveldb.Batch{}
+	batch := leveldbhelper.NewUpdateBatch()
 	flpBytes, err := flp.marshal()
 	if err != nil {
 		return err

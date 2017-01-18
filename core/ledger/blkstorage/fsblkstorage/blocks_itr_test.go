@@ -25,9 +25,9 @@ import (
 )
 
 func TestBlocksItrBlockingNext(t *testing.T) {
-	env := newTestEnv(t)
+	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
 	defer env.Cleanup()
-	blkfileMgrWrapper := newTestBlockfileWrapper(t, env)
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
 	blkfileMgr := blkfileMgrWrapper.blockfileMgr
 
@@ -52,12 +52,12 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 	<-doneChan
 }
 
-func testIterateAndVerify(t *testing.T, itr *BlocksItr, blocks []*common.Block, doneChan chan bool) {
+func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, doneChan chan bool) {
 	blocksIterated := 0
 	for {
-		blockHolder, err := itr.Next()
+		bh, err := itr.Next()
 		testutil.AssertNoError(t, err, "")
-		testutil.AssertEquals(t, blockHolder.(*BlockHolder).GetBlock(), blocks[blocksIterated])
+		testutil.AssertEquals(t, bh.(*blockHolder).GetBlock(), blocks[blocksIterated])
 		blocksIterated++
 		if blocksIterated == len(blocks) {
 			break

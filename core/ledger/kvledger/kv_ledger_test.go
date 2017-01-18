@@ -126,10 +126,10 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//generating a block based on the simulation result
 	block2 := bg.NextBlock([][]byte{simRes}, false)
 	//performing validation of read and write set to find valid transactions
-	ledger.(*KVLedger).txtmgmt.ValidateAndPrepare(block2, true)
+	ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(block2, true)
 	//writing the validated block to block storage but not committing the transaction
 	//to state DB and history DB (if exist)
-	err := ledger.(*KVLedger).blockStore.AddBlock(block2)
+	err := ledger.(*kvLedger).blockStore.AddBlock(block2)
 	//assume that peer fails here before committing the transaction
 	assert.NoError(t, err)
 
@@ -149,7 +149,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//value for 'key3' should be 'value3' as the last commit failed
 	testutil.AssertEquals(t, value, []byte("value3"))
 	//savepoint in state DB should 1 as the last commit failed
-	stateDBSavepoint, _ := ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	stateDBSavepoint, _ := ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
 	testutil.AssertEquals(t, stateDBSavepoint, uint64(1))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
@@ -167,7 +167,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		}
 		testutil.AssertEquals(t, count, 1)
 		//savepoint in history DB should 1 as the last commit failed
-		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(1))
 	}
 	simulator.Done()
@@ -189,7 +189,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//value for 'key3' should be 'value6' after recovery
 	testutil.AssertEquals(t, value, []byte("value6"))
 	//savepoint in state DB should 2 after recovery
-	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
 	testutil.AssertEquals(t, stateDBSavepoint, uint64(2))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
@@ -204,7 +204,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		}
 		testutil.AssertEquals(t, count, 2)
 		//savepoint in history DB should 2 after recovery
-		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(2))
 	}
 	simulator.Done()
@@ -223,11 +223,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//generating a block based on the simulation result
 	block3 := bg.NextBlock([][]byte{simRes}, false)
 	//performing validation of read and write set to find valid transactions
-	ledger.(*KVLedger).txtmgmt.ValidateAndPrepare(block3, true)
+	ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(block3, true)
 	//writing the validated block to block storage
-	err = ledger.(*KVLedger).blockStore.AddBlock(block3)
+	err = ledger.(*kvLedger).blockStore.AddBlock(block3)
 	//committing the transaction to state DB
-	err = ledger.(*KVLedger).txtmgmt.Commit()
+	err = ledger.(*kvLedger).txtmgmt.Commit()
 	//assume that peer fails here after committing the transaction to state DB but before
 	//history DB
 	assert.NoError(t, err)
@@ -248,7 +248,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//value for 'key3' should be 'value9'
 	testutil.AssertEquals(t, value, []byte("value9"))
 	//savepoint in state DB should 3
-	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
 	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
@@ -266,7 +266,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		}
 		testutil.AssertEquals(t, count, 2)
 		//savepoint in history DB should 2 as the last commit failed
-		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(2))
 	}
 	simulator.Done()
@@ -278,7 +278,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	provider, _ = NewProvider()
 	ledger, _ = provider.Open("testLedger")
 	simulator, _ = ledger.NewTxSimulator()
-	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
 	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
@@ -293,7 +293,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		}
 		testutil.AssertEquals(t, count, 3)
 		//savepoint in history DB should 3 after recovery
-		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(3))
 	}
 	simulator.Done()
@@ -313,12 +313,12 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//generating a block based on the simulation result
 	block4 := bg.NextBlock([][]byte{simRes}, false)
 	//performing validation of read and write set to find valid transactions
-	ledger.(*KVLedger).txtmgmt.ValidateAndPrepare(block4, true)
+	ledger.(*kvLedger).txtmgmt.ValidateAndPrepare(block4, true)
 	//writing the validated block to block storage but fails to commit to state DB but
 	//successfully commits to history DB (if exists)
-	err = ledger.(*KVLedger).blockStore.AddBlock(block4)
+	err = ledger.(*kvLedger).blockStore.AddBlock(block4)
 	if ledgerconfig.IsHistoryDBEnabled() == true {
-		err = ledger.(*KVLedger).historymgmt.Commit(block4)
+		err = ledger.(*kvLedger).historymgmt.Commit(block4)
 	}
 	assert.NoError(t, err)
 
@@ -338,7 +338,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//value for 'key3' should be 'value9' as the last commit to State DB failed
 	testutil.AssertEquals(t, value, []byte("value9"))
 	//savepoint in state DB should 3 as the last commit failed
-	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
 	testutil.AssertEquals(t, stateDBSavepoint, uint64(3))
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
@@ -356,7 +356,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		}
 		testutil.AssertEquals(t, count, 4)
 		//savepoint in history DB should 4
-		historyDBSavepoint, _ := ledger.(*KVLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(4))
 	}
 	simulator.Done()
@@ -378,7 +378,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//value for 'key3' should be 'value12' after state DB recovery
 	testutil.AssertEquals(t, value, []byte("value12"))
 	//savepoint in state DB should 4 after the recovery
-	stateDBSavepoint, _ = ledger.(*KVLedger).txtmgmt.GetBlockNumFromSavepoint()
+	stateDBSavepoint, _ = ledger.(*kvLedger).txtmgmt.GetBlockNumFromSavepoint()
 	testutil.AssertEquals(t, stateDBSavepoint, uint64(4))
 	simulator.Done()
 }

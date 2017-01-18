@@ -28,6 +28,8 @@ var username = ""
 var password = ""
 var historyDatabase = true
 
+var maxBlockFileSize = 0
+
 // CouchDBDef contains parameters
 type CouchDBDef struct {
 	URL      string
@@ -51,30 +53,24 @@ func GetRootPath() string {
 	return filepath.Join(sysPath, "ledgersData")
 }
 
-// GetLedgersPath returns the filesystem path that further contains sub-directories.
-// Each sub-directory for each specific ledger and the name of the sub-directory is the ledgerid
-func GetLedgersPath() string {
-	return filepath.Join(GetRootPath(), "ledgers")
-}
-
-// GetLedgerPath returns the filesystem path for stroing ledger specific contents
-func GetLedgerPath(ledgerID string) string {
-	return filepath.Join(GetLedgersPath(), ledgerID)
-}
-
-// GetBlockStoragePath returns the path for storing blocks for a specific ledger
-func GetBlockStoragePath(ledgerID string) string {
-	return filepath.Join(GetLedgerPath(ledgerID), "blocks")
-}
-
 // GetLedgerProviderPath returns the filesystem path for stroing ledger ledgerProvider contents
 func GetLedgerProviderPath() string {
 	return filepath.Join(GetRootPath(), "ledgerProvider")
 }
 
-// GetMaxBlockfileSize returns the maximum size of the block file
+// GetStateLevelDBPath returns the filesystem path that is used to maintain the state level db
+func GetStateLevelDBPath() string {
+	return filepath.Join(GetRootPath(), "stateLeveldb")
+}
+
+// GetBlockStorePath returns the filesystem path that is used by the block store
+func GetBlockStorePath() string {
+	return filepath.Join(GetRootPath(), "blocks")
+}
+
+// GetMaxBlockfileSize returns maximum size of the block file
 func GetMaxBlockfileSize() int {
-	return 0
+	return 64 * 1024 * 1024
 }
 
 //GetCouchDBDefinition exposes the useCouchDB variable

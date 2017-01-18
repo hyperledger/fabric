@@ -73,10 +73,9 @@ func TestCompositeKey(t *testing.T) {
 }
 
 func testCompositeKey(t *testing.T, dbName string, ns string, key string) {
-	compositeKey := constructCompositeKey(dbName, ns, key)
+	compositeKey := constructCompositeKey(ns, key)
 	t.Logf("compositeKey=%#v", compositeKey)
-	dbName1, ns1, key1 := splitCompositeKey(compositeKey)
-	testutil.AssertEquals(t, dbName1, dbName)
+	ns1, key1 := splitCompositeKey(compositeKey)
 	testutil.AssertEquals(t, ns1, ns)
 	testutil.AssertEquals(t, key1, key)
 }

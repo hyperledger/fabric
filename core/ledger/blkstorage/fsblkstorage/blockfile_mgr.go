@@ -25,7 +25,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger/util/db"
+	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putil "github.com/hyperledger/fabric/protos/utils"
@@ -43,10 +43,15 @@ var (
 	blkMgrInfoKey = []byte("blkMgrInfo")
 )
 
+type conf struct {
+	blockfilesDir    string
+	maxBlockfileSize int
+}
+
 type blockfileMgr struct {
 	rootDir           string
 	conf              *Conf
-	db                *db.DB
+	db                *leveldbhelper.DBHandle
 	index             index
 	cpInfo            *checkpointInfo
 	cpInfoCond        *sync.Cond
@@ -95,17 +100,15 @@ At start up a new manager:
 		-- If index and file system are not in sync, syncs index from the FS
   *)  Updates blockchain info used by the APIs
 */
-func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfileMgr {
+func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig, indexStore *leveldbhelper.DBHandle) *blockfileMgr {
 	//Determine the root directory for the blockfile storage, if it does not exist create it
-	rootDir := conf.blockfilesDir
+	rootDir := conf.getLedgerBlockDir(id)
 	_, err := util.CreateDirIfMissing(rootDir)
 	if err != nil {
 		panic(fmt.Sprintf("Error: %s", err))
 	}
-	//Determine the kev value db instance, if it does not exist, create the directory and instantiate the database.
-	db := initDB(conf)
 	// Instantiate the manager, i.e. blockFileMgr structure
-	mgr := &blockfileMgr{rootDir: rootDir, conf: conf, db: db}
+	mgr := &blockfileMgr{rootDir: rootDir, conf: conf, db: indexStore}
 
 	// cp = checkpointInfo, retrieve from the database the file suffix or number of where blocks were stored.
 	// It also retrieves the current size of that file and the last block number that was written to that file.
@@ -123,7 +126,7 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 	}
 	//Verify that the checkpoint stored in db is accurate with what is actually stored in block file system
 	// If not the same, sync the cpInfo and the file system
-	syncCPInfoFromFS(conf, cpInfo)
+	syncCPInfoFromFS(rootDir, cpInfo)
 	//Open a writer to the file identified by the number and truncate it to only contain the latest block
 	// that was completely saved (file system, index, cpinfo, etc)
 	currentFileWriter, err := newBlockfileWriter(deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum))
@@ -137,7 +140,7 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 	}
 
 	// Create a new KeyValue store database handler for the blocks index in the keyvalue database
-	mgr.index = newBlockIndex(indexConfig, db)
+	mgr.index = newBlockIndex(indexConfig, indexStore)
 
 	// Update the manager with the checkpoint info and the file writer
 	mgr.cpInfo = cpInfo
@@ -174,21 +177,13 @@ func newBlockfileMgr(conf *Conf, indexConfig *blkstorage.IndexConfig) *blockfile
 	return mgr
 }
 
-func initDB(conf *Conf) *db.DB {
-	dbInst := db.CreateDB(&db.Conf{
-		DBPath: conf.dbPath})
-	dbInst.Open()
-	return dbInst
-}
-
 //cp = checkpointInfo, from the database gets the file suffix and the size of
 // the file of where the last block was written.  Also retrieves contains the
 // last block number that was written.  At init
 //checkpointInfo:latestFileChunkSuffixNum=[0], latestFileChunksize=[0], lastBlockNumber=[0]
-func syncCPInfoFromFS(conf *Conf, cpInfo *checkpointInfo) {
+func syncCPInfoFromFS(rootDir string, cpInfo *checkpointInfo) {
 	logger.Debugf("Starting checkpoint=%s", cpInfo)
 	//Checks if the file suffix of where the last block was written exists
-	rootDir := conf.blockfilesDir
 	filePath := deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum)
 	exists, size, err := util.FileExists(filePath)
 	if err != nil {
@@ -224,7 +219,6 @@ func (mgr *blockfileMgr) open() error {
 
 func (mgr *blockfileMgr) close() {
 	mgr.currentFileWriter.close()
-	mgr.db.Close()
 }
 
 func (mgr *blockfileMgr) moveToNextFile() {
@@ -443,7 +437,7 @@ func (mgr *blockfileMgr) retrieveBlockHeaderByNumber(blockNum uint64) (*common.B
 	return info.blockHeader, nil
 }
 
-func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*BlocksItr, error) {
+func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*blocksItr, error) {
 	return newBlockItr(mgr, startNum), nil
 }
 
