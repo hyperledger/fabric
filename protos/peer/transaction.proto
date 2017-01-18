@@ -21,6 +21,7 @@ option go_package = "github.com/hyperledger/fabric/protos/peer";
 package protos;
 
 import "google/protobuf/timestamp.proto";
+import "peer/proposal_response.proto";
 
 // This message is necessary to facilitate the verification of the signature
 // (in the signature field) over the bytes of the transaction (in the
@@ -83,4 +84,40 @@ message TransactionAction {
 	// The payload of the action as defined by the type in the header For
 	// chaincode, it's the bytes of ChaincodeActionPayload
 	bytes payload = 2;
+}
+
+//---------- Chaincode Transaction ------------
+
+// ChaincodeActionPayload is the message to be used for the TransactionAction's
+// payload when the Header's type is set to CHAINCODE.  It carries the
+// chaincodeProposalPayload and an endorsed action to apply to the ledger.
+message ChaincodeActionPayload {
+
+	// This field contains the bytes of the ChaincodeProposalPayload message from
+	// the original invocation (essentially the arguments) after the application
+	// of the visibility function. The main visibility modes are "full" (the
+	// entire ChaincodeProposalPayload message is included here), "hash" (only
+	// the hash of the ChaincodeProposalPayload message is included) or
+	// "nothing".  This field will be used to check the consistency of
+	// ProposalResponsePayload.proposalHash.  For the CHAINCODE type,
+	// ProposalResponsePayload.proposalHash is supposed to be H(ProposalHeader ||
+	// f(ChaincodeProposalPayload)) where f is the visibility function.
+	bytes chaincodeProposalPayload = 1;
+
+	// The list of actions to apply to the ledger
+	ChaincodeEndorsedAction action = 2;
+}
+
+// ChaincodeEndorsedAction carries information about the endorsement of a
+// specific proposal
+message ChaincodeEndorsedAction {
+
+	// This is the bytes of the ProposalResponsePayload message signed by the
+	// endorsers.  Recall that for the CHAINCODE type, the
+	// ProposalResponsePayload's extenstion field carries a ChaincodeAction
+	bytes proposalResponsePayload = 1;
+
+	// The endorsement of the proposal, basically the endorser's signature over
+	// proposalResponsePayload
+	repeated Endorsement endorsements = 2;
 }

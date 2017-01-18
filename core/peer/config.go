@@ -85,17 +85,11 @@ func CacheConfiguration() (err error) {
 	// getPeerEndpoint returns the PeerEndpoint for this Peer instance.  Affected by env:peer.addressAutoDetect
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
 		var peerAddress string
-		var peerType pb.PeerEndpoint_Type
 		peerAddress, err := getLocalAddress()
 		if err != nil {
 			return nil, err
 		}
-		if viper.GetBool("peer.validator.enabled") {
-			peerType = pb.PeerEndpoint_VALIDATOR
-		} else {
-			peerType = pb.PeerEndpoint_NON_VALIDATOR
-		}
-		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: viper.GetString("peer.id")}, Address: peerAddress, Type: peerType}, nil
+		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: viper.GetString("peer.id")}, Address: peerAddress}, nil
 	}
 
 	localAddress, localAddressError = getLocalAddress()
