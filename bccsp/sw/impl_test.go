@@ -589,19 +589,43 @@ func TestECDSAKeyReRand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed generating ECDSA key [%s]", err)
 	}
+	if k == nil {
+		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
+	}
 
 	reRandomizedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
 	if err != nil {
 		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
-	}
-	if k == nil {
-		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
 	}
 	if !reRandomizedKey.Private() {
 		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key should be private")
 	}
 	if reRandomizedKey.Symmetric() {
 		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key should be asymmetric")
+	}
+
+	k2, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public ECDSA key from private [%s]", err)
+	}
+	if k2 == nil {
+		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
+	}
+
+	reRandomizedKey2, err := currentBCCSP.KeyDeriv(k2, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+	if err != nil {
+		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
+	}
+
+	if reRandomizedKey2.Private() {
+		t.Fatal("Re-randomized public Key must remain public")
+	}
+	if reRandomizedKey2.Symmetric() {
+		t.Fatal("Re-randomized ECDSA asymmetric key must remain asymmetric")
+	}
+
+	if false == bytes.Equal(reRandomizedKey.SKI(), reRandomizedKey2.SKI()) {
+		t.Fatal("Re-randomized ECDSA Private- or Public-Keys must end up having the same SKI")
 	}
 }
 
