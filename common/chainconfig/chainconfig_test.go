@@ -17,6 +17,7 @@ limitations under the License.
 package chainconfig
 
 import (
+	"reflect"
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -143,5 +144,37 @@ func TestBlockDataHashingStructure(t *testing.T) {
 
 	if newWidth := m.BlockDataHashingStructureWidth(); newWidth != expectedWidth {
 		t.Fatalf("Unexpected width, got %d expected %d", newWidth, expectedWidth)
+	}
+}
+
+func TestOrdererAddresses(t *testing.T) {
+	expectedResult := []string{"foo", "bar:1234"}
+	invalidMessage := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Chain,
+		Key:   BlockDataHashingStructureKey,
+		Value: []byte("Garbage Data"),
+	}
+	validMessage := &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Chain,
+		Key:   OrdererAddressesKey,
+		Value: utils.MarshalOrPanic(&cb.OrdererAddresses{Addresses: expectedResult}),
+	}
+	m := NewDescriptorImpl()
+	m.BeginConfig()
+
+	err := m.ProposeConfig(invalidMessage)
+	if err == nil {
+		t.Fatalf("Should have failed on invalid message")
+	}
+
+	err = m.ProposeConfig(validMessage)
+	if err != nil {
+		t.Fatalf("Error applying valid config: %s", err)
+	}
+
+	m.CommitConfig()
+
+	if newAddrs := m.OrdererAddresses(); !reflect.DeepEqual(newAddrs, expectedResult) {
+		t.Fatalf("Unexpected width, got %s expected %s", newAddrs, expectedResult)
 	}
 }
