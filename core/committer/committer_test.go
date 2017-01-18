@@ -54,7 +54,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	block1 := testutil.ConstructBlock(t, [][]byte{simRes}, true)
 
-	err = committer.CommitBlock(block1)
+	err = committer.Commit(block1)
 	assert.NoError(t, err)
 
 	height, err = committer.LedgerHeight()

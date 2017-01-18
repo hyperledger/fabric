@@ -48,8 +48,8 @@ func NewLedgerCommitter(ledger ledger.PeerLedger, validator txvalidator.Validato
 	return &LedgerCommitter{ledger: ledger, validator: validator}
 }
 
-// CommitBlock commits block to into the ledger
-func (lc *LedgerCommitter) CommitBlock(block *common.Block) error {
+// Commit commits block to into the ledger
+func (lc *LedgerCommitter) Commit(block *common.Block) error {
 	// Validate and mark invalid transactions
 	logger.Debug("Validating block")
 	lc.validator.Validate(block)

@@ -28,7 +28,7 @@ import "github.com/hyperledger/fabric/protos/common"
 type Committer interface {
 
 	// Commit block to the ledger
-	CommitBlock(block *common.Block) error
+	Commit(block *common.Block) error
 
 	// Get recent block sequence number
 	LedgerHeight() (uint64, error)

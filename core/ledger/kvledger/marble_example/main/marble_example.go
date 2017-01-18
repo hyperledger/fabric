@@ -82,7 +82,7 @@ func initApp() {
 	tx, err := marbleApp.CreateMarble(marble)
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 }
@@ -92,7 +92,7 @@ func transferMarble() {
 	tx1, err := marbleApp.TransferMarble([]string{"marble1", "jerry"})
 	handleError(err, true)
 	rawBlock := consenter.ConstructBlock(tx1)
-	err = committer.CommitBlock(rawBlock)
+	err = committer.Commit(rawBlock)
 	handleError(err, true)
 	printBlocksInfo(rawBlock)
 }
