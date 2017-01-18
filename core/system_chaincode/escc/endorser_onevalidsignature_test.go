@@ -97,7 +97,7 @@ func TestInvoke(t *testing.T) {
 	cs := &pb.ChaincodeSpec{
 		ChaincodeID: &pb.ChaincodeID{Name: "foo"},
 		Type:        pb.ChaincodeSpec_GOLANG,
-		CtorMsg:     &pb.ChaincodeInput{Args: [][]byte{[]byte("some"), []byte("args")}}}
+		Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("some"), []byte("args")}}}
 
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: cs}
 

@@ -632,7 +632,7 @@ func (handler *Handler) handleRangeQueryStateClose(id, txid string) (*pb.RangeQu
 func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, txid string) ([]byte, error) {
 	chaincodeID := &pb.ChaincodeID{Name: chaincodeName}
 	input := &pb.ChaincodeInput{Args: args}
-	payload := &pb.ChaincodeSpec{ChaincodeID: chaincodeID, CtorMsg: input}
+	payload := &pb.ChaincodeSpec{ChaincodeID: chaincodeID, Input: input}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to process invoke chaincode request")

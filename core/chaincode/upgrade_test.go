@@ -36,7 +36,7 @@ func getUpgradeLCCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.Ch
 	}
 
 	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("upgrade"), []byte(chainID), b}}}}
+	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("upgrade"), []byte(chainID), b}}}}
 
 	return lcccSpec, nil
 }
@@ -134,7 +134,7 @@ func TestUpgradeCC(t *testing.T) {
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 	cccid := NewCCContext(chainID, ccName, "0", "", false, nil)
 	_, err = deploy(ctxt, cccid, spec)
@@ -150,7 +150,7 @@ func TestUpgradeCC(t *testing.T) {
 	// Query example01, which should fail
 	qArgs := util.ToChaincodeArgs("query", "a")
 
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: qArgs}}
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: qArgs}}
 
 	_, _, _, err = invoke(ctxt, chainID, spec)
 	if err == nil {
@@ -171,7 +171,7 @@ func TestUpgradeCC(t *testing.T) {
 
 	//Note ccName hasn't changed...
 	chaincodeID = &pb.ChaincodeID{Name: ccName, Path: url}
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 	//...and get back the ccid with the new version
 	cccid2, err := upgrade(ctxt, cccid, spec)
@@ -186,7 +186,7 @@ func TestUpgradeCC(t *testing.T) {
 	}
 
 	//go back and do the same query now
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: qArgs}}
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: qArgs}}
 
 	_, _, _, err = invokeWithVersion(ctxt, chainID, cccid2.Version, spec)
 	if err != nil {
@@ -223,13 +223,13 @@ func TestInvalUpgradeCC(t *testing.T) {
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 	cccid := NewCCContext(chainID, ccName, "0", "", false, nil)
 
 	//Note ccName hasn't changed...
 	chaincodeID = &pb.ChaincodeID{Name: ccName, Path: url}
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 	//...and get back the ccid with the new version
 	cccid2, err := upgrade(ctxt, cccid, spec)

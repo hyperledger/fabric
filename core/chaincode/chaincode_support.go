@@ -510,12 +510,12 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 	}
 	if cds != nil {
 		cID = cds.ChaincodeSpec.ChaincodeID
-		cMsg = cds.ChaincodeSpec.CtorMsg
+		cMsg = cds.ChaincodeSpec.Input
 		cLang = cds.ChaincodeSpec.Type
 		initargs = cMsg.Args
 	} else {
 		cID = ci.ChaincodeSpec.ChaincodeID
-		cMsg = ci.ChaincodeSpec.CtorMsg
+		cMsg = ci.ChaincodeSpec.Input
 	}
 
 	canName := cccid.GetCanonicalName()

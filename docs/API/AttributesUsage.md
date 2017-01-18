@@ -113,7 +113,7 @@ POST host:port/chaincode
     "chaincodeID":{
         "name": "mycc"
     },
-    "ctorMsg": {
+    "input": {
         "function":"init",
         "args":[]
     }

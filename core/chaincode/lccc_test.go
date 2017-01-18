@@ -35,7 +35,7 @@ func register(stub *shim.MockStub, ccname string) error {
 }
 
 func constructDeploymentSpec(name string, path string, initArgs [][]byte) (*pb.ChaincodeDeploymentSpec, error) {
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: name, Path: path}, CtorMsg: &pb.ChaincodeInput{Args: initArgs}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: name, Path: path}, Input: &pb.ChaincodeInput{Args: initArgs}}
 	codePackageBytes, err := container.GetChaincodePackageBytes(spec)
 	if err != nil {
 		return nil, err

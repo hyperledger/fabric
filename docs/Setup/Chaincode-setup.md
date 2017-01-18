@@ -291,7 +291,7 @@ POST <host:port>/chaincode
     "chaincodeID":{
         "name": "mycc"
     },
-    "ctorMsg": {
+    "input": {
         "args":["init", "a", "100", "b", "200"]
     }
   },
@@ -329,7 +329,7 @@ POST <host:port>/chaincode
     "chaincodeID":{
         "name": "mycc"
     },
-    "ctorMsg": {
+    "input": {
         "args":["init", "a", "100", "b", "200"]
     },
     "secureContext": "jim"
@@ -367,7 +367,7 @@ POST <host:port>/chaincode
       "chaincodeID":{
           "name":"mycc"
       },
-      "ctorMsg": {
+      "input": {
          "args":["invoke", "a", "b", "10"]
       }
   },
@@ -405,7 +405,7 @@ POST <host:port>/chaincode
       "chaincodeID":{
           "name":"mycc"
       },
-      "ctorMsg": {
+      "input": {
          "args":["invoke", "a", "b", "10"]
       },
       "secureContext": "jim"
@@ -455,7 +455,7 @@ POST <host:port>/chaincode
       "chaincodeID":{
           "name":"mycc"
       },
-      "ctorMsg": {
+      "input": {
          "args":["query", "a"]
       }
   },
@@ -493,7 +493,7 @@ POST <host:port>/chaincode
       "chaincodeID":{
           "name":"mycc"
       },
-      "ctorMsg": {
+      "input": {
          "args":["query", "a"]
       },
       "secureContext": "jim"

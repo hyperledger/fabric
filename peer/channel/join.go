@@ -77,7 +77,7 @@ func getJoinCCSpec() (*pb.ChaincodeSpec, error) {
 	spec = &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]),
 		ChaincodeID: &pb.ChaincodeID{Name: "cscc"},
-		CtorMsg:     input,
+		Input:       input,
 	}
 
 	return spec, nil

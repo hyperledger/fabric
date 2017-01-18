@@ -130,7 +130,7 @@ func (cc *CCClient) getChaincodeSpec(args [][]byte) *pb.ChaincodeSpec {
 	return &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[cc.Lang]),
 		ChaincodeID: &pb.ChaincodeID{Path: cc.Path, Name: cc.Name},
-		CtorMsg:     &pb.ChaincodeInput{Args: args},
+		Input:       &pb.ChaincodeInput{Args: args},
 	}
 }
 

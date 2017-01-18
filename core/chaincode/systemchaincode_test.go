@@ -94,12 +94,12 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 
 	url := "github.com/hyperledger/fabric/core/system_chaincode/sample_syscc"
 
-	cdsforStop := &pb.ChaincodeDeploymentSpec{ExecEnv: 1, ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}}
+	cdsforStop := &pb.ChaincodeDeploymentSpec{ExecEnv: 1, ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}}
 
 	f := "putval"
 	args := util.ToChaincodeArgs(f, "greeting", "hey there")
 
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, Input: &pb.ChaincodeInput{Args: args}}
 
 	sysCCVers := util.GetSysCCVersion()
 
@@ -114,7 +114,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 
 	f = "getval"
 	args = util.ToChaincodeArgs(f, "greeting")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, CtorMsg: &pb.ChaincodeInput{Args: args}}
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url}, Input: &pb.ChaincodeInput{Args: args}}
 	_, _, _, err = invokeWithVersion(ctxt, chainID, sysCCVers, spec)
 	if err != nil {
 		theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)

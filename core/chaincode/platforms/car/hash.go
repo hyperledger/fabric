@@ -36,7 +36,7 @@ import (
 //with the same (name, ctor, args)
 func generateHashcode(spec *pb.ChaincodeSpec, path string) (string, error) {
 
-	ctor := spec.CtorMsg
+	ctor := spec.Input
 	if ctor == nil || len(ctor.Args) == 0 {
 		return "", errors.New("Cannot generate hashcode from empty ctor")
 	}

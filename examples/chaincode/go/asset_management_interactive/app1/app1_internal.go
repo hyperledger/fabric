@@ -135,7 +135,7 @@ func deployInternal(deployer crypto.Client, adminCert crypto.CertificateHandler)
 		Type:        1,
 		ChaincodeID: &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/examples/chaincode/go/asset_management"},
 		//ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		CtorMsg:              &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
+		Input:                &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
 		Metadata:             adminCert.GetCertificate(),
 		ConfidentialityLevel: confidentialityLevel,
 	}

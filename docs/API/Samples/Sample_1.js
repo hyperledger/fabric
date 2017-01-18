@@ -69,7 +69,7 @@ function runSwaggerAPITest() {
         "chaincodeID":{
             "path":"github.com/openblockchain/obc-peer/openchain/example/chaincode/chaincode_example02"
         },
-        "ctorMsg": {
+        "input": {
             "function":"init",
             "args":["a", "100", "b", "200"]
         }
@@ -90,7 +90,7 @@ function runSwaggerAPITest() {
                 "chaincodeID":{
                     "name":"bb540edfc1ee2ac0f5e2ec6000677f4cd1c6728046d5e32dede7fea11a42f86a6943b76a8f9154f4792032551ed320871ff7b7076047e4184292e01e3421889c"
                 },
-                "ctorMsg": {
+                "input": {
                     "function":"invoke",
                     "args":["a", "b", "10"]
                 }
@@ -110,7 +110,7 @@ function runSwaggerAPITest() {
                     "chaincodeID":{
                         "name":"bb540edfc1ee2ac0f5e2ec6000677f4cd1c6728046d5e32dede7fea11a42f86a6943b76a8f9154f4792032551ed320871ff7b7076047e4184292e01e3421889c"
                     },
-                    "ctorMsg": {
+                    "input": {
                         "function":"query",
                         "args":["a"]
                     }

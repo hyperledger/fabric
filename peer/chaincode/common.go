@@ -93,7 +93,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec = &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[chaincodeLang]),
 		ChaincodeID: &pb.ChaincodeID{Path: chaincodePath, Name: chaincodeName},
-		CtorMsg:     input,
+		Input:       input,
 		Attributes:  attributes,
 	}
 	return spec, nil

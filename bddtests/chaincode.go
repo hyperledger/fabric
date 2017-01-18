@@ -30,7 +30,7 @@ func createChaincodeSpec(ccType string, path string, args [][]byte) *pb.Chaincod
 	// make chaincode spec for chaincode to be deployed
 	ccSpec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[ccType]),
 		ChaincodeID: &pb.ChaincodeID{Path: path},
-		CtorMsg:     &pb.ChaincodeInput{Args: args}}
+		Input:       &pb.ChaincodeInput{Args: args}}
 	return ccSpec
 
 }
@@ -47,7 +47,7 @@ func createProposalForChaincode(ccChaincodeDeploymentSpec *pb.ChaincodeDeploymen
 	}
 	lcChaincodeSpec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG,
 		ChaincodeID: &pb.ChaincodeID{Name: "lccc"},
-		CtorMsg:     &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), ccDeploymentSpecBytes}}}
+		Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("default"), ccDeploymentSpecBytes}}}
 	lcChaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: lcChaincodeSpec}
 
 	uuid := createProposalID()
