@@ -29,7 +29,7 @@ import (
 //create a chaincode invocation spec
 func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error) {
 	var err error
-	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: ccname}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
+	spec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: ccname}, Input: &pb.ChaincodeInput{Args: args}}}
 	if nil != err {
 		return nil, err
 	}

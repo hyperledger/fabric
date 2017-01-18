@@ -197,7 +197,7 @@ func deployInternal(deployer crypto.Client, adminCert crypto.CertificateHandler)
 		Type:        1,
 		ChaincodeID: &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/examples/chaincode/go/asset_management"},
 		//ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		CtorMsg:              &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
+		Input:                &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
 		Metadata:             adminCert.GetCertificate(),
 		ConfidentialityLevel: confidentialityLevel,
 	}
@@ -258,7 +258,7 @@ func assignOwnershipInternal(invoker crypto.Client, invokerCert crypto.Certifica
 	spec := &pb.ChaincodeSpec{
 		Type:                 1,
 		ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		CtorMsg:              chaincodeInput,
+		Input:                chaincodeInput,
 		Metadata:             sigma, // Proof of identity
 		ConfidentialityLevel: confidentialityLevel,
 	}
@@ -309,7 +309,7 @@ func transferOwnershipInternal(owner crypto.Client, ownerCert crypto.Certificate
 	spec := &pb.ChaincodeSpec{
 		Type:                 1,
 		ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		CtorMsg:              chaincodeInput,
+		Input:                chaincodeInput,
 		Metadata:             sigma, // Proof of identity
 		ConfidentialityLevel: confidentialityLevel,
 	}
@@ -333,7 +333,7 @@ func whoIsTheOwner(invoker crypto.Client, asset string) (transaction *pb.Transac
 	spec := &pb.ChaincodeSpec{
 		Type:                 1,
 		ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
-		CtorMsg:              chaincodeInput,
+		Input:                chaincodeInput,
 		ConfidentialityLevel: confidentialityLevel,
 	}
 

@@ -110,7 +110,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 	}
 
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec, err := buildSysCC(ctxt, spec)
@@ -135,7 +135,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 // deDeploySysCC stops the system chaincode and deregisters it from inproccontroller
 func deDeploySysCC(chainID string, syscc *SystemChaincode) error {
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	ctx := context.Background()
 	// First build and get the deployment spec

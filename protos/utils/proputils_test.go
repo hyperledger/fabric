@@ -38,7 +38,7 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			Type:        pb.ChaincodeSpec_GOLANG,
 			ChaincodeID: &pb.ChaincodeID{Name: "chaincode_name"},
-			CtorMsg:     &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
+			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
 
 func TestProposal(t *testing.T) {
@@ -115,9 +115,9 @@ func TestProposal(t *testing.T) {
 	// sanity check on cis
 	if cis.ChaincodeSpec.Type != pb.ChaincodeSpec_GOLANG ||
 		cis.ChaincodeSpec.ChaincodeID.Name != "chaincode_name" ||
-		len(cis.ChaincodeSpec.CtorMsg.Args) != 2 ||
-		string(cis.ChaincodeSpec.CtorMsg.Args[0]) != "arg1" ||
-		string(cis.ChaincodeSpec.CtorMsg.Args[1]) != "arg2" {
+		len(cis.ChaincodeSpec.Input.Args) != 2 ||
+		string(cis.ChaincodeSpec.Input.Args[0]) != "arg1" ||
+		string(cis.ChaincodeSpec.Input.Args[1]) != "arg2" {
 		t.Fatalf("Invalid chaincode invocation spec after unmarshalling\n")
 		return
 	}

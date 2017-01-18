@@ -67,7 +67,7 @@ message ChaincodeSpec {
 
     Type type = 1;
     ChaincodeID chaincodeID = 2;
-    ChaincodeInput ctorMsg = 3;
+    ChaincodeInput input = 3;
     int32 timeout = 4;
     ConfidentialityLevel confidentialityLevel = 5;
     bytes metadata = 6;

@@ -103,7 +103,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 
 	cccid := chaincode.NewCCContext(chainID, cid.Name, version, txid, syscc, prop)
 
-	b, ccevent, err = chaincode.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.CtorMsg.Args)
+	b, ccevent, err = chaincode.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.Input.Args)
 
 	if err != nil {
 		return nil, nil, err
@@ -117,9 +117,9 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	//
 	//NOTE that if there's an error all simulation, including the chaincode
 	//table changes in lccc will be thrown away
-	if cid.Name == "lccc" && len(cis.ChaincodeSpec.CtorMsg.Args) == 3 && (string(cis.ChaincodeSpec.CtorMsg.Args[0]) == "deploy" || string(cis.ChaincodeSpec.CtorMsg.Args[0]) == "upgrade") {
+	if cid.Name == "lccc" && len(cis.ChaincodeSpec.Input.Args) == 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
 		var ccVersion string
-		switch string(cis.ChaincodeSpec.CtorMsg.Args[0]) {
+		switch string(cis.ChaincodeSpec.Input.Args[0]) {
 		case "deploy":
 			//NOTE - if user provides chaincode version on deploy, that'll be in the
 			//ChaincodeID and will be used
@@ -128,10 +128,10 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 			//use the new version
 			ccVersion = string(b)
 		default:
-			panic(fmt.Sprintf("invalid call to lccc... we shouldn't have got here (ie,passed ExecuteChaincode (%s))", cis.ChaincodeSpec.CtorMsg.Args[0]))
+			panic(fmt.Sprintf("invalid call to lccc... we shouldn't have got here (ie,passed ExecuteChaincode (%s))", cis.ChaincodeSpec.Input.Args[0]))
 		}
 		var cds *pb.ChaincodeDeploymentSpec
-		cds, err = putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.CtorMsg.Args[2])
+		cds, err = putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -254,7 +254,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 	// args[5] - payloadVisibility
 	args := [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes, eventBytes, visibility}
 	version := util.GetSysCCVersion()
-	ecccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: escc}, CtorMsg: &pb.ChaincodeInput{Args: args}}}
+	ecccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: escc}, Input: &pb.ChaincodeInput{Args: args}}}
 	prBytes, _, err := e.callChaincode(ctx, chainID, version, txid, proposal, ecccis, &pb.ChaincodeID{Name: escc}, txsim)
 	if err != nil {
 		return nil, err

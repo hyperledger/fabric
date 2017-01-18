@@ -391,7 +391,7 @@ message ChaincodeSpec {
     }
     Type type = 1;
     ChaincodeID chaincodeID = 2;
-    ChaincodeInput ctorMsg = 3;
+    ChaincodeInput input = 3;
     int32 timeout = 4;
     string secureContext = 5;
     ConfidentialityLevel confidentialityLevel = 6;
@@ -411,7 +411,7 @@ message ChaincodeInput {
 
 **Definition of fields:**
 - `chaincodeID` - The chaincode source code path and name.
-- `ctorMsg` - Function name and argument parameters to call.
+- `input` - Function name and argument parameters to call.
 - `timeout` - Time in milliseconds to execute the transaction.
 - `confidentialityLevel` - Confidentiality level of this transaction.
 - `secureContext` - Security context of the transactor.
@@ -2522,7 +2522,7 @@ POST host:port/chaincode
     "chaincodeID":{
         "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
-    "ctorMsg": {
+    "input": {
         "function":"init",
         "args":["a", "1000", "b", "2000"]
     }
@@ -2557,7 +2557,7 @@ POST host:port/chaincode
     "chaincodeID":{
         "path":"github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
     },
-    "ctorMsg": {
+    "input": {
         "function":"init",
         "args":["a", "1000", "b", "2000"]
     },
@@ -2583,7 +2583,7 @@ POST host:port/chaincode
     "chaincodeID":{
       "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
     },
-  	"ctorMsg": {
+  	"input": {
     	"function":"invoke",
       	"args":["a", "b", "100"]
   	}
@@ -2616,7 +2616,7 @@ Invoke Request with security enabled:
     "chaincodeID":{
       "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
     },
-  	"ctorMsg": {
+  	"input": {
     	"function":"invoke",
       	"args":["a", "b", "100"]
   	},
@@ -2642,7 +2642,7 @@ POST host:port/chaincode/
     "chaincodeID":{
       "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
     },
-  	"ctorMsg": {
+  	"input": {
     	"function":"query",
       	"args":["a"]
   	}
@@ -2675,7 +2675,7 @@ Query Request with security enabled:
     "chaincodeID":{
       "name":"52b0d803fc395b5e34d8d4a7cd69fb6aa00099b8fabed83504ac1c5d61a425aca5b3ad3bf96643ea4fdaac132c417c37b00f88fa800de7ece387d008a76d3586"
     },
-  	"ctorMsg": {
+  	"input": {
     	"function":"query",
       	"args":["a"]
   	},
