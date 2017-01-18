@@ -92,8 +92,15 @@ func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Commi
 		return nil, nil, false
 	}
 
-	if committer.Isolated() {
-		logger.Debugf("Found message which requested to be isolated, cutting into its own batch")
+	messageSizeBytes := messageSizeBytes(msg)
+
+	if committer.Isolated() || messageSizeBytes > r.sharedConfigManager.BatchSize().PreferredMaxBytes {
+
+		if committer.Isolated() {
+			logger.Debugf("Found message which requested to be isolated, cutting into its own batch")
+		} else {
+			logger.Debugf("The current message, with %v bytes, is larger than the preferred batch size of %v bytes and will be isolated.", messageSizeBytes, r.sharedConfigManager.BatchSize().PreferredMaxBytes)
+		}
 
 		messageBatches := [][]*cb.Envelope{}
 		committerBatches := [][]filter.Committer{}
@@ -115,7 +122,6 @@ func (r *receiver) Ordered(msg *cb.Envelope) ([][]*cb.Envelope, [][]filter.Commi
 	messageBatches := [][]*cb.Envelope{}
 	committerBatches := [][]filter.Committer{}
 
-	messageSizeBytes := messageSizeBytes(msg)
 	messageWillOverflowBatchSizeBytes := r.pendingBatchSizeBytes+messageSizeBytes > r.sharedConfigManager.BatchSize().PreferredMaxBytes
 
 	if messageWillOverflowBatchSizeBytes {
