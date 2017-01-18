@@ -41,23 +41,27 @@ func CombineRoutingFilters(filters ...RoutingFilter) RoutingFilter {
 
 // SelectPeers returns a slice of peers that match a list of routing filters
 func SelectPeers(k int, peerPool []discovery.NetworkMember, filters ...RoutingFilter) []*comm.RemotePeer {
+	var filteredPeers []*comm.RemotePeer
+	for _, peer := range peerPool {
+		if CombineRoutingFilters(filters ...)(peer) {
+			filteredPeers = append(filteredPeers, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.Endpoint})
+		}
+	}
+
 	var indices []int
-	if len(peerPool) <= k {
-		indices = make([]int, len(peerPool))
-		for i := 0; i < len(peerPool); i++ {
+	if len(filteredPeers) <= k {
+		indices = make([]int, len(filteredPeers))
+		for i := 0; i < len(filteredPeers); i++ {
 			indices[i] = i
 		}
 	} else {
-		indices = util.GetRandomIndices(k, len(peerPool)-1)
+		indices = util.GetRandomIndices(k, len(filteredPeers)-1)
 	}
 
 	var remotePeers []*comm.RemotePeer
 	for _, index := range indices {
-		peer := peerPool[index]
-		if CombineRoutingFilters(filters ...)(peer) {
-			remotePeers = append(remotePeers, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.Endpoint})
-		}
-
+		remotePeers = append(remotePeers, filteredPeers[index])
 	}
+
 	return remotePeers
 }
