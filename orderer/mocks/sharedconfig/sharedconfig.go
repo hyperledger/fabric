@@ -27,14 +27,14 @@ type Manager struct {
 	BatchSizeVal *ab.BatchSize
 	// BatchTimeoutVal is returned as the result of BatchTimeout()
 	BatchTimeoutVal time.Duration
-	// ChainCreatorsVal is returned as the result of ChainCreators()
-	ChainCreatorsVal []string
+	// ChainCreationPolicyNamesVal is returned as the result of ChainCreationPolicyNames()
+	ChainCreationPolicyNamesVal []string
 	// KafkaBrokersVal is returned as the result of KafkaBrokers()
 	KafkaBrokersVal []string
-	// IngressPolicyVal is returned as the result of IngressPolicy()
-	IngressPolicyVal string
-	// EgressPolicyVal is returned as the result of EgressPolicy()
-	EgressPolicyVal string
+	// IngressPolicyNamesVal is returned as the result of IngressPolicyNames()
+	IngressPolicyNamesVal []string
+	// EgressPolicyNamesVal is returned as the result of EgressPolicyNames()
+	EgressPolicyNamesVal []string
 }
 
 // ConsensusType returns the ConsensusTypeVal
@@ -52,9 +52,9 @@ func (scm *Manager) BatchTimeout() time.Duration {
 	return scm.BatchTimeoutVal
 }
 
-// ChainCreators returns the ChainCreatorsVal
-func (scm *Manager) ChainCreators() []string {
-	return scm.ChainCreatorsVal
+// ChainCreationPolicyNames returns the ChainCreationPolicyNamesVal
+func (scm *Manager) ChainCreationPolicyNames() []string {
+	return scm.ChainCreationPolicyNamesVal
 }
 
 // KafkaBrokers returns the KafkaBrokersVal
@@ -62,12 +62,12 @@ func (scm *Manager) KafkaBrokers() []string {
 	return scm.KafkaBrokersVal
 }
 
-// IngressPolicy returns the IngressPolicyVal
-func (scm *Manager) IngressPolicy() string {
-	return scm.IngressPolicyVal
+// IngressPolicyNames returns the IngressPolicyNamesVal
+func (scm *Manager) IngressPolicyNames() []string {
+	return scm.IngressPolicyNamesVal
 }
 
-// EgressPolicy returns the EgressPolicyVal
-func (scm *Manager) EgressPolicy() string {
-	return scm.EgressPolicyVal
+// EgressPolicyNames returns the EgressPolicyNamesVal
+func (scm *Manager) EgressPolicyNames() []string {
+	return scm.EgressPolicyNamesVal
 }

@@ -22,9 +22,9 @@ It has these top-level messages:
 	BatchSize
 	BatchTimeout
 	CreationPolicy
-	IngressPolicy
-	EgressPolicy
-	ChainCreators
+	IngressPolicyNames
+	EgressPolicyNames
+	ChainCreationPolicyNames
 	KafkaBrokers
 	KafkaMessage
 	KafkaMessageRegular

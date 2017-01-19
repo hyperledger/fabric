@@ -92,6 +92,9 @@ func NewBackendAB(backend *Backend) *BackendAB {
 			policyManager: &mockpolicies.Manager{Policy: &mockpolicies.Policy{}},
 		},
 	}
+
+	manager.support.sharedConfig.(*mocksharedconfig.Manager).EgressPolicyNamesVal = []string{"XXX"}
+	manager.support.sharedConfig.(*mocksharedconfig.Manager).IngressPolicyNamesVal = []string{"XXX"}
 	// XXX End hackiness
 
 	bab := &BackendAB{

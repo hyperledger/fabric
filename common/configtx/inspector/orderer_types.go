@@ -56,24 +56,24 @@ func (ot ordererTypes) Value(configItem *cb.ConfigurationItem) Viewable {
 			return viewableError(name, err)
 		}
 		return viewableCreationPolicy(configItem.Key, value)
-	case "IngressPolicy":
-		value := &ab.IngressPolicy{}
+	case "IngressPolicyNames":
+		value := &ab.IngressPolicyNames{}
 		if err := proto.Unmarshal(configItem.Value, value); err != nil {
 			return viewableError(name, err)
 		}
-		return viewableIngressPolicy(configItem.Key, value)
-	case "EgressPolicy":
-		value := &ab.EgressPolicy{}
+		return viewableIngressPolicyNames(configItem.Key, value)
+	case "EgressPolicyNames":
+		value := &ab.EgressPolicyNames{}
 		if err := proto.Unmarshal(configItem.Value, value); err != nil {
 			return viewableError(name, err)
 		}
-		return viewableEgressPolicy(configItem.Key, value)
-	case "ChainCreators":
-		value := &ab.ChainCreators{}
+		return viewableEgressPolicyNames(configItem.Key, value)
+	case "ChainCreationPolicyNames":
+		value := &ab.ChainCreationPolicyNames{}
 		if err := proto.Unmarshal(configItem.Value, value); err != nil {
 			return viewableError(name, err)
 		}
-		return viewableChainCreators(configItem.Key, value)
+		return viewableChainCreationPolicyNames(configItem.Key, value)
 	case "KafkaBrokers":
 		value := &ab.KafkaBrokers{}
 		if err := proto.Unmarshal(configItem.Value, value); err != nil {
@@ -99,24 +99,24 @@ func viewableBatchTimeout(name string, batchTimeout *ab.BatchTimeout) Viewable {
 	}
 }
 
-func viewableIngressPolicy(name string, ingressPolicy *ab.IngressPolicy) Viewable {
+func viewableIngressPolicyNames(name string, ingressPolicy *ab.IngressPolicyNames) Viewable {
 	return &field{
 		name:   name,
-		values: []Viewable{viewableString("Name", ingressPolicy.Name)},
+		values: []Viewable{viewableStringSlice("Name", ingressPolicy.Names)},
 	}
 }
 
-func viewableEgressPolicy(name string, egressPolicy *ab.EgressPolicy) Viewable {
+func viewableEgressPolicyNames(name string, egressPolicy *ab.EgressPolicyNames) Viewable {
 	return &field{
 		name:   name,
-		values: []Viewable{viewableString("Name", egressPolicy.Name)},
+		values: []Viewable{viewableStringSlice("Names", egressPolicy.Names)},
 	}
 }
 
-func viewableChainCreators(name string, creators *ab.ChainCreators) Viewable {
+func viewableChainCreationPolicyNames(name string, chainCreationPolicyNames *ab.ChainCreationPolicyNames) Viewable {
 	return &field{
 		name:   name,
-		values: []Viewable{viewableStringSlice("Policies", creators.Policies)},
+		values: []Viewable{viewableStringSlice("Names", chainCreationPolicyNames.Names)},
 	}
 }
 

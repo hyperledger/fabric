@@ -172,7 +172,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 	}
 
 	ok := false
-	for _, chainCreatorPolicy := range sc.support.SharedConfig().ChainCreators() {
+	for _, chainCreatorPolicy := range sc.support.SharedConfig().ChainCreationPolicyNames() {
 		if chainCreatorPolicy == creationPolicy.Policy {
 			ok = true
 			break

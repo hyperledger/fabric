@@ -27,7 +27,7 @@ import (
 var logger = logging.MustGetLogger("orderer/common/sigfilter")
 
 type sigFilter struct {
-	policySource  func() string
+	policySource  func() []string
 	policyManager policies.Manager
 }
 
@@ -36,7 +36,7 @@ type sigFilter struct {
 // In general, both the policy name and the policy itself are mutable, this is why
 // not only the policy is retrieved at each invocation, but also the name of which
 // policy to retrieve
-func New(policySource func() string, policyManager policies.Manager) filter.Rule {
+func New(policySource func() []string, policyManager policies.Manager) filter.Rule {
 	return &sigFilter{
 		policySource:  policySource,
 		policyManager: policyManager,
@@ -54,20 +54,21 @@ func (sf *sigFilter) Apply(message *cb.Envelope) (filter.Action, filter.Committe
 		return filter.Reject, nil
 	}
 
-	policy, ok := sf.policyManager.GetPolicy(sf.policySource())
-	if !ok {
-		logger.Debugf("Rejecting because policy was not found")
-		return filter.Reject, nil
-	}
-
-	err = policy.Evaluate(signedData)
-
-	if err != nil {
-		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Rejecting because policy did not evaluate without error: %s", err)
+	for _, policy := range sf.policySource() {
+		policy, ok := sf.policyManager.GetPolicy(policy)
+		if !ok {
+			logger.Debugf("Could not find policy %s", policy)
+			continue
 		}
-		return filter.Reject, nil
+
+		err = policy.Evaluate(signedData)
+
+		if err == nil {
+			logger.Debugf("Accepting validly signed message")
+			return filter.Forward, nil
+		}
 	}
 
-	return filter.Forward, nil
+	logger.Debugf("Rejecting message which was not appropriately signed")
+	return filter.Reject, nil
 }

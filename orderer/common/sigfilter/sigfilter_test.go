@@ -42,8 +42,8 @@ func makeEnvelope() *cb.Envelope {
 	}
 }
 
-func fooSource() string {
-	return "foo"
+func fooSource() []string {
+	return []string{"foo"}
 }
 
 func TestAccept(t *testing.T) {

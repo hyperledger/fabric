@@ -21,21 +21,21 @@ import (
 )
 
 func (cbs *commonBootstrapper) makeOrdererSystemChainConfig() []*cb.ConfigurationItem {
-	return []*cb.ConfigurationItem{cbs.encodeChainCreators()}
+	return []*cb.ConfigurationItem{cbs.templateChainCreationPolicyNames()}
 }
 
 func (cbs *commonBootstrapper) TemplateItems() []*cb.ConfigurationItem {
 	return []*cb.ConfigurationItem{
-		cbs.encodeConsensusType(),
-		cbs.encodeBatchSize(),
-		cbs.encodeBatchTimeout(),
-		cbs.encodeAcceptAllPolicy(),
-		cbs.encodeIngressPolicy(),
-		cbs.encodeEgressPolicy(),
-		cbs.lockDefaultModificationPolicy(),
+		cbs.templateConsensusType(),
+		cbs.templateBatchSize(),
+		cbs.templateBatchTimeout(),
+		cbs.templateAcceptAllPolicy(),
+		cbs.templateIngressPolicyNames(),
+		cbs.templateEgressPolicyNames(),
+		cbs.templateRejectAllPolicy(),
 	}
 }
 
 func (kbs *kafkaBootstrapper) TemplateItems() []*cb.ConfigurationItem {
-	return append(kbs.commonBootstrapper.TemplateItems(), kbs.encodeKafkaBrokers())
+	return append(kbs.commonBootstrapper.TemplateItems(), kbs.templateKafkaBrokers())
 }

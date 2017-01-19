@@ -140,7 +140,7 @@ func createStandardFilters(configManager configtx.Manager, policyManager policie
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
 		sizefilter.MaxBytesRule(sharedConfig.BatchSize().AbsoluteMaxBytes),
-		sigfilter.New(sharedConfig.IngressPolicy, policyManager),
+		sigfilter.New(sharedConfig.IngressPolicyNames, policyManager),
 		configtx.NewFilter(configManager),
 		filter.AcceptRule,
 	})
@@ -152,7 +152,7 @@ func createSystemChainFilters(ml *multiLedger, configManager configtx.Manager, p
 	return filter.NewRuleSet([]filter.Rule{
 		filter.EmptyRejectRule,
 		sizefilter.MaxBytesRule(sharedConfig.BatchSize().AbsoluteMaxBytes),
-		sigfilter.New(sharedConfig.IngressPolicy, policyManager),
+		sigfilter.New(sharedConfig.IngressPolicyNames, policyManager),
 		newSystemChainFilter(ml),
 		configtx.NewFilter(configManager),
 		filter.AcceptRule,

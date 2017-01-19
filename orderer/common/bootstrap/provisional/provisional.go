@@ -59,8 +59,8 @@ const (
 	epoch        = 0
 )
 
-// DefaultChainCreators is the default value of ChainCreatorsKey.
-var DefaultChainCreators = []string{AcceptAllPolicyKey}
+// DefaultChainCreationPolicyNames is the default value of ChainCreatorsKey.
+var DefaultChainCreationPolicyNames = []string{AcceptAllPolicyKey}
 
 type commonBootstrapper struct {
 	chainID       string

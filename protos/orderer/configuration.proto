@@ -67,20 +67,25 @@ message CreationPolicy {
     bytes digest = 2;
 }
 
-// IngressPolicy is the name of the policy which incoming Broadcast messages are filtered against
-message IngressPolicy {
-    string name = 1;
+// IngressPolicyNames is the set of policy names which incoming Broadcast signatures are filtered against
+message IngressPolicyNames {
+    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
+    // because implementing referential policies in a general way is difficult, and dangerous
+    repeated string names = 1;
 }
 
-// EgressPolicy is the name of the policy which incoming Deliver messages are filtered against
-message EgressPolicy {
-    string name = 1;
+// EgressPolicyNames is the set of policy names which incoming Deliver signatures are filtered against
+message EgressPolicyNames {
+    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
+    // because implementing referential policies in a general way is difficult, and dangerous
+    repeated string names = 1;
 }
 
-message ChainCreators {
-    // A list of policies, any of which may be specified as the chain creation
-    // policy in a chain creation request
-    repeated string policies = 1;
+// ChainCreationPolicyNames is the set of policies which may be invoked for chain creation
+message ChainCreationPolicyNames {
+    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
+    // because implementing referential policies in a general way is difficult, and dangerous
+    repeated string names = 1;
 }
 
 // Carries a list of bootstrap brokers, i.e. this is not the exclusive set of

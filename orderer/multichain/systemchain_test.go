@@ -106,7 +106,7 @@ func TestGoodProposal(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.ChainCreatorsVal = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
 	mcc.ms.mpm.mp = &mockPolicy{}
 
 	chainCreateTx := &cb.ConfigurationItem{
@@ -191,7 +191,7 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.msc.ChainCreatorsVal = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
 		Key:  configtx.CreationPolicyKey,
@@ -215,7 +215,7 @@ func TestProposalWithBadDigest(t *testing.T) {
 
 	mcc := newMockChainCreator()
 	mcc.ms.mpm.mp = &mockPolicy{}
-	mcc.ms.msc.ChainCreatorsVal = []string{provisional.AcceptAllPolicyKey}
+	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
 
 	chainCreateTx := &cb.ConfigurationItem{
 		Key:  configtx.CreationPolicyKey,

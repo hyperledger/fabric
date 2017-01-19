@@ -57,8 +57,8 @@ type Manager interface {
 	Sequence() uint64
 }
 
-// DefaultModificationPolicyID is the ID of the policy used when no other policy can be resolved, for instance when attempting to create a new config item
-const DefaultModificationPolicyID = "DefaultModificationPolicy"
+// NewConfigurationItemPolicyKey is the ID of the policy used when no other policy can be resolved, for instance when attempting to create a new config item
+const NewConfigurationItemPolicyKey = "NewConfigurationItemPolicy"
 
 type acceptAllPolicy struct{}
 
@@ -187,7 +187,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 		return nil, fmt.Errorf("Config is for the wrong chain, expected %s, got %s", cm.chainID, chainID)
 	}
 
-	defaultModificationPolicy, defaultPolicySet := cm.pm.GetPolicy(DefaultModificationPolicyID)
+	defaultModificationPolicy, defaultPolicySet := cm.pm.GetPolicy(NewConfigurationItemPolicyKey)
 
 	// If the default modification policy is not set, it indicates this is an uninitialized chain, so be permissive of modification
 	if !defaultPolicySet {

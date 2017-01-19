@@ -111,7 +111,7 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 		configManager, policyManager, backingLedger, sharedConfigManager := ml.newResources(configTx)
 		chainID := configManager.ChainID()
 
-		if sharedConfigManager.ChainCreators() != nil {
+		if sharedConfigManager.ChainCreationPolicyNames() != nil {
 			if ml.sysChain != nil {
 				logger.Fatalf("There appear to be two system chains %s and %s", ml.sysChain.support.ChainID(), chainID)
 			}
