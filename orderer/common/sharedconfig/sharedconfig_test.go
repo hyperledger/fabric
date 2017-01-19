@@ -319,3 +319,20 @@ func TestChainCreationPolicyNames(t *testing.T) {
 	m := NewManagerImpl()
 	testPolicyNames(m, ChainCreationPolicyNamesKey, TemplateChainCreationPolicyNames, m.ChainCreationPolicyNames, t)
 }
+
+func TestEmptyChainCreationPolicyNames(t *testing.T) {
+	m := NewManagerImpl()
+
+	m.BeginConfig()
+
+	err := m.ProposeConfig(TemplateChainCreationPolicyNames(nil))
+	if err != nil {
+		t.Fatalf("Error applying valid config: %s", err)
+	}
+
+	m.CommitConfig()
+
+	if m.ChainCreationPolicyNames() == nil {
+		t.Fatalf("Should have gotten back empty slice, not nil")
+	}
+}

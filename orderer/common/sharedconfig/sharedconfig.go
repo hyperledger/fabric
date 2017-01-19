@@ -86,13 +86,13 @@ type Manager interface {
 }
 
 type ordererConfig struct {
-	consensusType         string
-	batchSize             *ab.BatchSize
-	batchTimeout          time.Duration
-	chainCreationPolicies []string
-	kafkaBrokers          []string
-	ingressPolicyNames    []string
-	egressPolicyNames     []string
+	consensusType            string
+	batchSize                *ab.BatchSize
+	batchTimeout             time.Duration
+	chainCreationPolicyNames []string
+	kafkaBrokers             []string
+	ingressPolicyNames       []string
+	egressPolicyNames        []string
 }
 
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
@@ -127,7 +127,7 @@ func (pm *ManagerImpl) BatchTimeout() time.Duration {
 // ChainCreationPolicyNames returns the policy names which are allowed for chain creation
 // This field is only set for the system ordering chain
 func (pm *ManagerImpl) ChainCreationPolicyNames() []string {
-	return pm.config.chainCreationPolicies
+	return pm.config.chainCreationPolicyNames
 }
 
 // KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
@@ -225,11 +225,17 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 		}
 		pm.pendingConfig.batchTimeout = timeoutValue
 	case ChainCreationPolicyNamesKey:
-		chainCreationPolicies := &ab.ChainCreationPolicyNames{}
-		if err := proto.Unmarshal(configItem.Value, chainCreationPolicies); err != nil {
+		chainCreationPolicyNames := &ab.ChainCreationPolicyNames{}
+		if err := proto.Unmarshal(configItem.Value, chainCreationPolicyNames); err != nil {
 			return fmt.Errorf("Unmarshaling error for ChainCreator: %s", err)
 		}
-		pm.pendingConfig.chainCreationPolicies = chainCreationPolicies.Names
+		if chainCreationPolicyNames.Names == nil {
+			// Proto unmarshals empty slices to nil, but this poses a problem for us in detecting the system chain
+			// if it does not set this value, so explicitly set the policies to the empty string slice, if it is set
+			pm.pendingConfig.chainCreationPolicyNames = []string{}
+		} else {
+			pm.pendingConfig.chainCreationPolicyNames = chainCreationPolicyNames.Names
+		}
 	case IngressPolicyNamesKey:
 		ingressPolicyNames := &ab.IngressPolicyNames{}
 		if err := proto.Unmarshal(configItem.Value, ingressPolicyNames); err != nil {
