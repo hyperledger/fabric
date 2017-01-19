@@ -96,11 +96,11 @@ func InitBlockMetadata(block *cb.Block) {
 }
 
 const (
-	epoch                           = uint64(0)
-	messageVersion                  = int32(1)
-	lastModified                    = uint64(0)
-	mspKey                          = "MSP"
-	XXX_DefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
+	epoch                          = uint64(0)
+	messageVersion                 = int32(1)
+	lastModified                   = uint64(0)
+	mspKey                         = "MSP"
+	xxxDefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
 )
 
 func createConfigItem(chainID string,
@@ -151,7 +151,7 @@ func EncodeMSPUnsigned(testChainID string) *cb.ConfigurationItem {
 	return createConfigItem(testChainID,
 		mspKey,
 		MarshalOrPanic(conf),
-		XXX_DefaultModificationPolicyID, cb.ConfigurationItem_Orderer)
+		xxxDefaultModificationPolicyID, cb.ConfigurationItem_Orderer)
 }
 
 // EncodeMSP gets the signed configuration item with the default MSP
@@ -166,5 +166,5 @@ func EncodeMSP(testChainID string) *cb.SignedConfigurationItem {
 	return createSignedConfigItem(testChainID,
 		mspKey,
 		MarshalOrPanic(conf),
-		XXX_DefaultModificationPolicyID, cb.ConfigurationItem_Orderer)
+		xxxDefaultModificationPolicyID, cb.ConfigurationItem_Orderer)
 }

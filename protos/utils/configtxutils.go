@@ -143,13 +143,12 @@ func BreakOutBlockToConfigurationEnvelope(block *pb.Block) (*pb.ConfigurationEnv
 		return nil, nil, fmt.Errorf("Block.BlockData is not an array of 1. This is not a configuration transaction\n")
 	}
 
-	payloads, envelopeSignatures, err := BreakOutBlockData(block.Data)
+	payloads, envelopeSignatures, _ := BreakOutBlockData(block.Data)
 
 	if payloads[0].Header.ChainHeader.Type != int32(pb.HeaderType_CONFIGURATION_TRANSACTION) {
 		return nil, nil, fmt.Errorf("Payload Header type is not configuration_transaction. This is not a configuration transaction\n")
 	}
-	var configEnvelope *pb.ConfigurationEnvelope
-	configEnvelope, err = BreakOutPayloadDataToConfigurationEnvelope(payloads[0].Data)
+	configEnvelope, err := BreakOutPayloadDataToConfigurationEnvelope(payloads[0].Data)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error breaking out configurationEnvelope: %v\n", err)
 	}
