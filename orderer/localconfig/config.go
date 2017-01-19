@@ -44,10 +44,21 @@ type General struct {
 	MaxWindowSize uint32
 	ListenAddress string
 	ListenPort    uint16
+	TLS           TLS
 	GenesisMethod string
 	GenesisFile   string
 	Profile       Profile
 	LogLevel      string
+}
+
+//TLS contains config used to configure TLS for the grpc server
+type TLS struct {
+	Enabled           bool
+	ServerKey         string
+	ServerCertificate string
+	ServerRootCAs     []string
+	ClientAuthEnabled bool
+	ClientRootCAs     []string
 }
 
 // Genesis contains config which is used by the provisional bootstrapper
