@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func (cbs *commonBootstrapper) templateConsensusType() *cb.ConfigurationItem {
@@ -41,12 +40,7 @@ func (cbs *commonBootstrapper) templateChainCreationPolicyNames() *cb.Configurat
 }
 
 func (cbs *commonBootstrapper) templateAcceptAllPolicy() *cb.ConfigurationItem {
-	configItemKey := AcceptAllPolicyKey
-	configItemValue := utils.MarshalOrPanic(utils.MakePolicyOrPanic(cauthdsl.AcceptAllPolicy))
-	modPolicy := configtx.NewConfigurationItemPolicyKey
-
-	configItemChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, cbs.chainID, epoch)
-	return utils.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Policy, lastModified, modPolicy, configItemKey, configItemValue)
+	return cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy)
 }
 
 func (cbs *commonBootstrapper) templateIngressPolicyNames() *cb.ConfigurationItem {
@@ -59,12 +53,7 @@ func (cbs *commonBootstrapper) templateEgressPolicyNames() *cb.ConfigurationItem
 
 func (cbs *commonBootstrapper) templateRejectAllPolicy() *cb.ConfigurationItem {
 	// Lock down the new configuration item policy to prevent any new configuration items from being created
-	configItemKey := configtx.NewConfigurationItemPolicyKey
-	configItemValue := utils.MarshalOrPanic(utils.MakePolicyOrPanic(cauthdsl.RejectAllPolicy))
-	modPolicy := configtx.NewConfigurationItemPolicyKey
-
-	configItemChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, cbs.chainID, epoch)
-	return utils.MakeConfigurationItem(configItemChainHeader, cb.ConfigurationItem_Policy, lastModified, modPolicy, configItemKey, configItemValue)
+	return cauthdsl.TemplatePolicy(configtx.NewConfigurationItemPolicyKey, cauthdsl.RejectAllPolicy)
 }
 
 func (kbs *kafkaBootstrapper) templateKafkaBrokers() *cb.ConfigurationItem {
