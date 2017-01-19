@@ -19,9 +19,11 @@ package provisional
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
+	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -36,8 +38,6 @@ type Generator interface {
 }
 
 const (
-	msgVersion = int32(1)
-
 	// ConsensusTypeSolo identifies the solo consensus implementation.
 	ConsensusTypeSolo = "solo"
 	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
@@ -53,64 +53,61 @@ const (
 
 	// AcceptAllPolicyKey is the key of the AcceptAllPolicy.
 	AcceptAllPolicyKey = "AcceptAllPolicy"
-
-	// These values are fixed for the genesis block.
-	lastModified = 0
-	epoch        = 0
 )
 
 // DefaultChainCreationPolicyNames is the default value of ChainCreatorsKey.
 var DefaultChainCreationPolicyNames = []string{AcceptAllPolicyKey}
 
-type commonBootstrapper struct {
-	chainID       string
-	consensusType string
-	batchSize     *ab.BatchSize
-	batchTimeout  string
-}
-
-type soloBootstrapper struct {
-	commonBootstrapper
-}
-
-type kafkaBootstrapper struct {
-	commonBootstrapper
-	kafkaBrokers []string
+type bootstrapper struct {
+	minimalItems     []*cb.ConfigurationItem
+	systemChainItems []*cb.ConfigurationItem
 }
 
 // New returns a new provisional bootstrap helper.
 func New(conf *config.TopLevel) Generator {
-	cbs := &commonBootstrapper{
-		chainID:       TestChainID,
-		consensusType: conf.Genesis.OrdererType,
-		batchSize: &ab.BatchSize{
-			MaxMessageCount:   conf.Genesis.BatchSize.MaxMessageCount,
-			AbsoluteMaxBytes:  conf.Genesis.BatchSize.AbsoluteMaxBytes,
-			PreferredMaxBytes: conf.Genesis.BatchSize.PreferredMaxBytes,
+	bs := &bootstrapper{
+		minimalItems: []*cb.ConfigurationItem{
+			// Orderer Config Types
+			sharedconfig.TemplateConsensusType(conf.Genesis.OrdererType),
+			sharedconfig.TemplateBatchSize(&ab.BatchSize{
+				MaxMessageCount:   conf.Genesis.BatchSize.MaxMessageCount,
+				AbsoluteMaxBytes:  conf.Genesis.BatchSize.AbsoluteMaxBytes,
+				PreferredMaxBytes: conf.Genesis.BatchSize.PreferredMaxBytes,
+			}),
+			sharedconfig.TemplateBatchTimeout(conf.Genesis.BatchTimeout.String()),
+			sharedconfig.TemplateIngressPolicyNames([]string{AcceptAllPolicyKey}),
+			sharedconfig.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
+
+			// Policies
+			cauthdsl.TemplatePolicy(configtx.NewConfigurationItemPolicyKey, cauthdsl.RejectAllPolicy),
+			cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy),
 		},
-		batchTimeout: conf.Genesis.BatchTimeout.String(),
+
+		systemChainItems: []*cb.ConfigurationItem{
+			sharedconfig.TemplateChainCreationPolicyNames(DefaultChainCreationPolicyNames),
+		},
 	}
 
 	switch conf.Genesis.OrdererType {
 	case ConsensusTypeSolo, ConsensusTypeSbft:
-		return &soloBootstrapper{
-			commonBootstrapper: *cbs,
-		}
 	case ConsensusTypeKafka:
-		return &kafkaBootstrapper{
-			commonBootstrapper: *cbs,
-			kafkaBrokers:       conf.Kafka.Brokers,
-		}
+		bs.minimalItems = append(bs.minimalItems, sharedconfig.TemplateKafkaBrokers(conf.Kafka.Brokers))
 	default:
 		panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Genesis.OrdererType))
 	}
+
+	return bs
 }
 
-func (cbs *commonBootstrapper) genesisBlock(minimalTemplateItems func() []*cb.ConfigurationItem) *cb.Block {
+func (bs *bootstrapper) TemplateItems() []*cb.ConfigurationItem {
+	return bs.minimalItems
+}
+
+func (bs *bootstrapper) GenesisBlock() *cb.Block {
 	block, err := genesis.NewFactoryImpl(
 		configtx.NewCompositeTemplate(
-			configtx.NewSimpleTemplate(minimalTemplateItems()...),
-			configtx.NewSimpleTemplate(cbs.makeOrdererSystemChainConfig()...),
+			configtx.NewSimpleTemplate(bs.minimalItems...),
+			configtx.NewSimpleTemplate(bs.systemChainItems...),
 		),
 	).Block(TestChainID)
 
@@ -118,14 +115,4 @@ func (cbs *commonBootstrapper) genesisBlock(minimalTemplateItems func() []*cb.Co
 		panic(err)
 	}
 	return block
-}
-
-// GenesisBlock returns the genesis block to be used for bootstrapping.
-func (cbs *commonBootstrapper) GenesisBlock() *cb.Block {
-	return cbs.genesisBlock(cbs.TemplateItems)
-}
-
-// GenesisBlock returns the genesis block to be used for bootstrapping.
-func (kbs *kafkaBootstrapper) GenesisBlock() *cb.Block {
-	return kbs.genesisBlock(kbs.TemplateItems)
 }
