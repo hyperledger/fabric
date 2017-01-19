@@ -109,7 +109,7 @@ func TestManagerImpl(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters)
+	manager := NewManagerImpl(lf, consenters, &xxxCryptoHelper{})
 
 	_, ok := manager.GetChain("Fake")
 	if ok {
@@ -155,7 +155,7 @@ func TestSignatureFilter(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters)
+	manager := NewManagerImpl(lf, consenters, &xxxCryptoHelper{})
 
 	cs, ok := manager.GetChain(provisional.TestChainID)
 
@@ -193,7 +193,7 @@ func TestNewChain(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters)
+	manager := NewManagerImpl(lf, consenters, &xxxCryptoHelper{})
 
 	generator := provisional.New(conf)
 	items := generator.TemplateItems()

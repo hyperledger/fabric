@@ -29,6 +29,7 @@ import (
 	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto"
 )
 
 var logger = logging.MustGetLogger("orderer/multichain")
@@ -41,21 +42,12 @@ func (xxx xxxCryptoHelper) VerifySignature(sd *cb.SignedData) error {
 	return nil
 }
 
-func (xxx xxxCryptoHelper) NewSignatureHeader() *cb.SignatureHeader {
-	return &cb.SignatureHeader{}
+func (xxx xxxCryptoHelper) NewSignatureHeader() (*cb.SignatureHeader, error) {
+	return &cb.SignatureHeader{}, nil
 }
 
-func (xxx xxxCryptoHelper) Sign(message []byte) []byte {
-	return message
-}
-
-// Signer is a temporary stub interface which will be implemented by the local MSP
-type Signer interface {
-	// NewSignatureHeader creates a SignatureHeader with the correct signing identity and a valid nonce
-	NewSignatureHeader() *cb.SignatureHeader
-
-	// Sign a message which should embed a signature header created by NewSignatureHeader
-	Sign(message []byte) []byte
+func (xxx xxxCryptoHelper) Sign(message []byte) ([]byte, error) {
+	return message, nil
 }
 
 // Manager coordinates the creation and access of chains
@@ -74,6 +66,7 @@ type multiLedger struct {
 	consenters    map[string]Consenter
 	ledgerFactory ordererledger.Factory
 	sysChain      *systemChain
+	signer        crypto.LocalSigner
 }
 
 func getConfigTx(reader ordererledger.Reader) *cb.Envelope {
@@ -91,11 +84,12 @@ func getConfigTx(reader ordererledger.Reader) *cb.Envelope {
 }
 
 // NewManagerImpl produces an instance of a Manager
-func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]Consenter) Manager {
+func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]Consenter, signer crypto.LocalSigner) Manager {
 	ml := &multiLedger{
 		chains:        make(map[string]*chainSupport),
 		ledgerFactory: ledgerFactory,
 		consenters:    consenters,
+		signer:        signer,
 	}
 
 	existingChains := ledgerFactory.ChainIDs()
@@ -122,7 +116,7 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 				backingLedger,
 				sharedConfigManager,
 				consenters,
-				&xxxCryptoHelper{})
+				signer)
 			ml.chains[string(chainID)] = chain
 			ml.sysChain = newSystemChain(chain)
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
@@ -135,7 +129,7 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 				backingLedger,
 				sharedConfigManager,
 				consenters,
-				&xxxCryptoHelper{})
+				signer)
 			ml.chains[string(chainID)] = chain
 			chain.start()
 		}
@@ -238,7 +232,7 @@ func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 		newChains[key] = value
 	}
 
-	cs := newChainSupport(createStandardFilters(configManager, policyManager, sharedConfig), configManager, policyManager, backingLedger, sharedConfig, ml.consenters, &xxxCryptoHelper{})
+	cs := newChainSupport(createStandardFilters(configManager, policyManager, sharedConfig), configManager, policyManager, backingLedger, sharedConfig, ml.consenters, ml.signer)
 	chainID := configManager.ChainID()
 
 	logger.Debugf("Created and starting new chain %s", chainID)

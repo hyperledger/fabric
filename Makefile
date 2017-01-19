@@ -187,6 +187,7 @@ build/image/peer/payload:       build/docker/bin/peer \
 				build/msp-sampleconfig.tar.bz2 \
 				build/genesis-sampleconfig.tar.bz2
 build/image/orderer/payload:    build/docker/bin/orderer \
+				build/msp-sampleconfig.tar.bz2 \
 				orderer/orderer.yaml
 build/image/testenv/payload:    build/gotools.tar.bz2
 build/image/runtime/payload:    build/docker/busybox

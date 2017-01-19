@@ -18,6 +18,7 @@ package multichain
 
 import (
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
@@ -60,7 +61,7 @@ type Chain interface {
 
 // ConsenterSupport provides the resources available to a Consenter implementation
 type ConsenterSupport interface {
-	Signer
+	crypto.LocalSigner
 	BlockCutter() blockcutter.Receiver
 	SharedConfig() sharedconfig.Manager
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
@@ -94,7 +95,7 @@ type chainSupport struct {
 	sharedConfigManager sharedconfig.Manager
 	ledger              ordererledger.ReadWriter
 	filters             *filter.RuleSet
-	signer              Signer
+	signer              crypto.LocalSigner
 	lastConfiguration   uint64
 	lastConfigSeq       uint64
 }
@@ -106,7 +107,7 @@ func newChainSupport(
 	backing ordererledger.ReadWriter,
 	sharedConfigManager sharedconfig.Manager,
 	consenters map[string]Consenter,
-	signer Signer,
+	signer crypto.LocalSigner,
 ) *chainSupport {
 
 	cutter := blockcutter.NewReceiverImpl(sharedConfigManager, filters)
@@ -163,11 +164,11 @@ func (cs *chainSupport) start() {
 	cs.chain.Start()
 }
 
-func (cs *chainSupport) NewSignatureHeader() *cb.SignatureHeader {
+func (cs *chainSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
 	return cs.signer.NewSignatureHeader()
 }
 
-func (cs *chainSupport) Sign(message []byte) []byte {
+func (cs *chainSupport) Sign(message []byte) ([]byte, error) {
 	return cs.signer.Sign(message)
 }
 
@@ -210,15 +211,16 @@ func (cs *chainSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Block {
 func (cs *chainSupport) addBlockSignature(block *cb.Block) {
 	logger.Debugf("%+v", cs)
 	logger.Debugf("%+v", cs.signer)
+
 	blockSignature := &cb.MetadataSignature{
-		SignatureHeader: utils.MarshalOrPanic(cs.signer.NewSignatureHeader()),
+		SignatureHeader: utils.MarshalOrPanic(utils.NewSignatureHeaderOrPanic(cs.signer)),
 	}
 
 	// Note, this value is intentionally nil, as this metadata is only about the signature, there is no additional metadata
 	// information required beyond the fact that the metadata item is signed.
 	blockSignatureValue := []byte(nil)
 
-	blockSignature.Signature = cs.signer.Sign(util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
+	blockSignature.Signature = utils.SignOrPanic(cs.signer, util.ConcatenateBytes(blockSignatureValue, blockSignature.SignatureHeader, block.Header.Bytes()))
 
 	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = utils.MarshalOrPanic(&cb.Metadata{
 		Value: blockSignatureValue,
@@ -236,12 +238,12 @@ func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 	}
 
 	lastConfigSignature := &cb.MetadataSignature{
-		SignatureHeader: utils.MarshalOrPanic(cs.signer.NewSignatureHeader()),
+		SignatureHeader: utils.MarshalOrPanic(utils.NewSignatureHeaderOrPanic(cs.signer)),
 	}
 
 	lastConfigValue := utils.MarshalOrPanic(&cb.LastConfiguration{Index: cs.lastConfiguration})
 
-	lastConfigSignature.Signature = cs.signer.Sign(util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
+	lastConfigSignature.Signature = utils.SignOrPanic(cs.signer, util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
 
 	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{
 		Value: lastConfigValue,
