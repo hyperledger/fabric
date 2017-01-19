@@ -92,9 +92,9 @@ peer node start --peer-defaultchain=false
 ```
 
 ```
-"--peer-defaultchain=true" is the default. It allow users continue to work with the default **TEST_CHAINID** without having to join a chain.
+"--peer-defaultchain=true" is the default. It allow users continue to work with the default "test_chainid" without having to join a chain.
 
-"--peer-defaultchain=false" starts the peer with only the channels that were joined by the peer. If the peer never joined a channel it would start up without any channels. In particular, it does not have the default **TEST_CHAINID** support.
+"--peer-defaultchain=false" starts the peer with only the channels that were joined by the peer. If the peer never joined a channel it would start up without any channels. In particular, it does not have the default "test_chainid" support.
 
 To join channels, a peer MUST be started with the "--peer-defaultchain=false" option.
 ```

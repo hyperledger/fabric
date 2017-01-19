@@ -84,7 +84,7 @@ def step_impl(context, chainId):
 @given(u'the orderer admins use the genesis block for chain "{chainId}" to configure orderers')
 def step_impl(context, chainId):
     pass
-    #raise NotImplementedError(u'STEP: Given the orderer admins use the genesis block for chain "**TEST_CHAINID**" to configure orderers')
+    #raise NotImplementedError(u'STEP: Given the orderer admins use the genesis block for chain "test_chainid" to configure orderers')
 
 @given(u'the ordererBootstrapAdmin generates a GUUID to identify the orderer system chain and refer to it by name as "{ordererSystemChainId}"')
 def step_impl(context, ordererSystemChainId):
