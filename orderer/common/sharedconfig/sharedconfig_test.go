@@ -27,13 +27,20 @@ import (
 
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 )
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
+}
+
+func invalidMessage(key string) *cb.ConfigurationItem {
+	return &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Orderer,
+		Key:   key,
+		Value: []byte("Garbage Data"),
+	}
 }
 
 func doesFuncCrash(crasher func(), test string) bool {
@@ -85,22 +92,10 @@ func TestRollback(t *testing.T) {
 
 func TestConsensusType(t *testing.T) {
 	endType := "foo"
-	invalidMessage :=
-		&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   ConsensusTypeKey,
-			Value: []byte("Garbage Data"),
-		}
-	validMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   ConsensusTypeKey,
-		Value: utils.MarshalOrPanic(&ab.ConsensusType{Type: endType}),
-	}
-	otherValidMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   ConsensusTypeKey,
-		Value: utils.MarshalOrPanic(&ab.ConsensusType{Type: "bar"}),
-	}
+	invalidMessage := invalidMessage(ConsensusTypeKey)
+	validMessage := TemplateConsensusType(endType)
+	otherValidMessage := TemplateConsensusType("bar")
+
 	m := NewManagerImpl()
 	m.BeginConfig()
 
@@ -143,11 +138,9 @@ func TestBatchSize(t *testing.T) {
 	t.Run("ValidConfiguration", func(t *testing.T) {
 		m := NewManagerImpl()
 		m.BeginConfig()
-		err := m.ProposeConfig(&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   BatchSizeKey,
-			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}),
-		})
+		err := m.ProposeConfig(
+			TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}),
+		)
 		assert.Nil(t, err, "Error applying valid config: %s", err)
 		m.CommitConfig()
 		if m.BatchSize().MaxMessageCount != validMaxMessageCount {
@@ -164,11 +157,7 @@ func TestBatchSize(t *testing.T) {
 	t.Run("UnserializableConfiguration", func(t *testing.T) {
 		m := NewManagerImpl()
 		m.BeginConfig()
-		err := m.ProposeConfig(&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   BatchSizeKey,
-			Value: []byte("Garbage Data"),
-		})
+		err := m.ProposeConfig(invalidMessage(BatchSizeKey))
 		assert.NotNil(t, err, "Should have failed on invalid message")
 		m.CommitConfig()
 	})
@@ -176,11 +165,7 @@ func TestBatchSize(t *testing.T) {
 	t.Run("ZeroMaxMessageCount", func(t *testing.T) {
 		m := NewManagerImpl()
 		m.BeginConfig()
-		err := m.ProposeConfig(&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   BatchSizeKey,
-			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}),
-		})
+		err := m.ProposeConfig(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}))
 		assert.NotNil(t, err, "Should have rejected batch size max message count of 0")
 		m.CommitConfig()
 	})
@@ -188,11 +173,7 @@ func TestBatchSize(t *testing.T) {
 	t.Run("ZeroAbsoluteMaxBytes", func(t *testing.T) {
 		m := NewManagerImpl()
 		m.BeginConfig()
-		err := m.ProposeConfig(&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   BatchSizeKey,
-			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0, PreferredMaxBytes: validPreferredMaxBytes}),
-		})
+		err := m.ProposeConfig(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0, PreferredMaxBytes: validPreferredMaxBytes}))
 		assert.NotNil(t, err, "Should have rejected batch size absolute max message bytes of 0")
 		m.CommitConfig()
 	})
@@ -200,11 +181,7 @@ func TestBatchSize(t *testing.T) {
 	t.Run("TooLargePreferredMaxBytes", func(t *testing.T) {
 		m := NewManagerImpl()
 		m.BeginConfig()
-		err := m.ProposeConfig(&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   BatchSizeKey,
-			Value: utils.MarshalOrPanic(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validAbsoluteMaxBytes + 1}),
-		})
+		err := m.ProposeConfig(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validAbsoluteMaxBytes + 1}))
 		assert.NotNil(t, err, "Should have rejected batch size preferred max message bytes greater than absolute max message bytes")
 		m.CommitConfig()
 	})
@@ -212,26 +189,11 @@ func TestBatchSize(t *testing.T) {
 
 func TestBatchTimeout(t *testing.T) {
 	endBatchTimeout, _ := time.ParseDuration("1s")
-	invalidMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   BatchTimeoutKey,
-		Value: []byte("Garbage Data"),
-	}
-	negativeBatchTimeout := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   BatchTimeoutKey,
-		Value: utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: "-1s"}),
-	}
-	zeroBatchTimeout := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   BatchTimeoutKey,
-		Value: utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: "0s"}),
-	}
-	validMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   BatchTimeoutKey,
-		Value: utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: endBatchTimeout.String()}),
-	}
+	invalidMessage := invalidMessage(BatchTimeoutKey)
+	negativeBatchTimeout := TemplateBatchTimeout("-1s")
+	zeroBatchTimeout := TemplateBatchTimeout("0s")
+	validMessage := TemplateBatchTimeout(endBatchTimeout.String())
+
 	m := NewManagerImpl()
 	m.BeginConfig()
 
@@ -265,34 +227,15 @@ func TestBatchTimeout(t *testing.T) {
 func TestKafkaBrokers(t *testing.T) {
 	endList := []string{"127.0.0.1:9092", "foo.bar:9092"}
 
-	invalidMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   KafkaBrokersKey,
-		Value: []byte("Garbage Data"),
-	}
-
-	zeroBrokers := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   KafkaBrokersKey,
-		Value: utils.MarshalOrPanic(&ab.KafkaBrokers{}),
-	}
-
+	invalidMessage := invalidMessage(KafkaBrokersKey)
+	zeroBrokers := TemplateKafkaBrokers([]string{})
 	badList := []string{"127.0.0.1", "foo.bar", "127.0.0.1:-1", "localhost:65536", "foo.bar.:9092", ".127.0.0.1:9092", "-foo.bar:9092"}
 	badMessages := []*cb.ConfigurationItem{}
 	for _, badAddress := range badList {
-		msg := &cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   KafkaBrokersKey,
-			Value: utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: []string{badAddress}}),
-		}
-		badMessages = append(badMessages, msg)
+		badMessages = append(badMessages, TemplateKafkaBrokers([]string{badAddress}))
 	}
 
-	validMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   KafkaBrokersKey,
-		Value: utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: endList}),
-	}
+	validMessage := TemplateKafkaBrokers(endList)
 
 	m := NewManagerImpl()
 	m.BeginConfig()
@@ -330,20 +273,11 @@ func TestKafkaBrokers(t *testing.T) {
 	}
 }
 
-func TestIngressPolicyNames(t *testing.T) {
-	endPolicy := []string{"foo"}
-	invalidMessage :=
-		&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   IngressPolicyNamesKey,
-			Value: []byte("Garbage Data"),
-		}
-	validMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   IngressPolicyNamesKey,
-		Value: utils.MarshalOrPanic(&ab.IngressPolicyNames{Names: endPolicy}),
-	}
-	m := NewManagerImpl()
+func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) *cb.ConfigurationItem, retriever func() []string, t *testing.T) {
+	endPolicy := []string{"foo", "bar"}
+	invalidMessage := invalidMessage(key)
+	validMessage := initializer(endPolicy)
+
 	m.BeginConfig()
 
 	err := m.ProposeConfig(validMessage)
@@ -366,48 +300,22 @@ func TestIngressPolicyNames(t *testing.T) {
 
 	m.CommitConfig()
 
-	if nowPolicy := m.IngressPolicyNames(); !reflect.DeepEqual(nowPolicy, endPolicy) {
-		t.Fatalf("IngressPolicyNames should have ended as %s but was %s", endPolicy, nowPolicy)
+	if nowPolicy := retriever(); !reflect.DeepEqual(nowPolicy, endPolicy) {
+		t.Fatalf("%s should have ended as %s but was %s", key, endPolicy, nowPolicy)
 	}
 }
 
-func TestEgressPolicyNames(t *testing.T) {
-	endPolicy := []string{"foo"}
-	invalidMessage :=
-		&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Orderer,
-			Key:   EgressPolicyNamesKey,
-			Value: []byte("Garbage Data"),
-		}
-	validMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
-		Key:   EgressPolicyNamesKey,
-		Value: utils.MarshalOrPanic(&ab.EgressPolicyNames{Names: endPolicy}),
-	}
+func TestIngressPolicyNames(t *testing.T) {
 	m := NewManagerImpl()
-	m.BeginConfig()
+	testPolicyNames(m, IngressPolicyNamesKey, TemplateIngressPolicyNames, m.IngressPolicyNames, t)
+}
 
-	err := m.ProposeConfig(validMessage)
-	if err != nil {
-		t.Fatalf("Error applying valid config: %s", err)
-	}
+func TestEgressPolicyNames(t *testing.T) {
+	m := NewManagerImpl()
+	testPolicyNames(m, EgressPolicyNamesKey, TemplateEgressPolicyNames, m.EgressPolicyNames, t)
+}
 
-	m.CommitConfig()
-	m.BeginConfig()
-
-	err = m.ProposeConfig(invalidMessage)
-	if err == nil {
-		t.Fatalf("Should have failed on invalid message")
-	}
-
-	err = m.ProposeConfig(validMessage)
-	if err != nil {
-		t.Fatalf("Error re-applying valid config: %s", err)
-	}
-
-	m.CommitConfig()
-
-	if nowPolicy := m.EgressPolicyNames(); !reflect.DeepEqual(nowPolicy, endPolicy) {
-		t.Fatalf("EgressPolicyNames should have ended as %s but was %s", endPolicy, nowPolicy)
-	}
+func TestChainCreationPolicyNames(t *testing.T) {
+	m := NewManagerImpl()
+	testPolicyNames(m, ChainCreationPolicyNamesKey, TemplateChainCreationPolicyNames, m.ChainCreationPolicyNames, t)
 }
