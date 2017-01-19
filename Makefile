@@ -63,7 +63,7 @@ PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
 GENESIS_SAMPLECONFIG = $(shell git ls-files common/configtx/test/*.template)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv testenv runtime
+IMAGES = peer orderer ccenv javaenv testenv runtime zookeeper
 
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
@@ -191,6 +191,7 @@ build/image/orderer/payload:    build/docker/bin/orderer \
 				orderer/orderer.yaml
 build/image/testenv/payload:    build/gotools.tar.bz2
 build/image/runtime/payload:    build/docker/busybox
+build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
 
 build/image/%/payload:
 	mkdir -p $@
