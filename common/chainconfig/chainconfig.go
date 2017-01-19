@@ -57,7 +57,7 @@ type Descriptor interface {
 
 	// BlockDataHashingStructureWidth returns the width to use when constructing the
 	// Merkle tree to compute the BlockData hash
-	BlockDatahashingStructureWidth() int
+	BlockDataHashingStructureWidth() uint32
 
 	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
 	OrdererAddresses() []string

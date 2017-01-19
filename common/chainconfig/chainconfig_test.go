@@ -37,6 +37,10 @@ func makeInvalidConfigItem(key string) *cb.ConfigurationItem {
 	}
 }
 
+func TestInterface(t *testing.T) {
+	_ = Descriptor(NewDescriptorImpl())
+}
+
 func TestDoubleBegin(t *testing.T) {
 	defer func() {
 		if err := recover(); err == nil {
