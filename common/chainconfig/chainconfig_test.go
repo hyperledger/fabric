@@ -21,13 +21,20 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 )
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
+}
+
+func makeInvalidConfigItem(key string) *cb.ConfigurationItem {
+	return &cb.ConfigurationItem{
+		Type:  cb.ConfigurationItem_Chain,
+		Key:   key,
+		Value: []byte("Garbage Data"),
+	}
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -63,22 +70,10 @@ func TestRollback(t *testing.T) {
 }
 
 func TestHashingAlgorithm(t *testing.T) {
-	invalidMessage :=
-		&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Chain,
-			Key:   HashingAlgorithmKey,
-			Value: []byte("Garbage Data"),
-		}
-	invalidAlgorithm := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
-		Key:   HashingAlgorithmKey,
-		Value: utils.MarshalOrPanic(&cb.HashingAlgorithm{Name: "MD5"}),
-	}
-	validAlgorithm := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
-		Key:   HashingAlgorithmKey,
-		Value: utils.MarshalOrPanic(&cb.HashingAlgorithm{Name: SHA3Shake256}),
-	}
+	invalidMessage := makeInvalidConfigItem(HashingAlgorithmKey)
+	invalidAlgorithm := TemplateHashingAlgorithm("MD5")
+	validAlgorithm := DefaultHashingAlgorithm()
+
 	m := NewDescriptorImpl()
 	m.BeginConfig()
 
@@ -105,23 +100,10 @@ func TestHashingAlgorithm(t *testing.T) {
 }
 
 func TestBlockDataHashingStructure(t *testing.T) {
-	expectedWidth := uint32(7)
-	invalidMessage :=
-		&cb.ConfigurationItem{
-			Type:  cb.ConfigurationItem_Chain,
-			Key:   BlockDataHashingStructureKey,
-			Value: []byte("Garbage Data"),
-		}
-	invalidWidth := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
-		Key:   BlockDataHashingStructureKey,
-		Value: utils.MarshalOrPanic(&cb.BlockDataHashingStructure{Width: 0}),
-	}
-	validWidth := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
-		Key:   BlockDataHashingStructureKey,
-		Value: utils.MarshalOrPanic(&cb.BlockDataHashingStructure{Width: expectedWidth}),
-	}
+	invalidMessage := makeInvalidConfigItem(BlockDataHashingStructureKey)
+	invalidWidth := TemplateBlockDataHashingStructure(0)
+	validWidth := DefaultBlockDataHashingStructure()
+
 	m := NewDescriptorImpl()
 	m.BeginConfig()
 
@@ -142,23 +124,14 @@ func TestBlockDataHashingStructure(t *testing.T) {
 
 	m.CommitConfig()
 
-	if newWidth := m.BlockDataHashingStructureWidth(); newWidth != expectedWidth {
-		t.Fatalf("Unexpected width, got %d expected %d", newWidth, expectedWidth)
+	if newWidth := m.BlockDataHashingStructureWidth(); newWidth != defaultBlockDataHashingStructureWidth {
+		t.Fatalf("Unexpected width, got %d expected %d", newWidth, defaultBlockDataHashingStructureWidth)
 	}
 }
 
 func TestOrdererAddresses(t *testing.T) {
-	expectedResult := []string{"foo", "bar:1234"}
-	invalidMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
-		Key:   BlockDataHashingStructureKey,
-		Value: []byte("Garbage Data"),
-	}
-	validMessage := &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
-		Key:   OrdererAddressesKey,
-		Value: utils.MarshalOrPanic(&cb.OrdererAddresses{Addresses: expectedResult}),
-	}
+	invalidMessage := makeInvalidConfigItem(OrdererAddressesKey)
+	validMessage := DefaultOrdererAddresses()
 	m := NewDescriptorImpl()
 	m.BeginConfig()
 
@@ -174,7 +147,7 @@ func TestOrdererAddresses(t *testing.T) {
 
 	m.CommitConfig()
 
-	if newAddrs := m.OrdererAddresses(); !reflect.DeepEqual(newAddrs, expectedResult) {
-		t.Fatalf("Unexpected width, got %s expected %s", newAddrs, expectedResult)
+	if newAddrs := m.OrdererAddresses(); !reflect.DeepEqual(newAddrs, defaultOrdererAddresses) {
+		t.Fatalf("Unexpected width, got %s expected %s", newAddrs, defaultOrdererAddresses)
 	}
 }
