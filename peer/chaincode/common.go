@@ -33,7 +33,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
 
@@ -54,9 +53,8 @@ func checkSpec(spec *pb.ChaincodeSpec) error {
 
 // getChaincodeBytes get chaincode deployment spec given the chaincode spec
 func getChaincodeBytes(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
-	mode := viper.GetString("chaincode.mode")
 	var codePackageBytes []byte
-	if mode != chaincode.DevModeUserRunsChaincode {
+	if chaincode.IsDevMode() == false {
 		var err error
 		if err = checkSpec(spec); err != nil {
 			return nil, err

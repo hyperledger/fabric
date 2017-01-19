@@ -260,10 +260,7 @@ func serve(args []string) error {
 //which will be registered only during join phase.
 func registerChaincodeSupport(grpcServer *grpc.Server) {
 	//get user mode
-	userRunsCC := false
-	if viper.GetString("chaincode.mode") == chaincode.DevModeUserRunsChaincode {
-		userRunsCC = true
-	}
+	userRunsCC := chaincode.IsDevMode()
 
 	//get chaincode startup timeout
 	tOut, err := strconv.Atoi(viper.GetString("chaincode.startuptimeout"))

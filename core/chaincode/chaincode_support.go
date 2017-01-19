@@ -713,3 +713,10 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, cccid *C
 
 	return ccresp, err
 }
+
+// Returns true if the peer was configured with development-mode enabled
+func IsDevMode() bool {
+	mode := viper.GetString("chaincode.mode")
+
+	return mode == DevModeUserRunsChaincode
+}
