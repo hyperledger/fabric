@@ -22,7 +22,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/history"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/history/histmgr"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/history/histmgr/couchdbhistmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
@@ -42,7 +43,7 @@ type kvLedger struct {
 	ledgerID    string
 	blockStore  blkstorage.BlockStore
 	txtmgmt     txmgr.TxMgr
-	historymgmt history.HistMgr
+	historymgmt histmgr.HistMgr
 }
 
 // NewKVLedger constructs new `KVLedger`
@@ -50,7 +51,7 @@ func newKVLedger(ledgerID string, blockStore blkstorage.BlockStore, versionedDB 
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	//State and History database managers
 	var txmgmt txmgr.TxMgr
-	var historymgmt history.HistMgr
+	var historymgmt histmgr.HistMgr
 
 	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(versionedDB)
 
@@ -59,7 +60,7 @@ func newKVLedger(ledgerID string, blockStore blkstorage.BlockStore, versionedDB 
 
 		couchDBDef := ledgerconfig.GetCouchDBDefinition()
 
-		historymgmt = history.NewCouchDBHistMgr(
+		historymgmt = couchdbhistmgr.NewCouchDBHistMgr(
 			couchDBDef.URL,      //couchDB connection URL
 			"system_history",    //couchDB db name matches ledger name, TODO for now use system_history ledger, eventually allow passing in subledger name
 			couchDBDef.Username, //enter couchDB id here

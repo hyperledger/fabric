@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package history
+package couchdbhistmgr
 
 import "github.com/hyperledger/fabric/core/ledger"
 
@@ -47,6 +47,7 @@ func (itr *qHistoryItr) Next() (ledger.QueryResult, error) {
 		return nil, nil
 	}
 	//TODO Returning blockNumTrannum as TxID for now but eventually will return txID instead
+	//TODO This includes the seperator before the blocknum and tran num:  aka(see test):   strKeySep+"1"+strKeySep+"1"
 	return &ledger.KeyModification{TxID: historicValue.blockNumTranNum, Value: historicValue.value}, nil
 }
 
