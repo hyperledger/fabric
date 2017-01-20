@@ -32,8 +32,6 @@ type SecurityAdvisor interface {
 	// Verify verifies a JoinChannelMessage, returns nil on success,
 	// and an error on failure
 	Verify(JoinChannelMessage) error
-
-
 }
 
 // ChannelNotifier is implemented by the gossip component and is used for the peer

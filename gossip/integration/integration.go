@@ -101,7 +101,6 @@ func (cs *naiveCryptoService) Verify(vkID api.PeerIdentityType, signature, messa
 }
 
 type orgCryptoService struct {
-
 }
 
 // OrgByPeerIdentity returns the OrgIdentityType

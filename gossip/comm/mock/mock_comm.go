@@ -186,4 +186,3 @@ func (mock *commMock) Stop() {
 func (mock *commMock) BlackListPKIid(PKIid common.PKIidType) {
 	// NOOP
 }
-

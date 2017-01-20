@@ -45,7 +45,6 @@ var (
 //   only 1 leader should be left eventually
 // - Peers communicate by gossiping leadership proposal or declaration messages
 
-
 // The Algorithm, in pseudo code:
 //
 //
@@ -85,8 +84,6 @@ var (
 // 	If a proposal message from a peer with an ID lower
 // 	than yourself was received, return.
 //	Else, declare yourself a leader
-
-
 
 // LeaderElectionAdapter is used by the leader election module
 // to send and receive messages and to get membership information

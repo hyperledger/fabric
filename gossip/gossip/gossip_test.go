@@ -766,7 +766,7 @@ var testingg = func(g goroutine) bool {
 	return strings.Index(g.stack[len(g.stack)-1], "testing.go") != -1
 }
 
-func anyOfPredicates(predicates ... goroutinePredicate) goroutinePredicate {
+func anyOfPredicates(predicates ...goroutinePredicate) goroutinePredicate {
 	return func(g goroutine) bool {
 		for _, pred := range predicates {
 			if pred(g) {
@@ -778,7 +778,7 @@ func anyOfPredicates(predicates ... goroutinePredicate) goroutinePredicate {
 }
 
 func shouldNotBeRunningAtEnd(gr goroutine) bool {
-	return ! anyOfPredicates(runTests, goExit, testingg, waitForTestCompl, gossipTest, clientConn, connectionLeak)(gr)
+	return !anyOfPredicates(runTests, goExit, testingg, waitForTestCompl, gossipTest, clientConn, connectionLeak)(gr)
 }
 
 func ensureGoroutineExit(t *testing.T) {

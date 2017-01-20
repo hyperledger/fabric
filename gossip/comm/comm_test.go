@@ -426,11 +426,11 @@ func TestReConnections(t *testing.T) {
 
 	// comm1 connects to comm2
 	comm1.Send(createGossipMsg(), remotePeer(3612))
-	waitForMessages(t, out2 , 1, "Comm2 didn't receive a message from comm1 in a timely manner")
+	waitForMessages(t, out2, 1, "Comm2 didn't receive a message from comm1 in a timely manner")
 	time.Sleep(time.Second)
 	// comm2 sends to comm1
 	comm2.Send(createGossipMsg(), remotePeer(3611))
-	waitForMessages(t, out1 , 1, "Comm1 didn't receive a message from comm2 in a timely manner")
+	waitForMessages(t, out1, 1, "Comm1 didn't receive a message from comm2 in a timely manner")
 
 	comm1.Stop()
 	comm1, _ = newCommInstance(3611, naiveSec)
@@ -438,7 +438,7 @@ func TestReConnections(t *testing.T) {
 	out1 = make(chan uint64, 1)
 	go reader(out1, comm1.Accept(acceptAll))
 	comm2.Send(createGossipMsg(), remotePeer(3611))
-	waitForMessages(t, out1 , 1, "Comm1 didn't receive a message from comm2 in a timely manner")
+	waitForMessages(t, out1, 1, "Comm1 didn't receive a message from comm2 in a timely manner")
 }
 
 func TestProbe(t *testing.T) {
