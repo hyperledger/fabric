@@ -22,6 +22,10 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 )
 
+func TestConfigtxInitializerInterface(t *testing.T) {
+	_ = configtx.Initializer(&Initializer{})
+}
+
 func TestConfigtxManagerInterface(t *testing.T) {
 	_ = configtx.Manager(&Manager{})
 }

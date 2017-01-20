@@ -47,6 +47,8 @@ type Handler interface {
 
 // Manager provides a mechanism to query and update configuration
 type Manager interface {
+	Resources
+
 	// Apply attempts to apply a configtx to become the new configuration
 	Apply(configtx *cb.ConfigurationEnvelope) error
 
@@ -70,11 +72,10 @@ func (ap *acceptAllPolicy) Evaluate(signedData []*cb.SignedData) error {
 }
 
 type configurationManager struct {
+	Initializer
 	sequence      uint64
 	chainID       string
-	pm            policies.Manager
 	configuration map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem
-	handlers      map[cb.ConfigurationItem_ConfigurationType]Handler
 }
 
 // computeChainIDAndSequence returns the chain id and the sequence number for a configuration envelope
@@ -118,10 +119,10 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint
 	return chainID, m, nil
 }
 
-// NewConfigurationManager creates a new Manager unless an error is encountered
-func NewConfigurationManager(configtx *cb.ConfigurationEnvelope, pm policies.Manager, handlers map[cb.ConfigurationItem_ConfigurationType]Handler) (Manager, error) {
+// NewManagerImpl creates a new Manager unless an error is encountered
+func NewManagerImpl(configtx *cb.ConfigurationEnvelope, initializer Initializer) (Manager, error) {
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
-		if _, ok := handlers[cb.ConfigurationItem_ConfigurationType(ctype)]; !ok {
+		if _, ok := initializer.Handlers()[cb.ConfigurationItem_ConfigurationType(ctype)]; !ok {
 			return nil, errors.New("Must supply a handler for all known types")
 		}
 	}
@@ -132,10 +133,9 @@ func NewConfigurationManager(configtx *cb.ConfigurationEnvelope, pm policies.Man
 	}
 
 	cm := &configurationManager{
+		Initializer:   initializer,
 		sequence:      seq - 1,
 		chainID:       chainID,
-		pm:            pm,
-		handlers:      handlers,
 		configuration: makeConfigMap(),
 	}
 
@@ -159,21 +159,21 @@ func makeConfigMap() map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.C
 func (cm *configurationManager) beginHandlers() {
 	logger.Debugf("Beginning new configuration for chain %s", cm.chainID)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
-		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].BeginConfig()
+		cm.Initializer.Handlers()[cb.ConfigurationItem_ConfigurationType(ctype)].BeginConfig()
 	}
 }
 
 func (cm *configurationManager) rollbackHandlers() {
 	logger.Debugf("Rolling back configuration for chain %s", cm.chainID)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
-		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].RollbackConfig()
+		cm.Initializer.Handlers()[cb.ConfigurationItem_ConfigurationType(ctype)].RollbackConfig()
 	}
 }
 
 func (cm *configurationManager) commitHandlers() {
 	logger.Debugf("Committing configuration for chain %s", cm.chainID)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
-		cm.handlers[cb.ConfigurationItem_ConfigurationType(ctype)].CommitConfig()
+		cm.Initializer.Handlers()[cb.ConfigurationItem_ConfigurationType(ctype)].CommitConfig()
 	}
 }
 
@@ -193,7 +193,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 		return nil, fmt.Errorf("Config is for the wrong chain, expected %s, got %s", cm.chainID, chainID)
 	}
 
-	defaultModificationPolicy, defaultPolicySet := cm.pm.GetPolicy(NewConfigurationItemPolicyKey)
+	defaultModificationPolicy, defaultPolicySet := cm.PolicyManager().GetPolicy(NewConfigurationItemPolicyKey)
 
 	// If the default modification policy is not set, it indicates this is an uninitialized chain, so be permissive of modification
 	if !defaultPolicySet {
@@ -226,7 +226,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 
 		// If a config item was modified, its LastModified must be set correctly, and it must satisfy the modification policy
 		if isModified {
-			logger.Debugf("Proposed configuration item of type %v and key %t on chain %s has been modified", config.Type, config.Key, cm.chainID)
+			logger.Debugf("Proposed configuration item of type %v and key %s on chain %s has been modified", config.Type, config.Key, cm.chainID)
 
 			if config.LastModified != seq {
 				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", config.Key, config.Type, config.LastModified, seq)
@@ -237,7 +237,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 			var policy policies.Policy
 			oldItem, ok := cm.configuration[config.Type][config.Key]
 			if ok {
-				policy, _ = cm.pm.GetPolicy(oldItem.ModificationPolicy)
+				policy, _ = cm.PolicyManager().GetPolicy(oldItem.ModificationPolicy)
 			} else {
 				policy = defaultModificationPolicy
 			}
@@ -256,7 +256,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 
 		// Ensure the type handler agrees the config is well formed
 		logger.Debugf("Proposing configuration item of type %v for key %s on chain %s", config.Type, config.Key, cm.chainID)
-		err = cm.handlers[config.Type].ProposeConfig(config)
+		err = cm.Initializer.Handlers()[config.Type].ProposeConfig(config)
 		if err != nil {
 			return nil, fmt.Errorf("Error proposing configuration item of type %v for key %s on chain %s: %s", config.Type, config.Key, chainID, err)
 		}
