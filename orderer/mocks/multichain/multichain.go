@@ -69,13 +69,14 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 
 // WriteBlock writes data to the Batches channel
 // Note that _committers is ignored by this mock implementation
-func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Committer) *cb.Block {
+func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Committer, encodedMetadataValue []byte) *cb.Block {
 	logger.Debugf("mockWriter: attempting to write batch")
 	umtxs := make([]*cb.Envelope, len(block.Data.Data))
 	for i := range block.Data.Data {
 		umtxs[i] = utils.UnmarshalEnvelopeOrPanic(block.Data.Data[i])
 	}
 	mcs.Batches <- umtxs
+	block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	return block
 }
 

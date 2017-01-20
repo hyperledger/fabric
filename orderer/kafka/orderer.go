@@ -78,7 +78,7 @@ type consenterImpl struct {
 // HandleChain creates/returns a reference to a Chain for the given set of support resources.
 // Implements the multichain.Consenter interface. Called by multichain.newChainSupport(), which
 // is itself called by multichain.NewManagerImpl() when ranging over the ledgerFactory's existingChains.
-func (co *consenterImpl) HandleChain(cs multichain.ConsenterSupport) (multichain.Chain, error) {
+func (co *consenterImpl) HandleChain(cs multichain.ConsenterSupport, metadata *cb.Metadata) (multichain.Chain, error) {
 	return newChain(co, cs), nil
 }
 
@@ -237,7 +237,7 @@ func (ch *chainImpl) loop() {
 						return
 					}
 					block := ch.support.CreateNextBlock(batch)
-					ch.support.WriteBlock(block, committers)
+					ch.support.WriteBlock(block, committers, nil)
 					ch.lastCutBlock++
 					logger.Debug("Proper time-to-cut received, just cut block", ch.lastCutBlock)
 					continue
@@ -264,7 +264,7 @@ func (ch *chainImpl) loop() {
 				// If !ok, batches == nil, so this will be skipped
 				for i, batch := range batches {
 					block := ch.support.CreateNextBlock(batch)
-					ch.support.WriteBlock(block, committers[i])
+					ch.support.WriteBlock(block, committers[i], nil)
 					ch.lastCutBlock++
 					logger.Debug("Batch filled, just cut block", ch.lastCutBlock)
 				}
