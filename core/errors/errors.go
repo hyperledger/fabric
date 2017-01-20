@@ -69,7 +69,7 @@ func newHLError(debug bool) *hlError {
 func setupHLError(e *hlError, debug bool) {
 	e.componentcode = "UTILITY"
 	e.reasoncode = "UNKNOWNERROR"
-	e.message = "An unknown error has occurred."
+	e.message = "An unknown error occurred."
 	if !debug {
 		e.stackGetter = noopGetStack
 		return
@@ -109,14 +109,18 @@ func (h *hlError) GetErrorCode() string {
 // Message returns the corresponding error message for this error in default
 // language.
 func (h *hlError) Message() string {
-	// initialize logging level for errors from core.yaml. it can also be set
-	// for code running on the peer dynamically via CLI using
-	// "peer logging setlevel error <log-level>"
-	errorLogLevelString, _ := flogging.GetModuleLevel("error")
-
 	message := h.GetErrorCode() + " - " + fmt.Sprintf(h.message, h.args...)
-	if errorLogLevelString == logging.DEBUG.String() {
-		message = appendCallStack(message, h.GetStack())
+
+	// check that the error has a callstack before proceeding
+	if h.GetStack() != "" {
+		// initialize logging level for errors from core.yaml. it can also be set
+		// for code running on the peer dynamically via CLI using
+		// "peer logging setlevel error <log-level>"
+		errorLogLevelString, _ := flogging.GetModuleLevel("error")
+
+		if errorLogLevelString == logging.DEBUG.String() {
+			message = appendCallStack(message, h.GetStack())
+		}
 	}
 
 	return message
@@ -143,9 +147,15 @@ func ErrorWithCallstack(componentcode string, reasoncode string, message string,
 func newCustomError(componentcode string, reasoncode string, message string, generateStack bool, args ...interface{}) CallStackError {
 	e := &hlError{}
 	setupHLError(e, generateStack)
-	e.componentcode = strings.ToUpper(componentcode)
-	e.reasoncode = strings.ToUpper(reasoncode)
-	e.message = message
+	if componentcode != "" {
+		e.componentcode = strings.ToUpper(componentcode)
+	}
+	if reasoncode != "" {
+		e.reasoncode = strings.ToUpper(reasoncode)
+	}
+	if message != "" {
+		e.message = message
+	}
 	e.args = args
 	return e
 }
