@@ -27,6 +27,16 @@ General:
     # Listen port: The port on which to bind to listen
     ListenPort: 7050
 
+    # TLS: TLS settings for the GRPC server
+    TLS:
+        Enabled: false
+        ServerKey:
+        ServerCertificate:
+        ServerRootCAs:
+        ClientAuthEnabled: false
+        ClientRootCAs:
+
+
     # Log Level: The level at which to log.  This accepts logging specifications
     # per fabric/docs/Setup/logging-control.md
     LogLevel: info

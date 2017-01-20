@@ -26,6 +26,7 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/kafka"
@@ -43,7 +44,6 @@ import (
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/core/peer/msp"
 	logging "github.com/op/go-logging"
-	"google.golang.org/grpc"
 )
 
 var logger = logging.MustGetLogger("orderer/main")
@@ -63,11 +63,19 @@ func main() {
 		}()
 	}
 
-	grpcServer := grpc.NewServer()
-
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
 	if err != nil {
 		fmt.Println("Failed to listen:", err)
+		return
+	}
+
+	//Create GRPC server - return if an error occurs
+	secureConfig := comm.SecureServerConfig{
+		UseTLS: conf.General.TLS.Enabled,
+	}
+	grpcServer, err := comm.NewGRPCServerFromListener(lis, secureConfig)
+	if err != nil {
+		fmt.Println("Failed to return new GRPC server: ", err)
 		return
 	}
 
@@ -145,7 +153,7 @@ func main() {
 		int(conf.General.MaxWindowSize),
 	)
 
-	ab.RegisterAtomicBroadcastServer(grpcServer, server)
+	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Infof("Beginning to serve requests")
-	grpcServer.Serve(lis)
+	grpcServer.Start()
 }
