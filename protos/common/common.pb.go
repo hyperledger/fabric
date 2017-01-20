@@ -341,6 +341,9 @@ func (m *Block) GetMetadata() *BlockMetadata {
 	return nil
 }
 
+// BlockHeader is the element of the block which forms the block chain
+// The block header is hashed using the configured chain hashing algorithm
+// over the ASN.1 encoding of the BlockHeader
 type BlockHeader struct {
 	Number       uint64 `protobuf:"varint,1,opt,name=Number" json:"Number,omitempty"`
 	PreviousHash []byte `protobuf:"bytes,2,opt,name=PreviousHash,proto3" json:"PreviousHash,omitempty"`

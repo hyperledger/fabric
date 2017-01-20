@@ -17,6 +17,10 @@ limitations under the License.
 package common
 
 import (
+	"encoding/asn1"
+	"fmt"
+	"math"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 )
@@ -38,16 +42,35 @@ func NewBlock(seqNum uint64, previousHash []byte) *Block {
 	return block
 }
 
-// Bytes returns the marshaled representation of the block header.
+type asn1Header struct {
+	Number       int64
+	PreviousHash []byte
+	DataHash     []byte
+}
+
+// Bytes returns the ASN.1 marshaled representation of the block header.
 func (b *BlockHeader) Bytes() []byte {
-	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash
-	if err != nil {
-		panic("This should never fail and is generally irrecoverable")
+	asn1Header := asn1Header{
+		PreviousHash: b.PreviousHash,
+		DataHash:     b.DataHash,
 	}
-	return data
+	if b.Number > uint64(math.MaxInt64) {
+		panic(fmt.Errorf("Golang does not currently support encoding uint64 to asn1"))
+	} else {
+		asn1Header.Number = int64(b.Number)
+	}
+	result, err := asn1.Marshal(asn1Header)
+	if err != nil {
+		// Errors should only arise for types which cannot be encoded, since the
+		// BlockHeader type is known a-priori to contain only encodable types, an
+		// error here is fatal and should not be propogated
+		panic(err)
+	}
+	return result
 }
 
 // Hash returns the hash of the block header.
+// XXX This method will be removed shortly to allow for confgurable hashing algorithms
 func (b *BlockHeader) Hash() []byte {
 	return util.ComputeCryptoHash(b.Bytes())
 }

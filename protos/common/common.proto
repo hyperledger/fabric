@@ -145,6 +145,9 @@ message Block {
     BlockMetadata Metadata = 3;
 }
 
+// BlockHeader is the element of the block which forms the block chain
+// The block header is hashed using the configured chain hashing algorithm
+// over the ASN.1 encoding of the BlockHeader
 message BlockHeader {
     uint64 Number = 1; // The position in the blockchain
     bytes PreviousHash = 2; // The hash of the previous block header
