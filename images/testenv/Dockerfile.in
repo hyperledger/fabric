@@ -1,3 +1,25 @@
 FROM hyperledger/fabric-baseimage:_BASE_TAG_
+
+# fabric configuration file locations
+RUN mkdir -p /etc/hyperledger/fabric
+ENV ORDERER_CFG_PATH /etc/hyperledger/fabric
+ENV PEER_CFG_PATH /etc/hyperledger/fabric
+
+# ledger db location
+RUN mkdir -p /var/hyperledger/db
+
+# install gotools
 ADD payload/gotools.tar.bz2 /usr/local/bin/
+
+# fabric configuration files
+COPY payload/orderer.yaml $ORDERER_CFG_PATH
+COPY payload/core.yaml $PEER_CFG_PATH
+ADD payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
+
+
+# fabric binaries
+COPY payload/orderer /usr/local/bin
+COPY payload/peer /usr/local/bin
+
+# typically, this is mapped to a developer's dev environment
 WORKDIR /opt/gopath/src/github.com/hyperledger/fabric
