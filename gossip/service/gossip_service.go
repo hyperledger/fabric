@@ -18,12 +18,9 @@ package service
 
 import (
 	"sync"
-	"time"
 
-	"github.com/hyperledger/fabric/common/util"
 	peerComm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/integration"
@@ -41,23 +38,6 @@ var (
 )
 
 type gossipSvc gossip.Gossip
-
-// TODO: This is a temporary join channel struct, to be removed once
-// the structure of configuration block in terms of anchor peers will
-// be defined and coded. Currently need it to allow the end-to-end
-// skeleton to work, having gossip multi chain support.
-type joinChanMsg struct {
-}
-
-// GetTimestamp returns the timestamp of the message's creation
-func (*joinChanMsg) GetTimestamp() time.Time {
-	return time.Now()
-}
-
-// AnchorPeers returns all the anchor peers that are in the channel
-func (*joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	return []api.AnchorPeer{{Cert: api.PeerIdentityType(util.GetTestOrgID())}}
-}
 
 // GossipService encapsulates gossip and state capabilities into single interface
 type GossipService interface {
@@ -105,6 +85,11 @@ func GetGossipService() GossipService {
 
 // JoinChannel joins the channel and initialize gossip state with given committer
 func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *common.Block) error {
+	joinChannelMessage, err := JoinChannelMessageFromBlock(block)
+	if err != nil {
+		logger.Error("Failed creating join channel message:", err)
+		return err
+	}
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -113,8 +98,8 @@ func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *com
 	} else {
 		// Initialize new state provider for given committer
 		logger.Debug("Creating state provider for chainID", chainID)
+		g.JoinChan(joinChannelMessage, gossipCommon.ChainID(chainID))
 		g.chains[chainID] = state.NewGossipStateProvider(chainID, g, commiter)
-		g.JoinChan(&joinChanMsg{}, gossipCommon.ChainID(chainID))
 	}
 
 	return nil
