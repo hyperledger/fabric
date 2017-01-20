@@ -36,7 +36,7 @@ from grpc.beta.interfaces import StatusCode
 from common.common_pb2 import Payload
 
 # The default chain ID when the system is statically bootstrapped for testing
-TEST_CHAIN_ID = "**TEST_CHAINID**"
+TEST_CHAIN_ID = "test_chainid"
 
 def _defaultDataFunction(index):
     payload = common_pb2.Payload(

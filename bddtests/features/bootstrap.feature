@@ -131,4 +131,4 @@ Feature: Bootstrap
 
     Examples: Orderer Options
       |          ComposeFile                 |    Waittime   |       OrdererSystemChainId       |PolicyType    |   ConsensusType |
-      |   docker-compose-next-4.yml          |       60      |   **TEST_CHAINID**               |unanimous    |       solo      |
+      |   docker-compose-next-4.yml          |       60      |   test_chainid               |unanimous    |       solo      |
