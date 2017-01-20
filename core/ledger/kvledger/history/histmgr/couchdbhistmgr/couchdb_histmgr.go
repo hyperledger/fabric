@@ -14,15 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package history
+package couchdbhistmgr
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	helper "github.com/hyperledger/fabric/core/ledger/kvledger/history/histmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
 	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/hyperledger/fabric/protos/common"
@@ -39,11 +38,9 @@ type couchSavepointData struct {
 	UpdateSeq string `json:"UpdateSeq"`
 }
 
-var logger = logging.MustGetLogger("history")
+var logger = logging.MustGetLogger("couchdbhistmgr")
 
-var compositeKeySep = []byte{0x00}
-
-// CouchDBHistMgr a simple implementation of interface `histmgmt.HistMgr'.
+// CouchDBHistMgr a simple implementation of interface `histmgr.HistMgr'.
 // TODO This implementation does not currently use a lock but may need one to ensure query's are consistent
 type CouchDBHistMgr struct {
 	couchDB *couchdb.CouchDatabase // COUCHDB new properties for CouchDB
@@ -64,12 +61,12 @@ func NewCouchDBHistMgr(couchDBConnectURL string, dbName string, id string, pw st
 	return &CouchDBHistMgr{couchDB: couchDB}
 }
 
-// NewHistoryQueryExecutor implements method in interface `histmgmt.HistMgr'.
+// NewHistoryQueryExecutor implements method in interface `histr.HistMgr'.
 func (histmgr *CouchDBHistMgr) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
 	return &CouchDBHistQueryExecutor{histmgr}, nil
 }
 
-// Commit implements method in interface `histmgmt.HistMgr`
+// Commit implements method in interface `histmgr.HistMgr`
 // This writes to a separate history database.
 // TODO dpending on how invalid transactions are handled may need to filter what history commits.
 func (histmgr *CouchDBHistMgr) Commit(block *common.Block) error {
@@ -113,7 +110,7 @@ func (histmgr *CouchDBHistMgr) Commit(block *common.Block) error {
 			for _, kvWrite := range nsRWSet.Writes {
 				writeKey := kvWrite.Key
 				writeValue := kvWrite.Value
-				compositeKey := constructCompositeKey(ns, writeKey, blockNo, tranNo)
+				compositeKey := helper.ConstructCompositeKey(ns, writeKey, blockNo, tranNo)
 				var bytesDoc []byte
 
 				logger.Debugf("===HISTORYDB=== ns (namespace or cc id) = %v, writeKey: %v, compositeKey: %v, writeValue = %v",
@@ -195,8 +192,8 @@ func (histmgr *CouchDBHistMgr) getTransactionsForNsKey(namespace string, key str
 	var compositeStartKey []byte
 	var compositeEndKey []byte
 	if key != "" {
-		compositeStartKey = constructPartialCompositeKey(namespace, key, false)
-		compositeEndKey = constructPartialCompositeKey(namespace, key, true)
+		compositeStartKey = helper.ConstructPartialCompositeKey(namespace, key, false)
+		compositeEndKey = helper.ConstructPartialCompositeKey(namespace, key, true)
 	}
 
 	//TODO the limit should not be hardcoded.  Need the config.
@@ -227,37 +224,6 @@ func (txmgr *CouchDBHistMgr) GetBlockNumFromSavepoint() (uint64, error) {
 	return savepointDoc.BlockNum, nil
 }
 
-func constructCompositeKey(ns string, key string, blocknum uint64, trannum uint64) string {
-	//History Key is:  "namespace key blocknum trannum"", with namespace being the chaincode id
-
-	// TODO - We will likely want sortable varint encoding, rather then a simple number, in order to support sorted key scans
-	var buffer bytes.Buffer
-	buffer.WriteString(ns)
-	buffer.WriteByte(0)
-	buffer.WriteString(key)
-	buffer.WriteByte(0)
-	buffer.WriteString(strconv.Itoa(int(blocknum)))
-	buffer.WriteByte(0)
-	buffer.WriteString(strconv.Itoa(int(trannum)))
-
-	return buffer.String()
-}
-
-func constructPartialCompositeKey(ns string, key string, endkey bool) []byte {
-	compositeKey := []byte(ns)
-	compositeKey = append(compositeKey, compositeKeySep...)
-	compositeKey = append(compositeKey, []byte(key)...)
-	if endkey {
-		compositeKey = append(compositeKey, []byte("1")...)
-	}
-	return compositeKey
-}
-
-func splitCompositeKey(compositePartialKey []byte, compositeKey []byte) (string, string) {
-	split := bytes.SplitN(compositeKey, compositePartialKey, 2)
-	return string(split[0]), string(split[1])
-}
-
 type histScanner struct {
 	cursor              int
 	compositePartialKey []byte
@@ -283,7 +249,7 @@ func (scanner *histScanner) next() (*historicValue, error) {
 
 	selectedValue := scanner.results[scanner.cursor]
 
-	_, blockNumTranNum := splitCompositeKey(scanner.compositePartialKey, []byte(selectedValue.ID))
+	_, blockNumTranNum := helper.SplitCompositeKey(scanner.compositePartialKey, []byte(selectedValue.ID))
 
 	return &historicValue{blockNumTranNum, selectedValue.Value}, nil
 

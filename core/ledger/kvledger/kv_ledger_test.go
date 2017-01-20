@@ -398,8 +398,6 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	ledger, _ := provider.Create("testLedger")
 	defer ledger.Close()
 
-	//testNs := "ns1"
-
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
