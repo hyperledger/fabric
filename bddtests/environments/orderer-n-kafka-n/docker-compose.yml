@@ -16,7 +16,7 @@ services:
       - kafka
 
   kafka:
-    build: ../kafka
+    image: hyperledger/fabric-kafka
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     depends_on:
