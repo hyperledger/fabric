@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
@@ -79,7 +80,7 @@ func TestNewChainTemplate(t *testing.T) {
 	)
 
 	creationPolicy := "Test"
-	nct := NewChainCreationTemplate(creationPolicy, simple)
+	nct := NewChainCreationTemplate(creationPolicy, util.ComputeCryptoHash, simple)
 
 	newChainID := "foo"
 	items, err := nct.Items(newChainID)

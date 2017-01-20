@@ -19,6 +19,7 @@ package validation
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/util"
@@ -29,7 +30,8 @@ func TestValidateConfigTx(t *testing.T) {
 	chainID := util.GetTestChainID()
 	oTemplate := test.GetOrdererTemplate()
 	mspcfg := configtx.NewSimpleTemplate(utils.EncodeMSPUnsigned(chainID))
-	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspcfg)
+	chainCfg := configtx.NewSimpleTemplate(chainconfig.DefaultHashingAlgorithm())
+	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspcfg, chainCfg)
 	chCrtEnv, err := configtx.MakeChainCreationTransaction(test.AcceptAllPolicyKey, chainID, signer, chCrtTemp)
 	if err != nil {
 		t.Fatalf("MakeChainCreationTransaction failed, err %s", err)
