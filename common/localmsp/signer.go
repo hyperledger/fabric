@@ -28,7 +28,7 @@ import (
 type mspSigner struct {
 }
 
-// New returns a new instance of the msp-based LocalSigner.
+// NewSigner returns a new instance of the msp-based LocalSigner.
 // It assumes that the local msp has been already initialized.
 // Look at mspmgmt.LoadLocalMsp for further information.
 func NewSigner() crypto.LocalSigner {

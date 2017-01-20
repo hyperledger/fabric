@@ -1,6 +1,6 @@
 FROM hyperledger/fabric-runtime:_TAG_
 ENV PEER_CFG_PATH /etc/hyperledger/fabric
-RUN mkdir -p /var/hyperledger/db $PEER_CFG_PATH
+RUN mkdir -p /var/hyperledger/production $PEER_CFG_PATH
 COPY payload/peer /usr/local/bin
 COPY payload/core.yaml $PEER_CFG_PATH
 ADD  payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH

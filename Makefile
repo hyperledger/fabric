@@ -105,7 +105,7 @@ unit-tests: unit-test
 docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer
 
-BEHAVE_ENVIRONMENTS = kafka orderer-1-kafka-1 orderer-1-kafka-3
+BEHAVE_ENVIRONMENTS = kafka orderer orderer-1-kafka-1 orderer-1-kafka-3
 BEHAVE_ENVIRONMENT_TARGETS = $(patsubst %,bddtests/environments/%, $(BEHAVE_ENVIRONMENTS))
 .PHONY: behave-environments $(BEHAVE_ENVIRONMENT_TARGETS)
 behave-environments: $(BEHAVE_ENVIRONMENT_TARGETS)
