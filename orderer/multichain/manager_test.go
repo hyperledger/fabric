@@ -115,7 +115,7 @@ func TestNoSystemChain(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
 
-	NewManagerImpl(lf, consenters)
+	NewManagerImpl(lf, consenters, &xxxCryptoHelper{})
 }
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate
