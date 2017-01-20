@@ -203,7 +203,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 	return cb.Status_SUCCESS
 }
 
-func (sc *systemChain) inspect(configTxManager configtx.Manager, policyManager policies.Manager, sharedConfigManager sharedconfig.Manager) cb.Status {
+func (sc *systemChain) inspect(configResources *configResources) cb.Status {
 	// XXX decide what it is that we will require to be the same in the new configuration, and what will be allowed to be different
 	// Are all keys allowed? etc.
 
@@ -241,12 +241,12 @@ func (sc *systemChain) authorizeAndInspect(configTx *cb.Envelope) cb.Status {
 		return status
 	}
 
-	configTxManager, policyManager, sharedConfigManager, err := newConfigTxManagerAndHandlers(configEnvelope)
+	configResources, err := newConfigResources(configEnvelope)
 	if err != nil {
 		logger.Debugf("Failed to create config manager and handlers: %s", err)
 		return cb.Status_BAD_REQUEST
 	}
 
 	// Make sure that the configuration does not modify any of the orderer
-	return sc.inspect(configTxManager, policyManager, sharedConfigManager)
+	return sc.inspect(configResources)
 }

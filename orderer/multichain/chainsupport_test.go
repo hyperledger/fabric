@@ -64,7 +64,7 @@ func (mc *mockCommitter) Commit() {
 func TestCommitConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
 	txs := []*cb.Envelope{makeNormalTx("foo", 0), makeNormalTx("bar", 1)}
 	committers := []filter.Committer{&mockCommitter{}, &mockCommitter{}}
 	block := cs.CreateNextBlock(txs)
@@ -89,7 +89,7 @@ func TestCommitConfig(t *testing.T) {
 func TestWriteBlockSignatures(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
 
 	blockMetadata := func(block *cb.Block) *cb.Metadata {
 		metadata, err := utils.GetMetadataFromBlock(block, cb.BlockMetadataIndex_SIGNATURES)
@@ -107,7 +107,7 @@ func TestWriteBlockSignatures(t *testing.T) {
 func TestWriteLastConfiguration(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
 
 	lastConfig := func(block *cb.Block) uint64 {
 		index, err := utils.GetLastConfigurationIndexFromBlock(block)
