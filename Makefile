@@ -63,7 +63,7 @@ PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
 GENESIS_SAMPLECONFIG = $(shell git ls-files common/configtx/test/*.template)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv testenv runtime zookeeper
+IMAGES = peer orderer ccenv javaenv testenv runtime zookeeper kafka
 
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
@@ -106,13 +106,11 @@ docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer
 
 BEHAVE_ENVIRONMENTS = kafka orderer-1-kafka-1 orderer-1-kafka-3
-.PHONY: behave-environments $(BEHAVE_ENVIRONMENTS)
-behave-environments: $(BEHAVE_ENVIRONMENTS)
-$(BEHAVE_ENVIRONMENTS):
-	@echo "# Generated from Dockerfile.in.  DO NOT EDIT!" > bddtests/environments/kafka/Dockerfile
-	@cat bddtests/environments/kafka/Dockerfile.in | \
-	sed -e "s|_DOCKER_TAG_|$(DOCKER_TAG)|" >> bddtests/environments/kafka/Dockerfile
-	@docker-compose --file bddtests/environments/$@/docker-compose.yml build
+BEHAVE_ENVIRONMENT_TARGETS = $(patsubst %,bddtests/environments/%, $(BEHAVE_ENVIRONMENTS))
+.PHONY: behave-environments $(BEHAVE_ENVIRONMENT_TARGETS)
+behave-environments: $(BEHAVE_ENVIRONMENT_TARGETS)
+$(BEHAVE_ENVIRONMENT_TARGETS):
+	@docker-compose --file $@/docker-compose.yml build
 
 behave-deps: docker peer build/bin/block-listener behave-environments
 behave: behave-deps
@@ -197,18 +195,21 @@ build/image/testenv/payload:    build/gotools.tar.bz2 \
 				build/msp-sampleconfig.tar.bz2
 build/image/runtime/payload:    build/docker/busybox
 build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
+build/image/kafka/payload:      images/kafka/docker-entrypoint.sh
 
 build/image/%/payload:
 	mkdir -p $@
 	cp $^ $@
 
-build/image/%/$(DUMMY): Makefile build/image/%/payload
-	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
-	@echo "Building docker $(TARGET)-image"
-	@cat images/$(TARGET)/Dockerfile.in \
+build/image/%/Dockerfile: images/%/Dockerfile.in
+	@cat $< \
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
-		> $(@D)/Dockerfile
+		> $@
+
+build/image/%/$(DUMMY): Makefile build/image/%/payload build/image/%/Dockerfile
+	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
+	@echo "Building docker $(TARGET)-image"
 	$(DBUILD) -t $(PROJECT_NAME)-$(TARGET) $(@D)
 	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@

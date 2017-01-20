@@ -17,7 +17,7 @@ services:
       - kafka0
 
   kafka0:
-    build: ../kafka
+    image: hyperledger/fabric-kafka
     environment:
       KAFKA_BROKER_ID: 0
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
