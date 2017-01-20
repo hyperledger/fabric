@@ -41,7 +41,8 @@ func TestBasicRW(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := NewTestVDBEnv(t)
-		defer env.Cleanup()
+		env.Cleanup("TestDB")
+		defer env.Cleanup("TestDB")
 		commontests.TestBasicRW(t, env.DBProvider)
 
 	}
@@ -51,7 +52,10 @@ func TestMultiDBBasicRW(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := NewTestVDBEnv(t)
-		defer env.Cleanup()
+		env.Cleanup("TestDB1")
+		env.Cleanup("TestDB2")
+		defer env.Cleanup("TestDB1")
+		defer env.Cleanup("TestDB2")
 		commontests.TestMultiDBBasicRW(t, env.DBProvider)
 
 	}
@@ -60,7 +64,8 @@ func TestMultiDBBasicRW(t *testing.T) {
 /* TODO add delete support in couchdb and then convert key value of nil to a couch delete. This will resolve TestDeletes
 func TestDeletes(t *testing.T) {
 	env := NewTestVDBEnv(t)
-	defer env.Cleanup()
+	env.Cleanup("TestDB")
+	defer env.Cleanup("TestDB")
 	commontests.TestDeletes(t, env.DBProvider)
 }
 */
@@ -69,7 +74,8 @@ func TestIterator(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := NewTestVDBEnv(t)
-		defer env.Cleanup()
+		env.Cleanup("TestDB")
+		defer env.Cleanup("TestDB")
 		commontests.TestIterator(t, env.DBProvider)
 
 	}
@@ -113,7 +119,8 @@ func TestQuery(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := NewTestVDBEnv(t)
-		defer env.Cleanup()
+		env.Cleanup("TestDB")
+		defer env.Cleanup("TestDB")
 		commontests.TestQuery(t, env.DBProvider)
 
 	}

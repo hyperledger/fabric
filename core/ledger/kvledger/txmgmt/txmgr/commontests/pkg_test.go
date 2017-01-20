@@ -55,6 +55,8 @@ func init() {
 
 }
 
+///////////// LevelDB Environment //////////////
+
 type levelDBLockBasedEnv struct {
 	testDBEnv *stateleveldb.TestVDBEnv
 	testDB    statedb.VersionedDB
@@ -90,6 +92,10 @@ func (env *levelDBLockBasedEnv) cleanup() {
 	defer env.testDBEnv.Cleanup()
 }
 
+///////////// CouchDB Environment //////////////
+
+var couchTestChainID = "TxmgrTestDB"
+
 type couchDBLockBasedEnv struct {
 	testDBEnv *statecouchdb.TestVDBEnv
 	testDB    statedb.VersionedDB
@@ -104,7 +110,7 @@ func (env *couchDBLockBasedEnv) init(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
 	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "127.0.0.1:5984")
 	testDBEnv := statecouchdb.NewTestVDBEnv(t)
-	testDB, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	testDB, err := testDBEnv.DBProvider.GetDBHandle(couchTestChainID)
 	testutil.AssertNoError(t, err, "")
 
 	txMgr := lockbasedtxmgr.NewLockBasedTxMgr(testDB)
@@ -123,8 +129,10 @@ func (env *couchDBLockBasedEnv) getVDB() statedb.VersionedDB {
 
 func (env *couchDBLockBasedEnv) cleanup() {
 	defer env.txmgr.Shutdown()
-	defer env.testDBEnv.Cleanup()
+	defer env.testDBEnv.Cleanup(couchTestChainID)
 }
+
+//////////// txMgrTestHelper /////////////
 
 type txMgrTestHelper struct {
 	t     *testing.T
