@@ -136,6 +136,10 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 
 	}
 
+	if ml.sysChain == nil {
+		logger.Panicf("No system chain found")
+	}
+
 	return ml
 }
 

@@ -103,6 +103,22 @@ func TestGetConfigTxFailure(t *testing.T) {
 }
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate
+func TestNoSystemChain(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("Should have panicked when starting without a system chain")
+		}
+	}()
+
+	lf := ramledger.New(10)
+
+	consenters := make(map[string]Consenter)
+	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
+
+	NewManagerImpl(lf, consenters)
+}
+
+// This test essentially brings the entire system up and is ultimately what main.go will replicate
 func TestManagerImpl(t *testing.T) {
 	lf, rl := NewRAMLedgerAndFactory(10)
 
