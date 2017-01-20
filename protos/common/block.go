@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 )
 
-// NewBlock construct a block with no data and no metadata
+// NewBlock construct a block with no data and no metadata.
 func NewBlock(seqNum uint64, previousHash []byte) *Block {
 	block := &Block{}
 	block.Header = &BlockHeader{}
@@ -34,6 +34,7 @@ func NewBlock(seqNum uint64, previousHash []byte) *Block {
 	return block
 }
 
+// Bytes returns the marshaled representation of the block header.
 func (b *BlockHeader) Bytes() []byte {
 	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash
 	if err != nil {
@@ -42,10 +43,12 @@ func (b *BlockHeader) Bytes() []byte {
 	return data
 }
 
+// Hash returns the hash of the block header.
 func (b *BlockHeader) Hash() []byte {
 	return util.ComputeCryptoHash(b.Bytes())
 }
 
+// Hash returns the hash of the marshaled representation of the block data.
 func (b *BlockData) Hash() []byte {
 	data, err := proto.Marshal(b) // XXX this is wrong, protobuf is not the right mechanism to serialize for a hash, AND, it is not a MerkleTree hash
 	if err != nil {

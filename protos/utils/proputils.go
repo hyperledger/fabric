@@ -52,15 +52,15 @@ func GetChaincodeProposalContext(prop *peer.Proposal) (*peer.ChaincodeProposalCo
 	// get back the header
 	hdr, err := GetHeader(prop.Header)
 	if err != nil {
-		return nil, fmt.Errorf("Could not extract the header from the proposal, err %s\n", err)
+		return nil, fmt.Errorf("Could not extract the header from the proposal: %s", err)
 	}
 	if common.HeaderType(hdr.ChainHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
 		common.HeaderType(hdr.ChainHeader.Type) != common.HeaderType_CONFIGURATION_TRANSACTION {
-		return nil, fmt.Errorf("invalid proposal type expected ENDORSER_TRANSACTION or CONFIGURATION_TRANSACTION. Was [%s]", hdr.ChainHeader.Type)
+		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIGURATION_TRANSACTION. Was: %d", hdr.ChainHeader.Type)
 	}
 
 	if hdr.SignatureHeader == nil {
-		return nil, errors.New("invalid signature header. It must be different from nil")
+		return nil, errors.New("Invalid signature header. It must be different from nil.")
 	}
 
 	ccPropPayload := &peer.ChaincodeProposalPayload{}

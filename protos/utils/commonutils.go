@@ -177,6 +177,7 @@ func MakePayloadHeader(ch *cb.ChainHeader, sh *cb.SignatureHeader) *cb.Header {
 	}
 }
 
+// NewSignatureHeaderOrPanic returns a signature header and panics on error.
 func NewSignatureHeaderOrPanic(signer crypto.LocalSigner) *cb.SignatureHeader {
 	if signer == nil {
 		panic(errors.New("Invalid signer. Must be different from nil."))
@@ -189,6 +190,7 @@ func NewSignatureHeaderOrPanic(signer crypto.LocalSigner) *cb.SignatureHeader {
 	return signatureHeader
 }
 
+// SignOrPanic signs a message and panics on error.
 func SignOrPanic(signer crypto.LocalSigner, msg []byte) []byte {
 	if signer == nil {
 		panic(errors.New("Invalid signer. Must be different from nil."))
