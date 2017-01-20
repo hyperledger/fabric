@@ -44,6 +44,12 @@ type ConsenterSupport struct {
 
 	// ChainIDVal is the value returned by ChainID()
 	ChainIDVal string
+
+	// NextBlockVal stores the block created by the most recent CreateNextBlock() call
+	NextBlockVal *cb.Block
+
+	// WriteBlockVal stores the block created by the most recent WriteBlock() call
+	WriteBlockVal *cb.Block
 }
 
 // BlockCutter returns BlockCutterVal
@@ -64,6 +70,7 @@ func (mcs *ConsenterSupport) CreateNextBlock(data []*cb.Envelope) *cb.Block {
 		mtxs[i] = utils.MarshalOrPanic(data[i])
 	}
 	block.Data = &cb.BlockData{Data: mtxs}
+	mcs.NextBlockVal = block
 	return block
 }
 
@@ -77,6 +84,7 @@ func (mcs *ConsenterSupport) WriteBlock(block *cb.Block, _committers []filter.Co
 	}
 	mcs.Batches <- umtxs
 	block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
+	mcs.WriteBlockVal = block
 	return block
 }
 
