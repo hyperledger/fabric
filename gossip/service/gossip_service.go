@@ -93,16 +93,17 @@ func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *com
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	if chainID, err := utils.GetChainIDFromBlock(block); err != nil {
+	chainID, err := utils.GetChainIDFromBlock(block)
+	if err != nil {
 		return err
-	} else {
-		// Initialize new state provider for given committer
-		logger.Debug("Creating state provider for chainID", chainID)
-		g.JoinChan(joinChannelMessage, gossipCommon.ChainID(chainID))
-		g.chains[chainID] = state.NewGossipStateProvider(chainID, g, commiter)
 	}
 
+	// Initialize new state provider for given committer
+	logger.Debug("Creating state provider for chainID", chainID)
+	g.JoinChan(joinChannelMessage, gossipCommon.ChainID(chainID))
+	g.chains[chainID] = state.NewGossipStateProvider(chainID, g, commiter)
 	return nil
+
 }
 
 // GetBlock returns block for given chain

@@ -21,17 +21,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/golang/protobuf/proto"
-	"github.com/stretchr/testify/assert"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 type blockInvalidator func(*common.Block) *common.Block
-
 
 // unMarshaller is a mock for proto.Unmarshal
 // that fails on an Nth attempt
@@ -47,7 +46,7 @@ func (um *unMarshaller) unMarshal(buf []byte, pb proto.Message) error {
 	return proto.Unmarshal(buf, pb)
 }
 
-func failUnmarshallAtAttempt(attempts int) func (buf []byte, pb proto.Message) error {
+func failUnmarshallAtAttempt(attempts int) func(buf []byte, pb proto.Message) error {
 	um := &unMarshaller{attemptsLeft: attempts}
 	return um.unMarshal
 }
@@ -104,7 +103,6 @@ func TestInvalidJoinChannelBlock(t *testing.T) {
 	}
 	testJoinChannelFails(t, multipleAnchorPeers, nil)
 
-
 	noAnchorPeers := func(_ *common.Block) *common.Block {
 		anchorPeers := &peer.AnchorPeers{
 			AnchorPees: []*peer.AnchorPeer{},
@@ -137,7 +135,6 @@ func TestValidJoinChannelBlock(t *testing.T) {
 	assert.Equal(t, []byte("cert"), []byte(jcm.AnchorPeers()[0].Cert))
 }
 
-
 func testJoinChannelFails(t *testing.T, invalidator blockInvalidator, unMarshallFunc func(buf []byte, pb proto.Message) error) {
 	if unMarshallFunc != nil {
 		unMarshal = unMarshallFunc
@@ -154,7 +151,6 @@ func testJoinChannelFails(t *testing.T, invalidator blockInvalidator, unMarshall
 	// Restore previous unmarshal function anyway
 	unMarshal = proto.Unmarshal
 }
-
 
 func createValidJoinChanMessage(t *testing.T, seqNum int, host string, port int, cert []byte) *common.Block {
 	anchorPeers := &peer.AnchorPeers{

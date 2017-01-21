@@ -19,16 +19,16 @@ package service
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
 // unMarshal is used to un-marshall proto-buffer types.
 // In tests, I override this variable with a function
-var unMarshal func (buf []byte, pb proto.Message) error
+var unMarshal func(buf []byte, pb proto.Message) error
 
 func init() {
 	unMarshal = proto.Unmarshal
@@ -37,7 +37,7 @@ func init() {
 // This is an implementation of api.JoinChannelMessage.
 // This object is created from a *common.Block
 type joinChannelMessage struct {
-	seqNum uint64
+	seqNum      uint64
 	anchorPeers []api.AnchorPeer
 }
 
@@ -91,7 +91,7 @@ func parseBlock(block *common.Block) (*peer.AnchorPeers, error) {
 		found = true
 		anchorPeerConfig = confItem
 	}
-	if ! found {
+	if !found {
 		return nil, fmt.Errorf("Didn't find AnchorPeer definition in configuration block")
 	}
 	rawAnchorPeersBytes := anchorPeerConfig.Value
