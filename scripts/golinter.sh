@@ -2,7 +2,7 @@
 
 set -e
 
-declare -a arr=("./core" "./events" "./examples" "./peer" "./protos" "./orderer")
+declare -a arr=("./core" "./events" "./examples" "./peer" "./protos" "./orderer" "./msp" "./gossip")
 
 for i in "${arr[@]}"
 do

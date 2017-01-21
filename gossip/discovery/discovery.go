@@ -17,8 +17,8 @@ limitations under the License.
 package discovery
 
 import (
-	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/proto"
 )
 
 // CryptoService is an interface that the discovery expects to be implemented and passed on creation

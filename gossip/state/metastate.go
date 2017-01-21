@@ -59,7 +59,7 @@ func (n *NodeMetastate) Update(height uint64) {
 
 // FromBytes - encode from byte array into meta data structure
 func FromBytes(buf []byte) (*NodeMetastate, error) {
-	state  := NodeMetastate{}
+	state := NodeMetastate{}
 	reader := bytes.NewReader(buf)
 	// As bytes are written in the big endian to keep supporting
 	// cross platforming and for consistency reasons read also

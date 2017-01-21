@@ -826,13 +826,13 @@ func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.C
 
 	b, err := prot.Marshal(stateInfMsg)
 	if err != nil {
-		g.logger.Error("Failed marshalling StateInfo message:", err)
+		g.logger.Error("Failed marshalling StateInfo message: ", err)
 		return nil, err
 	}
 
 	sig, err := g.mcs.Sign(b)
 	if err != nil {
-		g.logger.Errorf("Failed signing StateInfo message:", err)
+		g.logger.Error("Failed signing StateInfo message: ", err)
 		return nil, err
 	}
 

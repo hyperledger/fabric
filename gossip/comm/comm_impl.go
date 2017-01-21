@@ -544,7 +544,6 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, grpc.DialOption, []b
 	var serverOpts []grpc.ServerOption
 	var dialOpts grpc.DialOption
 
-
 	keyFileName := fmt.Sprintf("key.%d.pem", rand.Int63())
 	certFileName := fmt.Sprintf("cert.%d.pem", rand.Int63())
 

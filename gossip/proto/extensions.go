@@ -20,6 +20,7 @@ import (
 	"bytes"
 
 	"fmt"
+
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
 )

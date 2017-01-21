@@ -99,7 +99,7 @@ func (cs *certStore) handleMessage(msg comm.ReceivedMessage) {
 func (cs *certStore) validateIdentityMsg(msg *proto.GossipMessage) error {
 	idMsg := msg.GetPeerIdentity()
 	if idMsg == nil {
-		return fmt.Errorf("Identity empty:", msg)
+		return fmt.Errorf("Identity empty: %+v", msg)
 	}
 	pkiID := idMsg.PkiID
 	cert := idMsg.Cert
