@@ -71,6 +71,9 @@ type GRPCServer interface {
 	//RemoveClientRootCAs removes PEM-encoded X509 certificate authorities from
 	//the list of authorities used to verify client certificates
 	RemoveClientRootCAs(clientRoots [][]byte) error
+	//SetClientRootCAs sets the list of authorities used to verify client
+	//certificates based on a list of PEM-encoded X509 certificate authorities
+	SetClientRootCAs(clientRoots [][]byte) error
 }
 
 type grpcServerImpl struct {
@@ -299,6 +302,41 @@ func (gServer *grpcServerImpl) removeClientRootCA(clientRoot []byte) error {
 			delete(gServer.clientRootCAs, subject)
 		}
 	}
+	return nil
+}
+
+//SetClientRootCAs sets the list of authorities used to verify client
+//certificates based on a list of PEM-encoded X509 certificate authorities
+func (gServer *grpcServerImpl) SetClientRootCAs(clientRoots [][]byte) error {
+	gServer.lock.Lock()
+	defer gServer.lock.Unlock()
+
+	errMsg := "Failed to set client root certificate(s): %s"
+
+	//create a new map and CertPool
+	clientRootCAs := make(map[string]*x509.Certificate)
+	for _, clientRoot := range clientRoots {
+		certs, subjects, err := pemToX509Certs(clientRoot)
+		if err != nil {
+			return fmt.Errorf(errMsg, err.Error())
+		}
+		if len(certs) >= 1 {
+			for i, cert := range certs {
+				//add it to our clientRootCAs map using subject as key
+				clientRootCAs[subjects[i]] = cert
+			}
+		}
+	}
+
+	//create a new CertPool and populate with the new clientRootCAs
+	certPool := x509.NewCertPool()
+	for _, clientRoot := range clientRootCAs {
+		certPool.AddCert(clientRoot)
+	}
+	//replace the internal map
+	gServer.clientRootCAs = clientRootCAs
+	//replace the current ClientCAs pool
+	gServer.tlsConfig.ClientCAs = certPool
 	return nil
 }
 
