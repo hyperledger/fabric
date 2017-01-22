@@ -28,7 +28,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-var myLogger = logging.MustGetLogger("asset_mgm")
+var myLogger = logging.MustGetLogger("asset_mgmt")
 
 // AssetManagementChaincode is simple chaincode implementing a basic Asset Management system
 // with access control enforcement at chaincode level.
@@ -45,15 +45,6 @@ func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface) pb.Res
 	myLogger.Debug("Init Chaincode...")
 	if len(args) != 0 {
 		return shim.Error("Incorrect number of arguments. Expecting 0")
-	}
-
-	// Create ownership table
-	err := stub.CreateTable("AssetsOwnership", []*shim.ColumnDefinition{
-		&shim.ColumnDefinition{Name: "Asset", Type: shim.ColumnDefinition_STRING, Key: true},
-		&shim.ColumnDefinition{Name: "Owner", Type: shim.ColumnDefinition_BYTES, Key: false},
-	})
-	if err != nil {
-		return shim.Error("Failed creating AssetsOnwership table.")
 	}
 
 	// Set the admin
@@ -105,18 +96,14 @@ func (t *AssetManagementChaincode) assign(stub shim.ChaincodeStubInterface, args
 		return shim.Error("The caller is not an administrator")
 	}
 
-	// Register assignment
-	myLogger.Debugf("New owner of [%s] is [% x]", asset, owner)
-
-	ok, err = stub.InsertRow("AssetsOwnership", shim.Row{
-		Columns: []*shim.Column{
-			&shim.Column{Value: &shim.Column_String_{String_: asset}},
-			&shim.Column{Value: &shim.Column_Bytes{Bytes: owner}}},
-	})
-
-	if !ok && err == nil {
+	currentOwner, err := stub.GetState(asset)
+	if len(currentOwner) > 0 && err == nil {
 		return shim.Error("Asset was already assigned.")
 	}
+
+	// Register assignment
+	myLogger.Debugf("New owner of [%s] is [% x]", asset, owner)
+	err = stub.PutState(asset, owner)
 
 	myLogger.Debug("Assign...done!")
 
@@ -138,16 +125,11 @@ func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, ar
 
 	// Verify the identity of the caller
 	// Only the owner can transfer one of his assets
-	var columns []shim.Column
-	col1 := shim.Column{Value: &shim.Column_String_{String_: asset}}
-	columns = append(columns, col1)
-
-	row, err := stub.GetRow("AssetsOwnership", columns)
+	prvOwner, err := stub.GetState(asset)
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed retrieving asset [%s]: [%s]", asset, err))
 	}
 
-	prvOwner := row.Columns[1].GetBytes()
 	myLogger.Debugf("Previous owener of [%s] is [% x]", asset, prvOwner)
 	if len(prvOwner) == 0 {
 		return shim.Error("Invalid previous owner. Nil")
@@ -163,22 +145,7 @@ func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, ar
 	}
 
 	// At this point, the proof of ownership is valid, then register transfer
-	err = stub.DeleteRow(
-		"AssetsOwnership",
-		[]shim.Column{shim.Column{Value: &shim.Column_String_{String_: asset}}},
-	)
-	if err != nil {
-		return shim.Error("Failed deliting row.")
-	}
-
-	_, err = stub.InsertRow(
-		"AssetsOwnership",
-		shim.Row{
-			Columns: []*shim.Column{
-				&shim.Column{Value: &shim.Column_String_{String_: asset}},
-				&shim.Column{Value: &shim.Column_Bytes{Bytes: newOwner}},
-			},
-		})
+	err = stub.PutState(asset, newOwner)
 	if err != nil {
 		return shim.Error("Failed inserting row.")
 	}
@@ -278,19 +245,15 @@ func (t *AssetManagementChaincode) query(stub shim.ChaincodeStubInterface, args 
 
 	myLogger.Debugf("Query [%s]", string(asset))
 
-	var columns []shim.Column
-	col1 := shim.Column{Value: &shim.Column_String_{String_: asset}}
-	columns = append(columns, col1)
-
-	row, err := stub.GetRow("AssetsOwnership", columns)
+	owner, err := stub.GetState(asset)
 	if err != nil {
 		myLogger.Debugf("Failed retriving asset [%s]: [%s]", string(asset), err)
 		return shim.Error(fmt.Sprintf("Failed retriving asset [%s]: [%s]", string(asset), err))
 	}
 
-	myLogger.Debugf("Query done [% x]", row.Columns[1].GetBytes())
+	myLogger.Debugf("Query done [% x]", owner)
 
-	return shim.Success(row.Columns[1].GetBytes())
+	return shim.Success([]byte(base64.StdEncoding.EncodeToString(owner)))
 }
 
 func main() {
