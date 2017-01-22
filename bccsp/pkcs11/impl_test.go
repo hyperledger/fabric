@@ -17,28 +17,23 @@ package pkcs11
 
 import (
 	"bytes"
-	"os"
-	"testing"
-
 	"crypto"
-	"crypto/rsa"
-
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"fmt"
+	"hash"
 	"math/big"
 	"net"
+	"os"
+	"testing"
 	"time"
-
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/sha256"
-
-	"fmt"
-
-	"crypto/sha512"
-	"hash"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
@@ -64,6 +59,17 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 	currentKS = ks
+
+	lib, pin, label := findPKCS11Lib()
+	if enablePKCS11tests {
+		err := initPKCS11(lib, pin, label)
+		if err != nil {
+			fmt.Printf("Failed initializing PKCS11 library [%s]", err)
+			os.Exit(-1)
+		}
+	} else {
+		fmt.Printf("No PKCS11 library found, skipping PKCS11 tests")
+	}
 
 	tests := []testConfig{
 		{256, "SHA2"},
@@ -1895,4 +1901,36 @@ func getCryptoHashIndex(t *testing.T) crypto.Hash {
 	}
 
 	return crypto.SHA3_256
+}
+
+var enablePKCS11tests = false
+
+func findPKCS11Lib() (lib, pin, label string) {
+	//FIXME: Till we workout the configuration piece, look for the libraries in the familiar places
+	lib = os.Getenv("PKCS11_LIB")
+	if lib == "" {
+		pin = "98765432"
+		label = "ForFabric"
+		possibilities := []string{
+			"/usr/lib/softhsm/libsofthsm2.so",                            //Debian
+			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so",           //Ubuntu
+			"/usr/lib/s390x-linux-gnu/softhsm/libsofthsm2.so",            //Ubuntu
+			"/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so", //MacOS
+		}
+		for _, path := range possibilities {
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				lib = path
+				enablePKCS11tests = true
+				break
+			}
+		}
+		if lib == "" {
+			enablePKCS11tests = false
+		}
+	} else {
+		enablePKCS11tests = true
+		pin = os.Getenv("PKCS11_PIN")
+		label = os.Getenv("PKCS11_LABEL")
+	}
+	return lib, pin, label
 }
