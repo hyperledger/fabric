@@ -99,6 +99,9 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 	ctxt := context.Background()
 	if !syscc.ChainlessCC {
 		lgr := peer.GetLedger(chainID)
+		if lgr == nil {
+			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name, chainID))
+		}
 		var txsim ledger.TxSimulator
 		if txsim, err = lgr.NewTxSimulator(); err != nil {
 			return err
