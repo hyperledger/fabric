@@ -17,7 +17,6 @@ limitations under the License.
 package chaincode
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -32,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
@@ -314,10 +314,19 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCContext, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, err error) {
 	canName := cccid.GetCanonicalName()
 	envs = []string{"CORE_CHAINCODE_ID_NAME=" + canName}
-	//if TLS is enabled, pass TLS material to chaincode
+
+	// ----------------------------------------------------------------------------
+	// Pass TLS options to chaincode
+	// ----------------------------------------------------------------------------
+	// Note: The peer certificate is only baked into the image during the build
+	// phase (see core/chaincode/platforms).  This logic below merely assumes the
+	// image is already configured appropriately and is simply toggling the feature
+	// on or off.  If the peer's x509 has changed since the chaincode was deployed,
+	// the image may be stale and the admin will need to remove the current containers
+	// before restarting the peer.
+	// ----------------------------------------------------------------------------
 	if chaincodeSupport.peerTLS {
 		envs = append(envs, "CORE_PEER_TLS_ENABLED=true")
-		envs = append(envs, "CORE_PEER_TLS_CERT_FILE="+chaincodeSupport.peerTLSCertFile)
 		if chaincodeSupport.peerTLSSvrHostOrd != "" {
 			envs = append(envs, "CORE_PEER_TLS_SERVERHOSTOVERRIDE="+chaincodeSupport.peerTLSSvrHostOrd)
 		}
@@ -540,7 +549,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 	//launch container if it is a System container or not in dev mode
 	if (!chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) && (chrte == nil || chrte.handler == nil) {
 
-		builder := func() (io.Reader, error) { return bytes.NewBuffer(cds.CodePackage), nil }
+		builder := func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) }
 		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, cLang, builder)
 		if err != nil {
 			chaincodeLogger.Errorf("launchAndWaitForRegister failed %s", err)
@@ -600,7 +609,11 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, cccid 
 		return cds, fmt.Errorf("error getting args for chaincode %s", err)
 	}
 
-	var targz io.Reader = bytes.NewBuffer(cds.CodePackage)
+	targz, err := platforms.GenerateDockerBuild(cds)
+	if err != nil {
+		return cds, fmt.Errorf("error converting CodePackage to Docker: %s", err)
+	}
+
 	cir := &container.CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID, Version: cccid.Version}, Args: args, Reader: targz, Env: envs}
 
 	vmtype, _ := chaincodeSupport.getVMType(cds)

@@ -355,7 +355,6 @@ chaincode:
         # be appended depedendent upon the chaincode specification.
         Dockerfile:  |
           FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
-          COPY src $GOPATH/src
           WORKDIR $GOPATH
 
     car:

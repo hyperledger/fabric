@@ -19,9 +19,7 @@ package java
 import (
 	"archive/tar"
 	"fmt"
-	"io/ioutil"
 	"strings"
-	"time"
 
 	"os"
 
@@ -29,33 +27,7 @@ import (
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/spf13/viper"
 )
-
-var buildCmd = map[string]string{
-	"build.gradle": "gradle -b build.gradle clean && gradle -b build.gradle build",
-	"pom.xml":      "mvn -f pom.xml clean && mvn -f pom.xml package",
-}
-
-//getBuildCmd returns the type of build gradle/maven based on the file
-//found in java chaincode project root
-//build.gradle - gradle  - returns the first found build type
-//pom.xml - maven
-func getBuildCmd(packagePath string) (string, error) {
-	files, err := ioutil.ReadDir(packagePath)
-	if err != nil {
-		return "", err
-	} else {
-		for _, f := range files {
-			if !f.IsDir() {
-				if buildCmd, ok := buildCmd[f.Name()]; ok == true {
-					return buildCmd, nil
-				}
-			}
-		}
-		return "", errors.New("Build file not found")
-	}
-}
 
 //tw is expected to have the chaincode in it from GenerateHashcode.
 //This method will just package the dockerfile
@@ -86,33 +58,6 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 		urlLocation = urlLocation[:len(urlLocation)-1]
 	}
 
-	buildCmd, err := getBuildCmd(urlLocation)
-	if err != nil {
-		return err
-	}
-	var dockerFileContents string
-	var buf []string
-
-	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.java.Dockerfile"))
-	buf = append(buf, "COPY src /root/chaincode")
-	buf = append(buf, "RUN  cd /root/chaincode && "+buildCmd)
-	buf = append(buf, "RUN  cp /root/chaincode/build/chaincode.jar /root")
-	buf = append(buf, "RUN  cp /root/chaincode/build/libs/* /root/libs")
-
-	// Add COPY command to Dockerfile when it is a self-signed cert and rootcert.pem
-	// is specified in the peer.tls.rootcert.file configuration. It is made available
-	// in the docker context tar file in writer.go
-
-	if viper.GetBool("peer.tls.enabled") && viper.GetString("peer.tls.rootcert.file") != "" {
-		buf = append(buf, "COPY src/certs/rootcert.pem /root/certs/rootcert.pem")
-	}
-
-	dockerFileContents = strings.Join(buf, "\n")
-	dockerFileSize := int64(len([]byte(dockerFileContents)))
-	//Make headers identical by using zero time
-	var zeroTime time.Time
-	tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: dockerFileSize, ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime})
-	tw.Write([]byte(dockerFileContents))
 	err = cutil.WriteJavaProjectToPackage(tw, urlLocation)
 	if err != nil {
 		return fmt.Errorf("Error writing Chaincode package contents: %s", err)
