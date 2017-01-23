@@ -577,6 +577,11 @@ def createGenesisBlock(context, chainId, consensusType, signedConfigItems = []):
     blockData = common_dot_common_pb2.BlockData(Data=[envelope.SerializeToString()])
 
 
+    # Spoke with kostas, for orderer in general
+    signaturesMetadata = ""
+    lastConfigurationBlockMetadata = common_dot_common_pb2.Metadata(value=common_dot_common_pb2.LastConfiguration(index=0).SerializeToString()).SerializeToString()
+    ordererConfigMetadata = ""
+    transactionFilterMetadata = ""
     block = common_dot_common_pb2.Block(
         Header=common_dot_common_pb2.BlockHeader(
             Number=0,
@@ -584,7 +589,7 @@ def createGenesisBlock(context, chainId, consensusType, signedConfigItems = []):
             DataHash=bootstrapHelper.computeBlockDataHash(blockData),
         ),
         Data=blockData,
-        Metadata=common_dot_common_pb2.BlockMetadata(Metadata=("",common_dot_common_pb2.Metadata(value=common_dot_common_pb2.LastConfiguration(index=0).SerializeToString()).SerializeToString(),"")),
+        Metadata=common_dot_common_pb2.BlockMetadata(Metadata=[signaturesMetadata,lastConfigurationBlockMetadata,transactionFilterMetadata, ordererConfigMetadata]),
     )
 
     # Add this back once crypto certs are required
