@@ -62,7 +62,7 @@ func (rl *fsBasedOrdererLedger) Close() {
 	rl.blockStore.Shutdown()
 }
 
-// CommitBlock adds a new block
-func (rl *fsBasedOrdererLedger) CommitBlock(block *common.Block) error {
+// Commit adds a new block
+func (rl *fsBasedOrdererLedger) Commit(block *common.Block) error {
 	return rl.blockStore.AddBlock(block)
 }

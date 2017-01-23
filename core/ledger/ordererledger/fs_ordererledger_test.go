@@ -43,7 +43,7 @@ func TestOrdererLedger(t *testing.T) {
 	// Construct test blocks and add to orderer ledger
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	for _, block := range blocks {
-		ordererLedger.CommitBlock(block)
+		ordererLedger.Commit(block)
 	}
 
 	// test GetBlockchainInfo()

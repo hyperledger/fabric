@@ -34,13 +34,13 @@ type Ledger interface {
 	GetBlocksIterator(startBlockNumber uint64) (ResultsIterator, error)
 	// Close closes the ledger
 	Close()
+	// Commit adds a new block
+	Commit(block *common.Block) error
 }
 
 // OrdererLedger implements methods required by 'orderer ledger'
 type OrdererLedger interface {
 	Ledger
-	// CommitBlock adds a new block
-	CommitBlock(block *common.Block) error
 }
 
 // PeerLedgerProvider provides handle to ledger instances
@@ -91,8 +91,6 @@ type PeerLedger interface {
 	// A client can obtain more than one 'HistoryQueryExecutor's for parallel execution.
 	// Any synchronization should be performed at the implementation level if required
 	NewHistoryQueryExecutor() (HistoryQueryExecutor, error)
-	// Commits block into the ledger
-	Commit(block *common.Block) error
 	//Prune prunes the blocks/transactions that satisfy the given policy
 	Prune(policy PrunePolicy) error
 }

@@ -32,8 +32,8 @@ func ConstructCommitter(ledger ledger.PeerLedger) *Committer {
 	return &Committer{ledger}
 }
 
-// CommitBlock commits the block
-func (c *Committer) CommitBlock(rawBlock *common.Block) error {
+// Commit commits the block
+func (c *Committer) Commit(rawBlock *common.Block) error {
 	logger.Debugf("Committer validating the block...")
 	if err := c.ledger.Commit(rawBlock); err != nil {
 		return err

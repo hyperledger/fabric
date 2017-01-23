@@ -413,7 +413,7 @@ func (s *GossipStateProviderImpl) AddPayload(payload *proto.Payload) error {
 }
 
 func (s *GossipStateProviderImpl) commitBlock(block *common.Block, seqNum uint64) error {
-	if err := s.committer.CommitBlock(block); err != nil {
+	if err := s.committer.Commit(block); err != nil {
 		s.logger.Errorf("Got error while committing(%s)\n", err)
 		return err
 	}
