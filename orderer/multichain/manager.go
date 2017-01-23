@@ -19,7 +19,6 @@ package multichain
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
@@ -157,40 +156,15 @@ func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
 }
 
 func newConfigTxManagerAndHandlers(configEnvelope *cb.ConfigurationEnvelope) (configtx.Manager, policies.Manager, sharedconfig.Manager, error) {
-	policyProviderMap := make(map[int32]policies.Provider)
-	for pType := range cb.Policy_PolicyType_name {
-		rtype := cb.Policy_PolicyType(pType)
-		switch rtype {
-		case cb.Policy_UNKNOWN:
-			// Do not register a handler
-		case cb.Policy_SIGNATURE:
-			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(
-				cauthdsl.NewMockDeserializer()) // FIXME: here we should pass in the orderer MSP as soon as it's ready
-		case cb.Policy_MSP:
-			// Add hook for MSP Handler here
-		}
-	}
-	policyManager := policies.NewManagerImpl(policyProviderMap)
+	initializer := configtx.NewInitializer()
 	sharedConfigManager := sharedconfig.NewManagerImpl()
-	configHandlerMap := make(map[cb.ConfigurationItem_ConfigurationType]configtx.Handler)
-	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
-		rtype := cb.ConfigurationItem_ConfigurationType(ctype)
-		switch rtype {
-		case cb.ConfigurationItem_Policy:
-			configHandlerMap[rtype] = policyManager
-		case cb.ConfigurationItem_Orderer:
-			configHandlerMap[rtype] = sharedConfigManager
-		default:
-			configHandlerMap[rtype] = configtx.NewBytesHandler()
-		}
-	}
-
-	configManager, err := configtx.NewConfigurationManager(configEnvelope, policyManager, configHandlerMap)
+	initializer.Handlers()[cb.ConfigurationItem_Orderer] = sharedConfigManager
+	configManager, err := configtx.NewManagerImpl(configEnvelope, initializer)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Error unpacking configuration transaction: %s", err)
 	}
 
-	return configManager, policyManager, sharedConfigManager, nil
+	return configManager, initializer.PolicyManager(), sharedConfigManager, nil
 }
 
 func (ml *multiLedger) newResources(configTx *cb.Envelope) (configtx.Manager, policies.Manager, ordererledger.ReadWriter, sharedconfig.Manager) {

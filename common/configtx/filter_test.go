@@ -14,20 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configtx
+package configtx_test
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
 
+	. "github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/filter"
+	mockconfigtx "github.com/hyperledger/fabric/orderer/mocks/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 )
 
 type mockConfigManager struct {
+	mockconfigtx.Manager
 	applied *cb.ConfigurationEnvelope
 	err     error
 }
