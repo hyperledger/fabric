@@ -49,10 +49,13 @@ func NewLedgerCommitter(ledger ledger.PeerLedger, validator txvalidator.Validato
 }
 
 // Commit commits block to into the ledger
+// Note, it is important that this always be called serially
 func (lc *LedgerCommitter) Commit(block *common.Block) error {
 	// Validate and mark invalid transactions
 	logger.Debug("Validating block")
-	lc.validator.Validate(block)
+	if err := lc.validator.Validate(block); err != nil {
+		return err
+	}
 
 	if err := lc.ledger.Commit(block); err != nil {
 		return err

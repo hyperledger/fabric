@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -39,7 +40,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
 	defer ledger.Close()
 
-	validator := &txValidator{ledger, &validator.MockVsccValidator{}}
+	validator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, &validator.MockVsccValidator{}}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
@@ -70,7 +71,7 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
 	defer ledger.Close()
 
-	validator := &txValidator{ledger, &validator.MockVsccValidator{}}
+	validator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, &validator.MockVsccValidator{}}
 
 	// Create simeple endorsement transaction
 	payload := &common.Payload{

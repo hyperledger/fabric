@@ -22,8 +22,9 @@ import "github.com/hyperledger/fabric/protos/common"
 type MockValidator struct {
 }
 
-// Validate does nothing
-func (m *MockValidator) Validate(block *common.Block) {
+// Validate does nothing, returning no error
+func (m *MockValidator) Validate(block *common.Block) error {
+	return nil
 }
 
 // MockVsccValidator is a mock implementation of the VSCC validation interface
