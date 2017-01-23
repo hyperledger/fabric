@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	ledgerpackage "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -92,7 +93,6 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
-
 	//creating and committing the first block
 	simulator, _ := ledger.NewTxSimulator()
 	//simulating a transaction
@@ -106,7 +106,6 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	block1 := bg.NextBlock([][]byte{simRes}, false)
 	//performing validation of read and write set to find valid transactions
 	ledger.Commit(block1)
-
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
@@ -154,10 +153,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
-		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
-		//TODO: once the GetState() for CouchDB is updated to remove revID and other
-		//CouchDB related values, we can compare the values. For now, we just count
-		//the number of records.
+		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
+		//TODO: once GetHistoryForKey() returns values we can compare the values. For now, we just count
 		count := 0
 		for {
 			if kmod, _ := itr.Next(); kmod == nil {
@@ -166,8 +163,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			count++
 		}
 		testutil.AssertEquals(t, count, 1)
+
 		//savepoint in history DB should 1 as the last commit failed
-		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(1))
 	}
 	simulator.Done()
@@ -194,7 +192,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
-		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
+		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
 		count := 0
 		for {
 			if kmod, _ := itr.Next(); kmod == nil {
@@ -203,8 +201,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			count++
 		}
 		testutil.AssertEquals(t, count, 2)
+
 		//savepoint in history DB should 2 after recovery
-		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(2))
 	}
 	simulator.Done()
@@ -213,6 +212,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//SCENARIO 2: peer fails after committing the third block to state DB
 	//but before committing to history DB (if exist)
 	//======================================================================================
+
 	simulator, _ = ledger.NewTxSimulator()
 	//simulating transaction
 	simulator.SetState("ns1", "key1", []byte("value7"))
@@ -253,10 +253,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
-		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
-		//TODO: once the GetState() for CouchDB is updated to remove revID and other
-		//CouchDB related values, we can compare the values. For now, we just count
-		//the number of records.
+		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
+		//TODO: once GetHistoryForKey() returns values we can compare the values. For now, we just count
 		count := 0
 		for {
 			if kmod, _ := itr.Next(); kmod == nil {
@@ -265,8 +263,9 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			count++
 		}
 		testutil.AssertEquals(t, count, 2)
+
 		//savepoint in history DB should 2 as the last commit failed
-		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(2))
 	}
 	simulator.Done()
@@ -283,7 +282,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
-		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
+		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
 		count := 0
 		for {
 			if kmod, _ := itr.Next(); kmod == nil {
@@ -292,13 +291,15 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 			count++
 		}
 		testutil.AssertEquals(t, count, 3)
+
 		//savepoint in history DB should 3 after recovery
-		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(3))
 	}
 	simulator.Done()
 
 	//Rare scenario
+
 	//======================================================================================
 	//SCENARIO 3: peer fails after committing the fourth block to history DB (if exist)
 	//but before committing to state DB
@@ -318,7 +319,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	//successfully commits to history DB (if exists)
 	err = ledger.(*kvLedger).blockStore.AddBlock(block4)
 	if ledgerconfig.IsHistoryDBEnabled() == true {
-		err = ledger.(*kvLedger).historymgmt.Commit(block4)
+		err = ledger.(*kvLedger).historyDB.Commit(block4)
 	}
 	assert.NoError(t, err)
 
@@ -343,10 +344,8 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		qhistory, _ := ledger.NewHistoryQueryExecutor()
-		itr, _ := qhistory.GetTransactionsForKey("ns1", "key1", true, false)
-		//TODO: once the GetState() for CouchDB is updated to remove revID and other
-		//CouchDB related values, we can compare the values. For now, we just count
-		//the number of records.
+		itr, _ := qhistory.GetHistoryForKey("ns1", "key1")
+		//TODO: once GetHistoryForKey() returns values we can compare the values. For now, we just count
 		count := 0
 		for {
 			if kmod, _ := itr.Next(); kmod == nil {
@@ -356,7 +355,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		}
 		testutil.AssertEquals(t, count, 4)
 		//savepoint in history DB should 4
-		historyDBSavepoint, _ := ledger.(*kvLedger).historymgmt.GetBlockNumFromSavepoint()
+		historyDBSavepoint, _ := ledger.(*kvLedger).historyDB.GetBlockNumFromSavepoint()
 		testutil.AssertEquals(t, historyDBSavepoint, uint64(4))
 	}
 	simulator.Done()
@@ -419,7 +418,6 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 
-	//Note key 4 and 6 are updates but key 7 is new.  I.E. should see history for key 4 and 6 if history is enabled
 	simulationResults := [][]byte{}
 	simulator, _ = ledger.NewTxSimulator()
 	simulator.SetState("ns1", "key4", []byte("value3"))
@@ -459,13 +457,14 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	b2, _ = ledger.GetBlockByNumber(2)
 	testutil.AssertEquals(t, b2, block2)
 
-	//TODO move this test to history.
+	//Similar test has been pushed down to historyleveldb_test.go as well
 	if ledgerconfig.IsHistoryDBEnabled() == true {
+		logger.Debugf("History is enabled\n")
 		qhistory, err := ledger.NewHistoryQueryExecutor()
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to retrieve history database executor"))
 
-		itr, err2 := qhistory.GetTransactionsForKey("ns1", "key7", true, false)
-		testutil.AssertNoError(t, err2, fmt.Sprintf("Error when trying to retrieve history database executor"))
+		itr, err2 := qhistory.GetHistoryForKey("ns1", "key7")
+		testutil.AssertNoError(t, err2, fmt.Sprintf("Error upon GetHistoryForKey"))
 
 		count := 0
 		for {
@@ -473,13 +472,12 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 			if kmod == nil {
 				break
 			}
-			//TODO TEST CONTENT - need to point to ledger import and not the KVledger
-			//TODO MOVE TEST TO HISTORY
-			//bt := kmod.(*ledger.KeyModification).TxID
-			//v := kmod.(*ledger.KeyModification).Value
-			//t.Logf("Retrieved for ns=%s, key=key7  : k=%s, v=%s at count=%d start=%s end=%s", testNs, bt, v, count)
+			txid := kmod.(*ledgerpackage.KeyModification).TxID
+			//v := kmod.(*ledger.KeyModification).Value TODO value not populated yet
+			t.Logf("Retrieved history record for key=key7 at TxId=%s", txid)
 			count++
 		}
 		testutil.AssertEquals(t, count, 3)
+		// TODO add assertions for exact history values once it is populated
 	}
 }

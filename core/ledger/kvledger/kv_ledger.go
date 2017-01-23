@@ -22,8 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history/histmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/history/histmgr/couchdbhistmgr"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
@@ -40,34 +39,25 @@ var logger = logging.MustGetLogger("kvledger")
 // KVLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
-	ledgerID    string
-	blockStore  blkstorage.BlockStore
-	txtmgmt     txmgr.TxMgr
-	historymgmt histmgr.HistMgr
+	ledgerID   string
+	blockStore blkstorage.BlockStore
+	txtmgmt    txmgr.TxMgr
+	historyDB  historydb.HistoryDB
 }
 
 // NewKVLedger constructs new `KVLedger`
-func newKVLedger(ledgerID string, blockStore blkstorage.BlockStore, versionedDB statedb.VersionedDB) (*kvLedger, error) {
-	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
-	//State and History database managers
-	var txmgmt txmgr.TxMgr
-	var historymgmt histmgr.HistMgr
+func newKVLedger(ledgerID string, blockStore blkstorage.BlockStore,
+	versionedDB statedb.VersionedDB, historyDB historydb.HistoryDB) (*kvLedger, error) {
 
+	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
+
+	//Initialize transaction manager using state database
+	var txmgmt txmgr.TxMgr
 	txmgmt = lockbasedtxmgr.NewLockBasedTxMgr(versionedDB)
 
-	if ledgerconfig.IsHistoryDBEnabled() == true {
-		logger.Debugf("===HISTORYDB=== NewKVLedger() Using CouchDB for transaction history database")
-
-		couchDBDef := ledgerconfig.GetCouchDBDefinition()
-
-		historymgmt = couchdbhistmgr.NewCouchDBHistMgr(
-			couchDBDef.URL,      //couchDB connection URL
-			"system_history",    //couchDB db name matches ledger name, TODO for now use system_history ledger, eventually allow passing in subledger name
-			couchDBDef.Username, //enter couchDB id here
-			couchDBDef.Password) //enter couchDB pw here
-	}
-
-	l := &kvLedger{ledgerID, blockStore, txmgmt, historymgmt}
+	// Create a kvLedger for this chain/ledger, which encasulates the underlying
+	// id store, blockstore, txmgr (state database), history database
+	l := &kvLedger{ledgerID, blockStore, txmgmt, historyDB}
 
 	//Recover both state DB and history DB if they are out of sync with block storage
 	if err := recoverDB(l); err != nil {
@@ -104,7 +94,7 @@ func recoverDB(l *kvLedger) error {
 
 	if ledgerconfig.IsHistoryDBEnabled() == true {
 		//Getting savepointValue stored in the history DB
-		if historyDBSavepoint, err = l.historymgmt.GetBlockNumFromSavepoint(); err != nil {
+		if historyDBSavepoint, err = l.historyDB.GetBlockNumFromSavepoint(); err != nil {
 			return err
 		}
 		//Check whether the history DB is in sync with block storage
@@ -200,7 +190,7 @@ func recommitLostBlocks(l *kvLedger, savepoint uint64, blockHeight uint64, recov
 			}
 		}
 		if ledgerconfig.IsHistoryDBEnabled() == true && recoverHistoryDB == true {
-			if err = l.historymgmt.Commit(block); err != nil {
+			if err = l.historyDB.Commit(block); err != nil {
 				return err
 			}
 		}
@@ -260,7 +250,7 @@ func (l *kvLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 // A client can obtain more than one 'HistoryQueryExecutor's for parallel execution.
 // Any synchronization should be performed at the implementation level if required
 func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
-	return l.historymgmt.NewHistoryQueryExecutor()
+	return l.historyDB.NewHistoryQueryExecutor()
 }
 
 // Commit commits the valid block (returned in the method RemoveInvalidTransactionsAndPrepare) and related state changes
@@ -278,19 +268,16 @@ func (l *kvLedger) Commit(block *common.Block) error {
 		return err
 	}
 
-	logger.Debugf("Committing block to state database")
+	logger.Debugf("Committing block transactions to state database")
 	if err = l.txtmgmt.Commit(); err != nil {
 		panic(fmt.Errorf(`Error during commit to txmgr:%s`, err))
 	}
 
-	//TODO There are still some decisions to be made regarding how consistent history
-	//needs to stay with the state.  At min will want this to run async with state db writes.
-	//(History needs to wait for the block (FSBlock) to write but not the state db)
-	logger.Debugf("===HISTORYDB=== Commit() will write to history if enabled else will be by-passed if not enabled: vledgerconfig.IsHistoryDBEnabled(): %v\n", ledgerconfig.IsHistoryDBEnabled())
+	// History database could be written in parallel with state and/or async as a future optimization
 	if ledgerconfig.IsHistoryDBEnabled() == true {
-		logger.Debugf("Committing transactions to history database")
-		if err := l.historymgmt.Commit(block); err != nil {
-			panic(fmt.Errorf(`Error during commit to txthistory:%s`, err))
+		logger.Debugf("Committing block transactions to history database")
+		if err := l.historyDB.Commit(block); err != nil {
+			panic(fmt.Errorf(`Error during commit to history db:%s`, err))
 		}
 	}
 

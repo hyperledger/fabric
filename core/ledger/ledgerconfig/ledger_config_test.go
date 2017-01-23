@@ -1,4 +1,4 @@
-/*
+/*h
 Copyright IBM Corp. 2016 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,31 +61,20 @@ func TestIsHistoryDBEnabledDefault(t *testing.T) {
 	testutil.AssertEquals(t, defaultValue, false) //test default config is false
 }
 
-func TestIsHistoryDBEnabledWhenCouchDBIsDisabled(t *testing.T) {
+func TestIsHistoryDBEnabledTrue(t *testing.T) {
 	setUpCoreYAMLConfig()
 	defer testutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.stateDatabase", "goleveldb")
-	viper.Set("ledger.state.historyDatabase", true)
-	updatedValue := IsHistoryDBEnabled()
-	testutil.AssertEquals(t, updatedValue, false) //test config is false
-}
-
-func TestIsHistoryDBEnabledWhenOnlyCouchDBEnabled(t *testing.T) {
-	setUpCoreYAMLConfig()
-	defer testutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
-	viper.Set("ledger.state.historyDatabase", false)
-	updatedValue := IsHistoryDBEnabled()
-	testutil.AssertEquals(t, updatedValue, false) //test config is false
-}
-
-func TestIsHistoryDBEnabled(t *testing.T) {
-	setUpCoreYAMLConfig()
-	defer testutil.ResetConfigToDefaultValues()
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
 	viper.Set("ledger.state.historyDatabase", true)
 	updatedValue := IsHistoryDBEnabled()
 	testutil.AssertEquals(t, updatedValue, true) //test config returns true
+}
+
+func TestIsHistoryDBEnabledFalse(t *testing.T) {
+	setUpCoreYAMLConfig()
+	defer testutil.ResetConfigToDefaultValues()
+	viper.Set("ledger.state.historyDatabase", false)
+	updatedValue := IsHistoryDBEnabled()
+	testutil.AssertEquals(t, updatedValue, false) //test config returns false
 }
 
 func setUpCoreYAMLConfig() {

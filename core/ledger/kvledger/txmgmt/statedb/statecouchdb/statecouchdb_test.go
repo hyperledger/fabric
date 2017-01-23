@@ -32,6 +32,7 @@ func TestMain(m *testing.M) {
 	testutil.SetupCoreYAMLConfig("./../../../../../../peer")
 
 	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "127.0.0.1:5984")
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/statecouchdb")
 
 	os.Exit(m.Run())
 }
