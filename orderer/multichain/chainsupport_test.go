@@ -100,7 +100,7 @@ func TestWriteBlockSignatures(t *testing.T) {
 func TestWriteBlockOrdererMetadata(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
 
 	value := []byte("foo")
 	expected := &cb.Metadata{Value: value}

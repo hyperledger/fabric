@@ -125,7 +125,7 @@ func newChainSupport(
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
-		logger.Fatalf("Error extracting orderer metadata for chain %x: %s", configManager.ChainID(), err)
+		logger.Fatalf("Error extracting orderer metadata for chain %x: %s", cs.ChainID(), err)
 	}
 
 	cs.chain, err = consenter.HandleChain(cs, metadata)
