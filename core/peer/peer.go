@@ -92,8 +92,9 @@ func Initialize(dsProvider func(string) error) {
 		}
 		// Create a chain if we get a valid ledger with config block
 		if err = createChain(cid, ledger, cb); err != nil {
-			peerLogger.Warning("Failed to load chain %s", cid)
+			peerLogger.Warningf("Failed to load chain %s(%s)", cid, err)
 			peerLogger.Debug("Error reloading chain %s with message %s. We continue to the next chain rather than abort.", cid, err)
+			continue
 		}
 
 		// now create the delivery service for this chain
