@@ -24,7 +24,11 @@ import (
 
 	"bytes"
 
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"errors"
+	"math/big"
+	"reflect"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -57,6 +61,9 @@ type bccspmsp struct {
 
 	// verification options for MSP members
 	opts *x509.VerifyOptions
+
+	// list of certificate revocation lists
+	CRL []*pkix.CertificateList
 }
 
 // NewBccspMsp returns an MSP instance backed up by a BCCSP
@@ -140,6 +147,86 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 		idPub.(*identity).cert, idPub.(*identity).pk, peerSigner, msp), nil
 }
 
+/*
+   This is the definition of the ASN.1 marshalling of AuthorityKeyIdentifier
+   from https://www.ietf.org/rfc/rfc5280.txt
+
+   AuthorityKeyIdentifier ::= SEQUENCE {
+      keyIdentifier             [0] KeyIdentifier           OPTIONAL,
+      authorityCertIssuer       [1] GeneralNames            OPTIONAL,
+      authorityCertSerialNumber [2] CertificateSerialNumber OPTIONAL  }
+
+   KeyIdentifier ::= OCTET STRING
+
+   CertificateSerialNumber  ::=  INTEGER
+
+*/
+
+type authorityKeyIdentifier struct {
+	KeyIdentifier             []byte  `asn1:"optional,tag:0"`
+	AuthorityCertIssuer       []byte  `asn1:"optional,tag:1"`
+	AuthorityCertSerialNumber big.Int `asn1:"optional,tag:2"`
+}
+
+// getAuthorityKeyIdentifierFromCrl returns the Authority Key Identifier
+// for the supplied CRL. The authority key identifier can be used to identify
+// the public key corresponding to the private key which was used to sign the CRL.
+func getAuthorityKeyIdentifierFromCrl(crl *pkix.CertificateList) ([]byte, error) {
+	aki := authorityKeyIdentifier{}
+
+	for _, ext := range crl.TBSCertList.Extensions {
+		// Authority Key Identifier is identified by the following ASN.1 tag
+		// authorityKeyIdentifier (2 5 29 35) (see https://tools.ietf.org/html/rfc3280.html)
+		if reflect.DeepEqual(ext.Id, asn1.ObjectIdentifier{2, 5, 29, 35}) {
+			_, err := asn1.Unmarshal(ext.Value, &aki)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to unmarshal AKI, error %s", err)
+			}
+
+			return aki.KeyIdentifier, nil
+		}
+	}
+
+	return nil, errors.New("authorityKeyIdentifier not found in certificate")
+}
+
+// getSubjectKeyIdentifierFromCert returns the Subject Key Identifier for the supplied certificate
+// Subject Key Identifier is an identifier of the public key of this certificate
+func getSubjectKeyIdentifierFromCert(cert *x509.Certificate) ([]byte, error) {
+	var SKI []byte
+
+	for _, ext := range cert.Extensions {
+		// Subject Key Identifier is identified by the following ASN.1 tag
+		// subjectKeyIdentifier (2 5 29 14) (see https://tools.ietf.org/html/rfc3280.html)
+		if reflect.DeepEqual(ext.Id, asn1.ObjectIdentifier{2, 5, 29, 14}) {
+			_, err := asn1.Unmarshal(ext.Value, &SKI)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to unmarshal Subject Key Identifier, err %s", err)
+			}
+
+			return SKI, nil
+		}
+	}
+
+	return nil, errors.New("subjectKeyIdentifier not found in certificate")
+}
+
+// isCAProperlyFormed does a few checks on the certificate,
+// assuming it's a CA; it returns true if all looks good
+// and false otherwise
+func isCAProperlyFormed(cert *x509.Certificate) bool {
+	_, err := getSubjectKeyIdentifierFromCert(cert)
+	if err != nil {
+		return false
+	}
+
+	if !cert.IsCA {
+		return false
+	}
+
+	return true
+}
+
 // Setup sets up the internal data structures
 // for this MSP, given an MSPConfig ref; it
 // returns nil in case of success or an error otherwise
@@ -160,16 +247,14 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	mspLogger.Debugf("Setting up MSP instance %s", msp.name)
 
 	// make and fill the set of admin certs (if present)
-	if conf.Admins != nil {
-		msp.admins = make([]Identity, len(conf.Admins))
-		for i, admCert := range conf.Admins {
-			id, err := msp.getIdentityFromConf(admCert)
-			if err != nil {
-				return err
-			}
-
-			msp.admins[i] = id
+	msp.admins = make([]Identity, len(conf.Admins))
+	for i, admCert := range conf.Admins {
+		id, err := msp.getIdentityFromConf(admCert)
+		if err != nil {
+			return err
 		}
+
+		msp.admins[i] = id
 	}
 
 	// make and fill the set of CA certs - we expect them to be there
@@ -187,18 +272,21 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 
 	// make and fill the set of intermediate certs (if present)
-	if conf.IntermediateCerts != nil {
-		msp.intermediateCerts = make([]Identity, len(conf.IntermediateCerts))
-		for i, trustedCert := range conf.IntermediateCerts {
-			id, err := msp.getIdentityFromConf(trustedCert)
-			if err != nil {
-				return err
-			}
-
-			msp.intermediateCerts[i] = id
+	msp.intermediateCerts = make([]Identity, len(conf.IntermediateCerts))
+	for i, trustedCert := range conf.IntermediateCerts {
+		id, err := msp.getIdentityFromConf(trustedCert)
+		if err != nil {
+			return err
 		}
-	} else {
-		msp.intermediateCerts = make([]Identity, 0)
+
+		msp.intermediateCerts[i] = id
+	}
+
+	// ensure that our CAs are properly formed
+	for _, cert := range append(append([]Identity{}, msp.rootCerts...), msp.intermediateCerts...) {
+		if !isCAProperlyFormed(cert.(*identity).cert) {
+			return fmt.Errorf("CA Certificate did not have the Subject Key Identifier extension, (SN: %s)", cert.(*identity).cert.SerialNumber)
+		}
 	}
 
 	// setup the signer (if present)
@@ -221,6 +309,52 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 	for _, v := range msp.intermediateCerts {
 		msp.opts.Intermediates.AddCert(v.(*identity).cert)
+	}
+
+	// setup the CRL (if present)
+	msp.CRL = make([]*pkix.CertificateList, len(conf.RevocationList))
+	for i, crlbytes := range conf.RevocationList {
+		valid := false
+
+		// at first we parse it
+		crl, err := x509.ParseCRL(crlbytes)
+		if err != nil {
+			return fmt.Errorf("Could not parse RevocationList, err %s", err)
+		}
+
+		// we extract the AKI - this is needed so that we know which CA should have signed us
+		aki, err := getAuthorityKeyIdentifierFromCrl(crl)
+		if err != nil {
+			return fmt.Errorf("Could not get AuthorityKeyIdentifier from RevocationList, err %s", err)
+		}
+
+		// now check the signature over the CRL - it has to be signed
+		// by one of our CAs (either root or intermediate)
+		for _, ca := range append(append([]Identity{}, msp.rootCerts...), msp.intermediateCerts...) {
+			// get the SKI for the CA
+			ski, err := getSubjectKeyIdentifierFromCert(ca.(*identity).cert)
+			if err != nil {
+				return fmt.Errorf("Could not get SubjectKeyIdentifier from CA cert, err %s", err)
+			}
+
+			// this is the CA that should have signed
+			// this CRL, check its signature over it
+			if bytes.Equal(aki, ski) {
+				err := ca.(*identity).cert.CheckCRLSignature(crl)
+				if err != nil {
+					return fmt.Errorf("Invalid signature on the CRL, err %s", err)
+				}
+				valid = true
+				break
+			}
+		}
+
+		// valid may not be set in case none of the CAs signed the CRL
+		if !valid {
+			return errors.New("Could not verify signature over the CRL")
+		}
+
+		msp.CRL[i] = crl
 	}
 
 	return nil
@@ -263,7 +397,7 @@ func (msp *bccspmsp) GetSigningIdentity(identifier *IdentityIdentifier) (Signing
 func (msp *bccspmsp) Validate(id Identity) error {
 	mspLogger.Infof("MSP %s validating identity", msp.name)
 
-	switch id.(type) {
+	switch id := id.(type) {
 	// If this identity is of this specific type,
 	// this is how I can validate it given the
 	// root of trust this MSP has
@@ -274,7 +408,7 @@ func (msp *bccspmsp) Validate(id Identity) error {
 		}
 
 		// CAs cannot be directly used as identities..
-		if id.(*identity).cert.IsCA {
+		if id.cert.IsCA {
 			return errors.New("A CA certificate cannot be used directly by this MSP")
 		}
 
@@ -290,12 +424,57 @@ func (msp *bccspmsp) Validate(id Identity) error {
 		//    signed by CA but not by CA -> iCA1)
 
 		// ask golang to validate the cert for us based on the options that we've built at setup time
-		_, err := id.(*identity).cert.Verify(*(msp.opts))
+		validationChain, err := id.cert.Verify(*(msp.opts))
 		if err != nil {
 			return fmt.Errorf("The supplied identity is not valid, Verify() returned %s", err)
-		} else {
-			return nil
 		}
+
+		// we only support a single validation chain;
+		// if there's more than one then there might
+		// be unclarity about who owns the identity
+		if len(validationChain) != 1 {
+			return fmt.Errorf("This MSP only supports a single validation chain, got %d", len(validationChain))
+		}
+
+		// we expect a chain of length at least 2
+		if len(validationChain[0]) < 2 {
+			return fmt.Errorf("Expected a chain of length at least 2, got %d", len(validationChain))
+		}
+
+		// here we know that the identity is valid; now we have to check whether it has been revoked
+
+		// identify the SKI of the CA that signed this cert
+		SKI, err := getSubjectKeyIdentifierFromCert(validationChain[0][1])
+		if err != nil {
+			return fmt.Errorf("Could not obtain Subject Key Identifier for signer cert, err %s", err)
+		}
+
+		// check whether one of the CRLs we have has this cert's
+		// SKI as its AuthorityKeyIdentifier
+		for _, crl := range msp.CRL {
+			aki, err := getAuthorityKeyIdentifierFromCrl(crl)
+			if err != nil {
+				return fmt.Errorf("Could not obtain Authority Key Identifier for crl, err %s", err)
+			}
+
+			// check if the SKI of the cert that signed us matches the AKI of any of the CRLs
+			if bytes.Equal(aki, SKI) {
+				// we have a CRL, check whether the serial number is revoked
+				for _, rc := range crl.TBSCertList.RevokedCertificates {
+					if rc.SerialNumber.Cmp(id.cert.SerialNumber) == 0 {
+						// A CRL also includes a time of revocation so that
+						// the CA can say "this cert is to be revoked starting
+						// from this time"; however here we just assume that
+						// revocation applies instantaneously from the time
+						// the MSP config is committed and used so we will not
+						// make use of that field
+						return errors.New("The certificate has been revoked")
+					}
+				}
+			}
+		}
+
+		return nil
 	default:
 		return fmt.Errorf("Identity type not recognized")
 	}
