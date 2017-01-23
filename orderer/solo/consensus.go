@@ -43,7 +43,7 @@ func New() multichain.Consenter {
 	return &consenter{}
 }
 
-func (solo *consenter) HandleChain(support multichain.ConsenterSupport) (multichain.Chain, error) {
+func (solo *consenter) HandleChain(support multichain.ConsenterSupport, metadata *cb.Metadata) (multichain.Chain, error) {
 	return newChain(support), nil
 }
 
@@ -92,7 +92,7 @@ func (ch *chain) main() {
 			}
 			for i, batch := range batches {
 				block := ch.support.CreateNextBlock(batch)
-				ch.support.WriteBlock(block, committers[i])
+				ch.support.WriteBlock(block, committers[i], nil)
 			}
 			if len(batches) > 0 {
 				timer = nil
@@ -108,7 +108,7 @@ func (ch *chain) main() {
 			}
 			logger.Debugf("Batch timer expired, creating block")
 			block := ch.support.CreateNextBlock(batch)
-			ch.support.WriteBlock(block, committers)
+			ch.support.WriteBlock(block, committers, nil)
 		case <-ch.exitChan:
 			logger.Debugf("Exiting")
 			return

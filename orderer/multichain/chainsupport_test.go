@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	mockconfigtx "github.com/hyperledger/fabric/orderer/mocks/configtx"
@@ -68,7 +69,7 @@ func TestCommitConfig(t *testing.T) {
 	txs := []*cb.Envelope{makeNormalTx("foo", 0), makeNormalTx("bar", 1)}
 	committers := []filter.Committer{&mockCommitter{}, &mockCommitter{}}
 	block := cs.CreateNextBlock(txs)
-	cs.WriteBlock(block, committers)
+	cs.WriteBlock(block, committers, nil)
 
 	blockTXs := make([]*cb.Envelope, len(ml.data))
 	for i := range ml.data {
@@ -91,17 +92,27 @@ func TestWriteBlockSignatures(t *testing.T) {
 	cm := &mockconfigtx.Manager{}
 	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
 
-	blockMetadata := func(block *cb.Block) *cb.Metadata {
-		metadata, err := utils.GetMetadataFromBlock(block, cb.BlockMetadataIndex_SIGNATURES)
-		if err != nil {
-			panic(err)
-		}
-		return metadata
-	}
-
-	if blockMetadata(cs.WriteBlock(cb.NewBlock(0, nil), nil)) == nil {
+	if utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil), cb.BlockMetadataIndex_SIGNATURES) == nil {
 		t.Fatalf("Block should have block signature")
 	}
+}
+
+func TestWriteBlockOrdererMetadata(t *testing.T) {
+	ml := &mockLedgerReadWriter{}
+	cm := &mockconfigtx.Manager{}
+	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
+
+	value := []byte("foo")
+	expected := &cb.Metadata{Value: value}
+	actual := utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, value), cb.BlockMetadataIndex_ORDERER)
+
+	if actual == nil {
+		t.Fatalf("Block should have orderer metadata written")
+	}
+	if !proto.Equal(expected, actual) {
+		t.Fatalf("Orderer metadata not written to block correctly")
+	}
+
 }
 
 func TestWriteLastConfiguration(t *testing.T) {
@@ -109,30 +120,23 @@ func TestWriteLastConfiguration(t *testing.T) {
 	cm := &mockconfigtx.Manager{}
 	cs := &chainSupport{ledger: ml, configManager: cm, signer: &xxxCryptoHelper{}}
 
-	lastConfig := func(block *cb.Block) uint64 {
-		index, err := utils.GetLastConfigurationIndexFromBlock(block)
-		if err != nil {
-			panic(err)
-		}
-		return index
-	}
-
 	expected := uint64(0)
-	if lc := lastConfig(cs.WriteBlock(cb.NewBlock(0, nil), nil)); lc != expected {
+
+	if lc := utils.GetLastConfigurationIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil)); lc != expected {
 		t.Fatalf("First block should have config block index of %d, but got %d", expected, lc)
 	}
-
-	if lc := lastConfig(cs.WriteBlock(cb.NewBlock(1, nil), nil)); lc != expected {
+	if lc := utils.GetLastConfigurationIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(1, nil), nil, nil)); lc != expected {
 		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
 	}
 
 	cm.SequenceVal = 1
 	expected = uint64(2)
-	if lc := lastConfig(cs.WriteBlock(cb.NewBlock(2, nil), nil)); lc != expected {
+
+	if lc := utils.GetLastConfigurationIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(2, nil), nil, nil)); lc != expected {
 		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
 	}
 
-	if lc := lastConfig(cs.WriteBlock(cb.NewBlock(3, nil), nil)); lc != expected {
+	if lc := utils.GetLastConfigurationIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(3, nil), nil, nil)); lc != expected {
 		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
 	}
 

@@ -27,20 +27,22 @@ import (
 type mockConsenter struct {
 }
 
-func (mc *mockConsenter) HandleChain(support ConsenterSupport) (Chain, error) {
+func (mc *mockConsenter) HandleChain(support ConsenterSupport, metadata *cb.Metadata) (Chain, error) {
 	return &mockChain{
-		queue:   make(chan *cb.Envelope),
-		cutter:  support.BlockCutter(),
-		support: support,
-		done:    make(chan struct{}),
+		queue:    make(chan *cb.Envelope),
+		cutter:   support.BlockCutter(),
+		support:  support,
+		metadata: metadata,
+		done:     make(chan struct{}),
 	}, nil
 }
 
 type mockChain struct {
-	queue   chan *cb.Envelope
-	support ConsenterSupport
-	cutter  blockcutter.Receiver
-	done    chan struct{}
+	queue    chan *cb.Envelope
+	cutter   blockcutter.Receiver
+	support  ConsenterSupport
+	metadata *cb.Metadata
+	done     chan struct{}
 }
 
 func (mch *mockChain) Enqueue(env *cb.Envelope) bool {
@@ -59,7 +61,7 @@ func (mch *mockChain) Start() {
 			batches, committers, _ := mch.cutter.Ordered(msg)
 			for i, batch := range batches {
 				block := mch.support.CreateNextBlock(batch)
-				mch.support.WriteBlock(block, committers[i])
+				mch.support.WriteBlock(block, committers[i], nil)
 			}
 		}
 	}()

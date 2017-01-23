@@ -79,7 +79,7 @@ func New() multichain.Consenter {
 }
 
 // HandleChain creates/returns a reference to a Chain for the given set of support resources.
-func (solo *consenter) HandleChain(support multichain.ConsenterSupport) (multichain.Chain, error) {
+func (solo *consenter) HandleChain(support multichain.ConsenterSupport, metadata *cb.Metadata) (multichain.Chain, error) {
 	return newChain(support), nil
 }
 

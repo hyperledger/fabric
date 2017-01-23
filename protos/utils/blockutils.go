@@ -46,7 +46,7 @@ func GetChainIDFromBlock(block *cb.Block) (string, error) {
 	return payload.Header.ChainHeader.ChainID, nil
 }
 
-// GetMetadataFromBlock retrieves metadata at the specified index
+// GetMetadataFromBlock retrieves metadata at the specified index.
 func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Metadata, error) {
 	md := &cb.Metadata{}
 	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
@@ -54,6 +54,16 @@ func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Met
 		return nil, err
 	}
 	return md, nil
+}
+
+// GetMetadataFromBlockOrPanic retrieves metadata at the specified index, or panics on error.
+func GetMetadataFromBlockOrPanic(block *cb.Block, index cb.BlockMetadataIndex) *cb.Metadata {
+	md := &cb.Metadata{}
+	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
+	if err != nil {
+		panic(err)
+	}
+	return md
 }
 
 // GetLastConfigurationIndexFromBlock retrieves the index of the last configuration block as encoded in the block metadata
@@ -68,6 +78,20 @@ func GetLastConfigurationIndexFromBlock(block *cb.Block) (uint64, error) {
 		return 0, err
 	}
 	return lc.Index, nil
+}
+
+// GetLastConfigurationIndexFromBlockOrPanic retrieves the index of the last configuration block as encoded in the block metadata, or panics on error.
+func GetLastConfigurationIndexFromBlockOrPanic(block *cb.Block) uint64 {
+	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIGURATION)
+	if err != nil {
+		panic(err)
+	}
+	lc := &cb.LastConfiguration{}
+	err = proto.Unmarshal(md.Value, lc)
+	if err != nil {
+		panic(err)
+	}
+	return lc.Index
 }
 
 // GetBlockFromBlockBytes marshals the bytes into Block
