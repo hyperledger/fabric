@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	testFolder = "/tmp/test/ledger/ordererledger"
+	testFolder = "/tmp/fabric/ledgertests/ordererledger"
 )
 
 func TestOrdererLedger(t *testing.T) {

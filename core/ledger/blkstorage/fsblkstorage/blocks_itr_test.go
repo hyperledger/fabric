@@ -25,7 +25,7 @@ import (
 )
 
 func TestBlocksItrBlockingNext(t *testing.T) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()

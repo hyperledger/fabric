@@ -28,7 +28,7 @@ import (
 )
 
 func TestBlockfileMgrBlockReadWrite(t *testing.T) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -47,7 +47,7 @@ func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
 
 func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint int,
 	numBlocksAfterCheckpoint int, numLastBlockBytes int, numPartialBytesToWrite int) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -92,7 +92,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 }
 
 func TestBlockfileMgrBlockIterator(t *testing.T) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -120,7 +120,7 @@ func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
 }
 
 func TestBlockfileMgrBlockchainInfo(t *testing.T) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -135,7 +135,7 @@ func TestBlockfileMgrBlockchainInfo(t *testing.T) {
 }
 
 func TestBlockfileMgrGetTxById(t *testing.T) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -156,7 +156,7 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 }
 
 func TestBlockfileMgrRestart(t *testing.T) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -182,7 +182,7 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	}
 
 	maxFileSie := int(0.75 * float64(size))
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", maxFileSie))
+	env := newTestEnv(t, NewConf(testPath, maxFileSie))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)

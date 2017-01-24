@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
-const testDBPath = "/tmp/test/hyperledger/fabric/core/ledger/util/db"
+const testDBPath = "/tmp/fabric/ledgertests/util/leveldbhelper"
 
 func TestDBBasicWriteAndReads(t *testing.T) {
 	testDBBasicWriteAndReads(t, "db1", "db2", "")

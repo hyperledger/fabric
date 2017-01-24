@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 )
 
-var testPath = "/tmp/fabric/ledgertests"
+var testPath = "/tmp/fabric/ledgertests/blkstorage/fsblkstorage"
 
 type testEnv struct {
 	t        testing.TB

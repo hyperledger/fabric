@@ -54,7 +54,7 @@ func TestBlockIndexSync(t *testing.T) {
 }
 
 func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncByRestart bool) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 	ledgerid := "testledger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -113,7 +113,7 @@ func TestBlockIndexSelectiveIndexing(t *testing.T) {
 }
 
 func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.IndexableAttr) {
-	env := newTestEnvSelectiveIndexing(t, NewConf("/tmp/fabric/ledgertests", 0), indexItems)
+	env := newTestEnvSelectiveIndexing(t, NewConf(testPath, 0), indexItems)
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testledger")
 	defer blkfileMgrWrapper.close()

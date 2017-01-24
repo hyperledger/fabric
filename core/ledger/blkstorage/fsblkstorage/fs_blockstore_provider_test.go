@@ -28,7 +28,7 @@ import (
 )
 
 func TestMultipleBlockStores(t *testing.T) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 
 	provider := env.provider
@@ -65,7 +65,7 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.
 }
 
 func TestBlockStoreProvider(t *testing.T) {
-	env := newTestEnv(t, NewConf("/tmp/fabric/ledgertests", 0))
+	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
 
 	provider := env.provider
