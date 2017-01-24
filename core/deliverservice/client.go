@@ -211,7 +211,6 @@ func (d *DeliverService) readUntilClose() {
 			payload := createPayload(seqNum, t.Block)
 			// Use payload to create gossip message
 			gossipMsg := createGossipMsg(d.chainID, payload)
-			logger.Debug("Creating gossip message", gossipMsg)
 
 			logger.Debugf("Adding payload locally, buffer seqNum = [%d], peers number [%d]", seqNum, numberOfPeers)
 			// Add payload to local state payloads buffer
