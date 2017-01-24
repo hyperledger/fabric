@@ -17,11 +17,10 @@ limitations under the License.
 package escc
 
 import (
-	"errors"
-
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
@@ -36,10 +35,10 @@ type EndorserOneValidSignature struct {
 }
 
 // Init is called once when the chaincode started the first time
-func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	logger.Infof("Successfully initialized ESCC")
 
-	return nil, nil
+	return shim.Success(nil)
 }
 
 // Invoke is called to endorse the specified Proposal
@@ -61,12 +60,12 @@ func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) ([]by
 // silently discarded: the only state changes that will be persisted if
 // this endorsement is successful is what we are about to sign, which by
 // definition can't be a state change of our own.
-func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
 	if len(args) < 4 {
-		return nil, fmt.Errorf("Incorrect number of arguments (expected a minimum of 4, provided %d)", len(args))
+		return shim.Error(fmt.Sprintf("Incorrect number of arguments (expected a minimum of 4, provided %d)", len(args)))
 	} else if len(args) > 6 {
-		return nil, fmt.Errorf("Incorrect number of arguments (expected a maximum of 6, provided %d)", len(args))
+		return shim.Error(fmt.Sprintf("Incorrect number of arguments (expected a maximum of 6, provided %d)", len(args)))
 	}
 
 	logger.Infof("ESCC starts: %d args", len(args))
@@ -74,7 +73,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	// handle the header
 	var hdr []byte
 	if args[1] == nil {
-		return nil, errors.New("serialized Header object is null")
+		return shim.Error("serialized Header object is null")
 	}
 
 	hdr = args[1]
@@ -82,7 +81,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	// handle the proposal payload
 	var payl []byte
 	if args[2] == nil {
-		return nil, errors.New("serialized ChaincodeProposalPayload object is null")
+		return shim.Error("serialized ChaincodeProposalPayload object is null")
 	}
 
 	payl = args[2]
@@ -90,7 +89,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	// handle simulation results
 	var results []byte
 	if args[3] == nil {
-		return nil, errors.New("simulation results are null")
+		return shim.Error("simulation results are null")
 	}
 
 	results = args[3]
@@ -107,7 +106,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	visibility := []byte("") // TODO: when visibility is properly defined, replace with the default
 	if len(args) > 5 {
 		if args[5] == nil {
-			return nil, errors.New("serialized events are null")
+			return shim.Error("serialized events are null")
 		}
 		visibility = args[5]
 	}
@@ -115,26 +114,34 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) ([]
 	// obtain the default signing identity for this peer; it will be used to sign this proposal response
 	localMsp := mspmgmt.GetLocalMSP()
 	if localMsp == nil {
-		return nil, fmt.Errorf("Nil local MSP manager")
+		return shim.Error("Nil local MSP manager")
 	}
 
 	signingEndorser, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		return nil, fmt.Errorf("Could not obtain the default signing identity, err %s", err)
+		return shim.Error(fmt.Sprintf("Could not obtain the default signing identity, err %s", err))
 	}
 
 	// obtain a proposal response
 	presp, err := utils.CreateProposalResponse(hdr, payl, results, events, visibility, signingEndorser)
 	if err != nil {
-		return nil, err
+		return shim.Error(err.Error())
 	}
 
 	// marshall the proposal response so that we return its bytes
 	prBytes, err := utils.GetBytesProposalResponse(presp)
 	if err != nil {
-		return nil, fmt.Errorf("Could not marshall ProposalResponse: err %s", err)
+		return shim.Error(fmt.Sprintf("Could not marshall ProposalResponse: err %s", err))
+	}
+
+	pResp, err := utils.GetProposalResponse(prBytes)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	if pResp.Response == nil {
+		fmt.Println("GetProposalResponse get empty Response")
 	}
 
 	logger.Infof("ESCC exits successfully")
-	return prBytes, nil
+	return shim.Success(prBytes)
 }

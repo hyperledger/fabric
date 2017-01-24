@@ -294,7 +294,7 @@ func (stub *ChaincodeStub) GetTxID() string {
 // InvokeChaincode locally calls the specified chaincode `Invoke` using the
 // same transaction context; that is, chaincode calling chaincode doesn't
 // create a new transaction message.
-func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
+func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte) pb.Response {
 	return stub.handler.handleInvokeChaincode(chaincodeName, args, stub.TxID)
 }
 

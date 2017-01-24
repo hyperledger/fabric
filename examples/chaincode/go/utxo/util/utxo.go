@@ -138,7 +138,7 @@ func (u *UTXO) Execute(txData []byte) (*ExecResult, error) {
 }
 
 // Query search the storage for a given transaction hash
-func (u *UTXO) Query(txHashHex string) ([]byte, error) {
+func (u *UTXO) Query(txHashHex string) pb.Response {
 	tx, _, err := u.Store.GetTran(txHashHex)
 	return tx, err
 }

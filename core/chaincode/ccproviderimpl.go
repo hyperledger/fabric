@@ -87,7 +87,7 @@ func (c *ccProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid 
 }
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments
-func (c *ccProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) ([]byte, *peer.ChaincodeEvent, error) {
+func (c *ccProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return ExecuteChaincode(ctxt, cccid.(*ccProviderContextImpl).ctx, args)
 }
 

@@ -37,8 +37,8 @@ func TestInit(t *testing.T) {
 	stub := shim.NewMockStub("endorseronevalidsignature", e)
 
 	args := [][]byte{[]byte("DEFAULT"), []byte("PEER")}
-	if _, err := stub.MockInit("1", args); err != nil {
-		fmt.Println("Init failed", err)
+	if res := stub.MockInit("1", args); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
 }
@@ -49,47 +49,47 @@ func TestInvoke(t *testing.T) {
 
 	// Initialize ESCC supplying the identity of the signer
 	args := [][]byte{[]byte("DEFAULT"), []byte("PEER")}
-	if _, err := stub.MockInit("1", args); err != nil {
-		fmt.Println("Init failed", err)
+	if res := stub.MockInit("1", args); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
 
 	// Failed path: Not enough parameters
 	args = [][]byte{[]byte("test")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
 	}
 
 	// Failed path: Not enough parameters
 	args = [][]byte{[]byte("test"), []byte("test")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
 	}
 
 	// Failed path: Not enough parameters
 	args = [][]byte{[]byte("test"), []byte("test"), []byte("test")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
 	}
 
 	// Failed path: header is null
 	args = [][]byte{[]byte("test"), nil, []byte("test"), []byte("test")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
-		fmt.Println("Invoke", args, "failed", err)
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null header.  args: %v", args)
 	}
 
 	// Failed path: payload is null
 	args = [][]byte{[]byte("test"), []byte("test"), nil, []byte("test")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
-		fmt.Println("Invoke", args, "failed", err)
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null payload.  args: %v", args)
 	}
 
 	// Failed path: action struct is null
 	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), nil}
-	if _, err := stub.MockInvoke("1", args); err == nil {
-		fmt.Println("Invoke", args, "failed", err)
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null action struct.  args: %v", args)
 	}
 
@@ -128,14 +128,14 @@ func TestInvoke(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes}
-	prBytes, err := stub.MockInvoke("1", args)
-	if err != nil {
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
 		t.Fail()
-		t.Fatalf("escc invoke failed with: %v", err)
+		t.Fatalf("escc invoke failed with: %s", res.Message)
 		return
 	}
 
-	err = validateProposalResponse(prBytes, proposal, nil, simRes, nil)
+	err = validateProposalResponse(res.Payload, proposal, nil, simRes, nil)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)
@@ -146,14 +146,14 @@ func TestInvoke(t *testing.T) {
 	events := []byte("events")
 
 	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes, events}
-	prBytes, err = stub.MockInvoke("1", args)
-	if err != nil {
+	res = stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
 		t.Fail()
-		t.Fatalf("escc invoke failed with: %v", err)
+		t.Fatalf("escc invoke failed with: %s", res.Message)
 		return
 	}
 
-	err = validateProposalResponse(prBytes, proposal, nil, simRes, events)
+	err = validateProposalResponse(res.Payload, proposal, nil, simRes, events)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)
@@ -164,14 +164,14 @@ func TestInvoke(t *testing.T) {
 	visibility := []byte("visibility")
 
 	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes, events, visibility}
-	prBytes, err = stub.MockInvoke("1", args)
-	if err != nil {
+	res = stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
 		t.Fail()
-		t.Fatalf("escc invoke failed with: %v", err)
+		t.Fatalf("escc invoke failed with: %s", res.Message)
 		return
 	}
 
-	err = validateProposalResponse(prBytes, proposal, visibility, simRes, events)
+	err = validateProposalResponse(res.Payload, proposal, visibility, simRes, events)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)

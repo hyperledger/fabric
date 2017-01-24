@@ -17,9 +17,8 @@ limitations under the License.
 package samplesyscc
 
 import (
-	"errors"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // SampleSysCC example simple Chaincode implementation
@@ -28,22 +27,22 @@ type SampleSysCC struct {
 
 // Init initializes the sample system chaincode by storing the key and value
 // arguments passed in as parameters
-func (t *SampleSysCC) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *SampleSysCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	//as system chaincodes do not take part in consensus and are part of the system,
 	//best practice to do nothing (or very little) in Init.
 
-	return nil, nil
+	return shim.Success(nil)
 }
 
 // Invoke gets the supplied key and if it exists, updates the key with the newly
 // supplied value.
-func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	f, args := stub.GetFunctionAndParameters()
 
 	switch f {
 	case "putval":
 		if len(args) != 2 {
-			return nil, errors.New("need 2 args (key and a value)")
+			return shim.Error("need 2 args (key and a value)")
 		}
 
 		// Initialize the chaincode
@@ -53,17 +52,21 @@ func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
 		_, err := stub.GetState(key)
 		if err != nil {
 			jsonResp := "{\"Error\":\"Failed to get val for " + key + "\"}"
-			return nil, errors.New(jsonResp)
+			return shim.Error(jsonResp)
 		}
 
 		// Write the state to the ledger
 		err = stub.PutState(key, []byte(val))
-		return nil, err
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		return shim.Success(nil)
 	case "getval":
 		var err error
 
 		if len(args) != 1 {
-			return nil, errors.New("Incorrect number of arguments. Expecting key to query")
+			return shim.Error("Incorrect number of arguments. Expecting key to query")
 		}
 
 		key := args[0]
@@ -72,17 +75,17 @@ func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
 		valbytes, err := stub.GetState(key)
 		if err != nil {
 			jsonResp := "{\"Error\":\"Failed to get state for " + key + "\"}"
-			return nil, errors.New(jsonResp)
+			return shim.Error(jsonResp)
 		}
 
 		if valbytes == nil {
 			jsonResp := "{\"Error\":\"Nil val for " + key + "\"}"
-			return nil, errors.New(jsonResp)
+			return shim.Error(jsonResp)
 		}
 
-		return valbytes, nil
+		return shim.Success(valbytes)
 	default:
 		jsonResp := "{\"Error\":\"Unknown functon " + f + "\"}"
-		return nil, errors.New(jsonResp)
+		return shim.Error(jsonResp)
 	}
 }

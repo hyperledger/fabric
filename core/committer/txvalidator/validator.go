@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	coreUtil "github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -261,10 +262,14 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 
 	// invoke VSCC
 	logger.Info("Invoking VSCC txid", txid, "chaindID", chainID)
-	_, _, err = v.ccprovider.ExecuteChaincode(ctxt, cccid, args)
+	res, _, err := v.ccprovider.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
-		logger.Errorf("VSCC check failed for transaction txid=%s, error %s", txid, err)
+		logger.Errorf("Invoke VSCC failed for transaction txid=%s, error %s", txid, err)
 		return err
+	}
+	if res.Status != shim.OK {
+		logger.Errorf("VSCC check failed for transaction txid=%s, error %s", txid, res.Message)
+		return fmt.Errorf("%s", res.Message)
 	}
 
 	return nil

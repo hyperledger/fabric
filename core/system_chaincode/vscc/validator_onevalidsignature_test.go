@@ -53,8 +53,8 @@ func TestInit(t *testing.T) {
 	v := new(ValidatorOneValidSignature)
 	stub := shim.NewMockStub("validatoronevalidsignature", v)
 
-	if _, err := stub.MockInit("1", nil); err != nil {
-		t.Fatalf("vscc init failed with %v", err)
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		t.Fatalf("vscc init failed with %s", res.Message)
 	}
 }
 
@@ -75,14 +75,14 @@ func TestInvoke(t *testing.T) {
 
 	// Failed path: Invalid arguments
 	args := [][]byte{[]byte("dv")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("vscc invoke should have failed")
 		return
 	}
 
 	args = [][]byte{[]byte("dv"), []byte("tx")}
 	args[1] = nil
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("vscc invoke should have failed")
 		return
 	}
@@ -107,7 +107,7 @@ func TestInvoke(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.Fatalf("vscc invoke returned err %s", err)
 		return
 	}
@@ -120,7 +120,7 @@ func TestInvoke(t *testing.T) {
 	}
 
 	args = [][]byte{[]byte("dv"), envBytes, policy}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("vscc invoke should have failed")
 		return
 	}

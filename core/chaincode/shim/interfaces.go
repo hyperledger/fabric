@@ -19,6 +19,8 @@ package shim
 
 import (
 	"github.com/golang/protobuf/ptypes/timestamp"
+
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // Chaincode interface must be implemented by all chaincodes. The fabric runs
@@ -26,11 +28,10 @@ import (
 type Chaincode interface {
 	// Init is called during Deploy transaction after the container has been
 	// established, allowing the chaincode to initialize its internal data
-	Init(stub ChaincodeStubInterface) ([]byte, error)
-
+	Init(stub ChaincodeStubInterface) pb.Response
 	// Invoke is called for every Invoke transactions. The chaincode may change
 	// its state variables
-	Invoke(stub ChaincodeStubInterface) ([]byte, error)
+	Invoke(stub ChaincodeStubInterface) pb.Response
 }
 
 // ChaincodeStubInterface is used by deployable chaincode apps to access and modify their ledgers
@@ -51,7 +52,7 @@ type ChaincodeStubInterface interface {
 	// InvokeChaincode locally calls the specified chaincode `Invoke` using the
 	// same transaction context; that is, chaincode calling chaincode doesn't
 	// create a new transaction message.
-	InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error)
+	InvokeChaincode(chaincodeName string, args [][]byte) pb.Response
 
 	// GetState returns the byte array value specified by the `key`.
 	GetState(key string) ([]byte, error)

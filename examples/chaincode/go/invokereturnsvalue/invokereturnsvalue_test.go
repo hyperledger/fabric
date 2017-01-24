@@ -23,18 +23,18 @@ import (
 )
 
 func checkInit(t *testing.T, stub *shim.MockStub, args [][]byte, retval []byte) {
-	result, err := stub.MockInit("1", args)
-	if err != nil {
-		fmt.Println("Init failed", err)
+	res := stub.MockInit("1", args)
+	if res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
 	if retval != nil {
-		if result == nil {
+		if res.Payload == nil {
 			fmt.Printf("Init returned nil, expected %s", string(retval))
 			t.FailNow()
 		}
-		if string(result) != string(retval) {
-			fmt.Printf("Init returned %s, expected %s", string(result), string(retval))
+		if string(res.Payload) != string(retval) {
+			fmt.Printf("Init returned %s, expected %s", string(res.Payload), string(retval))
 			t.FailNow()
 		}
 	}
@@ -53,19 +53,19 @@ func checkState(t *testing.T, stub *shim.MockStub, name string, value string) {
 }
 
 func checkInvoke(t *testing.T, stub *shim.MockStub, args [][]byte, retval []byte) {
-	result, err := stub.MockInvoke("1", args)
-	if err != nil {
-		fmt.Println("Invoke", args, "failed", err)
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.FailNow()
 	}
 
 	if retval != nil {
-		if result == nil {
+		if res.Payload == nil {
 			fmt.Printf("Invoke returned nil, expected %s", string(retval))
 			t.FailNow()
 		}
-		if string(result) != string(retval) {
-			fmt.Printf("Invoke returned %s, expected %s", string(result), string(retval))
+		if string(res.Payload) != string(retval) {
+			fmt.Printf("Invoke returned %s, expected %s", string(res.Payload), string(retval))
 			t.FailNow()
 		}
 	}

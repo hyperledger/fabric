@@ -21,9 +21,11 @@ package shim
 import (
 	"container/list"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
 
@@ -105,21 +107,21 @@ func (stub *MockStub) MockPeerChaincode(invokableChaincodeName string, otherStub
 }
 
 // Initialise this chaincode,  also starts and ends a transaction.
-func (stub *MockStub) MockInit(uuid string, args [][]byte) ([]byte, error) {
+func (stub *MockStub) MockInit(uuid string, args [][]byte) pb.Response {
 	stub.args = args
 	stub.MockTransactionStart(uuid)
-	bytes, err := stub.cc.Init(stub)
+	res := stub.cc.Init(stub)
 	stub.MockTransactionEnd(uuid)
-	return bytes, err
+	return res
 }
 
 // Invoke this chaincode, also starts and ends a transaction.
-func (stub *MockStub) MockInvoke(uuid string, args [][]byte) ([]byte, error) {
+func (stub *MockStub) MockInvoke(uuid string, args [][]byte) pb.Response {
 	stub.args = args
 	stub.MockTransactionStart(uuid)
-	bytes, err := stub.cc.Invoke(stub)
+	res := stub.cc.Invoke(stub)
 	stub.MockTransactionEnd(uuid)
-	return bytes, err
+	return res
 }
 
 // GetState retrieves the value for a given key from the ledger
@@ -210,14 +212,14 @@ func (stub *MockStub) CreateCompositeKey(objectType string, attributes []string)
 // E.g. stub1.InvokeChaincode("stub2Hash", funcArgs)
 // Before calling this make sure to create another MockStub stub2, call stub2.MockInit(uuid, func, args)
 // and register it with stub1 by calling stub1.MockPeerChaincode("stub2Hash", stub2)
-func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
+func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte) pb.Response {
 	// TODO "args" here should possibly be a serialized pb.ChaincodeInput
 	otherStub := stub.Invokables[chaincodeName]
 	mockLogger.Debug("MockStub", stub.Name, "Invoking peer chaincode", otherStub.Name, args)
 	//	function, strings := getFuncArgs(args)
-	bytes, err := otherStub.MockInvoke(stub.TxID, args)
-	mockLogger.Debug("MockStub", stub.Name, "Invoked peer chaincode", otherStub.Name, "got", bytes, err)
-	return bytes, err
+	res := otherStub.MockInvoke(stub.TxID, args)
+	mockLogger.Debug("MockStub", stub.Name, "Invoked peer chaincode", otherStub.Name, "got", fmt.Sprintf("%+v", res))
+	return res
 }
 
 // Not implemented

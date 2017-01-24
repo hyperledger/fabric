@@ -41,8 +41,8 @@ func TestConfigerInit(t *testing.T) {
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
 
-	if _, err := stub.MockInit("1", nil); err != nil {
-		fmt.Println("Init failed", err)
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
 }
@@ -74,7 +74,7 @@ func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 	setupEndpoint(t)
 	// Failed path: Not enough parameters
 	args := [][]byte{[]byte("JoinChain")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("cscc invoke JoinChain should have failed with invalid number of args: %v", args)
 	}
 }
@@ -91,8 +91,7 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 
 	// Failed path: wrong parameter type
 	args := [][]byte{[]byte("JoinChain"), []byte("action")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
-		fmt.Println("Invoke", args, "failed", err)
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("cscc invoke JoinChain should have failed with null genesis block.  args: %v", args)
 	}
 }
@@ -124,7 +123,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		t.Fatalf("cscc invoke JoinChain failed because invalid block")
 	}
 	args := [][]byte{[]byte("JoinChain"), blockBytes}
-	if _, err = stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", err)
 	}
 
@@ -135,7 +134,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", err)
 	}
 	args = [][]byte{[]byte("GetConfigBlock"), []byte(chainID)}
-	if _, err = stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.Fatalf("cscc invoke GetConfigBlock failed with: %v", err)
 	}
 }
@@ -149,14 +148,13 @@ func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
 
 	// Failed path: Not enough parameters
 	args := [][]byte{[]byte("UpdateConfigBlock")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("cscc invoke UpdateConfigBlock should have failed with invalid number of args: %v", args)
 	}
 
 	// Failed path: wrong parameter type
 	args = [][]byte{[]byte("UpdateConfigBlock"), []byte("action")}
-	if _, err := stub.MockInvoke("1", args); err == nil {
-		fmt.Println("Invoke", args, "failed", err)
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.Fatalf("cscc invoke UpdateConfigBlock should have failed with null genesis block - args: %v", args)
 	}
 
@@ -166,8 +164,8 @@ func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
 		t.Fatalf("cscc invoke UpdateConfigBlock failed because invalid block")
 	}
 	args = [][]byte{[]byte("UpdateConfigBlock"), blockBytes}
-	if _, err := stub.MockInvoke("1", args); err != nil {
-		t.Fatalf("cscc invoke UpdateConfigBlock failed with: %v", err)
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.Fatalf("cscc invoke UpdateConfigBlock failed with: %v", res.Message)
 	}
 
 	// Query the configuration block
@@ -177,7 +175,7 @@ func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
 		t.Fatalf("cscc invoke UpdateConfigBlock failed with: %v", err)
 	}
 	args = [][]byte{[]byte("GetConfigBlock"), []byte(chainID)}
-	if _, err := stub.MockInvoke("1", args); err != nil {
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.Fatalf("cscc invoke GetConfigBlock failed with: %v", err)
 	}
 

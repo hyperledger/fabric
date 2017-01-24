@@ -57,7 +57,7 @@ func (c *mockCcProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, t
 }
 
 // ExecuteChaincode does nothing
-func (c *mockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) ([]byte, *peer.ChaincodeEvent, error) {
+func (c *mockCcProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
 	return nil, nil, nil
 }
 
