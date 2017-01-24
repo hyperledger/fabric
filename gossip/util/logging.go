@@ -28,11 +28,16 @@ import (
 )
 
 const (
-	LOGGING_MESSAGE_BUFF_MODULE = "mbuff"
-	LOGGING_EMITTER_MODULE      = "emitter"
-	LOGGING_GOSSIP_MODULE       = "gossip"
-	LOGGING_DISCOVERY_MODULE    = "discovery"
-	LOGGING_COMM_MODULE         = "comm"
+	// LoggingMessageBuffModule defines the module for logging message buffer
+	LoggingMessageBuffModule = "mbuff"
+	// LoggingEmitterModule defines the module for logging emitter
+	LoggingEmitterModule = "emitter"
+	// LoggingGossipModule defines the module for logging gossip
+	LoggingGossipModule = "gossip"
+	// LoggingDiscoveryModule defines the module for logging discovery
+	LoggingDiscoveryModule = "discovery"
+	// LoggingCommModule defines the module for logging communication
+	LoggingCommModule = "comm"
 )
 
 var loggersByModules = make(map[string]*Logger)
@@ -48,25 +53,30 @@ func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 }
 
+// Logger defines a logger for gossip
 type Logger struct {
 	logging.Logger
 	module string
 }
 
+// SetDefaultFormat sets the formatter for the gossip logger
 func SetDefaultFormat(formatStr string) {
 	format = logging.MustStringFormatter(formatStr)
 }
 
+// SetDefaultLoggingLevel sets the default logging level for the gossip logger
 func SetDefaultLoggingLevel(level logging.Level) {
 	defaultLevel = level
 }
 
+// SetLevel sets the level for the logger
 func (l *Logger) SetLevel(lvl logging.Level) {
 	logging.SetLevel(lvl, l.module)
 }
 
-func GetLogger(module string, peerId string) *Logger {
-	module = module + "-" + peerId
+// GetLogger returns a logger for given gossip module and peerID
+func GetLogger(module string, peerID string) *Logger {
+	module = module + "-" + peerID
 	lock.Lock()
 	defer lock.Unlock()
 

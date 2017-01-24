@@ -24,12 +24,14 @@ import (
 	"sync"
 )
 
+// Equals returns whether a and b are the same
 type Equals func(a interface{}, b interface{}) bool
 
 func init() {
 	rand.Seed(42)
 }
 
+// IndexInSlice returns the index of given object o in array
 func IndexInSlice(array interface{}, o interface{}, equals Equals) int {
 	arr := reflect.ValueOf(array)
 	for i := 0; i < arr.Len(); i++ {
@@ -44,6 +46,8 @@ func numbericEqual(a interface{}, b interface{}) bool {
 	return a.(int) == b.(int)
 }
 
+// GetRandomIndices returns a slice of random indices
+// from 0 to given highestIndex
 func GetRandomIndices(indiceCount, highestIndex int) []int {
 	if highestIndex+1 < indiceCount {
 		return nil
@@ -67,29 +71,34 @@ func GetRandomIndices(indiceCount, highestIndex int) []int {
 	return indices
 }
 
+// Abs returns abs(a-b)
 func Abs(a, b uint64) uint64 {
 	if a > b {
 		return a - b
-	} else {
-		return b - a
 	}
+	return b - a
 }
 
+// Set is a generic and thread-safe
+// set container
 type Set struct {
 	items map[interface{}]struct{}
 	lock  *sync.RWMutex
 }
 
+// NewSet returns a new set
 func NewSet() *Set {
 	return &Set{lock: &sync.RWMutex{}, items: make(map[interface{}]struct{})}
 }
 
+// Add adds given item to the set
 func (s *Set) Add(item interface{}) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.items[item] = struct{}{}
 }
 
+// Exists returns true whether given item is in the set
 func (s *Set) Exists(item interface{}) bool {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -97,6 +106,8 @@ func (s *Set) Exists(item interface{}) bool {
 	return exists
 }
 
+// ToArray returns a slice with items
+// at the point in time the method was invoked
 func (s *Set) ToArray() []interface{} {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -109,12 +120,14 @@ func (s *Set) ToArray() []interface{} {
 	return a
 }
 
+// Clear removes all elements from set
 func (s *Set) Clear() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.items = make(map[interface{}]struct{})
 }
 
+// Remove removes a given item from the set
 func (s *Set) Remove(item interface{}) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -126,6 +139,8 @@ type goroutine struct {
 	Stack []string
 }
 
+// PrintStackTrace prints to stdout
+// all goroutines
 func PrintStackTrace() {
 	buf := make([]byte, 1<<16)
 	runtime.Stack(buf, true)
