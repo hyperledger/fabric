@@ -115,7 +115,7 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		lock:           &sync.RWMutex{},
 		toDieChan:      make(chan struct{}, 1),
 		toDieFlag:      int32(0),
-		logger:         util.GetLogger(util.LOGGING_DISCOVERY_MODULE, self.Endpoint),
+		logger:         util.GetLogger(util.LoggingDiscoveryModule, self.Endpoint),
 	}
 
 	d.logger.SetLevel(logging.WARNING)

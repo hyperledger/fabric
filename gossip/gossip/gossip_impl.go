@@ -77,7 +77,7 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	var c comm.Comm
 	var err error
 	idMapper := identity.NewIdentityMapper(mcs)
-	lgr := util.GetLogger(util.LOGGING_GOSSIP_MODULE, conf.ID)
+	lgr := util.GetLogger(util.LoggingGossipModule, conf.ID)
 	if s == nil {
 		c, err = createCommWithServer(conf.BindPort, idMapper, selfIdentity)
 	} else {
