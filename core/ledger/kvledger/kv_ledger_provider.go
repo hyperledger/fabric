@@ -72,10 +72,10 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 	// Initialize the versioned database (state database)
 	var vdbProvider statedb.VersionedDBProvider
 	if !ledgerconfig.IsCouchDBEnabled() {
-		logger.Debugf("Constructing leveldb VersionedDBProvider")
+		logger.Debug("Constructing leveldb VersionedDBProvider")
 		vdbProvider = stateleveldb.NewVersionedDBProvider()
 	} else {
-		logger.Debugf("Constructing CouchDB VersionedDBProvider")
+		logger.Debug("Constructing CouchDB VersionedDBProvider")
 		var err error
 		vdbProvider, err = statecouchdb.NewVersionedDBProvider()
 		if err != nil {
