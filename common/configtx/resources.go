@@ -18,6 +18,7 @@ package configtx
 
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -28,6 +29,9 @@ import (
 type Resources interface {
 	// PolicyManager returns the policies.Manager for the chain
 	PolicyManager() policies.Manager
+
+	// ChainConfig returns the chainconfig.Descriptor for the chain
+	ChainConfig() chainconfig.Descriptor
 }
 
 // Initializer is a structure which is only useful before a configtx.Manager
@@ -42,11 +46,17 @@ type Initializer interface {
 type resources struct {
 	handlers      map[cb.ConfigurationItem_ConfigurationType]Handler
 	policyManager policies.Manager
+	chainConfig   chainconfig.Descriptor
 }
 
 // PolicyManager returns the policies.Manager for the chain
 func (r *resources) PolicyManager() policies.Manager {
 	return r.policyManager
+}
+
+// ChainConfig returns the chainconfig.Descriptor for the chain
+func (r *resources) ChainConfig() chainconfig.Descriptor {
+	return r.chainConfig
 }
 
 // Handlers returns the handlers to be used when initializing the configtx.Manager
@@ -71,11 +81,14 @@ func NewInitializer() Initializer {
 	}
 
 	policyManager := policies.NewManagerImpl(policyProviderMap)
+	chainConfig := chainconfig.NewDescriptorImpl()
 	handlers := make(map[cb.ConfigurationItem_ConfigurationType]Handler)
 
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
 		rtype := cb.ConfigurationItem_ConfigurationType(ctype)
 		switch rtype {
+		case cb.ConfigurationItem_Chain:
+			handlers[rtype] = chainConfig
 		case cb.ConfigurationItem_Policy:
 			handlers[rtype] = policyManager
 		default:
@@ -86,5 +99,6 @@ func NewInitializer() Initializer {
 	return &resources{
 		handlers:      handlers,
 		policyManager: policyManager,
+		chainConfig:   chainConfig,
 	}
 }

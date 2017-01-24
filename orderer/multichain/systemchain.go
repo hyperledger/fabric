@@ -19,6 +19,7 @@ package multichain
 import (
 	"bytes"
 
+	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
@@ -39,6 +40,7 @@ type limitedSupport interface {
 	ChainID() string
 	PolicyManager() policies.Manager
 	SharedConfig() sharedconfig.Manager
+	ChainConfig() chainconfig.Descriptor
 	Enqueue(env *cb.Envelope) bool
 }
 
@@ -193,7 +195,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 	// XXX actually do policy signature validation
 	_ = policy
 
-	configHash := configtx.HashItems(configEnvelope.Items[1:])
+	configHash := configtx.HashItems(configEnvelope.Items[1:], sc.support.ChainConfig().HashingAlgorithm())
 
 	if !bytes.Equal(configHash, creationPolicy.Digest) {
 		logger.Debugf("Validly signed chain creation did not contain correct digest for remaining configuration %x vs. %x", configHash, creationPolicy.Digest)

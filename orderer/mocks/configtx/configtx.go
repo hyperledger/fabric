@@ -17,6 +17,7 @@ limitations under the License.
 package configtx
 
 import (
+	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -28,6 +29,9 @@ type Initializer struct {
 
 	// PolicyManagerVal is returned as the result of PolicyManager()
 	PolicyManagerVal policies.Manager
+
+	// ChainConfigVal is returned as the result of ChainConfig()
+	ChainConfigVal chainconfig.Descriptor
 }
 
 // Returns the HandlersVal
@@ -38,6 +42,11 @@ func (i *Initializer) Handlers() map[cb.ConfigurationItem_ConfigurationType]conf
 // Returns the PolicyManagerVal
 func (i *Initializer) PolicyManager() policies.Manager {
 	return i.PolicyManagerVal
+}
+
+// Returns the ChainConfigVal
+func (i *Initializer) ChainConfig() chainconfig.Descriptor {
+	return i.ChainConfigVal
 }
 
 // Manager is a mock implementation of configtx.Manager

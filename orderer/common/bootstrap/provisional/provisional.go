@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
@@ -67,6 +68,11 @@ type bootstrapper struct {
 func New(conf *config.TopLevel) Generator {
 	bs := &bootstrapper{
 		minimalItems: []*cb.ConfigurationItem{
+			// Chain Config Types
+			chainconfig.DefaultHashingAlgorithm(),
+			chainconfig.DefaultBlockDataHashingStructure(),
+			chainconfig.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
+
 			// Orderer Config Types
 			sharedconfig.TemplateConsensusType(conf.Genesis.OrdererType),
 			sharedconfig.TemplateBatchSize(&ab.BatchSize{

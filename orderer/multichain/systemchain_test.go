@@ -20,7 +20,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	mockchainconfig "github.com/hyperledger/fabric/common/mocks/chainconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	coreutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
@@ -49,17 +51,19 @@ func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 }
 
 type mockSupport struct {
-	mpm     *mockPolicyManager
-	msc     *mocksharedconfig.Manager
-	chainID string
-	queue   []*cb.Envelope
+	mpm         *mockPolicyManager
+	msc         *mocksharedconfig.Manager
+	chainID     string
+	queue       []*cb.Envelope
+	chainConfig *mockchainconfig.Descriptor
 }
 
 func newMockSupport(chainID string) *mockSupport {
 	return &mockSupport{
-		mpm:     &mockPolicyManager{},
-		msc:     &mocksharedconfig.Manager{},
-		chainID: chainID,
+		mpm:         &mockPolicyManager{},
+		msc:         &mocksharedconfig.Manager{},
+		chainID:     chainID,
+		chainConfig: &mockchainconfig.Descriptor{},
 	}
 }
 
@@ -78,6 +82,10 @@ func (ms *mockSupport) PolicyManager() policies.Manager {
 
 func (ms *mockSupport) SharedConfig() sharedconfig.Manager {
 	return ms.msc
+}
+
+func (ms *mockSupport) ChainConfig() chainconfig.Descriptor {
+	return ms.chainConfig
 }
 
 type mockChainCreator struct {
@@ -118,7 +126,7 @@ func TestGoodProposal(t *testing.T) {
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte{}),
+			Digest: mcc.ms.ChainConfig().HashingAlgorithm()([]byte{}),
 		}),
 	}
 	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
