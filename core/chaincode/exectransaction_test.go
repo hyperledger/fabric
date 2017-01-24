@@ -37,6 +37,7 @@ import (
 	putils "github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -855,9 +856,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 }
 
 // Test the invocation of a transaction.
-func TestRangeQuery(t *testing.T) {
-	//TODO enable after ledger enables RangeQuery
-	t.Skip()
+func TestQueries(t *testing.T) {
 
 	chainID := util.GetTestChainID()
 
@@ -891,8 +890,44 @@ func TestRangeQuery(t *testing.T) {
 	}
 
 	// Invoke second chaincode, which will inturn invoke the first chaincode
+	f = "put"
+	args = util.ToChaincodeArgs(f, "key1", "{\"shipmentID\":\"161003PKC7300\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091622\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, err = invoke(ctxt, chainID, spec)
+
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", chaincodeID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	f = "put"
+	args = util.ToChaincodeArgs(f, "key2", "{\"shipmentID\":\"161003PKC7300\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091622\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, err = invoke(ctxt, chainID, spec)
+
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", chaincodeID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	f = "put"
+	args = util.ToChaincodeArgs(f, "key3", "{\"shipmentID\":\"161003PKC7300\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091622\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, err = invoke(ctxt, chainID, spec)
+
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", chaincodeID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
 	f = "keys"
-	args = util.ToChaincodeArgs(f)
+	args = util.ToChaincodeArgs(f, "key0", "key3")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, Input: &pb.ChaincodeInput{Args: args}}
 	_, _, _, err = invoke(ctxt, chainID, spec)
@@ -902,6 +937,21 @@ func TestRangeQuery(t *testing.T) {
 		t.Logf("Error invoking <%s>: %s", chaincodeID, err)
 		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
+	}
+
+	if ledgerconfig.IsCouchDBEnabled() == true {
+		f = "query"
+		args = util.ToChaincodeArgs(f, "{\"selector\":{\"currency\":\"USD\"}}")
+
+		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, Input: &pb.ChaincodeInput{Args: args}}
+		_, _, _, err = invoke(ctxt, chainID, spec)
+
+		if err != nil {
+			t.Fail()
+			t.Logf("Error invoking <%s>: %s", chaincodeID, err)
+			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			return
+		}
 	}
 	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }

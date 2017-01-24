@@ -86,7 +86,13 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Success(value)
 
 	case "keys":
-		keysIter, err := stub.RangeQueryState("", "")
+		if len(args) < 2 {
+			return shim.Error("put operation must include two arguments, a key and value")
+		}
+		startKey := args[0]
+		endKey := args[1]
+
+		keysIter, err := stub.RangeQueryState(startKey, endKey)
 		if err != nil {
 			return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
 		}
@@ -104,6 +110,29 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		jsonKeys, err := json.Marshal(keys)
 		if err != nil {
 			return shim.Error(fmt.Sprintf("keys operation failed. Error marshaling JSON: %s", err))
+		}
+
+		return shim.Success(jsonKeys)
+	case "query":
+		query := args[0]
+		keysIter, err := stub.ExecuteQuery(query)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+		}
+		defer keysIter.Close()
+
+		var keys []string
+		for keysIter.HasNext() {
+			key, _, iterErr := keysIter.Next()
+			if iterErr != nil {
+				return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+			}
+			keys = append(keys, key)
+		}
+
+		jsonKeys, err := json.Marshal(keys)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("query operation failed. Error marshaling JSON: %s", err))
 		}
 
 		return shim.Success(jsonKeys)

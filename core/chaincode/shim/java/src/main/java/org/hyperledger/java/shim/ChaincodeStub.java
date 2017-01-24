@@ -102,7 +102,7 @@ public class ChaincodeStub {
      */
     public Map<String, ByteString> rangeQueryRawState(String startKey, String endKey) {
         Map<String, ByteString> map = new HashMap<>();
-        for (Chaincode.RangeQueryStateKeyValue mapping : handler.handleRangeQueryState(
+        for (Chaincode.QueryStateKeyValue mapping : handler.handleRangeQueryState(
                 startKey, endKey, uuid).getKeysAndValuesList()) {
             map.put(mapping.getKey(), mapping.getValue());
         }

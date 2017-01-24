@@ -315,12 +315,12 @@ func (stub *ChaincodeStub) DelState(key string) error {
 	return stub.handler.handleDelState(key, stub.TxID)
 }
 
-// StateRangeQueryIterator allows a chaincode to iterate over a range of
+// StateQueryIterator allows a chaincode to iterate over a set of
 // key/value pairs in the state.
-type StateRangeQueryIterator struct {
+type StateQueryIterator struct {
 	handler    *Handler
 	uuid       string
-	response   *pb.RangeQueryStateResponse
+	response   *pb.QueryStateResponse
 	currentLoc int
 }
 
@@ -329,12 +329,21 @@ type StateRangeQueryIterator struct {
 // an iterator will be returned that can be used to iterate over all keys
 // between the startKey and endKey, inclusive. The order in which keys are
 // returned by the iterator is random.
-func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateRangeQueryIteratorInterface, error) {
+func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateQueryIteratorInterface, error) {
 	response, err := stub.handler.handleRangeQueryState(startKey, endKey, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
-	return &StateRangeQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+}
+
+func (stub *ChaincodeStub) ExecuteQuery(query string) (StateQueryIteratorInterface, error) {
+	response, err := stub.handler.handleExecuteQueryState(query, stub.TxID)
+	if err != nil {
+		return nil, err
+	}
+	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+
 }
 
 //Given a list of attributes, createCompositeKey function combines these attributes
@@ -359,11 +368,11 @@ func createCompositeKey(stub ChaincodeStubInterface, objectType string, attribut
 //matches the given partial composite key. This function should be used only for
 //a partial composite key. For a full composite key, an iter with empty response
 //would be returned.
-func (stub *ChaincodeStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+func (stub *ChaincodeStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
 	return partialCompositeKeyQuery(stub, objectType, attributes)
 }
 
-func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, attributes []string) (StateQueryIteratorInterface, error) {
 	partialCompositeKey, _ := stub.CreateCompositeKey(objectType, attributes)
 	keysIter, err := stub.RangeQueryState(partialCompositeKey+"1", partialCompositeKey+":")
 	if err != nil {
@@ -374,7 +383,7 @@ func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, at
 
 // HasNext returns true if the range query iterator contains additional keys
 // and values.
-func (iter *StateRangeQueryIterator) HasNext() bool {
+func (iter *StateQueryIterator) HasNext() bool {
 	if iter.currentLoc < len(iter.response.KeysAndValues) || iter.response.HasMore {
 		return true
 	}
@@ -382,7 +391,7 @@ func (iter *StateRangeQueryIterator) HasNext() bool {
 }
 
 // Next returns the next key and value in the range query iterator.
-func (iter *StateRangeQueryIterator) Next() (string, []byte, error) {
+func (iter *StateQueryIterator) Next() (string, []byte, error) {
 	if iter.currentLoc < len(iter.response.KeysAndValues) {
 		keyValue := iter.response.KeysAndValues[iter.currentLoc]
 		iter.currentLoc++
@@ -390,7 +399,7 @@ func (iter *StateRangeQueryIterator) Next() (string, []byte, error) {
 	} else if !iter.response.HasMore {
 		return "", nil, errors.New("No such key")
 	} else {
-		response, err := iter.handler.handleRangeQueryStateNext(iter.response.ID, iter.uuid)
+		response, err := iter.handler.handleQueryStateNext(iter.response.ID, iter.uuid)
 
 		if err != nil {
 			return "", nil, err
@@ -407,8 +416,8 @@ func (iter *StateRangeQueryIterator) Next() (string, []byte, error) {
 
 // Close closes the range query iterator. This should be called when done
 // reading from the iterator to free up resources.
-func (iter *StateRangeQueryIterator) Close() error {
-	_, err := iter.handler.handleRangeQueryStateClose(iter.response.ID, iter.uuid)
+func (iter *StateQueryIterator) Close() error {
+	_, err := iter.handler.handleQueryStateClose(iter.response.ID, iter.uuid)
 	return err
 }
 

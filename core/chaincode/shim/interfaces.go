@@ -68,7 +68,7 @@ type ChaincodeStubInterface interface {
 	// an iterator will be returned that can be used to iterate over all keys
 	// between the startKey and endKey, inclusive. The order in which keys are
 	// returned by the iterator is random.
-	RangeQueryState(startKey, endKey string) (StateRangeQueryIteratorInterface, error)
+	RangeQueryState(startKey, endKey string) (StateQueryIteratorInterface, error)
 
 	//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
 	//state based on a given partial composite key. This function returns an
@@ -76,11 +76,13 @@ type ChaincodeStubInterface interface {
 	//matches the given partial composite key. This function should be used only for
 	//a partial composite key. For a full composite key, an iter with empty response
 	//would be returned.
-	PartialCompositeKeyQuery(objectType string, keys []string) (StateRangeQueryIteratorInterface, error)
+	PartialCompositeKeyQuery(objectType string, keys []string) (StateQueryIteratorInterface, error)
 
 	//Given a list of attributes, createCompundKey function combines these attributes
 	//to form a composite key.
 	CreateCompositeKey(objectType string, attributes []string) (string, error)
+
+	ExecuteQuery(query string) (StateQueryIteratorInterface, error)
 
 	// GetCallerCertificate returns caller certificate
 	GetCallerCertificate() ([]byte, error)
@@ -104,9 +106,9 @@ type ChaincodeStubInterface interface {
 	SetEvent(name string, payload []byte) error
 }
 
-// StateRangeQueryIteratorInterface allows a chaincode to iterate over a range of
+// StateQueryIteratorInterface allows a chaincode to iterate over a set of
 // key/value pairs in the state.
-type StateRangeQueryIteratorInterface interface {
+type StateQueryIteratorInterface interface {
 
 	// HasNext returns true if the range query iterator contains additional keys
 	// and values.

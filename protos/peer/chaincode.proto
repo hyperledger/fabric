@@ -134,9 +134,10 @@ message ChaincodeMessage {
         INVOKE_CHAINCODE = 11;
         RESPONSE = 13;
         RANGE_QUERY_STATE = 14;
-        RANGE_QUERY_STATE_NEXT = 15;
-        RANGE_QUERY_STATE_CLOSE = 16;
-        KEEPALIVE = 17;
+        EXECUTE_QUERY_STATE = 15;
+        QUERY_STATE_NEXT = 16;
+        QUERY_STATE_CLOSE = 17;
+        KEEPALIVE = 18;
     }
 
     Type type = 1;
@@ -162,21 +163,25 @@ message RangeQueryState {
     string endKey = 2;
 }
 
-message RangeQueryStateNext {
+message ExecuteQueryState {
+    string query = 1;
+}
+
+message QueryStateNext {
     string ID = 1;
 }
 
-message RangeQueryStateClose {
-  string ID = 1;
+message QueryStateClose {
+    string ID = 1;
 }
 
-message RangeQueryStateKeyValue {
+message QueryStateKeyValue {
     string key = 1;
     bytes value = 2;
 }
 
-message RangeQueryStateResponse {
-    repeated RangeQueryStateKeyValue keysAndValues = 1;
+message QueryStateResponse {
+    repeated QueryStateKeyValue keysAndValues = 1;
     bool hasMore = 2;
     string ID = 3;
 }
