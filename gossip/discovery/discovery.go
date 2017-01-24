@@ -23,11 +23,11 @@ import (
 
 // CryptoService is an interface that the discovery expects to be implemented and passed on creation
 type CryptoService interface {
-	// validateAliveMsg validates that an Alive message is authentic
-	ValidateAliveMsg(*proto.AliveMessage) bool
+	// ValidateAliveMsg validates that an Alive message is authentic
+	ValidateAliveMsg(*proto.GossipMessage) bool
 
-	// SignMessage signs an AliveMessage and updates its signature field
-	SignMessage(*proto.AliveMessage) *proto.AliveMessage
+	// SignMessage signs a message
+	SignMessage(m *proto.GossipMessage) *proto.GossipMessage
 }
 
 // CommService is an interface that the discovery expects to be implemented and passed on creation

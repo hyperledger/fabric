@@ -21,6 +21,7 @@ import (
 
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
 )
@@ -274,4 +275,39 @@ func (m *GossipMessage) IsTagLegal() error {
 	}
 
 	return fmt.Errorf("Unknown message type: %v", m)
+}
+
+type Verifier func(peerIdentity []byte, signature, message []byte) error
+type Signer func(msg []byte) ([]byte, error)
+
+// Sign signs a GossipMessage with given Signer.
+// Returns a signed message on success
+// or an error on failure
+func (m *GossipMessage) Sign(signer Signer) error {
+	m.Signature = nil
+	serializedMsg, err := proto.Marshal(m)
+	if err != nil {
+		return err
+	}
+	sig, err := signer(serializedMsg)
+	if err != nil {
+		return err
+	}
+	m.Signature = sig
+	return nil
+}
+
+// Verify verifies a signed GossipMessage with a given Verifier.
+// Returns nil on success, error on failure.
+func (m *GossipMessage) Verify(peerIdentity []byte, verify Verifier) error {
+	sig := m.Signature
+	defer func() {
+		m.Signature = sig
+	}()
+	m.Signature = nil
+	serializedMsg, err := proto.Marshal(m)
+	if err != nil {
+		return err
+	}
+	return verify(peerIdentity, sig, serializedMsg)
 }

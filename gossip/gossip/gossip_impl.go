@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	prot "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -309,7 +308,7 @@ func (g *gossipServiceImpl) validateMsg(msg comm.ReceivedMessage) bool {
 	}
 
 	if msg.GetGossipMessage().IsAliveMsg() {
-		if !g.disSecAdap.ValidateAliveMsg(msg.GetGossipMessage().GetAliveMsg()) {
+		if !g.disSecAdap.ValidateAliveMsg(msg.GetGossipMessage()) {
 			return false
 		}
 	}
@@ -333,8 +332,7 @@ func (g *gossipServiceImpl) validateMsg(msg comm.ReceivedMessage) bool {
 	}
 
 	if msg.GetGossipMessage().IsStateInfoMsg() {
-		stateInfoMsg := msg.GetGossipMessage().GetStateInfo()
-		if err := g.validateStateInfoMsg(stateInfoMsg); err != nil {
+		if err := g.validateStateInfoMsg(msg.GetGossipMessage()); err != nil {
 			g.logger.Warning("StateInfo message", msg, "is found invalid:", err)
 			return false
 		}
@@ -670,8 +668,9 @@ func newDiscoverySecurityAdapter(idMapper identity.Mapper, mcs api.MessageCrypto
 }
 
 // validateAliveMsg validates that an Alive message is authentic
-func (sa *discoverySecurityAdapter) ValidateAliveMsg(am *proto.AliveMessage) bool {
-	if am == nil || am.Membership == nil || am.Membership.PkiID == nil || am.Signature == nil {
+func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.GossipMessage) bool {
+	am := m.GetAliveMsg()
+	if am == nil || am.Membership == nil || am.Membership.PkiID == nil || m.Signature == nil {
 		sa.logger.Warning("Invalid alive message:", am)
 		return false
 	}
@@ -705,19 +704,16 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(am *proto.AliveMessage) boo
 	}
 
 	// At this point we got the certificate of the peer, proceed to verifying the AliveMessage
-
-	sig := am.Signature
-	am.Signature = nil
-	amIdentity := am.Identity
-	am.Identity = nil
-	b, err := prot.Marshal(am)
-	am.Signature = sig
-	am.Identity = amIdentity
-	if err != nil {
-		sa.logger.Error("Failed marshalling", am, ":", err)
-		return false
+	verifier := func(peerIdentity []byte, signature, message []byte) error {
+		return sa.mcs.Verify(api.PeerIdentityType(peerIdentity), signature, message)
 	}
-	err = sa.mcs.Verify(identity, sig, b)
+
+	rawIdentity := m.GetAliveMsg().Identity
+	m.GetAliveMsg().Identity = nil
+	defer func() {
+		m.GetAliveMsg().Identity = rawIdentity
+	}()
+	err := m.Verify(identity, verifier)
 	if err != nil {
 		sa.logger.Warning("Failed verifying:", am, ":", err)
 		return false
@@ -726,23 +722,22 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(am *proto.AliveMessage) boo
 }
 
 // SignMessage signs an AliveMessage and updates its signature field
-func (sa *discoverySecurityAdapter) SignMessage(am *proto.AliveMessage) *proto.AliveMessage {
-	am.Signature = nil
+func (sa *discoverySecurityAdapter) SignMessage(m *proto.GossipMessage) *proto.GossipMessage {
+	am := m.GetAliveMsg()
+	signer := func(msg []byte) ([]byte, error) {
+		return sa.mcs.Sign(msg)
+	}
 	identity := am.Identity
 	am.Identity = nil
-	b, err := prot.Marshal(am)
-	if err != nil {
-		sa.logger.Error("Failed marshalling", am, ":", err)
-		return am
-	}
-	b, err = sa.mcs.Sign(b)
+	defer func() {
+		am.Identity = identity
+	}()
+	err := m.Sign(signer)
 	if err != nil {
 		sa.logger.Error("Failed signing", am, ":", err)
-		return am
+		return nil
 	}
-	am.Signature = b
-	am.Identity = identity
-	return am
+	return m
 }
 
 func (g *gossipServiceImpl) peersWithEndpoints(endpoints ...string) []*comm.RemotePeer {
@@ -755,30 +750,6 @@ func (g *gossipServiceImpl) peersWithEndpoints(endpoints ...string) []*comm.Remo
 		}
 	}
 	return peers
-}
-
-func (g *gossipServiceImpl) validateIdentityMsg(msg *proto.GossipMessage) error {
-	if msg.GetPeerIdentity() == nil {
-		return fmt.Errorf("Identity empty")
-	}
-	idMsg := msg.GetPeerIdentity()
-	pkiID := idMsg.PkiID
-	cert := idMsg.Cert
-	sig := idMsg.Sig
-	if bytes.Equal(g.idMapper.GetPKIidOfCert(api.PeerIdentityType(cert)), common.PKIidType(pkiID)) {
-		return fmt.Errorf("Calculated pkiID doesn't match identity")
-	}
-	idMsg.Sig = nil
-	b, err := prot.Marshal(idMsg)
-	if err != nil {
-		return fmt.Errorf("Failed marshalling: %v", err)
-	}
-	err = g.mcs.Verify(api.PeerIdentityType(cert), sig, b)
-	if err != nil {
-		return fmt.Errorf("Failed verifying message: %v", err)
-	}
-	idMsg.Sig = sig
-	return nil
 }
 
 func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
@@ -815,37 +786,33 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.GossipMessage, error) {
 	stateInfMsg := &proto.StateInfo{
-		Metadata:  metadata,
-		PkiID:     g.comm.GetPKIid(),
-		Signature: nil,
+		Metadata: metadata,
+		PkiID:    g.comm.GetPKIid(),
 		Timestamp: &proto.PeerTime{
 			IncNumber: uint64(g.incTime.UnixNano()),
 			SeqNum:    uint64(time.Now().UnixNano()),
 		},
 	}
 
-	b, err := prot.Marshal(stateInfMsg)
-	if err != nil {
-		g.logger.Error("Failed marshalling StateInfo message: ", err)
-		return nil, err
-	}
-
-	sig, err := g.mcs.Sign(b)
-	if err != nil {
-		g.logger.Error("Failed signing StateInfo message: ", err)
-		return nil, err
-	}
-
-	stateInfMsg.Signature = sig
-
-	return &proto.GossipMessage{
+	m := &proto.GossipMessage{
 		Channel: chainID,
 		Nonce:   0,
 		Tag:     proto.GossipMessage_CHAN_OR_ORG,
 		Content: &proto.GossipMessage_StateInfo{
 			StateInfo: stateInfMsg,
 		},
-	}, nil
+	}
+
+	signer := func(msg []byte) ([]byte, error) {
+		return g.mcs.Sign(msg)
+	}
+
+	err := m.Sign(signer)
+	if err != nil {
+		g.logger.Error("Failed signing StateInfo message: ", err)
+		return nil, err
+	}
+	return m, nil
 }
 
 func (g *gossipServiceImpl) isInMyorg(member discovery.NetworkMember) bool {
@@ -868,16 +835,15 @@ func (g *gossipServiceImpl) getOrgOfPeer(PKIID common.PKIidType) api.OrgIdentity
 	return g.secAdvisor.OrgByPeerIdentity(cert)
 }
 
-func (g *gossipServiceImpl) validateStateInfoMsg(msg *proto.StateInfo) error {
-	sig := msg.Signature
-	msg.Signature = nil
-	b, err := prot.Marshal(msg)
+func (g *gossipServiceImpl) validateStateInfoMsg(msg *proto.GossipMessage) error {
+	verifier := func(identity []byte, signature, message []byte) error {
+		return g.idMapper.Verify(identity, signature, message)
+	}
+	identity, err := g.idMapper.Get(msg.GetStateInfo().PkiID)
 	if err != nil {
 		return err
 	}
-	err = g.idMapper.Verify(msg.PkiID, sig, b)
-	msg.Signature = sig
-	return err
+	return msg.Verify(identity, verifier)
 }
 
 // partitionMessages receives a predicate and a slice of gossip messages

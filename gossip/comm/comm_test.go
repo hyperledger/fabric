@@ -116,22 +116,29 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 		return nil
 	}
 	clientCertHash := certHashFromRawCert(cert.Certificate[0])
-	sig, err := naiveSec.Sign(clientCertHash)
-	if sigMutator != nil {
-		sig = sigMutator(sig)
-	}
+
 	pkiID := common.PKIidType(endpoint)
 	if pkiIDmutator != nil {
 		pkiID = common.PKIidType(pkiIDmutator([]byte(endpoint)))
 	}
-
 	assert.NoError(t, err, "%v", err)
-	msg := createConnectionMsg(pkiID, sig, []byte(endpoint))
+	msg := createConnectionMsg(pkiID, clientCertHash, []byte(endpoint), func(msg []byte) ([]byte, error) {
+		return msg, nil
+	})
+
+	if sigMutator != nil {
+		msg.Signature = sigMutator(msg.Signature)
+	}
+
 	stream.Send(msg)
 	msg, err = stream.Recv()
 	assert.NoError(t, err, "%v", err)
 	if sigMutator == nil {
-		assert.Equal(t, extractCertificateHashFromContext(stream.Context()), msg.GetConn().Sig)
+		hash := extractCertificateHashFromContext(stream.Context())
+		expectedMsg := createConnectionMsg(common.PKIidType("localhost:9611"), hash, []byte("localhost:9611"), func(msg []byte) ([]byte, error) {
+			return msg, nil
+		})
+		assert.Equal(t, expectedMsg.Signature, msg.Signature)
 	}
 	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiID)
 	msg2Send := createGossipMsg()

@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	prot "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -191,9 +190,10 @@ func createMismatchedUpdateMessage() *proto.GossipMessage {
 		Cert:  []byte("D"),
 	}
 
-	b, _ := prot.Marshal(identity)
-	identity.Sig, _ = (&naiveCryptoService{}).Sign(b)
-	return &proto.GossipMessage{
+	signer := func(msg []byte) ([]byte, error) {
+		return (&naiveCryptoService{}).Sign(msg)
+	}
+	m := &proto.GossipMessage{
 		Channel: nil,
 		Nonce:   0,
 		Tag:     proto.GossipMessage_EMPTY,
@@ -201,6 +201,10 @@ func createMismatchedUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
+
+	m.Sign(signer)
+
+	return m
 }
 
 func createBadlySignedUpdateMessage() *proto.GossipMessage {
@@ -209,16 +213,11 @@ func createBadlySignedUpdateMessage() *proto.GossipMessage {
 		Cert:  []byte("C"),
 	}
 
-	b, _ := prot.Marshal(identity)
-	identity.Sig, _ = (&naiveCryptoService{}).Sign(b)
-	// This would simulate a bad sig
-	if identity.Sig[0] == 0 {
-		identity.Sig[0] = 1
-	} else {
-		identity.Sig[0] = 0
+	signer := func(msg []byte) ([]byte, error) {
+		return (&naiveCryptoService{}).Sign(msg)
 	}
 
-	return &proto.GossipMessage{
+	m := &proto.GossipMessage{
 		Channel: nil,
 		Nonce:   0,
 		Tag:     proto.GossipMessage_EMPTY,
@@ -226,6 +225,15 @@ func createBadlySignedUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
+	m.Sign(signer)
+	// This would simulate a bad sig
+	if m.Signature[0] == 0 {
+		m.Signature[0] = 1
+	} else {
+		m.Signature[0] = 0
+	}
+
+	return m
 }
 
 func createValidUpdateMessage() *proto.GossipMessage {
@@ -234,9 +242,10 @@ func createValidUpdateMessage() *proto.GossipMessage {
 		Cert:  []byte("B"),
 	}
 
-	b, _ := prot.Marshal(identity)
-	identity.Sig, _ = (&naiveCryptoService{}).Sign(b)
-	return &proto.GossipMessage{
+	signer := func(msg []byte) ([]byte, error) {
+		return (&naiveCryptoService{}).Sign(msg)
+	}
+	m := &proto.GossipMessage{
 		Channel: nil,
 		Nonce:   0,
 		Tag:     proto.GossipMessage_EMPTY,
@@ -244,6 +253,8 @@ func createValidUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
+	m.Sign(signer)
+	return m
 }
 
 func createUpdateMessage(nonce uint64, idMsg *proto.GossipMessage) comm.ReceivedMessage {

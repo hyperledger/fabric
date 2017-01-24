@@ -42,48 +42,50 @@ message GossipMessage {
     // to forward the message
     Tag tag = 3;
 
+    bytes signature = 4;
+
     oneof content {
         // Membership
-        AliveMessage aliveMsg = 4;
-        MembershipRequest memReq = 5;
-        MembershipResponse memRes = 6;
+        AliveMessage aliveMsg = 5;
+        MembershipRequest memReq = 6;
+        MembershipResponse memRes = 7;
 
         // Contains a ledger block
-        DataMessage dataMsg = 7;
+        DataMessage dataMsg = 8;
 
         // Used for push&pull
-        GossipHello hello = 8;
-        DataDigest  dataDig = 9;
-        DataRequest dataReq = 10;
-        DataUpdate  dataUpdate = 11;
+        GossipHello hello = 9;
+        DataDigest  dataDig = 10;
+        DataRequest dataReq = 11;
+        DataUpdate  dataUpdate = 12;
 
         // Empty message, used for pinging
-        Empty empty = 12;
+        Empty empty = 13;
 
         // ConnEstablish, used for establishing a connection
-        ConnEstablish conn = 13;
+        ConnEstablish conn = 14;
 
         // Used for relaying information
         // about state
-        StateInfo stateInfo = 14;
+        StateInfo stateInfo = 15;
 
         // Used for sending sets of StateInfo messages
-        StateInfoSnapshot stateSnapshot = 15;
+        StateInfoSnapshot stateSnapshot = 16;
 
         // Used for asking for StateInfoSnapshots
-        StateInfoPullRequest stateInfoPullReq = 16;
+        StateInfoPullRequest stateInfoPullReq = 17;
 
         //  Used to ask from a remote peer a set of blocks
-        RemoteStateRequest stateRequest = 17;
+        RemoteStateRequest stateRequest = 18;
 
         // Used to send a set of blocks to a remote peer
-        RemoteStateResponse stateResponse = 18;
+        RemoteStateResponse stateResponse = 19;
 
         // Used to indicate intent of peer to become leader
-        LeadershipMessage leadershipMsg = 19;
+        LeadershipMessage leadershipMsg = 20;
 
         // Used to learn of a peer's certificate
-        PeerIdentity peerIdentity = 20;
+        PeerIdentity peerIdentity = 21;
     }
 }
 
@@ -93,7 +95,6 @@ message StateInfo {
     bytes metadata     = 1;
     PeerTime timestamp = 2;
     bytes pkiID        = 3;
-    bytes signature    = 4;
 }
 
 // StateInfoSnapshot is an aggregation of StateInfo messages
@@ -111,19 +112,18 @@ message StateInfoPullRequest {
 // Whenever a peer connects to another peer, it handshakes
 // with it by sending this message that proves its identity
 message ConnEstablish {
-    bytes sig   = 1;
-    bytes pkiID = 2;
-    bytes cert  = 3;
+    bytes pkiID = 1;
+    bytes cert  = 2;
+    bytes hash  = 3;
 }
 
 // PeerIdentity defines the identity of the peer
 // Used to make other peers learn of the identity
 // of a certain peer
 message PeerIdentity {
-    bytes sig      = 1;
-    bytes pkiID    = 2;
-    bytes cert     = 3;
-    bytes metadata = 4;
+    bytes pkiID    = 1;
+    bytes cert     = 2;
+    bytes metadata = 3;
 }
 
 // Messages related to pull mechanism
@@ -189,7 +189,6 @@ message Payload {
 message AliveMessage {
     Member membership  = 1;
     PeerTime timestamp = 2;
-    bytes signature    = 3;
     bytes identity     = 4;
 }
 
@@ -198,7 +197,6 @@ message AliveMessage {
 message LeadershipMessage {
     Member membership  = 1;
     PeerTime timestamp = 2;
-    bytes signature    = 3;
 }
 
 // PeerTime defines the logical time of a peer's life
@@ -210,14 +208,14 @@ message PeerTime {
 // MembershipRequest is used to ask membership information
 // from a remote peer
 message MembershipRequest {
-    AliveMessage selfInformation = 1;
+    GossipMessage selfInformation = 1;
     repeated bytes         known = 2;
 }
 
 // MembershipResponse is used for replying to MembershipRequests
 message MembershipResponse {
-    repeated AliveMessage alive = 1;
-    repeated AliveMessage dead  = 2;
+    repeated GossipMessage alive = 1;
+    repeated GossipMessage dead  = 2;
 }
 
 // Member holds membership-related information
