@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mspmgmt
+package mgmt_test
 
 import (
 	"testing"
@@ -22,13 +22,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/msp"
+	. "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMSPConfigManager(t *testing.T) {
-	conf, err := msp.GetLocalMspConfig("../../../msp/sampleconfig/")
+	conf, err := msp.GetLocalMspConfig("../sampleconfig/")
 	assert.NoError(t, err)
 
 	confBytes, err := proto.Marshal(conf)

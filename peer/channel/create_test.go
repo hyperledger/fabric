@@ -22,7 +22,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/peer/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 )

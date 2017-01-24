@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/peer/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/spf13/cobra"
 )
 

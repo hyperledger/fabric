@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	//	"github.com/hyperledger/fabric/protos/utils"
-	"github.com/hyperledger/fabric/core/peer/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
 var once sync.Once

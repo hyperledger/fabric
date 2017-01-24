@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mspmgmt
+package mgmt
 
 import (
 	"fmt"
@@ -137,4 +137,9 @@ func (bh *MSPConfigHandler) ProposeConfig(configItem *common.ConfigurationItem) 
 // GetMSPManager returns the currently committed MSP manager
 func (bh *MSPConfigHandler) GetMSPManager() msp.MSPManager {
 	return bh.committedMgr
+}
+
+// DesierializeIdentity allows *MSPConfigHandler to implement the msp.Common interface
+func (bh *MSPConfigHandler) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
+	return bh.committedMgr.DeserializeIdentity(serializedIdentity)
 }

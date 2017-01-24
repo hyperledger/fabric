@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -32,6 +33,9 @@ type Initializer struct {
 
 	// ChainConfigVal is returned as the result of ChainConfig()
 	ChainConfigVal chainconfig.Descriptor
+
+	// MSPManagerVal is returned as the result of MSPManager()
+	MSPManagerVal msp.MSPManager
 }
 
 // Returns the HandlersVal
@@ -47,6 +51,11 @@ func (i *Initializer) PolicyManager() policies.Manager {
 // Returns the ChainConfigVal
 func (i *Initializer) ChainConfig() chainconfig.Descriptor {
 	return i.ChainConfigVal
+}
+
+// Returns the MSPManagerVal
+func (i *Initializer) MSPManager() msp.MSPManager {
+	return i.MSPManagerVal
 }
 
 // Manager is a mock implementation of configtx.Manager
