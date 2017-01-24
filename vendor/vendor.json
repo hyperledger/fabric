@@ -27,6 +27,12 @@
 			"revisionTime": "2016-08-07T16:35:39Z"
 		},
 		{
+			"checksumSHA1": "BG0cnhTKUG9+WsLTySEeV6eiNyo=",
+			"path": "github.com/Knetic/govaluate",
+			"revision": "3cc7c7de92e74a87c657e957e003600723db32f6",
+			"revisionTime": "2016-12-26T20:32:30Z"
+		},
+		{
 			"checksumSHA1": "a/iaWA9b8WJcVD1sN4fHUDRf0Uk=",
 			"path": "github.com/Shopify/sarama",
 			"revision": "af0513c4d97979eb876d201391fac6475ec08268",
