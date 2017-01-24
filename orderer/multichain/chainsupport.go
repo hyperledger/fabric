@@ -127,6 +127,7 @@ func newChainSupport(
 	if err != nil {
 		logger.Fatalf("Error extracting orderer metadata for chain %x: %s", cs.ChainID(), err)
 	}
+	logger.Debugf("Retrieved metadata for tip of chain (block #%d): %+v", cs.Reader().Height()-1, metadata)
 
 	cs.chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {

@@ -30,6 +30,7 @@ It has these top-level messages:
 	KafkaMessageRegular
 	KafkaMessageTimeToCut
 	KafkaMessageConnect
+	KafkaMetadata
 */
 package orderer
 
