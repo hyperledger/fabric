@@ -19,19 +19,18 @@ limitations under the License.
 package shim
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
+	coder "github.com/hyperledger/fabric/core/ledger/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -337,20 +336,41 @@ func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateRangeQ
 	return &StateRangeQueryIterator{stub.handler, stub.TxID, response, 0}, nil
 }
 
-//Given a list of attributes, createCompositeKey function combines these attributes
+//Given a list of attributes, CreateCompositeKey function combines these attributes
 //to form a composite key.
 func (stub *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
 	return createCompositeKey(stub, objectType, attributes)
 }
 
 func createCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (string, error) {
-	var compositeKey bytes.Buffer
-	compositeKey.WriteString(objectType)
+	var compositeKey []byte
+	compositeKey = append(compositeKey, coder.EncodeOrderPreservingVarUint64(uint64(len(objectType)))...)
+	compositeKey = append(compositeKey, []byte(objectType)...)
 	for _, attribute := range attributes {
-		compositeKey.WriteString(strconv.Itoa(len(attribute)))
-		compositeKey.WriteString(attribute)
+		compositeKey = append(compositeKey, coder.EncodeOrderPreservingVarUint64(uint64(len(attribute)))...)
+		compositeKey = append(compositeKey, []byte(attribute)...)
 	}
-	return compositeKey.String(), nil
+	return string(compositeKey), nil
+}
+
+//Given a composite key, SplitCompositeKey function splits the key into attributes
+//on which the composite key was formed.
+func (stub *ChaincodeStub) SplitCompositeKey(compositeKey string) (string, []string, error) {
+	return splitCompositeKey(stub, compositeKey)
+}
+
+func splitCompositeKey(stub ChaincodeStubInterface, compositeKey string) (string, []string, error) {
+	startIndex := 0
+	cKey := []byte(compositeKey)
+	attributes := []string{}
+	for startIndex < len(compositeKey) {
+		len, bytesConsumed := coder.DecodeOrderPreservingVarUint64(cKey[startIndex:])
+		attrBeginIndex := startIndex + int(bytesConsumed)
+		attrEndIndex := attrBeginIndex + int(len)
+		attributes = append(attributes, compositeKey[attrBeginIndex:attrEndIndex])
+		startIndex = attrEndIndex
+	}
+	return attributes[0], attributes[1:], nil
 }
 
 //PartialCompositeKeyQuery function can be invoked by a chaincode to query the
@@ -365,7 +385,7 @@ func (stub *ChaincodeStub) PartialCompositeKeyQuery(objectType string, attribute
 
 func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
 	partialCompositeKey, _ := stub.CreateCompositeKey(objectType, attributes)
-	keysIter, err := stub.RangeQueryState(partialCompositeKey+"1", partialCompositeKey+":")
+	keysIter, err := stub.RangeQueryState(partialCompositeKey, partialCompositeKey+"\xFF")
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching rows: %s", err)
 	}
