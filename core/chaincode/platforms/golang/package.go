@@ -60,18 +60,20 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 		return fmt.Errorf("could not get chaincode name from path %s", urlLocation)
 	}
 
-	//let the executable's name be chaincode ID's name
-	newRunLine := fmt.Sprintf("RUN go install %s && mv $GOPATH/bin/%s $GOPATH/bin/%s", urlLocation, chaincodeGoName, spec.ChaincodeID.Name)
+	var buf []string
 
+	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"))
+	//let the executable's name be chaincode ID's name
+	buf = append(buf, fmt.Sprintf("RUN go install %s && mv $GOPATH/bin/%s $GOPATH/bin/%s", urlLocation, chaincodeGoName, spec.ChaincodeID.Name))
 	//NOTE-this could have been abstracted away so we could use it for all platforms in a common manner
 	//However, it would still be docker specific. Hence any such abstraction has to be done in a manner that
 	//is not just language dependent but also container depenedent. So lets make this change per platform for now
 	//in the interest of avoiding over-engineering without proper abstraction
 	if viper.GetBool("peer.tls.enabled") {
-		newRunLine = fmt.Sprintf("%s\nCOPY src/certs/cert.pem %s", newRunLine, viper.GetString("peer.tls.cert.file"))
+		buf = append(buf, fmt.Sprintf("COPY src/certs/cert.pem %s", viper.GetString("peer.tls.cert.file")))
 	}
 
-	dockerFileContents := fmt.Sprintf("%s\n%s", cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"), newRunLine)
+	dockerFileContents := strings.Join(buf, "\n")
 	dockerFileSize := int64(len([]byte(dockerFileContents)))
 
 	//Make headers identical by using zero time
