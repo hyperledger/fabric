@@ -157,6 +157,9 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Failed computing digest [%s]", err)
 	}
 
+	mspLogger.Debugf("Sign: plaintext: %X \n", msg)
+	mspLogger.Debugf("Sign: digest: %X \n", digest)
+
 	// Sign
 	return id.signer.Sign(rand.Reader, digest, nil)
 }
