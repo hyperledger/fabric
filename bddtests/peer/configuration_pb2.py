@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/configuration.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x18peer/configuration.proto\x12\x06protos\"5\n\x0b\x41nchorPeers\x12&\n\nanchorPees\x18\x01 \x03(\x0b\x32\x12.protos.AnchorPeer\"6\n\nAnchorPeer\x12\x0c\n\x04Host\x18\x01 \x01(\t\x12\x0c\n\x04Port\x18\x02 \x01(\x05\x12\x0c\n\x04\x43\x65rt\x18\x03 \x01(\x0c\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x18peer/configuration.proto\x12\x06protos\"6\n\x0b\x41nchorPeers\x12\'\n\x0b\x61nchorPeers\x18\x01 \x03(\x0b\x32\x12.protos.AnchorPeer\"6\n\nAnchorPeer\x12\x0c\n\x04Host\x18\x01 \x01(\t\x12\x0c\n\x04Port\x18\x02 \x01(\x05\x12\x0c\n\x04\x43\x65rt\x18\x03 \x01(\x0c\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -34,7 +34,7 @@ _ANCHORPEERS = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='anchorPees', full_name='protos.AnchorPeers.anchorPees', index=0,
+      name='anchorPeers', full_name='protos.AnchorPeers.anchorPeers', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -53,7 +53,7 @@ _ANCHORPEERS = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=36,
-  serialized_end=89,
+  serialized_end=90,
 )
 
 
@@ -97,11 +97,11 @@ _ANCHORPEER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=91,
-  serialized_end=145,
+  serialized_start=92,
+  serialized_end=146,
 )
 
-_ANCHORPEERS.fields_by_name['anchorPees'].message_type = _ANCHORPEER
+_ANCHORPEERS.fields_by_name['anchorPeers'].message_type = _ANCHORPEER
 DESCRIPTOR.message_types_by_name['AnchorPeers'] = _ANCHORPEERS
 DESCRIPTOR.message_types_by_name['AnchorPeer'] = _ANCHORPEER
 

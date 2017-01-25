@@ -82,9 +82,9 @@ Feature: Bootstrap
     And the ordererBootstrapAdmin runs the channel template tool to create the orderer configuration template "template1" for application developers using orderer "orderer0"
     And the ordererBootstrapAdmin distributes orderer configuration template "template1" and chain creation policy name "chainCreatePolicy1"
 
-    And the following application developers are defined for peer organizations
-      | Developer       | ChainCreationPolicyName     | Organization  |
-      | dev0Org0        | chainCreatePolicy1          |  peerOrg0     |
+    And the following application developers are defined for peer organizations and each saves their cert as alias
+      | Developer       | ChainCreationPolicyName     | Organization  |  AliasSavedUnder   |
+      | dev0Org0        | chainCreatePolicy1          |  peerOrg0     |    dev0Org0App1    |
 
     # Need Consortium MSP info and
     # need to add the ChannelWriters ConfigItem (using ChannelWriters ref name),
@@ -102,6 +102,7 @@ Feature: Bootstrap
       | peer2Signer     | peer2    | peerOrg1      |
 
     # TODO: grab the peer orgs from template1 and put into Murali's MSP info SCIs.
+    # Entry point for creating a channel from existing templates
     And the user "dev0Org0" creates a signedConfigEnvelope "createChannelSignedConfigEnvelope1"
         | ChannelID                          | Template     | Chain Creation Policy Name  | Anchors  |
         | com.acme.blockchain.jdoe.Channel1  | template1    | chainCreatePolicy1          | anchors1 |
@@ -125,25 +126,63 @@ Feature: Bootstrap
 
     Then user "dev0Org0" should get a delivery "genesisBlockForMyNewChannel" from "orderer0" of "1" blocks with "1" messages within "1" seconds
 
-    When user "dev0Org0" request to join channel using genesis block "genesisBlockForMyNewChannel" on peer "peer0" with result "joinChannelResult"
-      | Developer       | ChainCreationPolicyName     | Organization  |
-      | dev0Org0        | chainCreatePolicy1          |  peerOrg0     |
+    # This is entry point for joining an existing channel
+    When user "dev0Org0" using cert alias "dev0Org0App1" requests to join channel using genesis block "genesisBlockForMyNewChannel" on peers with result "joinChannelResult"
+      | Peer       |
+      | peer0      |
+      | peer2      |
 
 
-    Then user "dev0Org0" expects result code for "joinChannelResult" of "200"
+    Then user "dev0Org0" expects result code for "joinChannelResult" of "200" from peers:
+      | Peer       |
+      | peer0      |
+      | peer2      |
 
-    # TODO: Add the channel name!!
-    When user "binhn" creates a chaincode spec "cc_spec" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with args
+    # Entry point for invoking on an existing channel
+    When user "dev0Org0" creates a chaincode spec "cc_spec" with name "example02" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with args
       | funcName | arg1 |  arg2 | arg3 | arg4 |
       |   init   |  a   |  100  |  b   |  200 |
-    And user "binhn" creates a deployment spec "cc_deploy_spec" using chaincode spec "cc_spec" and devops on peer "vp0"
-    And user "binhn" creates a deployment proposal "proposal1" using chaincode deployment spec "cc_deploy_spec"
-    And user "binhn" sends proposal "proposal1" to endorsers with timeout of "20" seconds:
-      | peer0  |
-    And user "binhn" stores their last result as "proposal1Responses"
-    Then user "binhn" expects proposal responses "proposal1Responses" with status "200" from endorsers:
-      | peer0  |
 
+      #And user "binhn" creates a deployment spec "cc_deploy_spec" using chaincode spec "cc_spec" and devops on peer "vp0"
+      #And user "binhn" creates a deployment proposal "proposal1" using chaincode deployment spec "cc_deploy_spec"
+
+    # Under the covers, create a deployment spec, etc.
+    And user "dev0Org0" using cert alias "dev0Org0App1" creates a deployment proposal "proposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
+
+    And user "dev0Org0" sends proposal "proposal1" to endorsers with timeout of "30" seconds with proposal responses "deploymentProposalResponses":
+      | Endorser |
+      | peer0    |
+      | peer2    |
+
+
+    Then user "dev0Org0" expects proposal responses "deploymentProposalResponses" with status "200" from endorsers:
+      | Endorser |
+      | peer0    |
+      | peer2    |
+
+    And user "dev0Org0" expects proposal responses "deploymentProposalResponses" each have the same value from endorsers:
+      | Endorser |
+      | peer0    |
+      | peer2    |
+
+    When user "dev0Org0" creates a transaction "deploymentTransaction1" from proposal responses "deploymentProposalResponses"
+
+    And the user "dev0Org0" broadcasts transaction "deploymentTransaction1" on channel "com.acme.blockchain.jdoe.Channel1" to orderer "orderer0"
+
+    # Sleep as the deliver takes a bit
+    And I wait "2" seconds
+
+    When user "dev0Org0" connects to deliver function on orderer "orderer0"
+    And user "dev0Org0" sends deliver a seek request on orderer "orderer0" with properties:
+      | ChainId                               | Start |  End    |
+      | com.acme.blockchain.jdoe.Channel1     |   1   |  1      |
+
+    Then user "dev0Org0" should get a delivery "deploymentTransaction11Block" from "orderer0" of "1" blocks with "1" messages within "1" seconds
+
+    # TODO: Add a peer query stanza here
+
+
+    # TODO: Once events are working, consider listen event listener as well.
 
     Examples: Orderer Options
       |          ComposeFile                 |    Waittime   | PolicyType    |   ConsensusType |

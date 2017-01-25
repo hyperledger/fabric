@@ -136,11 +136,6 @@ func (bh *MSPConfigHandler) CommitConfig() {
 
 // ProposeConfig called when config is added to a proposal
 func (bh *MSPConfigHandler) ProposeConfig(configItem *common.ConfigurationItem) error {
-	// we expect MSP type of config items
-	if configItem.Key != msputils.MSPKey {
-		return fmt.Errorf("Expected config item key %s, got %s", msputils.MSPKey, configItem.Key)
-	}
-
 	mspconfig := &mspprotos.MSPConfig{}
 	err := proto.Unmarshal(configItem.Value, mspconfig)
 	if err != nil {

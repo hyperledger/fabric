@@ -167,12 +167,15 @@ def step_impl(context, userName, createChannelSignedConfigEnvelope):
     # txConfigEnvelope = bootstrap_util.createConfigTxEnvelope(chainId=channelID, signedConfigEnvelope=signedConfigEnvelope)
 
 
-@given(u'the following application developers are defined for peer organizations')
+@given(u'the following application developers are defined for peer organizations and each saves their cert as alias')
 def step_impl(context):
     assert 'table' in context, "Expected table with triplet of Developer/ChainCreationPolicyName/Organization"
     directory = bootstrap_util.getDirectory(context)
     for row in context.table.rows:
-        directory.registerOrdererAdminTuple(row['Developer'], row['ChainCreationPolicyName'], row['Organization'])
+        userName = row['Developer']
+        nodeAdminNamedTuple = directory.registerOrdererAdminTuple(userName, row['ChainCreationPolicyName'], row['Organization'])
+        user = directory.getUser(userName)
+        user.tags[row['AliasSavedUnder']] = nodeAdminNamedTuple
 
 @given(u'the user "{userName}" collects signatures for signedConfigEnvelope "{createChannelSignedConfigEnvelopeName}" from peer orgs')
 def step_impl(context, userName, createChannelSignedConfigEnvelopeName):
@@ -231,23 +234,22 @@ def step_impl(context, userName, deliveryName, composeService, expectedBlocks, n
     assert len(blocks) == int(expectedBlocks), "Expected {0} blocks, received {1}".format(expectedBlocks, len(blocks))
     user.tags[deliveryName] = blocks
 
-@when(u'user "{userName}" request to join channel using genesis block "{genisisBlockName}" on peer "{composeService}" with result "{joinChannelResult}"')
-def step_impl(context, userName, genisisBlockName, composeService, joinChannelResult):
+@when(u'user "{userName}" using cert alias "{certAlias}" requests to join channel using genesis block "{genisisBlockName}" on peers with result "{joinChannelResult}"')
+def step_impl(context, userName, certAlias, genisisBlockName, joinChannelResult):
     timeout = 10
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
-    # Collect the cert tuple information
-    row = context.table.rows[0]
-    signersCert = directory.findCertByTuple(row['Developer'], row['ChainCreationPolicyName'], row['Organization'])
+    # Find the cert using the cert tuple information saved for the user under certAlias
+    signersCert = directory.findCertForNodeAdminTuple(user.tags[certAlias])
 
     # Retrieve the genesis block from the returned value of deliver (Will be list with first block as genesis block)
     genesisBlock = user.tags[genisisBlockName][0]
     ccSpec = endorser_util.getChaincodeSpec("GOLANG", "", "cscc", ["JoinChain", genesisBlock.SerializeToString()])
-    proposal = endorser_util.createInvokeProposalForBDD(ccSpec=ccSpec, chainID="",signersCert=signersCert, Mspid="DEFAULT")
+    proposal = endorser_util.createInvokeProposalForBDD(ccSpec=ccSpec, chainID="",signersCert=signersCert, Mspid="DEFAULT", type="CONFIGURATION_TRANSACTION")
     signedProposal = endorser_util.signProposal(proposal=proposal, entity=user, signersCert=signersCert)
 
     # Send proposal to each specified endorser, waiting 'timeout' seconds for response/error
-    endorsers = [composeService]
+    endorsers = [row['Peer'] for row in context.table.rows]
     proposalResponseFutures = [endorserStub.ProcessProposal.future(signedProposal, int(timeout)) for endorserStub in endorser_util.getEndorserStubs(context, endorsers)]
     resultsDict =  dict(zip(endorsers, [respFuture.result() for respFuture in proposalResponseFutures]))
     user.tags[joinChannelResult] = resultsDict
@@ -271,14 +273,14 @@ def step_impl(context, chainCreationPolicyNames, ordererSystemChainIdName):
     chainCreationPolicyNamesConfigItem = bootstrap_util.createChainCreationPolicyNames(context, chainCreationPolicyNames=policyNames, chaindId=ordererSystemChainIdGUUID)
     ordererBootstrapAdmin.tags[chainCreationPolicyNames] = [chainCreationPolicyNamesConfigItem]
 
-@then(u'user "{userName}" expects result code for "{proposalResponseName}" of "{proposalResponseResultCode}"')
+@then(u'user "{userName}" expects result code for "{proposalResponseName}" of "{proposalResponseResultCode}" from peers')
 def step_impl(context, userName, proposalResponseName, proposalResponseResultCode):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    proposalResponse = user.tags[proposalResponseName]
+    peerToProposalResponseDict = user.tags[proposalResponseName]
+    unexpectedResponses = [(composeService,proposalResponse) for composeService, proposalResponse in peerToProposalResponseDict.items() if proposalResponse.response.payload != proposalResponseResultCode]
     print("ProposalResponse: \n{0}\n".format(proposalResponse))
     print("")
-    raise NotImplementedError(u'STEP: Then user "dev0Org0" expects result code for "joinChannelResult" of "200"')
 
 @given(u'the user "{userName}" creates an peer anchor set "{anchorSetName}" for channel "{channelName}" for orgs')
 def step_impl(context, userName, anchorSetName, channelName):

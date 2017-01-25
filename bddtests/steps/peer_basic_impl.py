@@ -28,6 +28,7 @@ import sys, requests, json
 
 import bdd_test_util
 import compose
+import bootstrap_util
 
 CORE_REST_PORT = 7050
 JSONRPC_VERSION = "2.0"
@@ -69,7 +70,7 @@ def getDockerComposeFileArgsFromYamlFile(compose_yaml):
 @given(u'we compose "{composeYamlFile}"')
 def step_impl(context, composeYamlFile):
     # time.sleep(10)              # Should be replaced with a definitive interlock guaranteeing that all peers/membersrvc are ready
-    composition = compose.Composition(context, composeYamlFile)
+    composition = compose.Composition(context, composeYamlFile, projectName=bootstrap_util.ContextHelper.GetHelper(context=context).getGuuid())
     context.compose_containers = composition.containerDataList
     context.composition = composition
 
