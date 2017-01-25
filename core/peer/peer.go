@@ -165,7 +165,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	configtxInitializer := configtx.NewInitializer()
 	configtxInitializer.Handlers()[common.ConfigurationItem_Peer] = sharedConfigHandler
-	configtxManager, err := configtx.NewManagerImpl(configEnvelope, configtxInitializer)
+	configtxManager, err := configtx.NewManagerImpl(configEnvelope, configtxInitializer, nil)
 	if err != nil {
 		return err
 	}

@@ -162,7 +162,7 @@ func MakeChainCreationTransaction(creationPolicy string, chainID string, signer 
 		return nil, err
 	}
 
-	manager, err := NewManagerImpl(&cb.ConfigurationEnvelope{Items: items}, NewInitializer())
+	manager, err := NewManagerImpl(&cb.ConfigurationEnvelope{Items: items}, NewInitializer(), nil)
 
 	newChainTemplate := NewChainCreationTemplate(creationPolicy, manager.ChainConfig().HashingAlgorithm(), composite)
 	signedConfigItems, err := newChainTemplate.Items(chainID)

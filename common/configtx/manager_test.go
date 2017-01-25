@@ -92,10 +92,29 @@ func makeSignedConfigurationItem(id, modificationPolicy string, lastModified uin
 func TestOmittedHandler(t *testing.T) {
 	_, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: map[cb.ConfigurationItem_ConfigurationType]Handler{}})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: map[cb.ConfigurationItem_ConfigurationType]Handler{}}, nil)
 
 	if err == nil {
 		t.Fatal("Should have failed to construct manager because handlers were missing")
+	}
+}
+
+func TestCallback(t *testing.T) {
+	var calledBack Manager
+	callback := func(m Manager) {
+		calledBack = m
+	}
+
+	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
+		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, []func(Manager){callback})
+
+	if err != nil {
+		t.Fatalf("Error constructing configuration manager: %s", err)
+	}
+
+	if calledBack != cm {
+		t.Fatalf("Should have called back with the correct manager")
 	}
 }
 
@@ -103,7 +122,7 @@ func TestOmittedHandler(t *testing.T) {
 func TestWrongChainID(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -128,7 +147,7 @@ func TestWrongChainID(t *testing.T) {
 func TestOldConfigReplay(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -155,7 +174,7 @@ func TestInvalidInitialConfigByStructure(t *testing.T) {
 	entries[0].ConfigurationItem = []byte("Corrupted")
 	_, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: entries,
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err == nil {
 		t.Fatal("Should have failed to construct configuration by policy")
@@ -166,7 +185,7 @@ func TestInvalidInitialConfigByStructure(t *testing.T) {
 func TestValidConfigChange(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -192,7 +211,7 @@ func TestValidConfigChange(t *testing.T) {
 func TestConfigChangeRegressedSequence(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -221,7 +240,7 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 func TestConfigChangeOldSequence(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 1, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -253,7 +272,7 @@ func TestConfigImplicitDelete(t *testing.T) {
 			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain),
 			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar"), defaultChain),
 		},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -280,7 +299,7 @@ func TestConfigImplicitDelete(t *testing.T) {
 func TestEmptyConfigUpdate(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -308,7 +327,7 @@ func TestSilentConfigModification(t *testing.T) {
 			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain),
 			makeSignedConfigurationItem("bar", "bar", 0, []byte("bar"), defaultChain),
 		},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -337,7 +356,7 @@ func TestSilentConfigModification(t *testing.T) {
 func TestInvalidInitialConfigByPolicy(t *testing.T) {
 	_, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{policyResult: fmt.Errorf("err")}}, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{policyResult: fmt.Errorf("err")}}, HandlersVal: defaultHandlers()}, nil)
 
 	if err == nil {
 		t.Fatal("Should have failed to construct configuration by policy")
@@ -350,7 +369,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	mpm := &mockPolicyManager{}
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: mpm, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: mpm, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -379,7 +398,7 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	mpm := &mockPolicyManager{}
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: mpm, HandlersVal: defaultHandlers()})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: mpm, HandlersVal: defaultHandlers()}, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -424,7 +443,7 @@ func TestInvalidProposal(t *testing.T) {
 	initializer := &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: handlers}
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
-	}, initializer)
+	}, initializer, nil)
 
 	if err != nil {
 		t.Fatalf("Error constructing configuration manager: %s", err)
@@ -455,7 +474,7 @@ func TestMissingHeader(t *testing.T) {
 	data, _ := proto.Marshal(configItem)
 	_, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{&cb.SignedConfigurationItem{ConfigurationItem: data}},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: handlers})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: handlers}, nil)
 
 	if err == nil {
 		t.Error("Should have errored creating the configuration manager because of the missing header")
@@ -467,7 +486,7 @@ func TestMissingChainID(t *testing.T) {
 	handlers := defaultHandlers()
 	_, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), "")},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: handlers})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: handlers}, nil)
 
 	if err == nil {
 		t.Error("Should have errored creating the configuration manager because of the missing header")
@@ -482,7 +501,7 @@ func TestMismatchedChainID(t *testing.T) {
 			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), "chain1"),
 			makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), "chain2"),
 		},
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: handlers})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: handlers}, nil)
 
 	if err == nil {
 		t.Error("Should have errored creating the configuration manager because of the missing header")
