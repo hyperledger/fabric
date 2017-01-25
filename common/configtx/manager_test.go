@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	. "github.com/hyperledger/fabric/common/configtx"
+	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/common/policies"
-	mockconfigtx "github.com/hyperledger/fabric/orderer/mocks/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"errors"
