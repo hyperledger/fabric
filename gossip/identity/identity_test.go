@@ -46,6 +46,12 @@ func (*naiveCryptoService) VerifyBlock(signedBlock api.SignedBlock) error {
 	return nil
 }
 
+// VerifyByChannel verifies a peer's signature on a message in the context
+// of a specific channel
+func (*naiveCryptoService) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+	return nil
+}
+
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {

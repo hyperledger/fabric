@@ -37,8 +37,14 @@ type MessageCryptoService interface {
 
 	// Verify checks that signature is a valid signature of message under a peer's verification key.
 	// If the verification succeeded, Verify returns nil meaning no error occurred.
-	// If peerCert is nil, then the signature is verified against this peer's verification key.
+	// If peerIdentity is nil, then the signature is verified against this peer's verification key.
 	Verify(peerIdentity PeerIdentityType, signature, message []byte) error
+
+	// VerifyByChannel checks that signature is a valid signature of message
+	// under a peer's verification key, but also in the context of a specific channel.
+	// If the verification succeeded, Verify returns nil meaning no error occurred.
+	// If peerIdentity is nil, then the signature is verified against this peer's verification key.
+	VerifyByChannel(chainID common.ChainID, peerIdentity PeerIdentityType, signature, message []byte) error
 
 	// ValidateIdentity validates the identity of a remote peer.
 	// If the identity is invalid, revoked, expired it returns an error.

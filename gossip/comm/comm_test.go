@@ -82,6 +82,12 @@ func (*naiveSecProvider) Verify(peerIdentity api.PeerIdentityType, signature, me
 	return nil
 }
 
+// VerifyByChannel verifies a peer's signature on a message in the context
+// of a specific channel
+func (*naiveSecProvider) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+	return nil
+}
+
 func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	endpoint := fmt.Sprintf("localhost:%d", port)
 	inst, err := NewCommInstanceWithServer(port, identity.NewIdentityMapper(sec), []byte(endpoint))

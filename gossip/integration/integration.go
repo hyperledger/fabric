@@ -92,6 +92,12 @@ func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {
 	return msg, nil
 }
 
+// VerifyByChannel verifies a peer's signature on a message in the context
+// of a specific channel
+func (*naiveCryptoService) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+	return nil
+}
+
 // Verify verifies a signature on a message that came from a peer with a certain vkID
 func (cs *naiveCryptoService) Verify(vkID api.PeerIdentityType, signature, message []byte) error {
 	if !bytes.Equal(signature, message) {
