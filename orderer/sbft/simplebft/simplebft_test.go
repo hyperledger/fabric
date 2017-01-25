@@ -37,9 +37,9 @@ const highN uint64 = 10 //keep highN greater or equal to 10
 var testLog = logging.MustGetLogger("test")
 
 func init() {
-	logging.SetLevel(logging.NOTICE, "")
-	//logging.SetLevel(logging.DEBUG, "test")
-	//logging.SetLevel(logging.DEBUG, "sbft")
+	// logging.SetLevel(logging.NOTICE, "")
+	// logging.SetLevel(logging.DEBUG, "test")
+	logging.SetLevel(logging.DEBUG, "sbft")
 }
 
 func skipInShortMode(t *testing.T) {
@@ -126,11 +126,11 @@ func TestMultiChain(t *testing.T) {
 			// was written to the "ledger"
 			j, _ := strconv.ParseInt(chainId, 10, 64)
 			if j%2 == 0 && len(a.batches[chainId]) != 1 {
-				t.Fatalf("expected one batch on chain %s", chainId)
+				t.Fatalf("expected one batches on chain %s", chainId)
 			}
 			// in other cases, we should have at most an empty ledger
 			if j%2 != 0 && len(a.batches[chainId]) != 0 {
-				t.Fatalf("expected one batch on chain %s", chainId)
+				t.Fatalf("expected one batches on chain %s", chainId)
 			}
 		}
 	}
@@ -214,12 +214,13 @@ func TestQuorumSizes(t *testing.T) {
 func TestSBFTDelayed(t *testing.T) {
 	skipInShortMode(t)
 	N := lowN
-	sys := newTestSystem(N)
+	BS := uint64(1)
+	sys := newTestSystemWithBatchSize(N, BS)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
 	for i := uint64(0); i < N; i++ {
 		a := sys.NewAdapter(i)
-		s, err := New(i, chainId, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 1, RequestTimeoutNsec: 20000000000}, a)
+		s, err := New(i, chainId, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: BS, RequestTimeoutNsec: 20000000000}, a)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -274,7 +275,7 @@ func TestN1(t *testing.T) {
 	sys.Run()
 	for _, a := range adapters {
 		if len(a.batches[chainId]) != 1 {
-			t.Fatal("expected execution of 1 batch")
+			t.Fatal("expected execution of 1 batches")
 		}
 		if !reflect.DeepEqual([][]byte{r1}, a.batches[chainId][0].Payloads) {
 			t.Error("wrong request executed (1)")
@@ -417,10 +418,10 @@ func TestNewPrimaryHandlingViewChange(t *testing.T) {
 	sys.Run()
 	for _, a := range adapters {
 		if len(a.batches[chainId]) < 1 {
-			t.Fatal("expected execution of at least one batch")
+			t.Fatal("expected execution of at least one batches")
 		}
 		if a.batches[chainId][0].Payloads != nil && !reflect.DeepEqual(adapters[2].batches[chainId][0].Payloads, a.batches[chainId][0].Payloads) {
-			t.Error("consensus violated on first batch at replica", a.id)
+			t.Error("consensus violated on first batches at replica", a.id)
 		}
 	}
 }
@@ -469,7 +470,7 @@ func TestByzPrimaryBullyingSingleReplica(t *testing.T) {
 	sys.Run()
 	for _, a := range adapters {
 		if a.id != 1 && len(a.batches[chainId]) != 1 {
-			t.Fatal("expected execution of 1 batch at all except replica 1")
+			t.Fatal("expected execution of 1 batches at all except replica 1")
 		}
 	}
 }
@@ -506,7 +507,7 @@ func TestViewChange(t *testing.T) {
 	sys.Run()
 	for _, a := range adapters {
 		if len(a.batches[chainId]) != 1 {
-			t.Fatal("expected execution of 1 batch")
+			t.Fatal("expected execution of 1 batches")
 		}
 		if !reflect.DeepEqual([][]byte{r1}, a.batches[chainId][0].Payloads) {
 			t.Error("wrong request executed (1)")
@@ -559,7 +560,7 @@ func TestMsgReordering(t *testing.T) {
 	sys.Run()
 	for _, a := range adapters {
 		if len(a.batches[chainId]) != 1 {
-			t.Fatal("expected execution of 1 batch")
+			t.Fatal("expected execution of 1 batches")
 		}
 		if !reflect.DeepEqual([][]byte{r1}, a.batches[chainId][0].Payloads) {
 			t.Error("wrong request executed (1)")
@@ -612,7 +613,7 @@ func TestBacklogReordering(t *testing.T) {
 	sys.Run()
 	for _, a := range adapters {
 		if len(a.batches[chainId]) != 1 {
-			t.Fatal("expected execution of 1 batch")
+			t.Fatal("expected execution of 1 batches")
 		}
 		if !reflect.DeepEqual([][]byte{r1}, a.batches[chainId][0].Payloads) {
 			t.Error("wrong request executed (1)")
@@ -652,7 +653,7 @@ func TestViewChangeWithRetransmission(t *testing.T) {
 	sys.Run()
 	for _, a := range adapters {
 		if len(a.batches[chainId]) != 1 {
-			t.Fatal("expected execution of 1 batch")
+			t.Fatal("expected execution of 1 batches")
 		}
 		if !reflect.DeepEqual([][]byte{r1}, a.batches[chainId][0].Payloads) {
 			t.Error("wrong request executed (1)")
@@ -726,7 +727,7 @@ func TestViewChangeXset(t *testing.T) {
 			continue
 		}
 		if len(a.batches[chainId]) != 2 {
-			t.Fatalf("expected execution of 1 batch: %v", a.batches[chainId])
+			t.Fatalf("expected execution of 1 batches: %v", a.batches[chainId])
 		}
 		if !reflect.DeepEqual([][]byte{r1}, a.batches[chainId][0].Payloads) {
 			t.Error("wrong request executed first")
@@ -845,7 +846,7 @@ func TestAbdicatingPrimary(t *testing.T) {
 	sys.Run()
 	for _, a := range adapters {
 		if len(a.batches[chainId]) != 1 {
-			t.Fatalf("expected execution of 1 batch, %d got %v", a.id, a.batches[chainId])
+			t.Fatalf("expected execution of 1 batches, %d got %v", a.id, a.batches[chainId])
 		}
 	}
 }
@@ -1227,12 +1228,13 @@ func TestRestartMissedViewChange(t *testing.T) {
 func TestFullBacklog(t *testing.T) {
 	skipInShortMode(t)
 	N := lowN
-	sys := newTestSystem(N)
+	BS := uint64(1)
+	sys := newTestSystemWithBatchSize(N, BS)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
 	for i := uint64(0); i < N; i++ {
 		a := sys.NewAdapter(i)
-		s, err := New(i, chainId, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 1, RequestTimeoutNsec: 20000000000}, a)
+		s, err := New(i, chainId, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: BS, RequestTimeoutNsec: 20000000000}, a)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1269,12 +1271,13 @@ func TestFullBacklog(t *testing.T) {
 func TestHelloMsg(t *testing.T) {
 	skipInShortMode(t)
 	N := lowN
-	sys := newTestSystemWOTimers(N)
+	BS := uint64(1)
+	sys := newTestSystemWOTimersWithBatchSize(N, BS)
 	var repls []*SBFT
 	var adapters []*testSystemAdapter
 	for i := uint64(0); i < N; i++ {
 		a := sys.NewAdapter(i)
-		s, err := New(i, chainId, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 1, RequestTimeoutNsec: 20000000000}, a)
+		s, err := New(i, chainId, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: uint64(BS), RequestTimeoutNsec: 20000000000}, a)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1310,7 +1313,7 @@ func TestHelloMsg(t *testing.T) {
 	phase = 2 //start delivering msgs to replica 1
 
 	testLog.Notice("restarting replica 1")
-	repls[1], _ = New(1, chainId, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: 10, RequestTimeoutNsec: 20000000000}, adapters[1])
+	repls[1], _ = New(1, chainId, &Config{N: N, F: 1, BatchDurationNsec: 2000000000, BatchSizeBytes: BS, RequestTimeoutNsec: 20000000000}, adapters[1])
 	for _, a := range adapters {
 		if a.id != 1 {
 			a.receivers[chainId].Connection(1)
@@ -1326,9 +1329,9 @@ func TestHelloMsg(t *testing.T) {
 	repls[1].Request(r3)
 	sys.Run()
 
-	for _, a := range adapters {
+	for i, a := range adapters {
 		if len(a.batches[chainId]) != 2 {
-			t.Fatal("expected execution of 2 batches")
+			t.Fatalf("expected execution of 2 batches but executed %d     %d", len(a.batches[chainId]), i)
 		}
 	}
 }

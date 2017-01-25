@@ -40,6 +40,7 @@ import (
 	"encoding/gob"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	commonfilter "github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/sbft/connection"
@@ -246,6 +247,51 @@ func (b *Backend) AddSbftPeer(chainID string, support multichain.ConsenterSuppor
 	return s.New(b.GetMyId(), chainID, config, b)
 }
 
+func (b *Backend) Ordered(chainID string, req *s.Request) ([][]*s.Request, [][]filter.Committer, bool) {
+	// ([][]*cb.Envelope, [][]filter.Committer, bool) {
+	// If the message is a valid normal message and fills a batch, the batch, committers, true is returned
+	// If the message is a valid special message (like a config message) it terminates the current batch
+	// and returns the current batch and committers (if it is not empty), plus a second batch containing the special transaction and commiter, and true
+	env := &cb.Envelope{}
+	err := proto.Unmarshal(req.Payload, env)
+	if err != nil {
+		logger.Panicf("Request format error: %s", err)
+	}
+	envbatch, committers, accepted := b.supports[chainID].BlockCutter().Ordered(env)
+	if accepted {
+		if len(envbatch) == 1 {
+			rb1 := toRequestBatch(envbatch[0])
+			return [][]*s.Request{rb1}, committers, true
+		}
+		if len(envbatch) == 2 {
+			rb1 := toRequestBatch(envbatch[0])
+			rb2 := toRequestBatch(envbatch[1])
+			return [][]*s.Request{rb1, rb2}, committers, true
+		}
+
+		return nil, nil, true
+	}
+	return nil, nil, false
+}
+
+func (b *Backend) Cut(chainID string) ([]*s.Request, []filter.Committer) {
+	envbatch, committers := b.supports[chainID].BlockCutter().Cut()
+	return toRequestBatch(envbatch), committers
+}
+
+func toRequestBatch(envelopes []*cb.Envelope) []*s.Request {
+	rqs := make([]*s.Request, 0, len(envelopes))
+	for _, e := range envelopes {
+		requestbytes, err := proto.Marshal(e)
+		if err != nil {
+			logger.Panicf("Cannot marshal envelope: %s", err)
+		}
+		rq := &s.Request{Payload: requestbytes}
+		rqs = append(rqs, rq)
+	}
+	return rqs
+}
+
 // Consensus implements the SBFT consensus gRPC interface
 func (c *consensusConn) Consensus(_ *Handshake, srv Consensus_ConsensusServer) error {
 	pi := connection.GetPeerInfo(srv)
@@ -333,7 +379,7 @@ func (b *Backend) Timer(d time.Duration, tf func()) s.Canceller {
 }
 
 // Deliver writes a block
-func (b *Backend) Deliver(chainId string, batch *s.Batch) {
+func (b *Backend) Deliver(chainId string, batch *s.Batch, committers []commonfilter.Committer) {
 	blockContents := make([]*cb.Envelope, 0, len(batch.Payloads))
 	for _, p := range batch.Payloads {
 		envelope := &cb.Envelope{}
@@ -354,7 +400,6 @@ func (b *Backend) Deliver(chainId string, batch *s.Batch) {
 	metadata[signaturesIndex] = encodeSignatures(batch.Signatures)
 	block.Metadata.Metadata = metadata
 	b.lastBatches[chainId] = batch
-	committers := []commonfilter.Committer{}
 	b.supports[chainId].WriteBlock(block, committers, nil)
 }
 

@@ -242,12 +242,10 @@ func (cs *chainSupport) WriteBlock(block *cb.Block, committers []filter.Committe
 	for _, committer := range committers {
 		committer.Commit()
 	}
-
 	// Set the orderer-related metadata field
 	if encodedMetadataValue != nil {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = utils.MarshalOrPanic(&cb.Metadata{Value: encodedMetadataValue})
 	}
-
 	cs.addBlockSignature(block)
 	cs.addLastConfigSignature(block)
 

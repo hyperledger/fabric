@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/mocks/multichain"
 	mc "github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/sbft/simplebft"
@@ -88,10 +89,10 @@ func TestLedgerReadWrite(t *testing.T) {
 	sgns[uint64(22)] = []byte("sgn22")
 	batch := simplebft.Batch{Header: header, Payloads: data, Signatures: sgns}
 
-	b.Deliver(testChainID1, &batch)
+	b.Deliver(testChainID1, &batch, []filter.Committer{})
 	batch1 := b.LastBatch(testChainID1)
 	batch2 := b.LastBatch(testChainID2)
-	b.Deliver(testChainID3, &batch)
+	b.Deliver(testChainID3, &batch, []filter.Committer{})
 	batch3 := b.LastBatch(testChainID3)
 
 	if !reflect.DeepEqual(batch, *batch1) {

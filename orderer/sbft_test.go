@@ -133,6 +133,8 @@ func TestSbftPeer(t *testing.T) {
 	}
 	client := ab.NewAtomicBroadcastClient(clientconn)
 
+	<-time.After(4 * time.Second)
+
 	resultch := make(chan item)
 	errorch := make(chan error)
 

@@ -18,9 +18,9 @@ package simplebft
 
 import "reflect"
 
-// makeXset returns a request subject that should be proposed as batch
+// makeXset returns a request subject that should be proposed as batches
 // for new-view.  If there is no request to select (null request), it
-// will return nil for subject.  makeXset always returns a batch for
+// will return nil for subject.  makeXset always returns a batches for
 // the most recent checkpoint.
 func (s *SBFT) makeXset(vcs []*ViewChange) (*Subject, *Batch, bool) {
 	// first select base commit (equivalent to checkpoint/low water mark)
@@ -127,7 +127,7 @@ nextm:
 	}
 
 	// B. otherwise select null request
-	// We actually don't select a null request, but report the most recent batch instead.
+	// We actually don't select a null request, but report the most recent batches instead.
 	if emptycount >= s.viewChangeQuorum() {
 		log.Debugf("replica %d: no pertinent requests found for %d", s.id, next)
 		return nil, best, true
