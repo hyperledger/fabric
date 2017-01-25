@@ -34,16 +34,6 @@ func TestInvalidStoreKey(t *testing.T) {
 		t.Fatal("Error should be different from nil in this case")
 	}
 
-	err = ks.StoreKey(&ecdsaPrivateKey{nil})
-	if err == nil {
-		t.Fatal("Error should be different from nil in this case")
-	}
-
-	err = ks.StoreKey(&ecdsaPublicKey{nil})
-	if err == nil {
-		t.Fatal("Error should be different from nil in this case")
-	}
-
 	err = ks.StoreKey(&rsaPublicKey{nil})
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")

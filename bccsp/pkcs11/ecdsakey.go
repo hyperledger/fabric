@@ -18,19 +18,15 @@ package pkcs11
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
-	"fmt"
-
-	"crypto/sha256"
-
 	"errors"
-
-	"crypto/elliptic"
+	"fmt"
 
 	"github.com/hyperledger/fabric/bccsp"
 )
 
 type ecdsaPrivateKey struct {
-	privKey *ecdsa.PrivateKey
+	ski []byte
+	pub ecdsaPublicKey
 }
 
 // Bytes converts this key to its byte representation,
@@ -41,17 +37,7 @@ func (k *ecdsaPrivateKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *ecdsaPrivateKey) SKI() (ski []byte) {
-	if k.privKey == nil {
-		return nil
-	}
-
-	// Marshall the public key
-	raw := elliptic.Marshal(k.privKey.Curve, k.privKey.PublicKey.X, k.privKey.PublicKey.Y)
-
-	// Hash it
-	hash := sha256.New()
-	hash.Write(raw)
-	return hash.Sum(nil)
+	return k.ski
 }
 
 // Symmetric returns true if this key is a symmetric key,
@@ -69,17 +55,18 @@ func (k *ecdsaPrivateKey) Private() bool {
 // PublicKey returns the corresponding public key part of an asymmetric public/private key pair.
 // This method returns an error in symmetric key schemes.
 func (k *ecdsaPrivateKey) PublicKey() (bccsp.Key, error) {
-	return &ecdsaPublicKey{&k.privKey.PublicKey}, nil
+	return &k.pub, nil
 }
 
 type ecdsaPublicKey struct {
-	pubKey *ecdsa.PublicKey
+	ski []byte
+	pub *ecdsa.PublicKey
 }
 
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {
-	raw, err = x509.MarshalPKIXPublicKey(k.pubKey)
+	raw, err = x509.MarshalPKIXPublicKey(k.pub)
 	if err != nil {
 		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
 	}
@@ -88,17 +75,7 @@ func (k *ecdsaPublicKey) Bytes() (raw []byte, err error) {
 
 // SKI returns the subject key identifier of this key.
 func (k *ecdsaPublicKey) SKI() (ski []byte) {
-	if k.pubKey == nil {
-		return nil
-	}
-
-	// Marshall the public key
-	raw := elliptic.Marshal(k.pubKey.Curve, k.pubKey.X, k.pubKey.Y)
-
-	// Hash it
-	hash := sha256.New()
-	hash.Write(raw)
-	return hash.Sum(nil)
+	return k.ski
 }
 
 // Symmetric returns true if this key is a symmetric key,

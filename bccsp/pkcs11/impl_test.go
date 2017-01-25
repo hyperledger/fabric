@@ -37,6 +37,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
+	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"golang.org/x/crypto/sha3"
 )
@@ -44,6 +45,7 @@ import (
 var (
 	currentKS         bccsp.KeyStore
 	currentBCCSP      bccsp.BCCSP
+	currentSWBCCSP    bccsp.BCCSP
 	currentTestConfig testConfig
 )
 
@@ -82,6 +84,12 @@ func TestMain(m *testing.M) {
 		var err error
 		currentTestConfig = config
 		currentBCCSP, err = New(config.securityLevel, config.hashFamily, currentKS)
+		if err != nil {
+			fmt.Printf("Failed initiliazing BCCSP at [%d, %s]: [%s]", config.securityLevel, config.hashFamily, err)
+			os.Exit(-1)
+		}
+
+		currentSWBCCSP, err = sw.New(config.securityLevel, config.hashFamily, &sw.DummyKeyStore{})
 		if err != nil {
 			fmt.Printf("Failed initiliazing BCCSP at [%d, %s]: [%s]", config.securityLevel, config.hashFamily, err)
 			os.Exit(-1)
@@ -171,15 +179,9 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 		t.Fatal("Failed generating ECDSA P256 key. Key should be asymmetric")
 	}
 
-	ecdsaKey := k.(*ecdsaPrivateKey).privKey
-	if !elliptic.P256().IsOnCurve(ecdsaKey.X, ecdsaKey.Y) {
-		t.Fatal("P256 generated key in invalid. The public key must be on the P256 curve.")
-	}
-	if elliptic.P256() != ecdsaKey.Curve {
+	ecdsaKey := k.(*ecdsaPrivateKey).pub
+	if elliptic.P256() != ecdsaKey.pub.Curve {
 		t.Fatal("P256 generated key in invalid. The curve must be P256.")
-	}
-	if ecdsaKey.D.Cmp(big.NewInt(0)) == 0 {
-		t.Fatal("P256 generated key in invalid. Private key must be different from 0.")
 	}
 
 	// Curve P384
@@ -197,17 +199,10 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 		t.Fatal("Failed generating ECDSA P384 key. Key should be asymmetric")
 	}
 
-	ecdsaKey = k.(*ecdsaPrivateKey).privKey
-	if !elliptic.P384().IsOnCurve(ecdsaKey.X, ecdsaKey.Y) {
-		t.Fatal("P256 generated key in invalid. The public key must be on the P384 curve.")
-	}
-	if elliptic.P384() != ecdsaKey.Curve {
+	ecdsaKey = k.(*ecdsaPrivateKey).pub
+	if elliptic.P384() != ecdsaKey.pub.Curve {
 		t.Fatal("P256 generated key in invalid. The curve must be P384.")
 	}
-	if ecdsaKey.D.Cmp(big.NewInt(0)) == 0 {
-		t.Fatal("P256 generated key in invalid. Private key must be different from 0.")
-	}
-
 }
 
 func TestKeyGenRSAOpts(t *testing.T) {
@@ -595,19 +590,43 @@ func TestECDSAKeyReRand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed generating ECDSA key [%s]", err)
 	}
+	if k == nil {
+		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
+	}
 
 	reRandomizedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
 	if err != nil {
 		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
-	}
-	if k == nil {
-		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
 	}
 	if !reRandomizedKey.Private() {
 		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key should be private")
 	}
 	if reRandomizedKey.Symmetric() {
 		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key should be asymmetric")
+	}
+
+	k2, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public ECDSA key from private [%s]", err)
+	}
+	if k2 == nil {
+		t.Fatal("Failed re-randomizing ECDSA key. Re-randomized Key must be different from nil")
+	}
+
+	reRandomizedKey2, err := currentBCCSP.KeyDeriv(k2, &bccsp.ECDSAReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+	if err != nil {
+		t.Fatalf("Failed re-randomizing ECDSA key [%s]", err)
+	}
+
+	if reRandomizedKey2.Private() {
+		t.Fatal("Re-randomized public Key must remain public")
+	}
+	if reRandomizedKey2.Symmetric() {
+		t.Fatal("Re-randomized ECDSA asymmetric key must remain asymmetric")
+	}
+
+	if false == bytes.Equal(reRandomizedKey.SKI(), reRandomizedKey2.SKI()) {
+		t.Fatal("Re-randomized ECDSA Private- or Public-Keys must end up having the same SKI")
 	}
 }
 
@@ -650,7 +669,7 @@ func TestECDSAVerify(t *testing.T) {
 
 	signature, err := currentBCCSP.Sign(k, digest, nil)
 	if err != nil {
-		t.Fatalf("Failed generating ECDSA signature [%s]", err)
+		t.Fatalf("Failed generating ECDSA signature  [%s]", err)
 	}
 
 	valid, err := currentBCCSP.Verify(k, signature, digest, nil)
@@ -674,13 +693,19 @@ func TestECDSAVerify(t *testing.T) {
 		t.Fatal("Failed verifying ECDSA signature. Signature not valid.")
 	}
 
+	// Import the exported public key
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting ECDSA raw public key [%s]", err)
+	}
+
 	// Store public key
-	err = currentKS.StoreKey(pk)
+	_, err = currentBCCSP.KeyImport(pkRaw, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: false})
 	if err != nil {
 		t.Fatalf("Failed storing corresponding public key [%s]", err)
 	}
 
-	pk2, err := currentKS.GetKey(pk.SKI())
+	pk2, err := currentBCCSP.GetKey(pk.SKI())
 	if err != nil {
 		t.Fatalf("Failed retrieving corresponding public key [%s]", err)
 	}
@@ -1082,7 +1107,7 @@ func TestECDSALowS(t *testing.T) {
 		t.Fatalf("Failed unmarshalling signature [%s]", err)
 	}
 
-	if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).privKey.Curve]) >= 0 {
+	if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).pub.pub.Curve]) >= 0 {
 		t.Fatal("Invalid signature. It must have low-S")
 	}
 
@@ -1096,12 +1121,12 @@ func TestECDSALowS(t *testing.T) {
 
 	// Ensure that signature with high-S are rejected.
 	for {
-		R, S, err = ecdsa.Sign(rand.Reader, k.(*ecdsaPrivateKey).privKey, digest)
+		R, S, err = signECDSA(k.SKI(), digest)
 		if err != nil {
 			t.Fatalf("Failed generating signature [%s]", err)
 		}
 
-		if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).privKey.Curve]) > 0 {
+		if S.Cmp(curveHalfOrders[k.(*ecdsaPrivateKey).pub.pub.Curve]) > 0 {
 			break
 		}
 	}
