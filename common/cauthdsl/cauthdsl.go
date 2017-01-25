@@ -136,7 +136,7 @@ func (id *mockIdentity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpt
 	return nil
 }
 
-func (id *mockIdentity) VerifyAttributes(proof [][]byte, spec *msp.AttributeProofSpec) error {
+func (id *mockIdentity) VerifyAttributes(proof []byte, spec *msp.AttributeProofSpec) error {
 	return nil
 }
 

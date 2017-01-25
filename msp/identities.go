@@ -109,7 +109,7 @@ func (id *identity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error
 	return nil
 }
 
-func (id *identity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) error {
+func (id *identity) VerifyAttributes(proof []byte, spec *AttributeProofSpec) error {
 	// TODO
 	return nil
 }

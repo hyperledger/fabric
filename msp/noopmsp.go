@@ -105,7 +105,7 @@ func (id *noopidentity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) e
 	return nil
 }
 
-func (id *noopidentity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) error {
+func (id *noopidentity) VerifyAttributes(proof []byte, spec *AttributeProofSpec) error {
 	return nil
 }
 
