@@ -49,7 +49,7 @@ func JoinChannelMessageFromBlock(block *common.Block) (api.JoinChannelMessage, e
 		return nil, err
 	}
 	jcm := &joinChannelMessage{seqNum: block.Header.Number, anchorPeers: []api.AnchorPeer{}}
-	for _, ap := range anchorPeers.AnchorPees {
+	for _, ap := range anchorPeers.AnchorPeers {
 		anchorPeer := api.AnchorPeer{
 			Host: ap.Host,
 			Port: int(ap.Port),
@@ -99,7 +99,7 @@ func parseBlock(block *common.Block) (*peer.AnchorPeers, error) {
 	if err := unMarshal(rawAnchorPeersBytes, anchorPeers); err != nil {
 		return nil, fmt.Errorf("Failed deserializing anchor peers from configuration item")
 	}
-	if len(anchorPeers.AnchorPees) == 0 {
+	if len(anchorPeers.AnchorPeers) == 0 {
 		return nil, fmt.Errorf("AnchorPeers field in configuration block was found, but is empty")
 	}
 	return anchorPeers, nil

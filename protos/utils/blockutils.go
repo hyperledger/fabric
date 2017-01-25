@@ -198,7 +198,7 @@ func EncodeMSP(chainID string) *cb.SignedConfigurationItem {
 // EncodeAnchorPeers returns a configuration item with anchor peers
 func EncodeAnchorPeers() *cb.ConfigurationItem {
 	anchorPeers := &peer.AnchorPeers{
-		AnchorPees: []*peer.AnchorPeer{{Cert: []byte("cert"), Host: "fakeHost", Port: int32(5611)}},
+		AnchorPeers: []*peer.AnchorPeer{{Cert: []byte("cert"), Host: "fakeHost", Port: int32(5611)}},
 	}
 	rawAnchorPeers := MarshalOrPanic(anchorPeers)
 	// We don't populate the chainID because that value is over-written later on anyway
