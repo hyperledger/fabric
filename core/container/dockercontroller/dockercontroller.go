@@ -100,8 +100,8 @@ func getDockerHostConfig() *docker.HostConfig {
 	return hostConfig
 }
 
-func (vm *DockerVM) createContainer(ctxt context.Context, client *docker.Client, imageID string, containerID string, args []string, env []string, attachstdin bool, attachstdout bool) error {
-	config := docker.Config{Cmd: args, Image: imageID, Env: env, AttachStdin: attachstdin, AttachStdout: attachstdout}
+func (vm *DockerVM) createContainer(ctxt context.Context, client *docker.Client, imageID string, containerID string, args []string, env []string) error {
+	config := docker.Config{Cmd: args, Image: imageID, Env: env}
 	copts := docker.CreateContainerOptions{Name: containerID, Config: &config, HostConfig: getDockerHostConfig()}
 	dockerLogger.Debugf("Create container: %s", containerID)
 	_, err := client.CreateContainer(copts)
@@ -112,7 +112,7 @@ func (vm *DockerVM) createContainer(ctxt context.Context, client *docker.Client,
 	return nil
 }
 
-func (vm *DockerVM) deployImage(client *docker.Client, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
+func (vm *DockerVM) deployImage(client *docker.Client, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
 	id, _ := vm.GetVMName(ccid)
 	outputbuf := bytes.NewBuffer(nil)
 	opts := docker.BuildImageOptions{
@@ -137,11 +137,11 @@ func (vm *DockerVM) deployImage(client *docker.Client, ccid ccintf.CCID, args []
 //for docker inputbuf is tar reader ready for use by docker.Client
 //the stream from end client to peer could directly be this tar stream
 //talk to docker daemon using docker Client and build the image
-func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
+func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
 	client, err := cutil.NewDockerClient()
 	switch err {
 	case nil:
-		if err = vm.deployImage(client, ccid, args, env, attachstdin, attachstdout, reader); err != nil {
+		if err = vm.deployImage(client, ccid, args, env, reader); err != nil {
 			return err
 		}
 	default:
@@ -151,7 +151,7 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 }
 
 //Start starts a container using a previously created docker image
-func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
+func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
 	imageID, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
 	if err != nil {
@@ -166,18 +166,18 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 	vm.stopInternal(ctxt, client, containerID, 0, false, false)
 
 	dockerLogger.Debugf("Start container %s", containerID)
-	err = vm.createContainer(ctxt, client, imageID, containerID, args, env, attachstdin, attachstdout)
+	err = vm.createContainer(ctxt, client, imageID, containerID, args, env)
 	if err != nil {
 		//if image not found try to create image and retry
 		if err == docker.ErrNoSuchImage {
 			if reader != nil {
 				dockerLogger.Debugf("start-could not find image ...attempt to recreate image %s", err)
-				if err = vm.deployImage(client, ccid, args, env, attachstdin, attachstdout, reader); err != nil {
+				if err = vm.deployImage(client, ccid, args, env, reader); err != nil {
 					return err
 				}
 
 				dockerLogger.Debug("start-recreated image successfully")
-				if err = vm.createContainer(ctxt, client, imageID, containerID, args, env, attachstdin, attachstdout); err != nil {
+				if err = vm.createContainer(ctxt, client, imageID, containerID, args, env); err != nil {
 					dockerLogger.Errorf("start-could not recreate container post recreate image: %s", err)
 					return err
 				}
