@@ -30,10 +30,12 @@ import (
 
 var chaincodeDeployCmd *cobra.Command
 
+const deploy_cmdname = "deploy"
+
 // deployCmd returns the cobra command for Chaincode Deploy
 func deployCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeDeployCmd = &cobra.Command{
-		Use:       "deploy",
+		Use:       deploy_cmdname,
 		Short:     fmt.Sprintf("Deploy the specified chaincode to the network."),
 		Long:      fmt.Sprintf(`Deploy the specified chaincode to the network.`),
 		ValidArgs: []string{"1"},
@@ -64,7 +66,7 @@ func deploy(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, 
 
 	uuid := util.GenerateUUID()
 
-	prop, err := utils.CreateDeployProposalFromCDS(uuid, chainID, cds, creator)
+	prop, err := utils.CreateDeployProposalFromCDS(uuid, chainID, cds, creator, policyMarhsalled, []byte(escc), []byte(vscc))
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}

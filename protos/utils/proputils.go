@@ -240,6 +240,17 @@ func GetSignatureHeader(bytes []byte) (*common.SignatureHeader, error) {
 	return sh, nil
 }
 
+// GetSignaturePolicyEnvelope returns a SignaturePolicyEnvelope from bytes
+func GetSignaturePolicyEnvelope(bytes []byte) (*common.SignaturePolicyEnvelope, error) {
+	p := &common.SignaturePolicyEnvelope{}
+	err := proto.Unmarshal(bytes, p)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
 // CreateChaincodeProposal creates a proposal from given input
 func CreateChaincodeProposal(txid string, typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, error) {
 	return CreateChaincodeProposalWithTransient(txid, typ, chainID, cis, creator, nil)
@@ -438,17 +449,17 @@ func CreateProposalFromCIS(txid string, typ common.HeaderType, chainID string, c
 }
 
 // CreateDeployProposalFromCDS returns a deploy proposal given a serialized identity and a ChaincodeDeploymentSpec
-func CreateDeployProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
-	return createProposalFromCDS(txid, chainID, cds, creator, true)
+func CreateDeployProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte) (*peer.Proposal, error) {
+	return createProposalFromCDS(txid, chainID, cds, creator, policy, escc, vscc, true)
 }
 
 // CreateUpgradeProposalFromCDS returns a upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec
-func CreateUpgradeProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
-	return createProposalFromCDS(txid, chainID, cds, creator, false)
+func CreateUpgradeProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte) (*peer.Proposal, error) {
+	return createProposalFromCDS(txid, chainID, cds, creator, policy, escc, vscc, false)
 }
 
 // createProposalFromCDS returns a deploy or upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec
-func createProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, deploy bool) (*peer.Proposal, error) {
+func createProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte, deploy bool) (*peer.Proposal, error) {
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
@@ -465,7 +476,7 @@ func createProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeplo
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			Type:        peer.ChaincodeSpec_GOLANG,
 			ChaincodeID: &peer.ChaincodeID{Name: "lccc"},
-			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b}}}}
+			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b, policy, escc, vscc}}}}
 
 	//...and get the proposal for it
 	return CreateProposalFromCIS(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, lcccSpec, creator)

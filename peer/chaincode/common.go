@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	cutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
@@ -131,6 +132,47 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	//we need chaincode name for everything, including deploy
 	if chaincodeName == common.UndefinedParamValue {
 		return fmt.Errorf("Must supply value for %s name parameter.\n", chainFuncName)
+	}
+
+	// if it's not a deploy or an upgrade we don't need policy, escc and vscc
+	if cmd.Name() != deploy_cmdname && cmd.Name() != upgrade_cmdname {
+		if escc != common.UndefinedParamValue {
+			return fmt.Errorf("escc should be supplied only to chaincode deploy requests")
+		}
+
+		if vscc != common.UndefinedParamValue {
+			return fmt.Errorf("vscc should be supplied only to chaincode deploy requests")
+		}
+
+		if policy != common.UndefinedParamValue {
+			return fmt.Errorf("policy should be supplied only to chaincode deploy requests")
+		}
+	} else {
+		if escc != common.UndefinedParamValue {
+			logger.Infof("Using escc %s", escc)
+		} else {
+			logger.Infof("Using default escc")
+			escc = "escc"
+		}
+
+		if vscc != common.UndefinedParamValue {
+			logger.Infof("Using vscc %s", vscc)
+		} else {
+			logger.Infof("Using default vscc")
+			vscc = "vscc"
+		}
+
+		if policy != common.UndefinedParamValue {
+			p, err := cauthdsl.FromString(policy)
+			if err != nil {
+				return fmt.Errorf("Invalid policy %s\n", policy)
+			}
+			policyMarhsalled = putils.MarshalOrPanic(p)
+		} else {
+			// FIXME: we need to get the default from somewhere
+			p := cauthdsl.SignedByMspMember("DEFAULT")
+			policyMarhsalled = putils.MarshalOrPanic(p)
+		}
 	}
 
 	// Check that non-empty chaincode parameters contain only Args as a key.

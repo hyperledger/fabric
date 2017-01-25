@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/sharedconfig"
 	"github.com/hyperledger/fabric/protos/common"
@@ -251,6 +252,17 @@ func GetLedger(cid string) ledger.PeerLedger {
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
 		return c.cs.ledger
+	}
+	return nil
+}
+
+// GetMSPMgr returns the MSP manager of the chain with chain ID.
+// Note that this call returns nil if chain cid has not been created.
+func GetMSPMgr(cid string) msp.MSPManager {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs.MSPManager()
 	}
 	return nil
 }

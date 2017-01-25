@@ -128,7 +128,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	//
 	//NOTE that if there's an error all simulation, including the chaincode
 	//table changes in lccc will be thrown away
-	if cid.Name == "lccc" && len(cis.ChaincodeSpec.Input.Args) == 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
+	if cid.Name == "lccc" && len(cis.ChaincodeSpec.Input.Args) >= 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
 		var ccVersion string
 		switch string(cis.ChaincodeSpec.Input.Args[0]) {
 		case "deploy":
