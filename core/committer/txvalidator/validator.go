@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -35,11 +34,23 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
+// Support provides all of the needed to evaluate the VSCC
+type Support interface {
+	// Ledger returns the ledger associated with this validator
+	Ledger() ledger.PeerLedger
+
+	// MSPManager returns the MSP manager for this chain
+	MSPManager() msp.MSPManager
+
+	// Apply attempts to apply a configtx to become the new configuration
+	Apply(configtx *common.ConfigurationEnvelope) error
+}
+
 //Validator interface which defines API to validate block transactions
 // and return the bit array mask indicating invalid transactions which
 // didn't pass validation.
 type Validator interface {
-	Validate(block *common.Block)
+	Validate(block *common.Block) error
 }
 
 // private interface to decouple tx validator
@@ -52,7 +63,7 @@ type vsccValidator interface {
 // vsccValidator implementation which used to call
 // vscc chaincode and validate block transactions
 type vsccValidatorImpl struct {
-	ledger     ledger.PeerLedger
+	support    Support
 	ccprovider ccprovider.ChaincodeProvider
 }
 
@@ -60,8 +71,8 @@ type vsccValidatorImpl struct {
 // reference to the ledger to enable tx simulation
 // and execution of vscc
 type txValidator struct {
-	ledger ledger.PeerLedger
-	vscc   vsccValidator
+	support Support
+	vscc    vsccValidator
 }
 
 var logger *logging.Logger // package-level logger
@@ -72,9 +83,9 @@ func init() {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(ledger ledger.PeerLedger) Validator {
+func NewTxValidator(support Support) Validator {
 	// Encapsulates interface implementation
-	return &txValidator{ledger, &vsccValidatorImpl{ledger: ledger, ccprovider: ccprovider.GetChaincodeProvider()}}
+	return &txValidator{support, &vsccValidatorImpl{support: support, ccprovider: ccprovider.GetChaincodeProvider()}}
 }
 
 func (v *txValidator) chainExists(chain string) bool {
@@ -82,7 +93,7 @@ func (v *txValidator) chainExists(chain string) bool {
 	return true
 }
 
-func (v *txValidator) Validate(block *common.Block) {
+func (v *txValidator) Validate(block *common.Block) error {
 	logger.Debug("START Block Validation")
 	defer logger.Debug("END Block Validation")
 	txsfltr := ledgerUtil.NewFilterBitArray(uint(len(block.Data.Data)))
@@ -118,7 +129,7 @@ func (v *txValidator) Validate(block *common.Block) {
 				if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 					// Check duplicate transactions
 					txID := payload.Header.ChainHeader.TxID
-					if _, err := v.ledger.GetTransactionByID(txID); err == nil {
+					if _, err := v.support.Ledger().GetTransactionByID(txID); err == nil {
 						logger.Warning("Duplicate transaction found, ", txID, ", skipping")
 						continue
 					}
@@ -131,13 +142,19 @@ func (v *txValidator) Validate(block *common.Block) {
 						continue
 					}
 				} else if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
-					// TODO: here we should call CSCC and pass it the config tx
-					// note that there is quite a bit more validation necessary
-					// on this tx, namely, validation that each config item has
-					// signature matching the policy required for the item from
-					// the existing configuration; this is taken care of nicely
-					// by configtx.Manager (see fabric/common/configtx).
-					logger.Debug("config transaction received for chain %s", chain)
+					configEnvelope, err := utils.UnmarshalConfigurationEnvelope(payload.Data)
+					if err != nil {
+						err := fmt.Errorf("Error unmarshaling configuration which passed initial validity checks: %s", err)
+						logger.Critical(err)
+						return err
+					}
+
+					if err := v.support.Apply(configEnvelope); err != nil {
+						err := fmt.Errorf("Error validating configuration which passed initial validity checks: %s", err)
+						logger.Critical(err)
+						return err
+					}
+					logger.Debugf("config transaction received for chain %s", chain)
 				}
 
 				if _, err := proto.Marshal(env); err != nil {
@@ -156,16 +173,17 @@ func (v *txValidator) Validate(block *common.Block) {
 	utils.InitBlockMetadata(block)
 	// Serialize invalid transaction bit array into block metadata field
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr.ToBytes()
+
+	return nil
 }
 
-// getHardcodedPolicy returns a policy that requests
+// getSemiHardcodedPolicy returns a policy that requests
 // one valid signature from the first MSP in this
 // chain's MSP manager
 // FIXME: this needs to be removed as soon as we extract the policy from LCCC
-func getHardcodedPolicy(chainID string) ([]byte, error) {
+func getSemiHardcodedPolicy(chainID string, mspMgr msp.MSPManager) ([]byte, error) {
 	// 1) determine the MSP identifier for the first MSP in this chain
 	var msp msp.MSP
-	mspMgr := mspmgmt.GetManagerForChain(chainID)
 	msps, err := mspMgr.GetMSPs()
 	if err != nil {
 		return nil, fmt.Errorf("Could not retrieve the MSPs for the chain manager, err %s", err)
@@ -216,7 +234,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	// by the deployer and can be retrieved via LCCC: we create
 	// a policy that requests 1 valid signature from this chain's
 	// MSP
-	policy, err := getHardcodedPolicy(chainID)
+	policy, err := getSemiHardcodedPolicy(chainID, v.support.MSPManager())
 	if err != nil {
 		return err
 	}
@@ -227,7 +245,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	// args[2] - serialized policy
 	args := [][]byte{[]byte(""), envBytes, policy}
 
-	ctxt, err := v.ccprovider.GetContext(v.ledger)
+	ctxt, err := v.ccprovider.GetContext(v.support.Ledger())
 	if err != nil {
 		logger.Errorf("Cannot obtain context for txid=%s, err %s", txid, err)
 		return err

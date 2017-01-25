@@ -27,6 +27,7 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -41,12 +42,25 @@ import (
 
 var peerLogger = logging.MustGetLogger("peer")
 
+type chainSupport struct {
+	configtx.Manager
+	ledger ledger.PeerLedger
+	mspmgr msp.MSPManager
+}
+
+func (cs *chainSupport) Ledger() ledger.PeerLedger {
+	return cs.ledger
+}
+
+func (cs *chainSupport) MSPManager() msp.MSPManager {
+	return cs.mspmgr
+}
+
 // chain is a local struct to manage objects in a chain
 type chain struct {
+	cs        *chainSupport
 	cb        *common.Block
-	ledger    ledger.PeerLedger
 	committer committer.Committer
-	mspmgr    msp.MSPManager
 }
 
 // chains is a local map of chainID->chainObject
@@ -146,12 +160,32 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 
 // createChain creates a new chain object and insert it into the chains
 func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
-	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(ledger))
 
+	configEnvelope, _, err := utils.BreakOutBlockToConfigurationEnvelope(cb)
+	if err != nil {
+		return err
+	}
+
+	configtxInitializer := configtx.NewInitializer()
+	// TODO Hook peer shared config manager in here once it exists
+	configtxManager, err := configtx.NewManagerImpl(configEnvelope, configtxInitializer)
+	if err != nil {
+		return err
+	}
+
+	// TODO Move to the configtx.Handler interface (which MSP already implements)
 	mgr, err := mspmgmt.GetMSPManagerFromBlock(cid, cb)
 	if err != nil {
 		return err
 	}
+
+	cs := &chainSupport{
+		Manager: configtxManager,
+		ledger:  ledger,
+		mspmgr:  mgr,
+	}
+
+	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(cs))
 
 	// TODO This should be called from a configtx.Manager but it's not
 	// implemented yet. When it will be, this needs to move there,
@@ -162,7 +196,15 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	chains.Lock()
 	defer chains.Unlock()
-	chains.list[cid] = &chain{cb: cb, ledger: ledger, mspmgr: mgr, committer: c}
+	chains.list[cid] = &chain{
+		cs: &chainSupport{
+			Manager: configtxManager,
+			ledger:  ledger,
+			mspmgr:  mgr,
+		},
+		cb:        cb,
+		committer: c,
+	}
 	return nil
 }
 
@@ -191,7 +233,7 @@ func MockCreateChain(cid string) error {
 
 	chains.Lock()
 	defer chains.Unlock()
-	chains.list[cid] = &chain{ledger: ledger}
+	chains.list[cid] = &chain{cs: &chainSupport{ledger: ledger}}
 
 	return nil
 }
@@ -202,7 +244,7 @@ func GetLedger(cid string) ledger.PeerLedger {
 	chains.RLock()
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
-		return c.ledger
+		return c.cs.ledger
 	}
 	return nil
 }
