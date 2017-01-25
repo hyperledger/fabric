@@ -51,9 +51,8 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	vv, _ := db.GetState("ns1", "key1")
 	testutil.AssertEquals(t, vv, &vv1)
 
-	//TODO re-enable test after Couch version wrapper is added
-	//vv, _ = db.GetState("ns2", "key4")
-	//testutil.AssertEquals(t, vv, &vv4)
+	vv, _ = db.GetState("ns2", "key4")
+	testutil.AssertEquals(t, vv, &vv4)
 
 	sp, err := db.GetLatestSavePoint()
 	testutil.AssertNoError(t, err, "")
@@ -91,9 +90,8 @@ func TestMultiDBBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, sp, savePoint1)
 
-	//TODO re-enable test after Couch version wrapper is added
-	//vv, _ = db2.GetState("ns1", "key1")
-	//testutil.AssertEquals(t, vv, &vv3)
+	vv, _ = db2.GetState("ns1", "key1")
+	testutil.AssertEquals(t, vv, &vv3)
 
 	sp, err = db2.GetLatestSavePoint()
 	testutil.AssertNoError(t, err, "")
@@ -222,4 +220,23 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult3, err := itr.Next()
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertNil(t, queryResult3)
+
+	// query with fields
+	itr, err = db.ExecuteQuery("{\"selector\":{\"owner\":\"jerry\"},\"fields\": [\"owner\", \"asset_name\", \"color\", \"size\"]}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify one jerry result
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNotNil(t, queryResult1)
+	versionedQueryRecord = queryResult1.(*statedb.VersionedQueryRecord)
+	stringRecord = string(versionedQueryRecord.Record)
+	bFoundJerry = strings.Contains(stringRecord, "jerry")
+	testutil.AssertEquals(t, bFoundJerry, true)
+
+	// verify no more results
+	queryResult2, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult2)
+
 }
