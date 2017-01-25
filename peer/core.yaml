@@ -180,6 +180,10 @@ vm:
                 file: /path/to/ca.pem
             key:
                 file: /path/to/server-key.pem
+
+        # Enables/disables the standard out/err from chaincode containers for debugging purposes
+        attachStdout: false
+
         # Parameters of docker container creating. For docker can created by custom parameters
         # If you have your own ipam & dns-server for cluster you can use them to create container efficient.
         # NetworkMode Sets the networking mode for the container. Supported standard values are: `host`(default),`bridge`,`ipvlan`,`none`

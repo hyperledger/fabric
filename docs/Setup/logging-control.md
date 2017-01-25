@@ -60,7 +60,13 @@ settings):
 
 ## Go chaincodes
 
-As independently executed programs, user-provided chaincodes can use any appropriate technique to create their private logs - from simple print statements to fully-annotated and level-controlled logs. The chaincode `shim` package provides APIs that allow a chaincode to create and manage logging objects whose logs will be formatted and interleaved consistently with the `shim` logs.
+The standard mechanism to log within a chaincode application is to integrate with the logging transport exposed to each chaincode instance via the peer.  The chaincode `shim` package provides APIs that allow a chaincode to create and manage logging objects whose logs will be formatted and interleaved consistently with the `shim` logs.
+
+As independently executed programs, user-provided chaincodes may technically also produce output on stdout/stderr.  While naturally useful for "devmode", these channels are normally disabled on a production network to mitigate abuse from broken or malicious code.  However, it is possible to enable this output even for peer-managed containers (e.g. "netmode") on a per-peer basis via the CORE_VM_DOCKER_ATTACHSTDOUT=true configuration option.
+
+Once enabled, each chaincode will receive its own logging channel keyed by its container-id.  Any output written to either stdout or stderr will be integrated with the peer's log on a per-line basis.  It is not recommended to enable this for production.
+
+### API
 
 `NewLogger(name string) *ChaincodeLogger` - Create a logging object for use by a chaincode
 
