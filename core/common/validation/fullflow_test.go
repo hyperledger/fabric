@@ -65,10 +65,11 @@ func TestGoodPath(t *testing.T) {
 		return
 	}
 
+	response := &peer.Response{Status: 200}
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, simRes, nil, nil, signer)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, nil, signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -198,10 +199,11 @@ func TestBadTx(t *testing.T) {
 		return
 	}
 
+	response := &peer.Response{Status: 200}
 	simRes := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, simRes, nil, nil, signer)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, simRes, nil, nil, signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -250,19 +252,21 @@ func Test2EndorsersAgree(t *testing.T) {
 		return
 	}
 
+	response1 := &peer.Response{Status: 200}
 	simRes1 := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp1, err := utils.CreateProposalResponse(prop.Header, prop.Payload, simRes1, nil, nil, signer)
+	presp1, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, nil, signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
 	}
 
+	response2 := &peer.Response{Status: 200}
 	simRes2 := []byte("simulation_result")
 
 	// endorse it to get a proposal response
-	presp2, err := utils.CreateProposalResponse(prop.Header, prop.Payload, simRes2, nil, nil, signer)
+	presp2, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, nil, signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
@@ -291,19 +295,21 @@ func Test2EndorsersDisagree(t *testing.T) {
 		return
 	}
 
+	response1 := &peer.Response{Status: 200}
 	simRes1 := []byte("simulation_result1")
 
 	// endorse it to get a proposal response
-	presp1, err := utils.CreateProposalResponse(prop.Header, prop.Payload, simRes1, nil, nil, signer)
+	presp1, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response1, simRes1, nil, nil, signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return
 	}
 
+	response2 := &peer.Response{Status: 200}
 	simRes2 := []byte("simulation_result2")
 
 	// endorse it to get a proposal response
-	presp2, err := utils.CreateProposalResponse(prop.Header, prop.Payload, simRes2, nil, nil, signer)
+	presp2, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response2, simRes2, nil, nil, signer)
 	if err != nil {
 		t.Fatalf("CreateProposalResponse failed, err %s", err)
 		return

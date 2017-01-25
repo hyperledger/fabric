@@ -41,7 +41,7 @@ func createTx() (*common.Envelope, error) {
 		return nil, err
 	}
 
-	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, []byte("res"), nil, nil, id)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, []byte("res"), nil, nil, id)
 	if err != nil {
 		return nil, err
 	}

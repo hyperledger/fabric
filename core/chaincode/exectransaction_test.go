@@ -184,7 +184,7 @@ func endTxSimulation(chainID string, txsim ledger.TxSimulator, payload []byte, c
 			}
 
 			// assemble a (signed) proposal response message
-			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, txSimulationResults, nil, nil, signer)
+			resp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, &pb.Response{Status: 200}, txSimulationResults, nil, nil, signer)
 			if err != nil {
 				return err
 			}
