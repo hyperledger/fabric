@@ -67,6 +67,7 @@ type Genesis struct {
 	OrdererType  string
 	BatchTimeout time.Duration
 	BatchSize    BatchSize
+	SbftShared   SbftShared
 }
 
 // BatchSize contains configuration affecting the size of batches
@@ -101,16 +102,18 @@ type Kafka struct {
 	Version sarama.KafkaVersion
 }
 
-// Sbft contains config for the SBFT orderer
-type Sbft struct {
-	PeerCommAddr       string
-	CertFile           string
-	KeyFile            string
-	DataDir            string
+// SbftLocal contains config for the SBFT peer/replica
+type SbftLocal struct {
+	PeerCommAddr string
+	CertFile     string
+	KeyFile      string
+	DataDir      string
+}
+
+// SbftShared contains config for the SBFT network
+type SbftShared struct {
 	N                  uint64
 	F                  uint64
-	BatchDurationNsec  uint64
-	BatchSizeBytes     uint64
 	RequestTimeoutNsec uint64
 	Peers              map[string]string // Address to Cert mapping
 }
@@ -132,7 +135,7 @@ type TopLevel struct {
 	FileLedger FileLedger
 	Kafka      Kafka
 	Genesis    Genesis
-	Sbft       Sbft
+	SbftLocal  SbftLocal
 }
 
 var defaults = TopLevel{
@@ -175,20 +178,18 @@ var defaults = TopLevel{
 			AbsoluteMaxBytes:  100000000,
 			PreferredMaxBytes: 512 * 1024,
 		},
+		SbftShared: SbftShared{
+			N:                  1,
+			F:                  0,
+			RequestTimeoutNsec: uint64(time.Second.Nanoseconds()),
+			Peers:              map[string]string{":6101": "sbft/testdata/cert1.pem"},
+		},
 	},
-	// TODO move the appropriate parts to Genesis
-	// and use BatchSizeMaxBytes
-	Sbft: Sbft{
-		PeerCommAddr:       ":6101",
-		CertFile:           "sbft/testdata/cert1.pem",
-		KeyFile:            "sbft/testdata/key.pem",
-		DataDir:            "/tmp",
-		N:                  1,
-		F:                  0,
-		BatchDurationNsec:  1000,
-		BatchSizeBytes:     1000000000,
-		RequestTimeoutNsec: 1000000000,
-		Peers:              map[string]string{":6101": "sbft/testdata/cert1.pem"},
+	SbftLocal: SbftLocal{
+		PeerCommAddr: ":6101",
+		CertFile:     "sbft/testdata/cert1.pem",
+		KeyFile:      "sbft/testdata/key.pem",
+		DataDir:      "/tmp",
 	},
 }
 
