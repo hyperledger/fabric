@@ -55,7 +55,7 @@ type identityMapperImpl struct {
 	sync.RWMutex
 }
 
-// NewIdentityStore method, all we need is a reference to a MessageCryptoService
+// NewIdentityMapper method, all we need is a reference to a MessageCryptoService
 func NewIdentityMapper(mcs api.MessageCryptoService) Mapper {
 	return &identityMapperImpl{
 		mcs:        mcs,

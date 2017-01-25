@@ -110,7 +110,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.Receive
 		PullInterval:      time.Millisecond * 500,
 		Tag:               proto.GossipMessage_EMPTY,
 		Channel:           nil,
-		Id:                "id1",
+		ID:                "id1",
 	}
 	sender := &senderMock{}
 	memberSvc := &membershipSvcMock{}

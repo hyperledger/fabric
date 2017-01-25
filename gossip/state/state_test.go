@@ -46,7 +46,7 @@ var (
 	logger     = gossipUtil.GetLogger(gossipUtil.LoggingStateModule, "")
 )
 
-var orgId = []byte("ORG1")
+var orgID = []byte("ORG1")
 var anchorPeerIdentity = api.PeerIdentityType("identityInOrg1")
 
 type joinChanMsg struct {
@@ -69,7 +69,7 @@ type orgCryptoService struct {
 // OrgByPeerIdentity returns the OrgIdentityType
 // of a given peer identity
 func (*orgCryptoService) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
-	return orgId
+	return orgID
 }
 
 // Verify verifies a JoinChannelMessage, returns nil on success,

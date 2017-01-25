@@ -789,7 +789,7 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 	conf := pull.PullConfig{
 		MsgType:           proto.PullMsgType_IdentityMsg,
 		Channel:           []byte(""),
-		Id:                g.conf.SelfEndpoint,
+		ID:                g.conf.SelfEndpoint,
 		PeerCountToSelect: g.conf.PullPeerNum,
 		PullInterval:      g.conf.PullInterval,
 		Tag:               proto.GossipMessage_EMPTY,

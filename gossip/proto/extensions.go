@@ -18,7 +18,6 @@ package proto
 
 import (
 	"bytes"
-
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
