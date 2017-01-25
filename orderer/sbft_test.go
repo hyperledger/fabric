@@ -29,7 +29,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/core/peer/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/ledger"
 	"github.com/hyperledger/fabric/orderer/ledger/ram"

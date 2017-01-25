@@ -24,8 +24,8 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/errors"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 )

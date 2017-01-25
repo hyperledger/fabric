@@ -20,6 +20,8 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -32,6 +34,9 @@ type Resources interface {
 
 	// ChainConfig returns the chainconfig.Descriptor for the chain
 	ChainConfig() chainconfig.Descriptor
+
+	// MSPManager returns the msp.MSPManager for the chain
+	MSPManager() msp.MSPManager
 }
 
 // Initializer is a structure which is only useful before a configtx.Manager
@@ -44,9 +49,10 @@ type Initializer interface {
 }
 
 type resources struct {
-	handlers      map[cb.ConfigurationItem_ConfigurationType]Handler
-	policyManager policies.Manager
-	chainConfig   chainconfig.Descriptor
+	handlers         map[cb.ConfigurationItem_ConfigurationType]Handler
+	policyManager    policies.Manager
+	chainConfig      chainconfig.Descriptor
+	mspConfigHandler *mspmgmt.MSPConfigHandler
 }
 
 // PolicyManager returns the policies.Manager for the chain
@@ -59,6 +65,11 @@ func (r *resources) ChainConfig() chainconfig.Descriptor {
 	return r.chainConfig
 }
 
+// MSPManager returns the msp.MSPManager for the chain
+func (r *resources) MSPManager() msp.MSPManager {
+	return r.mspConfigHandler.GetMSPManager()
+}
+
 // Handlers returns the handlers to be used when initializing the configtx.Manager
 func (r *resources) Handlers() map[cb.ConfigurationItem_ConfigurationType]Handler {
 	return r.handlers
@@ -66,6 +77,7 @@ func (r *resources) Handlers() map[cb.ConfigurationItem_ConfigurationType]Handle
 
 // NewInitializer creates a chain initializer for the basic set of common chain resources
 func NewInitializer() Initializer {
+	mspConfigHandler := &mspmgmt.MSPConfigHandler{}
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
 		rtype := cb.Policy_PolicyType(pType)
@@ -73,8 +85,7 @@ func NewInitializer() Initializer {
 		case cb.Policy_UNKNOWN:
 			// Do not register a handler
 		case cb.Policy_SIGNATURE:
-			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(
-				cauthdsl.NewMockDeserializer()) // FIXME: here we should pass in the orderer MSP as soon as it's ready
+			policyProviderMap[pType] = cauthdsl.NewPolicyProvider(mspConfigHandler)
 		case cb.Policy_MSP:
 			// Add hook for MSP Handler here
 		}
@@ -91,14 +102,17 @@ func NewInitializer() Initializer {
 			handlers[rtype] = chainConfig
 		case cb.ConfigurationItem_Policy:
 			handlers[rtype] = policyManager
+		case cb.ConfigurationItem_MSP:
+			handlers[rtype] = mspConfigHandler
 		default:
 			handlers[rtype] = NewBytesHandler()
 		}
 	}
 
 	return &resources{
-		handlers:      handlers,
-		policyManager: policyManager,
-		chainConfig:   chainConfig,
+		handlers:         handlers,
+		policyManager:    policyManager,
+		chainConfig:      chainConfig,
+		mspConfigHandler: mspConfigHandler,
 	}
 }

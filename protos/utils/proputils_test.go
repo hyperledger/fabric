@@ -26,8 +26,8 @@ import (
 	"os"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"

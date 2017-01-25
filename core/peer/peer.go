@@ -33,9 +33,8 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
-	"github.com/hyperledger/fabric/core/peer/msp"
 	"github.com/hyperledger/fabric/gossip/service"
-	"github.com/hyperledger/fabric/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -45,15 +44,10 @@ var peerLogger = logging.MustGetLogger("peer")
 type chainSupport struct {
 	configtx.Manager
 	ledger ledger.PeerLedger
-	mspmgr msp.MSPManager
 }
 
 func (cs *chainSupport) Ledger() ledger.PeerLedger {
 	return cs.ledger
-}
-
-func (cs *chainSupport) MSPManager() msp.MSPManager {
-	return cs.mspmgr
 }
 
 // chain is a local struct to manage objects in a chain
@@ -173,8 +167,9 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
-	// TODO Move to the configtx.Handler interface (which MSP already implements)
-	mgr, err := mspmgmt.GetMSPManagerFromBlock(cid, cb)
+	// TODO remove once all references to mspmgmt are gone from peer code
+	// MSP is now initialized above in configtx.Manager
+	_, err = mspmgmt.GetMSPManagerFromBlock(cid, cb)
 	if err != nil {
 		return err
 	}
@@ -182,7 +177,6 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	cs := &chainSupport{
 		Manager: configtxManager,
 		ledger:  ledger,
-		mspmgr:  mgr,
 	}
 
 	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(cs))
@@ -197,11 +191,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	chains.Lock()
 	defer chains.Unlock()
 	chains.list[cid] = &chain{
-		cs: &chainSupport{
-			Manager: configtxManager,
-			ledger:  ledger,
-			mspmgr:  mgr,
-		},
+		cs:        cs,
 		cb:        cb,
 		committer: c,
 	}

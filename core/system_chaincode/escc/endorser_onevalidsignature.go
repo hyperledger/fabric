@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
-	"github.com/hyperledger/fabric/core/peer/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
 var logger = logging.MustGetLogger("escc")

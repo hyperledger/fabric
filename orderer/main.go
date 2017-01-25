@@ -46,7 +46,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/core/peer/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	logging "github.com/op/go-logging"
 )
 

@@ -22,7 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/stretchr/testify/assert"
-	"github.com/hyperledger/fabric/core/peer/msp"
+	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 )
 
 func TestMain(m *testing.M) {
