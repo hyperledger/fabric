@@ -21,5 +21,9 @@ ADD payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
 COPY payload/orderer /usr/local/bin
 COPY payload/peer /usr/local/bin
 
+# softhsm2
+COPY payload/install-softhsm2.sh /tmp
+RUN bash /tmp/install-softhsm2.sh && rm -f install-softhsm2.sh
+
 # typically, this is mapped to a developer's dev environment
 WORKDIR /opt/gopath/src/github.com/hyperledger/fabric

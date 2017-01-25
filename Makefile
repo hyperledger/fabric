@@ -192,7 +192,8 @@ build/image/testenv/payload:    build/gotools.tar.bz2 \
 				orderer/orderer.yaml \
 				build/docker/bin/peer \
 				peer/core.yaml \
-				build/msp-sampleconfig.tar.bz2
+				build/msp-sampleconfig.tar.bz2 \
+				images/testenv/install-softhsm2.sh
 build/image/runtime/payload:    build/docker/busybox
 build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
 build/image/kafka/payload:      images/kafka/docker-entrypoint.sh
