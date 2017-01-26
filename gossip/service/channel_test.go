@@ -94,7 +94,7 @@ func TestInvalidJoinChannelBlock(t *testing.T) {
 		host := "localhost"
 		port := 5611
 		anchorPeers := &peer.AnchorPeers{
-			AnchorPees: []*peer.AnchorPeer{{Cert: cert, Host: host, Port: int32(port)}},
+			AnchorPeers: []*peer.AnchorPeer{{Cert: cert, Host: host, Port: int32(port)}},
 		}
 		confItem1 := createAnchorPeerConfItem(t, anchorPeers, utils.AnchorPeerConfItemKey)
 		confItem2 := createAnchorPeerConfItem(t, anchorPeers, utils.AnchorPeerConfItemKey)
@@ -105,7 +105,7 @@ func TestInvalidJoinChannelBlock(t *testing.T) {
 
 	noAnchorPeers := func(_ *common.Block) *common.Block {
 		anchorPeers := &peer.AnchorPeers{
-			AnchorPees: []*peer.AnchorPeer{},
+			AnchorPeers: []*peer.AnchorPeer{},
 		}
 		confItem := createAnchorPeerConfItem(t, anchorPeers, utils.AnchorPeerConfItemKey)
 		block, _ := genesis.NewFactoryImpl(configtx.NewSimpleTemplate(confItem)).Block("TEST")
@@ -115,7 +115,7 @@ func TestInvalidJoinChannelBlock(t *testing.T) {
 
 	noAnchorPeerItemType := func(_ *common.Block) *common.Block {
 		anchorPeers := &peer.AnchorPeers{
-			AnchorPees: []*peer.AnchorPeer{},
+			AnchorPeers: []*peer.AnchorPeer{},
 		}
 		confItem := createAnchorPeerConfItem(t, anchorPeers, "MSP configuration")
 		block, _ := genesis.NewFactoryImpl(configtx.NewSimpleTemplate(confItem)).Block("TEST")
@@ -154,7 +154,7 @@ func testJoinChannelFails(t *testing.T, invalidator blockInvalidator, unMarshall
 
 func createValidJoinChanMessage(t *testing.T, seqNum int, host string, port int, cert []byte) *common.Block {
 	anchorPeers := &peer.AnchorPeers{
-		AnchorPees: []*peer.AnchorPeer{{Cert: cert, Host: host, Port: int32(port)}},
+		AnchorPeers: []*peer.AnchorPeer{{Cert: cert, Host: host, Port: int32(port)}},
 	}
 	confItem := createAnchorPeerConfItem(t, anchorPeers, utils.AnchorPeerConfItemKey)
 	block, err := genesis.NewFactoryImpl(configtx.NewSimpleTemplate(confItem)).Block("TEST")

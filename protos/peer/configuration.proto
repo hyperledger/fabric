@@ -22,7 +22,7 @@ package protos;
 
 // AnchorPeers simply represents list of anchor peers which is used in ConfigurationItem
 message AnchorPeers {
-    repeated AnchorPeer anchorPees = 1;
+    repeated AnchorPeer anchorPeers = 1;
 }
 
 // AnchorPeer message structure which provides information about anchor peer, it includes host name,
