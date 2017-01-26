@@ -78,7 +78,13 @@ func (s *SBFT) handlePreprepare(pp *Preprepare, src uint64) {
 		log.Infof("replica %d: preprepare batches prev hash does not match expected %s, got %s", s.id, hash2str(batchheader.PrevHash), hash2str(prevhash))
 		return
 	}
-	committers := s.getCommitters(pp)
+
+	blockOK, committers := s.getCommittersFromBatch(pp.Batch)
+	if !blockOK {
+		log.Debugf("Replica %d found Byzantine block in preprepare, Seq: %d View: %d", s.id, pp.Seq.Seq, pp.Seq.View)
+		s.sendViewChange()
+		return
+	}
 	log.Infof("replica %d: handlePrepare", s.id)
 	s.handleCheckedPreprepare(pp, committers)
 }
@@ -100,26 +106,6 @@ func (s *SBFT) acceptPreprepare(pp *Preprepare, committers []filter.Committer) {
 	}
 }
 
-func (s *SBFT) getCommitters(pp *Preprepare) []filter.Committer {
-	// if we are the primary, we can be sure the block is OK
-	// and we also have the committers
-	// TODO what to do with the remaining ones???
-	// how to mantain the mapping between batches and committers?
-	var committers []filter.Committer
-
-	if !s.isPrimary() {
-		blockOK, allcommitters := s.getCommittersFromBlockCutter(pp.Batch)
-		if !blockOK {
-			log.Panicf("Replica %d found Byzantine block, Seq: %d View: %d", s.id, pp.Seq.Seq, pp.Seq.View)
-		}
-		committers = allcommitters
-	} else {
-		committers = s.primarycommitters[0]
-		s.primarycommitters = s.primarycommitters[1:]
-	}
-	return committers
-}
-
 func (s *SBFT) handleCheckedPreprepare(pp *Preprepare, committers []filter.Committer) {
 	s.acceptPreprepare(pp, committers)
 	if !s.isPrimary() {
@@ -128,34 +114,6 @@ func (s *SBFT) handleCheckedPreprepare(pp *Preprepare, committers []filter.Commi
 	}
 
 	s.maybeSendCommit()
-}
-
-func (s *SBFT) getCommittersFromBlockCutter(reqBatch *Batch) (bool, []filter.Committer) {
-	reqs := make([]*Request, 0, len(reqBatch.Payloads))
-	for _, pl := range reqBatch.Payloads {
-		req := &Request{Payload: pl}
-		reqs = append(reqs, req)
-	}
-	batches := make([][]*Request, 0, 1)
-	comms := [][]filter.Committer{}
-	for _, r := range reqs {
-		b, c, accepted := s.sys.Ordered(s.chainId, r)
-		if !accepted {
-			return false, nil
-		}
-		batches = append(batches, b...)
-		comms = append(comms, c...)
-	}
-	if len(batches) > 1 || len(batches) != len(comms) {
-		return false, nil
-	}
-
-	if len(batches) == 0 {
-		_, committer := s.sys.Cut(s.chainId)
-		return true, committer
-	} else {
-		return true, comms[0]
-	}
 }
 
 ////////////////////////////////////////////////
