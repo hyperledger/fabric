@@ -31,6 +31,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	testFilesystemPath = "/tmp/fabric/ledgertests/kvledger/txmgmt/txmgr/commontests"
+)
+
 type testEnv interface {
 	init(t *testing.T)
 	getName() string
@@ -68,7 +72,7 @@ func (env *levelDBLockBasedEnv) getName() string {
 }
 
 func (env *levelDBLockBasedEnv) init(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
+	viper.Set("peer.fileSystemPath", testFilesystemPath)
 	testDBEnv := stateleveldb.NewTestVDBEnv(t)
 	testDB, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
 	testutil.AssertNoError(t, err, "")
@@ -107,7 +111,7 @@ func (env *couchDBLockBasedEnv) getName() string {
 }
 
 func (env *couchDBLockBasedEnv) init(t *testing.T) {
-	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests")
+	viper.Set("peer.fileSystemPath", testFilesystemPath)
 	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "127.0.0.1:5984")
 	testDBEnv := statecouchdb.NewTestVDBEnv(t)
 	testDB, err := testDBEnv.DBProvider.GetDBHandle(couchTestChainID)

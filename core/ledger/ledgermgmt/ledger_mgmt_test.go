@@ -20,9 +20,17 @@ import (
 	"fmt"
 	"testing"
 
+	"os"
+
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/spf13/viper"
 )
+
+func TestMain(m *testing.M) {
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/ledgermgmt")
+	os.Exit(m.Run())
+}
 
 func TestLedgerMgmt(t *testing.T) {
 	InitializeTestEnv()
