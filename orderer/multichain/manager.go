@@ -167,7 +167,7 @@ func newConfigResources(configEnvelope *cb.ConfigurationEnvelope) (*configResour
 	initializer := configtx.NewInitializer()
 	initializer.Handlers()[cb.ConfigurationItem_Orderer] = sharedConfigManager
 
-	configManager, err := configtx.NewManagerImpl(configEnvelope, initializer)
+	configManager, err := configtx.NewManagerImpl(configEnvelope, initializer, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error unpacking configuration transaction: %s", err)
 	}

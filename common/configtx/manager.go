@@ -76,6 +76,7 @@ type configurationManager struct {
 	sequence      uint64
 	chainID       string
 	configuration map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem
+	callOnUpdate  []func(Manager)
 }
 
 // computeChainIDAndSequence returns the chain id and the sequence number for a configuration envelope
@@ -119,8 +120,9 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint
 	return chainID, m, nil
 }
 
-// NewManagerImpl creates a new Manager unless an error is encountered
-func NewManagerImpl(configtx *cb.ConfigurationEnvelope, initializer Initializer) (Manager, error) {
+// NewManagerImpl creates a new Manager unless an error is encountered, each element of the callOnUpdate slice
+// is invoked when a new configuration is committed
+func NewManagerImpl(configtx *cb.ConfigurationEnvelope, initializer Initializer, callOnUpdate []func(Manager)) (Manager, error) {
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
 		if _, ok := initializer.Handlers()[cb.ConfigurationItem_ConfigurationType(ctype)]; !ok {
 			return nil, errors.New("Must supply a handler for all known types")
@@ -137,6 +139,7 @@ func NewManagerImpl(configtx *cb.ConfigurationEnvelope, initializer Initializer)
 		sequence:      seq - 1,
 		chainID:       chainID,
 		configuration: makeConfigMap(),
+		callOnUpdate:  callOnUpdate,
 	}
 
 	err = cm.Apply(configtx)
@@ -174,6 +177,9 @@ func (cm *configurationManager) commitHandlers() {
 	logger.Debugf("Committing configuration for chain %s", cm.chainID)
 	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
 		cm.Initializer.Handlers()[cb.ConfigurationItem_ConfigurationType(ctype)].CommitConfig()
+	}
+	for _, callback := range cm.callOnUpdate {
+		callback(cm)
 	}
 }
 
