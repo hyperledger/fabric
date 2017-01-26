@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 
 	lib, pin, label := findPKCS11Lib()
 	if enablePKCS11tests {
-		err := initPKCS11(lib, pin, label)
+		err := InitPKCS11(lib, pin, label)
 		if err != nil {
 			fmt.Printf("Failed initializing PKCS11 library [%s]", err)
 			os.Exit(-1)

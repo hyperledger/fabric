@@ -527,7 +527,7 @@ func createProposalFromCDS(chainID string, cds *peer.ChaincodeDeploymentSpec, cr
 func ComputeProposalTxID(nonce, creator []byte) (string, error) {
 	// TODO: Get the Hash function to be used from
 	// channel configuration
-	digest, err := factory.GetDefaultOrPanic().Hash(
+	digest, err := factory.GetDefault().Hash(
 		append(nonce, creator...),
 		&bccsp.SHA256Opts{})
 	if err != nil {
@@ -571,7 +571,7 @@ func computeProposalBindingInternal(nonce, creator []byte, epoch uint64) ([]byte
 	binary.LittleEndian.PutUint64(epochBytes, epoch)
 
 	// TODO: add to genesis block the hash function used for the binding computation.
-	digest, err := factory.GetDefaultOrPanic().Hash(
+	digest, err := factory.GetDefault().Hash(
 		append(append(nonce, creator...), epochBytes...),
 		&bccsp.SHA256Opts{})
 	if err != nil {

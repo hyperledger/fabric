@@ -274,7 +274,7 @@ func GetProposalHash2(header []byte, ccPropPayl []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
-	hash, err := factory.GetDefaultOrPanic().GetHash(&bccsp.SHAOpts{})
+	hash, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
 	}
@@ -304,8 +304,7 @@ func GetProposalHash1(header []byte, ccPropPayl []byte, visibility []byte) ([]by
 		return nil, err
 	}
 
-	// TODO: use bccsp interfaces and providers as soon as they are ready!
-	hash2, err := factory.GetDefaultOrPanic().GetHash(&bccsp.SHAOpts{})
+	hash2, err := factory.GetDefault().GetHash(&bccsp.SHAOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
 	}

@@ -18,23 +18,19 @@ package factory
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
+	"github.com/hyperledger/fabric/bccsp/sw"
 )
 
 const (
 	// PKCS11BasedFactoryName is the name of the factory of the hsm-based BCCSP implementation
-	PKCS11BasedFactoryName = "P11"
+	PKCS11BasedFactoryName = "PKCS11"
 )
 
 // PKCS11Factory is the factory of the HSM-based BCCSP.
-type PKCS11Factory struct {
-	initOnce sync.Once
-	bccsp    bccsp.BCCSP
-	err      error
-}
+type PKCS11Factory struct{}
 
 // Name returns the name of this factory
 func (f *PKCS11Factory) Name() string {
@@ -42,46 +38,52 @@ func (f *PKCS11Factory) Name() string {
 }
 
 // Get returns an instance of BCCSP using Opts.
-func (f *PKCS11Factory) Get(opts Opts) (bccsp.BCCSP, error) {
+func (f *PKCS11Factory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 	// Validate arguments
-	if opts == nil {
-		return nil, errors.New("Invalid opts. It must not be nil.")
+	if config == nil || config.SwOpts == nil {
+		return nil, errors.New("Invalid config. It must not be nil.")
 	}
 
-	if opts.FactoryName() != f.Name() {
-		return nil, fmt.Errorf("Invalid Provider Name [%s]. Opts must refer to [%s].", opts.FactoryName(), f.Name())
-	}
+	p11Opts := config.Pkcs11Opts
 
-	pkcs11Opts, ok := opts.(*PKCS11Opts)
-	if !ok {
-		return nil, errors.New("Invalid opts. They must be of type PKCS11Opts.")
+	//TODO: PKCS11 does not need a keystore, but we have not migrated all of PKCS11 BCCSP to PKCS11 yet
+	var ks bccsp.KeyStore
+	if p11Opts.Ephemeral == true {
+		ks = &sw.DummyKeyStore{}
+	} else if p11Opts.FileKeystore != nil {
+		fks := &sw.FileBasedKeyStore{}
+		err := fks.Init(nil, p11Opts.FileKeystore.KeyStorePath, false)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to initialize software key store: %s", err)
+		}
+		ks = fks
+	} else {
+		// Default to DummyKeystore
+		ks = &sw.DummyKeyStore{}
 	}
-
-	if !opts.Ephemeral() {
-		f.initOnce.Do(func() {
-			f.bccsp, f.err = pkcs11.New(pkcs11Opts.SecLevel, pkcs11Opts.HashFamily, pkcs11Opts.KeyStore)
-			return
-		})
-		return f.bccsp, f.err
+	err := pkcs11.InitPKCS11(p11Opts.Library, p11Opts.Pin, p11Opts.Label)
+	if err != nil {
+		return nil, fmt.Errorf("Failed initializing PKCS11 library %s %s [%s]",
+			p11Opts.Library, p11Opts.Label, err)
 	}
-
-	return pkcs11.New(pkcs11Opts.SecLevel, pkcs11Opts.HashFamily, pkcs11Opts.KeyStore)
+	return pkcs11.New(p11Opts.SecLevel, p11Opts.HashFamily, ks)
 }
 
 // PKCS11Opts contains options for the P11Factory
 type PKCS11Opts struct {
-	Ephemeral_ bool
-	SecLevel   int
-	HashFamily string
-	KeyStore   bccsp.KeyStore
-}
+	// Default algorithms when not specified (Deprecated?)
+	SecLevel   int    `mapstructure:"security" json:"security"`
+	HashFamily string `mapstructure:"hash" json:"hash"`
 
-// FactoryName returns the name of the provider
-func (o *PKCS11Opts) FactoryName() string {
-	return PKCS11BasedFactoryName
-}
+	// Keystore options
+	Ephemeral     bool               `mapstructure:"tempkeys,omitempty" json:"tempkeys,omitempty"`
+	FileKeystore  *FileKeystoreOpts  `mapstructure:"filekeystore,omitempty" json:"filekeystore,omitempty"`
+	DummyKeystore *DummyKeystoreOpts `mapstructure:"dummykeystore,omitempty" json:"dummykeystore,omitempty"`
 
-// Ephemeral returns true if the CSP has to be ephemeral, false otherwise
-func (o *PKCS11Opts) Ephemeral() bool {
-	return o.Ephemeral_
+	// PKCS11 options
+	Library    string `mapstructure:"library" json:"library"`
+	Label      string `mapstructure:"label" json:"label"`
+	Pin        string `mapstructure:"pin" json:"pin"`
+	Sensitive  bool   `mapstructure:"sensitivekeys,omitempty" json:"sensitivekeys,omitempty"`
+	SoftVerify bool   `mapstructure:"softwareverify,omitempty" json:"softwareverify,omitempty"`
 }

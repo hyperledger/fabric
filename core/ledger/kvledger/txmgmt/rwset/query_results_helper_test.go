@@ -21,6 +21,7 @@ import (
 
 	"fmt"
 
+	bccspfactory "github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 )
@@ -132,7 +133,7 @@ func buildTestKVReads(t *testing.T, num int) []*KVRead {
 func computeTestHashKVReads(t *testing.T, kvReads []*KVRead) Hash {
 	b, err := serializeKVReads(kvReads)
 	testutil.AssertNoError(t, err, "")
-	h, err := computeHash(b)
+	h, err := bccspfactory.GetDefault().Hash(b, hashOpts)
 	testutil.AssertNoError(t, err, "")
 	return h
 }

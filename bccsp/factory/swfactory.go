@@ -18,7 +18,6 @@ package factory
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -30,11 +29,7 @@ const (
 )
 
 // SWFactory is the factory of the software-based BCCSP.
-type SWFactory struct {
-	initOnce sync.Once
-	bccsp    bccsp.BCCSP
-	err      error
-}
+type SWFactory struct{}
 
 // Name returns the name of this factory
 func (f *SWFactory) Name() string {
@@ -42,46 +37,47 @@ func (f *SWFactory) Name() string {
 }
 
 // Get returns an instance of BCCSP using Opts.
-func (f *SWFactory) Get(opts Opts) (bccsp.BCCSP, error) {
+func (f *SWFactory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 	// Validate arguments
-	if opts == nil {
-		return nil, errors.New("Invalid opts. It must not be nil.")
+	if config == nil || config.SwOpts == nil {
+		return nil, errors.New("Invalid config. It must not be nil.")
 	}
 
-	if opts.FactoryName() != f.Name() {
-		return nil, fmt.Errorf("Invalid Provider Name [%s]. Opts must refer to [%s].", opts.FactoryName(), f.Name())
+	swOpts := config.SwOpts
+
+	var ks bccsp.KeyStore
+	if swOpts.Ephemeral == true {
+		ks = &sw.DummyKeyStore{}
+	} else if swOpts.FileKeystore != nil {
+		fks := &sw.FileBasedKeyStore{}
+		err := fks.Init(nil, swOpts.FileKeystore.KeyStorePath, false)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to initialize software key store: %s", err)
+		}
+		ks = fks
+	} else {
+		// Default to DummyKeystore
+		ks = &sw.DummyKeyStore{}
 	}
 
-	swOpts, ok := opts.(*SwOpts)
-	if !ok {
-		return nil, errors.New("Invalid opts. They must be of type SwOpts.")
-	}
-
-	if !opts.Ephemeral() {
-		f.initOnce.Do(func() {
-			f.bccsp, f.err = sw.New(swOpts.SecLevel, swOpts.HashFamily, swOpts.KeyStore)
-			return
-		})
-		return f.bccsp, f.err
-	}
-
-	return sw.New(swOpts.SecLevel, swOpts.HashFamily, swOpts.KeyStore)
+	return sw.New(swOpts.SecLevel, swOpts.HashFamily, ks)
 }
 
 // SwOpts contains options for the SWFactory
 type SwOpts struct {
-	Ephemeral_ bool
-	SecLevel   int
-	HashFamily string
-	KeyStore   bccsp.KeyStore
+	// Default algorithms when not specified (Deprecated?)
+	SecLevel   int    `mapstructure:"security" json:"security"`
+	HashFamily string `mapstructure:"hash" json:"hash"`
+
+	// Keystore Options
+	Ephemeral     bool               `mapstructure:"tempkeys,omitempty" json:"tempkeys,omitempty"`
+	FileKeystore  *FileKeystoreOpts  `mapstructure:"filekeystore,omitempty" json:"filekeystore,omitempty"`
+	DummyKeystore *DummyKeystoreOpts `mapstructure:"dummykeystore,omitempty" json:"dummykeystore,omitempty"`
 }
 
-// FactoryName returns the name of the provider
-func (o *SwOpts) FactoryName() string {
-	return SoftwareBasedFactoryName
+// Pluggable Keystores, could add JKS, P12, etc..
+type FileKeystoreOpts struct {
+	KeyStorePath string `mapstructure:"keystore"`
 }
 
-// Ephemeral returns true if the CSP has to be ephemeral, false otherwise
-func (o *SwOpts) Ephemeral() bool {
-	return o.Ephemeral_
-}
+type DummyKeystoreOpts struct{}

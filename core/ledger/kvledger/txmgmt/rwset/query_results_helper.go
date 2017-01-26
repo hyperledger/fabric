@@ -125,7 +125,7 @@ func (helper *RangeQueryResultsHelper) processPendingResults() error {
 		return err
 	}
 	helper.pendingResults = nil
-	hash, err := computeHash(b)
+	hash, err := bccspfactory.GetDefault().Hash(b, hashOpts)
 	if err != nil {
 		return err
 	}
@@ -253,13 +253,5 @@ func computeCombinedHash(hashes []Hash) (Hash, error) {
 	for _, h := range hashes {
 		combinedHash = append(combinedHash, h...)
 	}
-	return computeHash(combinedHash)
-}
-
-func computeHash(data []byte) (Hash, error) {
-	bccsp, err := bccspfactory.GetDefault()
-	if err != nil {
-		return nil, err
-	}
-	return bccsp.Hash(data, hashOpts)
+	return bccspfactory.GetDefault().Hash(combinedHash, hashOpts)
 }
