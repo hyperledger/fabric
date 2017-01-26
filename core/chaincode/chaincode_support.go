@@ -33,6 +33,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -64,59 +65,6 @@ func getTxSimulator(context context.Context) ledger.TxSimulator {
 	}
 	//chaincode will not allow state operations
 	return nil
-}
-
-//CCContext pass this around instead of string of args
-type CCContext struct {
-	//ChainID chain id
-	ChainID string
-
-	//Name chaincode name
-	Name string
-
-	//Version used to construct the chaincode image and register
-	Version string
-
-	//TxID is the transaction id for the proposal (if any)
-	TxID string
-
-	//Syscc is this a system chaincode
-	Syscc bool
-
-	//Proposal for this invoke (if any)
-	//this is kept here just in case we need to pass something
-	//from this to the chaincode
-	Proposal *pb.Proposal
-
-	//this is not set but computed (note that this is not exported. use GetCanonicalName)
-	canonicalName string
-}
-
-//NewCCContext just construct a new struct with whatever args
-func NewCCContext(cid, name, version, txid string, syscc bool, prop *pb.Proposal) *CCContext {
-	//version CANNOT be empty. The chaincode namespace has to use version and chain name.
-	//All system chaincodes share the same version given by utils.GetSysCCVersion. Note
-	//that neither Chain Name or Version are stored in a chaincodes state on the ledger
-	if version == "" {
-		panic(fmt.Sprintf("---empty version---(chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p", cid, name, version, txid, syscc, prop))
-	}
-
-	canName := name + ":" + version + "/" + cid
-
-	cccid := &CCContext{cid, name, version, txid, syscc, prop, canName}
-
-	chaincodeLogger.Infof("NewCCCC (chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p,canname=%s", cid, name, version, txid, syscc, prop, cccid.canonicalName)
-
-	return cccid
-}
-
-//GetCanonicalName returns the canonical name associated with the proposal context
-func (cccid *CCContext) GetCanonicalName() string {
-	if cccid.canonicalName == "" {
-		panic(fmt.Sprintf("cccid not constructed using NewCCContext(chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t)", cccid.ChainID, cccid.Name, cccid.Version, cccid.TxID, cccid.Syscc))
-	}
-
-	return cccid.canonicalName
 }
 
 //
@@ -317,7 +265,7 @@ func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Ha
 }
 
 // Based on state of chaincode send either init or ready to move to ready state
-func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Context, cccid *CCContext, initArgs [][]byte, timeout time.Duration) error {
+func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Context, cccid *ccprovider.CCContext, initArgs [][]byte, timeout time.Duration) error {
 	canName := cccid.GetCanonicalName()
 	chaincodeSupport.runningChaincodes.Lock()
 	//if its in the map, there must be a connected stream...nothing to do
@@ -362,7 +310,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 }
 
 //get args and env given chaincodeID
-func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *CCContext, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, err error) {
+func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCContext, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, err error) {
 	canName := cccid.GetCanonicalName()
 	envs = []string{"CORE_CHAINCODE_ID_NAME=" + canName}
 	//if TLS is enabled, pass TLS material to chaincode
@@ -407,7 +355,7 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *CCContext, cLang 
 }
 
 // launchAndWaitForRegister will launch container if not already running. Use the targz to create the image if not found
-func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *CCContext, cds *pb.ChaincodeDeploymentSpec, cLang pb.ChaincodeSpec_Type, targz io.Reader) error {
+func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec, cLang pb.ChaincodeSpec_Type, targz io.Reader) error {
 	canName := cccid.GetCanonicalName()
 	if canName == "" {
 		return fmt.Errorf("chaincode name not set")
@@ -472,7 +420,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 }
 
 //Stop stops a chaincode if running
-func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cccid *CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	canName := cccid.GetCanonicalName()
 	if canName == "" {
 		return fmt.Errorf("chaincode name not set")
@@ -504,7 +452,7 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cccid *C
 }
 
 // Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into FSM ready state.
-func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid *CCContext, spec interface{}) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
+func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid *ccprovider.CCContext, spec interface{}) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
 	//build the chaincode
 	var cID *pb.ChaincodeID
 	var cMsg *pb.ChaincodeInput
@@ -622,7 +570,7 @@ func (chaincodeSupport *ChaincodeSupport) getVMType(cds *pb.ChaincodeDeploymentS
 }
 
 // Deploy deploys the chaincode if not in development mode where user is running the chaincode.
-func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, cccid *CCContext, cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
+func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) (*pb.ChaincodeDeploymentSpec, error) {
 	cLang := cds.ChaincodeSpec.Type
 	canName := cccid.GetCanonicalName()
 
@@ -682,7 +630,7 @@ func createTransactionMessage(txid string, cMsg *pb.ChaincodeInput) (*pb.Chainco
 }
 
 // Execute executes a transaction and waits for it to complete until a timeout value.
-func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, cccid *CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
+func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, cccid *ccprovider.CCContext, msg *pb.ChaincodeMessage, timeout time.Duration) (*pb.ChaincodeMessage, error) {
 	canName := cccid.GetCanonicalName()
 	chaincodeSupport.runningChaincodes.Lock()
 	//we expect the chaincode to be running... sanity check

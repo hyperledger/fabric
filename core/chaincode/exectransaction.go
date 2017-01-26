@@ -25,12 +25,13 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 //Execute - execute proposal, return original response of chaincode
-func Execute(ctxt context.Context, cccid *CCContext, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
+func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var err error
 	var cds *pb.ChaincodeDeploymentSpec
 	var ci *pb.ChaincodeInvocationSpec
@@ -111,7 +112,7 @@ func Execute(ctxt context.Context, cccid *CCContext, spec interface{}) (*pb.Resp
 
 // ExecuteWithErrorFilter is similar to Execute, but filters error contained in chaincode response and returns Payload of response only.
 // Mostly used by unit-test.
-func ExecuteWithErrorFilter(ctxt context.Context, cccid *CCContext, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+func ExecuteWithErrorFilter(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
 	res, event, err := Execute(ctxt, cccid, spec)
 	if err != nil {
 		chaincodeLogger.Errorf("ExecuteWithErrorFilter %s error: %s", cccid.Name, err)

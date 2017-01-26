@@ -14,12 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chaincode
+package scc
 
 import (
 	//import system chain codes here
-	"github.com/hyperledger/fabric/core/system_chaincode/escc"
-	"github.com/hyperledger/fabric/core/system_chaincode/vscc"
+	"github.com/hyperledger/fabric/core/scc/cscc"
+	"github.com/hyperledger/fabric/core/scc/escc"
+	"github.com/hyperledger/fabric/core/scc/lccc"
+	"github.com/hyperledger/fabric/core/scc/qscc"
+	"github.com/hyperledger/fabric/core/scc/vscc"
 )
 
 //see systemchaincode_test.go for an example using "sample_syscc"
@@ -28,23 +31,23 @@ var systemChaincodes = []*SystemChaincode{
 		ChainlessCC: true,
 		Enabled:     true,
 		Name:        "cscc",
-		Path:        "github.com/hyperledger/fabric/core/chaincode/cscc",
+		Path:        "github.com/hyperledger/fabric/core/scc/cscc",
 		InitArgs:    [][]byte{[]byte("")},
-		Chaincode:   &PeerConfiger{},
+		Chaincode:   &cscc.PeerConfiger{},
 	},
 	{
 		ChainlessCC: false,
 		Enabled:     true,
 		Name:        "lccc",
-		Path:        "github.com/hyperledger/fabric/core/chaincode/lscc",
+		Path:        "github.com/hyperledger/fabric/core/scc/lccc",
 		InitArgs:    [][]byte{[]byte("")},
-		Chaincode:   &LifeCycleSysCC{},
+		Chaincode:   &lccc.LifeCycleSysCC{},
 	},
 	{
 		ChainlessCC: false,
 		Enabled:     true,
 		Name:        "escc",
-		Path:        "github.com/hyperledger/fabric/core/system_chaincode/escc",
+		Path:        "github.com/hyperledger/fabric/core/scc/escc",
 		InitArgs:    [][]byte{[]byte("")},
 		Chaincode:   &escc.EndorserOneValidSignature{},
 	},
@@ -52,7 +55,7 @@ var systemChaincodes = []*SystemChaincode{
 		ChainlessCC: false,
 		Enabled:     true,
 		Name:        "vscc",
-		Path:        "github.com/hyperledger/fabric/core/system_chaincode/vscc",
+		Path:        "github.com/hyperledger/fabric/core/scc/vscc",
 		InitArgs:    [][]byte{[]byte("")},
 		Chaincode:   &vscc.ValidatorOneValidSignature{},
 	},
@@ -62,7 +65,7 @@ var systemChaincodes = []*SystemChaincode{
 		Name:        "qscc",
 		Path:        "github.com/hyperledger/fabric/core/chaincode/qscc",
 		InitArgs:    [][]byte{[]byte("")},
-		Chaincode:   &LedgerQuerier{},
+		Chaincode:   &qscc.LedgerQuerier{},
 	},
 }
 
@@ -94,13 +97,13 @@ func DeployChainlessSysCCs() {
 	}
 }
 
-//this is used in unit tests to stop and remove the system chaincodes before
+//DeDeploySysCCs is used in unit tests to stop and remove the system chaincodes before
 //restarting them in the same process. This allows clean start of the system
 //in the same process
-func deDeploySysCCs(chainID string) {
+func DeDeploySysCCs(chainID string) {
 	for _, sysCC := range systemChaincodes {
 		if !sysCC.ChainlessCC {
-			deDeploySysCC(chainID, sysCC)
+			DeDeploySysCC(chainID, sysCC)
 		}
 	}
 }
@@ -125,4 +128,18 @@ func IsChainlessSysCC(name string) bool {
 		}
 	}
 	return false
+}
+
+// MockRegisterSysCCs is used only for testing
+// This is needed to break import cycle
+func MockRegisterSysCCs(mockSysCCs []*SystemChaincode) []*SystemChaincode {
+	orig := systemChaincodes
+	systemChaincodes = mockSysCCs
+	RegisterSysCCs()
+	return orig
+}
+
+// MockResetSysCCs restore orig system ccs - is used only for testing
+func MockResetSysCCs(mockSysCCs []*SystemChaincode) {
+	systemChaincodes = mockSysCCs
 }

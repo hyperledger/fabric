@@ -13,18 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package chaincode
+package lccc
 
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/container"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"google.golang.org/grpc"
 )
 
 func register(stub *shim.MockStub, ccname string) error {
@@ -45,27 +43,8 @@ func constructDeploymentSpec(name string, path string, initArgs [][]byte) (*pb.C
 	return chaincodeDeploymentSpec, nil
 }
 
-func initialize() {
-	//use a different address than what we usually use for "peer"
-	//we override the peerAddress set in chaincode_support.go
-	// FIXME: Use peer.GetLocalAddress()
-	peerAddress := "0.0.0.0:21212"
-
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
-
-	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
-	}
-
-	ccStartupTimeout := time.Duration(30000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
-}
-
 //TestDeploy tests the deploy function (stops short of actually running the chaincode)
 func TestDeploy(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -83,8 +62,6 @@ func TestDeploy(t *testing.T) {
 
 //TestInvalidCodeDeploy tests the deploy function with invalid code package
 func TestInvalidCodeDeploy(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -100,8 +77,6 @@ func TestInvalidCodeDeploy(t *testing.T) {
 
 //TestInvalidChaincodeName tests the deploy function with invalid chaincode name
 func TestInvalidChaincodeName(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -125,8 +100,6 @@ func TestInvalidChaincodeName(t *testing.T) {
 
 //TestRedeploy tests the redeploying will fail function(and fail with "exists" error)
 func TestRedeploy(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -151,8 +124,6 @@ func TestRedeploy(t *testing.T) {
 
 //TestCheckCC invokes the GETCCINFO function to get status of deployed chaincode
 func TestCheckCC(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -175,8 +146,6 @@ func TestCheckCC(t *testing.T) {
 
 //TestMultipleDeploy tests deploying multiple chaincodes
 func TestMultipleDeploy(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -216,8 +185,6 @@ func TestMultipleDeploy(t *testing.T) {
 
 //TestRetryFailedDeploy tests re-deploying after a failure
 func TestRetryFailedDeploy(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -256,8 +223,6 @@ func TestRetryFailedDeploy(t *testing.T) {
 
 //TestUpgrade tests the upgrade function
 func TestUpgrade(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
@@ -293,8 +258,6 @@ func TestUpgrade(t *testing.T) {
 
 //TestUpgradeNonExistChaincode tests upgrade non exist chaincode
 func TestUpgradeNonExistChaincode(t *testing.T) {
-	initialize()
-
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package chaincode
+package cscc
 
 import (
 	"fmt"
@@ -28,6 +28,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -60,7 +61,7 @@ func setupEndpoint(t *testing.T) {
 		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "cscctestpeer"}, Address: peerAddress}, nil
 	}
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
-	pb.RegisterChaincodeSupportServer(grpcServer, NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
+	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
 }
 
 func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {

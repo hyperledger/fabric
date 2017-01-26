@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/peer/common"
@@ -75,7 +76,7 @@ var nodeStartCmd = &cobra.Command{
 //user to create a single chain and initialize it
 func initChainless() {
 	//deploy the chainless system chaincodes
-	chaincode.DeployChainlessSysCCs()
+	scc.DeployChainlessSysCCs()
 	logger.Infof("Deployed chainless system chaincodess")
 }
 
@@ -84,7 +85,7 @@ func initChainless() {
 func startDeliveryService(chainID string) error {
 	// Initialize all system chainodes on this chain
 	// TODO: Fix this code to initialize instead of deploy chaincodes
-	chaincode.DeploySysCCs(chainID)
+	scc.DeploySysCCs(chainID)
 
 	commit := peer.GetCommitter(chainID)
 	if commit == nil {
@@ -186,7 +187,7 @@ func serve(args []string) error {
 		//this creates test_chainid and sets up gossip
 		if err = peer.CreateChainFromBlock(block); err == nil {
 			fmt.Printf("create chain [%s]", chainID)
-			chaincode.DeploySysCCs(chainID)
+			scc.DeploySysCCs(chainID)
 			logger.Infof("Deployed system chaincodes on %s", chainID)
 
 			if err = startDeliveryService(chainID); err != nil {
@@ -273,7 +274,7 @@ func registerChaincodeSupport(grpcServer *grpc.Server) {
 	ccSrv := chaincode.NewChaincodeSupport(peer.GetPeerEndpoint, userRunsCC, ccStartupTimeout)
 
 	//Now that chaincode is initialized, register all system chaincodes.
-	chaincode.RegisterSysCCs()
+	scc.RegisterSysCCs()
 
 	pb.RegisterChaincodeSupportServer(grpcServer, ccSrv)
 }

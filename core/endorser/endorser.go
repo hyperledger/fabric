@@ -26,9 +26,11 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
+	syscc "github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -69,7 +71,7 @@ func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
 }
 
 //deploy the chaincode after call to the system chaincode is successful
-func (e *Endorser) deploy(ctxt context.Context, cccid *chaincode.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
+func (e *Endorser) deploy(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
 	chaincodeSupport := chaincode.GetChain()
 
 	_, err := chaincodeSupport.Deploy(ctxt, cccid, cds)
@@ -104,9 +106,9 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	}
 
 	//is this a system chaincode
-	syscc := chaincode.IsSysCC(cid.Name)
+	scc := syscc.IsSysCC(cid.Name)
 
-	cccid := chaincode.NewCCContext(chainID, cid.Name, version, txid, syscc, prop)
+	cccid := ccprovider.NewCCContext(chainID, cid.Name, version, txid, scc, prop)
 
 	res, ccevent, err = chaincode.ExecuteChaincode(ctxt, cccid, cis.ChaincodeSpec.Input.Args)
 
@@ -146,11 +148,11 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 		}
 
 		//this should not be a system chaincode
-		if chaincode.IsSysCC(cds.ChaincodeSpec.ChaincodeID.Name) {
+		if syscc.IsSysCC(cds.ChaincodeSpec.ChaincodeID.Name) {
 			return nil, nil, fmt.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeID.Name, chainID)
 		}
 
-		cccid = chaincode.NewCCContext(chainID, cds.ChaincodeSpec.ChaincodeID.Name, ccVersion, txid, false, prop)
+		cccid = ccprovider.NewCCContext(chainID, cds.ChaincodeSpec.ChaincodeID.Name, ccVersion, txid, false, prop)
 
 		err = e.deploy(ctxt, cccid, cds)
 		if err != nil {
@@ -163,7 +165,7 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 }
 
 //simulate the proposal by calling the chaincode
-func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid string, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*chaincode.ChaincodeData, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
+func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid string, prop *pb.Proposal, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, *pb.Response, []byte, *pb.ChaincodeEvent, error) {
 	//we do expect the payload to be a ChaincodeInvocationSpec
 	//if we are supporting other payloads in future, this be glaringly point
 	//as something that should change
@@ -181,11 +183,11 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		return nil, nil, nil, nil, err
 	}
 
-	var cd *chaincode.ChaincodeData
+	var cd *ccprovider.ChaincodeData
 
 	//default it to a system CC
 	version := util.GetSysCCVersion()
-	if !chaincode.IsSysCC(cid.Name) {
+	if !syscc.IsSysCC(cid.Name) {
 		cd, err = e.getCDSFromLCCC(ctx, chainID, txid, prop, cid.Name, txsim)
 		if err != nil {
 			return nil, nil, nil, nil, fmt.Errorf("failed to obtain cds for %s - %s", cid.Name, err)
@@ -211,7 +213,7 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	return cd, res, simResult, ccevent, nil
 }
 
-func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid string, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (*chaincode.ChaincodeData, error) {
+func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid string, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, error) {
 	ctxt := ctx
 	if txsim != nil {
 		ctxt = context.WithValue(ctx, chaincode.TXSimulatorKey, txsim)
@@ -221,7 +223,7 @@ func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid stri
 }
 
 //endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd *chaincode.ChaincodeData) (*pb.ProposalResponse, error) {
+func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd *ccprovider.ChaincodeData) (*pb.ProposalResponse, error) {
 	endorserLogger.Infof("endorseProposal starts for chainID %s, ccid %s", chainID, ccid)
 
 	// 1) extract the chaincodeDeploymentSpec for the chaincode we are invoking; we need it to get the escc
@@ -314,7 +316,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	chainID := hdr.ChainHeader.ChainID
 
 	//chainless MSPs have "" chain name
-	ischainless := chaincode.IsChainlessSysCC(hdrExt.ChaincodeID.Name)
+	ischainless := syscc.IsChainlessSysCC(hdrExt.ChaincodeID.Name)
 
 	//chainID should be empty for chainless SysCC (such as CSCC for Join proposal) and for
 	//nothing else

@@ -21,7 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protos/peer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // ccProviderFactory implements the ccprovider.ChaincodeProviderFactory
@@ -47,7 +47,7 @@ type ccProviderImpl struct {
 
 // ccProviderContextImpl contains the state that is passed around to calls to methods of ccProviderImpl
 type ccProviderContextImpl struct {
-	ctx *CCContext
+	ctx *ccprovider.CCContext
 }
 
 // GetContext returns a context for the supplied ledger, with the appropriate tx simulator
@@ -65,13 +65,13 @@ func (c *ccProviderImpl) GetContext(ledger ledger.PeerLedger) (context.Context, 
 // GetCCContext returns an interface that encapsulates a
 // chaincode context; the interface is required to avoid
 // referencing the chaincode package from the interface definition
-func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, prop *peer.Proposal) interface{} {
-	ctx := NewCCContext(cid, name, version, txid, syscc, prop)
+func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, prop *pb.Proposal) interface{} {
+	ctx := ccprovider.NewCCContext(cid, name, version, txid, syscc, prop)
 	return &ccProviderContextImpl{ctx: ctx}
 }
 
 // GetCCValidationInfoFromLCCC returns the VSCC and the policy listed in LCCC for the supplied chaincode
-func (c *ccProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
+func (c *ccProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
 	data, err := GetChaincodeDataFromLCCC(ctxt, txid, prop, chainID, chaincodeID)
 	if err != nil {
 		return "", nil, err
@@ -87,8 +87,26 @@ func (c *ccProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid 
 }
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments
-func (c *ccProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*peer.Response, *peer.ChaincodeEvent, error) {
+func (c *ccProviderImpl) ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
 	return ExecuteChaincode(ctxt, cccid.(*ccProviderContextImpl).ctx, args)
+}
+
+// Execute executes the chaincode given context and spec (invocation or deploy)
+func (c *ccProviderImpl) Execute(ctxt context.Context, cccid interface{}, spec interface{}) (*pb.Response, *pb.ChaincodeEvent, error) {
+	return Execute(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+}
+
+// ExecuteWithErrorFilder executes the chaincode given context and spec and returns payload
+func (c *ccProviderImpl) ExecuteWithErrorFilter(ctxt context.Context, cccid interface{}, spec interface{}) ([]byte, *pb.ChaincodeEvent, error) {
+	return ExecuteWithErrorFilter(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+}
+
+// ExecuteWithErrorFilder executes the chaincode given context and spec and returns payload
+func (c *ccProviderImpl) Stop(ctxt context.Context, cccid interface{}, spec *pb.ChaincodeDeploymentSpec) error {
+	if theChaincodeSupport != nil {
+		return theChaincodeSupport.Stop(ctxt, cccid.(*ccProviderContextImpl).ctx, spec)
+	}
+	panic("ChaincodeSupport not initialized")
 }
 
 // ReleaseContext frees up resources held by the context

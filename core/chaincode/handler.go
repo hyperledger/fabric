@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -995,7 +996,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 				return
 			}
-			cccid := NewCCContext(txContext.chainID, calledCCName, cd.Version, msg.Txid, false, txContext.proposal)
+			cccid := ccprovider.NewCCContext(txContext.chainID, calledCCName, cd.Version, msg.Txid, false, txContext.proposal)
 
 			// Launch the new chaincode if not already running
 			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, cccid, chaincodeInvocationSpec)

@@ -19,6 +19,7 @@ package chaincode
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"golang.org/x/net/context"
@@ -41,7 +42,7 @@ func TestExecuteInvokeOnManyChains(t *testing.T) {
 
 	args := []string{"a", "b", "10"}
 	for _, c := range chains {
-		cccid := NewCCContext(c, "example02", "0", "", false, nil)
+		cccid := ccprovider.NewCCContext(c, "example02", "0", "", false, nil)
 		err = invokeExample02Transaction(ctxt, cccid, chaincodeID, args, false)
 		if err != nil {
 			t.Fail()

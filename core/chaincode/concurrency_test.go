@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"golang.org/x/net/context"
@@ -53,7 +54,7 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := NewCCContext(chainID, "nkpi", "0", "", false, nil)
+	cccid := ccprovider.NewCCContext(chainID, "nkpi", "0", "", false, nil)
 
 	defer theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 

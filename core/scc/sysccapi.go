@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chaincode
+package scc
 
 import (
 	"fmt"
@@ -23,8 +23,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 
 	"github.com/op/go-logging"
@@ -96,20 +96,21 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	var err error
 
+	ccprov := ccprovider.GetChaincodeProvider()
+
 	ctxt := context.Background()
 	if !syscc.ChainlessCC {
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name, chainID))
 		}
-		var txsim ledger.TxSimulator
-		if txsim, err = lgr.NewTxSimulator(); err != nil {
+
+		_, err := ccprov.GetContext(lgr)
+		if err != nil {
 			return err
 		}
 
-		ctxt = context.WithValue(ctxt, TXSimulatorKey, txsim)
-
-		defer txsim.Done()
+		defer ccprov.ReleaseContext()
 	}
 
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
@@ -126,17 +127,18 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 	txid := util.GenerateUUID()
 
 	version := util.GetSysCCVersion()
-	cccid := NewCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name, version, txid, true, nil)
 
-	_, _, err = ExecuteWithErrorFilter(ctxt, cccid, chaincodeDeploymentSpec)
+	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name, version, txid, true, nil)
+
+	_, _, err = ccprov.ExecuteWithErrorFilter(ctxt, cccid, chaincodeDeploymentSpec)
 
 	sysccLogger.Infof("system chaincode %s/%s(%s) deployed", syscc.Name, chainID, syscc.Path)
 
 	return err
 }
 
-// deDeploySysCC stops the system chaincode and deregisters it from inproccontroller
-func deDeploySysCC(chainID string, syscc *SystemChaincode) error {
+// DeDeploySysCC stops the system chaincode and deregisters it from inproccontroller
+func DeDeploySysCC(chainID string, syscc *SystemChaincode) error {
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
@@ -149,12 +151,13 @@ func deDeploySysCC(chainID string, syscc *SystemChaincode) error {
 		return err
 	}
 
-	chaincodeSupport := GetChain()
-	if chaincodeSupport != nil {
-		version := util.GetSysCCVersion()
-		cccid := NewCCContext(chainID, syscc.Name, version, "", true, nil)
-		err = chaincodeSupport.Stop(ctx, cccid, chaincodeDeploymentSpec)
-	}
+	ccprov := ccprovider.GetChaincodeProvider()
+
+	version := util.GetSysCCVersion()
+
+	cccid := ccprov.GetCCContext(chainID, syscc.Name, version, "", true, nil)
+
+	err = ccprov.Stop(ctx, cccid, chaincodeDeploymentSpec)
 
 	return err
 }

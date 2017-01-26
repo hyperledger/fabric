@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -40,7 +41,7 @@ func createCIS(ccname string, args [][]byte) (*pb.ChaincodeInvocationSpec, error
 // GetCDSFromLCCC gets chaincode deployment spec from LCCC
 func GetCDSFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) ([]byte, error) {
 	version := util.GetSysCCVersion()
-	cccid := NewCCContext(chainID, "lccc", version, txid, true, prop)
+	cccid := ccprovider.NewCCContext(chainID, "lccc", version, txid, true, prop)
 	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getdepspec"), []byte(chainID), []byte(chaincodeID)})
 	if err != nil {
 		return nil, fmt.Errorf("Execute getdepspec(%s, %s) of LCCC error: %s", chainID, chaincodeID, err)
@@ -53,15 +54,15 @@ func GetCDSFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainI
 }
 
 // GetChaincodeDataFromLCCC gets chaincode data from LCCC given name
-func GetChaincodeDataFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (*ChaincodeData, error) {
+func GetChaincodeDataFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (*ccprovider.ChaincodeData, error) {
 	version := util.GetSysCCVersion()
-	cccid := NewCCContext(chainID, "lccc", version, txid, true, prop)
+	cccid := ccprovider.NewCCContext(chainID, "lccc", version, txid, true, prop)
 	res, _, err := ExecuteChaincode(ctxt, cccid, [][]byte{[]byte("getccdata"), []byte(chainID), []byte(chaincodeID)})
 	if err == nil {
 		if res.Status != shim.OK {
 			return nil, fmt.Errorf("%s", res.Message)
 		}
-		cd := &ChaincodeData{}
+		cd := &ccprovider.ChaincodeData{}
 		err = proto.Unmarshal(res.Payload, cd)
 		if err != nil {
 			return nil, err
@@ -73,7 +74,7 @@ func GetChaincodeDataFromLCCC(ctxt context.Context, txid string, prop *pb.Propos
 }
 
 // ExecuteChaincode executes a given chaincode given chaincode name and arguments
-func ExecuteChaincode(ctxt context.Context, cccid *CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
+func ExecuteChaincode(ctxt context.Context, cccid *ccprovider.CCContext, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var spec *pb.ChaincodeInvocationSpec
 	var err error
 	var res *pb.Response

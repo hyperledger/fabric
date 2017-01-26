@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package chaincode configer provides functions to manage
+// Package cscc chaincode configer provides functions to manage
 // configuration transactions as the network is being reconfigured. The
 // configuration transactions arrive from the ordering service to the committer
 // who calls this chaincode. The chaincode also provides peer configuration
 // services such as joining a chain or getting configuration data.
-package chaincode
+package cscc
 
 import (
 	"fmt"
@@ -51,7 +51,7 @@ const (
 // This allows the chaincode to initialize any variables on the ledger prior
 // to any transaction execution on the chain.
 func (e *PeerConfiger) Init(stub shim.ChaincodeStubInterface) pb.Response {
-	logger.Info("Init CSCC")
+	cnflogger.Info("Init CSCC")
 	return shim.Success(nil)
 }
 
