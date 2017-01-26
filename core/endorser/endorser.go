@@ -83,8 +83,12 @@ func (e *Endorser) deploy(ctxt context.Context, cccid *chaincode.CCContext, cds 
 		return fmt.Errorf("%s", err)
 	}
 
-	//stop now that we are done
-	chaincodeSupport.Stop(ctxt, cccid, cds)
+	if chaincode.IsDevMode() == false {
+		//stop now that we are done
+		chaincodeSupport.Stop(ctxt, cccid, cds)
+	} else {
+		endorserLogger.Debug("devmode: skipping stop")
+	}
 
 	return nil
 }
