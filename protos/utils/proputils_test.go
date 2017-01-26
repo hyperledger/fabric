@@ -144,6 +144,7 @@ func TestProposalResponse(t *testing.T) {
 		TxID:        "TxID"}
 
 	pHashBytes := []byte("proposal_hash")
+	pResponse := &pb.Response{Status: 200}
 	results := []byte("results")
 	eventBytes, err := GetBytesChaincodeEvent(events)
 	if err != nil {
@@ -152,7 +153,7 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// get the bytes of the ProposalResponsePayload
-	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, results, eventBytes)
+	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 		return
@@ -229,9 +230,10 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	res := []byte("res")
+	response := &pb.Response{Status: 200, Payload: []byte("payload")}
+	result := []byte("res")
 
-	presp, err := CreateProposalResponse(prop.Header, prop.Payload, res, nil, nil, signer)
+	presp, err := CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, nil, signer)
 	if err != nil {
 		t.Fatalf("Could not create proposal response, err %s\n", err)
 		return
@@ -261,7 +263,16 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	if bytes.Compare(act2.Results, res) != 0 {
+	if act2.Response.Status != response.Status {
+		t.Fatalf("response staus don't match")
+		return
+	}
+	if bytes.Compare(act2.Response.Payload, response.Payload) != 0 {
+		t.Fatalf("response payload don't match")
+		return
+	}
+
+	if bytes.Compare(act2.Results, result) != 0 {
 		t.Fatalf("results don't match")
 		return
 	}
@@ -308,7 +319,16 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	if bytes.Compare(ca.Results, res) != 0 {
+	if ca.Response.Status != response.Status {
+		t.Fatalf("response staus don't match")
+		return
+	}
+	if bytes.Compare(ca.Response.Payload, response.Payload) != 0 {
+		t.Fatalf("response payload don't match")
+		return
+	}
+
+	if bytes.Compare(ca.Results, result) != 0 {
 		t.Fatalf("results don't match")
 		return
 	}

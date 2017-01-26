@@ -109,12 +109,13 @@ func createTestBlock(t *testing.T) *common.Block {
 		TxID:        "TxID"}
 
 	pHashBytes := []byte("proposal_hash")
+	pResponse := &ehpb.Response{Status: 200}
 	results := []byte("results")
 	eventBytes, err := utils.GetBytesChaincodeEvent(events)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 	}
-	ccaPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(pHashBytes, results, eventBytes)
+	ccaPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 	}

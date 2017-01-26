@@ -46,6 +46,10 @@ func TestInit(t *testing.T) {
 func TestInvoke(t *testing.T) {
 	e := new(EndorserOneValidSignature)
 	stub := shim.NewMockStub("endorseronevalidsignature", e)
+	successResponse := &pb.Response{Status: 200, Payload: []byte("payload")}
+	failResponse := &pb.Response{Status: 500, Message: "error"}
+	successRes, _ := putils.GetBytesResponse(successResponse)
+	failRes, _ := putils.GetBytesResponse(failResponse)
 
 	// Initialize ESCC supplying the identity of the signer
 	args := [][]byte{[]byte("DEFAULT"), []byte("PEER")}
@@ -72,25 +76,45 @@ func TestInvoke(t *testing.T) {
 		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
 	}
 
+	// Failed path: Not enough parameters
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), []byte("test")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.Fatalf("escc invoke should have failed with invalid number of args: %v", args)
+	}
+
 	// Failed path: header is null
-	args = [][]byte{[]byte("test"), nil, []byte("test"), []byte("test")}
+	args = [][]byte{[]byte("test"), nil, []byte("test"), successRes, []byte("test")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null header.  args: %v", args)
 	}
 
 	// Failed path: payload is null
-	args = [][]byte{[]byte("test"), []byte("test"), nil, []byte("test")}
+	args = [][]byte{[]byte("test"), []byte("test"), nil, successRes, []byte("test")}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null payload.  args: %v", args)
 	}
 
+	// Failed path: response is null
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), nil, []byte("test")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
+		t.Fatalf("escc invoke should have failed with a null response.  args: %v", args)
+	}
+
 	// Failed path: action struct is null
-	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), nil}
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), successRes, nil}
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		fmt.Println("Invoke", args, "failed", string(res.Message))
 		t.Fatalf("escc invoke should have failed with a null action struct.  args: %v", args)
+	}
+
+	// Failed path: status code >=500
+	args = [][]byte{[]byte("test"), []byte("test"), []byte("test"), failRes, []byte("test")}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		fmt.Println("Invoke", args, "failed", string(res.Message))
+		t.Fatalf("escc invoke should have failed with a null response.  args: %v", args)
 	}
 
 	// Successful path - create a proposal
@@ -127,7 +151,7 @@ func TestInvoke(t *testing.T) {
 	// success test 1: invocation with mandatory args only
 	simRes := []byte("simulation_result")
 
-	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes}
+	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, successRes, simRes}
 	res := stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		t.Fail()
@@ -135,7 +159,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	err = validateProposalResponse(res.Payload, proposal, nil, simRes, nil)
+	err = validateProposalResponse(res.Payload, proposal, nil, successResponse, simRes, nil)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)
@@ -145,7 +169,7 @@ func TestInvoke(t *testing.T) {
 	// success test 2: invocation with mandatory args + events
 	events := []byte("events")
 
-	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes, events}
+	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, successRes, simRes, events}
 	res = stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		t.Fail()
@@ -153,7 +177,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	err = validateProposalResponse(res.Payload, proposal, nil, simRes, events)
+	err = validateProposalResponse(res.Payload, proposal, nil, successResponse, simRes, events)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)
@@ -163,7 +187,7 @@ func TestInvoke(t *testing.T) {
 	// success test 3: invocation with mandatory args + events and visibility
 	visibility := []byte("visibility")
 
-	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes, events, visibility}
+	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, successRes, simRes, events, visibility}
 	res = stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		t.Fail()
@@ -171,7 +195,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	err = validateProposalResponse(res.Payload, proposal, visibility, simRes, events)
+	err = validateProposalResponse(res.Payload, proposal, visibility, successResponse, simRes, events)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)
@@ -179,7 +203,7 @@ func TestInvoke(t *testing.T) {
 	}
 }
 
-func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility []byte, simRes []byte, events []byte) error {
+func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility []byte, response *pb.Response, simRes []byte, events []byte) error {
 	if visibility == nil {
 		// TODO: set visibility to the default visibility mode once modes are defined
 	}
@@ -222,6 +246,17 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	cact, err := putils.GetChaincodeAction(prp.Extension)
 	if err != nil {
 		return fmt.Errorf("could not unmarshal the chaincode action structure: err %s", err)
+	}
+
+	// validate that the response match
+	if cact.Response.Status != response.Status {
+		return fmt.Errorf("response status do not match")
+	}
+	if cact.Response.Message != response.Message {
+		return fmt.Errorf("response message do not match")
+	}
+	if bytes.Compare(cact.Response.Payload, response.Payload) != 0 {
+		return fmt.Errorf("response payload do not match")
 	}
 
 	// validate that the results match

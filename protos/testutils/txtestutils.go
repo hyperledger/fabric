@@ -79,12 +79,12 @@ func getMSPMgrConfigDir() (string, error) {
 
 // ConstructSingedTxEnvWithDefaultSigner constructs a transaction envelop for tests with a default signer.
 // This method helps other modules to construct a transaction with supplied parameters
-func ConstructSingedTxEnvWithDefaultSigner(txid string, chainID, ccName string, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
-	return ConstructSingedTxEnv(txid, chainID, ccName, simulationResults, events, visibility, signer)
+func ConstructSingedTxEnvWithDefaultSigner(txid string, chainID, ccName string, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
+	return ConstructSingedTxEnv(txid, chainID, ccName, response, simulationResults, events, visibility, signer)
 }
 
 // ConstructSingedTxEnv constructs a transaction envelop for tests
-func ConstructSingedTxEnv(txid string, chainID string, ccName string, simulationResults []byte, events []byte, visibility []byte, signer msp.SigningIdentity) (*common.Envelope, error) {
+func ConstructSingedTxEnv(txid string, chainID string, ccName string, pResponse *pb.Response, simulationResults []byte, events []byte, visibility []byte, signer msp.SigningIdentity) (*common.Envelope, error) {
 	ss, err := signer.Serialize()
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func ConstructSingedTxEnv(txid string, chainID string, ccName string, simulation
 		return nil, err
 	}
 
-	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, simulationResults, nil, nil, signer)
+	presp, err := putils.CreateProposalResponse(prop.Header, prop.Payload, pResponse, simulationResults, nil, nil, signer)
 	if err != nil {
 		return nil, err
 	}
@@ -111,11 +111,11 @@ var mspLcl msp.MSP
 var sigId msp.SigningIdentity
 
 // ConstructUnsingedTxEnv creates a Transaction envelope from given inputs
-func ConstructUnsingedTxEnv(txid string, chainID string, ccName string, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
+func ConstructUnsingedTxEnv(txid string, chainID string, ccName string, response *pb.Response, simulationResults []byte, events []byte, visibility []byte) (*common.Envelope, error) {
 	if mspLcl == nil {
 		mspLcl = msp.NewNoopMsp()
 		sigId, _ = mspLcl.GetDefaultSigningIdentity()
 	}
 
-	return ConstructSingedTxEnv(txid, chainID, ccName, simulationResults, events, visibility, sigId)
+	return ConstructSingedTxEnv(txid, chainID, ccName, response, simulationResults, events, visibility, sigId)
 }

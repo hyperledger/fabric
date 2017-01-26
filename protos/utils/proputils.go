@@ -130,6 +130,17 @@ func GetChaincodeAction(caBytes []byte) (*peer.ChaincodeAction, error) {
 	return chaincodeAction, nil
 }
 
+// GetResponse gets the Response given response bytes
+func GetResponse(resBytes []byte) (*peer.Response, error) {
+	response := &peer.Response{}
+	err := proto.Unmarshal(resBytes, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 // GetChaincodeEvents gets the ChaincodeEvents given chaicnode event bytes
 func GetChaincodeEvents(eBytes []byte) (*peer.ChaincodeEvent, error) {
 	chaincodeEvent := &peer.ChaincodeEvent{}
@@ -274,8 +285,8 @@ func CreateChaincodeProposalWithTransient(txid string, typ common.HeaderType, ch
 }
 
 // GetBytesProposalResponsePayload gets proposal response payload
-func GetBytesProposalResponsePayload(hash []byte, result []byte, event []byte) ([]byte, error) {
-	cAct := &peer.ChaincodeAction{Events: event, Results: result}
+func GetBytesProposalResponsePayload(hash []byte, response *peer.Response, result []byte, event []byte) ([]byte, error) {
+	cAct := &peer.ChaincodeAction{Events: event, Results: result, Response: response}
 	cActBytes, err := proto.Marshal(cAct)
 	if err != nil {
 		return nil, err
@@ -298,6 +309,16 @@ func GetBytesChaincodeProposalPayload(cpp *peer.ChaincodeProposalPayload) ([]byt
 	}
 
 	return cppBytes, nil
+}
+
+// GetBytesResponse gets the bytes of Response
+func GetBytesResponse(res *peer.Response) ([]byte, error) {
+	resBytes, err := proto.Marshal(res)
+	if err != nil {
+		return nil, err
+	}
+
+	return resBytes, nil
 }
 
 // GetBytesChaincodeEvent gets the bytes of ChaincodeEvent

@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 )
 
@@ -114,7 +115,8 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 }
 
 func constructTransaction(simulationResults []byte) *common.Envelope {
-	txEnv, _ := ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GenerateUUID(), util.GetTestChainID(), "foo", simulationResults, nil, nil)
+	response := &pb.Response{Status: 200}
+	txEnv, _ := ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GenerateUUID(), util.GetTestChainID(), "foo", response, simulationResults, nil, nil)
 	return txEnv
 }
 

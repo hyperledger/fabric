@@ -217,7 +217,7 @@ func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid stri
 }
 
 //endorse the proposal by calling the ESCC
-func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, proposal *pb.Proposal, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd *chaincode.ChaincodeData) (*pb.ProposalResponse, error) {
+func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd *chaincode.ChaincodeData) (*pb.ProposalResponse, error) {
 	endorserLogger.Infof("endorseProposal starts for chainID %s, ccid %s", chainID, ccid)
 
 	// 1) extract the chaincodeDeploymentSpec for the chaincode we are invoking; we need it to get the escc
@@ -249,15 +249,21 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 		}
 	}
 
+	resBytes, err := putils.GetBytesResponse(response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response bytes - %s", err)
+	}
+
 	// 3) call the ESCC we've identified
 	// arguments:
 	// args[0] - function name (not used now)
 	// args[1] - serialized Header object
 	// args[2] - serialized ChaincodeProposalPayload object
-	// args[3] - binary blob of simulation results
-	// args[4] - serialized events
-	// args[5] - payloadVisibility
-	args := [][]byte{[]byte(""), proposal.Header, proposal.Payload, simRes, eventBytes, visibility}
+	// args[3] - result of executing chaincode
+	// args[4] - binary blob of simulation results
+	// args[5] - serialized events
+	// args[6] - payloadVisibility
+	args := [][]byte{[]byte(""), proposal.Header, proposal.Payload, resBytes, simRes, eventBytes, visibility}
 	version := util.GetSysCCVersion()
 	ecccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: escc}, Input: &pb.ChaincodeInput{Args: args}}}
 	res, _, err := e.callChaincode(ctx, chainID, version, txid, proposal, ecccis, &pb.ChaincodeID{Name: escc}, txsim)
@@ -356,7 +362,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	if ischainless {
 		pResp = &pb.ProposalResponse{Response: &pb.Response{}}
 	} else {
-		pResp, err = e.endorseProposal(ctx, chainID, txid, prop, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeID, txsim, cd)
+		pResp, err = e.endorseProposal(ctx, chainID, txid, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeID, txsim, cd)
 		if err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 		}
