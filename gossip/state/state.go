@@ -112,13 +112,6 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 		return nil
 	}
 
-	//if the ledger is empty, we need a block from orderer
-	//so don't expect height+1 but expect 0
-	next := height
-	if height > 0 {
-		next = height + 1
-	}
-
 	s := &GossipStateProviderImpl{
 		chainID: chainID,
 
@@ -133,7 +126,7 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 
 		stopFlag: 0,
 		// Create a queue for payload received
-		payloads: NewPayloadsBuffer(next),
+		payloads: NewPayloadsBuffer(height + 1),
 
 		committer: committer,
 

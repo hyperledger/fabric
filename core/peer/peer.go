@@ -212,6 +212,10 @@ func CreateChainFromBlock(cb *common.Block) error {
 		return err
 	}
 
+	if err := ledger.Commit(cb); err != nil {
+		peerLogger.Errorf("Unable to get genesis block committed into the ledger, chainID %v", cid)
+		return err
+	}
 	return createChain(cid, ledger, cb)
 }
 
