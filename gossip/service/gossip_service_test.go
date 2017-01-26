@@ -22,6 +22,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -53,4 +54,9 @@ func TestInitGossipService(t *testing.T) {
 			assert.Equal(t, gossip, GetGossipService())
 		}(gossip)
 	}
+}
+
+// Make sure *joinChannelMessage implements the api.JoinChannelMessage
+func TestJCMInterface(t *testing.T) {
+	_ = api.JoinChannelMessage(&joinChannelMessage{})
 }
