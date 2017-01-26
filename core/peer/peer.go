@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/gossip/service"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/peer/sharedconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -160,8 +161,10 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
+	sharedConfigHandler := sharedconfig.NewDescriptorImpl()
+
 	configtxInitializer := configtx.NewInitializer()
-	// TODO Hook peer shared config manager in here once it exists
+	configtxInitializer.Handlers()[common.ConfigurationItem_Peer] = sharedConfigHandler
 	configtxManager, err := configtx.NewManagerImpl(configEnvelope, configtxInitializer)
 	if err != nil {
 		return err
