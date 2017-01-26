@@ -1,421 +1,253 @@
+# Hyperledger Fabric Glossary
 
-## Roles & Personas
+*Note: This glossary is structured to prioritize new terms and features specific
+to v1.0 architecture.  It makes the assumption that one already possesses a
+working familiarity with the basic tenets of blockchain.*
 
-#### _Roles_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Chain Member</b></td>
-<td>
-Entities that do not participate in the validation process of a blockchain network, but help to maintain the integrity of a network. Unlike Chain transactors, chain members maintain a local copy of the ledger.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Chain Transactor</b></td>
-<td>
-Entities that have permission to create transactions and query network data.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Chain Validator</b></td>
-<td>
-Entities that own a stake of a chain network. Each chain validator has a voice in deciding whether a transaction is valid, therefore chain validators can interrogate all transactions sent to their chain.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Chain Auditor</b></td>
-<td>
-Entities with the permission to interrogate transactions.
-</td>
-</tr>
-</table>
+__Blockchain Network__ – A blockchain network consists of, at minimum, one peer
+(responsible for endorsing and committing transactions) leveraging an ordering
+service, and a membership services component (certificate authority) that
+distributes and revokes cryptographic certificates representative of user
+identities and permissions.
 
-#### _Participants_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Solution User</b></td>
-<td>
-End users are agnostic about the details of chain networks, they typically initiate transactions on a chain network through applications made available by solutions providers.
-<p><p>
-<span style="text-decoration:underline">Roles:</span> None
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Solution Provider</b></td>
-<td>
-Organizations that develop mobile and/or browser based applications for end (solution) users to access chain networks. Some application owners may also be network owners.
-<p><p>
-Roles: Chain Transactor
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Network Proprietor</b></td>
-<td>
-Proprietor(s) setup and define the purpose of a chain network. They are the stakeholders of a network.
-<p><p>
-Roles: Chain Transactor, Chain Validator
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Network Owner</b></td>
-<td>
-Owners are stakeholders of a network that can validate transactions. After a network is first launched, its proprietor (who then becomes an owner) will invite business partners to co-own the network (by assigning them validating nodes). Any new owner added to a network must be approved by its existing owners.
-<p><p>
-Roles: Chain Transactor, Chain Validator
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Network Member</b></td>
-<td>
-Members are participants of a blockchain network that cannot validate transactions but has the right to add users to the network.
-<p><p>
-Roles: Chain Transactor, Chain Member
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Network Users</b></td>
-<td>
-End users of a network are also solution users. Unlike network owners and members, users do not own nodes. They transact with the network through an entry point offered by a member or an owner node.
-<p><p>
-Roles: Chain Transactor
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Network Auditors</b></td>
-<td>
-Individuals or organizations with the permission to interrogate transactions.
-<p><p>
-Roles: Chain Auditor
-</td>
-</tr>
-</table>
+__Permissioned Network__ - A blockchain network where any entity (node) is
+required to maintain a member identity on the network.  End users must be
+authorized and authenticated in order to use the network.
 
-&nbsp;
+__Peer__ - Component that executes, and maintains a ledger of, transactions.  
+There are two roles for a peer – endorser and committer.  The architecture has
+been designed such that a peer is always a committer, but not necessarily always
+an endorser.  Peers play no role in the ordering of transactions.
 
-## Business Network
+__Member__ – A Member is a participant (such as a company or organization) that
+operates components - Peers, Orderers, and applications - in the blockchain
+network.  A member is identified by its CA certificate (i.e. a unique enrollment).  
+A Member’s peer will be leveraged by end users in order to perform transaction
+operations on specific channels.
 
-#### _Types of Networks (Business View)_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Industry Network</b></td>
-<td>
-A chain network that services solutions built for a particular industry.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Regional Industry Network</b></td>
-<td>
-A chain network that services applications built for a particular industry and region.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Application Network</b></td>
-<td>
-A chain network that only services a single solution.
-</td>
-</tr>
-</table>
+__Transaction__ - Refers to an operation in which an authorized end user
+performs read/write operations against the ledger.  There are three unique types
+of transactions - deploy, invoke, and query.
 
-#### _Types of Chains (Conceptual View)_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Main Chain</b></td>
-<td>
-A business network; each main chain operates one or multiple applications/solutions validated by the same group of organizations.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Confidential Chain</b></td>
-<td>
-A special purpose chain created to run confidential business logic that is only accessible by contract stakeholders.
-</td>
-</tr>
-</table>
+__End User__ – An end user is someone who would interact with the blockchain
+through a set of published APIs (i.e. the hfc SDK).  You can have an admin user
+who will typically grant permissions to the Member’s components, and a client
+user, who, upon proper authentication through the admin user, will drive
+chaincode applications (deploy, invoke, query) on various channels.  In the case
+of self-executing transactions, the application itself can also be thought of
+as the end user.
 
+__Ordering Service__ - A centralized or decentralized service that orders
+transactions in a block.  You can select different implementations of the
+"ordering" function - e.g "solo" for simplicity and testing, Kafka for crash
+fault tolerance, or sBFT/PBFT for byzantine fault tolerance. You can also
+develop your own protocol to plug into the service.
 
-&nbsp;
+__Consensus__ - A broader term overarching the entire transactional flow, which
+serves to generate an agreement on the order and to confirm the correctness of
+the set of transactions constituting a block.
 
-## Network Management
+__Orderer__ - One of the network entities that form the ordering service.  A
+collection of ordering service nodes (OSNs) will order transactions into blocks
+according to the network's chosen ordering implementation.  In the case of
+"solo", only one OSN is required.  Transactions are "broadcast" to orderers, and
+then "delivered" as blocks to the appropriate channel.
 
-#### _Member management_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Owner Registration</b></td>
-<td>
-The process of registering and inviting new owner(s) to a blockchain network. Approval from existing network owners is required when adding or deleting a participant with ownership right
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Member Registration</b></td>
-<td>
-The process of registering and inviting new network members to a blockchain network.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>User Registration</b></td>
-<td>
-The process of registering new users to a blockchain network. Both members and owners can register users on their own behalf as long as they follow the policy of their network.
-</td>
-</tr>
-</table>
+__Endorser__ – A specific peer role, where the Endorser peer is responsible for
+simulating transactions, and in turn preventing unstable or non-deterministic
+transactions from passing through the network.  A transaction is sent to an
+endorser in the form of a transaction proposal.  All endorsing peers are also
+committing peers (i.e. they write to the ledger).
 
+__Committer__ –  A specific peer role, where the Committing peer appends the
+validated transactions to the channel-specific ledger.  A peer can act as both
+an endorser and committer, but in more regulated circumstances might only serve
+as a committer.
 
-&nbsp;
+__Bootstrap__ – The initial setup of a network.  There is the bootstrap of a
+peer network, during which policies, system chaincodes, and cryptographic
+materials (certs) are disseminated amongst participants, and the bootstrap
+of an ordering network.  The bootstrap of the ordering network must precede the
+bootstrap of the peer network, as a peer network is contingent upon the presence
+of an ordering service.  A network need only be “bootstrapped” once.
 
-## Transactions
+__Block__ - A batch of ordered transactions, potentially containing ones of an
+invalid nature, that is delivered to the peers for validation and committal.
 
-#### _Types of Transactions_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Deployment Transaction</b></td>
-<td>
-Transactions that deploy a new chaincode to a chain.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Invocation Transaction</b></td>
-<td>
-Transactions that invoke a function on a chaincode.
-</td>
-</tr>
-</table>
+__System chain__ - Necessary in order to initialize a blockchain network.  
+Contains a configuration block defining the network at a system level.  
+The system chain lives within the ordering service, and similar to a
+channel, has an initial configuration containing information
+such as: root certificates for participating organizations and ordering service nodes,
+policies, listening address for OSN, and configuration details.  Any change to the
+overall network (e.g. a new org joining or a new OSN being added) will result
+in a new configuration block being added to the system chain.  
 
+The system chain can be thought of as the common binding for a channel or group
+of channels.  For instance, a collection of financial institutions may form a
+consortium (represented through the system chain), and then proceed to create
+channels relative to their aligned and varying business agendas.  
 
-#### _Confidentiality of Transactions_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Public Transaction</b></td>
-<td>
-A transaction with its payload in the open. Anyone with access to a chain network can interrogate the details of public transactions.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Confidential Transaction</b></td>
-<td>
-A transaction with its payload cryptographically hidden such that no one besides the stakeholders of a transaction can interrogate its content.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Confidential Chaincode Transaction</b></td>
-<td>
-A transaction with its payload encrypted such that only validators can decrypt them. Chaincode confidentiality is determined during deploy time. If a chaincode is deployed as a confidential chaincode, then the payload of all subsequent invocation transactions to that chaincode will be encrypted.
-</td>
-</tr>
-</table>
+__Channel__ - Formed as an offshoot of the system chain; and best thought of
+as a “topic” for peers to subscribe to, or rather, a subset of a
+broader blockchain network. A peer may subscribe on various channels and can
+only access the transactions on the subscribed channels.  Each channel will have
+a unique ledger, thus accommodating confidentiality and execution of multilateral
+contracts.
 
+__Multi-channel__ - The fabric will allow for multiple channels with a
+designated ledger per channel.  This capability allows for multilateral contracts
+where only the restricted participants on the channel will submit, endorse,
+order, or commit transactions on that channel.  As such, a single peer can
+maintain multiple ledgers without compromising privacy and confidentiality.
 
-#### _Inter-chain Transactions_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Inter-Network Transaction</b></td>
-<td>
-Transactions between two business networks (main chains).
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Inter-Chain Transaction</b></td>
-<td>
-Transactions between confidential chains and main chains. Chaincodes in a confidential chain can trigger transactions on one or multiple main chain(s).
-</td>
-</tr>
-</table>
+__Configuration Block__ - Contains the configuration data defining members and
+policies for a system chain or channel(s).  Any changes to the channel(s) or
+overall network (e.g. a new member successfully joining) will result in a new
+configuration block being appended to the appropriate chain.  This block will
+contain the contents of the genesis block, plus the delta.  The policy to alter
+or edit a channel-level configuration block is defined through the Configuration
+System Chaincode (CSCC).  
 
-&nbsp;
+__Genesis Block__ – The configuration block that initializes a blockchain
+network or channel, and also serves as the first block on a chain.  
 
-## Network Entities
+__Ledger__ – An append-only transaction log managed by peers.  Ledger keeps the
+log of ordered transaction batches.  There are two denotations for ledger; peer
+and validated.  The peer ledger contains all batched transactions coming out of
+the ordering service, some of which may in fact be invalid.  The validated ledger
+will contain fully endorsed and validated transaction blocks.  In other words,
+transactions in the validated ledger have passed the entire gamut of "consensus"
+- i.e. they have been endorsed, ordered, and validated.
 
-#### _Systems_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Application Backend</b></td>
-<td>
-  Purpose: Backend application service that supports associated mobile and/or browser based applications.
-  <p><p>
-  Key Roles:<p>
-  1)	Manages end users and registers them with the membership service
-  <p>
-  2)	Initiates transactions requests, and sends the requests to a node
-  <p><p>
-  Owned by: Solution Provider, Network Proprietor
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Non Validating Node (Peer)</b></td>
-<td>
-  Purpose: Constructs transactions and forwards them to validating nodes. Peer nodes keep a copy of all transaction records so that solution providers can query them locally.
-  <p><p>
-  Key Roles:<p>
-  1)	Manages and maintains user certificates issued by the membership service<p>
-  2)	Constructs transactions and forwards them to validating nodes <p>
-  3)	Maintains a local copy of the ledger, and allows application owners to query information locally.
-  <p><p>
-	Owned by: Solution Provider, Network Auditor
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Validating Node (Peer)</b></td>
-<td>
-  Purpose: Creates and validates transactions, and maintains the state of chaincodes<p><p>
-  Key Roles:<p>
-  1)	Manages and maintains user certificates issued by membership service<p>
-  2)	Creates transactions<p>
-  3)	Executes and validates transactions with other validating nodes on the network<p>
-  4)	Maintains a local copy of ledger<p>
-  5)	Participates in consensus and updates ledger
-  <p><p>
-  Owned by: Network Proprietor, Solution Provider (if they belong to the same entity)
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Membership Service</b></td>
-<td>
-  Purpose: Issues and manages the identity of end users and organizations<p><p>
-  Key Roles:<p>
-  1)	Issues enrollment certificate to each end user and organization<p>
-  2)	Issues transaction certificates associated to each end user and organization<p>
-  3)	Issues TLS certificates for secured communication between Hyperledger fabric entities<p>
-  4)	Issues chain specific keys
-  <p><p>
-  Owned by: Third party service provider
-</td>
-</tr>
-</table>
+__Dynamic membership__ - The fabric will allow for endorsers and committers to
+come and go based on membership, and the blockchain network will continue to
+operate. Dynamic membership is critical when businesses grow and members need to
+be added or removed for various reasons.
 
+__Query/Non-Key Value Query__ – using couchDB 2.0 you now have the capability
+to leverage an API to perform more complex queries against combinations of
+variables, including time ranges, transaction types, users, etc.  This feature
+allows for auditors and regulators to aggregate and mine large chunks of data.
 
-#### _Membership Service Components_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Registration Authority</b></td>
-<td>
-Assigns registration username & registration password pairs to network participants. This username/password pair will be used to acquire enrollment certificate from ECA.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Enrollment Certificate Authority (ECA)</b></td>
-<td>
-Issues enrollment certificates (ECert) to network participants that have already registered with a membership service. ECerts are long term certificates used to identify individual entities participating in one or more networks.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Transaction Certificate Authority (TCA)</b></td>
-<td>
-Issues transaction certificates (TCerts) to ECert owners. An infinite number of TCerts can be derived from each ECert. TCerts are used by network participants to send transactions. Depending on the level of security requirements, network participants may choose to use a new TCert for every transaction.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>TLS-Certificate Authority (TLS-CA)</b></td>
-<td>
-Issues TLS certificates to systems that transmit messages in a chain network. TLS certificates are used to secure the communication channel between systems.
-</td>
-</tr>
-</table>
+__Gossip Protocol__ – communication protocol used among peers in a channel, to
+maintain their network and to elect Leaders, through which funnels all
+communications with the Ordering Service.  Gossip allows for data dissemination,
+therein providing support for scalability due to the fact that not all peers
+are required to execute transactions and communicate with the ordering service.
 
-&nbsp;
+__System Chaincode (SCC)__ - System Chaincode is a chaincode built with the peer
+and run in the same process as the peer.  SCC is responsible for broader
+configurations of fabric behavior, such as timing and naming services.
 
-## Hyperledger Fabric Entities
+__Lifecycle System Chaincode (LSCC)__ - Handles deployment, upgrade and
+termination transactions for user chaincodes.
 
-#### _Chaincode_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Public Chaincode</b></td>
-<td>
-Chaincodes deployed by public transactions, these chaincodes can be invoked by any member of the network.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Confidential Chaincode</b></td>
-<td>
-Chaincodes deployed by confidential transactions, these chaincodes can only be invoked by validating members (Chain validators) of the network.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Access Controlled Chaincode</b></td>
-<td>
-Chaincodes deployed by confidential transactions that also embed the tokens of approved invokers. These invokers are also allowed to invoke confidential chaincodes even though they are not validators.
-</td>
-</tr>
-</table>
+__Configuration System Chaincode (CSCC)__ - A “management” system chaincode that
+handles configuration requests to alter an aspect of a channel
+(e.g. add a new member).  The CSCC will interrogate the channel’s policies to
+determine if a new configuration block can be created.
 
+__Endorsement System Chaincode (ESCC)__ - Handles the endorsement policy for
+specific pieces of chaincode deployed on a network, and defines the necessary
+parameters (percentage or combination of signatures from endorsing peers) for a
+transaction proposal to receive a successful proposal response
+(i.e. endorsement).  Deployments and invocations of user chaincodes both require
+a corresponding ESCC, which is defined at the time of the deployment transaction
+proposal for the user chaincode.
 
-#### _Ledger_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>Chaincode-State</b></td>
-<td>
-HPL provides state support; Chaincodes access internal state storage through state APIs. States are created and updated by transactions calling chaincode functions with state accessing logic.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Transaction List</b></td>
-<td>
-All processed transactions are kept in the ledger in their original form (with payload encrypted for confidential transactions), so that network participants can interrogate past transactions to which they have access permissions.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Ledger Hash</b></td>
-<td>
-A hash that captures the present snapshot of the ledger. It is a product of all validated transactions processed by the network since the genesis transaction.
-</td>
-</tr>
-</table>
+__Validation System Chaincode (VSCC)__ - Handles the validation policy for
+specific pieces of chaincode deployed on a network.  Deployments and invocations
+of user chaincodes both require a corresponding VSCC, which is defined at the
+time of the deployment transaction proposal for the user chaincode.  VSCC
+validates the specified level of "endorsement" (i.e. endorsement policy) in
+order to prevent malicious or faulty behavior from the client.
 
+__Policy__ – There are policies for endorsement, validation, block committal,
+chaincode management and network/channel management.  Policies are defined
+through system chaincodes, and contain the requisite specifications for a
+network action to succeed.  For example, an endorsement policy may require that
+100% of endorsers achieve the same result upon transaction simulation.
 
-#### _Node_
----
-<table border="0">
-<col>
-<col>
-<tr>
-<td width="20%"><b>DevOps Service</b></td>
-<td>
-The frontal module on a node that provides APIs for clients to interact with their node and chain network. This module is also responsible to construct transactions, and work with the membership service component to receive and store all types of certificates and encryption keys in its storage.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Node Service</b></td>
-<td>
-The main module on a node that is responsible to process transactions, deploy and execute chaincodes, maintain ledger data, and trigger the consensus process.
-</td>
-</tr>
-<tr>
-<td width="20%"><b>Consensus</b></td>
-<td>
-The default consensus algorithm of Hyperledger fabric is an implementation of PBFT.
-</td>
-</tr>
-</table>
+__Endorsement policy__ - A blockchain network must establish rules that govern
+the endorsement (or not) of proposed, simulated transactions. This endorsement
+policy could require that a transaction be endorsed by a minimum number of
+endorsing peers, a minimum percentage of endorsing peers, or by all endorsing
+peers that are assigned to a specific chaincode application. Policies can be
+curated based on the application and the desired level of resilience against
+misbehavior (deliberate or not) by the endorsing peers.  A distinct endorsement
+policy for deploy transactions, which install new chaincode, is also required.
+
+__Proposal__ - a transaction request sent from a client or admin user to one or
+more peers in a network; examples include deploy, invoke, query, or
+configuration request.
+
+__Deploy__ – refers to the function through which chaincode applications are
+deployed on `chain`.  A deploy is first sent from the client SDK or CLI to a
+Lifecycle System Chaincode in the form of a proposal.
+
+__Invoke__ – Used to call chaincode functions.  Invocations are captured as
+transaction proposals, which then pass through a modular flow of endorsement,
+ordering, validation, committal.  The structure of invoke is a function and an
+array of arguments.
+
+__Membership Services__ - Membership Services manages user identities on a
+permissioned blockchain network; this function is implemented through the
+`fabric-ca` component.  `fabric-ca` is comprised of a client and server, and
+handles the distribution and revocation of enrollment materials (certificates),
+which serve to identify and authenticate users on a network.
+
+The in-line `MembershipSrvc` code (MSP) runs on the peers themselves, and is used by
+the peer when authenticating transaction processing results, and by the client
+to verify/authenticate transactions.  Membership Services provides a distinction
+of roles by combining elements of Public Key Infrastructure (PKI) and
+decentralization (consensus). By contrast, non-permissioned networks do not
+provide member-specific authority or a distinction of roles.
+
+A permissioned blockchain requires entities to register for long-term identity
+credentials (Enrollment Certificates), which can be distinguished according to
+entity type. For users, an Enrollment Certificate authorizes the Transaction
+Certificate Authority (TCA) to issue pseudonymous credentials; these
+certificates authorize transactions submitted by the user. Transaction
+certificates persist on the blockchain, and enable authorized auditors to
+associate, and identify the transacting parties for otherwise un-linkable
+transactions.
+
+__Membership Service Provider (MSP)__ - Refers to an abstract component of the
+system that provides (anonymous) credentials to clients, and peers for them to
+participate in a Hyperledger/fabric network. Clients use these credentials to
+authenticate their transactions, and peers use these credentials to authenticate
+transaction processing results (endorsements). While strongly connected to the
+transaction processing components of the systems, this interface aims to have
+membership services components defined, in such a way that alternate
+implementations of this can be smoothly plugged in without modifying the core of
+transaction processing components of the system.
+
+__Initialize__ – a chaincode method to define the assets and parameters in a
+piece of chaincode prior to issuing deploys and invocations.  As the name
+implies, this function should be used to do any initialization to the chaincode,
+such as configure the initial state of a key/value pair on the ledger.
+
+__appshim__ - An application client used by ordering service nodes to
+process "broadcast" messages arriving from clients or peers.  This shim allows
+the ordering service to perform membership-related functionality checks.  In
+other words, is a peer or client properly authorized to perform the requested
+function (e.g. upgrade chaincode or reconfigure channel settings).
+
+__osshim__ - An ordering service client used by the application to process
+ordering service messages (i.e. "deliver" messages) that are advertised
+within a channel.  
+
+__Hyperledger Fabric Client Software Development Kit (SDK)__ – Provides a
+powerful class of APIs and contains myriad “methods” or “calls” that expose the
+capabilities and functionalities in the Hyperledger Fabric code base.  For
+example, `addMember`, `removeMember`.  The Fabric SDK comes in three flavors -
+Node.js, Java, and Python - allowing developers to write application code in
+any of these programming languages.  
+
+__Chaincode__ – Embedded logic that encodes the rules for specific types of
+network transactions. Developers write chaincode applications, which are then
+deployed onto a chain by an appropriately authorized member. End users then
+invoke chaincode through a client-side application that interfaces with a
+network peer. Chaincode runs network transactions, which if validated, are
+appended to the shared ledger and modify world state.
