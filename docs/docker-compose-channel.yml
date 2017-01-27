@@ -36,6 +36,7 @@ services:
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005
       - CORE_PEER_GOSSIP_ORGLEADER=true
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp/sampleconfig
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     ports:
       - 7051:7051
@@ -64,6 +65,7 @@ services:
       - CORE_PEER_ENDORSER_ENABLED=true
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005
       - CORE_PEER_ADDRESS=peer0:7051
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp/sampleconfig
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: /bin/sh
     links:
