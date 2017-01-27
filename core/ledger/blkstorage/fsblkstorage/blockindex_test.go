@@ -22,6 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	putil "github.com/hyperledger/fabric/protos/utils"
 )
 
 type noopIndex struct {
@@ -145,23 +146,25 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 	// test 'retrieveTransactionByID'
 	txid, err := extractTxID(blocks[0].Data.Data[0])
 	testutil.AssertNoError(t, err, "")
-	tx, err := blockfileMgr.retrieveTransactionByID(txid)
+	txEnvelope, err := blockfileMgr.retrieveTransactionByID(txid)
 	if testutil.Contains(indexItems, blkstorage.IndexableAttrTxID) {
 		testutil.AssertNoError(t, err, "Error while retrieving tx by id")
-		txOrig, err := extractTransaction(blocks[0].Data.Data[0])
+		txEnvelopeBytes := blocks[0].Data.Data[0]
+		txEnvelopeOrig, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
 		testutil.AssertNoError(t, err, "")
-		testutil.AssertEquals(t, tx, txOrig)
+		testutil.AssertEquals(t, txEnvelope, txEnvelopeOrig)
 	} else {
 		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
 	}
 
 	//test 'retrieveTrasnactionsByBlockNumTranNum
-	tx2, err := blockfileMgr.retrieveTransactionForBlockNumTranNum(1, 1)
+	txEnvelope2, err := blockfileMgr.retrieveTransactionForBlockNumTranNum(1, 1)
 	if testutil.Contains(indexItems, blkstorage.IndexableAttrBlockNumTranNum) {
 		testutil.AssertNoError(t, err, "Error while retrieving tx by blockNum and tranNum")
-		txOrig2, err2 := extractTransaction(blocks[0].Data.Data[0])
+		txEnvelopeBytes2 := blocks[0].Data.Data[0]
+		txEnvelopeOrig2, err2 := putil.GetEnvelopeFromBlock(txEnvelopeBytes2)
 		testutil.AssertNoError(t, err2, "")
-		testutil.AssertEquals(t, tx2, txOrig2)
+		testutil.AssertEquals(t, txEnvelope2, txEnvelopeOrig2)
 	} else {
 		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
 	}

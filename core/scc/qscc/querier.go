@@ -192,13 +192,14 @@ func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
 	if tid == nil {
 		return shim.Error("Transaction ID must not be nil.")
 	}
-	tx, err := vledger.GetTransactionByID(string(tid))
+	txEnvelope, err := vledger.GetTransactionByID(string(tid))
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get transaction with id %s, error %s", string(tid), err))
 	}
-	// TODO: tx is *pb.Transaction, what should we return?
+	// TODO In the returned transaction, need to replace binary simulation results with a proto
+	//  structure including write set, so that clients know what this transaction wrote
 
-	bytes, err := utils.Marshal(tx)
+	bytes, err := utils.Marshal(txEnvelope)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -219,6 +220,9 @@ func getBlockByNumber(vledger ledger.PeerLedger, number []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed to get block number %d, error %s", bnum, err))
 	}
 	// TODO: consider trim block content before returning
+	//  Specifically, trim transaction 'data' out of the transaction array Payloads
+	//  This will preserve the transaction Payload header,
+	//  and client can do GetTransactionByID() if they want the full transaction details
 
 	bytes, err := utils.Marshal(block)
 	if err != nil {
@@ -237,6 +241,9 @@ func getBlockByHash(vledger ledger.PeerLedger, hash []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed to get block hash %s, error %s", string(hash), err))
 	}
 	// TODO: consider trim block content before returning
+	//  Specifically, trim transaction 'data' out of the transaction array Payloads
+	//  This will preserve the transaction Payload header,
+	//  and client can do GetTransactionByID() if they want the full transaction details
 
 	bytes, err := utils.Marshal(block)
 	if err != nil {

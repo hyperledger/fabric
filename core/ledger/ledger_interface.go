@@ -76,7 +76,7 @@ type OrdererLedgerProvider interface {
 type PeerLedger interface {
 	Ledger
 	// GetTransactionByID retrieves a transaction by id
-	GetTransactionByID(txID string) (*pb.Transaction, error)
+	GetTransactionByID(txID string) (*common.Envelope, error)
 	// GetBlockByHash returns a block given it's hash
 	GetBlockByHash(blockHash []byte) (*common.Block, error)
 	// NewTxSimulator gives handle to a transaction simulator.
@@ -173,9 +173,8 @@ type KV struct {
 
 // KeyModification - QueryResult for History.
 type KeyModification struct {
-	TxID        string
-	Value       []byte
-	Transaction *pb.Transaction
+	TxID  string
+	Value []byte
 }
 
 // QueryRecord - Result structure for query records. Holds a namespace, key and record.

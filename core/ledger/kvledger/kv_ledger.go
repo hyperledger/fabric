@@ -210,7 +210,7 @@ func recommitLostBlocks(l *kvLedger, savepoint uint64, blockHeight uint64, recov
 }
 
 // GetTransactionByID retrieves a transaction by id
-func (l *kvLedger) GetTransactionByID(txID string) (*pb.Transaction, error) {
+func (l *kvLedger) GetTransactionByID(txID string) (*common.Envelope, error) {
 	return l.blockStore.RetrieveTxByID(txID)
 }
 

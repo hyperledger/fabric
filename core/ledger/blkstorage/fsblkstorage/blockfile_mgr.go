@@ -440,22 +440,22 @@ func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*blocksItr, error) {
 	return newBlockItr(mgr, startNum), nil
 }
 
-func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*pb.Transaction, error) {
+func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*common.Envelope, error) {
 	logger.Debugf("retrieveTransactionByID() - txId = [%s]", txID)
 	loc, err := mgr.index.getTxLoc(txID)
 	if err != nil {
 		return nil, err
 	}
-	return mgr.fetchTransaction(loc)
+	return mgr.fetchTransactionEnvelope(loc)
 }
 
-func (mgr *blockfileMgr) retrieveTransactionForBlockNumTranNum(blockNum uint64, tranNum uint64) (*pb.Transaction, error) {
+func (mgr *blockfileMgr) retrieveTransactionForBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error) {
 	logger.Debugf("retrieveTransactionForBlockNumTranNum() - blockNum = [%d], tranNum = [%d]", blockNum, tranNum)
 	loc, err := mgr.index.getTXLocForBlockNumTranNum(blockNum, tranNum)
 	if err != nil {
 		return nil, err
 	}
-	return mgr.fetchTransaction(loc)
+	return mgr.fetchTransactionEnvelope(loc)
 }
 
 func (mgr *blockfileMgr) fetchBlock(lp *fileLocPointer) (*common.Block, error) {
@@ -470,14 +470,14 @@ func (mgr *blockfileMgr) fetchBlock(lp *fileLocPointer) (*common.Block, error) {
 	return block, nil
 }
 
-func (mgr *blockfileMgr) fetchTransaction(lp *fileLocPointer) (*pb.Transaction, error) {
+func (mgr *blockfileMgr) fetchTransactionEnvelope(lp *fileLocPointer) (*common.Envelope, error) {
 	var err error
 	var txEnvelopeBytes []byte
 	if txEnvelopeBytes, err = mgr.fetchRawBytes(lp); err != nil {
 		return nil, err
 	}
 	_, n := proto.DecodeVarint(txEnvelopeBytes)
-	return extractTransaction(txEnvelopeBytes[n:])
+	return putil.GetEnvelopeFromBlock(txEnvelopeBytes[n:])
 }
 
 func (mgr *blockfileMgr) fetchBlockBytes(lp *fileLocPointer) ([]byte, error) {
@@ -560,24 +560,6 @@ func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64)
 	}
 	logger.Debugf("scanForLastCompleteBlock(): last complete block ends at offset=[%d]", blockStream.currentOffset)
 	return blockStream.currentOffset, numBlocks, errRead
-}
-
-func extractTransaction(txEnvelopeBytes []byte) (*pb.Transaction, error) {
-	var err error
-	var txEnvelope *common.Envelope
-	var txPayload *common.Payload
-	var tx *pb.Transaction
-
-	if txEnvelope, err = putil.GetEnvelopeFromBlock(txEnvelopeBytes); err != nil {
-		return nil, err
-	}
-	if txPayload, err = putil.GetPayload(txEnvelope); err != nil {
-		return nil, err
-	}
-	if tx, err = putil.GetTransaction(txPayload.Data); err != nil {
-		return nil, err
-	}
-	return tx, nil
 }
 
 // checkpointInfo

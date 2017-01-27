@@ -25,6 +25,7 @@ import (
 
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	putil "github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestBlockfileMgrBlockReadWrite(t *testing.T) {
@@ -146,11 +147,11 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 			// blockNum starts with 1
 			txID, err := extractTxID(blk.Data.Data[j])
 			testutil.AssertNoError(t, err, "")
-			txFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)
+			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByID(txID)
 			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
-			tx, err := extractTransaction(txEnvelopeBytes)
+			txEnvelope, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
 			testutil.AssertNoError(t, err, "Error while unmarshalling tx")
-			testutil.AssertEquals(t, txFromFileMgr, tx)
+			testutil.AssertEquals(t, txEnvelopeFromFileMgr, txEnvelope)
 		}
 	}
 }
