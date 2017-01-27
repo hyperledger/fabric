@@ -78,9 +78,13 @@ type ChaincodeStubInterface interface {
 	//would be returned.
 	PartialCompositeKeyQuery(objectType string, keys []string) (StateRangeQueryIteratorInterface, error)
 
-	//Given a list of attributes, createCompundKey function combines these attributes
+	//Given a list of attributes, CreateCompositeKey function combines these attributes
 	//to form a composite key.
 	CreateCompositeKey(objectType string, attributes []string) (string, error)
+
+	//Given a composite key, SplitCompositeKey function splits the key into attributes
+	//on which the composite key was formed.
+	SplitCompositeKey(compositeKey string) (string, []string, error)
 
 	// GetCallerCertificate returns caller certificate
 	GetCallerCertificate() ([]byte, error)

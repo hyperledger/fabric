@@ -202,10 +202,16 @@ func (stub *MockStub) PartialCompositeKeyQuery(objectType string, attributes []s
 	return partialCompositeKeyQuery(stub, objectType, attributes)
 }
 
-//Given a list of attributes, createCompositeKey function combines these attributes
+//Given a list of attributes, CreateCompositeKey function combines these attributes
 //to form a composite key.
 func (stub *MockStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
 	return createCompositeKey(stub, objectType, attributes)
+}
+
+//Given a composite key, SplitCompositeKey function splits the key into attributes
+//on which the composite key was formed.
+func (stub *MockStub) SplitCompositeKey(compositeKey string) (string, []string, error) {
+	return splitCompositeKey(stub, compositeKey)
 }
 
 // Invokes a peered chaincode.

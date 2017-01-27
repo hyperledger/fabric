@@ -112,10 +112,10 @@ func TestPartialCompositeKeyQuery(t *testing.T) {
 
 	stub.MockTransactionEnd("init")
 	expectKeys := []string{compositeKey1, compositeKey2}
+	expectKeysAttributes := [][]string{{"set-1", "red"}, {"set-1", "blue"}}
 	expectValues := [][]byte{marbleJSONBytes1, marbleJSONBytes2}
 
 	rqi, _ := stub.PartialCompositeKeyQuery("marble", []string{"set-1"})
-
 	fmt.Println("Running loop")
 	for i := 0; i < 2; i++ {
 		key, value, err := rqi.Next()
@@ -123,6 +123,18 @@ func TestPartialCompositeKeyQuery(t *testing.T) {
 		if expectKeys[i] != key {
 			fmt.Println("Expected key", expectKeys[i], "got", key)
 			t.FailNow()
+		}
+		objectType, attributes, _ := stub.SplitCompositeKey(key)
+		if objectType != "marble" {
+			fmt.Println("Expected objectType", "marble", "got", objectType)
+			t.FailNow()
+		}
+		fmt.Println(attributes)
+		for index, attr := range attributes {
+			if expectKeysAttributes[i][index] != attr {
+				fmt.Println("Expected keys attribute", expectKeysAttributes[index][i], "got", attr)
+				t.FailNow()
+			}
 		}
 		if jsonBytesEqual(expectValues[i], value) != true {
 			fmt.Println("Expected value", expectValues[i], "got", value)
