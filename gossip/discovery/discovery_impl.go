@@ -133,6 +133,31 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 	return d
 }
 
+func (d *gossipDiscoveryImpl) Connect(member NetworkMember) {
+	d.logger.Debug("Entering", member)
+	defer d.logger.Debug("Exiting")
+
+	if member.PKIid == nil {
+		d.logger.Warning("Empty PkiID, aborting")
+		return
+	}
+
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	if _, exists := d.id2Member[string(member.PKIid)]; exists {
+		d.logger.Info("Member", member, "already known")
+		return
+	}
+
+	d.deadLastTS[string(member.PKIid)] = &timestamp{
+		incTime:  time.Unix(0, 0),
+		lastSeen: time.Now(),
+		seqNum:   0,
+	}
+	d.id2Member[string(member.PKIid)] = &member
+}
+
 func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
 	d.logger.Info("Entering:", endpoints)
 	defer d.logger.Info("Exiting")

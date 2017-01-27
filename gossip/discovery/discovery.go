@@ -80,4 +80,7 @@ type Discovery interface {
 	// InitiateSync makes the instance ask a given number of peers
 	// for their membership information
 	InitiateSync(peerNum int)
+
+	// Connect makes this instance to connect to a remote instance
+	Connect(NetworkMember)
 }

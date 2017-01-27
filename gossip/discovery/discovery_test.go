@@ -258,6 +258,28 @@ func bootPeer(port int) string {
 	return fmt.Sprintf("localhost:%d", port)
 }
 
+func TestConnect(t *testing.T) {
+	t.Parallel()
+	nodeNum := 10
+	instances := []*gossipInstance{}
+	for i := 0; i < nodeNum; i++ {
+		inst := createDiscoveryInstance(7611+i, fmt.Sprintf("d%d", i), []string{})
+		instances = append(instances, inst)
+		j := (i + 1) % 10
+		endpoint := fmt.Sprintf("localhost:%d", 7611+j)
+		netMember2Connect2 := NetworkMember{Endpoint: endpoint, PKIid: []byte(endpoint)}
+		inst.Connect(netMember2Connect2)
+		// Check passing nil PKI-ID doesn't crash peer
+		inst.Connect(NetworkMember{PKIid: nil, Endpoint: endpoint})
+	}
+
+	fullMembership := func() bool {
+		return nodeNum-1 == len(instances[nodeNum-1].GetMembership())
+	}
+	waitUntilOrFail(t, fullMembership)
+	stopInstances(t, instances)
+}
+
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 	nodeNum := 5
