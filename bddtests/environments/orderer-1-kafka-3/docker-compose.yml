@@ -4,7 +4,7 @@ services:
     image: hyperledger/fabric-zookeeper
 
   orderer0:
-    image: hyperledger/fabric-orderer
+    image: hyperledger/fabric-testenv-orderer
     environment:
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENESIS_ORDERERTYPE=kafka

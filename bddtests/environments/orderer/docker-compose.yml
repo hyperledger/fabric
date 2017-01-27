@@ -1,0 +1,11 @@
+version: '2'
+services:
+  orderer:
+    build: .
+    image: hyperledger/fabric-testenv-orderer
+    environment:
+      - ORDERER_GENERAL_QUEUESIZE=1000
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENESIS_ORDERERTYPE=solo
+    ports:
+      - '7050'
