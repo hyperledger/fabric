@@ -23,19 +23,11 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/dockercontroller"
 	"github.com/hyperledger/fabric/core/container/inproccontroller"
 )
-
-//abstract virtual image for supporting arbitrary virual machines
-type vm interface {
-	Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error
-	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error
-	Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
-	Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error
-	GetVMName(ccID ccintf.CCID) (string, error)
-}
 
 type refCountedLock struct {
 	refCount int
@@ -67,9 +59,9 @@ func init() {
 	vmcontroller.containerLocks = make(map[string]*refCountedLock)
 }
 
-func (vmc *VMController) newVM(typ string) vm {
+func (vmc *VMController) newVM(typ string) api.VM {
 	var (
-		v vm
+		v api.VM
 	)
 
 	switch typ {
@@ -123,7 +115,7 @@ func (vmc *VMController) unlockContainer(id string) {
 //note that we'd stop on the first method on the stack that does not
 //take context
 type VMCReqIntf interface {
-	do(ctxt context.Context, v vm) VMCResp
+	do(ctxt context.Context, v api.VM) VMCResp
 	getCCID() ccintf.CCID
 }
 
@@ -142,7 +134,7 @@ type CreateImageReq struct {
 	Env    []string
 }
 
-func (bp CreateImageReq) do(ctxt context.Context, v vm) VMCResp {
+func (bp CreateImageReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
 	if err := v.Deploy(ctxt, bp.CCID, bp.Args, bp.Env, bp.Reader); err != nil {
@@ -161,15 +153,15 @@ func (bp CreateImageReq) getCCID() ccintf.CCID {
 //StartImageReq - properties for starting a container.
 type StartImageReq struct {
 	ccintf.CCID
-	Reader io.Reader
-	Args   []string
-	Env    []string
+	Builder api.BuildSpecFactory
+	Args    []string
+	Env     []string
 }
 
-func (si StartImageReq) do(ctxt context.Context, v vm) VMCResp {
+func (si StartImageReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
-	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.Reader); err != nil {
+	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.Builder); err != nil {
 		resp = VMCResp{Err: err}
 	} else {
 		resp = VMCResp{}
@@ -192,7 +184,7 @@ type StopImageReq struct {
 	Dontremove bool
 }
 
-func (si StopImageReq) do(ctxt context.Context, v vm) VMCResp {
+func (si StopImageReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
 	if err := v.Stop(ctxt, si.CCID, si.Timeout, si.Dontkill, si.Dontremove); err != nil {
@@ -216,7 +208,7 @@ type DestroyImageReq struct {
 	NoPrune bool
 }
 
-func (di DestroyImageReq) do(ctxt context.Context, v vm) VMCResp {
+func (di DestroyImageReq) do(ctxt context.Context, v api.VM) VMCResp {
 	var resp VMCResp
 
 	if err := v.Destroy(ctxt, di.CCID, di.Force, di.NoPrune); err != nil {

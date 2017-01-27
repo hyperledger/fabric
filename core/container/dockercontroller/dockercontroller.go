@@ -26,6 +26,7 @@ import (
 	"bufio"
 
 	"github.com/fsouza/go-dockerclient"
+	container "github.com/hyperledger/fabric/core/container/api"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	"github.com/op/go-logging"
@@ -154,7 +155,7 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 }
 
 //Start starts a container using a previously created docker image
-func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
+func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, builder container.BuildSpecFactory) error {
 	imageID, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
 	if err != nil {
@@ -174,8 +175,14 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 	if err != nil {
 		//if image not found try to create image and retry
 		if err == docker.ErrNoSuchImage {
-			if reader != nil {
+			if builder != nil {
 				dockerLogger.Debugf("start-could not find image ...attempt to recreate image %s", err)
+
+				reader, err := builder()
+				if err != nil {
+					dockerLogger.Errorf("Error creating image builder: %s", err)
+				}
+
 				if err = vm.deployImage(client, ccid, args, env, reader); err != nil {
 					return err
 				}
