@@ -17,8 +17,11 @@ limitations under the License.
 package committer
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
@@ -60,6 +63,13 @@ func (lc *LedgerCommitter) Commit(block *common.Block) error {
 	if err := lc.ledger.Commit(block); err != nil {
 		return err
 	}
+
+	// send block event *after* the block has been committed
+	if err := producer.SendProducerBlockEvent(block); err != nil {
+		logger.Errorf("Error sending block event %s", err)
+		return fmt.Errorf("Error sending block event %s", err)
+	}
+
 	return nil
 }
 
