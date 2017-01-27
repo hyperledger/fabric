@@ -22,11 +22,6 @@ import (
 	"net"
 	"sync"
 
-	"google.golang.org/grpc"
-
-	"github.com/op/go-logging"
-	"github.com/spf13/viper"
-
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
@@ -38,6 +33,9 @@ import (
 	"github.com/hyperledger/fabric/peer/sharedconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/op/go-logging"
+	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 )
 
 var peerLogger = logging.MustGetLogger("peer")
@@ -70,16 +68,16 @@ func MockInitialize() {
 	ledgermgmt.InitializeTestEnv()
 	chains.list = nil
 	chains.list = make(map[string]*chain)
-	deliveryServiceProvider = func(string) error { return nil }
+	chainInitializer = func(string) { return }
 }
 
-var deliveryServiceProvider func(string) error
+var chainInitializer func(string)
 
 // Initialize sets up any chains that the peer has from the persistence. This
 // function should be called at the start up when the ledger and gossip
 // ready
-func Initialize(dsProvider func(string) error) {
-	deliveryServiceProvider = dsProvider
+func Initialize(init func(string)) {
+	chainInitializer = init
 
 	var cb *common.Block
 	var ledger ledger.PeerLedger
@@ -107,19 +105,17 @@ func Initialize(dsProvider func(string) error) {
 			continue
 		}
 
-		// now create the delivery service for this chain
-		if err = deliveryServiceProvider(cid); err != nil {
-			peerLogger.Errorf("Error creating delivery service for %s(err - %s)", cid, err)
-		}
+		InitChain(cid)
 	}
 }
 
-//CreateDeliveryService creates the delivery service for the chainID
-func CreateDeliveryService(chainID string) error {
-	if deliveryServiceProvider == nil {
-		return fmt.Errorf("delivery service provider not available")
+// Take care to initialize chain after peer joined, for example deploys system CCs
+func InitChain(cid string) {
+	if chainInitializer != nil {
+		// Initialize chaincode, namely deploy system CC
+		peerLogger.Debugf("Init chain %s", cid)
+		chainInitializer(cid)
 	}
-	return deliveryServiceProvider(chainID)
 }
 
 func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {

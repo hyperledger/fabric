@@ -135,7 +135,7 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 
 	logging.SetFormatter(logFormat)
 
-	state := NewNodeMetastate(height)
+	state := NewNodeMetastate(height - 1)
 
 	s.logger.Infof("Updating node metadata information, current ledger sequence is at = %d, next expected block is = %d", state.LedgerHeight, s.payloads.Next())
 	bytes, err := state.Bytes()

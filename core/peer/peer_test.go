@@ -22,16 +22,39 @@ import (
 	"os"
 	"testing"
 
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
+
+type mockDeliveryClient struct {
+}
+
+// JoinChain once peer joins the chain it should need to check whenever
+// it has been selected as a leader and open connection to the configured
+// ordering service endpoint
+func (*mockDeliveryClient) JoinChain(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+	return nil
+}
+
+// Stop terminates delivery service and closes the connection
+func (*mockDeliveryClient) Stop() {
+
+}
+
+type mockDeliveryClientFactory struct {
+}
+
+func (*mockDeliveryClientFactory) Service(g service.GossipService) (deliverclient.DeliverService, error) {
+	return &mockDeliveryClient{}, nil
+}
 
 func TestInitialize(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
@@ -62,7 +85,7 @@ func TestCreateChainFromBlock(t *testing.T) {
 	mgmt.LoadFakeSetupWithLocalMspAndTestChainMsp("../../msp/sampleconfig")
 
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
-	service.InitGossipService(identity, "localhost:13611", grpcServer)
+	service.InitGossipServiceCustomDeliveryFactory(identity, "localhost:13611", grpcServer, &mockDeliveryClientFactory{})
 
 	err = CreateChainFromBlock(block)
 	if err != nil {

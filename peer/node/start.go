@@ -32,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
-	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
@@ -79,28 +78,6 @@ func initChainless() {
 	//deploy the chainless system chaincodes
 	scc.DeployChainlessSysCCs()
 	logger.Infof("Deployed chainless system chaincodess")
-}
-
-//startDeliveryService is used by the peer to start a delivery service
-//when the peer joins a chain
-func startDeliveryService(chainID string) error {
-	// Initialize all system chainodes on this chain
-	// TODO: Fix this code to initialize instead of deploy chaincodes
-	scc.DeploySysCCs(chainID)
-
-	commit := peer.GetCommitter(chainID)
-	if commit == nil {
-		return fmt.Errorf("Unable to get committer for [%s]", chainID)
-	}
-
-	var deliverService *deliverclient.DeliverService
-	if deliverService = deliverclient.NewDeliverService(chainID); deliverService == nil {
-		return fmt.Errorf("Unable to created delivery service for [%s]", chainID)
-	}
-
-	deliverService.Start(commit)
-
-	return nil
 }
 
 func serve(args []string) error {
@@ -196,17 +173,16 @@ func serve(args []string) error {
 			fmt.Printf("create chain [%s]", chainID)
 			scc.DeploySysCCs(chainID)
 			logger.Infof("Deployed system chaincodes on %s", chainID)
-
-			if err = startDeliveryService(chainID); err != nil {
-				panic(fmt.Sprintf("%s", err))
-			}
 		} else {
 			fmt.Printf("create default chain [%s] failed with %s", chainID, err)
 		}
 	}
 
 	//this brings up all the chains (including testchainid)
-	peer.Initialize(startDeliveryService)
+	peer.Initialize(func(cid string) {
+		logger.Debugf("Deploying system CC, for chain <%s>", cid)
+		scc.DeploySysCCs(cid)
+	})
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s",
 		peerEndpoint.ID, viper.GetString("peer.networkId"), peerEndpoint.Address)

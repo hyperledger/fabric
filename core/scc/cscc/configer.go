@@ -24,12 +24,11 @@ package cscc
 import (
 	"fmt"
 
-	"github.com/op/go-logging"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/op/go-logging"
 )
 
 // PeerConfiger implements the configuration handler for the peer. For every
@@ -110,9 +109,7 @@ func joinChain(blockBytes []byte) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed to get the chain ID from the configuration block, %s", err))
 	}
 
-	if err = peer.CreateDeliveryService(chainID); err != nil {
-		return shim.Error(err.Error())
-	}
+	peer.InitChain(chainID)
 
 	return shim.Success(nil)
 }

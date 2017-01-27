@@ -22,14 +22,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-
 	"github.com/golang/protobuf/proto"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/gossip/service"
@@ -37,7 +35,32 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
+
+type mockDeliveryClient struct {
+}
+
+// JoinChain once peer joins the chain it should need to check whenever
+// it has been selected as a leader and open connection to the configured
+// ordering service endpoint
+func (*mockDeliveryClient) JoinChain(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+	return nil
+}
+
+// Stop terminates delivery service and closes the connection
+func (*mockDeliveryClient) Stop() {
+
+}
+
+type mockDeliveryClientFactory struct {
+}
+
+func (*mockDeliveryClientFactory) Service(g service.GossipService) (deliverclient.DeliverService, error) {
+	return &mockDeliveryClient{}, nil
+}
 
 func TestConfigerInit(t *testing.T) {
 	e := new(PeerConfiger)
@@ -121,7 +144,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	mgmt.LoadFakeSetupWithLocalMspAndTestChainMsp("../../../msp/sampleconfig")
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 
-	service.InitGossipService(identity, "localhost:13611", grpcServer)
+	service.InitGossipServiceCustomDeliveryFactory(identity, "localhost:13611", grpcServer, &mockDeliveryClientFactory{})
 
 	// Successful path for JoinChain
 	blockBytes := mockConfigBlock()

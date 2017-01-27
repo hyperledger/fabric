@@ -21,6 +21,7 @@ import (
 
 	peerComm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
@@ -53,10 +54,26 @@ type GossipService interface {
 	AddPayload(chainID string, payload *proto.Payload) error
 }
 
+// DeliveryServiceFactory factory to create and initialize delivery service instance
+type DeliveryServiceFactory interface {
+	// Returns an instance of delivery client
+	Service(g GossipService) (deliverclient.DeliverService, error)
+}
+
+type deliveryFactoryImpl struct {
+}
+
+// Returns an instance of delivery client
+func (*deliveryFactoryImpl) Service(g GossipService) (deliverclient.DeliverService, error) {
+	return deliverclient.NewDeliverService(g)
+}
+
 type gossipServiceImpl struct {
 	gossipSvc
-	chains map[string]state.GossipStateProvider
-	lock   sync.RWMutex
+	chains          map[string]state.GossipStateProvider
+	deliveryService deliverclient.DeliverService
+	deliveryFactory DeliveryServiceFactory
+	lock            sync.RWMutex
 }
 
 // This is an implementation of api.JoinChannelMessage.
@@ -77,6 +94,12 @@ var logger = logging.MustGetLogger("gossipService")
 
 // InitGossipService initialize gossip service
 func InitGossipService(identity []byte, endpoint string, s *grpc.Server, bootPeers ...string) {
+	InitGossipServiceCustomDeliveryFactory(identity, endpoint, s, &deliveryFactoryImpl{}, bootPeers...)
+}
+
+// InitGossipService initialize gossip service with customize delivery factory
+// implementation, might be useful for testing and mocking purposes
+func InitGossipServiceCustomDeliveryFactory(identity []byte, endpoint string, s *grpc.Server, factory DeliveryServiceFactory, bootPeers ...string) {
 	once.Do(func() {
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 		dialOpts := []grpc.DialOption{}
@@ -88,8 +111,9 @@ func InitGossipService(identity []byte, endpoint string, s *grpc.Server, bootPee
 
 		gossip := integration.NewGossipComponent(identity, endpoint, s, dialOpts, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
-			gossipSvc: gossip,
-			chains:    make(map[string]state.GossipStateProvider),
+			gossipSvc:       gossip,
+			chains:          make(map[string]state.GossipStateProvider),
+			deliveryFactory: factory,
 		}
 	})
 }
@@ -108,7 +132,24 @@ func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
 func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committer.Committer) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
+	// Initialize new state provider for given committer
+	logger.Debug("Creating state provider for chainID", chainID)
 	g.chains[chainID] = state.NewGossipStateProvider(chainID, g, committer)
+	if g.deliveryService == nil {
+		var err error
+		g.deliveryService, err = g.deliveryFactory.Service(gossipServiceInstance)
+		if err != nil {
+			logger.Warning("Cannot create delivery client, due to", err)
+		}
+	}
+
+	if g.deliveryService != nil {
+		if err := g.deliveryService.JoinChain(chainID, committer); err != nil {
+			logger.Error("Delivery service is not able to join the chain, due to", err)
+		}
+	} else {
+		logger.Warning("Delivery client is down won't be able to pull blocks for chain", chainID)
+	}
 }
 
 // configUpdated constructs a joinChannelMessage and sends it to the gossipSvc
@@ -144,9 +185,14 @@ func (g *gossipServiceImpl) AddPayload(chainID string, payload *proto.Payload) e
 
 // Stop stops the gossip component
 func (g *gossipServiceImpl) Stop() {
+	g.lock.Lock()
+	defer g.lock.Unlock()
 	for _, ch := range g.chains {
 		logger.Info("Stopping chain", ch)
 		ch.Stop()
 	}
 	g.gossipSvc.Stop()
+	if g.deliveryService != nil {
+		g.deliveryService.Stop()
+	}
 }
