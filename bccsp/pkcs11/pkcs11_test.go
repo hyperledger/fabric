@@ -63,7 +63,7 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		t.Fatal("Failed signing message [%s]", err)
 	}
 
-	pass, err := verifyECDSA(key, hash1, R, S)
+	pass, err := verifyECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatal("Error verifying message 1 [%s]", err)
 	}
@@ -76,7 +76,7 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		t.Fatal("Signature should match with software verification!")
 	}
 
-	pass, err = verifyECDSA(key, hash2, R, S)
+	pass, err = verifyECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatal("Error verifying message 2 [%s]", err)
 	}
@@ -129,7 +129,7 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 		t.Fatal("Failed signing message [%s]", err)
 	}
 
-	pass, err := verifyECDSA(ski, hash1, R, S)
+	pass, err := verifyECDSA(ski, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 1 [%s]\n%s\n\n%s", err, hex.Dump(R.Bytes()), hex.Dump(S.Bytes()))
 	}
@@ -142,7 +142,7 @@ func TestPKCS11ECKeyImportSignVerify(t *testing.T) {
 		t.Fatal("Signature should match with software verification!")
 	}
 
-	pass, err = verifyECDSA(ski, hash2, R, S)
+	pass, err = verifyECDSA(ski, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatal("Error verifying message 2 [%s]", err)
 	}
@@ -198,7 +198,7 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 		t.Fatalf("Failed signing message [%s]", err)
 	}
 
-	pass, err := verifyECDSA(key2, hash1, R, S)
+	pass, err := verifyECDSA(key2, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 1 [%s]", err)
 	}
@@ -206,7 +206,7 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 		t.Fatal("Signature should match! [1]")
 	}
 
-	pass, err = verifyECDSA(key, hash1, R, S)
+	pass, err = verifyECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 2 [%s]", err)
 	}
@@ -219,7 +219,7 @@ func TestPKCS11ECKeyExport(t *testing.T) {
 		t.Fatal("Signature should match with software verification!")
 	}
 
-	pass, err = verifyECDSA(key, hash2, R, S)
+	pass, err = verifyECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatal("Error verifying message 3 [%s]", err)
 	}
