@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
@@ -61,8 +62,8 @@ func TestEncodeDecodeValueAndVersion(t *testing.T) {
 }
 
 func testValueAndVersionEncodeing(t *testing.T, value []byte, version *version.Height) {
-	encodedValue := encodeValue(value, version)
-	val, ver := decodeValue(encodedValue)
+	encodedValue := statedb.EncodeValue(value, version)
+	val, ver := statedb.DecodeValue(encodedValue)
 	testutil.AssertEquals(t, val, value)
 	testutil.AssertEquals(t, ver, version)
 }

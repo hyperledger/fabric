@@ -20,7 +20,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/spf13/viper"
@@ -36,7 +38,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-//TODO add wrapper for version in couchdb to resolve final tests in TestBasicRW and TestMultiDBBasicRW
 func TestBasicRW(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
@@ -81,19 +82,17 @@ func TestIterator(t *testing.T) {
 	}
 }
 
-/* TODO re-visit after adding version wrapper in couchdb
 func TestEncodeDecodeValueAndVersion(t *testing.T) {
-	testValueAndVersionEncodeing(t, []byte("value1"), version.NewHeight(1, 2))
-	testValueAndVersionEncodeing(t, []byte{}, version.NewHeight(50, 50))
+	testValueAndVersionEncoding(t, []byte("value1"), version.NewHeight(1, 2))
+	testValueAndVersionEncoding(t, []byte{}, version.NewHeight(50, 50))
 }
 
-func testValueAndVersionEncodeing(t *testing.T, value []byte, version *version.Height) {
-	encodedValue := encodeValue(value, version)
-	val, ver := decodeValue(encodedValue)
+func testValueAndVersionEncoding(t *testing.T, value []byte, version *version.Height) {
+	encodedValue := statedb.EncodeValue(value, version)
+	val, ver := statedb.DecodeValue(encodedValue)
 	testutil.AssertEquals(t, val, value)
 	testutil.AssertEquals(t, ver, version)
 }
-*/
 
 func TestCompositeKey(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
@@ -113,7 +112,6 @@ func testCompositeKey(t *testing.T, ns string, key string) {
 }
 
 // The following tests are unique to couchdb, they are not used in leveldb
-
 //  query test
 func TestQuery(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {

@@ -90,7 +90,7 @@ func (vdb *versionedDB) GetState(namespace string, key string) (*statedb.Version
 	if dbVal == nil {
 		return nil, nil
 	}
-	val, ver := decodeValue(dbVal)
+	val, ver := statedb.DecodeValue(dbVal)
 	return &statedb.VersionedValue{Value: val, Version: ver}, nil
 }
 
@@ -144,7 +144,7 @@ func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 			if vv.Value == nil {
 				dbBatch.Delete(compositeKey)
 			} else {
-				dbBatch.Put(compositeKey, encodeValue(vv.Value, vv.Version))
+				dbBatch.Put(compositeKey, statedb.EncodeValue(vv.Value, vv.Version))
 			}
 		}
 	}
@@ -163,20 +163,6 @@ func (vdb *versionedDB) GetLatestSavePoint() (*version.Height, error) {
 	}
 	version, _ := version.NewHeightFromBytes(versionBytes)
 	return version, nil
-}
-
-func encodeValue(value []byte, version *version.Height) []byte {
-	encodedValue := version.ToBytes()
-	if value != nil {
-		encodedValue = append(encodedValue, value...)
-	}
-	return encodedValue
-}
-
-func decodeValue(encodedValue []byte) ([]byte, *version.Height) {
-	version, n := version.NewHeightFromBytes(encodedValue)
-	value := encodedValue[n:]
-	return value, version
 }
 
 func constructCompositeKey(ns string, key string) []byte {
@@ -206,7 +192,7 @@ func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
 	dbValCopy := make([]byte, len(dbVal))
 	copy(dbValCopy, dbVal)
 	_, key := splitCompositeKey(dbKey)
-	value, version := decodeValue(dbValCopy)
+	value, version := statedb.DecodeValue(dbValCopy)
 	return &statedb.VersionedKV{
 		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
 		VersionedValue: statedb.VersionedValue{Value: value, Version: version}}, nil
