@@ -50,7 +50,7 @@ const (
 	// networks. It it necessary to set and export this variable so that test
 	// clients can connect without being rejected for targetting a chain which
 	// does not exist.
-	TestChainID = "test_chainid"
+	TestChainID = "testchainid"
 
 	// AcceptAllPolicyKey is the key of the AcceptAllPolicy.
 	AcceptAllPolicyKey = "AcceptAllPolicy"
