@@ -53,6 +53,7 @@ func Cmd(cf *ChannelCmdFactory) *cobra.Command {
 	AddFlags(channelCmd)
 	channelCmd.AddCommand(joinCmd(cf))
 	channelCmd.AddCommand(createCmd(cf))
+	channelCmd.AddCommand(fetchCmd(cf))
 
 	return channelCmd
 }
@@ -80,7 +81,7 @@ type ChannelCmdFactory struct {
 }
 
 // InitCmdFactory init the ChannelCmdFactor with default clients
-func InitCmdFactory(forJoin bool) (*ChannelCmdFactory, error) {
+func InitCmdFactory(isOrdererRequired bool) (*ChannelCmdFactory, error) {
 	var err error
 
 	cmdFact := &ChannelCmdFactory{}
@@ -96,7 +97,7 @@ func InitCmdFactory(forJoin bool) (*ChannelCmdFactory, error) {
 	}
 
 	//for join, we need the endorser as well
-	if forJoin {
+	if isOrdererRequired {
 		cmdFact.EndorserClient, err = common.GetEndorserClient()
 		if err != nil {
 			return nil, fmt.Errorf("Error getting endorser client %s: %s", channelFuncName, err)
