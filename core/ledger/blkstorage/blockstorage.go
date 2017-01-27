@@ -66,6 +66,6 @@ type BlockStore interface {
 	RetrieveBlocks(startNum uint64) (ledger.ResultsIterator, error)
 	RetrieveBlockByHash(blockHash []byte) (*common.Block, error)
 	RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) // blockNum of  math.MaxUint64 will return last block
-	RetrieveTxByID(txID string) (*pb.Transaction, error)
+	RetrieveTxByID(txID string) (*common.Envelope, error)
 	Shutdown()
 }
