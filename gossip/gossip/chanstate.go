@@ -101,7 +101,7 @@ func (ga *gossipAdapterImpl) Gossip(msg *proto.GossipMessage) {
 // ValidateStateInfoMessage returns error if a message isn't valid
 // nil otherwise
 func (ga *gossipAdapterImpl) ValidateStateInfoMessage(msg *proto.GossipMessage) error {
-	return ga.gossipServiceImpl.validateStateInfoMsg(msg.GetStateInfo())
+	return ga.gossipServiceImpl.validateStateInfoMsg(msg)
 }
 
 // OrgByPeerIdentity extracts the organization identifier from a peer's identity

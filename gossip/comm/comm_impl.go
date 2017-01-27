@@ -388,20 +388,25 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 	ctx := stream.Context()
 	remoteAddress := extractRemoteAddress(stream)
 	remoteCertHash := extractCertificateHashFromContext(ctx)
-	var sig []byte
 	var err error
+	var cMsg *proto.GossipMessage
+	var signer proto.Signer
 
 	// If TLS is detected, sign the hash of our cert to bind our TLS cert
 	// to the gRPC session
 	if remoteCertHash != nil && c.selfCertHash != nil {
-		sig, err = c.idMapper.Sign(c.selfCertHash)
-		if err != nil {
-			c.logger.Error("Failed signing self certificate hash:", err)
-			return nil, err
+		signer = func(msg []byte) ([]byte, error) {
+			return c.idMapper.Sign(msg)
+		}
+	} else { // If we don't use TLS, we have no unique text to sign,
+		//  so don't sign anything
+		signer = func(msg []byte) ([]byte, error) {
+			return msg, nil
 		}
 	}
 
-	cMsg := createConnectionMsg(c.PKIID, sig, c.peerIdentity)
+	cMsg = createConnectionMsg(c.PKIID, c.selfCertHash, c.peerIdentity, signer)
+
 	c.logger.Debug("Sending", cMsg, "to", remoteAddress)
 	stream.Send(cMsg)
 	m := readWithTimeout(stream, defConnTimeout)
@@ -433,7 +438,14 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 
 	// if TLS is detected, verify remote peer
 	if remoteCertHash != nil && c.selfCertHash != nil {
-		err = c.idMapper.Verify(receivedMsg.PkiID, receivedMsg.Sig, remoteCertHash)
+		if !bytes.Equal(remoteCertHash, receivedMsg.Hash) {
+			return nil, fmt.Errorf("Expected %v in remote hash, but got %v", remoteCertHash, receivedMsg.Hash)
+		}
+		verifier := func(peerIdentity []byte, signature, message []byte) error {
+			pkiID := c.idMapper.GetPKIidOfCert(api.PeerIdentityType(peerIdentity))
+			return c.idMapper.Verify(pkiID, signature, message)
+		}
+		err = m.Verify(receivedMsg.Cert, verifier)
 		if err != nil {
 			c.logger.Error("Failed verifying signature from", remoteAddress, ":", err)
 			return nil, err
@@ -516,18 +528,20 @@ func readWithTimeout(stream interface{}, timeout time.Duration) *proto.GossipMes
 	}
 }
 
-func createConnectionMsg(pkiID common.PKIidType, sig []byte, cert api.PeerIdentityType) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func createConnectionMsg(pkiID common.PKIidType, hash []byte, cert api.PeerIdentityType, signer proto.Signer) *proto.GossipMessage {
+	m := &proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
 		Content: &proto.GossipMessage_Conn{
 			Conn: &proto.ConnEstablish{
+				Hash:  hash,
 				Cert:  cert,
 				PkiID: pkiID,
-				Sig:   sig,
 			},
 		},
 	}
+	m.Sign(signer)
+	return m
 }
 
 type stream interface {

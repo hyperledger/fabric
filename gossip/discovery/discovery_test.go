@@ -63,11 +63,11 @@ type gossipInstance struct {
 	shouldGossip bool
 }
 
-func (comm *dummyCommModule) ValidateAliveMsg(am *proto.AliveMessage) bool {
+func (comm *dummyCommModule) ValidateAliveMsg(am *proto.GossipMessage) bool {
 	return true
 }
 
-func (comm *dummyCommModule) SignMessage(am *proto.AliveMessage) *proto.AliveMessage {
+func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage) *proto.GossipMessage {
 	return am
 }
 
