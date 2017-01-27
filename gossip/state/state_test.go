@@ -25,6 +25,7 @@ import (
 	"time"
 
 	pb "github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -123,7 +124,7 @@ func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) e
 func bootPeers(ids ...int) []string {
 	peers := []string{}
 	for _, id := range ids {
-		peers = append(peers, fmt.Sprintf("localhost:%d", (id+portPrefix)))
+		peers = append(peers, fmt.Sprintf("localhost:%d", id+portPrefix))
 	}
 	return peers
 }
@@ -172,6 +173,8 @@ func newGossipInstance(config *gossip.Config) gossip.Gossip {
 // Create new instance of KVLedger to be used for testing
 func newCommitter(id int) committer.Committer {
 	ledger, _ := ledgermgmt.CreateLedger(strconv.Itoa(id))
+	cb, _ := test.MakeGenesisBlock(util.GetTestChainID())
+	ledger.Commit(cb)
 	return committer.NewLedgerCommitter(ledger, &validator.MockValidator{})
 }
 
@@ -334,8 +337,8 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 		logger.Debug("[*****]: Trying to see all peers get all blocks")
 		for _, p := range peersSet {
 			height, err := p.commit.LedgerHeight()
-			if height != uint64(msgCount) || err != nil {
-				logger.Debug("[XXXXXXX]: Ledger height is at: ", height)
+			if height != uint64(msgCount+1) || err != nil {
+				//logger.Debug("[XXXXXXX]: Ledger height is at: ", height)
 				return false
 			}
 		}

@@ -126,7 +126,7 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 
 		stopFlag: 0,
 		// Create a queue for payload received
-		payloads: NewPayloadsBuffer(height + 1),
+		payloads: NewPayloadsBuffer(height),
 
 		committer: committer,
 
@@ -329,17 +329,12 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 				}
 			}
 		}
+		s.logger.Debug("[XXX]: Stateprovider stopped, stoping anti entropy procedure.")
 
 		if current == max {
-			// No messages in the buffer or there are no gaps
-			//s.logger.Debugf("Current ledger height is the same as ledger height on other peers.")
 			continue
 		}
 
-		if current > 0 {
-			current = current + 1
-		}
-		//s.logger.Debugf("Requesting new blocks in range [%d...%d].", current+1, max)
 		s.requestBlocksInRange(uint64(current), uint64(max))
 	}
 	s.logger.Debug("[XXX]: Stateprovider stopped, stoping anti entropy procedure.")

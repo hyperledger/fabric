@@ -38,7 +38,7 @@ import (
 var logger *logging.Logger // package-level logger
 
 func init() {
-	logger = logging.MustGetLogger("noopssinglechain.client")
+	logger = logging.MustGetLogger("deliveryService")
 }
 
 // DeliverService used to communicate with orderers to obtain
