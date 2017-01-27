@@ -16,9 +16,9 @@ limitations under the License.
 package pkcs11
 
 import (
-	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/asn1"
 	"fmt"
 	"hash"
 
@@ -30,7 +30,7 @@ type config struct {
 	securityLevel int
 	hashFamily    string
 
-	ellipticCurve elliptic.Curve
+	ellipticCurve asn1.ObjectIdentifier
 	hashFunction  func() hash.Hash
 	aesBitLength  int
 	rsaBitLength  int
@@ -51,12 +51,12 @@ func (conf *config) setSecurityLevel(securityLevel int, hashFamily string) (err 
 func (conf *config) setSecurityLevelSHA2(level int) (err error) {
 	switch level {
 	case 256:
-		conf.ellipticCurve = elliptic.P256()
+		conf.ellipticCurve = oidNamedCurveP256
 		conf.hashFunction = sha256.New
 		conf.rsaBitLength = 2048
 		conf.aesBitLength = 32
 	case 384:
-		conf.ellipticCurve = elliptic.P384()
+		conf.ellipticCurve = oidNamedCurveP384
 		conf.hashFunction = sha512.New384
 		conf.rsaBitLength = 3072
 		conf.aesBitLength = 32
@@ -69,12 +69,12 @@ func (conf *config) setSecurityLevelSHA2(level int) (err error) {
 func (conf *config) setSecurityLevelSHA3(level int) (err error) {
 	switch level {
 	case 256:
-		conf.ellipticCurve = elliptic.P256()
+		conf.ellipticCurve = oidNamedCurveP256
 		conf.hashFunction = sha3.New256
 		conf.rsaBitLength = 2048
 		conf.aesBitLength = 32
 	case 384:
-		conf.ellipticCurve = elliptic.P384()
+		conf.ellipticCurve = oidNamedCurveP384
 		conf.hashFunction = sha3.New384
 		conf.rsaBitLength = 3072
 		conf.aesBitLength = 32

@@ -16,9 +16,7 @@ limitations under the License.
 package pkcs11
 
 import (
-	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
 	"encoding/asn1"
 	"errors"
 	"fmt"
@@ -74,38 +72,38 @@ func unmarshalECDSASignature(raw []byte) (*big.Int, *big.Int, error) {
 	return sig.R, sig.S, nil
 }
 
-func (csp *impl) signECDSA(k *ecdsa.PrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
-	r, s, err := ecdsa.Sign(rand.Reader, k, digest)
+func (csp *impl) signECDSA(k ecdsaPrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+	r, s, err := signECDSA(k.ski, digest)
 	if err != nil {
 		return nil, err
 	}
 
 	// check for low-S
-	halfOrder, ok := curveHalfOrders[k.Curve]
+	halfOrder, ok := curveHalfOrders[k.pub.pub.Curve]
 	if !ok {
-		return nil, fmt.Errorf("Curve not recognized [%s]", k.Curve)
+		return nil, fmt.Errorf("Curve not recognized [%s]", k.pub.pub.Curve)
 	}
 
 	// is s > halfOrder Then
 	if s.Cmp(halfOrder) == 1 {
 		// Set s to N - s that will be then in the lower part of signature space
 		// less or equal to half order
-		s.Sub(k.Params().N, s)
+		s.Sub(k.pub.pub.Params().N, s)
 	}
 
 	return marshalECDSASignature(r, s)
 }
 
-func (csp *impl) verifyECDSA(k *ecdsa.PublicKey, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
 	r, s, err := unmarshalECDSASignature(signature)
 	if err != nil {
 		return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
 	}
 
 	// check for low-S
-	halfOrder, ok := curveHalfOrders[k.Curve]
+	halfOrder, ok := curveHalfOrders[k.pub.Curve]
 	if !ok {
-		return false, fmt.Errorf("Curve not recognized [%s]", k.Curve)
+		return false, fmt.Errorf("Curve not recognized [%s]", k.pub.Curve)
 	}
 
 	// If s > halfOrder Then
@@ -113,5 +111,5 @@ func (csp *impl) verifyECDSA(k *ecdsa.PublicKey, signature, digest []byte, opts 
 		return false, fmt.Errorf("Invalid S. Must be smaller than half the order [%s][%s].", s, halfOrder)
 	}
 
-	return ecdsa.Verify(k, digest, r, s), nil
+	return verifyECDSA(k.ski, digest, r, s)
 }
