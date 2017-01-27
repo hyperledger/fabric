@@ -88,6 +88,40 @@ func TestCreateChain(t *testing.T) {
 	mockBroadcastClient := common.GetMockBroadcastClient(nil)
 
 	mockCF := &ChannelCmdFactory{
+		BroadcastClient:  mockBroadcastClient,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
+		AnchorPeerParser: common.GetAnchorPeersParser("../common/testdata/anchorPeersOrg1.txt"),
+	}
+
+	cmd := createCmd(mockCF)
+
+	AddFlags(cmd)
+
+	args := []string{"-c", mockchain, "-a", "../common/testdata/anchorPeersOrg1.txt"}
+	cmd.SetArgs(args)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fail()
+		t.Errorf("expected join command to succeed")
+	}
+}
+
+func TestCreateChainWithDefaultAnchorPeers(t *testing.T) {
+	InitMSP()
+
+	mockchain := "mockchain"
+
+	defer os.Remove(mockchain + ".block")
+
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		t.Fatalf("Get default signer error: %v", err)
+	}
+
+	mockBroadcastClient := common.GetMockBroadcastClient(nil)
+
+	mockCF := &ChannelCmdFactory{
 		BroadcastClient: mockBroadcastClient,
 		Signer:          signer,
 		DeliverClient:   &mockDeliverClient{},
@@ -103,6 +137,39 @@ func TestCreateChain(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fail()
 		t.Errorf("expected join command to succeed")
+	}
+}
+
+func TestCreateChainInvalidAnchorPeers(t *testing.T) {
+	InitMSP()
+
+	mockchain := "mockchain"
+
+	defer os.Remove(mockchain + ".block")
+
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		t.Fatalf("Get default signer error: %v", err)
+	}
+
+	mockBroadcastClient := common.GetMockBroadcastClient(nil)
+
+	mockCF := &ChannelCmdFactory{
+		BroadcastClient:  mockBroadcastClient,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
+		AnchorPeerParser: common.GetAnchorPeersParser("../common/testdata/anchorPeersBadPEM.txt"),
+	}
+
+	cmd := createCmd(mockCF)
+
+	AddFlags(cmd)
+
+	args := []string{"-c", mockchain, "-a", "../common/testdata/anchorPeersBadPEM.txt"}
+	cmd.SetArgs(args)
+
+	if err := cmd.Execute(); err == nil {
+		t.Errorf("expected create chain to fail because of invalid anchor peer file")
 	}
 }
 
@@ -122,16 +189,17 @@ func TestCreateChainBCFail(t *testing.T) {
 	mockBroadcastClient := common.GetMockBroadcastClient(sendErr)
 
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{},
+		BroadcastClient:  mockBroadcastClient,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
+		AnchorPeerParser: common.GetAnchorPeersParser("../common/testdata/anchorPeersOrg1.txt"),
 	}
 
 	cmd := createCmd(mockCF)
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain}
+	args := []string{"-c", mockchain, "-a", "../common/testdata/anchorPeersOrg1.txt"}
 	cmd.SetArgs(args)
 
 	expectedErrMsg := sendErr.Error()
@@ -161,16 +229,17 @@ func TestCreateChainDeliverFail(t *testing.T) {
 	recvErr := fmt.Errorf("deliver create tx failed")
 
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{recvErr},
+		BroadcastClient:  mockBroadcastClient,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{recvErr},
+		AnchorPeerParser: common.GetAnchorPeersParser("../common/testdata/anchorPeersOrg1.txt"),
 	}
 
 	cmd := createCmd(mockCF)
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain}
+	args := []string{"-c", mockchain, "-a", "../common/testdata/anchorPeersOrg1.txt"}
 	cmd.SetArgs(args)
 
 	expectedErrMsg := recvErr.Error()

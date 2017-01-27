@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 const (
@@ -62,7 +63,8 @@ func init() {
 	}
 
 	template = configtx.NewSimpleTemplate(templateProto.Items...)
-	gossTemplate := configtx.NewSimpleTemplate(utils.EncodeAnchorPeers())
+	anchorPeers := []*peer.AnchorPeer{{Host: "fakehost", Port: 2000, Cert: []byte{}}}
+	gossTemplate := configtx.NewSimpleTemplate(utils.EncodeAnchorPeers(anchorPeers))
 	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(MSPTemplate{}, template, gossTemplate))
 }
 
