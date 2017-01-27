@@ -150,7 +150,7 @@ func TestVMCBuildImage(t *testing.T) {
 	//creat a CreateImageReq obj and send it to VMCProcess
 	go func() {
 		defer close(c)
-		cir := CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: "simple"}}}, Reader: tarRdr, AttachStdout: true}
+		cir := CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: "simple"}}}, Reader: tarRdr}
 		_, err := VMCProcess(ctxt, "Docker", cir)
 		if err != nil {
 			t.Fail()

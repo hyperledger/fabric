@@ -30,8 +30,8 @@ import (
 
 //abstract virtual image for supporting arbitrary virual machines
 type vm interface {
-	Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error
-	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error
+	Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error
+	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error
 	Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error
 	Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error
 	GetVMName(ccID ccintf.CCID) (string, error)
@@ -137,17 +137,15 @@ type VMCResp struct {
 //CreateImageReq - properties for creating an container image
 type CreateImageReq struct {
 	ccintf.CCID
-	Reader       io.Reader
-	AttachStdin  bool
-	AttachStdout bool
-	Args         []string
-	Env          []string
+	Reader io.Reader
+	Args   []string
+	Env    []string
 }
 
 func (bp CreateImageReq) do(ctxt context.Context, v vm) VMCResp {
 	var resp VMCResp
 
-	if err := v.Deploy(ctxt, bp.CCID, bp.Args, bp.Env, bp.AttachStdin, bp.AttachStdout, bp.Reader); err != nil {
+	if err := v.Deploy(ctxt, bp.CCID, bp.Args, bp.Env, bp.Reader); err != nil {
 		resp = VMCResp{Err: err}
 	} else {
 		resp = VMCResp{}
@@ -163,17 +161,15 @@ func (bp CreateImageReq) getCCID() ccintf.CCID {
 //StartImageReq - properties for starting a container.
 type StartImageReq struct {
 	ccintf.CCID
-	Reader       io.Reader
-	Args         []string
-	Env          []string
-	AttachStdin  bool
-	AttachStdout bool
+	Reader io.Reader
+	Args   []string
+	Env    []string
 }
 
 func (si StartImageReq) do(ctxt context.Context, v vm) VMCResp {
 	var resp VMCResp
 
-	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.AttachStdin, si.AttachStdout, si.Reader); err != nil {
+	if err := v.Start(ctxt, si.CCID, si.Args, si.Env, si.Reader); err != nil {
 		resp = VMCResp{Err: err}
 	} else {
 		resp = VMCResp{}

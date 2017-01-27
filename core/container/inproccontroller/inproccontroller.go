@@ -80,7 +80,7 @@ func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContain
 }
 
 //Deploy verifies chaincode is registered and creates an instance for it. Currently only one instance can be created
-func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
+func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 
 	ipctemplate := typeRegistry[path]
@@ -153,7 +153,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 }
 
 //Start starts a previously registered system codechain
-func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
+func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, reader io.Reader) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 
 	ipctemplate := typeRegistry[path]
