@@ -214,23 +214,27 @@ func (stub *MockStub) PartialCompositeKeyQuery(objectType string, attributes []s
 	return partialCompositeKeyQuery(stub, objectType, attributes)
 }
 
-//Given a list of attributes, CreateCompositeKey function combines these attributes
+// CreateCompositeKey combines the list of attributes
 //to form a composite key.
 func (stub *MockStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
 	return createCompositeKey(stub, objectType, attributes)
 }
 
-//Given a composite key, SplitCompositeKey function splits the key into attributes
-//on which the composite key was formed.
+// SplitCompositeKey splits the composite key into attributes
+// on which the composite key was formed.
 func (stub *MockStub) SplitCompositeKey(compositeKey string) (string, []string, error) {
 	return splitCompositeKey(stub, compositeKey)
 }
 
-// Invokes a peered chaincode.
-// E.g. stub1.InvokeChaincode("stub2Hash", funcArgs)
+// InvokeChaincode calls a peered chaincode.
+// E.g. stub1.InvokeChaincode("stub2Hash", funcArgs, channel)
 // Before calling this make sure to create another MockStub stub2, call stub2.MockInit(uuid, func, args)
 // and register it with stub1 by calling stub1.MockPeerChaincode("stub2Hash", stub2)
-func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte) pb.Response {
+func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte, channel string) pb.Response {
+	// Internally we use chaincode name as a composite name
+	if channel != "" {
+		chaincodeName = chaincodeName + "/" + channel
+	}
 	// TODO "args" here should possibly be a serialized pb.ChaincodeInput
 	otherStub := stub.Invokables[chaincodeName]
 	mockLogger.Debug("MockStub", stub.Name, "Invoking peer chaincode", otherStub.Name, args)

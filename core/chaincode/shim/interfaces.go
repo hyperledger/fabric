@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Interfaces to allow testing of chaincode apps with mocked up stubs
 package shim
 
 import (
@@ -51,8 +50,11 @@ type ChaincodeStubInterface interface {
 
 	// InvokeChaincode locally calls the specified chaincode `Invoke` using the
 	// same transaction context; that is, chaincode calling chaincode doesn't
-	// create a new transaction message.
-	InvokeChaincode(chaincodeName string, args [][]byte) pb.Response
+	// create a new transaction message. If the called chaincode is on a different
+	// channel, only the Response is returned to the caller; any PutState calls
+	// will not have any effect on the ledger of the channel; effectively it is
+	// a `Query`. If `channel` is empty, the caller's channel is assumed.
+	InvokeChaincode(chaincodeName string, args [][]byte, channel string) pb.Response
 
 	// GetState returns the byte array value specified by the `key`.
 	GetState(key string) ([]byte, error)

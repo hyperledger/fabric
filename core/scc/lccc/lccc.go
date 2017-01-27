@@ -389,7 +389,7 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 
 		cd, cdbytes, _ := lccc.getChaincode(stub, chain, ccname)
 		if cd == nil || cdbytes == nil {
-			logger.Debug("ChaincodeID [%s/%s] does not exist", chain, ccname)
+			logger.Debugf("ChaincodeID: %s does not exist on channel: %s ", ccname, chain)
 			return shim.Error(TXNotFoundErr(ccname + "/" + chain).Error())
 		}
 

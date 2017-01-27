@@ -48,7 +48,7 @@ func (p *PassthruChaincode) iq(stub shim.ChaincodeStubInterface, function string
 	}
 	chaincodeID := function
 
-	return stub.InvokeChaincode(chaincodeID, util.ToChaincodeArgs(args...))
+	return stub.InvokeChaincode(chaincodeID, util.ToChaincodeArgs(args...), "")
 }
 
 // Invoke passes through the invoke call

@@ -329,7 +329,6 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 				}
 			}
 		}
-		s.logger.Debug("[XXX]: Stateprovider stopped, stoping anti entropy procedure.")
 
 		if current == max {
 			continue
@@ -337,7 +336,6 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 
 		s.requestBlocksInRange(uint64(current), uint64(max))
 	}
-	s.logger.Debug("[XXX]: Stateprovider stopped, stoping anti entropy procedure.")
 	s.done.Done()
 }
 

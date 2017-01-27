@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/looplab/fsm"
@@ -114,14 +115,18 @@ func shorttxid(txid string) string {
 //and suffix will just be absent (also note that LCCC reserves
 //"/:[]${}" as special chars mainly for such namespace uses)
 func (handler *Handler) decomposeRegisteredName(cid *pb.ChaincodeID) {
-	handler.ccCompParts = &ccParts{}
-	b := []byte(cid.Name)
+	handler.ccCompParts = chaincodeIDParts(cid.Name)
+}
+
+func chaincodeIDParts(ccName string) *ccParts {
+	b := []byte(ccName)
+	p := &ccParts{}
 
 	//compute suffix (ie, chain name)
 	i := bytes.IndexByte(b, '/')
 	if i >= 0 {
 		if i < len(b)-1 {
-			handler.ccCompParts.suffix = string(b[i+1:])
+			p.suffix = string(b[i+1:])
 		}
 		b = b[:i]
 	}
@@ -130,14 +135,14 @@ func (handler *Handler) decomposeRegisteredName(cid *pb.ChaincodeID) {
 	i = bytes.IndexByte(b, ':')
 	if i >= 0 {
 		if i < len(b)-1 {
-			handler.ccCompParts.version = string(b[i+1:])
+			p.version = string(b[i+1:])
 		}
 		b = b[:i]
 	}
+	// remaining is the chaincode name
+	p.name = string(b)
 
-	handler.ccCompParts.name = string(b)
-
-	return
+	return p
 }
 
 func (handler *Handler) getCCRootName() string {
@@ -219,6 +224,16 @@ func (handler *Handler) deleteQueryIterator(txContext *transactionContext, txid 
 	handler.Lock()
 	defer handler.Unlock()
 	delete(txContext.queryIteratorMap, txid)
+}
+
+// Check if the transactor is allow to call this chaincode on this channel
+func (handler *Handler) checkACL(proposal *pb.Proposal, calledCC *ccParts) *pb.ChaincodeMessage {
+	// TODO: Decide what to pass in to verify that this transactor can access this
+	// channel (chID) and chaincode (ccID). Very likely we need the signedProposal
+	// which contains the sig and creator cert
+
+	// If error, return ChaincodeMessage with type ChaincodeMessage_ERROR
+	return nil
 }
 
 //THIS CAN BE REMOVED ONCE WE FULL SUPPORT (Invoke) CONFIDENTIALITY WITH CC-CALLING-CC
@@ -564,41 +579,50 @@ func (handler *Handler) handleGetState(msg *pb.ChaincodeMessage) {
 		}
 
 		var serialSendMsg *pb.ChaincodeMessage
+		var txContext *transactionContext
+		txContext, serialSendMsg = handler.isValidTxSim(msg.Txid,
+			"[%s]No ledger context for GetState. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
 
 		defer func() {
 			handler.deleteTXIDEntry(msg.Txid)
-			chaincodeLogger.Debugf("[%s]handleGetState serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
+			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+				chaincodeLogger.Debugf("[%s]handleGetState serial send %s",
+					shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
+			}
 			handler.serialSendAsync(serialSendMsg, nil)
 		}()
 
-		key := string(msg.Payload)
-
-		// Invoke ledger to get state
-		chaincodeID := handler.getCCRootName()
-
-		var res []byte
-		var err error
-		var txContext *transactionContext
-
-		txContext, serialSendMsg = handler.isValidTxSim(msg.Txid, "[%s]No ledger context for GetState. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
 		if txContext == nil {
 			return
 		}
 
+		key := string(msg.Payload)
+		chaincodeID := handler.getCCRootName()
+		if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+			chaincodeLogger.Debugf("[%s] getting state for chaincode %s, key %s, channel %s",
+				shorttxid(msg.Txid), chaincodeID, key, txContext.chainID)
+		}
+
+		var res []byte
+		var err error
 		res, err = txContext.txsimulator.GetState(chaincodeID, key)
 
 		if err != nil {
 			// Send error msg back to chaincode. GetState will not trigger event
 			payload := []byte(err.Error())
-			chaincodeLogger.Errorf("[%s]Failed to get chaincode state(%s). Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
+			chaincodeLogger.Errorf("[%s]Failed to get chaincode state(%s). Sending %s",
+				shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 		} else if res == nil {
 			//The state object being requested does not exist
-			chaincodeLogger.Debugf("[%s]No state associated with key: %s. Sending %s with an empty payload", shorttxid(msg.Txid), key, pb.ChaincodeMessage_RESPONSE)
+			chaincodeLogger.Debugf("[%s]No state associated with key: %s. Sending %s with an empty payload",
+				shorttxid(msg.Txid), key, pb.ChaincodeMessage_RESPONSE)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid}
 		} else {
 			// Send response msg back to chaincode. GetState will not trigger event
-			chaincodeLogger.Debugf("[%s]Got state. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RESPONSE)
+			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+				chaincodeLogger.Debugf("[%s]Got state. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RESPONSE)
+			}
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid}
 		}
 
@@ -677,7 +701,7 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 		var i = uint32(0)
 		var qresult ledger.QueryResult
 		for ; i < maxRangeQueryStateLimit; i++ {
-			qresult, err := rangeIter.Next()
+			qresult, err = rangeIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
 				return
@@ -952,7 +976,7 @@ func (handler *Handler) handleExecuteQueryState(msg *pb.ChaincodeMessage) {
 		var i = uint32(0)
 		var qresult ledger.QueryResult
 		for ; i < maxExecuteQueryStateLimit; i++ {
-			qresult, err := executeIter.Next()
+			qresult, err = executeIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
 				return
@@ -970,8 +994,9 @@ func (handler *Handler) handleExecuteQueryState(msg *pb.ChaincodeMessage) {
 			handler.deleteQueryIterator(txContext, iterID)
 		}
 
+		var payloadBytes []byte
 		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, ID: iterID}
-		payloadBytes, err := proto.Marshal(payload)
+		payloadBytes, err = proto.Marshal(payload)
 		if err != nil {
 			executeIter.Close()
 			handler.deleteQueryIterator(txContext, iterID)
@@ -1029,8 +1054,9 @@ func (handler *Handler) afterInvokeChaincode(e *fsm.Event, state string) {
 func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 	go func() {
 		msg, _ := e.Args[0].(*pb.ChaincodeMessage)
-
-		chaincodeLogger.Debugf("[%s]state is %s", shorttxid(msg.Txid), state)
+		if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+			chaincodeLogger.Debugf("[%s]state is %s", shorttxid(msg.Txid), state)
+		}
 		// Check if this is the unique request from this chaincode txid
 		uniqueReq := handler.createTXIDEntry(msg.Txid)
 		if !uniqueReq {
@@ -1040,23 +1066,26 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 		}
 
 		var triggerNextStateMsg *pb.ChaincodeMessage
+		var txContext *transactionContext
+		txContext, triggerNextStateMsg = handler.isValidTxSim(msg.Txid, "[%s]No ledger context for %s. Sending %s",
+			shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_ERROR)
 
 		defer func() {
 			handler.deleteTXIDEntry(msg.Txid)
-			chaincodeLogger.Debugf("[%s]enterBusyState trigger event %s", shorttxid(triggerNextStateMsg.Txid), triggerNextStateMsg.Type)
+			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+				chaincodeLogger.Debugf("[%s]enterBusyState trigger event %s",
+					shorttxid(triggerNextStateMsg.Txid), triggerNextStateMsg.Type)
+			}
 			handler.triggerNextState(triggerNextStateMsg, true)
 		}()
+
+		if txContext == nil {
+			return
+		}
 
 		chaincodeID := handler.getCCRootName()
 		var err error
 		var res []byte
-
-		var txContext *transactionContext
-
-		txContext, triggerNextStateMsg = handler.isValidTxSim(msg.Txid, "[%s]No ledger context for %s. Sending %s", shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_ERROR)
-		if txContext == nil {
-			return
-		}
 
 		if msg.Type.String() == pb.ChaincodeMessage_PUT_STATE.String() {
 			putStateInfo := &pb.PutStateInfo{}
@@ -1074,11 +1103,8 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			key := string(msg.Payload)
 			err = txContext.txsimulator.DeleteState(chaincodeID, key)
 		} else if msg.Type.String() == pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
-			//check and prohibit C-call-C for CONFIDENTIAL txs
-			chaincodeLogger.Debugf("[%s] C-call-C", shorttxid(msg.Txid))
-
-			if triggerNextStateMsg = handler.canCallChaincode(msg.Txid, false); triggerNextStateMsg != nil {
-				return
+			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+				chaincodeLogger.Debugf("[%s] C-call-C", shorttxid(msg.Txid))
 			}
 			chaincodeSpec := &pb.ChaincodeSpec{}
 			unmarshalErr := proto.Unmarshal(msg.Payload, chaincodeSpec)
@@ -1089,31 +1115,76 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 				return
 			}
 
-			// Get the chaincodeID to invoke
-			calledCCName := chaincodeSpec.ChaincodeID.Name
-			chaincodeLogger.Debugf("[%s] C-call-C %s", shorttxid(msg.Txid), calledCCName)
+			// Get the chaincodeID to invoke. The chaincodeID to be called may
+			// contain composite info like "chaincode-name:version/channel-name"
+			// We are not using version now but default to the latest
+			calledCcParts := chaincodeIDParts(chaincodeSpec.ChaincodeID.Name)
+			chaincodeSpec.ChaincodeID.Name = calledCcParts.name
+			if calledCcParts.suffix == "" {
+				// use caller's channel as the called chaincode is in the same channel
+				calledCcParts.suffix = txContext.chainID
+			}
+			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+				chaincodeLogger.Debugf("[%s] C-call-C %s on channel %s",
+					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
+			}
 
+			triggerNextStateMsg = handler.checkACL(txContext.proposal, calledCcParts)
+			if triggerNextStateMsg != nil {
+				return
+			}
+
+			// Set up a new context for the called chaincode if on a different channel
+			// We grab the called channel's ledger simulator to hold the new state
 			ctxt := context.Background()
-			ctxt = context.WithValue(ctxt, TXSimulatorKey, txContext.txsimulator)
+			txsim := txContext.txsimulator
+			if calledCcParts.suffix != txContext.chainID {
+				lgr := peer.GetLedger(calledCcParts.suffix)
+				if lgr == nil {
+					payload := "Failed to find ledger for called channel " + calledCcParts.suffix
+					triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR,
+						Payload: []byte(payload), Txid: msg.Txid}
+					return
+				}
+				txsim2, err2 := lgr.NewTxSimulator()
+				if err2 != nil {
+					triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR,
+						Payload: []byte(err2.Error()), Txid: msg.Txid}
+					return
+				}
+				defer txsim2.Done()
+				txsim = txsim2
+			}
+			ctxt = context.WithValue(ctxt, TXSimulatorKey, txsim)
 
-			// Create the invocation spec
-			chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
+			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+				chaincodeLogger.Debugf("[%s] calling lccc to get chaincode data for %s on channel %s",
+					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
+			}
 
-			//Get the latest version of calledCCName
-			cd, err := GetChaincodeDataFromLCCC(ctxt, msg.Txid, txContext.proposal, txContext.chainID, calledCCName)
+			//Call LCCC to get the called chaincode artifacts
+			var cd *ccprovider.ChaincodeData
+			cd, err = GetChaincodeDataFromLCCC(ctxt, msg.Txid, txContext.proposal, calledCcParts.suffix, calledCcParts.name)
 			if err != nil {
 				payload := []byte(err.Error())
-				chaincodeLogger.Debugf("[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s", shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
+				chaincodeLogger.Debugf("[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s",
+					shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
 				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 				return
 			}
-			cccid := ccprovider.NewCCContext(txContext.chainID, calledCCName, cd.Version, msg.Txid, false, txContext.proposal)
+			cccid := ccprovider.NewCCContext(calledCcParts.suffix, calledCcParts.name, cd.Version, msg.Txid, false, txContext.proposal)
 
 			// Launch the new chaincode if not already running
-			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, cccid, chaincodeInvocationSpec)
+			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+				chaincodeLogger.Debugf("[%s] launching chaincode %s on channel %s",
+					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
+			}
+			cciSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
+			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(ctxt, cccid, cciSpec)
 			if launchErr != nil {
 				payload := []byte(launchErr.Error())
-				chaincodeLogger.Debugf("[%s]Failed to launch invoked chaincode. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
+				chaincodeLogger.Debugf("[%s]Failed to launch invoked chaincode. Sending %s",
+					shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
 				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 				return
 			}
@@ -1145,7 +1216,9 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 		}
 
 		// Send response msg back to chaincode.
-		chaincodeLogger.Debugf("[%s]Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_RESPONSE)
+		if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+			chaincodeLogger.Debugf("[%s]Completed %s. Sending %s", shorttxid(msg.Txid), msg.Type.String(), pb.ChaincodeMessage_RESPONSE)
+		}
 		triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: res, Txid: msg.Txid}
 	}()
 }
@@ -1297,11 +1370,12 @@ func (handler *Handler) sendExecuteMessage(ctxt context.Context, chainID string,
 	if err != nil {
 		return nil, err
 	}
-
-	chaincodeLogger.Debugf("[%s]Inside sendExecuteMessage. Message %s", shorttxid(msg.Txid), msg.Type.String())
+	if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+		chaincodeLogger.Debugf("[%s]Inside sendExecuteMessage. Message %s", shorttxid(msg.Txid), msg.Type.String())
+	}
 
 	//if security is disabled the context elements will just be nil
-	if err := handler.setChaincodeProposal(prop, msg); err != nil {
+	if err = handler.setChaincodeProposal(prop, msg); err != nil {
 		return nil, err
 	}
 
