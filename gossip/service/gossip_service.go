@@ -21,13 +21,13 @@ import (
 
 	peerComm "github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/integration"
 	"github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
@@ -43,8 +43,10 @@ type gossipSvc gossip.Gossip
 type GossipService interface {
 	gossip.Gossip
 
-	// JoinChannel joins new chain given the configuration block and initialized committer service
-	JoinChannel(committer committer.Committer, block *common.Block) error
+	// NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
+	NewConfigEventer() ConfigProcessor
+	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
+	InitializeChannel(chainID string, committer committer.Committer)
 	// GetBlock returns block for given chain
 	GetBlock(chainID string, index uint64) *common.Block
 	// AddPayload appends message payload to for given chain
@@ -55,6 +57,20 @@ type gossipServiceImpl struct {
 	gossipSvc
 	chains map[string]state.GossipStateProvider
 	lock   sync.RWMutex
+}
+
+// This is an implementation of api.JoinChannelMessage.
+type joinChannelMessage struct {
+	seqNum      uint64
+	anchorPeers []api.AnchorPeer
+}
+
+func (jcm *joinChannelMessage) SequenceNumber() uint64 {
+	return jcm.seqNum
+}
+
+func (jcm *joinChannelMessage) AnchorPeers() []api.AnchorPeer {
+	return jcm.anchorPeers
 }
 
 var logger = logging.MustGetLogger("gossipService")
@@ -83,27 +99,33 @@ func GetGossipService() GossipService {
 	return gossipServiceInstance
 }
 
-// JoinChannel joins the channel and initialize gossip state with given committer
-func (g *gossipServiceImpl) JoinChannel(commiter committer.Committer, block *common.Block) error {
-	joinChannelMessage, err := JoinChannelMessageFromBlock(block)
-	if err != nil {
-		logger.Error("Failed creating join channel message:", err)
-		return err
-	}
+// NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
+func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
+	return newConfigEventer(g)
+}
+
+// InitializeChannel allocates the state provider and should be invoked once per channel per execution
+func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committer.Committer) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
+	g.chains[chainID] = state.NewGossipStateProvider(chainID, g, committer)
+}
 
-	chainID, err := utils.GetChainIDFromBlock(block)
-	if err != nil {
-		return err
+// configUpdated constructs a joinChannelMessage and sends it to the gossipSvc
+func (g *gossipServiceImpl) configUpdated(config Config) {
+	jcm := &joinChannelMessage{seqNum: config.Sequence(), anchorPeers: []api.AnchorPeer{}}
+	for _, ap := range config.AnchorPeers() {
+		anchorPeer := api.AnchorPeer{
+			Host: ap.Host,
+			Port: int(ap.Port),
+			Cert: api.PeerIdentityType(ap.Cert),
+		}
+		jcm.anchorPeers = append(jcm.anchorPeers, anchorPeer)
 	}
 
 	// Initialize new state provider for given committer
-	logger.Debug("Creating state provider for chainID", chainID)
-	g.JoinChan(joinChannelMessage, gossipCommon.ChainID(chainID))
-	g.chains[chainID] = state.NewGossipStateProvider(chainID, g, commiter)
-	return nil
-
+	logger.Debug("Creating state provider for chainID", config.ChainID())
+	g.JoinChan(jcm, gossipCommon.ChainID(config.ChainID()))
 }
 
 // GetBlock returns block for given chain

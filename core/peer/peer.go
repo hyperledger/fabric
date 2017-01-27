@@ -44,6 +44,7 @@ var peerLogger = logging.MustGetLogger("peer")
 
 type chainSupport struct {
 	configtx.Manager
+	sharedconfig.Descriptor
 	ledger ledger.PeerLedger
 }
 
@@ -163,9 +164,22 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	sharedConfigHandler := sharedconfig.NewDescriptorImpl()
 
+	gossipEventer := service.GetGossipService().NewConfigEventer()
+
+	gossipCallbackWrapper := func(cm configtx.Manager) {
+		gossipEventer.ProcessConfigUpdate(&chainSupport{
+			Manager:    cm,
+			Descriptor: sharedConfigHandler,
+		})
+	}
+
 	configtxInitializer := configtx.NewInitializer()
 	configtxInitializer.Handlers()[common.ConfigurationItem_Peer] = sharedConfigHandler
-	configtxManager, err := configtx.NewManagerImpl(configEnvelope, configtxInitializer, nil)
+	configtxManager, err := configtx.NewManagerImpl(
+		configEnvelope,
+		configtxInitializer,
+		[]func(cm configtx.Manager){gossipCallbackWrapper},
+	)
 	if err != nil {
 		return err
 	}
@@ -178,18 +192,13 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	}
 
 	cs := &chainSupport{
-		Manager: configtxManager,
-		ledger:  ledger,
+		Manager:    configtxManager,
+		Descriptor: sharedConfigHandler,
+		ledger:     ledger,
 	}
 
 	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(cs))
-
-	// TODO This should be called from a configtx.Manager but it's not
-	// implemented yet. When it will be, this needs to move there,
-	// and the inner fields (AnchorPeers) only should be passed to this.
-	if err := service.GetGossipService().JoinChannel(c, cb); err != nil {
-		return err
-	}
+	service.GetGossipService().InitializeChannel(cs.ChainID(), c)
 
 	chains.Lock()
 	defer chains.Unlock()
