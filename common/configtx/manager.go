@@ -19,16 +19,28 @@ package configtx
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"errors"
+
 	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("common/configtx")
+
+// Constraints for valid chain IDs
+var (
+	allowedChars = "[a-zA-Z0-9.-]+"
+	maxLength    = 249
+	illegalNames = map[string]struct{}{
+		".":  struct{}{},
+		"..": struct{}{},
+	}
+)
 
 // Handler provides a hook which allows other pieces of code to participate in config proposals
 type Handler interface {
@@ -91,8 +103,7 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint
 
 	for _, signedItem := range configtx.Items {
 		item := &cb.ConfigurationItem{}
-		err := proto.Unmarshal(signedItem.ConfigurationItem, item)
-		if err != nil {
+		if err := proto.Unmarshal(signedItem.ConfigurationItem, item); err != nil {
 			return "", 0, fmt.Errorf("Error unmarshaling signedItem.ConfigurationItem: %s", err)
 		}
 
@@ -115,9 +126,43 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint
 				return "", 0, fmt.Errorf("Mismatched chainIDs in envelope %s != %s", chainID, item.Header.ChainID)
 			}
 		}
+
+		if err := validateChainID(chainID); err != nil {
+			return "", 0, err
+		}
 	}
 
 	return chainID, m, nil
+}
+
+// validateChainID makes sure that proposed chain IDs (i.e. channel names)
+// comply with the following restrictions:
+//      1. Contain only ASCII alphanumerics, dots '.', dashes '-'
+//      2. Are shorter than 250 characters.
+//      3. Are not the strings "." or "..".
+//
+// Our hand here is forced by:
+// https://github.com/apache/kafka/blob/trunk/core/src/main/scala/kafka/common/Topic.scala#L29
+func validateChainID(chainID string) error {
+	re, _ := regexp.Compile(allowedChars)
+	// Length
+	if len(chainID) <= 0 {
+		return fmt.Errorf("chain ID illegal, cannot be empty")
+	}
+	if len(chainID) > maxLength {
+		return fmt.Errorf("chain ID illegal, cannot be longer than %d", maxLength)
+	}
+	// Illegal name
+	if _, ok := illegalNames[chainID]; ok {
+		return fmt.Errorf("name '%s' for chain ID is not allowed", chainID)
+	}
+	// Illegal characters
+	matched := re.FindString(chainID)
+	if len(matched) != len(chainID) {
+		return fmt.Errorf("Chain ID '%s' contains illegal characters", chainID)
+	}
+
+	return nil
 }
 
 // NewManagerImpl creates a new Manager unless an error is encountered, each element of the callOnUpdate slice
@@ -218,7 +263,7 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 		}
 
 		// Ensure the config sequence numbers are correct to prevent replay attacks
-		isModified := false
+		var isModified bool
 
 		if val, ok := cm.configuration[config.Type][config.Key]; ok {
 			// Config was modified if any of the contents changed

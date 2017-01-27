@@ -26,6 +26,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"errors"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -118,8 +119,8 @@ func TestCallback(t *testing.T) {
 	}
 }
 
-// TestWrongChainID tests that a configuration update for a different chain ID fails
-func TestWrongChainID(t *testing.T) {
+// TestDifferentChainID tests that a configuration update for a different chain ID fails
+func TestDifferentChainID(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigurationEnvelope{
 		Items: []*cb.SignedConfigurationItem{makeSignedConfigurationItem("foo", "foo", 0, []byte("foo"), defaultChain)},
 	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, nil)
