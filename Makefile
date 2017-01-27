@@ -63,7 +63,7 @@ PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
 GENESIS_SAMPLECONFIG = $(shell git ls-files common/configtx/test/*.template)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv testenv runtime zookeeper kafka
+IMAGES = peer orderer ccenv javaenv testenv zookeeper kafka
 
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
@@ -153,18 +153,9 @@ build/docker/gotools: gotools/Makefile
 		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		make install BINDIR=/opt/gotools/bin OBJDIR=/opt/gotools/obj
 
-build/docker/busybox:
-	@$(DRUN) \
-		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		make -f busybox/Makefile install BINDIR=$(@D)
-
 # Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
 build/bin/peer: build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMMY)
 build/image/peer/$(DUMMY): build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMMY)
-
-# Both peer-docker and orderer-docker depend on the runtime image
-build/image/peer/$(DUMMY): build/image/runtime/$(DUMMY)
-build/image/orderer/$(DUMMY): build/image/runtime/$(DUMMY)
 
 build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
@@ -194,7 +185,6 @@ build/image/testenv/payload:    build/gotools.tar.bz2 \
 				peer/core.yaml \
 				build/msp-sampleconfig.tar.bz2 \
 				images/testenv/install-softhsm2.sh
-build/image/runtime/payload:    build/docker/busybox
 build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
 build/image/kafka/payload:      images/kafka/docker-entrypoint.sh
 
