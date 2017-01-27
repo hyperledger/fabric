@@ -17,21 +17,28 @@ limitations under the License.
 package rwset
 
 import (
-	"reflect"
-
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	logging "github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("rwset")
 
 type nsRWs struct {
-	readMap  map[string]*KVRead
-	writeMap map[string]*KVWrite
+	readMap          map[string]*KVRead //for mvcc validation
+	writeMap         map[string]*KVWrite
+	rangeQueriesMap  map[rangeQueryKey]*RangeQueryInfo //for phantom read validation
+	rangeQueriesKeys []rangeQueryKey
 }
 
 func newNsRWs() *nsRWs {
-	return &nsRWs{make(map[string]*KVRead), make(map[string]*KVWrite)}
+	return &nsRWs{make(map[string]*KVRead), make(map[string]*KVWrite), make(map[rangeQueryKey]*RangeQueryInfo), nil}
+}
+
+type rangeQueryKey struct {
+	startKey     string
+	endKey       string
+	itrExhausted bool
 }
 
 // RWSet maintains the read-write set
@@ -56,6 +63,17 @@ func (rws *RWSet) AddToWriteSet(ns string, key string, value []byte) {
 	nsRWs.writeMap[key] = NewKVWrite(key, value)
 }
 
+// AddToRangeQuerySet adds a range query info for performing phantom read validation
+func (rws *RWSet) AddToRangeQuerySet(ns string, rqi *RangeQueryInfo) {
+	nsRWs := rws.getOrCreateNsRW(ns)
+	key := rangeQueryKey{rqi.StartKey, rqi.EndKey, rqi.ItrExhausted}
+	_, ok := nsRWs.rangeQueriesMap[key]
+	if !ok {
+		nsRWs.rangeQueriesMap[key] = rqi
+		nsRWs.rangeQueriesKeys = append(nsRWs.rangeQueriesKeys, key)
+	}
+}
+
 // GetFromWriteSet return the value of a key from the write-set
 func (rws *RWSet) GetFromWriteSet(ns string, key string) ([]byte, bool) {
 	nsRWs, ok := rws.rwMap[ns]
@@ -73,24 +91,32 @@ func (rws *RWSet) GetFromWriteSet(ns string, key string) ([]byte, bool) {
 // GetTxReadWriteSet returns the read-write set in the form that can be serialized
 func (rws *RWSet) GetTxReadWriteSet() *TxReadWriteSet {
 	txRWSet := &TxReadWriteSet{}
-	sortedNamespaces := getSortedKeys(rws.rwMap)
+	sortedNamespaces := util.GetSortedKeys(rws.rwMap)
 	for _, ns := range sortedNamespaces {
 		//Get namespace specific read-writes
 		nsReadWriteMap := rws.rwMap[ns]
+
 		//add read set
 		reads := []*KVRead{}
-		sortedReadKeys := getSortedKeys(nsReadWriteMap.readMap)
+		sortedReadKeys := util.GetSortedKeys(nsReadWriteMap.readMap)
 		for _, key := range sortedReadKeys {
 			reads = append(reads, nsReadWriteMap.readMap[key])
 		}
 
 		//add write set
 		writes := []*KVWrite{}
-		sortedWriteKeys := getSortedKeys(nsReadWriteMap.writeMap)
+		sortedWriteKeys := util.GetSortedKeys(nsReadWriteMap.writeMap)
 		for _, key := range sortedWriteKeys {
 			writes = append(writes, nsReadWriteMap.writeMap[key])
 		}
-		nsRWs := &NsReadWriteSet{NameSpace: ns, Reads: reads, Writes: writes}
+
+		//add range query info
+		rangeQueriesInfo := []*RangeQueryInfo{}
+		rangeQueriesMap := nsReadWriteMap.rangeQueriesMap
+		for _, key := range nsReadWriteMap.rangeQueriesKeys {
+			rangeQueriesInfo = append(rangeQueriesInfo, rangeQueriesMap[key])
+		}
+		nsRWs := &NsReadWriteSet{NameSpace: ns, Reads: reads, Writes: writes, RangeQueriesInfo: rangeQueriesInfo}
 		txRWSet.NsRWs = append(txRWSet.NsRWs, nsRWs)
 	}
 	return txRWSet
@@ -104,14 +130,4 @@ func (rws *RWSet) getOrCreateNsRW(ns string) *nsRWs {
 		rws.rwMap[ns] = nsRWs
 	}
 	return nsRWs
-}
-
-func getSortedKeys(m interface{}) []string {
-	mapVal := reflect.ValueOf(m)
-	keyVals := mapVal.MapKeys()
-	keys := []string{}
-	for _, keyVal := range keyVals {
-		keys = append(keys, keyVal.String())
-	}
-	return keys
 }

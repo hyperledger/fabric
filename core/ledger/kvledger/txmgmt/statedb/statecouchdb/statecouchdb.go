@@ -193,59 +193,63 @@ func (vdb *VersionedDB) ExecuteQuery(query string) (statedb.ResultsIterator, err
 // ApplyUpdates implements method in VersionedDB interface
 func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
 
-	for ck, vv := range batch.KVs {
-		compositeKey := constructCompositeKey(ck.Namespace, ck.Key)
+	namespaces := batch.GetUpdatedNamespaces()
+	for _, ns := range namespaces {
+		updates := batch.GetUpdates(ns)
+		for k, vv := range updates {
+			compositeKey := constructCompositeKey(ns, k)
 
-		// trace the first 200 characters of versioned value only, in case it is huge
-		if logger.IsEnabledFor(logging.DEBUG) {
-			versionedValueDump := fmt.Sprintf("%#v", vv)
-			if len(versionedValueDump) > 200 {
-				versionedValueDump = versionedValueDump[0:200] + "..."
-			}
-			logger.Debugf("Applying key=%#v, versionedValue=%s", ck, versionedValueDump)
-		}
-
-		// TODO add delete logic for couch using this approach from stateleveldb - convert nils to deletes
-		/*		if vv.Value == nil {
-					levelBatch.Delete(compositeKey)
-				} else {
-					levelBatch.Put(compositeKey, encodeValue(vv.Value, vv.Version))
+			// trace the first 200 characters of versioned value only, in case it is huge
+			if logger.IsEnabledFor(logging.DEBUG) {
+				versionedValueDump := fmt.Sprintf("%#v", vv)
+				if len(versionedValueDump) > 200 {
+					versionedValueDump = versionedValueDump[0:200] + "..."
 				}
-		*/
-
-		if couchdb.IsJSON(string(vv.Value)) {
-
-			// SaveDoc using couchdb client and use JSON format
-			rev, err := vdb.db.SaveDoc(string(compositeKey), "", vv.Value, nil)
-			if err != nil {
-				logger.Errorf("Error during Commit(): %s\n", err.Error())
-				return err
-			}
-			if rev != "" {
-				logger.Debugf("Saved document revision number: %s\n", rev)
+				logger.Debugf("Applying key=%#v, versionedValue=%s", compositeKey, versionedValueDump)
 			}
 
-		} else { // if the data is not JSON, save as binary attachment in Couch
+			// TODO add delete logic for couch using this approach from stateleveldb - convert nils to deletes
+			/*		if vv.Value == nil {
+						levelBatch.Delete(compositeKey)
+					} else {
+						levelBatch.Put(compositeKey, encodeValue(vv.Value, vv.Version))
+					}
+			*/
 
-			//Create an attachment structure and load the bytes
-			attachment := &couchdb.Attachment{}
-			attachment.AttachmentBytes = vv.Value
-			attachment.ContentType = "application/octet-stream"
-			attachment.Name = "valueBytes"
+			if couchdb.IsJSON(string(vv.Value)) {
 
-			attachments := []couchdb.Attachment{}
-			attachments = append(attachments, *attachment)
+				// SaveDoc using couchdb client and use JSON format
+				rev, err := vdb.db.SaveDoc(string(compositeKey), "", vv.Value, nil)
+				if err != nil {
+					logger.Errorf("Error during Commit(): %s\n", err.Error())
+					return err
+				}
+				if rev != "" {
+					logger.Debugf("Saved document revision number: %s\n", rev)
+				}
 
-			// SaveDoc using couchdb client and use attachment to persist the binary data
-			rev, err := vdb.db.SaveDoc(string(compositeKey), "", nil, attachments)
-			if err != nil {
-				logger.Errorf("Error during Commit(): %s\n", err.Error())
-				return err
+			} else { // if the data is not JSON, save as binary attachment in Couch
+
+				//Create an attachment structure and load the bytes
+				attachment := &couchdb.Attachment{}
+				attachment.AttachmentBytes = vv.Value
+				attachment.ContentType = "application/octet-stream"
+				attachment.Name = "valueBytes"
+
+				attachments := []couchdb.Attachment{}
+				attachments = append(attachments, *attachment)
+
+				// SaveDoc using couchdb client and use attachment to persist the binary data
+				rev, err := vdb.db.SaveDoc(string(compositeKey), "", nil, attachments)
+				if err != nil {
+					logger.Errorf("Error during Commit(): %s\n", err.Error())
+					return err
+				}
+				if rev != "" {
+					logger.Debugf("Saved document revision number: %s\n", rev)
+				}
+
 			}
-			if rev != "" {
-				logger.Debugf("Saved document revision number: %s\n", rev)
-			}
-
 		}
 	}
 

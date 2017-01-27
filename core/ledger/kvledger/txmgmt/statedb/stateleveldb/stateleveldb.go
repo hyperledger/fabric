@@ -128,20 +128,24 @@ func (vdb *versionedDB) ExecuteQuery(query string) (statedb.ResultsIterator, err
 // ApplyUpdates implements method in VersionedDB interface
 func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
 	dbBatch := leveldbhelper.NewUpdateBatch()
-	for ck, vv := range batch.KVs {
-		compositeKey := constructCompositeKey(ck.Namespace, ck.Key)
-		// trace the first 200 characters of versioned value only, in case it is huge
-		if logger.IsEnabledFor(logging.DEBUG) {
-			versionedValueDump := fmt.Sprintf("%#v", vv)
-			if len(versionedValueDump) > 200 {
-				versionedValueDump = versionedValueDump[0:200] + "..."
+	namespaces := batch.GetUpdatedNamespaces()
+	for _, ns := range namespaces {
+		updates := batch.GetUpdates(ns)
+		for k, vv := range updates {
+			compositeKey := constructCompositeKey(ns, k)
+			// trace the first 200 characters of versioned value only, in case it is huge
+			if logger.IsEnabledFor(logging.DEBUG) {
+				versionedValueDump := fmt.Sprintf("%#v", vv)
+				if len(versionedValueDump) > 200 {
+					versionedValueDump = versionedValueDump[0:200] + "..."
+				}
+				logger.Debugf("Applying key=%#v, versionedValue=%s", compositeKey, versionedValueDump)
 			}
-			logger.Debugf("Applying key=%#v, versionedValue=%s", ck, versionedValueDump)
-		}
-		if vv.Value == nil {
-			dbBatch.Delete(compositeKey)
-		} else {
-			dbBatch.Put(compositeKey, encodeValue(vv.Value, vv.Version))
+			if vv.Value == nil {
+				dbBatch.Delete(compositeKey)
+			} else {
+				dbBatch.Put(compositeKey, encodeValue(vv.Value, vv.Version))
+			}
 		}
 	}
 	dbBatch.Put(savePointKey, height.ToBytes())
@@ -197,8 +201,12 @@ func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
 	if !scanner.dbItr.Next() {
 		return nil, nil
 	}
-	_, key := splitCompositeKey(scanner.dbItr.Key())
-	value, version := decodeValue(scanner.dbItr.Value())
+	dbKey := scanner.dbItr.Key()
+	dbVal := scanner.dbItr.Value()
+	dbValCopy := make([]byte, len(dbVal))
+	copy(dbValCopy, dbVal)
+	_, key := splitCompositeKey(dbKey)
+	value, version := decodeValue(dbValCopy)
 	return &statedb.VersionedKV{
 		CompositeKey:   statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
 		VersionedValue: statedb.VersionedValue{Value: value, Version: version}}, nil
