@@ -155,6 +155,45 @@ func TestSignAndVerify(t *testing.T) {
 	}
 }
 
+func TestSignAndVerify_longMessage(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded")
+		return
+	}
+
+	serializedID, err := id.Serialize()
+	if err != nil {
+		t.Fatalf("Serialize should have succeeded")
+		return
+	}
+
+	idBack, err := localMsp.DeserializeIdentity(serializedID)
+	if err != nil {
+		t.Fatalf("DeserializeIdentity should have succeeded")
+		return
+	}
+
+	msg := []byte("ABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFGABCDEFG")
+	sig, err := id.Sign(msg)
+	if err != nil {
+		t.Fatalf("Sign should have succeeded")
+		return
+	}
+
+	err = id.Verify(msg, sig)
+	if err != nil {
+		t.Fatalf("The signature should be valid")
+		return
+	}
+
+	err = idBack.Verify(msg, sig)
+	if err != nil {
+		t.Fatalf("The signature should be valid")
+		return
+	}
+}
+
 func TestMain(m *testing.M) {
 	retVal := m.Run()
 	os.Exit(retVal)
