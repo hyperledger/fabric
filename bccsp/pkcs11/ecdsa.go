@@ -111,5 +111,5 @@ func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte, opts bc
 		return false, fmt.Errorf("Invalid S. Must be smaller than half the order [%s][%s].", s, halfOrder)
 	}
 
-	return verifyECDSA(k.ski, digest, r, s)
+	return verifyECDSA(k.ski, digest, r, s, k.pub.Curve.Params().BitSize/8)
 }

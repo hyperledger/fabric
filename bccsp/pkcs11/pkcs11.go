@@ -328,7 +328,7 @@ func signECDSA(ski []byte, msg []byte) (R, S *big.Int, err error) {
 	return R, S, nil
 }
 
-func verifyECDSA(ski []byte, msg []byte, R, S *big.Int) (valid bool, err error) {
+func verifyECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize int) (valid bool, err error) {
 	p11lib := ctx
 	session := getSession()
 	defer returnSession(session)
@@ -340,7 +340,14 @@ func verifyECDSA(ski []byte, msg []byte, R, S *big.Int) (valid bool, err error) 
 		return false, fmt.Errorf("Public key not found [%s]\n", err)
 	}
 
-	sig := append(R.Bytes(), S.Bytes()...)
+	r := R.Bytes()
+	s := S.Bytes()
+
+	// Pad front of R and S with Zeroes if needed
+	sig := make([]byte, 2*byteSize)
+	copy(sig[byteSize-len(r):byteSize], r)
+	copy(sig[2*byteSize-len(s):], s)
+
 	err = p11lib.VerifyInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)},
 		*publicKey)
 	if err != nil {
