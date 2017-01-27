@@ -50,7 +50,7 @@ func NewLockBasedTxMgr(db statedb.VersionedDB) *LockBasedTxMgr {
 // returns 0 if NO savepoint is found
 func (txmgr *LockBasedTxMgr) GetBlockNumFromSavepoint() (uint64, error) {
 	height, err := txmgr.db.GetLatestSavePoint()
-	if err != nil {
+	if err != nil || height == nil {
 		return 0, err
 	}
 	return height.BlockNum, nil

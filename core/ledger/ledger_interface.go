@@ -126,8 +126,8 @@ type QueryExecutor interface {
 
 // HistoryQueryExecutor executes the history queries
 type HistoryQueryExecutor interface {
-	// GetTransactionsForKey retrieves the set of transactons that updated this key by doing a key range query.
-	GetTransactionsForKey(namespace string, key string, includeValues bool, includeTransactions bool) (ResultsIterator, error)
+	// GetHistoryForKey retrieves the history of values for a key.
+	GetHistoryForKey(namespace string, key string) (ResultsIterator, error)
 }
 
 // TxSimulator simulates a transaction on a consistent snapshot of the 'as recent state as possible'
