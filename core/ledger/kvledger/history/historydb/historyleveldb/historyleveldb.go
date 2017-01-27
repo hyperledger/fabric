@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
 )
 
@@ -97,41 +97,57 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 	//TODO add check for invalid trans in bit array
 	for _, envBytes := range block.Data.Data {
 		tranNo++
-		logger.Debugf("Updating history for tranNo: %v", tranNo)
 
-		// extract actions from the envelope message
-		respPayload, err := utils.GetActionFromEnvelope(envBytes)
+		env, err := putils.GetEnvelopeFromBlock(envBytes)
 		if err != nil {
 			return err
 		}
 
-		//preparation for extracting RWSet from transaction
-		txRWSet := &rwset.TxReadWriteSet{}
-
-		// Get the Result from the Action and then Unmarshal
-		// it into a TxReadWriteSet using custom unmarshalling
-		if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
+		payload, err := putils.GetPayload(env)
+		if err != nil {
 			return err
 		}
 
-		// for each transaction, loop through the namespaces and writesets
-		// and add a history record for each write
-		for _, nsRWSet := range txRWSet.NsRWs {
-			ns := nsRWSet.NameSpace
+		if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 
-			for _, kvWrite := range nsRWSet.Writes {
-				writeKey := kvWrite.Key
-
-				logger.Debugf("Writing history record for: ns=%s, key=%s, blockNo=%d tranNo=%d",
-					ns, writeKey, blockNo, tranNo)
-
-				//composite key for history records is in the form ns~key~blockNo~tranNo
-				compositeHistoryKey := historydb.ConstructCompositeHistoryKey(ns, writeKey, blockNo, tranNo)
-
-				// No value is required, write an empty byte array (emptyValue) since Put() of nil is not allowed
-				dbBatch.Put(compositeHistoryKey, emptyValue)
+			logger.Debugf("Updating history for tranNo: %d", tranNo)
+			// extract actions from the envelope message
+			respPayload, err := putils.GetActionFromEnvelope(envBytes)
+			if err != nil {
+				return err
 			}
+
+			//preparation for extracting RWSet from transaction
+			txRWSet := &rwset.TxReadWriteSet{}
+
+			// Get the Result from the Action and then Unmarshal
+			// it into a TxReadWriteSet using custom unmarshalling
+			if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
+				return err
+			}
+			// for each transaction, loop through the namespaces and writesets
+			// and add a history record for each write
+			for _, nsRWSet := range txRWSet.NsRWs {
+				ns := nsRWSet.NameSpace
+
+				for _, kvWrite := range nsRWSet.Writes {
+					writeKey := kvWrite.Key
+
+					logger.Debugf("Writing history record for: ns=%s, key=%s, blockNo=%d tranNo=%d",
+						ns, writeKey, blockNo, tranNo)
+
+					//composite key for history records is in the form ns~key~blockNo~tranNo
+					compositeHistoryKey := historydb.ConstructCompositeHistoryKey(ns, writeKey, blockNo, tranNo)
+
+					// No value is required, write an empty byte array (emptyValue) since Put() of nil is not allowed
+					dbBatch.Put(compositeHistoryKey, emptyValue)
+				}
+			}
+
+		} else {
+			logger.Debugf("Skipping transaction %d since it is not an endorsement transaction\n", tranNo)
 		}
+
 	}
 
 	// add savepoint for recovery purpose

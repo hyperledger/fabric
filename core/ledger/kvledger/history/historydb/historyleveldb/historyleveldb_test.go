@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/spf13/viper"
@@ -124,4 +125,18 @@ func TestHistoryDisabled(t *testing.T) {
 
 	_, err2 := qhistory.GetHistoryForKey("ns1", "key7")
 	testutil.AssertError(t, err2, "Error should have been returned for GetHistoryForKey() when history disabled")
+}
+
+//TestGenesisBlockNoError tests that Genesis blocks are ignored by history processing
+// since we only persist history of chaincode key writes
+func TestGenesisBlockNoError(t *testing.T) {
+
+	env := NewTestHistoryEnv(t)
+	defer env.cleanup()
+
+	block, err := configtxtest.MakeGenesisBlock("test_chainid")
+	testutil.AssertNoError(t, err, "")
+
+	err = env.TestHistoryDB.Commit(block)
+	testutil.AssertNoError(t, err, "")
 }
