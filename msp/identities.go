@@ -157,7 +157,13 @@ func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Failed computing digest [%s]", err)
 	}
 
-	mspLogger.Debugf("Sign: plaintext: %X \n", msg)
+	// TODO - consider removing these debug statements in the future as they may
+	// contain confidential information
+	if len(msg) < 32 {
+		mspLogger.Debugf("Sign: plaintext: %X \n", msg)
+	} else {
+		mspLogger.Debugf("Sign: plaintext: %X...%X \n", msg[0:16], msg[len(msg)-16:])
+	}
 	mspLogger.Debugf("Sign: digest: %X \n", digest)
 
 	// Sign
