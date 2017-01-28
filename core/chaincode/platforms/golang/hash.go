@@ -151,9 +151,17 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 		return "", errors.New("Cannot collect files from empty chaincode path")
 	}
 
-	input := spec.Input
-	if input == nil || len(input.Args) == 0 {
-		return "", errors.New("Cannot collect files from empty input")
+	//install will not have inputs and we don't have to collect hash for it
+	var inputbytes []byte
+
+	var err error
+	if spec.Input == nil || len(spec.Input.Args) == 0 {
+		logger.Debugf("not using input for hash computation for %v ", chaincodeID)
+	} else {
+		inputbytes, err = proto.Marshal(spec.Input)
+		if err != nil {
+			return "", fmt.Errorf("Error marshalling constructor: %s", err)
+		}
 	}
 
 	//code root will point to the directory where the code exists
@@ -170,7 +178,6 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 
 	path := chaincodeID.Path
 
-	var err error
 	var actualcodepath string
 	if strings.HasPrefix(path, "http://") {
 		ishttp = true
@@ -193,11 +200,11 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 	if err = ccutil.IsCodeExist(tmppath); err != nil {
 		return "", fmt.Errorf("code does not exist %s", err)
 	}
-	inputbytes, err := proto.Marshal(input)
-	if err != nil {
-		return "", fmt.Errorf("Error marshalling constructor: %s", err)
+
+	hash := []byte{}
+	if inputbytes != nil {
+		hash = util.GenerateHashFromSignature(actualcodepath, inputbytes)
 	}
-	hash := util.GenerateHashFromSignature(actualcodepath, inputbytes)
 
 	hash, err = ccutil.HashFilesInDir(filepath.Join(codegopath, "src"), actualcodepath, hash, tw)
 	if err != nil {
