@@ -16,7 +16,10 @@ limitations under the License.
 
 package kafka
 
-import "github.com/Shopify/sarama"
+import (
+	"github.com/Shopify/sarama"
+	"github.com/hyperledger/fabric/orderer/localconfig"
+)
 
 // Consumer allows the caller to receive a stream of blobs from the Kafka cluster for a specific partition.
 type Consumer interface {
@@ -29,8 +32,8 @@ type consumerImpl struct {
 	partition sarama.PartitionConsumer
 }
 
-func newConsumer(brokers []string, kafkaVersion sarama.KafkaVersion, cp ChainPartition, offset int64) (Consumer, error) {
-	parent, err := sarama.NewConsumer(brokers, newBrokerConfig(kafkaVersion, rawPartition))
+func newConsumer(brokers []string, kafkaVersion sarama.KafkaVersion, tls config.TLS, cp ChainPartition, offset int64) (Consumer, error) {
+	parent, err := sarama.NewConsumer(brokers, newBrokerConfig(kafkaVersion, rawPartition, tls))
 	if err != nil {
 		return nil, err
 	}

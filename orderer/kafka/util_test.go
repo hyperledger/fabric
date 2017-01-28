@@ -21,6 +21,9 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/orderer/localconfig"
+	"github.com/hyperledger/fabric/orderer/mocks/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestProducerConfigMessageMaxBytes(t *testing.T) {
@@ -35,7 +38,8 @@ func TestProducerConfigMessageMaxBytes(t *testing.T) {
 		"ProduceRequest": sarama.NewMockProduceResponse(t),
 	})
 
-	config := newBrokerConfig(testConf.Kafka.Version, rawPartition)
+	mockTLS := config.TLS{Enabled: false}
+	config := newBrokerConfig(testConf.Kafka.Version, rawPartition, mockTLS)
 	producer, err := sarama.NewSyncProducer([]string{broker.Addr()}, config)
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +90,7 @@ func TestNewBrokerConfig(t *testing.T) {
 		"ProduceRequest": sarama.NewMockProduceResponse(t),
 	})
 
-	config := newBrokerConfig(testConf.Kafka.Version, differentPartition)
+	config := newBrokerConfig(testConf.Kafka.Version, differentPartition, config.TLS{Enabled: false})
 	producer, err := sarama.NewSyncProducer([]string{broker.Addr()}, config)
 	if err != nil {
 		t.Fatal("Failed to create producer:", err)
@@ -104,4 +108,93 @@ func TestNewBrokerConfig(t *testing.T) {
 			t.Fatalf("Message wasn't posted to the right partition - expected: %d, got %v", differentPartition, assignedPartition)
 		}
 	}
+}
+
+func TestTLSConfigEnabled(t *testing.T) {
+	publicKey, privateKey, err := util.GenerateMockPublicPrivateKeyPairPEM(false)
+	if err != nil {
+		t.Fatalf("Enable to generate a public/private key pair: %v", err)
+	}
+	caPublicKey, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
+	if err != nil {
+		t.Fatalf("Enable to generate a signer certificate: %v", err)
+	}
+
+	config := newBrokerConfig(testConf.Kafka.Version, 0, config.TLS{
+		Enabled:     true,
+		PrivateKey:  privateKey,
+		Certificate: publicKey,
+		RootCAs:     []string{caPublicKey},
+	})
+
+	assert.True(t, config.Net.TLS.Enable)
+	assert.NotNil(t, config.Net.TLS.Config)
+	assert.Len(t, config.Net.TLS.Config.Certificates, 1)
+	assert.Len(t, config.Net.TLS.Config.RootCAs.Subjects(), 1)
+	assert.Equal(t, uint16(0), config.Net.TLS.Config.MaxVersion)
+	assert.Equal(t, uint16(0), config.Net.TLS.Config.MinVersion)
+}
+
+func TestTLSConfigDisabled(t *testing.T) {
+	publicKey, privateKey, err := util.GenerateMockPublicPrivateKeyPairPEM(false)
+	if err != nil {
+		t.Fatalf("Enable to generate a public/private key pair: %v", err)
+	}
+	caPublicKey, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
+	if err != nil {
+		t.Fatalf("Enable to generate a signer certificate: %v", err)
+	}
+
+	config := newBrokerConfig(testConf.Kafka.Version, 0, config.TLS{
+		Enabled:     false,
+		PrivateKey:  privateKey,
+		Certificate: publicKey,
+		RootCAs:     []string{caPublicKey},
+	})
+
+	assert.False(t, config.Net.TLS.Enable)
+	assert.Zero(t, config.Net.TLS.Config)
+
+}
+
+func TestTLSConfigBadCert(t *testing.T) {
+	publicKey, privateKey, err := util.GenerateMockPublicPrivateKeyPairPEM(false)
+	if err != nil {
+		t.Fatalf("Enable to generate a public/private key pair: %v", err)
+	}
+	caPublicKey, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
+	if err != nil {
+		t.Fatalf("Enable to generate a signer certificate: %v", err)
+	}
+
+	t.Run("BadPrivateKey", func(t *testing.T) {
+		assert.Panics(t, func() {
+			newBrokerConfig(testConf.Kafka.Version, 0, config.TLS{
+				Enabled:     true,
+				PrivateKey:  privateKey,
+				Certificate: "TRASH",
+				RootCAs:     []string{caPublicKey},
+			})
+		})
+	})
+	t.Run("BadPublicKey", func(t *testing.T) {
+		assert.Panics(t, func() {
+			newBrokerConfig(testConf.Kafka.Version, 0, config.TLS{
+				Enabled:     true,
+				PrivateKey:  "TRASH",
+				Certificate: publicKey,
+				RootCAs:     []string{caPublicKey},
+			})
+		})
+	})
+	t.Run("BadRootCAs", func(t *testing.T) {
+		assert.Panics(t, func() {
+			newBrokerConfig(testConf.Kafka.Version, 0, config.TLS{
+				Enabled:     true,
+				PrivateKey:  privateKey,
+				Certificate: publicKey,
+				RootCAs:     []string{"TRASH"},
+			})
+		})
+	})
 }

@@ -19,13 +19,16 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/orderer/mocks/util"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGoodConfig(t *testing.T) {
@@ -189,5 +192,198 @@ func TestEnvInnerVar(t *testing.T) {
 	v2, _ := time.ParseDuration(envVal2)
 	if config.Kafka.Retry.Period != v2 {
 		t.Fatalf("Environmental override of inner config test 2 did not work")
+	}
+}
+
+func TestKafkaTLSConfig(t *testing.T) {
+	testCases := []struct {
+		name        string
+		tls         TLS
+		shouldPanic bool
+	}{
+		{"Disabled", TLS{Enabled: false}, false},
+		{"EnabledNoPrivateKey", TLS{Enabled: true, Certificate: "public.key"}, true},
+		{"EnabledNoPublicKey", TLS{Enabled: true, PrivateKey: "private.key"}, true},
+		{"EnabledNoTrustedRoots", TLS{Enabled: true, PrivateKey: "private.key", Certificate: "public.key"}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uconf := &TopLevel{Kafka: Kafka{TLS: tc.tls}}
+			if tc.shouldPanic {
+				assert.Panics(t, func() { uconf.completeInitialization() }, "should panic")
+			} else {
+				assert.NotPanics(t, func() { uconf.completeInitialization() }, "should not panic")
+			}
+		})
+	}
+}
+
+type stringFromFileConfig struct {
+	Inner struct {
+		Single   string
+		Multiple []string
+	}
+}
+
+func TestStringNotFromFile(t *testing.T) {
+
+	expectedValue := "expected_value"
+	yaml := fmt.Sprintf("---\nInner:\n  Single: %s\n", expectedValue)
+
+	config := viper.New()
+	config.SetConfigType("yaml")
+
+	if err := config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
+		t.Fatalf("Error reading config: %s", err)
+	}
+
+	var uconf stringFromFileConfig
+	if err := ExactWithDateUnmarshal(config, &uconf); err != nil {
+		t.Fatalf("Failed to unmarshall: %s", err)
+	}
+
+	if uconf.Inner.Single != expectedValue {
+		t.Fatalf(`Expected: "%s", Actual: "%s"`, expectedValue, uconf.Inner.Single)
+	}
+
+}
+
+func TestStringFromFile(t *testing.T) {
+
+	expectedValue := "this is the text in the file"
+
+	// create temp file
+	file, err := ioutil.TempFile(os.TempDir(), "test")
+	if err != nil {
+		t.Fatalf("Unable to create temp file.")
+	}
+	defer os.Remove(file.Name())
+
+	// write temp file
+	if err = ioutil.WriteFile(file.Name(), []byte(expectedValue), 0777); err != nil {
+		t.Fatalf("Unable to write to temp file.")
+	}
+
+	yaml := fmt.Sprintf("---\nInner:\n  Single:\n    File: %s", file.Name())
+
+	config := viper.New()
+	config.SetConfigType("yaml")
+
+	if err = config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
+		t.Fatalf("Error reading config: %s", err)
+	}
+	var uconf stringFromFileConfig
+	if err = ExactWithDateUnmarshal(config, &uconf); err != nil {
+		t.Fatalf("Failed to unmarshall: %s", err)
+	}
+
+	if uconf.Inner.Single != expectedValue {
+		t.Fatalf(`Expected: "%s", Actual: "%s"`, expectedValue, uconf.Inner.Single)
+	}
+}
+
+func TestPEMBlocksFromFile(t *testing.T) {
+
+	// create temp file
+	file, err := ioutil.TempFile(os.TempDir(), "test")
+	if err != nil {
+		t.Fatalf("Unable to create temp file.")
+	}
+	defer os.Remove(file.Name())
+
+	numberOfCertificates := 3
+	var pems []byte
+	for i := 0; i < numberOfCertificates; i++ {
+		publicKeyCert, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
+		if err != nil {
+			t.Fatalf("Enable to generate a signer certificate: %v", err)
+		}
+		pems = append(pems, publicKeyCert...)
+	}
+
+	// write temp file
+	if err := ioutil.WriteFile(file.Name(), pems, 0666); err != nil {
+		t.Fatalf("Unable to write to temp file: %v", err)
+	}
+
+	yaml := fmt.Sprintf("---\nInner:\n  Multiple:\n    File: %s", file.Name())
+
+	config := viper.New()
+	config.SetConfigType("yaml")
+
+	if err := config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
+		t.Fatalf("Error reading config: %v", err)
+	}
+	var uconf stringFromFileConfig
+	if err := ExactWithDateUnmarshal(config, &uconf); err != nil {
+		t.Fatalf("Failed to unmarshall: %v", err)
+	}
+
+	if len(uconf.Inner.Multiple) != 3 {
+		t.Fatalf(`Expected: "%v", Actual: "%v"`, numberOfCertificates, len(uconf.Inner.Multiple))
+	}
+}
+
+func TestStringFromFileNotSpecified(t *testing.T) {
+
+	yaml := fmt.Sprintf("---\nInner:\n  Single:\n    File:\n")
+
+	config := viper.New()
+	config.SetConfigType("yaml")
+
+	if err := config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
+		t.Fatalf("Error reading config: %s", err)
+	}
+	var uconf stringFromFileConfig
+	if err := ExactWithDateUnmarshal(config, &uconf); err == nil {
+		t.Fatalf("Should of failed to unmarshall.")
+	}
+
+}
+
+func TestStringFromFileEnv(t *testing.T) {
+
+	expectedValue := "this is the text in the file"
+
+	// create temp file
+	file, err := ioutil.TempFile(os.TempDir(), "test")
+	if err != nil {
+		t.Fatalf("Unable to create temp file.")
+	}
+	defer os.Remove(file.Name())
+
+	// write temp file
+	if err = ioutil.WriteFile(file.Name(), []byte(expectedValue), 0777); err != nil {
+		t.Fatalf("Unable to write to temp file.")
+	}
+
+	envVar := "ORDERER_INNER_SINGLE_FILE"
+	envVal := file.Name()
+	os.Setenv(envVar, envVal)
+	defer os.Unsetenv(envVar)
+	config := viper.New()
+	config.SetEnvPrefix(Prefix)
+	config.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	config.SetEnvKeyReplacer(replacer)
+	config.SetConfigType("yaml")
+
+	data := "---\nInner:\n  Single:\n    File: wrong_file"
+
+	if err = config.ReadConfig(bytes.NewReader([]byte(data))); err != nil {
+		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
+	}
+
+	var uconf stringFromFileConfig
+
+	err = ExactWithDateUnmarshal(config, &uconf)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal with: %s", err)
+	}
+
+	t.Log(uconf.Inner.Single)
+
+	if !reflect.DeepEqual(uconf.Inner.Single, expectedValue) {
+		t.Fatalf(`Expected: "%v",  Actual: "%v"`, expectedValue, uconf.Inner.Single)
 	}
 }

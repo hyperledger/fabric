@@ -30,9 +30,9 @@ General:
     # TLS: TLS settings for the GRPC server
     TLS:
         Enabled: false
-        ServerKey:
-        ServerCertificate:
-        ServerRootCAs:
+        PrivateKey:
+        Certificate:
+        RootCAs:
         ClientAuthEnabled: false
         ClientRootCAs:
 
@@ -113,6 +113,26 @@ Kafka:
     # NOTE: Use IP:port notation
     Brokers:
         - 127.0.0.1:9092
+
+    # TLS: TLS settings for the Kafka client
+    TLS:
+
+      # Enabled: set to true enable TLS
+      Enabled: false
+
+      # PrivateKey: PEM encoded private key orderer will use for authentication.
+      PrivateKey:
+        #File: uncomment to read PrivateKey from a file
+
+      # Certificate: PEM encoded signed public key vertificate orderer will use
+      # for authentication.
+      Certificate:
+        #File: uncomment to read Certificate from a file
+
+      # RootCAs: PEM encoded trusted signer certificates used to validate
+      # certificates from the Kafka cluster.
+      RootCAs:
+        #File: uncomment to read Certificate from a file
 
 ################################################################################
 #

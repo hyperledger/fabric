@@ -147,7 +147,7 @@ func main() {
 
 	consenters := make(map[string]multichain.Consenter)
 	consenters["solo"] = solo.New()
-	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry)
+	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry, conf.Kafka.TLS)
 	consenters["sbft"] = sbft.New(makeSbftConsensusConfig(conf), makeSbftStackConfig(conf))
 
 	manager := multichain.NewManagerImpl(lf, consenters, localmsp.NewSigner())

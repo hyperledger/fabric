@@ -18,6 +18,7 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math"
 	"reflect"
 	"regexp"
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"encoding/json"
+	"encoding/pem"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -50,7 +52,7 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 		} else if m, ok := val.(map[string]interface{}); ok {
 			logger.Debugf("Found map[string]interface{} value for %s", fqKey)
 			result[key] = getKeysRecursively(fqKey+".", v, m)
-		} else if m, ok := unmarshalJson(val); ok {
+		} else if m, ok := unmarshalJSON(val); ok {
 			logger.Debugf("Found real value for %s setting to map[string]string %v", fqKey, m)
 			result[key] = m
 		} else {
@@ -61,7 +63,7 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 	return result
 }
 
-func unmarshalJson(val interface{}) (map[string]string, bool) {
+func unmarshalJSON(val interface{}) (map[string]string, bool) {
 	mp := map[string]string{}
 	s, ok := val.(string)
 	if !ok {
@@ -95,7 +97,7 @@ func customDecodeHook() mapstructure.DecodeHookFunc {
 
 		raw := data.(string)
 		l := len(raw)
-		if raw[0] == '[' && raw[l-1] == ']' {
+		if l > 1 && raw[0] == '[' && raw[l-1] == ']' {
 			slice := strings.Split(raw[1:l-1], ",")
 			for i, v := range slice {
 				slice[i] = strings.TrimSpace(v)
@@ -142,6 +144,90 @@ func byteSizeDecodeHook() mapstructure.DecodeHookFunc {
 	}
 }
 
+func stringFromFileDecodeHook() mapstructure.DecodeHookFunc {
+	return func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+		// "to" type should be string
+		if t != reflect.String {
+			return data, nil
+		}
+		// "from" type should be map
+		if f != reflect.Map {
+			return data, nil
+		}
+		v := reflect.ValueOf(data)
+		switch v.Kind() {
+		case reflect.String:
+			return data, nil
+		case reflect.Map:
+			d := data.(map[string]interface{})
+			fileName, ok := d["File"]
+			if !ok {
+				fileName, ok = d["file"]
+			}
+			switch {
+			case ok && fileName != nil:
+				bytes, err := ioutil.ReadFile(fileName.(string))
+				if err != nil {
+					return data, err
+				}
+				return string(bytes), nil
+			case ok:
+				// fileName was nil
+				return nil, fmt.Errorf("Value of File: was nil")
+			}
+		}
+		return data, nil
+	}
+}
+
+func pemBlocksFromFileDecodeHook() mapstructure.DecodeHookFunc {
+	return func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+		// "to" type should be string
+		if t != reflect.Slice {
+			return data, nil
+		}
+		// "from" type should be map
+		if f != reflect.Map {
+			return data, nil
+		}
+		v := reflect.ValueOf(data)
+		switch v.Kind() {
+		case reflect.String:
+			return data, nil
+		case reflect.Map:
+			d := data.(map[string]interface{})
+			fileName, ok := d["File"]
+			if !ok {
+				fileName, ok = d["file"]
+			}
+			switch {
+			case ok && fileName != nil:
+				var result []string
+				bytes, err := ioutil.ReadFile(fileName.(string))
+				if err != nil {
+					return data, err
+				}
+				for len(bytes) > 0 {
+					var block *pem.Block
+					block, bytes = pem.Decode(bytes)
+					if block == nil {
+						break
+					}
+					if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+						continue
+					}
+					result = append(result, string(pem.EncodeToMemory(block)))
+				}
+				return result, nil
+			case ok:
+				// fileName was nil
+				return nil, fmt.Errorf("Value of File: was nil")
+			}
+		}
+		return data, nil
+	}
+}
+
 // ExactWithDateUnmarshal is intended to unmarshal a config file into a structure
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
@@ -158,6 +244,8 @@ func ExactWithDateUnmarshal(v *viper.Viper, output interface{}) error {
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			customDecodeHook(),
 			byteSizeDecodeHook(),
+			stringFromFileDecodeHook(),
+			pemBlocksFromFileDecodeHook(),
 		),
 	}
 

@@ -15,6 +15,7 @@ ADD payload/kafka-run-class.sh /opt/kafka/bin/kafka-run-class.sh
 ADD payload/docker-entrypoint.sh /docker-entrypoint.sh
 
 EXPOSE 9092
+EXPOSE 9093
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["/opt/kafka/bin/kafka-server-start.sh"]

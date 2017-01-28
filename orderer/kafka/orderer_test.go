@@ -51,14 +51,16 @@ func mockNewConsenter(t *testing.T, kafkaVersion sarama.KafkaVersion, retryOptio
 	prodDisk := make(chan *ab.KafkaMessage)
 	consDisk := make(chan *ab.KafkaMessage)
 
+	mockTLS := config.TLS{Enabled: false}
+
 	mockBfValue := func(brokers []string, cp ChainPartition) (Broker, error) {
 		return mockNewBroker(t, cp)
 	}
-	mockPfValue := func(brokers []string, kafkaVersion sarama.KafkaVersion, retryOptions config.Retry) Producer {
+	mockPfValue := func(brokers []string, kafkaVersion sarama.KafkaVersion, retryOptions config.Retry, tls config.TLS) Producer {
 		// The first Send on this producer will return a blob with offset #nextProducedOffset
 		return mockNewProducer(t, cp, nextProducedOffset, prodDisk)
 	}
-	mockCfValue := func(brokers []string, kafkaVersion sarama.KafkaVersion, cp ChainPartition, lastPersistedOffset int64) (Consumer, error) {
+	mockCfValue := func(brokers []string, kafkaVersion sarama.KafkaVersion, tls config.TLS, cp ChainPartition, lastPersistedOffset int64) (Consumer, error) {
 		if lastPersistedOffset != nextProducedOffset {
 			panic(fmt.Errorf("Mock objects about to be set up incorrectly (consumer to seek to %d, producer to post %d)", lastPersistedOffset, nextProducedOffset))
 		}
@@ -67,11 +69,12 @@ func mockNewConsenter(t *testing.T, kafkaVersion sarama.KafkaVersion, retryOptio
 
 	return &mockConsenterImpl{
 		consenterImpl: consenterImpl{
-			kv: kafkaVersion,
-			ro: retryOptions,
-			bf: mockBfValue,
-			pf: mockPfValue,
-			cf: mockCfValue,
+			kv:  kafkaVersion,
+			ro:  retryOptions,
+			tls: mockTLS,
+			bf:  mockBfValue,
+			pf:  mockPfValue,
+			cf:  mockCfValue,
 		},
 		prodDisk: prodDisk,
 		consDisk: consDisk,
