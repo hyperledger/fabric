@@ -17,10 +17,8 @@ limitations under the License.
 package rwset
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 )
@@ -62,16 +60,8 @@ func TestTxRWSetMarshalUnmarshal(t *testing.T) {
 	nsRW4 := &NsReadWriteSet{"ns4",
 		[]*KVRead{&KVRead{"key8", version.NewHeight(1, 3)}},
 		[]*KVWrite{&KVWrite{"key9", false, []byte("value9")}, &KVWrite{"key10", false, []byte("value10")}},
-		[]*RangeQueryInfo{&RangeQueryInfo{"startKey1", "endKey1", true, nil, testutil.ConstructRandomBytes(t, 10)}}}
-
-	buf := proto.NewBuffer(nil)
-	rqInfo := &RangeQueryInfo{"startKey2", "endKey2", false, []*KVRead{&KVRead{"key11", version.NewHeight(1, 3)}}, nil}
-	rqInfo.Marshal(buf)
-
-	rqInfo1 := &RangeQueryInfo{}
-	rqInfo1.Unmarshal(buf)
-	fmt.Printf("rqInfo=%#v\n", rqInfo)
-	fmt.Printf("rqInfo1=%#v\n", rqInfo1)
+		[]*RangeQueryInfo{&RangeQueryInfo{"startKey1", "endKey1", true, nil,
+			&MerkleSummary{20, 1, []Hash{testutil.ConstructRandomBytes(t, 10)}}}}}
 
 	nsRW5 := &NsReadWriteSet{"ns5",
 		nil,

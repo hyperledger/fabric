@@ -32,20 +32,20 @@ func TestRWSetHolder(t *testing.T) {
 
 	rqi1 := &RangeQueryInfo{"bKey", "", false, nil, nil}
 	rqi1.EndKey = "eKey"
-	rqi1.results = []*KVRead{NewKVRead("bKey1", version.NewHeight(2, 3)), NewKVRead("bKey2", version.NewHeight(2, 4))}
+	rqi1.Results = []*KVRead{NewKVRead("bKey1", version.NewHeight(2, 3)), NewKVRead("bKey2", version.NewHeight(2, 4))}
 	rqi1.ItrExhausted = true
 	rwSet.AddToRangeQuerySet("ns1", rqi1)
 
 	rqi2 := &RangeQueryInfo{"bKey", "", false, nil, nil}
 	rqi2.EndKey = "eKey"
-	rqi2.results = []*KVRead{NewKVRead("bKey1", version.NewHeight(2, 3)), NewKVRead("bKey2", version.NewHeight(2, 4))}
+	rqi2.Results = []*KVRead{NewKVRead("bKey1", version.NewHeight(2, 3)), NewKVRead("bKey2", version.NewHeight(2, 4))}
 	rqi2.ItrExhausted = true
 	rwSet.AddToRangeQuerySet("ns1", rqi2)
 
 	rqi3 := &RangeQueryInfo{"bKey", "", true, nil, nil}
 	rwSet.AddToRangeQuerySet("ns1", rqi3)
 	rqi3.EndKey = "eKey1"
-	rqi3.results = []*KVRead{NewKVRead("bKey1", version.NewHeight(2, 3)), NewKVRead("bKey2", version.NewHeight(2, 4))}
+	rqi3.Results = []*KVRead{NewKVRead("bKey1", version.NewHeight(2, 3)), NewKVRead("bKey2", version.NewHeight(2, 4))}
 
 	rwSet.AddToReadSet("ns2", "key2", version.NewHeight(1, 2))
 	rwSet.AddToWriteSet("ns2", "key3", []byte("value3"))

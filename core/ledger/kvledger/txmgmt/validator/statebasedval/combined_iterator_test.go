@@ -32,11 +32,12 @@ func TestCombinedIterator(t *testing.T) {
 	db, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
 	testutil.AssertNoError(t, err, "")
 
-	//populate db with initial data
+	// populate db with initial data
 	batch := statedb.NewUpdateBatch()
 	batch.Put("ns", "key1", []byte("value1"), version.NewHeight(1, 1))
 	batch.Put("ns", "key4", []byte("value4"), version.NewHeight(1, 1))
 	batch.Put("ns", "key6", []byte("value6"), version.NewHeight(1, 1))
+	batch.Put("ns", "key8", []byte("value8"), version.NewHeight(1, 1))
 	db.ApplyUpdates(batch, version.NewHeight(1, 5))
 
 	// prepare batch1
@@ -50,10 +51,8 @@ func TestCombinedIterator(t *testing.T) {
 	batch2 := statedb.NewUpdateBatch()
 
 	// Test db + batch1 updates
-	dbItr1, _ := db.GetStateRangeScanIterator("ns", "key2", "key8")
-	itr1, _ := newCombinedIterator("ns", dbItr1, batch1.GetRangeScanIterator("ns", "key2", "key8"))
+	itr1, _ := newCombinedIterator(db, batch1, "ns", "key2", "key8", false)
 	defer itr1.Close()
-
 	checkItrResults(t, itr1, []*statedb.VersionedKV{
 		constructVersionedKV("ns", "key3", []byte("value3"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
@@ -61,9 +60,18 @@ func TestCombinedIterator(t *testing.T) {
 		constructVersionedKV("ns", "key7", []byte("value7"), version.NewHeight(1, 1)),
 	})
 
+	itr1WithEndKey, _ := newCombinedIterator(db, batch1, "ns", "key2", "key8", true)
+	defer itr1WithEndKey.Close()
+	checkItrResults(t, itr1WithEndKey, []*statedb.VersionedKV{
+		constructVersionedKV("ns", "key3", []byte("value3"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key6", []byte("value6_new"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key7", []byte("value7"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key8", []byte("value8"), version.NewHeight(1, 1)),
+	})
+
 	// Test db + batch2 updates
-	dbItr2, _ := db.GetStateRangeScanIterator("ns", "key2", "key8")
-	itr2, _ := newCombinedIterator("ns", dbItr2, batch2.GetRangeScanIterator("ns", "key2", "key8"))
+	itr2, _ := newCombinedIterator(db, batch2, "ns", "key2", "key8", false)
 	defer itr2.Close()
 	checkItrResults(t, itr2, []*statedb.VersionedKV{
 		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
@@ -71,14 +79,15 @@ func TestCombinedIterator(t *testing.T) {
 	})
 
 	// Test db + batch1 updates with full range query
-	dbItr3, _ := db.GetStateRangeScanIterator("ns", "", "")
-	itr3, _ := newCombinedIterator("ns", dbItr3, batch1.GetRangeScanIterator("ns", "", ""))
+	itr3, _ := newCombinedIterator(db, batch1, "ns", "", "", false)
+	defer itr3.Close()
 	checkItrResults(t, itr3, []*statedb.VersionedKV{
 		constructVersionedKV("ns", "key1", []byte("value1"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key3", []byte("value3"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key6", []byte("value6_new"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key7", []byte("value7"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key8", []byte("value8"), version.NewHeight(1, 1)),
 	})
 }
 

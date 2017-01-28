@@ -110,6 +110,19 @@ func NewUpdateBatch() *UpdateBatch {
 	return &UpdateBatch{make(map[string]*nsUpdates)}
 }
 
+// Get returns the VersionedValue for the given namespace and key
+func (batch *UpdateBatch) Get(ns string, key string) *VersionedValue {
+	nsUpdates, ok := batch.updates[ns]
+	if !ok {
+		return nil
+	}
+	vv, ok := nsUpdates.m[key]
+	if !ok {
+		return nil
+	}
+	return vv
+}
+
 // Put adds a VersionedKV
 func (batch *UpdateBatch) Put(ns string, key string, value []byte, version *version.Height) {
 	if value == nil {
