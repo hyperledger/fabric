@@ -85,6 +85,53 @@ func ExampleError() {
 	// not be appended to the error message
 	flogging.SetModuleLevel("error", "warning")
 
+	err := Error("Utility", "UnknownError", "An unknown error occurred.")
+
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		fmt.Printf("%s\n", err.GetErrorCode())
+		fmt.Printf("%s\n", err.GetComponentCode())
+		fmt.Printf("%s\n", err.GetReasonCode())
+		fmt.Printf("%s\n", err.Message())
+		// Output:
+		// UTILITY_UNKNOWNERROR - An unknown error occurred.
+		// UTILITY_UNKNOWNERROR
+		// UTILITY
+		// UNKNOWNERROR
+		// UTILITY_UNKNOWNERROR - An unknown error occurred.
+	}
+}
+
+func ExampleError_blankParameters() {
+	// when the 'error' module is set to anything but debug, the callstack will
+	// not be appended to the error message
+	flogging.SetModuleLevel("error", "warning")
+
+	// create error with blank strings for the component code, reason code, and
+	// message text. the code should use the default for each value instead of
+	// using the blank strings
+	err := Error("", "", "")
+
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		fmt.Printf("%s\n", err.GetErrorCode())
+		fmt.Printf("%s\n", err.GetComponentCode())
+		fmt.Printf("%s\n", err.GetReasonCode())
+		fmt.Printf("%s\n", err.Message())
+		// Output:
+		// UTILITY_UNKNOWNERROR - An unknown error occurred.
+		// UTILITY_UNKNOWNERROR
+		// UTILITY
+		// UNKNOWNERROR
+		// UTILITY_UNKNOWNERROR - An unknown error occurred.
+	}
+}
+
+func ExampleErrorWithCallstack() {
+	// when the 'error' module is set to anything but debug, the callstack will
+	// not be appended to the error message
+	flogging.SetModuleLevel("error", "warning")
+
 	err := ErrorWithCallstack("Utility", "UnknownError", "An unknown error occurred.")
 
 	if err != nil {
