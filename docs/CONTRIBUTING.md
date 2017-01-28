@@ -79,6 +79,64 @@ the `lf-sandbox`
 you should be ready to set up your local development
 [environment](dev-setup/devenv.md).
 
+## What makes a good change request?
+
+* One change at a time. Not five, not three, not ten. One and only one. Why?
+Because it limits the blast area of the change. If we have a regression, it is
+much easier to identify the culprit commit than if we have some composite
+change that impacts more of the code.
+
+* Include a link to the JIRA story for the change. Why? Because a) we want to
+track our velocity to better judge what we think we can deliver and when and b)
+because we can justify the change more effectively. In many cases, there
+should be some discussion around a proposed change and we want to link back to
+that from the change itself.
+
+* Include unit and integration tests (or changes to existing tests) with every
+change. This does not mean just happy path testing, either. It also means
+negative testing of any defensive code that it correctly catches input errors.
+When you write code, you are responsible to test it and provide the tests that
+demonstrate that your change does what it claims. Why? Because
+without this we have no clue whether our current code base actually works.
+
+* Unit tests should have NO external dependencies. You should be able to run
+unit tests in place with `go test` or equivalent for the language. Any test
+that requires some external dependency (e.g. needs to be scripted to run another
+component) needs appropriate mocking. Anything else is not unit testing, it is
+integration testing by definition. Why? Because many open source developers
+do Test Driven Development. They place a watch on the directory that invokes
+the tests automagically as the code is changed. This is far more efficient
+than having to run a whole build between code changes.
+
+* Minimize the lines of code per CR. Why? Maintainers have day jobs, too. If
+you send a 1,000 or 2,000 LOC change, how long do you think it takes to review
+all of that code? Keep your changes to < 200-300 LOC if possible. If you have a
+larger change, decompose it into multiple independent changess. If you are adding
+a bunch of new functions to fulfill the requirements of a new capability, add
+them separately with their tests, and then write the code that uses them to
+deliver the capability. Of course, there are always exceptions. If you add a
+small change and then add 300 LOC of tests, you will be forgiven;-)
+If you need to make a change that has broad impact or a bunch of generated
+code (protobufs, etc.). Again, there can be exceptions.
+
+* Write a meaningful commit message. Include a meaningful 50 (or less) character
+title, followed by a blank line, followed my a more comprehensive description
+of the change. Be sure to include the JIRA identifier corresponding to the
+change (e.g. [FAB-1234]). This can be in the title but should also be in the
+body of the commit message.
+
+e.g.
+```
+[FAB-1234] fix foobar() panic
+
+Fix [FAB-1234] added a check to ensure that when foobar(foo string) is called,
+that there is a non-empty string argument.
+```
+
+Finally, be responsive. Don't let a change request fester with review comments
+such that it gets to a point that it requires a rebase. It only further delays
+getting it merged and adds more work for you - to remediate the merge conflicts.
+
 ## Coding guidelines
 
 Be sure to check out the language-specific [style guides](Style-guides/go-style.md)
