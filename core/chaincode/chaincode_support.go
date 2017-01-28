@@ -246,7 +246,7 @@ func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Ha
 
 	// clean up rangeQueryIteratorMap
 	for _, context := range chaincodehandler.txCtxs {
-		for _, v := range context.rangeQueryIteratorMap {
+		for _, v := range context.queryIteratorMap {
 			v.Close()
 		}
 	}

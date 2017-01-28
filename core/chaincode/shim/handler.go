@@ -494,7 +494,7 @@ func (handler *Handler) handleDelState(key string, txid string) error {
 	return errors.New("Incorrect chaincode message received")
 }
 
-func (handler *Handler) handleRangeQueryState(startKey, endKey string, txid string) (*pb.RangeQueryStateResponse, error) {
+func (handler *Handler) handleRangeQueryState(startKey, endKey string, txid string) (*pb.QueryStateResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
 	respChan, uniqueReqErr := handler.createChannel(txid)
 	if uniqueReqErr != nil {
@@ -522,7 +522,7 @@ func (handler *Handler) handleRangeQueryState(startKey, endKey string, txid stri
 		// Success response
 		chaincodeLogger.Debugf("[%s]Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 
-		rangeQueryResponse := &pb.RangeQueryStateResponse{}
+		rangeQueryResponse := &pb.QueryStateResponse{}
 		unmarshalErr := proto.Unmarshal(responseMsg.Payload, rangeQueryResponse)
 		if unmarshalErr != nil {
 			chaincodeLogger.Errorf("[%s]unmarshall error", shorttxid(responseMsg.Txid))
@@ -542,7 +542,7 @@ func (handler *Handler) handleRangeQueryState(startKey, endKey string, txid stri
 	return nil, errors.New("Incorrect chaincode message received")
 }
 
-func (handler *Handler) handleRangeQueryStateNext(id, txid string) (*pb.RangeQueryStateResponse, error) {
+func (handler *Handler) handleQueryStateNext(id, txid string) (*pb.QueryStateResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
 	respChan, uniqueReqErr := handler.createChannel(txid)
 	if uniqueReqErr != nil {
@@ -553,16 +553,16 @@ func (handler *Handler) handleRangeQueryStateNext(id, txid string) (*pb.RangeQue
 	defer handler.deleteChannel(txid)
 
 	// Send RANGE_QUERY_STATE_NEXT message to validator chaincode support
-	payload := &pb.RangeQueryStateNext{ID: id}
+	payload := &pb.QueryStateNext{ID: id}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to process range query state next request")
 	}
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT, Payload: payloadBytes, Txid: txid}
-	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT)
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: payloadBytes, Txid: txid}
+	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_NEXT)
 	responseMsg, err := handler.sendReceive(msg, respChan)
 	if err != nil {
-		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RANGE_QUERY_STATE_NEXT)
+		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_NEXT)
 		return nil, errors.New("could not send msg")
 	}
 
@@ -570,14 +570,14 @@ func (handler *Handler) handleRangeQueryStateNext(id, txid string) (*pb.RangeQue
 		// Success response
 		chaincodeLogger.Debugf("[%s]Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 
-		rangeQueryResponse := &pb.RangeQueryStateResponse{}
-		unmarshalErr := proto.Unmarshal(responseMsg.Payload, rangeQueryResponse)
+		queryResponse := &pb.QueryStateResponse{}
+		unmarshalErr := proto.Unmarshal(responseMsg.Payload, queryResponse)
 		if unmarshalErr != nil {
 			chaincodeLogger.Errorf("[%s]unmarshall error", shorttxid(responseMsg.Txid))
 			return nil, errors.New("Error unmarshalling RangeQueryStateResponse.")
 		}
 
-		return rangeQueryResponse, nil
+		return queryResponse, nil
 	}
 	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
 		// Error response
@@ -590,7 +590,7 @@ func (handler *Handler) handleRangeQueryStateNext(id, txid string) (*pb.RangeQue
 	return nil, errors.New("Incorrect chaincode message received")
 }
 
-func (handler *Handler) handleRangeQueryStateClose(id, txid string) (*pb.RangeQueryStateResponse, error) {
+func (handler *Handler) handleQueryStateClose(id, txid string) (*pb.QueryStateResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
 	respChan, uniqueReqErr := handler.createChannel(txid)
 	if uniqueReqErr != nil {
@@ -601,16 +601,16 @@ func (handler *Handler) handleRangeQueryStateClose(id, txid string) (*pb.RangeQu
 	defer handler.deleteChannel(txid)
 
 	// Send RANGE_QUERY_STATE_CLOSE message to validator chaincode support
-	payload := &pb.RangeQueryStateClose{ID: id}
+	payload := &pb.QueryStateClose{ID: id}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to process range query state close request")
 	}
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE, Payload: payloadBytes, Txid: txid}
-	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE)
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: payloadBytes, Txid: txid}
+	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_CLOSE)
 	responseMsg, err := handler.sendReceive(msg, respChan)
 	if err != nil {
-		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RANGE_QUERY_STATE_CLOSE)
+		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_CLOSE)
 		return nil, errors.New("could not send msg")
 	}
 
@@ -618,14 +618,62 @@ func (handler *Handler) handleRangeQueryStateClose(id, txid string) (*pb.RangeQu
 		// Success response
 		chaincodeLogger.Debugf("[%s]Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
 
-		rangeQueryResponse := &pb.RangeQueryStateResponse{}
-		unmarshalErr := proto.Unmarshal(responseMsg.Payload, rangeQueryResponse)
+		queryResponse := &pb.QueryStateResponse{}
+		unmarshalErr := proto.Unmarshal(responseMsg.Payload, queryResponse)
 		if unmarshalErr != nil {
 			chaincodeLogger.Errorf("[%s]unmarshall error", shorttxid(responseMsg.Txid))
 			return nil, errors.New("Error unmarshalling RangeQueryStateResponse.")
 		}
 
-		return rangeQueryResponse, nil
+		return queryResponse, nil
+	}
+	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+		// Error response
+		chaincodeLogger.Errorf("[%s]Received %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
+		return nil, errors.New(string(responseMsg.Payload[:]))
+	}
+
+	// Incorrect chaincode message received
+	chaincodeLogger.Errorf("Incorrect chaincode message %s recieved. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, errors.New("Incorrect chaincode message received")
+}
+
+func (handler *Handler) handleExecuteQueryState(query string, txid string) (*pb.QueryStateResponse, error) {
+	// Create the channel on which to communicate the response from validating peer
+	respChan, uniqueReqErr := handler.createChannel(txid)
+	if uniqueReqErr != nil {
+		chaincodeLogger.Debugf("[%s]Another state request pending for this Txid. Cannot process.", shorttxid(txid))
+		return nil, uniqueReqErr
+	}
+
+	defer handler.deleteChannel(txid)
+
+	// Send EXECUTE_QUERY_STATE message to validator chaincode support
+	payload := &pb.ExecuteQueryState{Query: query}
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		return nil, errors.New("Failed to process range query state request")
+	}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_EXECUTE_QUERY_STATE, Payload: payloadBytes, Txid: txid}
+	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_EXECUTE_QUERY_STATE)
+	responseMsg, err := handler.sendReceive(msg, respChan)
+	if err != nil {
+		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_EXECUTE_QUERY_STATE)
+		return nil, errors.New("could not send msg")
+	}
+
+	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+		// Success response
+		chaincodeLogger.Debugf("[%s]Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
+
+		executeQueryResponse := &pb.QueryStateResponse{}
+		unmarshalErr := proto.Unmarshal(responseMsg.Payload, executeQueryResponse)
+		if unmarshalErr != nil {
+			chaincodeLogger.Errorf("[%s]unmarshall error", shorttxid(responseMsg.Txid))
+			return nil, errors.New("Error unmarshalling QueryStateResponse.")
+		}
+
+		return executeQueryResponse, nil
 	}
 	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
 		// Error response

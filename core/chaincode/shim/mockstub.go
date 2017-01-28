@@ -188,8 +188,12 @@ func (stub *MockStub) DelState(key string) error {
 	return nil
 }
 
-func (stub *MockStub) RangeQueryState(startKey, endKey string) (StateRangeQueryIteratorInterface, error) {
+func (stub *MockStub) RangeQueryState(startKey, endKey string) (StateQueryIteratorInterface, error) {
 	return NewMockStateRangeQueryIterator(stub, startKey, endKey), nil
+}
+
+func (stub *MockStub) ExecuteQuery(query string) (StateQueryIteratorInterface, error) {
+	return nil, errors.New("Not Implemented")
 }
 
 //PartialCompositeKeyQuery function can be invoked by a chaincode to query the
@@ -198,7 +202,7 @@ func (stub *MockStub) RangeQueryState(startKey, endKey string) (StateRangeQueryI
 //matches the given partial composite key. This function should be used only for
 //a partial composite key. For a full composite key, an iter with empty response
 //would be returned.
-func (stub *MockStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateRangeQueryIteratorInterface, error) {
+func (stub *MockStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
 	return partialCompositeKeyQuery(stub, objectType, attributes)
 }
 
