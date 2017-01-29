@@ -57,7 +57,7 @@ func startCmd() *cobra.Command {
 	flags.BoolVarP(&chaincodeDevMode, "peer-chaincodedev", "", false,
 		"Whether peer in chaincode development mode")
 	flags.BoolVarP(&peerDefaultChain, "peer-defaultchain", "", true,
-		"Whether to start peer with chain test_chainid")
+		"Whether to start peer with chain testchainid")
 
 	return nodeStartCmd
 }
@@ -184,7 +184,7 @@ func serve(args []string) error {
 			panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
 		}
 
-		//this creates test_chainid and sets up gossip
+		//this creates testchainid and sets up gossip
 		if err = peer.CreateChainFromBlock(block); err == nil {
 			fmt.Printf("create chain [%s]", chainID)
 			scc.DeploySysCCs(chainID)
@@ -198,7 +198,7 @@ func serve(args []string) error {
 		}
 	}
 
-	//this brings up all the chains (including test_chainid)
+	//this brings up all the chains (including testchainid)
 	peer.Initialize(startDeliveryService)
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s",

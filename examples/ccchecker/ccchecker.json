@@ -14,5 +14,5 @@
        }
    ],
  "TimeoutToAbortSecs": 60,
- "ChainName": "test_chainid"
+ "ChainName": "testchainid"
 }
