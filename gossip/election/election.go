@@ -102,6 +102,8 @@ type LeaderElectionAdapter interface {
 	Peers() []Peer
 }
 
+type leadershipCallback func(isLeader bool)
+
 // LeaderElectionService is the object that runs the leader election algorithm
 type LeaderElectionService interface {
 	// IsLeader returns whether this peer is a leader or not
@@ -127,8 +129,11 @@ type Msg interface {
 	IsDeclaration() bool
 }
 
+func noopCallback(_ bool) {
+}
+
 // NewLeaderElectionService returns a new LeaderElectionService
-func NewLeaderElectionService(adapter LeaderElectionAdapter, id string) LeaderElectionService {
+func NewLeaderElectionService(adapter LeaderElectionAdapter, id string, callback leadershipCallback) LeaderElectionService {
 	if len(id) == 0 {
 		panic(fmt.Errorf("Empty id"))
 	}
@@ -139,7 +144,13 @@ func NewLeaderElectionService(adapter LeaderElectionAdapter, id string) LeaderEl
 		stopChan:      make(chan struct{}, 1),
 		interruptChan: make(chan struct{}, 1),
 		logger:        logging.MustGetLogger("LeaderElection"),
+		callback:      noopCallback,
 	}
+
+	if callback != nil {
+		le.callback = callback
+	}
+
 	// TODO: This will be configured using the core.yaml when FAB-1217 (Integrate peer logging with gossip logging) is done
 	logging.SetLevel(logging.WARNING, "LeaderElection")
 	go le.start()
@@ -160,6 +171,7 @@ type leaderElectionSvcImpl struct {
 	sleeping      bool
 	adapter       LeaderElectionAdapter
 	logger        *logging.Logger
+	callback      leadershipCallback
 }
 
 func (le *leaderElectionSvcImpl) start() {
@@ -357,11 +369,13 @@ func (le *leaderElectionSvcImpl) IsLeader() bool {
 func (le *leaderElectionSvcImpl) beLeader() {
 	le.logger.Info(le.id, ": Becoming a leader")
 	atomic.StoreInt32(&le.isLeader, int32(1))
+	le.callback(true)
 }
 
 func (le *leaderElectionSvcImpl) stopBeingLeader() {
 	le.logger.Info(le.id, "Stopped being a leader")
 	atomic.StoreInt32(&le.isLeader, int32(0))
+	le.callback(false)
 }
 
 func (le *leaderElectionSvcImpl) shouldStop() bool {

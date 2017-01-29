@@ -60,10 +60,12 @@ func (m *msg) IsDeclaration() bool {
 type peer struct {
 	mockedMethods map[string]struct{}
 	mock.Mock
-	id         string
-	peers      map[string]*peer
-	sharedLock *sync.RWMutex
-	msgChan    chan Msg
+	id                   string
+	peers                map[string]*peer
+	sharedLock           *sync.RWMutex
+	msgChan              chan Msg
+	isLeaderFromCallback bool
+	callbackInvoked      bool
 	LeaderElectionService
 }
 
@@ -126,6 +128,11 @@ func (p *peer) Peers() []Peer {
 	return peers
 }
 
+func (p *peer) leaderCallback(isLeader bool) {
+	p.isLeaderFromCallback = isLeader
+	p.callbackInvoked = true
+}
+
 func createPeers(spawnInterval time.Duration, ids ...int) []*peer {
 	peers := make([]*peer, len(ids))
 	peerMap := make(map[string]*peer)
@@ -143,8 +150,8 @@ func createPeers(spawnInterval time.Duration, ids ...int) []*peer {
 func createPeer(id int, peerMap map[string]*peer, l *sync.RWMutex) *peer {
 	idStr := fmt.Sprintf("p%d", id)
 	c := make(chan Msg, 100)
-	p := &peer{id: idStr, peers: peerMap, sharedLock: l, msgChan: c, mockedMethods: make(map[string]struct{})}
-	p.LeaderElectionService = NewLeaderElectionService(p, idStr)
+	p := &peer{id: idStr, peers: peerMap, sharedLock: l, msgChan: c, mockedMethods: make(map[string]struct{}), isLeaderFromCallback: false, callbackInvoked: false}
+	p.LeaderElectionService = NewLeaderElectionService(p, idStr, p.leaderCallback)
 	l.Lock()
 	peerMap[idStr] = p
 	l.Unlock()
@@ -152,7 +159,7 @@ func createPeer(id int, peerMap map[string]*peer, l *sync.RWMutex) *peer {
 
 }
 
-func waitForLeaderElection(t *testing.T, peers []*peer) []string {
+func waitForMultipleLeadersElection(t *testing.T, peers []*peer, leadersNum int) []string {
 	end := time.Now().Add(testTimeout)
 	for time.Now().Before(end) {
 		var leaders []string
@@ -161,13 +168,17 @@ func waitForLeaderElection(t *testing.T, peers []*peer) []string {
 				leaders = append(leaders, p.id)
 			}
 		}
-		if len(leaders) > 0 {
+		if len(leaders) >= leadersNum {
 			return leaders
 		}
 		time.Sleep(testPollInterval)
 	}
 	t.Fatal("No leader detected")
 	return nil
+}
+
+func waitForLeaderElection(t *testing.T, peers []*peer) []string {
+	return waitForMultipleLeadersElection(t, peers, 1)
 }
 
 func TestInitPeersAtSameTime(t *testing.T) {
@@ -179,6 +190,7 @@ func TestInitPeersAtSameTime(t *testing.T) {
 	leaders := waitForLeaderElection(t, peers)
 	isP0leader := peers[len(peers)-1].IsLeader()
 	assert.True(t, isP0leader, "p0 isn't a leader. Leaders are: %v", leaders)
+	assert.True(t, peers[len(peers)-1].isLeaderFromCallback, "p0 didn't got leaderhip change callback invoked")
 	assert.Len(t, leaders, 1, "More than 1 leader elected")
 }
 
@@ -257,6 +269,18 @@ func TestConvergence(t *testing.T) {
 	finalLeaders := waitForLeaderElection(t, combinedPeers)
 	assert.Len(t, finalLeaders, 1, "Combined peer group was suppose to have 1 leader exactly")
 	assert.Equal(t, leaders1[0], finalLeaders[0], "Combined peer group has different leader than expected:")
+
+	for _, p := range combinedPeers {
+		if p.id == finalLeaders[0] {
+			assert.True(t, p.isLeaderFromCallback, "Leadership callback result is wrong for ", p.id)
+			assert.True(t, p.callbackInvoked, "Leadership callback wasn't invoked for ", p.id)
+		} else {
+			assert.False(t, p.isLeaderFromCallback, "Leadership callback result is wrong for ", p.id)
+			if p.id == leaders2[0] {
+				assert.True(t, p.callbackInvoked, "Leadership callback wasn't invoked for ", p.id)
+			}
+		}
+	}
 }
 
 func TestLeadershipTakeover(t *testing.T) {
@@ -286,20 +310,36 @@ func TestPartition(t *testing.T) {
 	leaders := waitForLeaderElection(t, peers)
 	assert.Len(t, leaders, 1, "Only 1 leader should have been elected")
 	assert.Equal(t, "p0", leaders[0])
+	assert.True(t, peers[len(peers)-1].isLeaderFromCallback, "Leadership callback result is wrong for %s", peers[len(peers)-1].id)
+
 	for _, p := range peers {
 		p.On("Peers").Return([]Peer{})
 		p.On("Gossip", mock.Anything)
 	}
 	time.Sleep(leadershipDeclarationInterval + leaderAliveThreshold*2)
-	leaders = waitForLeaderElection(t, peers)
-	assert.Len(t, leaders, len(leaders))
+	leaders = waitForMultipleLeadersElection(t, peers, 6)
+	assert.Len(t, leaders, 6)
+	for _, p := range peers {
+		assert.True(t, p.isLeaderFromCallback, "Leadership callback result is wrong for %s", p.id)
+	}
+
 	for _, p := range peers {
 		p.sharedLock.Lock()
 		p.mockedMethods = make(map[string]struct{})
+		p.callbackInvoked = false
 		p.sharedLock.Unlock()
 	}
 	time.Sleep(leadershipDeclarationInterval + leaderAliveThreshold*2)
 	leaders = waitForLeaderElection(t, peers)
 	assert.Len(t, leaders, 1, "Only 1 leader should have been elected")
 	assert.Equal(t, "p0", leaders[0])
+	for _, p := range peers {
+		if p.id == leaders[0] {
+			assert.True(t, p.isLeaderFromCallback, "Leadership callback result is wrong for %", p.id)
+		} else {
+			assert.False(t, p.isLeaderFromCallback, "Leadership callback result is wrong for %s", p.id)
+			assert.True(t, p.callbackInvoked, "Leadership callback wasn't invoked for %s", p.id)
+		}
+	}
+
 }
