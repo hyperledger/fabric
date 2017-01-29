@@ -47,7 +47,7 @@ func init() {
 	discovery.SetExpirationTimeout(aliveTimeInterval * 10)
 	discovery.SetReconnectInterval(aliveTimeInterval * 5)
 
-	testWG.Add(6)
+	testWG.Add(7)
 
 }
 
@@ -63,6 +63,7 @@ func acceptData(m interface{}) bool {
 }
 
 type joinChanMsg struct {
+	anchorPeers []api.AnchorPeer
 }
 
 // SequenceNumber returns the sequence number of the block this joinChanMsg
@@ -72,8 +73,11 @@ func (*joinChanMsg) SequenceNumber() uint64 {
 }
 
 // AnchorPeers returns all the anchor peers that are in the channel
-func (*joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	return []api.AnchorPeer{{Cert: anchorPeerIdentity}}
+func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
+	if len(jcm.anchorPeers) == 0 {
+		return []api.AnchorPeer{{Cert: anchorPeerIdentity}}
+	}
+	return jcm.anchorPeers
 }
 
 type naiveCryptoService struct {
@@ -278,6 +282,60 @@ func TestPull(t *testing.T) {
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestPull>>>")
+	testWG.Done()
+}
+
+func TestConnectToAnchorPeers(t *testing.T) {
+	t.Parallel()
+	portPrefix := 8610
+	// Scenario: Spawn 5 peers, and make each of them connect to
+	// the other 2 using join channel.
+	stopped := int32(0)
+	go waitForTestCompletion(&stopped, t)
+	n := 5
+
+	jcm := &joinChanMsg{anchorPeers: []api.AnchorPeer{}}
+	for i := 0; i < n; i++ {
+		pkiID := fmt.Sprintf("localhost:%d", portPrefix+i)
+		ap := api.AnchorPeer{
+			Port: portPrefix + i,
+			Host: "localhost",
+			Cert: []byte(pkiID),
+		}
+		jcm.anchorPeers = append(jcm.anchorPeers, ap)
+	}
+
+	peers := make([]Gossip, n)
+	wg := sync.WaitGroup{}
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			peers[i] = newGossipInstance(portPrefix, i, 100)
+			peers[i].JoinChan(jcm, common.ChainID("A"))
+			peers[i].UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+			wg.Done()
+		}(i)
+	}
+	waitUntilOrFailBlocking(t, wg.Wait)
+	waitUntilOrFail(t, checkPeersMembership(peers, n-1))
+
+	channelMembership := func() bool {
+		for _, peer := range peers {
+			if len(peer.PeersOfChannel(common.ChainID("A"))) != n-1 {
+				return false
+			}
+		}
+		return true
+	}
+	waitUntilOrFail(t, channelMembership)
+
+	stop := func() {
+		stopPeers(peers)
+	}
+	waitUntilOrFailBlocking(t, stop)
+
+	fmt.Println("<<<TestConnectToAnchorPeers>>>")
+	atomic.StoreInt32(&stopped, int32(1))
 	testWG.Done()
 }
 

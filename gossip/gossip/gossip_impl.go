@@ -158,6 +158,24 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 		return
 	}
 	g.chanState.joinChannel(joinMsg, chainID)
+
+	selfPkiID := g.mcs.GetPKIidOfCert(g.selfIdentity)
+	for _, ap := range joinMsg.AnchorPeers() {
+		if ap.Host == "" {
+			g.logger.Warning("Got empty hostname, skipping connecting to anchor peer", ap)
+		}
+		if ap.Port == 0 {
+			g.logger.Warning("Got invalid port (0), skipping connecting to anchor peer", ap)
+		}
+		pkiID := g.mcs.GetPKIidOfCert(ap.Cert)
+		// Skip connecting to self
+		if bytes.Equal([]byte(pkiID), []byte(selfPkiID)) {
+			g.logger.Info("Anchor peer with same PKI-ID, skipping connecting to myself")
+			continue
+		}
+		endpoint := fmt.Sprintf("%s:%d", ap.Host, ap.Port)
+		g.disc.Connect(discovery.NetworkMember{Endpoint: endpoint, PKIid: pkiID})
+	}
 }
 
 func (g *gossipServiceImpl) handlePresumedDead() {
