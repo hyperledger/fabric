@@ -59,6 +59,29 @@ func GetManagerForChain(ChainID string) msp.MSPManager {
 	return mspMgr
 }
 
+// GetManagers returns all the managers registered
+func GetManagers() map[string]msp.MSPManager {
+	m.Lock()
+	defer m.Unlock()
+
+	clone := make(map[string]msp.MSPManager)
+
+	for key, mspManager := range mspMap {
+		clone[key] = mspManager
+	}
+
+	return clone
+}
+
+// GetManagerForChainIfExists returns the MSPManager associated to ChainID
+// it it exists
+func GetManagerForChainIfExists(ChainID string) msp.MSPManager {
+	m.Lock()
+	defer m.Unlock()
+
+	return mspMap[ChainID]
+}
+
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)
 func GetLocalMSP() msp.MSP {
 	var lclMsp msp.MSP
@@ -95,4 +118,14 @@ func GetMSPCommon(chainID string) msp.Common {
 	}
 
 	return GetManagerForChain(chainID)
+}
+
+// GetLocalSigningIdentityOrPanic returns the local signing identity or panic in case
+// or error
+func GetLocalSigningIdentityOrPanic() msp.SigningIdentity {
+	id, err := GetLocalMSP().GetDefaultSigningIdentity()
+	if err != nil {
+		peerLogger.Panic("Failed getting local signing identity [%s]", err)
+	}
+	return id
 }

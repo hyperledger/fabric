@@ -98,7 +98,7 @@ func (cs *cryptoService) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityTyp
 	panic("Should not be called in this test")
 }
 
-func (cs *cryptoService) VerifyBlock(signedBlock api.SignedBlock) error {
+func (cs *cryptoService) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
 	args := cs.Called(signedBlock)
 	if args.Get(0) == nil {
 		return nil
