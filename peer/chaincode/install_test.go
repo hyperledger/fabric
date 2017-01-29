@@ -75,6 +75,21 @@ func TestInstallCmd(t *testing.T) {
 	}
 }
 
+// TestBadVersion tests generation of install command
+func TestBadVersion(t *testing.T) {
+	fsPath := "/tmp/installtest"
+
+	cmd := initInstallTest(fsPath, t)
+	defer finitInstallTest(fsPath)
+
+	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}
+	cmd.SetArgs(args)
+
+	if err := cmd.Execute(); err == nil {
+		t.Fatalf("Expected error executing install command for version not specified")
+	}
+}
+
 // TestNonExistentCC non existent chaincode should fail as expected
 func TestNonExistentCC(t *testing.T) {
 	fsPath := "/tmp/installtest"
