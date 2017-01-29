@@ -192,7 +192,15 @@ func (stub *MockStub) RangeQueryState(startKey, endKey string) (StateQueryIterat
 	return NewMockStateRangeQueryIterator(stub, startKey, endKey), nil
 }
 
-func (stub *MockStub) ExecuteQuery(query string) (StateQueryIteratorInterface, error) {
+// GetQueryResult function can be invoked by a chaincode to perform a
+// rich query against state database.  Only supported by state database implementations
+// that support rich query.  The query string is in the syntax of the underlying
+// state database. An iterator is returned which can be used to iterate (next) over
+// the query result set
+func (stub *MockStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
+	// Not implemented since the mock engine does not have a query engine.
+	// However, a very simple query engine that supports string matching
+	// could be implemented to test that the framework supports queries
 	return nil, errors.New("Not Implemented")
 }
 

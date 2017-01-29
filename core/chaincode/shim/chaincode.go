@@ -336,7 +336,12 @@ func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateQueryI
 	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
 }
 
-func (stub *ChaincodeStub) ExecuteQuery(query string) (StateQueryIteratorInterface, error) {
+// GetQueryResult function can be invoked by a chaincode to perform a
+// rich query against state database.  Only supported by state database implementations
+// that support rich query.  The query string is in the syntax of the underlying
+// state database. An iterator is returned which can be used to iterate (next) over
+// the query result set
+func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
 	response, err := stub.handler.handleExecuteQueryState(query, stub.TxID)
 	if err != nil {
 		return nil, err

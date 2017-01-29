@@ -714,7 +714,7 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 	}()
 }
 
-// afterRangeQueryState handles a RANGE_QUERY_STATE_NEXT request from the chaincode.
+// afterQueryStateNext handles a QUERY_STATE_NEXT request from the chaincode.
 func (handler *Handler) afterQueryStateNext(e *fsm.Event, state string) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
@@ -725,10 +725,10 @@ func (handler *Handler) afterQueryStateNext(e *fsm.Event, state string) {
 
 	// Query ledger for state
 	handler.handleQueryStateNext(msg)
-	chaincodeLogger.Debug("Exiting RANGE_QUERY_STATE_NEXT")
+	chaincodeLogger.Debug("Exiting QUERY_STATE_NEXT")
 }
 
-// Handles query to ledger to rage query state next
+// Handles query to ledger for query state next
 func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 	// The defer followed by triggering a go routine dance is needed to ensure that the previous state transition
 	// is completed before the next one is triggered. The previous state transition is deemed complete only when
@@ -754,17 +754,17 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		unmarshalErr := proto.Unmarshal(msg.Payload, queryStateNext)
 		if unmarshalErr != nil {
 			payload := []byte(unmarshalErr.Error())
-			chaincodeLogger.Errorf("Failed to unmarshall state range next query request. Sending %s", pb.ChaincodeMessage_ERROR)
+			chaincodeLogger.Errorf("Failed to unmarshall state next query request. Sending %s", pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}
 
 		txContext := handler.getTxContext(msg.Txid)
-		rangeIter := handler.getQueryIterator(txContext, queryStateNext.ID)
+		queryIter := handler.getQueryIterator(txContext, queryStateNext.ID)
 
-		if rangeIter == nil {
-			payload := []byte("Range query iterator not found")
-			chaincodeLogger.Errorf("Range query iterator not found. Sending %s", pb.ChaincodeMessage_ERROR)
+		if queryIter == nil {
+			payload := []byte("query iterator not found")
+			chaincodeLogger.Errorf("query iterator not found. Sending %s", pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}
@@ -775,7 +775,7 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		var qresult ledger.QueryResult
 		var err error
 		for ; i < maxRangeQueryStateLimit; i++ {
-			qresult, err = rangeIter.Next()
+			qresult, err = queryIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
 				return
@@ -789,14 +789,14 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		}
 
 		if qresult != nil {
-			rangeIter.Close()
+			queryIter.Close()
 			handler.deleteQueryIterator(txContext, queryStateNext.ID)
 		}
 
 		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, ID: queryStateNext.ID}
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
-			rangeIter.Close()
+			queryIter.Close()
 			handler.deleteQueryIterator(txContext, queryStateNext.ID)
 
 			// Send error msg back to chaincode. GetState will not trigger event
@@ -812,7 +812,7 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 	}()
 }
 
-// afterRangeQueryState handles a RANGE_QUERY_STATE_CLOSE request from the chaincode.
+// afterRangeQueryState handles a QUERY_STATE_CLOSE request from the chaincode.
 func (handler *Handler) afterQueryStateClose(e *fsm.Event, state string) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
@@ -823,7 +823,7 @@ func (handler *Handler) afterQueryStateClose(e *fsm.Event, state string) {
 
 	// Query ledger for state
 	handler.handleQueryStateClose(msg)
-	chaincodeLogger.Debug("Exiting RANGE_QUERY_STATE_CLOSE")
+	chaincodeLogger.Debug("Exiting QUERY_STATE_CLOSE")
 }
 
 // Handles the closing of a state iterator
@@ -852,7 +852,7 @@ func (handler *Handler) handleQueryStateClose(msg *pb.ChaincodeMessage) {
 		unmarshalErr := proto.Unmarshal(msg.Payload, queryStateClose)
 		if unmarshalErr != nil {
 			payload := []byte(unmarshalErr.Error())
-			chaincodeLogger.Errorf("Failed to unmarshall state range query close request. Sending %s", pb.ChaincodeMessage_ERROR)
+			chaincodeLogger.Errorf("Failed to unmarshall state query close request. Sending %s", pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}
@@ -923,7 +923,7 @@ func (handler *Handler) handleExecuteQueryState(msg *pb.ChaincodeMessage) {
 		unmarshalErr := proto.Unmarshal(msg.Payload, executeQueryState)
 		if unmarshalErr != nil {
 			payload := []byte(unmarshalErr.Error())
-			chaincodeLogger.Errorf("Failed to unmarshall range query request. Sending %s", pb.ChaincodeMessage_ERROR)
+			chaincodeLogger.Errorf("Failed to unmarshall query request. Sending %s", pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}
@@ -936,7 +936,7 @@ func (handler *Handler) handleExecuteQueryState(msg *pb.ChaincodeMessage) {
 		if txContext == nil {
 			return
 		}
-		fmt.Println("==CENDHU==" + executeQueryState.Query)
+
 		executeIter, err := txContext.txsimulator.ExecuteQuery(executeQueryState.Query)
 		if err != nil {
 			// Send error msg back to chaincode. GetState will not trigger event
@@ -960,8 +960,8 @@ func (handler *Handler) handleExecuteQueryState(msg *pb.ChaincodeMessage) {
 			if qresult == nil {
 				break
 			}
-			kv := qresult.(*ledger.KV)
-			keyAndValue := pb.QueryStateKeyValue{Key: kv.Key, Value: kv.Value}
+			queryRecord := qresult.(*ledger.QueryRecord)
+			keyAndValue := pb.QueryStateKeyValue{Key: queryRecord.Key, Value: queryRecord.Record}
 			keysAndValues = append(keysAndValues, &keyAndValue)
 		}
 
