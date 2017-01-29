@@ -552,11 +552,11 @@ func (handler *Handler) handleQueryStateNext(id, txid string) (*pb.QueryStateRes
 
 	defer handler.deleteChannel(txid)
 
-	// Send RANGE_QUERY_STATE_NEXT message to validator chaincode support
+	// Send QUERY_STATE_NEXT message to validator chaincode support
 	payload := &pb.QueryStateNext{ID: id}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
-		return nil, errors.New("Failed to process range query state next request")
+		return nil, errors.New("Failed to process query state next request")
 	}
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_NEXT, Payload: payloadBytes, Txid: txid}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_NEXT)
@@ -574,7 +574,7 @@ func (handler *Handler) handleQueryStateNext(id, txid string) (*pb.QueryStateRes
 		unmarshalErr := proto.Unmarshal(responseMsg.Payload, queryResponse)
 		if unmarshalErr != nil {
 			chaincodeLogger.Errorf("[%s]unmarshall error", shorttxid(responseMsg.Txid))
-			return nil, errors.New("Error unmarshalling RangeQueryStateResponse.")
+			return nil, errors.New("Error unmarshalling QueryStateResponse.")
 		}
 
 		return queryResponse, nil
@@ -600,11 +600,11 @@ func (handler *Handler) handleQueryStateClose(id, txid string) (*pb.QueryStateRe
 
 	defer handler.deleteChannel(txid)
 
-	// Send RANGE_QUERY_STATE_CLOSE message to validator chaincode support
+	// Send QUERY_STATE_CLOSE message to validator chaincode support
 	payload := &pb.QueryStateClose{ID: id}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
-		return nil, errors.New("Failed to process range query state close request")
+		return nil, errors.New("Failed to process query state close request")
 	}
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_QUERY_STATE_CLOSE, Payload: payloadBytes, Txid: txid}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_QUERY_STATE_CLOSE)
@@ -622,7 +622,7 @@ func (handler *Handler) handleQueryStateClose(id, txid string) (*pb.QueryStateRe
 		unmarshalErr := proto.Unmarshal(responseMsg.Payload, queryResponse)
 		if unmarshalErr != nil {
 			chaincodeLogger.Errorf("[%s]unmarshall error", shorttxid(responseMsg.Txid))
-			return nil, errors.New("Error unmarshalling RangeQueryStateResponse.")
+			return nil, errors.New("Error unmarshalling QueryStateResponse.")
 		}
 
 		return queryResponse, nil
@@ -652,7 +652,7 @@ func (handler *Handler) handleExecuteQueryState(query string, txid string) (*pb.
 	payload := &pb.ExecuteQueryState{Query: query}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
-		return nil, errors.New("Failed to process range query state request")
+		return nil, errors.New("Failed to process query state request")
 	}
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_EXECUTE_QUERY_STATE, Payload: payloadBytes, Txid: txid}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_EXECUTE_QUERY_STATE)

@@ -115,7 +115,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return shim.Success(jsonKeys)
 	case "query":
 		query := args[0]
-		keysIter, err := stub.ExecuteQuery(query)
+		keysIter, err := stub.GetQueryResult(query)
 		if err != nil {
 			return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
 		}

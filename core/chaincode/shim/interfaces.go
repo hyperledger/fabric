@@ -66,26 +66,31 @@ type ChaincodeStubInterface interface {
 	// RangeQueryState function can be invoked by a chaincode to query of a range
 	// of keys in the state. Assuming the startKey and endKey are in lexical
 	// an iterator will be returned that can be used to iterate over all keys
-	// between the startKey and endKey, inclusive. The order in which keys are
+	// between the startKey (inclusive) and endKey (exclusive). The order in which keys are
 	// returned by the iterator is random.
 	RangeQueryState(startKey, endKey string) (StateQueryIteratorInterface, error)
 
-	//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
-	//state based on a given partial composite key. This function returns an
-	//iterator which can be used to iterate over all composite keys whose prefix
-	//matches the given partial composite key. This function should be used only for
-	//a partial composite key. For a full composite key, an iter with empty response
-	//would be returned.
+	// PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+	// state based on a given partial composite key. This function returns an
+	// iterator which can be used to iterate over all composite keys whose prefix
+	// matches the given partial composite key. This function should be used only for
+	// a partial composite key. For a full composite key, an iter with empty response
+	// would be returned.
 	PartialCompositeKeyQuery(objectType string, keys []string) (StateQueryIteratorInterface, error)
 
-	//Given a list of attributes, CreateCompositeKey function combines these attributes
-	//to form a composite key.
+	// Given a list of attributes, CreateCompositeKey function combines these attributes
+	// to form a composite key.
 	CreateCompositeKey(objectType string, attributes []string) (string, error)
 
-	ExecuteQuery(query string) (StateQueryIteratorInterface, error)
+	// GetQueryResult function can be invoked by a chaincode to perform a
+	// rich query against state database.  Only supported by state database implementations
+	// that support rich query.  The query string is in the syntax of the underlying
+	// state database. An iterator is returned which can be used to iterate (next) over
+	// the query result set
+	GetQueryResult(query string) (StateQueryIteratorInterface, error)
 
-	//Given a composite key, SplitCompositeKey function splits the key into attributes
-	//on which the composite key was formed.
+	// Given a composite key, SplitCompositeKey function splits the key into attributes
+	// on which the composite key was formed.
 	SplitCompositeKey(compositeKey string) (string, []string, error)
 
 	// GetCallerCertificate returns caller certificate
