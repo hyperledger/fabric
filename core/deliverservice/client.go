@@ -22,7 +22,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/events/producer"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/gossip/service"
@@ -219,10 +218,6 @@ func (d *DeliverService) readUntilClose() {
 			// Gossip messages with other nodes
 			logger.Debugf("Gossiping block [%d], peers number [%d]", seqNum, numberOfPeers)
 			service.GetGossipService().Gossip(gossipMsg)
-			if err = producer.SendProducerBlockEvent(t.Block); err != nil {
-				logger.Errorf("Error sending block event %s", err)
-			}
-
 		default:
 			logger.Warning("Received unknown: ", t)
 			return
