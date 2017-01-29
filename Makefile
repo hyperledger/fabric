@@ -186,7 +186,8 @@ build/image/testenv/payload:    build/gotools.tar.bz2 \
 				build/msp-sampleconfig.tar.bz2 \
 				images/testenv/install-softhsm2.sh
 build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
-build/image/kafka/payload:      images/kafka/docker-entrypoint.sh
+build/image/kafka/payload:      images/kafka/docker-entrypoint.sh \
+				images/kafka/kafka-run-class.sh
 
 build/image/%/payload:
 	mkdir -p $@
