@@ -193,6 +193,8 @@ build/image/%/payload:
 	mkdir -p $@
 	cp $^ $@
 
+.PRECIOUS: build/image/%/Dockerfile
+
 build/image/%/Dockerfile: images/%/Dockerfile.in
 	@cat $< \
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
