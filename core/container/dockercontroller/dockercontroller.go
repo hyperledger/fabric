@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
+
+	"bufio"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/core/container/ccintf"
@@ -100,8 +103,8 @@ func getDockerHostConfig() *docker.HostConfig {
 	return hostConfig
 }
 
-func (vm *DockerVM) createContainer(ctxt context.Context, client *docker.Client, imageID string, containerID string, args []string, env []string) error {
-	config := docker.Config{Cmd: args, Image: imageID, Env: env}
+func (vm *DockerVM) createContainer(ctxt context.Context, client *docker.Client, imageID string, containerID string, args []string, env []string, attachStdout bool) error {
+	config := docker.Config{Cmd: args, Image: imageID, Env: env, AttachStdout: attachStdout, AttachStderr: attachStdout}
 	copts := docker.CreateContainerOptions{Name: containerID, Config: &config, HostConfig: getDockerHostConfig()}
 	dockerLogger.Debugf("Create container: %s", containerID)
 	_, err := client.CreateContainer(copts)
@@ -160,13 +163,14 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 	}
 
 	containerID := strings.Replace(imageID, ":", "_", -1)
+	attachStdout := viper.GetBool("vm.docker.attachStdout")
 
 	//stop,force remove if necessary
 	dockerLogger.Debugf("Cleanup container %s", containerID)
 	vm.stopInternal(ctxt, client, containerID, 0, false, false)
 
 	dockerLogger.Debugf("Start container %s", containerID)
-	err = vm.createContainer(ctxt, client, imageID, containerID, args, env)
+	err = vm.createContainer(ctxt, client, imageID, containerID, args, env, attachStdout)
 	if err != nil {
 		//if image not found try to create image and retry
 		if err == docker.ErrNoSuchImage {
@@ -177,7 +181,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 				}
 
 				dockerLogger.Debug("start-recreated image successfully")
-				if err = vm.createContainer(ctxt, client, imageID, containerID, args, env); err != nil {
+				if err = vm.createContainer(ctxt, client, imageID, containerID, args, env, attachStdout); err != nil {
 					dockerLogger.Errorf("start-could not recreate container post recreate image: %s", err)
 					return err
 				}
@@ -189,6 +193,74 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 			dockerLogger.Errorf("start-could not recreate container %s", err)
 			return err
 		}
+	}
+
+	if attachStdout {
+		// Launch a few go-threads to manage output streams from the container.
+		// They will be automatically destroyed when the container exits
+		attached := make(chan struct{})
+		r, w := io.Pipe()
+
+		go func() {
+			// AttachToContainer will fire off a message on the "attached" channel once the
+			// attachment completes, and then block until the container is terminated.
+			err = client.AttachToContainer(docker.AttachToContainerOptions{
+				Container:    containerID,
+				OutputStream: w,
+				ErrorStream:  w,
+				Logs:         true,
+				Stdout:       true,
+				Stderr:       true,
+				Stream:       true,
+				Success:      attached,
+			})
+
+			// If we get here, the container has terminated.  Send a signal on the pipe
+			// so that downstream may clean up appropriately
+			_ = w.CloseWithError(err)
+		}()
+
+		go func() {
+			// Block here until the attachment completes or we timeout
+			select {
+			case <-attached:
+				// successful attach
+			case <-time.After(10 * time.Second):
+				dockerLogger.Errorf("Timeout while attaching to IO channel in container %s", containerID)
+				return
+			}
+
+			// Acknowledge the attachment?  This was included in the gist I followed
+			// (http://bit.ly/2jBrCtM).  Not sure it's actually needed but it doesn't
+			// appear to hurt anything.
+			attached <- struct{}{}
+
+			// Establish a buffer for our IO channel so that we may do readline-style
+			// ingestion of the IO, one log entry per line
+			is := bufio.NewReader(r)
+
+			// Acquire a custom logger for our chaincode, inheriting the level from the peer
+			containerLogger := logging.MustGetLogger(containerID)
+			logging.SetLevel(logging.GetLevel("peer"), containerID)
+
+			for {
+				// Loop forever dumping lines of text into the containerLogger
+				// until the pipe is closed
+				line, err := is.ReadString('\n')
+				if err != nil {
+					switch err {
+					case io.EOF:
+						dockerLogger.Infof("Container %s has closed its IO channel", containerID)
+					default:
+						dockerLogger.Errorf("Error reading container output: %s", err)
+					}
+
+					return
+				}
+
+				containerLogger.Info(line)
+			}
+		}()
 	}
 
 	// start container with HostConfig was deprecated since v1.10 and removed in v1.2
