@@ -40,7 +40,18 @@ In the above shell execute the create command
 ```
 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005 peer channel create -c myc1
 ```
+
 This will create a channel genesis block file `myc1.block` to issue join commands with.
+If you want to specify anchor peers, you can create anchor peer files in the following format:
+peer-hostname
+port
+PEM file of peer certificate
+
+See CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005 peer channel create -h for an anchor-peer file example
+And pass the anchor peer files as a comma-separated argument with flag -a: in example:
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005 peer channel create -c myc1 -a anchorPeer1.txt,anchorPeer2.txt
+```
 
 ### Join a channel
 Execute the join command to peer0 in the CLI container.
