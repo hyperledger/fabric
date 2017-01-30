@@ -645,15 +645,25 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 	//Append the startKey if provided
 	if startKey != "" {
 		startKey = strconv.QuoteToGraphic(startKey)
-		startKey = strings.Replace(startKey, "\\x00", "\\u0000", 1)
+		startKey = strings.Replace(startKey, "\\x00", "\\u0000", -1)
+		startKey = strings.Replace(startKey, "\\x1e", "\\u001e", -1)
+		startKey = strings.Replace(startKey, "\\x1f", "\\u001f", -1)
+		startKey = strings.Replace(startKey, "\\xff", "\\u00ff", -1)
+		//TODO add general unicode support instead of special cases
+
 		queryParms.Add("startkey", startKey)
 	}
 
 	//Append the endKey if provided
 	if endKey != "" {
 		endKey = strconv.QuoteToGraphic(endKey)
-		endKey = strings.Replace(endKey, "\\x00", "\\u0000", 1)
-		endKey = strings.Replace(endKey, "\\x01", "\\u0001", 1) //TODO add general unicode support instead of special cases
+		endKey = strings.Replace(endKey, "\\x00", "\\u0000", -1)
+		endKey = strings.Replace(endKey, "\\x01", "\\u0001", -1)
+		endKey = strings.Replace(endKey, "\\x1e", "\\u001e", -1)
+		endKey = strings.Replace(endKey, "\\x1f", "\\u001f", -1)
+		endKey = strings.Replace(endKey, "\\xff", "\\u00ff", -1)
+		//TODO add general unicode support instead of special cases
+
 		queryParms.Add("endkey", endKey)
 	}
 

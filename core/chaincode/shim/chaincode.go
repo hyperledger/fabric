@@ -19,18 +19,20 @@ limitations under the License.
 package shim
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
-	coder "github.com/hyperledger/fabric/core/ledger/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -356,14 +358,14 @@ func (stub *ChaincodeStub) CreateCompositeKey(objectType string, attributes []st
 }
 
 func createCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (string, error) {
-	var compositeKey []byte
-	compositeKey = append(compositeKey, coder.EncodeOrderPreservingVarUint64(uint64(len(objectType)))...)
-	compositeKey = append(compositeKey, []byte(objectType)...)
+	var compositeKey bytes.Buffer
+	replacer := strings.NewReplacer("\x1E", "\x1E\x1E", "\x1F", "\x1E\x1F")
+	compositeKey.WriteString(replacer.Replace(objectType))
 	for _, attribute := range attributes {
-		compositeKey = append(compositeKey, coder.EncodeOrderPreservingVarUint64(uint64(len(attribute)))...)
-		compositeKey = append(compositeKey, []byte(attribute)...)
+		compositeKey.WriteString("\x1F" + strconv.Itoa(len(attribute)) + "\x1F")
+		compositeKey.WriteString(replacer.Replace(attribute))
 	}
-	return string(compositeKey), nil
+	return compositeKey.String(), nil
 }
 
 //Given a composite key, SplitCompositeKey function splits the key into attributes
@@ -373,17 +375,15 @@ func (stub *ChaincodeStub) SplitCompositeKey(compositeKey string) (string, []str
 }
 
 func splitCompositeKey(stub ChaincodeStubInterface, compositeKey string) (string, []string, error) {
-	startIndex := 0
-	cKey := []byte(compositeKey)
-	attributes := []string{}
-	for startIndex < len(compositeKey) {
-		len, bytesConsumed := coder.DecodeOrderPreservingVarUint64(cKey[startIndex:])
-		attrBeginIndex := startIndex + int(bytesConsumed)
-		attrEndIndex := attrBeginIndex + int(len)
-		attributes = append(attributes, compositeKey[attrBeginIndex:attrEndIndex])
-		startIndex = attrEndIndex
+	re := regexp.MustCompile("\x1F[0-9]+\x1F")
+	splittedKey := re.Split(compositeKey, -1)
+	attributes := make([]string, 0)
+	replacer := strings.NewReplacer("\x1E\x1F", "\x1F", "\x1E\x1E", "\x1E")
+	objectType := replacer.Replace(splittedKey[0])
+	for _, attr := range splittedKey[1:] {
+		attributes = append(attributes, replacer.Replace(attr))
 	}
-	return attributes[0], attributes[1:], nil
+	return objectType, attributes, nil
 }
 
 //PartialCompositeKeyQuery function can be invoked by a chaincode to query the
