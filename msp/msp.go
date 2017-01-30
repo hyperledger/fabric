@@ -25,8 +25,8 @@ import (
 // FIXME: we need better comments on the interfaces!!
 // FIXME: we need better comments on the interfaces!!
 
-//Common is implemented by both MSPManger and MSP
-type Common interface {
+// IdentityDeserializer is implemented by both MSPManger and MSP
+type IdentityDeserializer interface {
 	// DeserializeIdentity deserializes an identity.
 	// Deserialization will fail if the identity is associated to
 	// an msp that is different from this one that is performing
@@ -55,8 +55,8 @@ type Common interface {
 // This object is immutable, it is initialized once and never changed.
 type MSPManager interface {
 
-	// Common interface needs to be implemented by MSPManager
-	Common
+	// IdentityDeserializer interface needs to be implemented by MSPManager
+	IdentityDeserializer
 
 	// Setup the MSP manager instance according to configuration information
 	Setup(msps []*msp.MSPConfig) error
@@ -69,8 +69,8 @@ type MSPManager interface {
 // to accommodate peer functionality
 type MSP interface {
 
-	// Common interface needs to be implemented by MSP
-	Common
+	// IdentityDeserializer interface needs to be implemented by MSP
+	IdentityDeserializer
 
 	// Setup the MSP instance according to configuration information
 	Setup(config *msp.MSPConfig) error

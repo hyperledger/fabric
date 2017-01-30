@@ -30,7 +30,7 @@ import (
 var cauthdslLogger = logging.MustGetLogger("cauthdsl")
 
 // compile recursively builds a go evaluatable function corresponding to the policy specified
-func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserializer msp.Common) (func([]*cb.SignedData, []bool) bool, error) {
+func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserializer msp.IdentityDeserializer) (func([]*cb.SignedData, []bool) bool, error) {
 	switch t := policy.Type.(type) {
 	case *cb.SignaturePolicy_From:
 		policies := make([]func([]*cb.SignedData, []bool) bool, len(t.From.Policies))
@@ -159,7 +159,7 @@ func toSignedData(data [][]byte, identities [][]byte, signatures [][]byte) ([]*c
 type mockDeserializer struct {
 }
 
-func NewMockDeserializer() msp.Common {
+func NewMockDeserializer() msp.IdentityDeserializer {
 	return &mockDeserializer{}
 }
 

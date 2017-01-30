@@ -28,11 +28,11 @@ import (
 )
 
 type provider struct {
-	deserializer msp.Common
+	deserializer msp.IdentityDeserializer
 }
 
 // NewProviderImpl provides a policy generator for cauthdsl type policies
-func NewPolicyProvider(deserializer msp.Common) policies.Provider {
+func NewPolicyProvider(deserializer msp.IdentityDeserializer) policies.Provider {
 	return &provider{
 		deserializer: deserializer,
 	}

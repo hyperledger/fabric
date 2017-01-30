@@ -4,9 +4,13 @@ import (
 	"os"
 	"reflect"
 	"testing"
-)
 
-var localMsp MSP
+	"fmt"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/msp"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestNoopMSP(t *testing.T) {
 	noopmsp := NewNoopMsp()
@@ -57,26 +61,6 @@ func TestMSPSetupBad(t *testing.T) {
 	}
 }
 
-func TestMSPSetupGood(t *testing.T) {
-	conf, err := GetLocalMspConfig("./sampleconfig/")
-	if err != nil {
-		t.Fatalf("Setup should have succeeded, got err %s instead", err)
-		return
-	}
-
-	localMsp, err = NewBccspMsp()
-	if err != nil {
-		t.Fatalf("Constructor for msp should have succeeded, got err %s instead", err)
-		return
-	}
-
-	err = localMsp.Setup(conf)
-	if err != nil {
-		t.Fatalf("Setup for msp should have succeeded, got err %s instead", err)
-		return
-	}
-}
-
 func TestGetIdentities(t *testing.T) {
 	_, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
@@ -114,6 +98,61 @@ func TestSerializeIdentities(t *testing.T) {
 		t.Fatalf("Identities should be equal (%s) (%s)", id, idBack)
 		return
 	}
+}
+
+func TestSerializeIdentitiesWithWrongMSP(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		return
+	}
+
+	serializedID, err := id.Serialize()
+	if err != nil {
+		t.Fatalf("Serialize should have succeeded, got err %s", err)
+		return
+	}
+
+	sid := &SerializedIdentity{}
+	err = proto.Unmarshal(serializedID, sid)
+	assert.NoError(t, err)
+
+	sid.Mspid += "BARF"
+
+	serializedID, err = proto.Marshal(sid)
+	assert.NoError(t, err)
+
+	_, err = localMsp.DeserializeIdentity(serializedID)
+	assert.Error(t, err)
+}
+
+func TestSerializeIdentitiesWithMSPManager(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		return
+	}
+
+	serializedID, err := id.Serialize()
+	if err != nil {
+		t.Fatalf("Serialize should have succeeded, got err %s", err)
+		return
+	}
+
+	_, err = mspMgr.DeserializeIdentity(serializedID)
+	assert.NoError(t, err)
+
+	sid := &SerializedIdentity{}
+	err = proto.Unmarshal(serializedID, sid)
+	assert.NoError(t, err)
+
+	sid.Mspid += "BARF"
+
+	serializedID, err = proto.Marshal(sid)
+	assert.NoError(t, err)
+
+	_, err = mspMgr.DeserializeIdentity(serializedID)
+	assert.Error(t, err)
 }
 
 func TestSignAndVerify(t *testing.T) {
@@ -194,7 +233,37 @@ func TestSignAndVerify_longMessage(t *testing.T) {
 	}
 }
 
+var conf *msp.MSPConfig
+var localMsp MSP
+var mspMgr MSPManager
+
 func TestMain(m *testing.M) {
+	var err error
+	conf, err = GetLocalMspConfig("./sampleconfig/")
+	if err != nil {
+		fmt.Printf("Setup should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	localMsp, err = NewBccspMsp()
+	if err != nil {
+		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	err = localMsp.Setup(conf)
+	if err != nil {
+		fmt.Printf("Setup for msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	mspMgr = NewMSPManager()
+	err = mspMgr.Setup([]*msp.MSPConfig{conf})
+	if err != nil {
+		fmt.Printf("Setup for msp manager should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
 	retVal := m.Run()
 	os.Exit(retVal)
 }

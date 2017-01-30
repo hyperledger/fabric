@@ -250,17 +250,10 @@ func (msp *bccspmsp) Validate(id Identity) error {
 	}
 }
 
-// DeserializeIdentity returns an Identity
-// instance that was marshalled to the supplied byte array
+// DeserializeIdentity returns an Identity given the byte-level
+// representation of a SerializedIdentity struct
 func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	mspLogger.Infof("Obtaining identity")
-
-	// FIXME: this is not ideal, because the manager already does this
-	// unmarshalling if we go through it; however the local MSP does
-	// not have a manager and in case it has to deserialize an identity,
-	// it will have to do the whole thing by itself; for now I've left
-	// it this way but we can introduce a local MSP manager and fix it
-	// more nicely
 
 	// We first deserialize to a SerializedIdentity to get the MSP ID
 	sId := &SerializedIdentity{}
@@ -269,10 +262,17 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
 	}
 
-	// TODO: check that sId.Mspid is equal to this msp'id as per contract of the interface.
+	if sId.Mspid != msp.name {
+		return nil, fmt.Errorf("Expected MSP ID %s, received %s", msp.name, sId.Mspid)
+	}
 
+	return msp.deserializeIdentityInternal(sId.IdBytes)
+}
+
+// deserializeIdentityInternal returns an identity given its byte-level representation
+func (msp *bccspmsp) deserializeIdentityInternal(serializedIdentity []byte) (Identity, error) {
 	// This MSP will always deserialize certs this way
-	bl, _ := pem.Decode(sId.IdBytes)
+	bl, _ := pem.Decode(serializedIdentity)
 	if bl == nil {
 		return nil, fmt.Errorf("Could not decode the PEM structure")
 	}
@@ -284,9 +284,6 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 	// Now we have the certificate; make sure that its fields
 	// (e.g. the Issuer.OU or the Subject.OU) match with the
 	// MSP id that this MSP has; otherwise it might be an attack
-	// TODO!
-	// TODO!
-	// TODO!
 	// TODO!
 	// We can't do it yet because there is no standardized way
 	// (yet) to encode the MSP ID into the x.509 body of a cert
