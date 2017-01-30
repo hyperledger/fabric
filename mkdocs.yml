@@ -10,10 +10,10 @@ pages:
 - Home: index.md
 - Why Hyperledger Fabric?: whyfabric.md
 - Fabric overview: overview.md
-- Fabric capabilities: capabilities.md
-- Fabric architecture: architecture.md
-- Getting started: getstarted.md
-- Chaincode and sample program: chaincode.md
+#- Fabric capabilities: capabilities.md
+#- Fabric architecture: architecture.md
+#- Getting started: getstarted.md
+#- Chaincode and sample program: chaincode.md
 - Glossary: glossary.md
 
 - Fabric Developer:
