@@ -15,20 +15,21 @@ pages:
 #- Getting started: getstarted.md
 #- Chaincode and sample program: chaincode.md
 - Glossary: glossary.md
+- Releases: releases.md
 
 - Fabric Developer:
   - v1.0 Preview: abstract_v1.md
-  - Navigating Jira: jira_navigation.md
   - Contributing: CONTRIBUTING.md
   - Maintainers: MAINTAINERS.md
+  - Getting an Account: Gerrit/lf-account.md
+  - Navigating Jira: jira_navigation.md
   - Fabric Developer Setup: dev-setup/devenv.md
   - Building Fabric: dev-setup/build.md
-  - Getting an Account: Gerrit/lf-account.md
   - Gerrit: Gerrit/gerrit.md
-  - Reviewing: Gerrit/reviewing.md
   - Changes: Gerrit/changes.md
+  - Reviewing: Gerrit/reviewing.md
   - Best Practices: Gerrit/best-practices.md
-  - Go Style Guides:
+  - Style Guides:
     - Golang: Style-guides/go-style.md
 
 markdown_extensions:
