@@ -18,6 +18,7 @@ package stateleveldb
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -122,7 +123,7 @@ func (vdb *versionedDB) GetStateRangeScanIterator(namespace string, startKey str
 
 // ExecuteQuery implements method in VersionedDB interface
 func (vdb *versionedDB) ExecuteQuery(query string) (statedb.ResultsIterator, error) {
-	panic("Method not supported for leveldb")
+	return nil, errors.New("ExecuteQuery not supported for leveldb")
 }
 
 // ApplyUpdates implements method in VersionedDB interface
