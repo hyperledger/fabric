@@ -22,6 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/genesis"
+	peersharedconfig "github.com/hyperledger/fabric/peer/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -34,7 +35,7 @@ const (
 	AcceptAllPolicyKey = "AcceptAllPolicy"
 )
 
-var template configtx.Template
+var ordererTemplate configtx.Template
 
 var genesisFactory genesis.Factory
 
@@ -62,10 +63,10 @@ func init() {
 		panic(err)
 	}
 
-	template = configtx.NewSimpleTemplate(templateProto.Items...)
+	ordererTemplate = configtx.NewSimpleTemplate(templateProto.Items...)
 	anchorPeers := []*peer.AnchorPeer{{Host: "fakehost", Port: 2000, Cert: []byte{}}}
-	gossTemplate := configtx.NewSimpleTemplate(utils.EncodeAnchorPeers(anchorPeers))
-	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(MSPTemplate{}, template, gossTemplate))
+	gossTemplate := configtx.NewSimpleTemplate(peersharedconfig.TemplateAnchorPeers(anchorPeers))
+	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(MSPTemplate{}, ordererTemplate, gossTemplate))
 }
 
 func MakeGenesisBlock(chainID string) (*cb.Block, error) {
@@ -74,5 +75,5 @@ func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 
 // GetOrderererTemplate returns the test orderer template
 func GetOrdererTemplate() configtx.Template {
-	return template
+	return ordererTemplate
 }
