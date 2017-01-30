@@ -27,9 +27,9 @@ import java.util.List;
 public class LinkExample extends ChaincodeBase {
 
 	//Default name for map chaincode in dev mode
-	//Can be set to a hash location via init or setMap 
+	//Can be set to a hash location via init or setMap
 	private String mapChaincode = "map";
-	
+
 	@Override
 	public String run(ChaincodeStub stub, String function, String[] args) {
 		switch (function) {
@@ -38,7 +38,7 @@ public class LinkExample extends ChaincodeBase {
 			mapChaincode = args[0];
 			break;
 		case "put":
-			stub.invokeChaincode(mapChaincode, function, toByteStringList(args));
+			stub.invokeChaincode(mapChaincode, function, toByteStringList(args), "");
 		default:
 			break;
 		}

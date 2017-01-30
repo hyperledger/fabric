@@ -81,7 +81,7 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 
 	f := "invoke"
 	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")
-	response := stub.InvokeChaincode(chainCodeToCall, invokeArgs)
+	response := stub.InvokeChaincode(chainCodeToCall, invokeArgs, "")
 	if response.Status != shim.OK {
 		errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", string(response.Payload))
 		fmt.Printf(errStr)
@@ -96,36 +96,54 @@ func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string
 		return shim.Error(err.Error())
 	}
 
-	return shim.Success(nil)
+	return response
 }
 
 func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	var event string // Event entity
 	var err error
 
-	if len(args) != 1 {
+	if len(args) < 1 {
 		return shim.Error("Incorrect number of arguments. Expecting entity to query")
 	}
 
 	event = args[0]
+	var jsonResp string
 
 	// Get the state from the ledger
 	eventValbytes, err := stub.GetState(event)
 	if err != nil {
-		jsonResp := "{\"Error\":\"Failed to get state for " + event + "\"}"
+		jsonResp = "{\"Error\":\"Failed to get state for " + event + "\"}"
 		return shim.Error(jsonResp)
 	}
 
 	if eventValbytes == nil {
-		jsonResp := "{\"Error\":\"Nil value for " + event + "\"}"
+		jsonResp = "{\"Error\":\"Nil value for " + event + "\"}"
 		return shim.Error(jsonResp)
 	}
 
-	jsonResp := "{\"Name\":\"" + event + "\",\"Amount\":\"" + string(eventValbytes) + "\"}"
-	fmt.Printf("Query Response:%s\n", jsonResp)
+	if len(args) > 3 {
+		chainCodeToCall := args[1]
+		queryKey := args[2]
+		channel := args[3]
+		f := "query"
+		invokeArgs := util.ToChaincodeArgs(f, queryKey)
+		response := stub.InvokeChaincode(chainCodeToCall, invokeArgs, channel)
+		if response.Status != shim.OK {
+			errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())
+			fmt.Printf(errStr)
+			return shim.Error(errStr)
+		}
+		jsonResp = string(response.Payload)
+	} else {
+		jsonResp = "{\"Name\":\"" + event + "\",\"Amount\":\"" + string(eventValbytes) + "\"}"
+	}
+	fmt.Printf("Query Response: %s\n", jsonResp)
+
 	return shim.Success([]byte(jsonResp))
 }
 
+// Invoke is called by fabric to execute a transaction
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	if function == "invoke" {

@@ -428,6 +428,9 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cccid *c
 
 	//stop the chaincode
 	sir := container.StopImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID, Version: cccid.Version}, Timeout: 0}
+	// The line below is left for debugging. It replaces the line above to keep
+	// the chaincode container around to give you a chance to get data
+	//sir := container.StopImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID, ChainID: cccid.ChainID, Version: cccid.Version}, Timeout: 0, Dontremove: true}
 
 	vmtype, _ := chaincodeSupport.getVMType(cds)
 
@@ -490,7 +493,9 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 			return cID, cMsg, err
 		}
 		if chrte.handler.isRunning() {
-			chaincodeLogger.Debugf("chaincode is running(no need to launch) : %s", canName)
+			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
+				chaincodeLogger.Debugf("chaincode is running(no need to launch) : %s", canName)
+			}
 			chaincodeSupport.runningChaincodes.Unlock()
 			return cID, cMsg, nil
 		}
@@ -662,7 +667,7 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, cccid *c
 	return ccresp, err
 }
 
-// Returns true if the peer was configured with development-mode enabled
+// IsDevMode returns true if the peer was configured with development-mode enabled
 func IsDevMode() bool {
 	mode := viper.GetString("chaincode.mode")
 

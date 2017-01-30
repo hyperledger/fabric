@@ -274,6 +274,7 @@ func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.Chainco
 	stub.proposalContext = proposalContext
 }
 
+// InitTestStub initializes an appropriate stub for testing chaincode
 func InitTestStub(funargs ...string) *ChaincodeStub {
 	stub := ChaincodeStub{}
 	allargs := util.ToChaincodeArgs(funargs...)
@@ -282,6 +283,7 @@ func InitTestStub(funargs ...string) *ChaincodeStub {
 	return &stub
 }
 
+// GetTxID returns the transaction ID
 func (stub *ChaincodeStub) GetTxID() string {
 	return stub.TxID
 }
@@ -294,7 +296,11 @@ func (stub *ChaincodeStub) GetTxID() string {
 // InvokeChaincode locally calls the specified chaincode `Invoke` using the
 // same transaction context; that is, chaincode calling chaincode doesn't
 // create a new transaction message.
-func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte) pb.Response {
+func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte, channel string) pb.Response {
+	// Internally we handle chaincode name as a composite name
+	if channel != "" {
+		chaincodeName = chaincodeName + "/" + channel
+	}
 	return stub.handler.handleInvokeChaincode(chaincodeName, args, stub.TxID)
 }
 
@@ -351,8 +357,7 @@ func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInter
 
 }
 
-//Given a list of attributes, CreateCompositeKey function combines these attributes
-//to form a composite key.
+//CreateCompositeKey combines the given attributes to form a composite key.
 func (stub *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
 	return createCompositeKey(stub, objectType, attributes)
 }
@@ -368,8 +373,7 @@ func createCompositeKey(stub ChaincodeStubInterface, objectType string, attribut
 	return compositeKey.String(), nil
 }
 
-//Given a composite key, SplitCompositeKey function splits the key into attributes
-//on which the composite key was formed.
+//SplitCompositeKey splits the key into attributes on which the composite key was formed.
 func (stub *ChaincodeStub) SplitCompositeKey(compositeKey string) (string, []string, error) {
 	return splitCompositeKey(stub, compositeKey)
 }
@@ -445,10 +449,12 @@ func (iter *StateQueryIterator) Close() error {
 	return err
 }
 
+// GetArgs returns the argument list
 func (stub *ChaincodeStub) GetArgs() [][]byte {
 	return stub.args
 }
 
+// GetStringArgs returns the arguments as array of strings
 func (stub *ChaincodeStub) GetStringArgs() []string {
 	args := stub.GetArgs()
 	strargs := make([]string, 0, len(args))
@@ -458,6 +464,8 @@ func (stub *ChaincodeStub) GetStringArgs() []string {
 	return strargs
 }
 
+// GetFunctionAndParameters returns the first arg as the function and the rest
+// as argument string array
 func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params []string) {
 	allargs := stub.GetStringArgs()
 	function = ""

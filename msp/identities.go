@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/op/go-logging"
 )
 
 type identity struct {
@@ -81,7 +82,7 @@ func (id *identity) GetOrganizationUnits() string {
 // to determine whether this identity produced the
 // signature; it returns nil if so or an error otherwise
 func (id *identity) Verify(msg []byte, sig []byte) error {
-	mspLogger.Infof("Verifying signature")
+	// mspLogger.Infof("Verifying signature")
 
 	// Compute Hash
 	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHAOpts{})
@@ -89,10 +90,11 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 		return fmt.Errorf("Failed computing digest [%s]", err)
 	}
 
-	// Verify signature
-	mspLogger.Debugf("Verify: msg = %s", hex.Dump(msg))
-	mspLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
-	mspLogger.Debugf("Verify: sig = %s", hex.Dump(sig))
+	// TODO: Are these ok to log ?
+	if mspLogger.IsEnabledFor(logging.DEBUG) {
+		mspLogger.Debugf("Verify: digest = %s", hex.Dump(digest))
+		mspLogger.Debugf("Verify: sig = %s", hex.Dump(sig))
+	}
 
 	valid, err := id.msp.bccsp.Verify(id.pk, sig, digest, nil)
 	if err != nil {
@@ -116,7 +118,7 @@ func (id *identity) VerifyAttributes(proof []byte, spec *AttributeProofSpec) err
 
 // Serialize returns a byte array representation of this identity
 func (id *identity) Serialize() ([]byte, error) {
-	mspLogger.Infof("Serializing identity %s", id.id)
+	// mspLogger.Infof("Serializing identity %s", id.id)
 
 	pb := &pem.Block{Bytes: id.cert.Raw}
 	pemBytes := pem.EncodeToMemory(pb)
@@ -143,13 +145,13 @@ type signingidentity struct {
 }
 
 func newSigningIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, signer *signer.CryptoSigner, msp *bccspmsp) SigningIdentity {
-	mspLogger.Infof("Creating signing identity instance for ID %s", id)
+	//mspLogger.Infof("Creating signing identity instance for ID %s", id)
 	return &signingidentity{identity{id: id, cert: cert, pk: pk, msp: msp}, signer}
 }
 
 // Sign produces a signature over msg, signed by this instance
 func (id *signingidentity) Sign(msg []byte) ([]byte, error) {
-	mspLogger.Infof("Signing message")
+	//mspLogger.Infof("Signing message")
 
 	// Compute Hash
 	digest, err := id.msp.bccsp.Hash(msg, &bccsp.SHAOpts{})

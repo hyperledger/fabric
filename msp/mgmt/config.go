@@ -18,6 +18,8 @@ package mgmt
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
@@ -36,11 +38,31 @@ func LoadLocalMsp(dir string) error {
 	return GetLocalMSP().Setup(conf)
 }
 
+func getConfigPath(dir string) (string, error) {
+	// Try to read the dir
+	if _, err := os.Stat(dir); err != nil {
+		cfg := os.Getenv("PEER_CFG_PATH")
+		if cfg != "" {
+			dir = filepath.Join(cfg, dir)
+		} else {
+			dir = filepath.Join(os.Getenv("GOPATH"), "/src/github.com/hyperledger/fabric/msp/sampleconfig/")
+		}
+		if _, err := os.Stat(dir); err != nil {
+			return "", err
+		}
+	}
+	return dir, nil
+}
+
 // FIXME: this is required for now because we need a local MSP
 // and also the MSP mgr for the test chain; as soon as the code
 // to setup chains is ready, the chain should be setup using
 // the method below and this method should disappear
 func LoadFakeSetupWithLocalMspAndTestChainMsp(dir string) error {
+	var err error
+	if dir, err = getConfigPath(dir); err != nil {
+		return err
+	}
 	conf, err := msp.GetLocalMspConfig(dir)
 	if err != nil {
 		return err

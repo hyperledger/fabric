@@ -519,7 +519,7 @@ func checkFinalState(cccid *ccprovider.CCContext) error {
 		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", cName, resErr)
 	}
 	if Aval != 90 {
-		return fmt.Errorf("Incorrect result. Aval is wrong for <%s>", cName)
+		return fmt.Errorf("Incorrect result. Aval %d != 90 <%s>", Aval, cName)
 	}
 
 	resbytes, resErr = txsim.GetState(cccid.Name, "b")
@@ -531,7 +531,7 @@ func checkFinalState(cccid *ccprovider.CCContext) error {
 		return fmt.Errorf("Error retrieving state from ledger for <%s>: %s", cName, resErr)
 	}
 	if Bval != 210 {
-		return fmt.Errorf("Incorrect result. Bval is wrong for <%s>", cName)
+		return fmt.Errorf("Incorrect result. Bval %d != 210 <%s>", Bval, cName)
 	}
 
 	// Success
