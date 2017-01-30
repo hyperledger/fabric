@@ -142,8 +142,8 @@ type Identity interface {
 	// VerifyOpts a signature over some message using this identity as reference
 	VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) error
 
-	// VerifyAttributes verifies attributes given proofs
-	VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) error
+	// VerifyAttributes verifies attributes given a proof
+	VerifyAttributes(proof []byte, spec *AttributeProofSpec) error
 
 	// Serialize converts an identity to bytes
 	Serialize() ([]byte, error)
@@ -170,7 +170,7 @@ type SigningIdentity interface {
 	// SignOpts the message with options
 	SignOpts(msg []byte, opts SignatureOpts) ([]byte, error)
 
-	// GetAttributeProof creates a proof for an attribute
+	// GetAttributeProof creates a proof for a set of attributes
 	GetAttributeProof(spec *AttributeProofSpec) (proof []byte, err error)
 
 	// GetPublicVersion returns the public parts of this identity
