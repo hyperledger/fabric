@@ -869,7 +869,11 @@ func (g *gossipServiceImpl) getOrgOfPeer(PKIID common.PKIidType) api.OrgIdentity
 
 func (g *gossipServiceImpl) validateStateInfoMsg(msg *proto.GossipMessage) error {
 	verifier := func(identity []byte, signature, message []byte) error {
-		return g.idMapper.Verify(identity, signature, message)
+		pkiID := g.idMapper.GetPKIidOfCert(api.PeerIdentityType(identity))
+		if pkiID == nil {
+			return fmt.Errorf("PKI-ID not found in identity mapper")
+		}
+		return g.idMapper.Verify(pkiID, signature, message)
 	}
 	identity, err := g.idMapper.Get(msg.GetStateInfo().PkiID)
 	if err != nil {

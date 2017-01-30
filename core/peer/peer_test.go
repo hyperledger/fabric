@@ -30,6 +30,7 @@ import (
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/mocks/ccprovider"
 	"github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/msp/mgmt"
 )
 
 func TestInitialize(t *testing.T) {
@@ -57,7 +58,11 @@ func TestCreateChainFromBlock(t *testing.T) {
 	assert.NoError(t, err)
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
-	service.InitGossipService("localhost:13611", grpcServer)
+
+	mgmt.LoadFakeSetupWithLocalMspAndTestChainMsp("../../msp/sampleconfig")
+
+	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
+	service.InitGossipService(identity, "localhost:13611", grpcServer)
 
 	err = CreateChainFromBlock(block)
 	if err != nil {

@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -112,34 +113,37 @@ func anchorPeerFromFile(filename string) (*peer.AnchorPeer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Anchor peer certificate is not a valid PEM certificate: %v", err)
 	}
+
+	// TODO: this MSP-ID isn't going to stay like that in the future,
+	// but right now, it's the same for everyone.
+	identity, err := msp.NewSerializedIdentity("DEFAULT", rawPEM)
+	if err != nil {
+		return nil, err
+	}
+
 	ap := &peer.AnchorPeer{
 		Host: hostname,
 		Port: int32(port),
-		Cert: block.Bytes,
+		Cert: identity,
 	}
 	return ap, nil
 }
 
-const defaultAnchorPeerFile = `anchorpeer
+const defaultAnchorPeerFile = `peer0
 7051
 -----BEGIN CERTIFICATE-----
-MIIDZzCCAk+gAwIBAgIJAKSntkwsYDPhMA0GCSqGSIb3DQEBCwUAMEoxCzAJBgNV
-BAYTAklMMQ8wDQYDVQQIDAZJc3JhZWwxDjAMBgNVBAcMBUhhaWZhMQwwCgYDVQQK
-DANJQk0xDDAKBgNVBAsMA0lCTTAeFw0xNzAxMjcwMzUzMjdaFw0xODAxMjcwMzUz
-MjdaMEoxCzAJBgNVBAYTAklMMQ8wDQYDVQQIDAZJc3JhZWwxDjAMBgNVBAcMBUhh
-aWZhMQwwCgYDVQQKDANJQk0xDDAKBgNVBAsMA0lCTTCCASIwDQYJKoZIhvcNAQEB
-BQADggEPADCCAQoCggEBAL0KUiuuZFfs+BN7+FnDKoeiVGCkayQVrPrdeO8Mwu/n
-928T9lhmBI6wFnmkdeEjYTi1M5dks8hEal2AP8ykREc+LTmMH5JAJ8kktnoNQteO
-rdFqnBpzA0IdiDnaLLLU3QD22VT47TPxWnfqZ3Z+fEJkmxc+tNmJJ5/0eCxXC4v4
-875wQZP8CEeI1EpkljL6AILLNCUN4qpug2R2CCBRvGaqA81TM8NKxvWgN90iSAiv
-vrQIc3/aelIpaJN457JEqLWgAcWw982rFUn5+D3u63pUq99lWH16VU4vRdUFzqi1
-E3mBbGNTcNBzrBYswj5KhMFHLBpzIwQQX+Tvjh70cwkCAwEAAaNQME4wHQYDVR0O
-BBYEFNHpTtXPDggAIavkdxLh+ttFH+HCMB8GA1UdIwQYMBaAFNHpTtXPDggAIavk
-dxLh+ttFH+HCMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBADuYrb0h
-eXepdpkUSZ6t5mk6R4vyaGDQAHCUltL5Q2qhL8f5sWxMBqke/JhbB02+pQCsvj8P
-SIVSXuCXgFbzP0O3gNWqGhGn9atgN/j81hGyXtpAl5U5hyqcaFATX++Rdv58TKty
-WnjzYUtnrG2W6c5uK/XPmoUHoNHxkgj1HrlmuahdrxzFXkdcND7UIfW8U2K0Cz4V
-gJyAC5yIOs+kakE2gwjJI8SqREgegfO1JIbBfnUCkDJj1TLu2eUkBgnVLeJrcbXq
-AbiMV4MFfj5KFA51Tp8QltKbsPPm1Vx3+CRVWNnMgqVWygIQF+8h4H/CcETU4XCV
-4LqJvYfKwy27YUA=
+MIICjDCCAjKgAwIBAgIUBEVwsSx0TmqdbzNwleNBBzoIT0wwCgYIKoZIzj0EAwIw
+fzELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNh
+biBGcmFuY2lzY28xHzAdBgNVBAoTFkludGVybmV0IFdpZGdldHMsIEluYy4xDDAK
+BgNVBAsTA1dXVzEUMBIGA1UEAxMLZXhhbXBsZS5jb20wHhcNMTYxMTExMTcwNzAw
+WhcNMTcxMTExMTcwNzAwWjBjMQswCQYDVQQGEwJVUzEXMBUGA1UECBMOTm9ydGgg
+Q2Fyb2xpbmExEDAOBgNVBAcTB1JhbGVpZ2gxGzAZBgNVBAoTEkh5cGVybGVkZ2Vy
+IEZhYnJpYzEMMAoGA1UECxMDQ09QMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+HBuKsAO43hs4JGpFfiGMkB/xsILTsOvmN2WmwpsPHZNL6w8HWe3xCPQtdG/XJJvZ
++C756KEsUBM3yw5PTfku8qOBpzCBpDAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYw
+FAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAwHQYDVR0OBBYEFOFC
+dcUZ4es3ltiCgAVDoyLfVpPIMB8GA1UdIwQYMBaAFBdnQj2qnoI/xMUdn1vDmdG1
+nEgQMCUGA1UdEQQeMByCCm15aG9zdC5jb22CDnd3dy5teWhvc3QuY29tMAoGCCqG
+SM49BAMCA0gAMEUCIDf9Hbl4xn3z4EwNKmilM9lX2Fq4jWpAaRVB97OmVEeyAiEA
+25aDPQHGGq2AvhKT0wvt08cX1GTGCIbfmuLpMwKQj38=
 -----END CERTIFICATE-----`
