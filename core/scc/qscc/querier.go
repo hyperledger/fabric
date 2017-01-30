@@ -150,10 +150,16 @@ func getQueryResult(vledger ledger.PeerLedger, query []byte) (res pb.Response) {
 	buffer.WriteString("[")
 
 	var qresult ledger.QueryResult
+	bArrayMemberAlreadyWritten := false
 	qresult, err = ri.Next()
 	for r := 0; qresult != nil && err == nil && r < limit; r++ {
 		if qr, ok := qresult.(*ledger.QueryRecord); ok {
+			// Add a comma before array members, suppress it for the first array member
+			if bArrayMemberAlreadyWritten == true {
+				buffer.WriteString(",")
+			}
 			collectRecord(&buffer, qr)
+			bArrayMemberAlreadyWritten = true
 		}
 		qresult, err = ri.Next()
 	}
