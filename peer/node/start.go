@@ -39,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
@@ -169,7 +170,13 @@ func serve(args []string) error {
 
 	// Initialize gossip component
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
-	service.InitGossipService(peerEndpoint.Address, grpcServer, bootstrap...)
+
+	serializedIdentity, err := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
+	if err != nil {
+		panic(fmt.Sprintf("Failed serializing self identity: %v", err))
+	}
+
+	service.InitGossipService(serializedIdentity, peerEndpoint.Address, grpcServer, bootstrap...)
 	defer service.GetGossipService().Stop()
 
 	//initialize the env for chainless startup

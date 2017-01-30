@@ -76,7 +76,7 @@ func (jcm *joinChannelMessage) AnchorPeers() []api.AnchorPeer {
 var logger = logging.MustGetLogger("gossipService")
 
 // InitGossipService initialize gossip service
-func InitGossipService(endpoint string, s *grpc.Server, bootPeers ...string) {
+func InitGossipService(identity []byte, endpoint string, s *grpc.Server, bootPeers ...string) {
 	once.Do(func() {
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 		dialOpts := []grpc.DialOption{}
@@ -86,7 +86,7 @@ func InitGossipService(endpoint string, s *grpc.Server, bootPeers ...string) {
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
 
-		gossip := integration.NewGossipComponent(endpoint, s, dialOpts, bootPeers...)
+		gossip := integration.NewGossipComponent(identity, endpoint, s, dialOpts, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
 			gossipSvc: gossip,
 			chains:    make(map[string]state.GossipStateProvider),

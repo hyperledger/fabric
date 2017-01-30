@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/msp/mgmt"
 	"google.golang.org/grpc"
 )
 
@@ -39,9 +40,12 @@ func TestNewGossipCryptoService(t *testing.T) {
 	endpoint2 := "localhost:5612"
 	endpoint3 := "localhost:5613"
 
-	g1 := NewGossipComponent(endpoint1, s1, []grpc.DialOption{grpc.WithInsecure()})
-	g2 := NewGossipComponent(endpoint2, s2, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
-	g3 := NewGossipComponent(endpoint3, s3, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
+	mgmt.LoadFakeSetupWithLocalMspAndTestChainMsp("../../msp/sampleconfig")
+	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
+
+	g1 := NewGossipComponent(identity, endpoint1, s1, []grpc.DialOption{grpc.WithInsecure()})
+	g2 := NewGossipComponent(identity, endpoint2, s2, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
+	g3 := NewGossipComponent(identity, endpoint3, s3, []grpc.DialOption{grpc.WithInsecure()}, endpoint1)
 	go s1.Serve(ll1)
 	go s2.Serve(ll2)
 	go s3.Serve(ll3)
