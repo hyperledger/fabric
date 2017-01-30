@@ -24,12 +24,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// no need to break out block header as none of its parts are serialized
-
-// no need to break out block metadata as it's just a byte slice
-
-// no need to break Block into constituents. Nothing to unmarshall
-
 // BreakOutBlockDataOrPanic executes BreakOutBlockData() but panics on error
 func BreakOutBlockDataOrPanic(blockData *pb.BlockData) ([]*pb.Payload, [][]byte) {
 	payloads, envelopeSignatures, err := BreakOutBlockData(blockData)
@@ -92,68 +86,23 @@ func BreakOutPayloadDataToConfigurationEnvelope(payloadData []byte) (*pb.Configu
 	return configEnvelope, nil
 } //BreakOutPayloadToConfigurationEnvelope
 
-// BreakOutConfigEnvelopeToConfigItemsOrPanic calls BreakOutConfigEnvelopeToConfigItems() but panics on error
-func BreakOutConfigEnvelopeToConfigItemsOrPanic(configEnvelope *pb.ConfigurationEnvelope) ([]*pb.ConfigurationItem, [][]*pb.ConfigurationSignature) {
-	configItems, configSignatures, err := BreakOutConfigEnvelopeToConfigItems(configEnvelope)
-	if err != nil {
-		panic(err)
-	}
-	return configItems, configSignatures
-} // BreakOutConfigEnvelopeToConfigItemsOrPanic
-
-// BreakOutConfigEnvelopeToConfigItems decomposes a ConfigurationEnvelope to its constituent ConfigurationItems and ConfigurationSignatures
-// Note that a ConfigurationItem can have multiple signatures so each element in the returned ConfigurationItems slice is associated with a slice of ConfigurationSignatures
-func BreakOutConfigEnvelopeToConfigItems(configEnvelope *pb.ConfigurationEnvelope) ([]*pb.ConfigurationItem, [][]*pb.ConfigurationSignature, error) {
-	if configEnvelope == nil {
-		return nil, nil, fmt.Errorf("BreakOutConfigEnvelopeToConfigItems received null input\n")
-	}
-
-	var configItems []*pb.ConfigurationItem
-	var configSignatures [][]*pb.ConfigurationSignature
-
-	var err error
-	var configItem *pb.ConfigurationItem
-	for i, signedConfigItem := range configEnvelope.Items {
-		configItem = &pb.ConfigurationItem{}
-		err = proto.Unmarshal(signedConfigItem.ConfigurationItem, configItem)
-		if err != nil {
-			return nil, nil, fmt.Errorf("BreakOutConfigEnvelopToConfigItems cannot unmarshall signedConfigurationItem: %v\n", err)
-		}
-		configItems = append(configItems, configItem)
-		for _, signedConfigItemSignature := range signedConfigItem.Signatures {
-			configSignatures[i] = append(configSignatures[i], signedConfigItemSignature)
-		}
-	}
-
-	return configItems, configSignatures, nil
-} // BreakOutConfigEnvelopeToConfigItems
-
-// BreakOutBlockToConfigurationEnvelopeOrPanic calls BreakOutBlockToConfigurationEnvelope() but panics on error
-func BreakOutBlockToConfigurationEnvelopeOrPanic(block *pb.Block) (*pb.ConfigurationEnvelope, []byte) {
-	configEnvelope, envelopeSignature, err := BreakOutBlockToConfigurationEnvelope(block)
-	if err != nil {
-		panic(err)
-	}
-	return configEnvelope, envelopeSignature
-} // BreakOutBlockToConfigurationEnvelopeOrPanic
-
 // BreakOutBlockToConfigurationEnvelope decomposes a configuration transaction Block to its ConfigurationEnvelope
-func BreakOutBlockToConfigurationEnvelope(block *pb.Block) (*pb.ConfigurationEnvelope, []byte, error) {
+func BreakOutBlockToConfigurationEnvelope(block *pb.Block) (*pb.ConfigurationEnvelope, error) {
 	if block == nil || block.Data == nil || len(block.Data.Data) > 1 {
-		return nil, nil, fmt.Errorf("Block.BlockData is not an array of 1. This is not a configuration transaction\n")
+		return nil, fmt.Errorf("Block.BlockData is not an array of 1. This is not a configuration transaction\n")
 	}
 
-	payloads, envelopeSignatures, _ := BreakOutBlockData(block.Data)
+	payloads, _, _ := BreakOutBlockData(block.Data)
 
 	if payloads[0].Header.ChainHeader.Type != int32(pb.HeaderType_CONFIGURATION_TRANSACTION) {
-		return nil, nil, fmt.Errorf("Payload Header type is not configuration_transaction. This is not a configuration transaction\n")
+		return nil, fmt.Errorf("Payload Header type is not configuration_transaction. This is not a configuration transaction\n")
 	}
 	configEnvelope, err := BreakOutPayloadDataToConfigurationEnvelope(payloads[0].Data)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error breaking out configurationEnvelope: %v\n", err)
+		return nil, fmt.Errorf("Error breaking out configurationEnvelope: %v\n", err)
 	}
 
-	return configEnvelope, envelopeSignatures[0], nil
+	return configEnvelope, nil
 } // BreakOutPayloadToConfigurationEnvelope
 
 // UnmarshalConfigurationItemOrPanic unmarshals bytes to a ConfigurationItem or panics on error
