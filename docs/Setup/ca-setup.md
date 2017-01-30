@@ -69,7 +69,7 @@ For the remainder of this server section, we assume that you have set the
 
 #### Initializing the server
 
-Initialize the Fabric CA server as follows: 
+Initialize the Fabric CA server as follows:
 
 ```
 # fabric-ca server init CSR-JSON-FILE
@@ -100,6 +100,10 @@ you will be running your fabric-ca server.
 
 All of the fields above pertain to the X.509 certificate which is generated
 by the `fabric server init` command as follows:  
+
+<a name="csr-fields"/>
+###### CSR fields
+
 - **CN** is the Common Name  
 - **keys** specifies the algorithm and key size as described below  
 - **O** is the organization name   
@@ -121,7 +125,7 @@ Algorithm (ECDSA) with curve `prime256v1` and signature algorithm
 `ecdsa-with-SHA256`:
 ```
 "key": {
-   "algo": "ecdsa" 
+   "algo": "ecdsa"
    "size": 256
 }
 ```
@@ -292,13 +296,13 @@ of the following form to your fabric-ca server's configuration file:
    }
 ```
 
-where: 
-   * `scheme` is one of *ldap* or *ldaps*; 
-   * `adminDN` is the distinquished name of the admin user; 
+where:
+   * `scheme` is one of *ldap* or *ldaps*;
+   * `adminDN` is the distinquished name of the admin user;
    * `pass` is the password of the admin user;  
-   * `host` is the hostname or IP address of the LDAP server; 
-   * `port` is the optional port number, where default 389 for *ldap* and 636 for *ldaps*; 
-   * `base` is the optional root of the LDAP tree to use for searches; 
+   * `host` is the hostname or IP address of the LDAP server;
+   * `port` is the optional port number, where default 389 for *ldap* and 636 for *ldaps*;
+   * `base` is the optional root of the LDAP tree to use for searches;
    * `filter` is a filter to use when searching to convert a login user name to
    a distinquished name.  For example, a value of `(uid=%s)` searches for LDAP
    entries with the value of a `uid` attribute whose value is the login user name.
@@ -325,7 +329,7 @@ runs the LDAP tests in FABRIC_CA/cli/server/ldap/ldap_test.go, and stops the Ope
 
 ###### When LDAP is configured, attribute retrieval works as follows:
 
-   * A client SDK sends a request for a batch of tcerts **with one or more attributes** to the fabric-ca server. 
+   * A client SDK sends a request for a batch of tcerts **with one or more attributes** to the fabric-ca server.
    * The fabric-ca server receives the tcert request and does as follows:
        * extracts the enrollment ID from the token in the authorization header
        (after validating the token);
@@ -362,7 +366,7 @@ listen http-in
       server server3 hostname3:port
 ```
 
-<a name="fabric-ca-client"></a>
+<a name="fabric-ca-client"/>
 ## Fabric CA Client
 
 This section describes how to use the fabric-ca client.
@@ -391,6 +395,7 @@ In the examples in this document, the server's certificate is at
 `$HOME/fabric-ca/server/server-cert.pem`.  The file name must
 match the name in the *client-config.json* file.
 
+<a name="EnrollBootstrap"/>
 #### Enroll the bootstrap user
 
 Unless the fabric-ca server is configured to use LDAP, it must
@@ -398,12 +403,35 @@ be configured with at least one pre-registered bootstrap user.
 In the previous server-config.json in this document, that user
 has an enrollment ID of *admin* with an enrollment secret of *adminpw*.
 
+<a name="csr-admin"/>
+First, create a CSR (Certificate Signing Request) JSON file similar to
+the following.  Customize it as desired.
+
+```
+{
+  "key": { "algo": "ecdsa", "size": 256 },
+  "names": [
+      {
+        "O": "Hyperledger Fabric",
+        "OU": "Fabric CA",
+        "L": "Raleigh",
+        "ST": "North Carolina",
+        "C": "US"
+      }
+  ]
+}
+```
+
+See [CSR fields](#csr-fields) for a description of the fields in this file.
+When enrolling, the CN (Common Name) field is automatically set to the enrollment ID
+which is *admin* in this example, so it can be omitted from the csr.json file.
+
 The following command enrolls the admin user and stores an enrollment certificate (ECert)
 in the fabric-ca client's home directory.
 
 ```
 # export FABRIC_CA_HOME=$HOME/fabric-ca/clients/admin
-# fabric-ca client enroll -config client-config.json admin adminpw http://localhost:7054
+# fabric-ca client enroll -config client-config.json admin adminpw http://localhost:7054 csr.json
 ```
 
 You should see a message similar to `[INFO] enrollment information was successfully stored in`
@@ -428,7 +456,7 @@ In particular, the invoker's identity must have been registered with the attribu
 that the registrar is allowed to register.
 
 For example, the attributes for a registrar might be as follows, indicating
-that this registrar identity can register peer, application, and user identities. 
+that this registrar identity can register peer, application, and user identities.
 
 ```
 "attrs": [{"name":"hf.Registrar.Roles", "value":"peer,app,user"}]
@@ -477,7 +505,11 @@ Now that you have successfully registered a peer identity,
 you may now enroll the peer given the enrollment ID and secret
 (i.e. the *password* from the previous section).
 
-This is similar to enrolling the bootstrap user previously except that
+First, create a CSR (Certificate Signing Request) JSON file similar to
+the one described in the [Enrolling the bootstrap user](#EnrollBootstrap) section.
+Name the file *csr.json* for the following example.
+
+This is similar to enrolling the bootstrap user except that
 we also demonstrate how to use environment variables to place
 the key and certificate files in a specific location.
 The following example shows how to place them into a Hyperledger Fabric
@@ -486,17 +518,17 @@ The *MSP_DIR* environment variable refers to the root
 directory of MSP in Hyperledger Fabric and the $MSP_DIR/signcerts
 and $MSP_DIR/keystore directories must exist.
 
-
-Also note that you must replace *gHIexUckKpHz* with the secret which was
+Also note that you must replace *\<secret>* with the secret which was
 returned from the registration in the previous section.
 
 ```
 # export FABRIC_CA_CERT_FILE=$MSP_DIR/signcerts/peer.pem
 # export FABRIC_CA_KEY_FILE=$MSP_DIR/keystore/key.pem
-# fabric-ca client enroll -config client-config.json peer1 gHIexUckKpHz https://localhost:7054
+# fabric-ca client enroll -config client-config.json peer1 <secret> https://localhost:7054 csr.json
 ```
 
-The peer.pem and key.pem files should now exist at the specified locations.
+The peer.pem and key.pem files should now exist at the locations specified
+by the environment variables.
 
 #### Revoke a certificate or user
 
@@ -564,57 +596,59 @@ following Postgres documentation: https://www.postgresql.org/docs/9.4/static/lib
 
 ### MySQL SSL Configuration
 **Basic instructions for configuring SSL on MySQL server:**
+
 1. Open or create my.cnf file for the server. Add or un-comment the lines below
 in [mysqld] section. These should point to the key and certificates for the
 server, and the root CA cert.
 
-Instruction on creating server and client side certs:
+  Instruction on creating server and client side certs:
 http://dev.mysql.com/doc/refman/5.7/en/creating-ssl-files-using-openssl.html
 
-[mysqld]
-ssl-ca=ca-cert.pem
-ssl-cert=server-cert.pem
-ssl-key=server-key.pem
+  [mysqld]
+  ssl-ca=ca-cert.pem
+  ssl-cert=server-cert.pem
+  ssl-key=server-key.pem
 
-Can run the following query to confirm SSL has been enabled.
+  Can run the following query to confirm SSL has been enabled.
 
-mysql> SHOW GLOBAL VARIABLES LIKE 'have_%ssl';
+  mysql> SHOW GLOBAL VARIABLES LIKE 'have_%ssl';
 
-Should see:
-```
-+---------------+-------+
-| Variable_name | Value |
-+---------------+-------+
-| have_openssl  | YES   |
-| have_ssl      | YES   |
-+---------------+-------+
-```
+  Should see:
+
+  ```
+  +---------------+-------+
+  | Variable_name | Value |
+  +---------------+-------+
+  | have_openssl  | YES   |
+  | have_ssl      | YES   |
+  +---------------+-------+
+  ```
 
 2. After the server-side SSL configuration is finished, the next step is to
 create a user who has a privilege to access the MySQL server over SSL. For that,
 log in to the MySQL server, and type:
 
-mysql> GRANT ALL PRIVILEGES ON *.* TO 'ssluser'@'%' IDENTIFIED BY 'password' REQUIRE SSL;
-mysql> FLUSH PRIVILEGES;
+  mysql> GRANT ALL PRIVILEGES ON *.* TO 'ssluser'@'%' IDENTIFIED BY 'password' REQUIRE SSL;
+  mysql> FLUSH PRIVILEGES;
 
-If you want to give a specific ip address from which the user will access the
-server change the '%' to the specific ip address.
+  If you want to give a specific ip address from which the user will access the
+  server change the '%' to the specific ip address.
 
-**MySQL Server - Require Client Certificates**
-Options for secure connections are similar to those used on the server side.
+  **MySQL Server - Require Client Certificates**
+  Options for secure connections are similar to those used on the server side.
 
-- ssl-ca identifies the Certificate Authority (CA) certificate. This option,
-if used, must specify the same certificate used by the server.
-- ssl-cert identifies the client public key certificate.
-- ssl-key identifies the client private key.
+  - ssl-ca identifies the Certificate Authority (CA) certificate. This option,
+   if used, must specify the same certificate used by the server.
+  - ssl-cert identifies the client public key certificate.
+  - ssl-key identifies the client private key.
 
-Suppose that you want to connect using an account that has no special encryption
-requirements or was created using a GRANT statement that includes the REQUIRE SSL
-option. As a recommended set of secure-connection options, start the MySQL
-server with at least --ssl-cert and --ssl-key, and invoke the fabric-ca server with
-**ca_certfiles** option set in the fabric-ca server file.
+  Suppose that you want to connect using an account that has no special encryption
+  requirements or was created using a GRANT statement that includes the REQUIRE SSL
+  option. As a recommended set of secure-connection options, start the MySQL
+  server with at least --ssl-cert and --ssl-key, and invoke the fabric-ca server with
+  **ca_certfiles** option set in the fabric-ca server file.
 
-To require that a client certificate also be specified, create the account using
-the REQUIRE X509 option. Then the client must also specify the proper client key
-and certificate files or the MySQL server will reject the connection. CA cert,
-client cert, and client key are all required for the fabric-ca server.
+  To require that a client certificate also be specified, create the account using
+  the REQUIRE X509 option. Then the client must also specify the proper client key
+  and certificate files or the MySQL server will reject the connection. CA cert,
+  client cert, and client key are all required for the fabric-ca server.
