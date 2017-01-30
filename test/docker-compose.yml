@@ -1,3 +1,8 @@
+ca:
+  image: hyperledger/fabric-ca
+  ports:
+    - 7054:7054
+
 orderer:
   image: hyperledger/fabric-orderer
   environment:
@@ -9,8 +14,8 @@ orderer:
     - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
     - ORDERER_GENERAL_LISTENPORT=7050
     - ORDERER_RAMLEDGER_HISTORY_SIZE=100
-  expose:
-    - 7050
+  ports:
+    - 7050:7050
 
 vp:
   image: hyperledger/fabric-peer
@@ -19,9 +24,9 @@ vp:
   ports:
     - 7051:7051
     - 7053:7053
-    - 7054:7054
   environment:
     - CORE_PEER_ADDRESSAUTODETECT=true
     - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
+  command: peer node start --peer-chaincodedev
