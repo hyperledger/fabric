@@ -118,10 +118,6 @@ func TestGoodProposal(t *testing.T) {
 	mcc.ms.mpm.mp = &mockPolicy{}
 
 	chainCreateTx := &cb.ConfigurationItem{
-		Header: &cb.ChainHeader{
-			ChainID: newChainID,
-			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
-		},
 		Key:  configtx.CreationPolicyKey,
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{

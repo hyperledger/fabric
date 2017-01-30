@@ -98,9 +98,6 @@ func TestBreakOutConfigEnvelopeToConfigItems(t *testing.T) {
 	if len(configItems) != 1 {
 		t.Errorf("TestBreakOutPayloadDataToConfigurationEnvelope did not return array of 1 config item\n")
 	}
-	if configItems[0].Header.Type != int32(pb.HeaderType_CONFIGURATION_TRANSACTION) || configItems[0].Header.ChainID != "test" {
-		t.Errorf("TestBreakOutConfigEnvelopeToConfigItems, configItem header does not match original %+v . Expected config_transaction and chainid 'test'\n", configItems[0].Header)
-	}
 	if configItems[0].Type != pb.ConfigurationItem_Orderer || configItems[0].Key != "abc" || !bytes.Equal(configItems[0].Value, []byte("test")) {
 		t.Errorf("TestBreakOutConfigEnvelopeToConfigItems configItem type,Key,Value do not match original %+v\n. Expected orderer, 'abc', 'test'", configItems[0])
 	}
@@ -198,15 +195,13 @@ func testConfigurationBlock() *pb.Block {
 }
 
 func testConfigurationEnvelope() *pb.ConfigurationEnvelope {
-	chainHeader := testChainHeader()
-	configItem := makeConfigurationItem(chainHeader, pb.ConfigurationItem_Orderer, 0, "defaultPolicyID", "abc", []byte("test"))
+	configItem := makeConfigurationItem(pb.ConfigurationItem_Orderer, 0, "defaultPolicyID", "abc", []byte("test"))
 	signedConfigItem, _ := makeSignedConfigurationItem(configItem, nil)
 	return makeConfigurationEnvelope(signedConfigItem)
 } // testConfigurationEnvelope
 
-func makeConfigurationItem(ch *pb.ChainHeader, configItemType pb.ConfigurationItem_ConfigurationType, lastModified uint64, modPolicyID string, key string, value []byte) *pb.ConfigurationItem {
+func makeConfigurationItem(configItemType pb.ConfigurationItem_ConfigurationType, lastModified uint64, modPolicyID string, key string, value []byte) *pb.ConfigurationItem {
 	return &pb.ConfigurationItem{
-		Header:             ch,
 		Type:               configItemType,
 		LastModified:       lastModified,
 		ModificationPolicy: modPolicyID,

@@ -27,7 +27,6 @@ import (
 // MakeConfigurationItem makes a ConfigurationItem.
 func MakeConfigurationItem(ch *cb.ChainHeader, configItemType cb.ConfigurationItem_ConfigurationType, lastModified uint64, modPolicyID string, key string, value []byte) *cb.ConfigurationItem {
 	return &cb.ConfigurationItem{
-		Header:             ch,
 		Type:               configItemType,
 		LastModified:       lastModified,
 		ModificationPolicy: modPolicyID,
