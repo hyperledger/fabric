@@ -217,6 +217,11 @@ func (m *GossipMessage) IsDigestMsg() bool {
 	return m.GetDataDig() != nil
 }
 
+// IsLeadershipMsg returns whether this GossipMessage is a leadership (leader election) message
+func (m *GossipMessage) IsLeadershipMsg() bool {
+	return m.GetLeadershipMsg() != nil
+}
+
 // MsgConsumer invokes code given a GossipMessage
 type MsgConsumer func(*GossipMessage)
 
