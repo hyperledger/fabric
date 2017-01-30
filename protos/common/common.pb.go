@@ -7,8 +7,10 @@ Package common is a generated protocol buffer package.
 
 It is generated from these files:
 	common/common.proto
+	common/configtx.proto
 	common/configuration.proto
 	common/msp_principal.proto
+	common/policies.proto
 
 It has these top-level messages:
 	LastConfiguration
@@ -28,15 +30,15 @@ It has these top-level messages:
 	SignedConfigurationItem
 	ConfigurationItem
 	ConfigurationSignature
-	Policy
-	SignaturePolicyEnvelope
-	SignaturePolicy
 	HashingAlgorithm
 	BlockDataHashingStructure
 	OrdererAddresses
 	MSPPrincipal
 	OrganizationUnit
 	MSPRole
+	Policy
+	SignaturePolicyEnvelope
+	SignaturePolicy
 */
 package common
 
