@@ -1,0 +1,171 @@
+---
+################################################################################
+#
+#   Orderer Configuration
+#
+#   - This controls the type and configuration for the orderer which is started
+#   - This controls the type and configuration for the ordererledger if needed
+#
+################################################################################
+General:
+
+    # Ledger Type: The ledger type to provide to the orderer (if needed)
+    # Available types are "ram", "file".
+    LedgerType: ram
+
+    # Queue Size: The maximum number of messages to allow pending from a gRPC
+    # client.
+    QueueSize: 10
+
+    # Max Window Size: The maximum number of messages to for the orderer Deliver
+    # to allow before acknowledgement must be received from the client.
+    MaxWindowSize: 1000
+
+    # Listen address: The IP on which to bind to listen
+    ListenAddress: 127.0.0.1
+
+    # Listen port: The port on which to bind to listen
+    ListenPort: 7050
+
+    # TLS: TLS settings for the GRPC server
+    TLS:
+        Enabled: false
+        ServerKey:
+        ServerCertificate:
+        ServerRootCAs:
+        ClientAuthEnabled: false
+        ClientRootCAs:
+
+
+    # Log Level: The level at which to log.  This accepts logging specifications
+    # per fabric/docs/Setup/logging-control.md
+    LogLevel: info
+
+    # Genesis method: The method by which to retrieve/generate the genesis
+    # block. Available values are "provisional", "file". Provisional utilizes
+    # the parameters in the Genesis section to dynamically generate a new
+    # genesis block. File uses the file provided by GenesisFile as the genesis
+    # block.
+    GenesisMethod: provisional
+
+    # Genesis file: The file containing the genesis block. Used by the orderer
+    # when GenesisMethod is set to "file".
+    GenesisFile: ./genesisblock
+
+    # Enable an HTTP service for Go "pprof" profiling as documented at:
+    # https://golang.org/pkg/net/http/pprof
+    Profile:
+        Enabled: false
+        Address: 0.0.0.0:6060
+
+################################################################################
+#
+#   SECTION: RAM Ledger
+#
+#   - This section applies to the configuration of the RAM ledger
+#
+################################################################################
+RAMLedger:
+
+    # History Size: The number of blocks that the RAM ledger is set to retain
+    HistorySize: 1000
+
+
+################################################################################
+#
+#   SECTION: File Ledger
+#
+#   - This section applies to the configuration of the file ledger
+#
+################################################################################
+FileLedger:
+
+    # Location: The directory to store the blocks in
+    # NOTE: If this is unset, a temporary location will be chosen using
+    # the prefix specified by Prefix
+    Location:
+
+    # The prefix to use when generating a ledger directory in temporary space
+    # Otherwise, this value is ignored
+    Prefix: hyperledger-fabric-ordererledger
+
+################################################################################
+#
+#   SECTION: Kafka
+#
+#   - This section applies to the configuration of the Kafka-backed orderer
+#
+################################################################################
+Kafka:
+
+    # Retry: What to do if none of the Kafka brokers are available
+    Retry:
+        # The producer should attempt to reconnect every <Period>
+        Period: 3s
+        # Panic if <Stop> has elapsed and no connection has been established
+        Stop: 60s
+
+    # Verbose: Turn on logging for sarama, the client library that we use to
+    # interact with the Kafka cluster
+    Verbose: false
+
+    # Brokers: A list of Kafka brokers to which the orderer connects
+    # NOTE: Use IP:port notation
+    Brokers:
+        - 127.0.0.1:9092
+
+################################################################################
+#
+#   SECTION: Sbft
+#
+#   - This section applies to the configuration of the Sbft-backed orderer
+#
+################################################################################
+Sbft:
+    # Address to use for SBFT internal communication
+    PeerCommAddr: ":6101"
+    CertFile: "sbft/testdata/cert1.pem"
+    KeyFile: "sbft/testdata/key.pem"
+    # Directory for SBFT data (persistence)
+    DataDir: "/tmp"
+    # Number of peers
+    "N": 1
+    # Fault tolerance
+    F: 0
+    BatchDurationNsec: 1000
+    BatchSizeBytes: 1000000000
+    RequestTimeoutNsec: 1000000000
+    # Peers (PeerCommAddr) with the path of their cert
+    Peers:
+        ":6101": "sbft/testdata/cert1.pem"
+
+################################################################################
+#
+#   SECTION: Genesis
+#
+#   - This section applies to the configuration for the provisional bootstrapper
+#
+################################################################################
+Genesis:
+
+    # Orderer Type: The orderer implementation to start
+    # Available types are "solo" and "kafka"
+    OrdererType: solo
+
+    # Batch Timeout: The amount of time to wait before creating a batch
+    BatchTimeout: 10s
+
+    # Batch Size: Controls the number of messages batched into a block
+    BatchSize:
+
+        # Max Message Count: The maximum number of messages to permit in a batch
+        MaxMessageCount: 10
+
+        # Absolute Max Bytes: The absolute maximum number of bytes allowed for
+        # the serialized messages in a batch.
+        AbsoluteMaxBytes: 99 MB
+
+        # Preferred Max Bytes: The preferred maximum number of bytes allowed for
+        # the serialized messages in a batch. A message larger than the preferred
+        # max bytes will result in a batch larger than preferred max bytes.
+        PreferredMaxBytes: 512 KB
