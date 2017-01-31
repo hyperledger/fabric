@@ -104,12 +104,14 @@ func GetAdminClient() (pb.AdminClient, error) {
 	return adminClient, nil
 }
 
-// SetErrorLoggingLevel sets the 'error' module's logger to the value in
+// SetLogLevelFromViper sets the log level for 'module' logger to the value in
 // core.yaml
-func SetErrorLoggingLevel() error {
-	viperErrorLoggingLevel := viper.GetString("logging.error")
-	_, err := flogging.SetModuleLevel("error", viperErrorLoggingLevel)
-
+func SetLogLevelFromViper(module string) error {
+	var err error
+	if module != "" {
+		logLevelFromViper := viper.GetString("logging." + module)
+		_, err = flogging.SetModuleLevel(module, logLevelFromViper)
+	}
 	return err
 }
 
