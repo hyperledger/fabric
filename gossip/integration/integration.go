@@ -21,9 +21,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/peer/gossip/mcs"
 	"github.com/hyperledger/fabric/peer/gossip/sa"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
@@ -58,5 +61,43 @@ func NewGossipComponent(identity []byte, endpoint string, s *grpc.Server, dialOp
 	conf := newConfig(endpoint, bootPeers...)
 	cryptSvc := mcs.NewMessageCryptoService()
 	secAdv := sa.NewSecurityAdvisor()
+	if viper.GetBool("peer.gossip.ignoresecurity") {
+		sec := &secImpl{[]byte(endpoint)}
+		cryptSvc = sec
+		secAdv = sec
+		identity = []byte(endpoint)
+	}
 	return gossip.NewGossipService(conf, s, secAdv, cryptSvc, identity, dialOpts...)
+}
+
+type secImpl struct {
+	identity []byte
+}
+
+func (*secImpl) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType {
+	return api.OrgIdentityType("DEFAULT")
+}
+
+func (s *secImpl) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
+	return common.PKIidType(peerIdentity)
+}
+
+func (s *secImpl) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
+	return nil
+}
+
+func (s *secImpl) Sign(msg []byte) ([]byte, error) {
+	return msg, nil
+}
+
+func (s *secImpl) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	return nil
+}
+
+func (s *secImpl) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	return nil
+}
+
+func (s *secImpl) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	return nil
 }

@@ -27,6 +27,7 @@ import (
 
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/peer"
+	"github.com/spf13/viper"
 )
 
 type AnchorPeerParser struct {
@@ -126,6 +127,11 @@ func anchorPeerFromFile(filename string) (*peer.AnchorPeer, error) {
 		Port: int32(port),
 		Cert: identity,
 	}
+
+	if viper.GetBool("peer.gossip.ignoresecurity") {
+		ap.Cert = []byte(fmt.Sprintf("%s:%d", ap.Host, ap.Port))
+	}
+
 	return ap, nil
 }
 
