@@ -1138,7 +1138,7 @@ This function is called by `helper.NewConsensusHandler` when setting the `consen
 
 ##### 3.4.11.1 High-level overview
 
-A validating peer establishes a message handler (`helper.ConsensusHandler`) for every connected peer, via the `helper.NewConsesusHandler` function (a handler factory). Every incoming message is inspected on its type (`helper.HandleMessage`); if it's a message for which consensus needs to be reached, it's passed on to the peer's consenter object (`consensus.Consenter`). Otherwise it's passed on to the next message handler in the stack.
+A validating peer establishes a message handler (`helper.ConsensusHandler`) for every connected peer, via the `helper.NewConsensusHandler` function (a handler factory). Every incoming message is inspected on its type (`helper.HandleMessage`); if it's a message for which consensus needs to be reached, it's passed on to the peer's consenter object (`consensus.Consenter`). Otherwise it's passed on to the next message handler in the stack.
 
 ##### 3.4.11.2 helper.ConsensusHandler
 
@@ -1193,7 +1193,7 @@ Returns a `helper.Helper` object whose `coordinator` is set to the input argumen
 
 ##### 3.4.11.6 helper.HandleMessage
 
-Recall that the `helper.ConsesusHandler` object returned by `helper.NewConsensusHandler` implements the `peer.MessageHandler` interface:
+Recall that the `helper.ConsensusHandler` object returned by `helper.NewConsensusHandler` implements the `peer.MessageHandler` interface:
 
 ```
 type MessageHandler interface {
