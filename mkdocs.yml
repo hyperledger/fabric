@@ -12,7 +12,7 @@ pages:
 - Fabric overview: overview.md
 #- Fabric capabilities: capabilities.md
 #- Fabric architecture: architecture.md
-#- Getting started: getstarted.md
+- Getting started: gettingstarted.md
 #- Chaincode and sample program: chaincode.md
 - Glossary: glossary.md
 
