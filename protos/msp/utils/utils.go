@@ -22,9 +22,6 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
-// FIXME: is this the right way to place this const?
-const MSPKey = "MSP"
-
 func GetMSPManagerConfigFromBlock(b *common.Block) ([]*msp.MSPConfig, error) {
 	// TODO: should we check that b is a configuration
 	// block or should we just assume our caller will
