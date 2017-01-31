@@ -28,7 +28,7 @@ import (
 )
 
 func TestTemplate(t *testing.T) {
-	conf, err := GetLocalMspConfig("sampleconfig/")
+	conf, err := GetLocalMspConfig("sampleconfig/", "DEFAULT")
 	assert.NoError(t, err)
 
 	confBytes, err := proto.Marshal(conf)

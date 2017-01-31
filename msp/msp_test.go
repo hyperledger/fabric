@@ -70,7 +70,7 @@ func TestNoopMSP(t *testing.T) {
 }
 
 func TestMSPSetupBad(t *testing.T) {
-	_, err := GetLocalMspConfig("barf")
+	_, err := GetLocalMspConfig("barf", "DEFAULT")
 	if err == nil {
 		t.Fatalf("Setup should have failed on an invalid config file")
 		return
@@ -255,7 +255,7 @@ var mspMgr MSPManager
 
 func TestMain(m *testing.M) {
 	var err error
-	conf, err = GetLocalMspConfig("./sampleconfig/")
+	conf, err = GetLocalMspConfig("./sampleconfig/", "DEFAULT")
 	if err != nil {
 		fmt.Printf("Setup should have succeeded, got err %s instead", err)
 		os.Exit(-1)

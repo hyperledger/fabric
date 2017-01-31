@@ -26,7 +26,7 @@ import (
 )
 
 func TestMSPConfigManager(t *testing.T) {
-	conf, err := msp.GetLocalMspConfig("../../../../msp/sampleconfig/")
+	conf, err := msp.GetLocalMspConfig("../../../../msp/sampleconfig/", "DEFAULT")
 	assert.NoError(t, err)
 
 	confBytes, err := proto.Marshal(conf)

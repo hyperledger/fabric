@@ -84,7 +84,7 @@ func main() {
 	}
 
 	// Load local MSP
-	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir)
+	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.LocalMSPID)
 	if err != nil { // Handle errors reading the config file
 		panic(fmt.Errorf("Failed initializing crypto [%s]", err))
 	}

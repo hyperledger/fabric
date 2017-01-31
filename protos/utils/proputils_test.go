@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/stretchr/testify/assert"
@@ -340,7 +341,7 @@ var signerSerialized []byte
 func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigFile := "../../msp/sampleconfig/"
-	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigFile)
+	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigFile)
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize msp")

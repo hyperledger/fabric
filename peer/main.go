@@ -100,10 +100,15 @@ func main() {
 	flogging.SetLoggingFormat(viper.GetString("logging.format"), logOutput)
 
 	// Init the MSP
-	// TODO: determine the location of this config file
 	var mspMgrConfigDir = viper.GetString("peer.mspConfigPath")
+	var mspID = viper.GetString("peer.localMspId")
 
-	err = common.InitCrypto(mspMgrConfigDir)
+	if mspID != "DEFAULT" { // FIXME: remove this line as soon as GOSSIP GETS the MSP ID from the genesis block
+		logger.Warning("Setting mspID to DEFAULT as temporary workaround") // FIXME: remove this line as soon as GOSSIP GETS the MSP ID from the genesis block
+		mspID = "DEFAULT"                                                  // FIXME: remove this line as soon as GOSSIP GETS the MSP ID from the genesis block
+	} // FIXME: remove this line as soon as GOSSIP GETS the MSP ID from the genesis block
+
+	err = common.InitCrypto(mspMgrConfigDir, mspID)
 	if err != nil { // Handle errors reading the config file
 		panic(err.Error())
 	}

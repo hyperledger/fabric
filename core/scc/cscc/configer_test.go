@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -142,7 +143,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	go grpcServer.Serve(socket)
 	defer grpcServer.Stop()
 
-	mgmt.LoadFakeSetupWithLocalMspAndTestChainMsp("../../../msp/sampleconfig")
+	msptesttools.LoadMSPSetupForTesting("../../../msp/sampleconfig")
 	identity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 
 	service.InitGossipServiceCustomDeliveryFactory(identity, "localhost:13611", grpcServer, &mockDeliveryClientFactory{})

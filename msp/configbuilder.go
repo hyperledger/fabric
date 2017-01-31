@@ -87,7 +87,7 @@ const (
 	intermediatecerts = "intermediatecerts"
 )
 
-func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
+func GetLocalMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 	cacertDir := filepath.Join(dir, cacerts)
 	signcertDir := filepath.Join(dir, signcerts)
 	admincertDir := filepath.Join(dir, admincerts)
@@ -131,7 +131,7 @@ func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
 		RootCerts:         cacerts,
 		IntermediateCerts: intermediatecert,
 		SigningIdentity:   sigid,
-		Name:              "DEFAULT"}
+		Name:              ID}
 
 	fmpsjs, _ := proto.Marshal(fmspconf)
 

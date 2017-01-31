@@ -52,6 +52,7 @@ type General struct {
 	Profile       Profile
 	LogLevel      string
 	LocalMSPDir   string
+	LocalMSPID    string
 }
 
 //TLS contains config used to configure TLS
@@ -177,6 +178,7 @@ var defaults = TopLevel{
 		},
 		LogLevel:    "INFO",
 		LocalMSPDir: "../msp/sampleconfig/",
+		LocalMSPID:  "DEFAULT",
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,
@@ -255,6 +257,9 @@ func (c *TopLevel) completeInitialization() {
 			// the file is initialized, so we cannot initialize this in the structure, so we
 			// deference the env portion here
 			c.General.LocalMSPDir = filepath.Join(os.Getenv("ORDERER_CFG_PATH"), defaults.General.LocalMSPDir)
+		case c.General.LocalMSPID == "":
+			logger.Infof("General.LocalMSPID unset, setting to %s", defaults.General.LocalMSPID)
+			c.General.LocalMSPID = defaults.General.LocalMSPID
 		case c.FileLedger.Prefix == "":
 			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
 			c.FileLedger.Prefix = defaults.FileLedger.Prefix

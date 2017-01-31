@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/validation"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -311,7 +312,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 
 func TestMain(m *testing.M) {
 	mspMgrConfigDir := "../../../msp/sampleconfig/"
-	mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
 
 	os.Exit(m.Run())
 }

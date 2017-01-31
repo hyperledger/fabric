@@ -17,69 +17,26 @@ limitations under the License.
 package mgmt
 
 import (
-	"os"
-	"path/filepath"
 	"sync"
 
-	"github.com/hyperledger/fabric/common/util"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
+	"errors"
 
 	"github.com/hyperledger/fabric/msp"
 	"github.com/op/go-logging"
 )
 
-func LoadLocalMsp(dir string) error {
-	conf, err := msp.GetLocalMspConfig(dir)
+// LoadLocalMsp loads the local MSP from the specified directory
+func LoadLocalMsp(dir string, mspID string) error {
+	if mspID == "" {
+		return errors.New("The local MSP must have an ID")
+	}
+
+	conf, err := msp.GetLocalMspConfig(dir, mspID)
 	if err != nil {
 		return err
 	}
 
 	return GetLocalMSP().Setup(conf)
-}
-
-func getConfigPath(dir string) (string, error) {
-	// Try to read the dir
-	if _, err := os.Stat(dir); err != nil {
-		cfg := os.Getenv("PEER_CFG_PATH")
-		if cfg != "" {
-			dir = filepath.Join(cfg, dir)
-		} else {
-			dir = filepath.Join(os.Getenv("GOPATH"), "/src/github.com/hyperledger/fabric/msp/sampleconfig/")
-		}
-		if _, err := os.Stat(dir); err != nil {
-			return "", err
-		}
-	}
-	return dir, nil
-}
-
-// FIXME: this is required for now because we need a local MSP
-// and also the MSP mgr for the test chain; as soon as the code
-// to setup chains is ready, the chain should be setup using
-// the method below and this method should disappear
-func LoadFakeSetupWithLocalMspAndTestChainMsp(dir string) error {
-	var err error
-	if dir, err = getConfigPath(dir); err != nil {
-		return err
-	}
-	conf, err := msp.GetLocalMspConfig(dir)
-	if err != nil {
-		return err
-	}
-
-	err = GetLocalMSP().Setup(conf)
-	if err != nil {
-		return err
-	}
-
-	fakeConfig := []*mspprotos.MSPConfig{conf}
-
-	err = GetManagerForChain(util.GetTestChainID()).Setup(fakeConfig)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // FIXME: AS SOON AS THE CHAIN MANAGEMENT CODE IS COMPLETE,

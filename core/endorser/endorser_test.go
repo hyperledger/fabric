@@ -34,6 +34,7 @@ import (
 	syscc "github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	pbutils "github.com/hyperledger/fabric/protos/utils"
@@ -426,7 +427,7 @@ func TestMain(m *testing.M) {
 
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigDir := "../../msp/sampleconfig/"
-	err = mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	err = msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
 	if err != nil {
 		fmt.Printf("Could not initialize msp/signer, err %s", err)
 		os.Exit(-1)
