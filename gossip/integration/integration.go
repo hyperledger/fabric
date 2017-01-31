@@ -58,15 +58,21 @@ func newConfig(selfEndpoint string, bootPeers ...string) *gossip.Config {
 
 // NewGossipComponent creates a gossip component that attaches itself to the given gRPC server
 func NewGossipComponent(identity []byte, endpoint string, s *grpc.Server, dialOpts []grpc.DialOption, bootPeers ...string) gossip.Gossip {
+	if overrideEndpoint := viper.GetString("peer.gossip.endpoint"); overrideEndpoint != "" {
+		endpoint = overrideEndpoint
+	}
+
 	conf := newConfig(endpoint, bootPeers...)
 	cryptSvc := mcs.NewMessageCryptoService()
 	secAdv := sa.NewSecurityAdvisor()
+
 	if viper.GetBool("peer.gossip.ignoresecurity") {
 		sec := &secImpl{[]byte(endpoint)}
 		cryptSvc = sec
 		secAdv = sec
 		identity = []byte(endpoint)
 	}
+
 	return gossip.NewGossipService(conf, s, secAdv, cryptSvc, identity, dialOpts...)
 }
 
