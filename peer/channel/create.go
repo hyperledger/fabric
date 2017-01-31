@@ -28,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -53,9 +52,9 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	if err != nil {
 		return err
 	}
-	//TODO this is a temporary hack until `orderer.template` is supplied from the CLI
+	//TODO this is a temporary hack until `orderer.template` and 'msp.template' is supplied from the CLI
 	oTemplate := configtxtest.OrdererTemplate()
-	mspTemplate := configtx.NewSimpleTemplate(utils.EncodeMSPUnsigned(chainID))
+	mspTemplate := configtxtest.MSPTemplate()
 	gossTemplate := configtx.NewSimpleTemplate(sharedconfig.TemplateAnchorPeers(anchorPeers))
 	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspTemplate, gossTemplate)
 

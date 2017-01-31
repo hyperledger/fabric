@@ -18,12 +18,8 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
 	"github.com/golang/protobuf/proto"
-
-	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -111,38 +107,4 @@ func InitBlockMetadata(block *cb.Block) {
 			block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 		}
 	}
-}
-
-const xxxDefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
-
-// GetTESTMSPConfigPath This function is needed to locate the MSP test configuration when running
-// in CI build env or local with "make unit-test". A better way to manage this
-// is to define a config path in yaml that may point to test or production
-// location of the config
-func GetTESTMSPConfigPath() string {
-	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
-	if _, err := ioutil.ReadDir(cfgPath); err != nil {
-		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
-	return cfgPath
-}
-
-// EncodeMSPUnsigned gets the unsigned configuration item with the default MSP
-func EncodeMSPUnsigned(chainID string) *cb.ConfigurationItem {
-	cfgPath := GetTESTMSPConfigPath()
-	conf, err := msp.GetLocalMspConfig(cfgPath)
-	if err != nil {
-		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
-	}
-	return &cb.ConfigurationItem{
-		Type:               cb.ConfigurationItem_MSP,
-		Key:                "DEFAULT", // XXX this should really be computed dynamically, but it's better than the old wrong "MSP"
-		Value:              MarshalOrPanic(conf),
-		ModificationPolicy: xxxDefaultModificationPolicyID,
-	}
-}
-
-// EncodeMSP gets the signed configuration item with the default MSP
-func EncodeMSP(chainID string) *cb.SignedConfigurationItem {
-	return &cb.SignedConfigurationItem{ConfigurationItem: MarshalOrPanic(EncodeMSPUnsigned(chainID))}
 }
