@@ -41,6 +41,7 @@ It has these top-level messages:
 	Register
 	Rejection
 	Unregister
+	SignedEvent
 	Event
 	PeerID
 	PeerEndpoint
