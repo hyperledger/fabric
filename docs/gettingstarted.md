@@ -5,10 +5,10 @@ and the deployment and invocation of chaincode.  CLI will be used for the creati
 joining of the channel and the node SDK will be used for the client authentication,
 and chaincode functions utilizing the channel.
 
-Docker-compose will be used to create a consortium of three organizations, each
+Docker Compose will be used to create a consortium of three organizations, each
 running an endorsing/committing peer, as well as a "solo" orderer and a Certificate Authority (CA).
 The cryptographic material, based on standard PKI implementation, has been pre-generated
-and is included in the sfhackfest.tar.gz in order to expedite the flow.  The CA, responsible for
+and is included in the `sfhackfest.tar.gz` in order to expedite the flow.  The CA, responsible for
 issuing, revoking and maintaining the crypto material represents one of the organizations and
 is needed by the client (node SDK) for authentication.  In an enterprise scenario, each
 organization might have their own CA, with more complex security measures implemented - e.g.
@@ -37,7 +37,7 @@ You're looking for a version higher than 2.1.8.
 ## Curl the source code to create network entities
 
 * Download the [cURL](https://curl.haxx.se/download.html) tool if not already installed.
-* Determine a location on your local machine where you want to place the Fabric and application source.
+* Determine a location on your local machine where you want to place the Fabric artifacts and application code.
 ```bash
 mkdir -p <my_dev_workspace>/hackfest
 cd <my_dev_workspace>/hackfest
@@ -46,31 +46,33 @@ Next, execute the following command:
 ```bash
 curl -L https://raw.githubusercontent.com/hyperledger/fabric/master/examples/sfhackfest/sfhackfest.tar.gz -o sfhackfest.tar.gz 2> /dev/null;  tar -xvf sfhackfest.tar.gz
 ```
-This command pulls and extracts all of the necessary artifacts to set up your network - docker compose script,
-channel generate/join script, crypto material for identity attestation, etc.  In the /src/github.com/example_cc directory you
-will find the chaincode that will be deployed.  
+This command pulls and extracts all of the necessary artifacts to set up your
+network - Docker Compose script, channel generate/join script, crypto material
+for identity attestation, etc.  In the `/src/github.com/example_cc` directory you
+will find the chaincode that will be deployed.
 
 Your directory should contain the following:
 ```bash
 JDoe-mbp: JohnDoe$ pwd
 /Users/JohnDoe
 JDoe-mbp: JohnDoe$ ls
-sfhackfest.tar.gz   channel_test.sh	  src
-ccenv		docker-compose-gettingstarted.yml	  tmp
+sfhackfest.tar.gz   channel_test.sh   src
+ccenv	  docker-compose-gettingstarted.yml	 tmp
 ```
 
 ## Using Docker
 
 You do not need to manually pull any images.  The images for - `fabric-peer`,
 `fabric-orderer`, `fabric-ca`, and `cli` are specified in the .yml file and will
-automatically download, extract, and run when you execute the `docker-compose` commands.
+automatically download, extract, and run when you execute the `docker-compose` command.
 
 ## Commands
 
 The channel commands are:
-* `create` - create and name a channel in the `orderer` and get back a genesis
+* "create" - create and name a channel in the `orderer` and get back a genesis
 block for the channel.  The genesis block is named in accordance with the channel name.
-* `join` - use the genesis block from the `create` command to issue a join request to a Peer.
+* "join" - use the genesis block from the `create` command to issue a join
+request to a Peer.
 
 ## Use Docker to spawn network entities & create/join a channel
 
@@ -82,15 +84,15 @@ Create network entities, create channel, join peers to channel:
 ```bash
 docker-compose -f docker-compose-gettingstarted.yml up -d
 ```
-Behind the scenes this started six containers (3 peers, "solo" orderer, CLI and CA)
-in detached mode.  A script - channel_test.sh - embedded within the
-docker-compose-gettingstarted.yml issued the create channel and join channel commands within the
-CLI container.  In the end, you are left with a network and a channel containing three
-peers - peer0, peer1, peer2.
+Behind the scenes this started six containers (3 peers, a "solo" orderer, CLI and CA)
+in detached mode.  A script - `channel_test.sh` - embedded within the
+`docker-compose-gettingstarted.yml` issued the create channel and join channel
+commands within the CLI container.  In the end, you are left with a network and
+a channel containing three peers - peer0, peer1, peer2.
 
 View your containers:
 ```bash
-# if you have no other containers running, you will see nine
+# if you have no other containers running, you will see six
 docker ps
 ```
 
@@ -106,46 +108,50 @@ To view results for channel creation/join:
 ```bash
 vi results.txt
 ```
-To view logs:
+You're looking for:
 ```bash
-vi log.txt
+SUCCESSFUL CHANNEL CREATION
+SUCCESSFUL JOIN CHANNEL on PEER0
+SUCCESSFUL JOIN CHANNEL on PEER1
+SUCCESSFUL JOIN CHANNEL on PEER2
 ```
-To view genesis block details:
+
+To view genesis block:
 ```bash
 vi myc1.block
 ```
 
 ## Curl the application source code and SDK modules
 
-* Prior to issuing the command, make sure you are in the same working directory where you curled the network code.  
+* Prior to issuing the command, make sure you are in the same working directory
+where you curled the network code.
 * Execute the following command:
 ```bash
 curl -OOOOOO https://raw.githubusercontent.com/hyperledger/fabric-sdk-node/master/examples/balance-transfer/{config.json,deploy.js,helper.js,invoke.js,query.js,package.json}
 ```
 
-This command pulls the javascript code for issuing your deploy, invoke and query calls.  It also
-retrieves dependencies for the node SDK modules.  
+This command pulls the javascript code for issuing your deploy, invoke and query calls.
+It also retrieves dependencies for the node SDK modules.
 
 * Install the node modules:
 ```bash
+# You may be prompted for your root password at one or more times during this process.
 npm install
 ```
-You may be prompted for your root password at one or more times during the `npm install`.
-At this point you have installed all of the prerequisites and source code.
+You now have all of the necessary prerequisites and Fabric artifacts.
 
 ## Use node SDK to register/enroll user and deploy/invoke/query
 
 The individual javascript programs will exercise the SDK APIs to register and enroll the client with
 the provisioned Certificate Authority.  Once the client is properly authenticated,
 the programs will demonstrate basic chaincode functionalities - deploy, invoke, and query.  Make
-sure you are in the working directory where you pulled the source code.  You can explore the individual
-javascript programs to better understand the various APIs.
+sure you are in the working directory where you pulled the source code before proceeding.
 
-Register and enroll the user & deploy chaincode:
+Register/enroll & deploy chaincode (Linux or OSX):
 ```bash
 GOPATH=$PWD node deploy.js
 ```
-_if running on Windows_:
+Register/enroll & deploy chaincode (Windows):
 ```bash
 SET GOPATH=%cd%
 node deploy.js
@@ -159,11 +165,12 @@ Query against key value "a":
 node query.js
 ```
 You will receive a "200 response" in your terminal if each command is successful.
+Explore the various javascript programs to better understand the SDK and APIs.
 
 ## Manually create and join channel (optional)
 
-To manually exercise the createChannel and joinChannel APIs through the CLI container, you will
-need to edit the Docker Compose file.  Use an editor to open docker-compose-gettingstarted.yml and
+To manually exercise the create channel and join channel APIs through the CLI container, you will
+need to edit the Docker Compose file.  Use an editor to open `docker-compose-gettingstarted.yml` and
 comment out the `channel_test.sh` command in your cli image.  Simply place a `#` to the left
 of the command.  For example:
 ```bash
@@ -186,14 +193,14 @@ Send createChannel API to Ordering Service:
 ```
 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer channel create -c myc1
 ```
-This will return a genesis block - myc1.block - that you can issue join commands with.
-Next, send a joinChannel API to peer0 and pass in the genesis block as an argument.
+This will return a genesis block - `myc1.block` - that you can issue join commands with.
+Next, send a joinChannel API to `peer0` and pass in the genesis block as an argument.
 The channel is defined within the genesis block:
 ```
 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 CORE_PEER_ADDRESS=peer0:7051 peer channel join -b myc1.block
 ```
-To join the other peers to the channel, simply reissue the above command with peer1
-or peer2 specified.  For example:
+To join the other peers to the channel, simply reissue the above command with `peer1`
+or `peer2` specified.  For example:
 ```
 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 CORE_PEER_ADDRESS=peer1:7051 peer channel join -b myc1.block
 ```
@@ -226,6 +233,45 @@ already occupied.  If this occurs, you will need to kill the container that is u
 
 If a file cannot be located, make sure your curl commands executed successfully and make
 sure you are in the directory where you pulled the source code.
+
+If you ran through the automated channel create/join process (i.e. did not comment out
+`channel_test.sh` in the `docker-compose-gettingstarted.yml`), then channel - `myc1` - and
+genesis block - `myc1.block` - have already been created and exist on your machine.
+As a result, if you proceed to execute the manual steps in your cli container:
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer channel create -c myc1
+```
+Then you will run into an error similar to:
+```
+<EXACT_TIMESTAMP>       UTC [msp] Sign -> DEBU 064 Sign: digest: 5ABA6805B3CDBAF16C6D0DCD6DC439F92793D55C82DB130206E35791BCF18E5F
+Error: Got unexpected status: BAD_REQUEST
+Usage:
+  peer channel create [flags]
+```
+This occurs because you are attempting to create a channel named `myc1`, and this channel
+already exists!  There are two options.  Try issuing the peer channel create command
+with a different channel name - `myc2`.  For example:
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer channel create -c myc2
+```
+Then join:
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 CORE_PEER_ADDRESS=peer0:7051 peer channel join -b myc2.block
+```
+
+If you do choose to create a new channel, you will also need to edit the "channelID" parameter
+in the `config.json` file to match the new channel's name.  For example:
+```
+{
+   "chainName":"fabric-client1",
+   "chaincodeID":"mycc",
+   "channelID":"myc2",
+   "goPath":"../../test/fixtures",
+   "chaincodePath":"github.com/example_cc",
+```
+
+OR, if you want your channel called - `myc1` -, remove your docker containers and
+then follow the same commands in the __Manually create and join channel__ section.
 
 Remove a specific docker container:
 ```bash
