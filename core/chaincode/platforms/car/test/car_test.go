@@ -20,10 +20,10 @@ import (
 	"os"
 	"testing"
 
-	//"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config"
-	//"github.com/hyperledger/fabric/core/container"
-	//pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/core/container"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 func TestMain(m *testing.M) {
@@ -31,27 +31,23 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// Disable this for change chaincode interface temporarily.
-// TODO: Update java chaincode interface and enable this.
-//func TestCar_BuildImage(t *testing.T) {
-//	//Skipping the test till chaintool is fixed for changint CtorMsg to Input
-//	t.Skip()
-//	vm, err := container.NewVM()
+func TestCar_BuildImage(t *testing.T) {
+	vm, err := container.NewVM()
 
-//	if err != nil {
-//		t.Errorf("Error getting VM: %s", err)
-//		return
-//	}
-//	// Build the spec
-//	cwd, err := os.Getwd()
-//	if err != nil {
-//		t.Errorf("Error getting CWD: %s", err)
-//		return
-//	}
+	if err != nil {
+		t.Errorf("Error getting VM: %s", err)
+		return
+	}
+	// Build the spec
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("Error getting CWD: %s", err)
+		return
+	}
 
-//	chaincodePath := cwd + "/org.hyperledger.chaincode.example02-0.1-SNAPSHOT.car"
-//	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_CAR, ChaincodeID: &pb.ChaincodeID{Name: "cartest", Path: chaincodePath}, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
-//	if _, err := vm.BuildChaincodeContainer(spec); err != nil {
-//		t.Error(err)
-//	}
-//}
+	chaincodePath := cwd + "/org.hyperledger.chaincode.example02-0.1-SNAPSHOT.car"
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_CAR, ChaincodeID: &pb.ChaincodeID{Name: "cartest", Path: chaincodePath}, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
+	if _, err := vm.BuildChaincodeContainer(spec); err != nil {
+		t.Error(err)
+	}
+}
