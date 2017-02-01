@@ -23,13 +23,13 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
-	"github.com/hyperledger/fabric/peer/gossip/mcs"
-	"github.com/hyperledger/fabric/peer/gossip/sa"
+	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
+
+// This file is used to bootstrap a gossip instance and/or leader election service instance
 
 func getIntOrDefault(key string, defVal int) int {
 	if viper.GetInt(key) == 0 {
@@ -83,55 +83,12 @@ func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string
 }
 
 // NewGossipComponent creates a gossip component that attaches itself to the given gRPC server
-func NewGossipComponent(identity []byte, endpoint string, s *grpc.Server, dialOpts []grpc.DialOption, bootPeers ...string) gossip.Gossip {
-	if overrideEndpoint := viper.GetString("peer.gossip.endpoint"); overrideEndpoint != "" {
-		endpoint = overrideEndpoint
-	}
+func NewGossipComponent(peerIdentity []byte, endpoint string, s *grpc.Server, secAdv api.SecurityAdvisor, cryptSvc api.MessageCryptoService, idMapper identity.Mapper, dialOpts []grpc.DialOption, bootPeers ...string) gossip.Gossip {
 
 	externalEndpoint := viper.GetString("peer.gossip.externalEndpoint")
 
 	conf := newConfig(endpoint, externalEndpoint, bootPeers...)
-	cryptSvc := mcs.NewMessageCryptoService()
-	secAdv := sa.NewSecurityAdvisor()
+	gossipInstance := gossip.NewGossipService(conf, s, secAdv, cryptSvc, idMapper, peerIdentity, dialOpts...)
 
-	if viper.GetBool("peer.gossip.ignoreSecurity") {
-		sec := &secImpl{[]byte(endpoint)}
-		cryptSvc = sec
-		secAdv = sec
-		identity = []byte(endpoint)
-	}
-
-	return gossip.NewGossipService(conf, s, secAdv, cryptSvc, identity, dialOpts...)
-}
-
-type secImpl struct {
-	identity []byte
-}
-
-func (*secImpl) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType {
-	return api.OrgIdentityType("DEFAULT")
-}
-
-func (s *secImpl) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
-	return common.PKIidType(peerIdentity)
-}
-
-func (s *secImpl) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
-	return nil
-}
-
-func (s *secImpl) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
-}
-
-func (s *secImpl) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	return nil
-}
-
-func (s *secImpl) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	return nil
-}
-
-func (s *secImpl) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
-	return nil
+	return gossipInstance
 }

@@ -74,10 +74,10 @@ type gossipServiceImpl struct {
 }
 
 // NewGossipService creates a gossip instance attached to a gRPC server
-func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvisor, mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType, dialOpts ...grpc.DialOption) Gossip {
+func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvisor, mcs api.MessageCryptoService, idMapper identity.Mapper, selfIdentity api.PeerIdentityType, dialOpts ...grpc.DialOption) Gossip {
 	var c comm.Comm
 	var err error
-	idMapper := identity.NewIdentityMapper(mcs)
+
 	lgr := util.GetLogger(util.LoggingGossipModule, conf.ID)
 	if s == nil {
 		c, err = createCommWithServer(conf.BindPort, idMapper, selfIdentity)
@@ -168,8 +168,8 @@ func createCommWithoutServer(s *grpc.Server, cert *tls.Certificate, idStore iden
 }
 
 // NewGossipServiceWithServer creates a new gossip instance with a gRPC server
-func NewGossipServiceWithServer(conf *Config, secAdvisor api.SecurityAdvisor, mcs api.MessageCryptoService, identity api.PeerIdentityType) Gossip {
-	return NewGossipService(conf, nil, secAdvisor, mcs, identity)
+func NewGossipServiceWithServer(conf *Config, secAdvisor api.SecurityAdvisor, mcs api.MessageCryptoService, mapper identity.Mapper, identity api.PeerIdentityType) Gossip {
+	return NewGossipService(conf, nil, secAdvisor, mcs, mapper, identity)
 }
 
 func createCommWithServer(port int, idStore identity.Mapper, identity api.PeerIdentityType) (comm.Comm, error) {
