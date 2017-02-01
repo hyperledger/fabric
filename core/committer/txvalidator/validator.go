@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -28,10 +27,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/msp"
+
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 // Support provides all of the needed to evaluate the VSCC
@@ -177,41 +176,6 @@ func (v *txValidator) Validate(block *common.Block) error {
 	return nil
 }
 
-// getSemiHardcodedPolicy returns a policy that requests
-// one valid signature from the first MSP in this
-// chain's MSP manager
-// FIXME: this needs to be removed as soon as we extract the policy from LCCC
-func getSemiHardcodedPolicy(chainID string, mspMgr msp.MSPManager) ([]byte, error) {
-	// 1) determine the MSP identifier for the first MSP in this chain
-	var msp msp.MSP
-	msps, err := mspMgr.GetMSPs()
-	if err != nil {
-		return nil, fmt.Errorf("Could not retrieve the MSPs for the chain manager, err %s", err)
-	}
-	if len(msps) == 0 {
-		return nil, errors.New("At least one MSP was expected")
-	}
-	for _, m := range msps {
-		msp = m
-		break
-	}
-	mspid, err := msp.GetIdentifier()
-	if err != nil {
-		return nil, fmt.Errorf("Failure getting the msp identifier, err %s", err)
-	}
-
-	// 2) get the policy
-	p := cauthdsl.SignedByMspMember(mspid)
-
-	// 3) marshal it and return it
-	b, err := proto.Marshal(p)
-	if err != nil {
-		return nil, fmt.Errorf("Could not marshal policy, err %s", err)
-	}
-
-	return b, err
-}
-
 func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte) error {
 	// Chain ID
 	chainID := payload.Header.ChainHeader.ChainID
@@ -230,21 +194,6 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		return err
 	}
 
-	// TODO: temporary workaround until the policy is specified
-	// by the deployer and can be retrieved via LCCC: we create
-	// a policy that requests 1 valid signature from this chain's
-	// MSP
-	policy, err := getSemiHardcodedPolicy(chainID, v.support.MSPManager())
-	if err != nil {
-		return err
-	}
-
-	// build arguments for VSCC invocation
-	// args[0] - function name (not used now)
-	// args[1] - serialized Envelope
-	// args[2] - serialized policy
-	args := [][]byte{[]byte(""), envBytes, policy}
-
 	ctxt, err := v.ccprovider.GetContext(v.support.Ledger())
 	if err != nil {
 		logger.Errorf("Cannot obtain context for txid=%s, err %s", txid, err)
@@ -258,22 +207,32 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		return err
 	}
 
-	// TODO: Temporary solution until FAB-1422 get resolved
-	// Explanation: we actually deploying chaincode transaction,
-	// hence no lccc yet to query for the data, therefore currently
-	// introducing a workaround to skip obtaining LCCC data.
-	vscc := "vscc"
-	if hdrExt.ChaincodeID.Name != "lccc" {
-		// Extracting vscc from lccc
-		// TODO: extract policy as well when available; it's the second argument returned by GetCCValidationInfoFromLCCC
-		vscc, _, err = v.ccprovider.GetCCValidationInfoFromLCCC(ctxt, txid, nil, chainID, hdrExt.ChaincodeID.Name)
-		if err != nil {
-			logger.Errorf("Unable to get chaincode data from LCCC for txid %s, due to %s", txid, err)
-			return err
-		}
+	// LCCC should not undergo standard VSCC type of
+	// validation. It should instead go through system
+	// policy validation to determine whether the issuer
+	// is entitled to deploy a chaincode on our chain
+	// VSCCValidateTx should
+	if hdrExt.ChaincodeID.Name == "lccc" {
+		// TODO: until FAB-1934 is in, we need to stop here
+		logger.Infof("Invocation of LCCC detected, no further VSCC validation necessary")
+		return nil
 	}
 
+	// obtain name of the VSCC and the policy from LCCC
+	vscc, policy, err := v.ccprovider.GetCCValidationInfoFromLCCC(ctxt, txid, nil, chainID, hdrExt.ChaincodeID.Name)
+	if err != nil {
+		logger.Errorf("Unable to get chaincode data from LCCC for txid %s, due to %s", txid, err)
+		return err
+	}
+
+	// build arguments for VSCC invocation
+	// args[0] - function name (not used now)
+	// args[1] - serialized Envelope
+	// args[2] - serialized policy
+	args := [][]byte{[]byte(""), envBytes, policy}
+
 	vscctxid := coreUtil.GenerateUUID()
+
 	// Get chaincode version
 	version := coreUtil.GetSysCCVersion()
 	cccid := v.ccprovider.GetCCContext(chainID, vscc, version, vscctxid, true, nil)

@@ -19,11 +19,28 @@ import (
 	"fmt"
 	"testing"
 
+	"os"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
+
+type mocksccProviderFactory struct {
+}
+
+func (c *mocksccProviderFactory) NewSystemChaincodeProvider() sysccprovider.SystemChaincodeProvider {
+	return &mocksccProviderImpl{}
+}
+
+type mocksccProviderImpl struct {
+}
+
+func (c *mocksccProviderImpl) IsSysCC(name string) bool {
+	return true
+}
 
 func register(stub *shim.MockStub, ccname string) error {
 	args := [][]byte{[]byte("register"), []byte(ccname)}
@@ -48,6 +65,11 @@ func TestDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -65,6 +87,11 @@ func TestInvalidCodeDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
 	baddepspec := []byte("bad deploy spec")
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), baddepspec}
 	res := stub.MockInvoke("1", args)
@@ -79,6 +106,11 @@ func TestInvalidCodeDeploy(t *testing.T) {
 func TestInvalidChaincodeName(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
+
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
 
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 
@@ -102,6 +134,11 @@ func TestInvalidChaincodeName(t *testing.T) {
 func TestRedeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
+
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
 
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
@@ -127,6 +164,11 @@ func TestCheckCC(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -148,6 +190,11 @@ func TestCheckCC(t *testing.T) {
 func TestMultipleDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
+
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
 
 	//deploy 02
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
@@ -188,6 +235,11 @@ func TestRetryFailedDeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
 	//deploy 02
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
@@ -226,6 +278,11 @@ func TestUpgrade(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -261,6 +318,11 @@ func TestUpgradeNonExistChaincode(t *testing.T) {
 	scc := new(LifeCycleSysCC)
 	stub := shim.NewMockStub("lccc", scc)
 
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
 	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -283,4 +345,9 @@ func TestUpgradeNonExistChaincode(t *testing.T) {
 	if string(res.Message) != NotFoundErr("test").Error() {
 		t.FailNow()
 	}
+}
+
+func TestMain(m *testing.M) {
+	sysccprovider.RegisterSystemChaincodeProviderFactory(&mocksccProviderFactory{})
+	os.Exit(m.Run())
 }

@@ -19,6 +19,8 @@ package chaincode
 import (
 	"context"
 
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -72,18 +74,23 @@ func (c *ccProviderImpl) GetCCContext(cid, name, version, txid string, syscc boo
 
 // GetCCValidationInfoFromLCCC returns the VSCC and the policy listed in LCCC for the supplied chaincode
 func (c *ccProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
+	// LCCC does not have any notion about its own
+	// endorsing policy - we should never call this
+	// function with lccc as the chaincodeID
+	if chaincodeID == "lccc" {
+		panic("GetCCValidationInfoFromLCCC invoke for LCCC")
+	}
+
 	data, err := GetChaincodeDataFromLCCC(ctxt, txid, prop, chainID, chaincodeID)
 	if err != nil {
 		return "", nil, err
 	}
 
-	vscc := "vscc"
-	// Check whenever VSCC defined for chaincode data
-	if data != nil && data.Vscc != "" {
-		vscc = data.Vscc
+	if data == nil || data.Vscc == "" || data.Policy == nil {
+		return "", nil, fmt.Errorf("Incorrect validation info in LCCC")
 	}
 
-	return vscc, data.Policy, nil
+	return data.Vscc, data.Policy, nil
 }
 
 // ExecuteChaincode executes the chaincode specified in the context with the specified arguments
