@@ -31,6 +31,9 @@ pages:
   - Go Style Guides:
     - Golang: Style-guides/go-style.md
 
+- Setup:
+  - Fabric CA: ca-setup.md
+
 markdown_extensions:
   - toc:
      permalink: true
