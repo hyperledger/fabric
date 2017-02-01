@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/configtx"
 	coreUtil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -141,7 +142,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 						continue
 					}
 				} else if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
-					configEnvelope, err := utils.UnmarshalConfigurationEnvelope(payload.Data)
+					configEnvelope, err := configtx.UnmarshalConfigurationEnvelope(payload.Data)
 					if err != nil {
 						err := fmt.Errorf("Error unmarshaling configuration which passed initial validity checks: %s", err)
 						logger.Critical(err)

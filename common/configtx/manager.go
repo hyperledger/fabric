@@ -17,6 +17,7 @@ limitations under the License.
 package configtx
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -24,9 +25,6 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"errors"
-
-	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
 )
 
@@ -93,33 +91,28 @@ type configurationManager struct {
 
 // computeChainIDAndSequence returns the chain id and the sequence number for a configuration envelope
 // or an error if there is a problem with the configuration envelope
-func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint64, error) {
-	if len(configtx.Items) == 0 {
+func computeChainIDAndSequence(config *cb.Config) (string, uint64, error) {
+	if len(config.Items) == 0 {
 		return "", 0, errors.New("Empty envelope unsupported")
 	}
 
 	m := uint64(0)
 
-	if configtx.Header == nil {
+	if config.Header == nil {
 		return "", 0, fmt.Errorf("Header not set")
 	}
 
-	if configtx.Header.ChainID == "" {
+	if config.Header.ChainID == "" {
 		return "", 0, fmt.Errorf("Header chainID was not set")
 	}
 
-	chainID := configtx.Header.ChainID
+	chainID := config.Header.ChainID
 
 	if err := validateChainID(chainID); err != nil {
 		return "", 0, err
 	}
 
-	for _, signedItem := range configtx.Items {
-		item := &cb.ConfigurationItem{}
-		if err := proto.Unmarshal(signedItem.ConfigurationItem, item); err != nil {
-			return "", 0, fmt.Errorf("Error unmarshaling signedItem.ConfigurationItem: %s", err)
-		}
-
+	for _, item := range config.Items {
 		if item.LastModified > m {
 			m = item.LastModified
 		}
@@ -167,7 +160,12 @@ func NewManagerImpl(configtx *cb.ConfigurationEnvelope, initializer Initializer,
 		}
 	}
 
-	chainID, seq, err := computeChainIDAndSequence(configtx)
+	config, err := UnmarshalConfig(configtx.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	chainID, seq, err := computeChainIDAndSequence(config)
 	if err != nil {
 		return nil, fmt.Errorf("Error computing chain ID and sequence: %s", err)
 	}
@@ -222,7 +220,17 @@ func (cm *configurationManager) commitHandlers() {
 }
 
 func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope) (configMap map[cb.ConfigurationItem_ConfigurationType]map[string]*cb.ConfigurationItem, err error) {
-	chainID, seq, err := computeChainIDAndSequence(configtx)
+	config, err := UnmarshalConfig(configtx.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	chainID, seq, err := computeChainIDAndSequence(config)
+	if err != nil {
+		return nil, err
+	}
+
+	signedData, err := configtx.AsSignedData()
 	if err != nil {
 		return nil, err
 	}
@@ -246,50 +254,36 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 
 	configMap = makeConfigMap()
 
-	for _, entry := range configtx.Items {
-		// Verify every entry is well formed
-		config := &cb.ConfigurationItem{}
-		err = proto.Unmarshal(entry.ConfigurationItem, config)
-		if err != nil {
-			// Note that this is not reachable by test coverage because the unmarshal error would have already been found when computing the chainID and seqNo
-			return nil, fmt.Errorf("Error unmarshaling ConfigurationItem: %s", err)
-		}
-
+	for _, item := range config.Items {
 		// Ensure the config sequence numbers are correct to prevent replay attacks
 		var isModified bool
 
-		if val, ok := cm.configuration[config.Type][config.Key]; ok {
+		if val, ok := cm.configuration[item.Type][item.Key]; ok {
 			// Config was modified if any of the contents changed
-			isModified = !reflect.DeepEqual(val, config)
+			isModified = !reflect.DeepEqual(val, item)
 		} else {
-			if config.LastModified != seq {
-				return nil, fmt.Errorf("Key %v for type %v was new, but had an older Sequence %d set", config.Key, config.Type, config.LastModified)
+			if item.LastModified != seq {
+				return nil, fmt.Errorf("Key %v for type %v was new, but had an older Sequence %d set", item.Key, item.Type, item.LastModified)
 			}
 			isModified = true
 		}
 
 		// If a config item was modified, its LastModified must be set correctly, and it must satisfy the modification policy
 		if isModified {
-			logger.Debugf("Proposed configuration item of type %v and key %s on chain %s has been modified", config.Type, config.Key, cm.chainID)
+			logger.Debugf("Proposed configuration item of type %v and key %s on chain %s has been modified", item.Type, item.Key, chainID)
 
-			if config.LastModified != seq {
-				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", config.Key, config.Type, config.LastModified, seq)
+			if item.LastModified != seq {
+				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", item.Key, item.Type, item.LastModified, seq)
 			}
 
 			// Get the modification policy for this config item if one was previously specified
 			// or the default if this is a new config item
 			var policy policies.Policy
-			oldItem, ok := cm.configuration[config.Type][config.Key]
+			oldItem, ok := cm.configuration[item.Type][item.Key]
 			if ok {
 				policy, _ = cm.PolicyManager().GetPolicy(oldItem.ModificationPolicy)
 			} else {
 				policy = defaultModificationPolicy
-			}
-
-			// Get signatures
-			signedData, err := entry.AsSignedData()
-			if err != nil {
-				return nil, err
 			}
 
 			// Ensure the policy is satisfied
@@ -299,13 +293,19 @@ func (cm *configurationManager) processConfig(configtx *cb.ConfigurationEnvelope
 		}
 
 		// Ensure the type handler agrees the config is well formed
-		logger.Debugf("Proposing configuration item of type %v for key %s on chain %s", config.Type, config.Key, cm.chainID)
-		err = cm.Initializer.Handlers()[config.Type].ProposeConfig(config)
+		logger.Debugf("Proposing configuration item of type %v for key %s on chain %s", item.Type, item.Key, cm.chainID)
+		err = cm.Initializer.Handlers()[item.Type].ProposeConfig(item)
 		if err != nil {
-			return nil, fmt.Errorf("Error proposing configuration item of type %v for key %s on chain %s: %s", config.Type, config.Key, chainID, err)
+			return nil, fmt.Errorf("Error proposing configuration item of type %v for key %s on chain %s: %s", item.Type, item.Key, chainID, err)
 		}
 
-		configMap[config.Type][config.Key] = config
+		// Ensure the same key has not been specified multiple times
+		_, ok := configMap[item.Type][item.Key]
+		if ok {
+			return nil, fmt.Errorf("Specified config item of type %v for key %s for chain %s multiple times", item.Type, item.Key, chainID)
+		}
+
+		configMap[item.Type][item.Key] = item
 	}
 
 	// Ensure that any config items which used to exist still exist, to prevent implicit deletion

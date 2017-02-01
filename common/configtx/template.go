@@ -36,8 +36,8 @@ const (
 
 // Template can be used to faciliate creation of configuration transactions
 type Template interface {
-	// Items returns a set of SignedConfigurationItems for the given chainID
-	Items(chainID string) ([]*cb.SignedConfigurationItem, error)
+	// Items returns a set of ConfigurationEnvelopes for the given chainID
+	Envelope(chainID string) (*cb.ConfigurationEnvelope, error)
 }
 
 type simpleTemplate struct {
@@ -49,18 +49,20 @@ func NewSimpleTemplate(items ...*cb.ConfigurationItem) Template {
 	return &simpleTemplate{items: items}
 }
 
-// Items returns a set of SignedConfigurationItems for the given chainID, and errors only on marshaling errors
-func (st *simpleTemplate) Items(chainID string) ([]*cb.SignedConfigurationItem, error) {
-	signedItems := make([]*cb.SignedConfigurationItem, len(st.items))
-	for i := range st.items {
-		mItem, err := proto.Marshal(st.items[i])
-		if err != nil {
-			return nil, err
-		}
-		signedItems[i] = &cb.SignedConfigurationItem{ConfigurationItem: mItem}
+// Items returns a set of ConfigurationEnvelopes for the given chainID, and errors only on marshaling errors
+func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigurationEnvelope, error) {
+	marshaledConfig, err := proto.Marshal(&cb.Config{
+		Header: &cb.ChainHeader{
+			ChainID: chainID,
+			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
+		},
+		Items: st.items,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return signedItems, nil
+	return &cb.ConfigurationEnvelope{Config: marshaledConfig}, nil
 }
 
 type compositeTemplate struct {
@@ -72,75 +74,46 @@ func NewCompositeTemplate(templates ...Template) Template {
 	return &compositeTemplate{templates: templates}
 }
 
-// Items returns a set of SignedConfigurationItems for the given chainID, and errors only on marshaling errors
-func (ct *compositeTemplate) Items(chainID string) ([]*cb.SignedConfigurationItem, error) {
-	items := make([][]*cb.SignedConfigurationItem, len(ct.templates))
-	var err error
+// Items returns a set of ConfigurationEnvelopes for the given chainID, and errors only on marshaling errors
+func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigurationEnvelope, error) {
+	items := make([][]*cb.ConfigurationItem, len(ct.templates))
 	for i := range ct.templates {
-		items[i], err = ct.templates[i].Items(chainID)
+		configEnv, err := ct.templates[i].Envelope(chainID)
 		if err != nil {
 			return nil, err
 		}
+		config, err := UnmarshalConfig(configEnv.Config)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = config.Items
 	}
 
-	return join(items...), nil
-}
-
-type newChainTemplate struct {
-	creationPolicy string
-	hash           func([]byte) []byte
-	template       Template
+	return NewSimpleTemplate(join(items...)...).Envelope(chainID)
 }
 
 // NewChainCreationTemplate takes a CreationPolicy and a Template to produce a Template which outputs an appropriately
-// constructed list of SignedConfigurationItem including an appropriate digest.  Note, using this Template in
+// constructed list of ConfigurationEnvelope.  Note, using this Template in
 // a CompositeTemplate will invalidate the CreationPolicy
-func NewChainCreationTemplate(creationPolicy string, hash func([]byte) []byte, template Template) Template {
-	return &newChainTemplate{
-		creationPolicy: creationPolicy,
-		hash:           hash,
-		template:       template,
-	}
-}
-
-// Items returns a set of SignedConfigurationItems for the given chainID, and errors only on marshaling errors
-func (nct *newChainTemplate) Items(chainID string) ([]*cb.SignedConfigurationItem, error) {
-	items, err := nct.template.Items(chainID)
-	if err != nil {
-		return nil, err
-	}
-
-	creationPolicy := &cb.SignedConfigurationItem{
-		ConfigurationItem: utils.MarshalOrPanic(&cb.ConfigurationItem{
-			Type: cb.ConfigurationItem_Orderer,
-			Key:  CreationPolicyKey,
-			Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-				Policy: nct.creationPolicy,
-				Digest: HashItems(items, nct.hash),
-			}),
+func NewChainCreationTemplate(creationPolicy string, template Template) Template {
+	creationPolicyTemplate := NewSimpleTemplate(&cb.ConfigurationItem{
+		Type: cb.ConfigurationItem_Orderer,
+		Key:  CreationPolicyKey,
+		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
+			Policy: creationPolicy,
 		}),
-	}
+	})
 
-	return join([]*cb.SignedConfigurationItem{creationPolicy}, items), nil
+	return NewCompositeTemplate(creationPolicyTemplate, template)
 }
 
-// HashItems is a utility method for computing the hash of the concatenation of the marshaled ConfigurationItems
-// in a []*cb.SignedConfigurationItem
-func HashItems(items []*cb.SignedConfigurationItem, hash func([]byte) []byte) []byte {
-	sourceBytes := make([][]byte, len(items))
-	for i := range items {
-		sourceBytes[i] = items[i].ConfigurationItem
-	}
-	return hash(util.ConcatenateBytes(sourceBytes...))
-}
-
-// join takes a number of SignedConfigurationItem slices and produces a single item
-func join(sets ...[]*cb.SignedConfigurationItem) []*cb.SignedConfigurationItem {
+// join takes a number of []*cb.ConfigurationItems and produces their concatenation
+func join(sets ...[]*cb.ConfigurationItem) []*cb.ConfigurationItem {
 	total := 0
 	for _, set := range sets {
 		total += len(set)
 	}
-	result := make([]*cb.SignedConfigurationItem, total)
+	result := make([]*cb.ConfigurationItem, total)
 	last := 0
 	for _, set := range sets {
 		for i := range set {
@@ -154,35 +127,29 @@ func join(sets ...[]*cb.SignedConfigurationItem) []*cb.SignedConfigurationItem {
 
 // MakeChainCreationTransaction is a handy utility function for creating new chain transactions using the underlying Template framework
 func MakeChainCreationTransaction(creationPolicy string, chainID string, signer msp.SigningIdentity, templates ...Template) (*cb.Envelope, error) {
-	composite := NewCompositeTemplate(templates...)
-	items, err := composite.Items(chainID)
-	if err != nil {
-		return nil, err
-	}
-
-	manager, err := NewManagerImpl(&cb.ConfigurationEnvelope{Header: &cb.ChainHeader{ChainID: chainID, Type: int32(cb.HeaderType_CONFIGURATION_ITEM)}, Items: items}, NewInitializer(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	newChainTemplate := NewChainCreationTemplate(creationPolicy, manager.ChainConfig().HashingAlgorithm(), composite)
-	signedConfigItems, err := newChainTemplate.Items(chainID)
-	if err != nil {
-		return nil, err
-	}
-
 	sSigner, err := signer.Serialize()
 	if err != nil {
 		return nil, fmt.Errorf("Serialization of identity failed, err %s", err)
 	}
 
+	newChainTemplate := NewChainCreationTemplate(creationPolicy, NewCompositeTemplate(templates...))
+	newConfigEnv, err := newChainTemplate.Envelope(chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	newConfigEnv.Signatures = []*cb.ConfigurationSignature{&cb.ConfigurationSignature{
+		SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
+	}}
+	newConfigEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigEnv.Signatures[0].SignatureHeader, newConfigEnv.Config))
+	if err != nil {
+		return nil, err
+	}
+
 	payloadChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, msgVersion, chainID, epoch)
 	payloadSignatureHeader := utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
 	payloadHeader := utils.MakePayloadHeader(payloadChainHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
-		Items:  signedConfigItems,
-		Header: &cb.ChainHeader{ChainID: chainID, Type: int32(cb.HeaderType_CONFIGURATION_ITEM)},
-	})}
+	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(newConfigEnv)}
 	paylBytes := utils.MarshalOrPanic(payload)
 
 	// sign the payload

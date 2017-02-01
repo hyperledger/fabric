@@ -28,7 +28,7 @@ It has these top-level messages:
 	BlockMetadata
 	ConfigurationEnvelope
 	ConfigurationTemplate
-	SignedConfigurationItem
+	Config
 	ConfigurationItem
 	ConfigurationSignature
 	HashingAlgorithm

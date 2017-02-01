@@ -26,35 +26,23 @@ import (
 func viewableConfigurationEnvelope(name string, configEnvelope *cb.ConfigurationEnvelope) Viewable {
 	return &field{
 		name:   name,
-		values: []Viewable{viewableSignedConfigurationItemSlice("Items", configEnvelope.Items)},
+		values: []Viewable{viewableConfig("Config", configEnvelope.Config), viewableConfigurationSignatureSlice("Signatures", configEnvelope.Signatures)},
 	}
 }
 
-func viewableSignedConfigurationItemSlice(name string, signedConfigItems []*cb.SignedConfigurationItem) Viewable {
-	values := make([]Viewable, len(signedConfigItems))
-	for i, item := range signedConfigItems {
-		values[i] = viewableSignedConfigurationItem(fmt.Sprintf("Element %d", i), item)
+func viewableConfig(name string, configBytes []byte) Viewable {
+	config := &cb.Config{}
+	err := proto.Unmarshal(configBytes, config)
+	if err != nil {
+		return viewableError(name, err)
+	}
+	values := make([]Viewable, len(config.Items))
+	for i, item := range config.Items {
+		values[i] = viewableConfigurationItem(fmt.Sprintf("Element %d", i), item)
 	}
 	return &field{
 		name:   name,
 		values: values,
-	}
-}
-
-func viewableSignedConfigurationItem(name string, signedConfigItem *cb.SignedConfigurationItem) Viewable {
-	var viewableConfigItem Viewable
-
-	configItem := &cb.ConfigurationItem{}
-
-	if err := proto.Unmarshal(signedConfigItem.ConfigurationItem, configItem); err != nil {
-		viewableConfigItem = viewableError(name, err)
-	} else {
-		viewableConfigItem = viewableConfigurationItem("ConfigurationItem", configItem)
-	}
-
-	return &field{
-		name:   name,
-		values: []Viewable{viewableConfigItem, viewableConfigurationSignatureSlice("Signatures", signedConfigItem.Signatures)},
 	}
 }
 
