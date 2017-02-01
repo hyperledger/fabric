@@ -182,11 +182,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	}
 
 	// TODO remove once all references to mspmgmt are gone from peer code
-	// MSP is now initialized above in configtx.Manager
-	_, err = mspmgmt.GetMSPManagerFromBlock(cid, cb)
-	if err != nil {
-		return err
-	}
+	mspmgmt.XXXSetMSPManager(cid, configtxManager.MSPManager())
 
 	cs := &chainSupport{
 		Manager:    configtxManager,
