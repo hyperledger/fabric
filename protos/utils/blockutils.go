@@ -25,7 +25,6 @@ import (
 
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/peer"
 )
 
 // GetChainIDFromBlock returns chain ID in the block
@@ -193,14 +192,4 @@ func EncodeMSP(chainID string) *cb.SignedConfigurationItem {
 		mspKey,
 		MarshalOrPanic(conf),
 		xxxDefaultModificationPolicyID, cb.ConfigurationItem_MSP)
-}
-
-// EncodeAnchorPeers returns a configuration item with anchor peers
-func EncodeAnchorPeers(anchorPeers []*peer.AnchorPeer) *cb.ConfigurationItem {
-	apConfig := &peer.AnchorPeers{
-		AnchorPeers: anchorPeers,
-	}
-	rawAnchorPeers := MarshalOrPanic(apConfig)
-	// We don't populate the chainID because that value is over-written later on anyway
-	return createConfigItem("", AnchorPeerConfItemKey, rawAnchorPeers, xxxDefaultModificationPolicyID, cb.ConfigurationItem_Peer)
 }

@@ -26,6 +26,7 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/peer/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
@@ -55,7 +56,7 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	//TODO this is a temporary hack until `orderer.template` is supplied from the CLI
 	oTemplate := configtxtest.GetOrdererTemplate()
 	mspTemplate := configtx.NewSimpleTemplate(utils.EncodeMSPUnsigned(chainID))
-	gossTemplate := configtx.NewSimpleTemplate(utils.EncodeAnchorPeers(anchorPeers))
+	gossTemplate := configtx.NewSimpleTemplate(sharedconfig.TemplateAnchorPeers(anchorPeers))
 	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspTemplate, gossTemplate)
 
 	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
