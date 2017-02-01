@@ -27,7 +27,7 @@ import (
 
 // deployCmd returns the cobra command for Chaincode Deploy
 func packageCmd(cf *ChaincodeCmdFactory) *cobra.Command {
-	chaincodeDeployCmd = &cobra.Command{
+	chaincodeInstantiateCmd = &cobra.Command{
 		Use:       "package",
 		Short:     fmt.Sprintf("Package the specified chaincode into a deployment spec."),
 		Long:      fmt.Sprintf(`Package the specified chaincode into a deployment spec.`),
@@ -37,7 +37,7 @@ func packageCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		},
 	}
 
-	return chaincodeDeployCmd
+	return chaincodeInstantiateCmd
 }
 
 // chaincodeDeploy deploys the chaincode. On success, the chaincode name
@@ -50,7 +50,7 @@ func chaincodePackage(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory
 		return err
 	}
 
-	cds, err := getChaincodeBytes(spec)
+	cds, err := getChaincodeBytes(spec, true)
 	if err != nil {
 		return fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}

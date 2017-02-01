@@ -137,11 +137,21 @@ func getDeployOrUpgradeProposal(cds *pb.ChaincodeDeploymentSpec, chainID string,
 	} else {
 		propType = "deploy"
 	}
+	sccver := util.GetSysCCVersion()
 	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b}}}}
+	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc", Version: sccver}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b}}}}
 
 	//...and get the proposal for it
-	return getInvokeProposal(lcccSpec, chainID, creator)
+	var prop *pb.Proposal
+	if prop, err = getInvokeProposal(lcccSpec, chainID, creator); err != nil {
+		return nil, err
+	}
+
+	if err = ccprovider.PutChaincodeIntoFS(cds); err != nil {
+		return nil, err
+	}
+
+	return prop, nil
 }
 
 func getSignedProposal(prop *pb.Proposal, signer msp.SigningIdentity) (*pb.SignedProposal, error) {
@@ -252,7 +262,7 @@ func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error
 //TestDeploy deploy chaincode example01
 func TestDeploy(t *testing.T) {
 	chainID := util.GetTestChainID()
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex01", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex01", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
 	cccid := ccprovider.NewCCContext(chainID, "ex01", "0", "", false, nil)
 
@@ -266,51 +276,12 @@ func TestDeploy(t *testing.T) {
 	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
-//TestDeployBadArgs sets bad args on deploy. It should fail, and example02 should not be deployed
-func TestDeployBadArgs(t *testing.T) {
-	chainID := util.GetTestChainID()
-	//invalid arguments
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b")}}}
-
-	cccid := ccprovider.NewCCContext(chainID, "ex02", "0", "", false, nil)
-
-	_, _, err := deploy(endorserServer, chainID, spec, nil)
-	if err == nil {
-		t.Fail()
-		t.Log("DeployBadArgs-expected error in deploy but succeeded")
-		chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-}
-
-//TestDeployBadPayload set payload to nil and do a deploy. It should fail and example02 should not be deployed
-func TestDeployBadPayload(t *testing.T) {
-	chainID := util.GetTestChainID()
-	//invalid arguments
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
-
-	cccid := ccprovider.NewCCContext(chainID, "ex02", "0", "", false, nil)
-
-	f := func(cds *pb.ChaincodeDeploymentSpec) {
-		cds.CodePackage = nil
-	}
-	_, _, err := deploy(endorserServer, chainID, spec, f)
-	if err == nil {
-		t.Fail()
-		t.Log("DeployBadPayload-expected error in deploy but succeeded")
-		chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-	chaincode.GetChain().Stop(context.Background(), cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-}
-
 //TestRedeploy - deploy two times, second time should fail but example02 should remain deployed
 func TestRedeploy(t *testing.T) {
 	chainID := util.GetTestChainID()
 
 	//invalid arguments
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
 	cccid := ccprovider.NewCCContext(chainID, "ex02", "0", "", false, nil)
 
@@ -339,7 +310,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
-	chaincodeID := &pb.ChaincodeID{Path: url, Name: "ex01"}
+	chaincodeID := &pb.ChaincodeID{Path: url, Name: "ex01", Version: "0"}
 
 	args := []string{"10"}
 
@@ -390,8 +361,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	chaincodeID1 := &pb.ChaincodeID{Path: url1, Name: "upgradeex01"}
-	chaincodeID2 := &pb.ChaincodeID{Path: url2, Name: "upgradeex01"}
+	chaincodeID1 := &pb.ChaincodeID{Path: url1, Name: "upgradeex01", Version: "0"}
+	chaincodeID2 := &pb.ChaincodeID{Path: url2, Name: "upgradeex01", Version: "1"}
 
 	f := "init"
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")

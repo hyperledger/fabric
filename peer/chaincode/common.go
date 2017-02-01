@@ -53,9 +53,9 @@ func checkSpec(spec *pb.ChaincodeSpec) error {
 }
 
 // getChaincodeBytes get chaincode deployment spec given the chaincode spec
-func getChaincodeBytes(spec *pb.ChaincodeSpec) (*pb.ChaincodeDeploymentSpec, error) {
+func getChaincodeBytes(spec *pb.ChaincodeSpec, crtPkg bool) (*pb.ChaincodeDeploymentSpec, error) {
 	var codePackageBytes []byte
-	if chaincode.IsDevMode() == false {
+	if chaincode.IsDevMode() == false && crtPkg {
 		var err error
 		if err = checkSpec(spec); err != nil {
 			return nil, err
@@ -134,8 +134,14 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		return fmt.Errorf("Must supply value for %s name parameter.\n", chainFuncName)
 	}
 
+	if cmd != nil && (cmd == chaincodeInstantiateCmd || cmd == chaincodeInstallCmd || cmd == chaincodeUpgradeCmd) {
+		if chaincodeVersion == "" {
+			return fmt.Errorf("Chaincode version is not provided")
+		}
+	}
+
 	// if it's not a deploy or an upgrade we don't need policy, escc and vscc
-	if cmd.Name() != deploy_cmdname && cmd.Name() != upgrade_cmdname {
+	if cmd.Name() != instantiate_cmdname && cmd.Name() != upgrade_cmdname {
 		if escc != common.UndefinedParamValue {
 			return fmt.Errorf("escc should be supplied only to chaincode deploy requests")
 		}

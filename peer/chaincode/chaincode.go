@@ -41,9 +41,9 @@ func AddFlags(cmd *cobra.Command) {
 	flags.StringVarP(&chaincodePath, "path", "p", common.UndefinedParamValue,
 		fmt.Sprintf("Path to %s", chainFuncName))
 	flags.StringVarP(&chaincodeName, "name", "n", common.UndefinedParamValue,
-		fmt.Sprint("Name of the chaincode returned by the deploy transaction"))
+		fmt.Sprint("Name of the chaincode"))
 	flags.StringVarP(&chaincodeVersion, "version", "v", common.UndefinedParamValue,
-		fmt.Sprint("Version of the chaincode specifid in deploy/upgrade transactions"))
+		fmt.Sprint("Version of the chaincode specified in install/instantiate/upgrade commands"))
 	flags.StringVarP(&chaincodeUsr, "username", "u", common.UndefinedParamValue,
 		fmt.Sprint("Username for chaincode operations when security is enabled"))
 	flags.StringVarP(&customIDGenAlg, "tid", "t", common.UndefinedParamValue,
@@ -62,7 +62,7 @@ func AddFlags(cmd *cobra.Command) {
 func Cmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	AddFlags(chaincodeCmd)
 
-	chaincodeCmd.AddCommand(deployCmd(cf))
+	chaincodeCmd.AddCommand(instantiateCmd(cf))
 	chaincodeCmd.AddCommand(invokeCmd(cf))
 	chaincodeCmd.AddCommand(queryCmd(cf))
 	chaincodeCmd.AddCommand(upgradeCmd(cf))

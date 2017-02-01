@@ -48,7 +48,7 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 
 	url := "github.com/hyperledger/fabric/examples/ccchecker/chaincodes/newkeyperinvoke"
 
-	chaincodeID := &pb.ChaincodeID{Name: "nkpi", Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: "nkpi", Path: url, Version: "0"}
 
 	args := util.ToChaincodeArgs("init", "")
 

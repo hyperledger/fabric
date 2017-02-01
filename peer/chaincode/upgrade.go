@@ -54,7 +54,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 		return nil, err
 	}
 
-	cds, err := getChaincodeBytes(spec)
+	cds, err := getChaincodeBytes(spec, false)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
