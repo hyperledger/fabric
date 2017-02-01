@@ -31,7 +31,7 @@ import (
 var m sync.Mutex
 var localMsp msp.MSP
 var mspMap map[string]msp.MSPManager = make(map[string]msp.MSPManager)
-var peerLogger = logging.MustGetLogger("peer")
+var mspLogger = logging.MustGetLogger("msp")
 
 // GetManagerForChain returns the msp manager for the supplied
 // chain; if no such manager exists, one is created
@@ -51,9 +51,9 @@ func GetManagerForChain(ChainID string) msp.MSPManager {
 	}
 
 	if created {
-		peerLogger.Infof("Created new msp manager for chain %s", ChainID)
+		mspLogger.Debugf("Created new msp manager for chain %s", ChainID)
 	} else {
-		peerLogger.Infof("Returinging existing manager for chain %s", ChainID)
+		mspLogger.Debugf("Returning existing manager for chain %s", ChainID)
 	}
 
 	return mspMgr
@@ -96,16 +96,16 @@ func GetLocalMSP() msp.MSP {
 			created = true
 			lclMsp, err = msp.NewBccspMsp()
 			if err != nil {
-				peerLogger.Fatalf("Failed to initlaize local MSP, received err %s", err)
+				mspLogger.Fatalf("Failed to initialize local MSP, received err %s", err)
 			}
 			localMsp = lclMsp
 		}
 	}
 
 	if created {
-		peerLogger.Infof("Created new local MSP")
+		mspLogger.Debugf("Created new local MSP")
 	} else {
-		peerLogger.Infof("Returning existing local MSP")
+		mspLogger.Debugf("Returning existing local MSP")
 	}
 
 	return lclMsp
@@ -125,7 +125,7 @@ func GetMSPCommon(chainID string) msp.Common {
 func GetLocalSigningIdentityOrPanic() msp.SigningIdentity {
 	id, err := GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
-		peerLogger.Panic("Failed getting local signing identity [%s]", err)
+		mspLogger.Panicf("Failed getting local signing identity [%s]", err)
 	}
 	return id
 }
