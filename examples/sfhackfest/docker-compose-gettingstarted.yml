@@ -14,14 +14,14 @@ services:
   ccenv_snapshot:
     container_name: ccenv_snapshot
     build: ./ccenv
-    image: hyperledger/fabric-ccenv:x86_64-0.7.0-snapshot-3ee280e
+    image: hyperledger/fabric-ccenv:x86_64-0.7.0-snapshot-c7b3fe0
     volumes:
         - ./ccenv:/opt/gopath/src/github.com/hyperledger/fabric/orderer/ccenv
 
   ca:
-    image: rameshthoomu/fabric-ca-x86_64:x86_64-0.7.0-snapshot-f5291e7
+    image: sfhackfest22017/fabric-ca:x86_64-0.7.0-snapshot-6294c57
     ports:
-      - "7054:7054"
+      - 8054:7054
     environment:
       - CA_CERTIFICATE=peerOrg0_cert.pem
       - CA_KEY_CERTIFICATE=peerOrg0_pk.pem
@@ -33,7 +33,7 @@ services:
 
   orderer:
     container_name: orderer
-    image: rameshthoomu/fabric-orderer-x86_64:x86_64-0.7.0-snapshot-3ee280e
+    image: sfhackfest22017/fabric-orderer:x86_64-0.7.0-snapshot-c7b3fe0
     environment:
       - ORDERER_GENERAL_LEDGERTYPE=ram
       - ORDERER_GENERAL_BATCHTIMEOUT=10s
@@ -49,13 +49,13 @@ services:
       - ./tmp/orderer:/etc/hyperledger/fabric/orderer
     command: orderer
     ports:
-      - 7050:7050
+      - 8050:7050
     networks:
       - bridge
 
   peer0:
     container_name: peer0
-    image: rameshthoomu/fabric-peer-x86_64:x86_64-0.7.0-snapshot-3ee280e
+    image: sfhackfest22017/fabric-peer:x86_64-0.7.0-snapshot-c7b3fe0
     environment:
       - CORE_PEER_ADDRESSAUTODETECT=true
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
@@ -67,11 +67,12 @@ services:
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_GOSSIP_ORGLEADER=true
+      - CORE_PEER_GOSSIP_IGNORESECURITY=true
 
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     ports:
-      - 7051:7051
-      - 7053:7053
+      - 8051:7051
+      - 8053:7053
     links:
       - orderer:orderer
     volumes:
@@ -82,7 +83,7 @@ services:
 
   peer1:
     container_name: peer1
-    image: rameshthoomu/fabric-peer-x86_64:x86_64-0.7.0-snapshot-3ee280e
+    image: sfhackfest22017/fabric-peer:x86_64-0.7.0-snapshot-c7b3fe0
     environment:
       - CORE_PEER_ADDRESSAUTODETECT=true
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
@@ -94,9 +95,10 @@ services:
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_GOSSIP_ORGLEADER=true
+      - CORE_PEER_GOSSIP_IGNORESECURITY=true
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     ports:
-      - 8051:7051
+      - 8055:7051
     command: peer node start --peer-defaultchain=false
     links:
       - orderer:orderer
@@ -109,7 +111,7 @@ services:
 
   peer2:
     container_name: peer2
-    image: rameshthoomu/fabric-peer-x86_64:x86_64-0.7.0-snapshot-3ee280e
+    image: sfhackfest22017/fabric-peer:x86_64-0.7.0-snapshot-c7b3fe0
     environment:
       - CORE_PEER_ADDRESSAUTODETECT=true
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
@@ -121,10 +123,11 @@ services:
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_GOSSIP_ORGLEADER=true
+      - CORE_PEER_GOSSIP_IGNORESECURITY=true
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
 
     ports:
-      - 9051:7051
+      - 8056:7051
     command: peer node start --peer-defaultchain=false
     links:
       - orderer:orderer
@@ -138,7 +141,7 @@ services:
 
   cli:
     container_name: cli
-    image: rameshthoomu/fabric-peer-x86_64:x86_64-0.7.0-snapshot-3ee280e
+    image: sfhackfest22017/fabric-peer:x86_64-0.7.0-snapshot-c7b3fe0
     tty: true
     environment:
       - GOPATH=/opt/gopath
@@ -152,7 +155,7 @@ services:
       - CORE_PEER_ADDRESS=peer0:7051
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: sh -c './channel_test.sh; sleep 10000'
-#    command: /bin/sh
+#   command: /bin/sh
     links:
       - orderer:orderer
       - peer0:peer0
