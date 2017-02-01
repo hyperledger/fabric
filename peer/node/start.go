@@ -230,10 +230,11 @@ func serve(args []string) error {
 		}()
 	}
 
-	// sets the logging level for the 'error' module to the default value from
-	// core.yaml. it can also be updated dynamically using
-	// "peer logging setlevel error <log-level>"
-	common.SetErrorLoggingLevel()
+	// sets the logging level for the 'error' and 'msp' modules to the
+	// values from core.yaml. they can also be updated dynamically using
+	// "peer logging setlevel <module-name> <log-level>"
+	common.SetLogLevelFromViper("error")
+	common.SetLogLevelFromViper("msp")
 
 	// Block until grpc server exits
 	return <-serve

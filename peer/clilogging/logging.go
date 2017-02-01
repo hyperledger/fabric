@@ -47,7 +47,7 @@ var loggingCmd = &cobra.Command{
 		// note: for code running on the peer, this level is set during peer startup
 		// in peer/node/start.go and can be updated dynamically using
 		// "peer logging setlevel error <log-level>"
-		return common.SetErrorLoggingLevel()
+		return common.SetLogLevelFromViper("error")
 	},
 	Short: fmt.Sprintf("%s specific commands.", loggingFuncName),
 	Long:  fmt.Sprintf("%s specific commands.", loggingFuncName),
