@@ -65,5 +65,6 @@ type BlockStore interface {
 	RetrieveBlockByHash(blockHash []byte) (*common.Block, error)
 	RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) // blockNum of  math.MaxUint64 will return last block
 	RetrieveTxByID(txID string) (*common.Envelope, error)
+	RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error)
 	Shutdown()
 }
