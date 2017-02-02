@@ -23,7 +23,7 @@ import chaincode_pb2
 
 import bdd_test_util
 
-from grpc.beta import implementations
+import grpc
 
 def getSecretForUserRegistration(userRegistration):
     return devops_pb2.Secret(enrollId=userRegistration.secretMsg['enrollId'],enrollSecret=userRegistration.secretMsg['enrollSecret'])
@@ -45,7 +45,7 @@ def getTxResult(context, enrollId):
     return txResult
 
 def getGRPCChannel(ipAddress):
-    channel = implementations.insecure_channel(ipAddress, 7051)
+    channel = grpc.insecure_channel("{0}:{1}".format(ipAddress, 7051), options = [('grpc.max_message_length', 100*1024*1024)])
     print("Returning GRPC for address: {0}".format(ipAddress))
     return channel
 

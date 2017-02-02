@@ -22,6 +22,9 @@ if sys.version_info < (3, 6):
 from OpenSSL import crypto
 from OpenSSL import rand
 import ecdsa
+import shutil
+
+from slugify import slugify
 
 from collections import namedtuple
 from enum import Enum
@@ -46,6 +49,67 @@ import uuid
 # Type to represent tuple of user, nodeName, ogranization
 NodeAdminTuple = namedtuple("NodeAdminTuple", ['user', 'nodeName', 'organization'])
 
+class ContextHelper:
+
+    def __init__(self, context):
+        self.context = context
+        self.guuid = GetUUID()
+
+    def getGuuid(self):
+        return self.guuid
+
+    def getTmpPath(self):
+        pathToReturn = "tmp"
+        if not os.path.isdir(pathToReturn):
+            os.makedirs(pathToReturn)
+        return pathToReturn
+
+    def getCachePath(self):
+        pathToReturn = os.path.join(self.getTmpPath(), "cache")
+        if not os.path.isdir(pathToReturn):
+            os.makedirs(pathToReturn)
+        return pathToReturn
+
+
+    def getTmpProjectPath(self):
+        pathToReturn = os.path.join(self.getTmpPath(), self.guuid)
+        if not os.path.isdir(pathToReturn):
+            os.makedirs(pathToReturn)
+        return pathToReturn
+
+    def getTmpPathForName(self, name, copyFromCache=False):
+        'Returns the tmp path for a file, and a flag indicating if the file exists. Will also check in the cache and copy to tmp if copyFromCache==True'
+        slugifiedName = slugify(name)
+        tmpPath = os.path.join(self.getTmpProjectPath(), slugifiedName)
+        fileExists = False
+        if os.path.isfile(tmpPath):
+            # file already exists in tmp path, return path and exists flag
+            fileExists = True
+        elif copyFromCache:
+            # See if the file exists in cache, and copy over to project folder.
+            cacheFilePath = os.path.join(self.getCachePath(), slugifiedName)
+            if os.path.isfile(cacheFilePath):
+                shutil.copy(cacheFilePath, tmpPath)
+                fileExists = True
+        return (tmpPath, fileExists)
+
+    def copyToCache(self, name):
+        srcPath, fileExists = self.getTmpPathForName(name, copyFromCache=False)
+        assert fileExists, "Tried to copy source file to cache, but file not found for: {0}".format(srcPath)
+        # Now copy to the cache if it does not already exist
+        cacheFilePath = os.path.join(self.getCachePath(), slugify(name))
+        if not os.path.isfile(cacheFilePath):
+            shutil.copy(srcPath, cacheFilePath)
+
+
+    def isConfigEnabled(self, configName):
+        return self.context.config.userdata.get(configName, "false") == "true"
+
+    @classmethod
+    def GetHelper(cls, context):
+        if not "contextHelper" in context:
+            context.contextHelper = ContextHelper(context)
+        return context.contextHelper
 
 def GetUUID():
     return compose.Composition.GetUUID()
@@ -143,6 +207,11 @@ class Entity:
         req = createCertRequest(self.pKey, CN=nodeName)
         #print("request => {0}".format(crypto.dump_certificate_request(crypto.FILETYPE_PEM, req)))
         return req
+
+    def computeHash(self, data):
+        s = self.hashfunc()
+        s.update(data)
+        return s.digest()
 
     def sign(self, dataAsBytearray):
         return self.ecdsaSigningKey.sign(dataAsBytearray, hashfunc=self.hashfunc, sigencode=self.sigencode)
@@ -261,6 +330,7 @@ class Directory:
         # Verify the certificate, returns None if it can validate the certificate
         store_ctx.verify_certificate()
         self.ordererAdminTuples[ordererAdminTuple] = userCert
+        return ordererAdminTuple
 
 
 class AuthDSLHelper:
@@ -291,6 +361,7 @@ class BootstrapHelper:
     KEY_ACCEPT_ALL_POLICY = "AcceptAllPolicy"
     KEY_INGRESS_POLICY = "IngressPolicyNames"
     KEY_EGRESS_POLICY = "EgressPolicyNames"
+    KEY_HASHING_ALGORITHM = "HashingAlgorithm"
     KEY_BATCH_SIZE = "BatchSize"
     KEY_BATCH_TIMEOUT = "BatchTimeout"
     KEY_CREATIONPOLICY = "CreationPolicy"
@@ -370,6 +441,13 @@ class BootstrapHelper:
             commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("MSP"),
             key=mspUniqueId,
             value=ciValue.SerializeToString())
+        return self.signConfigItem(configItem)
+
+    def encodeHashingAlgorithm(self, hashingAlgorithm="SHAKE256"):
+        configItem = self.getConfigItem(
+            commonConfigType=common_dot_configuration_pb2.ConfigurationItem.ConfigurationType.Value("Chain"),
+            key=BootstrapHelper.KEY_HASHING_ALGORITHM,
+            value=common_dot_configuration_pb2.HashingAlgorithm(name=hashingAlgorithm).SerializeToString())
         return self.signConfigItem(configItem)
 
     def encodeBatchSize(self):
@@ -506,7 +584,7 @@ def getSignedAnchorConfigItems(context, chainId, nodeAdminTuples):
 
     anchorPeers = peer_dot_configuration_pb2.AnchorPeers()
     for nodeAdminTuple in nodeAdminTuples:
-        anchorPeer = anchorPeers.anchorPees.add()
+        anchorPeer = anchorPeers.anchorPeers.add()
         anchorPeer.Host=nodeAdminTuple.nodeName
         anchorPeer.Port=5611
         anchorPeer.Cert=crypto.dump_certificate(crypto.FILETYPE_PEM, directory.findCertForNodeAdminTuple(nodeAdminTuple))
@@ -531,6 +609,11 @@ def createSignedConfigItems(context, chainId, consensusType, signedConfigItems =
     # assert len(directory.ordererAdminTuples) > 0, "No orderer admin tuples defined!!!"
     bootstrapHelper = BootstrapHelper(chainId = chainId, consensusType=consensusType)
     configItems = signedConfigItems
+    configItems.append(bootstrapHelper.encodeHashingAlgorithm())
+
+    # configItems.append(bootstrapHelper.encodeBlockDataHashingStructure())
+    # configItems.append(bootstrapHelper.encodeOrdererAddresses())
+
     configItems.append(bootstrapHelper.encodeBatchSize())
     configItems.append(bootstrapHelper.encodeBatchTimeout())
     configItems.append(bootstrapHelper.encodeConsensusType())

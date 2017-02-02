@@ -20,11 +20,9 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/hex"
-	"fmt"
-
 	"encoding/pem"
-
 	"errors"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
