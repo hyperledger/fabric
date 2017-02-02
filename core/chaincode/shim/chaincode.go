@@ -30,6 +30,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -41,6 +42,7 @@ import (
 
 // Logger for the shim package.
 var chaincodeLogger = logging.MustGetLogger("shim")
+var logOutput = os.Stderr
 
 const (
 	minUnicodeRuneValue = 0            //U+0000
@@ -70,12 +72,7 @@ var peerAddress string
 func Start(cc Chaincode) error {
 	// If Start() is called, we assume this is a standalone chaincode and set
 	// up formatted logging.
-	format := logging.MustStringFormatter("%{time:15:04:05.000} [%{module}] %{level:.4s} : %{message}")
-	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	backendFormatter := logging.NewBackendFormatter(backend, format)
-	logging.SetBackend(backendFormatter).SetLevel(logging.Level(shimLoggingLevel), "shim")
-
-	SetChaincodeLoggingLevel()
+	SetupChaincodeLogging()
 
 	err := factory.InitFactories(&factory.DefaultOpts)
 	if err != nil {
@@ -121,18 +118,23 @@ func IsEnabledForLogLevel(logLevel string) bool {
 	return chaincodeLogger.IsEnabledFor(lvl)
 }
 
-// SetChaincodeLoggingLevel sets the chaincode logging level to the value
-// of CORE_LOGGING_CHAINCODE set from core.yaml by chaincode_support.go
-func SetChaincodeLoggingLevel() {
+// SetupChaincodeLogging sets the chaincode logging format and the level
+// to the values of CORE_CHAINCODE_LOGFORMAT and CORE_CHAINCODE_LOGLEVEL set
+// from core.yaml by chaincode_support.go
+func SetupChaincodeLogging() {
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 
-	chaincodeLogLevelString := viper.GetString("logging.chaincode")
+	logFormat := viper.GetString("chaincode.logFormat")
+	flogging.SetLoggingFormat(logFormat, logOutput)
+
+	chaincodeLogLevelString := viper.GetString("chaincode.logLevel")
 	if chaincodeLogLevelString == "" {
 		shimLogLevelDefault := logging.Level(shimLoggingLevel)
 		chaincodeLogger.Infof("Chaincode log level not provided; defaulting to: %s", shimLogLevelDefault)
+		SetLoggingLevel(shimLoggingLevel)
 	} else {
 		chaincodeLogLevel, err := LogLevel(chaincodeLogLevelString)
 		if err == nil {
@@ -620,7 +622,7 @@ const (
 	LogCritical = LoggingLevel(logging.CRITICAL)
 )
 
-var shimLoggingLevel = LogDebug // Necessary for correct initialization; See Start()
+var shimLoggingLevel = LogInfo // Necessary for correct initialization; See Start()
 
 // SetLoggingLevel allows a Go language chaincode to set the logging level of
 // its shim.
