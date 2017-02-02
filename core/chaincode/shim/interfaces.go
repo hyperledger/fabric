@@ -77,12 +77,18 @@ type ChaincodeStubInterface interface {
 	// iterator which can be used to iterate over all composite keys whose prefix
 	// matches the given partial composite key. This function should be used only for
 	// a partial composite key. For a full composite key, an iter with empty response
-	// would be returned.
+	// would be returned. The objectType and attributes are expected to have only
+	// valid utf8 strings and should not contain U+0000 (nil byte) and U+10FFFF (biggest and unallocated code point)
 	PartialCompositeKeyQuery(objectType string, keys []string) (StateQueryIteratorInterface, error)
 
 	// Given a list of attributes, CreateCompositeKey function combines these attributes
-	// to form a composite key.
+	// to form a composite key. The objectType and attributes are expected to have only
+	// valid utf8 strings and should not contain U+0000 (nil byte) and U+10FFFF (biggest and unallocated code point)
 	CreateCompositeKey(objectType string, attributes []string) (string, error)
+
+	// Given a composite key, SplitCompositeKey function splits the key into attributes
+	// on which the composite key was formed.
+	SplitCompositeKey(compositeKey string) (string, []string, error)
 
 	// GetQueryResult function can be invoked by a chaincode to perform a
 	// rich query against state database.  Only supported by state database implementations
@@ -90,10 +96,6 @@ type ChaincodeStubInterface interface {
 	// state database. An iterator is returned which can be used to iterate (next) over
 	// the query result set
 	GetQueryResult(query string) (StateQueryIteratorInterface, error)
-
-	// Given a composite key, SplitCompositeKey function splits the key into attributes
-	// on which the composite key was formed.
-	SplitCompositeKey(compositeKey string) (string, []string, error)
 
 	// GetCallerCertificate returns caller certificate
 	GetCallerCertificate() ([]byte, error)
