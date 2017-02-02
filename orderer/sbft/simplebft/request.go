@@ -31,12 +31,13 @@ func (s *SBFT) handleRequest(req *Request, src uint64) {
 	log.Infof("replica %d: inserting %x into pending", s.id, key)
 	s.pending[key] = req
 	if s.isPrimary() && s.activeView {
-		s.passedToBC[key] = req
-		batches, committers, accepted := s.sys.Ordered(s.chainId, req)
-		if !accepted {
+		batches, committers, valid := s.sys.Validate(s.chainId, req)
+		if !valid {
 			// this one is problematic, lets skip it
+			delete(s.pending, key)
 			return
 		}
+		s.validated[key] = valid
 		if len(batches) == 0 {
 			s.startBatchTimer()
 		} else {
@@ -90,23 +91,25 @@ func (s *SBFT) maybeSendNextBatch() {
 	if len(s.batches) == 0 {
 		hasPending := len(s.pending) != 0
 		for k, req := range s.pending {
-			if s.passedToBC[k] == nil {
-				batches, committers, accepted := s.sys.Ordered(s.chainId, req)
+			if s.validated[k] == false {
+				batches, committers, valid := s.sys.Validate(s.chainId, req)
 				s.batches = append(s.batches, batches...)
 				s.primarycommitters = append(s.primarycommitters, committers...)
-				if !accepted {
+				if !valid {
 					log.Panicf("Replica %d: one of our own pending requests is erroneous.", s.id)
+					delete(s.pending, k)
+					continue
 				}
+				s.validated[k] = true
 			}
 		}
 		if len(s.batches) == 0 {
-			// if we have no pending, every req was included
-			// in a batches
+			// if we have no pending, every req was included in batches
 			if !hasPending {
 				return
 			}
-			// we have pending reqs that were just send to BC or
-			// were already sent (they are in passedToBC)
+			// we have pending reqs that were just sent for validation or
+			// were already sent (they are in s.validated)
 			batch, committers := s.sys.Cut(s.chainId)
 			s.batches = append(s.batches, batch)
 			s.primarycommitters = append(s.primarycommitters, committers)

@@ -168,7 +168,7 @@ func (t *testSystemAdapter) Deliver(chainId string, batch *Batch, committer []fi
 	t.batches[chainId] = append(t.batches[chainId], batch)
 }
 
-func (t *testSystemAdapter) Ordered(chainID string, req *Request) ([][]*Request, [][]filter.Committer, bool) {
+func (t *testSystemAdapter) Validate(chainID string, req *Request) ([][]*Request, [][]filter.Committer, bool) {
 	r := t.reqs
 	if t.reqs == nil || uint64(len(t.reqs)) == maxReqCount-uint64(1) {
 		t.reqs = make([]*Request, 0, maxReqCount-1)

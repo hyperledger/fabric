@@ -159,7 +159,7 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 			}
 		}
 		// TODO we should not do this here, as prevBatch was already delivered
-		blockOK, committers := s.getCommittersFromBlockCutter(prevBatch)
+		blockOK, committers := s.getCommittersFromBatch(prevBatch)
 		if !blockOK {
 			log.Panic("Replica %d: our last checkpointed batch is erroneous (block cutter).", s.id)
 		}
@@ -180,9 +180,10 @@ func (s *SBFT) handleNewView(nv *NewView, src uint64) {
 			Seq:   &SeqView{Seq: nv.Batch.DecodeHeader().Seq, View: s.view},
 			Batch: nv.Batch,
 		}
-		blockOK, committers := s.getCommittersFromBlockCutter(nv.Batch)
+		blockOK, committers := s.getCommittersFromBatch(nv.Batch)
 		if !blockOK {
-			log.Panic("Replica %d: new view %d batch erroneous (block cutter).", s.id, nv.View)
+			log.Debugf("Replica %d: new view %d batch erroneous (block cutter).", s.id, nv.View)
+			s.sendViewChange()
 		}
 
 		s.handleCheckedPreprepare(pp, committers)

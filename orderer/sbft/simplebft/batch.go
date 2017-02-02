@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/orderer/common/filter"
 )
 
 func (s *SBFT) makeBatch(seq uint64, prevHash []byte, data [][]byte) *Batch {
@@ -89,4 +90,32 @@ func (b *Batch) DecodeHeader() *BatchHeader {
 	}
 
 	return batchheader
+}
+
+func (s *SBFT) getCommittersFromBatch(reqBatch *Batch) (bool, []filter.Committer) {
+	reqs := make([]*Request, 0, len(reqBatch.Payloads))
+	for _, pl := range reqBatch.Payloads {
+		req := &Request{Payload: pl}
+		reqs = append(reqs, req)
+	}
+	batches := make([][]*Request, 0, 1)
+	comms := [][]filter.Committer{}
+	for _, r := range reqs {
+		b, c, valid := s.sys.Validate(s.chainId, r)
+		if !valid {
+			return false, nil
+		}
+		batches = append(batches, b...)
+		comms = append(comms, c...)
+	}
+	if len(batches) > 1 || len(batches) != len(comms) {
+		return false, nil
+	}
+
+	if len(batches) == 0 {
+		_, committer := s.sys.Cut(s.chainId)
+		return true, committer
+	} else {
+		return true, comms[0]
+	}
 }

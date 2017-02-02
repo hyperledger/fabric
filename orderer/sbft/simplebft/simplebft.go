@@ -52,7 +52,7 @@ type System interface {
 	Sign(data []byte) []byte
 	CheckSig(data []byte, src uint64, sig []byte) error
 	Reconnect(chainId string, replica uint64)
-	Ordered(chainID string, req *Request) ([][]*Request, [][]filter.Committer, bool)
+	Validate(chainID string, req *Request) ([][]*Request, [][]filter.Committer, bool)
 	Cut(chainID string) ([]*Request, []filter.Committer)
 }
 
@@ -77,7 +77,7 @@ type SBFT struct {
 	viewChangeTimer   Canceller
 	replicaState      []replicaInfo
 	pending           map[string]*Request
-	passedToBC        map[string]*Request
+	validated         map[string]bool
 	chainId           string
 	primarycommitters [][]filter.Committer
 }
@@ -122,7 +122,7 @@ func New(id uint64, chainID string, config *Config, sys System) (*SBFT, error) {
 		viewChangeTimer:   dummyCanceller{},
 		replicaState:      make([]replicaInfo, config.N),
 		pending:           make(map[string]*Request),
-		passedToBC:        make(map[string]*Request),
+		validated:         make(map[string]bool),
 		batches:           make([][]*Request, 0, 3),
 		primarycommitters: make([][]filter.Committer, 0),
 	}
@@ -155,7 +155,7 @@ func New(id uint64, chainID string, config *Config, sys System) (*SBFT, error) {
 		s.activeView = true
 		if pp.Seq.Seq > s.seq() {
 			// TODO double add to BC?
-			_, committers := s.getCommittersFromBlockCutter(pp.Batch)
+			_, committers := s.getCommittersFromBatch(pp.Batch)
 			s.acceptPreprepare(pp, committers)
 		}
 	}
@@ -288,6 +288,6 @@ func (s *SBFT) deliverBatch(batch *Batch, committers []filter.Committer) {
 		key := hash2str(hash(req))
 		log.Infof("replica %d: attempting to remove %x from pending", s.id, key)
 		delete(s.pending, key)
-		delete(s.passedToBC, key)
+		delete(s.validated, key)
 	}
 }
