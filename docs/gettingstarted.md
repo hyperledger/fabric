@@ -106,7 +106,7 @@ You should see the following in your terminal:
 ```
 To view results for channel creation/join:
 ```bash
-vi results.txt
+cat results.txt
 ```
 You're looking for:
 ```bash
@@ -116,9 +116,9 @@ SUCCESSFUL JOIN CHANNEL on PEER1
 SUCCESSFUL JOIN CHANNEL on PEER2
 ```
 
-To view genesis block:
+To verify the genesis block for the channel was created you can issue:
 ```bash
-vi myc1.block
+ls -ltr myc1.block
 ```
 
 ## Curl the application source code and SDK modules
