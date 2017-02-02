@@ -164,19 +164,20 @@ func main() {
 }
 
 func makeSbftConsensusConfig(conf *config.TopLevel) *sbft.ConsensusConfig {
-	cfg := simplebft.Config{N: conf.Sbft.N, F: conf.Sbft.F, BatchDurationNsec: conf.Sbft.BatchDurationNsec,
-		BatchSizeBytes:     conf.Sbft.BatchSizeBytes,
-		RequestTimeoutNsec: conf.Sbft.RequestTimeoutNsec}
+	cfg := simplebft.Config{N: conf.Genesis.SbftShared.N, F: conf.Genesis.SbftShared.F,
+		BatchDurationNsec:  uint64(conf.Genesis.BatchTimeout),
+		BatchSizeBytes:     uint64(conf.Genesis.BatchSize.AbsoluteMaxBytes),
+		RequestTimeoutNsec: conf.Genesis.SbftShared.RequestTimeoutNsec}
 	peers := make(map[string][]byte)
-	for addr, cert := range conf.Sbft.Peers {
+	for addr, cert := range conf.Genesis.SbftShared.Peers {
 		peers[addr], _ = sbftcrypto.ParseCertPEM(cert)
 	}
 	return &sbft.ConsensusConfig{Consensus: &cfg, Peers: peers}
 }
 
 func makeSbftStackConfig(conf *config.TopLevel) *backend.StackConfig {
-	return &backend.StackConfig{ListenAddr: conf.Sbft.PeerCommAddr,
-		CertFile: conf.Sbft.CertFile,
-		KeyFile:  conf.Sbft.KeyFile,
-		DataDir:  conf.Sbft.DataDir}
+	return &backend.StackConfig{ListenAddr: conf.SbftLocal.PeerCommAddr,
+		CertFile: conf.SbftLocal.CertFile,
+		KeyFile:  conf.SbftLocal.KeyFile,
+		DataDir:  conf.SbftLocal.DataDir}
 }

@@ -116,28 +116,18 @@ Kafka:
 
 ################################################################################
 #
-#   SECTION: Sbft
+#   SECTION: Sbft local
 #
 #   - This section applies to the configuration of the Sbft-backed orderer
 #
 ################################################################################
-Sbft:
+SbftLocal:
     # Address to use for SBFT internal communication
     PeerCommAddr: ":6101"
     CertFile: "sbft/testdata/cert1.pem"
     KeyFile: "sbft/testdata/key.pem"
     # Directory for SBFT data (persistence)
     DataDir: "/tmp"
-    # Number of peers
-    "N": 1
-    # Fault tolerance
-    F: 0
-    BatchDurationNsec: 1000
-    BatchSizeBytes: 1000000000
-    RequestTimeoutNsec: 1000000000
-    # Peers (PeerCommAddr) with the path of their cert
-    Peers:
-        ":6101": "sbft/testdata/cert1.pem"
 
 ################################################################################
 #
@@ -169,3 +159,15 @@ Genesis:
         # the serialized messages in a batch. A message larger than the preferred
         # max bytes will result in a batch larger than preferred max bytes.
         PreferredMaxBytes: 512 KB
+
+    # Defines the SBFT parameters when 'sbft' is specified as the 'OrdererType'
+    SbftShared:
+        # Number of peers
+        "N": 1
+        # Fault tolerance
+        F: 0
+        # Timeout of requests (seconds)
+        RequestTimeoutNsec: 1000000000
+        # Peers (PeerCommAddr) with the path of their cert
+        Peers:
+            ":6101": "sbft/testdata/cert1.pem"
