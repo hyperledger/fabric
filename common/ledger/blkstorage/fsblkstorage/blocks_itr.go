@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/common/ledger"
 
 	"github.com/hyperledger/fabric/protos/common"
 )

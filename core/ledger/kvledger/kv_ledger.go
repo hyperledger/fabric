@@ -20,8 +20,9 @@ import (
 	"errors"
 	"fmt"
 
+	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
@@ -31,7 +32,6 @@ import (
 	logging "github.com/op/go-logging"
 
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 var logger = logging.MustGetLogger("kvledger")
@@ -205,7 +205,7 @@ func (l *kvLedger) GetTransactionByID(txID string) (*common.Envelope, error) {
 }
 
 // GetBlockchainInfo returns basic info about blockchain
-func (l *kvLedger) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
+func (l *kvLedger) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 	return l.blockStore.GetBlockchainInfo()
 }
 
@@ -219,7 +219,7 @@ func (l *kvLedger) GetBlockByNumber(blockNumber uint64) (*common.Block, error) {
 // GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
 // The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
 // ResultsIterator contains type BlockHolder
-func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsIterator, error) {
+func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (commonledger.ResultsIterator, error) {
 	return l.blockStore.RetrieveBlocks(startBlockNumber)
 
 }
@@ -230,7 +230,7 @@ func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
 }
 
 //Prune prunes the blocks/transactions that satisfy the given policy
-func (l *kvLedger) Prune(policy ledger.PrunePolicy) error {
+func (l *kvLedger) Prune(policy commonledger.PrunePolicy) error {
 	return errors.New("Not yet implemented")
 }
 

@@ -19,13 +19,14 @@ package commontests
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/viper"
@@ -47,7 +48,7 @@ var testEnvs = []testEnv{}
 
 func init() {
 	//call a helper method to load the core.yaml so that we can detect whether couch is configured
-	testutil.SetupCoreYAMLConfig("./../../../../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
 
 	//Only run the tests if CouchDB is explitily enabled in the code,
 	//otherwise CouchDB may not be installed and all the tests would fail

@@ -35,7 +35,7 @@ var Policy_PolicyType_value = map[string]int32{
 func (x Policy_PolicyType) String() string {
 	return proto.EnumName(Policy_PolicyType_name, int32(x))
 }
-func (Policy_PolicyType) EnumDescriptor() ([]byte, []int) { return fileDescriptor4, []int{0, 0} }
+func (Policy_PolicyType) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{0, 0} }
 
 // Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
 // multiple policy engines, this is typed as a oneof for now
@@ -47,7 +47,7 @@ type Policy struct {
 func (m *Policy) Reset()                    { *m = Policy{} }
 func (m *Policy) String() string            { return proto.CompactTextString(m) }
 func (*Policy) ProtoMessage()               {}
-func (*Policy) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
+func (*Policy) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
 
 // SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
 type SignaturePolicyEnvelope struct {
@@ -59,7 +59,7 @@ type SignaturePolicyEnvelope struct {
 func (m *SignaturePolicyEnvelope) Reset()                    { *m = SignaturePolicyEnvelope{} }
 func (m *SignaturePolicyEnvelope) String() string            { return proto.CompactTextString(m) }
 func (*SignaturePolicyEnvelope) ProtoMessage()               {}
-func (*SignaturePolicyEnvelope) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
+func (*SignaturePolicyEnvelope) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
 
 func (m *SignaturePolicyEnvelope) GetPolicy() *SignaturePolicy {
 	if m != nil {
@@ -91,7 +91,7 @@ type SignaturePolicy struct {
 func (m *SignaturePolicy) Reset()                    { *m = SignaturePolicy{} }
 func (m *SignaturePolicy) String() string            { return proto.CompactTextString(m) }
 func (*SignaturePolicy) ProtoMessage()               {}
-func (*SignaturePolicy) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
+func (*SignaturePolicy) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
 
 type isSignaturePolicy_Type interface {
 	isSignaturePolicy_Type()
@@ -205,7 +205,7 @@ type SignaturePolicy_NOutOf struct {
 func (m *SignaturePolicy_NOutOf) Reset()                    { *m = SignaturePolicy_NOutOf{} }
 func (m *SignaturePolicy_NOutOf) String() string            { return proto.CompactTextString(m) }
 func (*SignaturePolicy_NOutOf) ProtoMessage()               {}
-func (*SignaturePolicy_NOutOf) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2, 0} }
+func (*SignaturePolicy_NOutOf) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2, 0} }
 
 func (m *SignaturePolicy_NOutOf) GetPolicies() []*SignaturePolicy {
 	if m != nil {
@@ -222,9 +222,9 @@ func init() {
 	proto.RegisterEnum("common.Policy_PolicyType", Policy_PolicyType_name, Policy_PolicyType_value)
 }
 
-func init() { proto.RegisterFile("common/policies.proto", fileDescriptor4) }
+func init() { proto.RegisterFile("common/policies.proto", fileDescriptor5) }
 
-var fileDescriptor4 = []byte{
+var fileDescriptor5 = []byte{
 	// 357 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x74, 0x51, 0xe1, 0x6a, 0xc2, 0x30,
 	0x18, 0x34, 0xea, 0xaa, 0xfb, 0x74, 0x4c, 0xc2, 0x36, 0x8b, 0x8c, 0x21, 0xfd, 0x25, 0x8c, 0xb5,

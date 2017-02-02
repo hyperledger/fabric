@@ -45,7 +45,6 @@ It has these top-level messages:
 	Event
 	PeerID
 	PeerEndpoint
-	BlockchainInfo
 	SignedProposal
 	Proposal
 	ChaincodeHeaderExtension

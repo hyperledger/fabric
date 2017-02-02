@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
@@ -59,7 +60,7 @@ type transactionContext struct {
 	responseNotifier chan *pb.ChaincodeMessage
 
 	// tracks open iterators used for range queries
-	queryIteratorMap map[string]ledger.ResultsIterator
+	queryIteratorMap map[string]commonledger.ResultsIterator
 
 	txsimulator ledger.TxSimulator
 }
@@ -186,7 +187,7 @@ func (handler *Handler) createTxContext(ctxt context.Context, chainID string, tx
 		return nil, fmt.Errorf("txid:%s exists", txid)
 	}
 	txctx := &transactionContext{chainID: chainID, proposal: prop, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
-		queryIteratorMap: make(map[string]ledger.ResultsIterator)}
+		queryIteratorMap: make(map[string]commonledger.ResultsIterator)}
 	handler.txCtxs[txid] = txctx
 	txctx.txsimulator = getTxSimulator(ctxt)
 
@@ -208,13 +209,13 @@ func (handler *Handler) deleteTxContext(txid string) {
 }
 
 func (handler *Handler) putQueryIterator(txContext *transactionContext, txid string,
-	queryIterator ledger.ResultsIterator) {
+	queryIterator commonledger.ResultsIterator) {
 	handler.Lock()
 	defer handler.Unlock()
 	txContext.queryIteratorMap[txid] = queryIterator
 }
 
-func (handler *Handler) getQueryIterator(txContext *transactionContext, txid string) ledger.ResultsIterator {
+func (handler *Handler) getQueryIterator(txContext *transactionContext, txid string) commonledger.ResultsIterator {
 	handler.Lock()
 	defer handler.Unlock()
 	return txContext.queryIteratorMap[txid]
@@ -699,7 +700,7 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 
 		var keysAndValues []*pb.QueryStateKeyValue
 		var i = uint32(0)
-		var qresult ledger.QueryResult
+		var qresult commonledger.QueryResult
 		for ; i < maxRangeQueryStateLimit; i++ {
 			qresult, err = rangeIter.Next()
 			if err != nil {
@@ -796,7 +797,7 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		var keysAndValues []*pb.QueryStateKeyValue
 		var i = uint32(0)
 
-		var qresult ledger.QueryResult
+		var qresult commonledger.QueryResult
 		var err error
 		for ; i < maxRangeQueryStateLimit; i++ {
 			qresult, err = queryIter.Next()
@@ -974,7 +975,7 @@ func (handler *Handler) handleExecuteQueryState(msg *pb.ChaincodeMessage) {
 
 		var keysAndValues []*pb.QueryStateKeyValue
 		var i = uint32(0)
-		var qresult ledger.QueryResult
+		var qresult commonledger.QueryResult
 		for ; i < maxExecuteQueryStateLimit; i++ {
 			qresult, err = executeIter.Next()
 			if err != nil {

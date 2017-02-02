@@ -15,24 +15,15 @@ limitations under the License.
 */
 syntax = "proto3";
 
-option go_package = "github.com/hyperledger/fabric/protos/peer";
+option go_package = "github.com/hyperledger/fabric/protos/common";
 
-package protos;
+package common;
 
-import "peer/proposal.proto";
-import "peer/proposal_response.proto";
+// Contains information about the blockchain ledger such as height, current
+// block hash, and previous block hash.
+message BlockchainInfo {
+    uint64 height = 1;
+    bytes currentBlockHash = 2;
+    bytes previousBlockHash = 3;
 
-message PeerID {
-    string name = 1;
-}
-
-message PeerEndpoint {
-    PeerID ID = 1;
-    string address = 2;
-}
-
-//-------- the Endorser service ------------
-
-service Endorser {
-	rpc ProcessProposal(SignedProposal) returns (ProposalResponse) {}
 }

@@ -41,7 +41,7 @@ func (x MSPPrincipal_Classification) String() string {
 	return proto.EnumName(MSPPrincipal_Classification_name, int32(x))
 }
 func (MSPPrincipal_Classification) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor3, []int{0, 0}
+	return fileDescriptor4, []int{0, 0}
 }
 
 type MSPRole_MSPRoleType int32
@@ -63,7 +63,7 @@ var MSPRole_MSPRoleType_value = map[string]int32{
 func (x MSPRole_MSPRoleType) String() string {
 	return proto.EnumName(MSPRole_MSPRoleType_name, int32(x))
 }
-func (MSPRole_MSPRoleType) EnumDescriptor() ([]byte, []int) { return fileDescriptor3, []int{2, 0} }
+func (MSPRole_MSPRoleType) EnumDescriptor() ([]byte, []int) { return fileDescriptor4, []int{2, 0} }
 
 // MSPPrincipal aims to represent an MSP-centric set of identities.
 // In particular, this structure allows for definition of
@@ -103,7 +103,7 @@ type MSPPrincipal struct {
 func (m *MSPPrincipal) Reset()                    { *m = MSPPrincipal{} }
 func (m *MSPPrincipal) String() string            { return proto.CompactTextString(m) }
 func (*MSPPrincipal) ProtoMessage()               {}
-func (*MSPPrincipal) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (*MSPPrincipal) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 // OrganizationUnit governs the organization of the Principal
 // field of a policy principal when a specific organization unity members
@@ -120,7 +120,7 @@ type OrganizationUnit struct {
 func (m *OrganizationUnit) Reset()                    { *m = OrganizationUnit{} }
 func (m *OrganizationUnit) String() string            { return proto.CompactTextString(m) }
 func (*OrganizationUnit) ProtoMessage()               {}
-func (*OrganizationUnit) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
+func (*OrganizationUnit) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
 
 // MSPRole governs the organization of the Principal
 // field of an MSPPrincipal when it aims to define one of the
@@ -137,7 +137,7 @@ type MSPRole struct {
 func (m *MSPRole) Reset()                    { *m = MSPRole{} }
 func (m *MSPRole) String() string            { return proto.CompactTextString(m) }
 func (*MSPRole) ProtoMessage()               {}
-func (*MSPRole) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{2} }
+func (*MSPRole) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
 
 func init() {
 	proto.RegisterType((*MSPPrincipal)(nil), "common.MSPPrincipal")
@@ -147,9 +147,9 @@ func init() {
 	proto.RegisterEnum("common.MSPRole_MSPRoleType", MSPRole_MSPRoleType_name, MSPRole_MSPRoleType_value)
 }
 
-func init() { proto.RegisterFile("common/msp_principal.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("common/msp_principal.proto", fileDescriptor4) }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor4 = []byte{
 	// 316 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x92, 0xc1, 0x4b, 0xc3, 0x30,
 	0x14, 0xc6, 0x97, 0xa1, 0x93, 0x3e, 0xb7, 0x52, 0x72, 0xd0, 0x31, 0x3d, 0x8c, 0xba, 0xc3, 0x40,

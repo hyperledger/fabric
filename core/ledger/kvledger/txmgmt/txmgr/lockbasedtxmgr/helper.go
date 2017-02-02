@@ -17,6 +17,7 @@ limitations under the License.
 package lockbasedtxmgr
 
 import (
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -60,7 +61,7 @@ func (h *queryHelper) getStateMultipleKeys(namespace string, keys []string) ([][
 	return values, nil
 }
 
-func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey string, endKey string) (ledger.ResultsIterator, error) {
+func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error) {
 	h.checkDone()
 	itr, err := newResultsItr(namespace, startKey, endKey, h.txmgr.db, h.rwset)
 	if err != nil {
@@ -70,7 +71,7 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 	return itr, nil
 }
 
-func (h *queryHelper) executeQuery(query string) (ledger.ResultsIterator, error) {
+func (h *queryHelper) executeQuery(query string) (commonledger.ResultsIterator, error) {
 	dbItr, err := h.txmgr.db.ExecuteQuery(query)
 	if err != nil {
 		return nil, err
@@ -128,7 +129,7 @@ func newResultsItr(ns string, startKey string, endKey string, db statedb.Version
 // caller decides to stop iterating at some intermidiate point. Alternatively, we could have
 // set the EndKey and ItrExhausted in the Close() function but it may not be desirable to change
 // transactional behaviour based on whether the Close() was invoked or not
-func (itr *resultsItr) Next() (ledger.QueryResult, error) {
+func (itr *resultsItr) Next() (commonledger.QueryResult, error) {
 	queryResult, err := itr.dbItr.Next()
 	if err != nil {
 		return nil, err
@@ -176,7 +177,7 @@ type queryResultsItr struct {
 }
 
 // Next implements method in interface ledger.ResultsIterator
-func (itr *queryResultsItr) Next() (ledger.QueryResult, error) {
+func (itr *queryResultsItr) Next() (commonledger.QueryResult, error) {
 
 	queryResult, err := itr.DBItr.Next()
 	if err != nil {

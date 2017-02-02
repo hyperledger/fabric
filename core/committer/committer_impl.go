@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
 
@@ -75,7 +74,7 @@ func (lc *LedgerCommitter) Commit(block *common.Block) error {
 
 // LedgerHeight returns recently committed block sequence number
 func (lc *LedgerCommitter) LedgerHeight() (uint64, error) {
-	var info *pb.BlockchainInfo
+	var info *common.BlockchainInfo
 	var err error
 	if info, err = lc.ledger.GetBlockchainInfo(); err != nil {
 		logger.Errorf("Cannot get blockchain info, %s\n", info)

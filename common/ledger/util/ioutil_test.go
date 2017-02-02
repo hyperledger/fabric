@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 )
 
 var DbPathTest = "/tmp/v2/test/util"

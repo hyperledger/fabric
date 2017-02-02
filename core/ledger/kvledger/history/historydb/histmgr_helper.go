@@ -19,7 +19,7 @@ package historydb
 import (
 	"bytes"
 
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/common/ledger/util"
 )
 
 var compositeKeySep = []byte{0x00}

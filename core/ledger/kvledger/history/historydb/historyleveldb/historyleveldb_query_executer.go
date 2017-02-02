@@ -20,10 +20,11 @@ import (
 	"errors"
 	"fmt"
 
+	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
@@ -33,7 +34,7 @@ type LevelHistoryDBQueryExecutor struct {
 }
 
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
-func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (ledger.ResultsIterator, error) {
+func (q *LevelHistoryDBQueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
 
 	if ledgerconfig.IsHistoryDBEnabled() == false {
 		return nil, errors.New("History tracking not enabled - historyDatabase is false")
@@ -59,7 +60,7 @@ func newHistoryScanner(compositePartialKey []byte, dbItr iterator.Iterator) *his
 	return &historyScanner{compositePartialKey, dbItr}
 }
 
-func (scanner *historyScanner) Next() (ledger.QueryResult, error) {
+func (scanner *historyScanner) Next() (commonledger.QueryResult, error) {
 	if !scanner.dbItr.Next() {
 		return nil, nil
 	}

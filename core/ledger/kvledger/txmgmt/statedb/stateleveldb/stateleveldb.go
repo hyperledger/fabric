@@ -21,10 +21,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
 	logging "github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
