@@ -18,6 +18,7 @@ package chainconfig
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -144,8 +145,8 @@ func (pm *DescriptorImpl) ProposeConfig(configItem *cb.ConfigurationItem) error 
 			return fmt.Errorf("Unmarshaling error for BlockDataHashingStructure: %s", err)
 		}
 
-		if blockDataHashingStructure.Width == 0 {
-			return fmt.Errorf("BlockDataHashStructure width must not be zero")
+		if blockDataHashingStructure.Width != math.MaxUint32 {
+			return fmt.Errorf("BlockDataHashStructure width only supported at MaxUint32 in this version")
 		}
 
 		pm.pendingConfig.blockDataHashingStructureWidth = blockDataHashingStructure.Width
