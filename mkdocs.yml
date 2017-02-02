@@ -29,11 +29,18 @@ pages:
   - Changes: Gerrit/changes.md
   - Reviewing: Gerrit/reviewing.md
   - Best Practices: Gerrit/best-practices.md
+  - Canonical Use Cases: biz/usecases.md
   - Style Guides:
     - Golang: Style-guides/go-style.md
 
+- Application Developer:
+  - CLI: API/CLI.md
+  - Writing, Building, and Running Chaincode: Setup/Chaincode-setup.md
+  - Chaincode FAQ: FAQ/chaincode_FAQ.md
+
 - Setup:
   - Fabric CA: Setup/ca-setup.md
+  - Logging Control: Setup/logging-control.md
 
 markdown_extensions:
   - toc:
@@ -48,4 +55,4 @@ markdown_extensions:
       enable_dollar_delimiter: True #for use of inline $..$
   - footnotes
 
-copyright: Copyright &copy; 2016 IBM Corp. <br></br>Contributed to the Hyperledger Project under the <a href="https://github.com/hyperledger/fabric/blob/master/LICENSE" target="_blank">Apache Software License 2.0</a>
+copyright: Copyright &copy; 2017 IBM Corp. <br></br>Contributed to the Hyperledger Project under the <a href="https://github.com/hyperledger/fabric/blob/master/LICENSE" target="_blank">Apache Software License 2.0</a>
