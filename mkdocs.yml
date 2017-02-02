@@ -33,7 +33,7 @@ pages:
     - Golang: Style-guides/go-style.md
 
 - Setup:
-  - Fabric CA: ca-setup.md
+  - Fabric CA: Setup/ca-setup.md
 
 markdown_extensions:
   - toc:
