@@ -76,9 +76,9 @@ func NewInitializer() api.Initializer {
 	for ctype := range cb.ConfigItem_ConfigType_name {
 		rtype := cb.ConfigItem_ConfigType(ctype)
 		switch rtype {
-		case cb.ConfigItem_Chain:
+		case cb.ConfigItem_CHAIN:
 			handlers[rtype] = chainConfig
-		case cb.ConfigItem_Policy:
+		case cb.ConfigItem_POLICY:
 			handlers[rtype] = policyManager
 		case cb.ConfigItem_MSP:
 			handlers[rtype] = mspConfigHandler

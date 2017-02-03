@@ -158,7 +158,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
 
 	var creationConfigItem *cb.ConfigItem
 	for _, item := range config.Items {
-		if item.Type == cb.ConfigItem_Orderer && item.Key == configtx.CreationPolicyKey {
+		if item.Type == cb.ConfigItem_ORDERER && item.Key == configtx.CreationPolicyKey {
 			creationConfigItem = item
 			break
 		}

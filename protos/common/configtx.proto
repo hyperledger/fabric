@@ -96,11 +96,10 @@ message ConfigPolicy {
 
 message ConfigItem {
     enum ConfigType {
-        // XXX change all to UPPER_CASE
-        Policy = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
-        Chain = 1;    // Marshaled format for this type is yet to be determined
-        Orderer = 2;  // Marshaled format for this type is yet to be determined
-        Peer = 3;     // Marshaled format for this type is yet to be determined
+        POLICY = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
+        CHAIN = 1;    // Marshaled format for this type is yet to be determined
+        ORDERER = 2;  // Marshaled format for this type is yet to be determined
+        PEER = 3;     // Marshaled format for this type is yet to be determined
         MSP = 4;      // Marshaled MSPConfig proto
     }
     ConfigType type = 1;            // The type of configuration this is.

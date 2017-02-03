@@ -57,8 +57,8 @@ func verifyItemsResult(t *testing.T, template Template, count int) {
 
 func TestSimpleTemplate(t *testing.T) {
 	simple := NewSimpleTemplate(
-		&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "0"},
-		&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "1"},
+		&cb.ConfigItem{Type: cb.ConfigItem_ORDERER, Key: "0"},
+		&cb.ConfigItem{Type: cb.ConfigItem_ORDERER, Key: "1"},
 	)
 	verifyItemsResult(t, simple, 2)
 }
@@ -66,11 +66,11 @@ func TestSimpleTemplate(t *testing.T) {
 func TestCompositeTemplate(t *testing.T) {
 	composite := NewCompositeTemplate(
 		NewSimpleTemplate(
-			&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "0"},
-			&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "1"},
+			&cb.ConfigItem{Type: cb.ConfigItem_ORDERER, Key: "0"},
+			&cb.ConfigItem{Type: cb.ConfigItem_ORDERER, Key: "1"},
 		),
 		NewSimpleTemplate(
-			&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "2"},
+			&cb.ConfigItem{Type: cb.ConfigItem_ORDERER, Key: "2"},
 		),
 	)
 
@@ -79,8 +79,8 @@ func TestCompositeTemplate(t *testing.T) {
 
 func TestNewChainTemplate(t *testing.T) {
 	simple := NewSimpleTemplate(
-		&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "0"},
-		&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "1"},
+		&cb.ConfigItem{Type: cb.ConfigItem_ORDERER, Key: "0"},
+		&cb.ConfigItem{Type: cb.ConfigItem_ORDERER, Key: "1"},
 	)
 
 	creationPolicy := "Test"

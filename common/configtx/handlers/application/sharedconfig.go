@@ -84,7 +84,7 @@ func (di *SharedConfigImpl) CommitConfig() {
 
 // ProposeConfig is used to add new config to the config proposal
 func (di *SharedConfigImpl) ProposeConfig(configItem *cb.ConfigItem) error {
-	if configItem.Type != cb.ConfigItem_Peer {
+	if configItem.Type != cb.ConfigItem_PEER {
 		return fmt.Errorf("Expected type of ConfigItem_Peer, got %v", configItem.Type)
 	}
 

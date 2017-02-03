@@ -37,7 +37,7 @@ func init() {
 
 func invalidMessage(key string) *cb.ConfigItem {
 	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_Orderer,
+		Type:  cb.ConfigItem_ORDERER,
 		Key:   key,
 		Value: []byte("Garbage Data"),
 	}

@@ -33,7 +33,7 @@ func init() {
 
 func makeInvalidConfigItem(key string) *cb.ConfigItem {
 	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_Peer,
+		Type:  cb.ConfigItem_PEER,
 		Key:   key,
 		Value: []byte("Garbage Data"),
 	}

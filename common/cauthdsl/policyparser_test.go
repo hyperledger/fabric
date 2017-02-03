@@ -32,12 +32,12 @@ func TestAnd(t *testing.T) {
 	principals := make([]*common.MSPPrincipal, 0)
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "A"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "A"})})
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "B"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "B"})})
 
 	p2 := &common.SignaturePolicyEnvelope{
 		Version:    0,
@@ -55,12 +55,12 @@ func TestOr(t *testing.T) {
 	principals := make([]*common.MSPPrincipal, 0)
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "A"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "A"})})
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "B"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "B"})})
 
 	p2 := &common.SignaturePolicyEnvelope{
 		Version:    0,
@@ -78,16 +78,16 @@ func TestComplex1(t *testing.T) {
 	principals := make([]*common.MSPPrincipal, 0)
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "B"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "B"})})
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "C"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "C"})})
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "A"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "A"})})
 
 	p2 := &common.SignaturePolicyEnvelope{
 		Version:    0,
@@ -105,20 +105,20 @@ func TestComplex2(t *testing.T) {
 	principals := make([]*common.MSPPrincipal, 0)
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "A"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "A"})})
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "B"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "B"})})
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Admin, MSPIdentifier: "C"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_ADMIN, MSPIdentifier: "C"})})
 
 	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ByMSPRole,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_Member, MSPIdentifier: "D"})})
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MSPIdentifier: "D"})})
 
 	p2 := &common.SignaturePolicyEnvelope{
 		Version:    0,

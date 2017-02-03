@@ -49,15 +49,14 @@ package common;
 message MSPPrincipal {
 
     enum Classification {
-        // XXX Change all to UPPER_CASE
-        ByMSPRole = 0;  // Represents the one of the dedicated MSP roles, the
+        ROLE = 0;  // Represents the one of the dedicated MSP roles, the
         // one of a member of MSP network, and the one of an
         // administrator of an MSP network
-        ByOrganizationUnit = 1; // Denotes a finer grained (affiliation-based)
+        ORGANIZATION_UNIT = 1; // Denotes a finer grained (affiliation-based)
         // groupping of entities, per MSP affiliation
         // E.g., this can well be represented by an MSP's
         // Organization unit
-        ByIdentity  = 2;    // Denotes a principal that consists of a single
+        IDENTITY  = 2;    // Denotes a principal that consists of a single
         // identity
     }
 
@@ -104,8 +103,8 @@ message MSPRole {
     string MSPIdentifier = 1; // XXX change to msp_identifier
 
     enum MSPRoleType {
-        Member = 0; // Represents an MSP Member // XXX change to MEMBER
-        Admin  = 1; // Represents an MSP Admin  // XXX change to ADMIN
+        MEMBER = 0; // Represents an MSP Member
+        ADMIN  = 1; // Represents an MSP Admin
     }
 
     // MSPRoleType defines which of the available, pre-defined MSP-roles

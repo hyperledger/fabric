@@ -24,7 +24,7 @@ import (
 // TemplatePolicy creates a headerless configuration item representing a policy for a given key
 func TemplatePolicy(key string, sigPolicyEnv *cb.SignaturePolicyEnvelope) *cb.ConfigItem {
 	return &cb.ConfigItem{
-		Type: cb.ConfigItem_Policy,
+		Type: cb.ConfigItem_POLICY,
 		Key:  key,
 		Value: utils.MarshalOrPanic(&cb.Policy{
 			Type:   int32(cb.Policy_SIGNATURE),

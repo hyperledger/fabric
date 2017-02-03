@@ -59,5 +59,5 @@ func viewableSignaturePolicyEnvelope(name string, signaturePolicyEnvelope *cb.Si
 }
 
 func init() {
-	typeMap[cb.ConfigItem_Policy] = policyTypes{}
+	typeMap[cb.ConfigItem_POLICY] = policyTypes{}
 }

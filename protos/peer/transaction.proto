@@ -40,10 +40,9 @@ message SignedTransaction {
 
 // This is used to wrap an invalid Transaction with the cause
 message InvalidTransaction {
-	// XXX Change to UPPER_CASE
 	enum Cause {
-		TxIdAlreadyExists = 0;
-		RWConflictDuringCommit = 1;
+		TX_ID_ALREADY_EXISTS = 0;
+		RW_CONFLICT_DURING_COMMIT = 1;
 	}
 	Transaction transaction = 1;
 	Cause cause = 2;

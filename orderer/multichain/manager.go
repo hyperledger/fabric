@@ -150,7 +150,7 @@ func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
 func newConfigResources(configEnvelope *cb.ConfigEnvelope) (*configResources, error) {
 	sharedConfigManager := configtxorderer.NewManagerImpl()
 	initializer := configtx.NewInitializer()
-	initializer.Handlers()[cb.ConfigItem_Orderer] = sharedConfigManager
+	initializer.Handlers()[cb.ConfigItem_ORDERER] = sharedConfigManager
 
 	configManager, err := configtx.NewManagerImplNext(configEnvelope, initializer, nil)
 	if err != nil {

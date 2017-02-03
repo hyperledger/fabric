@@ -108,7 +108,7 @@ func (pm *ManagerImpl) CommitConfig() {
 
 // ProposeConfig is used to add new config to the configuration proposal
 func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigItem) error {
-	if configItem.Type != cb.ConfigItem_Policy {
+	if configItem.Type != cb.ConfigItem_POLICY {
 		return fmt.Errorf("Expected type of ConfigItem_Policy, got %v", configItem.Type)
 	}
 

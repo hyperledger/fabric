@@ -57,7 +57,7 @@ func ConfigNextToConfig(config *cb.ConfigNext) *cb.Config {
 	for key, value := range channel.Values {
 		result.Items = append(result.Items, &cb.ConfigItem{
 			Key:   key,
-			Type:  cb.ConfigItem_Chain,
+			Type:  cb.ConfigItem_CHAIN,
 			Value: value.Value,
 		})
 	}
@@ -65,7 +65,7 @@ func ConfigNextToConfig(config *cb.ConfigNext) *cb.Config {
 	for key, value := range channel.Groups[OrdererGroup].Values {
 		result.Items = append(result.Items, &cb.ConfigItem{
 			Key:   key,
-			Type:  cb.ConfigItem_Orderer,
+			Type:  cb.ConfigItem_ORDERER,
 			Value: value.Value,
 		})
 	}
@@ -73,7 +73,7 @@ func ConfigNextToConfig(config *cb.ConfigNext) *cb.Config {
 	for key, value := range channel.Groups[ApplicationGroup].Values {
 		result.Items = append(result.Items, &cb.ConfigItem{
 			Key:   key,
-			Type:  cb.ConfigItem_Peer,
+			Type:  cb.ConfigItem_PEER,
 			Value: value.Value,
 		})
 	}
@@ -83,7 +83,7 @@ func ConfigNextToConfig(config *cb.ConfigNext) *cb.Config {
 		logger.Debugf("Reversing policy %s", key)
 		result.Items = append(result.Items, &cb.ConfigItem{
 			Key:   key,
-			Type:  cb.ConfigItem_Policy,
+			Type:  cb.ConfigItem_POLICY,
 			Value: utils.MarshalOrPanic(value.Policy),
 		})
 	}

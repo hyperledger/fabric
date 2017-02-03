@@ -304,7 +304,7 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 	switch principal.PrincipalClassification {
 	// in this case, we have to check whether the
 	// identity has a role in the msp - member or admin
-	case common.MSPPrincipal_ByMSPRole:
+	case common.MSPPrincipal_ROLE:
 		// Principal contains the msp role
 		mspRole := &common.MSPRole{}
 		err := proto.Unmarshal(principal.Principal, mspRole)
@@ -322,16 +322,16 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 		switch mspRole.Role {
 		// in the case of member, we simply check
 		// whether this identity is valid for the MSP
-		case common.MSPRole_Member:
+		case common.MSPRole_MEMBER:
 			return msp.Validate(id)
-		case common.MSPRole_Admin:
+		case common.MSPRole_ADMIN:
 			panic("Not yet implemented")
 		default:
 			return fmt.Errorf("Invalid MSP role type %d", int32(mspRole.Role))
 		}
 	// in this case we have to serialize this instance
 	// and compare it byte-by-byte with Principal
-	case common.MSPPrincipal_ByIdentity:
+	case common.MSPPrincipal_IDENTITY:
 		idBytes, err := id.Serialize()
 		if err != nil {
 			return fmt.Errorf("Could not serialize this identity instance, err %s", err)
@@ -343,7 +343,7 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 		} else {
 			return errors.New("The identities do not match")
 		}
-	case common.MSPPrincipal_ByOrganizationUnit:
+	case common.MSPPrincipal_ORGANIZATION_UNIT:
 		panic("Not yet implemented")
 	default:
 		return fmt.Errorf("Invalid principal type %d", int32(principal.PrincipalClassification))

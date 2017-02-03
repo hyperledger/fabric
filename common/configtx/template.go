@@ -63,13 +63,13 @@ func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
 	for _, item := range st.items {
 		var values map[string]*cb.ConfigValue
 		switch item.Type {
-		case cb.ConfigItem_Peer:
+		case cb.ConfigItem_PEER:
 			values = channel.Groups[ApplicationGroup].Values
-		case cb.ConfigItem_Orderer:
+		case cb.ConfigItem_ORDERER:
 			values = channel.Groups[OrdererGroup].Values
-		case cb.ConfigItem_Chain:
+		case cb.ConfigItem_CHAIN:
 			values = channel.Values
-		case cb.ConfigItem_Policy:
+		case cb.ConfigItem_POLICY:
 			logger.Debugf("Templating about policy %s", item.Key)
 			policy := &cb.Policy{}
 			err := proto.Unmarshal(item.Value, policy)
@@ -190,7 +190,7 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error
 // a CompositeTemplate will invalidate the CreationPolicy
 func NewChainCreationTemplate(creationPolicy string, template Template) Template {
 	creationPolicyTemplate := NewSimpleTemplate(&cb.ConfigItem{
-		Type: cb.ConfigItem_Orderer,
+		Type: cb.ConfigItem_ORDERER,
 		Key:  CreationPolicyKey,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: creationPolicy,

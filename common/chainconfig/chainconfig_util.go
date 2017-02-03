@@ -28,7 +28,7 @@ const defaultHashingAlgorithm = SHA3Shake256
 // TemplateHashingAlgorithm creates a headerless config item representing the hashing algorithm
 func TemplateHashingAlgorithm(name string) *cb.ConfigItem {
 	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_Chain,
+		Type:  cb.ConfigItem_CHAIN,
 		Key:   HashingAlgorithmKey,
 		Value: utils.MarshalOrPanic(&cb.HashingAlgorithm{Name: name}),
 	}
@@ -45,7 +45,7 @@ const defaultBlockDataHashingStructureWidth = math.MaxUint32
 // TemplateBlockDataHashingStructure creates a headerless config item representing the block data hashing structure
 func TemplateBlockDataHashingStructure(width uint32) *cb.ConfigItem {
 	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_Chain,
+		Type:  cb.ConfigItem_CHAIN,
 		Key:   BlockDataHashingStructureKey,
 		Value: utils.MarshalOrPanic(&cb.BlockDataHashingStructure{Width: width}),
 	}
@@ -61,7 +61,7 @@ var defaultOrdererAddresses = []string{"127.0.0.1:7050"}
 // TemplateOrdererAddressess creates a headerless config item representing the orderer addresses
 func TemplateOrdererAddresses(addresses []string) *cb.ConfigItem {
 	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_Chain,
+		Type:  cb.ConfigItem_CHAIN,
 		Key:   OrdererAddressesKey,
 		Value: utils.MarshalOrPanic(&cb.OrdererAddresses{Addresses: addresses}),
 	}

@@ -82,7 +82,7 @@ func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]b
 
 func makeConfigTx(chainID string, i int) *cb.Envelope {
 	configTemplate := configtx.NewSimpleTemplate(&cb.ConfigItem{
-		Type:  cb.ConfigItem_Orderer,
+		Type:  cb.ConfigItem_ORDERER,
 		Key:   fmt.Sprintf("%d", i),
 		Value: []byte(fmt.Sprintf("%d", i)),
 	})

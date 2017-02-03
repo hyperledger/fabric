@@ -172,7 +172,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	}
 
 	configtxInitializer := configtx.NewInitializer()
-	configtxInitializer.Handlers()[common.ConfigItem_Peer] = sharedConfigHandler
+	configtxInitializer.Handlers()[common.ConfigItem_PEER] = sharedConfigHandler
 	configtxManager, err := configtx.NewManagerImplNext(
 		configEnvelope,
 		configtxInitializer,

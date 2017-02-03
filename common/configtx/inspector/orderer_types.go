@@ -147,5 +147,5 @@ func viewableBatchSize(name string, batchSize *ab.BatchSize) Viewable {
 }
 
 func init() {
-	typeMap[cb.ConfigItem_Orderer] = ordererTypes{}
+	typeMap[cb.ConfigItem_ORDERER] = ordererTypes{}
 }

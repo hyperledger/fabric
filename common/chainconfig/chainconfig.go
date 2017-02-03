@@ -123,7 +123,7 @@ func (pm *DescriptorImpl) CommitConfig() {
 
 // ProposeConfig is used to add new config to the config proposal
 func (pm *DescriptorImpl) ProposeConfig(configItem *cb.ConfigItem) error {
-	if configItem.Type != cb.ConfigItem_Chain {
+	if configItem.Type != cb.ConfigItem_CHAIN {
 		return fmt.Errorf("Expected type of ConfigItem_Chain, got %v", configItem.Type)
 	}
 
