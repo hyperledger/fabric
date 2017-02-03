@@ -178,7 +178,7 @@ func (b *blocksProviderImpl) seekOldest() error {
 	return b.client.Send(&common.Envelope{
 		Payload: utils.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
-				ChainHeader: &common.ChainHeader{
+				ChannelHeader: &common.ChannelHeader{
 					ChannelId: b.chainID,
 				},
 				SignatureHeader: &common.SignatureHeader{},
@@ -196,7 +196,7 @@ func (b *blocksProviderImpl) seekLatestFromCommitter(height uint64) error {
 	return b.client.Send(&common.Envelope{
 		Payload: utils.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
-				ChainHeader: &common.ChainHeader{
+				ChannelHeader: &common.ChannelHeader{
 					ChannelId: b.chainID,
 				},
 				SignatureHeader: &common.SignatureHeader{},

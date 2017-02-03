@@ -133,7 +133,7 @@ func TestGoodProposal(t *testing.T) {
 
 	wrapped := mcc.ms.queue[0]
 	payload := utils.UnmarshalPayloadOrPanic(wrapped.Payload)
-	if payload.Header.ChainHeader.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
+	if payload.Header.ChannelHeader.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
 		t.Fatalf("Wrapped transaction should be of type ORDERER_TRANSACTION")
 	}
 	envelope := utils.UnmarshalEnvelopeOrPanic(payload.Data)

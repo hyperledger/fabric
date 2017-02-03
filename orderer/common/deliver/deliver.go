@@ -81,13 +81,13 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 			return err
 		}
 
-		if payload.Header == nil || payload.Header.ChainHeader == nil {
+		if payload.Header == nil || payload.Header.ChannelHeader == nil {
 			err := fmt.Errorf("Malformed envelope recieved with bad header")
 			logger.Error(err)
 			return err
 		}
 
-		chain, ok := ds.sm.GetChain(payload.Header.ChainHeader.ChannelId)
+		chain, ok := ds.sm.GetChain(payload.Header.ChannelHeader.ChannelId)
 		if !ok {
 			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
@@ -105,7 +105,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Received seekInfo %v for chain %s", seekInfo, payload.Header.ChainHeader.ChannelId)
+			logger.Debugf("Received seekInfo %v for chain %s", seekInfo, payload.Header.ChannelHeader.ChannelId)
 		}
 
 		cursor, number := chain.Reader().Iterator(seekInfo.Start)

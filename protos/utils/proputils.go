@@ -54,9 +54,9 @@ func GetChaincodeProposalContext(prop *peer.Proposal) (*peer.ChaincodeProposalCo
 	if err != nil {
 		return nil, fmt.Errorf("Could not extract the header from the proposal: %s", err)
 	}
-	if common.HeaderType(hdr.ChainHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
-		common.HeaderType(hdr.ChainHeader.Type) != common.HeaderType_CONFIGURATION_TRANSACTION {
-		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIGURATION_TRANSACTION. Was: %d", hdr.ChainHeader.Type)
+	if common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
+		common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_CONFIGURATION_TRANSACTION {
+		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIGURATION_TRANSACTION. Was: %d", hdr.ChannelHeader.Type)
 	}
 
 	if hdr.SignatureHeader == nil {
@@ -89,7 +89,7 @@ func GetHeader(bytes []byte) (*common.Header, error) {
 // GetChaincodeHeaderExtension get chaincode header extension given header
 func GetChaincodeHeaderExtension(hdr *common.Header) (*peer.ChaincodeHeaderExtension, error) {
 	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
-	err := proto.Unmarshal(hdr.ChainHeader.Extension, chaincodeHdrExt)
+	err := proto.Unmarshal(hdr.ChannelHeader.Extension, chaincodeHdrExt)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ func CreateChaincodeProposalWithTransient(txid string, typ common.HeaderType, ch
 		return nil, err
 	}
 
-	hdr := &common.Header{ChainHeader: &common.ChainHeader{Type: int32(typ),
+	hdr := &common.Header{ChannelHeader: &common.ChannelHeader{Type: int32(typ),
 		TxId:      txid,
 		ChannelId: chainID,
 		Extension: ccHdrExtBytes},

@@ -69,12 +69,12 @@ message MetadataSignature {
 }
 
 message Header {
-    ChainHeader chain_header = 1;
+    ChannelHeader channel_header = 1;
     SignatureHeader signature_header = 2;
 }
 
 // Header is a generic replay prevention and identity message to include in a signed payload
-message ChainHeader {
+message ChannelHeader {
     int32 type = 1; // Header types 0-10000 are reserved and defined by HeaderType
 
     // Version indicates message protocol version

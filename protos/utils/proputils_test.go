@@ -85,7 +85,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// sanity check on header
-	if hdr.ChainHeader.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) ||
+	if hdr.ChannelHeader.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) ||
 		hdr.SignatureHeader.Nonce == nil ||
 		string(hdr.SignatureHeader.Creator) != "creator" {
 		t.Fatalf("Invalid header after unmarshalling\n")

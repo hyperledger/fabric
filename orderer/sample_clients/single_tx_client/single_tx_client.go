@@ -102,7 +102,7 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 	dstream.Send(&cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChainHeader: &cb.ChainHeader{
+				ChannelHeader: &cb.ChannelHeader{
 					ChannelId: provisional.TestChainID,
 				},
 				SignatureHeader: &cb.SignatureHeader{},
@@ -149,7 +149,7 @@ func broadcastSender(resultch chan byte, errorch chan error, client ab.AtomicBro
 	bs := []byte{0, 1, 2, 3}
 	pl := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
+			ChannelHeader: &cb.ChannelHeader{
 				ChannelId: provisional.TestChainID,
 			},
 		},

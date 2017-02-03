@@ -84,7 +84,7 @@ func (a *Adapter) Disconnected(err error) {
 }
 
 func createTestBlock(t *testing.T) *common.Block {
-	chdr := &common.ChainHeader{
+	chdr := &common.ChannelHeader{
 		Type:    int32(common.HeaderType_ENDORSER_TRANSACTION),
 		Version: 1,
 		Timestamp: &timestamp.Timestamp{
@@ -92,7 +92,7 @@ func createTestBlock(t *testing.T) *common.Block {
 			Nanos:   0,
 		},
 		ChannelId: "test"}
-	hdr := &common.Header{ChainHeader: chdr}
+	hdr := &common.Header{ChannelHeader: chdr}
 	payload := &common.Payload{Header: hdr}
 	cea := &ehpb.ChaincodeEndorsedAction{}
 	ccaPayload := &ehpb.ChaincodeActionPayload{Action: cea}

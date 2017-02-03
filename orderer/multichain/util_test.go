@@ -96,7 +96,7 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 func makeConfigTxFromConfigEnvelope(chainID string, configEnv *cb.ConfigEnvelope) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
+			ChannelHeader: &cb.ChannelHeader{
 				Type:      int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
 				ChannelId: chainID,
 			},
@@ -112,7 +112,7 @@ func makeConfigTxFromConfigEnvelope(chainID string, configEnv *cb.ConfigEnvelope
 func makeNormalTx(chainID string, i int) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
+			ChannelHeader: &cb.ChannelHeader{
 				Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
 				ChannelId: chainID,
 			},
@@ -128,7 +128,7 @@ func makeNormalTx(chainID string, i int) *cb.Envelope {
 func makeSignaturelessTx(chainID string, i int) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
+			ChannelHeader: &cb.ChannelHeader{
 				Type:      int32(cb.HeaderType_ENDORSER_TRANSACTION),
 				ChannelId: chainID,
 			},

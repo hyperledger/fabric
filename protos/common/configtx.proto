@@ -33,10 +33,10 @@ package common;
 //   1. Retrieve the existing configuration
 //   2. Note the highest configuration sequence number, store it and increment it by one
 //   3. Modify desired ConfigItems, setting each LastModified to the stored and incremented sequence number
-//     a) Note that the ConfigItem has a ChainHeader header attached to it, who's type is set to CONFIGURATION_ITEM
+//     a) Note that the ConfigItem has a ChannelHeader header attached to it, who's type is set to CONFIGURATION_ITEM
 //   4. Create Config message containing the new configuration, marshal it into ConfigEnvelope.config and encode the required signatures
 //     a) Each signature is of type ConfigSignature
-//     b) The ConfigSignature signature is over the concatenation of signatureHeader and the Config bytes (which includes a ChainHeader)
+//     b) The ConfigSignature signature is over the concatenation of signatureHeader and the Config bytes (which includes a ChannelHeader)
 //   5. Submit new Config for ordering in Envelope signed by submitter
 //     a) The Envelope Payload has data set to the marshaled ConfigEnvelope
 //     b) The Envelope Payload has a header of type Header.Type.CONFIGURATION_TRANSACTION
@@ -61,14 +61,14 @@ message ConfigTemplate {
 
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message Config {
-    ChainHeader header = 1;
+    ChannelHeader header = 1;
     repeated ConfigItem items = 2;
 }
 
 // XXX this structure is to allow us to minimize the diffs in this change series
 // it will be renamed Config once the original is ready to be removed
 message ConfigNext {
-    ChainHeader header = 1;
+    ChannelHeader header = 1;
     ConfigGroup channel = 2;
 }
 

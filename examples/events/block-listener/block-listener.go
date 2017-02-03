@@ -99,7 +99,7 @@ func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 			return nil, fmt.Errorf("Could not extract payload from envelope, err %s", err)
 		}
 
-		if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 			tx, err := utils.GetTransaction(payload.Data)
 			if err != nil {
 				return nil, fmt.Errorf("Error unmarshalling transaction payload for block event: %s", err)
@@ -158,7 +158,7 @@ func main() {
 						fmt.Printf("\n")
 						fmt.Printf("Received invalid transaction\n")
 						fmt.Printf("--------------\n")
-						fmt.Printf("Transaction invalid: TxID: %s\n", tx.Header.ChainHeader.TxId)
+						fmt.Printf("Transaction invalid: TxID: %s\n", tx.Header.ChannelHeader.TxId)
 					}
 				} else {
 					fmt.Printf("Transaction:\n\t[%v]\n", r)
