@@ -69,10 +69,11 @@ automatically download, extract, and run when you execute the `docker-compose` c
 ## Commands
 
 The channel commands are:
-* "create" - create and name a channel in the `orderer` and get back a genesis
+
+* `create` - create and name a channel in the `orderer` and get back a genesis
 block for the channel.  The genesis block is named in accordance with the channel name.
-* "join" - use the genesis block from the `create` command to issue a join
-request to a Peer.
+* `join` - use the genesis block from the `create` command to issue a join
+request to a peer.
 
 ## Use Docker to spawn network entities & create/join a channel
 
@@ -84,7 +85,7 @@ Create network entities, create channel, join peers to channel:
 ```bash
 docker-compose -f docker-compose-gettingstarted.yml up -d
 ```
-Behind the scenes this started six containers (3 peers, a "solo" orderer, CLI and CA)
+Behind the scenes this started six containers (3 peers, a "solo" orderer, cli and CA)
 in detached mode.  A script - `channel_test.sh` - embedded within the
 `docker-compose-gettingstarted.yml` issued the create channel and join channel
 commands within the CLI container.  In the end, you are left with a network and
@@ -95,10 +96,9 @@ View your containers:
 # if you have no other containers running, you will see six
 docker ps
 ```
-
 Ensure the channel has been created and peers have successfully joined:
 ```bash
-docker exec -it cli sh
+docker exec -it cli bash
 ```
 You should see the following in your terminal:
 ```bash
@@ -106,7 +106,7 @@ You should see the following in your terminal:
 ```
 To view results for channel creation/join:
 ```bash
-cat results.txt
+more results.txt
 ```
 You're looking for:
 ```bash
@@ -116,15 +116,20 @@ SUCCESSFUL JOIN CHANNEL on PEER1
 SUCCESSFUL JOIN CHANNEL on PEER2
 ```
 
-To verify the genesis block for the channel was created you can issue:
+To view genesis block:
 ```bash
-ls -ltr myc1.block
+more myc1.block
+```
+
+Exit the cli container:
+```bash
+exit
 ```
 
 ## Curl the application source code and SDK modules
 
 * Prior to issuing the command, make sure you are in the same working directory
-where you curled the network code.
+where you curled the network code.  AND make sure you have exited the cli container.
 * Execute the following command:
 ```bash
 curl -OOOOOO https://raw.githubusercontent.com/hyperledger/fabric-sdk-node/master/examples/balance-transfer/{config.json,deploy.js,helper.js,invoke.js,query.js,package.json}
@@ -147,32 +152,89 @@ the provisioned Certificate Authority.  Once the client is properly authenticate
 the programs will demonstrate basic chaincode functionalities - deploy, invoke, and query.  Make
 sure you are in the working directory where you pulled the source code before proceeding.
 
+Upon success of each node program, you will receive a "200" response in the terminal.
+
 Register/enroll & deploy chaincode (Linux or OSX):
 ```bash
+# Deploy initializes key value pairs of "a","100" & "b","200".
 GOPATH=$PWD node deploy.js
 ```
 Register/enroll & deploy chaincode (Windows):
 ```bash
+# Deploy initializes key value pairs of "a","100" & "b","200".
 SET GOPATH=%cd%
 node deploy.js
 ```
-Issue an invoke. Move units from "a" to "b":
+Issue an invoke. Move units 100 from "a" to "b":
 ```bash
 node invoke.js
 ```
-Query against key value "a":
+Query against key value "b":
 ```bash
+# this should return a value of 300
 node query.js
 ```
-You will receive a "200 response" in your terminal if each command is successful.
-Explore the various javascript programs to better understand the SDK and APIs.
+Explore the various node.js programs, along with `example_cc.go` to better understand
+the SDK and APIs.
 
-## Manually create and join channel (optional)
+## Manually create and join peers to a new channel
 
-To manually exercise the create channel and join channel APIs through the CLI container, you will
+Use the cli container to manually exercise the create channel and join channel APIs.
+
+Channel - `myc1` already exists, so let's create a new channel named `myc2`.  
+
+Exec into the cli container:
+```bash
+docker exec -it cli bash
+```
+If successful, you should see the following in your terminal:
+```bash
+/opt/gopath/src/github.com/hyperledger/fabric/peer #
+```
+Send createChannel API to Ordering Service:
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer channel create -c myc2
+```
+This will return a genesis block - `myc2.block` - that you can issue join commands with.
+Next, send a joinChannel API to `peer0` and pass in the genesis block as an argument.
+The channel is defined within the genesis block:
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 CORE_PEER_ADDRESS=peer0:7051 peer channel join -b myc2.block
+```
+To join the other peers to the channel, simply reissue the above command with `peer1`
+or `peer2` specified.  For example:
+```
+CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 CORE_PEER_ADDRESS=peer1:7051 peer channel join -b myc2.block
+```
+Once the peers have all joined the channel, you are able to issues queries against
+any peer without having to deploy chaincode to each of them.
+
+## Use cli to deploy, invoke and query
+
+Run the deploy command.  This command is deploying a chaincode named `mycc` to
+`peer0` on the Channel ID `myc2`.  The constructor message is initializing `a` and
+`b` with values of 100 and 200 respectively.
+```
+CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer chaincode deploy -C myc2 -n mycc -p github.com/hyperledger/fabric/examples -c '{"Args":["init","a","100","b","200"]}'
+```
+Run the invoke command.  This invocation is moving 10 units from `a` to `b`.
+```
+CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer chaincode invoke -C myc2 -n mycc -c '{"function":"invoke","Args":["move","a","b","10"]}'
+```
+Run the query command.  The invocation transferred 10 units from `a` to `b`, therefore
+a query against `a` should return the value 90.
+```
+CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer chaincode query -C myc2 -n mycc -c '{"function":"invoke","Args":["query","a"]}'
+```
+You can issue an `exit` command at any time to exit the cli container.
+
+## Creating your initial channel through the cli
+
+If you want to manually create the initial channel through the cli container, you will
 need to edit the Docker Compose file.  Use an editor to open `docker-compose-gettingstarted.yml` and
 comment out the `channel_test.sh` command in your cli image.  Simply place a `#` to the left
-of the command.  For example:
+of the command.  (Recall that this script is executing the create and join channel
+APIs when you run `docker-compose up`)  For example:
 ```bash
 cli:
   container_name: cli
@@ -181,58 +243,55 @@ cli:
 #  command: sh -c './channel_test.sh; sleep 1000'
 #  command: /bin/sh
 ```
-Exec into the cli container:
-```bash
-docker exec -it cli sh
-```
-If successful, you should see the following in your terminal:
-```bash
-/opt/gopath/src/github.com/hyperledger/fabric/peer #
-```
-Send createChannel API to Ordering Service:
-```
-CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer channel create -c myc1
-```
-This will return a genesis block - `myc1.block` - that you can issue join commands with.
-Next, send a joinChannel API to `peer0` and pass in the genesis block as an argument.
-The channel is defined within the genesis block:
-```
-CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 CORE_PEER_ADDRESS=peer0:7051 peer channel join -b myc1.block
-```
-To join the other peers to the channel, simply reissue the above command with `peer1`
-or `peer2` specified.  For example:
-```
-CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 CORE_PEER_ADDRESS=peer1:7051 peer channel join -b myc1.block
-```
-Once the peers have all joined the channel, you are able to issues queries against
-any peer without having to deploy chaincode to each of them.
 
-## Use cli to deploy, invoke and query (optional)
-
-Run the deploy command.  This command is deploying a chaincode named `mycc` to
-`peer0` on the Channel ID `myc1`.  The constructor message is initializing `a` and
-`b` with values of 100 and 200 respectively.
-```
-CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer chaincode deploy -C myc1 -n mycc -p github.com/hyperledger/fabric/examples -c '{"Args":["init","a","100","b","200"]}'
-```
-Run the invoke command.  This invocation is moving 10 units from `a` to `b`.
-```
-CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer chaincode invoke -C myc1 -n mycc -c '{"function":"invoke","Args":["move","a","b","10"]}'
-```
-Run the query command.  The invocation transferred 10 units from `a` to `b`, therefore
-a query against `a` should return the value 90.
-```
-CORE_PEER_ADDRESS=peer0:7051 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 peer chaincode query -C myc1 -n mycc -c '{"function":"invoke","Args":["query","a"]}'
-```
-You can issue an `exit` command at any time to exit the cli container.
+Then use the cli commands from the prior two sections.
 
 ## Troubleshooting (optional)
 
-If you have existing containers running you may receive an error indicating that a port is
+If you have existing containers running, you may receive an error indicating that a port is
 already occupied.  If this occurs, you will need to kill the container that is using said port.
 
 If a file cannot be located, make sure your curl commands executed successfully and make
 sure you are in the directory where you pulled the source code.
+
+If you are receiving timeout or GRPC communication errors, try restarting your
+failing docker process.  For example:
+```bash
+docker stop peer0
+```
+Then:
+```bash
+docker start peer0
+```
+
+Another approach to GRPC and DNS errors (peer failing to resolve with orderer and vice
+versa) is to hardcode the IP addresses for each.  You will know if there is a DNS
+issue, because a `more results.txt` command within the cli container will display
+something similar to:
+```bash
+ERROR CREATING CHANNEL
+PEER0 ERROR JOINING CHANNEL
+```
+
+Issue a `docker inspect <container_name>` to ascertain the IP address.  For example:
+```bash
+docker inspect peer0 | grep IPAddress
+```
+AND
+```bash
+docker inspect orderer | grep IPAddress
+```
+Take these values and hard code them into your cli commands.  For example:
+```bash
+CORE_PEER_COMMITTER_LEDGER_ORDERER=172.21.0.2:7050 peer channel create -c myc1
+```
+AND THEN
+```bash
+CORE_PEER_COMMITTER_LEDGER_ORDERER=<IP_ADDRESS> CORE_PEER_ADDRESS=<IP_ADDRESS> peer channel join -b myc1.block
+```
+
+If you are seeing errors while using the node SDK, make sure you have a current version
+of node.js and npm installed on your machine.  
 
 If you ran through the automated channel create/join process (i.e. did not comment out
 `channel_test.sh` in the `docker-compose-gettingstarted.yml`), then channel - `myc1` - and
@@ -259,8 +318,9 @@ Then join:
 CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050 CORE_PEER_ADDRESS=peer0:7051 peer channel join -b myc2.block
 ```
 
-If you do choose to create a new channel, you will also need to edit the "channelID" parameter
-in the `config.json` file to match the new channel's name.  For example:
+If you do choose to create a new channel, and want to run deploy/invoke/query with
+the node.js programs, you also need to edit the "channelID" parameter in the
+`config.json` file to match the new channel's name.  For example:
 ```
 {
    "chainName":"fabric-client1",
@@ -271,7 +331,17 @@ in the `config.json` file to match the new channel's name.  For example:
 ```
 
 OR, if you want your channel called - `myc1` -, remove your docker containers and
-then follow the same commands in the __Manually create and join channel__ section.
+then follow the same commands in the __Manually create and join peers to a new channel__
+section.
+
+## Clean up
+
+Shut down your containers:
+```bash
+docker-compose -f docker-compose-gettingstarted.yml down
+```
+
+## Helpful Docker tips
 
 Remove a specific docker container:
 ```bash
