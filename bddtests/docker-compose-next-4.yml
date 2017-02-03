@@ -6,6 +6,8 @@ services:
     extends:
       file: docker-compose-orderer-solo.yml
       service: orderer0
+    environment:
+      - ORDERER_GENERAL_LOCALMSPDIR=${ORDERER0_ORDERER_GENERAL_LOCALMSPDIR}
 
 
   peer0:

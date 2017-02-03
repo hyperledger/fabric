@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='msp/mspconfig.proto',
   package='msp',
   syntax='proto3',
-  serialized_pb=_b('\n\x13msp/mspconfig.proto\x12\x03msp\")\n\tMSPConfig\x12\x0c\n\x04Type\x18\x01 \x01(\x05\x12\x0e\n\x06\x43onfig\x18\x02 \x01(\x0c\"\x8d\x01\n\x0f\x46\x61\x62ricMSPConfig\x12\x0c\n\x04Name\x18\x01 \x01(\t\x12\x11\n\tRootCerts\x18\x02 \x03(\x0c\x12\x0e\n\x06\x41\x64mins\x18\x03 \x03(\x0c\x12\x16\n\x0eRevocationList\x18\x04 \x03(\x0c\x12\x31\n\x0fSigningIdentity\x18\x05 \x01(\x0b\x32\x18.msp.SigningIdentityInfo\"P\n\x13SigningIdentityInfo\x12\x14\n\x0cPublicSigner\x18\x01 \x01(\x0c\x12#\n\rPrivateSigner\x18\x02 \x01(\x0b\x32\x0c.msp.KeyInfo\"5\n\x07KeyInfo\x12\x15\n\rKeyIdentifier\x18\x01 \x01(\t\x12\x13\n\x0bKeyMaterial\x18\x02 \x01(\x0c\x42*Z(github.com/hyperledger/fabric/protos/mspb\x06proto3')
+  serialized_pb=_b('\n\x13msp/mspconfig.proto\x12\x03msp\")\n\tMSPConfig\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x0e\n\x06\x63onfig\x18\x02 \x01(\x0c\"\xac\x01\n\x0f\x46\x61\x62ricMSPConfig\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x12\n\nroot_certs\x18\x02 \x03(\x0c\x12\x1a\n\x12intermediate_certs\x18\x03 \x03(\x0c\x12\x0e\n\x06\x61\x64mins\x18\x04 \x03(\x0c\x12\x17\n\x0frevocation_list\x18\x05 \x03(\x0c\x12\x32\n\x10signing_identity\x18\x06 \x01(\x0b\x32\x18.msp.SigningIdentityInfo\"R\n\x13SigningIdentityInfo\x12\x15\n\rpublic_signer\x18\x01 \x01(\x0c\x12$\n\x0eprivate_signer\x18\x02 \x01(\x0b\x32\x0c.msp.KeyInfo\"7\n\x07KeyInfo\x12\x16\n\x0ekey_identifier\x18\x01 \x01(\t\x12\x14\n\x0ckey_material\x18\x02 \x01(\x0c\x42*Z(github.com/hyperledger/fabric/protos/mspb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -34,14 +34,14 @@ _MSPCONFIG = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Type', full_name='msp.MSPConfig.Type', index=0,
+      name='type', full_name='msp.MSPConfig.type', index=0,
       number=1, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Config', full_name='msp.MSPConfig.Config', index=1,
+      name='config', full_name='msp.MSPConfig.config', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -72,36 +72,43 @@ _FABRICMSPCONFIG = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Name', full_name='msp.FabricMSPConfig.Name', index=0,
+      name='name', full_name='msp.FabricMSPConfig.name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='RootCerts', full_name='msp.FabricMSPConfig.RootCerts', index=1,
+      name='root_certs', full_name='msp.FabricMSPConfig.root_certs', index=1,
       number=2, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Admins', full_name='msp.FabricMSPConfig.Admins', index=2,
+      name='intermediate_certs', full_name='msp.FabricMSPConfig.intermediate_certs', index=2,
       number=3, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='RevocationList', full_name='msp.FabricMSPConfig.RevocationList', index=3,
+      name='admins', full_name='msp.FabricMSPConfig.admins', index=3,
       number=4, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='SigningIdentity', full_name='msp.FabricMSPConfig.SigningIdentity', index=4,
-      number=5, type=11, cpp_type=10, label=1,
+      name='revocation_list', full_name='msp.FabricMSPConfig.revocation_list', index=4,
+      number=5, type=12, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='signing_identity', full_name='msp.FabricMSPConfig.signing_identity', index=5,
+      number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -119,7 +126,7 @@ _FABRICMSPCONFIG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=72,
-  serialized_end=213,
+  serialized_end=244,
 )
 
 
@@ -131,14 +138,14 @@ _SIGNINGIDENTITYINFO = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='PublicSigner', full_name='msp.SigningIdentityInfo.PublicSigner', index=0,
+      name='public_signer', full_name='msp.SigningIdentityInfo.public_signer', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='PrivateSigner', full_name='msp.SigningIdentityInfo.PrivateSigner', index=1,
+      name='private_signer', full_name='msp.SigningIdentityInfo.private_signer', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -156,8 +163,8 @@ _SIGNINGIDENTITYINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=215,
-  serialized_end=295,
+  serialized_start=246,
+  serialized_end=328,
 )
 
 
@@ -169,14 +176,14 @@ _KEYINFO = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='KeyIdentifier', full_name='msp.KeyInfo.KeyIdentifier', index=0,
+      name='key_identifier', full_name='msp.KeyInfo.key_identifier', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='KeyMaterial', full_name='msp.KeyInfo.KeyMaterial', index=1,
+      name='key_material', full_name='msp.KeyInfo.key_material', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -194,12 +201,12 @@ _KEYINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=297,
-  serialized_end=350,
+  serialized_start=330,
+  serialized_end=385,
 )
 
-_FABRICMSPCONFIG.fields_by_name['SigningIdentity'].message_type = _SIGNINGIDENTITYINFO
-_SIGNINGIDENTITYINFO.fields_by_name['PrivateSigner'].message_type = _KEYINFO
+_FABRICMSPCONFIG.fields_by_name['signing_identity'].message_type = _SIGNINGIDENTITYINFO
+_SIGNINGIDENTITYINFO.fields_by_name['private_signer'].message_type = _KEYINFO
 DESCRIPTOR.message_types_by_name['MSPConfig'] = _MSPCONFIG
 DESCRIPTOR.message_types_by_name['FabricMSPConfig'] = _FABRICMSPCONFIG
 DESCRIPTOR.message_types_by_name['SigningIdentityInfo'] = _SIGNINGIDENTITYINFO

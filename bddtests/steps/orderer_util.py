@@ -160,9 +160,9 @@ class UserRegistration:
         assert composeService in self.abDeliversStreamHelperDict, "NOT connected to deliver stream on {0}".format(composeService)
         return self.abDeliversStreamHelperDict[composeService]
 
-    def broadcastMessages(self, context, numMsgsToBroadcast, composeService, chainID=TEST_CHAIN_ID, dataFunc=_defaultDataFunction, chainHeaderType=common_pb2.ENDORSER_TRANSACTION):
+    def broadcastMessages(self, context, numMsgsToBroadcast, composeService, chainID=TEST_CHAIN_ID, dataFunc=_defaultDataFunction):
         abStub = self.getABStubForComposeService(context, composeService)
-        replyGenerator = abStub.Broadcast(generateBroadcastMessages(chainID=chainID, numToGenerate = int(numMsgsToBroadcast), dataFunc=dataFunc, chainHeaderType=chainHeaderType), 2)
+        replyGenerator = abStub.Broadcast(generateBroadcastMessages(chainID=chainID, numToGenerate = int(numMsgsToBroadcast), dataFunc=dataFunc), 2)
         counter = 0
         try:
             for reply in replyGenerator:
@@ -230,8 +230,8 @@ def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  b
     return common_pb2.Envelope(
         payload = common_pb2.Payload(
             header = common_pb2.Header(
-                chainHeader = common_pb2.ChainHeader( chainID = chainID ),
-                signatureHeader = common_pb2.SignatureHeader(),
+                channel_header = common_pb2.ChannelHeader( channel_id = chainID ),
+                signature_header = common_pb2.SignatureHeader(),
             ),
             data = ab_pb2.SeekInfo(
                 start = seekPosition(start),
@@ -242,7 +242,7 @@ def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  b
     )
 
 
-def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 3, timeToHoldOpen = 1, dataFunc =_defaultDataFunction, chainHeaderType=common_pb2.ENDORSER_TRANSACTION ):
+def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 3, timeToHoldOpen = 1, dataFunc =_defaultDataFunction):
     messages = []
     for i in range(0, numToGenerate):
         messages.append(dataFunc(i))

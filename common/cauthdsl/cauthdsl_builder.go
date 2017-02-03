@@ -123,8 +123,8 @@ func Or(lhs, rhs *cb.SignaturePolicy) *cb.SignaturePolicy {
 // NOutOf creates a policy which requires N out of the slice of policies to evaluate to true
 func NOutOf(n int32, policies []*cb.SignaturePolicy) *cb.SignaturePolicy {
 	return &cb.SignaturePolicy{
-		Type: &cb.SignaturePolicy_From{
-			From: &cb.SignaturePolicy_NOutOf{
+		Type: &cb.SignaturePolicy_NOutOf_{
+			NOutOf: &cb.SignaturePolicy_NOutOf{
 				N:        n,
 				Policies: policies,
 			},

@@ -1,9 +1,8 @@
 import subprocess
-import os
-import glob
 
+from steps.docgen import DocumentGenerator
 from steps.bdd_test_util import cli_call
-
+from steps.contexthelper import ContextHelper
 from steps.coverage import saveCoverageFiles, createCoverageAggregate
 
 def coverageEnabled(context):
@@ -17,7 +16,21 @@ def getDockerComposeFileArgsFromYamlFile(compose_yaml):
         args = args + ["-f"] + [part]
     return args
 
+def before_step(context, step):
+    contextHelper = ContextHelper.GetHelper(context=context)
+    contextHelper.before_step(step)
+
+def before_scenario(context, scenario):
+    contextHelper = ContextHelper.GetHelper(context=context)
+    contextHelper.before_scenario(scenario)
+    if 'generateDocs' in scenario.tags:
+        DocumentGenerator(contextHelper=contextHelper, scenario=scenario)
+
+
 def after_scenario(context, scenario):
+    contextHelper = ContextHelper.GetHelper(context=context)
+    contextHelper.after_scenario(scenario)
+
     get_logs = context.config.userdata.get("logs", "N")
     if get_logs.lower() == "force" or (scenario.status == "failed" and get_logs.lower() == "y" and "compose_containers" in context):
         print("Scenario {0} failed. Getting container logs".format(scenario.name))
