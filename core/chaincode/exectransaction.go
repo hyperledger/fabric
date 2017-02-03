@@ -85,8 +85,8 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 	}
 
 	if resp.ChaincodeEvent != nil {
-		resp.ChaincodeEvent.ChaincodeID = cccid.Name
-		resp.ChaincodeEvent.TxID = cccid.TxID
+		resp.ChaincodeEvent.ChaincodeId = cccid.Name
+		resp.ChaincodeEvent.TxId = cccid.TxID
 	}
 
 	if resp.Type == pb.ChaincodeMessage_COMPLETED {

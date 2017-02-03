@@ -119,7 +119,7 @@ func TestInvoke(t *testing.T) {
 
 	// Successful path - create a proposal
 	cs := &pb.ChaincodeSpec{
-		ChaincodeID: &pb.ChaincodeID{Name: "foo"},
+		ChaincodeId: &pb.ChaincodeID{Name: "foo"},
 		Type:        pb.ChaincodeSpec_GOLANG,
 		Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("some"), []byte("args")}}}
 

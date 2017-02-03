@@ -553,7 +553,7 @@ func (handler *Handler) handleQueryStateNext(id, txid string) (*pb.QueryStateRes
 	defer handler.deleteChannel(txid)
 
 	// Send QUERY_STATE_NEXT message to validator chaincode support
-	payload := &pb.QueryStateNext{ID: id}
+	payload := &pb.QueryStateNext{Id: id}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to process query state next request")
@@ -601,7 +601,7 @@ func (handler *Handler) handleQueryStateClose(id, txid string) (*pb.QueryStateRe
 	defer handler.deleteChannel(txid)
 
 	// Send QUERY_STATE_CLOSE message to validator chaincode support
-	payload := &pb.QueryStateClose{ID: id}
+	payload := &pb.QueryStateClose{Id: id}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to process query state close request")
@@ -690,7 +690,7 @@ func (handler *Handler) handleExecuteQueryState(query string, txid string) (*pb.
 func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, txid string) pb.Response {
 	chaincodeID := &pb.ChaincodeID{Name: chaincodeName}
 	input := &pb.ChaincodeInput{Args: args}
-	payload := &pb.ChaincodeSpec{ChaincodeID: chaincodeID, Input: input}
+	payload := &pb.ChaincodeSpec{ChaincodeId: chaincodeID, Input: input}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return pb.Response{

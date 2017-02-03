@@ -82,7 +82,7 @@ func setupEndpoint(t *testing.T) {
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "cscctestpeer"}, Address: peerAddress}, nil
+		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "cscctestpeer"}, Address: peerAddress}, nil
 	}
 	ccStartupTimeout := time.Duration(30000) * time.Millisecond
 	pb.RegisterChaincodeSupportServer(grpcServer, chaincode.NewChaincodeSupport(getPeerEndpoint, false, ccStartupTimeout))
@@ -234,6 +234,6 @@ func getChainID(blockBytes []byte) (string, error) {
 	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
 		return "", err
 	}
-	fmt.Printf("chain id: %v\n", payload.Header.ChainHeader.ChainID)
-	return payload.Header.ChainHeader.ChainID, nil
+	fmt.Printf("chain id: %v\n", payload.Header.ChainHeader.ChannelId)
+	return payload.Header.ChainHeader.ChannelId, nil
 }

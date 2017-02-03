@@ -50,7 +50,7 @@ func TestExecuteInvokeOnManyChains(t *testing.T) {
 		} else {
 			t.Logf("Invoke test passed for chain %s", c)
 		}
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: chaincodeID}})
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 	}
 
 }

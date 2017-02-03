@@ -292,35 +292,35 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return err
 	}
 
-	if !lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeID.Name) {
-		return InvalidChaincodeNameErr(cds.ChaincodeSpec.ChaincodeID.Name)
+	if !lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name) {
+		return InvalidChaincodeNameErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
 	if err = lccc.acl(stub, chainname, cds); err != nil {
 		return err
 	}
 
-	cd, _, err := lccc.getChaincode(stub, cds.ChaincodeSpec.ChaincodeID.Name)
+	cd, _, err := lccc.getChaincode(stub, cds.ChaincodeSpec.ChaincodeId.Name)
 	if cd != nil {
-		return ExistsErr(cds.ChaincodeSpec.ChaincodeID.Name)
+		return ExistsErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
-	if cds.ChaincodeSpec.ChaincodeID.Version == "" {
-		return EmptyVersionErr(cds.ChaincodeSpec.ChaincodeID.Name)
+	if cds.ChaincodeSpec.ChaincodeId.Version == "" {
+		return EmptyVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
-	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name, cds.ChaincodeSpec.ChaincodeID.Version, depSpec, policy, escc, vscc)
+	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, depSpec, policy, escc, vscc)
 
 	return err
 }
 
 func (lccc *LifeCycleSysCC) getUpgradeVersion(cd *ccprovider.ChaincodeData, cds *pb.ChaincodeDeploymentSpec) (string, error) {
-	if cd.Version == cds.ChaincodeSpec.ChaincodeID.Version {
-		return "", IdenticalVersionErr(cds.ChaincodeSpec.ChaincodeID.Name)
+	if cd.Version == cds.ChaincodeSpec.ChaincodeId.Version {
+		return "", IdenticalVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
 
-	if cds.ChaincodeSpec.ChaincodeID.Version != "" {
-		return cds.ChaincodeSpec.ChaincodeID.Version, nil
+	if cds.ChaincodeSpec.ChaincodeId.Version != "" {
+		return cds.ChaincodeSpec.ChaincodeId.Version, nil
 	}
 
 	//user did not specifcy Version. the previous version better be a number
@@ -349,7 +349,7 @@ func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 		return nil, err
 	}
 
-	chaincodeName := cds.ChaincodeSpec.ChaincodeID.Name
+	chaincodeName := cds.ChaincodeSpec.ChaincodeId.Name
 	if !lccc.isValidChaincodeName(chaincodeName) {
 		return nil, InvalidChaincodeNameErr(chaincodeName)
 	}

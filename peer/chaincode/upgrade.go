@@ -70,7 +70,7 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal %s: %s\n", chainFuncName, err)
 	}
-	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeID)
+	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeId)
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)

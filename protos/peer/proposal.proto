@@ -228,7 +228,7 @@ message ChaincodeHeaderExtension {
 	bytes payload_visibility = 1;
 
 	// The ID of the chaincode to target.
-	ChaincodeID chaincodeID = 2; // XXX change this to chaincode_id
+	ChaincodeID chaincode_id = 2;
 }
 
 // ChaincodeProposalPayload is the Proposal's payload message to be used when

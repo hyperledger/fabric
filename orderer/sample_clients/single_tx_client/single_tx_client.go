@@ -103,7 +103,7 @@ func updateReceiver(resultch chan byte, errorch chan error, client ab.AtomicBroa
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
 				ChainHeader: &cb.ChainHeader{
-					ChainID: provisional.TestChainID,
+					ChannelId: provisional.TestChainID,
 				},
 				SignatureHeader: &cb.SignatureHeader{},
 			},
@@ -150,7 +150,7 @@ func broadcastSender(resultch chan byte, errorch chan error, client ab.AtomicBro
 	pl := &cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
-				ChainID: provisional.TestChainID,
+				ChannelId: provisional.TestChainID,
 			},
 		},
 		Data: bs,

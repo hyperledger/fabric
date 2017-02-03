@@ -686,7 +686,7 @@ public class Handler {
 				.addAllArgs(args)
 				.build();
 		ChaincodeSpec payload = ChaincodeSpec.newBuilder()
-				.setChaincodeID(id)
+				.setChaincodeId(id)
 				.setInput(input)
 				.build();
 

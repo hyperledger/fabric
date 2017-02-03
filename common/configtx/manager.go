@@ -59,9 +59,9 @@ type configManager struct {
 	callOnUpdate []func(api.Manager)
 }
 
-// computeChainIDAndSequence returns the chain id and the sequence number for a config envelope
+// computeChannelIdAndSequence returns the chain id and the sequence number for a config envelope
 // or an error if there is a problem with the config envelope
-func computeChainIDAndSequence(config *cb.Config) (string, uint64, error) {
+func computeChannelIdAndSequence(config *cb.Config) (string, uint64, error) {
 	if len(config.Items) == 0 {
 		return "", 0, errors.New("Empty envelope unsupported")
 	}
@@ -72,11 +72,11 @@ func computeChainIDAndSequence(config *cb.Config) (string, uint64, error) {
 		return "", 0, fmt.Errorf("Header not set")
 	}
 
-	if config.Header.ChainID == "" {
+	if config.Header.ChannelId == "" {
 		return "", 0, fmt.Errorf("Header chainID was not set")
 	}
 
-	chainID := config.Header.ChainID
+	chainID := config.Header.ChannelId
 
 	if err := validateChainID(chainID); err != nil {
 		return "", 0, err
@@ -146,7 +146,7 @@ func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer api.Initializer, ca
 		return nil, err
 	}
 
-	chainID, seq, err := computeChainIDAndSequence(config)
+	chainID, seq, err := computeChannelIdAndSequence(config)
 	if err != nil {
 		return nil, fmt.Errorf("Error computing chain ID and sequence: %s", err)
 	}
@@ -206,7 +206,7 @@ func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap m
 		return nil, err
 	}
 
-	chainID, seq, err := computeChainIDAndSequence(config)
+	chainID, seq, err := computeChannelIdAndSequence(config)
 	if err != nil {
 		return nil, err
 	}

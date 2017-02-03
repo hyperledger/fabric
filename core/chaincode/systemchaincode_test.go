@@ -61,7 +61,7 @@ func initSysCCTests() (*oldSysCCInfo, net.Listener, error) {
 	}
 
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
-		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
+		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: "testpeer"}, Address: peerAddress}, nil
 	}
 
 	ccStartupTimeout := time.Duration(5000) * time.Millisecond
@@ -103,7 +103,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 	f := "putval"
 	args := util.ToChaincodeArgs(f, "greeting", "hey there")
 
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
 
 	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec)
 
@@ -117,7 +117,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 
 	f = "getval"
 	args = util.ToChaincodeArgs(f, "greeting")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
 	_, _, _, err = invokeWithVersion(ctxt, chainID, sysCCVers, spec)
 	if err != nil {
 		theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)

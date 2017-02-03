@@ -86,7 +86,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 	}
 
 	// get the policy
-	mgr := mspmgmt.GetManagerForChain(payl.Header.ChainHeader.ChainID)
+	mgr := mspmgmt.GetManagerForChain(payl.Header.ChainHeader.ChannelId)
 	pProvider := cauthdsl.NewPolicyProvider(mgr)
 	policy, err := pProvider.NewPolicy(args[2])
 	if err != nil {

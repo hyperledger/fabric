@@ -44,7 +44,7 @@ func (s *broadcastClient) broadcast(transaction []byte) error {
 	payload, err := proto.Marshal(&cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
-				ChainID: s.chainID,
+				ChannelId: s.chainID,
 			},
 			SignatureHeader: &cb.SignatureHeader{},
 		},

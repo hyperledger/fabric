@@ -111,11 +111,11 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 		}
 
 		//this should not be a system chaincode
-		if syscc.IsSysCC(cds.ChaincodeSpec.ChaincodeID.Name) {
-			return nil, nil, fmt.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeID.Name, chainID)
+		if syscc.IsSysCC(cds.ChaincodeSpec.ChaincodeId.Name) {
+			return nil, nil, fmt.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeId.Name, chainID)
 		}
 
-		cccid = ccprovider.NewCCContext(chainID, cds.ChaincodeSpec.ChaincodeID.Name, cds.ChaincodeSpec.ChaincodeID.Version, txid, false, prop)
+		cccid = ccprovider.NewCCContext(chainID, cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, txid, false, prop)
 
 		_, _, err = chaincode.Execute(ctxt, cccid, cds)
 		if err != nil {
@@ -231,7 +231,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 	// args[6] - payloadVisibility
 	args := [][]byte{[]byte(""), proposal.Header, proposal.Payload, resBytes, simRes, eventBytes, visibility}
 	version := util.GetSysCCVersion()
-	ecccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: escc}, Input: &pb.ChaincodeInput{Args: args}}}
+	ecccis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: escc}, Input: &pb.ChaincodeInput{Args: args}}}
 	res, _, err := e.callChaincode(ctx, chainID, version, txid, proposal, ecccis, &pb.ChaincodeID{Name: escc}, txsim)
 	if err != nil {
 		return nil, err
@@ -273,24 +273,24 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
-	chainID := hdr.ChainHeader.ChainID
+	chainID := hdr.ChainHeader.ChannelId
 
 	//chainless MSPs have "" chain name
-	ischainless := syscc.IsChainlessSysCC(hdrExt.ChaincodeID.Name)
+	ischainless := syscc.IsChainlessSysCC(hdrExt.ChaincodeId.Name)
 
 	//chainID should be empty for chainless SysCC (such as CSCC for Join proposal) and for
 	//nothing else
 	if chainID == "" && !ischainless {
-		err = fmt.Errorf("chainID not provided for chaincode %s", hdrExt.ChaincodeID.Name)
+		err = fmt.Errorf("chainID not provided for chaincode %s", hdrExt.ChaincodeId.Name)
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	} else if chainID != "" && ischainless {
-		err = fmt.Errorf("chainID %s provided for a chainless syscc", hdrExt.ChaincodeID.Name)
+		err = fmt.Errorf("chainID %s provided for a chainless syscc", hdrExt.ChaincodeId.Name)
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
 	//TODO check for uniqueness of prop.TxID with ledger
 
-	txid := hdr.ChainHeader.TxID
+	txid := hdr.ChainHeader.TxId
 	if txid == "" {
 		err = fmt.Errorf("Invalid txID")
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
@@ -315,7 +315,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	//1 -- simulate
 	//TODO what do we do with response ? We need it for Invoke responses for sure
 	//Which field in PayloadResponse will carry return value ?
-	cd, res, simulationResult, ccevent, err := e.simulateProposal(ctx, chainID, txid, prop, hdrExt.ChaincodeID, txsim)
+	cd, res, simulationResult, ccevent, err := e.simulateProposal(ctx, chainID, txid, prop, hdrExt.ChaincodeId, txsim)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
@@ -328,7 +328,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	if ischainless {
 		pResp = &pb.ProposalResponse{Response: &pb.Response{}}
 	} else {
-		pResp, err = e.endorseProposal(ctx, chainID, txid, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeID, txsim, cd)
+		pResp, err = e.endorseProposal(ctx, chainID, txid, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId, txsim, cd)
 		if err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 		}

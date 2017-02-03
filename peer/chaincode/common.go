@@ -86,7 +86,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	chaincodeLang = strings.ToUpper(chaincodeLang)
 	spec = &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[chaincodeLang]),
-		ChaincodeID: &pb.ChaincodeID{Path: chaincodePath, Name: chaincodeName, Version: chaincodeVersion},
+		ChaincodeId: &pb.ChaincodeID{Path: chaincodePath, Name: chaincodeName, Version: chaincodeVersion},
 		Input:       input,
 	}
 	return spec, nil

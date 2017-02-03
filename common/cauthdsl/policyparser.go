@@ -148,7 +148,7 @@ func secondPass(args ...interface{}) (interface{}, error) {
 			/* build the principal we've been told */
 			p := &common.MSPPrincipal{
 				PrincipalClassification: common.MSPPrincipal_ROLE,
-				Principal:               utils.MarshalOrPanic(&common.MSPRole{MSPIdentifier: subm[0][1], Role: r})}
+				Principal:               utils.MarshalOrPanic(&common.MSPRole{MspIdentifier: subm[0][1], Role: r})}
 			ctx.principals = append(ctx.principals, p)
 
 			/* create a SignaturePolicy that requires a signature from

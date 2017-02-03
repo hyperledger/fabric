@@ -66,7 +66,7 @@ func getBuildCmd(codePackage []byte) (string, error) {
 
 //ValidateSpec validates the java chaincode specs
 func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeID.Path)
+	path, err := url.Parse(spec.ChaincodeId.Path)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
@@ -75,13 +75,13 @@ func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	//which we do later anyway. But we *can* - and *should* - test for existence of local paths.
 	//Treat empty scheme as a local filesystem path
 	//	if url.Scheme == "" {
-	//		pathToCheck := filepath.Join(os.Getenv("GOPATH"), "src", spec.ChaincodeID.Path)
+	//		pathToCheck := filepath.Join(os.Getenv("GOPATH"), "src", spec.ChaincodeId.Path)
 	//		exists, err := pathExists(pathToCheck)
 	//		if err != nil {
 	//			return fmt.Errorf("Error validating chaincode path: %s", err)
 	//		}
 	//		if !exists {
-	//			return fmt.Errorf("Path to chaincode does not exist: %s", spec.ChaincodeID.Path)
+	//			return fmt.Errorf("Path to chaincode does not exist: %s", spec.ChaincodeId.Path)
 	//		}
 	//	}
 	return nil

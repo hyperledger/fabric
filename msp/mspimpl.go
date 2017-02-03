@@ -314,8 +314,8 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 
 		// at first, we check whether the MSP
 		// identifier is the same as that of the identity
-		if mspRole.MSPIdentifier != msp.name {
-			return fmt.Errorf("The identity is a member of a different MSP (expected %s, got %s)", mspRole.MSPIdentifier, id.GetMSPIdentifier())
+		if mspRole.MspIdentifier != msp.name {
+			return fmt.Errorf("The identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
 		}
 
 		// now we validate the different msp roles

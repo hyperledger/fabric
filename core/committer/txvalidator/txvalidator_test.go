@@ -76,9 +76,9 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	payload := &common.Payload{
 		Header: &common.Header{
 			ChainHeader: &common.ChainHeader{
-				TxID:    "simple_txID", // Fake txID
-				Type:    int32(common.HeaderType_ENDORSER_TRANSACTION),
-				ChainID: util2.GetTestChainID(),
+				TxId:      "simple_txID", // Fake txID
+				Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
+				ChannelId: util2.GetTestChainID(),
 			},
 		},
 		Data: []byte("test"),

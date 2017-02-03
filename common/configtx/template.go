@@ -98,8 +98,8 @@ func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
 
 	marshaledConfig, err := proto.Marshal(&cb.ConfigNext{
 		Header: &cb.ChainHeader{
-			ChainID: chainID,
-			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
+			ChannelId: chainID,
+			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
 		},
 		Channel: channel,
 	})
@@ -173,8 +173,8 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error
 
 	marshaledConfig, err := proto.Marshal(&cb.ConfigNext{
 		Header: &cb.ChainHeader{
-			ChainID: chainID,
-			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
+			ChannelId: chainID,
+			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
 		},
 		Channel: channel,
 	})

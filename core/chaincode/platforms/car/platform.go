@@ -39,7 +39,7 @@ func (carPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 
 func (carPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 
-	return ioutil.ReadFile(spec.ChaincodeID.Path)
+	return ioutil.ReadFile(spec.ChaincodeId.Path)
 }
 
 func (carPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
@@ -52,7 +52,7 @@ func (carPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec)
 	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.car.Dockerfile"))
 	buf = append(buf, "COPY codepackage.car /tmp/codepackage.car")
 	// invoking directly for maximum JRE compatiblity
-	buf = append(buf, fmt.Sprintf("RUN java -jar /usr/local/bin/chaintool buildcar /tmp/codepackage.car -o $GOPATH/bin/%s && rm /tmp/codepackage.car", spec.ChaincodeID.Name))
+	buf = append(buf, fmt.Sprintf("RUN java -jar /usr/local/bin/chaintool buildcar /tmp/codepackage.car -o $GOPATH/bin/%s && rm /tmp/codepackage.car", spec.ChaincodeId.Name))
 
 	dockerFileContents := strings.Join(buf, "\n")
 

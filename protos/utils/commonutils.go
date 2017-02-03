@@ -151,8 +151,8 @@ func MakeChainHeader(headerType cb.HeaderType, version int32, chainID string, ep
 			Seconds: time.Now().Unix(),
 			Nanos:   0,
 		},
-		ChainID: chainID,
-		Epoch:   epoch,
+		ChannelId: chainID,
+		Epoch:     epoch,
 	}
 }
 

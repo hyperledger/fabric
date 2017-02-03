@@ -84,8 +84,8 @@ message ChainHeader {
     // by the sender
     google.protobuf.Timestamp timestamp = 3;
 
-    // Identifier of the chain this message is bound for
-    string chainID = 4; // XXX change to channel_id
+    // Identifier of the channel this message is bound for
+    string channel_id = 4;
 
     // An unique identifier that is used end-to-end.
     //  -  set by higher layers such as end user or SDK
@@ -93,7 +93,7 @@ message ChainHeader {
     //  -  as the header is passed along unchanged, it will be
     //     be retrieved by the committer (uniqueness check here as well)
     //  -  to be stored in the ledger
-    string txID = 5; // XXX change to tx_id
+    string tx_id = 5;
 
     // The epoch in which this header was generated, where epoch is defined based on block height
     // Epoch in which the response has been generated. This field identifies a

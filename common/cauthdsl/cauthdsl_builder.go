@@ -80,7 +80,7 @@ func SignedByMspMember(mspId string) *cb.SignaturePolicyEnvelope {
 	// specify the principal: it's a member of the msp we just found
 	principal := &cb.MSPPrincipal{
 		PrincipalClassification: cb.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&cb.MSPRole{Role: cb.MSPRole_MEMBER, MSPIdentifier: mspId})}
+		Principal:               utils.MarshalOrPanic(&cb.MSPRole{Role: cb.MSPRole_MEMBER, MspIdentifier: mspId})}
 
 	// create the policy: it requires exactly 1 signature from the first (and only) principal
 	p := &cb.SignaturePolicyEnvelope{

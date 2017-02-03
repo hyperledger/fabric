@@ -247,7 +247,7 @@ func CreateChaincodeProposal(txid string, typ common.HeaderType, chainID string,
 
 // CreateChaincodeProposalWithTransient creates a proposal from given input
 func CreateChaincodeProposalWithTransient(txid string, typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, transient []byte) (*peer.Proposal, error) {
-	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeID: cis.ChaincodeSpec.ChaincodeID}
+	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeId: cis.ChaincodeSpec.ChaincodeId}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
 		return nil, err
@@ -271,8 +271,8 @@ func CreateChaincodeProposalWithTransient(txid string, typ common.HeaderType, ch
 	}
 
 	hdr := &common.Header{ChainHeader: &common.ChainHeader{Type: int32(typ),
-		TxID:      txid,
-		ChainID:   chainID,
+		TxId:      txid,
+		ChannelId: chainID,
 		Extension: ccHdrExtBytes},
 		SignatureHeader: &common.SignatureHeader{Nonce: nonce, Creator: creator}}
 
@@ -472,7 +472,7 @@ func createProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeplo
 	lcccSpec := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			Type:        peer.ChaincodeSpec_GOLANG,
-			ChaincodeID: &peer.ChaincodeID{Name: "lccc"},
+			ChaincodeId: &peer.ChaincodeID{Name: "lccc"},
 			Input:       ccinp}}
 
 	//...and get the proposal for it

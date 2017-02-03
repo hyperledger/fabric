@@ -52,7 +52,7 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 
 	args := util.ToChaincodeArgs("init", "")
 
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 	cccid := ccprovider.NewCCContext(chainID, "nkpi", "0", "", false, nil)
 
@@ -85,7 +85,7 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 			args = util.ToChaincodeArgs("get", newkey)
 		}
 
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
+		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 		//start with a new background
 		_, _, results[qnum], err = invoke(context.Background(), chainID, spec)

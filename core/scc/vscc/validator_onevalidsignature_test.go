@@ -32,7 +32,7 @@ import (
 )
 
 func createTx() (*common.Envelope, error) {
-	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeID: &peer.ChaincodeID{Name: "foo"}}}
+	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: &peer.ChaincodeID{Name: "foo"}}}
 
 	uuid := util.GenerateUUID()
 
