@@ -17,9 +17,7 @@ limitations under the License.
 package container
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"fmt"
 
 	"golang.org/x/net/context"
@@ -67,16 +65,30 @@ func (vm *VM) ListImages(context context.Context) error {
 }
 
 // BuildChaincodeContainer builds the container for the supplied chaincode specification
-func (vm *VM) BuildChaincodeContainer(spec *pb.ChaincodeSpec) ([]byte, error) {
-	chaincodePkgBytes, err := GetChaincodePackageBytes(spec)
+func (vm *VM) BuildChaincodeContainer(spec *pb.ChaincodeSpec) error {
+	codePackage, err := GetChaincodePackageBytes(spec)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting chaincode package bytes: %s", err)
+		return fmt.Errorf("Error getting chaincode package bytes: %s", err)
 	}
-	err = vm.buildChaincodeContainerUsingDockerfilePackageBytes(spec, chaincodePkgBytes)
+
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackage}
+	dockerSpec, err := platforms.GenerateDockerBuild(cds)
 	if err != nil {
-		return nil, fmt.Errorf("Error building Chaincode container: %s", err)
+		return fmt.Errorf("Error getting chaincode docker image: %s", err)
 	}
-	return chaincodePkgBytes, nil
+
+	output := bytes.NewBuffer(nil)
+
+	err = vm.Client.BuildImage(docker.BuildImageOptions{
+		Name:         spec.ChaincodeID.Name,
+		InputStream:  dockerSpec,
+		OutputStream: output,
+	})
+	if err != nil {
+		return fmt.Errorf("Error building docker: %s (output = %s)", err, output.String())
+	}
+
+	return nil
 }
 
 // GetChaincodePackageBytes creates bytes for docker container generation using the supplied chaincode specification
@@ -85,45 +97,5 @@ func GetChaincodePackageBytes(spec *pb.ChaincodeSpec) ([]byte, error) {
 		return nil, fmt.Errorf("invalid chaincode spec")
 	}
 
-	inputbuf := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(inputbuf)
-	tw := tar.NewWriter(gw)
-
-	platform, err := platforms.Find(spec.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	err = platform.WritePackage(spec, tw)
-	if err != nil {
-		return nil, err
-	}
-
-	tw.Close()
-	gw.Close()
-
-	if err != nil {
-		return nil, err
-	}
-
-	chaincodePkgBytes := inputbuf.Bytes()
-
-	return chaincodePkgBytes, nil
-}
-
-// Builds the Chaincode image using the supplied Dockerfile package contents
-func (vm *VM) buildChaincodeContainerUsingDockerfilePackageBytes(spec *pb.ChaincodeSpec, code []byte) error {
-	outputbuf := bytes.NewBuffer(nil)
-	vmName := spec.ChaincodeID.Name
-	inputbuf := bytes.NewReader(code)
-	opts := docker.BuildImageOptions{
-		Name:         vmName,
-		InputStream:  inputbuf,
-		OutputStream: outputbuf,
-	}
-	if err := vm.Client.BuildImage(opts); err != nil {
-		vmLogger.Errorf("Failed Chaincode docker build:\n%s\n", outputbuf.String())
-		return err
-	}
-	return nil
+	return platforms.GetDeploymentPayload(spec)
 }

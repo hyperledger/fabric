@@ -18,77 +18,81 @@ package car
 
 import (
 	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
+	"net/url"
 	"strings"
-	"time"
 
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-func download(path string) (string, error) {
-	if strings.HasPrefix(path, "http://") {
-		// The file is remote, so we need to download it to a temporary location first
+func httpDownload(path string) ([]byte, error) {
 
-		var tmp *os.File
-		var err error
-		tmp, err = ioutil.TempFile("", "car")
-		if err != nil {
-			return "", fmt.Errorf("Error creating temporary file: %s", err)
-		}
-		defer os.Remove(tmp.Name())
-		defer tmp.Close()
+	// The file is remote, so we need to download it first
+	var err error
 
-		resp, err := http.Get(path)
-		if err != nil {
-			return "", fmt.Errorf("Error with HTTP GET: %s", err)
-		}
-		defer resp.Body.Close()
+	resp, err := http.Get(path)
+	if err != nil {
+		return nil, fmt.Errorf("Error with HTTP GET: %s", err)
+	}
+	defer resp.Body.Close()
 
-		_, err = io.Copy(tmp, resp.Body)
-		if err != nil {
-			return "", fmt.Errorf("Error downloading bytes: %s", err)
-		}
+	buf := bytes.NewBuffer(nil)
 
-		return tmp.Name(), nil
+	// FIXME: Validate maximum size constraints are not violated
+	_, err = io.Copy(buf, resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Error downloading bytes: %s", err)
 	}
 
-	return path, nil
+	return buf.Bytes(), nil
 }
 
-// WritePackage satisfies the platform interface for generating a docker package
-// that encapsulates the environment for a CAR based chaincode
-func (carPlatform *Platform) WritePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
+var httpSchemes = map[string]bool{
+	"http":  true,
+	"https": true,
+}
 
-	path, err := download(spec.ChaincodeID.Path)
+func (carPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+
+	path := spec.ChaincodeID.Path
+	url, err := url.Parse(path)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("Error decoding %s: %s", path, err)
 	}
 
+	if _, ok := httpSchemes[url.Scheme]; ok {
+		return httpDownload(path)
+	} else {
+		// All we know is its _not_ an HTTP scheme.  Assume the path is a local file
+		// and see if it works.
+		return ioutil.ReadFile(url.Path)
+	}
+}
+
+func (carPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) (string, error) {
+
 	var buf []string
+	var err error
+
+	spec := cds.ChaincodeSpec
 
 	//let the executable's name be chaincode ID's name
 	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.car.Dockerfile"))
-	buf = append(buf, "COPY package.car /tmp/package.car")
+	buf = append(buf, "COPY codepackage.car /tmp/codepackage.car")
 	// invoking directly for maximum JRE compatiblity
-	buf = append(buf, fmt.Sprintf("RUN java -jar /usr/local/bin/chaintool buildcar /tmp/package.car -o $GOPATH/bin/%s && rm /tmp/package.car", spec.ChaincodeID.Name))
+	buf = append(buf, fmt.Sprintf("RUN java -jar /usr/local/bin/chaintool buildcar /tmp/codepackage.car -o $GOPATH/bin/%s && rm /tmp/codepackage.car", spec.ChaincodeID.Name))
 
 	dockerFileContents := strings.Join(buf, "\n")
-	dockerFileSize := int64(len([]byte(dockerFileContents)))
 
-	//Make headers identical by using zero time
-	var zeroTime time.Time
-	tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: dockerFileSize, ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime})
-	tw.Write([]byte(dockerFileContents))
-
-	err = cutil.WriteFileToPackage(path, "package.car", tw)
+	err = cutil.WriteBytesToPackage("codepackage.car", cds.CodePackage, tw)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return dockerFileContents, nil
 }

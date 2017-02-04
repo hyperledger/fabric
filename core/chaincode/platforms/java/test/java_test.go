@@ -43,7 +43,7 @@ func TestJava_BuildImage(t *testing.T) {
 	chaincodePath := "../../../../../examples/chaincode/java/SimpleSample"
 	//TODO find a better way to launch example java chaincode
 	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_JAVA, ChaincodeID: &pb.ChaincodeID{Name: "ssample", Path: chaincodePath}, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
-	if _, err := vm.BuildChaincodeContainer(spec); err != nil {
+	if err := vm.BuildChaincodeContainer(spec); err != nil {
 		t.Fail()
 		t.Log(err)
 	}

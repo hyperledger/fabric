@@ -18,6 +18,7 @@ unit-tests:
     - GO_LDFLAGS
     - OUTPUT
     - TEST_PKGS=${TEST_PKGS}
+    - CORE_VM_DOCKER_ATTACHSTDOUT=true
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     - ${GOPATH}/src/github.com/hyperledger/fabric:/opt/gopath/src/github.com/hyperledger/fabric

@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
 )
 
 var vmLogger = logging.MustGetLogger("container")
@@ -123,14 +122,6 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 		return err
 	}
 
-	// Add the certificates to tar
-	if viper.GetBool("peer.tls.enabled") {
-		err := WriteFileToPackage(viper.GetString("peer.tls.cert.file"), "src/certs/cert.pem", tw)
-		if err != nil {
-			return fmt.Errorf("Error writing cert file to package: %s", err)
-		}
-	}
-
 	// Write the tar file out
 	if err := tw.Close(); err != nil {
 		return err
@@ -148,13 +139,6 @@ func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 
 		vmLogger.Errorf("Error writing folder to tar package %s", err)
 		return err
-	}
-	// Add the ca for self signed cert to tar
-	if viper.GetBool("peer.tls.enabled") && viper.GetString("peer.tls.rootcert.file") != "" {
-		err := WriteFileToPackage(viper.GetString("peer.tls.rootcert.file"), "src/certs/rootcert.pem", tw)
-		if err != nil {
-			return fmt.Errorf("Error writing cert file to package: %s", err)
-		}
 	}
 	// Write the tar file out
 	if err := tw.Close(); err != nil {
@@ -202,6 +186,15 @@ func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw
 	if _, err := io.Copy(tw, is); err != nil {
 		return fmt.Errorf("Error copy (path: %s, oldname:%s,newname:%s,sz:%d) : %s", localpath, oldname, packagepath, header.Size, err)
 	}
+
+	return nil
+}
+
+func WriteBytesToPackage(name string, payload []byte, tw *tar.Writer) error {
+	//Make headers identical by using zero time
+	var zeroTime time.Time
+	tw.WriteHeader(&tar.Header{Name: name, Size: int64(len(payload)), ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime})
+	tw.Write(payload)
 
 	return nil
 }
