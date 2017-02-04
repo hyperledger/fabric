@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	ledgerpackage "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,7 +37,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
@@ -51,7 +52,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 
 	simulator, _ = ledger.NewTxSimulator()
@@ -65,7 +66,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
 
 	b1, _ := ledger.GetBlockByHash(block1Hash)
@@ -82,7 +83,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 }
 
 func TestKVLedgerDBRecovery(t *testing.T) {
-	testutil.SetupCoreYAMLConfig("./../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig("./../../../peer")
 	env := newTestEnv(t)
 	defer env.cleanup()
 	provider, _ := NewProvider()
@@ -91,7 +92,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 	//creating and committing the first block
 	simulator, _ := ledger.NewTxSimulator()
@@ -108,7 +109,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	ledger.Commit(block1)
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 
 	//======================================================================================
@@ -134,7 +135,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
 
 	simulator, _ = ledger.NewTxSimulator()
@@ -234,7 +235,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block3Hash := block3.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block3Hash, PreviousBlockHash: block2.Header.Hash()})
 
 	simulator, _ = ledger.NewTxSimulator()
@@ -325,7 +326,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block4Hash := block4.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 4, CurrentBlockHash: block4Hash, PreviousBlockHash: block3.Header.Hash()})
 
 	simulator, _ = ledger.NewTxSimulator()
@@ -385,7 +386,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig("./../../../peer")
 
 	logger.Debugf("TestLedgerWithCouchDbEnabledWithBinaryAndJSONData  IsCouchDBEnabled()value: %v , IsHistoryDBEnabled()value: %v\n",
 		ledgerconfig.IsCouchDBEnabled(), ledgerconfig.IsHistoryDBEnabled())
@@ -398,7 +399,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	defer ledger.Close()
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
@@ -415,7 +416,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 
 	simulationResults := [][]byte{}
@@ -442,7 +443,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := block2.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 2, CurrentBlockHash: block2Hash, PreviousBlockHash: block1.Header.Hash()})
 
 	b1, _ := ledger.GetBlockByHash(block1Hash)

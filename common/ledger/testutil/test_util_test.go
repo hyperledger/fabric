@@ -13,26 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-syntax = "proto3";
 
-option go_package = "github.com/hyperledger/fabric/protos/peer";
+package testutil
 
-package protos;
+import "testing"
 
-import "peer/proposal.proto";
-import "peer/proposal_response.proto";
-
-message PeerID {
-    string name = 1;
-}
-
-message PeerEndpoint {
-    PeerID ID = 1;
-    string address = 2;
-}
-
-//-------- the Endorser service ------------
-
-service Endorser {
-	rpc ProcessProposal(SignedProposal) returns (ProposalResponse) {}
+func TestSkipAll(t *testing.T) {
+	t.Skip(`No tests in this package for now - This package contains only utility functions that are meant to be used by other functional tests`)
 }

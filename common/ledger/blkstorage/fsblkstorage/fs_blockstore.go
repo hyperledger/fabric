@@ -17,12 +17,11 @@ limitations under the License.
 package fsblkstorage
 
 import (
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // fsBlockStore - filesystem based implementation for `BlockStore`
@@ -44,7 +43,7 @@ func (store *fsBlockStore) AddBlock(block *common.Block) error {
 }
 
 // GetBlockchainInfo returns the current info about blockchain
-func (store *fsBlockStore) GetBlockchainInfo() (*pb.BlockchainInfo, error) {
+func (store *fsBlockStore) GetBlockchainInfo() (*common.BlockchainInfo, error) {
 	return store.fileMgr.getBlockchainInfo(), nil
 }
 

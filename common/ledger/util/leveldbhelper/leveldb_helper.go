@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/op/go-logging"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"

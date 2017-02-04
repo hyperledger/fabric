@@ -23,11 +23,10 @@ import (
 	"sync/atomic"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/util"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	putil "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
@@ -153,7 +152,7 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 	mgr.syncIndex()
 
 	// init BlockchainInfo for external API's
-	bcInfo := &pb.BlockchainInfo{
+	bcInfo := &common.BlockchainInfo{
 		Height:            0,
 		CurrentBlockHash:  nil,
 		PreviousBlockHash: nil}
@@ -166,7 +165,7 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig,
 		}
 		lastBlockHash := lastBlockHeader.Hash()
 		previousBlockHash := lastBlockHeader.PreviousHash
-		bcInfo = &pb.BlockchainInfo{
+		bcInfo = &common.BlockchainInfo{
 			Height:            cpInfo.lastBlockNumber,
 			CurrentBlockHash:  lastBlockHash,
 			PreviousBlockHash: previousBlockHash}
@@ -373,8 +372,8 @@ func (mgr *blockfileMgr) syncIndex() error {
 	return nil
 }
 
-func (mgr *blockfileMgr) getBlockchainInfo() *pb.BlockchainInfo {
-	return mgr.bcInfo.Load().(*pb.BlockchainInfo)
+func (mgr *blockfileMgr) getBlockchainInfo() *common.BlockchainInfo {
+	return mgr.bcInfo.Load().(*common.BlockchainInfo)
 }
 
 func (mgr *blockfileMgr) updateCheckpoint(cpInfo *checkpointInfo) {
@@ -387,7 +386,7 @@ func (mgr *blockfileMgr) updateCheckpoint(cpInfo *checkpointInfo) {
 
 func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *common.Block) {
 	currentBCInfo := mgr.getBlockchainInfo()
-	newBCInfo := &pb.BlockchainInfo{
+	newBCInfo := &common.BlockchainInfo{
 		Height:            currentBCInfo.Height + 1,
 		CurrentBlockHash:  latestBlockHash,
 		PreviousBlockHash: latestBlock.Header.PreviousHash}

@@ -21,10 +21,9 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	putil "github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -127,7 +126,7 @@ func TestBlockfileMgrBlockchainInfo(t *testing.T) {
 	defer blkfileMgrWrapper.close()
 
 	bcInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)

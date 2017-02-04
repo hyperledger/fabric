@@ -9,6 +9,7 @@ It is generated from these files:
 	common/common.proto
 	common/configtx.proto
 	common/configuration.proto
+	common/ledger.proto
 	common/msp_principal.proto
 	common/policies.proto
 
@@ -33,6 +34,7 @@ It has these top-level messages:
 	HashingAlgorithm
 	BlockDataHashingStructure
 	OrdererAddresses
+	BlockchainInfo
 	MSPPrincipal
 	OrganizationUnit
 	MSPRole

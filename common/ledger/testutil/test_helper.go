@@ -22,7 +22,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 )
 
@@ -93,14 +92,14 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*common.Block {
 // ConstructTransaction constructs a transaction for testing
 func ConstructTransaction(t *testing.T, simulationResults []byte, sign bool) (*common.Envelope, string, error) {
 	ccName := "foo"
-	response := &pb.Response{Status: 200}
+	//response := &pb.Response{Status: 200}
 	txID := util.GenerateUUID()
 	var txEnv *common.Envelope
 	var err error
 	if sign {
-		txEnv, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(txID, util.GetTestChainID(), ccName, response, simulationResults, nil, nil)
+		txEnv, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(txID, util.GetTestChainID(), ccName, nil, simulationResults, nil, nil)
 	} else {
-		txEnv, err = ptestutils.ConstructUnsingedTxEnv(txID, util.GetTestChainID(), ccName, response, simulationResults, nil, nil)
+		txEnv, err = ptestutils.ConstructUnsingedTxEnv(txID, util.GetTestChainID(), ccName, nil, simulationResults, nil, nil)
 	}
 	return txEnv, txID, err
 }

@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
 func TestLedgerProvider(t *testing.T) {

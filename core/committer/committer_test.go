@@ -19,13 +19,13 @@ package committer
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/mocks/validator"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 func TestKVLedgerBlockStorage(t *testing.T) {
@@ -42,7 +42,7 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	assert.NoError(t, err)
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
@@ -67,6 +67,6 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := block1.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 }

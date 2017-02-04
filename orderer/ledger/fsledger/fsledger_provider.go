@@ -14,58 +14,57 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ordererledger
+package fsledger
 
 import (
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/blkstorage"
-	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
 )
 
-// FSBasedOrdererLedgerProvider impements interface ledger.OrdererLedgerProvider
-type FSBasedOrdererLedgerProvider struct {
+// Provider impements interface OrdererLedgerProvider
+type Provider struct {
 	blkStoreProvider blkstorage.BlockStoreProvider
 }
 
-// NewFSBasedOrdererLedgerProvider construct a new filesystem based orderer ledger provider. Only one instance should be created
-func NewFSBasedOrdererLedgerProvider(conf *fsblkstorage.Conf) *FSBasedOrdererLedgerProvider {
+// NewProvider construct a new filesystem based orderer ledger provider. Only one instance should be created
+func NewProvider(conf *fsblkstorage.Conf) *Provider {
 	attrsToIndex := []blkstorage.IndexableAttr{
 		blkstorage.IndexableAttrBlockNum,
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	fsBlkStoreProvider := fsblkstorage.NewProvider(conf, indexConfig)
-	return &FSBasedOrdererLedgerProvider{fsBlkStoreProvider}
+	return &Provider{fsBlkStoreProvider}
 }
 
 // Create implements corresponding method in the interface ledger.OrdererLedgerProvider
-func (p *FSBasedOrdererLedgerProvider) Create(ledgerID string) (ledger.OrdererLedger, error) {
+func (p *Provider) Create(ledgerID string) (OrdererLedger, error) {
 	blkStore, err := p.blkStoreProvider.CreateBlockStore(ledgerID)
 	if err != nil {
 		return nil, err
 	}
-	return &fsBasedOrdererLedger{blkStore}, nil
+	return &fsLedger{blkStore}, nil
 }
 
 // Open implements corresponding method in the interface ledger.OrdererLedgerProvider
-func (p *FSBasedOrdererLedgerProvider) Open(ledgerID string) (ledger.OrdererLedger, error) {
+func (p *Provider) Open(ledgerID string) (OrdererLedger, error) {
 	blkStore, err := p.blkStoreProvider.OpenBlockStore(ledgerID)
 	if err != nil {
 		return nil, err
 	}
-	return &fsBasedOrdererLedger{blkStore}, nil
+	return &fsLedger{blkStore}, nil
 }
 
 // Exists implements corresponding method in the interface ledger.OrdererLedgerProvider
-func (p *FSBasedOrdererLedgerProvider) Exists(ledgerID string) (bool, error) {
+func (p *Provider) Exists(ledgerID string) (bool, error) {
 	return p.blkStoreProvider.Exists(ledgerID)
 }
 
 // List implements corresponding method in the interface ledger.OrdererLedgerProvider
-func (p *FSBasedOrdererLedgerProvider) List() ([]string, error) {
+func (p *Provider) List() ([]string, error) {
 	return p.blkStoreProvider.List()
 }
 
 // Close implements corresponding method in the interface ledger.OrdererLedgerProvider
-func (p *FSBasedOrdererLedgerProvider) Close() {
+func (p *Provider) Close() {
 	p.blkStoreProvider.Close()
 }

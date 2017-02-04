@@ -24,6 +24,7 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
@@ -118,7 +119,7 @@ func getQueryResult(vledger ledger.PeerLedger, query []byte) (res pb.Response) {
 	}
 	qstring := string(query)
 	var qexe ledger.QueryExecutor
-	var ri ledger.ResultsIterator
+	var ri commonledger.ResultsIterator
 	var err error
 
 	// We install a recover() to gain control in 2 cases
@@ -149,7 +150,7 @@ func getQueryResult(vledger ledger.PeerLedger, query []byte) (res pb.Response) {
 	var buffer bytes.Buffer
 	buffer.WriteString("[")
 
-	var qresult ledger.QueryResult
+	var qresult commonledger.QueryResult
 	bArrayMemberAlreadyWritten := false
 	qresult, err = ri.Next()
 	for r := 0; qresult != nil && err == nil && r < limit; r++ {

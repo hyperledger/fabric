@@ -21,8 +21,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 )
 
 //Basic setup to test couch
@@ -54,7 +55,7 @@ var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owne
 func TestDBConnectionDef(t *testing.T) {
 
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig("./../../../../peer")
 
 	//create a new connection
 	_, err := CreateConnectionDefinition(connectURL, "", "")

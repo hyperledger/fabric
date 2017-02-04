@@ -20,18 +20,19 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/spf13/viper"
 )
 
 func TestMain(m *testing.M) {
 
 	//call a helper method to load the core.yaml, will be used to detect if CouchDB is enabled
-	testutil.SetupCoreYAMLConfig("./../../../../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
 
 	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "127.0.0.1:5984")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/statecouchdb")

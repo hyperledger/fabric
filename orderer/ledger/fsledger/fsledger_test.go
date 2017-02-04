@@ -14,19 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ordererledger
+package fsledger
 
 import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/blkstorage/fsblkstorage"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 )
 
 const (
-	testFolder = "/tmp/fabric/ledgertests/ordererledger"
+	testFolder = "/tmp/fabric/orderer/ledger/fsledger"
 )
 
 func TestOrdererLedger(t *testing.T) {
@@ -34,7 +34,7 @@ func TestOrdererLedger(t *testing.T) {
 	cleanup(t)
 	defer cleanup(t)
 
-	ordererLedgerProvider := NewFSBasedOrdererLedgerProvider(conf)
+	ordererLedgerProvider := NewProvider(conf)
 	defer ordererLedgerProvider.Close()
 
 	ordererLedger, _ := ordererLedgerProvider.Create("testLedger")

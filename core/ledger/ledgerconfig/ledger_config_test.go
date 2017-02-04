@@ -19,7 +19,8 @@ package ledgerconfig
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
+	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/spf13/viper"
 )
 
@@ -30,7 +31,7 @@ func TestIsCouchDBEnabledDefault(t *testing.T) {
 	// If the  ledger test are run with CouchDb enabled, need to provide a mechanism
 	// To let this test run but still test default values.
 	if IsCouchDBEnabled() == true {
-		testutil.ResetConfigToDefaultValues()
+		ledgertestutil.ResetConfigToDefaultValues()
 		defer viper.Set("ledger.state.stateDatabase", "CouchDB")
 	}
 	defaultValue := IsCouchDBEnabled()
@@ -39,7 +40,7 @@ func TestIsCouchDBEnabledDefault(t *testing.T) {
 
 func TestIsCouchDBEnabled(t *testing.T) {
 	setUpCoreYAMLConfig()
-	defer testutil.ResetConfigToDefaultValues()
+	defer ledgertestutil.ResetConfigToDefaultValues()
 	viper.Set("ledger.state.stateDatabase", "CouchDB")
 	updatedValue := IsCouchDBEnabled()
 	testutil.AssertEquals(t, updatedValue, true) //test config returns true
@@ -47,7 +48,7 @@ func TestIsCouchDBEnabled(t *testing.T) {
 
 func TestGetCouchDBDefinition(t *testing.T) {
 	setUpCoreYAMLConfig()
-	defer testutil.ResetConfigToDefaultValues()
+	defer ledgertestutil.ResetConfigToDefaultValues()
 	viper.Set("ledger.state.stateDatabase", "CouchDB")
 	couchDBDef := GetCouchDBDefinition()
 	testutil.AssertEquals(t, couchDBDef.URL, "127.0.0.1:5984")
@@ -63,7 +64,7 @@ func TestIsHistoryDBEnabledDefault(t *testing.T) {
 
 func TestIsHistoryDBEnabledTrue(t *testing.T) {
 	setUpCoreYAMLConfig()
-	defer testutil.ResetConfigToDefaultValues()
+	defer ledgertestutil.ResetConfigToDefaultValues()
 	viper.Set("ledger.state.historyDatabase", true)
 	updatedValue := IsHistoryDBEnabled()
 	testutil.AssertEquals(t, updatedValue, true) //test config returns true
@@ -71,7 +72,7 @@ func TestIsHistoryDBEnabledTrue(t *testing.T) {
 
 func TestIsHistoryDBEnabledFalse(t *testing.T) {
 	setUpCoreYAMLConfig()
-	defer testutil.ResetConfigToDefaultValues()
+	defer ledgertestutil.ResetConfigToDefaultValues()
 	viper.Set("ledger.state.historyDatabase", false)
 	updatedValue := IsHistoryDBEnabled()
 	testutil.AssertEquals(t, updatedValue, false) //test config returns false
@@ -79,5 +80,5 @@ func TestIsHistoryDBEnabledFalse(t *testing.T) {
 
 func setUpCoreYAMLConfig() {
 	//call a helper method to load the core.yaml
-	testutil.SetupCoreYAMLConfig("./../../../peer")
+	ledgertestutil.SetupCoreYAMLConfig("./../../../peer")
 }
