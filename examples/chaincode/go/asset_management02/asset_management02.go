@@ -209,11 +209,6 @@ func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface) pb.Res
 		return shim.Error("Incorrect number of arguments. Expecting 0")
 	}
 
-	err := dHandler.createTable(stub)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
 	return shim.Success(nil)
 }
 

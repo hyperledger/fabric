@@ -19,15 +19,10 @@ package main
 import (
 	"errors"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-)
+	"encoding/json"
+	"fmt"
 
-// consts associated with chaincode table
-const (
-	tableColumn       = "AssetsOwnership"
-	columnAccountID   = "Account"
-	columnContactInfo = "ContactInfo"
-	columnAmount      = "Amount"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
 //DepositoryHandler provides APIs used to perform operations on CC's KV store
@@ -39,17 +34,10 @@ func NewDepositoryHandler() *depositoryHandler {
 	return &depositoryHandler{}
 }
 
-// createTable initiates a new asset depository table in the chaincode state
-// stub: chaincodestub
-func (t *depositoryHandler) createTable(stub shim.ChaincodeStubInterface) error {
-
-	// Create asset depository table
-	return stub.CreateTable(tableColumn, []*shim.ColumnDefinition{
-		&shim.ColumnDefinition{Name: columnAccountID, Type: shim.ColumnDefinition_STRING, Key: true},
-		&shim.ColumnDefinition{Name: columnContactInfo, Type: shim.ColumnDefinition_STRING, Key: false},
-		&shim.ColumnDefinition{Name: columnAmount, Type: shim.ColumnDefinition_UINT64, Key: false},
-	})
-
+type depositoryAccount struct {
+	AccountID   string `json:"account_id"`
+	ContactInfo string `json:"contact_info"`
+	Amount      uint64 `json:"amount"`
 }
 
 // assign allocates assets to account IDs in the chaincode state for each of the
@@ -64,21 +52,27 @@ func (t *depositoryHandler) assign(stub shim.ChaincodeStubInterface,
 
 	myLogger.Debugf("insert accountID= %v", accountID)
 
-	//insert a new row for this account ID that includes contact information and balance
-	ok, err := stub.InsertRow(tableColumn, shim.Row{
-		Columns: []*shim.Column{
-			&shim.Column{Value: &shim.Column_String_{String_: accountID}},
-			&shim.Column{Value: &shim.Column_String_{String_: contactInfo}},
-			&shim.Column{Value: &shim.Column_Uint64{Uint64: amount}}},
-	})
-
 	// you can only assign balances to new account IDs
-	if !ok && err == nil {
+	accountBytes, err := stub.GetState(accountID)
+	if err == nil && len(accountBytes) > 0 {
 		myLogger.Errorf("system error %v", err)
 		return errors.New("Asset was already assigned.")
 	}
 
-	return nil
+	account := depositoryAccount{
+		AccountID:   accountID,
+		ContactInfo: contactInfo,
+		Amount:      amount,
+	}
+	accountBytes, err = json.Marshal(account)
+	if err != nil {
+		myLogger.Errorf("account marshaling error %v", err)
+		return errors.New("Failed to serialize account info." + err.Error())
+	}
+
+	//update this account that includes contact information and balance
+	err = stub.PutState(accountID, accountBytes)
+	return err
 }
 
 // updateAccountBalance updates the balance amount of an account ID
@@ -94,18 +88,20 @@ func (t *depositoryHandler) updateAccountBalance(stub shim.ChaincodeStubInterfac
 	myLogger.Debugf("insert accountID= %v", accountID)
 
 	//replace the old record row associated with the account ID with the new record row
-	ok, err := stub.ReplaceRow(tableColumn, shim.Row{
-		Columns: []*shim.Column{
-			&shim.Column{Value: &shim.Column_String_{String_: accountID}},
-			&shim.Column{Value: &shim.Column_String_{String_: contactInfo}},
-			&shim.Column{Value: &shim.Column_Uint64{Uint64: amount}}},
-	})
-
-	if !ok && err == nil {
-		myLogger.Errorf("system error %v", err)
-		return errors.New("failed to replace row with account Id." + accountID)
+	account := depositoryAccount{
+		AccountID:   accountID,
+		ContactInfo: contactInfo,
+		Amount:      amount,
 	}
-	return nil
+	accountBytes, err := json.Marshal(account)
+	if err != nil {
+		myLogger.Errorf("account marshaling error %v", err)
+		return errors.New("Failed to serialize account info." + err.Error())
+	}
+
+	//update this account that includes contact information and balance
+	err = stub.PutState(accountID, accountBytes)
+	return err
 }
 
 // deleteAccountRecord deletes the record row associated with an account ID on the chaincode state table
@@ -116,10 +112,7 @@ func (t *depositoryHandler) deleteAccountRecord(stub shim.ChaincodeStubInterface
 	myLogger.Debugf("insert accountID= %v", accountID)
 
 	//delete record matching account ID passed in
-	err := stub.DeleteRow(
-		"AssetsOwnership",
-		[]shim.Column{shim.Column{Value: &shim.Column_String_{String_: accountID}}},
-	)
+	err := stub.DelState(accountID)
 
 	if err != nil {
 		myLogger.Errorf("system error %v", err)
@@ -179,12 +172,12 @@ func (t *depositoryHandler) transfer(stub shim.ChaincodeStubInterface, fromAccou
 // stub: chaincodestub
 // accountID: account ID
 func (t *depositoryHandler) queryContactInfo(stub shim.ChaincodeStubInterface, accountID string) (string, error) {
-	row, err := t.queryTable(stub, accountID)
+	account, err := t.queryTable(stub, accountID)
 	if err != nil {
 		return "", err
 	}
 
-	return row.Columns[1].GetString_(), nil
+	return account.ContactInfo, nil
 }
 
 // queryBalance queries the balance information matching a correponding account ID on the chaincode state table
@@ -194,40 +187,43 @@ func (t *depositoryHandler) queryBalance(stub shim.ChaincodeStubInterface, accou
 
 	myLogger.Debugf("insert accountID= %v", accountID)
 
-	row, err := t.queryTable(stub, accountID)
+	account, err := t.queryTable(stub, accountID)
 	if err != nil {
 		return 0, err
 	}
-	if len(row.Columns) == 0 || row.Columns[2] == nil {
-		return 0, errors.New("row or column value not found")
-	}
 
-	return row.Columns[2].GetUint64(), nil
+	return account.Amount, nil
 }
 
 // queryAccount queries the balance and contact information matching a correponding account ID on the chaincode state table
 // stub: chaincodestub
 // accountID: account ID
 func (t *depositoryHandler) queryAccount(stub shim.ChaincodeStubInterface, accountID string) (string, uint64, error) {
-	row, err := t.queryTable(stub, accountID)
+	account, err := t.queryTable(stub, accountID)
 	if err != nil {
 		return "", 0, err
 	}
-	if len(row.Columns) == 0 || row.Columns[2] == nil {
-		return "", 0, errors.New("row or column value not found")
-	}
 
-	return row.Columns[1].GetString_(), row.Columns[2].GetUint64(), nil
+	return account.ContactInfo, account.Amount, nil
 }
 
 // queryTable returns the record row matching a correponding account ID on the chaincode state table
 // stub: chaincodestub
 // accountID: account ID
-func (t *depositoryHandler) queryTable(stub shim.ChaincodeStubInterface, accountID string) (shim.Row, error) {
+func (t *depositoryHandler) queryTable(stub shim.ChaincodeStubInterface, accountID string) (*depositoryAccount, error) {
 
-	var columns []shim.Column
-	col1 := shim.Column{Value: &shim.Column_String_{String_: accountID}}
-	columns = append(columns, col1)
+	accountBytes, err := stub.GetState(accountID)
+	if err != nil {
+		return nil, errors.New("Failed to get account." + err.Error())
+	}
+	if len(accountBytes) == 0 {
+		return nil, fmt.Errorf("Account %s not exists.", accountID)
+	}
 
-	return stub.GetRow(tableColumn, columns)
+	account := &depositoryAccount{}
+	err = json.Unmarshal(accountBytes, account)
+	if err != nil {
+		return nil, errors.New("Failed to parse account Info. " + err.Error())
+	}
+	return account, nil
 }
