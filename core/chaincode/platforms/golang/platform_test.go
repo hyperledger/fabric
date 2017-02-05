@@ -74,3 +74,17 @@ func TestValidateCDS(t *testing.T) {
 		}
 	}
 }
+
+func Test_writeGopathSrc(t *testing.T) {
+
+	inputbuf := bytes.NewBuffer(nil)
+	tw := tar.NewWriter(inputbuf)
+
+	err := writeGopathSrc(tw, "")
+	if err != nil {
+		t.Fail()
+		t.Logf("Error writing gopath src: %s", err)
+	}
+	//ioutil.WriteFile("/tmp/chaincode_deployment.tar", inputbuf.Bytes(), 0644)
+
+}

@@ -17,15 +17,11 @@ limitations under the License.
 package container
 
 import (
-	"archive/tar"
-	"bytes"
 	"flag"
-	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
-	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"golang.org/x/net/context"
 )
@@ -49,20 +45,6 @@ func TestVM_ListImages(t *testing.T) {
 		t.Fail()
 		t.Logf("Error listing images: %s", err)
 	}
-}
-
-func TestVM_BuildImage_WritingGopathSource(t *testing.T) {
-	t.Skip("This can be re-enabled if testing GOPATH writing to tar image.")
-	inputbuf := bytes.NewBuffer(nil)
-	tw := tar.NewWriter(inputbuf)
-
-	err := cutil.WriteGopathSrc(tw, "")
-	if err != nil {
-		t.Fail()
-		t.Logf("Error writing gopath src: %s", err)
-	}
-	ioutil.WriteFile("/tmp/chaincode_deployment.tar", inputbuf.Bytes(), 0644)
-
 }
 
 func TestVM_BuildImage_ChaincodeLocal(t *testing.T) {

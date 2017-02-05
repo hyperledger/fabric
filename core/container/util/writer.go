@@ -31,14 +31,6 @@ import (
 
 var vmLogger = logging.MustGetLogger("container")
 
-var includeFileTypes = map[string]bool{
-	".c":    true,
-	".h":    true,
-	".go":   true,
-	".yaml": true,
-	".json": true,
-}
-
 // These filetypes are excluded while creating the tar package sent to Docker
 // Generated .class and other temporary files can be excluded
 var javaExcludeFileTypes = map[string]bool{
@@ -105,28 +97,6 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 		vmLogger.Infof("Error walking rootDirectory: %s", err)
 		return err
 	}
-	return nil
-}
-
-//WriteGopathSrc tars up files under gopath src
-func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
-	gopath := os.Getenv("GOPATH")
-	// Only take the first element of GOPATH
-	gopath = filepath.SplitList(gopath)[0]
-
-	rootDirectory := filepath.Join(gopath, "src")
-	vmLogger.Infof("rootDirectory = %s", rootDirectory)
-
-	if err := WriteFolderToTarPackage(tw, rootDirectory, excludeDir, includeFileTypes, nil); err != nil {
-		vmLogger.Errorf("Error writing folder to tar package %s", err)
-		return err
-	}
-
-	// Write the tar file out
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	//ioutil.WriteFile("/tmp/chaincode_deployment.tar", inputbuf.Bytes(), 0644)
 	return nil
 }
 
