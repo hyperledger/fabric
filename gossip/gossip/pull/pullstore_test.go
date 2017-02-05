@@ -114,7 +114,7 @@ func createPullInstance(endpoint string, peer2PullInst map[string]*pullInstance)
 	conf := PullConfig{
 		MsgType:           proto.PullMsgType_BlockMessage,
 		Channel:           []byte(""),
-		Id:                endpoint,
+		ID:                endpoint,
 		PeerCountToSelect: 3,
 		PullInterval:      pullInterval,
 		Tag:               proto.GossipMessage_EMPTY,

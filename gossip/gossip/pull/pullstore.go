@@ -29,6 +29,7 @@ import (
 	"github.com/op/go-logging"
 )
 
+// Constants go here.
 const (
 	HelloMsgType PullMsgType = iota
 	DigestMsgType
@@ -40,8 +41,9 @@ const (
 type PullMsgType int
 
 // MessageHook defines a function that will run after a certain pull message is received
-type MessageHook func(itemIds []string, items []*proto.GossipMessage, msg comm.ReceivedMessage)
+type MessageHook func(itemIDs []string, items []*proto.GossipMessage, msg comm.ReceivedMessage)
 
+// Sender sends messages to remote peers
 type Sender interface {
 	// Send sends a message to a list of remote peers
 	Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
@@ -55,7 +57,7 @@ type MembershipService interface {
 
 // PullConfig defines the configuration of the pull mediator
 type PullConfig struct {
-	Id                string
+	ID                string
 	PullInterval      time.Duration // Duration between pull invocations
 	PeerCountToSelect int           // Number of peers to initiate pull with
 	Tag               proto.GossipMessage_Tag
@@ -64,7 +66,7 @@ type PullConfig struct {
 }
 
 // Mediator is a component wrap a PullEngine and provides the methods
-// it needs to perform pull synchronization..
+// it needs to perform pull synchronization.
 // The specialization of a pull mediator to a certain type of message is
 // done by the configuration, a IdentifierExtractor, IdentifierExtractor
 // given at construction, and also hooks that can be registered for each
@@ -86,28 +88,29 @@ type Mediator interface {
 	HandleMessage(msg comm.ReceivedMessage)
 }
 
-// pullStoreImpl is an implementation of PullStore
+// pullMediatorImpl is an implementation of Mediator
 type pullMediatorImpl struct {
+	sync.RWMutex
+	Sender
 	msgType2Hook map[PullMsgType][]MessageHook
 	idExtractor  proto.IdentifierExtractor
 	msgCons      proto.MsgConsumer
 	config       PullConfig
 	logger       *logging.Logger
-	sync.RWMutex
-	itemId2msg map[string]*proto.GossipMessage
-	Sender
-	memBvc MembershipService
-	engine *algo.PullEngine
+	itemID2Msg   map[string]*proto.GossipMessage
+	memBvc       MembershipService
+	engine       *algo.PullEngine
 }
 
+// NewPullMediator returns a new Mediator
 func NewPullMediator(config PullConfig, sndr Sender, memSvc MembershipService, idExtractor proto.IdentifierExtractor, msgCons proto.MsgConsumer) Mediator {
 	p := &pullMediatorImpl{
 		msgCons:      msgCons,
 		msgType2Hook: make(map[PullMsgType][]MessageHook),
 		idExtractor:  idExtractor,
 		config:       config,
-		logger:       util.GetLogger(util.LoggingPullModule, config.Id),
-		itemId2msg:   make(map[string]*proto.GossipMessage),
+		logger:       util.GetLogger(util.LoggingPullModule, config.ID),
+		itemID2Msg:   make(map[string]*proto.GossipMessage),
 		memBvc:       memSvc,
 		Sender:       sndr,
 	}
@@ -128,7 +131,7 @@ func (p *pullMediatorImpl) HandleMessage(m comm.ReceivedMessage) {
 
 	p.logger.Debug(msg)
 
-	itemIds := []string{}
+	itemIDs := []string{}
 	items := []*proto.GossipMessage{}
 	var pullMsgType PullMsgType
 
@@ -137,33 +140,33 @@ func (p *pullMediatorImpl) HandleMessage(m comm.ReceivedMessage) {
 		p.engine.OnHello(helloMsg.Nonce, m)
 	}
 	if digest := msg.GetDataDig(); digest != nil {
-		itemIds = digest.Digests
+		itemIDs = digest.Digests
 		pullMsgType = DigestMsgType
 		p.engine.OnDigest(digest.Digests, digest.Nonce, m)
 	}
 	if req := msg.GetDataReq(); req != nil {
-		itemIds = req.Digests
+		itemIDs = req.Digests
 		pullMsgType = RequestMsgType
 		p.engine.OnReq(req.Digests, req.Nonce, m)
 	}
 	if res := msg.GetDataUpdate(); res != nil {
-		itemIds = make([]string, len(res.Data))
+		itemIDs = make([]string, len(res.Data))
 		items = make([]*proto.GossipMessage, len(res.Data))
 		pullMsgType = ResponseMsgType
 		for i, pulledMsg := range res.Data {
 			p.msgCons(pulledMsg)
-			itemIds[i] = p.idExtractor(pulledMsg)
+			itemIDs[i] = p.idExtractor(pulledMsg)
 			items[i] = pulledMsg
 			p.Lock()
-			p.itemId2msg[itemIds[i]] = pulledMsg
+			p.itemID2Msg[itemIDs[i]] = pulledMsg
 			p.Unlock()
 		}
-		p.engine.OnRes(itemIds, res.Nonce)
+		p.engine.OnRes(itemIDs, res.Nonce)
 	}
 
 	// Invoke hooks for relevant message type
 	for _, h := range p.hooksByMsgType(pullMsgType) {
-		h(itemIds, items, m)
+		h(itemIDs, items, m)
 	}
 }
 
@@ -183,18 +186,18 @@ func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType PullMsgType, hook Message
 func (p *pullMediatorImpl) Add(msg *proto.GossipMessage) {
 	p.Lock()
 	defer p.Unlock()
-	itemId := p.idExtractor(msg)
-	p.itemId2msg[itemId] = msg
-	p.engine.Add(itemId)
+	itemID := p.idExtractor(msg)
+	p.itemID2Msg[itemID] = msg
+	p.engine.Add(itemID)
 }
 
 // Remove removes a GossipMessage from the store
 func (p *pullMediatorImpl) Remove(msg *proto.GossipMessage) {
 	p.Lock()
 	defer p.Unlock()
-	itemId := p.idExtractor(msg)
-	delete(p.itemId2msg, itemId)
-	p.engine.Remove(itemId)
+	itemID := p.idExtractor(msg)
+	delete(p.itemID2Msg, itemID)
+	p.engine.Remove(itemID)
 }
 
 // SelectPeers returns a slice of peers which the engine will initiate the protocol with
@@ -271,7 +274,7 @@ func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce ui
 	p.RLock()
 	defer p.RUnlock()
 	for _, item := range items {
-		if msg, exists := p.itemId2msg[item]; exists {
+		if msg, exists := p.itemID2Msg[item]; exists {
 			items2return = append(items2return, msg)
 		}
 	}
@@ -314,6 +317,7 @@ func (p *pullMediatorImpl) hooksByMsgType(msgType PullMsgType) []MessageHook {
 	return returnedHooks
 }
 
+// SelectEndpoints select k peers from peerPool and returns them.
 func SelectEndpoints(k int, peerPool []discovery.NetworkMember) []*comm.RemotePeer {
 	if len(peerPool) < k {
 		k = len(peerPool)
