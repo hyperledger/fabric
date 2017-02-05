@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/protos/gossip"
 )
 
 // ReceivedMessageImpl is an implementation of ReceivedMessage

@@ -22,8 +22,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	gossip_common "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
-	gossip_proto "github.com/hyperledger/fabric/gossip/proto"
 	"github.com/hyperledger/fabric/protos/common"
+	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
