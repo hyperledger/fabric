@@ -35,15 +35,15 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/proto"
+	gossipUtil "github.com/hyperledger/fabric/gossip/util"
 	pcomm "github.com/hyperledger/fabric/protos/common"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	portPrefix = 5610
-	logger, _  = logging.GetLogger("GossipStateProviderTest")
+	logger     = gossipUtil.GetLogger(gossipUtil.LoggingStateModule, "")
 )
 
 var orgId = []byte("ORG1")

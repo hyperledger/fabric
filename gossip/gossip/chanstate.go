@@ -29,7 +29,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/op/go-logging"
 )
 
 type channelState struct {
@@ -159,7 +159,7 @@ type gossipChannel struct {
 	stateInfoMsgStore         msgstore.MessageStore
 	chainID                   common.ChainID
 	blocksPuller              pull.Mediator
-	logger                    *util.Logger
+	logger                    *logging.Logger
 	stateInfoPublishScheduler *time.Ticker
 	stateInfoRequestScheduler *time.Ticker
 }

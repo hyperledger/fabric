@@ -27,7 +27,6 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/proto"
-	"github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -245,7 +244,6 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 	s := grpc.NewServer()
 
 	discSvc := NewDiscoveryService(bootstrapPeers, self, comm, comm)
-	discSvc.(*gossipDiscoveryImpl).logger.SetLevel(logging.WARNING)
 	gossInst := &gossipInstance{comm: comm, gRGCserv: s, Discovery: discSvc, lsnr: ll, shouldGossip: shouldGossip}
 
 	proto.RegisterGossipServer(s, gossInst)

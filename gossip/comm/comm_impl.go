@@ -113,8 +113,6 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		proto.RegisterGossipServer(s, commInst)
 	}
 
-	commInst.logger.SetLevel(logging.WARNING)
-
 	return commInst, nil
 }
 
@@ -143,7 +141,7 @@ type commImpl struct {
 	selfCertHash      []byte
 	peerIdentity      api.PeerIdentityType
 	idMapper          identity.Mapper
-	logger            *util.Logger
+	logger            *logging.Logger
 	opts              []grpc.DialOption
 	connStore         *connectionStore
 	PKIID             []byte

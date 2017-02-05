@@ -29,6 +29,7 @@ import (
 	common2 "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
 )
@@ -46,10 +47,6 @@ type GossipStateProvider interface {
 	// Stop terminates state transfer object
 	Stop()
 }
-
-var logFormat = logging.MustStringFormatter(
-	`%{color}%{level} %{longfunc}():%{color:reset}(%{module})%{message}`,
-)
 
 var remoteStateMsgFilter = func(message interface{}) bool {
 	return message.(comm.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
@@ -92,7 +89,7 @@ type GossipStateProviderImpl struct {
 
 // NewGossipStateProvider creates initialized instance of gossip state provider
 func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer.Committer) GossipStateProvider {
-	logger, _ := logging.GetLogger("GossipStateProvider")
+	logger := util.GetLogger(util.LoggingStateModule, "")
 
 	gossipChan, _ := g.Accept(func(message interface{}) bool {
 		// Get only data messages
@@ -132,8 +129,6 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 
 		logger: logger,
 	}
-
-	logging.SetFormatter(logFormat)
 
 	state := NewNodeMetastate(height - 1)
 
