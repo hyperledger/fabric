@@ -41,7 +41,7 @@ type index interface {
 	getBlockLocByHash(blockHash []byte) (*fileLocPointer, error)
 	getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error)
 	getTxLoc(txID string) (*fileLocPointer, error)
-	getTXLocForBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error)
+	getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error)
 }
 
 type blockIdxInfo struct {
@@ -181,7 +181,7 @@ func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 	return txFLP, nil
 }
 
-func (index *blockIndex) getTXLocForBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
+func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockNumTranNum]; !ok {
 		return nil, blkstorage.ErrAttrNotIndexed
 	}

@@ -43,7 +43,7 @@ func (i *noopIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, err
 func (i *noopIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 	return nil, nil
 }
-func (i *noopIndex) getTXLocForBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
+func (i *noopIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
 	return nil, nil
 }
 
@@ -158,7 +158,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 	}
 
 	//test 'retrieveTrasnactionsByBlockNumTranNum
-	txEnvelope2, err := blockfileMgr.retrieveTransactionForBlockNumTranNum(1, 1)
+	txEnvelope2, err := blockfileMgr.retrieveTransactionByBlockNumTranNum(1, 1)
 	if testutil.Contains(indexItems, blkstorage.IndexableAttrBlockNumTranNum) {
 		testutil.AssertNoError(t, err, "Error while retrieving tx by blockNum and tranNum")
 		txEnvelopeBytes2 := blocks[0].Data.Data[0]

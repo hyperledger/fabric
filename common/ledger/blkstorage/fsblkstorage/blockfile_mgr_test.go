@@ -155,6 +155,25 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 	}
 }
 
+func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath, 0))
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	defer blkfileMgrWrapper.close()
+	blocks := testutil.ConstructTestBlocks(t, 10)
+	blkfileMgrWrapper.addBlocks(blocks)
+	for blockIndex, blk := range blocks {
+		for tranIndex, txEnvelopeBytes := range blk.Data.Data {
+			// blockNum starts with 1, tranNum starts with 1
+			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByBlockNumTranNum(uint64(blockIndex+1), uint64(tranIndex+1))
+			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
+			txEnvelope, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
+			testutil.AssertNoError(t, err, "Error while unmarshalling tx")
+			testutil.AssertEquals(t, txEnvelopeFromFileMgr, txEnvelope)
+		}
+	}
+}
+
 func TestBlockfileMgrRestart(t *testing.T) {
 	env := newTestEnv(t, NewConf(testPath, 0))
 	defer env.Cleanup()
