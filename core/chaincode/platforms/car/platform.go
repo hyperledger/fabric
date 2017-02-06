@@ -17,6 +17,12 @@ limitations under the License.
 package car
 
 import (
+	"archive/tar"
+	"fmt"
+	"io/ioutil"
+	"strings"
+
+	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -29,4 +35,32 @@ type Platform struct {
 // require anything specific so we just implicitly approve any spec
 func (carPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	return nil
+}
+
+func (carPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
+
+	return ioutil.ReadFile(spec.ChaincodeID.Path)
+}
+
+func (carPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) (string, error) {
+
+	var buf []string
+	var err error
+
+	spec := cds.ChaincodeSpec
+
+	//let the executable's name be chaincode ID's name
+	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.car.Dockerfile"))
+	buf = append(buf, "COPY codepackage.car /tmp/codepackage.car")
+	// invoking directly for maximum JRE compatiblity
+	buf = append(buf, fmt.Sprintf("RUN java -jar /usr/local/bin/chaintool buildcar /tmp/codepackage.car -o $GOPATH/bin/%s && rm /tmp/codepackage.car", spec.ChaincodeID.Name))
+
+	dockerFileContents := strings.Join(buf, "\n")
+
+	err = cutil.WriteBytesToPackage("codepackage.car", cds.CodePackage, tw)
+	if err != nil {
+		return "", err
+	}
+
+	return dockerFileContents, nil
 }
