@@ -103,14 +103,9 @@ func UnmarshalEnvelope(encoded []byte) (*cb.Envelope, error) {
 
 // ExtractEnvelopeOrPanic retrieves the requested envelope from a given block and unmarshals it -- it panics if either of these operation fail.
 func ExtractEnvelopeOrPanic(block *cb.Block, index int) *cb.Envelope {
-	envelopeCount := len(block.Data.Data)
-	if index < 0 || index >= envelopeCount {
-		panic("Envelope index out of bounds")
-	}
-	marshaledEnvelope := block.Data.Data[index]
-	envelope := &cb.Envelope{}
-	if err := proto.Unmarshal(marshaledEnvelope, envelope); err != nil {
-		panic(fmt.Errorf("Block data does not carry an envelope at index %d: %s", index, err))
+	envelope, err := ExtractEnvelope(block, index)
+	if err != nil {
+		panic(err)
 	}
 	return envelope
 }
@@ -131,9 +126,9 @@ func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
 
 // ExtractPayloadOrPanic retrieves the payload of a given envelope and unmarshals it -- it panics if either of these operations fail.
 func ExtractPayloadOrPanic(envelope *cb.Envelope) *cb.Payload {
-	payload := &cb.Payload{}
-	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
-		panic(fmt.Errorf("Envelope does not carry a Payload: %s", err))
+	payload, err := ExtractPayload(envelope)
+	if err != nil {
+		panic(err)
 	}
 	return payload
 }

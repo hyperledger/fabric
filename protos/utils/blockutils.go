@@ -57,8 +57,7 @@ func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Met
 
 // GetMetadataFromBlockOrPanic retrieves metadata at the specified index, or panics on error.
 func GetMetadataFromBlockOrPanic(block *cb.Block, index cb.BlockMetadataIndex) *cb.Metadata {
-	md := &cb.Metadata{}
-	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
+	md, err := GetMetadataFromBlock(block, index)
 	if err != nil {
 		panic(err)
 	}
@@ -81,16 +80,11 @@ func GetLastConfigurationIndexFromBlock(block *cb.Block) (uint64, error) {
 
 // GetLastConfigurationIndexFromBlockOrPanic retrieves the index of the last configuration block as encoded in the block metadata, or panics on error.
 func GetLastConfigurationIndexFromBlockOrPanic(block *cb.Block) uint64 {
-	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIGURATION)
+	index, err := GetLastConfigurationIndexFromBlock(block)
 	if err != nil {
 		panic(err)
 	}
-	lc := &cb.LastConfiguration{}
-	err = proto.Unmarshal(md.Value, lc)
-	if err != nil {
-		panic(err)
-	}
-	return lc.Index
+	return index
 }
 
 // GetBlockFromBlockBytes marshals the bytes into Block
