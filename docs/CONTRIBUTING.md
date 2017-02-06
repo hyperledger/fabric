@@ -78,6 +78,14 @@ the `lf-sandbox`
 you should be ready to set up your local development
 [environment](dev-setup/devenv.md).
 
+Next, try [building the project](dev-setup/build.md) in your local development
+environment to ensure that everything is set up correctly.
+
+[Logging control](Setup/logging-control.md) describes how to tweak the logging
+levels of various components within the Fabric. Finally, every source file
+needs to include a [license header](dev-setup/headers.txt): modified to include
+a copyright statement for the principle author(s).
+
 ## What makes a good change request?
 
 * One change at a time. Not five, not three, not ten. One and only one. Why?
@@ -138,8 +146,24 @@ getting it merged and adds more work for you - to remediate the merge conflicts.
 
 ## Coding guidelines
 
-Be sure to check out the language-specific [style guides](Style-guides/go-style.md)
-before making any changes. This will ensure a smoother review.
+Be sure to check out the language-specific
+[style guides](Style-guides/go-style.md) before making any changes. This will
+ensure a smoother review.
+
+## Communication <a name="communication"></a>
+
+We use [RocketChat](https://chat.hyperledger.org/) for communication and
+Google Hangouts&trade; for screen sharing between developers. Our development
+planning and prioritization is done in [JIRA](https://jira.hyperledger.org),
+and we take longer running discussions/decisions to the
+[mailing list](http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric).
+
+## Maintainers
+
+The project's [maintainers](MAINTAINERS.md) are responsible for reviewing and
+merging all patches submitted for review and they guide the over-all technical
+direction of the project within the guidelines established by the Hyperledger
+Project's Technical Steering Committee (TSC).
 
 ### Becoming a maintainer
 

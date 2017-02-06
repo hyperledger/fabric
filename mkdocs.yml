@@ -9,9 +9,10 @@ theme_dir: 'docs/custom_theme'
 pages:
 - Home: index.md
 - Why Hyperledger Fabric?: whyfabric.md
-- Fabric overview: overview.md
+- Fabric Overview: overview.md
+- Architecture Overview: architecture.md
+- Architecture Deep Dive: arch-deep-dive.md
 #- Fabric capabilities: capabilities.md
-#- Fabric architecture: architecture.md
 - Getting started: gettingstarted.md
 #- Chaincode and sample program: chaincode.md
 - Glossary: glossary.md
