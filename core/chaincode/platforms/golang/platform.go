@@ -125,10 +125,10 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 	return payload, nil
 }
 
-func (goPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) (string, error) {
+func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
 
-	var err error
 	var buf []string
+	var err error
 
 	spec := cds.ChaincodeSpec
 
@@ -154,10 +154,9 @@ func (goPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec,
 
 	dockerFileContents := strings.Join(buf, "\n")
 
-	err = cutil.WriteBytesToPackage("codepackage.tgz", cds.CodePackage, tw)
-	if err != nil {
-		return "", err
-	}
-
 	return dockerFileContents, nil
+}
+
+func (goPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
+	return cutil.WriteBytesToPackage("codepackage.tgz", cds.CodePackage, tw)
 }

@@ -25,6 +25,8 @@ import (
 
 	"strings"
 
+	"io/ioutil"
+
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
@@ -39,7 +41,8 @@ import (
 type Platform interface {
 	ValidateSpec(spec *pb.ChaincodeSpec) error
 	GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error)
-	GenerateDockerBuild(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) (string, error)
+	GenerateDockerfile(spec *pb.ChaincodeDeploymentSpec) (string, error)
+	GenerateDockerBuild(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error
 }
 
 var logger = logging.MustGetLogger("chaincode-platform")
@@ -69,45 +72,71 @@ func GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 	return platform.GetDeploymentPayload(spec)
 }
 
-func generateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
-
-	platform, err := Find(cds.ChaincodeSpec.Type)
-	if err != nil {
-		return fmt.Errorf("Failed to determine platform type: %s", err)
+func getPeerTLSCert() ([]byte, error) {
+	path := viper.GetString("peer.tls.cert.file")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// It's not an error if the file doesn't exist, we simply do not have a cert
+		return nil, nil
 	}
 
-	dockerFileBase, err := platform.GenerateDockerBuild(cds, tw)
-	if err != nil {
-		return fmt.Errorf("Failed to generate platform-specific docker build: %s", err)
-	}
+	// FIXME: FAB-2037 - ensure we sanely resolve relative paths specified in the yaml
+	return ioutil.ReadFile(path)
+}
+
+func generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec, tls bool) ([]byte, error) {
 
 	var buf []string
 
-	buf = append(buf, dockerFileBase)
+	// ----------------------------------------------------------------------------------------------------
+	// Let the platform define the base Dockerfile
+	// ----------------------------------------------------------------------------------------------------
+	base, err := platform.GenerateDockerfile(cds)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to generate platform-specific Dockerfile: %s", err)
+	}
 
-	// NOTE: We bake the peer TLS certificate in at the time we build the chaincode container if a cert is
-	// found, regardless of whether TLS is enabled or not.  The main implication is that if the adminstrator
-	// updates the peer cert, the chaincode containers will need to be invalidated and rebuilt.
-	// We will manage enabling or disabling TLS at container run time via CORE_PEER_TLS_ENABLED
-	hostTLSPath := viper.GetString("peer.tls.cert.file")
-	if _, err = os.Stat(hostTLSPath); err == nil {
+	buf = append(buf, base)
 
+	// ----------------------------------------------------------------------------------------------------
+	// Then augment it with any general options
+	// ----------------------------------------------------------------------------------------------------
+	if tls {
 		const guestTLSPath = "/etc/hyperledger/fabric/peer.crt"
 
 		buf = append(buf, "ENV CORE_PEER_TLS_CERT_FILE="+guestTLSPath)
 		buf = append(buf, "COPY peer.crt "+guestTLSPath)
+	}
 
-		err = cutil.WriteFileToPackage(hostTLSPath, "peer.crt", tw)
+	// ----------------------------------------------------------------------------------------------------
+	// Finalize it
+	// ----------------------------------------------------------------------------------------------------
+	contents := strings.Join(buf, "\n")
+
+	return []byte(contents), nil
+}
+
+type InputFiles map[string][]byte
+
+func generateDockerBuild(platform Platform, cds *pb.ChaincodeDeploymentSpec, inputFiles InputFiles, tw *tar.Writer) error {
+
+	var err error
+
+	// ----------------------------------------------------------------------------------------------------
+	// First stream out our static inputFiles
+	// ----------------------------------------------------------------------------------------------------
+	for name, data := range inputFiles {
+		err = cutil.WriteBytesToPackage(name, data, tw)
 		if err != nil {
-			return fmt.Errorf("Failed to inject peer certificate: %s", err)
+			return fmt.Errorf("Failed to inject Dockerfile: %s", err)
 		}
 	}
 
-	dockerFileContents := strings.Join(buf, "\n")
-
-	err = cutil.WriteBytesToPackage("Dockerfile", []byte(dockerFileContents), tw)
+	// ----------------------------------------------------------------------------------------------------
+	// Now give the platform an opportunity to contribute its own context to the build
+	// ----------------------------------------------------------------------------------------------------
+	err = platform.GenerateDockerBuild(cds, tw)
 	if err != nil {
-		return fmt.Errorf("Failed to inject Dockerfile: %s", err)
+		return fmt.Errorf("Failed to generate platform-specific docker build: %s", err)
 	}
 
 	return nil
@@ -115,13 +144,50 @@ func generateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error 
 
 func GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec) (io.Reader, error) {
 
+	inputFiles := make(InputFiles)
+
+	// ----------------------------------------------------------------------------------------------------
+	// Determine our platform driver from the spec
+	// ----------------------------------------------------------------------------------------------------
+	platform, err := Find(cds.ChaincodeSpec.Type)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to determine platform type: %s", err)
+	}
+
+	// ----------------------------------------------------------------------------------------------------
+	// Transfer the peer's TLS certificate to our list of input files, if applicable
+	// ----------------------------------------------------------------------------------------------------
+	// NOTE: We bake the peer TLS certificate in at the time we build the chaincode container if a cert is
+	// found, regardless of whether TLS is enabled or not.  The main implication is that if the administrator
+	// updates the peer cert, the chaincode containers will need to be invalidated and rebuilt.
+	// We will manage enabling or disabling TLS at container run time via CORE_PEER_TLS_ENABLED
+	cert, err := getPeerTLSCert()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read the TLS certificate: %s", err)
+	}
+
+	inputFiles["peer.crt"] = cert
+
+	// ----------------------------------------------------------------------------------------------------
+	// Generate the Dockerfile specific to our context
+	// ----------------------------------------------------------------------------------------------------
+	dockerFile, err := generateDockerfile(platform, cds, cert != nil)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to generate a Dockerfile: %s", err)
+	}
+
+	inputFiles["Dockerfile"] = dockerFile
+
+	// ----------------------------------------------------------------------------------------------------
+	// Finally, launch an asynchronous process to stream all of the above into a docker build context
+	// ----------------------------------------------------------------------------------------------------
 	input, output := io.Pipe()
 
 	go func() {
 		gw := gzip.NewWriter(output)
 		tw := tar.NewWriter(gw)
 
-		err := generateDockerBuild(cds, tw)
+		err := generateDockerBuild(platform, cds, inputFiles, tw)
 		if err != nil {
 			logger.Error(err)
 		}

@@ -42,10 +42,9 @@ func (carPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byt
 	return ioutil.ReadFile(spec.ChaincodeID.Path)
 }
 
-func (carPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) (string, error) {
+func (carPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
 
 	var buf []string
-	var err error
 
 	spec := cds.ChaincodeSpec
 
@@ -57,10 +56,10 @@ func (carPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec
 
 	dockerFileContents := strings.Join(buf, "\n")
 
-	err = cutil.WriteBytesToPackage("codepackage.car", cds.CodePackage, tw)
-	if err != nil {
-		return "", err
-	}
-
 	return dockerFileContents, nil
+}
+
+func (carPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
+
+	return cutil.WriteBytesToPackage("codepackage.car", cds.CodePackage, tw)
 }

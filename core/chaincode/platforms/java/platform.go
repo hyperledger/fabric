@@ -118,8 +118,7 @@ func (javaPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]by
 	return payload, nil
 }
 
-func (javaPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) (string, error) {
-
+func (javaPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
 	var err error
 	var buf []string
 
@@ -136,10 +135,9 @@ func (javaPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpe
 
 	dockerFileContents := strings.Join(buf, "\n")
 
-	err = cutil.WriteBytesToPackage("codepackage.tgz", cds.CodePackage, tw)
-	if err != nil {
-		return "", err
-	}
-
 	return dockerFileContents, nil
+}
+
+func (javaPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
+	return cutil.WriteBytesToPackage("codepackage.tgz", cds.CodePackage, tw)
 }
