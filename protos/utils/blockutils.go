@@ -119,38 +119,7 @@ func InitBlockMetadata(block *cb.Block) {
 	}
 }
 
-const (
-	AnchorPeerConfItemKey          = "AnchorPeers"
-	epoch                          = uint64(0)
-	messageVersion                 = int32(1)
-	lastModified                   = uint64(0)
-	mspKey                         = "MSP"
-	xxxDefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
-)
-
-func createConfigItem(chainID string,
-	configItemKey string,
-	configItemValue []byte,
-	modPolicy string, configItemType cb.ConfigurationItem_ConfigurationType) *cb.ConfigurationItem {
-
-	ciChainHeader := MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM,
-		messageVersion, chainID, epoch)
-	configItem := MakeConfigurationItem(ciChainHeader,
-		configItemType, lastModified, modPolicy,
-		configItemKey, configItemValue)
-
-	return configItem
-}
-
-func createSignedConfigItem(chainID string,
-	configItemKey string,
-	configItemValue []byte,
-	modPolicy string, configItemType cb.ConfigurationItem_ConfigurationType) *cb.SignedConfigurationItem {
-	configItem := createConfigItem(chainID, configItemKey, configItemValue, modPolicy, configItemType)
-	return &cb.SignedConfigurationItem{
-		ConfigurationItem: MarshalOrPanic(configItem),
-		Signatures:        nil}
-}
+const xxxDefaultModificationPolicyID = "DefaultModificationPolicy" // Break an import cycle during work to remove the below configtx construction methods
 
 // GetTESTMSPConfigPath This function is needed to locate the MSP test configuration when running
 // in CI build env or local with "make unit-test". A better way to manage this
@@ -171,25 +140,15 @@ func EncodeMSPUnsigned(chainID string) *cb.ConfigurationItem {
 	if err != nil {
 		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
 	}
-	// TODO: once https://gerrit.hyperledger.org/r/#/c/3941 is merged, change this to MSP
-	// Right now we don't have an MSP type there
-	return createConfigItem(chainID,
-		mspKey,
-		MarshalOrPanic(conf),
-		xxxDefaultModificationPolicyID, cb.ConfigurationItem_MSP)
+	return &cb.ConfigurationItem{
+		Type:               cb.ConfigurationItem_MSP,
+		Key:                "DEFAULT", // XXX this should really be computed dynamically, but it's better than the old wrong "MSP"
+		Value:              MarshalOrPanic(conf),
+		ModificationPolicy: xxxDefaultModificationPolicyID,
+	}
 }
 
 // EncodeMSP gets the signed configuration item with the default MSP
 func EncodeMSP(chainID string) *cb.SignedConfigurationItem {
-	cfgPath := GetTESTMSPConfigPath()
-	conf, err := msp.GetLocalMspConfig(cfgPath)
-	if err != nil {
-		panic(fmt.Sprintf("GetLocalMspConfig failed, err %s", err))
-	}
-	// TODO: once https://gerrit.hyperledger.org/r/#/c/3941 is merged, change this to MSP
-	// Right now we don't have an MSP type there
-	return createSignedConfigItem(chainID,
-		mspKey,
-		MarshalOrPanic(conf),
-		xxxDefaultModificationPolicyID, cb.ConfigurationItem_MSP)
+	return &cb.SignedConfigurationItem{ConfigurationItem: MarshalOrPanic(EncodeMSPUnsigned(chainID))}
 }

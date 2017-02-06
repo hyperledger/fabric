@@ -154,7 +154,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 // createChain creates a new chain object and insert it into the chains
 func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
-	configEnvelope, _, err := utils.BreakOutBlockToConfigurationEnvelope(cb)
+	configEnvelope, err := utils.BreakOutBlockToConfigurationEnvelope(cb)
 	if err != nil {
 		return err
 	}
