@@ -84,7 +84,7 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 	return policy, true
 }
 
-// BeginConfig is used to start a new configuration proposal
+// BeginConfig is used to start a new config proposal
 func (pm *ManagerImpl) BeginConfig() {
 	if pm.pendingPolicies != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
@@ -92,12 +92,12 @@ func (pm *ManagerImpl) BeginConfig() {
 	pm.pendingPolicies = make(map[string]Policy)
 }
 
-// RollbackConfig is used to abandon a new configuration proposal
+// RollbackConfig is used to abandon a new config proposal
 func (pm *ManagerImpl) RollbackConfig() {
 	pm.pendingPolicies = nil
 }
 
-// CommitConfig is used to commit a new configuration proposal
+// CommitConfig is used to commit a new config proposal
 func (pm *ManagerImpl) CommitConfig() {
 	if pm.pendingPolicies == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
@@ -106,10 +106,10 @@ func (pm *ManagerImpl) CommitConfig() {
 	pm.pendingPolicies = nil
 }
 
-// ProposeConfig is used to add new configuration to the configuration proposal
-func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
-	if configItem.Type != cb.ConfigurationItem_Policy {
-		return fmt.Errorf("Expected type of ConfigurationItem_Policy, got %v", configItem.Type)
+// ProposeConfig is used to add new config to the configuration proposal
+func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigItem) error {
+	if configItem.Type != cb.ConfigItem_Policy {
+		return fmt.Errorf("Expected type of ConfigItem_Policy, got %v", configItem.Type)
 	}
 
 	policy := &cb.Policy{}

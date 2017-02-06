@@ -25,9 +25,9 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-// Resources is the common set of configuration resources for all chains
+// Resources is the common set of config resources for all chains
 // Depending on whether chain is used at the orderer or at the peer, other
-// configuration resources may be available
+// config resources may be available
 type Resources interface {
 	// PolicyManager returns the policies.Manager for the chain
 	PolicyManager() policies.Manager
@@ -45,11 +45,11 @@ type Resources interface {
 type Initializer interface {
 	Resources
 	// Handlers returns the handlers to be used when initializing the configtx.Manager
-	Handlers() map[cb.ConfigurationItem_ConfigurationType]Handler
+	Handlers() map[cb.ConfigItem_ConfigType]Handler
 }
 
 type resources struct {
-	handlers         map[cb.ConfigurationItem_ConfigurationType]Handler
+	handlers         map[cb.ConfigItem_ConfigType]Handler
 	policyManager    policies.Manager
 	chainConfig      chainconfig.Descriptor
 	mspConfigHandler *mspmgmt.MSPConfigHandler
@@ -71,7 +71,7 @@ func (r *resources) MSPManager() msp.MSPManager {
 }
 
 // Handlers returns the handlers to be used when initializing the configtx.Manager
-func (r *resources) Handlers() map[cb.ConfigurationItem_ConfigurationType]Handler {
+func (r *resources) Handlers() map[cb.ConfigItem_ConfigType]Handler {
 	return r.handlers
 }
 
@@ -93,16 +93,16 @@ func NewInitializer() Initializer {
 
 	policyManager := policies.NewManagerImpl(policyProviderMap)
 	chainConfig := chainconfig.NewDescriptorImpl()
-	handlers := make(map[cb.ConfigurationItem_ConfigurationType]Handler)
+	handlers := make(map[cb.ConfigItem_ConfigType]Handler)
 
-	for ctype := range cb.ConfigurationItem_ConfigurationType_name {
-		rtype := cb.ConfigurationItem_ConfigurationType(ctype)
+	for ctype := range cb.ConfigItem_ConfigType_name {
+		rtype := cb.ConfigItem_ConfigType(ctype)
 		switch rtype {
-		case cb.ConfigurationItem_Chain:
+		case cb.ConfigItem_Chain:
 			handlers[rtype] = chainConfig
-		case cb.ConfigurationItem_Policy:
+		case cb.ConfigItem_Policy:
 			handlers[rtype] = policyManager
-		case cb.ConfigurationItem_MSP:
+		case cb.ConfigItem_MSP:
 			handlers[rtype] = mspConfigHandler
 		default:
 			handlers[rtype] = NewBytesHandler()

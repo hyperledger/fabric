@@ -25,11 +25,11 @@ import (
 )
 
 // This file contains the functions needed to create Viewables for protos defined in
-// the orderer configuration proto
+// the orderer config proto
 
 type ordererTypes struct{}
 
-func (ot ordererTypes) Value(configItem *cb.ConfigurationItem) Viewable {
+func (ot ordererTypes) Value(configItem *cb.ConfigItem) Viewable {
 	name := "Value"
 	switch configItem.Key {
 	case "ConsensusType":
@@ -147,5 +147,5 @@ func viewableBatchSize(name string, batchSize *ab.BatchSize) Viewable {
 }
 
 func init() {
-	typeMap[cb.ConfigurationItem_Orderer] = ordererTypes{}
+	typeMap[cb.ConfigItem_Orderer] = ordererTypes{}
 }

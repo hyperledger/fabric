@@ -26,7 +26,7 @@ import (
 
 type Initializer struct {
 	// HandlersVal is returned as the result of Handlers()
-	HandlersVal map[cb.ConfigurationItem_ConfigurationType]configtx.Handler
+	HandlersVal map[cb.ConfigItem_ConfigType]configtx.Handler
 
 	// PolicyManagerVal is returned as the result of PolicyManager()
 	PolicyManagerVal policies.Manager
@@ -39,7 +39,7 @@ type Initializer struct {
 }
 
 // Returns the HandlersVal
-func (i *Initializer) Handlers() map[cb.ConfigurationItem_ConfigurationType]configtx.Handler {
+func (i *Initializer) Handlers() map[cb.ConfigItem_ConfigType]configtx.Handler {
 	return i.HandlersVal
 }
 
@@ -80,12 +80,12 @@ func (cm *Manager) Sequence() uint64 {
 }
 
 // Apply panics
-func (cm *Manager) Apply(configtx *cb.ConfigurationEnvelope) error {
+func (cm *Manager) Apply(configtx *cb.ConfigEnvelope) error {
 	panic("Unimplemented")
 }
 
 // Validate panics
-func (cm *Manager) Validate(configtx *cb.ConfigurationEnvelope) error {
+func (cm *Manager) Validate(configtx *cb.ConfigEnvelope) error {
 	panic("Unimplemented")
 
 }

@@ -25,19 +25,19 @@ option go_package = "github.com/hyperledger/fabric/protos/common";
 
 package common;
 
-// ConfigurationEnvelope is designed to contain _all_ configuration for a chain with no dependency
+// ConfigEnvelope is designed to contain _all_ configuration for a chain with no dependency
 // on previous configuration transactions.
 //
 // It is generated with the following scheme:
 //   1. Retrieve the existing configuration
 //   2. Note the highest configuration sequence number, store it and increment it by one
-//   3. Modify desired ConfigurationItems, setting each LastModified to the stored and incremented sequence number
-//     a) Note that the ConfigurationItem has a ChainHeader header attached to it, who's type is set to CONFIGURATION_ITEM
-//   4. Create Config message containing the new configuration, marshal it into ConfigurationEnvelope.config and encode the required signatures
-//     a) Each signature is of type ConfigurationSignature
-//     b) The ConfigurationSignature signature is over the concatenation of signatureHeader and the Config bytes (which includes a ChainHeader)
-//   5. Submit new Configuration for ordering in Envelope signed by submitter
-//     a) The Envelope Payload has data set to the marshaled ConfigurationEnvelope
+//   3. Modify desired ConfigItems, setting each LastModified to the stored and incremented sequence number
+//     a) Note that the ConfigItem has a ChainHeader header attached to it, who's type is set to CONFIGURATION_ITEM
+//   4. Create Config message containing the new configuration, marshal it into ConfigEnvelope.config and encode the required signatures
+//     a) Each signature is of type ConfigSignature
+//     b) The ConfigSignature signature is over the concatenation of signatureHeader and the Config bytes (which includes a ChainHeader)
+//   5. Submit new Config for ordering in Envelope signed by submitter
+//     a) The Envelope Payload has data set to the marshaled ConfigEnvelope
 //     b) The Envelope Payload has a header of type Header.Type.CONFIGURATION_TRANSACTION
 //
 // The configuration manager will verify:
@@ -46,40 +46,40 @@ package common;
 //   3. No existing configuration item has been ommitted
 //   4. All configuration changes have a LastModification of one more than the last configuration's highest LastModification number
 //   5. All configuration changes satisfy the corresponding modification policy
-message ConfigurationEnvelope {
+message ConfigEnvelope {
     bytes config = 1;                               // A marshaled Config structure
-    repeated ConfigurationSignature signatures = 2; // Signatures over the config
+    repeated ConfigSignature signatures = 2; // Signatures over the config
 }
 
-// ConfigurationTemplate is used as a serialization format to share configuration templates
+// ConfigTemplate is used as a serialization format to share configuration templates
 // The orderer supplies a configuration template to the user to use when constructing a new
 // chain creation transaction, so this is used to facilitate that.
-message ConfigurationTemplate {
-    repeated ConfigurationItem Items = 1;
+message ConfigTemplate {
+    repeated ConfigItem Items = 1;
 }
 
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message Config {
     ChainHeader header = 1;
-    repeated ConfigurationItem items = 2;
+    repeated ConfigItem items = 2;
 }
 
-message ConfigurationItem {
-    enum ConfigurationType {
+message ConfigItem {
+    enum ConfigType {
         Policy = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
         Chain = 1;    // Marshaled format for this type is yet to be determined
         Orderer = 2;  // Marshaled format for this type is yet to be determined
         Peer = 3;     // Marshaled format for this type is yet to be determined
         MSP = 4;      // Marshaled MSPConfig proto
     }
-    ConfigurationType Type = 1;     // The type of configuration this is.
-    uint64 LastModified = 2;        // The Sequence number in the ConfigurationEnvelope this item was last modified
+    ConfigType Type = 1;     // The type of configuration this is.
+    uint64 LastModified = 2;        // The Sequence number in the ConfigEnvelope this item was last modified
     string ModificationPolicy = 3;  // What policy to check before allowing modification
     string Key = 4;                 // A unique ID, unique scoped by Type, to reference the value by
     bytes Value = 5;                // The byte representation of this configuration, usually a marshaled message
 }
 
-message ConfigurationSignature {
+message ConfigSignature {
     bytes signature_header = 1; // A marshaled SignatureHeader
     bytes signature = 2;        // Signature over the concatenation signatureHeader bytes and config bytes
 }

@@ -31,34 +31,34 @@ import (
 )
 
 const (
-	// ConsensusTypeKey is the cb.ConfigurationItem type key name for the ConsensusType message
+	// ConsensusTypeKey is the cb.ConfigItem type key name for the ConsensusType message
 	ConsensusTypeKey = "ConsensusType"
 
-	// BatchSizeKey is the cb.ConfigurationItem type key name for the BatchSize message
+	// BatchSizeKey is the cb.ConfigItem type key name for the BatchSize message
 	BatchSizeKey = "BatchSize"
 
-	// BatchTimeoutKey is the cb.ConfigurationItem type key name for the BatchTimeout message
+	// BatchTimeoutKey is the cb.ConfigItem type key name for the BatchTimeout message
 	BatchTimeoutKey = "BatchTimeout"
 
-	// ChainCreationPolicyNamesKey is the cb.ConfigurationItem type key name for the ChainCreationPolicyNames message
+	// ChainCreationPolicyNamesKey is the cb.ConfigItem type key name for the ChainCreationPolicyNames message
 	ChainCreationPolicyNamesKey = "ChainCreationPolicyNames"
 
-	// KafkaBrokersKey is the cb.ConfigurationItem type key name for the KafkaBrokers message
+	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message
 	KafkaBrokersKey = "KafkaBrokers"
 
-	// IngressPolicyNamesKey is the cb.ConfigurationItem type key name for the IngressPolicyNames message
+	// IngressPolicyNamesKey is the cb.ConfigItem type key name for the IngressPolicyNames message
 	IngressPolicyNamesKey = "IngressPolicyNames"
 
-	// EgressPolicyNamesKey is the cb.ConfigurationItem type key name for the EgressPolicyNames message
+	// EgressPolicyNamesKey is the cb.ConfigItem type key name for the EgressPolicyNames message
 	EgressPolicyNamesKey = "EgressPolicyNames"
 )
 
 var logger = logging.MustGetLogger("orderer/common/sharedconfig")
 
-// Manager stores the common shared orderer configuration
+// Manager stores the common shared orderer config
 // It is intended to be the primary accessor of ManagerImpl
 // It is intended to discourage use of the other exported ManagerImpl methods
-// which are used for updating the orderer configuration by the ConfigManager
+// which are used for updating the orderer config by the ConfigManager
 type Manager interface {
 	// ConsensusType returns the configured consensus type
 	ConsensusType() string
@@ -147,7 +147,7 @@ func (pm *ManagerImpl) EgressPolicyNames() []string {
 	return pm.config.egressPolicyNames
 }
 
-// BeginConfig is used to start a new configuration proposal
+// BeginConfig is used to start a new config proposal
 func (pm *ManagerImpl) BeginConfig() {
 	if pm.pendingConfig != nil {
 		logger.Fatalf("Programming error, cannot call begin in the middle of a proposal")
@@ -155,12 +155,12 @@ func (pm *ManagerImpl) BeginConfig() {
 	pm.pendingConfig = &ordererConfig{}
 }
 
-// RollbackConfig is used to abandon a new configuration proposal
+// RollbackConfig is used to abandon a new config proposal
 func (pm *ManagerImpl) RollbackConfig() {
 	pm.pendingConfig = nil
 }
 
-// CommitConfig is used to commit a new configuration proposal
+// CommitConfig is used to commit a new config proposal
 func (pm *ManagerImpl) CommitConfig() {
 	if pm.pendingConfig == nil {
 		logger.Fatalf("Programming error, cannot call commit without an existing proposal")
@@ -172,10 +172,10 @@ func (pm *ManagerImpl) CommitConfig() {
 	}
 }
 
-// ProposeConfig is used to add new configuration to the configuration proposal
-func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
-	if configItem.Type != cb.ConfigurationItem_Orderer {
-		return fmt.Errorf("Expected type of ConfigurationItem_Orderer, got %v", configItem.Type)
+// ProposeConfig is used to add new config to the config proposal
+func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigItem) error {
+	if configItem.Type != cb.ConfigItem_Orderer {
+		return fmt.Errorf("Expected type of ConfigItem_Orderer, got %v", configItem.Type)
 	}
 
 	switch configItem.Key {
@@ -185,7 +185,7 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
 			return fmt.Errorf("Unmarshaling error for ConsensusType: %s", err)
 		}
 		if pm.config.consensusType == "" {
-			// The first configuration we accept the consensus type regardless
+			// The first config we accept the consensus type regardless
 			pm.config.consensusType = consensusType.Type
 		}
 		if consensusType.Type != pm.config.consensusType {

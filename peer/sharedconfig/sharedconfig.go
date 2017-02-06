@@ -28,16 +28,16 @@ import (
 
 // Peer config keys
 const (
-	// AnchorPeersKey is the cb.ConfigurationItem type key name for the AnchorPeers message
+	// AnchorPeersKey is the cb.ConfigItem type key name for the AnchorPeers message
 	AnchorPeersKey = "AnchorPeers"
 )
 
 var logger = logging.MustGetLogger("peer/sharedconfig")
 
-// Descriptor stores the common peer configuration
+// Descriptor stores the common peer config
 // It is intended to be the primary accessor of DescriptorImpl
 // It is intended to discourage use of the other exported DescriptorImpl methods
-// which are used for updating the chain configuration by the configtx.Manager
+// which are used for updating the chain config by the configtx.Manager
 type Descriptor interface {
 	// AnchorPeers returns the list of anchor peers for the channel
 	AnchorPeers() []*pb.AnchorPeer
@@ -66,24 +66,24 @@ func (di *DescriptorImpl) AnchorPeers() []*pb.AnchorPeer {
 	return di.config.anchorPeers
 }
 
-// BeginConfig is used to start a new configuration proposal
+// BeginConfig is used to start a new config proposal
 func (di *DescriptorImpl) BeginConfig() {
-	logger.Debugf("Beginning a possible new peer shared configuration")
+	logger.Debugf("Beginning a possible new peer shared config")
 	if di.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	di.pendingConfig = &sharedConfig{}
 }
 
-// RollbackConfig is used to abandon a new configuration proposal
+// RollbackConfig is used to abandon a new config proposal
 func (di *DescriptorImpl) RollbackConfig() {
-	logger.Debugf("Rolling back proposed peer shared configuration")
+	logger.Debugf("Rolling back proposed peer shared config")
 	di.pendingConfig = nil
 }
 
-// CommitConfig is used to commit a new configuration proposal
+// CommitConfig is used to commit a new config proposal
 func (di *DescriptorImpl) CommitConfig() {
-	logger.Debugf("Committing new peer shared configuration")
+	logger.Debugf("Committing new peer shared config")
 	if di.pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}
@@ -91,10 +91,10 @@ func (di *DescriptorImpl) CommitConfig() {
 	di.pendingConfig = nil
 }
 
-// ProposeConfig is used to add new configuration to the configuration proposal
-func (di *DescriptorImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
-	if configItem.Type != cb.ConfigurationItem_Peer {
-		return fmt.Errorf("Expected type of ConfigurationItem_Peer, got %v", configItem.Type)
+// ProposeConfig is used to add new config to the config proposal
+func (di *DescriptorImpl) ProposeConfig(configItem *cb.ConfigItem) error {
+	if configItem.Type != cb.ConfigItem_Peer {
+		return fmt.Errorf("Expected type of ConfigItem_Peer, got %v", configItem.Type)
 	}
 
 	switch configItem.Key {
@@ -108,7 +108,7 @@ func (di *DescriptorImpl) ProposeConfig(configItem *cb.ConfigurationItem) error 
 		}
 		di.pendingConfig.anchorPeers = anchorPeers.AnchorPeers
 	default:
-		logger.Warningf("Uknown Peer configuration item with key %s", configItem.Key)
+		logger.Warningf("Uknown Peer config item with key %s", configItem.Key)
 	}
 	return nil
 }

@@ -59,8 +59,8 @@ func makePolicySource(policyResult bool) []byte {
 
 func addPolicy(manager *policies.ManagerImpl, id string, policy []byte) {
 	manager.BeginConfig()
-	err := manager.ProposeConfig(&cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Policy,
+	err := manager.ProposeConfig(&cb.ConfigItem{
+		Type:  cb.ConfigItem_Policy,
 		Key:   id,
 		Value: policy,
 	})

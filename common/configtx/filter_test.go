@@ -31,15 +31,15 @@ import (
 
 type mockConfigManager struct {
 	mockconfigtx.Manager
-	applied *cb.ConfigurationEnvelope
+	applied *cb.ConfigEnvelope
 	err     error
 }
 
-func (mcm *mockConfigManager) Validate(configtx *cb.ConfigurationEnvelope) error {
+func (mcm *mockConfigManager) Validate(configtx *cb.ConfigEnvelope) error {
 	return mcm.err
 }
 
-func (mcm *mockConfigManager) Apply(configtx *cb.ConfigurationEnvelope) error {
+func (mcm *mockConfigManager) Apply(configtx *cb.ConfigEnvelope) error {
 	mcm.applied = configtx
 	return mcm.err
 }
@@ -65,7 +65,7 @@ func TestForwardNonConfig(t *testing.T) {
 func TestAcceptGoodConfig(t *testing.T) {
 	mcm := &mockConfigManager{}
 	cf := NewFilter(mcm)
-	configEnv := &cb.ConfigurationEnvelope{}
+	configEnv := &cb.ConfigEnvelope{}
 	config, _ := proto.Marshal(configEnv)
 	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	configEnvelope := &cb.Envelope{
@@ -73,23 +73,23 @@ func TestAcceptGoodConfig(t *testing.T) {
 	}
 	result, committer := cf.Apply(configEnvelope)
 	if result != filter.Accept {
-		t.Fatal("Should have indicated a good config message causes a reconfiguration")
+		t.Fatal("Should have indicated a good config message causes a reconfig")
 	}
 
 	if !committer.Isolated() {
-		t.Fatal("Configuration transactions should be isolated to their own block")
+		t.Fatal("Config transactions should be isolated to their own block")
 	}
 
 	committer.Commit()
 
 	if !reflect.DeepEqual(mcm.applied, configEnv) {
-		t.Fatalf("Should have applied new configuration on commit got %v and %v", mcm.applied, configEnv)
+		t.Fatalf("Should have applied new config on commit got %v and %v", mcm.applied, configEnv)
 	}
 }
 
 func TestRejectBadConfig(t *testing.T) {
 	cf := NewFilter(&mockConfigManager{err: fmt.Errorf("Error")})
-	config, _ := proto.Marshal(&cb.ConfigurationEnvelope{})
+	config, _ := proto.Marshal(&cb.ConfigEnvelope{})
 	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	result, _ := cf.Apply(&cb.Envelope{
 		Payload: configBytes,

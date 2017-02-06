@@ -26,7 +26,7 @@ import (
 
 type policyTypes struct{}
 
-func (ot policyTypes) Value(configItem *cb.ConfigurationItem) Viewable {
+func (ot policyTypes) Value(configItem *cb.ConfigItem) Viewable {
 	name := "Value"
 	value := &cb.Policy{}
 	if err := proto.Unmarshal(configItem.Value, value); err != nil {
@@ -59,5 +59,5 @@ func viewableSignaturePolicyEnvelope(name string, signaturePolicyEnvelope *cb.Si
 }
 
 func init() {
-	typeMap[cb.ConfigurationItem_Policy] = policyTypes{}
+	typeMap[cb.ConfigItem_Policy] = policyTypes{}
 }

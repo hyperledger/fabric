@@ -41,9 +41,9 @@ type Signable interface {
 }
 
 // AsSignedData returns the set of signatures for the SignedCOnfigurationItem as SignedData or an error indicating why this was not possible
-func (ce *ConfigurationEnvelope) AsSignedData() ([]*SignedData, error) {
+func (ce *ConfigEnvelope) AsSignedData() ([]*SignedData, error) {
 	if ce == nil {
-		return nil, fmt.Errorf("No signatures for nil SignedConfigurationItem")
+		return nil, fmt.Errorf("No signatures for nil SignedConfigItem")
 	}
 
 	result := make([]*SignedData, len(ce.Signatures))

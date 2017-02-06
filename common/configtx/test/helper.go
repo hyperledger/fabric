@@ -78,7 +78,7 @@ func resolveName(name string) (string, []byte) {
 func readTemplate(name string) configtx.Template {
 	_, data := resolveName(name)
 
-	templateProto := &cb.ConfigurationTemplate{}
+	templateProto := &cb.ConfigTemplate{}
 	err := proto.Unmarshal(data, templateProto)
 	if err != nil {
 		panic(err)
@@ -87,16 +87,16 @@ func readTemplate(name string) configtx.Template {
 	return configtx.NewSimpleTemplate(templateProto.Items...)
 }
 
-// WriteTemplate takes an output file and set of config items and writes them to that file as a marshaled ConfigurationTemplate
-func WriteTemplate(name string, items ...*cb.ConfigurationItem) {
+// WriteTemplate takes an output file and set of config items and writes them to that file as a marshaled ConfigTemplate
+func WriteTemplate(name string, items ...*cb.ConfigItem) {
 	path, _ := resolveName(name)
 
-	logger.Debugf("Encoding configuration template")
-	outputData := utils.MarshalOrPanic(&cb.ConfigurationTemplate{
+	logger.Debugf("Encoding config template")
+	outputData := utils.MarshalOrPanic(&cb.ConfigTemplate{
 		Items: items,
 	})
 
-	logger.Debugf("Writing configuration to %s", path)
+	logger.Debugf("Writing config to %s", path)
 	ioutil.WriteFile(path, outputData, 0644)
 }
 

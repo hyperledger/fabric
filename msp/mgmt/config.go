@@ -115,7 +115,7 @@ func (bh *MSPConfigHandler) CommitConfig() {
 }
 
 // ProposeConfig called when config is added to a proposal
-func (bh *MSPConfigHandler) ProposeConfig(configItem *common.ConfigurationItem) error {
+func (bh *MSPConfigHandler) ProposeConfig(configItem *common.ConfigItem) error {
 	mspconfig := &mspprotos.MSPConfig{}
 	err := proto.Unmarshal(configItem.Value, mspconfig)
 	if err != nil {

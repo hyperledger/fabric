@@ -53,7 +53,7 @@ type Manager interface {
 	// GetChain retrieves the chain support for a chain (and whether it exists)
 	GetChain(chainID string) (ChainSupport, bool)
 
-	// ProposeChain accepts a configuration transaction for a chain which does not already exists
+	// ProposeChain accepts a config transaction for a chain which does not already exists
 	// The status returned is whether the proposal is accepted for consideration, only after consensus
 	// occurs will the proposal be committed or rejected
 	ProposeChain(env *cb.Envelope) cb.Status
@@ -83,13 +83,13 @@ type multiLedger struct {
 
 func getConfigTx(reader ordererledger.Reader) *cb.Envelope {
 	lastBlock := ordererledger.GetBlock(reader, reader.Height()-1)
-	index, err := utils.GetLastConfigurationIndexFromBlock(lastBlock)
+	index, err := utils.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {
-		logger.Panicf("Chain did not have appropriately encoded last configuration in its latest block: %s", err)
+		logger.Panicf("Chain did not have appropriately encoded last config in its latest block: %s", err)
 	}
 	configBlock := ordererledger.GetBlock(reader, index)
 	if configBlock == nil {
-		logger.Panicf("Configuration block does not exist")
+		logger.Panicf("Config block does not exist")
 	}
 
 	return utils.ExtractEnvelopeOrPanic(configBlock, 0)
@@ -112,7 +112,7 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 		}
 		configTx := getConfigTx(rl)
 		if configTx == nil {
-			logger.Fatalf("Could not find configuration transaction for chain %s", chainID)
+			logger.Fatalf("Could not find config transaction for chain %s", chainID)
 		}
 		ledgerResources := ml.newLedgerResources(configTx)
 		chainID := ledgerResources.ChainID()
@@ -149,7 +149,7 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 	return ml
 }
 
-// ProposeChain accepts a configuration transaction for a chain which does not already exists
+// ProposeChain accepts a config transaction for a chain which does not already exists
 // The status returned is whether the proposal is accepted for consideration, only after consensus
 // occurs will the proposal be committed or rejected
 func (ml *multiLedger) ProposeChain(env *cb.Envelope) cb.Status {
@@ -162,14 +162,14 @@ func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
 	return cs, ok
 }
 
-func newConfigResources(configEnvelope *cb.ConfigurationEnvelope) (*configResources, error) {
+func newConfigResources(configEnvelope *cb.ConfigEnvelope) (*configResources, error) {
 	sharedConfigManager := sharedconfig.NewManagerImpl()
 	initializer := configtx.NewInitializer()
-	initializer.Handlers()[cb.ConfigurationItem_Orderer] = sharedConfigManager
+	initializer.Handlers()[cb.ConfigItem_Orderer] = sharedConfigManager
 
 	configManager, err := configtx.NewManagerImpl(configEnvelope, initializer, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Error unpacking configuration transaction: %s", err)
+		return nil, fmt.Errorf("Error unpacking config transaction: %s", err)
 	}
 
 	return &configResources{
@@ -185,7 +185,7 @@ func (ml *multiLedger) newLedgerResources(configTx *cb.Envelope) *ledgerResource
 		logger.Fatalf("Error unmarshaling a config transaction payload: %s", err)
 	}
 
-	configEnvelope := &cb.ConfigurationEnvelope{}
+	configEnvelope := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(payload.Data, configEnvelope)
 	if err != nil {
 		logger.Fatalf("Error unmarshaling a config transaction to config envelope: %s", err)

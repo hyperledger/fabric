@@ -30,12 +30,12 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
-// Generator can either create an orderer genesis block or configuration template
+// Generator can either create an orderer genesis block or config template
 type Generator interface {
 	bootstrap.Helper
 
-	// TemplateItems returns a set of configuration items which can be used to initialize a template
-	TemplateItems() []*cb.ConfigurationItem
+	// TemplateItems returns a set of config items which can be used to initialize a template
+	TemplateItems() []*cb.ConfigItem
 }
 
 const (
@@ -60,14 +60,14 @@ const (
 var DefaultChainCreationPolicyNames = []string{AcceptAllPolicyKey}
 
 type bootstrapper struct {
-	minimalItems     []*cb.ConfigurationItem
-	systemChainItems []*cb.ConfigurationItem
+	minimalItems     []*cb.ConfigItem
+	systemChainItems []*cb.ConfigItem
 }
 
 // New returns a new provisional bootstrap helper.
 func New(conf *config.TopLevel) Generator {
 	bs := &bootstrapper{
-		minimalItems: []*cb.ConfigurationItem{
+		minimalItems: []*cb.ConfigItem{
 			// Chain Config Types
 			chainconfig.DefaultHashingAlgorithm(),
 			chainconfig.DefaultBlockDataHashingStructure(),
@@ -85,11 +85,11 @@ func New(conf *config.TopLevel) Generator {
 			sharedconfig.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
 
 			// Policies
-			cauthdsl.TemplatePolicy(configtx.NewConfigurationItemPolicyKey, cauthdsl.RejectAllPolicy),
+			cauthdsl.TemplatePolicy(configtx.NewConfigItemPolicyKey, cauthdsl.RejectAllPolicy),
 			cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy),
 		},
 
-		systemChainItems: []*cb.ConfigurationItem{
+		systemChainItems: []*cb.ConfigItem{
 			sharedconfig.TemplateChainCreationPolicyNames(DefaultChainCreationPolicyNames),
 		},
 	}
@@ -105,7 +105,7 @@ func New(conf *config.TopLevel) Generator {
 	return bs
 }
 
-func (bs *bootstrapper) TemplateItems() []*cb.ConfigurationItem {
+func (bs *bootstrapper) TemplateItems() []*cb.ConfigItem {
 	return bs.minimalItems
 }
 

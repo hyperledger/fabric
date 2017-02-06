@@ -21,11 +21,11 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-var typeMap map[cb.ConfigurationItem_ConfigurationType]ConfigurationItemValueLens = make(map[cb.ConfigurationItem_ConfigurationType]ConfigurationItemValueLens)
+var typeMap map[cb.ConfigItem_ConfigType]ConfigItemValueLens = make(map[cb.ConfigItem_ConfigType]ConfigItemValueLens)
 
-type ConfigurationItemValueLens interface {
+type ConfigItemValueLens interface {
 	// Value takes a config item and returns a Viewable version of its value
-	Value(configItem *cb.ConfigurationItem) Viewable
+	Value(configItem *cb.ConfigItem) Viewable
 }
 
 type Viewable interface {
@@ -55,7 +55,7 @@ func printViewable(viewable Viewable, curDepth int) {
 	}
 }
 
-func PrintConfiguration(configEnvelope *cb.ConfigurationEnvelope) {
-	viewable := viewableConfigurationEnvelope("ConfigurationEnvelope", configEnvelope)
+func PrintConfig(configEnvelope *cb.ConfigEnvelope) {
+	viewable := viewableConfigEnvelope("ConfigEnvelope", configEnvelope)
 	printViewable(viewable, 0)
 }
