@@ -103,6 +103,10 @@ func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.E
 		},
 		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
 			Items: signedItems,
+			Header: &cb.ChainHeader{
+				Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
+				ChainID: chainID,
+			},
 		}),
 	}
 	return &cb.Envelope{

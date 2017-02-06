@@ -98,8 +98,21 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint
 		return "", 0, errors.New("Empty envelope unsupported")
 	}
 
-	m := uint64(0)     //configtx.Items[0].LastModified
-	var chainID string //:= configtx.Items[0].Header.ChainID
+	m := uint64(0)
+
+	if configtx.Header == nil {
+		return "", 0, fmt.Errorf("Header not set")
+	}
+
+	if configtx.Header.ChainID == "" {
+		return "", 0, fmt.Errorf("Header chainID was not set")
+	}
+
+	chainID := configtx.Header.ChainID
+
+	if err := validateChainID(chainID); err != nil {
+		return "", 0, err
+	}
 
 	for _, signedItem := range configtx.Items {
 		item := &cb.ConfigurationItem{}
@@ -109,26 +122,6 @@ func computeChainIDAndSequence(configtx *cb.ConfigurationEnvelope) (string, uint
 
 		if item.LastModified > m {
 			m = item.LastModified
-		}
-
-		if item.Header == nil {
-			return "", 0, fmt.Errorf("Header not set: %v", item)
-		}
-
-		if item.Header.ChainID == "" {
-			return "", 0, fmt.Errorf("Header chainID was not set: %v", item)
-		}
-
-		if chainID == "" {
-			chainID = item.Header.ChainID
-		} else {
-			if chainID != item.Header.ChainID {
-				return "", 0, fmt.Errorf("Mismatched chainIDs in envelope %s != %s", chainID, item.Header.ChainID)
-			}
-		}
-
-		if err := validateChainID(chainID); err != nil {
-			return "", 0, err
 		}
 	}
 

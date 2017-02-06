@@ -48,6 +48,9 @@ package common;
 //   5. All configuration changes satisfy the corresponding modification policy
 message ConfigurationEnvelope {
     repeated SignedConfigurationItem Items = 1;
+
+    // XXX This needs to be signed over, purely temporary pending completion of https://jira.hyperledger.org/browse/FAB-1880
+    ChainHeader header = 2;
 }
 
 // ConfigurationTemplate is used as a serialization format to share configuration templates
@@ -71,12 +74,11 @@ message ConfigurationItem {
         Peer = 3;     // Marshaled format for this type is yet to be determined
         MSP = 4;      // Marshaled MSPConfig proto
     }
-    ChainHeader Header = 1;  // The header which ties this configuration to a particular chain
-    ConfigurationType Type = 2;     // The type of configuration this is.
-    uint64 LastModified = 3;        // The Sequence number in the ConfigurationEnvelope this item was last modified
-    string ModificationPolicy = 4;  // What policy to check before allowing modification
-    string Key = 5;                 // A unique ID, unique scoped by Type, to reference the value by
-    bytes Value = 6;                // The byte representation of this configuration, usually a marshaled message
+    ConfigurationType Type = 1;     // The type of configuration this is.
+    uint64 LastModified = 2;        // The Sequence number in the ConfigurationEnvelope this item was last modified
+    string ModificationPolicy = 3;  // What policy to check before allowing modification
+    string Key = 4;                 // A unique ID, unique scoped by Type, to reference the value by
+    bytes Value = 5;                // The byte representation of this configuration, usually a marshaled message
 }
 
 message ConfigurationSignature {

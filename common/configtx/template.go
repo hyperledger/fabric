@@ -53,7 +53,6 @@ func NewSimpleTemplate(items ...*cb.ConfigurationItem) Template {
 func (st *simpleTemplate) Items(chainID string) ([]*cb.SignedConfigurationItem, error) {
 	signedItems := make([]*cb.SignedConfigurationItem, len(st.items))
 	for i := range st.items {
-		st.items[i].Header = &cb.ChainHeader{ChainID: chainID, Type: int32(cb.HeaderType_CONFIGURATION_ITEM)}
 		mItem, err := proto.Marshal(st.items[i])
 		if err != nil {
 			return nil, err
@@ -113,9 +112,8 @@ func (nct *newChainTemplate) Items(chainID string) ([]*cb.SignedConfigurationIte
 
 	creationPolicy := &cb.SignedConfigurationItem{
 		ConfigurationItem: utils.MarshalOrPanic(&cb.ConfigurationItem{
-			Header: utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_ITEM, msgVersion, chainID, epoch),
-			Type:   cb.ConfigurationItem_Orderer,
-			Key:    CreationPolicyKey,
+			Type: cb.ConfigurationItem_Orderer,
+			Key:  CreationPolicyKey,
 			Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 				Policy: nct.creationPolicy,
 				Digest: HashItems(items, nct.hash),
@@ -162,7 +160,7 @@ func MakeChainCreationTransaction(creationPolicy string, chainID string, signer 
 		return nil, err
 	}
 
-	manager, err := NewManagerImpl(&cb.ConfigurationEnvelope{Items: items}, NewInitializer(), nil)
+	manager, err := NewManagerImpl(&cb.ConfigurationEnvelope{Header: &cb.ChainHeader{ChainID: chainID, Type: int32(cb.HeaderType_CONFIGURATION_ITEM)}, Items: items}, NewInitializer(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +179,10 @@ func MakeChainCreationTransaction(creationPolicy string, chainID string, signer 
 	payloadChainHeader := utils.MakeChainHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, msgVersion, chainID, epoch)
 	payloadSignatureHeader := utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
 	payloadHeader := utils.MakePayloadHeader(payloadChainHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(utils.MakeConfigurationEnvelope(signedConfigItems...))}
+	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
+		Items:  signedConfigItems,
+		Header: &cb.ChainHeader{ChainID: chainID, Type: int32(cb.HeaderType_CONFIGURATION_ITEM)},
+	})}
 	paylBytes := utils.MarshalOrPanic(payload)
 
 	// sign the payload
