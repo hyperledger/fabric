@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/channel"
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
 )
 

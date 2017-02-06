@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

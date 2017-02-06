@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/protos/gossip"
 )
 
 // Comm is an object that enables to communicate with other peers

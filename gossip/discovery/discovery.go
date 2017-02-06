@@ -18,7 +18,7 @@ package discovery
 
 import (
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/protos/gossip"
 )
 
 // CryptoService is an interface that the discovery expects to be implemented and passed on creation
