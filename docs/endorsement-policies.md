@@ -25,7 +25,7 @@ principals or gates; this gate essentially captures the expectation that out of 
 `n` principals or gates, `t` are requested to be satisfied. 
 
 For example:
- - `T(2, 'A', 'B', 'C')` requests at 1 signature from any 2 of the principals `A`, `B` or `C`;
+ - `T(2, 'A', 'B', 'C')` requests a signature from any 2 principals out of 'A', 'B' or 'C';
  - `T(1, 'A', T(2, 'B', 'C'))` requests either one signature from principal `A` or 1 signature 
    from `B` and `C` each.
     
