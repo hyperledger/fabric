@@ -95,6 +95,7 @@ func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 }
 
 func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte) <-chan ReceivedMessage {
+	c := &commImpl{}
 	err := generateCertificates("key.pem", "cert.pem")
 	defer os.Remove("cert.pem")
 	defer os.Remove("key.pem")
@@ -122,7 +123,7 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 		pkiID = common.PKIidType(pkiIDmutator([]byte(endpoint)))
 	}
 	assert.NoError(t, err, "%v", err)
-	msg := createConnectionMsg(pkiID, clientCertHash, []byte(endpoint), func(msg []byte) ([]byte, error) {
+	msg := c.createConnectionMsg(pkiID, clientCertHash, []byte(endpoint), func(msg []byte) ([]byte, error) {
 		return msg, nil
 	})
 
@@ -135,7 +136,7 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	assert.NoError(t, err, "%v", err)
 	if sigMutator == nil {
 		hash := extractCertificateHashFromContext(stream.Context())
-		expectedMsg := createConnectionMsg(common.PKIidType("localhost:9611"), hash, []byte("localhost:9611"), func(msg []byte) ([]byte, error) {
+		expectedMsg := c.createConnectionMsg(common.PKIidType("localhost:9611"), hash, []byte("localhost:9611"), func(msg []byte) ([]byte, error) {
 			return msg, nil
 		})
 		assert.Equal(t, expectedMsg.Signature, msg.Signature)
