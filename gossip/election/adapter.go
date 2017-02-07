@@ -18,7 +18,6 @@ package election
 
 import (
 	"bytes"
-	"strconv"
 	"sync"
 	"time"
 
@@ -35,7 +34,7 @@ type msgImpl struct {
 }
 
 func (mi *msgImpl) SenderID() string {
-	return string(mi.msg.GetLeadershipMsg().GetMembership().PkiID)
+	return string(mi.msg.GetLeadershipMsg().PkiID)
 }
 
 func (mi *msgImpl) IsProposal() bool {
@@ -43,8 +42,7 @@ func (mi *msgImpl) IsProposal() bool {
 }
 
 func (mi *msgImpl) IsDeclaration() bool {
-	isDeclaration, _ := strconv.ParseBool(string(mi.msg.GetLeadershipMsg().GetMembership().Metadata))
-	return isDeclaration
+	return mi.msg.GetLeadershipMsg().IsDeclaration
 }
 
 type peerImpl struct {
@@ -136,7 +134,7 @@ func (ai *adapterImpl) Accept() <-chan Msg {
 			verifier := func(identity []byte, signature, message []byte) error {
 				return ai.mcs.Verify(identity, signature, message)
 			}
-			identity, err := ai.mcs.Get(leadershipMsg.GetMembership().PkiID)
+			identity, err := ai.mcs.Get(leadershipMsg.PkiID)
 			if err != nil {
 				ai.logger.Error("Failed verify, can't get identity", leadershipMsg, ":", err)
 				return false
@@ -174,15 +172,9 @@ func (ai *adapterImpl) CreateMessage(isDeclaration bool) Msg {
 	ai.seqNum++
 	seqNum := ai.seqNum
 
-	metadata := []byte{}
-	metadata = strconv.AppendBool(metadata, isDeclaration)
-
 	leadershipMsg := &proto.LeadershipMessage{
-		Membership: &proto.Member{
-			PkiID:    ai.self.PKIid,
-			Endpoint: ai.self.Endpoint,
-			Metadata: metadata,
-		},
+		PkiID:         ai.self.PKIid,
+		IsDeclaration: isDeclaration,
 		Timestamp: &proto.PeerTime{
 			IncNumber: ai.incTime,
 			SeqNum:    seqNum,

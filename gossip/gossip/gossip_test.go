@@ -909,16 +909,9 @@ func createDataMsg(seqnum uint64, data []byte, hash string, channel common.Chain
 }
 
 func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uint64, seqNum uint64, endpoint string, pkiid []byte) *proto.GossipMessage {
-
-	metadata := []byte{}
-	metadata = strconv.AppendBool(metadata, isDeclaration)
-
 	leadershipMsg := &proto.LeadershipMessage{
-		Membership: &proto.Member{
-			PkiID:    pkiid,
-			Endpoint: endpoint,
-			Metadata: metadata,
-		},
+		IsDeclaration: isDeclaration,
+		PkiID:         pkiid,
 		Timestamp: &proto.PeerTime{
 			IncNumber: incTime,
 			SeqNum:    seqNum,

@@ -195,8 +195,9 @@ message AliveMessage {
 // Leadership Message is sent during leader election to inform
 // remote peers about intent of peer to proclaim itself as leader
 message LeadershipMessage {
-    Member membership  = 1;
+    bytes pkiID        = 1;
     PeerTime timestamp = 2;
+    bool isDeclaration = 3;
 }
 
 // PeerTime defines the logical time of a peer's life
