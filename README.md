@@ -38,7 +38,7 @@ Full details of how to contribute to this project are documented [here](http://h
 
 [Hyperledger mailing lists and archives](http://lists.hyperledger.org/)
 
-[Hyperledger Slack](http://hyperledgerproject.slack.com) - if you need an invitation, try our [Slack inviter](https://slack.hyperledger.org)
+[Hyperledger Chat](http://chat.hyperledger.org/channel/fabric)
 
 [Hyperledger Wiki](https://wiki.hyperledger.org/)
 

@@ -5,7 +5,7 @@ through the Gerrit review system.
 
 Please be sure that you are subscribed to the [mailing
 list](http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric) and of
-course, you can reach out on [Slack](https://hyperledgerproject.slack.com/) if
+course, you can reach out on [chat](https://chat.hyperledger.org/) if
 you need help.
 
 Gerrit assigns the following roles to users:

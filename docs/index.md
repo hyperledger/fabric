@@ -48,7 +48,7 @@ Project's Technical Steering Committee (TSC).
 
 ## Communication <a name="communication"></a>
 
-We use [Hyperledger Slack](https://slack.hyperledger.org/) for communication and
+We use [Hyperledger chat](https://chat.hyperledger.org/) for communication and
 Google Hangouts&trade; for screen sharing between developers. Our development
 planning and prioritization is done in [JIRA](https://jira.hyperledger.org),
 and we take longer running discussions/decisions to the
@@ -62,7 +62,7 @@ project not answered in this documentation, please use
 [StackOverflow](http://stackoverflow.com/questions/tagged/hyperledger). If you
 need help finding things, please don't hesitate to send a note to the
 [mailing list](http://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric),
-or ask on [Slack]((https://slack.hyperledger.org/)).
+or ask on [chat]((https://chat.hyperledger.org/)).
 
 # Hyperledger Fabric Documentation
 
