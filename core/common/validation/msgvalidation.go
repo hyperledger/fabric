@@ -120,7 +120,7 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return fmt.Errorf("Nil arguments")
 	}
 
-	mspObj := mspmgmt.GetMSPCommon(ChainID)
+	mspObj := mspmgmt.GetIdentityDeserializer(ChainID)
 	if mspObj == nil {
 		return fmt.Errorf("could not get msp for chain [%s]", ChainID)
 	}

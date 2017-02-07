@@ -116,6 +116,10 @@ func (mgr *mspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, e
 		return nil, fmt.Errorf("MSP %s is unknown", sId.Mspid)
 	}
 
-	// if we have this MSP, we ask it to deserialize
-	return msp.DeserializeIdentity(serializedID)
+	switch t := msp.(type) {
+	case *bccspmsp:
+		return t.deserializeIdentityInternal(sId.IdBytes)
+	default:
+		return t.DeserializeIdentity(serializedID)
+	}
 }

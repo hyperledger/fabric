@@ -113,8 +113,8 @@ func GetLocalMSP() msp.MSP {
 	return lclMsp
 }
 
-//GetMSPCommon returns the common interface
-func GetMSPCommon(chainID string) msp.Common {
+// GetIdentityDeserializer returns the IdentityDeserializer for the given chain
+func GetIdentityDeserializer(chainID string) msp.IdentityDeserializer {
 	if chainID == "" {
 		return GetLocalMSP()
 	}
