@@ -26,6 +26,28 @@ import (
 	"github.com/op/go-logging"
 )
 
+var orgSchema = &cb.ConfigGroupSchema{
+	Groups: map[string]*cb.ConfigGroupSchema{},
+	Values: map[string]*cb.ConfigValueSchema{
+		"MSP": nil, // TODO, consolidate into a constant once common org code exists
+	},
+	Policies: map[string]*cb.ConfigPolicySchema{
+	// TODO, set appropriately once hierarchical policies are implemented
+	},
+}
+
+var Schema = &cb.ConfigGroupSchema{
+	Groups: map[string]*cb.ConfigGroupSchema{
+		"": orgSchema,
+	},
+	Values: map[string]*cb.ConfigValueSchema{
+		AnchorPeersKey: nil,
+	},
+	Policies: map[string]*cb.ConfigPolicySchema{
+	// TODO, set appropriately once hierarchical policies are implemented
+	},
+}
+
 // Peer config keys
 const (
 	// AnchorPeersKey is the cb.ConfigItem type key name for the AnchorPeers message
