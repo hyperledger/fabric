@@ -24,7 +24,7 @@ import (
 )
 
 func TestFromTemplate(t *testing.T) {
-	ordererTemplate := configtxtest.GetOrdererTemplate()
+	ordererTemplate := configtxtest.OrdererTemplate()
 	signedItems, err := ordererTemplate.Items("SampleChainID")
 	if err != nil {
 		t.Fatalf("Error creating signed items: %s", err)

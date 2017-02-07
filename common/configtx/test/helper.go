@@ -48,26 +48,6 @@ var peerTemplate configtx.Template
 
 var genesisFactory genesis.Factory
 
-func readTemplate(name string) configtx.Template {
-	gopath := os.Getenv("GOPATH")
-	data, err := ioutil.ReadFile(gopath + "/src/github.com/hyperledger/fabric/common/configtx/test/" + name)
-	if err != nil {
-		peerConfig := os.Getenv("PEER_CFG_PATH")
-		data, err = ioutil.ReadFile(peerConfig + "/common/configtx/test/" + name)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	templateProto := &cb.ConfigurationTemplate{}
-	err = proto.Unmarshal(data, templateProto)
-	if err != nil {
-		panic(err)
-	}
-
-	return configtx.NewSimpleTemplate(templateProto.Items...)
-}
-
 func init() {
 	ordererTemplate = readTemplate(OrdererTemplateName)
 	mspTemplate = readTemplate(MSPTemplateName)
@@ -75,32 +55,63 @@ func init() {
 	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(mspTemplate, ordererTemplate, peerTemplate))
 }
 
+func resolveName(name string) (string, []byte) {
+	path := os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/common/configtx/test/" + name
+	data, err := ioutil.ReadFile(path)
+	if err == nil {
+		return path, data
+	}
+
+	path = os.Getenv("PEER_CFG_PATH") + "/common/configtx/test/" + name
+	data, err = ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+
+	return path, data
+}
+
+func readTemplate(name string) configtx.Template {
+	_, data := resolveName(name)
+
+	templateProto := &cb.ConfigurationTemplate{}
+	err := proto.Unmarshal(data, templateProto)
+	if err != nil {
+		panic(err)
+	}
+
+	return configtx.NewSimpleTemplate(templateProto.Items...)
+}
+
 // WriteTemplate takes an output file and set of config items and writes them to that file as a marshaled ConfigurationTemplate
-func WriteTemplate(outputFile string, items ...*cb.ConfigurationItem) {
+func WriteTemplate(name string, items ...*cb.ConfigurationItem) {
+	path, _ := resolveName(name)
+
 	logger.Debugf("Encoding configuration template")
 	outputData := utils.MarshalOrPanic(&cb.ConfigurationTemplate{
 		Items: items,
 	})
 
-	logger.Debugf("Writing configuration to disk")
-	ioutil.WriteFile(outputFile, outputData, 0644)
+	logger.Debugf("Writing configuration to %s", path)
+	ioutil.WriteFile(path, outputData, 0644)
 }
 
+// MakeGenesisBlock creates a genesis block using the test templates for the given chainID
 func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 	return genesisFactory.Block(chainID)
 }
 
-// GetOrderererTemplate returns the test orderer template
-func GetOrdererTemplate() configtx.Template {
+// OrderererTemplate returns the test orderer template
+func OrdererTemplate() configtx.Template {
 	return ordererTemplate
 }
 
-// GetMSPerTemplate returns the test MSP template
-func GetMSPTemplate() configtx.Template {
+// MSPerTemplate returns the test MSP template
+func MSPTemplate() configtx.Template {
 	return mspTemplate
 }
 
-// GetMSPerTemplate returns the test peer template
-func GetPeerTemplate() configtx.Template {
+// MSPerTemplate returns the test peer template
+func PeerTemplate() configtx.Template {
 	return peerTemplate
 }

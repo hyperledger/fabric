@@ -23,8 +23,5 @@ import (
 )
 
 func TestTemplate(t *testing.T) {
-	configtxtest.WriteTemplate(
-		"../../common/configtx/test/"+configtxtest.PeerTemplateName,
-		DefaultAnchorPeers(),
-	)
+	configtxtest.WriteTemplate(configtxtest.PeerTemplateName, DefaultAnchorPeers())
 }

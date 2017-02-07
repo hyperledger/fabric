@@ -14,14 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package provisional
 
 import (
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
 func TestUpdateTemplate(t *testing.T) {
-	writeTemplate("../../../common/configtx/test/" + configtxtest.OrdererTemplateName)
+	conf := config.Load()
+
+	generator := New(conf)
+
+	templateItems := generator.TemplateItems()
+
+	configtxtest.WriteTemplate(configtxtest.OrdererTemplateName, templateItems...)
 }

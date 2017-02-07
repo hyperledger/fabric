@@ -28,7 +28,7 @@ import (
 
 func TestValidateConfigTx(t *testing.T) {
 	chainID := util.GetTestChainID()
-	oTemplate := test.GetOrdererTemplate()
+	oTemplate := test.OrdererTemplate()
 	mspcfg := configtx.NewSimpleTemplate(utils.EncodeMSPUnsigned(chainID))
 	chainCfg := configtx.NewSimpleTemplate(chainconfig.DefaultHashingAlgorithm())
 	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspcfg, chainCfg)
