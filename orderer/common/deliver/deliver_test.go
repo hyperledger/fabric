@@ -21,14 +21,14 @@ import (
 	"testing"
 	"time"
 
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	mockpolicies "github.com/hyperledger/fabric/orderer/mocks/policies"
-	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -84,7 +84,7 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 
 type mockSupport struct {
 	ledger        ordererledger.ReadWriter
-	sharedConfig  *mocksharedconfig.Manager
+	sharedConfig  *mockconfigtxorderer.SharedConfig
 	policyManager *mockpolicies.Manager
 }
 
@@ -103,7 +103,7 @@ func NewRAMLedger() ordererledger.ReadWriter {
 	return rl
 }
 
-func (mcs *mockSupport) SharedConfig() sharedconfig.Manager {
+func (mcs *mockSupport) SharedConfig() configtxapi.OrdererConfig {
 	return mcs.sharedConfig
 }
 
@@ -114,7 +114,7 @@ func newMockMultichainManager() *mockSupportManager {
 	}
 	mm.chains[systemChainID] = &mockSupport{
 		ledger:        rl,
-		sharedConfig:  &mocksharedconfig.Manager{EgressPolicyNamesVal: []string{"somePolicy"}},
+		sharedConfig:  &mockconfigtxorderer.SharedConfig{EgressPolicyNamesVal: []string{"somePolicy"}},
 		policyManager: &mockpolicies.Manager{Policy: &mockpolicies.Policy{}},
 	}
 	return mm

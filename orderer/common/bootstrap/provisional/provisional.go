@@ -22,9 +22,9 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -74,15 +74,15 @@ func New(conf *config.TopLevel) Generator {
 			chainconfig.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
 
 			// Orderer Config Types
-			sharedconfig.TemplateConsensusType(conf.Genesis.OrdererType),
-			sharedconfig.TemplateBatchSize(&ab.BatchSize{
+			configtxorderer.TemplateConsensusType(conf.Genesis.OrdererType),
+			configtxorderer.TemplateBatchSize(&ab.BatchSize{
 				MaxMessageCount:   conf.Genesis.BatchSize.MaxMessageCount,
 				AbsoluteMaxBytes:  conf.Genesis.BatchSize.AbsoluteMaxBytes,
 				PreferredMaxBytes: conf.Genesis.BatchSize.PreferredMaxBytes,
 			}),
-			sharedconfig.TemplateBatchTimeout(conf.Genesis.BatchTimeout.String()),
-			sharedconfig.TemplateIngressPolicyNames([]string{AcceptAllPolicyKey}),
-			sharedconfig.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
+			configtxorderer.TemplateBatchTimeout(conf.Genesis.BatchTimeout.String()),
+			configtxorderer.TemplateIngressPolicyNames([]string{AcceptAllPolicyKey}),
+			configtxorderer.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
 
 			// Policies
 			cauthdsl.TemplatePolicy(configtx.NewConfigItemPolicyKey, cauthdsl.RejectAllPolicy),
@@ -90,14 +90,14 @@ func New(conf *config.TopLevel) Generator {
 		},
 
 		systemChainItems: []*cb.ConfigItem{
-			sharedconfig.TemplateChainCreationPolicyNames(DefaultChainCreationPolicyNames),
+			configtxorderer.TemplateChainCreationPolicyNames(DefaultChainCreationPolicyNames),
 		},
 	}
 
 	switch conf.Genesis.OrdererType {
 	case ConsensusTypeSolo, ConsensusTypeSbft:
 	case ConsensusTypeKafka:
-		bs.minimalItems = append(bs.minimalItems, sharedconfig.TemplateKafkaBrokers(conf.Kafka.Brokers))
+		bs.minimalItems = append(bs.minimalItems, configtxorderer.TemplateKafkaBrokers(conf.Kafka.Brokers))
 	default:
 		panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Genesis.OrdererType))
 	}

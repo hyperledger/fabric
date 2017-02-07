@@ -19,9 +19,9 @@ package deliver
 import (
 	"fmt"
 
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -52,7 +52,7 @@ type Support interface {
 	Reader() ordererledger.Reader
 
 	// SharedConfig returns the shared config manager for this chain
-	SharedConfig() sharedconfig.Manager
+	SharedConfig() configtxapi.OrdererConfig
 }
 
 type deliverServer struct {

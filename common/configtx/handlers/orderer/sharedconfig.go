@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sharedconfig
+package orderer
 
 import (
 	"fmt"
@@ -53,37 +53,7 @@ const (
 	EgressPolicyNamesKey = "EgressPolicyNames"
 )
 
-var logger = logging.MustGetLogger("orderer/common/sharedconfig")
-
-// Manager stores the common shared orderer config
-// It is intended to be the primary accessor of ManagerImpl
-// It is intended to discourage use of the other exported ManagerImpl methods
-// which are used for updating the orderer config by the ConfigManager
-type Manager interface {
-	// ConsensusType returns the configured consensus type
-	ConsensusType() string
-
-	// BatchSize returns the maximum number of messages to include in a block
-	BatchSize() *ab.BatchSize
-
-	// BatchTimeout returns the amount of time to wait before creating a batch
-	BatchTimeout() time.Duration
-
-	// ChainCreationPolicyNames returns the policy names which are allowed for chain creation
-	// This field is only set for the system ordering chain
-	ChainCreationPolicyNames() []string
-
-	// KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
-	// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
-	// used for ordering
-	KafkaBrokers() []string
-
-	// IngressPolicyNames returns the name of the policy to validate incoming broadcast messages against
-	IngressPolicyNames() []string
-
-	// EgressPolicyNames returns the name of the policy to validate incoming broadcast messages against
-	EgressPolicyNames() []string
-}
+var logger = logging.MustGetLogger("configtx/handlers/orderer")
 
 type ordererConfig struct {
 	consensusType            string
@@ -95,14 +65,13 @@ type ordererConfig struct {
 	egressPolicyNames        []string
 }
 
-// ManagerImpl is an implementation of Manager and configtx.ConfigHandler
-// In general, it should only be referenced as an Impl for the configtx.ConfigManager
+// ManagerImpl is an implementation of configtxapi.OrdererConfig and configtxapi.Handler
 type ManagerImpl struct {
 	pendingConfig *ordererConfig
 	config        *ordererConfig
 }
 
-// NewManagerImpl creates a new ManagerImpl with the given CryptoHelper
+// NewManagerImpl creates a new ManagerImpl
 func NewManagerImpl() *ManagerImpl {
 	return &ManagerImpl{
 		config: &ordererConfig{},

@@ -17,6 +17,7 @@ limitations under the License.
 package multichain
 
 import (
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
@@ -24,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/configtxfilter"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
 	"github.com/hyperledger/fabric/orderer/common/sizefilter"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
@@ -66,7 +66,7 @@ type Chain interface {
 type ConsenterSupport interface {
 	crypto.LocalSigner
 	BlockCutter() blockcutter.Receiver
-	SharedConfig() sharedconfig.Manager
+	SharedConfig() configtxapi.OrdererConfig
 	CreateNextBlock(messages []*cb.Envelope) *cb.Block
 	WriteBlock(block *cb.Block, committers []filter.Committer, encodedMetadataValue []byte) *cb.Block
 	ChainID() string // ChainID returns the chain ID this specific consenter instance is associated with

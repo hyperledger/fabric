@@ -17,11 +17,41 @@ limitations under the License.
 package api
 
 import (
+	"time"
+
 	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 )
+
+// OrdererConfig stores the common shared orderer config
+type OrdererConfig interface {
+	// ConsensusType returns the configured consensus type
+	ConsensusType() string
+
+	// BatchSize returns the maximum number of messages to include in a block
+	BatchSize() *ab.BatchSize
+
+	// BatchTimeout returns the amount of time to wait before creating a batch
+	BatchTimeout() time.Duration
+
+	// ChainCreationPolicyNames returns the policy names which are allowed for chain creation
+	// This field is only set for the system ordering chain
+	ChainCreationPolicyNames() []string
+
+	// KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
+	// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
+	// used for ordering
+	KafkaBrokers() []string
+
+	// IngressPolicyNames returns the name of the policy to validate incoming broadcast messages against
+	IngressPolicyNames() []string
+
+	// EgressPolicyNames returns the name of the policy to validate incoming broadcast messages against
+	EgressPolicyNames() []string
+}
 
 // Handler provides a hook which allows other pieces of code to participate in config proposals
 type Handler interface {

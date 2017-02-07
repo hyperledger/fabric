@@ -19,9 +19,9 @@ package sharedconfig
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 )
 
 func TestSharedConfigInterface(t *testing.T) {
-	_ = sharedconfig.Manager(&Manager{})
+	_ = configtxapi.OrdererConfig(&SharedConfig{})
 }

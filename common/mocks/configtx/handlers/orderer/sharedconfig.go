@@ -19,8 +19,8 @@ package sharedconfig
 import ab "github.com/hyperledger/fabric/protos/orderer"
 import "time"
 
-// Manager is a mock implementation of sharedconfig.Manager
-type Manager struct {
+// SharedConfig is a mock implementation of sharedconfig.SharedConfig
+type SharedConfig struct {
 	// ConsensusTypeVal is returned as the result of ConsensusType()
 	ConsensusTypeVal string
 	// BatchSizeVal is returned as the result of BatchSize()
@@ -38,36 +38,36 @@ type Manager struct {
 }
 
 // ConsensusType returns the ConsensusTypeVal
-func (scm *Manager) ConsensusType() string {
+func (scm *SharedConfig) ConsensusType() string {
 	return scm.ConsensusTypeVal
 }
 
 // BatchSize returns the BatchSizeVal
-func (scm *Manager) BatchSize() *ab.BatchSize {
+func (scm *SharedConfig) BatchSize() *ab.BatchSize {
 	return scm.BatchSizeVal
 }
 
 // BatchTimeout returns the BatchTimeoutVal
-func (scm *Manager) BatchTimeout() time.Duration {
+func (scm *SharedConfig) BatchTimeout() time.Duration {
 	return scm.BatchTimeoutVal
 }
 
 // ChainCreationPolicyNames returns the ChainCreationPolicyNamesVal
-func (scm *Manager) ChainCreationPolicyNames() []string {
+func (scm *SharedConfig) ChainCreationPolicyNames() []string {
 	return scm.ChainCreationPolicyNamesVal
 }
 
 // KafkaBrokers returns the KafkaBrokersVal
-func (scm *Manager) KafkaBrokers() []string {
+func (scm *SharedConfig) KafkaBrokers() []string {
 	return scm.KafkaBrokersVal
 }
 
 // IngressPolicyNames returns the IngressPolicyNamesVal
-func (scm *Manager) IngressPolicyNames() []string {
+func (scm *SharedConfig) IngressPolicyNames() []string {
 	return scm.IngressPolicyNamesVal
 }
 
 // EgressPolicyNames returns the EgressPolicyNamesVal
-func (scm *Manager) EgressPolicyNames() []string {
+func (scm *SharedConfig) EgressPolicyNames() []string {
 	return scm.EgressPolicyNamesVal
 }

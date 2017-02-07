@@ -17,11 +17,11 @@ limitations under the License.
 package multichain
 
 import (
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
-	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -34,7 +34,7 @@ var logger = logging.MustGetLogger("orderer/mocks/multichain")
 // Whenever a block is written, it writes to the Batches channel to allow for synchronization
 type ConsenterSupport struct {
 	// SharedConfigVal is the value returned by SharedConfig()
-	SharedConfigVal *mocksharedconfig.Manager
+	SharedConfigVal *mockconfigtxorderer.SharedConfig
 
 	// BlockCutterVal is the value returned by BlockCutter()
 	BlockCutterVal *mockblockcutter.Receiver
@@ -58,7 +58,7 @@ func (mcs *ConsenterSupport) BlockCutter() blockcutter.Receiver {
 }
 
 // SharedConfig returns SharedConfigVal
-func (mcs *ConsenterSupport) SharedConfig() sharedconfig.Manager {
+func (mcs *ConsenterSupport) SharedConfig() configtxapi.OrdererConfig {
 	return mcs.SharedConfigVal
 }
 
