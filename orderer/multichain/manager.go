@@ -32,22 +32,6 @@ import (
 
 var logger = logging.MustGetLogger("orderer/multichain")
 
-// XXX This crypto helper is a stand in until we have a real crypto handler
-// it considers all signatures to be valid
-type xxxCryptoHelper struct{}
-
-func (xxx xxxCryptoHelper) VerifySignature(sd *cb.SignedData) error {
-	return nil
-}
-
-func (xxx xxxCryptoHelper) NewSignatureHeader() (*cb.SignatureHeader, error) {
-	return &cb.SignatureHeader{}, nil
-}
-
-func (xxx xxxCryptoHelper) Sign(message []byte) ([]byte, error) {
-	return message, nil
-}
-
 // Manager coordinates the creation and access of chains
 type Manager interface {
 	// GetChain retrieves the chain support for a chain (and whether it exists)

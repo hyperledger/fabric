@@ -65,7 +65,7 @@ func (mc *mockCommitter) Commit() {
 func TestCommitConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &mockCryptoHelper{}}
 	txs := []*cb.Envelope{makeNormalTx("foo", 0), makeNormalTx("bar", 1)}
 	committers := []filter.Committer{&mockCommitter{}, &mockCommitter{}}
 	block := cs.CreateNextBlock(txs)
@@ -90,7 +90,7 @@ func TestCommitConfig(t *testing.T) {
 func TestWriteBlockSignatures(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &mockCryptoHelper{}}
 
 	if utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil), cb.BlockMetadataIndex_SIGNATURES) == nil {
 		t.Fatalf("Block should have block signature")
@@ -100,7 +100,7 @@ func TestWriteBlockSignatures(t *testing.T) {
 func TestWriteBlockOrdererMetadata(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &mockCryptoHelper{}}
 
 	value := []byte("foo")
 	expected := &cb.Metadata{Value: value}
@@ -118,7 +118,7 @@ func TestWriteBlockOrdererMetadata(t *testing.T) {
 func TestWriteLastConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
-	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &mockCryptoHelper{}}
 
 	expected := uint64(0)
 
