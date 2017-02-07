@@ -30,7 +30,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/gossip"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
 )
 

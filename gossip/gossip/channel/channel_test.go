@@ -29,7 +29,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
-	"github.com/hyperledger/fabric/protos/gossip"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -211,8 +211,8 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
-	adapter.On("Send", mock.AnythingOfType("*proto.GossipMessage"), mock.Anything)
-	adapter.On("Gossip", mock.AnythingOfType("*proto.GossipMessage")).Run(func(arg mock.Arguments) {
+	adapter.On("Send", mock.AnythingOfType("*gossip.GossipMessage"), mock.Anything)
+	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage")).Run(func(arg mock.Arguments) {
 		if atomic.LoadInt32(&receivedMsg) == int32(1) {
 			return
 		}
@@ -246,8 +246,8 @@ func TestChannelPull(t *testing.T) {
 	receivedBlocksChan := make(chan *proto.GossipMessage)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
-	adapter.On("Gossip", mock.AnythingOfType("*proto.GossipMessage"))
-	adapter.On("DeMultiplex", mock.AnythingOfType("*proto.GossipMessage")).Run(func(arg mock.Arguments) {
+	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
+	adapter.On("DeMultiplex", mock.AnythingOfType("*gossip.GossipMessage")).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*proto.GossipMessage)
 		if !msg.IsDataMsg() {
 			return
@@ -261,7 +261,7 @@ func TestChannelPull(t *testing.T) {
 
 	var wg sync.WaitGroup
 	pullPhase := simulatePullPhase(gc, t, &wg, func(*proto.GossipMessage) {})
-	adapter.On("Send", mock.AnythingOfType("*proto.GossipMessage"), mock.Anything).Run(pullPhase)
+	adapter.On("Send", mock.AnythingOfType("*gossip.GossipMessage"), mock.Anything).Run(pullPhase)
 
 	wg.Wait()
 	for expectedSeq := 10; expectedSeq < 11; expectedSeq++ {
@@ -282,7 +282,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 	gossipMessagesSentFromChannel := make(chan *proto.GossipMessage, 1)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
-	adapter.On("Gossip", mock.AnythingOfType("*proto.GossipMessage"))
+	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
@@ -306,7 +306,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 	}
 	// First, ensure it does that for pull messages from peers that are in the channel
 	helloMsg := createHelloMsg(pkiIDInOrg1)
-	helloMsg.On("Respond", mock.AnythingOfType("*proto.GossipMessage")).Run(messageRelayer)
+	helloMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
 	gc.HandleMessage(helloMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
@@ -315,7 +315,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 	}
 	// And now for peers that are not in the channel (should not send back a message)
 	helloMsg = createHelloMsg(pkiIDinOrg2)
-	helloMsg.On("Respond", mock.AnythingOfType("*proto.GossipMessage")).Run(messageRelayer)
+	helloMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
 	gc.HandleMessage(helloMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
@@ -329,7 +329,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 		msg:   req,
 		PKIID: pkiIDInOrg1,
 	}
-	validReceivedMsg.On("Respond", mock.AnythingOfType("*proto.GossipMessage")).Run(messageRelayer)
+	validReceivedMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
 	gc.HandleMessage(validReceivedMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
@@ -342,7 +342,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 		msg:   req,
 		PKIID: pkiIDinOrg2,
 	}
-	invalidReceivedMsg.On("Respond", mock.AnythingOfType("*proto.GossipMessage")).Run(messageRelayer)
+	invalidReceivedMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
 	gc.HandleMessage(invalidReceivedMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
@@ -357,7 +357,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 		msg:   req2,
 		PKIID: pkiIDInOrg1,
 	}
-	invalidReceivedMsg2.On("Respond", mock.AnythingOfType("*proto.GossipMessage")).Run(messageRelayer)
+	invalidReceivedMsg2.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
 	gc.HandleMessage(invalidReceivedMsg2)
 	select {
 	case <-gossipMessagesSentFromChannel:
@@ -374,7 +374,7 @@ func TestChannelIsInChannel(t *testing.T) {
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
-	adapter.On("Gossip", mock.AnythingOfType("*proto.GossipMessage"))
+	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 
@@ -393,7 +393,7 @@ func TestChannelIsSubscribed(t *testing.T) {
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
-	adapter.On("Gossip", mock.AnythingOfType("*proto.GossipMessage"))
+	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1, channelA), PKIID: pkiIDInOrg1})
@@ -411,7 +411,7 @@ func TestChannelAddToMessageStore(t *testing.T) {
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
-	adapter.On("DeMultiplex", mock.AnythingOfType("*proto.GossipMessage")).Run(func(arg mock.Arguments) {
+	adapter.On("DeMultiplex", mock.AnythingOfType("*gossip.GossipMessage")).Run(func(arg mock.Arguments) {
 		demuxedMsgs <- arg.Get(0).(*proto.GossipMessage)
 	})
 
@@ -438,7 +438,7 @@ func TestChannelAddToMessageStore(t *testing.T) {
 	gc.AddToMsgStore(createStateInfoMsg(10, pkiIDInOrg1, channelA))
 	helloMsg := createHelloMsg(pkiIDInOrg1)
 	respondedChan := make(chan struct{}, 1)
-	helloMsg.On("Respond", mock.AnythingOfType("*proto.GossipMessage")).Run(func(arg mock.Arguments) {
+	helloMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(func(arg mock.Arguments) {
 		respondedChan <- struct{}{}
 	})
 	gc.HandleMessage(helloMsg)
@@ -588,7 +588,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	adapter.On("Gossip", mock.Anything)
 	sentMessages := make(chan *proto.GossipMessage, 10)
 	adapter.On("Send", mock.Anything, mock.Anything)
-	adapter.On("ValidateStateInfoMessage", mock.AnythingOfType("*proto.GossipMessage")).Return(nil)
+	adapter.On("ValidateStateInfoMessage", mock.AnythingOfType("*gossip.GossipMessage")).Return(nil)
 
 	// Ensure we ignore stateInfo snapshots from peers not in the channel
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(common.ChainID("B"), createStateInfoMsg(4, pkiIDInOrg1, channelA))})
@@ -728,7 +728,7 @@ func TestChannelReconfigureChannel(t *testing.T) {
 	// Just call it again, to make sure stuff don't crash
 	gc.ConfigureChannel(api.JoinChannelMessage(newJoinChanMsg))
 
-	adapter.On("Gossip", mock.AnythingOfType("*proto.GossipMessage"))
+	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 
@@ -760,7 +760,7 @@ func TestChannelReconfigureChannel(t *testing.T) {
 		msg := arg.Get(0).(*proto.GossipMessage)
 		gossipMessagesSentFromChannel <- msg
 	}
-	invalidReceivedMsg.On("Respond", mock.AnythingOfType("*proto.GossipMessage")).Run(messageRelayer)
+	invalidReceivedMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
 	gc.HandleMessage(invalidReceivedMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:

@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option go_package = "github.com/hyperledger/fabric/gossip/proto" ;
+option go_package = "github.com/hyperledger/fabric/protos/gossip" ;
 
-package proto;
+package gossip;
 
 
 // Gossip
