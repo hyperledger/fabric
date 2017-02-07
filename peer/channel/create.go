@@ -22,11 +22,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxapplication "github.com/hyperledger/fabric/common/configtx/handlers/application"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/peer/common"
-	"github.com/hyperledger/fabric/peer/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/spf13/cobra"
 )
@@ -55,7 +55,7 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	//TODO this is a temporary hack until `orderer.template` and 'msp.template' is supplied from the CLI
 	oTemplate := configtxtest.OrdererTemplate()
 	mspTemplate := configtxtest.MSPTemplate()
-	gossTemplate := configtx.NewSimpleTemplate(sharedconfig.TemplateAnchorPeers(anchorPeers))
+	gossTemplate := configtx.NewSimpleTemplate(configtxapplication.TemplateAnchorPeers(anchorPeers))
 	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspTemplate, gossTemplate)
 
 	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()

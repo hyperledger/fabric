@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	configtxapplication "github.com/hyperledger/fabric/common/configtx/handlers/application"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -32,7 +33,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/peer/sharedconfig"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -44,7 +44,7 @@ var peerLogger = logging.MustGetLogger("peer")
 
 type chainSupport struct {
 	configtxapi.Manager
-	sharedconfig.Descriptor
+	configtxapi.ApplicationConfig
 	ledger ledger.PeerLedger
 }
 
@@ -160,14 +160,14 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
-	sharedConfigHandler := sharedconfig.NewDescriptorImpl()
+	sharedConfigHandler := configtxapplication.NewSharedConfigImpl()
 
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
 	gossipCallbackWrapper := func(cm configtxapi.Manager) {
 		gossipEventer.ProcessConfigUpdate(&chainSupport{
-			Manager:    cm,
-			Descriptor: sharedConfigHandler,
+			Manager:           cm,
+			ApplicationConfig: sharedConfigHandler,
 		})
 	}
 
@@ -186,9 +186,9 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	mspmgmt.XXXSetMSPManager(cid, configtxManager.MSPManager())
 
 	cs := &chainSupport{
-		Manager:    configtxManager,
-		Descriptor: sharedConfigHandler,
-		ledger:     ledger,
+		Manager:           configtxManager,
+		ApplicationConfig: sharedConfigHandler,
+		ledger:            ledger,
 	}
 
 	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(cs))

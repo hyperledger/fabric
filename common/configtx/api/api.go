@@ -24,7 +24,14 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
+
+// ApplicationConfig stores the common shared application config
+type ApplicationConfig interface {
+	// AnchorPeers returns the list of gossip anchor peers
+	AnchorPeers() []*pb.AnchorPeer
+}
 
 // OrdererConfig stores the common shared orderer config
 type OrdererConfig interface {
