@@ -17,6 +17,7 @@ limitations under the License.
 package integration
 
 import (
+	"crypto/tls"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +31,21 @@ import (
 	"google.golang.org/grpc"
 )
 
-// This file is used to bootstrap a gossip instance for integration/demo purposes ONLY
+func getIntOrDefault(key string, defVal int) int {
+	if viper.GetInt(key) == 0 {
+		return defVal
+	} else {
+		return viper.GetInt(key)
+	}
+}
+
+func getDurationOrDefault(key string, defVal time.Duration) time.Duration {
+	if viper.GetDuration(key) == 0 {
+		return defVal
+	} else {
+		return viper.GetDuration(key)
+	}
+}
 
 func newConfig(selfEndpoint string, bootPeers ...string) *gossip.Config {
 	port, err := strconv.ParseInt(strings.Split(selfEndpoint, ":")[1], 10, 64)
@@ -38,21 +53,31 @@ func newConfig(selfEndpoint string, bootPeers ...string) *gossip.Config {
 		panic(err)
 	}
 
+	var cert *tls.Certificate
+	if viper.GetBool("peer.tls.enabled") {
+		*cert, err = tls.LoadX509KeyPair(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return &gossip.Config{
 		BindPort:                   int(port),
 		BootstrapPeers:             bootPeers,
 		ID:                         selfEndpoint,
-		MaxBlockCountToStore:       100,
-		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
-		MaxPropagationBurstSize:    10,
-		PropagateIterations:        1,
-		PropagatePeerNum:           3,
-		PullInterval:               time.Duration(4) * time.Second,
-		PullPeerNum:                3,
+		MaxBlockCountToStore:       getIntOrDefault("peer.gossip.maxBlockCountToStore", 100),
+		MaxPropagationBurstLatency: getDurationOrDefault("peer.gossip.maxPropagationBurstLatency", 10*time.Millisecond),
+		MaxPropagationBurstSize:    getIntOrDefault("peer.gossip.maxPropagationBurstSize", 10),
+		PropagateIterations:        getIntOrDefault("peer.gossip.propagateIterations", 1),
+		PropagatePeerNum:           getIntOrDefault("peer.gossip.propagatePeerNum", 3),
+		PullInterval:               getDurationOrDefault("peer.gossip.pullInterval", 4*time.Second),
+		PullPeerNum:                getIntOrDefault("peer.gossip.pullPeerNum", 3),
 		SelfEndpoint:               selfEndpoint,
-		PublishCertPeriod:          10 * time.Second,
-		RequestStateInfoInterval:   4 * time.Second,
-		PublishStateInfoInterval:   4 * time.Second,
+		PublishCertPeriod:          getDurationOrDefault("peer.gossip.publishCertPeriod", 10*time.Second),
+		RequestStateInfoInterval:   getDurationOrDefault("peer.gossip.requestStateInfoInterval", 4*time.Second),
+		PublishStateInfoInterval:   getDurationOrDefault("peer.gossip.publishStateInfoInterval", 4*time.Second),
+		SkipBlockVerification:      viper.GetBool("peer.gossip.skipBlockVerification"),
+		TLSServerCert:              cert,
 	}
 }
 
@@ -66,7 +91,7 @@ func NewGossipComponent(identity []byte, endpoint string, s *grpc.Server, dialOp
 	cryptSvc := mcs.NewMessageCryptoService()
 	secAdv := sa.NewSecurityAdvisor()
 
-	if viper.GetBool("peer.gossip.ignoresecurity") {
+	if viper.GetBool("peer.gossip.ignoreSecurity") {
 		sec := &secImpl{[]byte(endpoint)}
 		cryptSvc = sec
 		secAdv = sec

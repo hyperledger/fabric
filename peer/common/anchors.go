@@ -128,7 +128,7 @@ func anchorPeerFromFile(filename string) (*peer.AnchorPeer, error) {
 		Cert: identity,
 	}
 
-	if viper.GetBool("peer.gossip.ignoresecurity") {
+	if viper.GetBool("peer.gossip.ignoreSecurity") {
 		ap.Cert = []byte(fmt.Sprintf("%s:%d", ap.Host, ap.Port))
 	}
 

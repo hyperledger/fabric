@@ -19,15 +19,18 @@ package integration
 import (
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
 // This is just a test that shows how to instantiate a gossip component
 func TestNewGossipCryptoService(t *testing.T) {
+	setupTestEnv()
 	s1 := grpc.NewServer()
 	s2 := grpc.NewServer()
 	s3 := grpc.NewServer()
@@ -55,4 +58,16 @@ func TestNewGossipCryptoService(t *testing.T) {
 	fmt.Println(g2.Peers())
 	fmt.Println(g3.Peers())
 	time.Sleep(time.Second)
+}
+
+func setupTestEnv() {
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	viper.AddConfigPath("./../../peer")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
+	if err != nil { // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
 }
