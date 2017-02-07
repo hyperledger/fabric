@@ -18,13 +18,11 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
-	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 )
@@ -43,13 +41,7 @@ func writeTemplate(outputFile string) {
 	logger.Debugf("Producing template items")
 	templateItems := generator.TemplateItems()
 
-	logger.Debugf("Encoding configuration template")
-	outputData := utils.MarshalOrPanic(&cb.ConfigurationTemplate{
-		Items: templateItems,
-	})
-
-	logger.Debugf("Writing configuration to disk")
-	ioutil.WriteFile(outputFile, outputData, 0644)
+	configtxtest.WriteTemplate(outputFile, templateItems...)
 }
 
 func main() {

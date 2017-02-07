@@ -18,8 +18,10 @@ package main
 
 import (
 	"testing"
+
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 )
 
 func TestUpdateTemplate(t *testing.T) {
-	writeTemplate("../../../common/configtx/test/orderer.template")
+	writeTemplate("../../../common/configtx/test/" + configtxtest.OrdererTemplateName)
 }

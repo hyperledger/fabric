@@ -22,7 +22,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/msp/utils"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -33,7 +32,7 @@ func GetTestBlockFromMspConfig(conf *msp.MSPConfig) (*common.Block, error) {
 		return nil, fmt.Errorf("proto.Marshal failed for a configuration item payload, err %s", err)
 	}
 
-	ci := &common.ConfigurationItem{Type: common.ConfigurationItem_MSP, Key: msputils.MSPKey, Value: confBytes}
+	ci := &common.ConfigurationItem{Type: common.ConfigurationItem_MSP, Key: "DEFAULT", Value: confBytes}
 	ciBytes, err := proto.Marshal(ci)
 	if err != nil {
 		return nil, fmt.Errorf("proto.Marshal failed for a configuration item, err %s", err)
