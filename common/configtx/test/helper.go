@@ -46,13 +46,17 @@ var ordererTemplate configtx.Template
 var mspTemplate configtx.Template
 var peerTemplate configtx.Template
 
+var compositeTemplate configtx.Template
+
 var genesisFactory genesis.Factory
 
 func init() {
 	ordererTemplate = readTemplate(OrdererTemplateName)
 	mspTemplate = readTemplate(MSPTemplateName)
 	peerTemplate = readTemplate(PeerTemplateName)
-	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(mspTemplate, ordererTemplate, peerTemplate))
+
+	compositeTemplate = configtx.NewCompositeTemplate(mspTemplate, ordererTemplate, peerTemplate)
+	genesisFactory = genesis.NewFactoryImpl(compositeTemplate)
 }
 
 func resolveName(name string) (string, []byte) {
@@ -114,4 +118,9 @@ func MSPTemplate() configtx.Template {
 // MSPerTemplate returns the test peer template
 func PeerTemplate() configtx.Template {
 	return peerTemplate
+}
+
+// CompositeTemplate returns the composite template of peer, orderer, and MSP
+func CompositeTemplate() configtx.Template {
+	return compositeTemplate
 }

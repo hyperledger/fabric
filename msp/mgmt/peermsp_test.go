@@ -17,16 +17,26 @@ limitations under the License.
 package mgmt
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/msp/testutils"
-	"github.com/hyperledger/fabric/protos/utils"
 )
 
+// getTestMSPConfigPath returns the path to sampleconfig for unit tests
+func getTestMSPConfigPath() string {
+	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
+	if _, err := ioutil.ReadDir(cfgPath); err != nil {
+		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
+	}
+	return cfgPath
+}
+
 func TestLocalMSP(t *testing.T) {
-	testMSPConfigPath := utils.GetTESTMSPConfigPath()
+	testMSPConfigPath := getTestMSPConfigPath()
 	err := LoadLocalMsp(testMSPConfigPath)
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
@@ -40,7 +50,7 @@ func TestLocalMSP(t *testing.T) {
 
 // TODO: as soon as proper per-chain MSP support is developed, this test will no longer be required
 func TestFakeSetup(t *testing.T) {
-	testMSPConfigPath := utils.GetTESTMSPConfigPath()
+	testMSPConfigPath := getTestMSPConfigPath()
 	err := LoadFakeSetupWithLocalMspAndTestChainMsp(testMSPConfigPath)
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
@@ -62,7 +72,7 @@ func TestFakeSetup(t *testing.T) {
 }
 
 func TestGetMSPManagerFromBlock(t *testing.T) {
-	testMSPConfigPath := utils.GetTESTMSPConfigPath()
+	testMSPConfigPath := getTestMSPConfigPath()
 	conf, err := msp.GetLocalMspConfig(testMSPConfigPath)
 	if err != nil {
 		t.Fatalf("GetLocalMspConfig failed, err %s", err)
