@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 )
@@ -149,6 +150,17 @@ func validateChainID(chainID string) error {
 	}
 
 	return nil
+}
+
+func NewManagerImplNext(configtx *cb.ConfigEnvelope, initializer Initializer, callOnUpdate []func(Manager)) (Manager, error) {
+	configNext, err := UnmarshalConfigNext(configtx.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	config := ConfigNextToConfig(configNext)
+
+	return NewManagerImpl(&cb.ConfigEnvelope{Config: utils.MarshalOrPanic(config), Signatures: configtx.Signatures}, initializer, callOnUpdate)
 }
 
 // NewManagerImpl creates a new Manager unless an error is encountered, each element of the callOnUpdate slice

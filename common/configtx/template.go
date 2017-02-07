@@ -32,6 +32,10 @@ const (
 	CreationPolicyKey = "CreationPolicy"
 	msgVersion        = int32(0)
 	epoch             = 0
+
+	ApplicationGroup = "Application"
+	OrdererGroup     = "Orderer"
+	MSPKey           = "MSP"
 )
 
 // Template can be used to faciliate creation of config transactions
@@ -45,18 +49,59 @@ type simpleTemplate struct {
 }
 
 // NewSimpleTemplate creates a Template using the supplied items
+// XXX This signature will change soon, leaving as is for backwards compatibility
 func NewSimpleTemplate(items ...*cb.ConfigItem) Template {
 	return &simpleTemplate{items: items}
 }
 
 // Items returns a set of ConfigEnvelopes for the given chainID, and errors only on marshaling errors
 func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
-	marshaledConfig, err := proto.Marshal(&cb.Config{
+	channel := cb.NewConfigGroup()
+	channel.Groups[ApplicationGroup] = cb.NewConfigGroup()
+	channel.Groups[OrdererGroup] = cb.NewConfigGroup()
+
+	for _, item := range st.items {
+		var values map[string]*cb.ConfigValue
+		switch item.Type {
+		case cb.ConfigItem_Peer:
+			values = channel.Groups[ApplicationGroup].Values
+		case cb.ConfigItem_Orderer:
+			values = channel.Groups[OrdererGroup].Values
+		case cb.ConfigItem_Chain:
+			values = channel.Values
+		case cb.ConfigItem_Policy:
+			logger.Debugf("Templating about policy %s", item.Key)
+			policy := &cb.Policy{}
+			err := proto.Unmarshal(item.Value, policy)
+			if err != nil {
+				return nil, err
+			}
+			channel.Policies[item.Key] = &cb.ConfigPolicy{
+				Policy: policy,
+			}
+			continue
+		case cb.ConfigItem_MSP:
+			group := cb.NewConfigGroup()
+			channel.Groups[ApplicationGroup].Groups[item.Key] = group
+			channel.Groups[OrdererGroup].Groups[item.Key] = group
+			group.Values[MSPKey] = &cb.ConfigValue{
+				Value: item.Value,
+			}
+			continue
+		}
+
+		// For Peer, Orderer, Chain, types
+		values[item.Key] = &cb.ConfigValue{
+			Value: item.Value,
+		}
+	}
+
+	marshaledConfig, err := proto.Marshal(&cb.ConfigNext{
 		Header: &cb.ChainHeader{
 			ChainID: chainID,
 			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
 		},
-		Items: st.items,
+		Channel: channel,
 	})
 	if err != nil {
 		return nil, err
@@ -74,22 +119,70 @@ func NewCompositeTemplate(templates ...Template) Template {
 	return &compositeTemplate{templates: templates}
 }
 
+func copyGroup(source *cb.ConfigGroup, target *cb.ConfigGroup) error {
+	for key, value := range source.Values {
+		_, ok := target.Values[key]
+		if ok {
+			return fmt.Errorf("Duplicate key: %s", key)
+		}
+		target.Values[key] = value
+	}
+
+	for key, policy := range source.Policies {
+		_, ok := target.Policies[key]
+		if ok {
+			return fmt.Errorf("Duplicate policy: %s", key)
+		}
+		target.Policies[key] = policy
+	}
+
+	for key, group := range source.Groups {
+		_, ok := target.Groups[key]
+		if !ok {
+			target.Groups[key] = cb.NewConfigGroup()
+		}
+
+		err := copyGroup(group, target.Groups[key])
+		if err != nil {
+			return fmt.Errorf("Error copying group %s: %s", key, err)
+		}
+	}
+	return nil
+}
+
 // Items returns a set of ConfigEnvelopes for the given chainID, and errors only on marshaling errors
 func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
-	items := make([][]*cb.ConfigItem, len(ct.templates))
+	channel := cb.NewConfigGroup()
+	channel.Groups[ApplicationGroup] = cb.NewConfigGroup()
+	channel.Groups[OrdererGroup] = cb.NewConfigGroup()
+
 	for i := range ct.templates {
 		configEnv, err := ct.templates[i].Envelope(chainID)
 		if err != nil {
 			return nil, err
 		}
-		config, err := UnmarshalConfig(configEnv.Config)
+		config, err := UnmarshalConfigNext(configEnv.Config)
 		if err != nil {
 			return nil, err
 		}
-		items[i] = config.Items
+		err = copyGroup(config.Channel, channel)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return NewSimpleTemplate(join(items...)...).Envelope(chainID)
+	marshaledConfig, err := proto.Marshal(&cb.ConfigNext{
+		Header: &cb.ChainHeader{
+			ChainID: chainID,
+			Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
+		},
+		Channel: channel,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &cb.ConfigEnvelope{Config: marshaledConfig}, nil
 }
 
 // NewChainCreationTemplate takes a CreationPolicy and a Template to produce a Template which outputs an appropriately

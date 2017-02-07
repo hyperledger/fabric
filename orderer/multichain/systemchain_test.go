@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -116,14 +115,12 @@ func TestGoodProposal(t *testing.T) {
 	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
 	mcc.ms.mpm.mp = &mockPolicy{}
 
-	chainCreateTx := &cb.ConfigItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-		}),
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
+	ingressTx := makeConfigTxFromConfigEnvelope(newChainID, configEnv)
+
 	status := mcc.sysChain.proposeChain(ingressTx)
 	if status != cb.Status_SUCCESS {
 		t.Fatalf("Should have successfully proposed chain")
@@ -171,15 +168,11 @@ func TestProposalWithBadPolicy(t *testing.T) {
 	mcc := newMockChainCreator()
 	mcc.ms.mpm.mp = &mockPolicy{}
 
-	chainCreateTx := &cb.ConfigItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigItem_Orderer,
-
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-		}),
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
+	ingressTx := makeConfigTxFromConfigEnvelope(newChainID, configEnv)
 
 	status := mcc.sysChain.proposeChain(ingressTx)
 
@@ -194,14 +187,11 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	mcc := newMockChainCreator()
 	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
 
-	chainCreateTx := &cb.ConfigItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-		}),
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	if err != nil {
+		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
+	ingressTx := makeConfigTxFromConfigEnvelope(newChainID, configEnv)
 
 	status := mcc.sysChain.proposeChain(ingressTx)
 

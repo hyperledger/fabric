@@ -29,6 +29,10 @@ It has these top-level messages:
 	ConfigEnvelope
 	ConfigTemplate
 	Config
+	ConfigNext
+	ConfigGroup
+	ConfigValue
+	ConfigPolicy
 	ConfigItem
 	ConfigSignature
 	HashingAlgorithm

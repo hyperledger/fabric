@@ -19,6 +19,7 @@ package multichain
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -80,12 +81,19 @@ func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]b
 }
 
 func makeConfigTx(chainID string, i int) *cb.Envelope {
-	return makeConfigTxWithItems(chainID, &cb.ConfigItem{
+	configTemplate := configtx.NewSimpleTemplate(&cb.ConfigItem{
+		Type:  cb.ConfigItem_Orderer,
+		Key:   fmt.Sprintf("%d", i),
 		Value: []byte(fmt.Sprintf("%d", i)),
 	})
+	configEnv, err := configTemplate.Envelope(chainID)
+	if err != nil {
+		panic(err)
+	}
+	return makeConfigTxFromConfigEnvelope(chainID, configEnv)
 }
 
-func makeConfigTxWithItems(chainID string, items ...*cb.ConfigItem) *cb.Envelope {
+func makeConfigTxFromConfigEnvelope(chainID string, configEnv *cb.ConfigEnvelope) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
@@ -94,15 +102,7 @@ func makeConfigTxWithItems(chainID string, items ...*cb.ConfigItem) *cb.Envelope
 			},
 			SignatureHeader: &cb.SignatureHeader{},
 		},
-		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
-			Config: utils.MarshalOrPanic(&cb.Config{
-				Items: items,
-				Header: &cb.ChainHeader{
-					Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
-					ChainID: chainID,
-				},
-			}),
-		}),
+		Data: utils.MarshalOrPanic(configEnv),
 	}
 	return &cb.Envelope{
 		Payload: utils.MarshalOrPanic(payload),
