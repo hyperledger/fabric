@@ -33,11 +33,7 @@ var logger = logging.MustGetLogger("orderer/tools/baseconfig")
 
 const defaultOutputFile = "orderer.template"
 
-func main() {
-	var outputFile string
-	flag.StringVar(&outputFile, "outputFile", defaultOutputFile, "The file to write the configuration templatee to")
-	flag.Parse()
-
+func writeTemplate(outputFile string) {
 	conf := config.Load()
 	flogging.InitFromSpec(conf.General.LogLevel)
 
@@ -54,5 +50,12 @@ func main() {
 
 	logger.Debugf("Writing configuration to disk")
 	ioutil.WriteFile(outputFile, outputData, 0644)
+}
 
+func main() {
+	var outputFile string
+	flag.StringVar(&outputFile, "outputFile", defaultOutputFile, "The file to write the configuration templatee to")
+	flag.Parse()
+
+	writeTemplate(outputFile)
 }
