@@ -28,6 +28,9 @@ It has these top-level messages:
 	BlockMetadata
 	ConfigEnvelope
 	ConfigTemplate
+	ConfigGroupSchema
+	ConfigValueSchema
+	ConfigPolicySchema
 	Config
 	ConfigNext
 	ConfigGroup
