@@ -51,7 +51,6 @@ func init() {
 
 }
 
-//var testLock = sync.RWMutex{}
 var orgInChannelA = api.OrgIdentityType("ORG1")
 var anchorPeerIdentity = api.PeerIdentityType("identityInOrg1")
 
@@ -164,12 +163,13 @@ func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gos
 		PropagatePeerNum:           3,
 		PullInterval:               time.Duration(2) * time.Second,
 		PullPeerNum:                5,
-		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
+		InternalEndpoint:           fmt.Sprintf("localhost:%d", port),
+		ExternalEndpoint:           fmt.Sprintf("1.2.3.4:%d", port),
 		PublishCertPeriod:          time.Duration(4) * time.Second,
 		PublishStateInfoInterval:   time.Duration(1) * time.Second,
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
-	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(conf.SelfEndpoint))
+	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(conf.InternalEndpoint))
 	return g
 }
 
@@ -186,12 +186,13 @@ func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot
 		PropagatePeerNum:           0,
 		PullInterval:               time.Duration(1000) * time.Millisecond,
 		PullPeerNum:                20,
-		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
+		InternalEndpoint:           fmt.Sprintf("localhost:%d", port),
+		ExternalEndpoint:           fmt.Sprintf("1.2.3.4:%d", port),
 		PublishCertPeriod:          time.Duration(0) * time.Second,
 		PublishStateInfoInterval:   time.Duration(1) * time.Second,
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
-	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(conf.SelfEndpoint))
+	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, &naiveCryptoService{}, api.PeerIdentityType(conf.InternalEndpoint))
 	return g
 }
 
@@ -324,7 +325,7 @@ func TestConnectToAnchorPeers(t *testing.T) {
 		}(i)
 	}
 	waitUntilOrFailBlocking(t, wg.Wait)
-	waitUntilOrFail(t, checkPeersMembership(peers, n-1))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1))
 
 	channelMembership := func() bool {
 		for _, peer := range peers {
@@ -410,6 +411,7 @@ func TestMembership(t *testing.T) {
 	}
 	metadataDisseminationTime := time.Now()
 	waitUntilOrFail(t, metaDataUpdated)
+	fmt.Println("Metadata updated")
 	t.Log("Metadata dissemination took", time.Since(metadataDisseminationTime))
 
 	stop := func() {
@@ -479,7 +481,7 @@ func TestDissemination(t *testing.T) {
 	}
 
 	membershipTime := time.Now()
-	waitUntilOrFail(t, checkPeersMembership(peers, n))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
 	t.Log("Membership establishment took", time.Since(membershipTime))
 
 	for i := 1; i <= msgsCount2Send; i++ {
@@ -514,7 +516,7 @@ func TestDissemination(t *testing.T) {
 	incTime := uint64(time.Now().UnixNano())
 	t3 := time.Now()
 
-	leadershipMsg := createLeadershipMsg(true, common.ChainID("A"), incTime, uint64(seqNum), boot.(*gossipServiceImpl).conf.SelfEndpoint, boot.(*gossipServiceImpl).comm.GetPKIid())
+	leadershipMsg := createLeadershipMsg(true, common.ChainID("A"), incTime, uint64(seqNum), boot.(*gossipServiceImpl).conf.InternalEndpoint, boot.(*gossipServiceImpl).comm.GetPKIid())
 	boot.Gossip(leadershipMsg)
 
 	waitUntilOrFailBlocking(t, wgLeadership.Wait)
@@ -569,7 +571,7 @@ func TestMembershipConvergence(t *testing.T) {
 		peers = append(peers, pI)
 	}
 
-	waitUntilOrFail(t, checkPeersMembership(peers, 4))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, 4))
 	t.Log("Sets of peers connected successfully")
 
 	connectorPeer := newGossipInstance(portPrefix, 15, 100, 0, 1, 2)
@@ -664,7 +666,7 @@ func TestDataLeakage(t *testing.T) {
 	}
 
 	waitUntilOrFailBlocking(t, wg.Wait)
-	waitUntilOrFail(t, checkPeersMembership(peers, n-1))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1))
 
 	channels := []common.ChainID{common.ChainID("A"), common.ChainID("B")}
 
@@ -771,7 +773,7 @@ func TestDisseminateAll2All(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
-	waitUntilOrFail(t, checkPeersMembership(peers, n-1))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1))
 
 	bMutex := sync.WaitGroup{}
 	bMutex.Add(10 * n * (n - 1))
@@ -837,6 +839,10 @@ func createDataMsg(seqnum uint64, data []byte, hash string, channel common.Chain
 }
 
 func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uint64, seqNum uint64, endpoint string, pkiid []byte) *proto.GossipMessage {
+
+	metadata := []byte{}
+	metadata = strconv.AppendBool(metadata, isDeclaration)
+
 	leadershipMsg := &proto.LeadershipMessage{
 		IsDeclaration: isDeclaration,
 		PkiID:         pkiid,
@@ -924,7 +930,7 @@ func ensureGoroutineExit(t *testing.T) {
 
 func metadataOfPeer(members []discovery.NetworkMember, endpoint string) []byte {
 	for _, member := range members {
-		if member.Endpoint == endpoint {
+		if member.InternalEndpoint.Endpoint == endpoint {
 			return member.Metadata
 		}
 	}
@@ -1025,11 +1031,15 @@ func searchInStackTrace(searchTerm string, stack []string) bool {
 	return false
 }
 
-func checkPeersMembership(peers []Gossip, n int) func() bool {
+func checkPeersMembership(t *testing.T, peers []Gossip, n int) func() bool {
 	return func() bool {
 		for _, peer := range peers {
 			if len(peer.Peers()) != n {
 				return false
+			}
+			for _, p := range peer.Peers() {
+				assert.NotNil(t, p.InternalEndpoint)
+				assert.NotEmpty(t, p.Endpoint)
 			}
 		}
 		return true

@@ -158,7 +158,7 @@ func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
 		PropagatePeerNum:           3,
 		PullInterval:               time.Duration(4) * time.Second,
 		PullPeerNum:                5,
-		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
+		InternalEndpoint:           fmt.Sprintf("localhost:%d", port),
 		PublishCertPeriod:          10 * time.Second,
 		RequestStateInfoInterval:   4 * time.Second,
 		PublishStateInfoInterval:   4 * time.Second,
@@ -167,7 +167,7 @@ func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
 
 // Create gossip instance
 func newGossipInstance(config *gossip.Config) gossip.Gossip {
-	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, &naiveCryptoService{}, []byte(config.SelfEndpoint))
+	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, &naiveCryptoService{}, []byte(config.InternalEndpoint))
 }
 
 // Create new instance of KVLedger to be used for testing

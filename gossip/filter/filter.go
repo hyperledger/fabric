@@ -44,7 +44,7 @@ func SelectPeers(k int, peerPool []discovery.NetworkMember, filters ...RoutingFi
 	var filteredPeers []*comm.RemotePeer
 	for _, peer := range peerPool {
 		if CombineRoutingFilters(filters...)(peer) {
-			filteredPeers = append(filteredPeers, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.Endpoint})
+			filteredPeers = append(filteredPeers, &comm.RemotePeer{PKIID: peer.PKIid, Endpoint: peer.PreferredEndpoint()})
 		}
 	}
 

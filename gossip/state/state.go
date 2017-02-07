@@ -339,11 +339,11 @@ func (s *GossipStateProviderImpl) antiEntropy() {
 func (s *GossipStateProviderImpl) requestBlocksInRange(start uint64, end uint64) {
 	var peers []*comm.RemotePeer
 	// Filtering peers which might have relevant blocks
-	for _, value := range s.gossip.PeersOfChannel(common2.ChainID(s.chainID)) {
-		nodeMetadata, err := FromBytes(value.Metadata)
+	for _, netMember := range s.gossip.PeersOfChannel(common2.ChainID(s.chainID)) {
+		nodeMetadata, err := FromBytes(netMember.Metadata)
 		if err == nil {
 			if nodeMetadata.LedgerHeight >= end {
-				peers = append(peers, &comm.RemotePeer{Endpoint: value.Endpoint, PKIID: value.PKIid})
+				peers = append(peers, &comm.RemotePeer{Endpoint: netMember.PreferredEndpoint(), PKIID: netMember.PKIid})
 			}
 		} else {
 			s.logger.Errorf("Unable to de-serialize node meta state, error = %s", err)

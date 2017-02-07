@@ -47,7 +47,7 @@ func getDurationOrDefault(key string, defVal time.Duration) time.Duration {
 	}
 }
 
-func newConfig(selfEndpoint string, bootPeers ...string) *gossip.Config {
+func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string) *gossip.Config {
 	port, err := strconv.ParseInt(strings.Split(selfEndpoint, ":")[1], 10, 64)
 	if err != nil {
 		panic(err)
@@ -72,7 +72,8 @@ func newConfig(selfEndpoint string, bootPeers ...string) *gossip.Config {
 		PropagatePeerNum:           getIntOrDefault("peer.gossip.propagatePeerNum", 3),
 		PullInterval:               getDurationOrDefault("peer.gossip.pullInterval", 4*time.Second),
 		PullPeerNum:                getIntOrDefault("peer.gossip.pullPeerNum", 3),
-		SelfEndpoint:               selfEndpoint,
+		InternalEndpoint:           selfEndpoint,
+		ExternalEndpoint:           externalEndpoint,
 		PublishCertPeriod:          getDurationOrDefault("peer.gossip.publishCertPeriod", 10*time.Second),
 		RequestStateInfoInterval:   getDurationOrDefault("peer.gossip.requestStateInfoInterval", 4*time.Second),
 		PublishStateInfoInterval:   getDurationOrDefault("peer.gossip.publishStateInfoInterval", 4*time.Second),
@@ -87,7 +88,9 @@ func NewGossipComponent(identity []byte, endpoint string, s *grpc.Server, dialOp
 		endpoint = overrideEndpoint
 	}
 
-	conf := newConfig(endpoint, bootPeers...)
+	externalEndpoint := viper.GetString("peer.gossip.externalEndpoint")
+
+	conf := newConfig(endpoint, externalEndpoint, bootPeers...)
 	cryptSvc := mcs.NewMessageCryptoService()
 	secAdv := sa.NewSecurityAdvisor()
 

@@ -54,13 +54,28 @@ type CommService interface {
 
 // NetworkMember is a peer's representation
 type NetworkMember struct {
-	Endpoint string
-	Metadata []byte
-	PKIid    common.PKIidType
+	Endpoint         string
+	Metadata         []byte
+	PKIid            common.PKIidType
+	InternalEndpoint *proto.SignedEndpoint
+}
+
+// PreferredEndpoint computes the endpoint to connect to,
+// while preferring internal endpoint over the standard
+// endpoint
+func (nm NetworkMember) PreferredEndpoint() string {
+	if nm.InternalEndpoint != nil && nm.InternalEndpoint.Endpoint != "" {
+		return nm.InternalEndpoint.Endpoint
+	}
+	return nm.Endpoint
 }
 
 // Discovery is the interface that represents a discovery module
 type Discovery interface {
+
+	// Exists returns whether a peer with given
+	// PKI-ID is known
+	Exists(PKIID common.PKIidType) bool
 
 	// Self returns this instance's membership information
 	Self() NetworkMember
