@@ -18,8 +18,8 @@ package configtx
 
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx/handlers/channel"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -29,7 +29,7 @@ import (
 type resources struct {
 	handlers         map[cb.ConfigItem_ConfigType]api.Handler
 	policyManager    policies.Manager
-	chainConfig      chainconfig.Descriptor
+	channelConfig    api.ChannelConfig
 	mspConfigHandler *mspmgmt.MSPConfigHandler
 }
 
@@ -38,9 +38,9 @@ func (r *resources) PolicyManager() policies.Manager {
 	return r.policyManager
 }
 
-// ChainConfig returns the chainconfig.Descriptor for the chain
-func (r *resources) ChainConfig() chainconfig.Descriptor {
-	return r.chainConfig
+// ChannelConfig returns the api.ChannelConfig for the chain
+func (r *resources) ChannelConfig() api.ChannelConfig {
+	return r.channelConfig
 }
 
 // MSPManager returns the msp.MSPManager for the chain
@@ -70,14 +70,14 @@ func NewInitializer() api.Initializer {
 	}
 
 	policyManager := policies.NewManagerImpl(policyProviderMap)
-	chainConfig := chainconfig.NewDescriptorImpl()
+	channelConfig := channel.NewSharedConfigImpl()
 	handlers := make(map[cb.ConfigItem_ConfigType]api.Handler)
 
 	for ctype := range cb.ConfigItem_ConfigType_name {
 		rtype := cb.ConfigItem_ConfigType(ctype)
 		switch rtype {
 		case cb.ConfigItem_CHAIN:
-			handlers[rtype] = chainConfig
+			handlers[rtype] = channelConfig
 		case cb.ConfigItem_POLICY:
 			handlers[rtype] = policyManager
 		case cb.ConfigItem_MSP:
@@ -90,7 +90,7 @@ func NewInitializer() api.Initializer {
 	return &resources{
 		handlers:         handlers,
 		policyManager:    policyManager,
-		chainConfig:      chainConfig,
+		channelConfig:    channelConfig,
 		mspConfigHandler: mspConfigHandler,
 	}
 }

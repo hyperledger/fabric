@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxchannel "github.com/hyperledger/fabric/common/configtx/handlers/channel"
 	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
@@ -69,9 +69,9 @@ func New(conf *config.TopLevel) Generator {
 	bs := &bootstrapper{
 		minimalItems: []*cb.ConfigItem{
 			// Chain Config Types
-			chainconfig.DefaultHashingAlgorithm(),
-			chainconfig.DefaultBlockDataHashingStructure(),
-			chainconfig.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
+			configtxchannel.DefaultHashingAlgorithm(),
+			configtxchannel.DefaultBlockDataHashingStructure(),
+			configtxchannel.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
 
 			// Orderer Config Types
 			configtxorderer.TemplateConsensusType(conf.Genesis.OrdererType),

@@ -17,7 +17,6 @@ limitations under the License.
 package multichain
 
 import (
-	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
@@ -38,7 +37,7 @@ type limitedSupport interface {
 	ChainID() string
 	PolicyManager() policies.Manager
 	SharedConfig() configtxapi.OrdererConfig
-	ChainConfig() chainconfig.Descriptor
+	ChannelConfig() configtxapi.ChannelConfig
 	Enqueue(env *cb.Envelope) bool
 }
 

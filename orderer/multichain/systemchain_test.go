@@ -20,10 +20,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	mockchainconfig "github.com/hyperledger/fabric/common/mocks/chainconfig"
+	mockconfigtxchannel "github.com/hyperledger/fabric/common/mocks/configtx/handlers/channel"
 	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
@@ -53,7 +52,7 @@ type mockSupport struct {
 	msc         *mockconfigtxorderer.SharedConfig
 	chainID     string
 	queue       []*cb.Envelope
-	chainConfig *mockchainconfig.Descriptor
+	chainConfig *mockconfigtxchannel.SharedConfig
 }
 
 func newMockSupport(chainID string) *mockSupport {
@@ -61,7 +60,7 @@ func newMockSupport(chainID string) *mockSupport {
 		mpm:         &mockPolicyManager{},
 		msc:         &mockconfigtxorderer.SharedConfig{},
 		chainID:     chainID,
-		chainConfig: &mockchainconfig.Descriptor{},
+		chainConfig: &mockconfigtxchannel.SharedConfig{},
 	}
 }
 
@@ -82,7 +81,7 @@ func (ms *mockSupport) SharedConfig() configtxapi.OrdererConfig {
 	return ms.msc
 }
 
-func (ms *mockSupport) ChainConfig() chainconfig.Descriptor {
+func (ms *mockSupport) ChannelConfig() configtxapi.ChannelConfig {
 	return ms.chainConfig
 }
 

@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chainconfig
+package channel
 
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/chainconfig"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 )
 
 func TestChainConfigInterface(t *testing.T) {
-	_ = chainconfig.Descriptor(&Descriptor{})
+	_ = configtxapi.ChannelConfig(&SharedConfig{})
 }
