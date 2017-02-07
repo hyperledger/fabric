@@ -30,11 +30,11 @@ into the window and press 'Add'.
 If you are looking for something to work on, or need some expert assistance in
 debugging a problem or working out a fix to an issue, our
 [community](https://www.hyperledger.org/community) is always eager to help. We
-hang out on [Slack](https://hyperledgerproject.slack.com/), IRC (#hyperledger on
-freenode.net) and the [mailing lists](http://lists.hyperledger.org/). Most of us
-don't bite :grin: and will be glad to help. The only silly question is the one
-you don't ask. Questions are in fact a great way to help improve the project as
-they highlight where our documentation could be clearer.
+hang out on [Chat](https://chat.hyperledger.org/channel/fabric/), IRC
+(#hyperledger on freenode.net) and the [mailing lists](http://lists.hyperledger.org/).
+Most of us don't bite :grin: and will be glad to help. The only silly question
+is the one you don't ask. Questions are in fact a great way to help improve the
+project as they highlight where our documentation could be clearer.
 
 ## Requirements and Use Cases
 
@@ -42,8 +42,7 @@ We have a [Requirements
 WG](https://wiki.hyperledger.org/groups/requirements/requirements-wg) that is
 documenting use cases and from those use cases deriving requirements. If you are
 interested in contributing to this effort, please feel free to join the
-discussion in
-[slack](https://hyperledgerproject.slack.com/messages/requirements/).
+discussion in [chat](https://chat.hyperledger.org/channel/requirements/).
 
 ## Reporting bugs
 
@@ -53,7 +52,7 @@ sufficient information for someone else to reproduce the issue. One of the
 project's maintainers should respond to your issue within 24 hours. If not,
 please bump the issue with a comment and request that it be reviewed. You can
 also post to the `#fabric-maintainers` channel in
-[slack](https://hyperledgerproject.slack.com/messages/requirements/).
+[chat](https://chat.hyperledger.org/channel/fabric-maintainers).
 
 ## Fixing issues and working stories
 
