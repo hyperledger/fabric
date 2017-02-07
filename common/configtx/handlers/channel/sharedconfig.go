@@ -20,12 +20,37 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/hyperledger/fabric/common/configtx/handlers/application"
+	"github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
+
+const (
+	// ApplicationGroupKey is the group name for the application config
+	ApplicationGroupKey = "Application"
+
+	// OrdererGroupKey is the group name for the orderer config
+	OrdererGroupKey = "Orderer"
+)
+
+var Schema = &cb.ConfigGroupSchema{
+	Groups: map[string]*cb.ConfigGroupSchema{
+		ApplicationGroupKey: application.Schema,
+		OrdererGroupKey:     orderer.Schema,
+	},
+	Values: map[string]*cb.ConfigValueSchema{
+		HashingAlgorithmKey:          nil,
+		BlockDataHashingStructureKey: nil,
+		OrdererAddressesKey:          nil,
+	},
+	Policies: map[string]*cb.ConfigPolicySchema{
+	// TODO, set appropriately once hierarchical policies are implemented
+	},
+}
 
 // Chain config keys
 const (
