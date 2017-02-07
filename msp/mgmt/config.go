@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
-	"github.com/hyperledger/fabric/protos/msp/utils"
 )
 
 func LoadLocalMsp(dir string) error {
@@ -81,25 +80,6 @@ func LoadFakeSetupWithLocalMspAndTestChainMsp(dir string) error {
 	}
 
 	return nil
-}
-
-// GetMSPManagerFromBlock returns a new MSP manager from a ConfigurationEnvelope
-// Note that chainID should really be obtained from the block. Passing it for
-// two reasons (1) efficiency (2) getting chainID from block using protos/utils
-// will cause import cycles
-func GetMSPManagerFromBlock(cid string, b *common.Block) (msp.MSPManager, error) {
-	mgrConfig, err := msputils.GetMSPManagerConfigFromBlock(b)
-	if err != nil {
-		return nil, err
-	}
-
-	mgr := GetManagerForChain(cid)
-	err = mgr.Setup(mgrConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return mgr, nil
 }
 
 // MSPConfigHandler

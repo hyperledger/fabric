@@ -35,25 +35,17 @@ var mspLogger = logging.MustGetLogger("msp")
 
 // GetManagerForChain returns the msp manager for the supplied
 // chain; if no such manager exists, one is created
-func GetManagerForChain(ChainID string) msp.MSPManager {
-	var mspMgr msp.MSPManager
-	var created bool = false
-	{
-		m.Lock()
-		defer m.Unlock()
+func GetManagerForChain(chainID string) msp.MSPManager {
+	m.Lock()
+	defer m.Unlock()
 
-		mspMgr = mspMap[ChainID]
-		if mspMgr == nil {
-			created = true
-			mspMgr = msp.NewMSPManager()
-			mspMap[ChainID] = mspMgr
-		}
-	}
-
-	if created {
-		mspLogger.Debugf("Created new msp manager for chain %s", ChainID)
+	mspMgr, ok := mspMap[chainID]
+	if !ok {
+		mspLogger.Debugf("Created new msp manager for chain %s", chainID)
+		mspMgr = msp.NewMSPManager()
+		mspMap[chainID] = mspMgr
 	} else {
-		mspLogger.Debugf("Returning existing manager for chain %s", ChainID)
+		mspLogger.Debugf("Returning existing manager for chain %s", chainID)
 	}
 
 	return mspMgr
@@ -80,6 +72,16 @@ func GetManagerForChainIfExists(ChainID string) msp.MSPManager {
 	defer m.Unlock()
 
 	return mspMap[ChainID]
+}
+
+// XXXSetMSPManager is a stopgap solution to transition from the custom MSP config block
+// parsing to the configtx.Manager interface, while preserving the problematic singleton
+// nature of the MSP manager
+func XXXSetMSPManager(chainID string, manager msp.MSPManager) {
+	m.Lock()
+	defer m.Unlock()
+
+	mspMap[chainID] = manager
 }
 
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)

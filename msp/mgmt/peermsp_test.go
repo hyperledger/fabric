@@ -22,8 +22,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protos/msp/testutils"
 )
 
 // getTestMSPConfigPath returns the path to sampleconfig for unit tests
@@ -62,35 +60,6 @@ func TestFakeSetup(t *testing.T) {
 	}
 
 	msps, err := GetManagerForChain(util.GetTestChainID()).GetMSPs()
-	if err != nil {
-		t.Fatalf("EnlistedMSPs failed, err %s", err)
-	}
-
-	if msps == nil || len(msps) == 0 {
-		t.Fatalf("There are no MSPS in the manager for chain %s", util.GetTestChainID())
-	}
-}
-
-func TestGetMSPManagerFromBlock(t *testing.T) {
-	testMSPConfigPath := getTestMSPConfigPath()
-	conf, err := msp.GetLocalMspConfig(testMSPConfigPath)
-	if err != nil {
-		t.Fatalf("GetLocalMspConfig failed, err %s", err)
-	}
-
-	block, err := msptestutils.GetTestBlockFromMspConfig(conf)
-	if err != nil {
-		t.Fatalf("getTestBlockFromMspConfig failed, err %s", err)
-	}
-
-	mgr, err := GetMSPManagerFromBlock("testchainid", block)
-	if err != nil {
-		t.Fatalf("GetMSPManagerFromBlock failed, err %s", err)
-	} else if mgr == nil {
-		t.Fatalf("Returned nil manager")
-	}
-
-	msps, err := mgr.GetMSPs()
 	if err != nil {
 		t.Fatalf("EnlistedMSPs failed, err %s", err)
 	}
