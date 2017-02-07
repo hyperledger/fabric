@@ -22,12 +22,10 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/genesis"
-	peersharedconfig "github.com/hyperledger/fabric/peer/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/peer"
 	logging "github.com/op/go-logging"
 )
 
@@ -41,10 +39,12 @@ const (
 const (
 	OrdererTemplateName = "orderer.template"
 	MSPTemplateName     = "msp.template"
+	PeerTemplateName    = "peer.template"
 )
 
 var ordererTemplate configtx.Template
 var mspTemplate configtx.Template
+var peerTemplate configtx.Template
 
 var genesisFactory genesis.Factory
 
@@ -71,9 +71,8 @@ func readTemplate(name string) configtx.Template {
 func init() {
 	ordererTemplate = readTemplate(OrdererTemplateName)
 	mspTemplate = readTemplate(MSPTemplateName)
-	anchorPeers := []*peer.AnchorPeer{{Host: "fakehost", Port: 2000, Cert: []byte{}}}
-	gossTemplate := configtx.NewSimpleTemplate(peersharedconfig.TemplateAnchorPeers(anchorPeers))
-	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(mspTemplate, ordererTemplate, gossTemplate))
+	peerTemplate = readTemplate(PeerTemplateName)
+	genesisFactory = genesis.NewFactoryImpl(configtx.NewCompositeTemplate(mspTemplate, ordererTemplate, peerTemplate))
 }
 
 // WriteTemplate takes an output file and set of config items and writes them to that file as a marshaled ConfigurationTemplate
@@ -99,4 +98,9 @@ func GetOrdererTemplate() configtx.Template {
 // GetMSPerTemplate returns the test MSP template
 func GetMSPTemplate() configtx.Template {
 	return mspTemplate
+}
+
+// GetMSPerTemplate returns the test peer template
+func GetPeerTemplate() configtx.Template {
+	return peerTemplate
 }
