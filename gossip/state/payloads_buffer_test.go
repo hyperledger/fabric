@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/protos/gossip"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
 

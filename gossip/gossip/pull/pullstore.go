@@ -25,7 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/hyperledger/fabric/protos/gossip"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
 )
 
