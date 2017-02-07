@@ -68,6 +68,7 @@ func newKVLedger(ledgerID string, blockStore blkstorage.BlockStore,
 //Recover the state database and history database (if exist)
 //by recommitting last valid blocks
 func recoverDB(l *kvLedger) error {
+	logger.Debugf("Entering recoverDB()")
 	//If there is no block in blockstorage, nothing to recover.
 	info, _ := l.blockStore.GetBlockchainInfo()
 	if info.Height == 0 {
@@ -247,33 +248,35 @@ func (l *kvLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
 // NewHistoryQueryExecutor gives handle to a history query executor.
 // A client can obtain more than one 'HistoryQueryExecutor's for parallel execution.
 // Any synchronization should be performed at the implementation level if required
+// Pass the ledger blockstore so that historical values can be looked up from the chain
 func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
-	return l.historyDB.NewHistoryQueryExecutor()
+	return l.historyDB.NewHistoryQueryExecutor(l.blockStore)
 }
 
 // Commit commits the valid block (returned in the method RemoveInvalidTransactionsAndPrepare) and related state changes
 func (l *kvLedger) Commit(block *common.Block) error {
 	var err error
+	blockNo := block.Header.Number
 
-	logger.Debug("Validating block")
+	logger.Debugf("Validating block [%d]", blockNo)
 	err = l.txtmgmt.ValidateAndPrepare(block, true)
 	if err != nil {
 		return err
 	}
 
-	logger.Debug("Committing block to storage")
+	logger.Debugf("Committing block [%d] to storage", blockNo)
 	if err = l.blockStore.AddBlock(block); err != nil {
 		return err
 	}
 
-	logger.Debug("Committing block transactions to state database")
+	logger.Debugf("Committing block [%d] transactions to state database", blockNo)
 	if err = l.txtmgmt.Commit(); err != nil {
 		panic(fmt.Errorf(`Error during commit to txmgr:%s`, err))
 	}
 
 	// History database could be written in parallel with state and/or async as a future optimization
 	if ledgerconfig.IsHistoryDBEnabled() {
-		logger.Debugf("Committing block transactions to history database")
+		logger.Debugf("Committing block [%d] transactions to history database", blockNo)
 		if err := l.historyDB.Commit(block); err != nil {
 			panic(fmt.Errorf(`Error during commit to history db:%s`, err))
 		}

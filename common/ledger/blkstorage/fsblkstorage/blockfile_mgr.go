@@ -99,6 +99,7 @@ At start up a new manager:
   *)  Updates blockchain info used by the APIs
 */
 func newBlockfileMgr(id string, conf *Conf, indexConfig *blkstorage.IndexConfig, indexStore *leveldbhelper.DBHandle) *blockfileMgr {
+	logger.Debugf("newBlockfileMgr() initializing file-based block storage for ledger: %s ", id)
 	//Determine the root directory for the blockfile storage, if it does not exist create it
 	rootDir := conf.getLedgerBlockDir(id)
 	_, err := util.CreateDirIfMissing(rootDir)
@@ -343,6 +344,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 
 	//Should be at the last block, but go ahead and loop looking for next blockBytes
 	//If there is another block, add it to the index
+	//TODO Currently this re-indexes the lastBlockIndexed every time. May be better to skip it.
 	for {
 		if blockBytes, blockPlacementInfo, err = stream.nextBlockBytesAndPlacementInfo(); err != nil {
 			return err
@@ -354,9 +356,14 @@ func (mgr *blockfileMgr) syncIndex() error {
 		if err != nil {
 			return err
 		}
+
+		//The blockStartOffset will get applied to the txOffsets prior to indexing within indexBlock(),
+		//therefore just shift by the difference between blockBytesOffset and blockStartOffset
+		numBytesToShift := int(blockPlacementInfo.blockBytesOffset - blockPlacementInfo.blockStartOffset)
 		for _, offset := range info.txOffsets {
-			offset.loc.offset += int(blockPlacementInfo.blockBytesOffset)
+			offset.loc.offset += numBytesToShift
 		}
+
 		//Update the blockIndexInfo with what was actually stored in file system
 		blockIdxInfo := &blockIdxInfo{}
 		blockIdxInfo.blockHash = info.blockHeader.Hash()
@@ -364,6 +371,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
 			locPointer: locPointer{offset: int(blockPlacementInfo.blockStartOffset)}}
 		blockIdxInfo.txOffsets = info.txOffsets
+		logger.Debugf("syncIndex() indexing block [%d]", blockIdxInfo.blockNum)
 		if err = mgr.index.indexBlock(blockIdxInfo); err != nil {
 			return err
 		}
@@ -470,6 +478,7 @@ func (mgr *blockfileMgr) fetchBlock(lp *fileLocPointer) (*common.Block, error) {
 }
 
 func (mgr *blockfileMgr) fetchTransactionEnvelope(lp *fileLocPointer) (*common.Envelope, error) {
+	logger.Debugf("Entering fetchTransactionEnvelope() %v\n", lp)
 	var err error
 	var txEnvelopeBytes []byte
 	if txEnvelopeBytes, err = mgr.fetchRawBytes(lp); err != nil {

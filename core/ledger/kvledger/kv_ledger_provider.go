@@ -107,6 +107,8 @@ func (provider *Provider) Create(ledgerID string) (ledger.PeerLedger, error) {
 // Open implements the corresponding method from interface ledger.PeerLedgerProvider
 func (provider *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 
+	logger.Debugf("Open() opening kvledger: %s", ledgerID)
+
 	// Check the ID store to ensure that the chainId/ledgerId exists
 	exists, err := provider.idStore.ledgerIDExists(ledgerID)
 	if err != nil {
