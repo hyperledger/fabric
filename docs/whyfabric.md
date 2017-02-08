@@ -2,10 +2,10 @@
 
 The Hyperledger Fabric project is delivering a blockchain platform
 designed to allow the exchange of an asset or the state of an asset to be
-consented upon, maintained, and viewed by all parties in a permissioned group.  
-A key characteristic of Hyperledger Fabric is that the asset is defined
+consented upon, maintained, and viewed by all parties in a permissioned group. A
+key characteristic of Hyperledger Fabric is that the asset is defined
 digitally, with all participants simply agreeing on its
-representation/characterization.  As such, Hypewrledger Fabric can support a
+representation/characterization.  As such, Hyperledger Fabric can support a
 broad range of asset types; ranging from the tangible (real estate and hardware)
 to the intangible (contracts and intellectual property).
 
