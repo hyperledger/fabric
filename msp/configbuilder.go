@@ -1,3 +1,19 @@
+/*
+Copyright IBM Corp. 2017 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package msp
 
 import (
@@ -64,10 +80,11 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 }
 
 const (
-	cacerts    = "cacerts"
-	admincerts = "admincerts"
-	signcerts  = "signcerts"
-	keystore   = "keystore"
+	cacerts           = "cacerts"
+	admincerts        = "admincerts"
+	signcerts         = "signcerts"
+	keystore          = "keystore"
+	intermediatecerts = "intermediatecerts"
 )
 
 func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
@@ -75,6 +92,7 @@ func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
 	signcertDir := filepath.Join(dir, signcerts)
 	admincertDir := filepath.Join(dir, admincerts)
 	keystoreDir := filepath.Join(dir, keystore)
+	intermediatecertsDir := filepath.Join(dir, intermediatecerts)
 
 	cacerts, err := getPemMaterialFromDir(cacertDir)
 	if err != nil || len(cacerts) == 0 {
@@ -96,6 +114,9 @@ func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
 		return nil, fmt.Errorf("Could not load a valid signing key from directory %s, err %s", keystoreDir, err)
 	}
 
+	intermediatecert, _ := getPemMaterialFromDir(intermediatecertsDir)
+	// intermediate certs are not mandatory
+
 	// FIXME: for now we're making the following assumptions
 	// 1) there is exactly one signing cert
 	// 2) there is exactly one signing key
@@ -105,7 +126,12 @@ func GetLocalMspConfig(dir string) (*msp.MSPConfig, error) {
 
 	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: keyinfo}
 
-	fmspconf := &msp.FabricMSPConfig{Admins: admincert, RootCerts: cacerts, SigningIdentity: sigid, Name: "DEFAULT"}
+	fmspconf := &msp.FabricMSPConfig{
+		Admins:            admincert,
+		RootCerts:         cacerts,
+		IntermediateCerts: intermediatecert,
+		SigningIdentity:   sigid,
+		Name:              "DEFAULT"}
 
 	fmpsjs, _ := proto.Marshal(fmspconf)
 

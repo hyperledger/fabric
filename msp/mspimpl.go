@@ -19,11 +19,12 @@ package msp
 import (
 	"crypto/x509"
 	"fmt"
-	"time"
 
 	"encoding/pem"
 
 	"bytes"
+
+	"errors"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -31,14 +32,16 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/protos/common"
 	m "github.com/hyperledger/fabric/protos/msp"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 // This is an instantiation of an MSP that
 // uses BCCSP for its cryptographic primitives.
 type bccspmsp struct {
-	// list of certs we trust
-	trustedCerts []Identity
+	// list of CA certs we trust
+	rootCerts []Identity
+
+	// list of intermediate certs we trust
+	intermediateCerts []Identity
 
 	// list of signing identities
 	signer SigningIdentity
@@ -51,6 +54,9 @@ type bccspmsp struct {
 
 	// the provider identifier for this MSP
 	name string
+
+	// verification options for MSP members
+	opts *x509.VerifyOptions
 }
 
 // NewBccspMsp returns an MSP instance backed up by a BCCSP
@@ -153,26 +159,46 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	msp.name = conf.Name
 	mspLogger.Debugf("Setting up MSP instance %s", msp.name)
 
-	// make and fill the set of admin certs
-	msp.admins = make([]Identity, len(conf.Admins))
-	for i, admCert := range conf.Admins {
-		id, err := msp.getIdentityFromConf(admCert)
-		if err != nil {
-			return err
-		}
+	// make and fill the set of admin certs (if present)
+	if conf.Admins != nil {
+		msp.admins = make([]Identity, len(conf.Admins))
+		for i, admCert := range conf.Admins {
+			id, err := msp.getIdentityFromConf(admCert)
+			if err != nil {
+				return err
+			}
 
-		msp.admins[i] = id
+			msp.admins[i] = id
+		}
 	}
 
-	// make and fill the set of CA certs
-	msp.trustedCerts = make([]Identity, len(conf.RootCerts))
+	// make and fill the set of CA certs - we expect them to be there
+	if len(conf.RootCerts) == 0 {
+		return errors.New("Expected at least one CA certificate")
+	}
+	msp.rootCerts = make([]Identity, len(conf.RootCerts))
 	for i, trustedCert := range conf.RootCerts {
 		id, err := msp.getIdentityFromConf(trustedCert)
 		if err != nil {
 			return err
 		}
 
-		msp.trustedCerts[i] = id
+		msp.rootCerts[i] = id
+	}
+
+	// make and fill the set of intermediate certs (if present)
+	if conf.IntermediateCerts != nil {
+		msp.intermediateCerts = make([]Identity, len(conf.IntermediateCerts))
+		for i, trustedCert := range conf.IntermediateCerts {
+			id, err := msp.getIdentityFromConf(trustedCert)
+			if err != nil {
+				return err
+			}
+
+			msp.intermediateCerts[i] = id
+		}
+	} else {
+		msp.intermediateCerts = make([]Identity, 0)
 	}
 
 	// setup the signer (if present)
@@ -183,6 +209,18 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 		}
 
 		msp.signer = sid
+	}
+
+	// pre-create the verify options with roots and intermediates
+	msp.opts = &x509.VerifyOptions{
+		Roots:         x509.NewCertPool(),
+		Intermediates: x509.NewCertPool(),
+	}
+	for _, v := range msp.rootCerts {
+		msp.opts.Roots.AddCert(v.(*identity).cert)
+	}
+	for _, v := range msp.intermediateCerts {
+		msp.opts.Intermediates.AddCert(v.(*identity).cert)
 	}
 
 	return nil
@@ -230,16 +268,29 @@ func (msp *bccspmsp) Validate(id Identity) error {
 	// this is how I can validate it given the
 	// root of trust this MSP has
 	case *identity:
-		opts := x509.VerifyOptions{
-			Roots:       x509.NewCertPool(),
-			CurrentTime: time.Now(),
+		// we expect to have a valid VerifyOptions instance
+		if msp.opts == nil {
+			return errors.New("Invalid msp instance")
 		}
 
-		for _, v := range msp.trustedCerts {
-			opts.Roots.AddCert(v.(*identity).cert)
+		// CAs cannot be directly used as identities..
+		if id.(*identity).cert.IsCA {
+			return errors.New("A CA certificate cannot be used directly by this MSP")
 		}
 
-		_, err := id.(*identity).cert.Verify(opts)
+		// at this point we might want to perform some
+		// more elaborate validation. We do not do this
+		// yet because we do not want to impose any
+		// constraints without knowing the exact requirements,
+		// but we at least list the kind of extra validation that we might perform:
+		// 1) we might only allow a single verification chain (e.g. we expect the
+		//    cert to be signed exactly only by the CA or only by the intermediate)
+		// 2) we might want to let golang find any path, and then have a blacklist
+		//    of paths (e.g. it can be signed by CA -> iCA1 -> iCA2 and it can be
+		//    signed by CA but not by CA -> iCA1)
+
+		// ask golang to validate the cert for us based on the options that we've built at setup time
+		_, err := id.(*identity).cert.Verify(*(msp.opts))
 		if err != nil {
 			return fmt.Errorf("The supplied identity is not valid, Verify() returned %s", err)
 		} else {
