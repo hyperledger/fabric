@@ -40,7 +40,7 @@ func makeInvalidConfigItem(key string) *cb.ConfigItem {
 }
 
 func TestInterface(t *testing.T) {
-	_ = configtxapi.ApplicationConfig(NewSharedConfigImpl())
+	_ = configtxapi.ApplicationConfig(NewSharedConfigImpl(nil))
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -50,7 +50,7 @@ func TestDoubleBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil)
 	m.BeginConfig()
 	m.BeginConfig()
 }
@@ -62,12 +62,12 @@ func TestCommitWithoutBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil)
 	m.CommitConfig()
 }
 
 func TestRollback(t *testing.T) {
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil)
 	m.pendingConfig = &sharedConfig{}
 	m.RollbackConfig()
 	if m.pendingConfig != nil {
@@ -82,7 +82,7 @@ func TestAnchorPeers(t *testing.T) {
 	}
 	invalidMessage := makeInvalidConfigItem(AnchorPeersKey)
 	validMessage := TemplateAnchorPeers(endVal)
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil)
 	m.BeginConfig()
 
 	err := m.ProposeConfig(invalidMessage)

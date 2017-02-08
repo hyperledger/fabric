@@ -23,10 +23,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-type Initializer struct {
-	// HandlersVal is returned as the result of Handlers()
-	HandlersVal map[cb.ConfigItem_ConfigType]configtxapi.Handler
-
+type Resources struct {
 	// PolicyManagerVal is returned as the result of PolicyManager()
 	PolicyManagerVal policies.Manager
 
@@ -43,35 +40,56 @@ type Initializer struct {
 	MSPManagerVal msp.MSPManager
 }
 
-// Returns the HandlersVal
-func (i *Initializer) Handlers() map[cb.ConfigItem_ConfigType]configtxapi.Handler {
-	return i.HandlersVal
-}
-
 // Returns the PolicyManagerVal
-func (i *Initializer) PolicyManager() policies.Manager {
-	return i.PolicyManagerVal
+func (r *Resources) PolicyManager() policies.Manager {
+	return r.PolicyManagerVal
 }
 
 // Returns the ChannelConfigVal
-func (i *Initializer) ChannelConfig() configtxapi.ChannelConfig {
-	return i.ChannelConfigVal
+func (r *Resources) ChannelConfig() configtxapi.ChannelConfig {
+	return r.ChannelConfigVal
 }
 
 // Returns the OrdererConfigVal
-func (i *Initializer) OrdererConfig() configtxapi.OrdererConfig {
-	return i.OrdererConfigVal
+func (r *Resources) OrdererConfig() configtxapi.OrdererConfig {
+	return r.OrdererConfigVal
 }
 
 // Returns the ApplicationConfigVal
-func (i *Initializer) ApplicationConfig() configtxapi.ApplicationConfig {
-	return i.ApplicationConfigVal
+func (r *Resources) ApplicationConfig() configtxapi.ApplicationConfig {
+	return r.ApplicationConfigVal
 }
 
 // Returns the MSPManagerVal
-func (i *Initializer) MSPManager() msp.MSPManager {
-	return i.MSPManagerVal
+func (r *Resources) MSPManager() msp.MSPManager {
+	return r.MSPManagerVal
 }
+
+// Initializer mocks the configtxapi.Initializer interface
+type Initializer struct {
+	Resources
+
+	// HandlersVal is returned as the result of Handlers()
+	HandlerVal configtxapi.Handler
+}
+
+// Returns the HandlersVal
+func (i *Initializer) Handler(path []string) (configtxapi.Handler, error) {
+	return i.HandlerVal, nil
+}
+
+func (i *Initializer) PolicyProposer() configtxapi.Handler {
+	panic("Unimplemented")
+}
+
+// BeginConfig calls through to the HandlerVal
+func (i *Initializer) BeginConfig() {}
+
+// CommitConfig calls through to the HandlerVal
+func (i *Initializer) CommitConfig() {}
+
+// RollbackConfig calls through to the HandlerVal
+func (i *Initializer) RollbackConfig() {}
 
 // Manager is a mock implementation of configtxapi.Manager
 type Manager struct {

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/configtx/handlers/application"
 	"github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/util"
@@ -83,12 +84,17 @@ type chainConfig struct {
 type SharedConfigImpl struct {
 	pendingConfig *chainConfig
 	config        *chainConfig
+
+	ordererConfig     *orderer.ManagerImpl
+	applicationConfig *application.SharedConfigImpl
 }
 
 // NewSharedConfigImpl creates a new SharedConfigImpl with the given CryptoHelper
-func NewSharedConfigImpl() *SharedConfigImpl {
+func NewSharedConfigImpl(ordererConfig *orderer.ManagerImpl, applicationConfig *application.SharedConfigImpl) *SharedConfigImpl {
 	return &SharedConfigImpl{
-		config: &chainConfig{},
+		config:            &chainConfig{},
+		ordererConfig:     ordererConfig,
+		applicationConfig: applicationConfig,
 	}
 }
 
@@ -131,10 +137,6 @@ func (pm *SharedConfigImpl) CommitConfig() {
 
 // ProposeConfig is used to add new config to the config proposal
 func (pm *SharedConfigImpl) ProposeConfig(configItem *cb.ConfigItem) error {
-	if configItem.Type != cb.ConfigItem_CHAIN {
-		return fmt.Errorf("Expected type of ConfigItem_Chain, got %v", configItem.Type)
-	}
-
 	switch configItem.Key {
 	case HashingAlgorithmKey:
 		hashingAlgorithm := &cb.HashingAlgorithm{}
@@ -168,4 +170,26 @@ func (pm *SharedConfigImpl) ProposeConfig(configItem *cb.ConfigItem) error {
 		logger.Warningf("Uknown Chain config item with key %s", configItem.Key)
 	}
 	return nil
+}
+
+// Handler returns the associated api.Handler for the given path
+func (pm *SharedConfigImpl) Handler(path []string) (api.Handler, error) {
+	if len(path) == 0 {
+		return pm, nil
+	}
+
+	var initializer api.SubInitializer
+
+	switch path[0] {
+	case ApplicationGroupKey:
+		initializer = pm.applicationConfig
+	case OrdererGroupKey:
+		initializer = pm.ordererConfig
+	default:
+		return nil, fmt.Errorf("Disallowed channel group: %s", path[0])
+	}
+
+	return initializer.Handler(path[1:])
+
+	return nil, fmt.Errorf("Unallowed group")
 }

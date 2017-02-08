@@ -147,7 +147,7 @@ func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
 
 func newConfigResources(configEnvelope *cb.ConfigEnvelope) (*configResources, error) {
 	initializer := configtx.NewInitializer()
-	configManager, err := configtx.NewManagerImplNext(configEnvelope, initializer, nil)
+	configManager, err := configtx.NewManagerImpl(configEnvelope, initializer, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error unpacking config transaction: %s", err)
 	}

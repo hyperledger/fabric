@@ -60,7 +60,7 @@ func doesFuncCrash(crasher func(), test string) bool {
 
 func TestDoubleBegin(t *testing.T) {
 	crashes := doesFuncCrash(func() {
-		m := NewManagerImpl()
+		m := NewManagerImpl(nil)
 		m.BeginConfig()
 		m.BeginConfig()
 	}, "TestDoubleBegin")
@@ -72,7 +72,7 @@ func TestDoubleBegin(t *testing.T) {
 
 func TestCommitWithoutBegin(t *testing.T) {
 	crashes := doesFuncCrash(func() {
-		m := NewManagerImpl()
+		m := NewManagerImpl(nil)
 		m.CommitConfig()
 	}, "TestCommitWithoutBegin")
 
@@ -82,7 +82,7 @@ func TestCommitWithoutBegin(t *testing.T) {
 }
 
 func TestRollback(t *testing.T) {
-	m := NewManagerImpl()
+	m := NewManagerImpl(nil)
 	m.pendingConfig = &ordererConfig{}
 	m.RollbackConfig()
 	if m.pendingConfig != nil {
@@ -96,7 +96,7 @@ func TestConsensusType(t *testing.T) {
 	validMessage := TemplateConsensusType(endType)
 	otherValidMessage := TemplateConsensusType("bar")
 
-	m := NewManagerImpl()
+	m := NewManagerImpl(nil)
 	m.BeginConfig()
 
 	err := m.ProposeConfig(validMessage)
@@ -136,7 +136,7 @@ func TestBatchSize(t *testing.T) {
 	validPreferredMaxBytes := uint32(500)
 
 	t.Run("ValidConfig", func(t *testing.T) {
-		m := NewManagerImpl()
+		m := NewManagerImpl(nil)
 		m.BeginConfig()
 		err := m.ProposeConfig(
 			TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}),
@@ -155,7 +155,7 @@ func TestBatchSize(t *testing.T) {
 	})
 
 	t.Run("UnserializableConfig", func(t *testing.T) {
-		m := NewManagerImpl()
+		m := NewManagerImpl(nil)
 		m.BeginConfig()
 		err := m.ProposeConfig(invalidMessage(BatchSizeKey))
 		assert.NotNil(t, err, "Should have failed on invalid message")
@@ -163,7 +163,7 @@ func TestBatchSize(t *testing.T) {
 	})
 
 	t.Run("ZeroMaxMessageCount", func(t *testing.T) {
-		m := NewManagerImpl()
+		m := NewManagerImpl(nil)
 		m.BeginConfig()
 		err := m.ProposeConfig(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}))
 		assert.NotNil(t, err, "Should have rejected batch size max message count of 0")
@@ -171,7 +171,7 @@ func TestBatchSize(t *testing.T) {
 	})
 
 	t.Run("ZeroAbsoluteMaxBytes", func(t *testing.T) {
-		m := NewManagerImpl()
+		m := NewManagerImpl(nil)
 		m.BeginConfig()
 		err := m.ProposeConfig(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0, PreferredMaxBytes: validPreferredMaxBytes}))
 		assert.NotNil(t, err, "Should have rejected batch size absolute max message bytes of 0")
@@ -179,7 +179,7 @@ func TestBatchSize(t *testing.T) {
 	})
 
 	t.Run("TooLargePreferredMaxBytes", func(t *testing.T) {
-		m := NewManagerImpl()
+		m := NewManagerImpl(nil)
 		m.BeginConfig()
 		err := m.ProposeConfig(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validAbsoluteMaxBytes + 1}))
 		assert.NotNil(t, err, "Should have rejected batch size preferred max message bytes greater than absolute max message bytes")
@@ -194,7 +194,7 @@ func TestBatchTimeout(t *testing.T) {
 	zeroBatchTimeout := TemplateBatchTimeout("0s")
 	validMessage := TemplateBatchTimeout(endBatchTimeout.String())
 
-	m := NewManagerImpl()
+	m := NewManagerImpl(nil)
 	m.BeginConfig()
 
 	err := m.ProposeConfig(validMessage)
@@ -237,7 +237,7 @@ func TestKafkaBrokers(t *testing.T) {
 
 	validMessage := TemplateKafkaBrokers(endList)
 
-	m := NewManagerImpl()
+	m := NewManagerImpl(nil)
 	m.BeginConfig()
 
 	err := m.ProposeConfig(validMessage)
@@ -306,22 +306,22 @@ func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) 
 }
 
 func TestIngressPolicyNames(t *testing.T) {
-	m := NewManagerImpl()
+	m := NewManagerImpl(nil)
 	testPolicyNames(m, IngressPolicyNamesKey, TemplateIngressPolicyNames, m.IngressPolicyNames, t)
 }
 
 func TestEgressPolicyNames(t *testing.T) {
-	m := NewManagerImpl()
+	m := NewManagerImpl(nil)
 	testPolicyNames(m, EgressPolicyNamesKey, TemplateEgressPolicyNames, m.EgressPolicyNames, t)
 }
 
 func TestChainCreationPolicyNames(t *testing.T) {
-	m := NewManagerImpl()
+	m := NewManagerImpl(nil)
 	testPolicyNames(m, ChainCreationPolicyNamesKey, TemplateChainCreationPolicyNames, m.ChainCreationPolicyNames, t)
 }
 
 func TestEmptyChainCreationPolicyNames(t *testing.T) {
-	m := NewManagerImpl()
+	m := NewManagerImpl(nil)
 
 	m.BeginConfig()
 

@@ -19,8 +19,8 @@ package configtx
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
@@ -52,21 +52,37 @@ func (ap *acceptAllPolicy) Evaluate(signedData []*cb.SignedData) error {
 }
 
 type configManager struct {
-	api.Initializer
+	api.Resources
 	sequence     uint64
 	chainID      string
-	config       map[cb.ConfigItem_ConfigType]map[string]*cb.ConfigItem
+	config       map[string]comparable
 	callOnUpdate []func(api.Manager)
+	initializer  api.Initializer
+}
+
+func computeSequence(configGroup *cb.ConfigGroup) uint64 {
+	max := uint64(0)
+	for _, value := range configGroup.Values {
+		if value.Version > max {
+			max = value.Version
+		}
+	}
+
+	for _, group := range configGroup.Groups {
+		if groupMax := computeSequence(group); groupMax > max {
+			max = groupMax
+		}
+	}
+
+	return max
 }
 
 // computeChannelIdAndSequence returns the chain id and the sequence number for a config envelope
 // or an error if there is a problem with the config envelope
-func computeChannelIdAndSequence(config *cb.Config) (string, uint64, error) {
-	if len(config.Items) == 0 {
+func computeChannelIdAndSequence(config *cb.ConfigNext) (string, uint64, error) {
+	if config.Channel == nil {
 		return "", 0, errors.New("Empty envelope unsupported")
 	}
-
-	m := uint64(0)
 
 	if config.Header == nil {
 		return "", 0, fmt.Errorf("Header not set")
@@ -82,11 +98,7 @@ func computeChannelIdAndSequence(config *cb.Config) (string, uint64, error) {
 		return "", 0, err
 	}
 
-	for _, item := range config.Items {
-		if item.LastModified > m {
-			m = item.LastModified
-		}
-	}
+	m := computeSequence(config.Channel)
 
 	return chainID, m, nil
 }
@@ -121,27 +133,8 @@ func validateChainID(chainID string) error {
 	return nil
 }
 
-func NewManagerImplNext(configtx *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
-	configNext, err := UnmarshalConfigNext(configtx.Config)
-	if err != nil {
-		return nil, err
-	}
-
-	config := ConfigNextToConfig(configNext)
-
-	return NewManagerImpl(&cb.ConfigEnvelope{Config: utils.MarshalOrPanic(config), Signatures: configtx.Signatures}, initializer, callOnUpdate)
-}
-
-// NewManagerImpl creates a new Manager unless an error is encountered, each element of the callOnUpdate slice
-// is invoked when a new config is committed
 func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
-	for ctype := range cb.ConfigItem_ConfigType_name {
-		if _, ok := initializer.Handlers()[cb.ConfigItem_ConfigType(ctype)]; !ok {
-			return nil, errors.New("Must supply a handler for all known types")
-		}
-	}
-
-	config, err := UnmarshalConfig(configtx.Config)
+	config, err := UnmarshalConfigNext(configtx.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -152,10 +145,11 @@ func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer api.Initializer, ca
 	}
 
 	cm := &configManager{
-		Initializer:  initializer,
+		Resources:    initializer,
+		initializer:  initializer,
 		sequence:     seq - 1,
 		chainID:      chainID,
-		config:       makeConfigMap(),
+		config:       make(map[string]comparable),
 		callOnUpdate: callOnUpdate,
 	}
 
@@ -168,40 +162,88 @@ func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer api.Initializer, ca
 	return cm, nil
 }
 
-func makeConfigMap() map[cb.ConfigItem_ConfigType]map[string]*cb.ConfigItem {
-	configMap := make(map[cb.ConfigItem_ConfigType]map[string]*cb.ConfigItem)
-	for ctype := range cb.ConfigItem_ConfigType_name {
-		configMap[cb.ConfigItem_ConfigType(ctype)] = make(map[string]*cb.ConfigItem)
-	}
-	return configMap
-}
-
 func (cm *configManager) beginHandlers() {
 	logger.Debugf("Beginning new config for chain %s", cm.chainID)
-	for ctype := range cb.ConfigItem_ConfigType_name {
-		cm.Initializer.Handlers()[cb.ConfigItem_ConfigType(ctype)].BeginConfig()
-	}
+	cm.initializer.BeginConfig()
 }
 
 func (cm *configManager) rollbackHandlers() {
 	logger.Debugf("Rolling back config for chain %s", cm.chainID)
-	for ctype := range cb.ConfigItem_ConfigType_name {
-		cm.Initializer.Handlers()[cb.ConfigItem_ConfigType(ctype)].RollbackConfig()
-	}
+	cm.initializer.RollbackConfig()
 }
 
 func (cm *configManager) commitHandlers() {
 	logger.Debugf("Committing config for chain %s", cm.chainID)
-	for ctype := range cb.ConfigItem_ConfigType_name {
-		cm.Initializer.Handlers()[cb.ConfigItem_ConfigType(ctype)].CommitConfig()
-	}
+	cm.initializer.CommitConfig()
 	for _, callback := range cm.callOnUpdate {
 		callback(cm)
 	}
 }
 
-func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap map[cb.ConfigItem_ConfigType]map[string]*cb.ConfigItem, err error) {
-	config, err := UnmarshalConfig(configtx.Config)
+func (cm *configManager) recurseConfig(result map[string]comparable, path []string, group *cb.ConfigGroup) error {
+
+	for key, group := range group.Groups {
+		// TODO rename validateChainID to validateConfigID
+		if err := validateChainID(key); err != nil {
+			return fmt.Errorf("Illegal characters in group key: %s", key)
+		}
+
+		if err := cm.recurseConfig(result, append(path, key), group); err != nil {
+			return err
+		}
+
+		// TODO, uncomment to validate version validation on groups
+		// result["[Groups]"+strings.Join(path, ".")+key] = comparable{path: path, ConfigGroup: group}
+	}
+
+	valueHandler, err := cm.initializer.Handler(path)
+	if err != nil {
+		return err
+	}
+
+	for key, value := range group.Values {
+		if err := validateChainID(key); err != nil {
+			return fmt.Errorf("Illegal characters in values key: %s", key)
+		}
+
+		err := valueHandler.ProposeConfig(&cb.ConfigItem{
+			Key:   key,
+			Value: value.Value,
+		})
+		if err != nil {
+			return err
+		}
+
+		result["[Values]"+strings.Join(path, ".")+key] = comparable{path: path, ConfigValue: value}
+	}
+
+	logger.Debugf("Found %d policies", len(group.Policies))
+	for key, policy := range group.Policies {
+		if err := validateChainID(key); err != nil {
+			return fmt.Errorf("Illegal characters in policies key: %s", key)
+		}
+
+		logger.Debugf("Proposing policy: %s", key)
+		err := cm.initializer.PolicyProposer().ProposeConfig(&cb.ConfigItem{
+			// TODO, fix policy interface to take the policy directly
+			Type:  cb.ConfigItem_POLICY,
+			Key:   key,
+			Value: utils.MarshalOrPanic(policy.Policy),
+		})
+
+		if err != nil {
+			return err
+		}
+
+		// TODO, uncomment to validate version validation on policies
+		//result["[Policies]"+strings.Join(path, ".")+key] = comparable{path: path, ConfigPolicy: policy}
+	}
+
+	return nil
+}
+
+func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap map[string]comparable, err error) {
+	config, err := UnmarshalConfigNext(configtx.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -233,36 +275,41 @@ func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap m
 		defaultModificationPolicy = &acceptAllPolicy{}
 	}
 
-	configMap = makeConfigMap()
+	configMap = make(map[string]comparable)
 
-	for _, item := range config.Items {
+	if err := cm.recurseConfig(configMap, []string{}, config.Channel); err != nil {
+		return nil, err
+	}
+
+	for key, value := range configMap {
+		logger.Debugf("Processing key %s with value %v", key, value)
+
 		// Ensure the config sequence numbers are correct to prevent replay attacks
 		var isModified bool
 
-		if val, ok := cm.config[item.Type][item.Key]; ok {
-			// Config was modified if any of the contents changed
-			isModified = !reflect.DeepEqual(val, item)
+		oldValue, ok := cm.config[key]
+		if ok {
+			isModified = !value.equals(oldValue)
 		} else {
-			if item.LastModified != seq {
-				return nil, fmt.Errorf("Key %v for type %v was new, but had an older Sequence %d set", item.Key, item.Type, item.LastModified)
+			if value.version() != seq {
+				return nil, fmt.Errorf("Key %v was new, but had an older Sequence %d set", key, value.version())
 			}
 			isModified = true
 		}
 
-		// If a config item was modified, its LastModified must be set correctly, and it must satisfy the modification policy
+		// If a config item was modified, its Version must be set correctly, and it must satisfy the modification policy
 		if isModified {
-			logger.Debugf("Proposed config item of type %v and key %s on chain %s has been modified", item.Type, item.Key, chainID)
+			logger.Debugf("Proposed config item %s on channel %s has been modified", key, chainID)
 
-			if item.LastModified != seq {
-				return nil, fmt.Errorf("Key %v for type %v was modified, but its LastModified %d does not equal current configtx Sequence %d", item.Key, item.Type, item.LastModified, seq)
+			if value.version() != seq {
+				return nil, fmt.Errorf("Key %s was modified, but its Version %d does not equal current configtx Sequence %d", key, value.version(), seq)
 			}
 
 			// Get the modification policy for this config item if one was previously specified
 			// or the default if this is a new config item
 			var policy policies.Policy
-			oldItem, ok := cm.config[item.Type][item.Key]
 			if ok {
-				policy, _ = cm.PolicyManager().GetPolicy(oldItem.ModificationPolicy)
+				policy, _ = cm.PolicyManager().GetPolicy(oldValue.modPolicy())
 			} else {
 				policy = defaultModificationPolicy
 			}
@@ -272,34 +319,15 @@ func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap m
 				return nil, err
 			}
 		}
-
-		// Ensure the type handler agrees the config is well formed
-		logger.Debugf("Proposing config item of type %v for key %s on chain %s", item.Type, item.Key, cm.chainID)
-		err = cm.Initializer.Handlers()[item.Type].ProposeConfig(item)
-		if err != nil {
-			return nil, fmt.Errorf("Error proposing config item of type %v for key %s on chain %s: %s", item.Type, item.Key, chainID, err)
-		}
-
-		// Ensure the same key has not been specified multiple times
-		_, ok := configMap[item.Type][item.Key]
-		if ok {
-			return nil, fmt.Errorf("Specified config item of type %v for key %s for chain %s multiple times", item.Type, item.Key, chainID)
-		}
-
-		configMap[item.Type][item.Key] = item
 	}
 
 	// Ensure that any config items which used to exist still exist, to prevent implicit deletion
-	for ctype := range cb.ConfigItem_ConfigType_name {
-		curMap := cm.config[cb.ConfigItem_ConfigType(ctype)]
-		newMap := configMap[cb.ConfigItem_ConfigType(ctype)]
-		for id := range curMap {
-			_, ok := newMap[id]
-			if !ok {
-				return nil, fmt.Errorf("Missing key %v for type %v in new config", id, ctype)
-			}
-
+	for key, _ := range cm.config {
+		_, ok := configMap[key]
+		if !ok {
+			return nil, fmt.Errorf("Missing key %v in new config", key)
 		}
+
 	}
 
 	return configMap, nil
