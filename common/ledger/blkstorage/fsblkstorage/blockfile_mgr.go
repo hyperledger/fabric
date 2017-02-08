@@ -320,6 +320,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 	startFileNum := 0
 	startOffset := 0
 	blockNum := uint64(1)
+	skipFirstBlock := false
 	//get the last file that blocks were added to using the checkpoint info
 	endFileNum := mgr.cpInfo.latestFileChunkSuffixNum
 	//if the index stored in the db has value, update the index information with those values
@@ -331,6 +332,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 		startFileNum = flp.fileSuffixNum
 		startOffset = flp.locPointer.offset
 		blockNum = lastBlockIndexed
+		skipFirstBlock = true
 	}
 
 	//open a blockstream to the file location that was stored in the index
@@ -340,6 +342,16 @@ func (mgr *blockfileMgr) syncIndex() error {
 	}
 	var blockBytes []byte
 	var blockPlacementInfo *blockPlacementInfo
+
+	if skipFirstBlock {
+		if blockBytes, _, err = stream.nextBlockBytesAndPlacementInfo(); err != nil {
+			return err
+		}
+		if blockBytes == nil {
+			return fmt.Errorf("block bytes for block num = [%d] should not be nil here. The indexes for the block are already present",
+				lastBlockIndexed)
+		}
+	}
 
 	//Should be at the last block, but go ahead and loop looking for next blockBytes
 	//If there is another block, add it to the index
