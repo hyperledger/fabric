@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configtx_test
+package configtx
 
 import (
 	"errors"
 	"fmt"
 	"testing"
 
-	. "github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/configtx/api"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -30,8 +30,8 @@ import (
 
 var defaultChain = "DefaultChainID"
 
-func defaultHandlers() map[cb.ConfigItem_ConfigType]Handler {
-	handlers := make(map[cb.ConfigItem_ConfigType]Handler)
+func defaultHandlers() map[cb.ConfigItem_ConfigType]api.Handler {
+	handlers := make(map[cb.ConfigItem_ConfigType]api.Handler)
 	for ctype := range cb.ConfigItem_ConfigType_name {
 		handlers[cb.ConfigItem_ConfigType(ctype)] = NewBytesHandler()
 	}
@@ -87,7 +87,7 @@ func makeMarshaledConfig(chainID string, configItems ...*cb.ConfigItem) []byte {
 func TestOmittedHandler(t *testing.T) {
 	_, err := NewManagerImpl(&cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: map[cb.ConfigItem_ConfigType]Handler{}}, nil)
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: map[cb.ConfigItem_ConfigType]api.Handler{}}, nil)
 
 	if err == nil {
 		t.Fatal("Should have failed to construct manager because handlers were missing")
@@ -95,14 +95,14 @@ func TestOmittedHandler(t *testing.T) {
 }
 
 func TestCallback(t *testing.T) {
-	var calledBack Manager
-	callback := func(m Manager) {
+	var calledBack api.Manager
+	callback := func(m api.Manager) {
 		calledBack = m
 	}
 
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
-	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, []func(Manager){callback})
+	}, &mockconfigtx.Initializer{PolicyManagerVal: &mockPolicyManager{&mockPolicy{}}, HandlersVal: defaultHandlers()}, []func(api.Manager){callback})
 
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)

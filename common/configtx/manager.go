@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"regexp"
 
+	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -41,38 +42,6 @@ var (
 	}
 )
 
-// Handler provides a hook which allows other pieces of code to participate in config proposals
-type Handler interface {
-	// BeginConfig called when a config proposal is begun
-	BeginConfig()
-
-	// RollbackConfig called when a config proposal is abandoned
-	RollbackConfig()
-
-	// CommitConfig called when a config proposal is committed
-	CommitConfig()
-
-	// ProposeConfig called when config is added to a proposal
-	ProposeConfig(configItem *cb.ConfigItem) error
-}
-
-// Manager provides a mechanism to query and update config
-type Manager interface {
-	Resources
-
-	// Apply attempts to apply a configtx to become the new config
-	Apply(configtx *cb.ConfigEnvelope) error
-
-	// Validate attempts to validate a new configtx against the current config state
-	Validate(configtx *cb.ConfigEnvelope) error
-
-	// ChainID retrieves the chain ID associated with this manager
-	ChainID() string
-
-	// Sequence returns the current sequence number of the config
-	Sequence() uint64
-}
-
 // NewConfigItemPolicyKey is the ID of the policy used when no other policy can be resolved, for instance when attempting to create a new config item
 const NewConfigItemPolicyKey = "NewConfigItemPolicy"
 
@@ -83,11 +52,11 @@ func (ap *acceptAllPolicy) Evaluate(signedData []*cb.SignedData) error {
 }
 
 type configManager struct {
-	Initializer
+	api.Initializer
 	sequence     uint64
 	chainID      string
 	config       map[cb.ConfigItem_ConfigType]map[string]*cb.ConfigItem
-	callOnUpdate []func(Manager)
+	callOnUpdate []func(api.Manager)
 }
 
 // computeChainIDAndSequence returns the chain id and the sequence number for a config envelope
@@ -152,7 +121,7 @@ func validateChainID(chainID string) error {
 	return nil
 }
 
-func NewManagerImplNext(configtx *cb.ConfigEnvelope, initializer Initializer, callOnUpdate []func(Manager)) (Manager, error) {
+func NewManagerImplNext(configtx *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
 	configNext, err := UnmarshalConfigNext(configtx.Config)
 	if err != nil {
 		return nil, err
@@ -165,7 +134,7 @@ func NewManagerImplNext(configtx *cb.ConfigEnvelope, initializer Initializer, ca
 
 // NewManagerImpl creates a new Manager unless an error is encountered, each element of the callOnUpdate slice
 // is invoked when a new config is committed
-func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer Initializer, callOnUpdate []func(Manager)) (Manager, error) {
+func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
 	for ctype := range cb.ConfigItem_ConfigType_name {
 		if _, ok := initializer.Handlers()[cb.ConfigItem_ConfigType(ctype)]; !ok {
 			return nil, errors.New("Must supply a handler for all known types")

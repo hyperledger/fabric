@@ -17,12 +17,12 @@ limitations under the License.
 package multichain
 
 import (
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
+	"github.com/hyperledger/fabric/orderer/common/configtxfilter"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
@@ -143,7 +143,7 @@ func createStandardFilters(ledgerResources *ledgerResources) *filter.RuleSet {
 		filter.EmptyRejectRule,
 		sizefilter.MaxBytesRule(ledgerResources.SharedConfig().BatchSize().AbsoluteMaxBytes),
 		sigfilter.New(ledgerResources.SharedConfig().IngressPolicyNames, ledgerResources.PolicyManager()),
-		configtx.NewFilter(ledgerResources),
+		configtxfilter.NewFilter(ledgerResources),
 		filter.AcceptRule,
 	})
 
@@ -156,7 +156,7 @@ func createSystemChainFilters(ml *multiLedger, ledgerResources *ledgerResources)
 		sizefilter.MaxBytesRule(ledgerResources.SharedConfig().BatchSize().AbsoluteMaxBytes),
 		sigfilter.New(ledgerResources.SharedConfig().IngressPolicyNames, ledgerResources.PolicyManager()),
 		newSystemChainFilter(ml),
-		configtx.NewFilter(ledgerResources),
+		configtxfilter.NewFilter(ledgerResources),
 		filter.AcceptRule,
 	})
 }

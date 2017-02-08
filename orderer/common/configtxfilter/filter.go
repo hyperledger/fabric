@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configtx
+package configtxfilter
 
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -26,18 +27,18 @@ import (
 )
 
 type configFilter struct {
-	configManager Manager
+	configManager api.Manager
 }
 
 // New creates a new configfilter Rule based on the given Manager
-func NewFilter(manager Manager) filter.Rule {
+func NewFilter(manager api.Manager) filter.Rule {
 	return &configFilter{
 		configManager: manager,
 	}
 }
 
 type configCommitter struct {
-	manager        Manager
+	manager        api.Manager
 	configEnvelope *cb.ConfigEnvelope
 }
 

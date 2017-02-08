@@ -19,13 +19,13 @@ package configtx
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 )
 
 func TestConfigtxInitializerInterface(t *testing.T) {
-	_ = configtx.Initializer(&Initializer{})
+	_ = configtxapi.Initializer(&Initializer{})
 }
 
 func TestConfigtxManagerInterface(t *testing.T) {
-	_ = configtx.Manager(&Manager{})
+	_ = configtxapi.Manager(&Manager{})
 }

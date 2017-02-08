@@ -19,37 +19,15 @@ package configtx
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chainconfig"
+	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-// Resources is the common set of config resources for all chains
-// Depending on whether chain is used at the orderer or at the peer, other
-// config resources may be available
-type Resources interface {
-	// PolicyManager returns the policies.Manager for the chain
-	PolicyManager() policies.Manager
-
-	// ChainConfig returns the chainconfig.Descriptor for the chain
-	ChainConfig() chainconfig.Descriptor
-
-	// MSPManager returns the msp.MSPManager for the chain
-	MSPManager() msp.MSPManager
-}
-
-// Initializer is a structure which is only useful before a configtx.Manager
-// has been instantiated for a chain, afterwards, it is of no utility, which
-// is why it embeds the Resources interface
-type Initializer interface {
-	Resources
-	// Handlers returns the handlers to be used when initializing the configtx.Manager
-	Handlers() map[cb.ConfigItem_ConfigType]Handler
-}
-
 type resources struct {
-	handlers         map[cb.ConfigItem_ConfigType]Handler
+	handlers         map[cb.ConfigItem_ConfigType]api.Handler
 	policyManager    policies.Manager
 	chainConfig      chainconfig.Descriptor
 	mspConfigHandler *mspmgmt.MSPConfigHandler
@@ -71,12 +49,12 @@ func (r *resources) MSPManager() msp.MSPManager {
 }
 
 // Handlers returns the handlers to be used when initializing the configtx.Manager
-func (r *resources) Handlers() map[cb.ConfigItem_ConfigType]Handler {
+func (r *resources) Handlers() map[cb.ConfigItem_ConfigType]api.Handler {
 	return r.handlers
 }
 
 // NewInitializer creates a chain initializer for the basic set of common chain resources
-func NewInitializer() Initializer {
+func NewInitializer() api.Initializer {
 	mspConfigHandler := &mspmgmt.MSPConfigHandler{}
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
@@ -93,7 +71,7 @@ func NewInitializer() Initializer {
 
 	policyManager := policies.NewManagerImpl(policyProviderMap)
 	chainConfig := chainconfig.NewDescriptorImpl()
-	handlers := make(map[cb.ConfigItem_ConfigType]Handler)
+	handlers := make(map[cb.ConfigItem_ConfigType]api.Handler)
 
 	for ctype := range cb.ConfigItem_ConfigType_name {
 		rtype := cb.ConfigItem_ConfigType(ctype)

@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -44,7 +45,7 @@ type Manager interface {
 }
 
 type configResources struct {
-	configtx.Manager
+	configtxapi.Manager
 	sharedConfig sharedconfig.Manager
 }
 

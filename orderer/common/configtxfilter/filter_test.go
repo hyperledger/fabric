@@ -14,14 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configtx_test
+package configtxfilter
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
 
-	. "github.com/hyperledger/fabric/common/configtx"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
