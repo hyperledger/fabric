@@ -19,15 +19,13 @@ limitations under the License.
 package shim
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -42,6 +40,11 @@ import (
 
 // Logger for the shim package.
 var chaincodeLogger = logging.MustGetLogger("shim")
+
+const (
+	minUnicodeRuneValue = 0            //U+0000
+	maxUnicodeRuneValue = utf8.MaxRune //U+10FFFF - maximum (and unallocated) code point
+)
 
 // ChaincodeStub is an object passed to chaincode for shim side handling of
 // APIs.
@@ -359,35 +362,52 @@ func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInter
 
 //CreateCompositeKey combines the given attributes to form a composite key.
 func (stub *ChaincodeStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
-	return createCompositeKey(stub, objectType, attributes)
-}
-
-func createCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (string, error) {
-	var compositeKey bytes.Buffer
-	replacer := strings.NewReplacer("\x1E", "\x1E\x1E", "\x1F", "\x1E\x1F")
-	compositeKey.WriteString(replacer.Replace(objectType))
-	for _, attribute := range attributes {
-		compositeKey.WriteString("\x1F" + strconv.Itoa(len(attribute)) + "\x1F")
-		compositeKey.WriteString(replacer.Replace(attribute))
-	}
-	return compositeKey.String(), nil
+	return createCompositeKey(objectType, attributes)
 }
 
 //SplitCompositeKey splits the key into attributes on which the composite key was formed.
 func (stub *ChaincodeStub) SplitCompositeKey(compositeKey string) (string, []string, error) {
-	return splitCompositeKey(stub, compositeKey)
+	return splitCompositeKey(compositeKey)
 }
 
-func splitCompositeKey(stub ChaincodeStubInterface, compositeKey string) (string, []string, error) {
-	re := regexp.MustCompile("\x1F[0-9]+\x1F")
-	splittedKey := re.Split(compositeKey, -1)
-	attributes := make([]string, 0)
-	replacer := strings.NewReplacer("\x1E\x1F", "\x1F", "\x1E\x1E", "\x1E")
-	objectType := replacer.Replace(splittedKey[0])
-	for _, attr := range splittedKey[1:] {
-		attributes = append(attributes, replacer.Replace(attr))
+func createCompositeKey(objectType string, attributes []string) (string, error) {
+	if err := validateCompositeKeyAttribute(objectType); err != nil {
+		return "", err
 	}
-	return objectType, attributes, nil
+	ck := objectType + string(minUnicodeRuneValue)
+	for _, att := range attributes {
+		if err := validateCompositeKeyAttribute(att); err != nil {
+			return "", err
+		}
+		ck += att + string(minUnicodeRuneValue)
+	}
+	return ck, nil
+}
+
+func splitCompositeKey(compositeKey string) (string, []string, error) {
+	componentIndex := 0
+	components := []string{}
+	for i := 0; i < len(compositeKey); i++ {
+		if compositeKey[i] == minUnicodeRuneValue {
+			components = append(components, compositeKey[componentIndex:i])
+			componentIndex = i + 1
+		}
+	}
+	return components[0], components[1:], nil
+}
+
+func validateCompositeKeyAttribute(str string) error {
+	for index, runeValue := range str {
+		if !utf8.ValidRune(runeValue) {
+			return fmt.Errorf("Not a valid utf8 string. Contains rune [%d] starting at byte position [%d]",
+				runeValue, index)
+		}
+		if runeValue == minUnicodeRuneValue || runeValue == maxUnicodeRuneValue {
+			return fmt.Errorf(`Input contain unicode %#U starting at position [%d]. %#U and %#U are not allowed in the input attribute of a composite key`,
+				runeValue, index, minUnicodeRuneValue, maxUnicodeRuneValue)
+		}
+	}
+	return nil
 }
 
 //PartialCompositeKeyQuery function can be invoked by a chaincode to query the
@@ -402,7 +422,7 @@ func (stub *ChaincodeStub) PartialCompositeKeyQuery(objectType string, attribute
 
 func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, attributes []string) (StateQueryIteratorInterface, error) {
 	partialCompositeKey, _ := stub.CreateCompositeKey(objectType, attributes)
-	keysIter, err := stub.RangeQueryState(partialCompositeKey, partialCompositeKey+"\xFF")
+	keysIter, err := stub.RangeQueryState(partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue))
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching rows: %s", err)
 	}

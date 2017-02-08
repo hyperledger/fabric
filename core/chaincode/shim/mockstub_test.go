@@ -111,9 +111,10 @@ func TestPartialCompositeKeyQuery(t *testing.T) {
 	stub.PutState(compositeKey3, marbleJSONBytes3)
 
 	stub.MockTransactionEnd("init")
-	expectKeys := []string{compositeKey1, compositeKey2}
-	expectKeysAttributes := [][]string{{"set-1", "red"}, {"set-1", "blue"}}
-	expectValues := [][]byte{marbleJSONBytes1, marbleJSONBytes2}
+	// should return in sorted order of attributes
+	expectKeys := []string{compositeKey2, compositeKey1}
+	expectKeysAttributes := [][]string{{"set-1", "blue"}, {"set-1", "red"}}
+	expectValues := [][]byte{marbleJSONBytes2, marbleJSONBytes1}
 
 	rqi, _ := stub.PartialCompositeKeyQuery("marble", []string{"set-1"})
 	fmt.Println("Running loop")

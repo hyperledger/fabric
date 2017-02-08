@@ -19,7 +19,9 @@ package couchdb
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -51,6 +53,11 @@ type Asset struct {
 }
 
 var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owner":"jerry"}`)
+
+func TestMain(m *testing.M) {
+	ledgertestutil.SetupCoreYAMLConfig("./../../../../peer")
+	os.Exit(m.Run())
+}
 
 func TestDBConnectionDef(t *testing.T) {
 
@@ -140,15 +147,30 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 		testutil.AssertEquals(t, dbResp.DbName, database)
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("1", "", assetJSON, nil)
+		_, saveerr := db.SaveDoc("idWith/slash", "", assetJSON, nil)
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 		//Retrieve the test document
-		dbGetResp, _, geterr := db.ReadDoc("1")
+		dbGetResp, _, geterr := db.ReadDoc("idWith/slash")
 		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
 
 		//Unmarshal the document to Asset structure
 		assetResp := &Asset{}
+		json.Unmarshal(dbGetResp, &assetResp)
+
+		//Verify the owner retrieved matches
+		testutil.AssertEquals(t, assetResp.Owner, "jerry")
+
+		//Save the test document
+		_, saveerr = db.SaveDoc("1", "", assetJSON, nil)
+		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
+
+		//Retrieve the test document
+		dbGetResp, _, geterr = db.ReadDoc("1")
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
+
+		//Unmarshal the document to Asset structure
+		assetResp = &Asset{}
 		json.Unmarshal(dbGetResp, &assetResp)
 
 		//Verify the owner retrieved matches
@@ -216,6 +238,60 @@ func TestDBBadJSON(t *testing.T) {
 
 	}
 
+}
+
+func TestPrefixScan(t *testing.T) {
+	if !ledgerconfig.IsCouchDBEnabled() {
+		return
+	}
+	cleanup()
+	defer cleanup()
+
+	//create a new instance and database object
+	couchInstance, err := CreateCouchInstance(connectURL, username, password)
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+	db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+
+	//create a new database
+	_, errdb := db.CreateDatabaseIfNotExist()
+	testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+	//Retrieve the info for the new database and make sure the name matches
+	dbResp, _, errdb := db.GetDatabaseInfo()
+	testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to retrieve database information"))
+	testutil.AssertEquals(t, dbResp.DbName, database)
+
+	//Save documents
+	for i := 0; i < 20; i++ {
+		id1 := string(0) + string(i) + string(0)
+		id2 := string(0) + string(i) + string(1)
+		id3 := string(0) + string(i) + string(utf8.MaxRune-1)
+		_, saveerr := db.SaveDoc(id1, "", assetJSON, nil)
+		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
+		_, saveerr = db.SaveDoc(id2, "", assetJSON, nil)
+		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
+		_, saveerr = db.SaveDoc(id3, "", assetJSON, nil)
+		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
+
+	}
+	startKey := string(0) + string(10)
+	endKey := startKey + string(utf8.MaxRune)
+	resultsPtr, geterr := db.ReadDocRange(startKey, endKey, 1000, 0)
+	testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to perform a range scan"))
+	testutil.AssertNotNil(t, resultsPtr)
+	results := *resultsPtr
+	testutil.AssertEquals(t, len(results), 3)
+	testutil.AssertEquals(t, results[0].ID, string(0)+string(10)+string(0))
+	testutil.AssertEquals(t, results[1].ID, string(0)+string(10)+string(1))
+	testutil.AssertEquals(t, results[2].ID, string(0)+string(10)+string(utf8.MaxRune-1))
+
+	//Drop the database
+	_, errdbdrop := db.DropDatabase()
+	testutil.AssertNoError(t, errdbdrop, fmt.Sprintf("Error dropping database"))
+
+	//Retrieve the info for the new database and make sure the name matches
+	_, _, errdbinfo := db.GetDatabaseInfo()
+	testutil.AssertError(t, errdbinfo, fmt.Sprintf("Error should have been thrown for missing database"))
 }
 
 func TestDBSaveAttachment(t *testing.T) {
