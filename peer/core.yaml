@@ -72,6 +72,34 @@ peer:
         bootstrap: 0.0.0.0:7051
         # For debug - is peer is its org leader and should pass blocks from orderer to other peers in org
         orgLeader: true
+        # ID of this instance
+        endpoint:
+        # Maximum count of blocks we store in memory
+        maxBlockCountToStore: 100
+        # Max time between consecutive message pushes(unit: millisecond)
+        maxPropagationBurstLatency: 10ms
+        # Max number of messages stored until it triggers a push to remote peers
+        maxPropagationBurstSize: 10
+        # Number of times a message is pushed to remote peers
+        propagateIterations: 1
+        # Number of peers selected to push messages to
+        propagatePeerNum: 3
+        # Determines frequency of pull phases(unit: second)
+        pullInterval: 4s
+        # Number of peers to pull from
+        pullPeerNum: 3
+        # Determines frequency of pulling state info messages from peers(unit: second)
+        requestStateInfoInterval: 4s
+        # Determines frequency of pushing state info messages to peers(unit: second)
+        publishStateInfoInterval: 4s
+        # Maximum time a stateInfo message is kept until expired
+        stateInfoRetentionInterval:
+        # Time from startup certificates are included in Alive messages(unit: second)
+        publishCertPeriod: 10s
+        # Should we skip verifying block messages or not
+        skipBlockVerification: false
+        # Should we ignore security or not
+        ignoreSecurity: false
 
     # Sync related configuration
     sync:

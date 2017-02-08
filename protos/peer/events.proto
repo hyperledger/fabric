@@ -50,6 +50,7 @@ message Interest {
     oneof RegInfo {
         ChaincodeReg chaincodeRegInfo = 2;
     }
+    string chainID = 3;
 }
 
 //---------- consumer events ---------
@@ -71,6 +72,14 @@ message Unregister {
     repeated Interest events = 1;
 }
 
+// SignedEvent is used for any communication between consumer and producer
+message SignedEvent {
+    // Signature over the event bytes
+    bytes signature = 1;
+    // Marshal of Event object
+    bytes eventBytes = 2;
+}
+
 //Event is used by
 //  - consumers (adapters) to send Register
 //  - producer to advertise supported types and events
@@ -89,6 +98,8 @@ message Event {
         //Unregister consumer sent events
         Unregister unregister = 5;
     }
+    // Creator of the event, specified as a certificate chain
+    bytes creator = 6;
 }
 
 // Interface exported by the events server

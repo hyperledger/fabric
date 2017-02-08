@@ -110,7 +110,7 @@ func aliveInvalidationPolicy(thisMsg *AliveMessage, thatMsg *AliveMessage) commo
 }
 
 func leaderInvalidationPolicy(thisMsg *LeadershipMessage, thatMsg *LeadershipMessage) common.InvalidationResult {
-	if !bytes.Equal(thisMsg.Membership.PkiID, thatMsg.Membership.PkiID) {
+	if !bytes.Equal(thisMsg.PkiID, thatMsg.PkiID) {
 		return common.MessageNoAction
 	}
 

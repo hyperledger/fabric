@@ -226,20 +226,17 @@ func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid stri
 func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd *ccprovider.ChaincodeData) (*pb.ProposalResponse, error) {
 	endorserLogger.Infof("endorseProposal starts for chainID %s, ccid %s", chainID, ccid)
 
-	// 1) extract the chaincodeDeploymentSpec for the chaincode we are invoking; we need it to get the escc
+	// 1) extract the name of the escc that is requested to endorse this chaincode
 	var escc string
-
 	//ie, not "lccc" or system chaincodes
 	if cd != nil {
-		_, err := putils.GetChaincodeDeploymentSpec(cd.DepSpec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal cds for %s - %s", ccid, err)
+		escc = cd.Escc
+		if escc == "" { // this should never happen, LCCC always fills this field
+			panic("No ESCC specified in ChaincodeData")
 		}
-
-		// FIXME: pick the right escc from cds - currently cds doesn't have this info
-		escc = "escc"
 	} else {
 		// FIXME: getCDSFromLCCC seems to fail for lccc - not sure this is expected?
+		// TODO: who should endorse a call to LCCC?
 		escc = "escc"
 	}
 

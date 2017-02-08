@@ -48,19 +48,31 @@ message FabricMSPConfig {
     // this can refer to the Subject OU field or the Issuer OU field.
     string Name = 1;
 
-    // List of root certificates associated
+    // List of root certificates trusted by this MSP
+    // they are used upon certificate validation (see
+    // comment for IntermediateCerts below)
     repeated bytes RootCerts = 2;
 
+    // List of intermediate certificates trusted by this MSP;
+    // they are used upon certificate validation as follows:
+    // validation attempts to build a path from the certificate
+    // to be validated (which is at one end of the path) and
+    // one of the certs in the RootCerts field (which is at
+    // the other end of the path). If the path is longer than
+    // 2, certificates in the middle are searched within the
+    // IntermediateCerts pool
+    repeated bytes IntermediateCerts = 3;
+
     // Identity denoting the administrator of this MSP
-    repeated bytes Admins = 3;
+    repeated bytes Admins = 4;
 
     // Identity revocation list
-    repeated bytes RevocationList = 4;
+    repeated bytes RevocationList = 5;
 
     // SigningIdentity holds information on the signing identity
     // this peer is to use, and which is to be imported by the
     // MSP defined before
-    SigningIdentityInfo SigningIdentity = 5;
+    SigningIdentityInfo SigningIdentity = 6;
 }
 
 // SigningIdentityInfo represents the configuration information

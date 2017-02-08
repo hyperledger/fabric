@@ -33,6 +33,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	logging "github.com/op/go-logging"
@@ -335,16 +336,18 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 
 //SaveDoc method provides a function to save a document, id and byte array
 func (dbclient *CouchDatabase) SaveDoc(id string, rev string, bytesDoc []byte, attachments []Attachment) (string, error) {
-
 	logger.Debugf("Entering SaveDoc()")
-
+	if !utf8.ValidString(id) {
+		return "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
+	}
 	saveURL, err := url.Parse(dbclient.couchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return "", err
 	}
-	saveURL.Path = dbclient.dbName + "/" + id
-
+	saveURL.Path = dbclient.dbName
+	// id can contain a '/', so encode separately
+	saveURL = &url.URL{Opaque: saveURL.String() + "/" + encodePathElement(id)}
 	logger.Debugf("  id=%s,  value=%s", id, string(bytesDoc))
 
 	if rev == "" {
@@ -501,14 +504,17 @@ func getRevisionHeader(resp *http.Response) (string, error) {
 func (dbclient *CouchDatabase) ReadDoc(id string) ([]byte, string, error) {
 
 	logger.Debugf("Entering ReadDoc()  id=%s", id)
-
+	if !utf8.ValidString(id) {
+		return nil, "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
+	}
 	readURL, err := url.Parse(dbclient.couchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, "", err
 	}
-	readURL.Path = dbclient.dbName + "/" + id
-
+	readURL.Path = dbclient.dbName
+	// id can contain a '/', so encode separately
+	readURL = &url.URL{Opaque: readURL.String() + "/" + encodePathElement(id)}
 	query := readURL.Query()
 	query.Add("attachments", "true")
 
@@ -644,26 +650,19 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	//Append the startKey if provided
 	if startKey != "" {
-		startKey = strconv.QuoteToGraphic(startKey)
-		startKey = strings.Replace(startKey, "\\x00", "\\u0000", -1)
-		startKey = strings.Replace(startKey, "\\x1e", "\\u001e", -1)
-		startKey = strings.Replace(startKey, "\\x1f", "\\u001f", -1)
-		startKey = strings.Replace(startKey, "\\xff", "\\u00ff", -1)
-		//TODO add general unicode support instead of special cases
-
+		var err error
+		if startKey, err = encodeForJSON(startKey); err != nil {
+			return nil, err
+		}
 		queryParms.Add("startkey", startKey)
 	}
 
 	//Append the endKey if provided
 	if endKey != "" {
-		endKey = strconv.QuoteToGraphic(endKey)
-		endKey = strings.Replace(endKey, "\\x00", "\\u0000", -1)
-		endKey = strings.Replace(endKey, "\\x01", "\\u0001", -1)
-		endKey = strings.Replace(endKey, "\\x1e", "\\u001e", -1)
-		endKey = strings.Replace(endKey, "\\x1f", "\\u001f", -1)
-		endKey = strings.Replace(endKey, "\\xff", "\\u00ff", -1)
-		//TODO add general unicode support instead of special cases
-
+		var err error
+		if endKey, err = encodeForJSON(endKey); err != nil {
+			return nil, err
+		}
 		queryParms.Add("endkey", endKey)
 	}
 
@@ -918,4 +917,23 @@ func (dbclient *CouchDatabase) handleRequest(method, connectURL string, data io.
 func IsJSON(s string) bool {
 	var js map[string]interface{}
 	return json.Unmarshal([]byte(s), &js) == nil
+}
+
+// encodePathElement uses Golang for encoding and in addition, replaces a '/' by %2F.
+// Otherwise, in the regular encoding, a '/' is treated as a path separator in the url
+func encodePathElement(str string) string {
+	u := &url.URL{}
+	u.Path = str
+	encodedStr := u.String()
+	encodedStr = strings.Replace(encodedStr, "/", "%2F", -1)
+	return encodedStr
+}
+
+func encodeForJSON(str string) (string, error) {
+	buf := &bytes.Buffer{}
+	encoder := json.NewEncoder(buf)
+	if err := encoder.Encode(str); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

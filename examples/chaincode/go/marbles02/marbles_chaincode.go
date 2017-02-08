@@ -210,16 +210,46 @@ func (t *SimpleChaincode) readMarble(stub shim.ChaincodeStubInterface, args []st
 // delete - remove a marble key/value pair from state
 // ==================================================
 func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var jsonResp string
+	var marbleJSON marble
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
-
 	marbleName := args[0]
-	err := stub.DelState(marbleName) //remove the marble from chaincode state
+
+	// to maintain the color~name index, we need to read the marble first and get its color
+	valAsbytes, err := stub.GetState(marbleName) //get the marble from chaincode state
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to get state for " + marbleName + "\"}"
+		return shim.Error(jsonResp)
+	} else if valAsbytes == nil {
+		jsonResp = "{\"Error\":\"Marble does not exist: " + marbleName + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	err = json.Unmarshal([]byte(jsonResp), &marbleJSON)
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to decode JSON of: " + marbleName + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	err = stub.DelState(marbleName) //remove the marble from chaincode state
 	if err != nil {
 		return shim.Error("Failed to delete state:" + err.Error())
 	}
 
+	// maintain the index
+	indexName := "color~name"
+	colorNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{marbleJSON.Color, marbleJSON.Name})
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	//  Delete index entry to state.
+	err = stub.DelState(colorNameIndexKey)
+	if err != nil {
+		return shim.Error("Failed to delete state:" + err.Error())
+	}
 	return shim.Success(nil)
 }
 
