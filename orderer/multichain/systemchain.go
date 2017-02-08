@@ -17,8 +17,6 @@ limitations under the License.
 package multichain
 
 import (
-	"bytes"
-
 	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/policies"
@@ -150,19 +148,23 @@ func (sc *systemChain) proposeChain(configTx *cb.Envelope) cb.Status {
 }
 
 func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.Status {
-	if len(configEnvelope.Items) == 0 {
-		return cb.Status_BAD_REQUEST
-	}
-
-	creationConfigItem := &cb.ConfigurationItem{}
-	err := proto.Unmarshal(configEnvelope.Items[0].ConfigurationItem, creationConfigItem)
+	config := &cb.Config{}
+	err := proto.Unmarshal(configEnvelope.Config, config)
 	if err != nil {
 		logger.Debugf("Failing to validate chain creation because of unmarshaling error: %s", err)
 		return cb.Status_BAD_REQUEST
 	}
 
-	if creationConfigItem.Key != configtx.CreationPolicyKey {
-		logger.Debugf("Failing to validate chain creation because first configuration item was not the CreationPolicy")
+	var creationConfigItem *cb.ConfigurationItem
+	for _, item := range config.Items {
+		if item.Type == cb.ConfigurationItem_Orderer && item.Key == configtx.CreationPolicyKey {
+			creationConfigItem = item
+			break
+		}
+	}
+
+	if creationConfigItem == nil {
+		logger.Debugf("Failing to validate chain creation because no creation policy included")
 		return cb.Status_BAD_REQUEST
 	}
 
@@ -192,14 +194,16 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 		return cb.Status_INTERNAL_SERVER_ERROR
 	}
 
-	// XXX actually do policy signature validation
-	_ = policy
-
-	configHash := configtx.HashItems(configEnvelope.Items[1:], sc.support.ChainConfig().HashingAlgorithm())
-
-	if !bytes.Equal(configHash, creationPolicy.Digest) {
-		logger.Debugf("Validly signed chain creation did not contain correct digest for remaining configuration %x vs. %x", configHash, creationPolicy.Digest)
+	signedData, err := configEnvelope.AsSignedData()
+	if err != nil {
+		logger.Debugf("Failed to validate chain creation because config envelope could not be converted to signed data: %s", err)
 		return cb.Status_BAD_REQUEST
+	}
+
+	err = policy.Evaluate(signedData)
+	if err != nil {
+		logger.Debugf("Failed to validate chain creation, did not satisfy policy: %s", err)
+		return cb.Status_FORBIDDEN
 	}
 
 	return cb.Status_SUCCESS
@@ -229,11 +233,6 @@ func (sc *systemChain) authorizeAndInspect(configTx *cb.Envelope) cb.Status {
 	err = proto.Unmarshal(payload.Data, configEnvelope)
 	if err != nil {
 		logger.Debugf("Rejecting chain proposal: Error unmarshalling config envelope from payload: %s", err)
-		return cb.Status_BAD_REQUEST
-	}
-
-	if len(configEnvelope.Items) == 0 {
-		logger.Debugf("Failing to validate chain creation because configuration was empty")
 		return cb.Status_BAD_REQUEST
 	}
 

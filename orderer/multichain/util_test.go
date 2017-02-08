@@ -86,13 +86,6 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 }
 
 func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.Envelope {
-	signedItems := make([]*cb.SignedConfigurationItem, len(items))
-	for i, item := range items {
-		signedItems[i] = &cb.SignedConfigurationItem{
-			ConfigurationItem: utils.MarshalOrPanic(item),
-		}
-	}
-
 	payload := &cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
@@ -102,11 +95,13 @@ func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.E
 			SignatureHeader: &cb.SignatureHeader{},
 		},
 		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
-			Items: signedItems,
-			Header: &cb.ChainHeader{
-				Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
-				ChainID: chainID,
-			},
+			Config: utils.MarshalOrPanic(&cb.Config{
+				Items: items,
+				Header: &cb.ChainHeader{
+					Type:    int32(cb.HeaderType_CONFIGURATION_ITEM),
+					ChainID: chainID,
+				},
+			}),
 		}),
 	}
 	return &cb.Envelope{

@@ -60,9 +60,6 @@ message CreationPolicy {
     // The name of the policy which should be used to validate the creation of
     // this chain
     string policy = 1;
-
-    // The hash of the concatenation of remaining configuration item bytes
-    bytes digest = 2;
 }
 
 // IngressPolicyNames is the set of policy names which incoming Broadcast signatures are filtered against

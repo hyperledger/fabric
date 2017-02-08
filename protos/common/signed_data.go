@@ -41,13 +41,13 @@ type Signable interface {
 }
 
 // AsSignedData returns the set of signatures for the SignedCOnfigurationItem as SignedData or an error indicating why this was not possible
-func (sci *SignedConfigurationItem) AsSignedData() ([]*SignedData, error) {
-	if sci == nil {
+func (ce *ConfigurationEnvelope) AsSignedData() ([]*SignedData, error) {
+	if ce == nil {
 		return nil, fmt.Errorf("No signatures for nil SignedConfigurationItem")
 	}
 
-	result := make([]*SignedData, len(sci.Signatures))
-	for i, configSig := range sci.Signatures {
+	result := make([]*SignedData, len(ce.Signatures))
+	for i, configSig := range ce.Signatures {
 		sigHeader := &SignatureHeader{}
 		err := proto.Unmarshal(configSig.SignatureHeader, sigHeader)
 		if err != nil {
@@ -55,7 +55,7 @@ func (sci *SignedConfigurationItem) AsSignedData() ([]*SignedData, error) {
 		}
 
 		result[i] = &SignedData{
-			Data:      util.ConcatenateBytes(sci.ConfigurationItem, configSig.SignatureHeader),
+			Data:      util.ConcatenateBytes(configSig.SignatureHeader, ce.Config),
 			Identity:  sigHeader.Creator,
 			Signature: configSig.Signature,
 		}

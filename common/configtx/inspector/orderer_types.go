@@ -132,7 +132,6 @@ func viewableCreationPolicy(name string, creationPolicy *ab.CreationPolicy) View
 		name: name,
 		values: []Viewable{
 			viewableString("Policy", creationPolicy.Policy),
-			viewableBytes("Digest", creationPolicy.Digest),
 		},
 	}
 }

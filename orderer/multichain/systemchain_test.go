@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	mockchainconfig "github.com/hyperledger/fabric/common/mocks/chainconfig"
 	"github.com/hyperledger/fabric/common/policies"
-	coreutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
@@ -122,7 +121,6 @@ func TestGoodProposal(t *testing.T) {
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: provisional.AcceptAllPolicyKey,
-			Digest: mcc.ms.ChainConfig().HashingAlgorithm()([]byte{}),
 		}),
 	}
 	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
@@ -179,7 +177,6 @@ func TestProposalWithBadPolicy(t *testing.T) {
 
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte{}),
 		}),
 	}
 	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
@@ -202,31 +199,6 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 		Type: cb.ConfigurationItem_Orderer,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte{}),
-		}),
-	}
-	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)
-
-	status := mcc.sysChain.proposeChain(ingressTx)
-
-	if status == cb.Status_SUCCESS {
-		t.Fatalf("Should not have validated the transaction with missing policy")
-	}
-}
-
-func TestProposalWithBadDigest(t *testing.T) {
-	newChainID := "NewChainID"
-
-	mcc := newMockChainCreator()
-	mcc.ms.mpm.mp = &mockPolicy{}
-	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
-
-	chainCreateTx := &cb.ConfigurationItem{
-		Key:  configtx.CreationPolicyKey,
-		Type: cb.ConfigurationItem_Orderer,
-		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
-			Policy: provisional.AcceptAllPolicyKey,
-			Digest: coreutil.ComputeCryptoHash([]byte("BAD_DIGEST")),
 		}),
 	}
 	ingressTx := makeConfigTxWithItems(newChainID, chainCreateTx)

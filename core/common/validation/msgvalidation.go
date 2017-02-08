@@ -226,22 +226,7 @@ func validateConfigTransaction(data []byte, hdr *common.Header) error {
 		return fmt.Errorf("Nil arguments")
 	}
 
-	// if the type is CONFIGURATION_TRANSACTION we unmarshal a ConfigurationEnvelope message
-	ce, err := utils.GetConfigurationEnvelope(data)
-	if err != nil {
-		return fmt.Errorf("GetConfigurationEnvelope failed, err %s", err)
-	}
-
-	// check that we have at least one configuration item
-	if ce.Items == nil || len(ce.Items) == 0 {
-		return fmt.Errorf("At least one configuration item is necessary")
-	}
-
-	for _, item := range ce.Items {
-		if item.ConfigurationItem == nil {
-			return fmt.Errorf("ConfigurationItem cannot be nil")
-		}
-	}
+	// There is no need to do this validation here, the configtx.Manager handles this
 
 	return nil
 }

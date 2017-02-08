@@ -20,17 +20,13 @@ import (
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 func TestFromTemplate(t *testing.T) {
 	ordererTemplate := configtxtest.OrdererTemplate()
-	signedItems, err := ordererTemplate.Items("SampleChainID")
+	configEnvelope, err := ordererTemplate.Envelope("SampleChainID")
 	if err != nil {
 		t.Fatalf("Error creating signed items: %s", err)
-	}
-	configEnvelope := &cb.ConfigurationEnvelope{
-		Items: signedItems,
 	}
 	PrintConfiguration(configEnvelope)
 }

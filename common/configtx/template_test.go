@@ -20,26 +20,28 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func verifyItemsResult(t *testing.T, template Template, count int) {
 	newChainID := "foo"
 
-	result, err := template.Items(newChainID)
+	configEnv, err := template.Envelope(newChainID)
 	if err != nil {
-		t.Fatalf("Should not have errored")
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	if len(result) != count {
-		t.Errorf("Expected %d items, but got %d", count, len(result))
+	config, err := UnmarshalConfig(configEnv.Config)
+	if err != nil {
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	for i, signedItem := range result {
-		item := utils.UnmarshalConfigurationItemOrPanic(signedItem.ConfigurationItem)
+	if len(config.Items) != count {
+		t.Errorf("Expected %d items, but got %d", count, len(config.Items))
+	}
+
+	for i, item := range config.Items {
 		expected := fmt.Sprintf("%d", i)
 		assert.Equal(t, expected, string(item.Value), "Expected %s but got %s", expected, item.Value)
 	}
@@ -74,20 +76,24 @@ func TestNewChainTemplate(t *testing.T) {
 	)
 
 	creationPolicy := "Test"
-	nct := NewChainCreationTemplate(creationPolicy, util.ComputeCryptoHash, simple)
+	nct := NewChainCreationTemplate(creationPolicy, simple)
 
 	newChainID := "foo"
-	items, err := nct.Items(newChainID)
+	configEnv, err := nct.Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error creation a chain creation configuration")
 	}
 
-	if expected := 3; len(items) != expected {
-		t.Fatalf("Expected %d items, but got %d", expected, len(items))
+	config, err := UnmarshalConfig(configEnv.Config)
+	if err != nil {
+		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	for i, signedItem := range items {
-		item := utils.UnmarshalConfigurationItemOrPanic(signedItem.ConfigurationItem)
+	if expected := 3; len(config.Items) != expected {
+		t.Fatalf("Expected %d items, but got %d", expected, len(config.Items))
+	}
+
+	for i, item := range config.Items {
 		if i == 0 {
 			if item.Key != CreationPolicyKey {
 				t.Errorf("First item should have been the creation policy")
