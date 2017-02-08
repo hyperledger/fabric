@@ -19,18 +19,22 @@ package configtx
 import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx/api"
-	"github.com/hyperledger/fabric/common/configtx/handlers/channel"
+	configtxapplication "github.com/hyperledger/fabric/common/configtx/handlers/application"
+	configtxchannel "github.com/hyperledger/fabric/common/configtx/handlers/channel"
 	configtxmsp "github.com/hyperledger/fabric/common/configtx/handlers/msp"
+	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 type resources struct {
-	handlers         map[cb.ConfigItem_ConfigType]api.Handler
-	policyManager    policies.Manager
-	channelConfig    api.ChannelConfig
-	mspConfigHandler *configtxmsp.MSPConfigHandler
+	handlers          map[cb.ConfigItem_ConfigType]api.Handler
+	policyManager     policies.Manager
+	channelConfig     api.ChannelConfig
+	ordererConfig     api.OrdererConfig
+	applicationConfig api.ApplicationConfig
+	mspConfigHandler  *configtxmsp.MSPConfigHandler
 }
 
 // PolicyManager returns the policies.Manager for the chain
@@ -41,6 +45,16 @@ func (r *resources) PolicyManager() policies.Manager {
 // ChannelConfig returns the api.ChannelConfig for the chain
 func (r *resources) ChannelConfig() api.ChannelConfig {
 	return r.channelConfig
+}
+
+// OrdererConfig returns the api.OrdererConfig for the chain
+func (r *resources) OrdererConfig() api.OrdererConfig {
+	return r.ordererConfig
+}
+
+// ApplicationConfig returns the api.ApplicationConfig for the chain
+func (r *resources) ApplicationConfig() api.ApplicationConfig {
+	return r.applicationConfig
 }
 
 // MSPManager returns the msp.MSPManager for the chain
@@ -70,7 +84,9 @@ func NewInitializer() api.Initializer {
 	}
 
 	policyManager := policies.NewManagerImpl(policyProviderMap)
-	channelConfig := channel.NewSharedConfigImpl()
+	channelConfig := configtxchannel.NewSharedConfigImpl()
+	ordererConfig := configtxorderer.NewManagerImpl()
+	applicationConfig := configtxapplication.NewSharedConfigImpl()
 	handlers := make(map[cb.ConfigItem_ConfigType]api.Handler)
 
 	for ctype := range cb.ConfigItem_ConfigType_name {
@@ -78,6 +94,10 @@ func NewInitializer() api.Initializer {
 		switch rtype {
 		case cb.ConfigItem_CHAIN:
 			handlers[rtype] = channelConfig
+		case cb.ConfigItem_ORDERER:
+			handlers[rtype] = ordererConfig
+		case cb.ConfigItem_PEER:
+			handlers[rtype] = applicationConfig
 		case cb.ConfigItem_POLICY:
 			handlers[rtype] = policyManager
 		case cb.ConfigItem_MSP:
@@ -88,9 +108,11 @@ func NewInitializer() api.Initializer {
 	}
 
 	return &resources{
-		handlers:         handlers,
-		policyManager:    policyManager,
-		channelConfig:    channelConfig,
-		mspConfigHandler: mspConfigHandler,
+		handlers:          handlers,
+		policyManager:     policyManager,
+		channelConfig:     channelConfig,
+		ordererConfig:     ordererConfig,
+		applicationConfig: applicationConfig,
+		mspConfigHandler:  mspConfigHandler,
 	}
 }

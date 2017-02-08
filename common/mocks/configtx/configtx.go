@@ -33,6 +33,12 @@ type Initializer struct {
 	// ChannelConfigVal is returned as the result of ChannelConfig()
 	ChannelConfigVal configtxapi.ChannelConfig
 
+	// OrdererConfigVal is returned as the result of OrdererConfig()
+	OrdererConfigVal configtxapi.OrdererConfig
+
+	// ApplicationConfigVal is returned as the result of ApplicationConfig()
+	ApplicationConfigVal configtxapi.ApplicationConfig
+
 	// MSPManagerVal is returned as the result of MSPManager()
 	MSPManagerVal msp.MSPManager
 }
@@ -50,6 +56,16 @@ func (i *Initializer) PolicyManager() policies.Manager {
 // Returns the ChannelConfigVal
 func (i *Initializer) ChannelConfig() configtxapi.ChannelConfig {
 	return i.ChannelConfigVal
+}
+
+// Returns the OrdererConfigVal
+func (i *Initializer) OrdererConfig() configtxapi.OrdererConfig {
+	return i.OrdererConfigVal
+}
+
+// Returns the ApplicationConfigVal
+func (i *Initializer) ApplicationConfig() configtxapi.ApplicationConfig {
+	return i.ApplicationConfigVal
 }
 
 // Returns the MSPManagerVal
