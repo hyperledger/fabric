@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,14 +64,14 @@ func TestMultiDBBasicRW(t *testing.T) {
 	}
 }
 
-/* TODO add delete support in couchdb and then convert key value of nil to a couch delete. This will resolve TestDeletes
 func TestDeletes(t *testing.T) {
-	env := NewTestVDBEnv(t)
-	env.Cleanup("TestDB")
-	defer env.Cleanup("TestDB")
-	commontests.TestDeletes(t, env.DBProvider)
+	if ledgerconfig.IsCouchDBEnabled() == true {
+		env := NewTestVDBEnv(t)
+		env.Cleanup("TestDB")
+		defer env.Cleanup("TestDB")
+		commontests.TestDeletes(t, env.DBProvider)
+	}
 }
-*/
 
 func TestIterator(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {

@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -261,45 +261,47 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 				logger.Debugf("Applying key=%#v, versionedValue=%s", compositeKey, versionedValueDump)
 			}
 
-			// TODO add delete logic for couch using this approach from stateleveldb - convert nils to deletes
-			/*		if vv.Value == nil {
-						levelBatch.Delete(compositeKey)
-					} else {
-						levelBatch.Put(compositeKey, encodeValue(vv.Value, vv.Version))
+			//convert nils to deletes
+			if vv.Value == nil {
+
+				vdb.db.DeleteDoc(string(compositeKey), "")
+
+			} else {
+
+				//Check to see if the value is a valid JSON
+				//If this is not a valid JSON, then store as an attachment
+				if couchdb.IsJSON(string(vv.Value)) {
+
+					// SaveDoc using couchdb client and use JSON format
+					rev, err := vdb.db.SaveDoc(string(compositeKey), "", addVersionAndChainCodeID(vv.Value, ns, vv.Version), nil)
+					if err != nil {
+						logger.Errorf("Error during Commit(): %s\n", err.Error())
+						return err
 					}
-			*/
+					if rev != "" {
+						logger.Debugf("Saved document revision number: %s\n", rev)
+					}
 
-			if couchdb.IsJSON(string(vv.Value)) {
+				} else { // if the data is not JSON, save as binary attachment in Couch
 
-				// SaveDoc using couchdb client and use JSON format
-				rev, err := vdb.db.SaveDoc(string(compositeKey), "", addVersionAndChainCodeID(vv.Value, ns, vv.Version), nil)
-				if err != nil {
-					logger.Errorf("Error during Commit(): %s\n", err.Error())
-					return err
-				}
-				if rev != "" {
-					logger.Debugf("Saved document revision number: %s\n", rev)
-				}
+					//Create an attachment structure and load the bytes
+					attachment := &couchdb.Attachment{}
+					attachment.AttachmentBytes = statedb.EncodeValue(vv.Value, vv.Version)
+					attachment.ContentType = "application/octet-stream"
+					attachment.Name = "valueBytes"
 
-			} else { // if the data is not JSON, save as binary attachment in Couch
+					attachments := []couchdb.Attachment{}
+					attachments = append(attachments, *attachment)
 
-				//Create an attachment structure and load the bytes
-				attachment := &couchdb.Attachment{}
-				attachment.AttachmentBytes = statedb.EncodeValue(vv.Value, vv.Version)
-				attachment.ContentType = "application/octet-stream"
-				attachment.Name = "valueBytes"
-
-				attachments := []couchdb.Attachment{}
-				attachments = append(attachments, *attachment)
-
-				// SaveDoc using couchdb client and use attachment to persist the binary data
-				rev, err := vdb.db.SaveDoc(string(compositeKey), "", addVersionAndChainCodeID(nil, ns, vv.Version), attachments)
-				if err != nil {
-					logger.Errorf("Error during Commit(): %s\n", err.Error())
-					return err
-				}
-				if rev != "" {
-					logger.Debugf("Saved document revision number: %s\n", rev)
+					// SaveDoc using couchdb client and use attachment to persist the binary data
+					rev, err := vdb.db.SaveDoc(string(compositeKey), "", addVersionAndChainCodeID(nil, ns, vv.Version), attachments)
+					if err != nil {
+						logger.Errorf("Error during Commit(): %s\n", err.Error())
+						return err
+					}
+					if rev != "" {
+						logger.Debugf("Saved document revision number: %s\n", rev)
+					}
 				}
 			}
 		}
