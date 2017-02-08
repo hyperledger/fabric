@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -330,5 +330,62 @@ func TestDBSaveAttachment(t *testing.T) {
 		//Test to see that the result from CouchDB matches the initial text
 		testutil.AssertEquals(t, string(returnDoc), string(byteText))
 
+	}
+}
+
+func TestDBDeleteDocument(t *testing.T) {
+
+	if ledgerconfig.IsCouchDBEnabled() == true {
+
+		cleanup()
+		defer cleanup()
+
+		//create a new instance and database object
+		couchInstance, err := CreateCouchInstance(connectURL, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+
+		//create a new database
+		_, errdb := db.CreateDatabaseIfNotExist()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+		//Save the test document
+		_, saveerr := db.SaveDoc("2", "", assetJSON, nil)
+		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
+
+		//Attempt to retrieve the test document
+		_, _, readErr := db.ReadDoc("2")
+		testutil.AssertNoError(t, readErr, fmt.Sprintf("Error when trying to retrieve a document with attachment"))
+
+		//Delete the test document
+		deleteErr := db.DeleteDoc("2", "")
+		testutil.AssertNoError(t, deleteErr, fmt.Sprintf("Error when trying to delete a document"))
+
+		//Attempt to retrieve the test document
+		readValue, _, _ := db.ReadDoc("2")
+		testutil.AssertNil(t, readValue)
+
+	}
+}
+
+func TestDBDeleteNonExistingDocument(t *testing.T) {
+
+	if ledgerconfig.IsCouchDBEnabled() == true {
+
+		cleanup()
+		defer cleanup()
+
+		//create a new instance and database object
+		couchInstance, err := CreateCouchInstance(connectURL, username, password)
+		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
+		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
+
+		//create a new database
+		_, errdb := db.CreateDatabaseIfNotExist()
+		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
+
+		//Save the test document
+		deleteErr := db.DeleteDoc("2", "")
+		testutil.AssertNoError(t, deleteErr, fmt.Sprintf("Error when trying to delete a non existing document"))
 	}
 }

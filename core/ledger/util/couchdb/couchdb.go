@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2016, 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -733,6 +733,55 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 }
 
+//DeleteDoc method provides function to delete a document from the database by id
+func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
+
+	logger.Debugf("Entering DeleteDoc()  id=%s", id)
+
+	deleteURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return err
+	}
+
+	deleteURL.Path = dbclient.dbName
+	// id can contain a '/', so encode separately
+	deleteURL = &url.URL{Opaque: deleteURL.String() + "/" + encodePathElement(id)}
+
+	if rev == "" {
+
+		//See if the document already exists, we need the rev for delete
+		_, revdoc, err2 := dbclient.ReadDoc(id)
+		if err2 != nil {
+			//set the revision to indicate that the document was not found
+			rev = ""
+		} else {
+			//set the revision to the rev returned from the document read
+			rev = revdoc
+		}
+	}
+
+	logger.Debugf("  rev=%s", rev)
+
+	resp, couchDBReturn, err := dbclient.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "")
+	if err != nil {
+		fmt.Printf("couchDBReturn=%v", couchDBReturn)
+		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
+			logger.Debug("Document not found (404), returning nil value instead of 404 error")
+			// non-existent document should return nil value instead of a 404 error
+			// for details see https://github.com/hyperledger-archives/fabric/issues/936
+			return nil
+		}
+		return err
+	}
+	defer resp.Body.Close()
+
+	logger.Debugf("Exiting DeleteDoc()")
+
+	return nil
+
+}
+
 //QueryDocuments method provides function for processing a query
 func (dbclient *CouchDatabase) QueryDocuments(query string, limit, skip int) (*[]QueryResult, error) {
 
@@ -796,7 +845,6 @@ func (dbclient *CouchDatabase) QueryDocuments(query string, limit, skip int) (*[
 
 		logger.Debugf("Adding row to resultset: %s", row)
 
-		//TODO Replace the temporary NewHeight version when available
 		var addDocument = &QueryResult{jsonDoc.ID, row}
 
 		results = append(results, *addDocument)
@@ -821,7 +869,7 @@ func (dbclient *CouchDatabase) handleRequest(method, connectURL string, data io.
 	}
 
 	//add content header for PUT
-	if method == http.MethodPut || method == http.MethodPost {
+	if method == http.MethodPut || method == http.MethodPost || method == http.MethodDelete {
 
 		//If the multipartBoundary is not set, then this is a JSON and content-type should be set
 		//to application/json.   Else, this is contains an attachment and needs to be multipart
