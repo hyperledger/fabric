@@ -35,7 +35,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	logging "github.com/op/go-logging"
 )
 
@@ -104,9 +103,8 @@ type DocID struct {
 
 //QueryResult is used for returning query results from CouchDB
 type QueryResult struct {
-	ID      string
-	Version *version.Height
-	Value   []byte
+	ID    string
+	Value []byte
 }
 
 //CouchConnectionDef contains parameters
@@ -713,7 +711,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 				return nil, err
 			}
 
-			var addDocument = &QueryResult{jsonDoc.ID, version.NewHeight(1, 1), binaryDocument}
+			var addDocument = &QueryResult{jsonDoc.ID, binaryDocument}
 
 			results = append(results, *addDocument)
 
@@ -721,7 +719,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 			logger.Debugf("Adding json docment for id: %s", jsonDoc.ID)
 
-			var addDocument = &QueryResult{jsonDoc.ID, version.NewHeight(1, 1), row.Doc}
+			var addDocument = &QueryResult{jsonDoc.ID, row.Doc}
 
 			results = append(results, *addDocument)
 
@@ -799,7 +797,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string, limit, skip int) (*[
 		logger.Debugf("Adding row to resultset: %s", row)
 
 		//TODO Replace the temporary NewHeight version when available
-		var addDocument = &QueryResult{jsonDoc.ID, version.NewHeight(1, 1), row}
+		var addDocument = &QueryResult{jsonDoc.ID, row}
 
 		results = append(results, *addDocument)
 
