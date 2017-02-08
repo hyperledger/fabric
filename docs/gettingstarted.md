@@ -21,18 +21,25 @@ and channel, or quickly jump to the application development phase.
 
 ## Prerequisites and setup
 
-* [Docker](https://www.docker.com/products/overview) - v1.12 or higher
+* [Docker](https://www.docker.com/products/overview) - v1.13
 * [Docker Compose](https://docs.docker.com/compose/overview/) - v1.8 or higher
-* [Node.js](https://nodejs.org/en/download/) - comes with the node package manager (npm).
+* [Node.js](https://nodejs.org/en/download/) - v6.9.5.  Node.js comes with npm.  
+
 If you already have npm on your machine, issue the following command to retrieve the latest package:
 ```bash
 npm install npm@latest
 ```
-then execute the following to see your version:
+Then execute the following to see your version:
 ```bash
+# you're looking for 3.10.10 or higher
 npm -v
 ```
-You're looking for a version higher than 2.1.8.
+To see your node version:
+```bash
+# you're looking for 6.9.5
+node -v
+```
+
 
 ## Curl the source code to create network entities
 
