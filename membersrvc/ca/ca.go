@@ -490,10 +490,10 @@ func (ca *CA) readCertificates(id string, opt ...int64) (*sql.Rows, error) {
 	defer mutex.RUnlock()
 
 	if len(opt) > 0 && opt[0] != 0 {
-		return ca.db.Query("SELECT cert, kdfkey FROM Certificates WHERE id=? AND timestamp=? ORDER BY usage", id, opt[0])
+		return ca.db.Query("SELECT cert FROM Certificates WHERE id=? AND timestamp=? ORDER BY usage", id, opt[0])
 	}
 
-	return ca.db.Query("SELECT cert, kdfkey FROM Certificates WHERE id=?", id)
+	return ca.db.Query("SELECT cert FROM Certificates WHERE id=?", id)
 }
 
 func (ca *CA) readCertificateSets(id string, start, end int64) (*sql.Rows, error) {
@@ -502,7 +502,7 @@ func (ca *CA) readCertificateSets(id string, start, end int64) (*sql.Rows, error
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	return ca.db.Query("SELECT cert, kdfKey, timestamp FROM Certificates WHERE id=? AND timestamp BETWEEN ? AND ? ORDER BY timestamp", id, start, end)
+	return ca.db.Query("SELECT cert, timestamp FROM Certificates WHERE id=? AND timestamp BETWEEN ? AND ? ORDER BY timestamp", id, start, end)
 }
 
 func (ca *CA) readCertificateByHash(hash []byte) ([]byte, error) {
