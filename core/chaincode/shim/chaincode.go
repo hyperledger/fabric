@@ -397,11 +397,10 @@ func splitCompositeKey(compositeKey string) (string, []string, error) {
 }
 
 func validateCompositeKeyAttribute(str string) error {
+	if !utf8.ValidString(str) {
+		return fmt.Errorf("Not a valid utf8 string: [%x]", str)
+	}
 	for index, runeValue := range str {
-		if !utf8.ValidRune(runeValue) {
-			return fmt.Errorf("Not a valid utf8 string. Contains rune [%d] starting at byte position [%d]",
-				runeValue, index)
-		}
 		if runeValue == minUnicodeRuneValue || runeValue == maxUnicodeRuneValue {
 			return fmt.Errorf(`Input contain unicode %#U starting at position [%d]. %#U and %#U are not allowed in the input attribute of a composite key`,
 				runeValue, index, minUnicodeRuneValue, maxUnicodeRuneValue)
