@@ -38,11 +38,6 @@ var compositeKeySep = []byte{0x00}
 var lastKeyIndicator = byte(0x01)
 var savePointKey = []byte{0x00}
 
-var dataWrapper = "data"
-var jsonQuerySort = "sort"
-var jsonQueryFields = "fields"
-var jsonQuerySelector = "selector"
-
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
 	couchInstance *couchdb.CouchInstance
