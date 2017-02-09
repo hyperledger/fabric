@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/common/viperutil"
+
 	"github.com/Shopify/sarama"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -358,7 +360,7 @@ func LoadGenesis() *GenesisTopLevel {
 
 	var uconf GenesisTopLevel
 
-	err = ExactWithDateUnmarshal(config, &uconf)
+	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err != nil {
 		panic(fmt.Errorf("Error unmarshaling into structure: %s", err))
 	}
@@ -407,7 +409,7 @@ func Load() *TopLevel {
 
 	var uconf TopLevel
 
-	err = ExactWithDateUnmarshal(config, &uconf)
+	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err != nil {
 		panic(fmt.Errorf("Error unmarshaling into structure: %s", err))
 	}
