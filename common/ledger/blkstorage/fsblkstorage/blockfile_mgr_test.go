@@ -216,3 +216,23 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum, 2)
 	blkfileMgrWrapper.testGetBlockByHash(blocks)
 }
+
+func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath, 0))
+	defer env.Cleanup()
+	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
+	defer blkfileMgrWrapper.close()
+	blocks := testutil.ConstructTestBlocks(t, 10)
+	blkfileMgrWrapper.addBlocks(blocks)
+	for _, blk := range blocks {
+		for j, _ := range blk.Data.Data {
+			// blockNum starts with 1
+			txID, err := extractTxID(blk.Data.Data[j])
+			testutil.AssertNoError(t, err, "")
+
+			blockFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveBlockByTxID(txID)
+			testutil.AssertNoError(t, err, "Error while retrieving block from blkfileMgr")
+			testutil.AssertEquals(t, blockFromFileMgr, blk)
+		}
+	}
+}

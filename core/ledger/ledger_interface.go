@@ -43,6 +43,8 @@ type PeerLedger interface {
 	GetTransactionByID(txID string) (*common.Envelope, error)
 	// GetBlockByHash returns a block given it's hash
 	GetBlockByHash(blockHash []byte) (*common.Block, error)
+	// GetBlockByTxID returns a block which contains a transaction
+	GetBlockByTxID(txID string) (*common.Block, error)
 	// NewTxSimulator gives handle to a transaction simulator.
 	// A client can obtain more than one 'TxSimulator's for parallel execution.
 	// Any snapshoting/synchronization should be performed at the implementation level if required

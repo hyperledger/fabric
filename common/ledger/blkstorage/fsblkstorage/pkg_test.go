@@ -41,6 +41,7 @@ func newTestEnv(t testing.TB, conf *Conf) *testEnv {
 		blkstorage.IndexableAttrBlockNum,
 		blkstorage.IndexableAttrTxID,
 		blkstorage.IndexableAttrBlockNumTranNum,
+		blkstorage.IndexableAttrBlockTxID,
 	}
 	return newTestEnvSelectiveIndexing(t, conf, attrsToIndex)
 }

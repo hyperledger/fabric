@@ -47,6 +47,10 @@ func (i *noopIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (
 	return nil, nil
 }
 
+func (i *noopIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error) {
+	return nil, nil
+}
+
 func TestBlockIndexSync(t *testing.T) {
 	testBlockIndexSync(t, 10, 5, false)
 	testBlockIndexSync(t, 10, 5, true)
@@ -111,6 +115,7 @@ func TestBlockIndexSelectiveIndexing(t *testing.T) {
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNumTranNum})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockHash, blkstorage.IndexableAttrBlockNum})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxID, blkstorage.IndexableAttrBlockNumTranNum})
+	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockTxID})
 }
 
 func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.IndexableAttr) {
@@ -165,6 +170,17 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 		txEnvelopeOrig2, err2 := putil.GetEnvelopeFromBlock(txEnvelopeBytes2)
 		testutil.AssertNoError(t, err2, "")
 		testutil.AssertEquals(t, txEnvelope2, txEnvelopeOrig2)
+	} else {
+		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
+	}
+
+	// test 'retrieveBlockByTxID'
+	txid, err = extractTxID(blocks[0].Data.Data[0])
+	testutil.AssertNoError(t, err, "")
+	block, err = blockfileMgr.retrieveBlockByTxID(txid)
+	if testutil.Contains(indexItems, blkstorage.IndexableAttrBlockTxID) {
+		testutil.AssertNoError(t, err, "Error while retrieving block by txID")
+		testutil.AssertEquals(t, blocks[0], block)
 	} else {
 		testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
 	}

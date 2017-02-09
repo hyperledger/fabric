@@ -228,6 +228,11 @@ func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
 	return l.blockStore.RetrieveBlockByHash(blockHash)
 }
 
+// GetBlockByTxID returns a block which contains a transaction
+func (l *kvLedger) GetBlockByTxID(txID string) (*common.Block, error) {
+	return l.blockStore.RetrieveBlockByTxID(txID)
+}
+
 //Prune prunes the blocks/transactions that satisfy the given policy
 func (l *kvLedger) Prune(policy commonledger.PrunePolicy) error {
 	return errors.New("Not yet implemented")

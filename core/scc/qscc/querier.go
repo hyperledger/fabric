@@ -45,6 +45,7 @@ const (
 	GetBlockByNumber   string = "GetBlockByNumber"
 	GetBlockByHash     string = "GetBlockByHash"
 	GetTransactionByID string = "GetTransactionByID"
+	GetBlockByTxID     string = "GetBlockByTxID"
 )
 
 // Init is called once per chain when the chain is created.
@@ -95,6 +96,8 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return getBlockByHash(targetLedger, args[2])
 	case GetChainInfo:
 		return getChainInfo(targetLedger)
+	case GetBlockByTxID:
+		return getBlockByTxID(targetLedger, args[2])
 	}
 
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
@@ -171,6 +174,23 @@ func getChainInfo(vledger ledger.PeerLedger) pb.Response {
 		return shim.Error(fmt.Sprintf("Failed to get block info with error %s", err))
 	}
 	bytes, err := utils.Marshal(binfo)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(bytes)
+}
+
+func getBlockByTxID(vledger ledger.PeerLedger, rawTxID []byte) pb.Response {
+	txID := string(rawTxID)
+	block, err := vledger.GetBlockByTxID(txID)
+
+	if err != nil {
+		return shim.Error(fmt.Sprintf("Failed to get block for txID %s, error %s", txID, err))
+	}
+
+	bytes, err := utils.Marshal(block)
+
 	if err != nil {
 		return shim.Error(err.Error())
 	}

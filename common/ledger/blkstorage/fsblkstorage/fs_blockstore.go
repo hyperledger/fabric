@@ -77,6 +77,10 @@ func (store *fsBlockStore) RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum 
 	return store.fileMgr.retrieveTransactionByBlockNumTranNum(blockNum, tranNum)
 }
 
+func (store *fsBlockStore) RetrieveBlockByTxID(txID string) (*common.Block, error) {
+	return store.fileMgr.retrieveBlockByTxID(txID)
+}
+
 // Shutdown shuts down the block store
 func (store *fsBlockStore) Shutdown() {
 	logger.Debugf("closing fs blockStore:%s", store.id)

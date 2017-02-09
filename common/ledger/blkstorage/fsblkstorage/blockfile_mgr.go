@@ -438,6 +438,17 @@ func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*common.Block, 
 	return mgr.fetchBlock(loc)
 }
 
+func (mgr *blockfileMgr) retrieveBlockByTxID(txID string) (*common.Block, error) {
+	logger.Debugf("retrieveBlockByTxID() - txID = [%s]", txID)
+
+	loc, err := mgr.index.getBlockLocByTxID(txID)
+
+	if err != nil {
+		return nil, err
+	}
+	return mgr.fetchBlock(loc)
+}
+
 func (mgr *blockfileMgr) retrieveBlockHeaderByNumber(blockNum uint64) (*common.BlockHeader, error) {
 	logger.Debugf("retrieveBlockHeaderByNumber() - blockNum = [%d]", blockNum)
 	loc, err := mgr.index.getBlockLocByBlockNum(blockNum)
