@@ -34,8 +34,8 @@ import (
 type Generator interface {
 	bootstrap.Helper
 
-	// TemplateItems returns a set of config items which can be used to initialize a template
-	TemplateItems() []*cb.ConfigItem
+	// ChannelTemplate returns a template which can be used to help initialize a channel
+	ChannelTemplate() configtx.Template
 }
 
 const (
@@ -61,6 +61,7 @@ var DefaultChainCreationPolicyNames = []string{AcceptAllPolicyKey}
 
 type bootstrapper struct {
 	minimalItems     []*cb.ConfigItem
+	minimalGroups    []*cb.ConfigGroup
 	systemChainItems []*cb.ConfigItem
 }
 
@@ -83,7 +84,9 @@ func New(conf *config.TopLevel) Generator {
 			configtxorderer.TemplateBatchTimeout(conf.Genesis.BatchTimeout.String()),
 			configtxorderer.TemplateIngressPolicyNames([]string{AcceptAllPolicyKey}),
 			configtxorderer.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
+		},
 
+		minimalGroups: []*cb.ConfigGroup{
 			// Policies
 			cauthdsl.TemplatePolicy(configtx.NewConfigItemPolicyKey, cauthdsl.RejectAllPolicy),
 			cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy),
@@ -105,15 +108,18 @@ func New(conf *config.TopLevel) Generator {
 	return bs
 }
 
-func (bs *bootstrapper) TemplateItems() []*cb.ConfigItem {
-	return bs.minimalItems
+func (bs *bootstrapper) ChannelTemplate() configtx.Template {
+	return configtx.NewCompositeTemplate(
+		configtx.NewSimpleTemplate(bs.minimalItems...),
+		configtx.NewSimpleTemplateNext(bs.minimalGroups...),
+	)
 }
 
 func (bs *bootstrapper) GenesisBlock() *cb.Block {
 	block, err := genesis.NewFactoryImpl(
 		configtx.NewCompositeTemplate(
-			configtx.NewSimpleTemplate(bs.minimalItems...),
 			configtx.NewSimpleTemplate(bs.systemChainItems...),
+			bs.ChannelTemplate(),
 		),
 	).Block(TestChainID)
 

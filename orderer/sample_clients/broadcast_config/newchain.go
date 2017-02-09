@@ -26,15 +26,14 @@ import (
 func newChainRequest(consensusType, creationPolicy, newChannelId string) *cb.Envelope {
 	conf.Genesis.OrdererType = consensusType
 	generator := provisional.New(conf)
-	items := generator.TemplateItems()
-	simpleTemplate := configtx.NewSimpleTemplate(items...)
+	channelTemplate := generator.ChannelTemplate()
 
 	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
 	if err != nil {
 		panic(err)
 	}
 
-	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChannelId, signer, simpleTemplate)
+	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChannelId, signer, channelTemplate)
 	if err != nil {
 		panic(err)
 	}
