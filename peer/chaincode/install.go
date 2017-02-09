@@ -67,6 +67,12 @@ func createCCInstallPath(path string) (string, error) {
 
 func packageCC(chaincodeBin []byte) ([]byte, error) {
 	//TODO create proper, secured package, for now return chaincode binary asis
+	//
+	//At minimum, the package will contain
+	//  . chaincodeBin
+	//  . serialized Policy
+	//  . hash of the above computed here at install time
+	//  . signature with above
 	return chaincodeBin, nil
 }
 
