@@ -136,11 +136,11 @@ func (pm *SharedConfigImpl) CommitConfig() {
 }
 
 // ProposeConfig is used to add new config to the config proposal
-func (pm *SharedConfigImpl) ProposeConfig(configItem *cb.ConfigItem) error {
-	switch configItem.Key {
+func (pm *SharedConfigImpl) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+	switch key {
 	case HashingAlgorithmKey:
 		hashingAlgorithm := &cb.HashingAlgorithm{}
-		if err := proto.Unmarshal(configItem.Value, hashingAlgorithm); err != nil {
+		if err := proto.Unmarshal(configValue.Value, hashingAlgorithm); err != nil {
 			return fmt.Errorf("Unmarshaling error for HashingAlgorithm: %s", err)
 		}
 		switch hashingAlgorithm.Name {
@@ -151,7 +151,7 @@ func (pm *SharedConfigImpl) ProposeConfig(configItem *cb.ConfigItem) error {
 		}
 	case BlockDataHashingStructureKey:
 		blockDataHashingStructure := &cb.BlockDataHashingStructure{}
-		if err := proto.Unmarshal(configItem.Value, blockDataHashingStructure); err != nil {
+		if err := proto.Unmarshal(configValue.Value, blockDataHashingStructure); err != nil {
 			return fmt.Errorf("Unmarshaling error for BlockDataHashingStructure: %s", err)
 		}
 
@@ -162,12 +162,12 @@ func (pm *SharedConfigImpl) ProposeConfig(configItem *cb.ConfigItem) error {
 		pm.pendingConfig.blockDataHashingStructureWidth = blockDataHashingStructure.Width
 	case OrdererAddressesKey:
 		ordererAddresses := &cb.OrdererAddresses{}
-		if err := proto.Unmarshal(configItem.Value, ordererAddresses); err != nil {
+		if err := proto.Unmarshal(configValue.Value, ordererAddresses); err != nil {
 			return fmt.Errorf("Unmarshaling error for HashingAlgorithm: %s", err)
 		}
 		pm.pendingConfig.ordererAddresses = ordererAddresses.Addresses
 	default:
-		logger.Warningf("Uknown Chain config item with key %s", configItem.Key)
+		logger.Warningf("Uknown Chain config item with key %s", key)
 	}
 	return nil
 }

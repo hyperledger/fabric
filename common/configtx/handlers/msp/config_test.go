@@ -32,14 +32,16 @@ func TestMSPConfigManager(t *testing.T) {
 	confBytes, err := proto.Marshal(conf)
 	assert.NoError(t, err)
 
-	ci := &common.ConfigItem{Key: "DEFAULT", Value: confBytes}
+	ci := &common.ConfigValue{Value: confBytes}
 
 	// test success:
 
 	// begin/propose/commit
+	key := "DEFAULT"
+
 	mspCH := &MSPConfigHandler{}
 	mspCH.BeginConfig()
-	err = mspCH.ProposeConfig(ci)
+	err = mspCH.ProposeConfig(key, ci)
 	assert.NoError(t, err)
 	mspCH.CommitConfig()
 
@@ -53,8 +55,8 @@ func TestMSPConfigManager(t *testing.T) {
 	// test failure
 	// begin/propose/commit
 	mspCH.BeginConfig()
-	err = mspCH.ProposeConfig(ci)
+	err = mspCH.ProposeConfig(key, ci)
 	assert.NoError(t, err)
-	err = mspCH.ProposeConfig(&common.ConfigItem{Type: common.ConfigItem_MSP, Key: "DEFAULT", Value: []byte("BARF!")})
+	err = mspCH.ProposeConfig(key, &common.ConfigValue{Value: []byte("BARF!")})
 	assert.Error(t, err)
 }

@@ -23,6 +23,7 @@ import (
 
 // Policy is a mock implementation of the policies.Policy interface
 type Policy struct {
+	// Err is the error returned by Evaluate
 	Err error
 }
 
@@ -33,11 +34,20 @@ func (p *Policy) Evaluate(signatureSet []*cb.SignedData) error {
 
 // Manager is a mock implementation of the policies.Manager interface
 type Manager struct {
-	// Policy is returned as the output to GetPolicy
+	// Policy is returned as the output to GetPolicy if a Policy
+	// for id is not in PolicyMap
 	Policy *Policy
+
+	PolicyMap map[string]*Policy
 }
 
 // GetPolicy returns the value of Manager.Policy and whether it was nil or not
 func (m *Manager) GetPolicy(id string) (policies.Policy, bool) {
+	if m.PolicyMap != nil {
+		policy, ok := m.PolicyMap[id]
+		if ok {
+			return policy, true
+		}
+	}
 	return m.Policy, m.Policy != nil
 }

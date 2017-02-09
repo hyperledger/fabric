@@ -30,10 +30,13 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func makeInvalidConfigItem(key string) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_CHAIN,
-		Key:   key,
+// A temporary method while ConfigItem is being removed
+func itemToValue(configItem *cb.ConfigItem) (string, *cb.ConfigValue) {
+	return configItem.Key, &cb.ConfigValue{Value: configItem.Value}
+}
+
+func makeInvalidConfigItem() *cb.ConfigValue {
+	return &cb.ConfigValue{
 		Value: []byte("Garbage Data"),
 	}
 }
@@ -75,24 +78,24 @@ func TestRollback(t *testing.T) {
 }
 
 func TestHashingAlgorithm(t *testing.T) {
-	invalidMessage := makeInvalidConfigItem(HashingAlgorithmKey)
+	invalidMessage := makeInvalidConfigItem()
 	invalidAlgorithm := TemplateHashingAlgorithm("MD5")
 	validAlgorithm := DefaultHashingAlgorithm()
 
 	m := NewSharedConfigImpl(nil, nil)
 	m.BeginConfig()
 
-	err := m.ProposeConfig(invalidMessage)
+	err := m.ProposeConfig(HashingAlgorithmKey, invalidMessage)
 	if err == nil {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(invalidAlgorithm)
+	err = m.ProposeConfig(itemToValue(invalidAlgorithm))
 	if err == nil {
 		t.Fatalf("Should have failed on invalid algorithm")
 	}
 
-	err = m.ProposeConfig(validAlgorithm)
+	err = m.ProposeConfig(itemToValue(validAlgorithm))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
@@ -105,24 +108,24 @@ func TestHashingAlgorithm(t *testing.T) {
 }
 
 func TestBlockDataHashingStructure(t *testing.T) {
-	invalidMessage := makeInvalidConfigItem(BlockDataHashingStructureKey)
+	invalidMessage := makeInvalidConfigItem()
 	invalidWidth := TemplateBlockDataHashingStructure(0)
 	validWidth := DefaultBlockDataHashingStructure()
 
 	m := NewSharedConfigImpl(nil, nil)
 	m.BeginConfig()
 
-	err := m.ProposeConfig(invalidMessage)
+	err := m.ProposeConfig(BlockDataHashingStructureKey, invalidMessage)
 	if err == nil {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(invalidWidth)
+	err = m.ProposeConfig(itemToValue(invalidWidth))
 	if err == nil {
 		t.Fatalf("Should have failed on invalid width")
 	}
 
-	err = m.ProposeConfig(validWidth)
+	err = m.ProposeConfig(itemToValue(validWidth))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
@@ -135,17 +138,17 @@ func TestBlockDataHashingStructure(t *testing.T) {
 }
 
 func TestOrdererAddresses(t *testing.T) {
-	invalidMessage := makeInvalidConfigItem(OrdererAddressesKey)
+	invalidMessage := makeInvalidConfigItem()
 	validMessage := DefaultOrdererAddresses()
 	m := NewSharedConfigImpl(nil, nil)
 	m.BeginConfig()
 
-	err := m.ProposeConfig(invalidMessage)
+	err := m.ProposeConfig(OrdererAddressesKey, invalidMessage)
 	if err == nil {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(validMessage)
+	err = m.ProposeConfig(itemToValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}

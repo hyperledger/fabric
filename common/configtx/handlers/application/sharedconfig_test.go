@@ -31,12 +31,14 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func makeInvalidConfigItem(key string) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_PEER,
-		Key:   key,
+func makeInvalidConfigValue() *cb.ConfigValue {
+	return &cb.ConfigValue{
 		Value: []byte("Garbage Data"),
 	}
+}
+
+func itemToValue(configItem *cb.ConfigItem) (string, *cb.ConfigValue) {
+	return configItem.Key, &cb.ConfigValue{Value: configItem.Value}
 }
 
 func TestInterface(t *testing.T) {
@@ -80,17 +82,17 @@ func TestAnchorPeers(t *testing.T) {
 		&pb.AnchorPeer{Host: "foo", Port: 234, Cert: []byte("foocert")},
 		&pb.AnchorPeer{Host: "bar", Port: 237, Cert: []byte("barcert")},
 	}
-	invalidMessage := makeInvalidConfigItem(AnchorPeersKey)
+	invalidMessage := makeInvalidConfigValue()
 	validMessage := TemplateAnchorPeers(endVal)
 	m := NewSharedConfigImpl(nil)
 	m.BeginConfig()
 
-	err := m.ProposeConfig(invalidMessage)
+	err := m.ProposeConfig(AnchorPeersKey, invalidMessage)
 	if err == nil {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(validMessage)
+	err = m.ProposeConfig(itemToValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
