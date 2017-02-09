@@ -227,7 +227,7 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 		return shim.Error(jsonResp)
 	}
 
-	err = json.Unmarshal([]byte(jsonResp), &marbleJSON)
+	err = json.Unmarshal([]byte(valAsbytes), &marbleJSON)
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to decode JSON of: " + marbleName + "\"}"
 		return shim.Error(jsonResp)
