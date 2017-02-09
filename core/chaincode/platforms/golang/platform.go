@@ -137,20 +137,10 @@ func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) 
 		return "", fmt.Errorf("could not decode url: %s", err)
 	}
 
-	toks := strings.Split(urlLocation, "/")
-	if toks == nil || len(toks) == 0 {
-		return "", fmt.Errorf("cannot get path components from %s", urlLocation)
-	}
-
-	chaincodeGoName := toks[len(toks)-1]
-	if chaincodeGoName == "" {
-		return "", fmt.Errorf("could not get chaincode name from path %s", urlLocation)
-	}
-
 	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"))
 	buf = append(buf, "ADD codepackage.tgz $GOPATH")
 	//let the executable's name be chaincode ID's name
-	buf = append(buf, fmt.Sprintf("RUN go install %s && mv $GOPATH/bin/%s $GOPATH/bin/%s", urlLocation, chaincodeGoName, spec.ChaincodeId.Name))
+	buf = append(buf, fmt.Sprintf("RUN go build -o $GOPATH/bin/%s %s", spec.ChaincodeId.Name, urlLocation))
 
 	dockerFileContents := strings.Join(buf, "\n")
 
