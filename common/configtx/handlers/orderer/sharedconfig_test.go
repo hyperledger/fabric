@@ -41,9 +41,11 @@ func invalidMessage() *cb.ConfigValue {
 	}
 }
 
-// A temporary method while ConfigItem is being deprecated
-func itemToValue(configItem *cb.ConfigItem) (string, *cb.ConfigValue) {
-	return configItem.Key, &cb.ConfigValue{Value: configItem.Value}
+func groupToKeyValue(configGroup *cb.ConfigGroup) (string, *cb.ConfigValue) {
+	for key, value := range configGroup.Groups[GroupKey].Values {
+		return key, value
+	}
+	panic("No value encoded")
 }
 
 func doesFuncCrash(crasher func(), test string) bool {
@@ -102,7 +104,7 @@ func TestConsensusType(t *testing.T) {
 	m := NewManagerImpl(nil)
 	m.BeginConfig()
 
-	err := m.ProposeConfig(itemToValue(validMessage))
+	err := m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
@@ -115,12 +117,12 @@ func TestConsensusType(t *testing.T) {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(itemToValue(validMessage))
+	err = m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error re-applying valid config: %s", err)
 	}
 
-	err = m.ProposeConfig(itemToValue(otherValidMessage))
+	err = m.ProposeConfig(groupToKeyValue(otherValidMessage))
 	if err == nil {
 		t.Fatalf("Should not have applied config with different consensus type after it was initially set")
 	}
@@ -142,7 +144,7 @@ func TestBatchSize(t *testing.T) {
 		m := NewManagerImpl(nil)
 		m.BeginConfig()
 		err := m.ProposeConfig(
-			itemToValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes})),
+			groupToKeyValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes})),
 		)
 		assert.Nil(t, err, "Error applying valid config: %s", err)
 		m.CommitConfig()
@@ -168,7 +170,7 @@ func TestBatchSize(t *testing.T) {
 	t.Run("ZeroMaxMessageCount", func(t *testing.T) {
 		m := NewManagerImpl(nil)
 		m.BeginConfig()
-		err := m.ProposeConfig(itemToValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes})))
+		err := m.ProposeConfig(groupToKeyValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes})))
 		assert.NotNil(t, err, "Should have rejected batch size max message count of 0")
 		m.CommitConfig()
 	})
@@ -176,7 +178,7 @@ func TestBatchSize(t *testing.T) {
 	t.Run("ZeroAbsoluteMaxBytes", func(t *testing.T) {
 		m := NewManagerImpl(nil)
 		m.BeginConfig()
-		err := m.ProposeConfig(itemToValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0, PreferredMaxBytes: validPreferredMaxBytes})))
+		err := m.ProposeConfig(groupToKeyValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0, PreferredMaxBytes: validPreferredMaxBytes})))
 		assert.NotNil(t, err, "Should have rejected batch size absolute max message bytes of 0")
 		m.CommitConfig()
 	})
@@ -184,7 +186,7 @@ func TestBatchSize(t *testing.T) {
 	t.Run("TooLargePreferredMaxBytes", func(t *testing.T) {
 		m := NewManagerImpl(nil)
 		m.BeginConfig()
-		err := m.ProposeConfig(itemToValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validAbsoluteMaxBytes + 1})))
+		err := m.ProposeConfig(groupToKeyValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validAbsoluteMaxBytes + 1})))
 		assert.NotNil(t, err, "Should have rejected batch size preferred max message bytes greater than absolute max message bytes")
 		m.CommitConfig()
 	})
@@ -200,7 +202,7 @@ func TestBatchTimeout(t *testing.T) {
 	m := NewManagerImpl(nil)
 	m.BeginConfig()
 
-	err := m.ProposeConfig(itemToValue(validMessage))
+	err := m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
@@ -210,12 +212,12 @@ func TestBatchTimeout(t *testing.T) {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(itemToValue(negativeBatchTimeout))
+	err = m.ProposeConfig(groupToKeyValue(negativeBatchTimeout))
 	if err == nil {
 		t.Fatalf("Should have rejected negative batch timeout: %s", err)
 	}
 
-	err = m.ProposeConfig(itemToValue(zeroBatchTimeout))
+	err = m.ProposeConfig(groupToKeyValue(zeroBatchTimeout))
 	if err == nil {
 		t.Fatalf("Should have rejected batch timeout of 0")
 	}
@@ -233,7 +235,7 @@ func TestKafkaBrokers(t *testing.T) {
 	invalidMessage := invalidMessage()
 	zeroBrokers := TemplateKafkaBrokers([]string{})
 	badList := []string{"127.0.0.1", "foo.bar", "127.0.0.1:-1", "localhost:65536", "foo.bar.:9092", ".127.0.0.1:9092", "-foo.bar:9092"}
-	badMessages := []*cb.ConfigItem{}
+	badMessages := []*cb.ConfigGroup{}
 	for _, badAddress := range badList {
 		badMessages = append(badMessages, TemplateKafkaBrokers([]string{badAddress}))
 	}
@@ -243,7 +245,7 @@ func TestKafkaBrokers(t *testing.T) {
 	m := NewManagerImpl(nil)
 	m.BeginConfig()
 
-	err := m.ProposeConfig(itemToValue(validMessage))
+	err := m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
@@ -253,13 +255,13 @@ func TestKafkaBrokers(t *testing.T) {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(itemToValue(zeroBrokers))
+	err = m.ProposeConfig(groupToKeyValue(zeroBrokers))
 	if err == nil {
 		t.Fatalf("Should have rejected empty brokers list")
 	}
 
 	for i := range badMessages {
-		err = m.ProposeConfig(itemToValue(badMessages[i]))
+		err = m.ProposeConfig(groupToKeyValue(badMessages[i]))
 		if err == nil {
 			t.Fatalf("Should have rejected broker address which is obviously malformed")
 		}
@@ -276,14 +278,14 @@ func TestKafkaBrokers(t *testing.T) {
 	}
 }
 
-func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) *cb.ConfigItem, retriever func() []string, t *testing.T) {
+func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) *cb.ConfigGroup, retriever func() []string, t *testing.T) {
 	endPolicy := []string{"foo", "bar"}
 	invalidMessage := invalidMessage()
 	validMessage := initializer(endPolicy)
 
 	m.BeginConfig()
 
-	err := m.ProposeConfig(itemToValue(validMessage))
+	err := m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
@@ -296,7 +298,7 @@ func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) 
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(itemToValue(validMessage))
+	err = m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error re-applying valid config: %s", err)
 	}
@@ -328,7 +330,7 @@ func TestEmptyChainCreationPolicyNames(t *testing.T) {
 
 	m.BeginConfig()
 
-	err := m.ProposeConfig(itemToValue(TemplateChainCreationPolicyNames(nil)))
+	err := m.ProposeConfig(groupToKeyValue(TemplateChainCreationPolicyNames(nil)))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
