@@ -22,6 +22,7 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -112,6 +113,17 @@ func GetProposalResponse(prBytes []byte) (*peer.ProposalResponse, error) {
 func GetChaincodeDeploymentSpec(code []byte) (*peer.ChaincodeDeploymentSpec, error) {
 	cds := &peer.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(code, cds)
+	if err != nil {
+		return nil, err
+	}
+
+	// FAB-2122: Validate the CDS according to platform specific requirements
+	platform, err := platforms.Find(cds.ChaincodeSpec.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	err = platform.ValidateDeploymentSpec(cds)
 	if err != nil {
 		return nil, err
 	}
