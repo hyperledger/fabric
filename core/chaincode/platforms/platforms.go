@@ -74,9 +74,14 @@ func GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 
 func getPeerTLSCert() ([]byte, error) {
 	path := viper.GetString("peer.tls.cert.file")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// It's not an error if the file doesn't exist, we simply do not have a cert
-		return nil, nil
+	if _, err := os.Stat(path); err != nil {
+
+		if os.IsNotExist(err) && viper.GetBool("peer.tls.enabled") == false {
+			// It's not an error if the file doesn't exist but TLS is disabled anyway
+			return nil, nil
+		}
+
+		return nil, err
 	}
 
 	// FIXME: FAB-2037 - ensure we sanely resolve relative paths specified in the yaml
@@ -127,7 +132,7 @@ func generateDockerBuild(platform Platform, cds *pb.ChaincodeDeploymentSpec, inp
 	for name, data := range inputFiles {
 		err = cutil.WriteBytesToPackage(name, data, tw)
 		if err != nil {
-			return fmt.Errorf("Failed to inject Dockerfile: %s", err)
+			return fmt.Errorf("Failed to inject \"%s\": %s", name, err)
 		}
 	}
 
