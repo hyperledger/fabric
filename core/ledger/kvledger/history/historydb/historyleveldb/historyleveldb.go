@@ -17,6 +17,7 @@ limitations under the License.
 package historyleveldb
 
 import (
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history/historydb"
@@ -82,16 +83,13 @@ func (historyDB *historyDB) Close() {
 // Commit implements method in HistoryDB interface
 func (historyDB *historyDB) Commit(block *common.Block) error {
 
-	logger.Debugf("Entering HistoryLevelDB.Commit()")
-
-	//Get the blocknumber off of the header
 	blockNo := block.Header.Number
 	//Set the starting tranNo to 0
 	var tranNo uint64
 
 	dbBatch := leveldbhelper.NewUpdateBatch()
 
-	logger.Debugf("Updating history for blockNo: %v with [%d] transactions",
+	logger.Debugf("Updating history database for blockNo [%v] with [%d] transactions",
 		blockNo, len(block.Data.Data))
 
 	//TODO add check for invalid trans in bit array
@@ -110,7 +108,6 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 
 		if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 
-			logger.Debugf("Updating history for tranNo: %d", tranNo)
 			// extract actions from the envelope message
 			respPayload, err := putils.GetActionFromEnvelope(envBytes)
 			if err != nil {
@@ -133,9 +130,6 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 				for _, kvWrite := range nsRWSet.Writes {
 					writeKey := kvWrite.Key
 
-					logger.Debugf("Writing history record for: ns=%s, key=%s, blockNo=%d tranNo=%d",
-						ns, writeKey, blockNo, tranNo)
-
 					//composite key for history records is in the form ns~key~blockNo~tranNo
 					compositeHistoryKey := historydb.ConstructCompositeHistoryKey(ns, writeKey, blockNo, tranNo)
 
@@ -145,9 +139,8 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 			}
 
 		} else {
-			logger.Debugf("Skipping transaction %d since it is not an endorsement transaction\n", tranNo)
+			logger.Debugf("Skipping transaction [%d] since it is not an endorsement transaction\n", tranNo)
 		}
-
 	}
 
 	// add savepoint for recovery purpose
@@ -159,12 +152,13 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 		return err
 	}
 
+	logger.Debugf("Updates committed to history database for blockNo [%v]", blockNo)
 	return nil
 }
 
 // NewHistoryQueryExecutor implements method in HistoryDB interface
-func (historyDB *historyDB) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
-	return &LevelHistoryDBQueryExecutor{historyDB}, nil
+func (historyDB *historyDB) NewHistoryQueryExecutor(blockStore blkstorage.BlockStore) (ledger.HistoryQueryExecutor, error) {
+	return &LevelHistoryDBQueryExecutor{historyDB, blockStore}, nil
 }
 
 // GetBlockNumFromSavepoint implements method in HistoryDB interface

@@ -17,6 +17,7 @@ limitations under the License.
 package fsblkstorage
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -292,5 +293,16 @@ func (flp *fileLocPointer) String() string {
 }
 
 func (blockIdxInfo *blockIdxInfo) String() string {
-	return fmt.Sprintf("blockNum=%d, blockHash=%#v", blockIdxInfo.blockNum, blockIdxInfo.blockHash)
+
+	var buffer bytes.Buffer
+	for _, txOffset := range blockIdxInfo.txOffsets {
+		buffer.WriteString("txId=")
+		buffer.WriteString(txOffset.txID)
+		buffer.WriteString(" locPointer=")
+		buffer.WriteString(txOffset.loc.String())
+		buffer.WriteString("\n")
+	}
+	txOffsetsString := buffer.String()
+
+	return fmt.Sprintf("blockNum=%d, blockHash=%#v txOffsets=\n%s", blockIdxInfo.blockNum, blockIdxInfo.blockHash, txOffsetsString)
 }
