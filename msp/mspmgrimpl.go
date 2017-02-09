@@ -56,7 +56,7 @@ func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
 		return fmt.Errorf("Setup error: at least one MSP configuration item is required")
 	}
 
-	mspLogger.Infof("Setting up the MSP manager (%d msps)", len(msps))
+	mspLogger.Debugf("Setting up the MSP manager (%d msps)", len(msps))
 
 	// create the map that assigns MSP IDs to their manager instance - once
 	mgr.mspsMap = make(map[string]MSP)
@@ -67,7 +67,7 @@ func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
 			return fmt.Errorf("Setup error: unsupported msp type %d", mspConf.Type)
 		}
 
-		mspLogger.Infof("Setting up MSP")
+		mspLogger.Debugf("Setting up MSP")
 
 		// create the msp instance
 		msp, err := NewBccspMsp()
@@ -91,7 +91,7 @@ func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
 
 	mgr.up = true
 
-	mspLogger.Infof("MSP manager setup complete, setup %d msps", len(msps))
+	mspLogger.Debugf("MSP manager setup complete, setup %d msps", len(msps))
 
 	return nil
 }

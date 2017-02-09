@@ -36,7 +36,7 @@ func readPemFile(file string) ([]byte, error) {
 }
 
 func getPemMaterialFromDir(dir string) ([][]byte, error) {
-	mspLogger.Infof("Reading directory %s", dir)
+	mspLogger.Debugf("Reading directory %s", dir)
 
 	content := make([][]byte, 0)
 	files, err := ioutil.ReadDir(dir)
@@ -50,7 +50,7 @@ func getPemMaterialFromDir(dir string) ([][]byte, error) {
 		}
 
 		fullName := filepath.Join(dir, string(filepath.Separator), f.Name())
-		mspLogger.Infof("Inspecting file %s", fullName)
+		mspLogger.Debugf("Inspecting file %s", fullName)
 
 		item, err := readPemFile(fullName)
 		if err != nil {
