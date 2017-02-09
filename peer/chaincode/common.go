@@ -197,7 +197,9 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			return fmt.Errorf("Non-empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 		}
 	} else {
-		return errors.New("Empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
+		if cmd == nil || cmd != chaincodeInstallCmd {
+			return errors.New("Empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
+		}
 	}
 
 	return nil
