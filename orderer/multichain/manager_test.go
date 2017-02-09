@@ -44,6 +44,20 @@ func init() {
 	genesisBlock = provisional.New(conf).GenesisBlock()
 }
 
+type mockCryptoHelper struct{}
+
+func (xxx mockCryptoHelper) VerifySignature(sd *cb.SignedData) error {
+	return nil
+}
+
+func (xxx mockCryptoHelper) NewSignatureHeader() (*cb.SignatureHeader, error) {
+	return &cb.SignatureHeader{}, nil
+}
+
+func (xxx mockCryptoHelper) Sign(message []byte) ([]byte, error) {
+	return message, nil
+}
+
 func NewRAMLedgerAndFactory(maxSize int) (ordererledger.Factory, ordererledger.ReadWriter) {
 	rlf := ramledger.New(10)
 	rl, err := rlf.GetOrCreate(provisional.TestChainID)
@@ -115,7 +129,7 @@ func TestNoSystemChain(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
 
-	NewManagerImpl(lf, consenters, &xxxCryptoHelper{})
+	NewManagerImpl(lf, consenters, &mockCryptoHelper{})
 }
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate
@@ -125,7 +139,7 @@ func TestManagerImpl(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, &xxxCryptoHelper{})
+	manager := NewManagerImpl(lf, consenters, &mockCryptoHelper{})
 
 	_, ok := manager.GetChain("Fake")
 	if ok {
@@ -171,7 +185,7 @@ func TestSignatureFilter(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, &xxxCryptoHelper{})
+	manager := NewManagerImpl(lf, consenters, &mockCryptoHelper{})
 
 	cs, ok := manager.GetChain(provisional.TestChainID)
 
@@ -209,7 +223,7 @@ func TestNewChain(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Genesis.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, &xxxCryptoHelper{})
+	manager := NewManagerImpl(lf, consenters, &mockCryptoHelper{})
 
 	generator := provisional.New(conf)
 	items := generator.TemplateItems()
