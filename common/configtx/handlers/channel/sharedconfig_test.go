@@ -30,9 +30,11 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-// A temporary method while ConfigItem is being removed
-func itemToValue(configItem *cb.ConfigItem) (string, *cb.ConfigValue) {
-	return configItem.Key, &cb.ConfigValue{Value: configItem.Value}
+func groupToKeyValue(configGroup *cb.ConfigGroup) (string, *cb.ConfigValue) {
+	for key, value := range configGroup.Values {
+		return key, value
+	}
+	panic("No value encoded")
 }
 
 func makeInvalidConfigItem() *cb.ConfigValue {
@@ -90,12 +92,12 @@ func TestHashingAlgorithm(t *testing.T) {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(itemToValue(invalidAlgorithm))
+	err = m.ProposeConfig(groupToKeyValue(invalidAlgorithm))
 	if err == nil {
 		t.Fatalf("Should have failed on invalid algorithm")
 	}
 
-	err = m.ProposeConfig(itemToValue(validAlgorithm))
+	err = m.ProposeConfig(groupToKeyValue(validAlgorithm))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
@@ -120,12 +122,12 @@ func TestBlockDataHashingStructure(t *testing.T) {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(itemToValue(invalidWidth))
+	err = m.ProposeConfig(groupToKeyValue(invalidWidth))
 	if err == nil {
 		t.Fatalf("Should have failed on invalid width")
 	}
 
-	err = m.ProposeConfig(itemToValue(validWidth))
+	err = m.ProposeConfig(groupToKeyValue(validWidth))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
@@ -148,7 +150,7 @@ func TestOrdererAddresses(t *testing.T) {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(itemToValue(validMessage))
+	err = m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}

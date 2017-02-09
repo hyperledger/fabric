@@ -69,11 +69,6 @@ type bootstrapper struct {
 func New(conf *config.TopLevel) Generator {
 	bs := &bootstrapper{
 		minimalItems: []*cb.ConfigItem{
-			// Chain Config Types
-			configtxchannel.DefaultHashingAlgorithm(),
-			configtxchannel.DefaultBlockDataHashingStructure(),
-			configtxchannel.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
-
 			// Orderer Config Types
 			configtxorderer.TemplateConsensusType(conf.Genesis.OrdererType),
 			configtxorderer.TemplateBatchSize(&ab.BatchSize{
@@ -87,6 +82,11 @@ func New(conf *config.TopLevel) Generator {
 		},
 
 		minimalGroups: []*cb.ConfigGroup{
+			// Chain Config Types
+			configtxchannel.DefaultHashingAlgorithm(),
+			configtxchannel.DefaultBlockDataHashingStructure(),
+			configtxchannel.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
+
 			// Policies
 			cauthdsl.TemplatePolicy(configtx.NewConfigItemPolicyKey, cauthdsl.RejectAllPolicy),
 			cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy),
