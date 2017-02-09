@@ -144,12 +144,6 @@ func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userr
 
 	theChaincodeSupport.ccStartupTimeout = ccstartuptimeout
 
-	//TODO I'm not sure if this needs to be on a per chain basis... too lowel and just needs to be a global default ?
-	theChaincodeSupport.chaincodeInstallPath = viper.GetString("chaincode.installpath")
-	if theChaincodeSupport.chaincodeInstallPath == "" {
-		theChaincodeSupport.chaincodeInstallPath = chaincodeInstallPathDefault
-	}
-
 	theChaincodeSupport.peerTLS = viper.GetBool("peer.tls.enabled")
 	if theChaincodeSupport.peerTLS {
 		theChaincodeSupport.peerTLSCertFile = viper.GetString("peer.tls.cert.file")
@@ -198,19 +192,18 @@ func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userr
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
 type ChaincodeSupport struct {
-	runningChaincodes    *runningChaincodes
-	peerAddress          string
-	ccStartupTimeout     time.Duration
-	chaincodeInstallPath string
-	userRunsCC           bool
-	peerNetworkID        string
-	peerID               string
-	peerTLS              bool
-	peerTLSCertFile      string
-	peerTLSKeyFile       string
-	peerTLSSvrHostOrd    string
-	keepalive            time.Duration
-	chaincodeLogLevel    string
+	runningChaincodes *runningChaincodes
+	peerAddress       string
+	ccStartupTimeout  time.Duration
+	userRunsCC        bool
+	peerNetworkID     string
+	peerID            string
+	peerTLS           bool
+	peerTLSCertFile   string
+	peerTLSKeyFile    string
+	peerTLSSvrHostOrd string
+	keepalive         time.Duration
+	chaincodeLogLevel string
 }
 
 // DuplicateChaincodeHandlerError returned if attempt to register same chaincodeID while a stream already exists.
@@ -356,7 +349,7 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 	switch cLang {
 	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
 		//chaincode executable will be same as the name of the chaincode
-		args = []string{chaincodeSupport.chaincodeInstallPath + cccid.Name, fmt.Sprintf("-peer.address=%s", chaincodeSupport.peerAddress)}
+		args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", chaincodeSupport.peerAddress)}
 		chaincodeLogger.Debugf("Executable is %s", args[0])
 	case pb.ChaincodeSpec_JAVA:
 		//TODO add security args

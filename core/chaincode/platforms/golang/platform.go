@@ -138,9 +138,9 @@ func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) 
 	}
 
 	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"))
-	buf = append(buf, "ADD codepackage.tgz $GOPATH")
+	buf = append(buf, "ADD codepackage.tgz /tmp/codepackage")
 	//let the executable's name be chaincode ID's name
-	buf = append(buf, fmt.Sprintf("RUN go build -o $GOPATH/bin/%s %s", spec.ChaincodeId.Name, urlLocation))
+	buf = append(buf, fmt.Sprintf("RUN GOPATH=/tmp/codepackage:$GOPATH go build -o /usr/local/bin/chaincode %s", urlLocation))
 
 	dockerFileContents := strings.Join(buf, "\n")
 
