@@ -230,9 +230,7 @@ func TestPull(t *testing.T) {
 
 	n := 5
 	msgsCount2Send := 10
-	boot := newGossipInstanceWithOnlyPull(portPrefix, 0, 100)
-	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
-	boot.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+
 	peers := make([]Gossip, n)
 	wg := sync.WaitGroup{}
 	wg.Add(n)
@@ -246,6 +244,12 @@ func TestPull(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+
+	time.Sleep(time.Second)
+
+	boot := newGossipInstanceWithOnlyPull(portPrefix, 0, 100)
+	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	boot.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
 
 	knowAll := func() bool {
 		for i := 1; i <= n; i++ {
