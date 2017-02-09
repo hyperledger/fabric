@@ -30,7 +30,7 @@ import (
 var genesisBlock *cb.Block
 
 func init() {
-	genesisBlock = provisional.New(config.Load()).GenesisBlock()
+	genesisBlock = provisional.New(config.LoadGenesis()).GenesisBlock()
 	testables = append(testables, &fileLedgerTestEnv{})
 }
 

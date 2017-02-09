@@ -24,14 +24,14 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-var confSolo, confKafka *config.TopLevel
-var testCases []*config.TopLevel
+var confSolo, confKafka *config.GenesisTopLevel
+var testCases []*config.GenesisTopLevel
 
 func init() {
-	confSolo = config.Load()
-	confKafka = config.Load()
-	confKafka.Genesis.OrdererType = ConsensusTypeKafka
-	testCases = []*config.TopLevel{confSolo, confKafka}
+	confSolo = config.LoadGenesis()
+	confKafka = config.LoadGenesis()
+	confKafka.Orderer.OrdererType = ConsensusTypeKafka
+	testCases = []*config.GenesisTopLevel{confSolo, confKafka}
 }
 
 func TestGenesisBlockHeader(t *testing.T) {
@@ -40,10 +40,10 @@ func TestGenesisBlockHeader(t *testing.T) {
 	for _, tc := range testCases {
 		genesisBlock := New(tc).GenesisBlock()
 		if genesisBlock.Header.Number != expectedHeaderNumber {
-			t.Fatalf("Case %s: Expected header number %d, got %d", tc.Genesis.OrdererType, expectedHeaderNumber, genesisBlock.Header.Number)
+			t.Fatalf("Case %s: Expected header number %d, got %d", tc.Orderer.OrdererType, expectedHeaderNumber, genesisBlock.Header.Number)
 		}
 		if !bytes.Equal(genesisBlock.Header.PreviousHash, nil) {
-			t.Fatalf("Case %s: Expected header previousHash to be nil, got %x", tc.Genesis.OrdererType, genesisBlock.Header.PreviousHash)
+			t.Fatalf("Case %s: Expected header previousHash to be nil, got %x", tc.Orderer.OrdererType, genesisBlock.Header.PreviousHash)
 		}
 	}
 }

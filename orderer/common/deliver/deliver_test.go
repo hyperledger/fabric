@@ -44,7 +44,7 @@ const ledgerSize = 10
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
-	genesisBlock = provisional.New(config.Load()).GenesisBlock()
+	genesisBlock = provisional.New(config.LoadGenesis()).GenesisBlock()
 }
 
 type mockD struct {

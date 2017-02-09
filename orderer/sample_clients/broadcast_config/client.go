@@ -29,6 +29,7 @@ import (
 )
 
 var conf *config.TopLevel
+var genConf *config.GenesisTopLevel
 
 type broadcastClient struct {
 	ab.AtomicBroadcast_BroadcastClient
@@ -67,6 +68,7 @@ type argsImpl struct {
 
 func init() {
 	conf = config.Load()
+	genConf = config.LoadGenesis()
 }
 
 func main() {
@@ -75,7 +77,7 @@ func main() {
 
 	flag.StringVar(&srv, "server", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort), "The RPC server to connect to.")
 	flag.StringVar(&cmd.name, "cmd", "newChain", "The action that this client is requesting via the config transaction.")
-	flag.StringVar(&cmd.args.consensusType, "consensusType", conf.Genesis.OrdererType, "In case of a newChain command, the type of consensus the ordering service is running on.")
+	flag.StringVar(&cmd.args.consensusType, "consensusType", genConf.Orderer.OrdererType, "In case of a newChain command, the type of consensus the ordering service is running on.")
 	flag.StringVar(&cmd.args.creationPolicy, "creationPolicy", "AcceptAllPolicy", "In case of a newChain command, the chain creation policy this request should be validated against.")
 	flag.StringVar(&cmd.args.chainID, "chainID", "NewChannelId", "In case of a newChain command, the chain ID to create.")
 	flag.Parse()

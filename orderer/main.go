@@ -114,7 +114,7 @@ func main() {
 		// Select the bootstrapping mechanism
 		switch conf.General.GenesisMethod {
 		case "provisional":
-			genesisBlock = provisional.New(conf).GenesisBlock()
+			genesisBlock = provisional.New(config.LoadGenesis()).GenesisBlock()
 		case "file":
 			genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 		default:
@@ -165,8 +165,8 @@ func main() {
 
 func makeSbftConsensusConfig(conf *config.TopLevel) *sbft.ConsensusConfig {
 	cfg := simplebft.Config{N: conf.Genesis.SbftShared.N, F: conf.Genesis.SbftShared.F,
-		BatchDurationNsec:  uint64(conf.Genesis.BatchTimeout),
-		BatchSizeBytes:     uint64(conf.Genesis.BatchSize.AbsoluteMaxBytes),
+		BatchDurationNsec:  uint64(conf.Genesis.DeprecatedBatchTimeout),
+		BatchSizeBytes:     uint64(conf.Genesis.DeprecatedBatchSize),
 		RequestTimeoutNsec: conf.Genesis.SbftShared.RequestTimeoutNsec}
 	peers := make(map[string][]byte)
 	for addr, cert := range conf.Genesis.SbftShared.Peers {
