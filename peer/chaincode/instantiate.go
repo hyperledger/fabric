@@ -28,14 +28,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var chaincodeDeployCmd *cobra.Command
+var chaincodeInstantiateCmd *cobra.Command
 
-const deploy_cmdname = "deploy"
+const instantiate_cmdname = "instantiate"
 
-// deployCmd returns the cobra command for Chaincode Deploy
-func deployCmd(cf *ChaincodeCmdFactory) *cobra.Command {
-	chaincodeDeployCmd = &cobra.Command{
-		Use:       deploy_cmdname,
+// instantiateCmd returns the cobra command for Chaincode Deploy
+func instantiateCmd(cf *ChaincodeCmdFactory) *cobra.Command {
+	chaincodeInstantiateCmd = &cobra.Command{
+		Use:       instantiate_cmdname,
 		Short:     fmt.Sprintf("Deploy the specified chaincode to the network."),
 		Long:      fmt.Sprintf(`Deploy the specified chaincode to the network.`),
 		ValidArgs: []string{"1"},
@@ -44,17 +44,17 @@ func deployCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 		},
 	}
 
-	return chaincodeDeployCmd
+	return chaincodeInstantiateCmd
 }
 
-//deploy the command via Endorser
-func deploy(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
+//instantiate the command via Endorser
+func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	cds, err := getChaincodeBytes(spec)
+	cds, err := getChaincodeBytes(spec, false)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
@@ -95,7 +95,7 @@ func deploy(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, 
 	return nil, nil
 }
 
-// chaincodeDeploy deploys the chaincode. On success, the chaincode name
+// chaincodeDeploy instantiates the chaincode. On success, the chaincode name
 // (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
 // commands.
 func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
@@ -107,7 +107,7 @@ func chaincodeDeploy(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory)
 		}
 	}
 	defer cf.BroadcastClient.Close()
-	env, err := deploy(cmd, cf)
+	env, err := instantiate(cmd, cf)
 	if err != nil {
 		return err
 	}

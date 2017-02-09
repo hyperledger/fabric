@@ -169,10 +169,10 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 		"created",
 		fsm.Events{
 			{Name: pb.ChaincodeMessage_REGISTERED.String(), Src: []string{"created"}, Dst: "established"},
-			{Name: pb.ChaincodeMessage_INIT.String(), Src: []string{"established"}, Dst: "init"},
 			{Name: pb.ChaincodeMessage_READY.String(), Src: []string{"established"}, Dst: "ready"},
 			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{"init"}, Dst: "established"},
 			{Name: pb.ChaincodeMessage_RESPONSE.String(), Src: []string{"init"}, Dst: "init"},
+			{Name: pb.ChaincodeMessage_INIT.String(), Src: []string{"ready"}, Dst: "ready"},
 			{Name: pb.ChaincodeMessage_TRANSACTION.String(), Src: []string{"ready"}, Dst: "ready"},
 			{Name: pb.ChaincodeMessage_RESPONSE.String(), Src: []string{"ready"}, Dst: "ready"},
 			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{"ready"}, Dst: "ready"},
@@ -180,10 +180,10 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 			{Name: pb.ChaincodeMessage_COMPLETED.String(), Src: []string{"ready"}, Dst: "ready"},
 		},
 		fsm.Callbacks{
-			"before_" + pb.ChaincodeMessage_REGISTERED.String(): func(e *fsm.Event) { v.beforeRegistered(e) },
-			"after_" + pb.ChaincodeMessage_RESPONSE.String():    func(e *fsm.Event) { v.afterResponse(e) },
-			"after_" + pb.ChaincodeMessage_ERROR.String():       func(e *fsm.Event) { v.afterError(e) },
-			"enter_init":                                        func(e *fsm.Event) { v.enterInitState(e) },
+			"before_" + pb.ChaincodeMessage_REGISTERED.String():  func(e *fsm.Event) { v.beforeRegistered(e) },
+			"after_" + pb.ChaincodeMessage_RESPONSE.String():     func(e *fsm.Event) { v.afterResponse(e) },
+			"after_" + pb.ChaincodeMessage_ERROR.String():        func(e *fsm.Event) { v.afterError(e) },
+			"before_" + pb.ChaincodeMessage_INIT.String():        func(e *fsm.Event) { v.enterInitState(e) },
 			"before_" + pb.ChaincodeMessage_TRANSACTION.String(): func(e *fsm.Event) { v.enterTransactionState(e) },
 		},
 	)

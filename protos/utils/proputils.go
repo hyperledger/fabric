@@ -449,23 +449,31 @@ func CreateUpgradeProposalFromCDS(txid string, chainID string, cds *peer.Chainco
 
 // createProposalFromCDS returns a deploy or upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec
 func createProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte, deploy bool) (*peer.Proposal, error) {
-	b, err := proto.Marshal(cds)
-	if err != nil {
-		return nil, err
-	}
-
 	var propType string
 	if deploy {
 		propType = "deploy"
 	} else {
 		propType = "upgrade"
 	}
+
+	//in the new mode, cds will be nil, "deploy" and "upgrade" are instantiates.
+	var ccinp *peer.ChaincodeInput
+	if cds != nil {
+		b, err := proto.Marshal(cds)
+		if err != nil {
+			return nil, err
+		}
+		ccinp = &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b, policy, escc, vscc}}
+	} else {
+		ccinp = &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), nil, policy, escc, vscc}}
+	}
+
 	//wrap the deployment in an invocation spec to lccc...
 	lcccSpec := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			Type:        peer.ChaincodeSpec_GOLANG,
 			ChaincodeID: &peer.ChaincodeID{Name: "lccc"},
-			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b, policy, escc, vscc}}}}
+			Input:       ccinp}}
 
 	//...and get the proposal for it
 	return CreateProposalFromCIS(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, lcccSpec, creator)

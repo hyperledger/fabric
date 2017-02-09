@@ -130,7 +130,7 @@ func TestUpgradeCC(t *testing.T) {
 
 	ccName := "mycc"
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
-	chaincodeID := &pb.ChaincodeID{Name: ccName, Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: ccName, Path: url, Version: "0"}
 
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
@@ -171,7 +171,7 @@ func TestUpgradeCC(t *testing.T) {
 	url = "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
 	//Note ccName hasn't changed...
-	chaincodeID = &pb.ChaincodeID{Name: ccName, Path: url}
+	chaincodeID = &pb.ChaincodeID{Name: ccName, Path: url, Version: "1"}
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 	//...and get back the ccid with the new version
@@ -219,7 +219,7 @@ func TestInvalUpgradeCC(t *testing.T) {
 
 	ccName := "mycc"
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	chaincodeID := &pb.ChaincodeID{Name: ccName, Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: ccName, Path: url, Version: "0"}
 
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
@@ -229,7 +229,7 @@ func TestInvalUpgradeCC(t *testing.T) {
 	cccid := ccprovider.NewCCContext(chainID, ccName, "0", "", false, nil)
 
 	//Note ccName hasn't changed...
-	chaincodeID = &pb.ChaincodeID{Name: ccName, Path: url}
+	chaincodeID = &pb.ChaincodeID{Name: ccName, Path: url, Version: "1"}
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 	//...and get back the ccid with the new version

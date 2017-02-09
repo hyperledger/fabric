@@ -70,31 +70,6 @@ func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
 	return lgr.NewTxSimulator()
 }
 
-//deploy the chaincode after call to the system chaincode is successful
-func (e *Endorser) deploy(ctxt context.Context, cccid *ccprovider.CCContext, cds *pb.ChaincodeDeploymentSpec) error {
-	chaincodeSupport := chaincode.GetChain()
-
-	_, err := chaincodeSupport.Deploy(ctxt, cccid, cds)
-	if err != nil {
-		return fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
-	}
-
-	//launch and wait for ready
-	_, _, err = chaincodeSupport.Launch(ctxt, cccid, cds)
-	if err != nil {
-		return fmt.Errorf("%s", err)
-	}
-
-	if chaincode.IsDevMode() == false {
-		//stop now that we are done
-		chaincodeSupport.Stop(ctxt, cccid, cds)
-	} else {
-		endorserLogger.Debug("devmode: skipping stop")
-	}
-
-	return nil
-}
-
 //call specified chaincode (system or user)
 func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version string, txid string, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var err error
@@ -129,18 +104,6 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 	//NOTE that if there's an error all simulation, including the chaincode
 	//table changes in lccc will be thrown away
 	if cid.Name == "lccc" && len(cis.ChaincodeSpec.Input.Args) >= 3 && (string(cis.ChaincodeSpec.Input.Args[0]) == "deploy" || string(cis.ChaincodeSpec.Input.Args[0]) == "upgrade") {
-		var ccVersion string
-		switch string(cis.ChaincodeSpec.Input.Args[0]) {
-		case "deploy":
-			//NOTE - if user provides chaincode version on deploy, that'll be in the
-			//ChaincodeID and will be used
-			ccVersion = "0"
-		case "upgrade":
-			//use the new version
-			ccVersion = string(res.Payload)
-		default:
-			panic(fmt.Sprintf("invalid call to lccc... we shouldn't have got here (ie,passed ExecuteChaincode (%s))", cis.ChaincodeSpec.Input.Args[0]))
-		}
 		var cds *pb.ChaincodeDeploymentSpec
 		cds, err = putils.GetChaincodeDeploymentSpec(cis.ChaincodeSpec.Input.Args[2])
 		if err != nil {
@@ -152,11 +115,11 @@ func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version s
 			return nil, nil, fmt.Errorf("attempting to deploy a system chaincode %s/%s", cds.ChaincodeSpec.ChaincodeID.Name, chainID)
 		}
 
-		cccid = ccprovider.NewCCContext(chainID, cds.ChaincodeSpec.ChaincodeID.Name, ccVersion, txid, false, prop)
+		cccid = ccprovider.NewCCContext(chainID, cds.ChaincodeSpec.ChaincodeID.Name, cds.ChaincodeSpec.ChaincodeID.Version, txid, false, prop)
 
-		err = e.deploy(ctxt, cccid, cds)
+		_, _, err = chaincode.Execute(ctxt, cccid, cds)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("%s", err)
 		}
 	}
 	//----- END -------

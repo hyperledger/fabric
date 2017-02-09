@@ -19,6 +19,8 @@ package ccprovider
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/golang/protobuf/proto"
 
@@ -29,6 +31,76 @@ import (
 )
 
 var ccproviderLogger = logging.MustGetLogger("ccprovider")
+
+var chaincodeInstallPath string
+
+//SetChaincodesPath sets the chaincode path for this peer
+func SetChaincodesPath(path string) {
+	if s, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			if err := os.Mkdir(path, 0755); err != nil {
+				panic(fmt.Sprintf("Could not create chaincodes install path: %s", err))
+			}
+		} else {
+			panic(fmt.Sprintf("Could not stat chaincodes install path: %s", err))
+		}
+	} else if !s.IsDir() {
+		panic(fmt.Errorf("chaincode path exists but not a dir: %s", path))
+	}
+
+	chaincodeInstallPath = path
+}
+
+//GetChaincodePackage returns the chaincode package from the file system
+func GetChaincodePackage(ccname string, ccversion string) ([]byte, error) {
+	path := fmt.Sprintf("%s/%s.%s", chaincodeInstallPath, ccname, ccversion)
+	var ccbytes []byte
+	var err error
+	if ccbytes, err = ioutil.ReadFile(path); err != nil {
+		return nil, err
+	}
+	return ccbytes, nil
+}
+
+//GetChaincodeFromFS returns the chaincode and its package from the file system
+func GetChaincodeFromFS(ccname string, ccversion string) ([]byte, *pb.ChaincodeDeploymentSpec, error) {
+	//NOTE- this is the only place from where we get code from file system
+	//this API needs to be modified to take other params for security.
+	//this implementation needs to be enhanced to do those security checks
+	ccbytes, err := GetChaincodePackage(ccname, ccversion)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cdsfs := &pb.ChaincodeDeploymentSpec{}
+	err = proto.Unmarshal(ccbytes, cdsfs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal fs deployment spec for %s, %s", ccname, ccversion)
+	}
+
+	return ccbytes, cdsfs, nil
+}
+
+//PutChaincodeIntoFS - serializes chaincode to a package on the file system
+func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
+	//NOTE- this is  only place from where we put code into file system
+	//this API needs to be modified to take other params for security.
+	//this implementation needs to be enhanced to do those security checks
+	ccname := depSpec.ChaincodeSpec.ChaincodeID.Name
+	ccversion := depSpec.ChaincodeSpec.ChaincodeID.Version
+
+	b, err := proto.Marshal(depSpec)
+	if err != nil {
+		return fmt.Errorf("failed to marshal fs deployment spec for %s, %s", ccname, ccversion)
+	}
+
+	path := fmt.Sprintf("%s/%s.%s", chaincodeInstallPath, ccname, ccversion)
+	if err = ioutil.WriteFile(path, b, 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 //CCContext pass this around instead of string of args
 type CCContext struct {
@@ -65,7 +137,7 @@ func NewCCContext(cid, name, version, txid string, syscc bool, prop *pb.Proposal
 		panic(fmt.Sprintf("---empty version---(chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p", cid, name, version, txid, syscc, prop))
 	}
 
-	canName := name + ":" + version + "/" + cid
+	canName := name + ":" + version
 
 	cccid := &CCContext{cid, name, version, txid, syscc, prop, canName}
 

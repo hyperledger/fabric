@@ -89,9 +89,9 @@ func setupEndpoint(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
-	//t.Skip("Test CI build")
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
-	defer os.RemoveAll("/var/hyperledger/test/")
+	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
+	os.Mkdir("/tmp/hyperledgertest", 0755)
+	defer os.RemoveAll("/tmp/hyperledgertest/")
 
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
@@ -105,9 +105,9 @@ func TestConfigerInvokeJoinChainMissingParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
-	//t.Skip("Test CI build")
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
-	defer os.RemoveAll("/var/hyperledger/test/")
+	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
+	os.Mkdir("/tmp/hyperledgertest", 0755)
+	defer os.RemoveAll("/tmp/hyperledgertest/")
 
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
@@ -122,12 +122,13 @@ func TestConfigerInvokeJoinChainWrongParams(t *testing.T) {
 }
 
 func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
-	//t.Skip("Test CI build")
-	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
+	viper.Set("peer.fileSystemPath", "/tmp/hyperledgertest/")
+	os.Mkdir("/tmp/hyperledgertest", 0755)
+
 	peer.MockInitialize()
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
-	defer os.RemoveAll("/var/hyperledger/test/")
+	defer os.RemoveAll("/tmp/hyperledgerest/")
 
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
@@ -169,7 +170,6 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 }
 
 func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
-	//t.Skip("Test CI build")
 	e := new(PeerConfiger)
 	stub := shim.NewMockStub("PeerConfiger", e)
 

@@ -238,8 +238,10 @@ func getDeployLCCCSpec(chainID string, cds *pb.ChaincodeDeploymentSpec) (*pb.Cha
 		return nil, err
 	}
 
+	sysCCVers := util.GetSysCCVersion()
+
 	//wrap the deployment in an invocation spec to lccc...
-	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
+	lcccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "lccc", Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(chainID), b}}}}
 
 	return lcccSpec, nil
 }
@@ -280,6 +282,10 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 			endTxSimulationCDS(cccid.ChainID, uuid, txsim, []byte("deployed"), false, chaincodeDeploymentSpec)
 		}
 	}()
+
+	if err = ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec); err != nil {
+		return nil, err
+	}
 
 	sysCCVers := util.GetSysCCVersion()
 	lcccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeID.Name, sysCCVers, uuid, true, nil)
@@ -354,7 +360,7 @@ func executeDeployTransaction(t *testing.T, chainID string, name string, url str
 
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: name, Path: url}, Input: &pb.ChaincodeInput{Args: args}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: name, Path: url, Version: "0"}, Input: &pb.ChaincodeInput{Args: args}}
 
 	cccid := ccprovider.NewCCContext(chainID, name, "0", "", false, nil)
 
@@ -377,7 +383,7 @@ func chaincodeQueryChaincode(chainID string, user string) error {
 	// Deploy first chaincode
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1}
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1, Version: "0"}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -398,7 +404,7 @@ func chaincodeQueryChaincode(chainID string, user string) error {
 	// Deploy second chaincode
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example05"
 
-	cID2 := &pb.ChaincodeID{Name: "example05", Path: url2}
+	cID2 := &pb.ChaincodeID{Name: "example05", Path: url2, Version: "0"}
 	f = "init"
 	args = util.ToChaincodeArgs(f, "sum", "0")
 
@@ -605,7 +611,7 @@ func TestExecuteInvokeTransaction(t *testing.T) {
 
 	cccid := ccprovider.NewCCContext(chainID, "example02", "0", "", false, nil)
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url, Version: "0"}
 
 	args := []string{"a", "b", "10"}
 	err = invokeExample02Transaction(ctxt, cccid, chaincodeID, args, true)
@@ -635,7 +641,7 @@ func TestExecuteInvokeInvalidTransaction(t *testing.T) {
 	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url}
+	chaincodeID := &pb.ChaincodeID{Name: "example02", Path: url, Version: "0"}
 
 	cccid := ccprovider.NewCCContext(chainID, "example02", "0", "", false, nil)
 
@@ -688,7 +694,7 @@ func chaincodeInvokeChaincode(t *testing.T, chainID string, user string) (err er
 	// Deploy first chaincode
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1}
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1, Version: "0"}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -712,7 +718,7 @@ func chaincodeInvokeChaincode(t *testing.T, chainID string, user string) (err er
 	// Deploy second chaincode
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example04"
 
-	cID2 := &pb.ChaincodeID{Name: "example04", Path: url2}
+	cID2 := &pb.ChaincodeID{Name: "example04", Path: url2, Version: "0"}
 	f = "init"
 	args = util.ToChaincodeArgs(f, "e", "0")
 
@@ -787,7 +793,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	// Deploy first chaincode
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1}
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1, Version: "0"}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -809,7 +815,7 @@ func TestChaincodeInvokeChaincodeErrorCase(t *testing.T) {
 	// Deploy second chaincode
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
 
-	cID2 := &pb.ChaincodeID{Name: "pthru", Path: url2}
+	cID2 := &pb.ChaincodeID{Name: "pthru", Path: url2, Version: "0"}
 	f = "init"
 	args = util.ToChaincodeArgs(f)
 
@@ -873,7 +879,7 @@ func TestQueries(t *testing.T) {
 	var ctxt = context.Background()
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/map"
-	cID := &pb.ChaincodeID{Name: "tmap", Path: url}
+	cID := &pb.ChaincodeID{Name: "tmap", Path: url, Version: "0"}
 
 	f := "init"
 	args := util.ToChaincodeArgs(f)
@@ -973,7 +979,7 @@ func TestGetEvent(t *testing.T) {
 
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/eventsender"
 
-	cID := &pb.ChaincodeID{Name: "esender", Path: url}
+	cID := &pb.ChaincodeID{Name: "esender", Path: url, Version: "0"}
 	f := "init"
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: cID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(f)}}
 
@@ -1040,7 +1046,7 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	// Deploy first chaincode
 	url1 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
 
-	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1}
+	cID1 := &pb.ChaincodeID{Name: "example02", Path: url1, Version: "0"}
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
@@ -1062,7 +1068,7 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	// Deploy second chaincode
 	url2 := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example05"
 
-	cID2 := &pb.ChaincodeID{Name: "example05", Path: url2}
+	cID2 := &pb.ChaincodeID{Name: "example05", Path: url2, Version: "0"}
 	f = "init"
 	args = util.ToChaincodeArgs(f, "sum", "0")
 

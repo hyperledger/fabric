@@ -40,7 +40,6 @@ import (
 const (
 	createdstate     = "created"     //start state
 	establishedstate = "established" //in: CREATED, rcv:  REGISTER, send: REGISTERED, INIT
-	initstate        = "init"        //in:ESTABLISHED, rcv:-, send: INIT
 	readystate       = "ready"       //in:ESTABLISHED,TRANSACTION, rcv:COMPLETED
 	endstate         = "end"         //in:INIT,ESTABLISHED, rcv: error, terminate container
 
@@ -389,29 +388,19 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 		fsm.Events{
 			//Send REGISTERED, then, if deploy { trigger INIT(via INIT) } else { trigger READY(via COMPLETED) }
 			{Name: pb.ChaincodeMessage_REGISTER.String(), Src: []string{createdstate}, Dst: establishedstate},
-			{Name: pb.ChaincodeMessage_INIT.String(), Src: []string{establishedstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_READY.String(), Src: []string{establishedstate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_PUT_STATE.String(), Src: []string{initstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_PUT_STATE.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_DEL_STATE.String(), Src: []string{initstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_DEL_STATE.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), Src: []string{initstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_INVOKE_CHAINCODE.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_COMPLETED.String(), Src: []string{initstate, readystate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_COMPLETED.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_GET_STATE.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_GET_STATE.String(), Src: []string{initstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_RANGE_QUERY_STATE.String(), Src: []string{initstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_EXECUTE_QUERY_STATE.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_EXECUTE_QUERY_STATE.String(), Src: []string{initstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_QUERY_STATE_NEXT.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_QUERY_STATE_NEXT.String(), Src: []string{initstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_QUERY_STATE_CLOSE.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_QUERY_STATE_CLOSE.String(), Src: []string{initstate}, Dst: initstate},
-			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{initstate}, Dst: endstate},
 			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{readystate}, Dst: readystate},
-			{Name: pb.ChaincodeMessage_RESPONSE.String(), Src: []string{initstate}, Dst: initstate},
 			{Name: pb.ChaincodeMessage_RESPONSE.String(), Src: []string{readystate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_INIT.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_TRANSACTION.String(), Src: []string{readystate}, Dst: readystate},
 		},
 		fsm.Callbacks{
@@ -427,7 +416,6 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 			"after_" + pb.ChaincodeMessage_DEL_STATE.String():           func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
 			"after_" + pb.ChaincodeMessage_INVOKE_CHAINCODE.String():    func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
 			"enter_" + establishedstate:                                 func(e *fsm.Event) { v.enterEstablishedState(e, v.FSM.Current()) },
-			"enter_" + initstate:                                        func(e *fsm.Event) { v.enterInitState(e, v.FSM.Current()) },
 			"enter_" + readystate:                                       func(e *fsm.Event) { v.enterReadyState(e, v.FSM.Current()) },
 			"enter_" + endstate:                                         func(e *fsm.Event) { v.enterEndState(e, v.FSM.Current()) },
 		},
@@ -1193,9 +1181,9 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			// TODO: Need to handle timeout correctly
 			timeout := time.Duration(30000) * time.Millisecond
 
-			ccMsg, _ := createTransactionMessage(msg.Txid, chaincodeInput)
+			ccMsg, _ := createCCMessage(pb.ChaincodeMessage_TRANSACTION, msg.Txid, chaincodeInput)
 
-			// Execute the chaincode
+			// Execute the chaincode... this CANNOT be an init at least for now
 			response, execErr := handler.chaincodeSupport.Execute(ctxt, cccid, ccMsg, timeout)
 
 			//payload is marshalled and send to the calling chaincode's shim which unmarshals and
@@ -1226,22 +1214,6 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 
 func (handler *Handler) enterEstablishedState(e *fsm.Event, state string) {
 	handler.notifyDuringStartup(true)
-}
-
-func (handler *Handler) enterInitState(e *fsm.Event, state string) {
-	ccMsg, ok := e.Args[0].(*pb.ChaincodeMessage)
-	if !ok {
-		e.Cancel(fmt.Errorf("Received unexpected message type"))
-		return
-	}
-	chaincodeLogger.Debugf("[%s]Entered state %s", shorttxid(ccMsg.Txid), state)
-	//very first time entering init state from established, send message to chaincode
-	if ccMsg.Type == pb.ChaincodeMessage_INIT {
-		if err := handler.serialSend(ccMsg); err != nil {
-			errMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(fmt.Sprintf("Error sending %s: %s", pb.ChaincodeMessage_INIT, err)), Txid: ccMsg.Txid}
-			handler.notify(errMsg)
-		}
-	}
 }
 
 func (handler *Handler) enterReadyState(e *fsm.Event, state string) {
@@ -1284,48 +1256,29 @@ func (handler *Handler) setChaincodeProposal(prop *pb.Proposal, msg *pb.Chaincod
 	return nil
 }
 
-//if initArgs is set (should be for "deploy" only) move to Init
-//else move to ready
-func (handler *Handler) initOrReady(ctxt context.Context, chainID string, txid string, prop *pb.Proposal, initArgs [][]byte) (chan *pb.ChaincodeMessage, error) {
-	var ccMsg *pb.ChaincodeMessage
-	var send bool
-
+//move to ready
+func (handler *Handler) ready(ctxt context.Context, chainID string, txid string, prop *pb.Proposal) (chan *pb.ChaincodeMessage, error) {
 	txctx, funcErr := handler.createTxContext(ctxt, chainID, txid, prop)
 	if funcErr != nil {
 		return nil, funcErr
 	}
 
-	notfy := txctx.responseNotifier
-
-	if initArgs != nil {
-		chaincodeLogger.Debug("sending INIT")
-		funcArgsMsg := &pb.ChaincodeInput{Args: initArgs}
-		var payload []byte
-		if payload, funcErr = proto.Marshal(funcArgsMsg); funcErr != nil {
-			handler.deleteTxContext(txid)
-			return nil, fmt.Errorf("Failed to marshall %s : %s\n", ccMsg.Type.String(), funcErr)
-		}
-		ccMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INIT, Payload: payload, Txid: txid}
-		send = false
-	} else {
-		chaincodeLogger.Debug("sending READY")
-		ccMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: txid}
-		send = true
-	}
+	chaincodeLogger.Debug("sending READY")
+	ccMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: txid}
 
 	//if security is disabled the context elements will just be nil
 	if err := handler.setChaincodeProposal(prop, ccMsg); err != nil {
 		return nil, err
 	}
 
-	handler.triggerNextState(ccMsg, send)
+	handler.triggerNextState(ccMsg, true)
 
-	return notfy, nil
+	return txctx.responseNotifier, nil
 }
 
 // HandleMessage implementation of MessageHandler interface.  Peer's handling of Chaincode messages.
 func (handler *Handler) HandleMessage(msg *pb.ChaincodeMessage) error {
-	chaincodeLogger.Debugf("[%s]Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
+	chaincodeLogger.Debugf("[%s]Fabric side Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 
 	if (msg.Type == pb.ChaincodeMessage_COMPLETED || msg.Type == pb.ChaincodeMessage_ERROR) && handler.FSM.Current() == "ready" {
 		chaincodeLogger.Debugf("[%s]HandleMessage- COMPLETED. Notify", msg.Txid)
@@ -1402,8 +1355,6 @@ func (handler *Handler) isRunning() bool {
 		fallthrough
 	case establishedstate:
 		fallthrough
-	case initstate:
-		return false
 	default:
 		return true
 	}
