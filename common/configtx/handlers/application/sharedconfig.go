@@ -57,7 +57,7 @@ var Schema = &cb.ConfigGroupSchema{
 
 // Peer config keys
 const (
-	// AnchorPeersKey is the cb.ConfigItem type key name for the AnchorPeers message
+	// AnchorPeersKey is the key name for the AnchorPeers ConfigValue
 	AnchorPeersKey = "AnchorPeers"
 )
 

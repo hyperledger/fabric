@@ -24,16 +24,21 @@ import (
 
 var defaultAnchorPeers = []*pb.AnchorPeer{}
 
-// TemplateAnchorPeers creates a headerless config item representing the anchor peers
-func TemplateAnchorPeers(anchorPeers []*pb.AnchorPeer) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_PEER,
-		Key:   AnchorPeersKey,
-		Value: utils.MarshalOrPanic(&pb.AnchorPeers{AnchorPeers: anchorPeers}),
+func configGroup(key string, value []byte) *cb.ConfigGroup {
+	result := cb.NewConfigGroup()
+	result.Groups[GroupKey] = cb.NewConfigGroup()
+	result.Groups[GroupKey].Values[key] = &cb.ConfigValue{
+		Value: value,
 	}
+	return result
+}
+
+// TemplateAnchorPeers creates a headerless config item representing the anchor peers
+func TemplateAnchorPeers(anchorPeers []*pb.AnchorPeer) *cb.ConfigGroup {
+	return configGroup(AnchorPeersKey, utils.MarshalOrPanic(&pb.AnchorPeers{AnchorPeers: anchorPeers}))
 }
 
 // DefaultAnchorPeers creates a headerless config item for the default orderer addresses
-func DefaultAnchorPeers() *cb.ConfigItem {
+func DefaultAnchorPeers() *cb.ConfigGroup {
 	return TemplateAnchorPeers(defaultAnchorPeers)
 }
