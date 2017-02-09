@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	mockpolicies "github.com/hyperledger/fabric/orderer/mocks/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
