@@ -30,9 +30,9 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func makeInvalidConfigItem(key string) *cb.ConfigurationItem {
-	return &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Peer,
+func makeInvalidConfigItem(key string) *cb.ConfigItem {
+	return &cb.ConfigItem{
+		Type:  cb.ConfigItem_Peer,
 		Key:   key,
 		Value: []byte("Garbage Data"),
 	}

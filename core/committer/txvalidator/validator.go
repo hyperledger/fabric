@@ -42,8 +42,8 @@ type Support interface {
 	// MSPManager returns the MSP manager for this chain
 	MSPManager() msp.MSPManager
 
-	// Apply attempts to apply a configtx to become the new configuration
-	Apply(configtx *common.ConfigurationEnvelope) error
+	// Apply attempts to apply a configtx to become the new config
+	Apply(configtx *common.ConfigEnvelope) error
 }
 
 //Validator interface which defines API to validate block transactions
@@ -142,15 +142,15 @@ func (v *txValidator) Validate(block *common.Block) error {
 						continue
 					}
 				} else if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
-					configEnvelope, err := configtx.UnmarshalConfigurationEnvelope(payload.Data)
+					configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 					if err != nil {
-						err := fmt.Errorf("Error unmarshaling configuration which passed initial validity checks: %s", err)
+						err := fmt.Errorf("Error unmarshaling config which passed initial validity checks: %s", err)
 						logger.Critical(err)
 						return err
 					}
 
 					if err := v.support.Apply(configEnvelope); err != nil {
-						err := fmt.Errorf("Error validating configuration which passed initial validity checks: %s", err)
+						err := fmt.Errorf("Error validating config which passed initial validity checks: %s", err)
 						logger.Critical(err)
 						return err
 					}

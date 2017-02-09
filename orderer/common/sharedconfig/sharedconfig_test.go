@@ -35,9 +35,9 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func invalidMessage(key string) *cb.ConfigurationItem {
-	return &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Orderer,
+func invalidMessage(key string) *cb.ConfigItem {
+	return &cb.ConfigItem{
+		Type:  cb.ConfigItem_Orderer,
 		Key:   key,
 		Value: []byte("Garbage Data"),
 	}
@@ -135,7 +135,7 @@ func TestBatchSize(t *testing.T) {
 	validAbsoluteMaxBytes := uint32(1000)
 	validPreferredMaxBytes := uint32(500)
 
-	t.Run("ValidConfiguration", func(t *testing.T) {
+	t.Run("ValidConfig", func(t *testing.T) {
 		m := NewManagerImpl()
 		m.BeginConfig()
 		err := m.ProposeConfig(
@@ -154,7 +154,7 @@ func TestBatchSize(t *testing.T) {
 		}
 	})
 
-	t.Run("UnserializableConfiguration", func(t *testing.T) {
+	t.Run("UnserializableConfig", func(t *testing.T) {
 		m := NewManagerImpl()
 		m.BeginConfig()
 		err := m.ProposeConfig(invalidMessage(BatchSizeKey))
@@ -230,7 +230,7 @@ func TestKafkaBrokers(t *testing.T) {
 	invalidMessage := invalidMessage(KafkaBrokersKey)
 	zeroBrokers := TemplateKafkaBrokers([]string{})
 	badList := []string{"127.0.0.1", "foo.bar", "127.0.0.1:-1", "localhost:65536", "foo.bar.:9092", ".127.0.0.1:9092", "-foo.bar:9092"}
-	badMessages := []*cb.ConfigurationItem{}
+	badMessages := []*cb.ConfigItem{}
 	for _, badAddress := range badList {
 		badMessages = append(badMessages, TemplateKafkaBrokers([]string{badAddress}))
 	}
@@ -273,7 +273,7 @@ func TestKafkaBrokers(t *testing.T) {
 	}
 }
 
-func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) *cb.ConfigurationItem, retriever func() []string, t *testing.T) {
+func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) *cb.ConfigItem, retriever func() []string, t *testing.T) {
 	endPolicy := []string{"foo", "bar"}
 	invalidMessage := invalidMessage(key)
 	validMessage := initializer(endPolicy)

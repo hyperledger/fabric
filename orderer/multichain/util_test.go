@@ -80,12 +80,12 @@ func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]b
 }
 
 func makeConfigTx(chainID string, i int) *cb.Envelope {
-	return makeConfigTxWithItems(chainID, &cb.ConfigurationItem{
+	return makeConfigTxWithItems(chainID, &cb.ConfigItem{
 		Value: []byte(fmt.Sprintf("%d", i)),
 	})
 }
 
-func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.Envelope {
+func makeConfigTxWithItems(chainID string, items ...*cb.ConfigItem) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
@@ -94,7 +94,7 @@ func makeConfigTxWithItems(chainID string, items ...*cb.ConfigurationItem) *cb.E
 			},
 			SignatureHeader: &cb.SignatureHeader{},
 		},
-		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{
+		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
 			Config: utils.MarshalOrPanic(&cb.Config{
 				Items: items,
 				Header: &cb.ChainHeader{

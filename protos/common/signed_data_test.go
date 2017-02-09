@@ -33,10 +33,10 @@ func marshalOrPanic(msg proto.Message) []byte {
 }
 
 func TestNilConfigEnvelopeAsSignedData(t *testing.T) {
-	var ce *ConfigurationEnvelope
+	var ce *ConfigEnvelope
 	_, err := ce.AsSignedData()
 	if err == nil {
-		t.Fatalf("Should have errored trying to convert a nil signed configuration item to signed data")
+		t.Fatalf("Should have errored trying to convert a nil signed config item to signed data")
 	}
 }
 
@@ -45,9 +45,9 @@ func TestConfigEnvelopeAsSignedData(t *testing.T) {
 	signatures := [][]byte{[]byte("Signature1"), []byte("Signature2")}
 	identities := [][]byte{[]byte("Identity1"), []byte("Identity2")}
 
-	configSignatures := make([]*ConfigurationSignature, len(signatures))
+	configSignatures := make([]*ConfigSignature, len(signatures))
 	for i := range configSignatures {
-		configSignatures[i] = &ConfigurationSignature{
+		configSignatures[i] = &ConfigSignature{
 			SignatureHeader: marshalOrPanic(&SignatureHeader{
 				Creator: identities[i],
 			}),
@@ -55,7 +55,7 @@ func TestConfigEnvelopeAsSignedData(t *testing.T) {
 		}
 	}
 
-	ce := &ConfigurationEnvelope{
+	ce := &ConfigEnvelope{
 		Config:     configBytes,
 		Signatures: configSignatures,
 	}

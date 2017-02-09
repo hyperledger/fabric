@@ -25,49 +25,49 @@ import (
 
 const defaultHashingAlgorithm = SHA3Shake256
 
-// TemplateHashingAlgorithm creates a headerless configuration item representing the hashing algorithm
-func TemplateHashingAlgorithm(name string) *cb.ConfigurationItem {
-	return &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
+// TemplateHashingAlgorithm creates a headerless config item representing the hashing algorithm
+func TemplateHashingAlgorithm(name string) *cb.ConfigItem {
+	return &cb.ConfigItem{
+		Type:  cb.ConfigItem_Chain,
 		Key:   HashingAlgorithmKey,
 		Value: utils.MarshalOrPanic(&cb.HashingAlgorithm{Name: name}),
 	}
 
 }
 
-// DefaultHashingAlgorithm creates a headerless configuration item for the default hashing algorithm
-func DefaultHashingAlgorithm() *cb.ConfigurationItem {
+// DefaultHashingAlgorithm creates a headerless config item for the default hashing algorithm
+func DefaultHashingAlgorithm() *cb.ConfigItem {
 	return TemplateHashingAlgorithm(defaultHashingAlgorithm)
 }
 
 const defaultBlockDataHashingStructureWidth = math.MaxUint32
 
-// TemplateBlockDataHashingStructure creates a headerless configuration item representing the block data hashing structure
-func TemplateBlockDataHashingStructure(width uint32) *cb.ConfigurationItem {
-	return &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
+// TemplateBlockDataHashingStructure creates a headerless config item representing the block data hashing structure
+func TemplateBlockDataHashingStructure(width uint32) *cb.ConfigItem {
+	return &cb.ConfigItem{
+		Type:  cb.ConfigItem_Chain,
 		Key:   BlockDataHashingStructureKey,
 		Value: utils.MarshalOrPanic(&cb.BlockDataHashingStructure{Width: width}),
 	}
 }
 
-// DefaultBlockDatahashingStructure creates a headerless configuration item for the default block data hashing structure
-func DefaultBlockDataHashingStructure() *cb.ConfigurationItem {
+// DefaultBlockDatahashingStructure creates a headerless config item for the default block data hashing structure
+func DefaultBlockDataHashingStructure() *cb.ConfigItem {
 	return TemplateBlockDataHashingStructure(defaultBlockDataHashingStructureWidth)
 }
 
 var defaultOrdererAddresses = []string{"127.0.0.1:7050"}
 
-// TemplateOrdererAddressess creates a headerless configuration item representing the orderer addresses
-func TemplateOrdererAddresses(addresses []string) *cb.ConfigurationItem {
-	return &cb.ConfigurationItem{
-		Type:  cb.ConfigurationItem_Chain,
+// TemplateOrdererAddressess creates a headerless config item representing the orderer addresses
+func TemplateOrdererAddresses(addresses []string) *cb.ConfigItem {
+	return &cb.ConfigItem{
+		Type:  cb.ConfigItem_Chain,
 		Key:   OrdererAddressesKey,
 		Value: utils.MarshalOrPanic(&cb.OrdererAddresses{Addresses: addresses}),
 	}
 }
 
-// DefaultOrdererAddresses creates a headerless configuration item for the default orderer addresses
-func DefaultOrdererAddresses() *cb.ConfigurationItem {
+// DefaultOrdererAddresses creates a headerless config item for the default orderer addresses
+func DefaultOrdererAddresses() *cb.ConfigItem {
 	return TemplateOrdererAddresses(defaultOrdererAddresses)
 }

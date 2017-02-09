@@ -49,8 +49,8 @@ func verifyItemsResult(t *testing.T, template Template, count int) {
 
 func TestSimpleTemplate(t *testing.T) {
 	simple := NewSimpleTemplate(
-		&cb.ConfigurationItem{Value: []byte("0")},
-		&cb.ConfigurationItem{Value: []byte("1")},
+		&cb.ConfigItem{Value: []byte("0")},
+		&cb.ConfigItem{Value: []byte("1")},
 	)
 	verifyItemsResult(t, simple, 2)
 }
@@ -58,11 +58,11 @@ func TestSimpleTemplate(t *testing.T) {
 func TestCompositeTemplate(t *testing.T) {
 	composite := NewCompositeTemplate(
 		NewSimpleTemplate(
-			&cb.ConfigurationItem{Value: []byte("0")},
-			&cb.ConfigurationItem{Value: []byte("1")},
+			&cb.ConfigItem{Value: []byte("0")},
+			&cb.ConfigItem{Value: []byte("1")},
 		),
 		NewSimpleTemplate(
-			&cb.ConfigurationItem{Value: []byte("2")},
+			&cb.ConfigItem{Value: []byte("2")},
 		),
 	)
 
@@ -71,8 +71,8 @@ func TestCompositeTemplate(t *testing.T) {
 
 func TestNewChainTemplate(t *testing.T) {
 	simple := NewSimpleTemplate(
-		&cb.ConfigurationItem{Value: []byte("1")},
-		&cb.ConfigurationItem{Value: []byte("2")},
+		&cb.ConfigItem{Value: []byte("1")},
+		&cb.ConfigItem{Value: []byte("2")},
 	)
 
 	creationPolicy := "Test"
@@ -81,7 +81,7 @@ func TestNewChainTemplate(t *testing.T) {
 	newChainID := "foo"
 	configEnv, err := nct.Envelope(newChainID)
 	if err != nil {
-		t.Fatalf("Error creation a chain creation configuration")
+		t.Fatalf("Error creation a chain creation config")
 	}
 
 	config, err := UnmarshalConfig(configEnv.Config)

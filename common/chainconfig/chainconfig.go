@@ -29,13 +29,13 @@ import (
 
 // Chain config keys
 const (
-	// HashingAlgorithmKey is the cb.ConfigurationItem type key name for the HashingAlgorithm message
+	// HashingAlgorithmKey is the cb.ConfigItem type key name for the HashingAlgorithm message
 	HashingAlgorithmKey = "HashingAlgorithm"
 
-	// BlockDataHashingStructureKey is the cb.ConfigurationItem type key name for the BlockDataHashingStructure message
+	// BlockDataHashingStructureKey is the cb.ConfigItem type key name for the BlockDataHashingStructure message
 	BlockDataHashingStructureKey = "BlockDataHashingStructure"
 
-	// OrdererAddressesKey is the cb.ConfigurationItem type key name for the OrdererAddresses message
+	// OrdererAddressesKey is the cb.ConfigItem type key name for the OrdererAddresses message
 	OrdererAddressesKey = "OrdererAddresses"
 )
 
@@ -47,10 +47,10 @@ const (
 
 var logger = logging.MustGetLogger("common/chainconfig")
 
-// Descriptor stores the common chain configuration
+// Descriptor stores the common chain config
 // It is intended to be the primary accessor of DescriptorImpl
 // It is intended to discourage use of the other exported DescriptorImpl methods
-// which are used for updating the chain configuration by the configtx.Manager
+// which are used for updating the chain config by the configtx.Manager
 type Descriptor interface {
 	// HashingAlgorithm returns the default algorithm to be used when hashing
 	// such as computing block hashes, and CreationPolicy digests
@@ -99,7 +99,7 @@ func (pm *DescriptorImpl) OrdererAddresses() []string {
 	return pm.config.ordererAddresses
 }
 
-// BeginConfig is used to start a new configuration proposal
+// BeginConfig is used to start a new config proposal
 func (pm *DescriptorImpl) BeginConfig() {
 	if pm.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
@@ -107,12 +107,12 @@ func (pm *DescriptorImpl) BeginConfig() {
 	pm.pendingConfig = &chainConfig{}
 }
 
-// RollbackConfig is used to abandon a new configuration proposal
+// RollbackConfig is used to abandon a new config proposal
 func (pm *DescriptorImpl) RollbackConfig() {
 	pm.pendingConfig = nil
 }
 
-// CommitConfig is used to commit a new configuration proposal
+// CommitConfig is used to commit a new config proposal
 func (pm *DescriptorImpl) CommitConfig() {
 	if pm.pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
@@ -121,10 +121,10 @@ func (pm *DescriptorImpl) CommitConfig() {
 	pm.pendingConfig = nil
 }
 
-// ProposeConfig is used to add new configuration to the configuration proposal
-func (pm *DescriptorImpl) ProposeConfig(configItem *cb.ConfigurationItem) error {
-	if configItem.Type != cb.ConfigurationItem_Chain {
-		return fmt.Errorf("Expected type of ConfigurationItem_Chain, got %v", configItem.Type)
+// ProposeConfig is used to add new config to the config proposal
+func (pm *DescriptorImpl) ProposeConfig(configItem *cb.ConfigItem) error {
+	if configItem.Type != cb.ConfigItem_Chain {
+		return fmt.Errorf("Expected type of ConfigItem_Chain, got %v", configItem.Type)
 	}
 
 	switch configItem.Key {
@@ -157,7 +157,7 @@ func (pm *DescriptorImpl) ProposeConfig(configItem *cb.ConfigurationItem) error 
 		}
 		pm.pendingConfig.ordererAddresses = ordererAddresses.Addresses
 	default:
-		logger.Warningf("Uknown Chain configuration item with key %s", configItem.Key)
+		logger.Warningf("Uknown Chain config item with key %s", configItem.Key)
 	}
 	return nil
 }

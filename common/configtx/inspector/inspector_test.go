@@ -28,5 +28,5 @@ func TestFromTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating signed items: %s", err)
 	}
-	PrintConfiguration(configEnvelope)
+	PrintConfig(configEnvelope)
 }

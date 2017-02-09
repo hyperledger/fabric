@@ -35,9 +35,9 @@ func UnmarshalConfig(data []byte) (*cb.Config, error) {
 	return config, nil
 }
 
-// UnmarshalConfigurationEnvelope attempts to unmarshal bytes to a *cb.ConfigurationEnvelope
-func UnmarshalConfigurationEnvelope(data []byte) (*cb.ConfigurationEnvelope, error) {
-	configEnv := &cb.ConfigurationEnvelope{}
+// UnmarshalConfigEnvelope attempts to unmarshal bytes to a *cb.ConfigEnvelope
+func UnmarshalConfigEnvelope(data []byte) (*cb.ConfigEnvelope, error) {
+	configEnv := &cb.ConfigEnvelope{}
 	err := proto.Unmarshal(data, configEnv)
 	if err != nil {
 		return nil, err
@@ -45,9 +45,9 @@ func UnmarshalConfigurationEnvelope(data []byte) (*cb.ConfigurationEnvelope, err
 	return configEnv, nil
 }
 
-func ConfigurationEnvelopeFromBlock(block *cb.Block) (*cb.ConfigurationEnvelope, error) {
+func ConfigEnvelopeFromBlock(block *cb.Block) (*cb.ConfigEnvelope, error) {
 	if block.Data == nil || len(block.Data.Data) != 1 {
-		return nil, fmt.Errorf("Not a configuration block, must contain exactly one tx")
+		return nil, fmt.Errorf("Not a config block, must contain exactly one tx")
 	}
 
 	envelope, err := utils.UnmarshalEnvelope(block.Data.Data[0])
@@ -60,5 +60,5 @@ func ConfigurationEnvelopeFromBlock(block *cb.Block) (*cb.ConfigurationEnvelope,
 		return nil, err
 	}
 
-	return UnmarshalConfigurationEnvelope(payload.Data)
+	return UnmarshalConfigEnvelope(payload.Data)
 }

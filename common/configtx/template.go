@@ -34,23 +34,23 @@ const (
 	epoch             = 0
 )
 
-// Template can be used to faciliate creation of configuration transactions
+// Template can be used to faciliate creation of config transactions
 type Template interface {
-	// Items returns a set of ConfigurationEnvelopes for the given chainID
-	Envelope(chainID string) (*cb.ConfigurationEnvelope, error)
+	// Items returns a set of ConfigEnvelopes for the given chainID
+	Envelope(chainID string) (*cb.ConfigEnvelope, error)
 }
 
 type simpleTemplate struct {
-	items []*cb.ConfigurationItem
+	items []*cb.ConfigItem
 }
 
 // NewSimpleTemplate creates a Template using the supplied items
-func NewSimpleTemplate(items ...*cb.ConfigurationItem) Template {
+func NewSimpleTemplate(items ...*cb.ConfigItem) Template {
 	return &simpleTemplate{items: items}
 }
 
-// Items returns a set of ConfigurationEnvelopes for the given chainID, and errors only on marshaling errors
-func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigurationEnvelope, error) {
+// Items returns a set of ConfigEnvelopes for the given chainID, and errors only on marshaling errors
+func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
 	marshaledConfig, err := proto.Marshal(&cb.Config{
 		Header: &cb.ChainHeader{
 			ChainID: chainID,
@@ -62,7 +62,7 @@ func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigurationEnvelope, e
 		return nil, err
 	}
 
-	return &cb.ConfigurationEnvelope{Config: marshaledConfig}, nil
+	return &cb.ConfigEnvelope{Config: marshaledConfig}, nil
 }
 
 type compositeTemplate struct {
@@ -74,9 +74,9 @@ func NewCompositeTemplate(templates ...Template) Template {
 	return &compositeTemplate{templates: templates}
 }
 
-// Items returns a set of ConfigurationEnvelopes for the given chainID, and errors only on marshaling errors
-func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigurationEnvelope, error) {
-	items := make([][]*cb.ConfigurationItem, len(ct.templates))
+// Items returns a set of ConfigEnvelopes for the given chainID, and errors only on marshaling errors
+func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
+	items := make([][]*cb.ConfigItem, len(ct.templates))
 	for i := range ct.templates {
 		configEnv, err := ct.templates[i].Envelope(chainID)
 		if err != nil {
@@ -93,11 +93,11 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigurationEnvelope
 }
 
 // NewChainCreationTemplate takes a CreationPolicy and a Template to produce a Template which outputs an appropriately
-// constructed list of ConfigurationEnvelope.  Note, using this Template in
+// constructed list of ConfigEnvelope.  Note, using this Template in
 // a CompositeTemplate will invalidate the CreationPolicy
 func NewChainCreationTemplate(creationPolicy string, template Template) Template {
-	creationPolicyTemplate := NewSimpleTemplate(&cb.ConfigurationItem{
-		Type: cb.ConfigurationItem_Orderer,
+	creationPolicyTemplate := NewSimpleTemplate(&cb.ConfigItem{
+		Type: cb.ConfigItem_Orderer,
 		Key:  CreationPolicyKey,
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: creationPolicy,
@@ -107,13 +107,13 @@ func NewChainCreationTemplate(creationPolicy string, template Template) Template
 	return NewCompositeTemplate(creationPolicyTemplate, template)
 }
 
-// join takes a number of []*cb.ConfigurationItems and produces their concatenation
-func join(sets ...[]*cb.ConfigurationItem) []*cb.ConfigurationItem {
+// join takes a number of []*cb.ConfigItems and produces their concatenation
+func join(sets ...[]*cb.ConfigItem) []*cb.ConfigItem {
 	total := 0
 	for _, set := range sets {
 		total += len(set)
 	}
-	result := make([]*cb.ConfigurationItem, total)
+	result := make([]*cb.ConfigItem, total)
 	last := 0
 	for _, set := range sets {
 		for i := range set {
@@ -138,7 +138,7 @@ func MakeChainCreationTransaction(creationPolicy string, chainID string, signer 
 		return nil, err
 	}
 
-	newConfigEnv.Signatures = []*cb.ConfigurationSignature{&cb.ConfigurationSignature{
+	newConfigEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
 		SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
 	}}
 	newConfigEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigEnv.Signatures[0].SignatureHeader, newConfigEnv.Config))

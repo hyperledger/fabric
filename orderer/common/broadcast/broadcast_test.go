@@ -99,7 +99,7 @@ func (ms *mockSupport) Enqueue(env *cb.Envelope) bool {
 
 func makeConfigMessage(chainID string) *cb.Envelope {
 	payload := &cb.Payload{
-		Data: utils.MarshalOrPanic(&cb.ConfigurationEnvelope{}),
+		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{}),
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
 				ChainID: chainID,

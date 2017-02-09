@@ -38,13 +38,13 @@ func NewFilter(manager Manager) filter.Rule {
 
 type configCommitter struct {
 	manager        Manager
-	configEnvelope *cb.ConfigurationEnvelope
+	configEnvelope *cb.ConfigEnvelope
 }
 
 func (cc *configCommitter) Commit() {
 	err := cc.manager.Apply(cc.configEnvelope)
 	if err != nil {
-		panic(fmt.Errorf("Could not apply configuration transaction which should have already been validated: %s", err))
+		panic(fmt.Errorf("Could not apply config transaction which should have already been validated: %s", err))
 	}
 }
 
@@ -65,7 +65,7 @@ func (cf *configFilter) Apply(message *cb.Envelope) (filter.Action, filter.Commi
 		return filter.Forward, nil
 	}
 
-	config := &cb.ConfigurationEnvelope{}
+	config := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(msgData.Data, config)
 	if err != nil {
 		return filter.Reject, nil

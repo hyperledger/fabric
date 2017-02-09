@@ -147,7 +147,7 @@ func (sc *systemChain) proposeChain(configTx *cb.Envelope) cb.Status {
 	return cb.Status_SUCCESS
 }
 
-func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.Status {
+func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
 	config := &cb.Config{}
 	err := proto.Unmarshal(configEnvelope.Config, config)
 	if err != nil {
@@ -155,9 +155,9 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 		return cb.Status_BAD_REQUEST
 	}
 
-	var creationConfigItem *cb.ConfigurationItem
+	var creationConfigItem *cb.ConfigItem
 	for _, item := range config.Items {
-		if item.Type == cb.ConfigurationItem_Orderer && item.Key == configtx.CreationPolicyKey {
+		if item.Type == cb.ConfigItem_Orderer && item.Key == configtx.CreationPolicyKey {
 			creationConfigItem = item
 			break
 		}
@@ -171,7 +171,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 	creationPolicy := &ab.CreationPolicy{}
 	err = proto.Unmarshal(creationConfigItem.Value, creationPolicy)
 	if err != nil {
-		logger.Debugf("Failing to validate chain creation because first configuration item could not unmarshal to a CreationPolicy: %s", err)
+		logger.Debugf("Failing to validate chain creation because first config item could not unmarshal to a CreationPolicy: %s", err)
 		return cb.Status_BAD_REQUEST
 	}
 
@@ -210,7 +210,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigurationEnvelope) cb.St
 }
 
 func (sc *systemChain) inspect(configResources *configResources) cb.Status {
-	// XXX decide what it is that we will require to be the same in the new configuration, and what will be allowed to be different
+	// XXX decide what it is that we will require to be the same in the new config, and what will be allowed to be different
 	// Are all keys allowed? etc.
 
 	return cb.Status_SUCCESS
@@ -225,18 +225,18 @@ func (sc *systemChain) authorizeAndInspect(configTx *cb.Envelope) cb.Status {
 	}
 
 	if payload.Header == nil || payload.Header.ChainHeader == nil || payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
-		logger.Debugf("Rejecting chain proposal: Not a configuration transaction: %s", err)
+		logger.Debugf("Rejecting chain proposal: Not a config transaction: %s", err)
 		return cb.Status_BAD_REQUEST
 	}
 
-	configEnvelope := &cb.ConfigurationEnvelope{}
+	configEnvelope := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(payload.Data, configEnvelope)
 	if err != nil {
 		logger.Debugf("Rejecting chain proposal: Error unmarshalling config envelope from payload: %s", err)
 		return cb.Status_BAD_REQUEST
 	}
 
-	// Make sure that the configuration was signed by the appropriate authorized entities
+	// Make sure that the config was signed by the appropriate authorized entities
 	status := sc.authorize(configEnvelope)
 	if status != cb.Status_SUCCESS {
 		return status
@@ -248,6 +248,6 @@ func (sc *systemChain) authorizeAndInspect(configTx *cb.Envelope) cb.Status {
 		return cb.Status_BAD_REQUEST
 	}
 
-	// Make sure that the configuration does not modify any of the orderer
+	// Make sure that the config does not modify any of the orderer
 	return sc.inspect(configResources)
 }

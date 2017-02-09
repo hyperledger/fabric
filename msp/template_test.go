@@ -35,7 +35,7 @@ func TestTemplate(t *testing.T) {
 	assert.NoError(t, err)
 
 	// XXX We should really get the MSP name by inspecting it, but, we know it is DEFAULT so hardcoding for now
-	ci := &common.ConfigurationItem{Type: common.ConfigurationItem_MSP, Key: "DEFAULT", Value: confBytes}
+	ci := &common.ConfigItem{Type: common.ConfigItem_MSP, Key: "DEFAULT", Value: confBytes}
 
 	configtxtest.WriteTemplate(configtxtest.MSPTemplateName, ci)
 }

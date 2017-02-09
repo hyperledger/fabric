@@ -56,7 +56,7 @@ func (bh *BytesHandler) CommitConfig() {
 }
 
 // ProposeConfig called when config is added to a proposal
-func (bh *BytesHandler) ProposeConfig(configItem *cb.ConfigurationItem) error {
+func (bh *BytesHandler) ProposeConfig(configItem *cb.ConfigItem) error {
 	bh.proposed[configItem.Key] = configItem.Value
 	return nil
 }

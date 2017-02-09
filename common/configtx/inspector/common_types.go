@@ -23,10 +23,10 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func viewableConfigurationEnvelope(name string, configEnvelope *cb.ConfigurationEnvelope) Viewable {
+func viewableConfigEnvelope(name string, configEnvelope *cb.ConfigEnvelope) Viewable {
 	return &field{
 		name:   name,
-		values: []Viewable{viewableConfig("Config", configEnvelope.Config), viewableConfigurationSignatureSlice("Signatures", configEnvelope.Signatures)},
+		values: []Viewable{viewableConfig("Config", configEnvelope.Config), viewableConfigSignatureSlice("Signatures", configEnvelope.Signatures)},
 	}
 }
 
@@ -38,7 +38,7 @@ func viewableConfig(name string, configBytes []byte) Viewable {
 	}
 	values := make([]Viewable, len(config.Items))
 	for i, item := range config.Items {
-		values[i] = viewableConfigurationItem(fmt.Sprintf("Element %d", i), item)
+		values[i] = viewableConfigItem(fmt.Sprintf("Element %d", i), item)
 	}
 	return &field{
 		name:   name,
@@ -46,10 +46,10 @@ func viewableConfig(name string, configBytes []byte) Viewable {
 	}
 }
 
-func viewableConfigurationSignatureSlice(name string, configSigs []*cb.ConfigurationSignature) Viewable {
+func viewableConfigSignatureSlice(name string, configSigs []*cb.ConfigSignature) Viewable {
 	values := make([]Viewable, len(configSigs))
 	for i, item := range configSigs {
-		values[i] = viewableConfigurationSignature(fmt.Sprintf("Element %d", i), item)
+		values[i] = viewableConfigSignature(fmt.Sprintf("Element %d", i), item)
 	}
 	return &field{
 		name:   name,
@@ -57,7 +57,7 @@ func viewableConfigurationSignatureSlice(name string, configSigs []*cb.Configura
 	}
 }
 
-func viewableConfigurationSignature(name string, configSig *cb.ConfigurationSignature) Viewable {
+func viewableConfigSignature(name string, configSig *cb.ConfigSignature) Viewable {
 	children := make([]Viewable, 2)
 
 	sigHeader := &cb.SignatureHeader{}
@@ -83,7 +83,7 @@ func viewableSignatureHeader(name string, sh *cb.SignatureHeader) Viewable {
 	}
 }
 
-func viewableConfigurationItem(name string, ci *cb.ConfigurationItem) Viewable {
+func viewableConfigItem(name string, ci *cb.ConfigItem) Viewable {
 
 	values := make([]Viewable, 6) // Type, Key, Header, LastModified, ModificationPolicy, Value
 	values[0] = viewableString("Type", fmt.Sprintf("%v", ci.Type))

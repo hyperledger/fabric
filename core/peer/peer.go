@@ -95,7 +95,7 @@ func Initialize(init func(string)) {
 			continue
 		}
 		if cb, err = getCurrConfigBlockFromLedger(ledger); err != nil {
-			peerLogger.Warningf("Failed to find configuration block on ledger %s(%s)", cid, err)
+			peerLogger.Warningf("Failed to find config block on ledger %s(%s)", cid, err)
 			peerLogger.Debug("Error while looking for config block on ledger %s with message %s. We continue to the next ledger rather than abort.", cid, err)
 			continue
 		}
@@ -120,7 +120,7 @@ func InitChain(cid string) {
 }
 
 func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
-	// Configuration blocks contain only 1 transaction, so we look for 1-tx
+	// Config blocks contain only 1 transaction, so we look for 1-tx
 	// blocks and check the transaction type
 	var envelope *common.Envelope
 	var tx *common.Payload
@@ -148,13 +148,13 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 		}
 		currBlockNumber = block.Header.Number - 1
 	}
-	return nil, fmt.Errorf("Failed to find configuration block.")
+	return nil, fmt.Errorf("Failed to find config block.")
 }
 
 // createChain creates a new chain object and insert it into the chains
 func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
-	configEnvelope, err := configtx.ConfigurationEnvelopeFromBlock(cb)
+	configEnvelope, err := configtx.ConfigEnvelopeFromBlock(cb)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	}
 
 	configtxInitializer := configtx.NewInitializer()
-	configtxInitializer.Handlers()[common.ConfigurationItem_Peer] = sharedConfigHandler
+	configtxInitializer.Handlers()[common.ConfigItem_Peer] = sharedConfigHandler
 	configtxManager, err := configtx.NewManagerImpl(
 		configEnvelope,
 		configtxInitializer,
@@ -287,10 +287,10 @@ func SetCurrConfigBlock(block *common.Block, cid string) error {
 	defer chains.Unlock()
 	if c, ok := chains.list[cid]; ok {
 		c.cb = block
-		// TODO: Change MSP configuration
+		// TODO: Change MSP config
 		// c.mspmgr.Reconfig(block)
 
-		// TODO: Change gossip configurations
+		// TODO: Change gossip configs
 		return nil
 	}
 	return fmt.Errorf("Chain %s doesn't exist on the peer", cid)

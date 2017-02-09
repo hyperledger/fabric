@@ -37,7 +37,7 @@ enum Status {
 enum HeaderType {
     MESSAGE = 0;                   // Used for messages which are signed but opaque
     CONFIGURATION_TRANSACTION = 1; // Used for messages which reconfigure the chain
-    CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigurationItems
+    CONFIGURATION_ITEM = 2;        // Used inside of the the reconfiguration message for signing over ConfigItems
     ENDORSER_TRANSACTION = 3;      // Used by the SDK to submit endorser based transactions
     ORDERER_TRANSACTION = 4;       // Used internally by the orderer for management
     DELIVER_SEEK_INFO = 5;         // Used as the type for Envelope messages submitted to instruct the Deliver API to seek
@@ -52,8 +52,8 @@ enum BlockMetadataIndex {
                                 // e.g. For Kafka, this is where we store the last offset written to the local ledger.
 }
 
-// LastConfiguration is the encoded value for the Metadata message which is encoded in the LAST_CONFIGURATION block metadata index
-message LastConfiguration {
+// LastConfig is the encoded value for the Metadata message which is encoded in the LAST_CONFIGURATION block metadata index
+message LastConfig {
 	uint64 index  = 1;
 }
 

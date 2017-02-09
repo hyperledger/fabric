@@ -115,28 +115,28 @@ func TestWriteBlockOrdererMetadata(t *testing.T) {
 
 }
 
-func TestWriteLastConfiguration(t *testing.T) {
+func TestWriteLastConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
 	cm := &mockconfigtx.Manager{}
 	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: &xxxCryptoHelper{}}
 
 	expected := uint64(0)
 
-	if lc := utils.GetLastConfigurationIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil)); lc != expected {
+	if lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil)); lc != expected {
 		t.Fatalf("First block should have config block index of %d, but got %d", expected, lc)
 	}
-	if lc := utils.GetLastConfigurationIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(1, nil), nil, nil)); lc != expected {
+	if lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(1, nil), nil, nil)); lc != expected {
 		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
 	}
 
 	cm.SequenceVal = 1
 	expected = uint64(2)
 
-	if lc := utils.GetLastConfigurationIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(2, nil), nil, nil)); lc != expected {
+	if lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(2, nil), nil, nil)); lc != expected {
 		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
 	}
 
-	if lc := utils.GetLastConfigurationIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(3, nil), nil, nil)); lc != expected {
+	if lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(3, nil), nil, nil)); lc != expected {
 		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
 	}
 
