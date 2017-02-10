@@ -63,7 +63,6 @@ GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | 
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
-GENESIS_SAMPLECONFIG = $(shell git ls-files common/configtx/test/*.template)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = peer orderer ccenv javaenv testenv zookeeper kafka
 
@@ -176,7 +175,7 @@ build/image/javaenv/payload:    build/javashim.tar.bz2 \
 build/image/peer/payload:       build/docker/bin/peer \
 				peer/core.yaml \
 				build/msp-sampleconfig.tar.bz2 \
-				build/genesis-sampleconfig.tar.bz2
+				common/configtx/tool/genesis.yaml
 build/image/orderer/payload:    build/docker/bin/orderer \
 				build/msp-sampleconfig.tar.bz2 \
 				orderer/orderer.yaml \
@@ -222,7 +221,6 @@ build/goshim.tar.bz2: $(GOSHIM_DEPS)
 build/javashim.tar.bz2: $(JAVASHIM_DEPS)
 build/protos.tar.bz2: $(PROTOS)
 build/msp-sampleconfig.tar.bz2: $(MSP_SAMPLECONFIG)
-build/genesis-sampleconfig.tar.bz2: $(GENESIS_SAMPLECONFIG)
 
 build/%.tar.bz2:
 	@echo "Creating $@"

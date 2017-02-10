@@ -117,21 +117,29 @@ func Load() *TopLevel {
 	config := viper.New()
 
 	config.SetConfigName("genesis")
-
 	var cfgPath string
 
-	// Path to look for the config file in based on ORDERER_CFG_PATH and GOPATH
-	searchPath := os.Getenv("ORDERER_CFG_PATH") + ":" + os.Getenv("GOPATH")
-	for _, p := range filepath.SplitList(searchPath) {
-		genesisPath := filepath.Join(p, "src/github.com/hyperledger/fabric/common/configtx/tool/")
+	// Path to look for the config file in based on GOPATH
+	searchPath := []string{
+		os.Getenv("ORDERER_CFG_PATH"),
+		os.Getenv("PEER_CFG_PATH"),
+	}
+
+	for _, p := range filepath.SplitList(os.Getenv("GOPATH")) {
+		searchPath = append(searchPath, filepath.Join(p, "src/github.com/hyperledger/fabric/common/configtx/tool/"))
+	}
+
+	for _, genesisPath := range searchPath {
+		logger.Infof("Checking for genesis.yaml at: %s", genesisPath)
 		if _, err := os.Stat(filepath.Join(genesisPath, "genesis.yaml")); err != nil {
-			// The yaml file does not exist in this component of the go src
+			// The yaml file does not exist in this component of the path
 			continue
 		}
 		cfgPath = genesisPath
 	}
+
 	if cfgPath == "" {
-		logger.Fatalf("Could not find genesis.yaml, try setting GOPATH correctly")
+		logger.Fatalf("Could not find genesis.yaml in paths of %s.  Try setting ORDERER_CFG_PATH, PEER_CFG_PATH, or GOPATH correctly", searchPath)
 	}
 	config.AddConfigPath(cfgPath) // Path to look for the config file in
 

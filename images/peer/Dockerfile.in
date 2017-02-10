@@ -5,5 +5,5 @@ RUN mkdir -p /var/hyperledger/production $PEER_CFG_PATH
 COPY payload/peer /usr/local/bin
 COPY payload/core.yaml $PEER_CFG_PATH
 ADD  payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
-ADD  payload/genesis-sampleconfig.tar.bz2 $PEER_CFG_PATH
+ADD  payload/genesis.yaml $PEER_CFG_PATH
 CMD peer node start

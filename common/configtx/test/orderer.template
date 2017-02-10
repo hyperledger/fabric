@@ -1,17 +1,0 @@
-
- "HashingAlgorithm*
-
-SHAKE256
-%"BlockDataHashingStructure*ÿÿÿÿ
-&"OrdererAddresses*
-127.0.0.1:7050
-"ConsensusType*
-solo
-"	BatchSize*
-€€À1€€ 
-"BatchTimeout*
-10s
-)"IngressPolicyNames*
-AcceptAllPolicy
-("EgressPolicyNames*
-AcceptAllPolicy
