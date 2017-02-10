@@ -14,19 +14,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package inspector
+package test
 
 import (
 	"testing"
 
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	logging "github.com/op/go-logging"
 )
 
-func TestFromTemplate(t *testing.T) {
-	ordererTemplate := configtxtest.OrdererTemplate()
-	configEnvelope, err := ordererTemplate.Envelope("SampleChainID")
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
+
+func TestMakeGenesisBlock(t *testing.T) {
+	_, err := MakeGenesisBlock("foo")
 	if err != nil {
-		t.Fatalf("Error creating signed items: %s", err)
+		t.Fatalf("Error making genesis block: %s", err)
 	}
-	PrintConfig(configEnvelope)
+}
+
+func TestOrdererTemplate(t *testing.T) {
+	_ = OrdererTemplate()
+}
+
+func TestMSPTemplate(t *testing.T) {
+	_ = MSPTemplate()
+}
+
+func TestApplicationTemplate(t *testing.T) {
+	_ = ApplicationTemplate()
+}
+
+func TestCompositeTemplate(t *testing.T) {
+	_ = CompositeTemplate()
 }

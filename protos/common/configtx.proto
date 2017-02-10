@@ -52,13 +52,6 @@ message ConfigEnvelope {
     repeated ConfigSignature signatures = 2; // Signatures over the config
 }
 
-// ConfigTemplate is used as a serialization format to share configuration templates
-// The orderer supplies a configuration template to the user to use when constructing a new
-// chain creation transaction, so this is used to facilitate that.
-message ConfigTemplate {
-    repeated ConfigItem items = 1;
-}
-
 message ConfigGroupSchema {
     map<string, ConfigGroupSchema> groups = 1;
     map<string, ConfigValueSchema> values = 2;
@@ -68,12 +61,6 @@ message ConfigGroupSchema {
 message ConfigValueSchema {}
 
 message ConfigPolicySchema {}
-
-// This message may change slightly depending on the finalization of signature schemes for transactions
-message Config {
-    ChannelHeader header = 1;
-    repeated ConfigItem items = 2;
-}
 
 // XXX this structure is to allow us to minimize the diffs in this change series
 // it will be renamed Config once the original is ready to be removed
@@ -102,21 +89,6 @@ message ConfigPolicy {
     uint64 version = 1;
     Policy policy = 2;
     string mod_policy = 3;
-}
-
-message ConfigItem {
-    enum ConfigType {
-        POLICY = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
-        CHAIN = 1;    // Marshaled format for this type is yet to be determined
-        ORDERER = 2;  // Marshaled format for this type is yet to be determined
-        PEER = 3;     // Marshaled format for this type is yet to be determined
-        MSP = 4;      // Marshaled MSPConfig proto
-    }
-    ConfigType type = 1;            // The type of configuration this is.
-    uint64 last_modified = 2;       // The Sequence number in the ConfigEnvelope this item was last modified
-    string modification_policy = 3; // What policy to check before allowing modification
-    string key = 4;                 // A unique ID, unique scoped by Type, to reference the value by
-    bytes value = 5;                // The byte representation of this configuration, usually a marshaled message
 }
 
 message ConfigSignature {

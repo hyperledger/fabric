@@ -37,7 +37,7 @@ func groupToKeyValue(configGroup *cb.ConfigGroup) (string, *cb.ConfigValue) {
 	panic("No value encoded")
 }
 
-func makeInvalidConfigItem() *cb.ConfigValue {
+func makeInvalidConfigValue() *cb.ConfigValue {
 	return &cb.ConfigValue{
 		Value: []byte("Garbage Data"),
 	}
@@ -80,7 +80,7 @@ func TestRollback(t *testing.T) {
 }
 
 func TestHashingAlgorithm(t *testing.T) {
-	invalidMessage := makeInvalidConfigItem()
+	invalidMessage := makeInvalidConfigValue()
 	invalidAlgorithm := TemplateHashingAlgorithm("MD5")
 	validAlgorithm := DefaultHashingAlgorithm()
 
@@ -110,7 +110,7 @@ func TestHashingAlgorithm(t *testing.T) {
 }
 
 func TestBlockDataHashingStructure(t *testing.T) {
-	invalidMessage := makeInvalidConfigItem()
+	invalidMessage := makeInvalidConfigValue()
 	invalidWidth := TemplateBlockDataHashingStructure(0)
 	validWidth := DefaultBlockDataHashingStructure()
 
@@ -140,7 +140,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 }
 
 func TestOrdererAddresses(t *testing.T) {
-	invalidMessage := makeInvalidConfigItem()
+	invalidMessage := makeInvalidConfigValue()
 	validMessage := DefaultOrdererAddresses()
 	m := NewSharedConfigImpl(nil, nil)
 	m.BeginConfig()
