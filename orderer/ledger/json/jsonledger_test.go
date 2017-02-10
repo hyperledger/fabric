@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package fileledger
+package jsonledger
 
 import (
 	"bytes"
@@ -41,19 +41,19 @@ type testEnv struct {
 	location string
 }
 
-func initialize(t *testing.T) (*testEnv, *fileLedger) {
+func initialize(t *testing.T) (*testEnv, *jsonLedger) {
 	name, err := ioutil.TempDir("", "hyperledger_fabric")
 	if err != nil {
 		t.Fatalf("Error creating temp dir: %s", err)
 	}
-	flf := New(name).(*fileLedgerFactory)
+	flf := New(name).(*jsonLedgerFactory)
 	fl, err := flf.GetOrCreate(provisional.TestChainID)
 	if err != nil {
 		panic(err)
 	}
 
 	fl.Append(genesisBlock)
-	return &testEnv{location: name, t: t}, fl.(*fileLedger)
+	return &testEnv{location: name, t: t}, fl.(*jsonLedger)
 }
 
 func (tev *testEnv) tearDown() {
@@ -93,7 +93,7 @@ func TestReinitialization(t *testing.T) {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	fl := tfl.(*fileLedger)
+	fl := tfl.(*jsonLedger)
 	if fl.height != 2 {
 		t.Fatalf("Block height should be 2")
 	}

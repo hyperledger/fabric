@@ -32,7 +32,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
-	fileledger "github.com/hyperledger/fabric/orderer/ledger/file"
+	jsonledger "github.com/hyperledger/fabric/orderer/ledger/json"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
@@ -93,6 +93,9 @@ func main() {
 	var lf ordererledger.Factory
 	switch conf.General.LedgerType {
 	case "file":
+		// just use the json ledger type for now
+		fallthrough
+	case "json":
 		location := conf.FileLedger.Location
 		if location == "" {
 			var err error
@@ -101,7 +104,7 @@ func main() {
 				panic(fmt.Errorf("Error creating temp dir: %s", err))
 			}
 		}
-		lf = fileledger.New(location)
+		lf = jsonledger.New(location)
 	case "ram":
 		fallthrough
 	default:

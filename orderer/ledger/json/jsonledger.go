@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package fileledger
+package jsonledger
 
 import (
 	"bytes"
@@ -31,7 +31,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 )
 
-var logger = logging.MustGetLogger("ordererledger/fileledger")
+var logger = logging.MustGetLogger("ordererledger/jsonledger")
 var closedChan chan struct{}
 
 func init() {
@@ -45,11 +45,11 @@ const (
 )
 
 type cursor struct {
-	fl          *fileLedger
+	jl          *jsonLedger
 	blockNumber uint64
 }
 
-type fileLedger struct {
+type jsonLedger struct {
 	directory      string
 	fqFormatString string
 	height         uint64
@@ -58,28 +58,28 @@ type fileLedger struct {
 	marshaler      *jsonpb.Marshaler
 }
 
-type fileLedgerFactory struct {
+type jsonLedgerFactory struct {
 	directory string
 	ledgers   map[string]ordererledger.ReadWriter
 	mutex     sync.Mutex
 }
 
-// New creates a new fileledger Factory and the ordering system chain specified by the systemGenesis block (if it does not already exist)
+// New creates a new jsonledger Factory and the ordering system chain specified by the systemGenesis block (if it does not already exist)
 func New(directory string) ordererledger.Factory {
 
-	logger.Debugf("Initializing fileLedger at '%s'", directory)
+	logger.Debugf("Initializing jsonLedger at '%s'", directory)
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		logger.Fatalf("Could not create directory %s: %s", directory, err)
 	}
 
-	flf := &fileLedgerFactory{
+	jlf := &jsonLedgerFactory{
 		directory: directory,
 		ledgers:   make(map[string]ordererledger.ReadWriter),
 	}
 
-	infos, err := ioutil.ReadDir(flf.directory)
+	infos, err := ioutil.ReadDir(jlf.directory)
 	if err != nil {
-		logger.Panicf("Error reading from directory %s while initializing fileledger: %s", flf.directory, err)
+		logger.Panicf("Error reading from directory %s while initializing jsonledger: %s", jlf.directory, err)
 	}
 
 	for _, info := range infos {
@@ -91,24 +91,24 @@ func New(directory string) ordererledger.Factory {
 		if err != nil {
 			continue
 		}
-		fl, err := flf.GetOrCreate(chainID)
+		jl, err := jlf.GetOrCreate(chainID)
 		if err != nil {
 			logger.Warningf("Failed to initialize chain from %s:", err)
 			continue
 		}
-		flf.ledgers[chainID] = fl
+		jlf.ledgers[chainID] = jl
 	}
 
-	return flf
+	return jlf
 }
 
-func (flf *fileLedgerFactory) ChainIDs() []string {
-	flf.mutex.Lock()
-	defer flf.mutex.Unlock()
-	ids := make([]string, len(flf.ledgers))
+func (jlf *jsonLedgerFactory) ChainIDs() []string {
+	jlf.mutex.Lock()
+	defer jlf.mutex.Unlock()
+	ids := make([]string, len(jlf.ledgers))
 
 	i := 0
-	for key := range flf.ledgers {
+	for key := range jlf.ledgers {
 		ids[i] = key
 		i++
 	}
@@ -116,18 +116,18 @@ func (flf *fileLedgerFactory) ChainIDs() []string {
 	return ids
 }
 
-func (flf *fileLedgerFactory) GetOrCreate(chainID string) (ordererledger.ReadWriter, error) {
-	flf.mutex.Lock()
-	defer flf.mutex.Unlock()
+func (jlf *jsonLedgerFactory) GetOrCreate(chainID string) (ordererledger.ReadWriter, error) {
+	jlf.mutex.Lock()
+	defer jlf.mutex.Unlock()
 
 	key := chainID
 
-	l, ok := flf.ledgers[key]
+	l, ok := jlf.ledgers[key]
 	if ok {
 		return l, nil
 	}
 
-	directory := fmt.Sprintf("%s/"+chainDirectoryFormatString, flf.directory, chainID)
+	directory := fmt.Sprintf("%s/"+chainDirectoryFormatString, jlf.directory, chainID)
 
 	logger.Debugf("Initializing chain at '%s'", directory)
 
@@ -136,26 +136,26 @@ func (flf *fileLedgerFactory) GetOrCreate(chainID string) (ordererledger.ReadWri
 	}
 
 	ch := newChain(directory)
-	flf.ledgers[key] = ch
+	jlf.ledgers[key] = ch
 	return ch, nil
 }
 
-// newChain creates a new chain backed by a file ledger
+// newChain creates a new chain backed by a json ledger
 func newChain(directory string) ordererledger.ReadWriter {
-	fl := &fileLedger{
+	jl := &jsonLedger{
 		directory:      directory,
 		fqFormatString: directory + "/" + blockFileFormatString,
 		signal:         make(chan struct{}),
 		marshaler:      &jsonpb.Marshaler{Indent: "  "},
 	}
-	fl.initializeBlockHeight()
-	logger.Debugf("Initialized to block height %d with hash %x", fl.height-1, fl.lastHash)
-	return fl
+	jl.initializeBlockHeight()
+	logger.Debugf("Initialized to block height %d with hash %x", jl.height-1, jl.lastHash)
+	return jl
 }
 
 // initializeBlockHeight verifies all blocks exist between 0 and the block height, and populates the lastHash
-func (fl *fileLedger) initializeBlockHeight() {
-	infos, err := ioutil.ReadDir(fl.directory)
+func (jl *jsonLedger) initializeBlockHeight() {
+	infos, err := ioutil.ReadDir(jl.directory)
 	if err != nil {
 		panic(err)
 	}
@@ -174,33 +174,33 @@ func (fl *fileLedger) initializeBlockHeight() {
 		}
 		nextNumber++
 	}
-	fl.height = nextNumber
-	if fl.height == 0 {
+	jl.height = nextNumber
+	if jl.height == 0 {
 		return
 	}
-	block, found := fl.readBlock(fl.height - 1)
+	block, found := jl.readBlock(jl.height - 1)
 	if !found {
-		panic(fmt.Errorf("Block %d was in directory listing but error reading", fl.height-1))
+		panic(fmt.Errorf("Block %d was in directory listing but error reading", jl.height-1))
 	}
 	if block == nil {
-		panic(fmt.Errorf("Error reading block %d", fl.height-1))
+		panic(fmt.Errorf("Error reading block %d", jl.height-1))
 	}
-	fl.lastHash = block.Header.Hash()
+	jl.lastHash = block.Header.Hash()
 }
 
 // blockFilename returns the fully qualified path to where a block of a given number should be stored on disk
-func (fl *fileLedger) blockFilename(number uint64) string {
-	return fmt.Sprintf(fl.fqFormatString, number)
+func (jl *jsonLedger) blockFilename(number uint64) string {
+	return fmt.Sprintf(jl.fqFormatString, number)
 }
 
 // writeBlock commits a block to disk
-func (fl *fileLedger) writeBlock(block *cb.Block) {
-	file, err := os.Create(fl.blockFilename(block.Header.Number))
+func (jl *jsonLedger) writeBlock(block *cb.Block) {
+	file, err := os.Create(jl.blockFilename(block.Header.Number))
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
-	err = fl.marshaler.Marshal(file, block)
+	err = jl.marshaler.Marshal(file, block)
 	logger.Debugf("Wrote block %d", block.Header.Number)
 	if err != nil {
 		panic(err)
@@ -209,8 +209,8 @@ func (fl *fileLedger) writeBlock(block *cb.Block) {
 }
 
 // readBlock returns the block or nil, and whether the block was found or not, (nil,true) generally indicates an irrecoverable problem
-func (fl *fileLedger) readBlock(number uint64) (*cb.Block, bool) {
-	file, err := os.Open(fl.blockFilename(number))
+func (jl *jsonLedger) readBlock(number uint64) (*cb.Block, bool) {
+	file, err := os.Open(jl.blockFilename(number))
 	if err == nil {
 		defer file.Close()
 		block := &cb.Block{}
@@ -225,41 +225,41 @@ func (fl *fileLedger) readBlock(number uint64) (*cb.Block, bool) {
 }
 
 // Height returns the highest block number in the chain, plus one
-func (fl *fileLedger) Height() uint64 {
-	return fl.height
+func (jl *jsonLedger) Height() uint64 {
+	return jl.height
 }
 
 // Append appends a new block to the ledger
-func (fl *fileLedger) Append(block *cb.Block) error {
-	if block.Header.Number != fl.height {
-		return fmt.Errorf("Block number should have been %d but was %d", fl.height, block.Header.Number)
+func (jl *jsonLedger) Append(block *cb.Block) error {
+	if block.Header.Number != jl.height {
+		return fmt.Errorf("Block number should have been %d but was %d", jl.height, block.Header.Number)
 	}
 
-	if !bytes.Equal(block.Header.PreviousHash, fl.lastHash) {
-		return fmt.Errorf("Block should have had previous hash of %x but was %x", fl.lastHash, block.Header.PreviousHash)
+	if !bytes.Equal(block.Header.PreviousHash, jl.lastHash) {
+		return fmt.Errorf("Block should have had previous hash of %x but was %x", jl.lastHash, block.Header.PreviousHash)
 	}
 
-	fl.writeBlock(block)
-	fl.lastHash = block.Header.Hash()
-	fl.height++
-	close(fl.signal)
-	fl.signal = make(chan struct{})
+	jl.writeBlock(block)
+	jl.lastHash = block.Header.Hash()
+	jl.height++
+	close(jl.signal)
+	jl.signal = make(chan struct{})
 	return nil
 }
 
 // Iterator implements the ordererledger.Reader definition
-func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.Iterator, uint64) {
+func (jl *jsonLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.Iterator, uint64) {
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
-		return &cursor{fl: fl, blockNumber: 0}, 0
+		return &cursor{jl: jl, blockNumber: 0}, 0
 	case *ab.SeekPosition_Newest:
-		high := fl.height - 1
-		return &cursor{fl: fl, blockNumber: high}, high
+		high := jl.height - 1
+		return &cursor{jl: jl, blockNumber: high}, high
 	case *ab.SeekPosition_Specified:
-		if start.Specified.Number > fl.height {
+		if start.Specified.Number > jl.height {
 			return &ordererledger.NotFoundErrorIterator{}, 0
 		}
-		return &cursor{fl: fl, blockNumber: start.Specified.Number}, start.Specified.Number
+		return &cursor{jl: jl, blockNumber: start.Specified.Number}, start.Specified.Number
 	}
 
 	// This line should be unreachable, but the compiler requires it
@@ -270,7 +270,7 @@ func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.It
 func (cu *cursor) Next() (*cb.Block, cb.Status) {
 	// This only loops once, as signal reading indicates the new block has been written
 	for {
-		block, found := cu.fl.readBlock(cu.blockNumber)
+		block, found := cu.jl.readBlock(cu.blockNumber)
 		if found {
 			if block == nil {
 				return nil, cb.Status_SERVICE_UNAVAILABLE
@@ -278,14 +278,14 @@ func (cu *cursor) Next() (*cb.Block, cb.Status) {
 			cu.blockNumber++
 			return block, cb.Status_SUCCESS
 		}
-		<-cu.fl.signal
+		<-cu.jl.signal
 	}
 }
 
 // ReadyChan returns a channel that will close when Next is ready to be called without blocking
 func (cu *cursor) ReadyChan() <-chan struct{} {
-	signal := cu.fl.signal
-	if _, err := os.Stat(cu.fl.blockFilename(cu.blockNumber)); os.IsNotExist(err) {
+	signal := cu.jl.signal
+	if _, err := os.Stat(cu.jl.blockFilename(cu.blockNumber)); os.IsNotExist(err) {
 		return signal
 	}
 	return closedChan
