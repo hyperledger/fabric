@@ -63,9 +63,6 @@ const (
 
 	//characters used in chaincodenamespace
 	specialChars = "/:[]${}"
-
-	// chaincode version when deploy
-	startVersion = "0"
 )
 
 //---------- the LCCC -----------------
@@ -176,6 +173,13 @@ type InvalidVersionErr string
 
 func (f InvalidVersionErr) Error() string {
 	return fmt.Sprintf("invalid version %s", string(f))
+}
+
+//EmptyVersionErr trying to upgrade to same version of Chaincode
+type EmptyVersionErr string
+
+func (f EmptyVersionErr) Error() string {
+	return fmt.Sprintf("version not provided for chaincode %s", string(f))
 }
 
 //-------------- helper functions ------------------
@@ -301,13 +305,11 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return ExistsErr(cds.ChaincodeSpec.ChaincodeID.Name)
 	}
 
-	//user default startversion if none specified
-	ver := startVersion
-	if cds.ChaincodeSpec.ChaincodeID.Version != "" {
-		ver = cds.ChaincodeSpec.ChaincodeID.Version
+	if cds.ChaincodeSpec.ChaincodeID.Version == "" {
+		return EmptyVersionErr(cds.ChaincodeSpec.ChaincodeID.Name)
 	}
 
-	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name, ver, depSpec, policy, escc, vscc)
+	_, err = lccc.createChaincode(stub, chainname, cds.ChaincodeSpec.ChaincodeID.Name, cds.ChaincodeSpec.ChaincodeID.Version, depSpec, policy, escc, vscc)
 
 	return err
 }

@@ -140,6 +140,35 @@ func TestInvalidChaincodeName(t *testing.T) {
 	}
 }
 
+//TestEmptyChaincodeVersion tests the deploy function without a version name
+func TestEmptyChaincodeVersion(t *testing.T) {
+	scc := new(LifeCycleSysCC)
+	stub := shim.NewMockStub("lccc", scc)
+
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")})
+	defer os.Remove(lccctestpath + "/chaincodes/example02.0")
+
+	//change version to empty
+	cds.ChaincodeSpec.ChaincodeID.Version = ""
+
+	var b []byte
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.FailNow()
+	}
+
+	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	res := stub.MockInvoke("1", args)
+	if string(res.Message) != EmptyVersionErr("example02").Error() {
+		t.Logf("Get error: %s", res.Message)
+		t.FailNow()
+	}
+}
+
 //TestRedeploy tests the redeploying will fail function(and fail with "exists" error)
 func TestRedeploy(t *testing.T) {
 	scc := new(LifeCycleSysCC)

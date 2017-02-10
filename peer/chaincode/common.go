@@ -134,9 +134,9 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		return fmt.Errorf("Must supply value for %s name parameter.\n", chainFuncName)
 	}
 
-	if cmd != nil && (cmd == chaincodeInstantiateCmd || cmd == chaincodeInstallCmd || cmd == chaincodeUpgradeCmd) {
-		if chaincodeVersion == "" {
-			return fmt.Errorf("Chaincode version is not provided")
+	if cmd.Name() == instantiate_cmdname || cmd.Name() == install_cmdname || cmd.Name() == upgrade_cmdname {
+		if chaincodeVersion == common.UndefinedParamValue {
+			return fmt.Errorf("Chaincode version is not provided for %s", cmd.Name())
 		}
 	}
 

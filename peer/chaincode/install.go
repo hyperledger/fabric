@@ -28,6 +28,8 @@ import (
 
 var chaincodeInstallCmd *cobra.Command
 
+const install_cmdname = "install"
+
 // installCmd returns the cobra command for Chaincode Deploy
 func installCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInstallCmd = &cobra.Command{
