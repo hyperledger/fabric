@@ -148,14 +148,21 @@ func (sc *systemChain) proposeChain(configTx *cb.Envelope) cb.Status {
 }
 
 func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
-	configNext := &cb.Config{}
-	err := proto.Unmarshal(configEnvelope.Config, configNext)
+	// XXX as a temporary hack to get the protos in, we assume the write set contains the whole config
+
+	if configEnvelope.LastUpdate == nil {
+		logger.Debugf("Must include a config update")
+		return cb.Status_BAD_REQUEST
+	}
+
+	configNext := &cb.ConfigUpdate{}
+	err := proto.Unmarshal(configEnvelope.LastUpdate.ConfigUpdate, configNext)
 	if err != nil {
 		logger.Debugf("Failing to validate chain creation because of unmarshaling error: %s", err)
 		return cb.Status_BAD_REQUEST
 	}
 
-	ordererGroup, ok := configNext.Channel.Groups[configtxorderer.GroupKey]
+	ordererGroup, ok := configNext.WriteSet.Groups[configtxorderer.GroupKey]
 	if !ok {
 		logger.Debugf("Rejecting channel creation because it is missing orderer group")
 		return cb.Status_BAD_REQUEST
@@ -193,7 +200,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
 		return cb.Status_INTERNAL_SERVER_ERROR
 	}
 
-	signedData, err := configEnvelope.AsSignedData()
+	signedData, err := configEnvelope.LastUpdate.AsSignedData()
 	if err != nil {
 		logger.Debugf("Failed to validate chain creation because config envelope could not be converted to signed data: %s", err)
 		return cb.Status_BAD_REQUEST

@@ -118,7 +118,7 @@ func TestGoodProposal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxFromConfigEnvelope(newChainID, configEnv)
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 
 	status := mcc.sysChain.proposeChain(ingressTx)
 	if status != cb.Status_SUCCESS {
@@ -171,7 +171,7 @@ func TestProposalWithBadPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxFromConfigEnvelope(newChainID, configEnv)
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 
 	status := mcc.sysChain.proposeChain(ingressTx)
 
@@ -190,7 +190,7 @@ func TestProposalWithMissingPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}
-	ingressTx := makeConfigTxFromConfigEnvelope(newChainID, configEnv)
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
 
 	status := mcc.sysChain.proposeChain(ingressTx)
 
