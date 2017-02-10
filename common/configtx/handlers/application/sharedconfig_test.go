@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sharedconfig
+package application
 
 import (
 	"reflect"
 	"testing"
 
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
@@ -39,7 +40,7 @@ func makeInvalidConfigItem(key string) *cb.ConfigItem {
 }
 
 func TestInterface(t *testing.T) {
-	_ = Descriptor(NewDescriptorImpl())
+	_ = configtxapi.ApplicationConfig(NewSharedConfigImpl())
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -49,7 +50,7 @@ func TestDoubleBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.BeginConfig()
 	m.BeginConfig()
 }
@@ -61,12 +62,12 @@ func TestCommitWithoutBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.CommitConfig()
 }
 
 func TestRollback(t *testing.T) {
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.pendingConfig = &sharedConfig{}
 	m.RollbackConfig()
 	if m.pendingConfig != nil {
@@ -81,7 +82,7 @@ func TestAnchorPeers(t *testing.T) {
 	}
 	invalidMessage := makeInvalidConfigItem(AnchorPeersKey)
 	validMessage := TemplateAnchorPeers(endVal)
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.BeginConfig()
 
 	err := m.ProposeConfig(invalidMessage)
