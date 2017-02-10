@@ -324,25 +324,24 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 	waitUntilTrueOrTimeout(t, func() bool {
 		for _, p := range peersSet {
 			if len(p.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != bootstrapSetSize+standartPeersSize-1 {
-				logger.Debug("[XXXXXXX]: Peer discovery has not finished yet")
+				logger.Debug("Peer discovery has not finished yet")
 				return false
 			}
 		}
-		logger.Debug("[AAAAAA]: All peer discovered each other!!!")
+		logger.Debug("All peer discovered each other!!!")
 		return true
 	}, 30*time.Second)
 
-	logger.Debug("[!!!!!]: Waiting for all blocks to arrive.")
+	logger.Debug("Waiting for all blocks to arrive.")
 	waitUntilTrueOrTimeout(t, func() bool {
-		logger.Debug("[*****]: Trying to see all peers get all blocks")
+		logger.Debug("Trying to see all peers get all blocks")
 		for _, p := range peersSet {
 			height, err := p.commit.LedgerHeight()
 			if height != uint64(msgCount+1) || err != nil {
-				//logger.Debug("[XXXXXXX]: Ledger height is at: ", height)
 				return false
 			}
 		}
-		logger.Debug("[#####]: All peers have same ledger height!!!")
+		logger.Debug("All peers have same ledger height!!!")
 		return true
 	}, 60*time.Second)
 }
@@ -401,7 +400,7 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	select {
 	case <-readyCh:
 		{
-			logger.Info("[XXX]: Done!!!")
+			logger.Info("Done!!!")
 
 		}
 	case <-time.After(time.Duration(10) * time.Second):
@@ -414,12 +413,12 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Duration) {
 	ch := make(chan struct{})
 	go func() {
-		logger.Debug("[@@@@@]: Started to spin off, until predicate will be satisfied.")
+		logger.Debug("Started to spin off, until predicate will be satisfied.")
 		for !predicate() {
 			time.Sleep(1 * time.Second)
 		}
 		ch <- struct{}{}
-		logger.Debug("[@@@@@]: Done.")
+		logger.Debug("Done.")
 	}()
 
 	select {
@@ -429,5 +428,5 @@ func waitUntilTrueOrTimeout(t *testing.T, predicate func() bool, timeout time.Du
 		t.Fatal("Timeout has expired")
 		break
 	}
-	logger.Debug("[>>>>>] Stop wainting until timeout or true")
+	logger.Debug("Stop waiting until timeout or true")
 }
