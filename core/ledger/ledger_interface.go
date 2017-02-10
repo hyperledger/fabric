@@ -86,7 +86,8 @@ type QueryExecutor interface {
 	GetStateRangeScanIterator(namespace string, startKey string, endKey string) (commonledger.ResultsIterator, error)
 	// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
 	// Only used for state databases that support query
-	ExecuteQuery(query string) (commonledger.ResultsIterator, error)
+	// For a chaincode, the namespace corresponds to the chaincodeId
+	ExecuteQuery(namespace, query string) (commonledger.ResultsIterator, error)
 	// Done releases resources occupied by the QueryExecutor
 	Done()
 }

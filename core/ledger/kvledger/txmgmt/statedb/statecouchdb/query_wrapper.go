@@ -34,7 +34,10 @@ Result Wrapped Query:
 
 
 */
-func ApplyQueryWrapper(queryString string) string {
+func ApplyQueryWrapper(namespace, queryString string) string {
+
+	//TODO - namespace is being added to support scoping queries to the correct chaincode context
+	// A followup change will add the implementation for enabling the namespace filter
 
 	//create a generic map for the query json
 	jsonQueryMap := make(map[string]interface{})

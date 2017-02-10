@@ -122,7 +122,7 @@ func (vdb *versionedDB) GetStateRangeScanIterator(namespace string, startKey str
 }
 
 // ExecuteQuery implements method in VersionedDB interface
-func (vdb *versionedDB) ExecuteQuery(query string) (statedb.ResultsIterator, error) {
+func (vdb *versionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIterator, error) {
 	return nil, errors.New("ExecuteQuery not supported for leveldb")
 }
 

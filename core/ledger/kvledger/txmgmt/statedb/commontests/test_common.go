@@ -207,7 +207,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	db.ApplyUpdates(batch, savePoint)
 
 	// query for owner=jerry
-	itr, err := db.ExecuteQuery("{\"selector\":{\"owner\":\"jerry\"}}")
+	itr, err := db.ExecuteQuery("ns1", "{\"selector\":{\"owner\":\"jerry\"}}")
 	testutil.AssertNoError(t, err, "")
 
 	// verify one jerry result
@@ -225,11 +225,11 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNil(t, queryResult2)
 
 	// query using bad query string
-	itr, err = db.ExecuteQuery("this is an invalid query string")
+	itr, err = db.ExecuteQuery("ns1", "this is an invalid query string")
 	testutil.AssertError(t, err, "Should have received an error for invalid query string")
 
 	// query returns 0 records
-	itr, err = db.ExecuteQuery("{\"selector\":{\"owner\":\"not_a_valid_name\"}}")
+	itr, err = db.ExecuteQuery("ns1", "{\"selector\":{\"owner\":\"not_a_valid_name\"}}")
 	testutil.AssertNoError(t, err, "")
 
 	// verify no results
@@ -238,7 +238,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNil(t, queryResult3)
 
 	// query with fields
-	itr, err = db.ExecuteQuery("{\"selector\":{\"owner\":\"jerry\"},\"fields\": [\"owner\", \"asset_name\", \"color\", \"size\"]}")
+	itr, err = db.ExecuteQuery("ns1", "{\"selector\":{\"owner\":\"jerry\"},\"fields\": [\"owner\", \"asset_name\", \"color\", \"size\"]}")
 	testutil.AssertNoError(t, err, "")
 
 	// verify one jerry result
@@ -256,7 +256,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNil(t, queryResult2)
 
 	// query with complex selector
-	itr, err = db.ExecuteQuery("{\"selector\":{\"$and\":[{\"size\":{\"$gt\": 5}},{\"size\":{\"$lt\":8}},{\"$not\":{\"size\":6}}]}}")
+	itr, err = db.ExecuteQuery("ns1", "{\"selector\":{\"$and\":[{\"size\":{\"$gt\": 5}},{\"size\":{\"$lt\":8}},{\"$not\":{\"size\":6}}]}}")
 	testutil.AssertNoError(t, err, "")
 
 	// verify one fred result
@@ -274,7 +274,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNil(t, queryResult2)
 
 	// query with embedded implicit "AND" and explicit "OR"
-	itr, err = db.ExecuteQuery("{\"selector\":{\"color\":\"green\",\"$or\":[{\"owner\":\"fred\"},{\"owner\":\"mary\"}]}}")
+	itr, err = db.ExecuteQuery("ns1", "{\"selector\":{\"color\":\"green\",\"$or\":[{\"owner\":\"fred\"},{\"owner\":\"mary\"}]}}")
 	testutil.AssertNoError(t, err, "")
 
 	// verify one green result

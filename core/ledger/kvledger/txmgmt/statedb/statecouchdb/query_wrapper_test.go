@@ -28,7 +28,7 @@ func TestSimpleQuery(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner":{"$eq":"jerry"}},"limit": 10,"skip": 0}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	//There should be one wrapped field
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"data.owner\""), 1)
@@ -46,7 +46,7 @@ func TestQueryWithOperator(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"$or":[{"owner":{"$eq":"jerry"}},{"owner": {"$eq": "frank"}}]},"limit": 10,"skip": 0}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"data.owner\""), 2)
 
@@ -66,7 +66,7 @@ func TestQueryWithImplicitOperatorAndExplicitOperator(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"color":"green","$or":[{"owner":"fred"},{"owner":"mary"}]}}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"data.owner\""), 2)
 
@@ -88,7 +88,7 @@ func TestQueryWithFields(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner": {"$eq": "tom"}},"fields": ["owner", "asset_name", "color", "size"], "limit": 10, "skip": 0}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	//$eq operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"$eq\""), 1)
@@ -112,7 +112,7 @@ func TestQueryWithSortFields(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner": {"$eq": "tom"}},"fields": ["owner", "asset_name", "color", "size"], "sort": ["size", "color"], "limit": 10, "skip": 0}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	//$eq operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"$eq\""), 1)
@@ -136,7 +136,7 @@ func TestQueryWithSortObjects(t *testing.T) {
 
 	rawQuery := []byte(`{"selector":{"owner": {"$eq": "tom"}},"fields": ["owner", "asset_name", "color", "size"], "sort": [{"size": "desc"}, {"color": "desc"}], "limit": 10, "skip": 0}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	//$eq operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"$eq\""), 1)
@@ -173,7 +173,7 @@ func TestQueryLeadingOperator(t *testing.T) {
  }
  }`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	//$and operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"$and\""), 1)
@@ -200,7 +200,7 @@ func TestQueryLeadingAndEmbeddedOperator(t *testing.T) {
 					 ]
 			 }}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	//$and operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"$and\""), 1)
@@ -242,7 +242,7 @@ func TestQueryEmbeddedOperatorAndArrayOfObjects(t *testing.T) {
 	  }
 	}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	//$and operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"$and\""), 1)
@@ -270,7 +270,7 @@ func TestQueryEmbeddedOperatorAndArrayOfValues(t *testing.T) {
 	  }
 	}`)
 
-	wrappedQuery := []byte(ApplyQueryWrapper(string(rawQuery)))
+	wrappedQuery := []byte(ApplyQueryWrapper("ns1", string(rawQuery)))
 
 	//$gt operator should be unchanged
 	testutil.AssertEquals(t, strings.Count(string(wrappedQuery), "\"$gt\""), 1)
