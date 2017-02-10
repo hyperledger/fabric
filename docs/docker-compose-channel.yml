@@ -46,6 +46,9 @@ services:
       - orderer:orderer
     volumes:
         - /var/run/:/host/var/run/
+        #in the "- <HOST>:/opt/gopath/src/github.com/hyperledger/fabric/examples/" mapping below, the HOST part
+        #should be modified to the path on the host. This will work as is in the Vagrant environment
+        - /opt/gopath/src/github.com/hyperledger/fabric/examples/:/opt/gopath/src/github.com/hyperledger/fabric/examples/
     depends_on:
       - orderer
     networks:
