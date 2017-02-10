@@ -46,7 +46,7 @@ type identity struct {
 }
 
 func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, msp *bccspmsp) Identity {
-	mspLogger.Infof("Creating identity instance for ID %s", id)
+	mspLogger.Debugf("Creating identity instance for ID %s", id)
 	return &identity{id: id, cert: cert, pk: pk, msp: msp}
 }
 

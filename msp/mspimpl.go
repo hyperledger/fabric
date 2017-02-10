@@ -58,7 +58,7 @@ type bccspmsp struct {
 // generate identities and signing identities backed by
 // certificates and keypairs
 func NewBccspMsp() (MSP, error) {
-	mspLogger.Infof("Creating BCCSP-based MSP instance")
+	mspLogger.Debugf("Creating BCCSP-based MSP instance")
 
 	// TODO: security level, hash family and keystore should
 	// be probably set in the appropriate way.
@@ -151,7 +151,7 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 
 	// set the name for this msp
 	msp.name = conf.Name
-	mspLogger.Infof("Setting up MSP instance %s", msp.name)
+	mspLogger.Debugf("Setting up MSP instance %s", msp.name)
 
 	// make and fill the set of admin certs
 	msp.admins = make([]Identity, len(conf.Admins))
@@ -201,7 +201,7 @@ func (msp *bccspmsp) GetIdentifier() (string, error) {
 // GetDefaultSigningIdentity returns the
 // default signing identity for this MSP (if any)
 func (msp *bccspmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
-	mspLogger.Infof("Obtaining default signing identity")
+	mspLogger.Debugf("Obtaining default signing identity")
 
 	if msp.signer == nil {
 		return nil, fmt.Errorf("This MSP does not possess a valid default signing identity")
