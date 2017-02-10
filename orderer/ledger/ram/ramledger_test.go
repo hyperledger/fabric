@@ -19,8 +19,8 @@ package ramledger
 import (
 	"testing"
 
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
-	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	logging "github.com/op/go-logging"
@@ -30,7 +30,7 @@ var genesisBlock *cb.Block
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
-	genesisBlock = provisional.New(config.LoadGenesis()).GenesisBlock()
+	genesisBlock = provisional.New(genesisconfig.Load()).GenesisBlock()
 }
 
 func NewTestChain(maxSize int) *ramLedger {

@@ -25,6 +25,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
@@ -114,7 +115,7 @@ func main() {
 		// Select the bootstrapping mechanism
 		switch conf.General.GenesisMethod {
 		case "provisional":
-			genesisBlock = provisional.New(config.LoadGenesis()).GenesisBlock()
+			genesisBlock = provisional.New(genesisconfig.Load()).GenesisBlock()
 		case "file":
 			genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 		default:

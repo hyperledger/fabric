@@ -74,27 +74,6 @@ type Genesis struct {
 	SbftShared             SbftShared
 }
 
-// GenesisTopLevel contains the genesis structures for use by the provisional bootstrapper
-type GenesisTopLevel struct {
-	Orderer Orderer
-}
-
-// Orderer contains config which is used for orderer genesis by the provisional bootstrapper
-type Orderer struct {
-	OrdererType  string
-	Addresses    []string
-	BatchTimeout time.Duration
-	BatchSize    BatchSize
-	Kafka        Kafka
-}
-
-// BatchSize contains configuration affecting the size of batches
-type BatchSize struct {
-	MaxMessageCount   uint32
-	AbsoluteMaxBytes  uint32
-	PreferredMaxBytes uint32
-}
-
 // Profile contains configuration for Go pprof profiling
 type Profile struct {
 	Enabled bool
@@ -114,7 +93,6 @@ type FileLedger struct {
 
 // Kafka contains config for the Kafka orderer
 type Kafka struct {
-	Brokers []string // TODO This should be removed when the genesis config moves
 	Retry   Retry
 	Verbose bool
 	Version sarama.KafkaVersion
@@ -186,7 +164,6 @@ var defaults = TopLevel{
 		Prefix:   "hyperledger-fabric-ordererledger",
 	},
 	Kafka: Kafka{
-		Brokers: []string{"127.0.0.1:9092"},
 		Retry: Retry{
 			Period: 3 * time.Second,
 			Stop:   60 * time.Second,
@@ -271,103 +248,6 @@ func (c *TopLevel) completeInitialization() {
 			return
 		}
 	}
-}
-
-var genesisDefaults = GenesisTopLevel{
-	Orderer: Orderer{
-		OrdererType:  "solo",
-		Addresses:    []string{"127.0.0.1:7050"},
-		BatchTimeout: 10 * time.Second,
-		BatchSize: BatchSize{
-			MaxMessageCount:   10,
-			AbsoluteMaxBytes:  100000000,
-			PreferredMaxBytes: 512 * 1024,
-		},
-		Kafka: Kafka{
-			Brokers: []string{"127.0.0.1:9092"},
-		},
-	},
-}
-
-func (g *GenesisTopLevel) completeInitialization() {
-	for {
-		switch {
-		case g.Orderer.OrdererType == "":
-			logger.Infof("Orderer.OrdererType unset, setting to %s", genesisDefaults.Orderer.OrdererType)
-			g.Orderer.OrdererType = genesisDefaults.Orderer.OrdererType
-		case g.Orderer.Addresses == nil:
-			logger.Infof("Orderer.Addresses unset, setting to %s", genesisDefaults.Orderer.Addresses)
-			g.Orderer.Addresses = genesisDefaults.Orderer.Addresses
-		case g.Orderer.BatchTimeout == 0:
-			logger.Infof("Orderer.BatchTimeout unset, setting to %s", genesisDefaults.Orderer.BatchTimeout)
-			g.Orderer.BatchTimeout = genesisDefaults.Orderer.BatchTimeout
-		case g.Orderer.BatchTimeout == 0:
-			logger.Infof("Orderer.BatchTimeout unset, setting to %s", genesisDefaults.Orderer.BatchTimeout)
-			g.Orderer.BatchTimeout = genesisDefaults.Orderer.BatchTimeout
-		case g.Orderer.BatchSize.MaxMessageCount == 0:
-			logger.Infof("Orderer.BatchSize.MaxMessageCount unset, setting to %s", genesisDefaults.Orderer.BatchSize.MaxMessageCount)
-			g.Orderer.BatchSize.MaxMessageCount = genesisDefaults.Orderer.BatchSize.MaxMessageCount
-		case g.Orderer.BatchSize.AbsoluteMaxBytes == 0:
-			logger.Infof("Orderer.BatchSize.AbsoluteMaxBytes unset, setting to %s", genesisDefaults.Orderer.BatchSize.AbsoluteMaxBytes)
-			g.Orderer.BatchSize.AbsoluteMaxBytes = genesisDefaults.Orderer.BatchSize.AbsoluteMaxBytes
-		case g.Orderer.BatchSize.PreferredMaxBytes == 0:
-			logger.Infof("Orderer.BatchSize.PreferredMaxBytes unset, setting to %s", genesisDefaults.Orderer.BatchSize.PreferredMaxBytes)
-			g.Orderer.BatchSize.PreferredMaxBytes = genesisDefaults.Orderer.BatchSize.PreferredMaxBytes
-		case g.Orderer.Kafka.Brokers == nil:
-			logger.Infof("Orderer.Kafka.Brokers unset, setting to %v", genesisDefaults.Orderer.Kafka.Brokers)
-			g.Orderer.Kafka.Brokers = genesisDefaults.Orderer.Kafka.Brokers
-		default:
-			return
-		}
-	}
-}
-
-func LoadGenesis() *GenesisTopLevel {
-	config := viper.New()
-
-	const prefix = "GENESIS"
-
-	config.SetConfigName("genesis")
-	cfgPath := os.Getenv("ORDERER_CFG_PATH")
-	if cfgPath == "" {
-		logger.Infof("No orderer cfg path set, assuming development environment, deriving from go path")
-		// Path to look for the config file in based on GOPATH
-		gopath := os.Getenv("GOPATH")
-		for _, p := range filepath.SplitList(gopath) {
-			ordererPath := filepath.Join(p, "src/github.com/hyperledger/fabric/orderer/")
-			if _, err := os.Stat(filepath.Join(ordererPath, "genesis.yaml")); err != nil {
-				// The yaml file does not exist in this component of the go src
-				continue
-			}
-			cfgPath = ordererPath
-		}
-		if cfgPath == "" {
-			logger.Fatalf("Could not find orderer.yaml, try setting ORDERER_CFG_PATH or GOPATH correctly")
-		}
-	}
-	config.AddConfigPath(cfgPath) // Path to look for the config file in
-
-	// for environment variables
-	config.SetEnvPrefix(prefix)
-	config.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	config.SetEnvKeyReplacer(replacer)
-
-	err := config.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("Error reading %s plugin config: %s", prefix, err))
-	}
-
-	var uconf GenesisTopLevel
-
-	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
-	if err != nil {
-		panic(fmt.Errorf("Error unmarshaling into structure: %s", err))
-	}
-
-	uconf.completeInitialization()
-
-	return &uconf
 }
 
 // Load parses the orderer.yaml file and environment, producing a struct suitable for config use

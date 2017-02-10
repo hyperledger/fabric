@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
-	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -35,11 +35,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var conf *config.GenesisTopLevel
+var conf *genesisconfig.TopLevel
 var genesisBlock *cb.Block
 
 func init() {
-	conf = config.LoadGenesis()
+	conf = genesisconfig.Load()
 	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(conf).GenesisBlock()
 }
@@ -217,7 +217,7 @@ func TestSignatureFilter(t *testing.T) {
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
 func TestNewChain(t *testing.T) {
-	conf := config.LoadGenesis()
+	conf := genesisconfig.Load()
 	lf, rl := NewRAMLedgerAndFactory(10)
 
 	consenters := make(map[string]Consenter)

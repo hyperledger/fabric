@@ -109,11 +109,6 @@ Kafka:
     # interact with the Kafka cluster
     Verbose: false
 
-    # Brokers: A list of Kafka brokers to which the orderer connects
-    # NOTE: Use IP:port notation
-    Brokers:
-        - 127.0.0.1:9092
-
     # TLS: TLS settings for the Kafka client
     TLS:
 
