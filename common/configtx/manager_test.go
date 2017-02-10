@@ -62,7 +62,7 @@ func makeMarshaledConfig(chainID string, configPairs ...*configPair) []byte {
 		values[pair.key] = pair.value
 	}
 
-	config := &cb.ConfigNext{
+	config := &cb.Config{
 		Header: &cb.ChannelHeader{ChannelId: chainID},
 		Channel: &cb.ConfigGroup{
 			Values: values,
@@ -438,7 +438,7 @@ func TestInvalidProposal(t *testing.T) {
 func TestMissingHeader(t *testing.T) {
 	group := cb.NewConfigGroup()
 	group.Values["foo"] = &cb.ConfigValue{}
-	data := utils.MarshalOrPanic(&cb.ConfigNext{Channel: group})
+	data := utils.MarshalOrPanic(&cb.Config{Channel: group})
 	_, err := NewManagerImpl(&cb.ConfigEnvelope{
 		Config: data,
 	}, defaultInitializer(), nil)

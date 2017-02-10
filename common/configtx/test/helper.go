@@ -90,12 +90,12 @@ func MSPTemplate() configtx.Template {
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
-	return configtx.NewSimpleTemplateNext(configtxmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey}, mspConf))
+	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey}, mspConf))
 }
 
 // ApplicationTemplate returns the test application template
 func ApplicationTemplate() configtx.Template {
-	return configtx.NewSimpleTemplateNext(configtxapplication.DefaultAnchorPeers())
+	return configtx.NewSimpleTemplate(configtxapplication.DefaultAnchorPeers())
 }
 
 // CompositeTemplate returns the composite template of peer, orderer, and MSP

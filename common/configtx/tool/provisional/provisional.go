@@ -106,13 +106,13 @@ func New(conf *genesisconfig.TopLevel) Generator {
 }
 
 func (bs *bootstrapper) ChannelTemplate() configtx.Template {
-	return configtx.NewSimpleTemplateNext(bs.minimalGroups...)
+	return configtx.NewSimpleTemplate(bs.minimalGroups...)
 }
 
 func (bs *bootstrapper) GenesisBlock() *cb.Block {
 	block, err := genesis.NewFactoryImpl(
 		configtx.NewCompositeTemplate(
-			configtx.NewSimpleTemplateNext(bs.systemChainGroups...),
+			configtx.NewSimpleTemplate(bs.systemChainGroups...),
 			bs.ChannelTemplate(),
 		),
 	).Block(TestChainID)

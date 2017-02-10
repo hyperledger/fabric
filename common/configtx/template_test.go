@@ -34,7 +34,7 @@ func verifyItemsResult(t *testing.T, template Template, count int) {
 		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	configNext, err := UnmarshalConfigNext(configEnv.Config)
+	configNext, err := UnmarshalConfig(configEnv.Config)
 	if err != nil {
 		t.Fatalf("Should not have errored: %s", err)
 	}
@@ -54,7 +54,7 @@ func simpleGroup(index int) *cb.ConfigGroup {
 }
 
 func TestSimpleTemplate(t *testing.T) {
-	simple := NewSimpleTemplateNext(
+	simple := NewSimpleTemplate(
 		simpleGroup(0),
 		simpleGroup(1),
 	)
@@ -63,11 +63,11 @@ func TestSimpleTemplate(t *testing.T) {
 
 func TestCompositeTemplate(t *testing.T) {
 	composite := NewCompositeTemplate(
-		NewSimpleTemplateNext(
+		NewSimpleTemplate(
 			simpleGroup(0),
 			simpleGroup(1),
 		),
-		NewSimpleTemplateNext(
+		NewSimpleTemplate(
 			simpleGroup(2),
 		),
 	)
@@ -76,7 +76,7 @@ func TestCompositeTemplate(t *testing.T) {
 }
 
 func TestNewChainTemplate(t *testing.T) {
-	simple := NewSimpleTemplateNext(
+	simple := NewSimpleTemplate(
 		simpleGroup(0),
 		simpleGroup(1),
 	)
@@ -90,7 +90,7 @@ func TestNewChainTemplate(t *testing.T) {
 		t.Fatalf("Error creation a chain creation config")
 	}
 
-	configNext, err := UnmarshalConfigNext(configEnv.Config)
+	configNext, err := UnmarshalConfig(configEnv.Config)
 	if err != nil {
 		t.Fatalf("Should not have errored: %s", err)
 	}

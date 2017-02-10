@@ -79,7 +79,7 @@ func computeSequence(configGroup *cb.ConfigGroup) uint64 {
 
 // computeChannelIdAndSequence returns the chain id and the sequence number for a config envelope
 // or an error if there is a problem with the config envelope
-func computeChannelIdAndSequence(config *cb.ConfigNext) (string, uint64, error) {
+func computeChannelIdAndSequence(config *cb.Config) (string, uint64, error) {
 	if config.Channel == nil {
 		return "", 0, errors.New("Empty envelope unsupported")
 	}
@@ -134,7 +134,7 @@ func validateChainID(chainID string) error {
 }
 
 func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
-	config, err := UnmarshalConfigNext(configtx.Config)
+	config, err := UnmarshalConfig(configtx.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (cm *configManager) recurseConfig(result map[string]comparable, path []stri
 }
 
 func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap map[string]comparable, err error) {
-	config, err := UnmarshalConfigNext(configtx.Config)
+	config, err := UnmarshalConfig(configtx.Config)
 	if err != nil {
 		return nil, err
 	}

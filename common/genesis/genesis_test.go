@@ -23,7 +23,7 @@ import (
 )
 
 func TestSanity(t *testing.T) {
-	impl := NewFactoryImpl(configtx.NewSimpleTemplateNext())
+	impl := NewFactoryImpl(configtx.NewSimpleTemplate())
 	_, err := impl.Block("TestChainID")
 	if err != nil {
 		t.Fatalf("Basic sanity fails")
