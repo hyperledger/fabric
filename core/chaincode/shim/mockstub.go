@@ -188,7 +188,7 @@ func (stub *MockStub) DelState(key string) error {
 	return nil
 }
 
-func (stub *MockStub) RangeQueryState(startKey, endKey string) (StateQueryIteratorInterface, error) {
+func (stub *MockStub) GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error) {
 	return NewMockStateRangeQueryIterator(stub, startKey, endKey), nil
 }
 
@@ -204,14 +204,14 @@ func (stub *MockStub) GetQueryResult(query string) (StateQueryIteratorInterface,
 	return nil, errors.New("Not Implemented")
 }
 
-//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+//GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
 //state based on a given partial composite key. This function returns an
 //iterator which can be used to iterate over all composite keys whose prefix
 //matches the given partial composite key. This function should be used only for
 //a partial composite key. For a full composite key, an iter with empty response
 //would be returned.
-func (stub *MockStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
-	return partialCompositeKeyQuery(stub, objectType, attributes)
+func (stub *MockStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
+	return getStateByPartialCompositeKey(stub, objectType, attributes)
 }
 
 // CreateCompositeKey combines the list of attributes

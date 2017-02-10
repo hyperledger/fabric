@@ -599,7 +599,7 @@ public class Handler {
 		}
 	}
 
-	public QueryStateResponse handleRangeQueryState(String startKey, String endKey, String uuid) {
+	public QueryStateResponse handleGetStateByRange(String startKey, String endKey, String uuid) {
 		// Create the channel on which to communicate the response from validating peer
 		Channel<ChaincodeMessage> responseChannel;
 		try {
@@ -612,23 +612,23 @@ public class Handler {
 
 		//Defer
 		try {
-			// Send RANGE_QUERY_STATE message to validator chaincode support
-			RangeQueryState payload = RangeQueryState.newBuilder()
+			// Send GET_STATE_BY_RANGE message to validator chaincode support
+			GetStateByRange payload = GetStateByRange.newBuilder()
 					.setStartKey(startKey)
 					.setEndKey(endKey)
 					.build();
 
 			ChaincodeMessage message = ChaincodeMessage.newBuilder()
-					.setType(RANGE_QUERY_STATE)
+					.setType(GET_STATE_BY_RANGE)
 					.setPayload(payload.toByteString())
 					.setTxid(uuid)
 					.build();
 
-			logger.debug(String.format("[%s]Sending %s", shortID(message), RANGE_QUERY_STATE));
+			logger.debug(String.format("[%s]Sending %s", shortID(message), GET_STATE_BY_RANGE));
 			try {
 				serialSend(message);
 			} catch (Exception e){
-				logger.error(String.format("[%s]error sending %s", shortID(message), RANGE_QUERY_STATE));
+				logger.error(String.format("[%s]error sending %s", shortID(message), GET_STATE_BY_RANGE));
 				throw new RuntimeException("could not send message");
 			}
 
@@ -651,7 +651,7 @@ public class Handler {
 					rangeQueryResponse = QueryStateResponse.parseFrom(response.getPayload());
 				} catch (Exception e) {
 					logger.error(String.format("[%s]unmarshall error", shortID(response.getTxid())));
-					throw new RuntimeException("Error unmarshalling RangeQueryStateResponse.");
+					throw new RuntimeException("Error unmarshalling GetStateByRangeResponse.");
 				}
 
 				return rangeQueryResponse;

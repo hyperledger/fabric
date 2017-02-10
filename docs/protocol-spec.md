@@ -684,7 +684,7 @@ message ChaincodeMessage {
         QUERY = 14;
         QUERY_COMPLETED = 15;
         QUERY_ERROR = 16;
-        RANGE_QUERY_STATE = 17;
+        GET_STATE_BY_RANGE = 17;
     }
 
     Type type = 1;
@@ -745,42 +745,42 @@ Chaincode sends a `GET_STATE` message to retrieve the value whose key is specifi
 ###### DEL_STATE
 Chaincode sends a `DEL_STATE` message to delete the value whose key is specified in the `payload`.
 
-###### RANGE_QUERY_STATE
-Chaincode sends a `RANGE_QUERY_STATE` message to get a range of values. The message `payload` contains a `RangeQueryStateInfo` object.
+###### GET_STATE_BY_RANGE
+Chaincode sends a `GET_STATE_BY_RANGE` message to get a range of values. The message `payload` contains a `GetStateByRangeInfo` object.
 
 ```
-message RangeQueryState {
+message GetStateByRange {
 	string startKey = 1;
 	string endKey = 2;
 }
 ```
 
-The `startKey` and `endKey` are inclusive and assumed to be in lexical order. The validating peer responds with `RESPONSE` message whose `payload` is a `RangeQueryStateResponse` object.
+The `startKey` and `endKey` are inclusive and assumed to be in lexical order. The validating peer responds with `RESPONSE` message whose `payload` is a `GetStateByRangeResponse` object.
 
 ```
-message RangeQueryStateResponse {
-    repeated RangeQueryStateKeyValue keysAndValues = 1;
+message GetStateByRangeResponse {
+    repeated GetStateByRangeKeyValue keysAndValues = 1;
     bool hasMore = 2;
     string ID = 3;
 }
-message RangeQueryStateKeyValue {
+message GetStateByRangeKeyValue {
     string key = 1;
     bytes value = 2;
 }
 ```
 
-If `hasMore=true` in the response, this indicates that additional keys are available in the requested range. The chaincode can request the next set of keys and values by sending a `RangeQueryStateNext` message with an ID that matches the ID returned in the response.
+If `hasMore=true` in the response, this indicates that additional keys are available in the requested range. The chaincode can request the next set of keys and values by sending a `GetStateByRangeNext` message with an ID that matches the ID returned in the response.
 
 ```
-message RangeQueryStateNext {
+message GetStateByRangeNext {
     string ID = 1;
 }
 ```
 
-When the chaincode is finished reading from the range, it should send a `RangeQueryStateClose` message with the ID it wishes to close.
+When the chaincode is finished reading from the range, it should send a `GetStateByRangeClose` message with the ID it wishes to close.
 
 ```
-message RangeQueryStateClose {
+message GetStateByRangeClose {
   string ID = 1;
 }
 ```

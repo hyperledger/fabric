@@ -494,7 +494,7 @@ func (handler *Handler) handleDelState(key string, txid string) error {
 	return errors.New("Incorrect chaincode message received")
 }
 
-func (handler *Handler) handleRangeQueryState(startKey, endKey string, txid string) (*pb.QueryStateResponse, error) {
+func (handler *Handler) handleGetStateByRange(startKey, endKey string, txid string) (*pb.QueryStateResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
 	respChan, uniqueReqErr := handler.createChannel(txid)
 	if uniqueReqErr != nil {
@@ -504,17 +504,17 @@ func (handler *Handler) handleRangeQueryState(startKey, endKey string, txid stri
 
 	defer handler.deleteChannel(txid)
 
-	// Send RANGE_QUERY_STATE message to validator chaincode support
-	payload := &pb.RangeQueryState{StartKey: startKey, EndKey: endKey}
+	// Send GET_STATE_BY_RANGE message to validator chaincode support
+	payload := &pb.GetStateByRange{StartKey: startKey, EndKey: endKey}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to process range query state request")
 	}
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RANGE_QUERY_STATE, Payload: payloadBytes, Txid: txid}
-	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RANGE_QUERY_STATE)
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE_BY_RANGE, Payload: payloadBytes, Txid: txid}
+	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_BY_RANGE)
 	responseMsg, err := handler.sendReceive(msg, respChan)
 	if err != nil {
-		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_RANGE_QUERY_STATE)
+		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE_BY_RANGE)
 		return nil, errors.New("could not send msg")
 	}
 
@@ -526,7 +526,7 @@ func (handler *Handler) handleRangeQueryState(startKey, endKey string, txid stri
 		unmarshalErr := proto.Unmarshal(responseMsg.Payload, rangeQueryResponse)
 		if unmarshalErr != nil {
 			chaincodeLogger.Errorf("[%s]unmarshall error", shorttxid(responseMsg.Txid))
-			return nil, errors.New("Error unmarshalling RangeQueryStateResponse.")
+			return nil, errors.New("Error unmarshalling GetStateByRangeResponse.")
 		}
 
 		return rangeQueryResponse, nil
@@ -638,7 +638,7 @@ func (handler *Handler) handleQueryStateClose(id, txid string) (*pb.QueryStateRe
 	return nil, errors.New("Incorrect chaincode message received")
 }
 
-func (handler *Handler) handleExecuteQueryState(query string, txid string) (*pb.QueryStateResponse, error) {
+func (handler *Handler) handleGetQueryResult(query string, txid string) (*pb.QueryStateResponse, error) {
 	// Create the channel on which to communicate the response from validating peer
 	respChan, uniqueReqErr := handler.createChannel(txid)
 	if uniqueReqErr != nil {
@@ -648,17 +648,17 @@ func (handler *Handler) handleExecuteQueryState(query string, txid string) (*pb.
 
 	defer handler.deleteChannel(txid)
 
-	// Send EXECUTE_QUERY_STATE message to validator chaincode support
-	payload := &pb.ExecuteQueryState{Query: query}
+	// Send GET_QUERY_RESULT message to validator chaincode support
+	payload := &pb.GetQueryResult{Query: query}
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to process query state request")
 	}
-	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_EXECUTE_QUERY_STATE, Payload: payloadBytes, Txid: txid}
-	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_EXECUTE_QUERY_STATE)
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_QUERY_RESULT, Payload: payloadBytes, Txid: txid}
+	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_QUERY_RESULT)
 	responseMsg, err := handler.sendReceive(msg, respChan)
 	if err != nil {
-		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_EXECUTE_QUERY_STATE)
+		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_QUERY_RESULT)
 		return nil, errors.New("could not send msg")
 	}
 

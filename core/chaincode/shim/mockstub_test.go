@@ -89,8 +89,8 @@ func jsonBytesEqual(expected []byte, actual []byte) bool {
 	return reflect.DeepEqual(infActual, infExpected)
 }
 
-func TestPartialCompositeKeyQuery(t *testing.T) {
-	stub := NewMockStub("PartialCompositeKeyQueryTest", nil)
+func TestGetStateByPartialCompositeKey(t *testing.T) {
+	stub := NewMockStub("GetStateByPartialCompositeKeyTest", nil)
 	stub.MockTransactionStart("init")
 
 	marble1 := &Marble{"marble", "set-1", "red", 5, "tom"}
@@ -116,7 +116,7 @@ func TestPartialCompositeKeyQuery(t *testing.T) {
 	expectKeysAttributes := [][]string{{"set-1", "blue"}, {"set-1", "red"}}
 	expectValues := [][]byte{marbleJSONBytes2, marbleJSONBytes1}
 
-	rqi, _ := stub.PartialCompositeKeyQuery("marble", []string{"set-1"})
+	rqi, _ := stub.GetStateByPartialCompositeKey("marble", []string{"set-1"})
 	fmt.Println("Running loop")
 	for i := 0; i < 2; i++ {
 		key, value, err := rqi.Next()

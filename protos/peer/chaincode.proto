@@ -136,8 +136,8 @@ message ChaincodeMessage {
         DEL_STATE = 10;
         INVOKE_CHAINCODE = 11;
         RESPONSE = 13;
-        RANGE_QUERY_STATE = 14;
-        EXECUTE_QUERY_STATE = 15;
+        GET_STATE_BY_RANGE = 14;
+        GET_QUERY_RESULT = 15;
         QUERY_STATE_NEXT = 16;
         QUERY_STATE_CLOSE = 17;
         KEEPALIVE = 18;
@@ -161,12 +161,12 @@ message PutStateInfo {
     bytes value = 2;
 }
 
-message RangeQueryState {
-    string start_key = 1;
-    string end_key = 2;
+message GetStateByRange {
+    string startKey = 1;
+    string endKey = 2;
 }
 
-message ExecuteQueryState {
+message GetQueryResult {
     string query = 1;
 }
 

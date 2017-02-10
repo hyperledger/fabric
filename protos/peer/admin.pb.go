@@ -28,8 +28,8 @@ It has these top-level messages:
 	ChaincodeProposalContext
 	ChaincodeMessage
 	PutStateInfo
-	RangeQueryState
-	ExecuteQueryState
+	GetStateByRange
+	GetQueryResult
 	QueryStateNext
 	QueryStateClose
 	QueryStateKeyValue
