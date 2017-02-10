@@ -69,7 +69,7 @@ message ChaincodeSpec {
     }
 
     Type type = 1;
-    ChaincodeID chaincodeID = 2;
+    ChaincodeID chaincodeID = 2; // XXX change to chaincode_id
     ChaincodeInput input = 3;
     int32 timeout = 4;
 }
@@ -83,18 +83,18 @@ message ChaincodeDeploymentSpec {
         SYSTEM = 1;
     }
 
-    ChaincodeSpec chaincodeSpec = 1;
+    ChaincodeSpec chaincode_spec = 1;
     // Controls when the chaincode becomes executable.
-    google.protobuf.Timestamp effectiveDate = 2;
-    bytes codePackage = 3;
-    ExecutionEnvironment execEnv=  4;
+    google.protobuf.Timestamp effective_date = 2;
+    bytes code_package = 3;
+    ExecutionEnvironment exec_env=  4;
 
 }
 
 // Carries the chaincode function and its arguments.
 message ChaincodeInvocationSpec {
 
-    ChaincodeSpec chaincodeSpec = 1;
+    ChaincodeSpec chaincode_spec = 1;
     // This field can contain a user-specified ID generation algorithm
     // If supplied, this will be used to generate a ID
     // If not supplied (left empty), sha256base64 will be used
@@ -102,7 +102,7 @@ message ChaincodeInvocationSpec {
     //  1, a hash function
     //  2, a decoding used to decode user (string) input to bytes
     // Currently, SHA256 with BASE64 is supported (e.g. idGenerationAlg='sha256base64')
-    string idGenerationAlg = 2;
+    string id_generation_alg = 2;
 }
 
 // ChaincodeProposalContext contains proposal data that we send to the chaincode
@@ -148,12 +148,12 @@ message ChaincodeMessage {
     bytes payload = 3;
     string txid = 4;
 
-    ChaincodeProposalContext proposalContext = 5;
+    ChaincodeProposalContext proposal_context = 5;
 
     //event emmited by chaincode. Used only with Init or Invoke.
     // This event is then stored (currently)
     //with Block.NonHashData.TransactionResult
-    ChaincodeEvent chaincodeEvent = 6;
+    ChaincodeEvent chaincode_event = 6;
 }
 
 message PutStateInfo {
@@ -162,8 +162,8 @@ message PutStateInfo {
 }
 
 message RangeQueryState {
-    string startKey = 1;
-    string endKey = 2;
+    string start_key = 1;
+    string end_key = 2;
 }
 
 message ExecuteQueryState {
@@ -171,11 +171,11 @@ message ExecuteQueryState {
 }
 
 message QueryStateNext {
-    string ID = 1;
+    string ID = 1; // XXX change to id
 }
 
 message QueryStateClose {
-    string ID = 1;
+    string ID = 1; // XXX change to id
 }
 
 message QueryStateKeyValue {
@@ -184,9 +184,9 @@ message QueryStateKeyValue {
 }
 
 message QueryStateResponse {
-    repeated QueryStateKeyValue keysAndValues = 1;
-    bool hasMore = 2;
-    string ID = 3;
+    repeated QueryStateKeyValue keys_and_values = 1;
+    bool has_more = 2;
+    string ID = 3; // XXX change to id
 }
 
 // Interface that provides support to chaincode execution. ChaincodeContext

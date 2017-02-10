@@ -29,7 +29,7 @@ import "peer/proposal_response.proto";
 message SignedTransaction {
 
 	// The bytes of the Transaction. NDD
-	bytes transactionBytes = 1;
+	bytes transaction_bytes = 1;
 
 	// Signature of the transactionBytes The public key of the signature is in
 	// the header field of TransactionAction There might be multiple
@@ -40,6 +40,7 @@ message SignedTransaction {
 
 // This is used to wrap an invalid Transaction with the cause
 message InvalidTransaction {
+	// XXX Change to UPPER_CASE
 	enum Cause {
 		TxIdAlreadyExists = 0;
 		RWConflictDuringCommit = 1;
@@ -102,7 +103,7 @@ message ChaincodeActionPayload {
 	// ProposalResponsePayload.proposalHash.  For the CHAINCODE type,
 	// ProposalResponsePayload.proposalHash is supposed to be H(ProposalHeader ||
 	// f(ChaincodeProposalPayload)) where f is the visibility function.
-	bytes chaincodeProposalPayload = 1;
+	bytes chaincode_proposal_payload = 1;
 
 	// The list of actions to apply to the ledger
 	ChaincodeEndorsedAction action = 2;
@@ -115,7 +116,7 @@ message ChaincodeEndorsedAction {
 	// This is the bytes of the ProposalResponsePayload message signed by the
 	// endorsers.  Recall that for the CHAINCODE type, the
 	// ProposalResponsePayload's extenstion field carries a ChaincodeAction
-	bytes proposalResponsePayload = 1;
+	bytes proposal_response_payload = 1;
 
 	// The endorsement of the proposal, basically the endorser's signature over
 	// proposalResponsePayload

@@ -27,11 +27,9 @@ message PeerID {
 }
 
 message PeerEndpoint {
-    PeerID ID = 1;
+    PeerID ID = 1; // XXX change to id
     string address = 2;
 }
-
-//-------- the Endorser service ------------
 
 service Endorser {
 	rpc ProcessProposal(SignedProposal) returns (ProposalResponse) {}

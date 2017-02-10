@@ -56,7 +56,7 @@ message ConfigEnvelope {
 // The orderer supplies a configuration template to the user to use when constructing a new
 // chain creation transaction, so this is used to facilitate that.
 message ConfigTemplate {
-    repeated ConfigItem Items = 1;
+    repeated ConfigItem items = 1;
 }
 
 // This message may change slightly depending on the finalization of signature schemes for transactions
@@ -96,17 +96,18 @@ message ConfigPolicy {
 
 message ConfigItem {
     enum ConfigType {
+        // XXX change all to UPPER_CASE
         Policy = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
         Chain = 1;    // Marshaled format for this type is yet to be determined
         Orderer = 2;  // Marshaled format for this type is yet to be determined
         Peer = 3;     // Marshaled format for this type is yet to be determined
         MSP = 4;      // Marshaled MSPConfig proto
     }
-    ConfigType Type = 1;     // The type of configuration this is.
-    uint64 LastModified = 2;        // The Sequence number in the ConfigEnvelope this item was last modified
-    string ModificationPolicy = 3;  // What policy to check before allowing modification
-    string Key = 4;                 // A unique ID, unique scoped by Type, to reference the value by
-    bytes Value = 5;                // The byte representation of this configuration, usually a marshaled message
+    ConfigType type = 1;            // The type of configuration this is.
+    uint64 last_modified = 2;       // The Sequence number in the ConfigEnvelope this item was last modified
+    string modification_policy = 3; // What policy to check before allowing modification
+    string key = 4;                 // A unique ID, unique scoped by Type, to reference the value by
+    bytes value = 5;                // The byte representation of this configuration, usually a marshaled message
 }
 
 message ConfigSignature {
