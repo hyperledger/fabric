@@ -26,10 +26,10 @@ import (
 	"os"
 
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/kafka"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	fileledger "github.com/hyperledger/fabric/orderer/ledger/file"

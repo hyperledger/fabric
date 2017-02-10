@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/mocks/util"
 	"github.com/stretchr/testify/assert"
