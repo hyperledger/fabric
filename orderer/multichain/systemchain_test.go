@@ -22,12 +22,12 @@ import (
 
 	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	mockchainconfig "github.com/hyperledger/fabric/common/mocks/chainconfig"
+	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
-	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
@@ -50,7 +50,7 @@ func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
 
 type mockSupport struct {
 	mpm         *mockPolicyManager
-	msc         *mocksharedconfig.Manager
+	msc         *mockconfigtxorderer.SharedConfig
 	chainID     string
 	queue       []*cb.Envelope
 	chainConfig *mockchainconfig.Descriptor
@@ -59,7 +59,7 @@ type mockSupport struct {
 func newMockSupport(chainID string) *mockSupport {
 	return &mockSupport{
 		mpm:         &mockPolicyManager{},
-		msc:         &mocksharedconfig.Manager{},
+		msc:         &mockconfigtxorderer.SharedConfig{},
 		chainID:     chainID,
 		chainConfig: &mockchainconfig.Descriptor{},
 	}
@@ -78,7 +78,7 @@ func (ms *mockSupport) PolicyManager() policies.Manager {
 	return ms.mpm
 }
 
-func (ms *mockSupport) SharedConfig() sharedconfig.Manager {
+func (ms *mockSupport) SharedConfig() configtxapi.OrdererConfig {
 	return ms.msc
 }
 
