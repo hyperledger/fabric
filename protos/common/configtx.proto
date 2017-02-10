@@ -20,6 +20,7 @@ limitations under the License.
 syntax = "proto3";
 
 import "common/common.proto";
+import "common/policies.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/common";
 
@@ -47,7 +48,7 @@ package common;
 //   4. All configuration changes have a LastModification of one more than the last configuration's highest LastModification number
 //   5. All configuration changes satisfy the corresponding modification policy
 message ConfigEnvelope {
-    bytes config = 1;                               // A marshaled Config structure
+    bytes config = 1;                        // A marshaled ConfigNext structure
     repeated ConfigSignature signatures = 2; // Signatures over the config
 }
 
@@ -62,6 +63,35 @@ message ConfigTemplate {
 message Config {
     ChainHeader header = 1;
     repeated ConfigItem items = 2;
+}
+
+// XXX this structure is to allow us to minimize the diffs in this change series
+// it will be renamed Config once the original is ready to be removed
+message ConfigNext {
+    ChainHeader header = 1;
+    ConfigGroup channel = 2;
+}
+
+// ConfigGroup is the hierarchical data structure for holding config
+message ConfigGroup {
+    uint64 version = 1;
+    map<string,ConfigGroup> groups = 2;
+    map<string,ConfigValue> values = 3;
+    map<string,ConfigPolicy> policies = 4;
+    string mod_policy = 5;
+}
+
+// ConfigValue represents an individual piece of config data
+message ConfigValue {
+    uint64 version = 1;
+    bytes value = 2;
+    string mod_policy = 3;
+}
+
+message ConfigPolicy {
+    uint64 version = 1;
+    Policy policy = 2;
+    string mod_policy = 3;
 }
 
 message ConfigItem {

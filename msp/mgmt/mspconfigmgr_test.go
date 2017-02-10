@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/msp"
 	. "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
@@ -39,7 +39,7 @@ func TestMSPConfigManager(t *testing.T) {
 	// test success:
 
 	// begin/propose/commit
-	var mspCH configtx.Handler
+	var mspCH configtxapi.Handler
 	mspCH = &MSPConfigHandler{}
 	mspCH.BeginConfig()
 	err = mspCH.ProposeConfig(ci)

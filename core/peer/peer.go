@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -42,7 +43,7 @@ import (
 var peerLogger = logging.MustGetLogger("peer")
 
 type chainSupport struct {
-	configtx.Manager
+	configtxapi.Manager
 	sharedconfig.Descriptor
 	ledger ledger.PeerLedger
 }
@@ -163,7 +164,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
-	gossipCallbackWrapper := func(cm configtx.Manager) {
+	gossipCallbackWrapper := func(cm configtxapi.Manager) {
 		gossipEventer.ProcessConfigUpdate(&chainSupport{
 			Manager:    cm,
 			Descriptor: sharedConfigHandler,
@@ -172,10 +173,10 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	configtxInitializer := configtx.NewInitializer()
 	configtxInitializer.Handlers()[common.ConfigItem_Peer] = sharedConfigHandler
-	configtxManager, err := configtx.NewManagerImpl(
+	configtxManager, err := configtx.NewManagerImplNext(
 		configEnvelope,
 		configtxInitializer,
-		[]func(cm configtx.Manager){gossipCallbackWrapper},
+		[]func(cm configtxapi.Manager){gossipCallbackWrapper},
 	)
 	if err != nil {
 		return err

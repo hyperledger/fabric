@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/orderer/common/sharedconfig"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -44,7 +45,7 @@ type Manager interface {
 }
 
 type configResources struct {
-	configtx.Manager
+	configtxapi.Manager
 	sharedConfig sharedconfig.Manager
 }
 
@@ -151,7 +152,7 @@ func newConfigResources(configEnvelope *cb.ConfigEnvelope) (*configResources, er
 	initializer := configtx.NewInitializer()
 	initializer.Handlers()[cb.ConfigItem_Orderer] = sharedConfigManager
 
-	configManager, err := configtx.NewManagerImpl(configEnvelope, initializer, nil)
+	configManager, err := configtx.NewManagerImplNext(configEnvelope, initializer, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error unpacking config transaction: %s", err)
 	}

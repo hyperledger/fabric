@@ -14,18 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package configtx
+package common
 
-import (
-	"testing"
-
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-)
-
-func TestConfigtxInitializerInterface(t *testing.T) {
-	_ = configtxapi.Initializer(&Initializer{})
-}
-
-func TestConfigtxManagerInterface(t *testing.T) {
-	_ = configtxapi.Manager(&Manager{})
+func NewConfigGroup() *ConfigGroup {
+	return &ConfigGroup{
+		Groups:   make(map[string]*ConfigGroup),
+		Values:   make(map[string]*ConfigValue),
+		Policies: make(map[string]*ConfigPolicy),
+	}
 }

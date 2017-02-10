@@ -18,7 +18,7 @@ package configtx
 
 import (
 	"github.com/hyperledger/fabric/common/chainconfig"
-	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -26,7 +26,7 @@ import (
 
 type Initializer struct {
 	// HandlersVal is returned as the result of Handlers()
-	HandlersVal map[cb.ConfigItem_ConfigType]configtx.Handler
+	HandlersVal map[cb.ConfigItem_ConfigType]configtxapi.Handler
 
 	// PolicyManagerVal is returned as the result of PolicyManager()
 	PolicyManagerVal policies.Manager
@@ -39,7 +39,7 @@ type Initializer struct {
 }
 
 // Returns the HandlersVal
-func (i *Initializer) Handlers() map[cb.ConfigItem_ConfigType]configtx.Handler {
+func (i *Initializer) Handlers() map[cb.ConfigItem_ConfigType]configtxapi.Handler {
 	return i.HandlersVal
 }
 
@@ -58,7 +58,7 @@ func (i *Initializer) MSPManager() msp.MSPManager {
 	return i.MSPManagerVal
 }
 
-// Manager is a mock implementation of configtx.Manager
+// Manager is a mock implementation of configtxapi.Manager
 type Manager struct {
 	Initializer
 

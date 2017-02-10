@@ -32,25 +32,33 @@ func verifyItemsResult(t *testing.T, template Template, count int) {
 		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	config, err := UnmarshalConfig(configEnv.Config)
+	configNext, err := UnmarshalConfigNext(configEnv.Config)
 	if err != nil {
 		t.Fatalf("Should not have errored: %s", err)
 	}
+	config := ConfigNextToConfig(configNext)
 
 	if len(config.Items) != count {
 		t.Errorf("Expected %d items, but got %d", count, len(config.Items))
 	}
 
-	for i, item := range config.Items {
-		expected := fmt.Sprintf("%d", i)
-		assert.Equal(t, expected, string(item.Value), "Expected %s but got %s", expected, item.Value)
+	for i, _ := range config.Items {
+		count := 0
+		for _, item := range config.Items {
+			key := fmt.Sprintf("%d", i)
+			if key == item.Key {
+				count++
+			}
+		}
+		expected := 1
+		assert.Equal(t, expected, count, "Expected %d but got %d for %d", expected, count, i)
 	}
 }
 
 func TestSimpleTemplate(t *testing.T) {
 	simple := NewSimpleTemplate(
-		&cb.ConfigItem{Value: []byte("0")},
-		&cb.ConfigItem{Value: []byte("1")},
+		&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "0"},
+		&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "1"},
 	)
 	verifyItemsResult(t, simple, 2)
 }
@@ -58,11 +66,11 @@ func TestSimpleTemplate(t *testing.T) {
 func TestCompositeTemplate(t *testing.T) {
 	composite := NewCompositeTemplate(
 		NewSimpleTemplate(
-			&cb.ConfigItem{Value: []byte("0")},
-			&cb.ConfigItem{Value: []byte("1")},
+			&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "0"},
+			&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "1"},
 		),
 		NewSimpleTemplate(
-			&cb.ConfigItem{Value: []byte("2")},
+			&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "2"},
 		),
 	)
 
@@ -71,8 +79,8 @@ func TestCompositeTemplate(t *testing.T) {
 
 func TestNewChainTemplate(t *testing.T) {
 	simple := NewSimpleTemplate(
-		&cb.ConfigItem{Value: []byte("1")},
-		&cb.ConfigItem{Value: []byte("2")},
+		&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "0"},
+		&cb.ConfigItem{Type: cb.ConfigItem_Orderer, Key: "1"},
 	)
 
 	creationPolicy := "Test"
@@ -84,24 +92,40 @@ func TestNewChainTemplate(t *testing.T) {
 		t.Fatalf("Error creation a chain creation config")
 	}
 
-	config, err := UnmarshalConfig(configEnv.Config)
+	configNext, err := UnmarshalConfigNext(configEnv.Config)
 	if err != nil {
 		t.Fatalf("Should not have errored: %s", err)
 	}
+	config := ConfigNextToConfig(configNext)
 
 	if expected := 3; len(config.Items) != expected {
 		t.Fatalf("Expected %d items, but got %d", expected, len(config.Items))
 	}
 
-	for i, item := range config.Items {
-		if i == 0 {
-			if item.Key != CreationPolicyKey {
-				t.Errorf("First item should have been the creation policy")
-			}
-		} else {
-			if expected := fmt.Sprintf("%d", i); string(item.Value) != expected {
-				t.Errorf("Expected %s but got %s", expected, item.Value)
+	for i, _ := range config.Items {
+		if i == len(config.Items)-1 {
+			break
+		}
+		count := 0
+		for _, item := range config.Items {
+			key := fmt.Sprintf("%d", i)
+			if key == item.Key {
+				count++
 			}
 		}
+		expected := 1
+		assert.Equal(t, expected, count, "Expected %d but got %d for %d", expected, count, i)
+	}
+
+	foundCreationPolicy := false
+	for _, item := range config.Items {
+		if item.Key == CreationPolicyKey {
+			foundCreationPolicy = true
+			continue
+		}
+	}
+
+	if !foundCreationPolicy {
+		t.Errorf("Should have found the creation policy")
 	}
 }
