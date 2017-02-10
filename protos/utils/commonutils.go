@@ -164,6 +164,18 @@ func MakeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte) *cb.Si
 	}
 }
 
+func SetTxID(channelHeader *cb.ChannelHeader, signatureHeader *cb.SignatureHeader) error {
+	txid, err := ComputeProposalTxID(
+		signatureHeader.Nonce,
+		signatureHeader.Creator,
+	)
+	if err != nil {
+		return err
+	}
+	channelHeader.TxId = txid
+	return nil
+}
+
 // MakePayloadHeader creates a Payload Header.
 func MakePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) *cb.Header {
 	return &cb.Header{
