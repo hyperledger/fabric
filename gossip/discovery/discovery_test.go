@@ -234,6 +234,10 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 		Metadata: []byte{},
 		PKIid:    []byte(endpoint),
 		Endpoint: endpoint,
+		InternalEndpoint: &proto.SignedEndpoint{
+			Endpoint:  endpoint,
+			Signature: []byte{},
+		},
 	}
 
 	listenAddress := fmt.Sprintf("%s:%d", "", port)
@@ -414,6 +418,22 @@ func TestGetFullMembership(t *testing.T) {
 	}
 
 	assertMembership(t, instances, nodeNum-1)
+
+	// Ensure that internal endpoint was propagated to everyone
+	for _, inst := range instances {
+		for _, member := range inst.GetMembership() {
+			assert.NotEmpty(t, member.InternalEndpoint.Endpoint)
+			assert.NotEmpty(t, member.Endpoint)
+		}
+	}
+
+	// Check that Exists() is valid
+	for _, inst := range instances {
+		for _, member := range inst.GetMembership() {
+			assert.True(t, inst.Exists(member.PKIid))
+		}
+	}
+
 	stopInstances(t, instances)
 }
 

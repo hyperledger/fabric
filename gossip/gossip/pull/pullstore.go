@@ -299,8 +299,8 @@ func (p *pullMediatorImpl) peersWithEndpoints(endpoints ...string) []*comm.Remot
 	peers := []*comm.RemotePeer{}
 	for _, member := range p.memBvc.GetMembership() {
 		for _, endpoint := range endpoints {
-			if member.Endpoint == endpoint {
-				peers = append(peers, &comm.RemotePeer{Endpoint: member.Endpoint, PKIID: member.PKIid})
+			if member.PreferredEndpoint() == endpoint {
+				peers = append(peers, &comm.RemotePeer{Endpoint: member.PreferredEndpoint(), PKIID: member.PKIid})
 			}
 		}
 	}
@@ -326,7 +326,7 @@ func SelectEndpoints(k int, peerPool []discovery.NetworkMember) []*comm.RemotePe
 	indices := util.GetRandomIndices(k, len(peerPool)-1)
 	endpoints := make([]*comm.RemotePeer, len(indices))
 	for i, j := range indices {
-		endpoints[i] = &comm.RemotePeer{Endpoint: peerPool[j].Endpoint, PKIID: peerPool[j].PKIid}
+		endpoints[i] = &comm.RemotePeer{Endpoint: peerPool[j].PreferredEndpoint(), PKIID: peerPool[j].PKIid}
 	}
 	return endpoints
 }

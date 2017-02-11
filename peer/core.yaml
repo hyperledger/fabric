@@ -101,6 +101,10 @@ peer:
         # Should we ignore security or not
         ignoreSecurity: false
 
+        # This is an endpoint that is published to peers outside of the organization.
+        # If this isn't set, the peer will not be known to other organizations.
+        externalEndpoint:
+
     # Sync related configuration
     sync:
         blocks:
