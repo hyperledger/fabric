@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	logging "github.com/op/go-logging"
 )
 
@@ -199,8 +200,23 @@ func recommitLostBlocks(l *kvLedger, savepoint uint64, blockHeight uint64, recov
 }
 
 // GetTransactionByID retrieves a transaction by id
-func (l *kvLedger) GetTransactionByID(txID string) (*common.Envelope, error) {
-	return l.blockStore.RetrieveTxByID(txID)
+func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, error) {
+
+	tranEnv, err := l.blockStore.RetrieveTxByID(txID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Hardocde to Valid:true for now
+	processedTran := &peer.ProcessedTransaction{TransactionEnvelope: tranEnv, Valid: true}
+
+	// TODO subsequent changeset will retrieve validation bit array on the block to indicate
+	// whether the tran was validated or invalidated.  It is possible to retreive both the tran
+	// and the block (with bit array) from storage and combine the results.  But it would be
+	// more efficient to refactor block storage to retrieve the tran and the validation bit
+	// in one operation.
+
+	return processedTran, nil
 }
 
 // GetBlockchainInfo returns basic info about blockchain
