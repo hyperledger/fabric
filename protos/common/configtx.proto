@@ -59,6 +59,16 @@ message ConfigTemplate {
     repeated ConfigItem items = 1;
 }
 
+message ConfigGroupSchema {
+    map<string, ConfigGroupSchema> groups = 1;
+    map<string, ConfigValueSchema> values = 2;
+    map<string, ConfigPolicySchema> policies = 3;
+}
+
+message ConfigValueSchema {}
+
+message ConfigPolicySchema {}
+
 // This message may change slightly depending on the finalization of signature schemes for transactions
 message Config {
     ChannelHeader header = 1;
