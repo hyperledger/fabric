@@ -73,8 +73,3 @@ func (bh *MSPConfigHandler) ProposeConfig(configItem *common.ConfigItem) error {
 	bh.proposedMgr = msp.NewMSPManager()
 	return bh.proposedMgr.Setup(bh.config)
 }
-
-// DesierializeIdentity allows *MSPConfigHandler to implement the msp.Common interface
-func (bh *MSPConfigHandler) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	return bh.DeserializeIdentity(serializedIdentity)
-}
