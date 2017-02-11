@@ -14,21 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mgmt_test
+package msp
 
 import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/msp"
-	. "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMSPConfigManager(t *testing.T) {
-	conf, err := msp.GetLocalMspConfig("../sampleconfig/")
+	conf, err := msp.GetLocalMspConfig("../../../../msp/sampleconfig/")
 	assert.NoError(t, err)
 
 	confBytes, err := proto.Marshal(conf)
@@ -39,17 +37,13 @@ func TestMSPConfigManager(t *testing.T) {
 	// test success:
 
 	// begin/propose/commit
-	var mspCH configtxapi.Handler
-	mspCH = &MSPConfigHandler{}
+	mspCH := &MSPConfigHandler{}
 	mspCH.BeginConfig()
 	err = mspCH.ProposeConfig(ci)
 	assert.NoError(t, err)
 	mspCH.CommitConfig()
 
-	// get the manager we just created
-	mgr := mspCH.(*MSPConfigHandler).GetMSPManager()
-
-	msps, err := mgr.GetMSPs()
+	msps, err := mspCH.GetMSPs()
 	assert.NoError(t, err)
 
 	if msps == nil || len(msps) == 0 {

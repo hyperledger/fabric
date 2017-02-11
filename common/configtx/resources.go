@@ -20,9 +20,9 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/configtx/handlers/channel"
+	configtxmsp "github.com/hyperledger/fabric/common/configtx/handlers/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -30,7 +30,7 @@ type resources struct {
 	handlers         map[cb.ConfigItem_ConfigType]api.Handler
 	policyManager    policies.Manager
 	channelConfig    api.ChannelConfig
-	mspConfigHandler *mspmgmt.MSPConfigHandler
+	mspConfigHandler *configtxmsp.MSPConfigHandler
 }
 
 // PolicyManager returns the policies.Manager for the chain
@@ -45,7 +45,7 @@ func (r *resources) ChannelConfig() api.ChannelConfig {
 
 // MSPManager returns the msp.MSPManager for the chain
 func (r *resources) MSPManager() msp.MSPManager {
-	return r.mspConfigHandler.GetMSPManager()
+	return r.mspConfigHandler
 }
 
 // Handlers returns the handlers to be used when initializing the configtx.Manager
@@ -55,7 +55,7 @@ func (r *resources) Handlers() map[cb.ConfigItem_ConfigType]api.Handler {
 
 // NewInitializer creates a chain initializer for the basic set of common chain resources
 func NewInitializer() api.Initializer {
-	mspConfigHandler := &mspmgmt.MSPConfigHandler{}
+	mspConfigHandler := &configtxmsp.MSPConfigHandler{}
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
 		rtype := cb.Policy_PolicyType(pType)
