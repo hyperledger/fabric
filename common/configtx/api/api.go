@@ -105,15 +105,21 @@ type Manager interface {
 	Sequence() uint64
 }
 
-// Resources is the common set of config resources for all chains
+// Resources is the common set of config resources for all channels
 // Depending on whether chain is used at the orderer or at the peer, other
 // config resources may be available
 type Resources interface {
-	// PolicyManager returns the policies.Manager for the chain
+	// PolicyManager returns the policies.Manager for the channel
 	PolicyManager() policies.Manager
 
 	// ChannelConfig returns the ChannelConfig for the chain
 	ChannelConfig() ChannelConfig
+
+	// OrdererConfig returns the configtxorderer.SharedConfig for the channel
+	OrdererConfig() OrdererConfig
+
+	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel
+	ApplicationConfig() ApplicationConfig
 
 	// MSPManager returns the msp.MSPManager for the chain
 	MSPManager() msp.MSPManager

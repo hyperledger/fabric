@@ -24,7 +24,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	configtxapplication "github.com/hyperledger/fabric/common/configtx/handlers/application"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -160,19 +159,17 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		return err
 	}
 
-	sharedConfigHandler := configtxapplication.NewSharedConfigImpl()
+	configtxInitializer := configtx.NewInitializer()
 
 	gossipEventer := service.GetGossipService().NewConfigEventer()
 
 	gossipCallbackWrapper := func(cm configtxapi.Manager) {
 		gossipEventer.ProcessConfigUpdate(&chainSupport{
 			Manager:           cm,
-			ApplicationConfig: sharedConfigHandler,
+			ApplicationConfig: configtxInitializer.ApplicationConfig(),
 		})
 	}
 
-	configtxInitializer := configtx.NewInitializer()
-	configtxInitializer.Handlers()[common.ConfigItem_PEER] = sharedConfigHandler
 	configtxManager, err := configtx.NewManagerImplNext(
 		configEnvelope,
 		configtxInitializer,
@@ -187,7 +184,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	cs := &chainSupport{
 		Manager:           configtxManager,
-		ApplicationConfig: sharedConfigHandler,
+		ApplicationConfig: configtxManager.ApplicationConfig(), // TODO, refactor as this is accessible through Manager
 		ledger:            ledger,
 	}
 

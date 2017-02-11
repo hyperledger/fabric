@@ -21,7 +21,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -46,11 +45,10 @@ type Manager interface {
 
 type configResources struct {
 	configtxapi.Manager
-	sharedConfig configtxapi.OrdererConfig
 }
 
 func (cr *configResources) SharedConfig() configtxapi.OrdererConfig {
-	return cr.sharedConfig
+	return cr.OrdererConfig()
 }
 
 type ledgerResources struct {
@@ -148,18 +146,14 @@ func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
 }
 
 func newConfigResources(configEnvelope *cb.ConfigEnvelope) (*configResources, error) {
-	sharedConfigManager := configtxorderer.NewManagerImpl()
 	initializer := configtx.NewInitializer()
-	initializer.Handlers()[cb.ConfigItem_ORDERER] = sharedConfigManager
-
 	configManager, err := configtx.NewManagerImplNext(configEnvelope, initializer, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error unpacking config transaction: %s", err)
 	}
 
 	return &configResources{
-		Manager:      configManager,
-		sharedConfig: sharedConfigManager,
+		Manager: configManager,
 	}, nil
 }
 
