@@ -38,7 +38,7 @@ func GetChainIDFromBlock(block *cb.Block) (string, error) {
 		return "", fmt.Errorf("Error reconstructing payload(%s)", err)
 	}
 
-	return payload.Header.ChainHeader.ChainID, nil
+	return payload.Header.ChainHeader.ChannelId, nil
 }
 
 // GetMetadataFromBlock retrieves metadata at the specified index.

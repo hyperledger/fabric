@@ -86,8 +86,8 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 	//NOTE- this is  only place from where we put code into file system
 	//this API needs to be modified to take other params for security.
 	//this implementation needs to be enhanced to do those security checks
-	ccname := depSpec.ChaincodeSpec.ChaincodeID.Name
-	ccversion := depSpec.ChaincodeSpec.ChaincodeID.Version
+	ccname := depSpec.ChaincodeSpec.ChaincodeId.Name
+	ccversion := depSpec.ChaincodeSpec.ChaincodeId.Version
 
 	b, err := proto.Marshal(depSpec)
 	if err != nil {

@@ -90,7 +90,7 @@ func ConstructSingedTxEnv(txid string, chainID string, ccName string, pResponse 
 		return nil, err
 	}
 
-	prop, err := putils.CreateChaincodeProposal(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeID: &pb.ChaincodeID{Name: ccName}}}, ss)
+	prop, err := putils.CreateChaincodeProposal(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: &pb.ChaincodeID{Name: ccName}}}, ss)
 	if err != nil {
 		return nil, err
 	}

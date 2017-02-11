@@ -40,7 +40,7 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*p
 		return nil, fmt.Errorf("Invalid header extension for type CHAINCODE")
 	}
 
-	putilsLogger.Infof("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeID)
+	putilsLogger.Infof("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeId)
 
 	//    - ensure that the chaincodeID is correct (?)
 	// TODO: should we even do this? If so, using which interface?
@@ -78,7 +78,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	}
 
 	// validate the signature
-	err = checkSignatureFromCreator(hdr.SignatureHeader.Creator, signedProp.Signature, signedProp.ProposalBytes, hdr.ChainHeader.ChainID)
+	err = checkSignatureFromCreator(hdr.SignatureHeader.Creator, signedProp.Signature, signedProp.ProposalBytes, hdr.ChainHeader.ChannelId)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -342,7 +342,7 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 	}
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(payload.Header.SignatureHeader.Creator, e.Signature, e.Payload, payload.Header.ChainHeader.ChainID)
+	err = checkSignatureFromCreator(payload.Header.SignatureHeader.Creator, e.Signature, e.Payload, payload.Header.ChainHeader.ChannelId)
 	if err != nil {
 		return nil, err
 	}

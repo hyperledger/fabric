@@ -114,7 +114,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 	}
 
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	// First build and get the deployment spec
 	chaincodeDeploymentSpec, err := buildSysCC(ctxt, spec)
@@ -128,7 +128,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	version := util.GetSysCCVersion()
 
-	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name, version, txid, true, nil)
+	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil)
 
 	_, _, err = ccprov.ExecuteWithErrorFilter(ctxt, cccid, chaincodeDeploymentSpec)
 
@@ -140,7 +140,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 // DeDeploySysCC stops the system chaincode and deregisters it from inproccontroller
 func DeDeploySysCC(chainID string, syscc *SystemChaincode) error {
 	chaincodeID := &pb.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: syscc.InitArgs}}
 
 	ctx := context.Background()
 	// First build and get the deployment spec

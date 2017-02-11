@@ -89,7 +89,7 @@ func CacheConfiguration() (err error) {
 		if err != nil {
 			return nil, err
 		}
-		return &pb.PeerEndpoint{ID: &pb.PeerID{Name: viper.GetString("peer.id")}, Address: peerAddress}, nil
+		return &pb.PeerEndpoint{Id: &pb.PeerID{Name: viper.GetString("peer.id")}, Address: peerAddress}, nil
 	}
 
 	localAddress, localAddressError = getLocalAddress()

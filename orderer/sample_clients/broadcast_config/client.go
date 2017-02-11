@@ -77,7 +77,7 @@ func main() {
 	flag.StringVar(&cmd.name, "cmd", "newChain", "The action that this client is requesting via the config transaction.")
 	flag.StringVar(&cmd.args.consensusType, "consensusType", conf.Genesis.OrdererType, "In case of a newChain command, the type of consensus the ordering service is running on.")
 	flag.StringVar(&cmd.args.creationPolicy, "creationPolicy", "AcceptAllPolicy", "In case of a newChain command, the chain creation policy this request should be validated against.")
-	flag.StringVar(&cmd.args.chainID, "chainID", "NewChainID", "In case of a newChain command, the chain ID to create.")
+	flag.StringVar(&cmd.args.chainID, "chainID", "NewChannelId", "In case of a newChain command, the chain ID to create.")
 	flag.Parse()
 
 	conn, err := grpc.Dial(srv, grpc.WithInsecure())

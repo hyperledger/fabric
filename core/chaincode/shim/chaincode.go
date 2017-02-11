@@ -446,7 +446,7 @@ func (iter *StateQueryIterator) Next() (string, []byte, error) {
 	} else if !iter.response.HasMore {
 		return "", nil, errors.New("No such key")
 	} else {
-		response, err := iter.handler.handleQueryStateNext(iter.response.ID, iter.uuid)
+		response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid)
 
 		if err != nil {
 			return "", nil, err
@@ -464,7 +464,7 @@ func (iter *StateQueryIterator) Next() (string, []byte, error) {
 // Close closes the range query iterator. This should be called when done
 // reading from the iterator to free up resources.
 func (iter *StateQueryIterator) Close() error {
-	_, err := iter.handler.handleQueryStateClose(iter.response.ID, iter.uuid)
+	_, err := iter.handler.handleQueryStateClose(iter.response.Id, iter.uuid)
 	return err
 }
 

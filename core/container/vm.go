@@ -80,7 +80,7 @@ func (vm *VM) BuildChaincodeContainer(spec *pb.ChaincodeSpec) error {
 	output := bytes.NewBuffer(nil)
 
 	err = vm.Client.BuildImage(docker.BuildImageOptions{
-		Name:         spec.ChaincodeID.Name,
+		Name:         spec.ChaincodeId.Name,
 		InputStream:  dockerSpec,
 		OutputStream: output,
 	})
@@ -93,7 +93,7 @@ func (vm *VM) BuildChaincodeContainer(spec *pb.ChaincodeSpec) error {
 
 // GetChaincodePackageBytes creates bytes for docker container generation using the supplied chaincode specification
 func GetChaincodePackageBytes(spec *pb.ChaincodeSpec) ([]byte, error) {
-	if spec == nil || spec.ChaincodeID == nil {
+	if spec == nil || spec.ChaincodeId == nil {
 		return nil, fmt.Errorf("invalid chaincode spec")
 	}
 

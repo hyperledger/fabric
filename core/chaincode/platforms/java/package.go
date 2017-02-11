@@ -36,10 +36,10 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 	var urlLocation string
 	var err error
 
-	if strings.HasPrefix(spec.ChaincodeID.Path, "http://") ||
-		strings.HasPrefix(spec.ChaincodeID.Path, "https://") {
+	if strings.HasPrefix(spec.ChaincodeId.Path, "http://") ||
+		strings.HasPrefix(spec.ChaincodeId.Path, "https://") {
 
-		urlLocation, err = getCodeFromHTTP(spec.ChaincodeID.Path)
+		urlLocation, err = getCodeFromHTTP(spec.ChaincodeId.Path)
 		defer func() {
 			os.RemoveAll(urlLocation)
 		}()
@@ -47,7 +47,7 @@ func writeChaincodePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 			return err
 		}
 	} else {
-		urlLocation = spec.ChaincodeID.Path
+		urlLocation = spec.ChaincodeId.Path
 	}
 
 	if urlLocation == "" {

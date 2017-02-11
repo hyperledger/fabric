@@ -185,7 +185,7 @@ func serve(args []string) error {
 	})
 
 	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s",
-		peerEndpoint.ID, viper.GetString("peer.networkId"), peerEndpoint.Address)
+		peerEndpoint.Id, viper.GetString("peer.networkId"), peerEndpoint.Address)
 
 	// Start the grpc server. Done in a goroutine so we can deploy the
 	// genesis block if needed.

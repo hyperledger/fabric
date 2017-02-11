@@ -708,7 +708,7 @@ func (handler *Handler) handleRangeQueryState(msg *pb.ChaincodeMessage) {
 			handler.deleteQueryIterator(txContext, iterID)
 		}
 
-		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, ID: iterID}
+		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
 			rangeIter.Close()
@@ -773,7 +773,7 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		}
 
 		txContext := handler.getTxContext(msg.Txid)
-		queryIter := handler.getQueryIterator(txContext, queryStateNext.ID)
+		queryIter := handler.getQueryIterator(txContext, queryStateNext.Id)
 
 		if queryIter == nil {
 			payload := []byte("query iterator not found")
@@ -803,14 +803,14 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 
 		if qresult != nil {
 			queryIter.Close()
-			handler.deleteQueryIterator(txContext, queryStateNext.ID)
+			handler.deleteQueryIterator(txContext, queryStateNext.Id)
 		}
 
-		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, ID: queryStateNext.ID}
+		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: queryStateNext.Id}
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
 			queryIter.Close()
-			handler.deleteQueryIterator(txContext, queryStateNext.ID)
+			handler.deleteQueryIterator(txContext, queryStateNext.Id)
 
 			// Send error msg back to chaincode. GetState will not trigger event
 			payload := []byte(err.Error())
@@ -871,13 +871,13 @@ func (handler *Handler) handleQueryStateClose(msg *pb.ChaincodeMessage) {
 		}
 
 		txContext := handler.getTxContext(msg.Txid)
-		iter := handler.getQueryIterator(txContext, queryStateClose.ID)
+		iter := handler.getQueryIterator(txContext, queryStateClose.Id)
 		if iter != nil {
 			iter.Close()
-			handler.deleteQueryIterator(txContext, queryStateClose.ID)
+			handler.deleteQueryIterator(txContext, queryStateClose.Id)
 		}
 
-		payload := &pb.QueryStateResponse{HasMore: false, ID: queryStateClose.ID}
+		payload := &pb.QueryStateResponse{HasMore: false, Id: queryStateClose.Id}
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
 
@@ -984,7 +984,7 @@ func (handler *Handler) handleExecuteQueryState(msg *pb.ChaincodeMessage) {
 		}
 
 		var payloadBytes []byte
-		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, ID: iterID}
+		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
 		payloadBytes, err = proto.Marshal(payload)
 		if err != nil {
 			executeIter.Close()
@@ -1107,8 +1107,8 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			// Get the chaincodeID to invoke. The chaincodeID to be called may
 			// contain composite info like "chaincode-name:version/channel-name"
 			// We are not using version now but default to the latest
-			calledCcParts := chaincodeIDParts(chaincodeSpec.ChaincodeID.Name)
-			chaincodeSpec.ChaincodeID.Name = calledCcParts.name
+			calledCcParts := chaincodeIDParts(chaincodeSpec.ChaincodeId.Name)
+			chaincodeSpec.ChaincodeId.Name = calledCcParts.name
 			if calledCcParts.suffix == "" {
 				// use caller's channel as the called chaincode is in the same channel
 				calledCcParts.suffix = txContext.chainID

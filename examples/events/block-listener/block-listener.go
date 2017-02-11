@@ -158,12 +158,12 @@ func main() {
 						fmt.Printf("\n")
 						fmt.Printf("Received invalid transaction\n")
 						fmt.Printf("--------------\n")
-						fmt.Printf("Transaction invalid: TxID: %s\n", tx.Header.ChainHeader.TxID)
+						fmt.Printf("Transaction invalid: TxID: %s\n", tx.Header.ChainHeader.TxId)
 					}
 				} else {
 					fmt.Printf("Transaction:\n\t[%v]\n", r)
 					if event, err := getChainCodeEvents(r); err == nil {
-						if len(chaincodeID) != 0 && event.ChaincodeID == chaincodeID {
+						if len(chaincodeID) != 0 && event.ChaincodeId == chaincodeID {
 							fmt.Printf("Received chaincode event\n")
 							fmt.Printf("------------------------\n")
 							fmt.Printf("Chaincode Event:%+v\n", event)

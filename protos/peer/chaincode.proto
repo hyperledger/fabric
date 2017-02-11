@@ -69,7 +69,7 @@ message ChaincodeSpec {
     }
 
     Type type = 1;
-    ChaincodeID chaincodeID = 2; // XXX change to chaincode_id
+    ChaincodeID chaincode_id = 2;
     ChaincodeInput input = 3;
     int32 timeout = 4;
 }
@@ -171,11 +171,11 @@ message ExecuteQueryState {
 }
 
 message QueryStateNext {
-    string ID = 1; // XXX change to id
+    string id = 1;
 }
 
 message QueryStateClose {
-    string ID = 1; // XXX change to id
+    string id = 1;
 }
 
 message QueryStateKeyValue {
@@ -186,7 +186,7 @@ message QueryStateKeyValue {
 message QueryStateResponse {
     repeated QueryStateKeyValue keys_and_values = 1;
     bool has_more = 2;
-    string ID = 3; // XXX change to id
+    string id = 3;
 }
 
 // Interface that provides support to chaincode execution. ChaincodeContext

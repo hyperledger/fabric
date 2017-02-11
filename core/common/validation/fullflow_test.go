@@ -35,7 +35,7 @@ import (
 func getProposal() (*peer.Proposal, error) {
 	cis := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
-			ChaincodeID: &peer.ChaincodeID{Name: "foo"},
+			ChaincodeId: &peer.ChaincodeID{Name: "foo"},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
 	uuid := util.GenerateUUID()

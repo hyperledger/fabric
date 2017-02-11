@@ -200,7 +200,7 @@ func deployInternal(deployer crypto.Client, adminCert crypto.CertificateHandler)
 	// Prepare the spec. The metadata includes the identity of the administrator
 	spec := &pb.ChaincodeSpec{
 		Type:        1,
-		ChaincodeID: &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/examples/chaincode/go/asset_management"},
+		ChaincodeId: &pb.ChaincodeID{Path: "github.com/hyperledger/fabric/examples/chaincode/go/asset_management"},
 		//ChaincodeID:          &pb.ChaincodeID{Name: chaincodeName},
 		Input:    &pb.ChaincodeInput{Args: util.ToChaincodeArgs("init")},
 		Metadata: adminCert.GetCertificate(),
@@ -213,7 +213,7 @@ func deployInternal(deployer crypto.Client, adminCert crypto.CertificateHandler)
 	}
 
 	// Now create the Transactions message and send to Peer.
-	transaction, err := deployer.NewChaincodeDeployTransaction(cds, cds.ChaincodeSpec.ChaincodeID.Name)
+	transaction, err := deployer.NewChaincodeDeployTransaction(cds, cds.ChaincodeSpec.ChaincodeId.Name)
 	if err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode: %s ", err)
 	}
@@ -222,7 +222,7 @@ func deployInternal(deployer crypto.Client, adminCert crypto.CertificateHandler)
 
 	appLogger.Debugf("resp [%s]", resp.String())
 
-	chaincodeName = cds.ChaincodeSpec.ChaincodeID.Name
+	chaincodeName = cds.ChaincodeSpec.ChaincodeId.Name
 	appLogger.Debugf("ChaincodeName [%s]", chaincodeName)
 
 	return
@@ -261,7 +261,7 @@ func assignOwnershipInternal(invoker crypto.Client, invokerCert crypto.Certifica
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
 		Type:        1,
-		ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
+		ChaincodeId: &pb.ChaincodeID{Name: chaincodeName},
 		Input:       chaincodeInput,
 		Metadata:    sigma, // Proof of identity
 	}
@@ -311,7 +311,7 @@ func transferOwnershipInternal(owner crypto.Client, ownerCert crypto.Certificate
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
 		Type:        1,
-		ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
+		ChaincodeId: &pb.ChaincodeID{Name: chaincodeName},
 		Input:       chaincodeInput,
 		Metadata:    sigma, // Proof of identity
 	}
@@ -334,7 +334,7 @@ func whoIsTheOwner(invoker crypto.Client, asset string) (transaction *pb.Transac
 	// Prepare spec and submit
 	spec := &pb.ChaincodeSpec{
 		Type:        1,
-		ChaincodeID: &pb.ChaincodeID{Name: chaincodeName},
+		ChaincodeId: &pb.ChaincodeID{Name: chaincodeName},
 		Input:       chaincodeInput,
 	}
 

@@ -207,5 +207,5 @@ func extractTxID(txEnvelopBytes []byte) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	return txPayload.Header.ChainHeader.TxID, nil
+	return txPayload.Header.ChainHeader.TxId, nil
 }

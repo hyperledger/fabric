@@ -37,7 +37,7 @@ type Handler interface {
 
 // SupportManager provides a way for the Handler to look up the Support for a chain
 type SupportManager interface {
-	// GetChain gets the chain support for a given ChainID
+	// GetChain gets the chain support for a given ChannelId
 	GetChain(chainID string) (Support, bool)
 
 	// ProposeChain accepts a configuration transaction for a chain which does not already exists
@@ -79,12 +79,12 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 		payload := &cb.Payload{}
 		err = proto.Unmarshal(msg.Payload, payload)
-		if payload.Header == nil || payload.Header.ChainHeader == nil || payload.Header.ChainHeader.ChainID == "" {
+		if payload.Header == nil || payload.Header.ChainHeader == nil || payload.Header.ChainHeader.ChannelId == "" {
 			logger.Debugf("Received malformed message, dropping connection")
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
-		support, ok := bh.sm.GetChain(payload.Header.ChainHeader.ChainID)
+		support, ok := bh.sm.GetChain(payload.Header.ChainHeader.ChannelId)
 		if !ok {
 			// Chain not found, maybe create one?
 			if payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
@@ -100,7 +100,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is filtering message for chain %s", payload.Header.ChainHeader.ChainID)
+			logger.Debugf("Broadcast is filtering message for chain %s", payload.Header.ChainHeader.ChannelId)
 		}
 
 		// Normal transaction for existing chain
@@ -117,7 +117,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is successfully enqueued message for chain %s", payload.Header.ChainHeader.ChainID)
+			logger.Debugf("Broadcast is successfully enqueued message for chain %s", payload.Header.ChainHeader.ChannelId)
 		}
 
 		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})

@@ -119,8 +119,8 @@ func (sc *systemChain) proposeChain(configTx *cb.Envelope) cb.Status {
 	sysPayload := &cb.Payload{
 		Header: &cb.Header{
 			ChainHeader: &cb.ChainHeader{
-				ChainID: sc.support.ChainID(),
-				Type:    int32(cb.HeaderType_ORDERER_TRANSACTION),
+				ChannelId: sc.support.ChainID(),
+				Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
 			},
 			SignatureHeader: &cb.SignatureHeader{
 			// XXX Appropriately set the signing identity and nonce here

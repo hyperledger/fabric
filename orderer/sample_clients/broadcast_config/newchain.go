@@ -23,7 +23,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-func newChainRequest(consensusType, creationPolicy, newChainID string) *cb.Envelope {
+func newChainRequest(consensusType, creationPolicy, newChannelId string) *cb.Envelope {
 	conf.Genesis.OrdererType = consensusType
 	generator := provisional.New(conf)
 	items := generator.TemplateItems()
@@ -34,7 +34,7 @@ func newChainRequest(consensusType, creationPolicy, newChainID string) *cb.Envel
 		panic(err)
 	}
 
-	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChainID, signer, simpleTemplate)
+	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChannelId, signer, simpleTemplate)
 	if err != nil {
 		panic(err)
 	}

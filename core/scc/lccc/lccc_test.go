@@ -54,7 +54,7 @@ func register(stub *shim.MockStub, ccname string) error {
 }
 
 func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte) (*pb.ChaincodeDeploymentSpec, error) {
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeID: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
 
 	codePackageBytes := []byte(name + path + version)
 
@@ -125,7 +125,7 @@ func TestInvalidChaincodeName(t *testing.T) {
 	defer os.Remove(lccctestpath + "/chaincodes/example02.0")
 
 	//change name to empty
-	cds.ChaincodeSpec.ChaincodeID.Name = ""
+	cds.ChaincodeSpec.ChaincodeId.Name = ""
 
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -154,7 +154,7 @@ func TestEmptyChaincodeVersion(t *testing.T) {
 	defer os.Remove(lccctestpath + "/chaincodes/example02.0")
 
 	//change version to empty
-	cds.ChaincodeSpec.ChaincodeID.Version = ""
+	cds.ChaincodeSpec.ChaincodeId.Version = ""
 
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -222,7 +222,7 @@ func TestCheckCC(t *testing.T) {
 		t.FailNow()
 	}
 
-	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
+	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
@@ -251,7 +251,7 @@ func TestMultipleDeploy(t *testing.T) {
 		t.FailNow()
 	}
 
-	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
+	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
@@ -268,7 +268,7 @@ func TestMultipleDeploy(t *testing.T) {
 		t.FailNow()
 	}
 
-	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
+	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
@@ -312,7 +312,7 @@ func TestRetryFailedDeploy(t *testing.T) {
 	}
 
 	//get the deploymentspec
-	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeID.Name)}
+	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK || res.Payload == nil {
 		t.FailNow()
 	}

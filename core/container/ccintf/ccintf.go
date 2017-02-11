@@ -60,7 +60,7 @@ func (ccid *CCID) GetName() string {
 		panic("nil chaincode spec")
 	}
 
-	name := ccid.ChaincodeSpec.ChaincodeID.Name
+	name := ccid.ChaincodeSpec.ChaincodeId.Name
 	if ccid.Version != "" {
 		name = name + "-" + ccid.Version
 	}

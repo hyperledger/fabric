@@ -87,7 +87,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 			return err
 		}
 
-		chain, ok := ds.sm.GetChain(payload.Header.ChainHeader.ChainID)
+		chain, ok := ds.sm.GetChain(payload.Header.ChainHeader.ChannelId)
 		if !ok {
 			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
@@ -105,7 +105,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Received seekInfo %v for chain %s", seekInfo, payload.Header.ChainHeader.ChainID)
+			logger.Debugf("Received seekInfo %v for chain %s", seekInfo, payload.Header.ChainHeader.ChannelId)
 		}
 
 		cursor, number := chain.Reader().Iterator(seekInfo.Start)

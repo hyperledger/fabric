@@ -43,7 +43,7 @@ func seekHelper(chainID string, start *ab.SeekPosition) *common.Envelope {
 		Payload: utils.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
 				ChainHeader: &common.ChainHeader{
-					ChainID: chainID,
+					ChannelId: chainID,
 				},
 				SignatureHeader: &common.SignatureHeader{},
 			},

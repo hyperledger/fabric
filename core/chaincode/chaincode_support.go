@@ -482,11 +482,11 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		}
 	}
 	if cds != nil {
-		cID = cds.ChaincodeSpec.ChaincodeID
+		cID = cds.ChaincodeSpec.ChaincodeId
 		cMsg = cds.ChaincodeSpec.Input
 		cLang = cds.ChaincodeSpec.Type
 	} else {
-		cID = ci.ChaincodeSpec.ChaincodeID
+		cID = ci.ChaincodeSpec.ChaincodeId
 		cMsg = ci.ChaincodeSpec.Input
 	}
 

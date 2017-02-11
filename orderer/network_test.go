@@ -356,7 +356,7 @@ func Broadcast(p *Peer, startingPort int, bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	h := &cb.Header{ChainHeader: &cb.ChainHeader{ChainID: provisional.TestChainID}, SignatureHeader: &cb.SignatureHeader{}}
+	h := &cb.Header{ChainHeader: &cb.ChainHeader{ChannelId: provisional.TestChainID}, SignatureHeader: &cb.SignatureHeader{}}
 	pl := &cb.Payload{Data: bytes, Header: h}
 	mpl, err := proto.Marshal(pl)
 	panicOnError(err)
@@ -389,7 +389,7 @@ func Receive(p *Peer, startingPort int) (*Receiver, error) {
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
 				ChainHeader: &cb.ChainHeader{
-					ChainID: provisional.TestChainID,
+					ChannelId: provisional.TestChainID,
 				},
 				SignatureHeader: &cb.SignatureHeader{},
 			},

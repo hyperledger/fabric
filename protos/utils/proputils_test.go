@@ -37,7 +37,7 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 	return &pb.ChaincodeInvocationSpec{
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			Type:        pb.ChaincodeSpec_GOLANG,
-			ChaincodeID: &pb.ChaincodeID{Name: "chaincode_name"},
+			ChaincodeId: &pb.ChaincodeID{Name: "chaincode_name"},
 			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
 }
 
@@ -100,7 +100,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// sanity check on header extension
-	if string(hdrExt.ChaincodeID.Name) != "chaincode_name" {
+	if string(hdrExt.ChaincodeId.Name) != "chaincode_name" {
 		t.Fatalf("Invalid header extension after unmarshalling\n")
 		return
 	}
@@ -114,7 +114,7 @@ func TestProposal(t *testing.T) {
 
 	// sanity check on cis
 	if cis.ChaincodeSpec.Type != pb.ChaincodeSpec_GOLANG ||
-		cis.ChaincodeSpec.ChaincodeID.Name != "chaincode_name" ||
+		cis.ChaincodeSpec.ChaincodeId.Name != "chaincode_name" ||
 		len(cis.ChaincodeSpec.Input.Args) != 2 ||
 		string(cis.ChaincodeSpec.Input.Args[0]) != "arg1" ||
 		string(cis.ChaincodeSpec.Input.Args[1]) != "arg2" {
@@ -138,10 +138,10 @@ func TestProposal(t *testing.T) {
 
 func TestProposalResponse(t *testing.T) {
 	events := &pb.ChaincodeEvent{
-		ChaincodeID: "ccid",
+		ChaincodeId: "ccid",
 		EventName:   "EventName",
 		Payload:     []byte("EventPayload"),
-		TxID:        "TxID"}
+		TxId:        "TxID"}
 
 	pHashBytes := []byte("proposal_hash")
 	pResponse := &pb.Response{Status: 200}
@@ -186,7 +186,7 @@ func TestProposalResponse(t *testing.T) {
 	}
 
 	// sanity check on the event
-	if string(event.ChaincodeID) != "ccid" {
+	if string(event.ChaincodeId) != "ccid" {
 		t.Fatalf("Invalid actions after unmarshalling")
 		return
 	}

@@ -77,7 +77,7 @@ func makeConfigItem(id, modificationPolicy string, lastModified uint64, data []b
 
 func makeMarshaledConfig(chainID string, configItems ...*cb.ConfigItem) []byte {
 	config := &cb.Config{
-		Header: &cb.ChainHeader{ChainID: chainID},
+		Header: &cb.ChainHeader{ChannelId: chainID},
 		Items:  configItems,
 	}
 	return utils.MarshalOrPanic(config)

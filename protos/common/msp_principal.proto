@@ -85,7 +85,7 @@ message OrganizationUnit {
 
     // MSPIdentifier represents the identifier of the MSP this organization unit
     // refers to
-    string MSPIdentifier = 1; // XXX change to msp_identifier
+    string msp_identifier = 1;
 
     // OrganizationUnitIdentifier defines the organization unit under the
     // MSP identified with MSPIdentifier
@@ -100,7 +100,7 @@ message MSPRole {
 
     // MSPIdentifier represents the identifier of the MSP this principal
     // refers to
-    string MSPIdentifier = 1; // XXX change to msp_identifier
+    string msp_identifier = 1;
 
     enum MSPRoleType {
         MEMBER = 0; // Represents an MSP Member

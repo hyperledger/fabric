@@ -49,12 +49,12 @@ func pathExists(path string) (bool, error) {
 
 func decodeUrl(spec *pb.ChaincodeSpec) (string, error) {
 	var urlLocation string
-	if strings.HasPrefix(spec.ChaincodeID.Path, "http://") {
-		urlLocation = spec.ChaincodeID.Path[7:]
-	} else if strings.HasPrefix(spec.ChaincodeID.Path, "https://") {
-		urlLocation = spec.ChaincodeID.Path[8:]
+	if strings.HasPrefix(spec.ChaincodeId.Path, "http://") {
+		urlLocation = spec.ChaincodeId.Path[7:]
+	} else if strings.HasPrefix(spec.ChaincodeId.Path, "https://") {
+		urlLocation = spec.ChaincodeId.Path[8:]
 	} else {
-		urlLocation = spec.ChaincodeID.Path
+		urlLocation = spec.ChaincodeId.Path
 	}
 
 	if urlLocation == "" {
@@ -70,7 +70,7 @@ func decodeUrl(spec *pb.ChaincodeSpec) (string, error) {
 
 // ValidateSpec validates Go chaincodes
 func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
-	path, err := url.Parse(spec.ChaincodeID.Path)
+	path, err := url.Parse(spec.ChaincodeId.Path)
 	if err != nil || path == nil {
 		return fmt.Errorf("invalid path: %s", err)
 	}
@@ -82,13 +82,13 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 		gopath := os.Getenv("GOPATH")
 		// Only take the first element of GOPATH
 		gopath = filepath.SplitList(gopath)[0]
-		pathToCheck := filepath.Join(gopath, "src", spec.ChaincodeID.Path)
+		pathToCheck := filepath.Join(gopath, "src", spec.ChaincodeId.Path)
 		exists, err := pathExists(pathToCheck)
 		if err != nil {
 			return fmt.Errorf("Error validating chaincode path: %s", err)
 		}
 		if !exists {
-			return fmt.Errorf("Path to chaincode does not exist: %s", spec.ChaincodeID.Path)
+			return fmt.Errorf("Path to chaincode does not exist: %s", spec.ChaincodeId.Path)
 		}
 	}
 	return nil
@@ -150,7 +150,7 @@ func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) 
 	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"))
 	buf = append(buf, "ADD codepackage.tgz $GOPATH")
 	//let the executable's name be chaincode ID's name
-	buf = append(buf, fmt.Sprintf("RUN go install %s && mv $GOPATH/bin/%s $GOPATH/bin/%s", urlLocation, chaincodeGoName, spec.ChaincodeID.Name))
+	buf = append(buf, fmt.Sprintf("RUN go install %s && mv $GOPATH/bin/%s $GOPATH/bin/%s", urlLocation, chaincodeGoName, spec.ChaincodeId.Name))
 
 	dockerFileContents := strings.Join(buf, "\n")
 

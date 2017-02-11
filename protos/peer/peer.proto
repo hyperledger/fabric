@@ -27,7 +27,7 @@ message PeerID {
 }
 
 message PeerEndpoint {
-    PeerID ID = 1; // XXX change to id
+    PeerID id = 1;
     string address = 2;
 }
 
