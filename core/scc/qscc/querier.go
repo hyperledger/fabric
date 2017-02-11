@@ -17,14 +17,11 @@ limitations under the License.
 package qscc
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
 
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
 
-	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
@@ -37,7 +34,6 @@ import (
 // - GetBlockByNumber returns a block
 // - GetBlockByHash returns a block
 // - GetTransactionByID returns a transaction
-// - GetQueryResult returns result of a freeform query
 type LedgerQuerier struct {
 }
 
@@ -49,7 +45,6 @@ const (
 	GetBlockByNumber   string = "GetBlockByNumber"
 	GetBlockByHash     string = "GetBlockByHash"
 	GetTransactionByID string = "GetTransactionByID"
-	GetQueryResult     string = "GetQueryResult"
 )
 
 // Init is called once per chain when the chain is created.
@@ -68,11 +63,6 @@ func (e *LedgerQuerier) Init(stub shim.ChaincodeStubInterface) pb.Response {
 // # GetBlockByNumber: Return the block specified by block number in args[2]
 // # GetBlockByHash: Return the block specified by block hash in args[2]
 // # GetTransactionByID: Return the transaction specified by ID in args[2]
-// # GetQueryResult: Return the result of executing the specified native
-// query string in args[2]. Note that this only works if plugged in database
-// supports it. The result is a JSON array in a byte array. Note that error
-// may be returned together with a valid partial result as error might occur
-// during accummulating records from the ledger
 func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
 
@@ -97,8 +87,6 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	// TODO: Handle ACL
 
 	switch fname {
-	case GetQueryResult:
-		return getQueryResult(targetLedger, args[2])
 	case GetTransactionByID:
 		return getTransactionByID(targetLedger, args[2])
 	case GetBlockByNumber:
@@ -110,89 +98,6 @@ func (e *LedgerQuerier) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
-}
-
-// Execute the specified query string
-func getQueryResult(vledger ledger.PeerLedger, query []byte) (res pb.Response) {
-	if query == nil {
-		return shim.Error("Query string must not be nil.")
-	}
-	qstring := string(query)
-	var qexe ledger.QueryExecutor
-	var ri commonledger.ResultsIterator
-	var err error
-
-	// We install a recover() to gain control in 2 cases
-	// 1) bytes.Buffer panics, which happens when out of memory
-	// This is a safety measure beyond the config limit variable
-	// 2) plugin db driver might panic
-	// We recover by stopping the query and return the panic error.
-	defer func() {
-		if panicValue := recover(); panicValue != nil {
-			if qscclogger.IsEnabledFor(logging.DEBUG) {
-				qscclogger.Debugf("Recovering panic: %s", panicValue)
-			}
-			res = shim.Error(fmt.Sprintf("Error recovery: %s", panicValue))
-		}
-	}()
-
-	if qexe, err = vledger.NewQueryExecutor(); err != nil {
-		return shim.Error(err.Error())
-	}
-	if ri, err = qexe.ExecuteQuery(qstring); err != nil {
-		return shim.Error(err.Error())
-	}
-	defer ri.Close()
-
-	limit := viper.GetInt("ledger.state.couchDBConfig.queryLimit")
-
-	// buffer is a JSON array containing QueryRecords
-	var buffer bytes.Buffer
-	buffer.WriteString("[")
-
-	var qresult commonledger.QueryResult
-	bArrayMemberAlreadyWritten := false
-	qresult, err = ri.Next()
-	for r := 0; qresult != nil && err == nil && r < limit; r++ {
-		if qr, ok := qresult.(*ledger.QueryRecord); ok {
-			// Add a comma before array members, suppress it for the first array member
-			if bArrayMemberAlreadyWritten == true {
-				buffer.WriteString(",")
-			}
-			collectRecord(&buffer, qr)
-			bArrayMemberAlreadyWritten = true
-		}
-		qresult, err = ri.Next()
-	}
-
-	buffer.WriteString("]")
-
-	// Return what we have accummulated
-	ret := buffer.Bytes()
-	return shim.Success(ret)
-}
-
-// Append QueryRecord into buffer as a JSON record of the form {namespace, key, record}
-// type QueryRecord struct {
-// 	Namespace string
-// 	Key       string
-// 	Record    []byte
-// }
-func collectRecord(buffer *bytes.Buffer, rec *ledger.QueryRecord) {
-	buffer.WriteString("{\"Namespace\":")
-	buffer.WriteString("\"")
-	buffer.WriteString(rec.Namespace)
-	buffer.WriteString("\"")
-
-	buffer.WriteString(", \"Key\":")
-	buffer.WriteString("\"")
-	buffer.WriteString(rec.Key)
-	buffer.WriteString("\"")
-
-	buffer.WriteString(", \"Record\":")
-	// Record is a JSON object, so we write as-is
-	buffer.WriteString(string(rec.Record))
-	buffer.WriteString("}")
 }
 
 func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
