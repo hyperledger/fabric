@@ -71,13 +71,11 @@ var nodeStartCmd = &cobra.Command{
 	},
 }
 
-//!!!!!----IMPORTANT----IMPORTANT---IMPORTANT------!!!!
-//This is a place holder for multichain work. Currently
-//user to create a single chain and initialize it
-func initChainless() {
-	//deploy the chainless system chaincodes
-	scc.DeployChainlessSysCCs()
-	logger.Infof("Deployed chainless system chaincodess")
+//start chaincodes
+func initSysCCs() {
+	//deploy system chaincodes
+	scc.DeploySysCCs("")
+	logger.Infof("Deployed system chaincodess")
 }
 
 func serve(args []string) error {
@@ -156,8 +154,8 @@ func serve(args []string) error {
 	service.InitGossipService(serializedIdentity, peerEndpoint.Address, grpcServer, bootstrap...)
 	defer service.GetGossipService().Stop()
 
-	//initialize the env for chainless startup
-	initChainless()
+	//initialize system chaincodes
+	initSysCCs()
 
 	// Begin startup of default chain
 	if peerDefaultChain {

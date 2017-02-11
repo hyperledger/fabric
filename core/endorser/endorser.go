@@ -276,16 +276,10 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	chainID := hdr.ChannelHeader.ChannelId
 
 	//chainless MSPs have "" chain name
-	ischainless := syscc.IsChainlessSysCC(hdrExt.ChaincodeId.Name)
+	ischainless := false
 
-	//chainID should be empty for chainless SysCC (such as CSCC for Join proposal) and for
-	//nothing else
-	if chainID == "" && !ischainless {
-		err = fmt.Errorf("chainID not provided for chaincode %s", hdrExt.ChaincodeId.Name)
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
-	} else if chainID != "" && ischainless {
-		err = fmt.Errorf("chainID %s provided for a chainless syscc", hdrExt.ChaincodeId.Name)
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	if chainID == "" {
+		ischainless = true
 	}
 
 	//TODO check for uniqueness of prop.TxID with ledger

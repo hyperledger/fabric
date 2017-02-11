@@ -39,10 +39,6 @@ var sysccLogger = logging.MustGetLogger("sysccapi")
 // when the fabric comes up. SystemChaincodes are installed by adding an
 // entry in importsysccs.go
 type SystemChaincode struct {
-	//Global, once only not tied to chains. Such chaincodes cannot
-	//save state in the ledger. CSCC is an example
-	ChainlessCC bool
-
 	// Enabled a convenient switch to enable/disable system chaincode without
 	// having to remove entry from importsysccs.go
 	Enabled bool
@@ -88,10 +84,9 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 		return nil
 	}
 
-	if chainID == "" && !syscc.ChainlessCC {
-		return fmt.Errorf("cannot deploy system chaincode %s without chain id", syscc.Name)
-	} else if chainID != "" && syscc.ChainlessCC {
-		return fmt.Errorf("cannot deploy chainless system chaincode %s with chain id %s", syscc.Name, chainID)
+	chainless := false
+	if chainID == "" {
+		chainless = true
 	}
 
 	var err error
@@ -99,7 +94,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 	ccprov := ccprovider.GetChaincodeProvider()
 
 	ctxt := context.Background()
-	if !syscc.ChainlessCC {
+	if !chainless {
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name, chainID))
