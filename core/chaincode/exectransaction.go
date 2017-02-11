@@ -78,11 +78,6 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 		// Rollback transaction
 		return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", cccid.TxID)
 	}
-	res := &pb.Response{}
-	unmarshalErr := proto.Unmarshal(resp.Payload, res)
-	if unmarshalErr != nil {
-		return nil, nil, fmt.Errorf("Failed to unmarshal response for (%s): %s", cccid.TxID, unmarshalErr)
-	}
 
 	if resp.ChaincodeEvent != nil {
 		resp.ChaincodeEvent.ChaincodeId = cccid.Name
@@ -90,6 +85,12 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 	}
 
 	if resp.Type == pb.ChaincodeMessage_COMPLETED {
+		res := &pb.Response{}
+		unmarshalErr := proto.Unmarshal(resp.Payload, res)
+		if unmarshalErr != nil {
+			return nil, nil, fmt.Errorf("Failed to unmarshal response for (%s): %s", cccid.TxID, unmarshalErr)
+		}
+
 		// Success
 		return res, resp.ChaincodeEvent, nil
 	} else if resp.Type == pb.ChaincodeMessage_ERROR {
@@ -97,7 +98,8 @@ func Execute(ctxt context.Context, cccid *ccprovider.CCContext, spec interface{}
 		return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction returned with failure: %s", string(resp.Payload))
 	}
 
-	return res, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", cccid.TxID, resp.Type)
+	//TODO - this should never happen ... a panic is more appropriate but will save that for future
+	return nil, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", cccid.TxID, resp.Type)
 }
 
 // ExecuteWithErrorFilter is similar to Execute, but filters error contained in chaincode response and returns Payload of response only.
