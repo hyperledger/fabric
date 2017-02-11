@@ -234,6 +234,6 @@ func getChainID(blockBytes []byte) (string, error) {
 	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
 		return "", err
 	}
-	fmt.Printf("chain id: %v\n", payload.Header.ChainHeader.ChannelId)
-	return payload.Header.ChainHeader.ChannelId, nil
+	fmt.Printf("Channel id: %v\n", payload.Header.ChannelHeader.ChannelId)
+	return payload.Header.ChannelHeader.ChannelId, nil
 }

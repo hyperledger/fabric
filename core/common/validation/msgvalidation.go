@@ -78,7 +78,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	}
 
 	// validate the signature
-	err = checkSignatureFromCreator(hdr.SignatureHeader.Creator, signedProp.Signature, signedProp.ProposalBytes, hdr.ChainHeader.ChannelId)
+	err = checkSignatureFromCreator(hdr.SignatureHeader.Creator, signedProp.Signature, signedProp.ProposalBytes, hdr.ChannelHeader.ChannelId)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -88,7 +88,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	// TODO: perform a check against replay attacks
 
 	// continue the validation in a way that depends on the type specified in the header
-	switch common.HeaderType(hdr.ChainHeader.Type) {
+	switch common.HeaderType(hdr.ChannelHeader.Type) {
 	case common.HeaderType_CONFIGURATION_TRANSACTION:
 		//which the types are different the validation is the same
 		//viz, validate a proposal to a chaincode. If we need other
@@ -105,7 +105,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 		return prop, hdr, chaincodeHdrExt, err
 	default:
 		//NOTE : we proably need a case
-		return nil, nil, nil, fmt.Errorf("Unsupported proposal type %d", common.HeaderType(hdr.ChainHeader.Type))
+		return nil, nil, nil, fmt.Errorf("Unsupported proposal type %d", common.HeaderType(hdr.ChannelHeader.Type))
 	}
 }
 
@@ -172,11 +172,11 @@ func validateSignatureHeader(sHdr *common.SignatureHeader) error {
 	return nil
 }
 
-// checks for a valid ChainHeader
-func validateChainHeader(cHdr *common.ChainHeader) error {
+// checks for a valid ChannelHeader
+func validateChannelHeader(cHdr *common.ChannelHeader) error {
 	// check for nil argument
 	if cHdr == nil {
-		return fmt.Errorf("Nil ChainHeader provided")
+		return fmt.Errorf("Nil ChannelHeader provided")
 	}
 
 	// validate the header type
@@ -186,7 +186,7 @@ func validateChainHeader(cHdr *common.ChainHeader) error {
 		return fmt.Errorf("invalid header type %s", common.HeaderType(cHdr.Type))
 	}
 
-	putilsLogger.Infof("validateChainHeader info: header type %d", common.HeaderType(cHdr.Type))
+	putilsLogger.Infof("validateChannelHeader info: header type %d", common.HeaderType(cHdr.Type))
 
 	// TODO: validate chainID in cHdr.ChainID
 
@@ -203,7 +203,7 @@ func validateCommonHeader(hdr *common.Header) error {
 		return fmt.Errorf("Nil header")
 	}
 
-	err := validateChainHeader(hdr.ChainHeader)
+	err := validateChannelHeader(hdr.ChannelHeader)
 	if err != nil {
 		return err
 	}
@@ -296,8 +296,8 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		}
 
 		// build the original header by stitching together
-		// the common ChainHeader and the per-action SignatureHeader
-		hdrOrig := &common.Header{ChainHeader: hdr.ChainHeader, SignatureHeader: sHdr}
+		// the common ChannelHeader and the per-action SignatureHeader
+		hdrOrig := &common.Header{ChannelHeader: hdr.ChannelHeader, SignatureHeader: sHdr}
 		hdrBytes, err := utils.GetBytesHeader(hdrOrig) // FIXME: here we hope that hdrBytes will be the same one that the endorser had
 		if err != nil {
 			return err
@@ -342,7 +342,7 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 	}
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(payload.Header.SignatureHeader.Creator, e.Signature, e.Payload, payload.Header.ChainHeader.ChannelId)
+	err = checkSignatureFromCreator(payload.Header.SignatureHeader.Creator, e.Signature, e.Payload, payload.Header.ChannelHeader.ChannelId)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +352,7 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 	// TODO: perform a check against replay attacks
 
 	// continue the validation in a way that depends on the type specified in the header
-	switch common.HeaderType(payload.Header.ChainHeader.Type) {
+	switch common.HeaderType(payload.Header.ChannelHeader.Type) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
 		err = validateEndorserTransaction(payload.Data, payload.Header)
 		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
@@ -362,6 +362,6 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
 		return payload, err
 	default:
-		return nil, fmt.Errorf("Unsupported transaction payload type %d", common.HeaderType(payload.Header.ChainHeader.Type))
+		return nil, fmt.Errorf("Unsupported transaction payload type %d", common.HeaderType(payload.Header.ChannelHeader.Type))
 	}
 }

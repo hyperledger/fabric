@@ -122,7 +122,7 @@ func getTxIDandKeyWriteValueFromTran(
 		return "", nil, err
 	}
 
-	txID := payload.Header.ChainHeader.TxId
+	txID := payload.Header.ChannelHeader.TxId
 
 	txRWSet := &rwset.TxReadWriteSet{}
 

@@ -74,7 +74,7 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 func (mm *mockSupportManager) ProposeChain(configTx *cb.Envelope) cb.Status {
 	payload := utils.ExtractPayloadOrPanic(configTx)
 
-	mm.chains[string(payload.Header.ChainHeader.ChannelId)] = &mockSupport{
+	mm.chains[string(payload.Header.ChannelHeader.ChannelId)] = &mockSupport{
 		filters: filter.NewRuleSet([]filter.Rule{
 			filter.EmptyRejectRule,
 			filter.AcceptRule,
@@ -101,7 +101,7 @@ func makeConfigMessage(chainID string) *cb.Envelope {
 	payload := &cb.Payload{
 		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{}),
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
+			ChannelHeader: &cb.ChannelHeader{
 				ChannelId: chainID,
 				Type:      int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
 			},
@@ -116,7 +116,7 @@ func makeMessage(chainID string, data []byte) *cb.Envelope {
 	payload := &cb.Payload{
 		Data: data,
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
+			ChannelHeader: &cb.ChannelHeader{
 				ChannelId: chainID,
 			},
 		},

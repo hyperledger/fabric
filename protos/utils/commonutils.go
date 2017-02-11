@@ -142,9 +142,9 @@ func ExtractPayload(envelope *cb.Envelope) (*cb.Payload, error) {
 	return payload, nil
 }
 
-// MakeChainHeader creates a ChainHeader.
-func MakeChainHeader(headerType cb.HeaderType, version int32, chainID string, epoch uint64) *cb.ChainHeader {
-	return &cb.ChainHeader{
+// MakeChannelHeader creates a ChannelHeader.
+func MakeChannelHeader(headerType cb.HeaderType, version int32, chainID string, epoch uint64) *cb.ChannelHeader {
+	return &cb.ChannelHeader{
 		Type:    int32(headerType),
 		Version: version,
 		Timestamp: &timestamp.Timestamp{
@@ -165,9 +165,9 @@ func MakeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte) *cb.Si
 }
 
 // MakePayloadHeader creates a Payload Header.
-func MakePayloadHeader(ch *cb.ChainHeader, sh *cb.SignatureHeader) *cb.Header {
+func MakePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) *cb.Header {
 	return &cb.Header{
-		ChainHeader:     ch,
+		ChannelHeader:   ch,
 		SignatureHeader: sh,
 	}
 }

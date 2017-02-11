@@ -273,7 +273,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
-	chainID := hdr.ChainHeader.ChannelId
+	chainID := hdr.ChannelHeader.ChannelId
 
 	//chainless MSPs have "" chain name
 	ischainless := syscc.IsChainlessSysCC(hdrExt.ChaincodeId.Name)
@@ -290,7 +290,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	//TODO check for uniqueness of prop.TxID with ledger
 
-	txid := hdr.ChainHeader.TxId
+	txid := hdr.ChannelHeader.TxId
 	if txid == "" {
 		err = fmt.Errorf("Invalid txID")
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err

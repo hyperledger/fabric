@@ -66,7 +66,7 @@ func TestAcceptGoodConfig(t *testing.T) {
 	cf := NewFilter(mcm)
 	configEnv := &cb.ConfigEnvelope{}
 	config, _ := proto.Marshal(configEnv)
-	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
+	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChannelHeader: &cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	configEnvelope := &cb.Envelope{
 		Payload: configBytes,
 	}
@@ -89,7 +89,7 @@ func TestAcceptGoodConfig(t *testing.T) {
 func TestRejectBadConfig(t *testing.T) {
 	cf := NewFilter(&mockConfigManager{err: fmt.Errorf("Error")})
 	config, _ := proto.Marshal(&cb.ConfigEnvelope{})
-	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChainHeader: &cb.ChainHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
+	configBytes, _ := proto.Marshal(&cb.Payload{Header: &cb.Header{ChannelHeader: &cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIGURATION_TRANSACTION)}}, Data: config})
 	result, _ := cf.Apply(&cb.Envelope{
 		Payload: configBytes,
 	})

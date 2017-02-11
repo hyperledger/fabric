@@ -73,7 +73,7 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 		return filter.Forward, nil
 	}
 
-	if msgData.Header == nil || msgData.Header.ChainHeader == nil || msgData.Header.ChainHeader.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
+	if msgData.Header == nil || msgData.Header.ChannelHeader == nil || msgData.Header.ChannelHeader.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
 		return filter.Forward, nil
 	}
 
@@ -118,7 +118,7 @@ func (sc *systemChain) proposeChain(configTx *cb.Envelope) cb.Status {
 
 	sysPayload := &cb.Payload{
 		Header: &cb.Header{
-			ChainHeader: &cb.ChainHeader{
+			ChannelHeader: &cb.ChannelHeader{
 				ChannelId: sc.support.ChainID(),
 				Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
 			},
@@ -225,7 +225,7 @@ func (sc *systemChain) authorizeAndInspect(configTx *cb.Envelope) cb.Status {
 		return cb.Status_BAD_REQUEST
 	}
 
-	if payload.Header == nil || payload.Header.ChainHeader == nil || payload.Header.ChainHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
+	if payload.Header == nil || payload.Header.ChannelHeader == nil || payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
 		logger.Debugf("Rejecting chain proposal: Not a config transaction: %s", err)
 		return cb.Status_BAD_REQUEST
 	}

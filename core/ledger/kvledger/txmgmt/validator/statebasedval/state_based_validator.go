@@ -107,7 +107,7 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 		}
 
 		valid := false
-		if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 			txRWSet, err := v.validateEndorserTX(envBytes, doMVCCValidation, updates)
 			if err != nil {
 				return nil, err
@@ -118,13 +118,13 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 				addWriteSetToBatch(txRWSet, committingTxHeight, updates)
 				valid = true
 			}
-		} else if common.HeaderType(payload.Header.ChainHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
+		} else if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
 			valid, err = v.validateConfigTX(env)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			logger.Errorf("Skipping transaction %d that's not an endorsement or configuration %d", txIndex, payload.Header.ChainHeader.Type)
+			logger.Errorf("Skipping transaction %d that's not an endorsement or configuration %d", txIndex, payload.Header.ChannelHeader.Type)
 			valid = false
 		}
 
