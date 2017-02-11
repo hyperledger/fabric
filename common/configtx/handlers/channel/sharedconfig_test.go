@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chainconfig
+package channel
 
 import (
 	"reflect"
 	"testing"
 
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	logging "github.com/op/go-logging"
@@ -38,7 +39,7 @@ func makeInvalidConfigItem(key string) *cb.ConfigItem {
 }
 
 func TestInterface(t *testing.T) {
-	_ = Descriptor(NewDescriptorImpl())
+	_ = configtxapi.ChannelConfig(NewSharedConfigImpl())
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -48,7 +49,7 @@ func TestDoubleBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.BeginConfig()
 	m.BeginConfig()
 }
@@ -60,12 +61,12 @@ func TestCommitWithoutBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.CommitConfig()
 }
 
 func TestRollback(t *testing.T) {
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.pendingConfig = &chainConfig{}
 	m.RollbackConfig()
 	if m.pendingConfig != nil {
@@ -78,7 +79,7 @@ func TestHashingAlgorithm(t *testing.T) {
 	invalidAlgorithm := TemplateHashingAlgorithm("MD5")
 	validAlgorithm := DefaultHashingAlgorithm()
 
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.BeginConfig()
 
 	err := m.ProposeConfig(invalidMessage)
@@ -108,7 +109,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 	invalidWidth := TemplateBlockDataHashingStructure(0)
 	validWidth := DefaultBlockDataHashingStructure()
 
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.BeginConfig()
 
 	err := m.ProposeConfig(invalidMessage)
@@ -136,7 +137,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 func TestOrdererAddresses(t *testing.T) {
 	invalidMessage := makeInvalidConfigItem(OrdererAddressesKey)
 	validMessage := DefaultOrdererAddresses()
-	m := NewDescriptorImpl()
+	m := NewSharedConfigImpl()
 	m.BeginConfig()
 
 	err := m.ProposeConfig(invalidMessage)

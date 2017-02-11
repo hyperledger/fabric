@@ -17,7 +17,6 @@ limitations under the License.
 package configtx
 
 import (
-	"github.com/hyperledger/fabric/common/chainconfig"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -31,8 +30,8 @@ type Initializer struct {
 	// PolicyManagerVal is returned as the result of PolicyManager()
 	PolicyManagerVal policies.Manager
 
-	// ChainConfigVal is returned as the result of ChainConfig()
-	ChainConfigVal chainconfig.Descriptor
+	// ChannelConfigVal is returned as the result of ChannelConfig()
+	ChannelConfigVal configtxapi.ChannelConfig
 
 	// MSPManagerVal is returned as the result of MSPManager()
 	MSPManagerVal msp.MSPManager
@@ -48,9 +47,9 @@ func (i *Initializer) PolicyManager() policies.Manager {
 	return i.PolicyManagerVal
 }
 
-// Returns the ChainConfigVal
-func (i *Initializer) ChainConfig() chainconfig.Descriptor {
-	return i.ChainConfigVal
+// Returns the ChannelConfigVal
+func (i *Initializer) ChannelConfig() configtxapi.ChannelConfig {
+	return i.ChannelConfigVal
 }
 
 // Returns the MSPManagerVal

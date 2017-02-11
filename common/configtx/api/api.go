@@ -19,13 +19,26 @@ package api
 import (
 	"time"
 
-	"github.com/hyperledger/fabric/common/chainconfig"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
+
+// ChannelConfig stores the common channel config
+type ChannelConfig interface {
+	// HashingAlgorithm returns the default algorithm to be used when hashing
+	// such as computing block hashes, and CreationPolicy digests
+	HashingAlgorithm() func(input []byte) []byte
+
+	// BlockDataHashingStructureWidth returns the width to use when constructing the
+	// Merkle tree to compute the BlockData hash
+	BlockDataHashingStructureWidth() uint32
+
+	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+	OrdererAddresses() []string
+}
 
 // ApplicationConfig stores the common shared application config
 type ApplicationConfig interface {
@@ -99,8 +112,8 @@ type Resources interface {
 	// PolicyManager returns the policies.Manager for the chain
 	PolicyManager() policies.Manager
 
-	// ChainConfig returns the chainconfig.Descriptor for the chain
-	ChainConfig() chainconfig.Descriptor
+	// ChannelConfig returns the ChannelConfig for the chain
+	ChannelConfig() ChannelConfig
 
 	// MSPManager returns the msp.MSPManager for the chain
 	MSPManager() msp.MSPManager

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chainconfig
+package channel
 
 import (
 	"fmt"
@@ -45,24 +45,7 @@ const (
 	SHA3Shake256 = "SHAKE256"
 )
 
-var logger = logging.MustGetLogger("common/chainconfig")
-
-// Descriptor stores the common chain config
-// It is intended to be the primary accessor of DescriptorImpl
-// It is intended to discourage use of the other exported DescriptorImpl methods
-// which are used for updating the chain config by the configtx.Manager
-type Descriptor interface {
-	// HashingAlgorithm returns the default algorithm to be used when hashing
-	// such as computing block hashes, and CreationPolicy digests
-	HashingAlgorithm() func(input []byte) []byte
-
-	// BlockDataHashingStructureWidth returns the width to use when constructing the
-	// Merkle tree to compute the BlockData hash
-	BlockDataHashingStructureWidth() uint32
-
-	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
-	OrdererAddresses() []string
-}
+var logger = logging.MustGetLogger("configtx/handlers/chainconfig")
 
 type chainConfig struct {
 	hashingAlgorithm               func(input []byte) []byte
@@ -70,37 +53,37 @@ type chainConfig struct {
 	ordererAddresses               []string
 }
 
-// DescriptorImpl is an implementation of Manager and configtx.ConfigHandler
+// SharedConfigImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.Manager
-type DescriptorImpl struct {
+type SharedConfigImpl struct {
 	pendingConfig *chainConfig
 	config        *chainConfig
 }
 
-// NewDescriptorImpl creates a new DescriptorImpl with the given CryptoHelper
-func NewDescriptorImpl() *DescriptorImpl {
-	return &DescriptorImpl{
+// NewSharedConfigImpl creates a new SharedConfigImpl with the given CryptoHelper
+func NewSharedConfigImpl() *SharedConfigImpl {
+	return &SharedConfigImpl{
 		config: &chainConfig{},
 	}
 }
 
 // HashingAlgorithm returns a function pointer to the chain hashing algorihtm
-func (pm *DescriptorImpl) HashingAlgorithm() func(input []byte) []byte {
+func (pm *SharedConfigImpl) HashingAlgorithm() func(input []byte) []byte {
 	return pm.config.hashingAlgorithm
 }
 
 // BlockDataHashingStructure returns the width to use when forming the block data hashing structure
-func (pm *DescriptorImpl) BlockDataHashingStructureWidth() uint32 {
+func (pm *SharedConfigImpl) BlockDataHashingStructureWidth() uint32 {
 	return pm.config.blockDataHashingStructureWidth
 }
 
 // OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
-func (pm *DescriptorImpl) OrdererAddresses() []string {
+func (pm *SharedConfigImpl) OrdererAddresses() []string {
 	return pm.config.ordererAddresses
 }
 
 // BeginConfig is used to start a new config proposal
-func (pm *DescriptorImpl) BeginConfig() {
+func (pm *SharedConfigImpl) BeginConfig() {
 	if pm.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
@@ -108,12 +91,12 @@ func (pm *DescriptorImpl) BeginConfig() {
 }
 
 // RollbackConfig is used to abandon a new config proposal
-func (pm *DescriptorImpl) RollbackConfig() {
+func (pm *SharedConfigImpl) RollbackConfig() {
 	pm.pendingConfig = nil
 }
 
 // CommitConfig is used to commit a new config proposal
-func (pm *DescriptorImpl) CommitConfig() {
+func (pm *SharedConfigImpl) CommitConfig() {
 	if pm.pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}
@@ -122,7 +105,7 @@ func (pm *DescriptorImpl) CommitConfig() {
 }
 
 // ProposeConfig is used to add new config to the config proposal
-func (pm *DescriptorImpl) ProposeConfig(configItem *cb.ConfigItem) error {
+func (pm *SharedConfigImpl) ProposeConfig(configItem *cb.ConfigItem) error {
 	if configItem.Type != cb.ConfigItem_CHAIN {
 		return fmt.Errorf("Expected type of ConfigItem_Chain, got %v", configItem.Type)
 	}

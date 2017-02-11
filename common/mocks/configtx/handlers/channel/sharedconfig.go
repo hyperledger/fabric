@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chainconfig
+package channel
 
 import "github.com/hyperledger/fabric/common/util"
 
@@ -22,8 +22,8 @@ func nearIdentityHash(input []byte) []byte {
 	return util.ConcatenateBytes([]byte("FakeHash("), input, []byte(""))
 }
 
-// Descriptor is a mock implementation of sharedconfig.Descriptor
-type Descriptor struct {
+// SharedConfig is a mock implementation of sharedconfig.SharedConfig
+type SharedConfig struct {
 	// HashingAlgorithmVal is returned as the result of HashingAlgorithm() if set
 	HashingAlgorithmVal func([]byte) []byte
 	// BlockDataHashingStructureWidthVal is returned as the result of BlockDataHashingStructureWidth()
@@ -33,7 +33,7 @@ type Descriptor struct {
 }
 
 // HashingAlgorithm returns the HashingAlgorithmVal if set, otherwise a fake simple hash function
-func (scm *Descriptor) HashingAlgorithm() func([]byte) []byte {
+func (scm *SharedConfig) HashingAlgorithm() func([]byte) []byte {
 	if scm.HashingAlgorithmVal == nil {
 		return nearIdentityHash
 	}
@@ -41,11 +41,11 @@ func (scm *Descriptor) HashingAlgorithm() func([]byte) []byte {
 }
 
 // BlockDataHashingStructureWidth returns the BlockDataHashingStructureWidthVal
-func (scm *Descriptor) BlockDataHashingStructureWidth() uint32 {
+func (scm *SharedConfig) BlockDataHashingStructureWidth() uint32 {
 	return scm.BlockDataHashingStructureWidthVal
 }
 
 // OrdererAddresses returns the OrdererAddressesVal
-func (scm *Descriptor) OrdererAddresses() []string {
+func (scm *SharedConfig) OrdererAddresses() []string {
 	return scm.OrdererAddressesVal
 }
