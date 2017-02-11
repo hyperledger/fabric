@@ -46,7 +46,7 @@ type packetMock struct {
 type channelMock struct {
 	accept common.MessageAcceptor
 
-	channel chan comm.ReceivedMessage
+	channel chan proto.ReceivedMessage
 }
 
 type commMock struct {
@@ -91,11 +91,19 @@ func (packet *packetMock) Respond(msg *proto.GossipMessage) {
 	}
 }
 
+// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// constructed with
+func (packet *packetMock) GetSourceMessage() *proto.SignedGossipMessage {
+	return nil
+}
+
 // GetGossipMessage returns the underlying GossipMessage
 func (packet *packetMock) GetGossipMessage() *proto.GossipMessage {
 	return packet.msg.(*proto.GossipMessage)
 }
 
+// GetPKIID returns the PKI-ID of the remote peer
+// that sent the message
 func (packet *packetMock) GetPKIID() common.PKIidType {
 	return nil
 }
@@ -151,8 +159,8 @@ func (mock *commMock) Probe(peer *comm.RemotePeer) error {
 
 // Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 // Each message from the channel can be used to send a reply back to the sender
-func (mock *commMock) Accept(accept common.MessageAcceptor) <-chan comm.ReceivedMessage {
-	ch := make(chan comm.ReceivedMessage)
+func (mock *commMock) Accept(accept common.MessageAcceptor) <-chan proto.ReceivedMessage {
+	ch := make(chan proto.ReceivedMessage)
 	mock.acceptors = append(mock.acceptors, &channelMock{accept, ch})
 	return ch
 }

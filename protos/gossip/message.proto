@@ -13,7 +13,13 @@ service Gossip {
 
     // Ping is used to probe a remote peer's aliveness
     rpc Ping (Empty) returns (Empty) {}
+}
 
+// GossipMessage contains a marshalled
+// GossipMessage and a signature over it.
+message SignedGossipMessage {
+    bytes payload   = 1;
+    bytes signature = 2;
 }
 
 // GossipMessage defines the message sent in a gossip network

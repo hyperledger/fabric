@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	proto "github.com/hyperledger/fabric/protos/gossip"
@@ -216,7 +215,7 @@ func (g *peerMockGossip) Peers() []discovery.NetworkMember {
 	return res
 }
 
-func (g *peerMockGossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage) {
+func (g *peerMockGossip) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
 	ch := make(chan *proto.GossipMessage, 100)
 	g.acceptorLock.Lock()
 	g.acceptors = append(g.acceptors, &mockAcceptor{

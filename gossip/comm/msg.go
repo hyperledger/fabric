@@ -30,6 +30,12 @@ type ReceivedMessageImpl struct {
 	conn *connection
 }
 
+// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// constructed with
+func (m *ReceivedMessageImpl) GetSourceMessage() *proto.SignedGossipMessage {
+	return nil
+}
+
 // Respond sends a msg to the source that sent the ReceivedMessageImpl
 func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
 	m.conn.send(msg, func(e error) {})

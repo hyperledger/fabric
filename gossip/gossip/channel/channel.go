@@ -67,7 +67,7 @@ type GossipChannel interface {
 	IsSubscribed(member discovery.NetworkMember) bool
 
 	// HandleMessage processes a message sent by a remote peer
-	HandleMessage(comm.ReceivedMessage)
+	HandleMessage(proto.ReceivedMessage)
 
 	// AddToMsgStore adds a given GossipMessage to the message store
 	AddToMsgStore(msg *proto.GossipMessage)
@@ -354,7 +354,7 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 }
 
 // HandleMessage processes a message sent by a remote peer
-func (gc *gossipChannel) HandleMessage(msg comm.ReceivedMessage) {
+func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 	if !gc.verifyMsg(msg) {
 		return
 	}
@@ -500,7 +500,7 @@ func (gc *gossipChannel) createStateInfoSnapshot() *proto.GossipMessage {
 	}
 }
 
-func (gc *gossipChannel) verifyMsg(msg comm.ReceivedMessage) bool {
+func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
 	if msg == nil {
 		gc.logger.Warning("Messsage is nil")
 		return false

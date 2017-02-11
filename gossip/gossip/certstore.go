@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
 	"github.com/hyperledger/fabric/gossip/identity"
@@ -63,7 +62,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 
 	puller.Add(certStore.createIdentityMessage())
 
-	puller.RegisterMsgHook(pull.ResponseMsgType, func(_ []string, msgs []*proto.GossipMessage, _ comm.ReceivedMessage) {
+	puller.RegisterMsgHook(pull.ResponseMsgType, func(_ []string, msgs []*proto.GossipMessage, _ proto.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiID)
 			cert := api.PeerIdentityType(msg.GetPeerIdentity().Cert)
@@ -78,7 +77,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 	return certStore
 }
 
-func (cs *certStore) handleMessage(msg comm.ReceivedMessage) {
+func (cs *certStore) handleMessage(msg proto.ReceivedMessage) {
 	if update := msg.GetGossipMessage().GetDataUpdate(); update != nil {
 		for _, m := range update.Data {
 			if !m.IsIdentityMsg() {

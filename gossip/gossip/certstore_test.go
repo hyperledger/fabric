@@ -50,6 +50,12 @@ type sentMsg struct {
 	mock.Mock
 }
 
+// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// constructed with
+func (s *sentMsg) GetSourceMessage() *proto.SignedGossipMessage {
+	return nil
+}
+
 func (s *sentMsg) Respond(msg *proto.GossipMessage) {
 	s.Called(msg)
 }
@@ -80,7 +86,7 @@ func (m *membershipSvcMock) GetMembership() []discovery.NetworkMember {
 }
 
 func TestCertStoreBadSignature(t *testing.T) {
-	badSignature := func(nonce uint64) comm.ReceivedMessage {
+	badSignature := func(nonce uint64) proto.ReceivedMessage {
 		return createUpdateMessage(nonce, createBadlySignedUpdateMessage())
 	}
 
@@ -88,7 +94,7 @@ func TestCertStoreBadSignature(t *testing.T) {
 }
 
 func TestCertStoreMismatchedIdentity(t *testing.T) {
-	mismatchedIdentity := func(nonce uint64) comm.ReceivedMessage {
+	mismatchedIdentity := func(nonce uint64) proto.ReceivedMessage {
 		return createUpdateMessage(nonce, createMismatchedUpdateMessage())
 	}
 
@@ -96,14 +102,14 @@ func TestCertStoreMismatchedIdentity(t *testing.T) {
 }
 
 func TestCertStoreShouldSucceed(t *testing.T) {
-	totallyFineIdentity := func(nonce uint64) comm.ReceivedMessage {
+	totallyFineIdentity := func(nonce uint64) proto.ReceivedMessage {
 		return createUpdateMessage(nonce, createValidUpdateMessage())
 	}
 
 	testCertificateUpdate(t, totallyFineIdentity, true)
 }
 
-func testCertificateUpdate(t *testing.T, updateFactory func(uint64) comm.ReceivedMessage, shouldSucceed bool) {
+func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.ReceivedMessage, shouldSucceed bool) {
 	config := pull.PullConfig{
 		MsgType:           proto.PullMsgType_IdentityMsg,
 		PeerCountToSelect: 1,
@@ -257,7 +263,7 @@ func createValidUpdateMessage() *proto.GossipMessage {
 	return m
 }
 
-func createUpdateMessage(nonce uint64, idMsg *proto.GossipMessage) comm.ReceivedMessage {
+func createUpdateMessage(nonce uint64, idMsg *proto.GossipMessage) proto.ReceivedMessage {
 	update := &proto.GossipMessage{
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataUpdate{
@@ -271,7 +277,7 @@ func createUpdateMessage(nonce uint64, idMsg *proto.GossipMessage) comm.Received
 	return &sentMsg{msg: update}
 }
 
-func createDigest(nonce uint64) comm.ReceivedMessage {
+func createDigest(nonce uint64) proto.ReceivedMessage {
 	digest := &proto.GossipMessage{
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataDig{

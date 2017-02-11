@@ -236,7 +236,7 @@ func (g *gossipServiceImpl) start() {
 	go g.handlePresumedDead()
 
 	msgSelector := func(msg interface{}) bool {
-		gMsg, isGossipMsg := msg.(comm.ReceivedMessage)
+		gMsg, isGossipMsg := msg.(proto.ReceivedMessage)
 		if !isGossipMsg {
 			return false
 		}
@@ -254,7 +254,7 @@ func (g *gossipServiceImpl) start() {
 	g.logger.Info("Gossip instance", g.conf.ID, "started")
 }
 
-func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan comm.ReceivedMessage) {
+func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan proto.ReceivedMessage) {
 	defer g.logger.Debug("Exiting")
 	g.stopSignal.Add(1)
 	defer g.stopSignal.Done()
@@ -270,7 +270,7 @@ func (g *gossipServiceImpl) acceptMessages(incMsgs <-chan comm.ReceivedMessage) 
 	}
 }
 
-func (g *gossipServiceImpl) handleMessage(m comm.ReceivedMessage) {
+func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 	if g.toDie() {
 		return
 	}
@@ -336,7 +336,7 @@ func (g *gossipServiceImpl) handleMessage(m comm.ReceivedMessage) {
 	}
 }
 
-func (g *gossipServiceImpl) forwardDiscoveryMsg(msg comm.ReceivedMessage) {
+func (g *gossipServiceImpl) forwardDiscoveryMsg(msg proto.ReceivedMessage) {
 	defer func() { // can be closed while shutting down
 		recover()
 	}()
@@ -345,7 +345,7 @@ func (g *gossipServiceImpl) forwardDiscoveryMsg(msg comm.ReceivedMessage) {
 
 // validateMsg checks the signature of the message if exists,
 // and also checks that the tag matches the message type
-func (g *gossipServiceImpl) validateMsg(msg comm.ReceivedMessage) bool {
+func (g *gossipServiceImpl) validateMsg(msg proto.ReceivedMessage) bool {
 	if err := msg.GetGossipMessage().IsTagLegal(); err != nil {
 		g.logger.Warning("Tag of", msg.GetGossipMessage(), "isn't legal:", err)
 		return false
@@ -384,7 +384,7 @@ func (g *gossipServiceImpl) validateMsg(msg comm.ReceivedMessage) bool {
 	return true
 }
 
-func (g *gossipServiceImpl) forwardToDiscoveryLayer(msg comm.ReceivedMessage) {
+func (g *gossipServiceImpl) forwardToDiscoveryLayer(msg proto.ReceivedMessage) {
 	defer func() { // can be closed while shutting down
 		recover()
 	}()
@@ -605,7 +605,7 @@ func (g *gossipServiceImpl) UpdateChannelMetadata(md []byte, chainID common.Chai
 // If passThrough is false, the messages are processed by the gossip layer beforehand.
 // If passThrough is true, the gossip layer doesn't intervene and the messages
 // can be used to send a reply back to the sender
-func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan comm.ReceivedMessage) {
+func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough bool) (<-chan *proto.GossipMessage, <-chan proto.ReceivedMessage) {
 	if passThrough {
 		return nil, g.comm.Accept(acceptor)
 	}
@@ -630,7 +630,7 @@ func (g *gossipServiceImpl) Accept(acceptor common.MessageAcceptor, passThrough 
 }
 
 func selectOnlyDiscoveryMessages(m interface{}) bool {
-	msg, isGossipMsg := m.(comm.ReceivedMessage)
+	msg, isGossipMsg := m.(proto.ReceivedMessage)
 	if !isGossipMsg {
 		return false
 	}
