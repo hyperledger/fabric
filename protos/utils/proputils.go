@@ -437,35 +437,40 @@ func CreateProposalFromCIS(txid string, typ common.HeaderType, chainID string, c
 	return CreateChaincodeProposal(txid, typ, chainID, cis, creator)
 }
 
+// CreateInstallProposalFromCDS returns a install proposal given a serialized identity and a ChaincodeDeploymentSpec
+func CreateInstallProposalFromCDS(txid string, cds *peer.ChaincodeDeploymentSpec, creator []byte) (*peer.Proposal, error) {
+	return createProposalFromCDS(txid, "", cds, creator, nil, nil, nil, "install")
+}
+
 // CreateDeployProposalFromCDS returns a deploy proposal given a serialized identity and a ChaincodeDeploymentSpec
 func CreateDeployProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte) (*peer.Proposal, error) {
-	return createProposalFromCDS(txid, chainID, cds, creator, policy, escc, vscc, true)
+	return createProposalFromCDS(txid, chainID, cds, creator, policy, escc, vscc, "deploy")
 }
 
 // CreateUpgradeProposalFromCDS returns a upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec
 func CreateUpgradeProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte) (*peer.Proposal, error) {
-	return createProposalFromCDS(txid, chainID, cds, creator, policy, escc, vscc, false)
+	return createProposalFromCDS(txid, chainID, cds, creator, policy, escc, vscc, "upgrade")
 }
 
 // createProposalFromCDS returns a deploy or upgrade proposal given a serialized identity and a ChaincodeDeploymentSpec
-func createProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte, deploy bool) (*peer.Proposal, error) {
-	var propType string
-	if deploy {
-		propType = "deploy"
-	} else {
-		propType = "upgrade"
-	}
-
+func createProposalFromCDS(txid string, chainID string, cds *peer.ChaincodeDeploymentSpec, creator []byte, policy []byte, escc []byte, vscc []byte, propType string) (*peer.Proposal, error) {
 	//in the new mode, cds will be nil, "deploy" and "upgrade" are instantiates.
 	var ccinp *peer.ChaincodeInput
+	var b []byte
+	var err error
 	if cds != nil {
-		b, err := proto.Marshal(cds)
+		b, err = proto.Marshal(cds)
 		if err != nil {
 			return nil, err
 		}
+	}
+	switch propType {
+	case "deploy":
+		fallthrough
+	case "upgrade":
 		ccinp = &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), b, policy, escc, vscc}}
-	} else {
-		ccinp = &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), []byte(chainID), nil, policy, escc, vscc}}
+	case "install":
+		ccinp = &peer.ChaincodeInput{Args: [][]byte{[]byte(propType), b}}
 	}
 
 	//wrap the deployment in an invocation spec to lccc...

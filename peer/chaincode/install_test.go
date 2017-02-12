@@ -17,10 +17,12 @@
 package chaincode
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/peer/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -54,25 +56,6 @@ func initInstallTest(fsPath string, t *testing.T) *cobra.Command {
 
 func finitInstallTest(fsPath string) {
 	os.RemoveAll(fsPath)
-}
-
-// TestInstallCmd tests generation of install command
-func TestInstallCmd(t *testing.T) {
-	fsPath := "/tmp/installtest"
-
-	cmd := initInstallTest(fsPath, t)
-	defer finitInstallTest(fsPath)
-
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "testversion"}
-	cmd.SetArgs(args)
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Error executing install command %s", err)
-	}
-
-	if _, err := os.Stat(fsPath + "/chaincodes/example02.testversion"); err != nil {
-		t.Fatalf("chaincode example02.testversion does not exist %s", err)
-	}
 }
 
 // TestBadVersion tests generation of install command
@@ -109,25 +92,41 @@ func TestNonExistentCC(t *testing.T) {
 	}
 }
 
-// TestCCExists should fail second time
-func TestCCExists(t *testing.T) {
-	fsPath := "/tmp/installtest"
+func installEx02() error {
 
-	cmd := initInstallTest(fsPath, t)
-	defer finitInstallTest(fsPath)
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		return fmt.Errorf("Get default signer error: %v", err)
+	}
 
-	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "testversion"}
+	mockResponse := &pb.ProposalResponse{
+		Response:    &pb.Response{Status: 200},
+		Endorsement: &pb.Endorsement{},
+	}
+
+	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
+
+	mockCF := &ChaincodeCmdFactory{
+		EndorserClient: mockEndorerClient,
+		Signer:         signer,
+	}
+
+	cmd := installCmd(mockCF)
+	AddFlags(cmd)
+
+	args := []string{"-n", "example02", "-p", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "-v", "anotherversion"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Error executing install command %s", err)
+		return fmt.Errorf("Run chaincode upgrade cmd error:%v", err)
 	}
 
-	if _, err := os.Stat(fsPath + "/chaincodes/example02.testversion"); err != nil {
-		t.Fatalf("chaincode example02.testversion does not exist %s", err)
-	}
+	return nil
+}
 
-	if err := cmd.Execute(); err == nil {
-		t.Fatalf("Expected error reinstall but succeeded")
+func TestInstall(t *testing.T) {
+	InitMSP()
+	if err := installEx02(); err != nil {
+		t.Fatalf("Install failed with error: %v", err)
 	}
 }

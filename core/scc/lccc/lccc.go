@@ -46,6 +46,9 @@ const (
 
 	//chaincode lifecyle commands
 
+	//INSTALL install command
+	INSTALL = "install"
+
 	//DEPLOY deploy command
 	DEPLOY = "deploy"
 
@@ -284,6 +287,29 @@ func (lccc *LifeCycleSysCC) isValidChaincodeName(chaincodename string) bool {
 	return true
 }
 
+//this implements "install" Invoke transaction
+func (lccc *LifeCycleSysCC) executeInstall(stub shim.ChaincodeStubInterface, depSpec []byte) error {
+	cds, err := lccc.getChaincodeDeploymentSpec(depSpec)
+
+	if err != nil {
+		return err
+	}
+
+	if !lccc.isValidChaincodeName(cds.ChaincodeSpec.ChaincodeId.Name) {
+		return InvalidChaincodeNameErr(cds.ChaincodeSpec.ChaincodeId.Name)
+	}
+
+	if cds.ChaincodeSpec.ChaincodeId.Version == "" {
+		return EmptyVersionErr(cds.ChaincodeSpec.ChaincodeId.Name)
+	}
+
+	if err = ccprovider.PutChaincodeIntoFS(cds); err != nil {
+		return fmt.Errorf("Error installing chaincode code %s:%s(%s)", cds.ChaincodeSpec.ChaincodeId.Name, cds.ChaincodeSpec.ChaincodeId.Version, err)
+	}
+
+	return err
+}
+
 //this implements "deploy" Invoke transaction
 func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chainname string, depSpec []byte, policy []byte, escc []byte, vscc []byte) error {
 	cds, err := lccc.getChaincodeDeploymentSpec(depSpec)
@@ -395,6 +421,18 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 	function := string(args[0])
 
 	switch function {
+	case INSTALL:
+		if len(args) < 2 {
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
+		}
+
+		depSpec := args[1]
+
+		err := lccc.executeInstall(stub, depSpec)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success([]byte("OK"))
 	case DEPLOY:
 		if len(args) < 3 || len(args) > 6 {
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())

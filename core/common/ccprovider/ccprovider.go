@@ -89,12 +89,17 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 	ccname := depSpec.ChaincodeSpec.ChaincodeId.Name
 	ccversion := depSpec.ChaincodeSpec.ChaincodeId.Version
 
+	//return error if chaincode exists
+	path := fmt.Sprintf("%s/%s.%s", chaincodeInstallPath, ccname, ccversion)
+	if _, err := os.Stat(path); err == nil {
+		return fmt.Errorf("chaincode %s exits", path)
+	}
+
 	b, err := proto.Marshal(depSpec)
 	if err != nil {
 		return fmt.Errorf("failed to marshal fs deployment spec for %s, %s", ccname, ccversion)
 	}
 
-	path := fmt.Sprintf("%s/%s.%s", chaincodeInstallPath, ccname, ccversion)
 	if err = ioutil.WriteFile(path, b, 0644); err != nil {
 		return err
 	}

@@ -19,11 +19,15 @@ package chaincode
 import (
 	"fmt"
 
+	"golang.org/x/net/context"
+
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/peer/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var chaincodeInstallCmd *cobra.Command
@@ -45,20 +49,51 @@ func installCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	return chaincodeInstallCmd
 }
 
-// chaincodeInstall deploys the chaincode. On success, the chaincode name
-// (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
-// commands.
+//install the depspec to "peer.address"
+func install(chaincodeName string, chaincodeVersion string, cds *pb.ChaincodeDeploymentSpec, cf *ChaincodeCmdFactory) error {
+	creator, err := cf.Signer.Serialize()
+	if err != nil {
+		return fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
+	}
+
+	uuid := util.GenerateUUID()
+
+	prop, err := utils.CreateInstallProposalFromCDS(uuid, cds, creator)
+	if err != nil {
+		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
+	}
+
+	var signedProp *pb.SignedProposal
+	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
+	if err != nil {
+		return fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
+	}
+
+	proposalResponse, err := cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
+	if err != nil {
+		return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+	}
+
+	if proposalResponse != nil {
+		fmt.Printf("Installed remotely %v\n", proposalResponse)
+	}
+
+	return nil
+}
+
+// chaincodeInstall installs the chaincode. If remoteinstall, does it via a lccc call
 func chaincodeInstall(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	if chaincodePath == common.UndefinedParamValue || chaincodeVersion == common.UndefinedParamValue {
 		return fmt.Errorf("Must supply value for %s path and version parameters.\n", chainFuncName)
 	}
 
-	peerPath := viper.GetString("peer.fileSystemPath")
-	if peerPath == "" {
-		return fmt.Errorf("Peer's environment \"peer.fileSystemPath\" is not set")
+	var err error
+	if cf == nil {
+		cf, err = InitCmdFactory()
+		if err != nil {
+			return err
+		}
 	}
-
-	ccprovider.SetChaincodesPath(peerPath + "/chaincodes")
 
 	tmppkg, _ := ccprovider.GetChaincodePackage(chaincodeName, chaincodeVersion)
 	if tmppkg != nil {
@@ -75,11 +110,7 @@ func chaincodeInstall(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory
 		return fmt.Errorf("Error getting chaincode code %s: %s", chainFuncName, err)
 	}
 
-	if err = ccprovider.PutChaincodeIntoFS(cds); err != nil {
-		return fmt.Errorf("Error installing chaincode code %s:%s(%s)", chaincodeName, chaincodeVersion, err)
-	}
-
-	logger.Debugf("Installed chaincode %s:%s", chaincodeName, chaincodeVersion)
+	err = install(chaincodeName, chaincodeVersion, cds, cf)
 
 	return err
 }
