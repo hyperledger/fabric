@@ -33,7 +33,7 @@ func getTestMSPConfigPath() string {
 
 func TestLocalMSP(t *testing.T) {
 	testMSPConfigPath := getTestMSPConfigPath()
-	err := LoadLocalMsp(testMSPConfigPath, "DEFAULT")
+	err := LoadLocalMsp(testMSPConfigPath, nil, "DEFAULT")
 
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)

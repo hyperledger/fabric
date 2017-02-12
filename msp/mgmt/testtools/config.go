@@ -48,7 +48,7 @@ func LoadMSPSetupForTesting(dir string) error {
 	if dir, err = getConfigPath(dir); err != nil {
 		return err
 	}
-	conf, err := msp.GetLocalMspConfig(dir, "DEFAULT")
+	conf, err := msp.GetLocalMspConfig(dir, nil, "DEFAULT")
 	if err != nil {
 		return err
 	}

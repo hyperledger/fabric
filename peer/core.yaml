@@ -195,6 +195,18 @@ peer:
     # Path on the file system where peer will store data (eg ledger)
     fileSystemPath: /var/hyperledger/production
 
+    # BCCSP (Blockchain crypto provider): Select which crypto implementation or
+    # library to use
+    BCCSP:
+        Default: SW
+        SW:
+            Hash: SHA3
+            Security: 256
+            # Location of Key Store, can be subdirectory of SbftLocal.DataDir
+            FileKeyStore: 
+                # If "", defaults to 'mspConfigPath'/keystore
+                KeyStore: 
+
     # Path on the file system where peer will find MSP local configurations
     mspConfigPath: msp/sampleconfig
 

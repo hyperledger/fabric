@@ -28,6 +28,8 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+
+	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 )
 
 var logger = logging.MustGetLogger("orderer/config")
@@ -52,6 +54,7 @@ type General struct {
 	LogLevel       string
 	LocalMSPDir    string
 	LocalMSPID     string
+	BCCSP          *bccsp.FactoryOpts
 }
 
 //TLS contains config used to configure TLS
@@ -155,6 +158,7 @@ var defaults = TopLevel{
 		LogLevel:    "INFO",
 		LocalMSPDir: "../msp/sampleconfig/",
 		LocalMSPID:  "DEFAULT",
+		BCCSP:       &bccsp.DefaultOpts,
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,

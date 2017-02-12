@@ -27,11 +27,16 @@ var (
 	// Default BCCSP
 	defaultBCCSP bccsp.BCCSP
 
+	// when InitFactories has not been called yet (should only happen
+	// in test cases), use this BCCSP temporarily
+	bootBCCSP bccsp.BCCSP
+
 	// BCCSP Factories
 	bccspMap map[string]bccsp.BCCSP
 
 	// factories' Sync on Initialization
 	factoriesInitOnce sync.Once
+	bootBCCSPInitOnce sync.Once
 
 	// Factories' Initialization Error
 	factoriesInitError error
@@ -53,7 +58,16 @@ type BCCSPFactory interface {
 // GetDefault returns a non-ephemeral (long-term) BCCSP
 func GetDefault() bccsp.BCCSP {
 	if defaultBCCSP == nil {
-		panic("BCCSP Factory: Must call InitFactories before using BCCSP!")
+		logger.Warning("Before using BCCSP, please call InitFactories(). Falling back to bootBCCSP.")
+		bootBCCSPInitOnce.Do(func() {
+			var err error
+			f := &SWFactory{}
+			bootBCCSP, err = f.Get(&DefaultOpts)
+			if err != nil {
+				panic("BCCSP Internal error, failed initialization with DefaultOpts!")
+			}
+		})
+		return bootBCCSP
 	}
 	return defaultBCCSP
 }

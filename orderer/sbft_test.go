@@ -120,7 +120,7 @@ func TestSbftPeer(t *testing.T) {
 	consenters := make(map[string]multichain.Consenter)
 	consenters[sbftName] = sbftConsenter
 
-	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.LocalMSPID)
+	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil { // Handle errors reading the config file
 		panic(fmt.Errorf("Failed initializing crypto [%s]", err))
 	}
