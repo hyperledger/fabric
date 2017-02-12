@@ -30,6 +30,34 @@ import (
 	"github.com/op/go-logging"
 )
 
+var orgSchema = &cb.ConfigGroupSchema{
+	Groups: map[string]*cb.ConfigGroupSchema{},
+	Values: map[string]*cb.ConfigValueSchema{
+		"MSP": nil, // TODO, consolidate into a constant once common org code exists
+	},
+	Policies: map[string]*cb.ConfigPolicySchema{
+	// TODO, set appropriately once hierarchical policies are implemented
+	},
+}
+
+var Schema = &cb.ConfigGroupSchema{
+	Groups: map[string]*cb.ConfigGroupSchema{
+		"": orgSchema,
+	},
+	Values: map[string]*cb.ConfigValueSchema{
+		ConsensusTypeKey:            nil,
+		BatchSizeKey:                nil,
+		BatchTimeoutKey:             nil,
+		ChainCreationPolicyNamesKey: nil,
+		KafkaBrokersKey:             nil,
+		IngressPolicyNamesKey:       nil,
+		EgressPolicyNamesKey:        nil,
+	},
+	Policies: map[string]*cb.ConfigPolicySchema{
+	// TODO, set appropriately once hierarchical policies are implemented
+	},
+}
+
 const (
 	// ConsensusTypeKey is the cb.ConfigItem type key name for the ConsensusType message
 	ConsensusTypeKey = "ConsensusType"
