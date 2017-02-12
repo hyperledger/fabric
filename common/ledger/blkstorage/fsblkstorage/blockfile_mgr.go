@@ -354,9 +354,9 @@ func (mgr *blockfileMgr) syncIndex() error {
 		}
 	}
 
-	//Should be at the last block, but go ahead and loop looking for next blockBytes
-	//If there is another block, add it to the index
-	//TODO Currently this re-indexes the lastBlockIndexed every time. May be better to skip it.
+	//Should be at the last block already, but go ahead and loop looking for next blockBytes.
+	//If there is another block, add it to the index.
+	//This will ensure block indexes are correct, for example if peer had crashed before indexes got updated.
 	for {
 		if blockBytes, blockPlacementInfo, err = stream.nextBlockBytesAndPlacementInfo(); err != nil {
 			return err
