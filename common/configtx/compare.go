@@ -80,8 +80,8 @@ func subsetOfGroups(inner, outer map[string]*cb.ConfigGroup) bool {
 		return true
 	}
 
-	// If inner is not the empty set, then the outer empty set cannot be a superset of inner
-	if len(outer) == 0 {
+	// If inner has more elements than outer, it cannot be a subset
+	if len(inner) > len(outer) {
 		return false
 	}
 
@@ -101,8 +101,8 @@ func subsetOfPolicies(inner, outer map[string]*cb.ConfigPolicy) bool {
 		return true
 	}
 
-	// If inner is not the empty set, then the outer empty set cannot be a superset of inner
-	if len(outer) == 0 {
+	// If inner has more elements than outer, it cannot be a subset
+	if len(inner) > len(outer) {
 		return false
 	}
 
@@ -122,8 +122,8 @@ func subsetOfValues(inner, outer map[string]*cb.ConfigValue) bool {
 		return true
 	}
 
-	// If inner is not the empty set, then the outer empty set cannot be a superset of inner
-	if len(outer) == 0 {
+	// If inner has more elements than outer, it cannot be a subset
+	if len(inner) > len(outer) {
 		return false
 	}
 
@@ -143,27 +143,12 @@ func equalConfigGroup(lhs, rhs *cb.ConfigGroup) bool {
 		return false
 	}
 
-	if !subsetOfGroups(lhs.Groups, rhs.Groups) {
-		return false
-	}
-
-	if !subsetOfGroups(rhs.Groups, lhs.Groups) {
-		return false
-	}
-
-	if !subsetOfPolicies(lhs.Policies, rhs.Policies) {
-		return false
-	}
-
-	if !subsetOfPolicies(rhs.Policies, lhs.Policies) {
-		return false
-	}
-
-	if !subsetOfValues(lhs.Values, rhs.Values) {
-		return false
-	}
-
-	if !subsetOfValues(rhs.Values, lhs.Values) {
+	if !subsetOfGroups(lhs.Groups, rhs.Groups) ||
+		!subsetOfGroups(rhs.Groups, lhs.Groups) ||
+		!subsetOfPolicies(lhs.Policies, rhs.Policies) ||
+		!subsetOfPolicies(rhs.Policies, lhs.Policies) ||
+		!subsetOfValues(lhs.Values, rhs.Values) ||
+		!subsetOfValues(rhs.Values, lhs.Values) {
 		return false
 	}
 
