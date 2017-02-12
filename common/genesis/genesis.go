@@ -17,6 +17,7 @@ limitations under the License.
 package genesis
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -48,10 +49,16 @@ func (f *factory) Block(chainID string) (*cb.Block, error) {
 		return nil, err
 	}
 
+	configUpdate := &cb.ConfigUpdate{}
+	err = proto.Unmarshal(configEnv.ConfigUpdate, configUpdate)
+	if err != nil {
+		return nil, err
+	}
+
 	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, chainID, epoch)
 	payloadSignatureHeader := utils.MakeSignatureHeader(nil, utils.CreateNonceOrPanic())
 	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{LastUpdate: configEnv})}
+	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{Header: configUpdate.Header, Channel: configUpdate.WriteSet}})}
 	envelope := &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}
 
 	block := cb.NewBlock(0, nil)
