@@ -26,6 +26,7 @@ type comparable struct {
 	*cb.ConfigGroup
 	*cb.ConfigValue
 	*cb.ConfigPolicy
+	key  string
 	path []string
 }
 

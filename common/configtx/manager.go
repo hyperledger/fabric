@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
@@ -186,66 +185,32 @@ func (cm *configManager) commitHandlers() {
 	}
 }
 
-func (cm *configManager) recurseConfig(result map[string]comparable, path []string, group *cb.ConfigGroup) error {
-
-	for key, group := range group.Groups {
-		// TODO rename validateChainID to validateConfigID
-		if err := validateChainID(key); err != nil {
-			return fmt.Errorf("Illegal characters in group key: %s", key)
+func (cm *configManager) proposeConfig(config map[string]comparable) error {
+	for fqPath, c := range config {
+		logger.Debugf("Proposing: %s", fqPath)
+		switch {
+		case c.ConfigValue != nil:
+			valueHandler, err := cm.initializer.Handler(c.path)
+			if err != nil {
+				return err
+			}
+			if err := valueHandler.ProposeConfig(c.key, c.ConfigValue); err != nil {
+				return err
+			}
+		case c.ConfigPolicy != nil:
+			if err := cm.initializer.PolicyProposer().ProposeConfig(c.key, &cb.ConfigValue{
+				// TODO, fix policy interface to take the policy directly
+				Value: utils.MarshalOrPanic(c.ConfigPolicy.Policy),
+			}); err != nil {
+				return err
+			}
 		}
-
-		if err := cm.recurseConfig(result, append(path, key), group); err != nil {
-			return err
-		}
-
-		// TODO, uncomment to validate version validation on groups
-		// result["[Groups]"+strings.Join(path, ".")+key] = comparable{path: path, ConfigGroup: group}
-	}
-
-	valueHandler, err := cm.initializer.Handler(path)
-	if err != nil {
-		return err
-	}
-
-	for key, value := range group.Values {
-		if err := validateChainID(key); err != nil {
-			return fmt.Errorf("Illegal characters in values key: %s", key)
-		}
-
-		err := valueHandler.ProposeConfig(key, &cb.ConfigValue{
-			Value: value.Value,
-		})
-		if err != nil {
-			return err
-		}
-
-		result["[Values]"+strings.Join(path, ".")+key] = comparable{path: path, ConfigValue: value}
-	}
-
-	logger.Debugf("Found %d policies", len(group.Policies))
-	for key, policy := range group.Policies {
-		if err := validateChainID(key); err != nil {
-			return fmt.Errorf("Illegal characters in policies key: %s", key)
-		}
-
-		logger.Debugf("Proposing policy: %s", key)
-		err := cm.initializer.PolicyProposer().ProposeConfig(key, &cb.ConfigValue{
-			// TODO, fix policy interface to take the policy directly
-			Value: utils.MarshalOrPanic(policy.Policy),
-		})
-
-		if err != nil {
-			return err
-		}
-
-		// TODO, uncomment to validate version validation on policies
-		//result["[Policies]"+strings.Join(path, ".")+key] = comparable{path: path, ConfigPolicy: policy}
 	}
 
 	return nil
 }
 
-func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap map[string]comparable, err error) {
+func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (map[string]comparable, error) {
 	// XXX as a temporary hack to get the new protos working, we assume entire config is always in the ConfigUpdate.WriteSet
 
 	if configtx.LastUpdate == nil {
@@ -284,9 +249,13 @@ func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap m
 		defaultModificationPolicy = &acceptAllPolicy{}
 	}
 
-	configMap = make(map[string]comparable)
+	configMap, err := mapConfig(config.WriteSet)
+	if err != nil {
+		return nil, err
+	}
+	delete(configMap, "[Groups] /Channel") // XXX temporary hack to prevent evaluating groups for modification
 
-	if err := cm.recurseConfig(configMap, []string{}, config.WriteSet); err != nil {
+	if err := cm.proposeConfig(configMap); err != nil {
 		return nil, err
 	}
 
