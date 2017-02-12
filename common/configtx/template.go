@@ -65,7 +65,7 @@ func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, er
 	config, err := proto.Marshal(&cb.ConfigUpdate{
 		Header: &cb.ChannelHeader{
 			ChannelId: chainID,
-			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
+			Type:      int32(cb.HeaderType_CONFIG),
 		},
 		WriteSet: st.configGroup,
 	})
@@ -141,7 +141,7 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope,
 	marshaledConfig, err := proto.Marshal(&cb.ConfigUpdate{
 		Header: &cb.ChannelHeader{
 			ChannelId: chainID,
-			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
+			Type:      int32(cb.HeaderType_CONFIG),
 		},
 		WriteSet: channel,
 	})
@@ -192,7 +192,7 @@ func MakeChainCreationTransaction(creationPolicy string, chainID string, signer 
 		LastUpdate: newConfigUpdateEnv,
 	}
 
-	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, msgVersion, chainID, epoch)
+	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, chainID, epoch)
 	payloadSignatureHeader := utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())
 	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
 	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(newConfigEnv)}

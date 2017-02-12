@@ -55,8 +55,8 @@ func GetChaincodeProposalContext(prop *peer.Proposal) (*peer.ChaincodeProposalCo
 		return nil, fmt.Errorf("Could not extract the header from the proposal: %s", err)
 	}
 	if common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
-		common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_CONFIGURATION_TRANSACTION {
-		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIGURATION_TRANSACTION. Was: %d", hdr.ChannelHeader.Type)
+		common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_CONFIG {
+		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIG. Was: %d", hdr.ChannelHeader.Type)
 	}
 
 	if hdr.SignatureHeader == nil {

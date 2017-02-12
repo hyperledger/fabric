@@ -55,7 +55,7 @@ func TestGenesisMetadata(t *testing.T) {
 			t.Fatalf("Expected non-nil metadata")
 		}
 
-		if genesisBlock.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] == nil {
+		if genesisBlock.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] == nil {
 			t.Fatalf("Should have last config set")
 		}
 	}

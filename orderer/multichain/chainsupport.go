@@ -230,7 +230,7 @@ func (cs *chainSupport) addLastConfigSignature(block *cb.Block) {
 
 	lastConfigSignature.Signature = utils.SignOrPanic(cs.signer, util.ConcatenateBytes(lastConfigValue, lastConfigSignature.SignatureHeader, block.Header.Bytes()))
 
-	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{
 		Value: lastConfigValue,
 		Signatures: []*cb.MetadataSignature{
 			lastConfigSignature,

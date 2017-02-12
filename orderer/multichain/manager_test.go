@@ -87,7 +87,7 @@ func TestGetConfigTx(t *testing.T) {
 	rl.Append(ordererledger.CreateNextBlock(rl, []*cb.Envelope{ctx}))
 
 	block := ordererledger.CreateNextBlock(rl, []*cb.Envelope{makeNormalTx(provisional.TestChainID, 7)})
-	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIGURATION] = utils.MarshalOrPanic(&cb.Metadata{Value: utils.MarshalOrPanic(&cb.LastConfig{Index: 7})})
+	block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = utils.MarshalOrPanic(&cb.Metadata{Value: utils.MarshalOrPanic(&cb.LastConfig{Index: 7})})
 	rl.Append(block)
 
 	pctx := getConfigTx(rl)

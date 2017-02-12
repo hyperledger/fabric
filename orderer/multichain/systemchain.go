@@ -230,7 +230,7 @@ func (sc *systemChain) authorizeAndInspect(configTx *cb.Envelope) cb.Status {
 		return cb.Status_BAD_REQUEST
 	}
 
-	if payload.Header == nil || payload.Header.ChannelHeader == nil || payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
+	if payload.Header == nil || payload.Header.ChannelHeader == nil || payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIG) {
 		logger.Debugf("Rejecting chain proposal: Not a config transaction: %s", err)
 		return cb.Status_BAD_REQUEST
 	}

@@ -99,7 +99,7 @@ func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.Co
 	payload := &cb.Payload{
 		Header: &cb.Header{
 			ChannelHeader: &cb.ChannelHeader{
-				Type:      int32(cb.HeaderType_CONFIGURATION_TRANSACTION),
+				Type:      int32(cb.HeaderType_CONFIG),
 				ChannelId: chainID,
 			},
 			SignatureHeader: &cb.SignatureHeader{},

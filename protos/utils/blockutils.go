@@ -62,7 +62,7 @@ func GetMetadataFromBlockOrPanic(block *cb.Block, index cb.BlockMetadataIndex) *
 
 // GetLastConfigIndexFromBlock retrieves the index of the last config block as encoded in the block metadata
 func GetLastConfigIndexFromBlock(block *cb.Block) (uint64, error) {
-	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIGURATION)
+	md, err := GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
 	if err != nil {
 		return 0, err
 	}

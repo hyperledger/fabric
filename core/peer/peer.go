@@ -142,7 +142,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 				currBlockNumber = block.Header.Number - 1
 				continue
 			}
-			if tx.Header.ChannelHeader.Type == int32(common.HeaderType_CONFIGURATION_TRANSACTION) {
+			if tx.Header.ChannelHeader.Type == int32(common.HeaderType_CONFIG) {
 				return block, nil
 			}
 		}
