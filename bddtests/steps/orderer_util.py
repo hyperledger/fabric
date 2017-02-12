@@ -149,7 +149,6 @@ class UserRegistration:
     def getUserName(self):
         return self.userName
 
-
     def connectToDeliverFunction(self, context, composeService, timeout=1):
         'Connect to the deliver function and drain messages to associated orderer queue'
         assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
@@ -157,38 +156,36 @@ class UserRegistration:
         self.abDeliversStreamHelperDict[composeService] = streamHelper
         return streamHelper
 
-
     def getDelivererStreamHelper(self, context, composeService):
         assert composeService in self.abDeliversStreamHelperDict, "NOT connected to deliver stream on {0}".format(composeService)
         return self.abDeliversStreamHelperDict[composeService]
 
-
-
     def broadcastMessages(self, context, numMsgsToBroadcast, composeService, chainID=TEST_CHAIN_ID, dataFunc=_defaultDataFunction, chainHeaderType=common_pb2.ENDORSER_TRANSACTION):
-		abStub = self.getABStubForComposeService(context, composeService)
-		replyGenerator = abStub.Broadcast(generateBroadcastMessages(chainID=chainID, numToGenerate = int(numMsgsToBroadcast), dataFunc=dataFunc, chainHeaderType=chainHeaderType), 2)
-		counter = 0
-		try:
-			for reply in replyGenerator:
-				counter += 1
-				print("{0} received reply: {1}, counter = {2}".format(self.getUserName(), reply, counter))
-				if counter == int(numMsgsToBroadcast):
-					break
-		except Exception as e:
-			print("Got error: {0}".format(e) )
-			print("Got error")
-		print("Done")
-		assert counter == int(numMsgsToBroadcast), "counter = {0}, expected {1}".format(counter, numMsgsToBroadcast)
+        abStub = self.getABStubForComposeService(context, composeService)
+        replyGenerator = abStub.Broadcast(generateBroadcastMessages(chainID=chainID, numToGenerate = int(numMsgsToBroadcast), dataFunc=dataFunc, chainHeaderType=chainHeaderType), 2)
+        counter = 0
+        try:
+            for reply in replyGenerator:
+                counter += 1
+                print("{0} received reply: {1}, counter = {2}".format(self.getUserName(), reply, counter))
+                if counter == int(numMsgsToBroadcast):
+                    break
+        except Exception as e:
+            print("Got error: {0}".format(e) )
+            print("Got error")
+        print("Done")
+        assert counter == int(numMsgsToBroadcast), "counter = {0}, expected {1}".format(counter, numMsgsToBroadcast)
 
     def getABStubForComposeService(self, context, composeService):
-		'Return a Stub for the supplied composeService, will cache'
-		if composeService in self.atomicBroadcastStubsDict:
-			return self.atomicBroadcastStubsDict[composeService]
-		# Get the IP address of the server that the user registered on
-		channel = getGRPCChannel(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
-		newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
-		self.atomicBroadcastStubsDict[composeService] = newABStub
-		return newABStub
+        'Return a Stub for the supplied composeService, will cache'
+        if composeService in self.atomicBroadcastStubsDict:
+            return self.atomicBroadcastStubsDict[composeService]
+        # Get the IP address of the server that the user registered on
+        channel = getGRPCChannel(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
+        newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
+        self.atomicBroadcastStubsDict[composeService] = newABStub
+        return newABStub
+
 
 # Registerses a user on a specific composeService
 def registerUser(context, secretMsg, composeService):
@@ -243,7 +240,6 @@ def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  b
             ).SerializeToString(),
         ).SerializeToString(),
     )
-
 
 
 def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 3, timeToHoldOpen = 1, dataFunc =_defaultDataFunction, chainHeaderType=common_pb2.ENDORSER_TRANSACTION ):
