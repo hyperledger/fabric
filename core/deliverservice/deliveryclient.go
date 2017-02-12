@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"fmt"
+
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -39,10 +41,13 @@ func init() {
 // DeliverService used to communicate with orderers to obtain
 // new block and send the to the committer service
 type DeliverService interface {
-	// JoinChain once peer joins the chain it should need to check whenever
-	// it has been selected as a leader and open connection to the configured
-	// ordering service endpoint
-	JoinChain(chainID string, ledgerInfo blocksprovider.LedgerInfo) error
+	// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
+	// to channel peers.
+	StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error
+
+	// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
+	// to channel peers.
+	StopDeliverForChannel(chainID string) error
 
 	// Stop terminates delivery service and closes the connection
 	Stop()
@@ -131,33 +136,56 @@ func NewFactoryDeliverService(gossip blocksprovider.GossipServiceAdapter, factor
 	}
 }
 
-// JoinChain initialize the grpc stream for given chainID, creates blocks provider instance
-// to spawn in go routine to read new blocks starting from the position provided by ledger
+// StartDeliverForChannel starts blocks delivery for channel
+// initializes the grpc stream for given chainID, creates blocks provider instance
+// that spawns in go routine to read new blocks starting from the position provided by ledger
 // info instance.
-func (d *deliverServiceImpl) JoinChain(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
-	isLeader := viper.GetBool("peer.gossip.orgLeader")
-
-	if isLeader {
+func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	if d.stopping {
+		errMsg := fmt.Sprintf("Delivery service is stopping cannot join a new channel %s", chainID)
+		logger.Errorf(errMsg)
+		return errors.New(errMsg)
+	}
+	if _, exist := d.clients[chainID]; exist {
+		errMsg := fmt.Sprintf("Delivery service - block provider already exists for %s found, can't start delivery", chainID)
+		logger.Errorf(errMsg)
+		return errors.New(errMsg)
+	} else {
 		abc, err := d.clientsFactory.Create()
 		if err != nil {
 			logger.Errorf("Unable to initialize atomic broadcast, due to %s", err)
 			return err
 		}
-
-		d.lock.Lock()
-		defer d.lock.Unlock()
-
-		if d.stopping {
-			logger.Errorf("Delivery service is stopping cannot join a new channel")
-			return errors.New("Delivery service is stopping cannot join a new channel")
-		}
-
+		logger.Debug("This peer will pass blocks from orderer service to other peers")
 		d.clients[chainID] = blocksprovider.NewBlocksProvider(chainID, abc, d.gossip)
 
 		if err := d.clients[chainID].RequestBlocks(ledgerInfo); err == nil {
 			// Start reading blocks from ordering service in case this peer is a leader for specified chain
 			go d.clients[chainID].DeliverBlocks()
 		}
+	}
+	return nil
+}
+
+// StopDeliverForChannel stops blocks delivery for channel by stopping channel block provider
+func (d *deliverServiceImpl) StopDeliverForChannel(chainID string) error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	if d.stopping {
+		errMsg := fmt.Sprintf("Delivery service is stopping, cannot stop delivery for channel %s", chainID)
+		logger.Errorf(errMsg)
+		return errors.New(errMsg)
+	}
+	if client, exist := d.clients[chainID]; exist {
+		client.Stop()
+		delete(d.clients, chainID)
+		logger.Debug("This peer will stop pass blocks from orderer service to other peers")
+	} else {
+		errMsg := fmt.Sprintf("Delivery service - no block provider for %s found, can't stop delivery", chainID)
+		logger.Errorf(errMsg)
+		return errors.New(errMsg)
 	}
 	return nil
 }

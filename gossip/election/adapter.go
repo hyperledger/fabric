@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
 )
@@ -44,7 +45,7 @@ func (mi *msgImpl) IsDeclaration() bool {
 }
 
 type peerImpl struct {
-	member *discovery.NetworkMember
+	member discovery.NetworkMember
 }
 
 func (pi *peerImpl) ID() peerID {
@@ -66,8 +67,8 @@ type gossip interface {
 }
 
 type adapterImpl struct {
-	gossip gossip
-	self   *discovery.NetworkMember
+	gossip    gossip
+	selfPKIid common.PKIidType
 
 	incTime uint64
 	seqNum  uint64
@@ -81,17 +82,17 @@ type adapterImpl struct {
 }
 
 // NewAdapter creates new leader election adapter
-func NewAdapter(gossip gossip, self *discovery.NetworkMember, channel common.ChainID) LeaderElectionAdapter {
+func NewAdapter(gossip gossip, pkiid common.PKIidType, channel common.ChainID) LeaderElectionAdapter {
 	return &adapterImpl{
-		gossip: gossip,
-		self:   self,
+		gossip:    gossip,
+		selfPKIid: pkiid,
 
 		incTime: uint64(time.Now().UnixNano()),
 		seqNum:  uint64(0),
 
 		channel: channel,
 
-		logger: logging.MustGetLogger("LeaderElectionAdapter"),
+		logger: util.GetLogger(util.LoggingElectionModule, ""),
 
 		doneCh:   make(chan struct{}),
 		stopOnce: &sync.Once{},
@@ -134,7 +135,7 @@ func (ai *adapterImpl) CreateMessage(isDeclaration bool) Msg {
 	seqNum := ai.seqNum
 
 	leadershipMsg := &proto.LeadershipMessage{
-		PkiID:         ai.self.PKIid,
+		PkiID:         ai.selfPKIid,
 		IsDeclaration: isDeclaration,
 		Timestamp: &proto.PeerTime{
 			IncNumber: ai.incTime,
@@ -156,7 +157,7 @@ func (ai *adapterImpl) Peers() []Peer {
 
 	var res []Peer
 	for _, peer := range peers {
-		res = append(res, &peerImpl{&peer})
+		res = append(res, &peerImpl{peer})
 	}
 
 	return res

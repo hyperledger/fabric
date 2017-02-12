@@ -46,10 +46,15 @@ import (
 type mockDeliveryClient struct {
 }
 
-// JoinChain once peer joins the chain it should need to check whenever
-// it has been selected as a leader and open connection to the configured
-// ordering service endpoint
-func (*mockDeliveryClient) JoinChain(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+// StartDeliverForChannel dynamically starts delivery of new blocks from ordering service
+// to channel peers.
+func (ds *mockDeliveryClient) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+	return nil
+}
+
+// StopDeliverForChannel dynamically stops delivery of new blocks from ordering service
+// to channel peers.
+func (ds *mockDeliveryClient) StopDeliverForChannel(chainID string) error {
 	return nil
 }
 

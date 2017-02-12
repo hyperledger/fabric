@@ -41,7 +41,7 @@ func TestNewAdapter(t *testing.T) {
 	peersCluster := newClusterOfPeers("0")
 	peersCluster.addPeer("peer0", mockGossip)
 
-	NewAdapter(mockGossip, selfNetworkMember, []byte("channel0"))
+	NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"))
 }
 
 func TestAdapterImpl_CreateMessage(t *testing.T) {
@@ -52,7 +52,7 @@ func TestAdapterImpl_CreateMessage(t *testing.T) {
 	}
 	mockGossip := newGossip("peer0", selfNetworkMember)
 
-	adapter := NewAdapter(mockGossip, selfNetworkMember, []byte("channel0"))
+	adapter := NewAdapter(mockGossip, selfNetworkMember.PKIid, []byte("channel0"))
 	msg := adapter.CreateMessage(true)
 
 	if !msg.(*msgImpl).msg.IsLeadershipMsg() {
@@ -142,7 +142,7 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 		case msg := <-channels[fmt.Sprintf("Peer%d", 1)]:
 			if !msg.IsDeclaration() {
 				t.Error("Msg should be declaration")
-			} else if !bytes.Equal(msg.SenderID(), sender.self.PKIid) {
+			} else if !bytes.Equal(msg.SenderID(), sender.selfPKIid) {
 				t.Error("Msg Sender is wrong")
 			} else {
 				totalMsg++
@@ -150,7 +150,7 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 		case msg := <-channels[fmt.Sprintf("Peer%d", 2)]:
 			if !msg.IsDeclaration() {
 				t.Error("Msg should be declaration")
-			} else if !bytes.Equal(msg.SenderID(), sender.self.PKIid) {
+			} else if !bytes.Equal(msg.SenderID(), sender.selfPKIid) {
 				t.Error("Msg Sender is wrong")
 			} else {
 				totalMsg++
@@ -308,7 +308,7 @@ func createCluster(peers ...int) (*clusterOfPeers, map[string]*adapterImpl) {
 		}
 
 		mockGossip := newGossip(peerEndpoint, peerMember)
-		adapter := NewAdapter(mockGossip, peerMember, []byte("channel0"))
+		adapter := NewAdapter(mockGossip, peerMember.PKIid, []byte("channel0"))
 		adapters[peerEndpoint] = adapter.(*adapterImpl)
 		cluster.addPeer(peerEndpoint, mockGossip)
 	}

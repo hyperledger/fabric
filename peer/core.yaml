@@ -70,7 +70,11 @@ peer:
     # Gossip related configuration
     gossip:
         bootstrap: 127.0.0.1:7051
-        # Is peer is its org leader and should pass blocks from orderer to other peers in org
+        # Use automatically chosen peer (high avalibility) to distribute blocks in channel or static one
+        # Setting this true and orgLeader true cause panic exit
+        useLeaderElection: false
+        # For debug - is peer is its org leader and should pass blocks from orderer to other peers in org
+        # Works only if useLeaderElection set to false
         orgLeader: true
         # ID of this instance
         endpoint:

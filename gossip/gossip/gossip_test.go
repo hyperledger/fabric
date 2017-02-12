@@ -531,8 +531,10 @@ func TestDissemination(t *testing.T) {
 		leadershipChan, _ := peers[i-1].Accept(acceptLeadershp, false)
 		go func(index int, ch <-chan *proto.GossipMessage) {
 			defer wgLeadership.Done()
-			<-ch
-			receivedLeadershipMessages[index]++
+			msg := <-ch
+			if bytes.Equal(msg.Channel, common.ChainID("A")) {
+				receivedLeadershipMessages[index]++
+			}
 		}(i-1, leadershipChan)
 	}
 
@@ -885,9 +887,6 @@ func createDataMsg(seqnum uint64, data []byte, hash string, channel common.Chain
 }
 
 func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uint64, seqNum uint64, endpoint string, pkiid []byte) *proto.GossipMessage {
-
-	metadata := []byte{}
-	metadata = strconv.AppendBool(metadata, isDeclaration)
 
 	leadershipMsg := &proto.LeadershipMessage{
 		IsDeclaration: isDeclaration,

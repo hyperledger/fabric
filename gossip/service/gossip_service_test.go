@@ -22,13 +22,24 @@ import (
 	"sync"
 	"testing"
 
+	"bytes"
 	"time"
 
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/core/deliverservice"
+	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
+	gossipCommon "github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/election"
+	"github.com/hyperledger/fabric/gossip/gossip"
+	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/state"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/gossip/mcs"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -72,3 +83,577 @@ func TestInitGossipService(t *testing.T) {
 func TestJCMInterface(t *testing.T) {
 	_ = api.JoinChannelMessage(&joinChannelMessage{})
 }
+
+func TestLeaderElectionWithDeliverClient(t *testing.T) {
+
+	//Test check if leader election works with mock deliver service instance
+	//Configuration set to use dynamic leader election
+	//10 peers started, added to channel and at the end we check if only for one peer
+	//mockDeliverService.StartDeliverForChannel was invoked
+
+	viper.Set("peer.gossip.useLeaderElection", true)
+	viper.Set("peer.gossip.orgLeader", false)
+
+	n := 10
+	gossips := startPeers(t, n, 10000)
+
+	channelName := "chanA"
+	peerIndexes := make([]int, n)
+	for i := 0; i < n; i++ {
+		peerIndexes[i] = i
+	}
+	addPeersToChannel(t, n, 10000, channelName, gossips, peerIndexes)
+
+	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+
+	services := make([]*electionService, n)
+
+	for i := 0; i < n; i++ {
+		deliverServiceFactory := &mockDeliverServiceFactory{
+			service: &mockDeliverService{
+				running: make(map[string]bool),
+			},
+		}
+		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
+		deliverServiceFactory.service.running[channelName] = false
+
+		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{0})
+		service, exist := gossips[i].(*gossipServiceImpl).leaderElection[channelName]
+		assert.True(t, exist, "Leader election service should be created for peer %d and channel %s", i, channelName)
+		services[i] = &electionService{nil, false, 0}
+		services[i].LeaderElectionService = service
+	}
+
+	assert.True(t, waitForLeaderElection(t, services, 0, time.Second*30, time.Second*2), "One leader (peer 0) should be selected")
+
+	assert.True(t, gossips[0].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Delivery service should be started in peer %d", 0)
+
+	for i := 1; i < n; i++ {
+		assert.False(t, gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Delivery service should not be started in peer %d", i)
+	}
+
+	stopPeers(gossips)
+}
+
+func TestWithStaticDeliverClientLeader(t *testing.T) {
+
+	//Tests check if static leader flag works ok.
+	//Leader election flag set to false, and static leader flag set to true
+	//Two gossip service instances (peers) created.
+	//Each peer is added to channel and should run mock delivery client
+	//After that each peer added to another client and it should run deliver client for this channel as well.
+
+	viper.Set("peer.gossip.useLeaderElection", false)
+	viper.Set("peer.gossip.orgLeader", true)
+
+	n := 2
+	gossips := startPeers(t, n, 10000)
+
+	channelName := "chanA"
+	peerIndexes := make([]int, n)
+	for i := 0; i < n; i++ {
+		peerIndexes[i] = i
+	}
+
+	addPeersToChannel(t, n, 10000, channelName, gossips, peerIndexes)
+
+	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+
+	deliverServiceFactory := &mockDeliverServiceFactory{
+		service: &mockDeliverService{
+			running: make(map[string]bool),
+		},
+	}
+
+	for i := 0; i < n; i++ {
+		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
+		deliverServiceFactory.service.running[channelName] = false
+		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{0})
+	}
+
+	for i := 0; i < n; i++ {
+		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService, "Delivery service not initiated in peer %d", i)
+		assert.True(t, gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
+	}
+
+	channelName = "chanB"
+	for i := 0; i < n; i++ {
+		deliverServiceFactory.service.running[channelName] = false
+		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{0})
+	}
+
+	for i := 0; i < n; i++ {
+		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService, "Delivery service not initiated in peer %d", i)
+		assert.True(t, gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Block deliverer not started for peer %d", i)
+	}
+
+	stopPeers(gossips)
+}
+
+func TestWithStaticDeliverClientNotLeader(t *testing.T) {
+	viper.Set("peer.gossip.useLeaderElection", false)
+	viper.Set("peer.gossip.orgLeader", false)
+
+	n := 2
+	gossips := startPeers(t, n, 10000)
+
+	channelName := "chanA"
+	peerIndexes := make([]int, n)
+	for i := 0; i < n; i++ {
+		peerIndexes[i] = i
+	}
+
+	addPeersToChannel(t, n, 10000, channelName, gossips, peerIndexes)
+
+	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+
+	deliverServiceFactory := &mockDeliverServiceFactory{
+		service: &mockDeliverService{
+			running: make(map[string]bool),
+		},
+	}
+
+	for i := 0; i < n; i++ {
+		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
+		deliverServiceFactory.service.running[channelName] = false
+		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{0})
+	}
+
+	for i := 0; i < n; i++ {
+		assert.NotNil(t, gossips[i].(*gossipServiceImpl).deliveryService, "Delivery service not initiated in peer %d", i)
+		assert.False(t, gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Block deliverer should not be started for peer %d", i)
+	}
+
+	stopPeers(gossips)
+}
+
+func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
+	viper.Set("peer.gossip.useLeaderElection", true)
+	viper.Set("peer.gossip.orgLeader", true)
+
+	n := 2
+	gossips := startPeers(t, n, 10000)
+
+	channelName := "chanA"
+	peerIndexes := make([]int, n)
+	for i := 0; i < n; i++ {
+		peerIndexes[i] = i
+	}
+
+	addPeersToChannel(t, n, 10000, channelName, gossips, peerIndexes)
+
+	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+
+	deliverServiceFactory := &mockDeliverServiceFactory{
+		service: &mockDeliverService{
+			running: make(map[string]bool),
+		},
+	}
+
+	for i := 0; i < n; i++ {
+		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
+		assert.Panics(t, func() {
+			gossips[i].InitializeChannel(channelName, &mockLedgerInfo{0})
+		}, "Dynamic leader lection based and static connection to ordering service can't exist simultaniosly")
+	}
+
+	stopPeers(gossips)
+}
+
+type mockDeliverServiceFactory struct {
+	service *mockDeliverService
+}
+
+func (mf *mockDeliverServiceFactory) Service(g GossipService) (deliverclient.DeliverService, error) {
+	return mf.service, nil
+}
+
+type mockDeliverService struct {
+	running map[string]bool
+}
+
+func (ds *mockDeliverService) StartDeliverForChannel(chainID string, ledgerInfo blocksprovider.LedgerInfo) error {
+	ds.running[chainID] = true
+	return nil
+}
+
+func (ds *mockDeliverService) StopDeliverForChannel(chainID string) error {
+	ds.running[chainID] = false
+	return nil
+}
+
+func (ds *mockDeliverService) Stop() {
+}
+
+type mockLedgerInfo struct {
+	Height uint64
+}
+
+// LedgerHeight returns mocked value to the ledger height
+func (li *mockLedgerInfo) LedgerHeight() (uint64, error) {
+	return li.Height, nil
+}
+
+// Commit block to the ledger
+func (li *mockLedgerInfo) Commit(block *common.Block) error {
+	return nil
+}
+
+// Gets blocks with sequence numbers provided in the slice
+func (li *mockLedgerInfo) GetBlocks(blockSeqs []uint64) []*common.Block {
+	return nil
+}
+
+// Closes committing service
+func (li *mockLedgerInfo) Close() {
+}
+
+func TestLeaderElectionWithRealGossip(t *testing.T) {
+
+	// Spawn 10 gossip instances with single channel and inside same organization
+	// Run leader election on top of each gossip instance and check that only one leader chosen
+	// Create another channel includes sub-set of peers over same gossip instances {1,3,5,7}
+	// Run additional leader election services for new channel
+	// Check correct leader still exist for first channel and new correct leader chosen in second channel
+	// Stop gossip instances of leader peers for both channels and see that new leader chosen for both
+
+	// Creating gossip service instances for peers
+	n := 10
+	gossips := startPeers(t, n, 10000)
+
+	// Joining all peers to first channel
+	channelName := "chanA"
+	peerIndexes := make([]int, n)
+	for i := 0; i < n; i++ {
+		peerIndexes[i] = i
+	}
+	addPeersToChannel(t, n, 10000, channelName, gossips, peerIndexes)
+
+	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+
+	logger.Warning("Starting leader election services")
+
+	//Stariting leader election services
+	services := make([]*electionService, n)
+
+	for i := 0; i < n; i++ {
+		services[i] = &electionService{nil, false, 0}
+		services[i].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(gossipCommon.ChainID(channelName), services[i].callback)
+	}
+
+	logger.Warning("Waiting for leader election")
+
+	assert.True(t, waitForLeaderElection(t, services, 0, time.Second*30, time.Second*2), "One leader (peer 0) should be selected")
+	assert.True(t, services[0].callbackInvokeRes, "Callback func for peer 0 should be called (chanA)")
+
+	for i := 1; i < n; i++ {
+		assert.False(t, services[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanA)", i)
+		assert.False(t, services[i].IsLeader(), "Peer %d should not be leader  in chanA", i)
+	}
+
+	// Adding some peers to new channel and creating leader election services for peers in new channel
+	// Expecting peer 1 (first in list of election services) to become leader of second channel
+	secondChannelPeerIndexes := []int{1, 3, 5, 7}
+	secondChannelName := "chanB"
+	secondChannelServices := make([]*electionService, len(secondChannelPeerIndexes))
+	addPeersToChannel(t, n, 10000, secondChannelName, gossips, secondChannelPeerIndexes)
+
+	for idx, i := range secondChannelPeerIndexes {
+		secondChannelServices[idx] = &electionService{nil, false, 0}
+		secondChannelServices[idx].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(gossipCommon.ChainID(secondChannelName), secondChannelServices[idx].callback)
+	}
+
+	assert.True(t, waitForLeaderElection(t, secondChannelServices, 0, time.Second*30, time.Second*2), "One leader (peer 1) should be selected")
+	assert.True(t, waitForLeaderElection(t, services, 0, time.Second*30, time.Second*2), "One leader (peer 0) should be selected")
+
+	assert.True(t, services[0].callbackInvokeRes, "Callback func for peer 0 should be called (chanA)")
+	for i := 1; i < n; i++ {
+		assert.False(t, services[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanA)", i)
+		assert.False(t, services[i].IsLeader(), "Peer %d should not be leader in chanA", i)
+	}
+
+	assert.True(t, secondChannelServices[0].callbackInvokeRes, "Callback func for peer 1 should be called (chanB)")
+	for i := 1; i < len(secondChannelServices); i++ {
+		assert.False(t, secondChannelServices[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanB)", secondChannelPeerIndexes[i])
+		assert.False(t, secondChannelServices[i].IsLeader(), "Peer %d should not be leader in chanB", i)
+	}
+
+	//Stopping 2 gossip instances(peer 0 and peer 1), should init re-election
+	//Now peer 2 become leader for first channel and peer 3 for second channel
+	stopPeers(gossips[:2])
+
+	assert.True(t, waitForLeaderElection(t, secondChannelServices[1:], 0, time.Second*30, time.Second*2), "One leader (peer 2) should be selected")
+	assert.True(t, waitForLeaderElection(t, services[2:], 0, time.Second*30, time.Second*2), "One leader (peer 3) should be selected")
+
+	assert.True(t, services[2].callbackInvokeRes, "Callback func for peer 2 should be called (chanA)")
+	for i := 3; i < n; i++ {
+		assert.False(t, services[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanA)", i)
+		assert.False(t, services[i].IsLeader(), "Peer %d should not be leader in chanA", i)
+	}
+
+	assert.True(t, secondChannelServices[1].callbackInvokeRes, "Callback func for peer 3 should be called (chanB)")
+	for i := 2; i < len(secondChannelServices); i++ {
+		assert.False(t, secondChannelServices[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanB)", secondChannelPeerIndexes[i])
+		assert.False(t, secondChannelServices[i].IsLeader(), "Peer %d should not be leader in chanB", i)
+	}
+
+	stopServices(secondChannelServices)
+	stopServices(services)
+	stopPeers(gossips[2:])
+}
+
+type electionService struct {
+	election.LeaderElectionService
+	callbackInvokeRes   bool
+	callbackInvokeCount int
+}
+
+func (es *electionService) callback(isLeader bool) {
+	es.callbackInvokeRes = isLeader
+	es.callbackInvokeCount = es.callbackInvokeCount + 1
+}
+
+type joinChanMsg struct {
+	anchorPeers []api.AnchorPeer
+}
+
+// SequenceNumber returns the sequence number of the block this joinChanMsg
+// is derived from
+func (jmc *joinChanMsg) SequenceNumber() uint64 {
+	return uint64(time.Now().UnixNano())
+}
+
+// AnchorPeers returns all the anchor peers that are in the channel
+func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
+	if len(jcm.anchorPeers) == 0 {
+		return []api.AnchorPeer{{OrgID: orgInChannelA}}
+	}
+	return jcm.anchorPeers
+}
+
+func waitForFullMembership(t *testing.T, gossips []GossipService, peersNum int, timeout time.Duration, testPollInterval time.Duration) bool {
+	end := time.Now().Add(timeout)
+	var correctPeers int
+	for time.Now().Before(end) {
+		correctPeers = 0
+		for _, g := range gossips {
+			if len(g.Peers()) == (peersNum - 1) {
+				correctPeers++
+			}
+		}
+		if correctPeers == peersNum {
+			return true
+		}
+		time.Sleep(testPollInterval)
+	}
+	logger.Warningf("Only %d peers have full membership", correctPeers)
+	return false
+}
+
+func waitForMultipleLeadersElection(t *testing.T, services []*electionService, leadersNum int, leaderIndexes []int, timeout time.Duration, testPollInterval time.Duration) bool {
+	end := time.Now().Add(timeout)
+	for time.Now().Before(end) {
+		leaders := 0
+		incorrectLeaders := false
+		for i, s := range services {
+			if s.IsLeader() {
+				expectedLeader := false
+				for _, index := range leaderIndexes {
+					if i == index {
+						leaders++
+						expectedLeader = true
+					}
+				}
+				if !expectedLeader {
+					logger.Warning("Incorrect peer", i, "become leader")
+					incorrectLeaders = true
+				}
+			}
+		}
+		if leaders == leadersNum && !incorrectLeaders {
+			return true
+		}
+		time.Sleep(testPollInterval)
+	}
+	return false
+}
+
+func waitForLeaderElection(t *testing.T, services []*electionService, leaderIndex int, timeout time.Duration, testPollInterval time.Duration) bool {
+	return waitForMultipleLeadersElection(t, services, 1, []int{leaderIndex}, timeout, testPollInterval)
+}
+
+func waitUntilOrFailBlocking(t *testing.T, f func(), timeout time.Duration) {
+	successChan := make(chan struct{}, 1)
+	go func() {
+		f()
+		successChan <- struct{}{}
+	}()
+	select {
+	case <-time.NewTimer(timeout).C:
+		break
+	case <-successChan:
+		return
+	}
+	util.PrintStackTrace()
+	assert.Fail(t, "Timeout expired!")
+}
+
+func stopServices(services []*electionService) {
+	stoppingWg := sync.WaitGroup{}
+	stoppingWg.Add(len(services))
+	for i, sI := range services {
+		go func(i int, s_i election.LeaderElectionService) {
+			defer stoppingWg.Done()
+			s_i.Stop()
+		}(i, sI)
+	}
+	stoppingWg.Wait()
+	time.Sleep(time.Second * time.Duration(2))
+}
+
+func stopPeers(peers []GossipService) {
+	stoppingWg := sync.WaitGroup{}
+	stoppingWg.Add(len(peers))
+	for i, pI := range peers {
+		go func(i int, p_i GossipService) {
+			defer stoppingWg.Done()
+			p_i.Stop()
+		}(i, pI)
+	}
+	stoppingWg.Wait()
+	time.Sleep(time.Second * time.Duration(2))
+}
+
+func addPeersToChannel(t *testing.T, n int, portPrefix int, channel string, peers []GossipService, peerIndexes []int) {
+	jcm := &joinChanMsg{}
+
+	wg := sync.WaitGroup{}
+	for _, i := range peerIndexes {
+		wg.Add(1)
+		go func(i int) {
+			peers[i].JoinChan(jcm, gossipCommon.ChainID(channel))
+			peers[i].UpdateChannelMetadata([]byte("bla bla"), gossipCommon.ChainID(channel))
+			wg.Done()
+		}(i)
+	}
+	waitUntilOrFailBlocking(t, wg.Wait, time.Second*10)
+}
+
+func startPeers(t *testing.T, n int, portPrefix int) []GossipService {
+
+	peers := make([]GossipService, n)
+	wg := sync.WaitGroup{}
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+
+			peers[i] = newGossipInstance(portPrefix, i, 100, 0, 1, 2, 3, 4, 5)
+			wg.Done()
+		}(i)
+	}
+	waitUntilOrFailBlocking(t, wg.Wait, time.Second*10)
+
+	return peers
+}
+
+func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) GossipService {
+	port := id + portPrefix
+	conf := &gossip.Config{
+		BindPort:                   port,
+		BootstrapPeers:             bootPeers(portPrefix, boot...),
+		ID:                         fmt.Sprintf("p%d", id),
+		MaxBlockCountToStore:       maxMsgCount,
+		MaxPropagationBurstLatency: time.Duration(500) * time.Millisecond,
+		MaxPropagationBurstSize:    20,
+		PropagateIterations:        1,
+		PropagatePeerNum:           3,
+		PullInterval:               time.Duration(2) * time.Second,
+		PullPeerNum:                5,
+		InternalEndpoint:           fmt.Sprintf("localhost:%d", port),
+		ExternalEndpoint:           fmt.Sprintf("1.2.3.4:%d", port),
+		PublishCertPeriod:          time.Duration(4) * time.Second,
+		PublishStateInfoInterval:   time.Duration(1) * time.Second,
+		RequestStateInfoInterval:   time.Duration(1) * time.Second,
+	}
+	cryptoService := &naiveCryptoService{}
+	idMapper := identity.NewIdentityMapper(cryptoService)
+
+	gossip := gossip.NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService, idMapper, api.PeerIdentityType(conf.InternalEndpoint))
+
+	gossipService := &gossipServiceImpl{
+		gossipSvc:       gossip,
+		chains:          make(map[string]state.GossipStateProvider),
+		leaderElection:  make(map[string]election.LeaderElectionService),
+		deliveryFactory: &deliveryFactoryImpl{},
+		idMapper:        idMapper,
+		peerIdentity:    api.PeerIdentityType(conf.InternalEndpoint),
+	}
+
+	return gossipService
+}
+
+func bootPeers(portPrefix int, ids ...int) []string {
+	peers := []string{}
+	for _, id := range ids {
+		peers = append(peers, fmt.Sprintf("localhost:%d", (id+portPrefix)))
+	}
+	return peers
+}
+
+type naiveCryptoService struct {
+}
+
+type orgCryptoService struct {
+}
+
+// OrgByPeerIdentity returns the OrgIdentityType
+// of a given peer identity
+func (*orgCryptoService) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
+	return orgInChannelA
+}
+
+// Verify verifies a JoinChanMessage, returns nil on success,
+// and an error on failure
+func (*orgCryptoService) Verify(joinChanMsg api.JoinChannelMessage) error {
+	return nil
+}
+
+// VerifyByChannel verifies a peer's signature on a message in the context
+// of a specific channel
+func (*naiveCryptoService) VerifyByChannel(_ gossipCommon.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
+	return nil
+}
+
+func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+	return nil
+}
+
+// GetPKIidOfCert returns the PKI-ID of a peer's identity
+func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) gossipCommon.PKIidType {
+	return gossipCommon.PKIidType(peerIdentity)
+}
+
+// VerifyBlock returns nil if the block is properly signed,
+// else returns error
+func (*naiveCryptoService) VerifyBlock(chainID gossipCommon.ChainID, signedBlock api.SignedBlock) error {
+	return nil
+}
+
+// Sign signs msg with this peer's signing key and outputs
+// the signature if no error occurred.
+func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {
+	return msg, nil
+}
+
+// Verify checks that signature is a valid signature of message under a peer's verification key.
+// If the verification succeeded, Verify returns nil meaning no error occurred.
+// If peerCert is nil, then the signature is verified against this peer's verification key.
+func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	equal := bytes.Equal(signature, message)
+	if !equal {
+		return fmt.Errorf("Wrong signature:%v, %v", signature, message)
+	}
+	return nil
+}
+
+var orgInChannelA = api.OrgIdentityType("ORG1")
