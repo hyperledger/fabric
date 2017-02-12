@@ -115,6 +115,20 @@ type Manager struct {
 
 	// SequenceVal is returned as the result of Sequence()
 	SequenceVal uint64
+
+	// ApplyVal is returned by Apply
+	ApplyVal error
+
+	// AppliedConfigUpdateEnvelope is set by Apply
+	AppliedConfigUpdateEnvelope *cb.ConfigUpdateEnvelope
+
+	// ValidateVal is returned by Validate
+	ValidateVal error
+}
+
+// ConfigEnvelope is currently unimplemented
+func (cm *Manager) ConfigEnvelope() *cb.ConfigEnvelope {
+	panic("Unimplemented")
 }
 
 // ConsensusType returns the ConsensusTypeVal
@@ -127,13 +141,13 @@ func (cm *Manager) Sequence() uint64 {
 	return cm.SequenceVal
 }
 
-// Apply panics
-func (cm *Manager) Apply(configtx *cb.ConfigEnvelope) error {
-	panic("Unimplemented")
+// Apply returns ApplyVal
+func (cm *Manager) Apply(configtx *cb.ConfigUpdateEnvelope) error {
+	cm.AppliedConfigUpdateEnvelope = configtx
+	return cm.ApplyVal
 }
 
-// Validate panics
-func (cm *Manager) Validate(configtx *cb.ConfigEnvelope) error {
-	panic("Unimplemented")
-
+// Validate returns ValidateVal
+func (cm *Manager) Validate(configtx *cb.ConfigUpdateEnvelope) error {
+	return cm.ValidateVal
 }
