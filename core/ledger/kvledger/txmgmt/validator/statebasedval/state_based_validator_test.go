@@ -99,25 +99,25 @@ func TestPhantomValidation(t *testing.T) {
 	//rwset1 should be valid
 	rwset1 := rwset.NewRWSet()
 	rqi1 := &rwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: true}
-	rqi1.AddResult(rwset.NewKVRead("key2", version.NewHeight(1, 2)))
-	rqi1.AddResult(rwset.NewKVRead("key3", version.NewHeight(1, 3)))
+	rqi1.Results = []*rwset.KVRead{rwset.NewKVRead("key2", version.NewHeight(1, 2)),
+		rwset.NewKVRead("key3", version.NewHeight(1, 3))}
 	rwset1.AddToRangeQuerySet("ns1", rqi1)
 	checkValidation(t, validator, []*rwset.RWSet{rwset1}, []int{})
 
 	//rwset2 should not be valid - Version of key4 changed
 	rwset2 := rwset.NewRWSet()
 	rqi2 := &rwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
-	rqi2.AddResult(rwset.NewKVRead("key2", version.NewHeight(1, 2)))
-	rqi2.AddResult(rwset.NewKVRead("key3", version.NewHeight(1, 3)))
-	rqi2.AddResult(rwset.NewKVRead("key4", version.NewHeight(1, 3)))
+	rqi2.Results = []*rwset.KVRead{rwset.NewKVRead("key2", version.NewHeight(1, 2)),
+		rwset.NewKVRead("key3", version.NewHeight(1, 3)),
+		rwset.NewKVRead("key4", version.NewHeight(1, 3))}
 	rwset2.AddToRangeQuerySet("ns1", rqi2)
 	checkValidation(t, validator, []*rwset.RWSet{rwset2}, []int{1})
 
 	//rwset3 should not be valid - simulate key3 got commited to db
 	rwset3 := rwset.NewRWSet()
 	rqi3 := &rwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
-	rqi3.AddResult(rwset.NewKVRead("key2", version.NewHeight(1, 2)))
-	rqi3.AddResult(rwset.NewKVRead("key4", version.NewHeight(1, 4)))
+	rqi3.Results = []*rwset.KVRead{rwset.NewKVRead("key2", version.NewHeight(1, 2)),
+		rwset.NewKVRead("key4", version.NewHeight(1, 4))}
 	rwset3.AddToRangeQuerySet("ns1", rqi3)
 	checkValidation(t, validator, []*rwset.RWSet{rwset3}, []int{1})
 
@@ -126,9 +126,9 @@ func TestPhantomValidation(t *testing.T) {
 	rwset4.AddToWriteSet("ns1", "key3", nil)
 	rwset5 := rwset.NewRWSet()
 	rqi5 := &rwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
-	rqi5.AddResult(rwset.NewKVRead("key2", version.NewHeight(1, 2)))
-	rqi5.AddResult(rwset.NewKVRead("key3", version.NewHeight(1, 3)))
-	rqi5.AddResult(rwset.NewKVRead("key4", version.NewHeight(1, 4)))
+	rqi5.Results = []*rwset.KVRead{rwset.NewKVRead("key2", version.NewHeight(1, 2)),
+		rwset.NewKVRead("key3", version.NewHeight(1, 3)),
+		rwset.NewKVRead("key4", version.NewHeight(1, 4))}
 	rwset5.AddToRangeQuerySet("ns1", rqi5)
 	checkValidation(t, validator, []*rwset.RWSet{rwset4, rwset5}, []int{1})
 
@@ -137,11 +137,66 @@ func TestPhantomValidation(t *testing.T) {
 	rwset6.AddToWriteSet("ns1", "key2_1", []byte("value2_1"))
 	rwset7 := rwset.NewRWSet()
 	rqi7 := &rwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
-	rqi7.AddResult(rwset.NewKVRead("key2", version.NewHeight(1, 2)))
-	rqi7.AddResult(rwset.NewKVRead("key3", version.NewHeight(1, 3)))
-	rqi7.AddResult(rwset.NewKVRead("key4", version.NewHeight(1, 4)))
+	rqi7.Results = []*rwset.KVRead{rwset.NewKVRead("key2", version.NewHeight(1, 2)),
+		rwset.NewKVRead("key3", version.NewHeight(1, 3)),
+		rwset.NewKVRead("key4", version.NewHeight(1, 4))}
 	rwset7.AddToRangeQuerySet("ns1", rqi7)
 	checkValidation(t, validator, []*rwset.RWSet{rwset6, rwset7}, []int{1})
+}
+
+func TestPhantomHashBasedValidation(t *testing.T) {
+	testDBEnv := stateleveldb.NewTestVDBEnv(t)
+	defer testDBEnv.Cleanup()
+
+	db, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	testutil.AssertNoError(t, err, "")
+
+	//populate db with initial data
+	batch := statedb.NewUpdateBatch()
+	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
+	batch.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
+	batch.Put("ns1", "key3", []byte("value3"), version.NewHeight(1, 3))
+	batch.Put("ns1", "key4", []byte("value4"), version.NewHeight(1, 4))
+	batch.Put("ns1", "key5", []byte("value5"), version.NewHeight(1, 5))
+	batch.Put("ns1", "key6", []byte("value6"), version.NewHeight(1, 6))
+	batch.Put("ns1", "key7", []byte("value7"), version.NewHeight(1, 7))
+	batch.Put("ns1", "key8", []byte("value8"), version.NewHeight(1, 8))
+	batch.Put("ns1", "key9", []byte("value9"), version.NewHeight(1, 9))
+	db.ApplyUpdates(batch, version.NewHeight(1, 9))
+
+	validator := NewValidator(db)
+
+	rwset1 := rwset.NewRWSet()
+	rqi1 := &rwset.RangeQueryInfo{StartKey: "key2", EndKey: "key9", ItrExhausted: true}
+	kvReadsDuringSimulation1 := []*rwset.KVRead{
+		rwset.NewKVRead("key2", version.NewHeight(1, 2)),
+		rwset.NewKVRead("key3", version.NewHeight(1, 3)),
+		rwset.NewKVRead("key4", version.NewHeight(1, 4)),
+		rwset.NewKVRead("key5", version.NewHeight(1, 5)),
+		rwset.NewKVRead("key6", version.NewHeight(1, 6)),
+		rwset.NewKVRead("key7", version.NewHeight(1, 7)),
+		rwset.NewKVRead("key8", version.NewHeight(1, 8)),
+	}
+	rqi1.ResultHash = buildTestHashResults(t, 2, kvReadsDuringSimulation1)
+	rwset1.AddToRangeQuerySet("ns1", rqi1)
+	checkValidation(t, validator, []*rwset.RWSet{rwset1}, []int{})
+
+	rwset2 := rwset.NewRWSet()
+	rqi2 := &rwset.RangeQueryInfo{StartKey: "key1", EndKey: "key9", ItrExhausted: false}
+	kvReadsDuringSimulation2 := []*rwset.KVRead{
+		rwset.NewKVRead("key1", version.NewHeight(1, 1)),
+		rwset.NewKVRead("key2", version.NewHeight(1, 2)),
+		rwset.NewKVRead("key3", version.NewHeight(1, 2)),
+		rwset.NewKVRead("key4", version.NewHeight(1, 4)),
+		rwset.NewKVRead("key5", version.NewHeight(1, 5)),
+		rwset.NewKVRead("key6", version.NewHeight(1, 6)),
+		rwset.NewKVRead("key7", version.NewHeight(1, 7)),
+		rwset.NewKVRead("key8", version.NewHeight(1, 8)),
+		rwset.NewKVRead("key9", version.NewHeight(1, 9)),
+	}
+	rqi2.ResultHash = buildTestHashResults(t, 2, kvReadsDuringSimulation2)
+	rwset2.AddToRangeQuerySet("ns1", rqi2)
+	checkValidation(t, validator, []*rwset.RWSet{rwset2}, []int{1})
 }
 
 func checkValidation(t *testing.T, validator *Validator, rwsets []*rwset.RWSet, invalidTxIndexes []int) {
@@ -160,8 +215,21 @@ func checkValidation(t *testing.T, validator *Validator, rwsets []*rwset.RWSet, 
 			invalidTxNum++
 		}
 	}
-
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, invalidTxNum, len(invalidTxIndexes))
 	//TODO Add the check for exact txnum that is marked invlid when bitarray is in place
+}
+
+func buildTestHashResults(t *testing.T, maxDegree int, kvReads []*rwset.KVRead) *rwset.MerkleSummary {
+	if len(kvReads) <= maxDegree {
+		t.Fatalf("This method should be called with number of KVReads more than maxDegree; Else, hashing won't be performedrwset")
+	}
+	helper, _ := rwset.NewRangeQueryResultsHelper(true, maxDegree)
+	for _, kvRead := range kvReads {
+		helper.AddResult(kvRead)
+	}
+	_, h, err := helper.Done()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNotNil(t, h)
+	return h
 }

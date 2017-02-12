@@ -68,6 +68,9 @@ func (s *lockBasedTxSimulator) SetStateMultipleKeys(namespace string, kvs map[st
 func (s *lockBasedTxSimulator) GetTxSimulationResults() ([]byte, error) {
 	logger.Debugf("Simulation completed, getting simulation results")
 	s.Done()
+	if s.helper.err != nil {
+		return nil, s.helper.err
+	}
 	return s.rwset.GetTxReadWriteSet().Marshal()
 }
 

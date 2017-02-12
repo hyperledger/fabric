@@ -92,3 +92,16 @@ func GetCouchDBDefinition() *CouchDBDef {
 func IsHistoryDBEnabled() bool {
 	return viper.GetBool("ledger.state.historyDatabase")
 }
+
+// IsQueryReadsHashingEnabled enables or disables computing of hash
+// of range query results for phantom item validation
+func IsQueryReadsHashingEnabled() bool {
+	return true
+}
+
+// GetMaxDegreeQueryReadsHashing return the maximum degree of the merkle tree for hashes of
+// of range query results for phantom item validation
+// For more details - see description in kvledger/txmgmt/rwset/query_results_helper.go
+func GetMaxDegreeQueryReadsHashing() int {
+	return 50
+}
