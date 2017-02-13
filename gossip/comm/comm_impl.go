@@ -98,7 +98,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		deadEndpoints:     make(chan common.PKIidType, 100),
 		stopping:          int32(0),
 		exitChan:          make(chan struct{}, 1),
-		subscriptions:     make([]chan ReceivedMessage, 0),
+		subscriptions:     make([]chan proto.ReceivedMessage, 0),
 		blackListedPKIIDs: make([]common.PKIidType, 0),
 	}
 	commInst.connStore = newConnStore(commInst, commInst.logger)
@@ -154,7 +154,7 @@ type commImpl struct {
 	exitChan          chan struct{}
 	stopping          int32
 	stopWG            sync.WaitGroup
-	subscriptions     []chan ReceivedMessage
+	subscriptions     []chan proto.ReceivedMessage
 	blackListedPKIIDs []common.PKIidType
 }
 
@@ -290,9 +290,9 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	return err
 }
 
-func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan ReceivedMessage {
+func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan proto.ReceivedMessage {
 	genericChan := c.msgPublisher.AddChannel(acceptor)
-	specificChan := make(chan ReceivedMessage, 10)
+	specificChan := make(chan proto.ReceivedMessage, 10)
 
 	if c.isStopping() {
 		c.logger.Warning("Accept() called but comm module is stopping, returning empty channel")

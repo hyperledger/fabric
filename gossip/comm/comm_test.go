@@ -94,7 +94,7 @@ func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	return inst, err
 }
 
-func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte) <-chan ReceivedMessage {
+func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte) <-chan proto.ReceivedMessage {
 	c := &commImpl{}
 	err := generateCertificates("key.pem", "cert.pem")
 	defer os.Remove("cert.pem")
@@ -189,7 +189,7 @@ func TestBasic(t *testing.T) {
 	m1 := comm1.Accept(acceptAll)
 	m2 := comm2.Accept(acceptAll)
 	out := make(chan uint64, 2)
-	reader := func(ch <-chan ReceivedMessage) {
+	reader := func(ch <-chan proto.ReceivedMessage) {
 		m := <-ch
 		out <- m.GetGossipMessage().Nonce
 	}
@@ -228,7 +228,7 @@ func TestBlackListPKIid(t *testing.T) {
 	defer comm3.Stop()
 	defer comm4.Stop()
 
-	reader := func(instance string, out chan uint64, in <-chan ReceivedMessage) {
+	reader := func(instance string, out chan uint64, in <-chan proto.ReceivedMessage) {
 		for {
 			msg := <-in
 			if msg == nil {
@@ -328,7 +328,7 @@ func TestResponses(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	nonceIncrememter := func(msg ReceivedMessage) ReceivedMessage {
+	nonceIncrememter := func(msg proto.ReceivedMessage) proto.ReceivedMessage {
 		msg.GetGossipMessage().Nonce++
 		return msg
 	}
@@ -365,11 +365,11 @@ func TestAccept(t *testing.T) {
 	comm2, _ := newCommInstance(7612, naiveSec)
 
 	evenNONCESelector := func(m interface{}) bool {
-		return m.(ReceivedMessage).GetGossipMessage().Nonce%2 == 0
+		return m.(proto.ReceivedMessage).GetGossipMessage().Nonce%2 == 0
 	}
 
 	oddNONCESelector := func(m interface{}) bool {
-		return m.(ReceivedMessage).GetGossipMessage().Nonce%2 != 0
+		return m.(proto.ReceivedMessage).GetGossipMessage().Nonce%2 != 0
 	}
 
 	evenNONCES := comm1.Accept(evenNONCESelector)
@@ -381,7 +381,7 @@ func TestAccept(t *testing.T) {
 	out := make(chan uint64, defRecvBuffSize)
 	sem := make(chan struct{}, 0)
 
-	readIntoSlice := func(a *[]uint64, ch <-chan ReceivedMessage) {
+	readIntoSlice := func(a *[]uint64, ch <-chan proto.ReceivedMessage) {
 		for m := range ch {
 			*a = append(*a, m.GetGossipMessage().Nonce)
 			out <- m.GetGossipMessage().Nonce
@@ -422,7 +422,7 @@ func TestReConnections(t *testing.T) {
 	comm1, _ := newCommInstance(3611, naiveSec)
 	comm2, _ := newCommInstance(3612, naiveSec)
 
-	reader := func(out chan uint64, in <-chan ReceivedMessage) {
+	reader := func(out chan uint64, in <-chan proto.ReceivedMessage) {
 		for {
 			msg := <-in
 			if msg == nil {

@@ -38,7 +38,7 @@ type Comm interface {
 
 	// Accept returns a dedicated read-only channel for messages sent by other nodes that match a certain predicate.
 	// Each message from the channel can be used to send a reply back to the sender
-	Accept(common.MessageAcceptor) <-chan ReceivedMessage
+	Accept(common.MessageAcceptor) <-chan proto.ReceivedMessage
 
 	// PresumedDead returns a read-only channel for node endpoints that are suspected to be offline
 	PresumedDead() <-chan common.PKIidType
@@ -62,21 +62,4 @@ type RemotePeer struct {
 // String converts a RemotePeer to a string
 func (p *RemotePeer) String() string {
 	return fmt.Sprintf("%s, PKIid:%v", p.Endpoint, p.PKIID)
-}
-
-// ReceivedMessage is a GossipMessage wrapper that
-// enables the user to send a message to the origin from which
-// the ReceivedMessage was sent from.
-// It also allows to know the identity of the sender
-type ReceivedMessage interface {
-
-	// Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
-	Respond(msg *proto.GossipMessage)
-
-	// GetGossipMessage returns the underlying GossipMessage
-	GetGossipMessage() *proto.GossipMessage
-
-	// GetPKIID returns the PKI-ID of the remote peer
-	// that sent the message
-	GetPKIID() common.PKIidType
 }

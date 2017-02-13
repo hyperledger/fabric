@@ -41,7 +41,7 @@ const (
 type PullMsgType int
 
 // MessageHook defines a function that will run after a certain pull message is received
-type MessageHook func(itemIDs []string, items []*proto.GossipMessage, msg comm.ReceivedMessage)
+type MessageHook func(itemIDs []string, items []*proto.GossipMessage, msg proto.ReceivedMessage)
 
 // Sender sends messages to remote peers
 type Sender interface {
@@ -85,7 +85,7 @@ type Mediator interface {
 	Remove(*proto.GossipMessage)
 
 	// HandleMessage handles a message from some remote peer
-	HandleMessage(msg comm.ReceivedMessage)
+	HandleMessage(msg proto.ReceivedMessage)
 }
 
 // pullMediatorImpl is an implementation of Mediator
@@ -118,7 +118,7 @@ func NewPullMediator(config PullConfig, sndr Sender, memSvc MembershipService, i
 	return p
 }
 
-func (p *pullMediatorImpl) HandleMessage(m comm.ReceivedMessage) {
+func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 	if m.GetGossipMessage() == nil || !m.GetGossipMessage().IsPullMsg() {
 		return
 	}
@@ -246,7 +246,7 @@ func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context int
 		},
 	}
 	p.logger.Debug("Sending digest", digMsg.GetDataDig().Digests)
-	context.(comm.ReceivedMessage).Respond(digMsg)
+	context.(proto.ReceivedMessage).Respond(digMsg)
 }
 
 // SendReq sends an array of items to a certain remote PullEngine identified
@@ -292,7 +292,7 @@ func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce ui
 		},
 	}
 	p.logger.Debug("Sending", returnedUpdate, "to")
-	context.(comm.ReceivedMessage).Respond(returnedUpdate)
+	context.(proto.ReceivedMessage).Respond(returnedUpdate)
 }
 
 func (p *pullMediatorImpl) peersWithEndpoints(endpoints ...string) []*comm.RemotePeer {

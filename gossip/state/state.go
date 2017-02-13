@@ -48,7 +48,7 @@ type GossipStateProvider interface {
 }
 
 var remoteStateMsgFilter = func(message interface{}) bool {
-	return message.(comm.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
+	return message.(proto.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
 }
 
 const (
@@ -69,7 +69,7 @@ type GossipStateProviderImpl struct {
 	// Channel to read gossip messages from
 	gossipChan <-chan *proto.GossipMessage
 
-	commChan <-chan comm.ReceivedMessage
+	commChan <-chan proto.ReceivedMessage
 
 	// Flag which signals for termination
 	stopFlag int32
@@ -177,7 +177,7 @@ func (s *GossipStateProviderImpl) listen() {
 	s.done.Done()
 }
 
-func (s *GossipStateProviderImpl) directMessage(msg comm.ReceivedMessage) {
+func (s *GossipStateProviderImpl) directMessage(msg proto.ReceivedMessage) {
 	s.logger.Debug("[ENTER] -> directMessage")
 	defer s.logger.Debug("[EXIT] ->  directMessage")
 
@@ -201,7 +201,7 @@ func (s *GossipStateProviderImpl) directMessage(msg comm.ReceivedMessage) {
 	}
 }
 
-func (s *GossipStateProviderImpl) handleStateRequest(msg comm.ReceivedMessage) {
+func (s *GossipStateProviderImpl) handleStateRequest(msg proto.ReceivedMessage) {
 	request := msg.GetGossipMessage().GetStateRequest()
 	response := &proto.RemoteStateResponse{Payloads: make([]*proto.Payload, 0)}
 	for _, seqNum := range request.SeqNums {
@@ -233,7 +233,7 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg comm.ReceivedMessage) {
 	})
 }
 
-func (s *GossipStateProviderImpl) handleStateResponse(msg comm.ReceivedMessage) {
+func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage) {
 	response := msg.GetGossipMessage().GetStateResponse()
 	for _, payload := range response.GetPayloads() {
 		s.logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)

@@ -303,6 +303,29 @@ func (m *GossipMessage) IsTagLegal() error {
 type Verifier func(peerIdentity []byte, signature, message []byte) error
 type Signer func(msg []byte) ([]byte, error)
 
+// ReceivedMessage is a GossipMessage wrapper that
+// enables the user to send a message to the origin from which
+// the ReceivedMessage was sent from.
+// It also allows to know the identity of the sender,
+// to obtain the raw bytes the GossipMessage was un-marshaled from,
+// and the signature over these raw bytes.
+type ReceivedMessage interface {
+
+	// Respond sends a GossipMessage to the origin from which this ReceivedMessage was sent from
+	Respond(msg *GossipMessage)
+
+	// GetGossipMessage returns the underlying GossipMessage
+	GetGossipMessage() *GossipMessage
+
+	// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+	// constructed with
+	GetSourceMessage() *SignedGossipMessage
+
+	// GetPKIID returns the PKI-ID of the remote peer
+	// that sent the message
+	GetPKIID() common.PKIidType
+}
+
 // Sign signs a GossipMessage with given Signer.
 // Returns a signed message on success
 // or an error on failure

@@ -46,6 +46,12 @@ type pullMsg struct {
 	msg         *proto.GossipMessage
 }
 
+// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// constructed with
+func (pm *pullMsg) GetSourceMessage() *proto.SignedGossipMessage {
+	return nil
+}
+
 func (pm *pullMsg) Respond(msg *proto.GossipMessage) {
 	pm.respondChan <- &pullMsg{
 		msg:         msg,
@@ -93,7 +99,7 @@ func (p *pullInstance) stop() {
 	p.stopChan <- struct{}{}
 }
 
-func (p *pullInstance) wrapPullMsg(msg *proto.GossipMessage) comm.ReceivedMessage {
+func (p *pullInstance) wrapPullMsg(msg *proto.GossipMessage) proto.ReceivedMessage {
 	return &pullMsg{
 		msg:         msg,
 		respondChan: p.msgChan,
@@ -164,7 +170,7 @@ func TestRegisterMsgHook(t *testing.T) {
 
 	for _, msgType := range []PullMsgType{HelloMsgType, DigestMsgType, RequestMsgType, ResponseMsgType} {
 		mType := msgType
-		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*proto.GossipMessage, _ comm.ReceivedMessage) {
+		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*proto.GossipMessage, _ proto.ReceivedMessage) {
 			receivedMsgTypes.Add(mType)
 		})
 	}
@@ -226,7 +232,7 @@ func TestHandleMessage(t *testing.T) {
 	inst1ReceivedDigest := int32(0)
 	inst1ReceivedResponse := int32(0)
 
-	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.GossipMessage, _ comm.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.GossipMessage, _ proto.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) {
 			return
 		}
@@ -234,7 +240,7 @@ func TestHandleMessage(t *testing.T) {
 		assert.True(t, len(itemIds) == 3)
 	})
 
-	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.GossipMessage, _ comm.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.GossipMessage, _ proto.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedResponse) == int32(1) {
 			return
 		}

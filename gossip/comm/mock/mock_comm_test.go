@@ -37,8 +37,8 @@ func TestMockComm(t *testing.T) {
 	defer comm1.Stop()
 
 	msgCh := comm1.Accept(func(message interface{}) bool {
-		return message.(comm.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
-			message.(comm.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
+		return message.(proto.ReceivedMessage).GetGossipMessage().GetStateRequest() != nil ||
+			message.(proto.ReceivedMessage).GetGossipMessage().GetStateResponse() != nil
 	})
 
 	comm2 := NewCommMock(second.endpoint, members)
