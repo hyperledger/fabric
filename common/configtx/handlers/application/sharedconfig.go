@@ -110,19 +110,19 @@ func (di *SharedConfigImpl) CommitConfig() {
 }
 
 // ProposeConfig is used to add new config to the config proposal
-func (di *SharedConfigImpl) ProposeConfig(configItem *cb.ConfigItem) error {
-	switch configItem.Key {
+func (di *SharedConfigImpl) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+	switch key {
 	case AnchorPeersKey:
 		anchorPeers := &pb.AnchorPeers{}
-		if err := proto.Unmarshal(configItem.Value, anchorPeers); err != nil {
-			return fmt.Errorf("Unmarshaling error for %s: %s", configItem.Key, err)
+		if err := proto.Unmarshal(configValue.Value, anchorPeers); err != nil {
+			return fmt.Errorf("Unmarshaling error for %s: %s", key, err)
 		}
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Setting %s to %v", configItem.Key, anchorPeers.AnchorPeers)
+			logger.Debugf("Setting %s to %v", key, anchorPeers.AnchorPeers)
 		}
 		di.pendingConfig.anchorPeers = anchorPeers.AnchorPeers
 	default:
-		logger.Warningf("Uknown Peer config item with key %s", configItem.Key)
+		logger.Warningf("Uknown Peer config item with key %s", key)
 	}
 	return nil
 }

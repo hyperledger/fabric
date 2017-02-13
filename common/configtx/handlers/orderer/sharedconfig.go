@@ -177,11 +177,11 @@ func (pm *ManagerImpl) CommitConfig() {
 }
 
 // ProposeConfig is used to add new config to the config proposal
-func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigItem) error {
-	switch configItem.Key {
+func (pm *ManagerImpl) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+	switch key {
 	case ConsensusTypeKey:
 		consensusType := &ab.ConsensusType{}
-		if err := proto.Unmarshal(configItem.Value, consensusType); err != nil {
+		if err := proto.Unmarshal(configValue.Value, consensusType); err != nil {
 			return fmt.Errorf("Unmarshaling error for ConsensusType: %s", err)
 		}
 		if pm.config.consensusType == "" {
@@ -194,7 +194,7 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigItem) error {
 		pm.pendingConfig.consensusType = consensusType.Type
 	case BatchSizeKey:
 		batchSize := &ab.BatchSize{}
-		if err := proto.Unmarshal(configItem.Value, batchSize); err != nil {
+		if err := proto.Unmarshal(configValue.Value, batchSize); err != nil {
 			return fmt.Errorf("Unmarshaling error for BatchSize: %s", err)
 		}
 		if batchSize.MaxMessageCount == 0 {
@@ -214,7 +214,7 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigItem) error {
 		var timeoutValue time.Duration
 		var err error
 		batchTimeout := &ab.BatchTimeout{}
-		if err = proto.Unmarshal(configItem.Value, batchTimeout); err != nil {
+		if err = proto.Unmarshal(configValue.Value, batchTimeout); err != nil {
 			return fmt.Errorf("Unmarshaling error for BatchTimeout: %s", err)
 		}
 		if timeoutValue, err = time.ParseDuration(batchTimeout.Timeout); err != nil {
@@ -226,7 +226,7 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigItem) error {
 		pm.pendingConfig.batchTimeout = timeoutValue
 	case ChainCreationPolicyNamesKey:
 		chainCreationPolicyNames := &ab.ChainCreationPolicyNames{}
-		if err := proto.Unmarshal(configItem.Value, chainCreationPolicyNames); err != nil {
+		if err := proto.Unmarshal(configValue.Value, chainCreationPolicyNames); err != nil {
 			return fmt.Errorf("Unmarshaling error for ChainCreator: %s", err)
 		}
 		if chainCreationPolicyNames.Names == nil {
@@ -238,19 +238,19 @@ func (pm *ManagerImpl) ProposeConfig(configItem *cb.ConfigItem) error {
 		}
 	case IngressPolicyNamesKey:
 		ingressPolicyNames := &ab.IngressPolicyNames{}
-		if err := proto.Unmarshal(configItem.Value, ingressPolicyNames); err != nil {
+		if err := proto.Unmarshal(configValue.Value, ingressPolicyNames); err != nil {
 			return fmt.Errorf("Unmarshaling error for IngressPolicyNames: %s", err)
 		}
 		pm.pendingConfig.ingressPolicyNames = ingressPolicyNames.Names
 	case EgressPolicyNamesKey:
 		egressPolicyNames := &ab.EgressPolicyNames{}
-		if err := proto.Unmarshal(configItem.Value, egressPolicyNames); err != nil {
+		if err := proto.Unmarshal(configValue.Value, egressPolicyNames); err != nil {
 			return fmt.Errorf("Unmarshaling error for EgressPolicyNames: %s", err)
 		}
 		pm.pendingConfig.egressPolicyNames = egressPolicyNames.Names
 	case KafkaBrokersKey:
 		kafkaBrokers := &ab.KafkaBrokers{}
-		if err := proto.Unmarshal(configItem.Value, kafkaBrokers); err != nil {
+		if err := proto.Unmarshal(configValue.Value, kafkaBrokers); err != nil {
 			return fmt.Errorf("Unmarshaling error for KafkaBrokers: %s", err)
 		}
 		if len(kafkaBrokers.Brokers) == 0 {

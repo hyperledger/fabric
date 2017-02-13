@@ -76,7 +76,7 @@ type OrdererConfig interface {
 // Handler provides a hook which allows other pieces of code to participate in config proposals
 type Handler interface {
 	// ProposeConfig called when config is added to a proposal
-	ProposeConfig(configItem *cb.ConfigItem) error
+	ProposeConfig(key string, configValue *cb.ConfigValue) error
 }
 
 // Manager provides a mechanism to query and update config

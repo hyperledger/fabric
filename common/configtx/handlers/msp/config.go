@@ -60,9 +60,9 @@ func (bh *MSPConfigHandler) CommitConfig() {
 }
 
 // ProposeConfig called when config is added to a proposal
-func (bh *MSPConfigHandler) ProposeConfig(configItem *common.ConfigItem) error {
+func (bh *MSPConfigHandler) ProposeConfig(key string, configValue *common.ConfigValue) error {
 	mspconfig := &mspprotos.MSPConfig{}
-	err := proto.Unmarshal(configItem.Value, mspconfig)
+	err := proto.Unmarshal(configValue.Value, mspconfig)
 	if err != nil {
 		return fmt.Errorf("Error unmarshalling msp config item, err %s", err)
 	}

@@ -226,14 +226,13 @@ func TestNewChain(t *testing.T) {
 	manager := NewManagerImpl(lf, consenters, &mockCryptoHelper{})
 
 	generator := provisional.New(conf)
-	items := generator.TemplateItems()
-	simpleTemplate := configtx.NewSimpleTemplate(items...)
+	channelTemplate := generator.ChannelTemplate()
 
 	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
 	assert.NoError(t, err)
 
 	newChainID := "TestNewChain"
-	newChainMessage, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, newChainID, signer, simpleTemplate)
+	newChainMessage, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, newChainID, signer, channelTemplate)
 	if err != nil {
 		t.Fatalf("Error producing config transaction: %s", err)
 	}

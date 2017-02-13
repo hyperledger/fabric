@@ -44,6 +44,40 @@ type Template interface {
 	Envelope(chainID string) (*cb.ConfigEnvelope, error)
 }
 
+type simpleTemplateNext struct {
+	configGroup *cb.ConfigGroup
+}
+
+// NewSimpleTemplateNext creates a Template using the supplied ConfigGroup
+func NewSimpleTemplateNext(configGroups ...*cb.ConfigGroup) Template {
+	sts := make([]Template, len(configGroups))
+	for i, group := range configGroups {
+		sts[i] = &simpleTemplateNext{
+			configGroup: group,
+		}
+	}
+	return NewCompositeTemplate(sts...)
+}
+
+// Envelope returns a ConfigEnvelopes for the given chainID
+func (st *simpleTemplateNext) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
+	config, err := proto.Marshal(&cb.ConfigNext{
+		Header: &cb.ChannelHeader{
+			ChannelId: chainID,
+			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
+		},
+		Channel: st.configGroup,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &cb.ConfigEnvelope{
+		Config: config,
+	}, nil
+}
+
 type simpleTemplate struct {
 	items []*cb.ConfigItem
 }
@@ -153,8 +187,6 @@ func copyGroup(source *cb.ConfigGroup, target *cb.ConfigGroup) error {
 // Items returns a set of ConfigEnvelopes for the given chainID, and errors only on marshaling errors
 func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
 	channel := cb.NewConfigGroup()
-	channel.Groups[ApplicationGroup] = cb.NewConfigGroup()
-	channel.Groups[OrdererGroup] = cb.NewConfigGroup()
 
 	for i := range ct.templates {
 		configEnv, err := ct.templates[i].Envelope(chainID)

@@ -206,8 +206,7 @@ func (cm *configManager) recurseConfig(result map[string]comparable, path []stri
 			return fmt.Errorf("Illegal characters in values key: %s", key)
 		}
 
-		err := valueHandler.ProposeConfig(&cb.ConfigItem{
-			Key:   key,
+		err := valueHandler.ProposeConfig(key, &cb.ConfigValue{
 			Value: value.Value,
 		})
 		if err != nil {
@@ -224,10 +223,8 @@ func (cm *configManager) recurseConfig(result map[string]comparable, path []stri
 		}
 
 		logger.Debugf("Proposing policy: %s", key)
-		err := cm.initializer.PolicyProposer().ProposeConfig(&cb.ConfigItem{
+		err := cm.initializer.PolicyProposer().ProposeConfig(key, &cb.ConfigValue{
 			// TODO, fix policy interface to take the policy directly
-			Type:  cb.ConfigItem_POLICY,
-			Key:   key,
 			Value: utils.MarshalOrPanic(policy.Policy),
 		})
 

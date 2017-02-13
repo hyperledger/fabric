@@ -29,3 +29,11 @@ func TestConfigtxInitializerInterface(t *testing.T) {
 func TestConfigtxManagerInterface(t *testing.T) {
 	_ = configtxapi.Manager(&Manager{})
 }
+
+func TestConfigtxResourcesInterface(t *testing.T) {
+	_ = configtxapi.Resources(&Resources{})
+}
+
+func TestConfigtxHandlerInterface(t *testing.T) {
+	_ = configtxapi.Handler(&Handler{})
+}

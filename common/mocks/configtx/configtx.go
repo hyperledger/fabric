@@ -18,6 +18,7 @@ package configtx
 
 import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -25,7 +26,7 @@ import (
 
 type Resources struct {
 	// PolicyManagerVal is returned as the result of PolicyManager()
-	PolicyManagerVal policies.Manager
+	PolicyManagerVal *mockpolicies.Manager
 
 	// ChannelConfigVal is returned as the result of ChannelConfig()
 	ChannelConfigVal configtxapi.ChannelConfig
@@ -90,6 +91,20 @@ func (i *Initializer) CommitConfig() {}
 
 // RollbackConfig calls through to the HandlerVal
 func (i *Initializer) RollbackConfig() {}
+
+// Handler mocks the configtxapi.Handler interface
+type Handler struct {
+	LastKey               string
+	LastValue             *cb.ConfigValue
+	ErrorForProposeConfig error
+}
+
+// ProposeConfig sets LastKey to key, and LastValue to configValue, returning ErrorForProposedConfig
+func (h *Handler) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+	h.LastKey = key
+	h.LastValue = configValue
+	return h.ErrorForProposeConfig
+}
 
 // Manager is a mock implementation of configtxapi.Manager
 type Manager struct {
