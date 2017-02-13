@@ -202,11 +202,24 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	jsonValue9 := "{\"asset_name\": \"marble9\",\"color\": \"green\",\"size\": 9,\"owner\": \"fred\"}"
 	batch.Put("ns1", "key9", []byte(jsonValue9), version.NewHeight(1, 9))
 	jsonValue10 := "{\"asset_name\": \"marble10\",\"color\": \"green\",\"size\": 10,\"owner\": \"mary\"}"
-	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 12))
-	savePoint := version.NewHeight(2, 12)
+	batch.Put("ns1", "key10", []byte(jsonValue10), version.NewHeight(1, 10))
+
+	//add keys for a separate namespace
+	batch.Put("ns2", "key1", []byte(jsonValue1), version.NewHeight(1, 11))
+	batch.Put("ns2", "key2", []byte(jsonValue2), version.NewHeight(1, 12))
+	batch.Put("ns2", "key3", []byte(jsonValue3), version.NewHeight(1, 13))
+	batch.Put("ns2", "key4", []byte(jsonValue4), version.NewHeight(1, 14))
+	batch.Put("ns2", "key5", []byte(jsonValue5), version.NewHeight(1, 15))
+	batch.Put("ns2", "key6", []byte(jsonValue6), version.NewHeight(1, 16))
+	batch.Put("ns2", "key7", []byte(jsonValue7), version.NewHeight(1, 17))
+	batch.Put("ns2", "key8", []byte(jsonValue8), version.NewHeight(1, 18))
+	batch.Put("ns2", "key9", []byte(jsonValue9), version.NewHeight(1, 19))
+	batch.Put("ns2", "key10", []byte(jsonValue10), version.NewHeight(1, 20))
+
+	savePoint := version.NewHeight(2, 21)
 	db.ApplyUpdates(batch, savePoint)
 
-	// query for owner=jerry
+	// query for owner=jerry, use namespace "ns1"
 	itr, err := db.ExecuteQuery("ns1", "{\"selector\":{\"owner\":\"jerry\"}}")
 	testutil.AssertNoError(t, err, "")
 
@@ -224,6 +237,33 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertNil(t, queryResult2)
 
+	// query for owner=jerry, use namespace "ns2"
+	itr, err = db.ExecuteQuery("ns2", "{\"selector\":{\"owner\":\"jerry\"}}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify one jerry result
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNotNil(t, queryResult1)
+	versionedQueryRecord = queryResult1.(*statedb.VersionedQueryRecord)
+	stringRecord = string(versionedQueryRecord.Record)
+	bFoundRecord = strings.Contains(stringRecord, "jerry")
+	testutil.AssertEquals(t, bFoundRecord, true)
+
+	// verify no more results
+	queryResult2, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult2)
+
+	// query for owner=jerry, use namespace "ns3"
+	itr, err = db.ExecuteQuery("ns3", "{\"selector\":{\"owner\":\"jerry\"}}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify results - should be no records
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult1)
+
 	// query using bad query string
 	itr, err = db.ExecuteQuery("ns1", "this is an invalid query string")
 	testutil.AssertError(t, err, "Should have received an error for invalid query string")
@@ -237,7 +277,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertNil(t, queryResult3)
 
-	// query with fields
+	// query with fields, namespace "ns1"
 	itr, err = db.ExecuteQuery("ns1", "{\"selector\":{\"owner\":\"jerry\"},\"fields\": [\"owner\", \"asset_name\", \"color\", \"size\"]}")
 	testutil.AssertNoError(t, err, "")
 
@@ -255,7 +295,34 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertNil(t, queryResult2)
 
-	// query with complex selector
+	// query with fields, namespace "ns2"
+	itr, err = db.ExecuteQuery("ns2", "{\"selector\":{\"owner\":\"jerry\"},\"fields\": [\"owner\", \"asset_name\", \"color\", \"size\"]}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify one jerry result
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNotNil(t, queryResult1)
+	versionedQueryRecord = queryResult1.(*statedb.VersionedQueryRecord)
+	stringRecord = string(versionedQueryRecord.Record)
+	bFoundRecord = strings.Contains(stringRecord, "jerry")
+	testutil.AssertEquals(t, bFoundRecord, true)
+
+	// verify no more results
+	queryResult2, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult2)
+
+	// query with fields, namespace "ns3"
+	itr, err = db.ExecuteQuery("ns3", "{\"selector\":{\"owner\":\"jerry\"},\"fields\": [\"owner\", \"asset_name\", \"color\", \"size\"]}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify no results
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult1)
+
+	// query with complex selector, namespace "ns1"
 	itr, err = db.ExecuteQuery("ns1", "{\"selector\":{\"$and\":[{\"size\":{\"$gt\": 5}},{\"size\":{\"$lt\":8}},{\"$not\":{\"size\":6}}]}}")
 	testutil.AssertNoError(t, err, "")
 
@@ -273,7 +340,34 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertNil(t, queryResult2)
 
-	// query with embedded implicit "AND" and explicit "OR"
+	// query with complex selector, namespace "ns2"
+	itr, err = db.ExecuteQuery("ns2", "{\"selector\":{\"$and\":[{\"size\":{\"$gt\": 5}},{\"size\":{\"$lt\":8}},{\"$not\":{\"size\":6}}]}}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify one fred result
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNotNil(t, queryResult1)
+	versionedQueryRecord = queryResult1.(*statedb.VersionedQueryRecord)
+	stringRecord = string(versionedQueryRecord.Record)
+	bFoundRecord = strings.Contains(stringRecord, "fred")
+	testutil.AssertEquals(t, bFoundRecord, true)
+
+	// verify no more results
+	queryResult2, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult2)
+
+	// query with complex selector, namespace "ns3"
+	itr, err = db.ExecuteQuery("ns3", "{\"selector\":{\"$and\":[{\"size\":{\"$gt\": 5}},{\"size\":{\"$lt\":8}},{\"$not\":{\"size\":6}}]}}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify no more results
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult1)
+
+	// query with embedded implicit "AND" and explicit "OR", namespace "ns1"
 	itr, err = db.ExecuteQuery("ns1", "{\"selector\":{\"color\":\"green\",\"$or\":[{\"owner\":\"fred\"},{\"owner\":\"mary\"}]}}")
 	testutil.AssertNoError(t, err, "")
 
@@ -299,5 +393,41 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult3, err = itr.Next()
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertNil(t, queryResult3)
+
+	// query with embedded implicit "AND" and explicit "OR", namespace "ns2"
+	itr, err = db.ExecuteQuery("ns2", "{\"selector\":{\"color\":\"green\",\"$or\":[{\"owner\":\"fred\"},{\"owner\":\"mary\"}]}}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify one green result
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNotNil(t, queryResult1)
+	versionedQueryRecord = queryResult1.(*statedb.VersionedQueryRecord)
+	stringRecord = string(versionedQueryRecord.Record)
+	bFoundRecord = strings.Contains(stringRecord, "green")
+	testutil.AssertEquals(t, bFoundRecord, true)
+
+	// verify another green result
+	queryResult2, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNotNil(t, queryResult2)
+	versionedQueryRecord = queryResult2.(*statedb.VersionedQueryRecord)
+	stringRecord = string(versionedQueryRecord.Record)
+	bFoundRecord = strings.Contains(stringRecord, "green")
+	testutil.AssertEquals(t, bFoundRecord, true)
+
+	// verify no more results
+	queryResult3, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult3)
+
+	// query with embedded implicit "AND" and explicit "OR", namespace "ns3"
+	itr, err = db.ExecuteQuery("ns3", "{\"selector\":{\"color\":\"green\",\"$or\":[{\"owner\":\"fred\"},{\"owner\":\"mary\"}]}}")
+	testutil.AssertNoError(t, err, "")
+
+	// verify no results
+	queryResult1, err = itr.Next()
+	testutil.AssertNoError(t, err, "")
+	testutil.AssertNil(t, queryResult1)
 
 }

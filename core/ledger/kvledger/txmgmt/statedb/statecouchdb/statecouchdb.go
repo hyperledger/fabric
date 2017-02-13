@@ -229,7 +229,11 @@ func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 	//TODO - limit is currently set at 1000,  eventually this will need to be changed
 	//to reflect a config option and potentially return an exception if the threshold is exceeded
 	// skip (paging) is not utilized by fabric
-	queryString := ApplyQueryWrapper(namespace, query)
+	queryString, err := ApplyQueryWrapper(namespace, query)
+	if err != nil {
+		logger.Debugf("Error calling QueryDocuments(): %s\n", err.Error())
+		return nil, err
+	}
 
 	queryResult, err := vdb.db.QueryDocuments(queryString, 1000, 0)
 	if err != nil {
