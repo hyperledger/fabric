@@ -114,7 +114,17 @@ func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.Co
 				Header:  configUpdate.Header,
 				Channel: configUpdate.WriteSet,
 			},
-			LastUpdate: configUpdateEnv,
+			LastUpdate: &cb.Envelope{
+				Payload: utils.MarshalOrPanic(&cb.Payload{
+					Header: &cb.Header{
+						ChannelHeader: &cb.ChannelHeader{
+							Type:      int32(cb.HeaderType_CONFIG_UPDATE),
+							ChannelId: chainID,
+						},
+					},
+					Data: utils.MarshalOrPanic(configUpdateEnv),
+				}),
+			},
 		}),
 	}
 	return &cb.Envelope{

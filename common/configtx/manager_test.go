@@ -72,7 +72,7 @@ func makeConfigEnvelope(chainID string, configPairs ...*configPair) *cb.ConfigEn
 	}
 }
 
-func makeConfigUpdateEnvelope(chainID string, configPairs ...*configPair) *cb.ConfigUpdateEnvelope {
+func makeConfigUpdateEnvelope(chainID string, configPairs ...*configPair) *cb.Envelope {
 	values := make(map[string]*cb.ConfigValue)
 	for _, pair := range configPairs {
 		values[pair.key] = pair.value
@@ -84,8 +84,17 @@ func makeConfigUpdateEnvelope(chainID string, configPairs ...*configPair) *cb.Co
 			Values: values,
 		},
 	}
-	return &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: utils.MarshalOrPanic(config),
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: &cb.ChannelHeader{
+					Type: int32(cb.HeaderType_CONFIG_UPDATE),
+				},
+			},
+			Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
+				ConfigUpdate: utils.MarshalOrPanic(config),
+			}),
+		}),
 	}
 }
 
@@ -274,7 +283,7 @@ func TestEmptyConfigUpdate(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigUpdateEnvelope{}
+	newConfig := &cb.Envelope{}
 
 	err = cm.Validate(newConfig)
 	if err == nil {

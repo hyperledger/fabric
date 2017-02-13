@@ -19,11 +19,11 @@ package configtxfilter
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
-
-	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 type configFilter struct {
@@ -39,7 +39,7 @@ func NewFilter(manager api.Manager) filter.Rule {
 
 type configCommitter struct {
 	manager        api.Manager
-	configEnvelope *cb.ConfigUpdateEnvelope
+	configEnvelope *cb.Envelope
 }
 
 func (cc *configCommitter) Commit() {
@@ -55,9 +55,7 @@ func (cc *configCommitter) Isolated() bool {
 
 // Apply applies the rule to the given Envelope, replying with the Action to take for the message
 func (cf *configFilter) Apply(message *cb.Envelope) (filter.Action, filter.Committer) {
-	msgData := &cb.Payload{}
-
-	err := proto.Unmarshal(message.Payload, msgData)
+	msgData, err := utils.UnmarshalPayload(message.Payload)
 	if err != nil {
 		return filter.Forward, nil
 	}
@@ -66,19 +64,18 @@ func (cf *configFilter) Apply(message *cb.Envelope) (filter.Action, filter.Commi
 		return filter.Forward, nil
 	}
 
-	config := &cb.ConfigEnvelope{}
-	err = proto.Unmarshal(msgData.Data, config)
+	configEnvelope, err := configtx.UnmarshalConfigEnvelope(msgData.Data)
 	if err != nil {
 		return filter.Reject, nil
 	}
 
-	err = cf.configManager.Validate(config.LastUpdate)
+	err = cf.configManager.Validate(configEnvelope.LastUpdate)
 	if err != nil {
 		return filter.Reject, nil
 	}
 
 	return filter.Accept, &configCommitter{
 		manager:        cf.configManager,
-		configEnvelope: config.LastUpdate,
+		configEnvelope: configEnvelope.LastUpdate,
 	}
 }

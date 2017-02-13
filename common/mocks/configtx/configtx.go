@@ -120,7 +120,7 @@ type Manager struct {
 	ApplyVal error
 
 	// AppliedConfigUpdateEnvelope is set by Apply
-	AppliedConfigUpdateEnvelope *cb.ConfigUpdateEnvelope
+	AppliedConfigUpdateEnvelope *cb.Envelope
 
 	// ValidateVal is returned by Validate
 	ValidateVal error
@@ -142,12 +142,12 @@ func (cm *Manager) Sequence() uint64 {
 }
 
 // Apply returns ApplyVal
-func (cm *Manager) Apply(configtx *cb.ConfigUpdateEnvelope) error {
+func (cm *Manager) Apply(configtx *cb.Envelope) error {
 	cm.AppliedConfigUpdateEnvelope = configtx
 	return cm.ApplyVal
 }
 
 // Validate returns ValidateVal
-func (cm *Manager) Validate(configtx *cb.ConfigUpdateEnvelope) error {
+func (cm *Manager) Validate(configtx *cb.Envelope) error {
 	return cm.ValidateVal
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -155,8 +156,19 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
 		return cb.Status_BAD_REQUEST
 	}
 
-	configNext := &cb.ConfigUpdate{}
-	err := proto.Unmarshal(configEnvelope.LastUpdate.ConfigUpdate, configNext)
+	configEnvEnvPayload, err := utils.UnmarshalPayload(configEnvelope.LastUpdate.Payload)
+	if err != nil {
+		logger.Debugf("Failing to validate chain creation because of payload unmarshaling error: %s", err)
+		return cb.Status_BAD_REQUEST
+	}
+
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configEnvEnvPayload.Data)
+	if err != nil {
+		logger.Debugf("Failing to validate chain creation because of config update envelope unmarshaling error: %s", err)
+		return cb.Status_BAD_REQUEST
+	}
+
+	configNext, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
 	if err != nil {
 		logger.Debugf("Failing to validate chain creation because of unmarshaling error: %s", err)
 		return cb.Status_BAD_REQUEST
@@ -200,7 +212,7 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
 		return cb.Status_INTERNAL_SERVER_ERROR
 	}
 
-	signedData, err := configEnvelope.LastUpdate.AsSignedData()
+	signedData, err := configUpdateEnv.AsSignedData()
 	if err != nil {
 		logger.Debugf("Failed to validate chain creation because config envelope could not be converted to signed data: %s", err)
 		return cb.Status_BAD_REQUEST

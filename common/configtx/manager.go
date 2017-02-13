@@ -310,16 +310,46 @@ func (cm *configManager) processConfig(configtx *cb.ConfigUpdateEnvelope) (map[s
 	return computedResult, nil
 }
 
+func envelopeToConfigUpdate(configtx *cb.Envelope) (*cb.ConfigUpdateEnvelope, error) {
+	payload, err := utils.UnmarshalPayload(configtx.Payload)
+	if err != nil {
+		return nil, err
+	}
+
+	if payload.Header == nil || payload.Header.ChannelHeader == nil {
+		return nil, fmt.Errorf("Envelope must have ChannelHeader")
+	}
+
+	if payload.Header == nil || payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
+		return nil, fmt.Errorf("Not a tx of type CONFIG_UPDATE")
+	}
+
+	configUpdateEnv, err := UnmarshalConfigUpdateEnvelope(payload.Data)
+	if err != nil {
+		return nil, fmt.Errorf("Error unmarshaling ConfigUpdateEnvelope: %s", err)
+	}
+
+	return configUpdateEnv, nil
+}
+
 // Validate attempts to validate a new configtx against the current config state
-func (cm *configManager) Validate(configtx *cb.ConfigUpdateEnvelope) error {
-	_, err := cm.processConfig(configtx)
+func (cm *configManager) Validate(configtx *cb.Envelope) error {
+	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
+	if err != nil {
+		return err
+	}
+	_, err = cm.processConfig(configUpdateEnv)
 	cm.rollbackHandlers()
 	return err
 }
 
 // Apply attempts to apply a configtx to become the new config
-func (cm *configManager) Apply(configtx *cb.ConfigUpdateEnvelope) error {
-	configMap, err := cm.processConfig(configtx)
+func (cm *configManager) Apply(configtx *cb.Envelope) error {
+	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
+	if err != nil {
+		return err
+	}
+	configMap, err := cm.processConfig(configUpdateEnv)
 	if err != nil {
 		cm.rollbackHandlers()
 		return err

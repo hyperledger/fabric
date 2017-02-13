@@ -47,9 +47,19 @@ func TestAcceptGoodConfig(t *testing.T) {
 	configUpdateEnv := &cb.ConfigUpdateEnvelope{
 		ConfigUpdate: utils.MarshalOrPanic(configGroup),
 	}
-	configEnvBytes := utils.MarshalOrPanic(&cb.ConfigEnvelope{
-		LastUpdate: configUpdateEnv,
-	})
+	configEnv := &cb.ConfigEnvelope{
+		LastUpdate: &cb.Envelope{
+			Payload: utils.MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: &cb.ChannelHeader{
+						Type: int32(cb.HeaderType_CONFIG_UPDATE),
+					},
+				},
+				Data: utils.MarshalOrPanic(configUpdateEnv),
+			}),
+		},
+	}
+	configEnvBytes := utils.MarshalOrPanic(configEnv)
 	configBytes := utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: &cb.ChannelHeader{Type: int32(cb.HeaderType_CONFIG)}}, Data: configEnvBytes})
 	configEnvelope := &cb.Envelope{
 		Payload: configBytes,
@@ -63,12 +73,10 @@ func TestAcceptGoodConfig(t *testing.T) {
 		t.Fatal("Config transactions should be isolated to their own block")
 	}
 
-	t.Logf("%+v", committer.(*configCommitter).configEnvelope)
-
 	committer.Commit()
 
-	if !reflect.DeepEqual(mcm.AppliedConfigUpdateEnvelope, configUpdateEnv) {
-		t.Fatalf("Should have applied new config on commit got %+v and %+v", mcm.AppliedConfigUpdateEnvelope, configUpdateEnv)
+	if !reflect.DeepEqual(mcm.AppliedConfigUpdateEnvelope, configEnv.LastUpdate) {
+		t.Fatalf("Should have applied new config on commit got %+v and %+v", mcm.AppliedConfigUpdateEnvelope, configEnv.LastUpdate)
 	}
 }
 

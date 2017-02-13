@@ -199,7 +199,17 @@ func MakeChainCreationTransaction(creationPolicy string, chainID string, signer 
 			Header:  configUpdate.Header,
 			Channel: configUpdate.WriteSet,
 		},
-		LastUpdate: newConfigUpdateEnv,
+		LastUpdate: &cb.Envelope{
+			Payload: utils.MarshalOrPanic(&cb.Payload{
+				Header: &cb.Header{
+					ChannelHeader: &cb.ChannelHeader{
+						ChannelId: chainID,
+						Type:      int32(cb.HeaderType_CONFIG_UPDATE),
+					},
+				},
+				Data: utils.MarshalOrPanic(newConfigUpdateEnv),
+			}),
+		},
 	}
 
 	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, chainID, epoch)

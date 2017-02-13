@@ -84,10 +84,10 @@ type Manager interface {
 	Resources
 
 	// Apply attempts to apply a configtx to become the new config
-	Apply(configtx *cb.ConfigUpdateEnvelope) error
+	Apply(configtx *cb.Envelope) error
 
 	// Validate attempts to validate a new configtx against the current config state
-	Validate(configtx *cb.ConfigUpdateEnvelope) error
+	Validate(configtx *cb.Envelope) error
 
 	// ConfigEnvelope returns the *cb.ConfigEnvelope from the last successful Apply
 	ConfigEnvelope() *cb.ConfigEnvelope

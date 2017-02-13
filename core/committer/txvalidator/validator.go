@@ -43,7 +43,7 @@ type Support interface {
 	MSPManager() msp.MSPManager
 
 	// Apply attempts to apply a configtx to become the new config
-	Apply(configtx *common.ConfigUpdateEnvelope) error
+	Apply(configtx *common.Envelope) error
 }
 
 //Validator interface which defines API to validate block transactions
