@@ -99,9 +99,10 @@ func TestSbftPeer(t *testing.T) {
 	// Start GRPC
 	logger.Info("Creating a GRPC server.")
 	conf := config.Load()
-	conf.Genesis.OrdererType = sbftName
+	genConf := config.LoadGenesis()
+	genConf.Orderer.OrdererType = sbftName
 	conf.General.LocalMSPDir = pwd + "/../msp/sampleconfig"
-	lf := newRAMLedgerFactory(conf)
+	lf := newRAMLedgerFactory(genConf)
 	consenters := make(map[string]multichain.Consenter)
 	consenters[sbftName] = sbftConsenter
 
@@ -261,7 +262,7 @@ func broadcastSender(t *testing.T, resultch chan item, errorch chan error, clien
 	resultch <- item{itemtype: sent, payload: mpl}
 }
 
-func newRAMLedgerFactory(conf *config.TopLevel) ordererledger.Factory {
+func newRAMLedgerFactory(conf *config.GenesisTopLevel) ordererledger.Factory {
 	rlf := ramledger.New(10)
 	genesisBlock := provisional.New(conf).GenesisBlock()
 	rl, err := rlf.GetOrCreate(provisional.TestChainID)

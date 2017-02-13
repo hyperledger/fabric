@@ -24,8 +24,8 @@ import (
 )
 
 func newChainRequest(consensusType, creationPolicy, newChannelId string) *cb.Envelope {
-	conf.Genesis.OrdererType = consensusType
-	generator := provisional.New(conf)
+	genConf.Orderer.OrdererType = consensusType
+	generator := provisional.New(genConf)
 	channelTemplate := generator.ChannelTemplate()
 
 	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()

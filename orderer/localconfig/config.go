@@ -62,12 +62,28 @@ type TLS struct {
 	ClientRootCAs     []string
 }
 
-// Genesis contains config which is used by the provisional bootstrapper
+// Genesis is a deprecated structure which was used to put
+// values into the genesis block, but this is now handled elsewhere
+// SBFT did not reference these values via the genesis block however
+// so it is being left here for backwards compatibility purposes
 type Genesis struct {
+	DeprecatedBatchTimeout time.Duration
+	DeprecatedBatchSize    uint32
+	SbftShared             SbftShared
+}
+
+// GenesisTopLevel contains the genesis structures for use by the provisional bootstrapper
+type GenesisTopLevel struct {
+	Orderer Orderer
+}
+
+// Orderer contains config which is used for orderer genesis by the provisional bootstrapper
+type Orderer struct {
 	OrdererType  string
+	Addresses    []string
 	BatchTimeout time.Duration
 	BatchSize    BatchSize
-	SbftShared   SbftShared
+	Kafka        Kafka
 }
 
 // BatchSize contains configuration affecting the size of batches
@@ -96,7 +112,7 @@ type FileLedger struct {
 
 // Kafka contains config for the Kafka orderer
 type Kafka struct {
-	Brokers []string // TODO This should be deprecated and this information should be stored in the config block
+	Brokers []string // TODO This should be removed when the genesis config moves
 	Retry   Retry
 	Verbose bool
 	Version sarama.KafkaVersion
@@ -123,6 +139,11 @@ type SbftShared struct {
 type Retry struct {
 	Period time.Duration
 	Stop   time.Duration
+}
+
+type RuntimeAndGenesis struct {
+	runtime *TopLevel
+	genesis *Genesis
 }
 
 // TopLevel directly corresponds to the orderer config yaml
@@ -175,13 +196,6 @@ var defaults = TopLevel{
 		},
 	},
 	Genesis: Genesis{
-		OrdererType:  "solo",
-		BatchTimeout: 10 * time.Second,
-		BatchSize: BatchSize{
-			MaxMessageCount:   10,
-			AbsoluteMaxBytes:  100000000,
-			PreferredMaxBytes: 512 * 1024,
-		},
 		SbftShared: SbftShared{
 			N:                  1,
 			F:                  0,
@@ -242,30 +256,12 @@ func (c *TopLevel) completeInitialization() {
 		case c.FileLedger.Prefix == "":
 			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
 			c.FileLedger.Prefix = defaults.FileLedger.Prefix
-		case c.Kafka.Brokers == nil:
-			logger.Infof("Kafka.Brokers unset, setting to %v", defaults.Kafka.Brokers)
-			c.Kafka.Brokers = defaults.Kafka.Brokers
 		case c.Kafka.Retry.Period == 0*time.Second:
 			logger.Infof("Kafka.Retry.Period unset, setting to %v", defaults.Kafka.Retry.Period)
 			c.Kafka.Retry.Period = defaults.Kafka.Retry.Period
 		case c.Kafka.Retry.Stop == 0*time.Second:
 			logger.Infof("Kafka.Retry.Stop unset, setting to %v", defaults.Kafka.Retry.Stop)
 			c.Kafka.Retry.Stop = defaults.Kafka.Retry.Stop
-		case c.Genesis.OrdererType == "":
-			logger.Infof("Genesis.OrdererType unset, setting to %s", defaults.Genesis.OrdererType)
-			c.Genesis.OrdererType = defaults.Genesis.OrdererType
-		case c.Genesis.BatchTimeout == 0:
-			logger.Infof("Genesis.BatchTimeout unset, setting to %s", defaults.Genesis.BatchTimeout)
-			c.Genesis.BatchTimeout = defaults.Genesis.BatchTimeout
-		case c.Genesis.BatchSize.MaxMessageCount == 0:
-			logger.Infof("Genesis.BatchSize.MaxMessageCount unset, setting to %s", defaults.Genesis.BatchSize.MaxMessageCount)
-			c.Genesis.BatchSize.MaxMessageCount = defaults.Genesis.BatchSize.MaxMessageCount
-		case c.Genesis.BatchSize.AbsoluteMaxBytes == 0:
-			logger.Infof("Genesis.BatchSize.AbsoluteMaxBytes unset, setting to %s", defaults.Genesis.BatchSize.AbsoluteMaxBytes)
-			c.Genesis.BatchSize.AbsoluteMaxBytes = defaults.Genesis.BatchSize.AbsoluteMaxBytes
-		case c.Genesis.BatchSize.PreferredMaxBytes == 0:
-			logger.Infof("Genesis.BatchSize.PreferredMaxBytes unset, setting to %s", defaults.Genesis.BatchSize.PreferredMaxBytes)
-			c.Genesis.BatchSize.PreferredMaxBytes = defaults.Genesis.BatchSize.PreferredMaxBytes
 		default:
 			// A bit hacky, but its type makes it impossible to test for a nil value.
 			// This may be overwritten by the Kafka orderer upon instantiation.
@@ -273,6 +269,103 @@ func (c *TopLevel) completeInitialization() {
 			return
 		}
 	}
+}
+
+var genesisDefaults = GenesisTopLevel{
+	Orderer: Orderer{
+		OrdererType:  "solo",
+		Addresses:    []string{"127.0.0.1:7050"},
+		BatchTimeout: 10 * time.Second,
+		BatchSize: BatchSize{
+			MaxMessageCount:   10,
+			AbsoluteMaxBytes:  100000000,
+			PreferredMaxBytes: 512 * 1024,
+		},
+		Kafka: Kafka{
+			Brokers: []string{"127.0.0.1:9092"},
+		},
+	},
+}
+
+func (g *GenesisTopLevel) completeInitialization() {
+	for {
+		switch {
+		case g.Orderer.OrdererType == "":
+			logger.Infof("Orderer.OrdererType unset, setting to %s", genesisDefaults.Orderer.OrdererType)
+			g.Orderer.OrdererType = genesisDefaults.Orderer.OrdererType
+		case g.Orderer.Addresses == nil:
+			logger.Infof("Orderer.Addresses unset, setting to %s", genesisDefaults.Orderer.Addresses)
+			g.Orderer.Addresses = genesisDefaults.Orderer.Addresses
+		case g.Orderer.BatchTimeout == 0:
+			logger.Infof("Orderer.BatchTimeout unset, setting to %s", genesisDefaults.Orderer.BatchTimeout)
+			g.Orderer.BatchTimeout = genesisDefaults.Orderer.BatchTimeout
+		case g.Orderer.BatchTimeout == 0:
+			logger.Infof("Orderer.BatchTimeout unset, setting to %s", genesisDefaults.Orderer.BatchTimeout)
+			g.Orderer.BatchTimeout = genesisDefaults.Orderer.BatchTimeout
+		case g.Orderer.BatchSize.MaxMessageCount == 0:
+			logger.Infof("Orderer.BatchSize.MaxMessageCount unset, setting to %s", genesisDefaults.Orderer.BatchSize.MaxMessageCount)
+			g.Orderer.BatchSize.MaxMessageCount = genesisDefaults.Orderer.BatchSize.MaxMessageCount
+		case g.Orderer.BatchSize.AbsoluteMaxBytes == 0:
+			logger.Infof("Orderer.BatchSize.AbsoluteMaxBytes unset, setting to %s", genesisDefaults.Orderer.BatchSize.AbsoluteMaxBytes)
+			g.Orderer.BatchSize.AbsoluteMaxBytes = genesisDefaults.Orderer.BatchSize.AbsoluteMaxBytes
+		case g.Orderer.BatchSize.PreferredMaxBytes == 0:
+			logger.Infof("Orderer.BatchSize.PreferredMaxBytes unset, setting to %s", genesisDefaults.Orderer.BatchSize.PreferredMaxBytes)
+			g.Orderer.BatchSize.PreferredMaxBytes = genesisDefaults.Orderer.BatchSize.PreferredMaxBytes
+		case g.Orderer.Kafka.Brokers == nil:
+			logger.Infof("Orderer.Kafka.Brokers unset, setting to %v", genesisDefaults.Orderer.Kafka.Brokers)
+			g.Orderer.Kafka.Brokers = genesisDefaults.Orderer.Kafka.Brokers
+		default:
+			return
+		}
+	}
+}
+
+func LoadGenesis() *GenesisTopLevel {
+	config := viper.New()
+
+	const prefix = "GENESIS"
+
+	config.SetConfigName("genesis")
+	cfgPath := os.Getenv("ORDERER_CFG_PATH")
+	if cfgPath == "" {
+		logger.Infof("No orderer cfg path set, assuming development environment, deriving from go path")
+		// Path to look for the config file in based on GOPATH
+		gopath := os.Getenv("GOPATH")
+		for _, p := range filepath.SplitList(gopath) {
+			ordererPath := filepath.Join(p, "src/github.com/hyperledger/fabric/orderer/")
+			if _, err := os.Stat(filepath.Join(ordererPath, "genesis.yaml")); err != nil {
+				// The yaml file does not exist in this component of the go src
+				continue
+			}
+			cfgPath = ordererPath
+		}
+		if cfgPath == "" {
+			logger.Fatalf("Could not find orderer.yaml, try setting ORDERER_CFG_PATH or GOPATH correctly")
+		}
+	}
+	config.AddConfigPath(cfgPath) // Path to look for the config file in
+
+	// for environment variables
+	config.SetEnvPrefix(prefix)
+	config.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	config.SetEnvKeyReplacer(replacer)
+
+	err := config.ReadInConfig()
+	if err != nil {
+		panic(fmt.Errorf("Error reading %s plugin config: %s", prefix, err))
+	}
+
+	var uconf GenesisTopLevel
+
+	err = ExactWithDateUnmarshal(config, &uconf)
+	if err != nil {
+		panic(fmt.Errorf("Error unmarshaling into structure: %s", err))
+	}
+
+	uconf.completeInitialization()
+
+	return &uconf
 }
 
 // Load parses the orderer.yaml file and environment, producing a struct suitable for config use

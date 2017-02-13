@@ -65,22 +65,22 @@ type bootstrapper struct {
 }
 
 // New returns a new provisional bootstrap helper.
-func New(conf *config.TopLevel) Generator {
+func New(conf *config.GenesisTopLevel) Generator {
 	bs := &bootstrapper{
 		minimalGroups: []*cb.ConfigGroup{
 			// Chain Config Types
 			configtxchannel.DefaultHashingAlgorithm(),
 			configtxchannel.DefaultBlockDataHashingStructure(),
-			configtxchannel.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
+			configtxchannel.TemplateOrdererAddresses(conf.Orderer.Addresses),
 
 			// Orderer Config Types
-			configtxorderer.TemplateConsensusType(conf.Genesis.OrdererType),
+			configtxorderer.TemplateConsensusType(conf.Orderer.OrdererType),
 			configtxorderer.TemplateBatchSize(&ab.BatchSize{
-				MaxMessageCount:   conf.Genesis.BatchSize.MaxMessageCount,
-				AbsoluteMaxBytes:  conf.Genesis.BatchSize.AbsoluteMaxBytes,
-				PreferredMaxBytes: conf.Genesis.BatchSize.PreferredMaxBytes,
+				MaxMessageCount:   conf.Orderer.BatchSize.MaxMessageCount,
+				AbsoluteMaxBytes:  conf.Orderer.BatchSize.AbsoluteMaxBytes,
+				PreferredMaxBytes: conf.Orderer.BatchSize.PreferredMaxBytes,
 			}),
-			configtxorderer.TemplateBatchTimeout(conf.Genesis.BatchTimeout.String()),
+			configtxorderer.TemplateBatchTimeout(conf.Orderer.BatchTimeout.String()),
 			configtxorderer.TemplateIngressPolicyNames([]string{AcceptAllPolicyKey}),
 			configtxorderer.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
 
@@ -94,12 +94,12 @@ func New(conf *config.TopLevel) Generator {
 		},
 	}
 
-	switch conf.Genesis.OrdererType {
+	switch conf.Orderer.OrdererType {
 	case ConsensusTypeSolo, ConsensusTypeSbft:
 	case ConsensusTypeKafka:
-		bs.minimalGroups = append(bs.minimalGroups, configtxorderer.TemplateKafkaBrokers(conf.Kafka.Brokers))
+		bs.minimalGroups = append(bs.minimalGroups, configtxorderer.TemplateKafkaBrokers(conf.Orderer.Kafka.Brokers))
 	default:
-		panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Genesis.OrdererType))
+		panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Orderer.OrdererType))
 	}
 
 	return bs

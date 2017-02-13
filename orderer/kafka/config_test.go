@@ -38,14 +38,6 @@ var (
 )
 
 var testConf = &config.TopLevel{
-	General: config.General{
-		LedgerType:    "ram",
-		QueueSize:     100,
-		MaxWindowSize: 100,
-		ListenAddress: "127.0.0.1",
-		ListenPort:    7050,
-		GenesisMethod: "provisional",
-	},
 	Kafka: config.Kafka{
 		Brokers: []string{"127.0.0.1:9092"},
 		Retry: config.Retry{
@@ -54,15 +46,6 @@ var testConf = &config.TopLevel{
 		},
 		Verbose: false,
 		Version: sarama.V0_9_0_1,
-	},
-	Genesis: config.Genesis{
-		OrdererType:  "kafka",
-		BatchTimeout: 500 * time.Millisecond,
-		BatchSize: config.BatchSize{
-			MaxMessageCount:   100,
-			AbsoluteMaxBytes:  10 * 1024 * 1024,
-			PreferredMaxBytes: 512 * 1024,
-		},
 	},
 }
 

@@ -30,7 +30,7 @@ var genesisBlock *cb.Block
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
-	genesisBlock = provisional.New(config.Load()).GenesisBlock()
+	genesisBlock = provisional.New(config.LoadGenesis()).GenesisBlock()
 }
 
 func NewTestChain(maxSize int) *ramLedger {
