@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	logging "github.com/op/go-logging"
