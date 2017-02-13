@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package viperutil
 
 import (
 	"fmt"
@@ -30,8 +30,11 @@ import (
 	"encoding/pem"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
+
+var logger = logging.MustGetLogger("viperutil")
 
 func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
@@ -228,10 +231,10 @@ func pemBlocksFromFileDecodeHook() mapstructure.DecodeHookFunc {
 	}
 }
 
-// ExactWithDateUnmarshal is intended to unmarshal a config file into a structure
+// EnhancedExactUnmarshal is intended to unmarshal a config file into a structure
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
-func ExactWithDateUnmarshal(v *viper.Viper, output interface{}) error {
+func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 	baseKeys := v.AllSettings() // AllKeys doesn't actually return all keys, it only returns the base ones
 	leafKeys := getKeysRecursively("", v, baseKeys)
 
