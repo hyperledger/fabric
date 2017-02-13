@@ -22,6 +22,7 @@ package protos;
 
 import "google/protobuf/timestamp.proto";
 import "peer/proposal_response.proto";
+import "common/common.proto";
 
 // This message is necessary to facilitate the verification of the signature
 // (in the signature field) over the bytes of the transaction (in the
@@ -38,14 +39,18 @@ message SignedTransaction {
 	bytes signature = 2;
 }
 
-// This is used to wrap an invalid Transaction with the cause
-message InvalidTransaction {
-	enum Cause {
-		TX_ID_ALREADY_EXISTS = 0;
-		RW_CONFLICT_DURING_COMMIT = 1;
-	}
-	Transaction transaction = 1;
-	Cause cause = 2;
+// ProcessedTransaction wraps an Envelope that includes a transaction along with an indication
+// of whether the transaction was validated or invalidated by committing peer.
+// The use case is that GetTransactionByID API needs to retrieve the transaction Envelope
+// from block storage, and return it to a client, and indicate whether the transaction
+// was validated or invalidated by committing peer. So that the originally submitted
+// transaction Envelope is not modified, the ProcessedTransaction wrapper is returned.
+message ProcessedTransaction {
+    // An Envelope which includes a processed transaction
+    common.Envelope transactionEnvelope = 1;
+
+    // An indication of whether the transaction was validated or invalidated by committing peer
+    bool valid = 2;
 }
 
 // The transaction to be sent to the ordering service. A transaction contains

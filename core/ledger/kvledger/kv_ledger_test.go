@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/protos/common"
+	putils "github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -81,6 +82,20 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	b2, _ = ledger.GetBlockByNumber(2)
 	testutil.AssertEquals(t, b2, block2)
+
+	// get the tran id from the 2nd block, then use it to test GetTransactionByID()
+	txEnvBytes2 := block2.Data.Data[0]
+	txEnv2, err := putils.GetEnvelopeFromBlock(txEnvBytes2)
+	testutil.AssertNoError(t, err, "Error upon GetEnvelopeFromBlock")
+	payload2, err := putils.GetPayload(txEnv2)
+	testutil.AssertNoError(t, err, "Error upon GetPayload")
+	txID2 := payload2.Header.ChannelHeader.TxId
+	processedTran2, err := ledger.GetTransactionByID(txID2)
+	testutil.AssertNoError(t, err, "Error upon GetTransactionByID")
+	// get the tran envelope from the retrieved ProcessedTransaction
+	retrievedTxEnv2 := processedTran2.TransactionEnvelope
+	testutil.AssertEquals(t, retrievedTxEnv2, txEnv2)
+
 }
 
 func TestKVLedgerDBRecovery(t *testing.T) {

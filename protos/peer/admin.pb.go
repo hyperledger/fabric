@@ -56,7 +56,7 @@ It has these top-level messages:
 	ProposalResponsePayload
 	Endorsement
 	SignedTransaction
-	InvalidTransaction
+	ProcessedTransaction
 	Transaction
 	TransactionAction
 	ChaincodeActionPayload

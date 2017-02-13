@@ -107,14 +107,13 @@ func getTransactionByID(vledger ledger.PeerLedger, tid []byte) pb.Response {
 	if tid == nil {
 		return shim.Error("Transaction ID must not be nil.")
 	}
-	txEnvelope, err := vledger.GetTransactionByID(string(tid))
+
+	processedTran, err := vledger.GetTransactionByID(string(tid))
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get transaction with id %s, error %s", string(tid), err))
 	}
-	// TODO In the returned transaction, need to replace binary simulation results with a proto
-	//  structure including write set, so that clients know what this transaction wrote
 
-	bytes, err := utils.Marshal(txEnvelope)
+	bytes, err := utils.Marshal(processedTran)
 	if err != nil {
 		return shim.Error(err.Error())
 	}

@@ -19,6 +19,7 @@ package ledger
 import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 // PeerLedgerProvider provides handle to ledger instances
@@ -40,7 +41,7 @@ type PeerLedgerProvider interface {
 type PeerLedger interface {
 	commonledger.Ledger
 	// GetTransactionByID retrieves a transaction by id
-	GetTransactionByID(txID string) (*common.Envelope, error)
+	GetTransactionByID(txID string) (*peer.ProcessedTransaction, error)
 	// GetBlockByHash returns a block given it's hash
 	GetBlockByHash(blockHash []byte) (*common.Block, error)
 	// GetBlockByTxID returns a block which contains a transaction
