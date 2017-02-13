@@ -112,7 +112,7 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 	go d.periodicalReconnectToDead()
 	go d.handlePresumedDeadPeers()
 
-	d.connect2BootstrapPeers(bootstrapPeers)
+	go d.connect2BootstrapPeers(bootstrapPeers)
 
 	d.logger.Info("Started", self, "incTime is", d.incTime)
 
@@ -156,22 +156,35 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember) {
 func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
 	d.logger.Info("Entering:", endpoints)
 	defer d.logger.Info("Exiting")
-	wg := sync.WaitGroup{}
-	req := d.createMembershipRequest()
-	for _, endpoint := range endpoints {
-		wg.Add(1)
-		go func(endpoint string) {
-			defer wg.Done()
-			peer := &NetworkMember{
-				Endpoint: endpoint,
-				InternalEndpoint: &proto.SignedEndpoint{
+
+	for !d.somePeerIsKnown() {
+		var wg sync.WaitGroup
+		req := d.createMembershipRequest()
+		wg.Add(len(endpoints))
+		for _, endpoint := range endpoints {
+			go func(endpoint string) {
+				defer wg.Done()
+				peer := &NetworkMember{
 					Endpoint: endpoint,
-				},
-			}
-			d.comm.SendToPeer(peer, req)
-		}(endpoint)
+					InternalEndpoint: &proto.SignedEndpoint{
+						Endpoint: endpoint,
+					},
+				}
+				if !d.comm.Ping(peer) {
+					return
+				}
+				d.comm.SendToPeer(peer, req)
+			}(endpoint)
+		}
+		wg.Wait()
+		time.Sleep(reconnectInterval)
 	}
-	wg.Wait()
+}
+
+func (d *gossipDiscoveryImpl) somePeerIsKnown() bool {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+	return len(d.aliveLastTS) != 0
 }
 
 func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {

@@ -404,18 +404,21 @@ func TestGetFullMembership(t *testing.T) {
 	nodeNum := 15
 	bootPeers := []string{bootPeer(5511), bootPeer(5512)}
 	instances := []*gossipInstance{}
-
-	inst := createDiscoveryInstance(5511, "d1", bootPeers)
-	instances = append(instances, inst)
-
-	inst = createDiscoveryInstance(5512, "d2", bootPeers)
-	instances = append(instances, inst)
+	var inst *gossipInstance
 
 	for i := 3; i <= nodeNum; i++ {
 		id := fmt.Sprintf("d%d", i)
 		inst = createDiscoveryInstance(5510+i, id, bootPeers)
 		instances = append(instances, inst)
 	}
+
+	time.Sleep(time.Second)
+
+	inst = createDiscoveryInstance(5511, "d1", bootPeers)
+	instances = append(instances, inst)
+
+	inst = createDiscoveryInstance(5512, "d2", bootPeers)
+	instances = append(instances, inst)
 
 	assertMembership(t, instances, nodeNum-1)
 
