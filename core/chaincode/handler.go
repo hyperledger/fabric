@@ -67,6 +67,11 @@ type transactionContext struct {
 type nextStateInfo struct {
 	msg      *pb.ChaincodeMessage
 	sendToCC bool
+
+	//the only time we need to send synchronously is
+	//when launching the chaincode to take it to ready
+	//state (look for the panic when sending serial)
+	sendSync bool
 }
 
 //chaincode registered name is of the form
@@ -261,7 +266,13 @@ func (handler *Handler) deregister() error {
 }
 
 func (handler *Handler) triggerNextState(msg *pb.ChaincodeMessage, send bool) {
-	handler.nextState <- &nextStateInfo{msg, send}
+	//this will send Async
+	handler.nextState <- &nextStateInfo{msg: msg, sendToCC: send, sendSync: false}
+}
+
+func (handler *Handler) triggerNextStateSync(msg *pb.ChaincodeMessage) {
+	//this will send sync
+	handler.nextState <- &nextStateInfo{msg: msg, sendToCC: true, sendSync: true}
 }
 
 func (handler *Handler) waitForKeepaliveTimer() <-chan time.Time {
@@ -361,8 +372,18 @@ func (handler *Handler) processStream() error {
 
 		if nsInfo != nil && nsInfo.sendToCC {
 			chaincodeLogger.Debugf("[%s]sending state message %s", shorttxid(in.Txid), in.Type.String())
-			//if error bail in select
-			handler.serialSendAsync(in, errc)
+			//ready messages are sent sync
+			if nsInfo.sendSync {
+				if in.Type.String() != pb.ChaincodeMessage_READY.String() {
+					panic(fmt.Sprintf("[%s]Sync send can only be for READY state %s\n", shorttxid(in.Txid), in.Type.String()))
+				}
+				if err = handler.serialSend(in); err != nil {
+					return fmt.Errorf("[%s]Error sending ready  message, ending stream: %s", shorttxid(in.Txid), err)
+				}
+			} else {
+				//if error bail in select
+				handler.serialSendAsync(in, errc)
+			}
 		}
 	}
 }
@@ -1264,7 +1285,10 @@ func (handler *Handler) ready(ctxt context.Context, chainID string, txid string,
 		return nil, err
 	}
 
-	handler.triggerNextState(ccMsg, true)
+	//send the ready synchronously as the
+	//ready message is during launch and needs
+	//to happen before any init/invokes can sneak in
+	handler.triggerNextStateSync(ccMsg)
 
 	return txctx.responseNotifier, nil
 }
