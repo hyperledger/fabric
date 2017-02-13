@@ -29,11 +29,10 @@ import (
 )
 
 type resources struct {
-	handlers          map[cb.ConfigItem_ConfigType]api.Handler
-	policyManager     policies.Manager
-	channelConfig     api.ChannelConfig
-	ordererConfig     api.OrdererConfig
-	applicationConfig api.ApplicationConfig
+	policyManager     *policies.ManagerImpl
+	channelConfig     *configtxchannel.SharedConfigImpl
+	ordererConfig     *configtxorderer.ManagerImpl
+	applicationConfig *configtxapplication.SharedConfigImpl
 	mspConfigHandler  *configtxmsp.MSPConfigHandler
 }
 
@@ -62,14 +61,9 @@ func (r *resources) MSPManager() msp.MSPManager {
 	return r.mspConfigHandler
 }
 
-// Handlers returns the handlers to be used when initializing the configtx.Manager
-func (r *resources) Handlers() map[cb.ConfigItem_ConfigType]api.Handler {
-	return r.handlers
-}
-
-// NewInitializer creates a chain initializer for the basic set of common chain resources
-func NewInitializer() api.Initializer {
+func newResources() *resources {
 	mspConfigHandler := &configtxmsp.MSPConfigHandler{}
+
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
 		rtype := cb.Policy_PolicyType(pType)
@@ -83,36 +77,62 @@ func NewInitializer() api.Initializer {
 		}
 	}
 
-	policyManager := policies.NewManagerImpl(policyProviderMap)
-	channelConfig := configtxchannel.NewSharedConfigImpl()
-	ordererConfig := configtxorderer.NewManagerImpl()
-	applicationConfig := configtxapplication.NewSharedConfigImpl()
-	handlers := make(map[cb.ConfigItem_ConfigType]api.Handler)
-
-	for ctype := range cb.ConfigItem_ConfigType_name {
-		rtype := cb.ConfigItem_ConfigType(ctype)
-		switch rtype {
-		case cb.ConfigItem_CHAIN:
-			handlers[rtype] = channelConfig
-		case cb.ConfigItem_ORDERER:
-			handlers[rtype] = ordererConfig
-		case cb.ConfigItem_PEER:
-			handlers[rtype] = applicationConfig
-		case cb.ConfigItem_POLICY:
-			handlers[rtype] = policyManager
-		case cb.ConfigItem_MSP:
-			handlers[rtype] = mspConfigHandler
-		default:
-			handlers[rtype] = NewBytesHandler()
-		}
-	}
+	ordererConfig := configtxorderer.NewManagerImpl(mspConfigHandler)
+	applicationConfig := configtxapplication.NewSharedConfigImpl(mspConfigHandler)
 
 	return &resources{
-		handlers:          handlers,
-		policyManager:     policyManager,
-		channelConfig:     channelConfig,
+		policyManager:     policies.NewManagerImpl(policyProviderMap),
+		channelConfig:     configtxchannel.NewSharedConfigImpl(ordererConfig, applicationConfig),
 		ordererConfig:     ordererConfig,
 		applicationConfig: applicationConfig,
 		mspConfigHandler:  mspConfigHandler,
 	}
+
+}
+
+type initializer struct {
+	*resources
+	is map[string]api.Initializer
+}
+
+// NewInitializer creates a chain initializer for the basic set of common chain resources
+func NewInitializer() api.Initializer {
+	return &initializer{
+		resources: newResources(),
+	}
+}
+
+// BeginConfig is used to start a new config proposal
+func (i *initializer) BeginConfig() {
+	i.policyManager.BeginConfig()
+	i.channelConfig.BeginConfig()
+	i.ordererConfig.BeginConfig()
+	i.applicationConfig.BeginConfig()
+	i.mspConfigHandler.BeginConfig()
+}
+
+// RollbackConfig is used to abandon a new config proposal
+func (i *initializer) RollbackConfig() {
+	i.policyManager.RollbackConfig()
+	i.channelConfig.RollbackConfig()
+	i.ordererConfig.RollbackConfig()
+	i.applicationConfig.RollbackConfig()
+	i.mspConfigHandler.RollbackConfig()
+}
+
+// CommitConfig is used to commit a new config proposal
+func (i *initializer) CommitConfig() {
+	i.policyManager.CommitConfig()
+	i.channelConfig.CommitConfig()
+	i.ordererConfig.CommitConfig()
+	i.applicationConfig.CommitConfig()
+	i.mspConfigHandler.CommitConfig()
+}
+
+func (i *initializer) PolicyProposer() api.Handler {
+	return i.policyManager
+}
+
+func (i *initializer) Handler(path []string) (api.Handler, error) {
+	return i.channelConfig.Handler(path)
 }

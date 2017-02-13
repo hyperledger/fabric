@@ -26,6 +26,7 @@ type comparable struct {
 	*cb.ConfigGroup
 	*cb.ConfigValue
 	*cb.ConfigPolicy
+	path []string
 }
 
 func (cg comparable) equals(other comparable) bool {
@@ -49,6 +50,34 @@ func (cg comparable) equals(other comparable) bool {
 
 	// Unreachable
 	return false
+}
+
+func (cg comparable) version() uint64 {
+	switch {
+	case cg.ConfigGroup != nil:
+		return cg.ConfigGroup.Version
+	case cg.ConfigValue != nil:
+		return cg.ConfigValue.Version
+	case cg.ConfigPolicy != nil:
+		return cg.ConfigPolicy.Version
+	}
+
+	// Unreachable
+	return 0
+}
+
+func (cg comparable) modPolicy() string {
+	switch {
+	case cg.ConfigGroup != nil:
+		return cg.ConfigGroup.ModPolicy
+	case cg.ConfigValue != nil:
+		return cg.ConfigValue.ModPolicy
+	case cg.ConfigPolicy != nil:
+		return cg.ConfigPolicy.ModPolicy
+	}
+
+	// Unreachable
+	return ""
 }
 
 func equalConfigValues(lhs, rhs *cb.ConfigValue) bool {

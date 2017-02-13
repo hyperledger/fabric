@@ -170,7 +170,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		})
 	}
 
-	configtxManager, err := configtx.NewManagerImplNext(
+	configtxManager, err := configtx.NewManagerImpl(
 		configEnvelope,
 		configtxInitializer,
 		[]func(cm configtxapi.Manager){gossipCallbackWrapper},

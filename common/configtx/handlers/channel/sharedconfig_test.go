@@ -39,7 +39,7 @@ func makeInvalidConfigItem(key string) *cb.ConfigItem {
 }
 
 func TestInterface(t *testing.T) {
-	_ = configtxapi.ChannelConfig(NewSharedConfigImpl())
+	_ = configtxapi.ChannelConfig(NewSharedConfigImpl(nil, nil))
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -49,7 +49,7 @@ func TestDoubleBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil, nil)
 	m.BeginConfig()
 	m.BeginConfig()
 }
@@ -61,12 +61,12 @@ func TestCommitWithoutBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil, nil)
 	m.CommitConfig()
 }
 
 func TestRollback(t *testing.T) {
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil, nil)
 	m.pendingConfig = &chainConfig{}
 	m.RollbackConfig()
 	if m.pendingConfig != nil {
@@ -79,7 +79,7 @@ func TestHashingAlgorithm(t *testing.T) {
 	invalidAlgorithm := TemplateHashingAlgorithm("MD5")
 	validAlgorithm := DefaultHashingAlgorithm()
 
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil, nil)
 	m.BeginConfig()
 
 	err := m.ProposeConfig(invalidMessage)
@@ -109,7 +109,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 	invalidWidth := TemplateBlockDataHashingStructure(0)
 	validWidth := DefaultBlockDataHashingStructure()
 
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil, nil)
 	m.BeginConfig()
 
 	err := m.ProposeConfig(invalidMessage)
@@ -137,7 +137,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 func TestOrdererAddresses(t *testing.T) {
 	invalidMessage := makeInvalidConfigItem(OrdererAddressesKey)
 	validMessage := DefaultOrdererAddresses()
-	m := NewSharedConfigImpl()
+	m := NewSharedConfigImpl(nil, nil)
 	m.BeginConfig()
 
 	err := m.ProposeConfig(invalidMessage)

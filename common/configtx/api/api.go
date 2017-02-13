@@ -75,15 +75,6 @@ type OrdererConfig interface {
 
 // Handler provides a hook which allows other pieces of code to participate in config proposals
 type Handler interface {
-	// BeginConfig called when a config proposal is begun
-	BeginConfig()
-
-	// RollbackConfig called when a config proposal is abandoned
-	RollbackConfig()
-
-	// CommitConfig called when a config proposal is committed
-	CommitConfig()
-
 	// ProposeConfig called when config is added to a proposal
 	ProposeConfig(configItem *cb.ConfigItem) error
 }
@@ -125,11 +116,28 @@ type Resources interface {
 	MSPManager() msp.MSPManager
 }
 
-// Initializer is a structure which is only useful before a configtx.Manager
-// has been instantiated for a chain, afterwards, it is of no utility, which
-// is why it embeds the Resources interface
+// SubInitializer is used downstream from initializer
+type SubInitializer interface {
+	// BeginConfig called when a config proposal is begun
+	BeginConfig()
+
+	// RollbackConfig called when a config proposal is abandoned
+	RollbackConfig()
+
+	// CommitConfig called when a config proposal is committed
+	CommitConfig()
+
+	// Handler returns the associated value handler for a given config path
+	Handler(path []string) (Handler, error)
+}
+
+// Initializer is used as indirection between Manager and Handler to allow
+// for single Handlers to handle multiple paths
 type Initializer interface {
+	SubInitializer
+
 	Resources
-	// Handlers returns the handlers to be used when initializing the configtx.Manager
-	Handlers() map[cb.ConfigItem_ConfigType]Handler
+
+	// PolicyProposer as a Handler is a temporary hack
+	PolicyProposer() Handler
 }

@@ -16,6 +16,8 @@ limitations under the License.
 
 package configtx
 
+// XXX Remove this
+
 import (
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -57,7 +59,6 @@ func (bh *BytesHandler) CommitConfig() {
 
 // ProposeConfig called when config is added to a proposal
 func (bh *BytesHandler) ProposeConfig(configItem *cb.ConfigItem) error {
-	bh.proposed[configItem.Key] = configItem.Value
 	return nil
 }
 
