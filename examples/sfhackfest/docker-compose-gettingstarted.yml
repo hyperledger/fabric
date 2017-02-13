@@ -45,8 +45,6 @@ services:
       - ORDERER_GENERAL_LISTENPORT=7050
       - ORDERER_RAMLEDGER_HISTORY_SIZE=100
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
-    volumes:
-      - ./tmp/orderer:/etc/hyperledger/fabric/orderer
     command: orderer
     ports:
       - 8050:7050
@@ -70,6 +68,8 @@ services:
       - CORE_PEER_GOSSIP_IGNORESECURITY=true
 
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+
+    command: peer node start --peer-defaultchain=false
     ports:
       - 8051:7051
       - 8053:7053
@@ -166,7 +166,7 @@ services:
         #in the "- <HOST>:/opt/gopath/src/github.com/hyperledger/fabric/examples/" mapping below, the HOST part
         #should be modified to the path on the host. This will work as is in the Vagrant environment
         - ./src/github.com/example_cc/example_cc.go:/opt/gopath/src/github.com/hyperledger/fabric/examples/example_cc.go
-        - ./tmp/peer3/:/etc/hyperledger/fabric/msp/sampleconfig
+        - ./tmp/peer3:/etc/hyperledger/fabric/msp/sampleconfig
         - ./channel_test.sh:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel_test.sh
     networks:
       - bridge
