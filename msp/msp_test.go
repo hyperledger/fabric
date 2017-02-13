@@ -24,6 +24,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
@@ -247,6 +248,33 @@ func TestSignAndVerify_longMessage(t *testing.T) {
 		t.Fatalf("The signature should be valid")
 		return
 	}
+}
+
+func TestGetOU(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	if err != nil {
+		t.Fatalf("GetSigningIdentity should have succeeded")
+		return
+	}
+
+	assert.Equal(t, "COP", id.GetOrganizationalUnits()[0])
+}
+
+func TestOUPolicyPrincipal(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	ou := &common.OrganizationUnit{OrganizationalUnitIdentifier: "COP", MspIdentifier: "DEFAULT"}
+	bytes, err := proto.Marshal(ou)
+	assert.NoError(t, err)
+
+	principal := &common.MSPPrincipal{
+		PrincipalClassification: common.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               bytes,
+	}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
 }
 
 var conf *msp.MSPConfig

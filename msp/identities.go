@@ -70,10 +70,13 @@ func (id *identity) Validate() error {
 	return id.msp.Validate(id)
 }
 
-// GetOrganizationUnits returns the OU for this instance
-func (id *identity) GetOrganizationUnits() string {
-	// TODO
-	return "dunno"
+// GetOrganizationalUnits returns the OU for this instance
+func (id *identity) GetOrganizationalUnits() []string {
+	if id.cert == nil {
+		return nil
+	}
+
+	return id.cert.Subject.OrganizationalUnit
 }
 
 // NewSerializedIdentity returns a serialized identity

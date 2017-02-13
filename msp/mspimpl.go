@@ -395,7 +395,35 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 			return errors.New("The identities do not match")
 		}
 	case common.MSPPrincipal_ORGANIZATION_UNIT:
-		panic("Not yet implemented")
+		// Principal contains the OrganizationUnit
+		OU := &common.OrganizationUnit{}
+		err := proto.Unmarshal(principal.Principal, OU)
+		if err != nil {
+			return fmt.Errorf("Could not unmarshal OrganizationUnit from principal, err %s", err)
+		}
+
+		// at first, we check whether the MSP
+		// identifier is the same as that of the identity
+		if OU.MspIdentifier != msp.name {
+			return fmt.Errorf("The identity is a member of a different MSP (expected %s, got %s)", OU.MspIdentifier, id.GetMSPIdentifier())
+		}
+
+		// we then check if the identity is valid with this MSP
+		// and fail if it is not
+		err = msp.Validate(id)
+		if err != nil {
+			return err
+		}
+
+		// now we check whether any of this identity's OUs match the requested one
+		for _, ou := range id.GetOrganizationalUnits() {
+			if ou == OU.OrganizationalUnitIdentifier {
+				return nil
+			}
+		}
+
+		// if we are here, no match was found, return an error
+		return errors.New("The identities do not match")
 	default:
 		return fmt.Errorf("Invalid principal type %d", int32(principal.PrincipalClassification))
 	}
