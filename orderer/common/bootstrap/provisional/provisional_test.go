@@ -20,18 +20,18 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/localconfig"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-var confSolo, confKafka *config.GenesisTopLevel
-var testCases []*config.GenesisTopLevel
+var confSolo, confKafka *genesisconfig.TopLevel
+var testCases []*genesisconfig.TopLevel
 
 func init() {
-	confSolo = config.LoadGenesis()
-	confKafka = config.LoadGenesis()
+	confSolo = genesisconfig.Load()
+	confKafka = genesisconfig.Load()
 	confKafka.Orderer.OrdererType = ConsensusTypeKafka
-	testCases = []*config.GenesisTopLevel{confSolo, confKafka}
+	testCases = []*genesisconfig.TopLevel{confSolo, confKafka}
 }
 
 func TestGenesisBlockHeader(t *testing.T) {

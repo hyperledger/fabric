@@ -28,6 +28,7 @@ import (
 	"bytes"
 
 	"github.com/golang/protobuf/proto"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/localmsp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
@@ -99,7 +100,7 @@ func TestSbftPeer(t *testing.T) {
 	// Start GRPC
 	logger.Info("Creating a GRPC server.")
 	conf := config.Load()
-	genConf := config.LoadGenesis()
+	genConf := genesisconfig.Load()
 	genConf.Orderer.OrdererType = sbftName
 	conf.General.LocalMSPDir = pwd + "/../msp/sampleconfig"
 	conf.General.LocalMSPID = "DEFAULT"
@@ -263,7 +264,7 @@ func broadcastSender(t *testing.T, resultch chan item, errorch chan error, clien
 	resultch <- item{itemtype: sent, payload: mpl}
 }
 
-func newRAMLedgerFactory(conf *config.GenesisTopLevel) ordererledger.Factory {
+func newRAMLedgerFactory(conf *genesisconfig.TopLevel) ordererledger.Factory {
 	rlf := ramledger.New(10)
 	genesisBlock := provisional.New(conf).GenesisBlock()
 	rl, err := rlf.GetOrCreate(provisional.TestChainID)

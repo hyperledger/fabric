@@ -23,13 +23,14 @@ import (
 
 	"google.golang.org/grpc"
 
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
 var conf *config.TopLevel
-var genConf *config.GenesisTopLevel
+var genConf *genesisconfig.TopLevel
 
 type broadcastClient struct {
 	ab.AtomicBroadcast_BroadcastClient
@@ -68,7 +69,7 @@ type argsImpl struct {
 
 func init() {
 	conf = config.Load()
-	genConf = config.LoadGenesis()
+	genConf = genesisconfig.Load()
 }
 
 func main() {

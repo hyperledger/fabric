@@ -23,9 +23,9 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxchannel "github.com/hyperledger/fabric/common/configtx/handlers/channel"
 	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
-	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
@@ -65,7 +65,7 @@ type bootstrapper struct {
 }
 
 // New returns a new provisional bootstrap helper.
-func New(conf *config.GenesisTopLevel) Generator {
+func New(conf *genesisconfig.TopLevel) Generator {
 	bs := &bootstrapper{
 		minimalGroups: []*cb.ConfigGroup{
 			// Chain Config Types

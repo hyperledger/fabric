@@ -22,13 +22,13 @@ import (
 	"time"
 
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configtx/handlers/orderer"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
-	"github.com/hyperledger/fabric/orderer/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -44,7 +44,7 @@ const ledgerSize = 10
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
-	genesisBlock = provisional.New(config.LoadGenesis()).GenesisBlock()
+	genesisBlock = provisional.New(genesisconfig.Load()).GenesisBlock()
 }
 
 type mockD struct {

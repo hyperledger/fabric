@@ -180,11 +180,11 @@ build/image/peer/payload:       build/docker/bin/peer \
 build/image/orderer/payload:    build/docker/bin/orderer \
 				build/msp-sampleconfig.tar.bz2 \
 				orderer/orderer.yaml \
-				orderer/genesis.yaml
+				common/configtx/tool/genesis.yaml
 build/image/testenv/payload:    build/gotools.tar.bz2 \
 				build/docker/bin/orderer \
 				orderer/orderer.yaml \
-				orderer/genesis.yaml \
+				common/configtx/tool/genesis.yaml \
 				build/docker/bin/peer \
 				peer/core.yaml \
 				build/msp-sampleconfig.tar.bz2 \

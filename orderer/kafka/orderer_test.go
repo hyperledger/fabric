@@ -37,7 +37,7 @@ import (
 var cp = newChainPartition(provisional.TestChainID, rawPartition)
 
 func newMockSharedConfigManager() *mockconfigtxorderer.SharedConfig {
-	return &mockconfigtxorderer.SharedConfig{KafkaBrokersVal: testConf.Kafka.Brokers}
+	return &mockconfigtxorderer.SharedConfig{KafkaBrokersVal: testGenesisConf.Orderer.Kafka.Brokers}
 }
 
 type mockConsenterImpl struct {
