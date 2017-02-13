@@ -54,10 +54,11 @@ func testTxSimulatorWithNoExistingData(t *testing.T, env testEnv) {
 
 func TestTxSimulatorWithExistingData(t *testing.T) {
 	for _, testEnv := range testEnvs {
-		t.Logf("Running test for TestEnv = %s", testEnv.getName())
-		testEnv.init(t)
-		testTxSimulatorWithExistingData(t, testEnv)
-		testEnv.cleanup()
+		t.Run(testEnv.getName(), func(t *testing.T) {
+			testEnv.init(t)
+			testTxSimulatorWithExistingData(t, testEnv)
+			testEnv.cleanup()
+		})
 	}
 }
 
@@ -101,7 +102,7 @@ func testTxSimulatorWithExistingData(t *testing.T, env testEnv) {
 	//TODO re-enable after adding couch version wrapper
 	//testutil.AssertEquals(t, vv.Version, version.NewHeight(2, 1))
 	vv, _ = env.getVDB().GetState("ns1", "key2")
-	testutil.AssertEquals(t, vv.Version, version.NewHeight(1, 1))
+	testutil.AssertEquals(t, vv.Version, version.NewHeight(0, 1))
 }
 
 func TestTxValidation(t *testing.T) {

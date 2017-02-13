@@ -28,14 +28,14 @@ import (
 )
 
 func TestBlockfileMgrBlockReadWrite(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
 	blkfileMgrWrapper.testGetBlockByHash(blocks)
-	blkfileMgrWrapper.testGetBlockByNumber(blocks, 1)
+	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0)
 }
 
 func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
@@ -47,7 +47,7 @@ func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
 
 func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint int,
 	numBlocksAfterCheckpoint int, numLastBlockBytes int, numPartialBytesToWrite int) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
@@ -58,6 +58,7 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	cpInfo1 := &checkpointInfo{
 		currentCPInfo.latestFileChunkSuffixNum,
 		currentCPInfo.latestFileChunksize,
+		currentCPInfo.isChainEmpty,
 		currentCPInfo.lastBlockNumber}
 
 	blocksAfterCP := bg.NextTestBlocks(numBlocksAfterCheckpoint)
@@ -88,17 +89,17 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	allBlocks = append(allBlocks, blocksBeforeCP...)
 	allBlocks = append(allBlocks, blocksAfterCP...)
 	allBlocks = append(allBlocks, blocksAfterRestart...)
-	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 1, len(allBlocks), allBlocks)
+	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 0, len(allBlocks)-1, allBlocks)
 }
 
 func TestBlockfileMgrBlockIterator(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
-	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 1, 8, blocks[0:8])
+	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 0, 7, blocks[0:8])
 }
 
 func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
@@ -120,7 +121,7 @@ func testBlockfileMgrBlockIterator(t *testing.T, blockfileMgr *blockfileMgr,
 }
 
 func TestBlockfileMgrBlockchainInfo(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -135,7 +136,7 @@ func TestBlockfileMgrBlockchainInfo(t *testing.T) {
 }
 
 func TestBlockfileMgrGetTxById(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -156,7 +157,7 @@ func TestBlockfileMgrGetTxById(t *testing.T) {
 }
 
 func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -165,7 +166,7 @@ func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
 	for blockIndex, blk := range blocks {
 		for tranIndex, txEnvelopeBytes := range blk.Data.Data {
 			// blockNum starts with 1, tranNum starts with 1
-			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByBlockNumTranNum(uint64(blockIndex+1), uint64(tranIndex+1))
+			txEnvelopeFromFileMgr, err := blkfileMgrWrapper.blockfileMgr.retrieveTransactionByBlockNumTranNum(uint64(blockIndex), uint64(tranIndex+1))
 			testutil.AssertNoError(t, err, "Error while retrieving tx from blkfileMgr")
 			txEnvelope, err := putil.GetEnvelopeFromBlock(txEnvelopeBytes)
 			testutil.AssertNoError(t, err, "Error while unmarshalling tx")
@@ -175,24 +176,27 @@ func TestBlockfileMgrGetTxByBlockNumTranNum(t *testing.T) {
 }
 
 func TestBlockfileMgrRestart(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
+	expectedHeight := uint64(10)
+	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height, expectedHeight)
 	blkfileMgrWrapper.close()
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
-	testutil.AssertEquals(t, int(blkfileMgrWrapper.blockfileMgr.cpInfo.lastBlockNumber), 10)
+	testutil.AssertEquals(t, int(blkfileMgrWrapper.blockfileMgr.cpInfo.lastBlockNumber), 9)
 	blkfileMgrWrapper.testGetBlockByHash(blocks)
+	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height, expectedHeight)
 }
 
 func TestBlockfileMgrFileRolling(t *testing.T) {
-	blocks := testutil.ConstructTestBlocks(t, 100)
+	blocks := testutil.ConstructTestBlocks(t, 200)
 	size := 0
-	for _, block := range blocks {
+	for _, block := range blocks[:100] {
 		by, _, err := serializeBlock(block)
 		testutil.AssertNoError(t, err, "Error while serializing block")
 		blockBytesSize := len(by)
@@ -201,31 +205,31 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	}
 
 	maxFileSie := int(0.75 * float64(size))
-	env := newTestEnv(t, NewConf(testPath, maxFileSie))
+	env := newTestEnv(t, NewConf(testPath(), maxFileSie))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
-	blkfileMgrWrapper.addBlocks(blocks)
+	blkfileMgrWrapper.addBlocks(blocks[:100])
 	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum, 1)
-	blkfileMgrWrapper.testGetBlockByHash(blocks)
+	blkfileMgrWrapper.testGetBlockByHash(blocks[:100])
 	blkfileMgrWrapper.close()
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
-	blkfileMgrWrapper.addBlocks(blocks)
+	blkfileMgrWrapper.addBlocks(blocks[100:])
 	testutil.AssertEquals(t, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum, 2)
-	blkfileMgrWrapper.testGetBlockByHash(blocks)
+	blkfileMgrWrapper.testGetBlockByHash(blocks[100:])
 }
 
 func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
 	for _, blk := range blocks {
-		for j, _ := range blk.Data.Data {
+		for j := range blk.Data.Data {
 			// blockNum starts with 1
 			txID, err := extractTxID(blk.Data.Data[j])
 			testutil.AssertNoError(t, err, "")

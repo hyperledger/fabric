@@ -28,7 +28,7 @@ import (
 )
 
 func TestMultipleBlockStores(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider
@@ -56,7 +56,7 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.
 	testutil.AssertEquals(t, bcInfo.Height, uint64(len(expectedBlocks)))
 	testutil.AssertEquals(t, bcInfo.CurrentBlockHash, expectedBlocks[len(expectedBlocks)-1].GetHeader().Hash())
 
-	itr, _ := store.RetrieveBlocks(1)
+	itr, _ := store.RetrieveBlocks(0)
 	for i := 0; i < len(expectedBlocks); i++ {
 		blockHolder, _ := itr.Next()
 		block := blockHolder.(ledger.BlockHolder).GetBlock()
@@ -65,7 +65,7 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store blkstorage.
 }
 
 func TestBlockStoreProvider(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 
 	provider := env.provider

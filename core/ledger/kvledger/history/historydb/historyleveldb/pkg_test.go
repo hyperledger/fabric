@@ -17,6 +17,7 @@ limitations under the License.
 package historyleveldb
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -90,7 +91,10 @@ type testBlockStoreEnv struct {
 
 func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
 
-	var testPath = "/tmp/fabric/ledgertests/kvledger/history/historydb/historyleveldb"
+	testPath, err := ioutil.TempDir("", "historyleveldb-")
+	if err != nil {
+		panic(err)
+	}
 	conf := fsblkstorage.NewConf(testPath, 0)
 
 	attrsToIndex := []blkstorage.IndexableAttr{

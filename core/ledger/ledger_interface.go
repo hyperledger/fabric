@@ -28,7 +28,7 @@ type PeerLedgerProvider interface {
 	Create(ledgerID string) (PeerLedger, error)
 	// Open opens an already created ledger
 	Open(ledgerID string) (PeerLedger, error)
-	// Exists tells whether the ledger with given id exits
+	// Exists tells whether the ledger with given id exists
 	Exists(ledgerID string) (bool, error)
 	// List lists the ids of the existing ledgers
 	List() ([]string, error)

@@ -38,12 +38,12 @@ func TestSavepoint(t *testing.T) {
 	env := NewTestHistoryEnv(t)
 	defer env.cleanup()
 
-	// read the savepoint, it should not exist and should return 0
-	blockNum, err := env.testHistoryDB.GetBlockNumFromSavepoint()
-	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetBlockNumFromSavepoint()")
-	testutil.AssertEquals(t, blockNum, uint64(0))
+	// read the savepoint, it should not exist and should return nil Height object
+	savepoint, err := env.testHistoryDB.GetLastSavepoint()
+	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
+	testutil.AssertNil(t, savepoint)
 
-	// create a block
+	// create the first block (block 0)
 	simulator, _ := env.txmgr.NewTxSimulator()
 	simulator.SetState("ns1", "key1", []byte("value1"))
 	simulator.Done()
@@ -53,10 +53,10 @@ func TestSavepoint(t *testing.T) {
 	err = env.testHistoryDB.Commit(block1)
 	testutil.AssertNoError(t, err, "")
 
-	// read the savepoint, it should now exist and return 1
-	blockNum, err = env.testHistoryDB.GetBlockNumFromSavepoint()
-	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetBlockNumFromSavepoint()")
-	testutil.AssertEquals(t, blockNum, uint64(1))
+	// read the savepoint, it should now exist and return a Height object with BlockNum 0
+	savepoint, err = env.testHistoryDB.GetLastSavepoint()
+	testutil.AssertNoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
+	testutil.AssertEquals(t, savepoint.BlockNum, uint64(0))
 }
 
 func TestHistory(t *testing.T) {

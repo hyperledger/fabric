@@ -162,11 +162,34 @@ func (historyDB *historyDB) NewHistoryQueryExecutor(blockStore blkstorage.BlockS
 }
 
 // GetBlockNumFromSavepoint implements method in HistoryDB interface
-func (historyDB *historyDB) GetBlockNumFromSavepoint() (uint64, error) {
+func (historyDB *historyDB) GetLastSavepoint() (*version.Height, error) {
 	versionBytes, err := historyDB.db.Get(savePointKey)
 	if err != nil || versionBytes == nil {
-		return 0, err
+		return nil, err
 	}
 	height, _ := version.NewHeightFromBytes(versionBytes)
-	return height.BlockNum, nil
+	return height, nil
+}
+
+// ShouldRecover implements method in interface kvledger.Recoverer
+func (historyDB *historyDB) ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error) {
+	if !ledgerconfig.IsHistoryDBEnabled() {
+		return false, 0, nil
+	}
+	savepoint, err := historyDB.GetLastSavepoint()
+	if err != nil {
+		return false, 0, err
+	}
+	if savepoint == nil {
+		return true, 0, nil
+	}
+	return savepoint.BlockNum != lastAvailableBlock, savepoint.BlockNum + 1, nil
+}
+
+// CommitLostBlock implements method in interface kvledger.Recoverer
+func (historyDB *historyDB) CommitLostBlock(block *common.Block) error {
+	if err := historyDB.Commit(block); err != nil {
+		return err
+	}
+	return nil
 }

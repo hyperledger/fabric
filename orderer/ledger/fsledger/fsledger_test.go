@@ -17,6 +17,7 @@ limitations under the License.
 package fsledger
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -25,9 +26,15 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 )
 
-const (
-	testFolder = "/tmp/fabric/orderer/ledger/fsledger"
-)
+var testFolder string
+
+func init() {
+	var err error
+	testFolder, err = ioutil.TempDir("", "fsledger")
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestOrdererLedger(t *testing.T) {
 	conf := fsblkstorage.NewConf(testFolder, 0)
@@ -52,12 +59,12 @@ func TestOrdererLedger(t *testing.T) {
 	testutil.AssertEquals(t, bcInfo.Height, uint64(10))
 
 	// test GetBlockByNumber()
-	block, err := ordererLedger.GetBlockByNumber(2)
+	block, err := ordererLedger.GetBlockByNumber(1)
 	testutil.AssertNoError(t, err, "Error in getting block by number")
 	testutil.AssertEquals(t, block, blocks[1])
 
-	// get blocks iterator for block number starting from 3
-	itr, err := ordererLedger.GetBlocksIterator(3)
+	// get blocks iterator for block number starting from 2
+	itr, err := ordererLedger.GetBlocksIterator(2)
 	testutil.AssertNoError(t, err, "Error in getting iterator")
 	blockHolder, err := itr.Next()
 	testutil.AssertNoError(t, err, "")

@@ -18,6 +18,7 @@ package endorser
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -48,10 +49,15 @@ var endorserServer pb.EndorserServer
 var mspInstance msp.MSP
 var signer msp.SigningIdentity
 
+type testEnvironment struct {
+	tempDir  string
+	listener net.Listener
+}
+
 //initialize peer and start up. If security==enabled, login as vp
-func initPeer(chainID string) (net.Listener, error) {
+func initPeer(chainID string) (*testEnvironment, error) {
 	//start clean
-	finitPeer(nil)
+	// finitPeer(nil)
 	var opts []grpc.ServerOption
 	if viper.GetBool("peer.tls.enabled") {
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
@@ -62,7 +68,8 @@ func initPeer(chainID string) (net.Listener, error) {
 	}
 	grpcServer := grpc.NewServer(opts...)
 
-	viper.Set("peer.fileSystemPath", filepath.Join(os.TempDir(), "hyperledger", "production"))
+	tempDir := newTempDir()
+	viper.Set("peer.fileSystemPath", filepath.Join(tempDir, "hyperledger", "production"))
 
 	peerAddress, err := peer.GetLocalAddress()
 	if err != nil {
@@ -94,12 +101,12 @@ func initPeer(chainID string) (net.Listener, error) {
 
 	go grpcServer.Serve(lis)
 
-	return lis, nil
+	return &testEnvironment{tempDir: tempDir, listener: lis}, nil
 }
 
-func finitPeer(lis net.Listener) {
-	closeListenerAndSleep(lis)
-	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
+func finitPeer(tev *testEnvironment) {
+	closeListenerAndSleep(tev.listener)
+	os.RemoveAll(tev.tempDir)
 }
 
 func closeListenerAndSleep(l net.Listener) {
@@ -255,6 +262,10 @@ func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error
 	return resp, err
 }
 
+func deleteChaincodeOnDisk(chaincodeID string) {
+	os.RemoveAll(filepath.Join(viper.GetString("peer.fileSystemPath"), "chaincodes", chaincodeID))
+}
+
 //begin tests. Note that we rely upon the system chaincode and peer to be created
 //once and be used for all the tests. In order to avoid dependencies / collisions
 //due to deployed chaincodes, trying to use different chaincodes for different
@@ -264,8 +275,7 @@ func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error
 func TestDeploy(t *testing.T) {
 	chainID := util.GetTestChainID()
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
-
-	defer os.RemoveAll("/tmp/hyperledger/production/chaincodes/ex01.0")
+	defer deleteChaincodeOnDisk("ex01.0")
 
 	cccid := ccprovider.NewCCContext(chainID, "ex01", "0", "", false, nil)
 
@@ -286,7 +296,7 @@ func TestRedeploy(t *testing.T) {
 	//invalid arguments
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "ex02", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 
-	defer os.RemoveAll("/tmp/hyperledger/production/chaincodes/ex02.0")
+	defer deleteChaincodeOnDisk("ex02.0")
 
 	cccid := ccprovider.NewCCContext(chainID, "ex02", "0", "", false, nil)
 
@@ -298,7 +308,7 @@ func TestRedeploy(t *testing.T) {
 		return
 	}
 
-	os.RemoveAll("/tmp/hyperledger/production/chaincodes/ex02.0")
+	deleteChaincodeOnDisk("ex02.0")
 
 	//second time should not fail as we are just simulating
 	_, _, err = deploy(endorserServer, chainID, spec, nil)
@@ -319,7 +329,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
 	chaincodeID := &pb.ChaincodeID{Path: url, Name: "ex01", Version: "0"}
 
-	defer os.RemoveAll("/tmp/hyperledger/production/chaincodes/ex01.0")
+	defer deleteChaincodeOnDisk("ex01.0")
 
 	args := []string{"10"}
 
@@ -337,8 +347,8 @@ func TestDeployAndInvoke(t *testing.T) {
 		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
-
-	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp)
+	var nextBlockNumber uint64 // first block
+	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp, nextBlockNumber)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error committing <%s>: %s", chaincodeID1, err)
@@ -349,7 +359,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	f = "invoke"
 	invokeArgs := append([]string{f}, args...)
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
-	resp, err = invoke(chainID, spec)
+	_, err = invoke(chainID, spec)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking transaction: %s", err)
@@ -373,8 +383,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 	chaincodeID1 := &pb.ChaincodeID{Path: url1, Name: "upgradeex01", Version: "0"}
 	chaincodeID2 := &pb.ChaincodeID{Path: url2, Name: "upgradeex01", Version: "1"}
 
-	defer os.RemoveAll("/tmp/hyperledger/production/chaincodes/upgradeex01.0")
-	defer os.RemoveAll("/tmp/hyperledger/production/chaincodes/upgradeex01.1")
+	defer deleteChaincodeOnDisk("upgradeex01.0")
+	defer deleteChaincodeOnDisk("upgradeex01.1")
 
 	f := "init"
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
@@ -394,7 +404,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 		return
 	}
 
-	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp)
+	var nextBlockNumber uint64 = 1 // something above created block 0
+	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp, nextBlockNumber)
 	if err != nil {
 		t.Fail()
 		chaincode.GetChain().Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID1}})
@@ -405,7 +416,7 @@ func TestDeployAndUpgrade(t *testing.T) {
 
 	argsUpgrade := util.ToChaincodeArgs(f, "a", "150", "b", "300")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID2, Input: &pb.ChaincodeInput{Args: argsUpgrade}}
-	resp, prop, err = upgrade(endorserServer, chainID, spec, nil)
+	_, _, err = upgrade(endorserServer, chainID, spec, nil)
 	if err != nil {
 		t.Fail()
 		chaincode.GetChain().Stop(ctxt, cccid1, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID1}})
@@ -421,16 +432,23 @@ func TestDeployAndUpgrade(t *testing.T) {
 	chaincode.GetChain().Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID2}})
 }
 
+func newTempDir() string {
+	tempDir, err := ioutil.TempDir("", "fabric-")
+	if err != nil {
+		panic(err)
+	}
+	return tempDir
+}
+
 func TestMain(m *testing.M) {
 	SetupTestConfig()
-	viper.Set("peer.fileSystemPath", filepath.Join(os.TempDir(), "hyperledger", "production"))
 
 	chainID := util.GetTestChainID()
-	lis, err := initPeer(chainID)
+	tev, err := initPeer(chainID)
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize tests")
-		finitPeer(lis)
+		finitPeer(tev)
 		return
 	}
 
@@ -441,21 +459,21 @@ func TestMain(m *testing.M) {
 	err = msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
 	if err != nil {
 		fmt.Printf("Could not initialize msp/signer, err %s", err)
+		finitPeer(tev)
 		os.Exit(-1)
-		finitPeer(lis)
 		return
 	}
 	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Printf("Could not initialize msp/signer")
+		finitPeer(tev)
 		os.Exit(-1)
-		finitPeer(lis)
 		return
 	}
 
 	retVal := m.Run()
 
-	finitPeer(lis)
+	finitPeer(tev)
 
 	os.Exit(retVal)
 }

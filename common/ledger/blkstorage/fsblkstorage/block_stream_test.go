@@ -30,7 +30,7 @@ func TestBlockfileStream(t *testing.T) {
 }
 
 func testBlockfileStream(t *testing.T, numBlocks int) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	ledgerid := "testledger"
 	w := newTestBlockfileWrapper(env, ledgerid)
@@ -71,7 +71,7 @@ func TestBlockFileStreamUnexpectedEOF(t *testing.T) {
 }
 
 func testBlockFileStreamUnexpectedEOF(t *testing.T, numBlocks int, partialBlockBytes []byte) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	w := newTestBlockfileWrapper(env, "testLedger")
 	blockfileMgr := w.blockfileMgr
@@ -100,7 +100,7 @@ func TestBlockStream(t *testing.T) {
 }
 
 func testBlockStream(t *testing.T, numFiles int) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	w := newTestBlockfileWrapper(env, "testLedger")
 	defer w.close()

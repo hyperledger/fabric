@@ -18,6 +18,7 @@ package fsblkstorage
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math"
 	"os"
 	"testing"
@@ -28,7 +29,13 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 )
 
-var testPath = "/tmp/fabric/ledgertests/blkstorage/fsblkstorage"
+func testPath() string {
+	if path, err := ioutil.TempDir("", "fsblkstorage-"); err != nil {
+		panic(err)
+	} else {
+		return path
+	}
+}
 
 type testEnv struct {
 	t        testing.TB

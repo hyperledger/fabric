@@ -58,7 +58,9 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 
 	defer theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 
-	_, err = deploy(ctxt, cccid, spec)
+	var nextBlockNumber uint64
+	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
+	nextBlockNumber++
 	if err != nil {
 		t.Fail()
 		t.Logf("Error initializing chaincode %s(%s)", chaincodeID, err)
@@ -88,7 +90,7 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
 		//start with a new background
-		_, _, results[qnum], err = invoke(context.Background(), chainID, spec)
+		_, _, results[qnum], err = invoke(context.Background(), chainID, spec, nextBlockNumber)
 
 		if err != nil {
 			errs[qnum] = fmt.Errorf("Error executing <%s>: %s", chaincodeID.Name, err)
