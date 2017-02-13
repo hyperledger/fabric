@@ -32,6 +32,11 @@ import (
 	"github.com/op/go-logging"
 )
 
+const (
+	// GroupKey is the group name for the orderer config
+	GroupKey = "Orderer"
+)
+
 var orgSchema = &cb.ConfigGroupSchema{
 	Groups: map[string]*cb.ConfigGroupSchema{},
 	Values: map[string]*cb.ConfigValueSchema{

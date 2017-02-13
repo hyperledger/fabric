@@ -30,18 +30,10 @@ import (
 	"github.com/op/go-logging"
 )
 
-const (
-	// ApplicationGroupKey is the group name for the application config
-	ApplicationGroupKey = "Application"
-
-	// OrdererGroupKey is the group name for the orderer config
-	OrdererGroupKey = "Orderer"
-)
-
 var Schema = &cb.ConfigGroupSchema{
 	Groups: map[string]*cb.ConfigGroupSchema{
-		ApplicationGroupKey: application.Schema,
-		OrdererGroupKey:     orderer.Schema,
+		application.GroupKey: application.Schema,
+		orderer.GroupKey:     orderer.Schema,
 	},
 	Values: map[string]*cb.ConfigValueSchema{
 		HashingAlgorithmKey:          nil,
@@ -181,9 +173,9 @@ func (pm *SharedConfigImpl) Handler(path []string) (api.Handler, error) {
 	var initializer api.SubInitializer
 
 	switch path[0] {
-	case ApplicationGroupKey:
+	case application.GroupKey:
 		initializer = pm.applicationConfig
-	case OrdererGroupKey:
+	case orderer.GroupKey:
 		initializer = pm.ordererConfig
 	default:
 		return nil, fmt.Errorf("Disallowed channel group: %s", path[0])

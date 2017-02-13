@@ -28,6 +28,11 @@ import (
 	"github.com/op/go-logging"
 )
 
+const (
+	// GroupKey is the group name for the Application config
+	GroupKey = "Application"
+)
+
 var orgSchema = &cb.ConfigGroupSchema{
 	Groups: map[string]*cb.ConfigGroupSchema{},
 	Values: map[string]*cb.ConfigValueSchema{
@@ -52,7 +57,7 @@ var Schema = &cb.ConfigGroupSchema{
 
 // Peer config keys
 const (
-	// AnchorPeersKey is the cb.ConfigItem type key name for the AnchorPeers message
+	// AnchorPeersKey is the key name for the AnchorPeers ConfigValue
 	AnchorPeersKey = "AnchorPeers"
 )
 

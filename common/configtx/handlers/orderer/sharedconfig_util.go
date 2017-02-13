@@ -22,65 +22,46 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-// TemplateConsensusType creates a headerless config item representing the consensus type
-func TemplateConsensusType(typeValue string) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_ORDERER,
-		Key:   ConsensusTypeKey,
-		Value: utils.MarshalOrPanic(&ab.ConsensusType{Type: typeValue}),
+func configGroup(key string, value []byte) *cb.ConfigGroup {
+	result := cb.NewConfigGroup()
+	result.Groups[GroupKey] = cb.NewConfigGroup()
+	result.Groups[GroupKey].Values[key] = &cb.ConfigValue{
+		Value: value,
 	}
+	return result
+}
+
+// TemplateConsensusType creates a headerless config item representing the consensus type
+func TemplateConsensusType(typeValue string) *cb.ConfigGroup {
+	return configGroup(ConsensusTypeKey, utils.MarshalOrPanic(&ab.ConsensusType{Type: typeValue}))
 }
 
 // TemplateBatchSize creates a headerless config item representing the batch size
-func TemplateBatchSize(batchSize *ab.BatchSize) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_ORDERER,
-		Key:   BatchSizeKey,
-		Value: utils.MarshalOrPanic(batchSize),
-	}
+func TemplateBatchSize(batchSize *ab.BatchSize) *cb.ConfigGroup {
+	return configGroup(BatchSizeKey, utils.MarshalOrPanic(batchSize))
 }
 
 // TemplateBatchTimeout creates a headerless config item representing the batch timeout
-func TemplateBatchTimeout(batchTimeout string) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_ORDERER,
-		Key:   BatchTimeoutKey,
-		Value: utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: batchTimeout}),
-	}
+func TemplateBatchTimeout(batchTimeout string) *cb.ConfigGroup {
+	return configGroup(BatchTimeoutKey, utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: batchTimeout}))
 }
 
 // TemplateChainCreationPolicyNames creates a headerless configuraiton item representing the chain creation policy names
-func TemplateChainCreationPolicyNames(names []string) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_ORDERER,
-		Key:   ChainCreationPolicyNamesKey,
-		Value: utils.MarshalOrPanic(&ab.ChainCreationPolicyNames{Names: names}),
-	}
+func TemplateChainCreationPolicyNames(names []string) *cb.ConfigGroup {
+	return configGroup(ChainCreationPolicyNamesKey, utils.MarshalOrPanic(&ab.ChainCreationPolicyNames{Names: names}))
 }
 
 // TemplateIngressPolicyNames creates a headerless config item representing the ingress policy names
-func TemplateIngressPolicyNames(names []string) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_ORDERER,
-		Key:   IngressPolicyNamesKey,
-		Value: utils.MarshalOrPanic(&ab.IngressPolicyNames{Names: names}),
-	}
+func TemplateIngressPolicyNames(names []string) *cb.ConfigGroup {
+	return configGroup(IngressPolicyNamesKey, utils.MarshalOrPanic(&ab.IngressPolicyNames{Names: names}))
 }
 
 // TemplateEgressPolicyNames creates a headerless config item representing the egress policy names
-func TemplateEgressPolicyNames(names []string) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_ORDERER,
-		Key:   EgressPolicyNamesKey,
-		Value: utils.MarshalOrPanic(&ab.EgressPolicyNames{Names: names}),
-	}
+func TemplateEgressPolicyNames(names []string) *cb.ConfigGroup {
+	return configGroup(EgressPolicyNamesKey, utils.MarshalOrPanic(&ab.EgressPolicyNames{Names: names}))
 }
 
 // TemplateKafkaBrokers creates a headerless config item representing the kafka brokers
-func TemplateKafkaBrokers(brokers []string) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		Type:  cb.ConfigItem_ORDERER,
-		Key:   KafkaBrokersKey,
-		Value: utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: brokers}),
-	}
+func TemplateKafkaBrokers(brokers []string) *cb.ConfigGroup {
+	return configGroup(KafkaBrokersKey, utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: brokers}))
 }

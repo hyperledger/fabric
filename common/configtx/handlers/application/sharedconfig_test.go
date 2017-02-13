@@ -37,8 +37,11 @@ func makeInvalidConfigValue() *cb.ConfigValue {
 	}
 }
 
-func itemToValue(configItem *cb.ConfigItem) (string, *cb.ConfigValue) {
-	return configItem.Key, &cb.ConfigValue{Value: configItem.Value}
+func groupToKeyValue(configGroup *cb.ConfigGroup) (string, *cb.ConfigValue) {
+	for key, value := range configGroup.Groups[GroupKey].Values {
+		return key, value
+	}
+	panic("No value encoded")
 }
 
 func TestInterface(t *testing.T) {
@@ -92,7 +95,7 @@ func TestAnchorPeers(t *testing.T) {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(itemToValue(validMessage))
+	err = m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}

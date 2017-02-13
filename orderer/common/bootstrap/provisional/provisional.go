@@ -60,15 +60,19 @@ const (
 var DefaultChainCreationPolicyNames = []string{AcceptAllPolicyKey}
 
 type bootstrapper struct {
-	minimalItems     []*cb.ConfigItem
-	minimalGroups    []*cb.ConfigGroup
-	systemChainItems []*cb.ConfigItem
+	minimalGroups     []*cb.ConfigGroup
+	systemChainGroups []*cb.ConfigGroup
 }
 
 // New returns a new provisional bootstrap helper.
 func New(conf *config.TopLevel) Generator {
 	bs := &bootstrapper{
-		minimalItems: []*cb.ConfigItem{
+		minimalGroups: []*cb.ConfigGroup{
+			// Chain Config Types
+			configtxchannel.DefaultHashingAlgorithm(),
+			configtxchannel.DefaultBlockDataHashingStructure(),
+			configtxchannel.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
+
 			// Orderer Config Types
 			configtxorderer.TemplateConsensusType(conf.Genesis.OrdererType),
 			configtxorderer.TemplateBatchSize(&ab.BatchSize{
@@ -79,20 +83,13 @@ func New(conf *config.TopLevel) Generator {
 			configtxorderer.TemplateBatchTimeout(conf.Genesis.BatchTimeout.String()),
 			configtxorderer.TemplateIngressPolicyNames([]string{AcceptAllPolicyKey}),
 			configtxorderer.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
-		},
-
-		minimalGroups: []*cb.ConfigGroup{
-			// Chain Config Types
-			configtxchannel.DefaultHashingAlgorithm(),
-			configtxchannel.DefaultBlockDataHashingStructure(),
-			configtxchannel.TemplateOrdererAddresses([]string{fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)}),
 
 			// Policies
 			cauthdsl.TemplatePolicy(configtx.NewConfigItemPolicyKey, cauthdsl.RejectAllPolicy),
 			cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy),
 		},
 
-		systemChainItems: []*cb.ConfigItem{
+		systemChainGroups: []*cb.ConfigGroup{
 			configtxorderer.TemplateChainCreationPolicyNames(DefaultChainCreationPolicyNames),
 		},
 	}
@@ -100,7 +97,7 @@ func New(conf *config.TopLevel) Generator {
 	switch conf.Genesis.OrdererType {
 	case ConsensusTypeSolo, ConsensusTypeSbft:
 	case ConsensusTypeKafka:
-		bs.minimalItems = append(bs.minimalItems, configtxorderer.TemplateKafkaBrokers(conf.Kafka.Brokers))
+		bs.minimalGroups = append(bs.minimalGroups, configtxorderer.TemplateKafkaBrokers(conf.Kafka.Brokers))
 	default:
 		panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Genesis.OrdererType))
 	}
@@ -109,16 +106,13 @@ func New(conf *config.TopLevel) Generator {
 }
 
 func (bs *bootstrapper) ChannelTemplate() configtx.Template {
-	return configtx.NewCompositeTemplate(
-		configtx.NewSimpleTemplate(bs.minimalItems...),
-		configtx.NewSimpleTemplateNext(bs.minimalGroups...),
-	)
+	return configtx.NewSimpleTemplateNext(bs.minimalGroups...)
 }
 
 func (bs *bootstrapper) GenesisBlock() *cb.Block {
 	block, err := genesis.NewFactoryImpl(
 		configtx.NewCompositeTemplate(
-			configtx.NewSimpleTemplate(bs.systemChainItems...),
+			configtx.NewSimpleTemplateNext(bs.systemChainGroups...),
 			bs.ChannelTemplate(),
 		),
 	).Block(TestChainID)
