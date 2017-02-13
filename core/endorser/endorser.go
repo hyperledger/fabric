@@ -320,7 +320,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	//TODO till we implement global ESCC, CSCC for system chaincodes
 	//chainless proposals (such as CSCC) don't have to be endorsed
 	if ischainless {
-		pResp = &pb.ProposalResponse{Response: &pb.Response{}}
+		pResp = &pb.ProposalResponse{Response: res}
 	} else {
 		pResp, err = e.endorseProposal(ctx, chainID, txid, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId, txsim, cd)
 		if err != nil {

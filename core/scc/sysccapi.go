@@ -84,17 +84,12 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 		return nil
 	}
 
-	chainless := false
-	if chainID == "" {
-		chainless = true
-	}
-
 	var err error
 
 	ccprov := ccprovider.GetChaincodeProvider()
 
 	ctxt := context.Background()
-	if !chainless {
+	if chainID != "" {
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
 			panic(fmt.Sprintf("syschain %s start up failure - unexpected nil ledger for channel %s", syscc.Name, chainID))

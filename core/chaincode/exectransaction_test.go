@@ -284,9 +284,8 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 		}
 	}()
 
-	if err = ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec); err != nil {
-		return nil, err
-	}
+	//ignore existence errors
+	ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
 
 	sysCCVers := util.GetSysCCVersion()
 	lcccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil)
