@@ -72,4 +72,4 @@ def step_impl(context, enrollId, composeService):
 
     userRegistration = orderer_util.getUserRegistration(context, enrollId)
     streamHelper = userRegistration.getDelivererStreamHelper(context, composeService)
-        streamHelper.seekToRange(start = start, end = end)
+    streamHelper.seekToRange(start = start, end = end)
