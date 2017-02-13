@@ -1,16 +1,24 @@
 #!/bin/bash
 
-target=$1
+find_golang_src() {
+    find $1 -name "*.go" -or -name "*.h" -or -name "*.c"
+}
 
-deps=`go list -f '{{ join .Deps "\n" }}' $target`
+list_deps() {
+    target=$1
 
-find $GOPATH/src/$target -type f
+    deps=`go list -f '{{ join .Deps "\n" }}' $target`
 
-for dep in $deps;
-do
-    importpath=$GOPATH/src/$dep
-    if [ -d $importpath ];
-    then
-        find $importpath -type f
-    fi
-done
+    find_golang_src $GOPATH/src/$target
+
+    for dep in $deps;
+    do
+        importpath=$GOPATH/src/$dep
+        if [ -d $importpath ];
+        then
+            find_golang_src $importpath
+        fi
+    done
+}
+
+list_deps $1 | sort | uniq

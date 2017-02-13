@@ -59,7 +59,7 @@ EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
-GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | sort | uniq)
+GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
