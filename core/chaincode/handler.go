@@ -406,7 +406,6 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 		fsm.Callbacks{
 			"before_" + pb.ChaincodeMessage_REGISTER.String():           func(e *fsm.Event) { v.beforeRegisterEvent(e, v.FSM.Current()) },
 			"before_" + pb.ChaincodeMessage_COMPLETED.String():          func(e *fsm.Event) { v.beforeCompletedEvent(e, v.FSM.Current()) },
-			"before_" + pb.ChaincodeMessage_INIT.String():               func(e *fsm.Event) { v.beforeInitState(e, v.FSM.Current()) },
 			"after_" + pb.ChaincodeMessage_GET_STATE.String():           func(e *fsm.Event) { v.afterGetState(e, v.FSM.Current()) },
 			"after_" + pb.ChaincodeMessage_RANGE_QUERY_STATE.String():   func(e *fsm.Event) { v.afterRangeQueryState(e, v.FSM.Current()) },
 			"after_" + pb.ChaincodeMessage_EXECUTE_QUERY_STATE.String(): func(e *fsm.Event) { v.afterExecuteQueryState(e, v.FSM.Current()) },
@@ -520,12 +519,6 @@ func (handler *Handler) beforeCompletedEvent(e *fsm.Event, state string) {
 	// Notify on channel once into READY state
 	chaincodeLogger.Debugf("[%s]beforeCompleted - not in ready state will notify when in readystate", shorttxid(msg.Txid))
 	return
-}
-
-// beforeInitState is invoked before an init message is sent to the chaincode.
-func (handler *Handler) beforeInitState(e *fsm.Event, state string) {
-	chaincodeLogger.Debugf("Before state %s.. notifying waiter that we are up", state)
-	handler.notifyDuringStartup(true)
 }
 
 // afterGetState handles a GET_STATE request from the chaincode.
@@ -1333,18 +1326,8 @@ func (handler *Handler) sendExecuteMessage(ctxt context.Context, chainID string,
 		return nil, err
 	}
 
-	// Trigger FSM event if it is a transaction
-	if msg.Type.String() == pb.ChaincodeMessage_TRANSACTION.String() {
-		chaincodeLogger.Debugf("[%s]sendExecuteMsg trigger event %s", shorttxid(msg.Txid), msg.Type)
-		handler.triggerNextState(msg, true)
-	} else {
-		// Send the message to shim
-		chaincodeLogger.Debugf("[%s]sending query", shorttxid(msg.Txid))
-		if err = handler.serialSend(msg); err != nil {
-			handler.deleteTxContext(msg.Txid)
-			return nil, fmt.Errorf("[%s]SendMessage error sending (%s)", shorttxid(msg.Txid), err)
-		}
-	}
+	chaincodeLogger.Debugf("[%s]sendExecuteMsg trigger event %s", shorttxid(msg.Txid), msg.Type)
+	handler.triggerNextState(msg, true)
 
 	return txctx.responseNotifier, nil
 }
