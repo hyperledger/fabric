@@ -22,7 +22,7 @@ import (
 	"sync"
 	"testing"
 
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -67,7 +67,7 @@ func initMSP() {
 		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
 	}
 
-	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
 	if err != nil {
 		panic(fmt.Errorf("Fatal error when reading MSP config file %s: err %s\n", mspMgrConfigDir, err))
 	}

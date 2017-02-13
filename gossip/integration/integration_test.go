@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
@@ -46,7 +47,7 @@ func TestNewGossipCryptoService(t *testing.T) {
 	endpoint2 := "localhost:5612"
 	endpoint3 := "localhost:5613"
 
-	mgmt.LoadFakeSetupWithLocalMspAndTestChainMsp("../../msp/sampleconfig")
+	msptesttools.LoadMSPSetupForTesting("../../msp/sampleconfig")
 	peerIdentity, _ := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 
 	cryptSvc := &cryptoService{}

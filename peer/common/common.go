@@ -60,14 +60,8 @@ func InitConfig(cmdRoot string) error {
 }
 
 //InitCrypto initializes crypto for this peer
-func InitCrypto(mspMgrConfigDir string) error {
-	// FIXME: when this peer joins a chain, it should get the
-	// config for that chain with the list of MSPs that the
-	// chain uses; however this is not yet implemented.
-	// Additionally, we might always want to have an MSP for
-	// the local test chain so that we can run tests with the
-	// peer CLI. This is why we create this fake setup here for now
-	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+func InitCrypto(mspMgrConfigDir string, localMSPID string) error {
+	err := mspmgmt.LoadLocalMsp(mspMgrConfigDir, localMSPID)
 	if err != nil {
 		return fmt.Errorf("Fatal error when setting up MSP from directory %s: err %s\n", mspMgrConfigDir, err)
 	}

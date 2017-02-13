@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -42,7 +43,7 @@ func init() {
 		os.Exit(-1)
 		return
 	}
-	err = mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	err = msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
 	if err != nil {
 		fmt.Printf("Could not load msp config, err %s", err)
 		os.Exit(-1)

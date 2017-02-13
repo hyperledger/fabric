@@ -63,9 +63,11 @@ func initYaml(mainFlags *pflag.FlagSet) {
 //initialize MSP from -m <mspconfigdir>. Defaults to ../../msp/sampleconfig
 func initMSP(mainFlags *pflag.FlagSet) {
 	mspMgrConfigDir := ""
+	mspID := ""
 	mainFlags.StringVarP(&mspMgrConfigDir, "mspcfgdir", "m", "../../msp/sampleconfig/", "Path to MSP dir")
+	mainFlags.StringVarP(&mspID, "mspid", "i", "DEFAULT", "MSP ID")
 
-	err := common.InitCrypto(mspMgrConfigDir)
+	err := common.InitCrypto(mspMgrConfigDir, mspID)
 	if err != nil {
 		panic(err.Error())
 	}

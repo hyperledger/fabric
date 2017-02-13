@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,7 +40,7 @@ func TestMain(m *testing.M) {
 	// as the MSP-related classes can be easly mocked.
 
 	mspMgrConfigDir := "./../../../msp/sampleconfig/"
-	err := mgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
 	if err != nil {
 		fmt.Printf("Failed LoadFakeSetupWithLocalMspAndTestChainMsp [%s]", err)
 		os.Exit(-1)

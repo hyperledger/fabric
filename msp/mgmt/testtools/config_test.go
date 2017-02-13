@@ -14,16 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mgmt
+package msptesttools
 
 import (
+	"testing"
+
 	"io/ioutil"
 	"os"
-	"testing"
+
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/msp/mgmt"
 )
 
-// getTestMSPConfigPath returns the path to sampleconfig for unit tests
-func getTestMSPConfigPath() string {
+func getTESTMSPConfigPath() string {
 	cfgPath := os.Getenv("PEER_CFG_PATH") + "/msp/sampleconfig/"
 	if _, err := ioutil.ReadDir(cfgPath); err != nil {
 		cfgPath = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
@@ -31,16 +34,24 @@ func getTestMSPConfigPath() string {
 	return cfgPath
 }
 
-func TestLocalMSP(t *testing.T) {
-	testMSPConfigPath := getTestMSPConfigPath()
-	err := LoadLocalMsp(testMSPConfigPath, "DEFAULT")
-
+func TestFakeSetup(t *testing.T) {
+	testMSPConfigPath := getTESTMSPConfigPath()
+	err := LoadMSPSetupForTesting(testMSPConfigPath)
 	if err != nil {
 		t.Fatalf("LoadLocalMsp failed, err %s", err)
 	}
 
-	_, err = GetLocalMSP().GetDefaultSigningIdentity()
+	_, err = mgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fatalf("GetDefaultSigningIdentity failed, err %s", err)
+	}
+
+	msps, err := mgmt.GetManagerForChain(util.GetTestChainID()).GetMSPs()
+	if err != nil {
+		t.Fatalf("EnlistedMSPs failed, err %s", err)
+	}
+
+	if msps == nil || len(msps) == 0 {
+		t.Fatalf("There are no MSPS in the manager for chain %s", util.GetTestChainID())
 	}
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -330,7 +331,7 @@ func TestMain(m *testing.M) {
 	// setup crypto algorithms
 	// setup the MSP manager so that we can sign/verify
 	mspMgrConfigDir := "../../../msp/sampleconfig/"
-	err := mspmgmt.LoadFakeSetupWithLocalMspAndTestChainMsp(mspMgrConfigDir)
+	err := msptesttools.LoadMSPSetupForTesting(mspMgrConfigDir)
 	if err != nil {
 		fmt.Printf("Could not initialize msp, err %s", err)
 		os.Exit(-1)
