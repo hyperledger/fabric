@@ -22,47 +22,48 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	. "github.com/hyperledger/fabric/orderer/ledger"
-	jsonledger "github.com/hyperledger/fabric/orderer/ledger/json"
-	cb "github.com/hyperledger/fabric/protos/common"
+	fileledger "github.com/hyperledger/fabric/orderer/ledger/file"
 )
 
-var genesisBlock = cb.NewBlock(0, nil)
-
 func init() {
-	testables = append(testables, &jsonLedgerTestEnv{})
+	testables = append(testables, &fileLedgerTestEnv{})
 }
 
-type jsonLedgerTestFactory struct {
+type fileLedgerTestFactory struct {
 	location string
 }
 
-type jsonLedgerTestEnv struct {
+type fileLedgerTestEnv struct {
 }
 
-func (env *jsonLedgerTestEnv) Initialize() (ledgerTestFactory, error) {
+func (env *fileLedgerTestEnv) Initialize() (ledgerTestFactory, error) {
 	var err error
 	location, err := ioutil.TempDir("", "hyperledger")
 	if err != nil {
 		return nil, err
 	}
-	return &jsonLedgerTestFactory{location: location}, nil
+	return &fileLedgerTestFactory{location: location}, nil
 }
 
-func (env *jsonLedgerTestEnv) Name() string {
-	return "jsonledger"
+func (env *fileLedgerTestEnv) Name() string {
+	return "fileledger"
 }
 
-func (env *jsonLedgerTestFactory) Destroy() error {
+func (env *fileLedgerTestEnv) Close(lf Factory) {
+	lf.Close()
+}
+
+func (env *fileLedgerTestFactory) Destroy() error {
 	err := os.RemoveAll(env.location)
 	return err
 }
 
-func (env *jsonLedgerTestFactory) Persistent() bool {
+func (env *fileLedgerTestFactory) Persistent() bool {
 	return true
 }
 
-func (env *jsonLedgerTestFactory) New() (Factory, ReadWriter) {
-	flf := jsonledger.New(env.location)
+func (env *fileLedgerTestFactory) New() (Factory, ReadWriter) {
+	flf := fileledger.New(env.location)
 	fl, err := flf.GetOrCreate(provisional.TestChainID)
 	if err != nil {
 		panic(err)

@@ -30,6 +30,9 @@ type Factory interface {
 
 	// ChainIDs returns the chain IDs the Factory is aware of
 	ChainIDs() []string
+
+	// Close releases all resources acquired by the factory
+	Close()
 }
 
 // Iterator is useful for a chain Reader to stream blocks as they are created

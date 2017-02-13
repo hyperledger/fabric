@@ -140,6 +140,11 @@ func (jlf *jsonLedgerFactory) GetOrCreate(chainID string) (ordererledger.ReadWri
 	return ch, nil
 }
 
+// Close does nothing for json ledger
+func (jlf *jsonLedgerFactory) Close() {
+	return // nothing to do
+}
+
 // newChain creates a new chain backed by a json ledger
 func newChain(directory string) ordererledger.ReadWriter {
 	jl := &jsonLedger{
