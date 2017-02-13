@@ -92,7 +92,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		startKey := args[0]
 		endKey := args[1]
 
-		keysIter, err := stub.RangeQueryState(startKey, endKey)
+		keysIter, err := stub.GetStateByRange(startKey, endKey)
 		if err != nil {
 			return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
 		}

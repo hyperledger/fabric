@@ -65,21 +65,21 @@ type ChaincodeStubInterface interface {
 	// DelState removes the specified `key` and its value from the ledger.
 	DelState(key string) error
 
-	// RangeQueryState function can be invoked by a chaincode to query of a range
+	// GetStateByRange function can be invoked by a chaincode to query of a range
 	// of keys in the state. Assuming the startKey and endKey are in lexical
 	// an iterator will be returned that can be used to iterate over all keys
 	// between the startKey (inclusive) and endKey (exclusive). The order in which keys are
 	// returned by the iterator is random.
-	RangeQueryState(startKey, endKey string) (StateQueryIteratorInterface, error)
+	GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error)
 
-	// PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+	// GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
 	// state based on a given partial composite key. This function returns an
 	// iterator which can be used to iterate over all composite keys whose prefix
 	// matches the given partial composite key. This function should be used only for
 	// a partial composite key. For a full composite key, an iter with empty response
 	// would be returned. The objectType and attributes are expected to have only
 	// valid utf8 strings and should not contain U+0000 (nil byte) and U+10FFFF (biggest and unallocated code point)
-	PartialCompositeKeyQuery(objectType string, keys []string) (StateQueryIteratorInterface, error)
+	GetStateByPartialCompositeKey(objectType string, keys []string) (StateQueryIteratorInterface, error)
 
 	// Given a list of attributes, CreateCompositeKey function combines these attributes
 	// to form a composite key. The objectType and attributes are expected to have only

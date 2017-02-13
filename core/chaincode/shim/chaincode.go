@@ -333,13 +333,13 @@ type StateQueryIterator struct {
 	currentLoc int
 }
 
-// RangeQueryState function can be invoked by a chaincode to query of a range
+// GetStateByRange function can be invoked by a chaincode to query of a range
 // of keys in the state. Assuming the startKey and endKey are in lexical order,
 // an iterator will be returned that can be used to iterate over all keys
 // between the startKey and endKey, inclusive. The order in which keys are
 // returned by the iterator is random.
-func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateQueryIteratorInterface, error) {
-	response, err := stub.handler.handleRangeQueryState(startKey, endKey, stub.TxID)
+func (stub *ChaincodeStub) GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error) {
+	response, err := stub.handler.handleGetStateByRange(startKey, endKey, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +352,7 @@ func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateQueryI
 // state database. An iterator is returned which can be used to iterate (next) over
 // the query result set
 func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
-	response, err := stub.handler.handleExecuteQueryState(query, stub.TxID)
+	response, err := stub.handler.handleGetQueryResult(query, stub.TxID)
 	if err != nil {
 		return nil, err
 	}
@@ -409,19 +409,19 @@ func validateCompositeKeyAttribute(str string) error {
 	return nil
 }
 
-//PartialCompositeKeyQuery function can be invoked by a chaincode to query the
+//GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
 //state based on a given partial composite key. This function returns an
 //iterator which can be used to iterate over all composite keys whose prefix
 //matches the given partial composite key. This function should be used only for
 //a partial composite key. For a full composite key, an iter with empty response
 //would be returned.
-func (stub *ChaincodeStub) PartialCompositeKeyQuery(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
-	return partialCompositeKeyQuery(stub, objectType, attributes)
+func (stub *ChaincodeStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
+	return getStateByPartialCompositeKey(stub, objectType, attributes)
 }
 
-func partialCompositeKeyQuery(stub ChaincodeStubInterface, objectType string, attributes []string) (StateQueryIteratorInterface, error) {
+func getStateByPartialCompositeKey(stub ChaincodeStubInterface, objectType string, attributes []string) (StateQueryIteratorInterface, error) {
 	partialCompositeKey, _ := stub.CreateCompositeKey(objectType, attributes)
-	keysIter, err := stub.RangeQueryState(partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue))
+	keysIter, err := stub.GetStateByRange(partialCompositeKey, partialCompositeKey+string(maxUnicodeRuneValue))
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching rows: %s", err)
 	}

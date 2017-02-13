@@ -701,7 +701,7 @@ message ChaincodeMessage {
         QUERY = 14;
         QUERY_COMPLETED = 15;
         QUERY_ERROR = 16;
-        RANGE_QUERY_STATE = 17;
+        GET_STATE_BY_RANGE = 17;
     }
 
     Type type = 1;
@@ -762,42 +762,42 @@ message PutStateInfo {
 #### DEL_STATE
 链码发送一个由`payload`指定要删除值的键的`DEL_STATE`消息。
 
-#### RANGE_QUERY_STATE
-链码发送一个`payload`包含`RANGE_QUERY_STATE`对象的`RANGE_QUERY_STATE`来获取一个范围内的值。
+#### GET_STATE_BY_RANGE
+链码发送一个`payload`包含`GET_STATE_BY_RANGE`对象的`GET_STATE_BY_RANGE`来获取一个范围内的值。
 
 ```
-message RangeQueryState {
+message GetStateByRange {
 	string startKey = 1;
 	string endKey = 2;
 }
 ```
 
-`startKey`和`endKey`假设是通过字典排序的. 验证 peer 响应一个`payload`是`RangeQueryStateResponse`对象的`RESPONSE`消息
+`startKey`和`endKey`假设是通过字典排序的. 验证 peer 响应一个`payload`是`GetStateByRangeResponse`对象的`RESPONSE`消息
 
 ```
-message RangeQueryStateResponse {
-    repeated RangeQueryStateKeyValue keysAndValues = 1;
+message GetStateByRangeResponse {
+    repeated GetStateByRangeKeyValue keysAndValues = 1;
     bool hasMore = 2;
     string ID = 3;
 }
-message RangeQueryStateKeyValue {
+message GetStateByRangeKeyValue {
     string key = 1;
     bytes value = 2;
 }
 ```
 
-如果相应中`hasMore=true`，这表示有在请求的返回中还有另外的键。链码可以通过发送包含与响应中ID相同的ID的`RangeQueryStateNext`消息来获取下一集合。
+如果相应中`hasMore=true`，这表示有在请求的返回中还有另外的键。链码可以通过发送包含与响应中ID相同的ID的`GetStateByRangeNext`消息来获取下一集合。
 
 ```
-message RangeQueryStateNext {
+message GetStateByRangeNext {
     string ID = 1;
 }
 ```
 
-当链码结束读取范围，它会发送带有ID的`RangeQueryStateClose`消息来期望它关闭。
+当链码结束读取范围，它会发送带有ID的`GetStateByRangeClose`消息来期望它关闭。
 
 ```
-message RangeQueryStateClose {
+message GetStateByRangeClose {
   string ID = 1;
 }
 ```

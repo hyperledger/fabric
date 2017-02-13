@@ -292,9 +292,9 @@ func (t *SimpleChaincode) transferMarble(stub shim.ChaincodeStubInterface, args 
 	return shim.Success(nil)
 }
 
-// ==== Example: PartialCompositeKeyQuery/RangeQuery =========================================
+// ==== Example: GetStateByPartialCompositeKey/RangeQuery =========================================
 // transferMarblesBasedOnColor will transfer marbles of a given color to a certain new owner.
-// Uses a PartialCompositeKeyQuery (range query) against color~name 'index'.
+// Uses a GetStateByPartialCompositeKey (range query) against color~name 'index'.
 // Committing peers will re-execute range queries to guarantee that result sets are stable
 // between endorsement time and commit time. The transaction is invalidated by the
 // committing peers if the result set has changed between endorsement time and commit time.
@@ -314,7 +314,7 @@ func (t *SimpleChaincode) transferMarblesBasedOnColor(stub shim.ChaincodeStubInt
 
 	// Query the color~name index by color
 	// This will execute a key range query on all keys starting with 'color'
-	coloredMarbleResultsIterator, err := stub.PartialCompositeKeyQuery("color~name", []string{color})
+	coloredMarbleResultsIterator, err := stub.GetStateByPartialCompositeKey("color~name", []string{color})
 	if err != nil {
 		return shim.Error(err.Error())
 	}
