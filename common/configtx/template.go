@@ -17,6 +17,7 @@ limitations under the License.
 package configtx
 
 import (
+	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -76,72 +77,6 @@ func (st *simpleTemplateNext) Envelope(chainID string) (*cb.ConfigEnvelope, erro
 	return &cb.ConfigEnvelope{
 		Config: config,
 	}, nil
-}
-
-type simpleTemplate struct {
-	items []*cb.ConfigItem
-}
-
-// NewSimpleTemplate creates a Template using the supplied items
-// XXX This signature will change soon, leaving as is for backwards compatibility
-func NewSimpleTemplate(items ...*cb.ConfigItem) Template {
-	return &simpleTemplate{items: items}
-}
-
-// Items returns a set of ConfigEnvelopes for the given chainID, and errors only on marshaling errors
-func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
-	channel := cb.NewConfigGroup()
-	channel.Groups[ApplicationGroup] = cb.NewConfigGroup()
-	channel.Groups[OrdererGroup] = cb.NewConfigGroup()
-
-	for _, item := range st.items {
-		var values map[string]*cb.ConfigValue
-		switch item.Type {
-		case cb.ConfigItem_PEER:
-			values = channel.Groups[ApplicationGroup].Values
-		case cb.ConfigItem_ORDERER:
-			values = channel.Groups[OrdererGroup].Values
-		case cb.ConfigItem_CHAIN:
-			values = channel.Values
-		case cb.ConfigItem_POLICY:
-			logger.Debugf("Templating about policy %s", item.Key)
-			policy := &cb.Policy{}
-			err := proto.Unmarshal(item.Value, policy)
-			if err != nil {
-				return nil, err
-			}
-			channel.Policies[item.Key] = &cb.ConfigPolicy{
-				Policy: policy,
-			}
-			continue
-		case cb.ConfigItem_MSP:
-			group := cb.NewConfigGroup()
-			channel.Groups[ApplicationGroup].Groups[item.Key] = group
-			channel.Groups[OrdererGroup].Groups[item.Key] = group
-			group.Values[MSPKey] = &cb.ConfigValue{
-				Value: item.Value,
-			}
-			continue
-		}
-
-		// For Peer, Orderer, Chain, types
-		values[item.Key] = &cb.ConfigValue{
-			Value: item.Value,
-		}
-	}
-
-	marshaledConfig, err := proto.Marshal(&cb.ConfigNext{
-		Header: &cb.ChannelHeader{
-			ChannelId: chainID,
-			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
-		},
-		Channel: channel,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &cb.ConfigEnvelope{Config: marshaledConfig}, nil
 }
 
 type compositeTemplate struct {
@@ -221,33 +156,15 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error
 // constructed list of ConfigEnvelope.  Note, using this Template in
 // a CompositeTemplate will invalidate the CreationPolicy
 func NewChainCreationTemplate(creationPolicy string, template Template) Template {
-	creationPolicyTemplate := NewSimpleTemplate(&cb.ConfigItem{
-		Type: cb.ConfigItem_ORDERER,
-		Key:  CreationPolicyKey,
+	result := cb.NewConfigGroup()
+	result.Groups[configtxorderer.GroupKey] = cb.NewConfigGroup()
+	result.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey] = &cb.ConfigValue{
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: creationPolicy,
 		}),
-	})
-
-	return NewCompositeTemplate(creationPolicyTemplate, template)
-}
-
-// join takes a number of []*cb.ConfigItems and produces their concatenation
-func join(sets ...[]*cb.ConfigItem) []*cb.ConfigItem {
-	total := 0
-	for _, set := range sets {
-		total += len(set)
-	}
-	result := make([]*cb.ConfigItem, total)
-	last := 0
-	for _, set := range sets {
-		for i := range set {
-			result[i+last] = set[i]
-		}
-		last += len(set)
 	}
 
-	return result
+	return NewCompositeTemplate(NewSimpleTemplateNext(result), template)
 }
 
 // MakeChainCreationTransaction is a handy utility function for creating new chain transactions using the underlying Template framework

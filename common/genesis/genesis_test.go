@@ -20,11 +20,10 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx"
-	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 func TestSanity(t *testing.T) {
-	impl := NewFactoryImpl(configtx.NewSimpleTemplate(&cb.ConfigItem{}))
+	impl := NewFactoryImpl(configtx.NewSimpleTemplateNext())
 	_, err := impl.Block("TestChainID")
 	if err != nil {
 		t.Fatalf("Basic sanity fails")

@@ -40,23 +40,26 @@ func defaultInitializer() *mockconfigtx.Initializer {
 	}
 }
 
-func makeConfigItem(id, modificationPolicy string, lastModified uint64, data []byte) *cb.ConfigItem {
-	return &cb.ConfigItem{
-		ModificationPolicy: modificationPolicy,
-		LastModified:       lastModified,
-		Key:                id,
-		Value:              data,
+type configPair struct {
+	key   string
+	value *cb.ConfigValue
+}
+
+func makeConfigPair(id, modificationPolicy string, lastModified uint64, data []byte) *configPair {
+	return &configPair{
+		key: id,
+		value: &cb.ConfigValue{
+			ModPolicy: modificationPolicy,
+			Version:   lastModified,
+			Value:     data,
+		},
 	}
 }
 
-func makeMarshaledConfig(chainID string, configItems ...*cb.ConfigItem) []byte {
+func makeMarshaledConfig(chainID string, configPairs ...*configPair) []byte {
 	values := make(map[string]*cb.ConfigValue)
-	for _, item := range configItems {
-		values[item.Key] = &cb.ConfigValue{
-			Version:   item.LastModified,
-			ModPolicy: item.ModificationPolicy,
-			Value:     item.Value,
-		}
+	for _, pair := range configPairs {
+		values[pair.key] = pair.value
 	}
 
 	config := &cb.ConfigNext{
@@ -75,7 +78,7 @@ func TestCallback(t *testing.T) {
 	}
 
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, defaultInitializer(), []func(api.Manager){callback})
 
 	if err != nil {
@@ -90,7 +93,7 @@ func TestCallback(t *testing.T) {
 // TestDifferentChainID tests that a config update for a different chain ID fails
 func TestDifferentChainID(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, defaultInitializer(), nil)
 
 	if err != nil {
@@ -98,7 +101,7 @@ func TestDifferentChainID(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigEnvelope{
-		Config: makeMarshaledConfig("wrongChain", makeConfigItem("foo", "foo", 1, []byte("foo"))),
+		Config: makeMarshaledConfig("wrongChain", makeConfigPair("foo", "foo", 1, []byte("foo"))),
 	}
 
 	err = cm.Validate(newConfig)
@@ -115,7 +118,7 @@ func TestDifferentChainID(t *testing.T) {
 // TestOldConfigReplay tests that resubmitting a config for a sequence number which is not newer is ignored
 func TestOldConfigReplay(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, defaultInitializer(), nil)
 
 	if err != nil {
@@ -123,7 +126,7 @@ func TestOldConfigReplay(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}
 
 	err = cm.Validate(newConfig)
@@ -151,7 +154,7 @@ func TestInvalidInitialConfigByStructure(t *testing.T) {
 // TestValidConfigChange tests the happy path of updating a config value with no defaultModificationPolicy
 func TestValidConfigChange(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, defaultInitializer(), nil)
 
 	if err != nil {
@@ -159,7 +162,7 @@ func TestValidConfigChange(t *testing.T) {
 	}
 
 	newConfig := &cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 1, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
 	}
 
 	err = cm.Validate(newConfig)
@@ -177,7 +180,7 @@ func TestValidConfigChange(t *testing.T) {
 // config values while advancing another
 func TestConfigChangeRegressedSequence(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 1, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
 	}, defaultInitializer(), nil)
 
 	if err != nil {
@@ -187,8 +190,8 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 	newConfig := &cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(
 			defaultChain,
-			makeConfigItem("foo", "foo", 0, []byte("foo")),
-			makeConfigItem("bar", "bar", 2, []byte("bar")),
+			makeConfigPair("foo", "foo", 0, []byte("foo")),
+			makeConfigPair("bar", "bar", 2, []byte("bar")),
 		),
 	}
 
@@ -207,7 +210,7 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 // config values while advancing another
 func TestConfigChangeOldSequence(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 1, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
 	}, defaultInitializer(), nil)
 
 	if err != nil {
@@ -217,8 +220,8 @@ func TestConfigChangeOldSequence(t *testing.T) {
 	newConfig := &cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(
 			defaultChain,
-			makeConfigItem("foo", "foo", 2, []byte("foo")),
-			makeConfigItem("bar", "bar", 1, []byte("bar")),
+			makeConfigPair("foo", "foo", 2, []byte("foo")),
+			makeConfigPair("bar", "bar", 1, []byte("bar")),
 		),
 	}
 
@@ -239,8 +242,8 @@ func TestConfigImplicitDelete(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(
 			defaultChain,
-			makeConfigItem("foo", "foo", 0, []byte("foo")),
-			makeConfigItem("bar", "bar", 0, []byte("bar")),
+			makeConfigPair("foo", "foo", 0, []byte("foo")),
+			makeConfigPair("bar", "bar", 0, []byte("bar")),
 		),
 	}, defaultInitializer(), nil)
 
@@ -251,7 +254,7 @@ func TestConfigImplicitDelete(t *testing.T) {
 	newConfig := &cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(
 			defaultChain,
-			makeConfigItem("bar", "bar", 1, []byte("bar")),
+			makeConfigPair("bar", "bar", 1, []byte("bar")),
 		),
 	}
 
@@ -269,7 +272,7 @@ func TestConfigImplicitDelete(t *testing.T) {
 // TestEmptyConfigUpdate tests to make sure that an empty config is rejected as an update
 func TestEmptyConfigUpdate(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, defaultInitializer(), nil)
 
 	if err != nil {
@@ -296,8 +299,8 @@ func TestSilentConfigModification(t *testing.T) {
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(
 			defaultChain,
-			makeConfigItem("foo", "foo", 0, []byte("foo")),
-			makeConfigItem("bar", "bar", 0, []byte("bar")),
+			makeConfigPair("foo", "foo", 0, []byte("foo")),
+			makeConfigPair("bar", "bar", 0, []byte("bar")),
 		),
 	}, defaultInitializer(), nil)
 
@@ -308,8 +311,8 @@ func TestSilentConfigModification(t *testing.T) {
 	newConfig := &cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(
 			defaultChain,
-			makeConfigItem("foo", "foo", 0, []byte("different")),
-			makeConfigItem("bar", "bar", 1, []byte("bar")),
+			makeConfigPair("foo", "foo", 0, []byte("different")),
+			makeConfigPair("bar", "bar", 1, []byte("bar")),
 		),
 	}
 
@@ -330,7 +333,7 @@ func TestInvalidInitialConfigByPolicy(t *testing.T) {
 	initializer := defaultInitializer()
 	initializer.Resources.PolicyManagerVal.Policy.Err = fmt.Errorf("err")
 	_, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, initializer, nil)
 
 	if err == nil {
@@ -343,7 +346,7 @@ func TestInvalidInitialConfigByPolicy(t *testing.T) {
 func TestConfigChangeViolatesPolicy(t *testing.T) {
 	initializer := defaultInitializer()
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, initializer, nil)
 
 	if err != nil {
@@ -353,7 +356,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	initializer.Resources.PolicyManagerVal.Policy.Err = fmt.Errorf("err")
 
 	newConfig := &cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 1, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
 	}
 
 	err = cm.Validate(newConfig)
@@ -372,7 +375,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	initializer := defaultInitializer()
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, initializer, nil)
 
 	if err != nil {
@@ -386,8 +389,8 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	newConfig := &cb.ConfigEnvelope{
 		Config: makeMarshaledConfig(
 			defaultChain,
-			makeConfigItem("foo", "foo", 0, []byte("foo")),
-			makeConfigItem("bar", "bar", 1, []byte("foo")),
+			makeConfigPair("foo", "foo", 0, []byte("foo")),
+			makeConfigPair("bar", "bar", 1, []byte("foo")),
 		),
 	}
 
@@ -407,7 +410,7 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 func TestInvalidProposal(t *testing.T) {
 	initializer := defaultInitializer()
 	cm, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, initializer, nil)
 
 	if err != nil {
@@ -417,7 +420,7 @@ func TestInvalidProposal(t *testing.T) {
 	initializer.HandlerVal = &mockconfigtx.Handler{ErrorForProposeConfig: fmt.Errorf("err")}
 
 	newConfig := &cb.ConfigEnvelope{
-		Config: makeMarshaledConfig(defaultChain, makeConfigItem("foo", "foo", 1, []byte("foo"))),
+		Config: makeMarshaledConfig(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
 	}
 
 	err = cm.Validate(newConfig)
@@ -433,8 +436,9 @@ func TestInvalidProposal(t *testing.T) {
 
 // TestMissingHeader checks that a config item with a missing header causes the config to be rejected
 func TestMissingHeader(t *testing.T) {
-	configItem := makeConfigItem("foo", "foo", 0, []byte("foo"))
-	data := utils.MarshalOrPanic(&cb.Config{Items: []*cb.ConfigItem{configItem}})
+	group := cb.NewConfigGroup()
+	group.Values["foo"] = &cb.ConfigValue{}
+	data := utils.MarshalOrPanic(&cb.ConfigNext{Channel: group})
 	_, err := NewManagerImpl(&cb.ConfigEnvelope{
 		Config: data,
 	}, defaultInitializer(), nil)
@@ -447,7 +451,7 @@ func TestMissingHeader(t *testing.T) {
 // TestMissingChainID checks that a config item with a missing chainID causes the config to be rejected
 func TestMissingChainID(t *testing.T) {
 	_, err := NewManagerImpl(&cb.ConfigEnvelope{
-		Config: makeMarshaledConfig("", makeConfigItem("foo", "foo", 0, []byte("foo"))),
+		Config: makeMarshaledConfig("", makeConfigPair("foo", "foo", 0, []byte("foo"))),
 	}, defaultInitializer(), nil)
 
 	if err == nil {

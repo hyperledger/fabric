@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -81,11 +82,12 @@ func (mlw *mockLedgerWriter) Append(blockContents []*cb.Envelope, metadata [][]b
 }
 
 func makeConfigTx(chainID string, i int) *cb.Envelope {
-	configTemplate := configtx.NewSimpleTemplate(&cb.ConfigItem{
-		Type:  cb.ConfigItem_ORDERER,
-		Key:   fmt.Sprintf("%d", i),
+	group := cb.NewConfigGroup()
+	group.Groups[configtxorderer.GroupKey] = cb.NewConfigGroup()
+	group.Groups[configtxorderer.GroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
 		Value: []byte(fmt.Sprintf("%d", i)),
-	})
+	}
+	configTemplate := configtx.NewSimpleTemplateNext(group)
 	configEnv, err := configTemplate.Envelope(chainID)
 	if err != nil {
 		panic(err)
