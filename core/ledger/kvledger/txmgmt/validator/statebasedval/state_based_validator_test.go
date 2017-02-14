@@ -201,17 +201,18 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 
 func checkValidation(t *testing.T, validator *Validator, rwsets []*rwset.RWSet, invalidTxIndexes []int) {
 	simulationResults := [][]byte{}
-	for _, rwset := range rwsets {
-		sr, err := rwset.GetTxReadWriteSet().Marshal()
+	for _, readWriteSet := range rwsets {
+		sr, err := readWriteSet.GetTxReadWriteSet().Marshal()
 		testutil.AssertNoError(t, err, "")
 		simulationResults = append(simulationResults, sr)
 	}
 	block := testutil.ConstructBlock(t, simulationResults, false)
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = util.NewTxValidationFlags(len(block.Data.Data))
 	_, err := validator.ValidateAndPrepareBatch(block, true)
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}
 	}
@@ -222,7 +223,7 @@ func checkValidation(t *testing.T, validator *Validator, rwsets []*rwset.RWSet, 
 
 func buildTestHashResults(t *testing.T, maxDegree int, kvReads []*rwset.KVRead) *rwset.MerkleSummary {
 	if len(kvReads) <= maxDegree {
-		t.Fatalf("This method should be called with number of KVReads more than maxDegree; Else, hashing won't be performedrwset")
+		t.Fatal("This method should be called with number of KVReads more than maxDegree; Else, hashing won't be performedrwset")
 	}
 	helper, _ := rwset.NewRangeQueryResultsHelper(true, maxDegree)
 	for _, kvRead := range kvReads {

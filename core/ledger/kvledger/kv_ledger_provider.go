@@ -64,6 +64,7 @@ func NewProvider() (ledger.PeerLedgerProvider, error) {
 		blkstorage.IndexableAttrTxID,
 		blkstorage.IndexableAttrBlockNumTranNum,
 		blkstorage.IndexableAttrBlockTxID,
+		blkstorage.IndexableAttrTxValidationCode,
 	}
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 	blockStoreProvider := fsblkstorage.NewProvider(

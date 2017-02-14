@@ -49,6 +49,9 @@ type PeerLedger interface {
 	// NewTxSimulator gives handle to a transaction simulator.
 	// A client can obtain more than one 'TxSimulator's for parallel execution.
 	// Any snapshoting/synchronization should be performed at the implementation level if required
+
+	// GetTxValidationCodeByTxID returns reason code of transaction validation
+	GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error)
 	NewTxSimulator() (TxSimulator, error)
 	// NewQueryExecutor gives handle to a query executor.
 	// A client can obtain more than one 'QueryExecutor's for parallel execution.

@@ -25,15 +25,19 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 const (
-	blockNumIdxKeyPrefix        = 'n'
-	blockHashIdxKeyPrefix       = 'h'
-	txIDIdxKeyPrefix            = 't'
-	blockNumTranNumIdxKeyPrefix = 'a'
-	blockTxIDIdxKeyPrefix       = 'b'
-	indexCheckpointKeyStr       = "indexCheckpointKey"
+	blockNumIdxKeyPrefix           = 'n'
+	blockHashIdxKeyPrefix          = 'h'
+	txIDIdxKeyPrefix               = 't'
+	blockNumTranNumIdxKeyPrefix    = 'a'
+	blockTxIDIdxKeyPrefix          = 'b'
+	txValidationResultIdxKeyPrefix = 'v'
+	indexCheckpointKeyStr          = "indexCheckpointKey"
 )
 
 var indexCheckpointKey = []byte(indexCheckpointKeyStr)
@@ -47,6 +51,7 @@ type index interface {
 	getTxLoc(txID string) (*fileLocPointer, error)
 	getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error)
 	getBlockLocByTxID(txID string) (*fileLocPointer, error)
+	getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error)
 }
 
 type blockIdxInfo struct {
@@ -54,6 +59,7 @@ type blockIdxInfo struct {
 	blockHash []byte
 	flp       *fileLocPointer
 	txOffsets []*txindexInfo
+	metadata  *common.BlockMetadata
 }
 
 type blockIndex struct {
@@ -92,6 +98,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	logger.Debugf("Indexing block [%s]", blockIdxInfo)
 	flp := blockIdxInfo.flp
 	txOffsets := blockIdxInfo.txOffsets
+	txsfltr := ledgerUtil.TxValidationFlags(blockIdxInfo.metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	batch := leveldbhelper.NewUpdateBatch()
 	flpBytes, err := flp.marshal()
 	if err != nil {
@@ -138,6 +145,13 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrBlockTxID]; ok {
 		for _, txoffset := range txOffsets {
 			batch.Put(constructBlockTxIDKey(txoffset.txID), flpBytes)
+		}
+	}
+
+	// Index6 - Store transaction validation result by transaction id
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxValidationCode]; ok {
+		for idx, txoffset := range txOffsets {
+			batch.Put(constructTxValidationCodeIDKey(txoffset.txID), []byte{byte(txsfltr.Flag(idx))})
 		}
 	}
 
@@ -228,6 +242,26 @@ func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint
 	return txFLP, nil
 }
 
+func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+	if _, ok := index.indexItemsMap[blkstorage.IndexableAttrTxValidationCode]; !ok {
+		return peer.TxValidationCode(-1), blkstorage.ErrAttrNotIndexed
+	}
+
+	raw, err := index.db.Get(constructTxValidationCodeIDKey(txID))
+
+	if err != nil {
+		return peer.TxValidationCode(-1), err
+	} else if raw == nil {
+		return peer.TxValidationCode(-1), blkstorage.ErrAttrNotIndexed
+	} else if len(raw) != 1 {
+		return peer.TxValidationCode(-1), errors.New("Invalid value in indexItems")
+	}
+
+	result := peer.TxValidationCode(int32(raw[0]))
+
+	return result, nil
+}
+
 func constructBlockNumKey(blockNum uint64) []byte {
 	blkNumBytes := util.EncodeOrderPreservingVarUint64(blockNum)
 	return append([]byte{blockNumIdxKeyPrefix}, blkNumBytes...)
@@ -243,6 +277,10 @@ func constructTxIDKey(txID string) []byte {
 
 func constructBlockTxIDKey(txID string) []byte {
 	return append([]byte{blockTxIDIdxKeyPrefix}, []byte(txID)...)
+}
+
+func constructTxValidationCodeIDKey(txID string) []byte {
+	return append([]byte{txValidationResultIdxKeyPrefix}, []byte(txID)...)
 }
 
 func constructBlockNumTranNumKey(blockNum uint64, txNum uint64) []byte {

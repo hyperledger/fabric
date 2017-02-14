@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	putil "github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
@@ -314,7 +315,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 	//save the index in the database
 	mgr.index.indexBlock(&blockIdxInfo{
 		blockNum: block.Header.Number, blockHash: blockHash,
-		flp: blockFLP, txOffsets: txOffsets})
+		flp: blockFLP, txOffsets: txOffsets, metadata: block.Metadata})
 
 	//update the checkpoint info (for storage) and the blockchain info (for APIs) in the manager
 	mgr.updateCheckpoint(newCPInfo)
@@ -399,6 +400,8 @@ func (mgr *blockfileMgr) syncIndex() error {
 		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
 			locPointer: locPointer{offset: int(blockPlacementInfo.blockStartOffset)}}
 		blockIdxInfo.txOffsets = info.txOffsets
+		blockIdxInfo.metadata = info.metadata
+
 		logger.Debugf("syncIndex() indexing block [%d]", blockIdxInfo.blockNum)
 		if err = mgr.index.indexBlock(blockIdxInfo); err != nil {
 			return err
@@ -463,6 +466,11 @@ func (mgr *blockfileMgr) retrieveBlockByTxID(txID string) (*common.Block, error)
 		return nil, err
 	}
 	return mgr.fetchBlock(loc)
+}
+
+func (mgr *blockfileMgr) retrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+	logger.Debugf("retrieveTxValidationCodeByTxID() - txID = [%s]", txID)
+	return mgr.index.getTxValidationCodeByTxID(txID)
 }
 
 func (mgr *blockfileMgr) retrieveBlockHeaderByNumber(blockNum uint64) (*common.BlockHeader, error) {

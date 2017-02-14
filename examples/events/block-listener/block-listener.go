@@ -17,6 +17,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -48,11 +49,11 @@ func (a *adapter) Recv(msg *pb.Event) (bool, error) {
 
 //Disconnected implements consumer.EventAdapter interface for disconnecting
 func (a *adapter) Disconnected(err error) {
-	fmt.Printf("Disconnected...exiting\n")
+	fmt.Print("Disconnected...exiting\n")
 	os.Exit(1)
 }
 
-func createEventClient(eventAddress string, cid string) *adapter {
+func createEventClient(eventAddress string, _ string) *adapter {
 	var obcEHClient *consumer.EventsClient
 
 	done := make(chan *pb.Event_Block)
@@ -68,7 +69,7 @@ func createEventClient(eventAddress string, cid string) *adapter {
 }
 func getTxPayload(tdata []byte) (*common.Payload, error) {
 	if tdata == nil {
-		return nil, fmt.Errorf("Cannot extract payload from nil transaction")
+		return nil, errors.New("Cannot extract payload from nil transaction")
 	}
 
 	if env, err := utils.GetEnvelopeFromBlock(tdata); err != nil {
@@ -87,7 +88,7 @@ func getTxPayload(tdata []byte) (*common.Payload, error) {
 // getChainCodeEvents parses block events for chaincode events associated with individual transactions
 func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 	if tdata == nil {
-		return nil, fmt.Errorf("Cannot extract payload from nil transaction")
+		return nil, errors.New("Cannot extract payload from nil transaction")
 	}
 
 	if env, err := utils.GetEnvelopeFromBlock(tdata); err != nil {
@@ -128,7 +129,7 @@ func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("No events found")
+	return nil, errors.New("No events found")
 }
 
 func main() {
@@ -142,41 +143,41 @@ func main() {
 
 	a := createEventClient(eventAddress, chaincodeID)
 	if a == nil {
-		fmt.Printf("Error creating event client\n")
+		fmt.Println("Error creating event client")
 		return
 	}
 
 	for {
 		select {
 		case b := <-a.notfy:
-			fmt.Printf("\n")
-			fmt.Printf("\n")
-			fmt.Printf("Received block\n")
-			fmt.Printf("--------------\n")
-			txsFltr := util.NewFilterBitArrayFromBytes(b.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+			fmt.Println("")
+			fmt.Println("")
+			fmt.Println("Received block")
+			fmt.Println("--------------")
+			txsFltr := util.TxValidationFlags(b.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 			for i, r := range b.Block.Data.Data {
-				if txsFltr.IsSet(uint(i)) {
+				if txsFltr.IsInvalid(i) {
 					tx, _ := getTxPayload(r)
 					if tx != nil {
 						chdr, err := utils.UnmarshalChannelHeader(tx.Header.ChannelHeader)
 						if err != nil {
-							fmt.Printf("Error extracting channel header\n")
+							fmt.Print("Error extracting channel header\n")
 							return
 						}
 
-						fmt.Printf("\n")
-						fmt.Printf("\n")
-						fmt.Printf("Received invalid transaction\n")
-						fmt.Printf("--------------\n")
+						fmt.Println("")
+						fmt.Println("")
+						fmt.Println("Received invalid transaction")
+						fmt.Println("--------------")
 						fmt.Printf("Transaction invalid: TxID: %s\n", chdr.TxId)
 					}
 				} else {
 					fmt.Printf("Transaction:\n\t[%v]\n", r)
 					if event, err := getChainCodeEvents(r); err == nil {
 						if len(chaincodeID) != 0 && event.ChaincodeId == chaincodeID {
-							fmt.Printf("Received chaincode event\n")
-							fmt.Printf("------------------------\n")
+							fmt.Println("Received chaincode event")
+							fmt.Println("------------------------")
 							fmt.Printf("Chaincode Event:%+v\n", event)
 						}
 					}

@@ -21,6 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 // IndexableAttr represents an indexable attribute
@@ -28,11 +29,12 @@ type IndexableAttr string
 
 // constants for indexable attributes
 const (
-	IndexableAttrBlockNum        = IndexableAttr("BlockNum")
-	IndexableAttrBlockHash       = IndexableAttr("BlockHash")
-	IndexableAttrTxID            = IndexableAttr("TxID")
-	IndexableAttrBlockNumTranNum = IndexableAttr("BlockNumTranNum")
-	IndexableAttrBlockTxID       = IndexableAttr("BlockTxID")
+	IndexableAttrBlockNum         = IndexableAttr("BlockNum")
+	IndexableAttrBlockHash        = IndexableAttr("BlockHash")
+	IndexableAttrTxID             = IndexableAttr("TxID")
+	IndexableAttrBlockNumTranNum  = IndexableAttr("BlockNumTranNum")
+	IndexableAttrBlockTxID        = IndexableAttr("BlockTxID")
+	IndexableAttrTxValidationCode = IndexableAttr("TxValidationCode")
 )
 
 // IndexConfig - a configuration that includes a list of attributes that should be indexed
@@ -68,5 +70,6 @@ type BlockStore interface {
 	RetrieveTxByID(txID string) (*common.Envelope, error)
 	RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error)
 	RetrieveBlockByTxID(txID string) (*common.Block, error)
+	RetrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error)
 	Shutdown()
 }

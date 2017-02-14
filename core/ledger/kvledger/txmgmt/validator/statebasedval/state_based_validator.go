@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
 	logging "github.com/op/go-logging"
 )
@@ -40,11 +41,11 @@ func NewValidator(db statedb.VersionedDB) *Validator {
 }
 
 //validate endorser transaction
-func (v *Validator) validateEndorserTX(envBytes []byte, doMVCCValidation bool, updates *statedb.UpdateBatch) (*rwset.TxReadWriteSet, error) {
+func (v *Validator) validateEndorserTX(envBytes []byte, doMVCCValidation bool, updates *statedb.UpdateBatch) (*rwset.TxReadWriteSet, peer.TxValidationCode, error) {
 	// extract actions from the envelope message
 	respPayload, err := putils.GetActionFromEnvelope(envBytes)
 	if err != nil {
-		return nil, err
+		return nil, peer.TxValidationCode_NIL_TXACTION, nil
 	}
 
 	//preparation for extracting RWSet from transaction
@@ -53,7 +54,7 @@ func (v *Validator) validateEndorserTX(envBytes []byte, doMVCCValidation bool, u
 	// Get the Result from the Action
 	// and then Unmarshal it into a TxReadWriteSet using custom unmarshalling
 	if err = txRWSet.Unmarshal(respPayload.Results); err != nil {
-		return nil, err
+		return nil, peer.TxValidationCode_INVALID_OTHER_REASON, nil
 	}
 
 	// trace the first 1000 characters of RWSet only, in case it is huge
@@ -66,16 +67,18 @@ func (v *Validator) validateEndorserTX(envBytes []byte, doMVCCValidation bool, u
 		}
 	}
 
+	var txResult peer.TxValidationCode = peer.TxValidationCode_VALID
+
 	//mvccvalidation, may invalidate transaction
 	if doMVCCValidation {
-		if valid, err := v.validateTx(txRWSet, updates); err != nil {
-			return nil, err
-		} else if !valid {
+		if txResult, err = v.validateTx(txRWSet, updates); err != nil {
+			return nil, txResult, err
+		} else if txResult != peer.TxValidationCode_VALID {
 			txRWSet = nil
 		}
 	}
 
-	return txRWSet, err
+	return txRWSet, txResult, err
 }
 
 // TODO validate configuration transaction
@@ -88,11 +91,21 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 	logger.Debugf("New block arrived for validation:%#v, doMVCCValidation=%t", block, doMVCCValidation)
 	updates := statedb.NewUpdateBatch()
 	logger.Debugf("Validating a block with [%d] transactions", len(block.Data.Data))
-	txsFilter := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+
+	// Committer validator has already set validation flags based on well formed tran checks
+	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+
+	// Precaution in case committer validator has not added validation flags yet
+	if len(txsFilter) == 0 {
+		txsFilter = util.NewTxValidationFlags(len(block.Data.Data))
+		block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
+	}
+
 	for txIndex, envBytes := range block.Data.Data {
-		if txsFilter.IsSet(uint(txIndex)) {
+		if txsFilter.IsInvalid(txIndex) {
 			// Skiping invalid transaction
-			logger.Debug("Skipping transaction marked as invalid, txIndex=", txIndex)
+			logger.Warningf("Block [%d] Transaction index [%d] marked as invalid by committer. Reason code [%d]",
+				block.Header.Number, txIndex, txsFilter.Flag(txIndex))
 			continue
 		}
 
@@ -111,34 +124,45 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 			return nil, err
 		}
 
-		valid := false
 		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
-			txRWSet, err := v.validateEndorserTX(envBytes, doMVCCValidation, updates)
+			txRWSet, txResult, err := v.validateEndorserTX(envBytes, doMVCCValidation, updates)
+
 			if err != nil {
 				return nil, err
 			}
+
+			txsFilter.SetFlag(txIndex, txResult)
+
 			//txRWSet != nil => t is valid
 			if txRWSet != nil {
 				committingTxHeight := version.NewHeight(block.Header.Number, uint64(txIndex+1))
 				addWriteSetToBatch(txRWSet, committingTxHeight, updates)
-				valid = true
+				txsFilter.SetFlag(txIndex, peer.TxValidationCode_VALID)
 			}
 		} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
-			valid, err = v.validateConfigTX(env)
+			_, err := v.validateConfigTX(env)
+
 			if err != nil {
 				return nil, err
+			} else {
+				txsFilter.SetFlag(txIndex, peer.TxValidationCode_VALID)
 			}
+
 		} else {
 			logger.Errorf("Skipping transaction %d that's not an endorsement or configuration %d", txIndex, chdr.Type)
-			valid = false
+			txsFilter.SetFlag(txIndex, peer.TxValidationCode_UNKNOWN_TX_TYPE)
 		}
 
-		if !valid {
-			// Unset bit in byte array corresponded to the invalid transaction
-			txsFilter.Set(uint(txIndex))
+		if txsFilter.IsValid(txIndex) {
+			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator",
+				block.Header.Number, txIndex, chdr.TxId)
+		} else {
+			logger.Warningf("Block [%d] Transaction index [%d] TxId [%s] marked as invalid by state validator. Reason code [%d]",
+				block.Header.Number, txIndex, chdr.TxId, txsFilter.Flag(txIndex))
 		}
+
 	}
-	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter.ToBytes()
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 	return updates, nil
 }
 
@@ -155,18 +179,26 @@ func addWriteSetToBatch(txRWSet *rwset.TxReadWriteSet, txHeight *version.Height,
 	}
 }
 
-func (v *Validator) validateTx(txRWSet *rwset.TxReadWriteSet, updates *statedb.UpdateBatch) (bool, error) {
+func (v *Validator) validateTx(txRWSet *rwset.TxReadWriteSet, updates *statedb.UpdateBatch) (peer.TxValidationCode, error) {
 	for _, nsRWSet := range txRWSet.NsRWs {
 		ns := nsRWSet.NameSpace
-		//TODO introduce different Error codes for different causes of validation failure
+
 		if valid, err := v.validateReadSet(ns, nsRWSet.Reads, updates); !valid || err != nil {
-			return valid, err
+			if err != nil {
+				return peer.TxValidationCode(-1), err
+			} else {
+				return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
+			}
 		}
 		if valid, err := v.validateRangeQueries(ns, nsRWSet.RangeQueriesInfo, updates); !valid || err != nil {
-			return valid, err
+			if err != nil {
+				return peer.TxValidationCode(-1), err
+			} else {
+				return peer.TxValidationCode_PHANTOM_READ_CONFLICT, nil
+			}
 		}
 	}
-	return true, nil
+	return peer.TxValidationCode_VALID, nil
 }
 
 func (v *Validator) validateReadSet(ns string, kvReads []*rwset.KVRead, updates *statedb.UpdateBatch) (bool, error) {

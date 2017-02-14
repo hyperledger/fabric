@@ -28,6 +28,7 @@ import (
 type serializedBlockInfo struct {
 	blockHeader *common.BlockHeader
 	txOffsets   []*txindexInfo
+	metadata    *common.BlockMetadata
 }
 
 //The order of the transactions must be maintained for history
@@ -41,6 +42,7 @@ func serializeBlock(block *common.Block) ([]byte, *serializedBlockInfo, error) {
 	var err error
 	info := &serializedBlockInfo{}
 	info.blockHeader = block.Header
+	info.metadata = block.Metadata
 	if err = addHeaderBytes(block.Header, buf); err != nil {
 		return nil, nil, err
 	}
@@ -84,6 +86,12 @@ func extractSerializedBlockInfo(serializedBlockBytes []byte) (*serializedBlockIn
 	if err != nil {
 		return nil, err
 	}
+
+	info.metadata, err = extractMetadata(b)
+	if err != nil {
+		return nil, err
+	}
+
 	return info, nil
 }
 

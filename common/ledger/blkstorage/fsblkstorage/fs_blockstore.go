@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 )
 
 // fsBlockStore - filesystem based implementation for `BlockStore`
@@ -79,6 +80,10 @@ func (store *fsBlockStore) RetrieveTxByBlockNumTranNum(blockNum uint64, tranNum 
 
 func (store *fsBlockStore) RetrieveBlockByTxID(txID string) (*common.Block, error) {
 	return store.fileMgr.retrieveBlockByTxID(txID)
+}
+
+func (store *fsBlockStore) RetrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+	return store.fileMgr.retrieveTxValidationCodeByTxID(txID)
 }
 
 // Shutdown shuts down the block store

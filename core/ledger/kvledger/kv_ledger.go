@@ -80,11 +80,11 @@ func (l *kvLedger) recoverDBs() error {
 	recoverables := []recoverable{l.txtmgmt, l.historyDB}
 	recoverers := []*recoverer{}
 	for _, recoverable := range recoverables {
-		recover, firstBlockNum, err := recoverable.ShouldRecover(lastAvailableBlockNum)
+		recoverFlag, firstBlockNum, err := recoverable.ShouldRecover(lastAvailableBlockNum)
 		if err != nil {
 			return err
 		}
-		if recover {
+		if recoverFlag {
 			recoverers = append(recoverers, &recoverer{firstBlockNum, recoverable})
 		}
 	}
@@ -138,15 +138,13 @@ func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, 
 		return nil, err
 	}
 
-	// Hardocde to Valid:true for now
-	processedTran := &peer.ProcessedTransaction{TransactionEnvelope: tranEnv, Valid: true}
+	txVResult, err := l.blockStore.RetrieveTxValidationCodeByTxID(txID)
 
-	// TODO subsequent changeset will retrieve validation bit array on the block to indicate
-	// whether the tran was validated or invalidated.  It is possible to retreive both the tran
-	// and the block (with bit array) from storage and combine the results.  But it would be
-	// more efficient to refactor block storage to retrieve the tran and the validation bit
-	// in one operation.
+	if err != nil {
+		return nil, err
+	}
 
+	processedTran := &peer.ProcessedTransaction{TransactionEnvelope: tranEnv, ValidationCode: int32(txVResult)}
 	return processedTran, nil
 }
 
@@ -178,6 +176,10 @@ func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
 // GetBlockByTxID returns a block which contains a transaction
 func (l *kvLedger) GetBlockByTxID(txID string) (*common.Block, error) {
 	return l.blockStore.RetrieveBlockByTxID(txID)
+}
+
+func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+	return l.blockStore.RetrieveTxValidationCodeByTxID(txID)
 }
 
 //Prune prunes the blocks/transactions that satisfy the given policy

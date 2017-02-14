@@ -17,12 +17,11 @@ limitations under the License.
 package validation
 
 import (
+	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
-
-	"fmt"
-	"os"
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
@@ -83,8 +82,8 @@ func TestGoodPath(t *testing.T) {
 	}
 
 	// validate the transaction
-	payl, err := ValidateTransaction(tx)
-	if err != nil {
+	payl, txResult := ValidateTransaction(tx)
+	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
 	}
@@ -112,7 +111,7 @@ func TestGoodPath(t *testing.T) {
 
 	// compare it to the original action and expect it to be equal
 	if string(simRes) != string(simResBack.Results) {
-		t.Fatalf("Simulation results are different")
+		t.Fatal("Simulation results are different")
 		return
 	}
 }
@@ -148,7 +147,7 @@ func TestBadProp(t *testing.T) {
 	// validate it - it should fail
 	_, _, _, err = ValidateProposalMessage(sProp)
 	if err == nil {
-		t.Fatalf("ValidateProposalMessage should have failed")
+		t.Fatal("ValidateProposalMessage should have failed")
 		return
 	}
 
@@ -165,14 +164,14 @@ func TestBadProp(t *testing.T) {
 	// validate it - it should fail
 	_, _, _, err = ValidateProposalMessage(sProp)
 	if err == nil {
-		t.Fatalf("ValidateProposalMessage should have failed")
+		t.Fatal("ValidateProposalMessage should have failed")
 		return
 	}
 
 	// get a bad signing identity
 	badSigner, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("Couldn't get noop signer")
+		t.Fatal("Couldn't get noop signer")
 		return
 	}
 
@@ -186,7 +185,7 @@ func TestBadProp(t *testing.T) {
 	// validate it - it should fail
 	_, _, _, err = ValidateProposalMessage(sProp)
 	if err == nil {
-		t.Fatalf("ValidateProposalMessage should have failed")
+		t.Fatal("ValidateProposalMessage should have failed")
 		return
 	}
 }
@@ -220,9 +219,9 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Payload)
 
 	// validate the transaction it should fail
-	_, err = ValidateTransaction(tx)
-	if err == nil {
-		t.Fatalf("ValidateTransaction should have failed")
+	_, txResult := ValidateTransaction(tx)
+	if txResult == peer.TxValidationCode_VALID {
+		t.Fatal("ValidateTransaction should have failed")
 		return
 	}
 
@@ -237,9 +236,9 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Signature)
 
 	// validate the transaction it should fail
-	_, err = ValidateTransaction(tx)
-	if err == nil {
-		t.Fatalf("ValidateTransaction should have failed")
+	_, txResult = ValidateTransaction(tx)
+	if txResult == peer.TxValidationCode_VALID {
+		t.Fatal("ValidateTransaction should have failed")
 		return
 	}
 }
@@ -280,8 +279,8 @@ func Test2EndorsersAgree(t *testing.T) {
 	}
 
 	// validate the transaction
-	_, err = ValidateTransaction(tx)
-	if err != nil {
+	_, txResult := ValidateTransaction(tx)
+	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
 	}
@@ -318,7 +317,7 @@ func Test2EndorsersDisagree(t *testing.T) {
 	// assemble a transaction from that proposal and endorsement
 	_, err = utils.CreateSignedTx(prop, signer, presp1, presp2)
 	if err == nil {
-		t.Fatalf("CreateSignedTx should have failed")
+		t.Fatal("CreateSignedTx should have failed")
 		return
 	}
 }
@@ -339,14 +338,14 @@ func TestMain(m *testing.M) {
 
 	signer, err = mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
-		fmt.Printf("Could not get signer")
+		fmt.Println("Could not get signer")
 		os.Exit(-1)
 		return
 	}
 
 	signerSerialized, err = signer.Serialize()
 	if err != nil {
-		fmt.Printf("Could not serialize identity")
+		fmt.Println("Could not serialize identity")
 		os.Exit(-1)
 		return
 	}

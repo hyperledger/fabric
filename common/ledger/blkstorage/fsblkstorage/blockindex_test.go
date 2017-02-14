@@ -22,6 +22,9 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	putil "github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -49,6 +52,10 @@ func (i *noopIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (
 
 func (i *noopIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error) {
 	return nil, nil
+}
+
+func (i *noopIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+	return peer.TxValidationCode(-1), nil
 }
 
 func TestBlockIndexSync(t *testing.T) {
@@ -119,6 +126,7 @@ func TestBlockIndexSelectiveIndexing(t *testing.T) {
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockHash, blkstorage.IndexableAttrBlockNum})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxID, blkstorage.IndexableAttrBlockNumTranNum})
 	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockTxID})
+	testBlockIndexSelectiveIndexing(t, []blkstorage.IndexableAttr{blkstorage.IndexableAttrTxValidationCode})
 }
 
 func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.IndexableAttr) {
@@ -191,6 +199,27 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []blkstorage.Index
 			testutil.AssertEquals(t, blocks[0], block)
 		} else {
 			testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
+		}
+
+		for _, block := range blocks {
+			flags := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+
+			for idx, d := range block.Data.Data {
+				txid, err = extractTxID(d)
+				testutil.AssertNoError(t, err, "")
+
+				reason, err := blockfileMgr.retrieveTxValidationCodeByTxID(txid)
+
+				if testutil.Contains(indexItems, blkstorage.IndexableAttrTxValidationCode) {
+					testutil.AssertNoError(t, err, "Error while retrieving tx validation code by txID")
+
+					reasonFromFlags := flags.Flag(idx)
+
+					testutil.AssertEquals(t, reason, reasonFromFlags)
+				} else {
+					testutil.AssertSame(t, err, blkstorage.ErrAttrNotIndexed)
+				}
+			}
 		}
 	})
 }

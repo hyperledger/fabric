@@ -23,6 +23,7 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
@@ -51,8 +52,8 @@ func TestValidateConfigTx(t *testing.T) {
 		}),
 	}
 	updateResult.Signature, _ = signer.Sign(updateResult.Payload)
-	_, err = ValidateTransaction(updateResult)
-	if err != nil {
+	_, txResult := ValidateTransaction(updateResult)
+	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
 	}

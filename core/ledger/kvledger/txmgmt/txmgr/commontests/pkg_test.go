@@ -153,10 +153,10 @@ func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet []byte) {
 	block := h.bg.NextBlock([][]byte{txRWSet}, false)
 	err := h.txMgr.ValidateAndPrepare(block, true)
 	testutil.AssertNoError(h.t, err, "")
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}
 	}
@@ -169,10 +169,10 @@ func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet []byte) {
 	block := h.bg.NextBlock([][]byte{txRWSet}, false)
 	err := h.txMgr.ValidateAndPrepare(block, true)
 	testutil.AssertNoError(h.t, err, "")
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			invalidTxNum++
 		}
 	}

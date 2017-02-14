@@ -16,12 +16,11 @@ limitations under the License.
 package escc
 
 import (
-	"fmt"
-	"testing"
-
 	"bytes"
-
+	"errors"
+	"fmt"
 	"os"
+	"testing"
 
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -241,7 +240,7 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 
 	// validate that proposal hash matches
 	if bytes.Compare(pHash, prp.ProposalHash) != 0 {
-		return fmt.Errorf("proposal hash does not match")
+		return errors.New("proposal hash does not match")
 	}
 
 	// extract the chaincode action
@@ -252,23 +251,23 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 
 	// validate that the response match
 	if cact.Response.Status != response.Status {
-		return fmt.Errorf("response status do not match")
+		return errors.New("response status do not match")
 	}
 	if cact.Response.Message != response.Message {
-		return fmt.Errorf("response message do not match")
+		return errors.New("response message do not match")
 	}
 	if bytes.Compare(cact.Response.Payload, response.Payload) != 0 {
-		return fmt.Errorf("response payload do not match")
+		return errors.New("response payload do not match")
 	}
 
 	// validate that the results match
 	if bytes.Compare(cact.Results, simRes) != 0 {
-		return fmt.Errorf("results do not match")
+		return errors.New("results do not match")
 	}
 
 	// validate that the events match
 	if bytes.Compare(cact.Events, events) != 0 {
-		return fmt.Errorf("events do not match")
+		return errors.New("events do not match")
 	}
 
 	// get the identity of the endorser
@@ -303,8 +302,8 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 	}
 
 	// validate the transaction
-	_, err = validation.ValidateTransaction(tx)
-	if err != nil {
+	_, txResult := validation.ValidateTransaction(tx)
+	if txResult != pb.TxValidationCode_VALID {
 		return err
 	}
 

@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 )
@@ -96,14 +97,13 @@ func (v *txValidator) chainExists(chain string) bool {
 func (v *txValidator) Validate(block *common.Block) error {
 	logger.Debug("START Block Validation")
 	defer logger.Debug("END Block Validation")
-	txsfltr := ledgerUtil.NewFilterBitArray(uint(len(block.Data.Data)))
+	// Initialize trans as valid here, then set invalidation reason code upon invalidation below
+	txsfltr := ledgerUtil.NewTxValidationFlags(len(block.Data.Data))
 	for tIdx, d := range block.Data.Data {
-		// Start by marking transaction as invalid, before
-		// doing any validation checks.
-		txsfltr.Set(uint(tIdx))
 		if d != nil {
 			if env, err := utils.GetEnvelopeFromBlock(d); err != nil {
 				logger.Warningf("Error getting tx from block(%s)", err)
+				txsfltr.SetFlag(tIdx, peer.TxValidationCode_INVALID_OTHER_REASON)
 			} else if env != nil {
 				// validate the transaction: here we check that the transaction
 				// is properly formed, properly signed and that the security
@@ -113,14 +113,18 @@ func (v *txValidator) Validate(block *common.Block) error {
 				logger.Debug("Validating transaction peer.ValidateTransaction()")
 				var payload *common.Payload
 				var err error
-				if payload, err = validation.ValidateTransaction(env); err != nil {
+				var txResult peer.TxValidationCode
+
+				if payload, txResult = validation.ValidateTransaction(env); txResult != peer.TxValidationCode_VALID {
 					logger.Errorf("Invalid transaction with index %d, error %s", tIdx, err)
+					txsfltr.SetFlag(tIdx, txResult)
 					continue
 				}
 
 				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 				if err != nil {
 					logger.Warning("Could not unmarshal channel header, err %s, skipping", err)
+					txsfltr.SetFlag(tIdx, peer.TxValidationCode_INVALID_OTHER_REASON)
 					continue
 				}
 
@@ -129,6 +133,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 
 				if !v.chainExists(channel) {
 					logger.Errorf("Dropping transaction for non-existent chain %s", channel)
+					txsfltr.SetFlag(tIdx, peer.TxValidationCode_TARGET_CHAIN_NOT_FOUND)
 					continue
 				}
 
@@ -136,7 +141,8 @@ func (v *txValidator) Validate(block *common.Block) error {
 					// Check duplicate transactions
 					txID := chdr.TxId
 					if _, err := v.support.Ledger().GetTransactionByID(txID); err == nil {
-						logger.Warning("Duplicate transaction found, ", txID, ", skipping")
+						logger.Error("Duplicate transaction found, ", txID, ", skipping")
+						txsfltr.SetFlag(tIdx, peer.TxValidationCode_DUPLICATE_TXID)
 						continue
 					}
 
@@ -145,6 +151,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 					if err = v.vscc.VSCCValidateTx(payload, d); err != nil {
 						txID := txID
 						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
+						txsfltr.SetFlag(tIdx, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
 						continue
 					}
 				} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
@@ -165,20 +172,21 @@ func (v *txValidator) Validate(block *common.Block) error {
 
 				if _, err := proto.Marshal(env); err != nil {
 					logger.Warningf("Cannot marshal transaction due to %s", err)
+					txsfltr.SetFlag(tIdx, peer.TxValidationCode_MARSHAL_TX_ERROR)
 					continue
 				}
-				// Succeeded to pass down here, transaction is valid,
-				// just unset the filter bit array flag.
-				txsfltr.Unset(uint(tIdx))
+				// Succeeded to pass down here, transaction is valid
+				txsfltr.SetFlag(tIdx, peer.TxValidationCode_VALID)
 			} else {
 				logger.Warning("Nil tx from block")
+				txsfltr.SetFlag(tIdx, peer.TxValidationCode_NIL_ENVELOPE)
 			}
 		}
 	}
 	// Initialize metadata structure
 	utils.InitBlockMetadata(block)
-	// Serialize invalid transaction bit array into block metadata field
-	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr.ToBytes()
+
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsfltr
 
 	return nil
 }

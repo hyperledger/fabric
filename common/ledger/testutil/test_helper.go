@@ -21,8 +21,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/util"
+	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/common"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 //BlockGenerator generates a series of blocks for testing
@@ -90,7 +92,7 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*common.Block {
 }
 
 // ConstructTransaction constructs a transaction for testing
-func ConstructTransaction(t *testing.T, simulationResults []byte, sign bool) (*common.Envelope, string, error) {
+func ConstructTransaction(_ *testing.T, simulationResults []byte, sign bool) (*common.Envelope, string, error) {
 	ccName := "foo"
 	//response := &pb.Response{Status: 200}
 	var txID string
@@ -111,5 +113,9 @@ func newBlock(env []*common.Envelope, blockNum uint64, previousHash []byte) *com
 		block.Data.Data = append(block.Data.Data, txEnvBytes)
 	}
 	block.Header.DataHash = block.Data.Hash()
+	utils.InitBlockMetadata(block)
+
+	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = lutils.NewTxValidationFlags(len(env))
+
 	return block
 }

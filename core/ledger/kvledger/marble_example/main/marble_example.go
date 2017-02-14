@@ -99,11 +99,11 @@ func transferMarble() {
 
 func printBlocksInfo(block *common.Block) {
 	// Read invalid transactions filter
-	txsFltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	numOfInvalid := 0
 	// Count how many transaction indeed invalid
 	for i := 0; i < len(block.Data.Data); i++ {
-		if txsFltr.IsSet(uint(i)) {
+		if txsFltr.IsInvalid(i) {
 			numOfInvalid++
 		}
 	}

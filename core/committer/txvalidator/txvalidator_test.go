@@ -27,19 +27,20 @@ import (
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/core/mocks/validator"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestKVLedgerBlockStorage(t *testing.T) {
+func TestFirstBlockValidation(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/txvalidatortest")
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
 	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
 	defer ledger.Close()
 
-	validator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, &validator.MockVsccValidator{}}
+	tValidator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, &validator.MockVsccValidator{}}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
@@ -54,13 +55,10 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	block := testutil.ConstructBlock(t, [][]byte{simRes}, true)
 
-	validator.Validate(block)
+	tValidator.Validate(block)
 
-	txsfltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-
-	assert.True(t, !txsfltr.IsSet(uint(0)))
-	assert.True(t, !txsfltr.IsSet(uint(1)))
-	assert.True(t, !txsfltr.IsSet(uint(2)))
+	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	assert.True(t, txsfltr.IsSetTo(0, peer.TxValidationCode_VALID))
 }
 
 func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
@@ -70,7 +68,7 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	ledger, _ := ledgermgmt.CreateLedger("TestLedger")
 	defer ledger.Close()
 
-	validator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, &validator.MockVsccValidator{}}
+	tValidator := &txValidator{&mocktxvalidator.Support{LedgerVal: ledger}, &validator.MockVsccValidator{}}
 
 	// Create simeple endorsement transaction
 	payload := &common.Payload{
@@ -107,7 +105,7 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	}
 
 	block.Header = &common.BlockHeader{
-		Number:   1,
+		Number:   0,
 		DataHash: block.Data.Hash(),
 	}
 
@@ -118,9 +116,8 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 
 	// Validation should invalidate transaction,
 	// because it's already committed
-	validator.Validate(block)
+	tValidator.Validate(block)
 
-	txsfltr := util.NewFilterBitArrayFromBytes(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-
-	assert.True(t, txsfltr.IsSet(0))
+	txsfltr := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	assert.True(t, txsfltr.IsInvalid(0))
 }
