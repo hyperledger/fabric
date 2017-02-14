@@ -31,6 +31,8 @@ It has these top-level messages:
 	ConfigValueSchema
 	ConfigPolicySchema
 	Config
+	ConfigUpdateEnvelope
+	ConfigUpdate
 	ConfigGroup
 	ConfigValue
 	ConfigPolicy

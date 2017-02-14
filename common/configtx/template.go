@@ -41,8 +41,8 @@ const (
 
 // Template can be used to faciliate creation of config transactions
 type Template interface {
-	// Items returns a set of ConfigEnvelopes for the given chainID
-	Envelope(chainID string) (*cb.ConfigEnvelope, error)
+	// Items returns a set of ConfigUpdateEnvelopes for the given chainID
+	Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error)
 }
 
 type simpleTemplate struct {
@@ -60,22 +60,22 @@ func NewSimpleTemplate(configGroups ...*cb.ConfigGroup) Template {
 	return NewCompositeTemplate(sts...)
 }
 
-// Envelope returns a ConfigEnvelopes for the given chainID
-func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
-	config, err := proto.Marshal(&cb.Config{
+// Envelope returns a ConfigUpdateEnvelopes for the given chainID
+func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error) {
+	config, err := proto.Marshal(&cb.ConfigUpdate{
 		Header: &cb.ChannelHeader{
 			ChannelId: chainID,
 			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
 		},
-		Channel: st.configGroup,
+		WriteSet: st.configGroup,
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &cb.ConfigEnvelope{
-		Config: config,
+	return &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: config,
 	}, nil
 }
 
@@ -119,8 +119,8 @@ func copyGroup(source *cb.ConfigGroup, target *cb.ConfigGroup) error {
 	return nil
 }
 
-// Items returns a set of ConfigEnvelopes for the given chainID, and errors only on marshaling errors
-func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
+// Envelope returns the ConfigUpdateEnvelope for the given chainID
+func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error) {
 	channel := cb.NewConfigGroup()
 
 	for i := range ct.templates {
@@ -128,32 +128,32 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error
 		if err != nil {
 			return nil, err
 		}
-		config, err := UnmarshalConfig(configEnv.Config)
+		config, err := UnmarshalConfigUpdate(configEnv.ConfigUpdate)
 		if err != nil {
 			return nil, err
 		}
-		err = copyGroup(config.Channel, channel)
+		err = copyGroup(config.WriteSet, channel)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	marshaledConfig, err := proto.Marshal(&cb.Config{
+	marshaledConfig, err := proto.Marshal(&cb.ConfigUpdate{
 		Header: &cb.ChannelHeader{
 			ChannelId: chainID,
 			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
 		},
-		Channel: channel,
+		WriteSet: channel,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &cb.ConfigEnvelope{Config: marshaledConfig}, nil
+	return &cb.ConfigUpdateEnvelope{ConfigUpdate: marshaledConfig}, nil
 }
 
 // NewChainCreationTemplate takes a CreationPolicy and a Template to produce a Template which outputs an appropriately
-// constructed list of ConfigEnvelope.  Note, using this Template in
+// constructed list of ConfigUpdateEnvelope.  Note, using this Template in
 // a CompositeTemplate will invalidate the CreationPolicy
 func NewChainCreationTemplate(creationPolicy string, template Template) Template {
 	result := cb.NewConfigGroup()
@@ -175,17 +175,21 @@ func MakeChainCreationTransaction(creationPolicy string, chainID string, signer 
 	}
 
 	newChainTemplate := NewChainCreationTemplate(creationPolicy, NewCompositeTemplate(templates...))
-	newConfigEnv, err := newChainTemplate.Envelope(chainID)
+	newConfigUpdateEnv, err := newChainTemplate.Envelope(chainID)
+	if err != nil {
+		return nil, err
+	}
+	newConfigUpdateEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
+		SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
+	}}
+
+	newConfigUpdateEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigUpdateEnv.Signatures[0].SignatureHeader, newConfigUpdateEnv.ConfigUpdate))
 	if err != nil {
 		return nil, err
 	}
 
-	newConfigEnv.Signatures = []*cb.ConfigSignature{&cb.ConfigSignature{
-		SignatureHeader: utils.MarshalOrPanic(utils.MakeSignatureHeader(sSigner, utils.CreateNonceOrPanic())),
-	}}
-	newConfigEnv.Signatures[0].Signature, err = signer.Sign(util.ConcatenateBytes(newConfigEnv.Signatures[0].SignatureHeader, newConfigEnv.Config))
-	if err != nil {
-		return nil, err
+	newConfigEnv := &cb.ConfigEnvelope{
+		LastUpdate: newConfigUpdateEnv,
 	}
 
 	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIGURATION_TRANSACTION, msgVersion, chainID, epoch)

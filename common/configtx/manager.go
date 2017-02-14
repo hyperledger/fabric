@@ -79,8 +79,8 @@ func computeSequence(configGroup *cb.ConfigGroup) uint64 {
 
 // computeChannelIdAndSequence returns the chain id and the sequence number for a config envelope
 // or an error if there is a problem with the config envelope
-func computeChannelIdAndSequence(config *cb.Config) (string, uint64, error) {
-	if config.Channel == nil {
+func computeChannelIdAndSequence(config *cb.ConfigUpdate) (string, uint64, error) {
+	if config.WriteSet == nil {
 		return "", 0, errors.New("Empty envelope unsupported")
 	}
 
@@ -98,7 +98,7 @@ func computeChannelIdAndSequence(config *cb.Config) (string, uint64, error) {
 		return "", 0, err
 	}
 
-	m := computeSequence(config.Channel)
+	m := computeSequence(config.WriteSet)
 
 	return chainID, m, nil
 }
@@ -134,7 +134,13 @@ func validateChainID(chainID string) error {
 }
 
 func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
-	config, err := UnmarshalConfig(configtx.Config)
+	// XXX as a temporary hack to get the new protos working, we assume entire config is always in the ConfigUpdate.WriteSet
+
+	if configtx.LastUpdate == nil {
+		return nil, fmt.Errorf("Must have ConfigEnvelope.LastUpdate set")
+	}
+
+	config, err := UnmarshalConfigUpdate(configtx.LastUpdate.ConfigUpdate)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +246,13 @@ func (cm *configManager) recurseConfig(result map[string]comparable, path []stri
 }
 
 func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap map[string]comparable, err error) {
-	config, err := UnmarshalConfig(configtx.Config)
+	// XXX as a temporary hack to get the new protos working, we assume entire config is always in the ConfigUpdate.WriteSet
+
+	if configtx.LastUpdate == nil {
+		return nil, fmt.Errorf("Must have ConfigEnvelope.LastUpdate set")
+	}
+
+	config, err := UnmarshalConfigUpdate(configtx.LastUpdate.ConfigUpdate)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +262,7 @@ func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap m
 		return nil, err
 	}
 
-	signedData, err := configtx.AsSignedData()
+	signedData, err := configtx.LastUpdate.AsSignedData()
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +286,7 @@ func (cm *configManager) processConfig(configtx *cb.ConfigEnvelope) (configMap m
 
 	configMap = make(map[string]comparable)
 
-	if err := cm.recurseConfig(configMap, []string{}, config.Channel); err != nil {
+	if err := cm.recurseConfig(configMap, []string{}, config.WriteSet); err != nil {
 		return nil, err
 	}
 

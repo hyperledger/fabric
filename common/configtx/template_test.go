@@ -34,15 +34,15 @@ func verifyItemsResult(t *testing.T, template Template, count int) {
 		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	configNext, err := UnmarshalConfig(configEnv.Config)
+	configNext, err := UnmarshalConfigUpdate(configEnv.ConfigUpdate)
 	if err != nil {
 		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	assert.Equal(t, len(configNext.Channel.Values), count, "Not the right number of config values")
+	assert.Equal(t, len(configNext.WriteSet.Values), count, "Not the right number of config values")
 
-	for i := 0; i < len(configNext.Channel.Values); i++ {
-		_, ok := configNext.Channel.Values[fmt.Sprintf("%d", i)]
+	for i := 0; i < len(configNext.WriteSet.Values); i++ {
+		_, ok := configNext.WriteSet.Values[fmt.Sprintf("%d", i)]
 		assert.True(t, ok, "Expected %d but did not find it", i)
 	}
 }
@@ -90,18 +90,18 @@ func TestNewChainTemplate(t *testing.T) {
 		t.Fatalf("Error creation a chain creation config")
 	}
 
-	configNext, err := UnmarshalConfig(configEnv.Config)
+	configNext, err := UnmarshalConfigUpdate(configEnv.ConfigUpdate)
 	if err != nil {
 		t.Fatalf("Should not have errored: %s", err)
 	}
 
-	assert.Equal(t, len(configNext.Channel.Values), 2, "Not the right number of config values")
+	assert.Equal(t, len(configNext.WriteSet.Values), 2, "Not the right number of config values")
 
 	for i := 0; i < 2; i++ {
-		_, ok := configNext.Channel.Values[fmt.Sprintf("%d", i)]
+		_, ok := configNext.WriteSet.Values[fmt.Sprintf("%d", i)]
 		assert.True(t, ok, "Expected to find %d but did not", i)
 	}
 
-	_, ok := configNext.Channel.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey]
+	_, ok := configNext.WriteSet.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey]
 	assert.True(t, ok, "Did not find creation policy")
 }

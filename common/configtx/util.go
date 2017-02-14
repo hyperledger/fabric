@@ -35,6 +35,16 @@ func UnmarshalConfig(data []byte) (*cb.Config, error) {
 	return config, nil
 }
 
+// UnmarshalConfigUpdate attempts to unmarshal bytes to a *cb.ConfigUpdate
+func UnmarshalConfigUpdate(data []byte) (*cb.ConfigUpdate, error) {
+	configUpdate := &cb.ConfigUpdate{}
+	err := proto.Unmarshal(data, configUpdate)
+	if err != nil {
+		return nil, err
+	}
+	return configUpdate, nil
+}
+
 // UnmarshalConfigEnvelope attempts to unmarshal bytes to a *cb.ConfigEnvelope
 func UnmarshalConfigEnvelope(data []byte) (*cb.ConfigEnvelope, error) {
 	configEnv := &cb.ConfigEnvelope{}

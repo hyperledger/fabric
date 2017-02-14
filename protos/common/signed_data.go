@@ -40,8 +40,8 @@ type Signable interface {
 	AsSignedData() ([]*SignedData, error)
 }
 
-// AsSignedData returns the set of signatures for the SignedCOnfigurationItem as SignedData or an error indicating why this was not possible
-func (ce *ConfigEnvelope) AsSignedData() ([]*SignedData, error) {
+// AsSignedData returns the set of signatures for the ConfigUpdateEnvelope as SignedData or an error indicating why this was not possible
+func (ce *ConfigUpdateEnvelope) AsSignedData() ([]*SignedData, error) {
 	if ce == nil {
 		return nil, fmt.Errorf("No signatures for nil SignedConfigItem")
 	}
@@ -55,7 +55,7 @@ func (ce *ConfigEnvelope) AsSignedData() ([]*SignedData, error) {
 		}
 
 		result[i] = &SignedData{
-			Data:      util.ConcatenateBytes(configSig.SignatureHeader, ce.Config),
+			Data:      util.ConcatenateBytes(configSig.SignatureHeader, ce.ConfigUpdate),
 			Identity:  sigHeader.Creator,
 			Signature: configSig.Signature,
 		}

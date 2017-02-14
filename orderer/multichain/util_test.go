@@ -92,10 +92,10 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 	if err != nil {
 		panic(err)
 	}
-	return makeConfigTxFromConfigEnvelope(chainID, configEnv)
+	return makeConfigTxFromConfigUpdateEnvelope(chainID, configEnv)
 }
 
-func makeConfigTxFromConfigEnvelope(chainID string, configEnv *cb.ConfigEnvelope) *cb.Envelope {
+func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
 	payload := &cb.Payload{
 		Header: &cb.Header{
 			ChannelHeader: &cb.ChannelHeader{
@@ -104,7 +104,9 @@ func makeConfigTxFromConfigEnvelope(chainID string, configEnv *cb.ConfigEnvelope
 			},
 			SignatureHeader: &cb.SignatureHeader{},
 		},
-		Data: utils.MarshalOrPanic(configEnv),
+		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
+			LastUpdate: configUpdateEnv,
+		}),
 	}
 	return &cb.Envelope{
 		Payload: utils.MarshalOrPanic(payload),
