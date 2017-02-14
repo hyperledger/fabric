@@ -26,8 +26,8 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-var acceptAllPolicy []byte
-var rejectAllPolicy []byte
+var acceptAllPolicy *cb.Policy
+var rejectAllPolicy *cb.Policy
 
 func init() {
 	acceptAllPolicy = makePolicySource(true)
@@ -43,24 +43,23 @@ func marshalOrPanic(msg proto.Message) []byte {
 	return data
 }
 
-func makePolicySource(policyResult bool) []byte {
+func makePolicySource(policyResult bool) *cb.Policy {
 	var policyData *cb.SignaturePolicyEnvelope
 	if policyResult {
 		policyData = AcceptAllPolicy
 	} else {
 		policyData = RejectAllPolicy
 	}
-	marshaledPolicy := marshalOrPanic(&cb.Policy{
+	return &cb.Policy{
 		Type:   int32(cb.Policy_SIGNATURE),
 		Policy: marshalOrPanic(policyData),
-	})
-	return marshaledPolicy
+	}
 }
 
-func addPolicy(manager *policies.ManagerImpl, id string, policy []byte) {
+func addPolicy(manager *policies.ManagerImpl, id string, policy *cb.Policy) {
 	manager.BeginConfig()
-	err := manager.ProposeConfig(id, &cb.ConfigValue{
-		Value: policy,
+	err := manager.ProposePolicy(id, []string{}, &cb.ConfigPolicy{
+		Policy: policy,
 	})
 	if err != nil {
 		panic(err)

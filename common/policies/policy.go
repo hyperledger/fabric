@@ -18,10 +18,10 @@ package policies
 
 import (
 	"fmt"
+	"strings"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
 )
 
@@ -106,12 +106,11 @@ func (pm *ManagerImpl) CommitConfig() {
 	pm.pendingPolicies = nil
 }
 
-// TODO, move this off of *cb.ConfigValue and onto *cb.ConfigPolicy
-func (pm *ManagerImpl) ProposeConfig(key string, configValue *cb.ConfigValue) error {
-	policy := &cb.Policy{}
-	err := proto.Unmarshal(configValue.Value, policy)
-	if err != nil {
-		return err
+// ProposePolicy takes key, path, and ConfigPolicy and registers it in the proposed PolicyManager, or errors
+func (pm *ManagerImpl) ProposePolicy(key string, path []string, configPolicy *cb.ConfigPolicy) error {
+	policy := configPolicy.Policy
+	if policy == nil {
+		return fmt.Errorf("Policy cannot be nil")
 	}
 
 	provider, ok := pm.providers[int32(policy.Type)]
@@ -124,7 +123,18 @@ func (pm *ManagerImpl) ProposeConfig(key string, configValue *cb.ConfigValue) er
 		return err
 	}
 
-	pm.pendingPolicies[key] = cPolicy
+	prefix := strings.Join(path, "/")
+	if len(path) == 0 {
+		prefix = "/"
+	}
+
+	// TODO, once the other components are ready for it, use '_' below as fqKey
+	_ = prefix + "/" + key
+	fqKey := key
+
+	logger.Debugf("Writing policy with fqKey: %s", fqKey)
+
+	pm.pendingPolicies[fqKey] = cPolicy
 
 	logger.Debugf("Proposed new policy %s", key)
 	return nil

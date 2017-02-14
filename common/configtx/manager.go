@@ -178,10 +178,7 @@ func (cm *configManager) proposeConfig(config map[string]comparable) error {
 				return err
 			}
 		case c.ConfigPolicy != nil:
-			if err := cm.initializer.PolicyProposer().ProposeConfig(c.key, &cb.ConfigValue{
-				// TODO, fix policy interface to take the policy directly
-				Value: utils.MarshalOrPanic(c.ConfigPolicy.Policy),
-			}); err != nil {
+			if err := cm.initializer.PolicyHandler().ProposePolicy(c.key, c.path, c.ConfigPolicy); err != nil {
 				return err
 			}
 		}

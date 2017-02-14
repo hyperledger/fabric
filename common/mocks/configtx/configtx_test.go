@@ -22,6 +22,14 @@ import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 )
 
+func TestConfigtxTransactionalInterface(t *testing.T) {
+	_ = configtxapi.Transactional(&Transactional{})
+}
+
+func TestConfigtxPolicyHandlerInterface(t *testing.T) {
+	_ = configtxapi.PolicyHandler(&PolicyHandler{})
+}
+
 func TestConfigtxInitializerInterface(t *testing.T) {
 	_ = configtxapi.Initializer(&Initializer{})
 }

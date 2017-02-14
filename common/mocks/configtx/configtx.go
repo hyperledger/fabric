@@ -66,12 +66,27 @@ func (r *Resources) MSPManager() msp.MSPManager {
 	return r.MSPManagerVal
 }
 
+type Transactional struct{}
+
+// BeginConfig calls through to the HandlerVal
+func (t *Transactional) BeginConfig() {}
+
+// CommitConfig calls through to the HandlerVal
+func (t *Transactional) CommitConfig() {}
+
+// RollbackConfig calls through to the HandlerVal
+func (t *Transactional) RollbackConfig() {}
+
 // Initializer mocks the configtxapi.Initializer interface
 type Initializer struct {
+	Transactional
 	Resources
 
 	// HandlersVal is returned as the result of Handlers()
 	HandlerVal configtxapi.Handler
+
+	// PolicyHandlerVal is reutrned at the result of PolicyHandler()
+	PolicyHandlerVal *PolicyHandler
 }
 
 // Returns the HandlersVal
@@ -79,18 +94,27 @@ func (i *Initializer) Handler(path []string) (configtxapi.Handler, error) {
 	return i.HandlerVal, nil
 }
 
-func (i *Initializer) PolicyProposer() configtxapi.Handler {
-	panic("Unimplemented")
+// Returns the PolicyHandlerVal
+func (i *Initializer) PolicyHandler() configtxapi.PolicyHandler {
+	return i.PolicyHandlerVal
 }
 
-// BeginConfig calls through to the HandlerVal
-func (i *Initializer) BeginConfig() {}
+// PolicyHandler mocks the configtxapi.PolicyHandler interface
+type PolicyHandler struct {
+	Transactional
+	LastKey               string
+	LastPath              []string
+	LastValue             *cb.ConfigPolicy
+	ErrorForProposePolicy error
+}
 
-// CommitConfig calls through to the HandlerVal
-func (i *Initializer) CommitConfig() {}
-
-// RollbackConfig calls through to the HandlerVal
-func (i *Initializer) RollbackConfig() {}
+// ProposeConfig sets LastKey to key, LastPath to path, and LastPolicy to configPolicy, returning ErrorForProposedConfig
+func (ph *PolicyHandler) ProposePolicy(key string, path []string, configPolicy *cb.ConfigPolicy) error {
+	ph.LastKey = key
+	ph.LastValue = configPolicy
+	ph.LastPath = path
+	return ph.ErrorForProposePolicy
+}
 
 // Handler mocks the configtxapi.Handler interface
 type Handler struct {

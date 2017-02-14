@@ -80,6 +80,7 @@ type OrdererConfig interface {
 }
 
 // Handler provides a hook which allows other pieces of code to participate in config proposals
+// TODO, this should probably be renamed to ValueHandler
 type Handler interface {
 	// ProposeConfig called when config is added to a proposal
 	ProposeConfig(key string, configValue *cb.ConfigValue) error
@@ -125,8 +126,8 @@ type Resources interface {
 	MSPManager() msp.MSPManager
 }
 
-// SubInitializer is used downstream from initializer
-type SubInitializer interface {
+// Transactional is an interface which allows for an update to be proposed and rolled back
+type Transactional interface {
 	// BeginConfig called when a config proposal is begun
 	BeginConfig()
 
@@ -135,9 +136,21 @@ type SubInitializer interface {
 
 	// CommitConfig called when a config proposal is committed
 	CommitConfig()
+}
+
+// SubInitializer is used downstream from initializer
+type SubInitializer interface {
+	Transactional
 
 	// Handler returns the associated value handler for a given config path
 	Handler(path []string) (Handler, error)
+}
+
+// PolicyHandler is used for config updates to policy
+type PolicyHandler interface {
+	Transactional
+
+	ProposePolicy(key string, path []string, policy *cb.ConfigPolicy) error
 }
 
 // Initializer is used as indirection between Manager and Handler to allow
@@ -147,6 +160,6 @@ type Initializer interface {
 
 	Resources
 
-	// PolicyProposer as a Handler is a temporary hack
-	PolicyProposer() Handler
+	// PolicyProposer returns the PolicyHandler to handle updates to policy
+	PolicyHandler() PolicyHandler
 }

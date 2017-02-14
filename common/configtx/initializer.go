@@ -131,7 +131,7 @@ func (i *initializer) CommitConfig() {
 	i.mspConfigHandler.CommitConfig()
 }
 
-func (i *initializer) PolicyProposer() api.Handler {
+func (i *initializer) PolicyHandler() api.PolicyHandler {
 	return i.policyManager
 }
 
