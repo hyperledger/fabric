@@ -64,7 +64,7 @@ JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv testenv zookeeper kafka
+IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka
 
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
@@ -96,6 +96,9 @@ peer-docker: build/image/peer/$(DUMMY)
 orderer: build/bin/orderer
 orderer-docker: build/image/orderer/$(DUMMY)
 
+buildenv: build/image/buildenv/$(DUMMY)
+
+build/image/testenv/$(DUMMY): build/image/buildenv/$(DUMMY)
 testenv: build/image/testenv/$(DUMMY)
 
 unit-test: peer-docker testenv
@@ -118,9 +121,9 @@ behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
 
-linter: testenv
+linter: buildenv
 	@echo "LINT: Running code checks.."
-	@$(DRUN) hyperledger/fabric-testenv:$(DOCKER_TAG) ./scripts/golinter.sh
+	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
 
 %/chaintool: Makefile
 	@echo "Installing chaintool"
@@ -180,8 +183,9 @@ build/image/orderer/payload:    build/docker/bin/orderer \
 				build/msp-sampleconfig.tar.bz2 \
 				orderer/orderer.yaml \
 				common/configtx/tool/genesis.yaml
-build/image/testenv/payload:    build/gotools.tar.bz2 \
-				build/docker/bin/orderer \
+build/image/buildenv/payload:   build/gotools.tar.bz2 \
+				build/docker/gotools/bin/protoc-gen-go
+build/image/testenv/payload:    build/docker/bin/orderer \
 				orderer/orderer.yaml \
 				common/configtx/tool/genesis.yaml \
 				build/docker/bin/peer \
@@ -227,8 +231,8 @@ build/%.tar.bz2:
 	@tar -jc $^ > $@
 
 .PHONY: protos
-protos: testenv
-	@$(DRUN) hyperledger/fabric-testenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
+protos: buildenv
+	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
