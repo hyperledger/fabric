@@ -92,8 +92,8 @@ func (id *noopidentity) Validate() error {
 	return nil
 }
 
-func (id *noopidentity) GetOrganizationUnits() string {
-	return "dunno"
+func (id *noopidentity) GetOrganizationalUnits() []string {
+	return []string{"dunno"}
 }
 
 func (id *noopidentity) Verify(msg []byte, sig []byte) error {

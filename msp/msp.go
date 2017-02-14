@@ -119,22 +119,20 @@ type Identity interface {
 	// authority.
 	Validate() error
 
-	// TODO: Fix this comment
-	// GetOrganizationUnits returns the participant this identity is related to
-	// as long as this is public information. In certain implementations
-	// this could be implemented by certain attributes that are publicly
-	// associated to that identity, or the identifier of the root certificate
-	// authority that has provided signatures on this certificate.
+	// GetOrganizationalUnits returns zero or more organization units or
+	// divisions this identity is related to as long as this is public
+	// information. Certain MSP implementations may use attributes
+	// that are publicly associated to this identity, or the identifier of
+	// the root certificate authority that has provided signatures on this
+	// certificate.
 	// Examples:
-	//  - ParticipantID of a fabric-tcert that was signed by TCA under name
-	//    "Organization 1", would be "Organization 1".
-	//  - ParticipantID of an alternative implementation of tcert signed by a public
-	//    CA used by organization "Organization 1", could be provided in the clear
-	//    as part of that tcert structure that this call would be able to return.
-	// TODO: check if we need a dedicated type for participantID properly namespaced by the associated provider identifier.
-	GetOrganizationUnits() string
-
-	// TODO: Discuss GetOU() further.
+	//  - if the identity is an x.509 certificate, this function returns one
+	//    or more string which is encoded in the Subject's Distinguished Name
+	//    of the type OU
+	// TODO: For X.509 based identities, check if we need a dedicated type
+	//       for OU where the Certificate OU is properly namespaced by the
+	//       signer's identity
+	GetOrganizationalUnits() []string
 
 	// Verify a signature over some message using this identity as reference
 	Verify(msg []byte, sig []byte) error
