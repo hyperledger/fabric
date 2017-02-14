@@ -204,6 +204,12 @@ func (stub *MockStub) GetQueryResult(query string) (StateQueryIteratorInterface,
 	return nil, errors.New("Not Implemented")
 }
 
+// GetHistoryForKey function can be invoked by a chaincode to return a history of
+// key values across time. GetHistoryForKey is intended to be used for read-only queries.
+func (stub *MockStub) GetHistoryForKey(key string) (StateQueryIteratorInterface, error) {
+	return nil, errors.New("Not Implemented")
+}
+
 //GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
 //state based on a given partial composite key. This function returns an
 //iterator which can be used to iterate over all composite keys whose prefix

@@ -61,7 +61,8 @@ type transactionContext struct {
 	// tracks open iterators used for range queries
 	queryIteratorMap map[string]commonledger.ResultsIterator
 
-	txsimulator ledger.TxSimulator
+	txsimulator          ledger.TxSimulator
+	historyQueryExecutor ledger.HistoryQueryExecutor
 }
 
 type nextStateInfo struct {
@@ -194,6 +195,7 @@ func (handler *Handler) createTxContext(ctxt context.Context, chainID string, tx
 		queryIteratorMap: make(map[string]commonledger.ResultsIterator)}
 	handler.txCtxs[txid] = txctx
 	txctx.txsimulator = getTxSimulator(ctxt)
+	txctx.historyQueryExecutor = getHistoryQueryExecutor(ctxt)
 
 	return txctx, nil
 }
@@ -417,6 +419,7 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 			{Name: pb.ChaincodeMessage_GET_STATE.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_GET_STATE_BY_RANGE.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_GET_QUERY_RESULT.String(), Src: []string{readystate}, Dst: readystate},
+			{Name: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_QUERY_STATE_NEXT.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_QUERY_STATE_CLOSE.String(), Src: []string{readystate}, Dst: readystate},
 			{Name: pb.ChaincodeMessage_ERROR.String(), Src: []string{readystate}, Dst: readystate},
@@ -425,19 +428,20 @@ func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStre
 			{Name: pb.ChaincodeMessage_TRANSACTION.String(), Src: []string{readystate}, Dst: readystate},
 		},
 		fsm.Callbacks{
-			"before_" + pb.ChaincodeMessage_REGISTER.String():          func(e *fsm.Event) { v.beforeRegisterEvent(e, v.FSM.Current()) },
-			"before_" + pb.ChaincodeMessage_COMPLETED.String():         func(e *fsm.Event) { v.beforeCompletedEvent(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_GET_STATE.String():          func(e *fsm.Event) { v.afterGetState(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_GET_STATE_BY_RANGE.String(): func(e *fsm.Event) { v.afterGetStateByRange(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_GET_QUERY_RESULT.String():   func(e *fsm.Event) { v.afterGetQueryResult(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_QUERY_STATE_NEXT.String():   func(e *fsm.Event) { v.afterQueryStateNext(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_QUERY_STATE_CLOSE.String():  func(e *fsm.Event) { v.afterQueryStateClose(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_PUT_STATE.String():          func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_DEL_STATE.String():          func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
-			"after_" + pb.ChaincodeMessage_INVOKE_CHAINCODE.String():   func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
-			"enter_" + establishedstate:                                func(e *fsm.Event) { v.enterEstablishedState(e, v.FSM.Current()) },
-			"enter_" + readystate:                                      func(e *fsm.Event) { v.enterReadyState(e, v.FSM.Current()) },
-			"enter_" + endstate:                                        func(e *fsm.Event) { v.enterEndState(e, v.FSM.Current()) },
+			"before_" + pb.ChaincodeMessage_REGISTER.String():           func(e *fsm.Event) { v.beforeRegisterEvent(e, v.FSM.Current()) },
+			"before_" + pb.ChaincodeMessage_COMPLETED.String():          func(e *fsm.Event) { v.beforeCompletedEvent(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_GET_STATE.String():           func(e *fsm.Event) { v.afterGetState(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_GET_STATE_BY_RANGE.String():  func(e *fsm.Event) { v.afterGetStateByRange(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_GET_QUERY_RESULT.String():    func(e *fsm.Event) { v.afterGetQueryResult(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_GET_HISTORY_FOR_KEY.String(): func(e *fsm.Event) { v.afterGetHistoryForKey(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_QUERY_STATE_NEXT.String():    func(e *fsm.Event) { v.afterQueryStateNext(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_QUERY_STATE_CLOSE.String():   func(e *fsm.Event) { v.afterQueryStateClose(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_PUT_STATE.String():           func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_DEL_STATE.String():           func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
+			"after_" + pb.ChaincodeMessage_INVOKE_CHAINCODE.String():    func(e *fsm.Event) { v.enterBusyState(e, v.FSM.Current()) },
+			"enter_" + establishedstate:                                 func(e *fsm.Event) { v.enterEstablishedState(e, v.FSM.Current()) },
+			"enter_" + readystate:                                       func(e *fsm.Event) { v.enterReadyState(e, v.FSM.Current()) },
+			"enter_" + endstate:                                         func(e *fsm.Event) { v.enterEndState(e, v.FSM.Current()) },
 		},
 	)
 
@@ -968,7 +972,7 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 		if err != nil {
 			// Send error msg back to chaincode. GetState will not trigger event
 			payload := []byte(err.Error())
-			chaincodeLogger.Errorf("Failed to get ledger scan iterator. Sending %s", pb.ChaincodeMessage_ERROR)
+			chaincodeLogger.Errorf("Failed to get ledger query iterator. Sending %s", pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}
@@ -1002,6 +1006,118 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 		payloadBytes, err = proto.Marshal(payload)
 		if err != nil {
 			executeIter.Close()
+			handler.deleteQueryIterator(txContext, iterID)
+
+			// Send error msg back to chaincode. GetState will not trigger event
+			payload := []byte(err.Error())
+			chaincodeLogger.Errorf("Failed marshall resopnse. Sending %s", pb.ChaincodeMessage_ERROR)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+			return
+		}
+
+		chaincodeLogger.Debugf("Got keys and values. Sending %s", pb.ChaincodeMessage_RESPONSE)
+		serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid}
+
+	}()
+}
+
+const maxGetHistoryForKeyLimit = 100
+
+// afterGetHistoryForKey handles a GET_HISTORY_FOR_KEY request from the chaincode.
+func (handler *Handler) afterGetHistoryForKey(e *fsm.Event, state string) {
+	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
+	if !ok {
+		e.Cancel(fmt.Errorf("Received unexpected message type"))
+		return
+	}
+	chaincodeLogger.Debugf("Received %s, invoking get state from ledger", pb.ChaincodeMessage_GET_HISTORY_FOR_KEY)
+
+	// Query ledger history db
+	handler.handleGetHistoryForKey(msg)
+	chaincodeLogger.Debug("Exiting GET_HISTORY_FOR_KEY")
+}
+
+// Handles query to ledger history db
+func (handler *Handler) handleGetHistoryForKey(msg *pb.ChaincodeMessage) {
+	// The defer followed by triggering a go routine dance is needed to ensure that the previous state transition
+	// is completed before the next one is triggered. The previous state transition is deemed complete only when
+	// the afterQueryState function is exited. Interesting bug fix!!
+	go func() {
+		// Check if this is the unique state request from this chaincode txid
+		uniqueReq := handler.createTXIDEntry(msg.Txid)
+		if !uniqueReq {
+			// Drop this request
+			chaincodeLogger.Error("Another state request pending for this Txid. Cannot process.")
+			return
+		}
+
+		var serialSendMsg *pb.ChaincodeMessage
+
+		defer func() {
+			handler.deleteTXIDEntry(msg.Txid)
+			chaincodeLogger.Debugf("[%s]handleGetHistoryForKey serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
+			handler.serialSendAsync(serialSendMsg, nil)
+		}()
+
+		getHistoryForKey := &pb.GetHistoryForKey{}
+		unmarshalErr := proto.Unmarshal(msg.Payload, getHistoryForKey)
+		if unmarshalErr != nil {
+			payload := []byte(unmarshalErr.Error())
+			chaincodeLogger.Errorf("Failed to unmarshall query request. Sending %s", pb.ChaincodeMessage_ERROR)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+			return
+		}
+
+		iterID := util.GenerateUUID()
+
+		var txContext *transactionContext
+
+		txContext, serialSendMsg = handler.isValidTxSim(msg.Txid, "[%s]No ledger context for GetHistoryForKey. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
+		if txContext == nil {
+			return
+		}
+		chaincodeID := handler.getCCRootName()
+
+		historyIter, err := txContext.historyQueryExecutor.GetHistoryForKey(chaincodeID, getHistoryForKey.Key)
+		if err != nil {
+			// Send error msg back to chaincode. GetState will not trigger event
+			payload := []byte(err.Error())
+			chaincodeLogger.Errorf("Failed to get ledger history iterator. Sending %s", pb.ChaincodeMessage_ERROR)
+			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+			return
+		}
+
+		handler.putQueryIterator(txContext, iterID, historyIter)
+
+		// TODO QueryStateKeyValue can be re-used for now since history records have a string (TxID)
+		// and value (value).  But we'll need to use another structure if we add other fields like timestamp.
+		var keysAndValues []*pb.QueryStateKeyValue
+		var i = uint32(0)
+		var qresult commonledger.QueryResult
+		for ; i < maxGetHistoryForKeyLimit; i++ {
+			qresult, err = historyIter.Next()
+			if err != nil {
+				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
+				return
+			}
+			if qresult == nil {
+				break
+			}
+			queryRecord := qresult.(*ledger.KeyModification)
+			keyAndValue := pb.QueryStateKeyValue{Key: queryRecord.TxID, Value: queryRecord.Value}
+			keysAndValues = append(keysAndValues, &keyAndValue)
+		}
+
+		if qresult != nil {
+			historyIter.Close()
+			handler.deleteQueryIterator(txContext, iterID)
+		}
+
+		var payloadBytes []byte
+		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
+		payloadBytes, err = proto.Marshal(payload)
+		if err != nil {
+			historyIter.Close()
 			handler.deleteQueryIterator(txContext, iterID)
 
 			// Send error msg back to chaincode. GetState will not trigger event
@@ -1141,6 +1257,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			// We grab the called channel's ledger simulator to hold the new state
 			ctxt := context.Background()
 			txsim := txContext.txsimulator
+			historyQueryExecutor := txContext.historyQueryExecutor
 			if calledCcParts.suffix != txContext.chainID {
 				lgr := peer.GetLedger(calledCcParts.suffix)
 				if lgr == nil {
@@ -1159,6 +1276,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 				txsim = txsim2
 			}
 			ctxt = context.WithValue(ctxt, TXSimulatorKey, txsim)
+			ctxt = context.WithValue(ctxt, HistoryQueryExecutorKey, historyQueryExecutor)
 
 			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
 				chaincodeLogger.Debugf("[%s] calling lccc to get chaincode data for %s on channel %s",

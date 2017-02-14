@@ -97,6 +97,10 @@ type ChaincodeStubInterface interface {
 	// the query result set
 	GetQueryResult(query string) (StateQueryIteratorInterface, error)
 
+	// GetHistoryForKey function can be invoked by a chaincode to return a history of
+	// key values across time. GetHistoryForKey is intended to be used for read-only queries.
+	GetHistoryForKey(key string) (StateQueryIteratorInterface, error)
+
 	// GetCallerCertificate returns caller certificate
 	GetCallerCertificate() ([]byte, error)
 
