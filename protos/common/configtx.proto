@@ -48,7 +48,7 @@ package common;
 //   4. All configuration changes have a LastModification of one more than the last configuration's highest LastModification number
 //   5. All configuration changes satisfy the corresponding modification policy
 message ConfigEnvelope {
-    bytes config = 1;                        // A marshaled ConfigNext structure
+    bytes config = 1;                        // A marshaled Config structure
     repeated ConfigSignature signatures = 2; // Signatures over the config
 }
 
@@ -62,9 +62,8 @@ message ConfigValueSchema {}
 
 message ConfigPolicySchema {}
 
-// XXX this structure is to allow us to minimize the diffs in this change series
-// it will be renamed Config once the original is ready to be removed
-message ConfigNext {
+// Config represents the config for a particular channel
+message Config {
     ChannelHeader header = 1;
     ConfigGroup channel = 2;
 }

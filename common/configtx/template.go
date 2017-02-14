@@ -45,15 +45,15 @@ type Template interface {
 	Envelope(chainID string) (*cb.ConfigEnvelope, error)
 }
 
-type simpleTemplateNext struct {
+type simpleTemplate struct {
 	configGroup *cb.ConfigGroup
 }
 
-// NewSimpleTemplateNext creates a Template using the supplied ConfigGroup
-func NewSimpleTemplateNext(configGroups ...*cb.ConfigGroup) Template {
+// NewSimpleTemplate creates a Template using the supplied ConfigGroup
+func NewSimpleTemplate(configGroups ...*cb.ConfigGroup) Template {
 	sts := make([]Template, len(configGroups))
 	for i, group := range configGroups {
-		sts[i] = &simpleTemplateNext{
+		sts[i] = &simpleTemplate{
 			configGroup: group,
 		}
 	}
@@ -61,8 +61,8 @@ func NewSimpleTemplateNext(configGroups ...*cb.ConfigGroup) Template {
 }
 
 // Envelope returns a ConfigEnvelopes for the given chainID
-func (st *simpleTemplateNext) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
-	config, err := proto.Marshal(&cb.ConfigNext{
+func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error) {
+	config, err := proto.Marshal(&cb.Config{
 		Header: &cb.ChannelHeader{
 			ChannelId: chainID,
 			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
@@ -128,7 +128,7 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error
 		if err != nil {
 			return nil, err
 		}
-		config, err := UnmarshalConfigNext(configEnv.Config)
+		config, err := UnmarshalConfig(configEnv.Config)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +138,7 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigEnvelope, error
 		}
 	}
 
-	marshaledConfig, err := proto.Marshal(&cb.ConfigNext{
+	marshaledConfig, err := proto.Marshal(&cb.Config{
 		Header: &cb.ChannelHeader{
 			ChannelId: chainID,
 			Type:      int32(cb.HeaderType_CONFIGURATION_ITEM),
@@ -164,7 +164,7 @@ func NewChainCreationTemplate(creationPolicy string, template Template) Template
 		}),
 	}
 
-	return NewCompositeTemplate(NewSimpleTemplateNext(result), template)
+	return NewCompositeTemplate(NewSimpleTemplate(result), template)
 }
 
 // MakeChainCreationTransaction is a handy utility function for creating new chain transactions using the underlying Template framework

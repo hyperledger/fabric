@@ -30,7 +30,7 @@ It has these top-level messages:
 	ConfigGroupSchema
 	ConfigValueSchema
 	ConfigPolicySchema
-	ConfigNext
+	Config
 	ConfigGroup
 	ConfigValue
 	ConfigPolicy

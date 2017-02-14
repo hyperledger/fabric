@@ -87,7 +87,7 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 	group.Groups[configtxorderer.GroupKey].Values[fmt.Sprintf("%d", i)] = &cb.ConfigValue{
 		Value: []byte(fmt.Sprintf("%d", i)),
 	}
-	configTemplate := configtx.NewSimpleTemplateNext(group)
+	configTemplate := configtx.NewSimpleTemplate(group)
 	configEnv, err := configTemplate.Envelope(chainID)
 	if err != nil {
 		panic(err)

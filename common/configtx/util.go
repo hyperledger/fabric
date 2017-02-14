@@ -25,9 +25,9 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// UnmarshalConfigNext attempts to unmarshal bytes to a *cb.ConfigNext
-func UnmarshalConfigNext(data []byte) (*cb.ConfigNext, error) {
-	config := &cb.ConfigNext{}
+// UnmarshalConfig attempts to unmarshal bytes to a *cb.Config
+func UnmarshalConfig(data []byte) (*cb.Config, error) {
+	config := &cb.Config{}
 	err := proto.Unmarshal(data, config)
 	if err != nil {
 		return nil, err

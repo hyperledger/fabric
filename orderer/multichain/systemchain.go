@@ -148,7 +148,7 @@ func (sc *systemChain) proposeChain(configTx *cb.Envelope) cb.Status {
 }
 
 func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
-	configNext := &cb.ConfigNext{}
+	configNext := &cb.Config{}
 	err := proto.Unmarshal(configEnvelope.Config, configNext)
 	if err != nil {
 		logger.Debugf("Failing to validate chain creation because of unmarshaling error: %s", err)
