@@ -222,7 +222,7 @@ func (lccc *LifeCycleSysCC) putChaincodeData(stub shim.ChaincodeStubInterface, c
 }
 
 //checks for existence of chaincode on the given chain
-func (lccc *LifeCycleSysCC) getChaincode(stub shim.ChaincodeStubInterface, ccname string) (*ccprovider.ChaincodeData, []byte, error) {
+func (lccc *LifeCycleSysCC) getChaincode(stub shim.ChaincodeStubInterface, ccname string, checkFS bool) (*ccprovider.ChaincodeData, []byte, error) {
 	cdbytes, err := stub.GetState(ccname)
 	if err != nil {
 		return nil, nil, err
@@ -235,9 +235,11 @@ func (lccc *LifeCycleSysCC) getChaincode(stub shim.ChaincodeStubInterface, ccnam
 			return nil, nil, MarshallErr(ccname)
 		}
 
-		cd.DepSpec, _, err = ccprovider.GetChaincodeFromFS(ccname, cd.Version)
-		if err != nil {
-			return nil, nil, InvalidDeploymentSpecErr(err.Error())
+		if checkFS {
+			cd.DepSpec, _, err = ccprovider.GetChaincodeFromFS(ccname, cd.Version)
+			if err != nil {
+				return cd, nil, InvalidDeploymentSpecErr(err.Error())
+			}
 		}
 
 		return cd, cdbytes, nil
@@ -326,7 +328,7 @@ func (lccc *LifeCycleSysCC) executeDeploy(stub shim.ChaincodeStubInterface, chai
 		return err
 	}
 
-	cd, _, err := lccc.getChaincode(stub, cds.ChaincodeSpec.ChaincodeId.Name)
+	cd, _, err := lccc.getChaincode(stub, cds.ChaincodeSpec.ChaincodeId.Name, true)
 	if cd != nil {
 		return ExistsErr(cds.ChaincodeSpec.ChaincodeId.Name)
 	}
@@ -381,7 +383,7 @@ func (lccc *LifeCycleSysCC) executeUpgrade(stub shim.ChaincodeStubInterface, cha
 	}
 
 	// check for existence of chaincode
-	cd, _, err := lccc.getChaincode(stub, chaincodeName)
+	cd, _, err := lccc.getChaincode(stub, chaincodeName, true)
 	if cd == nil {
 		return nil, NotFoundErr(chainName)
 	}
@@ -529,20 +531,27 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 
 		chain := string(args[1])
 		ccname := string(args[2])
-		//get chaincode given <chain, name>
 
-		cd, cdbytes, _ := lccc.getChaincode(stub, ccname)
+		//check the FS only for deployment spec
+		//other calls are looking for LCCC entries only
+		checkFS := false
+		if function == GETDEPSPEC {
+			checkFS = true
+		}
+		cd, cdbytes, err := lccc.getChaincode(stub, ccname, checkFS)
 		if cd == nil || cdbytes == nil {
-			logger.Debugf("ChaincodeID: %s does not exist on channel: %s ", ccname, chain)
+			logger.Errorf("ChaincodeId: %s does not exist on channel: %s(err:%s)", ccname, chain, err)
 			return shim.Error(TXNotFoundErr(ccname + "/" + chain).Error())
 		}
 
-		if function == GETCCINFO {
+		switch function {
+		case GETCCINFO:
 			return shim.Success([]byte(cd.Name))
-		} else if function == GETCCDATA {
+		case GETCCDATA:
 			return shim.Success(cdbytes)
+		default:
+			return shim.Success(cd.DepSpec)
 		}
-		return shim.Success(cd.DepSpec)
 	}
 
 	return shim.Error(InvalidFunctionErr(function).Error())
