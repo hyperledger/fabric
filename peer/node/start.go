@@ -27,7 +27,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/util"
@@ -162,7 +161,7 @@ func serve(args []string) error {
 
 		// We create a genesis block for the test
 		// chain with its MSP so that we can transact
-		block, err := genesis.NewFactoryImpl(configtx.NewCompositeTemplate(test.MSPTemplate())).Block(chainID)
+		block, err := genesis.NewFactoryImpl(test.ApplicationOrgTemplate()).Block(chainID)
 		if nil != err {
 			panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
 		}

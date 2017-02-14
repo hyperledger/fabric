@@ -17,12 +17,9 @@ limitations under the License.
 package application
 
 import (
-	"reflect"
 	"testing"
 
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	cb "github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 
 	logging "github.com/op/go-logging"
 )
@@ -31,24 +28,11 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func makeInvalidConfigValue() *cb.ConfigValue {
-	return &cb.ConfigValue{
-		Value: []byte("Garbage Data"),
-	}
-}
-
-func groupToKeyValue(configGroup *cb.ConfigGroup) (string, *cb.ConfigValue) {
-	for key, value := range configGroup.Groups[GroupKey].Values {
-		return key, value
-	}
-	panic("No value encoded")
-}
-
-func TestInterface(t *testing.T) {
+func TestApplicationInterface(t *testing.T) {
 	_ = configtxapi.ApplicationConfig(NewSharedConfigImpl(nil))
 }
 
-func TestDoubleBegin(t *testing.T) {
+func TestApplicationDoubleBegin(t *testing.T) {
 	defer func() {
 		if err := recover(); err == nil {
 			t.Fatalf("Should have panicked on multiple begin configs")
@@ -60,7 +44,7 @@ func TestDoubleBegin(t *testing.T) {
 	m.BeginConfig()
 }
 
-func TestCommitWithoutBegin(t *testing.T) {
+func TestApplicationCommitWithoutBegin(t *testing.T) {
 	defer func() {
 		if err := recover(); err == nil {
 			t.Fatalf("Should have panicked on multiple begin configs")
@@ -71,38 +55,11 @@ func TestCommitWithoutBegin(t *testing.T) {
 	m.CommitConfig()
 }
 
-func TestRollback(t *testing.T) {
+func TestApplicationRollback(t *testing.T) {
 	m := NewSharedConfigImpl(nil)
 	m.pendingConfig = &sharedConfig{}
 	m.RollbackConfig()
 	if m.pendingConfig != nil {
 		t.Fatalf("Should have cleared pending config on rollback")
-	}
-}
-
-func TestAnchorPeers(t *testing.T) {
-	endVal := []*pb.AnchorPeer{
-		&pb.AnchorPeer{Host: "foo", Port: 234, Cert: []byte("foocert")},
-		&pb.AnchorPeer{Host: "bar", Port: 237, Cert: []byte("barcert")},
-	}
-	invalidMessage := makeInvalidConfigValue()
-	validMessage := TemplateAnchorPeers(endVal)
-	m := NewSharedConfigImpl(nil)
-	m.BeginConfig()
-
-	err := m.ProposeConfig(AnchorPeersKey, invalidMessage)
-	if err == nil {
-		t.Fatalf("Should have failed on invalid message")
-	}
-
-	err = m.ProposeConfig(groupToKeyValue(validMessage))
-	if err != nil {
-		t.Fatalf("Error applying valid config: %s", err)
-	}
-
-	m.CommitConfig()
-
-	if newVal := m.AnchorPeers(); !reflect.DeepEqual(newVal, endVal) {
-		t.Fatalf("Unexpected anchor peers, got %v expected %v", newVal, endVal)
 	}
 }

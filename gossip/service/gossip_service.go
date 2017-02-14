@@ -179,13 +179,15 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 // configUpdated constructs a joinChannelMessage and sends it to the gossipSvc
 func (g *gossipServiceImpl) configUpdated(config Config) {
 	jcm := &joinChannelMessage{seqNum: config.Sequence(), anchorPeers: []api.AnchorPeer{}}
-	for _, ap := range config.AnchorPeers() {
-		anchorPeer := api.AnchorPeer{
-			Host: ap.Host,
-			Port: int(ap.Port),
-			Cert: api.PeerIdentityType(ap.Cert),
+	for _, org := range config.Organizations() {
+		for _, ap := range org.AnchorPeers() {
+			anchorPeer := api.AnchorPeer{
+				Host: ap.Host,
+				Port: int(ap.Port),
+				Cert: api.PeerIdentityType(ap.Cert),
+			}
+			jcm.anchorPeers = append(jcm.anchorPeers, anchorPeer)
 		}
-		jcm.anchorPeers = append(jcm.anchorPeers, anchorPeer)
 	}
 
 	// Initialize new state provider for given committer

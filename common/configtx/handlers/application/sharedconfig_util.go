@@ -22,23 +22,17 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-var defaultAnchorPeers = []*pb.AnchorPeer{}
-
-func configGroup(key string, value []byte) *cb.ConfigGroup {
+func configGroup(orgID string, key string, value []byte) *cb.ConfigGroup {
 	result := cb.NewConfigGroup()
 	result.Groups[GroupKey] = cb.NewConfigGroup()
-	result.Groups[GroupKey].Values[key] = &cb.ConfigValue{
+	result.Groups[GroupKey].Groups[orgID] = cb.NewConfigGroup()
+	result.Groups[GroupKey].Groups[orgID].Values[key] = &cb.ConfigValue{
 		Value: value,
 	}
 	return result
 }
 
 // TemplateAnchorPeers creates a headerless config item representing the anchor peers
-func TemplateAnchorPeers(anchorPeers []*pb.AnchorPeer) *cb.ConfigGroup {
-	return configGroup(AnchorPeersKey, utils.MarshalOrPanic(&pb.AnchorPeers{AnchorPeers: anchorPeers}))
-}
-
-// DefaultAnchorPeers creates a headerless config item for the default orderer addresses
-func DefaultAnchorPeers() *cb.ConfigGroup {
-	return TemplateAnchorPeers(defaultAnchorPeers)
+func TemplateAnchorPeers(orgID string, anchorPeers []*pb.AnchorPeer) *cb.ConfigGroup {
+	return configGroup(orgID, AnchorPeersKey, utils.MarshalOrPanic(&pb.AnchorPeers{AnchorPeers: anchorPeers}))
 }

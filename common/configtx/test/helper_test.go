@@ -37,12 +37,12 @@ func TestOrdererTemplate(t *testing.T) {
 	_ = OrdererTemplate()
 }
 
-func TestMSPTemplate(t *testing.T) {
-	_ = MSPTemplate()
+func TestOrdererOrgTemplate(t *testing.T) {
+	_ = OrdererOrgTemplate()
 }
 
-func TestApplicationTemplate(t *testing.T) {
-	_ = ApplicationTemplate()
+func TestApplicationOrgTemplate(t *testing.T) {
+	_ = ApplicationOrgTemplate()
 }
 
 func TestCompositeTemplate(t *testing.T) {

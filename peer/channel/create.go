@@ -54,9 +54,10 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 	}
 	//TODO this is a temporary hack until `orderer.template` and 'msp.template' is supplied from the CLI
 	oTemplate := configtxtest.OrdererTemplate()
-	mspTemplate := configtxtest.MSPTemplate()
-	gossTemplate := configtx.NewSimpleTemplate(configtxapplication.TemplateAnchorPeers(anchorPeers))
-	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, mspTemplate, gossTemplate)
+	oOrgTemplate := configtxtest.OrdererOrgTemplate()
+	appOrgTemplate := configtxtest.ApplicationOrgTemplate()
+	gossTemplate := configtx.NewSimpleTemplate(configtxapplication.TemplateAnchorPeers("XXXFakeOrg", anchorPeers))
+	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, oOrgTemplate, appOrgTemplate, gossTemplate)
 
 	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {

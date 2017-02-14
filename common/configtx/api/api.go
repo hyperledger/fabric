@@ -40,10 +40,16 @@ type ChannelConfig interface {
 	OrdererAddresses() []string
 }
 
-// ApplicationConfig stores the common shared application config
-type ApplicationConfig interface {
+// ApplicationOrgConfig stores the per org application config
+type ApplicationOrgConfig interface {
 	// AnchorPeers returns the list of gossip anchor peers
 	AnchorPeers() []*pb.AnchorPeer
+}
+
+// ApplicationConfig stores the common shared application config
+type ApplicationConfig interface {
+	// Organizations returns a map of org ID to ApplicationOrgConfig
+	Organizations() map[string]ApplicationOrgConfig
 }
 
 // OrdererConfig stores the common shared orderer config

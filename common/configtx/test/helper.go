@@ -85,23 +85,27 @@ func OrdererTemplate() configtx.Template {
 	return provisional.New(genConf).ChannelTemplate()
 }
 
-// MSPTemplate returns the test MSP template
-func MSPTemplate() configtx.Template {
-	const sampleID = "SAMPLE"
-	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, sampleID)
+const sampleOrgID = "SAMPLE"
+
+// ApplicationOrgTemplate returns the SAMPLE org with MSP template
+func ApplicationOrgTemplate() configtx.Template {
+	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, sampleOrgID)
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
-	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey, sampleID}, mspConf),
-		configtxmsp.TemplateGroupMSP([]string{configtxorderer.GroupKey, sampleID}, mspConf))
+	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey, sampleOrgID}, mspConf))
 }
 
-// ApplicationTemplate returns the test application template
-func ApplicationTemplate() configtx.Template {
-	return configtx.NewSimpleTemplate(configtxapplication.DefaultAnchorPeers())
+// OrdererOrgTemplate returns the SAMPLE org with MSP template
+func OrdererOrgTemplate() configtx.Template {
+	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, sampleOrgID)
+	if err != nil {
+		logger.Panicf("Could not load sample MSP config: %s", err)
+	}
+	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxorderer.GroupKey, sampleOrgID}, mspConf))
 }
 
 // CompositeTemplate returns the composite template of peer, orderer, and MSP
 func CompositeTemplate() configtx.Template {
-	return configtx.NewCompositeTemplate(MSPTemplate(), OrdererTemplate(), ApplicationTemplate())
+	return configtx.NewCompositeTemplate(OrdererTemplate(), ApplicationOrgTemplate(), OrdererOrgTemplate())
 }

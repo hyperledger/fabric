@@ -23,9 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/handlers"
 	"github.com/hyperledger/fabric/common/configtx/handlers/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
-	pb "github.com/hyperledger/fabric/protos/peer"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
 
@@ -37,7 +35,8 @@ const (
 var orgSchema = &cb.ConfigGroupSchema{
 	Groups: map[string]*cb.ConfigGroupSchema{},
 	Values: map[string]*cb.ConfigValueSchema{
-		"MSP": nil, // TODO, consolidate into a constant once common org code exists
+		AnchorPeersKey:  nil,
+		handlers.MSPKey: nil, // TODO, consolidate into a constant once common org code exists
 	},
 	Policies: map[string]*cb.ConfigPolicySchema{
 	// TODO, set appropriately once hierarchical policies are implemented
@@ -48,25 +47,16 @@ var Schema = &cb.ConfigGroupSchema{
 	Groups: map[string]*cb.ConfigGroupSchema{
 		"": orgSchema,
 	},
-	Values: map[string]*cb.ConfigValueSchema{
-		AnchorPeersKey: nil,
-	},
+	Values:   map[string]*cb.ConfigValueSchema{},
 	Policies: map[string]*cb.ConfigPolicySchema{
 	// TODO, set appropriately once hierarchical policies are implemented
 	},
 }
 
-// Peer config keys
-const (
-	// AnchorPeersKey is the key name for the AnchorPeers ConfigValue
-	AnchorPeersKey = "AnchorPeers"
-)
-
-var logger = logging.MustGetLogger("peer/sharedconfig")
+var logger = logging.MustGetLogger("common/configtx/handlers/application")
 
 type sharedConfig struct {
-	anchorPeers []*pb.AnchorPeer
-	orgs        map[string]*handlers.OrgConfig
+	orgs map[string]api.ApplicationOrgConfig
 }
 
 // SharedConfigImpl is an implementation of Manager and configtx.ConfigHandler
@@ -86,11 +76,6 @@ func NewSharedConfigImpl(mspConfig *msp.MSPConfigHandler) *SharedConfigImpl {
 	}
 }
 
-// AnchorPeers returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
-func (di *SharedConfigImpl) AnchorPeers() []*pb.AnchorPeer {
-	return di.config.anchorPeers
-}
-
 // BeginConfig is used to start a new config proposal
 func (di *SharedConfigImpl) BeginConfig() {
 	logger.Debugf("Beginning a possible new peer shared config")
@@ -98,7 +83,7 @@ func (di *SharedConfigImpl) BeginConfig() {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	di.pendingConfig = &sharedConfig{
-		orgs: make(map[string]*handlers.OrgConfig),
+		orgs: make(map[string]api.ApplicationOrgConfig),
 	}
 }
 
@@ -120,20 +105,13 @@ func (di *SharedConfigImpl) CommitConfig() {
 
 // ProposeConfig is used to add new config to the config proposal
 func (di *SharedConfigImpl) ProposeConfig(key string, configValue *cb.ConfigValue) error {
-	switch key {
-	case AnchorPeersKey:
-		anchorPeers := &pb.AnchorPeers{}
-		if err := proto.Unmarshal(configValue.Value, anchorPeers); err != nil {
-			return fmt.Errorf("Unmarshaling error for %s: %s", key, err)
-		}
-		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Setting %s to %v", key, anchorPeers.AnchorPeers)
-		}
-		di.pendingConfig.anchorPeers = anchorPeers.AnchorPeers
-	default:
-		logger.Warningf("Uknown Peer config item with key %s", key)
-	}
+	logger.Warningf("Uknown Peer config item with key %s", key)
 	return nil
+}
+
+// Organizations returns a map of org ID to ApplicationOrgConfig
+func (di *SharedConfigImpl) Organizations() map[string]api.ApplicationOrgConfig {
+	return di.config.orgs
 }
 
 // Handler returns the associated api.Handler for the given path
@@ -148,8 +126,8 @@ func (pm *SharedConfigImpl) Handler(path []string) (api.Handler, error) {
 
 	org, ok := pm.pendingConfig.orgs[path[0]]
 	if !ok {
-		org = handlers.NewOrgConfig(path[0], pm.mspConfig)
+		org = NewApplicationOrgConfig(path[0], pm.mspConfig)
 		pm.pendingConfig.orgs[path[0]] = org
 	}
-	return org, nil
+	return org.(*ApplicationOrgConfig), nil
 }
