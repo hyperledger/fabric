@@ -103,8 +103,9 @@ type DocID struct {
 
 //QueryResult is used for returning query results from CouchDB
 type QueryResult struct {
-	ID    string
-	Value []byte
+	ID          string
+	Value       []byte
+	Attachments []Attachment
 }
 
 //CouchConnectionDef contains parameters
@@ -151,6 +152,12 @@ type FileDetails struct {
 	Follows     bool   `json:"follows"`
 	ContentType string `json:"content_type"`
 	Length      int    `json:"length"`
+}
+
+//CouchDoc defines the structure for a JSON document value
+type CouchDoc struct {
+	JSONValue   []byte
+	Attachments []Attachment
 }
 
 //CreateConnectionDefinition for a new client connection
@@ -305,9 +312,14 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 
 	logger.Debugf("Entering EnsureFullCommit()")
 
-	url := fmt.Sprintf("%s/%s/_ensure_full_commit", dbclient.couchInstance.conf.URL, dbclient.dbName)
+	connectURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return nil, err
+	}
+	connectURL.Path = dbclient.dbName + "/_ensure_full_commit"
 
-	resp, _, err := dbclient.handleRequest(http.MethodPost, url, nil, "", "")
+	resp, _, err := dbclient.handleRequest(http.MethodPost, connectURL.String(), nil, "", "")
 	if err != nil {
 		logger.Errorf("Failed to invoke _ensure_full_commit Error: %s\n", err.Error())
 		return nil, err
@@ -333,20 +345,24 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 }
 
 //SaveDoc method provides a function to save a document, id and byte array
-func (dbclient *CouchDatabase) SaveDoc(id string, rev string, bytesDoc []byte, attachments []Attachment) (string, error) {
+func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc) (string, error) {
+
 	logger.Debugf("Entering SaveDoc()")
 	if !utf8.ValidString(id) {
 		return "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
+
 	saveURL, err := url.Parse(dbclient.couchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return "", err
 	}
+
 	saveURL.Path = dbclient.dbName
 	// id can contain a '/', so encode separately
 	saveURL = &url.URL{Opaque: saveURL.String() + "/" + encodePathElement(id)}
-	logger.Debugf("  id=%s,  value=%s", id, string(bytesDoc))
+
+	logger.Debugf("  id=%s,  value=%s, attachments=%d", id, string(couchDoc.JSONValue), len(couchDoc.Attachments))
 
 	if rev == "" {
 
@@ -370,20 +386,20 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, bytesDoc []byte, a
 	defaultBoundary := ""
 
 	//check to see if attachments is nil, if so, then this is a JSON only
-	if attachments == nil {
+	if couchDoc.Attachments == nil {
 
 		//Test to see if this is a valid JSON
-		if IsJSON(string(bytesDoc)) != true {
+		if IsJSON(string(couchDoc.JSONValue)) != true {
 			return "", fmt.Errorf("JSON format is not valid")
 		}
 
 		// if there are no attachments, then use the bytes passed in as the JSON
-		data.ReadFrom(bytes.NewReader(bytesDoc))
+		data.ReadFrom(bytes.NewReader(couchDoc.JSONValue))
 
 	} else { // there are attachments
 
 		//attachments are included, create the multipart definition
-		multipartData, multipartBoundary, err3 := createAttachmentPart(bytesDoc, attachments, defaultBoundary)
+		multipartData, multipartBoundary, err3 := createAttachmentPart(couchDoc, defaultBoundary)
 		if err3 != nil {
 			return "", err3
 		}
@@ -415,7 +431,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, bytesDoc []byte, a
 
 }
 
-func createAttachmentPart(data []byte, attachments []Attachment, defaultBoundary string) (bytes.Buffer, string, error) {
+func createAttachmentPart(couchDoc *CouchDoc, defaultBoundary string) (bytes.Buffer, string, error) {
 
 	//Create a buffer for writing the result
 	writeBuffer := new(bytes.Buffer)
@@ -428,7 +444,7 @@ func createAttachmentPart(data []byte, attachments []Attachment, defaultBoundary
 
 	fileAttachments := map[string]FileDetails{}
 
-	for _, attachment := range attachments {
+	for _, attachment := range couchDoc.Attachments {
 		fileAttachments[attachment.Name] = FileDetails{true, attachment.ContentType, len(attachment.AttachmentBytes)}
 	}
 
@@ -436,12 +452,12 @@ func createAttachmentPart(data []byte, attachments []Attachment, defaultBoundary
 		"_attachments": fileAttachments}
 
 	//Add any data uploaded with the files
-	if data != nil {
+	if couchDoc.JSONValue != nil {
 
 		//create a generic map
 		genericMap := make(map[string]interface{})
 		//unmarshal the data into the generic map
-		json.Unmarshal(data, &genericMap)
+		json.Unmarshal(couchDoc.JSONValue, &genericMap)
 
 		//add all key/values to the attachmentJSONMap
 		for jsonKey, jsonValue := range genericMap {
@@ -464,7 +480,7 @@ func createAttachmentPart(data []byte, attachments []Attachment, defaultBoundary
 
 	part.Write(filesForUpload)
 
-	for _, attachment := range attachments {
+	for _, attachment := range couchDoc.Attachments {
 
 		header := make(textproto.MIMEHeader)
 		part, err2 := writer.CreatePart(header)
@@ -499,12 +515,13 @@ func getRevisionHeader(resp *http.Response) (string, error) {
 }
 
 //ReadDoc method provides function to retrieve a document from the database by id
-func (dbclient *CouchDatabase) ReadDoc(id string) ([]byte, string, error) {
-
+func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
+	var couchDoc CouchDoc
 	logger.Debugf("Entering ReadDoc()  id=%s", id)
 	if !utf8.ValidString(id) {
 		return nil, "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
+
 	readURL, err := url.Parse(dbclient.couchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
@@ -513,6 +530,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) ([]byte, string, error) {
 	readURL.Path = dbclient.dbName
 	// id can contain a '/', so encode separately
 	readURL = &url.URL{Opaque: readURL.String() + "/" + encodePathElement(id)}
+
 	query := readURL.Query()
 	query.Add("attachments", "true")
 
@@ -545,81 +563,82 @@ func (dbclient *CouchDatabase) ReadDoc(id string) ([]byte, string, error) {
 
 	//check to see if the is multipart,  handle as attachment if multipart is detected
 	if strings.HasPrefix(mediaType, "multipart/") {
-
 		//Set up the multipart reader based on the boundary
 		multipartReader := multipart.NewReader(resp.Body, params["boundary"])
 		for {
-
 			p, err := multipartReader.NextPart()
-
 			if err == io.EOF {
-				return nil, "", err
+				break // processed all parts
 			}
-
 			if err != nil {
 				return nil, "", err
 			}
 
+			defer p.Close()
+
 			logger.Debugf("part header=%s", p.Header)
-
-			//See if the part is gzip encoded
-			switch p.Header.Get("Content-Encoding") {
-			case "gzip":
-
-				var respBody []byte
-
-				gr, err := gzip.NewReader(p)
-				if err != nil {
-					return nil, "", err
-				}
-				respBody, err = ioutil.ReadAll(gr)
-				if err != nil {
-					return nil, "", err
-				}
-
-				logger.Debugf("Retrieved attachment data")
-
-				if p.Header.Get("Content-Disposition") == "attachment; filename=\"valueBytes\"" {
-
-					return respBody, revision, nil
-
-				}
-
-			default:
-
-				//retrieve the data,  this is not gzip
+			switch p.Header.Get("Content-Type") {
+			case "application/json":
 				partdata, err := ioutil.ReadAll(p)
 				if err != nil {
 					return nil, "", err
 				}
-				logger.Debugf("Retrieved attachment data")
+				couchDoc.JSONValue = partdata
+			default:
 
-				if p.Header.Get("Content-Disposition") == "attachment; filename=\"valueBytes\"" {
+				//Create an attachment structure and load it
+				attachment := Attachment{}
+				attachment.ContentType = p.Header.Get("Content-Type")
+				contentDispositionParts := strings.Split(p.Header.Get("Content-Disposition"), ";")
+				if strings.TrimSpace(contentDispositionParts[0]) == "attachment" {
+					switch p.Header.Get("Content-Encoding") {
+					case "gzip": //See if the part is gzip encoded
 
-					return partdata, revision, nil
+						var respBody []byte
 
-				}
+						gr, err := gzip.NewReader(p)
+						if err != nil {
+							return nil, "", err
+						}
+						respBody, err = ioutil.ReadAll(gr)
+						if err != nil {
+							return nil, "", err
+						}
 
-			}
+						logger.Debugf("Retrieved attachment data")
+						attachment.AttachmentBytes = respBody
+						attachment.Name = p.FileName()
+						couchDoc.Attachments = append(couchDoc.Attachments, attachment)
 
-		}
+					default:
 
-	} else {
+						//retrieve the data,  this is not gzip
+						partdata, err := ioutil.ReadAll(p)
+						if err != nil {
+							return nil, "", err
+						}
+						logger.Debugf("Retrieved attachment data")
+						attachment.AttachmentBytes = partdata
+						attachment.Name = p.FileName()
+						couchDoc.Attachments = append(couchDoc.Attachments, attachment)
 
-		//handle as JSON document
-		jsonDoc, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, "", err
-		}
+					} // end content-encoding switch
+				} // end if attachment
+			} // end content-type switch
+		} // for all multiparts
 
-		logger.Debugf("Read document, id=%s, value=%s", id, string(jsonDoc))
-
-		logger.Debugf("Exiting ReadDoc()")
-
-		return jsonDoc, revision, nil
-
+		return &couchDoc, revision, nil
 	}
 
+	//handle as JSON document
+	couchDoc.JSONValue, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", err
+	}
+
+	logger.Debugf("Read document, id=%s, value=%s", id, string(couchDoc.JSONValue))
+	logger.Debugf("Exiting ReadDoc()")
+	return &couchDoc, revision, nil
 }
 
 //ReadDocRange method provides function to a range of documents based on the start and end keys
@@ -647,12 +666,13 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 	queryParms.Add("inclusive_end", "false") // endkey should be exclusive to be consistent with goleveldb
 
 	//Append the startKey if provided
+
 	if startKey != "" {
 		var err error
 		if startKey, err = encodeForJSON(startKey); err != nil {
 			return nil, err
 		}
-		queryParms.Add("startkey", startKey)
+		queryParms.Add("startkey", "\""+startKey+"\"")
 	}
 
 	//Append the endKey if provided
@@ -661,7 +681,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 		if endKey, err = encodeForJSON(endKey); err != nil {
 			return nil, err
 		}
-		queryParms.Add("endkey", endKey)
+		queryParms.Add("endkey", "\""+endKey+"\"")
 	}
 
 	rangeURL.RawQuery = queryParms.Encode()
@@ -704,23 +724,21 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 		if jsonDoc.Attachments != nil {
 
-			logger.Debugf("Adding binary docment for id: %s", jsonDoc.ID)
+			logger.Debugf("Adding JSON document and attachments for id: %s", jsonDoc.ID)
 
-			binaryDocument, _, err := dbclient.ReadDoc(jsonDoc.ID)
+			couchDoc, _, err := dbclient.ReadDoc(jsonDoc.ID)
 			if err != nil {
 				return nil, err
 			}
 
-			var addDocument = &QueryResult{jsonDoc.ID, binaryDocument}
-
+			var addDocument = &QueryResult{jsonDoc.ID, couchDoc.JSONValue, couchDoc.Attachments}
 			results = append(results, *addDocument)
 
 		} else {
 
 			logger.Debugf("Adding json docment for id: %s", jsonDoc.ID)
 
-			var addDocument = &QueryResult{jsonDoc.ID, row.Doc}
-
+			var addDocument = &QueryResult{jsonDoc.ID, row.Doc, nil}
 			results = append(results, *addDocument)
 
 		}
@@ -837,20 +855,31 @@ func (dbclient *CouchDatabase) QueryDocuments(query string, limit, skip int) (*[
 
 	for _, row := range jsonResponse.Docs {
 
-		var jsonDoc = &DocID{}
+		var jsonDoc = &Doc{}
 		err3 := json.Unmarshal(row, &jsonDoc)
 		if err3 != nil {
 			return nil, err3
 		}
 
-		logger.Debugf("Adding row to resultset: %s", row)
+		if jsonDoc.Attachments != nil {
 
-		var addDocument = &QueryResult{jsonDoc.ID, row}
+			logger.Debugf("Adding JSON docment and attachments for id: %s", jsonDoc.ID)
 
-		results = append(results, *addDocument)
+			couchDoc, _, err := dbclient.ReadDoc(jsonDoc.ID)
+			if err != nil {
+				return nil, err
+			}
+			var addDocument = &QueryResult{ID: jsonDoc.ID, Value: couchDoc.JSONValue, Attachments: couchDoc.Attachments}
+			results = append(results, *addDocument)
 
+		} else {
+			logger.Debugf("Adding json docment for id: %s", jsonDoc.ID)
+			var addDocument = &QueryResult{ID: jsonDoc.ID, Value: row, Attachments: nil}
+
+			results = append(results, *addDocument)
+
+		}
 	}
-
 	logger.Debugf("Exiting QueryDocuments()")
 
 	return &results, nil
@@ -981,5 +1010,7 @@ func encodeForJSON(str string) (string, error) {
 	if err := encoder.Encode(str); err != nil {
 		return "", err
 	}
-	return buf.String(), nil
+	// Encode adds double quotes to string and terminates with \n - stripping them as bytes as they are all ascii(0-127)
+	buffer := buf.Bytes()
+	return string(buffer[1 : len(buffer)-2]), nil
 }
