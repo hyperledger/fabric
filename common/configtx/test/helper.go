@@ -85,7 +85,9 @@ func OrdererTemplate() configtx.Template {
 	return provisional.New(genConf).ChannelTemplate()
 }
 
-const sampleOrgID = "SAMPLE"
+// sampleOrgID apparently _must_ be set to DEFAULT or things break
+// Beware when changing!
+const sampleOrgID = "DEFAULT"
 
 // ApplicationOrgTemplate returns the SAMPLE org with MSP template
 func ApplicationOrgTemplate() configtx.Template {
