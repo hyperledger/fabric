@@ -686,6 +686,54 @@ func (handler *Handler) handleGetQueryResult(query string, txid string) (*pb.Que
 	return nil, errors.New("Incorrect chaincode message received")
 }
 
+func (handler *Handler) handleGetHistoryForKey(key string, txid string) (*pb.QueryStateResponse, error) {
+	// Create the channel on which to communicate the response from validating peer
+	respChan, uniqueReqErr := handler.createChannel(txid)
+	if uniqueReqErr != nil {
+		chaincodeLogger.Debugf("[%s]Another state request pending for this Txid. Cannot process.", shorttxid(txid))
+		return nil, uniqueReqErr
+	}
+
+	defer handler.deleteChannel(txid)
+
+	// Send GET_HISTORY_FOR_KEY message to validator chaincode support
+	payload := &pb.GetHistoryForKey{Key: key}
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		return nil, errors.New("Failed to process query state request")
+	}
+	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_HISTORY_FOR_KEY, Payload: payloadBytes, Txid: txid}
+	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_HISTORY_FOR_KEY)
+	responseMsg, err := handler.sendReceive(msg, respChan)
+	if err != nil {
+		chaincodeLogger.Errorf("[%s]error sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_HISTORY_FOR_KEY)
+		return nil, errors.New("could not send msg")
+	}
+
+	if responseMsg.Type.String() == pb.ChaincodeMessage_RESPONSE.String() {
+		// Success response
+		chaincodeLogger.Debugf("[%s]Received %s. Successfully got range", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_RESPONSE)
+
+		getHistoryForKeyResponse := &pb.QueryStateResponse{}
+		unmarshalErr := proto.Unmarshal(responseMsg.Payload, getHistoryForKeyResponse)
+		if unmarshalErr != nil {
+			chaincodeLogger.Errorf("[%s]unmarshall error", shorttxid(responseMsg.Txid))
+			return nil, errors.New("Error unmarshalling QueryStateResponse.")
+		}
+
+		return getHistoryForKeyResponse, nil
+	}
+	if responseMsg.Type.String() == pb.ChaincodeMessage_ERROR.String() {
+		// Error response
+		chaincodeLogger.Errorf("[%s]Received %s", shorttxid(responseMsg.Txid), pb.ChaincodeMessage_ERROR)
+		return nil, errors.New(string(responseMsg.Payload[:]))
+	}
+
+	// Incorrect chaincode message received
+	chaincodeLogger.Errorf("Incorrect chaincode message %s recieved. Expecting %s or %s", responseMsg.Type, pb.ChaincodeMessage_RESPONSE, pb.ChaincodeMessage_ERROR)
+	return nil, errors.New("Incorrect chaincode message received")
+}
+
 // handleInvokeChaincode communicates with the validator to invoke another chaincode.
 func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, txid string) pb.Response {
 	chaincodeID := &pb.ChaincodeID{Name: chaincodeName}

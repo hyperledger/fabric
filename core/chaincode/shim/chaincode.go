@@ -357,7 +357,16 @@ func (stub *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInter
 		return nil, err
 	}
 	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
+}
 
+// GetHistoryForKey function can be invoked by a chaincode to return a history of
+// key values across time. GetHistoryForKey is intended to be used for read-only queries.
+func (stub *ChaincodeStub) GetHistoryForKey(key string) (StateQueryIteratorInterface, error) {
+	response, err := stub.handler.handleGetHistoryForKey(key, stub.TxID)
+	if err != nil {
+		return nil, err
+	}
+	return &StateQueryIterator{stub.handler, stub.TxID, response, 0}, nil
 }
 
 //CreateCompositeKey combines the given attributes to form a composite key.

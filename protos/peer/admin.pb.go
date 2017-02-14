@@ -30,6 +30,7 @@ It has these top-level messages:
 	PutStateInfo
 	GetStateByRange
 	GetQueryResult
+	GetHistoryForKey
 	QueryStateNext
 	QueryStateClose
 	QueryStateKeyValue

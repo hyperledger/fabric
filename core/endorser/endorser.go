@@ -70,6 +70,14 @@ func (*Endorser) getTxSimulator(ledgername string) (ledger.TxSimulator, error) {
 	return lgr.NewTxSimulator()
 }
 
+func (*Endorser) getHistoryQueryExecutor(ledgername string) (ledger.HistoryQueryExecutor, error) {
+	lgr := peer.GetLedger(ledgername)
+	if lgr == nil {
+		return nil, fmt.Errorf("chain does not exist(%s)", ledgername)
+	}
+	return lgr.NewHistoryQueryExecutor()
+}
+
 //call specified chaincode (system or user)
 func (e *Endorser) callChaincode(ctxt context.Context, chainID string, version string, txid string, prop *pb.Proposal, cis *pb.ChaincodeInvocationSpec, cid *pb.ChaincodeID, txsim ledger.TxSimulator) (*pb.Response, *pb.ChaincodeEvent, error) {
 	var err error
@@ -292,11 +300,21 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	// obtaining once the tx simulator for this proposal. This will be nil
 	// for chainless proposals
+	// Also obtain a history query executor for history queries, since tx simulator does not cover history
 	var txsim ledger.TxSimulator
+	var historyQueryExecutor ledger.HistoryQueryExecutor
 	if chainID != "" {
 		if txsim, err = e.getTxSimulator(chainID); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 		}
+		if historyQueryExecutor, err = e.getHistoryQueryExecutor(chainID); err != nil {
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+		}
+		// Add the historyQueryExecutor to context
+		// TODO shouldn't we also add txsim to context here as well? Rather than passing txsim parameter
+		// around separately, since eventually it gets added to context anyways
+		ctx = context.WithValue(ctx, chaincode.HistoryQueryExecutorKey, historyQueryExecutor)
+
 		defer txsim.Done()
 	}
 	//this could be a request to a chainless SysCC

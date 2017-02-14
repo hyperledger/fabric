@@ -141,6 +141,7 @@ message ChaincodeMessage {
         QUERY_STATE_NEXT = 16;
         QUERY_STATE_CLOSE = 17;
         KEEPALIVE = 18;
+        GET_HISTORY_FOR_KEY = 19;
     }
 
     Type type = 1;
@@ -168,6 +169,10 @@ message GetStateByRange {
 
 message GetQueryResult {
     string query = 1;
+}
+
+message GetHistoryForKey {
+    string key = 1;
 }
 
 message QueryStateNext {

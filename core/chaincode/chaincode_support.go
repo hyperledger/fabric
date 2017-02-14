@@ -51,6 +51,9 @@ const (
 
 	//TXSimulatorKey is used to attach ledger simulation context
 	TXSimulatorKey string = "txsimulatorkey"
+
+	//HistoryQueryExecutorKey is used to attach ledger history query executor context
+	HistoryQueryExecutorKey string = "historyqueryexecutorkey"
 )
 
 //this is basically the singleton that supports the
@@ -64,6 +67,15 @@ var theChaincodeSupport *ChaincodeSupport
 func getTxSimulator(context context.Context) ledger.TxSimulator {
 	if txsim, ok := context.Value(TXSimulatorKey).(ledger.TxSimulator); ok {
 		return txsim
+	}
+	//chaincode will not allow state operations
+	return nil
+}
+
+//use this for ledger access and make sure HistoryQueryExecutor is being used
+func getHistoryQueryExecutor(context context.Context) ledger.HistoryQueryExecutor {
+	if historyQueryExecutor, ok := context.Value(HistoryQueryExecutorKey).(ledger.HistoryQueryExecutor); ok {
+		return historyQueryExecutor
 	}
 	//chaincode will not allow state operations
 	return nil
@@ -248,7 +260,7 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 
 func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Handler) error {
 
-	// clean up rangeQueryIteratorMap
+	// clean up queryIteratorMap
 	for _, context := range chaincodehandler.txCtxs {
 		for _, v := range context.queryIteratorMap {
 			v.Close()
