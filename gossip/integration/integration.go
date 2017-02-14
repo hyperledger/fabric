@@ -25,27 +25,12 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
 // This file is used to bootstrap a gossip instance and/or leader election service instance
-
-func getIntOrDefault(key string, defVal int) int {
-	if viper.GetInt(key) == 0 {
-		return defVal
-	} else {
-		return viper.GetInt(key)
-	}
-}
-
-func getDurationOrDefault(key string, defVal time.Duration) time.Duration {
-	if viper.GetDuration(key) == 0 {
-		return defVal
-	} else {
-		return viper.GetDuration(key)
-	}
-}
 
 func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string) *gossip.Config {
 	port, err := strconv.ParseInt(strings.Split(selfEndpoint, ":")[1], 10, 64)
@@ -65,18 +50,18 @@ func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string
 		BindPort:                   int(port),
 		BootstrapPeers:             bootPeers,
 		ID:                         selfEndpoint,
-		MaxBlockCountToStore:       getIntOrDefault("peer.gossip.maxBlockCountToStore", 100),
-		MaxPropagationBurstLatency: getDurationOrDefault("peer.gossip.maxPropagationBurstLatency", 10*time.Millisecond),
-		MaxPropagationBurstSize:    getIntOrDefault("peer.gossip.maxPropagationBurstSize", 10),
-		PropagateIterations:        getIntOrDefault("peer.gossip.propagateIterations", 1),
-		PropagatePeerNum:           getIntOrDefault("peer.gossip.propagatePeerNum", 3),
-		PullInterval:               getDurationOrDefault("peer.gossip.pullInterval", 4*time.Second),
-		PullPeerNum:                getIntOrDefault("peer.gossip.pullPeerNum", 3),
+		MaxBlockCountToStore:       util.GetIntOrDefault("peer.gossip.maxBlockCountToStore", 100),
+		MaxPropagationBurstLatency: util.GetDurationOrDefault("peer.gossip.maxPropagationBurstLatency", 10*time.Millisecond),
+		MaxPropagationBurstSize:    util.GetIntOrDefault("peer.gossip.maxPropagationBurstSize", 10),
+		PropagateIterations:        util.GetIntOrDefault("peer.gossip.propagateIterations", 1),
+		PropagatePeerNum:           util.GetIntOrDefault("peer.gossip.propagatePeerNum", 3),
+		PullInterval:               util.GetDurationOrDefault("peer.gossip.pullInterval", 4*time.Second),
+		PullPeerNum:                util.GetIntOrDefault("peer.gossip.pullPeerNum", 3),
 		InternalEndpoint:           selfEndpoint,
 		ExternalEndpoint:           externalEndpoint,
-		PublishCertPeriod:          getDurationOrDefault("peer.gossip.publishCertPeriod", 10*time.Second),
-		RequestStateInfoInterval:   getDurationOrDefault("peer.gossip.requestStateInfoInterval", 4*time.Second),
-		PublishStateInfoInterval:   getDurationOrDefault("peer.gossip.publishStateInfoInterval", 4*time.Second),
+		PublishCertPeriod:          util.GetDurationOrDefault("peer.gossip.publishCertPeriod", 10*time.Second),
+		RequestStateInfoInterval:   util.GetDurationOrDefault("peer.gossip.requestStateInfoInterval", 4*time.Second),
+		PublishStateInfoInterval:   util.GetDurationOrDefault("peer.gossip.publishStateInfoInterval", 4*time.Second),
 		SkipBlockVerification:      viper.GetBool("peer.gossip.skipBlockVerification"),
 		TLSServerCert:              cert,
 	}

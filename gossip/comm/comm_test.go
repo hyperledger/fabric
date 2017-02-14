@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -29,7 +30,9 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -38,7 +41,6 @@ import (
 
 func init() {
 	rand.Seed(42)
-	SetDialTimeout(time.Duration(300) * time.Millisecond)
 }
 
 func acceptAll(msg interface{}) bool {
@@ -147,6 +149,23 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	msg2Send.Nonce = nonce
 	go stream.Send(msg2Send)
 	return acceptChan
+}
+
+func TestViperConfig(t *testing.T) {
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	viper.AddConfigPath("./../../peer")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
+	if err != nil { // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+
+	assert.Equal(t, time.Duration(2)*time.Second, util.GetDurationOrDefault("peer.gossip.connTimeout", 0))
+	assert.Equal(t, time.Duration(300)*time.Millisecond, util.GetDurationOrDefault("peer.gossip.dialTimeout", 0))
+	assert.Equal(t, 20, util.GetIntOrDefault("peer.gossip.recvBuffSize", 0))
+	assert.Equal(t, 20, util.GetIntOrDefault("peer.gossip.sendBuffSize", 0))
 }
 
 func TestHandshake(t *testing.T) {
@@ -285,7 +304,7 @@ func TestParallelSend(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	messages2Send := defRecvBuffSize
+	messages2Send := util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize)
 
 	wg := sync.WaitGroup{}
 	go func() {
@@ -378,7 +397,7 @@ func TestAccept(t *testing.T) {
 	var evenResults []uint64
 	var oddResults []uint64
 
-	out := make(chan uint64, defRecvBuffSize)
+	out := make(chan uint64, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
 	sem := make(chan struct{}, 0)
 
 	readIntoSlice := func(a *[]uint64, ch <-chan proto.ReceivedMessage) {
@@ -392,11 +411,11 @@ func TestAccept(t *testing.T) {
 	go readIntoSlice(&evenResults, evenNONCES)
 	go readIntoSlice(&oddResults, oddNONCES)
 
-	for i := 0; i < defRecvBuffSize; i++ {
+	for i := 0; i < util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize); i++ {
 		comm2.Send(createGossipMsg(), remotePeer(7611))
 	}
 
-	waitForMessages(t, out, defRecvBuffSize, "Didn't receive all messages sent")
+	waitForMessages(t, out, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize), "Didn't receive all messages sent")
 
 	comm1.Stop()
 	comm2.Stop()
@@ -531,4 +550,11 @@ func waitForMessages(t *testing.T, msgChan chan uint64, count int, errMsg string
 		}
 	}
 	assert.Equal(t, count, c, errMsg)
+}
+
+func TestMain(m *testing.M) {
+	SetDialTimeout(time.Duration(300) * time.Millisecond)
+
+	ret := m.Run()
+	os.Exit(ret)
 }

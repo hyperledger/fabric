@@ -22,6 +22,9 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"time"
+
+	"github.com/spf13/viper"
 )
 
 // Equals returns whether a and b are the same
@@ -145,4 +148,22 @@ func PrintStackTrace() {
 	buf := make([]byte, 1<<16)
 	runtime.Stack(buf, true)
 	fmt.Printf("%s", buf)
+}
+
+// GetIntOrDefault returns the int value from config if present otherwise default value
+func GetIntOrDefault(key string, defVal int) int {
+	if val := viper.GetInt(key); val != 0 {
+		return val
+	}
+
+	return defVal
+}
+
+// GetIntOrDefault returns the Duration value from config if present otherwise default value
+func GetDurationOrDefault(key string, defVal time.Duration) time.Duration {
+	if val := viper.GetDuration(key); val != 0 {
+		return val
+	}
+
+	return defVal
 }
