@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx/handlers"
 	"github.com/hyperledger/fabric/common/configtx/handlers/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -98,6 +99,7 @@ type ordererConfig struct {
 	kafkaBrokers             []string
 	ingressPolicyNames       []string
 	egressPolicyNames        []string
+	orgs                     map[string]*handlers.OrgConfig
 }
 
 // ManagerImpl is an implementation of configtxapi.OrdererConfig and configtxapi.Handler
@@ -160,7 +162,9 @@ func (pm *ManagerImpl) BeginConfig() {
 	if pm.pendingConfig != nil {
 		logger.Fatalf("Programming error, cannot call begin in the middle of a proposal")
 	}
-	pm.pendingConfig = &ordererConfig{}
+	pm.pendingConfig = &ordererConfig{
+		orgs: make(map[string]*handlers.OrgConfig),
+	}
 }
 
 // RollbackConfig is used to abandon a new config proposal
@@ -281,7 +285,12 @@ func (pm *ManagerImpl) Handler(path []string) (api.Handler, error) {
 		return nil, fmt.Errorf("Orderer group allows only one further level of nesting")
 	}
 
-	return pm.mspConfig.Handler(path[1:])
+	org, ok := pm.pendingConfig.orgs[path[0]]
+	if !ok {
+		org = handlers.NewOrgConfig(path[0], pm.mspConfig)
+		pm.pendingConfig.orgs[path[0]] = org
+	}
+	return org, nil
 }
 
 // This does just a barebones sanity check.

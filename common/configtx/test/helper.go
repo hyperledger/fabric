@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapplication "github.com/hyperledger/fabric/common/configtx/handlers/application"
 	configtxmsp "github.com/hyperledger/fabric/common/configtx/handlers/msp"
+	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/genesis"
@@ -86,11 +87,13 @@ func OrdererTemplate() configtx.Template {
 
 // MSPTemplate returns the test MSP template
 func MSPTemplate() configtx.Template {
-	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, "SAMPLE")
+	const sampleID = "SAMPLE"
+	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, sampleID)
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
-	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey}, mspConf))
+	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey, sampleID}, mspConf),
+		configtxmsp.TemplateGroupMSP([]string{configtxorderer.GroupKey, sampleID}, mspConf))
 }
 
 // ApplicationTemplate returns the test application template

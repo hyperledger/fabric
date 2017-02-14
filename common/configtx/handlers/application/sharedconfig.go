@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configtx/handlers"
 	"github.com/hyperledger/fabric/common/configtx/handlers/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -65,6 +66,7 @@ var logger = logging.MustGetLogger("peer/sharedconfig")
 
 type sharedConfig struct {
 	anchorPeers []*pb.AnchorPeer
+	orgs        map[string]*handlers.OrgConfig
 }
 
 // SharedConfigImpl is an implementation of Manager and configtx.ConfigHandler
@@ -95,7 +97,9 @@ func (di *SharedConfigImpl) BeginConfig() {
 	if di.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
-	di.pendingConfig = &sharedConfig{}
+	di.pendingConfig = &sharedConfig{
+		orgs: make(map[string]*handlers.OrgConfig),
+	}
 }
 
 // RollbackConfig is used to abandon a new config proposal
@@ -142,5 +146,10 @@ func (pm *SharedConfigImpl) Handler(path []string) (api.Handler, error) {
 		return nil, fmt.Errorf("Application group allows only one further level of nesting")
 	}
 
-	return pm.mspConfig.Handler(path[1:])
+	org, ok := pm.pendingConfig.orgs[path[0]]
+	if !ok {
+		org = handlers.NewOrgConfig(path[0], pm.mspConfig)
+		pm.pendingConfig.orgs[path[0]] = org
+	}
+	return org, nil
 }
