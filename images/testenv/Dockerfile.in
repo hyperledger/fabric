@@ -1,4 +1,4 @@
-FROM hyperledger/fabric-baseimage:_BASE_TAG_
+FROM hyperledger/fabric-buildenv:_TAG_
 
 # fabric configuration locations
 ENV PEER_CFG_PATH /etc/hyperledger/fabric
@@ -10,15 +10,11 @@ RUN mkdir -p \
   $ORDERER_CFG_PATH \
   /var/hyperledger/production
 
-# install gotools
-ADD payload/gotools.tar.bz2 /usr/local/bin/
-
 # fabric configuration files
 COPY payload/orderer.yaml $ORDERER_CFG_PATH
 COPY payload/genesis.yaml $ORDERER_CFG_PATH
 COPY payload/core.yaml $PEER_CFG_PATH
 ADD payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
-
 
 # fabric binaries
 COPY payload/orderer /usr/local/bin
