@@ -173,7 +173,7 @@ func (t *AssetManagementChaincode) isCaller(stub shim.ChaincodeStubInterface, ce
 	if err != nil {
 		return false, errors.New("Failed getting metadata")
 	}
-	payload, err := stub.GetPayload()
+	payload, err := stub.GetArgsSlice()
 	if err != nil {
 		return false, errors.New("Failed getting payload")
 	}

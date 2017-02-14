@@ -25,7 +25,7 @@ type PeerID struct {
 func (m *PeerID) Reset()                    { *m = PeerID{} }
 func (m *PeerID) String() string            { return proto.CompactTextString(m) }
 func (*PeerID) ProtoMessage()               {}
-func (*PeerID) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*PeerID) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 type PeerEndpoint struct {
 	Id      *PeerID `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
@@ -35,7 +35,7 @@ type PeerEndpoint struct {
 func (m *PeerEndpoint) Reset()                    { *m = PeerEndpoint{} }
 func (m *PeerEndpoint) String() string            { return proto.CompactTextString(m) }
 func (*PeerEndpoint) ProtoMessage()               {}
-func (*PeerEndpoint) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
+func (*PeerEndpoint) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{1} }
 
 func (m *PeerEndpoint) GetId() *PeerID {
 	if m != nil {
@@ -118,12 +118,12 @@ var _Endorser_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptor5,
+	Metadata: fileDescriptor6,
 }
 
-func init() { proto.RegisterFile("peer/peer.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("peer/peer.proto", fileDescriptor6) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor6 = []byte{
 	// 234 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x54, 0x90, 0x4f, 0x4b, 0xc3, 0x40,
 	0x10, 0xc5, 0x6d, 0x90, 0xaa, 0xa3, 0x58, 0x58, 0x41, 0x42, 0x28, 0x22, 0x39, 0x29, 0x42, 0x02,

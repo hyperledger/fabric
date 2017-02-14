@@ -227,7 +227,12 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		stub.init(handler, msg.Txid, input, msg.ProposalContext)
+		err := stub.init(handler, msg.Txid, input, msg.Proposal)
+		if err != nil {
+			chaincodeLogger.Errorf("[%s]Init get error response [%s]. Sending %s", shorttxid(msg.Txid), err.Error(), pb.ChaincodeMessage_ERROR)
+			nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: []byte(err.Error()), Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent}
+			return
+		}
 		res := handler.cc.Init(stub)
 		chaincodeLogger.Debugf("[%s]Init get response status: %d", shorttxid(msg.Txid), res.Status)
 
@@ -296,7 +301,14 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
 		stub := new(ChaincodeStub)
-		stub.init(handler, msg.Txid, input, msg.ProposalContext)
+		err := stub.init(handler, msg.Txid, input, msg.Proposal)
+		if err != nil {
+			payload := []byte(err.Error())
+			// Send ERROR message to chaincode support and change state
+			chaincodeLogger.Errorf("[%s]Transaction execution failed. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_ERROR)
+			nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent}
+			return
+		}
 		res := handler.cc.Invoke(stub)
 
 		// Endorser will handle error contained in Response.

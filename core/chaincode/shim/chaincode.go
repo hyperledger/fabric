@@ -29,9 +29,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/comm"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -49,11 +49,16 @@ const (
 // ChaincodeStub is an object passed to chaincode for shim side handling of
 // APIs.
 type ChaincodeStub struct {
-	TxID            string
-	proposalContext *pb.ChaincodeProposalContext
-	chaincodeEvent  *pb.ChaincodeEvent
-	args            [][]byte
-	handler         *Handler
+	TxID           string
+	chaincodeEvent *pb.ChaincodeEvent
+	args           [][]byte
+	handler        *Handler
+	proposal       *pb.Proposal
+
+	// Additional fields extracted from the proposal
+	creator   []byte
+	transient map[string][]byte
+	binding   []byte
 }
 
 // Peer address derived from command line or env var
@@ -270,20 +275,32 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 // -- init stub ---
 // ChaincodeInvocation functionality
 
-func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput, proposalContext *pb.ChaincodeProposalContext) {
+func (stub *ChaincodeStub) init(handler *Handler, txid string, input *pb.ChaincodeInput, proposal *pb.Proposal) error {
 	stub.TxID = txid
 	stub.args = input.Args
 	stub.handler = handler
-	stub.proposalContext = proposalContext
-}
+	stub.proposal = proposal
 
-// InitTestStub initializes an appropriate stub for testing chaincode
-func InitTestStub(funargs ...string) *ChaincodeStub {
-	stub := ChaincodeStub{}
-	allargs := util.ToChaincodeArgs(funargs...)
-	newCI := &pb.ChaincodeInput{Args: allargs}
-	stub.init(&Handler{}, "TEST-txid", newCI, nil) // TODO: add msg.ProposalContext
-	return &stub
+	// TODO: sanity check: verify that every call to init with a nil
+	// proposal is a legitimate one, meaning it is an internal call
+	// to system chaincodes.
+	if proposal != nil {
+		// Extract creator, transient, binding...
+		var err error
+		stub.creator, stub.transient, err = utils.GetChaincodeProposalContext(proposal)
+		if err != nil {
+			return fmt.Errorf("Failed extracting proposal fields. [%s]", err)
+		}
+
+		// TODO: txid must uniquely identity the transaction.
+		// Remove this comment once replay attack protection will be in place
+		stub.binding, err = utils.ComputeProposalBinding(proposal)
+		if err != nil {
+			return fmt.Errorf("Failed computing binding from proposal. [%s]", err)
+		}
+	}
+
+	return nil
 }
 
 // GetTxID returns the transaction ID
@@ -505,33 +522,34 @@ func (stub *ChaincodeStub) GetFunctionAndParameters() (function string, params [
 	return
 }
 
-// GetCallerCertificate returns caller certificate
-func (stub *ChaincodeStub) GetCallerCertificate() ([]byte, error) {
-	if stub.proposalContext != nil {
-		return stub.proposalContext.Transient, nil
-	}
-
-	return nil, errors.New("Creator field not set.")
+// GetCreator returns SignatureHeader.Creator of the proposal
+// this Stub refers to.
+func (stub *ChaincodeStub) GetCreator() ([]byte, error) {
+	return stub.creator, nil
 }
 
-// GetCallerMetadata returns caller metadata
-func (stub *ChaincodeStub) GetCallerMetadata() ([]byte, error) {
-	if stub.proposalContext != nil {
-		return stub.proposalContext.Transient, nil
-	}
-
-	return nil, errors.New("Transient field not set.")
+// GetTransient returns the ChaincodeProposalPayload.transient field.
+// It is a map that contains data (e.g. cryptographic material)
+// that might be used to implement some form of application-level confidentiality. The contents
+// of this field, as prescribed by ChaincodeProposalPayload, are supposed to always
+// be omitted from the transaction and excluded from the ledger.
+func (stub *ChaincodeStub) GetTransient() (map[string][]byte, error) {
+	return stub.transient, nil
 }
 
 // GetBinding returns the transaction binding
 func (stub *ChaincodeStub) GetBinding() ([]byte, error) {
-	return nil, nil
+	return stub.binding, nil
 }
 
-// GetPayload returns transaction payload, which is a `ChaincodeSpec` defined
-// in fabric/protos/chaincode.proto
-func (stub *ChaincodeStub) GetPayload() ([]byte, error) {
-	return nil, nil
+// GetArgsSlice returns the arguments to the stub call as a byte array
+func (stub *ChaincodeStub) GetArgsSlice() ([]byte, error) {
+	args := stub.GetArgs()
+	res := []byte{}
+	for _, barg := range args {
+		res = append(res, barg...)
+	}
+	return res, nil
 }
 
 // GetTxTimestamp returns transaction created timestamp, which is currently

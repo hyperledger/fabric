@@ -9,6 +9,7 @@ It is generated from these files:
 	peer/admin.proto
 	peer/chaincode.proto
 	peer/chaincodeevent.proto
+	peer/chaincodeshim.proto
 	peer/configuration.proto
 	peer/events.proto
 	peer/peer.proto
@@ -25,7 +26,7 @@ It has these top-level messages:
 	ChaincodeSpec
 	ChaincodeDeploymentSpec
 	ChaincodeInvocationSpec
-	ChaincodeProposalContext
+	ChaincodeEvent
 	ChaincodeMessage
 	PutStateInfo
 	GetStateByRange
@@ -35,7 +36,6 @@ It has these top-level messages:
 	QueryStateClose
 	QueryStateKeyValue
 	QueryStateResponse
-	ChaincodeEvent
 	AnchorPeers
 	AnchorPeer
 	ChaincodeReg

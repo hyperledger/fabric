@@ -247,7 +247,7 @@ func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibi
 	}
 
 	// strip the transient bytes off the payload - this needs to be done no matter the visibility mode
-	cppNoTransient := &peer.ChaincodeProposalPayload{Input: payload.Input, Transient: nil}
+	cppNoTransient := &peer.ChaincodeProposalPayload{Input: payload.Input, TransientMap: nil}
 	cppBytes, err := GetBytesChaincodeProposalPayload(cppNoTransient)
 	if err != nil {
 		return nil, errors.New("Failure while marshalling the ChaincodeProposalPayload!")

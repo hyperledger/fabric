@@ -31,7 +31,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/looplab/fsm"
 	logging "github.com/op/go-logging"
 	"golang.org/x/net/context"
@@ -1379,13 +1378,7 @@ func (handler *Handler) setChaincodeProposal(prop *pb.Proposal, msg *pb.Chaincod
 	if prop != nil {
 		chaincodeLogger.Debug("Proposal different from nil. Creating chaincode proposal context...")
 
-		proposalContext, err := utils.GetChaincodeProposalContext(prop)
-		if err != nil {
-			chaincodeLogger.Debug("Failed getting proposal context from proposal [%s]", err)
-			return fmt.Errorf("Failed getting proposal context from proposal [%s]", err)
-		}
-
-		msg.ProposalContext = proposalContext
+		msg.Proposal = prop
 	}
 	return nil
 }
@@ -1400,7 +1393,6 @@ func (handler *Handler) ready(ctxt context.Context, chainID string, txid string,
 	chaincodeLogger.Debug("sending READY")
 	ccMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: txid}
 
-	//if security is disabled the context elements will just be nil
 	if err := handler.setChaincodeProposal(prop, ccMsg); err != nil {
 		return nil, err
 	}
@@ -1465,7 +1457,6 @@ func (handler *Handler) sendExecuteMessage(ctxt context.Context, chainID string,
 		chaincodeLogger.Debugf("[%s]Inside sendExecuteMessage. Message %s", shorttxid(msg.Txid), msg.Type.String())
 	}
 
-	//if security is disabled the context elements will just be nil
 	if err = handler.setChaincodeProposal(prop, msg); err != nil {
 		return nil, err
 	}

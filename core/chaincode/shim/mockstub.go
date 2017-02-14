@@ -251,12 +251,12 @@ func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte, chann
 }
 
 // Not implemented
-func (stub *MockStub) GetCallerCertificate() ([]byte, error) {
+func (stub *MockStub) GetCreator() ([]byte, error) {
 	return nil, nil
 }
 
 // Not implemented
-func (stub *MockStub) GetCallerMetadata() ([]byte, error) {
+func (stub *MockStub) GetTransient() (map[string][]byte, error) {
 	return nil, nil
 }
 
@@ -266,7 +266,7 @@ func (stub *MockStub) GetBinding() ([]byte, error) {
 }
 
 // Not implemented
-func (stub *MockStub) GetPayload() ([]byte, error) {
+func (stub *MockStub) GetArgsSlice() ([]byte, error) {
 	return nil, nil
 }
 

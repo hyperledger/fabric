@@ -22,6 +22,7 @@ import (
 	"errors"
 
 	"encoding/base64"
+	"encoding/binary"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -52,32 +53,42 @@ func GetChaincodeInvocationSpec(prop *peer.Proposal) (*peer.ChaincodeInvocationS
 	return cis, nil
 }
 
-// GetChaincodeProposalContext returns a ChaincodeProposalContext from a Proposal
-func GetChaincodeProposalContext(prop *peer.Proposal) (*peer.ChaincodeProposalContext, error) {
-	// get back the header
+// GetChaincodeProposalContext returns creator and transient
+func GetChaincodeProposalContext(prop *peer.Proposal) ([]byte, map[string][]byte, error) {
+	if prop == nil {
+		return nil, nil, fmt.Errorf("Proposal is nil")
+	}
+	if len(prop.Header) == 0 {
+		return nil, nil, fmt.Errorf("Proposal's header is nil")
+	}
+	if len(prop.Payload) == 0 {
+		return nil, nil, fmt.Errorf("Proposal's payload is nil")
+	}
+
+	//// get back the header
 	hdr, err := GetHeader(prop.Header)
 	if err != nil {
-		return nil, fmt.Errorf("Could not extract the header from the proposal: %s", err)
+		return nil, nil, fmt.Errorf("Could not extract the header from the proposal: %s", err)
+	}
+	if hdr == nil {
+		return nil, nil, fmt.Errorf("Unmarshalled header is nil")
 	}
 	if common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
 		common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_CONFIG {
-		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIG. Was: %d", hdr.ChannelHeader.Type)
+		return nil, nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIG. Was: %d", hdr.ChannelHeader.Type)
 	}
 
 	if hdr.SignatureHeader == nil {
-		return nil, errors.New("Invalid signature header. It must be different from nil.")
+		return nil, nil, errors.New("Invalid signature header. It must be different from nil.")
 	}
 
 	ccPropPayload := &peer.ChaincodeProposalPayload{}
 	err = proto.Unmarshal(prop.Payload, ccPropPayload)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &peer.ChaincodeProposalContext{
-		Creator:   hdr.SignatureHeader.Creator,
-		Transient: ccPropPayload.Transient,
-	}, nil
+	return hdr.SignatureHeader.Creator, ccPropPayload.TransientMap, nil
 }
 
 // GetHeader Get Header from bytes
@@ -262,7 +273,7 @@ func CreateChaincodeProposal(typ common.HeaderType, chainID string, cis *peer.Ch
 }
 
 // CreateChaincodeProposalWithTransient creates a proposal from given input
-func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, transient []byte) (*peer.Proposal, string, error) {
+func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, transientMap map[string][]byte) (*peer.Proposal, string, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeId: cis.ChaincodeSpec.ChaincodeId}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
@@ -274,7 +285,7 @@ func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string,
 		return nil, "", err
 	}
 
-	ccPropPayload := &peer.ChaincodeProposalPayload{Input: cisBytes, Transient: transient}
+	ccPropPayload := &peer.ChaincodeProposalPayload{Input: cisBytes, TransientMap: transientMap}
 	ccPropPayloadBytes, err := proto.Marshal(ccPropPayload)
 	if err != nil {
 		return nil, "", err
@@ -536,4 +547,35 @@ func CheckProposalTxID(txid string, nonce, creator []byte) error {
 	}
 
 	return nil
+}
+
+// ComputeProposalBinding computes the binding of a proposal
+func ComputeProposalBinding(proposal *peer.Proposal) ([]byte, error) {
+	if proposal == nil {
+		return nil, fmt.Errorf("Porposal is nil")
+	}
+	if len(proposal.Header) == 0 {
+		return nil, fmt.Errorf("Proposal's Header is nil")
+	}
+
+	h, err := GetHeader(proposal.Header)
+	if err != nil {
+		return nil, err
+	}
+
+	return computeProposalBindingInternal(h.SignatureHeader.Nonce, h.SignatureHeader.Creator, h.ChannelHeader.Epoch)
+}
+
+func computeProposalBindingInternal(nonce, creator []byte, epoch uint64) ([]byte, error) {
+	epochBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(epochBytes, epoch)
+
+	// TODO: add to genesis block the hash function used for the binding computation.
+	digest, err := factory.GetDefaultOrPanic().Hash(
+		append(append(nonce, creator...), epochBytes...),
+		&bccsp.SHA256Opts{})
+	if err != nil {
+		return nil, err
+	}
+	return digest, nil
 }

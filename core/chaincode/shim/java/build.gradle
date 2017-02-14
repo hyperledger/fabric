@@ -93,6 +93,9 @@ task copyProtos(type:Copy){
  from ("${rootDir}/protos/peer"){
      include '**/chaincodeevent.proto'
      include '**/chaincode.proto'
+     include '**/chaincodeshim.proto'
+     include '**/proposal.proto'
+     include '**/proposal_response.proto'
  }
     into "${projectDir}/src/main/proto/peer"
 

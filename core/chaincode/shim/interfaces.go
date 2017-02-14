@@ -101,18 +101,22 @@ type ChaincodeStubInterface interface {
 	// key values across time. GetHistoryForKey is intended to be used for read-only queries.
 	GetHistoryForKey(key string) (StateQueryIteratorInterface, error)
 
-	// GetCallerCertificate returns caller certificate
-	GetCallerCertificate() ([]byte, error)
+	// GetCreator returns SignatureHeader.Creator of the proposal
+	// this Stub refers to.
+	GetCreator() ([]byte, error)
 
-	// GetCallerMetadata returns caller metadata
-	GetCallerMetadata() ([]byte, error)
+	// GetTransient returns the ChaincodeProposalPayload.transient field.
+	// It is a map that contains data (e.g. cryptographic material)
+	// that might be used to implement some form of application-level confidentiality. The contents
+	// of this field, as prescribed by ChaincodeProposalPayload, are supposed to always
+	// be omitted from the transaction and excluded from the ledger.
+	GetTransient() (map[string][]byte, error)
 
 	// GetBinding returns the transaction binding
 	GetBinding() ([]byte, error)
 
-	// GetPayload returns transaction payload, which is a `ChaincodeSpec` defined
-	// in fabric/protos/chaincode.proto
-	GetPayload() ([]byte, error)
+	// GetArgsSlice returns the arguments to the stub call as a byte array
+	GetArgsSlice() ([]byte, error)
 
 	// GetTxTimestamp returns transaction created timestamp, which is currently
 	// taken from the peer receiving the transaction. Note that this timestamp
