@@ -27,6 +27,7 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 	"time"
 
@@ -41,6 +42,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+const ppc64 = "ppc64le"
 
 const keyfile = "sbft/testdata/key.pem"
 const maindir = "github.com/hyperledger/fabric/orderer"
@@ -105,7 +108,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestTwoReplicasBroadcastAndDeliverUsingTheSame(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 2000
 	skipInShortMode(t)
 	peers := InitPeers(2, startingPort)
@@ -128,7 +131,7 @@ func TestTwoReplicasBroadcastAndDeliverUsingTheSame(t *testing.T) {
 }
 
 func TestTwoReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	logging.SetLevel(logging.DEBUG, "sbft")
 	startingPort := 2500
 	skipInShortMode(t)
@@ -152,7 +155,7 @@ func TestTwoReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
 }
 
 func TestTenReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 3000
 	skipInShortMode(t)
 	peers := InitPeers(10, startingPort)
@@ -175,7 +178,7 @@ func TestTenReplicasBroadcastAndDeliverUsingDifferent(t *testing.T) {
 }
 
 func TestFourReplicasBombedWithBroadcasts(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 4000
 	skipInShortMode(t)
 	// Add for debug mode:
@@ -204,7 +207,7 @@ func TestFourReplicasBombedWithBroadcasts(t *testing.T) {
 }
 
 func TestTenReplicasBombedWithBroadcasts(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 5000
 	skipInShortMode(t)
 	broadcastCount := 15
@@ -231,7 +234,7 @@ func TestTenReplicasBombedWithBroadcasts(t *testing.T) {
 }
 
 func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
-	t.Parallel()
+	parallelIfNotPpc64(t)
 	startingPort := 6000
 	skipInShortMode(t)
 	broadcastCount := 15
@@ -269,6 +272,12 @@ func TestTenReplicasBombedWithBroadcastsIfLedgersConsistent(t *testing.T) {
 	}
 }
 
+func parallelIfNotPpc64(t *testing.T) {
+	if runtime.GOARCH != ppc64 {
+		t.Parallel()
+	}
+}
+
 func InitPeers(num uint64, startingPort int) []*Peer {
 	peers := make([]*Peer, 0, num)
 	certFiles := make([]string, 0, num)
@@ -291,6 +300,9 @@ func InitPeers(num uint64, startingPort int) []*Peer {
 func StartPeers(peers []*Peer) {
 	for _, p := range peers {
 		p.start()
+		if runtime.GOARCH == ppc64 {
+			time.Sleep(3 * time.Second)
+		}
 	}
 }
 
