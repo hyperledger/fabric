@@ -52,6 +52,18 @@ General:
     # when GenesisMethod is set to "file".
     GenesisFile: ./genesisblock
 
+    # LocalMSPDir is where to find the crypto material needed for signing in the orderer
+    # It is set relative here as a default for dev environments but should be changed to the
+    # real location in production
+    LocalMSPDir: ../msp/
+
+    # LocalMSPID is the identity to register the local MSP material with the MSP manager
+    # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
+    # Deployers need to change the value of the localMspId string.
+    # In particular, the name of the local MSP ID of a orderer needs
+    # to match the name of one of the MSPs in the ordering system channel
+    LocalMSPID: DEFAULT
+
     # Enable an HTTP service for Go "pprof" profiling as documented at:
     # https://golang.org/pkg/net/http/pprof
     Profile:
