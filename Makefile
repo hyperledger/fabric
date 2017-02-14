@@ -48,7 +48,7 @@ PKGNAME = github.com/$(PROJECT_NAME)
 GO_LDFLAGS = -X $(PKGNAME)/common/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell uname -m)
-CHAINTOOL_RELEASE=v0.10.1
+CHAINTOOL_RELEASE=v0.10.2
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 
 CHAINTOOL_URL ?= https://github.com/hyperledger/fabric-chaintool/releases/download/$(CHAINTOOL_RELEASE)/chaintool
