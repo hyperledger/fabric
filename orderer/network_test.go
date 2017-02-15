@@ -305,6 +305,7 @@ func generateConfigEnv(peerNum uint64, grpcPort int, peerCommPort string, certFi
 	panicOnError(err)
 	envs := []string{}
 	envs = append(envs, fmt.Sprintf("ORDERER_CFG_PATH=%s", ordererDir))
+	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_LOCALMSPDIR=%s", ordererDir+"/../msp/sampleconfig"))
 	envs = append(envs, fmt.Sprintf("ORDERER_GENERAL_LISTENPORT=%d", grpcPort))
 	envs = append(envs, fmt.Sprintf("CONFIGTX_ORDERER_ORDERERTYPE=%s", "sbft"))
 	envs = append(envs, fmt.Sprintf("ORDERER_GENESIS_DEPRECATEDBATCHTIMEOUT=%d", 1000))
