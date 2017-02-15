@@ -64,12 +64,6 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.Version
 	provider.mux.Lock()
 	defer provider.mux.Unlock()
 
-	//TODO determine if couch db naming restrictions should apply to all ledger names
-	//TODO enforce all naming rules
-	// Only lowercase characters (a-z), digits (0-9), and any of the characters _, $, (, ), +, -, and / are allowed. Must begin with a letter.
-	// For now, we'll just lowercase the name within the couch versioned db.
-	dbName = strings.ToLower(dbName)
-
 	vdb := provider.databases[dbName]
 	if vdb == nil {
 		var err error
