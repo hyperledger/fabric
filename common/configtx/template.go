@@ -188,7 +188,17 @@ func MakeChainCreationTransaction(creationPolicy string, chainID string, signer 
 		return nil, err
 	}
 
+	configUpdate, err := UnmarshalConfigUpdate(newConfigUpdateEnv.ConfigUpdate)
+	if err != nil {
+		return nil, err
+	}
+
 	newConfigEnv := &cb.ConfigEnvelope{
+		// Config is an XXX temporary workaround until the orderer generates the real configtx from the WriteSet
+		Config: &cb.Config{
+			Header:  configUpdate.Header,
+			Channel: configUpdate.WriteSet,
+		},
 		LastUpdate: newConfigUpdateEnv,
 	}
 

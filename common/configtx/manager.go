@@ -17,7 +17,6 @@ limitations under the License.
 package configtx
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 
@@ -77,32 +76,6 @@ func computeSequence(configGroup *cb.ConfigGroup) uint64 {
 	return max
 }
 
-// computeChannelIdAndSequence returns the chain id and the sequence number for a config envelope
-// or an error if there is a problem with the config envelope
-func computeChannelIdAndSequence(config *cb.ConfigUpdate) (string, uint64, error) {
-	if config.WriteSet == nil {
-		return "", 0, errors.New("Empty envelope unsupported")
-	}
-
-	if config.Header == nil {
-		return "", 0, fmt.Errorf("Header not set")
-	}
-
-	if config.Header.ChannelId == "" {
-		return "", 0, fmt.Errorf("Header chainID was not set")
-	}
-
-	chainID := config.Header.ChannelId
-
-	if err := validateChainID(chainID); err != nil {
-		return "", 0, err
-	}
-
-	m := computeSequence(config.WriteSet)
-
-	return chainID, m, nil
-}
-
 // validateChainID makes sure that proposed chain IDs (i.e. channel names)
 // comply with the following restrictions:
 //      1. Contain only ASCII alphanumerics, dots '.', dashes '-'
@@ -133,36 +106,43 @@ func validateChainID(chainID string) error {
 	return nil
 }
 
-func NewManagerImpl(configtx *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
-	// XXX as a temporary hack to get the new protos working, we assume entire config is always in the ConfigUpdate.WriteSet
-
-	if configtx.LastUpdate == nil {
-		return nil, fmt.Errorf("Must have ConfigEnvelope.LastUpdate set")
+func NewManagerImpl(configEnv *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
+	if configEnv == nil {
+		return nil, fmt.Errorf("Nil config envelope")
 	}
 
-	config, err := UnmarshalConfigUpdate(configtx.LastUpdate.ConfigUpdate)
-	if err != nil {
-		return nil, err
+	if configEnv.Config == nil {
+		return nil, fmt.Errorf("Nil config envelope Config")
 	}
 
-	chainID, seq, err := computeChannelIdAndSequence(config)
+	if configEnv.Config.Header == nil {
+		return nil, fmt.Errorf("Nil config envelop Config Header")
+	}
+
+	if err := validateChainID(configEnv.Config.Header.ChannelId); err != nil {
+		return nil, fmt.Errorf("Bad channel id: %s", err)
+	}
+
+	configMap, err := mapConfig(configEnv.Config.Channel)
 	if err != nil {
-		return nil, fmt.Errorf("Error computing chain ID and sequence: %s", err)
+		return nil, fmt.Errorf("Error converting config to map: %s", err)
 	}
 
 	cm := &configManager{
 		Resources:    initializer,
 		initializer:  initializer,
-		sequence:     seq - 1,
-		chainID:      chainID,
-		config:       make(map[string]comparable),
+		sequence:     computeSequence(configEnv.Config.Channel),
+		chainID:      configEnv.Config.Header.ChannelId,
+		config:       configMap,
 		callOnUpdate: callOnUpdate,
 	}
 
-	err = cm.Apply(configtx.LastUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("Error applying config transaction: %s", err)
+	cm.beginHandlers()
+	if err := cm.proposeConfig(configMap); err != nil {
+		cm.rollbackHandlers()
+		return nil, err
 	}
+	cm.commitHandlers()
 
 	return cm, nil
 }
@@ -213,8 +193,6 @@ func (cm *configManager) proposeConfig(config map[string]comparable) error {
 // authorizeUpdate validates that all modified config has the corresponding modification policies satisfied by the signature set
 // it returns a map of the modified config
 func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelope) (map[string]comparable, error) {
-	// XXX as a temporary hack to get the new protos working, we assume entire config is always in the ConfigUpdate.WriteSet
-
 	if configUpdateEnv == nil {
 		return nil, fmt.Errorf("Cannot process nil ConfigUpdateEnvelope")
 	}
@@ -224,7 +202,11 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 		return nil, err
 	}
 
-	chainID, seq, err := computeChannelIdAndSequence(config)
+	if config.Header == nil {
+		return nil, fmt.Errorf("Must have header set")
+	}
+
+	seq := computeSequence(config.WriteSet)
 	if err != nil {
 		return nil, err
 	}
@@ -240,15 +222,8 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 	}
 
 	// Verify config is intended for this globally unique chain ID
-	if chainID != cm.chainID {
-		return nil, fmt.Errorf("Config is for the wrong chain, expected %s, got %s", cm.chainID, chainID)
-	}
-
-	defaultModificationPolicy, defaultPolicySet := cm.PolicyManager().GetPolicy(NewConfigItemPolicyKey)
-
-	// If the default modification policy is not set, it indicates this is an uninitialized chain, so be permissive of modification
-	if !defaultPolicySet {
-		defaultModificationPolicy = &acceptAllPolicy{}
+	if config.Header.ChannelId != cm.chainID {
+		return nil, fmt.Errorf("Config is for the wrong chain, expected %s, got %s", cm.chainID, config.Header.ChannelId)
 	}
 
 	configMap, err := mapConfig(config.WriteSet)
@@ -277,25 +252,23 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 
 		// If a config item was modified, its Version must be set correctly, and it must satisfy the modification policy
 		if isModified {
-			logger.Debugf("Proposed config item %s on channel %s has been modified", key, chainID)
+			logger.Debugf("Proposed config item %s on channel %s has been modified", key, cm.chainID)
 
 			if value.version() != seq {
 				return nil, fmt.Errorf("Key %s was modified, but its Version %d does not equal current configtx Sequence %d", key, value.version(), seq)
 			}
 
 			// Get the modification policy for this config item if one was previously specified
-			// or the default if this is a new config item
+			// or accept it if it is new, as the group policy will be evaluated for its inclusion
 			var policy policies.Policy
 			if ok {
 				policy, _ = cm.PolicyManager().GetPolicy(oldValue.modPolicy())
-			} else {
-				policy = defaultModificationPolicy
+				// Ensure the policy is satisfied
+				if err = policy.Evaluate(signedData); err != nil {
+					return nil, err
+				}
 			}
 
-			// Ensure the policy is satisfied
-			if err = policy.Evaluate(signedData); err != nil {
-				return nil, err
-			}
 		}
 	}
 
