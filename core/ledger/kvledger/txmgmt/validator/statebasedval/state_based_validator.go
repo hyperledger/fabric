@@ -118,7 +118,7 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 				addWriteSetToBatch(txRWSet, committingTxHeight, updates)
 				valid = true
 			}
-		} else if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
+		} else if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_CONFIG {
 			valid, err = v.validateConfigTX(env)
 			if err != nil {
 				return nil, err

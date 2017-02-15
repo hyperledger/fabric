@@ -62,7 +62,7 @@ func (cf *configFilter) Apply(message *cb.Envelope) (filter.Action, filter.Commi
 		return filter.Forward, nil
 	}
 
-	if msgData.Header == nil || msgData.Header.ChannelHeader == nil || msgData.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
+	if msgData.Header == nil || msgData.Header.ChannelHeader == nil || msgData.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIG) {
 		return filter.Forward, nil
 	}
 

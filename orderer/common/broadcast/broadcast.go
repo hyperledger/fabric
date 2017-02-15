@@ -87,7 +87,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		support, ok := bh.sm.GetChain(payload.Header.ChannelHeader.ChannelId)
 		if !ok {
 			// Chain not found, maybe create one?
-			if payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIGURATION_TRANSACTION) {
+			if payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIG) {
 				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
 			}
 

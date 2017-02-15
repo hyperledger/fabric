@@ -28,7 +28,7 @@ var _ = math.Inf
 //     b) The ConfigSignature signature is over the concatenation of signature_header and the ConfigUpdate bytes (which includes a ChainHeader)
 //   5. Submit new Config for ordering in Envelope signed by submitter
 //     a) The Envelope Payload has data set to the marshaled ConfigEnvelope
-//     b) The Envelope Payload has a header of type Header.Type.CONFIG_UPDATE // XXX change CONFIGURATION_ITEM to CONFIG_UPDATE in common.proto
+//     b) The Envelope Payload has a header of type Header.Type.CONFIG_UPDATE
 //
 // The configuration manager will verify:
 //   1. All items in the read_set exist at the read versions

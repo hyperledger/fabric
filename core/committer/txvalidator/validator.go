@@ -141,7 +141,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 						continue
 					}
-				} else if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_CONFIGURATION_TRANSACTION {
+				} else if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_CONFIG {
 					configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 					if err != nil {
 						err := fmt.Errorf("Error unmarshaling config which passed initial validity checks: %s", err)

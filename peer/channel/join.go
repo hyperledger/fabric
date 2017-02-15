@@ -100,7 +100,7 @@ func executeJoin(cf *ChannelCmdFactory) (err error) {
 	uuid := cutil.GenerateUUID()
 
 	var prop *pb.Proposal
-	prop, err = putils.CreateProposalFromCIS(uuid, pcommon.HeaderType_CONFIGURATION_TRANSACTION, "", invocation, creator)
+	prop, err = putils.CreateProposalFromCIS(uuid, pcommon.HeaderType_CONFIG, "", invocation, creator)
 	if err != nil {
 		return fmt.Errorf("Error creating proposal for join %s\n", err)
 	}

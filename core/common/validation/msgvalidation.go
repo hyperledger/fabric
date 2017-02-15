@@ -89,7 +89,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 
 	// continue the validation in a way that depends on the type specified in the header
 	switch common.HeaderType(hdr.ChannelHeader.Type) {
-	case common.HeaderType_CONFIGURATION_TRANSACTION:
+	case common.HeaderType_CONFIG:
 		//which the types are different the validation is the same
 		//viz, validate a proposal to a chaincode. If we need other
 		//special validation for confguration, we would have to implement
@@ -181,8 +181,8 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 
 	// validate the header type
 	if common.HeaderType(cHdr.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
-		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIGURATION_ITEM &&
-		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIGURATION_TRANSACTION {
+		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIG_UPDATE &&
+		common.HeaderType(cHdr.Type) != common.HeaderType_CONFIG {
 		return fmt.Errorf("invalid header type %s", common.HeaderType(cHdr.Type))
 	}
 
@@ -217,7 +217,7 @@ func validateCommonHeader(hdr *common.Header) error {
 }
 
 // validateConfigTransaction validates the payload of a
-// transaction assuming its type is CONFIGURATION_TRANSACTION
+// transaction assuming its type is CONFIG
 func validateConfigTransaction(data []byte, hdr *common.Header) error {
 	putilsLogger.Infof("validateConfigTransaction starts for data %p, header %s", data, hdr)
 
@@ -357,7 +357,7 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 		err = validateEndorserTransaction(payload.Data, payload.Header)
 		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
 		return payload, err
-	case common.HeaderType_CONFIGURATION_TRANSACTION:
+	case common.HeaderType_CONFIG:
 		err = validateConfigTransaction(payload.Data, payload.Header)
 		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
 		return payload, err
