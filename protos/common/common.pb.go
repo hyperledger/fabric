@@ -47,6 +47,7 @@ It has these top-level messages:
 	Policy
 	SignaturePolicyEnvelope
 	SignaturePolicy
+	ImplicitMetaPolicy
 */
 package common
 
