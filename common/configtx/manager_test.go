@@ -102,9 +102,7 @@ func TestDifferentChainID(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope("wrongChain", makeConfigPair("foo", "foo", 1, []byte("foo"))),
-	}
+	newConfig := makeConfigUpdateEnvelope("wrongChain", makeConfigPair("foo", "foo", 1, []byte("foo")))
 
 	err = cm.Validate(newConfig)
 	if err == nil {
@@ -127,9 +125,7 @@ func TestOldConfigReplay(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo"))),
-	}
+	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo")))
 
 	err = cm.Validate(newConfig)
 	if err == nil {
@@ -165,9 +161,7 @@ func TestValidConfigChange(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
-	}
+	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
 
 	err = cm.Validate(newConfig)
 	if err != nil {
@@ -191,13 +185,11 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(
-			defaultChain,
-			makeConfigPair("foo", "foo", 0, []byte("foo")),
-			makeConfigPair("bar", "bar", 2, []byte("bar")),
-		),
-	}
+	newConfig := makeConfigUpdateEnvelope(
+		defaultChain,
+		makeConfigPair("foo", "foo", 0, []byte("foo")),
+		makeConfigPair("bar", "bar", 2, []byte("bar")),
+	)
 
 	err = cm.Validate(newConfig)
 	if err == nil {
@@ -221,13 +213,11 @@ func TestConfigChangeOldSequence(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(
-			defaultChain,
-			makeConfigPair("foo", "foo", 2, []byte("foo")),
-			makeConfigPair("bar", "bar", 1, []byte("bar")),
-		),
-	}
+	newConfig := makeConfigUpdateEnvelope(
+		defaultChain,
+		makeConfigPair("foo", "foo", 2, []byte("foo")),
+		makeConfigPair("bar", "bar", 1, []byte("bar")),
+	)
 
 	err = cm.Validate(newConfig)
 	if err == nil {
@@ -255,12 +245,10 @@ func TestConfigImplicitDelete(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(
-			defaultChain,
-			makeConfigPair("bar", "bar", 1, []byte("bar")),
-		),
-	}
+	newConfig := makeConfigUpdateEnvelope(
+		defaultChain,
+		makeConfigPair("bar", "bar", 1, []byte("bar")),
+	)
 
 	err = cm.Validate(newConfig)
 	if err == nil {
@@ -283,7 +271,7 @@ func TestEmptyConfigUpdate(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigEnvelope{}
+	newConfig := &cb.ConfigUpdateEnvelope{}
 
 	err = cm.Validate(newConfig)
 	if err == nil {
@@ -312,13 +300,11 @@ func TestSilentConfigModification(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(
-			defaultChain,
-			makeConfigPair("foo", "foo", 0, []byte("different")),
-			makeConfigPair("bar", "bar", 1, []byte("bar")),
-		),
-	}
+	newConfig := makeConfigUpdateEnvelope(
+		defaultChain,
+		makeConfigPair("foo", "foo", 0, []byte("different")),
+		makeConfigPair("bar", "bar", 1, []byte("bar")),
+	)
 
 	err = cm.Validate(newConfig)
 	if err == nil {
@@ -359,9 +345,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	// Set the mock policy to error
 	initializer.Resources.PolicyManagerVal.Policy.Err = fmt.Errorf("err")
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
-	}
+	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
 
 	err = cm.Validate(newConfig)
 	if err == nil {
@@ -390,13 +374,11 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	initializer.Resources.PolicyManagerVal.PolicyMap = make(map[string]*mockpolicies.Policy)
 	initializer.Resources.PolicyManagerVal.PolicyMap["foo"] = &mockpolicies.Policy{Err: fmt.Errorf("err")}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(
-			defaultChain,
-			makeConfigPair("foo", "foo", 0, []byte("foo")),
-			makeConfigPair("bar", "bar", 1, []byte("foo")),
-		),
-	}
+	newConfig := makeConfigUpdateEnvelope(
+		defaultChain,
+		makeConfigPair("foo", "foo", 0, []byte("foo")),
+		makeConfigPair("bar", "bar", 1, []byte("foo")),
+	)
 
 	err = cm.Validate(newConfig)
 	if err != nil {
@@ -423,9 +405,7 @@ func TestInvalidProposal(t *testing.T) {
 
 	initializer.HandlerVal = &mockconfigtx.Handler{ErrorForProposeConfig: fmt.Errorf("err")}
 
-	newConfig := &cb.ConfigEnvelope{
-		LastUpdate: makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo"))),
-	}
+	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
 
 	err = cm.Validate(newConfig)
 	if err == nil {

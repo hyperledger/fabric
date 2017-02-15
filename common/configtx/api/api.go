@@ -84,10 +84,13 @@ type Manager interface {
 	Resources
 
 	// Apply attempts to apply a configtx to become the new config
-	Apply(configtx *cb.ConfigEnvelope) error
+	Apply(configtx *cb.ConfigUpdateEnvelope) error
 
 	// Validate attempts to validate a new configtx against the current config state
-	Validate(configtx *cb.ConfigEnvelope) error
+	Validate(configtx *cb.ConfigUpdateEnvelope) error
+
+	// ConfigEnvelope returns the *cb.ConfigEnvelope from the last successful Apply
+	ConfigEnvelope() *cb.ConfigEnvelope
 
 	// ChainID retrieves the chain ID associated with this manager
 	ChainID() string

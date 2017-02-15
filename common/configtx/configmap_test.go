@@ -57,3 +57,21 @@ func TestConfigMap(t *testing.T) {
 	assert.Equal(t, comparable{key: "2DeepValue", path: []string{"Channel", "0DeepGroup", "1DeepGroup"}, ConfigValue: config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"]},
 		confMap["[Values] /Channel/0DeepGroup/1DeepGroup/2DeepValue"])
 }
+
+func TestMapConfigBack(t *testing.T) {
+	config := cb.NewConfigGroup()
+	config.Groups["0DeepGroup"] = cb.NewConfigGroup()
+	config.Values["0DeepValue1"] = &cb.ConfigValue{}
+	config.Values["0DeepValue2"] = &cb.ConfigValue{}
+	config.Groups["0DeepGroup"].Policies["1DeepPolicy"] = &cb.ConfigPolicy{}
+	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = cb.NewConfigGroup()
+	config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"] = &cb.ConfigValue{}
+
+	confMap, err := mapConfig(config)
+	assert.NoError(t, err, "Should not have errored building map")
+
+	newConfig, err := configMapToConfig(confMap)
+	assert.NoError(t, err, "Should not have errored building config")
+
+	assert.Equal(t, config, newConfig, "Should have transformed config map back from confMap")
+}

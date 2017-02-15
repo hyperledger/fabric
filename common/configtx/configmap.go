@@ -33,7 +33,7 @@ const (
 	PathSeparator = "/"
 )
 
-// mapConfig is the only method in this file intended to be called outside this file
+// mapConfig is intended to be called outside this file
 // it takes a ConfigGroup and generates a map of fqPath to comparables (or error on invalid keys)
 func mapConfig(channelGroup *cb.ConfigGroup) (map[string]comparable, error) {
 	result := make(map[string]comparable)
@@ -44,6 +44,7 @@ func mapConfig(channelGroup *cb.ConfigGroup) (map[string]comparable, error) {
 	return result, nil
 }
 
+// addToMap is used only internally by mapConfig
 func addToMap(cg comparable, result map[string]comparable) error {
 	var fqPath string
 
@@ -74,6 +75,7 @@ func addToMap(cg comparable, result map[string]comparable) error {
 	return nil
 }
 
+// recurseConfig is used only internally by mapConfig
 func recurseConfig(result map[string]comparable, path []string, group *cb.ConfigGroup) error {
 	if err := addToMap(comparable{key: path[len(path)-1], path: path[:len(path)-1], ConfigGroup: group}, result); err != nil {
 		return err
@@ -99,4 +101,59 @@ func recurseConfig(result map[string]comparable, path []string, group *cb.Config
 	}
 
 	return nil
+}
+
+// configMapToConfig is intended to be called from outside this file
+// It takes a configMap and converts it back into a *cb.ConfigGroup structure
+func configMapToConfig(configMap map[string]comparable) (*cb.ConfigGroup, error) {
+	rootPath := PathSeparator + RootGroupKey
+	return recurseConfigMap(rootPath, configMap)
+}
+
+// recurseConfigMap is used only internally by configMapToConfig
+// Note, this function mutates the cb.Config* entrieswithin configMap, so errors are generally fatal
+func recurseConfigMap(path string, configMap map[string]comparable) (*cb.ConfigGroup, error) {
+	groupPath := GroupPrefix + path
+	group, ok := configMap[groupPath]
+	if !ok {
+		return nil, fmt.Errorf("Missing group at path: %s", groupPath)
+	}
+
+	if group.ConfigGroup == nil {
+		return nil, fmt.Errorf("ConfigGroup not found at group path", groupPath)
+	}
+
+	for key, _ := range group.Groups {
+		updatedGroup, err := recurseConfigMap(path+PathSeparator+key, configMap)
+		if err != nil {
+			return nil, err
+		}
+		group.Groups[key] = updatedGroup
+	}
+
+	for key, _ := range group.Values {
+		valuePath := ValuePrefix + path + PathSeparator + key
+		value, ok := configMap[valuePath]
+		if !ok {
+			return nil, fmt.Errorf("Missing value at path: %s", valuePath)
+		}
+		if value.ConfigValue == nil {
+			return nil, fmt.Errorf("ConfigValue not found at value path", valuePath)
+		}
+		group.Values[key] = value.ConfigValue
+	}
+
+	for key, _ := range group.Policies {
+		policyPath := PolicyPrefix + path + PathSeparator + key
+		policy, ok := configMap[policyPath]
+		if !ok {
+			return nil, fmt.Errorf("Missing policy at path: %s", policyPath)
+		}
+		if policy.ConfigPolicy == nil {
+			return nil, fmt.Errorf("ConfigPolicy not found at policy path", policyPath)
+		}
+		group.Policies[key] = policy.ConfigPolicy
+	}
+
+	return group.ConfigGroup, nil
 }
