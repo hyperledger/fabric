@@ -53,8 +53,8 @@ func (q *lockBasedQueryExecutor) GetStateRangeScanIterator(namespace string, sta
 }
 
 // ExecuteQuery implements method in interface `ledger.QueryExecutor`
-func (q *lockBasedQueryExecutor) ExecuteQuery(query string) (ledger.ResultsIterator, error) {
-	return q.helper.executeQuery(query)
+func (q *lockBasedQueryExecutor) ExecuteQuery(namespace, query string) (ledger.ResultsIterator, error) {
+	return q.helper.executeQuery(namespace, query)
 }
 
 // Done implements method in interface `ledger.QueryExecutor`

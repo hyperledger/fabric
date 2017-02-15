@@ -968,7 +968,9 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 			return
 		}
 
-		executeIter, err := txContext.txsimulator.ExecuteQuery(getQueryResult.Query)
+		chaincodeID := handler.getCCRootName()
+
+		executeIter, err := txContext.txsimulator.ExecuteQuery(chaincodeID, getQueryResult.Query)
 		if err != nil {
 			// Send error msg back to chaincode. GetState will not trigger event
 			payload := []byte(err.Error())

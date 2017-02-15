@@ -74,8 +74,8 @@ func (h *queryHelper) getStateRangeScanIterator(namespace string, startKey strin
 	return itr, nil
 }
 
-func (h *queryHelper) executeQuery(query string) (commonledger.ResultsIterator, error) {
-	dbItr, err := h.txmgr.db.ExecuteQuery(query)
+func (h *queryHelper) executeQuery(namespace, query string) (commonledger.ResultsIterator, error) {
+	dbItr, err := h.txmgr.db.ExecuteQuery(namespace, query)
 	if err != nil {
 		return nil, err
 	}

@@ -559,7 +559,7 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 	queryExecuter, _ := txMgr.NewQueryExecutor()
 	queryString := "{\"selector\":{\"owner\": {\"$eq\": \"bob\"}},\"limit\": 10,\"skip\": 0}"
 
-	itr, _ := queryExecuter.ExecuteQuery(queryString)
+	itr, _ := queryExecuter.ExecuteQuery("ns1", queryString)
 
 	counter := 0
 	for {
