@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	mspprotos "github.com/hyperledger/fabric/protos/msp"
 )
 
 func getConfigPath(dir string) (string, error) {
@@ -59,9 +58,7 @@ func LoadMSPSetupForTesting(dir string) error {
 		return err
 	}
 
-	fakeConfig := []*mspprotos.MSPConfig{conf}
-
-	err = mgmt.GetManagerForChain(util.GetTestChainID()).Setup(fakeConfig)
+	err = mgmt.GetManagerForChain(util.GetTestChainID()).Setup([]msp.MSP{mgmt.GetLocalMSP()})
 	if err != nil {
 		return err
 	}

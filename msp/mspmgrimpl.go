@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/op/go-logging"
 )
 
@@ -42,7 +41,7 @@ func NewMSPManager() MSPManager {
 }
 
 // Setup initializes the internal data structures of this manager and creates MSPs
-func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
+func (mgr *mspManagerImpl) Setup(msps []MSP) error {
 	if mgr.up {
 		mspLogger.Infof("MSP manager already up")
 		return nil
@@ -61,26 +60,7 @@ func (mgr *mspManagerImpl) Setup(msps []*msp.MSPConfig) error {
 	// create the map that assigns MSP IDs to their manager instance - once
 	mgr.mspsMap = make(map[string]MSP)
 
-	for _, mspConf := range msps {
-		// check that the type for that MSP is supported
-		if mspConf.Type != int32(FABRIC) {
-			return fmt.Errorf("Setup error: unsupported msp type %d", mspConf.Type)
-		}
-
-		mspLogger.Debugf("Setting up MSP")
-
-		// create the msp instance
-		msp, err := NewBccspMsp()
-		if err != nil {
-			return fmt.Errorf("Creating the MSP manager failed, err %s", err)
-		}
-
-		// set it up
-		err = msp.Setup(mspConf)
-		if err != nil {
-			return fmt.Errorf("Setting up the MSP manager failed, err %s", err)
-		}
-
+	for _, msp := range msps {
 		// add the MSP to the map of active MSPs
 		mspID, err := msp.GetIdentifier()
 		if err != nil {

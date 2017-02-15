@@ -59,7 +59,7 @@ type MSPManager interface {
 	IdentityDeserializer
 
 	// Setup the MSP manager instance according to configuration information
-	Setup(msps []*msp.MSPConfig) error
+	Setup(msps []MSP) error
 
 	// GetMSPs Provides a list of Membership Service providers
 	GetMSPs() (map[string]MSP, error)
@@ -240,7 +240,7 @@ type IdentityIdentifier struct {
 // ProviderType indicates the type of an identity provider
 type ProviderType int
 
-// The ProviderTYpe of a member relative to the member API
+// The ProviderType of a member relative to the member API
 const (
 	FABRIC ProviderType = iota // MSP is of FABRIC type
 	OTHER                      // MSP is of OTHER TYPE
