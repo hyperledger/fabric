@@ -453,6 +453,51 @@ func TestUpgradeNonExistChaincode(t *testing.T) {
 	}
 }
 
+//TestGetAPIsWithoutInstall get functions should return the right responses when chaicode is on
+//ledger but not on FS
+func TestGetAPIsWithoutInstall(t *testing.T) {
+	scc := new(LifeCycleSysCC)
+	stub := shim.NewMockStub("lccc", scc)
+
+	if res := stub.MockInit("1", nil); res.Status != shim.OK {
+		fmt.Println("Init failed", string(res.Message))
+		t.FailNow()
+	}
+
+	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+
+	var b []byte
+	if b, err = proto.Marshal(cds); err != nil || b == nil {
+		t.FailNow()
+	}
+
+	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	//Force remove CC
+	os.Remove(lccctestpath + "/example02.0")
+
+	//GETCCINFO should still work
+	args = [][]byte{[]byte(GETCCINFO), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	//GETCCDATA should still work
+	args = [][]byte{[]byte(GETCCDATA), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	//GETDEPSPEC should not work
+	args = [][]byte{[]byte(GETDEPSPEC), []byte("test"), []byte(cds.ChaincodeSpec.ChaincodeId.Name)}
+	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
+		t.FailNow()
+	}
+}
+
 func TestMain(m *testing.M) {
 	ccprovider.SetChaincodesPath(lccctestpath)
 	sysccprovider.RegisterSystemChaincodeProviderFactory(&mocksccProviderFactory{})
