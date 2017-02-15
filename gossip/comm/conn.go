@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
@@ -183,7 +184,7 @@ func (cs *connectionStore) closeByPKIid(pkiID common.PKIidType) {
 
 func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_GossipStreamClient, ss proto.Gossip_GossipStreamServer) *connection {
 	connection := &connection{
-		outBuff:      make(chan *msgSending, defSendBuffSize),
+		outBuff:      make(chan *msgSending, util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize)),
 		cl:           cl,
 		conn:         c,
 		clientStream: cs,
@@ -242,7 +243,7 @@ func (conn *connection) send(msg *proto.GossipMessage, onErr func(error)) {
 	conn.Lock()
 	defer conn.Unlock()
 
-	if len(conn.outBuff) == defSendBuffSize {
+	if len(conn.outBuff) == util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize) {
 		go onErr(errSendOverflow)
 		return
 	}
@@ -257,7 +258,7 @@ func (conn *connection) send(msg *proto.GossipMessage, onErr func(error)) {
 
 func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
-	msgChan := make(chan *proto.GossipMessage, defRecvBuffSize)
+	msgChan := make(chan *proto.GossipMessage, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
 	defer close(msgChan)
 
 	// Call stream.Recv() asynchronously in readFromStream(),

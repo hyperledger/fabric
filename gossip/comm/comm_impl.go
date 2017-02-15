@@ -19,6 +19,7 @@ package comm
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -33,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
+	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -47,8 +49,7 @@ const (
 	sendOverflowErr = "Send buffer overflow"
 )
 
-var errSendOverflow = fmt.Errorf(sendOverflowErr)
-var dialTimeout = defDialTimeout
+var errSendOverflow = errors.New(sendOverflowErr)
 
 func init() {
 	rand.Seed(42)
@@ -56,7 +57,7 @@ func init() {
 
 // SetDialTimeout sets the dial timeout
 func SetDialTimeout(timeout time.Duration) {
-	dialTimeout = timeout
+	viper.Set("peer.gossip.dialTimeout", timeout)
 }
 
 func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
@@ -75,7 +76,7 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 	var certHash []byte
 
 	if len(dialOpts) == 0 {
-		dialOpts = []grpc.DialOption{grpc.WithTimeout(dialTimeout)}
+		dialOpts = []grpc.DialOption{grpc.WithTimeout(util.GetDurationOrDefault("peer.gossip.dialTimeout", defDialTimeout))}
 	}
 
 	if port > 0 {
@@ -168,7 +169,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 	defer c.logger.Debug("Exiting")
 
 	if c.isStopping() {
-		return nil, fmt.Errorf("Stopping")
+		return nil, errors.New("Stopping")
 	}
 	cc, err = grpc.Dial(endpoint, append(c.opts, grpc.WithBlock())...)
 	if err != nil {
@@ -188,7 +189,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
 				// PKIID is nil when we don't know the remote PKI id's
 				c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
-				return nil, fmt.Errorf("Authentication failure")
+				return nil, errors.New("Authentication failure")
 			}
 			conn := newConnection(cl, cc, stream, nil)
 			conn.pkiID = pkiID
@@ -275,7 +276,7 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	endpoint := remotePeer.Endpoint
 	pkiID := remotePeer.PKIID
 	if c.isStopping() {
-		return fmt.Errorf("Stopping")
+		return errors.New("Stopping")
 	}
 	c.logger.Debug("Entering, endpoint:", endpoint, "PKIID:", pkiID)
 	cc, err := grpc.Dial(remotePeer.Endpoint, append(c.opts, grpc.WithBlock())...)
@@ -407,15 +408,15 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 
 	c.logger.Debug("Sending", cMsg, "to", remoteAddress)
 	stream.Send(cMsg)
-	m := readWithTimeout(stream, defConnTimeout)
+	m := readWithTimeout(stream, util.GetDurationOrDefault("peer.gossip.connTimeout", defConnTimeout))
 	if m == nil {
 		c.logger.Warning("Timed out waiting for connection message from", remoteAddress)
-		return nil, fmt.Errorf("Timed out")
+		return nil, errors.New("Timed out")
 	}
 	receivedMsg := m.GetConn()
 	if receivedMsg == nil {
 		c.logger.Warning("Expected connection message but got", receivedMsg)
-		return nil, fmt.Errorf("Wrong type")
+		return nil, errors.New("Wrong type")
 	}
 
 	if receivedMsg.PkiID == nil {
@@ -425,7 +426,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 
 	if c.isPKIblackListed(receivedMsg.PkiID) {
 		c.logger.Warning("Connection attempt from", remoteAddress, "but it is black-listed")
-		return nil, fmt.Errorf("Black-listed")
+		return nil, errors.New("Black-listed")
 	}
 	c.logger.Debug("Received", receivedMsg, "from", remoteAddress)
 	err = c.idMapper.Put(receivedMsg.PkiID, receivedMsg.Cert)
@@ -456,7 +457,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 
 func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	if c.isStopping() {
-		return fmt.Errorf("Shutting down")
+		return errors.New("Shutting down")
 	}
 	PKIID, err := c.authenticateRemotePeer(stream)
 	if err != nil {
@@ -573,7 +574,7 @@ func createGRPCLayer(port int) (*grpc.Server, net.Listener, grpc.DialOption, []b
 		}
 
 		if len(cert.Certificate) == 0 {
-			panic(fmt.Errorf("Certificate chain is nil"))
+			panic(errors.New("Certificate chain is nil"))
 		}
 
 		returnedCertHash = certHashFromRawCert(cert.Certificate[0])

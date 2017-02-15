@@ -100,6 +100,14 @@ peer:
         skipBlockVerification: false
         # Should we ignore security or not
         ignoreSecurity: false
+        # Dial timeout(unit: second)
+        dialTimeout: 3s
+        # Connection timeout(unit: second)
+        connTimeout: 2s
+        # Buffer size of received messages
+        recvBuffSize: 20
+        # Buffer size of sending messages
+        sendBuffSize: 20
 
         # This is an endpoint that is published to peers outside of the organization.
         # If this isn't set, the peer will not be known to other organizations.
