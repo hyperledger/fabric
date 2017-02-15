@@ -3,137 +3,165 @@ package statecouchdb
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
+	"reflect"
 )
 
-//ApplyQueryWrapper parses the query string passed to CouchDB
-//the wrapper prepends the wrapper "data." to all fields specified in the query
-//All fields in the selector must have "data." prepended to the field names
-//Fields listed in fields key will have "data." prepended
-//Fields in the sort key will have "data." prepended
-func ApplyQueryWrapper(queryString string) []byte {
+var dataWrapper = "data"
+var jsonQueryFields = "fields"
+
+var validOperators = []string{"$and", "$or", "$not", "$nor", "$all", "$elemMatch",
+	"$lt", "$lte", "$eq", "$ne", "$gte", "$gt", "$exits", "$type", "$in", "$nin",
+	"$size", "$mod", "$regex"}
+
+/*
+ApplyQueryWrapper parses the query string passed to CouchDB
+the wrapper prepends the wrapper "data." to all fields specified in the query
+All fields in the selector must have "data." prepended to the field names
+Fields listed in fields key will have "data." prepended
+Fields in the sort key will have "data." prepended
+
+Example:
+
+Source Query:
+{"selector":{"owner": {"$eq": "tom"}},
+"fields": ["owner", "asset_name", "color", "size"],
+"sort": ["size", "color"], "limit": 10, "skip": 0}
+
+Result Wrapped Query:
+{"selector":{"data.owner":{"$eq":"tom"}},
+"fields": ["data.owner","data.asset_name","data.color","data.size","_id","version"],
+"sort":["data.size","data.color"],"limit":10,"skip":0}
+
+
+*/
+func ApplyQueryWrapper(queryString string) string {
 
 	//create a generic map for the query json
-	jsonQuery := make(map[string]interface{})
+	jsonQueryMap := make(map[string]interface{})
 
 	//unmarshal the selected json into the generic map
-	json.Unmarshal([]byte(queryString), &jsonQuery)
+	json.Unmarshal([]byte(queryString), &jsonQueryMap)
 
-	//iterate through the JSON query
-	for jsonKey, jsonValue := range jsonQuery {
+	//traverse through the json query and wrap any field names
+	processAndWrapQuery(jsonQueryMap)
 
-		//create a case for the data types found in the JSON query
-		switch jsonQueryPart := jsonValue.(type) {
+	//process the query and add the version and fields if fields are specified
+	for jsonKey, jsonValue := range jsonQueryMap {
 
-		//if the type is an array, then this is either the "fields" or "sort" part of the query
-		case []interface{}:
+		//Add the "_id" and "version" fields,  these are needed by default
+		if jsonKey == jsonQueryFields {
 
-			//check to see if this is a "fields" or "sort" array
-			//if jsonKey == jsonQueryFields || jsonKey == jsonQuerySort {
-			if jsonKey == jsonQueryFields {
-
-				//iterate through the names and add the data wrapper for each field
-				for itemKey, fieldName := range jsonQueryPart {
-
-					//add "data" wrapper to each field definition
-					jsonQueryPart[itemKey] = fmt.Sprintf("%v.%v", dataWrapper, fieldName)
-				}
+			//check to see if this is an interface map
+			if reflect.TypeOf(jsonValue).String() == "[]interface {}" {
 
 				//Add the "_id" and "version" fields,  these are needed by default
-				if jsonKey == jsonQueryFields {
-
-					jsonQueryPart = append(jsonQueryPart, "_id")
-					jsonQueryPart = append(jsonQueryPart, "version")
-
-					//Overwrite the query fields if the "_id" field has been added
-					jsonQuery[jsonQueryFields] = jsonQueryPart
-				}
-
+				//Overwrite the query fields if the "_id" field has been added
+				jsonQueryMap[jsonQueryFields] = append(jsonValue.([]interface{}), "_id", "version")
 			}
 
-			if jsonKey == jsonQuerySort {
+		}
+	}
 
-				//iterate through the names and add the data wrapper for each field
-				for sortItemKey, sortField := range jsonQueryPart {
+	//Marshal the updated json query
+	editedQuery, _ := json.Marshal(jsonQueryMap)
 
-					//create a case for the data types found in the JSON query
-					switch sortFieldType := sortField.(type) {
+	logger.Debugf("Rewritten query with data wrapper: %s", editedQuery)
 
-					//if the type is string, then this is a simple array of field names.
-					//Add the datawrapper to the field name
-					case string:
+	return string(editedQuery)
 
-						//simple case, update the existing array item with the updated name
-						jsonQueryPart[sortItemKey] = fmt.Sprintf("%v.%v", dataWrapper, sortField)
+}
 
-					case interface{}:
+func processAndWrapQuery(jsonQueryMap map[string]interface{}) {
 
-						//this case is a little more complicated.  Here we need to
-						//iterate over the mapped field names since this is an array of objects
-						//example:  {"fieldname":"desc"}
-						for key, itemValue := range sortField.(map[string]interface{}) {
-							//delete the mapping for the field definition, since we have to change the
-							//value of the key
-							delete(sortField.(map[string]interface{}), key)
+	//iterate through the JSON query
+	for _, jsonValue := range jsonQueryMap {
 
-							//add the key back into the map with the field name wrapped with then "data" wrapper
-							sortField.(map[string]interface{})[fmt.Sprintf("%v.%v", dataWrapper, key)] = itemValue
-						}
+		//create a case for the data types found in the JSON query
+		switch jsonValueType := jsonValue.(type) {
 
-					default:
+		case string:
+			//intercept the string case and prevent the []interface{} case from
+			//incorrectly processing the string
 
-						logger.Debugf("The type %v was not recognized as a valid sort field type.", sortFieldType)
+		case float64:
+			//intercept the float64 case and prevent the []interface{} case from
+			//incorrectly processing the float64
 
-					}
+		//if the type is an array, then iterate through the items
+		case []interface{}:
+
+			//iterate the the items in the array
+			for itemKey, itemValue := range jsonValueType {
+
+				switch itemValue.(type) {
+
+				case string:
+
+					//This is a simple string, so wrap the field and replace in the array
+					jsonValueType[itemKey] = fmt.Sprintf("%v.%v", dataWrapper, itemValue)
+
+				case []interface{}:
+
+					//This is a array, so traverse to the next level
+					processAndWrapQuery(itemValue.(map[string]interface{}))
+
+				case interface{}:
+
+					//process this part as a map
+					processInterfaceMap(itemValue.(map[string]interface{}))
 
 				}
 			}
 
 		case interface{}:
 
-			//if this is the "selector", the field names need to be mapped with the
-			//data wrapper
-			if jsonKey == jsonQuerySelector {
-
-				processSelector(jsonQueryPart.(map[string]interface{}))
-
-			}
-
-		default:
-
-			logger.Debugf("The value %v was not recognized as a valid selector field.", jsonKey)
+			//process this part as a map
+			processInterfaceMap(jsonValue.(map[string]interface{}))
 
 		}
 	}
-
-	//Marshal the updated json query
-	editedQuery, _ := json.Marshal(jsonQuery)
-
-	logger.Debugf("Rewritten query with data wrapper: %s", editedQuery)
-
-	return editedQuery
-
 }
 
-//processSelector is a recursion function for traversing the selector part of the query
-func processSelector(selectorFragment map[string]interface{}) {
+//processInterfaceMap processes an interface map and wraps field names or traverses the next level of the json query
+func processInterfaceMap(jsonFragment map[string]interface{}) {
 
-	//iterate through the top level definitions
-	for itemKey, itemValue := range selectorFragment {
+	//iterate the the item in the map
+	for keyVal, itemVal := range jsonFragment {
 
-		//check to see if the itemKey starts with a $.  If so, this indicates an operator
-		if strings.HasPrefix(fmt.Sprintf("%s", itemKey), "$") {
+		//check to see if the key is an operator
+		if arrayContains(validOperators, keyVal) {
 
-			processSelector(itemValue.(map[string]interface{}))
+			//if this is an operator, traverse the next level of the json query
+			processAndWrapQuery(jsonFragment)
 
 		} else {
 
-			//delete the mapping for the field definition, since we have to change the
-			//value of the key
-			delete(selectorFragment, itemKey)
-			//add the key back into the map with the field name wrapped with then "data" wrapper
-			selectorFragment[fmt.Sprintf("%v.%v", dataWrapper, itemKey)] = itemValue
+			//if this is not an operator, this is a field name and needs to be wrapped
+			wrapFieldName(jsonFragment, keyVal, itemVal)
 
 		}
 	}
+}
+
+//wrapFieldName "wraps" the field name with the data wrapper, and replaces the key in the json fragment
+func wrapFieldName(jsonFragment map[string]interface{}, key string, value interface{}) {
+
+	//delete the mapping for the field definition, since we have to change the
+	//value of the key
+	delete(jsonFragment, key)
+
+	//add the key back into the map with the field name wrapped with then "data" wrapper
+	jsonFragment[fmt.Sprintf("%v.%v", dataWrapper, key)] = value
+
+}
+
+//arrayContains is a function to detect if a soure array of strings contains the selected string
+//for this application, it is used to determine if a string is a valid CouchDB operator
+func arrayContains(sourceArray []string, selectItem string) bool {
+	set := make(map[string]struct{}, len(sourceArray))
+	for _, s := range sourceArray {
+		set[s] = struct{}{}
+	}
+	_, ok := set[selectItem]
+	return ok
 }
