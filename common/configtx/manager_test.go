@@ -36,7 +36,18 @@ func defaultInitializer() *mockconfigtx.Initializer {
 				Policy: &mockpolicies.Policy{},
 			},
 		},
-		HandlerVal: &mockconfigtx.Handler{},
+		PolicyHandlerVal: &mockconfigtx.PolicyHandler{
+			Handler: mockconfigtx.Handler{
+				Transactional: mockconfigtx.Transactional{
+					HandlerVal: &mockconfigtx.Handler{},
+				},
+			},
+		},
+		Handler: mockconfigtx.Handler{
+			Transactional: mockconfigtx.Transactional{
+				HandlerVal: &mockconfigtx.Handler{},
+			},
+		},
 	}
 }
 

@@ -40,8 +40,8 @@ func TestApplicationDoubleBegin(t *testing.T) {
 	}()
 
 	m := NewSharedConfigImpl(nil)
-	m.BeginConfig()
-	m.BeginConfig()
+	m.BeginConfig(nil)
+	m.BeginConfig(nil)
 }
 
 func TestApplicationCommitWithoutBegin(t *testing.T) {

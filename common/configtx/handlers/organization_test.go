@@ -29,7 +29,7 @@ func init() {
 }
 
 func TestInterface(t *testing.T) {
-	_ = configtxapi.SubInitializer(NewOrgConfig("id", nil))
+	_ = configtxapi.Handler(NewOrgConfig("id", nil))
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -40,8 +40,8 @@ func TestDoubleBegin(t *testing.T) {
 	}()
 
 	m := NewOrgConfig("id", nil)
-	m.BeginConfig()
-	m.BeginConfig()
+	m.BeginConfig(nil)
+	m.BeginConfig(nil)
 }
 
 func TestCommitWithoutBegin(t *testing.T) {

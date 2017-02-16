@@ -59,12 +59,17 @@ func NewOrgConfig(id string, mspConfig *mspconfig.MSPConfigHandler) *OrgConfig {
 }
 
 // BeginConfig is used to start a new config proposal
-func (oc *OrgConfig) BeginConfig() {
+func (oc *OrgConfig) BeginConfig(groups []string) ([]api.Handler, error) {
 	logger.Debugf("Beginning a possible new org config")
+	if len(groups) != 0 {
+		return nil, fmt.Errorf("Orgs do not support sub-groups")
+	}
+
 	if oc.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	oc.pendingConfig = &orgConfig{}
+	return nil, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
@@ -93,13 +98,4 @@ func (oc *OrgConfig) ProposeConfig(key string, configValue *cb.ConfigValue) erro
 		logger.Warningf("Uknown org config item with key %s", key)
 	}
 	return nil
-}
-
-// Handler returns the associated api.Handler for the given path
-func (oc *OrgConfig) Handler(path []string) (api.Handler, error) {
-	if len(path) == 0 {
-		return oc, nil
-	}
-
-	return nil, fmt.Errorf("Organizations do not further nesting")
 }

@@ -85,11 +85,15 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 }
 
 // BeginConfig is used to start a new config proposal
-func (pm *ManagerImpl) BeginConfig() {
+func (pm *ManagerImpl) BeginConfig(groups []string) ([]*ManagerImpl, error) {
+	if len(groups) != 0 {
+		return nil, fmt.Errorf("Unimplemented") // XXX Temporary workaround until policy manager is enhanced to support hierarchy
+	}
 	if pm.pendingPolicies != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	pm.pendingPolicies = make(map[string]Policy)
+	return nil, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal

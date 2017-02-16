@@ -66,10 +66,18 @@ func (r *Resources) MSPManager() msp.MSPManager {
 	return r.MSPManagerVal
 }
 
-type Transactional struct{}
+type Transactional struct {
+	HandlerVal *Handler
+}
 
-// BeginConfig calls through to the HandlerVal
-func (t *Transactional) BeginConfig() {}
+// BeginConfig returns slices populated by HandlerVal
+func (t *Transactional) BeginConfig(groups []string) ([]configtxapi.Handler, error) {
+	handlers := make([]configtxapi.Handler, len(groups))
+	for i := range handlers {
+		handlers[i] = t.HandlerVal
+	}
+	return handlers, nil
+}
 
 // CommitConfig calls through to the HandlerVal
 func (t *Transactional) CommitConfig() {}
@@ -79,19 +87,11 @@ func (t *Transactional) RollbackConfig() {}
 
 // Initializer mocks the configtxapi.Initializer interface
 type Initializer struct {
-	Transactional
+	Handler
 	Resources
-
-	// HandlersVal is returned as the result of Handlers()
-	HandlerVal configtxapi.Handler
 
 	// PolicyHandlerVal is reutrned at the result of PolicyHandler()
 	PolicyHandlerVal *PolicyHandler
-}
-
-// Returns the HandlersVal
-func (i *Initializer) Handler(path []string) (configtxapi.Handler, error) {
-	return i.HandlerVal, nil
 }
 
 // Returns the PolicyHandlerVal
@@ -101,7 +101,7 @@ func (i *Initializer) PolicyHandler() configtxapi.PolicyHandler {
 
 // PolicyHandler mocks the configtxapi.PolicyHandler interface
 type PolicyHandler struct {
-	Transactional
+	Handler
 	LastKey               string
 	LastPath              []string
 	LastValue             *cb.ConfigPolicy
@@ -118,6 +118,7 @@ func (ph *PolicyHandler) ProposePolicy(key string, path []string, configPolicy *
 
 // Handler mocks the configtxapi.Handler interface
 type Handler struct {
+	Transactional
 	LastKey               string
 	LastValue             *cb.ConfigValue
 	ErrorForProposeConfig error

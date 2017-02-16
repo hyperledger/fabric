@@ -105,46 +105,48 @@ func NewInitializer() api.Initializer {
 }
 
 // BeginConfig is used to start a new config proposal
-func (i *initializer) BeginConfig() {
-	i.policyManager.BeginConfig()
-	i.channelConfig.BeginConfig()
-	i.ordererConfig.BeginConfig()
-	i.applicationConfig.BeginConfig()
+func (i *initializer) BeginConfig(groups []string) ([]api.Handler, error) {
+	if len(groups) != 1 {
+		logger.Panicf("Initializer only supports having one root group")
+	}
 	i.mspConfigHandler.BeginConfig()
+	return []api.Handler{i.channelConfig}, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
 func (i *initializer) RollbackConfig() {
-	i.policyManager.RollbackConfig()
-	i.channelConfig.RollbackConfig()
-	i.ordererConfig.RollbackConfig()
-	i.applicationConfig.RollbackConfig()
 	i.mspConfigHandler.RollbackConfig()
 }
 
 // CommitConfig is used to commit a new config proposal
 func (i *initializer) CommitConfig() {
-	i.policyManager.CommitConfig()
-	i.channelConfig.CommitConfig()
-	i.ordererConfig.CommitConfig()
-	i.applicationConfig.CommitConfig()
 	i.mspConfigHandler.CommitConfig()
 }
 
-func (i *initializer) PolicyHandler() api.PolicyHandler {
-	return i.policyManager
+type importHack struct {
+	*policies.ManagerImpl
 }
 
-func (i *initializer) Handler(path []string) (api.Handler, error) {
-	if len(path) == 0 {
-		return nil, fmt.Errorf("Empty path")
+func (ih importHack) BeginConfig(groups []string) ([]api.Handler, error) {
+	policyManagers, err := ih.ManagerImpl.BeginConfig(groups)
+	if err != nil {
+		return nil, err
 	}
-
-	switch path[0] {
-	case RootGroupKey:
-		return i.channelConfig.Handler(path[1:])
-	default:
-		return nil, fmt.Errorf("Unknown root group: %s", path[0])
+	handlers := make([]api.Handler, len(policyManagers))
+	for i, policyManager := range policyManagers {
+		handlers[i] = &importHack{ManagerImpl: policyManager}
 	}
+	return handlers, err
+}
 
+func (ih importHack) ProposeConfig(key string, value *cb.ConfigValue) error {
+	return fmt.Errorf("Temporary hack")
+}
+
+func (i *initializer) PolicyHandler() api.PolicyHandler {
+	return importHack{ManagerImpl: i.policyManager}
+}
+
+func (i *initializer) ProposeConfig(key string, value *cb.ConfigValue) error {
+	return fmt.Errorf("Programming error, this should never be invoked")
 }

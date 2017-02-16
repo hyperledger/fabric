@@ -19,6 +19,7 @@ package application
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/configtx/handlers"
 	mspconfig "github.com/hyperledger/fabric/common/configtx/handlers/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -62,18 +63,23 @@ func (oc *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
 }
 
 // BeginConfig is used to start a new config proposal
-func (oc *ApplicationOrgConfig) BeginConfig() {
+func (oc *ApplicationOrgConfig) BeginConfig(groups []string) ([]api.Handler, error) {
 	logger.Debugf("Beginning a possible new org config")
+	if len(groups) != 0 {
+		return nil, fmt.Errorf("ApplicationGroup does not support subgroups")
+	}
 	if oc.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	oc.pendingConfig = &applicationOrgConfig{}
+	return oc.OrgConfig.BeginConfig(groups)
 }
 
 // RollbackConfig is used to abandon a new config proposal
 func (oc *ApplicationOrgConfig) RollbackConfig() {
 	logger.Debugf("Rolling back proposed org config")
 	oc.pendingConfig = nil
+	oc.OrgConfig.RollbackConfig()
 }
 
 // CommitConfig is used to commit a new config proposal
@@ -84,6 +90,7 @@ func (oc *ApplicationOrgConfig) CommitConfig() {
 	}
 	oc.config = oc.pendingConfig
 	oc.pendingConfig = nil
+	oc.OrgConfig.CommitConfig()
 }
 
 // ProposeConfig is used to add new config to the config proposal

@@ -157,14 +157,24 @@ func (pm *ManagerImpl) EgressPolicyNames() []string {
 }
 
 // BeginConfig is used to start a new config proposal
-func (pm *ManagerImpl) BeginConfig() {
-	logger.Debugf("Beginning possible new orderer config")
+func (pm *ManagerImpl) BeginConfig(groups []string) ([]api.Handler, error) {
+	logger.Debugf("Beginning a possible new orderer shared config")
 	if pm.pendingConfig != nil {
-		logger.Fatalf("Programming error, cannot call begin in the middle of a proposal")
+		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	pm.pendingConfig = &ordererConfig{
 		orgs: make(map[string]*handlers.OrgConfig),
 	}
+	orgHandlers := make([]api.Handler, len(groups))
+	for i, group := range groups {
+		org, ok := pm.pendingConfig.orgs[group]
+		if !ok {
+			org = handlers.NewOrgConfig(group, pm.mspConfig)
+			pm.pendingConfig.orgs[group] = org
+		}
+		orgHandlers[i] = org
+	}
+	return orgHandlers, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
@@ -273,24 +283,6 @@ func (pm *ManagerImpl) ProposeConfig(key string, configValue *cb.ConfigValue) er
 		pm.pendingConfig.kafkaBrokers = kafkaBrokers.Brokers
 	}
 	return nil
-}
-
-// Handler returns the associated api.Handler for the given path
-func (pm *ManagerImpl) Handler(path []string) (api.Handler, error) {
-	if len(path) == 0 {
-		return pm, nil
-	}
-
-	if len(path) > 1 {
-		return nil, fmt.Errorf("Orderer group allows only one further level of nesting")
-	}
-
-	org, ok := pm.pendingConfig.orgs[path[0]]
-	if !ok {
-		org = handlers.NewOrgConfig(path[0], pm.mspConfig)
-		pm.pendingConfig.orgs[path[0]] = org
-	}
-	return org, nil
 }
 
 // This does just a barebones sanity check.

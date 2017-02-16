@@ -47,13 +47,13 @@ func groupToKeyValue(configGroup *cb.ConfigGroup) (string, *cb.ConfigValue) {
 }
 
 func TestApplicationOrgInterface(t *testing.T) {
-	_ = configtxapi.SubInitializer(NewApplicationOrgConfig("id", nil))
+	_ = configtxapi.Handler(NewApplicationOrgConfig("id", nil))
 }
 
 func TestApplicationOrgDoubleBegin(t *testing.T) {
 	m := NewApplicationOrgConfig("id", nil)
-	m.BeginConfig()
-	assert.Panics(t, m.BeginConfig, "Two begins back to back should have caused a panic")
+	m.BeginConfig(nil)
+	assert.Panics(t, func() { m.BeginConfig(nil) }, "Two begins back to back should have caused a panic")
 }
 
 func TestApplicationOrgCommitWithoutBegin(t *testing.T) {
@@ -76,7 +76,7 @@ func TestApplicationOrgAnchorPeers(t *testing.T) {
 	invalidMessage := makeInvalidConfigValue()
 	validMessage := TemplateAnchorPeers("id", endVal)
 	m := NewApplicationOrgConfig("id", nil)
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	assert.Error(t, m.ProposeConfig(AnchorPeersKey, invalidMessage), "Should have failed on invalid message")
 	assert.NoError(t, m.ProposeConfig(groupToKeyValue(validMessage)), "Should not have failed on invalid message")
