@@ -20,14 +20,15 @@ import (
 	"testing"
 
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/policies"
 )
 
 func TestConfigtxTransactionalInterface(t *testing.T) {
 	_ = configtxapi.Transactional(&Transactional{})
 }
 
-func TestConfigtxPolicyHandlerInterface(t *testing.T) {
-	_ = configtxapi.PolicyHandler(&PolicyHandler{})
+func TestConfigtxPolicyProposerInterface(t *testing.T) {
+	_ = policies.Proposer(&PolicyProposer{})
 }
 
 func TestConfigtxInitializerInterface(t *testing.T) {

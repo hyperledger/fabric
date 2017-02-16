@@ -18,7 +18,6 @@ package policies
 
 import (
 	"fmt"
-	"strings"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -33,12 +32,33 @@ type Policy interface {
 	Evaluate(signatureSet []*cb.SignedData) error
 }
 
-// Manager is intended to be the primary accessor of ManagerImpl
-// It is intended to discourage use of the other exported ManagerImpl methods
-// which are used for updating policy by the ConfigManager
+// Manager is a read only subset of the policy ManagerImpl
 type Manager interface {
 	// GetPolicy returns a policy and true if it was the policy requested, or false if it is the default policy
 	GetPolicy(id string) (Policy, bool)
+
+	// Manager returns the sub-policy manager for a given path and whether it exists
+	Manager(path []string) (Manager, bool)
+
+	// Basepath returns the basePath the manager was instnatiated with
+	BasePath() string
+
+	// Policies returns all policy names defined in the manager
+	PolicyNames() []string
+
+	// SubManagers() returns all managers immediately descended from this one
+	SubManagers() []Manager
+}
+
+// Proposer is the interface used by the configtx manager for policy management
+type Proposer interface {
+	BeginPolicyProposals(groups []string) ([]Proposer, error)
+
+	ProposePolicy(name string, policy *cb.ConfigPolicy) error
+
+	RollbackProposals()
+
+	CommitProposals()
 }
 
 // Provider provides the backing implementation of a policy
@@ -47,19 +67,29 @@ type Provider interface {
 	NewPolicy(data []byte) (Policy, error)
 }
 
+type policyConfig struct {
+	policies map[string]Policy
+	managers map[string]*ManagerImpl
+}
+
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.ConfigManager
 type ManagerImpl struct {
-	providers       map[int32]Provider
-	policies        map[string]Policy
-	pendingPolicies map[string]Policy
+	basePath      string
+	providers     map[int32]Provider
+	config        *policyConfig
+	pendingConfig *policyConfig
 }
 
 // NewManagerImpl creates a new ManagerImpl with the given CryptoHelper
-func NewManagerImpl(providers map[int32]Provider) *ManagerImpl {
+func NewManagerImpl(basePath string, providers map[int32]Provider) *ManagerImpl {
 	return &ManagerImpl{
+		basePath:  basePath,
 		providers: providers,
-		policies:  make(map[string]Policy),
+		config: &policyConfig{
+			policies: make(map[string]Policy),
+			managers: make(map[string]*ManagerImpl),
+		},
 	}
 }
 
@@ -69,12 +99,51 @@ func (rp rejectPolicy) Evaluate(signedData []*cb.SignedData) error {
 	return fmt.Errorf("No such policy type: %s", rp)
 }
 
+// Basepath returns the basePath the manager was instnatiated with
+func (pm *ManagerImpl) BasePath() string {
+	return pm.basePath
+}
+
+func (pm *ManagerImpl) SubManagers() []Manager {
+	managers := make([]Manager, len(pm.config.managers))
+	i := 0
+	for _, manager := range pm.config.managers {
+		managers[i] = manager
+		i++
+	}
+	return managers
+}
+
+func (pm *ManagerImpl) PolicyNames() []string {
+	policyNames := make([]string, len(pm.config.policies))
+	i := 0
+	for policyName := range pm.config.policies {
+		policyNames[i] = policyName
+		i++
+	}
+	return policyNames
+}
+
+// Manager returns the sub-policy manager for a given path and whether it exists
+func (pm *ManagerImpl) Manager(path []string) (Manager, bool) {
+	if len(path) == 0 {
+		return pm, true
+	}
+
+	m, ok := pm.config.managers[path[0]]
+	if !ok {
+		return nil, false
+	}
+
+	return m.Manager(path[1:])
+}
+
 // GetPolicy returns a policy and true if it was the policy requested, or false if it is the default reject policy
 func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
-	policy, ok := pm.policies[id]
+	policy, ok := pm.config.policies[id]
 	if !ok {
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Returning dummy reject all policy because %s could not be found", id)
+			logger.Debugf("Returning dummy reject all policy because %s could not be found in %s", id, pm.basePath)
 		}
 		return rejectPolicy(id), false
 	}
@@ -84,34 +153,51 @@ func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
 	return policy, true
 }
 
-// BeginConfig is used to start a new config proposal
-func (pm *ManagerImpl) BeginConfig(groups []string) ([]*ManagerImpl, error) {
-	if len(groups) != 0 {
-		return nil, fmt.Errorf("Unimplemented") // XXX Temporary workaround until policy manager is enhanced to support hierarchy
-	}
-	if pm.pendingPolicies != nil {
+// BeginPolicies is used to start a new config proposal
+func (pm *ManagerImpl) BeginPolicyProposals(groups []string) ([]Proposer, error) {
+	if pm.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
-	pm.pendingPolicies = make(map[string]Policy)
-	return nil, nil
+
+	pm.pendingConfig = &policyConfig{
+		policies: make(map[string]Policy),
+		managers: make(map[string]*ManagerImpl),
+	}
+
+	managers := make([]Proposer, len(groups))
+	for i, group := range groups {
+		newManager := NewManagerImpl(group, pm.providers)
+		pm.pendingConfig.managers[group] = newManager
+		managers[i] = newManager
+	}
+	return managers, nil
 }
 
 // RollbackProposals is used to abandon a new config proposal
 func (pm *ManagerImpl) RollbackProposals() {
-	pm.pendingPolicies = nil
+	pm.pendingConfig = nil
 }
 
 // CommitProposals is used to commit a new config proposal
 func (pm *ManagerImpl) CommitProposals() {
-	if pm.pendingPolicies == nil {
+	if pm.pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}
-	pm.policies = pm.pendingPolicies
-	pm.pendingPolicies = nil
+
+	for managerPath, m := range pm.pendingConfig.managers {
+		for _, policyName := range m.PolicyNames() {
+			fqKey := managerPath + "/" + policyName
+			pm.pendingConfig.policies[fqKey], _ = m.GetPolicy(policyName)
+			logger.Debugf("In commit adding relative sub-policy %s to %s", fqKey, pm.basePath)
+		}
+	}
+
+	pm.config = pm.pendingConfig
+	pm.pendingConfig = nil
 }
 
 // ProposePolicy takes key, path, and ConfigPolicy and registers it in the proposed PolicyManager, or errors
-func (pm *ManagerImpl) ProposePolicy(key string, path []string, configPolicy *cb.ConfigPolicy) error {
+func (pm *ManagerImpl) ProposePolicy(key string, configPolicy *cb.ConfigPolicy) error {
 	policy := configPolicy.Policy
 	if policy == nil {
 		return fmt.Errorf("Policy cannot be nil")
@@ -127,19 +213,8 @@ func (pm *ManagerImpl) ProposePolicy(key string, path []string, configPolicy *cb
 		return err
 	}
 
-	prefix := strings.Join(path, "/")
-	if len(path) == 0 {
-		prefix = "/"
-	}
+	pm.pendingConfig.policies[key] = cPolicy
 
-	// TODO, once the other components are ready for it, use '_' below as fqKey
-	_ = prefix + "/" + key
-	fqKey := key
-
-	logger.Debugf("Writing policy with fqKey: %s", fqKey)
-
-	pm.pendingPolicies[fqKey] = cPolicy
-
-	logger.Debugf("Proposed new policy %s", key)
+	logger.Debugf("Proposed new policy %s for %s", key, pm.basePath)
 	return nil
 }

@@ -56,9 +56,9 @@ func makePolicySource(policyResult bool) *cb.Policy {
 	}
 }
 
-func addPolicy(manager *policies.ManagerImpl, id string, policy *cb.Policy) {
-	manager.BeginConfig(nil)
-	err := manager.ProposePolicy(id, []string{}, &cb.ConfigPolicy{
+func addPolicy(manager policies.Proposer, id string, policy *cb.Policy) {
+	manager.BeginPolicyProposals(nil)
+	err := manager.ProposePolicy(id, &cb.ConfigPolicy{
 		Policy: policy,
 	})
 	if err != nil {
@@ -75,7 +75,7 @@ func providerMap() map[int32]policies.Provider {
 
 func TestAccept(t *testing.T) {
 	policyID := "policyID"
-	m := policies.NewManagerImpl(providerMap())
+	m := policies.NewManagerImpl("test", providerMap())
 	addPolicy(m, policyID, acceptAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {
@@ -89,7 +89,7 @@ func TestAccept(t *testing.T) {
 
 func TestReject(t *testing.T) {
 	policyID := "policyID"
-	m := policies.NewManagerImpl(providerMap())
+	m := policies.NewManagerImpl("test", providerMap())
 	addPolicy(m, policyID, rejectAllPolicy)
 	policy, ok := m.GetPolicy(policyID)
 	if !ok {
@@ -102,7 +102,7 @@ func TestReject(t *testing.T) {
 }
 
 func TestRejectOnUnknown(t *testing.T) {
-	m := policies.NewManagerImpl(providerMap())
+	m := policies.NewManagerImpl("test", providerMap())
 	policy, ok := m.GetPolicy("FakePolicyID")
 	if ok {
 		t.Error("Should not have found policy which was never added, but did")

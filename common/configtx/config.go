@@ -21,12 +21,14 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx/api"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
 type configResult struct {
-	handler    api.Transactional
-	subResults []*configResult
+	handler       api.Transactional
+	policyHandler api.Transactional
+	subResults    []*configResult
 }
 
 func (cr *configResult) commit() {
@@ -34,6 +36,7 @@ func (cr *configResult) commit() {
 		subResult.commit()
 	}
 	cr.handler.CommitProposals()
+	cr.policyHandler.CommitProposals()
 }
 
 func (cr *configResult) rollback() {
@@ -41,13 +44,14 @@ func (cr *configResult) rollback() {
 		subResult.rollback()
 	}
 	cr.handler.RollbackProposals()
+	cr.policyHandler.RollbackProposals()
 }
 
 // proposeGroup proposes a group configuration with a given handler
 // it will in turn recursively call itself until all groups have been exhausted
 // at each call, it returns the handler that was passed in, plus any handlers returned
 // by recursive calls into proposeGroup
-func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handler configvaluesapi.ValueProposer) (*configResult, error) {
+func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handler configvaluesapi.ValueProposer, policyHandler policies.Proposer) (*configResult, error) {
 	subGroups := make([]string, len(group.Groups))
 	i := 0
 	for subGroup := range group.Groups {
@@ -61,17 +65,23 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 		return nil, err
 	}
 
-	if len(subHandlers) != len(subGroups) {
-		return nil, fmt.Errorf("Programming error, did not return as many handlers as groups %d vs %d", len(subHandlers), len(subGroups))
+	subPolicyHandlers, err := policyHandler.BeginPolicyProposals(subGroups)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(subHandlers) != len(subGroups) || len(subPolicyHandlers) != len(subGroups) {
+		return nil, fmt.Errorf("Programming error, did not return as many handlers as groups %d vs %d vs %d", len(subHandlers), len(subGroups), len(subPolicyHandlers))
 	}
 
 	result := &configResult{
-		handler:    handler,
-		subResults: make([]*configResult, 0, len(subGroups)),
+		handler:       handler,
+		policyHandler: policyHandler,
+		subResults:    make([]*configResult, 0, len(subGroups)),
 	}
 
 	for i, subGroup := range subGroups {
-		subResult, err := cm.proposeGroup(name+"/"+subGroup, group.Groups[subGroup], subHandlers[i])
+		subResult, err := cm.proposeGroup(name+"/"+subGroup, group.Groups[subGroup], subHandlers[i], subPolicyHandlers[i])
 		if err != nil {
 			result.rollback()
 			return nil, err
@@ -86,37 +96,23 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 		}
 	}
 
-	return result, nil
-}
-
-func (cm *configManager) proposePolicies(rootGroup *cb.ConfigGroup) (*configResult, error) {
-	cm.initializer.PolicyHandler().BeginConfig(nil) // XXX temporary workaround until policy manager is adapted with sub-policies
-
-	for key, policy := range rootGroup.Policies {
-		logger.Debugf("Proposing policy: %s", key)
-		if err := cm.initializer.PolicyHandler().ProposePolicy(key, []string{RootGroupKey}, policy); err != nil {
-			cm.initializer.PolicyHandler().RollbackProposals()
+	for key, policy := range group.Policies {
+		if err := policyHandler.ProposePolicy(key, policy); err != nil {
+			result.rollback()
 			return nil, err
 		}
 	}
 
-	return &configResult{handler: cm.initializer.PolicyHandler()}, nil
+	return result, nil
 }
 
 func (cm *configManager) processConfig(channelGroup *cb.ConfigGroup) (*configResult, error) {
 	helperGroup := cb.NewConfigGroup()
 	helperGroup.Groups[RootGroupKey] = channelGroup
-	groupResult, err := cm.proposeGroup("", helperGroup, cm.initializer)
+	groupResult, err := cm.proposeGroup("", helperGroup, cm.initializer.ValueProposer(), cm.initializer.PolicyProposer())
 	if err != nil {
 		return nil, err
 	}
 
-	policyResult, err := cm.proposePolicies(channelGroup)
-	if err != nil {
-		groupResult.rollback()
-		return nil, err
-	}
-	policyResult.subResults = []*configResult{groupResult}
-
-	return policyResult, nil
+	return groupResult, nil
 }

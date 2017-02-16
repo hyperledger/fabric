@@ -36,17 +36,11 @@ func defaultInitializer() *mockconfigtx.Initializer {
 				Policy: &mockpolicies.Policy{},
 			},
 		},
-		PolicyHandlerVal: &mockconfigtx.PolicyHandler{
-			Handler: mockconfigtx.Handler{
-				Transactional: mockconfigtx.Transactional{
-					HandlerVal: &mockconfigtx.Handler{},
-				},
-			},
+		PolicyProposerVal: &mockconfigtx.PolicyProposer{
+			Transactional: mockconfigtx.Transactional{},
 		},
-		Handler: mockconfigtx.Handler{
-			Transactional: mockconfigtx.Transactional{
-				HandlerVal: &mockconfigtx.Handler{},
-			},
+		ValueProposerVal: &mockconfigtx.ValueProposer{
+			Transactional: mockconfigtx.Transactional{},
 		},
 	}
 }
@@ -412,7 +406,7 @@ func TestInvalidProposal(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	initializer.HandlerVal = &mockconfigtx.Handler{ErrorForProposeConfig: fmt.Errorf("err")}
+	initializer.ValueProposerVal = &mockconfigtx.ValueProposer{ErrorForProposeConfig: fmt.Errorf("err")}
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
 

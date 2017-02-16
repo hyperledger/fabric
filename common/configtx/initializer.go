@@ -84,70 +84,92 @@ func newResources() *resources {
 	applicationConfig := configtxapplication.NewSharedConfigImpl(mspConfigHandler)
 
 	return &resources{
-		policyManager:     policies.NewManagerImpl(policyProviderMap),
+		policyManager:     policies.NewManagerImpl(RootGroupKey, policyProviderMap),
 		channelConfig:     configtxchannel.NewSharedConfigImpl(ordererConfig, applicationConfig),
 		ordererConfig:     ordererConfig,
 		applicationConfig: applicationConfig,
 		mspConfigHandler:  mspConfigHandler,
 	}
-
 }
 
-type initializer struct {
-	*resources
-	is map[string]api.Initializer
+type valueProposerRoot struct {
+	channelConfig    *configtxchannel.SharedConfigImpl
+	mspConfigHandler *configtxmsp.MSPConfigHandler
 }
 
-// NewInitializer creates a chain initializer for the basic set of common chain resources
-func NewInitializer() api.Initializer {
-	return &initializer{
-		resources: newResources(),
-	}
+type policyProposerRoot struct {
+	policyManager policies.Proposer
 }
 
 // BeginValueProposals is used to start a new config proposal
-func (i *initializer) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
+func (v *valueProposerRoot) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
 	if len(groups) != 1 {
 		logger.Panicf("Initializer only supports having one root group")
 	}
-	i.mspConfigHandler.BeginConfig()
-	return []configvaluesapi.ValueProposer{i.channelConfig}, nil
+	logger.Debugf("Calling begin for MSP manager")
+	v.mspConfigHandler.BeginConfig()
+	return []configvaluesapi.ValueProposer{v.channelConfig}, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
-func (i *initializer) RollbackProposals() {
+func (i *valueProposerRoot) RollbackProposals() {
+	logger.Debugf("Calling rollback for MSP manager")
 	i.mspConfigHandler.RollbackProposals()
 }
 
 // CommitConfig is used to commit a new config proposal
-func (i *initializer) CommitProposals() {
+func (i *valueProposerRoot) CommitProposals() {
+	logger.Debugf("Calling commit for MSP manager")
 	i.mspConfigHandler.CommitProposals()
 }
 
-type importHack struct {
-	*policies.ManagerImpl
-}
-
-func (ih importHack) BeginConfig(groups []string) ([]api.PolicyHandler, error) {
-	policyManagers, err := ih.ManagerImpl.BeginConfig(groups)
-	if err != nil {
-		return nil, err
-	}
-	handlers := make([]api.PolicyHandler, len(policyManagers))
-	for i, policyManager := range policyManagers {
-		handlers[i] = &importHack{ManagerImpl: policyManager}
-	}
-	return handlers, err
-}
-
-func (ih importHack) ProposeConfig(key string, value *cb.ConfigValue) error {
-	return fmt.Errorf("Temporary hack")
-}
-
-func (i *initializer) PolicyHandler() api.PolicyHandler {
-	return importHack{ManagerImpl: i.policyManager}
-}
-
-func (i *initializer) ProposeValue(key string, value *cb.ConfigValue) error {
+func (i *valueProposerRoot) ProposeValue(key string, value *cb.ConfigValue) error {
 	return fmt.Errorf("Programming error, this should never be invoked")
+}
+
+// BeginPolicyProposals is used to start a new config proposal
+func (p *policyProposerRoot) BeginPolicyProposals(groups []string) ([]policies.Proposer, error) {
+	if len(groups) != 1 {
+		logger.Panicf("Initializer only supports having one root group")
+	}
+	return []policies.Proposer{p.policyManager}, nil
+}
+
+func (i *policyProposerRoot) ProposePolicy(key string, policy *cb.ConfigPolicy) error {
+	return fmt.Errorf("Programming error, this should never be invoked")
+}
+
+// RollbackConfig is used to abandon a new config proposal
+func (i *policyProposerRoot) RollbackProposals() {}
+
+// CommitConfig is used to commit a new config proposal
+func (i *policyProposerRoot) CommitProposals() {}
+
+type initializer struct {
+	*resources
+	vpr *valueProposerRoot
+	ppr *policyProposerRoot
+}
+
+// NewInitializer creates a chain initializer for the basic set of common chain resources
+func NewInitializer() api.Initializer {
+	resources := newResources()
+	return &initializer{
+		resources: resources,
+		vpr: &valueProposerRoot{
+			channelConfig:    resources.channelConfig,
+			mspConfigHandler: resources.mspConfigHandler,
+		},
+		ppr: &policyProposerRoot{
+			policyManager: resources.policyManager,
+		},
+	}
+}
+
+func (i *initializer) PolicyProposer() policies.Proposer {
+	return i.ppr
+}
+
+func (i *initializer) ValueProposer() configvaluesapi.ValueProposer {
+	return i.vpr
 }
