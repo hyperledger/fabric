@@ -26,11 +26,12 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	ledgertestutil "github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/spf13/viper"
 )
 
 //Basic setup to test couch
-var connectURL = "localhost:5984"
-var badConnectURL = "localhost:5990"
+var connectURL = "couchdb:5984"
+var badConnectURL = "couchdb:5990"
 var database = "couch_util_testdb"
 var username = ""
 var password = ""
@@ -56,7 +57,10 @@ var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owne
 
 func TestMain(m *testing.M) {
 	ledgertestutil.SetupCoreYAMLConfig("./../../../../peer")
-	os.Exit(m.Run())
+	viper.Set("ledger.state.stateDatabase", "CouchDB")
+	result := m.Run()
+	viper.Set("ledger.state.stateDatabase", "goleveldb")
+	os.Exit(result)
 }
 
 func TestDBConnectionDef(t *testing.T) {
