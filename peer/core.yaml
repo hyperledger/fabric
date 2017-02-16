@@ -108,6 +108,12 @@ peer:
         recvBuffSize: 20
         # Buffer size of sending messages
         sendBuffSize: 20
+        # Time to wait before pull engine processes incoming digests (unit: second)
+        digestWaitTime: 1s
+        # Time to wait before pull engine removes incoming nonce (unit: second)
+        requestWaitTime: 1s
+        # Time to wait before pull engine ends pull (unit: second)
+        responseWaitTime: 2s
 
         # This is an endpoint that is published to peers outside of the organization.
         # If this isn't set, the peer will not be known to other organizations.

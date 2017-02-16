@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/spf13/viper"
 )
 
 /* PullEngine is an object that performs pull-based gossip, and maintains an internal state of items
@@ -47,23 +48,25 @@ func init() {
 	rand.Seed(42)
 }
 
-var digestWaitTime = time.Duration(1) * time.Second
-var requestWaitTime = time.Duration(1) * time.Second
-var responseWaitTime = time.Duration(2) * time.Second
+const (
+	defDigestWaitTime   = time.Duration(1) * time.Second
+	defRequestWaitTime  = time.Duration(1) * time.Second
+	defResponseWaitTime = time.Duration(2) * time.Second
+)
 
 // SetDigestWaitTime sets the digest wait time
 func SetDigestWaitTime(time time.Duration) {
-	digestWaitTime = time
+	viper.Set("peer.gossip.digestWaitTime", time)
 }
 
 // SetRequestWaitTime sets the request wait time
 func SetRequestWaitTime(time time.Duration) {
-	requestWaitTime = time
+	viper.Set("peer.gossip.requestWaitTime", time)
 }
 
 // SetResponseWaitTime sets the response wait time
 func SetResponseWaitTime(time time.Duration) {
-	responseWaitTime = time
+	viper.Set("peer.gossip.responseWaitTime", time)
 }
 
 // PullAdapter is needed by the PullEngine in order to
@@ -179,6 +182,7 @@ func (engine *PullEngine) initiatePull() {
 		engine.Hello(peer, nonce)
 	}
 
+	digestWaitTime := util.GetDurationOrDefault("peer.gossip.digestWaitTime", defDigestWaitTime)
 	time.AfterFunc(digestWaitTime, func() {
 		engine.processIncomingDigests()
 	})
@@ -207,6 +211,7 @@ func (engine *PullEngine) processIncomingDigests() {
 		engine.SendReq(dest, seqsToReq, engine.peers2nonces[dest])
 	}
 
+	responseWaitTime := util.GetDurationOrDefault("peer.gossip.responseWaitTime", defResponseWaitTime)
 	time.AfterFunc(responseWaitTime, engine.endPull)
 
 }
@@ -262,6 +267,8 @@ func (engine *PullEngine) Remove(seqs ...string) {
 // OnHello notifies the engine a hello has arrived
 func (engine *PullEngine) OnHello(nonce uint64, context interface{}) {
 	engine.incomingNONCES.Add(nonce)
+
+	requestWaitTime := util.GetDurationOrDefault("peer.gossip.requestWaitTime", defRequestWaitTime)
 	time.AfterFunc(requestWaitTime, func() {
 		engine.incomingNONCES.Remove(nonce)
 	})
