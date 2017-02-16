@@ -21,7 +21,6 @@ import (
 	"reflect"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -82,13 +81,4 @@ func (bh *MSPConfigHandler) ProposeConfig(key string, configValue *common.Config
 	// it and return whatever error setup gives me
 	bh.proposedMgr = msp.NewMSPManager()
 	return bh.proposedMgr.Setup(bh.config)
-}
-
-// Handler returns the associated api.Handler for the given path
-func (bh *MSPConfigHandler) Handler(path []string) (api.Handler, error) {
-	if len(path) > 0 {
-		return nil, fmt.Errorf("MSP handler does not support nested groups")
-	}
-
-	return bh, nil
 }

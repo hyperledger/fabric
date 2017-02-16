@@ -17,8 +17,6 @@ limitations under the License.
 package application
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/configtx/handlers"
 	"github.com/hyperledger/fabric/common/configtx/handlers/msp"
@@ -77,7 +75,7 @@ func NewSharedConfigImpl(mspConfig *msp.MSPConfigHandler) *SharedConfigImpl {
 }
 
 // BeginConfig is used to start a new config proposal
-func (di *SharedConfigImpl) BeginConfig() {
+func (di *SharedConfigImpl) BeginConfig(groups []string) ([]api.Handler, error) {
 	logger.Debugf("Beginning a possible new peer shared config")
 	if di.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
@@ -85,6 +83,16 @@ func (di *SharedConfigImpl) BeginConfig() {
 	di.pendingConfig = &sharedConfig{
 		orgs: make(map[string]api.ApplicationOrgConfig),
 	}
+	orgHandlers := make([]api.Handler, len(groups))
+	for i, group := range groups {
+		org, ok := di.pendingConfig.orgs[group]
+		if !ok {
+			org = NewApplicationOrgConfig(group, di.mspConfig)
+			di.pendingConfig.orgs[group] = org
+		}
+		orgHandlers[i] = org.(*ApplicationOrgConfig)
+	}
+	return orgHandlers, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
@@ -112,22 +120,4 @@ func (di *SharedConfigImpl) ProposeConfig(key string, configValue *cb.ConfigValu
 // Organizations returns a map of org ID to ApplicationOrgConfig
 func (di *SharedConfigImpl) Organizations() map[string]api.ApplicationOrgConfig {
 	return di.config.orgs
-}
-
-// Handler returns the associated api.Handler for the given path
-func (pm *SharedConfigImpl) Handler(path []string) (api.Handler, error) {
-	if len(path) == 0 {
-		return pm, nil
-	}
-
-	if len(path) > 1 {
-		return nil, fmt.Errorf("Application group allows only one further level of nesting")
-	}
-
-	org, ok := pm.pendingConfig.orgs[path[0]]
-	if !ok {
-		org = NewApplicationOrgConfig(path[0], pm.mspConfig)
-		pm.pendingConfig.orgs[path[0]] = org
-	}
-	return org.(*ApplicationOrgConfig), nil
 }

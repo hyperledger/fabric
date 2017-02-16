@@ -66,8 +66,8 @@ func doesFuncCrash(crasher func(), test string) bool {
 func TestDoubleBegin(t *testing.T) {
 	crashes := doesFuncCrash(func() {
 		m := NewManagerImpl(nil)
-		m.BeginConfig()
-		m.BeginConfig()
+		m.BeginConfig(nil)
+		m.BeginConfig(nil)
 	}, "TestDoubleBegin")
 
 	if !crashes {
@@ -102,7 +102,7 @@ func TestConsensusType(t *testing.T) {
 	otherValidMessage := TemplateConsensusType("bar")
 
 	m := NewManagerImpl(nil)
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err := m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
@@ -110,7 +110,7 @@ func TestConsensusType(t *testing.T) {
 	}
 
 	m.CommitConfig()
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err = m.ProposeConfig(ConsensusTypeKey, invalidMessage)
 	if err == nil {
@@ -142,7 +142,7 @@ func TestBatchSize(t *testing.T) {
 
 	t.Run("ValidConfig", func(t *testing.T) {
 		m := NewManagerImpl(nil)
-		m.BeginConfig()
+		m.BeginConfig(nil)
 		err := m.ProposeConfig(
 			groupToKeyValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes})),
 		)
@@ -161,7 +161,7 @@ func TestBatchSize(t *testing.T) {
 
 	t.Run("UnserializableConfig", func(t *testing.T) {
 		m := NewManagerImpl(nil)
-		m.BeginConfig()
+		m.BeginConfig(nil)
 		err := m.ProposeConfig(BatchSizeKey, invalidMessage())
 		assert.NotNil(t, err, "Should have failed on invalid message")
 		m.CommitConfig()
@@ -169,7 +169,7 @@ func TestBatchSize(t *testing.T) {
 
 	t.Run("ZeroMaxMessageCount", func(t *testing.T) {
 		m := NewManagerImpl(nil)
-		m.BeginConfig()
+		m.BeginConfig(nil)
 		err := m.ProposeConfig(groupToKeyValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes})))
 		assert.NotNil(t, err, "Should have rejected batch size max message count of 0")
 		m.CommitConfig()
@@ -177,7 +177,7 @@ func TestBatchSize(t *testing.T) {
 
 	t.Run("ZeroAbsoluteMaxBytes", func(t *testing.T) {
 		m := NewManagerImpl(nil)
-		m.BeginConfig()
+		m.BeginConfig(nil)
 		err := m.ProposeConfig(groupToKeyValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0, PreferredMaxBytes: validPreferredMaxBytes})))
 		assert.NotNil(t, err, "Should have rejected batch size absolute max message bytes of 0")
 		m.CommitConfig()
@@ -185,7 +185,7 @@ func TestBatchSize(t *testing.T) {
 
 	t.Run("TooLargePreferredMaxBytes", func(t *testing.T) {
 		m := NewManagerImpl(nil)
-		m.BeginConfig()
+		m.BeginConfig(nil)
 		err := m.ProposeConfig(groupToKeyValue(TemplateBatchSize(&ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validAbsoluteMaxBytes + 1})))
 		assert.NotNil(t, err, "Should have rejected batch size preferred max message bytes greater than absolute max message bytes")
 		m.CommitConfig()
@@ -200,7 +200,7 @@ func TestBatchTimeout(t *testing.T) {
 	validMessage := TemplateBatchTimeout(endBatchTimeout.String())
 
 	m := NewManagerImpl(nil)
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err := m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
@@ -243,7 +243,7 @@ func TestKafkaBrokers(t *testing.T) {
 	validMessage := TemplateKafkaBrokers(endList)
 
 	m := NewManagerImpl(nil)
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err := m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
@@ -283,7 +283,7 @@ func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) 
 	invalidMessage := invalidMessage()
 	validMessage := initializer(endPolicy)
 
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err := m.ProposeConfig(groupToKeyValue(validMessage))
 	if err != nil {
@@ -291,7 +291,7 @@ func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) 
 	}
 
 	m.CommitConfig()
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err = m.ProposeConfig(key, invalidMessage)
 	if err == nil {
@@ -328,7 +328,7 @@ func TestChainCreationPolicyNames(t *testing.T) {
 func TestEmptyChainCreationPolicyNames(t *testing.T) {
 	m := NewManagerImpl(nil)
 
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err := m.ProposeConfig(groupToKeyValue(TemplateChainCreationPolicyNames(nil)))
 	if err != nil {

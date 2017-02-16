@@ -55,8 +55,8 @@ func TestDoubleBegin(t *testing.T) {
 	}()
 
 	m := NewSharedConfigImpl(nil, nil)
-	m.BeginConfig()
-	m.BeginConfig()
+	m.BeginConfig(nil)
+	m.BeginConfig(nil)
 }
 
 func TestCommitWithoutBegin(t *testing.T) {
@@ -85,7 +85,7 @@ func TestHashingAlgorithm(t *testing.T) {
 	validAlgorithm := DefaultHashingAlgorithm()
 
 	m := NewSharedConfigImpl(nil, nil)
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err := m.ProposeConfig(HashingAlgorithmKey, invalidMessage)
 	if err == nil {
@@ -115,7 +115,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 	validWidth := DefaultBlockDataHashingStructure()
 
 	m := NewSharedConfigImpl(nil, nil)
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err := m.ProposeConfig(BlockDataHashingStructureKey, invalidMessage)
 	if err == nil {
@@ -143,7 +143,7 @@ func TestOrdererAddresses(t *testing.T) {
 	invalidMessage := makeInvalidConfigValue()
 	validMessage := DefaultOrdererAddresses()
 	m := NewSharedConfigImpl(nil, nil)
-	m.BeginConfig()
+	m.BeginConfig(nil)
 
 	err := m.ProposeConfig(OrdererAddressesKey, invalidMessage)
 	if err == nil {

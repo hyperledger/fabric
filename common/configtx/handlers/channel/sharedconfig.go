@@ -106,11 +106,26 @@ func (pm *SharedConfigImpl) OrdererAddresses() []string {
 }
 
 // BeginConfig is used to start a new config proposal
-func (pm *SharedConfigImpl) BeginConfig() {
+func (pm *SharedConfigImpl) BeginConfig(groups []string) ([]api.Handler, error) {
+	handlers := make([]api.Handler, len(groups))
+
+	for i, group := range groups {
+		switch group {
+		case application.GroupKey:
+			handlers[i] = pm.applicationConfig
+		case orderer.GroupKey:
+			handlers[i] = pm.ordererConfig
+		default:
+			return nil, fmt.Errorf("Disallowed channel group: %s", group)
+		}
+	}
+
 	if pm.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
+
 	pm.pendingConfig = &chainConfig{}
+	return handlers, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
@@ -162,26 +177,4 @@ func (pm *SharedConfigImpl) ProposeConfig(key string, configValue *cb.ConfigValu
 		logger.Warningf("Uknown Chain config item with key %s", key)
 	}
 	return nil
-}
-
-// Handler returns the associated api.Handler for the given path
-func (pm *SharedConfigImpl) Handler(path []string) (api.Handler, error) {
-	if len(path) == 0 {
-		return pm, nil
-	}
-
-	var initializer api.SubInitializer
-
-	switch path[0] {
-	case application.GroupKey:
-		initializer = pm.applicationConfig
-	case orderer.GroupKey:
-		initializer = pm.ordererConfig
-	default:
-		return nil, fmt.Errorf("Disallowed channel group: %s", path[0])
-	}
-
-	return initializer.Handler(path[1:])
-
-	return nil, fmt.Errorf("Unallowed group")
 }

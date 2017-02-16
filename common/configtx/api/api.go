@@ -82,6 +82,8 @@ type OrdererConfig interface {
 // Handler provides a hook which allows other pieces of code to participate in config proposals
 // TODO, this should probably be renamed to ValueHandler
 type Handler interface {
+	Transactional
+
 	// ProposeConfig called when config is added to a proposal
 	ProposeConfig(key string, configValue *cb.ConfigValue) error
 }
@@ -129,21 +131,13 @@ type Resources interface {
 // Transactional is an interface which allows for an update to be proposed and rolled back
 type Transactional interface {
 	// BeginConfig called when a config proposal is begun
-	BeginConfig()
+	BeginConfig(groups []string) ([]Handler, error)
 
 	// RollbackConfig called when a config proposal is abandoned
 	RollbackConfig()
 
 	// CommitConfig called when a config proposal is committed
 	CommitConfig()
-}
-
-// SubInitializer is used downstream from initializer
-type SubInitializer interface {
-	Transactional
-
-	// Handler returns the associated value handler for a given config path
-	Handler(path []string) (Handler, error)
 }
 
 // PolicyHandler is used for config updates to policy
@@ -156,7 +150,7 @@ type PolicyHandler interface {
 // Initializer is used as indirection between Manager and Handler to allow
 // for single Handlers to handle multiple paths
 type Initializer interface {
-	SubInitializer
+	Handler
 
 	Resources
 
