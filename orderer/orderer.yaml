@@ -55,7 +55,7 @@ General:
     # LocalMSPDir is where to find the crypto material needed for signing in the orderer
     # It is set relative here as a default for dev environments but should be changed to the
     # real location in production
-    LocalMSPDir: ../msp/
+    LocalMSPDir: msp/sampleconfig
 
     # LocalMSPID is the identity to register the local MSP material with the MSP manager
     # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
