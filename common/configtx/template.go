@@ -30,18 +30,26 @@ import (
 )
 
 const (
+	// CreationPolicyKey defines the config key used in the channel
+	// config, under which the creation policy is defined.
 	CreationPolicyKey = "CreationPolicy"
 	msgVersion        = int32(0)
 	epoch             = 0
 
+	// ApplicationGroup identifies the `groups` map key in the channel
+	// config, under which the application-related config group is set.
 	ApplicationGroup = "Application"
-	OrdererGroup     = "Orderer"
-	MSPKey           = "MSP"
+	// OrdererGroup identifies the `groups` map key in the channel
+	// config, under which the orderer-related config group is set.
+	OrdererGroup = "Orderer"
+	// MSPKey identifies the config key in the channel config,
+	// under which the application-related config group is set.
+	MSPKey = "MSP"
 )
 
 // Template can be used to faciliate creation of config transactions
 type Template interface {
-	// Items returns a set of ConfigUpdateEnvelopes for the given chainID
+	// Envelope returns a ConfigUpdateEnvelope for the given chainID
 	Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error)
 }
 
@@ -49,7 +57,7 @@ type simpleTemplate struct {
 	configGroup *cb.ConfigGroup
 }
 
-// NewSimpleTemplate creates a Template using the supplied ConfigGroup
+// NewSimpleTemplate creates a Template using the supplied ConfigGroups
 func NewSimpleTemplate(configGroups ...*cb.ConfigGroup) Template {
 	sts := make([]Template, len(configGroups))
 	for i, group := range configGroups {
@@ -60,7 +68,7 @@ func NewSimpleTemplate(configGroups ...*cb.ConfigGroup) Template {
 	return NewCompositeTemplate(sts...)
 }
 
-// Envelope returns a ConfigUpdateEnvelopes for the given chainID
+// Envelope returns a ConfigUpdateEnvelope for the given chainID
 func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error) {
 	config, err := proto.Marshal(&cb.ConfigUpdate{
 		Header: &cb.ChannelHeader{
@@ -83,7 +91,7 @@ type compositeTemplate struct {
 	templates []Template
 }
 
-// NewSimpleTemplate creates a Template using the source Templates
+// NewCompositeTemplate creates a Template using the source Templates
 func NewCompositeTemplate(templates ...Template) Template {
 	return &compositeTemplate{templates: templates}
 }
@@ -119,7 +127,7 @@ func copyGroup(source *cb.ConfigGroup, target *cb.ConfigGroup) error {
 	return nil
 }
 
-// Envelope returns the ConfigUpdateEnvelope for the given chainID
+// Envelope returns a ConfigUpdateEnvelope for the given chainID
 func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error) {
 	channel := cb.NewConfigGroup()
 
@@ -152,9 +160,8 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope,
 	return &cb.ConfigUpdateEnvelope{ConfigUpdate: marshaledConfig}, nil
 }
 
-// NewChainCreationTemplate takes a CreationPolicy and a Template to produce a Template which outputs an appropriately
-// constructed list of ConfigUpdateEnvelope.  Note, using this Template in
-// a CompositeTemplate will invalidate the CreationPolicy
+// NewChainCreationTemplate takes a CreationPolicy and a Template to produce a
+// Template which outputs an appropriately constructed list of ConfigUpdateEnvelopes.
 func NewChainCreationTemplate(creationPolicy string, template Template) Template {
 	result := cb.NewConfigGroup()
 	result.Groups[configtxorderer.GroupKey] = cb.NewConfigGroup()

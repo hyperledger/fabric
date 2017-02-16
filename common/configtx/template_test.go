@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -102,6 +104,12 @@ func TestNewChainTemplate(t *testing.T) {
 		assert.True(t, ok, "Expected to find %d but did not", i)
 	}
 
-	_, ok := configNext.WriteSet.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey]
+	configValue, ok := configNext.WriteSet.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey]
 	assert.True(t, ok, "Did not find creation policy")
+
+	creationPolicyMessage := new(ab.CreationPolicy)
+	if err := proto.Unmarshal(configValue.Value, creationPolicyMessage); err != nil {
+		t.Fatal("Should not have errored:", err)
+	}
+	assert.Equal(t, creationPolicy, creationPolicyMessage.Policy, "Policy names don't match")
 }
