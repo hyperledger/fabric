@@ -29,6 +29,7 @@ import (
 
 	"regexp"
 
+	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -186,23 +187,9 @@ func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte
 func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
 
 	var buf []string
-	var err error
 
-	spec := cds.ChaincodeSpec
-
-	urlLocation, err := decodeUrl(spec)
-	if err != nil {
-		return "", fmt.Errorf("could not decode url: %s", err)
-	}
-
-	const env = "GOPATH=/tmp/codepackage:$GOPATH"
-	const flags = "-ldflags \"-linkmode external -extldflags '-static'\""
-
-	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"))
-	buf = append(buf, "ADD codepackage.tgz /tmp/codepackage")
-	//let the executable's name be chaincode ID's name
-	buf = append(buf, fmt.Sprintf("RUN %s go build %s -o /usr/local/bin/chaincode %s", env, flags, urlLocation))
-	buf = append(buf, "RUN rm -rf /tmp/codepackage") // FAB-2122: scrub source after it is no longer needed
+	buf = append(buf, "FROM "+cutil.GetDockerfileFromConfig("chaincode.golang.runtime"))
+	buf = append(buf, "ADD binpackage.tar /usr/local/bin")
 
 	dockerFileContents := strings.Join(buf, "\n")
 
@@ -210,5 +197,25 @@ func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) 
 }
 
 func (goPlatform *Platform) GenerateDockerBuild(cds *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error {
-	return cutil.WriteBytesToPackage("codepackage.tgz", cds.CodePackage, tw)
+	spec := cds.ChaincodeSpec
+
+	pkgname, err := decodeUrl(spec)
+	if err != nil {
+		return fmt.Errorf("could not decode url: %s", err)
+	}
+
+	const ldflags = "-linkmode external -extldflags '-static'"
+
+	codepackage := bytes.NewReader(cds.CodePackage)
+	binpackage := bytes.NewBuffer(nil)
+	err = util.DockerBuild(util.DockerBuildOptions{
+		Cmd:          fmt.Sprintf("GOPATH=/chaincode/input:$GOPATH go build -ldflags \"%s\" -o /chaincode/output/chaincode %s", ldflags, pkgname),
+		InputStream:  codepackage,
+		OutputStream: binpackage,
+	})
+	if err != nil {
+		return err
+	}
+
+	return cutil.WriteBytesToPackage("binpackage.tar", binpackage.Bytes(), tw)
 }
