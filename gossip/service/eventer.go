@@ -19,7 +19,7 @@ package service
 import (
 	"reflect"
 
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
 
 	"github.com/hyperledger/fabric/protos/peer"
 )
@@ -30,7 +30,7 @@ type Config interface {
 	ChainID() string
 
 	// Organizations returns a map of org ID to ApplicationOrgConfig
-	Organizations() map[string]configtxapi.ApplicationOrgConfig
+	Organizations() map[string]configvaluesapi.ApplicationOrg
 
 	// Sequence should return the sequence number of the current configuration
 	Sequence() uint64
@@ -44,7 +44,7 @@ type ConfigProcessor interface {
 
 type configStore struct {
 	anchorPeers []*peer.AnchorPeer
-	orgMap      map[string]configtxapi.ApplicationOrgConfig
+	orgMap      map[string]configvaluesapi.ApplicationOrg
 }
 
 type configEventReceiver interface {

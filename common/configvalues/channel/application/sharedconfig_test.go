@@ -19,7 +19,7 @@ package application
 import (
 	"testing"
 
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configvalues/api"
 
 	logging "github.com/op/go-logging"
 )
@@ -29,7 +29,7 @@ func init() {
 }
 
 func TestApplicationInterface(t *testing.T) {
-	_ = configtxapi.ApplicationConfig(NewSharedConfigImpl(nil))
+	_ = api.Application(NewSharedConfigImpl(nil))
 }
 
 func TestApplicationDoubleBegin(t *testing.T) {
@@ -40,8 +40,8 @@ func TestApplicationDoubleBegin(t *testing.T) {
 	}()
 
 	m := NewSharedConfigImpl(nil)
-	m.BeginConfig(nil)
-	m.BeginConfig(nil)
+	m.BeginValueProposals(nil)
+	m.BeginValueProposals(nil)
 }
 
 func TestApplicationCommitWithoutBegin(t *testing.T) {
@@ -52,13 +52,13 @@ func TestApplicationCommitWithoutBegin(t *testing.T) {
 	}()
 
 	m := NewSharedConfigImpl(nil)
-	m.CommitConfig()
+	m.CommitProposals()
 }
 
 func TestApplicationRollback(t *testing.T) {
 	m := NewSharedConfigImpl(nil)
 	m.pendingConfig = &sharedConfig{}
-	m.RollbackConfig()
+	m.RollbackProposals()
 	if m.pendingConfig != nil {
 		t.Fatalf("Should have cleared pending config on rollback")
 	}

@@ -19,9 +19,9 @@ package application
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/configtx/api"
-	"github.com/hyperledger/fabric/common/configtx/handlers"
-	mspconfig "github.com/hyperledger/fabric/common/configtx/handlers/msp"
+	"github.com/hyperledger/fabric/common/configvalues/api"
+	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
+	mspconfig "github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
@@ -42,7 +42,7 @@ type applicationOrgConfig struct {
 // SharedConfigImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.Manager
 type ApplicationOrgConfig struct {
-	*handlers.OrgConfig
+	*organization.OrgConfig
 	pendingConfig *applicationOrgConfig
 	config        *applicationOrgConfig
 
@@ -52,7 +52,7 @@ type ApplicationOrgConfig struct {
 // NewSharedConfigImpl creates a new SharedConfigImpl with the given CryptoHelper
 func NewApplicationOrgConfig(id string, mspConfig *mspconfig.MSPConfigHandler) *ApplicationOrgConfig {
 	return &ApplicationOrgConfig{
-		OrgConfig: handlers.NewOrgConfig(id, mspConfig),
+		OrgConfig: organization.NewOrgConfig(id, mspConfig),
 		config:    &applicationOrgConfig{},
 	}
 }
@@ -62,8 +62,8 @@ func (oc *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
 	return oc.config.anchorPeers
 }
 
-// BeginConfig is used to start a new config proposal
-func (oc *ApplicationOrgConfig) BeginConfig(groups []string) ([]api.Handler, error) {
+// BeginValueProposals is used to start a new config proposal
+func (oc *ApplicationOrgConfig) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
 	logger.Debugf("Beginning a possible new org config")
 	if len(groups) != 0 {
 		return nil, fmt.Errorf("ApplicationGroup does not support subgroups")
@@ -72,29 +72,29 @@ func (oc *ApplicationOrgConfig) BeginConfig(groups []string) ([]api.Handler, err
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	oc.pendingConfig = &applicationOrgConfig{}
-	return oc.OrgConfig.BeginConfig(groups)
+	return oc.OrgConfig.BeginValueProposals(groups)
 }
 
-// RollbackConfig is used to abandon a new config proposal
-func (oc *ApplicationOrgConfig) RollbackConfig() {
+// RollbackProposals is used to abandon a new config proposal
+func (oc *ApplicationOrgConfig) RollbackProposals() {
 	logger.Debugf("Rolling back proposed org config")
 	oc.pendingConfig = nil
-	oc.OrgConfig.RollbackConfig()
+	oc.OrgConfig.RollbackProposals()
 }
 
-// CommitConfig is used to commit a new config proposal
-func (oc *ApplicationOrgConfig) CommitConfig() {
+// CommitProposals is used to commit a new config proposal
+func (oc *ApplicationOrgConfig) CommitProposals() {
 	logger.Debugf("Committing new org config")
 	if oc.pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}
 	oc.config = oc.pendingConfig
 	oc.pendingConfig = nil
-	oc.OrgConfig.CommitConfig()
+	oc.OrgConfig.CommitProposals()
 }
 
-// ProposeConfig is used to add new config to the config proposal
-func (oc *ApplicationOrgConfig) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+// ProposeValue is used to add new config to the config proposal
+func (oc *ApplicationOrgConfig) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	switch key {
 	case AnchorPeersKey:
 		anchorPeers := &pb.AnchorPeers{}
@@ -106,7 +106,7 @@ func (oc *ApplicationOrgConfig) ProposeConfig(key string, configValue *cb.Config
 		}
 		oc.pendingConfig.anchorPeers = anchorPeers.AnchorPeers
 	default:
-		return oc.OrgConfig.ProposeConfig(key, configValue)
+		return oc.OrgConfig.ProposeValue(key, configValue)
 	}
 
 	return nil

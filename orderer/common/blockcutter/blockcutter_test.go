@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configtx/handlers/orderer"
+	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"

@@ -17,8 +17,8 @@ limitations under the License.
 package multichain
 
 import (
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configtx/handlers/orderer"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
@@ -58,7 +58,7 @@ func (mcs *ConsenterSupport) BlockCutter() blockcutter.Receiver {
 }
 
 // SharedConfig returns SharedConfigVal
-func (mcs *ConsenterSupport) SharedConfig() configtxapi.OrdererConfig {
+func (mcs *ConsenterSupport) SharedConfig() configvaluesapi.Orderer {
 	return mcs.SharedConfigVal
 }
 

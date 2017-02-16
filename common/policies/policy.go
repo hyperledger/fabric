@@ -96,13 +96,13 @@ func (pm *ManagerImpl) BeginConfig(groups []string) ([]*ManagerImpl, error) {
 	return nil, nil
 }
 
-// RollbackConfig is used to abandon a new config proposal
-func (pm *ManagerImpl) RollbackConfig() {
+// RollbackProposals is used to abandon a new config proposal
+func (pm *ManagerImpl) RollbackProposals() {
 	pm.pendingPolicies = nil
 }
 
-// CommitConfig is used to commit a new config proposal
-func (pm *ManagerImpl) CommitConfig() {
+// CommitProposals is used to commit a new config proposal
+func (pm *ManagerImpl) CommitProposals() {
 	if pm.pendingPolicies == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}

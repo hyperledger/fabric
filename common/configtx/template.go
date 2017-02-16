@@ -17,7 +17,7 @@ limitations under the License.
 package configtx
 
 import (
-	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
+	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"

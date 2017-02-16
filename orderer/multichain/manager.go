@@ -21,6 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -47,7 +48,7 @@ type configResources struct {
 	configtxapi.Manager
 }
 
-func (cr *configResources) SharedConfig() configtxapi.OrdererConfig {
+func (cr *configResources) SharedConfig() configvaluesapi.Orderer {
 	return cr.OrdererConfig()
 }
 

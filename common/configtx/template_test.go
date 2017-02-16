@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
+	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 

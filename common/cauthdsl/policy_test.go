@@ -64,7 +64,7 @@ func addPolicy(manager *policies.ManagerImpl, id string, policy *cb.Policy) {
 	if err != nil {
 		panic(err)
 	}
-	manager.CommitConfig()
+	manager.CommitProposals()
 }
 
 func providerMap() map[int32]policies.Provider {

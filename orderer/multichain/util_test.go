@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
+	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"

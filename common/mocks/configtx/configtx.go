@@ -18,6 +18,7 @@ package configtx
 
 import (
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -29,13 +30,13 @@ type Resources struct {
 	PolicyManagerVal *mockpolicies.Manager
 
 	// ChannelConfigVal is returned as the result of ChannelConfig()
-	ChannelConfigVal configtxapi.ChannelConfig
+	ChannelConfigVal configvaluesapi.Channel
 
 	// OrdererConfigVal is returned as the result of OrdererConfig()
-	OrdererConfigVal configtxapi.OrdererConfig
+	OrdererConfigVal configvaluesapi.Orderer
 
 	// ApplicationConfigVal is returned as the result of ApplicationConfig()
-	ApplicationConfigVal configtxapi.ApplicationConfig
+	ApplicationConfigVal configvaluesapi.Application
 
 	// MSPManagerVal is returned as the result of MSPManager()
 	MSPManagerVal msp.MSPManager
@@ -47,17 +48,17 @@ func (r *Resources) PolicyManager() policies.Manager {
 }
 
 // Returns the ChannelConfigVal
-func (r *Resources) ChannelConfig() configtxapi.ChannelConfig {
+func (r *Resources) ChannelConfig() configvaluesapi.Channel {
 	return r.ChannelConfigVal
 }
 
 // Returns the OrdererConfigVal
-func (r *Resources) OrdererConfig() configtxapi.OrdererConfig {
+func (r *Resources) OrdererConfig() configvaluesapi.Orderer {
 	return r.OrdererConfigVal
 }
 
 // Returns the ApplicationConfigVal
-func (r *Resources) ApplicationConfig() configtxapi.ApplicationConfig {
+func (r *Resources) ApplicationConfig() configvaluesapi.Application {
 	return r.ApplicationConfigVal
 }
 
@@ -71,8 +72,8 @@ type Transactional struct {
 }
 
 // BeginConfig returns slices populated by HandlerVal
-func (t *Transactional) BeginConfig(groups []string) ([]configtxapi.Handler, error) {
-	handlers := make([]configtxapi.Handler, len(groups))
+func (t *Transactional) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
+	handlers := make([]configvaluesapi.ValueProposer, len(groups))
 	for i := range handlers {
 		handlers[i] = t.HandlerVal
 	}
@@ -80,10 +81,10 @@ func (t *Transactional) BeginConfig(groups []string) ([]configtxapi.Handler, err
 }
 
 // CommitConfig calls through to the HandlerVal
-func (t *Transactional) CommitConfig() {}
+func (t *Transactional) CommitProposals() {}
 
 // RollbackConfig calls through to the HandlerVal
-func (t *Transactional) RollbackConfig() {}
+func (t *Transactional) RollbackProposals() {}
 
 // Initializer mocks the configtxapi.Initializer interface
 type Initializer struct {
@@ -116,6 +117,11 @@ func (ph *PolicyHandler) ProposePolicy(key string, path []string, configPolicy *
 	return ph.ErrorForProposePolicy
 }
 
+// BeginConfig will be removed in the future
+func (ph *PolicyHandler) BeginConfig(groups []string) ([]configtxapi.PolicyHandler, error) {
+	return []configtxapi.PolicyHandler{ph}, nil
+}
+
 // Handler mocks the configtxapi.Handler interface
 type Handler struct {
 	Transactional
@@ -125,7 +131,7 @@ type Handler struct {
 }
 
 // ProposeConfig sets LastKey to key, and LastValue to configValue, returning ErrorForProposedConfig
-func (h *Handler) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+func (h *Handler) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	h.LastKey = key
 	h.LastValue = configValue
 	return h.ErrorForProposeConfig

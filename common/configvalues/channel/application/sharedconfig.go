@@ -17,9 +17,9 @@ limitations under the License.
 package application
 
 import (
-	"github.com/hyperledger/fabric/common/configtx/api"
-	"github.com/hyperledger/fabric/common/configtx/handlers"
-	"github.com/hyperledger/fabric/common/configtx/handlers/msp"
+	"github.com/hyperledger/fabric/common/configvalues/api"
+	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
+	"github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/op/go-logging"
@@ -33,8 +33,8 @@ const (
 var orgSchema = &cb.ConfigGroupSchema{
 	Groups: map[string]*cb.ConfigGroupSchema{},
 	Values: map[string]*cb.ConfigValueSchema{
-		AnchorPeersKey:  nil,
-		handlers.MSPKey: nil, // TODO, consolidate into a constant once common org code exists
+		AnchorPeersKey:      nil,
+		organization.MSPKey: nil, // TODO, consolidate into a constant once common org code exists
 	},
 	Policies: map[string]*cb.ConfigPolicySchema{
 	// TODO, set appropriately once hierarchical policies are implemented
@@ -54,7 +54,7 @@ var Schema = &cb.ConfigGroupSchema{
 var logger = logging.MustGetLogger("common/configtx/handlers/application")
 
 type sharedConfig struct {
-	orgs map[string]api.ApplicationOrgConfig
+	orgs map[string]api.ApplicationOrg
 }
 
 // SharedConfigImpl is an implementation of Manager and configtx.ConfigHandler
@@ -74,16 +74,16 @@ func NewSharedConfigImpl(mspConfig *msp.MSPConfigHandler) *SharedConfigImpl {
 	}
 }
 
-// BeginConfig is used to start a new config proposal
-func (di *SharedConfigImpl) BeginConfig(groups []string) ([]api.Handler, error) {
+// BeginValueProposals is used to start a new config proposal
+func (di *SharedConfigImpl) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
 	logger.Debugf("Beginning a possible new peer shared config")
 	if di.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	di.pendingConfig = &sharedConfig{
-		orgs: make(map[string]api.ApplicationOrgConfig),
+		orgs: make(map[string]api.ApplicationOrg),
 	}
-	orgHandlers := make([]api.Handler, len(groups))
+	orgHandlers := make([]api.ValueProposer, len(groups))
 	for i, group := range groups {
 		org, ok := di.pendingConfig.orgs[group]
 		if !ok {
@@ -95,14 +95,14 @@ func (di *SharedConfigImpl) BeginConfig(groups []string) ([]api.Handler, error) 
 	return orgHandlers, nil
 }
 
-// RollbackConfig is used to abandon a new config proposal
-func (di *SharedConfigImpl) RollbackConfig() {
+// RollbackProposals is used to abandon a new config proposal
+func (di *SharedConfigImpl) RollbackProposals() {
 	logger.Debugf("Rolling back proposed peer shared config")
 	di.pendingConfig = nil
 }
 
-// CommitConfig is used to commit a new config proposal
-func (di *SharedConfigImpl) CommitConfig() {
+// CommitProposals is used to commit a new config proposal
+func (di *SharedConfigImpl) CommitProposals() {
 	logger.Debugf("Committing new peer shared config")
 	if di.pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
@@ -111,13 +111,13 @@ func (di *SharedConfigImpl) CommitConfig() {
 	di.pendingConfig = nil
 }
 
-// ProposeConfig is used to add new config to the config proposal
-func (di *SharedConfigImpl) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+// ProposeValue is used to add new config to the config proposal
+func (di *SharedConfigImpl) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	logger.Warningf("Uknown Peer config item with key %s", key)
 	return nil
 }
 
-// Organizations returns a map of org ID to ApplicationOrgConfig
-func (di *SharedConfigImpl) Organizations() map[string]api.ApplicationOrgConfig {
+// Organizations returns a map of org ID to ApplicationOrg
+func (di *SharedConfigImpl) Organizations() map[string]api.ApplicationOrg {
 	return di.config.orgs
 }
