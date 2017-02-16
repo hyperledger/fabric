@@ -1,3 +1,19 @@
+/*
+Copyright IBM Corp. 2016 All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package statecouchdb
 
 import (
@@ -8,6 +24,7 @@ import (
 
 var dataWrapper = "data"
 var jsonQueryFields = "fields"
+var jsonQuerySelector = "selector"
 
 var validOperators = []string{"$and", "$or", "$not", "$nor", "$all", "$elemMatch",
 	"$lt", "$lte", "$eq", "$ne", "$gte", "$gt", "$exits", "$type", "$in", "$nin",
@@ -20,6 +37,9 @@ All fields in the selector must have "data." prepended to the field names
 Fields listed in fields key will have "data." prepended
 Fields in the sort key will have "data." prepended
 
+Also,  the query will be scoped to the chaincodeid if the contextID is supplied
+In the example a contextID of "marble" is assumed.
+
 Example:
 
 Source Query:
@@ -28,41 +48,44 @@ Source Query:
 "sort": ["size", "color"], "limit": 10, "skip": 0}
 
 Result Wrapped Query:
-{"selector":{"data.owner":{"$eq":"tom"}},
+{"selector":{"$and":[{"chaincodeid":"marble"},{"data.owner":{"$eq":"tom"}}]},
 "fields": ["data.owner","data.asset_name","data.color","data.size","_id","version"],
 "sort":["data.size","data.color"],"limit":10,"skip":0}
 
-
 */
-func ApplyQueryWrapper(namespace, queryString string) string {
-
-	//TODO - namespace is being added to support scoping queries to the correct chaincode context
-	// A followup change will add the implementation for enabling the namespace filter
+func ApplyQueryWrapper(namespace, queryString string) (string, error) {
 
 	//create a generic map for the query json
 	jsonQueryMap := make(map[string]interface{})
 
 	//unmarshal the selected json into the generic map
-	json.Unmarshal([]byte(queryString), &jsonQueryMap)
+	err := json.Unmarshal([]byte(queryString), &jsonQueryMap)
+	if err != nil {
+		return "", err
+	}
 
 	//traverse through the json query and wrap any field names
 	processAndWrapQuery(jsonQueryMap)
 
-	//process the query and add the version and fields if fields are specified
-	for jsonKey, jsonValue := range jsonQueryMap {
+	//if "fields" are specified in the query, the add the "_id", "version" and "chaincodeid" fields
+	if jsonValue, ok := jsonQueryMap[jsonQueryFields]; ok {
+		//check to see if this is an interface map
+		if reflect.TypeOf(jsonValue).String() == "[]interface {}" {
 
-		//Add the "_id" and "version" fields,  these are needed by default
-		if jsonKey == jsonQueryFields {
-
-			//check to see if this is an interface map
-			if reflect.TypeOf(jsonValue).String() == "[]interface {}" {
-
-				//Add the "_id" and "version" fields,  these are needed by default
-				//Overwrite the query fields if the "_id" field has been added
-				jsonQueryMap[jsonQueryFields] = append(jsonValue.([]interface{}), "_id", "version")
-			}
-
+			//Add the "_id" and "version" fields,  these are needed by default
+			//Overwrite the query fields if the "_id" field has been added
+			jsonQueryMap[jsonQueryFields] = append(jsonValue.([]interface{}),
+				"_id", "version", "chaincodeid")
 		}
+	}
+
+	//Check to see if the "selector" is specified in the query
+	if jsonValue, ok := jsonQueryMap[jsonQuerySelector]; ok {
+		//if the "selector" is found, then add the "$and" clause and the namespace filter
+		setNamespaceInSelector(namespace, jsonValue, jsonQueryMap)
+	} else {
+		//if the "selector" is not found, then add a default namespace filter
+		setDefaultNamespaceInSelector(namespace, jsonQueryMap)
 	}
 
 	//Marshal the updated json query
@@ -70,8 +93,50 @@ func ApplyQueryWrapper(namespace, queryString string) string {
 
 	logger.Debugf("Rewritten query with data wrapper: %s", editedQuery)
 
-	return string(editedQuery)
+	return string(editedQuery), nil
 
+}
+
+//setNamespaceInSelector adds an additional heirarchy in the "selector"
+//{"owner": {"$eq": "tom"}}
+//would be mapped as (assuming a namespace of "marble"):
+//{"$and":[{"chaincodeid":"marble"},{"data.owner":{"$eq":"tom"}}]}
+func setNamespaceInSelector(namespace, jsonValue interface{},
+	jsonQueryMap map[string]interface{}) {
+
+	//create a array to store the parts of the query
+	var queryParts = make([]interface{}, 0)
+
+	//Add the namespace filter to filter on the chaincodeid
+	namespaceFilter := make(map[string]interface{})
+	namespaceFilter["chaincodeid"] = namespace
+
+	//Add the context filter and the existing selector value
+	queryParts = append(queryParts, namespaceFilter, jsonValue)
+
+	//Create a new mapping for the new query stucture
+	mappedSelector := make(map[string]interface{})
+
+	//Specify the "$and" operator for the parts of the query
+	mappedSelector["$and"] = queryParts
+
+	//Set the new mapped selector to the query selector
+	jsonQueryMap[jsonQuerySelector] = mappedSelector
+
+}
+
+//setDefaultNamespaceInSelector adds an default namespace filter in "selector"
+//If no selector is specified, the following is mapped to the "selector"
+//assuming a namespace of "marble"
+//{"chaincodeid":"marble"}
+func setDefaultNamespaceInSelector(namespace string, jsonQueryMap map[string]interface{}) {
+
+	//Add the context filter to filter on the chaincodeid
+	namespaceFilter := make(map[string]interface{})
+	namespaceFilter["chaincodeid"] = namespace
+
+	//Set the new mapped selector to the query selector
+	jsonQueryMap[jsonQuerySelector] = namespaceFilter
 }
 
 func processAndWrapQuery(jsonQueryMap map[string]interface{}) {
@@ -125,7 +190,8 @@ func processAndWrapQuery(jsonQueryMap map[string]interface{}) {
 	}
 }
 
-//processInterfaceMap processes an interface map and wraps field names or traverses the next level of the json query
+//processInterfaceMap processes an interface map and wraps field names or traverses
+//the next level of the json query
 func processInterfaceMap(jsonFragment map[string]interface{}) {
 
 	//iterate the the item in the map
