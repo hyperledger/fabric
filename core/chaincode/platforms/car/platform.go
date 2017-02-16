@@ -18,7 +18,6 @@ package car
 
 import (
 	"archive/tar"
-	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -46,13 +45,11 @@ func (carPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec)
 
 	var buf []string
 
-	spec := cds.ChaincodeSpec
-
 	//let the executable's name be chaincode ID's name
 	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.car.Dockerfile"))
 	buf = append(buf, "COPY codepackage.car /tmp/codepackage.car")
 	// invoking directly for maximum JRE compatiblity
-	buf = append(buf, fmt.Sprintf("RUN java -jar /usr/local/bin/chaintool buildcar /tmp/codepackage.car -o $GOPATH/bin/%s && rm /tmp/codepackage.car", spec.ChaincodeId.Name))
+	buf = append(buf, "RUN java -jar /usr/local/bin/chaintool buildcar /tmp/codepackage.car -o /usr/local/bin/chaincode && rm /tmp/codepackage.car")
 
 	dockerFileContents := strings.Join(buf, "\n")
 

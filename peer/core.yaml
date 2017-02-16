@@ -312,10 +312,6 @@ chaincode:
     #net - in net mode validator will run chaincode in a docker container
 
     mode: net
-    # typically installpath should not be modified. Otherwise, user must ensure
-    # the chaincode executable is placed in the path specifed by installpath in
-    # the image
-    installpath: /opt/gopath/bin/
 
     # keepalive in seconds. In situations where the communiction goes through a
     # proxy that does not support keep-alive, this parameter will maintain connection
