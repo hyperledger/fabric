@@ -52,9 +52,10 @@ func (e *EndorserOneValidSignature) Init(stub shim.ChaincodeStubInterface) pb.Re
 // args[0] - function name (not used now)
 // args[1] - serialized Header object
 // args[2] - serialized ChaincodeProposalPayload object
-// args[3] - binary blob of simulation results
-// args[4] - serialized events (optional)
-// args[5] - payloadVisibility (optional)
+// args[3] - result of executing chaincode
+// args[4] - binary blob of simulation results
+// args[5] - serialized events
+// args[6] - payloadVisibility
 //
 // NOTE: this chaincode is meant to sign another chaincode's simulation
 // results. It should not manipulate state as any state change will be
@@ -119,11 +120,15 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 	}
 
 	// Handle payload visibility (it's an optional argument)
-	visibility := []byte("") // TODO: when visibility is properly defined, replace with the default
+	// currently the fabric only supports full visibility: this means that
+	// there are no restrictions on which parts of the proposal payload will
+	// be visible in the final transaction; this default approach requires
+	// no additional instructions in the PayloadVisibility field; however
+	// the fabric may be extended to encode more elaborate visibility
+	// mechanisms that shall be encoded in this field (and handled
+	// appropriately by the peer)
+	var visibility []byte
 	if len(args) > 6 {
-		if args[6] == nil {
-			return shim.Error("serialized events are null")
-		}
 		visibility = args[6]
 	}
 

@@ -46,9 +46,16 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*p
 	// TODO: should we even do this? If so, using which interface?
 
 	//    - ensure that the visibility field has some value we understand
-	// TODO: we need to define visibility fields first
-
-	// TODO: should we check the payload as well?
+	// currently the fabric only supports full visibility: this means that
+	// there are no restrictions on which parts of the proposal payload will
+	// be visible in the final transaction; this default approach requires
+	// no additional instructions in the PayloadVisibility field which is
+	// therefore expected to be nil; however the fabric may be extended to
+	// encode more elaborate visibility mechanisms that shall be encoded in
+	// this field (and handled appropriately by the peer)
+	if chaincodeHdrExt.PayloadVisibility != nil {
+		return nil, fmt.Errorf("Invalid payload visibility field")
+	}
 
 	return chaincodeHdrExt, nil
 }

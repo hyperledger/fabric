@@ -253,15 +253,15 @@ func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibi
 		return nil, errors.New("Failure while marshalling the ChaincodeProposalPayload!")
 	}
 
-	// TODO: handle payload visibility - it needs to be defined first!
-	// here, as an example, I'll code the visibility policy that allows the
-	// full header but only the hash of the payload
+	// currently the fabric only supports full visibility: this means that
+	// there are no restrictions on which parts of the proposal payload will
+	// be visible in the final transaction; this default approach requires
+	// no additional instructions in the PayloadVisibility field; however
+	// the fabric may be extended to encode more elaborate visibility
+	// mechanisms that shall be encoded in this field (and handled
+	// appropriately by the peer)
 
-	digest, err := factory.GetDefaultOrPanic().Hash(cppBytes, &bccsp.SHAOpts{})
-	if err != nil {
-		return nil, fmt.Errorf("Failed computing digest [%s]", err)
-	}
-	return digest, nil
+	return cppBytes, nil
 }
 
 // GetProposalHash2 gets the proposal hash - this version
