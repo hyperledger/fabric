@@ -186,9 +186,7 @@ func TestInvoke(t *testing.T) {
 	}
 
 	// success test 3: invocation with mandatory args + events and visibility
-	visibility := []byte("visibility")
-
-	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, successRes, simRes, events, visibility}
+	args = [][]byte{[]byte(""), proposal.Header, proposal.Payload, successRes, simRes, events, nil}
 	res = stub.MockInvoke("1", args)
 	if res.Status != shim.OK {
 		t.Fail()
@@ -196,7 +194,7 @@ func TestInvoke(t *testing.T) {
 		return
 	}
 
-	err = validateProposalResponse(res.Payload, proposal, visibility, successResponse, simRes, events)
+	err = validateProposalResponse(res.Payload, proposal, []byte{}, successResponse, simRes, events)
 	if err != nil {
 		t.Fail()
 		t.Fatalf("%s", err)

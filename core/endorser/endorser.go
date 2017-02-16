@@ -271,12 +271,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 // ProcessProposal process the Proposal
 func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
 	// at first, we check whether the message is valid
-	prop, _, hdrExt, err := validation.ValidateProposalMessage(signedProp)
-	if err != nil {
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
-	}
-
-	hdr, err := putils.GetHeader(prop.Header)
+	prop, hdr, hdrExt, err := validation.ValidateProposalMessage(signedProp)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
@@ -325,8 +320,6 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	//       to validate the supplied action before endorsing it
 
 	//1 -- simulate
-	//TODO what do we do with response ? We need it for Invoke responses for sure
-	//Which field in PayloadResponse will carry return value ?
 	cd, res, simulationResult, ccevent, err := e.simulateProposal(ctx, chainID, txid, prop, hdrExt.ChaincodeId, txsim)
 	if err != nil {
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
@@ -346,7 +339,6 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		}
 	}
 
-	//TODO what do we do with response ? We need it for Invoke responses for sure
 	// Set the proposal response payload - it
 	// contains the "return value" from the
 	// chaincode invocation
