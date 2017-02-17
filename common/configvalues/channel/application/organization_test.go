@@ -19,7 +19,7 @@ package application
 import (
 	"testing"
 
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configvalues/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
@@ -47,24 +47,24 @@ func groupToKeyValue(configGroup *cb.ConfigGroup) (string, *cb.ConfigValue) {
 }
 
 func TestApplicationOrgInterface(t *testing.T) {
-	_ = configtxapi.Handler(NewApplicationOrgConfig("id", nil))
+	_ = api.ValueProposer(NewApplicationOrgConfig("id", nil))
 }
 
 func TestApplicationOrgDoubleBegin(t *testing.T) {
 	m := NewApplicationOrgConfig("id", nil)
-	m.BeginConfig(nil)
-	assert.Panics(t, func() { m.BeginConfig(nil) }, "Two begins back to back should have caused a panic")
+	m.BeginValueProposals(nil)
+	assert.Panics(t, func() { m.BeginValueProposals(nil) }, "Two begins back to back should have caused a panic")
 }
 
 func TestApplicationOrgCommitWithoutBegin(t *testing.T) {
 	m := NewApplicationOrgConfig("id", nil)
-	assert.Panics(t, m.CommitConfig, "Committing without beginning should have caused a panic")
+	assert.Panics(t, m.CommitProposals, "Committing without beginning should have caused a panic")
 }
 
 func TestApplicationOrgRollback(t *testing.T) {
 	m := NewApplicationOrgConfig("id", nil)
 	m.pendingConfig = &applicationOrgConfig{}
-	m.RollbackConfig()
+	m.RollbackProposals()
 	assert.Nil(t, m.pendingConfig, "Should have cleared pending config on rollback")
 }
 
@@ -76,11 +76,11 @@ func TestApplicationOrgAnchorPeers(t *testing.T) {
 	invalidMessage := makeInvalidConfigValue()
 	validMessage := TemplateAnchorPeers("id", endVal)
 	m := NewApplicationOrgConfig("id", nil)
-	m.BeginConfig(nil)
+	m.BeginValueProposals(nil)
 
-	assert.Error(t, m.ProposeConfig(AnchorPeersKey, invalidMessage), "Should have failed on invalid message")
-	assert.NoError(t, m.ProposeConfig(groupToKeyValue(validMessage)), "Should not have failed on invalid message")
-	m.CommitConfig()
+	assert.Error(t, m.ProposeValue(AnchorPeersKey, invalidMessage), "Should have failed on invalid message")
+	assert.NoError(t, m.ProposeValue(groupToKeyValue(validMessage)), "Should not have failed on invalid message")
+	m.CommitProposals()
 
 	assert.Equal(t, m.AnchorPeers(), endVal, "Did not set updated anchor peers")
 }

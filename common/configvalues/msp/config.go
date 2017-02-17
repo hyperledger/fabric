@@ -43,29 +43,29 @@ type MSPConfigHandler struct {
 // BeginConfig called when a config proposal is begun
 func (bh *MSPConfigHandler) BeginConfig() {
 	if bh.pendingConfig != nil {
-		panic("Programming error, called BeginConfig while a proposal was in process")
+		panic("Programming error, called BeginValueProposals while a proposal was in process")
 	}
 	bh.pendingConfig = &mspConfigStore{
 		idMap: make(map[string]*pendingMSPConfig),
 	}
 }
 
-// RollbackConfig called when a config proposal is abandoned
-func (bh *MSPConfigHandler) RollbackConfig() {
+// RollbackProposals called when a config proposal is abandoned
+func (bh *MSPConfigHandler) RollbackProposals() {
 	bh.pendingConfig = nil
 }
 
-// CommitConfig called when a config proposal is committed
-func (bh *MSPConfigHandler) CommitConfig() {
+// CommitProposals called when a config proposal is committed
+func (bh *MSPConfigHandler) CommitProposals() {
 	if bh.pendingConfig == nil {
-		panic("Programming error, called CommitConfig with no proposal in process")
+		panic("Programming error, called CommitProposals with no proposal in process")
 	}
 
 	bh.MSPManager = bh.pendingConfig.proposedMgr
 	bh.pendingConfig = nil
 }
 
-// ProposeConfig called when config is added to a proposal
+// ProposeValue called when config is added to a proposal
 func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP, error) {
 	// check that the type for that MSP is supported
 	if mspConfig.Type != int32(msp.FABRIC) {

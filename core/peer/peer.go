@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -43,7 +44,7 @@ var peerLogger = logging.MustGetLogger("peer")
 
 type chainSupport struct {
 	configtxapi.Manager
-	configtxapi.ApplicationConfig
+	configvaluesapi.Application
 	ledger ledger.PeerLedger
 }
 
@@ -165,8 +166,8 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
 	gossipCallbackWrapper := func(cm configtxapi.Manager) {
 		gossipEventer.ProcessConfigUpdate(&chainSupport{
-			Manager:           cm,
-			ApplicationConfig: configtxInitializer.ApplicationConfig(),
+			Manager:     cm,
+			Application: configtxInitializer.ApplicationConfig(),
 		})
 	}
 
@@ -183,9 +184,9 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	mspmgmt.XXXSetMSPManager(cid, configtxManager.MSPManager())
 
 	cs := &chainSupport{
-		Manager:           configtxManager,
-		ApplicationConfig: configtxManager.ApplicationConfig(), // TODO, refactor as this is accessible through Manager
-		ledger:            ledger,
+		Manager:     configtxManager,
+		Application: configtxManager.ApplicationConfig(), // TODO, refactor as this is accessible through Manager
+		ledger:      ledger,
 	}
 
 	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(cs))

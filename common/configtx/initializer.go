@@ -21,10 +21,11 @@ import (
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx/api"
-	configtxapplication "github.com/hyperledger/fabric/common/configtx/handlers/application"
-	configtxchannel "github.com/hyperledger/fabric/common/configtx/handlers/channel"
-	configtxmsp "github.com/hyperledger/fabric/common/configtx/handlers/msp"
-	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configtxchannel "github.com/hyperledger/fabric/common/configvalues/channel"
+	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
+	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
+	configtxmsp "github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -44,17 +45,17 @@ func (r *resources) PolicyManager() policies.Manager {
 }
 
 // ChannelConfig returns the api.ChannelConfig for the chain
-func (r *resources) ChannelConfig() api.ChannelConfig {
+func (r *resources) ChannelConfig() configvaluesapi.Channel {
 	return r.channelConfig
 }
 
 // OrdererConfig returns the api.OrdererConfig for the chain
-func (r *resources) OrdererConfig() api.OrdererConfig {
+func (r *resources) OrdererConfig() configvaluesapi.Orderer {
 	return r.ordererConfig
 }
 
 // ApplicationConfig returns the api.ApplicationConfig for the chain
-func (r *resources) ApplicationConfig() api.ApplicationConfig {
+func (r *resources) ApplicationConfig() configvaluesapi.Application {
 	return r.applicationConfig
 }
 
@@ -104,35 +105,35 @@ func NewInitializer() api.Initializer {
 	}
 }
 
-// BeginConfig is used to start a new config proposal
-func (i *initializer) BeginConfig(groups []string) ([]api.Handler, error) {
+// BeginValueProposals is used to start a new config proposal
+func (i *initializer) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
 	if len(groups) != 1 {
 		logger.Panicf("Initializer only supports having one root group")
 	}
 	i.mspConfigHandler.BeginConfig()
-	return []api.Handler{i.channelConfig}, nil
+	return []configvaluesapi.ValueProposer{i.channelConfig}, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
-func (i *initializer) RollbackConfig() {
-	i.mspConfigHandler.RollbackConfig()
+func (i *initializer) RollbackProposals() {
+	i.mspConfigHandler.RollbackProposals()
 }
 
 // CommitConfig is used to commit a new config proposal
-func (i *initializer) CommitConfig() {
-	i.mspConfigHandler.CommitConfig()
+func (i *initializer) CommitProposals() {
+	i.mspConfigHandler.CommitProposals()
 }
 
 type importHack struct {
 	*policies.ManagerImpl
 }
 
-func (ih importHack) BeginConfig(groups []string) ([]api.Handler, error) {
+func (ih importHack) BeginConfig(groups []string) ([]api.PolicyHandler, error) {
 	policyManagers, err := ih.ManagerImpl.BeginConfig(groups)
 	if err != nil {
 		return nil, err
 	}
-	handlers := make([]api.Handler, len(policyManagers))
+	handlers := make([]api.PolicyHandler, len(policyManagers))
 	for i, policyManager := range policyManagers {
 		handlers[i] = &importHack{ManagerImpl: policyManager}
 	}
@@ -147,6 +148,6 @@ func (i *initializer) PolicyHandler() api.PolicyHandler {
 	return importHack{ManagerImpl: i.policyManager}
 }
 
-func (i *initializer) ProposeConfig(key string, value *cb.ConfigValue) error {
+func (i *initializer) ProposeValue(key string, value *cb.ConfigValue) error {
 	return fmt.Errorf("Programming error, this should never be invoked")
 }

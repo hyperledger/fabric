@@ -22,9 +22,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxapplication "github.com/hyperledger/fabric/common/configtx/handlers/application"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"

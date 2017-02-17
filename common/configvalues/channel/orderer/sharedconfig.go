@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric/common/configtx/api"
-	"github.com/hyperledger/fabric/common/configtx/handlers"
-	"github.com/hyperledger/fabric/common/configtx/handlers/msp"
+	"github.com/hyperledger/fabric/common/configvalues/api"
+	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
+	"github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -99,10 +99,10 @@ type ordererConfig struct {
 	kafkaBrokers             []string
 	ingressPolicyNames       []string
 	egressPolicyNames        []string
-	orgs                     map[string]*handlers.OrgConfig
+	orgs                     map[string]*organization.OrgConfig
 }
 
-// ManagerImpl is an implementation of configtxapi.OrdererConfig and configtxapi.Handler
+// ManagerImpl is an implementation of configtxapi.OrdererConfig and configtxapi.ValueProposer
 type ManagerImpl struct {
 	pendingConfig *ordererConfig
 	config        *ordererConfig
@@ -156,20 +156,20 @@ func (pm *ManagerImpl) EgressPolicyNames() []string {
 	return pm.config.egressPolicyNames
 }
 
-// BeginConfig is used to start a new config proposal
-func (pm *ManagerImpl) BeginConfig(groups []string) ([]api.Handler, error) {
+// BeginValueProposals is used to start a new config proposal
+func (pm *ManagerImpl) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
 	logger.Debugf("Beginning a possible new orderer shared config")
 	if pm.pendingConfig != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	pm.pendingConfig = &ordererConfig{
-		orgs: make(map[string]*handlers.OrgConfig),
+		orgs: make(map[string]*organization.OrgConfig),
 	}
-	orgHandlers := make([]api.Handler, len(groups))
+	orgHandlers := make([]api.ValueProposer, len(groups))
 	for i, group := range groups {
 		org, ok := pm.pendingConfig.orgs[group]
 		if !ok {
-			org = handlers.NewOrgConfig(group, pm.mspConfig)
+			org = organization.NewOrgConfig(group, pm.mspConfig)
 			pm.pendingConfig.orgs[group] = org
 		}
 		orgHandlers[i] = org
@@ -177,14 +177,14 @@ func (pm *ManagerImpl) BeginConfig(groups []string) ([]api.Handler, error) {
 	return orgHandlers, nil
 }
 
-// RollbackConfig is used to abandon a new config proposal
-func (pm *ManagerImpl) RollbackConfig() {
+// RollbackProposals is used to abandon a new config proposal
+func (pm *ManagerImpl) RollbackProposals() {
 	logger.Debugf("Rolling back orderer config")
 	pm.pendingConfig = nil
 }
 
-// CommitConfig is used to commit a new config proposal
-func (pm *ManagerImpl) CommitConfig() {
+// CommitProposals is used to commit a new config proposal
+func (pm *ManagerImpl) CommitProposals() {
 	if pm.pendingConfig == nil {
 		logger.Fatalf("Programming error, cannot call commit without an existing proposal")
 	}
@@ -195,8 +195,8 @@ func (pm *ManagerImpl) CommitConfig() {
 	}
 }
 
-// ProposeConfig is used to add new config to the config proposal
-func (pm *ManagerImpl) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+// ProposeValue is used to add new config to the config proposal
+func (pm *ManagerImpl) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	switch key {
 	case ConsensusTypeKey:
 		consensusType := &ab.ConsensusType{}

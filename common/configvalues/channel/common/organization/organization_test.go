@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package handlers
+package organization
 
 import (
 	"testing"
 
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configvalues/api"
 
 	logging "github.com/op/go-logging"
 )
@@ -29,7 +29,7 @@ func init() {
 }
 
 func TestInterface(t *testing.T) {
-	_ = configtxapi.Handler(NewOrgConfig("id", nil))
+	_ = api.ValueProposer(NewOrgConfig("id", nil))
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -40,8 +40,8 @@ func TestDoubleBegin(t *testing.T) {
 	}()
 
 	m := NewOrgConfig("id", nil)
-	m.BeginConfig(nil)
-	m.BeginConfig(nil)
+	m.BeginValueProposals(nil)
+	m.BeginValueProposals(nil)
 }
 
 func TestCommitWithoutBegin(t *testing.T) {
@@ -52,13 +52,13 @@ func TestCommitWithoutBegin(t *testing.T) {
 	}()
 
 	m := NewOrgConfig("id", nil)
-	m.CommitConfig()
+	m.CommitProposals()
 }
 
 func TestRollback(t *testing.T) {
 	m := NewOrgConfig("id", nil)
 	m.pendingConfig = &orgConfig{}
-	m.RollbackConfig()
+	m.RollbackProposals()
 	if m.pendingConfig != nil {
 		t.Fatalf("Should have cleared pending config on rollback")
 	}

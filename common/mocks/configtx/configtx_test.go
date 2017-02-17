@@ -41,7 +41,3 @@ func TestConfigtxManagerInterface(t *testing.T) {
 func TestConfigtxResourcesInterface(t *testing.T) {
 	_ = configtxapi.Resources(&Resources{})
 }
-
-func TestConfigtxHandlerInterface(t *testing.T) {
-	_ = configtxapi.Handler(&Handler{})
-}

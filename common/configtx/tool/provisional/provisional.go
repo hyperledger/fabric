@@ -21,9 +21,9 @@ import (
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxchannel "github.com/hyperledger/fabric/common/configtx/handlers/channel"
-	configtxorderer "github.com/hyperledger/fabric/common/configtx/handlers/orderer"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	configtxchannel "github.com/hyperledger/fabric/common/configvalues/channel"
+	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	cb "github.com/hyperledger/fabric/protos/common"

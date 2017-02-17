@@ -25,7 +25,7 @@ import (
 )
 
 func TestMSPConfigManager(t *testing.T) {
-	conf, err := msp.GetLocalMspConfig("../../../../msp/sampleconfig/", "DEFAULT")
+	conf, err := msp.GetLocalMspConfig("../../../msp/sampleconfig/", "DEFAULT")
 	assert.NoError(t, err)
 
 	// test success:
@@ -35,7 +35,7 @@ func TestMSPConfigManager(t *testing.T) {
 	mspCH.BeginConfig()
 	_, err = mspCH.ProposeMSP(conf)
 	assert.NoError(t, err)
-	mspCH.CommitConfig()
+	mspCH.CommitProposals()
 
 	msps, err := mspCH.GetMSPs()
 	assert.NoError(t, err)

@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	"github.com/hyperledger/fabric/common/configvalues/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	logging "github.com/op/go-logging"
@@ -44,7 +44,7 @@ func makeInvalidConfigValue() *cb.ConfigValue {
 }
 
 func TestInterface(t *testing.T) {
-	_ = configtxapi.ChannelConfig(NewSharedConfigImpl(nil, nil))
+	_ = api.Channel(NewSharedConfigImpl(nil, nil))
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -55,8 +55,8 @@ func TestDoubleBegin(t *testing.T) {
 	}()
 
 	m := NewSharedConfigImpl(nil, nil)
-	m.BeginConfig(nil)
-	m.BeginConfig(nil)
+	m.BeginValueProposals(nil)
+	m.BeginValueProposals(nil)
 }
 
 func TestCommitWithoutBegin(t *testing.T) {
@@ -67,13 +67,13 @@ func TestCommitWithoutBegin(t *testing.T) {
 	}()
 
 	m := NewSharedConfigImpl(nil, nil)
-	m.CommitConfig()
+	m.CommitProposals()
 }
 
 func TestRollback(t *testing.T) {
 	m := NewSharedConfigImpl(nil, nil)
 	m.pendingConfig = &chainConfig{}
-	m.RollbackConfig()
+	m.RollbackProposals()
 	if m.pendingConfig != nil {
 		t.Fatalf("Should have cleared pending config on rollback")
 	}
@@ -85,24 +85,24 @@ func TestHashingAlgorithm(t *testing.T) {
 	validAlgorithm := DefaultHashingAlgorithm()
 
 	m := NewSharedConfigImpl(nil, nil)
-	m.BeginConfig(nil)
+	m.BeginValueProposals(nil)
 
-	err := m.ProposeConfig(HashingAlgorithmKey, invalidMessage)
+	err := m.ProposeValue(HashingAlgorithmKey, invalidMessage)
 	if err == nil {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(groupToKeyValue(invalidAlgorithm))
+	err = m.ProposeValue(groupToKeyValue(invalidAlgorithm))
 	if err == nil {
 		t.Fatalf("Should have failed on invalid algorithm")
 	}
 
-	err = m.ProposeConfig(groupToKeyValue(validAlgorithm))
+	err = m.ProposeValue(groupToKeyValue(validAlgorithm))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
 
-	m.CommitConfig()
+	m.CommitProposals()
 
 	if m.HashingAlgorithm() == nil {
 		t.Fatalf("Should have set default hashing algorithm")
@@ -115,24 +115,24 @@ func TestBlockDataHashingStructure(t *testing.T) {
 	validWidth := DefaultBlockDataHashingStructure()
 
 	m := NewSharedConfigImpl(nil, nil)
-	m.BeginConfig(nil)
+	m.BeginValueProposals(nil)
 
-	err := m.ProposeConfig(BlockDataHashingStructureKey, invalidMessage)
+	err := m.ProposeValue(BlockDataHashingStructureKey, invalidMessage)
 	if err == nil {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(groupToKeyValue(invalidWidth))
+	err = m.ProposeValue(groupToKeyValue(invalidWidth))
 	if err == nil {
 		t.Fatalf("Should have failed on invalid width")
 	}
 
-	err = m.ProposeConfig(groupToKeyValue(validWidth))
+	err = m.ProposeValue(groupToKeyValue(validWidth))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
 
-	m.CommitConfig()
+	m.CommitProposals()
 
 	if newWidth := m.BlockDataHashingStructureWidth(); newWidth != defaultBlockDataHashingStructureWidth {
 		t.Fatalf("Unexpected width, got %d expected %d", newWidth, defaultBlockDataHashingStructureWidth)
@@ -143,19 +143,19 @@ func TestOrdererAddresses(t *testing.T) {
 	invalidMessage := makeInvalidConfigValue()
 	validMessage := DefaultOrdererAddresses()
 	m := NewSharedConfigImpl(nil, nil)
-	m.BeginConfig(nil)
+	m.BeginValueProposals(nil)
 
-	err := m.ProposeConfig(OrdererAddressesKey, invalidMessage)
+	err := m.ProposeValue(OrdererAddressesKey, invalidMessage)
 	if err == nil {
 		t.Fatalf("Should have failed on invalid message")
 	}
 
-	err = m.ProposeConfig(groupToKeyValue(validMessage))
+	err = m.ProposeValue(groupToKeyValue(validMessage))
 	if err != nil {
 		t.Fatalf("Error applying valid config: %s", err)
 	}
 
-	m.CommitConfig()
+	m.CommitProposals()
 
 	if newAddrs := m.OrdererAddresses(); !reflect.DeepEqual(newAddrs, defaultOrdererAddresses) {
 		t.Fatalf("Unexpected width, got %s expected %s", newAddrs, defaultOrdererAddresses)

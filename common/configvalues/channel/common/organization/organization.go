@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package handlers
+package organization
 
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/configtx/api"
-	mspconfig "github.com/hyperledger/fabric/common/configtx/handlers/msp"
+	"github.com/hyperledger/fabric/common/configvalues/api"
+	mspconfig "github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -61,8 +61,8 @@ func NewOrgConfig(id string, mspConfig *mspconfig.MSPConfigHandler) *OrgConfig {
 	}
 }
 
-// BeginConfig is used to start a new config proposal
-func (oc *OrgConfig) BeginConfig(groups []string) ([]api.Handler, error) {
+// BeginValueProposals is used to start a new config proposal
+func (oc *OrgConfig) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
 	logger.Debugf("Beginning a possible new org config")
 	if len(groups) != 0 {
 		return nil, fmt.Errorf("Orgs do not support sub-groups")
@@ -75,14 +75,14 @@ func (oc *OrgConfig) BeginConfig(groups []string) ([]api.Handler, error) {
 	return nil, nil
 }
 
-// RollbackConfig is used to abandon a new config proposal
-func (oc *OrgConfig) RollbackConfig() {
+// RollbackProposals is used to abandon a new config proposal
+func (oc *OrgConfig) RollbackProposals() {
 	logger.Debugf("Rolling back proposed org config")
 	oc.pendingConfig = nil
 }
 
-// CommitConfig is used to commit a new config proposal
-func (oc *OrgConfig) CommitConfig() {
+// CommitProposals is used to commit a new config proposal
+func (oc *OrgConfig) CommitProposals() {
 	logger.Debugf("Committing new org config")
 	if oc.pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
@@ -101,8 +101,8 @@ func (oc *OrgConfig) MSPID() string {
 	return oc.mspID
 }
 
-// ProposeConfig is used to add new config to the config proposal
-func (oc *OrgConfig) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+// ProposeValue is used to add new config to the config proposal
+func (oc *OrgConfig) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	switch key {
 	case MSPKey:
 		logger.Debugf("Initializing org MSP for id %s", oc.id)

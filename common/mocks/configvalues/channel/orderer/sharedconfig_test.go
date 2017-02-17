@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package channel
+package sharedconfig
 
 import (
 	"testing"
 
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
 )
 
-func TestChainConfigInterface(t *testing.T) {
-	_ = configtxapi.ChannelConfig(&SharedConfig{})
+func TestSharedConfigInterface(t *testing.T) {
+	_ = configvaluesapi.Orderer(&SharedConfig{})
 }

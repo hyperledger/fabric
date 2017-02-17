@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/configtx/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -32,21 +33,21 @@ func (cr *configResult) commit() {
 	for _, subResult := range cr.subResults {
 		subResult.commit()
 	}
-	cr.handler.CommitConfig()
+	cr.handler.CommitProposals()
 }
 
 func (cr *configResult) rollback() {
 	for _, subResult := range cr.subResults {
 		subResult.rollback()
 	}
-	cr.handler.RollbackConfig()
+	cr.handler.RollbackProposals()
 }
 
 // proposeGroup proposes a group configuration with a given handler
 // it will in turn recursively call itself until all groups have been exhausted
 // at each call, it returns the handler that was passed in, plus any handlers returned
 // by recursive calls into proposeGroup
-func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handler api.Handler) (*configResult, error) {
+func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handler configvaluesapi.ValueProposer) (*configResult, error) {
 	subGroups := make([]string, len(group.Groups))
 	i := 0
 	for subGroup := range group.Groups {
@@ -55,7 +56,7 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 	}
 
 	logger.Debugf("Beginning new config for channel %s and group %s", cm.chainID, name)
-	subHandlers, err := handler.BeginConfig(subGroups)
+	subHandlers, err := handler.BeginValueProposals(subGroups)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 	}
 
 	for key, value := range group.Values {
-		if err := handler.ProposeConfig(key, value); err != nil {
+		if err := handler.ProposeValue(key, value); err != nil {
 			result.rollback()
 			return nil, err
 		}
@@ -94,7 +95,7 @@ func (cm *configManager) proposePolicies(rootGroup *cb.ConfigGroup) (*configResu
 	for key, policy := range rootGroup.Policies {
 		logger.Debugf("Proposing policy: %s", key)
 		if err := cm.initializer.PolicyHandler().ProposePolicy(key, []string{RootGroupKey}, policy); err != nil {
-			cm.initializer.PolicyHandler().RollbackConfig()
+			cm.initializer.PolicyHandler().RollbackProposals()
 			return nil, err
 		}
 	}

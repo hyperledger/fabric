@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/hyperledger/fabric/common/configtx/api"
-	"github.com/hyperledger/fabric/common/configtx/handlers/application"
-	"github.com/hyperledger/fabric/common/configtx/handlers/orderer"
+	"github.com/hyperledger/fabric/common/configvalues/api"
+	"github.com/hyperledger/fabric/common/configvalues/channel/application"
+	"github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -105,9 +105,9 @@ func (pm *SharedConfigImpl) OrdererAddresses() []string {
 	return pm.config.ordererAddresses
 }
 
-// BeginConfig is used to start a new config proposal
-func (pm *SharedConfigImpl) BeginConfig(groups []string) ([]api.Handler, error) {
-	handlers := make([]api.Handler, len(groups))
+// BeginValueProposals is used to start a new config proposal
+func (pm *SharedConfigImpl) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
+	handlers := make([]api.ValueProposer, len(groups))
 
 	for i, group := range groups {
 		switch group {
@@ -128,13 +128,13 @@ func (pm *SharedConfigImpl) BeginConfig(groups []string) ([]api.Handler, error) 
 	return handlers, nil
 }
 
-// RollbackConfig is used to abandon a new config proposal
-func (pm *SharedConfigImpl) RollbackConfig() {
+// RollbackProposals is used to abandon a new config proposal
+func (pm *SharedConfigImpl) RollbackProposals() {
 	pm.pendingConfig = nil
 }
 
-// CommitConfig is used to commit a new config proposal
-func (pm *SharedConfigImpl) CommitConfig() {
+// CommitProposals is used to commit a new config proposal
+func (pm *SharedConfigImpl) CommitProposals() {
 	if pm.pendingConfig == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}
@@ -142,8 +142,8 @@ func (pm *SharedConfigImpl) CommitConfig() {
 	pm.pendingConfig = nil
 }
 
-// ProposeConfig is used to add new config to the config proposal
-func (pm *SharedConfigImpl) ProposeConfig(key string, configValue *cb.ConfigValue) error {
+// ProposeValue is used to add new config to the config proposal
+func (pm *SharedConfigImpl) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	switch key {
 	case HashingAlgorithmKey:
 		hashingAlgorithm := &cb.HashingAlgorithm{}
