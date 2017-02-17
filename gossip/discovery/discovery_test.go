@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -27,12 +28,21 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 var timeout = time.Second * time.Duration(15)
+
+func init() {
+	aliveTimeInterval := time.Duration(time.Millisecond * 100)
+	SetAliveTimeInterval(aliveTimeInterval)
+	SetAliveExpirationTimeout(10 * aliveTimeInterval)
+	SetAliveExpirationCheckInterval(aliveTimeInterval)
+	SetReconnectInterval(10 * aliveTimeInterval)
+}
 
 type dummyCommModule struct {
 	id           string
@@ -139,13 +149,6 @@ func (comm *dummyCommModule) CloseConn(peer *NetworkMember) {
 
 	comm.streams[peer.Endpoint].CloseSend()
 	comm.conns[peer.Endpoint].Close()
-}
-
-func init() {
-	aliveTimeInterval = time.Duration(time.Millisecond * 100)
-	aliveExpirationTimeout = 10 * aliveTimeInterval
-	aliveExpirationCheckInterval = aliveTimeInterval
-	reconnectInterval = aliveExpirationTimeout
 }
 
 func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) error {
@@ -348,12 +351,12 @@ func TestInitiateSync(t *testing.T) {
 				if atomic.LoadInt32(&toDie) == int32(1) {
 					return
 				}
-				time.Sleep(aliveExpirationTimeout / 3)
+				time.Sleep(getAliveExpirationTimeout() / 3)
 				inst.InitiateSync(9)
 			}
 		}()
 	}
-	time.Sleep(aliveExpirationTimeout * 4)
+	time.Sleep(getAliveExpirationTimeout() * 4)
 	assertMembership(t, instances, nodeNum-1)
 	atomic.StoreInt32(&toDie, int32(1))
 	stopInstances(t, instances)
@@ -472,13 +475,51 @@ func TestConvergence(t *testing.T) {
 	}
 
 	assertMembership(t, instances, 3)
-	connector := createDiscoveryInstance(4623, fmt.Sprintf("d13"), []string{bootPeer(4611), bootPeer(4615), bootPeer(4619)})
+	connector := createDiscoveryInstance(4623, "d13", []string{bootPeer(4611), bootPeer(4615), bootPeer(4619)})
 	instances = append(instances, connector)
 	assertMembership(t, instances, 12)
 	connector.Stop()
 	instances = instances[:len(instances)-1]
 	assertMembership(t, instances, 11)
 	stopInstances(t, instances)
+}
+
+func TestConfigFromFile(t *testing.T) {
+	preAliveTimeInterval := getAliveTimeInterval()
+	preAliveExpirationTimeout := getAliveExpirationTimeout()
+	preAliveExpirationCheckInterval := getAliveExpirationCheckInterval()
+	preReconnectInterval := getReconnectInterval()
+
+	// Recover the config values in order to avoid impacting other tests
+	defer func() {
+		SetAliveTimeInterval(preAliveTimeInterval)
+		SetAliveExpirationTimeout(preAliveExpirationTimeout)
+		SetAliveExpirationCheckInterval(preAliveExpirationCheckInterval)
+		SetReconnectInterval(preReconnectInterval)
+	}()
+
+	// Verify if using default values when config is missing
+	viper.Reset()
+	aliveExpirationCheckInterval = 0 * time.Second
+	assert.Equal(t, time.Duration(5)*time.Second, getAliveTimeInterval())
+	assert.Equal(t, time.Duration(25)*time.Second, getAliveExpirationTimeout())
+	assert.Equal(t, time.Duration(25)*time.Second/10, getAliveExpirationCheckInterval())
+	assert.Equal(t, time.Duration(25)*time.Second, getReconnectInterval())
+
+	//Verify reading the values from config file
+	viper.Reset()
+	aliveExpirationCheckInterval = 0 * time.Second
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	viper.AddConfigPath("./../../peer")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
+	assert.NoError(t, err)
+	assert.Equal(t, time.Duration(5)*time.Second, getAliveTimeInterval())
+	assert.Equal(t, time.Duration(25)*time.Second, getAliveExpirationTimeout())
+	assert.Equal(t, time.Duration(25)*time.Second/10, getAliveExpirationCheckInterval())
+	assert.Equal(t, time.Duration(25)*time.Second, getReconnectInterval())
 }
 
 func waitUntilOrFail(t *testing.T, pred func() bool) {

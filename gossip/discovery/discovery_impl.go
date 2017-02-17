@@ -27,23 +27,22 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
+	"github.com/spf13/viper"
 )
 
 const defaultHelloInterval = time.Duration(5) * time.Second
 
-var aliveTimeInterval = defaultHelloInterval
-var aliveExpirationTimeout = 5 * aliveTimeInterval
-var aliveExpirationCheckInterval = time.Duration(aliveExpirationTimeout / 10)
-var reconnectInterval = aliveExpirationTimeout
+var aliveExpirationCheckInterval time.Duration
 
-// SetAliveTimeInternal sets the alive time interval
-func SetAliveTimeInternal(interval time.Duration) {
-	aliveTimeInterval = interval
+// SetAliveTimeInterval sets the alive time interval
+func SetAliveTimeInterval(interval time.Duration) {
+	viper.Set("peer.gossip.aliveTimeInterval", interval)
 }
 
-// SetExpirationTimeout sets the expiration timeout
-func SetExpirationTimeout(timeout time.Duration) {
-	aliveExpirationTimeout = timeout
+// SetAliveExpirationTimeout sets the expiration timeout
+func SetAliveExpirationTimeout(timeout time.Duration) {
+	viper.Set("peer.gossip.aliveExpirationTimeout", timeout)
+	aliveExpirationCheckInterval = time.Duration(timeout / 10)
 }
 
 // SetAliveExpirationCheckInterval sets the expiration check interval
@@ -53,7 +52,7 @@ func SetAliveExpirationCheckInterval(interval time.Duration) {
 
 // SetReconnectInterval sets the reconnect interval
 func SetReconnectInterval(interval time.Duration) {
-	reconnectInterval = interval
+	viper.Set("peer.gossip.reconnectInterval", interval)
 }
 
 type timestamp struct {
@@ -177,7 +176,7 @@ func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
 			}(endpoint)
 		}
 		wg.Wait()
-		time.Sleep(reconnectInterval)
+		time.Sleep(getReconnectInterval())
 	}
 }
 
@@ -482,8 +481,8 @@ func (d *gossipDiscoveryImpl) periodicalReconnectToDead() {
 		}
 
 		wg.Wait()
-		d.logger.Debug("Sleeping", reconnectInterval)
-		time.Sleep(reconnectInterval)
+		d.logger.Debug("Sleeping", getReconnectInterval())
+		time.Sleep(getReconnectInterval())
 	}
 }
 
@@ -531,7 +530,7 @@ func (d *gossipDiscoveryImpl) periodicalCheckAlive() {
 	defer d.logger.Debug("Stopped")
 
 	for !d.toDie() {
-		time.Sleep(aliveExpirationCheckInterval)
+		time.Sleep(getAliveExpirationCheckInterval())
 		dead := d.getDeadMembers()
 		if len(dead) > 0 {
 			d.logger.Debugf("Got %v dead members: %v", len(dead), dead)
@@ -581,7 +580,7 @@ func (d *gossipDiscoveryImpl) getDeadMembers() []common.PKIidType {
 	dead := []common.PKIidType{}
 	for id, last := range d.aliveLastTS {
 		elapsedNonAliveTime := time.Since(last.lastSeen)
-		if elapsedNonAliveTime.Nanoseconds() > aliveExpirationTimeout.Nanoseconds() {
+		if elapsedNonAliveTime.Nanoseconds() > getAliveExpirationTimeout().Nanoseconds() {
 			d.logger.Warning("Haven't heard from", id, "for", elapsedNonAliveTime)
 			dead = append(dead, common.PKIidType(id))
 		}
@@ -593,8 +592,8 @@ func (d *gossipDiscoveryImpl) periodicalSendAlive() {
 	defer d.logger.Debug("Stopped")
 
 	for !d.toDie() {
-		d.logger.Debug("Sleeping", aliveTimeInterval)
-		time.Sleep(aliveTimeInterval)
+		d.logger.Debug("Sleeping", getAliveTimeInterval())
+		time.Sleep(getAliveTimeInterval())
 		d.comm.Gossip(d.createAliveMessage())
 	}
 }
@@ -802,4 +801,24 @@ func same(a *timestamp, b *proto.PeerTime) bool {
 func before(a *timestamp, b *proto.PeerTime) bool {
 	return (uint64(a.incTime.UnixNano()) == b.IncNumber && a.seqNum < b.SeqNum) ||
 		uint64(a.incTime.UnixNano()) < b.IncNumber
+}
+
+func getAliveTimeInterval() time.Duration {
+	return util.GetDurationOrDefault("peer.gossip.aliveTimeInterval", defaultHelloInterval)
+}
+
+func getAliveExpirationTimeout() time.Duration {
+	return util.GetDurationOrDefault("peer.gossip.aliveExpirationTimeout", 5*getAliveTimeInterval())
+}
+
+func getAliveExpirationCheckInterval() time.Duration {
+	if aliveExpirationCheckInterval != 0 {
+		return aliveExpirationCheckInterval
+	}
+
+	return time.Duration(getAliveExpirationTimeout() / 10)
+}
+
+func getReconnectInterval() time.Duration {
+	return util.GetDurationOrDefault("peer.gossip.reconnectInterval", getAliveExpirationTimeout())
 }
