@@ -36,6 +36,11 @@ func (carPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	return nil
 }
 
+func (carPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+	// CAR platform will validate the code package within chaintool
+	return nil
+}
+
 func (carPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 
 	return ioutil.ReadFile(spec.ChaincodeId.Path)

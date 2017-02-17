@@ -40,6 +40,7 @@ import (
 // the given platform
 type Platform interface {
 	ValidateSpec(spec *pb.ChaincodeSpec) error
+	ValidateDeploymentSpec(spec *pb.ChaincodeDeploymentSpec) error
 	GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error)
 	GenerateDockerfile(spec *pb.ChaincodeDeploymentSpec) (string, error)
 	GenerateDockerBuild(spec *pb.ChaincodeDeploymentSpec, tw *tar.Writer) error

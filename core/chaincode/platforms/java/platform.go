@@ -87,6 +87,11 @@ func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	return nil
 }
 
+func (javaPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
+	// FIXME: Java platform needs to implement its own validation similar to GOLANG
+	return nil
+}
+
 // WritePackage writes the java chaincode package
 func (javaPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 
