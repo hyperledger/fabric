@@ -44,19 +44,8 @@ type Manager struct {
 	// PolicyMap is returned is used to look up Policies in
 	PolicyMap map[string]*Policy
 
-	// SubManagers is used for the return value of Manager and SubManagers
+	// SubManagers is used for the return value of Manager
 	SubManagersMap map[string]*Manager
-}
-
-// Managers returns the values of SubManagers
-func (m *Manager) SubManagers() []policies.Manager {
-	result := make([]policies.Manager, len(m.SubManagersMap))
-	i := 0
-	for _, manager := range m.SubManagersMap {
-		result[i] = manager
-		i++
-	}
-	return result
 }
 
 // PolicyNames panics
