@@ -92,6 +92,24 @@ func SignedByMspMember(mspId string) *cb.SignaturePolicyEnvelope {
 	return p
 }
 
+// SignedByMspAdmin creates a SignaturePolicyEnvelope
+// requiring 1 signature from any admin of the specified MSP
+func SignedByMspAdmin(mspId string) *cb.SignaturePolicyEnvelope {
+	// specify the principal: it's a member of the msp we just found
+	principal := &cb.MSPPrincipal{
+		PrincipalClassification: cb.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&cb.MSPRole{Role: cb.MSPRole_ADMIN, MspIdentifier: mspId})}
+
+	// create the policy: it requires exactly 1 signature from the first (and only) principal
+	p := &cb.SignaturePolicyEnvelope{
+		Version:    0,
+		Policy:     NOutOf(1, []*cb.SignaturePolicy{SignedBy(0)}),
+		Identities: []*cb.MSPPrincipal{principal},
+	}
+
+	return p
+}
+
 // And is a convenience method which utilizes NOutOf to produce And equivalent behavior
 func And(lhs, rhs *cb.SignaturePolicy) *cb.SignaturePolicy {
 	return NOutOf(2, []*cb.SignaturePolicy{lhs, rhs})

@@ -25,6 +25,7 @@ import (
 	configtxchannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
 	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
+	configvaluesmsp "github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
@@ -56,15 +57,6 @@ const (
 
 	// AcceptAllPolicyKey is the key of the AcceptAllPolicy.
 	AcceptAllPolicyKey = "AcceptAllPolicy"
-
-	// ReadersPolicyKey is the key used for the read policy
-	ReadersPolicyKey = "Readers"
-
-	// WritersPolicyKey is the key used for the read policy
-	WritersPolicyKey = "Writers"
-
-	// AdminsPolicyKey is the key used for the read policy
-	AdminsPolicyKey = "Admins"
 )
 
 // DefaultChainCreationPolicyNames is the default value of ChainCreatorsKey.
@@ -99,19 +91,19 @@ func New(conf *genesisconfig.TopLevel) Generator {
 			cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy),
 
 			// Initialize the default Reader/Writer/Admins channel policies
-			policies.TemplateImplicitMetaAnyPolicy([]string{}, ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{}, WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{}, AdminsPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{}, configvaluesmsp.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{}, configvaluesmsp.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{}, configvaluesmsp.AdminsPolicyKey),
 
 			// Initialize the default Reader/Writer/Admins orderer policies
-			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxorderer.GroupKey}, AdminsPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.AdminsPolicyKey),
 
 			// Initialize the default Reader/Writer/Admins application policies
-			policies.TemplateImplicitMetaAnyPolicy([]string{configtxapplication.GroupKey}, ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{configtxapplication.GroupKey}, WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxapplication.GroupKey}, AdminsPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{configtxapplication.GroupKey}, configvaluesmsp.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{configtxapplication.GroupKey}, configvaluesmsp.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxapplication.GroupKey}, configvaluesmsp.AdminsPolicyKey),
 		},
 
 		systemChainGroups: []*cb.ConfigGroup{

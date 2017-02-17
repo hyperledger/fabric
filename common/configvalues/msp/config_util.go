@@ -17,25 +17,82 @@ limitations under the License.
 package msp
 
 import (
+	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/msp"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	logging "github.com/op/go-logging"
 )
 
+var logger = logging.MustGetLogger("configvalues/msp")
+
 const (
+	// ReadersPolicyKey is the key used for the read policy
+	ReadersPolicyKey = "Readers"
+
+	// WritersPolicyKey is the key used for the read policy
+	WritersPolicyKey = "Writers"
+
+	// AdminsPolicyKey is the key used for the read policy
+	AdminsPolicyKey = "Admins"
+
+	// MSPKey is the org key used for MSP configuration
 	MSPKey = "MSP"
 )
 
 // TemplateGroupMSP creates an MSP ConfigValue at the given configPath
-func TemplateGroupMSP(configPath []string, mspConf *msp.MSPConfig) *cb.ConfigGroup {
+func TemplateGroupMSP(configPath []string, mspConfig *mspprotos.MSPConfig) *cb.ConfigGroup {
+	// check that the type for that MSP is supported
+	if mspConfig.Type != int32(msp.FABRIC) {
+		logger.Panicf("Setup error: unsupported msp type %d", mspConfig.Type)
+	}
+
+	// create the msp instance
+	mspInst, err := msp.NewBccspMsp()
+	if err != nil {
+		logger.Panicf("Creating the MSP manager failed, err %s", err)
+	}
+
+	// set it up
+	err = mspInst.Setup(mspConfig)
+	if err != nil {
+		logger.Panicf("Setting up the MSP manager failed, err %s", err)
+	}
+
+	// add the MSP to the map of pending MSPs
+	mspID, err := mspInst.GetIdentifier()
+	if err != nil {
+		logger.Panicf("Could not extract msp identifier, err %s", err)
+	}
+
+	memberPolicy := &cb.ConfigPolicy{
+		Policy: &cb.Policy{
+			Type:   int32(cb.Policy_SIGNATURE),
+			Policy: utils.MarshalOrPanic(cauthdsl.SignedByMspMember(mspID)),
+		},
+	}
+
+	adminPolicy := &cb.ConfigPolicy{
+		Policy: &cb.Policy{
+			Type:   int32(cb.Policy_SIGNATURE),
+			Policy: utils.MarshalOrPanic(cauthdsl.SignedByMspAdmin(mspID)),
+		},
+	}
+
 	result := cb.NewConfigGroup()
+
 	intermediate := result
 	for _, group := range configPath {
 		intermediate.Groups[group] = cb.NewConfigGroup()
 		intermediate = intermediate.Groups[group]
 	}
 	intermediate.Values[MSPKey] = &cb.ConfigValue{
-		Value: utils.MarshalOrPanic(mspConf),
+		Value: utils.MarshalOrPanic(mspConfig),
 	}
+	intermediate.Policies[AdminsPolicyKey] = adminPolicy
+	intermediate.Policies[ReadersPolicyKey] = memberPolicy
+	intermediate.Policies[WritersPolicyKey] = memberPolicy
 	return result
 }
