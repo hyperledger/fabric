@@ -29,6 +29,7 @@ message Policy {
         UNKNOWN = 0; // Reserved to check for proper initialization
         SIGNATURE = 1;
         MSP = 2;
+        IMPLICIT_META = 3;
     }
     int32 type = 1; // For outside implementors, consider the first 1000 types reserved, otherwise one of PolicyType
     bytes policy = 2;
@@ -56,4 +57,22 @@ message SignaturePolicy {
         int32 signed_by = 1;
         NOutOf from = 2;
     }
+}
+
+// ImplicitMetaPolicy is a policy type which depends on the hierarchical nature of the configuration
+// It is implicit because the rule is generate implicitly based on the number of sub policies
+// It is meta because it depends only on the result of other policies
+// When evaluated, this policy iterates over all immediate child sub-groups, retrieves the policy
+// of name sub_policy, evaluates the collection and applies the rule.
+// For example, with 4 sub-groups, and a policy name of "foo", ImplicitMetaPolicy retrieves
+// each sub-group, retrieves policy "foo" for each subgroup, evaluates it, and, in the case of ANY
+// 1 satisfied is sufficient, ALL would require 4 signatures, and MAJORITY would require 3 signatures.
+message ImplicitMetaPolicy {
+    enum Rule {
+        ANY = 0;      // Requires any of the sub-policies be satisfied, if no sub-policies exist, always returns true
+        ALL = 1;      // Requires all of the sub-policies be satisfied
+        MAJORITY = 2; // Requires a strict majority (greater than half) of the sub-policies be satisfied
+    }
+    string sub_policy = 1;
+    Rule rule = 2;
 }
