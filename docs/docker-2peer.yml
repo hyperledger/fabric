@@ -1,0 +1,111 @@
+version: '2'
+networks:
+   bridge:
+
+services:
+  orderer:
+    container_name: orderer
+    image: hyperledger/fabric-orderer
+    environment:
+      - ORDERER_GENERAL_LEDGERTYPE=ram
+      - ORDERER_GENERAL_BATCHTIMEOUT=10s
+      - ORDERER_GENERAL_BATCHSIZE_MAXMESSAGECOUNT=10
+      - ORDERER_GENERAL_MAXWINDOWSIZE=1000
+      - ORDERER_GENERAL_ORDERERTYPE=solo
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=5005
+      - ORDERER_RAMLEDGER_HISTORY_SIZE=100
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/fabric/msp/sampleconfig
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+    command: orderer
+    ports:
+      - 5005:5005
+    networks:
+      - bridge
+
+  peer0:
+    container_name: peer0
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_NETWORKID=peer0
+      - CORE_NEXT=true
+      - CORE_PEER_ENDORSER_ENABLED=true
+      - CORE_PEER_ID=peer0
+      - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005
+      - CORE_PEER_GOSSIP_ORGLEADER=true
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp/sampleconfig
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start --peer-defaultchain=false
+    links:
+      - orderer:orderer
+    volumes:
+        - /var/run/:/host/var/run/
+        #in the "- <HOST>:/opt/gopath/src/github.com/hyperledger/fabric/examples/" mapping below, the HOST part
+        #should be modified to the path on the host. This will work as is in the Vagrant environment
+        - /opt/gopath/src/github.com/hyperledger/fabric/examples/:/opt/gopath/src/github.com/hyperledger/fabric/examples/
+    depends_on:
+      - orderer
+    networks:
+      - bridge
+
+  peer1:
+    container_name: peer1
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_NETWORKID=peer1
+      - CORE_NEXT=true
+      - CORE_PEER_ENDORSER_ENABLED=true
+      - CORE_PEER_ID=peer1
+      - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005
+      - CORE_PEER_GOSSIP_ORGLEADER=true
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp/sampleconfig
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start --peer-defaultchain=false
+    links:
+      - orderer:orderer
+    volumes:
+        - /var/run/:/host/var/run/
+        #in the "- <HOST>:/opt/gopath/src/github.com/hyperledger/fabric/examples/" mapping below, the HOST part
+        #should be modified to the path on the host. This will work as is in the Vagrant environment
+        - /opt/gopath/src/github.com/hyperledger/fabric/examples/:/opt/gopath/src/github.com/hyperledger/fabric/examples/
+    depends_on:
+      - orderer
+    networks:
+      - bridge
+
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-peer
+    tty: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_PEER_ADDRESSAUTODETECT=true
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_NEXT=true
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ENDORSER_ENABLED=true
+      - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:5005
+      - CORE_PEER_ADDRESS=peer0:7051
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp/sampleconfig
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/sh
+    links:
+      - orderer:orderer
+      - peer0:peer0
+    volumes:
+        - /var/run/:/host/var/run/
+        #in the "- <HOST>:/opt/gopath/src/github.com/hyperledger/fabric/examples/" mapping below, the HOST part
+        #should be modified to the path on the host. This will work as is in the Vagrant environment
+        - /opt/gopath/src/github.com/hyperledger/fabric/examples/:/opt/gopath/src/github.com/hyperledger/fabric/examples/
+    depends_on:
+      - orderer
+      - peer0
+      - peer1
+    networks:
+      - bridge
