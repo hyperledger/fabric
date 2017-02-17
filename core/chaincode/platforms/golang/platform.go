@@ -195,10 +195,13 @@ func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) 
 		return "", fmt.Errorf("could not decode url: %s", err)
 	}
 
+	const env = "GOPATH=/tmp/codepackage:$GOPATH"
+	const flags = "-ldflags \"-linkmode external -extldflags '-static'\""
+
 	buf = append(buf, cutil.GetDockerfileFromConfig("chaincode.golang.Dockerfile"))
 	buf = append(buf, "ADD codepackage.tgz /tmp/codepackage")
 	//let the executable's name be chaincode ID's name
-	buf = append(buf, fmt.Sprintf("RUN GOPATH=/tmp/codepackage:$GOPATH go build -o /usr/local/bin/chaincode %s", urlLocation))
+	buf = append(buf, fmt.Sprintf("RUN %s go build %s -o /usr/local/bin/chaincode %s", env, flags, urlLocation))
 	buf = append(buf, "RUN rm -rf /tmp/codepackage") // FAB-2122: scrub source after it is no longer needed
 
 	dockerFileContents := strings.Join(buf, "\n")
