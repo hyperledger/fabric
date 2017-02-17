@@ -25,6 +25,11 @@ import (
 	logging "github.com/op/go-logging"
 )
 
+const (
+	// ChannelReaders is the label for the channel's readers policy
+	ChannelReaders = "ChannelReaders"
+)
+
 var logger = logging.MustGetLogger("common/policies")
 
 // Policy is used to determine if a signature is valid
