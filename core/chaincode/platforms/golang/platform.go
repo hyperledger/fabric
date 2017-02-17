@@ -98,6 +98,11 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 
 func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSpec) error {
 
+	if cds.CodePackage == nil || len(cds.CodePackage) == 0 {
+		// Nothing to validate if no CodePackage was included
+		return nil
+	}
+
 	// FAB-2122: Scan the provided tarball to ensure it only contains source-code under
 	// /src/$packagename.  We do not want to allow something like ./pkg/shady.a to be installed under
 	// $GOPATH within the container.  Note, we do not look deeper than the path at this time
