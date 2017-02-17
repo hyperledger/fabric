@@ -17,7 +17,7 @@ limitations under the License.
 package multichain
 
 import (
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	mockconfigtxorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/filter"

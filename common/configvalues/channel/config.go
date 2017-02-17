@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/hyperledger/fabric/common/configvalues/api"
+	api "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/configvalues/channel/application"
 	"github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/util"
@@ -45,7 +45,7 @@ var Schema = &cb.ConfigGroupSchema{
 	},
 }
 
-// Chain config keys
+// Channel config keys
 const (
 	// HashingAlgorithmKey is the cb.ConfigItem type key name for the HashingAlgorithm message
 	HashingAlgorithmKey = "HashingAlgorithm"
@@ -63,9 +63,22 @@ const (
 	SHA3Shake256 = "SHAKE256"
 )
 
-var logger = logging.MustGetLogger("configtx/handlers/chainconfig")
+var logger = logging.MustGetLogger("configvalues/channel")
 
-type chainConfig struct {
+type ConfigReader interface {
+	// HashingAlgorithm returns the default algorithm to be used when hashing
+	// such as computing block hashes, and CreationPolicy digests
+	HashingAlgorithm() func(input []byte) []byte
+
+	// BlockDataHashingStructureWidth returns the width to use when constructing the
+	// Merkle tree to compute the BlockData hash
+	BlockDataHashingStructureWidth() uint32
+
+	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+	OrdererAddresses() []string
+}
+
+type values struct {
 	hashingAlgorithm               func(input []byte) []byte
 	blockDataHashingStructureWidth uint32
 	ordererAddresses               []string
@@ -73,77 +86,77 @@ type chainConfig struct {
 
 // SharedConfigImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.Manager
-type SharedConfigImpl struct {
-	pendingConfig *chainConfig
-	config        *chainConfig
+type Config struct {
+	pending *values
+	current *values
 
 	ordererConfig     *orderer.ManagerImpl
 	applicationConfig *application.SharedConfigImpl
 }
 
 // NewSharedConfigImpl creates a new SharedConfigImpl with the given CryptoHelper
-func NewSharedConfigImpl(ordererConfig *orderer.ManagerImpl, applicationConfig *application.SharedConfigImpl) *SharedConfigImpl {
-	return &SharedConfigImpl{
-		config:            &chainConfig{},
+func NewConfig(ordererConfig *orderer.ManagerImpl, applicationConfig *application.SharedConfigImpl) *Config {
+	return &Config{
+		current:           &values{},
 		ordererConfig:     ordererConfig,
 		applicationConfig: applicationConfig,
 	}
 }
 
 // HashingAlgorithm returns a function pointer to the chain hashing algorihtm
-func (pm *SharedConfigImpl) HashingAlgorithm() func(input []byte) []byte {
-	return pm.config.hashingAlgorithm
+func (c *Config) HashingAlgorithm() func(input []byte) []byte {
+	return c.current.hashingAlgorithm
 }
 
 // BlockDataHashingStructure returns the width to use when forming the block data hashing structure
-func (pm *SharedConfigImpl) BlockDataHashingStructureWidth() uint32 {
-	return pm.config.blockDataHashingStructureWidth
+func (c *Config) BlockDataHashingStructureWidth() uint32 {
+	return c.current.blockDataHashingStructureWidth
 }
 
 // OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
-func (pm *SharedConfigImpl) OrdererAddresses() []string {
-	return pm.config.ordererAddresses
+func (c *Config) OrdererAddresses() []string {
+	return c.current.ordererAddresses
 }
 
 // BeginValueProposals is used to start a new config proposal
-func (pm *SharedConfigImpl) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
+func (c *Config) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
 	handlers := make([]api.ValueProposer, len(groups))
 
 	for i, group := range groups {
 		switch group {
 		case application.GroupKey:
-			handlers[i] = pm.applicationConfig
+			handlers[i] = c.applicationConfig
 		case orderer.GroupKey:
-			handlers[i] = pm.ordererConfig
+			handlers[i] = c.ordererConfig
 		default:
 			return nil, fmt.Errorf("Disallowed channel group: %s", group)
 		}
 	}
 
-	if pm.pendingConfig != nil {
+	if c.pending != nil {
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 
-	pm.pendingConfig = &chainConfig{}
+	c.pending = &values{}
 	return handlers, nil
 }
 
 // RollbackProposals is used to abandon a new config proposal
-func (pm *SharedConfigImpl) RollbackProposals() {
-	pm.pendingConfig = nil
+func (c *Config) RollbackProposals() {
+	c.pending = nil
 }
 
 // CommitProposals is used to commit a new config proposal
-func (pm *SharedConfigImpl) CommitProposals() {
-	if pm.pendingConfig == nil {
+func (c *Config) CommitProposals() {
+	if c.pending == nil {
 		logger.Panicf("Programming error, cannot call commit without an existing proposal")
 	}
-	pm.config = pm.pendingConfig
-	pm.pendingConfig = nil
+	c.current = c.pending
+	c.pending = nil
 }
 
 // ProposeValue is used to add new config to the config proposal
-func (pm *SharedConfigImpl) ProposeValue(key string, configValue *cb.ConfigValue) error {
+func (c *Config) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	switch key {
 	case HashingAlgorithmKey:
 		hashingAlgorithm := &cb.HashingAlgorithm{}
@@ -152,7 +165,7 @@ func (pm *SharedConfigImpl) ProposeValue(key string, configValue *cb.ConfigValue
 		}
 		switch hashingAlgorithm.Name {
 		case SHA3Shake256:
-			pm.pendingConfig.hashingAlgorithm = util.ComputeCryptoHash
+			c.pending.hashingAlgorithm = util.ComputeCryptoHash
 		default:
 			return fmt.Errorf("Unknown hashing algorithm type: %s", hashingAlgorithm.Name)
 		}
@@ -166,13 +179,13 @@ func (pm *SharedConfigImpl) ProposeValue(key string, configValue *cb.ConfigValue
 			return fmt.Errorf("BlockDataHashStructure width only supported at MaxUint32 in this version")
 		}
 
-		pm.pendingConfig.blockDataHashingStructureWidth = blockDataHashingStructure.Width
+		c.pending.blockDataHashingStructureWidth = blockDataHashingStructure.Width
 	case OrdererAddressesKey:
 		ordererAddresses := &cb.OrdererAddresses{}
 		if err := proto.Unmarshal(configValue.Value, ordererAddresses); err != nil {
 			return fmt.Errorf("Unmarshaling error for HashingAlgorithm: %s", err)
 		}
-		pm.pendingConfig.ordererAddresses = ordererAddresses.Addresses
+		c.pending.ordererAddresses = ordererAddresses.Addresses
 	default:
 		logger.Warningf("Uknown Chain config item with key %s", key)
 	}

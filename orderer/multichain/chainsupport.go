@@ -17,7 +17,7 @@ limitations under the License.
 package multichain
 
 import (
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"

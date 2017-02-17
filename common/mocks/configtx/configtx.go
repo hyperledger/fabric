@@ -17,7 +17,8 @@ limitations under the License.
 package configtx
 
 import (
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
+	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -29,7 +30,7 @@ type Resources struct {
 	PolicyManagerVal *mockpolicies.Manager
 
 	// ChannelConfigVal is returned as the result of ChannelConfig()
-	ChannelConfigVal configvaluesapi.Channel
+	ChannelConfigVal configvalueschannel.ConfigReader
 
 	// OrdererConfigVal is returned as the result of OrdererConfig()
 	OrdererConfigVal configvaluesapi.Orderer
@@ -47,7 +48,7 @@ func (r *Resources) PolicyManager() policies.Manager {
 }
 
 // Returns the ChannelConfigVal
-func (r *Resources) ChannelConfig() configvaluesapi.Channel {
+func (r *Resources) ChannelConfig() configvalueschannel.ConfigReader {
 	return r.ChannelConfigVal
 }
 

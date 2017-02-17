@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/protos/peer"
 )
 

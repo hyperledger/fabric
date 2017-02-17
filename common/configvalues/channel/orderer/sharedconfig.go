@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyperledger/fabric/common/configvalues/api"
+	api "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"

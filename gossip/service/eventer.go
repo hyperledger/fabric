@@ -19,7 +19,7 @@ package service
 import (
 	"reflect"
 
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 
 	"github.com/hyperledger/fabric/protos/peer"
 )
