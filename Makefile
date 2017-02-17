@@ -45,11 +45,16 @@ PROJECT_VERSION=$(BASE_VERSION)
 endif
 
 PKGNAME = github.com/$(PROJECT_NAME)
-GO_LDFLAGS = -X $(PKGNAME)/common/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell uname -m)
 CHAINTOOL_RELEASE=v0.10.2
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
+
+# defined in common/metadata/metadata.go
+METADATA_VAR = Version=$(PROJECT_VERSION)
+METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
+
+GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 
 CHAINTOOL_URL ?= https://github.com/hyperledger/fabric-chaintool/releases/download/$(CHAINTOOL_RELEASE)/chaintool
 
