@@ -1,29 +1,31 @@
 # Overview
 
-Hyperledger Fabric is a robust and flexible blockchain network architecture
+**Hyperledger Fabric** is an implementation of a robust and flexible blockchain network architecture
 that provides enterprise-ready security, scalability, confidentiality and
-performance. Its unique implementation of distributed ledger technology ensures
-data integrity and consistency, while delivering accountability, transparency
-and efficiency. As a permissioned network, the fabric delivers a trusted
-blockchain network, where members are assured that all transactions can be
-detected and traced by authorized regulators and auditors.
+performance. Its unique implementation of distributed ledger technology (DLT)
+ensures data integrity and consistency, while delivering accountability,
+transparency and efficiency to the network.
 
-Hyperledger Fabric separates chaincode execution from transaction ordering,
-which limits the required levels of trust and verification across nodes,
-optimizing network scalability and performance. Private channels provide multi-
-lateral transactions with the high degree of privacy and confidentiality
-required for competing businesses and regulated industries to coexist on a
-common network. The fabric incorporates a modular approach to blockchain,
-enabling network designers to plug in their preferred implementations for
-components such as ordering, identity management and encryption.
+The key design features woven into the fabric fulfill its promise of a
+comprehensive, yet customizable, enterprise blockchain solution:
 
-In total, Hyperledger Fabric delivers a uniquely comprehensive, elastic and
-extensible architecture, distinguishing it from the alternative blockchain
-solutions. Planning for the future of enterprise blockchain requires building
-on a fully-vetted, open architecture; Hyperledger Fabric is your starting point.
+- Permissioned membership provides a trusted blockchain network, where  
+participants know that all transactions can be detected and traced by authorized
+regulators and auditors.
+- Channels enable multi-lateral transactions with the high degrees of privacy
+and confidentiality required by competing businesses and regulated industries
+that exchange assets on a common network.
+- The immutable, shared ledger encodes the entire transaction history for each
+channel, and includes SQL-like query capability for efficient auditing and
+dispute resolution.
+- Chaincode execution is partitioned from transaction ordering, limiting
+the required levels of trust and verification across node types, and optimizing
+network scalability and performance.
+- Modularity enables network designers to plug in their preferred
+implementations for components such as transaction ordering (consensus),
+identity management and encryption.
 
-**Attention**: The Hyperledger Fabric project team is continually working to
-improve the security, performance and robustness of the released software, and
-frequently publishes updates. To stay current as the project progresses, please
-see the **Communication** and **Still Have Questions?** topics. Your
-participation in Linux Foundation projects is welcomed and encouraged!
+Hyperledger Fabric delivers a uniquely elastic and extensible architecture,
+distinguishing it from alternative blockchain solutions. Planning for the
+future of enterprise blockchain requires building on top of a fully-vetted,
+open architecture; Hyperledger Fabric is your starting point.
