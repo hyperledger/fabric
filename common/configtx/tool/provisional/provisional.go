@@ -23,8 +23,10 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	configtxchannel "github.com/hyperledger/fabric/common/configvalues/channel"
+	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
 	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/genesis"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -54,6 +56,15 @@ const (
 
 	// AcceptAllPolicyKey is the key of the AcceptAllPolicy.
 	AcceptAllPolicyKey = "AcceptAllPolicy"
+
+	// ReadersPolicyKey is the key used for the read policy
+	ReadersPolicyKey = "Readers"
+
+	// WritersPolicyKey is the key used for the read policy
+	WritersPolicyKey = "Writers"
+
+	// AdminsPolicyKey is the key used for the read policy
+	AdminsPolicyKey = "Admins"
 )
 
 // DefaultChainCreationPolicyNames is the default value of ChainCreatorsKey.
@@ -85,8 +96,22 @@ func New(conf *genesisconfig.TopLevel) Generator {
 			configtxorderer.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
 
 			// Policies
-			cauthdsl.TemplatePolicy(configtx.NewConfigItemPolicyKey, cauthdsl.RejectAllPolicy),
 			cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy),
+
+			// Initialize the default Reader/Writer/Admins channel policies
+			policies.TemplateImplicitMetaAnyPolicy([]string{}, ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{}, WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{}, AdminsPolicyKey),
+
+			// Initialize the default Reader/Writer/Admins orderer policies
+			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxorderer.GroupKey}, AdminsPolicyKey),
+
+			// Initialize the default Reader/Writer/Admins application policies
+			policies.TemplateImplicitMetaAnyPolicy([]string{configtxapplication.GroupKey}, ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{configtxapplication.GroupKey}, WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxapplication.GroupKey}, AdminsPolicyKey),
 		},
 
 		systemChainGroups: []*cb.ConfigGroup{
