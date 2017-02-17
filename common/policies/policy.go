@@ -45,9 +45,6 @@ type Manager interface {
 
 	// Policies returns all policy names defined in the manager
 	PolicyNames() []string
-
-	// SubManagers() returns all managers immediately descended from this one
-	SubManagers() []Manager
 }
 
 // Proposer is the interface used by the configtx manager for policy management
@@ -70,6 +67,7 @@ type Provider interface {
 type policyConfig struct {
 	policies map[string]Policy
 	managers map[string]*ManagerImpl
+	imps     []*implicitMetaPolicy
 }
 
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
@@ -83,6 +81,11 @@ type ManagerImpl struct {
 
 // NewManagerImpl creates a new ManagerImpl with the given CryptoHelper
 func NewManagerImpl(basePath string, providers map[int32]Provider) *ManagerImpl {
+	_, ok := providers[int32(cb.Policy_IMPLICIT_META)]
+	if ok {
+		logger.Panicf("ImplicitMetaPolicy type must be provider by the policy manager")
+	}
+
 	return &ManagerImpl{
 		basePath:  basePath,
 		providers: providers,
@@ -102,16 +105,6 @@ func (rp rejectPolicy) Evaluate(signedData []*cb.SignedData) error {
 // Basepath returns the basePath the manager was instnatiated with
 func (pm *ManagerImpl) BasePath() string {
 	return pm.basePath
-}
-
-func (pm *ManagerImpl) SubManagers() []Manager {
-	managers := make([]Manager, len(pm.config.managers))
-	i := 0
-	for _, manager := range pm.config.managers {
-		managers[i] = manager
-		i++
-	}
-	return managers
 }
 
 func (pm *ManagerImpl) PolicyNames() []string {
@@ -192,6 +185,11 @@ func (pm *ManagerImpl) CommitProposals() {
 		}
 	}
 
+	// Now that all the policies are present, initialize the meta policies
+	for _, imp := range pm.pendingConfig.imps {
+		imp.initialize(pm.pendingConfig)
+	}
+
 	pm.config = pm.pendingConfig
 	pm.pendingConfig = nil
 }
@@ -203,14 +201,26 @@ func (pm *ManagerImpl) ProposePolicy(key string, configPolicy *cb.ConfigPolicy) 
 		return fmt.Errorf("Policy cannot be nil")
 	}
 
-	provider, ok := pm.providers[int32(policy.Type)]
-	if !ok {
-		return fmt.Errorf("Unknown policy type: %v", policy.Type)
-	}
+	var cPolicy Policy
 
-	cPolicy, err := provider.NewPolicy(policy.Policy)
-	if err != nil {
-		return err
+	if policy.Type == int32(cb.Policy_IMPLICIT_META) {
+		imp, err := newImplicitMetaPolicy(policy.Policy)
+		if err != nil {
+			return err
+		}
+		pm.pendingConfig.imps = append(pm.pendingConfig.imps, imp)
+		cPolicy = imp
+	} else {
+		provider, ok := pm.providers[int32(policy.Type)]
+		if !ok {
+			return fmt.Errorf("Unknown policy type: %v", policy.Type)
+		}
+
+		var err error
+		cPolicy, err = provider.NewPolicy(policy.Policy)
+		if err != nil {
+			return err
+		}
 	}
 
 	pm.pendingConfig.policies[key] = cPolicy
