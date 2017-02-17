@@ -1,6 +1,35 @@
 ---
 ################################################################################
 #
+#   Section: Organizations
+#
+#   - This section defines the different organizational identities which will
+#   be referenced later in the configuration.
+#
+################################################################################
+Organizations:
+
+    - &defaultOrg
+        # DefaultOrg defines the organization which is used in the sampleconfig
+        # of the fabric.git development environment
+        Name: defaultOrg
+
+        # ID to load the MSP definition as
+        ID: DEFAULT
+
+        # MSPDir is the filesystem path which contains the MSP configuration
+        MSPDir: msp/sampleconfig
+
+
+        AnchorPeers:
+            # AnchorPeers defines the location of peers which can be used
+            # for cross org gossip communication.  Note, this value is only
+            # encoded in the genesis block in the Application section context
+            - Host: 127.0.0.1
+              Port: 7051
+
+################################################################################
+#
 #   SECTION: Orderer
 #
 #   - This section defines the values to encode into a config transaction or
@@ -40,3 +69,26 @@ Orderer:
         Brokers:
             - 127.0.0.1:9092
 
+    # Organizations is the list of orgs which are defined as participants on
+    # the orderer side of the network
+    Organizations:
+
+        # The default organization as defined in the organization section
+        - *defaultOrg
+
+################################################################################
+#
+#   SECTION: Application
+#
+#   - This section defines the values to encode into a config transaction or
+#   genesis block for application related parameters
+#
+################################################################################
+Application:
+
+    # Organizations is the list of orgs which are defined as participants on
+    # the application side of the network
+    Organizations:
+
+        # The default organization as defined in the organization section
+        - *defaultOrg

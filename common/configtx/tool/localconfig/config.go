@@ -40,16 +40,43 @@ const Prefix string = "CONFIGTX"
 
 // TopLevel contains the genesis structures for use by the provisional bootstrapper
 type TopLevel struct {
-	Orderer Orderer
+	Application   Application
+	Organizations []*Organization
+	Orderer       Orderer
+}
+
+type Application struct {
+	Organizations []*Organization
+}
+
+type Organization struct {
+	Name   string
+	ID     string
+	MSPDir string
+
+	// Note, the viper deserialization does not seem to care for
+	// embedding of types, so we use one organization structure for
+	// both orderers and applications
+	AnchorPeers []*AnchorPeer
+}
+
+type AnchorPeer struct {
+	Host string
+	Port int
+}
+
+type ApplicationOrganization struct {
+	Organization
 }
 
 // Orderer contains config which is used for orderer genesis by the provisional bootstrapper
 type Orderer struct {
-	OrdererType  string
-	Addresses    []string
-	BatchTimeout time.Duration
-	BatchSize    BatchSize
-	Kafka        Kafka
+	OrdererType   string
+	Addresses     []string
+	BatchTimeout  time.Duration
+	BatchSize     BatchSize
+	Kafka         Kafka
+	Organizations []*Organization
 }
 
 // BatchSize contains configuration affecting the size of batches
