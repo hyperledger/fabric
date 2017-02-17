@@ -84,16 +84,11 @@ type PolicyHandler interface {
 // Initializer is used as indirection between Manager and Handler to allow
 // for single Handlers to handle multiple paths
 type Initializer interface {
-	// ProposeValue is used for propsing group values
-	ProposeValue(key string, configValue *cb.ConfigValue) error
+	// ValueProposer return the root value proposer
+	ValueProposer() configvalues.ValueProposer
 
-	// BeginValueProposals is called when a config proposal is begun
-	BeginValueProposals(groups []string) ([]configvalues.ValueProposer, error)
-
-	Transactional
+	// PolicyProposer return the root policy proposer
+	PolicyProposer() policies.Proposer
 
 	Resources
-
-	// PolicyProposer returns the PolicyHandler to handle updates to policy
-	PolicyHandler() PolicyHandler
 }

@@ -17,7 +17,6 @@ limitations under the License.
 package configtx
 
 import (
-	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -67,63 +66,62 @@ func (r *Resources) MSPManager() msp.MSPManager {
 	return r.MSPManagerVal
 }
 
-type Transactional struct {
-	HandlerVal *Handler
-}
+// Transactional implements the configtxapi.Transactional
+type Transactional struct{}
 
-// BeginConfig returns slices populated by HandlerVal
-func (t *Transactional) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
-	handlers := make([]configvaluesapi.ValueProposer, len(groups))
-	for i := range handlers {
-		handlers[i] = t.HandlerVal
-	}
-	return handlers, nil
-}
-
-// CommitConfig calls through to the HandlerVal
+// CommitConfig does nothing
 func (t *Transactional) CommitProposals() {}
 
-// RollbackConfig calls through to the HandlerVal
+// RollbackConfig does nothing
 func (t *Transactional) RollbackProposals() {}
 
 // Initializer mocks the configtxapi.Initializer interface
 type Initializer struct {
-	Handler
 	Resources
 
-	// PolicyHandlerVal is reutrned at the result of PolicyHandler()
-	PolicyHandlerVal *PolicyHandler
+	// PolicyProposerVal is returned by PolicyProposers
+	PolicyProposerVal *PolicyProposer
+
+	// ValueProposerVal is returned by ValueProposers
+	ValueProposerVal *ValueProposer
 }
 
-// Returns the PolicyHandlerVal
-func (i *Initializer) PolicyHandler() configtxapi.PolicyHandler {
-	return i.PolicyHandlerVal
+// PolicyProposers returns PolicyProposerVal
+func (i *Initializer) PolicyProposer() policies.Proposer {
+	return i.PolicyProposerVal
 }
 
-// PolicyHandler mocks the configtxapi.PolicyHandler interface
-type PolicyHandler struct {
-	Handler
+// ValueProposers returns ValueProposerVal
+func (i *Initializer) ValueProposer() configvaluesapi.ValueProposer {
+	return i.ValueProposerVal
+}
+
+// PolicyProposer mocks the policies.Proposer interface
+type PolicyProposer struct {
+	Transactional
 	LastKey               string
-	LastPath              []string
-	LastValue             *cb.ConfigPolicy
+	LastPolicy            *cb.ConfigPolicy
 	ErrorForProposePolicy error
 }
 
 // ProposeConfig sets LastKey to key, LastPath to path, and LastPolicy to configPolicy, returning ErrorForProposedConfig
-func (ph *PolicyHandler) ProposePolicy(key string, path []string, configPolicy *cb.ConfigPolicy) error {
-	ph.LastKey = key
-	ph.LastValue = configPolicy
-	ph.LastPath = path
-	return ph.ErrorForProposePolicy
+func (pp *PolicyProposer) ProposePolicy(key string, configPolicy *cb.ConfigPolicy) error {
+	pp.LastKey = key
+	pp.LastPolicy = configPolicy
+	return pp.ErrorForProposePolicy
 }
 
 // BeginConfig will be removed in the future
-func (ph *PolicyHandler) BeginConfig(groups []string) ([]configtxapi.PolicyHandler, error) {
-	return []configtxapi.PolicyHandler{ph}, nil
+func (pp *PolicyProposer) BeginPolicyProposals(groups []string) ([]policies.Proposer, error) {
+	handlers := make([]policies.Proposer, len(groups))
+	for i := range handlers {
+		handlers[i] = pp
+	}
+	return handlers, nil
 }
 
 // Handler mocks the configtxapi.Handler interface
-type Handler struct {
+type ValueProposer struct {
 	Transactional
 	LastKey               string
 	LastValue             *cb.ConfigValue
@@ -131,10 +129,19 @@ type Handler struct {
 }
 
 // ProposeConfig sets LastKey to key, and LastValue to configValue, returning ErrorForProposedConfig
-func (h *Handler) ProposeValue(key string, configValue *cb.ConfigValue) error {
-	h.LastKey = key
-	h.LastValue = configValue
-	return h.ErrorForProposeConfig
+func (vp *ValueProposer) ProposeValue(key string, configValue *cb.ConfigValue) error {
+	vp.LastKey = key
+	vp.LastValue = configValue
+	return vp.ErrorForProposeConfig
+}
+
+// BeginConfig returns slices populated by self
+func (vp *ValueProposer) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
+	handlers := make([]configvaluesapi.ValueProposer, len(groups))
+	for i := range handlers {
+		handlers[i] = vp
+	}
+	return handlers, nil
 }
 
 // Manager is a mock implementation of configtxapi.Manager

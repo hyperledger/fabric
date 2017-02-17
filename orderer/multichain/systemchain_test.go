@@ -25,30 +25,15 @@ import (
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
 	mockconfigvalueschannel "github.com/hyperledger/fabric/common/mocks/configvalues/channel"
 	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-type mockPolicy struct {
-	err error
-}
-
-func (mp *mockPolicy) Evaluate(sd []*cb.SignedData) error {
-	return mp.err
-}
-
-type mockPolicyManager struct {
-	mp *mockPolicy
-}
-
-func (mpm *mockPolicyManager) GetPolicy(id string) (policies.Policy, bool) {
-	return mpm.mp, mpm.mp != nil
-}
-
 type mockSupport struct {
-	mpm         *mockPolicyManager
+	mpm         *mockpolicies.Manager
 	msc         *mockconfigvaluesorderer.SharedConfig
 	chainID     string
 	queue       []*cb.Envelope
@@ -57,7 +42,7 @@ type mockSupport struct {
 
 func newMockSupport(chainID string) *mockSupport {
 	return &mockSupport{
-		mpm:         &mockPolicyManager{},
+		mpm:         &mockpolicies.Manager{},
 		msc:         &mockconfigvaluesorderer.SharedConfig{},
 		chainID:     chainID,
 		chainConfig: &mockconfigvalueschannel.SharedConfig{},
@@ -112,7 +97,7 @@ func TestGoodProposal(t *testing.T) {
 
 	mcc := newMockChainCreator()
 	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
-	mcc.ms.mpm.mp = &mockPolicy{}
+	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
 
 	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
 	if err != nil {
@@ -165,7 +150,7 @@ func TestProposalWithBadPolicy(t *testing.T) {
 	newChainID := "NewChainID"
 
 	mcc := newMockChainCreator()
-	mcc.ms.mpm.mp = &mockPolicy{}
+	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
 
 	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
 	if err != nil {
