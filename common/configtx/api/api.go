@@ -40,8 +40,18 @@ type ChannelConfig interface {
 	OrdererAddresses() []string
 }
 
+type OrgConfig interface {
+	// Name returns the name this org is referred to in config
+	Name() string
+
+	// MSPID returns the MSP ID associated with this org
+	MSPID() string
+}
+
 // ApplicationOrgConfig stores the per org application config
 type ApplicationOrgConfig interface {
+	OrgConfig
+
 	// AnchorPeers returns the list of gossip anchor peers
 	AnchorPeers() []*pb.AnchorPeer
 }

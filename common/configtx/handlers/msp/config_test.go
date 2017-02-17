@@ -19,9 +19,8 @@ package msp
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/protos/common"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,19 +28,12 @@ func TestMSPConfigManager(t *testing.T) {
 	conf, err := msp.GetLocalMspConfig("../../../../msp/sampleconfig/", "DEFAULT")
 	assert.NoError(t, err)
 
-	confBytes, err := proto.Marshal(conf)
-	assert.NoError(t, err)
-
-	ci := &common.ConfigValue{Value: confBytes}
-
 	// test success:
 
 	// begin/propose/commit
-	key := "DEFAULT"
-
 	mspCH := &MSPConfigHandler{}
 	mspCH.BeginConfig()
-	err = mspCH.ProposeConfig(key, ci)
+	_, err = mspCH.ProposeMSP(conf)
 	assert.NoError(t, err)
 	mspCH.CommitConfig()
 
@@ -55,8 +47,8 @@ func TestMSPConfigManager(t *testing.T) {
 	// test failure
 	// begin/propose/commit
 	mspCH.BeginConfig()
-	err = mspCH.ProposeConfig(key, ci)
+	_, err = mspCH.ProposeMSP(conf)
 	assert.NoError(t, err)
-	err = mspCH.ProposeConfig(key, &common.ConfigValue{Value: []byte("BARF!")})
+	_, err = mspCH.ProposeMSP(&mspprotos.MSPConfig{Config: []byte("BARF!")})
 	assert.Error(t, err)
 }

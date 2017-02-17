@@ -32,6 +32,14 @@ func (ao applicationOrgs) AnchorPeers() []*peer.AnchorPeer {
 	return ao
 }
 
+func (ao applicationOrgs) MSPID() string {
+	panic("Unimplimented")
+}
+
+func (ao applicationOrgs) Name() string {
+	panic("Unimplimented")
+}
+
 type mockReceiver struct {
 	orgs     map[string]configtxapi.ApplicationOrgConfig
 	sequence uint64

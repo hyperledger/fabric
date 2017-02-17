@@ -302,7 +302,7 @@ func TestMain(m *testing.M) {
 	}
 
 	mspMgr = NewMSPManager()
-	err = mspMgr.Setup([]*msp.MSPConfig{conf})
+	err = mspMgr.Setup([]MSP{localMsp})
 	if err != nil {
 		fmt.Printf("Setup for msp manager should have succeeded, got err %s instead", err)
 		os.Exit(-1)

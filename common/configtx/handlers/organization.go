@@ -23,7 +23,9 @@ import (
 	mspconfig "github.com/hyperledger/fabric/common/configtx/handlers/msp"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
 
@@ -43,6 +45,7 @@ type orgConfig struct {
 // In general, it should only be referenced as an Impl for the configtx.Manager
 type OrgConfig struct {
 	id            string
+	mspID         string
 	pendingConfig *orgConfig
 	config        *orgConfig
 
@@ -88,12 +91,53 @@ func (oc *OrgConfig) CommitConfig() {
 	oc.pendingConfig = nil
 }
 
+// Name returns the name this org is referred to in config
+func (oc *OrgConfig) Name() string {
+	return oc.id
+}
+
+// MSPID returns the MSP ID associated with this org
+func (oc *OrgConfig) MSPID() string {
+	return oc.mspID
+}
+
 // ProposeConfig is used to add new config to the config proposal
 func (oc *OrgConfig) ProposeConfig(key string, configValue *cb.ConfigValue) error {
 	switch key {
 	case MSPKey:
 		logger.Debugf("Initializing org MSP for id %s", oc.id)
-		return oc.mspConfig.ProposeConfig(key, configValue)
+
+		mspconfig := &mspprotos.MSPConfig{}
+		err := proto.Unmarshal(configValue.Value, mspconfig)
+		if err != nil {
+			return fmt.Errorf("Error unmarshalling msp config for org %s, err %s", oc.id, err)
+		}
+
+		logger.Debugf("Setting up MSP")
+		msp, err := oc.mspConfig.ProposeMSP(mspconfig)
+		if err != nil {
+			return err
+		}
+
+		mspID, err := msp.GetIdentifier()
+		if err != nil {
+			return fmt.Errorf("Could not extract msp identifier for org %s, err %s", oc.id, err)
+		}
+
+		if mspID == "" {
+			return fmt.Errorf("MSP for org %s has empty MSP ID", oc.id)
+		}
+
+		// If the mspID has never been initialized, store it to ensure immutability
+		if oc.mspID == "" {
+			oc.mspID = mspID
+		}
+
+		if mspID != oc.mspID {
+			return fmt.Errorf("MSP for org %s attempted to change its identifier from %s to %s", oc.id, oc.mspID, mspID)
+		}
+
+		oc.pendingConfig.msp = msp
 	default:
 		logger.Warningf("Uknown org config item with key %s", key)
 	}
