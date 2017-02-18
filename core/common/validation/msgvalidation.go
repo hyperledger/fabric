@@ -371,20 +371,20 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 
 	// TODO: ensure that creator can transact with us (some ACLs?) which set of APIs is supposed to give us this info?
 
-	// Verify that the transaction ID has been computed properly.
-	// This check is needed to ensure that the lookup into the ledger
-	// for the same TxID catches duplicates.
-	err = utils.CheckProposalTxID(
-		payload.Header.ChannelHeader.TxId,
-		payload.Header.SignatureHeader.Nonce,
-		payload.Header.SignatureHeader.Creator)
-	if err != nil {
-		return nil, err
-	}
-
 	// continue the validation in a way that depends on the type specified in the header
 	switch common.HeaderType(payload.Header.ChannelHeader.Type) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
+		// Verify that the transaction ID has been computed properly.
+		// This check is needed to ensure that the lookup into the ledger
+		// for the same TxID catches duplicates.
+		err = utils.CheckProposalTxID(
+			payload.Header.ChannelHeader.TxId,
+			payload.Header.SignatureHeader.Nonce,
+			payload.Header.SignatureHeader.Creator)
+		if err != nil {
+			return nil, err
+		}
+
 		err = validateEndorserTransaction(payload.Data, payload.Header)
 		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
 		return payload, err
