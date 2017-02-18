@@ -22,6 +22,8 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/util"
+	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 func TestValidateConfigTx(t *testing.T) {
@@ -32,7 +34,24 @@ func TestValidateConfigTx(t *testing.T) {
 		return
 	}
 
-	_, err = ValidateTransaction(chCrtEnv)
+	updateResult := &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{
+			ChannelHeader: &cb.ChannelHeader{
+				Type:      int32(cb.HeaderType_CONFIG),
+				ChannelId: chainID,
+			},
+			SignatureHeader: &cb.SignatureHeader{
+				Creator: signerSerialized,
+				Nonce:   utils.CreateNonceOrPanic(),
+			},
+		},
+			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
+				LastUpdate: chCrtEnv,
+			}),
+		}),
+	}
+	updateResult.Signature, _ = signer.Sign(updateResult.Payload)
+	_, err = ValidateTransaction(updateResult)
 	if err != nil {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return

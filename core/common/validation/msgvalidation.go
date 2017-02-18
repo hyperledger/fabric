@@ -389,6 +389,9 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
 		return payload, err
 	case common.HeaderType_CONFIG:
+		// Config transactions have signatures inside which will be validated, especially at genesis there may be no creator or
+		// signature on the outermost envelope
+
 		err = validateConfigTransaction(payload.Data, payload.Header)
 		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
 		return payload, err

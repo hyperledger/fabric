@@ -18,6 +18,7 @@ package configtx
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 
 	"github.com/hyperledger/fabric/common/configtx/api"
@@ -146,49 +147,92 @@ func (cm *configManager) commitCallbacks() {
 }
 
 // Validate attempts to validate a new configtx against the current config state
-func (cm *configManager) Validate(configtx *cb.Envelope) error {
+// It requires an Envelope of type CONFIG_UPDATE
+func (cm *configManager) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
 	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	configMap, err := cm.authorizeUpdate(configUpdateEnv)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	channelGroup, err := configMapToConfig(configMap)
 	if err != nil {
-		return fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
+		return nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
 	}
 
 	result, err := cm.processConfig(channelGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	result.rollback()
+
+	return &cb.ConfigEnvelope{
+		Config: &cb.Config{
+			Header: &cb.ChannelHeader{
+				ChannelId: cm.chainID,
+			},
+			Channel: channelGroup,
+		},
+		LastUpdate: configtx,
+	}, nil
+}
+
+func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (map[string]comparable, *configResult, error) {
+	if configEnv == nil {
+		return nil, nil, fmt.Errorf("Attempted to apply config with nil envelope")
+	}
+
+	configUpdateEnv, err := envelopeToConfigUpdate(configEnv.LastUpdate)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	configMap, err := cm.authorizeUpdate(configUpdateEnv)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	channelGroup, err := configMapToConfig(configMap)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
+	}
+
+	if configEnv.Config == nil {
+		return nil, nil, fmt.Errorf("Config cannot be nil")
+	}
+
+	if !reflect.DeepEqual(channelGroup, configEnv.Config.Channel) {
+		return nil, nil, fmt.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
+	}
+
+	result, err := cm.processConfig(channelGroup)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return configMap, result, nil
+}
+
+// Validate simulates applying a ConfigEnvelope to become the new config
+func (cm *configManager) Validate(configEnv *cb.ConfigEnvelope) error {
+	_, result, err := cm.prepareApply(configEnv)
 	if err != nil {
 		return err
 	}
 
 	result.rollback()
+
 	return nil
 }
 
-// Apply attempts to apply a configtx to become the new config
-func (cm *configManager) Apply(configtx *cb.Envelope) error {
-	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
-	if err != nil {
-		return err
-	}
-
-	configMap, err := cm.authorizeUpdate(configUpdateEnv)
-	if err != nil {
-		return err
-	}
-
-	channelGroup, err := configMapToConfig(configMap)
-	if err != nil {
-		return fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
-	}
-
-	result, err := cm.processConfig(channelGroup)
+// Apply attempts to apply a ConfigEnvelope to become the new config
+func (cm *configManager) Apply(configEnv *cb.ConfigEnvelope) error {
+	configMap, result, err := cm.prepareApply(configEnv)
 	if err != nil {
 		return err
 	}
@@ -199,13 +243,6 @@ func (cm *configManager) Apply(configtx *cb.Envelope) error {
 	cm.config = configMap
 	cm.sequence++
 
-	cm.configEnv = &cb.ConfigEnvelope{
-		Config: &cb.Config{
-			// XXX add header
-			Channel: channelGroup,
-		},
-		LastUpdate: configtx,
-	}
 	return nil
 }
 

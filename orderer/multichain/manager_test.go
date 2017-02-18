@@ -252,9 +252,15 @@ func TestNewChain(t *testing.T) {
 		if len(block.Data.Data) != 1 {
 			t.Fatalf("Should have had only one message in the orderer transaction block")
 		}
-		genesisConfigTx := utils.UnmarshalEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(utils.ExtractEnvelopeOrPanic(block, 0).Payload).Data)
-		if !reflect.DeepEqual(genesisConfigTx, newChainMessage) {
-			t.Errorf("Orderer config block contains wrong transaction, expected %v got %v", genesisConfigTx, newChainMessage)
+		configEnv, err := configtx.UnmarshalConfigEnvelope(utils.UnmarshalPayloadOrPanic(
+			utils.UnmarshalEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(utils.ExtractEnvelopeOrPanic(block, 0).Payload).Data).Payload).Data)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(configEnv.LastUpdate, newChainMessage) {
+			t.Errorf("Orderer config block contains wrong transaction, expected %v got %v", configEnv.LastUpdate, newChainMessage)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout in system chain")
@@ -285,9 +291,13 @@ func TestNewChain(t *testing.T) {
 		if len(block.Data.Data) != 1 {
 			t.Fatalf("Should have had only one message in the new genesis block")
 		}
-		genesisConfigTx := utils.ExtractEnvelopeOrPanic(block, 0)
-		if !reflect.DeepEqual(genesisConfigTx, newChainMessage) {
-			t.Errorf("Genesis block contains wrong transaction, expected %v got %v", genesisConfigTx, newChainMessage)
+		configEnv, err := configtx.ConfigEnvelopeFromBlock(block)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(configEnv.LastUpdate, newChainMessage) {
+			t.Errorf("Genesis block contains wrong transaction, expected %v got %v", configEnv.LastUpdate, newChainMessage)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout in system chain")

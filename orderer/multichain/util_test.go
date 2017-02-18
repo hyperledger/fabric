@@ -96,39 +96,16 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 }
 
 func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
-	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
-	if err != nil {
-		panic(err)
-	}
-
-	payload := &cb.Payload{
-		Header: &cb.Header{
-			ChannelHeader: &cb.ChannelHeader{
-				Type:      int32(cb.HeaderType_CONFIG),
-				ChannelId: chainID,
-			},
-			SignatureHeader: &cb.SignatureHeader{},
-		},
-		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
-			Config: &cb.Config{
-				Header:  configUpdate.Header,
-				Channel: configUpdate.WriteSet,
-			},
-			LastUpdate: &cb.Envelope{
-				Payload: utils.MarshalOrPanic(&cb.Payload{
-					Header: &cb.Header{
-						ChannelHeader: &cb.ChannelHeader{
-							Type:      int32(cb.HeaderType_CONFIG_UPDATE),
-							ChannelId: chainID,
-						},
-					},
-					Data: utils.MarshalOrPanic(configUpdateEnv),
-				}),
-			},
-		}),
-	}
 	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(payload),
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: &cb.ChannelHeader{
+					Type:      int32(cb.HeaderType_CONFIG_UPDATE),
+					ChannelId: chainID,
+				},
+			},
+			Data: utils.MarshalOrPanic(configUpdateEnv),
+		}),
 	}
 }
 

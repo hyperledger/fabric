@@ -75,7 +75,7 @@ func TestAcceptGoodConfig(t *testing.T) {
 
 	committer.Commit()
 
-	if !reflect.DeepEqual(mcm.AppliedConfigUpdateEnvelope, configEnv.LastUpdate) {
+	if !reflect.DeepEqual(mcm.AppliedConfigUpdateEnvelope, configEnv) {
 		t.Fatalf("Should have applied new config on commit got %+v and %+v", mcm.AppliedConfigUpdateEnvelope, configEnv.LastUpdate)
 	}
 }
