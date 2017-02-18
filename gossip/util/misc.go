@@ -74,14 +74,6 @@ func GetRandomIndices(indiceCount, highestIndex int) []int {
 	return indices
 }
 
-// Abs returns abs(a-b)
-func Abs(a, b uint64) uint64 {
-	if a > b {
-		return a - b
-	}
-	return b - a
-}
-
 // Set is a generic and thread-safe
 // set container
 type Set struct {

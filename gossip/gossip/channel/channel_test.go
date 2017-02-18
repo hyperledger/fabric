@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"errors"
+
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -34,7 +36,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type msgMutator func(*proto.GossipMessage)
+type msgMutator func(message *proto.Envelope)
 
 var conf = Config{
 	ID: "test",
@@ -119,17 +121,17 @@ func (cs *cryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) err
 
 type receivedMsg struct {
 	PKIID common.PKIidType
-	msg   *proto.GossipMessage
+	msg   *proto.SignedGossipMessage
 	mock.Mock
 }
 
 // GetSourceEnvelope Returns the Envelope the ReceivedMessage was
 // constructed with
 func (m *receivedMsg) GetSourceEnvelope() *proto.Envelope {
-	return nil
+	return m.msg.Envelope
 }
 
-func (m *receivedMsg) GetGossipMessage() *proto.GossipMessage {
+func (m *receivedMsg) GetGossipMessage() *proto.SignedGossipMessage {
 	return m.msg
 }
 
@@ -150,7 +152,7 @@ func (ga *gossipAdapterMock) GetConf() Config {
 	return args.Get(0).(Config)
 }
 
-func (ga *gossipAdapterMock) Gossip(msg *proto.GossipMessage) {
+func (ga *gossipAdapterMock) Gossip(msg *proto.SignedGossipMessage) {
 	ga.Called(msg)
 }
 
@@ -160,10 +162,11 @@ func (ga *gossipAdapterMock) DeMultiplex(msg interface{}) {
 
 func (ga *gossipAdapterMock) GetMembership() []discovery.NetworkMember {
 	args := ga.Called()
-	return args.Get(0).([]discovery.NetworkMember)
+	members := args.Get(0).([]discovery.NetworkMember)
+	return members
 }
 
-func (ga *gossipAdapterMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+func (ga *gossipAdapterMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	// Ensure we have configured Send prior
 	foundSend := false
 	for _, ec := range ga.ExpectedCalls {
@@ -178,7 +181,7 @@ func (ga *gossipAdapterMock) Send(msg *proto.GossipMessage, peers ...*comm.Remot
 	ga.Called(msg, peers)
 }
 
-func (ga *gossipAdapterMock) ValidateStateInfoMessage(msg *proto.GossipMessage) error {
+func (ga *gossipAdapterMock) ValidateStateInfoMessage(msg *proto.SignedGossipMessage) error {
 	args := ga.Called(msg)
 	if args.Get(0) == nil {
 		return nil
@@ -208,31 +211,31 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	t.Parallel()
 	ledgerHeight := 5
 	receivedMsg := int32(0)
-	stateInfoReceptionChan := make(chan *proto.GossipMessage, 1)
+	stateInfoReceptionChan := make(chan *proto.SignedGossipMessage, 1)
 
 	cs := &cryptoService{}
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
 
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
-	adapter.On("Send", mock.AnythingOfType("*gossip.GossipMessage"), mock.Anything)
-	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage")).Run(func(arg mock.Arguments) {
+	adapter.On("Send", mock.Anything, mock.Anything)
+	adapter.On("Gossip", mock.Anything).Run(func(arg mock.Arguments) {
 		if atomic.LoadInt32(&receivedMsg) == int32(1) {
 			return
 		}
 
 		atomic.StoreInt32(&receivedMsg, int32(1))
-		msg := arg.Get(0).(*proto.GossipMessage)
+		msg := arg.Get(0).(*proto.SignedGossipMessage)
 		stateInfoReceptionChan <- msg
 	})
 
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
 	gc.UpdateStateInfo(createStateInfoMsg(ledgerHeight, pkiIDInOrg1, channelA))
 
-	var msg *proto.GossipMessage
+	var msg *proto.SignedGossipMessage
 	select {
 	case <-time.After(time.Second * 5):
-		t.Fatalf("Haven't sent stateInfo on time")
+		t.Fatal("Haven't sent stateInfo on time")
 	case m := <-stateInfoReceptionChan:
 		msg = m
 	}
@@ -247,12 +250,12 @@ func TestChannelPull(t *testing.T) {
 	t.Parallel()
 	cs := &cryptoService{}
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
-	receivedBlocksChan := make(chan *proto.GossipMessage)
+	receivedBlocksChan := make(chan *proto.SignedGossipMessage)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
-	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
-	adapter.On("DeMultiplex", mock.AnythingOfType("*gossip.GossipMessage")).Run(func(arg mock.Arguments) {
-		msg := arg.Get(0).(*proto.GossipMessage)
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
+		msg := arg.Get(0).(*proto.SignedGossipMessage)
 		if !msg.IsDataMsg() {
 			return
 		}
@@ -264,14 +267,14 @@ func TestChannelPull(t *testing.T) {
 	go gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(100, pkiIDInOrg1, channelA)})
 
 	var wg sync.WaitGroup
-	pullPhase := simulatePullPhase(gc, t, &wg, func(*proto.GossipMessage) {})
-	adapter.On("Send", mock.AnythingOfType("*gossip.GossipMessage"), mock.Anything).Run(pullPhase)
+	pullPhase := simulatePullPhase(gc, t, &wg, func(envelope *proto.Envelope) {})
+	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase)
 
 	wg.Wait()
 	for expectedSeq := 10; expectedSeq < 11; expectedSeq++ {
 		select {
 		case <-time.After(time.Second * 5):
-			t.Fatalf("Haven't received blocks on time")
+			t.Fatal("Haven't received blocks on time")
 		case msg := <-receivedBlocksChan:
 			assert.Equal(t, uint64(expectedSeq), msg.GetDataMsg().Payload.SeqNum)
 		}
@@ -286,7 +289,7 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 	gossipMessagesSentFromChannel := make(chan *proto.GossipMessage, 1)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
-	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
+	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
@@ -310,20 +313,20 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 	}
 	// First, ensure it does that for pull messages from peers that are in the channel
 	helloMsg := createHelloMsg(pkiIDInOrg1)
-	helloMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
+	helloMsg.On("Respond", mock.Anything).Run(messageRelayer)
 	gc.HandleMessage(helloMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
 	case <-time.After(time.Second * 5):
-		t.Fatalf("Didn't reply with a digest on time")
+		t.Fatal("Didn't reply with a digest on time")
 	}
 	// And now for peers that are not in the channel (should not send back a message)
 	helloMsg = createHelloMsg(pkiIDinOrg2)
-	helloMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
+	helloMsg.On("Respond", mock.Anything).Run(messageRelayer)
 	gc.HandleMessage(helloMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
-		t.Fatalf("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
+		t.Fatal("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
 	case <-time.After(time.Second * 1):
 	}
 
@@ -333,12 +336,12 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 		msg:   req,
 		PKIID: pkiIDInOrg1,
 	}
-	validReceivedMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
+	validReceivedMsg.On("Respond", mock.Anything).Run(messageRelayer)
 	gc.HandleMessage(validReceivedMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
 	case <-time.After(time.Second * 5):
-		t.Fatalf("Didn't reply with a digest on time")
+		t.Fatal("Didn't reply with a digest on time")
 	}
 
 	// Ensure we don't respond to a StateInfoRequest from a peer in the wrong org
@@ -346,11 +349,11 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 		msg:   req,
 		PKIID: pkiIDinOrg2,
 	}
-	invalidReceivedMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
+	invalidReceivedMsg.On("Respond", mock.Anything).Run(messageRelayer)
 	gc.HandleMessage(invalidReceivedMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
-		t.Fatalf("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
+		t.Fatal("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
 	case <-time.After(time.Second * 1):
 	}
 
@@ -361,11 +364,11 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 		msg:   req2,
 		PKIID: pkiIDInOrg1,
 	}
-	invalidReceivedMsg2.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
+	invalidReceivedMsg2.On("Respond", mock.Anything).Run(messageRelayer)
 	gc.HandleMessage(invalidReceivedMsg2)
 	select {
 	case <-gossipMessagesSentFromChannel:
-		t.Fatalf("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
+		t.Fatal("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
 	case <-time.After(time.Second * 1):
 	}
 }
@@ -378,7 +381,7 @@ func TestChannelIsInChannel(t *testing.T) {
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
-	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
+	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 
@@ -397,7 +400,7 @@ func TestChannelIsSubscribed(t *testing.T) {
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
-	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
+	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1, channelA), PKIID: pkiIDInOrg1})
@@ -409,14 +412,14 @@ func TestChannelAddToMessageStore(t *testing.T) {
 
 	cs := &cryptoService{}
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
-	demuxedMsgs := make(chan *proto.GossipMessage, 1)
+	demuxedMsgs := make(chan *proto.SignedGossipMessage, 1)
 	adapter := new(gossipAdapterMock)
 	configureAdapter(adapter)
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
-	adapter.On("DeMultiplex", mock.AnythingOfType("*gossip.GossipMessage")).Run(func(arg mock.Arguments) {
-		demuxedMsgs <- arg.Get(0).(*proto.GossipMessage)
+	adapter.On("DeMultiplex", mock.Anything).Run(func(arg mock.Arguments) {
+		demuxedMsgs <- arg.Get(0).(*proto.SignedGossipMessage)
 	})
 
 	// Check that adding a message of a bad type doesn't crash the program
@@ -428,7 +431,7 @@ func TestChannelAddToMessageStore(t *testing.T) {
 	gc.HandleMessage(&receivedMsg{msg: dataMsgOfChannel(11, channelA), PKIID: pkiIDInOrg1})
 	select {
 	case <-time.After(time.Second):
-		t.Fatalf("Haven't detected a demultiplexing within a time period")
+		t.Fatal("Haven't detected a demultiplexing within a time period")
 	case <-demuxedMsgs:
 	}
 	gc.AddToMsgStore(dataMsgOfChannel(12, channelA))
@@ -436,19 +439,19 @@ func TestChannelAddToMessageStore(t *testing.T) {
 	select {
 	case <-time.After(time.Second):
 	case <-demuxedMsgs:
-		t.Fatalf("Demultiplexing detected, even though it wasn't supposed to happen")
+		t.Fatal("Demultiplexing detected, even though it wasn't supposed to happen")
 	}
 
 	gc.AddToMsgStore(createStateInfoMsg(10, pkiIDInOrg1, channelA))
 	helloMsg := createHelloMsg(pkiIDInOrg1)
 	respondedChan := make(chan struct{}, 1)
-	helloMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(func(arg mock.Arguments) {
+	helloMsg.On("Respond", mock.Anything).Run(func(arg mock.Arguments) {
 		respondedChan <- struct{}{}
 	})
 	gc.HandleMessage(helloMsg)
 	select {
 	case <-time.After(time.Second):
-		t.Fatalf("Haven't responded to hello message within a time period")
+		t.Fatal("Haven't responded to hello message within a time period")
 	case <-respondedChan:
 	}
 
@@ -458,7 +461,7 @@ func TestChannelAddToMessageStore(t *testing.T) {
 
 func TestChannelBadBlocks(t *testing.T) {
 	t.Parallel()
-	receivedMessages := make(chan *proto.GossipMessage, 1)
+	receivedMessages := make(chan *proto.SignedGossipMessage, 1)
 	cs := &cryptoService{}
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
 	adapter := new(gossipAdapterMock)
@@ -467,7 +470,7 @@ func TestChannelBadBlocks(t *testing.T) {
 	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
 
 	adapter.On("DeMultiplex", mock.Anything).Run(func(args mock.Arguments) {
-		receivedMessages <- args.Get(0).(*proto.GossipMessage)
+		receivedMessages <- args.Get(0).(*proto.SignedGossipMessage)
 	})
 
 	// Send a valid block
@@ -487,7 +490,7 @@ func TestChannelBadBlocks(t *testing.T) {
 
 	// Send a block with a bad signature
 	cs.Mock = mock.Mock{}
-	cs.On("VerifyBlock", mock.Anything).Return(fmt.Errorf("Bad signature"))
+	cs.On("VerifyBlock", mock.Anything).Return(errors.New("Bad signature"))
 	gc.HandleMessage(&receivedMsg{msg: createDataMsg(4, channelA), PKIID: pkiIDInOrg1})
 	assert.Len(t, receivedMessages, 0)
 }
@@ -508,8 +511,10 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	changeChan := func(msg *proto.GossipMessage) {
-		msg.Channel = []byte("B")
+	changeChan := func(env *proto.Envelope) {
+		sMsg, _ := env.ToGossipMessage()
+		sMsg.Channel = []byte("B")
+		env.Payload = sMsg.NoopSign().Payload
 	}
 
 	pullPhase1 := simulatePullPhase(gc, t, &wg, changeChan)
@@ -521,7 +526,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 
 	// Test a pull with a badly signed block
 	cs = &cryptoService{}
-	cs.On("VerifyBlock", mock.Anything).Return(fmt.Errorf("Bad block"))
+	cs.On("VerifyBlock", mock.Anything).Return(errors.New("Bad block"))
 	adapter = new(gossipAdapterMock)
 	adapter.On("Gossip", mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
@@ -531,7 +536,7 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 
 	var wg2 sync.WaitGroup
 	wg2.Add(1)
-	noop := func(msg *proto.GossipMessage) {
+	noop := func(env *proto.Envelope) {
 
 	}
 	pullPhase2 := simulatePullPhase(gc, t, &wg2, noop)
@@ -551,8 +556,10 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 
 	var wg3 sync.WaitGroup
 	wg3.Add(1)
-	emptyBlock := func(msg *proto.GossipMessage) {
-		msg.GetDataMsg().Payload = nil
+	emptyBlock := func(env *proto.Envelope) {
+		sMsg, _ := env.ToGossipMessage()
+		sMsg.GossipMessage.GetDataMsg().Payload = nil
+		env.Payload = sMsg.NoopSign().Payload
 	}
 	pullPhase3 := simulatePullPhase(gc, t, &wg3, emptyBlock)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase3)
@@ -572,8 +579,10 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 
 	var wg4 sync.WaitGroup
 	wg4.Add(1)
-	nonBlockMsg := func(msg *proto.GossipMessage) {
-		msg.Content = createHelloMsg(pkiIDInOrg1).GetGossipMessage().Content
+	nonBlockMsg := func(env *proto.Envelope) {
+		sMsg, _ := env.ToGossipMessage()
+		sMsg.Content = createHelloMsg(pkiIDInOrg1).GetGossipMessage().Content
+		env.Payload = sMsg.NoopSign().Payload
 	}
 	pullPhase4 := simulatePullPhase(gc, t, &wg4, nonBlockMsg)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase4)
@@ -592,7 +601,7 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	adapter.On("Gossip", mock.Anything)
 	sentMessages := make(chan *proto.GossipMessage, 10)
 	adapter.On("Send", mock.Anything, mock.Anything)
-	adapter.On("ValidateStateInfoMessage", mock.AnythingOfType("*gossip.GossipMessage")).Return(nil)
+	adapter.On("ValidateStateInfoMessage", mock.Anything).Return(nil)
 
 	// Ensure we ignore stateInfo snapshots from peers not in the channel
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: stateInfoSnapshotForChannel(common.ChainID("B"), createStateInfoMsg(4, pkiIDInOrg1, channelA))})
@@ -617,13 +626,13 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	// Check we can respond to stateInfoSnapshot requests
 	snapshotReq := &receivedMsg{
 		PKIID: pkiIDInOrg1,
-		msg: &proto.GossipMessage{
+		msg: (&proto.GossipMessage{
 			Channel: channelA,
 			Tag:     proto.GossipMessage_CHAN_OR_ORG,
 			Content: &proto.GossipMessage_StateInfoPullReq{
 				StateInfoPullReq: &proto.StateInfoPullRequest{},
 			},
-		},
+		}).NoopSign(),
 	}
 	snapshotReq.On("Respond", mock.Anything).Run(func(args mock.Arguments) {
 		sentMessages <- args.Get(0).(*proto.GossipMessage)
@@ -636,12 +645,14 @@ func TestChannelStateInfoSnapshot(t *testing.T) {
 	case msg := <-sentMessages:
 		elements := msg.GetStateSnapshot().Elements
 		assert.Len(t, elements, 1)
-		assert.Equal(t, []byte("4"), elements[0].GetStateInfo().Metadata)
+		sMsg, err := elements[0].ToGossipMessage()
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("4"), sMsg.GetStateInfo().Metadata)
 	}
 
 	// Ensure we don't crash if we got an invalid state info message
 	invalidStateInfoSnapshot := stateInfoSnapshotForChannel(channelA, createStateInfoMsg(4, pkiIDInOrg1, channelA))
-	invalidStateInfoSnapshot.GetStateSnapshot().Elements = []*proto.GossipMessage{createHelloMsg(pkiIDInOrg1).GetGossipMessage()}
+	invalidStateInfoSnapshot.GetStateSnapshot().Elements = []*proto.Envelope{createHelloMsg(pkiIDInOrg1).GetSourceEnvelope()}
 	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: invalidStateInfoSnapshot})
 
 	// Ensure we don't crash if we got a stateInfoMessage from a peer that its org isn't known
@@ -732,7 +743,7 @@ func TestChannelReconfigureChannel(t *testing.T) {
 	// Just call it again, to make sure stuff don't crash
 	gc.ConfigureChannel(api.JoinChannelMessage(newJoinChanMsg))
 
-	adapter.On("Gossip", mock.AnythingOfType("*gossip.GossipMessage"))
+	adapter.On("Gossip", mock.Anything)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 
@@ -764,18 +775,18 @@ func TestChannelReconfigureChannel(t *testing.T) {
 		msg := arg.Get(0).(*proto.GossipMessage)
 		gossipMessagesSentFromChannel <- msg
 	}
-	invalidReceivedMsg.On("Respond", mock.AnythingOfType("*gossip.GossipMessage")).Run(messageRelayer)
+	invalidReceivedMsg.On("Respond", mock.Anything).Run(messageRelayer)
 	gc.HandleMessage(invalidReceivedMsg)
 	select {
 	case <-gossipMessagesSentFromChannel:
-		t.Fatalf("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
+		t.Fatal("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
 	case <-time.After(time.Second * 1):
 	}
 
 }
 
-func createDataUpdateMsg(nonce uint64) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func createDataUpdateMsg(nonce uint64) *proto.SignedGossipMessage {
+	return (&proto.GossipMessage{
 		Nonce:   0,
 		Channel: []byte(channelA),
 		Tag:     proto.GossipMessage_CHAN_AND_ORG,
@@ -783,10 +794,10 @@ func createDataUpdateMsg(nonce uint64) *proto.GossipMessage {
 			DataUpdate: &proto.DataUpdate{
 				MsgType: proto.PullMsgType_BlockMessage,
 				Nonce:   nonce,
-				Data:    []*proto.GossipMessage{createDataMsg(10, channelA), createDataMsg(11, channelA)},
+				Data:    []*proto.Envelope{createDataMsg(10, channelA).Envelope, createDataMsg(11, channelA).Envelope},
 			},
 		},
-	}
+	}).NoopSign()
 }
 
 func createHelloMsg(PKIID common.PKIidType) *receivedMsg {
@@ -801,11 +812,11 @@ func createHelloMsg(PKIID common.PKIidType) *receivedMsg {
 			},
 		},
 	}
-	return &receivedMsg{msg: msg, PKIID: PKIID}
+	return &receivedMsg{msg: msg.NoopSign(), PKIID: PKIID}
 }
 
-func dataMsgOfChannel(seqnum uint64, channel common.ChainID) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func dataMsgOfChannel(seqnum uint64, channel common.ChainID) *proto.SignedGossipMessage {
+	return (&proto.GossipMessage{
 		Channel: []byte(channel),
 		Nonce:   0,
 		Tag:     proto.GossipMessage_CHAN_AND_ORG,
@@ -818,11 +829,11 @@ func dataMsgOfChannel(seqnum uint64, channel common.ChainID) *proto.GossipMessag
 				},
 			},
 		},
-	}
+	}).NoopSign()
 }
 
-func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common.ChainID) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common.ChainID) *proto.SignedGossipMessage {
+	return (&proto.GossipMessage{
 		Channel: channel,
 		Tag:     proto.GossipMessage_CHAN_OR_ORG,
 		Content: &proto.GossipMessage_StateInfo{
@@ -832,24 +843,28 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 				PkiID:     []byte(pkiID),
 			},
 		},
-	}
+	}).NoopSign()
 }
 
-func stateInfoSnapshotForChannel(chainID common.ChainID, stateInfoMsgs ...*proto.GossipMessage) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func stateInfoSnapshotForChannel(chainID common.ChainID, stateInfoMsgs ...*proto.SignedGossipMessage) *proto.SignedGossipMessage {
+	envelopes := make([]*proto.Envelope, len(stateInfoMsgs))
+	for i, sim := range stateInfoMsgs {
+		envelopes[i] = sim.Envelope
+	}
+	return (&proto.GossipMessage{
 		Channel: chainID,
 		Tag:     proto.GossipMessage_CHAN_OR_ORG,
 		Nonce:   0,
 		Content: &proto.GossipMessage_StateSnapshot{
 			StateSnapshot: &proto.StateInfoSnapshot{
-				Elements: stateInfoMsgs,
+				Elements: envelopes,
 			},
 		},
-	}
+	}).NoopSign()
 }
 
-func createDataMsg(seqnum uint64, channel common.ChainID) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func createDataMsg(seqnum uint64, channel common.ChainID) *proto.SignedGossipMessage {
+	return (&proto.GossipMessage{
 		Nonce:   0,
 		Tag:     proto.GossipMessage_CHAN_AND_ORG,
 		Channel: []byte(channel),
@@ -862,7 +877,7 @@ func createDataMsg(seqnum uint64, channel common.ChainID) *proto.GossipMessage {
 				},
 			},
 		},
-	}
+	}).NoopSign()
 }
 
 func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutator msgMutator) func(args mock.Arguments) {
@@ -870,16 +885,15 @@ func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutat
 	var sentHello bool
 	var sentReq bool
 	return func(args mock.Arguments) {
-		msg := args.Get(0).(*proto.GossipMessage)
+		msg := args.Get(0).(*proto.SignedGossipMessage)
 		l.Lock()
 		defer l.Unlock()
-
 		if msg.IsHelloMsg() && !sentHello {
 			sentHello = true
 			// Simulate a digest message an imaginary peer responds to the hello message sent
 			digestMsg := &receivedMsg{
 				PKIID: pkiIDInOrg1,
-				msg: &proto.GossipMessage{
+				msg: (&proto.GossipMessage{
 					Tag:     proto.GossipMessage_CHAN_AND_ORG,
 					Channel: []byte(channelA),
 					Content: &proto.GossipMessage_DataDig{
@@ -889,7 +903,7 @@ func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutat
 							Nonce:   msg.GetHello().Nonce,
 						},
 					},
-				},
+				}).NoopSign(),
 			}
 			go gc.HandleMessage(digestMsg)
 		}

@@ -75,8 +75,8 @@ type gossipDiscoveryImpl struct {
 	deadLastTS      map[string]*timestamp     // H
 	aliveLastTS     map[string]*timestamp     // V
 	id2Member       map[string]*NetworkMember // all known members
-	aliveMembership membershipStore
-	deadMembership  membershipStore
+	aliveMembership util.MembershipStore
+	deadMembership  util.MembershipStore
 
 	bootstrapPeers []string
 
@@ -98,8 +98,8 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		deadLastTS:      make(map[string]*timestamp),
 		aliveLastTS:     make(map[string]*timestamp),
 		id2Member:       make(map[string]*NetworkMember),
-		aliveMembership: make(membershipStore, 0),
-		deadMembership:  make(membershipStore, 0),
+		aliveMembership: make(util.MembershipStore, 0),
+		deadMembership:  make(util.MembershipStore, 0),
 		crypt:           crypt,
 		comm:            comm,
 		lock:            &sync.RWMutex{},
@@ -173,7 +173,7 @@ func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
 
 	for !d.somePeerIsKnown() {
 		var wg sync.WaitGroup
-		req := d.createMembershipRequest()
+		req := d.createMembershipRequest().NoopSign()
 		wg.Add(len(endpoints))
 		for _, endpoint := range endpoints {
 			go func(endpoint string) {
@@ -204,7 +204,7 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 		return
 	}
 	var peers2SendTo []*NetworkMember
-	memReq := d.createMembershipRequest()
+	memReq := d.createMembershipRequest().NoopSign()
 
 	d.lock.RLock()
 
@@ -277,7 +277,7 @@ func (d *gossipDiscoveryImpl) handleMessages() {
 	}
 }
 
-func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.GossipMessage) {
+func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 	if m == nil {
 		return
 	}
@@ -341,13 +341,13 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.GossipMessage) {
 				continue
 			}
 
-			newDeadMembers := []*proto.GossipMessage{}
+			newDeadMembers := []*proto.SignedGossipMessage{}
 			d.lock.RLock()
 			if _, known := d.id2Member[string(dm.GetAliveMsg().Membership.PkiID)]; !known {
 				newDeadMembers = append(newDeadMembers, dm)
 			}
 			d.lock.RUnlock()
-			d.learnNewMembers([]*proto.GossipMessage{}, newDeadMembers)
+			d.learnNewMembers([]*proto.SignedGossipMessage{}, newDeadMembers)
 		}
 	}
 }
@@ -364,13 +364,13 @@ func (d *gossipDiscoveryImpl) sendMemResponse(member *proto.Member, known [][]by
 		Metadata:         member.Metadata,
 		PKIid:            member.PkiID,
 		InternalEndpoint: internalEndpoint,
-	}, &proto.GossipMessage{
+	}, (&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: uint64(0),
 		Content: &proto.GossipMessage_MemRes{
 			MemRes: memResp,
 		},
-	})
+	}).NoopSign())
 }
 
 func (d *gossipDiscoveryImpl) createMembershipResponse(known [][]byte) *proto.MembershipResponse {
@@ -407,7 +407,7 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(known [][]byte) *proto.Me
 	}
 }
 
-func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.GossipMessage) {
+func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 	d.logger.Debug("Entering", m)
 	defer d.logger.Debug("Exiting")
 
@@ -429,7 +429,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.GossipMessage) {
 	d.lock.RUnlock()
 
 	if !known {
-		d.learnNewMembers([]*proto.GossipMessage{m}, []*proto.GossipMessage{})
+		d.learnNewMembers([]*proto.SignedGossipMessage{m}, []*proto.SignedGossipMessage{})
 		return
 	}
 
@@ -464,7 +464,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.GossipMessage) {
 
 	if isAlive {
 		if before(lastAliveTS, ts) {
-			d.learnExistingMembers([]*proto.GossipMessage{m})
+			d.learnExistingMembers([]*proto.SignedGossipMessage{m})
 		} else if !same(lastAliveTS, ts) {
 			d.logger.Debug(m.GetAliveMsg().Membership, "lastAliveTS:", lastAliveTS, "but got ts:", ts)
 		}
@@ -473,7 +473,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.GossipMessage) {
 	// else, ignore the message because it is too old
 }
 
-func (d *gossipDiscoveryImpl) resurrectMember(am *proto.GossipMessage, t proto.PeerTime) {
+func (d *gossipDiscoveryImpl) resurrectMember(am *proto.SignedGossipMessage, t proto.PeerTime) {
 	d.logger.Info("Entering, AliveMessage:", am, "t:", t)
 	defer d.logger.Info("Exiting")
 	d.lock.Lock()
@@ -501,7 +501,7 @@ func (d *gossipDiscoveryImpl) resurrectMember(am *proto.GossipMessage, t proto.P
 
 	delete(d.deadLastTS, string(pkiID))
 	d.deadMembership.Remove(common.PKIidType(pkiID))
-	d.aliveMembership.Put(common.PKIidType(pkiID), &message{GossipMessage: am, Envelope: am.Envelope})
+	d.aliveMembership.Put(common.PKIidType(pkiID), &proto.SignedGossipMessage{GossipMessage: am.GossipMessage, Envelope: am.Envelope})
 }
 
 func (d *gossipDiscoveryImpl) periodicalReconnectToDead() {
@@ -533,18 +533,18 @@ func (d *gossipDiscoveryImpl) sendMembershipRequest(member *NetworkMember) {
 	d.comm.SendToPeer(member, d.createMembershipRequest())
 }
 
-func (d *gossipDiscoveryImpl) createMembershipRequest() *proto.GossipMessage {
+func (d *gossipDiscoveryImpl) createMembershipRequest() *proto.SignedGossipMessage {
 	req := &proto.MembershipRequest{
 		SelfInformation: d.createAliveMessage().Envelope,
 		Known:           d.getKnownPeers(),
 	}
-	return &proto.GossipMessage{
+	return (&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: uint64(0),
 		Content: &proto.GossipMessage_MemReq{
 			MemReq: req,
 		},
-	}
+	}).NoopSign()
 }
 
 func (d *gossipDiscoveryImpl) getKnownPeers() [][]byte {
@@ -602,7 +602,7 @@ func (d *gossipDiscoveryImpl) expireDeadMembers(dead []common.PKIidType) {
 			delete(d.aliveLastTS, string(pkiID))
 		}
 
-		if am := d.aliveMembership.msgByID(pkiID); am != nil {
+		if am := d.aliveMembership.MsgByID(pkiID); am != nil {
 			d.deadMembership.Put(pkiID, am)
 			d.aliveMembership.Remove(pkiID)
 		}
@@ -641,7 +641,7 @@ func (d *gossipDiscoveryImpl) periodicalSendAlive() {
 	}
 }
 
-func (d *gossipDiscoveryImpl) createAliveMessage() *proto.GossipMessage {
+func (d *gossipDiscoveryImpl) createAliveMessage() *proto.SignedGossipMessage {
 	d.lock.Lock()
 	d.seqNum++
 	seqNum := d.seqNum
@@ -670,12 +670,13 @@ func (d *gossipDiscoveryImpl) createAliveMessage() *proto.GossipMessage {
 		},
 	}
 
-	env := d.crypt.SignMessage(msg2Gossip, internalEndpoint)
-	msg2Gossip.Envelope = env
-	return msg2Gossip
+	return &proto.SignedGossipMessage{
+		GossipMessage: msg2Gossip,
+		Envelope:      d.crypt.SignMessage(msg2Gossip, internalEndpoint),
+	}
 }
 
-func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.GossipMessage) {
+func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.SignedGossipMessage) {
 	d.logger.Infof("Entering: learnedMembers={%v}", aliveArr)
 	defer d.logger.Debug("Exiting")
 
@@ -718,18 +719,20 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.GossipMessa
 			alive.lastSeen = time.Now()
 			alive.seqNum = am.Timestamp.SeqNum
 
-			if am := d.aliveMembership.msgByID(m.GetAliveMsg().Membership.PkiID); am == nil {
-				d.logger.Debug("Appended", am, "to d.cachedMembership.Alive")
-				d.aliveMembership.Put(m.GetAliveMsg().Membership.PkiID, &message{GossipMessage: m, Envelope: am.Envelope})
+			if am := d.aliveMembership.MsgByID(m.GetAliveMsg().Membership.PkiID); am == nil {
+				d.logger.Debug("Adding", am, "to aliveMembership")
+				msg := &proto.SignedGossipMessage{GossipMessage: m.GossipMessage, Envelope: am.Envelope}
+				d.aliveMembership.Put(m.GetAliveMsg().Membership.PkiID, msg)
 			} else {
-				d.logger.Debug("Replaced", am, "in d.cachedMembership.Alive")
-				am.GossipMessage = m
+				d.logger.Debug("Replacing", am, "in aliveMembership")
+				am.GossipMessage = m.GossipMessage
+				am.Envelope = m.Envelope
 			}
 		}
 	}
 }
 
-func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.GossipMessage, deadMembers []*proto.GossipMessage) {
+func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.SignedGossipMessage, deadMembers []*proto.SignedGossipMessage) {
 	d.logger.Debugf("Entering: learnedMembers={%v}, deadMembers={%v}", aliveMembers, deadMembers)
 	defer d.logger.Debugf("Exiting")
 
@@ -746,7 +749,7 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.GossipMessag
 			seqNum:   am.GetAliveMsg().Timestamp.SeqNum,
 		}
 
-		d.aliveMembership.Put(am.GetAliveMsg().Membership.PkiID, &message{GossipMessage: am, Envelope: am.Envelope})
+		d.aliveMembership.Put(am.GetAliveMsg().Membership.PkiID, &proto.SignedGossipMessage{GossipMessage: am.GossipMessage, Envelope: am.Envelope})
 		d.logger.Infof("Learned about a new alive member: %v", am)
 	}
 
@@ -760,12 +763,12 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.GossipMessag
 			seqNum:   dm.GetAliveMsg().Timestamp.SeqNum,
 		}
 
-		d.deadMembership.Put(dm.GetAliveMsg().Membership.PkiID, &message{GossipMessage: dm, Envelope: dm.Envelope})
+		d.deadMembership.Put(dm.GetAliveMsg().Membership.PkiID, &proto.SignedGossipMessage{GossipMessage: dm.GossipMessage, Envelope: dm.Envelope})
 		d.logger.Infof("Learned about a new dead member: %v", dm)
 	}
 
 	// update the member in any case
-	for _, a := range [][]*proto.GossipMessage{aliveMembers, deadMembers} {
+	for _, a := range [][]*proto.SignedGossipMessage{aliveMembers, deadMembers} {
 		for _, m := range a {
 			member := m.GetAliveMsg()
 			if member == nil {

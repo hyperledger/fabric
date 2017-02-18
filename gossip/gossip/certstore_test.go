@@ -46,7 +46,7 @@ type pullerMock struct {
 }
 
 type sentMsg struct {
-	msg *proto.GossipMessage
+	msg *proto.SignedGossipMessage
 	mock.Mock
 }
 
@@ -60,7 +60,7 @@ func (s *sentMsg) Respond(msg *proto.GossipMessage) {
 	s.Called(msg)
 }
 
-func (s *sentMsg) GetGossipMessage() *proto.GossipMessage {
+func (s *sentMsg) GetGossipMessage() *proto.SignedGossipMessage {
 	return s.msg
 }
 
@@ -72,7 +72,7 @@ type senderMock struct {
 	mock.Mock
 }
 
-func (s *senderMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+func (s *senderMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	s.Called(msg, peers)
 }
 
@@ -125,8 +125,8 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 	pullMediator := pull.NewPullMediator(config,
 		sender,
 		memberSvc,
-		func(msg *proto.GossipMessage) string { return string(msg.GetPeerIdentity().PkiID) },
-		func(msg *proto.GossipMessage) {})
+		func(msg *proto.SignedGossipMessage) string { return string(msg.GetPeerIdentity().PkiID) },
+		func(msg *proto.SignedGossipMessage) {})
 	certStore := newCertStore(&pullerMock{
 		Mediator: pullMediator,
 	}, identity.NewIdentityMapper(&naiveCryptoService{}), api.PeerIdentityType("SELF"), &naiveCryptoService{})
@@ -139,7 +139,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 	sentDataReq := false
 	l := sync.Mutex{}
 	sender.On("Send", mock.Anything, mock.Anything).Run(func(arg mock.Arguments) {
-		msg := arg.Get(0).(*proto.GossipMessage)
+		msg := arg.Get(0).(*proto.SignedGossipMessage)
 		l.Lock()
 		defer l.Unlock()
 
@@ -157,7 +157,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 	wg.Wait()
 
 	hello := &sentMsg{
-		msg: &proto.GossipMessage{
+		msg: (&proto.GossipMessage{
 			Channel: []byte(""),
 			Tag:     proto.GossipMessage_EMPTY,
 			Content: &proto.GossipMessage_Hello{
@@ -167,7 +167,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 					MsgType:  proto.PullMsgType_IdentityMsg,
 				},
 			},
-		},
+		}).NoopSign(),
 	}
 	responseChan := make(chan *proto.GossipMessage, 1)
 	hello.On("Respond", mock.Anything).Run(func(arg mock.Arguments) {
@@ -188,7 +188,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 	}
 }
 
-func createMismatchedUpdateMessage() *proto.GossipMessage {
+func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
 		// This PKI-ID is different than the cert, and the mapping between
 		// certificate to PKI-ID in this test is simply the identity function.
@@ -207,13 +207,14 @@ func createMismatchedUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
-
-	m.Sign(signer)
-
-	return m
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: m,
+	}
+	sMsg.Sign(signer)
+	return sMsg
 }
 
-func createBadlySignedUpdateMessage() *proto.GossipMessage {
+func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
 		PkiID: []byte("C"),
 		Cert:  []byte("C"),
@@ -231,18 +232,20 @@ func createBadlySignedUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
-	m.Sign(signer)
-	// This would simulate a bad sig
-	if m.Envelope.Signature[0] == 0 {
-		m.Envelope.Signature[0] = 1
-	} else {
-		m.Envelope.Signature[0] = 0
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: m,
 	}
-
-	return m
+	sMsg.Sign(signer)
+	// This would simulate a bad sig
+	if sMsg.Envelope.Signature[0] == 0 {
+		sMsg.Envelope.Signature[0] = 1
+	} else {
+		sMsg.Envelope.Signature[0] = 0
+	}
+	return sMsg
 }
 
-func createValidUpdateMessage() *proto.GossipMessage {
+func createValidUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
 		PkiID: []byte("B"),
 		Cert:  []byte("B"),
@@ -259,22 +262,25 @@ func createValidUpdateMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
-	m.Sign(signer)
-	return m
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: m,
+	}
+	sMsg.Sign(signer)
+	return sMsg
 }
 
-func createUpdateMessage(nonce uint64, idMsg *proto.GossipMessage) proto.ReceivedMessage {
+func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) proto.ReceivedMessage {
 	update := &proto.GossipMessage{
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataUpdate{
 			DataUpdate: &proto.DataUpdate{
 				MsgType: proto.PullMsgType_IdentityMsg,
 				Nonce:   nonce,
-				Data:    []*proto.GossipMessage{idMsg},
+				Data:    []*proto.Envelope{idMsg.Envelope},
 			},
 		},
 	}
-	return &sentMsg{msg: update}
+	return &sentMsg{msg: update.NoopSign()}
 }
 
 func createDigest(nonce uint64) proto.ReceivedMessage {
@@ -288,5 +294,5 @@ func createDigest(nonce uint64) proto.ReceivedMessage {
 			},
 		},
 	}
-	return &sentMsg{msg: digest}
+	return &sentMsg{msg: digest.NoopSign()}
 }

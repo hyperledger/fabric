@@ -43,23 +43,23 @@ func init() {
 
 type pullMsg struct {
 	respondChan chan *pullMsg
-	msg         *proto.GossipMessage
+	msg         *proto.SignedGossipMessage
 }
 
 // GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
 // constructed with
 func (pm *pullMsg) GetSourceEnvelope() *proto.Envelope {
-	return nil
+	return pm.msg.Envelope
 }
 
 func (pm *pullMsg) Respond(msg *proto.GossipMessage) {
 	pm.respondChan <- &pullMsg{
-		msg:         msg,
+		msg:         msg.NoopSign(),
 		respondChan: pm.respondChan,
 	}
 }
 
-func (pm *pullMsg) GetGossipMessage() *proto.GossipMessage {
+func (pm *pullMsg) GetGossipMessage() *proto.SignedGossipMessage {
 	return pm.msg
 }
 
@@ -76,7 +76,7 @@ type pullInstance struct {
 	stopChan      chan struct{}
 }
 
-func (p *pullInstance) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+func (p *pullInstance) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	for _, peer := range peers {
 		m := &pullMsg{
 			respondChan: p.msgChan,
@@ -99,7 +99,7 @@ func (p *pullInstance) stop() {
 	p.stopChan <- struct{}{}
 }
 
-func (p *pullInstance) wrapPullMsg(msg *proto.GossipMessage) proto.ReceivedMessage {
+func (p *pullInstance) wrapPullMsg(msg *proto.SignedGossipMessage) proto.ReceivedMessage {
 	return &pullMsg{
 		msg:         msg,
 		respondChan: p.msgChan,
@@ -125,7 +125,7 @@ func createPullInstance(endpoint string, peer2PullInst map[string]*pullInstance)
 		PullInterval:      pullInterval,
 		Tag:               proto.GossipMessage_EMPTY,
 	}
-	seqNumFromMsg := func(msg *proto.GossipMessage) string {
+	seqNumFromMsg := func(msg *proto.SignedGossipMessage) string {
 		dataMsg := msg.GetDataMsg()
 		if dataMsg == nil {
 			return ""
@@ -135,7 +135,7 @@ func createPullInstance(endpoint string, peer2PullInst map[string]*pullInstance)
 		}
 		return fmt.Sprintf("%d", dataMsg.Payload.SeqNum)
 	}
-	blockConsumer := func(msg *proto.GossipMessage) {
+	blockConsumer := func(msg *proto.SignedGossipMessage) {
 		inst.items.Add(msg.GetDataMsg().Payload.SeqNum)
 	}
 	inst.mediator = NewPullMediator(conf, inst, inst, seqNumFromMsg, blockConsumer)
@@ -170,7 +170,7 @@ func TestRegisterMsgHook(t *testing.T) {
 
 	for _, msgType := range []PullMsgType{HelloMsgType, DigestMsgType, RequestMsgType, ResponseMsgType} {
 		mType := msgType
-		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*proto.GossipMessage, _ proto.ReceivedMessage) {
+		inst1.mediator.RegisterMsgHook(mType, func(_ []string, items []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
 			receivedMsgTypes.Add(mType)
 		})
 	}
@@ -232,7 +232,7 @@ func TestHandleMessage(t *testing.T) {
 	inst1ReceivedDigest := int32(0)
 	inst1ReceivedResponse := int32(0)
 
-	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.GossipMessage, _ proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(DigestMsgType, func(itemIds []string, _ []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) {
 			return
 		}
@@ -240,7 +240,7 @@ func TestHandleMessage(t *testing.T) {
 		assert.True(t, len(itemIds) == 3)
 	})
 
-	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.GossipMessage, _ proto.ReceivedMessage) {
+	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
 		if atomic.LoadInt32(&inst1ReceivedResponse) == int32(1) {
 			return
 		}
@@ -249,13 +249,13 @@ func TestHandleMessage(t *testing.T) {
 	})
 
 	// inst1 sends hello to inst2
-	inst2.mediator.HandleMessage(inst1.wrapPullMsg(helloMsg()))
+	inst2.mediator.HandleMessage(inst1.wrapPullMsg(helloMsg().NoopSign()))
 
 	// inst2 is expected to send digest to inst1
 	waitUntilOrFail(t, func() bool { return atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) })
 
 	// inst1 sends request to inst2
-	inst2.mediator.HandleMessage(inst1.wrapPullMsg(reqMsg("0", "1", "2")))
+	inst2.mediator.HandleMessage(inst1.wrapPullMsg(reqMsg("0", "1", "2").NoopSign()))
 
 	// inst2 is expected to send response to inst1
 	waitUntilOrFail(t, func() bool { return atomic.LoadInt32(&inst1ReceivedResponse) == int32(1) })
@@ -277,8 +277,8 @@ func waitUntilOrFail(t *testing.T, pred func() bool) {
 	assert.Fail(t, "Timeout expired!")
 }
 
-func dataMsg(seqNum int) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func dataMsg(seqNum int) *proto.SignedGossipMessage {
+	return (&proto.GossipMessage{
 		Nonce: 0,
 		Tag:   proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataMsg{
@@ -290,7 +290,7 @@ func dataMsg(seqNum int) *proto.GossipMessage {
 				},
 			},
 		},
-	}
+	}).NoopSign()
 }
 
 func helloMsg() *proto.GossipMessage {

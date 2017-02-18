@@ -24,7 +24,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/gossip/util"
 )
 
 // NewGossipMessageComparator creates a MessageReplacingPolicy given a maximum number of blocks to hold
@@ -43,8 +42,8 @@ func (mc *msgComparator) getMsgReplacingPolicy() common.MessageReplacingPolicy {
 }
 
 func (mc *msgComparator) invalidationPolicy(this interface{}, that interface{}) common.InvalidationResult {
-	thisMsg := this.(*GossipMessage)
-	thatMsg := that.(*GossipMessage)
+	thisMsg := this.(*SignedGossipMessage)
+	thatMsg := that.(*SignedGossipMessage)
 
 	if thisMsg.IsAliveMsg() && thatMsg.IsAliveMsg() {
 		return aliveInvalidationPolicy(thisMsg.GetAliveMsg(), thatMsg.GetAliveMsg())
@@ -92,7 +91,7 @@ func (mc *msgComparator) dataInvalidationPolicy(thisDataMsg *DataMessage, thatDa
 		return common.MessageNoAction
 	}
 
-	diff := util.Abs(thisDataMsg.Payload.SeqNum, thatDataMsg.Payload.SeqNum)
+	diff := abs(thisDataMsg.Payload.SeqNum, thatDataMsg.Payload.SeqNum)
 	if diff <= uint64(mc.dataBlockStorageSize) {
 		return common.MessageNoAction
 	}
@@ -235,11 +234,11 @@ func (m *GossipMessage) IsLeadershipMsg() bool {
 	return m.GetLeadershipMsg() != nil
 }
 
-// MsgConsumer invokes code given a GossipMessage
-type MsgConsumer func(*GossipMessage)
+// MsgConsumer invokes code given a SignedGossipMessage
+type MsgConsumer func(message *SignedGossipMessage)
 
-// IdentifierExtractor extracts from a GossipMessage an identifier
-type IdentifierExtractor func(*GossipMessage) string
+// IdentifierExtractor extracts from a SignedGossipMessage an identifier
+type IdentifierExtractor func(*SignedGossipMessage) string
 
 // IsTagLegal checks the GossipMessage tags and inner type
 // and returns an error if the tag doesn't match the type.
@@ -317,7 +316,7 @@ type ReceivedMessage interface {
 	Respond(msg *GossipMessage)
 
 	// GetGossipMessage returns the underlying GossipMessage
-	GetGossipMessage() *GossipMessage
+	GetGossipMessage() *SignedGossipMessage
 
 	// GetSourceMessage Returns the Envelope the ReceivedMessage was
 	// constructed with
@@ -331,7 +330,7 @@ type ReceivedMessage interface {
 // Sign signs a GossipMessage with given Signer.
 // Returns an Envelope on success,
 // panics on failure.
-func (m *GossipMessage) Sign(signer Signer) *Envelope {
+func (m *SignedGossipMessage) Sign(signer Signer) *Envelope {
 	// If we have a secretEnvelope, don't override it.
 	// Back it up, and restore it later
 	var secretEnvelope *SecretEnvelope
@@ -339,7 +338,7 @@ func (m *GossipMessage) Sign(signer Signer) *Envelope {
 		secretEnvelope = m.Envelope.SecretEnvelope
 	}
 	m.Envelope = nil
-	payload, err := proto.Marshal(m)
+	payload, err := proto.Marshal(m.GossipMessage)
 	if err != nil {
 		panic(err)
 	}
@@ -357,16 +356,20 @@ func (m *GossipMessage) Sign(signer Signer) *Envelope {
 	return e
 }
 
-func (m *GossipMessage) NoopSign() *Envelope {
+func (m *GossipMessage) NoopSign() *SignedGossipMessage {
 	signer := func(msg []byte) ([]byte, error) {
 		return nil, nil
 	}
-	return m.Sign(signer)
+	sMsg := &SignedGossipMessage{
+		GossipMessage: m,
+	}
+	sMsg.Sign(signer)
+	return sMsg
 }
 
 // Verify verifies a signed GossipMessage with a given Verifier.
 // Returns nil on success, error on failure.
-func (m *GossipMessage) Verify(peerIdentity []byte, verify Verifier) error {
+func (m *SignedGossipMessage) Verify(peerIdentity []byte, verify Verifier) error {
 	if m.Envelope == nil {
 		return errors.New("Missing envelope")
 	}
@@ -394,20 +397,20 @@ func (m *GossipMessage) Verify(peerIdentity []byte, verify Verifier) error {
 	return nil
 }
 
-func (m *GossipMessage) IsSigned() bool {
+func (m *SignedGossipMessage) IsSigned() bool {
 	return m.Envelope != nil && m.Envelope.Payload != nil && m.Envelope.Signature != nil
 }
 
-func (e *Envelope) ToGossipMessage() (*GossipMessage, error) {
+func (e *Envelope) ToGossipMessage() (*SignedGossipMessage, error) {
 	msg := &GossipMessage{}
 	err := proto.Unmarshal(e.Payload, msg)
 	if err != nil {
 		return nil, err
 	}
-
-	msg.Envelope = e
-
-	return msg, nil
+	return &SignedGossipMessage{
+		GossipMessage: msg,
+		Envelope:      e,
+	}, nil
 }
 
 func (e *Envelope) SignSecret(signer Signer, secret *Secret) {
@@ -431,4 +434,19 @@ func (s *SecretEnvelope) InternalEndpoint() string {
 		return ""
 	}
 	return secret.GetInternalEndpoint()
+}
+
+// SignedGossipMessage contains a GossipMessage
+// and the Envelope from which it came from
+type SignedGossipMessage struct {
+	*Envelope
+	*GossipMessage
+}
+
+// Abs returns abs(a-b)
+func abs(a, b uint64) uint64 {
+	if a > b {
+		return a - b
+	}
+	return b - a
 }

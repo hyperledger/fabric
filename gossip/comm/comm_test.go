@@ -149,7 +149,7 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	msg2Send := createGossipMsg()
 	nonce := uint64(rand.Int())
 	msg2Send.Nonce = nonce
-	go stream.Send(msg2Send.NoopSign())
+	go stream.Send(msg2Send.Envelope)
 	return acceptChan
 }
 
@@ -355,7 +355,7 @@ func TestResponses(t *testing.T) {
 		for m := range inChan {
 			reply := createGossipMsg()
 			reply.Nonce = m.GetGossipMessage().Nonce + 1
-			m.Respond(reply)
+			m.Respond(reply.GossipMessage)
 		}
 	}()
 	expectedNOnce := uint64(msg.Nonce + 1)
@@ -515,14 +515,14 @@ func TestPresumedDead(t *testing.T) {
 	}
 }
 
-func createGossipMsg() *proto.GossipMessage {
-	return &proto.GossipMessage{
+func createGossipMsg() *proto.SignedGossipMessage {
+	return (&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: uint64(rand.Int()),
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{},
 		},
-	}
+	}).NoopSign()
 }
 
 func remotePeer(port int) *RemotePeer {
