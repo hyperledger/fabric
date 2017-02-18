@@ -79,13 +79,13 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	}
 
 	// validate the header
-	err = validateCommonHeader(hdr)
+	chdr, shdr, err := validateCommonHeader(hdr)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	// validate the signature
-	err = checkSignatureFromCreator(hdr.SignatureHeader.Creator, signedProp.Signature, signedProp.ProposalBytes, hdr.ChannelHeader.ChannelId)
+	err = checkSignatureFromCreator(shdr.Creator, signedProp.Signature, signedProp.ProposalBytes, chdr.ChannelId)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -96,15 +96,15 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 	// This check is needed to ensure that the lookup into the ledger
 	// for the same TxID catches duplicates.
 	err = utils.CheckProposalTxID(
-		hdr.ChannelHeader.TxId,
-		hdr.SignatureHeader.Nonce,
-		hdr.SignatureHeader.Creator)
+		chdr.TxId,
+		shdr.Nonce,
+		shdr.Creator)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	// continue the validation in a way that depends on the type specified in the header
-	switch common.HeaderType(hdr.ChannelHeader.Type) {
+	switch common.HeaderType(chdr.Type) {
 	case common.HeaderType_CONFIG:
 		//which the types are different the validation is the same
 		//viz, validate a proposal to a chaincode. If we need other
@@ -121,7 +121,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 		return prop, hdr, chaincodeHdrExt, err
 	default:
 		//NOTE : we proably need a case
-		return nil, nil, nil, fmt.Errorf("Unsupported proposal type %d", common.HeaderType(hdr.ChannelHeader.Type))
+		return nil, nil, nil, fmt.Errorf("Unsupported proposal type %d", common.HeaderType(chdr.Type))
 	}
 }
 
@@ -220,22 +220,32 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 }
 
 // checks for a valid Header
-func validateCommonHeader(hdr *common.Header) error {
+func validateCommonHeader(hdr *common.Header) (*common.ChannelHeader, *common.SignatureHeader, error) {
 	if hdr == nil {
-		return fmt.Errorf("Nil header")
+		return nil, nil, fmt.Errorf("Nil header")
 	}
 
-	err := validateChannelHeader(hdr.ChannelHeader)
+	chdr, err := utils.UnmarshalChannelHeader(hdr.ChannelHeader)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	err = validateSignatureHeader(hdr.SignatureHeader)
+	shdr, err := utils.GetSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	return nil
+	err = validateChannelHeader(chdr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = validateSignatureHeader(shdr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return chdr, shdr, nil
 }
 
 // validateConfigTransaction validates the payload of a
@@ -319,14 +329,10 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 
 		// build the original header by stitching together
 		// the common ChannelHeader and the per-action SignatureHeader
-		hdrOrig := &common.Header{ChannelHeader: hdr.ChannelHeader, SignatureHeader: sHdr}
-		hdrBytes, err := utils.GetBytesHeader(hdrOrig) // FIXME: here we hope that hdrBytes will be the same one that the endorser had
-		if err != nil {
-			return err
-		}
+		hdrOrig := &common.Header{ChannelHeader: hdr.ChannelHeader, SignatureHeader: act.Header}
 
 		// compute proposalHash
-		pHash, err := utils.GetProposalHash2(hdrBytes, cap.ChaincodeProposalPayload)
+		pHash, err := utils.GetProposalHash2(hdrOrig, cap.ChaincodeProposalPayload)
 		if err != nil {
 			return err
 		}
@@ -358,13 +364,13 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 	putilsLogger.Infof("Header is %s", payload.Header)
 
 	// validate the header
-	err = validateCommonHeader(payload.Header)
+	chdr, shdr, err := validateCommonHeader(payload.Header)
 	if err != nil {
 		return nil, err
 	}
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(payload.Header.SignatureHeader.Creator, e.Signature, e.Payload, payload.Header.ChannelHeader.ChannelId)
+	err = checkSignatureFromCreator(shdr.Creator, e.Signature, e.Payload, chdr.ChannelId)
 	if err != nil {
 		return nil, err
 	}
@@ -372,15 +378,15 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 	// TODO: ensure that creator can transact with us (some ACLs?) which set of APIs is supposed to give us this info?
 
 	// continue the validation in a way that depends on the type specified in the header
-	switch common.HeaderType(payload.Header.ChannelHeader.Type) {
+	switch common.HeaderType(chdr.Type) {
 	case common.HeaderType_ENDORSER_TRANSACTION:
 		// Verify that the transaction ID has been computed properly.
 		// This check is needed to ensure that the lookup into the ledger
 		// for the same TxID catches duplicates.
 		err = utils.CheckProposalTxID(
-			payload.Header.ChannelHeader.TxId,
-			payload.Header.SignatureHeader.Nonce,
-			payload.Header.SignatureHeader.Creator)
+			chdr.TxId,
+			shdr.Nonce,
+			shdr.Creator)
 		if err != nil {
 			return nil, err
 		}
@@ -396,6 +402,6 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
 		return payload, err
 	default:
-		return nil, fmt.Errorf("Unsupported transaction payload type %d", common.HeaderType(payload.Header.ChannelHeader.Type))
+		return nil, fmt.Errorf("Unsupported transaction payload type %d", common.HeaderType(chdr.Type))
 	}
 }

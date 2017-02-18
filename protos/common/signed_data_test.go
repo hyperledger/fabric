@@ -89,12 +89,16 @@ func TestNilEnvelopeAsSignedData(t *testing.T) {
 func TestEnvelopeAsSignedData(t *testing.T) {
 	identity := []byte("Foo")
 	signature := []byte("Bar")
+
+	shdrbytes, err := proto.Marshal(&SignatureHeader{Creator: identity})
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
 	env := &Envelope{
 		Payload: marshalOrPanic(&Payload{
 			Header: &Header{
-				SignatureHeader: &SignatureHeader{
-					Creator: identity,
-				},
+				SignatureHeader: shdrbytes,
 			},
 		}),
 		Signature: signature,

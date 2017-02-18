@@ -89,7 +89,9 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	testutil.AssertNoError(t, err, "Error upon GetEnvelopeFromBlock")
 	payload2, err := putils.GetPayload(txEnv2)
 	testutil.AssertNoError(t, err, "Error upon GetPayload")
-	txID2 := payload2.Header.ChannelHeader.TxId
+	chdr, err := putils.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
+	testutil.AssertNoError(t, err, "Error upon GetChannelHeaderFromBytes")
+	txID2 := chdr.TxId
 	processedTran2, err := ledger.GetTransactionByID(txID2)
 	testutil.AssertNoError(t, err, "Error upon GetTransactionByID")
 	// get the tran envelope from the retrieved ProcessedTransaction

@@ -179,8 +179,8 @@ func SetTxID(channelHeader *cb.ChannelHeader, signatureHeader *cb.SignatureHeade
 // MakePayloadHeader creates a Payload Header.
 func MakePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) *cb.Header {
 	return &cb.Header{
-		ChannelHeader:   ch,
-		SignatureHeader: sh,
+		ChannelHeader:   MarshalOrPanic(ch),
+		SignatureHeader: MarshalOrPanic(sh),
 	}
 }
 
@@ -208,4 +208,15 @@ func SignOrPanic(signer crypto.LocalSigner, msg []byte) []byte {
 		panic(fmt.Errorf("Failed generting signature [%s]", err))
 	}
 	return sigma
+}
+
+// UnmarshalChannelHeader returns a ChannelHeader from bytes
+func UnmarshalChannelHeader(bytes []byte) (*cb.ChannelHeader, error) {
+	chdr := &cb.ChannelHeader{}
+	err := proto.Unmarshal(bytes, chdr)
+	if err != nil {
+		return nil, fmt.Errorf("UnmarshalChannelHeader failed, err %s", err)
+	}
+
+	return chdr, nil
 }

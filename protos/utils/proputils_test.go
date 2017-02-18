@@ -91,10 +91,20 @@ func TestProposal(t *testing.T) {
 		t.Fatalf("Could not unmarshal the header, err %s\n", err)
 	}
 
+	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		t.Fatalf("Could not unmarshal channel header, err %s", err)
+	}
+
+	shdr, err := GetSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		t.Fatalf("Could not unmarshal signature header, err %s", err)
+	}
+
 	// sanity check on header
-	if hdr.ChannelHeader.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) ||
-		hdr.SignatureHeader.Nonce == nil ||
-		string(hdr.SignatureHeader.Creator) != "creator" {
+	if chdr.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) ||
+		shdr.Nonce == nil ||
+		string(shdr.Creator) != "creator" {
 		t.Fatalf("Invalid header after unmarshalling\n")
 		return
 	}

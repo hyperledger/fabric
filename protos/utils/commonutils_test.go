@@ -115,8 +115,10 @@ func TestExtractPayloadOrPanic(t *testing.T) {
 
 func testPayload() *cb.Payload {
 	return &cb.Payload{
-		Header: MakePayloadHeader(MakeChannelHeader(cb.HeaderType_MESSAGE, int32(1), "test", 0), nil),
-		Data:   []byte("test"),
+		Header: MakePayloadHeader(
+			MakeChannelHeader(cb.HeaderType_MESSAGE, int32(1), "test", 0),
+			MakeSignatureHeader([]byte("creator"), []byte("nonce"))),
+		Data: []byte("test"),
 	}
 }
 

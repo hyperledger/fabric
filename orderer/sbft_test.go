@@ -210,10 +210,10 @@ func updateReceiver(t *testing.T, resultch chan item, errorch chan error, client
 	err = dstream.Send(&cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChannelHeader: &cb.ChannelHeader{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 					ChannelId: provisional.TestChainID,
-				},
-				SignatureHeader: &cb.SignatureHeader{},
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 			Data: utils.MarshalOrPanic(&ab.SeekInfo{
 				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
@@ -263,7 +263,9 @@ func broadcastSender(t *testing.T, resultch chan item, errorch chan error, clien
 		errorch <- fmt.Errorf("Failed to get broadcast stream: %s", err)
 		return
 	}
-	h := &cb.Header{ChannelHeader: &cb.ChannelHeader{ChannelId: provisional.TestChainID}, SignatureHeader: &cb.SignatureHeader{}}
+	h := &cb.Header{
+		ChannelHeader:   utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: provisional.TestChainID}),
+		SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{})}
 	bs := testData
 	pl := &cb.Payload{Data: bs, Header: h}
 	mpl, err := proto.Marshal(pl)

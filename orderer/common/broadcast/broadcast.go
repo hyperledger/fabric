@@ -25,6 +25,7 @@ import (
 	"io"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var logger = logging.MustGetLogger("orderer/common/broadcast")
@@ -84,12 +85,18 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 		payload := &cb.Payload{}
 		err = proto.Unmarshal(msg.Payload, payload)
-		if payload.Header == nil || payload.Header.ChannelHeader == nil || payload.Header.ChannelHeader.ChannelId == "" {
+		if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
 			logger.Debugf("Received malformed message, dropping connection")
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
-		if payload.Header.ChannelHeader.Type == int32(cb.HeaderType_CONFIG_UPDATE) {
+		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		if err != nil {
+			logger.Debugf("Received malformed message (bad channel header), dropping connection")
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+		}
+
+		if chdr.Type == int32(cb.HeaderType_CONFIG_UPDATE) {
 			logger.Debugf("Preprocessing CONFIG_UPDATE")
 			msg, err = bh.sm.Process(msg)
 			if err != nil {
@@ -97,19 +104,30 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			}
 
 			err = proto.Unmarshal(msg.Payload, payload)
-			if payload.Header == nil || payload.Header.ChannelHeader == nil || payload.Header.ChannelHeader.ChannelId == "" {
+			if payload.Header == nil {
+				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing")
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
+			}
+
+			chdr, err = utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+			if err != nil {
+				logger.Debugf("Generated bad transaction after CONFIG_UPDATE processing (bad channel header)")
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+			}
+
+			if chdr.ChannelId == "" {
 				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing")
 				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
 			}
 		}
 
-		support, ok := bh.sm.GetChain(payload.Header.ChannelHeader.ChannelId)
+		support, ok := bh.sm.GetChain(chdr.ChannelId)
 		if !ok {
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is filtering message for channel %s", payload.Header.ChannelHeader.ChannelId)
+			logger.Debugf("Broadcast is filtering message for channel %s", chdr.ChannelId)
 		}
 
 		// Normal transaction for existing chain
@@ -126,7 +144,7 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is successfully enqueued message for chain %s", payload.Header.ChannelHeader.ChannelId)
+			logger.Debugf("Broadcast is successfully enqueued message for chain %s", chdr.ChannelId)
 		}
 
 		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})

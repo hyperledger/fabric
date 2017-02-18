@@ -228,8 +228,13 @@ func validateProposalResponse(prBytes []byte, proposal *pb.Proposal, visibility 
 
 	// TODO: validate the epoch
 
+	hdr, err := putils.GetHeader(proposal.Header)
+	if err != nil {
+		return fmt.Errorf("could not unmarshal the proposal header structure: err %s", err)
+	}
+
 	// recompute proposal hash
-	pHash, err := putils.GetProposalHash1(proposal.Header, proposal.Payload, visibility)
+	pHash, err := putils.GetProposalHash1(hdr, proposal.Payload, visibility)
 	if err != nil {
 		return fmt.Errorf("could not obtain proposalHash: err %s", err)
 	}

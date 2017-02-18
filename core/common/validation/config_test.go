@@ -36,14 +36,14 @@ func TestValidateConfigTx(t *testing.T) {
 
 	updateResult := &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{
-			ChannelHeader: &cb.ChannelHeader{
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 				Type:      int32(cb.HeaderType_CONFIG),
 				ChannelId: chainID,
-			},
-			SignatureHeader: &cb.SignatureHeader{
+			}),
+			SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{
 				Creator: signerSerialized,
 				Nonce:   utils.CreateNonceOrPanic(),
-			},
+			}),
 		},
 			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
 				LastUpdate: chCrtEnv,

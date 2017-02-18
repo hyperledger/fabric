@@ -118,17 +118,23 @@ func (v *txValidator) Validate(block *common.Block) error {
 					continue
 				}
 
-				chain := payload.Header.ChannelHeader.ChannelId
-				logger.Debug("Transaction is for chain %s", chain)
-
-				if !v.chainExists(chain) {
-					logger.Errorf("Dropping transaction for non-existent chain %s", chain)
+				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+				if err != nil {
+					logger.Warning("Could not unmarshal channel header, err %s, skipping", err)
 					continue
 				}
 
-				if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+				channel := chdr.ChannelId
+				logger.Debug("Transaction is for chain %s", channel)
+
+				if !v.chainExists(channel) {
+					logger.Errorf("Dropping transaction for non-existent chain %s", channel)
+					continue
+				}
+
+				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 					// Check duplicate transactions
-					txID := payload.Header.ChannelHeader.TxId
+					txID := chdr.TxId
 					if _, err := v.support.Ledger().GetTransactionByID(txID); err == nil {
 						logger.Warning("Duplicate transaction found, ", txID, ", skipping")
 						continue
@@ -141,7 +147,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 						continue
 					}
-				} else if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_CONFIG {
+				} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
 					configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 					if err != nil {
 						err := fmt.Errorf("Error unmarshaling config which passed initial validity checks: %s", err)
@@ -154,7 +160,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 						logger.Critical(err)
 						return err
 					}
-					logger.Debugf("config transaction received for chain %s", chain)
+					logger.Debugf("config transaction received for chain %s", channel)
 				}
 
 				if _, err := proto.Marshal(env); err != nil {
@@ -178,8 +184,13 @@ func (v *txValidator) Validate(block *common.Block) error {
 }
 
 func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte) error {
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return err
+	}
+
 	// Chain ID
-	chainID := payload.Header.ChannelHeader.ChannelId
+	chainID := chdr.ChannelId
 	if chainID == "" {
 		err := fmt.Errorf("transaction header does not contain an chain ID")
 		logger.Errorf("%s", err)
@@ -187,8 +198,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	}
 
 	// Get transaction id
-	txid := payload.Header.ChannelHeader.TxId
-	logger.Info("[XXX remove me XXX] Transaction type,", common.HeaderType(payload.Header.ChannelHeader.Type))
+	txid := chdr.TxId
 	if txid == "" {
 		err := fmt.Errorf("transaction header does not contain transaction ID")
 		logger.Errorf("%s", err)

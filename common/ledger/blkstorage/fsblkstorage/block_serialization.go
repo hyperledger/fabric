@@ -207,5 +207,9 @@ func extractTxID(txEnvelopBytes []byte) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	return txPayload.Header.ChannelHeader.TxId, nil
+	chdr, err := utils.UnmarshalChannelHeader(txPayload.Header.ChannelHeader)
+	if err != nil {
+		return "", err
+	}
+	return chdr.TxId, nil
 }

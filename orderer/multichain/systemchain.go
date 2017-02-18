@@ -74,7 +74,16 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 		return filter.Forward, nil
 	}
 
-	if msgData.Header == nil || msgData.Header.ChannelHeader == nil || msgData.Header.ChannelHeader.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
+	if msgData.Header == nil /* || msgData.Header.ChannelHeader == nil */ {
+		return filter.Forward, nil
+	}
+
+	chdr, err := utils.UnmarshalChannelHeader(msgData.Header.ChannelHeader)
+	if err != nil {
+		return filter.Forward, nil
+	}
+
+	if chdr.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
 		return filter.Forward, nil
 	}
 
@@ -180,7 +189,16 @@ func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return fmt.Errorf("Rejecting chain proposal: Error unmarshaling envelope payload: %s", err)
 	}
 
-	if payload.Header == nil || payload.Header.ChannelHeader == nil || payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIG) {
+	if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
+		return fmt.Errorf("Rejecting chain proposal: Not a config transaction")
+	}
+
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return fmt.Errorf("Rejecting chain proposal: Error unmarshaling channel header: %s", err)
+	}
+
+	if chdr.Type != int32(cb.HeaderType_CONFIG) {
 		return fmt.Errorf("Rejecting chain proposal: Not a config transaction")
 	}
 

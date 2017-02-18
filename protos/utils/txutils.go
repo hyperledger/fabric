@@ -127,7 +127,12 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 		return nil, err
 	}
 
-	if bytes.Compare(signerBytes, hdr.SignatureHeader.Creator) != 0 {
+	shdr, err := GetSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	if bytes.Compare(signerBytes, shdr.Creator) != 0 {
 		return nil, fmt.Errorf("The signer needs to be the same as the one referenced in the header")
 	}
 
@@ -168,12 +173,6 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 		return nil, err
 	}
 
-	// get the bytes of the signature header, that will be the header of the TransactionAction
-	sHdrBytes, err := GetBytesSignatureHeader(hdr.SignatureHeader)
-	if err != nil {
-		return nil, err
-	}
-
 	// serialize the chaincode action payload
 	cap := &peer.ChaincodeActionPayload{ChaincodeProposalPayload: propPayloadBytes, Action: cea}
 	capBytes, err := GetBytesChaincodeActionPayload(cap)
@@ -182,7 +181,7 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 	}
 
 	// create a transaction
-	taa := &peer.TransactionAction{Header: sHdrBytes, Payload: capBytes}
+	taa := &peer.TransactionAction{Header: hdr.SignatureHeader, Payload: capBytes}
 	taas := make([]*peer.TransactionAction, 1)
 	taas[0] = taa
 	tx := &peer.Transaction{Actions: taas}
@@ -211,7 +210,12 @@ func CreateSignedTx(proposal *peer.Proposal, signer msp.SigningIdentity, resps .
 }
 
 // CreateProposalResponse creates a proposal response.
-func CreateProposalResponse(hdr []byte, payl []byte, response *peer.Response, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
+func CreateProposalResponse(hdrbytes []byte, payl []byte, response *peer.Response, results []byte, events []byte, visibility []byte, signingEndorser msp.SigningIdentity) (*peer.ProposalResponse, error) {
+	hdr, err := GetHeader(hdrbytes)
+	if err != nil {
+		return nil, err
+	}
+
 	// obtain the proposal hash given proposal header, payload and the requested visibility
 	pHashBytes, err := GetProposalHash1(hdr, payl, visibility)
 	if err != nil {
@@ -296,9 +300,12 @@ func GetBytesProposalPayloadForTx(payload *peer.ChaincodeProposalPayload, visibi
 // is called by the committer where the visibility policy
 // has already been enforced and so we already get what
 // we have to get in ccPropPayl
-func GetProposalHash2(header []byte, ccPropPayl []byte) ([]byte, error) {
+func GetProposalHash2(header *common.Header, ccPropPayl []byte) ([]byte, error) {
 	// check for nil argument
-	if header == nil || ccPropPayl == nil {
+	if header == nil ||
+		header.ChannelHeader == nil ||
+		header.SignatureHeader == nil ||
+		ccPropPayl == nil {
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
@@ -306,17 +313,21 @@ func GetProposalHash2(header []byte, ccPropPayl []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
 	}
-	hash.Write(header)     // hash the serialized Header object
-	hash.Write(ccPropPayl) // hash the bytes of the chaincode proposal payload that we are given
+	hash.Write(header.ChannelHeader)   // hash the serialized Channel Header object
+	hash.Write(header.SignatureHeader) // hash the serialized Signature Header object
+	hash.Write(ccPropPayl)             // hash the bytes of the chaincode proposal payload that we are given
 
 	return hash.Sum(nil), nil
 }
 
 // GetProposalHash1 gets the proposal hash bytes after sanitizing the
 // chaincode proposal payload according to the rules of visibility
-func GetProposalHash1(header []byte, ccPropPayl []byte, visibility []byte) ([]byte, error) {
+func GetProposalHash1(header *common.Header, ccPropPayl []byte, visibility []byte) ([]byte, error) {
 	// check for nil argument
-	if header == nil || ccPropPayl == nil /* || visibility == nil */ {
+	if header == nil ||
+		header.ChannelHeader == nil ||
+		header.SignatureHeader == nil ||
+		ccPropPayl == nil /* || visibility == nil */ {
 		return nil, fmt.Errorf("Nil arguments")
 	}
 
@@ -336,8 +347,9 @@ func GetProposalHash1(header []byte, ccPropPayl []byte, visibility []byte) ([]by
 	if err != nil {
 		return nil, fmt.Errorf("Failed instantiating hash function [%s]", err)
 	}
-	hash2.Write(header)  // hash the serialized Header object
-	hash2.Write(ppBytes) // hash of the part of the chaincode proposal payload that will go to the tx
+	hash2.Write(header.ChannelHeader)   // hash the serialized Channel Header object
+	hash2.Write(header.SignatureHeader) // hash the serialized Signature Header object
+	hash2.Write(ppBytes)                // hash of the part of the chaincode proposal payload that will go to the tx
 
 	return hash2.Sum(nil), nil
 }

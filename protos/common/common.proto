@@ -69,8 +69,8 @@ message MetadataSignature {
 }
 
 message Header {
-    ChannelHeader channel_header = 1;
-    SignatureHeader signature_header = 2;
+    bytes channel_header = 1;
+    bytes signature_header = 2;
 }
 
 // Header is a generic replay prevention and identity message to include in a signed payload

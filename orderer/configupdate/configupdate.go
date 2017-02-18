@@ -71,11 +71,20 @@ func channelID(env *cb.Envelope) (string, error) {
 		return "", fmt.Errorf("Failing to process config update because of payload unmarshaling error: %s", err)
 	}
 
-	if envPayload.Header == nil || envPayload.Header.ChannelHeader == nil || envPayload.Header.ChannelHeader.ChannelId == "" {
+	if envPayload.Header == nil /* || envPayload.Header.ChannelHeader == nil */ {
 		return "", fmt.Errorf("Failing to process config update because no channel ID was set")
 	}
 
-	return envPayload.Header.ChannelHeader.ChannelId, nil
+	chdr, err := utils.UnmarshalChannelHeader(envPayload.Header.ChannelHeader)
+	if err != nil {
+		return "", fmt.Errorf("Failing to process config update because of channel header unmarshaling error: %s", err)
+	}
+
+	if chdr.ChannelId == "" {
+		return "", fmt.Errorf("Failing to process config update because no channel ID was set")
+	}
+
+	return chdr.ChannelId, nil
 }
 
 // Process takes in an envelope of type CONFIG_UPDATE and proceses it

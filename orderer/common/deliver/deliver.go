@@ -29,6 +29,7 @@ import (
 	"github.com/op/go-logging"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 var logger = logging.MustGetLogger("orderer/common/deliver")
@@ -81,13 +82,19 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 			return err
 		}
 
-		if payload.Header == nil || payload.Header.ChannelHeader == nil {
+		if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
 			err := fmt.Errorf("Malformed envelope recieved with bad header")
 			logger.Error(err)
 			return err
 		}
 
-		chain, ok := ds.sm.GetChain(payload.Header.ChannelHeader.ChannelId)
+		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		chain, ok := ds.sm.GetChain(chdr.ChannelId)
 		if !ok {
 			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
@@ -105,7 +112,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Received seekInfo %v for chain %s", seekInfo, payload.Header.ChannelHeader.ChannelId)
+			logger.Debugf("Received seekInfo %v for chain %s", seekInfo, chdr.ChannelId)
 		}
 
 		cursor, number := chain.Reader().Iterator(seekInfo.Start)

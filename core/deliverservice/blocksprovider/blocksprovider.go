@@ -178,10 +178,10 @@ func (b *blocksProviderImpl) seekOldest() error {
 	return b.client.Send(&common.Envelope{
 		Payload: utils.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
-				ChannelHeader: &common.ChannelHeader{
+				ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
 					ChannelId: b.chainID,
-				},
-				SignatureHeader: &common.SignatureHeader{},
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{}),
 			},
 			Data: utils.MarshalOrPanic(&orderer.SeekInfo{
 				Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Oldest{Oldest: &orderer.SeekOldest{}}},
@@ -196,10 +196,10 @@ func (b *blocksProviderImpl) seekLatestFromCommitter(height uint64) error {
 	return b.client.Send(&common.Envelope{
 		Payload: utils.MarshalOrPanic(&common.Payload{
 			Header: &common.Header{
-				ChannelHeader: &common.ChannelHeader{
+				ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
 					ChannelId: b.chainID,
-				},
-				SignatureHeader: &common.SignatureHeader{},
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{}),
 			},
 			Data: utils.MarshalOrPanic(&orderer.SeekInfo{
 				Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: height}}},
