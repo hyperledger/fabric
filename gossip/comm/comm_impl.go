@@ -216,7 +216,7 @@ func (c *commImpl) Send(msg *proto.GossipMessage, peers ...*RemotePeer) {
 		return
 	}
 
-	c.logger.Info("Entering, sending", msg, "to ", len(peers), "peers")
+	c.logger.Debug("Entering, sending", msg, "to ", len(peers), "peers")
 
 	for _, peer := range peers {
 		go func(peer *RemotePeer, msg *proto.GossipMessage) {
@@ -333,7 +333,7 @@ func (c *commImpl) PresumedDead() <-chan common.PKIidType {
 }
 
 func (c *commImpl) CloseConn(peer *RemotePeer) {
-	c.logger.Info("Closing connection for", peer)
+	c.logger.Debug("Closing connection for", peer)
 	c.connStore.closeConn(peer)
 }
 
@@ -464,7 +464,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 		c.logger.Error("Authentication failed")
 		return err
 	}
-	c.logger.Info("Servicing", extractRemoteAddress(stream))
+	c.logger.Debug("Servicing", extractRemoteAddress(stream))
 
 	conn := c.connStore.onConnected(stream, PKIID)
 
@@ -485,7 +485,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	conn.handler = h
 
 	defer func() {
-		c.logger.Info("Client", extractRemoteAddress(stream), " disconnected")
+		c.logger.Debug("Client", extractRemoteAddress(stream), " disconnected")
 		c.connStore.closeByPKIid(PKIID)
 		conn.close()
 	}()
