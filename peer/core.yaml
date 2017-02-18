@@ -355,15 +355,3 @@ ledger:
     # historyDatabase - options are true or false
     # Indicates if the history of key updates should be stored in goleveldb
     historyDatabase: true
-
-###############################################################################
-#
-#    Security section - Applied to all entities (client, NVP, VP)
-#
-###############################################################################
-security:
-    # Can be 256 or 384.
-    level: 256
-
-    # Can be SHA2 or SHA3.
-    hashAlgorithm: SHA2
