@@ -17,7 +17,7 @@ limitations under the License.
 package comm
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -60,7 +60,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	cs.RUnlock()
 
 	if isClosing {
-		return nil, fmt.Errorf("Shutting down")
+		return nil, errors.New("Shutting down")
 	}
 
 	pkiID := peer.PKIID
@@ -90,7 +90,7 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 	destinationLock.Unlock()
 
 	if cs.isClosing {
-		return nil, fmt.Errorf("ConnStore is closing")
+		return nil, errors.New("ConnStore is closing")
 	}
 
 	cs.Lock()
@@ -273,7 +273,7 @@ func (conn *connection) serviceConnection() error {
 	for !conn.toDie() {
 		select {
 		case stop := <-conn.stopChan:
-			conn.logger.Warning("Closing reading from stream")
+			conn.logger.Debug("Closing reading from stream")
 			conn.stopChan <- stop
 			return nil
 		case err := <-errChan:
@@ -301,7 +301,7 @@ func (conn *connection) writeToStream() {
 			}
 			break
 		case stop := <-conn.stopChan:
-			conn.logger.Warning("Closing writing to stream")
+			conn.logger.Debug("Closing writing to stream")
 			conn.stopChan <- stop
 			return
 		}
@@ -316,17 +316,17 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.G
 		stream := conn.getStream()
 		if stream == nil {
 			conn.logger.Error(conn.pkiID, "Stream is nil, aborting!")
-			errChan <- fmt.Errorf("Stream is nil")
+			errChan <- errors.New("Stream is nil")
 			return
 		}
 		msg, err := stream.Recv()
 		if conn.toDie() {
-			conn.logger.Warning(conn.pkiID, "canceling read because closing")
+			conn.logger.Debug(conn.pkiID, "canceling read because closing")
 			return
 		}
 		if err != nil {
 			errChan <- err
-			conn.logger.Warning(conn.pkiID, "Got error, aborting:", err)
+			conn.logger.Debug(conn.pkiID, "Got error, aborting:", err)
 			return
 		}
 		msgChan <- msg
