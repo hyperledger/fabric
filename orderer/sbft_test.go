@@ -48,6 +48,24 @@ import (
 	"google.golang.org/grpc"
 )
 
+var genesisBlock *cb.Block
+var pwd string
+
+func init() {
+	var err error
+	pwd, err = os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	os.Chdir("..")
+
+	genConf := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	genConf.Orderer.OrdererType = sbftName
+	genesisBlock = provisional.New(genConf).GenesisBlock()
+
+	os.Chdir(pwd)
+}
+
 const update byte = 0
 const sent byte = 1
 
@@ -64,10 +82,6 @@ type item struct {
 }
 
 func TestSbftPeer(t *testing.T) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
 
 	t.Parallel()
 	skipInShortMode(t)
@@ -100,11 +114,9 @@ func TestSbftPeer(t *testing.T) {
 	// Start GRPC
 	logger.Info("Creating a GRPC server.")
 	conf := config.Load()
-	genConf := genesisconfig.Load()
-	genConf.Orderer.OrdererType = sbftName
 	conf.General.LocalMSPDir = pwd + "/../msp/sampleconfig"
 	conf.General.LocalMSPID = "DEFAULT"
-	lf := newRAMLedgerFactory(genConf)
+	lf := newRAMLedgerFactory()
 	consenters := make(map[string]multichain.Consenter)
 	consenters[sbftName] = sbftConsenter
 
@@ -264,9 +276,8 @@ func broadcastSender(t *testing.T, resultch chan item, errorch chan error, clien
 	resultch <- item{itemtype: sent, payload: mpl}
 }
 
-func newRAMLedgerFactory(conf *genesisconfig.TopLevel) ordererledger.Factory {
+func newRAMLedgerFactory() ordererledger.Factory {
 	rlf := ramledger.New(10)
-	genesisBlock := provisional.New(conf).GenesisBlock()
 	rl, err := rlf.GetOrCreate(provisional.TestChainID)
 	if err != nil {
 		panic(err)

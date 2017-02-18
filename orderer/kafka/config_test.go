@@ -39,7 +39,7 @@ var (
 )
 
 var testGenesisConf = &genesisconfig.TopLevel{
-	Orderer: genesisconfig.Orderer{
+	Orderer: &genesisconfig.Orderer{
 		Kafka: genesisconfig.Kafka{
 			Brokers: []string{"127.0.0.1:9092"},
 		},

@@ -29,6 +29,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	// SampleInsecureProfile references the sample profile which does not include any MSPs and uses solo for consensus
+	SampleInsecureProfile = "SampleInsecureSolo"
+
+	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for consensus
+	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
+)
+
 var logger = logging.MustGetLogger("configtx/tool/localconfig")
 
 func init() {
@@ -40,11 +48,19 @@ const Prefix string = "CONFIGTX"
 
 // TopLevel contains the genesis structures for use by the provisional bootstrapper
 type TopLevel struct {
-	Application   Application
+	Profiles      map[string]*Profile
 	Organizations []*Organization
-	Orderer       Orderer
+	Application   *Application
+	Orderer       *Orderer
 }
 
+// TopLevel contains the genesis structures for use by the provisional bootstrapper
+type Profile struct {
+	Application *Application
+	Orderer     *Orderer
+}
+
+// Application encodes the configuration needed for the config transaction
 type Application struct {
 	Organizations []*Organization
 }
@@ -92,7 +108,7 @@ type Kafka struct {
 }
 
 var genesisDefaults = TopLevel{
-	Orderer: Orderer{
+	Orderer: &Orderer{
 		OrdererType:  "solo",
 		Addresses:    []string{"127.0.0.1:7050"},
 		BatchTimeout: 10 * time.Second,
@@ -107,7 +123,7 @@ var genesisDefaults = TopLevel{
 	},
 }
 
-func (g *TopLevel) completeInitialization() {
+func (g *Profile) completeInitialization() {
 	for {
 		switch {
 		case g.Orderer.OrdererType == "":
@@ -140,10 +156,10 @@ func (g *TopLevel) completeInitialization() {
 	}
 }
 
-func Load() *TopLevel {
+func Load(profile string) *Profile {
 	config := viper.New()
 
-	config.SetConfigName("genesis")
+	config.SetConfigName("configtx")
 	var cfgPath string
 
 	// Path to look for the config file in based on GOPATH
@@ -157,8 +173,8 @@ func Load() *TopLevel {
 	}
 
 	for _, genesisPath := range searchPath {
-		logger.Infof("Checking for genesis.yaml at: %s", genesisPath)
-		if _, err := os.Stat(filepath.Join(genesisPath, "genesis.yaml")); err != nil {
+		logger.Infof("Checking for configtx.yaml at: %s", genesisPath)
+		if _, err := os.Stat(filepath.Join(genesisPath, "configtx.yaml")); err != nil {
 			// The yaml file does not exist in this component of the path
 			continue
 		}
@@ -166,7 +182,7 @@ func Load() *TopLevel {
 	}
 
 	if cfgPath == "" {
-		logger.Fatalf("Could not find genesis.yaml in paths of %s.  Try setting ORDERER_CFG_PATH, PEER_CFG_PATH, or GOPATH correctly", searchPath)
+		logger.Fatalf("Could not find configtx.yaml in paths of %s.  Try setting ORDERER_CFG_PATH, PEER_CFG_PATH, or GOPATH correctly", searchPath)
 	}
 	config.AddConfigPath(cfgPath) // Path to look for the config file in
 
@@ -188,7 +204,11 @@ func Load() *TopLevel {
 		panic(fmt.Errorf("Error unmarshaling into structure: %s", err))
 	}
 
-	uconf.completeInitialization()
+	result, ok := uconf.Profiles[profile]
+	if !ok {
+		logger.Panicf("Could not find profile %s", profile)
+	}
+	result.completeInitialization()
 
-	return &uconf
+	return result
 }

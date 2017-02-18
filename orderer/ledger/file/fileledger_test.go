@@ -22,7 +22,6 @@ import (
 	"os"
 	"testing"
 
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -31,11 +30,10 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-var genesisBlock *cb.Block
+var genesisBlock = cb.NewBlock(0, nil)
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
-	genesisBlock = provisional.New(genesisconfig.Load()).GenesisBlock()
 }
 
 type testEnv struct {

@@ -178,16 +178,16 @@ build/image/javaenv/payload:    build/javashim.tar.bz2 \
 build/image/peer/payload:       build/docker/bin/peer \
 				peer/core.yaml \
 				build/msp-sampleconfig.tar.bz2 \
-				common/configtx/tool/genesis.yaml
+				common/configtx/tool/configtx.yaml
 build/image/orderer/payload:    build/docker/bin/orderer \
 				build/msp-sampleconfig.tar.bz2 \
 				orderer/orderer.yaml \
-				common/configtx/tool/genesis.yaml
+				common/configtx/tool/configtx.yaml
 build/image/buildenv/payload:   build/gotools.tar.bz2 \
 				build/docker/gotools/bin/protoc-gen-go
 build/image/testenv/payload:    build/docker/bin/orderer \
 				orderer/orderer.yaml \
-				common/configtx/tool/genesis.yaml \
+				common/configtx/tool/configtx.yaml \
 				build/docker/bin/peer \
 				peer/core.yaml \
 				build/msp-sampleconfig.tar.bz2 \

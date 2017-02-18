@@ -198,15 +198,27 @@ func pemBlocksFromFileDecodeHook() mapstructure.DecodeHookFunc {
 		case reflect.String:
 			return data, nil
 		case reflect.Map:
-			d := data.(map[string]interface{})
-			fileName, ok := d["File"]
-			if !ok {
-				fileName, ok = d["file"]
+			var fileName string
+			var ok bool
+			switch d := data.(type) {
+			case map[string]string:
+				fileName, ok = d["File"]
+				if !ok {
+					fileName, ok = d["file"]
+				}
+			case map[string]interface{}:
+				var fileI interface{}
+				fileI, ok = d["File"]
+				if !ok {
+					fileI, ok = d["file"]
+				}
+				fileName, ok = fileI.(string)
 			}
+
 			switch {
-			case ok && fileName != nil:
+			case ok && fileName != "":
 				var result []string
-				bytes, err := ioutil.ReadFile(fileName.(string))
+				bytes, err := ioutil.ReadFile(fileName)
 				if err != nil {
 					return data, err
 				}
