@@ -30,7 +30,7 @@ import (
 )
 
 var conf *config.TopLevel
-var genConf *genesisconfig.TopLevel
+var genConf *genesisconfig.Profile
 
 type broadcastClient struct {
 	ab.AtomicBroadcast_BroadcastClient
@@ -69,7 +69,7 @@ type argsImpl struct {
 
 func init() {
 	conf = config.Load()
-	genConf = genesisconfig.Load()
+	genConf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)
 }
 
 func main() {

@@ -41,18 +41,19 @@ const Prefix string = "ORDERER"
 
 // General contains config which should be common among all orderer types
 type General struct {
-	LedgerType    string
-	QueueSize     uint32
-	MaxWindowSize uint32
-	ListenAddress string
-	ListenPort    uint16
-	TLS           TLS
-	GenesisMethod string
-	GenesisFile   string
-	Profile       Profile
-	LogLevel      string
-	LocalMSPDir   string
-	LocalMSPID    string
+	LedgerType     string
+	QueueSize      uint32
+	MaxWindowSize  uint32
+	ListenAddress  string
+	ListenPort     uint16
+	TLS            TLS
+	GenesisMethod  string
+	GenesisProfile string
+	GenesisFile    string
+	Profile        Profile
+	LogLevel       string
+	LocalMSPDir    string
+	LocalMSPID     string
 }
 
 //TLS contains config used to configure TLS
@@ -143,13 +144,14 @@ type TopLevel struct {
 
 var defaults = TopLevel{
 	General: General{
-		LedgerType:    "ram",
-		QueueSize:     1000,
-		MaxWindowSize: 1000,
-		ListenAddress: "127.0.0.1",
-		ListenPort:    7050,
-		GenesisMethod: "provisional",
-		GenesisFile:   "./genesisblock",
+		LedgerType:     "ram",
+		QueueSize:      1000,
+		MaxWindowSize:  1000,
+		ListenAddress:  "127.0.0.1",
+		ListenPort:     7050,
+		GenesisMethod:  "provisional",
+		GenesisProfile: "SampleSingleMSPSolo",
+		GenesisFile:    "./genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
@@ -219,6 +221,8 @@ func (c *TopLevel) completeInitialization() {
 			c.General.GenesisMethod = defaults.General.GenesisMethod
 		case c.General.GenesisFile == "":
 			c.General.GenesisFile = defaults.General.GenesisFile
+		case c.General.GenesisProfile == "":
+			c.General.GenesisProfile = defaults.General.GenesisProfile
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
 			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.PrivateKey == "":

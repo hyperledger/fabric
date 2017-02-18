@@ -14,7 +14,7 @@ RUN mkdir -p \
 
 # fabric configuration files
 COPY payload/orderer.yaml $ORDERER_CFG_PATH
-COPY payload/genesis.yaml $ORDERER_CFG_PATH
+COPY payload/configtx.yaml $ORDERER_CFG_PATH
 COPY payload/core.yaml $PEER_CFG_PATH
 ADD payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
 

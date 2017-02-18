@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
@@ -36,7 +35,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var genesisBlock *cb.Block
+var genesisBlock = cb.NewBlock(0, nil)
 
 var systemChainID = "systemChain"
 
@@ -44,7 +43,6 @@ const ledgerSize = 10
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
-	genesisBlock = provisional.New(genesisconfig.Load()).GenesisBlock()
 }
 
 type mockD struct {

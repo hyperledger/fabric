@@ -35,11 +35,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var conf *genesisconfig.TopLevel
-var genesisBlock *cb.Block
+var conf *genesisconfig.Profile
+var genesisBlock = cb.NewBlock(0, nil) // *cb.Block
 
 func init() {
-	conf = genesisconfig.Load()
+	conf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)
 	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(conf).GenesisBlock()
 }
@@ -217,7 +217,6 @@ func TestSignatureFilter(t *testing.T) {
 
 // This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
 func TestNewChain(t *testing.T) {
-	conf := genesisconfig.Load()
 	lf, rl := NewRAMLedgerAndFactory(10)
 
 	consenters := make(map[string]Consenter)

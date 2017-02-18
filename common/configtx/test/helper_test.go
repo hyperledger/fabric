@@ -17,12 +17,19 @@ limitations under the License.
 package test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	logging "github.com/op/go-logging"
 )
 
 func init() {
+	// Configuration is always specified relative to $GOPATH/github.com/hyperledger/fabric
+	// This test will fail with the default configuration if executed in the package dir
+	// We are in common/configtx/test
+	os.Chdir(filepath.Join("..", "..", ".."))
+
 	logging.SetLevel(logging.DEBUG, "")
 }
 

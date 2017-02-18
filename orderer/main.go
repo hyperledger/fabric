@@ -115,7 +115,7 @@ func main() {
 		// Select the bootstrapping mechanism
 		switch conf.General.GenesisMethod {
 		case "provisional":
-			genesisBlock = provisional.New(genesisconfig.Load()).GenesisBlock()
+			genesisBlock = provisional.New(genesisconfig.Load(conf.General.GenesisProfile)).GenesisBlock()
 		case "file":
 			genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 		default:

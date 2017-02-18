@@ -81,7 +81,7 @@ func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 
 // OrderererTemplate returns the test orderer template
 func OrdererTemplate() configtx.Template {
-	genConf := genesisconfig.Load()
+	genConf := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
 	return provisional.New(genConf).ChannelTemplate()
 }
 

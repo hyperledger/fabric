@@ -1,6 +1,36 @@
 ---
 ################################################################################
 #
+#   Profile
+#
+#   - Different configuration profiles may be encoded here to be specified
+#   as parameters to the configtxgen tool
+#
+################################################################################
+Profiles:
+
+    # SampleInsecureSol defines a configuration which contains no MSP definitions
+    # and allows all transactions and channel creation requests
+    SampleInsecureSolo:
+        Orderer:
+            <<: *OrdererDefaults
+        Application: 
+            <<: *ApplicationDefaults
+
+    # SampleSingleMSPSolo defines a configuration which contains a single MSP
+    # definition (the MSP sampleconfig).
+    SampleSingleMSPSolo:
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *SampleOrg
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *SampleOrg
+
+################################################################################
+#
 #   Section: Organizations
 #
 #   - This section defines the different organizational identities which will
@@ -9,17 +39,18 @@
 ################################################################################
 Organizations:
 
-    - &defaultOrg
+    # SampleOrg defines an MSP using the sampleconfig.  It should never be used
+    # in production but may be used as a template for other definitions
+    - &SampleOrg
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
-        Name: defaultOrg
+        Name: SampleOrg
 
         # ID to load the MSP definition as
         ID: DEFAULT
 
         # MSPDir is the filesystem path which contains the MSP configuration
         MSPDir: msp/sampleconfig
-
 
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
@@ -36,7 +67,7 @@ Organizations:
 #   genesis block for orderer related parameters
 #
 ################################################################################
-Orderer:
+Orderer: &OrdererDefaults
 
     # Orderer Type: The orderer implementation to start
     # Available types are "solo" and "kafka"
@@ -73,9 +104,6 @@ Orderer:
     # the orderer side of the network
     Organizations:
 
-        # The default organization as defined in the organization section
-        - *defaultOrg
-
 ################################################################################
 #
 #   SECTION: Application
@@ -84,11 +112,8 @@ Orderer:
 #   genesis block for application related parameters
 #
 ################################################################################
-Application:
+Application: &ApplicationDefaults
 
     # Organizations is the list of orgs which are defined as participants on
     # the application side of the network
     Organizations:
-
-        # The default organization as defined in the organization section
-        - *defaultOrg
