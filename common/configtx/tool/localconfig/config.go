@@ -39,10 +39,6 @@ const (
 
 var logger = logging.MustGetLogger("configtx/tool/localconfig")
 
-func init() {
-	logging.SetLevel(logging.ERROR, "")
-}
-
 // Prefix is the default config prefix for the orderer
 const Prefix string = "CONFIGTX"
 
@@ -189,7 +185,8 @@ func Load(profile string) *Profile {
 	// for environment variables
 	config.SetEnvPrefix(Prefix)
 	config.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
+	// This replacer allows substitution within the particular profile without having to fully qualify the name
+	replacer := strings.NewReplacer(strings.ToUpper(fmt.Sprintf("profiles.%s.", profile)), "", ".", "_")
 	config.SetEnvKeyReplacer(replacer)
 
 	err := config.ReadInConfig()
@@ -208,6 +205,7 @@ func Load(profile string) *Profile {
 	if !ok {
 		logger.Panicf("Could not find profile %s", profile)
 	}
+
 	result.completeInitialization()
 
 	return result
