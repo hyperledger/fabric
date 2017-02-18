@@ -296,12 +296,16 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
-	lgr := peer.GetLedger(chainID)
-	if lgr == nil {
-		return nil, errors.New("Failure while looking up the ledger")
-	}
-	if _, err := lgr.GetTransactionByID(txid); err == nil {
-		return nil, fmt.Errorf("Duplicate transaction found [%s]. Creator [%x]. [%s]", txid, hdr.SignatureHeader.Creator, err)
+	//chainless proposals do not/cannot affect ledger and cannot be submitted as transactions
+	//ignore uniqueness checks
+	if !ischainless {
+		lgr := peer.GetLedger(chainID)
+		if lgr == nil {
+			return nil, errors.New(fmt.Sprintf("Failure while looking up the ledger %s", chainID))
+		}
+		if _, err := lgr.GetTransactionByID(txid); err == nil {
+			return nil, fmt.Errorf("Duplicate transaction found [%s]. Creator [%x]. [%s]", txid, hdr.SignatureHeader.Creator, err)
+		}
 	}
 
 	// obtaining once the tx simulator for this proposal. This will be nil
