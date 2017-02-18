@@ -134,14 +134,9 @@ func TestDifferentChainID(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope("wrongChain", makeConfigPair("foo", "foo", 1, []byte("foo")))
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should have errored when validating a new config set the wrong chain ID")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should have errored when applying a new config with the wrong chain ID")
+		t.Error("Should have errored when proposing a new config set the wrong chain ID")
 	}
 }
 
@@ -157,14 +152,9 @@ func TestOldConfigReplay(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo")))
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should have errored when validating a config that is not a newer sequence number")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should have errored when applying a config that is not a newer sequence number")
+		t.Error("Should have errored when proposing a config that is not a newer sequence number")
 	}
 }
 
@@ -180,12 +170,17 @@ func TestValidConfigChange(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
 
-	err = cm.Validate(newConfig)
+	configEnv, err := cm.ProposeConfigUpdate(newConfig)
+	if err != nil {
+		t.Errorf("Should not have errored proposing config: %s", err)
+	}
+
+	err = cm.Validate(configEnv)
 	if err != nil {
 		t.Errorf("Should not have errored validating config: %s", err)
 	}
 
-	err = cm.Apply(newConfig)
+	err = cm.Apply(configEnv)
 	if err != nil {
 		t.Errorf("Should not have errored applying config: %s", err)
 	}
@@ -208,14 +203,9 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 		makeConfigPair("bar", "bar", 2, []byte("bar")),
 	)
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should have errored validating config because foo's sequence number regressed")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should have errored applying config because foo's sequence number regressed")
+		t.Error("Should have errored proposing config because foo's sequence number regressed")
 	}
 }
 
@@ -236,14 +226,9 @@ func TestConfigChangeOldSequence(t *testing.T) {
 		makeConfigPair("bar", "bar", 1, []byte("bar")),
 	)
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should have errored validating config because bar was new but its sequence number was old")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should have errored applying config because bar was new but its sequence number was old")
+		t.Error("Should have errored proposing config because bar was new but its sequence number was old")
 	}
 }
 
@@ -267,14 +252,9 @@ func TestConfigImplicitDelete(t *testing.T) {
 		makeConfigPair("bar", "bar", 1, []byte("bar")),
 	)
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should have errored validating config because foo was implicitly deleted")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should have errored applying config because foo was implicitly deleted")
+		t.Error("Should have errored proposing config because foo was implicitly deleted")
 	}
 }
 
@@ -290,14 +270,9 @@ func TestEmptyConfigUpdate(t *testing.T) {
 
 	newConfig := &cb.Envelope{}
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should not errored validating config because new config is empty")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should not errored applying config because new config is empty")
+		t.Error("Should not errored proposing config because new config is empty")
 	}
 }
 
@@ -323,14 +298,9 @@ func TestSilentConfigModification(t *testing.T) {
 		makeConfigPair("bar", "bar", 1, []byte("bar")),
 	)
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should not errored validating config because foo was silently modified (despite modification allowed by policy)")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should not errored applying config because foo was silently modified (despite modification allowed by policy)")
+		t.Error("Should have errored proposing config because foo was silently modified (despite modification allowed by policy)")
 	}
 }
 
@@ -350,14 +320,9 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should have errored validating config because policy rejected modification")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should have errored applying config because policy rejected modification")
+		t.Error("Should have errored proposing config because policy rejected modification")
 	}
 }
 
@@ -383,12 +348,17 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 		makeConfigPair("bar", "bar", 1, []byte("foo")),
 	)
 
-	err = cm.Validate(newConfig)
+	configEnv, err := cm.ProposeConfigUpdate(newConfig)
+	if err != nil {
+		t.Errorf("Should not have errored proposing config, but got %s", err)
+	}
+
+	err = cm.Validate(configEnv)
 	if err != nil {
 		t.Errorf("Should not have errored validating config, but got %s", err)
 	}
 
-	err = cm.Apply(newConfig)
+	err = cm.Apply(configEnv)
 	if err != nil {
 		t.Errorf("Should not have errored applying config, but got %s", err)
 	}
@@ -410,14 +380,9 @@ func TestInvalidProposal(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
 
-	err = cm.Validate(newConfig)
+	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
-		t.Error("Should have errored validating config because the handler rejected it")
-	}
-
-	err = cm.Apply(newConfig)
-	if err == nil {
-		t.Error("Should have errored applying config because the handler rejected it")
+		t.Error("Should have errored proposing config because the handler rejected it")
 	}
 }
 

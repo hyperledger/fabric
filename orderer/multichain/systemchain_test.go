@@ -71,6 +71,14 @@ func (ms *mockSupport) ChannelConfig() configvalueschannel.ConfigReader {
 	return ms.chainConfig
 }
 
+func (ms *mockSupport) Sign(data []byte) ([]byte, error) {
+	return data, nil
+}
+
+func (ms *mockSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
+	return &cb.SignatureHeader{}, nil
+}
+
 type mockChainCreator struct {
 	newChains []*cb.Envelope
 	ms        *mockSupport
@@ -121,8 +129,12 @@ func TestGoodProposal(t *testing.T) {
 	if payload.Header.ChannelHeader.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
 		t.Fatalf("Wrapped transaction should be of type ORDERER_TRANSACTION")
 	}
-	envelope := utils.UnmarshalEnvelopeOrPanic(payload.Data)
-	if !reflect.DeepEqual(envelope, ingressTx) {
+	outConfigEnv, err := configtx.UnmarshalConfigEnvelope(utils.UnmarshalPayloadOrPanic(utils.UnmarshalEnvelopeOrPanic(payload.Data).Payload).Data)
+	if err != nil {
+		t.Fatalf("Error unmarshaling: %s", err)
+	}
+
+	if !reflect.DeepEqual(outConfigEnv.LastUpdate, ingressTx) {
 		t.Fatalf("Received different configtx than ingressed into the system")
 	}
 
@@ -142,7 +154,9 @@ func TestGoodProposal(t *testing.T) {
 		t.Fatalf("Proposal should only have created 1 new chain")
 	}
 
-	if !reflect.DeepEqual(mcc.newChains[0], ingressTx) {
+	outConfigEnv, err = configtx.UnmarshalConfigEnvelope(utils.UnmarshalPayloadOrPanic(mcc.newChains[0].Payload).Data)
+
+	if !reflect.DeepEqual(ingressTx, outConfigEnv.LastUpdate) {
 		t.Fatalf("New chain should have been created with ingressTx")
 	}
 }

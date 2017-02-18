@@ -39,7 +39,7 @@ func NewFilter(manager api.Manager) filter.Rule {
 
 type configCommitter struct {
 	manager        api.Manager
-	configEnvelope *cb.Envelope
+	configEnvelope *cb.ConfigEnvelope
 }
 
 func (cc *configCommitter) Commit() {
@@ -69,13 +69,13 @@ func (cf *configFilter) Apply(message *cb.Envelope) (filter.Action, filter.Commi
 		return filter.Reject, nil
 	}
 
-	err = cf.configManager.Validate(configEnvelope.LastUpdate)
+	err = cf.configManager.Validate(configEnvelope)
 	if err != nil {
 		return filter.Reject, nil
 	}
 
 	return filter.Accept, &configCommitter{
 		manager:        cf.configManager,
-		configEnvelope: configEnvelope.LastUpdate,
+		configEnvelope: configEnvelope,
 	}
 }

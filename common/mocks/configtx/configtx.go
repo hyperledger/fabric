@@ -159,10 +159,16 @@ type Manager struct {
 	ApplyVal error
 
 	// AppliedConfigUpdateEnvelope is set by Apply
-	AppliedConfigUpdateEnvelope *cb.Envelope
+	AppliedConfigUpdateEnvelope *cb.ConfigEnvelope
 
 	// ValidateVal is returned by Validate
 	ValidateVal error
+
+	// ProposeConfigUpdateError is returned as the error value for ProposeConfigUpdate
+	ProposeConfigUpdateError error
+
+	// ProposeConfigUpdateVal is returns as the value for ProposeConfigUpdate
+	ProposeConfigUpdateVal *cb.ConfigEnvelope
 }
 
 // ConfigEnvelope is currently unimplemented
@@ -180,13 +186,18 @@ func (cm *Manager) Sequence() uint64 {
 	return cm.SequenceVal
 }
 
+// ProposeConfigUpdate
+func (cm *Manager) ProposeConfigUpdate(update *cb.Envelope) (*cb.ConfigEnvelope, error) {
+	return cm.ProposeConfigUpdateVal, cm.ProposeConfigUpdateError
+}
+
 // Apply returns ApplyVal
-func (cm *Manager) Apply(configtx *cb.Envelope) error {
-	cm.AppliedConfigUpdateEnvelope = configtx
+func (cm *Manager) Apply(configEnv *cb.ConfigEnvelope) error {
+	cm.AppliedConfigUpdateEnvelope = configEnv
 	return cm.ApplyVal
 }
 
 // Validate returns ValidateVal
-func (cm *Manager) Validate(configtx *cb.Envelope) error {
+func (cm *Manager) Validate(configEnv *cb.ConfigEnvelope) error {
 	return cm.ValidateVal
 }

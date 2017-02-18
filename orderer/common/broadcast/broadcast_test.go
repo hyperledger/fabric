@@ -103,7 +103,7 @@ func makeConfigMessage(chainID string) *cb.Envelope {
 		Header: &cb.Header{
 			ChannelHeader: &cb.ChannelHeader{
 				ChannelId: chainID,
-				Type:      int32(cb.HeaderType_CONFIG),
+				Type:      int32(cb.HeaderType_CONFIG_UPDATE),
 			},
 		},
 	}

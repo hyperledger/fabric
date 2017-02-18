@@ -39,6 +39,6 @@ func (ms *Support) MSPManager() msp.MSPManager {
 }
 
 // Apply returns ApplyVal
-func (ms *Support) Apply(configtx *common.Envelope) error {
+func (ms *Support) Apply(configtx *common.ConfigEnvelope) error {
 	return ms.ApplyVal
 }
