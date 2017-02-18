@@ -117,8 +117,8 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 
 	channels := make(map[string]<-chan Msg)
 
-	for peerId, adapter := range adapters {
-		channels[peerId] = adapter.Accept()
+	for peerID, adapter := range adapters {
+		channels[peerID] = adapter.Accept()
 	}
 
 	sender := adapters[fmt.Sprintf("Peer%d", 0)]

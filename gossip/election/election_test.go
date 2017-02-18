@@ -335,7 +335,7 @@ func TestPartition(t *testing.T) {
 	assert.Equal(t, "p0", leaders[0])
 	for _, p := range peers {
 		if p.id == leaders[0] {
-			assert.True(t, p.isLeaderFromCallback, "Leadership callback result is wrong for %", p.id)
+			assert.True(t, p.isLeaderFromCallback, "Leadership callback result is wrong for %s", p.id)
 		} else {
 			assert.False(t, p.isLeaderFromCallback, "Leadership callback result is wrong for %s", p.id)
 			assert.True(t, p.callbackInvoked, "Leadership callback wasn't invoked for %s", p.id)
