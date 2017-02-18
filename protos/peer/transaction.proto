@@ -67,16 +67,9 @@ message ProcessedTransaction {
 // to ensure that they are treated atomically.
 message Transaction {
 
-	// Version indicates message protocol version.
-	int32 version = 1;
-
-	// Timestamp is the local time that the
-	// message was created by the sender
-	google.protobuf.Timestamp timestamp = 2;
-
 	// The payload is an array of TransactionAction. An array is necessary to
 	// accommodate multiple actions per transaction
-	repeated TransactionAction actions = 3;
+	repeated TransactionAction actions = 1;
 }
 
 // TransactionAction binds a proposal to its action.  The type field in the
