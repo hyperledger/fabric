@@ -118,7 +118,7 @@ func deploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	version := util.GetSysCCVersion()
 
-	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil)
+	cccid := ccprov.GetCCContext(chainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, version, txid, true, nil, nil)
 
 	_, _, err = ccprov.ExecuteWithErrorFilter(ctxt, cccid, chaincodeDeploymentSpec)
 
@@ -145,7 +145,7 @@ func DeDeploySysCC(chainID string, syscc *SystemChaincode) error {
 
 	version := util.GetSysCCVersion()
 
-	cccid := ccprov.GetCCContext(chainID, syscc.Name, version, "", true, nil)
+	cccid := ccprov.GetCCContext(chainID, syscc.Name, version, "", true, nil, nil)
 
 	err = ccprov.Stop(ctx, cccid, chaincodeDeploymentSpec)
 

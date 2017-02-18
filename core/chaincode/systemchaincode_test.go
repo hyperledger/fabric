@@ -108,7 +108,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber)
 	nextBlockNumber++
 
-	cccid := ccprovider.NewCCContext(chainID, "sample_syscc", sysCCVers, "", true, nil)
+	cccid := ccprovider.NewCCContext(chainID, "sample_syscc", sysCCVers, "", true, nil, nil)
 	cdsforStop := &pb.ChaincodeDeploymentSpec{ExecEnv: 1, ChaincodeSpec: spec}
 	if err != nil {
 		theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)

@@ -124,6 +124,11 @@ type CCContext struct {
 	//Syscc is this a system chaincode
 	Syscc bool
 
+	//SignedProposal for this invoke (if any)
+	//this is kept here for access control and in case we need to pass something
+	//from this to the chaincode
+	SignedProposal *pb.SignedProposal
+
 	//Proposal for this invoke (if any)
 	//this is kept here just in case we need to pass something
 	//from this to the chaincode
@@ -134,7 +139,7 @@ type CCContext struct {
 }
 
 //NewCCContext just construct a new struct with whatever args
-func NewCCContext(cid, name, version, txid string, syscc bool, prop *pb.Proposal) *CCContext {
+func NewCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) *CCContext {
 	//version CANNOT be empty. The chaincode namespace has to use version and chain name.
 	//All system chaincodes share the same version given by utils.GetSysCCVersion. Note
 	//that neither Chain Name or Version are stored in a chaincodes state on the ledger
@@ -144,7 +149,7 @@ func NewCCContext(cid, name, version, txid string, syscc bool, prop *pb.Proposal
 
 	canName := name + ":" + version
 
-	cccid := &CCContext{cid, name, version, txid, syscc, prop, canName}
+	cccid := &CCContext{cid, name, version, txid, syscc, signedProp, prop, canName}
 
 	ccproviderLogger.Infof("NewCCCC (chain=%s,chaincode=%s,version=%s,txid=%s,syscc=%t,proposal=%p,canname=%s", cid, name, version, txid, syscc, prop, cccid.canonicalName)
 
@@ -189,9 +194,9 @@ type ChaincodeProvider interface {
 	// GetContext returns a ledger context
 	GetContext(ledger ledger.PeerLedger) (context.Context, error)
 	// GetCCContext returns an opaque chaincode context
-	GetCCContext(cid, name, version, txid string, syscc bool, prop *pb.Proposal) interface{}
+	GetCCContext(cid, name, version, txid string, syscc bool, signedProp *pb.SignedProposal, prop *pb.Proposal) interface{}
 	// GetCCValidationInfoFromLCCC returns the VSCC and the policy listed by LCCC for the supplied chaincode
-	GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error)
+	GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chainID string, chaincodeID string) (string, []byte, error)
 	// ExecuteChaincode executes the chaincode given context and args
 	ExecuteChaincode(ctxt context.Context, cccid interface{}, args [][]byte) (*pb.Response, *pb.ChaincodeEvent, error)
 	// Execute executes the chaincode given context and spec (invocation or deploy)

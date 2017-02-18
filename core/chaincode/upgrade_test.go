@@ -81,7 +81,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 	}()
 
 	sysCCVers := util.GetSysCCVersion()
-	lcccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil)
+	lcccid := ccprovider.NewCCContext(cccid.ChainID, cis.ChaincodeSpec.ChaincodeId.Name, sysCCVers, uuid, true, nil, nil)
 
 	var versionBytes []byte
 	//write to lccc
@@ -98,7 +98,7 @@ func upgrade2(ctx context.Context, cccid *ccprovider.CCContext,
 		return nil, fmt.Errorf("Expected new version from LCCC but got same %s(%s)", newVersion, cccid.Version)
 	}
 
-	newcccid = ccprovider.NewCCContext(cccid.ChainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, newVersion, uuid, false, nil)
+	newcccid = ccprovider.NewCCContext(cccid.ChainID, chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeId.Name, newVersion, uuid, false, nil, nil)
 
 	if _, _, err = ExecuteWithErrorFilter(ctx, newcccid, chaincodeDeploymentSpec); err != nil {
 		return nil, fmt.Errorf("Error deploying chaincode for upgrade: %s", err)
@@ -137,7 +137,7 @@ func TestUpgradeCC(t *testing.T) {
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := ccprovider.NewCCContext(chainID, ccName, "0", "", false, nil)
+	cccid := ccprovider.NewCCContext(chainID, ccName, "0", "", false, nil, nil)
 	var nextBlockNumber uint64
 	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
 
@@ -227,7 +227,7 @@ func TestInvalUpgradeCC(t *testing.T) {
 	f := "init"
 	args := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 
-	cccid := ccprovider.NewCCContext(chainID, ccName, "0", "", false, nil)
+	cccid := ccprovider.NewCCContext(chainID, ccName, "0", "", false, nil, nil)
 
 	//Note ccName hasn't changed...
 	chaincodeID := &pb.ChaincodeID{Name: ccName, Path: url, Version: "1"}
