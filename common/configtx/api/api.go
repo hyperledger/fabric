@@ -17,7 +17,8 @@ limitations under the License.
 package api
 
 import (
-	configvalues "github.com/hyperledger/fabric/common/configvalues/api"
+	configvalues "github.com/hyperledger/fabric/common/configvalues"
+	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -51,7 +52,7 @@ type Resources interface {
 	PolicyManager() policies.Manager
 
 	// ChannelConfig returns the ChannelConfig for the chain
-	ChannelConfig() configvalues.Channel
+	ChannelConfig() configvalueschannel.ConfigReader
 
 	// OrdererConfig returns the configtxorderer.SharedConfig for the channel
 	OrdererConfig() configvalues.Orderer

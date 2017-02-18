@@ -19,7 +19,7 @@ package sharedconfig
 import (
 	"testing"
 
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 )
 
 func TestSharedConfigInterface(t *testing.T) {

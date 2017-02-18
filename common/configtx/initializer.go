@@ -21,8 +21,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx/api"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
-	configtxchannel "github.com/hyperledger/fabric/common/configvalues/channel"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
+	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
 	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	configtxmsp "github.com/hyperledger/fabric/common/configvalues/msp"
@@ -33,7 +33,7 @@ import (
 
 type resources struct {
 	policyManager     *policies.ManagerImpl
-	channelConfig     *configtxchannel.SharedConfigImpl
+	channelConfig     *configvalueschannel.Config
 	ordererConfig     *configtxorderer.ManagerImpl
 	applicationConfig *configtxapplication.SharedConfigImpl
 	mspConfigHandler  *configtxmsp.MSPConfigHandler
@@ -45,7 +45,7 @@ func (r *resources) PolicyManager() policies.Manager {
 }
 
 // ChannelConfig returns the api.ChannelConfig for the chain
-func (r *resources) ChannelConfig() configvaluesapi.Channel {
+func (r *resources) ChannelConfig() configvalueschannel.ConfigReader {
 	return r.channelConfig
 }
 
@@ -85,7 +85,7 @@ func newResources() *resources {
 
 	return &resources{
 		policyManager:     policies.NewManagerImpl(RootGroupKey, policyProviderMap),
-		channelConfig:     configtxchannel.NewSharedConfigImpl(ordererConfig, applicationConfig),
+		channelConfig:     configvalueschannel.NewConfig(ordererConfig, applicationConfig),
 		ordererConfig:     ordererConfig,
 		applicationConfig: applicationConfig,
 		mspConfigHandler:  mspConfigHandler,
@@ -93,7 +93,7 @@ func newResources() *resources {
 }
 
 type valueProposerRoot struct {
-	channelConfig    *configtxchannel.SharedConfigImpl
+	channelConfig    *configvalueschannel.Config
 	mspConfigHandler *configtxmsp.MSPConfigHandler
 }
 

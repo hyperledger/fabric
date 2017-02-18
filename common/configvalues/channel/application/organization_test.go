@@ -19,7 +19,7 @@ package application
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configvalues/api"
+	api "github.com/hyperledger/fabric/common/configvalues"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 

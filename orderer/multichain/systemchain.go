@@ -18,7 +18,8 @@ package multichain
 
 import (
 	"github.com/hyperledger/fabric/common/configtx"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
+	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
@@ -39,7 +40,7 @@ type limitedSupport interface {
 	ChainID() string
 	PolicyManager() policies.Manager
 	SharedConfig() configvaluesapi.Orderer
-	ChannelConfig() configvaluesapi.Channel
+	ChannelConfig() configvalueschannel.ConfigReader
 	Enqueue(env *cb.Envelope) bool
 }
 

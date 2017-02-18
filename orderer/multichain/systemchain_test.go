@@ -22,7 +22,8 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues/api"
+	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
+	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	mockconfigvalueschannel "github.com/hyperledger/fabric/common/mocks/configvalues/channel"
 	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
@@ -66,7 +67,7 @@ func (ms *mockSupport) SharedConfig() configvaluesapi.Orderer {
 	return ms.msc
 }
 
-func (ms *mockSupport) ChannelConfig() configvaluesapi.Channel {
+func (ms *mockSupport) ChannelConfig() configvalueschannel.ConfigReader {
 	return ms.chainConfig
 }
 

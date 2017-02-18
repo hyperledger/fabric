@@ -19,7 +19,7 @@ package application
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configvalues/api"
+	api "github.com/hyperledger/fabric/common/configvalues"
 
 	logging "github.com/op/go-logging"
 )

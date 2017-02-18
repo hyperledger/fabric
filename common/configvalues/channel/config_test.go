@@ -20,7 +20,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configvalues/api"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	logging "github.com/op/go-logging"
@@ -44,7 +43,7 @@ func makeInvalidConfigValue() *cb.ConfigValue {
 }
 
 func TestInterface(t *testing.T) {
-	_ = api.Channel(NewSharedConfigImpl(nil, nil))
+	_ = ConfigReader(NewConfig(nil, nil))
 }
 
 func TestDoubleBegin(t *testing.T) {
@@ -54,7 +53,7 @@ func TestDoubleBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewSharedConfigImpl(nil, nil)
+	m := NewConfig(nil, nil)
 	m.BeginValueProposals(nil)
 	m.BeginValueProposals(nil)
 }
@@ -66,15 +65,15 @@ func TestCommitWithoutBegin(t *testing.T) {
 		}
 	}()
 
-	m := NewSharedConfigImpl(nil, nil)
+	m := NewConfig(nil, nil)
 	m.CommitProposals()
 }
 
 func TestRollback(t *testing.T) {
-	m := NewSharedConfigImpl(nil, nil)
-	m.pendingConfig = &chainConfig{}
+	m := NewConfig(nil, nil)
+	m.pending = &values{}
 	m.RollbackProposals()
-	if m.pendingConfig != nil {
+	if m.pending != nil {
 		t.Fatalf("Should have cleared pending config on rollback")
 	}
 }
@@ -84,7 +83,7 @@ func TestHashingAlgorithm(t *testing.T) {
 	invalidAlgorithm := TemplateHashingAlgorithm("MD5")
 	validAlgorithm := DefaultHashingAlgorithm()
 
-	m := NewSharedConfigImpl(nil, nil)
+	m := NewConfig(nil, nil)
 	m.BeginValueProposals(nil)
 
 	err := m.ProposeValue(HashingAlgorithmKey, invalidMessage)
@@ -114,7 +113,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 	invalidWidth := TemplateBlockDataHashingStructure(0)
 	validWidth := DefaultBlockDataHashingStructure()
 
-	m := NewSharedConfigImpl(nil, nil)
+	m := NewConfig(nil, nil)
 	m.BeginValueProposals(nil)
 
 	err := m.ProposeValue(BlockDataHashingStructureKey, invalidMessage)
@@ -142,7 +141,7 @@ func TestBlockDataHashingStructure(t *testing.T) {
 func TestOrdererAddresses(t *testing.T) {
 	invalidMessage := makeInvalidConfigValue()
 	validMessage := DefaultOrdererAddresses()
-	m := NewSharedConfigImpl(nil, nil)
+	m := NewConfig(nil, nil)
 	m.BeginValueProposals(nil)
 
 	err := m.ProposeValue(OrdererAddressesKey, invalidMessage)

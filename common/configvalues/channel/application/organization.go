@@ -19,7 +19,7 @@ package application
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/configvalues/api"
+	"github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
 	mspconfig "github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
