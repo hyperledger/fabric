@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -44,18 +45,16 @@ func init() {
 	genesisBlock = provisional.New(conf).GenesisBlock()
 }
 
-type mockCryptoHelper struct{}
+func mockCrypto() *mockCryptoHelper {
+	return &mockCryptoHelper{LocalSigner: mockcrypto.FakeLocalSigner}
+}
 
-func (xxx mockCryptoHelper) VerifySignature(sd *cb.SignedData) error {
+type mockCryptoHelper struct {
+	*mockcrypto.LocalSigner
+}
+
+func (mch mockCryptoHelper) VerifySignature(sd *cb.SignedData) error {
 	return nil
-}
-
-func (xxx mockCryptoHelper) NewSignatureHeader() (*cb.SignatureHeader, error) {
-	return &cb.SignatureHeader{}, nil
-}
-
-func (xxx mockCryptoHelper) Sign(message []byte) ([]byte, error) {
-	return message, nil
 }
 
 func NewRAMLedgerAndFactory(maxSize int) (ordererledger.Factory, ordererledger.ReadWriter) {
@@ -129,7 +128,7 @@ func TestNoSystemChain(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	NewManagerImpl(lf, consenters, &mockCryptoHelper{})
+	NewManagerImpl(lf, consenters, mockCrypto())
 }
 
 // This test essentially brings the entire system up and is ultimately what main.go will replicate
@@ -139,7 +138,7 @@ func TestManagerImpl(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, &mockCryptoHelper{})
+	manager := NewManagerImpl(lf, consenters, mockCrypto())
 
 	_, ok := manager.GetChain("Fake")
 	if ok {
@@ -185,7 +184,7 @@ func TestSignatureFilter(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, &mockCryptoHelper{})
+	manager := NewManagerImpl(lf, consenters, mockCrypto())
 
 	cs, ok := manager.GetChain(provisional.TestChainID)
 
@@ -222,7 +221,7 @@ func TestNewChain(t *testing.T) {
 	consenters := make(map[string]Consenter)
 	consenters[conf.Orderer.OrdererType] = &mockConsenter{}
 
-	manager := NewManagerImpl(lf, consenters, &mockCryptoHelper{})
+	manager := NewManagerImpl(lf, consenters, mockCrypto())
 
 	generator := provisional.New(conf)
 	channelTemplate := generator.ChannelTemplate()
