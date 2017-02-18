@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"errors"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
@@ -317,9 +319,9 @@ type ReceivedMessage interface {
 	// GetGossipMessage returns the underlying GossipMessage
 	GetGossipMessage() *GossipMessage
 
-	// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+	// GetSourceMessage Returns the Envelope the ReceivedMessage was
 	// constructed with
-	GetSourceMessage() *SignedGossipMessage
+	GetSourceEnvelope() *Envelope
 
 	// GetPKIID returns the PKI-ID of the remote peer
 	// that sent the message
@@ -327,33 +329,106 @@ type ReceivedMessage interface {
 }
 
 // Sign signs a GossipMessage with given Signer.
-// Returns a signed message on success
-// or an error on failure
-func (m *GossipMessage) Sign(signer Signer) error {
-	m.Signature = nil
-	serializedMsg, err := proto.Marshal(m)
-	if err != nil {
-		return err
+// Returns an Envelope on success,
+// panics on failure.
+func (m *GossipMessage) Sign(signer Signer) *Envelope {
+	// If we have a secretEnvelope, don't override it.
+	// Back it up, and restore it later
+	var secretEnvelope *SecretEnvelope
+	if m.Envelope != nil {
+		secretEnvelope = m.Envelope.SecretEnvelope
 	}
-	sig, err := signer(serializedMsg)
+	m.Envelope = nil
+	payload, err := proto.Marshal(m)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	m.Signature = sig
-	return nil
+	sig, err := signer(payload)
+	if err != nil {
+		panic(err)
+	}
+
+	e := &Envelope{
+		Payload:        payload,
+		Signature:      sig,
+		SecretEnvelope: secretEnvelope,
+	}
+	m.Envelope = e
+	return e
+}
+
+func (m *GossipMessage) NoopSign() *Envelope {
+	signer := func(msg []byte) ([]byte, error) {
+		return nil, nil
+	}
+	return m.Sign(signer)
 }
 
 // Verify verifies a signed GossipMessage with a given Verifier.
 // Returns nil on success, error on failure.
 func (m *GossipMessage) Verify(peerIdentity []byte, verify Verifier) error {
-	sig := m.Signature
-	defer func() {
-		m.Signature = sig
-	}()
-	m.Signature = nil
-	serializedMsg, err := proto.Marshal(m)
-	if err != nil {
-		return err
+	if m.Envelope == nil {
+		return errors.New("Missing envelope")
 	}
-	return verify(peerIdentity, sig, serializedMsg)
+	if len(m.Envelope.Payload) == 0 {
+		return errors.New("Empty payload")
+	}
+	if len(m.Envelope.Signature) == 0 {
+		return errors.New("Empty signature")
+	}
+	payloadSigVerificationErr := verify(peerIdentity, m.Envelope.Signature, m.Envelope.Payload)
+	if payloadSigVerificationErr != nil {
+		return payloadSigVerificationErr
+	}
+	if m.Envelope.SecretEnvelope != nil {
+		payload := m.Envelope.SecretEnvelope.Payload
+		sig := m.Envelope.SecretEnvelope.Signature
+		if len(payload) == 0 {
+			return errors.New("Empty payload")
+		}
+		if len(sig) == 0 {
+			return errors.New("Empty signature")
+		}
+		return verify(peerIdentity, sig, payload)
+	}
+	return nil
+}
+
+func (m *GossipMessage) IsSigned() bool {
+	return m.Envelope != nil && m.Envelope.Payload != nil && m.Envelope.Signature != nil
+}
+
+func (e *Envelope) ToGossipMessage() (*GossipMessage, error) {
+	msg := &GossipMessage{}
+	err := proto.Unmarshal(e.Payload, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	msg.Envelope = e
+
+	return msg, nil
+}
+
+func (e *Envelope) SignSecret(signer Signer, secret *Secret) {
+	payload, err := proto.Marshal(secret)
+	if err != nil {
+		panic(err)
+	}
+	sig, err := signer(payload)
+	if err != nil {
+		panic(err)
+	}
+	e.SecretEnvelope = &SecretEnvelope{
+		Payload:   payload,
+		Signature: sig,
+	}
+}
+
+func (s *SecretEnvelope) InternalEndpoint() string {
+	secret := &Secret{}
+	if err := proto.Unmarshal(s.Payload, secret); err != nil {
+		return ""
+	}
+	return secret.GetInternalEndpoint()
 }

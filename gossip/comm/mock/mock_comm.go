@@ -91,9 +91,9 @@ func (packet *packetMock) Respond(msg *proto.GossipMessage) {
 	}
 }
 
-// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// GetSourceEnvelope Returns the Envelope the ReceivedMessage was
 // constructed with
-func (packet *packetMock) GetSourceMessage() *proto.SignedGossipMessage {
+func (packet *packetMock) GetSourceEnvelope() *proto.Envelope {
 	return nil
 }
 

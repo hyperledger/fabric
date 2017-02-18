@@ -248,9 +248,13 @@ func (conn *connection) send(msg *proto.GossipMessage, onErr func(error)) {
 		return
 	}
 
+	if msg.Envelope == nil {
+		msg.NoopSign()
+	}
+
 	m := &msgSending{
-		msg:   msg,
-		onErr: onErr,
+		envelope: msg.Envelope,
+		onErr:    onErr,
 	}
 
 	conn.outBuff <- m
@@ -294,7 +298,7 @@ func (conn *connection) writeToStream() {
 		}
 		select {
 		case m := <-conn.outBuff:
-			err := stream.Send(m.msg)
+			err := stream.Send(m.envelope)
 			if err != nil {
 				go m.onErr(err)
 				return
@@ -319,7 +323,7 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.G
 			errChan <- errors.New("Stream is nil")
 			return
 		}
-		msg, err := stream.Recv()
+		envelope, err := stream.Recv()
 		if conn.toDie() {
 			conn.logger.Debug(conn.pkiID, "canceling read because closing")
 			return
@@ -328,6 +332,11 @@ func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.G
 			errChan <- err
 			conn.logger.Debug(conn.pkiID, "Got error, aborting:", err)
 			return
+		}
+		msg, err := envelope.ToGossipMessage()
+		if err != nil {
+			errChan <- err
+			conn.logger.Warning(conn.pkiID, "Got error, aborting:", err)
 		}
 		msgChan <- msg
 	}
@@ -354,6 +363,6 @@ func (conn *connection) getStream() stream {
 }
 
 type msgSending struct {
-	msg   *proto.GossipMessage
-	onErr func(error)
+	envelope *proto.Envelope
+	onErr    func(error)
 }

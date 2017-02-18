@@ -27,7 +27,7 @@ type CryptoService interface {
 	ValidateAliveMsg(*proto.GossipMessage) bool
 
 	// SignMessage signs a message
-	SignMessage(m *proto.GossipMessage) *proto.GossipMessage
+	SignMessage(m *proto.GossipMessage, internalEndpoint string) *proto.Envelope
 }
 
 // CommService is an interface that the discovery expects to be implemented and passed on creation
@@ -57,15 +57,15 @@ type NetworkMember struct {
 	Endpoint         string
 	Metadata         []byte
 	PKIid            common.PKIidType
-	InternalEndpoint *proto.SignedEndpoint
+	InternalEndpoint string
 }
 
 // PreferredEndpoint computes the endpoint to connect to,
 // while preferring internal endpoint over the standard
 // endpoint
 func (nm NetworkMember) PreferredEndpoint() string {
-	if nm.InternalEndpoint != nil && nm.InternalEndpoint.Endpoint != "" {
-		return nm.InternalEndpoint.Endpoint
+	if nm.InternalEndpoint != "" {
+		return nm.InternalEndpoint
 	}
 	return nm.Endpoint
 }

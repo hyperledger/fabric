@@ -137,11 +137,7 @@ func (cs *certStore) createIdentityMessage() *proto.GossipMessage {
 	signer := func(msg []byte) ([]byte, error) {
 		return cs.idMapper.Sign(msg)
 	}
-	if err := m.Sign(signer); err != nil {
-		cs.logger.Warning("Failed signing identity message:", err)
-		return nil
-	}
-
+	m.Sign(signer)
 	return m
 }
 

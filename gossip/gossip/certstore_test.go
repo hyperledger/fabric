@@ -50,9 +50,9 @@ type sentMsg struct {
 	mock.Mock
 }
 
-// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// GetSourceEnvelope Returns the SignedGossipMessage the ReceivedMessage was
 // constructed with
-func (s *sentMsg) GetSourceMessage() *proto.SignedGossipMessage {
+func (s *sentMsg) GetSourceEnvelope() *proto.Envelope {
 	return nil
 }
 
@@ -184,7 +184,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 			assert.Len(t, msg.GetDataDig().Digests, 1, "Mismatched identity has been injected into certStore")
 		}
 	case <-time.After(time.Second):
-		t.Fatalf("Didn't respond with a digest message in a timely manner")
+		t.Fatal("Didn't respond with a digest message in a timely manner")
 	}
 }
 
@@ -233,10 +233,10 @@ func createBadlySignedUpdateMessage() *proto.GossipMessage {
 	}
 	m.Sign(signer)
 	// This would simulate a bad sig
-	if m.Signature[0] == 0 {
-		m.Signature[0] = 1
+	if m.Envelope.Signature[0] == 0 {
+		m.Envelope.Signature[0] = 1
 	} else {
-		m.Signature[0] = 0
+		m.Envelope.Signature[0] = 0
 	}
 
 	return m

@@ -31,7 +31,7 @@ func TestMembershipStore(t *testing.T) {
 	id2 := common.PKIidType("id2")
 
 	msg1 := &message{}
-	msg2 := &message{SignedGossipMessage: &proto.SignedGossipMessage{}}
+	msg2 := &message{Envelope: &proto.Envelope{}}
 
 	// Test initially created store is empty
 	assert.Nil(t, membershipStore.msgByID(id1))
@@ -67,9 +67,9 @@ func TestToSlice(t *testing.T) {
 	id4 := common.PKIidType("id4")
 
 	msg1 := &message{}
-	msg2 := &message{SignedGossipMessage: &proto.SignedGossipMessage{}}
+	msg2 := &message{Envelope: &proto.Envelope{}}
 	msg3 := &message{GossipMessage: &proto.GossipMessage{}}
-	msg4 := &message{GossipMessage: &proto.GossipMessage{}, SignedGossipMessage: &proto.SignedGossipMessage{}}
+	msg4 := &message{GossipMessage: &proto.GossipMessage{}, Envelope: &proto.Envelope{}}
 
 	membershipStore.Put(id1, msg1)
 	membershipStore.Put(id2, msg2)

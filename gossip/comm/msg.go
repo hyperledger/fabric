@@ -30,10 +30,10 @@ type ReceivedMessageImpl struct {
 	conn *connection
 }
 
-// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// GetSourceEnvelope Returns the Envelope the ReceivedMessage was
 // constructed with
-func (m *ReceivedMessageImpl) GetSourceMessage() *proto.SignedGossipMessage {
-	return nil
+func (m *ReceivedMessageImpl) GetSourceEnvelope() *proto.Envelope {
+	return m.Envelope
 }
 
 // Respond sends a msg to the source that sent the ReceivedMessageImpl
