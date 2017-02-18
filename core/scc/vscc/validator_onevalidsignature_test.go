@@ -35,9 +35,7 @@ import (
 func createTx() (*common.Envelope, error) {
 	cis := &peer.ChaincodeInvocationSpec{ChaincodeSpec: &peer.ChaincodeSpec{ChaincodeId: &peer.ChaincodeID{Name: "foo"}}}
 
-	uuid := util.GenerateUUID()
-
-	prop, err := utils.CreateProposalFromCIS(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
+	prop, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, sid)
 	if err != nil {
 		return nil, err
 	}

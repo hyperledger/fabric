@@ -93,13 +93,13 @@ func ConstructTestBlocks(t *testing.T, numBlocks int) []*common.Block {
 func ConstructTransaction(t *testing.T, simulationResults []byte, sign bool) (*common.Envelope, string, error) {
 	ccName := "foo"
 	//response := &pb.Response{Status: 200}
-	txID := util.GenerateUUID()
+	var txID string
 	var txEnv *common.Envelope
 	var err error
 	if sign {
-		txEnv, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(txID, util.GetTestChainID(), ccName, nil, simulationResults, nil, nil)
+		txEnv, txID, err = ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), ccName, nil, simulationResults, nil, nil)
 	} else {
-		txEnv, err = ptestutils.ConstructUnsingedTxEnv(txID, util.GetTestChainID(), ccName, nil, simulationResults, nil, nil)
+		txEnv, txID, err = ptestutils.ConstructUnsingedTxEnv(util.GetTestChainID(), ccName, nil, simulationResults, nil, nil)
 	}
 	return txEnv, txID, err
 }

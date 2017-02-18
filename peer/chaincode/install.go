@@ -21,7 +21,6 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -56,9 +55,7 @@ func install(chaincodeName string, chaincodeVersion string, cds *pb.ChaincodeDep
 		return fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
 	}
 
-	uuid := util.GenerateUUID()
-
-	prop, err := utils.CreateInstallProposalFromCDS(uuid, cds, creator)
+	prop, _, err := utils.CreateInstallProposalFromCDS(cds, creator)
 	if err != nil {
 		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
 	}

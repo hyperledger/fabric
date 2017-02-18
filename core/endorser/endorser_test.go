@@ -112,8 +112,9 @@ func closeListenerAndSleep(l net.Listener) {
 //getProposal gets the proposal for the chaincode invocation
 //Currently supported only for Invokes (Queries still go through devops client)
 func getInvokeProposal(cis *pb.ChaincodeInvocationSpec, chainID string, creator []byte) (*pb.Proposal, error) {
-	uuid := util.GenerateUUID()
-	return pbutils.CreateChaincodeProposal(uuid, common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, creator)
+	proposal, _, err := pbutils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, creator)
+
+	return proposal, err
 }
 
 func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator []byte) (*pb.Proposal, error) {

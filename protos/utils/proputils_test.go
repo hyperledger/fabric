@@ -43,9 +43,8 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 }
 
 func TestProposal(t *testing.T) {
-	uuid := util.GenerateUUID()
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, err := CreateChaincodeProposalWithTransient(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), []byte("creator"), []byte("transient"))
+	prop, _, err := CreateChaincodeProposalWithTransient(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), []byte("creator"), []byte("transient"))
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return
@@ -224,8 +223,7 @@ func TestProposalResponse(t *testing.T) {
 
 func TestEnvelope(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	uuid := util.GenerateUUID()
-	prop, err := CreateChaincodeProposal(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), signerSerialized)
+	prop, _, err := CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), signerSerialized)
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return

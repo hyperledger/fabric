@@ -23,6 +23,8 @@ import (
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"
 
+	"errors"
+
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -285,12 +287,21 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		ischainless = true
 	}
 
-	//TODO check for uniqueness of prop.TxID with ledger
-
+	// Check for uniqueness of prop.TxID with ledger
+	// Notice that ValidateProposalMessage has already verified
+	// that TxID is computed propertly
 	txid := hdr.ChannelHeader.TxId
 	if txid == "" {
-		err = fmt.Errorf("Invalid txID")
+		err = errors.New("Invalid txID. It must be different from the empty string.")
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	}
+
+	lgr := peer.GetLedger(chainID)
+	if lgr == nil {
+		return nil, errors.New("Failure while looking up the ledger")
+	}
+	if _, err := lgr.GetTransactionByID(txid); err == nil {
+		return nil, fmt.Errorf("Duplicate transaction found [%s]. Creator [%x]. [%s]", txid, hdr.SignatureHeader.Creator, err)
 	}
 
 	// obtaining once the tx simulator for this proposal. This will be nil

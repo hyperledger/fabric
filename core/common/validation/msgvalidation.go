@@ -92,7 +92,16 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 
 	// TODO: ensure that creator can transact with us (some ACLs?) which set of APIs is supposed to give us this info?
 
-	// TODO: perform a check against replay attacks
+	// Verify that the transaction ID has been computed properly.
+	// This check is needed to ensure that the lookup into the ledger
+	// for the same TxID catches duplicates.
+	err = utils.CheckProposalTxID(
+		hdr.ChannelHeader.TxId,
+		hdr.SignatureHeader.Nonce,
+		hdr.SignatureHeader.Creator)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	// continue the validation in a way that depends on the type specified in the header
 	switch common.HeaderType(hdr.ChannelHeader.Type) {
@@ -197,9 +206,15 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 
 	// TODO: validate chainID in cHdr.ChainID
 
-	// TODO: validate epoch in cHdr.Epoch
+	// Validate epoch in cHdr.Epoch
+	// Currently we enforce that Epoch is 0.
+	// TODO: This check will be modified once the Epoch management
+	// will be in place.
+	if cHdr.Epoch != 0 {
+		return fmt.Errorf("Invalid Epoch in ChannelHeader. It must be 0. It was [%d]", cHdr.Epoch)
+	}
 
-	// TODO: validate version in cHdr.Version
+	// TODO: Validate version in cHdr.Version
 
 	return nil
 }
@@ -356,7 +371,16 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, error) {
 
 	// TODO: ensure that creator can transact with us (some ACLs?) which set of APIs is supposed to give us this info?
 
-	// TODO: perform a check against replay attacks
+	// Verify that the transaction ID has been computed properly.
+	// This check is needed to ensure that the lookup into the ledger
+	// for the same TxID catches duplicates.
+	err = utils.CheckProposalTxID(
+		payload.Header.ChannelHeader.TxId,
+		payload.Header.SignatureHeader.Nonce,
+		payload.Header.SignatureHeader.Creator)
+	if err != nil {
+		return nil, err
+	}
 
 	// continue the validation in a way that depends on the type specified in the header
 	switch common.HeaderType(payload.Header.ChannelHeader.Type) {

@@ -39,9 +39,8 @@ func getProposal() (*peer.Proposal, error) {
 			ChaincodeId: &peer.ChaincodeID{Name: "foo"},
 			Type:        peer.ChaincodeSpec_GOLANG}}
 
-	uuid := util.GenerateUUID()
-
-	return utils.CreateProposalFromCIS(uuid, common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, signerSerialized)
+	proposal, _, err := utils.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), cis, signerSerialized)
+	return proposal, err
 }
 
 func TestGoodPath(t *testing.T) {

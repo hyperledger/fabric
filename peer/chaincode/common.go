@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
-	cutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container"
@@ -263,15 +262,13 @@ func ChaincodeInvokeOrQuery(spec *pb.ChaincodeSpec, cID string, invoke bool, sig
 		return nil, fmt.Errorf("Error serializing identity for %s: %s", signer.GetIdentifier(), err)
 	}
 
-	uuid := cutil.GenerateUUID()
-
 	funcName := "invoke"
 	if !invoke {
 		funcName = "query"
 	}
 
 	var prop *pb.Proposal
-	prop, err = putils.CreateProposalFromCIS(uuid, pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator)
+	prop, _, err = putils.CreateProposalFromCIS(pcommon.HeaderType_ENDORSER_TRANSACTION, cID, invocation, creator)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating proposal  %s: %s", funcName, err)
 	}

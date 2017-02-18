@@ -34,7 +34,6 @@ func TestBlockSerialization(t *testing.T) {
 }
 
 func TestExtractTxid(t *testing.T) {
-	txid := "txID"
 	txEnv, txid, _ := testutil.ConstructTransaction(t, testutil.ConstructRandomBytes(t, 50), false)
 	txEnvBytes, _ := putils.GetBytesEnvelope(txEnv)
 	extractedTxid, err := extractTxID(txEnvBytes)
