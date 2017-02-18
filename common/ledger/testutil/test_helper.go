@@ -34,7 +34,7 @@ type BlockGenerator struct {
 
 // NewBlockGenerator instantiates new BlockGenerator for testing
 func NewBlockGenerator(t *testing.T) *BlockGenerator {
-	return &BlockGenerator{1, []byte{}, t}
+	return &BlockGenerator{0, []byte{}, t}
 }
 
 // NextBlock constructs next block in sequence that includes a number of transactions - one per simulationResults

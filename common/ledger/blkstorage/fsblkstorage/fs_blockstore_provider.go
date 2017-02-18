@@ -48,7 +48,7 @@ func (p *FsBlockstoreProvider) OpenBlockStore(ledgerid string) (blkstorage.Block
 	return newFsBlockStore(ledgerid, p.conf, p.indexConfig, indexStoreHandle), nil
 }
 
-// Exists tells whether the BlockStore with given id exits
+// Exists tells whether the BlockStore with given id exists
 func (p *FsBlockstoreProvider) Exists(ledgerid string) (bool, error) {
 	exists, _, err := util.FileExists(p.conf.getLedgerBlockDir(ledgerid))
 	return exists, err

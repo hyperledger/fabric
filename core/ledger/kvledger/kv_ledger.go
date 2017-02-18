@@ -59,7 +59,7 @@ func newKVLedger(ledgerID string, blockStore blkstorage.BlockStore,
 	l := &kvLedger{ledgerID, blockStore, txmgmt, historyDB}
 
 	//Recover both state DB and history DB if they are out of sync with block storage
-	if err := recoverDB(l); err != nil {
+	if err := l.recoverDBs(); err != nil {
 		panic(fmt.Errorf(`Error during state DB recovery:%s`, err))
 	}
 
@@ -68,7 +68,7 @@ func newKVLedger(ledgerID string, blockStore blkstorage.BlockStore,
 
 //Recover the state database and history database (if exist)
 //by recommitting last valid blocks
-func recoverDB(l *kvLedger) error {
+func (l *kvLedger) recoverDBs() error {
 	logger.Debugf("Entering recoverDB()")
 	//If there is no block in blockstorage, nothing to recover.
 	info, _ := l.blockStore.GetBlockchainInfo()
@@ -76,126 +76,57 @@ func recoverDB(l *kvLedger) error {
 		logger.Debug("Block storage is empty.")
 		return nil
 	}
-
-	var err error
-	var stateDBSavepoint, historyDBSavepoint uint64
-	//Default value for bool is false
-	var recoverStateDB, recoverHistoryDB bool
-
-	//Getting savepointValue stored in the state DB
-	if stateDBSavepoint, err = l.txtmgmt.GetBlockNumFromSavepoint(); err != nil {
-		return err
-	}
-
-	//Check whether the state DB is in sync with block storage
-	if recoverStateDB, err = isRecoveryNeeded(stateDBSavepoint, info.Height); err != nil {
-		return err
-	}
-
-	if ledgerconfig.IsHistoryDBEnabled() {
-		//Getting savepointValue stored in the history DB
-		if historyDBSavepoint, err = l.historyDB.GetBlockNumFromSavepoint(); err != nil {
+	lastAvailableBlockNum := info.Height - 1
+	recoverables := []recoverable{l.txtmgmt, l.historyDB}
+	recoverers := []*recoverer{}
+	for _, recoverable := range recoverables {
+		recover, firstBlockNum, err := recoverable.ShouldRecover(lastAvailableBlockNum)
+		if err != nil {
 			return err
 		}
-		//Check whether the history DB is in sync with block storage
-		if recoverHistoryDB, err = isRecoveryNeeded(historyDBSavepoint, info.Height); err != nil {
-			return err
+		if recover {
+			recoverers = append(recoverers, &recoverer{firstBlockNum, recoverable})
 		}
 	}
-
-	if !recoverHistoryDB && !recoverStateDB {
-		//If nothing needs recovery, return
-		if ledgerconfig.IsHistoryDBEnabled() {
-			logger.Debug("Both state database and history database are in sync with the block storage. No need to perform recovery operation.")
-		} else {
-			logger.Debug("State database is in sync with the block storage.")
-		}
+	if len(recoverers) == 0 {
 		return nil
-	} else if !recoverHistoryDB && recoverStateDB {
-		logger.Debugf("State database is behind block storage by %d blocks. Recovering state database.", info.Height-stateDBSavepoint)
-		if err = recommitLostBlocks(l, stateDBSavepoint, info.Height, recoverStateDB, recoverHistoryDB); err != nil {
-			return err
-		}
-	} else if recoverHistoryDB && !recoverStateDB {
-		logger.Debugf("History database is behind block storage by %d blocks. Recovering history database.", info.Height-historyDBSavepoint)
-		if err = recommitLostBlocks(l, historyDBSavepoint, info.Height, recoverStateDB, recoverHistoryDB); err != nil {
-			return err
-		}
-	} else if recoverHistoryDB && recoverStateDB {
-		logger.Debugf("State database is behind block storage by %d blocks, and history database is behind block storage by %d blocks. Recovering both state and history database.", info.Height-stateDBSavepoint, info.Height-historyDBSavepoint)
-		//If both state DB and history DB need to be recovered, first
-		//we need to ensure that the state DB and history DB are in same state
-		//before recommitting lost blocks.
-		if stateDBSavepoint > historyDBSavepoint {
-			logger.Debugf("History database is behind the state database by %d blocks", stateDBSavepoint-historyDBSavepoint)
-			logger.Debug("Making the history DB in sync with state DB")
-			if err = recommitLostBlocks(l, historyDBSavepoint, stateDBSavepoint, !recoverStateDB, recoverHistoryDB); err != nil {
-				return err
-			}
-			logger.Debug("Making both history DB and state DB in sync with the block storage")
-			if err = recommitLostBlocks(l, stateDBSavepoint, info.Height, recoverStateDB, recoverHistoryDB); err != nil {
-				return err
-			}
-		} else if stateDBSavepoint < historyDBSavepoint {
-			logger.Debugf("State database is behind the history database by %d blocks", historyDBSavepoint-stateDBSavepoint)
-			logger.Debug("Making the state DB in sync with history DB")
-			if err = recommitLostBlocks(l, stateDBSavepoint, historyDBSavepoint, recoverStateDB, !recoverHistoryDB); err != nil {
-				return err
-			}
-			logger.Debug("Making both state DB and history DB in sync with the block storage")
-			if err = recommitLostBlocks(l, historyDBSavepoint, info.Height, recoverStateDB, recoverHistoryDB); err != nil {
-				return err
-			}
-		} else {
-			logger.Debug("State and history database are in same state but behind block storage")
-			logger.Debug("Making both state DB and history DB in sync with the block storage")
-			if err = recommitLostBlocks(l, stateDBSavepoint, info.Height, recoverStateDB, recoverHistoryDB); err != nil {
-				return err
-			}
-		}
 	}
-	return nil
-}
+	if len(recoverers) == 1 {
+		return l.recommitLostBlocks(recoverers[0].firstBlockNum, lastAvailableBlockNum, recoverers[0].recoverable)
+	}
 
-//isRecoveryNeeded compares savepoint and current block height to decide whether
-//to initiate recovery process
-func isRecoveryNeeded(savepoint uint64, blockHeight uint64) (bool, error) {
-	if savepoint > blockHeight {
-		return false, errors.New("BlockStorage height is behind savepoint by %d blocks. Recovery the BlockStore first")
-	} else if savepoint == blockHeight {
-		return false, nil
-	} else {
-		return true, nil
+	// both dbs need to be recovered
+	if recoverers[0].firstBlockNum > recoverers[1].firstBlockNum {
+		// swap (put the lagger db at 0 index)
+		recoverers[0], recoverers[1] = recoverers[1], recoverers[0]
 	}
+	if recoverers[0].firstBlockNum != recoverers[1].firstBlockNum {
+		// bring the lagger db equal to the the other db
+		if err := l.recommitLostBlocks(recoverers[0].firstBlockNum, recoverers[1].firstBlockNum-1,
+			recoverers[0].recoverable); err != nil {
+			return err
+		}
+	}
+	// get both the db upto block storage
+	return l.recommitLostBlocks(recoverers[1].firstBlockNum, lastAvailableBlockNum,
+		recoverers[0].recoverable, recoverers[1].recoverable)
 }
 
 //recommitLostBlocks retrieves blocks in specified range and commit the write set to either
 //state DB or history DB or both
-func recommitLostBlocks(l *kvLedger, savepoint uint64, blockHeight uint64, recoverStateDB bool, recoverHistoryDB bool) error {
-	//Compute updateSet for each missing savepoint and commit to state DB
+func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64, recoverables ...recoverable) error {
 	var err error
 	var block *common.Block
-	for blockNumber := savepoint + 1; blockNumber <= blockHeight; blockNumber++ {
+	for blockNumber := firstBlockNum; blockNumber <= lastBlockNum; blockNumber++ {
 		if block, err = l.GetBlockByNumber(blockNumber); err != nil {
 			return err
 		}
-		if recoverStateDB {
-			logger.Debugf("Constructing updateSet for the block %d", blockNumber)
-			if err = l.txtmgmt.ValidateAndPrepare(block, false); err != nil {
-				return err
-			}
-			logger.Debugf("Committing block %d to state database", blockNumber)
-			if err = l.txtmgmt.Commit(); err != nil {
-				return err
-			}
-		}
-		if ledgerconfig.IsHistoryDBEnabled() && recoverHistoryDB {
-			if err = l.historyDB.Commit(block); err != nil {
+		for _, r := range recoverables {
+			if err := r.CommitLostBlock(block); err != nil {
 				return err
 			}
 		}
 	}
-
 	return nil
 }
 

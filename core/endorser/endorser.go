@@ -361,7 +361,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 // Only exposed for testing purposes - commit the tx simulation so that
 // a deploy transaction is persisted and that chaincode can be invoked.
 // This makes the endorser test self-sufficient
-func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, chainID string, signer msp.SigningIdentity, pResp *pb.ProposalResponse) error {
+func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, chainID string, signer msp.SigningIdentity, pResp *pb.ProposalResponse, blockNumber uint64) error {
 	tx, err := putils.CreateSignedTx(proposal, signer, pResp)
 	if err != nil {
 		return err
@@ -376,7 +376,7 @@ func (e *Endorser) commitTxSimulation(proposal *pb.Proposal, chainID string, sig
 	if err != nil {
 		return err
 	}
-	block := common.NewBlock(1, []byte{})
+	block := common.NewBlock(blockNumber, []byte{})
 	block.Data.Data = [][]byte{txBytes}
 	block.Header.DataHash = block.Data.Hash()
 	if err = lgr.Commit(block); err != nil {

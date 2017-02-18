@@ -14,23 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package txmgr
+package kvledger
 
-import (
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/protos/common"
-)
+import "github.com/hyperledger/fabric/protos/common"
 
-// TxMgr - an interface that a transaction manager should implement
-type TxMgr interface {
-	NewQueryExecutor() (ledger.QueryExecutor, error)
-	NewTxSimulator() (ledger.TxSimulator, error)
-	ValidateAndPrepare(block *common.Block, doMVCCValidation bool) error
-	GetLastSavepoint() (*version.Height, error)
+type recoverable interface {
+	// ShouldRecover return whether recovery is need.
+	// If the recovery is needed, this method also returns the block number to start recovery from.
+	// lastAvailableBlock is the max block number that has been committed to the block storage
 	ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error)
+	// CommitLostBlock recommits the block
 	CommitLostBlock(block *common.Block) error
-	Commit() error
-	Rollback()
-	Shutdown()
+}
+
+type recoverer struct {
+	firstBlockNum uint64
+	recoverable   recoverable
 }

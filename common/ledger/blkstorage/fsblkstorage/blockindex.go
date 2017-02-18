@@ -18,6 +18,7 @@ package fsblkstorage
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -36,6 +37,7 @@ const (
 )
 
 var indexCheckpointKey = []byte(indexCheckpointKeyStr)
+var errIndexEmpty = errors.New("NoBlockIndexed")
 
 type index interface {
 	getLastBlockIndexed() (uint64, error)
@@ -74,6 +76,9 @@ func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
 	var err error
 	if blockNumBytes, err = index.db.Get(indexCheckpointKey); err != nil {
 		return 0, nil
+	}
+	if blockNumBytes == nil {
+		return 0, errIndexEmpty
 	}
 	return decodeBlockNum(blockNumBytes), nil
 }

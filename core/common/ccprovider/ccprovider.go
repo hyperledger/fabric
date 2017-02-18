@@ -92,7 +92,7 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 	//return error if chaincode exists
 	path := fmt.Sprintf("%s/%s.%s", chaincodeInstallPath, ccname, ccversion)
 	if _, err := os.Stat(path); err == nil {
-		return fmt.Errorf("chaincode %s exits", path)
+		return fmt.Errorf("chaincode %s exists", path)
 	}
 
 	b, err := proto.Marshal(depSpec)

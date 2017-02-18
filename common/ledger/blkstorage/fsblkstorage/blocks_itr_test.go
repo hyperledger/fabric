@@ -25,7 +25,7 @@ import (
 )
 
 func TestBlocksItrBlockingNext(t *testing.T) {
-	env := newTestEnv(t, NewConf(testPath, 0))
+	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, "testLedger")
 	defer blkfileMgrWrapper.close()
@@ -34,13 +34,13 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks[:5])
 
-	itr, err := blkfileMgr.retrieveBlocks(2)
+	itr, err := blkfileMgr.retrieveBlocks(1)
 	defer itr.Close()
 	testutil.AssertNoError(t, err, "")
 	doneChan := make(chan bool)
 	go testIterateAndVerify(t, itr, blocks[1:], doneChan)
 	for {
-		if itr.blockNumToRetrieve == 6 {
+		if itr.blockNumToRetrieve == 5 {
 			break
 		}
 		time.Sleep(time.Millisecond * 10)
@@ -55,6 +55,7 @@ func TestBlocksItrBlockingNext(t *testing.T) {
 func testIterateAndVerify(t *testing.T, itr *blocksItr, blocks []*common.Block, doneChan chan bool) {
 	blocksIterated := 0
 	for {
+		logger.Infof("blocksIterated: %v", blocksIterated)
 		bh, err := itr.Next()
 		testutil.AssertNoError(t, err, "")
 		testutil.AssertEquals(t, bh.(*blockHolder).GetBlock(), blocks[blocksIterated])

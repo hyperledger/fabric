@@ -42,6 +42,8 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
+type key string
+
 const (
 	// DevModeUserRunsChaincode property allows user to run chaincode in development environment
 	DevModeUserRunsChaincode       string = "dev"
@@ -50,10 +52,10 @@ const (
 	peerAddressDefault             string = "0.0.0.0:7051"
 
 	//TXSimulatorKey is used to attach ledger simulation context
-	TXSimulatorKey string = "txsimulatorkey"
+	TXSimulatorKey key = "txsimulatorkey"
 
 	//HistoryQueryExecutorKey is used to attach ledger history query executor context
-	HistoryQueryExecutorKey string = "historyqueryexecutorkey"
+	HistoryQueryExecutorKey key = "historyqueryexecutorkey"
 )
 
 //this is basically the singleton that supports the

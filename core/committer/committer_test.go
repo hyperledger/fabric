@@ -52,21 +52,21 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.Done()
 
 	simRes, _ := simulator.GetTxSimulationResults()
-	block1 := testutil.ConstructBlock(t, [][]byte{simRes}, true)
+	block0 := testutil.ConstructBlock(t, [][]byte{simRes}, true)
 
-	err = committer.Commit(block1)
+	err = committer.Commit(block0)
 	assert.NoError(t, err)
 
 	height, err = committer.LedgerHeight()
 	assert.Equal(t, uint64(1), height)
 	assert.NoError(t, err)
 
-	blocks := committer.GetBlocks([]uint64{1})
+	blocks := committer.GetBlocks([]uint64{0})
 	assert.Equal(t, 1, len(blocks))
 	assert.NoError(t, err)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block1.Header.Hash()
+	block1Hash := block0.Header.Hash()
 	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 }

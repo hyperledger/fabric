@@ -19,6 +19,7 @@ package historydb
 import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/protos/common"
 )
 
@@ -34,5 +35,7 @@ type HistoryDBProvider interface {
 type HistoryDB interface {
 	NewHistoryQueryExecutor(blockStore blkstorage.BlockStore) (ledger.HistoryQueryExecutor, error)
 	Commit(block *common.Block) error
-	GetBlockNumFromSavepoint() (uint64, error)
+	GetLastSavepoint() (*version.Height, error)
+	ShouldRecover(lastAvailableBlock uint64) (bool, uint64, error)
+	CommitLostBlock(block *common.Block) error
 }
