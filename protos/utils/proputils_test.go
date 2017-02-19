@@ -25,6 +25,9 @@ import (
 	"fmt"
 	"os"
 
+	"crypto/sha256"
+	"encoding/hex"
+
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -336,6 +339,40 @@ func TestEnvelope(t *testing.T) {
 		t.Fatalf("results don't match")
 		return
 	}
+}
+
+func TestProposalTxID(t *testing.T) {
+	nonce := []byte{1}
+	creator := []byte{2}
+
+	txid, err := ComputeProposalTxID(nonce, creator)
+	assert.NotEmpty(t, txid, "TxID cannot be empty.")
+	assert.NoError(t, err, "Failed computing txID")
+	assert.Nil(t, CheckProposalTxID(txid, nonce, creator))
+	assert.Error(t, CheckProposalTxID("", nonce, creator))
+
+	txid, err = ComputeProposalTxID(nil, nil)
+	assert.NotEmpty(t, txid, "TxID cannot be empty.")
+	assert.NoError(t, err, "Failed computing txID")
+}
+
+func TestComputeProposalTxID(t *testing.T) {
+	txid, err := ComputeProposalTxID([]byte{1}, []byte{1})
+	assert.NoError(t, err, "Failed computing TxID")
+
+	// Compute the function computed by ComputeProposalTxID,
+	// namely, base64(sha256(nonce||creator))
+	hf := sha256.New()
+	hf.Write([]byte{1})
+	hf.Write([]byte{1})
+	hashOut := hf.Sum(nil)
+	txid2 := hex.EncodeToString(hashOut)
+
+	t.Logf("% x\n", hashOut)
+	t.Logf("% s\n", txid)
+	t.Logf("% s\n", txid2)
+
+	assert.Equal(t, txid, txid2)
 }
 
 var signer msp.SigningIdentity

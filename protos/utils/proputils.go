@@ -21,8 +21,9 @@ import (
 
 	"errors"
 
-	"encoding/base64"
 	"encoding/binary"
+
+	"encoding/hex"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
@@ -533,7 +534,7 @@ func ComputeProposalTxID(nonce, creator []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(digest), nil
+	return hex.EncodeToString(digest), nil
 }
 
 func CheckProposalTxID(txid string, nonce, creator []byte) error {
