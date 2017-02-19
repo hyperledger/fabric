@@ -58,7 +58,8 @@ func getArch() string {
 func parseDockerfileTemplate(template string) string {
 	r := strings.NewReplacer(
 		"$(ARCH)", getArch(),
-		"$(PROJECT_VERSION)", metadata.Version)
+		"$(PROJECT_VERSION)", metadata.Version,
+		"$(BASE_VERSION)", metadata.BaseVersion)
 
 	return r.Replace(template)
 }
