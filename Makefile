@@ -66,6 +66,7 @@ MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka
 
+pkgmap.configtxgen    := $(PKGNAME)/common/configtx/tool/configtxgen
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
 pkgmap.block-listener := $(PKGNAME)/examples/events/block-listener
@@ -95,6 +96,9 @@ peer-docker: build/image/peer/$(DUMMY)
 .PHONY: orderer
 orderer: build/bin/orderer
 orderer-docker: build/image/orderer/$(DUMMY)
+
+.PHONY: configtxgen
+configtxgen: build/bin/configtxgen
 
 buildenv: build/image/buildenv/$(DUMMY)
 
