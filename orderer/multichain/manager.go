@@ -38,10 +38,8 @@ type Manager interface {
 	// GetChain retrieves the chain support for a chain (and whether it exists)
 	GetChain(chainID string) (ChainSupport, bool)
 
-	// ProposeChain accepts a config transaction for a chain which does not already exists
-	// The status returned is whether the proposal is accepted for consideration, only after consensus
-	// occurs will the proposal be committed or rejected
-	ProposeChain(env *cb.Envelope) cb.Status
+	// SystemChannelID returns the channel ID for the system channel
+	SystemChannelID() string
 }
 
 type configResources struct {
@@ -58,11 +56,11 @@ type ledgerResources struct {
 }
 
 type multiLedger struct {
-	chains        map[string]*chainSupport
-	consenters    map[string]Consenter
-	ledgerFactory ordererledger.Factory
-	sysChain      *systemChain
-	signer        crypto.LocalSigner
+	chains          map[string]*chainSupport
+	consenters      map[string]Consenter
+	ledgerFactory   ordererledger.Factory
+	signer          crypto.LocalSigner
+	systemChannelID string
 }
 
 func getConfigTx(reader ordererledger.Reader) *cb.Envelope {
@@ -102,8 +100,8 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 		chainID := ledgerResources.ChainID()
 
 		if ledgerResources.SharedConfig().ChainCreationPolicyNames() != nil {
-			if ml.sysChain != nil {
-				logger.Fatalf("There appear to be two system chains %s and %s", ml.sysChain.support.ChainID(), chainID)
+			if ml.systemChannelID != "" {
+				logger.Fatalf("There appear to be two system chains %s and %s", ml.systemChannelID, chainID)
 			}
 			chain := newChainSupport(createSystemChainFilters(ml, ledgerResources),
 				ledgerResources,
@@ -111,7 +109,7 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 				signer)
 			logger.Infof("Starting with system channel: %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
 			ml.chains[string(chainID)] = chain
-			ml.sysChain = newSystemChain(chain)
+			ml.systemChannelID = chainID
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
 			defer chain.start()
 		} else {
@@ -126,18 +124,15 @@ func NewManagerImpl(ledgerFactory ordererledger.Factory, consenters map[string]C
 
 	}
 
-	if ml.sysChain == nil {
+	if ml.systemChannelID == "" {
 		logger.Panicf("No system chain found")
 	}
 
 	return ml
 }
 
-// ProposeChain accepts a config transaction for a chain which does not already exists
-// The status returned is whether the proposal is accepted for consideration, only after consensus
-// occurs will the proposal be committed or rejected
-func (ml *multiLedger) ProposeChain(env *cb.Envelope) cb.Status {
-	return ml.sysChain.proposeChain(env)
+func (ml *multiLedger) SystemChannelID() string {
+	return ml.systemChannelID
 }
 
 // GetChain retrieves the chain support for a chain (and whether it exists)
@@ -188,10 +183,6 @@ func (ml *multiLedger) newLedgerResources(configTx *cb.Envelope) *ledgerResource
 		configResources: configResources,
 		ledger:          ledger,
 	}
-}
-
-func (ml *multiLedger) systemChain() *systemChain {
-	return ml.sysChain
 }
 
 func (ml *multiLedger) newChain(configtx *cb.Envelope) {

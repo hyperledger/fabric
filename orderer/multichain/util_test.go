@@ -20,10 +20,16 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+)
+
+const (
+	msgVersion = int32(0)
+	epoch      = uint64(0)
 )
 
 type mockConsenter struct {
@@ -95,18 +101,27 @@ func makeConfigTx(chainID string, i int) *cb.Envelope {
 	return makeConfigTxFromConfigUpdateEnvelope(chainID, configEnv)
 }
 
-func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
-	return &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
-			Header: &cb.Header{
-				ChannelHeader: &cb.ChannelHeader{
-					Type:      int32(cb.HeaderType_CONFIG_UPDATE),
-					ChannelId: chainID,
-				},
-			},
-			Data: utils.MarshalOrPanic(configUpdateEnv),
-		}),
+func wrapConfigTx(env *cb.Envelope) *cb.Envelope {
+	result, err := utils.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, provisional.TestChainID, mockCrypto(), env, msgVersion, epoch)
+	if err != nil {
+		panic(err)
 	}
+	return result
+}
+
+func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.ConfigUpdateEnvelope) *cb.Envelope {
+	configUpdateTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, mockCrypto(), configUpdateEnv, msgVersion, epoch)
+	if err != nil {
+		panic(err)
+	}
+	configTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
+		Config:     &cb.Config{Header: &cb.ChannelHeader{ChannelId: chainID}, Channel: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
+		LastUpdate: configUpdateTx},
+		msgVersion, epoch)
+	if err != nil {
+		panic(err)
+	}
+	return configTx
 }
 
 func makeNormalTx(chainID string, i int) *cb.Envelope {

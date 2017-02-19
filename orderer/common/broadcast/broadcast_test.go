@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
@@ -63,7 +64,8 @@ func (m *mockB) Recv() (*cb.Envelope, error) {
 }
 
 type mockSupportManager struct {
-	chains map[string]*mockSupport
+	chains     map[string]*mockSupport
+	ProcessVal *cb.Envelope
 }
 
 func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
@@ -71,16 +73,11 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 	return chain, ok
 }
 
-func (mm *mockSupportManager) ProposeChain(configTx *cb.Envelope) cb.Status {
-	payload := utils.ExtractPayloadOrPanic(configTx)
-
-	mm.chains[string(payload.Header.ChannelHeader.ChannelId)] = &mockSupport{
-		filters: filter.NewRuleSet([]filter.Rule{
-			filter.EmptyRejectRule,
-			filter.AcceptRule,
-		}),
+func (mm *mockSupportManager) Process(configTx *cb.Envelope) (*cb.Envelope, error) {
+	if mm.ProcessVal == nil {
+		return nil, fmt.Errorf("Nil result implies error")
 	}
-	return cb.Status_SUCCESS
+	return mm.ProcessVal, nil
 }
 
 type mockSupport struct {
@@ -222,8 +219,9 @@ func TestBadChannelId(t *testing.T) {
 	}
 }
 
-func TestNewChannelId(t *testing.T) {
+func TestGoodConfigUpdate(t *testing.T) {
 	mm, _ := getMockSupportManager()
+	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: &cb.ChannelHeader{ChannelId: systemChain}}})}
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)
@@ -232,17 +230,17 @@ func TestNewChannelId(t *testing.T) {
 
 	m.recvChan <- makeConfigMessage(newChannelId)
 	reply := <-m.sendChan
-	if reply.Status != cb.Status_SUCCESS {
-		t.Fatalf("Should have created a new chain, got %d", reply.Status)
-	}
+	assert.Equal(t, cb.Status_SUCCESS, reply.Status, "Should have allowed a good CONFIG_UPDATE")
+}
 
-	if len(mm.chains) != 2 {
-		t.Fatalf("Should have created a new chain")
-	}
+func TestBadConfigUpdate(t *testing.T) {
+	mm, _ := getMockSupportManager()
+	bh := NewHandlerImpl(mm)
+	m := newMockB()
+	defer close(m.recvChan)
+	go bh.Handle(m)
 
-	m.recvChan <- makeMessage(newChannelId, []byte("Some bytes"))
-	reply = <-m.sendChan
-	if reply.Status != cb.Status_SUCCESS {
-		t.Fatalf("Should have successfully sent message to new chain, got %v", reply)
-	}
+	m.recvChan <- makeConfigMessage(systemChain)
+	reply := <-m.sendChan
+	assert.NotEqual(t, cb.Status_SUCCESS, reply.Status, "Should have rejected CONFIG_UPDATE")
 }

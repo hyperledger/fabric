@@ -85,6 +85,9 @@ type ChainSupport interface {
 
 	broadcast.Support
 	ConsenterSupport
+
+	// ProposeConfigUpdate applies a CONFIG_UPDATE to an existing config to produce a *cb.ConfigEnvelope
+	ProposeConfigUpdate(env *cb.Envelope) (*cb.ConfigEnvelope, error)
 }
 
 type chainSupport struct {
@@ -155,7 +158,7 @@ func createSystemChainFilters(ml *multiLedger, ledgerResources *ledgerResources)
 		filter.EmptyRejectRule,
 		sizefilter.MaxBytesRule(ledgerResources.SharedConfig().BatchSize().AbsoluteMaxBytes),
 		sigfilter.New(ledgerResources.SharedConfig().IngressPolicyNames, ledgerResources.PolicyManager()),
-		newSystemChainFilter(ml),
+		newSystemChainFilter(ledgerResources, ml),
 		configtxfilter.NewFilter(ledgerResources),
 		filter.AcceptRule,
 	})

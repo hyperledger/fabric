@@ -29,6 +29,14 @@ import (
 
 var logger = logging.MustGetLogger("orderer/common/broadcast")
 
+// ConfigUpdateProcessor is used to transform CONFIG_UPDATE transactions which are used to generate other envelope
+// message types with preprocessing by the orderer
+type ConfigUpdateProcessor interface {
+	// Process takes in an envelope of type CONFIG_UPDATE and proceses it
+	// to transform it either into another envelope type
+	Process(envConfigUpdate *cb.Envelope) (*cb.Envelope, error)
+}
+
 // Handler defines an interface which handles broadcasts
 type Handler interface {
 	// Handle starts a service thread for a given gRPC connection and services the broadcast connection
@@ -37,13 +45,10 @@ type Handler interface {
 
 // SupportManager provides a way for the Handler to look up the Support for a chain
 type SupportManager interface {
+	ConfigUpdateProcessor
+
 	// GetChain gets the chain support for a given ChannelId
 	GetChain(chainID string) (Support, bool)
-
-	// ProposeChain accepts a configuration transaction for a chain which does not already exists
-	// The status returned is whether the proposal is accepted for consideration, only after consensus
-	// occurs will the proposal be committed or rejected
-	ProposeChain(env *cb.Envelope) cb.Status
 }
 
 // Support provides the backing resources needed to support broadcast on a chain
@@ -84,23 +89,27 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
-		support, ok := bh.sm.GetChain(payload.Header.ChannelHeader.ChannelId)
-		if !ok {
-			// Chain not found, maybe create one?
-			if payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
-				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
+		if payload.Header.ChannelHeader.Type == int32(cb.HeaderType_CONFIG_UPDATE) {
+			logger.Debugf("Preprocessing CONFIG_UPDATE")
+			msg, err = bh.sm.Process(msg)
+			if err != nil {
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 			}
 
-			logger.Debugf("Proposing new chain")
-			err = srv.Send(&ab.BroadcastResponse{Status: bh.sm.ProposeChain(msg)})
-			if err != nil {
-				return err
+			err = proto.Unmarshal(msg.Payload, payload)
+			if payload.Header == nil || payload.Header.ChannelHeader == nil || payload.Header.ChannelHeader.ChannelId == "" {
+				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing")
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
 			}
-			continue
+		}
+
+		support, ok := bh.sm.GetChain(payload.Header.ChannelHeader.ChannelId)
+		if !ok {
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is filtering message for chain %s", payload.Header.ChannelHeader.ChannelId)
+			logger.Debugf("Broadcast is filtering message for channel %s", payload.Header.ChannelHeader.ChannelId)
 		}
 
 		// Normal transaction for existing chain
