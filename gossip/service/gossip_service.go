@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/integration"
 	"github.com/hyperledger/fabric/gossip/state"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/hyperledger/fabric/peer/gossip/mcs"
 	"github.com/hyperledger/fabric/peer/gossip/sa"
 	"github.com/hyperledger/fabric/protos/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
@@ -99,13 +98,13 @@ func (jcm *joinChannelMessage) AnchorPeers() []api.AnchorPeer {
 var logger = util.GetLogger(util.LoggingServiceModule, "")
 
 // InitGossipService initialize gossip service
-func InitGossipService(peerIdentity []byte, endpoint string, s *grpc.Server, bootPeers ...string) {
-	InitGossipServiceCustomDeliveryFactory(peerIdentity, endpoint, s, &deliveryFactoryImpl{}, bootPeers...)
+func InitGossipService(peerIdentity []byte, endpoint string, s *grpc.Server, mcs api.MessageCryptoService, bootPeers ...string) {
+	InitGossipServiceCustomDeliveryFactory(peerIdentity, endpoint, s, &deliveryFactoryImpl{}, mcs, bootPeers...)
 }
 
 // InitGossipService initialize gossip service with customize delivery factory
 // implementation, might be useful for testing and mocking purposes
-func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string, s *grpc.Server, factory DeliveryServiceFactory, bootPeers ...string) {
+func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string, s *grpc.Server, factory DeliveryServiceFactory, mcs api.MessageCryptoService, bootPeers ...string) {
 	once.Do(func() {
 		logger.Info("Initialize gossip with endpoint", endpoint, "and bootstrap set", bootPeers)
 		dialOpts := []grpc.DialOption{}
@@ -115,7 +114,6 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
 
-		cryptSvc := mcs.NewMessageCryptoService()
 		secAdv := sa.NewSecurityAdvisor()
 
 		if overrideEndpoint := viper.GetString("peer.gossip.endpoint"); overrideEndpoint != "" {
@@ -124,14 +122,14 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 
 		if viper.GetBool("peer.gossip.ignoreSecurity") {
 			sec := &secImpl{[]byte(endpoint)}
-			cryptSvc = sec
+			mcs = sec
 			secAdv = sec
 			peerIdentity = []byte(endpoint)
 		}
 
-		idMapper := identity.NewIdentityMapper(cryptSvc)
+		idMapper := identity.NewIdentityMapper(mcs)
 
-		gossip := integration.NewGossipComponent(peerIdentity, endpoint, s, secAdv, cryptSvc, idMapper, dialOpts, bootPeers...)
+		gossip := integration.NewGossipComponent(peerIdentity, endpoint, s, secAdv, mcs, idMapper, dialOpts, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
 			gossipSvc:       gossip,
 			chains:          make(map[string]state.GossipStateProvider),

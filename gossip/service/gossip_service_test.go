@@ -24,9 +24,11 @@ import (
 
 	"time"
 
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/peer/gossip/mcs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -47,7 +49,8 @@ func TestInitGossipService(t *testing.T) {
 	wg.Add(10)
 	for i := 0; i < 10; i++ {
 		go func() {
-			InitGossipService(identity, "localhost:5611", grpcServer)
+			InitGossipService(identity, "localhost:5611", grpcServer, mcs.New(&mockpolicies.PolicyManagerMgmt{}))
+
 			wg.Done()
 		}()
 	}
