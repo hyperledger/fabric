@@ -67,7 +67,7 @@ func (ccid *CCID) GetName() string {
 
 	//this better be chainless system chaincode!
 	if ccid.ChainID != "" {
-		hash := util.ComputeCryptoHash([]byte(ccid.ChainID))
+		hash := util.ComputeSHA256([]byte(ccid.ChainID))
 		hexstr := hex.EncodeToString(hash[:])
 		name = name + "-" + hexstr
 	}

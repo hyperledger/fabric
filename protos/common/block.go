@@ -71,7 +71,7 @@ func (b *BlockHeader) Bytes() []byte {
 // Hash returns the hash of the block header.
 // XXX This method will be removed shortly to allow for confgurable hashing algorithms
 func (b *BlockHeader) Hash() []byte {
-	return util.ComputeCryptoHash(b.Bytes())
+	return util.ComputeSHA256(b.Bytes())
 }
 
 // Bytes returns a deterministically serialized version of the BlockData
@@ -84,5 +84,5 @@ func (b *BlockData) Bytes() []byte {
 
 // Hash returns the hash of the marshaled representation of the block data.
 func (b *BlockData) Hash() []byte {
-	return util.ComputeCryptoHash(b.Bytes())
+	return util.ComputeSHA256(b.Bytes())
 }

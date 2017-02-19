@@ -59,8 +59,11 @@ const (
 
 // Hashing algorithm types
 const (
-	// SHAKE256 is the algorithm type for the sha3 shake256 hashing algorithm with 512 bits of output
-	SHA3Shake256 = "SHAKE256"
+	// SHA3256 is SHA3 with fixed size 256-bit hash
+	SHA3256 = "SHA3256"
+
+	// SHA256 is SHA2 with fixed size 256-bit hash
+	SHA256 = "SHA256"
 )
 
 var logger = logging.MustGetLogger("configvalues/channel")
@@ -164,8 +167,10 @@ func (c *Config) ProposeValue(key string, configValue *cb.ConfigValue) error {
 			return fmt.Errorf("Unmarshaling error for HashingAlgorithm: %s", err)
 		}
 		switch hashingAlgorithm.Name {
-		case SHA3Shake256:
-			c.pending.hashingAlgorithm = util.ComputeCryptoHash
+		case SHA256:
+			c.pending.hashingAlgorithm = util.ComputeSHA256
+		case SHA3256:
+			c.pending.hashingAlgorithm = util.ComputeSHA3256
 		default:
 			return fmt.Errorf("Unknown hashing algorithm type: %s", hashingAlgorithm.Name)
 		}

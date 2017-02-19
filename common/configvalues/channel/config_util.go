@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-const defaultHashingAlgorithm = SHA3Shake256
+const defaultHashingAlgorithm = SHA256
 
 func configGroup(key string, value []byte) *cb.ConfigGroup {
 	result := cb.NewConfigGroup()

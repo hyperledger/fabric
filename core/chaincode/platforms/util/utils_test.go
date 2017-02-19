@@ -13,7 +13,7 @@ import (
 // TestHashContentChange changes a random byte in a content and checks for hash change
 func TestHashContentChange(t *testing.T) {
 	b := []byte("firstcontent")
-	hash := util.ComputeCryptoHash(b)
+	hash := util.ComputeSHA256(b)
 
 	b2 := []byte("To be, or not to be- that is the question: Whether 'tis nobler in the mind to suffer The slings and arrows of outrageous fortune Or to take arms against a sea of troubles, And by opposing end them. To die- to sleep- No more; and by a sleep to say we end The heartache, and the thousand natural shocks That flesh is heir to. 'Tis a consummation Devoutly to be wish'd.")
 
@@ -48,7 +48,7 @@ func TestHashContentChange(t *testing.T) {
 // TestHashLenChange changes a random length of a content and checks for hash change
 func TestHashLenChange(t *testing.T) {
 	b := []byte("firstcontent")
-	hash := util.ComputeCryptoHash(b)
+	hash := util.ComputeSHA256(b)
 
 	b2 := []byte("To be, or not to be-")
 
@@ -70,7 +70,7 @@ func TestHashLenChange(t *testing.T) {
 // TestHashOrderChange changes a order of hash computation over a list of lines and checks for hash change
 func TestHashOrderChange(t *testing.T) {
 	b := []byte("firstcontent")
-	hash := util.ComputeCryptoHash(b)
+	hash := util.ComputeSHA256(b)
 
 	b2 := [][]byte{[]byte("To be, or not to be- that is the question:"),
 		[]byte("Whether 'tis nobler in the mind to suffer"),
@@ -119,7 +119,7 @@ func TestHashOrderChange(t *testing.T) {
 // TestHashOverFiles computes hash over a directory and ensures it matches precomputed, hardcoded, hash
 func TestHashOverFiles(t *testing.T) {
 	b := []byte("firstcontent")
-	hash := util.ComputeCryptoHash(b)
+	hash := util.ComputeSHA256(b)
 
 	hash, err := HashFilesInDir(".", "hashtestfiles1", hash, nil)
 
@@ -129,7 +129,7 @@ func TestHashOverFiles(t *testing.T) {
 	}
 
 	//as long as no files under "hashtestfiles1" are changed, hash should always compute to the following
-	expectedHash := "a4fe18bebf3d7e1c030c042903bdda9019b33829d03d9b95ab1edc8957be70dee6d786ab27b207210d29b5d9f88456ff753b8da5c244458cdcca6eb3c28a17ce"
+	expectedHash := "0c92180028200dfabd08d606419737f5cdecfcbab403e3f0d79e8d949f4775bc"
 
 	computedHash := hex.EncodeToString(hash[:])
 
@@ -140,7 +140,7 @@ func TestHashOverFiles(t *testing.T) {
 
 func TestHashDiffDir(t *testing.T) {
 	b := []byte("firstcontent")
-	hash := util.ComputeCryptoHash(b)
+	hash := util.ComputeSHA256(b)
 
 	hash1, err := HashFilesInDir(".", "hashtestfiles1", hash, nil)
 	if err != nil {
@@ -157,7 +157,7 @@ func TestHashDiffDir(t *testing.T) {
 }
 func TestHashSameDir(t *testing.T) {
 	b := []byte("firstcontent")
-	hash := util.ComputeCryptoHash(b)
+	hash := util.ComputeSHA256(b)
 
 	hash1, err := HashFilesInDir(".", "hashtestfiles1", hash, nil)
 	if err != nil {
