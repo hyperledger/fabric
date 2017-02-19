@@ -131,9 +131,6 @@ func (g *Profile) completeInitialization() {
 		case g.Orderer.BatchTimeout == 0:
 			logger.Infof("Orderer.BatchTimeout unset, setting to %s", genesisDefaults.Orderer.BatchTimeout)
 			g.Orderer.BatchTimeout = genesisDefaults.Orderer.BatchTimeout
-		case g.Orderer.BatchTimeout == 0:
-			logger.Infof("Orderer.BatchTimeout unset, setting to %s", genesisDefaults.Orderer.BatchTimeout)
-			g.Orderer.BatchTimeout = genesisDefaults.Orderer.BatchTimeout
 		case g.Orderer.BatchSize.MaxMessageCount == 0:
 			logger.Infof("Orderer.BatchSize.MaxMessageCount unset, setting to %s", genesisDefaults.Orderer.BatchSize.MaxMessageCount)
 			g.Orderer.BatchSize.MaxMessageCount = genesisDefaults.Orderer.BatchSize.MaxMessageCount
