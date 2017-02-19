@@ -26,6 +26,7 @@ import (
 	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	mockconfigvalueschannel "github.com/hyperledger/fabric/common/mocks/configvalues/channel"
 	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
+	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
@@ -34,6 +35,7 @@ import (
 )
 
 type mockSupport struct {
+	*mockcrypto.LocalSigner
 	mpm         *mockpolicies.Manager
 	msc         *mockconfigvaluesorderer.SharedConfig
 	chainID     string
@@ -43,6 +45,7 @@ type mockSupport struct {
 
 func newMockSupport(chainID string) *mockSupport {
 	return &mockSupport{
+		LocalSigner: mockcrypto.FakeLocalSigner,
 		mpm:         &mockpolicies.Manager{},
 		msc:         &mockconfigvaluesorderer.SharedConfig{},
 		chainID:     chainID,
@@ -69,14 +72,6 @@ func (ms *mockSupport) SharedConfig() configvaluesapi.Orderer {
 
 func (ms *mockSupport) ChannelConfig() configvalueschannel.ConfigReader {
 	return ms.chainConfig
-}
-
-func (ms *mockSupport) Sign(data []byte) ([]byte, error) {
-	return data, nil
-}
-
-func (ms *mockSupport) NewSignatureHeader() (*cb.SignatureHeader, error) {
-	return &cb.SignatureHeader{}, nil
 }
 
 type mockChainCreator struct {
