@@ -22,7 +22,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 )
 
-// DummyKeyStore is a read-only KeyStore that neither loads nor stores keys.
+// dummyKeyStore is a read-only KeyStore that neither loads nor stores keys.
 type DummyKeyStore struct {
 }
 

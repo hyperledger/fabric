@@ -49,17 +49,16 @@ func (f *PKCS11Factory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 	//TODO: PKCS11 does not need a keystore, but we have not migrated all of PKCS11 BCCSP to PKCS11 yet
 	var ks bccsp.KeyStore
 	if p11Opts.Ephemeral == true {
-		ks = &sw.DummyKeyStore{}
+		ks = sw.NewDummyKeyStore()
 	} else if p11Opts.FileKeystore != nil {
-		fks := &sw.FileBasedKeyStore{}
-		err := fks.Init(nil, p11Opts.FileKeystore.KeyStorePath, false)
+		fks, err := sw.NewFileBasedKeyStore(nil, p11Opts.FileKeystore.KeyStorePath, false)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to initialize software key store: %s", err)
 		}
 		ks = fks
 	} else {
 		// Default to DummyKeystore
-		ks = &sw.DummyKeyStore{}
+		ks = sw.NewDummyKeyStore()
 	}
 	err := pkcs11.InitPKCS11(p11Opts.Library, p11Opts.Pin, p11Opts.Label)
 	if err != nil {

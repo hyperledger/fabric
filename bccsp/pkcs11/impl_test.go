@@ -89,7 +89,7 @@ func TestMain(m *testing.M) {
 			os.Exit(-1)
 		}
 
-		currentSWBCCSP, err = sw.New(config.securityLevel, config.hashFamily, &sw.DummyKeyStore{})
+		currentSWBCCSP, err = sw.New(config.securityLevel, config.hashFamily, sw.NewDummyKeyStore())
 		if err != nil {
 			fmt.Printf("Failed initiliazing BCCSP at [%d, %s]: [%s]", config.securityLevel, config.hashFamily, err)
 			os.Exit(-1)
