@@ -22,6 +22,8 @@ import (
 	"sync"
 	"testing"
 
+	"time"
+
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -59,6 +61,8 @@ func TestInitGossipService(t *testing.T) {
 			assert.Equal(t, gossip, GetGossipService())
 		}(gossip)
 	}
+
+	time.Sleep(time.Second * 2)
 }
 
 // Make sure *joinChannelMessage implements the api.JoinChannelMessage
