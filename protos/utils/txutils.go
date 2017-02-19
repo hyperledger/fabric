@@ -25,6 +25,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -70,6 +71,33 @@ func GetEnvelopeFromBlock(data []byte) (*common.Envelope, error) {
 	}
 
 	return env, nil
+}
+
+// CreateSignedEnvelope creates a signed envelope of the desired type, with marshaled dataMsg and signs it
+func CreateSignedEnvelope(txType common.HeaderType, channelID string, signer crypto.LocalSigner, dataMsg proto.Message, msgVersion int32, epoch uint64) (*common.Envelope, error) {
+	payloadChannelHeader := MakeChannelHeader(txType, msgVersion, channelID, epoch)
+
+	payloadSignatureHeader, err := signer.NewSignatureHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := proto.Marshal(dataMsg)
+	if err != nil {
+		return nil, err
+	}
+
+	paylBytes := MarshalOrPanic(&common.Payload{
+		Header: MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader),
+		Data:   data,
+	})
+
+	sig, err := signer.Sign(paylBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &common.Envelope{Payload: paylBytes, Signature: sig}, nil
 }
 
 // CreateSignedTx assembles an Envelope message from proposal, endorsements, and a signer.
