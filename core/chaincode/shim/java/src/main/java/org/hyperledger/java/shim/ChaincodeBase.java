@@ -29,8 +29,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hyperledger.protos.Chaincode.ChaincodeID;
-import org.hyperledger.protos.Chaincode.ChaincodeMessage;
-import org.hyperledger.protos.Chaincode.ChaincodeMessage.Type;
+import org.hyperledger.protos.Chaincodeshim.ChaincodeMessage;
+import org.hyperledger.protos.Chaincodeshim.ChaincodeMessage.Type;
 import org.hyperledger.protos.ChaincodeSupportGrpc;
 import org.hyperledger.protos.ChaincodeSupportGrpc.ChaincodeSupportStub;
 

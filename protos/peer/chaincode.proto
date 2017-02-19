@@ -19,7 +19,6 @@ syntax = "proto3";
 package protos;
 option java_package = "org.hyperledger.protos";
 option go_package = "github.com/hyperledger/fabric/protos/peer";
-import "peer/chaincodeevent.proto";
 import "google/protobuf/timestamp.proto";
 
 
@@ -103,102 +102,4 @@ message ChaincodeInvocationSpec {
     //  2, a decoding used to decode user (string) input to bytes
     // Currently, SHA256 with BASE64 is supported (e.g. idGenerationAlg='sha256base64')
     string id_generation_alg = 2;
-}
-
-// ChaincodeProposalContext contains proposal data that we send to the chaincode
-// container shim and allow the chaincode to access through the shim interface.
-message ChaincodeProposalContext {
-
-    // Creator corresponds to SignatureHeader.Creator
-    bytes creator = 1;
-
-    // Transient corresponds to ChaincodeProposalPayload.Transient
-    // TODO: The transient field is supposed to carry application-specific
-    // data. They might be realted to access-control, encryption and so on.
-    // To simply access to this data, replacing bytes with a map
-    // is the next step to be carried.
-    bytes transient = 2;
-}
-
-message ChaincodeMessage {
-
-    enum Type {
-        UNDEFINED = 0;
-        REGISTER = 1;
-        REGISTERED = 2;
-        INIT = 3;
-        READY = 4;
-        TRANSACTION = 5;
-        COMPLETED = 6;
-        ERROR = 7;
-        GET_STATE = 8;
-        PUT_STATE = 9;
-        DEL_STATE = 10;
-        INVOKE_CHAINCODE = 11;
-        RESPONSE = 13;
-        GET_STATE_BY_RANGE = 14;
-        GET_QUERY_RESULT = 15;
-        QUERY_STATE_NEXT = 16;
-        QUERY_STATE_CLOSE = 17;
-        KEEPALIVE = 18;
-        GET_HISTORY_FOR_KEY = 19;
-    }
-
-    Type type = 1;
-    google.protobuf.Timestamp timestamp = 2;
-    bytes payload = 3;
-    string txid = 4;
-
-    ChaincodeProposalContext proposal_context = 5;
-
-    //event emmited by chaincode. Used only with Init or Invoke.
-    // This event is then stored (currently)
-    //with Block.NonHashData.TransactionResult
-    ChaincodeEvent chaincode_event = 6;
-}
-
-message PutStateInfo {
-    string key = 1;
-    bytes value = 2;
-}
-
-message GetStateByRange {
-    string startKey = 1;
-    string endKey = 2;
-}
-
-message GetQueryResult {
-    string query = 1;
-}
-
-message GetHistoryForKey {
-    string key = 1;
-}
-
-message QueryStateNext {
-    string id = 1;
-}
-
-message QueryStateClose {
-    string id = 1;
-}
-
-message QueryStateKeyValue {
-    string key = 1;
-    bytes value = 2;
-}
-
-message QueryStateResponse {
-    repeated QueryStateKeyValue keys_and_values = 1;
-    bool has_more = 2;
-    string id = 3;
-}
-
-// Interface that provides support to chaincode execution. ChaincodeContext
-// provides the context necessary for the server to respond appropriately.
-service ChaincodeSupport {
-
-    rpc Register(stream ChaincodeMessage) returns (stream ChaincodeMessage) {}
-
-
 }

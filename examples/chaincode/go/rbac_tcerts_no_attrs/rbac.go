@@ -242,7 +242,7 @@ func (t *RBACChaincode) hasInvokerRole(stub shim.ChaincodeStubInterface, role st
 	}
 
 	// Verify signature
-	payload, err := stub.GetPayload()
+	payload, err := stub.GetArgsSlice()
 	if err != nil {
 		return false, nil, errors.New("Failed getting payload")
 	}
