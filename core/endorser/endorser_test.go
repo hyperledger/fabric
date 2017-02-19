@@ -116,12 +116,18 @@ func closeListenerAndSleep(l net.Listener) {
 	}
 }
 
-//getProposal gets the proposal for the chaincode invocation
-//Currently supported only for Invokes (Queries still go through devops client)
-func getInvokeProposal(cis *pb.ChaincodeInvocationSpec, chainID string, creator []byte) (*pb.Proposal, error) {
-	proposal, _, err := pbutils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, creator)
+// getInvokeProposal gets the proposal for the chaincode invocation
+// Currently supported only for Invokes
+// It returns the proposal and the transaction id associated to the proposal
+func getInvokeProposal(cis *pb.ChaincodeInvocationSpec, chainID string, creator []byte) (*pb.Proposal, string, error) {
+	return pbutils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, creator)
+}
 
-	return proposal, err
+// getInvokeProposalOverride allows to get a proposal for the chaincode invocation
+// overriding transaction id and nonce which are by default auto-generated.
+// It returns the proposal and the transaction id associated to the proposal
+func getInvokeProposalOverride(txid string, cis *pb.ChaincodeInvocationSpec, chainID string, nonce, creator []byte) (*pb.Proposal, string, error) {
+	return pbutils.CreateChaincodeProposalWithTxIDNonceAndTransient(txid, common.HeaderType_ENDORSER_TRANSACTION, chainID, cis, nonce, creator, nil)
 }
 
 func getDeployProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator []byte) (*pb.Proposal, error) {
@@ -152,7 +158,7 @@ func getDeployOrUpgradeProposal(cds *pb.ChaincodeDeploymentSpec, chainID string,
 
 	//...and get the proposal for it
 	var prop *pb.Proposal
-	if prop, err = getInvokeProposal(lcccSpec, chainID, creator); err != nil {
+	if prop, _, err = getInvokeProposal(lcccSpec, chainID, creator); err != nil {
 		return nil, err
 	}
 
@@ -235,7 +241,40 @@ func deployOrUpgrade(endorserServer pb.EndorserServer, chainID string, spec *pb.
 	return resp, prop, err
 }
 
-func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error) {
+func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.Proposal, *pb.ProposalResponse, string, []byte, error) {
+	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
+
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, nil, "", nil, err
+	}
+
+	var prop *pb.Proposal
+	prop, txID, err := getInvokeProposal(invocation, chainID, creator)
+	if err != nil {
+		return nil, nil, "", nil, fmt.Errorf("Error creating proposal  %s: %s\n", spec.ChaincodeId, err)
+	}
+
+	nonce, err := pbutils.GetNonce(prop)
+	if err != nil {
+		return nil, nil, "", nil, fmt.Errorf("Failed getting nonce  %s: %s\n", spec.ChaincodeId, err)
+	}
+
+	var signedProp *pb.SignedProposal
+	signedProp, err = getSignedProposal(prop, signer)
+	if err != nil {
+		return nil, nil, "", nil, err
+	}
+
+	resp, err := endorserServer.ProcessProposal(context.Background(), signedProp)
+	if err != nil {
+		return nil, nil, "", nil, fmt.Errorf("Error endorsing %s: %s\n", spec.ChaincodeId, err)
+	}
+
+	return prop, resp, txID, nonce, err
+}
+
+func invokeWithOverride(txid string, chainID string, spec *pb.ChaincodeSpec, nonce []byte) (*pb.ProposalResponse, error) {
 	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 
 	creator, err := signer.Serialize()
@@ -244,9 +283,9 @@ func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error
 	}
 
 	var prop *pb.Proposal
-	prop, err = getInvokeProposal(invocation, chainID, creator)
+	prop, _, err = getInvokeProposalOverride(txid, invocation, chainID, nonce, creator)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", spec.ChaincodeId, err)
+		return nil, fmt.Errorf("Error creating proposal with override  %s %s: %s\n", txid, spec.ChaincodeId, err)
 	}
 
 	var signedProp *pb.SignedProposal
@@ -257,7 +296,7 @@ func invoke(chainID string, spec *pb.ChaincodeSpec) (*pb.ProposalResponse, error
 
 	resp, err := endorserServer.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("Error endorsing %s: %s\n", spec.ChaincodeId, err)
+		return nil, fmt.Errorf("Error endorsing %s %s: %s\n", txid, spec.ChaincodeId, err)
 	}
 
 	return resp, err
@@ -352,7 +391,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp, nextBlockNumber)
 	if err != nil {
 		t.Fail()
-		t.Logf("Error committing <%s>: %s", chaincodeID1, err)
+		t.Logf("Error committing deploy <%s>: %s", chaincodeID1, err)
 		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
@@ -360,10 +399,43 @@ func TestDeployAndInvoke(t *testing.T) {
 	f = "invoke"
 	invokeArgs := append([]string{f}, args...)
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
-	_, err = invoke(chainID, spec)
+	prop, resp, txid, nonce, err := invoke(chainID, spec)
 	if err != nil {
 		t.Fail()
 		t.Logf("Error invoking transaction: %s", err)
+		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		return
+	}
+	// Commit invoke
+	nextBlockNumber++
+	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp, nextBlockNumber)
+	if err != nil {
+		t.Fail()
+		t.Logf("Error committing first invoke <%s>: %s", chaincodeID1, err)
+		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		return
+	}
+
+	// Now test for an invalid TxID
+	f = "invoke"
+	invokeArgs = append([]string{f}, args...)
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
+	_, err = invokeWithOverride("invalid_tx_id", chainID, spec, nonce)
+	if err == nil {
+		t.Fail()
+		t.Log("Replay attack protection faild. Transaction with invalid txid passed")
+		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
+		return
+	}
+
+	// Now test for duplicated TxID
+	f = "invoke"
+	invokeArgs = append([]string{f}, args...)
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
+	_, err = invokeWithOverride(txid, chainID, spec, nonce)
+	if err == nil {
+		t.Fail()
+		t.Log("Replay attack protection faild. Transaction with duplicaged txid passed")
 		chaincode.GetChain().Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: chaincodeID}})
 		return
 	}
@@ -405,7 +477,7 @@ func TestDeployAndUpgrade(t *testing.T) {
 		return
 	}
 
-	var nextBlockNumber uint64 = 1 // something above created block 0
+	var nextBlockNumber uint64 = 2 // something above created block 0
 	err = endorserServer.(*Endorser).commitTxSimulation(prop, chainID, signer, resp, nextBlockNumber)
 	if err != nil {
 		t.Fail()

@@ -103,6 +103,31 @@ func GetHeader(bytes []byte) (*common.Header, error) {
 	return hdr, nil
 }
 
+// GetNonce returns the nonce used in Proposal
+func GetNonce(prop *peer.Proposal) ([]byte, error) {
+	// get back the header
+	hdr, err := GetHeader(prop.Header)
+	if err != nil {
+		return nil, fmt.Errorf("Could not extract the header from the proposal: %s", err)
+	}
+	if common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
+		common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_CONFIG {
+		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIG. Was: %d", hdr.ChannelHeader.Type)
+	}
+
+	if hdr.SignatureHeader == nil {
+		return nil, errors.New("Invalid signature header. It must be different from nil.")
+	}
+
+	ccPropPayload := &peer.ChaincodeProposalPayload{}
+	err = proto.Unmarshal(prop.Payload, ccPropPayload)
+	if err != nil {
+		return nil, err
+	}
+
+	return hdr.SignatureHeader.Nonce, nil
+}
+
 // GetChaincodeHeaderExtension get chaincode header extension given header
 func GetChaincodeHeaderExtension(hdr *common.Header) (*peer.ChaincodeHeaderExtension, error) {
 	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
@@ -268,13 +293,32 @@ func GetSignaturePolicyEnvelope(bytes []byte) (*common.SignaturePolicyEnvelope, 
 	return p, nil
 }
 
-// CreateChaincodeProposal creates a proposal from given input
+// CreateChaincodeProposal creates a proposal from given input.
+// It returns the proposal and the transaction id associated to the proposal
 func CreateChaincodeProposal(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte) (*peer.Proposal, string, error) {
 	return CreateChaincodeProposalWithTransient(typ, chainID, cis, creator, nil)
 }
 
 // CreateChaincodeProposalWithTransient creates a proposal from given input
+// It returns the proposal and the transaction id associated to the proposal
 func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, creator []byte, transientMap map[string][]byte) (*peer.Proposal, string, error) {
+	// generate a random nonce
+	nonce, err := primitives.GetRandomNonce()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// compute txid
+	txid, err := ComputeProposalTxID(nonce, creator)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return CreateChaincodeProposalWithTxIDNonceAndTransient(txid, typ, chainID, cis, nonce, creator, transientMap)
+}
+
+// CreateChaincodeProposalWithTxIDNonceAndTransient creates a proposal from given input
+func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.HeaderType, chainID string, cis *peer.ChaincodeInvocationSpec, nonce, creator []byte, transientMap map[string][]byte) (*peer.Proposal, string, error) {
 	ccHdrExt := &peer.ChaincodeHeaderExtension{ChaincodeId: cis.ChaincodeSpec.ChaincodeId}
 	ccHdrExtBytes, err := proto.Marshal(ccHdrExt)
 	if err != nil {
@@ -292,22 +336,9 @@ func CreateChaincodeProposalWithTransient(typ common.HeaderType, chainID string,
 		return nil, "", err
 	}
 
-	// generate a random nonce
-	nonce, err := primitives.GetRandomNonce()
-	if err != nil {
-		return nil, "", err
-	}
-
-	// epoch
-	// TODO: it is now set to zero. This must be changed once we
+	// TODO: epoch is now set to zero. This must be changed once we
 	// get a more appropriate mechanism to handle it in.
 	var epoch uint64 = 0
-
-	// compute txid
-	txid, err := ComputeProposalTxID(nonce, creator)
-	if err != nil {
-		return nil, "", err
-	}
 
 	hdr := &common.Header{ChannelHeader: &common.ChannelHeader{
 		Type:      int32(typ),
@@ -525,6 +556,8 @@ func createProposalFromCDS(chainID string, cds *peer.ChaincodeDeploymentSpec, cr
 	return CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, chainID, lcccSpec, creator)
 }
 
+// ComputeProposalTxID computes TxID as the Hash computed
+// over the concatenation of nonce and creator.
 func ComputeProposalTxID(nonce, creator []byte) (string, error) {
 	// TODO: Get the Hash function to be used from
 	// channel configuration
@@ -537,6 +570,8 @@ func ComputeProposalTxID(nonce, creator []byte) (string, error) {
 	return hex.EncodeToString(digest), nil
 }
 
+// CheckProposalTxID checks that txid is equal to the Hash computed
+// over the concatenation of nonce and creator.
 func CheckProposalTxID(txid string, nonce, creator []byte) error {
 	computedTxID, err := ComputeProposalTxID(nonce, creator)
 	if err != nil {
