@@ -13,14 +13,6 @@ General:
     # Available types are "ram", "file".
     LedgerType: ram
 
-    # Queue Size: The maximum number of messages to allow pending from a gRPC
-    # client.
-    QueueSize: 10
-
-    # Max Window Size: The maximum number of messages to for the orderer Deliver
-    # to allow before acknowledgement must be received from the client.
-    MaxWindowSize: 1000
-
     # Listen address: The IP on which to bind to listen
     ListenAddress: 127.0.0.1
 
