@@ -32,8 +32,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/signer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/protos/common"
 	m "github.com/hyperledger/fabric/protos/msp"
 )
@@ -73,13 +73,7 @@ type bccspmsp struct {
 func NewBccspMsp() (MSP, error) {
 	mspLogger.Debugf("Creating BCCSP-based MSP instance")
 
-	// TODO: security level, hash family and keystore should
-	// be probably set in the appropriate way.
-	bccsp, err := sw.NewDefaultSecurityLevelWithKeystore(&sw.DummyKeyStore{})
-	if err != nil {
-		return nil, fmt.Errorf("Failed initiliazing BCCSP [%s]", err)
-	}
-
+	bccsp := factory.GetDefault()
 	theMsp := &bccspmsp{}
 	theMsp.bccsp = bccsp
 
@@ -211,10 +205,10 @@ func getSubjectKeyIdentifierFromCert(cert *x509.Certificate) ([]byte, error) {
 	return nil, errors.New("subjectKeyIdentifier not found in certificate")
 }
 
-// isCAProperlyFormed does a few checks on the certificate,
+// isCACert does a few checks on the certificate,
 // assuming it's a CA; it returns true if all looks good
 // and false otherwise
-func isCAProperlyFormed(cert *x509.Certificate) bool {
+func isCACert(cert *x509.Certificate) bool {
 	_, err := getSubjectKeyIdentifierFromCert(cert)
 	if err != nil {
 		return false
@@ -284,7 +278,7 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 
 	// ensure that our CAs are properly formed
 	for _, cert := range append(append([]Identity{}, msp.rootCerts...), msp.intermediateCerts...) {
-		if !isCAProperlyFormed(cert.(*identity).cert) {
+		if !isCACert(cert.(*identity).cert) {
 			return fmt.Errorf("CA Certificate did not have the Subject Key Identifier extension, (SN: %s)", cert.(*identity).cert.SerialNumber)
 		}
 	}

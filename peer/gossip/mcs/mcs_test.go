@@ -65,7 +65,7 @@ func TestPKIidOfCert(t *testing.T) {
 	// Check pkid is not nil
 	assert.NotNil(t, pkid, "PKID must be different from nil")
 	// Check that pkid is the SHA2-256 of ithe peerIdentity
-	digest, err := factory.GetDefaultOrPanic().Hash(peerIdentity, &bccsp.SHA256Opts{})
+	digest, err := factory.GetDefault().Hash(peerIdentity, &bccsp.SHA256Opts{})
 	assert.NoError(t, err, "Failed computing digest of serialized identity [% x]", []byte(peerIdentity))
 	assert.Equal(t, digest, []byte(pkid), "PKID must be the SHA2-256 of peerIdentity")
 }

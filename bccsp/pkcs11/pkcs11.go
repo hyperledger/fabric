@@ -37,7 +37,7 @@ var (
 	probablySoftHSM = false //Only needed for KeyImport
 )
 
-func initPKCS11(lib, pin, label string) error {
+func InitPKCS11(lib, pin, label string) error {
 	if strings.Contains(lib, "softhsm") {
 		probablySoftHSM = true
 	}
