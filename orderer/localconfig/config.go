@@ -42,8 +42,6 @@ const Prefix string = "ORDERER"
 // General contains config which should be common among all orderer types
 type General struct {
 	LedgerType     string
-	QueueSize      uint32
-	MaxWindowSize  uint32
 	ListenAddress  string
 	ListenPort     uint16
 	TLS            TLS
@@ -145,8 +143,6 @@ type TopLevel struct {
 var defaults = TopLevel{
 	General: General{
 		LedgerType:     "ram",
-		QueueSize:      1000,
-		MaxWindowSize:  1000,
 		ListenAddress:  "127.0.0.1",
 		ListenPort:     7050,
 		GenesisMethod:  "provisional",
@@ -202,12 +198,6 @@ func (c *TopLevel) completeInitialization() {
 		case c.General.LedgerType == "":
 			logger.Infof("General.LedgerType unset, setting to %s", defaults.General.LedgerType)
 			c.General.LedgerType = defaults.General.LedgerType
-		case c.General.QueueSize == 0:
-			logger.Infof("General.QueueSize unset, setting to %s", defaults.General.QueueSize)
-			c.General.QueueSize = defaults.General.QueueSize
-		case c.General.MaxWindowSize == 0:
-			logger.Infof("General.MaxWindowSize unset, setting to %s", defaults.General.MaxWindowSize)
-			c.General.MaxWindowSize = defaults.General.MaxWindowSize
 		case c.General.ListenAddress == "":
 			logger.Infof("General.ListenAddress unset, setting to %s", defaults.General.ListenAddress)
 			c.General.ListenAddress = defaults.General.ListenAddress
