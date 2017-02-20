@@ -16,6 +16,7 @@
 import os
 import uuid
 import bdd_test_util
+from contexthelper import ContextHelper
 import peer_basic_impl
 import json
 
@@ -63,7 +64,10 @@ class Composition:
     def GetUUID(cls):
         return GetDockerSafeUUID()
 
-    def __init__(self, context, composeFilesYaml, projectName = GetDockerSafeUUID()):
+    def __init__(self, context, composeFilesYaml, projectName = None):
+        self.contextHelper = ContextHelper.GetHelper(context=context)
+        if not projectName:
+            projectName = self.contextHelper.getGuuid()
         self.projectName = projectName
         self.context = context
         self.containerDataList = []
@@ -88,23 +92,40 @@ class Composition:
     def getFileArgs(self):
         return self.parseComposeFilesArg(self.composeFilesYaml)
 
-    def getEnv(self):
-        myEnv = os.environ.copy()
+    def getEnvAdditions(self):
+        myEnv = {}
         myEnv["COMPOSE_PROJECT_NAME"] = self.projectName
         myEnv["CORE_PEER_NETWORKID"] = self.projectName
         # Invoke callbacks
         [callback.getEnv(self, self.context, myEnv) for callback in Composition.GetCompositionCallbacksFromContext(self.context)]
         return myEnv
 
+    def getEnv(self):
+        myEnv = os.environ.copy()
+        for key,value in self.getEnvAdditions().iteritems():
+            myEnv[key] = value
+        # myEnv["COMPOSE_PROJECT_NAME"] = self.projectName
+        # myEnv["CORE_PEER_NETWORKID"] = self.projectName
+        # # Invoke callbacks
+        # [callback.getEnv(self, self.context, myEnv) for callback in Composition.GetCompositionCallbacksFromContext(self.context)]
+        return myEnv
+
+    def getConfig(self):
+        return self.issueCommand(["config"])
+
     def refreshContainerIDs(self):
         containers = self.issueCommand(["ps", "-q"]).split()
         return containers
 
+    def _callCLI(self, argList, expect_success, env):
+        return bdd_test_util.cli_call(argList, expect_success=expect_success, env=env)
 
     def issueCommand(self, args):
         cmdArgs = self.getFileArgs()+ args
+        # output, error, returncode = \
+        #     bdd_test_util.cli_call(["docker-compose"] + cmdArgs, expect_success=True, env=self.getEnv())
         output, error, returncode = \
-            bdd_test_util.cli_call(["docker-compose"] + cmdArgs, expect_success=True, env=self.getEnv())
+            self._callCLI(["docker-compose"] + cmdArgs, expect_success=True, env=self.getEnv())
         # Don't rebuild if ps command
         if args[0] !="ps" and args[0] !="config":
             self.rebuildContainerData()

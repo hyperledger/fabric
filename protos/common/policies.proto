@@ -55,7 +55,7 @@ message SignaturePolicy {
     }
     oneof Type {
         int32 signed_by = 1;
-        NOutOf from = 2;
+        NOutOf n_out_of = 2;
     }
 }
 

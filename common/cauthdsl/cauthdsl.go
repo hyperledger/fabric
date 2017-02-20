@@ -32,9 +32,9 @@ var cauthdslLogger = logging.MustGetLogger("cauthdsl")
 // compile recursively builds a go evaluatable function corresponding to the policy specified
 func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserializer msp.IdentityDeserializer) (func([]*cb.SignedData, []bool) bool, error) {
 	switch t := policy.Type.(type) {
-	case *cb.SignaturePolicy_From:
-		policies := make([]func([]*cb.SignedData, []bool) bool, len(t.From.Policies))
-		for i, policy := range t.From.Policies {
+	case *cb.SignaturePolicy_NOutOf_:
+		policies := make([]func([]*cb.SignedData, []bool) bool, len(t.NOutOf.Policies))
+		for i, policy := range t.NOutOf.Policies {
 			compiledPolicy, err := compile(policy, identities, deserializer)
 			if err != nil {
 				return nil, err
@@ -54,13 +54,13 @@ func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserial
 				}
 			}
 
-			if verified >= t.From.N {
+			if verified >= t.NOutOf.N {
 				cauthdslLogger.Debugf("Gate evaluation succeeds: (%s)", t)
 			} else {
 				cauthdslLogger.Debugf("Gate evaluation fails: (%s)", t)
 			}
 
-			return verified >= t.From.N
+			return verified >= t.NOutOf.N
 		}, nil
 	case *cb.SignaturePolicy_SignedBy:
 		if t.SignedBy < 0 || t.SignedBy >= int32(len(identities)) {

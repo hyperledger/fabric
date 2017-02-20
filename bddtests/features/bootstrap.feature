@@ -12,7 +12,8 @@ Feature: Bootstrap
   I want to bootstrap a new blockchain network
 
     @doNotDecompose
-  Scenario Outline: Bootstrap a development network with 1 peer and 1 orderer, each having a single independent root of trust (No COP)
+    @generateDocs
+  Scenario Outline: Bootstrap a development network with 4 peers (2 orgs)  and 1 orderer (1 org), each having a single independent root of trust (No fabric-ca, just openssl)
     #creates 1 self-signed key/cert pair per orderer organization
     Given the orderer network has organizations:
       | Organization  |
@@ -32,34 +33,28 @@ Feature: Bootstrap
 
     And the ordererBootstrapAdmin generates a GUUID to identify the orderer system chain and refer to it by name as "OrdererSystemChainId"
 
-    # Actually creating proto ordere_dot_confoiguration.ChainCreators
-    # Creates SignedConfigItems
-    # Policy
     And the ordererBootstrapAdmin creates a chain creators policy "chainCreatePolicy1" (network name) for peer orgs who wish to form a network using orderer system chain "OrdererSystemChainId":
       | Organization  |
       |  peerOrg0     |
       |  peerOrg1     |
       |  peerOrg2     |
 
-    # Creates SignedConfigItems
-    And the ordererBoostrapAdmin creates the chain creation policy names "chainCreationPolicyNames" signedConfigurationItem for orderer system chain "OrdererSystemChainId" with policies:
+    And the ordererBoostrapAdmin creates the chain creation policy names "chainCreationPolicyNames" for orderer system chain "OrdererSystemChainId" with policies:
       |PolicyName                  |
       |chainCreatePolicy1          |
 
-
-    # Creates SignedConfigItems
-    And the ordererBoostrapAdmin creates MSP Configuration Items "mspConfigItems1" for orderer system chain "OrdererSystemChainId" for every MSP referenced by the policies:
+    And the ordererBoostrapAdmin creates MSP configuration "mspConfig1" for orderer system chain "OrdererSystemChainId" for every MSP referenced by the policies:
       |PolicyName                  |
       |chainCreatePolicy1          |
 
 
     # Order info includes orderer admin/orderer information and address (host:port) from previous steps
     # Only the peer organizations can vary.
-    And the ordererBootstrapAdmin creates the genesis block for chain "OrdererSystemChainId" for network config policy "<PolicyType>" and consensus "<ConsensusType>" using chain creators policies:
-      |  SignedConfigItemsName       |
+    And the ordererBootstrapAdmin creates the genesis block "ordererGenesisBlock" for chain "OrdererSystemChainId" for network config policy "<PolicyType>" and consensus "<ConsensusType>" using chain creators policies:
+      |  ConfigGroup Names           |
       |  chainCreatePolicy1          |
       |  chainCreationPolicyNames    |
-      |  mspConfigItems1             |
+      |  mspConfig1                  |
 
 
     And the orderer admins inspect and approve the genesis block for chain "OrdererSystemChainId"
@@ -103,18 +98,18 @@ Feature: Bootstrap
 
     # TODO: grab the peer orgs from template1 and put into Murali's MSP info SCIs.
     # Entry point for creating a channel from existing templates
-    And the user "dev0Org0" creates a signedConfigEnvelope "createChannelSignedConfigEnvelope1"
+    And the user "dev0Org0" creates a ConfigUpdateEnvelope "createChannelConfigUpdate1"
         | ChannelID                          | Template     | Chain Creation Policy Name  | Anchors  |
         | com.acme.blockchain.jdoe.Channel1  | template1    | chainCreatePolicy1          | anchors1 |
 
-    And the user "dev0Org0" collects signatures for signedConfigEnvelope "createChannelSignedConfigEnvelope1" from peer orgs:
+    And the user "dev0Org0" collects signatures for ConfigUpdateEnvelope "createChannelConfigUpdate1" from peer orgs:
       | Organization  |
       |  peerOrg0     |
       |  peerOrg1     |
 
-    And the user "dev0Org0" creates config Tx "configTx1" using signedConfigEnvelope "createChannelSignedConfigEnvelope1"
+    And the user "dev0Org0" creates a ConfigUpdate Tx "configUpdateTx1" using signed ConfigUpdateEnvelope "createChannelConfigUpdate1"
 
-    And the user "dev0Org0" broadcasts config Tx "configTx1" to orderer "orderer0" to create channel "com.acme.blockchain.jdoe.Channel1"
+    And the user "dev0Org0" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "orderer0" to create channel "com.acme.blockchain.jdoe.Channel1"
 
     # Sleep as the deliver takes a bit to have the first block ready
     And I wait "2" seconds

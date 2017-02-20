@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/proposal.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x13peer/proposal.proto\x12\x06protos\x1a\x14peer/chaincode.proto\x1a\x1cpeer/proposal_response.proto\":\n\x0eSignedProposal\x12\x15\n\rproposalBytes\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\">\n\x08Proposal\x12\x0e\n\x06header\x18\x01 \x01(\x0c\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\x12\x11\n\textension\x18\x03 \x01(\x0c\"_\n\x18\x43haincodeHeaderExtension\x12\x19\n\x11payloadVisibility\x18\x01 \x01(\x0c\x12(\n\x0b\x63haincodeID\x18\x02 \x01(\x0b\x32\x13.protos.ChaincodeID\"<\n\x18\x43haincodeProposalPayload\x12\r\n\x05Input\x18\x01 \x01(\x0c\x12\x11\n\tTransient\x18\x02 \x01(\x0c\"V\n\x0f\x43haincodeAction\x12\x0f\n\x07results\x18\x01 \x01(\x0c\x12\x0e\n\x06\x65vents\x18\x02 \x01(\x0c\x12\"\n\x08response\x18\x03 \x01(\x0b\x32\x10.protos.ResponseB+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x13peer/proposal.proto\x12\x06protos\x1a\x14peer/chaincode.proto\x1a\x1cpeer/proposal_response.proto\";\n\x0eSignedProposal\x12\x16\n\x0eproposal_bytes\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\">\n\x08Proposal\x12\x0e\n\x06header\x18\x01 \x01(\x0c\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\x12\x11\n\textension\x18\x03 \x01(\x0c\"a\n\x18\x43haincodeHeaderExtension\x12\x1a\n\x12payload_visibility\x18\x01 \x01(\x0c\x12)\n\x0c\x63haincode_id\x18\x02 \x01(\x0b\x32\x13.protos.ChaincodeID\"\xa8\x01\n\x18\x43haincodeProposalPayload\x12\r\n\x05input\x18\x01 \x01(\x0c\x12H\n\x0cTransientMap\x18\x02 \x03(\x0b\x32\x32.protos.ChaincodeProposalPayload.TransientMapEntry\x1a\x33\n\x11TransientMapEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"V\n\x0f\x43haincodeAction\x12\x0f\n\x07results\x18\x01 \x01(\x0c\x12\x0e\n\x06\x65vents\x18\x02 \x01(\x0c\x12\"\n\x08response\x18\x03 \x01(\x0b\x32\x10.protos.ResponseB+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
   ,
   dependencies=[peer_dot_chaincode__pb2.DESCRIPTOR,peer_dot_proposal__response__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -37,7 +37,7 @@ _SIGNEDPROPOSAL = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='proposalBytes', full_name='protos.SignedProposal.proposalBytes', index=0,
+      name='proposal_bytes', full_name='protos.SignedProposal.proposal_bytes', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -63,7 +63,7 @@ _SIGNEDPROPOSAL = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=83,
-  serialized_end=141,
+  serialized_end=142,
 )
 
 
@@ -107,8 +107,8 @@ _PROPOSAL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=143,
-  serialized_end=205,
+  serialized_start=144,
+  serialized_end=206,
 )
 
 
@@ -120,14 +120,14 @@ _CHAINCODEHEADEREXTENSION = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='payloadVisibility', full_name='protos.ChaincodeHeaderExtension.payloadVisibility', index=0,
+      name='payload_visibility', full_name='protos.ChaincodeHeaderExtension.payload_visibility', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='chaincodeID', full_name='protos.ChaincodeHeaderExtension.chaincodeID', index=1,
+      name='chaincode_id', full_name='protos.ChaincodeHeaderExtension.chaincode_id', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -145,27 +145,27 @@ _CHAINCODEHEADEREXTENSION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=207,
-  serialized_end=302,
+  serialized_start=208,
+  serialized_end=305,
 )
 
 
-_CHAINCODEPROPOSALPAYLOAD = _descriptor.Descriptor(
-  name='ChaincodeProposalPayload',
-  full_name='protos.ChaincodeProposalPayload',
+_CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY = _descriptor.Descriptor(
+  name='TransientMapEntry',
+  full_name='protos.ChaincodeProposalPayload.TransientMapEntry',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Input', full_name='protos.ChaincodeProposalPayload.Input', index=0,
-      number=1, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
+      name='key', full_name='protos.ChaincodeProposalPayload.TransientMapEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Transient', full_name='protos.ChaincodeProposalPayload.Transient', index=1,
+      name='value', full_name='protos.ChaincodeProposalPayload.TransientMapEntry.value', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -177,14 +177,51 @@ _CHAINCODEPROPOSALPAYLOAD = _descriptor.Descriptor(
   nested_types=[],
   enum_types=[
   ],
+  options=_descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001')),
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=425,
+  serialized_end=476,
+)
+
+_CHAINCODEPROPOSALPAYLOAD = _descriptor.Descriptor(
+  name='ChaincodeProposalPayload',
+  full_name='protos.ChaincodeProposalPayload',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='input', full_name='protos.ChaincodeProposalPayload.input', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='TransientMap', full_name='protos.ChaincodeProposalPayload.TransientMap', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[_CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY, ],
+  enum_types=[
+  ],
   options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=304,
-  serialized_end=364,
+  serialized_start=308,
+  serialized_end=476,
 )
 
 
@@ -228,11 +265,13 @@ _CHAINCODEACTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=366,
-  serialized_end=452,
+  serialized_start=478,
+  serialized_end=564,
 )
 
-_CHAINCODEHEADEREXTENSION.fields_by_name['chaincodeID'].message_type = peer_dot_chaincode__pb2._CHAINCODEID
+_CHAINCODEHEADEREXTENSION.fields_by_name['chaincode_id'].message_type = peer_dot_chaincode__pb2._CHAINCODEID
+_CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY.containing_type = _CHAINCODEPROPOSALPAYLOAD
+_CHAINCODEPROPOSALPAYLOAD.fields_by_name['TransientMap'].message_type = _CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY
 _CHAINCODEACTION.fields_by_name['response'].message_type = peer_dot_proposal__response__pb2._RESPONSE
 DESCRIPTOR.message_types_by_name['SignedProposal'] = _SIGNEDPROPOSAL
 DESCRIPTOR.message_types_by_name['Proposal'] = _PROPOSAL
@@ -262,11 +301,19 @@ ChaincodeHeaderExtension = _reflection.GeneratedProtocolMessageType('ChaincodeHe
 _sym_db.RegisterMessage(ChaincodeHeaderExtension)
 
 ChaincodeProposalPayload = _reflection.GeneratedProtocolMessageType('ChaincodeProposalPayload', (_message.Message,), dict(
+
+  TransientMapEntry = _reflection.GeneratedProtocolMessageType('TransientMapEntry', (_message.Message,), dict(
+    DESCRIPTOR = _CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY,
+    __module__ = 'peer.proposal_pb2'
+    # @@protoc_insertion_point(class_scope:protos.ChaincodeProposalPayload.TransientMapEntry)
+    ))
+  ,
   DESCRIPTOR = _CHAINCODEPROPOSALPAYLOAD,
   __module__ = 'peer.proposal_pb2'
   # @@protoc_insertion_point(class_scope:protos.ChaincodeProposalPayload)
   ))
 _sym_db.RegisterMessage(ChaincodeProposalPayload)
+_sym_db.RegisterMessage(ChaincodeProposalPayload.TransientMapEntry)
 
 ChaincodeAction = _reflection.GeneratedProtocolMessageType('ChaincodeAction', (_message.Message,), dict(
   DESCRIPTOR = _CHAINCODEACTION,
@@ -278,6 +325,8 @@ _sym_db.RegisterMessage(ChaincodeAction)
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z)github.com/hyperledger/fabric/protos/peer'))
+_CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY.has_options = True
+_CHAINCODEPROPOSALPAYLOAD_TRANSIENTMAPENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

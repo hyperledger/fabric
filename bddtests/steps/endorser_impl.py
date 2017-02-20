@@ -27,7 +27,7 @@ def step_impl(context, userName, ccType, chaincodeName, chaincodePath, ccSpecAli
 	args =  bootstrap_util.getArgsFromContextForUser(context, userName)
 	ccSpec = endorser_util.getChaincodeSpec(ccType=ccType, path=chaincodePath, name=chaincodeName, args=bdd_grpc_util.toStringArray(args))
 	print("ccSpec = {0}".format(ccSpec))
-	user.tags[ccSpecAlias] = ccSpec
+	user.setTagValue(ccSpecAlias, ccSpec)
 
 
 @when(u'user "{userName}" creates a deployment spec "{ccDeploymentSpecAlias}" using chaincode spec "{ccSpecAlias}" and devops on peer "{devopsComposeService}"')
@@ -40,7 +40,8 @@ def step_impl(context, userName, ccDeploymentSpecAlias, ccSpecAlias, devopsCompo
     channel = bdd_grpc_util.getGRPCChannel(ipAddress)
     devopsStub = devops_pb2.beta_create_Devops_stub(channel)
     deploymentSpec = devopsStub.Build(user.tags[ccSpecAlias],20)
-    user.tags[ccDeploymentSpecAlias] = deploymentSpec
+    #user.setTagValue(ccDeploymentSpecAlias, deploymentSpec)
+    user.setTagValue(ccDeploymentSpecAlias, deploymentSpec)
 
 
 @when(u'user "{userName}" using cert alias "{certAlias}" creates a deployment proposal "{proposalAlias}" for channel "{channelName}" using chaincode spec "{ccSpecAlias}"')
@@ -58,13 +59,13 @@ def step_impl(context, userName, certAlias, proposalAlias, channelName, ccSpecAl
         signersCert = directory.findCertForNodeAdminTuple(nodeAdminTuple)
         mspID = nodeAdminTuple.organization
 
-        proposal = endorser_util.createInvokeProposalForBDD(ccSpec=lcChaincodeSpec, chainID=channelName,signersCert=signersCert, Mspid=mspID, type="ENDORSER_TRANSACTION")
+        proposal = endorser_util.createInvokeProposalForBDD(context, ccSpec=lcChaincodeSpec, chainID=channelName,signersCert=signersCert, Mspid=mspID, type="ENDORSER_TRANSACTION")
 
         signedProposal = endorser_util.signProposal(proposal=proposal, entity=user, signersCert=signersCert)
 
         # proposal = endorser_util.createDeploymentProposalForBDD(ccDeploymentSpec)
         assert not proposalAlias in user.tags, "Proposal alias '{0}' already exists for '{1}'".format(proposalAlias, userName)
-        user.tags[proposalAlias] = signedProposal
+        user.setTagValue(proposalAlias, signedProposal)
 
 
 
@@ -82,6 +83,7 @@ def step_impl(context, userName, proposalAlias, timeout, proposalResponsesAlias)
     endorserStubs = endorser_util.getEndorserStubs(context, endorsers)
     proposalResponseFutures = [endorserStub.ProcessProposal.future(signedProposal, int(timeout)) for endorserStub in endorserStubs]
     resultsDict =  dict(zip(endorsers, [respFuture.result() for respFuture in proposalResponseFutures]))
+    #user.setTagValue(proposalResponsesAlias, resultsDict)
     user.tags[proposalResponsesAlias] = resultsDict
 
 

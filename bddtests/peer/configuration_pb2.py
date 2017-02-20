@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/configuration.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x18peer/configuration.proto\x12\x06protos\"6\n\x0b\x41nchorPeers\x12\'\n\x0b\x61nchorPeers\x18\x01 \x03(\x0b\x32\x12.protos.AnchorPeer\"6\n\nAnchorPeer\x12\x0c\n\x04Host\x18\x01 \x01(\t\x12\x0c\n\x04Port\x18\x02 \x01(\x05\x12\x0c\n\x04\x43\x65rt\x18\x03 \x01(\x0c\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x18peer/configuration.proto\x12\x06protos\"7\n\x0b\x41nchorPeers\x12(\n\x0c\x61nchor_peers\x18\x01 \x03(\x0b\x32\x12.protos.AnchorPeer\"6\n\nAnchorPeer\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\x12\x0c\n\x04\x63\x65rt\x18\x03 \x01(\x0c\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -34,7 +34,7 @@ _ANCHORPEERS = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='anchorPeers', full_name='protos.AnchorPeers.anchorPeers', index=0,
+      name='anchor_peers', full_name='protos.AnchorPeers.anchor_peers', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -53,7 +53,7 @@ _ANCHORPEERS = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=36,
-  serialized_end=90,
+  serialized_end=91,
 )
 
 
@@ -65,21 +65,21 @@ _ANCHORPEER = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='Host', full_name='protos.AnchorPeer.Host', index=0,
+      name='host', full_name='protos.AnchorPeer.host', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Port', full_name='protos.AnchorPeer.Port', index=1,
+      name='port', full_name='protos.AnchorPeer.port', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Cert', full_name='protos.AnchorPeer.Cert', index=2,
+      name='cert', full_name='protos.AnchorPeer.cert', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -97,11 +97,11 @@ _ANCHORPEER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=92,
-  serialized_end=146,
+  serialized_start=93,
+  serialized_end=147,
 )
 
-_ANCHORPEERS.fields_by_name['anchorPeers'].message_type = _ANCHORPEER
+_ANCHORPEERS.fields_by_name['anchor_peers'].message_type = _ANCHORPEER
 DESCRIPTOR.message_types_by_name['AnchorPeers'] = _ANCHORPEERS
 DESCRIPTOR.message_types_by_name['AnchorPeer'] = _ANCHORPEER
 
