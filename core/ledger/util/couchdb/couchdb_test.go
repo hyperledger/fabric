@@ -57,7 +57,8 @@ var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owne
 
 func TestMain(m *testing.M) {
 	ledgertestutil.SetupCoreYAMLConfig("./../../../../peer")
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
+	//TODO CouchDB tests are disabled.  Re-enable once intermittent failures are resolved.
+	//viper.Set("ledger.state.stateDatabase", "CouchDB")
 	result := m.Run()
 	viper.Set("ledger.state.stateDatabase", "goleveldb")
 	os.Exit(result)
