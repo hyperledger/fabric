@@ -69,7 +69,7 @@ JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
 MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka
+IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb
 
 pkgmap.configtxgen    := $(PKGNAME)/common/configtx/tool/configtxgen
 pkgmap.peer           := $(PKGNAME)/peer
@@ -110,7 +110,9 @@ buildenv: build/image/buildenv/$(DUMMY)
 build/image/testenv/$(DUMMY): build/image/buildenv/$(DUMMY)
 testenv: build/image/testenv/$(DUMMY)
 
-unit-test: peer-docker testenv
+couchdb: build/image/couchdb/$(DUMMY)
+
+unit-test: peer-docker testenv couchdb
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
@@ -204,6 +206,9 @@ build/image/testenv/payload:    build/docker/bin/orderer \
 build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
 build/image/kafka/payload:      images/kafka/docker-entrypoint.sh \
 				images/kafka/kafka-run-class.sh
+build/image/couchdb/payload:	images/couchdb/docker-entrypoint.sh \
+				images/couchdb/local.ini \
+				images/couchdb/vm.args
 
 build/image/%/payload:
 	mkdir -p $@

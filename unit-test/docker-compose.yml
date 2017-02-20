@@ -13,6 +13,7 @@ unit-tests:
   image: hyperledger/fabric-testenv
   links:
     - vp
+    - couchdb
   environment:
     - UNIT_TEST_PEER_IP=vp
     - GO_LDFLAGS
@@ -23,3 +24,11 @@ unit-tests:
     - /var/run/docker.sock:/var/run/docker.sock
     - ${GOPATH}/src/github.com/hyperledger/fabric:/opt/gopath/src/github.com/hyperledger/fabric
   command: ./unit-test/run.sh
+
+couchdb:
+  container_name: couchdb
+  image: hyperledger/fabric-couchdb
+  log_driver: none
+  ports:
+    - "5984:5984"
+
