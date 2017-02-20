@@ -54,7 +54,7 @@ func TestExecuteConcurrentInvokes(t *testing.T) {
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: args}}
 
-	cccid := ccprovider.NewCCContext(chainID, "nkpi", "0", "", false, nil)
+	cccid := ccprovider.NewCCContext(chainID, "nkpi", "0", "", false, nil, nil)
 
 	defer theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 

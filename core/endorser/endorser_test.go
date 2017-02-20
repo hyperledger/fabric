@@ -278,7 +278,7 @@ func TestDeploy(t *testing.T) {
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}}}
 	defer deleteChaincodeOnDisk("ex01.0")
 
-	cccid := ccprovider.NewCCContext(chainID, "ex01", "0", "", false, nil)
+	cccid := ccprovider.NewCCContext(chainID, "ex01", "0", "", false, nil, nil)
 
 	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
@@ -299,7 +299,7 @@ func TestRedeploy(t *testing.T) {
 
 	defer deleteChaincodeOnDisk("ex02.0")
 
-	cccid := ccprovider.NewCCContext(chainID, "ex02", "0", "", false, nil)
+	cccid := ccprovider.NewCCContext(chainID, "ex02", "0", "", false, nil, nil)
 
 	_, _, err := deploy(endorserServer, chainID, spec, nil)
 	if err != nil {
@@ -338,7 +338,7 @@ func TestDeployAndInvoke(t *testing.T) {
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID, Input: &pb.ChaincodeInput{Args: argsDeploy}}
 
-	cccid := ccprovider.NewCCContext(chainID, "ex01", "0", "", false, nil)
+	cccid := ccprovider.NewCCContext(chainID, "ex01", "0", "", false, nil, nil)
 
 	resp, prop, err := deploy(endorserServer, chainID, spec, nil)
 	chaincodeID1 := spec.ChaincodeId.Name
@@ -391,8 +391,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: chaincodeID1, Input: &pb.ChaincodeInput{Args: argsDeploy}}
 
-	cccid1 := ccprovider.NewCCContext(chainID, "upgradeex01", "0", "", false, nil)
-	cccid2 := ccprovider.NewCCContext(chainID, "upgradeex01", "1", "", false, nil)
+	cccid1 := ccprovider.NewCCContext(chainID, "upgradeex01", "0", "", false, nil, nil)
+	cccid2 := ccprovider.NewCCContext(chainID, "upgradeex01", "1", "", false, nil, nil)
 
 	resp, prop, err := deploy(endorserServer, chainID, spec, nil)
 

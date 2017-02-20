@@ -54,6 +54,7 @@ type MessageHandler interface {
 
 type transactionContext struct {
 	chainID          string
+	signedProp       *pb.SignedProposal
 	proposal         *pb.Proposal
 	responseNotifier chan *pb.ChaincodeMessage
 
@@ -181,7 +182,7 @@ func (handler *Handler) serialSendAsync(msg *pb.ChaincodeMessage, errc chan erro
 	}()
 }
 
-func (handler *Handler) createTxContext(ctxt context.Context, chainID string, txid string, prop *pb.Proposal) (*transactionContext, error) {
+func (handler *Handler) createTxContext(ctxt context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal) (*transactionContext, error) {
 	if handler.txCtxs == nil {
 		return nil, fmt.Errorf("cannot create notifier for txid:%s", txid)
 	}
@@ -190,7 +191,7 @@ func (handler *Handler) createTxContext(ctxt context.Context, chainID string, tx
 	if handler.txCtxs[txid] != nil {
 		return nil, fmt.Errorf("txid:%s exists", txid)
 	}
-	txctx := &transactionContext{chainID: chainID, proposal: prop, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
+	txctx := &transactionContext{chainID: chainID, signedProp: signedProp, proposal: prop, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
 		queryIteratorMap: make(map[string]commonledger.ResultsIterator)}
 	handler.txCtxs[txid] = txctx
 	txctx.txsimulator = getTxSimulator(ctxt)
@@ -233,7 +234,7 @@ func (handler *Handler) deleteQueryIterator(txContext *transactionContext, txid 
 }
 
 // Check if the transactor is allow to call this chaincode on this channel
-func (handler *Handler) checkACL(proposal *pb.Proposal, calledCC *ccParts) *pb.ChaincodeMessage {
+func (handler *Handler) checkACL(signedProp *pb.SignedProposal, proposal *pb.Proposal, calledCC *ccParts) *pb.ChaincodeMessage {
 	// TODO: Decide what to pass in to verify that this transactor can access this
 	// channel (chID) and chaincode (ccID). Very likely we need the signedProposal
 	// which contains the sig and creator cert
@@ -1249,7 +1250,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 					shorttxid(msg.Txid), calledCcParts.name, calledCcParts.suffix)
 			}
 
-			triggerNextStateMsg = handler.checkACL(txContext.proposal, calledCcParts)
+			triggerNextStateMsg = handler.checkACL(txContext.signedProp, txContext.proposal, calledCcParts)
 			if triggerNextStateMsg != nil {
 				return
 			}
@@ -1286,7 +1287,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 
 			//Call LCCC to get the called chaincode artifacts
 			var cd *ccprovider.ChaincodeData
-			cd, err = GetChaincodeDataFromLCCC(ctxt, msg.Txid, txContext.proposal, calledCcParts.suffix, calledCcParts.name)
+			cd, err = GetChaincodeDataFromLCCC(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcParts.suffix, calledCcParts.name)
 			if err != nil {
 				payload := []byte(err.Error())
 				chaincodeLogger.Debugf("[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s",
@@ -1294,7 +1295,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 				return
 			}
-			cccid := ccprovider.NewCCContext(calledCcParts.suffix, calledCcParts.name, cd.Version, msg.Txid, false, txContext.proposal)
+			cccid := ccprovider.NewCCContext(calledCcParts.suffix, calledCcParts.name, cd.Version, msg.Txid, false, txContext.signedProp, txContext.proposal)
 
 			// Launch the new chaincode if not already running
 			if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
@@ -1373,10 +1374,15 @@ func (handler *Handler) enterEndState(e *fsm.Event, state string) {
 	e.Cancel(fmt.Errorf("Entered end state"))
 }
 
-func (handler *Handler) setChaincodeProposal(prop *pb.Proposal, msg *pb.ChaincodeMessage) error {
+func (handler *Handler) setChaincodeProposal(signedProp *pb.SignedProposal, prop *pb.Proposal, msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debug("Setting chaincode proposal context...")
 	if prop != nil {
 		chaincodeLogger.Debug("Proposal different from nil. Creating chaincode proposal context...")
+
+		// Check that also signedProp is different from nil
+		if signedProp == nil {
+			return fmt.Errorf("Failed getting proposal context. Signed proposal is nil.")
+		}
 
 		msg.Proposal = prop
 	}
@@ -1384,8 +1390,8 @@ func (handler *Handler) setChaincodeProposal(prop *pb.Proposal, msg *pb.Chaincod
 }
 
 //move to ready
-func (handler *Handler) ready(ctxt context.Context, chainID string, txid string, prop *pb.Proposal) (chan *pb.ChaincodeMessage, error) {
-	txctx, funcErr := handler.createTxContext(ctxt, chainID, txid, prop)
+func (handler *Handler) ready(ctxt context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal) (chan *pb.ChaincodeMessage, error) {
+	txctx, funcErr := handler.createTxContext(ctxt, chainID, txid, signedProp, prop)
 	if funcErr != nil {
 		return nil, funcErr
 	}
@@ -1393,7 +1399,8 @@ func (handler *Handler) ready(ctxt context.Context, chainID string, txid string,
 	chaincodeLogger.Debug("sending READY")
 	ccMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: txid}
 
-	if err := handler.setChaincodeProposal(prop, ccMsg); err != nil {
+	//if security is disabled the context elements will just be nil
+	if err := handler.setChaincodeProposal(signedProp, prop, ccMsg); err != nil {
 		return nil, err
 	}
 
@@ -1448,8 +1455,8 @@ func filterError(errFromFSMEvent error) error {
 	return nil
 }
 
-func (handler *Handler) sendExecuteMessage(ctxt context.Context, chainID string, msg *pb.ChaincodeMessage, prop *pb.Proposal) (chan *pb.ChaincodeMessage, error) {
-	txctx, err := handler.createTxContext(ctxt, chainID, msg.Txid, prop)
+func (handler *Handler) sendExecuteMessage(ctxt context.Context, chainID string, msg *pb.ChaincodeMessage, signedProp *pb.SignedProposal, prop *pb.Proposal) (chan *pb.ChaincodeMessage, error) {
+	txctx, err := handler.createTxContext(ctxt, chainID, msg.Txid, signedProp, prop)
 	if err != nil {
 		return nil, err
 	}
@@ -1457,7 +1464,8 @@ func (handler *Handler) sendExecuteMessage(ctxt context.Context, chainID string,
 		chaincodeLogger.Debugf("[%s]Inside sendExecuteMessage. Message %s", shorttxid(msg.Txid), msg.Type.String())
 	}
 
-	if err = handler.setChaincodeProposal(prop, msg); err != nil {
+	//if security is disabled the context elements will just be nil
+	if err = handler.setChaincodeProposal(signedProp, prop, msg); err != nil {
 		return nil, err
 	}
 

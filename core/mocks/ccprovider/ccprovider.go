@@ -47,12 +47,12 @@ func (c *mockCcProviderImpl) GetContext(ledger ledger.PeerLedger) (context.Conte
 }
 
 // GetCCContext does nothing
-func (c *mockCcProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, prop *peer.Proposal) interface{} {
+func (c *mockCcProviderImpl) GetCCContext(cid, name, version, txid string, syscc bool, signedProp *peer.SignedProposal, prop *peer.Proposal) interface{} {
 	return &mockCcProviderContextImpl{}
 }
 
 // GetCCValidationInfoFromLCCC does nothing
-func (c *mockCcProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
+func (c *mockCcProviderImpl) GetCCValidationInfoFromLCCC(ctxt context.Context, txid string, signedProp *peer.SignedProposal, prop *peer.Proposal, chainID string, chaincodeID string) (string, []byte, error) {
 	return "vscc", nil, nil
 }
 

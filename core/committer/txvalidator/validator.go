@@ -220,7 +220,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	}
 
 	// obtain name of the VSCC and the policy from LCCC
-	vscc, policy, err := v.ccprovider.GetCCValidationInfoFromLCCC(ctxt, txid, nil, chainID, hdrExt.ChaincodeId.Name)
+	vscc, policy, err := v.ccprovider.GetCCValidationInfoFromLCCC(ctxt, txid, nil, nil, chainID, hdrExt.ChaincodeId.Name)
 	if err != nil {
 		logger.Errorf("Unable to get chaincode data from LCCC for txid %s, due to %s", txid, err)
 		return err
@@ -236,7 +236,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 
 	// Get chaincode version
 	version := coreUtil.GetSysCCVersion()
-	cccid := v.ccprovider.GetCCContext(chainID, vscc, version, vscctxid, true, nil)
+	cccid := v.ccprovider.GetCCContext(chainID, vscc, version, vscctxid, true, nil, nil)
 
 	// invoke VSCC
 	logger.Info("Invoking VSCC txid", txid, "chaindID", chainID)
