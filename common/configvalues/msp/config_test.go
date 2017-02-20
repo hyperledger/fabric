@@ -35,6 +35,7 @@ func TestMSPConfigManager(t *testing.T) {
 	mspCH.BeginConfig()
 	_, err = mspCH.ProposeMSP(conf)
 	assert.NoError(t, err)
+	mspCH.PreCommit()
 	mspCH.CommitProposals()
 
 	msps, err := mspCH.GetMSPs()

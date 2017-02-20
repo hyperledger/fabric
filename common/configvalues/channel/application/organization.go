@@ -111,3 +111,6 @@ func (oc *ApplicationOrgConfig) ProposeValue(key string, configValue *cb.ConfigV
 
 	return nil
 }
+
+// PreCommit returns nil
+func (c *ApplicationOrgConfig) PreCommit() error { return nil }

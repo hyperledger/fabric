@@ -84,6 +84,11 @@ type ValueProposer interface {
 	// RollbackProposals called when a config proposal is abandoned
 	RollbackProposals()
 
+	// PreCommit is invoked before committing the config to catch
+	// any errors which cannot be caught on a per proposal basis
+	// TODO, rename other methods to remove Value/Proposal references
+	PreCommit() error
+
 	// CommitProposals called when a config proposal is committed
 	CommitProposals()
 }

@@ -315,3 +315,6 @@ func brokerEntrySeemsValid(broker string) bool {
 	matched := re.FindString(host)
 	return len(matched) == len(host)
 }
+
+// PreCommit returns nil
+func (pm *ManagerImpl) PreCommit() error { return nil }

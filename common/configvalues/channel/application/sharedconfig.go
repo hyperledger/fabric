@@ -121,3 +121,6 @@ func (di *SharedConfigImpl) ProposeValue(key string, configValue *cb.ConfigValue
 func (di *SharedConfigImpl) Organizations() map[string]api.ApplicationOrg {
 	return di.config.orgs
 }
+
+// PreCommit returns nil
+func (di *SharedConfigImpl) PreCommit() error { return nil }

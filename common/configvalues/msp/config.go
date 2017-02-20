@@ -93,11 +93,21 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 	existingPendingMSPConfig, ok := bh.pendingConfig.idMap[mspID]
 	if ok && !reflect.DeepEqual(existingPendingMSPConfig.mspConfig, mspConfig) {
 		return nil, fmt.Errorf("Attempted to define two different versions of MSP: %s", mspID)
-	} else {
-		bh.pendingConfig.idMap[mspID] = &pendingMSPConfig{
-			mspConfig: mspConfig,
-			msp:       mspInst,
-		}
+	}
+
+	bh.pendingConfig.idMap[mspID] = &pendingMSPConfig{
+		mspConfig: mspConfig,
+		msp:       mspInst,
+	}
+
+	return mspInst, nil
+}
+
+// PreCommit instantiates the MSP manager
+func (bh *MSPConfigHandler) PreCommit() error {
+	if len(bh.pendingConfig.idMap) == 0 {
+		// Cannot instantiate an MSP manager with no MSPs
+		return nil
 	}
 
 	mspList := make([]msp.MSP, len(bh.pendingConfig.idMap))
@@ -107,14 +117,7 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 		i++
 	}
 
-	// the only way to make sure that I have a
-	// workable config is to toss the proposed
-	// manager, create a new one, call setup on
-	// it and return whatever error setup gives me
 	bh.pendingConfig.proposedMgr = msp.NewMSPManager()
-	err = bh.pendingConfig.proposedMgr.Setup(mspList)
-	if err != nil {
-		return nil, err
-	}
-	return mspInst, nil
+	err := bh.pendingConfig.proposedMgr.Setup(mspList)
+	return err
 }

@@ -117,6 +117,12 @@ func (i *valueProposerRoot) RollbackProposals() {
 	i.mspConfigHandler.RollbackProposals()
 }
 
+// PreCommit is used to verify total configuration before commit
+func (i *valueProposerRoot) PreCommit() error {
+	logger.Debugf("Calling pre commit for MSP manager")
+	return i.mspConfigHandler.PreCommit()
+}
+
 // CommitConfig is used to commit a new config proposal
 func (i *valueProposerRoot) CommitProposals() {
 	logger.Debugf("Calling commit for MSP manager")
@@ -137,6 +143,11 @@ func (p *policyProposerRoot) BeginPolicyProposals(groups []string) ([]policies.P
 
 func (i *policyProposerRoot) ProposePolicy(key string, policy *cb.ConfigPolicy) error {
 	return fmt.Errorf("Programming error, this should never be invoked")
+}
+
+// PreCommit is a no-op and returns nil
+func (i *policyProposerRoot) PreCommit() error {
+	return nil
 }
 
 // RollbackConfig is used to abandon a new config proposal

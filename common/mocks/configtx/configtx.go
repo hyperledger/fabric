@@ -70,6 +70,9 @@ func (r *Resources) MSPManager() msp.MSPManager {
 // Transactional implements the configtxapi.Transactional
 type Transactional struct{}
 
+// PreCommit returns nil
+func (t *Transactional) PreCommit() error { return nil }
+
 // CommitConfig does nothing
 func (t *Transactional) CommitProposals() {}
 
