@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/api"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -354,7 +355,7 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 	}
 
 	// Set the mock policy to error
-	initializer.Resources.PolicyManagerVal.PolicyMap = make(map[string]*mockpolicies.Policy)
+	initializer.Resources.PolicyManagerVal.PolicyMap = make(map[string]policies.Policy)
 	initializer.Resources.PolicyManagerVal.PolicyMap["foo"] = &mockpolicies.Policy{Err: fmt.Errorf("err")}
 
 	newConfig := makeConfigUpdateEnvelope(

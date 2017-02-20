@@ -42,7 +42,7 @@ type Manager struct {
 	BasePathVal string
 
 	// PolicyMap is returned is used to look up Policies in
-	PolicyMap map[string]*Policy
+	PolicyMap map[string]policies.Policy
 
 	// SubManagers is used for the return value of Manager
 	SubManagersMap map[string]*Manager

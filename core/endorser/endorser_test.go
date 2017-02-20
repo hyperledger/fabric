@@ -559,7 +559,7 @@ func TestWritersACLFail(t *testing.T) {
 		Err: errors.New("The creator of this proposal does not fulfil the writers policy of this chain"),
 	}
 	pm := peer.GetPolicyManager(chainID)
-	pm.(*mockpolicies.Manager).PolicyMap = map[string]*mockpolicies.Policy{policies.ChannelApplicationWriters: rejectpolicy}
+	pm.(*mockpolicies.Manager).PolicyMap = map[string]policies.Policy{policies.ChannelApplicationWriters: rejectpolicy}
 
 	f = "invoke"
 	invokeArgs := append([]string{f}, args...)
@@ -594,7 +594,7 @@ func TestAdminACLFail(t *testing.T) {
 		Err: errors.New("The creator of this proposal does not fulfil the writers policy of this chain"),
 	}
 	pm := peer.GetPolicyManager(chainID)
-	pm.(*mockpolicies.Manager).PolicyMap = map[string]*mockpolicies.Policy{policies.ChannelApplicationAdmins: rejectpolicy}
+	pm.(*mockpolicies.Manager).PolicyMap = map[string]policies.Policy{policies.ChannelApplicationAdmins: rejectpolicy}
 
 	var ctxt = context.Background()
 

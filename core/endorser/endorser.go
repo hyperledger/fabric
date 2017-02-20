@@ -33,8 +33,10 @@ import (
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/core/policy"
 	syscc "github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
@@ -47,41 +49,25 @@ var endorserLogger = logging.MustGetLogger("endorser")
 
 // Endorser provides the Endorser service ProcessProposal
 type Endorser struct {
+	policyChecker policy.PolicyChecker
 }
 
 // NewEndorserServer creates and returns a new Endorser server instance.
 func NewEndorserServer() pb.EndorserServer {
 	e := new(Endorser)
+	e.policyChecker = policy.NewPolicyChecker(
+		peer.NewChannelPolicyManagerGetter(),
+		mgmt.GetLocalMSP(),
+		mgmt.NewLocalMSPPrincipalGetter(),
+	)
+
 	return e
 }
 
 // checkACL checks that the supplied proposal complies
 // with the writers policy of the chain
-func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
-	// get policy manager to check ACLs
-	pm := peer.GetPolicyManager(chdr.ChannelId)
-	if pm == nil {
-		return fmt.Errorf("No policy manager available for chain %s", chdr.ChannelId)
-	}
-
-	// access the policy to use to validate this proposal
-	policy, _ := pm.GetPolicy(policies.ChannelApplicationWriters)
-
-	// evaluate that this proposal complies with the writers
-	err := policy.Evaluate(
-		[]*common.SignedData{{
-			Data:      signedProp.ProposalBytes,
-			Identity:  shdr.Creator,
-			Signature: signedProp.Signature,
-		}})
-	if err != nil {
-		return fmt.Errorf("The proposal does not comply with the %s for channel %s, error %s",
-			policies.ChannelApplicationWriters,
-			chdr.ChannelId,
-			err)
-	}
-
-	return nil
+func (e *Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
+	return e.policyChecker.CheckPolicy(chdr.ChannelId, policies.ChannelApplicationWriters, signedProp)
 }
 
 //TODO - check for escc and vscc

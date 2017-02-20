@@ -105,7 +105,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
 	var nextBlockNumber uint64
-	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber)
+	_, _, _, err := invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil)
 	nextBlockNumber++
 
 	cccid := ccprovider.NewCCContext(chainID, "sample_syscc", sysCCVers, "", true, nil, nil)
@@ -119,7 +119,7 @@ func deploySampleSysCC(t *testing.T, ctxt context.Context, chainID string) error
 	f = "getval"
 	args = util.ToChaincodeArgs(f, "greeting")
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "sample_syscc", Path: url, Version: sysCCVers}, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber)
+	_, _, _, err = invokeWithVersion(ctxt, chainID, sysCCVers, spec, nextBlockNumber, nil)
 	if err != nil {
 		theChaincodeSupport.Stop(ctxt, cccid, cdsforStop)
 		t.Logf("Error invoking sample_syscc: %s", err)
