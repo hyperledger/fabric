@@ -20,24 +20,23 @@ import (
 	"flag"
 	"io/ioutil"
 
+	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 )
 
-const (
-	DefaultGenesisFileLocation = "genesis.block"
-)
-
 var logger = logging.MustGetLogger("common/configtx/tool")
 
 func main() {
-	var writePath, profile string
+	var outputBlock, outputChannelCreateTx, profile, channelID string
 
-	dryRun := flag.Bool("dryRun", false, "Whether to only generate but not write the genesis block file.")
-	flag.StringVar(&writePath, "path", DefaultGenesisFileLocation, "The path to write the genesis block to.")
+	flag.StringVar(&outputBlock, "outputBlock", "", "The path to write the genesis block to (if set)")
+	flag.StringVar(&channelID, "channelID", provisional.TestChainID, "The channel ID to use in the configtx")
+	flag.StringVar(&outputChannelCreateTx, "outputCreateChannelTx", "", "The path to write a channel creation configtx to (if set)")
 	flag.StringVar(&profile, "profile", genesisconfig.SampleInsecureProfile, "The profile from configtx.yaml to use for generation.")
 	flag.Parse()
 
@@ -45,12 +44,33 @@ func main() {
 
 	logger.Info("Loading configuration")
 	config := genesisconfig.Load(profile)
+	pgen := provisional.New(config)
 
-	logger.Info("Generating genesis block")
-	genesisBlock := provisional.New(config).GenesisBlock()
-
-	if !*dryRun {
+	if outputBlock != "" {
+		logger.Info("Generating genesis block")
+		genesisBlock := pgen.GenesisBlock()
 		logger.Info("Writing genesis block")
-		ioutil.WriteFile(writePath, utils.MarshalOrPanic(genesisBlock), 0644)
+		err := ioutil.WriteFile(outputBlock, utils.MarshalOrPanic(genesisBlock), 0644)
+		if err != nil {
+			logger.Errorf("Error writing genesis block: %s", err)
+		}
+	}
+
+	if outputChannelCreateTx != "" {
+		logger.Info("Generating new channel configtx")
+		// TODO, use actual MSP eventually
+		signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
+		if err != nil {
+			logger.Fatalf("Error getting signing identity: %s", err)
+		}
+		configtx, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, channelID, signer, pgen.ChannelTemplate())
+		if err != nil {
+			logger.Fatalf("Error generating configtx: %s", err)
+		}
+		logger.Info("Writing new channel tx")
+		err = ioutil.WriteFile(outputChannelCreateTx, utils.MarshalOrPanic(configtx), 0644)
+		if err != nil {
+			logger.Errorf("Error writing channel create tx: %s", err)
+		}
 	}
 }

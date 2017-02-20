@@ -23,8 +23,18 @@ This configuration file may be edited, or, individual properties may be overridd
 ## Bootstrapping the orderer
 After creating a configuration profile as desired, simply invoke
 ```
-configtxgen -profile &lt;profile_name&gt;
+configtxgen -profile &lt;profile_name&gt; -outputBlock &lt;genesis.blockname&gt;
 ```
-This will produce a `genesis.block` file in the current directory.  You may optionally specify another filename by passing in the `-path` parameter, or, you may skip the writing of the file by passing the `dryRun` parameter if you simply wish to test parsing of the file.
+This will produce a `genesis.block` file in the current directory.  If you wish to skip writing the file simply do not pass `outputBlock`
 
 Then, to utilize this genesis block, before starting the orderer, simply specify `ORDERER_GENERAL_GENESISMETHOD=file` and `ORDERER_GENERAL_GENESISFILE=$PWD/genesis.block` or modify the `orderer.yaml` file to encode these values.
+
+## Creating a channel
+
+The tool can also output a channel creation tx by executing
+
+```
+configtxgen -profile &lt;profile_name&gt; -outputCreateChannelTx &lt;output.txname&gt;
+```
+
+This will output a marshaled `Envelope` message which may be sent to broadcast to create a channel.

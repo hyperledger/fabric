@@ -163,6 +163,7 @@ func (bs *bootstrapper) ChannelTemplate() configtx.Template {
 	)
 }
 
+// XXX deprecate and remove
 func (bs *bootstrapper) GenesisBlock() *cb.Block {
 	block, err := genesis.NewFactoryImpl(
 		configtx.NewCompositeTemplate(
@@ -170,6 +171,20 @@ func (bs *bootstrapper) GenesisBlock() *cb.Block {
 			bs.ChannelTemplate(),
 		),
 	).Block(TestChainID)
+
+	if err != nil {
+		panic(err)
+	}
+	return block
+}
+
+func (bs *bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
+	block, err := genesis.NewFactoryImpl(
+		configtx.NewCompositeTemplate(
+			configtx.NewSimpleTemplate(bs.ordererSystemChannelGroups...),
+			bs.ChannelTemplate(),
+		),
+	).Block(channelID)
 
 	if err != nil {
 		panic(err)
