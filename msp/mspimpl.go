@@ -308,45 +308,15 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	// setup the CRL (if present)
 	msp.CRL = make([]*pkix.CertificateList, len(conf.RevocationList))
 	for i, crlbytes := range conf.RevocationList {
-		valid := false
-
-		// at first we parse it
 		crl, err := x509.ParseCRL(crlbytes)
 		if err != nil {
 			return fmt.Errorf("Could not parse RevocationList, err %s", err)
 		}
 
-		// we extract the AKI - this is needed so that we know which CA should have signed us
-		aki, err := getAuthorityKeyIdentifierFromCrl(crl)
-		if err != nil {
-			return fmt.Errorf("Could not get AuthorityKeyIdentifier from RevocationList, err %s", err)
-		}
-
-		// now check the signature over the CRL - it has to be signed
-		// by one of our CAs (either root or intermediate)
-		for _, ca := range append(append([]Identity{}, msp.rootCerts...), msp.intermediateCerts...) {
-			// get the SKI for the CA
-			ski, err := getSubjectKeyIdentifierFromCert(ca.(*identity).cert)
-			if err != nil {
-				return fmt.Errorf("Could not get SubjectKeyIdentifier from CA cert, err %s", err)
-			}
-
-			// this is the CA that should have signed
-			// this CRL, check its signature over it
-			if bytes.Equal(aki, ski) {
-				err := ca.(*identity).cert.CheckCRLSignature(crl)
-				if err != nil {
-					return fmt.Errorf("Invalid signature on the CRL, err %s", err)
-				}
-				valid = true
-				break
-			}
-		}
-
-		// valid may not be set in case none of the CAs signed the CRL
-		if !valid {
-			return errors.New("Could not verify signature over the CRL")
-		}
+		// TODO: pre-verify the signature on the CRL and create a map
+		//       of CA certs to respective CRLs so that later upon
+		//       validation we can already look up the CRL given the
+		//       chain of the certificate to be validated
 
 		msp.CRL[i] = crl
 	}
@@ -456,6 +426,20 @@ func (msp *bccspmsp) Validate(id Identity) error {
 				// we have a CRL, check whether the serial number is revoked
 				for _, rc := range crl.TBSCertList.RevokedCertificates {
 					if rc.SerialNumber.Cmp(id.cert.SerialNumber) == 0 {
+						// We have found a CRL whose AKI matches the SKI of
+						// the CA (root or intermediate) that signed the
+						// certificate that is under validation. As a
+						// precaution, we verify that said CA is also the
+						// signer of this CRL.
+						err = validationChain[0][1].CheckCRLSignature(crl)
+						if err != nil {
+							// the CA cert that signed the certificate
+							// that is under validation did not sign the
+							// candidate CRL - skip
+							mspLogger.Warningf("Invalid signature over the identified CRL, error %s", err)
+							continue
+						}
+
 						// A CRL also includes a time of revocation so that
 						// the CA can say "this cert is to be revoked starting
 						// from this time"; however here we just assume that
