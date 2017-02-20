@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
@@ -31,7 +32,6 @@ import (
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
-	"github.com/hyperledger/fabric/msp"
 	logging "github.com/op/go-logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -223,23 +223,18 @@ func TestNewChain(t *testing.T) {
 
 	manager := NewManagerImpl(lf, consenters, mockCrypto())
 
-	generator := provisional.New(conf)
-	channelTemplate := generator.ChannelTemplate()
-
-	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
-	assert.NoError(t, err)
-
 	newChainID := "TestNewChain"
-	newChainMessage, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, newChainID, signer, channelTemplate)
+
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtxtest.CompositeTemplate()).Envelope(newChainID)
 	if err != nil {
-		t.Fatalf("Error producing config transaction: %s", err)
+		t.Fatalf("Error constructing configtx")
 	}
+	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	wrapped := wrapConfigTx(ingressTx)
 
-	status := manager.ProposeChain(newChainMessage)
-
-	if status != cb.Status_SUCCESS {
-		t.Fatalf("Error submitting chain creation request")
-	}
+	chainSupport, ok := manager.GetChain(manager.SystemChannelID())
+	assert.True(t, ok, "Could not find system channel")
+	chainSupport.Enqueue(wrapped)
 
 	it, _ := rl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 	select {
@@ -251,21 +246,13 @@ func TestNewChain(t *testing.T) {
 		if len(block.Data.Data) != 1 {
 			t.Fatalf("Should have had only one message in the orderer transaction block")
 		}
-		configEnv, err := configtx.UnmarshalConfigEnvelope(utils.UnmarshalPayloadOrPanic(
-			utils.UnmarshalEnvelopeOrPanic(utils.UnmarshalPayloadOrPanic(utils.ExtractEnvelopeOrPanic(block, 0).Payload).Data).Payload).Data)
 
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if !reflect.DeepEqual(configEnv.LastUpdate, newChainMessage) {
-			t.Errorf("Orderer config block contains wrong transaction, expected %v got %v", configEnv.LastUpdate, newChainMessage)
-		}
+		assert.Equal(t, wrapped, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0]), "Orderer config block contains wrong transaction")
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout in system chain")
 	}
 
-	chainSupport, ok := manager.GetChain(newChainID)
+	chainSupport, ok = manager.GetChain(newChainID)
 
 	if !ok {
 		t.Fatalf("Should have gotten new chain which was created")
@@ -290,14 +277,8 @@ func TestNewChain(t *testing.T) {
 		if len(block.Data.Data) != 1 {
 			t.Fatalf("Should have had only one message in the new genesis block")
 		}
-		configEnv, err := configtx.ConfigEnvelopeFromBlock(block)
-		if err != nil {
-			t.Fatal(err)
-		}
 
-		if !reflect.DeepEqual(configEnv.LastUpdate, newChainMessage) {
-			t.Errorf("Genesis block contains wrong transaction, expected %v got %v", configEnv.LastUpdate, newChainMessage)
-		}
+		assert.Equal(t, ingressTx, utils.UnmarshalEnvelopeOrPanic(block.Data.Data[0]), "Genesis block contains wrong transaction")
 	case <-time.After(time.Second):
 		t.Fatalf("Block 1 not produced after timeout in system chain")
 	}

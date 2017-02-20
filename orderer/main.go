@@ -151,12 +151,13 @@ func main() {
 	consenters["kafka"] = kafka.New(conf.Kafka.Version, conf.Kafka.Retry, conf.Kafka.TLS)
 	consenters["sbft"] = sbft.New(makeSbftConsensusConfig(conf), makeSbftStackConfig(conf))
 
-	manager := multichain.NewManagerImpl(lf, consenters, localmsp.NewSigner())
+	signer := localmsp.NewSigner()
+
+	manager := multichain.NewManagerImpl(lf, consenters, signer)
 
 	server := NewServer(
 		manager,
-		int(conf.General.QueueSize),
-		int(conf.General.MaxWindowSize),
+		signer,
 	)
 
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)

@@ -17,9 +17,10 @@ limitations under the License.
 package multichain
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/configtx"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
@@ -33,21 +34,15 @@ import (
 // Define some internal interfaces for easier mocking
 type chainCreator interface {
 	newChain(configTx *cb.Envelope)
-	systemChain() *systemChain
 }
 
 type limitedSupport interface {
-	ChainID() string
 	PolicyManager() policies.Manager
 	SharedConfig() configvaluesapi.Orderer
-	ChannelConfig() configvalueschannel.ConfigReader
-	Enqueue(env *cb.Envelope) bool
-	NewSignatureHeader() (*cb.SignatureHeader, error)
-	Sign([]byte) ([]byte, error)
 }
 
 type systemChainCommitter struct {
-	cc       chainCreator
+	filter   *systemChainFilter
 	configTx *cb.Envelope
 }
 
@@ -56,16 +51,18 @@ func (scc *systemChainCommitter) Isolated() bool {
 }
 
 func (scc *systemChainCommitter) Commit() {
-	scc.cc.newChain(scc.configTx)
+	scc.filter.cc.newChain(scc.configTx)
 }
 
 type systemChainFilter struct {
-	cc chainCreator
+	cc      chainCreator
+	support limitedSupport
 }
 
-func newSystemChainFilter(cc chainCreator) filter.Rule {
+func newSystemChainFilter(ls limitedSupport, cc chainCreator) filter.Rule {
 	return &systemChainFilter{
-		cc: cc,
+		support: ls,
+		cc:      cc,
 	}
 }
 
@@ -87,180 +84,60 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 		return filter.Reject, nil
 	}
 
-	status := scf.cc.systemChain().authorizeAndInspect(configTx)
-	if status != cb.Status_SUCCESS {
+	err = scf.authorizeAndInspect(configTx)
+	if err != nil {
+		logger.Debugf("Rejecting channel creation because: %s", err)
 		return filter.Reject, nil
 	}
 
 	return filter.Accept, &systemChainCommitter{
-		cc:       scf.cc,
+		filter:   scf,
 		configTx: configTx,
 	}
 }
 
-type systemChain struct {
-	support limitedSupport
-}
-
-func newSystemChain(support limitedSupport) *systemChain {
-	return &systemChain{
-		support: support,
-	}
-}
-
-// proposeChain takes in an envelope of type CONFIG_UPDATE, generates the new CONFIG and passes it along to the orderer system channel
-func (sc *systemChain) proposeChain(configUpdateTx *cb.Envelope) cb.Status {
-	configUpdatePayload, err := utils.UnmarshalPayload(configUpdateTx.Payload)
-	if err != nil {
-		logger.Debugf("Failing to propose channel creation because of payload unmarshaling error: %s", err)
-		return cb.Status_BAD_REQUEST
-	}
-
-	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configUpdatePayload.Data)
-	if err != nil {
-		logger.Debugf("Failing to propose channel creation because of config update envelope unmarshaling error: %s", err)
-		return cb.Status_BAD_REQUEST
-	}
-
-	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
-	if err != nil {
-		logger.Debugf("Failing to propose channel creation because of config update unmarshaling error: %s", err)
-		return cb.Status_BAD_REQUEST
-	}
-
-	if configUpdate.Header == nil {
-		logger.Debugf("Failing to propose channel creation because of config update had no header")
-		return cb.Status_BAD_REQUEST
-	}
-
-	sigHeader, err := sc.support.NewSignatureHeader()
-	if err != nil {
-		logger.Errorf("Error generating signature header: %s", err)
-		return cb.Status_INTERNAL_SERVER_ERROR
-	}
-
-	configTx := &cb.Envelope{
-		Payload: utils.MarshalOrPanic(&cb.Payload{
-			Header: &cb.Header{
-				ChannelHeader: &cb.ChannelHeader{
-					ChannelId: configUpdate.Header.ChannelId,
-					Type:      int32(cb.HeaderType_CONFIG),
-				},
-				SignatureHeader: sigHeader,
-			},
-			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
-				Config: &cb.Config{
-					Header: &cb.ChannelHeader{
-						ChannelId: configUpdate.Header.ChannelId,
-						Type:      int32(cb.HeaderType_CONFIG),
-					},
-					Channel: configUpdate.WriteSet,
-				},
-				LastUpdate: configUpdateTx,
-			}),
-		}),
-	}
-
-	configTx.Signature, err = sc.support.Sign(configTx.Payload)
-	if err != nil {
-		logger.Errorf("Error generating signature: %s", err)
-		return cb.Status_INTERNAL_SERVER_ERROR
-	}
-
-	status := sc.authorizeAndInspect(configTx)
-	if status != cb.Status_SUCCESS {
-		return status
-	}
-
-	marshaledEnv, err := proto.Marshal(configTx)
-	if err != nil {
-		logger.Debugf("Rejecting chain proposal: Error marshaling config: %s", err)
-		return cb.Status_INTERNAL_SERVER_ERROR
-	}
-
-	sysPayload := &cb.Payload{
-		Header: &cb.Header{
-			ChannelHeader: &cb.ChannelHeader{
-				ChannelId: sc.support.ChainID(),
-				Type:      int32(cb.HeaderType_ORDERER_TRANSACTION),
-			},
-			SignatureHeader: &cb.SignatureHeader{
-			// XXX Appropriately set the signing identity and nonce here
-			},
-		},
-		Data: marshaledEnv,
-	}
-
-	marshaledPayload, err := proto.Marshal(sysPayload)
-	if err != nil {
-		logger.Debugf("Rejecting chain proposal: Error marshaling payload: %s", err)
-		return cb.Status_INTERNAL_SERVER_ERROR
-	}
-
-	sysTran := &cb.Envelope{
-		Payload: marshaledPayload,
-		// XXX Add signature eventually
-	}
-
-	if !sc.support.Enqueue(sysTran) {
-		return cb.Status_INTERNAL_SERVER_ERROR
-	}
-
-	return cb.Status_SUCCESS
-}
-
-func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
-	// XXX as a temporary hack to get the protos in, we assume the write set contains the whole config
-
+func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) error {
 	if configEnvelope.LastUpdate == nil {
-		logger.Debugf("Must include a config update")
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Must include a config update")
 	}
 
 	configEnvEnvPayload, err := utils.UnmarshalPayload(configEnvelope.LastUpdate.Payload)
 	if err != nil {
-		logger.Debugf("Failing to validate chain creation because of payload unmarshaling error: %s", err)
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Failing to validate chain creation because of payload unmarshaling error: %s", err)
 	}
 
 	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configEnvEnvPayload.Data)
 	if err != nil {
-		logger.Debugf("Failing to validate chain creation because of config update envelope unmarshaling error: %s", err)
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Failing to validate chain creation because of config update envelope unmarshaling error: %s", err)
 	}
 
 	config, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
 	if err != nil {
-		logger.Debugf("Failing to validate chain creation because of unmarshaling error: %s", err)
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Failing to validate chain creation because of unmarshaling error: %s", err)
 	}
 
 	if config.WriteSet == nil {
-		logger.Debugf("Failing to validate channel creation because WriteSet is nil")
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Failing to validate channel creation because WriteSet is nil")
 	}
 
 	ordererGroup, ok := config.WriteSet.Groups[configtxorderer.GroupKey]
 	if !ok {
-		logger.Debugf("Rejecting channel creation because it is missing orderer group")
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Rejecting channel creation because it is missing orderer group")
 	}
 
 	creationConfigItem, ok := ordererGroup.Values[configtx.CreationPolicyKey]
 	if !ok {
-		logger.Debugf("Failing to validate chain creation because no creation policy included")
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Failing to validate chain creation because no creation policy included")
 	}
 
 	creationPolicy := &ab.CreationPolicy{}
 	err = proto.Unmarshal(creationConfigItem.Value, creationPolicy)
 	if err != nil {
-		logger.Debugf("Failing to validate chain creation because first config item could not unmarshal to a CreationPolicy: %s", err)
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Failing to validate chain creation because first config item could not unmarshal to a CreationPolicy: %s", err)
 	}
 
 	ok = false
-	for _, chainCreatorPolicy := range sc.support.SharedConfig().ChainCreationPolicyNames() {
+	for _, chainCreatorPolicy := range scf.support.SharedConfig().ChainCreationPolicyNames() {
 		if chainCreatorPolicy == creationPolicy.Policy {
 			ok = true
 			break
@@ -268,70 +145,62 @@ func (sc *systemChain) authorize(configEnvelope *cb.ConfigEnvelope) cb.Status {
 	}
 
 	if !ok {
-		logger.Debugf("Failed to validate chain creation because chain creation policy (%s) is not authorized for chain creation", creationPolicy.Policy)
-		return cb.Status_FORBIDDEN
+		return fmt.Errorf("Failed to validate chain creation because chain creation policy (%s) is not authorized for chain creation", creationPolicy.Policy)
 	}
 
-	policy, ok := sc.support.PolicyManager().GetPolicy(creationPolicy.Policy)
+	policy, ok := scf.support.PolicyManager().GetPolicy(creationPolicy.Policy)
 	if !ok {
-		logger.Debugf("Failed to get policy for chain creation despite it being listed as an authorized policy")
-		return cb.Status_INTERNAL_SERVER_ERROR
+		return fmt.Errorf("Failed to get policy for chain creation despite it being listed as an authorized policy")
 	}
 
 	signedData, err := configUpdateEnv.AsSignedData()
 	if err != nil {
-		logger.Debugf("Failed to validate chain creation because config envelope could not be converted to signed data: %s", err)
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Failed to validate chain creation because config envelope could not be converted to signed data: %s", err)
 	}
 
 	err = policy.Evaluate(signedData)
 	if err != nil {
-		logger.Debugf("Failed to validate chain creation, did not satisfy policy: %s", err)
-		return cb.Status_FORBIDDEN
+		return fmt.Errorf("Failed to validate chain creation, did not satisfy policy: %s", err)
 	}
 
-	return cb.Status_SUCCESS
+	return nil
 }
 
-func (sc *systemChain) inspect(configResources *configResources) cb.Status {
+func (scf *systemChainFilter) inspect(configResources *configResources) error {
 	// XXX decide what it is that we will require to be the same in the new config, and what will be allowed to be different
 	// Are all keys allowed? etc.
 
-	return cb.Status_SUCCESS
+	return nil
 }
 
-func (sc *systemChain) authorizeAndInspect(configTx *cb.Envelope) cb.Status {
+func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	payload := &cb.Payload{}
 	err := proto.Unmarshal(configTx.Payload, payload)
 	if err != nil {
-		logger.Debugf("Rejecting chain proposal: Error unmarshaling envelope payload: %s", err)
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Rejecting chain proposal: Error unmarshaling envelope payload: %s", err)
 	}
 
 	if payload.Header == nil || payload.Header.ChannelHeader == nil || payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIG) {
-		logger.Debugf("Rejecting chain proposal: Not a config transaction")
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Rejecting chain proposal: Not a config transaction")
 	}
 
 	configEnvelope := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(payload.Data, configEnvelope)
 	if err != nil {
-		logger.Debugf("Rejecting chain proposal: Error unmarshalling config envelope from payload: %s", err)
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Rejecting chain proposal: Error unmarshalling config envelope from payload: %s", err)
 	}
 
 	// Make sure that the config was signed by the appropriate authorized entities
-	status := sc.authorize(configEnvelope)
-	if status != cb.Status_SUCCESS {
-		return status
+	err = scf.authorize(configEnvelope)
+	if err != nil {
+		return err
 	}
 
 	configResources, err := newConfigResources(configEnvelope)
 	if err != nil {
-		logger.Debugf("Failed to create config manager and handlers: %s", err)
-		return cb.Status_BAD_REQUEST
+		return fmt.Errorf("Failed to create config manager and handlers: %s", err)
 	}
 
 	// Make sure that the config does not modify any of the orderer
-	return sc.inspect(configResources)
+	return scf.inspect(configResources)
 }

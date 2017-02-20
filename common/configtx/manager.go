@@ -108,6 +108,10 @@ func NewManagerImpl(configEnv *cb.ConfigEnvelope, initializer api.Initializer, c
 		return nil, fmt.Errorf("Nil config envelope Config")
 	}
 
+	if configEnv.Config.Channel == nil {
+		return nil, fmt.Errorf("Nil config envelope Config.Channel")
+	}
+
 	if configEnv.Config.Header == nil {
 		return nil, fmt.Errorf("Nil config envelop Config Header")
 	}

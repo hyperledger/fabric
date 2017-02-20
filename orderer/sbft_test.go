@@ -127,7 +127,7 @@ func TestSbftPeer(t *testing.T) {
 	signer := localmsp.NewSigner()
 	manager := multichain.NewManagerImpl(lf, consenters, signer)
 
-	server := NewServer(manager, int(conf.General.QueueSize), int(conf.General.MaxWindowSize))
+	server := NewServer(manager, signer)
 	grpcServer := grpc.NewServer()
 	grpcAddr := fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort)
 	lis, err := net.Listen("tcp", grpcAddr)

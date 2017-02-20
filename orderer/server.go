@@ -17,14 +17,25 @@ limitations under the License.
 package main
 
 import (
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/orderer/common/broadcast"
 	"github.com/hyperledger/fabric/orderer/common/deliver"
+	"github.com/hyperledger/fabric/orderer/configupdate"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
+type configUpdateSupport struct {
+	multichain.Manager
+}
+
+func (cus configUpdateSupport) GetChain(chainID string) (configupdate.Support, bool) {
+	return cus.Manager.GetChain(chainID)
+}
+
 type broadcastSupport struct {
 	multichain.Manager
+	broadcast.ConfigUpdateProcessor
 }
 
 func (bs broadcastSupport) GetChain(chainID string) (broadcast.Support, bool) {
@@ -45,12 +56,15 @@ type server struct {
 }
 
 // NewServer creates a ab.AtomicBroadcastServer based on the broadcast target and ledger Reader
-func NewServer(ml multichain.Manager, queueSize, maxWindowSize int) ab.AtomicBroadcastServer {
+func NewServer(ml multichain.Manager, signer crypto.LocalSigner) ab.AtomicBroadcastServer {
 	logger.Infof("Starting orderer")
 
 	s := &server{
-		dh: deliver.NewHandlerImpl(deliverSupport{ml}),
-		bh: broadcast.NewHandlerImpl(broadcastSupport{ml}),
+		dh: deliver.NewHandlerImpl(deliverSupport{Manager: ml}),
+		bh: broadcast.NewHandlerImpl(broadcastSupport{
+			Manager:               ml,
+			ConfigUpdateProcessor: configupdate.New(ml.SystemChannelID(), configUpdateSupport{Manager: ml}, signer),
+		}),
 	}
 	return s
 }
