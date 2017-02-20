@@ -143,3 +143,33 @@ func TestGetStateByPartialCompositeKey(t *testing.T) {
 		}
 	}
 }
+
+func TestGetStateByPartialCompositeKeyCollision(t *testing.T) {
+	stub := NewMockStub("GetStateByPartialCompositeKeyCollisionTest", nil)
+	stub.MockTransactionStart("init")
+
+	vehicle1Bytes := []byte("vehicle1")
+	compositeKeyVehicle1, _ := stub.CreateCompositeKey("Vehicle", []string{"VIN_1234"})
+	stub.PutState(compositeKeyVehicle1, vehicle1Bytes)
+
+	vehicleListing1Bytes := []byte("vehicleListing1")
+	compositeKeyVehicleListing1, _ := stub.CreateCompositeKey("VehicleListing", []string{"LIST_1234"})
+	stub.PutState(compositeKeyVehicleListing1, vehicleListing1Bytes)
+
+	stub.MockTransactionEnd("init")
+
+	// Only the single "Vehicle" object should be returned, not the "VehicleListing" object
+	rqi, _ := stub.GetStateByPartialCompositeKey("Vehicle", []string{})
+	i := 0
+	fmt.Println("Running loop")
+	for rqi.HasNext() {
+		i++
+		key, value, err := rqi.Next()
+		fmt.Println("Loop", i, "got", key, value, err)
+	}
+	// Only the single "Vehicle" object should be returned, not the "VehicleListing" object
+	if i != 1 {
+		fmt.Println("Expected 1, got", i)
+		t.FailNow()
+	}
+}
