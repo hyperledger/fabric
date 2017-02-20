@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package api
+// Note, the directory is still configvalues, but this is stuttery and config
+// is a more accurate and better name, TODO, update directory
+package config
 
 import (
 	"time"
