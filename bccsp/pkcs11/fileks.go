@@ -30,7 +30,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/utils"
 )
 
-// FileBasedKeyStore is a folder-based KeyStore.
+// fileBasedKeyStore is a folder-based KeyStore.
 // Each key is stored in a separated file whose name contains the key's SKI
 // and flags to identity the key's type. All the keys are stored in
 // a folder whose path is provided at initialization time.
