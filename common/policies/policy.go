@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	// ChannelReaders is the label for the channel's readers policy
-	ChannelReaders = "ChannelReaders"
+	// ChannelApplicationReaders is the label for the channel's application readers policy
+	ChannelApplicationReaders = "/channel/Application/Readers"
 )
 
 var logger = logging.MustGetLogger("common/policies")

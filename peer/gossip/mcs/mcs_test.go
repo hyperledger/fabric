@@ -24,6 +24,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -47,7 +48,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Init the MSP-based MessageCryptoService
-	msgCryptoService = NewMessageCryptoService()
+	msgCryptoService = New(&mockpolicies.PolicyManagerMgmt{})
 
 	os.Exit(m.Run())
 }

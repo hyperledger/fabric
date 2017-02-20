@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
@@ -247,6 +248,17 @@ func GetLedger(cid string) ledger.PeerLedger {
 	return nil
 }
 
+// GetPolicyManager returns the policy manager of the chain with chain ID. Note that this
+// call returns nil if chain cid has not been created.
+func GetPolicyManager(cid string) policies.Manager {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		return c.cs.PolicyManager()
+	}
+	return nil
+}
+
 // GetMSPMgr returns the MSP manager of the chain with chain ID.
 // Note that this call returns nil if chain cid has not been created.
 func GetMSPMgr(cid string) msp.MSPManager {
@@ -332,4 +344,42 @@ func NewPeerClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn, e
 		return comm.NewClientConnectionWithAddress(peerAddress, true, true, comm.InitTLSForPeer())
 	}
 	return comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
+}
+
+// GetPolicyManagerMgmt returns a special PolicyManager whose
+// only function is to give access to the policy manager of
+// a given channel. If the channel does not exists then,
+// it returns nil.
+// The only method implemented is therefore 'Manager'.
+func GetPolicyManagerMgmt() policies.Manager {
+	return &policyManagerMgmt{}
+}
+
+type policyManagerMgmt struct{}
+
+func (c *policyManagerMgmt) GetPolicy(id string) (policies.Policy, bool) {
+	panic("implement me")
+}
+
+// Manager returns the policy manager associated to a channel
+// specified by a path of length 1 that has the name of the channel as the only
+// coordinate available.
+// If the path has length different from 1, then the method returns (nil, false).
+// If the channel does not exists, then the method returns (nil, false)
+// Nothing is created.
+func (c *policyManagerMgmt) Manager(path []string) (policies.Manager, bool) {
+	if len(path) != 1 {
+		return nil, false
+	}
+
+	policyManager := GetPolicyManager(path[0])
+	return policyManager, policyManager != nil
+}
+
+func (c *policyManagerMgmt) BasePath() string {
+	panic("implement me")
+}
+
+func (c *policyManagerMgmt) PolicyNames() []string {
+	panic("implement me")
 }

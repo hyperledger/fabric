@@ -22,7 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
-	mockpolicy "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -43,16 +42,18 @@ var logger = logging.MustGetLogger("peer/gossip/mcs")
 //
 // A similar mechanism needs to be in place to update the local MSP, as well.
 // This implementation assumes that these mechanisms are all in place and working.
-//
-// TODO: The code currently does not validate an identity against the channel
-// read policy for the channel related gossip message.
 type mspMessageCryptoService struct {
+	manager policies.Manager
 }
 
-// NewMessageCryptoService creates a new instance of mspMessageCryptoService
-// that implements MessageCryptoService
-func NewMessageCryptoService() api.MessageCryptoService {
-	return &mspMessageCryptoService{}
+// New creates a new instance of mspMessageCryptoService
+// that implements MessageCryptoService.
+// The method takes in input a policy manager that gives
+// access to the policy manager of a given channel via the Manager method.
+// See fabric/core/peer/peer.go#NewPolicyManagerMgmt and
+// fabric/common/mocks/policies/policies.go#PolicyManagerMgmt
+func New(manager policies.Manager) api.MessageCryptoService {
+	return &mspMessageCryptoService{manager: manager}
 }
 
 // ValidateIdentity validates the identity of a remote peer.
@@ -146,12 +147,11 @@ func (s *mspMessageCryptoService) VerifyByChannel(chainID common.ChainID, peerId
 	}
 
 	// Get the policy manager for channel chainID
-	// TODO: replace this mock with the proper lookup once in place
-	// For now, we accept all
-	policyManager := mockpolicy.Manager{Policy: &mockpolicy.Policy{Err: nil}}
+	cpm, flag := s.manager.Manager([]string{string(chainID)})
+	logger.Debugf("Got policy manager for channel [%s] with flag [%s]", string(chainID), flag)
 
 	// Get channel reader policy
-	policy, flag := policyManager.GetPolicy(policies.ChannelReaders)
+	policy, flag := cpm.GetPolicy(policies.ChannelApplicationReaders)
 	logger.Debugf("Got reader policy for channel [%s] with flag [%s]", string(chainID), flag)
 
 	return policy.Evaluate(
