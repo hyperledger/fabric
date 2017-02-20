@@ -64,6 +64,9 @@ const (
 	//GETCCDATA get ChaincodeData
 	GETCCDATA = "getccdata"
 
+	//GETCHAINCODES gets the instantiated chaincodes on a channel
+	GETCHAINCODES = "getchaincodes"
+
 	//characters used in chaincodenamespace
 	specialChars = "/:[]${}"
 )
@@ -258,6 +261,55 @@ func (lccc *LifeCycleSysCC) getChaincodeDeploymentSpec(code []byte) (*pb.Chainco
 	}
 
 	return cds, nil
+}
+
+// getChaincodes returns all chaincodes instantiated on this LCCC's channel
+func (lccc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.Response {
+	// get all rows from LCCC
+	itr, err := stub.GetStateByRange("", "")
+
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer itr.Close()
+
+	// array to store metadata for all chaincode entries from LCCC
+	ccInfoArray := make([]*pb.ChaincodeInfo, 0)
+
+	for itr.HasNext() {
+		_, value, err := itr.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+
+		ccdata := &ccprovider.ChaincodeData{}
+		if err = proto.Unmarshal(value, ccdata); err != nil {
+			return shim.Error(err.Error())
+		}
+
+		ccdepspec := &pb.ChaincodeDeploymentSpec{}
+		if err = proto.Unmarshal(ccdata.DepSpec, ccdepspec); err != nil {
+			return shim.Error(err.Error())
+		}
+
+		path := ccdepspec.GetChaincodeSpec().ChaincodeId.Path
+		input := ccdepspec.GetChaincodeSpec().Input.String()
+
+		ccInfo := &pb.ChaincodeInfo{Name: ccdata.Name, Version: ccdata.Version, Path: path, Input: input, Escc: ccdata.Escc, Vscc: ccdata.Vscc}
+
+		// add this specific chaincode's metadata to the array of all chaincodes
+		ccInfoArray = append(ccInfoArray, ccInfo)
+	}
+	// add array with info about all instantiated chaincodes to the query
+	// response proto
+	cqr := &pb.ChaincodeQueryResponse{Chaincodes: ccInfoArray}
+
+	cqrbytes, err := proto.Marshal(cqr)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(cqrbytes)
 }
 
 //do access control
@@ -552,6 +604,11 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 		default:
 			return shim.Success(cd.DepSpec)
 		}
+	case GETCHAINCODES:
+		if len(args) != 1 {
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
+		}
+		return lccc.getChaincodes(stub)
 	}
 
 	return shim.Error(InvalidFunctionErr(function).Error())

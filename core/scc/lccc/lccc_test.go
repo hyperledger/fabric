@@ -80,7 +80,13 @@ func TestDeploy(t *testing.T) {
 		t.FailNow()
 	}
 
-	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	ccname := "example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	version := "0"
+	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, true)
+	if err != nil {
+		t.FailNow()
+	}
 	defer os.Remove(lccctestpath + "/example02.0")
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
@@ -89,6 +95,27 @@ func TestDeploy(t *testing.T) {
 
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), b}
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	args = [][]byte{[]byte(GETCHAINCODES)}
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	cqr := &pb.ChaincodeQueryResponse{}
+	err = proto.Unmarshal(res.Payload, cqr)
+	if err != nil {
+		t.FailNow()
+	}
+	// deployed one chaincode so query should return an array with one chaincode
+	if len(cqr.GetChaincodes()) != 1 {
+		t.FailNow()
+	}
+
+	// check that the ChaincodeInfo values match the input values
+	if cqr.GetChaincodes()[0].Name != ccname || cqr.GetChaincodes()[0].Version != version || cqr.GetChaincodes()[0].Path != path {
 		t.FailNow()
 	}
 }
@@ -329,6 +356,24 @@ func TestMultipleDeploy(t *testing.T) {
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.FailNow()
 	}
+
+	args = [][]byte{[]byte(GETCHAINCODES)}
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	cqr := &pb.ChaincodeQueryResponse{}
+	err = proto.Unmarshal(res.Payload, cqr)
+	if err != nil {
+		t.FailNow()
+	}
+
+	// deployed two chaincodes so query should return an array with two chaincodes
+	if len(cqr.GetChaincodes()) != 2 {
+		t.FailNow()
+	}
+
 }
 
 //TestRetryFailedDeploy tests re-deploying after a failure

@@ -321,6 +321,10 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 
 	current := iter.Current
 	for current != nil {
+		// if this is an open-ended query for all keys, return true
+		if iter.StartKey == "" && iter.EndKey == "" {
+			return true
+		}
 		comp1 := strings.Compare(current.Value.(string), iter.StartKey)
 		comp2 := strings.Compare(current.Value.(string), iter.EndKey)
 		if comp1 >= 0 {
@@ -356,7 +360,9 @@ func (iter *MockStateRangeQueryIterator) Next() (string, []byte, error) {
 	for iter.Current != nil {
 		comp1 := strings.Compare(iter.Current.Value.(string), iter.StartKey)
 		comp2 := strings.Compare(iter.Current.Value.(string), iter.EndKey)
-		if comp1 >= 0 && comp2 <= 0 {
+		// compare to start and end keys. or, if this is an open-ended query for
+		// all keys, it should always return the key and value
+		if (comp1 >= 0 && comp2 <= 0) || (iter.StartKey == "" && iter.EndKey == "") {
 			key := iter.Current.Value.(string)
 			value, err := iter.Stub.GetState(key)
 			iter.Current = iter.Current.Next()

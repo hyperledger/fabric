@@ -55,6 +55,32 @@ func TestMockStateRangeQueryIterator(t *testing.T) {
 	}
 }
 
+// TestMockStateRangeQueryIterator_openEnded tests running an open-ended query
+// for all keys on the MockStateRangeQueryIterator
+func TestMockStateRangeQueryIterator_openEnded(t *testing.T) {
+	stub := NewMockStub("rangeTest", nil)
+	stub.MockTransactionStart("init")
+	stub.PutState("1", []byte{61})
+	stub.PutState("0", []byte{62})
+	stub.PutState("5", []byte{65})
+	stub.PutState("3", []byte{63})
+	stub.PutState("4", []byte{64})
+	stub.PutState("6", []byte{66})
+	stub.MockTransactionEnd("init")
+
+	rqi := NewMockStateRangeQueryIterator(stub, "", "")
+
+	count := 0
+	for rqi.HasNext() {
+		rqi.Next()
+		count++
+	}
+
+	if count != rqi.Stub.Keys.Len() {
+		t.FailNow()
+	}
+}
+
 // TestSetChaincodeLoggingLevel uses the utlity function defined in chaincode.go to
 // set the chaincodeLogger's logging level
 func TestSetChaincodeLoggingLevel(t *testing.T) {
