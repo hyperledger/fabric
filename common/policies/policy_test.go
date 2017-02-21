@@ -74,6 +74,7 @@ func TestUnnestedManager(t *testing.T) {
 
 func TestNestedManager(t *testing.T) {
 	m := NewManagerImpl("test", defaultProviders())
+	absPrefix := "/test/"
 	nesting1, err := m.BeginPolicyProposals([]string{"nest1"})
 	assert.NoError(t, err)
 	assert.Len(t, nesting1, 1, "Should not have returned exactly one additional manager")
@@ -137,6 +138,10 @@ func TestNestedManager(t *testing.T) {
 	for _, policyName := range policyNames {
 		_, ok := m.GetPolicy(policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
+
+		absName := absPrefix + policyName
+		_, ok = m.GetPolicy(absName)
+		assert.True(t, ok, "Should have found absolute policy %s", absName)
 	}
 
 	for _, policyName := range n1PolicyNames {
@@ -145,6 +150,12 @@ func TestNestedManager(t *testing.T) {
 
 		_, ok = m.GetPolicy(n1.BasePath() + "/" + policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
+
+		for i, abs := range []Manager{n1, m} {
+			absName := absPrefix + n1.BasePath() + "/" + policyName
+			_, ok = abs.GetPolicy(absName)
+			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
+		}
 	}
 
 	for _, policyName := range n2aPolicyNames {
@@ -156,6 +167,12 @@ func TestNestedManager(t *testing.T) {
 
 		_, ok = m.GetPolicy(n1.BasePath() + "/" + n2a.BasePath() + "/" + policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
+
+		for i, abs := range []Manager{n2a, n1, m} {
+			absName := absPrefix + n1.BasePath() + "/" + n2a.BasePath() + "/" + policyName
+			_, ok = abs.GetPolicy(absName)
+			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
+		}
 	}
 
 	for _, policyName := range n2bPolicyNames {
@@ -167,5 +184,11 @@ func TestNestedManager(t *testing.T) {
 
 		_, ok = m.GetPolicy(n1.BasePath() + "/" + n2b.BasePath() + "/" + policyName)
 		assert.True(t, ok, "Should have found policy %s", policyName)
+
+		for i, abs := range []Manager{n2b, n1, m} {
+			absName := absPrefix + n1.BasePath() + "/" + n2b.BasePath() + "/" + policyName
+			_, ok = abs.GetPolicy(absName)
+			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
+		}
 	}
 }
