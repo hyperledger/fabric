@@ -18,7 +18,6 @@ package configtx
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -123,10 +122,6 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 }
 
 func (cm *configManager) policyForItem(item comparable) (policies.Policy, bool) {
-	if strings.HasPrefix(item.modPolicy(), PathSeparator) {
-		return cm.PolicyManager().GetPolicy(item.modPolicy()[1:])
-	}
-
 	// path is always at least of length 1
 	manager, ok := cm.PolicyManager().Manager(item.path[1:])
 	if !ok {

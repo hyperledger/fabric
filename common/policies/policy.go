@@ -18,6 +18,7 @@ package policies
 
 import (
 	"fmt"
+	"strings"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -25,8 +26,17 @@ import (
 )
 
 const (
+	// Path separator is used to separate policy names in paths
+	PathSeparator = "/"
+
+	// ChannelPrefix is used in the path of standard channel policy managers
+	ChannelPrefix = "Channel"
+
+	// ApplicationPrefix is used in the path of standard application policy paths
+	ApplicationPrefix = "Application"
+
 	// ChannelApplicationReaders is the label for the channel's application readers policy
-	ChannelApplicationReaders = "/channel/Application/Readers"
+	ChannelApplicationReaders = "/" + ChannelPrefix + "/" + ApplicationPrefix + "/Readers"
 )
 
 var logger = logging.MustGetLogger("common/policies")
@@ -45,7 +55,7 @@ type Manager interface {
 	// Manager returns the sub-policy manager for a given path and whether it exists
 	Manager(path []string) (Manager, bool)
 
-	// Basepath returns the basePath the manager was instnatiated with
+	// Basepath returns the basePath the manager was instantiated with
 	BasePath() string
 
 	// Policies returns all policy names defined in the manager
@@ -78,7 +88,9 @@ type policyConfig struct {
 // ManagerImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.ConfigManager
 type ManagerImpl struct {
+	parent        *ManagerImpl
 	basePath      string
+	fqPrefix      string
 	providers     map[int32]Provider
 	config        *policyConfig
 	pendingConfig *policyConfig
@@ -93,6 +105,7 @@ func NewManagerImpl(basePath string, providers map[int32]Provider) *ManagerImpl 
 
 	return &ManagerImpl{
 		basePath:  basePath,
+		fqPrefix:  PathSeparator + basePath + PathSeparator,
 		providers: providers,
 		config: &policyConfig{
 			policies: make(map[string]Policy),
@@ -138,15 +151,36 @@ func (pm *ManagerImpl) Manager(path []string) (Manager, bool) {
 
 // GetPolicy returns a policy and true if it was the policy requested, or false if it is the default reject policy
 func (pm *ManagerImpl) GetPolicy(id string) (Policy, bool) {
-	policy, ok := pm.config.policies[id]
-	if !ok {
-		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Returning dummy reject all policy because %s could not be found in %s", id, pm.basePath)
-		}
+	if id == "" {
+		logger.Errorf("Returning dummy reject all policy because no policy ID supplied")
 		return rejectPolicy(id), false
 	}
+	var relpath string
+
+	if strings.HasPrefix(id, PathSeparator) {
+		if pm.parent != nil {
+			return pm.parent.GetPolicy(id)
+		}
+		if !strings.HasPrefix(id, pm.fqPrefix) {
+			if logger.IsEnabledFor(logging.DEBUG) {
+				logger.Debugf("Requested policy from root manager with wrong basePath: %s, returning rejectAll", id)
+			}
+			return rejectPolicy(id), false
+		}
+		relpath = id[len(pm.fqPrefix):]
+	} else {
+		relpath = id
+	}
+
+	policy, ok := pm.config.policies[relpath]
+	if !ok {
+		if logger.IsEnabledFor(logging.DEBUG) {
+			logger.Debugf("Returning dummy reject all policy because %s could not be found in /%s/%s", id, pm.basePath, relpath)
+		}
+		return rejectPolicy(relpath), false
+	}
 	if logger.IsEnabledFor(logging.DEBUG) {
-		logger.Debugf("Returning policy %s for evaluation", id)
+		logger.Debugf("Returning policy %s for evaluation", relpath)
 	}
 	return policy, true
 }
@@ -165,6 +199,7 @@ func (pm *ManagerImpl) BeginPolicyProposals(groups []string) ([]Proposer, error)
 	managers := make([]Proposer, len(groups))
 	for i, group := range groups {
 		newManager := NewManagerImpl(group, pm.providers)
+		newManager.parent = pm
 		pm.pendingConfig.managers[group] = newManager
 		managers[i] = newManager
 	}
@@ -184,7 +219,7 @@ func (pm *ManagerImpl) CommitProposals() {
 
 	for managerPath, m := range pm.pendingConfig.managers {
 		for _, policyName := range m.PolicyNames() {
-			fqKey := managerPath + "/" + policyName
+			fqKey := managerPath + PathSeparator + policyName
 			pm.pendingConfig.policies[fqKey], _ = m.GetPolicy(policyName)
 			logger.Debugf("In commit adding relative sub-policy %s to %s", fqKey, pm.basePath)
 		}
@@ -197,6 +232,20 @@ func (pm *ManagerImpl) CommitProposals() {
 
 	pm.config = pm.pendingConfig
 	pm.pendingConfig = nil
+
+	if pm.parent == nil && pm.basePath == ChannelPrefix {
+		if _, ok := pm.config.managers[ApplicationPrefix]; ok {
+			// Check for default application policies if the application component is defined
+			for _, policyName := range []string{ChannelApplicationReaders} {
+				_, ok := pm.GetPolicy(policyName)
+				if !ok {
+					logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
+				} else {
+					logger.Debugf("As expected, current configuration has policy '%s'", policyName)
+				}
+			}
+		}
+	}
 }
 
 // ProposePolicy takes key, path, and ConfigPolicy and registers it in the proposed PolicyManager, or errors
