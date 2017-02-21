@@ -102,12 +102,6 @@ func main() {
 	// Init the MSP
 	var mspMgrConfigDir = viper.GetString("peer.mspConfigPath")
 	var mspID = viper.GetString("peer.localMspId")
-
-	if mspID != "DEFAULT" { // FIXME: remove this line as soon as GOSSIP GETS the MSP ID from the genesis block
-		logger.Warning("Setting mspID to DEFAULT as temporary workaround") // FIXME: remove this line as soon as GOSSIP GETS the MSP ID from the genesis block
-		mspID = "DEFAULT"                                                  // FIXME: remove this line as soon as GOSSIP GETS the MSP ID from the genesis block
-	} // FIXME: remove this line as soon as GOSSIP GETS the MSP ID from the genesis block
-
 	err = common.InitCrypto(mspMgrConfigDir, mspID)
 	if err != nil { // Handle errors reading the config file
 		panic(err.Error())
