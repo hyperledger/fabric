@@ -21,9 +21,8 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-// TemplateImplicitMetaPolicy creates a policy at the specified path with the given policyName
-// It utilizes the policyName for the subPolicyName as well, as this is the standard usage pattern
-func TemplateImplicitMetaPolicy(path []string, policyName string, rule cb.ImplicitMetaPolicy_Rule) *cb.ConfigGroup {
+// TemplateImplicitMetaPolicy creates a policy at the specified path with the given policyName and subPolicyName
+func TemplateImplicitMetaPolicyWithSubPolicy(path []string, policyName string, subPolicyName string, rule cb.ImplicitMetaPolicy_Rule) *cb.ConfigGroup {
 	root := cb.NewConfigGroup()
 	group := root
 	for _, element := range path {
@@ -36,11 +35,17 @@ func TemplateImplicitMetaPolicy(path []string, policyName string, rule cb.Implic
 			Type: int32(cb.Policy_IMPLICIT_META),
 			Policy: utils.MarshalOrPanic(&cb.ImplicitMetaPolicy{
 				Rule:      rule,
-				SubPolicy: policyName,
+				SubPolicy: subPolicyName,
 			}),
 		},
 	}
 	return root
+}
+
+// TemplateImplicitMetaPolicy creates a policy at the specified path with the given policyName
+// It utilizes the policyName for the subPolicyName as well, as this is the standard usage pattern
+func TemplateImplicitMetaPolicy(path []string, policyName string, rule cb.ImplicitMetaPolicy_Rule) *cb.ConfigGroup {
+	return TemplateImplicitMetaPolicyWithSubPolicy(path, policyName, policyName, rule)
 }
 
 // TempateImplicitMetaAnyPolicy returns TemplateImplicitMetaPolicy with cb.ImplicitMetaPolicy_ANY as the rule
