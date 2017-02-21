@@ -90,8 +90,6 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 		return nil, nil, nil, err
 	}
 
-	// TODO: ensure that creator can transact with us (some ACLs?) which set of APIs is supposed to give us this info?
-
 	// Verify that the transaction ID has been computed properly.
 	// This check is needed to ensure that the lookup into the ledger
 	// for the same TxID catches duplicates.

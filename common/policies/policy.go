@@ -37,6 +37,9 @@ const (
 
 	// ChannelApplicationReaders is the label for the channel's application readers policy
 	ChannelApplicationReaders = "/" + ChannelPrefix + "/" + ApplicationPrefix + "/Readers"
+
+	// ChannelApplicationWriters is the label for the channel's application writers policy
+	ChannelApplicationWriters = "/" + ChannelPrefix + "/" + ApplicationPrefix + "/Writers"
 )
 
 var logger = logging.MustGetLogger("common/policies")
@@ -248,7 +251,7 @@ func (pm *ManagerImpl) CommitProposals() {
 	if pm.parent == nil && pm.basePath == ChannelPrefix {
 		if _, ok := pm.config.managers[ApplicationPrefix]; ok {
 			// Check for default application policies if the application component is defined
-			for _, policyName := range []string{ChannelApplicationReaders} {
+			for _, policyName := range []string{ChannelApplicationReaders, ChannelApplicationWriters} {
 				_, ok := pm.GetPolicy(policyName)
 				if !ok {
 					logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)

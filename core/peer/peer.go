@@ -25,6 +25,8 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
+	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
+	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/committer"
@@ -32,7 +34,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/gossip/service"
-	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -236,9 +237,22 @@ func MockCreateChain(cid string) error {
 		return err
 	}
 
+	i := mockconfigtx.Initializer{
+		Resources: mockconfigtx.Resources{
+			PolicyManagerVal: &mockpolicies.Manager{
+				Policy: &mockpolicies.Policy{},
+			},
+		},
+	}
+
 	chains.Lock()
 	defer chains.Unlock()
-	chains.list[cid] = &chain{cs: &chainSupport{ledger: ledger}}
+	chains.list[cid] = &chain{
+		cs: &chainSupport{
+			ledger:  ledger,
+			Manager: &mockconfigtx.Manager{Initializer: i},
+		},
+	}
 
 	return nil
 }
@@ -261,28 +275,6 @@ func GetPolicyManager(cid string) policies.Manager {
 	defer chains.RUnlock()
 	if c, ok := chains.list[cid]; ok {
 		return c.cs.PolicyManager()
-	}
-	return nil
-}
-
-// GetMSPMgr returns the MSP manager of the chain with chain ID.
-// Note that this call returns nil if chain cid has not been created.
-func GetMSPMgr(cid string) msp.MSPManager {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
-		return c.cs.MSPManager()
-	}
-	return nil
-}
-
-// GetCommitter returns the committer of the chain with chain ID. Note that this
-// call returns nil if chain cid has not been created.
-func GetCommitter(cid string) committer.Committer {
-	chains.RLock()
-	defer chains.RUnlock()
-	if c, ok := chains.list[cid]; ok {
-		return c.committer
 	}
 	return nil
 }

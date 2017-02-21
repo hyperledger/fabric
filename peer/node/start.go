@@ -27,8 +27,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/configvalues/channel/application"
+	"github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/common/genesis"
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -161,9 +165,19 @@ func serve(args []string) error {
 	if peerDefaultChain {
 		chainID := util.GetTestChainID()
 
+		// add readers, writers and admin policies for the default chain
+		policyTemplate := configtx.NewSimpleTemplate(
+			policies.TemplateImplicitMetaAnyPolicy([]string{application.GroupKey}, msp.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{application.GroupKey}, msp.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{application.GroupKey}, msp.AdminsPolicyKey),
+		)
+
 		// We create a genesis block for the test
 		// chain with its MSP so that we can transact
-		block, err := genesis.NewFactoryImpl(test.ApplicationOrgTemplate()).Block(chainID)
+		block, err := genesis.NewFactoryImpl(
+			configtx.NewCompositeTemplate(
+				test.ApplicationOrgTemplate(),
+				policyTemplate)).Block(chainID)
 		if nil != err {
 			panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
 		}

@@ -25,6 +25,7 @@ import (
 
 	"errors"
 
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -54,8 +55,29 @@ func NewEndorserServer() pb.EndorserServer {
 	return e
 }
 
-//TODO - what would Endorser's ACL be ?
-func (*Endorser) checkACL(signedProp *pb.SignedProposal, prop *pb.Proposal) error {
+func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader) error {
+	// get policy manager to check ACLs
+	pm := peer.GetPolicyManager(chdr.ChannelId)
+	if pm == nil {
+		return fmt.Errorf("No policy manager available for chain %s", chdr.ChannelId)
+	}
+
+	// access the writers policy
+	policy, _ := pm.GetPolicy(policies.ChannelApplicationWriters)
+
+	// evaluate that this proposal complies with the writers
+	err := policy.Evaluate(
+		[]*common.SignedData{{
+			Data:      signedProp.ProposalBytes,
+			Identity:  shdr.Creator,
+			Signature: signedProp.Signature,
+		}})
+	if err != nil {
+		return fmt.Errorf("The proposal does not comply with the channel writers for channel %s, error %s",
+			chdr.ChannelId,
+			err)
+	}
+
 	return nil
 }
 
@@ -146,12 +168,8 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	//---1. check ACL
-	if err = e.checkACL(signedProp, prop); err != nil {
-		return nil, nil, nil, nil, err
-	}
 
-	//---2. check ESCC and VSCC for the chaincode
+	//---1. check ESCC and VSCC for the chaincode
 	if err = e.checkEsccAndVscc(prop); err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -290,13 +308,6 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	chainID := chdr.ChannelId
 
-	//chainless MSPs have "" chain name
-	ischainless := false
-
-	if chainID == "" {
-		ischainless = true
-	}
-
 	// Check for uniqueness of prop.TxID with ledger
 	// Notice that ValidateProposalMessage has already verified
 	// that TxID is computed propertly
@@ -308,13 +319,19 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	//chainless proposals do not/cannot affect ledger and cannot be submitted as transactions
 	//ignore uniqueness checks
-	if !ischainless {
+	if chainID != "" {
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
 			return nil, errors.New(fmt.Sprintf("Failure while looking up the ledger %s", chainID))
 		}
 		if _, err := lgr.GetTransactionByID(txid); err == nil {
 			return nil, fmt.Errorf("Duplicate transaction found [%s]. Creator [%x]. [%s]", txid, shdr.Creator, err)
+		}
+
+		// check ACL - we verify that this proposal
+		// complies with the "writers" policy of the chain
+		if err = e.checkACL(signedProp, chdr, shdr); err != nil {
+			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 		}
 	}
 
@@ -355,7 +372,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 
 	//TODO till we implement global ESCC, CSCC for system chaincodes
 	//chainless proposals (such as CSCC) don't have to be endorsed
-	if ischainless {
+	if chainID == "" {
 		pResp = &pb.ProposalResponse{Response: res}
 	} else {
 		pResp, err = e.endorseProposal(ctx, chainID, txid, signedProp, prop, res, simulationResult, ccevent, hdrExt.PayloadVisibility, hdrExt.ChaincodeId, txsim, cd)
