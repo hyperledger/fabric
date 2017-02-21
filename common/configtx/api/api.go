@@ -72,6 +72,9 @@ type Transactional interface {
 	// RollbackConfig called when a config proposal is abandoned
 	RollbackProposals()
 
+	// PreCommit verifies that the transaction can be committed successfully
+	PreCommit() error
+
 	// CommitConfig called when a config proposal is committed
 	CommitProposals()
 }

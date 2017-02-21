@@ -31,6 +31,16 @@ type configResult struct {
 	subResults    []*configResult
 }
 
+func (cr *configResult) preCommit() error {
+	for _, subResult := range cr.subResults {
+		err := subResult.preCommit()
+		if err != nil {
+			return err
+		}
+	}
+	return cr.handler.PreCommit()
+}
+
 func (cr *configResult) commit() {
 	for _, subResult := range cr.subResults {
 		subResult.commit()
@@ -101,6 +111,12 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 			result.rollback()
 			return nil, err
 		}
+	}
+
+	err = result.preCommit()
+	if err != nil {
+		result.rollback()
+		return nil, err
 	}
 
 	return result, nil

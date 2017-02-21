@@ -158,6 +158,9 @@ func (c *Config) CommitProposals() {
 	c.pending = nil
 }
 
+// PreCommit returns nil
+func (c *Config) PreCommit() error { return nil }
+
 // ProposeValue is used to add new config to the config proposal
 func (c *Config) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	switch key {

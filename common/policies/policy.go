@@ -54,13 +54,20 @@ type Manager interface {
 
 // Proposer is the interface used by the configtx manager for policy management
 type Proposer interface {
+	// BeginPolicyProposals starts a policy update transaction
 	BeginPolicyProposals(groups []string) ([]Proposer, error)
 
+	// ProposePolicy createss a pending policy update from a ConfigPolicy
 	ProposePolicy(name string, policy *cb.ConfigPolicy) error
 
+	// RollbackProposals discards the pending policy updates
 	RollbackProposals()
 
+	// CommitProposals commits the pending policy updates
 	CommitProposals()
+
+	// PreCommit tests if a commit will apply
+	PreCommit() error
 }
 
 // Provider provides the backing implementation of a policy
@@ -174,6 +181,11 @@ func (pm *ManagerImpl) BeginPolicyProposals(groups []string) ([]Proposer, error)
 // RollbackProposals is used to abandon a new config proposal
 func (pm *ManagerImpl) RollbackProposals() {
 	pm.pendingConfig = nil
+}
+
+// PreCommit is currently a no-op for the policy manager and always returns nil
+func (pm *ManagerImpl) PreCommit() error {
+	return nil
 }
 
 // CommitProposals is used to commit a new config proposal
