@@ -98,10 +98,10 @@ func makeConfigMessage(chainID string) *cb.Envelope {
 	payload := &cb.Payload{
 		Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{}),
 		Header: &cb.Header{
-			ChannelHeader: &cb.ChannelHeader{
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 				ChannelId: chainID,
 				Type:      int32(cb.HeaderType_CONFIG_UPDATE),
-			},
+			}),
 		},
 	}
 	return &cb.Envelope{
@@ -113,9 +113,9 @@ func makeMessage(chainID string, data []byte) *cb.Envelope {
 	payload := &cb.Payload{
 		Data: data,
 		Header: &cb.Header{
-			ChannelHeader: &cb.ChannelHeader{
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 				ChannelId: chainID,
-			},
+			}),
 		},
 	}
 	return &cb.Envelope{
@@ -221,7 +221,7 @@ func TestBadChannelId(t *testing.T) {
 
 func TestGoodConfigUpdate(t *testing.T) {
 	mm, _ := getMockSupportManager()
-	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: &cb.ChannelHeader{ChannelId: systemChain}}})}
+	mm.ProcessVal = &cb.Envelope{Payload: utils.MarshalOrPanic(&cb.Payload{Header: &cb.Header{ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: systemChain})}})}
 	bh := NewHandlerImpl(mm)
 	m := newMockB()
 	defer close(m.recvChan)

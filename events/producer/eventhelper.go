@@ -49,7 +49,12 @@ func SendProducerBlockEvent(block *common.Block) error {
 					return fmt.Errorf("Could not extract payload from envelope, err %s", err)
 				}
 
-				if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+				chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+				if err != nil {
+					return err
+				}
+
+				if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 					tx, err := utils.GetTransaction(payload.Data)
 					if err != nil {
 						return fmt.Errorf("Error unmarshalling transaction payload for block event: %s", err)

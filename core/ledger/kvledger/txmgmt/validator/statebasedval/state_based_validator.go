@@ -106,8 +106,13 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 			return nil, err
 		}
 
+		chdr, err := putils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		if err != nil {
+			return nil, err
+		}
+
 		valid := false
-		if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 			txRWSet, err := v.validateEndorserTX(envBytes, doMVCCValidation, updates)
 			if err != nil {
 				return nil, err
@@ -118,13 +123,13 @@ func (v *Validator) ValidateAndPrepareBatch(block *common.Block, doMVCCValidatio
 				addWriteSetToBatch(txRWSet, committingTxHeight, updates)
 				valid = true
 			}
-		} else if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_CONFIG {
+		} else if common.HeaderType(chdr.Type) == common.HeaderType_CONFIG {
 			valid, err = v.validateConfigTX(env)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			logger.Errorf("Skipping transaction %d that's not an endorsement or configuration %d", txIndex, payload.Header.ChannelHeader.Type)
+			logger.Errorf("Skipping transaction %d that's not an endorsement or configuration %d", txIndex, chdr.Type)
 			valid = false
 		}
 

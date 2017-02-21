@@ -359,7 +359,9 @@ func Broadcast(p *Peer, startingPort int, bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	h := &cb.Header{ChannelHeader: &cb.ChannelHeader{ChannelId: provisional.TestChainID}, SignatureHeader: &cb.SignatureHeader{}}
+	h := &cb.Header{
+		ChannelHeader:   utils.MarshalOrPanic(&cb.ChannelHeader{ChannelId: provisional.TestChainID}),
+		SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{})}
 	pl := &cb.Payload{Data: bytes, Header: h}
 	mpl, err := proto.Marshal(pl)
 	panicOnError(err)
@@ -391,10 +393,10 @@ func Receive(p *Peer, startingPort int) (*Receiver, error) {
 	dstream.Send(&cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChannelHeader: &cb.ChannelHeader{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 					ChannelId: provisional.TestChainID,
-				},
-				SignatureHeader: &cb.SignatureHeader{},
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
 			},
 
 			Data: utils.MarshalOrPanic(&ab.SeekInfo{

@@ -278,7 +278,17 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
-	chainID := hdr.ChannelHeader.ChannelId
+	chdr, err := putils.UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	}
+
+	shdr, err := putils.GetSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
+	}
+
+	chainID := chdr.ChannelId
 
 	//chainless MSPs have "" chain name
 	ischainless := false
@@ -290,7 +300,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// Check for uniqueness of prop.TxID with ledger
 	// Notice that ValidateProposalMessage has already verified
 	// that TxID is computed propertly
-	txid := hdr.ChannelHeader.TxId
+	txid := chdr.TxId
 	if txid == "" {
 		err = errors.New("Invalid txID. It must be different from the empty string.")
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
@@ -304,7 +314,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 			return nil, errors.New(fmt.Sprintf("Failure while looking up the ledger %s", chainID))
 		}
 		if _, err := lgr.GetTransactionByID(txid); err == nil {
-			return nil, fmt.Errorf("Duplicate transaction found [%s]. Creator [%x]. [%s]", txid, hdr.SignatureHeader.Creator, err)
+			return nil, fmt.Errorf("Duplicate transaction found [%s]. Creator [%x]. [%s]", txid, shdr.Creator, err)
 		}
 	}
 

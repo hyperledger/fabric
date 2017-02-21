@@ -144,7 +144,13 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 				currBlockNumber = block.Header.Number - 1
 				continue
 			}
-			if tx.Header.ChannelHeader.Type == int32(common.HeaderType_CONFIG) {
+			chdr, err := utils.UnmarshalChannelHeader(tx.Header.ChannelHeader)
+			if err != nil {
+				peerLogger.Warning("Failed to get ChannelHeader from Block %d, error %s.", block.Header.Number, err)
+				currBlockNumber = block.Header.Number - 1
+				continue
+			}
+			if chdr.Type == int32(common.HeaderType_CONFIG) {
 				return block, nil
 			}
 		}

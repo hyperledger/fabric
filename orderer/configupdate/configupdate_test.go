@@ -64,9 +64,9 @@ func TestChannelID(t *testing.T) {
 
 	result, err := channelID(makeEnvelope(&cb.Payload{
 		Header: &cb.Header{
-			ChannelHeader: &cb.ChannelHeader{
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
 				ChannelId: testChannelID,
-			},
+			}),
 		},
 	}))
 	assert.NoError(t, err, "Channel ID was present")
@@ -74,7 +74,7 @@ func TestChannelID(t *testing.T) {
 
 	_, err = channelID(makeEnvelope(&cb.Payload{
 		Header: &cb.Header{
-			ChannelHeader: &cb.ChannelHeader{},
+			ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{}),
 		},
 	}))
 	assert.Error(t, err, "Channel ID was empty")
@@ -107,7 +107,7 @@ func testConfigUpdate() *cb.Envelope {
 	return &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
-				ChannelHeader: ch,
+				ChannelHeader: utils.MarshalOrPanic(ch),
 			},
 			Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 				ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
@@ -149,5 +149,9 @@ func TestNewChannel(t *testing.T) {
 	assert.NoError(t, err, "Invalid envelope produced")
 
 	assert.Equal(t, systemChannelID, resultChan, "Wrapper TX should be bound for system channel")
-	assert.Equal(t, int32(cb.HeaderType_ORDERER_TRANSACTION), utils.UnmarshalPayloadOrPanic(env.Payload).Header.ChannelHeader.Type, "Wrong wrapper tx type")
+
+	chdr, err := utils.UnmarshalChannelHeader(utils.UnmarshalPayloadOrPanic(env.Payload).Header.ChannelHeader)
+	assert.NoError(t, err, "UnmarshalChannelHeader error")
+
+	assert.Equal(t, int32(cb.HeaderType_ORDERER_TRANSACTION), chdr.Type, "Wrong wrapper tx type")
 }

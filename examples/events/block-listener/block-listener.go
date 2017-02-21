@@ -99,7 +99,12 @@ func getChainCodeEvents(tdata []byte) (*pb.ChaincodeEvent, error) {
 			return nil, fmt.Errorf("Could not extract payload from envelope, err %s", err)
 		}
 
-		if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		if err != nil {
+			return nil, fmt.Errorf("Could not extract channel header from envelope, err %s", err)
+		}
+
+		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 			tx, err := utils.GetTransaction(payload.Data)
 			if err != nil {
 				return nil, fmt.Errorf("Error unmarshalling transaction payload for block event: %s", err)
@@ -154,11 +159,17 @@ func main() {
 				if txsFltr.IsSet(uint(i)) {
 					tx, _ := getTxPayload(r)
 					if tx != nil {
+						chdr, err := utils.UnmarshalChannelHeader(tx.Header.ChannelHeader)
+						if err != nil {
+							fmt.Printf("Error extracting channel header\n")
+							return
+						}
+
 						fmt.Printf("\n")
 						fmt.Printf("\n")
 						fmt.Printf("Received invalid transaction\n")
 						fmt.Printf("--------------\n")
-						fmt.Printf("Transaction invalid: TxID: %s\n", tx.Header.ChannelHeader.TxId)
+						fmt.Printf("Transaction invalid: TxID: %s\n", chdr.TxId)
 					}
 				} else {
 					fmt.Printf("Transaction:\n\t[%v]\n", r)

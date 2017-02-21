@@ -17,9 +17,8 @@ limitations under the License.
 package utils
 
 import (
-	"fmt"
-
 	"errors"
+	"fmt"
 
 	"encoding/binary"
 
@@ -74,13 +73,20 @@ func GetChaincodeProposalContext(prop *peer.Proposal) ([]byte, map[string][]byte
 	if hdr == nil {
 		return nil, nil, fmt.Errorf("Unmarshalled header is nil")
 	}
-	if common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
-		common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_CONFIG {
-		return nil, nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIG. Was: %d", hdr.ChannelHeader.Type)
+
+	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not extract the channel header from the proposal: %s", err)
 	}
 
-	if hdr.SignatureHeader == nil {
-		return nil, nil, errors.New("Invalid signature header. It must be different from nil.")
+	if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
+		common.HeaderType(chdr.Type) != common.HeaderType_CONFIG {
+		return nil, nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIG. Was: %d", chdr.Type)
+	}
+
+	shdr, err := GetSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not extract the signature header from the proposal: %s", err)
 	}
 
 	ccPropPayload := &peer.ChaincodeProposalPayload{}
@@ -89,7 +95,7 @@ func GetChaincodeProposalContext(prop *peer.Proposal) ([]byte, map[string][]byte
 		return nil, nil, err
 	}
 
-	return hdr.SignatureHeader.Creator, ccPropPayload.TransientMap, nil
+	return shdr.Creator, ccPropPayload.TransientMap, nil
 }
 
 // GetHeader Get Header from bytes
@@ -110,9 +116,19 @@ func GetNonce(prop *peer.Proposal) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Could not extract the header from the proposal: %s", err)
 	}
-	if common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
-		common.HeaderType(hdr.ChannelHeader.Type) != common.HeaderType_CONFIG {
-		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIG. Was: %d", hdr.ChannelHeader.Type)
+
+	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, fmt.Errorf("Could not extract the channel header from the proposal: %s", err)
+	}
+	shdr, err := GetSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		return nil, fmt.Errorf("Could not extract the signature header from the proposal: %s", err)
+	}
+
+	if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION &&
+		common.HeaderType(chdr.Type) != common.HeaderType_CONFIG {
+		return nil, fmt.Errorf("Invalid proposal type expected ENDORSER_TRANSACTION or CONFIG. Was: %d", chdr.Type)
 	}
 
 	if hdr.SignatureHeader == nil {
@@ -125,13 +141,18 @@ func GetNonce(prop *peer.Proposal) ([]byte, error) {
 		return nil, err
 	}
 
-	return hdr.SignatureHeader.Nonce, nil
+	return shdr.Nonce, nil
 }
 
 // GetChaincodeHeaderExtension get chaincode header extension given header
 func GetChaincodeHeaderExtension(hdr *common.Header) (*peer.ChaincodeHeaderExtension, error) {
+	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
+	if err != nil {
+		return nil, err
+	}
+
 	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
-	err := proto.Unmarshal(hdr.ChannelHeader.Extension, chaincodeHdrExt)
+	err = proto.Unmarshal(chdr.Extension, chaincodeHdrExt)
 	if err != nil {
 		return nil, err
 	}
@@ -340,13 +361,13 @@ func CreateChaincodeProposalWithTxIDNonceAndTransient(txid string, typ common.He
 	// get a more appropriate mechanism to handle it in.
 	var epoch uint64 = 0
 
-	hdr := &common.Header{ChannelHeader: &common.ChannelHeader{
+	hdr := &common.Header{ChannelHeader: MarshalOrPanic(&common.ChannelHeader{
 		Type:      int32(typ),
 		TxId:      txid,
 		ChannelId: chainID,
 		Extension: ccHdrExtBytes,
-		Epoch:     epoch},
-		SignatureHeader: &common.SignatureHeader{Nonce: nonce, Creator: creator}}
+		Epoch:     epoch}),
+		SignatureHeader: MarshalOrPanic(&common.SignatureHeader{Nonce: nonce, Creator: creator})}
 
 	hdrBytes, err := proto.Marshal(hdr)
 	if err != nil {
@@ -599,7 +620,16 @@ func ComputeProposalBinding(proposal *peer.Proposal) ([]byte, error) {
 		return nil, err
 	}
 
-	return computeProposalBindingInternal(h.SignatureHeader.Nonce, h.SignatureHeader.Creator, h.ChannelHeader.Epoch)
+	chdr, err := UnmarshalChannelHeader(h.ChannelHeader)
+	if err != nil {
+		return nil, err
+	}
+	shdr, err := GetSignatureHeader(h.SignatureHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	return computeProposalBindingInternal(shdr.Nonce, shdr.Creator, chdr.Epoch)
 }
 
 func computeProposalBindingInternal(nonce, creator []byte, epoch uint64) ([]byte, error) {

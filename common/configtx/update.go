@@ -154,11 +154,16 @@ func envelopeToConfigUpdate(configtx *cb.Envelope) (*cb.ConfigUpdateEnvelope, er
 		return nil, err
 	}
 
-	if payload.Header == nil || payload.Header.ChannelHeader == nil {
-		return nil, fmt.Errorf("Envelope must have ChannelHeader")
+	if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
+		return nil, fmt.Errorf("Envelope must have a Header")
 	}
 
-	if payload.Header == nil || payload.Header.ChannelHeader.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid ChannelHeader")
+	}
+
+	if chdr.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
 		return nil, fmt.Errorf("Not a tx of type CONFIG_UPDATE")
 	}
 

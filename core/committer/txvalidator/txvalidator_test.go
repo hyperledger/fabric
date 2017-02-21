@@ -75,11 +75,11 @@ func TestNewTxValidator_DuplicateTransactions(t *testing.T) {
 	// Create simeple endorsement transaction
 	payload := &common.Payload{
 		Header: &common.Header{
-			ChannelHeader: &common.ChannelHeader{
+			ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
 				TxId:      "simple_txID", // Fake txID
 				Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
 				ChannelId: util2.GetTestChainID(),
-			},
+			}),
 		},
 		Data: []byte("test"),
 	}

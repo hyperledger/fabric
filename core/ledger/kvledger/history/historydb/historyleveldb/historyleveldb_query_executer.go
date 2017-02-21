@@ -122,7 +122,12 @@ func getTxIDandKeyWriteValueFromTran(
 		return "", nil, err
 	}
 
-	txID := payload.Header.ChannelHeader.TxId
+	chdr, err := putils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return "", nil, err
+	}
+
+	txID := chdr.TxId
 
 	txRWSet := &rwset.TxReadWriteSet{}
 

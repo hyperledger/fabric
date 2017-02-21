@@ -77,13 +77,19 @@ func (env *Envelope) AsSignedData() ([]*SignedData, error) {
 		return nil, err
 	}
 
-	if payload.Header == nil || payload.Header.SignatureHeader == nil {
-		return nil, fmt.Errorf("Missing Header or SignatureHeader")
+	if payload.Header == nil /* || payload.Header.SignatureHeader == nil */ {
+		return nil, fmt.Errorf("Missing Header")
+	}
+
+	shdr := &SignatureHeader{}
+	err = proto.Unmarshal(payload.Header.SignatureHeader, shdr)
+	if err != nil {
+		return nil, fmt.Errorf("GetSignatureHeaderFromBytes failed, err %s", err)
 	}
 
 	return []*SignedData{&SignedData{
 		Data:      env.Payload,
-		Identity:  payload.Header.SignatureHeader.Creator,
+		Identity:  shdr.Creator,
 		Signature: env.Signature,
 	}}, nil
 }

@@ -106,7 +106,12 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 			return err
 		}
 
-		if common.HeaderType(payload.Header.ChannelHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		chdr, err := putils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+		if err != nil {
+			return err
+		}
+
+		if common.HeaderType(chdr.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 
 			// extract actions from the envelope message
 			respPayload, err := putils.GetActionFromEnvelope(envBytes)

@@ -92,7 +92,7 @@ func createTestBlock(t *testing.T) *common.Block {
 			Nanos:   0,
 		},
 		ChannelId: "test"}
-	hdr := &common.Header{ChannelHeader: chdr}
+	hdr := &common.Header{ChannelHeader: utils.MarshalOrPanic(chdr)}
 	payload := &common.Payload{Header: hdr}
 	cea := &ehpb.ChaincodeEndorsedAction{}
 	ccaPayload := &ehpb.ChaincodeActionPayload{Action: cea}
