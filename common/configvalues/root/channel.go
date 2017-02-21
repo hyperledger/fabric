@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	api "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/configvalues/channel/application"
-	"github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -99,7 +98,7 @@ func (cg *ChannelGroup) Allocate() Values {
 }
 
 // OrdererConfig returns the orderer config associated with this channel
-func (cg *ChannelGroup) OrdererConfig() *orderer.ManagerImpl {
+func (cg *ChannelGroup) OrdererConfig() *OrdererGroup {
 	return cg.ChannelConfig.ordererConfig
 }
 
@@ -113,8 +112,8 @@ func (cg *ChannelGroup) NewGroup(group string) (api.ValueProposer, error) {
 	switch group {
 	case application.GroupKey:
 		return application.NewSharedConfigImpl(cg.mspConfigHandler), nil
-	case orderer.GroupKey:
-		return orderer.NewManagerImpl(cg.mspConfigHandler), nil
+	case OrdererGroupKey:
+		return NewOrdererGroup(cg.mspConfigHandler), nil
 	default:
 		return nil, fmt.Errorf("Disallowed channel group: %s", group)
 	}
@@ -128,7 +127,7 @@ type ChannelConfig struct {
 	hashingAlgorithm func(input []byte) []byte
 
 	appConfig     *application.SharedConfigImpl
-	ordererConfig *orderer.ManagerImpl
+	ordererConfig *OrdererGroup
 }
 
 // NewChannelConfig creates a new ChannelConfig
@@ -181,8 +180,8 @@ func (cc *ChannelConfig) Validate(groups map[string]api.ValueProposer) error {
 			if !ok {
 				return fmt.Errorf("Application group was not Application config")
 			}
-		case orderer.GroupKey:
-			cc.ordererConfig, ok = value.(*orderer.ManagerImpl)
+		case OrdererGroupKey:
+			cc.ordererConfig, ok = value.(*OrdererGroup)
 			if !ok {
 				return fmt.Errorf("Orderer group was not Orderer config")
 			}

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package orderer
+package config
 
 import (
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -22,10 +22,10 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-func configGroup(key string, value []byte) *cb.ConfigGroup {
+func ordererConfigGroup(key string, value []byte) *cb.ConfigGroup {
 	result := cb.NewConfigGroup()
-	result.Groups[GroupKey] = cb.NewConfigGroup()
-	result.Groups[GroupKey].Values[key] = &cb.ConfigValue{
+	result.Groups[OrdererGroupKey] = cb.NewConfigGroup()
+	result.Groups[OrdererGroupKey].Values[key] = &cb.ConfigValue{
 		Value: value,
 	}
 	return result
@@ -33,25 +33,25 @@ func configGroup(key string, value []byte) *cb.ConfigGroup {
 
 // TemplateConsensusType creates a headerless config item representing the consensus type
 func TemplateConsensusType(typeValue string) *cb.ConfigGroup {
-	return configGroup(ConsensusTypeKey, utils.MarshalOrPanic(&ab.ConsensusType{Type: typeValue}))
+	return ordererConfigGroup(ConsensusTypeKey, utils.MarshalOrPanic(&ab.ConsensusType{Type: typeValue}))
 }
 
 // TemplateBatchSize creates a headerless config item representing the batch size
 func TemplateBatchSize(batchSize *ab.BatchSize) *cb.ConfigGroup {
-	return configGroup(BatchSizeKey, utils.MarshalOrPanic(batchSize))
+	return ordererConfigGroup(BatchSizeKey, utils.MarshalOrPanic(batchSize))
 }
 
 // TemplateBatchTimeout creates a headerless config item representing the batch timeout
 func TemplateBatchTimeout(batchTimeout string) *cb.ConfigGroup {
-	return configGroup(BatchTimeoutKey, utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: batchTimeout}))
+	return ordererConfigGroup(BatchTimeoutKey, utils.MarshalOrPanic(&ab.BatchTimeout{Timeout: batchTimeout}))
 }
 
 // TemplateChainCreationPolicyNames creates a headerless configuraiton item representing the chain creation policy names
 func TemplateChainCreationPolicyNames(names []string) *cb.ConfigGroup {
-	return configGroup(ChainCreationPolicyNamesKey, utils.MarshalOrPanic(&ab.ChainCreationPolicyNames{Names: names}))
+	return ordererConfigGroup(ChainCreationPolicyNamesKey, utils.MarshalOrPanic(&ab.ChainCreationPolicyNames{Names: names}))
 }
 
 // TemplateKafkaBrokers creates a headerless config item representing the kafka brokers
 func TemplateKafkaBrokers(brokers []string) *cb.ConfigGroup {
-	return configGroup(KafkaBrokersKey, utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: brokers}))
+	return ordererConfigGroup(KafkaBrokersKey, utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: brokers}))
 }

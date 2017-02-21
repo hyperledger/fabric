@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
+	config "github.com/hyperledger/fabric/common/configvalues/root"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -104,7 +104,7 @@ func TestNewChainTemplate(t *testing.T) {
 		assert.True(t, ok, "Expected to find %d but did not", i)
 	}
 
-	configValue, ok := configNext.WriteSet.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey]
+	configValue, ok := configNext.WriteSet.Groups[config.OrdererGroupKey].Values[CreationPolicyKey]
 	assert.True(t, ok, "Did not find creation policy")
 
 	creationPolicyMessage := new(ab.CreationPolicy)

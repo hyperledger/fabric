@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	configvaluesmsp "github.com/hyperledger/fabric/common/configvalues/msp"
 	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/genesis"
@@ -100,19 +99,19 @@ func New(conf *genesisconfig.Profile) Generator {
 	if conf.Orderer != nil {
 		bs.ordererGroups = []*cb.ConfigGroup{
 			// Orderer Config Types
-			configtxorderer.TemplateConsensusType(conf.Orderer.OrdererType),
-			configtxorderer.TemplateBatchSize(&ab.BatchSize{
+			config.TemplateConsensusType(conf.Orderer.OrdererType),
+			config.TemplateBatchSize(&ab.BatchSize{
 				MaxMessageCount:   conf.Orderer.BatchSize.MaxMessageCount,
 				AbsoluteMaxBytes:  conf.Orderer.BatchSize.AbsoluteMaxBytes,
 				PreferredMaxBytes: conf.Orderer.BatchSize.PreferredMaxBytes,
 			}),
-			configtxorderer.TemplateBatchTimeout(conf.Orderer.BatchTimeout.String()),
+			config.TemplateBatchTimeout(conf.Orderer.BatchTimeout.String()),
 
 			// Initialize the default Reader/Writer/Admins orderer policies, as well as block validation policy
-			policies.TemplateImplicitMetaPolicyWithSubPolicy([]string{configtxorderer.GroupKey}, BlockValidationPolicyKey, configvaluesmsp.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY),
-			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.AdminsPolicyKey),
+			policies.TemplateImplicitMetaPolicyWithSubPolicy([]string{config.OrdererGroupKey}, BlockValidationPolicyKey, configvaluesmsp.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY),
+			policies.TemplateImplicitMetaAnyPolicy([]string{config.OrdererGroupKey}, configvaluesmsp.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{config.OrdererGroupKey}, configvaluesmsp.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{config.OrdererGroupKey}, configvaluesmsp.AdminsPolicyKey),
 		}
 
 		for _, org := range conf.Orderer.Organizations {
@@ -120,20 +119,20 @@ func New(conf *genesisconfig.Profile) Generator {
 			if err != nil {
 				logger.Panicf("Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
-			bs.ordererGroups = append(bs.ordererGroups, configvaluesmsp.TemplateGroupMSP([]string{configtxorderer.GroupKey, org.Name}, mspConfig))
+			bs.ordererGroups = append(bs.ordererGroups, configvaluesmsp.TemplateGroupMSP([]string{config.OrdererGroupKey, org.Name}, mspConfig))
 		}
 
 		switch conf.Orderer.OrdererType {
 		case ConsensusTypeSolo, ConsensusTypeSbft:
 		case ConsensusTypeKafka:
-			bs.ordererGroups = append(bs.ordererGroups, configtxorderer.TemplateKafkaBrokers(conf.Orderer.Kafka.Brokers))
+			bs.ordererGroups = append(bs.ordererGroups, config.TemplateKafkaBrokers(conf.Orderer.Kafka.Brokers))
 		default:
 			panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Orderer.OrdererType))
 		}
 
 		bs.ordererSystemChannelGroups = []*cb.ConfigGroup{
 			// Policies
-			configtxorderer.TemplateChainCreationPolicyNames(DefaultChainCreationPolicyNames),
+			config.TemplateChainCreationPolicyNames(DefaultChainCreationPolicyNames),
 		}
 	}
 
