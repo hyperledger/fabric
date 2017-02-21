@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	api "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
 	mspconfig "github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -42,7 +41,7 @@ type applicationOrgConfig struct {
 // SharedConfigImpl is an implementation of Manager and configtx.ConfigHandler
 // In general, it should only be referenced as an Impl for the configtx.Manager
 type ApplicationOrgConfig struct {
-	*organization.OrgConfig
+	*OrganizationGroup
 	pendingConfig *applicationOrgConfig
 	config        *applicationOrgConfig
 
@@ -52,8 +51,8 @@ type ApplicationOrgConfig struct {
 // NewSharedConfigImpl creates a new SharedConfigImpl with the given CryptoHelper
 func NewApplicationOrgConfig(id string, mspConfig *mspconfig.MSPConfigHandler) *ApplicationOrgConfig {
 	return &ApplicationOrgConfig{
-		OrgConfig: organization.NewOrgConfig(id, mspConfig),
-		config:    &applicationOrgConfig{},
+		OrganizationGroup: NewOrganizationGroup(id, mspConfig),
+		config:            &applicationOrgConfig{},
 	}
 }
 
@@ -72,14 +71,14 @@ func (oc *ApplicationOrgConfig) BeginValueProposals(groups []string) ([]api.Valu
 		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
 	}
 	oc.pendingConfig = &applicationOrgConfig{}
-	return oc.OrgConfig.BeginValueProposals(groups)
+	return oc.OrganizationGroup.BeginValueProposals(groups)
 }
 
 // RollbackProposals is used to abandon a new config proposal
 func (oc *ApplicationOrgConfig) RollbackProposals() {
 	logger.Debugf("Rolling back proposed org config")
 	oc.pendingConfig = nil
-	oc.OrgConfig.RollbackProposals()
+	oc.OrganizationGroup.RollbackProposals()
 }
 
 // CommitProposals is used to commit a new config proposal
@@ -90,7 +89,7 @@ func (oc *ApplicationOrgConfig) CommitProposals() {
 	}
 	oc.config = oc.pendingConfig
 	oc.pendingConfig = nil
-	oc.OrgConfig.CommitProposals()
+	oc.OrganizationGroup.CommitProposals()
 }
 
 // ProposeValue is used to add new config to the config proposal
@@ -106,7 +105,7 @@ func (oc *ApplicationOrgConfig) ProposeValue(key string, configValue *cb.ConfigV
 		}
 		oc.pendingConfig.anchorPeers = anchorPeers.AnchorPeers
 	default:
-		return oc.OrgConfig.ProposeValue(key, configValue)
+		return oc.OrganizationGroup.ProposeValue(key, configValue)
 	}
 
 	return nil

@@ -24,7 +24,6 @@ import (
 	"time"
 
 	api "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
@@ -80,7 +79,7 @@ func NewOrdererGroup(mspConfig *msp.MSPConfigHandler) *OrdererGroup {
 
 // NewGroup returns an Org instance
 func (og *OrdererGroup) NewGroup(name string) (api.ValueProposer, error) {
-	return organization.NewOrgConfig(name, og.mspConfig), nil
+	return NewOrganizationGroup(name, og.mspConfig), nil
 }
 
 func (og *OrdererGroup) Allocate() Values {
