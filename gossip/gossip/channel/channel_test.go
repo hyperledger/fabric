@@ -55,12 +55,11 @@ func init() {
 var (
 	// Organizations: {ORG1, ORG2}
 	// Channel A: {ORG1}
-	channelA           = common.ChainID("A")
-	orgInChannelA      = api.OrgIdentityType("ORG1")
-	orgNotInChannelA   = api.OrgIdentityType("ORG2")
-	anchorPeerIdentity = api.PeerIdentityType("identityInOrg1")
-	pkiIDInOrg1        = common.PKIidType("pkiIDInOrg1")
-	pkiIDinOrg2        = common.PKIidType("pkiIDinOrg2")
+	channelA         = common.ChainID("A")
+	orgInChannelA    = api.OrgIdentityType("ORG1")
+	orgNotInChannelA = api.OrgIdentityType("ORG2")
+	pkiIDInOrg1      = common.PKIidType("pkiIDInOrg1")
+	pkiIDinOrg2      = common.PKIidType("pkiIDinOrg2")
 )
 
 type joinChanMsg struct {
@@ -83,7 +82,7 @@ func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
 	if jcm.anchorPeers != nil {
 		return jcm.anchorPeers()
 	}
-	return []api.AnchorPeer{{Cert: anchorPeerIdentity}}
+	return []api.AnchorPeer{{OrgID: orgInChannelA}}
 }
 
 type cryptoService struct {
@@ -200,7 +199,6 @@ func (ga *gossipAdapterMock) GetOrgOfPeer(PKIIID common.PKIidType) api.OrgIdenti
 func configureAdapter(adapter *gossipAdapterMock, members ...discovery.NetworkMember) {
 	adapter.On("GetConf").Return(conf)
 	adapter.On("GetMembership").Return(members)
-	adapter.On("OrgByPeerIdentity", anchorPeerIdentity).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiIDInOrg1).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
 	adapter.On("GetOrgOfPeer", mock.Anything).Return(api.OrgIdentityType(nil))
@@ -704,7 +702,7 @@ func TestChannelReconfigureChannel(t *testing.T) {
 
 	outdatedJoinChanMsg := &joinChanMsg{
 		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{Cert: api.PeerIdentityType(orgNotInChannelA)}}
+			return []api.AnchorPeer{{OrgID: orgNotInChannelA}}
 		},
 		getTS: func() time.Time {
 			return time.Now()
@@ -713,7 +711,7 @@ func TestChannelReconfigureChannel(t *testing.T) {
 
 	newJoinChanMsg := &joinChanMsg{
 		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{Cert: api.PeerIdentityType(orgInChannelA)}}
+			return []api.AnchorPeer{{OrgID: orgInChannelA}}
 		},
 		getTS: func() time.Time {
 			return time.Now().Add(time.Millisecond * 100)
@@ -722,7 +720,7 @@ func TestChannelReconfigureChannel(t *testing.T) {
 
 	updatedJoinChanMsg := &joinChanMsg{
 		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{Cert: api.PeerIdentityType(orgNotInChannelA)}}
+			return []api.AnchorPeer{{OrgID: orgNotInChannelA}}
 		},
 		getTS: func() time.Time {
 			return time.Now().Add(time.Millisecond * 200)

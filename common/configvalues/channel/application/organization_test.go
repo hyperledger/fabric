@@ -70,8 +70,8 @@ func TestApplicationOrgRollback(t *testing.T) {
 
 func TestApplicationOrgAnchorPeers(t *testing.T) {
 	endVal := []*pb.AnchorPeer{
-		&pb.AnchorPeer{Host: "foo", Port: 234, Cert: []byte("foocert")},
-		&pb.AnchorPeer{Host: "bar", Port: 237, Cert: []byte("barcert")},
+		&pb.AnchorPeer{Host: "foo", Port: 234},
+		&pb.AnchorPeer{Host: "bar", Port: 237},
 	}
 	invalidMessage := makeInvalidConfigValue()
 	validMessage := TemplateAnchorPeers("id", endVal)

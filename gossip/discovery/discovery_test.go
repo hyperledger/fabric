@@ -274,8 +274,6 @@ func TestConnect(t *testing.T) {
 		endpoint := fmt.Sprintf("localhost:%d", 7611+j)
 		netMember2Connect2 := NetworkMember{Endpoint: endpoint, PKIid: []byte(endpoint)}
 		inst.Connect(netMember2Connect2)
-		// Check passing nil PKI-ID doesn't crash peer
-		inst.Connect(NetworkMember{PKIid: nil, Endpoint: endpoint})
 	}
 
 	fullMembership := func() bool {

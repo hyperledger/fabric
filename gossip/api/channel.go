@@ -52,9 +52,10 @@ type JoinChannelMessage interface {
 
 // AnchorPeer is an anchor peer's certificate and endpoint (host:port)
 type AnchorPeer struct {
-	Cert PeerIdentityType // Cert defines the certificate of the remote peer
-	Host string           // Host is the hostname/ip address of the remote peer
-	Port int              // Port is the port the remote peer is listening on
+	Host  string          // Host is the hostname/ip address of the remote peer
+	Port  int             // Port is the port the remote peer is listening on
+	OrgID OrgIdentityType // OrgID is the identity of the organization the anchor peer came from
+
 }
 
 // OrgIdentityType defines the identity of an organization

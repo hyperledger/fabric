@@ -35,7 +35,4 @@ message AnchorPeer {
     // The port number
     int32 port  = 2;
 
-    // SSL certificate to be used to maintain mutual TLS
-    // connection with anchor peer
-    bytes cert  = 3;
 }

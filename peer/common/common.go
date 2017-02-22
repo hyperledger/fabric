@@ -88,13 +88,6 @@ func GetEndorserClient() (pb.EndorserClient, error) {
 	return endorserClient, nil
 }
 
-func GetAnchorPeersParser(anchorPeerParam string) *AnchorPeerParser {
-	if len(anchorPeerParam) == 0 {
-		return GetDefaultAnchorPeerParser()
-	}
-	return &AnchorPeerParser{anchorPeerParam: anchorPeerParam}
-}
-
 // GetAdminClient returns a new admin client connection for this peer
 func GetAdminClient() (pb.AdminClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()
