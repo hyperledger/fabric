@@ -7,8 +7,8 @@ services:
     image: hyperledger/fabric-testenv-orderer
     environment:
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
-      - ORDERER_GENESIS_ORDERERTYPE=kafka
-      - ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092]
+      - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+      - CONFIGTX_ORDERER_KAFKA_BROKERS=[kafka0:9092,kafka1:9092,kafka2:9092]
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
     command: orderer
     ports:
