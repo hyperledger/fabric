@@ -336,3 +336,33 @@ func TestQueryNoSelector(t *testing.T) {
 	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"selector\":{\"chaincodeid\":\"ns1\"}"), 1)
 
 }
+
+//TestQueryWithUseDesignDoc tests query with index design doc specified
+func TestQueryWithUseDesignDoc(t *testing.T) {
+
+	rawQuery := []byte(`{"selector":{"owner":{"$eq":"jerry"}},"use_index":"_design/testDoc","limit": 10,"skip": 0}`)
+
+	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery))
+
+	//Make sure the query did not throw an exception
+	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
+
+	//check to make sure the default selector is added
+	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"use_index\":\"_design/testDoc\""), 1)
+
+}
+
+//TestQueryWithUseDesignDocAndIndexName tests query with index design doc and index name specified
+func TestQueryWithUseDesignDocAndIndexName(t *testing.T) {
+
+	rawQuery := []byte(`{"selector":{"owner":{"$eq":"jerry"}},"use_index":["_design/testDoc","testIndexName"],"limit": 10,"skip": 0}`)
+
+	wrappedQuery, err := ApplyQueryWrapper("ns1", string(rawQuery))
+
+	//Make sure the query did not throw an exception
+	testutil.AssertNoError(t, err, "Unexpected error thrown when for query JSON")
+
+	//check to make sure the default selector is added
+	testutil.AssertEquals(t, strings.Count(wrappedQuery, "\"use_index\":[\"_design/testDoc\",\"testIndexName\"]"), 1)
+
+}
