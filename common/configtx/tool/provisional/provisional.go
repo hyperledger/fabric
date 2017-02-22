@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/bootstrap"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	pb "github.com/hyperledger/fabric/protos/peer"
 
 	logging "github.com/op/go-logging"
 )
@@ -147,7 +148,17 @@ func New(conf *genesisconfig.Profile) Generator {
 			if err != nil {
 				logger.Panicf("Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
-			bs.ordererGroups = append(bs.ordererGroups, configvaluesmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey, org.Name}, mspConfig))
+			bs.applicationGroups = append(bs.applicationGroups, configvaluesmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey, org.Name}, mspConfig))
+
+			var anchorProtos []*pb.AnchorPeer
+			for _, anchorPeer := range org.AnchorPeers {
+				anchorProtos = append(anchorProtos, &pb.AnchorPeer{
+					Host: anchorPeer.Host,
+					Port: int32(anchorPeer.Port),
+				})
+			}
+
+			bs.applicationGroups = append(bs.applicationGroups, configtxapplication.TemplateAnchorPeers(org.Name, anchorProtos))
 		}
 
 	}
