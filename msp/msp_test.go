@@ -277,6 +277,39 @@ func TestOUPolicyPrincipal(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAdminPolicyPrincipal(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&common.MSPRole{Role: common.MSPRole_ADMIN, MspIdentifier: "DEFAULT"})
+	assert.NoError(t, err)
+
+	principal := &common.MSPPrincipal{
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.NoError(t, err)
+}
+
+func TestAdminPolicyPrincipalFails(t *testing.T) {
+	id, err := localMsp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&common.MSPRole{Role: common.MSPRole_ADMIN, MspIdentifier: "DEFAULT"})
+	assert.NoError(t, err)
+
+	principal := &common.MSPPrincipal{
+		PrincipalClassification: common.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	// remove the admin so validation will fail
+	localMsp.(*bccspmsp).admins = make([]Identity, 0)
+
+	err = id.SatisfiesPrincipal(principal)
+	assert.Error(t, err)
+}
+
 var conf *msp.MSPConfig
 var localMsp MSP
 var mspMgr MSPManager
