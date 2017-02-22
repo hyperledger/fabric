@@ -82,6 +82,10 @@ class ContextHelper:
         print("before_step: {0}".format(self))
         print("")
 
+    def after_step(self, step):
+        print("after_step: {0}".format(self))
+        print("")
+
     def registerComposition(self, composition):
         return composition
 

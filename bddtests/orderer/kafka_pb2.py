@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/kafka.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x13orderer/kafka.proto\x12\x07orderer\"\xaf\x01\n\x0cKafkaMessage\x12/\n\x07regular\x18\x01 \x01(\x0b\x32\x1c.orderer.KafkaMessageRegularH\x00\x12\x35\n\x0btime_to_cut\x18\x02 \x01(\x0b\x32\x1e.orderer.KafkaMessageTimeToCutH\x00\x12/\n\x07\x63onnect\x18\x03 \x01(\x0b\x32\x1c.orderer.KafkaMessageConnectH\x00\x42\x06\n\x04Type\"&\n\x13KafkaMessageRegular\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\"-\n\x15KafkaMessageTimeToCut\x12\x14\n\x0c\x62lock_number\x18\x01 \x01(\x04\"&\n\x13KafkaMessageConnect\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+  serialized_pb=_b('\n\x13orderer/kafka.proto\x12\x07orderer\"\xaf\x01\n\x0cKafkaMessage\x12/\n\x07regular\x18\x01 \x01(\x0b\x32\x1c.orderer.KafkaMessageRegularH\x00\x12\x35\n\x0btime_to_cut\x18\x02 \x01(\x0b\x32\x1e.orderer.KafkaMessageTimeToCutH\x00\x12/\n\x07\x63onnect\x18\x03 \x01(\x0b\x32\x1c.orderer.KafkaMessageConnectH\x00\x42\x06\n\x04Type\"&\n\x13KafkaMessageRegular\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\"-\n\x15KafkaMessageTimeToCut\x12\x14\n\x0c\x62lock_number\x18\x01 \x01(\x04\"&\n\x13KafkaMessageConnect\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\".\n\rKafkaMetadata\x12\x1d\n\x15last_offset_persisted\x18\x01 \x01(\x03\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -166,6 +166,37 @@ _KAFKAMESSAGECONNECT = _descriptor.Descriptor(
   serialized_end=335,
 )
 
+
+_KAFKAMETADATA = _descriptor.Descriptor(
+  name='KafkaMetadata',
+  full_name='orderer.KafkaMetadata',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='last_offset_persisted', full_name='orderer.KafkaMetadata.last_offset_persisted', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=337,
+  serialized_end=383,
+)
+
 _KAFKAMESSAGE.fields_by_name['regular'].message_type = _KAFKAMESSAGEREGULAR
 _KAFKAMESSAGE.fields_by_name['time_to_cut'].message_type = _KAFKAMESSAGETIMETOCUT
 _KAFKAMESSAGE.fields_by_name['connect'].message_type = _KAFKAMESSAGECONNECT
@@ -182,6 +213,7 @@ DESCRIPTOR.message_types_by_name['KafkaMessage'] = _KAFKAMESSAGE
 DESCRIPTOR.message_types_by_name['KafkaMessageRegular'] = _KAFKAMESSAGEREGULAR
 DESCRIPTOR.message_types_by_name['KafkaMessageTimeToCut'] = _KAFKAMESSAGETIMETOCUT
 DESCRIPTOR.message_types_by_name['KafkaMessageConnect'] = _KAFKAMESSAGECONNECT
+DESCRIPTOR.message_types_by_name['KafkaMetadata'] = _KAFKAMETADATA
 
 KafkaMessage = _reflection.GeneratedProtocolMessageType('KafkaMessage', (_message.Message,), dict(
   DESCRIPTOR = _KAFKAMESSAGE,
@@ -210,6 +242,13 @@ KafkaMessageConnect = _reflection.GeneratedProtocolMessageType('KafkaMessageConn
   # @@protoc_insertion_point(class_scope:orderer.KafkaMessageConnect)
   ))
 _sym_db.RegisterMessage(KafkaMessageConnect)
+
+KafkaMetadata = _reflection.GeneratedProtocolMessageType('KafkaMetadata', (_message.Message,), dict(
+  DESCRIPTOR = _KAFKAMETADATA,
+  __module__ = 'orderer.kafka_pb2'
+  # @@protoc_insertion_point(class_scope:orderer.KafkaMetadata)
+  ))
+_sym_db.RegisterMessage(KafkaMetadata)
 
 
 DESCRIPTOR.has_options = True

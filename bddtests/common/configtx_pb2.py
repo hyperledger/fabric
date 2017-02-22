@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common/configtx.proto',
   package='common',
   syntax='proto3',
-  serialized_pb=_b('\n\x15\x63ommon/configtx.proto\x12\x06\x63ommon\x1a\x13\x63ommon/common.proto\x1a\x15\x63ommon/policies.proto\"W\n\x0e\x43onfigEnvelope\x12\x1e\n\x06\x63onfig\x18\x01 \x01(\x0b\x32\x0e.common.Config\x12%\n\x0blast_update\x18\x02 \x01(\x0b\x32\x10.common.Envelope\"\x9d\x03\n\x11\x43onfigGroupSchema\x12\x35\n\x06groups\x18\x01 \x03(\x0b\x32%.common.ConfigGroupSchema.GroupsEntry\x12\x35\n\x06values\x18\x02 \x03(\x0b\x32%.common.ConfigGroupSchema.ValuesEntry\x12\x39\n\x08policies\x18\x03 \x03(\x0b\x32\'.common.ConfigGroupSchema.PoliciesEntry\x1aH\n\x0bGroupsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12(\n\x05value\x18\x02 \x01(\x0b\x32\x19.common.ConfigGroupSchema:\x02\x38\x01\x1aH\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12(\n\x05value\x18\x02 \x01(\x0b\x32\x19.common.ConfigValueSchema:\x02\x38\x01\x1aK\n\rPoliciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12)\n\x05value\x18\x02 \x01(\x0b\x32\x1a.common.ConfigPolicySchema:\x02\x38\x01\"\x13\n\x11\x43onfigValueSchema\"\x14\n\x12\x43onfigPolicySchema\"U\n\x06\x43onfig\x12%\n\x06header\x18\x01 \x01(\x0b\x32\x15.common.ChannelHeader\x12$\n\x07\x63hannel\x18\x02 \x01(\x0b\x32\x13.common.ConfigGroup\"Z\n\x14\x43onfigUpdateEnvelope\x12\x15\n\rconfig_update\x18\x01 \x01(\x0c\x12+\n\nsignatures\x18\x02 \x03(\x0b\x32\x17.common.ConfigSignature\"\x84\x01\n\x0c\x43onfigUpdate\x12%\n\x06header\x18\x01 \x01(\x0b\x32\x15.common.ChannelHeader\x12%\n\x08read_set\x18\x02 \x01(\x0b\x32\x13.common.ConfigGroup\x12&\n\twrite_set\x18\x03 \x01(\x0b\x32\x13.common.ConfigGroup\"\x98\x03\n\x0b\x43onfigGroup\x12\x0f\n\x07version\x18\x01 \x01(\x04\x12/\n\x06groups\x18\x02 \x03(\x0b\x32\x1f.common.ConfigGroup.GroupsEntry\x12/\n\x06values\x18\x03 \x03(\x0b\x32\x1f.common.ConfigGroup.ValuesEntry\x12\x33\n\x08policies\x18\x04 \x03(\x0b\x32!.common.ConfigGroup.PoliciesEntry\x12\x12\n\nmod_policy\x18\x05 \x01(\t\x1a\x42\n\x0bGroupsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\"\n\x05value\x18\x02 \x01(\x0b\x32\x13.common.ConfigGroup:\x02\x38\x01\x1a\x42\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\"\n\x05value\x18\x02 \x01(\x0b\x32\x13.common.ConfigValue:\x02\x38\x01\x1a\x45\n\rPoliciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12#\n\x05value\x18\x02 \x01(\x0b\x32\x14.common.ConfigPolicy:\x02\x38\x01\"A\n\x0b\x43onfigValue\x12\x0f\n\x07version\x18\x01 \x01(\x04\x12\r\n\x05value\x18\x02 \x01(\x0c\x12\x12\n\nmod_policy\x18\x03 \x01(\t\"S\n\x0c\x43onfigPolicy\x12\x0f\n\x07version\x18\x01 \x01(\x04\x12\x1e\n\x06policy\x18\x02 \x01(\x0b\x32\x0e.common.Policy\x12\x12\n\nmod_policy\x18\x03 \x01(\t\">\n\x0f\x43onfigSignature\x12\x18\n\x10signature_header\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\x42-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
+  serialized_pb=_b('\n\x15\x63ommon/configtx.proto\x12\x06\x63ommon\x1a\x13\x63ommon/common.proto\x1a\x15\x63ommon/policies.proto\"W\n\x0e\x43onfigEnvelope\x12\x1e\n\x06\x63onfig\x18\x01 \x01(\x0b\x32\x0e.common.Config\x12%\n\x0blast_update\x18\x02 \x01(\x0b\x32\x10.common.Envelope\"\x9d\x03\n\x11\x43onfigGroupSchema\x12\x35\n\x06groups\x18\x01 \x03(\x0b\x32%.common.ConfigGroupSchema.GroupsEntry\x12\x35\n\x06values\x18\x02 \x03(\x0b\x32%.common.ConfigGroupSchema.ValuesEntry\x12\x39\n\x08policies\x18\x03 \x03(\x0b\x32\'.common.ConfigGroupSchema.PoliciesEntry\x1aH\n\x0bGroupsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12(\n\x05value\x18\x02 \x01(\x0b\x32\x19.common.ConfigGroupSchema:\x02\x38\x01\x1aH\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12(\n\x05value\x18\x02 \x01(\x0b\x32\x19.common.ConfigValueSchema:\x02\x38\x01\x1aK\n\rPoliciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12)\n\x05value\x18\x02 \x01(\x0b\x32\x1a.common.ConfigPolicySchema:\x02\x38\x01\"\x13\n\x11\x43onfigValueSchema\"\x14\n\x12\x43onfigPolicySchema\"F\n\x06\x43onfig\x12\x10\n\x08sequence\x18\x01 \x01(\x04\x12*\n\rchannel_group\x18\x02 \x01(\x0b\x32\x13.common.ConfigGroup\"Z\n\x14\x43onfigUpdateEnvelope\x12\x15\n\rconfig_update\x18\x01 \x01(\x0c\x12+\n\nsignatures\x18\x02 \x03(\x0b\x32\x17.common.ConfigSignature\"q\n\x0c\x43onfigUpdate\x12\x12\n\nchannel_id\x18\x01 \x01(\t\x12%\n\x08read_set\x18\x02 \x01(\x0b\x32\x13.common.ConfigGroup\x12&\n\twrite_set\x18\x03 \x01(\x0b\x32\x13.common.ConfigGroup\"\x98\x03\n\x0b\x43onfigGroup\x12\x0f\n\x07version\x18\x01 \x01(\x04\x12/\n\x06groups\x18\x02 \x03(\x0b\x32\x1f.common.ConfigGroup.GroupsEntry\x12/\n\x06values\x18\x03 \x03(\x0b\x32\x1f.common.ConfigGroup.ValuesEntry\x12\x33\n\x08policies\x18\x04 \x03(\x0b\x32!.common.ConfigGroup.PoliciesEntry\x12\x12\n\nmod_policy\x18\x05 \x01(\t\x1a\x42\n\x0bGroupsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\"\n\x05value\x18\x02 \x01(\x0b\x32\x13.common.ConfigGroup:\x02\x38\x01\x1a\x42\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\"\n\x05value\x18\x02 \x01(\x0b\x32\x13.common.ConfigValue:\x02\x38\x01\x1a\x45\n\rPoliciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12#\n\x05value\x18\x02 \x01(\x0b\x32\x14.common.ConfigPolicy:\x02\x38\x01\"A\n\x0b\x43onfigValue\x12\x0f\n\x07version\x18\x01 \x01(\x04\x12\r\n\x05value\x18\x02 \x01(\x0c\x12\x12\n\nmod_policy\x18\x03 \x01(\t\"S\n\x0c\x43onfigPolicy\x12\x0f\n\x07version\x18\x01 \x01(\x04\x12\x1e\n\x06policy\x18\x02 \x01(\x0b\x32\x0e.common.Policy\x12\x12\n\nmod_policy\x18\x03 \x01(\t\">\n\x0f\x43onfigSignature\x12\x18\n\x10signature_header\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\x42-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
   ,
   dependencies=[common_dot_common__pb2.DESCRIPTOR,common_dot_policies__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -279,14 +279,14 @@ _CONFIG = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='header', full_name='common.Config.header', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
+      name='sequence', full_name='common.Config.sequence', index=0,
+      number=1, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='channel', full_name='common.Config.channel', index=1,
+      name='channel_group', full_name='common.Config.channel_group', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -305,7 +305,7 @@ _CONFIG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=625,
-  serialized_end=710,
+  serialized_end=695,
 )
 
 
@@ -342,8 +342,8 @@ _CONFIGUPDATEENVELOPE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=712,
-  serialized_end=802,
+  serialized_start=697,
+  serialized_end=787,
 )
 
 
@@ -355,9 +355,9 @@ _CONFIGUPDATE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='header', full_name='common.ConfigUpdate.header', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
+      name='channel_id', full_name='common.ConfigUpdate.channel_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -387,8 +387,8 @@ _CONFIGUPDATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=805,
-  serialized_end=937,
+  serialized_start=789,
+  serialized_end=902,
 )
 
 
@@ -425,8 +425,8 @@ _CONFIGGROUP_GROUPSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1143,
-  serialized_end=1209,
+  serialized_start=1108,
+  serialized_end=1174,
 )
 
 _CONFIGGROUP_VALUESENTRY = _descriptor.Descriptor(
@@ -462,8 +462,8 @@ _CONFIGGROUP_VALUESENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1211,
-  serialized_end=1277,
+  serialized_start=1176,
+  serialized_end=1242,
 )
 
 _CONFIGGROUP_POLICIESENTRY = _descriptor.Descriptor(
@@ -499,8 +499,8 @@ _CONFIGGROUP_POLICIESENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1279,
-  serialized_end=1348,
+  serialized_start=1244,
+  serialized_end=1313,
 )
 
 _CONFIGGROUP = _descriptor.Descriptor(
@@ -557,8 +557,8 @@ _CONFIGGROUP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=940,
-  serialized_end=1348,
+  serialized_start=905,
+  serialized_end=1313,
 )
 
 
@@ -602,8 +602,8 @@ _CONFIGVALUE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1350,
-  serialized_end=1415,
+  serialized_start=1315,
+  serialized_end=1380,
 )
 
 
@@ -647,8 +647,8 @@ _CONFIGPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1417,
-  serialized_end=1500,
+  serialized_start=1382,
+  serialized_end=1465,
 )
 
 
@@ -685,8 +685,8 @@ _CONFIGSIGNATURE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1502,
-  serialized_end=1564,
+  serialized_start=1467,
+  serialized_end=1529,
 )
 
 _CONFIGENVELOPE.fields_by_name['config'].message_type = _CONFIG
@@ -700,10 +700,8 @@ _CONFIGGROUPSCHEMA_POLICIESENTRY.containing_type = _CONFIGGROUPSCHEMA
 _CONFIGGROUPSCHEMA.fields_by_name['groups'].message_type = _CONFIGGROUPSCHEMA_GROUPSENTRY
 _CONFIGGROUPSCHEMA.fields_by_name['values'].message_type = _CONFIGGROUPSCHEMA_VALUESENTRY
 _CONFIGGROUPSCHEMA.fields_by_name['policies'].message_type = _CONFIGGROUPSCHEMA_POLICIESENTRY
-_CONFIG.fields_by_name['header'].message_type = common_dot_common__pb2._CHANNELHEADER
-_CONFIG.fields_by_name['channel'].message_type = _CONFIGGROUP
+_CONFIG.fields_by_name['channel_group'].message_type = _CONFIGGROUP
 _CONFIGUPDATEENVELOPE.fields_by_name['signatures'].message_type = _CONFIGSIGNATURE
-_CONFIGUPDATE.fields_by_name['header'].message_type = common_dot_common__pb2._CHANNELHEADER
 _CONFIGUPDATE.fields_by_name['read_set'].message_type = _CONFIGGROUP
 _CONFIGUPDATE.fields_by_name['write_set'].message_type = _CONFIGGROUP
 _CONFIGGROUP_GROUPSENTRY.fields_by_name['value'].message_type = _CONFIGGROUP

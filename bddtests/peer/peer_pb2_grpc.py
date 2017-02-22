@@ -7,9 +7,6 @@ import peer.proposal_response_pb2 as peer_dot_proposal__response__pb2
 
 
 class EndorserStub(object):
-  """-------- the Endorser service ------------
-
-  """
 
   def __init__(self, channel):
     """Constructor.
@@ -25,9 +22,6 @@ class EndorserStub(object):
 
 
 class EndorserServicer(object):
-  """-------- the Endorser service ------------
-
-  """
 
   def ProcessProposal(self, request, context):
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)

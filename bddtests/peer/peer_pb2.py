@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/peer.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x0fpeer/peer.proto\x12\x06protos\x1a\x13peer/proposal.proto\x1a\x1cpeer/proposal_response.proto\"\x16\n\x06PeerID\x12\x0c\n\x04name\x18\x01 \x01(\t\";\n\x0cPeerEndpoint\x12\x1a\n\x02ID\x18\x01 \x01(\x0b\x32\x0e.protos.PeerID\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x01(\t\"U\n\x0e\x42lockchainInfo\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x18\n\x10\x63urrentBlockHash\x18\x02 \x01(\x0c\x12\x19\n\x11previousBlockHash\x18\x03 \x01(\x0c\x32Q\n\x08\x45ndorser\x12\x45\n\x0fProcessProposal\x12\x16.protos.SignedProposal\x1a\x18.protos.ProposalResponse\"\x00\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x0fpeer/peer.proto\x12\x06protos\x1a\x13peer/proposal.proto\x1a\x1cpeer/proposal_response.proto\"\x16\n\x06PeerID\x12\x0c\n\x04name\x18\x01 \x01(\t\";\n\x0cPeerEndpoint\x12\x1a\n\x02id\x18\x01 \x01(\x0b\x32\x0e.protos.PeerID\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x01(\t2Q\n\x08\x45ndorser\x12\x45\n\x0fProcessProposal\x12\x16.protos.SignedProposal\x1a\x18.protos.ProposalResponse\"\x00\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
   ,
   dependencies=[peer_dot_proposal__pb2.DESCRIPTOR,peer_dot_proposal__response__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -68,7 +68,7 @@ _PEERENDPOINT = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='ID', full_name='protos.PeerEndpoint.ID', index=0,
+      name='id', full_name='protos.PeerEndpoint.id', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -97,55 +97,9 @@ _PEERENDPOINT = _descriptor.Descriptor(
   serialized_end=161,
 )
 
-
-_BLOCKCHAININFO = _descriptor.Descriptor(
-  name='BlockchainInfo',
-  full_name='protos.BlockchainInfo',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='height', full_name='protos.BlockchainInfo.height', index=0,
-      number=1, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='currentBlockHash', full_name='protos.BlockchainInfo.currentBlockHash', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='previousBlockHash', full_name='protos.BlockchainInfo.previousBlockHash', index=2,
-      number=3, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=163,
-  serialized_end=248,
-)
-
-_PEERENDPOINT.fields_by_name['ID'].message_type = _PEERID
+_PEERENDPOINT.fields_by_name['id'].message_type = _PEERID
 DESCRIPTOR.message_types_by_name['PeerID'] = _PEERID
 DESCRIPTOR.message_types_by_name['PeerEndpoint'] = _PEERENDPOINT
-DESCRIPTOR.message_types_by_name['BlockchainInfo'] = _BLOCKCHAININFO
 
 PeerID = _reflection.GeneratedProtocolMessageType('PeerID', (_message.Message,), dict(
   DESCRIPTOR = _PEERID,
@@ -161,13 +115,6 @@ PeerEndpoint = _reflection.GeneratedProtocolMessageType('PeerEndpoint', (_messag
   ))
 _sym_db.RegisterMessage(PeerEndpoint)
 
-BlockchainInfo = _reflection.GeneratedProtocolMessageType('BlockchainInfo', (_message.Message,), dict(
-  DESCRIPTOR = _BLOCKCHAININFO,
-  __module__ = 'peer.peer_pb2'
-  # @@protoc_insertion_point(class_scope:protos.BlockchainInfo)
-  ))
-_sym_db.RegisterMessage(BlockchainInfo)
-
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z)github.com/hyperledger/fabric/protos/peer'))
@@ -182,9 +129,6 @@ try:
 
 
   class EndorserStub(object):
-    """-------- the Endorser service ------------
-
-    """
 
     def __init__(self, channel):
       """Constructor.
@@ -200,9 +144,6 @@ try:
 
 
   class EndorserServicer(object):
-    """-------- the Endorser service ------------
-
-    """
 
     def ProcessProposal(self, request, context):
       context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -229,9 +170,6 @@ try:
     It is recommended to use the GA API (classes and functions in this
     file not marked beta) for all further purposes. This class was generated
     only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """-------- the Endorser service ------------
-
-    """
     def ProcessProposal(self, request, context):
       context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
 
@@ -242,9 +180,6 @@ try:
     It is recommended to use the GA API (classes and functions in this
     file not marked beta) for all further purposes. This class was generated
     only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """-------- the Endorser service ------------
-
-    """
     def ProcessProposal(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
       raise NotImplementedError()
     ProcessProposal.future = None

@@ -1,3 +1,0 @@
-membersrvc0:
-    environment:
-        - MEMBERSRVC_CA_TCA_ATTRIBUTE-ENCRYPTION_ENABLED=true

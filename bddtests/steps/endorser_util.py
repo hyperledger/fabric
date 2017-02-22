@@ -6,7 +6,7 @@ import bdd_test_util
 import bdd_grpc_util
 import bootstrap_util
 from peer import chaincode_pb2
-from peer import chaincode_proposal_pb2
+from peer import transaction_pb2
 from peer import proposal_pb2
 from peer import peer_pb2_grpc
 import identities_pb2
@@ -21,6 +21,16 @@ def getChaincodeSpec(ccType, path, name, args):
 		chaincode_id = chaincode_pb2.ChaincodeID(path=path, name=name, version="test"),
 		input = chaincode_pb2.ChaincodeInput(args = args))
 	return ccSpec
+
+def getChaincodeSpecUsingTemplate(template_chaincode_spec, args):
+    # make chaincode spec for chaincode to be deployed
+    ccSpec = chaincode_pb2.ChaincodeSpec()
+    input = chaincode_pb2.ChaincodeInput(args = args)
+    ccSpec.CopyFrom(template_chaincode_spec)
+    ccSpec.input.CopyFrom(input)
+    return ccSpec
+
+
 
 def createPropsalId():
 	return 'TODO proposal Id'
@@ -50,13 +60,41 @@ def createInvokeProposalForBDD(context, ccSpec, chainID, signersCert, Mspid, typ
     chainHdr = bootstrapHelper.makeChainHeader(type=common_dot_common_pb2.HeaderType.Value(type),
                                                txID=tx_id, extension=ccHdrExt.SerializeToString())
 
-    header = common_dot_common_pb2.Header(channel_header=chainHdr, signature_header=sigHdr)
+    header = common_dot_common_pb2.Header(channel_header=chainHdr.SerializeToString(), signature_header=sigHdr.SerializeToString())
 
     # make proposal
     proposal = proposal_pb2.Proposal(header=header.SerializeToString(), payload=ccProposalPayload.SerializeToString())
 
 
     return proposal
+
+def createSignedTx(user, signed_proposal, proposal_responses):
+    assert len(proposal_responses) > 0, "Expected at least 1 ProposalResponse"
+    #Unpack signed proposal
+    proposal = proposal_pb2.Proposal()
+    proposal.ParseFromString(signed_proposal.proposal_bytes)
+    header = common_dot_common_pb2.Header()
+    header.ParseFromString(proposal.header)
+    ccProposalPayload = proposal_pb2.ChaincodeProposalPayload()
+    ccProposalPayload.ParseFromString(proposal.payload)
+    # Be sure to clear the TransientMap
+    ccProposalPayload.TransientMap.clear()
+
+    endorsements = [p.endorsement for p in proposal_responses]
+    ccEndorsedAction = transaction_pb2.ChaincodeEndorsedAction(proposal_response_payload=proposal_responses[0].payload, endorsements=endorsements)
+
+    ccActionPayload = transaction_pb2.ChaincodeActionPayload(chaincode_proposal_payload=ccProposalPayload.SerializeToString(), action=ccEndorsedAction)
+
+    transaction = transaction_pb2.Transaction()
+    action = transaction.actions.add()
+    action.header = header.signature_header
+    action.payload = ccActionPayload.SerializeToString()
+    payload = common_dot_common_pb2.Payload(header=header, data=transaction.SerializeToString())
+    payloadBytes = payload.SerializeToString()
+    signature = user.sign(payloadBytes)
+    envelope = common_dot_common_pb2.Envelope(payload=payloadBytes, signature=signature)
+    return envelope
+
 
 
 def signProposal(proposal, entity, signersCert):
@@ -74,9 +112,11 @@ def signProposal(proposal, entity, signersCert):
 def createDeploymentChaincodeSpecForBDD(ccDeploymentSpec, chainID):
     lc_chaincode_spec = getChaincodeSpec(ccType="GOLANG", path="", name="lccc",
                                          args=['deploy', chainID, ccDeploymentSpec.SerializeToString()])
-	# lc_chaincode_spec = chaincode_pb2.ChaincodeSpec(type = chaincode_pb2.ChaincodeSpec.GOLANG,
-	# 									 chaincode_id = chaincode_pb2.ChaincodeID(name="lccc"),
-	# 									 input = chaincode_pb2.ChaincodeInput(args = ['deploy', chainID, ccDeploymentSpec.SerializeToString()]))
+    return lc_chaincode_spec
+
+def createInstallChaincodeSpecForBDD(ccDeploymentSpec, chainID):
+    lc_chaincode_spec = getChaincodeSpec(ccType="GOLANG", path="", name="lccc",
+                                         args=['install', ccDeploymentSpec.SerializeToString()])
     return lc_chaincode_spec
 
 def getEndorserStubs(context, composeServices):

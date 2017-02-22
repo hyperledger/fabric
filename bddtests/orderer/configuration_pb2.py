@@ -13,16 +13,14 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-from common import common_pb2 as common_dot_common__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/configuration.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x1borderer/configuration.proto\x12\x07orderer\x1a\x13\x63ommon/common.proto\"\x1d\n\rConsensusType\x12\x0c\n\x04type\x18\x01 \x01(\t\"Y\n\tBatchSize\x12\x17\n\x0fmaxMessageCount\x18\x01 \x01(\r\x12\x18\n\x10\x61\x62soluteMaxBytes\x18\x02 \x01(\r\x12\x19\n\x11preferredMaxBytes\x18\x03 \x01(\r\"\x1f\n\x0c\x42\x61tchTimeout\x12\x0f\n\x07timeout\x18\x01 \x01(\t\"0\n\x0e\x43reationPolicy\x12\x0e\n\x06policy\x18\x01 \x01(\t\x12\x0e\n\x06\x64igest\x18\x02 \x01(\x0c\"#\n\x12IngressPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\"\"\n\x11\x45gressPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\")\n\x18\x43hainCreationPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\"\x1f\n\x0cKafkaBrokers\x12\x0f\n\x07\x62rokers\x18\x01 \x03(\tB.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
-  ,
-  dependencies=[common_dot_common__pb2.DESCRIPTOR,])
+  serialized_pb=_b('\n\x1borderer/configuration.proto\x12\x07orderer\"\x1d\n\rConsensusType\x12\x0c\n\x04type\x18\x01 \x01(\t\"Y\n\tBatchSize\x12\x17\n\x0fmaxMessageCount\x18\x01 \x01(\r\x12\x18\n\x10\x61\x62soluteMaxBytes\x18\x02 \x01(\r\x12\x19\n\x11preferredMaxBytes\x18\x03 \x01(\r\"\x1f\n\x0c\x42\x61tchTimeout\x12\x0f\n\x07timeout\x18\x01 \x01(\t\" \n\x0e\x43reationPolicy\x12\x0e\n\x06policy\x18\x01 \x01(\t\"#\n\x12IngressPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\"\"\n\x11\x45gressPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\")\n\x18\x43hainCreationPolicyNames\x12\r\n\x05names\x18\x01 \x03(\t\"\x1f\n\x0cKafkaBrokers\x12\x0f\n\x07\x62rokers\x18\x01 \x03(\tB.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+)
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
@@ -54,8 +52,8 @@ _CONSENSUSTYPE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=61,
-  serialized_end=90,
+  serialized_start=40,
+  serialized_end=69,
 )
 
 
@@ -99,8 +97,8 @@ _BATCHSIZE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=92,
-  serialized_end=181,
+  serialized_start=71,
+  serialized_end=160,
 )
 
 
@@ -130,8 +128,8 @@ _BATCHTIMEOUT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=183,
-  serialized_end=214,
+  serialized_start=162,
+  serialized_end=193,
 )
 
 
@@ -149,13 +147,6 @@ _CREATIONPOLICY = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
-    _descriptor.FieldDescriptor(
-      name='digest', full_name='orderer.CreationPolicy.digest', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b(""),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
   ],
   extensions=[
   ],
@@ -168,8 +159,8 @@ _CREATIONPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=216,
-  serialized_end=264,
+  serialized_start=195,
+  serialized_end=227,
 )
 
 
@@ -199,8 +190,8 @@ _INGRESSPOLICYNAMES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=266,
-  serialized_end=301,
+  serialized_start=229,
+  serialized_end=264,
 )
 
 
@@ -230,8 +221,8 @@ _EGRESSPOLICYNAMES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=303,
-  serialized_end=337,
+  serialized_start=266,
+  serialized_end=300,
 )
 
 
@@ -261,8 +252,8 @@ _CHAINCREATIONPOLICYNAMES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=339,
-  serialized_end=380,
+  serialized_start=302,
+  serialized_end=343,
 )
 
 
@@ -292,8 +283,8 @@ _KAFKABROKERS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=382,
-  serialized_end=413,
+  serialized_start=345,
+  serialized_end=376,
 )
 
 DESCRIPTOR.message_types_by_name['ConsensusType'] = _CONSENSUSTYPE

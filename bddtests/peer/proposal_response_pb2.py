@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/proposal_response.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x1cpeer/proposal_response.proto\x12\x06protos\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb1\x01\n\x10ProposalResponse\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\"\n\x08response\x18\x04 \x01(\x0b\x32\x10.protos.Response\x12\x0f\n\x07payload\x18\x05 \x01(\x0c\x12(\n\x0b\x65ndorsement\x18\x06 \x01(\x0b\x32\x13.protos.Endorsement\"<\n\x08Response\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"B\n\x17ProposalResponsePayload\x12\x14\n\x0cproposalHash\x18\x01 \x01(\x0c\x12\x11\n\textension\x18\x02 \x01(\x0c\"2\n\x0b\x45ndorsement\x12\x10\n\x08\x65ndorser\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x1cpeer/proposal_response.proto\x12\x06protos\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb1\x01\n\x10ProposalResponse\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\"\n\x08response\x18\x04 \x01(\x0b\x32\x10.protos.Response\x12\x0f\n\x07payload\x18\x05 \x01(\x0c\x12(\n\x0b\x65ndorsement\x18\x06 \x01(\x0b\x32\x13.protos.Endorsement\"<\n\x08Response\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"C\n\x17ProposalResponsePayload\x12\x15\n\rproposal_hash\x18\x01 \x01(\x0c\x12\x11\n\textension\x18\x02 \x01(\x0c\"2\n\x0b\x45ndorsement\x12\x10\n\x08\x65ndorser\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -140,7 +140,7 @@ _PROPOSALRESPONSEPAYLOAD = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='proposalHash', full_name='protos.ProposalResponsePayload.proposalHash', index=0,
+      name='proposal_hash', full_name='protos.ProposalResponsePayload.proposal_hash', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -166,7 +166,7 @@ _PROPOSALRESPONSEPAYLOAD = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=315,
-  serialized_end=381,
+  serialized_end=382,
 )
 
 
@@ -203,8 +203,8 @@ _ENDORSEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=383,
-  serialized_end=433,
+  serialized_start=384,
+  serialized_end=434,
 )
 
 _PROPOSALRESPONSE.fields_by_name['timestamp'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP

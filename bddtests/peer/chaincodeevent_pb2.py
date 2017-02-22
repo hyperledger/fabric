@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/chaincodeevent.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x19peer/chaincodeevent.proto\x12\x06protos\"W\n\x0e\x43haincodeEvent\x12\x13\n\x0b\x63haincodeID\x18\x01 \x01(\t\x12\x0c\n\x04txID\x18\x02 \x01(\t\x12\x11\n\teventName\x18\x03 \x01(\t\x12\x0f\n\x07payload\x18\x04 \x01(\x0c\x42\x43\n\x16org.hyperledger.protosZ)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x19peer/chaincodeevent.proto\x12\x06protos\"Z\n\x0e\x43haincodeEvent\x12\x14\n\x0c\x63haincode_id\x18\x01 \x01(\t\x12\r\n\x05tx_id\x18\x02 \x01(\t\x12\x12\n\nevent_name\x18\x03 \x01(\t\x12\x0f\n\x07payload\x18\x04 \x01(\x0c\x42\x43\n\x16org.hyperledger.protosZ)github.com/hyperledger/fabric/protos/peerb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -34,21 +34,21 @@ _CHAINCODEEVENT = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='chaincodeID', full_name='protos.ChaincodeEvent.chaincodeID', index=0,
+      name='chaincode_id', full_name='protos.ChaincodeEvent.chaincode_id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='txID', full_name='protos.ChaincodeEvent.txID', index=1,
+      name='tx_id', full_name='protos.ChaincodeEvent.tx_id', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='eventName', full_name='protos.ChaincodeEvent.eventName', index=2,
+      name='event_name', full_name='protos.ChaincodeEvent.event_name', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -74,7 +74,7 @@ _CHAINCODEEVENT = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=37,
-  serialized_end=124,
+  serialized_end=127,
 )
 
 DESCRIPTOR.message_types_by_name['ChaincodeEvent'] = _CHAINCODEEVENT

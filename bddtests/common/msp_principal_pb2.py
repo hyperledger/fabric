@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common/msp_principal.proto',
   package='common',
   syntax='proto3',
-  serialized_pb=_b('\n\x1a\x63ommon/msp_principal.proto\x12\x06\x63ommon\"\xb0\x01\n\x0cMSPPrincipal\x12\x44\n\x17PrincipalClassification\x18\x01 \x01(\x0e\x32#.common.MSPPrincipal.Classification\x12\x11\n\tPrincipal\x18\x03 \x01(\x0c\"G\n\x0e\x43lassification\x12\r\n\tByMSPRole\x10\x00\x12\x16\n\x12\x42yOrganizationUnit\x10\x01\x12\x0e\n\nByIdentity\x10\x02\"M\n\x10OrganizationUnit\x12\x15\n\rMSPIdentifier\x18\x01 \x01(\t\x12\"\n\x1aOrganizationUnitIdentifier\x18\x02 \x01(\t\"q\n\x07MSPRole\x12\x15\n\rMSPIdentifier\x18\x01 \x01(\t\x12)\n\x04Role\x18\x02 \x01(\x0e\x32\x1b.common.MSPRole.MSPRoleType\"$\n\x0bMSPRoleType\x12\n\n\x06Member\x10\x00\x12\t\n\x05\x41\x64min\x10\x01\x42-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
+  serialized_pb=_b('\n\x1a\x63ommon/msp_principal.proto\x12\x06\x63ommon\"\xa9\x01\n\x0cMSPPrincipal\x12\x45\n\x18principal_classification\x18\x01 \x01(\x0e\x32#.common.MSPPrincipal.Classification\x12\x11\n\tprincipal\x18\x02 \x01(\x0c\"?\n\x0e\x43lassification\x12\x08\n\x04ROLE\x10\x00\x12\x15\n\x11ORGANIZATION_UNIT\x10\x01\x12\x0c\n\x08IDENTITY\x10\x02\"q\n\x10OrganizationUnit\x12\x16\n\x0emsp_identifier\x18\x01 \x01(\t\x12&\n\x1eorganizational_unit_identifier\x18\x02 \x01(\t\x12\x1d\n\x15\x63\x65rtifiers_identifier\x18\x03 \x01(\x0c\"r\n\x07MSPRole\x12\x16\n\x0emsp_identifier\x18\x01 \x01(\t\x12)\n\x04Role\x18\x02 \x01(\x0e\x32\x1b.common.MSPRole.MSPRoleType\"$\n\x0bMSPRoleType\x12\n\n\x06MEMBER\x10\x00\x12\t\n\x05\x41\x44MIN\x10\x01\x42-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -32,22 +32,22 @@ _MSPPRINCIPAL_CLASSIFICATION = _descriptor.EnumDescriptor(
   file=DESCRIPTOR,
   values=[
     _descriptor.EnumValueDescriptor(
-      name='ByMSPRole', index=0, number=0,
+      name='ROLE', index=0, number=0,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ByOrganizationUnit', index=1, number=1,
+      name='ORGANIZATION_UNIT', index=1, number=1,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ByIdentity', index=2, number=2,
+      name='IDENTITY', index=2, number=2,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=144,
-  serialized_end=215,
+  serialized_start=145,
+  serialized_end=208,
 )
 _sym_db.RegisterEnumDescriptor(_MSPPRINCIPAL_CLASSIFICATION)
 
@@ -58,18 +58,18 @@ _MSPROLE_MSPROLETYPE = _descriptor.EnumDescriptor(
   file=DESCRIPTOR,
   values=[
     _descriptor.EnumValueDescriptor(
-      name='Member', index=0, number=0,
+      name='MEMBER', index=0, number=0,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='Admin', index=1, number=1,
+      name='ADMIN', index=1, number=1,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=373,
-  serialized_end=409,
+  serialized_start=403,
+  serialized_end=439,
 )
 _sym_db.RegisterEnumDescriptor(_MSPROLE_MSPROLETYPE)
 
@@ -82,15 +82,15 @@ _MSPPRINCIPAL = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='PrincipalClassification', full_name='common.MSPPrincipal.PrincipalClassification', index=0,
+      name='principal_classification', full_name='common.MSPPrincipal.principal_classification', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='Principal', full_name='common.MSPPrincipal.Principal', index=1,
-      number=3, type=12, cpp_type=9, label=1,
+      name='principal', full_name='common.MSPPrincipal.principal', index=1,
+      number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -109,7 +109,7 @@ _MSPPRINCIPAL = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=39,
-  serialized_end=215,
+  serialized_end=208,
 )
 
 
@@ -121,16 +121,23 @@ _ORGANIZATIONUNIT = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='MSPIdentifier', full_name='common.OrganizationUnit.MSPIdentifier', index=0,
+      name='msp_identifier', full_name='common.OrganizationUnit.msp_identifier', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='OrganizationUnitIdentifier', full_name='common.OrganizationUnit.OrganizationUnitIdentifier', index=1,
+      name='organizational_unit_identifier', full_name='common.OrganizationUnit.organizational_unit_identifier', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='certifiers_identifier', full_name='common.OrganizationUnit.certifiers_identifier', index=2,
+      number=3, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -146,8 +153,8 @@ _ORGANIZATIONUNIT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=217,
-  serialized_end=294,
+  serialized_start=210,
+  serialized_end=323,
 )
 
 
@@ -159,7 +166,7 @@ _MSPROLE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='MSPIdentifier', full_name='common.MSPRole.MSPIdentifier', index=0,
+      name='msp_identifier', full_name='common.MSPRole.msp_identifier', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -185,11 +192,11 @@ _MSPROLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=296,
-  serialized_end=409,
+  serialized_start=325,
+  serialized_end=439,
 )
 
-_MSPPRINCIPAL.fields_by_name['PrincipalClassification'].enum_type = _MSPPRINCIPAL_CLASSIFICATION
+_MSPPRINCIPAL.fields_by_name['principal_classification'].enum_type = _MSPPRINCIPAL_CLASSIFICATION
 _MSPPRINCIPAL_CLASSIFICATION.containing_type = _MSPPRINCIPAL
 _MSPROLE.fields_by_name['Role'].enum_type = _MSPROLE_MSPROLETYPE
 _MSPROLE_MSPROLETYPE.containing_type = _MSPROLE

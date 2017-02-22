@@ -14,26 +14,17 @@
 # limitations under the License.
 #
 
-import os
-import re
 import time
 import datetime
 import Queue
-import subprocess
-import devops_pb2
-import fabric_pb2
-import chaincode_pb2
 from orderer import ab_pb2
 from common import common_pb2
 
 import bdd_test_util
-import bdd_grpc_util
 
 from grpc.beta import implementations
-from grpc.framework.interfaces.face.face import NetworkError
 from grpc.framework.interfaces.face.face import AbortionError
 from grpc.beta.interfaces import StatusCode
-from common.common_pb2 import Payload
 
 # The default chain ID when the system is statically bootstrapped for testing
 TEST_CHAIN_ID = "testchainid"
@@ -109,14 +100,33 @@ class StreamHelper:
 
 class DeliverStreamHelper(StreamHelper):
 
-    def __init__(self, ordererStub, timeout = 1):
+    def __init__(self, ordererStub, timeout = 110):
         StreamHelper.__init__(self)
         # Set the UpdateMessage and start the stream
         sendGenerator = self.createSendGenerator(timeout)
         self.replyGenerator = ordererStub.Deliver(sendGenerator, timeout + 1)
 
+    def createSeekInfo(self, chainID, start = 'Oldest', end = 'Newest',  behavior = 'FAIL_IF_NOT_READY'):
+        seekInfo = ab_pb2.SeekInfo(
+            start = seekPosition(start),
+            stop = seekPosition(end),
+            behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
+        )
+        print("SeekInfo = {0}".format(seekInfo))
+        print("")
+        return common_pb2.Envelope(
+            payload = common_pb2.Payload(
+                header = common_pb2.Header(
+                    channel_header = common_pb2.ChannelHeader( channel_id = chainID ).SerializeToString(),
+                    signature_header = common_pb2.SignatureHeader().SerializeToString(),
+                ),
+                data = seekInfo.SerializeToString(),
+            ).SerializeToString(),
+        )
+
     def seekToRange(self, chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest'):
-        self.sendQueue.put(createSeekInfo(start = start, chainID = chainID))
+        seekInfo = self.createSeekInfo(start = start, end = end, chainID = chainID)
+        self.sendQueue.put(seekInfo)
 
     def getBlocks(self):
         blocks = []
@@ -148,6 +158,10 @@ class UserRegistration:
 
     def getUserName(self):
         return self.userName
+
+    def closeStreams(self):
+        for compose_service, deliverStreamHelper in self.abDeliversStreamHelperDict.iteritems():
+            deliverStreamHelper.sendQueue.put(None)
 
     def connectToDeliverFunction(self, context, composeService, timeout=1):
         'Connect to the deliver function and drain messages to associated orderer queue'
@@ -230,8 +244,8 @@ def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  b
     return common_pb2.Envelope(
         payload = common_pb2.Payload(
             header = common_pb2.Header(
-                channel_header = common_pb2.ChannelHeader( channel_id = chainID ),
-                signature_header = common_pb2.SignatureHeader(),
+                channel_header = common_pb2.ChannelHeader( channel_id = chainID ).SerializeToString(),
+                signature_header = common_pb2.SignatureHeader().SerializeToString(),
             ),
             data = ab_pb2.SeekInfo(
                 start = seekPosition(start),

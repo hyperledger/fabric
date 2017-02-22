@@ -19,6 +19,7 @@ import endorser_util
 import bdd_test_util
 import bootstrap_util
 import orderer_util
+import compose
 import time
 
 class ChannelCreationInfo:
@@ -162,12 +163,12 @@ def step_impl(context, userName, createChannelSignedConfigEnvelope):
     signedAnchorsConfigItems = user.tags[anchorSignedConfigItemsName]
 
     # Intermediate step until template tool is ready
-    signedConfigItems = bootstrap_util.createSignedConfigItems(configGroups=signedMspConfigItems + signedAnchorsConfigItems)
+    channel_config_groups = bootstrap_util.createSignedConfigItems(directory, configGroups=signedMspConfigItems + signedAnchorsConfigItems)
 
-
+    # bootstrap_util.setMetaPolicy(channelId=channelID, channgel_config_groups=channgel_config_groups)
 
     #NOTE: Conidered passing signing key for appDeveloper, but decided that the peer org signatures they need to collect subsequently should be proper way
-    config_update_envelope = bootstrap_util.createConfigUpdateEnvelope(channelConfigGroup=signedConfigItems, chainId=channelID, chainCreationPolicyName=chainCreationPolicyName)
+    config_update_envelope = bootstrap_util.createConfigUpdateEnvelope(channelConfigGroup=channel_config_groups, chainId=channelID, chainCreationPolicyName=chainCreationPolicyName)
 
     user.setTagValue(createChannelSignedConfigEnvelope, ChannelCreationInfo(channelID, chainCreationPolicyName, config_update_envelope))
 
@@ -217,6 +218,14 @@ def step_impl(context, userName, configTxName, orderer, channelId):
     configTxEnvelope = user.tags[configTxName]
     bootstrap_util.broadcastCreateChannelConfigTx(context=context, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=configTxEnvelope)
 
+@when(u'the user "{userName}" broadcasts transaction "{transactionAlias}" to orderer "{orderer}" on channel "{channelId}"')
+def step_impl(context, userName, transactionAlias, orderer, channelId):
+    directory = bootstrap_util.getDirectory(context)
+    user = directory.getUser(userName=userName)
+    transaction = user.tags[transactionAlias]
+    bootstrap_util.broadcastCreateChannelConfigTx(context=context, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=transaction)
+
+
 @when(u'user "{userName}" connects to deliver function on orderer "{composeService}"')
 def step_impl(context, userName, composeService):
     directory = bootstrap_util.getDirectory(context)
@@ -230,7 +239,8 @@ def step_impl(context, userName, composeService):
     row = context.table.rows[0]
     chainID = row['ChainId']
     start, end, = orderer_util.convertSeek(row['Start']), orderer_util.convertSeek(row['End'])
-
+    print("Start and end = {0}/{1}".format(start, end))
+    print("")
     streamHelper = user.getDelivererStreamHelper(context, composeService)
     streamHelper.seekToRange(chainID=chainID, start = start, end = end)
 
@@ -257,7 +267,7 @@ def step_impl(context, userName, certAlias, genisisBlockName, joinChannelResult)
     # Retrieve the genesis block from the returned value of deliver (Will be list with first block as genesis block)
     genesisBlock = user.tags[genisisBlockName][0]
     ccSpec = endorser_util.getChaincodeSpec("GOLANG", "", "cscc", ["JoinChain", genesisBlock.SerializeToString()])
-    proposal = endorser_util.createInvokeProposalForBDD(context, ccSpec=ccSpec, chainID="",signersCert=signersCert, Mspid="DEFAULT", type="CONFIG")
+    proposal = endorser_util.createInvokeProposalForBDD(context, ccSpec=ccSpec, chainID="",signersCert=signersCert, Mspid=user.tags[certAlias].organization, type="CONFIG")
     signedProposal = endorser_util.signProposal(proposal=proposal, entity=user, signersCert=signersCert)
 
     # Send proposal to each specified endorser, waiting 'timeout' seconds for response/error
@@ -300,3 +310,29 @@ def step_impl(context, userName, anchorSetName, channelName):
     user = directory.getUser(userName=userName)
     nodeAdminTuples = [directory.findNodeAdminTuple(row['User'], row['Peer'], row['Organization']) for row in context.table.rows]
     user.setTagValue(anchorSetName, bootstrap_util.getAnchorPeersConfigGroup(context=context, nodeAdminTuples=nodeAdminTuples))
+
+@given(u'we compose "{composeYamlFile}"')
+def step_impl(context, composeYamlFile):
+    # time.sleep(10)              # Should be replaced with a definitive interlock guaranteeing that all peers/membersrvc are ready
+    composition = compose.Composition(context, composeYamlFile)
+    context.compose_containers = composition.containerDataList
+    context.composition = composition
+
+@given(u'I wait "{seconds}" seconds')
+def step_impl(context, seconds):
+    time.sleep(float(seconds))
+
+@when(u'I wait "{seconds}" seconds')
+def step_impl(context, seconds):
+    time.sleep(float(seconds))
+
+@then(u'I wait "{seconds}" seconds')
+def step_impl(context, seconds):
+    time.sleep(float(seconds))
+
+@given(u'user "{userNameSource}" gives "{objectAlias}" to user "{userNameTarget}"')
+def step_impl(context, userNameSource, objectAlias, userNameTarget):
+    directory = bootstrap_util.getDirectory(context)
+    userSource = directory.getUser(userName=userNameSource)
+    userTarget = directory.getUser(userName=userNameTarget)
+    userTarget.setTagValue(objectAlias, userSource.tags[objectAlias])
