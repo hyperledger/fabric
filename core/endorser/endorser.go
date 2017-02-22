@@ -55,15 +55,26 @@ func NewEndorserServer() pb.EndorserServer {
 	return e
 }
 
-func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader) error {
+// checkACL checks that the supplied proposal complies
+// with the policies of the chain; for a system chaincode
+// we use the admins policy, whereas for normal chaincodes
+// we use the writers policy
+func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
 	// get policy manager to check ACLs
 	pm := peer.GetPolicyManager(chdr.ChannelId)
 	if pm == nil {
 		return fmt.Errorf("No policy manager available for chain %s", chdr.ChannelId)
 	}
 
-	// access the writers policy
-	policy, _ := pm.GetPolicy(policies.ChannelApplicationWriters)
+	// access the policy to use to validate this proposal
+	var policy policies.Policy
+	if syscc.IsSysCC(hdrext.ChaincodeId.Name) {
+		// in the case of a system chaincode, we use the admin policy
+		policy, _ = pm.GetPolicy(policies.ChannelApplicationAdmins)
+	} else {
+		// in the case of a normal chaincode, we use the writers policy
+		policy, _ = pm.GetPolicy(policies.ChannelApplicationWriters)
+	}
 
 	// evaluate that this proposal complies with the writers
 	err := policy.Evaluate(
@@ -317,9 +328,8 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
-	//chainless proposals do not/cannot affect ledger and cannot be submitted as transactions
-	//ignore uniqueness checks
 	if chainID != "" {
+		// here we handle uniqueness check and ACLs for proposals targeting a chain
 		lgr := peer.GetLedger(chainID)
 		if lgr == nil {
 			return nil, errors.New(fmt.Sprintf("Failure while looking up the ledger %s", chainID))
@@ -329,10 +339,15 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 		}
 
 		// check ACL - we verify that this proposal
-		// complies with the "writers" policy of the chain
-		if err = e.checkACL(signedProp, chdr, shdr); err != nil {
+		// complies with the policy of the chain
+		if err = e.checkACL(signedProp, chdr, shdr, hdrExt); err != nil {
 			return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 		}
+	} else {
+		// chainless proposals do not/cannot affect ledger and cannot be submitted as transactions
+		// ignore uniqueness checks; also, chainless proposals are not validated using the policies
+		// of the chain since by definition there is no chain; they are validated against the local
+		// MSP of the peer instead by the call to ValidateProposalMessage above
 	}
 
 	// obtaining once the tx simulator for this proposal. This will be nil
