@@ -70,7 +70,7 @@ func (advisor *mspSecurityAdvisor) OrgByPeerIdentity(peerIdentity api.PeerIdenti
 	}
 
 	// Check against managers
-	for chainID, mspManager := range mgmt.GetManagers() {
+	for chainID, mspManager := range mgmt.GetDeserializers() {
 		// Deserialize identity
 		identity, err := mspManager.DeserializeIdentity([]byte(peerIdentity))
 		if err != nil {

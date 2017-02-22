@@ -363,40 +363,14 @@ func GetChannelsInfo() []*pb.ChannelInfo {
 	return channelInfoArray
 }
 
-// GetPolicyManagerMgmt returns a special PolicyManager whose
-// only function is to give access to the policy manager of
-// a given channel. If the channel does not exists then,
-// it returns nil.
-// The only method implemented is therefore 'Manager'.
-func GetPolicyManagerMgmt() policies.Manager {
-	return &policyManagerMgmt{}
+// NewChannelPolicyManagerGetter returns a new instance of ChannelPolicyManagerGetter
+func NewChannelPolicyManagerGetter() policies.ChannelPolicyManagerGetter {
+	return &channelPolicyManagerGetter{}
 }
 
-type policyManagerMgmt struct{}
+type channelPolicyManagerGetter struct{}
 
-func (c *policyManagerMgmt) GetPolicy(id string) (policies.Policy, bool) {
-	panic("implement me")
-}
-
-// Manager returns the policy manager associated to a channel
-// specified by a path of length 1 that has the name of the channel as the only
-// coordinate available.
-// If the path has length different from 1, then the method returns (nil, false).
-// If the channel does not exists, then the method returns (nil, false)
-// Nothing is created.
-func (c *policyManagerMgmt) Manager(path []string) (policies.Manager, bool) {
-	if len(path) != 1 {
-		return nil, false
-	}
-
-	policyManager := GetPolicyManager(path[0])
+func (c *channelPolicyManagerGetter) Manager(channelID string) (policies.Manager, bool) {
+	policyManager := GetPolicyManager(channelID)
 	return policyManager, policyManager != nil
-}
-
-func (c *policyManagerMgmt) BasePath() string {
-	panic("implement me")
-}
-
-func (c *policyManagerMgmt) PolicyNames() []string {
-	panic("implement me")
 }

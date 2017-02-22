@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/common/configvalues/channel/application"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/common/genesis"
+	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core"
@@ -154,7 +155,10 @@ func serve(args []string) error {
 		panic(fmt.Sprintf("Failed serializing self identity: %v", err))
 	}
 
-	messageCryptoService := mcs.New(peer.GetPolicyManagerMgmt())
+	messageCryptoService := mcs.New(
+		peer.NewChannelPolicyManagerGetter(),
+		localmsp.NewSigner(),
+		mgmt.NewDeserializersManager())
 	service.InitGossipService(serializedIdentity, peerEndpoint.Address, grpcServer.Server(), messageCryptoService, bootstrap...)
 	defer service.GetGossipService().Stop()
 

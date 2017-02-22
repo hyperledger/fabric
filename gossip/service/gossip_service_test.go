@@ -25,7 +25,7 @@ import (
 	"bytes"
 	"time"
 
-	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
+	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -60,7 +60,8 @@ func TestInitGossipService(t *testing.T) {
 	wg.Add(10)
 	for i := 0; i < 10; i++ {
 		go func() {
-			InitGossipService(identity, "localhost:5611", grpcServer, mcs.New(&mockpolicies.PolicyManagerMgmt{}))
+			messageCryptoService := mcs.New(&mcs.MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
+			InitGossipService(identity, "localhost:5611", grpcServer, messageCryptoService)
 
 			wg.Done()
 		}()

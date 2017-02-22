@@ -98,6 +98,14 @@ type Provider interface {
 	NewPolicy(data []byte) (Policy, error)
 }
 
+// ChannelPolicyManagerGetter is a support interface
+// to get access to the policy manager of a given channel
+type ChannelPolicyManagerGetter interface {
+	// Returns the policy manager associated to the passed channel
+	// and true if it was the manager requested, or false if it is the default manager
+	Manager(channelID string) (Manager, bool)
+}
+
 type policyConfig struct {
 	policies map[string]Policy
 	managers map[string]*ManagerImpl
