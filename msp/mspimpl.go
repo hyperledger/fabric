@@ -528,12 +528,31 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrinci
 
 		// now we validate the different msp roles
 		switch mspRole.Role {
-		// in the case of member, we simply check
-		// whether this identity is valid for the MSP
 		case common.MSPRole_MEMBER:
+			// in the case of member, we simply check
+			// whether this identity is valid for the MSP
 			return msp.Validate(id)
 		case common.MSPRole_ADMIN:
-			panic("Not yet implemented")
+			// in the case of admin, we check that the
+			// id is exactly one of our admins
+			idBytes, err := id.Serialize()
+			if err != nil {
+				return fmt.Errorf("Could not serialize this identity instance, err %s", err)
+			}
+
+			for _, admincert := range msp.admins {
+				adBytes, err := admincert.Serialize()
+				if err != nil {
+					return fmt.Errorf("Could not serialize admin cert, err %s", err)
+				}
+
+				rv := bytes.Compare(idBytes, adBytes)
+				if rv == 0 {
+					return nil
+				}
+			}
+
+			return errors.New("This identity is not an admin")
 		default:
 			return fmt.Errorf("Invalid MSP role type %d", int32(mspRole.Role))
 		}
