@@ -17,6 +17,7 @@ limitations under the License.
 package channel
 
 import (
+	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -28,8 +29,23 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
 )
+
+//ConfigTxFileNotFound channel create configuration tx file not found
+type ConfigTxFileNotFound string
+
+func (e ConfigTxFileNotFound) Error() string {
+	return fmt.Sprintf("channel create configuration tx file not found %s", string(e))
+}
+
+//InvalidCreateTx invalid channel create transaction
+type InvalidCreateTx string
+
+func (e InvalidCreateTx) Error() string {
+	return fmt.Sprintf("Invalid channel create transaction : %s", string(e))
+}
 
 func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	createCmd := &cobra.Command{
@@ -44,15 +60,16 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 	return createCmd
 }
 
-func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
+func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 	if cf.AnchorPeerParser == nil {
 		cf.AnchorPeerParser = common.GetDefaultAnchorPeerParser()
 	}
+
 	anchorPeers, err := cf.AnchorPeerParser.Parse()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	//TODO this is a temporary hack until `orderer.template` and 'msp.template' is supplied from the CLI
+
 	oTemplate := configtxtest.OrdererTemplate()
 	oOrgTemplate := configtxtest.OrdererOrgTemplate()
 	appOrgTemplate := configtxtest.ApplicationOrgTemplate()
@@ -61,13 +78,64 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 
 	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	chCrtEnv, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, chainID, signer, chCrtTemp)
 
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	return chCrtEnv, nil
+}
+
+func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
+	cftx, err := ioutil.ReadFile(configTxFileName)
+	if err != nil {
+		return nil, ConfigTxFileNotFound(err.Error())
+	}
+
+	env := utils.UnmarshalEnvelopeOrPanic(cftx)
+
+	payload := utils.ExtractPayloadOrPanic(env)
+
+	if payload.Header == nil || payload.Header.ChannelHeader == nil {
+		return nil, InvalidCreateTx("bad header")
+	}
+
+	ch, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, InvalidCreateTx("could not unmarshall channel header")
+	}
+
+	if ch.Type != int32(cb.HeaderType_CONFIG_UPDATE) {
+		return nil, InvalidCreateTx("bad type")
+	}
+
+	if ch.ChannelId == "" {
+		return nil, InvalidCreateTx("empty channel id")
+	}
+
+	if ch.ChannelId != chainID {
+		return nil, InvalidCreateTx(fmt.Sprintf("mismatched channel ID %s != %s", ch.ChannelId, chainID))
+	}
+
+	return env, nil
+}
+
+func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
+	var err error
+	var chCrtEnv *cb.Envelope
+
+	if channelTxFile != "" {
+		if chCrtEnv, err = createChannelFromConfigTx(channelTxFile); err != nil {
+			return err
+		}
+	} else {
+		if chCrtEnv, err = createChannelFromDefaults(cf); err != nil {
+			return err
+		}
 	}
 
 	err = cf.BroadcastClient.Send(chCrtEnv)
@@ -105,6 +173,11 @@ func executeCreate(cf *ChannelCmdFactory) error {
 }
 
 func create(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
+	//the global chainID filled by the "-c" command
+	if chainID == common.UndefinedParamValue {
+		return fmt.Errorf("Must supply channel ID .\n")
+	}
+
 	var err error
 	if cf == nil {
 		cf, err = InitCmdFactory(false)

@@ -18,9 +18,13 @@ package channel
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
@@ -249,5 +253,152 @@ func TestCreateChainDeliverFail(t *testing.T) {
 		if err.Error() != expectedErrMsg {
 			t.Errorf("Run create chain get unexpected error: %s(expected %s)", err.Error(), expectedErrMsg)
 		}
+	}
+}
+
+func createTxFile(filename string, typ cb.HeaderType, channelID string) (*cb.Envelope, error) {
+	ch := &cb.ChannelHeader{Type: int32(typ), ChannelId: channelID}
+	data, err := proto.Marshal(ch)
+	if err != nil {
+		return nil, err
+	}
+
+	p := &cb.Payload{Header: &cb.Header{ChannelHeader: data}}
+	data, err = proto.Marshal(p)
+	if err != nil {
+		return nil, err
+	}
+
+	env := &cb.Envelope{Payload: data}
+	data, err = proto.Marshal(env)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = ioutil.WriteFile(filename, data, 0644); err != nil {
+		return nil, err
+	}
+
+	return env, nil
+}
+
+func TestCreateChainFromTx(t *testing.T) {
+	InitMSP()
+
+	mockchannel := "mockchannel"
+
+	dir, err := ioutil.TempDir("/tmp", "createtestfromtx-")
+	if err != nil {
+		t.Fatalf("couldn't create temp dir")
+	}
+
+	defer os.RemoveAll(dir) // clean up
+
+	//this could be created by the create command
+	defer os.Remove(mockchannel + ".block")
+
+	file := filepath.Join(dir, mockchannel)
+
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		t.Fatalf("Get default signer error: %v", err)
+	}
+
+	mockBroadcastClient := common.GetMockBroadcastClient(nil)
+
+	mockCF := &ChannelCmdFactory{
+		BroadcastClient:  mockBroadcastClient,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
+		AnchorPeerParser: common.GetAnchorPeersParser("../common/testdata/anchorPeersOrg1.txt"),
+	}
+
+	cmd := createCmd(mockCF)
+
+	AddFlags(cmd)
+
+	args := []string{"-c", mockchannel, "-f", file, "-a", "../common/testdata/anchorPeersOrg1.txt"}
+	cmd.SetArgs(args)
+
+	if _, err = createTxFile(file, cb.HeaderType_CONFIG_UPDATE, mockchannel); err != nil {
+		t.Fatalf("couldn't create tx file")
+	}
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("create chain failed")
+	}
+}
+
+func TestCreateChainInvalidTx(t *testing.T) {
+	InitMSP()
+
+	mockchannel := "mockchannel"
+
+	dir, err := ioutil.TempDir("/tmp", "createinvaltest-")
+	if err != nil {
+		t.Fatalf("couldn't create temp dir")
+	}
+
+	defer os.RemoveAll(dir) // clean up
+
+	//this is created by create command
+	defer os.Remove(mockchannel + ".block")
+
+	file := filepath.Join(dir, mockchannel)
+
+	signer, err := common.GetDefaultSigner()
+	if err != nil {
+		t.Fatalf("Get default signer error: %v", err)
+	}
+
+	mockBroadcastClient := common.GetMockBroadcastClient(nil)
+
+	mockCF := &ChannelCmdFactory{
+		BroadcastClient:  mockBroadcastClient,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
+		AnchorPeerParser: common.GetAnchorPeersParser("../common/testdata/anchorPeersOrg1.txt"),
+	}
+
+	cmd := createCmd(mockCF)
+
+	AddFlags(cmd)
+
+	args := []string{"-c", mockchannel, "-f", file, "-a", "../common/testdata/anchorPeersOrg1.txt"}
+	cmd.SetArgs(args)
+
+	//bad type CONFIG
+	if _, err = createTxFile(file, cb.HeaderType_CONFIG, mockchannel); err != nil {
+		t.Fatalf("couldn't create tx file")
+	}
+
+	defer os.Remove(file)
+
+	if err := cmd.Execute(); err == nil {
+		t.Errorf("expected error")
+	} else if _, ok := err.(InvalidCreateTx); !ok {
+		t.Errorf("invalid error")
+	}
+
+	//bad channel name - does not match one specified in command
+	if _, err = createTxFile(file, cb.HeaderType_CONFIG_UPDATE, "different_channel"); err != nil {
+		t.Fatalf("couldn't create tx file")
+	}
+
+	if err := cmd.Execute(); err == nil {
+		t.Errorf("expected error")
+	} else if _, ok := err.(InvalidCreateTx); !ok {
+		t.Errorf("invalid error")
+	}
+
+	//empty channel
+	if _, err = createTxFile(file, cb.HeaderType_CONFIG_UPDATE, ""); err != nil {
+		t.Fatalf("couldn't create tx file")
+	}
+
+	if err := cmd.Execute(); err == nil {
+		t.Errorf("expected error")
+	} else if _, ok := err.(InvalidCreateTx); !ok {
+		t.Errorf("invalid error")
 	}
 }
