@@ -18,6 +18,7 @@ package gossip
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"runtime"
 	"strconv"
@@ -87,6 +88,7 @@ func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
 }
 
 type naiveCryptoService struct {
+	allowedPkiIDS map[string]struct{}
 }
 
 type orgCryptoService struct {
@@ -106,8 +108,14 @@ func (*orgCryptoService) Verify(joinChanMsg api.JoinChannelMessage) error {
 
 // VerifyByChannel verifies a peer's signature on a message in the context
 // of a specific channel
-func (*naiveCryptoService) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
-	return nil
+func (cs *naiveCryptoService) VerifyByChannel(_ common.ChainID, identity api.PeerIdentityType, _, _ []byte) error {
+	if cs.allowedPkiIDS == nil {
+		return nil
+	}
+	if _, allowed := cs.allowedPkiIDS[string(identity)]; allowed {
+		return nil
+	}
+	return errors.New("Forbidden")
 }
 
 func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
@@ -152,7 +160,7 @@ func bootPeers(portPrefix int, ids ...int) []string {
 	return peers
 }
 
-func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gossip {
+func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int, mcs api.MessageCryptoService, boot ...int) Gossip {
 	port := id + portPrefix
 	conf := &Config{
 		BindPort:                   port,
@@ -171,12 +179,15 @@ func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gos
 		PublishStateInfoInterval:   time.Duration(1) * time.Second,
 		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
-	cryptoService := &naiveCryptoService{}
-	idMapper := identity.NewIdentityMapper(cryptoService)
 
-	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService, idMapper, api.PeerIdentityType(conf.InternalEndpoint))
+	idMapper := identity.NewIdentityMapper(mcs)
+	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, mcs, idMapper, api.PeerIdentityType(conf.InternalEndpoint))
 
 	return g
+}
+
+func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gossip {
+	return newGossipInstanceWithCustomMCS(portPrefix, id, maxMsgCount, &naiveCryptoService{}, boot...)
 }
 
 func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot ...int) Gossip {
@@ -658,9 +669,27 @@ func TestDataLeakage(t *testing.T) {
 	// Scenario: spawn some nodes and let them all
 	// establish full membership.
 	// Then, have half be in channel A and half be in channel B.
-	// Ensure nodes only get messages of their channels.
+	// However, make it so that only the first 3 from each channel
+	// are eligible to obtain blocks from the channels they're in.
+	// Ensure nodes only get messages of their channels and in case they
+	// are eligible for the channels.
 
 	totalPeers := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9} // THIS MUST BE EVEN AND NOT ODD
+	// Peer0 and Peer5 disseminate blocks
+	// only 1,2 and 6,7 should get blocks.
+
+	mcs := &naiveCryptoService{
+		allowedPkiIDS: map[string]struct{}{
+			// Channel A
+			"localhost:1610": {},
+			"localhost:1611": {},
+			"localhost:1612": {},
+			// Channel B
+			"localhost:1615": {},
+			"localhost:1616": {},
+			"localhost:1617": {},
+		},
+	}
 
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
@@ -673,7 +702,7 @@ func TestDataLeakage(t *testing.T) {
 		go func(i int) {
 			totPeers := append([]int(nil), totalPeers[:i]...)
 			bootPeers := append(totPeers, totalPeers[i+1:]...)
-			peers[i] = newGossipInstance(portPrefix, i, 100, bootPeers...)
+			peers[i] = newGossipInstanceWithCustomMCS(portPrefix, i, 100, mcs, bootPeers...)
 			wg.Done()
 		}(i)
 	}
@@ -683,26 +712,30 @@ func TestDataLeakage(t *testing.T) {
 
 	channels := []common.ChainID{common.ChainID("A"), common.ChainID("B")}
 
+	channelAmetadata := []byte("some metadata of channel A")
+	channelBmetadata := []byte("some metadata on channel B")
+
 	for i, channel := range channels {
 		for j := 0; j < (n / 2); j++ {
 			instanceIndex := (n/2)*i + j
 			peers[instanceIndex].JoinChan(&joinChanMsg{}, channel)
+			var metadata []byte
+			if i == 0 {
+				metadata = channelAmetadata
+			} else {
+				metadata = channelBmetadata
+			}
+			peers[instanceIndex].UpdateChannelMetadata(metadata, channel)
 			t.Log(instanceIndex, "joined", string(channel))
 		}
 	}
 
-	channelAmetadata := []byte("some metadata of channel A")
-	channelBmetadata := []byte("some metadata on channel B")
-
-	peers[0].UpdateChannelMetadata(channelAmetadata, channels[0])
-	peers[n/2].UpdateChannelMetadata(channelBmetadata, channels[1])
-
-	// Wait until all peers have at least 1 peer in the per-channel view
+	// Wait until all peers have other peers in the per-channel view
 	seeChannelMetadata := func() bool {
 		for i, channel := range channels {
-			for j := 1; j < (n / 2); j++ {
+			for j := 0; j < 3; j++ {
 				instanceIndex := (n/2)*i + j
-				if len(peers[instanceIndex].PeersOfChannel(channel)) == 0 {
+				if len(peers[instanceIndex].PeersOfChannel(channel)) < 2 {
 					return false
 				}
 			}
@@ -711,12 +744,12 @@ func TestDataLeakage(t *testing.T) {
 	}
 	t1 := time.Now()
 	waitUntilOrFail(t, seeChannelMetadata)
-	t.Log("Metadata sync took", time.Since(t1))
 
+	t.Log("Metadata sync took", time.Since(t1))
 	for i, channel := range channels {
-		for j := 1; j < (n / 2); j++ {
+		for j := 0; j < 3; j++ {
 			instanceIndex := (n/2)*i + j
-			assert.Len(t, peers[instanceIndex].PeersOfChannel(channel), 1)
+			assert.Len(t, peers[instanceIndex].PeersOfChannel(channel), 2)
 			if i == 0 {
 				assert.Equal(t, channelAmetadata, peers[instanceIndex].PeersOfChannel(channel)[0].Metadata)
 			} else {
@@ -727,9 +760,9 @@ func TestDataLeakage(t *testing.T) {
 
 	gotMessages := func() {
 		var wg sync.WaitGroup
-		wg.Add(n - 2)
+		wg.Add(4)
 		for i, channel := range channels {
-			for j := 1; j < (n / 2); j++ {
+			for j := 1; j < 3; j++ {
 				instanceIndex := (n/2)*i + j
 				go func(instanceIndex int, channel common.ChainID) {
 					incMsgChan, _ := peers[instanceIndex].Accept(acceptData, false)

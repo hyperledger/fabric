@@ -113,3 +113,13 @@ func (ga *gossipAdapterImpl) OrgByPeerIdentity(identity api.PeerIdentityType) ap
 func (ga *gossipAdapterImpl) GetOrgOfPeer(PKIID common.PKIidType) api.OrgIdentityType {
 	return ga.gossipServiceImpl.getOrgOfPeer(PKIID)
 }
+
+// GetIdentityByPKIID returns an identity of a peer with a certain
+// pkiID, or nil if not found
+func (ga *gossipAdapterImpl) GetIdentityByPKIID(pkiID common.PKIidType) api.PeerIdentityType {
+	identity, err := ga.idMapper.Get(pkiID)
+	if err != nil {
+		return nil
+	}
+	return identity
+}

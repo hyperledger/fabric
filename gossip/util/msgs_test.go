@@ -25,7 +25,7 @@ import (
 )
 
 func TestMembershipStore(t *testing.T) {
-	membershipStore := make(MembershipStore, 0)
+	membershipStore := NewMembershipStore()
 
 	id1 := common.PKIidType("id1")
 	id2 := common.PKIidType("id2")
@@ -35,7 +35,7 @@ func TestMembershipStore(t *testing.T) {
 
 	// Test initially created store is empty
 	assert.Nil(t, membershipStore.MsgByID(id1))
-	assert.Len(t, membershipStore, 0)
+	assert.Equal(t, membershipStore.Size(), 0)
 	// Test put works as expected
 	membershipStore.Put(id1, msg1)
 	assert.NotNil(t, membershipStore.MsgByID(id1))
@@ -44,11 +44,11 @@ func TestMembershipStore(t *testing.T) {
 	assert.Equal(t, msg1, membershipStore.MsgByID(id1))
 	assert.NotEqual(t, msg2, membershipStore.MsgByID(id1))
 	// Test capacity grows
-	assert.Len(t, membershipStore, 2)
+	assert.Equal(t, membershipStore.Size(), 2)
 	// Test remove works
 	membershipStore.Remove(id1)
 	assert.Nil(t, membershipStore.MsgByID(id1))
-	assert.Len(t, membershipStore, 1)
+	assert.Equal(t, membershipStore.Size(), 1)
 	// Test returned instance is not a copy
 	msg3 := &proto.SignedGossipMessage{GossipMessage: &proto.GossipMessage{}}
 	msg3Clone := &proto.SignedGossipMessage{GossipMessage: &proto.GossipMessage{}}
@@ -60,7 +60,7 @@ func TestMembershipStore(t *testing.T) {
 }
 
 func TestToSlice(t *testing.T) {
-	membershipStore := make(MembershipStore, 0)
+	membershipStore := NewMembershipStore()
 	id1 := common.PKIidType("id1")
 	id2 := common.PKIidType("id2")
 	id3 := common.PKIidType("id3")
