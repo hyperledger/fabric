@@ -25,8 +25,8 @@ import (
 )
 
 //Basic setup to test couch
-var connectURL = "localhost:5984"
-var badConnectURL = "localhost:5990"
+var connectURL = "couchdb:5984"
+var badConnectURL = "couchdb:5990"
 var username = ""
 var password = ""
 

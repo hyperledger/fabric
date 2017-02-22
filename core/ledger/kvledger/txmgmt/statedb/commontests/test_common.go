@@ -27,7 +27,7 @@ import (
 
 // TestBasicRW tests basic read-write
 func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("TestDB")
+	db, err := dbProvider.GetDBHandle("testbasicrw")
 	testutil.AssertNoError(t, err, "")
 
 	// Test retrieval of non-existent key - returns nil rather than error
@@ -61,10 +61,10 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 // TestMultiDBBasicRW tests basic read-write on multiple dbs
 func TestMultiDBBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db1, err := dbProvider.GetDBHandle("TestDB1")
+	db1, err := dbProvider.GetDBHandle("testmultidbbasicrw")
 	testutil.AssertNoError(t, err, "")
 
-	db2, err := dbProvider.GetDBHandle("TestDB2")
+	db2, err := dbProvider.GetDBHandle("testmultidbbasicrw2")
 	testutil.AssertNoError(t, err, "")
 
 	batch1 := statedb.NewUpdateBatch()
@@ -100,7 +100,7 @@ func TestMultiDBBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 // TestDeletes tests deteles
 func TestDeletes(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("TestDB")
+	db, err := dbProvider.GetDBHandle("testdeletes")
 	testutil.AssertNoError(t, err, "")
 
 	batch := statedb.NewUpdateBatch()
@@ -135,7 +135,7 @@ func TestDeletes(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 // TestIterator tests the iterator
 func TestIterator(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("TestDB")
+	db, err := dbProvider.GetDBHandle("testiterator")
 	testutil.AssertNoError(t, err, "")
 	db.Open()
 	defer db.Close()
@@ -178,7 +178,7 @@ func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
 
 // TestQuery tests queries
 func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-	db, err := dbProvider.GetDBHandle("TestDB")
+	db, err := dbProvider.GetDBHandle("testquery")
 	testutil.AssertNoError(t, err, "")
 	db.Open()
 	defer db.Close()

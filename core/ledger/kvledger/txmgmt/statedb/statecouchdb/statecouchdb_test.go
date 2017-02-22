@@ -33,19 +33,20 @@ func TestMain(m *testing.M) {
 
 	//call a helper method to load the core.yaml, will be used to detect if CouchDB is enabled
 	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
-
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "127.0.0.1:5984")
+	viper.Set("ledger.state.stateDatabase", "CouchDB")
+	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/statecouchdb")
-
-	os.Exit(m.Run())
+	result := m.Run()
+	viper.Set("ledger.state.stateDatabase", "goleveldb")
+	os.Exit(result)
 }
 
 func TestBasicRW(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := NewTestVDBEnv(t)
-		env.Cleanup("TestDB")
-		defer env.Cleanup("TestDB")
+		env.Cleanup("testbasicrw")
+		defer env.Cleanup("testbasicrw")
 		commontests.TestBasicRW(t, env.DBProvider)
 
 	}
@@ -55,10 +56,10 @@ func TestMultiDBBasicRW(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := NewTestVDBEnv(t)
-		env.Cleanup("TestDB1")
-		env.Cleanup("TestDB2")
-		defer env.Cleanup("TestDB1")
-		defer env.Cleanup("TestDB2")
+		env.Cleanup("testmultidbbasicrw")
+		env.Cleanup("testmultidbbasicrw2")
+		defer env.Cleanup("testmultidbbasicrw")
+		defer env.Cleanup("testmultidbbasicrw2")
 		commontests.TestMultiDBBasicRW(t, env.DBProvider)
 
 	}
@@ -67,8 +68,8 @@ func TestMultiDBBasicRW(t *testing.T) {
 func TestDeletes(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 		env := NewTestVDBEnv(t)
-		env.Cleanup("TestDB")
-		defer env.Cleanup("TestDB")
+		env.Cleanup("testdeletes")
+		defer env.Cleanup("testdeletes")
 		commontests.TestDeletes(t, env.DBProvider)
 	}
 }
@@ -77,8 +78,8 @@ func TestIterator(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := NewTestVDBEnv(t)
-		env.Cleanup("TestDB")
-		defer env.Cleanup("TestDB")
+		env.Cleanup("testiterator")
+		defer env.Cleanup("testiterator")
 		commontests.TestIterator(t, env.DBProvider)
 
 	}
@@ -119,8 +120,8 @@ func TestQuery(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		env := NewTestVDBEnv(t)
-		env.Cleanup("TestDB")
-		defer env.Cleanup("TestDB")
+		env.Cleanup("testquery")
+		defer env.Cleanup("testquery")
 		commontests.TestQuery(t, env.DBProvider)
 
 	}
