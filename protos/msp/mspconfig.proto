@@ -73,6 +73,11 @@ message FabricMSPConfig {
     // this peer is to use, and which is to be imported by the
     // MSP defined before
     SigningIdentityInfo signing_identity = 6;
+
+    // OrganizationalUnitIdentifiers holds one or more
+    // fabric organizational unit identifiers that belong to
+    // this MSP configuration
+    repeated FabricOUIdentifier organizational_unit_identifiers = 7;
 }
 
 // SigningIdentityInfo represents the configuration information
@@ -102,4 +107,17 @@ message KeyInfo {
     // KeyMaterial (optional) for the key to be imported; this is
     // properly encoded key bytes, prefixed by the type of the key
     bytes key_material = 2;
+}
+
+// FabricOUIdentifier represents an organizazional unit and
+// its related chain of trust identifier.
+message FabricOUIdentifier {
+
+    // CertifiersIdentifier is the hash of certificates chain of trust
+    // related to this organizational unit
+    bytes certifiers_identifier = 1;
+
+    // OrganizationUnitIdentifier defines the organizational unit under the
+    // MSP identified with MSPIdentifier
+    string organizational_unit_identifier = 2;
 }
