@@ -56,6 +56,8 @@ DBUILD = docker build $(DOCKER_BUILD_FLAGS)
 DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
 BASE_DOCKER_TAG=$(ARCH)-$(BASEIMAGE_RELEASE)
 
+BASE_DOCKER_LABEL=org.hyperledger.fabric
+
 DOCKER_GO_LDFLAGS += $(GO_LDFLAGS)
 DOCKER_GO_LDFLAGS += -linkmode external -extldflags '-static -lpthread'
 

@@ -19,3 +19,4 @@ package metadata
 // Variables defined by the Makefile and passed in with ldflags
 var Version string
 var BaseVersion string
+var BaseDockerLabel string

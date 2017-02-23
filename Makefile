@@ -53,6 +53,7 @@ BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 # defined in common/metadata/metadata.go
 METADATA_VAR = Version=$(PROJECT_VERSION)
 METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
+METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 
@@ -221,6 +222,8 @@ build/image/%/Dockerfile: images/%/Dockerfile.in
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $@
+	@echo LABEL $(BASE_DOCKER_LABEL).version=$(PROJECT_VERSION) \\>>$@
+	@echo "     " $(BASE_DOCKER_LABEL).base.version=$(BASEIMAGE_RELEASE)>>$@
 
 build/image/%/$(DUMMY): Makefile build/image/%/payload build/image/%/Dockerfile
 	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
