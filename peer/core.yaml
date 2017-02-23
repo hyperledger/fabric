@@ -114,7 +114,12 @@ peer:
         requestWaitTime: 1s
         # Time to wait before pull engine ends pull (unit: second)
         responseWaitTime: 2s
-
+        # Alive check interval(unit: second)
+        aliveTimeInterval: 5s
+        # Alive expiration timeout(unit: second)
+        aliveExpirationTimeout: 25s
+        # Reconnect interval(unit: second)
+        reconnectInterval: 25s
         # This is an endpoint that is published to peers outside of the organization.
         # If this isn't set, the peer will not be known to other organizations.
         externalEndpoint:
