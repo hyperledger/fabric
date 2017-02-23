@@ -124,6 +124,11 @@ func TestCreateChainFromBlock(t *testing.T) {
 	Initialize(nil)
 
 	SetCurrConfigBlock(block, testChainID)
+
+	channels := GetChannelsInfo()
+	if len(channels) != 1 {
+		t.Fatalf("incorrect number of channels")
+	}
 }
 
 func TestNewPeerClientConnection(t *testing.T) {

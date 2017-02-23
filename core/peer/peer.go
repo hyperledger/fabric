@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/service"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -342,6 +343,24 @@ func NewPeerClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn, e
 		return comm.NewClientConnectionWithAddress(peerAddress, true, true, comm.InitTLSForPeer())
 	}
 	return comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
+}
+
+// GetChannelsInfo returns an array with information about all channels for
+// this peer
+func GetChannelsInfo() []*pb.ChannelInfo {
+	// array to store metadata for all channels
+	var channelInfoArray []*pb.ChannelInfo
+
+	chains.RLock()
+	defer chains.RUnlock()
+	for key := range chains.list {
+		channelInfo := &pb.ChannelInfo{ChannelId: key}
+
+		// add this specific chaincode's metadata to the array of all chaincodes
+		channelInfoArray = append(channelInfoArray, channelInfo)
+	}
+
+	return channelInfoArray
 }
 
 // GetPolicyManagerMgmt returns a special PolicyManager whose

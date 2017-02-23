@@ -170,6 +170,24 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
 		t.Fatalf("cscc invoke GetConfigBlock failed with: %v", err)
 	}
+
+	// get channels for the peer
+	args = [][]byte{[]byte(GetChannels)}
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	cqr := &pb.ChannelQueryResponse{}
+	err = proto.Unmarshal(res.Payload, cqr)
+	if err != nil {
+		t.FailNow()
+	}
+
+	// peer joined one channel so query should return an array with one channel
+	if len(cqr.GetChannels()) != 1 {
+		t.FailNow()
+	}
 }
 
 func TestConfigerInvokeUpdateConfigBlock(t *testing.T) {
