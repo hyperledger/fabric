@@ -43,8 +43,12 @@ type ChaincodeInfo struct {
 	// the chaincode function upon instantiation and its arguments. This will be
 	// blank if the query is returning information about installed chaincodes.
 	Input string `protobuf:"bytes,4,opt,name=input" json:"input,omitempty"`
-	Escc  string `protobuf:"bytes,5,opt,name=escc" json:"escc,omitempty"`
-	Vscc  string `protobuf:"bytes,6,opt,name=vscc" json:"vscc,omitempty"`
+	// the name of the ESCC for this chaincode. This will be
+	// blank if the query is returning information about installed chaincodes.
+	Escc string `protobuf:"bytes,5,opt,name=escc" json:"escc,omitempty"`
+	// the name of the VSCC for this chaincode. This will be
+	// blank if the query is returning information about installed chaincodes.
+	Vscc string `protobuf:"bytes,6,opt,name=vscc" json:"vscc,omitempty"`
 }
 
 func (m *ChaincodeInfo) Reset()                    { *m = ChaincodeInfo{} }

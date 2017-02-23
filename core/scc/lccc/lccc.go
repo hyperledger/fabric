@@ -67,6 +67,9 @@ const (
 	//GETCHAINCODES gets the instantiated chaincodes on a channel
 	GETCHAINCODES = "getchaincodes"
 
+	//GETINSTALLEDCHAINCODES gets the installed chaincodes on a peer
+	GETINSTALLEDCHAINCODES = "getinstalledchaincodes"
+
 	//characters used in chaincodenamespace
 	specialChars = "/:[]${}"
 )
@@ -262,7 +265,7 @@ func (lccc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.R
 	defer itr.Close()
 
 	// array to store metadata for all chaincode entries from LCCC
-	ccInfoArray := make([]*pb.ChaincodeInfo, 0)
+	var ccInfoArray []*pb.ChaincodeInfo
 
 	for itr.HasNext() {
 		_, value, err := itr.Next()
@@ -291,6 +294,23 @@ func (lccc *LifeCycleSysCC) getChaincodes(stub shim.ChaincodeStubInterface) pb.R
 	// add array with info about all instantiated chaincodes to the query
 	// response proto
 	cqr := &pb.ChaincodeQueryResponse{Chaincodes: ccInfoArray}
+
+	cqrbytes, err := proto.Marshal(cqr)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(cqrbytes)
+}
+
+// getInstalledChaincodes returns all chaincodes installed on the peer
+func (lccc *LifeCycleSysCC) getInstalledChaincodes() pb.Response {
+	// get chaincode query response proto which contains information about all
+	// installed chaincodes
+	cqr, err := ccprovider.GetInstalledChaincodes()
+	if err != nil {
+		return shim.Error(err.Error())
+	}
 
 	cqrbytes, err := proto.Marshal(cqr)
 	if err != nil {
@@ -597,6 +617,11 @@ func (lccc *LifeCycleSysCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response
 			return shim.Error(InvalidArgsLenErr(len(args)).Error())
 		}
 		return lccc.getChaincodes(stub)
+	case GETINSTALLEDCHAINCODES:
+		if len(args) != 1 {
+			return shim.Error(InvalidArgsLenErr(len(args)).Error())
+		}
+		return lccc.getInstalledChaincodes()
 	}
 
 	return shim.Error(InvalidFunctionErr(function).Error())
