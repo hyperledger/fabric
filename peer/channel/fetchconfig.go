@@ -46,8 +46,6 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		}
 	}
 
-	defer cf.BroadcastClient.Close()
-
 	var block *cb.Block
 	if block, err = cf.DeliverClient.getBlock(); err != nil {
 		return err

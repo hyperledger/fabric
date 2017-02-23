@@ -74,12 +74,15 @@ var channelCmd = &cobra.Command{
 	Long:  fmt.Sprintf("%s specific commands.", channelFuncName),
 }
 
+type BroadcastClientFactory func() (common.BroadcastClient, error)
+
 // ChannelCmdFactory holds the clients used by ChannelCmdFactory
 type ChannelCmdFactory struct {
-	EndorserClient  pb.EndorserClient
-	Signer          msp.SigningIdentity
-	BroadcastClient common.BroadcastClient
-	DeliverClient   deliverClientIntf
+	EndorserClient   pb.EndorserClient
+	Signer           msp.SigningIdentity
+	BroadcastClient  common.BroadcastClient
+	DeliverClient    deliverClientIntf
+	BroadcastFactory BroadcastClientFactory
 }
 
 // InitCmdFactory init the ChannelCmdFactor with default clients
@@ -93,7 +96,10 @@ func InitCmdFactory(isOrdererRequired bool) (*ChannelCmdFactory, error) {
 		return nil, fmt.Errorf("Error getting default signer: %s", err)
 	}
 
-	cmdFact.BroadcastClient, err = common.GetBroadcastClient()
+	cmdFact.BroadcastFactory = func() (common.BroadcastClient, error) {
+		return common.GetBroadcastClient()
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("Error getting broadcast client: %s", err)
 	}

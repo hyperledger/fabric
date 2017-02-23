@@ -33,12 +33,10 @@ func TestFetchChain(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{},
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
 	}
 
 	cmd := createCmd(mockCF)

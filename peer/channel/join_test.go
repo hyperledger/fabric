@@ -43,12 +43,10 @@ func TestJoin(t *testing.T) {
 
 	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:  mockEndorerClient,
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
+		EndorserClient:   mockEndorerClient,
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
 	}
 
 	cmd := joinCmd(mockCF)
@@ -79,12 +77,10 @@ func TestJoinNonExistentBlock(t *testing.T) {
 
 	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:  mockEndorerClient,
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
+		EndorserClient:   mockEndorerClient,
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
 	}
 
 	cmd := joinCmd(mockCF)
@@ -121,12 +117,10 @@ func TestBadProposalResponse(t *testing.T) {
 
 	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		EndorserClient:  mockEndorerClient,
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
+		EndorserClient:   mockEndorerClient,
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
 	}
 
 	cmd := joinCmd(mockCF)

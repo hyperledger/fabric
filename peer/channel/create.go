@@ -123,15 +123,19 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 			return err
 		}
 	}
+	var broadcastClient common.BroadcastClient
+	broadcastClient, err = cf.BroadcastFactory()
+	if err != nil {
+		return err
+	}
 
-	err = cf.BroadcastClient.Send(chCrtEnv)
+	defer broadcastClient.Close()
+	err = broadcastClient.Send(chCrtEnv)
 
 	return err
 }
 
 func executeCreate(cf *ChannelCmdFactory) error {
-	defer cf.BroadcastClient.Close()
-
 	var err error
 
 	if err = sendCreateChainTransaction(cf); err != nil {
