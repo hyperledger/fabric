@@ -29,10 +29,13 @@ import (
 	ledgerUtil "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/msp"
 
+	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
+
+	"github.com/hyperledger/fabric/common/cauthdsl"
 )
 
 // Support provides all of the needed to evaluate the VSCC
@@ -45,6 +48,13 @@ type Support interface {
 
 	// Apply attempts to apply a configtx to become the new config
 	Apply(configtx *common.ConfigEnvelope) error
+
+	// PolicyManager returns the policies.Manager for the channel
+	PolicyManager() policies.Manager
+
+	// GetMSPIDs returns the IDs for the application MSPs
+	// that have been defined in the channel
+	GetMSPIDs(cid string) []string
 }
 
 //Validator interface which defines API to validate block transactions
@@ -58,7 +68,7 @@ type Validator interface {
 // and vscc execution, in order to increase
 // testability of txValidator
 type vsccValidator interface {
-	VSCCValidateTx(payload *common.Payload, envBytes []byte) error
+	VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) error
 }
 
 // vsccValidator implementation which used to call
@@ -148,7 +158,7 @@ func (v *txValidator) Validate(block *common.Block) error {
 
 					//the payload is used to get headers
 					logger.Debug("Validating transaction vscc tx validate")
-					if err = v.vscc.VSCCValidateTx(payload, d); err != nil {
+					if err = v.vscc.VSCCValidateTx(payload, d, env); err != nil {
 						txID := txID
 						logger.Errorf("VSCCValidateTx for transaction txId = %s returned error %s", txID, err)
 						txsfltr.SetFlag(tIdx, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
@@ -191,7 +201,8 @@ func (v *txValidator) Validate(block *common.Block) error {
 	return nil
 }
 
-func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte) error {
+func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []byte, env *common.Envelope) error {
+	// get channel header
 	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
 		return err
@@ -226,22 +237,25 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 		return err
 	}
 
-	// LSCC should not undergo standard VSCC type of
-	// validation. It should instead go through system
-	// policy validation to determine whether the issuer
-	// is entitled to deploy a chaincode on our chain
-	// VSCCValidateTx should
-	if hdrExt.ChaincodeId.Name == "lscc" {
-		// TODO: until FAB-1934 is in, we need to stop here
-		logger.Debugf("Invocation of LSCC detected, no further VSCC validation necessary")
-		return nil
-	}
+	var vscc string
+	var policy []byte
+	if hdrExt.ChaincodeId.Name != "lscc" {
+		// when we are validating any chaincode other than
+		// LSCC, we need to ask LSCC to give us the name
+		// of VSCC and of the policy that should be used
 
-	// obtain name of the VSCC and the policy from LSCC
-	vscc, policy, err := v.ccprovider.GetCCValidationInfoFromLSCC(ctxt, txid, nil, nil, chainID, hdrExt.ChaincodeId.Name)
-	if err != nil {
-		logger.Errorf("Unable to get chaincode data from LSCC for txid %s, due to %s", txid, err)
-		return err
+		// obtain name of the VSCC and the policy from LSCC
+		vscc, policy, err = v.ccprovider.GetCCValidationInfoFromLSCC(ctxt, txid, nil, nil, chainID, hdrExt.ChaincodeId.Name)
+		if err != nil {
+			logger.Errorf("Unable to get chaincode data from LSCC for txid %s, due to %s", txid, err)
+			return err
+		}
+	} else {
+		// when we are validating LSCC, we use the default
+		// VSCC and a default policy that requires one signature
+		// from any of the members of the channel
+		vscc = "vscc"
+		policy = cauthdsl.SignedByAnyMember(v.support.GetMSPIDs(chainID))
 	}
 
 	// build arguments for VSCC invocation
