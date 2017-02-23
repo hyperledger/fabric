@@ -22,10 +22,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
+	"github.com/hyperledger/fabric/common/configvalues/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -73,7 +75,19 @@ func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
 	oTemplate := configtxtest.OrdererTemplate()
 	oOrgTemplate := configtxtest.OrdererOrgTemplate()
 	appOrgTemplate := configtxtest.ApplicationOrgTemplate()
-	gossTemplate := configtx.NewSimpleTemplate(configtxapplication.TemplateAnchorPeers("XXXFakeOrg", anchorPeers))
+	gosscg := configtxapplication.TemplateAnchorPeers("XXXFakeOrg", anchorPeers)
+
+	// FIXME: remove this hack as soon as 'peer channel create' is fixed properly
+	// we add admin policies for this config group, otherwise a majority won't be reached
+	p := &cb.ConfigPolicy{
+		Policy: &cb.Policy{
+			Type:   int32(cb.Policy_SIGNATURE),
+			Policy: cauthdsl.MarshaledAcceptAllPolicy,
+		},
+	}
+	gosscg.Groups[configtxapplication.GroupKey].Groups["XXXFakeOrg"].Policies[msp.AdminsPolicyKey] = p
+
+	gossTemplate := configtx.NewSimpleTemplate(gosscg)
 	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, oOrgTemplate, appOrgTemplate, gossTemplate)
 
 	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
