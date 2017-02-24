@@ -79,6 +79,7 @@ type gossipServiceImpl struct {
 	lock            sync.RWMutex
 	msgCrypto       identity.Mapper
 	peerIdentity    []byte
+	secAdv          api.SecurityAdvisor
 }
 
 // This is an implementation of api.JoinChannelMessage.
@@ -136,6 +137,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 			deliveryFactory: factory,
 			msgCrypto:       idMapper,
 			peerIdentity:    peerIdentity,
+			secAdv:          secAdv,
 		}
 	})
 }
@@ -176,6 +178,12 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 
 // configUpdated constructs a joinChannelMessage and sends it to the gossipSvc
 func (g *gossipServiceImpl) configUpdated(config Config) {
+	myOrg := string(g.secAdv.OrgByPeerIdentity(api.PeerIdentityType(g.peerIdentity)))
+	if !g.amIinChannel(myOrg, config) {
+		logger.Error("Tried joining channel", config.ChainID(), "but our org(", myOrg, "), isn't "+
+			"among the orgs of the channel:", orgListFromConfig(config), ", aborting.")
+		return
+	}
 	jcm := &joinChannelMessage{seqNum: config.Sequence(), anchorPeers: []api.AnchorPeer{}}
 	for orgID, appOrg := range config.Organizations() {
 		for _, ap := range appOrg.AnchorPeers() {
@@ -219,6 +227,23 @@ func (g *gossipServiceImpl) Stop() {
 	if g.deliveryService != nil {
 		g.deliveryService.Stop()
 	}
+}
+
+func (g *gossipServiceImpl) amIinChannel(myOrg string, config Config) bool {
+	for _, orgName := range orgListFromConfig(config) {
+		if orgName == myOrg {
+			return true
+		}
+	}
+	return false
+}
+
+func orgListFromConfig(config Config) []string {
+	var orgList []string
+	for orgName := range config.Organizations() {
+		orgList = append(orgList, orgName)
+	}
+	return orgList
 }
 
 type secImpl struct {
