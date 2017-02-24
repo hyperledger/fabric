@@ -70,14 +70,14 @@ func (mc *msgComparator) invalidationPolicy(this interface{}, that interface{}) 
 }
 
 func (mc *msgComparator) stateInvalidationPolicy(thisStateMsg *StateInfo, thatStateMsg *StateInfo) common.InvalidationResult {
-	if !bytes.Equal(thisStateMsg.PkiID, thatStateMsg.PkiID) {
+	if !bytes.Equal(thisStateMsg.PkiId, thatStateMsg.PkiId) {
 		return common.MessageNoAction
 	}
 	return compareTimestamps(thisStateMsg.Timestamp, thatStateMsg.Timestamp)
 }
 
 func (mc *msgComparator) identityInvalidationPolicy(thisIdentityMsg *PeerIdentity, thatIdentityMsg *PeerIdentity) common.InvalidationResult {
-	if bytes.Equal(thisIdentityMsg.PkiID, thatIdentityMsg.PkiID) {
+	if bytes.Equal(thisIdentityMsg.PkiId, thatIdentityMsg.PkiId) {
 		return common.MessageInvalidated
 	}
 
@@ -104,7 +104,7 @@ func (mc *msgComparator) dataInvalidationPolicy(thisDataMsg *DataMessage, thatDa
 }
 
 func aliveInvalidationPolicy(thisMsg *AliveMessage, thatMsg *AliveMessage) common.InvalidationResult {
-	if !bytes.Equal(thisMsg.Membership.PkiID, thatMsg.Membership.PkiID) {
+	if !bytes.Equal(thisMsg.Membership.PkiId, thatMsg.Membership.PkiId) {
 		return common.MessageNoAction
 	}
 
@@ -112,7 +112,7 @@ func aliveInvalidationPolicy(thisMsg *AliveMessage, thatMsg *AliveMessage) commo
 }
 
 func leaderInvalidationPolicy(thisMsg *LeadershipMessage, thatMsg *LeadershipMessage) common.InvalidationResult {
-	if !bytes.Equal(thisMsg.PkiID, thatMsg.PkiID) {
+	if !bytes.Equal(thisMsg.PkiId, thatMsg.PkiId) {
 		return common.MessageNoAction
 	}
 

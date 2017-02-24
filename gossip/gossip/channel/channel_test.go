@@ -902,7 +902,7 @@ func createStateInfoMsg(ledgerHeight int, pkiID common.PKIidType, channel common
 			StateInfo: &proto.StateInfo{
 				Timestamp: &proto.PeerTime{IncNumber: uint64(time.Now().UnixNano()), SeqNum: 1},
 				Metadata:  []byte(fmt.Sprintf("%d", ledgerHeight)),
-				PkiID:     []byte(pkiID),
+				PkiId:     []byte(pkiID),
 			},
 		},
 	}).NoopSign()

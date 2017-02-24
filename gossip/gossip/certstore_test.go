@@ -124,7 +124,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 	pullMediator := pull.NewPullMediator(config,
 		sender,
 		memberSvc,
-		func(msg *proto.SignedGossipMessage) string { return string(msg.GetPeerIdentity().PkiID) },
+		func(msg *proto.SignedGossipMessage) string { return string(msg.GetPeerIdentity().PkiId) },
 		func(msg *proto.SignedGossipMessage) {})
 	certStore := newCertStore(&pullerMock{
 		Mediator: pullMediator,
@@ -191,7 +191,7 @@ func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
 		// This PKI-ID is different than the cert, and the mapping between
 		// certificate to PKI-ID in this test is simply the identity function.
-		PkiID: []byte("A"),
+		PkiId: []byte("A"),
 		Cert:  []byte("D"),
 	}
 
@@ -215,7 +215,7 @@ func createMismatchedUpdateMessage() *proto.SignedGossipMessage {
 
 func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
-		PkiID: []byte("C"),
+		PkiId: []byte("C"),
 		Cert:  []byte("C"),
 	}
 
@@ -246,7 +246,7 @@ func createBadlySignedUpdateMessage() *proto.SignedGossipMessage {
 
 func createValidUpdateMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
-		PkiID: []byte("B"),
+		PkiId: []byte("B"),
 		Cert:  []byte("B"),
 	}
 

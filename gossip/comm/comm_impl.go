@@ -425,24 +425,24 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 		return nil, errors.New("Wrong type")
 	}
 
-	if receivedMsg.PkiID == nil {
+	if receivedMsg.PkiId == nil {
 		c.logger.Warning("%s didn't send a pkiID")
 		return nil, fmt.Errorf("%s didn't send a pkiID", remoteAddress)
 	}
 
-	if c.isPKIblackListed(receivedMsg.PkiID) {
+	if c.isPKIblackListed(receivedMsg.PkiId) {
 		c.logger.Warning("Connection attempt from", remoteAddress, "but it is black-listed")
 		return nil, errors.New("Black-listed")
 	}
 	c.logger.Debug("Received", receivedMsg, "from", remoteAddress)
-	err = c.idMapper.Put(receivedMsg.PkiID, receivedMsg.Cert)
+	err = c.idMapper.Put(receivedMsg.PkiId, receivedMsg.Cert)
 	if err != nil {
 		c.logger.Warning("Identity store rejected", remoteAddress, ":", err)
 		return nil, err
 	}
 
 	connInfo := &proto.ConnectionInfo{
-		ID:       receivedMsg.PkiID,
+		ID:       receivedMsg.PkiId,
 		Identity: receivedMsg.Cert,
 	}
 
@@ -566,7 +566,7 @@ func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, hash []byte, cert
 			Conn: &proto.ConnEstablish{
 				Hash:  hash,
 				Cert:  cert,
-				PkiID: pkiID,
+				PkiId: pkiID,
 			},
 		},
 	}

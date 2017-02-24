@@ -454,14 +454,14 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 			return
 		}
 
-		orgID := gc.GetOrgOfPeer(stateInf.GetStateInfo().PkiID)
+		orgID := gc.GetOrgOfPeer(stateInf.GetStateInfo().PkiId)
 		if orgID == nil {
-			gc.logger.Warning("Couldn't find org identity of peer", stateInf.GetStateInfo().PkiID, "message sent from", sender)
+			gc.logger.Warning("Couldn't find org identity of peer", stateInf.GetStateInfo().PkiId, "message sent from", sender)
 			return
 		}
 
 		if !gc.IsOrgInChannel(orgID) {
-			gc.logger.Warning("Peer", stateInf.GetStateInfo().PkiID, "is not in an eligible org, can't process a stateInfo from it, sent from", sender)
+			gc.logger.Warning("Peer", stateInf.GetStateInfo().PkiId, "is not in an eligible org, can't process a stateInfo from it, sent from", sender)
 			return
 		}
 
@@ -586,7 +586,7 @@ type stateInfoCache struct {
 // Message must be a StateInfo message.
 func (cache stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
 	added := cache.MessageStore.Add(msg)
-	pkiID := msg.GetStateInfo().PkiID
+	pkiID := msg.GetStateInfo().PkiId
 	if added {
 		cache.MembershipStore.Put(pkiID, msg)
 	}

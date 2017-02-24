@@ -687,7 +687,7 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	_, aliveMsgChan := g2.Accept(func(o interface{}) bool {
 		msg := o.(proto.ReceivedMessage).GetGossipMessage()
 		// Make sure we get an AliveMessage and it's about g3
-		return msg.IsAliveMsg() && bytes.Equal(msg.GetAliveMsg().Membership.PkiID, []byte("localhost:2002"))
+		return msg.IsAliveMsg() && bytes.Equal(msg.GetAliveMsg().Membership.PkiId, []byte("localhost:2002"))
 	}, true)
 	aliveMsg := <-aliveMsgChan
 
@@ -960,7 +960,7 @@ func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uin
 
 	leadershipMsg := &proto.LeadershipMessage{
 		IsDeclaration: isDeclaration,
-		PkiID:         pkiid,
+		PkiId:         pkiid,
 		Timestamp: &proto.PeerTime{
 			IncNumber: incTime,
 			SeqNum:    seqNum,

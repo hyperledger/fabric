@@ -286,16 +286,16 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 
 	if msg.IsAliveMsg() {
 		am := msg.GetAliveMsg()
-		storedIdentity, _ := g.idMapper.Get(common.PKIidType(am.Membership.PkiID))
+		storedIdentity, _ := g.idMapper.Get(common.PKIidType(am.Membership.PkiId))
 		// If peer's certificate is included inside AliveMessage, and we don't have a mapping between
 		// its PKI-ID and certificate, create a mapping for it now.
 		if identity := am.Identity; identity != nil && storedIdentity == nil {
-			err := g.idMapper.Put(common.PKIidType(am.Membership.PkiID), api.PeerIdentityType(identity))
+			err := g.idMapper.Put(common.PKIidType(am.Membership.PkiId), api.PeerIdentityType(identity))
 			if err != nil {
 				g.logger.Warning("Failed adding identity of", am, "into identity store:", err)
 				return
 			}
-			g.logger.Info("Learned identity of", am.Membership.PkiID)
+			g.logger.Info("Learned identity of", am.Membership.PkiId)
 		}
 
 		added := g.aliveMsgStore.Add(msg)
@@ -341,7 +341,7 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 				g.logger.Warning("Got membership request with selfInfo that isn't an AliveMessage")
 				return
 			}
-			if !bytes.Equal(sMsg.GetAliveMsg().Membership.PkiID, m.GetConnectionInfo().ID) {
+			if !bytes.Equal(sMsg.GetAliveMsg().Membership.PkiId, m.GetConnectionInfo().ID) {
 				g.logger.Warning("Got membership request with selfInfo that doesn't match the handshake")
 				return
 			}
@@ -761,7 +761,7 @@ func (g *gossipServiceImpl) newDiscoverySecurityAdapter() *discoverySecurityAdap
 // validateAliveMsg validates that an Alive message is authentic
 func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.SignedGossipMessage) bool {
 	am := m.GetAliveMsg()
-	if am == nil || am.Membership == nil || am.Membership.PkiID == nil || !m.IsSigned() {
+	if am == nil || am.Membership == nil || am.Membership.PkiId == nil || !m.IsSigned() {
 		sa.logger.Warning("Invalid alive message:", m)
 		return false
 	}
@@ -772,7 +772,7 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.SignedGossipMessag
 	if am.Identity != nil {
 		identity = api.PeerIdentityType(am.Identity)
 		calculatedPKIID := sa.mcs.GetPKIidOfCert(identity)
-		claimedPKIID := am.Membership.PkiID
+		claimedPKIID := am.Membership.PkiId
 		if !bytes.Equal(calculatedPKIID, claimedPKIID) {
 			sa.logger.Warning("Calculated pkiID doesn't match identity:", calculatedPKIID, claimedPKIID)
 			return false
@@ -783,9 +783,9 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.SignedGossipMessag
 			return false
 		}
 	} else {
-		identity, _ = sa.idMapper.Get(am.Membership.PkiID)
+		identity, _ = sa.idMapper.Get(am.Membership.PkiId)
 		if identity != nil {
-			sa.logger.Debug("Fetched identity of", am.Membership.PkiID, "from identity store")
+			sa.logger.Debug("Fetched identity of", am.Membership.PkiId, "from identity store")
 		}
 	}
 
@@ -848,18 +848,18 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 	}
 	pkiIDFromMsg := func(msg *proto.SignedGossipMessage) string {
 		identityMsg := msg.GetPeerIdentity()
-		if identityMsg == nil || identityMsg.PkiID == nil {
+		if identityMsg == nil || identityMsg.PkiId == nil {
 			return ""
 		}
-		return fmt.Sprintf("%s", string(identityMsg.PkiID))
+		return fmt.Sprintf("%s", string(identityMsg.PkiId))
 	}
 	certConsumer := func(msg *proto.SignedGossipMessage) {
 		idMsg := msg.GetPeerIdentity()
-		if idMsg == nil || idMsg.Cert == nil || idMsg.PkiID == nil {
+		if idMsg == nil || idMsg.Cert == nil || idMsg.PkiId == nil {
 			g.logger.Warning("Invalid PeerIdentity:", idMsg)
 			return
 		}
-		err := g.idMapper.Put(common.PKIidType(idMsg.PkiID), api.PeerIdentityType(idMsg.Cert))
+		err := g.idMapper.Put(common.PKIidType(idMsg.PkiId), api.PeerIdentityType(idMsg.Cert))
 		if err != nil {
 			g.logger.Warning("Failed associating PKI-ID with certificate:", err)
 		}
@@ -872,7 +872,7 @@ func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.ChainID) (*proto.SignedGossipMessage, error) {
 	stateInfMsg := &proto.StateInfo{
 		Metadata: metadata,
-		PkiID:    g.comm.GetPKIid(),
+		PkiId:    g.comm.GetPKIid(),
 		Timestamp: &proto.PeerTime{
 			IncNumber: uint64(g.incTime.UnixNano()),
 			SeqNum:    uint64(time.Now().UnixNano()),
@@ -917,7 +917,7 @@ func (g *gossipServiceImpl) getOrgOfPeer(PKIID common.PKIidType) api.OrgIdentity
 }
 
 func (g *gossipServiceImpl) validateLeadershipMessage(msg *proto.SignedGossipMessage) error {
-	pkiID := msg.GetLeadershipMsg().PkiID
+	pkiID := msg.GetLeadershipMsg().PkiId
 	if len(pkiID) == 0 {
 		return errors.New("Empty PKI-ID")
 	}
@@ -938,7 +938,7 @@ func (g *gossipServiceImpl) validateStateInfoMsg(msg *proto.SignedGossipMessage)
 		}
 		return g.idMapper.Verify(pkiID, signature, message)
 	}
-	identity, err := g.idMapper.Get(msg.GetStateInfo().PkiID)
+	identity, err := g.idMapper.Get(msg.GetStateInfo().PkiId)
 	if err != nil {
 		return err
 	}

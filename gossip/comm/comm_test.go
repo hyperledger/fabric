@@ -147,7 +147,7 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 		})
 		assert.Equal(t, expectedMsg.Envelope.Signature, msg.Envelope.Signature)
 	}
-	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiID)
+	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiId)
 	msg2Send := createGossipMsg()
 	nonce := uint64(rand.Int())
 	msg2Send.Nonce = nonce

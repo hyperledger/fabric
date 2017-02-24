@@ -226,7 +226,7 @@ func (g *gossipInstance) tryForwardMessage(msg *proto.SignedGossipMessage) {
 	aliveMsg := msg.GetAliveMsg()
 
 	forward := false
-	id := string(aliveMsg.Membership.PkiID)
+	id := string(aliveMsg.Membership.PkiId)
 	seqNum := aliveMsg.Timestamp.SeqNum
 	if last, exists := g.comm.lastSeqs[id]; exists {
 		if last < seqNum {

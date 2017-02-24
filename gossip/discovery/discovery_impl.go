@@ -226,7 +226,7 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 		netMember := &NetworkMember{
 			Endpoint:         pulledPeer.Endpoint,
 			Metadata:         pulledPeer.Metadata,
-			PKIid:            pulledPeer.PkiID,
+			PKIid:            pulledPeer.PkiId,
 			InternalEndpoint: internalEndpoint,
 		}
 		peers2SendTo = append(peers2SendTo, netMember)
@@ -344,7 +344,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 
 			newDeadMembers := []*proto.SignedGossipMessage{}
 			d.lock.RLock()
-			if _, known := d.id2Member[string(dm.GetAliveMsg().Membership.PkiID)]; !known {
+			if _, known := d.id2Member[string(dm.GetAliveMsg().Membership.PkiId)]; !known {
 				newDeadMembers = append(newDeadMembers, dm)
 			}
 			d.lock.RUnlock()
@@ -359,7 +359,7 @@ func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, intern
 	targetPeer := &NetworkMember{
 		Endpoint:         targetMember.Endpoint,
 		Metadata:         targetMember.Metadata,
-		PKIid:            targetMember.PkiID,
+		PKIid:            targetMember.PkiId,
 		InternalEndpoint: internalEndpoint,
 	}
 
@@ -425,7 +425,7 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 		return
 	}
 
-	pkiID := m.GetAliveMsg().Membership.PkiID
+	pkiID := m.GetAliveMsg().Membership.PkiId
 	if equalPKIid(pkiID, d.self.PKIid) {
 		d.logger.Debug("Got alive message about ourselves,", m)
 		return
@@ -489,7 +489,7 @@ func (d *gossipDiscoveryImpl) resurrectMember(am *proto.SignedGossipMessage, t p
 	defer d.lock.Unlock()
 
 	member := am.GetAliveMsg().Membership
-	pkiID := member.PkiID
+	pkiID := member.PkiId
 	d.aliveLastTS[string(pkiID)] = &timestamp{
 		lastSeen: time.Now(),
 		seqNum:   t.SeqNum,
@@ -504,7 +504,7 @@ func (d *gossipDiscoveryImpl) resurrectMember(am *proto.SignedGossipMessage, t p
 	d.id2Member[string(pkiID)] = &NetworkMember{
 		Endpoint:         member.Endpoint,
 		Metadata:         member.Metadata,
-		PKIid:            member.PkiID,
+		PKIid:            member.PkiId,
 		InternalEndpoint: internalEndpoint,
 	}
 
@@ -672,7 +672,7 @@ func (d *gossipDiscoveryImpl) createAliveMessage() *proto.SignedGossipMessage {
 				Membership: &proto.Member{
 					Endpoint: endpoint,
 					Metadata: meta,
-					PkiID:    pkiID,
+					PkiId:    pkiID,
 				},
 				Timestamp: &proto.PeerTime{
 					IncNumber: uint64(d.incTime),
@@ -710,31 +710,31 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.SignedGossi
 		}
 
 		// update member's data
-		member := d.id2Member[string(am.Membership.PkiID)]
+		member := d.id2Member[string(am.Membership.PkiId)]
 		member.Endpoint = am.Membership.Endpoint
 		member.Metadata = am.Membership.Metadata
 		member.InternalEndpoint = internalEndpoint
 
-		if _, isKnownAsDead := d.deadLastTS[string(am.Membership.PkiID)]; isKnownAsDead {
+		if _, isKnownAsDead := d.deadLastTS[string(am.Membership.PkiId)]; isKnownAsDead {
 			d.logger.Warning(am.Membership, "has already expired")
 			continue
 		}
 
-		if _, isKnownAsAlive := d.aliveLastTS[string(am.Membership.PkiID)]; !isKnownAsAlive {
+		if _, isKnownAsAlive := d.aliveLastTS[string(am.Membership.PkiId)]; !isKnownAsAlive {
 			d.logger.Warning(am.Membership, "has already expired")
 			continue
 		} else {
 			d.logger.Debug("Updating aliveness data:", am)
 			// update existing aliveness data
-			alive := d.aliveLastTS[string(am.Membership.PkiID)]
+			alive := d.aliveLastTS[string(am.Membership.PkiId)]
 			alive.incTime = tsToTime(am.Timestamp.IncNumber)
 			alive.lastSeen = time.Now()
 			alive.seqNum = am.Timestamp.SeqNum
 
-			if am := d.aliveMembership.MsgByID(m.GetAliveMsg().Membership.PkiID); am == nil {
+			if am := d.aliveMembership.MsgByID(m.GetAliveMsg().Membership.PkiId); am == nil {
 				d.logger.Debug("Adding", am, "to aliveMembership")
 				msg := &proto.SignedGossipMessage{GossipMessage: m.GossipMessage, Envelope: am.Envelope}
-				d.aliveMembership.Put(m.GetAliveMsg().Membership.PkiID, msg)
+				d.aliveMembership.Put(m.GetAliveMsg().Membership.PkiId, msg)
 			} else {
 				d.logger.Debug("Replacing", am, "in aliveMembership")
 				am.GossipMessage = m.GossipMessage
@@ -752,30 +752,30 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.SignedGossip
 	defer d.lock.Unlock()
 
 	for _, am := range aliveMembers {
-		if equalPKIid(am.GetAliveMsg().Membership.PkiID, d.self.PKIid) {
+		if equalPKIid(am.GetAliveMsg().Membership.PkiId, d.self.PKIid) {
 			continue
 		}
-		d.aliveLastTS[string(am.GetAliveMsg().Membership.PkiID)] = &timestamp{
+		d.aliveLastTS[string(am.GetAliveMsg().Membership.PkiId)] = &timestamp{
 			incTime:  tsToTime(am.GetAliveMsg().Timestamp.IncNumber),
 			lastSeen: time.Now(),
 			seqNum:   am.GetAliveMsg().Timestamp.SeqNum,
 		}
 
-		d.aliveMembership.Put(am.GetAliveMsg().Membership.PkiID, &proto.SignedGossipMessage{GossipMessage: am.GossipMessage, Envelope: am.Envelope})
+		d.aliveMembership.Put(am.GetAliveMsg().Membership.PkiId, &proto.SignedGossipMessage{GossipMessage: am.GossipMessage, Envelope: am.Envelope})
 		d.logger.Infof("Learned about a new alive member: %v", am)
 	}
 
 	for _, dm := range deadMembers {
-		if equalPKIid(dm.GetAliveMsg().Membership.PkiID, d.self.PKIid) {
+		if equalPKIid(dm.GetAliveMsg().Membership.PkiId, d.self.PKIid) {
 			continue
 		}
-		d.deadLastTS[string(dm.GetAliveMsg().Membership.PkiID)] = &timestamp{
+		d.deadLastTS[string(dm.GetAliveMsg().Membership.PkiId)] = &timestamp{
 			incTime:  tsToTime(dm.GetAliveMsg().Timestamp.IncNumber),
 			lastSeen: time.Now(),
 			seqNum:   dm.GetAliveMsg().Timestamp.SeqNum,
 		}
 
-		d.deadMembership.Put(dm.GetAliveMsg().Membership.PkiID, &proto.SignedGossipMessage{GossipMessage: dm.GossipMessage, Envelope: dm.Envelope})
+		d.deadMembership.Put(dm.GetAliveMsg().Membership.PkiId, &proto.SignedGossipMessage{GossipMessage: dm.GossipMessage, Envelope: dm.Envelope})
 		d.logger.Infof("Learned about a new dead member: %v", dm)
 	}
 
@@ -793,10 +793,10 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.SignedGossip
 				internalEndpoint = m.Envelope.SecretEnvelope.InternalEndpoint()
 			}
 
-			d.id2Member[string(member.Membership.PkiID)] = &NetworkMember{
+			d.id2Member[string(member.Membership.PkiId)] = &NetworkMember{
 				Endpoint:         member.Membership.Endpoint,
 				Metadata:         member.Membership.Metadata,
-				PKIid:            member.Membership.PkiID,
+				PKIid:            member.Membership.PkiId,
 				InternalEndpoint: internalEndpoint,
 			}
 		}
@@ -820,7 +820,7 @@ func (d *gossipDiscoveryImpl) GetMembership() []NetworkMember {
 
 		member := m.GetAliveMsg()
 		response = append(response, NetworkMember{
-			PKIid:            member.Membership.PkiID,
+			PKIid:            member.Membership.PkiId,
 			Endpoint:         member.Membership.Endpoint,
 			Metadata:         member.Membership.Metadata,
 			InternalEndpoint: internalEndpoint,

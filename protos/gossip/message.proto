@@ -121,7 +121,7 @@ message GossipMessage {
 message StateInfo {
     bytes metadata     = 1;
     PeerTime timestamp = 2;
-    bytes pkiID        = 3;
+    bytes pki_id        = 3;
 }
 
 // StateInfoSnapshot is an aggregation of StateInfo messages
@@ -139,7 +139,7 @@ message StateInfoPullRequest {
 // Whenever a peer connects to another peer, it handshakes
 // with it by sending this message that proves its identity
 message ConnEstablish {
-    bytes pkiID = 1;
+    bytes pki_id = 1;
     bytes cert  = 2;
     bytes hash  = 3;
 }
@@ -148,7 +148,7 @@ message ConnEstablish {
 // Used to make other peers learn of the identity
 // of a certain peer
 message PeerIdentity {
-    bytes pkiID    = 1;
+    bytes pki_id    = 1;
     bytes cert     = 2;
     bytes metadata = 3;
 }
@@ -222,7 +222,7 @@ message AliveMessage {
 // Leadership Message is sent during leader election to inform
 // remote peers about intent of peer to proclaim itself as leader
 message LeadershipMessage {
-    bytes pkiID        = 1;
+    bytes pki_id        = 1;
     PeerTime timestamp = 2;
     bool is_declaration = 3;
 }
@@ -251,7 +251,7 @@ message MembershipResponse {
 message Member {
     string endpoint = 1;
     bytes  metadata = 2;
-    bytes  pkiID    = 3;
+    bytes  pki_id    = 3;
 }
 
 
