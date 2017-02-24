@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
 	}
 
-	if err := mspmgmt.LoadLocalMsp(mspMgrConfigDir, "DEFAULT"); err != nil {
+	if err := mspmgmt.LoadLocalMsp(mspMgrConfigDir, nil, "DEFAULT"); err != nil {
 		os.Exit(-1)
 	}
 

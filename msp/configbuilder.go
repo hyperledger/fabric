@@ -25,6 +25,7 @@ import (
 	"encoding/pem"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
@@ -87,12 +88,38 @@ const (
 	intermediatecerts = "intermediatecerts"
 )
 
-func GetLocalMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
+func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir string) {
+	if bccspConfig == nil {
+		bccspConfig = &factory.DefaultOpts
+	}
+
+	if bccspConfig.ProviderName == "SW" {
+		if bccspConfig.SwOpts == nil {
+			bccspConfig.SwOpts = factory.DefaultOpts.SwOpts
+		}
+
+		// Only override the KeyStorePath if it was left empty
+		if bccspConfig.SwOpts.FileKeystore == nil ||
+			bccspConfig.SwOpts.FileKeystore.KeyStorePath == "" {
+			bccspConfig.SwOpts.Ephemeral = false
+			bccspConfig.SwOpts.FileKeystore = &factory.FileKeystoreOpts{KeyStorePath: keystoreDir}
+		}
+	}
+}
+
+func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) (*msp.MSPConfig, error) {
 	cacertDir := filepath.Join(dir, cacerts)
 	signcertDir := filepath.Join(dir, signcerts)
 	admincertDir := filepath.Join(dir, admincerts)
 	keystoreDir := filepath.Join(dir, keystore)
 	intermediatecertsDir := filepath.Join(dir, intermediatecerts)
+
+	SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
+
+	err := factory.InitFactories(bccspConfig)
+	if err != nil {
+		return nil, fmt.Errorf("Could not initialize BCCSP Factories [%s]", err)
+	}
 
 	cacerts, err := getPemMaterialFromDir(cacertDir)
 	if err != nil || len(cacerts) == 0 {
@@ -109,22 +136,16 @@ func GetLocalMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 		return nil, fmt.Errorf("Could not load a valid admin certificate from directory %s, err %s", admincertDir, err)
 	}
 
-	keys, err := getPemMaterialFromDir(keystoreDir)
-	if err != nil || len(keys) == 0 {
-		return nil, fmt.Errorf("Could not load a valid signing key from directory %s, err %s", keystoreDir, err)
-	}
-
 	intermediatecert, _ := getPemMaterialFromDir(intermediatecertsDir)
 	// intermediate certs are not mandatory
 
-	// FIXME: for now we're making the following assumptions
-	// 1) there is exactly one signing cert
-	// 2) there is exactly one signing key
-	// 3) the cert and the key match
+	/* FIXME: for now we're making the following assumptions
+	1) there is exactly one signing cert
+	2) BCCSP's KeyStore has the the private key that matches SKI of
+	   signing cert
+	*/
 
-	keyinfo := &msp.KeyInfo{KeyIdentifier: "PEER", KeyMaterial: keys[0]}
-
-	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: keyinfo}
+	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: nil}
 
 	fmspconf := &msp.FabricMSPConfig{
 		Admins:            admincert,

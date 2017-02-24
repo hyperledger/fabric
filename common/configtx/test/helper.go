@@ -91,7 +91,7 @@ const sampleOrgID = "DEFAULT"
 
 // ApplicationOrgTemplate returns the SAMPLE org with MSP template
 func ApplicationOrgTemplate() configtx.Template {
-	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, sampleOrgID)
+	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, nil, sampleOrgID)
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
@@ -100,7 +100,7 @@ func ApplicationOrgTemplate() configtx.Template {
 
 // OrdererOrgTemplate returns the SAMPLE org with MSP template
 func OrdererOrgTemplate() configtx.Template {
-	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, sampleOrgID)
+	mspConf, err := msp.GetLocalMspConfig(sampleMSPPath, nil, sampleOrgID)
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}

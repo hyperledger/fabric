@@ -25,7 +25,7 @@ import (
 )
 
 func TestMSPConfigManager(t *testing.T) {
-	conf, err := msp.GetLocalMspConfig("../../../msp/sampleconfig/", "DEFAULT")
+	conf, err := msp.GetLocalMspConfig("../../../msp/sampleconfig/", nil, "DEFAULT")
 	assert.NoError(t, err)
 
 	// test success:

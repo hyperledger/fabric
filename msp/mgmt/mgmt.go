@@ -21,17 +21,18 @@ import (
 
 	"errors"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/op/go-logging"
 )
 
 // LoadLocalMsp loads the local MSP from the specified directory
-func LoadLocalMsp(dir string, mspID string) error {
+func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) error {
 	if mspID == "" {
 		return errors.New("The local MSP must have an ID")
 	}
 
-	conf, err := msp.GetLocalMspConfig(dir, mspID)
+	conf, err := msp.GetLocalMspConfig(dir, bccspConfig, mspID)
 	if err != nil {
 		return err
 	}

@@ -65,6 +65,18 @@ General:
     Profile:
         Enabled: false
         Address: 0.0.0.0:6060
+    
+    # BCCSP (Blockchain crypto provider): Select which crypto implementation or
+    # library to use
+    BCCSP:
+        Default: SW
+        SW:
+            Hash: SHA3
+            Security: 256
+            # Location of Key Store. If this is unset, a temporary location will 
+            # be chosen using 'LocalMSPDir'/keystore
+            FileKeyStore: 
+                KeyStore: 
 
 ################################################################################
 #

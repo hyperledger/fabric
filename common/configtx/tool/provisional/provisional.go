@@ -114,7 +114,7 @@ func New(conf *genesisconfig.Profile) Generator {
 		}
 
 		for _, org := range conf.Orderer.Organizations {
-			mspConfig, err := msp.GetLocalMspConfig(org.MSPDir, org.ID)
+			mspConfig, err := msp.GetLocalMspConfig(org.MSPDir, org.BCCSP, org.ID)
 			if err != nil {
 				logger.Panicf("Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
@@ -144,7 +144,7 @@ func New(conf *genesisconfig.Profile) Generator {
 			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxapplication.GroupKey}, configvaluesmsp.AdminsPolicyKey),
 		}
 		for _, org := range conf.Application.Organizations {
-			mspConfig, err := msp.GetLocalMspConfig(org.MSPDir, org.ID)
+			mspConfig, err := msp.GetLocalMspConfig(org.MSPDir, org.BCCSP, org.ID)
 			if err != nil {
 				logger.Panicf("Error loading MSP configuration for org %s: %s", org.Name, err)
 			}

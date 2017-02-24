@@ -27,6 +27,8 @@ import (
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+
+	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 )
 
 const (
@@ -65,6 +67,7 @@ type Organization struct {
 	Name   string
 	ID     string
 	MSPDir string
+	BCCSP  *bccsp.FactoryOpts
 
 	// Note, the viper deserialization does not seem to care for
 	// embedding of types, so we use one organization structure for

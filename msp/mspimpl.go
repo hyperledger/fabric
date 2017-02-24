@@ -17,16 +17,14 @@ limitations under the License.
 package msp
 
 import (
-	"crypto/x509"
-	"fmt"
-
-	"encoding/pem"
-
 	"bytes"
-
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/hex"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
 	"reflect"
 
@@ -80,34 +78,34 @@ func NewBccspMsp() (MSP, error) {
 	return theMsp, nil
 }
 
-func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, error) {
+func (msp *bccspmsp) getIdentityFromConf(idBytes []byte) (Identity, bccsp.Key, error) {
 	if idBytes == nil {
-		return nil, fmt.Errorf("getIdentityFromBytes error: nil idBytes")
+		return nil, nil, fmt.Errorf("getIdentityFromBytes error: nil idBytes")
 	}
 
 	// Decode the pem bytes
 	pemCert, _ := pem.Decode(idBytes)
 	if pemCert == nil {
-		return nil, fmt.Errorf("getIdentityFromBytes error: could not decode pem bytes")
+		return nil, nil, fmt.Errorf("getIdentityFromBytes error: could not decode pem bytes")
 	}
 
 	// get a cert
 	var cert *x509.Certificate
 	cert, err := x509.ParseCertificate(pemCert.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("getIdentityFromBytes error: failed to parse x509 cert, err %s", err)
+		return nil, nil, fmt.Errorf("getIdentityFromBytes error: failed to parse x509 cert, err %s", err)
 	}
 
 	// get the public key in the right format
 	certPubK, err := msp.bccsp.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: true})
 	if err != nil {
-		return nil, fmt.Errorf("getIdentityFromBytes error: failed to import certitifacate's public key [%s]", err)
+		return nil, nil, fmt.Errorf("getIdentityFromBytes error: failed to import certitifacate's public key [%s]", err)
 	}
 
 	return newIdentity(&IdentityIdentifier{
 		Mspid: msp.name,
 		Id:    "IDENTITY"}, /* FIXME: not clear where we would get the identifier for this identity */
-		cert, certPubK, msp), nil
+		cert, certPubK, msp), certPubK, nil
 }
 
 func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) (SigningIdentity, error) {
@@ -115,22 +113,31 @@ func (msp *bccspmsp) getSigningIdentityFromConf(sidInfo *m.SigningIdentityInfo) 
 		return nil, fmt.Errorf("getIdentityFromBytes error: nil sidInfo")
 	}
 
-	// extract the public part of the identity
-	idPub, err := msp.getIdentityFromConf(sidInfo.PublicSigner)
+	// Extract the public part of the identity
+	idPub, pubKey, err := msp.getIdentityFromConf(sidInfo.PublicSigner)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get secret key
-	pemKey, _ := pem.Decode(sidInfo.PrivateSigner.KeyMaterial)
-	key, err := msp.bccsp.KeyImport(pemKey.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
+	// Find the matching private key in the BCCSP keystore
+	privKey, err := msp.bccsp.GetKey(pubKey.SKI())
+	// Less Secure: Attempt to import Private Key from KeyInfo, if BCCSP was not able to find the key
 	if err != nil {
-		return nil, fmt.Errorf("getIdentityFromBytes error: Failed to import EC private key, err %s", err)
+		mspLogger.Debugf("Could not find SKI [%s], trying KeyMaterial field: %s\n", hex.EncodeToString(pubKey.SKI()), err)
+		if sidInfo.PrivateSigner == nil || sidInfo.PrivateSigner.KeyMaterial == nil {
+			return nil, fmt.Errorf("KeyMaterial not found in SigningIdentityInfo")
+		}
+
+		pemKey, _ := pem.Decode(sidInfo.PrivateSigner.KeyMaterial)
+		privKey, err = msp.bccsp.KeyImport(pemKey.Bytes, &bccsp.ECDSAPrivateKeyImportOpts{Temporary: true})
+		if err != nil {
+			return nil, fmt.Errorf("getIdentityFromBytes error: Failed to import EC private key, err %s", err)
+		}
 	}
 
 	// get the peer signer
 	peerSigner := &signer.CryptoSigner{}
-	err = peerSigner.Init(msp.bccsp, key)
+	err = peerSigner.Init(msp.bccsp, privKey)
 	if err != nil {
 		return nil, fmt.Errorf("getIdentityFromBytes error: Failed initializing CryptoSigner, err %s", err)
 	}
@@ -243,7 +250,7 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	// make and fill the set of admin certs (if present)
 	msp.admins = make([]Identity, len(conf.Admins))
 	for i, admCert := range conf.Admins {
-		id, err := msp.getIdentityFromConf(admCert)
+		id, _, err := msp.getIdentityFromConf(admCert)
 		if err != nil {
 			return err
 		}
@@ -257,7 +264,7 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	}
 	msp.rootCerts = make([]Identity, len(conf.RootCerts))
 	for i, trustedCert := range conf.RootCerts {
-		id, err := msp.getIdentityFromConf(trustedCert)
+		id, _, err := msp.getIdentityFromConf(trustedCert)
 		if err != nil {
 			return err
 		}
@@ -268,7 +275,7 @@ func (msp *bccspmsp) Setup(conf1 *m.MSPConfig) error {
 	// make and fill the set of intermediate certs (if present)
 	msp.intermediateCerts = make([]Identity, len(conf.IntermediateCerts))
 	for i, trustedCert := range conf.IntermediateCerts {
-		id, err := msp.getIdentityFromConf(trustedCert)
+		id, _, err := msp.getIdentityFromConf(trustedCert)
 		if err != nil {
 			return err
 		}

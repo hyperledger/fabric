@@ -32,9 +32,6 @@ var DefaultOpts = FactoryOpts{
 	},
 }
 
-// FIXME! FIXME! This needs to be moved to where viper reads in configs!
-var myHack = InitFactories(nil)
-
 // FactoryName returns the name of the provider
 func (o *FactoryOpts) FactoryName() string {
 	return o.ProviderName
