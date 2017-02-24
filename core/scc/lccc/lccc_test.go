@@ -26,6 +26,11 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	//"github.com/hyperledger/fabric/core/container"
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+
+	"github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -56,9 +61,19 @@ func register(stub *shim.MockStub, ccname string) error {
 func constructDeploymentSpec(name string, path string, version string, initArgs [][]byte, createFS bool) (*pb.ChaincodeDeploymentSpec, error) {
 	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: name, Path: path, Version: version}, Input: &pb.ChaincodeInput{Args: initArgs}}
 
-	codePackageBytes := []byte(name + path + version)
+	codePackageBytes := bytes.NewBuffer(nil)
+	gz := gzip.NewWriter(codePackageBytes)
+	tw := tar.NewWriter(gz)
 
-	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes}
+	err := util.WriteBytesToPackage("src/garbage.go", []byte(name+path+version), tw)
+	if err != nil {
+		return nil, err
+	}
+
+	tw.Close()
+	gz.Close()
+
+	chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes.Bytes()}
 
 	if createFS {
 		err := ccprovider.PutChaincodeIntoFS(chaincodeDeploymentSpec)
@@ -182,9 +197,8 @@ func TestInvalidCodeDeploy(t *testing.T) {
 	baddepspec := []byte("bad deploy spec")
 	args := [][]byte{[]byte(DEPLOY), []byte("test"), baddepspec}
 	res := stub.MockInvoke("1", args)
-	expectErr := InvalidDeploymentSpecErr("unexpected EOF")
-	if string(res.Message) != expectErr.Error() {
-		t.Logf("get result: %+v", res)
+	if res.Status == shim.OK {
+		t.Logf("Expected failure")
 		t.FailNow()
 	}
 }
