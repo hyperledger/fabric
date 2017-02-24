@@ -17,16 +17,15 @@ limitations under the License.
 package configtx
 
 import (
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
-	"github.com/hyperledger/fabric/common/util"
-	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
-	"github.com/hyperledger/fabric/protos/utils"
-
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
+	cb "github.com/hyperledger/fabric/protos/common"
+	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 const (

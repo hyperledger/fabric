@@ -60,11 +60,7 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 }
 
 func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
-	oTemplate := configtxtest.OrdererTemplate()
-	oOrgTemplate := configtxtest.OrdererOrgTemplate()
-	appOrgTemplate := configtxtest.ApplicationOrgTemplate()
-
-	chCrtTemp := configtx.NewCompositeTemplate(oTemplate, oOrgTemplate, appOrgTemplate)
+	chCrtTemp := configtxtest.CompositeTemplate()
 
 	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
