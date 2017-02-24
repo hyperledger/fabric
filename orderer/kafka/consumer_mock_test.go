@@ -107,6 +107,10 @@ func (mc *mockConsumerImpl) Recv() <-chan *sarama.ConsumerMessage {
 	return nil
 }
 
+func (mc *mockConsumerImpl) Errors() <-chan *sarama.ConsumerError {
+	return nil
+}
+
 func (mc *mockConsumerImpl) Close() error {
 	if err := mc.chainPartitionManager.Close(); err != nil {
 		return err
