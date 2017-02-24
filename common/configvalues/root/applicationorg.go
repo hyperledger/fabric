@@ -17,14 +17,10 @@ limitations under the License.
 package config
 
 import (
-	"fmt"
-
 	api "github.com/hyperledger/fabric/common/configvalues"
 	mspconfig "github.com/hyperledger/fabric/common/configvalues/msp"
-	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
-	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
 )
 
@@ -34,82 +30,66 @@ const (
 	AnchorPeersKey = "AnchorPeers"
 )
 
-type applicationOrgConfig struct {
-	anchorPeers []*pb.AnchorPeer
+type ApplicationOrgProtos struct {
+	AnchorPeers *pb.AnchorPeers
 }
 
-// SharedConfigImpl is an implementation of Manager and configtx.ConfigHandler
-// In general, it should only be referenced as an Impl for the configtx.Manager
 type ApplicationOrgConfig struct {
-	*OrganizationGroup
-	pendingConfig *applicationOrgConfig
-	config        *applicationOrgConfig
+	*OrganizationConfig
+	protos *ApplicationOrgProtos
 
-	mspConfig *mspconfig.MSPConfigHandler
+	applicationOrgGroup *ApplicationOrgGroup
 }
 
-// NewSharedConfigImpl creates a new SharedConfigImpl with the given CryptoHelper
-func NewApplicationOrgConfig(id string, mspConfig *mspconfig.MSPConfigHandler) *ApplicationOrgConfig {
-	return &ApplicationOrgConfig{
+// ApplicationOrgGroup defines the configuration for an application org
+type ApplicationOrgGroup struct {
+	*Proposer
+	*OrganizationGroup
+	*ApplicationOrgConfig
+}
+
+// NewApplicationOrgGroup creates a new ApplicationOrgGroup
+func NewApplicationOrgGroup(id string, mspConfig *mspconfig.MSPConfigHandler) *ApplicationOrgGroup {
+	aog := &ApplicationOrgGroup{
 		OrganizationGroup: NewOrganizationGroup(id, mspConfig),
-		config:            &applicationOrgConfig{},
 	}
+	aog.Proposer = NewProposer(aog)
+	return aog
 }
 
 // AnchorPeers returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
-func (oc *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
-	return oc.config.anchorPeers
+func (aog *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
+	return aog.protos.AnchorPeers.AnchorPeers
 }
 
-// BeginValueProposals is used to start a new config proposal
-func (oc *ApplicationOrgConfig) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
-	logger.Debugf("Beginning a possible new org config")
-	if len(groups) != 0 {
-		return nil, fmt.Errorf("ApplicationGroup does not support subgroups")
+func (aog *ApplicationOrgGroup) Allocate() Values {
+	return NewApplicationOrgConfig(aog)
+}
+
+func (aoc *ApplicationOrgConfig) Commit() {
+	aoc.applicationOrgGroup.ApplicationOrgConfig = aoc
+	aoc.OrganizationConfig.Commit()
+}
+
+func NewApplicationOrgConfig(aog *ApplicationOrgGroup) *ApplicationOrgConfig {
+	aoc := &ApplicationOrgConfig{
+		protos:             &ApplicationOrgProtos{},
+		OrganizationConfig: NewOrganizationConfig(aog.OrganizationGroup),
+
+		applicationOrgGroup: aog,
 	}
-	if oc.pendingConfig != nil {
-		logger.Panicf("Programming error, cannot call begin in the middle of a proposal")
-	}
-	oc.pendingConfig = &applicationOrgConfig{}
-	return oc.OrganizationGroup.BeginValueProposals(groups)
-}
-
-// RollbackProposals is used to abandon a new config proposal
-func (oc *ApplicationOrgConfig) RollbackProposals() {
-	logger.Debugf("Rolling back proposed org config")
-	oc.pendingConfig = nil
-	oc.OrganizationGroup.RollbackProposals()
-}
-
-// CommitProposals is used to commit a new config proposal
-func (oc *ApplicationOrgConfig) CommitProposals() {
-	logger.Debugf("Committing new org config")
-	if oc.pendingConfig == nil {
-		logger.Panicf("Programming error, cannot call commit without an existing proposal")
-	}
-	oc.config = oc.pendingConfig
-	oc.pendingConfig = nil
-	oc.OrganizationGroup.CommitProposals()
-}
-
-// ProposeValue is used to add new config to the config proposal
-func (oc *ApplicationOrgConfig) ProposeValue(key string, configValue *cb.ConfigValue) error {
-	switch key {
-	case AnchorPeersKey:
-		anchorPeers := &pb.AnchorPeers{}
-		if err := proto.Unmarshal(configValue.Value, anchorPeers); err != nil {
-			return fmt.Errorf("Unmarshaling error for %s: %s", key, err)
-		}
-		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Setting %s to %v", key, anchorPeers.AnchorPeers)
-		}
-		oc.pendingConfig.anchorPeers = anchorPeers.AnchorPeers
-	default:
-		return oc.OrganizationGroup.ProposeValue(key, configValue)
+	var err error
+	aoc.standardValues, err = NewStandardValues(aoc.protos, aoc.OrganizationConfig.protos)
+	if err != nil {
+		logger.Panicf("Programming error: %s", err)
 	}
 
-	return nil
+	return aoc
 }
 
-// PreCommit returns nil
-func (c *ApplicationOrgConfig) PreCommit() error { return nil }
+func (aoc *ApplicationOrgConfig) Validate(groups map[string]api.ValueProposer) error {
+	if logger.IsEnabledFor(logging.DEBUG) {
+		logger.Debugf("Anchor peers for org %s are %v", aoc.applicationOrgGroup.name, aoc.protos.AnchorPeers)
+	}
+	return aoc.OrganizationConfig.Validate(groups)
+}

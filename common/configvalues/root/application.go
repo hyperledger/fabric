@@ -53,10 +53,10 @@ func NewApplicationGroup(mspConfig *msp.MSPConfigHandler) *ApplicationGroup {
 }
 
 func (ag *ApplicationGroup) NewGroup(name string) (api.ValueProposer, error) {
-	return NewApplicationOrgConfig(name, ag.mspConfig), nil
+	return NewApplicationOrgGroup(name, ag.mspConfig), nil
 }
 
-// Allocate returns the
+// Allocate returns a new instance of the ApplicationConfig
 func (ag *ApplicationGroup) Allocate() Values {
 	return NewApplicationConfig(ag)
 }
@@ -79,7 +79,7 @@ func (ac *ApplicationConfig) Validate(groups map[string]api.ValueProposer) error
 	ac.applicationOrgs = make(map[string]api.ApplicationOrg)
 	var ok bool
 	for key, value := range groups {
-		ac.applicationOrgs[key], ok = value.(*ApplicationOrgConfig)
+		ac.applicationOrgs[key], ok = value.(*ApplicationOrgGroup)
 		if !ok {
 			return fmt.Errorf("Application sub-group %s was not an ApplicationOrgGroup, actually %T", key, value)
 		}

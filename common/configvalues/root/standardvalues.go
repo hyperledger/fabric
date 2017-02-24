@@ -38,6 +38,7 @@ func NewStandardValues(protosStructs ...interface{}) (*standardValues, error) {
 	}
 
 	for _, protosStruct := range protosStructs {
+		logger.Debugf("Initializing protos for %T\n", protosStruct)
 		if err := sv.initializeProtosStruct(reflect.ValueOf(protosStruct)); err != nil {
 			return nil, err
 		}
@@ -63,7 +64,7 @@ func (sv *standardValues) initializeProtosStruct(objValue reflect.Value) error {
 	numFields := objValue.Elem().NumField()
 	for i := 0; i < numFields; i++ {
 		structField := objType.Elem().Field(i)
-		fmt.Printf("Processing field: %s\n", structField.Name)
+		logger.Debugf("Processing field: %s\n", structField.Name)
 		switch structField.Type.Kind() {
 		case reflect.Ptr:
 			fieldPtr := objValue.Elem().Field(i)
