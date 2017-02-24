@@ -43,7 +43,7 @@ func (v *mockValues) ProtoMsg(key string) (proto.Message, bool) {
 	return msg, ok
 }
 
-func (v *mockValues) Validate() error {
+func (v *mockValues) Validate(map[string]api.ValueProposer) error {
 	return v.ValidateReturn
 }
 

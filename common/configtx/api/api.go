@@ -18,7 +18,7 @@ package api
 
 import (
 	configvalues "github.com/hyperledger/fabric/common/configvalues"
-	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
+	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -52,7 +52,7 @@ type Resources interface {
 	PolicyManager() policies.Manager
 
 	// ChannelConfig returns the ChannelConfig for the chain
-	ChannelConfig() configvalueschannel.ConfigReader
+	ChannelConfig() config.ChannelValues
 
 	// OrdererConfig returns the configtxorderer.SharedConfig for the channel
 	OrdererConfig() configvalues.Orderer

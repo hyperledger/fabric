@@ -14,16 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package channel
+package config
 
 import (
 	"math"
 
+	"github.com/hyperledger/fabric/bccsp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-const defaultHashingAlgorithm = SHA256
+const defaultHashingAlgorithm = bccsp.SHA256
 
 func configGroup(key string, value []byte) *cb.ConfigGroup {
 	result := cb.NewConfigGroup()

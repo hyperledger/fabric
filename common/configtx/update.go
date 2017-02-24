@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-func (c *config) verifyReadSet(readSet map[string]comparable) error {
+func (c *configSet) verifyReadSet(readSet map[string]comparable) error {
 	for key, value := range readSet {
 		existing, ok := c.configMap[key]
 		if !ok {
