@@ -20,6 +20,7 @@ import (
 	"flag"
 	"io/ioutil"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
@@ -43,6 +44,7 @@ func main() {
 	logging.SetLevel(logging.INFO, "")
 
 	logger.Info("Loading configuration")
+	factory.InitFactories(nil)
 	config := genesisconfig.Load(profile)
 	pgen := provisional.New(config)
 
