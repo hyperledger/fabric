@@ -184,7 +184,6 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 	// joinMsg is supposed to have been already verified
 	g.chanState.joinChannel(joinMsg, chainID)
 
-	selfPkiID := g.mcs.GetPKIidOfCert(g.selfIdentity)
 	for _, ap := range joinMsg.AnchorPeers() {
 		if ap.Host == "" {
 			g.logger.Warning("Got empty hostname, skipping connecting to anchor peer", ap)
@@ -194,15 +193,15 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 			g.logger.Warning("Got invalid port (0), skipping connecting to anchor peer", ap)
 			continue
 		}
-		pkiID := g.mcs.GetPKIidOfCert(ap.Cert)
+		endpoint := fmt.Sprintf("%s:%d", ap.Host, ap.Port)
 		// Skip connecting to self
-		if bytes.Equal([]byte(pkiID), []byte(selfPkiID)) {
-			g.logger.Info("Anchor peer with same PKI-ID, skipping connecting to myself")
+		if g.selfNetworkMember().Endpoint == endpoint || g.selfNetworkMember().InternalEndpoint.Endpoint == endpoint {
+			g.logger.Info("Anchor peer with same endpoint, skipping connecting to myself")
 			continue
 		}
-		endpoint := fmt.Sprintf("%s:%d", ap.Host, ap.Port)
+
 		g.disc.Connect(discovery.NetworkMember{
-			InternalEndpoint: &proto.SignedEndpoint{Endpoint: endpoint}, PKIid: pkiID})
+			InternalEndpoint: &proto.SignedEndpoint{Endpoint: endpoint}})
 	}
 }
 

@@ -48,7 +48,6 @@ var (
 )
 
 var orgID = []byte("ORG1")
-var anchorPeerIdentity = api.PeerIdentityType("identityInOrg1")
 
 type joinChanMsg struct {
 }
@@ -61,7 +60,7 @@ func (*joinChanMsg) SequenceNumber() uint64 {
 
 // AnchorPeers returns all the anchor peers that are in the channel
 func (*joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	return []api.AnchorPeer{{Cert: anchorPeerIdentity}}
+	return []api.AnchorPeer{{OrgID: orgID}}
 }
 
 type orgCryptoService struct {

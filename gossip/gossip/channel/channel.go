@@ -339,11 +339,7 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 	orgs := []api.OrgIdentityType{}
 	existingOrgInJoinChanMsg := make(map[string]struct{})
 	for _, anchorPeer := range joinMsg.AnchorPeers() {
-		orgID := gc.OrgByPeerIdentity(anchorPeer.Cert)
-		if orgID == nil {
-			gc.logger.Warning("Cannot extract org identity from certificate, aborting.")
-			return
-		}
+		orgID := anchorPeer.OrgID
 		if _, exists := existingOrgInJoinChanMsg[string(orgID)]; !exists {
 			orgs = append(orgs, orgID)
 			existingOrgInJoinChanMsg[string(orgID)] = struct{}{}

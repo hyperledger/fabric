@@ -134,11 +134,6 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember) {
 	d.logger.Debug("Entering", member)
 	defer d.logger.Debug("Exiting")
 
-	if member.PKIid == nil {
-		d.logger.Warning("Empty PkiID, aborting")
-		return
-	}
-
 	d.lock.Lock()
 	defer d.lock.Unlock()
 

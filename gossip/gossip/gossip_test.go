@@ -53,7 +53,6 @@ func init() {
 }
 
 var orgInChannelA = api.OrgIdentityType("ORG1")
-var anchorPeerIdentity = api.PeerIdentityType("identityInOrg1")
 
 func acceptData(m interface{}) bool {
 	if dataMsg := m.(*proto.GossipMessage).GetDataMsg(); dataMsg != nil {
@@ -82,7 +81,7 @@ func (*joinChanMsg) SequenceNumber() uint64 {
 // AnchorPeers returns all the anchor peers that are in the channel
 func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
 	if len(jcm.anchorPeers) == 0 {
-		return []api.AnchorPeer{{Cert: anchorPeerIdentity}}
+		return []api.AnchorPeer{{OrgID: orgInChannelA}}
 	}
 	return jcm.anchorPeers
 }
@@ -317,11 +316,10 @@ func TestConnectToAnchorPeers(t *testing.T) {
 
 	jcm := &joinChanMsg{anchorPeers: []api.AnchorPeer{}}
 	for i := 0; i < n; i++ {
-		pkiID := fmt.Sprintf("localhost:%d", portPrefix+i)
 		ap := api.AnchorPeer{
-			Port: portPrefix + i,
-			Host: "localhost",
-			Cert: []byte(pkiID),
+			Port:  portPrefix + i,
+			Host:  "localhost",
+			OrgID: orgInChannelA,
 		}
 		jcm.anchorPeers = append(jcm.anchorPeers, ap)
 	}
