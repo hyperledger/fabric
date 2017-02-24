@@ -212,7 +212,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 }
 
 func (c *commImpl) Send(msg *proto.GossipMessage, peers ...*RemotePeer) {
-	if c.isStopping() {
+	if c.isStopping() || len(peers) == 0 {
 		return
 	}
 
