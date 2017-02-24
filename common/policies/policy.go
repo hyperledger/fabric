@@ -35,14 +35,20 @@ const (
 	// ApplicationPrefix is used in the path of standard application policy paths
 	ApplicationPrefix = "Application"
 
+	// OrdererPrefix is used in the path of standard orderer policy paths
+	OrdererPrefix = "Orderer"
+
 	// ChannelApplicationReaders is the label for the channel's application readers policy
-	ChannelApplicationReaders = "/" + ChannelPrefix + "/" + ApplicationPrefix + "/Readers"
+	ChannelApplicationReaders = PathSeparator + ChannelPrefix + PathSeparator + ApplicationPrefix + PathSeparator + "Readers"
 
 	// ChannelApplicationWriters is the label for the channel's application writers policy
-	ChannelApplicationWriters = "/" + ChannelPrefix + "/" + ApplicationPrefix + "/Writers"
+	ChannelApplicationWriters = PathSeparator + ChannelPrefix + PathSeparator + ApplicationPrefix + PathSeparator + "Writers"
 
 	// ChannelApplicationAdmins is the label for the channel's application admin policy
-	ChannelApplicationAdmins = "/" + ChannelPrefix + "/" + ApplicationPrefix + "/Admins"
+	ChannelApplicationAdmins = PathSeparator + ChannelPrefix + PathSeparator + ApplicationPrefix + PathSeparator + "Admins"
+
+	// BlockValidation is the label for the policy which should validate the block signatures for the channel
+	BlockValidation = PathSeparator + ChannelPrefix + PathSeparator + OrdererPrefix + PathSeparator + "BlockValidation"
 )
 
 var logger = logging.MustGetLogger("common/policies")
@@ -258,6 +264,16 @@ func (pm *ManagerImpl) CommitProposals() {
 				ChannelApplicationReaders,
 				ChannelApplicationWriters,
 				ChannelApplicationAdmins} {
+				_, ok := pm.GetPolicy(policyName)
+				if !ok {
+					logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
+				} else {
+					logger.Debugf("As expected, current configuration has policy '%s'", policyName)
+				}
+			}
+		}
+		if _, ok := pm.config.managers[OrdererPrefix]; ok {
+			for _, policyName := range []string{BlockValidation} {
 				_, ok := pm.GetPolicy(policyName)
 				if !ok {
 					logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)

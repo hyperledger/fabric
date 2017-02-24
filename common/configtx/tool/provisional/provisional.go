@@ -63,6 +63,9 @@ const (
 
 	// AcceptAllPolicyKey is the key of the AcceptAllPolicy.
 	AcceptAllPolicyKey = "AcceptAllPolicy"
+
+	// BlockValidationPolicyKey
+	BlockValidationPolicyKey = "BlockValidation"
 )
 
 // DefaultChainCreationPolicyNames is the default value of ChainCreatorsKey.
@@ -107,7 +110,8 @@ func New(conf *genesisconfig.Profile) Generator {
 			configtxorderer.TemplateIngressPolicyNames([]string{AcceptAllPolicyKey}),
 			configtxorderer.TemplateEgressPolicyNames([]string{AcceptAllPolicyKey}),
 
-			// Initialize the default Reader/Writer/Admins orderer policies
+			// Initialize the default Reader/Writer/Admins orderer policies, as well as block validation policy
+			policies.TemplateImplicitMetaPolicyWithSubPolicy([]string{configtxorderer.GroupKey}, BlockValidationPolicyKey, configvaluesmsp.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY),
 			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.ReadersPolicyKey),
 			policies.TemplateImplicitMetaAnyPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.WritersPolicyKey),
 			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxorderer.GroupKey}, configvaluesmsp.AdminsPolicyKey),
