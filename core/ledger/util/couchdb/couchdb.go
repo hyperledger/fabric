@@ -69,6 +69,15 @@ type DBInfo struct {
 	InstanceStartTime string `json:"instance_start_time"`
 }
 
+//ConnectionInfo is a structure for capturing the database info and version
+type ConnectionInfo struct {
+	Couchdb string `json:"couchdb"`
+	Version string `json:"version"`
+	Vendor  struct {
+		Name string `json:"name"`
+	} `json:"vendor"`
+}
+
 //RangeQueryResponse is used for processing REST range query responses from CouchDB
 type RangeQueryResponse struct {
 	TotalRows int `json:"total_rows"`
@@ -211,7 +220,7 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 		connectURL.Path = dbclient.dbName
 
 		//process the URL with a PUT, creates the database
-		resp, _, err := dbclient.handleRequest(http.MethodPut, connectURL.String(), nil, "", "")
+		resp, _, err := dbclient.couchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "")
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +258,7 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 	}
 	connectURL.Path = dbclient.dbName
 
-	resp, couchDBReturn, err := dbclient.handleRequest(http.MethodGet, connectURL.String(), nil, "", "")
+	resp, couchDBReturn, err := dbclient.couchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "")
 	if err != nil {
 		return nil, couchDBReturn, err
 	}
@@ -270,6 +279,40 @@ func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 
 }
 
+//VerifyConnection method provides function to verify the connection information
+func (couchInstance *CouchInstance) VerifyConnection() (*ConnectionInfo, *DBReturn, error) {
+
+	connectURL, err := url.Parse(couchInstance.conf.URL)
+	if err != nil {
+		logger.Errorf("URL parse error: %s", err.Error())
+		return nil, nil, err
+	}
+	connectURL.Path = "/"
+
+	resp, couchDBReturn, err := couchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "")
+	if err != nil {
+		return nil, couchDBReturn, err
+	}
+	defer resp.Body.Close()
+
+	dbResponse := &ConnectionInfo{}
+	errJSON := json.NewDecoder(resp.Body).Decode(&dbResponse)
+	if errJSON != nil {
+		return nil, nil, errJSON
+	}
+
+	// trace the database info response
+	if logger.IsEnabledFor(logging.DEBUG) {
+		dbResponseJSON, err := json.Marshal(dbResponse)
+		if err == nil {
+			logger.Debugf("VerifyConnection() dbResponseJSON: %s", dbResponseJSON)
+		}
+	}
+
+	return dbResponse, couchDBReturn, nil
+
+}
+
 //DropDatabase provides method to drop an existing database
 func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 
@@ -282,7 +325,7 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 	}
 	connectURL.Path = dbclient.dbName
 
-	resp, _, err := dbclient.handleRequest(http.MethodDelete, connectURL.String(), nil, "", "")
+	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodDelete, connectURL.String(), nil, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +362,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 	}
 	connectURL.Path = dbclient.dbName + "/_ensure_full_commit"
 
-	resp, _, err := dbclient.handleRequest(http.MethodPost, connectURL.String(), nil, "", "")
+	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodPost, connectURL.String(), nil, "", "")
 	if err != nil {
 		logger.Errorf("Failed to invoke _ensure_full_commit Error: %s\n", err.Error())
 		return nil, err
@@ -413,7 +456,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 	}
 
 	//handle the request for saving the JSON or attachments
-	resp, _, err := dbclient.handleRequest(http.MethodPut, saveURL.String(), data, rev, defaultBoundary)
+	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodPut, saveURL.String(), data, rev, defaultBoundary)
 	if err != nil {
 		return "", err
 	}
@@ -536,7 +579,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 	readURL.RawQuery = query.Encode()
 
-	resp, couchDBReturn, err := dbclient.handleRequest(http.MethodGet, readURL.String(), nil, "", "")
+	resp, couchDBReturn, err := dbclient.couchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "")
 	if err != nil {
 		fmt.Printf("couchDBReturn=%v", couchDBReturn)
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
@@ -686,7 +729,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	rangeURL.RawQuery = queryParms.Encode()
 
-	resp, _, err := dbclient.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "")
+	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -781,7 +824,7 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 
 	logger.Debugf("  rev=%s", rev)
 
-	resp, couchDBReturn, err := dbclient.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "")
+	resp, couchDBReturn, err := dbclient.couchInstance.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "")
 	if err != nil {
 		fmt.Printf("couchDBReturn=%v", couchDBReturn)
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
@@ -826,7 +869,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string, limit, skip int) (*[
 
 	data.ReadFrom(bytes.NewReader([]byte(query)))
 
-	resp, _, err := dbclient.handleRequest(http.MethodPost, queryURL.String(), data, "", "")
+	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodPost, queryURL.String(), data, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -887,7 +930,7 @@ func (dbclient *CouchDatabase) QueryDocuments(query string, limit, skip int) (*[
 }
 
 //handleRequest method is a generic http request handler
-func (dbclient *CouchDatabase) handleRequest(method, connectURL string, data io.Reader, rev string, multipartBoundary string) (*http.Response, *DBReturn, error) {
+func (couchInstance *CouchInstance) handleRequest(method, connectURL string, data io.Reader, rev string, multipartBoundary string) (*http.Response, *DBReturn, error) {
 
 	logger.Debugf("Entering handleRequest()  method=%s  url=%v", method, connectURL)
 
@@ -925,8 +968,8 @@ func (dbclient *CouchDatabase) handleRequest(method, connectURL string, data io.
 	}
 
 	//If username and password are set the use basic auth
-	if dbclient.couchInstance.conf.Username != "" && dbclient.couchInstance.conf.Password != "" {
-		req.SetBasicAuth(dbclient.couchInstance.conf.Username, dbclient.couchInstance.conf.Password)
+	if couchInstance.conf.Username != "" && couchInstance.conf.Password != "" {
+		req.SetBasicAuth(couchInstance.conf.Username, couchInstance.conf.Password)
 	}
 
 	if logger.IsEnabledFor(logging.DEBUG) {
