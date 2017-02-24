@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package application
+package config
 
 import (
 	"testing"
@@ -38,7 +38,7 @@ func makeInvalidConfigValue() *cb.ConfigValue {
 }
 
 func groupToKeyValue(configGroup *cb.ConfigGroup) (string, *cb.ConfigValue) {
-	for _, group := range configGroup.Groups[GroupKey].Groups {
+	for _, group := range configGroup.Groups[ApplicationGroupKey].Groups {
 		for key, value := range group.Values {
 			return key, value
 		}

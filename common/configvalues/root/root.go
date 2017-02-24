@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/channel/application"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -84,6 +83,6 @@ func (r *Root) Orderer() *OrdererGroup {
 }
 
 // Application returns the associated Application level config
-func (r *Root) Application() *application.SharedConfigImpl {
+func (r *Root) Application() *ApplicationGroup {
 	return r.channel.ApplicationConfig()
 }

@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
 	configvaluesmsp "github.com/hyperledger/fabric/common/configvalues/msp"
 	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/genesis"
@@ -140,26 +139,26 @@ func New(conf *genesisconfig.Profile) Generator {
 
 		bs.applicationGroups = []*cb.ConfigGroup{
 			// Initialize the default Reader/Writer/Admins application policies
-			policies.TemplateImplicitMetaAnyPolicy([]string{configtxapplication.GroupKey}, configvaluesmsp.ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{configtxapplication.GroupKey}, configvaluesmsp.WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{configtxapplication.GroupKey}, configvaluesmsp.AdminsPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{config.ApplicationGroupKey}, configvaluesmsp.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{config.ApplicationGroupKey}, configvaluesmsp.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{config.ApplicationGroupKey}, configvaluesmsp.AdminsPolicyKey),
 		}
 		for _, org := range conf.Application.Organizations {
 			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.BCCSP, org.ID)
 			if err != nil {
 				logger.Panicf("Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
-			bs.applicationGroups = append(bs.applicationGroups, configvaluesmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey, org.Name}, mspConfig))
 
+			bs.applicationGroups = append(bs.applicationGroups, configvaluesmsp.TemplateGroupMSP([]string{config.ApplicationGroupKey, org.Name}, mspConfig))
 			var anchorProtos []*pb.AnchorPeer
 			for _, anchorPeer := range org.AnchorPeers {
 				anchorProtos = append(anchorProtos, &pb.AnchorPeer{
 					Host: anchorPeer.Host,
 					Port: int32(anchorPeer.Port),
 				})
-			}
 
-			bs.applicationGroups = append(bs.applicationGroups, configtxapplication.TemplateAnchorPeers(org.Name, anchorProtos))
+				bs.applicationGroups = append(bs.applicationGroups, config.TemplateAnchorPeers(org.Name, anchorProtos))
+			}
 		}
 
 	}

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package application
+package config
 
 import (
 	"testing"
@@ -29,37 +29,5 @@ func init() {
 }
 
 func TestApplicationInterface(t *testing.T) {
-	_ = api.Application(NewSharedConfigImpl(nil))
-}
-
-func TestApplicationDoubleBegin(t *testing.T) {
-	defer func() {
-		if err := recover(); err == nil {
-			t.Fatalf("Should have panicked on multiple begin configs")
-		}
-	}()
-
-	m := NewSharedConfigImpl(nil)
-	m.BeginValueProposals(nil)
-	m.BeginValueProposals(nil)
-}
-
-func TestApplicationCommitWithoutBegin(t *testing.T) {
-	defer func() {
-		if err := recover(); err == nil {
-			t.Fatalf("Should have panicked on multiple begin configs")
-		}
-	}()
-
-	m := NewSharedConfigImpl(nil)
-	m.CommitProposals()
-}
-
-func TestApplicationRollback(t *testing.T) {
-	m := NewSharedConfigImpl(nil)
-	m.pendingConfig = &sharedConfig{}
-	m.RollbackProposals()
-	if m.pendingConfig != nil {
-		t.Fatalf("Should have cleared pending config on rollback")
-	}
+	_ = api.Application((*ApplicationGroup)(nil))
 }

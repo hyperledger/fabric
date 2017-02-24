@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package application
+package config
 
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/configvalues"
+	api "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
 	mspconfig "github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -63,7 +63,7 @@ func (oc *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
 }
 
 // BeginValueProposals is used to start a new config proposal
-func (oc *ApplicationOrgConfig) BeginValueProposals(groups []string) ([]config.ValueProposer, error) {
+func (oc *ApplicationOrgConfig) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
 	logger.Debugf("Beginning a possible new org config")
 	if len(groups) != 0 {
 		return nil, fmt.Errorf("ApplicationGroup does not support subgroups")

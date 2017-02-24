@@ -22,7 +22,6 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	api "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/channel/application"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -103,15 +102,15 @@ func (cg *ChannelGroup) OrdererConfig() *OrdererGroup {
 }
 
 // ApplicationConfig returns the application config associated with this channel
-func (cg *ChannelGroup) ApplicationConfig() *application.SharedConfigImpl {
+func (cg *ChannelGroup) ApplicationConfig() *ApplicationGroup {
 	return cg.ChannelConfig.appConfig
 }
 
 // NewGroup instantiates either a new application or orderer config
 func (cg *ChannelGroup) NewGroup(group string) (api.ValueProposer, error) {
 	switch group {
-	case application.GroupKey:
-		return application.NewSharedConfigImpl(cg.mspConfigHandler), nil
+	case ApplicationGroupKey:
+		return NewApplicationGroup(cg.mspConfigHandler), nil
 	case OrdererGroupKey:
 		return NewOrdererGroup(cg.mspConfigHandler), nil
 	default:
@@ -126,7 +125,7 @@ type ChannelConfig struct {
 
 	hashingAlgorithm func(input []byte) []byte
 
-	appConfig     *application.SharedConfigImpl
+	appConfig     *ApplicationGroup
 	ordererConfig *OrdererGroup
 }
 
@@ -175,8 +174,8 @@ func (cc *ChannelConfig) Validate(groups map[string]api.ValueProposer) error {
 	var ok bool
 	for key, value := range groups {
 		switch key {
-		case application.GroupKey:
-			cc.appConfig, ok = value.(*application.SharedConfigImpl)
+		case ApplicationGroupKey:
+			cc.appConfig, ok = value.(*ApplicationGroup)
 			if !ok {
 				return fmt.Errorf("Application group was not Application config")
 			}
