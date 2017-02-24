@@ -30,6 +30,7 @@ import (
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -54,6 +55,7 @@ type dummyCommModule struct {
 	incMsgs      chan *proto.GossipMessage
 	lastSeqs     map[string]uint64
 	shouldGossip bool
+	mock         *mock.Mock
 }
 
 type gossipMsg struct {
@@ -92,9 +94,15 @@ func (comm *dummyCommModule) Gossip(msg *proto.GossipMessage) {
 }
 
 func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.GossipMessage) {
+	var mock *mock.Mock
 	comm.lock.RLock()
 	_, exists := comm.streams[peer.Endpoint]
+	mock = comm.mock
 	comm.lock.RUnlock()
+
+	if mock != nil {
+		mock.Called()
+	}
 
 	if !exists {
 		if comm.Ping(peer) == false {
@@ -110,6 +118,10 @@ func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.GossipMe
 func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 	comm.lock.Lock()
 	defer comm.lock.Unlock()
+
+	if comm.mock != nil {
+		comm.mock.Called()
+	}
 
 	_, alreadyExists := comm.streams[peer.Endpoint]
 	if !alreadyExists {
@@ -451,6 +463,22 @@ func TestGossipDiscoveryStopping(t *testing.T) {
 
 }
 
+func TestGossipDiscoverySkipConnectingToLocalhostBootstrap(t *testing.T) {
+	t.Parallel()
+	inst := createDiscoveryInstance(11611, "d1", []string{"localhost:11611", "127.0.0.1:11611"})
+	inst.comm.lock.Lock()
+	inst.comm.mock = &mock.Mock{}
+	inst.comm.mock.On("SendToPeer", mock.Anything).Run(func(mock.Arguments) {
+		t.Fatal("Should not have connected to any peer")
+	})
+	inst.comm.mock.On("Ping", mock.Anything).Run(func(mock.Arguments) {
+		t.Fatal("Should not have connected to any peer")
+	})
+	inst.comm.lock.Unlock()
+	time.Sleep(time.Second * 3)
+	waitUntilOrFailBlocking(t, inst.Stop)
+}
+
 func TestConvergence(t *testing.T) {
 	t.Parallel()
 	// scenario:
@@ -520,6 +548,20 @@ func TestConfigFromFile(t *testing.T) {
 	assert.Equal(t, time.Duration(25)*time.Second, getAliveExpirationTimeout())
 	assert.Equal(t, time.Duration(25)*time.Second/10, getAliveExpirationCheckInterval())
 	assert.Equal(t, time.Duration(25)*time.Second, getReconnectInterval())
+}
+
+func TestFilterOutLocalhost(t *testing.T) {
+	endpoints := []string{"localhost:5611", "127.0.0.1:5611", "1.2.3.4:5611"}
+	assert.Len(t, filterOutLocalhost(endpoints, 5611), 1)
+	endpoints = []string{"1.2.3.4:5611"}
+	assert.Len(t, filterOutLocalhost(endpoints, 5611), 1)
+	endpoints = []string{"localhost:5611", "127.0.0.1:5611"}
+	assert.Len(t, filterOutLocalhost(endpoints, 5611), 0)
+	// Check slice returned is a copy
+	endpoints = []string{"localhost:5611", "127.0.0.1:5611", "1.2.3.4:5611"}
+	endpoints2 := filterOutLocalhost(endpoints, 5611)
+	endpoints2[0] = "bla bla"
+	assert.NotEqual(t, endpoints[2], endpoints[0])
 }
 
 func waitUntilOrFail(t *testing.T, pred func() bool) {

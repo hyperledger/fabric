@@ -23,6 +23,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"strconv"
+	"strings"
+
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
@@ -153,8 +156,25 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember) {
 }
 
 func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
+	if d.self.InternalEndpoint == nil || len(d.self.InternalEndpoint.Endpoint) == 0 {
+		d.logger.Panic("Internal endpoint is empty:", d.self.InternalEndpoint)
+	}
+
+	if len(strings.Split(d.self.InternalEndpoint.Endpoint, ":")) != 2 {
+		d.logger.Panicf("Self endpoint %s isn't formatted as 'host:port'", d.self.InternalEndpoint.Endpoint)
+	}
+
+	myPort, err := strconv.ParseInt(strings.Split(d.self.InternalEndpoint.Endpoint, ":")[1], 10, 64)
+	if err != nil {
+		d.logger.Panicf("Self endpoint %s has not valid port'", d.self.InternalEndpoint.Endpoint)
+	}
+
 	d.logger.Info("Entering:", endpoints)
 	defer d.logger.Info("Exiting")
+	endpoints = filterOutLocalhost(endpoints, int(myPort))
+	if len(endpoints) == 0 {
+		return
+	}
 
 	for !d.somePeerIsKnown() {
 		var wg sync.WaitGroup
@@ -821,4 +841,15 @@ func getAliveExpirationCheckInterval() time.Duration {
 
 func getReconnectInterval() time.Duration {
 	return util.GetDurationOrDefault("peer.gossip.reconnectInterval", getAliveExpirationTimeout())
+}
+
+func filterOutLocalhost(endpoints []string, port int) []string {
+	var returnedEndpoints []string
+	for _, endpoint := range endpoints {
+		if endpoint == fmt.Sprintf("127.0.0.1:%d", port) || endpoint == fmt.Sprintf("localhost:%d", port) {
+			continue
+		}
+		returnedEndpoints = append(returnedEndpoints, endpoint)
+	}
+	return returnedEndpoints
 }
