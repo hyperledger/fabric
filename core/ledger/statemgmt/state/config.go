@@ -38,7 +38,7 @@ func loadConfig() {
 	stateImplName = stateImplType(viper.GetString("ledger.state.dataStructure.name"))
 	stateImplConfigs = viper.GetStringMap("ledger.state.dataStructure.configs")
 	deltaHistorySize = viper.GetInt("ledger.state.deltaHistorySize")
-	logger.Infof("Configurations loaded. stateImplName=[%s], stateImplConfigs=%s, deltaHistorySize=[%d]",
+	logger.Infof("Configurations loaded. stateImplName=[%s], stateImplConfigs=%v, deltaHistorySize=[%d]",
 		stateImplName, stateImplConfigs, deltaHistorySize)
 
 	if len(stateImplName) == 0 {
