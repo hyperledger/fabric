@@ -239,7 +239,7 @@ func (gc *gossipChannel) publishStateInfo() {
 
 func (gc *gossipChannel) createBlockPuller() pull.Mediator {
 	conf := pull.PullConfig{
-		MsgType:           proto.PullMsgType_BlockMessage,
+		MsgType:           proto.PullMsgType_BLOCK_MSG,
 		Channel:           []byte(gc.chainID),
 		ID:                gc.GetConf().ID,
 		PeerCountToSelect: gc.GetConf().PullPeerNum,
@@ -409,7 +409,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		}
 		return
 	}
-	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BlockMessage {
+	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BLOCK_MSG {
 		if !gc.EligibleForChannel(discovery.NetworkMember{PKIid: msg.GetConnectionInfo().ID}) {
 			gc.logger.Warning(msg.GetConnectionInfo().ID, "isn't eligible for channel", gc.chainID)
 			return

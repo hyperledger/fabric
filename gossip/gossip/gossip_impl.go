@@ -349,7 +349,7 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 		g.forwardDiscoveryMsg(m)
 	}
 
-	if msg.IsPullMsg() && msg.GetPullMsgType() == proto.PullMsgType_IdentityMsg {
+	if msg.IsPullMsg() && msg.GetPullMsgType() == proto.PullMsgType_IDENTITY_MSG {
 		g.certStore.handleMessage(m)
 	}
 }
@@ -839,7 +839,7 @@ func (sa *discoverySecurityAdapter) validateAliveMsgSignature(m *proto.SignedGos
 
 func (g *gossipServiceImpl) createCertStorePuller() pull.Mediator {
 	conf := pull.PullConfig{
-		MsgType:           proto.PullMsgType_IdentityMsg,
+		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		Channel:           []byte(""),
 		ID:                g.conf.InternalEndpoint,
 		PeerCountToSelect: g.conf.PullPeerNum,

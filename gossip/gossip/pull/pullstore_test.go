@@ -117,7 +117,7 @@ func createPullInstance(endpoint string, peer2PullInst map[string]*pullInstance)
 	peer2PullInst[endpoint] = inst
 
 	conf := PullConfig{
-		MsgType:           proto.PullMsgType_BlockMessage,
+		MsgType:           proto.PullMsgType_BLOCK_MSG,
 		Channel:           []byte(""),
 		ID:                endpoint,
 		PeerCountToSelect: 3,
@@ -300,7 +300,7 @@ func helloMsg() *proto.GossipMessage {
 			Hello: &proto.GossipHello{
 				Nonce:    0,
 				Metadata: nil,
-				MsgType:  proto.PullMsgType_BlockMessage,
+				MsgType:  proto.PullMsgType_BLOCK_MSG,
 			},
 		},
 	}
@@ -313,7 +313,7 @@ func reqMsg(digest ...string) *proto.GossipMessage {
 		Nonce:   0,
 		Content: &proto.GossipMessage_DataReq{
 			DataReq: &proto.DataRequest{
-				MsgType: proto.PullMsgType_BlockMessage,
+				MsgType: proto.PullMsgType_BLOCK_MSG,
 				Nonce:   0,
 				Digests: digest,
 			},

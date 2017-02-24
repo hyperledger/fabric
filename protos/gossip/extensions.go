@@ -172,7 +172,7 @@ func (m *GossipMessage) IsRemoteStateMessage() bool {
 
 // GetPullMsgType returns the phase of the pull mechanism this GossipMessage belongs to
 // for example: Hello, Digest, etc.
-// If this isn't a pull message, PullMsgType_Undefined is returned.
+// If this isn't a pull message, PullMsgType_UNDEFINED is returned.
 func (m *GossipMessage) GetPullMsgType() PullMsgType {
 	if helloMsg := m.GetHello(); helloMsg != nil {
 		return helloMsg.MsgType
@@ -190,7 +190,7 @@ func (m *GossipMessage) GetPullMsgType() PullMsgType {
 		return resMsg.MsgType
 	}
 
-	return PullMsgType_Undefined
+	return PullMsgType_UNDEFINED
 }
 
 // IsChannelRestricted returns whether this GossipMessage should be routed
@@ -270,12 +270,12 @@ func (m *GossipMessage) IsTagLegal() error {
 
 	if m.IsPullMsg() {
 		switch m.GetPullMsgType() {
-		case PullMsgType_BlockMessage:
+		case PullMsgType_BLOCK_MSG:
 			if m.Tag != GossipMessage_CHAN_AND_ORG {
 				return fmt.Errorf("Tag should be %s", GossipMessage_Tag_name[int32(GossipMessage_CHAN_AND_ORG)])
 			}
 			return nil
-		case PullMsgType_IdentityMsg:
+		case PullMsgType_IDENTITY_MSG:
 			if m.Tag != GossipMessage_EMPTY {
 				return fmt.Errorf("Tag should be %s", GossipMessage_Tag_name[int32(GossipMessage_EMPTY)])
 			}

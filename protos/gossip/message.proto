@@ -156,9 +156,9 @@ message PeerIdentity {
 // Messages related to pull mechanism
 
 enum PullMsgType {
-    Undefined     = 0;
-    BlockMessage  = 1;
-    IdentityMsg   = 2;
+    UNDEFINED     = 0;
+    BLOCK_MSG     = 1;
+    IDENTITY_MSG  = 2;
 }
 
 // DataRequest is a message used for a peer to request

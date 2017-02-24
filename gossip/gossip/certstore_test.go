@@ -110,7 +110,7 @@ func TestCertStoreShouldSucceed(t *testing.T) {
 
 func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.ReceivedMessage, shouldSucceed bool) {
 	config := pull.PullConfig{
-		MsgType:           proto.PullMsgType_IdentityMsg,
+		MsgType:           proto.PullMsgType_IDENTITY_MSG,
 		PeerCountToSelect: 1,
 		PullInterval:      time.Millisecond * 500,
 		Tag:               proto.GossipMessage_EMPTY,
@@ -163,7 +163,7 @@ func testCertificateUpdate(t *testing.T, updateFactory func(uint64) proto.Receiv
 				Hello: &proto.GossipHello{
 					Nonce:    0,
 					Metadata: nil,
-					MsgType:  proto.PullMsgType_IdentityMsg,
+					MsgType:  proto.PullMsgType_IDENTITY_MSG,
 				},
 			},
 		}).NoopSign(),
@@ -273,7 +273,7 @@ func createUpdateMessage(nonce uint64, idMsg *proto.SignedGossipMessage) proto.R
 		Tag: proto.GossipMessage_EMPTY,
 		Content: &proto.GossipMessage_DataUpdate{
 			DataUpdate: &proto.DataUpdate{
-				MsgType: proto.PullMsgType_IdentityMsg,
+				MsgType: proto.PullMsgType_IDENTITY_MSG,
 				Nonce:   nonce,
 				Data:    []*proto.Envelope{idMsg.Envelope},
 			},
@@ -288,7 +288,7 @@ func createDigest(nonce uint64) proto.ReceivedMessage {
 		Content: &proto.GossipMessage_DataDig{
 			DataDig: &proto.DataDigest{
 				Nonce:   nonce,
-				MsgType: proto.PullMsgType_IdentityMsg,
+				MsgType: proto.PullMsgType_IDENTITY_MSG,
 				Digests: []string{"A", "C"},
 			},
 		},

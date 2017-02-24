@@ -854,7 +854,7 @@ func createDataUpdateMsg(nonce uint64) *proto.SignedGossipMessage {
 		Tag:     proto.GossipMessage_CHAN_AND_ORG,
 		Content: &proto.GossipMessage_DataUpdate{
 			DataUpdate: &proto.DataUpdate{
-				MsgType: proto.PullMsgType_BlockMessage,
+				MsgType: proto.PullMsgType_BLOCK_MSG,
 				Nonce:   nonce,
 				Data:    []*proto.Envelope{createDataMsg(10, channelA).Envelope, createDataMsg(11, channelA).Envelope},
 			},
@@ -870,7 +870,7 @@ func createHelloMsg(PKIID common.PKIidType) *receivedMsg {
 			Hello: &proto.GossipHello{
 				Nonce:    500,
 				Metadata: nil,
-				MsgType:  proto.PullMsgType_BlockMessage,
+				MsgType:  proto.PullMsgType_BLOCK_MSG,
 			},
 		},
 	}
@@ -960,7 +960,7 @@ func simulatePullPhase(gc GossipChannel, t *testing.T, wg *sync.WaitGroup, mutat
 					Channel: []byte(channelA),
 					Content: &proto.GossipMessage_DataDig{
 						DataDig: &proto.DataDigest{
-							MsgType: proto.PullMsgType_BlockMessage,
+							MsgType: proto.PullMsgType_BLOCK_MSG,
 							Digests: []string{"10", "11"},
 							Nonce:   msg.GetHello().Nonce,
 						},
