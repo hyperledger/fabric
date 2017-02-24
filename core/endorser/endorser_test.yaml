@@ -322,6 +322,8 @@ peer:
         enabled:     false
         listenAddress: 0.0.0.0:6060
 
+    mspConfigPath: ../../msp/sampleconfig
+    
     # BCCSP (Blockchain crypto provider): Select which crypto implementation or
     # library to use
     BCCSP:
