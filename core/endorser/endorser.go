@@ -25,7 +25,6 @@ import (
 
 	"errors"
 
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -60,6 +59,7 @@ func NewEndorserServer() pb.EndorserServer {
 // we use the admins policy, whereas for normal chaincodes
 // we use the writers policy
 func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHeader, shdr *common.SignatureHeader, hdrext *pb.ChaincodeHeaderExtension) error {
+	/****** FAB-2457- we need to fix this right
 	// get policy manager to check ACLs
 	pm := peer.GetPolicyManager(chdr.ChannelId)
 	if pm == nil {
@@ -88,6 +88,7 @@ func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHea
 			chdr.ChannelId,
 			err)
 	}
+	**********/
 
 	return nil
 }
