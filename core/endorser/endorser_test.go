@@ -514,6 +514,8 @@ func TestDeployAndUpgrade(t *testing.T) {
 // the scenario in which the creator of this proposal is not among
 // the writers for the chain
 func TestWritersACLFail(t *testing.T) {
+	//skip pending FAB-2457 fix
+	t.Skip()
 	chainID := util.GetTestChainID()
 	var ctxt = context.Background()
 
@@ -578,6 +580,8 @@ func TestWritersACLFail(t *testing.T) {
 // the scenario in which the creator of this proposal is not among
 // the admins for the chain
 func TestAdminACLFail(t *testing.T) {
+	//skip pending FAB-2457 fix
+	t.Skip()
 	chainID := util.GetTestChainID()
 
 	// here we inject a reject policy for admins
