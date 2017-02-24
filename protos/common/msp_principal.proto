@@ -87,10 +87,13 @@ message OrganizationUnit {
     // refers to
     string msp_identifier = 1;
 
-    // OrganizationUnitIdentifier defines the organization unit under the
+    // OrganizationUnitIdentifier defines the organizational unit under the
     // MSP identified with MSPIdentifier
     string organizational_unit_identifier = 2;
 
+    // CertifiersIdentifier is the hash of certificates chain of trust
+    // related to this organizational unit
+    bytes certifiers_identifier = 3;
 }
 
 // MSPRole governs the organization of the Principal
