@@ -69,8 +69,8 @@ peer:
 
     # Gossip related configuration
     gossip:
-        bootstrap: 0.0.0.0:7051
-        # For debug - is peer is its org leader and should pass blocks from orderer to other peers in org
+        bootstrap: 127.0.0.1:7051
+        # Is peer is its org leader and should pass blocks from orderer to other peers in org
         orgLeader: true
         # ID of this instance
         endpoint:
