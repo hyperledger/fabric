@@ -352,7 +352,6 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
 		//chaincode executable will be same as the name of the chaincode
 		args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", chaincodeSupport.peerAddress)}
-		chaincodeLogger.Debugf("Executable is %s", args[0])
 	case pb.ChaincodeSpec_JAVA:
 		//TODO add security args
 		args = strings.Split(
@@ -366,11 +365,11 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 				args = append(args, chaincodeSupport.peerTLSSvrHostOrd)
 			}
 		}
-		chaincodeLogger.Debugf("Executable is %s", args[0])
-		chaincodeLogger.Debugf("Args %v", args)
 	default:
 		return nil, nil, fmt.Errorf("Unknown chaincodeType: %s", cLang)
 	}
+	chaincodeLogger.Debugf("Executable is %s", args[0])
+	chaincodeLogger.Debugf("Args %v", args)
 	return args, envs, nil
 }
 

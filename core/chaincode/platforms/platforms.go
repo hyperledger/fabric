@@ -27,6 +27,7 @@ import (
 
 	"io/ioutil"
 
+	"github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/car"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/golang"
 	"github.com/hyperledger/fabric/core/chaincode/platforms/java"
@@ -104,6 +105,15 @@ func generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec, tls 
 	buf = append(buf, base)
 
 	// ----------------------------------------------------------------------------------------------------
+	// Add some handy labels
+	// ----------------------------------------------------------------------------------------------------
+	buf = append(buf, fmt.Sprintf("LABEL %s.chaincode.id.name=\"%s\" \\", metadata.BaseDockerLabel, cds.ChaincodeSpec.ChaincodeId.Name))
+	buf = append(buf, fmt.Sprintf("      %s.chaincode.id.version=\"%s\" \\", metadata.BaseDockerLabel, cds.ChaincodeSpec.ChaincodeId.Version))
+	buf = append(buf, fmt.Sprintf("      %s.chaincode.type=\"%s\" \\", metadata.BaseDockerLabel, cds.ChaincodeSpec.Type.String()))
+	buf = append(buf, fmt.Sprintf("      %s.version=\"%s\" \\", metadata.BaseDockerLabel, metadata.Version))
+	buf = append(buf, fmt.Sprintf("      %s.base.version=\"%s\"", metadata.BaseDockerLabel, metadata.BaseVersion))
+
+	// ----------------------------------------------------------------------------------------------------
 	// Then augment it with any general options
 	// ----------------------------------------------------------------------------------------------------
 	if tls {
@@ -117,6 +127,7 @@ func generateDockerfile(platform Platform, cds *pb.ChaincodeDeploymentSpec, tls 
 	// Finalize it
 	// ----------------------------------------------------------------------------------------------------
 	contents := strings.Join(buf, "\n")
+	logger.Debugf("\n%s", contents)
 
 	return []byte(contents), nil
 }
