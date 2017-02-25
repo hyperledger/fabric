@@ -329,9 +329,10 @@ func (ks *FileBasedKeyStore) createKeyStoreIfNotExists() error {
 	// Check keystore directory
 	ksPath := ks.path
 	missing, err := utils.DirMissingOrEmpty(ksPath)
-	logger.Infof("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
 
 	if missing {
+		logger.Debugf("KeyStore path [%s] missing [%t]: [%s]", ksPath, missing, utils.ErrToString(err))
+
 		err := ks.createKeyStore()
 		if err != nil {
 			logger.Errorf("Failed creating KeyStore At [%s]: [%s]", ksPath, err.Error())
