@@ -22,9 +22,10 @@ import (
 	"reflect"
 )
 
-var dataWrapper = "data"
-var jsonQueryFields = "fields"
-var jsonQuerySelector = "selector"
+const dataWrapper = "data"
+const jsonQueryFields = "fields"
+const jsonQuerySelector = "selector"
+const jsonQueryUseIndex = "use_index"
 
 var validOperators = []string{"$and", "$or", "$not", "$nor", "$all", "$elemMatch",
 	"$lt", "$lte", "$eq", "$ne", "$gte", "$gt", "$exits", "$type", "$in", "$nin",
@@ -37,7 +38,8 @@ All fields in the selector must have "data." prepended to the field names
 Fields listed in fields key will have "data." prepended
 Fields in the sort key will have "data." prepended
 
-Also,  the query will be scoped to the chaincodeid if the contextID is supplied
+Also,  the query will be scoped to the chaincodeid
+
 In the example a contextID of "marble" is assumed.
 
 Example:
@@ -67,13 +69,12 @@ func ApplyQueryWrapper(namespace, queryString string) (string, error) {
 	//traverse through the json query and wrap any field names
 	processAndWrapQuery(jsonQueryMap)
 
-	//if "fields" are specified in the query, the add the "_id", "version" and "chaincodeid" fields
+	//if "fields" are specified in the query, then add the "_id", "version" and "chaincodeid" fields
 	if jsonValue, ok := jsonQueryMap[jsonQueryFields]; ok {
 		//check to see if this is an interface map
 		if reflect.TypeOf(jsonValue).String() == "[]interface {}" {
 
-			//Add the "_id" and "version" fields,  these are needed by default
-			//Overwrite the query fields if the "_id" field has been added
+			//Add the "_id", "version" and "chaincodeid" fields,  these are needed by default
 			jsonQueryMap[jsonQueryFields] = append(jsonValue.([]interface{}),
 				"_id", "version", "chaincodeid")
 		}
@@ -142,7 +143,7 @@ func setDefaultNamespaceInSelector(namespace string, jsonQueryMap map[string]int
 func processAndWrapQuery(jsonQueryMap map[string]interface{}) {
 
 	//iterate through the JSON query
-	for _, jsonValue := range jsonQueryMap {
+	for jsonKey, jsonValue := range jsonQueryMap {
 
 		//create a case for the data types found in the JSON query
 		switch jsonValueType := jsonValue.(type) {
@@ -165,8 +166,11 @@ func processAndWrapQuery(jsonQueryMap map[string]interface{}) {
 
 				case string:
 
-					//This is a simple string, so wrap the field and replace in the array
-					jsonValueType[itemKey] = fmt.Sprintf("%v.%v", dataWrapper, itemValue)
+					//if this is not "use_index", the wrap the string
+					if jsonKey != jsonQueryUseIndex {
+						//This is a simple string, so wrap the field and replace in the array
+						jsonValueType[itemKey] = fmt.Sprintf("%v.%v", dataWrapper, itemValue)
+					}
 
 				case []interface{}:
 
