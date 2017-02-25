@@ -24,6 +24,7 @@ package cscc
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -44,6 +45,7 @@ const (
 	JoinChain         string = "JoinChain"
 	UpdateConfigBlock string = "UpdateConfigBlock"
 	GetConfigBlock    string = "GetConfigBlock"
+	GetChannels       string = "GetChannels"
 )
 
 // Init is called once per chain when the chain is created.
@@ -67,10 +69,15 @@ func (e *PeerConfiger) Init(stub shim.ChaincodeStubInterface) pb.Response {
 func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	args := stub.GetArgs()
 
-	if len(args) < 2 {
+	if len(args) < 1 {
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments, %d", len(args)))
 	}
+
 	fname := string(args[0])
+
+	if fname != GetChannels && len(args) < 2 {
+		return shim.Error(fmt.Sprintf("Incorrect number of arguments, %d", len(args)))
+	}
 
 	cnflogger.Debugf("Invoke function: %s", fname)
 
@@ -82,6 +89,8 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return getConfigBlock(args[1])
 	} else if fname == UpdateConfigBlock {
 		return updateConfigBlock(args[1])
+	} else if fname == GetChannels {
+		return getChannels()
 	}
 
 	return shim.Error(fmt.Sprintf("Requested function %s not found.", fname))
@@ -150,4 +159,19 @@ func getConfigBlock(chainID []byte) pb.Response {
 	}
 
 	return shim.Success(blockBytes)
+}
+
+// getChannels returns information about all channels for this peer
+func getChannels() pb.Response {
+	channelInfoArray := peer.GetChannelsInfo()
+
+	// add array with info about all channels for this peer
+	cqr := &pb.ChannelQueryResponse{Channels: channelInfoArray}
+
+	cqrbytes, err := proto.Marshal(cqr)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(cqrbytes)
 }

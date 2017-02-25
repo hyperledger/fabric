@@ -45,3 +45,15 @@ message ChaincodeInfo {
   // blank if the query is returning information about installed chaincodes.
   string vscc = 6;
 }
+
+// ChannelQueryResponse returns information about each channel that pertains
+// to a query in lccc.go, such as GetChannels (returns all channels for a
+// given peer)
+message ChannelQueryResponse {
+  repeated ChannelInfo channels = 1;
+}
+
+// ChannelInfo contains general information about channels
+message ChannelInfo {
+  string channel_id = 1;
+}

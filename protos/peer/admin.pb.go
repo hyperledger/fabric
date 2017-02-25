@@ -59,6 +59,8 @@ It has these top-level messages:
 	Endorsement
 	ChaincodeQueryResponse
 	ChaincodeInfo
+	ChannelQueryResponse
+	ChannelInfo
 	SignedTransaction
 	ProcessedTransaction
 	Transaction
