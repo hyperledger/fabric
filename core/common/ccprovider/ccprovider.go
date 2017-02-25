@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 
@@ -105,6 +106,60 @@ func PutChaincodeIntoFS(depSpec *pb.ChaincodeDeploymentSpec) error {
 	}
 
 	return nil
+}
+
+// GetInstalledChaincodes returns a map whose key is the chaincode id and
+// value is the ChaincodeDeploymentSpec struct for that chaincodes that have
+// been installed (but not necessarily instantiated) on the peer by searching
+// the chaincode install path
+func GetInstalledChaincodes() (*pb.ChaincodeQueryResponse, error) {
+	files, err := ioutil.ReadDir(chaincodeInstallPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// array to store info for all chaincode entries from LCCC
+	var ccInfoArray []*pb.ChaincodeInfo
+
+	for _, file := range files {
+		fileNameArray := strings.Split(file.Name(), ".")
+
+		// check that length is 2 as expected, otherwise skip to next cc file
+		if len(fileNameArray) == 2 {
+			ccname := fileNameArray[0]
+			ccversion := fileNameArray[1]
+			_, cdsfs, err := GetChaincodeFromFS(ccname, ccversion)
+			if err != nil {
+				// either chaincode on filesystem has been tampered with or
+				// a non-chaincode file has been found in the chaincodes directory
+				ccproviderLogger.Errorf("Unreadable chaincode file found on filesystem: %s", file.Name())
+				continue
+			}
+
+			name := cdsfs.GetChaincodeSpec().GetChaincodeId().Name
+			version := cdsfs.GetChaincodeSpec().GetChaincodeId().Version
+			if name != ccname || version != ccversion {
+				// chaincode name/version in the chaincode file name has been modified
+				// by an external entity
+				ccproviderLogger.Errorf("Chaincode file's name/version has been modified on the filesystem: %s", file.Name())
+				continue
+			}
+
+			path := cdsfs.GetChaincodeSpec().ChaincodeId.Path
+			// since this is just an installed chaincode these should be blank
+			input, escc, vscc := "", "", ""
+
+			ccInfo := &pb.ChaincodeInfo{Name: name, Version: version, Path: path, Input: input, Escc: escc, Vscc: vscc}
+
+			// add this specific chaincode's metadata to the array of all chaincodes
+			ccInfoArray = append(ccInfoArray, ccInfo)
+		}
+	}
+	// add array with info about all instantiated chaincodes to the query
+	// response proto
+	cqr := &pb.ChaincodeQueryResponse{Chaincodes: ccInfoArray}
+
+	return cqr, nil
 }
 
 //CCContext pass this around instead of string of args

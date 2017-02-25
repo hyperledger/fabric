@@ -144,17 +144,41 @@ func TestInstall(t *testing.T) {
 		fmt.Println("Init failed", string(res.Message))
 		t.FailNow()
 	}
-
-	cds, err := constructDeploymentSpec("example02", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02", "0", [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
+	ccname := "example02"
+	path := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	version := "0"
+	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false)
 	var b []byte
 	if b, err = proto.Marshal(cds); err != nil || b == nil {
 		t.FailNow()
 	}
 
-	//constructDeploymentSpec puts the depspec on the FS. This should fail
+	//constructDeploymentSpec puts the depspec on the FS. This should succeed
 	args := [][]byte{[]byte(INSTALL), b}
 	defer os.Remove(lccctestpath + "/example02.0")
 	if res := stub.MockInvoke("1", args); res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	args = [][]byte{[]byte(GETINSTALLEDCHAINCODES)}
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	cqr := &pb.ChaincodeQueryResponse{}
+	err = proto.Unmarshal(res.Payload, cqr)
+	if err != nil {
+		t.FailNow()
+	}
+
+	// installed one chaincode so query should return an array with one chaincode
+	if len(cqr.GetChaincodes()) != 1 {
+		t.FailNow()
+	}
+
+	// check that the ChaincodeInfo values match the input values
+	if cqr.GetChaincodes()[0].Name != ccname || cqr.GetChaincodes()[0].Version != version || cqr.GetChaincodes()[0].Path != path {
 		t.FailNow()
 	}
 }
@@ -555,6 +579,45 @@ func TestGetAPIsWithoutInstall(t *testing.T) {
 	if res := stub.MockInvoke("1", args); res.Status == shim.OK {
 		t.FailNow()
 	}
+
+	// get instantiated chaincodes
+	args = [][]byte{[]byte(GETCHAINCODES)}
+	res := stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	cqr := &pb.ChaincodeQueryResponse{}
+	err = proto.Unmarshal(res.Payload, cqr)
+	if err != nil {
+		t.FailNow()
+	}
+
+	// one chaincode instantiated so query should return an array with one
+	// chaincode
+	if len(cqr.GetChaincodes()) != 1 {
+		t.FailNow()
+	}
+
+	// get installed chaincodes
+	args = [][]byte{[]byte(GETINSTALLEDCHAINCODES)}
+	res = stub.MockInvoke("1", args)
+	if res.Status != shim.OK {
+		t.FailNow()
+	}
+
+	cqr = &pb.ChaincodeQueryResponse{}
+	err = proto.Unmarshal(res.Payload, cqr)
+	if err != nil {
+		t.FailNow()
+	}
+
+	// no chaincodes installed to FS so query should return an array with zero
+	// chaincodes
+	if len(cqr.GetChaincodes()) != 0 {
+		t.FailNow()
+	}
+
 }
 
 func TestMain(m *testing.M) {
