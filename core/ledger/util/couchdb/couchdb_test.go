@@ -100,7 +100,7 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("2", "", assetJSON, nil)
+		_, saveerr := db.SaveDoc("2", "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 	}
@@ -120,7 +120,7 @@ func TestDBBadConnection(t *testing.T) {
 		testutil.AssertError(t, errdb, fmt.Sprintf("Error should have been thrown while creating a database with an invalid connecion"))
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("3", "", assetJSON, nil)
+		_, saveerr := db.SaveDoc("3", "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
 		testutil.AssertError(t, saveerr, fmt.Sprintf("Error should have been thrown while saving a document with an invalid connecion"))
 
 		//Retrieve the updated test document
@@ -135,7 +135,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		cleanup()
-		defer cleanup()
+		//defer cleanup()
 
 		//create a new instance and database object
 		couchInstance, err := CreateCouchInstance(connectURL, username, password)
@@ -152,7 +152,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 		testutil.AssertEquals(t, dbResp.DbName, database)
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("idWith/slash", "", assetJSON, nil)
+		_, saveerr := db.SaveDoc("idWith/slash", "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 		//Retrieve the test document
@@ -161,13 +161,14 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 		//Unmarshal the document to Asset structure
 		assetResp := &Asset{}
-		json.Unmarshal(dbGetResp, &assetResp)
+		geterr = json.Unmarshal(dbGetResp.JSONValue, &assetResp)
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
 
 		//Verify the owner retrieved matches
 		testutil.AssertEquals(t, assetResp.Owner, "jerry")
 
 		//Save the test document
-		_, saveerr = db.SaveDoc("1", "", assetJSON, nil)
+		_, saveerr = db.SaveDoc("1", "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 		//Retrieve the test document
@@ -176,7 +177,8 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 		//Unmarshal the document to Asset structure
 		assetResp = &Asset{}
-		json.Unmarshal(dbGetResp, &assetResp)
+		geterr = json.Unmarshal(dbGetResp.JSONValue, &assetResp)
+		testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to retrieve a document"))
 
 		//Verify the owner retrieved matches
 		testutil.AssertEquals(t, assetResp.Owner, "jerry")
@@ -188,7 +190,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 		assetDocUpdated, _ := json.Marshal(assetResp)
 
 		//Save the updated test document
-		_, saveerr = db.SaveDoc("1", "", assetDocUpdated, nil)
+		_, saveerr = db.SaveDoc("1", "", &CouchDoc{JSONValue: assetDocUpdated, Attachments: nil})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save the updated document"))
 
 		//Retrieve the updated test document
@@ -197,7 +199,7 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 		//Unmarshal the document to Asset structure
 		assetResp = &Asset{}
-		json.Unmarshal(dbGetResp, &assetResp)
+		json.Unmarshal(dbGetResp.JSONValue, &assetResp)
 
 		//Assert that the update was saved and retrieved
 		testutil.AssertEquals(t, assetResp.Owner, "bob")
@@ -238,7 +240,7 @@ func TestDBBadJSON(t *testing.T) {
 		badJSON := []byte(`{"asset_name"}`)
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("1", "", badJSON, nil)
+		_, saveerr := db.SaveDoc("1", "", &CouchDoc{JSONValue: badJSON, Attachments: nil})
 		testutil.AssertError(t, saveerr, fmt.Sprintf("Error should have been thrown for a bad JSON"))
 
 	}
@@ -271,16 +273,19 @@ func TestPrefixScan(t *testing.T) {
 		id1 := string(0) + string(i) + string(0)
 		id2 := string(0) + string(i) + string(1)
 		id3 := string(0) + string(i) + string(utf8.MaxRune-1)
-		_, saveerr := db.SaveDoc(id1, "", assetJSON, nil)
+		_, saveerr := db.SaveDoc(id1, "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
-		_, saveerr = db.SaveDoc(id2, "", assetJSON, nil)
+		_, saveerr = db.SaveDoc(id2, "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
-		_, saveerr = db.SaveDoc(id3, "", assetJSON, nil)
+		_, saveerr = db.SaveDoc(id3, "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 	}
 	startKey := string(0) + string(10)
 	endKey := startKey + string(utf8.MaxRune)
+	_, _, geterr := db.ReadDoc(endKey)
+	testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to get lastkey"))
+
 	resultsPtr, geterr := db.ReadDocRange(startKey, endKey, 1000, 0)
 	testutil.AssertNoError(t, geterr, fmt.Sprintf("Error when trying to perform a range scan"))
 	testutil.AssertNotNil(t, resultsPtr)
@@ -325,16 +330,14 @@ func TestDBSaveAttachment(t *testing.T) {
 		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("10", "", nil, attachments)
+		_, saveerr := db.SaveDoc("10", "", &CouchDoc{JSONValue: nil, Attachments: attachments})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 		//Attempt to retrieve the updated test document with attachments
-		returnDoc, _, geterr2 := db.ReadDoc("10")
+		couchDoc, _, geterr2 := db.ReadDoc("10")
 		testutil.AssertNoError(t, geterr2, fmt.Sprintf("Error when trying to retrieve a document with attachment"))
-
-		//Test to see that the result from CouchDB matches the initial text
-		testutil.AssertEquals(t, string(returnDoc), string(byteText))
-
+		testutil.AssertNotNil(t, couchDoc.Attachments)
+		testutil.AssertEquals(t, couchDoc.Attachments[0].AttachmentBytes, byteText)
 	}
 }
 
@@ -355,7 +358,7 @@ func TestDBDeleteDocument(t *testing.T) {
 		testutil.AssertNoError(t, errdb, fmt.Sprintf("Error when trying to create database"))
 
 		//Save the test document
-		_, saveerr := db.SaveDoc("2", "", assetJSON, nil)
+		_, saveerr := db.SaveDoc("2", "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
 		testutil.AssertNoError(t, saveerr, fmt.Sprintf("Error when trying to save a document"))
 
 		//Attempt to retrieve the test document
