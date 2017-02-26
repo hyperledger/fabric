@@ -41,12 +41,12 @@ const (
 type PullMsgType int
 
 // MessageHook defines a function that will run after a certain pull message is received
-type MessageHook func(itemIDs []string, items []*proto.GossipMessage, msg proto.ReceivedMessage)
+type MessageHook func(itemIDs []string, items []*proto.SignedGossipMessage, msg proto.ReceivedMessage)
 
 // Sender sends messages to remote peers
 type Sender interface {
 	// Send sends a message to a list of remote peers
-	Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer)
+	Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer)
 }
 
 // MembershipService obtains membership information of alive peers
@@ -79,10 +79,10 @@ type Mediator interface {
 	RegisterMsgHook(PullMsgType, MessageHook)
 
 	// Add adds a GossipMessage to the Mediator
-	Add(*proto.GossipMessage)
+	Add(*proto.SignedGossipMessage)
 
 	// Remove removes a GossipMessage from the Mediator
-	Remove(*proto.GossipMessage)
+	Remove(*proto.SignedGossipMessage)
 
 	// HandleMessage handles a message from some remote peer
 	HandleMessage(msg proto.ReceivedMessage)
@@ -97,7 +97,7 @@ type pullMediatorImpl struct {
 	msgCons      proto.MsgConsumer
 	config       PullConfig
 	logger       *logging.Logger
-	itemID2Msg   map[string]*proto.GossipMessage
+	itemID2Msg   map[string]*proto.SignedGossipMessage
 	memBvc       MembershipService
 	engine       *algo.PullEngine
 }
@@ -110,7 +110,7 @@ func NewPullMediator(config PullConfig, sndr Sender, memSvc MembershipService, i
 		idExtractor:  idExtractor,
 		config:       config,
 		logger:       util.GetLogger(util.LoggingPullModule, config.ID),
-		itemID2Msg:   make(map[string]*proto.GossipMessage),
+		itemID2Msg:   make(map[string]*proto.SignedGossipMessage),
 		memBvc:       memSvc,
 		Sender:       sndr,
 	}
@@ -132,7 +132,7 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 	p.logger.Debug(msg)
 
 	itemIDs := []string{}
-	items := []*proto.GossipMessage{}
+	items := []*proto.SignedGossipMessage{}
 	var pullMsgType PullMsgType
 
 	if helloMsg := msg.GetHello(); helloMsg != nil {
@@ -151,14 +151,19 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 	}
 	if res := msg.GetDataUpdate(); res != nil {
 		itemIDs = make([]string, len(res.Data))
-		items = make([]*proto.GossipMessage, len(res.Data))
+		items = make([]*proto.SignedGossipMessage, len(res.Data))
 		pullMsgType = ResponseMsgType
 		for i, pulledMsg := range res.Data {
-			p.msgCons(pulledMsg)
-			itemIDs[i] = p.idExtractor(pulledMsg)
-			items[i] = pulledMsg
+			msg, err := pulledMsg.ToGossipMessage()
+			if err != nil {
+				p.logger.Warning("Failed extracting GossipMessage from envelope:", err)
+				return
+			}
+			p.msgCons(msg)
+			itemIDs[i] = p.idExtractor(msg)
+			items[i] = msg
 			p.Lock()
-			p.itemID2Msg[itemIDs[i]] = pulledMsg
+			p.itemID2Msg[itemIDs[i]] = msg
 			p.Unlock()
 		}
 		p.engine.OnRes(itemIDs, res.Nonce)
@@ -183,7 +188,7 @@ func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType PullMsgType, hook Message
 }
 
 // Add adds a GossipMessage to the store
-func (p *pullMediatorImpl) Add(msg *proto.GossipMessage) {
+func (p *pullMediatorImpl) Add(msg *proto.SignedGossipMessage) {
 	p.Lock()
 	defer p.Unlock()
 	itemID := p.idExtractor(msg)
@@ -192,7 +197,7 @@ func (p *pullMediatorImpl) Add(msg *proto.GossipMessage) {
 }
 
 // Remove removes a GossipMessage from the store
-func (p *pullMediatorImpl) Remove(msg *proto.GossipMessage) {
+func (p *pullMediatorImpl) Remove(msg *proto.SignedGossipMessage) {
 	p.Lock()
 	defer p.Unlock()
 	itemID := p.idExtractor(msg)
@@ -227,7 +232,7 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 	}
 
 	p.logger.Debug("Sending hello to", dest)
-	p.Send(helloMsg, p.peersWithEndpoints(dest)...)
+	p.Send(helloMsg.NoopSign(), p.peersWithEndpoints(dest)...)
 }
 
 // SendDigest sends a digest to a remote PullEngine.
@@ -265,17 +270,17 @@ func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
 		},
 	}
 	p.logger.Debug("Sending", req, "to", dest)
-	p.Send(req, p.peersWithEndpoints(dest)...)
+	p.Send(req.NoopSign(), p.peersWithEndpoints(dest)...)
 }
 
 // SendRes sends an array of items to a remote PullEngine identified by a context.
 func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce uint64) {
-	items2return := []*proto.GossipMessage{}
+	items2return := []*proto.Envelope{}
 	p.RLock()
 	defer p.RUnlock()
 	for _, item := range items {
 		if msg, exists := p.itemID2Msg[item]; exists {
-			items2return = append(items2return, msg)
+			items2return = append(items2return, msg.Envelope)
 		}
 	}
 

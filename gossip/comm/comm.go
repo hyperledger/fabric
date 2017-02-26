@@ -31,7 +31,7 @@ type Comm interface {
 	GetPKIid() common.PKIidType
 
 	// Send sends a message to remote peers
-	Send(msg *proto.GossipMessage, peers ...*RemotePeer)
+	Send(msg *proto.SignedGossipMessage, peers ...*RemotePeer)
 
 	// Probe probes a remote node and returns nil if its responsive
 	Probe(peer *RemotePeer) error

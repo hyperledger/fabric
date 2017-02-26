@@ -25,7 +25,7 @@ import (
 
 // ReceivedMessageImpl is an implementation of ReceivedMessage
 type ReceivedMessageImpl struct {
-	*proto.GossipMessage
+	*proto.SignedGossipMessage
 	lock sync.Locker
 	conn *connection
 }
@@ -38,12 +38,12 @@ func (m *ReceivedMessageImpl) GetSourceEnvelope() *proto.Envelope {
 
 // Respond sends a msg to the source that sent the ReceivedMessageImpl
 func (m *ReceivedMessageImpl) Respond(msg *proto.GossipMessage) {
-	m.conn.send(msg, func(e error) {})
+	m.conn.send(msg.NoopSign(), func(e error) {})
 }
 
 // GetGossipMessage returns the inner GossipMessage
-func (m *ReceivedMessageImpl) GetGossipMessage() *proto.GossipMessage {
-	return m.GossipMessage
+func (m *ReceivedMessageImpl) GetGossipMessage() *proto.SignedGossipMessage {
+	return m.SignedGossipMessage
 }
 
 // GetPKIID returns the PKI-ID of the remote peer

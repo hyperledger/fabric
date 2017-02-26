@@ -24,7 +24,7 @@ import (
 // CryptoService is an interface that the discovery expects to be implemented and passed on creation
 type CryptoService interface {
 	// ValidateAliveMsg validates that an Alive message is authentic
-	ValidateAliveMsg(*proto.GossipMessage) bool
+	ValidateAliveMsg(message *proto.SignedGossipMessage) bool
 
 	// SignMessage signs a message
 	SignMessage(m *proto.GossipMessage, internalEndpoint string) *proto.Envelope
@@ -33,17 +33,17 @@ type CryptoService interface {
 // CommService is an interface that the discovery expects to be implemented and passed on creation
 type CommService interface {
 	// Gossip gossips a message
-	Gossip(msg *proto.GossipMessage)
+	Gossip(msg *proto.SignedGossipMessage)
 
 	// SendToPeer sends to a given peer a message.
 	// The nonce can be anything since the communication module handles the nonce itself
-	SendToPeer(peer *NetworkMember, msg *proto.GossipMessage)
+	SendToPeer(peer *NetworkMember, msg *proto.SignedGossipMessage)
 
 	// Ping probes a remote peer and returns if it's responsive or not
 	Ping(peer *NetworkMember) bool
 
 	// Accept returns a read-only channel for membership messages sent from remote peers
-	Accept() <-chan *proto.GossipMessage
+	Accept() <-chan *proto.SignedGossipMessage
 
 	// PresumedDead returns a read-only channel for peers that are presumed to be dead
 	PresumedDead() <-chan common.PKIidType

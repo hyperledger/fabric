@@ -195,12 +195,12 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			conn.pkiID = pkiID
 			conn.logger = c.logger
 
-			h := func(m *proto.GossipMessage) {
+			h := func(m *proto.SignedGossipMessage) {
 				c.logger.Debug("Got message:", m)
 				c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
-					conn:          conn,
-					lock:          conn,
-					GossipMessage: m,
+					conn:                conn,
+					lock:                conn,
+					SignedGossipMessage: m,
 				})
 			}
 			conn.handler = h
@@ -211,7 +211,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 	return nil, err
 }
 
-func (c *commImpl) Send(msg *proto.GossipMessage, peers ...*RemotePeer) {
+func (c *commImpl) Send(msg *proto.SignedGossipMessage, peers ...*RemotePeer) {
 	if c.isStopping() || len(peers) == 0 {
 		return
 	}
@@ -219,7 +219,7 @@ func (c *commImpl) Send(msg *proto.GossipMessage, peers ...*RemotePeer) {
 	c.logger.Debug("Entering, sending", msg, "to ", len(peers), "peers")
 
 	for _, peer := range peers {
-		go func(peer *RemotePeer, msg *proto.GossipMessage) {
+		go func(peer *RemotePeer, msg *proto.SignedGossipMessage) {
 			c.sendToEndpoint(peer, msg)
 		}(peer, msg)
 	}
@@ -247,7 +247,7 @@ func (c *commImpl) isPKIblackListed(p common.PKIidType) bool {
 	return false
 }
 
-func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.GossipMessage) {
+func (c *commImpl) sendToEndpoint(peer *RemotePeer, msg *proto.SignedGossipMessage) {
 	if c.isStopping() {
 		return
 	}
@@ -388,7 +388,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 	remoteAddress := extractRemoteAddress(stream)
 	remoteCertHash := extractCertificateHashFromContext(ctx)
 	var err error
-	var cMsg *proto.GossipMessage
+	var cMsg *proto.SignedGossipMessage
 	var signer proto.Signer
 
 	// If TLS is detected, sign the hash of our cert to bind our TLS cert
@@ -475,11 +475,11 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 		return nil
 	}
 
-	h := func(m *proto.GossipMessage) {
+	h := func(m *proto.SignedGossipMessage) {
 		c.msgPublisher.DeMultiplex(&ReceivedMessageImpl{
-			conn:          conn,
-			lock:          conn,
-			GossipMessage: m,
+			conn:                conn,
+			lock:                conn,
+			SignedGossipMessage: m,
 		})
 	}
 
@@ -506,8 +506,8 @@ func (c *commImpl) disconnect(pkiID common.PKIidType) {
 	c.connStore.closeByPKIid(pkiID)
 }
 
-func readWithTimeout(stream interface{}, timeout time.Duration, address string) (*proto.GossipMessage, error) {
-	incChan := make(chan *proto.GossipMessage, 1)
+func readWithTimeout(stream interface{}, timeout time.Duration, address string) (*proto.SignedGossipMessage, error) {
+	incChan := make(chan *proto.SignedGossipMessage, 1)
 	errChan := make(chan error, 1)
 	go func() {
 		if srvStr, isServerStr := stream.(proto.Gossip_GossipStreamServer); isServerStr {
@@ -541,7 +541,7 @@ func readWithTimeout(stream interface{}, timeout time.Duration, address string) 
 	}
 }
 
-func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, hash []byte, cert api.PeerIdentityType, signer proto.Signer) *proto.GossipMessage {
+func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, hash []byte, cert api.PeerIdentityType, signer proto.Signer) *proto.SignedGossipMessage {
 	m := &proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
@@ -553,8 +553,11 @@ func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, hash []byte, cert
 			},
 		},
 	}
-	m.Sign(signer)
-	return m
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: m,
+	}
+	sMsg.Sign(signer)
+	return sMsg
 }
 
 type stream interface {

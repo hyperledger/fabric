@@ -87,7 +87,7 @@ func (packet *packetMock) Respond(msg *proto.GossipMessage) {
 	packet.src.socket <- &packetMock{
 		src: packet.dst,
 		dst: packet.src,
-		msg: msg,
+		msg: msg.NoopSign(),
 	}
 }
 
@@ -98,8 +98,8 @@ func (packet *packetMock) GetSourceEnvelope() *proto.Envelope {
 }
 
 // GetGossipMessage returns the underlying GossipMessage
-func (packet *packetMock) GetGossipMessage() *proto.GossipMessage {
-	return packet.msg.(*proto.GossipMessage)
+func (packet *packetMock) GetGossipMessage() *proto.SignedGossipMessage {
+	return packet.msg.(*proto.SignedGossipMessage)
 }
 
 // GetPKIID returns the PKI-ID of the remote peer
@@ -141,7 +141,7 @@ func (mock *commMock) GetPKIid() common.PKIidType {
 }
 
 // Send sends a message to remote peers
-func (mock *commMock) Send(msg *proto.GossipMessage, peers ...*comm.RemotePeer) {
+func (mock *commMock) Send(msg *proto.SignedGossipMessage, peers ...*comm.RemotePeer) {
 	for _, peer := range peers {
 		logger.Debug("Sending message to peer ", peer.Endpoint, "from ", mock.id)
 		mock.members[peer.Endpoint].socket <- &packetMock{

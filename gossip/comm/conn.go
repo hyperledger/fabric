@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type handler func(*proto.GossipMessage)
+type handler func(message *proto.SignedGossipMessage)
 
 type connFactory interface {
 	createConnection(endpoint string, pkiID common.PKIidType) (*connection, error)
@@ -239,17 +239,13 @@ func (conn *connection) toDie() bool {
 	return atomic.LoadInt32(&(conn.stopFlag)) == int32(1)
 }
 
-func (conn *connection) send(msg *proto.GossipMessage, onErr func(error)) {
+func (conn *connection) send(msg *proto.SignedGossipMessage, onErr func(error)) {
 	conn.Lock()
 	defer conn.Unlock()
 
 	if len(conn.outBuff) == util.GetIntOrDefault("peer.gossip.sendBuffSize", defSendBuffSize) {
 		go onErr(errSendOverflow)
 		return
-	}
-
-	if msg.Envelope == nil {
-		msg.NoopSign()
 	}
 
 	m := &msgSending{
@@ -262,7 +258,7 @@ func (conn *connection) send(msg *proto.GossipMessage, onErr func(error)) {
 
 func (conn *connection) serviceConnection() error {
 	errChan := make(chan error, 1)
-	msgChan := make(chan *proto.GossipMessage, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
+	msgChan := make(chan *proto.SignedGossipMessage, util.GetIntOrDefault("peer.gossip.recvBuffSize", defRecvBuffSize))
 	defer close(msgChan)
 
 	// Call stream.Recv() asynchronously in readFromStream(),
@@ -312,7 +308,7 @@ func (conn *connection) writeToStream() {
 	}
 }
 
-func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.GossipMessage) {
+func (conn *connection) readFromStream(errChan chan error, msgChan chan *proto.SignedGossipMessage) {
 	defer func() {
 		recover()
 	}() // msgChan might be closed

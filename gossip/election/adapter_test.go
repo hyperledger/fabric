@@ -40,7 +40,7 @@ func TestNewAdapter(t *testing.T) {
 	peersCluster := newClusterOfPeers("0")
 	peersCluster.addPeer("peer0", mockGossip)
 
-	NewAdapter(mockGossip, selfNetworkMember, &mockMsgCrypto{}, []byte("channel0"))
+	NewAdapter(mockGossip, selfNetworkMember, []byte("channel0"))
 }
 
 func TestAdapterImpl_CreateMessage(t *testing.T) {
@@ -51,7 +51,7 @@ func TestAdapterImpl_CreateMessage(t *testing.T) {
 	}
 	mockGossip := newGossip("peer0", selfNetworkMember)
 
-	adapter := NewAdapter(mockGossip, selfNetworkMember, &mockMsgCrypto{}, []byte("channel0"))
+	adapter := NewAdapter(mockGossip, selfNetworkMember, []byte("channel0"))
 	msg := adapter.CreateMessage(true)
 
 	if !msg.(*msgImpl).msg.IsLeadershipMsg() {
@@ -307,7 +307,7 @@ func createCluster(peers ...int) (*clusterOfPeers, map[string]*adapterImpl) {
 		}
 
 		mockGossip := newGossip(peerEndpoint, peerMember)
-		adapter := NewAdapter(mockGossip, peerMember, &mockMsgCrypto{}, []byte("channel0"))
+		adapter := NewAdapter(mockGossip, peerMember, []byte("channel0"))
 		adapters[peerEndpoint] = adapter.(*adapterImpl)
 		cluster.addPeer(peerEndpoint, mockGossip)
 	}

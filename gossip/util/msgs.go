@@ -14,23 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package discovery
+package util
 
 import (
 	"github.com/hyperledger/fabric/gossip/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
 
-type message struct {
-	*proto.Envelope
-	*proto.GossipMessage
-}
-
-type membershipStore map[string]*message
+type MembershipStore map[string]*proto.SignedGossipMessage
 
 // msgByID returns a message stored by a certain ID, or nil
 // if such an ID isn't found
-func (m membershipStore) msgByID(pkiID common.PKIidType) *message {
+func (m MembershipStore) MsgByID(pkiID common.PKIidType) *proto.SignedGossipMessage {
 	if msg, exists := m[string(pkiID)]; exists {
 		return msg
 	}
@@ -38,19 +33,19 @@ func (m membershipStore) msgByID(pkiID common.PKIidType) *message {
 }
 
 // Put associates msg with the given pkiID
-func (m membershipStore) Put(pkiID common.PKIidType, msg *message) {
+func (m MembershipStore) Put(pkiID common.PKIidType, msg *proto.SignedGossipMessage) {
 	m[string(pkiID)] = msg
 }
 
 // Remove removes a message with a given pkiID
-func (m membershipStore) Remove(pkiID common.PKIidType) {
+func (m MembershipStore) Remove(pkiID common.PKIidType) {
 	delete(m, string(pkiID))
 }
 
 // ToSlice returns a slice backed by the elements
-// of the membershipStore
-func (m membershipStore) ToSlice() []*message {
-	members := make([]*message, len(m))
+// of the MembershipStore
+func (m MembershipStore) ToSlice() []*proto.SignedGossipMessage {
+	members := make([]*proto.SignedGossipMessage, len(m))
 	i := 0
 	for _, member := range m {
 		members[i] = member

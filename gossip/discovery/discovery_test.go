@@ -52,7 +52,7 @@ type dummyCommModule struct {
 	streams      map[string]proto.Gossip_GossipStreamClient
 	conns        map[string]*grpc.ClientConn
 	lock         *sync.RWMutex
-	incMsgs      chan *proto.GossipMessage
+	incMsgs      chan *proto.SignedGossipMessage
 	lastSeqs     map[string]uint64
 	shouldGossip bool
 	mock         *mock.Mock
@@ -74,7 +74,7 @@ type gossipInstance struct {
 	shouldGossip bool
 }
 
-func (comm *dummyCommModule) ValidateAliveMsg(am *proto.GossipMessage) bool {
+func (comm *dummyCommModule) ValidateAliveMsg(am *proto.SignedGossipMessage) bool {
 	return true
 }
 
@@ -89,11 +89,12 @@ func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage, internalEndpoi
 	signer := func(msg []byte) ([]byte, error) {
 		return nil, nil
 	}
-	am.Envelope.SignSecret(signer, secret)
-	return am.Envelope
+	env := am.NoopSign().Envelope
+	env.SignSecret(signer, secret)
+	return env
 }
 
-func (comm *dummyCommModule) Gossip(msg *proto.GossipMessage) {
+func (comm *dummyCommModule) Gossip(msg *proto.SignedGossipMessage) {
 	if !comm.shouldGossip {
 		return
 	}
@@ -104,11 +105,10 @@ func (comm *dummyCommModule) Gossip(msg *proto.GossipMessage) {
 	}
 }
 
-func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.GossipMessage) {
-	var mock *mock.Mock
+func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.SignedGossipMessage) {
 	comm.lock.RLock()
 	_, exists := comm.streams[peer.Endpoint]
-	mock = comm.mock
+	mock := comm.mock
 	comm.lock.RUnlock()
 
 	if mock != nil {
@@ -121,9 +121,8 @@ func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.GossipMe
 			return
 		}
 	}
-	e := msg.NoopSign()
 	comm.lock.Lock()
-	comm.streams[peer.Endpoint].Send(e)
+	comm.streams[peer.Endpoint].Send(msg.NoopSign().Envelope)
 	comm.lock.Unlock()
 }
 
@@ -155,7 +154,7 @@ func (comm *dummyCommModule) Ping(peer *NetworkMember) bool {
 	return true
 }
 
-func (comm *dummyCommModule) Accept() <-chan *proto.GossipMessage {
+func (comm *dummyCommModule) Accept() <-chan *proto.SignedGossipMessage {
 	return comm.incMsgs
 }
 
@@ -200,7 +199,7 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 	}
 }
 
-func (g *gossipInstance) tryForwardMessage(msg *proto.GossipMessage) {
+func (g *gossipInstance) tryForwardMessage(msg *proto.SignedGossipMessage) {
 	g.comm.lock.Lock()
 
 	aliveMsg := msg.GetAliveMsg()
@@ -253,7 +252,7 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 	comm := &dummyCommModule{
 		conns:        make(map[string]*grpc.ClientConn),
 		streams:      make(map[string]proto.Gossip_GossipStreamClient),
-		incMsgs:      make(chan *proto.GossipMessage, 1000),
+		incMsgs:      make(chan *proto.SignedGossipMessage, 1000),
 		presumeDead:  make(chan common.PKIidType, 10000),
 		id:           id,
 		detectedDead: make(chan string, 10000),
@@ -564,6 +563,7 @@ func TestConfigFromFile(t *testing.T) {
 }
 
 func TestFilterOutLocalhost(t *testing.T) {
+	t.Parallel()
 	endpoints := []string{"localhost:5611", "127.0.0.1:5611", "1.2.3.4:5611"}
 	assert.Len(t, filterOutLocalhost(endpoints, 5611), 1)
 	endpoints = []string{"1.2.3.4:5611"}

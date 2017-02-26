@@ -61,8 +61,7 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 	}
 
 	puller.Add(certStore.createIdentityMessage())
-
-	puller.RegisterMsgHook(pull.ResponseMsgType, func(_ []string, msgs []*proto.GossipMessage, _ proto.ReceivedMessage) {
+	puller.RegisterMsgHook(pull.ResponseMsgType, func(_ []string, msgs []*proto.SignedGossipMessage, _ proto.ReceivedMessage) {
 		for _, msg := range msgs {
 			pkiID := common.PKIidType(msg.GetPeerIdentity().PkiID)
 			cert := api.PeerIdentityType(msg.GetPeerIdentity().Cert)
@@ -71,15 +70,17 @@ func newCertStore(puller pull.Mediator, idMapper identity.Mapper, selfIdentity a
 			}
 		}
 	})
-
-	puller.Add(certStore.createIdentityMessage())
-
 	return certStore
 }
 
 func (cs *certStore) handleMessage(msg proto.ReceivedMessage) {
 	if update := msg.GetGossipMessage().GetDataUpdate(); update != nil {
-		for _, m := range update.Data {
+		for _, env := range update.Data {
+			m, err := env.ToGossipMessage()
+			if err != nil {
+				cs.logger.Warning("Failed extracting GossipMessage from envelope:", err)
+				return
+			}
 			if !m.IsIdentityMsg() {
 				cs.logger.Warning("Got a non-identity message:", m, "aborting")
 				return
@@ -93,7 +94,7 @@ func (cs *certStore) handleMessage(msg proto.ReceivedMessage) {
 	cs.pull.HandleMessage(msg)
 }
 
-func (cs *certStore) validateIdentityMsg(msg *proto.GossipMessage) error {
+func (cs *certStore) validateIdentityMsg(msg *proto.SignedGossipMessage) error {
 	idMsg := msg.GetPeerIdentity()
 	if idMsg == nil {
 		return fmt.Errorf("Identity empty: %+v", msg)
@@ -118,13 +119,12 @@ func (cs *certStore) validateIdentityMsg(msg *proto.GossipMessage) error {
 	return cs.mcs.ValidateIdentity(api.PeerIdentityType(idMsg.Cert))
 }
 
-func (cs *certStore) createIdentityMessage() *proto.GossipMessage {
+func (cs *certStore) createIdentityMessage() *proto.SignedGossipMessage {
 	identity := &proto.PeerIdentity{
 		Cert:     cs.selfIdentity,
 		Metadata: nil,
 		PkiID:    cs.idMapper.GetPKIidOfCert(cs.selfIdentity),
 	}
-
 	m := &proto.GossipMessage{
 		Channel: nil,
 		Nonce:   0,
@@ -133,12 +133,14 @@ func (cs *certStore) createIdentityMessage() *proto.GossipMessage {
 			PeerIdentity: identity,
 		},
 	}
-
 	signer := func(msg []byte) ([]byte, error) {
 		return cs.idMapper.Sign(msg)
 	}
-	m.Sign(signer)
-	return m
+	sMsg := &proto.SignedGossipMessage{
+		GossipMessage: m,
+	}
+	sMsg.Sign(signer)
+	return sMsg
 }
 
 func (cs *certStore) stop() {
