@@ -39,3 +39,37 @@ func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 	}
 
 }
+
+func TestDatabaseMapping(t *testing.T) {
+
+	//create a new instance and database object using a database name mixed case
+	databaseName, err := mapAndValidateDatabaseName("testDB")
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to map database name"))
+	testutil.AssertEquals(t, databaseName, "testdb")
+
+	//create a new instance and database object using a database name with numerics
+	databaseName, err = mapAndValidateDatabaseName("test1234DB")
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to map database name"))
+	testutil.AssertEquals(t, databaseName, "test1234db")
+
+	//create a new instance and database object using a database name with special characters
+	databaseName, err = mapAndValidateDatabaseName("test1234_$(),+-/~!@#%^&*[]{}.")
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to map database name"))
+	testutil.AssertEquals(t, databaseName, "test1234_$(),+-/_____________")
+
+	//create a new instance and database object using a database name with special characters
+	databaseName, err = mapAndValidateDatabaseName("5test1234")
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to map database name"))
+	testutil.AssertEquals(t, databaseName, "db_5test1234")
+
+	//create a new instance and database object using an empty string
+	_, err = mapAndValidateDatabaseName("")
+	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid name"))
+
+	_, err = mapAndValidateDatabaseName("A12345678901234567890123456789012345678901234" +
+		"56789012345678901234567890123456789012345678901234567890123456789012345678901234567890" +
+		"12345678901234567890123456789012345678901234567890123456789012345678901234567890123456" +
+		"78901234567890123456789012345678901234567890")
+	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for an invalid name"))
+
+}
