@@ -9,7 +9,6 @@ ENV ORDERER_GENERAL_LOCALMSPDIR $ORDERER_CFG_PATH/msp/sampleconfig
 # create needed directories
 RUN mkdir -p \
   $PEER_CFG_PATH \
-  $ORDERER_CFG_PATH \
   /var/hyperledger/production
 
 # fabric configuration files
