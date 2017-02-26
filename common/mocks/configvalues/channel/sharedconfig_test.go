@@ -19,9 +19,9 @@ package channel
 import (
 	"testing"
 
-	config "github.com/hyperledger/fabric/common/configvalues/root"
+	"github.com/hyperledger/fabric/common/config"
 )
 
 func TestChainConfigInterface(t *testing.T) {
-	_ = config.ChannelValues(&SharedConfig{})
+	_ = config.Channel(&SharedConfig{})
 }

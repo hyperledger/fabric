@@ -20,10 +20,9 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/config"
+	configtxmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx/api"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	configtxmsp "github.com/hyperledger/fabric/common/configvalues/msp"
-	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -41,17 +40,17 @@ func (r *resources) PolicyManager() policies.Manager {
 }
 
 // ChannelConfig returns the api.ChannelConfig for the chain
-func (r *resources) ChannelConfig() config.ChannelValues {
+func (r *resources) ChannelConfig() config.Channel {
 	return r.configRoot.Channel()
 }
 
 // OrdererConfig returns the api.OrdererConfig for the chain
-func (r *resources) OrdererConfig() configvaluesapi.Orderer {
+func (r *resources) OrdererConfig() config.Orderer {
 	return r.configRoot.Orderer()
 }
 
 // ApplicationConfig returns the api.ApplicationConfig for the chain
-func (r *resources) ApplicationConfig() configvaluesapi.Application {
+func (r *resources) ApplicationConfig() config.Application {
 	return r.configRoot.Application()
 }
 
@@ -130,6 +129,6 @@ func (i *initializer) PolicyProposer() policies.Proposer {
 	return i.ppr
 }
 
-func (i *initializer) ValueProposer() configvaluesapi.ValueProposer {
+func (i *initializer) ValueProposer() config.ValueProposer {
 	return i.resources.configRoot
 }

@@ -32,7 +32,7 @@ func init() {
 }
 
 func TestInterface(t *testing.T) {
-	_ = ChannelValues(NewChannelGroup(nil))
+	_ = Channel(NewChannelGroup(nil))
 }
 
 func TestHashingAlgorithm(t *testing.T) {

@@ -19,8 +19,7 @@ package config
 import (
 	"fmt"
 
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/msp"
+	"github.com/hyperledger/fabric/common/config/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
@@ -32,7 +31,7 @@ type Root struct {
 	mspConfigHandler *msp.MSPConfigHandler
 }
 
-// NewRoot creates a new instance of the configvalues Root
+// NewRoot creates a new instance of the Root
 func NewRoot(mspConfigHandler *msp.MSPConfigHandler) *Root {
 	return &Root{
 		channel:          NewChannelGroup(mspConfigHandler),
@@ -41,7 +40,7 @@ func NewRoot(mspConfigHandler *msp.MSPConfigHandler) *Root {
 }
 
 // BeginValueProposals is used to start a new config proposal
-func (r *Root) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
+func (r *Root) BeginValueProposals(groups []string) ([]ValueProposer, error) {
 	if len(groups) != 1 {
 		return nil, fmt.Errorf("Root config only supports having one base group")
 	}
@@ -49,7 +48,7 @@ func (r *Root) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProp
 		return nil, fmt.Errorf("Root group must have channel")
 	}
 	r.mspConfigHandler.BeginConfig()
-	return []configvaluesapi.ValueProposer{r.channel}, nil
+	return []ValueProposer{r.channel}, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal

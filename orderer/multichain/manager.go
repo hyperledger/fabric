@@ -17,9 +17,9 @@ limitations under the License.
 package multichain
 
 import (
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -43,7 +43,7 @@ type configResources struct {
 	configtxapi.Manager
 }
 
-func (cr *configResources) SharedConfig() configvaluesapi.Orderer {
+func (cr *configResources) SharedConfig() config.Orderer {
 	return cr.OrdererConfig()
 }
 

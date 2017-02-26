@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"testing"
 
-	api "github.com/hyperledger/fabric/common/configvalues"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
 
@@ -43,7 +42,7 @@ func (v *mockValues) ProtoMsg(key string) (proto.Message, bool) {
 	return msg, ok
 }
 
-func (v *mockValues) Validate(map[string]api.ValueProposer) error {
+func (v *mockValues) Validate(map[string]ValueProposer) error {
 	return v.ValidateReturn
 }
 
@@ -57,7 +56,7 @@ func newMockValues() *mockValues {
 
 type mockHandler struct {
 	AllocateReturn *mockValues
-	NewGroupMap    map[string]api.ValueProposer
+	NewGroupMap    map[string]ValueProposer
 	NewGroupError  error
 }
 
@@ -65,7 +64,7 @@ func (h *mockHandler) Allocate() Values {
 	return h.AllocateReturn
 }
 
-func (h *mockHandler) NewGroup(name string) (api.ValueProposer, error) {
+func (h *mockHandler) NewGroup(name string) (ValueProposer, error) {
 	group, ok := h.NewGroupMap[name]
 	if !ok {
 		return nil, fmt.Errorf("Missing group implies error")
@@ -76,7 +75,7 @@ func (h *mockHandler) NewGroup(name string) (api.ValueProposer, error) {
 func newMockHandler() *mockHandler {
 	return &mockHandler{
 		AllocateReturn: newMockValues(),
-		NewGroupMap:    make(map[string]api.ValueProposer),
+		NewGroupMap:    make(map[string]ValueProposer),
 	}
 }
 
@@ -149,7 +148,7 @@ func TestGroups(t *testing.T) {
 	assert.NoError(t, err, "Both groups were present")
 	p.CommitProposals()
 
-	mh.NewGroupMap = make(map[string]api.ValueProposer)
+	mh.NewGroupMap = make(map[string]ValueProposer)
 	_, err = p.BeginValueProposals([]string{"foo", "bar"})
 	assert.NoError(t, err, "Should not have tried to recreate the groups")
 	p.CommitProposals()

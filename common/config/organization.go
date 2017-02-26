@@ -19,8 +19,7 @@ package config
 import (
 	"fmt"
 
-	api "github.com/hyperledger/fabric/common/configvalues"
-	mspconfig "github.com/hyperledger/fabric/common/configvalues/msp"
+	mspconfig "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/msp"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
 )
@@ -74,7 +73,7 @@ func (og *OrganizationGroup) MSPID() string {
 }
 
 // NewGroup always errors
-func (og *OrganizationGroup) NewGroup(name string) (api.ValueProposer, error) {
+func (og *OrganizationGroup) NewGroup(name string) (ValueProposer, error) {
 	return nil, fmt.Errorf("Organization does not support subgroups")
 }
 
@@ -99,7 +98,7 @@ func NewOrganizationConfig(og *OrganizationGroup) *OrganizationConfig {
 }
 
 // Validate returns whether the configuration is valid
-func (oc *OrganizationConfig) Validate(groups map[string]api.ValueProposer) error {
+func (oc *OrganizationConfig) Validate(groups map[string]ValueProposer) error {
 	return oc.validateMSP()
 }
 

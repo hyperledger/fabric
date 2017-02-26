@@ -21,8 +21,7 @@ import (
 	"math"
 
 	"github.com/hyperledger/fabric/bccsp"
-	api "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/msp"
+	"github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -107,7 +106,7 @@ func (cg *ChannelGroup) ApplicationConfig() *ApplicationGroup {
 }
 
 // NewGroup instantiates either a new application or orderer config
-func (cg *ChannelGroup) NewGroup(group string) (api.ValueProposer, error) {
+func (cg *ChannelGroup) NewGroup(group string) (ValueProposer, error) {
 	switch group {
 	case ApplicationGroupKey:
 		return NewApplicationGroup(cg.mspConfigHandler), nil
@@ -160,7 +159,7 @@ func (cc *ChannelConfig) OrdererAddresses() []string {
 
 // Validate inspects the generated configuration protos, ensures that the values are correct, and
 // sets the ChannelConfig fields that may be referenced after Commit
-func (cc *ChannelConfig) Validate(groups map[string]api.ValueProposer) error {
+func (cc *ChannelConfig) Validate(groups map[string]ValueProposer) error {
 	for _, validator := range []func() error{
 		cc.validateHashingAlgorithm,
 		cc.validateBlockDataHashingStructure,

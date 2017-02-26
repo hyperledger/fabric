@@ -18,16 +18,8 @@ package config
 
 import (
 	"testing"
-
-	api "github.com/hyperledger/fabric/common/configvalues"
-
-	logging "github.com/op/go-logging"
 )
 
-func init() {
-	logging.SetLevel(logging.DEBUG, "")
-}
-
-func TestApplicationInterface(t *testing.T) {
-	_ = api.Application((*ApplicationGroup)(nil))
+func TestApplicationOrgInterface(t *testing.T) {
+	_ = ValueProposer(NewApplicationOrgGroup("id", nil))
 }

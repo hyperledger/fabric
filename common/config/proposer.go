@@ -19,7 +19,6 @@ package config
 import (
 	"fmt"
 
-	api "github.com/hyperledger/fabric/common/configvalues"
 	cb "github.com/hyperledger/fabric/protos/common"
 
 	"github.com/golang/protobuf/proto"
@@ -36,7 +35,7 @@ type Values interface {
 
 	// Validate should ensure that the values set into the proto messages are correct
 	// and that the new group values are allowed
-	Validate(map[string]api.ValueProposer) error
+	Validate(map[string]ValueProposer) error
 
 	// Commit should call back into the Value handler to update the config
 	Commit()
@@ -45,12 +44,12 @@ type Values interface {
 // Handler
 type Handler interface {
 	Allocate() Values
-	NewGroup(name string) (api.ValueProposer, error)
+	NewGroup(name string) (ValueProposer, error)
 }
 
 type config struct {
 	allocated Values
-	groups    map[string]api.ValueProposer
+	groups    map[string]ValueProposer
 }
 
 type Proposer struct {
@@ -67,20 +66,20 @@ func NewProposer(vh Handler) *Proposer {
 }
 
 // BeginValueProposals called when a config proposal is begun
-func (p *Proposer) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
+func (p *Proposer) BeginValueProposals(groups []string) ([]ValueProposer, error) {
 	if p.pending != nil {
 		logger.Panicf("Duplicated BeginValueProposals without Rollback or Commit")
 	}
 
-	result := make([]api.ValueProposer, len(groups))
+	result := make([]ValueProposer, len(groups))
 
 	p.pending = &config{
 		allocated: p.vh.Allocate(),
-		groups:    make(map[string]api.ValueProposer),
+		groups:    make(map[string]ValueProposer),
 	}
 
 	for i, groupName := range groups {
-		var group api.ValueProposer
+		var group ValueProposer
 		var ok bool
 
 		if p.current == nil {

@@ -17,7 +17,7 @@ limitations under the License.
 package blockcutter
 
 import (
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -52,7 +52,7 @@ type Receiver interface {
 }
 
 type receiver struct {
-	sharedConfigManager   configvaluesapi.Orderer
+	sharedConfigManager   config.Orderer
 	filters               *filter.RuleSet
 	pendingBatch          []*cb.Envelope
 	pendingBatchSizeBytes uint32
@@ -60,7 +60,7 @@ type receiver struct {
 }
 
 // NewReceiverImpl creates a Receiver implementation based on the given configtxorderer manager and filters
-func NewReceiverImpl(sharedConfigManager configvaluesapi.Orderer, filters *filter.RuleSet) Receiver {
+func NewReceiverImpl(sharedConfigManager config.Orderer, filters *filter.RuleSet) Receiver {
 	return &receiver{
 		sharedConfigManager: sharedConfigManager,
 		filters:             filters,

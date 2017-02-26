@@ -17,8 +17,7 @@ limitations under the License.
 package config
 
 import (
-	api "github.com/hyperledger/fabric/common/configvalues"
-	mspconfig "github.com/hyperledger/fabric/common/configvalues/msp"
+	mspconfig "github.com/hyperledger/fabric/common/config/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 
 	logging "github.com/op/go-logging"
@@ -87,7 +86,7 @@ func NewApplicationOrgConfig(aog *ApplicationOrgGroup) *ApplicationOrgConfig {
 	return aoc
 }
 
-func (aoc *ApplicationOrgConfig) Validate(groups map[string]api.ValueProposer) error {
+func (aoc *ApplicationOrgConfig) Validate(groups map[string]ValueProposer) error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Anchor peers for org %s are %v", aoc.applicationOrgGroup.name, aoc.protos.AnchorPeers)
 	}

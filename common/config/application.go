@@ -19,8 +19,7 @@ package config
 import (
 	"fmt"
 
-	api "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/msp"
+	"github.com/hyperledger/fabric/common/config/msp"
 )
 
 const (
@@ -39,7 +38,7 @@ type ApplicationConfig struct {
 	*standardValues
 
 	applicationGroup *ApplicationGroup
-	applicationOrgs  map[string]api.ApplicationOrg
+	applicationOrgs  map[string]ApplicationOrg
 }
 
 // NewSharedConfigImpl creates a new SharedConfigImpl with the given CryptoHelper
@@ -52,7 +51,7 @@ func NewApplicationGroup(mspConfig *msp.MSPConfigHandler) *ApplicationGroup {
 	return ag
 }
 
-func (ag *ApplicationGroup) NewGroup(name string) (api.ValueProposer, error) {
+func (ag *ApplicationGroup) NewGroup(name string) (ValueProposer, error) {
 	return NewApplicationOrgGroup(name, ag.mspConfig), nil
 }
 
@@ -75,8 +74,8 @@ func NewApplicationConfig(ag *ApplicationGroup) *ApplicationConfig {
 	}
 }
 
-func (ac *ApplicationConfig) Validate(groups map[string]api.ValueProposer) error {
-	ac.applicationOrgs = make(map[string]api.ApplicationOrg)
+func (ac *ApplicationConfig) Validate(groups map[string]ValueProposer) error {
+	ac.applicationOrgs = make(map[string]ApplicationOrg)
 	var ok bool
 	for key, value := range groups {
 		ac.applicationOrgs[key], ok = value.(*ApplicationOrgGroup)
@@ -92,6 +91,6 @@ func (ac *ApplicationConfig) Commit() {
 }
 
 // Organizations returns a map of org ID to ApplicationOrg
-func (ac *ApplicationConfig) Organizations() map[string]api.ApplicationOrg {
+func (ac *ApplicationConfig) Organizations() map[string]ApplicationOrg {
 	return ac.applicationOrgs
 }

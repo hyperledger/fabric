@@ -19,8 +19,8 @@ package configtx
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx/api"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -61,7 +61,7 @@ func (cr *configResult) rollback() {
 // it will in turn recursively call itself until all groups have been exhausted
 // at each call, it returns the handler that was passed in, plus any handlers returned
 // by recursive calls into proposeGroup
-func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handler configvaluesapi.ValueProposer, policyHandler policies.Proposer) (*configResult, error) {
+func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handler config.ValueProposer, policyHandler policies.Proposer) (*configResult, error) {
 	subGroups := make([]string, len(group.Groups))
 	i := 0
 	for subGroup := range group.Groups {

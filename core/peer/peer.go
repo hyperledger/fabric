@@ -23,9 +23,9 @@ import (
 	"net"
 	"sync"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -48,7 +48,7 @@ var peerLogger = logging.MustGetLogger("peer")
 
 type chainSupport struct {
 	configtxapi.Manager
-	configvaluesapi.Application
+	config.Application
 	ledger ledger.PeerLedger
 }
 

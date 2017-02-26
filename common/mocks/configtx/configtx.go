@@ -17,8 +17,7 @@ limitations under the License.
 package configtx
 
 import (
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	config "github.com/hyperledger/fabric/common/configvalues/root"
+	"github.com/hyperledger/fabric/common/config"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -30,13 +29,13 @@ type Resources struct {
 	PolicyManagerVal *mockpolicies.Manager
 
 	// ChannelConfigVal is returned as the result of ChannelConfig()
-	ChannelConfigVal config.ChannelValues
+	ChannelConfigVal config.Channel
 
 	// OrdererConfigVal is returned as the result of OrdererConfig()
-	OrdererConfigVal configvaluesapi.Orderer
+	OrdererConfigVal config.Orderer
 
 	// ApplicationConfigVal is returned as the result of ApplicationConfig()
-	ApplicationConfigVal configvaluesapi.Application
+	ApplicationConfigVal config.Application
 
 	// MSPManagerVal is returned as the result of MSPManager()
 	MSPManagerVal msp.MSPManager
@@ -48,17 +47,17 @@ func (r *Resources) PolicyManager() policies.Manager {
 }
 
 // Returns the ChannelConfigVal
-func (r *Resources) ChannelConfig() config.ChannelValues {
+func (r *Resources) ChannelConfig() config.Channel {
 	return r.ChannelConfigVal
 }
 
 // Returns the OrdererConfigVal
-func (r *Resources) OrdererConfig() configvaluesapi.Orderer {
+func (r *Resources) OrdererConfig() config.Orderer {
 	return r.OrdererConfigVal
 }
 
 // Returns the ApplicationConfigVal
-func (r *Resources) ApplicationConfig() configvaluesapi.Application {
+func (r *Resources) ApplicationConfig() config.Application {
 	return r.ApplicationConfigVal
 }
 
@@ -96,7 +95,7 @@ func (i *Initializer) PolicyProposer() policies.Proposer {
 }
 
 // ValueProposers returns ValueProposerVal
-func (i *Initializer) ValueProposer() configvaluesapi.ValueProposer {
+func (i *Initializer) ValueProposer() config.ValueProposer {
 	return i.ValueProposerVal
 }
 
@@ -140,8 +139,8 @@ func (vp *ValueProposer) ProposeValue(key string, configValue *cb.ConfigValue) e
 }
 
 // BeginConfig returns slices populated by self
-func (vp *ValueProposer) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
-	handlers := make([]configvaluesapi.ValueProposer, len(groups))
+func (vp *ValueProposer) BeginValueProposals(groups []string) ([]config.ValueProposer, error) {
+	handlers := make([]config.ValueProposer, len(groups))
 	for i := range handlers {
 		handlers[i] = vp
 	}
