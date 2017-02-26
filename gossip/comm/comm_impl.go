@@ -407,11 +407,12 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 	cMsg = c.createConnectionMsg(c.PKIID, c.selfCertHash, c.peerIdentity, signer)
 
 	c.logger.Debug("Sending", cMsg, "to", remoteAddress)
-	stream.Send(cMsg)
-	m := readWithTimeout(stream, util.GetDurationOrDefault("peer.gossip.connTimeout", defConnTimeout))
-	if m == nil {
-		c.logger.Warning("Timed out waiting for connection message from", remoteAddress)
-		return nil, errors.New("Timed out")
+	stream.Send(cMsg.Envelope)
+	m, err := readWithTimeout(stream, util.GetDurationOrDefault("peer.gossip.connTimeout", defConnTimeout), remoteAddress)
+	if err != nil {
+		err := fmt.Errorf("Failed reading messge from %s, reason: %v", remoteAddress, err)
+		c.logger.Warning(err)
+		return nil, err
 	}
 	receivedMsg := m.GetConn()
 	if receivedMsg == nil {
@@ -505,25 +506,38 @@ func (c *commImpl) disconnect(pkiID common.PKIidType) {
 	c.connStore.closeByPKIid(pkiID)
 }
 
-func readWithTimeout(stream interface{}, timeout time.Duration) *proto.GossipMessage {
+func readWithTimeout(stream interface{}, timeout time.Duration, address string) (*proto.GossipMessage, error) {
 	incChan := make(chan *proto.GossipMessage, 1)
+	errChan := make(chan error, 1)
 	go func() {
 		if srvStr, isServerStr := stream.(proto.Gossip_GossipStreamServer); isServerStr {
 			if m, err := srvStr.Recv(); err == nil {
-				incChan <- m
+				msg, err := m.ToGossipMessage()
+				if err != nil {
+					errChan <- err
+					return
+				}
+				incChan <- msg
 			}
 		}
 		if clStr, isClientStr := stream.(proto.Gossip_GossipStreamClient); isClientStr {
 			if m, err := clStr.Recv(); err == nil {
-				incChan <- m
+				msg, err := m.ToGossipMessage()
+				if err != nil {
+					errChan <- err
+					return
+				}
+				incChan <- msg
 			}
 		}
 	}()
 	select {
 	case <-time.NewTicker(timeout).C:
-		return nil
+		return nil, fmt.Errorf("Timed out waiting for connection message from %s", address)
 	case m := <-incChan:
-		return m
+		return m, nil
+	case err := <-errChan:
+		return nil, err
 	}
 }
 
@@ -539,16 +553,13 @@ func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, hash []byte, cert
 			},
 		},
 	}
-	if err := m.Sign(signer); err != nil {
-		c.logger.Panicf("Gossip failed to sign a message using the peer identity.\n Halting execution.\nActual error: %v", err)
-	}
-
+	m.Sign(signer)
 	return m
 }
 
 type stream interface {
-	Send(*proto.GossipMessage) error
-	Recv() (*proto.GossipMessage, error)
+	Send(envelope *proto.Envelope) error
+	Recv() (*proto.Envelope, error)
 	grpc.Stream
 }
 

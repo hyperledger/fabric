@@ -130,24 +130,26 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	})
 
 	if sigMutator != nil {
-		msg.Signature = sigMutator(msg.Signature)
+		msg.Envelope.Signature = sigMutator(msg.Envelope.Signature)
 	}
 
-	stream.Send(msg)
-	msg, err = stream.Recv()
+	stream.Send(msg.Envelope)
+	envelope, err := stream.Recv()
+	assert.NoError(t, err, "%v", err)
+	msg, err = envelope.ToGossipMessage()
 	assert.NoError(t, err, "%v", err)
 	if sigMutator == nil {
 		hash := extractCertificateHashFromContext(stream.Context())
 		expectedMsg := c.createConnectionMsg(common.PKIidType("localhost:9611"), hash, []byte("localhost:9611"), func(msg []byte) ([]byte, error) {
 			return msg, nil
 		})
-		assert.Equal(t, expectedMsg.Signature, msg.Signature)
+		assert.Equal(t, expectedMsg.Envelope.Signature, msg.Envelope.Signature)
 	}
 	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiID)
 	msg2Send := createGossipMsg()
 	nonce := uint64(rand.Int())
 	msg2Send.Nonce = nonce
-	go stream.Send(msg2Send)
+	go stream.Send(msg2Send.NoopSign())
 	return acceptChan
 }
 
@@ -347,17 +349,13 @@ func TestResponses(t *testing.T) {
 	defer comm1.Stop()
 	defer comm2.Stop()
 
-	nonceIncrememter := func(msg proto.ReceivedMessage) proto.ReceivedMessage {
-		msg.GetGossipMessage().Nonce++
-		return msg
-	}
-
 	msg := createGossipMsg()
 	go func() {
 		inChan := comm1.Accept(acceptAll)
 		for m := range inChan {
-			m = nonceIncrememter(m)
-			m.Respond(m.GetGossipMessage())
+			reply := createGossipMsg()
+			reply.Nonce = m.GetGossipMessage().Nonce + 1
+			m.Respond(reply)
 		}
 	}()
 	expectedNOnce := uint64(msg.Nonce + 1)

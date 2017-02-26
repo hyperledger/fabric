@@ -22,7 +22,7 @@ import (
 )
 
 type message struct {
-	*proto.SignedGossipMessage
+	*proto.Envelope
 	*proto.GossipMessage
 }
 

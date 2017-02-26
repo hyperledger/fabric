@@ -48,7 +48,7 @@ type pullMsg struct {
 
 // GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
 // constructed with
-func (pm *pullMsg) GetSourceMessage() *proto.SignedGossipMessage {
+func (pm *pullMsg) GetSourceEnvelope() *proto.Envelope {
 	return nil
 }
 

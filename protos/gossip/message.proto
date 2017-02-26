@@ -9,17 +9,40 @@ package gossip;
 service Gossip {
 
     // GossipStream is the gRPC stream used for sending and receiving messages
-    rpc GossipStream (stream GossipMessage) returns (stream GossipMessage) {}
+    rpc GossipStream (stream Envelope) returns (stream Envelope) {}
 
     // Ping is used to probe a remote peer's aliveness
     rpc Ping (Empty) returns (Empty) {}
 }
 
-// GossipMessage contains a marshalled
+
+// Envelope contains a marshalled
 // GossipMessage and a signature over it.
-message SignedGossipMessage {
+// It may also contain a SecretEnvelope
+// which is a marshalled Secret
+message Envelope {
     bytes payload   = 1;
     bytes signature = 2;
+    SecretEnvelope secretEnvelope = 3;
+}
+
+// SecretEnvelope is a marshalled Secret
+// and a signature over it.
+// The signature should be validated by the peer
+// that signed the Envelope the SecretEnvelope
+// came with
+message SecretEnvelope {
+    bytes payload   = 1;
+    bytes signature = 2;
+}
+
+// Secret is an entity that might be omitted
+// from an Envelope when the remote peer that is receiving
+// the Envelope shouldn't know the secret's content.
+message Secret {
+    oneof content {
+        string internalEndpoint = 1;
+    }
 }
 
 // GossipMessage defines the message sent in a gossip network
@@ -48,7 +71,9 @@ message GossipMessage {
     // to forward the message
     Tag tag = 3;
 
-    bytes signature = 4;
+    // Used to specify the envelope the GossipMessage came from
+    // TODO: Will be removed in next change set
+    Envelope envelope = 4;
 
     oneof content {
         // Membership
@@ -215,14 +240,14 @@ message PeerTime {
 // MembershipRequest is used to ask membership information
 // from a remote peer
 message MembershipRequest {
-    GossipMessage selfInformation = 1;
+    Envelope selfInformation = 1;
     repeated bytes         known = 2;
 }
 
 // MembershipResponse is used for replying to MembershipRequests
 message MembershipResponse {
-    repeated GossipMessage alive = 1;
-    repeated GossipMessage dead  = 2;
+    repeated Envelope alive = 1;
+    repeated Envelope dead  = 2;
 }
 
 // Member holds membership-related information
@@ -231,20 +256,8 @@ message Member {
     string endpoint = 1;
     bytes  metadata = 2;
     bytes  pkiID    = 3;
-    // internalEndpoint is used to connect to the peer
-    // if its in your own organization
-    SignedEndpoint internalEndpoint = 4;
 }
 
-// SignedEndpoint is an endpoint that has a signature
-// on it. The signature needs to be verified
-// by the relevant certificate of the peer
-// that sent the message the SignedEndpoint
-// is part of.
-message SignedEndpoint {
-    string endpoint = 1;
-    bytes signature = 2;
-}
 
 // Empty is used for pinging and in tests
 message Empty {}

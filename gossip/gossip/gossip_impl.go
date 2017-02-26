@@ -35,7 +35,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
-	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 	"google.golang.org/grpc"
 )
@@ -133,23 +132,11 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 }
 
 func (g *gossipServiceImpl) selfNetworkMember() discovery.NetworkMember {
-	var err error
-	internalEndpoint := &proto.SignedEndpoint{
-		Signature: nil,
-		Endpoint:  g.conf.InternalEndpoint,
-	}
-	// Sign the internal endpoint
-	internalEndpoint.Signature = nil
-	endpointBytes := utils.MarshalOrPanic(internalEndpoint)
-	internalEndpoint.Signature, err = g.mcs.Sign(endpointBytes)
-	if err != nil {
-		g.logger.Panic("Failed signing message:", err)
-	}
 	self := discovery.NetworkMember{
 		Endpoint:         g.conf.ExternalEndpoint,
 		PKIid:            g.comm.GetPKIid(),
 		Metadata:         []byte{},
-		InternalEndpoint: internalEndpoint,
+		InternalEndpoint: g.conf.InternalEndpoint,
 	}
 	g.logger.Info("Creating gossip service with self membership of", self)
 	return self
@@ -195,13 +182,13 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 		}
 		endpoint := fmt.Sprintf("%s:%d", ap.Host, ap.Port)
 		// Skip connecting to self
-		if g.selfNetworkMember().Endpoint == endpoint || g.selfNetworkMember().InternalEndpoint.Endpoint == endpoint {
+		if g.selfNetworkMember().Endpoint == endpoint || g.selfNetworkMember().InternalEndpoint == endpoint {
 			g.logger.Info("Anchor peer with same endpoint, skipping connecting to myself")
 			continue
 		}
 
 		g.disc.Connect(discovery.NetworkMember{
-			InternalEndpoint: &proto.SignedEndpoint{Endpoint: endpoint}})
+			InternalEndpoint: endpoint, Endpoint: endpoint})
 	}
 }
 
@@ -644,8 +631,6 @@ func selectOnlyDiscoveryMessages(m interface{}) bool {
 
 func (g *gossipServiceImpl) newDiscoveryAdapter() *discoveryAdapter {
 	return &discoveryAdapter{
-		identity:              g.selfIdentity,
-		includeIdentityPeriod: g.includeIdentityPeriod,
 		c:        g.comm,
 		stopping: int32(0),
 		gossipFunc: func(msg *proto.GossipMessage) {
@@ -659,13 +644,11 @@ func (g *gossipServiceImpl) newDiscoveryAdapter() *discoveryAdapter {
 // discoveryAdapter is used to supply the discovery module with needed abilities
 // that the comm interface in the discovery module declares
 type discoveryAdapter struct {
-	includeIdentityPeriod time.Time
-	identity              api.PeerIdentityType
-	stopping              int32
-	c                     comm.Comm
-	presumedDead          chan common.PKIidType
-	incChan               chan *proto.GossipMessage
-	gossipFunc            func(*proto.GossipMessage)
+	stopping     int32
+	c            comm.Comm
+	presumedDead chan common.PKIidType
+	incChan      chan *proto.GossipMessage
+	gossipFunc   func(*proto.GossipMessage)
 }
 
 func (da *discoveryAdapter) close() {
@@ -680,9 +663,6 @@ func (da *discoveryAdapter) toDie() bool {
 func (da *discoveryAdapter) Gossip(msg *proto.GossipMessage) {
 	if da.toDie() {
 		return
-	}
-	if msg.IsAliveMsg() && time.Now().Before(da.includeIdentityPeriod) {
-		msg.GetAliveMsg().Identity = da.identity
 	}
 	da.gossipFunc(msg)
 }
@@ -711,28 +691,32 @@ func (da *discoveryAdapter) CloseConn(peer *discovery.NetworkMember) {
 }
 
 type discoverySecurityAdapter struct {
-	idMapper identity.Mapper
-	sa       api.SecurityAdvisor
-	mcs      api.MessageCryptoService
-	c        comm.Comm
-	logger   *logging.Logger
+	identity              api.PeerIdentityType
+	includeIdentityPeriod time.Time
+	idMapper              identity.Mapper
+	sa                    api.SecurityAdvisor
+	mcs                   api.MessageCryptoService
+	c                     comm.Comm
+	logger                *logging.Logger
 }
 
 func (g *gossipServiceImpl) newDiscoverySecurityAdapter() *discoverySecurityAdapter {
 	return &discoverySecurityAdapter{
-		sa:       g.secAdvisor,
-		idMapper: g.idMapper,
-		mcs:      g.mcs,
-		c:        g.comm,
-		logger:   g.logger,
+		sa:                    g.secAdvisor,
+		idMapper:              g.idMapper,
+		mcs:                   g.mcs,
+		c:                     g.comm,
+		logger:                g.logger,
+		includeIdentityPeriod: g.includeIdentityPeriod,
+		identity:              g.selfIdentity,
 	}
 }
 
 // validateAliveMsg validates that an Alive message is authentic
 func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.GossipMessage) bool {
 	am := m.GetAliveMsg()
-	if am == nil || am.Membership == nil || am.Membership.PkiID == nil || m.Signature == nil {
-		sa.logger.Warning("Invalid alive message:", am)
+	if am == nil || am.Membership == nil || am.Membership.PkiID == nil || !m.IsSigned() {
+		sa.logger.Warning("Invalid alive message:", m)
 		return false
 	}
 
@@ -768,29 +752,20 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.GossipMessage) boo
 }
 
 // SignMessage signs an AliveMessage and updates its signature field
-func (sa *discoverySecurityAdapter) SignMessage(m *proto.GossipMessage) *proto.GossipMessage {
-	var err error
-	am := m.GetAliveMsg()
+func (sa *discoverySecurityAdapter) SignMessage(m *proto.GossipMessage, internalEndpoint string) *proto.Envelope {
 	signer := func(msg []byte) ([]byte, error) {
 		return sa.mcs.Sign(msg)
 	}
-
-	// We omit the inner endpoint when we sign an AliveMessage.
-	// (1) So we first back it up
-	endpoint := am.Membership.InternalEndpoint
-	// (2) And nullify it
-	am.Membership.InternalEndpoint = nil
-	// (3) And when we exit the method, we restore it
-	defer func() {
-		am.Membership.InternalEndpoint = endpoint
-	}()
-
-	err = m.Sign(signer)
-	if err != nil {
-		sa.logger.Error("Failed signing", am, ":", err)
-		return nil
+	if m.IsAliveMsg() && time.Now().Before(sa.includeIdentityPeriod) {
+		m.GetAliveMsg().Identity = sa.identity
 	}
-	return m
+	e := m.Sign(signer)
+	e.SignSecret(signer, &proto.Secret{
+		Content: &proto.Secret_InternalEndpoint{
+			InternalEndpoint: internalEndpoint,
+		},
+	})
+	return m.Envelope
 }
 
 func (sa *discoverySecurityAdapter) validateAliveMsgSignature(m *proto.GossipMessage, identity api.PeerIdentityType) bool {
@@ -800,39 +775,13 @@ func (sa *discoverySecurityAdapter) validateAliveMsgSignature(m *proto.GossipMes
 		return sa.mcs.Verify(api.PeerIdentityType(peerIdentity), signature, message)
 	}
 
-	// The message is signed when identity and internalEndpoint are nil
-	// (1) So we first back them up,
-	rawIdentity := am.Identity
-	internalEndpoint := am.Membership.InternalEndpoint
-	// (2) Nullify them
-	am.Identity = nil
-	am.Membership.InternalEndpoint = nil
-	// (3) And when we exit the method, we restore them
-	defer func() {
-		am.Identity = rawIdentity
-		am.Membership.InternalEndpoint = internalEndpoint
-	}()
 	// We verify the signature on the message
 	err := m.Verify(identity, verifier)
 	if err != nil {
 		sa.logger.Warning("Failed verifying:", am, ":", err)
 		return false
 	}
-	if internalEndpoint != nil && len(internalEndpoint.Signature) != 0 {
-		// Backup sig
-		sig := internalEndpoint.Signature
-		// Nullify it
-		internalEndpoint.Signature = nil
-		endpointBytes := utils.MarshalOrPanic(internalEndpoint)
-		// And restore it
-		internalEndpoint.Signature = sig
-		// And finally, we verify the signature
-		err = sa.mcs.Verify(identity, internalEndpoint.Signature, endpointBytes)
-		if err != nil {
-			sa.logger.Warning("Failed verifying internal endpoint:", am, err)
-			return false
-		}
-	}
+
 	return true
 }
 
@@ -891,11 +840,7 @@ func (g *gossipServiceImpl) createStateInfoMsg(metadata []byte, chainID common.C
 		return g.mcs.Sign(msg)
 	}
 
-	err := m.Sign(signer)
-	if err != nil {
-		g.logger.Error("Failed signing StateInfo message: ", err)
-		return nil, err
-	}
+	m.Sign(signer)
 	return m, nil
 }
 

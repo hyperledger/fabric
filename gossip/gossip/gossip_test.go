@@ -128,7 +128,9 @@ func (*naiveCryptoService) VerifyBlock(chainID common.ChainID, signedBlock api.S
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
+	sig := make([]byte, len(msg))
+	copy(sig, msg)
+	return sig, nil
 }
 
 // Verify checks that signature is a valid signature of message under a peer's verification key.
@@ -941,7 +943,7 @@ func ensureGoroutineExit(t *testing.T) {
 
 func metadataOfPeer(members []discovery.NetworkMember, endpoint string) []byte {
 	for _, member := range members {
-		if member.InternalEndpoint.Endpoint == endpoint {
+		if member.InternalEndpoint == endpoint {
 			return member.Metadata
 		}
 	}

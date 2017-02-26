@@ -78,8 +78,19 @@ func (comm *dummyCommModule) ValidateAliveMsg(am *proto.GossipMessage) bool {
 	return true
 }
 
-func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage) *proto.GossipMessage {
-	return am
+func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage, internalEndpoint string) *proto.Envelope {
+	am.NoopSign()
+
+	secret := &proto.Secret{
+		Content: &proto.Secret_InternalEndpoint{
+			InternalEndpoint: internalEndpoint,
+		},
+	}
+	signer := func(msg []byte) ([]byte, error) {
+		return nil, nil
+	}
+	am.Envelope.SignSecret(signer, secret)
+	return am.Envelope
 }
 
 func (comm *dummyCommModule) Gossip(msg *proto.GossipMessage) {
@@ -89,7 +100,7 @@ func (comm *dummyCommModule) Gossip(msg *proto.GossipMessage) {
 	comm.lock.Lock()
 	defer comm.lock.Unlock()
 	for _, conn := range comm.streams {
-		conn.Send(msg)
+		conn.Send(msg.Envelope)
 	}
 }
 
@@ -110,8 +121,9 @@ func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.GossipMe
 			return
 		}
 	}
+	e := msg.NoopSign()
 	comm.lock.Lock()
-	comm.streams[peer.Endpoint].Send(msg)
+	comm.streams[peer.Endpoint].Send(e)
 	comm.lock.Unlock()
 }
 
@@ -165,7 +177,7 @@ func (comm *dummyCommModule) CloseConn(peer *NetworkMember) {
 
 func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	for {
-		gMsg, err := stream.Recv()
+		envelope, err := stream.Recv()
 		if err == io.EOF {
 			return nil
 		}
@@ -173,6 +185,12 @@ func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) er
 			return err
 		}
 		lgr := g.Discovery.(*gossipDiscoveryImpl).logger
+		gMsg, err := envelope.ToGossipMessage()
+		if err != nil {
+			lgr.Warning("Failed deserializing GossipMessage from envelope:", err)
+			continue
+		}
+
 		lgr.Debug(g.Discovery.Self().Endpoint, "Got message:", gMsg)
 		g.comm.incMsgs <- gMsg
 
@@ -246,13 +264,10 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 
 	endpoint := fmt.Sprintf("localhost:%d", port)
 	self := NetworkMember{
-		Metadata: []byte{},
-		PKIid:    []byte(endpoint),
-		Endpoint: endpoint,
-		InternalEndpoint: &proto.SignedEndpoint{
-			Endpoint:  endpoint,
-			Signature: []byte{},
-		},
+		Metadata:         []byte{},
+		PKIid:            []byte(endpoint),
+		Endpoint:         endpoint,
+		InternalEndpoint: endpoint,
 	}
 
 	listenAddress := fmt.Sprintf("%s:%d", "", port)
@@ -438,7 +453,7 @@ func TestGetFullMembership(t *testing.T) {
 	// Ensure that internal endpoint was propagated to everyone
 	for _, inst := range instances {
 		for _, member := range inst.GetMembership() {
-			assert.NotEmpty(t, member.InternalEndpoint.Endpoint)
+			assert.NotEmpty(t, member.InternalEndpoint)
 			assert.NotEmpty(t, member.Endpoint)
 		}
 	}

@@ -123,9 +123,9 @@ type receivedMsg struct {
 	mock.Mock
 }
 
-// GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
+// GetSourceEnvelope Returns the Envelope the ReceivedMessage was
 // constructed with
-func (m *receivedMsg) GetSourceMessage() *proto.SignedGossipMessage {
+func (m *receivedMsg) GetSourceEnvelope() *proto.Envelope {
 	return nil
 }
 
