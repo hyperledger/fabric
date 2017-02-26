@@ -78,7 +78,7 @@ func (cs *certStore) handleMessage(msg proto.ReceivedMessage) {
 		for _, env := range update.Data {
 			m, err := env.ToGossipMessage()
 			if err != nil {
-				cs.logger.Warning("Failed extracting GossipMessage from envelope:", err)
+				cs.logger.Warning("Data update contains an invalid message:", err)
 				return
 			}
 			if !m.IsIdentityMsg() {
