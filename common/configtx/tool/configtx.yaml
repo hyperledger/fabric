@@ -9,16 +9,26 @@
 ################################################################################
 Profiles:
 
-    # SampleInsecureSol defines a configuration which contains no MSP definitions
-    # and allows all transactions and channel creation requests
+    # SampleInsecureSolo defines a configuration which uses the Solo orderer,
+    # contains no MSP definitions, and allows all transactions and channel
+    # creation requests
     SampleInsecureSolo:
         Orderer:
             <<: *OrdererDefaults
-        Application: 
+        Application:
             <<: *ApplicationDefaults
 
-    # SampleSingleMSPSolo defines a configuration which contains a single MSP
-    # definition (the MSP sampleconfig).
+    # SampleInsecureKafka defines a configuration that differs from the
+    # SampleInsecureSolo one only in that is uses the Kafka-based orderer.
+    SampleInsecureKafka:
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: kafka
+        Application:
+            <<: *ApplicationDefaults
+
+    # SampleSingleMSPSolo defines a configuration which uses the Solo orderer,
+    # and contains a single MSP definition (the MSP sampleconfig).
     SampleSingleMSPSolo:
         Orderer:
             <<: *OrdererDefaults
@@ -102,8 +112,9 @@ Orderer: &OrdererDefaults
         AbsoluteMaxBytes: 99 MB
 
         # Preferred Max Bytes: The preferred maximum number of bytes allowed for
-        # the serialized messages in a batch. A message larger than the preferred
-        # max bytes will result in a batch larger than preferred max bytes.
+        # the serialized messages in a batch. A message larger than the
+        # preferred max bytes will result in a batch larger than preferred max
+        # bytes.
         PreferredMaxBytes: 512 KB
 
     Kafka:
