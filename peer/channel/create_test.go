@@ -77,6 +77,10 @@ func initMSP() {
 	}
 }
 
+func mockBroadcastClientFactory() (common.BroadcastClient, error) {
+	return common.GetMockBroadcastClient(nil), nil
+}
+
 func TestCreateChain(t *testing.T) {
 	InitMSP()
 
@@ -89,12 +93,10 @@ func TestCreateChain(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{},
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
 	}
 
 	cmd := createCmd(mockCF)
@@ -122,12 +124,10 @@ func TestCreateChainWithDefaultAnchorPeers(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{},
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
 	}
 
 	cmd := createCmd(mockCF)
@@ -156,12 +156,13 @@ func TestCreateChainBCFail(t *testing.T) {
 	}
 
 	sendErr := fmt.Errorf("send create tx failed")
-	mockBroadcastClient := common.GetMockBroadcastClient(sendErr)
 
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{},
+		BroadcastFactory: func() (common.BroadcastClient, error) {
+			return common.GetMockBroadcastClient(sendErr), nil
+		},
+		Signer:        signer,
+		DeliverClient: &mockDeliverClient{},
 	}
 
 	cmd := createCmd(mockCF)
@@ -173,7 +174,7 @@ func TestCreateChainBCFail(t *testing.T) {
 
 	expectedErrMsg := sendErr.Error()
 	if err := cmd.Execute(); err == nil {
-		t.Errorf("expected create chain to fail with broadcast error")
+		t.Error("expected create chain to fail with broadcast error")
 	} else {
 		if err.Error() != expectedErrMsg {
 			t.Errorf("Run create chain get unexpected error: %s(expected %s)", err.Error(), expectedErrMsg)
@@ -193,14 +194,12 @@ func TestCreateChainDeliverFail(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	recvErr := fmt.Errorf("deliver create tx failed")
 
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{recvErr},
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{recvErr},
 	}
 
 	cmd := createCmd(mockCF)
@@ -268,12 +267,10 @@ func TestCreateChainFromTx(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{},
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
 	}
 
 	cmd := createCmd(mockCF)
@@ -314,12 +311,10 @@ func TestCreateChainInvalidTx(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	mockBroadcastClient := common.GetMockBroadcastClient(nil)
-
 	mockCF := &ChannelCmdFactory{
-		BroadcastClient: mockBroadcastClient,
-		Signer:          signer,
-		DeliverClient:   &mockDeliverClient{},
+		BroadcastFactory: mockBroadcastClientFactory,
+		Signer:           signer,
+		DeliverClient:    &mockDeliverClient{},
 	}
 
 	cmd := createCmd(mockCF)
