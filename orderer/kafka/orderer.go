@@ -181,9 +181,19 @@ func (ch *chainImpl) Start() {
 	}
 	ch.consumer = consumer
 	close(ch.setupChan)
+	go ch.listenForErrors()
 
 	// 3. Set the loop the keep up to date with the chain.
 	go ch.loop()
+}
+
+func (ch *chainImpl) listenForErrors() {
+	select {
+	case <-ch.exitChan:
+		return
+	case err := <-ch.consumer.Errors():
+		logger.Error(err)
+	}
 }
 
 // Halt frees the resources which were allocated for this Chain.

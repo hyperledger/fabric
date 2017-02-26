@@ -21,9 +21,11 @@ import (
 	"github.com/hyperledger/fabric/orderer/localconfig"
 )
 
-// Consumer allows the caller to receive a stream of blobs from the Kafka cluster for a specific partition.
+// Consumer allows the caller to receive a stream of blobs
+// from the Kafka cluster for a specific partition.
 type Consumer interface {
 	Recv() <-chan *sarama.ConsumerMessage
+	Errors() <-chan *sarama.ConsumerError
 	Closeable
 }
 
@@ -49,9 +51,16 @@ func newConsumer(brokers []string, kafkaVersion sarama.KafkaVersion, tls config.
 	return c, nil
 }
 
-// Recv returns a channel with blobs received from the Kafka cluster for a partition.
+// Recv returns a channel with blobs received
+// from the Kafka cluster for a partition.
 func (c *consumerImpl) Recv() <-chan *sarama.ConsumerMessage {
 	return c.partition.Messages()
+}
+
+// Errors returns a channel with errors occuring during
+// the consumption of a partition from the Kafka cluster.
+func (c *consumerImpl) Errors() <-chan *sarama.ConsumerError {
+	return c.partition.Errors()
 }
 
 // Close shuts down the partition consumer.

@@ -3,8 +3,7 @@
 #
 #   Orderer Configuration
 #
-#   - This controls the type and configuration for the orderer which is started
-#   - This controls the type and configuration for the ordererledger if needed
+#   - This controls the type and configuration of the orderer.
 #
 ################################################################################
 General:
@@ -13,13 +12,13 @@ General:
     # Available types are "ram", "file".
     LedgerType: ram
 
-    # Listen address: The IP on which to bind to listen
+    # Listen address: The IP on which to bind to listen.
     ListenAddress: 127.0.0.1
 
-    # Listen port: The port on which to bind to listen
+    # Listen port: The port on which to bind to listen.
     ListenPort: 7050
 
-    # TLS: TLS settings for the GRPC server
+    # TLS: TLS settings for the GRPC server.
     TLS:
         Enabled: false
         PrivateKey:
@@ -28,10 +27,9 @@ General:
         ClientAuthEnabled: false
         ClientRootCAs:
 
-
-    # Log Level: The level at which to log.  This accepts logging specifications
-    # per fabric/docs/Setup/logging-control.md
-    LogLevel: info
+    # Log Level: The level at which to log. This accepts logging specifications
+    # per: fabric/docs/Setup/logging-control.md
+    LogLevel: debug
 
     # Genesis method: The method by which to retrieve/generate the genesis
     # block. Available values are "provisional", "file". Provisional utilizes
@@ -40,24 +38,24 @@ General:
     # block.
     GenesisMethod: provisional
 
-    # Genesis profile: The profile to use when using the provisional GenesisMethod
-    # See the configtx.yaml file for the descriptions of the available profiles
+    # Genesis profile: The profile to use when using the provisional
+    # GenesisMethod, See the configtx.yaml file for the descriptions of the
+    # available profiles.
     GenesisProfile: SampleSingleMSPSolo
 
     # Genesis file: The file containing the genesis block. Used by the orderer
     # when GenesisMethod is set to "file".
     GenesisFile: ./genesisblock
 
-    # LocalMSPDir is where to find the crypto material needed for signing in the orderer
-    # It is set relative here as a default for dev environments but should be changed to the
-    # real location in production
+    # LocalMSPDir is where to find the crypto material needed for signing in the
+    # orderer. It is set relative here as a default for dev environments but
+    # should be changed to the real location in production.
     LocalMSPDir: msp/sampleconfig
 
-    # LocalMSPID is the identity to register the local MSP material with the MSP manager
-    # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
-    # Deployers need to change the value of the localMspId string.
-    # In particular, the name of the local MSP ID of a orderer needs
-    # to match the name of one of the MSPs in the ordering system channel
+    # LocalMSPID is the identity to register the local MSP material with the MSP
+    # manager. IMPORTANT: Deployers need to change the value of the localMspId
+    # string. In particular, the name of the local MSP ID of an orderer needs to
+    # match the name of one of the MSPs in the ordering system channel.
     LocalMSPID: DEFAULT
 
     # Enable an HTTP service for Go "pprof" profiling as documented at:
@@ -65,29 +63,29 @@ General:
     Profile:
         Enabled: false
         Address: 0.0.0.0:6060
-    
-    # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-    # library to use
+
+    # BCCSP: Select which crypto implementation or library to use for the
+    # blockchain crypto service provider.
     BCCSP:
         Default: SW
         SW:
             Hash: SHA3
             Security: 256
-            # Location of Key Store. If this is unset, a temporary location will 
-            # be chosen using 'LocalMSPDir'/keystore
-            FileKeyStore: 
-                KeyStore: 
+            # Location of key store. If this is unset, a location will be
+            # chosen using: 'LocalMSPDir'/keystore
+            FileKeyStore:
+                KeyStore:
 
 ################################################################################
 #
 #   SECTION: RAM Ledger
 #
-#   - This section applies to the configuration of the RAM ledger
+#   - This section applies to the configuration of the RAM ledger.
 #
 ################################################################################
 RAMLedger:
 
-    # History Size: The number of blocks that the RAM ledger is set to retain
+    # History Size: The number of blocks that the RAM ledger is set to retain.
     HistorySize: 1000
 
 
@@ -95,30 +93,30 @@ RAMLedger:
 #
 #   SECTION: File Ledger
 #
-#   - This section applies to the configuration of the file ledger
+#   - This section applies to the configuration of the file ledger.
 #
 ################################################################################
 FileLedger:
 
-    # Location: The directory to store the blocks in
+    # Location: The directory to store the blocks in.
     # NOTE: If this is unset, a temporary location will be chosen using
-    # the prefix specified by Prefix
+    # the prefix specified by Prefix.
     Location:
 
-    # The prefix to use when generating a ledger directory in temporary space
-    # Otherwise, this value is ignored
+    # The prefix to use when generating a ledger directory in temporary space.
+    # Otherwise, this value is ignored.
     Prefix: hyperledger-fabric-ordererledger
 
 ################################################################################
 #
 #   SECTION: Kafka
 #
-#   - This section applies to the configuration of the Kafka-backed orderer
+#   - This section applies to the configuration of the Kafka-based orderer.
 #
 ################################################################################
 Kafka:
 
-    # Retry: What to do if none of the Kafka brokers are available
+    # Retry: What to do if none of the Kafka brokers are available.
     Retry:
         # The producer should attempt to reconnect every <Period>
         Period: 3s
@@ -126,7 +124,7 @@ Kafka:
         Stop: 60s
 
     # Verbose: Turn on logging for sarama, the client library that we use to
-    # interact with the Kafka cluster
+    # interact with the Kafka cluster.
     Verbose: false
 
     # TLS: TLS settings for the Kafka client
@@ -135,11 +133,11 @@ Kafka:
       # Enabled: set to true enable TLS
       Enabled: false
 
-      # PrivateKey: PEM encoded private key orderer will use for authentication.
+      # PrivateKey: PEM-encoded private key orderer will use for authentication.
       PrivateKey:
         #File: uncomment to read PrivateKey from a file
 
-      # Certificate: PEM encoded signed public key vertificate orderer will use
+      # Certificate: PEM-encoded signed public key vertificate orderer will use
       # for authentication.
       Certificate:
         #File: uncomment to read Certificate from a file
@@ -151,12 +149,13 @@ Kafka:
 
 ################################################################################
 #
-#   SECTION: Sbft local
+#   SECTION: SBFT Local
 #
-#   - This section applies to the configuration of the Sbft-backed orderer
+#   - This section applies to the configuration of the SBFT-based orderer.
 #
 ################################################################################
 SbftLocal:
+
     # Address to use for SBFT internal communication
     PeerCommAddr: ":6101"
     CertFile: "sbft/testdata/cert1.pem"
@@ -168,12 +167,14 @@ SbftLocal:
 #
 #   SECTION: Genesis
 #
-#   - This section is pending removal but is left to support Sbft
-#     to be migrated to genesis.yaml
+#   - This section is pending removal but is left to support SBFT
+#     to be migrated to configtx.yaml.
 #
 ################################################################################
 Genesis:
-    # Deprecated Batch Timeout: The amount of time to wait before creating a batch
+
+    # Deprecated Batch Timeout: The amount of time to wait before creating a
+    # batch.
     DeprecatedBatchTimeout: 10s
 
     # DeprecatedBatchSize: The absolute maximum number of bytes allowed for
