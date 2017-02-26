@@ -32,7 +32,10 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	ccutil "github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	logging "github.com/op/go-logging"
 )
+
+var logger = logging.MustGetLogger("java/hash")
 
 func getCodeFromHTTP(path string) (codegopath string, err error) {
 
@@ -70,11 +73,6 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 		return "", errors.New("Cannot collect chaincode files from empty chaincode path")
 	}
 
-	input := spec.Input
-	if input == nil || len(input.Args) == 0 {
-		return "", errors.New("Cannot collect chaincode files from empty input")
-	}
-
 	codepath := chaincodeID.Path
 
 	var ishttp bool
@@ -103,11 +101,18 @@ func collectChaincodeFiles(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, erro
 		return "", fmt.Errorf("code does not exist %s", err)
 	}
 
-	inputbytes, err := proto.Marshal(input)
-	if err != nil {
-		return "", fmt.Errorf("Error marshalling constructor: %s", err)
+	var hash []byte
+
+	//install will not have inputs and we don't have to collect hash for it
+	if spec.Input == nil || len(spec.Input.Args) == 0 {
+		logger.Debugf("not using input for hash computation for %v ", chaincodeID)
+	} else {
+		inputbytes, err2 := proto.Marshal(spec.Input)
+		if err2 != nil {
+			return "", fmt.Errorf("Error marshalling constructor: %s", err)
+		}
+		hash = util.GenerateHashFromSignature(codepath, inputbytes)
 	}
-	hash := util.GenerateHashFromSignature(codepath, inputbytes)
 
 	hash, err = ccutil.HashFilesInDir("", codepath, hash, tw)
 	if err != nil {

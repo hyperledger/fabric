@@ -133,6 +133,9 @@ behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
 
+behave-peer-chaincode: build/bin/peer peer-docker orderer-docker
+	@cd peer/chaincode && behave
+
 linter: buildenv
 	@echo "LINT: Running code checks.."
 	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
