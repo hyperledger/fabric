@@ -70,7 +70,7 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments (expected a maximum of 7, provided %d)", len(args)))
 	}
 
-	logger.Infof("ESCC starts: %d args", len(args))
+	logger.Debugf("ESCC starts: %d args", len(args))
 
 	// handle the header
 	var hdr []byte
@@ -163,6 +163,6 @@ func (e *EndorserOneValidSignature) Invoke(stub shim.ChaincodeStubInterface) pb.
 		fmt.Println("GetProposalResponse get empty Response")
 	}
 
-	logger.Infof("ESCC exits successfully")
+	logger.Debugf("ESCC exits successfully")
 	return shim.Success(prBytes)
 }

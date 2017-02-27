@@ -89,8 +89,8 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 
 	dbBatch := leveldbhelper.NewUpdateBatch()
 
-	logger.Debugf("Updating history database for blockNo [%v] with [%d] transactions",
-		blockNo, len(block.Data.Data))
+	logger.Debugf("Channel [%s]: Updating history database for blockNo [%v] with [%d] transactions",
+		historyDB.dbName, blockNo, len(block.Data.Data))
 
 	//TODO add check for invalid trans in bit array
 	for _, envBytes := range block.Data.Data {
@@ -157,7 +157,7 @@ func (historyDB *historyDB) Commit(block *common.Block) error {
 		return err
 	}
 
-	logger.Debugf("Updates committed to history database for blockNo [%v]", blockNo)
+	logger.Debugf("Channel [%s]: Updates committed to history database for blockNo [%v]", historyDB.dbName, blockNo)
 	return nil
 }
 

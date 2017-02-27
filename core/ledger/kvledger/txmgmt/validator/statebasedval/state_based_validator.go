@@ -57,16 +57,6 @@ func (v *Validator) validateEndorserTX(envBytes []byte, doMVCCValidation bool, u
 		return nil, peer.TxValidationCode_INVALID_OTHER_REASON, nil
 	}
 
-	// trace the first 1000 characters of RWSet only, in case it is huge
-	if logger.IsEnabledFor(logging.DEBUG) {
-		txRWSetString := txRWSet.String()
-		if len(txRWSetString) < 1000 {
-			logger.Debugf("validating txRWSet:[%s]", txRWSetString)
-		} else {
-			logger.Debugf("validating txRWSet:[%s...]", txRWSetString[0:1000])
-		}
-	}
-
 	var txResult peer.TxValidationCode = peer.TxValidationCode_VALID
 
 	//mvccvalidation, may invalidate transaction

@@ -233,7 +233,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	// VSCCValidateTx should
 	if hdrExt.ChaincodeId.Name == "lccc" {
 		// TODO: until FAB-1934 is in, we need to stop here
-		logger.Infof("Invocation of LCCC detected, no further VSCC validation necessary")
+		logger.Debugf("Invocation of LCCC detected, no further VSCC validation necessary")
 		return nil
 	}
 
@@ -257,7 +257,7 @@ func (v *vsccValidatorImpl) VSCCValidateTx(payload *common.Payload, envBytes []b
 	cccid := v.ccprovider.GetCCContext(chainID, vscc, version, vscctxid, true, nil, nil)
 
 	// invoke VSCC
-	logger.Info("Invoking VSCC txid", txid, "chaindID", chainID)
+	logger.Debug("Invoking VSCC txid", txid, "chaindID", chainID)
 	res, _, err := v.ccprovider.ExecuteChaincode(ctxt, cccid, args)
 	if err != nil {
 		logger.Errorf("Invoke VSCC failed for transaction txid=%s, error %s", txid, err)

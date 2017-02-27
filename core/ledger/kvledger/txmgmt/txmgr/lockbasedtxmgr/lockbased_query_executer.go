@@ -59,6 +59,6 @@ func (q *lockBasedQueryExecutor) ExecuteQuery(namespace, query string) (ledger.R
 
 // Done implements method in interface `ledger.QueryExecutor`
 func (q *lockBasedQueryExecutor) Done() {
-	logger.Debugf("Done query executer/ tx simulator [%s]", q.id)
+	logger.Debugf("Done with transaction simulation / query execution [%s]", q.id)
 	q.helper.done()
 }

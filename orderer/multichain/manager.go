@@ -198,7 +198,7 @@ func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 	cs := newChainSupport(createStandardFilters(ledgerResources), ledgerResources, ml.consenters, ml.signer)
 	chainID := ledgerResources.ChainID()
 
-	logger.Debugf("Created and starting new chain %s", chainID)
+	logger.Infof("Created and starting new chain %s", chainID)
 
 	newChains[string(chainID)] = cs
 	cs.start()

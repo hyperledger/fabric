@@ -19,7 +19,6 @@ package stateleveldb
 import (
 	"bytes"
 	"errors"
-	"fmt"
 
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
@@ -134,14 +133,8 @@ func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 		updates := batch.GetUpdates(ns)
 		for k, vv := range updates {
 			compositeKey := constructCompositeKey(ns, k)
-			// trace the first 200 characters of versioned value only, in case it is huge
-			if logger.IsEnabledFor(logging.DEBUG) {
-				versionedValueDump := fmt.Sprintf("%#v", vv)
-				if len(versionedValueDump) > 200 {
-					versionedValueDump = versionedValueDump[0:200] + "..."
-				}
-				logger.Debugf("Applying key=%#v, versionedValue=%s", compositeKey, versionedValueDump)
-			}
+			logger.Debugf("Channel [%s]: Applying key=[%#v]", vdb.dbName, compositeKey)
+
 			if vv.Value == nil {
 				dbBatch.Delete(compositeKey)
 			} else {
