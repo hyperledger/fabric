@@ -153,22 +153,8 @@ func TestDBBadConnection(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		//create a new instance and database object
-		couchInstance, err := CreateCouchInstance(badConnectURL, username, password)
-		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to create couch instance"))
-		db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
-
-		//create a new database
-		_, errdb := db.CreateDatabaseIfNotExist()
-		testutil.AssertError(t, errdb, fmt.Sprintf("Error should have been thrown while creating a database with an invalid connecion"))
-
-		//Save the test document
-		_, saveerr := db.SaveDoc("3", "", &CouchDoc{JSONValue: assetJSON, Attachments: nil})
-		testutil.AssertError(t, saveerr, fmt.Sprintf("Error should have been thrown while saving a document with an invalid connecion"))
-
-		//Retrieve the updated test document
-		_, _, geterr := db.ReadDoc("3")
-		testutil.AssertError(t, geterr, fmt.Sprintf("Error should have been thrown while retrieving a document with an invalid connecion"))
-
+		_, err := CreateCouchInstance(badConnectURL, username, password)
+		testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for a bad connection"))
 	}
 }
 
@@ -460,4 +446,20 @@ func TestDBDeleteNonExistingDocument(t *testing.T) {
 			testutil.AssertNoError(t, deleteErr, fmt.Sprintf("Error when trying to delete a non existing document"))
 		}
 	}
+}
+
+func TestCouchDBVersion(t *testing.T) {
+
+	err := checkCouchDBVersion("2.0.0")
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error should not have been thrown for valid version"))
+
+	err = checkCouchDBVersion("4.5.0")
+	testutil.AssertNoError(t, err, fmt.Sprintf("Error should not have been thrown for valid version"))
+
+	err = checkCouchDBVersion("1.6.5.4")
+	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for invalid version"))
+
+	err = checkCouchDBVersion("0.0.0.0")
+	testutil.AssertError(t, err, fmt.Sprintf("Error should have been thrown for invalid version"))
+
 }

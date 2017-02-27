@@ -19,6 +19,7 @@ package couchdb
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -35,7 +36,41 @@ func CreateCouchInstance(couchDBConnectURL string, id string, pw string) (*Couch
 		return nil, err
 	}
 
-	return &CouchInstance{conf: *couchConf}, nil
+	//Create the CouchDB instance
+	couchInstance := &CouchInstance{conf: *couchConf}
+
+	connectInfo, retVal, verifyErr := couchInstance.VerifyConnection()
+	if verifyErr != nil {
+		return nil, fmt.Errorf("Unable to connect to CouchDB, check the hostname and port: %s", verifyErr.Error())
+	}
+
+	//return an error if the http return value is not 200
+	if retVal.StatusCode != 200 {
+		return nil, fmt.Errorf("CouchDB connection error, expecting return code of 200, received %v", retVal.StatusCode)
+	}
+
+	//check the CouchDB version number, return an error if the version is not at least 2.0.0
+	errVersion := checkCouchDBVersion(connectInfo.Version)
+	if errVersion != nil {
+		return nil, errVersion
+	}
+
+	return couchInstance, nil
+}
+
+//checkCouchDBVersion verifies CouchDB is at least 2.0.0
+func checkCouchDBVersion(version string) error {
+
+	//split the version into parts
+	majorVersion := strings.Split(version, ".")
+
+	//check to see that the major version number is at least 2
+	majorVersionInt, _ := strconv.Atoi(majorVersion[0])
+	if majorVersionInt < 2 {
+		return fmt.Errorf("CouchDB must be at least version 2.0.0.  Detected version %s", version)
+	}
+
+	return nil
 }
 
 //CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
