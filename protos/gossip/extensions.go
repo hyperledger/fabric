@@ -301,7 +301,13 @@ func (m *GossipMessage) IsTagLegal() error {
 	return fmt.Errorf("Unknown message type: %v", m)
 }
 
+// Verifier receives a peer identity, a signature and a message
+// and returns nil if the signature on the message could be verified
+// using the given identity.
 type Verifier func(peerIdentity []byte, signature, message []byte) error
+
+// Signer signs a message, and returns (signature, nil)
+// on success, and nil and an error on failure.
 type Signer func(msg []byte) ([]byte, error)
 
 // ReceivedMessage is a GossipMessage wrapper that
@@ -356,6 +362,7 @@ func (m *SignedGossipMessage) Sign(signer Signer) *Envelope {
 	return e
 }
 
+// NoopSign creates a SignedGossipMessage with a nil signature
 func (m *GossipMessage) NoopSign() *SignedGossipMessage {
 	signer := func(msg []byte) ([]byte, error) {
 		return nil, nil
@@ -397,15 +404,20 @@ func (m *SignedGossipMessage) Verify(peerIdentity []byte, verify Verifier) error
 	return nil
 }
 
+// IsSigned returns whether the message
+// has a signature in the envelope.
 func (m *SignedGossipMessage) IsSigned() bool {
 	return m.Envelope != nil && m.Envelope.Payload != nil && m.Envelope.Signature != nil
 }
 
+// ToGossipMessage un-marshals a given envelope and creates a
+// SignedGossipMessage out of it.
+// Returns an error if un-marshaling fails.
 func (e *Envelope) ToGossipMessage() (*SignedGossipMessage, error) {
 	msg := &GossipMessage{}
 	err := proto.Unmarshal(e.Payload, msg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed unmarshaling GossipMessage from envelope: %v", err)
 	}
 	return &SignedGossipMessage{
 		GossipMessage: msg,
@@ -413,6 +425,8 @@ func (e *Envelope) ToGossipMessage() (*SignedGossipMessage, error) {
 	}, nil
 }
 
+// SignSecret signs the secret payload and creates
+// a secret envelope out of it.
 func (e *Envelope) SignSecret(signer Signer, secret *Secret) {
 	payload, err := proto.Marshal(secret)
 	if err != nil {
@@ -428,6 +442,9 @@ func (e *Envelope) SignSecret(signer Signer, secret *Secret) {
 	}
 }
 
+// InternalEndpoint returns the internal endpoint
+// in the secret envelope, or an empty string
+// if a failure occurs.
 func (s *SecretEnvelope) InternalEndpoint() string {
 	secret := &Secret{}
 	if err := proto.Unmarshal(s.Payload, secret); err != nil {
@@ -441,6 +458,62 @@ func (s *SecretEnvelope) InternalEndpoint() string {
 type SignedGossipMessage struct {
 	*Envelope
 	*GossipMessage
+}
+
+func (p *Payload) toString() string {
+	return fmt.Sprintf("Block message: {Data: %d bytes, seq: %d}", len(p.Data), p.SeqNum)
+}
+
+func (du *DataUpdate) toString() string {
+	mType := PullMsgType_name[int32(du.MsgType)]
+	return fmt.Sprintf("Type: %s, items: %d, nonce: %d", mType, len(du.Data), du.Nonce)
+}
+
+func (mr *MembershipResponse) toString() string {
+	return fmt.Sprintf("MembershipResponse with Alive: %d, Dead: %d", len(mr.Alive), len(mr.Dead))
+}
+
+func (sis *StateInfoSnapshot) toString() string {
+	return fmt.Sprintf("StateInfoSnapshot with %d items", len(sis.Elements))
+}
+
+// String returns a string representation
+// of a SignedGossipMessage
+func (m *SignedGossipMessage) String() string {
+	env := "No envelope"
+	if m.Envelope != nil {
+		var secretEnv string
+		if m.SecretEnvelope != nil {
+			pl := len(m.SecretEnvelope.Payload)
+			sl := len(m.SecretEnvelope.Signature)
+			secretEnv = fmt.Sprintf(" Secret payload: %d bytes, Secret Signature: %d bytes", pl, sl)
+		}
+		env = fmt.Sprintf("%d bytes, Signature: %d bytes%s", len(m.Envelope.Payload), len(m.Envelope.Signature), secretEnv)
+	}
+	gMsg := "No gossipMessage"
+	if m.GossipMessage != nil {
+		var isSimpleMsg bool
+		if m.GetStateResponse() != nil {
+			gMsg = fmt.Sprintf("StateResponse with %d items", len(m.GetStateResponse().Payloads))
+		} else if m.IsDataMsg() {
+			gMsg = m.GetDataMsg().Payload.toString()
+		} else if m.IsDataUpdate() {
+			update := m.GetDataUpdate()
+			gMsg = fmt.Sprintf("DataUpdate: %s", update.toString())
+		} else if m.GetMemRes() != nil {
+			gMsg = m.GetMemRes().toString()
+		} else if m.IsStateInfoSnapshot() {
+			gMsg = m.GetStateSnapshot().toString()
+		} else {
+			gMsg = m.GossipMessage.String()
+			isSimpleMsg = true
+		}
+		if !isSimpleMsg {
+			desc := fmt.Sprintf("Channel: %v, nonce: %d, tag: %s", m.Channel, m.Nonce, GossipMessage_Tag_name[int32(m.Tag)])
+			gMsg = fmt.Sprintf("%s %s", desc, gMsg)
+		}
+	}
+	return fmt.Sprintf("GossipMessage: %v, Envelope: %s", gMsg, env)
 }
 
 // Abs returns abs(a-b)

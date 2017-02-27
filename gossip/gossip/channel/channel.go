@@ -416,7 +416,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 			for _, item := range m.GetDataUpdate().Data {
 				gMsg, err := item.ToGossipMessage()
 				if err != nil {
-					gc.logger.Warning("Failed extracting GossipMessage from envelope:", err)
+					gc.logger.Warning("Data update contains an invalid message:", err)
 					return
 				}
 				if !bytes.Equal(gMsg.Channel, []byte(gc.chainID)) {
@@ -444,7 +444,7 @@ func (gc *gossipChannel) handleStateInfSnapshot(m *proto.GossipMessage, sender c
 	for _, envelope := range m.GetStateSnapshot().Elements {
 		stateInf, err := envelope.ToGossipMessage()
 		if err != nil {
-			gc.logger.Warning("Failed extracting GossipMessage from envelope:", err)
+			gc.logger.Warning("StateInfo snapshot contains an invalid message:", err)
 			return
 		}
 		if !stateInf.IsStateInfoMsg() {

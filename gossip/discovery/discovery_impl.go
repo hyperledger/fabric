@@ -320,7 +320,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 		for _, env := range memResp.Alive {
 			am, err := env.ToGossipMessage()
 			if err != nil {
-				d.logger.Warning("Failed extracting GossipMessage from envelope:", err)
+				d.logger.Warning("Membership response contains an invalid message from an online peer:", err)
 				return
 			}
 			if !am.IsAliveMsg() {
@@ -333,7 +333,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 		for _, env := range memResp.Dead {
 			dm, err := env.ToGossipMessage()
 			if err != nil {
-				d.logger.Warning("Failed extracting GossipMessage from envelope:", err)
+				d.logger.Warning("Membership response contains an invalid message from an offline peer", err)
 				return
 			}
 			if !d.crypt.ValidateAliveMsg(m) {

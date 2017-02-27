@@ -24,6 +24,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -519,8 +520,7 @@ func readWithTimeout(stream interface{}, timeout time.Duration, address string) 
 				}
 				incChan <- msg
 			}
-		}
-		if clStr, isClientStr := stream.(proto.Gossip_GossipStreamClient); isClientStr {
+		} else if clStr, isClientStr := stream.(proto.Gossip_GossipStreamClient); isClientStr {
 			if m, err := clStr.Recv(); err == nil {
 				msg, err := m.ToGossipMessage()
 				if err != nil {
@@ -529,6 +529,8 @@ func readWithTimeout(stream interface{}, timeout time.Duration, address string) 
 				}
 				incChan <- msg
 			}
+		} else {
+			panic(fmt.Errorf("Stream isn't a GossipStreamServer or a GossipStreamClient, but %v. Aborting", reflect.TypeOf(stream)))
 		}
 	}()
 	select {

@@ -156,7 +156,7 @@ func (p *pullMediatorImpl) HandleMessage(m proto.ReceivedMessage) {
 		for i, pulledMsg := range res.Data {
 			msg, err := pulledMsg.ToGossipMessage()
 			if err != nil {
-				p.logger.Warning("Failed extracting GossipMessage from envelope:", err)
+				p.logger.Warning("Data update contains an invalid message:", err)
 				return
 			}
 			p.msgCons(msg)
