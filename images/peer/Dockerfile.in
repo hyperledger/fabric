@@ -6,4 +6,4 @@ COPY payload/peer /usr/local/bin
 COPY payload/core.yaml $PEER_CFG_PATH
 ADD  payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
 ADD  payload/configtx.yaml $PEER_CFG_PATH
-CMD peer node start
+CMD ["peer","node","start"]

@@ -8,4 +8,4 @@ COPY payload/configtx.yaml $ORDERER_CFG_PATH/
 COPY payload/orderer.yaml $ORDERER_CFG_PATH/
 ADD payload/msp-sampleconfig.tar.bz2 $ORDERER_CFG_PATH/
 EXPOSE 7050
-CMD orderer
+CMD ["orderer"]
