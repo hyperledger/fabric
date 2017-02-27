@@ -74,6 +74,8 @@ class Composition:
         self.containerDataList = []
         self.composeFilesYaml = composeFilesYaml
 
+        self.serviceNames = []
+        self.serviceNames = self._collectServiceNames()
         [callback.composing(self, context) for callback in Composition.GetCompositionCallbacksFromContext(context)]
         self.up(context, force_recreate, components)
 
