@@ -40,34 +40,17 @@ var (
 	}
 )
 
-// NewConfigItemPolicyKey is the ID of the policy used when no other policy can be resolved, for instance when attempting to create a new config item
-const NewConfigItemPolicyKey = "NewConfigItemPolicy"
+type config struct {
+	channelID string
+	sequence  uint64
+	configMap map[string]comparable
+}
 
 type configManager struct {
 	api.Resources
-	sequence     uint64
-	chainID      string
-	config       map[string]comparable
 	callOnUpdate []func(api.Manager)
 	initializer  api.Initializer
-	configEnv    *cb.ConfigEnvelope
-}
-
-func computeSequence(configGroup *cb.ConfigGroup) uint64 {
-	max := uint64(0)
-	for _, value := range configGroup.Values {
-		if value.Version > max {
-			max = value.Version
-		}
-	}
-
-	for _, group := range configGroup.Groups {
-		if groupMax := computeSequence(group); groupMax > max {
-			max = groupMax
-		}
-	}
-
-	return max
+	current      *config
 }
 
 // validateChainID makes sure that proposed chain IDs (i.e. channel names)
@@ -125,11 +108,13 @@ func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnU
 	}
 
 	cm := &configManager{
-		Resources:    initializer,
-		initializer:  initializer,
-		sequence:     configEnv.Config.Sequence,
-		chainID:      header.ChannelId,
-		config:       configMap,
+		Resources:   initializer,
+		initializer: initializer,
+		current: &config{
+			sequence:  configEnv.Config.Sequence,
+			configMap: configMap,
+			channelID: header.ChannelId,
+		},
 		callOnUpdate: callOnUpdate,
 	}
 
@@ -149,9 +134,13 @@ func (cm *configManager) commitCallbacks() {
 	}
 }
 
-// Validate attempts to validate a new configtx against the current config state
-// It requires an Envelope of type CONFIG_UPDATE
+// ProposeConfigUpdate takes in an Envelope of type CONFIG_UPDATE and produces a
+// ConfigEnvelope to be used as the Envelope Payload Data of a CONFIG message
 func (cm *configManager) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
+	return cm.proposeConfigUpdate(configtx)
+}
+
+func (cm *configManager) proposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error) {
 	configUpdateEnv, err := envelopeToConfigUpdate(configtx)
 	if err != nil {
 		return nil, err
@@ -176,7 +165,7 @@ func (cm *configManager) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 
 	return &cb.ConfigEnvelope{
 		Config: &cb.Config{
-			Sequence:     cm.sequence,
+			Sequence:     cm.current.sequence + 1,
 			ChannelGroup: channelGroup,
 		},
 		LastUpdate: configtx,
@@ -186,6 +175,14 @@ func (cm *configManager) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (map[string]comparable, *configResult, error) {
 	if configEnv == nil {
 		return nil, nil, fmt.Errorf("Attempted to apply config with nil envelope")
+	}
+
+	if configEnv.Config == nil {
+		return nil, nil, fmt.Errorf("Config cannot be nil")
+	}
+
+	if configEnv.Config.Sequence != cm.current.sequence+1 {
+		return nil, nil, fmt.Errorf("Config at sequence %d, cannot prepare to update to %d", cm.current.sequence, configEnv.Config.Sequence)
 	}
 
 	configUpdateEnv, err := envelopeToConfigUpdate(configEnv.LastUpdate)
@@ -201,10 +198,6 @@ func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (map[string]
 	channelGroup, err := configMapToConfig(configMap)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not turn configMap back to channelGroup: %s", err)
-	}
-
-	if configEnv.Config == nil {
-		return nil, nil, fmt.Errorf("Config cannot be nil")
 	}
 
 	if !reflect.DeepEqual(channelGroup, configEnv.Config.ChannelGroup) {
@@ -241,23 +234,21 @@ func (cm *configManager) Apply(configEnv *cb.ConfigEnvelope) error {
 	result.commit()
 	cm.commitCallbacks()
 
-	cm.config = configMap
-	cm.sequence++
+	cm.current = &config{
+		configMap: configMap,
+		channelID: cm.current.channelID,
+		sequence:  configEnv.Config.Sequence,
+	}
 
 	return nil
 }
 
-// ConfigEnvelope retrieve the current ConfigEnvelope, generated after the last successfully applied configuration
-func (cm *configManager) ConfigEnvelope() *cb.ConfigEnvelope {
-	return cm.configEnv
-}
-
 // ChainID retrieves the chain ID associated with this manager
 func (cm *configManager) ChainID() string {
-	return cm.chainID
+	return cm.current.channelID
 }
 
 // Sequence returns the current sequence number of the config
 func (cm *configManager) Sequence() uint64 {
-	return cm.sequence
+	return cm.current.sequence
 }

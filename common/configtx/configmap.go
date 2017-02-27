@@ -37,9 +37,11 @@ const (
 // it takes a ConfigGroup and generates a map of fqPath to comparables (or error on invalid keys)
 func mapConfig(channelGroup *cb.ConfigGroup) (map[string]comparable, error) {
 	result := make(map[string]comparable)
-	err := recurseConfig(result, []string{RootGroupKey}, channelGroup)
-	if err != nil {
-		return nil, err
+	if channelGroup != nil {
+		err := recurseConfig(result, []string{RootGroupKey}, channelGroup)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return result, nil
 }

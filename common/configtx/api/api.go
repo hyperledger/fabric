@@ -37,9 +37,6 @@ type Manager interface {
 	// Validate attempts to validate a new configtx against the current config state
 	ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error)
 
-	// ConfigEnvelope returns the *cb.ConfigEnvelope from the last successful Apply
-	ConfigEnvelope() *cb.ConfigEnvelope
-
 	// ChainID retrieves the chain ID associated with this manager
 	ChainID() string
 
