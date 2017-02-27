@@ -329,6 +329,23 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 	}
 
 	if selectOnlyDiscoveryMessages(m) {
+		// It's a membership request, check its self information
+		// matches the sender
+		if m.GetGossipMessage().GetMemReq() != nil {
+			sMsg, err := m.GetGossipMessage().GetMemReq().SelfInformation.ToGossipMessage()
+			if err != nil {
+				g.logger.Warning("Got membership request with invalid selfInfo:", err)
+				return
+			}
+			if !sMsg.IsAliveMsg() {
+				g.logger.Warning("Got membership request with selfInfo that isn't an AliveMessage")
+				return
+			}
+			if !bytes.Equal(sMsg.GetAliveMsg().Membership.PkiID, m.GetConnectionInfo().ID) {
+				g.logger.Warning("Got membership request with selfInfo that doesn't match the handshake")
+				return
+			}
+		}
 		g.forwardDiscoveryMsg(m)
 	}
 
@@ -383,13 +400,6 @@ func (g *gossipServiceImpl) validateMsg(msg proto.ReceivedMessage) bool {
 		}
 	}
 	return true
-}
-
-func (g *gossipServiceImpl) forwardToDiscoveryLayer(msg proto.ReceivedMessage) {
-	defer func() { // can be closed while shutting down
-		recover()
-	}()
-	g.discAdapter.incChan <- msg.GetGossipMessage()
 }
 
 func (g *gossipServiceImpl) sendGossipBatch(a []interface{}) {
