@@ -164,7 +164,7 @@ func getCurrConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, erro
 // createChain creates a new chain object and insert it into the chains
 func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 
-	configEnvelope, err := configtx.ConfigEnvelopeFromBlock(cb)
+	envelopeConfig, err := utils.ExtractEnvelope(cb, 0)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	}
 
 	configtxManager, err := configtx.NewManagerImpl(
-		configEnvelope,
+		envelopeConfig,
 		configtxInitializer,
 		[]func(cm configtxapi.Manager){gossipCallbackWrapper},
 	)

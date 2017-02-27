@@ -101,6 +101,34 @@ func UnmarshalEnvelope(encoded []byte) (*cb.Envelope, error) {
 	return envelope, err
 }
 
+// UnmarshalEnvelopeOfType unmarshals an envelope of the specified type, including
+// the unmarshaling the payload data
+func UnmarshalEnvelopeOfType(envelope *cb.Envelope, headerType cb.HeaderType, message proto.Message) (*cb.ChannelHeader, error) {
+	payload, err := UnmarshalPayload(envelope.Payload)
+	if err != nil {
+		return nil, err
+	}
+
+	if payload.Header == nil {
+		return nil, fmt.Errorf("Envelope must have a Header")
+	}
+
+	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid ChannelHeader")
+	}
+
+	if chdr.Type != int32(headerType) {
+		return nil, fmt.Errorf("Not a tx of type %v", headerType)
+	}
+
+	if err = proto.Unmarshal(payload.Data, message); err != nil {
+		return nil, fmt.Errorf("Error unmarshaling message for type %v: %s", headerType, err)
+	}
+
+	return chdr, nil
+}
+
 // ExtractEnvelopeOrPanic retrieves the requested envelope from a given block and unmarshals it -- it panics if either of these operation fail.
 func ExtractEnvelopeOrPanic(block *cb.Block, index int) *cb.Envelope {
 	envelope, err := ExtractEnvelope(block, index)

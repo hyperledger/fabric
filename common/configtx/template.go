@@ -70,11 +70,8 @@ func NewSimpleTemplate(configGroups ...*cb.ConfigGroup) Template {
 // Envelope returns a ConfigUpdateEnvelope for the given chainID
 func (st *simpleTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope, error) {
 	config, err := proto.Marshal(&cb.ConfigUpdate{
-		Header: &cb.ChannelHeader{
-			ChannelId: chainID,
-			Type:      int32(cb.HeaderType_CONFIG),
-		},
-		WriteSet: st.configGroup,
+		ChannelId: chainID,
+		WriteSet:  st.configGroup,
 	})
 
 	if err != nil {
@@ -146,11 +143,8 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope,
 	}
 
 	marshaledConfig, err := proto.Marshal(&cb.ConfigUpdate{
-		Header: &cb.ChannelHeader{
-			ChannelId: chainID,
-			Type:      int32(cb.HeaderType_CONFIG),
-		},
-		WriteSet: channel,
+		ChannelId: chainID,
+		WriteSet:  channel,
 	})
 	if err != nil {
 		return nil, err

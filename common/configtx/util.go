@@ -17,10 +17,7 @@ limitations under the License.
 package configtx
 
 import (
-	"fmt"
-
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -99,23 +96,4 @@ func UnmarshalConfigEnvelopeOrPanic(data []byte) *cb.ConfigEnvelope {
 		panic(err)
 	}
 	return result
-}
-
-// ConfigEnvelopeFromBlock extract the config envelope from a config block
-func ConfigEnvelopeFromBlock(block *cb.Block) (*cb.ConfigEnvelope, error) {
-	if block.Data == nil || len(block.Data.Data) != 1 {
-		return nil, fmt.Errorf("Not a config block, must contain exactly one tx")
-	}
-
-	envelope, err := utils.UnmarshalEnvelope(block.Data.Data[0])
-	if err != nil {
-		return nil, err
-	}
-
-	payload, err := utils.UnmarshalPayload(envelope.Payload)
-	if err != nil {
-		return nil, err
-	}
-
-	return UnmarshalConfigEnvelope(payload.Data)
 }
