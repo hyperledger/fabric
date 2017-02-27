@@ -55,6 +55,9 @@ const (
 
 	// OrdererAddressesKey is the cb.ConfigItem type key name for the OrdererAddresses message
 	OrdererAddressesKey = "OrdererAddresses"
+
+	// GroupKey is the name of the channel group
+	GroupKey = "Channel"
 )
 
 // Hashing algorithm types
