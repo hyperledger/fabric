@@ -154,22 +154,23 @@ func (cs *connectionStore) shutdown() {
 	wg.Wait()
 }
 
-func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer, pkiID common.PKIidType) *connection {
+func (cs *connectionStore) onConnected(serverStream proto.Gossip_GossipStreamServer, connInfo *proto.ConnectionInfo) *connection {
 	cs.Lock()
 	defer cs.Unlock()
 
-	if c, exists := cs.pki2Conn[string(pkiID)]; exists {
+	if c, exists := cs.pki2Conn[string(connInfo.Identity)]; exists {
 		c.close()
 	}
 
-	return cs.registerConn(pkiID, serverStream)
+	return cs.registerConn(connInfo, serverStream)
 }
 
-func (cs *connectionStore) registerConn(pkiID common.PKIidType, serverStream proto.Gossip_GossipStreamServer) *connection {
+func (cs *connectionStore) registerConn(connInfo *proto.ConnectionInfo, serverStream proto.Gossip_GossipStreamServer) *connection {
 	conn := newConnection(nil, nil, nil, serverStream)
-	conn.pkiID = pkiID
+	conn.pkiID = connInfo.ID
+	conn.info = connInfo
 	conn.logger = cs.logger
-	cs.pki2Conn[string(pkiID)] = conn
+	cs.pki2Conn[string(connInfo.ID)] = conn
 	return conn
 }
 
@@ -197,6 +198,7 @@ func newConnection(cl proto.GossipClient, c *grpc.ClientConn, cs proto.Gossip_Go
 }
 
 type connection struct {
+	info         *proto.ConnectionInfo
 	outBuff      chan *msgSending
 	logger       *logging.Logger                 // logger
 	pkiID        common.PKIidType                // pkiID of the remote endpoint

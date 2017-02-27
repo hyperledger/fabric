@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/identity"
@@ -41,6 +42,7 @@ import (
 
 func init() {
 	rand.Seed(42)
+	factory.InitFactories(nil)
 }
 
 func acceptAll(msg interface{}) bool {
@@ -178,7 +180,13 @@ func TestHandshake(t *testing.T) {
 	acceptChan := handshaker("localhost:9610", comm, t, nil, nil)
 	time.Sleep(2 * time.Second)
 	assert.Equal(t, 1, len(acceptChan))
-
+	msg := <-acceptChan
+	expectedPKIID := common.PKIidType("localhost:9610")
+	assert.Equal(t, expectedPKIID, msg.GetConnectionInfo().ID)
+	assert.Equal(t, api.PeerIdentityType("localhost:9610"), msg.GetConnectionInfo().Identity)
+	assert.NotNil(t, msg.GetConnectionInfo().Auth)
+	assert.True(t, msg.GetConnectionInfo().IsAuthenticated())
+	assert.Equal(t, msg.GetConnectionInfo().Auth.Signature, msg.GetConnectionInfo().Auth.SignedData)
 	// negative path, nothing should be read from the channel because the signature is wrong
 	mutateSig := func(b []byte) []byte {
 		if b[0] == 0 {
@@ -222,7 +230,7 @@ func TestBasic(t *testing.T) {
 	waitForMessages(t, out, 2, "Didn't receive 2 messages")
 }
 
-func TestGetPKIID(t *testing.T) {
+func TestGetConnectionInfo(t *testing.T) {
 	t.Parallel()
 	comm1, _ := newCommInstance(6000, naiveSec)
 	comm2, _ := newCommInstance(7000, naiveSec)
@@ -234,7 +242,7 @@ func TestGetPKIID(t *testing.T) {
 	case <-time.After(time.Second * 10):
 		t.Fatal("Didn't receive a message in time")
 	case msg := <-m1:
-		assert.Equal(t, comm2.GetPKIid(), msg.GetPKIID())
+		assert.Equal(t, comm2.GetPKIid(), msg.GetConnectionInfo().ID)
 	}
 }
 

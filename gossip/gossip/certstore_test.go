@@ -23,7 +23,6 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
-	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/gossip/pull"
@@ -64,7 +63,7 @@ func (s *sentMsg) GetGossipMessage() *proto.SignedGossipMessage {
 	return s.msg
 }
 
-func (s *sentMsg) GetPKIID() common.PKIidType {
+func (s *sentMsg) GetConnectionInfo() *proto.ConnectionInfo {
 	return nil
 }
 

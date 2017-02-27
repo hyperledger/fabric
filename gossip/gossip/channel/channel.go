@@ -359,13 +359,13 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		gc.logger.Warning("Got message", msg.GetGossipMessage(), "but it's not a per-channel message, discarding it")
 		return
 	}
-	orgID := gc.GetOrgOfPeer(msg.GetPKIID())
+	orgID := gc.GetOrgOfPeer(msg.GetConnectionInfo().ID)
 	if orgID == nil {
-		gc.logger.Warning("Couldn't find org identity of peer", msg.GetPKIID())
+		gc.logger.Warning("Couldn't find org identity of peer", msg.GetConnectionInfo().ID)
 		return
 	}
 	if !gc.IsOrgInChannel(orgID) {
-		gc.logger.Warning("Point to point message came from", msg.GetPKIID(), "but it's not eligible for the channel", msg.GetGossipMessage().Channel)
+		gc.logger.Warning("Point to point message came from", msg.GetConnectionInfo().ID, "but it's not eligible for the channel", msg.GetGossipMessage().Channel)
 		return
 	}
 
@@ -375,7 +375,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 	}
 
 	if m.IsStateInfoSnapshot() {
-		gc.handleStateInfSnapshot(m.GossipMessage, msg.GetPKIID())
+		gc.handleStateInfSnapshot(m.GossipMessage, msg.GetConnectionInfo().ID)
 		return
 	}
 
@@ -384,10 +384,10 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 
 		if m.IsDataMsg() {
 			if m.GetDataMsg().Payload == nil {
-				gc.logger.Warning("Payload is empty, got it from", msg.GetPKIID())
+				gc.logger.Warning("Payload is empty, got it from", msg.GetConnectionInfo().ID)
 				return
 			}
-			if !gc.verifyBlock(m.GossipMessage, msg.GetPKIID()) {
+			if !gc.verifyBlock(m.GossipMessage, msg.GetConnectionInfo().ID) {
 				gc.logger.Warning("Failed verifying block", m.GetDataMsg().Payload.SeqNum)
 				return
 			}
@@ -410,8 +410,8 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		return
 	}
 	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BlockMessage {
-		if !gc.EligibleForChannel(discovery.NetworkMember{PKIid: msg.GetPKIID()}) {
-			gc.logger.Warning(msg.GetPKIID(), "isn't eligible for channel", gc.chainID)
+		if !gc.EligibleForChannel(discovery.NetworkMember{PKIid: msg.GetConnectionInfo().ID}) {
+			gc.logger.Warning(msg.GetConnectionInfo().ID, "isn't eligible for channel", gc.chainID)
 			return
 		}
 		if m.IsDataUpdate() {
@@ -425,7 +425,7 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 					gc.logger.Warning("DataUpdate message contains item with channel", gMsg.Channel, "but should be", gc.chainID)
 					return
 				}
-				if !gc.verifyBlock(gMsg.GossipMessage, msg.GetPKIID()) {
+				if !gc.verifyBlock(gMsg.GossipMessage, msg.GetConnectionInfo().ID) {
 					return
 				}
 			}
@@ -525,7 +525,7 @@ func (gc *gossipChannel) verifyMsg(msg proto.ReceivedMessage) bool {
 		return false
 	}
 
-	if msg.GetPKIID() == nil {
+	if msg.GetConnectionInfo().ID == nil {
 		gc.logger.Warning("Message has nil PKI-ID")
 		return false
 	}

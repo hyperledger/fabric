@@ -165,6 +165,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 	var cc *grpc.ClientConn
 	var stream proto.Gossip_GossipStreamClient
 	var pkiID common.PKIidType
+	var connInfo *proto.ConnectionInfo
 
 	c.logger.Debug("Entering", endpoint, expectedPKIID)
 	defer c.logger.Debug("Exiting")
@@ -185,8 +186,9 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 	}
 
 	if stream, err = cl.GossipStream(context.Background()); err == nil {
-		pkiID, err = c.authenticateRemotePeer(stream)
+		connInfo, err = c.authenticateRemotePeer(stream)
 		if err == nil {
+			pkiID = connInfo.ID
 			if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
 				// PKIID is nil when we don't know the remote PKI id's
 				c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
@@ -194,6 +196,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			}
 			conn := newConnection(cl, cc, stream, nil)
 			conn.pkiID = pkiID
+			conn.info = connInfo
 			conn.logger = c.logger
 
 			h := func(m *proto.SignedGossipMessage) {
@@ -202,6 +205,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 					conn:                conn,
 					lock:                conn,
 					SignedGossipMessage: m,
+					connInfo:            connInfo,
 				})
 			}
 			conn.handler = h
@@ -384,7 +388,7 @@ func extractRemoteAddress(stream stream) string {
 	return remoteAddress
 }
 
-func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, error) {
+func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo, error) {
 	ctx := stream.Context()
 	remoteAddress := extractRemoteAddress(stream)
 	remoteCertHash := extractCertificateHashFromContext(ctx)
@@ -437,6 +441,11 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 		return nil, err
 	}
 
+	connInfo := &proto.ConnectionInfo{
+		ID:       receivedMsg.PkiID,
+		Identity: receivedMsg.Cert,
+	}
+
 	// if TLS is detected, verify remote peer
 	if remoteCertHash != nil && c.selfCertHash != nil {
 		if !bytes.Equal(remoteCertHash, receivedMsg.Hash) {
@@ -451,24 +460,29 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (common.PKIidType, erro
 			c.logger.Error("Failed verifying signature from", remoteAddress, ":", err)
 			return nil, err
 		}
+		connInfo.Auth = &proto.AuthInfo{
+			Signature:  m.Signature,
+			SignedData: m.Payload,
+		}
 	}
 
 	c.logger.Debug("Authenticated", remoteAddress)
-	return receivedMsg.PkiID, nil
+
+	return connInfo, nil
 }
 
 func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	if c.isStopping() {
 		return errors.New("Shutting down")
 	}
-	PKIID, err := c.authenticateRemotePeer(stream)
+	connInfo, err := c.authenticateRemotePeer(stream)
 	if err != nil {
 		c.logger.Error("Authentication failed")
 		return err
 	}
 	c.logger.Debug("Servicing", extractRemoteAddress(stream))
 
-	conn := c.connStore.onConnected(stream, PKIID)
+	conn := c.connStore.onConnected(stream, connInfo)
 
 	// if connStore denied the connection, it means we already have a connection to that peer
 	// so close this stream
@@ -481,6 +495,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 			conn:                conn,
 			lock:                conn,
 			SignedGossipMessage: m,
+			connInfo:            connInfo,
 		})
 	}
 
@@ -488,7 +503,7 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 
 	defer func() {
 		c.logger.Debug("Client", extractRemoteAddress(stream), " disconnected")
-		c.connStore.closeByPKIid(PKIID)
+		c.connStore.closeByPKIid(connInfo.ID)
 		conn.close()
 	}()
 
