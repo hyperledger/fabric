@@ -211,9 +211,9 @@ peer:
             Hash: SHA2
             Security: 256
             # Location of Key Store, can be subdirectory of SbftLocal.DataDir
-            FileKeyStore: 
+            FileKeyStore:
                 # If "", defaults to 'mspConfigPath'/keystore
-                KeyStore: 
+                KeyStore:
 
     # Path on the file system where peer will find MSP local configurations
     mspConfigPath: msp/sampleconfig

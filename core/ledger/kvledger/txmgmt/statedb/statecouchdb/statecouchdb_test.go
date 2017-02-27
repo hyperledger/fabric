@@ -33,9 +33,12 @@ func TestMain(m *testing.M) {
 
 	//call a helper method to load the core.yaml, will be used to detect if CouchDB is enabled
 	ledgertestutil.SetupCoreYAMLConfig("./../../../../../../peer")
-	viper.Set("ledger.state.stateDatabase", "CouchDB")
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
 	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/statecouchdb")
+	viper.Set("ledger.state.stateDatabase", "CouchDB")
+
+	// both vagrant and CI have couchdb configured at host "couchdb"
+	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
+
 	result := m.Run()
 	viper.Set("ledger.state.stateDatabase", "goleveldb")
 	os.Exit(result)
