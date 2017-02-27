@@ -5,11 +5,15 @@ services:
 
   orderer:
     image: hyperledger/fabric-testenv-orderer
+    container_name: orderer
     environment:
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_GENESISPROFILE=SampleInsecureKafka
+      - CONFIGTX_ORDERER_ORDERERTYPE=kafka
     ports:
       - '7050'
+    volumes:
+      - /etc/hyperledger/msp:/etc/hyperledger/msp
     depends_on:
       - zookeeper
       - kafka
