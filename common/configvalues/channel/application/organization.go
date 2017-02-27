@@ -63,7 +63,7 @@ func (oc *ApplicationOrgConfig) AnchorPeers() []*pb.AnchorPeer {
 }
 
 // BeginValueProposals is used to start a new config proposal
-func (oc *ApplicationOrgConfig) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
+func (oc *ApplicationOrgConfig) BeginValueProposals(groups []string) ([]config.ValueProposer, error) {
 	logger.Debugf("Beginning a possible new org config")
 	if len(groups) != 0 {
 		return nil, fmt.Errorf("ApplicationGroup does not support subgroups")

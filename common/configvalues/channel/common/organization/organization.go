@@ -62,7 +62,7 @@ func NewOrgConfig(id string, mspConfig *mspconfig.MSPConfigHandler) *OrgConfig {
 }
 
 // BeginValueProposals is used to start a new config proposal
-func (oc *OrgConfig) BeginValueProposals(groups []string) ([]api.ValueProposer, error) {
+func (oc *OrgConfig) BeginValueProposals(groups []string) ([]config.ValueProposer, error) {
 	logger.Debugf("Beginning a possible new org config")
 	if len(groups) != 0 {
 		return nil, fmt.Errorf("Orgs do not support sub-groups")
