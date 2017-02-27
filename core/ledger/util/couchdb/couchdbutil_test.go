@@ -28,8 +28,9 @@ import (
 func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		cleanup()
-		defer cleanup()
+		database := "testcreatecouchdbconnectionanddb"
+		cleanup(database)
+		defer cleanup(database)
 		//create a new connection
 		couchInstance, err := CreateCouchInstance(connectURL, "", "")
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to CreateCouchInstance"))

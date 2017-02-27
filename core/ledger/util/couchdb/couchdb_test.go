@@ -32,18 +32,17 @@ import (
 //Basic setup to test couch
 var connectURL = "couchdb:5984"
 var badConnectURL = "couchdb:5990"
-var database = "couch_util_testdb"
 var username = ""
 var password = ""
 
-func cleanup() error {
+func cleanup(database string) error {
 	//create a new connection
-	couchInstance, _ := CreateCouchInstance(connectURL, username, password)
-	db, err := CreateCouchDatabase(*couchInstance, database)
+	couchInstance, err := CreateCouchInstance(connectURL, username, password)
 	if err != nil {
 		fmt.Println("Unexpected error", err)
 		return err
 	}
+	db := CouchDatabase{couchInstance: *couchInstance, dbName: database}
 	//drop the test database
 	db.DropDatabase()
 	return nil
@@ -62,8 +61,7 @@ var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owne
 
 func TestMain(m *testing.M) {
 	ledgertestutil.SetupCoreYAMLConfig("./../../../../peer")
-	//TODO CouchDB tests are disabled.  Re-enable once intermittent failures are resolved.
-	//viper.Set("ledger.state.stateDatabase", "CouchDB")
+	viper.Set("ledger.state.stateDatabase", "CouchDB")
 	result := m.Run()
 	viper.Set("ledger.state.stateDatabase", "goleveldb")
 	os.Exit(result)
@@ -92,9 +90,10 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		err := cleanup()
+		database := "testdbcreatesavewithoutrevision"
+		err := cleanup(database)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
-		defer cleanup()
+		defer cleanup(database)
 
 		if err == nil {
 			//create a new instance and database object
@@ -162,9 +161,10 @@ func TestDBCreateDatabaseAndPersist(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		err := cleanup()
+		database := "testdbcreatedatabaseandpersist"
+		err := cleanup(database)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
-		defer cleanup()
+		defer cleanup(database)
 
 		if err == nil {
 			//create a new instance and database object
@@ -250,9 +250,10 @@ func TestDBBadJSON(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		err := cleanup()
+		database := "testdbbadjson"
+		err := cleanup(database)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
-		defer cleanup()
+		defer cleanup(database)
 
 		if err == nil {
 
@@ -286,9 +287,10 @@ func TestPrefixScan(t *testing.T) {
 	if !ledgerconfig.IsCouchDBEnabled() {
 		return
 	}
-	err := cleanup()
+	database := "testprefixscan"
+	err := cleanup(database)
 	testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
-	defer cleanup()
+	defer cleanup(database)
 
 	if err == nil {
 		//create a new instance and database object
@@ -339,7 +341,6 @@ func TestPrefixScan(t *testing.T) {
 		//Retrieve the info for the new database and make sure the name matches
 		_, _, errdbinfo := db.GetDatabaseInfo()
 		testutil.AssertError(t, errdbinfo, fmt.Sprintf("Error should have been thrown for missing database"))
-
 	}
 }
 
@@ -347,9 +348,10 @@ func TestDBSaveAttachment(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		err := cleanup()
+		database := "testdbsaveattachment"
+		err := cleanup(database)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
-		defer cleanup()
+		defer cleanup(database)
 
 		if err == nil {
 
@@ -390,9 +392,10 @@ func TestDBDeleteDocument(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		err := cleanup()
+		database := "testdbdeletedocument"
+		err := cleanup(database)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
-		defer cleanup()
+		defer cleanup(database)
 
 		if err == nil {
 			//create a new instance and database object
@@ -427,9 +430,10 @@ func TestDBDeleteNonExistingDocument(t *testing.T) {
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
-		err := cleanup()
+		database := "testdbdeletenonexistingdocument"
+		err := cleanup(database)
 		testutil.AssertNoError(t, err, fmt.Sprintf("Error when trying to cleanup  Error: %s", err))
-		defer cleanup()
+		defer cleanup(database)
 
 		if err == nil {
 			//create a new instance and database object
