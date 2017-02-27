@@ -25,6 +25,7 @@ import (
 
 	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/committer"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	common2 "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/gossip"
@@ -47,10 +48,6 @@ type GossipStateProvider interface {
 	Stop()
 }
 
-var remoteStateMsgFilter = func(message interface{}) bool {
-	return message.(proto.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
-}
-
 const (
 	defPollingPeriod       = 200 * time.Millisecond
 	defAntiEntropyInterval = 10 * time.Second
@@ -60,6 +57,9 @@ const (
 // the struct to handle in memory sliding window of
 // new ledger block to be acquired by hyper ledger
 type GossipStateProviderImpl struct {
+	// MessageCryptoService
+	mcs api.MessageCryptoService
+
 	// Chain id
 	chainID string
 
@@ -87,7 +87,7 @@ type GossipStateProviderImpl struct {
 }
 
 // NewGossipStateProvider creates initialized instance of gossip state provider
-func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer.Committer) GossipStateProvider {
+func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer.Committer, mcs api.MessageCryptoService) GossipStateProvider {
 	logger := util.GetLogger(util.LoggingStateModule, "")
 
 	gossipChan, _ := g.Accept(func(message interface{}) bool {
@@ -95,6 +95,26 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 		return message.(*proto.GossipMessage).IsDataMsg() &&
 			bytes.Equal(message.(*proto.GossipMessage).Channel, []byte(chainID))
 	}, false)
+
+	remoteStateMsgFilter := func(message interface{}) bool {
+		receivedMsg := message.(proto.ReceivedMessage)
+		msg := receivedMsg.GetGossipMessage()
+		if !msg.IsRemoteStateMessage() {
+			return false
+		}
+		// If we're not running with authentication, no point
+		// in enforcing access control
+		if !receivedMsg.GetConnectionInfo().IsAuthenticated() {
+			return true
+		}
+		connInfo := receivedMsg.GetConnectionInfo()
+		authErr := mcs.VerifyByChannel(msg.Channel, connInfo.Identity, connInfo.Auth.Signature, connInfo.Auth.SignedData)
+		if authErr != nil {
+			logger.Warning("Got unauthorized state transfer request from", string(connInfo.Identity))
+			return false
+		}
+		return true
+	}
 
 	// Filter message which are only relevant for state transfer
 	_, commChan := g.Accept(remoteStateMsgFilter, true)
@@ -109,6 +129,10 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 	}
 
 	s := &GossipStateProviderImpl{
+		// MessageCryptoService
+		mcs: mcs,
+
+		// Chain ID
 		chainID: chainID,
 
 		// Instance of the gossip
