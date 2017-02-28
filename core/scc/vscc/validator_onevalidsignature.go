@@ -69,7 +69,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		return shim.Error("No policy supplied")
 	}
 
-	logger.Infof("VSCC invoked")
+	logger.Debugf("VSCC invoked")
 
 	// get the envelope...
 	env, err := utils.GetEnvelopeFromBlock(args[1])
@@ -144,7 +144,7 @@ func (vscc *ValidatorOneValidSignature) Invoke(stub shim.ChaincodeStubInterface)
 		}
 	}
 
-	logger.Infof("VSCC exists successfully")
+	logger.Debugf("VSCC exists successfully")
 
 	return shim.Success(nil)
 }

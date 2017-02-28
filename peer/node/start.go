@@ -198,7 +198,7 @@ func serve(args []string) error {
 		scc.DeploySysCCs(cid)
 	})
 
-	logger.Infof("Starting peer with ID=%s, network ID=%s, address=%s",
+	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]",
 		peerEndpoint.Id, viper.GetString("peer.networkId"), peerEndpoint.Address)
 
 	// Start the grpc server. Done in a goroutine so we can deploy the
@@ -243,6 +243,9 @@ func serve(args []string) error {
 			}
 		}()
 	}
+
+	logger.Infof("Started peer with ID=[%s], network ID=[%s], address=[%s]",
+		peerEndpoint.Id, viper.GetString("peer.networkId"), peerEndpoint.Address)
 
 	// sets the logging level for the 'error' and 'msp' modules to the
 	// values from core.yaml. they can also be updated dynamically using

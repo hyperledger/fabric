@@ -409,6 +409,6 @@ func (s *GossipStateProviderImpl) commitBlock(block *common.Block, seqNum uint64
 		s.logger.Errorf("Unable to serialize node meta state, error = %s", err)
 	}
 
-	s.logger.Debug("Commit success, created a block!")
+	s.logger.Debugf("Channel [%s]: Created block [%d] with %d transaction(s)", s.chainID, block.Header.Number, len(block.Data.Data))
 	return nil
 }

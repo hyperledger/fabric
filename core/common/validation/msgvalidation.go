@@ -32,7 +32,7 @@ var putilsLogger = logging.MustGetLogger("protoutils")
 
 // validateChaincodeProposalMessage checks the validity of a Proposal message of type CHAINCODE
 func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*pb.ChaincodeHeaderExtension, error) {
-	putilsLogger.Infof("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
+	putilsLogger.Debugf("validateChaincodeProposalMessage starts for proposal %p, header %p", prop, hdr)
 
 	// 4) based on the header type (assuming it's CHAINCODE), look at the extensions
 	chaincodeHdrExt, err := utils.GetChaincodeHeaderExtension(hdr)
@@ -40,7 +40,7 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*p
 		return nil, errors.New("Invalid header extension for type CHAINCODE")
 	}
 
-	putilsLogger.Infof("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeId)
+	putilsLogger.Debugf("validateChaincodeProposalMessage info: header extension references chaincode %s", chaincodeHdrExt.ChaincodeId)
 
 	//    - ensure that the chaincodeID is correct (?)
 	// TODO: should we even do this? If so, using which interface?
@@ -64,7 +64,7 @@ func validateChaincodeProposalMessage(prop *pb.Proposal, hdr *common.Header) (*p
 // this function returns Header and ChaincodeHeaderExtension messages since they
 // have been unmarshalled and validated
 func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *common.Header, *pb.ChaincodeHeaderExtension, error) {
-	putilsLogger.Infof("ValidateProposalMessage starts for signed proposal %p", signedProp)
+	putilsLogger.Debugf("ValidateProposalMessage starts for signed proposal %p", signedProp)
 
 	// extract the Proposal message from signedProp
 	prop, err := utils.GetProposal(signedProp.ProposalBytes)
@@ -127,7 +127,7 @@ func ValidateProposalMessage(signedProp *pb.SignedProposal) (*pb.Proposal, *comm
 // this function returns nil if the creator
 // is a valid cert and the signature is valid
 func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, ChainID string) error {
-	putilsLogger.Infof("checkSignatureFromCreator starts")
+	putilsLogger.Debugf("checkSignatureFromCreator starts")
 
 	// check for nil argument
 	if creatorBytes == nil || sig == nil || msg == nil {
@@ -145,7 +145,7 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return fmt.Errorf("Failed to deserialize creator identity, err %s", err)
 	}
 
-	putilsLogger.Infof("checkSignatureFromCreator info: creator is %s", creator.GetIdentifier())
+	putilsLogger.Debugf("checkSignatureFromCreator info: creator is %s", creator.GetIdentifier())
 
 	// ensure that creator is a valid certificate
 	err = creator.Validate()
@@ -153,7 +153,7 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return fmt.Errorf("The creator certificate is not valid, err %s", err)
 	}
 
-	putilsLogger.Infof("checkSignatureFromCreator info: creator is valid")
+	putilsLogger.Debugf("checkSignatureFromCreator info: creator is valid")
 
 	// validate the signature
 	err = creator.Verify(msg, sig)
@@ -161,7 +161,7 @@ func checkSignatureFromCreator(creatorBytes []byte, sig []byte, msg []byte, Chai
 		return fmt.Errorf("The creator's signature over the proposal is not valid, err %s", err)
 	}
 
-	putilsLogger.Infof("checkSignatureFromCreator exists successfully")
+	putilsLogger.Debugf("checkSignatureFromCreator exists successfully")
 
 	return nil
 }
@@ -200,7 +200,7 @@ func validateChannelHeader(cHdr *common.ChannelHeader) error {
 		return fmt.Errorf("invalid header type %s", common.HeaderType(cHdr.Type))
 	}
 
-	putilsLogger.Infof("validateChannelHeader info: header type %d", common.HeaderType(cHdr.Type))
+	putilsLogger.Debugf("validateChannelHeader info: header type %d", common.HeaderType(cHdr.Type))
 
 	// TODO: validate chainID in cHdr.ChainID
 
@@ -249,7 +249,7 @@ func validateCommonHeader(hdr *common.Header) (*common.ChannelHeader, *common.Si
 // validateConfigTransaction validates the payload of a
 // transaction assuming its type is CONFIG
 func validateConfigTransaction(data []byte, hdr *common.Header) error {
-	putilsLogger.Infof("validateConfigTransaction starts for data %p, header %s", data, hdr)
+	putilsLogger.Debugf("validateConfigTransaction starts for data %p, header %s", data, hdr)
 
 	// check for nil argument
 	if data == nil || hdr == nil {
@@ -264,7 +264,7 @@ func validateConfigTransaction(data []byte, hdr *common.Header) error {
 // validateEndorserTransaction validates the payload of a
 // transaction assuming its type is ENDORSER_TRANSACTION
 func validateEndorserTransaction(data []byte, hdr *common.Header) error {
-	putilsLogger.Infof("validateEndorserTransaction starts for data %p, header %s", data, hdr)
+	putilsLogger.Debugf("validateEndorserTransaction starts for data %p, header %s", data, hdr)
 
 	// check for nil argument
 	if data == nil || hdr == nil {
@@ -290,7 +290,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 		return errors.New("At least one TransactionAction is required")
 	}
 
-	putilsLogger.Infof("validateEndorserTransaction info: there are %d actions", len(tx.Actions))
+	putilsLogger.Debugf("validateEndorserTransaction info: there are %d actions", len(tx.Actions))
 
 	for _, act := range tx.Actions {
 		// check for nil argument
@@ -311,7 +311,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 			return err
 		}
 
-		putilsLogger.Infof("validateEndorserTransaction info: signature header is valid")
+		putilsLogger.Debugf("validateEndorserTransaction info: signature header is valid")
 
 		// if the type is ENDORSER_TRANSACTION we unmarshal a ChaincodeActionPayload
 		ccActionPayload, err := utils.GetChaincodeActionPayload(act.Payload)
@@ -346,7 +346,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 
 // ValidateTransaction checks that the transaction envelope is properly formed
 func ValidateTransaction(e *common.Envelope) (*common.Payload, pb.TxValidationCode) {
-	putilsLogger.Infof("ValidateTransactionEnvelope starts for envelope %p", e)
+	putilsLogger.Debugf("ValidateTransactionEnvelope starts for envelope %p", e)
 
 	// check for nil argument
 	if e == nil {
@@ -361,7 +361,7 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, pb.TxValidationCo
 		return nil, pb.TxValidationCode_BAD_PAYLOAD
 	}
 
-	putilsLogger.Infof("Header is %s", payload.Header)
+	putilsLogger.Debugf("Header is %s", payload.Header)
 
 	// validate the header
 	chdr, shdr, err := validateCommonHeader(payload.Header)
@@ -396,7 +396,7 @@ func ValidateTransaction(e *common.Envelope) (*common.Payload, pb.TxValidationCo
 		}
 
 		err = validateEndorserTransaction(payload.Data, payload.Header)
-		putilsLogger.Infof("ValidateTransactionEnvelope returns err %s", err)
+		putilsLogger.Debugf("ValidateTransactionEnvelope returns err %s", err)
 
 		if err != nil {
 			putilsLogger.Errorf("validateEndorserTransaction returns err %s", err)

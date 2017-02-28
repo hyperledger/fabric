@@ -227,7 +227,7 @@ func (e *Endorser) getCDSFromLCCC(ctx context.Context, chainID string, txid stri
 
 //endorse the proposal by calling the ESCC
 func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, proposal *pb.Proposal, response *pb.Response, simRes []byte, event *pb.ChaincodeEvent, visibility []byte, ccid *pb.ChaincodeID, txsim ledger.TxSimulator, cd *ccprovider.ChaincodeData) (*pb.ProposalResponse, error) {
-	endorserLogger.Infof("endorseProposal starts for chainID %s, ccid %s", chainID, ccid)
+	endorserLogger.Debugf("endorseProposal starts for chainID %s, ccid %s", chainID, ccid)
 
 	// 1) extract the name of the escc that is requested to endorse this chaincode
 	var escc string
@@ -243,7 +243,7 @@ func (e *Endorser) endorseProposal(ctx context.Context, chainID string, txid str
 		escc = "escc"
 	}
 
-	endorserLogger.Infof("endorseProposal info: escc for cid %s is %s", ccid, escc)
+	endorserLogger.Debugf("endorseProposal info: escc for cid %s is %s", ccid, escc)
 
 	// marshalling event bytes
 	var err error

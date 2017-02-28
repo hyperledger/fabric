@@ -390,7 +390,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 //SaveDoc method provides a function to save a document, id and byte array
 func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc) (string, error) {
 
-	logger.Debugf("Entering SaveDoc()")
+	logger.Debugf("Entering SaveDoc()  id=[%s]", id)
 	if !utf8.ValidString(id) {
 		return "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
@@ -404,8 +404,6 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 	saveURL.Path = dbclient.dbName
 	// id can contain a '/', so encode separately
 	saveURL = &url.URL{Opaque: saveURL.String() + "/" + encodePathElement(id)}
-
-	logger.Debugf("  id=%s,  value=%s, attachments=%d", id, string(couchDoc.JSONValue), len(couchDoc.Attachments))
 
 	if rev == "" {
 
@@ -560,7 +558,7 @@ func getRevisionHeader(resp *http.Response) (string, error) {
 //ReadDoc method provides function to retrieve a document from the database by id
 func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 	var couchDoc CouchDoc
-	logger.Debugf("Entering ReadDoc()  id=%s", id)
+	logger.Debugf("Entering ReadDoc()  id=[%s]", id)
 	if !utf8.ValidString(id) {
 		return nil, "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
@@ -581,13 +579,13 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 	resp, couchDBReturn, err := dbclient.couchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "")
 	if err != nil {
-		fmt.Printf("couchDBReturn=%v", couchDBReturn)
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
 			logger.Debug("Document not found (404), returning nil value instead of 404 error")
 			// non-existent document should return nil value instead of a 404 error
 			// for details see https://github.com/hyperledger-archives/fabric/issues/936
 			return nil, "", nil
 		}
+		logger.Debugf("couchDBReturn=%v\n", couchDBReturn)
 		return nil, "", err
 	}
 	defer resp.Body.Close()
@@ -679,7 +677,6 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 		return nil, "", err
 	}
 
-	logger.Debugf("Read document, id=%s, value=%s", id, string(couchDoc.JSONValue))
 	logger.Debugf("Exiting ReadDoc()")
 	return &couchDoc, revision, nil
 }
@@ -973,18 +970,9 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	}
 
 	if logger.IsEnabledFor(logging.DEBUG) {
-		dump, err2 := httputil.DumpRequestOut(req, true)
-		if err2 != nil {
-			log.Fatal(err2)
-		}
-		// trace the first 200 bytes of http request only, in case it is huge
-		if dump != nil {
-			if len(dump) <= 200 {
-				logger.Debugf("HTTP Request: %s", dump)
-			} else {
-				logger.Debugf("HTTP Request: %s...", dump[0:200])
-			}
-		}
+		dump, _ := httputil.DumpRequestOut(req, false)
+		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
+		logger.Debugf("HTTP Request: %s", bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
 	}
 
 	//Create the http client
