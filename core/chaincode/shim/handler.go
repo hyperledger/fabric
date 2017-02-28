@@ -183,8 +183,8 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 			"before_" + pb.ChaincodeMessage_REGISTERED.String():  func(e *fsm.Event) { v.beforeRegistered(e) },
 			"after_" + pb.ChaincodeMessage_RESPONSE.String():     func(e *fsm.Event) { v.afterResponse(e) },
 			"after_" + pb.ChaincodeMessage_ERROR.String():        func(e *fsm.Event) { v.afterError(e) },
-			"before_" + pb.ChaincodeMessage_INIT.String():        func(e *fsm.Event) { v.enterInitState(e) },
-			"before_" + pb.ChaincodeMessage_TRANSACTION.String(): func(e *fsm.Event) { v.enterTransactionState(e) },
+			"before_" + pb.ChaincodeMessage_INIT.String():        func(e *fsm.Event) { v.beforeInit(e) },
+			"before_" + pb.ChaincodeMessage_TRANSACTION.String(): func(e *fsm.Event) { v.beforeTransaction(e) },
 		},
 	)
 	return v
@@ -257,8 +257,8 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 	}()
 }
 
-// enterInitState will initialize the chaincode if entering init from established.
-func (handler *Handler) enterInitState(e *fsm.Event) {
+// beforeInit will initialize the chaincode if entering init from established.
+func (handler *Handler) beforeInit(e *fsm.Event) {
 	chaincodeLogger.Debugf("Entered state %s", handler.FSM.Current())
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
@@ -327,8 +327,8 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 	}()
 }
 
-// enterTransactionState will execute chaincode's Run if coming from a TRANSACTION event.
-func (handler *Handler) enterTransactionState(e *fsm.Event) {
+// beforeTransaction will execute chaincode's Run if coming from a TRANSACTION event.
+func (handler *Handler) beforeTransaction(e *fsm.Event) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
 		e.Cancel(fmt.Errorf("Received unexpected message type"))

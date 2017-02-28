@@ -347,24 +347,11 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cccid *ccprovider.CCCont
 	if chaincodeSupport.chaincodeLogLevel != "" {
 		envs = append(envs, "CORE_LOGGING_CHAINCODE="+chaincodeSupport.chaincodeLogLevel)
 	}
-
 	switch cLang {
 	case pb.ChaincodeSpec_GOLANG, pb.ChaincodeSpec_CAR:
-		//chaincode executable will be same as the name of the chaincode
 		args = []string{"chaincode", fmt.Sprintf("-peer.address=%s", chaincodeSupport.peerAddress)}
 	case pb.ChaincodeSpec_JAVA:
-		//TODO add security args
-		args = strings.Split(
-			fmt.Sprintf("java -jar chaincode.jar -a %s -i %s",
-				chaincodeSupport.peerAddress, cccid.Name),
-			" ")
-		if chaincodeSupport.peerTLS {
-			args = append(args, "-s")
-			if chaincodeSupport.peerTLSSvrHostOrd != "" {
-				args = append(args, "-o")
-				args = append(args, chaincodeSupport.peerTLSSvrHostOrd)
-			}
-		}
+		args = []string{"java", "-jar", "chaincode.jar", "--peerAddress", chaincodeSupport.peerAddress}
 	default:
 		return nil, nil, fmt.Errorf("Unknown chaincodeType: %s", cLang)
 	}
@@ -400,6 +387,8 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 	}
 
 	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", canName, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID)
+	chaincodeLogger.Debugf("start container with args: %s", strings.Join(args, " "))
+	chaincodeLogger.Debugf("start container with env:\n\t%s", strings.Join(env, "\n\t"))
 
 	vmtype, _ := chaincodeSupport.getVMType(cds)
 
