@@ -58,7 +58,7 @@ type testConfig struct {
 }
 
 func TestMain(m *testing.M) {
-	ks, err := NewFileBasedKeyStore(nil, os.TempDir(), false);
+	ks, err := NewFileBasedKeyStore(nil, os.TempDir(), false)
 	if err != nil {
 		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
 		os.Exit(-1)
