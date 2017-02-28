@@ -31,8 +31,8 @@ type msgImpl struct {
 	msg *proto.GossipMessage
 }
 
-func (mi *msgImpl) SenderID() string {
-	return string(mi.msg.GetLeadershipMsg().PkiID)
+func (mi *msgImpl) SenderID() peerID {
+	return mi.msg.GetLeadershipMsg().PkiID
 }
 
 func (mi *msgImpl) IsProposal() bool {
@@ -47,8 +47,8 @@ type peerImpl struct {
 	member *discovery.NetworkMember
 }
 
-func (pi *peerImpl) ID() string {
-	return string(pi.member.PKIid)
+func (pi *peerImpl) ID() peerID {
+	return peerID(pi.member.PKIid)
 }
 
 type gossip interface {

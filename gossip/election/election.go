@@ -17,6 +17,7 @@ limitations under the License.
 package election
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -113,16 +114,18 @@ type LeaderElectionService interface {
 	Stop()
 }
 
+type peerID []byte
+
 // Peer describes a remote peer
 type Peer interface {
 	// ID returns the ID of the peer
-	ID() string
+	ID() peerID
 }
 
 // Msg describes a message sent from a remote peer
 type Msg interface {
 	// SenderID returns the ID of the peer sent the message
-	SenderID() string
+	SenderID() peerID
 	// IsProposal returns whether this message is a leadership proposal
 	IsProposal() bool
 	// IsDeclaration returns whether this message is a leadership declaration
@@ -138,7 +141,7 @@ func NewLeaderElectionService(adapter LeaderElectionAdapter, id string, callback
 		panic(fmt.Errorf("Empty id"))
 	}
 	le := &leaderElectionSvcImpl{
-		id:            id,
+		id:            peerID(id),
 		proposals:     util.NewSet(),
 		adapter:       adapter,
 		stopChan:      make(chan struct{}, 1),
@@ -157,7 +160,7 @@ func NewLeaderElectionService(adapter LeaderElectionAdapter, id string, callback
 
 // leaderElectionSvcImpl is an implementation of a LeaderElectionService
 type leaderElectionSvcImpl struct {
-	id        string
+	id        peerID
 	proposals *util.Set
 	sync.Mutex
 	stopChan      chan struct{}
@@ -209,13 +212,13 @@ func (le *leaderElectionSvcImpl) handleMessage(msg Msg) {
 	defer le.Unlock()
 
 	if msg.IsProposal() {
-		le.proposals.Add(msg.SenderID())
+		le.proposals.Add(string(msg.SenderID()))
 	} else if msg.IsDeclaration() {
 		atomic.StoreInt32(&le.leaderExists, int32(1))
 		if le.sleeping && len(le.interruptChan) == 0 {
 			le.interruptChan <- struct{}{}
 		}
-		if msg.SenderID() < le.id && le.IsLeader() {
+		if bytes.Compare(msg.SenderID(), le.id) < 0 && le.IsLeader() {
 			le.stopBeingLeader()
 		}
 	} else {
@@ -281,7 +284,7 @@ func (le *leaderElectionSvcImpl) leaderElection() {
 	// for being a leader
 	for _, o := range le.proposals.ToArray() {
 		id := o.(string)
-		if id < le.id {
+		if bytes.Compare(peerID(id), le.id) < 0 {
 			return
 		}
 	}
@@ -344,9 +347,9 @@ func (le *leaderElectionSvcImpl) drainInterruptChannel() {
 }
 
 // isAlive returns whether peer of given id is considered alive
-func (le *leaderElectionSvcImpl) isAlive(id string) bool {
+func (le *leaderElectionSvcImpl) isAlive(id peerID) bool {
 	for _, p := range le.adapter.Peers() {
-		if p.ID() == id {
+		if bytes.Equal(p.ID(), id) {
 			return true
 		}
 	}

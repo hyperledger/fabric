@@ -45,8 +45,8 @@ type msg struct {
 	proposal bool
 }
 
-func (m *msg) SenderID() string {
-	return m.sender
+func (m *msg) SenderID() peerID {
+	return peerID(m.sender)
 }
 
 func (m *msg) IsProposal() bool {
@@ -76,8 +76,8 @@ func (p *peer) On(methodName string, arguments ...interface{}) *mock.Call {
 	return p.Mock.On(methodName, arguments...)
 }
 
-func (p *peer) ID() string {
-	return p.id
+func (p *peer) ID() peerID {
+	return peerID(p.id)
 }
 
 func (p *peer) Gossip(m Msg) {
