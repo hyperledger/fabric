@@ -25,12 +25,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const package_desc = "Package the specified chaincode into a deployment spec."
+
 // deployCmd returns the cobra command for Chaincode Deploy
 func packageCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInstantiateCmd = &cobra.Command{
 		Use:       "package",
-		Short:     fmt.Sprintf("Package the specified chaincode into a deployment spec."),
-		Long:      fmt.Sprintf(`Package the specified chaincode into a deployment spec.`),
+		Short:     package_desc,
+		Long:      package_desc,
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodePackage(cmd, args, cf)

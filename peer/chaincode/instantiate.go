@@ -19,24 +19,25 @@ package chaincode
 import (
 	"fmt"
 
-	"golang.org/x/net/context"
-
 	protcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var chaincodeInstantiateCmd *cobra.Command
 
 const instantiate_cmdname = "instantiate"
 
+const instantiate_desc = "Deploy the specified chaincode to the network."
+
 // instantiateCmd returns the cobra command for Chaincode Deploy
 func instantiateCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInstantiateCmd = &cobra.Command{
 		Use:       instantiate_cmdname,
-		Short:     fmt.Sprintf("Deploy the specified chaincode to the network."),
-		Long:      fmt.Sprintf(`Deploy the specified chaincode to the network.`),
+		Short:     fmt.Sprintf(instantiate_desc),
+		Long:      fmt.Sprintf(instantiate_desc),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeDeploy(cmd, args, cf)
@@ -60,23 +61,23 @@ func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envel
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
+		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
 	prop, _, err := utils.CreateDeployProposalFromCDS(chainID, cds, creator, policyMarhsalled, []byte(escc), []byte(vscc))
 	if err != nil {
-		return nil, fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error creating proposal  %s: %s", chainFuncName, err)
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error creating signed proposal  %s: %s", chainFuncName, err)
 	}
 
 	proposalResponse, err := cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error endorsing %s: %s", chainFuncName, err)
 	}
 
 	if proposalResponse != nil {

@@ -29,7 +29,7 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInvokeCmd = &cobra.Command{
 		Use:       "invoke",
 		Short:     fmt.Sprintf("Invoke the specified %s.", chainFuncName),
-		Long:      fmt.Sprintf(`Invoke the specified %s. It will try to commit the endorsed transaction to the network.`, chainFuncName),
+		Long:      fmt.Sprintf("Invoke the specified %s. It will try to commit the endorsed transaction to the network.", chainFuncName),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeInvoke(cmd, args, cf)

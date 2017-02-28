@@ -33,12 +33,14 @@ var chaincodeInstallCmd *cobra.Command
 
 const install_cmdname = "install"
 
+const install_desc = "Package the specified chaincode into a deployment spec and save it on the peer's path."
+
 // installCmd returns the cobra command for Chaincode Deploy
 func installCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInstallCmd = &cobra.Command{
 		Use:       "install",
-		Short:     fmt.Sprintf("Package the specified chaincode into a deployment spec and save it on the peer's path."),
-		Long:      fmt.Sprintf(`Package the specified chaincode into a deployment spec and save it on the peer's path.`),
+		Short:     fmt.Sprintf(install_desc),
+		Long:      fmt.Sprintf(install_desc),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeInstall(cmd, args, cf)
@@ -52,27 +54,27 @@ func installCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 func install(chaincodeName string, chaincodeVersion string, cds *pb.ChaincodeDeploymentSpec, cf *ChaincodeCmdFactory) error {
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
+		return fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
 	prop, _, err := utils.CreateInstallProposalFromCDS(cds, creator)
 	if err != nil {
-		return fmt.Errorf("Error creating proposal  %s: %s\n", chainFuncName, err)
+		return fmt.Errorf("Error creating proposal  %s: %s", chainFuncName, err)
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
+		return fmt.Errorf("Error creating signed proposal  %s: %s", chainFuncName, err)
 	}
 
 	proposalResponse, err := cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+		return fmt.Errorf("Error endorsing %s: %s", chainFuncName, err)
 	}
 
 	if proposalResponse != nil {
-		fmt.Printf("Installed remotely %v\n", proposalResponse)
+		logger.Debug("Installed remotely %v", proposalResponse)
 	}
 
 	return nil
@@ -81,7 +83,7 @@ func install(chaincodeName string, chaincodeVersion string, cds *pb.ChaincodeDep
 // chaincodeInstall installs the chaincode. If remoteinstall, does it via a lccc call
 func chaincodeInstall(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	if chaincodePath == common.UndefinedParamValue || chaincodeVersion == common.UndefinedParamValue {
-		return fmt.Errorf("Must supply value for %s path and version parameters.\n", chainFuncName)
+		return fmt.Errorf("Must supply value for %s path and version parameters.", chainFuncName)
 	}
 
 	var err error
