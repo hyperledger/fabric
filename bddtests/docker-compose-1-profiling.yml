@@ -1,0 +1,9 @@
+vp0:
+  extends:
+    file: compose-defaults.yml
+    service: vp
+  environment:
+    - CORE_PEER_ID=vp0
+    - CORE_PEER_PROFILE_ENABLED=true
+  ports:
+    - 7050:6060

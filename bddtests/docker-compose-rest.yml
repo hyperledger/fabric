@@ -1,0 +1,17 @@
+membersrvc0:
+  extends:
+    file: compose-defaults.yml
+    service: membersrvc
+
+vp0:
+  extends:
+    file: compose-defaults.yml
+    service: vp
+  environment:
+    - CORE_PEER_ID=vp0
+    - CORE_SECURITY_ENABLED=true
+    - CORE_PEER_PKI_ECA_PADDR=membersrvc0:7054
+    - CORE_PEER_PKI_TCA_PADDR=membersrvc0:7054
+    - CORE_PEER_PKI_TLSCA_PADDR=membersrvc0:7054
+  links:
+    - membersrvc0

@@ -1,0 +1,22 @@
+vp0:
+  extends:
+    file: compose-defaults.yml
+    service: vp
+  environment:
+    - CORE_PEER_ID=vp0
+  command: peer node start --peer-chaincodedev
+
+ccenv:
+  image: hyperledger/fabric-ccenv
+  environment:
+    - CORE_CHAINCODE_ID_NAME=testCC
+    - CORE_PEER_ADDRESS=vp0:7051
+  # $$GOPATH (double dollar) required to prevent docker-compose doing its own
+  # substitution before the value gets to the container
+  command: |
+    sh -c "
+      go install github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+      exec $$GOPATH/bin/chaincode_example02
+    "
+  links:
+    - vp0

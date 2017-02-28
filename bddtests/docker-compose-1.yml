@@ -1,0 +1,7 @@
+vp0:
+  extends:
+    file: compose-defaults.yml
+    service: vp
+  environment:
+    - CORE_PEER_ID=vp0
+
