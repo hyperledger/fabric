@@ -75,8 +75,8 @@ type gossipDiscoveryImpl struct {
 	deadLastTS      map[string]*timestamp     // H
 	aliveLastTS     map[string]*timestamp     // V
 	id2Member       map[string]*NetworkMember // all known members
-	aliveMembership util.MembershipStore
-	deadMembership  util.MembershipStore
+	aliveMembership *util.MembershipStore
+	deadMembership  *util.MembershipStore
 
 	bootstrapPeers []string
 
@@ -98,8 +98,8 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		deadLastTS:      make(map[string]*timestamp),
 		aliveLastTS:     make(map[string]*timestamp),
 		id2Member:       make(map[string]*NetworkMember),
-		aliveMembership: make(util.MembershipStore, 0),
-		deadMembership:  make(util.MembershipStore, 0),
+		aliveMembership: util.NewMembershipStore(),
+		deadMembership:  util.NewMembershipStore(),
 		crypt:           crypt,
 		comm:            comm,
 		lock:            &sync.RWMutex{},
@@ -208,7 +208,7 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 
 	d.lock.RLock()
 
-	n := len(d.aliveMembership)
+	n := d.aliveMembership.Size()
 	k := peerNum
 	if k > n {
 		k = n

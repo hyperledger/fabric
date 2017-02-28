@@ -62,9 +62,9 @@ type GossipChannel interface {
 	// IsOrgInChannel returns whether the given organization is in the channel
 	IsOrgInChannel(membersOrg api.OrgIdentityType) bool
 
-	// IsSubscribed returns whether the given member published
-	// its participation in the channel
-	IsSubscribed(member discovery.NetworkMember) bool
+	// EligibleForChannel returns whether the given member should get blocks
+	// for this channel
+	EligibleForChannel(member discovery.NetworkMember) bool
 
 	// HandleMessage processes a message sent by a remote peer
 	HandleMessage(proto.ReceivedMessage)
@@ -106,7 +106,11 @@ type Adapter interface {
 	OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType
 
 	// GetOrgOfPeer returns the organization ID of a given peer PKI-ID
-	GetOrgOfPeer(common.PKIidType) api.OrgIdentityType
+	GetOrgOfPeer(pkiID common.PKIidType) api.OrgIdentityType
+
+	// GetIdentityByPKIID returns an identity of a peer with a certain
+	// pkiID, or nil if not found
+	GetIdentityByPKIID(pkiID common.PKIidType) api.PeerIdentityType
 }
 
 type gossipChannel struct {
@@ -119,7 +123,7 @@ type gossipChannel struct {
 	orgs                      []api.OrgIdentityType
 	joinMsg                   api.JoinChannelMessage
 	blockMsgStore             msgstore.MessageStore
-	stateInfoMsgStore         msgstore.MessageStore
+	stateInfoMsgStore         *stateInfoCache
 	leaderMsgStore            msgstore.MessageStore
 	chainID                   common.ChainID
 	blocksPuller              pull.Mediator
@@ -138,7 +142,7 @@ type membershipFilter struct {
 func (mf *membershipFilter) GetMembership() []discovery.NetworkMember {
 	var members []discovery.NetworkMember
 	for _, mem := range mf.adapter.GetMembership() {
-		if mf.IsSubscribed(mem) {
+		if mf.EligibleForChannel(mem) {
 			members = append(members, mem)
 		}
 	}
@@ -166,7 +170,7 @@ func NewGossipChannel(mcs api.MessageCryptoService, chainID common.ChainID, adap
 		gc.blocksPuller.Remove(m.(*proto.SignedGossipMessage))
 	})
 
-	gc.stateInfoMsgStore = NewStateInfoMessageStore()
+	gc.stateInfoMsgStore = newStateInfoCache()
 	gc.blocksPuller = gc.createBlockPuller()
 	gc.leaderMsgStore = msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {})
 
@@ -203,30 +207,23 @@ func (gc *gossipChannel) periodicalInvocation(fn func(), c <-chan time.Time) {
 func (gc *gossipChannel) GetPeers() []discovery.NetworkMember {
 	members := []discovery.NetworkMember{}
 
-	pkiID2NetMember := make(map[string]discovery.NetworkMember)
 	for _, member := range gc.GetMembership() {
-		pkiID2NetMember[string(member.PKIid)] = member
-	}
-
-	for _, o := range gc.stateInfoMsgStore.Get() {
-		stateInf := o.(*proto.SignedGossipMessage).GetStateInfo()
-		pkiID := stateInf.PkiID
-		if member, exists := pkiID2NetMember[string(pkiID)]; !exists {
+		if !gc.EligibleForChannel(member) {
 			continue
-		} else {
-			member.Metadata = stateInf.Metadata
-			members = append(members, member)
 		}
+		stateInf := gc.stateInfoMsgStore.MsgByID(member.PKIid)
+		if stateInf == nil {
+			continue
+		}
+		member.Metadata = stateInf.GetStateInfo().Metadata
+		members = append(members, member)
 	}
 	return members
 }
 
 func (gc *gossipChannel) requestStateInfo() {
 	req := gc.createStateInfoRequest().NoopSign()
-	endpoints := filter.SelectPeers(gc.GetConf().PullPeerNum, gc.GetMembership(), gc.IsSubscribed)
-	if len(endpoints) == 0 {
-		endpoints = filter.SelectPeers(gc.GetConf().PullPeerNum, gc.GetMembership(), gc.IsMemberInChan)
-	}
+	endpoints := filter.SelectPeers(gc.GetConf().PullPeerNum, gc.GetMembership(), gc.IsMemberInChan)
 	gc.Send(req, endpoints...)
 }
 
@@ -296,19 +293,20 @@ func (gc *gossipChannel) IsOrgInChannel(membersOrg api.OrgIdentityType) bool {
 	return false
 }
 
-// IsSubscribed returns whether the given member published
-// its participation in the channel
-func (gc *gossipChannel) IsSubscribed(member discovery.NetworkMember) bool {
+// EligibleForChannel returns whether the given member should get blocks
+// for this channel
+func (gc *gossipChannel) EligibleForChannel(member discovery.NetworkMember) bool {
 	if !gc.IsMemberInChan(member) {
 		return false
 	}
-	for _, o := range gc.stateInfoMsgStore.Get() {
-		m, isMsg := o.(*proto.SignedGossipMessage)
-		if isMsg && m.IsStateInfoMsg() && bytes.Equal(m.GetStateInfo().PkiID, member.PKIid) {
-			return true
-		}
+
+	identity := gc.GetIdentityByPKIID(member.PKIid)
+	msg := gc.stateInfoMsgStore.MsgByID(member.PKIid)
+	if msg == nil || identity == nil {
+		return false
 	}
-	return false
+
+	return gc.mcs.VerifyByChannel(gc.chainID, identity, msg.Envelope.Signature, msg.Envelope.Payload) == nil
 }
 
 // AddToMsgStore adds a given GossipMessage to the message store
@@ -412,6 +410,10 @@ func (gc *gossipChannel) HandleMessage(msg proto.ReceivedMessage) {
 		return
 	}
 	if m.IsPullMsg() && m.GetPullMsgType() == proto.PullMsgType_BlockMessage {
+		if !gc.EligibleForChannel(discovery.NetworkMember{PKIid: msg.GetPKIID()}) {
+			gc.logger.Warning(msg.GetPKIID(), "isn't eligible for channel", gc.chainID)
+			return
+		}
 		if m.IsDataUpdate() {
 			for _, item := range m.GetDataUpdate().Data {
 				gMsg, err := item.ToGossipMessage()
@@ -562,4 +564,31 @@ func (gc *gossipChannel) UpdateStateInfo(msg *proto.SignedGossipMessage) {
 // NewStateInfoMessageStore returns a MessageStore
 func NewStateInfoMessageStore() msgstore.MessageStore {
 	return msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {})
+}
+
+func newStateInfoCache() *stateInfoCache {
+	return &stateInfoCache{
+		MembershipStore: util.NewMembershipStore(),
+		MessageStore:    NewStateInfoMessageStore(),
+	}
+}
+
+// stateInfoCache is actually a messageStore
+// that also indexes messages that are added
+// so that they could be extracted later
+type stateInfoCache struct {
+	*util.MembershipStore
+	msgstore.MessageStore
+}
+
+// Add attempts to add the given message to the stateInfoCache,
+// and if the message was added, also indexes it.
+// Message must be a StateInfo message.
+func (cache stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
+	added := cache.MessageStore.Add(msg)
+	pkiID := msg.GetStateInfo().PkiID
+	if added {
+		cache.MembershipStore.Put(pkiID, msg)
+	}
+	return added
 }

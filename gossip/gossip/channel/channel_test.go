@@ -17,14 +17,13 @@ limitations under the License.
 package channel
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"errors"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -57,11 +56,12 @@ func init() {
 var (
 	// Organizations: {ORG1, ORG2}
 	// Channel A: {ORG1}
-	channelA         = common.ChainID("A")
-	orgInChannelA    = api.OrgIdentityType("ORG1")
-	orgNotInChannelA = api.OrgIdentityType("ORG2")
-	pkiIDInOrg1      = common.PKIidType("pkiIDInOrg1")
-	pkiIDinOrg2      = common.PKIidType("pkiIDinOrg2")
+	channelA                  = common.ChainID("A")
+	orgInChannelA             = api.OrgIdentityType("ORG1")
+	orgNotInChannelA          = api.OrgIdentityType("ORG2")
+	pkiIDInOrg1               = common.PKIidType("pkiIDInOrg1")
+	pkiIDInOrg1ButNotEligible = common.PKIidType("pkiIDInOrg1ButNotEligible")
+	pkiIDinOrg2               = common.PKIidType("pkiIDinOrg2")
 )
 
 type joinChanMsg struct {
@@ -88,6 +88,7 @@ func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
 }
 
 type cryptoService struct {
+	mocked bool
 	mock.Mock
 }
 
@@ -95,8 +96,12 @@ func (cs *cryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) commo
 	panic("Should not be called in this test")
 }
 
-func (cs *cryptoService) VerifyByChannel(_ common.ChainID, _ api.PeerIdentityType, _, _ []byte) error {
-	panic("Should not be called in this test")
+func (cs *cryptoService) VerifyByChannel(channel common.ChainID, identity api.PeerIdentityType, _, _ []byte) error {
+	if !cs.mocked {
+		return nil
+	}
+	args := cs.Called(identity)
+	return args.Get(0).(error)
 }
 
 func (cs *cryptoService) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
@@ -199,10 +204,15 @@ func (ga *gossipAdapterMock) GetOrgOfPeer(PKIIID common.PKIidType) api.OrgIdenti
 	return args.Get(0).(api.OrgIdentityType)
 }
 
+func (ga *gossipAdapterMock) GetIdentityByPKIID(pkiID common.PKIidType) api.PeerIdentityType {
+	return api.PeerIdentityType(pkiID)
+}
+
 func configureAdapter(adapter *gossipAdapterMock, members ...discovery.NetworkMember) {
 	adapter.On("GetConf").Return(conf)
 	adapter.On("GetMembership").Return(members)
 	adapter.On("GetOrgOfPeer", pkiIDInOrg1).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", pkiIDInOrg1ButNotEligible).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
 	adapter.On("GetOrgOfPeer", mock.Anything).Return(api.OrgIdentityType(nil))
 }
@@ -312,6 +322,8 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 		gossipMessagesSentFromChannel <- msg
 	}
 	// First, ensure it does that for pull messages from peers that are in the channel
+	// Let the peer first publish it is in the channel
+	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1, channelA), PKIID: pkiIDInOrg1})
 	helloMsg := createHelloMsg(pkiIDInOrg1)
 	helloMsg.On("Respond", mock.Anything).Run(messageRelayer)
 	gc.HandleMessage(helloMsg)
@@ -329,6 +341,23 @@ func TestChannelPeerNotInChannel(t *testing.T) {
 		t.Fatal("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
 	case <-time.After(time.Second * 1):
 	}
+
+	// Now for a more advanced scenario- the peer claims to be in the right org, and also claims to be in the channel
+	// but the MSP declares it is not eligible for the channel
+	// pkiIDInOrg1ButNotEligible
+	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1ButNotEligible, channelA), PKIID: pkiIDInOrg1ButNotEligible})
+	cs.On("VerifyByChannel", mock.Anything).Return(errors.New("Not eligible"))
+	cs.mocked = true
+	helloMsg = createHelloMsg(pkiIDInOrg1ButNotEligible)
+	helloMsg.On("Respond", mock.Anything).Run(messageRelayer)
+	gc.HandleMessage(helloMsg)
+	select {
+	case <-gossipMessagesSentFromChannel:
+		t.Fatal("Responded with digest, but shouldn't have since peer is not eligible for the channel")
+	case <-time.After(time.Second * 1):
+	}
+
+	cs.Mock = mock.Mock{}
 
 	// Ensure we respond to a valid StateInfoRequest
 	req := gc.(*gossipChannel).createStateInfoRequest()
@@ -404,7 +433,7 @@ func TestChannelIsSubscribed(t *testing.T) {
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("DeMultiplex", mock.Anything)
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1, channelA), PKIID: pkiIDInOrg1})
-	assert.True(t, gc.IsSubscribed(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
+	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
 }
 
 func TestChannelAddToMessageStore(t *testing.T) {
@@ -456,7 +485,7 @@ func TestChannelAddToMessageStore(t *testing.T) {
 	}
 
 	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1, channelA), PKIID: pkiIDInOrg1})
-	assert.True(t, gc.IsSubscribed(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
+	assert.True(t, gc.EligibleForChannel(discovery.NetworkMember{PKIid: pkiIDInOrg1}))
 }
 
 func TestChannelBadBlocks(t *testing.T) {
@@ -782,7 +811,38 @@ func TestChannelReconfigureChannel(t *testing.T) {
 		t.Fatal("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
 	case <-time.After(time.Second * 1):
 	}
+}
 
+func TestChannelGetPeers(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: We have a peer in an org, and the peer is notified that several peers
+	// exist, and some of them:
+	// (1) Join its channel, and are eligible for receiving blocks.
+	// (2) Join its channel, but are not eligible for receiving blocks (MSP doesn't allow this).
+	// (3) Say they join its channel, but are actually from an org that is not in the channel.
+	// The GetPeers query should only return peers that belong to the first group.
+	cs := &cryptoService{}
+	adapter := new(gossipAdapterMock)
+	adapter.On("Gossip", mock.Anything)
+	adapter.On("Send", mock.Anything, mock.Anything)
+	adapter.On("DeMultiplex", mock.Anything)
+	members := []discovery.NetworkMember{
+		{PKIid: pkiIDInOrg1},
+		{PKIid: pkiIDInOrg1ButNotEligible},
+		{PKIid: pkiIDinOrg2},
+	}
+	configureAdapter(adapter, members...)
+	gc := NewGossipChannel(cs, channelA, adapter, &joinChanMsg{})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDInOrg1, channelA)})
+	gc.HandleMessage(&receivedMsg{PKIID: pkiIDInOrg1, msg: createStateInfoMsg(1, pkiIDinOrg2, channelA)})
+	assert.Len(t, gc.GetPeers(), 1)
+	assert.Equal(t, pkiIDInOrg1, gc.GetPeers()[0].PKIid)
+
+	gc.HandleMessage(&receivedMsg{msg: createStateInfoMsg(10, pkiIDInOrg1ButNotEligible, channelA), PKIID: pkiIDInOrg1ButNotEligible})
+	cs.On("VerifyByChannel", mock.Anything).Return(errors.New("Not eligible"))
+	cs.mocked = true
+	assert.Len(t, gc.GetPeers(), 0)
 }
 
 func createDataUpdateMsg(nonce uint64) *proto.SignedGossipMessage {
