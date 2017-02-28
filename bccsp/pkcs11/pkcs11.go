@@ -157,7 +157,7 @@ func getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err error) {
 		return nil, false, fmt.Errorf("Failed Unmarshaling Public Key")
 	}
 
-	pubKey = &ecdsa.PublicKey{curve, x, y}
+	pubKey = &ecdsa.PublicKey{Curve: curve, X: x, Y: y}
 	return pubKey, isPriv, nil
 }
 
@@ -288,7 +288,7 @@ func generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski []byte, pub
 		return nil, nil, fmt.Errorf("Failed Unmarshaling Public Key")
 	}
 
-	pubGoKey := &ecdsa.PublicKey{nistCurve, x, y}
+	pubGoKey := &ecdsa.PublicKey{Curve: nistCurve, X: x, Y: y}
 
 	if logger.IsEnabledFor(logging.DEBUG) {
 		listAttrs(p11lib, session, prv)
