@@ -1,0 +1,11 @@
+sampleApp0:
+  image: hyperledger-sdk-node
+  environment:
+    - MEMBERSRVC_ADDRESS=membersrvc0:7054
+    - PEER_ADDRESS=vp0:7051
+    - KEY_VALUE_STORE=/tmp/hl_sdk_node_key_value_store
+  # Startup of peer must be delayed to allow membersrvc to come up first
+  command: node sampleSDKApp
+  links:
+    - membersrvc0
+    - vp0
