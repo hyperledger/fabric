@@ -70,13 +70,13 @@ func (r *Resources) MSPManager() msp.MSPManager {
 type Transactional struct{}
 
 // PreCommit returns nil
-func (t *Transactional) PreCommit() error { return nil }
+func (t *Transactional) PreCommit(tx interface{}) error { return nil }
 
 // CommitConfig does nothing
-func (t *Transactional) CommitProposals() {}
+func (t *Transactional) CommitProposals(tx interface{}) {}
 
 // RollbackConfig does nothing
-func (t *Transactional) RollbackProposals() {}
+func (t *Transactional) RollbackProposals(tx interface{}) {}
 
 // Initializer mocks the configtxapi.Initializer interface
 type Initializer struct {
@@ -108,14 +108,14 @@ type PolicyProposer struct {
 }
 
 // ProposeConfig sets LastKey to key, LastPath to path, and LastPolicy to configPolicy, returning ErrorForProposedConfig
-func (pp *PolicyProposer) ProposePolicy(key string, configPolicy *cb.ConfigPolicy) error {
+func (pp *PolicyProposer) ProposePolicy(tx interface{}, key string, configPolicy *cb.ConfigPolicy) error {
 	pp.LastKey = key
 	pp.LastPolicy = configPolicy
 	return pp.ErrorForProposePolicy
 }
 
 // BeginConfig will be removed in the future
-func (pp *PolicyProposer) BeginPolicyProposals(groups []string) ([]policies.Proposer, error) {
+func (pp *PolicyProposer) BeginPolicyProposals(tx interface{}, groups []string) ([]policies.Proposer, error) {
 	handlers := make([]policies.Proposer, len(groups))
 	for i := range handlers {
 		handlers[i] = pp
@@ -132,14 +132,14 @@ type ValueProposer struct {
 }
 
 // ProposeConfig sets LastKey to key, and LastValue to configValue, returning ErrorForProposedConfig
-func (vp *ValueProposer) ProposeValue(key string, configValue *cb.ConfigValue) error {
+func (vp *ValueProposer) ProposeValue(tx interface{}, key string, configValue *cb.ConfigValue) error {
 	vp.LastKey = key
 	vp.LastValue = configValue
 	return vp.ErrorForProposeConfig
 }
 
 // BeginConfig returns slices populated by self
-func (vp *ValueProposer) BeginValueProposals(groups []string) ([]config.ValueProposer, error) {
+func (vp *ValueProposer) BeginValueProposals(tx interface{}, groups []string) ([]config.ValueProposer, error) {
 	handlers := make([]config.ValueProposer, len(groups))
 	for i := range handlers {
 		handlers[i] = vp

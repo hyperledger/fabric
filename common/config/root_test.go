@@ -32,16 +32,16 @@ func init() {
 func TestBeginBadRoot(t *testing.T) {
 	r := NewRoot(&msp.MSPConfigHandler{})
 
-	_, err := r.BeginValueProposals([]string{ChannelGroupKey, ChannelGroupKey})
+	_, err := r.BeginValueProposals(t, []string{ChannelGroupKey, ChannelGroupKey})
 	assert.Error(t, err, "Only one root element allowed")
 
-	_, err = r.BeginValueProposals([]string{"foo"})
+	_, err = r.BeginValueProposals(t, []string{"foo"})
 	assert.Error(t, err, "Non %s group not allowed", ChannelGroupKey)
 }
 
 func TestProposeValue(t *testing.T) {
 	r := NewRoot(&msp.MSPConfigHandler{})
 
-	err := r.ProposeValue("foo", nil)
+	err := r.ProposeValue(t, "foo", nil)
 	assert.Error(t, err, "ProposeValue should return error")
 }

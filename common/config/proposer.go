@@ -18,6 +18,7 @@ package config
 
 import (
 	"fmt"
+	"sync"
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
@@ -27,15 +28,21 @@ import (
 
 var logger = logging.MustGetLogger("common/config")
 
+// ValuesDeserializer provides a mechanism to retrieve proto messages to deserialize config values into
+type ValuesDeserializer interface {
+	// ProtoMsg behaves like a map lookup for key
+	ProtoMsg(key string) (proto.Message, bool)
+}
+
 // Values defines a mechanism to supply messages to unamrshal from config
 // and a mechanism to validate the results
 type Values interface {
-	// ProtoMsg behaves like a map lookup for key
-	ProtoMsg(key string) (proto.Message, bool)
+	ValuesDeserializer
 
 	// Validate should ensure that the values set into the proto messages are correct
-	// and that the new group values are allowed
-	Validate(map[string]ValueProposer) error
+	// and that the new group values are allowed.  It also includes a tx ID in case cross
+	// Handler invocations (ie to the MSP Config Manager) must be made
+	Validate(interface{}, map[string]ValueProposer) error
 
 	// Commit should call back into the Value handler to update the config
 	Commit()
@@ -53,27 +60,31 @@ type config struct {
 }
 
 type Proposer struct {
-	vh      Handler
-	current *config
-	pending *config
+	vh          Handler
+	pending     map[interface{}]*config
+	current     *config
+	pendingLock sync.RWMutex
 }
 
 func NewProposer(vh Handler) *Proposer {
 	return &Proposer{
 		vh:      vh,
 		current: &config{},
+		pending: make(map[interface{}]*config),
 	}
 }
 
 // BeginValueProposals called when a config proposal is begun
-func (p *Proposer) BeginValueProposals(groups []string) ([]ValueProposer, error) {
-	if p.pending != nil {
+func (p *Proposer) BeginValueProposals(tx interface{}, groups []string) ([]ValueProposer, error) {
+	p.pendingLock.Lock()
+	defer p.pendingLock.Unlock()
+	if _, ok := p.pending[tx]; ok {
 		logger.Panicf("Duplicated BeginValueProposals without Rollback or Commit")
 	}
 
 	result := make([]ValueProposer, len(groups))
 
-	p.pending = &config{
+	pending := &config{
 		allocated: p.vh.Allocate(),
 		groups:    make(map[string]ValueProposer),
 	}
@@ -92,21 +103,30 @@ func (p *Proposer) BeginValueProposals(groups []string) ([]ValueProposer, error)
 			var err error
 			group, err = p.vh.NewGroup(groupName)
 			if err != nil {
-				p.pending = nil
+				pending = nil
 				return nil, fmt.Errorf("Error creating group %s: %s", groupName, err)
 			}
 		}
 
-		p.pending.groups[groupName] = group
+		pending.groups[groupName] = group
 		result[i] = group
 	}
+
+	p.pending[tx] = pending
 
 	return result, nil
 }
 
 // ProposeValue called when config is added to a proposal
-func (p *Proposer) ProposeValue(key string, configValue *cb.ConfigValue) error {
-	msg, ok := p.pending.allocated.ProtoMsg(key)
+func (p *Proposer) ProposeValue(tx interface{}, key string, configValue *cb.ConfigValue) error {
+	p.pendingLock.RLock()
+	pending, ok := p.pending[tx]
+	p.pendingLock.RUnlock()
+	if !ok {
+		logger.Panicf("Serious Programming Error: attempted to propose value for tx which had not been begun")
+	}
+
+	msg, ok := pending.allocated.ProtoMsg(key)
 	if !ok {
 		return fmt.Errorf("Unknown value key %s for %T", key, p.vh)
 	}
@@ -119,21 +139,32 @@ func (p *Proposer) ProposeValue(key string, configValue *cb.ConfigValue) error {
 }
 
 // Validate ensures that the new config values is a valid change
-func (p *Proposer) PreCommit() error {
-	return p.pending.allocated.Validate(p.pending.groups)
+func (p *Proposer) PreCommit(tx interface{}) error {
+	p.pendingLock.RLock()
+	pending, ok := p.pending[tx]
+	p.pendingLock.RUnlock()
+	if !ok {
+		logger.Panicf("Serious Programming Error: attempted to pre-commit tx which had not been begun")
+	}
+	return pending.allocated.Validate(tx, pending.groups)
 }
 
 // RollbackProposals called when a config proposal is abandoned
-func (p *Proposer) RollbackProposals() {
-	p.pending = nil
+func (p *Proposer) RollbackProposals(tx interface{}) {
+	p.pendingLock.Lock()
+	defer p.pendingLock.Unlock()
+	delete(p.pending, tx)
 }
 
 // CommitProposals called when a config proposal is committed
-func (p *Proposer) CommitProposals() {
-	if p.pending == nil {
-		logger.Panicf("Attempted to commit with no pending values (indicates no Begin invoked)")
+func (p *Proposer) CommitProposals(tx interface{}) {
+	p.pendingLock.Lock()
+	defer p.pendingLock.Unlock()
+	pending, ok := p.pending[tx]
+	if !ok {
+		logger.Panicf("Serious Programming Error: attempted to commit tx which had not been begun")
 	}
-	p.current = p.pending
+	p.current = pending
 	p.current.allocated.Commit()
-	p.pending = nil
+	delete(p.pending, tx)
 }

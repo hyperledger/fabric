@@ -26,6 +26,7 @@ import (
 )
 
 type configResult struct {
+	tx            interface{}
 	handler       api.Transactional
 	policyHandler api.Transactional
 	subResults    []*configResult
@@ -38,30 +39,30 @@ func (cr *configResult) preCommit() error {
 			return err
 		}
 	}
-	return cr.handler.PreCommit()
+	return cr.handler.PreCommit(cr.tx)
 }
 
 func (cr *configResult) commit() {
 	for _, subResult := range cr.subResults {
 		subResult.commit()
 	}
-	cr.handler.CommitProposals()
-	cr.policyHandler.CommitProposals()
+	cr.handler.CommitProposals(cr.tx)
+	cr.policyHandler.CommitProposals(cr.tx)
 }
 
 func (cr *configResult) rollback() {
 	for _, subResult := range cr.subResults {
 		subResult.rollback()
 	}
-	cr.handler.RollbackProposals()
-	cr.policyHandler.RollbackProposals()
+	cr.handler.RollbackProposals(cr.tx)
+	cr.policyHandler.RollbackProposals(cr.tx)
 }
 
 // proposeGroup proposes a group configuration with a given handler
 // it will in turn recursively call itself until all groups have been exhausted
 // at each call, it returns the handler that was passed in, plus any handlers returned
 // by recursive calls into proposeGroup
-func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handler config.ValueProposer, policyHandler policies.Proposer) (*configResult, error) {
+func (cm *configManager) proposeGroup(tx interface{}, name string, group *cb.ConfigGroup, handler config.ValueProposer, policyHandler policies.Proposer) (*configResult, error) {
 	subGroups := make([]string, len(group.Groups))
 	i := 0
 	for subGroup := range group.Groups {
@@ -70,12 +71,12 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 	}
 
 	logger.Debugf("Beginning new config for channel %s and group %s", cm.current.channelID, name)
-	subHandlers, err := handler.BeginValueProposals(subGroups)
+	subHandlers, err := handler.BeginValueProposals(tx, subGroups)
 	if err != nil {
 		return nil, err
 	}
 
-	subPolicyHandlers, err := policyHandler.BeginPolicyProposals(subGroups)
+	subPolicyHandlers, err := policyHandler.BeginPolicyProposals(tx, subGroups)
 	if err != nil {
 		return nil, err
 	}
@@ -85,13 +86,14 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 	}
 
 	result := &configResult{
+		tx:            tx,
 		handler:       handler,
 		policyHandler: policyHandler,
 		subResults:    make([]*configResult, 0, len(subGroups)),
 	}
 
 	for i, subGroup := range subGroups {
-		subResult, err := cm.proposeGroup(name+"/"+subGroup, group.Groups[subGroup], subHandlers[i], subPolicyHandlers[i])
+		subResult, err := cm.proposeGroup(tx, name+"/"+subGroup, group.Groups[subGroup], subHandlers[i], subPolicyHandlers[i])
 		if err != nil {
 			result.rollback()
 			return nil, err
@@ -100,14 +102,14 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 	}
 
 	for key, value := range group.Values {
-		if err := handler.ProposeValue(key, value); err != nil {
+		if err := handler.ProposeValue(tx, key, value); err != nil {
 			result.rollback()
 			return nil, err
 		}
 	}
 
 	for key, policy := range group.Policies {
-		if err := policyHandler.ProposePolicy(key, policy); err != nil {
+		if err := policyHandler.ProposePolicy(tx, key, policy); err != nil {
 			result.rollback()
 			return nil, err
 		}
@@ -125,7 +127,7 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 func (cm *configManager) processConfig(channelGroup *cb.ConfigGroup) (*configResult, error) {
 	helperGroup := cb.NewConfigGroup()
 	helperGroup.Groups[RootGroupKey] = channelGroup
-	groupResult, err := cm.proposeGroup("", helperGroup, cm.initializer.ValueProposer(), cm.initializer.PolicyProposer())
+	groupResult, err := cm.proposeGroup(channelGroup, "", helperGroup, cm.initializer.ValueProposer(), cm.initializer.PolicyProposer())
 	if err != nil {
 		return nil, err
 	}

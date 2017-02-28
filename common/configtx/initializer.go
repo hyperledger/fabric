@@ -60,7 +60,7 @@ func (r *resources) MSPManager() msp.MSPManager {
 }
 
 func newResources() *resources {
-	mspConfigHandler := &configtxmsp.MSPConfigHandler{}
+	mspConfigHandler := configtxmsp.NewMSPConfigHandler()
 
 	policyProviderMap := make(map[int32]policies.Provider)
 	for pType := range cb.Policy_PolicyType_name {
@@ -87,27 +87,27 @@ type policyProposerRoot struct {
 }
 
 // BeginPolicyProposals is used to start a new config proposal
-func (p *policyProposerRoot) BeginPolicyProposals(groups []string) ([]policies.Proposer, error) {
+func (p *policyProposerRoot) BeginPolicyProposals(tx interface{}, groups []string) ([]policies.Proposer, error) {
 	if len(groups) != 1 {
 		logger.Panicf("Initializer only supports having one root group")
 	}
 	return []policies.Proposer{p.policyManager}, nil
 }
 
-func (i *policyProposerRoot) ProposePolicy(key string, policy *cb.ConfigPolicy) error {
+func (i *policyProposerRoot) ProposePolicy(tx interface{}, key string, policy *cb.ConfigPolicy) error {
 	return fmt.Errorf("Programming error, this should never be invoked")
 }
 
 // PreCommit is a no-op and returns nil
-func (i *policyProposerRoot) PreCommit() error {
+func (i *policyProposerRoot) PreCommit(tx interface{}) error {
 	return nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
-func (i *policyProposerRoot) RollbackProposals() {}
+func (i *policyProposerRoot) RollbackProposals(tx interface{}) {}
 
 // CommitConfig is used to commit a new config proposal
-func (i *policyProposerRoot) CommitProposals() {}
+func (i *policyProposerRoot) CommitProposals(tx interface{}) {}
 
 type initializer struct {
 	*resources

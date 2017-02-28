@@ -42,7 +42,7 @@ func (v *mockValues) ProtoMsg(key string) (proto.Message, bool) {
 	return msg, ok
 }
 
-func (v *mockValues) Validate(map[string]ValueProposer) error {
+func (v *mockValues) Validate(interface{}, map[string]ValueProposer) error {
 	return v.ValidateReturn
 }
 
@@ -79,22 +79,29 @@ func newMockHandler() *mockHandler {
 	}
 }
 
-func TestDoubleBegin(t *testing.T) {
+func TestDoubleSameBegin(t *testing.T) {
 	p := NewProposer(&mockHandler{AllocateReturn: &mockValues{}})
-	p.BeginValueProposals(nil)
-	assert.Panics(t, func() { p.BeginValueProposals(nil) }, "Two begins back to back should have caused a panic")
+	p.BeginValueProposals(p, nil)
+	assert.Panics(t, func() { p.BeginValueProposals(p, nil) }, "Two begins back to back should have caused a panic")
+}
+
+func TestDoubleDifferentBegin(t *testing.T) {
+	p := NewProposer(&mockHandler{AllocateReturn: &mockValues{}})
+	p.BeginValueProposals(t, nil)
+	p.BeginValueProposals(p, nil)
+	// This function would panic on error
 }
 
 func TestCommitWithoutBegin(t *testing.T) {
 	p := NewProposer(&mockHandler{AllocateReturn: &mockValues{}})
-	assert.Panics(t, func() { p.CommitProposals() }, "Commit without begin should have caused a panic")
+	assert.Panics(t, func() { p.CommitProposals(t) }, "Commit without begin should have caused a panic")
 }
 
 func TestRollback(t *testing.T) {
 	p := NewProposer(&mockHandler{AllocateReturn: &mockValues{}})
-	p.pending = &config{}
-	p.RollbackProposals()
-	assert.Nil(t, p.pending, "Should have cleared pending config on rollback")
+	p.pending[t] = &config{}
+	p.RollbackProposals(t)
+	assert.Nil(t, p.pending[t], "Should have cleared pending config on rollback")
 }
 
 func TestGoodKeys(t *testing.T) {
@@ -103,14 +110,14 @@ func TestGoodKeys(t *testing.T) {
 	mh.AllocateReturn.ProtoMsgMap["Payload"] = &cb.Payload{}
 
 	p := NewProposer(mh)
-	_, err := p.BeginValueProposals(nil)
+	_, err := p.BeginValueProposals(t, nil)
 	assert.NoError(t, err)
 
 	env := &cb.Envelope{Payload: []byte("SOME DATA")}
 	pay := &cb.Payload{Data: []byte("SOME OTHER DATA")}
 
-	assert.NoError(t, p.ProposeValue("Envelope", &cb.ConfigValue{Value: utils.MarshalOrPanic(env)}))
-	assert.NoError(t, p.ProposeValue("Payload", &cb.ConfigValue{Value: utils.MarshalOrPanic(pay)}))
+	assert.NoError(t, p.ProposeValue(t, "Envelope", &cb.ConfigValue{Value: utils.MarshalOrPanic(env)}))
+	assert.NoError(t, p.ProposeValue(t, "Payload", &cb.ConfigValue{Value: utils.MarshalOrPanic(pay)}))
 
 	assert.Equal(t, mh.AllocateReturn.ProtoMsgMap["Envelope"], env)
 	assert.Equal(t, mh.AllocateReturn.ProtoMsgMap["Payload"], pay)
@@ -121,10 +128,10 @@ func TestBadMarshaling(t *testing.T) {
 	mh.AllocateReturn.ProtoMsgMap["Envelope"] = &cb.Envelope{}
 
 	p := NewProposer(mh)
-	_, err := p.BeginValueProposals(nil)
+	_, err := p.BeginValueProposals(t, nil)
 	assert.NoError(t, err)
 
-	assert.Error(t, p.ProposeValue("Envelope", &cb.ConfigValue{Value: []byte("GARBAGE")}), "Should have errored unmarshaling")
+	assert.Error(t, p.ProposeValue(t, "Envelope", &cb.ConfigValue{Value: []byte("GARBAGE")}), "Should have errored unmarshaling")
 }
 
 func TestBadMissingMessage(t *testing.T) {
@@ -132,10 +139,10 @@ func TestBadMissingMessage(t *testing.T) {
 	mh.AllocateReturn.ProtoMsgMap["Payload"] = &cb.Payload{}
 
 	p := NewProposer(mh)
-	_, err := p.BeginValueProposals(nil)
+	_, err := p.BeginValueProposals(t, nil)
 	assert.NoError(t, err)
 
-	assert.Error(t, p.ProposeValue("Envelope", &cb.ConfigValue{Value: utils.MarshalOrPanic(&cb.Envelope{})}), "Should have errored on unexpected message")
+	assert.Error(t, p.ProposeValue(t, "Envelope", &cb.ConfigValue{Value: utils.MarshalOrPanic(&cb.Envelope{})}), "Should have errored on unexpected message")
 }
 
 func TestGroups(t *testing.T) {
@@ -144,18 +151,18 @@ func TestGroups(t *testing.T) {
 	mh.NewGroupMap["bar"] = nil
 
 	p := NewProposer(mh)
-	_, err := p.BeginValueProposals([]string{"foo", "bar"})
+	_, err := p.BeginValueProposals(t, []string{"foo", "bar"})
 	assert.NoError(t, err, "Both groups were present")
-	p.CommitProposals()
+	p.CommitProposals(t)
 
 	mh.NewGroupMap = make(map[string]ValueProposer)
-	_, err = p.BeginValueProposals([]string{"foo", "bar"})
+	_, err = p.BeginValueProposals(t, []string{"foo", "bar"})
 	assert.NoError(t, err, "Should not have tried to recreate the groups")
-	p.CommitProposals()
+	p.CommitProposals(t)
 
-	_, err = p.BeginValueProposals([]string{"foo", "other"})
+	_, err = p.BeginValueProposals(t, []string{"foo", "other"})
 	assert.Error(t, err, "Should not have errored when trying to create 'other'")
 
-	_, err = p.BeginValueProposals([]string{"foo"})
+	_, err = p.BeginValueProposals(t, []string{"foo"})
 	assert.NoError(t, err, "Should be able to begin again without rolling back because of error")
 }

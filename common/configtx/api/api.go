@@ -66,22 +66,22 @@ type Resources interface {
 // Transactional is an interface which allows for an update to be proposed and rolled back
 type Transactional interface {
 	// RollbackConfig called when a config proposal is abandoned
-	RollbackProposals()
+	RollbackProposals(tx interface{})
 
 	// PreCommit verifies that the transaction can be committed successfully
-	PreCommit() error
+	PreCommit(tx interface{}) error
 
 	// CommitConfig called when a config proposal is committed
-	CommitProposals()
+	CommitProposals(tx interface{})
 }
 
 // PolicyHandler is used for config updates to policy
 type PolicyHandler interface {
 	Transactional
 
-	BeginConfig(groups []string) ([]PolicyHandler, error)
+	BeginConfig(tx interface{}, groups []string) ([]PolicyHandler, error)
 
-	ProposePolicy(key string, path []string, policy *cb.ConfigPolicy) error
+	ProposePolicy(tx interface{}, key string, path []string, policy *cb.ConfigPolicy) error
 }
 
 // Initializer is used as indirection between Manager and Handler to allow

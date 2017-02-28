@@ -98,19 +98,19 @@ func NewOrganizationConfig(og *OrganizationGroup) *OrganizationConfig {
 }
 
 // Validate returns whether the configuration is valid
-func (oc *OrganizationConfig) Validate(groups map[string]ValueProposer) error {
-	return oc.validateMSP()
+func (oc *OrganizationConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
+	return oc.validateMSP(tx)
 }
 
 func (oc *OrganizationConfig) Commit() {
 	oc.organizationGroup.OrganizationConfig = oc
 }
 
-func (oc *OrganizationConfig) validateMSP() error {
+func (oc *OrganizationConfig) validateMSP(tx interface{}) error {
 	var err error
 
 	logger.Debugf("Setting up MSP for org %s", oc.organizationGroup.name)
-	oc.msp, err = oc.organizationGroup.mspConfigHandler.ProposeMSP(oc.protos.MSP)
+	oc.msp, err = oc.organizationGroup.mspConfigHandler.ProposeMSP(tx, oc.protos.MSP)
 	if err != nil {
 		return err
 	}

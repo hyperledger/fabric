@@ -31,12 +31,12 @@ func TestMSPConfigManager(t *testing.T) {
 	// test success:
 
 	// begin/propose/commit
-	mspCH := &MSPConfigHandler{}
-	mspCH.BeginConfig()
-	_, err = mspCH.ProposeMSP(conf)
+	mspCH := NewMSPConfigHandler()
+	mspCH.BeginConfig(t)
+	_, err = mspCH.ProposeMSP(t, conf)
 	assert.NoError(t, err)
-	mspCH.PreCommit()
-	mspCH.CommitProposals()
+	mspCH.PreCommit(t)
+	mspCH.CommitProposals(t)
 
 	msps, err := mspCH.GetMSPs()
 	assert.NoError(t, err)
@@ -47,9 +47,9 @@ func TestMSPConfigManager(t *testing.T) {
 
 	// test failure
 	// begin/propose/commit
-	mspCH.BeginConfig()
-	_, err = mspCH.ProposeMSP(conf)
+	mspCH.BeginConfig(t)
+	_, err = mspCH.ProposeMSP(t, conf)
 	assert.NoError(t, err)
-	_, err = mspCH.ProposeMSP(&mspprotos.MSPConfig{Config: []byte("BARF!")})
+	_, err = mspCH.ProposeMSP(t, &mspprotos.MSPConfig{Config: []byte("BARF!")})
 	assert.Error(t, err)
 }

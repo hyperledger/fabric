@@ -159,7 +159,7 @@ func (cc *ChannelConfig) OrdererAddresses() []string {
 
 // Validate inspects the generated configuration protos, ensures that the values are correct, and
 // sets the ChannelConfig fields that may be referenced after Commit
-func (cc *ChannelConfig) Validate(groups map[string]ValueProposer) error {
+func (cc *ChannelConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
 	for _, validator := range []func() error{
 		cc.validateHashingAlgorithm,
 		cc.validateBlockDataHashingStructure,

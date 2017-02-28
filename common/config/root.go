@@ -40,34 +40,34 @@ func NewRoot(mspConfigHandler *msp.MSPConfigHandler) *Root {
 }
 
 // BeginValueProposals is used to start a new config proposal
-func (r *Root) BeginValueProposals(groups []string) ([]ValueProposer, error) {
+func (r *Root) BeginValueProposals(tx interface{}, groups []string) ([]ValueProposer, error) {
 	if len(groups) != 1 {
 		return nil, fmt.Errorf("Root config only supports having one base group")
 	}
 	if groups[0] != ChannelGroupKey {
 		return nil, fmt.Errorf("Root group must have channel")
 	}
-	r.mspConfigHandler.BeginConfig()
+	r.mspConfigHandler.BeginConfig(tx)
 	return []ValueProposer{r.channel}, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
-func (r *Root) RollbackProposals() {
-	r.mspConfigHandler.RollbackProposals()
+func (r *Root) RollbackProposals(tx interface{}) {
+	r.mspConfigHandler.RollbackProposals(tx)
 }
 
 // PreCommit is used to verify total configuration before commit
-func (r *Root) PreCommit() error {
-	return r.mspConfigHandler.PreCommit()
+func (r *Root) PreCommit(tx interface{}) error {
+	return r.mspConfigHandler.PreCommit(tx)
 }
 
 // CommitConfig is used to commit a new config proposal
-func (r *Root) CommitProposals() {
-	r.mspConfigHandler.CommitProposals()
+func (r *Root) CommitProposals(tx interface{}) {
+	r.mspConfigHandler.CommitProposals(tx)
 }
 
 // ProposeValue should not be invoked on this object
-func (r *Root) ProposeValue(key string, value *cb.ConfigValue) error {
+func (r *Root) ProposeValue(tx interface{}, key string, value *cb.ConfigValue) error {
 	return fmt.Errorf("Programming error, this should never be invoked")
 }
 

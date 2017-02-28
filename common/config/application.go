@@ -74,7 +74,7 @@ func NewApplicationConfig(ag *ApplicationGroup) *ApplicationConfig {
 	}
 }
 
-func (ac *ApplicationConfig) Validate(groups map[string]ValueProposer) error {
+func (ac *ApplicationConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
 	ac.applicationOrgs = make(map[string]ApplicationOrg)
 	var ok bool
 	for key, value := range groups {

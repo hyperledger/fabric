@@ -142,7 +142,7 @@ func (oc *OrdererConfig) KafkaBrokers() []string {
 	return oc.protos.KafkaBrokers.Brokers
 }
 
-func (oc *OrdererConfig) Validate(groups map[string]ValueProposer) error {
+func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
 	for _, validator := range []func() error{
 		oc.validateConsensusType,
 		oc.validateBatchSize,

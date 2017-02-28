@@ -86,9 +86,9 @@ func NewApplicationOrgConfig(aog *ApplicationOrgGroup) *ApplicationOrgConfig {
 	return aoc
 }
 
-func (aoc *ApplicationOrgConfig) Validate(groups map[string]ValueProposer) error {
+func (aoc *ApplicationOrgConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Anchor peers for org %s are %v", aoc.applicationOrgGroup.name, aoc.protos.AnchorPeers)
 	}
-	return aoc.OrganizationConfig.Validate(groups)
+	return aoc.OrganizationConfig.Validate(tx, groups)
 }
