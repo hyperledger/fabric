@@ -17,16 +17,15 @@
 package chaincode
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
 	"testing"
 
+	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
-	//	"github.com/hyperledger/fabric/protos/utils"
-
-	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 )
 
 var once sync.Once
@@ -141,7 +140,7 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 
 	mockEndorerClient := common.GetMockEndorserClient(mockResponse, nil)
 
-	sendErr := fmt.Errorf("send tx failed")
+	sendErr := errors.New("send tx failed")
 	mockBroadcastClient := common.GetMockBroadcastClient(sendErr)
 
 	mockCF := &ChaincodeCmdFactory{

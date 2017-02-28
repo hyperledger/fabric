@@ -69,7 +69,7 @@ func TestBadVersion(t *testing.T) {
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err == nil {
-		t.Fatalf("Expected error executing install command for version not specified")
+		t.Fatal("Expected error executing install command for version not specified")
 	}
 }
 
@@ -84,11 +84,11 @@ func TestNonExistentCC(t *testing.T) {
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err == nil {
-		t.Fatalf("Expected error executing install command for bad chaincode")
+		t.Fatal("Expected error executing install command for bad chaincode")
 	}
 
 	if _, err := os.Stat(fsPath + "/chaincodes/badexample02.testversion"); err == nil {
-		t.Fatalf("chaincode example02.testversion should not exist")
+		t.Fatal("chaincode example02.testversion should not exist")
 	}
 }
 

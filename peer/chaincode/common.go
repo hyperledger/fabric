@@ -106,12 +106,12 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 		logger.Infof("Invoke result: %v", proposalResp)
 	} else {
 		if proposalResp == nil {
-			return fmt.Errorf("Error query %s by endorsing: %s\n", chainFuncName, err)
+			return fmt.Errorf("Error query %s by endorsing: %s", chainFuncName, err)
 		}
 
 		if chaincodeQueryRaw {
 			if chaincodeQueryHex {
-				err = errors.New("Options --raw (-r) and --hex (-x) are not compatible\n")
+				err = errors.New("Options --raw (-r) and --hex (-x) are not compatible")
 				return
 			}
 			fmt.Print("Query Result (Raw): ")
@@ -130,7 +130,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool, cf *
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	//we need chaincode name for everything, including deploy
 	if chaincodeName == common.UndefinedParamValue {
-		return fmt.Errorf("Must supply value for %s name parameter.\n", chainFuncName)
+		return fmt.Errorf("Must supply value for %s name parameter.", chainFuncName)
 	}
 
 	if cmd.Name() == instantiate_cmdname || cmd.Name() == install_cmdname || cmd.Name() == upgrade_cmdname {
@@ -142,35 +142,35 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	// if it's not a deploy or an upgrade we don't need policy, escc and vscc
 	if cmd.Name() != instantiate_cmdname && cmd.Name() != upgrade_cmdname {
 		if escc != common.UndefinedParamValue {
-			return fmt.Errorf("escc should be supplied only to chaincode deploy requests")
+			return errors.New("escc should be supplied only to chaincode deploy requests")
 		}
 
 		if vscc != common.UndefinedParamValue {
-			return fmt.Errorf("vscc should be supplied only to chaincode deploy requests")
+			return errors.New("vscc should be supplied only to chaincode deploy requests")
 		}
 
 		if policy != common.UndefinedParamValue {
-			return fmt.Errorf("policy should be supplied only to chaincode deploy requests")
+			return errors.New("policy should be supplied only to chaincode deploy requests")
 		}
 	} else {
 		if escc != common.UndefinedParamValue {
 			logger.Infof("Using escc %s", escc)
 		} else {
-			logger.Infof("Using default escc")
+			logger.Info("Using default escc")
 			escc = "escc"
 		}
 
 		if vscc != common.UndefinedParamValue {
 			logger.Infof("Using vscc %s", vscc)
 		} else {
-			logger.Infof("Using default vscc")
+			logger.Info("Using default vscc")
 			vscc = "vscc"
 		}
 
 		if policy != common.UndefinedParamValue {
 			p, err := cauthdsl.FromString(policy)
 			if err != nil {
-				return fmt.Errorf("Invalid policy %s\n", policy)
+				return fmt.Errorf("Invalid policy %s", policy)
 			}
 			policyMarhsalled = putils.MarshalOrPanic(p)
 		} else {
@@ -199,7 +199,7 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		_, argsPresent := sm["args"]
 		_, funcPresent := sm["function"]
 		if !argsPresent || (len(m) == 2 && !funcPresent) || len(m) > 2 {
-			return fmt.Errorf("Non-empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
+			return errors.New("Non-empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 		}
 	} else {
 		if cmd == nil || cmd != chaincodeInstallCmd {

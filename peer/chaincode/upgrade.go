@@ -19,12 +19,11 @@ package chaincode
 import (
 	"fmt"
 
-	"golang.org/x/net/context"
-
 	protcommon "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 var chaincodeUpgradeCmd *cobra.Command
@@ -35,8 +34,8 @@ const upgrade_cmdname = "upgrade"
 func upgradeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeUpgradeCmd = &cobra.Command{
 		Use:       upgrade_cmdname,
-		Short:     fmt.Sprintf("Upgrade chaincode."),
-		Long:      fmt.Sprintf(`Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.`),
+		Short:     "Upgrade chaincode.",
+		Long:      "Upgrade an existing chaincode with the specified one. The new chaincode will immediately replace the existing chaincode upon the transaction committed.",
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeUpgrade(cmd, args, cf)
@@ -60,24 +59,24 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 
 	creator, err := cf.Signer.Serialize()
 	if err != nil {
-		return nil, fmt.Errorf("Error serializing identity for %s: %s\n", cf.Signer.GetIdentifier(), err)
+		return nil, fmt.Errorf("Error serializing identity for %s: %s", cf.Signer.GetIdentifier(), err)
 	}
 
 	prop, _, err := utils.CreateUpgradeProposalFromCDS(chainID, cds, creator, policyMarhsalled, []byte(escc), []byte(vscc))
 	if err != nil {
-		return nil, fmt.Errorf("Error creating proposal %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error creating proposal %s: %s", chainFuncName, err)
 	}
 	logger.Debugf("Get upgrade proposal for chaincode <%v>", spec.ChaincodeId)
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = utils.GetSignedProposal(prop, cf.Signer)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating signed proposal  %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error creating signed proposal  %s: %s", chainFuncName, err)
 	}
 
 	proposalResponse, err := cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, fmt.Errorf("Error endorsing %s: %s\n", chainFuncName, err)
+		return nil, fmt.Errorf("Error endorsing %s: %s", chainFuncName, err)
 	}
 	logger.Debugf("endorse upgrade proposal, get response <%v>", proposalResponse.Response)
 
