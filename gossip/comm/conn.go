@@ -89,7 +89,10 @@ func (cs *connectionStore) getConnection(peer *RemotePeer) (*connection, error) 
 
 	destinationLock.Unlock()
 
-	if cs.isClosing {
+	cs.RLock()
+	isClosing = cs.isClosing
+	cs.RUnlock()
+	if isClosing {
 		return nil, errors.New("ConnStore is closing")
 	}
 
@@ -141,10 +144,15 @@ func (cs *connectionStore) shutdown() {
 	cs.Lock()
 	cs.isClosing = true
 	pkiIds2conn := cs.pki2Conn
+
+	var connections2Close []*connection
+	for _, conn := range pkiIds2conn {
+		connections2Close = append(connections2Close, conn)
+	}
 	cs.Unlock()
 
 	wg := sync.WaitGroup{}
-	for _, conn := range pkiIds2conn {
+	for _, conn := range connections2Close {
 		wg.Add(1)
 		go func(conn *connection) {
 			cs.closeByPKIid(conn.pkiID)
