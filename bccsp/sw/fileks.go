@@ -16,6 +16,7 @@ limitations under the License.
 package sw
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -159,7 +160,7 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 			return nil, errors.New("Public key type not recognized")
 		}
 	default:
-		return nil, errors.New("Key type not recognized")
+		return ks.searchKeystoreForSKI(ski)
 	}
 }
 
@@ -219,6 +220,38 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 	}
 
 	return
+}
+
+func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err error) {
+
+	files, _ := ioutil.ReadDir(ks.path)
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		raw, err := ioutil.ReadFile(filepath.Join(ks.path, f.Name()))
+
+		key, err := utils.PEMtoPrivateKey(raw, ks.pwd)
+		if err != nil {
+			continue
+		}
+
+		switch key.(type) {
+		case *ecdsa.PrivateKey:
+			k = &ecdsaPrivateKey{key.(*ecdsa.PrivateKey)}
+		case *rsa.PrivateKey:
+			k = &rsaPrivateKey{key.(*rsa.PrivateKey)}
+		default:
+			continue
+		}
+
+		if !bytes.Equal(k.SKI(), ski) {
+			continue
+		}
+
+		return k, nil
+	}
+	return nil, errors.New("Key type not recognized")
 }
 
 func (ks *fileBasedKeyStore) getSuffix(alias string) string {
