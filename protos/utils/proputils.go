@@ -521,6 +521,10 @@ func GetActionFromEnvelope(envBytes []byte) (*peer.ChaincodeAction, error) {
 		return nil, err
 	}
 
+	if len(tx.Actions) == 0 {
+		return nil, fmt.Errorf("At least one TransactionAction is required")
+	}
+
 	_, respPayload, err := GetPayloads(tx.Actions[0])
 	return respPayload, err
 }
