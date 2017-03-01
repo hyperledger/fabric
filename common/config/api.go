@@ -21,7 +21,6 @@ package config
 import (
 	"time"
 
-	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -86,10 +85,7 @@ type Orderer interface {
 
 type ValueProposer interface {
 	// BeginValueProposals called when a config proposal is begun
-	BeginValueProposals(tx interface{}, groups []string) ([]ValueProposer, error)
-
-	// ProposeValue called when config is added to a proposal
-	ProposeValue(tx interface{}, key string, configValue *cb.ConfigValue) error
+	BeginValueProposals(tx interface{}, groups []string) (ValueDeserializer, []ValueProposer, error)
 
 	// RollbackProposals called when a config proposal is abandoned
 	RollbackProposals(tx interface{})

@@ -23,7 +23,21 @@ import (
 	"github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
+
+type configGroupWrapper struct {
+	*cb.ConfigGroup
+	deserializedValues map[string]proto.Message
+}
+
+func newConfigGroupWrapper(group *cb.ConfigGroup) *configGroupWrapper {
+	return &configGroupWrapper{
+		ConfigGroup:        group,
+		deserializedValues: make(map[string]proto.Message),
+	}
+}
 
 type configResult struct {
 	tx            interface{}
@@ -62,7 +76,7 @@ func (cr *configResult) rollback() {
 // it will in turn recursively call itself until all groups have been exhausted
 // at each call, it returns the handler that was passed in, plus any handlers returned
 // by recursive calls into proposeGroup
-func (cm *configManager) proposeGroup(tx interface{}, name string, group *cb.ConfigGroup, handler config.ValueProposer, policyHandler policies.Proposer) (*configResult, error) {
+func (cm *configManager) proposeGroup(tx interface{}, name string, group *configGroupWrapper, handler config.ValueProposer, policyHandler policies.Proposer) (*configResult, error) {
 	subGroups := make([]string, len(group.Groups))
 	i := 0
 	for subGroup := range group.Groups {
@@ -71,7 +85,7 @@ func (cm *configManager) proposeGroup(tx interface{}, name string, group *cb.Con
 	}
 
 	logger.Debugf("Beginning new config for channel %s and group %s", cm.current.channelID, name)
-	subHandlers, err := handler.BeginValueProposals(tx, subGroups)
+	valueDeserializer, subHandlers, err := handler.BeginValueProposals(tx, subGroups)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +107,7 @@ func (cm *configManager) proposeGroup(tx interface{}, name string, group *cb.Con
 	}
 
 	for i, subGroup := range subGroups {
-		subResult, err := cm.proposeGroup(tx, name+"/"+subGroup, group.Groups[subGroup], subHandlers[i], subPolicyHandlers[i])
+		subResult, err := cm.proposeGroup(tx, name+"/"+subGroup, newConfigGroupWrapper(group.Groups[subGroup]), subHandlers[i], subPolicyHandlers[i])
 		if err != nil {
 			result.rollback()
 			return nil, err
@@ -102,10 +116,12 @@ func (cm *configManager) proposeGroup(tx interface{}, name string, group *cb.Con
 	}
 
 	for key, value := range group.Values {
-		if err := handler.ProposeValue(tx, key, value); err != nil {
+		msg, err := valueDeserializer.Deserialize(key, value.Value)
+		if err != nil {
 			result.rollback()
 			return nil, err
 		}
+		group.deserializedValues[key] = msg
 	}
 
 	for key, policy := range group.Policies {
@@ -127,7 +143,7 @@ func (cm *configManager) proposeGroup(tx interface{}, name string, group *cb.Con
 func (cm *configManager) processConfig(channelGroup *cb.ConfigGroup) (*configResult, error) {
 	helperGroup := cb.NewConfigGroup()
 	helperGroup.Groups[RootGroupKey] = channelGroup
-	groupResult, err := cm.proposeGroup(channelGroup, "", helperGroup, cm.initializer.ValueProposer(), cm.initializer.PolicyProposer())
+	groupResult, err := cm.proposeGroup(channelGroup, "", newConfigGroupWrapper(helperGroup), cm.initializer.ValueProposer(), cm.initializer.PolicyProposer())
 	if err != nil {
 		return nil, err
 	}

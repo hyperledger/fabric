@@ -22,6 +22,8 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type Resources struct {
@@ -129,22 +131,21 @@ type ValueProposer struct {
 	LastKey               string
 	LastValue             *cb.ConfigValue
 	ErrorForProposeConfig error
-}
-
-// ProposeConfig sets LastKey to key, and LastValue to configValue, returning ErrorForProposedConfig
-func (vp *ValueProposer) ProposeValue(tx interface{}, key string, configValue *cb.ConfigValue) error {
-	vp.LastKey = key
-	vp.LastValue = configValue
-	return vp.ErrorForProposeConfig
+	DeserializeReturn     proto.Message
+	DeserializeError      error
 }
 
 // BeginConfig returns slices populated by self
-func (vp *ValueProposer) BeginValueProposals(tx interface{}, groups []string) ([]config.ValueProposer, error) {
+func (vp *ValueProposer) BeginValueProposals(tx interface{}, groups []string) (config.ValueDeserializer, []config.ValueProposer, error) {
 	handlers := make([]config.ValueProposer, len(groups))
 	for i := range handlers {
 		handlers[i] = vp
 	}
-	return handlers, nil
+	return vp, handlers, nil
+}
+
+func (vp *ValueProposer) Deserialize(key string, value []byte) (proto.Message, error) {
+	return vp.DeserializeReturn, vp.DeserializeError
 }
 
 // Manager is a mock implementation of configtxapi.Manager

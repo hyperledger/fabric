@@ -37,9 +37,17 @@ type mockValues struct {
 	ValidateReturn error
 }
 
-func (v *mockValues) ProtoMsg(key string) (proto.Message, bool) {
+func (v *mockValues) Deserialize(key string, value []byte) (proto.Message, error) {
 	msg, ok := v.ProtoMsgMap[key]
-	return msg, ok
+	if !ok {
+		return nil, fmt.Errorf("Missing message key: %s", key)
+	}
+	err := proto.Unmarshal(value, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return msg, nil
 }
 
 func (v *mockValues) Validate(interface{}, map[string]ValueProposer) error {
@@ -110,17 +118,19 @@ func TestGoodKeys(t *testing.T) {
 	mh.AllocateReturn.ProtoMsgMap["Payload"] = &cb.Payload{}
 
 	p := NewProposer(mh)
-	_, err := p.BeginValueProposals(t, nil)
+	vd, _, err := p.BeginValueProposals(t, nil)
 	assert.NoError(t, err)
 
 	env := &cb.Envelope{Payload: []byte("SOME DATA")}
 	pay := &cb.Payload{Data: []byte("SOME OTHER DATA")}
 
-	assert.NoError(t, p.ProposeValue(t, "Envelope", &cb.ConfigValue{Value: utils.MarshalOrPanic(env)}))
-	assert.NoError(t, p.ProposeValue(t, "Payload", &cb.ConfigValue{Value: utils.MarshalOrPanic(pay)}))
+	msg, err := vd.Deserialize("Envelope", utils.MarshalOrPanic(env))
+	assert.NoError(t, err)
+	assert.Equal(t, msg, env)
 
-	assert.Equal(t, mh.AllocateReturn.ProtoMsgMap["Envelope"], env)
-	assert.Equal(t, mh.AllocateReturn.ProtoMsgMap["Payload"], pay)
+	msg, err = vd.Deserialize("Payload", utils.MarshalOrPanic(pay))
+	assert.NoError(t, err)
+	assert.Equal(t, msg, pay)
 }
 
 func TestBadMarshaling(t *testing.T) {
@@ -128,10 +138,11 @@ func TestBadMarshaling(t *testing.T) {
 	mh.AllocateReturn.ProtoMsgMap["Envelope"] = &cb.Envelope{}
 
 	p := NewProposer(mh)
-	_, err := p.BeginValueProposals(t, nil)
+	vd, _, err := p.BeginValueProposals(t, nil)
 	assert.NoError(t, err)
 
-	assert.Error(t, p.ProposeValue(t, "Envelope", &cb.ConfigValue{Value: []byte("GARBAGE")}), "Should have errored unmarshaling")
+	_, err = vd.Deserialize("Envelope", []byte("GARBAGE"))
+	assert.Error(t, err, "Should have errored unmarshaling")
 }
 
 func TestBadMissingMessage(t *testing.T) {
@@ -139,10 +150,11 @@ func TestBadMissingMessage(t *testing.T) {
 	mh.AllocateReturn.ProtoMsgMap["Payload"] = &cb.Payload{}
 
 	p := NewProposer(mh)
-	_, err := p.BeginValueProposals(t, nil)
+	vd, _, err := p.BeginValueProposals(t, nil)
 	assert.NoError(t, err)
 
-	assert.Error(t, p.ProposeValue(t, "Envelope", &cb.ConfigValue{Value: utils.MarshalOrPanic(&cb.Envelope{})}), "Should have errored on unexpected message")
+	_, err = vd.Deserialize("Envelope", utils.MarshalOrPanic(&cb.Envelope{}))
+	assert.Error(t, err, "Should have errored on unexpected message")
 }
 
 func TestGroups(t *testing.T) {
@@ -151,18 +163,18 @@ func TestGroups(t *testing.T) {
 	mh.NewGroupMap["bar"] = nil
 
 	p := NewProposer(mh)
-	_, err := p.BeginValueProposals(t, []string{"foo", "bar"})
+	_, _, err := p.BeginValueProposals(t, []string{"foo", "bar"})
 	assert.NoError(t, err, "Both groups were present")
 	p.CommitProposals(t)
 
 	mh.NewGroupMap = make(map[string]ValueProposer)
-	_, err = p.BeginValueProposals(t, []string{"foo", "bar"})
+	_, _, err = p.BeginValueProposals(t, []string{"foo", "bar"})
 	assert.NoError(t, err, "Should not have tried to recreate the groups")
 	p.CommitProposals(t)
 
-	_, err = p.BeginValueProposals(t, []string{"foo", "other"})
+	_, _, err = p.BeginValueProposals(t, []string{"foo", "other"})
 	assert.Error(t, err, "Should not have errored when trying to create 'other'")
 
-	_, err = p.BeginValueProposals(t, []string{"foo"})
+	_, _, err = p.BeginValueProposals(t, []string{"foo"})
 	assert.NoError(t, err, "Should be able to begin again without rolling back because of error")
 }

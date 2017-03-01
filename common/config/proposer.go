@@ -20,24 +20,27 @@ import (
 	"fmt"
 	"sync"
 
-	cb "github.com/hyperledger/fabric/protos/common"
-
 	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("common/config")
 
-// ValuesDeserializer provides a mechanism to retrieve proto messages to deserialize config values into
-type ValuesDeserializer interface {
-	// ProtoMsg behaves like a map lookup for key
-	ProtoMsg(key string) (proto.Message, bool)
+// ValueDeserializer provides a mechanism to retrieve proto messages to deserialize config values into
+type ValueDeserializer interface {
+	// Deserialize takes a Value key as a string, and a marshaled Value value as bytes
+	// and returns the deserialized version of that value.  Note, this function operates
+	// with side effects intended.  Using a ValueDeserializer to deserialize a message will
+	// generally set the value in the Values interface that the ValueDeserializer derived from
+	// Therefore, the proto.Message may be safely discarded, but may be retained for
+	// inspection and or debugging purposes.
+	Deserialize(key string, value []byte) (proto.Message, error)
 }
 
 // Values defines a mechanism to supply messages to unamrshal from config
 // and a mechanism to validate the results
 type Values interface {
-	ValuesDeserializer
+	ValueDeserializer
 
 	// Validate should ensure that the values set into the proto messages are correct
 	// and that the new group values are allowed.  It also includes a tx ID in case cross
@@ -75,7 +78,7 @@ func NewProposer(vh Handler) *Proposer {
 }
 
 // BeginValueProposals called when a config proposal is begun
-func (p *Proposer) BeginValueProposals(tx interface{}, groups []string) ([]ValueProposer, error) {
+func (p *Proposer) BeginValueProposals(tx interface{}, groups []string) (ValueDeserializer, []ValueProposer, error) {
 	p.pendingLock.Lock()
 	defer p.pendingLock.Unlock()
 	if _, ok := p.pending[tx]; ok {
@@ -104,7 +107,7 @@ func (p *Proposer) BeginValueProposals(tx interface{}, groups []string) ([]Value
 			group, err = p.vh.NewGroup(groupName)
 			if err != nil {
 				pending = nil
-				return nil, fmt.Errorf("Error creating group %s: %s", groupName, err)
+				return nil, nil, fmt.Errorf("Error creating group %s: %s", groupName, err)
 			}
 		}
 
@@ -114,28 +117,7 @@ func (p *Proposer) BeginValueProposals(tx interface{}, groups []string) ([]Value
 
 	p.pending[tx] = pending
 
-	return result, nil
-}
-
-// ProposeValue called when config is added to a proposal
-func (p *Proposer) ProposeValue(tx interface{}, key string, configValue *cb.ConfigValue) error {
-	p.pendingLock.RLock()
-	pending, ok := p.pending[tx]
-	p.pendingLock.RUnlock()
-	if !ok {
-		logger.Panicf("Serious Programming Error: attempted to propose value for tx which had not been begun")
-	}
-
-	msg, ok := pending.allocated.ProtoMsg(key)
-	if !ok {
-		return fmt.Errorf("Unknown value key %s for %T", key, p.vh)
-	}
-
-	if err := proto.Unmarshal(configValue.Value, msg); err != nil {
-		return fmt.Errorf("Error unmarshaling key to proto message: %s", err)
-	}
-
-	return nil
+	return pending.allocated, result, nil
 }
 
 // Validate ensures that the new config values is a valid change

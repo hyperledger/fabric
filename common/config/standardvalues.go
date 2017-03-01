@@ -47,9 +47,21 @@ func NewStandardValues(protosStructs ...interface{}) (*standardValues, error) {
 	return sv, nil
 }
 
-func (sv *standardValues) ProtoMsg(key string) (proto.Message, bool) {
+// Deserialize looks up the backing Values proto of the given name, unmarshals the given bytes
+// to populate the backing message structure, and retuns a referenced to the retained deserialized
+// message (or an error, either because the key did not exist, or there was an an error unmarshaling
+func (sv *standardValues) Deserialize(key string, value []byte) (proto.Message, error) {
 	msg, ok := sv.lookup[key]
-	return msg, ok
+	if !ok {
+		return nil, fmt.Errorf("Not found")
+	}
+
+	err := proto.Unmarshal(value, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return msg, nil
 }
 
 func (sv *standardValues) initializeProtosStruct(objValue reflect.Value) error {
