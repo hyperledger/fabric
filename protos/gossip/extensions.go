@@ -23,6 +23,7 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 )
 
@@ -328,9 +329,29 @@ type ReceivedMessage interface {
 	// constructed with
 	GetSourceEnvelope() *Envelope
 
-	// GetPKIID returns the PKI-ID of the remote peer
+	// GetConnectionInfo returns information about the remote peer
 	// that sent the message
-	GetPKIID() common.PKIidType
+	GetConnectionInfo() *ConnectionInfo
+}
+
+// ConnectionInfo represents information about
+// the remote peer that sent a certain ReceivedMessage
+type ConnectionInfo struct {
+	ID       common.PKIidType
+	Auth     *AuthInfo
+	Identity api.PeerIdentityType
+}
+
+func (connInfo *ConnectionInfo) IsAuthenticated() bool {
+	return connInfo.Auth != nil
+}
+
+// AuthInfo represents the authentication
+// data that was provided by the remote peer
+// at the connection time
+type AuthInfo struct {
+	SignedData []byte
+	Signature  []byte
 }
 
 // Sign signs a GossipMessage with given Signer.

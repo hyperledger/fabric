@@ -270,7 +270,7 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 
 	msg := m.GetGossipMessage()
 
-	g.logger.Debug("Entering,", m.GetPKIID(), "sent us", msg)
+	g.logger.Debug("Entering,", m.GetConnectionInfo().ID, "sent us", msg)
 	defer g.logger.Debug("Exiting")
 
 	if !g.validateMsg(m) {
@@ -302,7 +302,7 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 	if msg.IsChannelRestricted() {
 		if gc := g.chanState.getGossipChannelByChainID(msg.Channel); gc == nil {
 			// If we're not in the channel but we should forward to peers of our org
-			if g.isInMyorg(discovery.NetworkMember{PKIid: m.GetPKIID()}) && msg.IsStateInfoMsg() {
+			if g.isInMyorg(discovery.NetworkMember{PKIid: m.GetConnectionInfo().ID}) && msg.IsStateInfoMsg() {
 				if g.stateInfoMsgStore.Add(msg) {
 					g.emitter.Add(msg)
 				}

@@ -144,8 +144,10 @@ func (m *receivedMsg) Respond(msg *proto.GossipMessage) {
 	m.Called(msg)
 }
 
-func (m *receivedMsg) GetPKIID() common.PKIidType {
-	return m.PKIID
+func (m *receivedMsg) GetConnectionInfo() *proto.ConnectionInfo {
+	return &proto.ConnectionInfo{
+		ID: m.PKIID,
+	}
 }
 
 type gossipAdapterMock struct {

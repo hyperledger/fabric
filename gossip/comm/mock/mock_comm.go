@@ -102,9 +102,9 @@ func (packet *packetMock) GetGossipMessage() *proto.SignedGossipMessage {
 	return packet.msg.(*proto.SignedGossipMessage)
 }
 
-// GetPKIID returns the PKI-ID of the remote peer
+// GetConnectionInfo returns information about the remote peer
 // that sent the message
-func (packet *packetMock) GetPKIID() common.PKIidType {
+func (packet *packetMock) GetConnectionInfo() *proto.ConnectionInfo {
 	return nil
 }
 
