@@ -471,6 +471,8 @@ func _(chainID string, _ string) error {
 
 // Test deploy of a transaction
 func TestExecuteDeployTransaction(t *testing.T) {
+	//chaincoe is deployed as part of many tests. No need for a separate one for this
+	t.Skip()
 	chainID := util.GetTestChainID()
 
 	executeDeployTransaction(t, chainID, "example01", "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01")
@@ -478,6 +480,8 @@ func TestExecuteDeployTransaction(t *testing.T) {
 
 // Test deploy of a transaction with a GOPATH with multiple elements
 func TestGopathExecuteDeployTransaction(t *testing.T) {
+	//this is no longer critical as chaincode is assembled in the client side (SDK)
+	t.Skip()
 	chainID := util.GetTestChainID()
 
 	// add a trailing slash to GOPATH
@@ -1041,6 +1045,9 @@ func TestGetEvent(t *testing.T) {
 // Test the execution of a chaincode that queries another chaincode
 // example02 implements "query" as a function in Invoke. example05 calls example02
 func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
+	//this is essentially same as the ChaincodeInvokeChaincode now that
+	//we don't distinguish between Invoke and Query (there's no separate "Query")
+	t.Skip()
 	chainID := util.GetTestChainID()
 
 	var peerLis net.Listener
