@@ -17,6 +17,7 @@ limitations under the License.
 package configtx
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/config"
@@ -24,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -35,6 +37,77 @@ type configResult struct {
 	policyHandler      policies.Proposer
 	subResults         []*configResult
 	deserializedValues map[string]proto.Message
+}
+
+func (cr *configResult) JSON() string {
+	var buffer bytes.Buffer
+	buffer.WriteString("{")
+	cr.bufferJSON(&buffer)
+	buffer.WriteString("}")
+	return buffer.String()
+
+}
+
+// bufferJSON takes a buffer and writes a JSON representation of the configResult into the buffer
+// Note that we use some mildly ad-hoc JSON encoding because the proto documentation explicitly
+// mentions that the encoding/json package does not correctly marshal proto objects, and we
+// do not have a proto object (nor can one be defined) which presents the mixed-map style of
+// keys mapping to different types of the config
+func (cr *configResult) bufferJSON(buffer *bytes.Buffer) {
+	jpb := &jsonpb.Marshaler{
+		EmitDefaults: true,
+		Indent:       "    ",
+	}
+
+	// "GroupName": {
+	buffer.WriteString("\"")
+	buffer.WriteString(cr.groupName)
+	buffer.WriteString("\": {")
+
+	//    "Values": {
+	buffer.WriteString("\"Values\": {")
+	count := 0
+	for key, value := range cr.group.Values {
+		// "Key": {
+		buffer.WriteString("\"")
+		buffer.WriteString(key)
+		buffer.WriteString("\": {")
+		// 	"Version": "X",
+		buffer.WriteString("\"Version\":\"")
+		buffer.WriteString(fmt.Sprintf("%d", value.Version))
+		buffer.WriteString("\",")
+		//      "ModPolicy": "foo",
+		buffer.WriteString("\"ModPolicy\":\"")
+		buffer.WriteString(value.ModPolicy)
+		buffer.WriteString("\",")
+		//      "Value": protoAsJSON
+		buffer.WriteString("\"Value\":")
+		jpb.Marshal(buffer, cr.deserializedValues[key])
+		// },
+		buffer.WriteString("}")
+		count++
+		if count < len(cr.group.Values) {
+			buffer.WriteString(",")
+		}
+	}
+	//     },
+	buffer.WriteString("},")
+
+	//     "Groups": {
+	count = 0
+	buffer.WriteString("\"Groups\": {")
+	for _, subResult := range cr.subResults {
+		subResult.bufferJSON(buffer)
+		count++
+		if count < len(cr.subResults) {
+			buffer.WriteString(",")
+		}
+	}
+	//     }
+	buffer.WriteString("}")
+
+	//     }
+	buffer.WriteString("}")
 }
 
 func (cr *configResult) preCommit() error {
