@@ -26,7 +26,8 @@ import (
 )
 
 func TestExecuteInvokeOnManyChains(t *testing.T) {
-	chains := []string{"chain1", "chain2", "chain3", "chain4"}
+	//lets use 2 chains to test multi chains
+	chains := []string{"chain1", "chain2"}
 	lis, err := initPeer(chains...)
 	if err != nil {
 		t.Fail()
