@@ -77,7 +77,8 @@ type gossipServiceImpl struct {
 	deliveryService deliverclient.DeliverService
 	deliveryFactory DeliveryServiceFactory
 	lock            sync.RWMutex
-	msgCrypto       identity.Mapper
+	idMapper        identity.Mapper
+	mcs             api.MessageCryptoService
 	peerIdentity    []byte
 	secAdv          api.SecurityAdvisor
 }
@@ -132,10 +133,11 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 
 		gossip := integration.NewGossipComponent(peerIdentity, endpoint, s, secAdv, mcs, idMapper, dialOpts, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
+			mcs:             mcs,
 			gossipSvc:       gossip,
 			chains:          make(map[string]state.GossipStateProvider),
 			deliveryFactory: factory,
-			msgCrypto:       idMapper,
+			idMapper:        idMapper,
 			peerIdentity:    peerIdentity,
 			secAdv:          secAdv,
 		}
@@ -158,7 +160,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 	defer g.lock.Unlock()
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for chainID", chainID)
-	g.chains[chainID] = state.NewGossipStateProvider(chainID, g, committer)
+	g.chains[chainID] = state.NewGossipStateProvider(chainID, g, committer, g.mcs)
 	if g.deliveryService == nil {
 		var err error
 		g.deliveryService, err = g.deliveryFactory.Service(gossipServiceInstance)

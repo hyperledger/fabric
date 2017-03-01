@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"errors"
+
 	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/util"
@@ -48,6 +50,12 @@ var (
 )
 
 var orgID = []byte("ORG1")
+
+type peerIdentityAcceptor func(identity api.PeerIdentityType) error
+
+var noopPeerIdentityAcceptor = func(identity api.PeerIdentityType) error {
+	return nil
+}
 
 type joinChanMsg struct {
 }
@@ -78,30 +86,33 @@ func (*orgCryptoService) Verify(joinChanMsg api.JoinChannelMessage) error {
 	return nil
 }
 
-type naiveCryptoService struct {
+type cryptoServiceMock struct {
+	acceptor peerIdentityAcceptor
 }
 
 // GetPKIidOfCert returns the PKI-ID of a peer's identity
-func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
+func (*cryptoServiceMock) GetPKIidOfCert(peerIdentity api.PeerIdentityType) common.PKIidType {
 	return common.PKIidType(peerIdentity)
 }
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveCryptoService) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
+func (*cryptoServiceMock) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
 	return nil
 }
 
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
-func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
+func (*cryptoServiceMock) Sign(msg []byte) ([]byte, error) {
+	clone := make([]byte, len(msg))
+	copy(clone, msg)
+	return clone, nil
 }
 
 // Verify checks that signature is a valid signature of message under a peer's verification key.
 // If the verification succeeded, Verify returns nil meaning no error occurred.
 // If peerCert is nil, then the signature is verified against this peer's verification key.
-func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
+func (*cryptoServiceMock) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
 	equal := bytes.Equal(signature, message)
 	if !equal {
 		return fmt.Errorf("Wrong signature:%v, %v", signature, message)
@@ -113,11 +124,11 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 // under a peer's verification key, but also in the context of a specific channel.
 // If the verification succeeded, Verify returns nil meaning no error occurred.
 // If peerIdentity is nil, then the signature is verified against this peer's verification key.
-func (*naiveCryptoService) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	return nil
+func (cs *cryptoServiceMock) VerifyByChannel(chainID common.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
+	return cs.acceptor(peerIdentity)
 }
 
-func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
+func (*cryptoServiceMock) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
 	return nil
 }
 
@@ -132,9 +143,10 @@ func bootPeers(ids ...int) []string {
 // Simple presentation of peer which includes only
 // communication module, gossip and state transfer
 type peerNode struct {
-	g gossip.Gossip
-	s GossipStateProvider
-
+	port   int
+	g      gossip.Gossip
+	s      GossipStateProvider
+	cs     *cryptoServiceMock
 	commit committer.Committer
 }
 
@@ -145,13 +157,13 @@ func (node *peerNode) shutdown() {
 }
 
 // Default configuration to be used for gossip and communication modules
-func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
+func newGossipConfig(id int, boot ...int) *gossip.Config {
 	port := id + portPrefix
 	return &gossip.Config{
 		BindPort:                   port,
 		BootstrapPeers:             bootPeers(boot...),
 		ID:                         fmt.Sprintf("p%d", id),
-		MaxBlockCountToStore:       maxMsgCount,
+		MaxBlockCountToStore:       0,
 		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
 		MaxPropagationBurstSize:    10,
 		PropagateIterations:        1,
@@ -166,11 +178,10 @@ func newGossipConfig(id int, maxMsgCount int, boot ...int) *gossip.Config {
 }
 
 // Create gossip instance
-func newGossipInstance(config *gossip.Config) gossip.Gossip {
-	cryptoService := &naiveCryptoService{}
-	idMapper := identity.NewIdentityMapper(cryptoService)
+func newGossipInstance(config *gossip.Config, mcs api.MessageCryptoService) gossip.Gossip {
+	idMapper := identity.NewIdentityMapper(mcs)
 
-	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, cryptoService, idMapper, []byte(config.InternalEndpoint))
+	return gossip.NewGossipServiceWithServer(config, &orgCryptoService{}, mcs, idMapper, []byte(config.InternalEndpoint))
 }
 
 // Create new instance of KVLedger to be used for testing
@@ -182,22 +193,115 @@ func newCommitter(id int) committer.Committer {
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
-func newPeerNode(config *gossip.Config, committer committer.Committer) *peerNode {
-
+func newPeerNode(config *gossip.Config, committer committer.Committer, acceptor peerIdentityAcceptor) *peerNode {
+	cs := &cryptoServiceMock{acceptor: acceptor}
 	// Gossip component based on configuration provided and communication module
-	gossip := newGossipInstance(config)
+	gossip := newGossipInstance(config, &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor})
 
 	logger.Debug("Joinning channel", util.GetTestChainID())
 	gossip.JoinChan(&joinChanMsg{}, common.ChainID(util.GetTestChainID()))
 
 	// Initialize pseudo peer simulator, which has only three
 	// basic parts
-	return &peerNode{
-		g: gossip,
-		s: NewGossipStateProvider(util.GetTestChainID(), gossip, committer),
 
+	return &peerNode{
+		port:   config.BindPort,
+		g:      gossip,
+		s:      NewGossipStateProvider(util.GetTestChainID(), gossip, committer, cs),
 		commit: committer,
+		cs:     cs,
 	}
+}
+
+func TestAccessControl(t *testing.T) {
+	viper.Set("peer.fileSystemPath", "/tmp/tests/ledger/node")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
+
+	bootstrapSetSize := 5
+	bootstrapSet := make([]*peerNode, 0)
+
+	authorizedPeers := map[string]struct{}{
+		"localhost:5610": {},
+		"localhost:5615": {},
+		"localhost:5618": {},
+		"localhost:5621": {},
+	}
+
+	blockPullPolicy := func(identity api.PeerIdentityType) error {
+		if _, isAuthorized := authorizedPeers[string(identity)]; isAuthorized {
+			return nil
+		}
+		return errors.New("Not authorized")
+	}
+
+	for i := 0; i < bootstrapSetSize; i++ {
+		committer := newCommitter(i)
+		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), committer, blockPullPolicy))
+	}
+
+	defer func() {
+		for _, p := range bootstrapSet {
+			p.shutdown()
+		}
+	}()
+
+	msgCount := 5
+
+	for i := 1; i <= msgCount; i++ {
+		rawblock := pcomm.NewBlock(uint64(i), []byte{})
+		if bytes, err := pb.Marshal(rawblock); err == nil {
+			payload := &proto.Payload{uint64(i), "", bytes}
+			bootstrapSet[0].s.AddPayload(payload)
+		} else {
+			t.Fail()
+		}
+	}
+
+	standardPeerSetSize := 10
+	peersSet := make([]*peerNode, 0)
+
+	for i := 0; i < standardPeerSetSize; i++ {
+		committer := newCommitter(bootstrapSetSize + i)
+		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), committer, blockPullPolicy))
+	}
+
+	defer func() {
+		for _, p := range peersSet {
+			p.shutdown()
+		}
+	}()
+
+	waitUntilTrueOrTimeout(t, func() bool {
+		for _, p := range peersSet {
+			if len(p.g.PeersOfChannel(common.ChainID(util.GetTestChainID()))) != bootstrapSetSize+standardPeerSetSize-1 {
+				logger.Debug("Peer discovery has not finished yet")
+				return false
+			}
+		}
+		logger.Debug("All peer discovered each other!!!")
+		return true
+	}, 30*time.Second)
+
+	logger.Debug("Waiting for all blocks to arrive.")
+	waitUntilTrueOrTimeout(t, func() bool {
+		logger.Debug("Trying to see all authorized peers get all blocks, and all non-authorized didn't")
+		for _, p := range peersSet {
+			height, err := p.commit.LedgerHeight()
+			id := fmt.Sprintf("localhost:%d", p.port)
+			if _, isAuthorized := authorizedPeers[id]; isAuthorized {
+				if height != uint64(msgCount+1) || err != nil {
+					return false
+				}
+			} else {
+				if err == nil && height > 1 {
+					assert.Fail(t, "Peer", id, "got message but isn't authorized! Height:", height)
+				}
+			}
+		}
+		logger.Debug("All peers have same ledger height!!!")
+		return true
+	}, 60*time.Second)
 }
 
 /*// Simple scenario to start first booting node, gossip a message
@@ -289,7 +393,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	for i := 0; i < bootstrapSetSize; i++ {
 		committer := newCommitter(i)
-		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i, 100), committer))
+		bootstrapSet = append(bootstrapSet, newPeerNode(newGossipConfig(i), committer, noopPeerIdentityAcceptor))
 	}
 
 	defer func() {
@@ -315,7 +419,7 @@ func TestNewGossipStateProvider_SendingManyMessages(t *testing.T) {
 
 	for i := 0; i < standartPeersSize; i++ {
 		committer := newCommitter(bootstrapSetSize + i)
-		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 100, 0, 1, 2, 3, 4), committer))
+		peersSet = append(peersSet, newPeerNode(newGossipConfig(bootstrapSetSize+i, 0, 1, 2, 3, 4), committer, noopPeerIdentityAcceptor))
 	}
 
 	defer func() {
@@ -354,14 +458,18 @@ func TestGossipStateProvider_TestStateMessages(t *testing.T) {
 	ledgermgmt.InitializeTestEnv()
 	defer ledgermgmt.CleanupTestEnv()
 
-	bootPeer := newPeerNode(newGossipConfig(0, 100), newCommitter(0))
+	bootPeer := newPeerNode(newGossipConfig(0), newCommitter(0), noopPeerIdentityAcceptor)
 	defer bootPeer.shutdown()
 
-	peer := newPeerNode(newGossipConfig(1, 100, 0), newCommitter(1))
+	peer := newPeerNode(newGossipConfig(1, 0), newCommitter(1), noopPeerIdentityAcceptor)
 	defer peer.shutdown()
 
-	_, bootCh := bootPeer.g.Accept(remoteStateMsgFilter, true)
-	_, peerCh := peer.g.Accept(remoteStateMsgFilter, true)
+	naiveStateMsgPredicate := func(message interface{}) bool {
+		return message.(proto.ReceivedMessage).GetGossipMessage().IsRemoteStateMessage()
+	}
+
+	_, bootCh := bootPeer.g.Accept(naiveStateMsgPredicate, true)
+	_, peerCh := peer.g.Accept(naiveStateMsgPredicate, true)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
