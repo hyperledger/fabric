@@ -84,14 +84,20 @@ type PolicyHandler interface {
 	ProposePolicy(tx interface{}, key string, path []string, policy *cb.ConfigPolicy) error
 }
 
-// Initializer is used as indirection between Manager and Handler to allow
-// for single Handlers to handle multiple paths
-type Initializer interface {
+// Proposer contains the references necesssary to appropriately unmarshal
+// a cb.ConfigGroup
+type Proposer interface {
 	// ValueProposer return the root value proposer
 	ValueProposer() config.ValueProposer
 
 	// PolicyProposer return the root policy proposer
 	PolicyProposer() policies.Proposer
+}
+
+// Initializer is used as indirection between Manager and Handler to allow
+// for single Handlers to handle multiple paths
+type Initializer interface {
+	Proposer
 
 	Resources
 }

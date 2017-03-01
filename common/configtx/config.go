@@ -27,23 +27,14 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-type configGroupWrapper struct {
-	*cb.ConfigGroup
-	deserializedValues map[string]proto.Message
-}
-
-func newConfigGroupWrapper(group *cb.ConfigGroup) *configGroupWrapper {
-	return &configGroupWrapper{
-		ConfigGroup:        group,
-		deserializedValues: make(map[string]proto.Message),
-	}
-}
-
 type configResult struct {
-	tx            interface{}
-	handler       api.Transactional
-	policyHandler api.Transactional
-	subResults    []*configResult
+	tx                 interface{}
+	groupName          string
+	group              *cb.ConfigGroup
+	valueHandler       config.ValueProposer
+	policyHandler      policies.Proposer
+	subResults         []*configResult
+	deserializedValues map[string]proto.Message
 }
 
 func (cr *configResult) preCommit() error {
@@ -53,14 +44,14 @@ func (cr *configResult) preCommit() error {
 			return err
 		}
 	}
-	return cr.handler.PreCommit(cr.tx)
+	return cr.valueHandler.PreCommit(cr.tx)
 }
 
 func (cr *configResult) commit() {
 	for _, subResult := range cr.subResults {
 		subResult.commit()
 	}
-	cr.handler.CommitProposals(cr.tx)
+	cr.valueHandler.CommitProposals(cr.tx)
 	cr.policyHandler.CommitProposals(cr.tx)
 }
 
@@ -68,85 +59,98 @@ func (cr *configResult) rollback() {
 	for _, subResult := range cr.subResults {
 		subResult.rollback()
 	}
-	cr.handler.RollbackProposals(cr.tx)
+	cr.valueHandler.RollbackProposals(cr.tx)
 	cr.policyHandler.RollbackProposals(cr.tx)
 }
 
 // proposeGroup proposes a group configuration with a given handler
 // it will in turn recursively call itself until all groups have been exhausted
-// at each call, it returns the handler that was passed in, plus any handlers returned
-// by recursive calls into proposeGroup
-func (cm *configManager) proposeGroup(tx interface{}, name string, group *configGroupWrapper, handler config.ValueProposer, policyHandler policies.Proposer) (*configResult, error) {
-	subGroups := make([]string, len(group.Groups))
+// at each call, it updates the configResult to contain references to the handlers
+// which have been invoked so that calling result.commit() or result.rollback() will
+// appropriately cleanup
+func proposeGroup(result *configResult) error {
+	subGroups := make([]string, len(result.group.Groups))
 	i := 0
-	for subGroup := range group.Groups {
+	for subGroup := range result.group.Groups {
 		subGroups[i] = subGroup
 		i++
 	}
 
-	logger.Debugf("Beginning new config for channel %s and group %s", cm.current.channelID, name)
-	valueDeserializer, subHandlers, err := handler.BeginValueProposals(tx, subGroups)
+	valueDeserializer, subValueHandlers, err := result.valueHandler.BeginValueProposals(result.tx, subGroups)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	subPolicyHandlers, err := policyHandler.BeginPolicyProposals(tx, subGroups)
+	subPolicyHandlers, err := result.policyHandler.BeginPolicyProposals(result.tx, subGroups)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if len(subHandlers) != len(subGroups) || len(subPolicyHandlers) != len(subGroups) {
-		return nil, fmt.Errorf("Programming error, did not return as many handlers as groups %d vs %d vs %d", len(subHandlers), len(subGroups), len(subPolicyHandlers))
+	if len(subValueHandlers) != len(subGroups) || len(subPolicyHandlers) != len(subGroups) {
+		return fmt.Errorf("Programming error, did not return as many handlers as groups %d vs %d vs %d", len(subValueHandlers), len(subGroups), len(subPolicyHandlers))
 	}
 
-	result := &configResult{
-		tx:            tx,
-		handler:       handler,
-		policyHandler: policyHandler,
-		subResults:    make([]*configResult, 0, len(subGroups)),
-	}
-
-	for i, subGroup := range subGroups {
-		subResult, err := cm.proposeGroup(tx, name+"/"+subGroup, newConfigGroupWrapper(group.Groups[subGroup]), subHandlers[i], subPolicyHandlers[i])
-		if err != nil {
-			result.rollback()
-			return nil, err
-		}
-		result.subResults = append(result.subResults, subResult)
-	}
-
-	for key, value := range group.Values {
+	for key, value := range result.group.Values {
 		msg, err := valueDeserializer.Deserialize(key, value.Value)
 		if err != nil {
 			result.rollback()
-			return nil, err
+			return err
 		}
-		group.deserializedValues[key] = msg
+		result.deserializedValues[key] = msg
 	}
 
-	for key, policy := range group.Policies {
-		if err := policyHandler.ProposePolicy(tx, key, policy); err != nil {
+	for key, policy := range result.group.Policies {
+		if err := result.policyHandler.ProposePolicy(result.tx, key, policy); err != nil {
 			result.rollback()
-			return nil, err
+			return err
+		}
+	}
+
+	result.subResults = make([]*configResult, 0, len(subGroups))
+
+	for i, subGroup := range subGroups {
+		result.subResults = append(result.subResults, &configResult{
+			tx:                 result.tx,
+			groupName:          result.groupName + "/" + subGroup,
+			group:              result.group.Groups[subGroup],
+			valueHandler:       subValueHandlers[i],
+			policyHandler:      subPolicyHandlers[i],
+			deserializedValues: make(map[string]proto.Message),
+		})
+
+		if err := proposeGroup(result.subResults[i]); err != nil {
+			result.rollback()
+			return err
 		}
 	}
 
 	err = result.preCommit()
 	if err != nil {
 		result.rollback()
-		return nil, err
+		return err
 	}
 
-	return result, nil
+	return nil
 }
 
-func (cm *configManager) processConfig(channelGroup *cb.ConfigGroup) (*configResult, error) {
+func processConfig(channelGroup *cb.ConfigGroup, proposer api.Proposer) (*configResult, error) {
 	helperGroup := cb.NewConfigGroup()
 	helperGroup.Groups[RootGroupKey] = channelGroup
-	groupResult, err := cm.proposeGroup(channelGroup, "", newConfigGroupWrapper(helperGroup), cm.initializer.ValueProposer(), cm.initializer.PolicyProposer())
+
+	configResult := &configResult{
+		group:         helperGroup,
+		valueHandler:  proposer.ValueProposer(),
+		policyHandler: proposer.PolicyProposer(),
+	}
+	err := proposeGroup(configResult)
 	if err != nil {
 		return nil, err
 	}
 
-	return groupResult, nil
+	return configResult, nil
+}
+
+func (cm *configManager) processConfig(channelGroup *cb.ConfigGroup) (*configResult, error) {
+	logger.Debugf("Beginning new config for channel %s", cm.current.channelID)
+	return processConfig(channelGroup, cm.initializer)
 }
