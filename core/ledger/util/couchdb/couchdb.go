@@ -33,12 +33,19 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	logging "github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("couchdb")
+
+//maximum number of retry attempts
+const maxRetries = 3
+
+//time between retry attempts in milliseconds
+const retryWaitTime = 100
 
 // DBOperationResponse is body for successful database calls.
 type DBOperationResponse struct {
@@ -982,14 +989,57 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	transport.DisableCompression = false
 	client.Transport = transport
 
-	//Execute http request
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, nil, err
+	//create the return objects for couchDB
+	var resp *http.Response
+	var errResp error
+	couchDBReturn := &DBReturn{}
+
+	//attempt the http request for the max number of retries
+	for attempts := 0; attempts < maxRetries; attempts++ {
+
+		//Execute http request
+		resp, errResp = client.Do(req)
+
+		//if an error is not detected then drop out of the retry
+		if errResp == nil && resp != nil && resp.StatusCode < 500 {
+			break
+		}
+
+		//if this is an error, record the retry error, else this is a 500 error
+		if errResp != nil {
+
+			//Log the error with the retry count and continue
+			logger.Debugf("Retrying couchdb request. Retry:%v  Error:%v",
+				attempts+1, errResp.Error())
+
+		} else {
+
+			//Read the response body
+			jsonError, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			errorBytes := []byte(jsonError)
+
+			//Unmarshal the response
+			json.Unmarshal(errorBytes, &couchDBReturn)
+
+			//Log the 500 error with the retry count and continue
+			logger.Debugf("Retrying couchdb request. Retry:%v  Couch DB Error:%s,  Status Code:%v  Reason:%v",
+				attempts+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason)
+
+		}
+
+		//sleep for specified sleep time, then retry
+		time.Sleep(retryWaitTime * time.Millisecond)
+
 	}
 
-	//create the return object for couchDB
-	couchDBReturn := &DBReturn{}
+	//if the error present, return the error
+	if errResp != nil {
+		return nil, nil, errResp
+	}
 
 	//set the return code for the couchDB request
 	couchDBReturn.StatusCode = resp.StatusCode
@@ -998,18 +1048,22 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	//in this case, the http request succeeded but CouchDB is reporing an error
 	if resp.StatusCode >= 400 {
 
+		//Read the response body
 		jsonError, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		logger.Debugf("Couch DB error  status code=%v  error=%s", resp.StatusCode, jsonError)
-
 		errorBytes := []byte(jsonError)
 
+		//marshal the response
 		json.Unmarshal(errorBytes, &couchDBReturn)
 
-		return nil, couchDBReturn, fmt.Errorf("Couch DB Error: %s", couchDBReturn.Reason)
+		logger.Debugf("Couch DB Error:%s,  Status Code:%v,  Reason:%s",
+			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
+
+		return nil, couchDBReturn, fmt.Errorf("Couch DB Error:%s,  Status Code:%v,  Reason:%s",
+			couchDBReturn.Error, resp.StatusCode, couchDBReturn.Reason)
 
 	}
 
