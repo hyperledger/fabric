@@ -17,6 +17,7 @@ limitations under the License.
 package election
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"sync"
@@ -91,7 +92,7 @@ func TestAdapterImpl_Peers(t *testing.T) {
 		}
 
 		for _, peer := range peers {
-			if _, exist := peersPKIDs[peer.ID()]; !exist {
+			if _, exist := peersPKIDs[string(peer.ID())]; !exist {
 				t.Errorf("Peer %s PKID not found", peer.(*peerImpl).member.Endpoint)
 			}
 		}
@@ -141,7 +142,7 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 		case msg := <-channels[fmt.Sprintf("Peer%d", 1)]:
 			if !msg.IsDeclaration() {
 				t.Error("Msg should be declaration")
-			} else if strings.Compare(msg.SenderID(), string(sender.self.PKIid)) != 0 {
+			} else if !bytes.Equal(msg.SenderID(), sender.self.PKIid) {
 				t.Error("Msg Sender is wrong")
 			} else {
 				totalMsg++
@@ -149,7 +150,7 @@ func TestAdapterImpl_Gossip(t *testing.T) {
 		case msg := <-channels[fmt.Sprintf("Peer%d", 2)]:
 			if !msg.IsDeclaration() {
 				t.Error("Msg should be declaration")
-			} else if strings.Compare(msg.SenderID(), string(sender.self.PKIid)) != 0 {
+			} else if !bytes.Equal(msg.SenderID(), sender.self.PKIid) {
 				t.Error("Msg Sender is wrong")
 			} else {
 				totalMsg++
