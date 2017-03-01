@@ -64,7 +64,7 @@ func initialize() {
 
 // CreateLedger creates a new ledger with the given id
 func CreateLedger(id string) (ledger.PeerLedger, error) {
-	logger.Infof("Creating leadger with id = %s", id)
+	logger.Infof("Creating ledger with id = %s", id)
 	lock.Lock()
 	defer lock.Unlock()
 	if !initialized {
@@ -76,13 +76,13 @@ func CreateLedger(id string) (ledger.PeerLedger, error) {
 	}
 	l = wrapLedger(id, l)
 	openedLedgers[id] = l
-	logger.Infof("Created leadger with id = %s", id)
+	logger.Infof("Created ledger with id = %s", id)
 	return l, nil
 }
 
 // OpenLedger returns a ledger for the given id
 func OpenLedger(id string) (ledger.PeerLedger, error) {
-	logger.Infof("Opening leadger with id = %s", id)
+	logger.Infof("Opening ledger with id = %s", id)
 	lock.Lock()
 	defer lock.Unlock()
 	if !initialized {
@@ -98,7 +98,7 @@ func OpenLedger(id string) (ledger.PeerLedger, error) {
 	}
 	l = wrapLedger(id, l)
 	openedLedgers[id] = l
-	logger.Infof("Opened leadger with id = %s", id)
+	logger.Infof("Opened ledger with id = %s", id)
 	return l, nil
 }
 
