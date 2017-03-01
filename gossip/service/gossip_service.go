@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/deliverservice"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipCommon "github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/integration"
@@ -74,6 +75,7 @@ func (*deliveryFactoryImpl) Service(g GossipService) (deliverclient.DeliverServi
 type gossipServiceImpl struct {
 	gossipSvc
 	chains          map[string]state.GossipStateProvider
+	leaderElection  map[string]election.LeaderElectionService
 	deliveryService deliverclient.DeliverService
 	deliveryFactory DeliveryServiceFactory
 	lock            sync.RWMutex
@@ -123,6 +125,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 		}
 
 		if viper.GetBool("peer.gossip.ignoreSecurity") {
+			logger.Info("This peer ignoring security in gossip")
 			sec := &secImpl{[]byte(endpoint)}
 			mcs = sec
 			secAdv = sec
@@ -136,6 +139,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 			mcs:             mcs,
 			gossipSvc:       gossip,
 			chains:          make(map[string]state.GossipStateProvider),
+			leaderElection:  make(map[string]election.LeaderElectionService),
 			deliveryFactory: factory,
 			idMapper:        idMapper,
 			peerIdentity:    peerIdentity,
@@ -170,8 +174,26 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 	}
 
 	if g.deliveryService != nil {
-		if err := g.deliveryService.JoinChain(chainID, committer); err != nil {
-			logger.Error("Delivery service is not able to join the chain, due to", err)
+		leaderElection := viper.GetBool("peer.gossip.useLeaderElection")
+		staticOrderConnection := viper.GetBool("peer.gossip.orgLeader")
+
+		if leaderElection && staticOrderConnection {
+			msg := "Setting both orgLeader and useLeaderElection to true isn't supported, aborting execution"
+			logger.Panic(msg)
+		} else if leaderElection {
+			logger.Debug("Delivery uses dynamic leader election mechanism, channel", chainID)
+			connector := &leaderElectionDeliverConnector{
+				deliverer: g.deliveryService,
+				committer: committer,
+				chainID:   chainID,
+			}
+			electionService := g.newLeaderElectionComponent(gossipCommon.ChainID(connector.chainID), connector.leadershipStatusChange)
+			g.leaderElection[chainID] = electionService
+		} else if staticOrderConnection {
+			logger.Debug("This peer is configured to connect to ordering service for blocks delivery, channel", chainID)
+			g.deliveryService.StartDeliverForChannel(chainID, committer)
+		} else {
+			logger.Debug("This peer is not configured to connect to ordering service for blocks delivery, channel", chainID)
 		}
 	} else {
 		logger.Warning("Delivery client is down won't be able to pull blocks for chain", chainID)
@@ -225,10 +247,21 @@ func (g *gossipServiceImpl) Stop() {
 		logger.Info("Stopping chain", ch)
 		ch.Stop()
 	}
+
+	for chainID, electionService := range g.leaderElection {
+		logger.Info("Stopping leader election for %s", chainID)
+		electionService.Stop()
+	}
 	g.gossipSvc.Stop()
 	if g.deliveryService != nil {
 		g.deliveryService.Stop()
 	}
+}
+
+func (g *gossipServiceImpl) newLeaderElectionComponent(channel gossipCommon.ChainID, callback func(bool)) election.LeaderElectionService {
+	PKIid := g.idMapper.GetPKIidOfCert(g.peerIdentity)
+	adapter := election.NewAdapter(g, PKIid, channel)
+	return election.NewLeaderElectionService(adapter, string(PKIid), callback)
 }
 
 func (g *gossipServiceImpl) amIinChannel(myOrg string, config Config) bool {
@@ -278,4 +311,23 @@ func (s *secImpl) VerifyByChannel(chainID gossipCommon.ChainID, peerIdentity api
 
 func (s *secImpl) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
 	return nil
+}
+
+type leaderElectionDeliverConnector struct {
+	deliverer deliverclient.DeliverService
+	chainID   string
+	committer committer.Committer
+}
+
+func (ledc *leaderElectionDeliverConnector) leadershipStatusChange(isLeader bool) {
+	if isLeader {
+		if err := ledc.deliverer.StartDeliverForChannel(ledc.chainID, ledc.committer); err != nil {
+			logger.Error("Delivery service is not able to start blocks delivery for chain, due to", err)
+		}
+	} else {
+		if err := ledc.deliverer.StopDeliverForChannel(ledc.chainID); err != nil {
+			logger.Error("Delivery service is not able to stop blocks delivery for chain, due to", err)
+		}
+
+	}
 }

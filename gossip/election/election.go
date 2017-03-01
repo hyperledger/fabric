@@ -183,8 +183,8 @@ func (le *leaderElectionSvcImpl) start() {
 }
 
 func (le *leaderElectionSvcImpl) handleMessages() {
-	le.logger.Info(le.id, ": Entering")
-	defer le.logger.Info(le.id, ": Exiting")
+	le.logger.Debug(le.id, ": Entering")
+	defer le.logger.Debug(le.id, ": Exiting")
 	defer le.stopWG.Done()
 	msgChan := le.adapter.Accept()
 	for {
@@ -270,14 +270,14 @@ func (le *leaderElectionSvcImpl) run() {
 }
 
 func (le *leaderElectionSvcImpl) leaderElection() {
-	le.logger.Info(le.id, ": Entering")
-	defer le.logger.Info(le.id, ": Exiting")
+	le.logger.Debug(le.id, ": Entering")
+	defer le.logger.Debug(le.id, ": Exiting")
 	le.propose()
 	le.waitForInterrupt(leaderElectionDuration)
 	// If someone declared itself as a leader, give up
 	// on trying to become a leader too
 	if le.isLeaderExists() {
-		le.logger.Info(le.id, ": Some peer is already a leader")
+		le.logger.Debug(le.id, ": Some peer is already a leader")
 		return
 	}
 	// Leader doesn't exist, let's see if there is a better candidate than us
@@ -296,8 +296,8 @@ func (le *leaderElectionSvcImpl) leaderElection() {
 
 // propose sends a leadership proposal message to remote peers
 func (le *leaderElectionSvcImpl) propose() {
-	le.logger.Info(le.id, ": Entering")
-	le.logger.Info(le.id, ": Exiting")
+	le.logger.Debug(le.id, ": Entering")
+	le.logger.Debug(le.id, ": Exiting")
 	leadershipProposal := le.adapter.CreateMessage(false)
 	le.adapter.Gossip(leadershipProposal)
 }
@@ -324,8 +324,8 @@ func (le *leaderElectionSvcImpl) leader() {
 // waitForMembershipStabilization waits for membership view to stabilize
 // or until a time limit expires, or until a peer declares itself as a leader
 func (le *leaderElectionSvcImpl) waitForMembershipStabilization(timeLimit time.Duration) {
-	le.logger.Info(le.id, ": Entering")
-	defer le.logger.Info(le.id, ": Exiting")
+	le.logger.Debug(le.id, ": Entering")
+	defer le.logger.Debug(le.id, ": Exiting, peers found", len(le.adapter.Peers()))
 	endTime := time.Now().Add(timeLimit)
 	viewSize := len(le.adapter.Peers())
 	for !le.shouldStop() {
@@ -368,13 +368,13 @@ func (le *leaderElectionSvcImpl) IsLeader() bool {
 }
 
 func (le *leaderElectionSvcImpl) beLeader() {
-	le.logger.Info(le.id, ": Becoming a leader")
+	le.logger.Debug(le.id, ": Becoming a leader")
 	atomic.StoreInt32(&le.isLeader, int32(1))
 	le.callback(true)
 }
 
 func (le *leaderElectionSvcImpl) stopBeingLeader() {
-	le.logger.Info(le.id, "Stopped being a leader")
+	le.logger.Debug(le.id, "Stopped being a leader")
 	atomic.StoreInt32(&le.isLeader, int32(0))
 	le.callback(false)
 }
@@ -385,8 +385,8 @@ func (le *leaderElectionSvcImpl) shouldStop() bool {
 
 // Stop stops the LeaderElectionService
 func (le *leaderElectionSvcImpl) Stop() {
-	le.logger.Info(le.id, ": Entering")
-	defer le.logger.Info(le.id, ": Exiting")
+	le.logger.Debug(le.id, ": Entering")
+	defer le.logger.Debug(le.id, ": Exiting")
 	atomic.StoreInt32(&le.toDie, int32(1))
 	le.stopChan <- struct{}{}
 	le.stopWG.Wait()

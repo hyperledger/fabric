@@ -49,9 +49,17 @@ func TestNewDeliverService(t *testing.T) {
 	}
 
 	service := NewFactoryDeliverService(gossipServiceAdapter, factory, nil)
-	service.JoinChain("TEST_CHAINID", &mocks.MockLedgerInfo{0})
+	assert.NilError(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}))
+
+	// Lets start deliver twice
+	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}), "can't start delivery")
+	// Lets stop deliver that not started
+	assert.Error(t, service.StopDeliverForChannel("TEST_CHAINID2"), "can't stop delivery")
 
 	// Let it try to simulate a few recv -> gossip rounds
+	time.Sleep(time.Duration(10) * time.Millisecond)
+	assert.NilError(t, service.StopDeliverForChannel("TEST_CHAINID"))
+
 	time.Sleep(time.Duration(10) * time.Millisecond)
 	service.Stop()
 
@@ -60,5 +68,8 @@ func TestNewDeliverService(t *testing.T) {
 
 	assert.Equal(t, atomic.LoadInt32(&blocksDeliverer.RecvCnt), atomic.LoadInt32(&gossipServiceAdapter.AddPayloadsCnt))
 	assert.Equal(t, atomic.LoadInt32(&blocksDeliverer.RecvCnt), atomic.LoadInt32(&gossipServiceAdapter.GossipCallsCnt))
+
+	assert.Error(t, service.StartDeliverForChannel("TEST_CHAINID", &mocks.MockLedgerInfo{0}), "Delivery service is stopping")
+	assert.Error(t, service.StopDeliverForChannel("TEST_CHAINID"), "Delivery service is stopping")
 
 }
