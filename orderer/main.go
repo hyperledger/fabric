@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/kafka"
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	jsonledger "github.com/hyperledger/fabric/orderer/ledger/json"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
@@ -90,7 +90,7 @@ func main() {
 		panic(fmt.Errorf("Failed initializing crypto [%s]", err))
 	}
 
-	var lf ordererledger.Factory
+	var lf ledger.Factory
 	switch conf.General.LedgerType {
 	case "file":
 		// just use the json ledger type for now

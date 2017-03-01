@@ -278,7 +278,7 @@ func broadcastSender(t *testing.T, resultch chan item, errorch chan error, clien
 	resultch <- item{itemtype: sent, payload: mpl}
 }
 
-func newRAMLedgerFactory() ordererledger.Factory {
+func newRAMLedgerFactory() ledger.Factory {
 	rlf := ramledger.New(10)
 	rl, err := rlf.GetOrCreate(provisional.TestChainID)
 	if err != nil {

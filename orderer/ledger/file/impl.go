@@ -18,13 +18,13 @@ package fileledger
 
 import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	ledger "github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("ordererledger/fileledger")
+var logger = logging.MustGetLogger("orderer/fileledger")
 var closedChan chan struct{}
 
 func init() {
@@ -69,33 +69,33 @@ func (i *fileLedgerIterator) ReadyChan() <-chan struct{} {
 
 // Iterator returns an Iterator, as specified by a cb.SeekInfo message, and its
 // starting block number
-func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.Iterator, uint64) {
+func (fl *fileLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, uint64) {
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
 		return &fileLedgerIterator{ledger: fl, blockNumber: 0}, 0
 	case *ab.SeekPosition_Newest:
 		info, err := fl.blockStore.GetBlockchainInfo()
 		if err != nil {
-			panic(err)
+			logger.Panic(err)
 		}
 		newestBlockNumber := info.Height - 1
 		return &fileLedgerIterator{ledger: fl, blockNumber: newestBlockNumber}, newestBlockNumber
 	case *ab.SeekPosition_Specified:
 		height := fl.Height()
 		if start.Specified.Number > height {
-			return &ordererledger.NotFoundErrorIterator{}, 0
+			return &ledger.NotFoundErrorIterator{}, 0
 		}
 		return &fileLedgerIterator{ledger: fl, blockNumber: start.Specified.Number}, start.Specified.Number
 	}
 	// This line should be unreachable, but the compiler requires it
-	return &ordererledger.NotFoundErrorIterator{}, 0
+	return &ledger.NotFoundErrorIterator{}, 0
 }
 
 // Height returns the number of blocks on the ledger
 func (fl *fileLedger) Height() uint64 {
 	info, err := fl.blockStore.GetBlockchainInfo()
 	if err != nil {
-		panic(err)
+		logger.Panic(err)
 	}
 	return info.Height
 }
