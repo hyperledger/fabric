@@ -113,7 +113,8 @@ func (env *couchDBLockBasedEnv) getName() string {
 
 func (env *couchDBLockBasedEnv) init(t *testing.T) {
 	viper.Set("peer.fileSystemPath", testFilesystemPath)
-	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "127.0.0.1:5984")
+	// both vagrant and CI have couchdb configured at host "couchdb"
+	viper.Set("ledger.state.couchDBConfig.couchDBAddress", "couchdb:5984")
 	testDBEnv := statecouchdb.NewTestVDBEnv(t)
 	testDB, err := testDBEnv.DBProvider.GetDBHandle(couchTestChainID)
 	testutil.AssertNoError(t, err, "")

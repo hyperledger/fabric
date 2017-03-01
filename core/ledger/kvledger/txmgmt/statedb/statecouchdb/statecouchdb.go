@@ -260,9 +260,6 @@ func (vdb *VersionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 					attachment.AttachmentBytes = vv.Value
 					attachment.ContentType = "application/octet-stream"
 					attachment.Name = binaryWrapper
-
-					attachments := []couchdb.Attachment{}
-					attachments = append(attachments, *attachment)
 					couchDoc.Attachments = append(couchDoc.Attachments, *attachment)
 					couchDoc.JSONValue = addVersionAndChainCodeID(nil, ns, vv.Version)
 				}
@@ -381,19 +378,19 @@ func (vdb *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
 	couchDoc, _, err := vdb.db.ReadDoc(savepointDocID)
 	if err != nil {
 		logger.Errorf("Failed to read savepoint data %s\n", err.Error())
-		return &version.Height{BlockNum: 0, TxNum: 0}, err
+		return nil, err
 	}
 
-	// ReadDoc() not found (404) will result in nil response, in these cases return height 0
-	if couchDoc.JSONValue == nil {
-		return &version.Height{BlockNum: 0, TxNum: 0}, nil
+	// ReadDoc() not found (404) will result in nil response, in these cases return height nil
+	if couchDoc == nil || couchDoc.JSONValue == nil {
+		return nil, nil
 	}
 
 	savepointDoc := &couchSavepointData{}
 	err = json.Unmarshal(couchDoc.JSONValue, &savepointDoc)
 	if err != nil {
 		logger.Errorf("Failed to unmarshal savepoint data %s\n", err.Error())
-		return &version.Height{BlockNum: 0, TxNum: 0}, err
+		return nil, err
 	}
 
 	return &version.Height{BlockNum: savepointDoc.BlockNum, TxNum: savepointDoc.TxNum}, nil

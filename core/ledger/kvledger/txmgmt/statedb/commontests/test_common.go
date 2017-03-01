@@ -30,6 +30,11 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	db, err := dbProvider.GetDBHandle("testbasicrw")
 	testutil.AssertNoError(t, err, "")
 
+	// Test that savepoint is nil for a new state db
+	sp, err := db.GetLatestSavePoint()
+	testutil.AssertNoError(t, err, "Error upon GetLatestSavePoint()")
+	testutil.AssertNil(t, sp)
+
 	// Test retrieval of non-existent key - returns nil rather than error
 	// For more details see https://github.com/hyperledger-archives/fabric/issues/936.
 	val, err := db.GetState("ns", "key1")
@@ -54,7 +59,7 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	vv, _ = db.GetState("ns2", "key4")
 	testutil.AssertEquals(t, vv, &vv4)
 
-	sp, err := db.GetLatestSavePoint()
+	sp, err = db.GetLatestSavePoint()
 	testutil.AssertNoError(t, err, "")
 	testutil.AssertEquals(t, sp, savePoint)
 }
