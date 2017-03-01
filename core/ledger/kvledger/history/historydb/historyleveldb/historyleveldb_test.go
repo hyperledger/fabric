@@ -24,6 +24,9 @@ import (
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/viper"
 )
 
@@ -122,6 +125,45 @@ func TestHistory(t *testing.T) {
 		testutil.AssertEquals(t, retrievedValue, expectedValue)
 	}
 	testutil.AssertEquals(t, count, 3)
+}
+
+func TestHistoryForInvalidTran(t *testing.T) {
+
+	env := NewTestHistoryEnv(t)
+	defer env.cleanup()
+	provider := env.testBlockStorageEnv.provider
+	store1, err := provider.OpenBlockStore("ledger1")
+	testutil.AssertNoError(t, err, "Error upon provider.OpenBlockStore()")
+	defer store1.Shutdown()
+
+	//block1
+	simulator, _ := env.txmgr.NewTxSimulator()
+	value1 := []byte("value1")
+	simulator.SetState("ns1", "key7", value1)
+	simulator.Done()
+	simRes, _ := simulator.GetTxSimulationResults()
+	bg := testutil.NewBlockGenerator(t)
+	block1 := bg.NextBlock([][]byte{simRes}, false)
+
+	//for this invalid tran test, set the transaction to invalid
+	txsFilter := util.TxValidationFlags(block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter.SetFlag(0, peer.TxValidationCode_INVALID_OTHER_REASON)
+	block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
+
+	err = store1.AddBlock(block1)
+	testutil.AssertNoError(t, err, "")
+	err = env.testHistoryDB.Commit(block1)
+	testutil.AssertNoError(t, err, "")
+
+	qhistory, err := env.testHistoryDB.NewHistoryQueryExecutor(store1)
+	testutil.AssertNoError(t, err, "Error upon NewHistoryQueryExecutor")
+
+	itr, err2 := qhistory.GetHistoryForKey("ns1", "key7")
+	testutil.AssertNoError(t, err2, "Error upon GetHistoryForKey()")
+
+	// test that there are no history values, since the tran was marked as invalid
+	kmod, _ := itr.Next()
+	testutil.AssertNil(t, kmod)
 }
 
 //TestSavepoint tests that save points get written after each block and get returned via GetBlockNumfromSavepoint
