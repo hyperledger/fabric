@@ -198,8 +198,14 @@ func processAndWrapQuery(jsonQueryMap map[string]interface{}) {
 //the next level of the json query
 func processInterfaceMap(jsonFragment map[string]interface{}) {
 
-	//iterate the the item in the map
+	//create a copy of the jsonFragment for iterating
+	var bufferFragment = make(map[string]interface{})
 	for keyVal, itemVal := range jsonFragment {
+		bufferFragment[keyVal] = itemVal
+	}
+
+	//iterate the the item in the map
+	for keyVal, itemVal := range bufferFragment {
 
 		//check to see if the key is an operator
 		if arrayContains(validOperators, keyVal) {
