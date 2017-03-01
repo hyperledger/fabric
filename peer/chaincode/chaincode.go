@@ -56,6 +56,7 @@ func AddFlags(cmd *cobra.Command) {
 		fmt.Sprint("The name of the endorsement system chaincode to be used for this chaincode"))
 	flags.StringVarP(&vscc, "vscc", "V", common.UndefinedParamValue,
 		fmt.Sprint("The name of the verification system chaincode to be used for this chaincode"))
+	flags.StringVarP(&orderingEndpoint, "orderer", "o", "", "Ordering service endpoint")
 }
 
 // Cmd returns the cobra command for Chaincode
@@ -88,6 +89,7 @@ var (
 	escc              string
 	vscc              string
 	policyMarhsalled  []byte
+	orderingEndpoint  string
 )
 
 var chaincodeCmd = &cobra.Command{

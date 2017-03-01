@@ -26,6 +26,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"errors"
+
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -103,7 +105,7 @@ func TestCreateChain(t *testing.T) {
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain}
+	args := []string{"-c", mockchain, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err != nil {
@@ -134,7 +136,7 @@ func TestCreateChainWithDefaultAnchorPeers(t *testing.T) {
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain}
+	args := []string{"-c", mockchain, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err != nil {
@@ -155,7 +157,7 @@ func TestCreateChainBCFail(t *testing.T) {
 		t.Fatalf("Get default signer error: %v", err)
 	}
 
-	sendErr := fmt.Errorf("send create tx failed")
+	sendErr := errors.New("send create tx failed")
 
 	mockCF := &ChannelCmdFactory{
 		BroadcastFactory: func() (common.BroadcastClient, error) {
@@ -169,7 +171,7 @@ func TestCreateChainBCFail(t *testing.T) {
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain}
+	args := []string{"-c", mockchain, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	expectedErrMsg := sendErr.Error()
@@ -206,7 +208,7 @@ func TestCreateChainDeliverFail(t *testing.T) {
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchain}
+	args := []string{"-c", mockchain, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	expectedErrMsg := recvErr.Error()
@@ -277,7 +279,7 @@ func TestCreateChainFromTx(t *testing.T) {
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchannel, "-f", file}
+	args := []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	if _, err = createTxFile(file, cb.HeaderType_CONFIG_UPDATE, mockchannel); err != nil {
@@ -321,7 +323,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 
 	AddFlags(cmd)
 
-	args := []string{"-c", mockchannel, "-f", file}
+	args := []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
 	//bad type CONFIG
