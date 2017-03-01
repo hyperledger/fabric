@@ -392,6 +392,7 @@ chaincode:
         lccc: enable
         escc: enable
         vscc: enable
+
 ###############################################################################
 #
 #    Ledger section - ledger configuration encompases both the blockchain
@@ -402,45 +403,22 @@ ledger:
 
   blockchain:
 
-    # Setting the deploy-system-chaincode property to false will prevent the
-    # deploying of system chaincode at genesis time.
-    deploy-system-chaincode: false
-
   state:
+    # stateDatabase - options are "goleveldb", "CouchDB"
+    # goleveldb - default state database stored in goleveldb.
+    # CouchDB - store state database in CouchDB
+    stateDatabase: goleveldb
+    couchDBConfig:
+       couchDBAddress: 127.0.0.1:5984
+       username:
+       password:
 
-    # Control the number state deltas that are maintained. This takes additional
-    # disk space, but allow the state to be rolled backwards and forwards
-    # without the need to replay transactions.
-    deltaHistorySize: 500
+    # historyDatabase - options are true or false
+    # Indicates if the history of key updates should be stored in goleveldb
+    historyDatabase: true
 
-    # The data structure in which the state will be stored. Different data
-    # structures may offer different performance characteristics.
-    # Options are 'buckettree', 'trie' and 'raw'.
-    # ( Note:'raw' is experimental and incomplete. )
-    # If not set, the default data structure is the 'buckettree'.
-    # This CANNOT be changed after the DB has been created.
-    dataStructure:
-      # The name of the data structure is for storing the state
-      name: buckettree
-      # The data structure specific configurations
-      configs:
-        # configurations for 'bucketree'. These CANNOT be changed after the DB
-        # has been created. 'numBuckets' defines the number of bins that the
-        # state key-values are to be divided
-        numBuckets: 1000003
-        # 'maxGroupingAtEachLevel' defines the number of bins that are grouped
-        #together to construct next level of the merkle-tree (this is applied
-        # repeatedly for constructing the entire tree).
-        maxGroupingAtEachLevel: 5
-        # 'bucketCacheSize' defines the size (in MBs) of the cache that is used to keep
-        # the buckets (from root upto secondlast level) in memory. This cache helps
-        # in making state hash computation faster. A value less than or equals to zero
-        # leads to disabling this caching. This caching helps more if transactions
-        # perform significant writes.
-        bucketCacheSize: 100
-
-        # configurations for 'trie'
-        # 'tire' has no additional configurations exposed as yet
+    # Limit on the number of records to return per query
+    queryLimit: 10000
 
 
 ################################################################################

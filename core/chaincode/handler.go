@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/looplab/fsm"
@@ -636,8 +637,6 @@ func (handler *Handler) handleGetState(msg *pb.ChaincodeMessage) {
 	}()
 }
 
-const maxGetStateByRangeLimit = 100
-
 // afterGetStateByRange handles a GET_STATE_BY_RANGE request from the chaincode.
 func (handler *Handler) afterGetStateByRange(e *fsm.Event, state string) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
@@ -705,9 +704,10 @@ func (handler *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 		handler.putQueryIterator(txContext, iterID, rangeIter)
 
 		var keysAndValues []*pb.QueryStateKeyValue
-		var i = uint32(0)
+		var i = 0
+		var queryLimit = ledgerconfig.GetQueryLimit()
 		var qresult commonledger.QueryResult
-		for ; i < maxGetStateByRangeLimit; i++ {
+		for ; i < queryLimit; i++ {
 			qresult, err = rangeIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
@@ -720,13 +720,19 @@ func (handler *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 			keyAndValue := pb.QueryStateKeyValue{Key: kv.Key, Value: kv.Value}
 			keysAndValues = append(keysAndValues, &keyAndValue)
 		}
-
 		if qresult != nil {
 			rangeIter.Close()
 			handler.deleteQueryIterator(txContext, iterID)
+			//TODO log the warning that the queryLimit was exceeded.  this will need to be revisited
+			//following changes to the future paging design.
+			chaincodeLogger.Warningf("Query limit of %v was exceeded.  Not all values meeting the criteria were returned.", queryLimit)
 		}
 
-		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
+		//TODO - HasMore is set to false until the requery issue for the peer is resolved
+		//FAB-2462 - Re-introduce paging for range queries and rich queries
+		//payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
+
+		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: false, Id: iterID}
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
 			rangeIter.Close()
@@ -801,11 +807,12 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		}
 
 		var keysAndValues []*pb.QueryStateKeyValue
-		var i = uint32(0)
+		var i = 0
+		var queryLimit = ledgerconfig.GetQueryLimit()
 
 		var qresult commonledger.QueryResult
 		var err error
-		for ; i < maxGetStateByRangeLimit; i++ {
+		for ; i < queryLimit; i++ {
 			qresult, err = queryIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
@@ -822,9 +829,16 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		if qresult != nil {
 			queryIter.Close()
 			handler.deleteQueryIterator(txContext, queryStateNext.Id)
+
+			//TODO log the warning that the queryLimit was exceeded.  this will need to be revisited
+			//following changes to the future paging design.
+			chaincodeLogger.Warningf("Query limit of %v was exceeded.  Not all values meeting the criteria were returned.", queryLimit)
 		}
 
-		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: queryStateNext.Id}
+		//TODO - HasMore is set to false until the requery issue for the peer is resolved
+		//FAB-2462 - Re-introduce paging for range queries and rich queries
+		//payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: queryStateNext.Id}
+		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: false, Id: queryStateNext.Id}
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
 			queryIter.Close()
@@ -912,8 +926,6 @@ func (handler *Handler) handleQueryStateClose(msg *pb.ChaincodeMessage) {
 	}()
 }
 
-const maxGetQueryResultLimit = 100
-
 // afterGetQueryResult handles a GET_QUERY_RESULT request from the chaincode.
 func (handler *Handler) afterGetQueryResult(e *fsm.Event, state string) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
@@ -982,9 +994,10 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 		handler.putQueryIterator(txContext, iterID, executeIter)
 
 		var keysAndValues []*pb.QueryStateKeyValue
-		var i = uint32(0)
+		var i = 0
+		var queryLimit = ledgerconfig.GetQueryLimit()
 		var qresult commonledger.QueryResult
-		for ; i < maxGetQueryResultLimit; i++ {
+		for ; i < queryLimit; i++ {
 			qresult, err = executeIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
@@ -1001,10 +1014,18 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 		if qresult != nil {
 			executeIter.Close()
 			handler.deleteQueryIterator(txContext, iterID)
+
+			//TODO log the warning that the queryLimit was exceeded.  this will need to be revisited
+			//following changes to the future paging design.
+			chaincodeLogger.Warningf("Query limit of %v was exceeded.  Not all values meeting the criteria were returned.", queryLimit)
 		}
 
 		var payloadBytes []byte
-		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
+
+		//TODO - HasMore is set to false until the requery issue for the peer is resolved
+		//FAB-2462 - Re-introduce paging for range queries and rich queries
+		//payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
+		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: false, Id: iterID}
 		payloadBytes, err = proto.Marshal(payload)
 		if err != nil {
 			executeIter.Close()
@@ -1022,8 +1043,6 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 
 	}()
 }
-
-const maxGetHistoryForKeyLimit = 100
 
 // afterGetHistoryForKey handles a GET_HISTORY_FOR_KEY request from the chaincode.
 func (handler *Handler) afterGetHistoryForKey(e *fsm.Event, state string) {
@@ -1094,9 +1113,10 @@ func (handler *Handler) handleGetHistoryForKey(msg *pb.ChaincodeMessage) {
 		// TODO QueryStateKeyValue can be re-used for now since history records have a string (TxID)
 		// and value (value).  But we'll need to use another structure if we add other fields like timestamp.
 		var keysAndValues []*pb.QueryStateKeyValue
-		var i = uint32(0)
+		var i = 0
+		var queryLimit = ledgerconfig.GetQueryLimit()
 		var qresult commonledger.QueryResult
-		for ; i < maxGetHistoryForKeyLimit; i++ {
+		for ; i < queryLimit; i++ {
 			qresult, err = historyIter.Next()
 			if err != nil {
 				chaincodeLogger.Errorf("Failed to get query result from iterator. Sending %s", pb.ChaincodeMessage_ERROR)
@@ -1113,10 +1133,18 @@ func (handler *Handler) handleGetHistoryForKey(msg *pb.ChaincodeMessage) {
 		if qresult != nil {
 			historyIter.Close()
 			handler.deleteQueryIterator(txContext, iterID)
+
+			//TODO log the warning that the queryLimit was exceeded.  this will need to be revisited
+			//following changes to the future paging design.
+			chaincodeLogger.Warningf("Query limit of %v was exceeded.  Not all values meeting the criteria were returned.", queryLimit)
 		}
 
 		var payloadBytes []byte
-		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
+
+		//TODO - HasMore is set to false until the requery issue for the peer is resolved
+		//FAB-2462 - Re-introduce paging for range queries and rich queries
+		//payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: qresult != nil, Id: iterID}
+		payload := &pb.QueryStateResponse{KeysAndValues: keysAndValues, HasMore: false, Id: iterID}
 		payloadBytes, err = proto.Marshal(payload)
 		if err != nil {
 			historyIter.Close()

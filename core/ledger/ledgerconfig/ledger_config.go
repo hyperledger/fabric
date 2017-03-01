@@ -89,6 +89,11 @@ func GetCouchDBDefinition() *CouchDBDef {
 	return &CouchDBDef{couchDBAddress, username, password}
 }
 
+//GetQueryLimit exposes the queryLimit variable
+func GetQueryLimit() int {
+	return viper.GetInt("ledger.state.queryLimit")
+}
+
 //IsHistoryDBEnabled exposes the historyDatabase variable
 func IsHistoryDBEnabled() bool {
 	return viper.GetBool("ledger.state.historyDatabase")

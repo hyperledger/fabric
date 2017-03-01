@@ -29,6 +29,7 @@ under the License.
 
 // ==== Query marbles ====
 // peer chaincode query -C myc1 -n marbles -c '{"Args":["readMarble","marble1"]}'
+// peer chaincode query -C myc1 -n marbles -c '{"Args":["getMarblesByRange","marble1","marble3"]}'
 // peer chaincode query -C myc1 -n marbles -c '{"Args":["getHistoryForMarble","marble1"]}'
 
 // Rich Query (Only supported if CouchDB is used as state database):
@@ -135,6 +136,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return t.queryMarbles(stub, args)
 	} else if function == "getHistoryForMarble" { //get history of values for a marble
 		return t.getHistoryForMarble(stub, args)
+	} else if function == "getMarblesByRange" { //get marbles based on range query
+		return t.getMarblesByRange(stub, args)
 	}
 
 	fmt.Println("invoke did not find func: " + function) //error
@@ -329,6 +332,64 @@ func (t *SimpleChaincode) transferMarble(stub shim.ChaincodeStubInterface, args 
 
 	fmt.Println("- end transferMarble (success)")
 	return shim.Success(nil)
+}
+
+// ===========================================================================================
+// getMarblesByRange performs a range query based on the start and end keys provided.
+
+// Read-only function results are not typically submitted to ordering. If the read-only
+// results are submitted to ordering, or if the query is used in an update transaction
+// and submitted to ordering, then the committing peers will re-execute to guarantee that
+// result sets are stable between endorsement time and commit time. The transaction is
+// invalidated by the committing peers if the result set has changed between endorsement
+// time and commit time.
+// Therefore, range queries are a safe option for performing update transactions based on query results.
+// ===========================================================================================
+func (t *SimpleChaincode) getMarblesByRange(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+	if len(args) < 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	startKey := args[0]
+	endKey := args[1]
+
+	resultsIterator, err := stub.GetStateByRange(startKey, endKey)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryResults
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResultKey, queryResultValue, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"Key\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(queryResultKey)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Record\":")
+		// Record is a JSON object, so we write as-is
+		buffer.WriteString(string(queryResultValue))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- getMarblesByRange queryResult:\n%s\n", buffer.String())
+
+	return shim.Success(buffer.Bytes())
 }
 
 // ==== Example: GetStateByPartialCompositeKey/RangeQuery =========================================

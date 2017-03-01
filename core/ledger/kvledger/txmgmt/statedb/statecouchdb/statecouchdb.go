@@ -39,6 +39,10 @@ var lastKeyIndicator = byte(0x01)
 
 var binaryWrapper = "valueBytes"
 
+//TODO querySkip is implemented for future use by query paging
+//currently defaulted to 0 and is not used
+var querySkip = 0
+
 // VersionedDBProvider implements interface VersionedDBProvider
 type VersionedDBProvider struct {
 	couchInstance *couchdb.CouchInstance
@@ -195,12 +199,15 @@ func (vdb *VersionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // endKey is exclusive
 func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
 
+	//Get the querylimit from core.yaml
+	queryLimit := ledgerconfig.GetQueryLimit()
+
 	compositeStartKey := constructCompositeKey(namespace, startKey)
 	compositeEndKey := constructCompositeKey(namespace, endKey)
 	if endKey == "" {
 		compositeEndKey[len(compositeEndKey)-1] = lastKeyIndicator
 	}
-	queryResult, err := vdb.db.ReadDocRange(string(compositeStartKey), string(compositeEndKey), 1000, 0)
+	queryResult, err := vdb.db.ReadDocRange(string(compositeStartKey), string(compositeEndKey), queryLimit, querySkip)
 	if err != nil {
 		logger.Debugf("Error calling ReadDocRange(): %s\n", err.Error())
 		return nil, err
@@ -213,16 +220,16 @@ func (vdb *VersionedDB) GetStateRangeScanIterator(namespace string, startKey str
 // ExecuteQuery implements method in VersionedDB interface
 func (vdb *VersionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIterator, error) {
 
-	//TODO - limit is currently set at 1000,  eventually this will need to be changed
-	//to reflect a config option and potentially return an exception if the threshold is exceeded
-	// skip (paging) is not utilized by fabric
-	queryString, err := ApplyQueryWrapper(namespace, query)
+	//Get the querylimit from core.yaml
+	queryLimit := ledgerconfig.GetQueryLimit()
+
+	queryString, err := ApplyQueryWrapper(namespace, query, queryLimit, 0)
 	if err != nil {
-		logger.Debugf("Error calling QueryDocuments(): %s\n", err.Error())
+		logger.Debugf("Error calling ApplyQueryWrapper(): %s\n", err.Error())
 		return nil, err
 	}
 
-	queryResult, err := vdb.db.QueryDocuments(queryString, 1000, 0)
+	queryResult, err := vdb.db.QueryDocuments(queryString)
 	if err != nil {
 		logger.Debugf("Error calling QueryDocuments(): %s\n", err.Error())
 		return nil, err

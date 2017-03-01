@@ -848,7 +848,7 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 }
 
 //QueryDocuments method provides function for processing a query
-func (dbclient *CouchDatabase) QueryDocuments(query string, limit, skip int) (*[]QueryResult, error) {
+func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, error) {
 
 	logger.Debugf("Entering QueryDocuments()  query=%s", query)
 
@@ -861,12 +861,6 @@ func (dbclient *CouchDatabase) QueryDocuments(query string, limit, skip int) (*[
 	}
 
 	queryURL.Path = dbclient.dbName + "/_find"
-
-	queryParms := queryURL.Query()
-	queryParms.Set("limit", strconv.Itoa(limit))
-	queryParms.Add("skip", strconv.Itoa(skip))
-
-	queryURL.RawQuery = queryParms.Encode()
 
 	//Set up a buffer for the data to be pushed to couchdb
 	data := new(bytes.Buffer)
