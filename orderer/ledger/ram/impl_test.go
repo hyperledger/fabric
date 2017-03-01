@@ -31,7 +31,7 @@ func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func NewTestChain(maxSize int) *ramLedger {
+func newTestChain(maxSize int) *ramLedger {
 	rlf := New(maxSize)
 	chain, err := rlf.GetOrCreate(provisional.TestChainID)
 	if err != nil {
@@ -45,7 +45,7 @@ func NewTestChain(maxSize int) *ramLedger {
 // Note that 'only' is applicable because the genesis block will be discarded
 func TestAppend(t *testing.T) {
 	maxSize := 3
-	rl := NewTestChain(maxSize)
+	rl := newTestChain(maxSize)
 	var blocks []*cb.Block
 	for i := 0; i < 3; i++ {
 		blocks = append(blocks, &cb.Block{Header: &cb.BlockHeader{Number: uint64(i + 1)}})
@@ -70,7 +70,7 @@ func TestAppend(t *testing.T) {
 // TestSignal checks if the signal channel closes when an item is appended
 func TestSignal(t *testing.T) {
 	maxSize := 3
-	rl := NewTestChain(maxSize)
+	rl := newTestChain(maxSize)
 	item := rl.newest
 	select {
 	case <-item.signal:
@@ -91,7 +91,7 @@ func TestSignal(t *testing.T) {
 func TestTruncationSafety(t *testing.T) {
 	maxSize := 3
 	newBlocks := 10
-	rl := NewTestChain(maxSize)
+	rl := newTestChain(maxSize)
 	item := rl.newest
 	for i := 0; i < newBlocks; i++ {
 		rl.appendBlock(&cb.Block{Header: &cb.BlockHeader{Number: uint64(i + 1)}})
