@@ -17,9 +17,9 @@ package factory
 
 // DefaultOpts offers a default implementation for Opts
 type FactoryOpts struct {
-	ProviderName string      `mapstructure:"default" json:"default"`
-	SwOpts       *SwOpts     `mapstructure:"SW,omitempty" json:"SW,omitempty"`
-	Pkcs11Opts   *PKCS11Opts `mapstructure:"PKCS11,omitempty" json:"PKCS11,omitempty"`
+	ProviderName string      `mapstructure:"default" json:"default" yaml:"Default"`
+	SwOpts       *SwOpts     `mapstructure:"SW,omitempty" json:"SW,omitempty" yaml:"SwOpts"`
+	Pkcs11Opts   *PKCS11Opts `mapstructure:"PKCS11,omitempty" json:"PKCS11,omitempty" yaml:"PKCS11"`
 }
 
 var DefaultOpts = FactoryOpts{
