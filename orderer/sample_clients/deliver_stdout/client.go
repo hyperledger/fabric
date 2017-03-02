@@ -50,7 +50,7 @@ func seekHelper(chainID string, start *ab.SeekPosition) *cb.Envelope {
 			},
 
 			Data: utils.MarshalOrPanic(&ab.SeekInfo{
-				Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
+				Start:    start,
 				Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
 				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
 			}),
