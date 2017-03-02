@@ -88,7 +88,7 @@ pages:
     - Golang: Style-guides/go-style.md
   - Still Have Questions?: questions.md
   - Criteria on quality: quality.md
-  - Incubation notice: incubation.md
+  - Status: status.md
   - License: license.md
 
 markdown_extensions:
