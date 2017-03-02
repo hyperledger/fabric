@@ -29,6 +29,14 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+type ConfigResult interface {
+	JSON() string
+}
+
+func NewConfigResult(config *cb.ConfigGroup, proposer api.Proposer) (ConfigResult, error) {
+	return processConfig(config, proposer)
+}
+
 type configResult struct {
 	tx                 interface{}
 	groupName          string

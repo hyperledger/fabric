@@ -43,6 +43,8 @@ type Generator interface {
 
 	// ChannelTemplate returns a template which can be used to help initialize a channel
 	ChannelTemplate() configtx.Template
+
+	GenesisBlockForChannel(channelID string) *cb.Block
 }
 
 const (
