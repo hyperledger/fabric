@@ -69,11 +69,11 @@ func GetManagerForChain(chainID string) msp.MSPManager {
 }
 
 // GetManagers returns all the managers registered
-func GetManagers() map[string]msp.MSPManager {
+func GetDeserializers() map[string]msp.IdentityDeserializer {
 	m.Lock()
 	defer m.Unlock()
 
-	clone := make(map[string]msp.MSPManager)
+	clone := make(map[string]msp.IdentityDeserializer)
 
 	for key, mspManager := range mspMap {
 		clone[key] = mspManager
