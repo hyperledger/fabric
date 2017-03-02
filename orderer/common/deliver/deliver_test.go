@@ -166,10 +166,9 @@ func TestOldestSeek(t *testing.T) {
 					t.Fatalf("Expected %d blocks but got %d", ledgerSize, count)
 				}
 				return
-			} else {
-				if deliverReply.GetBlock().Header.Number != count {
-					t.Fatalf("Expected block %d but got block %d", count, deliverReply.GetBlock().Header.Number)
-				}
+			}
+			if deliverReply.GetBlock().Header.Number != count {
+				t.Fatalf("Expected block %d but got block %d", count, deliverReply.GetBlock().Header.Number)
 			}
 		case <-time.After(time.Second):
 			t.Fatalf("Timed out waiting to get all blocks")
@@ -200,10 +199,9 @@ func TestNewestSeek(t *testing.T) {
 				t.Fatalf("Received an error on the reply channel")
 			}
 			return
-		} else {
-			if deliverReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
-				t.Fatalf("Expected only the most recent block")
-			}
+		}
+		if deliverReply.GetBlock().Header.Number != uint64(ledgerSize-1) {
+			t.Fatalf("Expected only the most recent block")
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("Timed out waiting to get all blocks")
@@ -236,10 +234,9 @@ func TestSpecificSeek(t *testing.T) {
 					t.Fatalf("Received an error on the reply channel")
 				}
 				return
-			} else {
-				if expected := specifiedStart + count; deliverReply.GetBlock().Header.Number != expected {
-					t.Fatalf("Expected block %d but got block %d", expected, deliverReply.GetBlock().Header.Number)
-				}
+			}
+			if expected := specifiedStart + count; deliverReply.GetBlock().Header.Number != expected {
+				t.Fatalf("Expected block %d but got block %d", expected, deliverReply.GetBlock().Header.Number)
 			}
 		case <-time.After(time.Second):
 			t.Fatalf("Timed out waiting to get all blocks")

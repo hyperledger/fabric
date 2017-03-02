@@ -83,7 +83,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 
 		if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
-			err := fmt.Errorf("Malformed envelope recieved with bad header")
+			err = fmt.Errorf("Malformed envelope received with bad header")
 			logger.Error(err)
 			return err
 		}
