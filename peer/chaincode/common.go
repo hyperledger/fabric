@@ -229,7 +229,7 @@ func InitCmdFactory() (*ChaincodeCmdFactory, error) {
 		return nil, fmt.Errorf("Error getting default signer: %s", err)
 	}
 
-	broadcastClient, err := common.GetBroadcastClient()
+	broadcastClient, err := common.GetBroadcastClient(orderingEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting broadcast client: %s", err)
 	}
