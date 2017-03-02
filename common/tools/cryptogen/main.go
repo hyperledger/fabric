@@ -101,7 +101,7 @@ func generatePeerOrgs(baseDir string, orgNames []string) {
 		// TODO: add ability to specify peer names
 		// for name just use default base name
 		peerNames := []string{}
-		for i := 1; i <= *numPeerOrgs; i++ {
+		for i := 1; i <= *numPeers; i++ {
 			peerNames = append(peerNames, fmt.Sprintf("%s%s%d",
 				orgName, peerBaseName, i))
 		}
