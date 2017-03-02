@@ -51,7 +51,7 @@ type GossipService interface {
 	// NewConfigEventer creates a ConfigProcessor which the configtx.Manager can ultimately route config updates to
 	NewConfigEventer() ConfigProcessor
 	// InitializeChannel allocates the state provider and should be invoked once per channel per execution
-	InitializeChannel(chainID string, committer committer.Committer)
+	InitializeChannel(chainID string, committer committer.Committer, endpoints []string)
 	// GetBlock returns block for given chain
 	GetBlock(chainID string, index uint64) *common.Block
 	// AddPayload appends message payload to for given chain
@@ -61,15 +61,15 @@ type GossipService interface {
 // DeliveryServiceFactory factory to create and initialize delivery service instance
 type DeliveryServiceFactory interface {
 	// Returns an instance of delivery client
-	Service(g GossipService) (deliverclient.DeliverService, error)
+	Service(g GossipService, endpoints []string) (deliverclient.DeliverService, error)
 }
 
 type deliveryFactoryImpl struct {
 }
 
 // Returns an instance of delivery client
-func (*deliveryFactoryImpl) Service(g GossipService) (deliverclient.DeliverService, error) {
-	return deliverclient.NewDeliverService(g)
+func (*deliveryFactoryImpl) Service(g GossipService, endpoints []string) (deliverclient.DeliverService, error) {
+	return deliverclient.NewDeliverService(g, endpoints)
 }
 
 type gossipServiceImpl struct {
@@ -159,7 +159,7 @@ func (g *gossipServiceImpl) NewConfigEventer() ConfigProcessor {
 }
 
 // InitializeChannel allocates the state provider and should be invoked once per channel per execution
-func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committer.Committer) {
+func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committer.Committer, endpoints []string) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	// Initialize new state provider for given committer
@@ -167,7 +167,7 @@ func (g *gossipServiceImpl) InitializeChannel(chainID string, committer committe
 	g.chains[chainID] = state.NewGossipStateProvider(chainID, g, committer, g.mcs)
 	if g.deliveryService == nil {
 		var err error
-		g.deliveryService, err = g.deliveryFactory.Service(gossipServiceInstance)
+		g.deliveryService, err = g.deliveryFactory.Service(gossipServiceInstance, endpoints)
 		if err != nil {
 			logger.Warning("Cannot create delivery client, due to", err)
 		}

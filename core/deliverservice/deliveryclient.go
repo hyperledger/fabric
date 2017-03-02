@@ -18,16 +18,15 @@ package deliverclient
 
 import (
 	"errors"
+	"fmt"
+	"math/rand"
 	"sync"
 	"time"
-
-	"fmt"
 
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -102,26 +101,27 @@ type deliverServiceImpl struct {
 // delivery service instance. It tries to establish connection to
 // the specified in the configuration ordering service, in case it
 // fails to dial to it, return nil
-func NewDeliverService(gossip blocksprovider.GossipServiceAdapter) (DeliverService, error) {
-	// TODO: Has to be fixed as ordering service configuration is part of the part of configuration block
-	endpoint := viper.GetString("peer.committer.ledger.orderer")
-	logger.Infof("Creating delivery service to get blocks from the ordering service, %s", endpoint)
+func NewDeliverService(gossip blocksprovider.GossipServiceAdapter, endpoints []string) (DeliverService, error) {
+	indices := rand.Perm(len(endpoints))
+	for _, idx := range indices {
+		logger.Infof("Creating delivery service to get blocks from the ordering service, %s", endpoints[idx])
 
-	dialOpts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
+		dialOpts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
 
-	if comm.TLSEnabled() {
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.InitTLSForPeer()))
-	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		if comm.TLSEnabled() {
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.InitTLSForPeer()))
+		} else {
+			dialOpts = append(dialOpts, grpc.WithInsecure())
+		}
+
+		conn, err := grpc.Dial(endpoints[idx], dialOpts...)
+		if err != nil {
+			logger.Errorf("Cannot dial to %s, because of %s", endpoints[idx], err)
+			continue
+		}
+		return NewFactoryDeliverService(gossip, &blocksDelivererFactoryImpl{conn}, conn), nil
 	}
-
-	conn, err := grpc.Dial(endpoint, dialOpts...)
-	if err != nil {
-		logger.Errorf("Cannot dial to %s, because of %s", endpoint, err)
-		return nil, err
-	}
-
-	return NewFactoryDeliverService(gossip, &blocksDelivererFactoryImpl{conn}, conn), nil
+	return nil, fmt.Errorf("Wasn't able to connect to any of ordering service endpoints %s", endpoints)
 }
 
 // NewFactoryDeliverService construction function to create and initialize
