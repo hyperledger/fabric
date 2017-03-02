@@ -46,64 +46,64 @@ const Prefix string = "CONFIGTX"
 
 // TopLevel contains the genesis structures for use by the provisional bootstrapper
 type TopLevel struct {
-	Profiles      map[string]*Profile
-	Organizations []*Organization
-	Application   *Application
-	Orderer       *Orderer
+	Profiles      map[string]*Profile `yaml:"Profiles"`
+	Organizations []*Organization     `yaml:"Organizations"`
+	Application   *Application        `yaml:"Application"`
+	Orderer       *Orderer            `yaml:"Orderer"`
 }
 
 // TopLevel contains the genesis structures for use by the provisional bootstrapper
 type Profile struct {
-	Application *Application
-	Orderer     *Orderer
+	Application *Application `yaml:"Application"`
+	Orderer     *Orderer     `yaml:"Orderer"`
 }
 
 // Application encodes the configuration needed for the config transaction
 type Application struct {
-	Organizations []*Organization
+	Organizations []*Organization `yaml:"Organizations"`
 }
 
 type Organization struct {
-	Name   string
-	ID     string
-	MSPDir string
-	BCCSP  *bccsp.FactoryOpts
+	Name   string             `yaml:"Name"`
+	ID     string             `yaml:"ID"`
+	MSPDir string             `yaml:"MSPDir"`
+	BCCSP  *bccsp.FactoryOpts `yaml:"BCCSP"`
 
 	// Note, the viper deserialization does not seem to care for
 	// embedding of types, so we use one organization structure for
 	// both orderers and applications
-	AnchorPeers []*AnchorPeer
+	AnchorPeers []*AnchorPeer `yaml:"AnchorPeers"`
 }
 
 type AnchorPeer struct {
-	Host string
-	Port int
+	Host string `yaml:"Host"`
+	Port int    `yaml:"Port"`
 }
 
 type ApplicationOrganization struct {
-	Organization
+	Organization `yaml:"Organization"`
 }
 
 // Orderer contains config which is used for orderer genesis by the provisional bootstrapper
 type Orderer struct {
-	OrdererType   string
-	Addresses     []string
-	BatchTimeout  time.Duration
-	BatchSize     BatchSize
-	Kafka         Kafka
-	Organizations []*Organization
+	OrdererType   string          `yaml:"OrdererType"`
+	Addresses     []string        `yaml:"Addresses"`
+	BatchTimeout  time.Duration   `yaml:"BatchTimeout"`
+	BatchSize     BatchSize       `yaml:"BatchSize"`
+	Kafka         Kafka           `yaml:"Kafka"`
+	Organizations []*Organization `yaml:"Organizations"`
 }
 
 // BatchSize contains configuration affecting the size of batches
 type BatchSize struct {
-	MaxMessageCount   uint32
-	AbsoluteMaxBytes  uint32
-	PreferredMaxBytes uint32
+	MaxMessageCount   uint32 `yaml:"MaxMessageSize"`
+	AbsoluteMaxBytes  uint32 `yaml:"AbsoluteMaxBytes"`
+	PreferredMaxBytes uint32 `yaml:"PreferredMaxBytes"`
 }
 
 // Kafka contains config for the Kafka orderer
 type Kafka struct {
-	Brokers []string
+	Brokers []string `yaml:"Brokers"`
 }
 
 var genesisDefaults = TopLevel{
