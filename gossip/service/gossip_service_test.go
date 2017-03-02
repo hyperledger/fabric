@@ -39,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/peer/gossip/mcs"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -105,7 +106,7 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 	}
 	addPeersToChannel(t, n, 10000, channelName, gossips, peerIndexes)
 
-	waitForFullMembership(t, gossips, n, time.Second*30, time.Second*2)
+	waitForFullMembership(t, gossips, n, time.Second*20, time.Second*2)
 
 	services := make([]*electionService, n)
 
@@ -119,19 +120,25 @@ func TestLeaderElectionWithDeliverClient(t *testing.T) {
 		deliverServiceFactory.service.running[channelName] = false
 
 		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{0}, []string{"localhost:5005"})
+		gossips[i].(*gossipServiceImpl).chains[channelName].Stop()
 		service, exist := gossips[i].(*gossipServiceImpl).leaderElection[channelName]
 		assert.True(t, exist, "Leader election service should be created for peer %d and channel %s", i, channelName)
 		services[i] = &electionService{nil, false, 0}
 		services[i].LeaderElectionService = service
 	}
 
-	assert.True(t, waitForLeaderElection(t, services, 0, time.Second*30, time.Second*2), "One leader (peer 0) should be selected")
+	// Is single leader was elected.
+	assert.True(t, waitForLeaderElection(t, services, time.Second*30, time.Second*2), "One leader should be selected")
 
-	assert.True(t, gossips[0].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Delivery service should be started in peer %d", 0)
-
-	for i := 1; i < n; i++ {
-		assert.False(t, gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName], "Delivery service should not be started in peer %d", i)
+	startsNum := 0
+	for i := 0; i < n; i++ {
+		// Is mockDeliverService.StartDeliverForChannel in current peer for the specific channel was invoked
+		if gossips[i].(*gossipServiceImpl).deliveryService.(*mockDeliverService).running[channelName] {
+			startsNum++
+		}
 	}
+
+	assert.Equal(t, 1, startsNum, "Only for one peer delivery client should start")
 
 	stopPeers(gossips)
 }
@@ -170,6 +177,7 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
 		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{0}, []string{"localhost:5005"})
+		gossips[i].(*gossipServiceImpl).chains[channelName].Stop()
 	}
 
 	for i := 0; i < n; i++ {
@@ -218,6 +226,7 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 		gossips[i].(*gossipServiceImpl).deliveryFactory = deliverServiceFactory
 		deliverServiceFactory.service.running[channelName] = false
 		gossips[i].InitializeChannel(channelName, &mockLedgerInfo{0}, []string{"localhost:5005"})
+		gossips[i].(*gossipServiceImpl).chains[channelName].Stop()
 	}
 
 	for i := 0; i < n; i++ {
@@ -302,7 +311,7 @@ func (li *mockLedgerInfo) Commit(block *common.Block) error {
 
 // Gets blocks with sequence numbers provided in the slice
 func (li *mockLedgerInfo) GetBlocks(blockSeqs []uint64) []*common.Block {
-	return nil
+	return make([]*common.Block, 0)
 }
 
 // Closes committing service
@@ -310,7 +319,6 @@ func (li *mockLedgerInfo) Close() {
 }
 
 func TestLeaderElectionWithRealGossip(t *testing.T) {
-	t.Skip()
 
 	// Spawn 10 gossip instances with single channel and inside same organization
 	// Run leader election on top of each gossip instance and check that only one leader chosen
@@ -318,6 +326,9 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	// Run additional leader election services for new channel
 	// Check correct leader still exist for first channel and new correct leader chosen in second channel
 	// Stop gossip instances of leader peers for both channels and see that new leader chosen for both
+
+	logging.SetLevel(logging.DEBUG, util.LoggingElectionModule)
+	logging.SetLevel(logging.DEBUG, util.LoggingServiceModule)
 
 	// Creating gossip service instances for peers
 	n := 10
@@ -335,7 +346,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	logger.Warning("Starting leader election services")
 
-	//Stariting leader election services
+	//Starting leader election services
 	services := make([]*electionService, n)
 
 	for i := 0; i < n; i++ {
@@ -345,13 +356,17 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	logger.Warning("Waiting for leader election")
 
-	assert.True(t, waitForLeaderElection(t, services, 0, time.Second*30, time.Second*2), "One leader (peer 0) should be selected")
-	assert.True(t, services[0].callbackInvokeRes, "Callback func for peer 0 should be called (chanA)")
+	assert.True(t, waitForLeaderElection(t, services, time.Second*30, time.Second*2), "One leader should be selected")
 
-	for i := 1; i < n; i++ {
-		assert.False(t, services[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanA)", i)
-		assert.False(t, services[i].IsLeader(), "Peer %d should not be leader  in chanA", i)
+	startsNum := 0
+	for i := 0; i < n; i++ {
+		// Is callback function was invoked by this leader election service instance
+		if services[i].callbackInvokeRes {
+			startsNum++
+		}
 	}
+	//Only leader should invoke callback function, so it is double check that only one leader exists
+	assert.Equal(t, 1, startsNum, "Only for one peer callback function should be called - chanA")
 
 	// Adding some peers to new channel and creating leader election services for peers in new channel
 	// Expecting peer 1 (first in list of election services) to become leader of second channel
@@ -365,39 +380,52 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 		secondChannelServices[idx].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(gossipCommon.ChainID(secondChannelName), secondChannelServices[idx].callback)
 	}
 
-	assert.True(t, waitForLeaderElection(t, secondChannelServices, 0, time.Second*30, time.Second*2), "One leader (peer 1) should be selected")
-	assert.True(t, waitForLeaderElection(t, services, 0, time.Second*30, time.Second*2), "One leader (peer 0) should be selected")
+	assert.True(t, waitForLeaderElection(t, secondChannelServices, time.Second*30, time.Second*2), "One leader should be selected for chanB")
+	assert.True(t, waitForLeaderElection(t, services, time.Second*30, time.Second*2), "One leader should be selected for chanA")
 
-	assert.True(t, services[0].callbackInvokeRes, "Callback func for peer 0 should be called (chanA)")
-	for i := 1; i < n; i++ {
-		assert.False(t, services[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanA)", i)
-		assert.False(t, services[i].IsLeader(), "Peer %d should not be leader in chanA", i)
+	startsNum = 0
+	for i := 0; i < n; i++ {
+		if services[i].callbackInvokeRes {
+			startsNum++
+		}
 	}
+	assert.Equal(t, 1, startsNum, "Only for one peer callback function should be called - chanA")
 
-	assert.True(t, secondChannelServices[0].callbackInvokeRes, "Callback func for peer 1 should be called (chanB)")
-	for i := 1; i < len(secondChannelServices); i++ {
-		assert.False(t, secondChannelServices[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanB)", secondChannelPeerIndexes[i])
-		assert.False(t, secondChannelServices[i].IsLeader(), "Peer %d should not be leader in chanB", i)
+	startsNum = 0
+	for i := 0; i < len(secondChannelServices); i++ {
+		if secondChannelServices[i].callbackInvokeRes {
+			startsNum++
+		}
 	}
+	assert.Equal(t, 1, startsNum, "Only for one peer callback function should be called - chanB")
 
 	//Stopping 2 gossip instances(peer 0 and peer 1), should init re-election
 	//Now peer 2 become leader for first channel and peer 3 for second channel
+
+	logger.Warning("Killing 2 peers, initiation new leader election")
+
 	stopPeers(gossips[:2])
 
-	assert.True(t, waitForLeaderElection(t, secondChannelServices[1:], 0, time.Second*30, time.Second*2), "One leader (peer 2) should be selected")
-	assert.True(t, waitForLeaderElection(t, services[2:], 0, time.Second*30, time.Second*2), "One leader (peer 3) should be selected")
+	waitForFullMembership(t, gossips[2:], n-2, time.Second*30, time.Second*2)
 
-	assert.True(t, services[2].callbackInvokeRes, "Callback func for peer 2 should be called (chanA)")
-	for i := 3; i < n; i++ {
-		assert.False(t, services[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanA)", i)
-		assert.False(t, services[i].IsLeader(), "Peer %d should not be leader in chanA", i)
-	}
+	assert.True(t, waitForLeaderElection(t, services[2:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanA")
+	assert.True(t, waitForLeaderElection(t, secondChannelServices[1:], time.Second*30, time.Second*2), "One leader should be selected after re-election - chanB")
 
-	assert.True(t, secondChannelServices[1].callbackInvokeRes, "Callback func for peer 3 should be called (chanB)")
-	for i := 2; i < len(secondChannelServices); i++ {
-		assert.False(t, secondChannelServices[i].callbackInvokeRes, "Callback func for peer %d should not be called (chanB)", secondChannelPeerIndexes[i])
-		assert.False(t, secondChannelServices[i].IsLeader(), "Peer %d should not be leader in chanB", i)
+	startsNum = 0
+	for i := 2; i < n; i++ {
+		if services[i].callbackInvokeRes {
+			startsNum++
+		}
 	}
+	assert.Equal(t, 1, startsNum, "Only for one peer callback function should be called after re-election - chanA")
+
+	startsNum = 0
+	for i := 1; i < len(secondChannelServices); i++ {
+		if secondChannelServices[i].callbackInvokeRes {
+			startsNum++
+		}
+	}
+	assert.Equal(t, 1, startsNum, "Only for one peer callback function should be called after re-election - chanB")
 
 	stopServices(secondChannelServices)
 	stopServices(services)
@@ -452,36 +480,37 @@ func waitForFullMembership(t *testing.T, gossips []GossipService, peersNum int, 
 	return false
 }
 
-func waitForMultipleLeadersElection(t *testing.T, services []*electionService, leadersNum int, leaderIndexes []int, timeout time.Duration, testPollInterval time.Duration) bool {
+func waitForMultipleLeadersElection(t *testing.T, services []*electionService, leadersNum int, timeout time.Duration, testPollInterval time.Duration) bool {
+	logger.Warning("Waiting for", leadersNum, "leaders")
 	end := time.Now().Add(timeout)
+	correctNumberOfLeadersFound := false
+	leaders := 0
 	for time.Now().Before(end) {
-		leaders := 0
-		incorrectLeaders := false
-		for i, s := range services {
+		leaders = 0
+		for _, s := range services {
 			if s.IsLeader() {
-				expectedLeader := false
-				for _, index := range leaderIndexes {
-					if i == index {
-						leaders++
-						expectedLeader = true
-					}
-				}
-				if !expectedLeader {
-					logger.Warning("Incorrect peer", i, "become leader")
-					incorrectLeaders = true
-				}
+				leaders++
 			}
 		}
-		if leaders == leadersNum && !incorrectLeaders {
-			return true
+		if leaders == leadersNum {
+			if correctNumberOfLeadersFound {
+				return true
+			}
+			correctNumberOfLeadersFound = true
+		} else {
+			correctNumberOfLeadersFound = false
 		}
 		time.Sleep(testPollInterval)
+	}
+	logger.Warning("Incorrect number of leaders", leaders)
+	for i, s := range services {
+		logger.Warning("Peer at index", i, "is leader", s.IsLeader())
 	}
 	return false
 }
 
-func waitForLeaderElection(t *testing.T, services []*electionService, leaderIndex int, timeout time.Duration, testPollInterval time.Duration) bool {
-	return waitForMultipleLeadersElection(t, services, 1, []int{leaderIndex}, timeout, testPollInterval)
+func waitForLeaderElection(t *testing.T, services []*electionService, timeout time.Duration, testPollInterval time.Duration) bool {
+	return waitForMultipleLeadersElection(t, services, 1, timeout, testPollInterval)
 }
 
 func waitUntilOrFailBlocking(t *testing.T, f func(), timeout time.Duration) {
