@@ -23,7 +23,7 @@ This configuration file may be edited, or, individual properties may be overridd
 ## Bootstrapping the orderer
 After creating a configuration profile as desired, simply invoke
 ```
-configtxgen -profile &lt;profile_name&gt; -outputBlock &lt;genesis.blockname&gt;
+configtxgen -profile <profile_name> -outputBlock <genesis.blockname>;
 ```
 This will produce a `genesis.block` file in the current directory.  If you wish to skip writing the file simply do not pass `outputBlock`
 
@@ -34,7 +34,7 @@ Then, to utilize this genesis block, before starting the orderer, simply specify
 The tool can also output a channel creation tx by executing
 
 ```
-configtxgen -profile &lt;profile_name&gt; -outputCreateChannelTx &lt;output.txname&gt;
+configtxgen -profile <profile_name> -outputCreateChannelTx <output.txname>
 ```
 
 This will output a marshaled `Envelope` message which may be sent to broadcast to create a channel.

@@ -9,7 +9,7 @@ through vagrant, make sure you have followed the steps outlined in
 fabric directory within your vagrant environment, execute the `make peer-docker`
 and `make orderer-docker` commands.
 
-### Start the network of 2 peers, an orderer, and a CLI
+### Start the network of 2 peers, an orderer, and a CLI container
 Navigate to the fabric/docs directory in your vagrant environment and start your network:
 ```bash
 docker-compose -f docker-2peer.yml up
@@ -33,7 +33,7 @@ root@ccd3308afc73:/opt/gopath/src/github.com/hyperledger/fabric/peer#
 ### Create and join channel from the remote CLI
 From your second terminal, lets create a channel by the name of "myc":
 ```bash
-peer channel create -c myc
+peer channel create -c myc -o orderer:5005
 ```
 This will generate a genesis block - `myc.block` - and place it into the same directory
 from which you issued your `peer channel create` command.  Now, from the same directory,
@@ -48,7 +48,11 @@ CORE_PEER_ADDRESS=peer1:7051 peer channel join -b myc.block
 From your second terminal, and still within the CLI container, issue the following
 command to install a chaincode named `mycc` with a version of `v0` onto `peer0`.
 ```bash
-CORE_PEER_ADDRESS=peer0:7051 peer chaincode install -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -v v0
+CORE_PEER_ADDRESS=peer0:7051 peer chaincode install \
+                 -o orderer:5005 \
+                 -n mycc \
+                 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 \
+                 -v v0
 ```
 
 ### Instantiate the chaincode on the channel from the remote CLI
@@ -56,35 +60,57 @@ Now, still within the cli container in your second terminal, instantiate the cha
 `mycc` with version `v0` onto `peer0`.  This instantiation will initialize the chaincode
 with key value pairs of ["a","100"] and ["b","200"].
 ```bash
-CORE_PEER_ADDRESS=peer0:7051 peer chaincode instantiate -C myc -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -v v0 -c '{"Args":["init","a","100","b","200"]}'
+CORE_PEER_ADDRESS=peer0:7051 peer chaincode instantiate \
+                 -o orderer:5005 \
+                 -C myc \
+                 -n mycc \
+                 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 \
+                 -c '{"Args":["init","a","100","b","200"]}' \
+                 -v v0 
 ```
 __Continue operating within your second terminal for the remainder of the commands__
 
 ### Query for the value of "a" to make sure the chaincode container has successfully started
 Send a query to `peer0` for the value of key `"a"`:
 ```bash
-CORE_PEER_ADDRESS=peer0:7051 peer chaincode query -C myc -n mycc -v v0 -c '{"Args":["query","a"]}'
+CORE_PEER_ADDRESS=peer0:7051 peer chaincode query \
+                 -C myc \
+                 -n mycc \
+                 -c '{"Args":["query","a"]}' \
+                 -v v0
 ```
 This query should return "100".
 
 ### Invoke to make a state change
 Send an invoke request to `peer0` to move 10 units from "a" to "b":
 ```bash
-CORE_PEER_ADDRESS=peer0:7051 peer chaincode invoke -C myc -n mycc -v v0 -c '{"Args":["invoke","a","b","10"]}'
+CORE_PEER_ADDRESS=peer0:7051 peer chaincode invoke \ 
+                 -C myc \
+                 -n mycc \
+                 -c '{"Args":["invoke","a","b","10"]}' \
+                 -v v0
 ```
 
 ### Query on the second peer
 Issue a query against the key "a" to `peer1`.  Recall that `peer1` has successfully
 joined the channel.
 ```bash
-CORE_PEER_ADDRESS=peer1:7051 peer chaincode query -C myc -n mycc -v v0 -c '{"Args":["query","a"]}'
+CORE_PEER_ADDRESS=peer1:7051 peer chaincode query \
+                 -C myc \
+                 -n mycc \
+                 -c '{"Args":["query","a"]}' \
+                 -v v0
 ```
 This will return an error response because `peer1` does not have the chaincode installed.
 
 ### Install on the second peer
 Now add the chaincode to `peer1` so that you can successfully perform read/write operations.
 ```bash
-CORE_PEER_ADDRESS=peer1:7051 peer chaincode install -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -v v0
+CORE_PEER_ADDRESS=peer1:7051 peer chaincode install \
+                 -o orderer:5005 \
+                 -n mycc \
+                 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 \
+                 -v v0
 ```
 __Note__: The initial instantiation applies to all peers in the channel, and is
 affected upon any peer that has the chaincode installed.  Therefore, we installed
@@ -97,7 +123,11 @@ chaincode must be installed on any peer receiving endorsement requests for that 
 ### Query on the second peer
 Now issue the same query request to `peer1`.
 ```bash
-CORE_PEER_ADDRESS=peer1:7051 peer chaincode query -C myc -n mycc -v v0 -c '{"Args":["query","a"]}'
+CORE_PEER_ADDRESS=peer1:7051 peer chaincode query \
+                 -C myc \
+                 -n mycc \
+                 -c '{"Args":["query","a"]}' \
+                 -v v0
 ```
 Query will now succeed.
 
