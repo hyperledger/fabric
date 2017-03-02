@@ -1,3 +1,0 @@
-# Why blockchain?
-
-...coming soon
