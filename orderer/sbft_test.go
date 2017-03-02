@@ -106,7 +106,7 @@ func TestSbftPeer(t *testing.T) {
 	keyFile := "sbft/testdata/key.pem"
 	cons := &simplebft.Config{N: 1, F: 0, BatchDurationNsec: 1000, BatchSizeBytes: 1000000000, RequestTimeoutNsec: 1000000000}
 	c := &sbft.ConsensusConfig{Consensus: cons, Peers: peers}
-	sc := &backend.StackConfig{listenAddr, certFile, keyFile, dataTmpDir}
+	sc := &backend.StackConfig{ListenAddr: listenAddr, CertFile: certFile, KeyFile: keyFile, DataDir: dataTmpDir}
 	sbftConsenter := sbft.New(c, sc)
 	<-time.After(5 * time.Second)
 	// End SBFT
