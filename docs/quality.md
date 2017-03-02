@@ -1,4 +1,0 @@
-# Quality
-
-[WIP]
-...coming soon 

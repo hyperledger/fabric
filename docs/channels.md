@@ -1,3 +1,0 @@
-## Channels
-
-...coming soon
