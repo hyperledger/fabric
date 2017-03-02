@@ -19,7 +19,11 @@ package fsblkstorage
 import "path/filepath"
 
 const (
-	defaultMaxBlockfileSize = 64 * 1024 * 1024
+	// ChainsDir is the name of the directory containing the channel ledgers.
+	ChainsDir = "chains"
+	// IndexDir is the name of the directory containing all block indexes across ledgers.
+	IndexDir                = "index"
+	defaultMaxBlockfileSize = 64 * 1024 * 1024 // bytes
 )
 
 // Conf encapsulates all the configurations for `FsBlockStore`
@@ -38,13 +42,13 @@ func NewConf(blockStorageDir string, maxBlockfileSize int) *Conf {
 }
 
 func (conf *Conf) getIndexDir() string {
-	return filepath.Join(conf.blockStorageDir, "index")
+	return filepath.Join(conf.blockStorageDir, IndexDir)
 }
 
-func (conf *Conf) getBlocksDir() string {
-	return filepath.Join(conf.blockStorageDir, "blocks")
+func (conf *Conf) getChainsDir() string {
+	return filepath.Join(conf.blockStorageDir, ChainsDir)
 }
 
 func (conf *Conf) getLedgerBlockDir(ledgerid string) string {
-	return filepath.Join(conf.getBlocksDir(), ledgerid)
+	return filepath.Join(conf.getChainsDir(), ledgerid)
 }
