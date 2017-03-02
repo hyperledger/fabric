@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -31,15 +30,9 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/kafka"
-	"github.com/hyperledger/fabric/orderer/ledger"
-	jsonledger "github.com/hyperledger/fabric/orderer/ledger/json"
-	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
 	"github.com/hyperledger/fabric/orderer/multichain"
 	"github.com/hyperledger/fabric/orderer/sbft"
-	"github.com/hyperledger/fabric/orderer/sbft/backend"
-	sbftcrypto "github.com/hyperledger/fabric/orderer/sbft/crypto"
-	"github.com/hyperledger/fabric/orderer/sbft/simplebft"
 	"github.com/hyperledger/fabric/orderer/solo"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
@@ -93,26 +86,7 @@ func main() {
 		logger.Panic("Failed to initialize local MSP:", err)
 	}
 
-	var lf ledger.Factory
-	switch conf.General.LedgerType {
-	case "file":
-		// just use the json ledger type for now
-		fallthrough
-	case "json":
-		location := conf.FileLedger.Location
-		if location == "" {
-			var err error
-			location, err = ioutil.TempDir("", conf.FileLedger.Prefix)
-			if err != nil {
-				logger.Panic("Error creating temp dir:", err)
-			}
-		}
-		lf = jsonledger.New(location)
-	case "ram":
-		fallthrough
-	default:
-		lf = ramledger.New(int(conf.RAMLedger.HistorySize))
-	}
+	lf, _ := createLedgerFactory(conf)
 
 	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
@@ -165,23 +139,4 @@ func main() {
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Info("Beginning to serve requests")
 	grpcServer.Start()
-}
-
-func makeSbftConsensusConfig(conf *config.TopLevel) *sbft.ConsensusConfig {
-	cfg := simplebft.Config{N: conf.Genesis.SbftShared.N, F: conf.Genesis.SbftShared.F,
-		BatchDurationNsec:  uint64(conf.Genesis.DeprecatedBatchTimeout),
-		BatchSizeBytes:     uint64(conf.Genesis.DeprecatedBatchSize),
-		RequestTimeoutNsec: conf.Genesis.SbftShared.RequestTimeoutNsec}
-	peers := make(map[string][]byte)
-	for addr, cert := range conf.Genesis.SbftShared.Peers {
-		peers[addr], _ = sbftcrypto.ParseCertPEM(cert)
-	}
-	return &sbft.ConsensusConfig{Consensus: &cfg, Peers: peers}
-}
-
-func makeSbftStackConfig(conf *config.TopLevel) *backend.StackConfig {
-	return &backend.StackConfig{ListenAddr: conf.SbftLocal.PeerCommAddr,
-		CertFile: conf.SbftLocal.CertFile,
-		KeyFile:  conf.SbftLocal.KeyFile,
-		DataDir:  conf.SbftLocal.DataDir}
 }

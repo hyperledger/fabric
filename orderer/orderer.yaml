@@ -33,7 +33,7 @@ General:
 
     # Log Level: The level at which to log. This accepts logging specifications
     # per: fabric/docs/Setup/logging-control.md
-    LogLevel: debug
+    LogLevel: info
 
     # Genesis method: The method by which to retrieve/generate the genesis
     # block. Available values are "provisional", "file". Provisional utilizes
