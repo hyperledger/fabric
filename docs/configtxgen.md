@@ -39,9 +39,13 @@ configtxgen -profile <profile_name> -outputCreateChannelTx <output.txname>
 
 This will output a marshaled `Envelope` message which may be sent to broadcast to create a channel.
 
-## Reviewing a configuration block
+## Reviewing a configuration
 
-In addition to creating configuration, the `configtxgen` tool is also capable of inspecting configuration.  You may even wish to combine the inspection with generation.  For example:
+In addition to creating configuration, the `configtxgen` tool is also capable of inspecting configuration.
+
+It supports inspecting both configuration blocks, and configuration transactions.  You may use the inspect flags `-inspectBlock` and `-inspectChannelCreateTx` respectively with the path to a file to inspect to output a human readable (JSON) representation of the configuration.
+
+You may even wish to combine the inspection with generation.  For example:
 
 ```
 $ build/bin/configtxgen -channelID foo -outputBlock foo.block -inspectBlock foo.block
