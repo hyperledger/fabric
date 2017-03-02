@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -69,9 +71,12 @@ func (m *gossipMsg) GetGossipMessage() *proto.GossipMessage {
 type gossipInstance struct {
 	comm *dummyCommModule
 	Discovery
-	gRGCserv     *grpc.Server
-	lsnr         net.Listener
-	shouldGossip bool
+	gRGCserv      *grpc.Server
+	lsnr          net.Listener
+	shouldGossip  bool
+	syncInitiator *time.Ticker
+	stopChan      chan struct{}
+	port          int
 }
 
 func (comm *dummyCommModule) ValidateAliveMsg(am *proto.SignedGossipMessage) bool {
@@ -174,6 +179,22 @@ func (comm *dummyCommModule) CloseConn(peer *NetworkMember) {
 	comm.conns[peer.Endpoint].Close()
 }
 
+func (g *gossipInstance) initiateSync(frequency time.Duration, peerNum int) {
+	g.syncInitiator = time.NewTicker(frequency)
+	g.stopChan = make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-g.syncInitiator.C:
+				g.Discovery.InitiateSync(peerNum)
+			case <-g.stopChan:
+				g.syncInitiator.Stop()
+				return
+			}
+		}
+	}()
+}
+
 func (g *gossipInstance) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	for {
 		envelope, err := stream.Recv()
@@ -225,6 +246,9 @@ func (g *gossipInstance) tryForwardMessage(msg *proto.SignedGossipMessage) {
 }
 
 func (g *gossipInstance) Stop() {
+	if g.syncInitiator != nil {
+		g.stopChan <- struct{}{}
+	}
 	g.gRGCserv.Stop()
 	g.lsnr.Close()
 	for _, stream := range g.comm.streams {
@@ -240,15 +264,27 @@ func (g *gossipInstance) Ping(context.Context, *proto.Empty) (*proto.Empty, erro
 	return &proto.Empty{}, nil
 }
 
+var noopPolicy = func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
+	return func(msg *proto.SignedGossipMessage) bool {
+			return true
+		}, func(message *proto.SignedGossipMessage) *proto.Envelope {
+			return message.Envelope
+		}
+}
+
 func createDiscoveryInstance(port int, id string, bootstrapPeers []string) *gossipInstance {
-	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, true)
+	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, true, noopPolicy)
 }
 
 func createDiscoveryInstanceWithNoGossip(port int, id string, bootstrapPeers []string) *gossipInstance {
-	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, false)
+	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, false, noopPolicy)
 }
 
-func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []string, shouldGossip bool) *gossipInstance {
+func createDiscoveryInstanceWithNoGossipWithDisclosurePolicy(port int, id string, bootstrapPeers []string, pol DisclosurePolicy) *gossipInstance {
+	return createDiscoveryInstanceThatGossips(port, id, bootstrapPeers, false, pol)
+}
+
+func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []string, shouldGossip bool, pol DisclosurePolicy) *gossipInstance {
 	comm := &dummyCommModule{
 		conns:        make(map[string]*grpc.ClientConn),
 		streams:      make(map[string]proto.Gossip_GossipStreamClient),
@@ -276,8 +312,8 @@ func createDiscoveryInstanceThatGossips(port int, id string, bootstrapPeers []st
 	}
 	s := grpc.NewServer()
 
-	discSvc := NewDiscoveryService(bootstrapPeers, self, comm, comm)
-	gossInst := &gossipInstance{comm: comm, gRGCserv: s, Discovery: discSvc, lsnr: ll, shouldGossip: shouldGossip}
+	discSvc := NewDiscoveryService(bootstrapPeers, self, comm, comm, pol)
+	gossInst := &gossipInstance{comm: comm, gRGCserv: s, Discovery: discSvc, lsnr: ll, shouldGossip: shouldGossip, port: port}
 
 	proto.RegisterGossipServer(s, gossInst)
 	go s.Serve(ll)
@@ -472,7 +508,6 @@ func TestGossipDiscoveryStopping(t *testing.T) {
 	inst := createDiscoveryInstance(9611, "d1", []string{bootPeer(9611)})
 	time.Sleep(time.Second)
 	waitUntilOrFailBlocking(t, inst.Stop)
-
 }
 
 func TestGossipDiscoverySkipConnectingToLocalhostBootstrap(t *testing.T) {
@@ -522,6 +557,140 @@ func TestConvergence(t *testing.T) {
 	instances = instances[:len(instances)-1]
 	assertMembership(t, instances, 11)
 	stopInstances(t, instances)
+}
+
+func TestDisclosurePolicyWithPull(t *testing.T) {
+	t.Parallel()
+	// Scenario: run 2 groups of peers that simulate 2 organizations:
+	// {p0, p1, p2, p3, p4}
+	// {p5, p6, p7, p8, p9}
+	// Only peers that have an even id have external addresses
+	// and only these peers should be published to peers of the other group,
+	// while the only ones that need to know about them are peers
+	// that have an even id themselves.
+	// Furthermore, peers in different sets, should not know about internal addresses of
+	// other peers.
+
+	// This is a bootstrap map that matches for each peer its own bootstrap peer.
+	// In practice (production) peers should only use peers of their orgs as bootstrap peers,
+	// but the discovery layer is ignorant of organizations.
+	bootPeerMap := map[int]int{
+		8610: 8616,
+		8611: 8610,
+		8612: 8610,
+		8613: 8610,
+		8614: 8610,
+		8615: 8616,
+		8616: 8610,
+		8617: 8616,
+		8618: 8616,
+		8619: 8616,
+	}
+
+	// This map matches each peer, the peers it should know about in the test scenario.
+	peersThatShouldBeKnownToPeers := map[int][]int{
+		8610: {8611, 8612, 8613, 8614, 8616, 8618},
+		8611: {8610, 8612, 8613, 8614},
+		8612: {8610, 8611, 8613, 8614, 8616, 8618},
+		8613: {8610, 8611, 8612, 8614},
+		8614: {8610, 8611, 8612, 8613, 8616, 8618},
+		8615: {8616, 8617, 8618, 8619},
+		8616: {8610, 8612, 8614, 8615, 8617, 8618, 8619},
+		8617: {8615, 8616, 8618, 8619},
+		8618: {8610, 8612, 8614, 8615, 8616, 8617, 8619},
+		8619: {8615, 8616, 8617, 8618},
+	}
+	// Create the peers in the two groups
+	instances1, instances2 := createDisjointPeerGroupsWithNoGossip(bootPeerMap)
+	// Sleep a while to let them establish membership. This time should be more than enough
+	// because the instances are configured to pull membership in very high frequency from
+	// up to 10 peers (which results in - pulling from everyone)
+	time.Sleep(time.Second * 5)
+	for _, inst := range append(instances1, instances2...) {
+		portsOfKnownMembers := portsOfMembers(inst.GetMembership())
+		// Ensure the expected membership is equal to the actual membership
+		// of each peer. the portsOfMembers returns a sorted slice so assert.Equal does the job.
+		assert.Equal(t, peersThatShouldBeKnownToPeers[inst.port], portsOfKnownMembers)
+		// Next, check that internal endpoints aren't leaked across groups,
+		for _, knownPeer := range inst.GetMembership() {
+			// If internal endpoint is known, ensure the peers are in the same group
+			// unless the peer in question is a peer that has a public address.
+			// We cannot control what we disclose about ourselves when we send a membership request
+			if len(knownPeer.InternalEndpoint) > 0 && inst.port%2 != 0 {
+				bothInGroup1 := portOfEndpoint(knownPeer.Endpoint) < 8615 && inst.port < 8615
+				bothInGroup2 := portOfEndpoint(knownPeer.Endpoint) >= 8615 && inst.port >= 8615
+				assert.True(t, bothInGroup1 || bothInGroup2, "%v knows about %v's internal endpoint", inst.port, knownPeer.InternalEndpoint)
+			}
+		}
+	}
+
+	t.Log("Shutting down instance 0...")
+	// Now, we shutdown instance 0 and ensure that peers that shouldn't know it,
+	// do not know it via membership requests
+	stopInstances(t, []*gossipInstance{instances1[0]})
+	time.Sleep(time.Second * 3)
+	for _, inst := range append(instances1[1:], instances2...) {
+		if peersThatShouldBeKnownToPeers[inst.port][0] == 8610 {
+			assert.Equal(t, 1, inst.Discovery.(*gossipDiscoveryImpl).deadMembership.Size())
+		} else {
+			assert.Equal(t, 0, inst.Discovery.(*gossipDiscoveryImpl).deadMembership.Size())
+		}
+	}
+	stopInstances(t, instances1[1:])
+	stopInstances(t, instances2)
+}
+
+func createDisjointPeerGroupsWithNoGossip(bootPeerMap map[int]int) ([]*gossipInstance, []*gossipInstance) {
+	instances1 := []*gossipInstance{}
+	instances2 := []*gossipInstance{}
+	for group := 0; group < 2; group++ {
+		for i := 0; i < 5; i++ {
+			group := group
+			id := fmt.Sprintf("id%d", group*5+i)
+			port := 8610 + group*5 + i
+			bootPeers := []string{bootPeer(bootPeerMap[port])}
+			pol := discPolForPeer(port)
+			inst := createDiscoveryInstanceWithNoGossipWithDisclosurePolicy(8610+group*5+i, id, bootPeers, pol)
+			inst.initiateSync(getAliveExpirationTimeout()/3, 10)
+			if group == 0 {
+				instances1 = append(instances1, inst)
+			} else {
+				instances2 = append(instances2, inst)
+			}
+		}
+	}
+	return instances1, instances2
+}
+
+func discPolForPeer(selfPort int) DisclosurePolicy {
+	return func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
+		targetPortStr := strings.Split(remotePeer.Endpoint, ":")[1]
+		targetPort, _ := strconv.ParseInt(targetPortStr, 10, 64)
+		return func(msg *proto.SignedGossipMessage) bool {
+				portOfAliveMsgStr := strings.Split(msg.GetAliveMsg().Membership.Endpoint, ":")[1]
+				portOfAliveMsg, _ := strconv.ParseInt(portOfAliveMsgStr, 10, 64)
+
+				if portOfAliveMsg < 8615 && targetPort < 8615 {
+					return true
+				}
+				if portOfAliveMsg >= 8615 && targetPort >= 8615 {
+					return true
+				}
+
+				// Else, expose peers with even ids to other peers with even ids
+				return portOfAliveMsg%2 == 0 && targetPort%2 == 0
+			}, func(msg *proto.SignedGossipMessage) *proto.Envelope {
+				if selfPort < 8615 && targetPort >= 8615 {
+					msg.Envelope.SecretEnvelope = nil
+				}
+
+				if selfPort >= 8615 && targetPort < 8615 {
+					msg.Envelope.SecretEnvelope = nil
+				}
+
+				return msg.Envelope
+			}
+	}
 }
 
 func TestConfigFromFile(t *testing.T) {
@@ -627,4 +796,18 @@ func assertMembership(t *testing.T, instances []*gossipInstance, expectedNum int
 		return false
 	}
 	waitUntilOrFail(t, fullMembership)
+}
+
+func portsOfMembers(members []NetworkMember) []int {
+	ports := make([]int, len(members))
+	for i := range members {
+		ports[i] = portOfEndpoint(members[i].Endpoint)
+	}
+	sort.Ints(ports)
+	return ports
+}
+
+func portOfEndpoint(endpoint string) int {
+	port, _ := strconv.ParseInt(strings.Split(endpoint, ":")[1], 10, 64)
+	return int(port)
 }

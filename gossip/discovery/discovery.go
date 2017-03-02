@@ -30,6 +30,26 @@ type CryptoService interface {
 	SignMessage(m *proto.GossipMessage, internalEndpoint string) *proto.Envelope
 }
 
+// EnvelopeFilter may or may not remove part of the Envelope
+// that the given SignedGossipMessage originates from.
+type EnvelopeFilter func(message *proto.SignedGossipMessage) *proto.Envelope
+
+// Sieve defines the messages that are allowed to be sent to some remote peer,
+// based on some criteria.
+// Returns whether the sieve permits sending a given message.
+type Sieve func(message *proto.SignedGossipMessage) bool
+
+// DisclosurePolicy defines which messages a given remote peer
+// is eligible of knowing about, and also what is it eligible
+// to know about out of a given SignedGossipMessage.
+// Returns:
+// 1) A Sieve for a given remote peer.
+//    The Sieve is applied for each peer in question and outputs
+//    whether the message should be disclosed to the remote peer.
+// 2) A EnvelopeFilter for a given SignedGossipMessage, which may remove
+//    part of the Envelope the SignedGossipMessage originates from
+type DisclosurePolicy func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter)
+
 // CommService is an interface that the discovery expects to be implemented and passed on creation
 type CommService interface {
 	// Gossip gossips a message

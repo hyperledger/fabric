@@ -19,13 +19,12 @@ package gossip
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"errors"
-	"reflect"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
@@ -121,7 +120,14 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 	g.discAdapter = g.newDiscoveryAdapter()
 	g.disSecAdap = g.newDiscoverySecurityAdapter()
 
-	g.disc = discovery.NewDiscoveryService(conf.BootstrapPeers, g.selfNetworkMember(), g.discAdapter, g.disSecAdap)
+	noopDisclosurePol := func(remotePeer *discovery.NetworkMember) (discovery.Sieve, discovery.EnvelopeFilter) {
+		return func(msg *proto.SignedGossipMessage) bool {
+				return true
+			}, func(message *proto.SignedGossipMessage) *proto.Envelope {
+				return message.Envelope
+			}
+	}
+	g.disc = discovery.NewDiscoveryService(conf.BootstrapPeers, g.selfNetworkMember(), g.discAdapter, g.disSecAdap, noopDisclosurePol)
 	g.logger.Info("Creating gossip service with self membership of", g.selfNetworkMember())
 
 	g.certStore = newCertStore(g.createCertStorePuller(), idMapper, selfIdentity, mcs)

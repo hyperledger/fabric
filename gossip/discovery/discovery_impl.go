@@ -84,28 +84,30 @@ type gossipDiscoveryImpl struct {
 	crypt CryptoService
 	lock  *sync.RWMutex
 
-	toDieChan chan struct{}
-	toDieFlag int32
-	logger    *logging.Logger
+	toDieChan        chan struct{}
+	toDieFlag        int32
+	logger           *logging.Logger
+	disclosurePolicy DisclosurePolicy
 }
 
 // NewDiscoveryService returns a new discovery service with the comm module passed and the crypto service passed
-func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommService, crypt CryptoService) Discovery {
+func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommService, crypt CryptoService, disPol DisclosurePolicy) Discovery {
 	d := &gossipDiscoveryImpl{
-		self:            self,
-		incTime:         uint64(time.Now().UnixNano()),
-		seqNum:          uint64(0),
-		deadLastTS:      make(map[string]*timestamp),
-		aliveLastTS:     make(map[string]*timestamp),
-		id2Member:       make(map[string]*NetworkMember),
-		aliveMembership: util.NewMembershipStore(),
-		deadMembership:  util.NewMembershipStore(),
-		crypt:           crypt,
-		comm:            comm,
-		lock:            &sync.RWMutex{},
-		toDieChan:       make(chan struct{}, 1),
-		toDieFlag:       int32(0),
-		logger:          util.GetLogger(util.LoggingDiscoveryModule, self.InternalEndpoint),
+		self:             self,
+		incTime:          uint64(time.Now().UnixNano()),
+		seqNum:           uint64(0),
+		deadLastTS:       make(map[string]*timestamp),
+		aliveLastTS:      make(map[string]*timestamp),
+		id2Member:        make(map[string]*NetworkMember),
+		aliveMembership:  util.NewMembershipStore(),
+		deadMembership:   util.NewMembershipStore(),
+		crypt:            crypt,
+		comm:             comm,
+		lock:             &sync.RWMutex{},
+		toDieChan:        make(chan struct{}, 1),
+		toDieFlag:        int32(0),
+		logger:           util.GetLogger(util.LoggingDiscoveryModule, self.InternalEndpoint),
+		disclosurePolicy: disPol,
 	}
 
 	go d.periodicalSendAlive()
@@ -307,7 +309,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 		// Sending a membership response to a peer may block this routine
 		// in case the sending is deliberately slow (i.e attack).
 		// will keep this async until I'll write a timeout detector in the comm layer
-		go d.sendMemResponse(selfInfoGossipMsg.GetAliveMsg().Membership, memReq.Known, internalEndpoint)
+		go d.sendMemResponse(selfInfoGossipMsg.GetAliveMsg().Membership, internalEndpoint)
 		return
 	}
 
@@ -352,19 +354,27 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 	}
 }
 
-func (d *gossipDiscoveryImpl) sendMemResponse(member *proto.Member, known [][]byte, internalEndpoint string) {
-	d.logger.Debug("Entering", member)
+func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, internalEndpoint string) {
+	d.logger.Debug("Entering", targetMember)
 
-	memResp := d.createMembershipResponse(known)
+	targetPeer := &NetworkMember{
+		Endpoint:         targetMember.Endpoint,
+		Metadata:         targetMember.Metadata,
+		PKIid:            targetMember.PkiID,
+		InternalEndpoint: internalEndpoint,
+	}
+
+	memResp := d.createMembershipResponse(targetPeer)
+	if memResp == nil {
+		errMsg := `Got a membership request from a peer that shouldn't have sent one: %v, closing connection to the peer as a result.`
+		d.logger.Warningf(errMsg, targetMember)
+		d.comm.CloseConn(targetPeer)
+		return
+	}
 
 	defer d.logger.Debug("Exiting, replying with", memResp)
 
-	d.comm.SendToPeer(&NetworkMember{
-		Endpoint:         member.Endpoint,
-		Metadata:         member.Metadata,
-		PKIid:            member.PkiID,
-		InternalEndpoint: internalEndpoint,
-	}, (&proto.GossipMessage{
+	d.comm.SendToPeer(targetPeer, (&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: uint64(0),
 		Content: &proto.GossipMessage_MemRes{
@@ -373,8 +383,13 @@ func (d *gossipDiscoveryImpl) sendMemResponse(member *proto.Member, known [][]by
 	}).NoopSign())
 }
 
-func (d *gossipDiscoveryImpl) createMembershipResponse(known [][]byte) *proto.MembershipResponse {
+func (d *gossipDiscoveryImpl) createMembershipResponse(targetMember *NetworkMember) *proto.MembershipResponse {
+	shouldBeDisclosed, omitConcealedFields := d.disclosurePolicy(targetMember)
 	aliveMsg := d.createAliveMessage()
+
+	if !shouldBeDisclosed(aliveMsg) {
+		return nil
+	}
 
 	d.lock.RLock()
 	defer d.lock.RUnlock()
@@ -382,27 +397,23 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(known [][]byte) *proto.Me
 	deadPeers := []*proto.Envelope{}
 
 	for _, dm := range d.deadMembership.ToSlice() {
-		isKnown := false
-		for _, knownPeer := range known {
-			if equalPKIid(knownPeer, dm.GetAliveMsg().Membership.PkiID) {
-				isKnown = true
-				break
-			}
+
+		if !shouldBeDisclosed(dm) {
+			continue
 		}
-		if !isKnown {
-			deadPeers = append(deadPeers, dm.Envelope)
-			break
-		}
+		deadPeers = append(deadPeers, omitConcealedFields(dm))
 	}
 
-	aliveMembersAsSlice := d.aliveMembership.ToSlice()
-	aliveSnapshot := make([]*proto.Envelope, len(aliveMembersAsSlice))
-	for i, msg := range aliveMembersAsSlice {
-		aliveSnapshot[i] = msg.Envelope
+	var aliveSnapshot []*proto.Envelope
+	for _, am := range d.aliveMembership.ToSlice() {
+		if !shouldBeDisclosed(am) {
+			continue
+		}
+		aliveSnapshot = append(aliveSnapshot, omitConcealedFields(am))
 	}
 
 	return &proto.MembershipResponse{
-		Alive: append(aliveSnapshot, aliveMsg.Envelope),
+		Alive: append(aliveSnapshot, omitConcealedFields(aliveMsg)),
 		Dead:  deadPeers,
 	}
 }
@@ -536,7 +547,10 @@ func (d *gossipDiscoveryImpl) sendMembershipRequest(member *NetworkMember) {
 func (d *gossipDiscoveryImpl) createMembershipRequest() *proto.SignedGossipMessage {
 	req := &proto.MembershipRequest{
 		SelfInformation: d.createAliveMessage().Envelope,
-		Known:           d.getKnownPeers(),
+		// TODO: sending the known peers is not secure because the remote peer might shouldn't know
+		// TODO: about the known peers. I'm deprecating this until a secure mechanism will be implemented.
+		// TODO: See FAB-2570 for tracking this issue.
+		Known: [][]byte{},
 	}
 	return (&proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
