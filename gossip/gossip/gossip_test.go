@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -49,9 +50,8 @@ func init() {
 	discovery.SetAliveExpirationCheckInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationTimeout(aliveTimeInterval * 10)
 	discovery.SetReconnectInterval(aliveTimeInterval * 5)
-
 	testWG.Add(7)
-
+	factory.InitFactories(nil)
 }
 
 var orgInChannelA = api.OrgIdentityType("ORG1")
