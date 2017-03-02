@@ -292,7 +292,6 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 	d.logger.Debug("Got message:", m)
 	defer d.logger.Debug("Exiting")
 
-	// TODO: make sure somehow that the membership request is "fresh"
 	if memReq := m.GetMemReq(); memReq != nil {
 		selfInfoGossipMsg, err := memReq.SelfInformation.ToGossipMessage()
 		if err != nil {
@@ -395,7 +394,6 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(targetMember *NetworkMemb
 	defer d.lock.RUnlock()
 
 	deadPeers := []*proto.Envelope{}
-
 	for _, dm := range d.deadMembership.ToSlice() {
 
 		if !shouldBeDisclosed(dm) {
