@@ -17,6 +17,7 @@ limitations under the License.
 package peer
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -199,7 +200,11 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 	}
 
 	c := committer.NewLedgerCommitter(ledger, txvalidator.NewTxValidator(cs))
-	service.GetGossipService().InitializeChannel(cs.ChainID(), c)
+	ordererAddresses := configtxManager.ChannelConfig().OrdererAddresses()
+	if len(ordererAddresses) == 0 {
+		return errors.New("No orderering service endpoint provided in configuration block")
+	}
+	service.GetGossipService().InitializeChannel(cs.ChainID(), c, ordererAddresses)
 
 	chains.Lock()
 	defer chains.Unlock()
