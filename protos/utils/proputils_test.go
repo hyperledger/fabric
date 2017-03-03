@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package utils_test
 
 import (
 	"bytes"
@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,7 +48,7 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 
 func TestProposal(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := CreateChaincodeProposalWithTransient(
+	prop, _, err := utils.CreateChaincodeProposalWithTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
 		util.GetTestChainID(), createCIS(),
 		[]byte("creator"),
@@ -58,14 +59,14 @@ func TestProposal(t *testing.T) {
 	}
 
 	// serialize the proposal
-	pBytes, err := GetBytesProposal(prop)
+	pBytes, err := utils.GetBytesProposal(prop)
 	if err != nil {
 		t.Fatalf("Could not serialize the chaincode proposal, err %s\n", err)
 		return
 	}
 
 	// deserialize it and expect it to be the same
-	propBack, err := GetProposal(pBytes)
+	propBack, err := utils.GetProposal(pBytes)
 	if err != nil {
 		t.Fatalf("Could not deserialize the chaincode proposal, err %s\n", err)
 		return
@@ -76,27 +77,27 @@ func TestProposal(t *testing.T) {
 	}
 
 	// get back the header
-	hdr, err := GetHeader(prop.Header)
+	hdr, err := utils.GetHeader(prop.Header)
 	if err != nil {
 		t.Fatalf("Could not extract the header from the proposal, err %s\n", err)
 	}
 
-	hdrBytes, err := GetBytesHeader(hdr)
+	hdrBytes, err := utils.GetBytesHeader(hdr)
 	if err != nil {
 		t.Fatalf("Could not marshal the header, err %s\n", err)
 	}
 
-	hdr, err = GetHeader(hdrBytes)
+	hdr, err = utils.GetHeader(hdrBytes)
 	if err != nil {
 		t.Fatalf("Could not unmarshal the header, err %s\n", err)
 	}
 
-	chdr, err := UnmarshalChannelHeader(hdr.ChannelHeader)
+	chdr, err := utils.UnmarshalChannelHeader(hdr.ChannelHeader)
 	if err != nil {
 		t.Fatalf("Could not unmarshal channel header, err %s", err)
 	}
 
-	shdr, err := GetSignatureHeader(hdr.SignatureHeader)
+	shdr, err := utils.GetSignatureHeader(hdr.SignatureHeader)
 	if err != nil {
 		t.Fatalf("Could not unmarshal signature header, err %s", err)
 	}
@@ -110,7 +111,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// get back the header extension
-	hdrExt, err := GetChaincodeHeaderExtension(hdr)
+	hdrExt, err := utils.GetChaincodeHeaderExtension(hdr)
 	if err != nil {
 		t.Fatalf("Could not extract the header extensions from the proposal, err %s\n", err)
 		return
@@ -123,7 +124,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	// get back the ChaincodeInvocationSpec
-	cis, err := GetChaincodeInvocationSpec(prop)
+	cis, err := utils.GetChaincodeInvocationSpec(prop)
 	if err != nil {
 		t.Fatalf("Could not extract chaincode invocation spec from header, err %s\n", err)
 		return
@@ -139,7 +140,7 @@ func TestProposal(t *testing.T) {
 		return
 	}
 
-	creator, transient, err := GetChaincodeProposalContext(prop)
+	creator, transient, err := utils.GetChaincodeProposalContext(prop)
 	if err != nil {
 		t.Fatalf("Failed getting chaincode proposal context [%s]", err)
 	}
@@ -164,28 +165,28 @@ func TestProposalResponse(t *testing.T) {
 	pHashBytes := []byte("proposal_hash")
 	pResponse := &pb.Response{Status: 200}
 	results := []byte("results")
-	eventBytes, err := GetBytesChaincodeEvent(events)
+	eventBytes, err := utils.GetBytesChaincodeEvent(events)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 		return
 	}
 
 	// get the bytes of the ProposalResponsePayload
-	prpBytes, err := GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes)
+	prpBytes, err := utils.GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
 		return
 	}
 
 	// get the ProposalResponsePayload message
-	prp, err := GetProposalResponsePayload(prpBytes)
+	prp, err := utils.GetProposalResponsePayload(prpBytes)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ProposalResponsePayload")
 		return
 	}
 
 	// get the ChaincodeAction message
-	act, err := GetChaincodeAction(prp.Extension)
+	act, err := utils.GetChaincodeAction(prp.Extension)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ChaincodeAction")
 		return
@@ -197,7 +198,7 @@ func TestProposalResponse(t *testing.T) {
 		return
 	}
 
-	event, err := GetChaincodeEvents(act.Events)
+	event, err := utils.GetChaincodeEvents(act.Events)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ChainCodeEvents")
 		return
@@ -216,14 +217,14 @@ func TestProposalResponse(t *testing.T) {
 		Response:    &pb.Response{Status: 200, Message: "OK"}}
 
 	// create a proposal response
-	prBytes, err := GetBytesProposalResponse(pr)
+	prBytes, err := utils.GetBytesProposalResponse(pr)
 	if err != nil {
 		t.Fatalf("Failure while marshalling the ProposalResponse")
 		return
 	}
 
 	// get the proposal response message back
-	prBack, err := GetProposalResponse(prBytes)
+	prBack, err := utils.GetProposalResponse(prBytes)
 	if err != nil {
 		t.Fatalf("Failure while unmarshalling the ProposalResponse")
 		return
@@ -241,7 +242,7 @@ func TestProposalResponse(t *testing.T) {
 
 func TestEnvelope(t *testing.T) {
 	// create a proposal from a ChaincodeInvocationSpec
-	prop, _, err := CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), signerSerialized)
+	prop, _, err := utils.CreateChaincodeProposal(common.HeaderType_ENDORSER_TRANSACTION, util.GetTestChainID(), createCIS(), signerSerialized)
 	if err != nil {
 		t.Fatalf("Could not create chaincode proposal, err %s\n", err)
 		return
@@ -250,31 +251,31 @@ func TestEnvelope(t *testing.T) {
 	response := &pb.Response{Status: 200, Payload: []byte("payload")}
 	result := []byte("res")
 
-	presp, err := CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, nil, signer)
+	presp, err := utils.CreateProposalResponse(prop.Header, prop.Payload, response, result, nil, nil, signer)
 	if err != nil {
 		t.Fatalf("Could not create proposal response, err %s\n", err)
 		return
 	}
 
-	tx, err := CreateSignedTx(prop, signer, presp)
+	tx, err := utils.CreateSignedTx(prop, signer, presp)
 	if err != nil {
 		t.Fatalf("Could not create signed tx, err %s\n", err)
 		return
 	}
 
-	envBytes, err := GetBytesEnvelope(tx)
+	envBytes, err := utils.GetBytesEnvelope(tx)
 	if err != nil {
 		t.Fatalf("Could not marshal envelope, err %s\n", err)
 		return
 	}
 
-	tx, err = GetEnvelopeFromBlock(envBytes)
+	tx, err = utils.GetEnvelopeFromBlock(envBytes)
 	if err != nil {
 		t.Fatalf("Could not unmarshal envelope, err %s\n", err)
 		return
 	}
 
-	act2, err := GetActionFromEnvelope(envBytes)
+	act2, err := utils.GetActionFromEnvelope(envBytes)
 	if err != nil {
 		t.Fatalf("Could not extract actions from envelop, err %s\n", err)
 		return
@@ -294,19 +295,19 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	txpayl, err := GetPayload(tx)
+	txpayl, err := utils.GetPayload(tx)
 	if err != nil {
 		t.Fatalf("Could not unmarshal payload, err %s\n", err)
 		return
 	}
 
-	tx2, err := GetTransaction(txpayl.Data)
+	tx2, err := utils.GetTransaction(txpayl.Data)
 	if err != nil {
 		t.Fatalf("Could not unmarshal Transaction, err %s\n", err)
 		return
 	}
 
-	sh, err := GetSignatureHeader(tx2.Actions[0].Header)
+	sh, err := utils.GetSignatureHeader(tx2.Actions[0].Header)
 	if err != nil {
 		t.Fatalf("Could not unmarshal SignatureHeader, err %s\n", err)
 		return
@@ -317,20 +318,20 @@ func TestEnvelope(t *testing.T) {
 		return
 	}
 
-	cap, err := GetChaincodeActionPayload(tx2.Actions[0].Payload)
+	cap, err := utils.GetChaincodeActionPayload(tx2.Actions[0].Payload)
 	if err != nil {
 		t.Fatalf("Could not unmarshal ChaincodeActionPayload, err %s\n", err)
 		return
 	}
 	assert.NotNil(t, cap)
 
-	prp, err := GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
+	prp, err := utils.GetProposalResponsePayload(cap.Action.ProposalResponsePayload)
 	if err != nil {
 		t.Fatalf("Could not unmarshal ProposalResponsePayload, err %s\n", err)
 		return
 	}
 
-	ca, err := GetChaincodeAction(prp.Extension)
+	ca, err := utils.GetChaincodeAction(prp.Extension)
 	if err != nil {
 		t.Fatalf("Could not unmarshal ChaincodeAction, err %s\n", err)
 		return
@@ -355,19 +356,19 @@ func TestProposalTxID(t *testing.T) {
 	nonce := []byte{1}
 	creator := []byte{2}
 
-	txid, err := ComputeProposalTxID(nonce, creator)
+	txid, err := utils.ComputeProposalTxID(nonce, creator)
 	assert.NotEmpty(t, txid, "TxID cannot be empty.")
 	assert.NoError(t, err, "Failed computing txID")
-	assert.Nil(t, CheckProposalTxID(txid, nonce, creator))
-	assert.Error(t, CheckProposalTxID("", nonce, creator))
+	assert.Nil(t, utils.CheckProposalTxID(txid, nonce, creator))
+	assert.Error(t, utils.CheckProposalTxID("", nonce, creator))
 
-	txid, err = ComputeProposalTxID(nil, nil)
+	txid, err = utils.ComputeProposalTxID(nil, nil)
 	assert.NotEmpty(t, txid, "TxID cannot be empty.")
 	assert.NoError(t, err, "Failed computing txID")
 }
 
 func TestComputeProposalTxID(t *testing.T) {
-	txid, err := ComputeProposalTxID([]byte{1}, []byte{1})
+	txid, err := utils.ComputeProposalTxID([]byte{1}, []byte{1})
 	assert.NoError(t, err, "Failed computing TxID")
 
 	// Compute the function computed by ComputeProposalTxID,

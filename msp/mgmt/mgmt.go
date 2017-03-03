@@ -17,11 +17,13 @@ limitations under the License.
 package mgmt
 
 import (
+	"reflect"
 	"sync"
 
 	"errors"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
+	configvaluesmsp "github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/op/go-logging"
 )
@@ -62,9 +64,27 @@ func GetManagerForChain(chainID string) msp.MSPManager {
 		mspMgr = msp.NewMSPManager()
 		mspMap[chainID] = mspMgr
 	} else {
-		mspLogger.Debugf("Returning existing manager for chain %s", chainID)
+		switch mgr := mspMgr.(type) {
+		case *configvaluesmsp.MSPConfigHandler:
+			// check for nil MSPManager interface as it can exist but not be
+			// instantiated
+			if mgr.MSPManager == nil {
+				mspLogger.Debugf("MSPManager is not instantiated; no MSPs are defined for this channel.")
+				// return nil so the MSPManager methods cannot be accidentally called,
+				// which would result in a panic
+				return nil
+			}
+		default:
+			// check for internal mspManagerImpl type. if a different type is found,
+			// it's because a developer has added a new type that implements the
+			// MSPManager interface and should add a case to the logic above to handle
+			// it.
+			if reflect.TypeOf(mgr).Elem().Name() != "mspManagerImpl" {
+				panic("Found unexpected MSPManager type.")
+			}
+		}
+		mspLogger.Debugf("Returning existing manager for channel '%s'", chainID)
 	}
-
 	return mspMgr
 }
 
