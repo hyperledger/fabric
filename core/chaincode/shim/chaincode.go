@@ -262,15 +262,13 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			}
 
 			//keepalive messages are PONGs to the fabric's PINGs
-			if (nsInfo != nil && nsInfo.sendToCC) || (in.Type == pb.ChaincodeMessage_KEEPALIVE) {
-				if in.Type == pb.ChaincodeMessage_KEEPALIVE {
-					chaincodeLogger.Debug("Sending KEEPALIVE response")
-					//ignore any errors, maybe next KEEPALIVE will work
-					handler.serialSendAsync(in, nil)
-				} else {
-					chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
-					handler.serialSendAsync(in, errc)
-				}
+			if in.Type == pb.ChaincodeMessage_KEEPALIVE {
+				chaincodeLogger.Debug("Sending KEEPALIVE response")
+				//ignore any errors, maybe next KEEPALIVE will work
+				handler.serialSendAsync(in, nil)
+			} else if nsInfo != nil && nsInfo.sendToCC {
+				chaincodeLogger.Debugf("[%s]send state message %s", shorttxid(in.Txid), in.Type.String())
+				handler.serialSendAsync(in, errc)
 			}
 		}
 	}()
