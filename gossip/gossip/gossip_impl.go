@@ -285,19 +285,6 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 	}
 
 	if msg.IsAliveMsg() {
-		am := msg.GetAliveMsg()
-		storedIdentity, _ := g.idMapper.Get(common.PKIidType(am.Membership.PkiId))
-		// If peer's certificate is included inside AliveMessage, and we don't have a mapping between
-		// its PKI-ID and certificate, create a mapping for it now.
-		if identity := am.Identity; identity != nil && storedIdentity == nil {
-			err := g.idMapper.Put(common.PKIidType(am.Membership.PkiId), api.PeerIdentityType(identity))
-			if err != nil {
-				g.logger.Warning("Failed adding identity of", am, "into identity store:", err)
-				return
-			}
-			g.logger.Info("Learned identity of", am.Membership.PkiId)
-		}
-
 		added := g.aliveMsgStore.Add(msg)
 		if !added {
 			return
@@ -771,13 +758,8 @@ func (sa *discoverySecurityAdapter) ValidateAliveMsg(m *proto.SignedGossipMessag
 	// If identity is included inside AliveMessage
 	if am.Identity != nil {
 		identity = api.PeerIdentityType(am.Identity)
-		calculatedPKIID := sa.mcs.GetPKIidOfCert(identity)
 		claimedPKIID := am.Membership.PkiId
-		if !bytes.Equal(calculatedPKIID, claimedPKIID) {
-			sa.logger.Warning("Calculated pkiID doesn't match identity:", calculatedPKIID, claimedPKIID)
-			return false
-		}
-		err := sa.mcs.ValidateIdentity(api.PeerIdentityType(identity))
+		err := sa.idMapper.Put(claimedPKIID, identity)
 		if err != nil {
 			sa.logger.Warning("Failed validating identity of", am, "reason:", err)
 			return false
