@@ -19,12 +19,9 @@ package cauthdsl
 import (
 	"fmt"
 
-	"bytes"
-
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/op/go-logging"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 var cauthdslLogger = logging.MustGetLogger("cauthdsl")
@@ -73,13 +70,16 @@ func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserial
 				if used[i] {
 					continue
 				}
-				// FIXME: what should I do with the error below?
-				identity, _ := deserializer.DeserializeIdentity(sd.Identity)
-				err := identity.SatisfiesPrincipal(signedByID)
+				identity, err := deserializer.DeserializeIdentity(sd.Identity)
+				if err != nil {
+					cauthdslLogger.Errorf("Principal deserialization failed: (%s) for identity %v", err, sd.Identity)
+					continue
+				}
+				err = identity.SatisfiesPrincipal(signedByID)
 				if err == nil {
 					err := identity.Verify(sd.Data, sd.Signature)
 					if err == nil {
-						cauthdslLogger.Debugf("Principal evaluation succeeds: (%s)", t, used)
+						cauthdslLogger.Debugf("Principal evaluation succeeds: (%s) (used %s)", t, used)
 						used[i] = true
 						return true
 					}
@@ -91,78 +91,4 @@ func compile(policy *cb.SignaturePolicy, identities []*cb.MSPPrincipal, deserial
 	default:
 		return nil, fmt.Errorf("Unknown type: %T:%v", t, t)
 	}
-}
-
-// FIXME: remove the code below as soon as we can use MSP from the policy manager code
-var invalidSignature = []byte("badsigned")
-
-type mockIdentity struct {
-	idBytes []byte
-}
-
-func (id *mockIdentity) SatisfiesPrincipal(p *cb.MSPPrincipal) error {
-	if bytes.Compare(id.idBytes, p.Principal) == 0 {
-		return nil
-	} else {
-		return errors.New("Principals do not match")
-	}
-}
-
-func (id *mockIdentity) GetIdentifier() *msp.IdentityIdentifier {
-	return &msp.IdentityIdentifier{Mspid: "Mock", Id: "Bob"}
-}
-
-func (id *mockIdentity) GetMSPIdentifier() string {
-	return "Mock"
-}
-
-func (id *mockIdentity) Validate() error {
-	return nil
-}
-
-func (id *mockIdentity) GetOrganizationalUnits() []string {
-	return []string{"dunno"}
-}
-
-func (id *mockIdentity) Verify(msg []byte, sig []byte) error {
-	if bytes.Compare(sig, invalidSignature) == 0 {
-		return errors.New("Invalid signature")
-	} else {
-		return nil
-	}
-}
-
-func (id *mockIdentity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpts) error {
-	return nil
-}
-
-func (id *mockIdentity) VerifyAttributes(proof []byte, spec *msp.AttributeProofSpec) error {
-	return nil
-}
-
-func (id *mockIdentity) Serialize() ([]byte, error) {
-	return id.idBytes, nil
-}
-
-func toSignedData(data [][]byte, identities [][]byte, signatures [][]byte) ([]*cb.SignedData, []bool) {
-	signedData := make([]*cb.SignedData, len(data))
-	for i := range signedData {
-		signedData[i] = &cb.SignedData{
-			Data:      data[i],
-			Identity:  identities[i],
-			Signature: signatures[i],
-		}
-	}
-	return signedData, make([]bool, len(signedData))
-}
-
-type mockDeserializer struct {
-}
-
-func NewMockDeserializer() msp.IdentityDeserializer {
-	return &mockDeserializer{}
-}
-
-func (md *mockDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	return &mockIdentity{idBytes: serializedIdentity}, nil
 }
