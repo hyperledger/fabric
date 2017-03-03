@@ -42,10 +42,10 @@ import (
 var logger = logging.MustGetLogger("couchdb")
 
 //maximum number of retry attempts
-const maxRetries = 3
+const maxRetries = 10
 
 //time between retry attempts in milliseconds
-const retryWaitTime = 100
+const retryWaitTime = 125
 
 // DBOperationResponse is body for successful database calls.
 type DBOperationResponse struct {
@@ -994,6 +994,9 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 	var errResp error
 	couchDBReturn := &DBReturn{}
 
+	//set initial wait duration for retries
+	waitDuration := retryWaitTime * time.Millisecond
+
 	//attempt the http request for the max number of retries
 	for attempts := 0; attempts < maxRetries; attempts++ {
 
@@ -1009,8 +1012,8 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 		if errResp != nil {
 
 			//Log the error with the retry count and continue
-			logger.Debugf("Retrying couchdb request. Retry:%v  Error:%v",
-				attempts+1, errResp.Error())
+			logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Error:%v",
+				waitDuration.String(), attempts+1, errResp.Error())
 
 		} else {
 
@@ -1026,13 +1029,16 @@ func (couchInstance *CouchInstance) handleRequest(method, connectURL string, dat
 			json.Unmarshal(errorBytes, &couchDBReturn)
 
 			//Log the 500 error with the retry count and continue
-			logger.Debugf("Retrying couchdb request. Retry:%v  Couch DB Error:%s,  Status Code:%v  Reason:%v",
-				attempts+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason)
+			logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Couch DB Error:%s,  Status Code:%v  Reason:%v",
+				waitDuration.String(), attempts+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason)
 
 		}
 
 		//sleep for specified sleep time, then retry
-		time.Sleep(retryWaitTime * time.Millisecond)
+		time.Sleep(waitDuration)
+
+		//backoff, doubling the retry time for next attempt
+		waitDuration *= 2
 
 	}
 
