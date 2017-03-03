@@ -67,14 +67,15 @@ func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHea
 	}
 
 	// access the policy to use to validate this proposal
-	var policy policies.Policy
+	var policyName string
 	if syscc.IsSysCC(hdrext.ChaincodeId.Name) {
 		// in the case of a system chaincode, we use the admin policy
-		policy, _ = pm.GetPolicy(policies.ChannelApplicationAdmins)
+		policyName = policies.ChannelApplicationAdmins
 	} else {
 		// in the case of a normal chaincode, we use the writers policy
-		policy, _ = pm.GetPolicy(policies.ChannelApplicationWriters)
+		policyName = policies.ChannelApplicationWriters
 	}
+	policy, _ := pm.GetPolicy(policyName)
 
 	// evaluate that this proposal complies with the writers
 	err := policy.Evaluate(
@@ -84,7 +85,8 @@ func (*Endorser) checkACL(signedProp *pb.SignedProposal, chdr *common.ChannelHea
 			Signature: signedProp.Signature,
 		}})
 	if err != nil {
-		return fmt.Errorf("The proposal does not comply with the channel writers for channel %s, error %s",
+		return fmt.Errorf("The proposal does not comply with the %s for channel %s, error %s",
+			policyName,
 			chdr.ChannelId,
 			err)
 	}
