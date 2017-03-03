@@ -111,8 +111,8 @@ func testConfigUpdate() *cb.Envelope {
 			},
 			Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
 				ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
-					Header:   ch,
-					WriteSet: cb.NewConfigGroup(),
+					ChannelId: ch.ChannelId,
+					WriteSet:  cb.NewConfigGroup(),
 				}),
 			}),
 		}),

@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/policies"
@@ -175,7 +176,7 @@ func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) error
 	return nil
 }
 
-func (scf *systemChainFilter) inspect(configResources *configResources) error {
+func (scf *systemChainFilter) inspect(configManager configtxapi.Resources) error {
 	// XXX decide what it is that we will require to be the same in the new config, and what will be allowed to be different
 	// Are all keys allowed? etc.
 
@@ -214,11 +215,12 @@ func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return err
 	}
 
-	configResources, err := newConfigResources(configEnvelope)
+	initializer := configtx.NewInitializer()
+	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
 	if err != nil {
 		return fmt.Errorf("Failed to create config manager and handlers: %s", err)
 	}
 
 	// Make sure that the config does not modify any of the orderer
-	return scf.inspect(configResources)
+	return scf.inspect(configManager)
 }

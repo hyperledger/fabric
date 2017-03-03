@@ -36,8 +36,8 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 		return nil, err
 	}
 
-	if config.Header == nil {
-		return nil, fmt.Errorf("Must have header set")
+	if config.ChannelId != cm.chainID {
+		return nil, fmt.Errorf("Update not for correct channel: %s for %s", config.ChannelId, cm.chainID)
 	}
 
 	seq := computeSequence(config.WriteSet)
@@ -53,11 +53,6 @@ func (cm *configManager) authorizeUpdate(configUpdateEnv *cb.ConfigUpdateEnvelop
 	// Verify config is a sequential update to prevent exhausting sequence numbers
 	if seq != cm.sequence+1 {
 		return nil, fmt.Errorf("Config sequence number jumped from %d to %d", cm.sequence, seq)
-	}
-
-	// Verify config is intended for this globally unique chain ID
-	if config.Header.ChannelId != cm.chainID {
-		return nil, fmt.Errorf("Config is for the wrong chain, expected %s, got %s", cm.chainID, config.Header.ChannelId)
 	}
 
 	configMap, err := mapConfig(config.WriteSet)
@@ -149,7 +144,7 @@ func envelopeToConfigUpdate(configtx *cb.Envelope) (*cb.ConfigUpdateEnvelope, er
 		return nil, err
 	}
 
-	if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
+	if payload.Header == nil {
 		return nil, fmt.Errorf("Envelope must have a Header")
 	}
 

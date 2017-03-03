@@ -58,7 +58,7 @@ func (f *factory) Block(chainID string) (*cb.Block, error) {
 	payloadChannelHeader := utils.MakeChannelHeader(cb.HeaderType_CONFIG, msgVersion, chainID, epoch)
 	payloadSignatureHeader := utils.MakeSignatureHeader(nil, utils.CreateNonceOrPanic())
 	payloadHeader := utils.MakePayloadHeader(payloadChannelHeader, payloadSignatureHeader)
-	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{Header: configUpdate.Header, Channel: configUpdate.WriteSet}})}
+	payload := &cb.Payload{Header: payloadHeader, Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{Config: &cb.Config{ChannelGroup: configUpdate.WriteSet}})}
 	envelope := &cb.Envelope{Payload: utils.MarshalOrPanic(payload), Signature: nil}
 
 	block := cb.NewBlock(0, nil)

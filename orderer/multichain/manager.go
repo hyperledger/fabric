@@ -17,8 +17,6 @@ limitations under the License.
 package multichain
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
@@ -27,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
 )
 
@@ -141,38 +138,14 @@ func (ml *multiLedger) GetChain(chainID string) (ChainSupport, bool) {
 	return cs, ok
 }
 
-func newConfigResources(configEnvelope *cb.ConfigEnvelope) (*configResources, error) {
-	initializer := configtx.NewInitializer()
-	configManager, err := configtx.NewManagerImpl(configEnvelope, initializer, nil)
-	if err != nil {
-		return nil, fmt.Errorf("Error unpacking config transaction: %s", err)
-	}
-
-	return &configResources{
-		Manager: configManager,
-	}, nil
-}
-
 func (ml *multiLedger) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
-	payload := &cb.Payload{}
-	err := proto.Unmarshal(configTx.Payload, payload)
-	if err != nil {
-		logger.Fatalf("Error unmarshaling a config transaction payload: %s", err)
-	}
-
-	configEnvelope := &cb.ConfigEnvelope{}
-	err = proto.Unmarshal(payload.Data, configEnvelope)
-	if err != nil {
-		logger.Fatalf("Error unmarshaling a config transaction to config envelope: %s", err)
-	}
-
-	configResources, err := newConfigResources(configEnvelope)
-
+	initializer := configtx.NewInitializer()
+	configManager, err := configtx.NewManagerImpl(configTx, initializer, nil)
 	if err != nil {
 		logger.Fatalf("Error creating configtx manager and handlers: %s", err)
 	}
 
-	chainID := configResources.ChainID()
+	chainID := configManager.ChainID()
 
 	ledger, err := ml.ledgerFactory.GetOrCreate(chainID)
 	if err != nil {
@@ -180,7 +153,7 @@ func (ml *multiLedger) newLedgerResources(configTx *cb.Envelope) *ledgerResource
 	}
 
 	return &ledgerResources{
-		configResources: configResources,
+		configResources: &configResources{Manager: configManager},
 		ledger:          ledger,
 	}
 }

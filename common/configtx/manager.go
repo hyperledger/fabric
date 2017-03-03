@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx/api"
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	logging "github.com/op/go-logging"
 )
@@ -99,28 +100,26 @@ func validateChainID(chainID string) error {
 	return nil
 }
 
-func NewManagerImpl(configEnv *cb.ConfigEnvelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
-	if configEnv == nil {
-		return nil, fmt.Errorf("Nil config envelope")
+func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnUpdate []func(api.Manager)) (api.Manager, error) {
+	if envConfig == nil {
+		return nil, fmt.Errorf("Nil envelope")
+	}
+
+	configEnv := &cb.ConfigEnvelope{}
+	header, err := utils.UnmarshalEnvelopeOfType(envConfig, cb.HeaderType_CONFIG, configEnv)
+	if err != nil {
+		return nil, fmt.Errorf("Bad envelope: %s", err)
 	}
 
 	if configEnv.Config == nil {
 		return nil, fmt.Errorf("Nil config envelope Config")
 	}
 
-	if configEnv.Config.Channel == nil {
-		return nil, fmt.Errorf("Nil config envelope Config.Channel")
-	}
-
-	if configEnv.Config.Header == nil {
-		return nil, fmt.Errorf("Nil config envelop Config Header")
-	}
-
-	if err := validateChainID(configEnv.Config.Header.ChannelId); err != nil {
+	if err := validateChainID(header.ChannelId); err != nil {
 		return nil, fmt.Errorf("Bad channel id: %s", err)
 	}
 
-	configMap, err := mapConfig(configEnv.Config.Channel)
+	configMap, err := mapConfig(configEnv.Config.ChannelGroup)
 	if err != nil {
 		return nil, fmt.Errorf("Error converting config to map: %s", err)
 	}
@@ -128,13 +127,13 @@ func NewManagerImpl(configEnv *cb.ConfigEnvelope, initializer api.Initializer, c
 	cm := &configManager{
 		Resources:    initializer,
 		initializer:  initializer,
-		sequence:     computeSequence(configEnv.Config.Channel),
-		chainID:      configEnv.Config.Header.ChannelId,
+		sequence:     configEnv.Config.Sequence,
+		chainID:      header.ChannelId,
 		config:       configMap,
 		callOnUpdate: callOnUpdate,
 	}
 
-	result, err := cm.processConfig(configEnv.Config.Channel)
+	result, err := cm.processConfig(configEnv.Config.ChannelGroup)
 	if err != nil {
 		return nil, err
 	}
@@ -177,10 +176,8 @@ func (cm *configManager) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigE
 
 	return &cb.ConfigEnvelope{
 		Config: &cb.Config{
-			Header: &cb.ChannelHeader{
-				ChannelId: cm.chainID,
-			},
-			Channel: channelGroup,
+			Sequence:     cm.sequence,
+			ChannelGroup: channelGroup,
 		},
 		LastUpdate: configtx,
 	}, nil
@@ -210,7 +207,7 @@ func (cm *configManager) prepareApply(configEnv *cb.ConfigEnvelope) (map[string]
 		return nil, nil, fmt.Errorf("Config cannot be nil")
 	}
 
-	if !reflect.DeepEqual(channelGroup, configEnv.Config.Channel) {
+	if !reflect.DeepEqual(channelGroup, configEnv.Config.ChannelGroup) {
 		return nil, nil, fmt.Errorf("ConfigEnvelope LastUpdate did not produce the supplied config result")
 	}
 

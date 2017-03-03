@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// XXX This is the older mechanism for specifying channel configuration
-// it is intended to be removed once there is no more dependency on it.
-
 syntax = "proto3";
 
 import "common/common.proto";
@@ -65,8 +62,8 @@ message ConfigPolicySchema {}
 
 // Config represents the config for a particular channel
 message Config {
-    ChannelHeader header = 1;
-    ConfigGroup channel = 2;
+    uint64 sequence = 1;
+    ConfigGroup channel_group = 2;
 }
 
 message ConfigUpdateEnvelope {
@@ -84,7 +81,7 @@ message ConfigUpdateEnvelope {
 // 4. Each policy is checked against the signatures from the ConfigUpdateEnvelope, any failing to verify are rejected
 // 5. The write_set is applied to the Config and the ConfigGroupSchema verifies that the updates were legal
 message ConfigUpdate {
-    ChannelHeader header = 1;    // Header scopes the update to a particular Channel
+    string channel_id = 1;     // Which channel this config update is for
     ConfigGroup read_set = 2;  // ReadSet explicitly lists the portion of the config which was read, this should be sparse with only Version set
     ConfigGroup write_set = 3; // WriteSet lists the portion of the config which was written, this should included updated Versions
 }
