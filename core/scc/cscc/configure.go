@@ -27,6 +27,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -119,6 +120,11 @@ func joinChain(blockBytes []byte) pb.Response {
 	}
 
 	peer.InitChain(chainID)
+
+	if err := producer.SendProducerBlockEvent(block); err != nil {
+		msg := fmt.Sprintf("Error sending block event %s", err)
+		return shim.Error(msg)
+	}
 
 	return shim.Success(nil)
 }
