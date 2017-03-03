@@ -58,8 +58,6 @@ var Schema = &cb.ConfigGroupSchema{
 		BatchTimeoutKey:             nil,
 		ChainCreationPolicyNamesKey: nil,
 		KafkaBrokersKey:             nil,
-		IngressPolicyNamesKey:       nil,
-		EgressPolicyNamesKey:        nil,
 	},
 	Policies: map[string]*cb.ConfigPolicySchema{
 	// TODO, set appropriately once hierarchical policies are implemented
@@ -81,12 +79,6 @@ const (
 
 	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message
 	KafkaBrokersKey = "KafkaBrokers"
-
-	// IngressPolicyNamesKey is the cb.ConfigItem type key name for the IngressPolicyNames message
-	IngressPolicyNamesKey = "IngressPolicyNames"
-
-	// EgressPolicyNamesKey is the cb.ConfigItem type key name for the EgressPolicyNames message
-	EgressPolicyNamesKey = "EgressPolicyNames"
 )
 
 var logger = logging.MustGetLogger("configtx/handlers/orderer")
@@ -97,8 +89,6 @@ type ordererConfig struct {
 	batchTimeout             time.Duration
 	chainCreationPolicyNames []string
 	kafkaBrokers             []string
-	ingressPolicyNames       []string
-	egressPolicyNames        []string
 	orgs                     map[string]*organization.OrgConfig
 }
 
@@ -144,16 +134,6 @@ func (pm *ManagerImpl) ChainCreationPolicyNames() []string {
 // used for ordering
 func (pm *ManagerImpl) KafkaBrokers() []string {
 	return pm.config.kafkaBrokers
-}
-
-// IngressPolicyNames returns the name of the policy to validate incoming broadcast messages against
-func (pm *ManagerImpl) IngressPolicyNames() []string {
-	return pm.config.ingressPolicyNames
-}
-
-// EgressPolicyNames returns the name of the policy to validate incoming deliver seeks against
-func (pm *ManagerImpl) EgressPolicyNames() []string {
-	return pm.config.egressPolicyNames
 }
 
 // BeginValueProposals is used to start a new config proposal
@@ -255,18 +235,6 @@ func (pm *ManagerImpl) ProposeValue(key string, configValue *cb.ConfigValue) err
 		} else {
 			pm.pendingConfig.chainCreationPolicyNames = chainCreationPolicyNames.Names
 		}
-	case IngressPolicyNamesKey:
-		ingressPolicyNames := &ab.IngressPolicyNames{}
-		if err := proto.Unmarshal(configValue.Value, ingressPolicyNames); err != nil {
-			return fmt.Errorf("Unmarshaling error for IngressPolicyNames: %s", err)
-		}
-		pm.pendingConfig.ingressPolicyNames = ingressPolicyNames.Names
-	case EgressPolicyNamesKey:
-		egressPolicyNames := &ab.EgressPolicyNames{}
-		if err := proto.Unmarshal(configValue.Value, egressPolicyNames); err != nil {
-			return fmt.Errorf("Unmarshaling error for EgressPolicyNames: %s", err)
-		}
-		pm.pendingConfig.egressPolicyNames = egressPolicyNames.Names
 	case KafkaBrokersKey:
 		kafkaBrokers := &ab.KafkaBrokers{}
 		if err := proto.Unmarshal(configValue.Value, kafkaBrokers); err != nil {

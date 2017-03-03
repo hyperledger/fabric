@@ -19,7 +19,6 @@ package deliver
 import (
 	"fmt"
 
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
@@ -51,9 +50,6 @@ type Support interface {
 
 	// Reader returns the chain Reader for the chain
 	Reader() ledger.Reader
-
-	// SharedConfig returns the shared config manager for this chain
-	SharedConfig() configvaluesapi.Orderer
 }
 
 type deliverServer struct {
@@ -99,7 +95,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 			return sendStatusReply(srv, cb.Status_NOT_FOUND)
 		}
 
-		sf := sigfilter.New(chain.SharedConfig().EgressPolicyNames, chain.PolicyManager())
+		sf := sigfilter.New(policies.ChannelReaders, chain.PolicyManager())
 		result, _ := sf.Apply(envelope)
 		if result != filter.Forward {
 			return sendStatusReply(srv, cb.Status_FORBIDDEN)

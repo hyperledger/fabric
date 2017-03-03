@@ -51,16 +51,6 @@ func TemplateChainCreationPolicyNames(names []string) *cb.ConfigGroup {
 	return configGroup(ChainCreationPolicyNamesKey, utils.MarshalOrPanic(&ab.ChainCreationPolicyNames{Names: names}))
 }
 
-// TemplateIngressPolicyNames creates a headerless config item representing the ingress policy names
-func TemplateIngressPolicyNames(names []string) *cb.ConfigGroup {
-	return configGroup(IngressPolicyNamesKey, utils.MarshalOrPanic(&ab.IngressPolicyNames{Names: names}))
-}
-
-// TemplateEgressPolicyNames creates a headerless config item representing the egress policy names
-func TemplateEgressPolicyNames(names []string) *cb.ConfigGroup {
-	return configGroup(EgressPolicyNamesKey, utils.MarshalOrPanic(&ab.EgressPolicyNames{Names: names}))
-}
-
 // TemplateKafkaBrokers creates a headerless config item representing the kafka brokers
 func TemplateKafkaBrokers(brokers []string) *cb.ConfigGroup {
 	return configGroup(KafkaBrokersKey, utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: brokers}))
