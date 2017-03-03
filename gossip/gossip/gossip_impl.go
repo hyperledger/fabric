@@ -196,8 +196,9 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 			continue
 		}
 
+		inOurOrg := bytes.Equal(g.selfOrg, ap.OrgID)
 		g.disc.Connect(discovery.NetworkMember{
-			InternalEndpoint: endpoint, Endpoint: endpoint})
+			InternalEndpoint: endpoint, Endpoint: endpoint}, inOurOrg)
 	}
 }
 

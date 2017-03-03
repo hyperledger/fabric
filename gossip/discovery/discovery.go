@@ -117,5 +117,7 @@ type Discovery interface {
 	InitiateSync(peerNum int)
 
 	// Connect makes this instance to connect to a remote instance
-	Connect(NetworkMember)
+	// The sendInternalEndpoint param determines whether or not
+	// to include the internal endpoint in the membership request.
+	Connect(member NetworkMember, sendInternalEndpoint bool)
 }

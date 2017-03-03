@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/rand"
 	"runtime"
 	"strconv"
 	"strings"
@@ -49,7 +50,7 @@ func init() {
 	discovery.SetAliveTimeInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationCheckInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationTimeout(aliveTimeInterval * 10)
-	discovery.SetReconnectInterval(aliveTimeInterval * 5)
+	discovery.SetReconnectInterval(aliveTimeInterval)
 	testWG.Add(7)
 	factory.InitFactories(nil)
 }
@@ -321,15 +322,21 @@ func TestPull(t *testing.T) {
 
 func TestConnectToAnchorPeers(t *testing.T) {
 	t.Parallel()
+	// Scenario: spawn 10 peers, and have them join a channel
+	// of 3 anchor peers that don't exist yet.
+	// Wait 5 seconds, and then spawn a random anchor peer out of the 3.
+	// Ensure that all peers successfully see each other in the channel
+
 	portPrefix := 8610
 	// Scenario: Spawn 5 peers, and make each of them connect to
 	// the other 2 using join channel.
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
-	n := 5
+	n := 10
+	anchorPeercount := 3
 
 	jcm := &joinChanMsg{anchorPeers: []api.AnchorPeer{}}
-	for i := 0; i < n; i++ {
+	for i := 0; i < anchorPeercount; i++ {
 		ap := api.AnchorPeer{
 			Port:  portPrefix + i,
 			Host:  "localhost",
@@ -343,18 +350,28 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
-			peers[i] = newGossipInstance(portPrefix, i, 100)
+			peers[i] = newGossipInstance(portPrefix, i+anchorPeercount, 100)
 			peers[i].JoinChan(jcm, common.ChainID("A"))
 			peers[i].UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
 			wg.Done()
 		}(i)
 	}
+
 	waitUntilOrFailBlocking(t, wg.Wait)
-	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1))
+
+	time.Sleep(time.Second * 5)
+
+	// Now start a random anchor peer
+	anchorPeer := newGossipInstance(portPrefix, rand.Intn(anchorPeercount), 100)
+	anchorPeer.JoinChan(jcm, common.ChainID("A"))
+	anchorPeer.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+
+	defer anchorPeer.Stop()
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
 
 	channelMembership := func() bool {
 		for _, peer := range peers {
-			if len(peer.PeersOfChannel(common.ChainID("A"))) != n-1 {
+			if len(peer.PeersOfChannel(common.ChainID("A"))) != n {
 				return false
 			}
 		}

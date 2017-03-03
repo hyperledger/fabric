@@ -36,6 +36,7 @@ import (
 const defaultHelloInterval = time.Duration(5) * time.Second
 
 var aliveExpirationCheckInterval time.Duration
+var maxConnectionAttempts = 120
 
 // SetAliveTimeInterval sets the alive time interval
 func SetAliveTimeInterval(interval time.Duration) {
@@ -132,24 +133,30 @@ func (d *gossipDiscoveryImpl) Exists(PKIID common.PKIidType) bool {
 	return exists
 }
 
-func (d *gossipDiscoveryImpl) Connect(member NetworkMember) {
+func (d *gossipDiscoveryImpl) Connect(member NetworkMember, sendInternalEndpoint bool) {
 	d.logger.Debug("Entering", member)
 	defer d.logger.Debug("Exiting")
 
-	d.lock.Lock()
-	defer d.lock.Unlock()
+	req := d.createMembershipRequest(sendInternalEndpoint).NoopSign()
 
-	if _, exists := d.id2Member[string(member.PKIid)]; exists {
-		d.logger.Info("Member", member, "already known")
-		return
-	}
-
-	d.deadLastTS[string(member.PKIid)] = &timestamp{
-		incTime:  time.Unix(0, 0),
-		lastSeen: time.Now(),
-		seqNum:   0,
-	}
-	d.id2Member[string(member.PKIid)] = &member
+	go func() {
+		for i := 0; i < maxConnectionAttempts && !d.toDie(); i++ {
+			peer := &NetworkMember{
+				InternalEndpoint: member.InternalEndpoint,
+				Endpoint:         member.Endpoint,
+			}
+			if !d.comm.Ping(peer) {
+				if d.toDie() {
+					return
+				}
+				d.logger.Warning("Could not connect to", member)
+				time.Sleep(getReconnectInterval())
+				continue
+			}
+			d.comm.SendToPeer(peer, req)
+			return
+		}
+	}()
 }
 
 func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
@@ -175,7 +182,7 @@ func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
 
 	for !d.somePeerIsKnown() {
 		var wg sync.WaitGroup
-		req := d.createMembershipRequest().NoopSign()
+		req := d.createMembershipRequest(true).NoopSign()
 		wg.Add(len(endpoints))
 		for _, endpoint := range endpoints {
 			go func(endpoint string) {
@@ -206,7 +213,7 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 		return
 	}
 	var peers2SendTo []*NetworkMember
-	memReq := d.createMembershipRequest().NoopSign()
+	memReq := d.createMembershipRequest(true).NoopSign()
 
 	d.lock.RLock()
 
@@ -384,7 +391,7 @@ func (d *gossipDiscoveryImpl) sendMemResponse(targetMember *proto.Member, intern
 
 func (d *gossipDiscoveryImpl) createMembershipResponse(targetMember *NetworkMember) *proto.MembershipResponse {
 	shouldBeDisclosed, omitConcealedFields := d.disclosurePolicy(targetMember)
-	aliveMsg := d.createAliveMessage()
+	aliveMsg := d.createAliveMessage(true)
 
 	if !shouldBeDisclosed(aliveMsg) {
 		return nil
@@ -525,7 +532,7 @@ func (d *gossipDiscoveryImpl) periodicalReconnectToDead() {
 				defer wg.Done()
 				if d.comm.Ping(&member) {
 					d.logger.Debug(member, "is responding, sending membership request")
-					d.sendMembershipRequest(&member)
+					d.sendMembershipRequest(&member, true)
 				} else {
 					d.logger.Debug(member, "is still dead")
 				}
@@ -538,13 +545,13 @@ func (d *gossipDiscoveryImpl) periodicalReconnectToDead() {
 	}
 }
 
-func (d *gossipDiscoveryImpl) sendMembershipRequest(member *NetworkMember) {
-	d.comm.SendToPeer(member, d.createMembershipRequest())
+func (d *gossipDiscoveryImpl) sendMembershipRequest(member *NetworkMember, includeInternalEndpoint bool) {
+	d.comm.SendToPeer(member, d.createMembershipRequest(includeInternalEndpoint))
 }
 
-func (d *gossipDiscoveryImpl) createMembershipRequest() *proto.SignedGossipMessage {
+func (d *gossipDiscoveryImpl) createMembershipRequest(includeInternalEndpoint bool) *proto.SignedGossipMessage {
 	req := &proto.MembershipRequest{
-		SelfInformation: d.createAliveMessage().Envelope,
+		SelfInformation: d.createAliveMessage(includeInternalEndpoint).Envelope,
 		// TODO: sending the known peers is not secure because the remote peer might shouldn't know
 		// TODO: about the known peers. I'm deprecating this until a secure mechanism will be implemented.
 		// TODO: See FAB-2570 for tracking this issue.
@@ -649,11 +656,11 @@ func (d *gossipDiscoveryImpl) periodicalSendAlive() {
 	for !d.toDie() {
 		d.logger.Debug("Sleeping", getAliveTimeInterval())
 		time.Sleep(getAliveTimeInterval())
-		d.comm.Gossip(d.createAliveMessage())
+		d.comm.Gossip(d.createAliveMessage(true))
 	}
 }
 
-func (d *gossipDiscoveryImpl) createAliveMessage() *proto.SignedGossipMessage {
+func (d *gossipDiscoveryImpl) createAliveMessage(includeInternalEndpoint bool) *proto.SignedGossipMessage {
 	d.lock.Lock()
 	d.seqNum++
 	seqNum := d.seqNum
@@ -682,10 +689,16 @@ func (d *gossipDiscoveryImpl) createAliveMessage() *proto.SignedGossipMessage {
 		},
 	}
 
-	return &proto.SignedGossipMessage{
+	signedMsg := &proto.SignedGossipMessage{
 		GossipMessage: msg2Gossip,
 		Envelope:      d.crypt.SignMessage(msg2Gossip, internalEndpoint),
 	}
+
+	if !includeInternalEndpoint {
+		signedMsg.Envelope.SecretEnvelope = nil
+	}
+
+	return signedMsg
 }
 
 func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.SignedGossipMessage) {
