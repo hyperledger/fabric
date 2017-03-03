@@ -50,19 +50,44 @@ func TestCombinedIterator(t *testing.T) {
 	// prepare batch2 (empty)
 	batch2 := statedb.NewUpdateBatch()
 
-	// Test db + batch1 updates
+	// Test db + batch1 updates (exclude endKey)
 	itr1, _ := newCombinedIterator(db, batch1, "ns", "key2", "key8", false)
 	defer itr1.Close()
-	checkItrResults(t, itr1, []*statedb.VersionedKV{
+	checkItrResults(t, "ExcludeEndKey", itr1, []*statedb.VersionedKV{
 		constructVersionedKV("ns", "key3", []byte("value3"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key6", []byte("value6_new"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key7", []byte("value7"), version.NewHeight(1, 1)),
 	})
 
+	// Test db + batch1 updates (include endKey)
 	itr1WithEndKey, _ := newCombinedIterator(db, batch1, "ns", "key2", "key8", true)
 	defer itr1WithEndKey.Close()
-	checkItrResults(t, itr1WithEndKey, []*statedb.VersionedKV{
+	checkItrResults(t, "IncludeEndKey", itr1WithEndKey, []*statedb.VersionedKV{
+		constructVersionedKV("ns", "key3", []byte("value3"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key6", []byte("value6_new"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key7", []byte("value7"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key8", []byte("value8"), version.NewHeight(1, 1)),
+	})
+
+	// Test db + batch1 updates (include endKey) for extra range
+	itr1WithEndKeyExtraRange, _ := newCombinedIterator(db, batch1, "ns", "key0", "key9", true)
+	defer itr1WithEndKeyExtraRange.Close()
+	checkItrResults(t, "IncludeEndKey_ExtraRange", itr1WithEndKeyExtraRange, []*statedb.VersionedKV{
+		constructVersionedKV("ns", "key1", []byte("value1"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key3", []byte("value3"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key6", []byte("value6_new"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key7", []byte("value7"), version.NewHeight(1, 1)),
+		constructVersionedKV("ns", "key8", []byte("value8"), version.NewHeight(1, 1)),
+	})
+
+	// Test db + batch1 updates with full range query
+	itr3, _ := newCombinedIterator(db, batch1, "ns", "", "", false)
+	defer itr3.Close()
+	checkItrResults(t, "ExcludeEndKey_FullRange", itr3, []*statedb.VersionedKV{
+		constructVersionedKV("ns", "key1", []byte("value1"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key3", []byte("value3"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key6", []byte("value6_new"), version.NewHeight(1, 1)),
@@ -73,32 +98,22 @@ func TestCombinedIterator(t *testing.T) {
 	// Test db + batch2 updates
 	itr2, _ := newCombinedIterator(db, batch2, "ns", "key2", "key8", false)
 	defer itr2.Close()
-	checkItrResults(t, itr2, []*statedb.VersionedKV{
+	checkItrResults(t, "ExcludeEndKey_EmptyUpdates", itr2, []*statedb.VersionedKV{
 		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
 		constructVersionedKV("ns", "key6", []byte("value6"), version.NewHeight(1, 1)),
 	})
-
-	// Test db + batch1 updates with full range query
-	itr3, _ := newCombinedIterator(db, batch1, "ns", "", "", false)
-	defer itr3.Close()
-	checkItrResults(t, itr3, []*statedb.VersionedKV{
-		constructVersionedKV("ns", "key1", []byte("value1"), version.NewHeight(1, 1)),
-		constructVersionedKV("ns", "key3", []byte("value3"), version.NewHeight(1, 1)),
-		constructVersionedKV("ns", "key4", []byte("value4"), version.NewHeight(1, 1)),
-		constructVersionedKV("ns", "key6", []byte("value6_new"), version.NewHeight(1, 1)),
-		constructVersionedKV("ns", "key7", []byte("value7"), version.NewHeight(1, 1)),
-		constructVersionedKV("ns", "key8", []byte("value8"), version.NewHeight(1, 1)),
-	})
 }
 
-func checkItrResults(t *testing.T, itr statedb.ResultsIterator, expectedResults []*statedb.VersionedKV) {
-	for i := 0; i < len(expectedResults); i++ {
-		res, _ := itr.Next()
-		testutil.AssertEquals(t, res, expectedResults[i])
-	}
-	lastRes, err := itr.Next()
-	testutil.AssertNoError(t, err, "")
-	testutil.AssertNil(t, lastRes)
+func checkItrResults(t *testing.T, testName string, itr statedb.ResultsIterator, expectedResults []*statedb.VersionedKV) {
+	t.Run(testName, func(t *testing.T) {
+		for i := 0; i < len(expectedResults); i++ {
+			res, _ := itr.Next()
+			testutil.AssertEquals(t, res, expectedResults[i])
+		}
+		lastRes, err := itr.Next()
+		testutil.AssertNoError(t, err, "")
+		testutil.AssertNil(t, lastRes)
+	})
 }
 
 func constructVersionedKV(ns string, key string, value []byte, version *version.Height) *statedb.VersionedKV {
