@@ -16,8 +16,11 @@ limitations under the License.
 
 package statebasedval
 
-import "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-import "strings"
+import (
+	"strings"
+
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+)
 
 // combinedIterator implements the interface statedb.ResultsIterator.
 // Internally, it maintains two iterators
@@ -131,15 +134,21 @@ func (itr *combinedIterator) serveEndKeyIfNeeded() (statedb.QueryResult, error) 
 	var vv *statedb.VersionedValue
 	var err error
 	vv = itr.updates.Get(itr.ns, itr.endKey)
+	logger.Debugf("endKey value from updates:%s", vv)
 	if vv == nil {
 		if vv, err = itr.db.GetState(itr.ns, itr.endKey); err != nil {
 			return nil, err
 		}
+		logger.Debugf("endKey value from stateDB:%s", vv)
+	}
+	itr.endKeyServed = true
+	if vv == nil {
+		return nil, nil
 	}
 	vkv := &statedb.VersionedKV{
 		CompositeKey:   statedb.CompositeKey{Namespace: itr.ns, Key: itr.endKey},
 		VersionedValue: statedb.VersionedValue{Value: vv.Value, Version: vv.Version}}
-	itr.endKeyServed = true
+
 	if isDelete(vkv) {
 		return nil, nil
 	}
