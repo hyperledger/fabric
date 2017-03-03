@@ -1,9 +1,11 @@
+*Needs Review*
+
 The Fabric Model
 =================
 
 .. _Assets:
 
-Assets 
+Assets
 ------
 
 Assets can range from the tangible (real estate and hardware) to the intangible
@@ -19,14 +21,14 @@ to be represented in binary or JSON format.
 
 .. _Chaincode:
 
-Chaincode 
+Chaincode
 ---------
 
-Chaincode is software defining an asset or assets, and the transaction instructions for 
+Chaincode is software defining an asset or assets, and the transaction instructions for
 modifying the asset(s).  In other words, it's the business logic.  Chaincode enforces the rules for reading
-or altering key value pairs or other state database information. Chaincode functions execute against 
-the ledger current state database and are initiated through a transaction proposal. Chaincode execution 
-results in a set of key value writes (write set) that can be submitted to the network and applied to 
+or altering key value pairs or other state database information. Chaincode functions execute against
+the ledger current state database and are initiated through a transaction proposal. Chaincode execution
+results in a set of key value writes (write set) that can be submitted to the network and applied to
 the ledger on all peers.
 
 .. _Ledger-Features:
@@ -55,7 +57,7 @@ channel. Each peer maintains a copy of the ledger for each channel of which they
 - A channel's ledger contains a configuration block defining policies, access control lists, and other pertinent information
 - Channel's contain :ref:`MSP`s allowing crypto materials to be derived from different certificate authorities
 
-See the :doc:`ledger` topic for a deeper dive on the databases, storage structure, and "query-ability."  
+See the :doc:`ledger` topic for a deeper dive on the databases, storage structure, and "query-ability."
 
 .. _Privacy-through-Channels:
 
@@ -90,8 +92,8 @@ governed on the broader network and on channel levels.  This "permissioned" noti
 of Fabric, coupled with the existence and capabilities of channels, helps address
 scenarios where privacy and confidentiality are paramount concerns.
 
-See the :doc:`ca-setup` to better understand cryptographic
-implementations, and the sign, verify, authenticate approach used in Fabric.  
+See the Fabric CA section to better understand cryptographic
+implementations, and the sign, verify, authenticate approach used in Fabric.
 
 .. _Consensus:
 
@@ -102,7 +104,7 @@ In distributed ledger technology, consensus has recently become synonymous with
 a specific algorithm, within a single function. However, consensus encompasses more
 than simply agreeing upon the order of transactions, and this differentiation is
 highlighted in Hyperledger Fabric through its fundamental role in the entire
-transaction flow, from proposal and endorsement, to ordering, validation and commitment.  
+transaction flow, from proposal and endorsement, to ordering, validation and commitment.
 In a nutshell, consensus is defined as the full-circle verification of the correctness of
 a set of transactions comprising a block.
 
@@ -129,7 +131,7 @@ through the different architectural components.  To conclude, consensus is not
 merely limited to the agreed upon order of a batch of transactions, but rather,
 it is an overarching characterization that is achieved as a byproduct of the ongoing
 verifications that take place during a transaction's journey from proposal to
-commitment.  
+commitment.
 
 Check out the :doc:`txflow` diagram for a visual representation
-of consensus.  
+of consensus.

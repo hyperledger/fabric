@@ -69,3 +69,139 @@ Then, to utilize this genesis block, before starting the orderer, simply
 specify ``ORDERER_GENERAL_GENESISMETHOD=file`` and
 ``ORDERER_GENERAL_GENESISFILE=$PWD/genesis.block`` or modify the
 ``orderer.yaml`` file to encode these values.
+
+Creating a channel
+------------------
+
+The tool can also output a channel creation tx by executing
+
+::
+
+    configtxgen -profile <profile_name> -outputCreateChannelTx <output.txname>
+
+This will output a marshaled ``Envelope`` message which may be sent to
+broadcast to create a channel.
+
+Reviewing a configuration
+-------------------------
+
+In addition to creating configuration, the ``configtxgen`` tool is also
+capable of inspecting configuration.
+
+It supports inspecting both configuration blocks, and configuration
+transactions. You may use the inspect flags ``-inspectBlock`` and
+``-inspectChannelCreateTx`` respectively with the path to a file to
+inspect to output a human readable (JSON) representation of the
+configuration.
+
+You may even wish to combine the inspection with generation. For
+example:
+
+::
+
+    $ build/bin/configtxgen -channelID foo -outputBlock foo.block -inspectBlock foo.block
+    2017/03/01 21:24:24 Loading configuration
+    2017/03/01 21:24:24 Checking for configtx.yaml at:
+    2017/03/01 21:24:24 Checking for configtx.yaml at:
+    2017/03/01 21:24:24 Checking for configtx.yaml at: /home/yellickj/go/src/github.com/hyperledger/fabric/common/configtx/tool
+    2017/03/01 21:24:24 map[orderer:map[BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:<nil> OrdererType:solo Addresses:[127.0.0.1:7050] BatchTimeout:10s] application:map[Organizations:<nil>] profiles:map[SampleInsecureSolo:map[Orderer:map[BatchTimeout:10s BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:<nil> OrdererType:solo Addresses:[127.0.0.1:7050]] Application:map[Organizations:<nil>]] SampleInsecureKafka:map[Orderer:map[Addresses:[127.0.0.1:7050] BatchTimeout:10s BatchSize:map[AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB MaxMessageCount:10] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:<nil> OrdererType:kafka] Application:map[Organizations:<nil>]] SampleSingleMSPSolo:map[Orderer:map[OrdererType:solo Addresses:[127.0.0.1:7050] BatchTimeout:10s BatchSize:map[MaxMessageCount:10 AbsoluteMaxBytes:99 MB PreferredMaxBytes:512 KB] Kafka:map[Brokers:[127.0.0.1:9092]] Organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp/sampleconfig BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:<nil>]]] AnchorPeers:[map[Host:127.0.0.1 Port:7051]]]]] Application:map[Organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp/sampleconfig BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:<nil>]]] AnchorPeers:[map[Port:7051 Host:127.0.0.1]]]]]]] organizations:[map[Name:SampleOrg ID:DEFAULT MSPDir:msp/sampleconfig BCCSP:map[Default:SW SW:map[Hash:SHA3 Security:256 FileKeyStore:map[KeyStore:<nil>]]] AnchorPeers:[map[Host:127.0.0.1 Port:7051]]]]]
+    2017/03/01 21:24:24 Generating genesis block
+    2017/03/01 21:24:24 Writing genesis block
+    2017/03/01 21:24:24 Inspecting block
+    2017/03/01 21:24:24 Parsing genesis block
+    Config for channel: foo
+    {
+        "": {
+            "Values": {},
+            "Groups": {
+                "/Channel": {
+                    "Values": {
+                        "HashingAlgorithm": {
+                            "Version": "0",
+                            "ModPolicy": "",
+                            "Value": {
+                                "name": "SHA256"
+                            }
+                        },
+                        "BlockDataHashingStructure": {
+                            "Version": "0",
+                            "ModPolicy": "",
+                            "Value": {
+                                "width": 4294967295
+                            }
+                        },
+                        "OrdererAddresses": {
+                            "Version": "0",
+                            "ModPolicy": "",
+                            "Value": {
+                                "addresses": [
+                                    "127.0.0.1:7050"
+                                ]
+                            }
+                        }
+                    },
+                    "Groups": {
+                        "/Channel/Orderer": {
+                            "Values": {
+                                "ChainCreationPolicyNames": {
+                                    "Version": "0",
+                                    "ModPolicy": "",
+                                    "Value": {
+                                        "names": [
+                                            "AcceptAllPolicy"
+                                        ]
+                                    }
+                                },
+                                "ConsensusType": {
+                                    "Version": "0",
+                                    "ModPolicy": "",
+                                    "Value": {
+                                        "type": "solo"
+                                    }
+                                },
+                                "BatchSize": {
+                                    "Version": "0",
+                                    "ModPolicy": "",
+                                    "Value": {
+                                        "maxMessageCount": 10,
+                                        "absoluteMaxBytes": 103809024,
+                                        "preferredMaxBytes": 524288
+                                    }
+                                },
+                                "BatchTimeout": {
+                                    "Version": "0",
+                                    "ModPolicy": "",
+                                    "Value": {
+                                        "timeout": "10s"
+                                    }
+                                },
+                                "IngressPolicyNames": {
+                                    "Version": "0",
+                                    "ModPolicy": "",
+                                    "Value": {
+                                        "names": [
+                                            "AcceptAllPolicy"
+                                        ]
+                                    }
+                                },
+                                "EgressPolicyNames": {
+                                    "Version": "0",
+                                    "ModPolicy": "",
+                                    "Value": {
+                                        "names": [
+                                            "AcceptAllPolicy"
+                                        ]
+                                    }
+                                }
+                            },
+                            "Groups": {}
+                        },
+                        "/Channel/Application": {
+                            "Values": {},
+                            "Groups": {}
+                        }
+                    }
+                }
+            }
+        }
+    }
