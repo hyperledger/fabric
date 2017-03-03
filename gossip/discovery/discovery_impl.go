@@ -337,7 +337,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 				d.logger.Warning("Membership response contains an invalid message from an offline peer", err)
 				return
 			}
-			if !d.crypt.ValidateAliveMsg(m) {
+			if !d.crypt.ValidateAliveMsg(dm) {
 				d.logger.Warningf("Alive message isn't authentic, someone spoofed %s's identity", dm.GetAliveMsg().Membership)
 				continue
 			}
