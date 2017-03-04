@@ -296,6 +296,32 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	return err
 }
 
+func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, error) {
+	cc, err := grpc.Dial(remotePeer.Endpoint, append(c.opts, grpc.WithBlock())...)
+	if err != nil {
+		return nil, err
+	}
+	defer cc.Close()
+
+	cl := proto.NewGossipClient(cc)
+	if _, err = cl.Ping(context.Background(), &proto.Empty{}); err != nil {
+		return nil, err
+	}
+
+	stream, err := cl.GossipStream(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	connInfo, err := c.authenticateRemotePeer(stream)
+	if err != nil {
+		return nil, err
+	}
+	if len(remotePeer.PKIID) > 0 && !bytes.Equal(connInfo.ID, remotePeer.PKIID) {
+		return nil, errors.New("PKI-ID of remote peer doesn't match expected PKI-ID")
+	}
+	return connInfo.Identity, nil
+}
+
 func (c *commImpl) Accept(acceptor common.MessageAcceptor) <-chan proto.ReceivedMessage {
 	genericChan := c.msgPublisher.AddChannel(acceptor)
 	specificChan := make(chan proto.ReceivedMessage, 10)
