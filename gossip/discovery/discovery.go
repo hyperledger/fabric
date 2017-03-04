@@ -93,9 +93,8 @@ func (nm NetworkMember) PreferredEndpoint() string {
 // Discovery is the interface that represents a discovery module
 type Discovery interface {
 
-	// Exists returns whether a peer with given
-	// PKI-ID is known
-	Exists(PKIID common.PKIidType) bool
+	// Lookup returns a network member, or nil if not found
+	Lookup(PKIID common.PKIidType) *NetworkMember
 
 	// Self returns this instance's membership information
 	Self() NetworkMember
