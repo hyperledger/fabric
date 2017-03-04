@@ -24,11 +24,13 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/test"
+	configtxchannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	"github.com/hyperledger/fabric/common/configvalues/channel/application"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 	"github.com/hyperledger/fabric/common/genesis"
@@ -56,6 +58,7 @@ import (
 
 var chaincodeDevMode bool
 var peerDefaultChain bool
+var orderingEndpoint string
 
 func startCmd() *cobra.Command {
 	// Set the flags on the node start command.
@@ -64,6 +67,7 @@ func startCmd() *cobra.Command {
 		"Whether peer in chaincode development mode")
 	flags.BoolVarP(&peerDefaultChain, "peer-defaultchain", "", true,
 		"Whether to start peer with chain testchainid")
+	flags.StringVarP(&orderingEndpoint, "orderer", "o", "orderer:7050", "Ordering service endpoint")
 
 	return nodeStartCmd
 }
@@ -152,7 +156,7 @@ func serve(args []string) error {
 
 	serializedIdentity, err := mgmt.GetLocalSigningIdentityOrPanic().Serialize()
 	if err != nil {
-		panic(fmt.Sprintf("Failed serializing self identity: %v", err))
+		logger.Panicf("Failed serializing self identity: %v", err)
 	}
 
 	messageCryptoService := mcs.New(
@@ -167,6 +171,14 @@ func serve(args []string) error {
 
 	// Begin startup of default chain
 	if peerDefaultChain {
+		if orderingEndpoint == "" {
+			logger.Panic("No ordering service endpoint provided, please use -o option.")
+		}
+
+		if len(strings.Split(orderingEndpoint, ":")) != 2 {
+			logger.Panicf("Invalid format of ordering service endpoint, %s.", orderingEndpoint)
+		}
+
 		chainID := util.GetTestChainID()
 
 		// add readers, writers and admin policies for the default chain
@@ -181,9 +193,11 @@ func serve(args []string) error {
 		block, err := genesis.NewFactoryImpl(
 			configtx.NewCompositeTemplate(
 				test.ApplicationOrgTemplate(),
+				configtx.NewSimpleTemplate(configtxchannel.TemplateOrdererAddresses([]string{orderingEndpoint})),
 				policyTemplate)).Block(chainID)
+
 		if nil != err {
-			panic(fmt.Sprintf("Unable to create genesis block for [%s] due to [%s]", chainID, err))
+			logger.Panicf("Unable to create genesis block for [%s] due to [%s]", chainID, err)
 		}
 
 		//this creates testchainid and sets up gossip
