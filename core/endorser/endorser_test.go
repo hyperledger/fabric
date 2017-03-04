@@ -145,6 +145,14 @@ func getUpgradeProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator
 //getDeployOrUpgradeProposal gets the proposal for the chaincode deploy or upgrade
 //the payload is a ChaincodeDeploymentSpec
 func getDeployOrUpgradeProposal(cds *pb.ChaincodeDeploymentSpec, chainID string, creator []byte, upgrade bool) (*pb.Proposal, error) {
+	//we need to save off the chaincode as we have to instantiate with nil CodePackage
+	var err error
+	if err = ccprovider.PutChaincodeIntoFS(cds); err != nil {
+		return nil, err
+	}
+
+	cds.CodePackage = nil
+
 	b, err := proto.Marshal(cds)
 	if err != nil {
 		return nil, err
@@ -163,10 +171,6 @@ func getDeployOrUpgradeProposal(cds *pb.ChaincodeDeploymentSpec, chainID string,
 	//...and get the proposal for it
 	var prop *pb.Proposal
 	if prop, _, err = getInvokeProposal(lcccSpec, chainID, creator); err != nil {
-		return nil, err
-	}
-
-	if err = ccprovider.PutChaincodeIntoFS(cds); err != nil {
 		return nil, err
 	}
 

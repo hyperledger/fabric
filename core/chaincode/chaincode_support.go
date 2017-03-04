@@ -467,7 +467,6 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 	//build the chaincode
 	var cID *pb.ChaincodeID
 	var cMsg *pb.ChaincodeInput
-	var cLang pb.ChaincodeSpec_Type
 
 	var cds *pb.ChaincodeDeploymentSpec
 	var ci *pb.ChaincodeInvocationSpec
@@ -479,7 +478,6 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 	if cds != nil {
 		cID = cds.ChaincodeSpec.ChaincodeId
 		cMsg = cds.ChaincodeSpec.Input
-		cLang = cds.ChaincodeSpec.Type
 	} else {
 		cID = ci.ChaincodeSpec.ChaincodeId
 		cMsg = ci.ChaincodeSpec.Input
@@ -536,8 +534,6 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 		if err != nil {
 			return cID, cMsg, fmt.Errorf("failed to unmarshal deployment transactions for %s - %s", canName, err)
 		}
-
-		cLang = cds.ChaincodeSpec.Type
 	}
 
 	//from here on : if we launch the container and get an error, we need to stop the container
@@ -554,12 +550,18 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, cccid 
 				if err != nil {
 					return cID, cMsg, err
 				}
-				cds.CodePackage = cdsfs.CodePackage
+				//we should use cdsfs completely. It is just a vestige of old protocol that we
+				//continue to use ChaincodeDeploymentSpec for anything other than Install. In
+				//particular, instantiate, invoke, upgrade should be using just some form of
+				//ChaincodeInvocationSpec.
+				cds = cdsfs
 				chaincodeLogger.Debugf("launchAndWaitForRegister fetched %d from file system", len(cds.CodePackage), err)
 			}
 		}
 
 		builder := func() (io.Reader, error) { return platforms.GenerateDockerBuild(cds) }
+
+		cLang := cds.ChaincodeSpec.Type
 		err = chaincodeSupport.launchAndWaitForRegister(context, cccid, cds, cLang, builder)
 		if err != nil {
 			chaincodeLogger.Errorf("launchAndWaitForRegister failed %s", err)
