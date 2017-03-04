@@ -303,6 +303,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 			d.logger.Warning("Failed deserializing GossipMessage from envelope:", err)
 			return
 		}
+
 		d.handleAliveMessage(selfInfoGossipMsg)
 
 		var internalEndpoint string
@@ -333,6 +334,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 				d.logger.Warning("Expected alive message, got", am, "instead")
 				return
 			}
+
 			d.handleAliveMessage(am)
 		}
 
@@ -399,6 +401,7 @@ func (d *gossipDiscoveryImpl) createMembershipResponse(targetMember *NetworkMemb
 	defer d.lock.RUnlock()
 
 	deadPeers := []*proto.Envelope{}
+
 	for _, dm := range d.deadMembership.ToSlice() {
 
 		if !shouldBeDisclosed(dm) {
@@ -502,6 +505,9 @@ func (d *gossipDiscoveryImpl) resurrectMember(am *proto.SignedGossipMessage, t p
 	}
 
 	var internalEndpoint string
+	if prevNetMem := d.id2Member[string(pkiID)]; prevNetMem != nil {
+		internalEndpoint = prevNetMem.InternalEndpoint
+	}
 	if am.Envelope.SecretEnvelope != nil {
 		internalEndpoint = am.Envelope.SecretEnvelope.InternalEndpoint()
 	}
@@ -715,7 +721,9 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*proto.SignedGossi
 		d.logger.Debug("updating", am)
 
 		var internalEndpoint string
-
+		if prevNetMem := d.id2Member[string(am.Membership.PkiId)]; prevNetMem != nil {
+			internalEndpoint = prevNetMem.InternalEndpoint
+		}
 		if m.Envelope.SecretEnvelope != nil {
 			internalEndpoint = m.Envelope.SecretEnvelope.InternalEndpoint()
 		}
@@ -804,6 +812,10 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.SignedGossip
 				internalEndpoint = m.Envelope.SecretEnvelope.InternalEndpoint()
 			}
 
+			if prevNetMem := d.id2Member[string(member.Membership.PkiId)]; prevNetMem != nil {
+				internalEndpoint = prevNetMem.InternalEndpoint
+			}
+
 			d.id2Member[string(member.Membership.PkiId)] = &NetworkMember{
 				Endpoint:         member.Membership.Endpoint,
 				Metadata:         member.Membership.Metadata,
@@ -823,18 +835,12 @@ func (d *gossipDiscoveryImpl) GetMembership() []NetworkMember {
 
 	response := []NetworkMember{}
 	for _, m := range d.aliveMembership.ToSlice() {
-		var internalEndpoint string
-
-		if m.Envelope.SecretEnvelope != nil {
-			internalEndpoint = m.Envelope.SecretEnvelope.InternalEndpoint()
-		}
-
 		member := m.GetAliveMsg()
 		response = append(response, NetworkMember{
 			PKIid:            member.Membership.PkiId,
 			Endpoint:         member.Membership.Endpoint,
 			Metadata:         member.Membership.Metadata,
-			InternalEndpoint: internalEndpoint,
+			InternalEndpoint: d.id2Member[string(m.GetAliveMsg().Membership.PkiId)].InternalEndpoint,
 		})
 	}
 	return response
