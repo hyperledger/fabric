@@ -56,7 +56,7 @@ func (p *FsBlockstoreProvider) Exists(ledgerid string) (bool, error) {
 
 // List lists the ids of the existing ledgers
 func (p *FsBlockstoreProvider) List() ([]string, error) {
-	return util.ListSubdirs(p.conf.getBlocksDir())
+	return util.ListSubdirs(p.conf.getChainsDir())
 }
 
 // Close closes the FsBlockstoreProvider
