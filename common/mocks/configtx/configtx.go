@@ -110,10 +110,10 @@ type PolicyProposer struct {
 }
 
 // ProposeConfig sets LastKey to key, LastPath to path, and LastPolicy to configPolicy, returning ErrorForProposedConfig
-func (pp *PolicyProposer) ProposePolicy(tx interface{}, key string, configPolicy *cb.ConfigPolicy) error {
+func (pp *PolicyProposer) ProposePolicy(tx interface{}, key string, configPolicy *cb.ConfigPolicy) (proto.Message, error) {
 	pp.LastKey = key
 	pp.LastPolicy = configPolicy
-	return pp.ErrorForProposePolicy
+	return nil, pp.ErrorForProposePolicy
 }
 
 // BeginConfig will be removed in the future

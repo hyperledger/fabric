@@ -44,9 +44,15 @@ func TestJSON(t *testing.T) {
 					Values: map[string]*cb.ConfigValue{
 						"inner1": &cb.ConfigValue{ModPolicy: "mod3"},
 					},
+					Policies: map[string]*cb.ConfigPolicy{
+						"policy1": &cb.ConfigPolicy{Policy: &cb.Policy{}, ModPolicy: "mod1"},
+					},
 				},
 				deserializedValues: map[string]proto.Message{
 					"inner1": &ab.ConsensusType{Type: "inner1"},
+				},
+				deserializedPolicies: map[string]proto.Message{
+					"policy1": &ab.ConsensusType{Type: "policy1"},
 				},
 			},
 			&configResult{
@@ -55,9 +61,15 @@ func TestJSON(t *testing.T) {
 					Values: map[string]*cb.ConfigValue{
 						"inner2": &cb.ConfigValue{ModPolicy: "mod3"},
 					},
+					Policies: map[string]*cb.ConfigPolicy{
+						"policy2": &cb.ConfigPolicy{Policy: &cb.Policy{Type: 1}, ModPolicy: "mod2"},
+					},
 				},
 				deserializedValues: map[string]proto.Message{
 					"inner2": &ab.ConsensusType{Type: "inner2"},
+				},
+				deserializedPolicies: map[string]proto.Message{
+					"policy2": &ab.ConsensusType{Type: "policy2"},
 				},
 			},
 		},
@@ -69,11 +81,10 @@ func TestJSON(t *testing.T) {
 	buffer := &bytes.Buffer{}
 	assert.NoError(t, json.Indent(buffer, []byte(cr.JSON()), "", ""), "JSON should parse nicely")
 
-	expected := "{\"rootGroup\":{\"Values\":{\"outer\":{\"Version\":\"1\",\"ModPolicy\":\"mod1\",\"Value\":{\"type\":\"outer\"}}},\"Groups\":{\"innerGroup1\":{\"Values\":{\"inner1\":{\"Version\":\"0\",\"ModPolicy\":\"mod3\",\"Value\":{\"type\":\"inner1\"}}},\"Groups\":{}},\"innerGroup2\":{\"Values\":{\"inner2\":{\"Version\":\"0\",\"ModPolicy\":\"mod3\",\"Value\":{\"type\":\"inner2\"}}},\"Groups\":{}}}}}"
+	expected := "{\"rootGroup\":{\"Values\":{\"outer\":{\"Version\":\"1\",\"ModPolicy\":\"mod1\",\"Value\":{\"type\":\"outer\"}}},\"Policies\":{},\"Groups\":{\"innerGroup1\":{\"Values\":{\"inner1\":{\"Version\":\"0\",\"ModPolicy\":\"mod3\",\"Value\":{\"type\":\"inner1\"}}},\"Policies\":{\"policy1\":{\"Version\":\"0\",\"ModPolicy\":\"mod1\",\"Policy\":{\"PolicyType\":\"0\",\"Policy\":{\"type\":\"policy1\"}}}},\"Groups\":{}},\"innerGroup2\":{\"Values\":{\"inner2\":{\"Version\":\"0\",\"ModPolicy\":\"mod3\",\"Value\":{\"type\":\"inner2\"}}},\"Policies\":{\"policy2\":{\"Version\":\"0\",\"ModPolicy\":\"mod2\",\"Policy\":{\"PolicyType\":\"1\",\"Policy\":{\"type\":\"policy2\"}}}},\"Groups\":{}}}}}"
 
 	// Remove all newlines and spaces from the JSON
 	compactedJSON := strings.Replace(strings.Replace(buffer.String(), "\n", "", -1), " ", "", -1)
 
 	assert.Equal(t, expected, compactedJSON)
-
 }

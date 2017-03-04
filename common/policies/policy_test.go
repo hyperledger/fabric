@@ -21,9 +21,9 @@ import (
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"github.com/stretchr/testify/assert"
-
+	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -32,8 +32,8 @@ func init() {
 
 type mockProvider struct{}
 
-func (mpp mockProvider) NewPolicy(data []byte) (Policy, error) {
-	return nil, nil
+func (mpp mockProvider) NewPolicy(data []byte) (Policy, proto.Message, error) {
+	return nil, nil, nil
 }
 
 const mockType = int32(0)
@@ -53,7 +53,7 @@ func TestUnnestedManager(t *testing.T) {
 	policyNames := []string{"1", "2", "3"}
 
 	for _, policyName := range policyNames {
-		err := m.ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := m.ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
@@ -90,25 +90,25 @@ func TestNestedManager(t *testing.T) {
 
 	policyNames := []string{"n0a", "n0b", "n0c"}
 	for _, policyName := range policyNames {
-		err := m.ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := m.ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
 	n1PolicyNames := []string{"n1a", "n1b", "n1c"}
 	for _, policyName := range n1PolicyNames {
-		err := nesting1[0].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := nesting1[0].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
 	n2aPolicyNames := []string{"n2a_1", "n2a_2", "n2a_3"}
 	for _, policyName := range n2aPolicyNames {
-		err := nesting2[0].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := nesting2[0].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
 	n2bPolicyNames := []string{"n2b_1", "n2b_2", "n2b_3"}
 	for _, policyName := range n2bPolicyNames {
-		err := nesting2[1].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := nesting2[1].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 

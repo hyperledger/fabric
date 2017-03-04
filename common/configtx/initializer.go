@@ -26,6 +26,8 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type resources struct {
@@ -94,8 +96,8 @@ func (p *policyProposerRoot) BeginPolicyProposals(tx interface{}, groups []strin
 	return []policies.Proposer{p.policyManager}, nil
 }
 
-func (i *policyProposerRoot) ProposePolicy(tx interface{}, key string, policy *cb.ConfigPolicy) error {
-	return fmt.Errorf("Programming error, this should never be invoked")
+func (i *policyProposerRoot) ProposePolicy(tx interface{}, key string, policy *cb.ConfigPolicy) (proto.Message, error) {
+	return nil, fmt.Errorf("Programming error, this should never be invoked")
 }
 
 // PreCommit is a no-op and returns nil

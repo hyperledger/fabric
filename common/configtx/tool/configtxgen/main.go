@@ -115,7 +115,10 @@ func doInspectBlock(inspectBlock string) error {
 	}
 
 	buffer := &bytes.Buffer{}
-	json.Indent(buffer, []byte(configResult.JSON()), "", "    ")
+	err = json.Indent(buffer, []byte(configResult.JSON()), "", "    ")
+	if err != nil {
+		return fmt.Errorf("Error in output JSON (usually a programming bug): %s", err)
+	}
 
 	fmt.Printf("Config for channel: %s at sequence %d\n", header.ChannelId, configEnvelope.Config.Sequence)
 
@@ -170,7 +173,10 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	}
 
 	buffer := &bytes.Buffer{}
-	json.Indent(buffer, []byte(configResult.JSON()), "", "    ")
+	err = json.Indent(buffer, []byte(configResult.JSON()), "", "    ")
+	if err != nil {
+		return fmt.Errorf("Error in output JSON (usually a programming bug): %s", err)
+	}
 
 	fmt.Printf("Config for channel: %s\n", header.ChannelId)
 

@@ -58,7 +58,7 @@ func makePolicySource(policyResult bool) *cb.Policy {
 
 func addPolicy(manager policies.Proposer, id string, policy *cb.Policy) {
 	manager.BeginPolicyProposals(id, nil)
-	err := manager.ProposePolicy(id, id, &cb.ConfigPolicy{
+	_, err := manager.ProposePolicy(id, id, &cb.ConfigPolicy{
 		Policy: policy,
 	})
 	if err != nil {

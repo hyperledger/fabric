@@ -23,6 +23,7 @@ import (
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
+	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
 )
 
@@ -86,8 +87,9 @@ type Proposer interface {
 	// BeginPolicyProposals starts a policy update transaction
 	BeginPolicyProposals(tx interface{}, groups []string) ([]Proposer, error)
 
-	// ProposePolicy createss a pending policy update from a ConfigPolicy
-	ProposePolicy(tx interface{}, name string, policy *cb.ConfigPolicy) error
+	// ProposePolicy createss a pending policy update from a ConfigPolicy and returns the deserialized
+	// value of the Policy representation
+	ProposePolicy(tx interface{}, name string, policy *cb.ConfigPolicy) (proto.Message, error)
 
 	// RollbackProposals discards the pending policy updates
 	RollbackProposals(tx interface{})
@@ -102,7 +104,7 @@ type Proposer interface {
 // Provider provides the backing implementation of a policy
 type Provider interface {
 	// NewPolicy creates a new policy based on the policy bytes
-	NewPolicy(data []byte) (Policy, error)
+	NewPolicy(data []byte) (Policy, proto.Message, error)
 }
 
 // ChannelPolicyManagerGetter is a support interface
@@ -324,7 +326,8 @@ func (pm *ManagerImpl) CommitProposals(tx interface{}) {
 }
 
 // ProposePolicy takes key, path, and ConfigPolicy and registers it in the proposed PolicyManager, or errors
-func (pm *ManagerImpl) ProposePolicy(tx interface{}, key string, configPolicy *cb.ConfigPolicy) error {
+// It also returns the deserialized policy value for tracking and inspection at the invocation side.
+func (pm *ManagerImpl) ProposePolicy(tx interface{}, key string, configPolicy *cb.ConfigPolicy) (proto.Message, error) {
 	pm.pendingLock.RLock()
 	pendingConfig, ok := pm.pendingConfig[tx]
 	pm.pendingLock.RUnlock()
@@ -334,33 +337,35 @@ func (pm *ManagerImpl) ProposePolicy(tx interface{}, key string, configPolicy *c
 
 	policy := configPolicy.Policy
 	if policy == nil {
-		return fmt.Errorf("Policy cannot be nil")
+		return nil, fmt.Errorf("Policy cannot be nil")
 	}
 
 	var cPolicy Policy
+	var deserialized proto.Message
 
 	if policy.Type == int32(cb.Policy_IMPLICIT_META) {
 		imp, err := newImplicitMetaPolicy(policy.Policy)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		pendingConfig.imps = append(pendingConfig.imps, imp)
 		cPolicy = imp
+		deserialized = imp.conf
 	} else {
 		provider, ok := pm.providers[int32(policy.Type)]
 		if !ok {
-			return fmt.Errorf("Unknown policy type: %v", policy.Type)
+			return nil, fmt.Errorf("Unknown policy type: %v", policy.Type)
 		}
 
 		var err error
-		cPolicy, err = provider.NewPolicy(policy.Policy)
+		cPolicy, deserialized, err = provider.NewPolicy(policy.Policy)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	pendingConfig.policies[key] = cPolicy
 
 	logger.Debugf("Proposed new policy %s for %s", key, pm.basePath)
-	return nil
+	return deserialized, nil
 }

@@ -38,13 +38,14 @@ func NewConfigResult(config *cb.ConfigGroup, proposer api.Proposer) (ConfigResul
 }
 
 type configResult struct {
-	tx                 interface{}
-	groupName          string
-	group              *cb.ConfigGroup
-	valueHandler       config.ValueProposer
-	policyHandler      policies.Proposer
-	subResults         []*configResult
-	deserializedValues map[string]proto.Message
+	tx                   interface{}
+	groupName            string
+	group                *cb.ConfigGroup
+	valueHandler         config.ValueProposer
+	policyHandler        policies.Proposer
+	subResults           []*configResult
+	deserializedValues   map[string]proto.Message
+	deserializedPolicies map[string]proto.Message
 }
 
 func (cr *configResult) JSON() string {
@@ -95,6 +96,40 @@ func (cr *configResult) bufferJSON(buffer *bytes.Buffer) {
 		buffer.WriteString("}")
 		count++
 		if count < len(cr.group.Values) {
+			buffer.WriteString(",")
+		}
+	}
+	//     },
+	buffer.WriteString("},")
+
+	count = 0
+	//    "Policies": {
+	buffer.WriteString("\"Policies\": {")
+	for key, policy := range cr.group.Policies {
+		// "Key": {
+		buffer.WriteString("\"")
+		buffer.WriteString(key)
+		buffer.WriteString("\": {")
+		// 	"Version": "X",
+		buffer.WriteString("\"Version\":\"")
+		buffer.WriteString(fmt.Sprintf("%d", policy.Version))
+		buffer.WriteString("\",")
+		//      "ModPolicy": "foo",
+		buffer.WriteString("\"ModPolicy\":\"")
+		buffer.WriteString(policy.ModPolicy)
+		buffer.WriteString("\",")
+		//      "Policy": {
+		buffer.WriteString("\"Policy\":{")
+		//          "PolicyType" :
+		buffer.WriteString(fmt.Sprintf("\"PolicyType\":\"%d\",", policy.Policy.Type))
+		//          "Policy" : policyAsJSON
+		buffer.WriteString("\"Policy\":")
+		jpb.Marshal(buffer, cr.deserializedPolicies[key])
+		//      }
+		// },
+		buffer.WriteString("}}")
+		count++
+		if count < len(cr.group.Policies) {
 			buffer.WriteString(",")
 		}
 	}
@@ -181,22 +216,25 @@ func proposeGroup(result *configResult) error {
 	}
 
 	for key, policy := range result.group.Policies {
-		if err := result.policyHandler.ProposePolicy(result.tx, key, policy); err != nil {
+		policy, err := result.policyHandler.ProposePolicy(result.tx, key, policy)
+		if err != nil {
 			result.rollback()
 			return err
 		}
+		result.deserializedPolicies[key] = policy
 	}
 
 	result.subResults = make([]*configResult, 0, len(subGroups))
 
 	for i, subGroup := range subGroups {
 		result.subResults = append(result.subResults, &configResult{
-			tx:                 result.tx,
-			groupName:          result.groupName + "/" + subGroup,
-			group:              result.group.Groups[subGroup],
-			valueHandler:       subValueHandlers[i],
-			policyHandler:      subPolicyHandlers[i],
-			deserializedValues: make(map[string]proto.Message),
+			tx:                   result.tx,
+			groupName:            result.groupName + "/" + subGroup,
+			group:                result.group.Groups[subGroup],
+			valueHandler:         subValueHandlers[i],
+			policyHandler:        subPolicyHandlers[i],
+			deserializedValues:   make(map[string]proto.Message),
+			deserializedPolicies: make(map[string]proto.Message),
 		})
 
 		if err := proposeGroup(result.subResults[i]); err != nil {

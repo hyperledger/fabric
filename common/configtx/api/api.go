@@ -21,6 +21,8 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // Manager provides a mechanism to query and update config
@@ -81,7 +83,7 @@ type PolicyHandler interface {
 
 	BeginConfig(tx interface{}, groups []string) ([]PolicyHandler, error)
 
-	ProposePolicy(tx interface{}, key string, path []string, policy *cb.ConfigPolicy) error
+	ProposePolicy(tx interface{}, key string, path []string, policy *cb.ConfigPolicy) (proto.Message, error)
 }
 
 // Proposer contains the references necesssary to appropriately unmarshal
