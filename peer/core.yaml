@@ -128,6 +128,17 @@ peer:
         # If this isn't set, the peer will not be known to other organizations.
         externalEndpoint:
 
+        # Leader election service configuration
+        election:
+            # Longest time peer wait for stable membership during leader election startup (unit: second)
+            startupGracePeriod: 15s
+            # Interval gossip membership sampled to check its stability (unit: second)
+            membershipSampleInterval: 1s
+            # Time pass since last declaration message before peer decide to go to election (unit: second)
+            leaderAliveThreshold: 10s
+            # Time between peer sends propose message and declare itself as a leader (sends declaration message) (unit: second)
+            leaderElectionDuration: 5s
+
     # Sync related configuration
     sync:
         blocks:

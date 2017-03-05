@@ -23,6 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"strings"
+
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -33,11 +36,11 @@ const (
 )
 
 func init() {
-	startupGracePeriod = time.Millisecond * 500
-	membershipSampleInterval = time.Millisecond * 100
-	leaderAliveThreshold = time.Millisecond * 500
-	leadershipDeclarationInterval = leaderAliveThreshold / 2
-	leaderElectionDuration = time.Millisecond * 500
+
+	SetStartupGracePeriod(time.Millisecond * 500)
+	SetMembershipSampleInterval(time.Millisecond * 100)
+	SetLeaderAliveThreshold(time.Millisecond * 500)
+	SetLeaderElectionDuration(time.Millisecond * 500)
 }
 
 type msg struct {
@@ -186,7 +189,7 @@ func TestInitPeersAtSameTime(t *testing.T) {
 	// Scenario: Peers are spawned at the same time
 	// expected outcome: the peer that has the lowest ID is the leader
 	peers := createPeers(0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-	time.Sleep(startupGracePeriod + leaderElectionDuration)
+	time.Sleep(getStartupGracePeriod() + getLeaderElectionDuration())
 	leaders := waitForLeaderElection(t, peers)
 	isP0leader := peers[len(peers)-1].IsLeader()
 	assert.True(t, isP0leader, "p0 isn't a leader. Leaders are: %v", leaders)
@@ -198,7 +201,7 @@ func TestInitPeersStartAtIntervals(t *testing.T) {
 	t.Parallel()
 	// Scenario: Peers are spawned one by one in a slow rate
 	// expected outcome: the first peer is the leader although its ID is lowest
-	peers := createPeers(startupGracePeriod+leadershipDeclarationInterval, 3, 2, 1, 0)
+	peers := createPeers(getStartupGracePeriod()+getLeadershipDeclarationInterval(), 3, 2, 1, 0)
 	waitForLeaderElection(t, peers)
 	assert.True(t, peers[0].IsLeader())
 }
@@ -226,9 +229,9 @@ func TestStop(t *testing.T) {
 	for _, p := range peers {
 		p.Stop()
 	}
-	time.Sleep(leaderAliveThreshold)
+	time.Sleep(getLeaderAliveThreshold())
 	gossipCounterAfterStop := atomic.LoadInt32(&gossipCounter)
-	time.Sleep(leaderAliveThreshold * 5)
+	time.Sleep(getLeaderAliveThreshold() * 5)
 	assert.Equal(t, gossipCounterAfterStop, atomic.LoadInt32(&gossipCounter))
 }
 
@@ -265,7 +268,7 @@ func TestConvergence(t *testing.T) {
 		p.On("Peers").Return(allPeerIds)
 	}
 
-	time.Sleep(leaderAliveThreshold * 5)
+	time.Sleep(getLeaderAliveThreshold() * 5)
 	finalLeaders := waitForLeaderElection(t, combinedPeers)
 	assert.Len(t, finalLeaders, 1, "Combined peer group was suppose to have 1 leader exactly")
 	assert.Equal(t, leaders1[0], finalLeaders[0], "Combined peer group has different leader than expected:")
@@ -288,12 +291,12 @@ func TestLeadershipTakeover(t *testing.T) {
 	// Scenario: Peers spawn one by one in descending order.
 	// After a while, the leader peer stops.
 	// expected outcome: the peer that takes over is the peer with lowest ID
-	peers := createPeers(startupGracePeriod+leadershipDeclarationInterval, 5, 4, 3, 2)
+	peers := createPeers(getStartupGracePeriod()+getLeadershipDeclarationInterval(), 5, 4, 3, 2)
 	leaders := waitForLeaderElection(t, peers)
 	assert.Len(t, leaders, 1, "Only 1 leader should have been elected")
 	assert.Equal(t, "p5", leaders[0])
 	peers[0].Stop()
-	time.Sleep(leadershipDeclarationInterval + leaderAliveThreshold*3)
+	time.Sleep(getLeadershipDeclarationInterval() + getLeaderAliveThreshold()*3)
 	leaders = waitForLeaderElection(t, peers[1:])
 	assert.Len(t, leaders, 1, "Only 1 leader should have been elected")
 	assert.Equal(t, "p2", leaders[0])
@@ -316,7 +319,7 @@ func TestPartition(t *testing.T) {
 		p.On("Peers").Return([]Peer{})
 		p.On("Gossip", mock.Anything)
 	}
-	time.Sleep(leadershipDeclarationInterval + leaderAliveThreshold*2)
+	time.Sleep(getLeadershipDeclarationInterval() + getLeaderAliveThreshold()*2)
 	leaders = waitForMultipleLeadersElection(t, peers, 6)
 	assert.Len(t, leaders, 6)
 	for _, p := range peers {
@@ -329,7 +332,7 @@ func TestPartition(t *testing.T) {
 		p.callbackInvoked = false
 		p.sharedLock.Unlock()
 	}
-	time.Sleep(leadershipDeclarationInterval + leaderAliveThreshold*2)
+	time.Sleep(getLeadershipDeclarationInterval() + getLeaderAliveThreshold()*2)
 	leaders = waitForLeaderElection(t, peers)
 	assert.Len(t, leaders, 1, "Only 1 leader should have been elected")
 	assert.Equal(t, "p0", leaders[0])
@@ -342,4 +345,42 @@ func TestPartition(t *testing.T) {
 		}
 	}
 
+}
+
+func TestConfigFromFile(t *testing.T) {
+	preStartupGracePeriod := getStartupGracePeriod()
+	preMembershipSampleInterval := getMembershipSampleInterval()
+	preLeaderAliveThreshold := getLeaderAliveThreshold()
+	preLeaderElectionDuration := getLeaderElectionDuration()
+
+	// Recover the config values in order to avoid impacting other tests
+	defer func() {
+		SetStartupGracePeriod(preStartupGracePeriod)
+		SetMembershipSampleInterval(preMembershipSampleInterval)
+		SetLeaderAliveThreshold(preLeaderAliveThreshold)
+		SetLeaderElectionDuration(preLeaderElectionDuration)
+	}()
+
+	// Verify if using default values when config is missing
+	viper.Reset()
+	assert.Equal(t, time.Second*15, getStartupGracePeriod())
+	assert.Equal(t, time.Second, getMembershipSampleInterval())
+	assert.Equal(t, time.Second*10, getLeaderAliveThreshold())
+	assert.Equal(t, time.Second*5, getLeaderElectionDuration())
+	assert.Equal(t, getLeaderAliveThreshold()/2, getLeadershipDeclarationInterval())
+
+	//Verify reading the values from config file
+	viper.Reset()
+	viper.SetConfigName("core")
+	viper.SetEnvPrefix("CORE")
+	viper.AddConfigPath("./../../peer")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
+	assert.NoError(t, err)
+	assert.Equal(t, time.Second*15, getStartupGracePeriod())
+	assert.Equal(t, time.Second, getMembershipSampleInterval())
+	assert.Equal(t, time.Second*10, getLeaderAliveThreshold())
+	assert.Equal(t, time.Second*5, getLeaderElectionDuration())
+	assert.Equal(t, getLeaderAliveThreshold()/2, getLeadershipDeclarationInterval())
 }
