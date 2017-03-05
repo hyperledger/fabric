@@ -2,7 +2,7 @@ Building the fabric
 -------------------
 
 The following instructions assume that you have already set up your
-`development environment <devenv.md>`__.
+`development environment <../source/asset_setup.rst>`__.
 
 To build the Fabric:
 
