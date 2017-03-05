@@ -120,6 +120,11 @@ func NewGossipStateProvider(chainID string, g gossip.Gossip, committer committer
 	_, commChan := g.Accept(remoteStateMsgFilter, true)
 
 	height, err := committer.LedgerHeight()
+	if height == 0 {
+		// Panic here since this is an indication of invalid situation which should not happen in normal
+		// code path.
+		logger.Panic("Committer height cannot be zero, ledger should include at least one block (genesis).")
+	}
 
 	if err != nil {
 		logger.Error("Could not read ledger info to obtain current ledger height due to: ", err)
