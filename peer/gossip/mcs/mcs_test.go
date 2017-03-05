@@ -17,16 +17,15 @@ limitations under the License.
 package mcs
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
-
-	mockscrypto "github.com/hyperledger/fabric/common/mocks/crypto"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/localmsp"
+	mockscrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -79,6 +78,7 @@ func TestVerify(t *testing.T) {
 			map[string]policies.Manager{
 				"A": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")}}},
 				"B": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Charlie"), []byte("msg3")}}},
+				"C": nil,
 			},
 		},
 		&mockscrypto.LocalSigner{Identity: []byte("Alice")},
@@ -87,6 +87,7 @@ func TestVerify(t *testing.T) {
 			channelDeserializers: map[string]msp.IdentityDeserializer{
 				"A": &mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")},
 				"B": &mockIdentityDeserializer{[]byte("Charlie"), []byte("msg3")},
+				"C": &mockIdentityDeserializer{[]byte("Yacov"), []byte("msg4")},
 			},
 		},
 	)
@@ -103,6 +104,12 @@ func TestVerify(t *testing.T) {
 
 	err = msgCryptoService.Verify(api.PeerIdentityType("Charlie"), sigma, msg)
 	assert.Error(t, err, "Charlie should not verify the signature")
+
+	sigma, err = msgCryptoService.Sign(msg)
+	assert.NoError(t, err)
+	err = msgCryptoService.Verify(api.PeerIdentityType("Yacov"), sigma, msg)
+	assert.Error(t, err)
+	assert.Contains(t, fmt.Sprintf("%v", err), "Could not acquire policy manager")
 }
 
 func TestVerifyBlock(t *testing.T) {
@@ -112,6 +119,7 @@ func TestVerifyBlock(t *testing.T) {
 			"A": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Bob"), []byte("msg2")}}},
 			"B": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Charlie"), []byte("msg3")}}},
 			"C": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
+			"D": &mockChannelPolicyManager{&mockPolicy{&mockIdentityDeserializer{[]byte("Alice"), []byte("msg1")}}},
 		},
 	}
 
@@ -130,9 +138,15 @@ func TestVerifyBlock(t *testing.T) {
 	// - Prepare testing valid block, Alice signs it.
 	blockRaw, msg := mockBlock(t, "C", aliceSigner, nil)
 	policyManagerGetter.managers["C"].(*mockChannelPolicyManager).mockPolicy.(*mockPolicy).deserializer.(*mockIdentityDeserializer).msg = msg
+	blockRaw2, msg2 := mockBlock(t, "D", aliceSigner, nil)
+	policyManagerGetter.managers["D"].(*mockChannelPolicyManager).mockPolicy.(*mockPolicy).deserializer.(*mockIdentityDeserializer).msg = msg2
 
 	// - Verify block
 	assert.NoError(t, msgCryptoService.VerifyBlock([]byte("C"), blockRaw))
+	delete(policyManagerGetter.managers, "D")
+	nilPolMgrErr := msgCryptoService.VerifyBlock([]byte("D"), blockRaw2)
+	assert.Contains(t, fmt.Sprintf("%v", nilPolMgrErr), "Could not acquire policy manager")
+	assert.Error(t, nilPolMgrErr)
 	assert.Error(t, msgCryptoService.VerifyBlock([]byte("A"), blockRaw))
 	assert.Error(t, msgCryptoService.VerifyBlock([]byte("B"), blockRaw))
 

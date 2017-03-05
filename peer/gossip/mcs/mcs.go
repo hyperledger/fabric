@@ -17,10 +17,9 @@ limitations under the License.
 package mcs
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-
-	"bytes"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -156,6 +155,9 @@ func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, signedBloc
 
 	// Get the policy manager for channelID
 	cpm, ok := s.channelPolicyManagerGetter.Manager(channelID)
+	if cpm == nil {
+		return fmt.Errorf("Could not acquire policy manager for channel %s", channelID)
+	}
 	// ok is true if it was the manager requested, or false if it is the default manager
 	logger.Debugf("Got policy manager for channel [%s] with flag [%s]", channelID, ok)
 
@@ -228,6 +230,9 @@ func (s *mspMessageCryptoService) VerifyByChannel(chainID common.ChainID, peerId
 
 	// Get the policy manager for channel chainID
 	cpm, flag := s.channelPolicyManagerGetter.Manager(string(chainID))
+	if cpm == nil {
+		return fmt.Errorf("Could not acquire policy manager for channel %s", string(chainID))
+	}
 	logger.Debugf("Got policy manager for channel [%s] with flag [%s]", string(chainID), flag)
 
 	// Get channel reader policy
