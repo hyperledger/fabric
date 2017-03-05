@@ -195,6 +195,7 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 		anchorPeers: []api.AnchorPeer{
 			{Host: "localhost", Port: 11611, OrgID: api.OrgIdentityType(orgA)},
 			{Host: "localhost", Port: 11615, OrgID: api.OrgIdentityType(orgB)},
+			{Host: "localhost", Port: 11616, OrgID: api.OrgIdentityType(orgA)},
 		},
 	}
 

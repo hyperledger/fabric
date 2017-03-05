@@ -196,8 +196,22 @@ func (g *gossipServiceImpl) JoinChan(joinMsg api.JoinChannelMessage, chainID com
 			g.logger.Infof("Anchor peer %s:%d isn't in our org(%v) and we have no external endpoint, skipping", ap.Host, ap.Port, string(ap.OrgID))
 			continue
 		}
+		anchorPeerOrg := ap.OrgID
+		isInOurOrg := func() bool {
+			identity, err := g.comm.Handshake(&comm.RemotePeer{Endpoint: endpoint})
+			if err != nil {
+				g.logger.Warning("Deep probe of", endpoint, "failed:", err)
+				return false
+			}
+			isAnchorPeerInMyOrg := bytes.Equal(g.selfOrg, g.secAdvisor.OrgByPeerIdentity(identity))
+			if bytes.Equal(anchorPeerOrg, g.selfOrg) && !isAnchorPeerInMyOrg {
+				g.logger.Warning("Anchor peer", endpoint, "isn't in our org, but is claimed to be")
+			}
+			return isAnchorPeerInMyOrg
+		}
+
 		g.disc.Connect(discovery.NetworkMember{
-			InternalEndpoint: endpoint, Endpoint: endpoint}, inOurOrg)
+			InternalEndpoint: endpoint, Endpoint: endpoint}, isInOurOrg)
 	}
 }
 
