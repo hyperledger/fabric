@@ -18,7 +18,6 @@ package election
 
 import (
 	"bytes"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -82,7 +81,6 @@ import (
 // LeaderElectionAdapter is used by the leader election module
 // to send and receive messages and to get membership information
 type LeaderElectionAdapter interface {
-
 	// Gossip gossips a message to other peers
 	Gossip(Msg)
 
@@ -131,7 +129,7 @@ func noopCallback(_ bool) {
 // NewLeaderElectionService returns a new LeaderElectionService
 func NewLeaderElectionService(adapter LeaderElectionAdapter, id string, callback leadershipCallback) LeaderElectionService {
 	if len(id) == 0 {
-		panic(fmt.Errorf("Empty id"))
+		panic("Empty id")
 	}
 	le := &leaderElectionSvcImpl{
 		id:            peerID(id),
@@ -363,13 +361,13 @@ func (le *leaderElectionSvcImpl) IsLeader() bool {
 func (le *leaderElectionSvcImpl) beLeader() {
 	le.logger.Debug(le.id, ": Becoming a leader")
 	atomic.StoreInt32(&le.isLeader, int32(1))
-	le.callback(true)
+	go le.callback(true)
 }
 
 func (le *leaderElectionSvcImpl) stopBeingLeader() {
 	le.logger.Debug(le.id, "Stopped being a leader")
 	atomic.StoreInt32(&le.isLeader, int32(0))
-	le.callback(false)
+	go le.callback(false)
 }
 
 func (le *leaderElectionSvcImpl) shouldStop() bool {

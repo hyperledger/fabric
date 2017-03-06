@@ -347,7 +347,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		services[i] = &electionService{nil, false, 0}
-		services[i].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(gossipCommon.ChainID(channelName), services[i].callback)
+		services[i].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(channelName, services[i].callback)
 	}
 
 	logger.Warning("Waiting for leader election")
@@ -373,7 +373,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	for idx, i := range secondChannelPeerIndexes {
 		secondChannelServices[idx] = &electionService{nil, false, 0}
-		secondChannelServices[idx].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(gossipCommon.ChainID(secondChannelName), secondChannelServices[idx].callback)
+		secondChannelServices[idx].LeaderElectionService = gossips[i].(*gossipServiceImpl).newLeaderElectionComponent(secondChannelName, secondChannelServices[idx].callback)
 	}
 
 	assert.True(t, waitForLeaderElection(t, secondChannelServices, time.Second*30, time.Second*2), "One leader should be selected for chanB")

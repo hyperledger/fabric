@@ -68,13 +68,24 @@ peer:
 
     # Gossip related configuration
     gossip:
+        # Bootstrap set to initialize gossip with
         bootstrap: 127.0.0.1:7051
-        # Use automatically chosen peer (high avalibility) to distribute blocks in channel or static one
-        # Setting this true and orgLeader true cause panic exit
+
+        # NOTE: orgLeader and useLeaderElection parameters are mutual exclusive
+        # setting both to true would result in the termination of the peer, since this is undefined
+        # state.
+
+        # Defines whenever peer will initialize dynamic algorithm for
+        # "leader" selection, where leader is the peer to establish
+        # connection with ordering service and use delivery protocol
+        # to pull ledger blocks from ordering service
         useLeaderElection: false
-        # For debug - is peer is its org leader and should pass blocks from orderer to other peers in org
-        # Works only if useLeaderElection set to false
+        # Statically defines peer to be an organization "leader",
+        # where this means that current peer will maintain connection
+        # with ordering service and disseminate block across peers in
+        # its own organization
         orgLeader: true
+
         # ID of this instance
         endpoint:
         # Maximum count of blocks we store in memory
