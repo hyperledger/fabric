@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/kafka"
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	jsonledger "github.com/hyperledger/fabric/orderer/ledger/json"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	"github.com/hyperledger/fabric/orderer/localconfig"
@@ -54,43 +54,46 @@ import (
 var logger = logging.MustGetLogger("orderer/main")
 
 func main() {
-	// Temporarilly set logging level until config is read
-	logging.SetLevel(logging.INFO, "")
 	conf := config.Load()
+
+	// Set the logging level
 	flogging.InitFromSpec(conf.General.LogLevel)
+	if conf.Kafka.Verbose {
+		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
+	}
 
 	// Start the profiling service if enabled.
 	// The ListenAndServe() call does not return unless an error occurs.
 	if conf.General.Profile.Enabled {
 		go func() {
-			logger.Infof("Starting Go pprof profiling service on %s", conf.General.Profile.Address)
-			panic(fmt.Errorf("Go pprof service failed: %s", http.ListenAndServe(conf.General.Profile.Address, nil)))
+			logger.Info("Starting Go pprof profiling service on:", conf.General.Profile.Address)
+			logger.Panic("Go pprof service failed:", http.ListenAndServe(conf.General.Profile.Address, nil))
 		}()
 	}
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.General.ListenAddress, conf.General.ListenPort))
 	if err != nil {
-		fmt.Println("Failed to listen:", err)
+		logger.Error("Failed to listen:", err)
 		return
 	}
 
-	//Create GRPC server - return if an error occurs
+	// Create GRPC server - return if an error occurs
 	secureConfig := comm.SecureServerConfig{
 		UseTLS: conf.General.TLS.Enabled,
 	}
 	grpcServer, err := comm.NewGRPCServerFromListener(lis, secureConfig)
 	if err != nil {
-		fmt.Println("Failed to return new GRPC server: ", err)
+		logger.Error("Failed to return new GRPC server:", err)
 		return
 	}
 
 	// Load local MSP
 	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
 	if err != nil { // Handle errors reading the config file
-		panic(fmt.Errorf("Failed initializing crypto [%s]", err))
+		logger.Panic("Failed to initialize local MSP:", err)
 	}
 
-	var lf ordererledger.Factory
+	var lf ledger.Factory
 	switch conf.General.LedgerType {
 	case "file":
 		// just use the json ledger type for now
@@ -101,7 +104,7 @@ func main() {
 			var err error
 			location, err = ioutil.TempDir("", conf.FileLedger.Prefix)
 			if err != nil {
-				panic(fmt.Errorf("Error creating temp dir: %s", err))
+				logger.Panic("Error creating temp dir:", err)
 			}
 		}
 		lf = jsonledger.New(location)
@@ -111,7 +114,7 @@ func main() {
 		lf = ramledger.New(int(conf.RAMLedger.HistorySize))
 	}
 
-	// Are we bootstrapping
+	// Are we bootstrapping?
 	if len(lf.ChainIDs()) == 0 {
 		var genesisBlock *cb.Block
 
@@ -122,31 +125,27 @@ func main() {
 		case "file":
 			genesisBlock = file.New(conf.General.GenesisFile).GenesisBlock()
 		default:
-			panic(fmt.Errorf("Unknown genesis method %s", conf.General.GenesisMethod))
+			logger.Panic("Unknown genesis method:", conf.General.GenesisMethod)
 		}
 
 		chainID, err := utils.GetChainIDFromBlock(genesisBlock)
 		if err != nil {
-			logger.Errorf("Failed to parse chain ID from genesis block: %s", err)
+			logger.Error("Failed to parse chain ID from genesis block:", err)
 			return
 		}
 		gl, err := lf.GetOrCreate(chainID)
 		if err != nil {
-			logger.Errorf("Failed to create the genesis chain: %s", err)
+			logger.Error("Failed to create the system chain:", err)
 			return
 		}
 
 		err = gl.Append(genesisBlock)
 		if err != nil {
-			logger.Errorf("Could not write genesis block to ledger: %s", err)
+			logger.Error("Could not write genesis block to ledger:", err)
 			return
 		}
 	} else {
-		logger.Infof("Not bootstrapping because of existing chains")
-	}
-
-	if conf.Kafka.Verbose {
-		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.Lshortfile)
+		logger.Info("Not bootstrapping because of existing chains")
 	}
 
 	consenters := make(map[string]multichain.Consenter)
@@ -164,7 +163,7 @@ func main() {
 	)
 
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
-	logger.Infof("Beginning to serve requests")
+	logger.Info("Beginning to serve requests")
 	grpcServer.Start()
 }
 

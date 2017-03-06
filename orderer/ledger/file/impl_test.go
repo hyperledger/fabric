@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package jsonledger
+package fileledger
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -39,69 +39,94 @@ func init() {
 type testEnv struct {
 	t        *testing.T
 	location string
+	flf      ledger.Factory
 }
 
-func initialize(t *testing.T) (*testEnv, *jsonLedger) {
+func initialize(t *testing.T) (*testEnv, *fileLedger) {
 	name, err := ioutil.TempDir("", "hyperledger_fabric")
 	if err != nil {
 		t.Fatalf("Error creating temp dir: %s", err)
 	}
-	flf := New(name).(*jsonLedgerFactory)
+	flf := New(name).(*fileLedgerFactory)
 	fl, err := flf.GetOrCreate(provisional.TestChainID)
 	if err != nil {
 		panic(err)
 	}
-
 	fl.Append(genesisBlock)
-	return &testEnv{location: name, t: t}, fl.(*jsonLedger)
+	return &testEnv{location: name, t: t, flf: flf}, fl.(*fileLedger)
 }
 
 func (tev *testEnv) tearDown() {
+	tev.shutDown()
 	err := os.RemoveAll(tev.location)
 	if err != nil {
 		tev.t.Fatalf("Error tearing down env: %s", err)
 	}
 }
 
+func (tev *testEnv) shutDown() {
+	tev.flf.Close()
+}
+
 func TestInitialization(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	if fl.height != 1 {
+
+	if fl.Height() != 1 {
 		t.Fatalf("Block height should be 1")
 	}
-	block, found := fl.readBlock(0)
-	if block == nil || !found {
+	block := ledger.GetBlock(fl, 0)
+	if block == nil {
 		t.Fatalf("Error retrieving genesis block")
 	}
-	if !bytes.Equal(block.Header.Hash(), fl.lastHash) {
+	if !bytes.Equal(block.Header.Hash(), genesisBlock.Header.Hash()) {
 		t.Fatalf("Block hashes did no match")
 	}
 }
 
 func TestReinitialization(t *testing.T) {
-	tev, ofl := initialize(t)
+	// initialize ledger provider and a ledger for the test chain
+	tev, leger1 := initialize(t)
+
+	// make sure we cleanup at the end (delete all traces of ledgers)
 	defer tev.tearDown()
-	ofl.Append(ordererledger.CreateNextBlock(ofl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
-	flf := New(tev.location)
-	chains := flf.ChainIDs()
+
+	// create a block to add to the ledger
+	b1 := ledger.CreateNextBlock(leger1, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}})
+
+	// add the block to the ledger
+	leger1.Append(b1)
+
+	// shutdown the ledger
+	leger1.blockStore.Shutdown()
+
+	// shut down the ledger provider
+	tev.shutDown()
+
+	// re-initialize the ledger provider (not the test ledger itself!)
+	provider2 := New(tev.location)
+
+	// assert expected ledgers exist
+	chains := provider2.ChainIDs()
 	if len(chains) != 1 {
 		t.Fatalf("Should have recovered the chain")
 	}
 
-	tfl, err := flf.GetOrCreate(chains[0])
+	// get the existing test chain ledger
+	ledger2, err := provider2.GetOrCreate(chains[0])
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	fl := tfl.(*jsonLedger)
-	if fl.height != 2 {
-		t.Fatalf("Block height should be 2")
+	fl := ledger2.(*fileLedger)
+	if fl.Height() != 2 {
+		t.Fatalf("Block height should be 2. Got %v", fl.Height())
 	}
-	block, found := fl.readBlock(1)
-	if block == nil || !found {
+	block := ledger.GetBlock(fl, 1)
+	if block == nil {
 		t.Fatalf("Error retrieving block 1")
 	}
-	if !bytes.Equal(block.Header.Hash(), fl.lastHash) {
+	if !bytes.Equal(block.Header.Hash(), b1.Header.Hash()) {
 		t.Fatalf("Block hashes did no match")
 	}
 }
@@ -109,6 +134,7 @@ func TestReinitialization(t *testing.T) {
 func TestMultiReinitialization(t *testing.T) {
 	tev, _ := initialize(t)
 	defer tev.tearDown()
+	tev.shutDown()
 	flf := New(tev.location)
 
 	_, err := flf.GetOrCreate("foo")
@@ -120,7 +146,7 @@ func TestMultiReinitialization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating chain")
 	}
-
+	flf.Close()
 	flf = New(tev.location)
 	chains := flf.ChainIDs()
 	if len(chains) != 3 {
@@ -131,13 +157,14 @@ func TestMultiReinitialization(t *testing.T) {
 func TestAddition(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	prevHash := fl.lastHash
-	fl.Append(ordererledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
-	if fl.height != 2 {
+	info, _ := fl.blockStore.GetBlockchainInfo()
+	prevHash := info.CurrentBlockHash
+	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	if fl.Height() != 2 {
 		t.Fatalf("Block height should be 2")
 	}
-	block, found := fl.readBlock(1)
-	if block == nil || !found {
+	block := ledger.GetBlock(fl, 1)
+	if block == nil {
 		t.Fatalf("Error retrieving genesis block")
 	}
 	if !bytes.Equal(block.Header.PreviousHash, prevHash) {
@@ -148,7 +175,7 @@ func TestAddition(t *testing.T) {
 func TestRetrieval(t *testing.T) {
 	tev, fl := initialize(t)
 	defer tev.tearDown()
-	fl.Append(ordererledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	it, num := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Oldest{}})
 	if num != 0 {
 		t.Fatalf("Expected genesis block iterator, but got %d", num)
@@ -194,7 +221,7 @@ func TestBlockedRetrieval(t *testing.T) {
 		t.Fatalf("Should not be ready for block read")
 	default:
 	}
-	fl.Append(ordererledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
+	fl.Append(ledger.CreateNextBlock(fl, []*cb.Envelope{&cb.Envelope{Payload: []byte("My Data")}}))
 	select {
 	case <-signal:
 	default:

@@ -19,15 +19,14 @@ package ramledger
 import (
 	"bytes"
 	"fmt"
-	"sync"
 
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 )
 
-var logger = logging.MustGetLogger("ordererledger/ramledger")
+var logger = logging.MustGetLogger("orderer/ramledger")
 
 type cursor struct {
 	list *simpleList
@@ -46,85 +45,27 @@ type ramLedger struct {
 	newest  *simpleList
 }
 
-type ramLedgerFactory struct {
-	maxSize int
-	ledgers map[string]ordererledger.ReadWriter
-	mutex   sync.Mutex
-}
-
-// New creates a new ramledger factory and system ordering chain based on the given systemGenesis block,
-// because there is no persistence, the new ReadWriter will have only the genesis block contained
-func New(maxSize int) ordererledger.Factory {
-	rlf := &ramLedgerFactory{
-		maxSize: maxSize,
-		ledgers: make(map[string]ordererledger.ReadWriter),
+// Next blocks until there is a new block available, or returns an error if the
+// next block is no longer retrievable
+func (cu *cursor) Next() (*cb.Block, cb.Status) {
+	// This only loops once, as signal reading indicates non-nil next
+	for {
+		if cu.list.next != nil {
+			cu.list = cu.list.next
+			return cu.list.block, cb.Status_SUCCESS
+		}
+		<-cu.list.signal
 	}
-
-	return rlf
 }
 
-func (rlf *ramLedgerFactory) GetOrCreate(chainID string) (ordererledger.ReadWriter, error) {
-	rlf.mutex.Lock()
-	defer rlf.mutex.Unlock()
-
-	key := chainID
-
-	l, ok := rlf.ledgers[key]
-	if ok {
-		return l, nil
-	}
-
-	ch := newChain(rlf.maxSize)
-	rlf.ledgers[key] = ch
-	return ch, nil
+// ReadyChan supplies a channel which will block until Next will not block
+func (cu *cursor) ReadyChan() <-chan struct{} {
+	return cu.list.signal
 }
 
-func (rlf *ramLedgerFactory) ChainIDs() []string {
-	rlf.mutex.Lock()
-	defer rlf.mutex.Unlock()
-	ids := make([]string, len(rlf.ledgers))
-
-	i := 0
-	for key := range rlf.ledgers {
-		ids[i] = key
-		i++
-	}
-
-	return ids
-}
-
-// Close does nothing for ram ledger
-func (rlf *ramLedgerFactory) Close() {
-	return // nothing to do
-}
-
-// newChain creates a new instance of the ram ledger for a chain
-func newChain(maxSize int) ordererledger.ReadWriter {
-	preGenesis := &cb.Block{
-		Header: &cb.BlockHeader{
-			Number: ^uint64(0),
-		},
-	}
-
-	rl := &ramLedger{
-		maxSize: maxSize,
-		size:    1,
-		oldest: &simpleList{
-			signal: make(chan struct{}),
-			block:  preGenesis,
-		},
-	}
-	rl.newest = rl.oldest
-	return rl
-}
-
-// Height returns the highest block number in the chain, plus one
-func (rl *ramLedger) Height() uint64 {
-	return rl.newest.block.Header.Number + 1
-}
-
-// Iterator implements the ordererledger.Reader definition
-func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.Iterator, uint64) {
+// Iterator returns an Iterator, as specified by a cb.SeekInfo message, and its
+// starting block number
+func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ledger.Iterator, uint64) {
 	var list *simpleList
 	switch start := startPosition.Type.(type) {
 	case *ab.SeekPosition_Oldest:
@@ -150,8 +91,9 @@ func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.Ite
 
 		// Note the two +1's here is to accomodate the 'preGenesis' block of ^uint64(0)
 		if specified+1 < oldest.block.Header.Number+1 || specified > rl.newest.block.Header.Number+1 {
-			logger.Debugf("Returning error iterator because specified seek was %d with oldest %d and newest %d", specified, rl.oldest.block.Header.Number, rl.newest.block.Header.Number)
-			return &ordererledger.NotFoundErrorIterator{}, 0
+			logger.Debugf("Returning error iterator because specified seek was %d with oldest %d and newest %d",
+				specified, rl.oldest.block.Header.Number, rl.newest.block.Header.Number)
+			return &ledger.NotFoundErrorIterator{}, 0
 		}
 
 		if specified == oldest.block.Header.Number {
@@ -184,33 +126,22 @@ func (rl *ramLedger) Iterator(startPosition *ab.SeekPosition) (ordererledger.Ite
 	return cursor, blockNum
 }
 
-// Next blocks until there is a new block available, or returns an error if the next block is no longer retrievable
-func (cu *cursor) Next() (*cb.Block, cb.Status) {
-	// This only loops once, as signal reading indicates non-nil next
-	for {
-		if cu.list.next != nil {
-			cu.list = cu.list.next
-			return cu.list.block, cb.Status_SUCCESS
-		}
-
-		<-cu.list.signal
-	}
-}
-
-// ReadyChan returns a channel that will close when Next is ready to be called without blocking
-func (cu *cursor) ReadyChan() <-chan struct{} {
-	return cu.list.signal
+// Height returns the number of blocks on the ledger
+func (rl *ramLedger) Height() uint64 {
+	return rl.newest.block.Header.Number + 1
 }
 
 // Append appends a new block to the ledger
 func (rl *ramLedger) Append(block *cb.Block) error {
 	if block.Header.Number != rl.newest.block.Header.Number+1 {
-		return fmt.Errorf("Block number should have been %d but was %d", rl.newest.block.Header.Number+1, block.Header.Number)
+		return fmt.Errorf("Block number should have been %d but was %d",
+			rl.newest.block.Header.Number+1, block.Header.Number)
 	}
 
 	if rl.newest.block.Header.Number+1 != 0 { // Skip this check for genesis block insertion
 		if !bytes.Equal(block.Header.PreviousHash, rl.newest.block.Header.Hash()) {
-			return fmt.Errorf("Block should have had previous hash of %x but was %x", rl.newest.block.Header.Hash(), block.Header.PreviousHash)
+			return fmt.Errorf("Block should have had previous hash of %x but was %x",
+				rl.newest.block.Header.Hash(), block.Header.PreviousHash)
 		}
 	}
 
@@ -232,7 +163,8 @@ func (rl *ramLedger) appendBlock(block *cb.Block) {
 	rl.size++
 
 	if rl.size > rl.maxSize {
-		logger.Debugf("RAM ledger max size about to be exceeded, removing oldest item: %d", rl.oldest.block.Header.Number)
+		logger.Debugf("RAM ledger max size about to be exceeded, removing oldest item: %d",
+			rl.oldest.block.Header.Number)
 		rl.oldest = rl.oldest.next
 		rl.size--
 	}

@@ -21,58 +21,58 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 )
 
 type fileLedgerFactory struct {
 	blkstorageProvider blkstorage.BlockStoreProvider
-	ledgers            map[string]ordererledger.ReadWriter
+	ledgers            map[string]ledger.ReadWriter
 	mutex              sync.Mutex
 }
 
 // GetOrCreate gets an existing ledger (if it exists) or creates it if it does not
-func (lf *fileLedgerFactory) GetOrCreate(chainID string) (ordererledger.ReadWriter, error) {
-	lf.mutex.Lock()
-	defer lf.mutex.Unlock()
+func (flf *fileLedgerFactory) GetOrCreate(chainID string) (ledger.ReadWriter, error) {
+	flf.mutex.Lock()
+	defer flf.mutex.Unlock()
 
 	key := chainID
 	// check cache
-	ledger, ok := lf.ledgers[key]
+	ledger, ok := flf.ledgers[key]
 	if ok {
 		return ledger, nil
 	}
 	// open fresh
-	blockStore, err := lf.blkstorageProvider.OpenBlockStore(key)
+	blockStore, err := flf.blkstorageProvider.OpenBlockStore(key)
 	if err != nil {
 		return nil, err
 	}
 	ledger = &fileLedger{blockStore: blockStore, signal: make(chan struct{})}
-	lf.ledgers[key] = ledger
+	flf.ledgers[key] = ledger
 	return ledger, nil
 }
 
-// ChainIDs returns the chain IDs the Factory is aware of
-func (lf *fileLedgerFactory) ChainIDs() []string {
-	chainIDs, err := lf.blkstorageProvider.List()
+// ChainIDs returns the chain IDs the factory is aware of
+func (flf *fileLedgerFactory) ChainIDs() []string {
+	chainIDs, err := flf.blkstorageProvider.List()
 	if err != nil {
-		panic(err)
+		logger.Panic(err)
 	}
 	return chainIDs
 }
 
-// Close closes the file ledgers served by this factory
-func (lf *fileLedgerFactory) Close() {
-	lf.blkstorageProvider.Close()
+// Close releases all resources acquired by the factory
+func (flf *fileLedgerFactory) Close() {
+	flf.blkstorageProvider.Close()
 }
 
 // New creates a new ledger factory
-func New(directory string) ordererledger.Factory {
+func New(directory string) ledger.Factory {
 	return &fileLedgerFactory{
 		blkstorageProvider: fsblkstorage.NewProvider(
 			fsblkstorage.NewConf(directory, -1),
 			&blkstorage.IndexConfig{
 				AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum}},
 		),
-		ledgers: make(map[string]ordererledger.ReadWriter),
+		ledgers: make(map[string]ledger.ReadWriter),
 	}
 }

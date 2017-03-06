@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	"github.com/hyperledger/fabric/orderer/common/sigfilter"
-	ordererledger "github.com/hyperledger/fabric/orderer/ledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
@@ -50,7 +50,7 @@ type Support interface {
 	PolicyManager() policies.Manager
 
 	// Reader returns the chain Reader for the chain
-	Reader() ordererledger.Reader
+	Reader() ledger.Reader
 
 	// SharedConfig returns the shared config manager for this chain
 	SharedConfig() configvaluesapi.Orderer
@@ -83,7 +83,7 @@ func (ds *deliverServer) Handle(srv ab.AtomicBroadcast_DeliverServer) error {
 		}
 
 		if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
-			err := fmt.Errorf("Malformed envelope recieved with bad header")
+			err = fmt.Errorf("Malformed envelope received with bad header")
 			logger.Error(err)
 			return err
 		}
