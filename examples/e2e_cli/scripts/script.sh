@@ -43,6 +43,8 @@ setGlobals () {
 }
 
 createChannel() {
+	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig
+	CORE_PEER_LOCALMSPID="OrdererMSP"
 	peer channel create -o $ORDERER_IP:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx >&log.txt
 	res=$?
 	cat log.txt
