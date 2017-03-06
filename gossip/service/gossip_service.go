@@ -137,14 +137,6 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 			endpoint = overrideEndpoint
 		}
 
-		if viper.GetBool("peer.gossip.ignoreSecurity") {
-			logger.Info("This peer ignoring security in gossip")
-			sec := &secImpl{[]byte(endpoint)}
-			mcs = sec
-			secAdv = sec
-			peerIdentity = []byte(endpoint)
-		}
-
 		idMapper := identity.NewIdentityMapper(mcs)
 		idMapper.Put(mcs.GetPKIidOfCert(peerIdentity), peerIdentity)
 
@@ -311,36 +303,4 @@ func orgListFromConfig(config Config) []string {
 		orgList = append(orgList, orgName)
 	}
 	return orgList
-}
-
-type secImpl struct {
-	identity []byte
-}
-
-func (*secImpl) OrgByPeerIdentity(api.PeerIdentityType) api.OrgIdentityType {
-	return api.OrgIdentityType("DEFAULT")
-}
-
-func (s *secImpl) GetPKIidOfCert(peerIdentity api.PeerIdentityType) gossipCommon.PKIidType {
-	return gossipCommon.PKIidType(peerIdentity)
-}
-
-func (s *secImpl) VerifyBlock(chainID gossipCommon.ChainID, signedBlock []byte) error {
-	return nil
-}
-
-func (s *secImpl) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
-}
-
-func (s *secImpl) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	return nil
-}
-
-func (s *secImpl) VerifyByChannel(chainID gossipCommon.ChainID, peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	return nil
-}
-
-func (s *secImpl) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
-	return nil
 }

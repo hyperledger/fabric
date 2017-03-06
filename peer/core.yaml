@@ -112,8 +112,6 @@ peer:
         publishCertPeriod: 10s
         # Should we skip verifying block messages or not
         skipBlockVerification: false
-        # Should we ignore security or not
-        ignoreSecurity: false
         # Dial timeout(unit: second)
         dialTimeout: 3s
         # Connection timeout(unit: second)
