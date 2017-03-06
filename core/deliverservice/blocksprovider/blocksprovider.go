@@ -24,6 +24,7 @@ import (
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 
+	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/protos/common"
 	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -175,39 +176,37 @@ func (b *blocksProviderImpl) RequestBlocks(ledgerInfoProvider LedgerInfo) error 
 }
 
 func (b *blocksProviderImpl) seekOldest() error {
-	return b.client.Send(&common.Envelope{
-		Payload: utils.MarshalOrPanic(&common.Payload{
-			Header: &common.Header{
-				ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
-					ChannelId: b.chainID,
-				}),
-				SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{}),
-			},
-			Data: utils.MarshalOrPanic(&orderer.SeekInfo{
-				Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Oldest{Oldest: &orderer.SeekOldest{}}},
-				Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
-				Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
-			}),
-		}),
-	})
+	seekInfo := &orderer.SeekInfo{
+		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Oldest{Oldest: &orderer.SeekOldest{}}},
+		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+	}
+
+	//TODO- epoch and msgVersion may need to be obtained for nowfollowing usage in orderer/configupdate/configupdate.go
+	msgVersion := int32(0)
+	epoch := uint64(0)
+	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch)
+	if err != nil {
+		return err
+	}
+	return b.client.Send(env)
 }
 
 func (b *blocksProviderImpl) seekLatestFromCommitter(height uint64) error {
-	return b.client.Send(&common.Envelope{
-		Payload: utils.MarshalOrPanic(&common.Payload{
-			Header: &common.Header{
-				ChannelHeader: utils.MarshalOrPanic(&common.ChannelHeader{
-					ChannelId: b.chainID,
-				}),
-				SignatureHeader: utils.MarshalOrPanic(&common.SignatureHeader{}),
-			},
-			Data: utils.MarshalOrPanic(&orderer.SeekInfo{
-				Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: height}}},
-				Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
-				Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
-			}),
-		}),
-	})
+	seekInfo := &orderer.SeekInfo{
+		Start:    &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: height}}},
+		Stop:     &orderer.SeekPosition{Type: &orderer.SeekPosition_Specified{Specified: &orderer.SeekSpecified{Number: math.MaxUint64}}},
+		Behavior: orderer.SeekInfo_BLOCK_UNTIL_READY,
+	}
+
+	//TODO- epoch and msgVersion may need to be obtained for nowfollowing usage in orderer/configupdate/configupdate.go
+	msgVersion := int32(0)
+	epoch := uint64(0)
+	env, err := utils.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, b.chainID, localmsp.NewSigner(), seekInfo, msgVersion, epoch)
+	if err != nil {
+		return err
+	}
+	return b.client.Send(env)
 }
 
 func createGossipMsg(chainID string, payload *gossip_proto.Payload) *gossip_proto.GossipMessage {
