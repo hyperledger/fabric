@@ -81,14 +81,34 @@ func TestMockStateRangeQueryIterator_openEnded(t *testing.T) {
 	}
 }
 
-// TestSetChaincodeLoggingLevel uses the utlity function defined in chaincode.go to
-// set the chaincodeLogger's logging level
-func TestSetChaincodeLoggingLevel(t *testing.T) {
+// TestSetupChaincodeLogging uses the utlity function defined in chaincode.go to
+// set the chaincodeLogger's logging format and level
+func TestSetupChaincodeLogging_blankLevel(t *testing.T) {
+	// set log level to a non-default level
+	testLogLevelString := ""
+	testLogFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
+
+	viper.Set("chaincode.logLevel", testLogLevelString)
+	viper.Set("chaincode.logFormat", testLogFormat)
+
+	SetupChaincodeLogging()
+
+	if !IsEnabledForLogLevel("info") {
+		t.FailNow()
+	}
+}
+
+// TestSetupChaincodeLogging uses the utlity function defined in chaincode.go to
+// set the chaincodeLogger's logging format and level
+func TestSetupChaincodeLogging(t *testing.T) {
 	// set log level to a non-default level
 	testLogLevelString := "debug"
-	viper.Set("logging.chaincode", testLogLevelString)
+	testLogFormat := "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
 
-	SetChaincodeLoggingLevel()
+	viper.Set("chaincode.logLevel", testLogLevelString)
+	viper.Set("chaincode.logFormat", testLogFormat)
+
+	SetupChaincodeLogging()
 
 	if !IsEnabledForLogLevel(testLogLevelString) {
 		t.FailNow()

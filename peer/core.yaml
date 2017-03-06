@@ -32,7 +32,6 @@ logging:
     peer:       warning
     node:       info
     network:    warning
-    chaincode:  warning
     version:    warning
     protoutils: debug
     error:      warning
@@ -346,6 +345,10 @@ chaincode:
         escc: enable
         vscc: enable
         qscc: enable
+
+    # logging section for the chaincode container
+    logLevel: warning
+    logFormat: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
 
 ###############################################################################
 #
