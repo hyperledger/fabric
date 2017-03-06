@@ -605,7 +605,17 @@ func TestDisclosurePolicyWithPull(t *testing.T) {
 	// Sleep a while to let them establish membership. This time should be more than enough
 	// because the instances are configured to pull membership in very high frequency from
 	// up to 10 peers (which results in - pulling from everyone)
-	time.Sleep(time.Second * 5)
+	waitUntilOrFail(t, func() bool {
+		for _, inst := range append(instances1, instances2...) {
+			// Ensure the expected membership is equal in size to the actual membership
+			// of each peer.
+			portsOfKnownMembers := portsOfMembers(inst.GetMembership())
+			if len(peersThatShouldBeKnownToPeers[inst.port]) != len(portsOfKnownMembers) {
+				return false
+			}
+		}
+		return true
+	})
 	for _, inst := range append(instances1, instances2...) {
 		portsOfKnownMembers := portsOfMembers(inst.GetMembership())
 		// Ensure the expected membership is equal to the actual membership
