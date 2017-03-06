@@ -387,7 +387,7 @@ func (g *gossipServiceImpl) validateMsg(msg proto.ReceivedMessage) bool {
 			return true
 		}
 
-		if err := g.mcs.VerifyBlock(msg.GetGossipMessage().Channel, blockMsg); err != nil {
+		if err := g.mcs.VerifyBlock(msg.GetGossipMessage().Channel, blockMsg.Payload.Data); err != nil {
 			g.logger.Warning("Could not verify block", blockMsg.Payload.SeqNum, ":", err)
 			return false
 		}

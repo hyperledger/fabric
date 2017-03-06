@@ -17,15 +17,13 @@ limitations under the License.
 package mcs
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-
-	"bytes"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -52,12 +50,6 @@ type mspMessageCryptoService struct {
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter
 	localSigner                crypto.LocalSigner
 	deserializer               mgmt.DeserializersManager
-}
-
-// NewWithMockPolicyManagerGetter returns an instance of MessageCryptoService
-// with all defaults but the policies.ChannelPolicyManagerGetter that is mocked
-func NewWithMockPolicyManagerGetter() api.MessageCryptoService {
-	return New(&MockChannelPolicyManagerGetter{}, localmsp.NewSigner(), mgmt.NewDeserializersManager())
 }
 
 // New creates a new instance of mspMessageCryptoService
@@ -109,15 +101,9 @@ func (s *mspMessageCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityTy
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
+func (s *mspMessageCryptoService) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
 	// - Convert signedBlock to common.Block.
-	// signedBlock is assumed to be a byte array
-	blockBytes, ok := signedBlock.([]byte)
-	if !ok {
-		return fmt.Errorf("Failed casting SignedBlock to []byte on channel [%s]", chainID)
-	}
-
-	block, err := utils.GetBlockFromBlockBytes(blockBytes)
+	block, err := utils.GetBlockFromBlockBytes(signedBlock)
 	if err != nil {
 		return fmt.Errorf("Failed unmarshalling block bytes on channel [%s]: [%s]", chainID, err)
 	}

@@ -18,13 +18,12 @@ package state
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
-
-	"errors"
 
 	pb "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx/test"
@@ -97,7 +96,7 @@ func (*cryptoServiceMock) GetPKIidOfCert(peerIdentity api.PeerIdentityType) comm
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*cryptoServiceMock) VerifyBlock(chainID common.ChainID, signedBlock api.SignedBlock) error {
+func (*cryptoServiceMock) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
 	return nil
 }
 
