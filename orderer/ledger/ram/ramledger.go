@@ -93,6 +93,11 @@ func (rlf *ramLedgerFactory) ChainIDs() []string {
 	return ids
 }
 
+// Close does nothing for ram ledger
+func (rlf *ramLedgerFactory) Close() {
+	return // nothing to do
+}
+
 // newChain creates a new instance of the ram ledger for a chain
 func newChain(maxSize int) ordererledger.ReadWriter {
 	preGenesis := &cb.Block{
