@@ -762,7 +762,7 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.SignedGossip
 		}
 
 		d.aliveMembership.Put(am.GetAliveMsg().Membership.PkiId, &proto.SignedGossipMessage{GossipMessage: am.GossipMessage, Envelope: am.Envelope})
-		d.logger.Infof("Learned about a new alive member: %v", am)
+		d.logger.Debugf("Learned about a new alive member: %v", am)
 	}
 
 	for _, dm := range deadMembers {
@@ -776,7 +776,7 @@ func (d *gossipDiscoveryImpl) learnNewMembers(aliveMembers []*proto.SignedGossip
 		}
 
 		d.deadMembership.Put(dm.GetAliveMsg().Membership.PkiId, &proto.SignedGossipMessage{GossipMessage: dm.GossipMessage, Envelope: dm.Envelope})
-		d.logger.Infof("Learned about a new dead member: %v", dm)
+		d.logger.Debugf("Learned about a new dead member: %v", dm)
 	}
 
 	// update the member in any case
