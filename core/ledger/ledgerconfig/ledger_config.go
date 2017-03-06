@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// TODO remove all these config variables, they are never used as defaults
 var stateDatabase = "goleveldb"
 var couchDBAddress = "127.0.0.1:5984"
 var username = ""
@@ -68,9 +69,9 @@ func GetHistoryLevelDBPath() string {
 	return filepath.Join(GetRootPath(), "historyLeveldb")
 }
 
-// GetBlockStorePath returns the filesystem path that is used by the block store
+// GetBlockStorePath returns the filesystem path that is used for the chain block stores
 func GetBlockStorePath() string {
-	return filepath.Join(GetRootPath(), "blocks")
+	return filepath.Join(GetRootPath(), "chains")
 }
 
 // GetMaxBlockfileSize returns maximum size of the block file
