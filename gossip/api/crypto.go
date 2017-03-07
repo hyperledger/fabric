@@ -32,7 +32,7 @@ type MessageCryptoService interface {
 
 	// VerifyBlock returns nil if the block is properly signed,
 	// else returns error
-	VerifyBlock(chainID common.ChainID, signedBlock SignedBlock) error
+	VerifyBlock(chainID common.ChainID, signedBlock []byte) error
 
 	// Sign signs msg with this peer's signing key and outputs
 	// the signature if no error occurred.
@@ -57,8 +57,3 @@ type MessageCryptoService interface {
 
 // PeerIdentityType is the peer's certificate
 type PeerIdentityType []byte
-
-// SignedBlock represents a fabric block that is signed according
-// to the latest block verification policy known to the peer
-type SignedBlock interface {
-}

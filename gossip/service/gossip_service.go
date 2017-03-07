@@ -293,7 +293,7 @@ func (s *secImpl) GetPKIidOfCert(peerIdentity api.PeerIdentityType) gossipCommon
 	return gossipCommon.PKIidType(peerIdentity)
 }
 
-func (s *secImpl) VerifyBlock(chainID gossipCommon.ChainID, signedBlock api.SignedBlock) error {
+func (s *secImpl) VerifyBlock(chainID gossipCommon.ChainID, signedBlock []byte) error {
 	return nil
 }
 
