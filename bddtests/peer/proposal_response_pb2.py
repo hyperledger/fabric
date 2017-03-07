@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/proposal_response.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x1cpeer/proposal_response.proto\x12\x06protos\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb1\x01\n\x10ProposalResponse\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\"\n\x08response\x18\x04 \x01(\x0b\x32\x10.protos.Response\x12\x0f\n\x07payload\x18\x05 \x01(\x0c\x12(\n\x0b\x65ndorsement\x18\x06 \x01(\x0b\x32\x13.protos.Endorsement\"<\n\x08Response\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"C\n\x17ProposalResponsePayload\x12\x15\n\rproposal_hash\x18\x01 \x01(\x0c\x12\x11\n\textension\x18\x02 \x01(\x0c\"2\n\x0b\x45ndorsement\x12\x10\n\x08\x65ndorser\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x1cpeer/proposal_response.proto\x12\x06protos\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb1\x01\n\x10ProposalResponse\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\"\n\x08response\x18\x04 \x01(\x0b\x32\x10.protos.Response\x12\x0f\n\x07payload\x18\x05 \x01(\x0c\x12(\n\x0b\x65ndorsement\x18\x06 \x01(\x0b\x32\x13.protos.Endorsement\"<\n\x08Response\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"C\n\x17ProposalResponsePayload\x12\x15\n\rproposal_hash\x18\x01 \x01(\x0c\x12\x11\n\textension\x18\x02 \x01(\x0c\"2\n\x0b\x45ndorsement\x12\x10\n\x08\x65ndorser\x18\x01 \x01(\x0c\x12\x11\n\tsignature\x18\x02 \x01(\x0c\x42h\n\"org.hyperledger.fabric.protos.peerB\x17ProposalResponsePackageZ)github.com/hyperledger/fabric/protos/peerb\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -245,7 +245,7 @@ _sym_db.RegisterMessage(Endorsement)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z)github.com/hyperledger/fabric/protos/peer'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n\"org.hyperledger.fabric.protos.peerB\027ProposalResponsePackageZ)github.com/hyperledger/fabric/protos/peer'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

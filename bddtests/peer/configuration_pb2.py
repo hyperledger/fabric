@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/configuration.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x18peer/configuration.proto\x12\x06protos\"7\n\x0b\x41nchorPeers\x12(\n\x0c\x61nchor_peers\x18\x01 \x03(\x0b\x32\x12.protos.AnchorPeer\"(\n\nAnchorPeer\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x18peer/configuration.proto\x12\x06protos\"7\n\x0b\x41nchorPeers\x12(\n\x0c\x61nchor_peers\x18\x01 \x03(\x0b\x32\x12.protos.AnchorPeer\"(\n\nAnchorPeer\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\x42O\n\"org.hyperledger.fabric.protos.peerZ)github.com/hyperledger/fabric/protos/peerb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -114,7 +114,7 @@ _sym_db.RegisterMessage(AnchorPeer)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z)github.com/hyperledger/fabric/protos/peer'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n\"org.hyperledger.fabric.protos.peerZ)github.com/hyperledger/fabric/protos/peer'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

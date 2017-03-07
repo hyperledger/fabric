@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common/configuration.proto',
   package='common',
   syntax='proto3',
-  serialized_pb=_b('\n\x1a\x63ommon/configuration.proto\x12\x06\x63ommon\" \n\x10HashingAlgorithm\x12\x0c\n\x04name\x18\x01 \x01(\t\"*\n\x19\x42lockDataHashingStructure\x12\r\n\x05width\x18\x01 \x01(\r\"%\n\x10OrdererAddresses\x12\x11\n\taddresses\x18\x01 \x03(\tB-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
+  serialized_pb=_b('\n\x1a\x63ommon/configuration.proto\x12\x06\x63ommon\" \n\x10HashingAlgorithm\x12\x0c\n\x04name\x18\x01 \x01(\t\"*\n\x19\x42lockDataHashingStructure\x12\r\n\x05width\x18\x01 \x01(\r\"%\n\x10OrdererAddresses\x12\x11\n\taddresses\x18\x01 \x03(\tBS\n$org.hyperledger.fabric.protos.commonZ+github.com/hyperledger/fabric/protos/commonb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -145,7 +145,7 @@ _sym_db.RegisterMessage(OrdererAddresses)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z+github.com/hyperledger/fabric/protos/common'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n$org.hyperledger.fabric.protos.commonZ+github.com/hyperledger/fabric/protos/common'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='peer/admin.proto',
   package='protos',
   syntax='proto3',
-  serialized_pb=_b('\n\x10peer/admin.proto\x12\x06protos\x1a\x1bgoogle/protobuf/empty.proto\"\x9a\x01\n\x0cServerStatus\x12/\n\x06status\x18\x01 \x01(\x0e\x32\x1f.protos.ServerStatus.StatusCode\"Y\n\nStatusCode\x12\r\n\tUNDEFINED\x10\x00\x12\x0b\n\x07STARTED\x10\x01\x12\x0b\n\x07STOPPED\x10\x02\x12\n\n\x06PAUSED\x10\x03\x12\t\n\x05\x45RROR\x10\x04\x12\x0b\n\x07UNKNOWN\x10\x05\"8\n\x0fLogLevelRequest\x12\x12\n\nlog_module\x18\x01 \x01(\t\x12\x11\n\tlog_level\x18\x02 \x01(\t\"9\n\x10LogLevelResponse\x12\x12\n\nlog_module\x18\x01 \x01(\t\x12\x11\n\tlog_level\x18\x02 \x01(\t2\xd5\x02\n\x05\x41\x64min\x12;\n\tGetStatus\x12\x16.google.protobuf.Empty\x1a\x14.protos.ServerStatus\"\x00\x12=\n\x0bStartServer\x12\x16.google.protobuf.Empty\x1a\x14.protos.ServerStatus\"\x00\x12<\n\nStopServer\x12\x16.google.protobuf.Empty\x1a\x14.protos.ServerStatus\"\x00\x12H\n\x11GetModuleLogLevel\x12\x17.protos.LogLevelRequest\x1a\x18.protos.LogLevelResponse\"\x00\x12H\n\x11SetModuleLogLevel\x12\x17.protos.LogLevelRequest\x1a\x18.protos.LogLevelResponse\"\x00\x42+Z)github.com/hyperledger/fabric/protos/peerb\x06proto3')
+  serialized_pb=_b('\n\x10peer/admin.proto\x12\x06protos\x1a\x1bgoogle/protobuf/empty.proto\"\x9a\x01\n\x0cServerStatus\x12/\n\x06status\x18\x01 \x01(\x0e\x32\x1f.protos.ServerStatus.StatusCode\"Y\n\nStatusCode\x12\r\n\tUNDEFINED\x10\x00\x12\x0b\n\x07STARTED\x10\x01\x12\x0b\n\x07STOPPED\x10\x02\x12\n\n\x06PAUSED\x10\x03\x12\t\n\x05\x45RROR\x10\x04\x12\x0b\n\x07UNKNOWN\x10\x05\"8\n\x0fLogLevelRequest\x12\x12\n\nlog_module\x18\x01 \x01(\t\x12\x11\n\tlog_level\x18\x02 \x01(\t\"9\n\x10LogLevelResponse\x12\x12\n\nlog_module\x18\x01 \x01(\t\x12\x11\n\tlog_level\x18\x02 \x01(\t2\xd5\x02\n\x05\x41\x64min\x12;\n\tGetStatus\x12\x16.google.protobuf.Empty\x1a\x14.protos.ServerStatus\"\x00\x12=\n\x0bStartServer\x12\x16.google.protobuf.Empty\x1a\x14.protos.ServerStatus\"\x00\x12<\n\nStopServer\x12\x16.google.protobuf.Empty\x1a\x14.protos.ServerStatus\"\x00\x12H\n\x11GetModuleLogLevel\x12\x17.protos.LogLevelRequest\x1a\x18.protos.LogLevelResponse\"\x00\x12H\n\x11SetModuleLogLevel\x12\x17.protos.LogLevelRequest\x1a\x18.protos.LogLevelResponse\"\x00\x42]\n\"org.hyperledger.fabric.protos.peerB\x0c\x41\x64minPackageZ)github.com/hyperledger/fabric/protos/peerb\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -202,7 +202,7 @@ _sym_db.RegisterMessage(LogLevelResponse)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z)github.com/hyperledger/fabric/protos/peer'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n\"org.hyperledger.fabric.protos.peerB\014AdminPackageZ)github.com/hyperledger/fabric/protos/peer'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

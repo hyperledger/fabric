@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='common/ledger.proto',
   package='common',
   syntax='proto3',
-  serialized_pb=_b('\n\x13\x63ommon/ledger.proto\x12\x06\x63ommon\"U\n\x0e\x42lockchainInfo\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x18\n\x10\x63urrentBlockHash\x18\x02 \x01(\x0c\x12\x19\n\x11previousBlockHash\x18\x03 \x01(\x0c\x42-Z+github.com/hyperledger/fabric/protos/commonb\x06proto3')
+  serialized_pb=_b('\n\x13\x63ommon/ledger.proto\x12\x06\x63ommon\"U\n\x0e\x42lockchainInfo\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x18\n\x10\x63urrentBlockHash\x18\x02 \x01(\x0c\x12\x19\n\x11previousBlockHash\x18\x03 \x01(\x0c\x42S\n$org.hyperledger.fabric.protos.commonZ+github.com/hyperledger/fabric/protos/commonb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -81,7 +81,7 @@ _sym_db.RegisterMessage(BlockchainInfo)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z+github.com/hyperledger/fabric/protos/common'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n$org.hyperledger.fabric.protos.commonZ+github.com/hyperledger/fabric/protos/common'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

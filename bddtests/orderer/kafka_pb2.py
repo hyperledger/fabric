@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='orderer/kafka.proto',
   package='orderer',
   syntax='proto3',
-  serialized_pb=_b('\n\x13orderer/kafka.proto\x12\x07orderer\"\xaf\x01\n\x0cKafkaMessage\x12/\n\x07regular\x18\x01 \x01(\x0b\x32\x1c.orderer.KafkaMessageRegularH\x00\x12\x35\n\x0btime_to_cut\x18\x02 \x01(\x0b\x32\x1e.orderer.KafkaMessageTimeToCutH\x00\x12/\n\x07\x63onnect\x18\x03 \x01(\x0b\x32\x1c.orderer.KafkaMessageConnectH\x00\x42\x06\n\x04Type\"&\n\x13KafkaMessageRegular\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\"-\n\x15KafkaMessageTimeToCut\x12\x14\n\x0c\x62lock_number\x18\x01 \x01(\x04\"&\n\x13KafkaMessageConnect\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\".\n\rKafkaMetadata\x12\x1d\n\x15last_offset_persisted\x18\x01 \x01(\x03\x42.Z,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
+  serialized_pb=_b('\n\x13orderer/kafka.proto\x12\x07orderer\"\xaf\x01\n\x0cKafkaMessage\x12/\n\x07regular\x18\x01 \x01(\x0b\x32\x1c.orderer.KafkaMessageRegularH\x00\x12\x35\n\x0btime_to_cut\x18\x02 \x01(\x0b\x32\x1e.orderer.KafkaMessageTimeToCutH\x00\x12/\n\x07\x63onnect\x18\x03 \x01(\x0b\x32\x1c.orderer.KafkaMessageConnectH\x00\x42\x06\n\x04Type\"&\n\x13KafkaMessageRegular\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\"-\n\x15KafkaMessageTimeToCut\x12\x14\n\x0c\x62lock_number\x18\x01 \x01(\x04\"&\n\x13KafkaMessageConnect\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\".\n\rKafkaMetadata\x12\x1d\n\x15last_offset_persisted\x18\x01 \x01(\x03\x42U\n%org.hyperledger.fabric.protos.ordererZ,github.com/hyperledger/fabric/protos/ordererb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -252,7 +252,7 @@ _sym_db.RegisterMessage(KafkaMetadata)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z,github.com/hyperledger/fabric/protos/orderer'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n%org.hyperledger.fabric.protos.ordererZ,github.com/hyperledger/fabric/protos/orderer'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.

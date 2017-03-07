@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='msp/identities.proto',
   package='msp',
   syntax='proto3',
-  serialized_pb=_b('\n\x14msp/identities.proto\x12\x03msp\"5\n\x12SerializedIdentity\x12\r\n\x05mspid\x18\x01 \x01(\t\x12\x10\n\x08id_bytes\x18\x02 \x01(\x0c\x42*Z(github.com/hyperledger/fabric/protos/mspb\x06proto3')
+  serialized_pb=_b('\n\x14msp/identities.proto\x12\x03msp\"5\n\x12SerializedIdentity\x12\r\n\x05mspid\x18\x01 \x01(\t\x12\x10\n\x08id_bytes\x18\x02 \x01(\x0c\x42M\n!org.hyperledger.fabric.protos.mspZ(github.com/hyperledger/fabric/protos/mspb\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -74,7 +74,7 @@ _sym_db.RegisterMessage(SerializedIdentity)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('Z(github.com/hyperledger/fabric/protos/msp'))
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n!org.hyperledger.fabric.protos.mspZ(github.com/hyperledger/fabric/protos/msp'))
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.
