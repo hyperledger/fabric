@@ -169,19 +169,25 @@ func New(conf *genesisconfig.Profile) Generator {
 }
 
 func (bs *bootstrapper) ChannelTemplate() configtx.Template {
-	return configtx.NewCompositeTemplate(
-		configtx.NewSimpleTemplate(bs.channelGroups...),
-		configtx.NewSimpleTemplate(bs.ordererGroups...),
-		configtx.NewSimpleTemplate(bs.applicationGroups...),
+	return configtx.NewModPolicySettingTemplate(
+		configvaluesmsp.AdminsPolicyKey,
+		configtx.NewCompositeTemplate(
+			configtx.NewSimpleTemplate(bs.channelGroups...),
+			configtx.NewSimpleTemplate(bs.ordererGroups...),
+			configtx.NewSimpleTemplate(bs.applicationGroups...),
+		),
 	)
 }
 
 // XXX deprecate and remove
 func (bs *bootstrapper) GenesisBlock() *cb.Block {
 	block, err := genesis.NewFactoryImpl(
-		configtx.NewCompositeTemplate(
-			configtx.NewSimpleTemplate(bs.ordererSystemChannelGroups...),
-			bs.ChannelTemplate(),
+		configtx.NewModPolicySettingTemplate(
+			configvaluesmsp.AdminsPolicyKey,
+			configtx.NewCompositeTemplate(
+				configtx.NewSimpleTemplate(bs.ordererSystemChannelGroups...),
+				bs.ChannelTemplate(),
+			),
 		),
 	).Block(TestChainID)
 
@@ -193,9 +199,12 @@ func (bs *bootstrapper) GenesisBlock() *cb.Block {
 
 func (bs *bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
 	block, err := genesis.NewFactoryImpl(
-		configtx.NewCompositeTemplate(
-			configtx.NewSimpleTemplate(bs.ordererSystemChannelGroups...),
-			bs.ChannelTemplate(),
+		configtx.NewModPolicySettingTemplate(
+			configvaluesmsp.AdminsPolicyKey,
+			configtx.NewCompositeTemplate(
+				configtx.NewSimpleTemplate(bs.ordererSystemChannelGroups...),
+				bs.ChannelTemplate(),
+			),
 		),
 	).Block(channelID)
 
