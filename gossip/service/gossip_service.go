@@ -133,6 +133,7 @@ func InitGossipServiceCustomDeliveryFactory(peerIdentity []byte, endpoint string
 		}
 
 		idMapper := identity.NewIdentityMapper(mcs)
+		idMapper.Put(mcs.GetPKIidOfCert(peerIdentity), peerIdentity)
 
 		gossip := integration.NewGossipComponent(peerIdentity, endpoint, s, secAdv, mcs, idMapper, dialOpts, bootPeers...)
 		gossipServiceInstance = &gossipServiceImpl{
