@@ -124,13 +124,12 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 	return d
 }
 
-// Exists returns whether a peer with given
-// PKI-ID is known
-func (d *gossipDiscoveryImpl) Exists(PKIID common.PKIidType) bool {
+// Lookup returns a network member, or nil if not found
+func (d *gossipDiscoveryImpl) Lookup(PKIID common.PKIidType) *NetworkMember {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
-	_, exists := d.id2Member[string(PKIID)]
-	return exists
+	nm := d.id2Member[string(PKIID)]
+	return nm
 }
 
 func (d *gossipDiscoveryImpl) Connect(member NetworkMember, sendInternalEndpoint bool) {
@@ -291,8 +290,7 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 		return
 	}
 	if m.GetAliveMsg() == nil && m.GetMemRes() == nil && m.GetMemReq() == nil {
-		d.logger.Warning("Got message with wrong type (expected Alive or MembershipResponse or MembershipRequest message):", m.Content) // TODO: write only message type
-		d.logger.Warning(m)
+		d.logger.Warning("Got message with wrong type (expected Alive or MembershipResponse or MembershipRequest message):", m.GossipMessage)
 		return
 	}
 

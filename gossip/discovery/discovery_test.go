@@ -526,10 +526,11 @@ func TestGetFullMembership(t *testing.T) {
 		}
 	}
 
-	// Check that Exists() is valid
+	// Check that Lookup() is valid
 	for _, inst := range instances {
 		for _, member := range inst.GetMembership() {
-			assert.True(t, inst.Exists(member.PKIid))
+			assert.Equal(t, string(member.PKIid), inst.Lookup(member.PKIid).Endpoint)
+			assert.Equal(t, member.PKIid, inst.Lookup(member.PKIid).PKIid)
 		}
 	}
 
