@@ -251,7 +251,7 @@ all peers in a channel maintain an exact copy of the ledger which
 comprises the blockchain to store the immutable, sequenced record in
 blocks, as well as a state database to maintain current fabric state.
 This includes those peers that do not have chaincode installed on them
-(like ``Peer3`` in the above example) . Finally, the chaincode is accessible
+(like ``Peer1`` in the above example) . Finally, the chaincode is accessible
 after it is installed (like ``Peer3`` in the above example) because it
 already has been instantiated.
 
@@ -461,7 +461,7 @@ The command is:
     peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem -C mychannel -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a", "100", "b","200"]}' -P "OR ('Org0MSP.member','Org1MSP.member')"
 
 See the `endorsement
-policies <http://hyperledger-fabric.readthedocs.io/en/latest/endorsement-policies/>`__
+policies <http://hyperledger-fabric.readthedocs.io/en/latest/endorsement-policies.html>`__
 documentation for more details on policy implementation.
 
 Invoke chaincode
