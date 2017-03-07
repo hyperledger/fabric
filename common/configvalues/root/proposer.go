@@ -61,7 +61,8 @@ type Proposer struct {
 
 func NewProposer(vh Handler) *Proposer {
 	return &Proposer{
-		vh: vh,
+		vh:      vh,
+		current: &config{},
 	}
 }
 
@@ -108,7 +109,7 @@ func (p *Proposer) BeginValueProposals(groups []string) ([]api.ValueProposer, er
 func (p *Proposer) ProposeValue(key string, configValue *cb.ConfigValue) error {
 	msg, ok := p.pending.allocated.ProtoMsg(key)
 	if !ok {
-		return fmt.Errorf("Unknown value key: %s", key)
+		return fmt.Errorf("Unknown value key %s for %T", key, p.vh)
 	}
 
 	if err := proto.Unmarshal(configValue.Value, msg); err != nil {

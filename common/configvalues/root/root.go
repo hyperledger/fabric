@@ -21,7 +21,6 @@ import (
 
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	"github.com/hyperledger/fabric/common/configvalues/channel/application"
-	"github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
@@ -80,7 +79,7 @@ func (r *Root) Channel() *ChannelGroup {
 }
 
 // Orderer returns the associated Orderer level config
-func (r *Root) Orderer() *orderer.ManagerImpl {
+func (r *Root) Orderer() *OrdererGroup {
 	return r.channel.OrdererConfig()
 }
 

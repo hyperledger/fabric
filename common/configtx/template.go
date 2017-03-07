@@ -19,13 +19,14 @@ package configtx
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
-	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
+	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/golang/protobuf/proto"
 )
 
 const (
@@ -34,16 +35,6 @@ const (
 	CreationPolicyKey = "CreationPolicy"
 	msgVersion        = int32(0)
 	epoch             = 0
-
-	// ApplicationGroup identifies the `groups` map key in the channel
-	// config, under which the application-related config group is set.
-	ApplicationGroup = "Application"
-	// OrdererGroup identifies the `groups` map key in the channel
-	// config, under which the orderer-related config group is set.
-	OrdererGroup = "Orderer"
-	// MSPKey identifies the config key in the channel config,
-	// under which the application-related config group is set.
-	MSPKey = "MSP"
 )
 
 // Template can be used to faciliate creation of config transactions
@@ -157,8 +148,8 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope,
 // Template which outputs an appropriately constructed list of ConfigUpdateEnvelopes.
 func NewChainCreationTemplate(creationPolicy string, template Template) Template {
 	result := cb.NewConfigGroup()
-	result.Groups[configtxorderer.GroupKey] = cb.NewConfigGroup()
-	result.Groups[configtxorderer.GroupKey].Values[CreationPolicyKey] = &cb.ConfigValue{
+	result.Groups[config.OrdererGroupKey] = cb.NewConfigGroup()
+	result.Groups[config.OrdererGroupKey].Values[CreationPolicyKey] = &cb.ConfigValue{
 		Value: utils.MarshalOrPanic(&ab.CreationPolicy{
 			Policy: creationPolicy,
 		}),
