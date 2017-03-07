@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/hyperledger/fabric/gossip/common"
+	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/util"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/op/go-logging"
@@ -79,6 +80,8 @@ type gossipDiscoveryImpl struct {
 	aliveMembership *util.MembershipStore
 	deadMembership  *util.MembershipStore
 
+	msgStore msgstore.MessageStore
+
 	bootstrapPeers []string
 
 	comm  CommService
@@ -102,6 +105,7 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		id2Member:        make(map[string]*NetworkMember),
 		aliveMembership:  util.NewMembershipStore(),
 		deadMembership:   util.NewMembershipStore(),
+		msgStore:         msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {}),
 		crypt:            crypt,
 		comm:             comm,
 		lock:             &sync.RWMutex{},
@@ -319,6 +323,12 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 	}
 
 	if m.IsAliveMsg() {
+		added := d.msgStore.Add(m)
+		if !added {
+			return
+		}
+		d.comm.Gossip(m)
+
 		d.handleAliveMessage(m)
 		return
 	}
