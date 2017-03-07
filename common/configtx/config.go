@@ -69,7 +69,7 @@ func (cm *configManager) proposeGroup(name string, group *cb.ConfigGroup, handle
 		i++
 	}
 
-	logger.Debugf("Beginning new config for channel %s and group %s", cm.chainID, name)
+	logger.Debugf("Beginning new config for channel %s and group %s", cm.current.channelID, name)
 	subHandlers, err := handler.BeginValueProposals(subGroups)
 	if err != nil {
 		return nil, err

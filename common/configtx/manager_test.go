@@ -25,6 +25,8 @@ import (
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var defaultChain = "DefaultChainID"
@@ -62,9 +64,9 @@ func makeConfigPair(id, modificationPolicy string, lastModified uint64, data []b
 }
 
 func makeEnvelopeConfig(channelID string, configPairs ...*configPair) *cb.Envelope {
-	values := make(map[string]*cb.ConfigValue)
+	channelGroup := cb.NewConfigGroup()
 	for _, pair := range configPairs {
-		values[pair.key] = pair.value
+		channelGroup.Values[pair.key] = pair.value
 	}
 
 	return &cb.Envelope{
@@ -77,27 +79,22 @@ func makeEnvelopeConfig(channelID string, configPairs ...*configPair) *cb.Envelo
 			},
 			Data: utils.MarshalOrPanic(&cb.ConfigEnvelope{
 				Config: &cb.Config{
-					ChannelGroup: &cb.ConfigGroup{
-						Values: values,
-					},
+					ChannelGroup: channelGroup,
 				},
 			}),
 		}),
 	}
 }
 
-func makeConfigUpdateEnvelope(chainID string, configPairs ...*configPair) *cb.Envelope {
-	values := make(map[string]*cb.ConfigValue)
+func makeConfigSet(configPairs ...*configPair) *cb.ConfigGroup {
+	result := cb.NewConfigGroup()
 	for _, pair := range configPairs {
-		values[pair.key] = pair.value
+		result.Values[pair.key] = pair.value
 	}
+	return result
+}
 
-	config := &cb.ConfigUpdate{
-		ChannelId: chainID,
-		WriteSet: &cb.ConfigGroup{
-			Values: values,
-		},
-	}
+func makeConfigUpdateEnvelope(chainID string, readSet, writeSet *cb.ConfigGroup) *cb.Envelope {
 	return &cb.Envelope{
 		Payload: utils.MarshalOrPanic(&cb.Payload{
 			Header: &cb.Header{
@@ -106,7 +103,11 @@ func makeConfigUpdateEnvelope(chainID string, configPairs ...*configPair) *cb.En
 				}),
 			},
 			Data: utils.MarshalOrPanic(&cb.ConfigUpdateEnvelope{
-				ConfigUpdate: utils.MarshalOrPanic(config),
+				ConfigUpdate: utils.MarshalOrPanic(&cb.ConfigUpdate{
+					ChannelId: chainID,
+					ReadSet:   readSet,
+					WriteSet:  writeSet,
+				}),
 			}),
 		}),
 	}
@@ -141,7 +142,7 @@ func TestDifferentChainID(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := makeConfigUpdateEnvelope("wrongChain", makeConfigPair("foo", "foo", 1, []byte("foo")))
+	newConfig := makeConfigUpdateEnvelope("wrongChain", makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
 	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
@@ -159,7 +160,7 @@ func TestOldConfigReplay(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 0, []byte("foo")))
+	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 0, []byte("foo"))))
 
 	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
@@ -177,7 +178,7 @@ func TestValidConfigChange(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
+	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
 	configEnv, err := cm.ProposeConfigUpdate(newConfig)
 	if err != nil {
@@ -208,8 +209,8 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(
 		defaultChain,
-		makeConfigPair("foo", "foo", 0, []byte("foo")),
-		makeConfigPair("bar", "bar", 2, []byte("bar")),
+		makeConfigSet(makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		makeConfigSet(makeConfigPair("bar", "bar", 2, []byte("bar"))),
 	)
 
 	_, err = cm.ProposeConfigUpdate(newConfig)
@@ -231,8 +232,11 @@ func TestConfigChangeOldSequence(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(
 		defaultChain,
-		makeConfigPair("foo", "foo", 2, []byte("foo")),
-		makeConfigPair("bar", "bar", 1, []byte("bar")),
+		makeConfigSet(),
+		makeConfigSet(
+			makeConfigPair("foo", "foo", 2, []byte("foo")),
+			makeConfigPair("bar", "bar", 1, []byte("bar")),
+		),
 	)
 
 	_, err = cm.ProposeConfigUpdate(newConfig)
@@ -241,9 +245,9 @@ func TestConfigChangeOldSequence(t *testing.T) {
 	}
 }
 
-// TestConfigImplicitDelete tests to make sure that a new config does not implicitly delete config items
-// by omitting them in the new config
-func TestConfigImplicitDelete(t *testing.T) {
+// TestConfigPartialUpdate tests to make sure that a new config can set only part
+// of the config and still be accepted
+func TestConfigPartialUpdate(t *testing.T) {
 	cm, err := NewManagerImpl(
 		makeEnvelopeConfig(
 			defaultChain,
@@ -258,13 +262,12 @@ func TestConfigImplicitDelete(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(
 		defaultChain,
-		makeConfigPair("bar", "bar", 1, []byte("bar")),
+		makeConfigSet(),
+		makeConfigSet(makeConfigPair("bar", "bar", 1, []byte("bar"))),
 	)
 
 	_, err = cm.ProposeConfigUpdate(newConfig)
-	if err == nil {
-		t.Error("Should have errored proposing config because foo was implicitly deleted")
-	}
+	assert.NoError(t, err, "Should have allowed partial update")
 }
 
 // TestEmptyConfigUpdate tests to make sure that an empty config is rejected as an update
@@ -303,8 +306,11 @@ func TestSilentConfigModification(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(
 		defaultChain,
-		makeConfigPair("foo", "foo", 0, []byte("different")),
-		makeConfigPair("bar", "bar", 1, []byte("bar")),
+		makeConfigSet(),
+		makeConfigSet(
+			makeConfigPair("foo", "foo", 0, []byte("different")),
+			makeConfigPair("bar", "bar", 1, []byte("bar")),
+		),
 	)
 
 	_, err = cm.ProposeConfigUpdate(newConfig)
@@ -327,7 +333,7 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 	// Set the mock policy to error
 	initializer.Resources.PolicyManagerVal.Policy.Err = fmt.Errorf("err")
 
-	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
+	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
 	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
@@ -353,8 +359,8 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 
 	newConfig := makeConfigUpdateEnvelope(
 		defaultChain,
-		makeConfigPair("foo", "foo", 0, []byte("foo")),
-		makeConfigPair("bar", "bar", 1, []byte("foo")),
+		makeConfigSet(makeConfigPair("foo", "foo", 0, []byte("foo"))),
+		makeConfigSet(makeConfigPair("bar", "bar", 0, []byte("foo"))),
 	)
 
 	configEnv, err := cm.ProposeConfigUpdate(newConfig)
@@ -387,7 +393,7 @@ func TestInvalidProposal(t *testing.T) {
 
 	initializer.ValueProposerVal = &mockconfigtx.ValueProposer{ErrorForProposeConfig: fmt.Errorf("err")}
 
-	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigPair("foo", "foo", 1, []byte("foo")))
+	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 
 	_, err = cm.ProposeConfigUpdate(newConfig)
 	if err == nil {
