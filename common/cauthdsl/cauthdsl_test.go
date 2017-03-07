@@ -17,11 +17,88 @@ limitations under the License.
 package cauthdsl
 
 import (
+	"bytes"
+	"errors"
 	"testing"
+
+	"github.com/hyperledger/fabric/msp"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
+
+var invalidSignature = []byte("badsigned")
+
+type mockIdentity struct {
+	idBytes []byte
+}
+
+func (id *mockIdentity) SatisfiesPrincipal(p *cb.MSPPrincipal) error {
+	if bytes.Compare(id.idBytes, p.Principal) == 0 {
+		return nil
+	} else {
+		return errors.New("Principals do not match")
+	}
+}
+
+func (id *mockIdentity) GetIdentifier() *msp.IdentityIdentifier {
+	return &msp.IdentityIdentifier{Mspid: "Mock", Id: "Bob"}
+}
+
+func (id *mockIdentity) GetMSPIdentifier() string {
+	return "Mock"
+}
+
+func (id *mockIdentity) Validate() error {
+	return nil
+}
+
+func (id *mockIdentity) GetOrganizationalUnits() []string {
+	return []string{"dunno"}
+}
+
+func (id *mockIdentity) Verify(msg []byte, sig []byte) error {
+	if bytes.Compare(sig, invalidSignature) == 0 {
+		return errors.New("Invalid signature")
+	} else {
+		return nil
+	}
+}
+
+func (id *mockIdentity) VerifyOpts(msg []byte, sig []byte, opts msp.SignatureOpts) error {
+	return nil
+}
+
+func (id *mockIdentity) VerifyAttributes(proof []byte, spec *msp.AttributeProofSpec) error {
+	return nil
+}
+
+func (id *mockIdentity) Serialize() ([]byte, error) {
+	return id.idBytes, nil
+}
+
+func toSignedData(data [][]byte, identities [][]byte, signatures [][]byte) ([]*cb.SignedData, []bool) {
+	signedData := make([]*cb.SignedData, len(data))
+	for i := range signedData {
+		signedData[i] = &cb.SignedData{
+			Data:      data[i],
+			Identity:  identities[i],
+			Signature: signatures[i],
+		}
+	}
+	return signedData, make([]bool, len(signedData))
+}
+
+type mockDeserializer struct {
+}
+
+func NewMockDeserializer() msp.IdentityDeserializer {
+	return &mockDeserializer{}
+}
+
+func (md *mockDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
+	return &mockIdentity{idBytes: serializedIdentity}, nil
+}
 
 var validSignature = []byte("signed")
 var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
