@@ -11,7 +11,7 @@ Feature: Bootstrap
   As a blockchain entrepreneur
   I want to bootstrap a new blockchain network
 
-    @doNotDecompose
+    #@doNotDecompose
     @generateDocs
   Scenario Outline: Bootstrap a development network with 4 peers (2 orgs)  and 1 orderer (1 org), each having a single independent root of trust (No fabric-ca, just openssl)
     #creates 1 self-signed key/cert pair per orderer organization
@@ -162,7 +162,7 @@ Feature: Bootstrap
     # Under the covers, create a deployment spec, etc.
     When user "dev0Org0" using cert alias "dev0Org0App1" creates a instantiate proposal "instantiateProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
 
-    And user "dev0Org0" sends proposal "instantiateProposal1" to endorsers with timeout of "30" seconds with proposal responses "instantiateProposalResponses":
+    And user "dev0Org0" sends proposal "instantiateProposal1" to endorsers with timeout of "90" seconds with proposal responses "instantiateProposalResponses":
       | Endorser |
       | peer0    |
       | peer2    |
