@@ -310,16 +310,6 @@ func testPolicyNames(m *ManagerImpl, key string, initializer func(val []string) 
 	}
 }
 
-func TestIngressPolicyNames(t *testing.T) {
-	m := NewManagerImpl(nil)
-	testPolicyNames(m, IngressPolicyNamesKey, TemplateIngressPolicyNames, m.IngressPolicyNames, t)
-}
-
-func TestEgressPolicyNames(t *testing.T) {
-	m := NewManagerImpl(nil)
-	testPolicyNames(m, EgressPolicyNamesKey, TemplateEgressPolicyNames, m.EgressPolicyNames, t)
-}
-
 func TestChainCreationPolicyNames(t *testing.T) {
 	m := NewManagerImpl(nil)
 	testPolicyNames(m, ChainCreationPolicyNamesKey, TemplateChainCreationPolicyNames, m.ChainCreationPolicyNames, t)

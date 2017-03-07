@@ -22,8 +22,6 @@ It has these top-level messages:
 	BatchSize
 	BatchTimeout
 	CreationPolicy
-	IngressPolicyNames
-	EgressPolicyNames
 	ChainCreationPolicyNames
 	KafkaBrokers
 	KafkaMessage

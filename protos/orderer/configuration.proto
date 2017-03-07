@@ -62,20 +62,6 @@ message CreationPolicy {
     string policy = 1;
 }
 
-// IngressPolicyNames is the set of policy names which incoming Broadcast signatures are filtered against
-message IngressPolicyNames {
-    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
-    // because implementing referential policies in a general way is difficult, and dangerous
-    repeated string names = 1;
-}
-
-// EgressPolicyNames is the set of policy names which incoming Deliver signatures are filtered against
-message EgressPolicyNames {
-    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
-    // because implementing referential policies in a general way is difficult, and dangerous
-    repeated string names = 1;
-}
-
 // ChainCreationPolicyNames is the set of policies which may be invoked for chain creation
 message ChainCreationPolicyNames {
     // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy

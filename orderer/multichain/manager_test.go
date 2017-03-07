@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
@@ -241,7 +240,7 @@ func TestNewChain(t *testing.T) {
 
 	newChainID := "TestNewChain"
 
-	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtxtest.CompositeTemplate()).Envelope(newChainID)
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, provisional.New(conf).ChannelTemplate()).Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}

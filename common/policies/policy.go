@@ -38,6 +38,12 @@ const (
 	// OrdererPrefix is used in the path of standard orderer policy paths
 	OrdererPrefix = "Orderer"
 
+	// ChannelReaders is the label for the channel's readers policy (encompassing both orderer and application readers)
+	ChannelReaders = PathSeparator + ChannelPrefix + PathSeparator + "Readers"
+
+	// ChannelWriters is the label for the channel's writers policy (encompassing both orderer and application writers)
+	ChannelWriters = PathSeparator + ChannelPrefix + PathSeparator + "Writers"
+
 	// ChannelApplicationReaders is the label for the channel's application readers policy
 	ChannelApplicationReaders = PathSeparator + ChannelPrefix + PathSeparator + ApplicationPrefix + PathSeparator + "Readers"
 
@@ -266,6 +272,14 @@ func (pm *ManagerImpl) CommitProposals() {
 	pm.pendingConfig = nil
 
 	if pm.parent == nil && pm.basePath == ChannelPrefix {
+		for _, policyName := range []string{ChannelReaders, ChannelWriters} {
+			_, ok := pm.GetPolicy(policyName)
+			if !ok {
+				logger.Warningf("Current configuration has no policy '%s', this will likely cause problems in production systems", policyName)
+			} else {
+				logger.Debugf("As expected, current configuration has policy '%s'", policyName)
+			}
+		}
 		if _, ok := pm.config.managers[ApplicationPrefix]; ok {
 			// Check for default application policies if the application component is defined
 			for _, policyName := range []string{

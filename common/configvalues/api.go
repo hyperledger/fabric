@@ -68,12 +68,6 @@ type Orderer interface {
 	// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
 	// used for ordering
 	KafkaBrokers() []string
-
-	// IngressPolicyNames returns the name of the policy to validate incoming broadcast messages against
-	IngressPolicyNames() []string
-
-	// EgressPolicyNames returns the name of the policy to validate incoming broadcast messages against
-	EgressPolicyNames() []string
 }
 
 type ValueProposer interface {

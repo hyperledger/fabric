@@ -22,8 +22,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/ledger"
@@ -82,7 +80,6 @@ func (mm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 
 type mockSupport struct {
 	ledger        ledger.ReadWriter
-	sharedConfig  *mockconfigvaluesorderer.SharedConfig
 	policyManager *mockpolicies.Manager
 }
 
@@ -101,10 +98,6 @@ func NewRAMLedger() ledger.ReadWriter {
 	return rl
 }
 
-func (mcs *mockSupport) SharedConfig() configvaluesapi.Orderer {
-	return mcs.sharedConfig
-}
-
 func newMockMultichainManager() *mockSupportManager {
 	rl := NewRAMLedger()
 	mm := &mockSupportManager{
@@ -112,7 +105,6 @@ func newMockMultichainManager() *mockSupportManager {
 	}
 	mm.chains[systemChainID] = &mockSupport{
 		ledger:        rl,
-		sharedConfig:  &mockconfigvaluesorderer.SharedConfig{EgressPolicyNamesVal: []string{"somePolicy"}},
 		policyManager: &mockpolicies.Manager{Policy: &mockpolicies.Policy{}},
 	}
 	return mm
