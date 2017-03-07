@@ -22,10 +22,10 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	configtxchannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
 	configtxorderer "github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	configvaluesmsp "github.com/hyperledger/fabric/common/configvalues/msp"
+	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -83,9 +83,9 @@ func New(conf *genesisconfig.Profile) Generator {
 	bs := &bootstrapper{
 		channelGroups: []*cb.ConfigGroup{
 			// Chain Config Types
-			configtxchannel.DefaultHashingAlgorithm(),
-			configtxchannel.DefaultBlockDataHashingStructure(),
-			configtxchannel.TemplateOrdererAddresses(conf.Orderer.Addresses), // TODO, move to conf.Channel when it exists
+			config.DefaultHashingAlgorithm(),
+			config.DefaultBlockDataHashingStructure(),
+			config.TemplateOrdererAddresses(conf.Orderer.Addresses), // TODO, move to conf.Channel when it exists
 
 			// Default policies
 			policies.TemplateImplicitMetaAnyPolicy([]string{}, configvaluesmsp.ReadersPolicyKey),

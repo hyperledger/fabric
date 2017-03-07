@@ -30,9 +30,9 @@ import (
 
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/test"
-	configtxchannel "github.com/hyperledger/fabric/common/configvalues/channel"
 	"github.com/hyperledger/fabric/common/configvalues/channel/application"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
+	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/policies"
@@ -193,7 +193,7 @@ func serve(args []string) error {
 		block, err := genesis.NewFactoryImpl(
 			configtx.NewCompositeTemplate(
 				test.ApplicationOrgTemplate(),
-				configtx.NewSimpleTemplate(configtxchannel.TemplateOrdererAddresses([]string{orderingEndpoint})),
+				configtx.NewSimpleTemplate(config.TemplateOrdererAddresses([]string{orderingEndpoint})),
 				policyTemplate)).Block(chainID)
 
 		if nil != err {

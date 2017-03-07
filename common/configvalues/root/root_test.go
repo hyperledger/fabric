@@ -19,7 +19,6 @@ package config
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configvalues/channel"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
 
 	logging "github.com/op/go-logging"
@@ -33,11 +32,11 @@ func init() {
 func TestBeginBadRoot(t *testing.T) {
 	r := NewRoot(&msp.MSPConfigHandler{})
 
-	_, err := r.BeginValueProposals([]string{channel.GroupKey, channel.GroupKey})
+	_, err := r.BeginValueProposals([]string{ChannelGroupKey, ChannelGroupKey})
 	assert.Error(t, err, "Only one root element allowed")
 
 	_, err = r.BeginValueProposals([]string{"foo"})
-	assert.Error(t, err, "Non %s group not allowed", channel.GroupKey)
+	assert.Error(t, err, "Non %s group not allowed", ChannelGroupKey)
 }
 
 func TestProposeValue(t *testing.T) {

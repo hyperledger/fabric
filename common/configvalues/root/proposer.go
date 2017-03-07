@@ -35,7 +35,8 @@ type Values interface {
 	ProtoMsg(key string) (proto.Message, bool)
 
 	// Validate should ensure that the values set into the proto messages are correct
-	Validate() error
+	// and that the new group values are allowed
+	Validate(map[string]api.ValueProposer) error
 
 	// Commit should call back into the Value handler to update the config
 	Commit()
@@ -119,7 +120,7 @@ func (p *Proposer) ProposeValue(key string, configValue *cb.ConfigValue) error {
 
 // Validate ensures that the new config values is a valid change
 func (p *Proposer) PreCommit() error {
-	return p.pending.allocated.Validate()
+	return p.pending.allocated.Validate(p.pending.groups)
 }
 
 // RollbackProposals called when a config proposal is abandoned

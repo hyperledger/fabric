@@ -28,7 +28,7 @@ import (
 )
 
 func TestReadSetNotPresent(t *testing.T) {
-	cm := &config{
+	cm := &configSet{
 		configMap: make(map[string]comparable),
 	}
 
@@ -43,7 +43,7 @@ func TestReadSetNotPresent(t *testing.T) {
 }
 
 func TestReadSetBackVersioned(t *testing.T) {
-	cm := &config{
+	cm := &configSet{
 		configMap: make(map[string]comparable),
 	}
 
@@ -79,7 +79,7 @@ func TestVerifyDeltaSet(t *testing.T) {
 				Policy: &mockpolicies.Policy{},
 			},
 		},
-		current: &config{
+		current: &configSet{
 			configMap: make(map[string]comparable),
 		},
 	}

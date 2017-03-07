@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/channel"
 	"github.com/hyperledger/fabric/common/configvalues/channel/application"
 	"github.com/hyperledger/fabric/common/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/common/configvalues/msp"
@@ -31,21 +30,14 @@ import (
 // Note, yes, this is a stuttering name, but, the intent is to move
 // this up one level at the end of refactoring
 type Root struct {
-	channel          *channel.Config
-	orderer          *orderer.ManagerImpl
-	application      *application.SharedConfigImpl
+	channel          *ChannelGroup
 	mspConfigHandler *msp.MSPConfigHandler
 }
 
 // NewRoot creates a new instance of the configvalues Root
 func NewRoot(mspConfigHandler *msp.MSPConfigHandler) *Root {
-	ordererConfig := orderer.NewManagerImpl(mspConfigHandler)
-	applicationConfig := application.NewSharedConfigImpl(mspConfigHandler)
-
 	return &Root{
-		channel:          channel.NewConfig(ordererConfig, applicationConfig),
-		orderer:          ordererConfig,
-		application:      applicationConfig,
+		channel:          NewChannelGroup(mspConfigHandler),
 		mspConfigHandler: mspConfigHandler,
 	}
 }
@@ -55,7 +47,7 @@ func (r *Root) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProp
 	if len(groups) != 1 {
 		return nil, fmt.Errorf("Root config only supports having one base group")
 	}
-	if groups[0] != channel.GroupKey {
+	if groups[0] != ChannelGroupKey {
 		return nil, fmt.Errorf("Root group must have channel")
 	}
 	r.mspConfigHandler.BeginConfig()
@@ -83,16 +75,16 @@ func (r *Root) ProposeValue(key string, value *cb.ConfigValue) error {
 }
 
 // Channel returns the associated Channel level config
-func (r *Root) Channel() *channel.Config {
+func (r *Root) Channel() *ChannelGroup {
 	return r.channel
 }
 
 // Orderer returns the associated Orderer level config
 func (r *Root) Orderer() *orderer.ManagerImpl {
-	return r.orderer
+	return r.channel.OrdererConfig()
 }
 
 // Application returns the associated Application level config
 func (r *Root) Application() *application.SharedConfigImpl {
-	return r.application
+	return r.channel.ApplicationConfig()
 }

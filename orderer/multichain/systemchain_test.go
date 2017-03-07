@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
@@ -74,7 +75,7 @@ func TestGoodProposal(t *testing.T) {
 	mcc.ms.msc.ChainCreationPolicyNamesVal = []string{provisional.AcceptAllPolicyKey}
 	mcc.ms.mpm.Policy = &mockpolicies.Policy{}
 
-	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtx.NewCompositeTemplate()).Envelope(newChainID)
+	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, configtxtest.CompositeTemplate()).Envelope(newChainID)
 	if err != nil {
 		t.Fatalf("Error constructing configtx")
 	}

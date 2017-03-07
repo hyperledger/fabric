@@ -18,7 +18,7 @@ package configtx
 
 import (
 	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	configvalueschannel "github.com/hyperledger/fabric/common/configvalues/channel"
+	config "github.com/hyperledger/fabric/common/configvalues/root"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
@@ -30,7 +30,7 @@ type Resources struct {
 	PolicyManagerVal *mockpolicies.Manager
 
 	// ChannelConfigVal is returned as the result of ChannelConfig()
-	ChannelConfigVal configvalueschannel.ConfigReader
+	ChannelConfigVal config.ChannelValues
 
 	// OrdererConfigVal is returned as the result of OrdererConfig()
 	OrdererConfigVal configvaluesapi.Orderer
@@ -48,7 +48,7 @@ func (r *Resources) PolicyManager() policies.Manager {
 }
 
 // Returns the ChannelConfigVal
-func (r *Resources) ChannelConfig() configvalueschannel.ConfigReader {
+func (r *Resources) ChannelConfig() config.ChannelValues {
 	return r.ChannelConfigVal
 }
 

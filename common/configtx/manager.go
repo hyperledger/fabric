@@ -40,7 +40,7 @@ var (
 	}
 )
 
-type config struct {
+type configSet struct {
 	channelID string
 	sequence  uint64
 	configMap map[string]comparable
@@ -50,7 +50,7 @@ type configManager struct {
 	api.Resources
 	callOnUpdate []func(api.Manager)
 	initializer  api.Initializer
-	current      *config
+	current      *configSet
 }
 
 // validateChainID makes sure that proposed chain IDs (i.e. channel names)
@@ -110,7 +110,7 @@ func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnU
 	cm := &configManager{
 		Resources:   initializer,
 		initializer: initializer,
-		current: &config{
+		current: &configSet{
 			sequence:  configEnv.Config.Sequence,
 			configMap: configMap,
 			channelID: header.ChannelId,
@@ -234,7 +234,7 @@ func (cm *configManager) Apply(configEnv *cb.ConfigEnvelope) error {
 	result.commit()
 	cm.commitCallbacks()
 
-	cm.current = &config{
+	cm.current = &configSet{
 		configMap: configMap,
 		channelID: cm.current.channelID,
 		sequence:  configEnv.Config.Sequence,
