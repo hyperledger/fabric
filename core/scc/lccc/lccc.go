@@ -18,6 +18,7 @@ package lccc
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -479,6 +480,7 @@ func (lccc *LifeCycleSysCC) getDefaultEndorsementPolicy(chain string) []byte {
 	// we create an array of principals, one principal
 	// per application MSP defined on this chain
 	ids := peer.GetMSPIDs(chain)
+	sort.Strings(ids)
 	principals := make([]*common.MSPPrincipal, len(ids))
 	sigspolicy := make([]*common.SignaturePolicy, len(ids))
 	for i, id := range ids {

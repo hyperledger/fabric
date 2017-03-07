@@ -22,21 +22,6 @@ import orderer_util
 import compose
 import time
 
-class ChannelCreationInfo:
-    'Used to store the information needed to construct Config TX for orderer broadcast to create a new channel'
-    def __init__(self, channelId, channelCreationPolicyName, signedConfigEnvelope):
-        self.channelId = channelId
-        self.channelCreationPolicyName = channelCreationPolicyName
-        self.config_update_envelope = signedConfigEnvelope
-
-    def __repr__(self):
-        return "channelId = {0}\nchannelCreationPolicyName={1}\nconfigUpdateEnvelope={2}\n".format(self.channelId,
-                                                                                                   self.channelCreationPolicyName,
-                                                                                                   str(
-                                                                                                       self.config_update_envelope))
-
-
-
 @given(u'the orderer network has organizations')
 def step_impl(context):
     assert 'table' in context, "Expected table of orderer organizations"
@@ -75,8 +60,9 @@ def step_impl(context):
     # Simply create the user
     bootstrap_util.getOrdererBootstrapAdmin(context, shouldCreate=True)
 
-@given(u'the ordererBootstrapAdmin creates the genesis block "{ordererGenesisBlockName}" for chain "{ordererSystemChainIdName}" for network config policy "{networkConfigPolicy}" and consensus "{consensusType}" using chain creators policies')
-def step_impl(context, ordererGenesisBlockName, ordererSystemChainIdName, networkConfigPolicy, consensusType):
+@given(u'the ordererBootstrapAdmin using cert alias "{certAlias}" creates the genesis block "{ordererGenesisBlockName}" for chain "{ordererSystemChainIdName}" for network config policy "{networkConfigPolicy}" and consensus "{consensusType}" using chain creators policies')
+def step_impl(context, certAlias, ordererGenesisBlockName, ordererSystemChainIdName, networkConfigPolicy, consensusType):
+    directory = bootstrap_util.getDirectory(context=context)
     ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
     ordererSystemChainIdGUUID = ordererBootstrapAdmin.tags[ordererSystemChainIdName]
     # Now collect the named signed config items
@@ -87,7 +73,11 @@ def step_impl(context, ordererGenesisBlockName, ordererSystemChainIdName, networ
     # Concatenate signedConfigItems
 
     # Construct block
-    (genesisBlock,envelope) = bootstrap_util.createGenesisBlock(context, ordererSystemChainIdGUUID, consensusType, signedConfigItems=configGroups)
+    nodeAdminTuple = ordererBootstrapAdmin.tags[certAlias]
+    bootstrapCert = directory.findCertForNodeAdminTuple(nodeAdminTuple=nodeAdminTuple)
+    (genesisBlock, envelope) = bootstrap_util.createGenesisBlock(context, ordererSystemChainIdGUUID, consensusType,
+                                                                 nodeAdminTuple=nodeAdminTuple,
+                                                                 signedConfigItems=configGroups)
     ordererBootstrapAdmin.setTagValue(ordererGenesisBlockName, genesisBlock)
     bootstrap_util.OrdererGensisBlockCompositionCallback(context, genesisBlock)
     bootstrap_util.PeerCompositionCallback(context)
@@ -170,7 +160,7 @@ def step_impl(context, userName, createChannelSignedConfigEnvelope):
     #NOTE: Conidered passing signing key for appDeveloper, but decided that the peer org signatures they need to collect subsequently should be proper way
     config_update_envelope = bootstrap_util.createConfigUpdateEnvelope(channelConfigGroup=channel_config_groups, chainId=channelID, chainCreationPolicyName=chainCreationPolicyName)
 
-    user.setTagValue(createChannelSignedConfigEnvelope, ChannelCreationInfo(channelID, chainCreationPolicyName, config_update_envelope))
+    user.setTagValue(createChannelSignedConfigEnvelope, config_update_envelope)
 
     # Construct TX Config Envelope, broadcast, expect success, and then connect to deliver to revtrieve block.
     # Make sure the blockdata exactly the TxConfigEnvelope I submitted.
@@ -192,23 +182,26 @@ def step_impl(context, userName, createChannelSignedConfigEnvelopeName):
     assert 'table' in context, "Expected table of peer organizations"
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    # Get the ChannelCreationInfo object that holds the signedConfigEnvelope
-    channelCreationInfo = user.tags[createChannelSignedConfigEnvelopeName]
-    config_update_envelope = channelCreationInfo.config_update_envelope
+    config_update_envelope = user.tags[createChannelSignedConfigEnvelopeName]
     for row in context.table.rows:
         org = directory.getOrganization(row['Organization'])
         assert bootstrap_util.Network.Peer in org.networks, "Organization '{0}' not in Peer network".format(org.name)
         bootstrap_util.BootstrapHelper.addSignatureToSignedConfigItem(config_update_envelope, (org, org.getSelfSignedCert()))
     # print("Signatures for signedConfigEnvelope:\n {0}\n".format(signedConfigEnvelope.Items[0]))
 
-@given(u'the user "{userName}" creates a ConfigUpdate Tx "{configUpdateTxName}" using signed ConfigUpdateEnvelope "{createChannelSignedConfigEnvelopeName}"')
-def step_impl(context, userName, configUpdateTxName, createChannelSignedConfigEnvelopeName):
+@given(u'the user "{userName}" creates a ConfigUpdate Tx "{configUpdateTxName}" using cert alias "{certAlias}" using signed ConfigUpdateEnvelope "{createChannelSignedConfigEnvelopeName}"')
+def step_impl(context, userName, certAlias, configUpdateTxName, createChannelSignedConfigEnvelopeName):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    channelCreationInfo = user.tags[createChannelSignedConfigEnvelopeName]
-    #TODO: this is temporary until partial update is supported.  Normally you would just return
-    # this message and send directly to broadcast.
-    envelope_for_config_update = bootstrap_util.createConfigUpdateTxEnvelope(channelCreationInfo.channelId, channelCreationInfo.config_update_envelope)
+    namedAdminTuple = user.tags[certAlias]
+    cert = directory.findCertForNodeAdminTuple(namedAdminTuple)
+    config_update_envelope = user.tags[createChannelSignedConfigEnvelopeName]
+    config_update = bootstrap_util.getChannelIdFromConfigUpdateEnvelope(config_update_envelope)
+    envelope_for_config_update = bootstrap_util.createEnvelopeForMsg(directory=directory,
+                                                                     nodeAdminTuple=namedAdminTuple,
+                                                                     chainId=config_update.channel_id,
+                                                                     msg=config_update_envelope,
+                                                                     typeAsString="CONFIG_UPDATE")
     user.setTagValue(configUpdateTxName, envelope_for_config_update)
 
 @given(u'the user "{userName}" broadcasts ConfigUpdate Tx "{configTxName}" to orderer "{orderer}" to create channel "{channelId}"')
@@ -226,11 +219,13 @@ def step_impl(context, userName, transactionAlias, orderer, channelId):
     bootstrap_util.broadcastCreateChannelConfigTx(context=context, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=transaction)
 
 
-@when(u'user "{userName}" connects to deliver function on orderer "{composeService}"')
-def step_impl(context, userName, composeService):
+@when(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}"')
+def step_impl(context, userName, certAlias, composeService):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
-    user.connectToDeliverFunction(context, composeService)
+    nodeAdminTuple = user.tags[certAlias]
+    cert = directory.findCertForNodeAdminTuple(nodeAdminTuple)
+    user.connectToDeliverFunction(context, composeService, cert, nodeAdminTuple=nodeAdminTuple)
 
 @when(u'user "{userName}" sends deliver a seek request on orderer "{composeService}" with properties')
 def step_impl(context, userName, composeService):
@@ -336,3 +331,13 @@ def step_impl(context, userNameSource, objectAlias, userNameTarget):
     userSource = directory.getUser(userName=userNameSource)
     userTarget = directory.getUser(userName=userNameTarget)
     userTarget.setTagValue(objectAlias, userSource.tags[objectAlias])
+
+@given(u'the ordererBootstrapAdmin creates a cert alias "{certAlias}" for orderer network bootstrap purposes for organizations')
+def step_impl(context, certAlias):
+    assert "table" in context, "Expected table of Organizations"
+    directory = bootstrap_util.getDirectory(context)
+    ordererBootstrapAdmin = bootstrap_util.getOrdererBootstrapAdmin(context)
+    assert len(context.table.rows) == 1, "Only support single orderer orgnaization at moment"
+    for row in context.table.rows:
+        nodeAdminNamedTuple = directory.registerOrdererAdminTuple(ordererBootstrapAdmin.name, "ordererBootstrapAdmin", row['Organization'])
+        ordererBootstrapAdmin.setTagValue(certAlias, nodeAdminNamedTuple)

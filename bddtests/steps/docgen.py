@@ -173,7 +173,7 @@ class DocumentGenerator:
         main = env.get_template("html/main.html").render(header=header, body=self.output.getvalue())
         (fileName, fileExists) = self.contextHelper.getTmpPathForName("scenario", extension="html")
         with open(fileName, 'w') as f:
-            f.write(main)
+            f.write(main.encode("utf-8"))
         self._writeNetworkJson()
         return joinpoint.proceed()
 

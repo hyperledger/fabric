@@ -72,7 +72,7 @@ def after_scenario(context, scenario):
 
 # stop any running peer that could get in the way before starting the tests
 def before_all(context):
-        cli_call(["../build/bin/peer", "node", "stop"], expect_success=False)
+    pass
 
 # stop any running peer that could get in the way before starting the tests
 def after_all(context):
