@@ -358,7 +358,7 @@ func TestConnect(t *testing.T) {
 		inst.Connect(netMember2Connect2, false)
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 3)
 	assert.Len(t, firstSentMemReqMsgs, 10)
 	close(firstSentMemReqMsgs)
 	for firstSentSelfMsg := range firstSentMemReqMsgs {
