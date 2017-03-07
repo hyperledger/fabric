@@ -584,7 +584,7 @@ type stateInfoCache struct {
 // Add attempts to add the given message to the stateInfoCache,
 // and if the message was added, also indexes it.
 // Message must be a StateInfo message.
-func (cache stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
+func (cache *stateInfoCache) Add(msg *proto.SignedGossipMessage) bool {
 	added := cache.MessageStore.Add(msg)
 	pkiID := msg.GetStateInfo().PkiId
 	if added {
