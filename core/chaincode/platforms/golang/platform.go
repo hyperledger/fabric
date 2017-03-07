@@ -28,6 +28,8 @@ import (
 	"regexp"
 	"strings"
 
+	"sort"
+
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	cutil "github.com/hyperledger/fabric/core/container/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -70,6 +72,26 @@ func decodeUrl(spec *pb.ChaincodeSpec) (string, error) {
 	return urlLocation, nil
 }
 
+func getGopath() (string, error) {
+	gopath := os.Getenv("GOPATH")
+	// Only take the first element of GOPATH
+	splitGoPath := filepath.SplitList(gopath)
+	if len(splitGoPath) == 0 {
+		return "", fmt.Errorf("invalid GOPATH environment variable value:[%s]", gopath)
+	}
+	return splitGoPath[0], nil
+}
+
+func filter(vs []string, f func(string) bool) []string {
+	vsf := make([]string, 0)
+	for _, v := range vs {
+		if f(v) {
+			vsf = append(vsf, v)
+		}
+	}
+	return vsf
+}
+
 // ValidateSpec validates Go chaincodes
 func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	path, err := url.Parse(spec.ChaincodeId.Path)
@@ -81,13 +103,10 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	//which we do later anyway. But we *can* - and *should* - test for existence of local paths.
 	//Treat empty scheme as a local filesystem path
 	if path.Scheme == "" {
-		gopath := os.Getenv("GOPATH")
-		// Only take the first element of GOPATH
-		splitGoPath := filepath.SplitList(gopath)
-		if len(splitGoPath) == 0 {
-			return fmt.Errorf("invalid GOPATH environment variable value:[%s]", gopath)
+		gopath, err := getGopath()
+		if err != nil {
+			return err
 		}
-		gopath = splitGoPath[0]
 		pathToCheck := filepath.Join(gopath, "src", spec.ChaincodeId.Path)
 		exists, err := pathExists(pathToCheck)
 		if err != nil {
@@ -156,35 +175,176 @@ func (goPlatform *Platform) ValidateDeploymentSpec(cds *pb.ChaincodeDeploymentSp
 	return nil
 }
 
-// WritePackage writes the Go chaincode package
+// Generates a deployment payload for GOLANG as a series of src/$pkg entries in .tar.gz format
 func (goPlatform *Platform) GetDeploymentPayload(spec *pb.ChaincodeSpec) ([]byte, error) {
 
 	var err error
 
-	inputbuf := bytes.NewBuffer(nil)
-	gw := gzip.NewWriter(inputbuf)
-	tw := tar.NewWriter(gw)
+	// --------------------------------------------------------------------------------------
+	// retrieve a CodeDescriptor from either HTTP or the filesystem
+	// --------------------------------------------------------------------------------------
+	code, err := getCode(spec)
+	if err != nil {
+		return nil, err
+	}
+	defer code.Cleanup()
 
-	//ignore the generated hash. Just use the tw
-	//The hash could be used in a future enhancement
-	//to check, warn of duplicate installs etc.
-	_, err = collectChaincodeFiles(spec, tw)
+	// --------------------------------------------------------------------------------------
+	// Update our environment for the purposes of executing go-list directives
+	// --------------------------------------------------------------------------------------
+	env := getEnv()
+	gopaths := splitEnvPaths(env["GOPATH"])
+	goroots := splitEnvPaths(env["GOROOT"])
+	gopaths[code.Gopath] = true
+	env["GOPATH"] = flattenEnvPaths(gopaths)
+
+	// --------------------------------------------------------------------------------------
+	// Retrieve the list of first-order imports referenced by the chaincode
+	// --------------------------------------------------------------------------------------
+	imports, err := listImports(env, code.Pkg)
+	if err != nil {
+		return nil, fmt.Errorf("Error obtaining imports: %s", err)
+	}
+
+	// --------------------------------------------------------------------------------------
+	// Remove any imports that are provided by the ccenv or system
+	// --------------------------------------------------------------------------------------
+	var provided = map[string]bool{
+		"github.com/hyperledger/fabric/core/chaincode/shim": true,
+		"github.com/hyperledger/fabric/protos/peer":         true,
+	}
+
+	imports = filter(imports, func(pkg string) bool {
+		// Drop if provided by CCENV
+		if _, ok := provided[pkg]; ok == true {
+			logger.Debugf("Discarding provided package %s", pkg)
+			return false
+		}
+
+		// Drop if provided by GOROOT
+		for goroot := range goroots {
+			fqp := filepath.Join(goroot, "src", pkg)
+			exists, err := pathExists(fqp)
+			if err == nil && exists {
+				logger.Debugf("Discarding GOROOT package %s", pkg)
+				return false
+			}
+		}
+
+		// Else, we keep it
+		logger.Debugf("Accepting import: %s", pkg)
+		return true
+	})
+
+	// --------------------------------------------------------------------------------------
+	// Assemble the fully resolved list of transitive dependencies from the imports that remain
+	// --------------------------------------------------------------------------------------
+	deps := make(map[string]bool)
+
+	for _, pkg := range imports {
+		_deps, err := listDeps(env, pkg)
+		if err != nil {
+			return nil, fmt.Errorf("Error obtaining dependencies for %s: %s", pkg, err)
+		}
+
+		// Merge with our top list
+		for _, dep := range _deps {
+			deps[dep] = true
+		}
+	}
+
+	// cull "" if it exists
+	delete(deps, "")
+
+	// --------------------------------------------------------------------------------------
+	// Find the source from our first-order code package ...
+	// --------------------------------------------------------------------------------------
+	fileMap, err := findSource(code.Gopath, code.Pkg)
 	if err != nil {
 		return nil, err
 	}
 
-	err = writeChaincodePackage(spec, tw)
+	// --------------------------------------------------------------------------------------
+	// ... followed by the source for any non-system dependencies that our code-package has
+	// from the filtered list
+	// --------------------------------------------------------------------------------------
+	for dep := range deps {
+
+		logger.Debugf("processing dep: %s", dep)
+
+		// Each dependency should either be in our GOPATH or GOROOT.  We are not interested in packaging
+		// any of the system packages.  However, the official way (go-list) to make this determination
+		// is too expensive to run for every dep.  Therefore, we cheat.  We assume that any packages that
+		// cannot be found must be system packages and silently skip them
+		for gopath := range gopaths {
+			fqp := filepath.Join(gopath, "src", dep)
+			exists, err := pathExists(fqp)
+
+			logger.Debugf("checking: %s exists: %v", fqp, exists)
+
+			if err == nil && exists {
+
+				// We only get here when we found it, so go ahead and load its code
+				files, err := findSource(gopath, dep)
+				if err != nil {
+					return nil, err
+				}
+
+				// Merge the map manually
+				for _, file := range files {
+					fileMap[file.Name] = file
+				}
+			}
+		}
+	}
+
+	logger.Debugf("done")
+
+	// --------------------------------------------------------------------------------------
+	// Reclassify and sort the files:
+	//
+	// Two goals:
+	//   * Remap non-package dependencies to package/vendor
+	//   * Sort the final filename so the tarball at least looks sane in terms of package grouping
+	// --------------------------------------------------------------------------------------
+	files := make(Sources, 0)
+	pkgPath := filepath.Join("src", code.Pkg)
+	vendorPath := filepath.Join(pkgPath, "vendor")
+	for _, file := range fileMap {
+		// Vendor any packages that are not already within our chaincode's primary package.  We
+		// detect this by checking the path-prefix.  Anything that is prefixed by "src/$pkg"
+		// (which includes the package itself and anything explicitly vendored in "src/$pkg/vendor")
+		// are left unperturbed.  Everything else is implicitly vendored under src/$pkg/vendor by
+		// simply remapping "src" -> "src/$pkg/vendor" in the tarball index.
+		if strings.HasPrefix(file.Name, pkgPath) == false {
+			origName := file.Name
+			file.Name = strings.Replace(origName, "src", vendorPath, 1)
+			logger.Debugf("vendoring %s -> %s", origName, file.Name)
+		}
+
+		files = append(files, file)
+	}
+
+	sort.Sort(files)
+
+	// --------------------------------------------------------------------------------------
+	// Write out our tar package
+	// --------------------------------------------------------------------------------------
+	payload := bytes.NewBuffer(nil)
+	gw := gzip.NewWriter(payload)
+	tw := tar.NewWriter(gw)
+
+	for _, file := range files {
+		err = cutil.WriteFileToPackage(file.Path, file.Name, tw)
+		if err != nil {
+			return nil, fmt.Errorf("Error writing %s to tar: %s", file.Name, err)
+		}
+	}
 
 	tw.Close()
 	gw.Close()
 
-	if err != nil {
-		return nil, err
-	}
-
-	payload := inputbuf.Bytes()
-
-	return payload, nil
+	return payload.Bytes(), nil
 }
 
 func (goPlatform *Platform) GenerateDockerfile(cds *pb.ChaincodeDeploymentSpec) (string, error) {
