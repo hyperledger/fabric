@@ -19,6 +19,7 @@ package discovery
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"sort"
 	"strconv"
@@ -45,6 +46,7 @@ func init() {
 	SetAliveExpirationTimeout(10 * aliveTimeInterval)
 	SetAliveExpirationCheckInterval(aliveTimeInterval)
 	SetReconnectInterval(10 * aliveTimeInterval)
+	maxConnectionAttempts = 10000
 }
 
 type dummyCommModule struct {
@@ -117,7 +119,7 @@ func (comm *dummyCommModule) SendToPeer(peer *NetworkMember, msg *proto.SignedGo
 	comm.lock.RUnlock()
 
 	if mock != nil {
-		mock.Called()
+		mock.Called(peer, msg)
 	}
 
 	if !exists {
@@ -329,19 +331,50 @@ func TestConnect(t *testing.T) {
 	t.Parallel()
 	nodeNum := 10
 	instances := []*gossipInstance{}
+	firstSentMemReqMsgs := make(chan *proto.SignedGossipMessage, nodeNum)
 	for i := 0; i < nodeNum; i++ {
 		inst := createDiscoveryInstance(7611+i, fmt.Sprintf("d%d", i), []string{})
+
+		inst.comm.lock.Lock()
+		inst.comm.mock = &mock.Mock{}
+		inst.comm.mock.On("SendToPeer", mock.Anything, mock.Anything).Run(func(arguments mock.Arguments) {
+			inst := inst
+			msg := arguments.Get(1).(*proto.SignedGossipMessage)
+			if req := msg.GetMemReq(); req != nil {
+				selfMsg, _ := req.SelfInformation.ToGossipMessage()
+				firstSentMemReqMsgs <- selfMsg
+				inst.comm.lock.Lock()
+				inst.comm.mock = nil
+				inst.comm.lock.Unlock()
+			}
+		})
+		inst.comm.mock.On("Ping", mock.Anything)
+		inst.comm.lock.Unlock()
+
 		instances = append(instances, inst)
 		j := (i + 1) % 10
 		endpoint := fmt.Sprintf("localhost:%d", 7611+j)
 		netMember2Connect2 := NetworkMember{Endpoint: endpoint, PKIid: []byte(endpoint)}
-		inst.Connect(netMember2Connect2)
+		inst.Connect(netMember2Connect2, false)
+	}
+
+	time.Sleep(time.Second * 1)
+	assert.Len(t, firstSentMemReqMsgs, 10)
+	close(firstSentMemReqMsgs)
+	for firstSentSelfMsg := range firstSentMemReqMsgs {
+		assert.Nil(t, firstSentSelfMsg.Envelope.SecretEnvelope)
 	}
 
 	fullMembership := func() bool {
 		return nodeNum-1 == len(instances[nodeNum-1].GetMembership())
 	}
 	waitUntilOrFail(t, fullMembership)
+
+	discInst := instances[rand.Intn(len(instances))].Discovery.(*gossipDiscoveryImpl)
+	am, _ := discInst.createMembershipRequest(true).GetMemReq().SelfInformation.ToGossipMessage()
+	assert.NotNil(t, am.SecretEnvelope)
+	am, _ = discInst.createMembershipRequest(false).GetMemReq().SelfInformation.ToGossipMessage()
+	assert.Nil(t, am.SecretEnvelope)
 	stopInstances(t, instances)
 }
 
