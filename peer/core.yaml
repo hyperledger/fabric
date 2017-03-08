@@ -370,9 +370,9 @@ ledger:
        username:
        password:
 
-       # Limit on the number of records to return per query
-       queryLimit: 1000
-
     # historyDatabase - options are true or false
     # Indicates if the history of key updates should be stored in goleveldb
     historyDatabase: true
+
+    # Limit on the number of records to return per query
+    queryLimit: 10000

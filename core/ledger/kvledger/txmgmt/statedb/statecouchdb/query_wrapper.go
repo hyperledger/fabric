@@ -26,6 +26,8 @@ const dataWrapper = "data"
 const jsonQueryFields = "fields"
 const jsonQuerySelector = "selector"
 const jsonQueryUseIndex = "use_index"
+const jsonQueryLimit = "limit"
+const jsonQuerySkip = "skip"
 
 var validOperators = []string{"$and", "$or", "$not", "$nor", "$all", "$elemMatch",
 	"$lt", "$lte", "$eq", "$ne", "$gte", "$gt", "$exits", "$type", "$in", "$nin",
@@ -38,7 +40,10 @@ All fields in the selector must have "data." prepended to the field names
 Fields listed in fields key will have "data." prepended
 Fields in the sort key will have "data." prepended
 
-Also,  the query will be scoped to the chaincodeid
+- The query will be scoped to the chaincodeid
+
+- limit be added to the query and is based on config
+- skip is defaulted to 0 and is currently not used, this is for future paging implementation
 
 In the example a contextID of "marble" is assumed.
 
@@ -47,7 +52,7 @@ Example:
 Source Query:
 {"selector":{"owner": {"$eq": "tom"}},
 "fields": ["owner", "asset_name", "color", "size"],
-"sort": ["size", "color"], "limit": 10, "skip": 0}
+"sort": ["size", "color"]}
 
 Result Wrapped Query:
 {"selector":{"$and":[{"chaincodeid":"marble"},{"data.owner":{"$eq":"tom"}}]},
@@ -55,7 +60,7 @@ Result Wrapped Query:
 "sort":["data.size","data.color"],"limit":10,"skip":0}
 
 */
-func ApplyQueryWrapper(namespace, queryString string) (string, error) {
+func ApplyQueryWrapper(namespace, queryString string, queryLimit, querySkip int) (string, error) {
 
 	//create a generic map for the query json
 	jsonQueryMap := make(map[string]interface{})
@@ -88,6 +93,12 @@ func ApplyQueryWrapper(namespace, queryString string) (string, error) {
 		//if the "selector" is not found, then add a default namespace filter
 		setDefaultNamespaceInSelector(namespace, jsonQueryMap)
 	}
+
+	//Add limit
+	jsonQueryMap[jsonQueryLimit] = queryLimit
+
+	//Add skip
+	jsonQueryMap[jsonQuerySkip] = querySkip
 
 	//Marshal the updated json query
 	editedQuery, _ := json.Marshal(jsonQueryMap)
