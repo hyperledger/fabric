@@ -56,6 +56,11 @@ func (r *resources) ApplicationConfig() config.Application {
 	return r.configRoot.Application()
 }
 
+// ConsortiumsConfig returns the api.ConsortiumsConfig for the chain
+func (r *resources) ConsortiumsConfig() config.Consortiums {
+	return r.configRoot.Consortiums()
+}
+
 // MSPManager returns the msp.MSPManager for the chain
 func (r *resources) MSPManager() msp.MSPManager {
 	return r.mspConfigHandler

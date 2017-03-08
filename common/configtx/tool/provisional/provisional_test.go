@@ -18,27 +18,18 @@ package provisional
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
 	"testing"
 
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
 )
 
-var confSolo, confKafka *genesisconfig.Profile
+var confSolo *genesisconfig.Profile
 var testCases []*genesisconfig.Profile
 
 func init() {
-	// Configuration is always specified relative to $GOPATH/github.com/hyperledger/fabric
-	// This test will fail with the default configuration if executed in the package dir
-	// We are in common/configtx/tool/provisional
-	os.Chdir(filepath.Join("..", "..", "..", ".."))
-
 	confSolo = genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
-	confKafka = genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
-	confKafka.Orderer.OrdererType = ConsensusTypeKafka
-	testCases = []*genesisconfig.Profile{confSolo, confKafka}
+	testCases = []*genesisconfig.Profile{confSolo}
 }
 
 func TestGenesisBlockHeader(t *testing.T) {

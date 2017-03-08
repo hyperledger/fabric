@@ -105,6 +105,11 @@ func (cg *ChannelGroup) ApplicationConfig() *ApplicationGroup {
 	return cg.ChannelConfig.appConfig
 }
 
+// ConsortiumsConfig returns the consortium config associated with this channel if it exists
+func (cg *ChannelGroup) ConsortiumsConfig() *ConsortiumsGroup {
+	return cg.ChannelConfig.consortiumsConfig
+}
+
 // NewGroup instantiates either a new application or orderer config
 func (cg *ChannelGroup) NewGroup(group string) (ValueProposer, error) {
 	switch group {
@@ -112,6 +117,8 @@ func (cg *ChannelGroup) NewGroup(group string) (ValueProposer, error) {
 		return NewApplicationGroup(cg.mspConfigHandler), nil
 	case OrdererGroupKey:
 		return NewOrdererGroup(cg.mspConfigHandler), nil
+	case ConsortiumsGroupKey:
+		return NewConsortiumsGroup(), nil
 	default:
 		return nil, fmt.Errorf("Disallowed channel group: %s", group)
 	}
@@ -124,8 +131,9 @@ type ChannelConfig struct {
 
 	hashingAlgorithm func(input []byte) []byte
 
-	appConfig     *ApplicationGroup
-	ordererConfig *OrdererGroup
+	appConfig         *ApplicationGroup
+	ordererConfig     *OrdererGroup
+	consortiumsConfig *ConsortiumsGroup
 }
 
 // NewChannelConfig creates a new ChannelConfig
@@ -182,6 +190,11 @@ func (cc *ChannelConfig) Validate(tx interface{}, groups map[string]ValuePropose
 			cc.ordererConfig, ok = value.(*OrdererGroup)
 			if !ok {
 				return fmt.Errorf("Orderer group was not Orderer config")
+			}
+		case ConsortiumsGroupKey:
+			cc.consortiumsConfig, ok = value.(*ConsortiumsGroup)
+			if !ok {
+				return fmt.Errorf("Consortiums group was no Consortium config")
 			}
 		default:
 			return fmt.Errorf("Disallowed channel group: %s", key)

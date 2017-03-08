@@ -21,6 +21,7 @@ package config
 import (
 	"time"
 
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -60,6 +61,18 @@ type Channel interface {
 
 	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
 	OrdererAddresses() []string
+}
+
+// Consortiums represents the set of consortiums serviced by an ordering service
+type Consortiums interface {
+	// Consortiums returns the set of consortiums
+	Consortiums() map[string]Consortium
+}
+
+// Consortium represents a group of orgs which may create channels together
+type Consortium interface {
+	// ChannelCreationPolicy returns the policy to check when instantiating a channel for this consortium
+	ChannelCreationPolicy() *cb.Policy
 }
 
 // Orderer stores the common shared orderer config
