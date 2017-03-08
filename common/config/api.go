@@ -21,7 +21,6 @@ package config
 import (
 	"time"
 
-	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
@@ -49,6 +48,20 @@ type Application interface {
 	Organizations() map[string]ApplicationOrg
 }
 
+// Channel gives read only access to the channel configuration
+type Channel interface {
+	// HashingAlgorithm returns the default algorithm to be used when hashing
+	// such as computing block hashes, and CreationPolicy digests
+	HashingAlgorithm() func(input []byte) []byte
+
+	// BlockDataHashingStructureWidth returns the width to use when constructing the
+	// Merkle tree to compute the BlockData hash
+	BlockDataHashingStructureWidth() uint32
+
+	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
+	OrdererAddresses() []string
+}
+
 // Orderer stores the common shared orderer config
 type Orderer interface {
 	// ConsensusType returns the configured consensus type
@@ -72,19 +85,16 @@ type Orderer interface {
 
 type ValueProposer interface {
 	// BeginValueProposals called when a config proposal is begun
-	BeginValueProposals(groups []string) ([]ValueProposer, error)
-
-	// ProposeValue called when config is added to a proposal
-	ProposeValue(key string, configValue *cb.ConfigValue) error
+	BeginValueProposals(tx interface{}, groups []string) (ValueDeserializer, []ValueProposer, error)
 
 	// RollbackProposals called when a config proposal is abandoned
-	RollbackProposals()
+	RollbackProposals(tx interface{})
 
 	// PreCommit is invoked before committing the config to catch
 	// any errors which cannot be caught on a per proposal basis
 	// TODO, rename other methods to remove Value/Proposal references
-	PreCommit() error
+	PreCommit(tx interface{}) error
 
 	// CommitProposals called when a config proposal is committed
-	CommitProposals()
+	CommitProposals(tx interface{})
 }

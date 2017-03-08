@@ -19,10 +19,9 @@ package multichain
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -39,7 +38,7 @@ type chainCreator interface {
 
 type limitedSupport interface {
 	PolicyManager() policies.Manager
-	SharedConfig() configvaluesapi.Orderer
+	SharedConfig() config.Orderer
 }
 
 type systemChainCommitter struct {

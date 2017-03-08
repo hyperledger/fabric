@@ -19,6 +19,7 @@ package msp
 import (
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/hyperledger/fabric/msp"
 	mspprotos "github.com/hyperledger/fabric/protos/msp"
@@ -36,37 +37,59 @@ type mspConfigStore struct {
 
 // MSPConfigHandler
 type MSPConfigHandler struct {
-	pendingConfig *mspConfigStore
+	pendingConfig map[interface{}]*mspConfigStore
+	pendingLock   sync.RWMutex
 	msp.MSPManager
 }
 
-// BeginConfig called when a config proposal is begun
-func (bh *MSPConfigHandler) BeginConfig() {
-	if bh.pendingConfig != nil {
-		panic("Programming error, called BeginValueProposals while a proposal was in process")
+func NewMSPConfigHandler() *MSPConfigHandler {
+	return &MSPConfigHandler{
+		pendingConfig: make(map[interface{}]*mspConfigStore),
 	}
-	bh.pendingConfig = &mspConfigStore{
+}
+
+// BeginConfig called when a config proposal is begun
+func (bh *MSPConfigHandler) BeginConfig(tx interface{}) {
+	bh.pendingLock.Lock()
+	defer bh.pendingLock.Unlock()
+	_, ok := bh.pendingConfig[tx]
+	if ok {
+		panic("Programming error, called BeginConfig mulitply for the same tx")
+	}
+	bh.pendingConfig[tx] = &mspConfigStore{
 		idMap: make(map[string]*pendingMSPConfig),
 	}
 }
 
 // RollbackProposals called when a config proposal is abandoned
-func (bh *MSPConfigHandler) RollbackProposals() {
-	bh.pendingConfig = nil
+func (bh *MSPConfigHandler) RollbackProposals(tx interface{}) {
+	bh.pendingLock.Lock()
+	defer bh.pendingLock.Unlock()
+	delete(bh.pendingConfig, tx)
 }
 
 // CommitProposals called when a config proposal is committed
-func (bh *MSPConfigHandler) CommitProposals() {
-	if bh.pendingConfig == nil {
-		panic("Programming error, called CommitProposals with no proposal in process")
+func (bh *MSPConfigHandler) CommitProposals(tx interface{}) {
+	bh.pendingLock.Lock()
+	defer bh.pendingLock.Unlock()
+	pendingConfig, ok := bh.pendingConfig[tx]
+	if !ok {
+		panic("Programming error, called BeginConfig mulitply for the same tx")
 	}
 
-	bh.MSPManager = bh.pendingConfig.proposedMgr
-	bh.pendingConfig = nil
+	bh.MSPManager = pendingConfig.proposedMgr
+	delete(bh.pendingConfig, tx)
 }
 
 // ProposeValue called when config is added to a proposal
-func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP, error) {
+func (bh *MSPConfigHandler) ProposeMSP(tx interface{}, mspConfig *mspprotos.MSPConfig) (msp.MSP, error) {
+	bh.pendingLock.RLock()
+	pendingConfig, ok := bh.pendingConfig[tx]
+	bh.pendingLock.RUnlock()
+	if !ok {
+		panic("Programming error, called BeginConfig mulitply for the same tx")
+	}
+
 	// check that the type for that MSP is supported
 	if mspConfig.Type != int32(msp.FABRIC) {
 		return nil, fmt.Errorf("Setup error: unsupported msp type %d", mspConfig.Type)
@@ -90,12 +113,12 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 		return nil, fmt.Errorf("Could not extract msp identifier, err %s", err)
 	}
 
-	existingPendingMSPConfig, ok := bh.pendingConfig.idMap[mspID]
+	existingPendingMSPConfig, ok := pendingConfig.idMap[mspID]
 	if ok && !reflect.DeepEqual(existingPendingMSPConfig.mspConfig, mspConfig) {
 		return nil, fmt.Errorf("Attempted to define two different versions of MSP: %s", mspID)
 	}
 
-	bh.pendingConfig.idMap[mspID] = &pendingMSPConfig{
+	pendingConfig.idMap[mspID] = &pendingMSPConfig{
 		mspConfig: mspConfig,
 		msp:       mspInst,
 	}
@@ -104,20 +127,27 @@ func (bh *MSPConfigHandler) ProposeMSP(mspConfig *mspprotos.MSPConfig) (msp.MSP,
 }
 
 // PreCommit instantiates the MSP manager
-func (bh *MSPConfigHandler) PreCommit() error {
-	if len(bh.pendingConfig.idMap) == 0 {
+func (bh *MSPConfigHandler) PreCommit(tx interface{}) error {
+	bh.pendingLock.RLock()
+	pendingConfig, ok := bh.pendingConfig[tx]
+	bh.pendingLock.RUnlock()
+	if !ok {
+		panic("Programming error, called PreCommit for tx which was not started")
+	}
+
+	if len(pendingConfig.idMap) == 0 {
 		// Cannot instantiate an MSP manager with no MSPs
 		return nil
 	}
 
-	mspList := make([]msp.MSP, len(bh.pendingConfig.idMap))
+	mspList := make([]msp.MSP, len(pendingConfig.idMap))
 	i := 0
-	for _, pendingMSP := range bh.pendingConfig.idMap {
+	for _, pendingMSP := range pendingConfig.idMap {
 		mspList[i] = pendingMSP.msp
 		i++
 	}
 
-	bh.pendingConfig.proposedMgr = msp.NewMSPManager()
-	err := bh.pendingConfig.proposedMgr.Setup(mspList)
+	pendingConfig.proposedMgr = msp.NewMSPManager()
+	err := pendingConfig.proposedMgr.Setup(mspList)
 	return err
 }

@@ -19,9 +19,9 @@ package multichain
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"

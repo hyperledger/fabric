@@ -23,9 +23,7 @@ import (
 	"strings"
 	"time"
 
-	api "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/channel/common/organization"
-	"github.com/hyperledger/fabric/common/configvalues/msp"
+	"github.com/hyperledger/fabric/common/config/msp"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 )
 
@@ -79,8 +77,8 @@ func NewOrdererGroup(mspConfig *msp.MSPConfigHandler) *OrdererGroup {
 }
 
 // NewGroup returns an Org instance
-func (og *OrdererGroup) NewGroup(name string) (api.ValueProposer, error) {
-	return organization.NewOrgConfig(name, og.mspConfig), nil
+func (og *OrdererGroup) NewGroup(name string) (ValueProposer, error) {
+	return NewOrganizationGroup(name, og.mspConfig), nil
 }
 
 func (og *OrdererGroup) Allocate() Values {
@@ -144,7 +142,7 @@ func (oc *OrdererConfig) KafkaBrokers() []string {
 	return oc.protos.KafkaBrokers.Brokers
 }
 
-func (oc *OrdererConfig) Validate(groups map[string]api.ValueProposer) error {
+func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {
 	for _, validator := range []func() error{
 		oc.validateConsensusType,
 		oc.validateBatchSize,

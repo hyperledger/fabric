@@ -19,10 +19,9 @@ package config
 import (
 	"fmt"
 
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
-	"github.com/hyperledger/fabric/common/configvalues/channel/application"
-	"github.com/hyperledger/fabric/common/configvalues/msp"
-	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/common/config/msp"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // Root acts as the object which anchors the rest of the config
@@ -33,7 +32,7 @@ type Root struct {
 	mspConfigHandler *msp.MSPConfigHandler
 }
 
-// NewRoot creates a new instance of the configvalues Root
+// NewRoot creates a new instance of the Root
 func NewRoot(mspConfigHandler *msp.MSPConfigHandler) *Root {
 	return &Root{
 		channel:          NewChannelGroup(mspConfigHandler),
@@ -41,36 +40,37 @@ func NewRoot(mspConfigHandler *msp.MSPConfigHandler) *Root {
 	}
 }
 
+type failDeserializer struct{}
+
+func (fd failDeserializer) Deserialize(key string, value []byte) (proto.Message, error) {
+	return nil, fmt.Errorf("Programming error, this should never be invoked")
+}
+
 // BeginValueProposals is used to start a new config proposal
-func (r *Root) BeginValueProposals(groups []string) ([]configvaluesapi.ValueProposer, error) {
+func (r *Root) BeginValueProposals(tx interface{}, groups []string) (ValueDeserializer, []ValueProposer, error) {
 	if len(groups) != 1 {
-		return nil, fmt.Errorf("Root config only supports having one base group")
+		return nil, nil, fmt.Errorf("Root config only supports having one base group")
 	}
 	if groups[0] != ChannelGroupKey {
-		return nil, fmt.Errorf("Root group must have channel")
+		return nil, nil, fmt.Errorf("Root group must have channel")
 	}
-	r.mspConfigHandler.BeginConfig()
-	return []configvaluesapi.ValueProposer{r.channel}, nil
+	r.mspConfigHandler.BeginConfig(tx)
+	return failDeserializer{}, []ValueProposer{r.channel}, nil
 }
 
 // RollbackConfig is used to abandon a new config proposal
-func (r *Root) RollbackProposals() {
-	r.mspConfigHandler.RollbackProposals()
+func (r *Root) RollbackProposals(tx interface{}) {
+	r.mspConfigHandler.RollbackProposals(tx)
 }
 
 // PreCommit is used to verify total configuration before commit
-func (r *Root) PreCommit() error {
-	return r.mspConfigHandler.PreCommit()
+func (r *Root) PreCommit(tx interface{}) error {
+	return r.mspConfigHandler.PreCommit(tx)
 }
 
 // CommitConfig is used to commit a new config proposal
-func (r *Root) CommitProposals() {
-	r.mspConfigHandler.CommitProposals()
-}
-
-// ProposeValue should not be invoked on this object
-func (r *Root) ProposeValue(key string, value *cb.ConfigValue) error {
-	return fmt.Errorf("Programming error, this should never be invoked")
+func (r *Root) CommitProposals(tx interface{}) {
+	r.mspConfigHandler.CommitProposals(tx)
 }
 
 // Channel returns the associated Channel level config
@@ -84,6 +84,6 @@ func (r *Root) Orderer() *OrdererGroup {
 }
 
 // Application returns the associated Application level config
-func (r *Root) Application() *application.SharedConfigImpl {
+func (r *Root) Application() *ApplicationGroup {
 	return r.channel.ApplicationConfig()
 }

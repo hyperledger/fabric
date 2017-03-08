@@ -21,9 +21,9 @@ import (
 
 	cb "github.com/hyperledger/fabric/protos/common"
 
-	"github.com/stretchr/testify/assert"
-
+	"github.com/golang/protobuf/proto"
 	logging "github.com/op/go-logging"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -32,8 +32,8 @@ func init() {
 
 type mockProvider struct{}
 
-func (mpp mockProvider) NewPolicy(data []byte) (Policy, error) {
-	return nil, nil
+func (mpp mockProvider) NewPolicy(data []byte) (Policy, proto.Message, error) {
+	return nil, nil, nil
 }
 
 const mockType = int32(0)
@@ -46,18 +46,18 @@ func defaultProviders() map[int32]Provider {
 
 func TestUnnestedManager(t *testing.T) {
 	m := NewManagerImpl("test", defaultProviders())
-	handlers, err := m.BeginPolicyProposals([]string{})
+	handlers, err := m.BeginPolicyProposals(t, []string{})
 	assert.NoError(t, err)
 	assert.Empty(t, handlers, "Should not have returned additional handlers")
 
 	policyNames := []string{"1", "2", "3"}
 
 	for _, policyName := range policyNames {
-		err := m.ProposePolicy(policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := m.ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
-	m.CommitProposals()
+	m.CommitProposals(t)
 
 	_, ok := m.Manager([]string{"subGroup"})
 	assert.False(t, ok, "Should not have found a subgroup manager")
@@ -75,47 +75,47 @@ func TestUnnestedManager(t *testing.T) {
 func TestNestedManager(t *testing.T) {
 	m := NewManagerImpl("test", defaultProviders())
 	absPrefix := "/test/"
-	nesting1, err := m.BeginPolicyProposals([]string{"nest1"})
+	nesting1, err := m.BeginPolicyProposals(t, []string{"nest1"})
 	assert.NoError(t, err)
 	assert.Len(t, nesting1, 1, "Should not have returned exactly one additional manager")
 
-	nesting2, err := nesting1[0].BeginPolicyProposals([]string{"nest2a", "nest2b"})
+	nesting2, err := nesting1[0].BeginPolicyProposals(t, []string{"nest2a", "nest2b"})
 	assert.NoError(t, err)
 	assert.Len(t, nesting2, 2, "Should not have returned two one additional managers")
 
-	_, err = nesting2[0].BeginPolicyProposals([]string{})
+	_, err = nesting2[0].BeginPolicyProposals(t, []string{})
 	assert.NoError(t, err)
-	_, err = nesting2[1].BeginPolicyProposals([]string{})
+	_, err = nesting2[1].BeginPolicyProposals(t, []string{})
 	assert.NoError(t, err)
 
 	policyNames := []string{"n0a", "n0b", "n0c"}
 	for _, policyName := range policyNames {
-		err := m.ProposePolicy(policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := m.ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
 	n1PolicyNames := []string{"n1a", "n1b", "n1c"}
 	for _, policyName := range n1PolicyNames {
-		err := nesting1[0].ProposePolicy(policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := nesting1[0].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
 	n2aPolicyNames := []string{"n2a_1", "n2a_2", "n2a_3"}
 	for _, policyName := range n2aPolicyNames {
-		err := nesting2[0].ProposePolicy(policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := nesting2[0].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
 	n2bPolicyNames := []string{"n2b_1", "n2b_2", "n2b_3"}
 	for _, policyName := range n2bPolicyNames {
-		err := nesting2[1].ProposePolicy(policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
+		_, err := nesting2[1].ProposePolicy(t, policyName, &cb.ConfigPolicy{Policy: &cb.Policy{Type: mockType}})
 		assert.NoError(t, err)
 	}
 
-	nesting2[0].CommitProposals()
-	nesting2[1].CommitProposals()
-	nesting1[0].CommitProposals()
-	m.CommitProposals()
+	nesting2[0].CommitProposals(t)
+	nesting2[1].CommitProposals(t)
+	nesting1[0].CommitProposals(t)
+	m.CommitProposals(t)
 
 	r, ok := m.Manager([]string{})
 	assert.True(t, ok, "Should have found the root manager")

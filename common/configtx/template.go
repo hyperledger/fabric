@@ -19,7 +19,7 @@ package configtx
 import (
 	"fmt"
 
-	config "github.com/hyperledger/fabric/common/configvalues/root"
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -144,6 +144,57 @@ func (ct *compositeTemplate) Envelope(chainID string) (*cb.ConfigUpdateEnvelope,
 	return &cb.ConfigUpdateEnvelope{ConfigUpdate: marshaledConfig}, nil
 }
 
+type modPolicySettingTemplate struct {
+	modPolicy string
+	template  Template
+}
+
+// NewModPolicySettingTemplate wraps another template and sets the ModPolicy of
+// every ConfigGroup/ConfigValue/ConfigPolicy to modPolicy
+func NewModPolicySettingTemplate(modPolicy string, template Template) Template {
+	return &modPolicySettingTemplate{
+		modPolicy: modPolicy,
+		template:  template,
+	}
+}
+
+func setGroupModPolicies(modPolicy string, group *cb.ConfigGroup) {
+	group.ModPolicy = modPolicy
+
+	for _, value := range group.Values {
+		value.ModPolicy = modPolicy
+	}
+
+	for _, policy := range group.Policies {
+		policy.ModPolicy = modPolicy
+	}
+
+	for _, nextGroup := range group.Groups {
+		setGroupModPolicies(modPolicy, nextGroup)
+	}
+}
+
+func (mpst *modPolicySettingTemplate) Envelope(channelID string) (*cb.ConfigUpdateEnvelope, error) {
+	configUpdateEnv, err := mpst.template.Envelope(channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	if err != nil {
+		return nil, err
+	}
+
+	setGroupModPolicies(mpst.modPolicy, config.WriteSet)
+	configUpdateEnv.ConfigUpdate = utils.MarshalOrPanic(config)
+	return configUpdateEnv, nil
+}
+
+type channelCreationTemplate struct {
+	consortiumName string
+	orgs           []string
+}
+
 // NewChainCreationTemplate takes a CreationPolicy and a Template to produce a
 // Template which outputs an appropriately constructed list of ConfigUpdateEnvelopes.
 func NewChainCreationTemplate(creationPolicy string, template Template) Template {
@@ -154,7 +205,6 @@ func NewChainCreationTemplate(creationPolicy string, template Template) Template
 			Policy: creationPolicy,
 		}),
 	}
-
 	return NewCompositeTemplate(NewSimpleTemplate(result), template)
 }
 

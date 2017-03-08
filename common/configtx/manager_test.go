@@ -391,7 +391,7 @@ func TestInvalidProposal(t *testing.T) {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
 
-	initializer.ValueProposerVal = &mockconfigtx.ValueProposer{ErrorForProposeConfig: fmt.Errorf("err")}
+	initializer.ValueProposerVal = &mockconfigtx.ValueProposer{DeserializeError: fmt.Errorf("err")}
 
 	newConfig := makeConfigUpdateEnvelope(defaultChain, makeConfigSet(), makeConfigSet(makeConfigPair("foo", "foo", 1, []byte("foo"))))
 

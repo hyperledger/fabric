@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -53,12 +54,12 @@ func TestSingle(t *testing.T) {
 	assert.NotNil(t, fooVal.Msg1, "Should have initialized Msg1")
 	assert.NotNil(t, fooVal.Msg2, "Should have initialized Msg2")
 
-	msg1, ok := sv.ProtoMsg("Msg1")
-	assert.True(t, ok, "Should have found map entry")
+	msg1, err := sv.Deserialize("Msg1", utils.MarshalOrPanic(&cb.Envelope{}))
+	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg1, fooVal.Msg1, "Should be same entry")
 
-	msg2, ok := sv.ProtoMsg("Msg2")
-	assert.True(t, ok, "Should have found map entry")
+	msg2, err := sv.Deserialize("Msg2", utils.MarshalOrPanic(&cb.Payload{}))
+	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg2, fooVal.Msg2, "Should be same entry")
 }
 
@@ -71,20 +72,20 @@ func TestPair(t *testing.T) {
 	assert.NotNil(t, fooVal.Msg2, "Should have initialized Msg2")
 	assert.NotNil(t, barVal.Msg3, "Should have initialized Msg3")
 
-	msg1, ok := sv.ProtoMsg("Msg1")
-	assert.True(t, ok, "Should have found map entry")
+	msg1, err := sv.Deserialize("Msg1", utils.MarshalOrPanic(&cb.Envelope{}))
+	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg1, fooVal.Msg1, "Should be same entry")
 
-	msg2, ok := sv.ProtoMsg("Msg2")
-	assert.True(t, ok, "Should have found map entry")
+	msg2, err := sv.Deserialize("Msg2", utils.MarshalOrPanic(&cb.Payload{}))
+	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg2, fooVal.Msg2, "Should be same entry")
 
-	msg3, ok := sv.ProtoMsg("Msg3")
-	assert.True(t, ok, "Should have found map entry")
+	msg3, err := sv.Deserialize("Msg3", utils.MarshalOrPanic(&cb.Header{}))
+	assert.NoError(t, err, "Should have found map entry")
 	assert.Equal(t, msg3, barVal.Msg3, "Should be same entry")
 }
 
-func TestNestingConflict(t *testing.T) {
+func TestPairConflict(t *testing.T) {
 	_, err := NewStandardValues(&foo{}, &conflict{})
 	assert.Error(t, err, "Conflicting keys provided")
 }

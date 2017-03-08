@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	config "github.com/hyperledger/fabric/common/configvalues/root"
+	"github.com/hyperledger/fabric/common/config"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 
@@ -75,6 +75,33 @@ func TestCompositeTemplate(t *testing.T) {
 	)
 
 	verifyItemsResult(t, composite, 3)
+}
+
+func TestModPolicySettingTemplate(t *testing.T) {
+	subGroup := "group"
+	input := cb.NewConfigGroup()
+	input.Groups[subGroup] = cb.NewConfigGroup()
+
+	policyName := "policy"
+	valueName := "value"
+	for _, group := range []*cb.ConfigGroup{input, input.Groups[subGroup]} {
+		group.Values[valueName] = &cb.ConfigValue{}
+		group.Policies[policyName] = &cb.ConfigPolicy{}
+	}
+
+	modPolicyName := "foo"
+	mpst := NewModPolicySettingTemplate(modPolicyName, NewSimpleTemplate(input))
+	output, err := mpst.Envelope("bar")
+	assert.NoError(t, err, "Creating envelope")
+
+	configUpdate := UnmarshalConfigUpdateOrPanic(output.ConfigUpdate)
+
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Values[valueName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Policies[policyName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Values[valueName].ModPolicy)
+	assert.Equal(t, modPolicyName, configUpdate.WriteSet.Groups[subGroup].Policies[policyName].ModPolicy)
 }
 
 func TestNewChainTemplate(t *testing.T) {

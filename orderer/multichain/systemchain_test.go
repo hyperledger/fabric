@@ -19,10 +19,10 @@ package multichain
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	configvaluesapi "github.com/hyperledger/fabric/common/configvalues"
 	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	mockpolicies "github.com/hyperledger/fabric/common/mocks/policies"
 	"github.com/hyperledger/fabric/common/policies"
@@ -48,7 +48,7 @@ func (ms *mockSupport) PolicyManager() policies.Manager {
 	return ms.mpm
 }
 
-func (ms *mockSupport) SharedConfig() configvaluesapi.Orderer {
+func (ms *mockSupport) SharedConfig() config.Orderer {
 	return ms.msc
 }
 

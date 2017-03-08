@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,29 +19,13 @@ package config
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/configvalues/msp"
-
 	logging "github.com/op/go-logging"
-	"github.com/stretchr/testify/assert"
 )
 
 func init() {
 	logging.SetLevel(logging.DEBUG, "")
 }
 
-func TestBeginBadRoot(t *testing.T) {
-	r := NewRoot(&msp.MSPConfigHandler{})
-
-	_, err := r.BeginValueProposals([]string{ChannelGroupKey, ChannelGroupKey})
-	assert.Error(t, err, "Only one root element allowed")
-
-	_, err = r.BeginValueProposals([]string{"foo"})
-	assert.Error(t, err, "Non %s group not allowed", ChannelGroupKey)
-}
-
-func TestProposeValue(t *testing.T) {
-	r := NewRoot(&msp.MSPConfigHandler{})
-
-	err := r.ProposeValue("foo", nil)
-	assert.Error(t, err, "ProposeValue should return error")
+func TestApplicationInterface(t *testing.T) {
+	_ = Application((*ApplicationGroup)(nil))
 }

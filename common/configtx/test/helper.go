@@ -20,12 +20,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/common/config"
+	configtxmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
-	configtxapplication "github.com/hyperledger/fabric/common/configvalues/channel/application"
-	configtxmsp "github.com/hyperledger/fabric/common/configvalues/msp"
-	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -95,7 +94,7 @@ func ApplicationOrgTemplate() configtx.Template {
 	if err != nil {
 		logger.Panicf("Could not load sample MSP config: %s", err)
 	}
-	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{configtxapplication.GroupKey, sampleOrgID}, mspConf))
+	return configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.ApplicationGroupKey, sampleOrgID}, mspConf))
 }
 
 // OrdererOrgTemplate returns the SAMPLE org with MSP template

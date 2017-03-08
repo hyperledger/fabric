@@ -28,11 +28,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/common/config"
+	"github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/configvalues/channel/application"
-	"github.com/hyperledger/fabric/common/configvalues/msp"
-	config "github.com/hyperledger/fabric/common/configvalues/root"
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/policies"
@@ -183,9 +182,9 @@ func serve(args []string) error {
 
 		// add readers, writers and admin policies for the default chain
 		policyTemplate := configtx.NewSimpleTemplate(
-			policies.TemplateImplicitMetaAnyPolicy([]string{application.GroupKey}, msp.ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{application.GroupKey}, msp.WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{application.GroupKey}, msp.AdminsPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{config.ApplicationGroupKey}, msp.ReadersPolicyKey),
+			policies.TemplateImplicitMetaAnyPolicy([]string{config.ApplicationGroupKey}, msp.WritersPolicyKey),
+			policies.TemplateImplicitMetaMajorityPolicy([]string{config.ApplicationGroupKey}, msp.AdminsPolicyKey),
 		)
 
 		// We create a genesis block for the test

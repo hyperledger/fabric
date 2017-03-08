@@ -1,5 +1,5 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,14 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package channel
+package config
 
 import (
 	"testing"
-
-	"github.com/hyperledger/fabric/common/config"
 )
 
-func TestChainConfigInterface(t *testing.T) {
-	_ = config.Channel(&SharedConfig{})
+func TestApplicationOrgInterface(t *testing.T) {
+	_ = ValueProposer(NewApplicationOrgGroup("id", nil))
 }

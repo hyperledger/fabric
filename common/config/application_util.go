@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package application
+package config
 
 import (
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -22,11 +22,11 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 )
 
-func configGroup(orgID string, key string, value []byte) *cb.ConfigGroup {
+func applicationConfigGroup(orgID string, key string, value []byte) *cb.ConfigGroup {
 	result := cb.NewConfigGroup()
-	result.Groups[GroupKey] = cb.NewConfigGroup()
-	result.Groups[GroupKey].Groups[orgID] = cb.NewConfigGroup()
-	result.Groups[GroupKey].Groups[orgID].Values[key] = &cb.ConfigValue{
+	result.Groups[ApplicationGroupKey] = cb.NewConfigGroup()
+	result.Groups[ApplicationGroupKey].Groups[orgID] = cb.NewConfigGroup()
+	result.Groups[ApplicationGroupKey].Groups[orgID].Values[key] = &cb.ConfigValue{
 		Value: value,
 	}
 	return result
@@ -34,5 +34,5 @@ func configGroup(orgID string, key string, value []byte) *cb.ConfigGroup {
 
 // TemplateAnchorPeers creates a headerless config item representing the anchor peers
 func TemplateAnchorPeers(orgID string, anchorPeers []*pb.AnchorPeer) *cb.ConfigGroup {
-	return configGroup(orgID, AnchorPeersKey, utils.MarshalOrPanic(&pb.AnchorPeers{AnchorPeers: anchorPeers}))
+	return applicationConfigGroup(orgID, AnchorPeersKey, utils.MarshalOrPanic(&pb.AnchorPeers{AnchorPeers: anchorPeers}))
 }
