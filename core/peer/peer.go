@@ -297,6 +297,30 @@ func GetCurrConfigBlock(cid string) *common.Block {
 	return nil
 }
 
+// GetMSPIDs returns the ID of each application MSP defined on this chain
+func GetMSPIDs(cid string) []string {
+	chains.RLock()
+	defer chains.RUnlock()
+	if c, ok := chains.list[cid]; ok {
+		if c == nil || c.cs == nil ||
+			c.cs.ApplicationConfig() == nil ||
+			c.cs.ApplicationConfig().Organizations() == nil {
+			return nil
+		}
+
+		orgs := c.cs.ApplicationConfig().Organizations()
+		toret := make([]string, len(orgs))
+		i := 0
+		for _, org := range orgs {
+			toret[i] = org.MSPID()
+			i++
+		}
+
+		return toret
+	}
+	return nil
+}
+
 // SetCurrConfigBlock sets the current config block of the specified chain
 func SetCurrConfigBlock(block *common.Block, cid string) error {
 	chains.Lock()

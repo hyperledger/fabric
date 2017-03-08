@@ -173,10 +173,6 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 				return fmt.Errorf("Invalid policy %s", policy)
 			}
 			policyMarhsalled = putils.MarshalOrPanic(p)
-		} else {
-			// FIXME: we need to get the default from somewhere
-			p := cauthdsl.SignedByMspMember("DEFAULT")
-			policyMarhsalled = putils.MarshalOrPanic(p)
 		}
 	}
 
