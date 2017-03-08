@@ -158,9 +158,9 @@ func New(conf *genesisconfig.Profile) Generator {
 					Host: anchorPeer.Host,
 					Port: int32(anchorPeer.Port),
 				})
-
-				bs.applicationGroups = append(bs.applicationGroups, config.TemplateAnchorPeers(org.Name, anchorProtos))
 			}
+
+			bs.applicationGroups = append(bs.applicationGroups, config.TemplateAnchorPeers(org.Name, anchorProtos))
 		}
 
 	}
