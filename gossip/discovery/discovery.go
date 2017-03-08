@@ -17,6 +17,8 @@ limitations under the License.
 package discovery
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/gossip/common"
 	proto "github.com/hyperledger/fabric/protos/gossip"
 )
@@ -78,6 +80,11 @@ type NetworkMember struct {
 	Metadata         []byte
 	PKIid            common.PKIidType
 	InternalEndpoint string
+}
+
+// String returns a string representation of the NetworkMember
+func (n *NetworkMember) String() string {
+	return fmt.Sprintf("Endpoint: %s, InternalEndpoint: %s, PKI-ID: %v, Metadata: %v", n.Endpoint, n.InternalEndpoint, n.PKIid, n.Metadata)
 }
 
 // PreferredEndpoint computes the endpoint to connect to,
