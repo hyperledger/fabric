@@ -23,7 +23,8 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/bccsp/factory"
-	configvaluesmsp "github.com/hyperledger/fabric/common/configvalues/msp"
+	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
+
 	"github.com/hyperledger/fabric/msp"
 	"github.com/op/go-logging"
 )
