@@ -19,6 +19,8 @@ package msp
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric/protos/msp"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/op/go-logging"
 )
@@ -84,7 +86,7 @@ func (mgr *mspManagerImpl) GetMSPs() (map[string]MSP, error) {
 // DeserializeIdentity returns an identity given its serialized version supplied as argument
 func (mgr *mspManagerImpl) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	// We first deserialize to a SerializedIdentity to get the MSP ID
-	sId := &SerializedIdentity{}
+	sId := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(serializedID, sId)
 	if err != nil {
 		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)

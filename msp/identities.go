@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/op/go-logging"
 )
 
@@ -86,7 +87,7 @@ func (id *identity) GetOrganizationalUnits() []string {
 func NewSerializedIdentity(mspID string, certPEM []byte) ([]byte, error) {
 	// We serialize identities by prepending the MSPID
 	// and appending the x509 cert in PEM format
-	sId := &SerializedIdentity{Mspid: mspID, IdBytes: certPEM}
+	sId := &msp.SerializedIdentity{Mspid: mspID, IdBytes: certPEM}
 	raw, err := proto.Marshal(sId)
 	if err != nil {
 		return nil, fmt.Errorf("Failed serializing identity [%s][% X]: [%s]", mspID, certPEM, err)
@@ -143,7 +144,7 @@ func (id *identity) Serialize() ([]byte, error) {
 	}
 
 	// We serialize identities by prepending the MSPID and appending the ASN.1 DER content of the cert
-	sId := &SerializedIdentity{Mspid: id.id.Mspid, IdBytes: pemBytes}
+	sId := &msp.SerializedIdentity{Mspid: id.id.Mspid, IdBytes: pemBytes}
 	idBytes, err := proto.Marshal(sId)
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshal a SerializedIdentity structure for identity %s, err %s", id.id, err)

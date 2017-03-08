@@ -481,7 +481,7 @@ func (msp *bccspmsp) DeserializeIdentity(serializedID []byte) (Identity, error) 
 	mspLogger.Infof("Obtaining identity")
 
 	// We first deserialize to a SerializedIdentity to get the MSP ID
-	sId := &SerializedIdentity{}
+	sId := &m.SerializedIdentity{}
 	err := proto.Unmarshal(serializedID, sId)
 	if err != nil {
 		return nil, fmt.Errorf("Could not deserialize a SerializedIdentity, err %s", err)
