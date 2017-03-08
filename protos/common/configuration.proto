@@ -41,3 +41,8 @@ message BlockDataHashingStructure {
 message OrdererAddresses {
     repeated string addresses = 1;
 }
+
+// Consortium represents the consortium context in which the channel was created
+message Consortium {
+    string name = 1;
+}

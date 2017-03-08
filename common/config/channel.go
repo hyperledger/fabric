@@ -28,6 +28,9 @@ import (
 
 // Channel config keys
 const (
+	// ConsortiumKey is the key for the cb.ConfigValue for the Consortium message
+	ConsortiumKey = "Consortium"
+
 	// HashingAlgorithmKey is the cb.ConfigItem type key name for the HashingAlgorithm message
 	HashingAlgorithmKey = "HashingAlgorithm"
 
@@ -60,6 +63,7 @@ type ChannelProtos struct {
 	HashingAlgorithm          *cb.HashingAlgorithm
 	BlockDataHashingStructure *cb.BlockDataHashingStructure
 	OrdererAddresses          *cb.OrdererAddresses
+	Consortium                *cb.Consortium
 }
 
 type channelConfigSetter struct {
@@ -163,6 +167,11 @@ func (cc *ChannelConfig) BlockDataHashingStructureWidth() uint32 {
 // OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
 func (cc *ChannelConfig) OrdererAddresses() []string {
 	return cc.protos.OrdererAddresses.Addresses
+}
+
+// ConsortiumName returns the name of the consortium this channel was created under
+func (cc *ChannelConfig) ConsortiumName() string {
+	return cc.protos.Consortium.Name
 }
 
 // Validate inspects the generated configuration protos, ensures that the values are correct, and
