@@ -149,6 +149,10 @@ func TestDBBadDatabaseName(t *testing.T) {
 
 func TestDBBadConnection(t *testing.T) {
 
+	// TestDBBadConnectionDef skipped since retry logic stalls the unit tests for two minutes.
+	// TODO Re-enable once configurable retry logic is introduced
+	t.Skip()
+
 	if ledgerconfig.IsCouchDBEnabled() == true {
 
 		//create a new instance and database object
