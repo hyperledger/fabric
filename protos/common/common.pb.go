@@ -10,7 +10,6 @@ It is generated from these files:
 	common/configtx.proto
 	common/configuration.proto
 	common/ledger.proto
-	common/msp_principal.proto
 	common/policies.proto
 
 It has these top-level messages:
@@ -41,9 +40,6 @@ It has these top-level messages:
 	BlockDataHashingStructure
 	OrdererAddresses
 	BlockchainInfo
-	MSPPrincipal
-	OrganizationUnit
-	MSPRole
 	Policy
 	SignaturePolicyEnvelope
 	SignaturePolicy

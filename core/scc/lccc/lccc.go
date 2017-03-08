@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos/common"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -481,12 +482,12 @@ func (lccc *LifeCycleSysCC) getDefaultEndorsementPolicy(chain string) []byte {
 	// per application MSP defined on this chain
 	ids := peer.GetMSPIDs(chain)
 	sort.Strings(ids)
-	principals := make([]*common.MSPPrincipal, len(ids))
+	principals := make([]*mspprotos.MSPPrincipal, len(ids))
 	sigspolicy := make([]*common.SignaturePolicy, len(ids))
 	for i, id := range ids {
-		principals[i] = &common.MSPPrincipal{
-			PrincipalClassification: common.MSPPrincipal_ROLE,
-			Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: id})}
+		principals[i] = &mspprotos.MSPPrincipal{
+			PrincipalClassification: mspprotos.MSPPrincipal_ROLE,
+			Principal:               utils.MarshalOrPanic(&mspprotos.MSPRole{Role: mspprotos.MSPRole_MEMBER, MspIdentifier: id})}
 		sigspolicy[i] = cauthdsl.SignedBy(int32(i))
 	}
 

@@ -20,12 +20,12 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 )
 
 type MSPPrincipalGetter interface {
 	// Get returns an MSP principal for the given role
-	Get(role string) (*common.MSPPrincipal, error)
+	Get(role string) (*msp.MSPPrincipal, error)
 }
 
 func NewLocalMSPPrincipalGetter() MSPPrincipalGetter {
@@ -34,7 +34,7 @@ func NewLocalMSPPrincipalGetter() MSPPrincipalGetter {
 
 type localMSPPrincipalGetter struct{}
 
-func (m *localMSPPrincipalGetter) Get(role string) (*common.MSPPrincipal, error) {
+func (m *localMSPPrincipalGetter) Get(role string) (*msp.MSPPrincipal, error) {
 	mspid, err := GetLocalMSP().GetIdentifier()
 	if err != nil {
 		return nil, fmt.Errorf("Could not extract local msp identifier [%s]", err)
@@ -43,22 +43,22 @@ func (m *localMSPPrincipalGetter) Get(role string) (*common.MSPPrincipal, error)
 	// TODO: put the constants in some more appropriate place
 	switch role {
 	case "admin":
-		principalBytes, err := proto.Marshal(&common.MSPRole{Role: common.MSPRole_ADMIN, MspIdentifier: mspid})
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: mspid})
 		if err != nil {
 			return nil, err
 		}
 
-		return &common.MSPPrincipal{
-			PrincipalClassification: common.MSPPrincipal_ROLE,
+		return &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
 			Principal:               principalBytes}, nil
 	case "member":
-		principalBytes, err := proto.Marshal(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: mspid})
+		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: mspid})
 		if err != nil {
 			return nil, err
 		}
 
-		return &common.MSPPrincipal{
-			PrincipalClassification: common.MSPPrincipal_ROLE,
+		return &msp.MSPPrincipal{
+			PrincipalClassification: msp.MSPPrincipal_ROLE,
 			Principal:               principalBytes}, nil
 	default:
 		return nil, fmt.Errorf("MSP Principal role [%s] not recognized.", role)

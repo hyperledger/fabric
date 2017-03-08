@@ -17,7 +17,7 @@ limitations under the License.
 
 syntax = "proto3";
 
-option go_package = "github.com/hyperledger/fabric/protos/common";
+option go_package = "github.com/hyperledger/fabric/protos/msp";
 
 package common;
 
