@@ -179,11 +179,14 @@ type Manager struct {
 
 	// ProposeConfigUpdateVal is returns as the value for ProposeConfigUpdate
 	ProposeConfigUpdateVal *cb.ConfigEnvelope
+
+	// ConfigEnvelopeVal is returned as the value for ConfigEnvelope()
+	ConfigEnvelopeVal *cb.ConfigEnvelope
 }
 
-// ConfigEnvelope is currently unimplemented
+// ConfigEnvelope returns the ConfigEnvelopeVal
 func (cm *Manager) ConfigEnvelope() *cb.ConfigEnvelope {
-	panic("Unimplemented")
+	return cm.ConfigEnvelopeVal
 }
 
 // ConsensusType returns the ConsensusTypeVal

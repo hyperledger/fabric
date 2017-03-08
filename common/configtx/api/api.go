@@ -41,6 +41,9 @@ type Manager interface {
 	// ChainID retrieves the chain ID associated with this manager
 	ChainID() string
 
+	// ConfigEnvelope returns the current config envelope
+	ConfigEnvelope() *cb.ConfigEnvelope
+
 	// Sequence returns the current sequence number of the config
 	Sequence() uint64
 }
