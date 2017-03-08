@@ -210,7 +210,7 @@ func proposeGroup(result *configResult) error {
 		msg, err := valueDeserializer.Deserialize(key, value.Value)
 		if err != nil {
 			result.rollback()
-			return err
+			return fmt.Errorf("Error deserializing key %s for group %s: %s", key, result.groupName, err)
 		}
 		result.deserializedValues[key] = msg
 	}

@@ -145,6 +145,14 @@ func (cm *configManager) policyForItem(item comparable) (policies.Policy, bool) 
 	if !ok {
 		return nil, ok
 	}
+
+	// In the case of the group type, its key is part of its path for the purposes of finding the policy manager
+	if item.ConfigGroup != nil {
+		manager, ok = manager.Manager([]string{item.key})
+	}
+	if !ok {
+		return nil, ok
+	}
 	return manager.GetPolicy(item.modPolicy())
 }
 
