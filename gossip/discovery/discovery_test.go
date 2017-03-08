@@ -355,7 +355,7 @@ func TestConnect(t *testing.T) {
 		j := (i + 1) % 10
 		endpoint := fmt.Sprintf("localhost:%d", 7611+j)
 		netMember2Connect2 := NetworkMember{Endpoint: endpoint, PKIid: []byte(endpoint)}
-		inst.Connect(netMember2Connect2, false)
+		inst.Connect(netMember2Connect2, func() bool { return false })
 	}
 
 	time.Sleep(time.Second * 3)

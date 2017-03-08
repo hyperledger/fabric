@@ -487,15 +487,38 @@ func TestProbe(t *testing.T) {
 	comm2, _ := newCommInstance(6612, naiveSec)
 	time.Sleep(time.Duration(1) * time.Second)
 	assert.NoError(t, comm1.Probe(remotePeer(6612)))
+	_, err := comm1.Handshake(remotePeer(6612))
+	assert.NoError(t, err)
 	assert.Error(t, comm1.Probe(remotePeer(9012)))
+	_, err = comm1.Handshake(remotePeer(9012))
+	assert.Error(t, err)
 	comm2.Stop()
 	time.Sleep(time.Second)
 	assert.Error(t, comm1.Probe(remotePeer(6612)))
+	_, err = comm1.Handshake(remotePeer(6612))
+	assert.Error(t, err)
 	comm2, _ = newCommInstance(6612, naiveSec)
 	defer comm2.Stop()
 	time.Sleep(time.Duration(1) * time.Second)
 	assert.NoError(t, comm2.Probe(remotePeer(6611)))
+	_, err = comm2.Handshake(remotePeer(6611))
+	assert.NoError(t, err)
 	assert.NoError(t, comm1.Probe(remotePeer(6612)))
+	_, err = comm1.Handshake(remotePeer(6612))
+	assert.NoError(t, err)
+	// Now try a deep probe with an expected PKI-ID that doesn't match
+	wrongRemotePeer := remotePeer(6612)
+	if wrongRemotePeer.PKIID[0] == 0 {
+		wrongRemotePeer.PKIID[0] = 1
+	} else {
+		wrongRemotePeer.PKIID[0] = 0
+	}
+	_, err = comm1.Handshake(wrongRemotePeer)
+	assert.Error(t, err)
+	// Try a deep probe with a nil PKI-ID
+	id, err := comm1.Handshake(&RemotePeer{Endpoint: "localhost:6612"})
+	assert.NoError(t, err)
+	assert.Equal(t, api.PeerIdentityType("localhost:6612"), id)
 }
 
 func TestPresumedDead(t *testing.T) {

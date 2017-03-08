@@ -117,6 +117,6 @@ type Discovery interface {
 
 	// Connect makes this instance to connect to a remote instance
 	// The sendInternalEndpoint param determines whether or not
-	// to include the internal endpoint in the membership request.
-	Connect(member NetworkMember, sendInternalEndpoint bool)
+	// to include the internal endpoint in the membership request,
+	Connect(member NetworkMember, sendInternalEndpoint func() bool)
 }

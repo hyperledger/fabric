@@ -132,11 +132,9 @@ func (d *gossipDiscoveryImpl) Lookup(PKIID common.PKIidType) *NetworkMember {
 	return nm
 }
 
-func (d *gossipDiscoveryImpl) Connect(member NetworkMember, sendInternalEndpoint bool) {
+func (d *gossipDiscoveryImpl) Connect(member NetworkMember, sendInternalEndpoint func() bool) {
 	d.logger.Debug("Entering", member)
 	defer d.logger.Debug("Exiting")
-
-	req := d.createMembershipRequest(sendInternalEndpoint).NoopSign()
 
 	go func() {
 		for i := 0; i < maxConnectionAttempts && !d.toDie(); i++ {
@@ -144,6 +142,7 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, sendInternalEndpoint
 				InternalEndpoint: member.InternalEndpoint,
 				Endpoint:         member.Endpoint,
 			}
+
 			if !d.comm.Ping(peer) {
 				if d.toDie() {
 					return
@@ -152,6 +151,7 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, sendInternalEndpoint
 				time.Sleep(getReconnectInterval())
 				continue
 			}
+			req := d.createMembershipRequest(sendInternalEndpoint()).NoopSign()
 			d.comm.SendToPeer(peer, req)
 			return
 		}
