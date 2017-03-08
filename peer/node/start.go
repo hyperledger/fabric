@@ -28,13 +28,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hyperledger/fabric/common/config"
-	"github.com/hyperledger/fabric/common/config/msp"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/genesis"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/common/localmsp"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -48,6 +44,7 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/gossip/mcs"
+	cb "github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -58,6 +55,12 @@ import (
 var chaincodeDevMode bool
 var peerDefaultChain bool
 var orderingEndpoint string
+
+// XXXDefaultChannelMSPID should not be defined in production code
+// It should only be referenced in tests.  However, it is necessary
+// to support the 'default chain' setup so temporarilly adding until
+// this concept can be removed to testing scenarios only
+const XXXDefaultChannelMSPID = "DEFAULT"
 
 func startCmd() *cobra.Command {
 	// Set the flags on the node start command.
@@ -180,24 +183,21 @@ func serve(args []string) error {
 
 		chainID := util.GetTestChainID()
 
-		// add readers, writers and admin policies for the default chain
-		policyTemplate := configtx.NewSimpleTemplate(
-			policies.TemplateImplicitMetaAnyPolicy([]string{config.ApplicationGroupKey}, msp.ReadersPolicyKey),
-			policies.TemplateImplicitMetaAnyPolicy([]string{config.ApplicationGroupKey}, msp.WritersPolicyKey),
-			policies.TemplateImplicitMetaMajorityPolicy([]string{config.ApplicationGroupKey}, msp.AdminsPolicyKey),
-		)
+		var block *cb.Block
 
-		// We create a genesis block for the test
-		// chain with its MSP so that we can transact
-		block, err := genesis.NewFactoryImpl(
-			configtx.NewCompositeTemplate(
-				test.ApplicationOrgTemplate(),
-				configtx.NewSimpleTemplate(config.TemplateOrdererAddresses([]string{orderingEndpoint})),
-				policyTemplate)).Block(chainID)
+		func() {
+			defer func() {
+				if err := recover(); err != nil {
+					logger.Fatalf("Peer configured to start with the default test chain, but supporting configuration files did not match.  Please ensure that configtx.yaml contains the unmodified SampleSingleMSPSolo profile and that msp/sampleconfig is present.\n%s", err)
+				}
+			}()
 
-		if nil != err {
-			logger.Panicf("Unable to create genesis block for [%s] due to [%s]", chainID, err)
-		}
+			genConf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
+			genConf.Orderer.Addresses = []string{orderingEndpoint}
+			genConf.Application.Organizations[0].Name = XXXDefaultChannelMSPID
+			genConf.Application.Organizations[0].ID = XXXDefaultChannelMSPID
+			block = provisional.New(genConf).GenesisBlockForChannel(chainID)
+		}()
 
 		//this creates testchainid and sets up gossip
 		if err = peer.CreateChainFromBlock(block); err == nil {
