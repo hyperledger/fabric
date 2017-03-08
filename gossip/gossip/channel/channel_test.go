@@ -217,9 +217,6 @@ func configureAdapter(adapter *gossipAdapterMock, members ...discovery.NetworkMe
 	adapter.On("GetOrgOfPeer", pkiIDInOrg1ButNotEligible).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
 	adapter.On("GetOrgOfPeer", mock.Anything).Return(api.OrgIdentityType(nil))
-	adapter.On("OrgByPeerIdentity", mock.Anything).Run(func(args mock.Arguments) {
-		fmt.Println(args.Get(0))
-	})
 }
 
 func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
