@@ -179,7 +179,7 @@ func (d *gossipDiscoveryImpl) connect2BootstrapPeers(endpoints []string) {
 		return
 	}
 
-	for !d.somePeerIsKnown() {
+	for i := 0; i < maxConnectionAttempts && !d.somePeerIsKnown() && !d.toDie(); i++ {
 		var wg sync.WaitGroup
 		req := d.createMembershipRequest(true).NoopSign()
 		wg.Add(len(endpoints))
