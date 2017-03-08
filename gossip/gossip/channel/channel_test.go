@@ -44,6 +44,7 @@ var conf = Config{
 	PullPeerNum:              3,
 	PullInterval:             time.Second,
 	RequestStateInfoInterval: time.Millisecond * 100,
+	Identity:                 api.PeerIdentityType("pkiIDInOrg1"),
 }
 
 func init() {
@@ -197,8 +198,7 @@ func (ga *gossipAdapterMock) ValidateStateInfoMessage(msg *proto.SignedGossipMes
 }
 
 func (ga *gossipAdapterMock) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
-	args := ga.Called(identity)
-	return args.Get(0).(api.OrgIdentityType)
+	return ga.GetOrgOfPeer(common.PKIidType(identity))
 }
 
 func (ga *gossipAdapterMock) GetOrgOfPeer(PKIIID common.PKIidType) api.OrgIdentityType {
@@ -217,6 +217,9 @@ func configureAdapter(adapter *gossipAdapterMock, members ...discovery.NetworkMe
 	adapter.On("GetOrgOfPeer", pkiIDInOrg1ButNotEligible).Return(orgInChannelA)
 	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
 	adapter.On("GetOrgOfPeer", mock.Anything).Return(api.OrgIdentityType(nil))
+	adapter.On("OrgByPeerIdentity", mock.Anything).Run(func(args mock.Arguments) {
+		fmt.Println(args.Get(0))
+	})
 }
 
 func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
@@ -813,6 +816,35 @@ func TestChannelReconfigureChannel(t *testing.T) {
 		t.Fatal("Responded with digest, but shouldn't have since peer is in ORG2 and its not in the channel")
 	case <-time.After(time.Second * 1):
 	}
+}
+
+func TestChannelNoAnchorPeers(t *testing.T) {
+	t.Parallel()
+
+	// Scenario: We got a join channel message with no anchor peers
+	// In this case, we should be in the channel
+
+	cs := &cryptoService{}
+	adapter := new(gossipAdapterMock)
+	configureAdapter(adapter, discovery.NetworkMember{PKIid: pkiIDInOrg1})
+
+	adapter.On("GetConf").Return(conf)
+	adapter.On("GetMembership").Return([]discovery.NetworkMember{})
+	adapter.On("OrgByPeerIdentity", api.PeerIdentityType(orgInChannelA)).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", pkiIDInOrg1).Return(orgInChannelA)
+	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
+
+	jcm := &joinChanMsg{
+		anchorPeers: func() []api.AnchorPeer {
+			return []api.AnchorPeer{}
+		},
+		getTS: func() time.Time {
+			return time.Now().Add(time.Millisecond * 100)
+		},
+	}
+
+	gc := NewGossipChannel(cs, channelA, adapter, api.JoinChannelMessage(jcm))
+	assert.True(t, gc.IsOrgInChannel(orgInChannelA))
 }
 
 func TestChannelGetPeers(t *testing.T) {

@@ -44,6 +44,7 @@ type Config struct {
 	PullPeerNum              int
 	PullInterval             time.Duration
 	RequestStateInfoInterval time.Duration
+	Identity                 api.PeerIdentityType
 }
 
 // GossipChannel defines an object that deals with all channel-related messages
@@ -335,8 +336,14 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 		gc.logger.Warning("Already have a more updated JoinChannel message(", gc.joinMsg.SequenceNumber(), ") than", gc.joinMsg.SequenceNumber())
 		return
 	}
-	orgs := []api.OrgIdentityType{}
+
+	var orgs []api.OrgIdentityType
 	existingOrgInJoinChanMsg := make(map[string]struct{})
+	// We are in the channel if the joinMsg contains an empty set of anchor peers
+	selfOrg := gc.OrgByPeerIdentity(gc.GetConf().Identity)
+	if len(joinMsg.AnchorPeers()) == 0 {
+		orgs = []api.OrgIdentityType{selfOrg}
+	}
 	for _, anchorPeer := range joinMsg.AnchorPeers() {
 		orgID := anchorPeer.OrgID
 		if _, exists := existingOrgInJoinChanMsg[string(orgID)]; !exists {
@@ -344,6 +351,7 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 			existingOrgInJoinChanMsg[string(orgID)] = struct{}{}
 		}
 	}
+
 	gc.orgs = orgs
 	gc.joinMsg = joinMsg
 }
