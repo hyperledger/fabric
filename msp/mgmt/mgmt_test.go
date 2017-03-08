@@ -19,7 +19,7 @@ package mgmt
 import (
 	"testing"
 
-	configvaluesmsp "github.com/hyperledger/fabric/common/configvalues/msp"
+	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/msp"
 )
 
@@ -44,7 +44,7 @@ func TestGetManagerForChains_usingMSPConfigHandlers(t *testing.T) {
 	msp1 := GetManagerForChain("test")
 	// return value should be nil because the MSPManager was not initialized
 	if msp1 != nil {
-		t.Fatalf("MSPManager should have been nil")
+		t.Fatal("MSPManager should have been nil")
 	}
 
 	XXXSetMSPManager("foo", &configvaluesmsp.MSPConfigHandler{MSPManager: msp.NewMSPManager()})
