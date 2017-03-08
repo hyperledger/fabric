@@ -25,6 +25,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/deliverservice/blocksprovider"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/protos/orderer"
 	"github.com/op/go-logging"
 	"golang.org/x/net/context"
@@ -95,13 +96,15 @@ type deliverServiceImpl struct {
 	stopping bool
 
 	conn *grpc.ClientConn
+
+	mcs api.MessageCryptoService
 }
 
 // NewDeliverService construction function to create and initialize
 // delivery service instance. It tries to establish connection to
 // the specified in the configuration ordering service, in case it
 // fails to dial to it, return nil
-func NewDeliverService(gossip blocksprovider.GossipServiceAdapter, endpoints []string) (DeliverService, error) {
+func NewDeliverService(gossip blocksprovider.GossipServiceAdapter, endpoints []string, mcs api.MessageCryptoService) (DeliverService, error) {
 	indices := rand.Perm(len(endpoints))
 	for _, idx := range indices {
 		logger.Infof("Creating delivery service to get blocks from the ordering service, %s", endpoints[idx])
@@ -119,7 +122,7 @@ func NewDeliverService(gossip blocksprovider.GossipServiceAdapter, endpoints []s
 			logger.Errorf("Cannot dial to %s, because of %s", endpoints[idx], err)
 			continue
 		}
-		return NewFactoryDeliverService(gossip, &blocksDelivererFactoryImpl{conn}, conn), nil
+		return NewFactoryDeliverService(gossip, &blocksDelivererFactoryImpl{conn}, conn, mcs), nil
 	}
 	return nil, fmt.Errorf("Wasn't able to connect to any of ordering service endpoints %s", endpoints)
 }
@@ -127,12 +130,13 @@ func NewDeliverService(gossip blocksprovider.GossipServiceAdapter, endpoints []s
 // NewFactoryDeliverService construction function to create and initialize
 // delivery service instance, with gossip service adapter and customized
 // factory to create blocks deliverers.
-func NewFactoryDeliverService(gossip blocksprovider.GossipServiceAdapter, factory BlocksDelivererFactory, conn *grpc.ClientConn) DeliverService {
+func NewFactoryDeliverService(gossip blocksprovider.GossipServiceAdapter, factory BlocksDelivererFactory, conn *grpc.ClientConn, mcs api.MessageCryptoService) DeliverService {
 	return &deliverServiceImpl{
 		clientsFactory: factory,
 		gossip:         gossip,
 		clients:        make(map[string]blocksprovider.BlocksProvider),
 		conn:           conn,
+		mcs:            mcs,
 	}
 }
 
@@ -159,7 +163,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 			return err
 		}
 		logger.Debug("This peer will pass blocks from orderer service to other peers")
-		d.clients[chainID] = blocksprovider.NewBlocksProvider(chainID, abc, d.gossip)
+		d.clients[chainID] = blocksprovider.NewBlocksProvider(chainID, abc, d.gossip, d.mcs)
 
 		if err := d.clients[chainID].RequestBlocks(ledgerInfo); err == nil {
 			// Start reading blocks from ordering service in case this peer is a leader for specified chain

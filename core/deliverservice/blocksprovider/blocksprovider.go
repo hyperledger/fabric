@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 
 	"github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/protos/common"
 	gossip_proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/orderer"
@@ -86,6 +87,8 @@ type blocksProviderImpl struct {
 
 	gossip GossipServiceAdapter
 
+	mcs api.MessageCryptoService
+
 	done int32
 }
 
@@ -96,11 +99,12 @@ func init() {
 }
 
 // NewBlocksProvider constructor function to creare blocks deliverer instance
-func NewBlocksProvider(chainID string, client BlocksDeliverer, gossip GossipServiceAdapter) BlocksProvider {
+func NewBlocksProvider(chainID string, client BlocksDeliverer, gossip GossipServiceAdapter, mcs api.MessageCryptoService) BlocksProvider {
 	return &blocksProviderImpl{
 		chainID: chainID,
 		client:  client,
 		gossip:  gossip,
+		mcs:     mcs,
 	}
 }
 
@@ -123,9 +127,19 @@ func (b *blocksProviderImpl) DeliverBlocks() {
 		case *orderer.DeliverResponse_Block:
 			seqNum := t.Block.Header.Number
 
+			marshaledBlock, err := proto.Marshal(t.Block)
+			if err != nil {
+				logger.Errorf("Error serializing block with sequence number %d, due to %s", seqNum, err)
+				continue
+			}
+			if err := b.mcs.VerifyBlock(gossipcommon.ChainID(b.chainID), marshaledBlock); err != nil {
+				logger.Errorf("Error verifying block with sequnce number %d, due to %s", seqNum, err)
+				continue
+			}
+
 			numberOfPeers := len(b.gossip.PeersOfChannel(gossipcommon.ChainID(b.chainID)))
 			// Create payload with a block received
-			payload := createPayload(seqNum, t.Block)
+			payload := createPayload(seqNum, marshaledBlock)
 			// Use payload to create gossip message
 			gossipMsg := createGossipMsg(b.chainID, payload)
 
@@ -223,8 +237,7 @@ func createGossipMsg(chainID string, payload *gossip_proto.Payload) *gossip_prot
 	return gossipMsg
 }
 
-func createPayload(seqNum uint64, block *common.Block) *gossip_proto.Payload {
-	marshaledBlock, _ := proto.Marshal(block)
+func createPayload(seqNum uint64, marshaledBlock []byte) *gossip_proto.Payload {
 	return &gossip_proto.Payload{
 		Data:   marshaledBlock,
 		SeqNum: seqNum,

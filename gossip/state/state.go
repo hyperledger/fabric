@@ -266,6 +266,10 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg proto.ReceivedMessage)
 	response := msg.GetGossipMessage().GetStateResponse()
 	for _, payload := range response.GetPayloads() {
 		s.logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)
+		if err := s.mcs.VerifyBlock(common2.ChainID(s.chainID), payload.Data); err != nil {
+			s.logger.Warningf("Error verifying block with sequence number %d, due to %s", payload.SeqNum, err)
+			return
+		}
 		err := s.payloads.Push(payload)
 		if err != nil {
 			s.logger.Warningf("Payload with sequence number %d was received earlier", payload.SeqNum)

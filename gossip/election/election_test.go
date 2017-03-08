@@ -18,12 +18,11 @@ package election
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"strings"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
