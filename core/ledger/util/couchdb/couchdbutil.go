@@ -82,7 +82,7 @@ func CreateCouchDatabase(couchInstance CouchInstance, dbName string) (*CouchData
 		return nil, err
 	}
 
-	couchDBDatabase := CouchDatabase{couchInstance: couchInstance, dbName: databaseName}
+	couchDBDatabase := CouchDatabase{CouchInstance: couchInstance, DBName: databaseName}
 
 	// Create CouchDB database upon ledger startup, if it doesn't already exist
 	_, err = couchDBDatabase.CreateDatabaseIfNotExist()

@@ -56,7 +56,7 @@ func (env *TestVDBEnv) Cleanup(dbName string) {
 func cleanupDB(dbName string) {
 	//create a new connection
 	couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password)
-	db, _ := couchdb.CreateCouchDatabase(*couchInstance, dbName)
+	db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: dbName}
 	//drop the test database
 	db.DropDatabase()
 }

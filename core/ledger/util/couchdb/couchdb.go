@@ -138,8 +138,8 @@ type CouchInstance struct {
 
 //CouchDatabase represents a database within a CouchDB instance
 type CouchDatabase struct {
-	couchInstance CouchInstance //connection configuration
-	dbName        string
+	CouchInstance CouchInstance //connection configuration
+	DBName        string
 }
 
 //DBReturn contains an error reported by CouchDB
@@ -217,17 +217,17 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 
 	if dbInfo == nil && couchDBReturn.StatusCode == 404 {
 
-		logger.Debugf("Database %s does not exist.", dbclient.dbName)
+		logger.Debugf("Database %s does not exist.", dbclient.DBName)
 
-		connectURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+		connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 		if err != nil {
 			logger.Errorf("URL parse error: %s", err.Error())
 			return nil, err
 		}
-		connectURL.Path = dbclient.dbName
+		connectURL.Path = dbclient.DBName
 
 		//process the URL with a PUT, creates the database
-		resp, _, err := dbclient.couchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "")
+		resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, connectURL.String(), nil, "", "")
 		if err != nil {
 			return nil, err
 		}
@@ -238,7 +238,7 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 		json.NewDecoder(resp.Body).Decode(&dbResponse)
 
 		if dbResponse.Ok == true {
-			logger.Debugf("Created database %s ", dbclient.dbName)
+			logger.Debugf("Created database %s ", dbclient.DBName)
 		}
 
 		logger.Debugf("Exiting CreateDatabaseIfNotExist()")
@@ -247,7 +247,7 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 
 	}
 
-	logger.Debugf("Database %s already exists", dbclient.dbName)
+	logger.Debugf("Database %s already exists", dbclient.DBName)
 
 	logger.Debugf("Exiting CreateDatabaseIfNotExist()")
 
@@ -258,14 +258,14 @@ func (dbclient *CouchDatabase) CreateDatabaseIfNotExist() (*DBOperationResponse,
 //GetDatabaseInfo method provides function to retrieve database information
 func (dbclient *CouchDatabase) GetDatabaseInfo() (*DBInfo, *DBReturn, error) {
 
-	connectURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, nil, err
 	}
-	connectURL.Path = dbclient.dbName
+	connectURL.Path = dbclient.DBName
 
-	resp, couchDBReturn, err := dbclient.couchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "")
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, connectURL.String(), nil, "", "")
 	if err != nil {
 		return nil, couchDBReturn, err
 	}
@@ -325,14 +325,14 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 
 	logger.Debugf("Entering DropDatabase()")
 
-	connectURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, err
 	}
-	connectURL.Path = dbclient.dbName
+	connectURL.Path = dbclient.DBName
 
-	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodDelete, connectURL.String(), nil, "", "")
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, connectURL.String(), nil, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func (dbclient *CouchDatabase) DropDatabase() (*DBOperationResponse, error) {
 	json.NewDecoder(resp.Body).Decode(&dbResponse)
 
 	if dbResponse.Ok == true {
-		logger.Debugf("Dropped database %s ", dbclient.dbName)
+		logger.Debugf("Dropped database %s ", dbclient.DBName)
 	}
 
 	logger.Debugf("Exiting DropDatabase()")
@@ -362,14 +362,14 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 
 	logger.Debugf("Entering EnsureFullCommit()")
 
-	connectURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	connectURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, err
 	}
-	connectURL.Path = dbclient.dbName + "/_ensure_full_commit"
+	connectURL.Path = dbclient.DBName + "/_ensure_full_commit"
 
-	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodPost, connectURL.String(), nil, "", "")
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, connectURL.String(), nil, "", "")
 	if err != nil {
 		logger.Errorf("Failed to invoke _ensure_full_commit Error: %s\n", err.Error())
 		return nil, err
@@ -380,7 +380,7 @@ func (dbclient *CouchDatabase) EnsureFullCommit() (*DBOperationResponse, error) 
 	json.NewDecoder(resp.Body).Decode(&dbResponse)
 
 	if dbResponse.Ok == true {
-		logger.Debugf("_ensure_full_commit database %s ", dbclient.dbName)
+		logger.Debugf("_ensure_full_commit database %s ", dbclient.DBName)
 	}
 
 	logger.Debugf("Exiting EnsureFullCommit()")
@@ -402,13 +402,13 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 		return "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
 
-	saveURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	saveURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return "", err
 	}
 
-	saveURL.Path = dbclient.dbName
+	saveURL.Path = dbclient.DBName
 	// id can contain a '/', so encode separately
 	saveURL = &url.URL{Opaque: saveURL.String() + "/" + encodePathElement(id)}
 
@@ -461,7 +461,7 @@ func (dbclient *CouchDatabase) SaveDoc(id string, rev string, couchDoc *CouchDoc
 	}
 
 	//handle the request for saving the JSON or attachments
-	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodPut, saveURL.String(), data, rev, defaultBoundary)
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPut, saveURL.String(), data, rev, defaultBoundary)
 	if err != nil {
 		return "", err
 	}
@@ -570,12 +570,12 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 		return nil, "", fmt.Errorf("doc id [%x] not a valid utf8 string", id)
 	}
 
-	readURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	readURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, "", err
 	}
-	readURL.Path = dbclient.dbName
+	readURL.Path = dbclient.DBName
 	// id can contain a '/', so encode separately
 	readURL = &url.URL{Opaque: readURL.String() + "/" + encodePathElement(id)}
 
@@ -584,7 +584,7 @@ func (dbclient *CouchDatabase) ReadDoc(id string) (*CouchDoc, string, error) {
 
 	readURL.RawQuery = query.Encode()
 
-	resp, couchDBReturn, err := dbclient.couchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "")
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodGet, readURL.String(), nil, "", "")
 	if err != nil {
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
 			logger.Debug("Document not found (404), returning nil value instead of 404 error")
@@ -699,12 +699,12 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	var results []QueryResult
 
-	rangeURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	rangeURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, err
 	}
-	rangeURL.Path = dbclient.dbName + "/_all_docs"
+	rangeURL.Path = dbclient.DBName + "/_all_docs"
 
 	queryParms := rangeURL.Query()
 	queryParms.Set("limit", strconv.Itoa(limit))
@@ -733,7 +733,7 @@ func (dbclient *CouchDatabase) ReadDocRange(startKey, endKey string, limit, skip
 
 	rangeURL.RawQuery = queryParms.Encode()
 
-	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "")
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodGet, rangeURL.String(), nil, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -803,13 +803,13 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 
 	logger.Debugf("Entering DeleteDoc()  id=%s", id)
 
-	deleteURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	deleteURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return err
 	}
 
-	deleteURL.Path = dbclient.dbName
+	deleteURL.Path = dbclient.DBName
 	// id can contain a '/', so encode separately
 	deleteURL = &url.URL{Opaque: deleteURL.String() + "/" + encodePathElement(id)}
 
@@ -828,7 +828,7 @@ func (dbclient *CouchDatabase) DeleteDoc(id, rev string) error {
 
 	logger.Debugf("  rev=%s", rev)
 
-	resp, couchDBReturn, err := dbclient.couchInstance.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "")
+	resp, couchDBReturn, err := dbclient.CouchInstance.handleRequest(http.MethodDelete, deleteURL.String(), nil, rev, "")
 	if err != nil {
 		fmt.Printf("couchDBReturn=%v", couchDBReturn)
 		if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
@@ -854,20 +854,20 @@ func (dbclient *CouchDatabase) QueryDocuments(query string) (*[]QueryResult, err
 
 	var results []QueryResult
 
-	queryURL, err := url.Parse(dbclient.couchInstance.conf.URL)
+	queryURL, err := url.Parse(dbclient.CouchInstance.conf.URL)
 	if err != nil {
 		logger.Errorf("URL parse error: %s", err.Error())
 		return nil, err
 	}
 
-	queryURL.Path = dbclient.dbName + "/_find"
+	queryURL.Path = dbclient.DBName + "/_find"
 
 	//Set up a buffer for the data to be pushed to couchdb
 	data := new(bytes.Buffer)
 
 	data.ReadFrom(bytes.NewReader([]byte(query)))
 
-	resp, _, err := dbclient.couchInstance.handleRequest(http.MethodPost, queryURL.String(), data, "", "")
+	resp, _, err := dbclient.CouchInstance.handleRequest(http.MethodPost, queryURL.String(), data, "", "")
 	if err != nil {
 		return nil, err
 	}
