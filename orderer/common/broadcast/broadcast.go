@@ -85,14 +85,23 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 
 		payload := &cb.Payload{}
 		err = proto.Unmarshal(msg.Payload, payload)
-		if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
-			logger.Debugf("Received malformed message, dropping connection")
+		if err != nil {
+			if logger.IsEnabledFor(logging.WARNING) {
+				logger.Warningf("Received malformed message, dropping connection: %s", err)
+			}
+			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+		}
+
+		if payload.Header == nil {
+			logger.Warningf("Received malformed message, with missing header, dropping connection")
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
 		chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 		if err != nil {
-			logger.Debugf("Received malformed message (bad channel header), dropping connection")
+			if logger.IsEnabledFor(logging.WARNING) {
+				logger.Warningf("Received malformed message (bad channel header), dropping connection: %s", err)
+			}
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
@@ -100,51 +109,59 @@ func (bh *handlerImpl) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			logger.Debugf("Preprocessing CONFIG_UPDATE")
 			msg, err = bh.sm.Process(msg)
 			if err != nil {
+				if logger.IsEnabledFor(logging.WARNING) {
+					logger.Warningf("Rejecting CONFIG_UPDATE because: %s", err)
+				}
 				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 			}
 
 			err = proto.Unmarshal(msg.Payload, payload)
-			if payload.Header == nil {
+			if err != nil || payload.Header == nil {
 				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing")
 				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
 			}
 
 			chdr, err = utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 			if err != nil {
-				logger.Debugf("Generated bad transaction after CONFIG_UPDATE processing (bad channel header)")
-				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
+				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing (bad channel header): %s", err)
+				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
 			}
 
 			if chdr.ChannelId == "" {
-				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing")
+				logger.Criticalf("Generated bad transaction after CONFIG_UPDATE processing (empty channel ID)")
 				return srv.Send(&ab.BroadcastResponse{Status: cb.Status_INTERNAL_SERVER_ERROR})
 			}
 		}
 
 		support, ok := bh.sm.GetChain(chdr.ChannelId)
 		if !ok {
+			if logger.IsEnabledFor(logging.WARNING) {
+				logger.Warningf("Rejecting broadcast because channel %s was not found", chdr.ChannelId)
+			}
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_NOT_FOUND})
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is filtering message for channel %s", chdr.ChannelId)
+			logger.Debugf("Broadcast is filtering message of type %d for channel %s", chdr.Type, chdr.ChannelId)
 		}
 
 		// Normal transaction for existing chain
 		_, filterErr := support.Filters().Apply(msg)
 
 		if filterErr != nil {
-			logger.Debugf("Rejecting broadcast message")
+			if logger.IsEnabledFor(logging.WARNING) {
+				logger.Warningf("Rejecting broadcast message because of filter error: %s", err)
+			}
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_BAD_REQUEST})
 		}
 
 		if !support.Enqueue(msg) {
-			logger.Debugf("Consenter instructed us to shut down")
+			logger.Infof("Consenter instructed us to shut down")
 			return srv.Send(&ab.BroadcastResponse{Status: cb.Status_SERVICE_UNAVAILABLE})
 		}
 
 		if logger.IsEnabledFor(logging.DEBUG) {
-			logger.Debugf("Broadcast is successfully enqueued message for chain %s", chdr.ChannelId)
+			logger.Debugf("Broadcast has successfully enqueued message of type %d for chain %s", chdr.Type, chdr.ChannelId)
 		}
 
 		err = srv.Send(&ab.BroadcastResponse{Status: cb.Status_SUCCESS})
