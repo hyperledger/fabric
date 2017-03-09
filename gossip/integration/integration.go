@@ -40,10 +40,11 @@ func newConfig(selfEndpoint string, externalEndpoint string, bootPeers ...string
 
 	var cert *tls.Certificate
 	if viper.GetBool("peer.tls.enabled") {
-		*cert, err = tls.LoadX509KeyPair(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
+		certTmp, err := tls.LoadX509KeyPair(viper.GetString("peer.tls.cert.file"), viper.GetString("peer.tls.key.file"))
 		if err != nil {
 			panic(err)
 		}
+		cert = &certTmp
 	}
 
 	return &gossip.Config{
