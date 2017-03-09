@@ -1,3 +1,17 @@
+# Copyright IBM Corp. 2016 All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 import os
 import json
@@ -136,7 +150,7 @@ def getExample02ChaincodeSpec():
 def _createDeploymentSpecAsFile(ccSpec, outputPath):
     '''peer chaincode package -n myCC -c '{"Args":["init","a","100","b","200"]}' -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 --logging-level=DEBUG test.file'''
     myEnv = os.environ.copy()
-    myEnv['CORE_PEER_MSPCONFIGPATH'] = "./../msp/sampleConfig"
+    myEnv['CORE_PEER_MSPCONFIGPATH'] = "./../msp/sampleconfig"
     nameArgs = ["-n", ccSpec.chaincode_id.name]
     ctorArgs = ["-c", json.dumps({'Args' : [item for item in ccSpec.input.args]})]
     pathArgs = ["-p", ccSpec.chaincode_id.path]

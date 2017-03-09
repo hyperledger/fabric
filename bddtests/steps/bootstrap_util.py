@@ -387,6 +387,8 @@ class BootstrapHelper:
     # AdminsPolicyKey is the key used for the admins policy
     KEY_POLICY_ADMINS = "Admins"
 
+    KEY_POLICY_BLOCK_VALIDATION = "BlockValidation"
+
     # OrdererAddressesKey is the cb.ConfigItem type key name for the OrdererAddresses message
     KEY_ORDERER_ADDRESSES = "OrdererAddresses"
 
@@ -691,6 +693,9 @@ def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType=
             rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
         group.policies[BootstrapHelper.KEY_POLICY_ADMINS].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
             rule=ruleMajority, sub_policy=BootstrapHelper.KEY_POLICY_ADMINS).SerializeToString()))
+    # Setting block validation policy for the orderer group
+    channel.groups[OrdererGroup].policies[BootstrapHelper.KEY_POLICY_BLOCK_VALIDATION].policy.CopyFrom(Policy(type=typeImplicitMeta, policy=IMP(
+        rule=ruleAny, sub_policy=BootstrapHelper.KEY_POLICY_WRITERS).SerializeToString()))
 
     # Add the orderer org groups MSPConfig info
     for ordererOrg in [org for org in directory.getOrganizations().values() if Network.Orderer in org.networks]:
@@ -856,6 +861,21 @@ class CallbackHelper:
     def getLocalMspConfigPath(self, composition, compose_service, pathType=PathType.Local):
         return "{0}/{1}/localMspConfig".format(self.getVolumePath(composition, pathType), compose_service)
 
+    def _getPathAndUserInfo(self, directory , composition, compose_service, nat_discriminator="Signer", pathType=PathType.Local):
+        matchingNATs = [nat for nat in directory.getNamedCtxTuples() if ((compose_service in nat.user) and (nat_discriminator in nat.user) and ((compose_service in nat.nodeName)))]
+        assert len(matchingNATs)==1, "Unexpected number of matching NodeAdminTuples: {0}".format(matchingNATs)
+        localMspConfigPath = self.getLocalMspConfigPath(composition=composition, compose_service=compose_service,pathType=pathType)
+        return (localMspConfigPath, matchingNATs[0].user)
+
+    def getLocalMspConfigPrivateKeyPath(self, directory , composition, compose_service, pathType=PathType.Local):
+        (localMspConfigPath, user) = self._getPathAndUserInfo(directory=directory, composition=composition, compose_service=compose_service, pathType=pathType)
+        return "{0}/keystore/{1}.pem".format(localMspConfigPath, user)
+
+    def getLocalMspConfigPublicCertPath(self, directory , composition, compose_service, pathType=PathType.Local):
+        (localMspConfigPath, user) = self._getPathAndUserInfo(directory=directory, composition=composition, compose_service=compose_service, pathType=pathType)
+        return "{0}/signcerts/{1}.pem".format(localMspConfigPath, user)
+
+
     def _writeMspFiles(self, directory , composition, compose_service, network):
         localMspConfigPath = self.getLocalMspConfigPath(composition, compose_service)
         os.makedirs("{0}/{1}".format(localMspConfigPath, "signcerts"))
@@ -967,7 +987,12 @@ class PeerCompositionCallback(compose.CompositionCallback, CallbackHelper):
             localMspConfigPath = self.getLocalMspConfigPath(composition, peerService, pathType=PathType.Container)
             env["{0}_CORE_PEER_MSPCFGPATH".format(peerService.upper())] = localMspConfigPath
             env["{0}_CORE_PEER_LOCALMSPID".format(peerService.upper())] = self._getMspId(compose_service=peerService, directory=directory)
-
+            # TLS Settings
+            # env["{0}_CORE_PEER_TLS_ENABLED".format(peerService.upper())] = self._getMspId(compose_service=peerService, directory=directory)
+            env["{0}_CORE_PEER_TLS_CERT_FILE".format(peerService.upper())] = self.getLocalMspConfigPublicCertPath(
+                directory=directory, composition=composition, compose_service=peerService, pathType=PathType.Container)
+            env["{0}_CORE_PEER_TLS_KEY_FILE".format(peerService.upper())] = self.getLocalMspConfigPrivateKeyPath(
+                directory=directory, composition=composition, compose_service=peerService, pathType=PathType.Container)
 
 def createChainCreationPolicyNames(context, chainCreationPolicyNames, chaindId):
     channel = common_dot_configtx_pb2.ConfigGroup()
