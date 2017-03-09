@@ -436,6 +436,16 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *proto.SignedGossipMessage) {
 	pkiID := m.GetAliveMsg().Membership.PkiId
 	if equalPKIid(pkiID, d.self.PKIid) {
 		d.logger.Debug("Got alive message about ourselves,", m)
+		diffExternalEndpoint := d.self.Endpoint != m.GetAliveMsg().Membership.Endpoint
+		var diffInternalEndpoint bool
+		secretEnvelope := m.GetSecretEnvelope()
+		if secretEnvelope != nil && secretEnvelope.InternalEndpoint() != "" {
+			diffInternalEndpoint = secretEnvelope.InternalEndpoint() != d.self.InternalEndpoint
+		}
+		if diffInternalEndpoint || diffExternalEndpoint {
+			d.logger.Error("Bad configuration detected: Received AliveMessage from a peer with the same PKI-ID as myself:", m.GossipMessage)
+		}
+
 		return
 	}
 
