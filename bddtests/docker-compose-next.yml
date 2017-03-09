@@ -9,4 +9,6 @@ services:
         environment:
           - CORE_NEXT=true
           - CORE_PEER_ENDORSER_ENABLED=true
+          - CORE_PEER_GOSSIP_ORGLEADER=false
+          - CORE_PEER_GOSSIP_USELEADERELECTION=true
 

@@ -135,19 +135,23 @@ Feature: Bootstrap
     When user "dev0Org0" using cert alias "dev0Org0App1" requests to join channel using genesis block "genesisBlockForMyNewChannel" on peers with result "joinChannelResult"
       | Peer       |
       | peer0      |
+      | peer1      |
 
     Then user "dev0Org0" expects result code for "joinChannelResult" of "200" from peers:
       | Peer       |
       | peer0      |
+      | peer1      |
 
      # This is entry point for joining an existing channel
       When user "dev0Org1" using cert alias "dev0Org1App1" requests to join channel using genesis block "genesisBlockForMyNewChannel" on peers with result "joinChannelResult"
         | Peer       |
         | peer2      |
+        | peer3      |
 
       Then user "dev0Org1" expects result code for "joinChannelResult" of "200" from peers:
         | Peer       |
         | peer2      |
+        | peer3      |
 
     # Entry point for invoking on an existing channel
     When user "dev0Org0" creates a chaincode spec "cc_spec" with name "example02" of type "GOLANG" for chaincode "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02" with args
