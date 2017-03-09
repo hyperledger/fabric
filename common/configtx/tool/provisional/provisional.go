@@ -18,6 +18,8 @@ package provisional
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/config"
@@ -68,6 +70,38 @@ const (
 	BlockValidationPolicyKey = "BlockValidation"
 )
 
+func resolveMSPDir(path string) string {
+	if path == "" || path[0] == os.PathSeparator {
+		return path
+	}
+
+	// Look for MSP dir first in current path, then in ORDERER_CFG_PATH, then PEER_CFG_PATH, and finally in GOPATH
+	searchPath := []string{
+		".",
+		os.Getenv("ORDERER_CFG_PATH"),
+		os.Getenv("PEER_CFG_PATH"),
+	}
+
+	for _, p := range filepath.SplitList(os.Getenv("GOPATH")) {
+		searchPath = append(searchPath, filepath.Join(p, "src/github.com/hyperledger/fabric/common/configtx/tool/"))
+	}
+
+	for _, baseDir := range searchPath {
+		logger.Infof("Checking for MSPDir at: %s", baseDir)
+		fqPath := filepath.Join(baseDir, path)
+		if _, err := os.Stat(fqPath); err != nil {
+			// The mspdir does not exist
+			continue
+		}
+		return fqPath
+	}
+
+	logger.Panicf("Unable to resolve a path for MSPDir: %s", path)
+
+	// Unreachable
+	return ""
+}
+
 // DefaultChainCreationPolicyNames is the default value of ChainCreatorsKey.
 var DefaultChainCreationPolicyNames = []string{AcceptAllPolicyKey}
 
@@ -116,7 +150,7 @@ func New(conf *genesisconfig.Profile) Generator {
 		}
 
 		for _, org := range conf.Orderer.Organizations {
-			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.BCCSP, org.ID)
+			mspConfig, err := msp.GetVerifyingMspConfig(resolveMSPDir(org.MSPDir), org.BCCSP, org.ID)
 			if err != nil {
 				logger.Panicf("Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
@@ -146,7 +180,7 @@ func New(conf *genesisconfig.Profile) Generator {
 			policies.TemplateImplicitMetaMajorityPolicy([]string{config.ApplicationGroupKey}, configvaluesmsp.AdminsPolicyKey),
 		}
 		for _, org := range conf.Application.Organizations {
-			mspConfig, err := msp.GetVerifyingMspConfig(org.MSPDir, org.BCCSP, org.ID)
+			mspConfig, err := msp.GetVerifyingMspConfig(resolveMSPDir(org.MSPDir), org.BCCSP, org.ID)
 			if err != nil {
 				logger.Panicf("Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
