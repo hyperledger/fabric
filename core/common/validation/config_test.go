@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/util"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -29,7 +29,7 @@ import (
 
 func TestValidateConfigTx(t *testing.T) {
 	chainID := util.GetTestChainID()
-	chCrtEnv, err := configtx.MakeChainCreationTransaction(configtxtest.AcceptAllPolicyKey, chainID, signer, configtxtest.CompositeTemplate())
+	chCrtEnv, err := configtx.MakeChainCreationTransaction(genesisconfig.SampleConsortiumName, chainID, signer)
 	if err != nil {
 		t.Fatalf("MakeChainCreationTransaction failed, err %s", err)
 		return

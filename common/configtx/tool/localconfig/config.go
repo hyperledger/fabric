@@ -59,8 +59,11 @@ const (
 	SampleInsecureProfile = "SampleInsecureSolo"
 	// SampleSingleMSPSoloProfile references the sample profile which includes only the sample MSP and uses solo for ordering.
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
+
 	// SampleConsortiumName is the sample consortium from the sample configtx.yaml
 	SampleConsortiumName = "SampleConsortium"
+	// SampleOrgName is the name of the sample org in the sample profiles
+	SampleOrgName = "SampleOrg"
 
 	// AdminRoleAdminPrincipal is set as AdminRole to cause the MSP role of type Admin to be used as the admin principal default
 	AdminRoleAdminPrincipal = "Role.ADMIN"
@@ -174,18 +177,19 @@ func Load(profile string) *Profile {
 
 	err := config.ReadInConfig()
 	if err != nil {
-		logger.Panicf("Error reading configuration: %s", err)
+		logger.Panic("Error reading configuration:", err)
 	}
+	logger.Debugf("Using config file: %s", config.ConfigFileUsed())
 
 	var uconf TopLevel
 	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err != nil {
-		logger.Panicf("Error unmarshaling config into struct: %s", err)
+		logger.Panic("Error unmarshaling config into struct:", err)
 	}
 
 	result, ok := uconf.Profiles[profile]
 	if !ok {
-		logger.Panicf("Could not find profile %s", profile)
+		logger.Panic("Could not find profile", profile)
 	}
 
 	result.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
@@ -194,36 +198,12 @@ func Load(profile string) *Profile {
 }
 
 func (p *Profile) completeInitialization(configDir string) {
-	p.initDefaults()
-
-	// Fix up any relative paths
-	if p.Orderer != nil {
-		for _, org := range p.Orderer.Organizations {
-			translatePaths(configDir, org)
-		}
-	}
-
-	if p.Application != nil {
-		for _, org := range p.Application.Organizations {
-			translatePaths(configDir, org)
-		}
-	}
-
-	if p.Consortiums != nil {
-		for _, consortium := range p.Consortiums {
-			for _, org := range consortium.Organizations {
-				translatePaths(configDir, org)
-			}
-		}
-	}
-}
-
-func (p *Profile) initDefaults() {
 	if p.Orderer != nil {
 		for _, org := range p.Orderer.Organizations {
 			if org.AdminPrincipal == "" {
 				org.AdminPrincipal = AdminRoleAdminPrincipal
 			}
+			translatePaths(configDir, org)
 		}
 	}
 
@@ -232,6 +212,7 @@ func (p *Profile) initDefaults() {
 			if org.AdminPrincipal == "" {
 				org.AdminPrincipal = AdminRoleAdminPrincipal
 			}
+			translatePaths(configDir, org)
 		}
 	}
 
@@ -241,6 +222,7 @@ func (p *Profile) initDefaults() {
 				if org.AdminPrincipal == "" {
 					org.AdminPrincipal = AdminRoleAdminPrincipal
 				}
+				translatePaths(configDir, org)
 			}
 		}
 	}

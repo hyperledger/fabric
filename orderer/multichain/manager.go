@@ -17,6 +17,8 @@ limitations under the License.
 package multichain
 
 import (
+	"fmt"
+
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
@@ -25,10 +27,16 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/crypto"
 )
 
 var logger = logging.MustGetLogger("orderer/multichain")
+
+const (
+	msgVersion = int32(0)
+	epoch      = 0
+)
 
 // Manager coordinates the creation and access of chains
 type Manager interface {
@@ -37,6 +45,10 @@ type Manager interface {
 
 	// SystemChannelID returns the channel ID for the system channel
 	SystemChannelID() string
+
+	// NewChannelConfig returns a bare bones configuration ready for channel
+	// creation request to be applied on top of it
+	NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error)
 }
 
 type configResources struct {
@@ -58,6 +70,7 @@ type multiLedger struct {
 	ledgerFactory   ledger.Factory
 	signer          crypto.LocalSigner
 	systemChannelID string
+	systemChannel   *chainSupport
 }
 
 func getConfigTx(reader ledger.Reader) *cb.Envelope {
@@ -107,6 +120,7 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 			logger.Infof("Starting with system channel %s and orderer type %s", chainID, chain.SharedConfig().ConsensusType())
 			ml.chains[string(chainID)] = chain
 			ml.systemChannelID = chainID
+			ml.systemChannel = chain
 			// We delay starting this chain, as it might try to copy and replace the chains map via newChain before the map is fully built
 			defer chain.start()
 		} else {
@@ -181,4 +195,106 @@ func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 
 func (ml *multiLedger) channelsCount() int {
 	return len(ml.chains)
+}
+
+func (ml *multiLedger) NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error) {
+	configUpdatePayload, err := utils.UnmarshalPayload(envConfigUpdate.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshaling error: %s", err)
+	}
+
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configUpdatePayload.Data)
+	if err != nil {
+		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshaling error: %s", err)
+	}
+
+	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshaling error: %s", err)
+	}
+
+	if configUpdate.WriteSet == nil {
+		return nil, fmt.Errorf("Config update has an empty writeset")
+	}
+
+	if configUpdate.WriteSet.Groups == nil || configUpdate.WriteSet.Groups[config.ApplicationGroupKey] == nil {
+		return nil, fmt.Errorf("Config update has missing application group")
+	}
+
+	if uv := configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Version; uv != 1 {
+		return nil, fmt.Errorf("Config update for channel creation does not set application group version to 1, was %d", uv)
+	}
+
+	consortiumConfigValue, ok := configUpdate.WriteSet.Values[config.ConsortiumKey]
+	if !ok {
+		return nil, fmt.Errorf("Consortium config value missing")
+	}
+
+	consortium := &cb.Consortium{}
+	err = proto.Unmarshal(consortiumConfigValue.Value, consortium)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading unmarshaling consortium name: %s", err)
+	}
+
+	applicationGroup := cb.NewConfigGroup()
+	consortiumsConfig := ml.systemChannel.ConsortiumsConfig()
+	if consortiumsConfig == nil {
+		return nil, fmt.Errorf("The ordering system channel does not appear to support creating channels")
+	}
+
+	consortiumConf, ok := consortiumsConfig.Consortiums()[consortium.Name]
+	if !ok {
+		return nil, fmt.Errorf("Unknown consortium name: %s", consortium.Name)
+	}
+
+	applicationGroup.Policies[config.ChannelCreationPolicyKey] = &cb.ConfigPolicy{
+		Policy: consortiumConf.ChannelCreationPolicy(),
+	}
+	applicationGroup.ModPolicy = config.ChannelCreationPolicyKey
+
+	// Get the current system channel config
+	systemChannelGroup := ml.systemChannel.ConfigEnvelope().Config.ChannelGroup
+
+	// If the consortium group has no members, allow the source request to have no members.  However,
+	// if the consortium group has any members, there must be at least one member in the source request
+	if len(systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 &&
+		len(configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups) == 0 {
+		return nil, fmt.Errorf("Proposed configuration has no application group members, but consortium contains members")
+	}
+
+	for orgName := range configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups {
+		consortiumGroup, ok := systemChannelGroup.Groups[config.ConsortiumsGroupKey].Groups[consortium.Name].Groups[orgName]
+		if !ok {
+			return nil, fmt.Errorf("Attempted to include a member which is not in the consortium")
+		}
+		applicationGroup.Groups[orgName] = consortiumGroup
+	}
+
+	channelGroup := cb.NewConfigGroup()
+
+	// Copy the system channel Channel level config to the new config
+	for key, value := range systemChannelGroup.Values {
+		channelGroup.Values[key] = value
+		if key == config.ConsortiumKey {
+			// Do not set the consortium name, we do this later
+			continue
+		}
+	}
+
+	for key, policy := range systemChannelGroup.Policies {
+		channelGroup.Policies[key] = policy
+	}
+
+	// Set the new config orderer group to the system channel orderer group and the application group to the new application group
+	channelGroup.Groups[config.OrdererGroupKey] = systemChannelGroup.Groups[config.OrdererGroupKey]
+	channelGroup.Groups[config.ApplicationGroupKey] = applicationGroup
+	channelGroup.Values[config.ConsortiumKey] = config.TemplateConsortium(consortium.Name).Values[config.ConsortiumKey]
+
+	templateConfig, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, configUpdate.ChannelId, ml.signer, &cb.ConfigEnvelope{
+		Config: &cb.Config{
+			ChannelGroup: channelGroup,
+		},
+	}, msgVersion, epoch)
+
+	return configtx.NewManagerImpl(templateConfig, configtx.NewInitializer(), nil)
 }

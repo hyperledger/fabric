@@ -23,7 +23,6 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -47,9 +46,8 @@ func TestInspectBlock(t *testing.T) {
 
 	factory.InitFactories(nil)
 	config := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
-	pgen := provisional.New(config)
 
-	assert.NoError(t, doOutputBlock(pgen, "foo", blockDest), "Good block generation request")
+	assert.NoError(t, doOutputBlock(config, "foo", blockDest), "Good block generation request")
 	assert.NoError(t, doInspectBlock(blockDest), "Good block inspection request")
 }
 
@@ -58,8 +56,16 @@ func TestInspectConfigTx(t *testing.T) {
 
 	factory.InitFactories(nil)
 	config := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
-	pgen := provisional.New(config)
 
-	assert.NoError(t, doOutputChannelCreateTx(pgen, "foo", configTxDest), "Good outputChannelCreateTx generation request")
+	assert.NoError(t, doOutputChannelCreateTx(config, "foo", configTxDest), "Good outputChannelCreateTx generation request")
 	assert.NoError(t, doInspectChannelCreateTx(configTxDest), "Good configtx inspection request")
+}
+
+func TestGenerateAnchorPeersUpdate(t *testing.T) {
+	configTxDest := tmpDir + string(os.PathSeparator) + "anchorPeerUpdate"
+
+	factory.InitFactories(nil)
+	config := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile)
+
+	assert.NoError(t, doOutputAnchorPeersUpdate(config, "foo", configTxDest, genesisconfig.SampleOrgName), "Good anchorPeerUpdate request")
 }

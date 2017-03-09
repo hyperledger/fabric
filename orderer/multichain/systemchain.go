@@ -18,14 +18,13 @@ package multichain
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
-	ab "github.com/hyperledger/fabric/protos/orderer"
 	"github.com/hyperledger/fabric/protos/utils"
 
 	"github.com/golang/protobuf/proto"
@@ -33,12 +32,12 @@ import (
 
 // Define some internal interfaces for easier mocking
 type chainCreator interface {
+	NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error)
 	newChain(configTx *cb.Envelope)
 	channelsCount() int
 }
 
 type limitedSupport interface {
-	PolicyManager() policies.Manager
 	SharedConfig() config.Orderer
 }
 
@@ -75,7 +74,7 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 		return filter.Forward, nil
 	}
 
-	if msgData.Header == nil /* || msgData.Header.ChannelHeader == nil */ {
+	if msgData.Header == nil {
 		return filter.Forward, nil
 	}
 
@@ -115,80 +114,35 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 	}
 }
 
-func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) error {
+func (scf *systemChainFilter) authorize(configEnvelope *cb.ConfigEnvelope) (configtxapi.Manager, error) {
 	if configEnvelope.LastUpdate == nil {
-		return fmt.Errorf("Must include a config update")
+		return nil, fmt.Errorf("Must include a config update")
 	}
 
-	configEnvEnvPayload, err := utils.UnmarshalPayload(configEnvelope.LastUpdate.Payload)
+	configManager, err := scf.cc.NewChannelConfig(configEnvelope.LastUpdate)
 	if err != nil {
-		return fmt.Errorf("Failing to validate chain creation because of payload unmarshaling error: %s", err)
+		return nil, fmt.Errorf("Error constructing new channel config from update: %s", err)
 	}
 
-	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configEnvEnvPayload.Data)
+	newChannelConfigEnv, err := configManager.ProposeConfigUpdate(configEnvelope.LastUpdate)
 	if err != nil {
-		return fmt.Errorf("Failing to validate chain creation because of config update envelope unmarshaling error: %s", err)
+		return nil, err
 	}
 
-	configMsg, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
+	err = configManager.Apply(newChannelConfigEnv)
 	if err != nil {
-		return fmt.Errorf("Failing to validate chain creation because of unmarshaling error: %s", err)
+		return nil, err
 	}
 
-	if configMsg.WriteSet == nil {
-		return fmt.Errorf("Failing to validate channel creation because WriteSet is nil")
-	}
-
-	ordererGroup, ok := configMsg.WriteSet.Groups[config.OrdererGroupKey]
-	if !ok {
-		return fmt.Errorf("Rejecting channel creation because it is missing orderer group")
-	}
-
-	creationConfigItem, ok := ordererGroup.Values[configtx.CreationPolicyKey]
-	if !ok {
-		return fmt.Errorf("Failing to validate chain creation because no creation policy included")
-	}
-
-	creationPolicy := &ab.CreationPolicy{}
-	err = proto.Unmarshal(creationConfigItem.Value, creationPolicy)
-	if err != nil {
-		return fmt.Errorf("Failing to validate chain creation because first config item could not unmarshal to a CreationPolicy: %s", err)
-	}
-
-	ok = false
-	for _, chainCreatorPolicy := range scf.support.SharedConfig().ChainCreationPolicyNames() {
-		if chainCreatorPolicy == creationPolicy.Policy {
-			ok = true
-			break
-		}
-	}
-
-	if !ok {
-		return fmt.Errorf("Failed to validate chain creation because chain creation policy (%s) is not authorized for chain creation", creationPolicy.Policy)
-	}
-
-	policy, ok := scf.support.PolicyManager().GetPolicy(creationPolicy.Policy)
-	if !ok {
-		return fmt.Errorf("Failed to get policy for chain creation despite it being listed as an authorized policy")
-	}
-
-	signedData, err := configUpdateEnv.AsSignedData()
-	if err != nil {
-		return fmt.Errorf("Failed to validate chain creation because config envelope could not be converted to signed data: %s", err)
-	}
-
-	err = policy.Evaluate(signedData)
-	if err != nil {
-		return fmt.Errorf("Failed to validate chain creation, did not satisfy policy: %s", err)
-	}
-
-	return nil
+	return configManager, nil
 }
 
-func (scf *systemChainFilter) inspect(configManager configtxapi.Resources) error {
-	// XXX decide what it is that we will require to be the same in the new config, and what will be allowed to be different
-	// Are all keys allowed? etc.
-
+func (scf *systemChainFilter) inspect(proposedManager, configManager configtxapi.Manager) error {
+	proposedEnv := proposedManager.ConfigEnvelope()
+	actualEnv := configManager.ConfigEnvelope()
+	if !reflect.DeepEqual(proposedEnv.Config, actualEnv.Config) {
+		return fmt.Errorf("The config proposed by the channel creation request did not match the config received with the channel creation request")
+	}
 	return nil
 }
 
@@ -199,7 +153,7 @@ func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return fmt.Errorf("Rejecting chain proposal: Error unmarshaling envelope payload: %s", err)
 	}
 
-	if payload.Header == nil /* || payload.Header.ChannelHeader == nil */ {
+	if payload.Header == nil {
 		return fmt.Errorf("Rejecting chain proposal: Not a config transaction")
 	}
 
@@ -219,7 +173,7 @@ func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	}
 
 	// Make sure that the config was signed by the appropriate authorized entities
-	err = scf.authorize(configEnvelope)
+	proposedManager, err := scf.authorize(configEnvelope)
 	if err != nil {
 		return err
 	}
@@ -231,5 +185,5 @@ func (scf *systemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 	}
 
 	// Make sure that the config does not modify any of the orderer
-	return scf.inspect(configManager)
+	return scf.inspect(proposedManager, configManager)
 }

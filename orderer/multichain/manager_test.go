@@ -25,6 +25,7 @@ import (
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/ledger"
 	ramledger "github.com/hyperledger/fabric/orderer/ledger/ram"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -39,11 +40,13 @@ import (
 
 var conf *genesisconfig.Profile
 var genesisBlock = cb.NewBlock(0, nil) // *cb.Block
+var mockSigningIdentity msp.SigningIdentity
 
 func init() {
 	conf = genesisconfig.Load(genesisconfig.SampleInsecureProfile)
 	logging.SetLevel(logging.DEBUG, "")
 	genesisBlock = provisional.New(conf).GenesisBlock()
+	mockSigningIdentity, _ = msp.NewNoopMsp().GetDefaultSigningIdentity()
 }
 
 func mockCrypto() *mockCryptoHelper {
@@ -240,11 +243,18 @@ func TestNewChain(t *testing.T) {
 
 	newChainID := "TestNewChain"
 
-	configEnv, err := configtx.NewChainCreationTemplate(provisional.AcceptAllPolicyKey, provisional.New(conf).ChannelTemplate()).Envelope(newChainID)
-	if err != nil {
-		t.Fatalf("Error constructing configtx")
-	}
-	ingressTx := makeConfigTxFromConfigUpdateEnvelope(newChainID, configEnv)
+	envConfigUpdate, err := configtx.MakeChainCreationTransaction(newChainID, genesisconfig.SampleConsortiumName, mockSigningIdentity)
+	assert.NoError(t, err, "Constructing chain creation tx")
+
+	cm, err := manager.NewChannelConfig(envConfigUpdate)
+	assert.NoError(t, err, "Constructing initial channel config")
+
+	configEnv, err := cm.ProposeConfigUpdate(envConfigUpdate)
+	assert.NoError(t, err, "Proposing initial update")
+
+	ingressTx, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, newChainID, mockCrypto(), configEnv, msgVersion, epoch)
+	assert.NoError(t, err, "Creating ingresstx")
+
 	wrapped := wrapConfigTx(ingressTx)
 
 	chainSupport, ok := manager.GetChain(manager.SystemChannelID())

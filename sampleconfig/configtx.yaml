@@ -1,10 +1,13 @@
 ---
 ################################################################################
 #
-#   Profile
+#   Profiles
 #
 #   - Different configuration profiles may be encoded here to be specified
-#   as parameters to the configtxgen tool.
+#   as parameters to the configtxgen tool.  The profiles which specify consortiums
+#   are to be used for generating the orderer genesis block.  With the correct
+#   consortium members defined in the orderer genesis block, channel creation
+#   requests may be generated with only the org member names and a consortium name
 #
 ################################################################################
 Profiles:
@@ -49,6 +52,22 @@ Profiles:
             SampleConsortium:
                 Organizations:
                     - *SampleOrg
+
+    # SampleEmptyInsecureChannel defines a channel with no members
+    # and therefore no access control
+    SampleEmptyInsecureChannel:
+        Consortium: SampleConsortium
+        Application:
+            Organizations:
+
+    # SampleSingleMSPChannel defines a channel with only the sample org as a
+    # member.  It is designed to be used in conjunction with SampleSingleMSPSolo
+    # and SampleSingleMSPKafka orderer profiles
+    SampleSingleMSPChannel:
+        Consortium: SampleConsortium
+        Application:
+            Organizations:
+                - *SampleOrg
 
 ################################################################################
 #

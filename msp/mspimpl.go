@@ -604,8 +604,10 @@ func (msp *bccspmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) 
 		case m.MSPRole_MEMBER:
 			// in the case of member, we simply check
 			// whether this identity is valid for the MSP
+			mspLogger.Debugf("Checking if identity satisfies MEMBER role for %s", msp.name)
 			return msp.Validate(id)
 		case m.MSPRole_ADMIN:
+			mspLogger.Debugf("Checking if identity satisfies ADMIN role for %s", msp.name)
 			// in the case of admin, we check that the
 			// id is exactly one of our admins
 			for _, admincert := range msp.admins {

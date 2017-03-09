@@ -25,7 +25,13 @@ else
 fi
 
 echo "Generating genesis block"
-$CONFIGTXGEN -profile TwoOrgs -outputBlock crypto/orderer/orderer.block
+$CONFIGTXGEN -profile TwoOrgsOrdererGenesis -outputBlock crypto/orderer/orderer.block
 
 echo "Generating channel configuration transaction"
-$CONFIGTXGEN -profile TwoOrgs -outputCreateChannelTx crypto/orderer/channel.tx -channelID $CHANNEL_NAME
+$CONFIGTXGEN -profile TwoOrgsChannel -outputCreateChannelTx crypto/orderer/channel.tx -channelID $CHANNEL_NAME
+
+echo "Generating anchor peer update for Org0MSP"
+$CONFIGTXGEN -profile TwoOrgsChannel -outputAnchorPeersUpdate crypto/orderer/Org0MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org0MSP
+
+echo "Generating anchor peer update for Org1MSP"
+$CONFIGTXGEN -profile TwoOrgsChannel -outputAnchorPeersUpdate crypto/orderer/Org1MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org1MSP

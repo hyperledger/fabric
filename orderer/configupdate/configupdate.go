@@ -23,7 +23,7 @@ package configupdate
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
 	"github.com/hyperledger/fabric/common/crypto"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -43,6 +43,10 @@ const (
 type SupportManager interface {
 	// GetChain gets the chain support for a given ChannelId
 	GetChain(chainID string) (Support, bool)
+
+	// NewChannelConfig returns a bare bones configuration ready for channel
+	// creation request to be applied on top of it
+	NewChannelConfig(envConfigUpdate *cb.Envelope) (configtxapi.Manager, error)
 }
 
 // Support enumerates a subset of the full channel support function which is required for this package
@@ -52,16 +56,23 @@ type Support interface {
 }
 
 type Processor struct {
-	signer          crypto.LocalSigner
-	manager         SupportManager
-	systemChannelID string
+	signer               crypto.LocalSigner
+	manager              SupportManager
+	systemChannelID      string
+	systemChannelSupport Support
 }
 
 func New(systemChannelID string, supportManager SupportManager, signer crypto.LocalSigner) *Processor {
+	support, ok := supportManager.GetChain(systemChannelID)
+	if !ok {
+		logger.Panicf("Supplied a SupportManager which did not contain a system channel")
+	}
+
 	return &Processor{
-		systemChannelID: systemChannelID,
-		manager:         supportManager,
-		signer:          signer,
+		systemChannelID:      systemChannelID,
+		manager:              supportManager,
+		signer:               signer,
+		systemChannelSupport: support,
 	}
 }
 
@@ -115,44 +126,25 @@ func (p *Processor) existingChannelConfig(envConfigUpdate *cb.Envelope, channelI
 	return utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID, p.signer, configEnvelope, msgVersion, epoch)
 }
 
-func createInitialConfig(envConfigUpdate *cb.Envelope) (*cb.ConfigEnvelope, error) {
-	// TODO, for now, this assumes the update contains the entire initial config
-	// in the future, a subset of config needs to be allowed
-
-	configUpdatePayload, err := utils.UnmarshalPayload(envConfigUpdate.Payload)
-	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshaling error: %s", err)
-	}
-
-	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configUpdatePayload.Data)
-	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshaling error: %s", err)
-	}
-
-	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshaling error: %s", err)
-	}
-
-	return &cb.ConfigEnvelope{
-		Config: &cb.Config{
-			ChannelGroup: configUpdate.WriteSet,
-		},
-
-		LastUpdate: envConfigUpdate,
-	}, nil
+func (p *Processor) proposeNewChannelToSystemChannel(newChannelEnvConfig *cb.Envelope) (*cb.Envelope, error) {
+	return utils.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, p.systemChannelID, p.signer, newChannelEnvConfig, msgVersion, epoch)
 }
 
 func (p *Processor) newChannelConfig(channelID string, envConfigUpdate *cb.Envelope) (*cb.Envelope, error) {
-	initialConfig, err := createInitialConfig(envConfigUpdate)
+	ctxm, err := p.manager.NewChannelConfig(envConfigUpdate)
 	if err != nil {
 		return nil, err
 	}
 
-	envConfig, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID, p.signer, initialConfig, msgVersion, epoch)
+	newChannelConfigEnv, err := ctxm.ProposeConfigUpdate(envConfigUpdate)
 	if err != nil {
 		return nil, err
 	}
 
-	return utils.CreateSignedEnvelope(cb.HeaderType_ORDERER_TRANSACTION, p.systemChannelID, p.signer, envConfig, msgVersion, epoch)
+	newChannelEnvConfig, err := utils.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID, p.signer, newChannelConfigEnv, msgVersion, epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.proposeNewChannelToSystemChannel(newChannelEnvConfig)
 }

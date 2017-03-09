@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/configtx"
+	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	mockcrypto "github.com/hyperledger/fabric/common/mocks/crypto"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -51,6 +53,14 @@ type mockSupportManager struct {
 
 func (msm *mockSupportManager) GetChain(chainID string) (Support, bool) {
 	return msm.GetChainVal, msm.GetChainVal != nil
+}
+
+func (msm *mockSupportManager) NewChannelConfig(env *cb.Envelope) (configtxapi.Manager, error) {
+	return &mockconfigtx.Manager{
+		ProposeConfigUpdateVal: &cb.ConfigEnvelope{
+			LastUpdate: env,
+		},
+	}, nil
 }
 
 func TestChannelID(t *testing.T) {
@@ -96,6 +106,7 @@ const testUpdateChannelID = "update_channel"
 
 func newTestInstance() (*mockSupportManager, *Processor) {
 	msm := &mockSupportManager{}
+	msm.GetChainVal = &mockSupport{}
 	return msm, New(systemChannelID, msm, mockcrypto.FakeLocalSigner)
 }
 
@@ -138,7 +149,8 @@ func TestExistingChannel(t *testing.T) {
 }
 
 func TestNewChannel(t *testing.T) {
-	_, p := newTestInstance()
+	msm, p := newTestInstance()
+	msm.GetChainVal = nil
 
 	testUpdate := testConfigUpdate()
 

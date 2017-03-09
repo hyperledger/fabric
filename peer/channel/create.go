@@ -25,8 +25,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/configtx"
-	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
-	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	localsigner "github.com/hyperledger/fabric/common/localmsp"
+	"github.com/hyperledger/fabric/common/util"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/peer/common"
 	cb "github.com/hyperledger/fabric/protos/common"
@@ -64,14 +65,12 @@ func createCmd(cf *ChannelCmdFactory) *cobra.Command {
 }
 
 func createChannelFromDefaults(cf *ChannelCmdFactory) (*cb.Envelope, error) {
-	chCrtTemp := configtxtest.CompositeTemplate()
-
 	signer, err := mspmgmt.GetLocalMSP().GetDefaultSigningIdentity()
 	if err != nil {
 		return nil, err
 	}
 
-	chCrtEnv, err := configtx.MakeChainCreationTransaction(provisional.AcceptAllPolicyKey, chainID, signer, chCrtTemp)
+	chCrtEnv, err := configtx.MakeChainCreationTransaction(chainID, genesisconfig.SampleConsortiumName, signer)
 
 	if err != nil {
 		return nil, err
@@ -86,9 +85,14 @@ func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
 		return nil, ConfigTxFileNotFound(err.Error())
 	}
 
-	env := utils.UnmarshalEnvelopeOrPanic(cftx)
+	return utils.UnmarshalEnvelope(cftx)
+}
 
-	payload := utils.ExtractPayloadOrPanic(env)
+func sanityCheckAndSignChannelCreateTx(envConfigUpdate *cb.Envelope) (*cb.Envelope, error) {
+	payload, err := utils.ExtractPayload(envConfigUpdate)
+	if err != nil {
+		return nil, InvalidCreateTx("bad payload")
+	}
 
 	if payload.Header == nil || payload.Header.ChannelHeader == nil {
 		return nil, InvalidCreateTx("bad header")
@@ -111,7 +115,26 @@ func createChannelFromConfigTx(configTxFileName string) (*cb.Envelope, error) {
 		return nil, InvalidCreateTx(fmt.Sprintf("mismatched channel ID %s != %s", ch.ChannelId, chainID))
 	}
 
-	return env, nil
+	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
+	if err != nil {
+		return nil, InvalidCreateTx("Bad config update env")
+	}
+
+	signer := localsigner.NewSigner()
+	sigHeader, err := signer.NewSignatureHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	configSig := &cb.ConfigSignature{
+		SignatureHeader: utils.MarshalOrPanic(sigHeader),
+	}
+
+	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
+
+	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
+
+	return utils.CreateSignedEnvelope(cb.HeaderType_CONFIG_UPDATE, chainID, signer, configUpdateEnv, 0, 0)
 }
 
 func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
@@ -127,6 +150,11 @@ func sendCreateChainTransaction(cf *ChannelCmdFactory) error {
 			return err
 		}
 	}
+
+	if chCrtEnv, err = sanityCheckAndSignChannelCreateTx(chCrtEnv); err != nil {
+		return err
+	}
+
 	var broadcastClient common.BroadcastClient
 	broadcastClient, err = cf.BroadcastFactory()
 	if err != nil {
