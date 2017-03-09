@@ -53,7 +53,7 @@ func NewStandardValues(protosStructs ...interface{}) (*standardValues, error) {
 func (sv *standardValues) Deserialize(key string, value []byte) (proto.Message, error) {
 	msg, ok := sv.lookup[key]
 	if !ok {
-		return nil, fmt.Errorf("Not found")
+		return nil, fmt.Errorf("Unexpected key %s", key)
 	}
 
 	err := proto.Unmarshal(value, msg)

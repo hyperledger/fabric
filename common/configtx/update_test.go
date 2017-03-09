@@ -165,4 +165,14 @@ func TestPolicyForItem(t *testing.T) {
 	})
 	assert.True(t, ok)
 	assert.Equal(t, policy, fooPolicy, "Should not have found relative foo policy the foo manager")
+
+	policy, ok = cm.policyForItem(comparable{
+		key:  "foo",
+		path: []string{"root"},
+		ConfigGroup: &cb.ConfigGroup{
+			ModPolicy: "foo",
+		},
+	})
+	assert.True(t, ok)
+	assert.Equal(t, policy, fooPolicy, "Should have found relative foo policy for foo group")
 }
