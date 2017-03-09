@@ -46,6 +46,8 @@ import (
 
 var peerLogger = logging.MustGetLogger("peer")
 
+var peerServer comm.GRPCServer
+
 type chainSupport struct {
 	configtxapi.Manager
 	config.Application
@@ -403,4 +405,23 @@ type channelPolicyManagerGetter struct{}
 func (c *channelPolicyManagerGetter) Manager(channelID string) (policies.Manager, bool) {
 	policyManager := GetPolicyManager(channelID)
 	return policyManager, policyManager != nil
+}
+
+// CreatePeerServer creates an instance of comm.GRPCServer
+// This server is used for peer communications
+func CreatePeerServer(listenAddress string,
+	secureConfig comm.SecureServerConfig) (comm.GRPCServer, error) {
+
+	var err error
+	peerServer, err = comm.NewGRPCServer(listenAddress, secureConfig)
+	if err != nil {
+		peerLogger.Errorf("Failed to create peer server (%s)", err)
+		return nil, err
+	}
+	return peerServer, nil
+}
+
+// GetPeerServer returns the peer server instance
+func GetPeerServer() comm.GRPCServer {
+	return peerServer
 }
