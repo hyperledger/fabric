@@ -20,21 +20,21 @@ import (
 	"errors"
 
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 )
 
 // LockBasedTxSimulator is a transaction simulator used in `LockBasedTxMgr`
 type lockBasedTxSimulator struct {
 	lockBasedQueryExecutor
-	rwset *rwset.RWSet
+	rwsetBuilder *rwsetutil.RWSetBuilder
 }
 
 func newLockBasedTxSimulator(txmgr *LockBasedTxMgr) *lockBasedTxSimulator {
-	rwset := rwset.NewRWSet()
-	helper := &queryHelper{txmgr: txmgr, rwset: rwset}
+	rwsetBuilder := rwsetutil.NewRWSetBuilder()
+	helper := &queryHelper{txmgr: txmgr, rwsetBuilder: rwsetBuilder}
 	id := util.GenerateUUID()
 	logger.Debugf("constructing new tx simulator [%s]", id)
-	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, id}, rwset}
+	return &lockBasedTxSimulator{lockBasedQueryExecutor{helper, id}, rwsetBuilder}
 }
 
 // GetState implements method in interface `ledger.TxSimulator`
@@ -45,7 +45,7 @@ func (s *lockBasedTxSimulator) GetState(ns string, key string) ([]byte, error) {
 // SetState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) SetState(ns string, key string, value []byte) error {
 	s.helper.checkDone()
-	s.rwset.AddToWriteSet(ns, key, value)
+	s.rwsetBuilder.AddToWriteSet(ns, key, value)
 	return nil
 }
 
@@ -71,7 +71,7 @@ func (s *lockBasedTxSimulator) GetTxSimulationResults() ([]byte, error) {
 	if s.helper.err != nil {
 		return nil, s.helper.err
 	}
-	return s.rwset.GetTxReadWriteSet().Marshal()
+	return s.rwsetBuilder.GetTxReadWriteSet().ToProtoBytes()
 }
 
 // ExecuteUpdate implements method in interface `ledger.TxSimulator`

@@ -14,16 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rwset
+package rwsetutil
 
 import (
 	"testing"
 
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	bccspfactory "github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
 func TestQueryResultHelper_NoResults(t *testing.T) {
@@ -58,7 +60,10 @@ func TestQueryResultHelper_Hash_OneLevel(t *testing.T) {
 	level1_2 := computeTestHashKVReads(t, kvReads[4:8])
 	level1_3 := computeTestHashKVReads(t, kvReads[8:])
 	testutil.AssertNil(t, r)
-	testutil.AssertEquals(t, h, &MerkleSummary{maxDegree, 1, []Hash{level1_1, level1_2, level1_3}})
+	testutil.AssertEquals(t, h, &kvrwset.QueryReadsMerkleSummary{
+		MaxDegree:      uint32(maxDegree),
+		MaxLevel:       1,
+		MaxLevelHashes: hashesToBytes([]Hash{level1_1, level1_2, level1_3})})
 }
 
 func TestQueryResultHelper_Hash_TwoLevel(t *testing.T) {
@@ -76,7 +81,10 @@ func TestQueryResultHelper_Hash_TwoLevel(t *testing.T) {
 	level2_1 := computeTestCombinedHash(t, level1_1, level1_2, level1_3, level1_4)
 	level2_2 := computeTestCombinedHash(t, level1_5, level1_6, level1_7)
 	testutil.AssertNil(t, r)
-	testutil.AssertEquals(t, h, &MerkleSummary{maxDegree, 2, []Hash{level2_1, level2_2}})
+	testutil.AssertEquals(t, h, &kvrwset.QueryReadsMerkleSummary{
+		MaxDegree:      uint32(maxDegree),
+		MaxLevel:       2,
+		MaxLevelHashes: hashesToBytes([]Hash{level2_1, level2_2})})
 }
 
 func TestQueryResultHelper_Hash_ThreeLevel(t *testing.T) {
@@ -109,11 +117,14 @@ func TestQueryResultHelper_Hash_ThreeLevel(t *testing.T) {
 	level3_1 := computeTestCombinedHash(t, level2_1, level2_2, level2_3, level2_4)
 	level3_2 := level1_17
 	testutil.AssertNil(t, r)
-	testutil.AssertEquals(t, h, &MerkleSummary{maxDegree, 3, []Hash{level3_1, level3_2}})
+	testutil.AssertEquals(t, h, &kvrwset.QueryReadsMerkleSummary{
+		MaxDegree:      uint32(maxDegree),
+		MaxLevel:       3,
+		MaxLevelHashes: hashesToBytes([]Hash{level3_1, level3_2})})
 }
 
-func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads []*KVRead) ([]*KVRead, *MerkleSummary) {
-	helper, _ := NewRangeQueryResultsHelper(enableHashing, maxDegree)
+func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads []*kvrwset.KVRead) ([]*kvrwset.KVRead, *kvrwset.QueryReadsMerkleSummary) {
+	helper, _ := NewRangeQueryResultsHelper(enableHashing, uint32(maxDegree))
 	for _, kvRead := range kvReads {
 		helper.AddResult(kvRead)
 	}
@@ -122,16 +133,18 @@ func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads [
 	return r, h
 }
 
-func buildTestKVReads(t *testing.T, num int) []*KVRead {
-	kvreads := []*KVRead{}
+func buildTestKVReads(t *testing.T, num int) []*kvrwset.KVRead {
+	kvreads := []*kvrwset.KVRead{}
 	for i := 0; i < num; i++ {
 		kvreads = append(kvreads, NewKVRead(fmt.Sprintf("key_%d", i), version.NewHeight(1, uint64(i))))
 	}
 	return kvreads
 }
 
-func computeTestHashKVReads(t *testing.T, kvReads []*KVRead) Hash {
-	b, err := serializeKVReads(kvReads)
+func computeTestHashKVReads(t *testing.T, kvReads []*kvrwset.KVRead) Hash {
+	queryReads := &kvrwset.QueryReads{}
+	queryReads.KvReads = kvReads
+	b, err := proto.Marshal(queryReads)
 	testutil.AssertNoError(t, err, "")
 	h, err := bccspfactory.GetDefault().Hash(b, hashOpts)
 	testutil.AssertNoError(t, err, "")

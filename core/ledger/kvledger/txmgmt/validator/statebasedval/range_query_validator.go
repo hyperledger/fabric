@@ -19,22 +19,23 @@ package statebasedval
 import (
 	"bytes"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 )
 
 type rangeQueryValidator interface {
-	init(rqInfo *rwset.RangeQueryInfo, itr statedb.ResultsIterator) error
+	init(rqInfo *kvrwset.RangeQueryInfo, itr statedb.ResultsIterator) error
 	validate() (bool, error)
 }
 
 type rangeQueryResultsValidator struct {
-	rqInfo *rwset.RangeQueryInfo
+	rqInfo *kvrwset.RangeQueryInfo
 	itr    statedb.ResultsIterator
 }
 
-func (v *rangeQueryResultsValidator) init(rqInfo *rwset.RangeQueryInfo, itr statedb.ResultsIterator) error {
+func (v *rangeQueryResultsValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr statedb.ResultsIterator) error {
 	v.rqInfo = rqInfo
 	v.itr = itr
 	return nil
@@ -44,7 +45,7 @@ func (v *rangeQueryResultsValidator) init(rqInfo *rwset.RangeQueryInfo, itr stat
 // and the iterator (latest view of the `committed state` i.e., db + updates). At first mismatch between the results
 // from the two sources (the range-query-info and the iterator), the validate retruns false.
 func (v *rangeQueryResultsValidator) validate() (bool, error) {
-	rqResults := v.rqInfo.Results
+	rqResults := v.rqInfo.GetRawReads().GetKvReads()
 	itr := v.itr
 	var result statedb.QueryResult
 	var err error
@@ -66,7 +67,7 @@ func (v *rangeQueryResultsValidator) validate() (bool, error) {
 			logger.Debugf("key name mismatch: Key in rwset = [%s], key in query results = [%s]", kvRead.Key, versionedKV.Key)
 			return false, nil
 		}
-		if !version.AreSame(versionedKV.Version, kvRead.Version) {
+		if !version.AreSame(versionedKV.Version, convertToVersionHeight(kvRead.Version)) {
 			logger.Debugf(`Version mismatch for key [%s]: Version in rwset = [%#v], latest version = [%#v]`,
 				versionedKV.Key, versionedKV.Version, kvRead.Version)
 			return false, nil
@@ -87,16 +88,16 @@ func (v *rangeQueryResultsValidator) validate() (bool, error) {
 }
 
 type rangeQueryHashValidator struct {
-	rqInfo        *rwset.RangeQueryInfo
+	rqInfo        *kvrwset.RangeQueryInfo
 	itr           statedb.ResultsIterator
-	resultsHelper *rwset.RangeQueryResultsHelper
+	resultsHelper *rwsetutil.RangeQueryResultsHelper
 }
 
-func (v *rangeQueryHashValidator) init(rqInfo *rwset.RangeQueryInfo, itr statedb.ResultsIterator) error {
+func (v *rangeQueryHashValidator) init(rqInfo *kvrwset.RangeQueryInfo, itr statedb.ResultsIterator) error {
 	v.rqInfo = rqInfo
 	v.itr = itr
 	var err error
-	v.resultsHelper, err = rwset.NewRangeQueryResultsHelper(true, rqInfo.ResultHash.MaxDegree)
+	v.resultsHelper, err = rwsetutil.NewRangeQueryResultsHelper(true, rqInfo.GetReadsMerkleHashes().MaxDegree)
 	return err
 }
 
@@ -111,8 +112,8 @@ func (v *rangeQueryHashValidator) init(rqInfo *rwset.RangeQueryInfo, itr statedb
 func (v *rangeQueryHashValidator) validate() (bool, error) {
 	itr := v.itr
 	lastMatchedIndex := -1
-	inMerkle := v.rqInfo.ResultHash
-	var merkle *rwset.MerkleSummary
+	inMerkle := v.rqInfo.GetReadsMerkleHashes()
+	var merkle *kvrwset.QueryReadsMerkleSummary
 	logger.Debugf("inMerkle: %#v", inMerkle)
 	for {
 		var result statedb.QueryResult
@@ -130,7 +131,7 @@ func (v *rangeQueryHashValidator) validate() (bool, error) {
 			return equals, nil
 		}
 		versionedKV := result.(*statedb.VersionedKV)
-		v.resultsHelper.AddResult(rwset.NewKVRead(versionedKV.Key, versionedKV.Version))
+		v.resultsHelper.AddResult(rwsetutil.NewKVRead(versionedKV.Key, versionedKV.Version))
 		merkle := v.resultsHelper.GetMerkleSummary()
 
 		if merkle.MaxLevel < inMerkle.MaxLevel {
@@ -152,4 +153,8 @@ func (v *rangeQueryHashValidator) validate() (bool, error) {
 			return false, nil
 		}
 	}
+}
+
+func convertToVersionHeight(v *kvrwset.Version) *version.Height {
+	return version.NewHeight(v.BlockNum, v.TxNum)
 }
