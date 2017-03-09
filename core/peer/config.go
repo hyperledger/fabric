@@ -52,7 +52,6 @@ var peerEndpointError error
 var syncStateSnapshotChannelSize int
 var syncStateDeltasChannelSize int
 var syncBlocksChannelSize int
-var validatorEnabled bool
 
 // Note: There is some kind of circular import issue that prevents us from
 // importing the "core" package into the "peer" package. The
@@ -98,7 +97,6 @@ func CacheConfiguration() (err error) {
 	syncStateSnapshotChannelSize = viper.GetInt("peer.sync.state.snapshot.channelSize")
 	syncStateDeltasChannelSize = viper.GetInt("peer.sync.state.deltas.channelSize")
 	syncBlocksChannelSize = viper.GetInt("peer.sync.blocks.channelSize")
-	validatorEnabled = viper.GetBool("peer.validator.enabled")
 
 	securityEnabled = true
 
@@ -159,14 +157,6 @@ func SyncBlocksChannelSize() int {
 		cacheConfiguration()
 	}
 	return syncBlocksChannelSize
-}
-
-// ValidatorEnabled returns the peer.validator.enabled property
-func ValidatorEnabled() bool {
-	if !configurationCached {
-		cacheConfiguration()
-	}
-	return validatorEnabled
 }
 
 // SecurityEnabled returns the securityEnabled property from cached configuration
