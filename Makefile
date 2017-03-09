@@ -114,6 +114,8 @@ orderer-docker: build/image/orderer/$(DUMMY)
 configtxgen: GO_TAGS+= nopkcs11
 configtxgen: build/bin/configtxgen
 
+javaenv: build/image/javaenv/$(DUMMY)
+
 buildenv: build/image/buildenv/$(DUMMY)
 
 build/image/testenv/$(DUMMY): build/image/buildenv/$(DUMMY)

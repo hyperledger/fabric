@@ -44,7 +44,7 @@ func TestExecuteInvokeOnManyChains(t *testing.T) {
 	args := []string{"a", "b", "10"}
 	for _, c := range chains {
 		cccid := ccprovider.NewCCContext(c, "example02", "0", "", false, nil, nil)
-		err = invokeExample02Transaction(ctxt, cccid, chaincodeID, args, false)
+		err = invokeExample02Transaction(ctxt, cccid, chaincodeID, pb.ChaincodeSpec_GOLANG, args, false)
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking transaction: %s", err)

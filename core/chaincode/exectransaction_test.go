@@ -19,6 +19,7 @@ package chaincode
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -317,7 +318,7 @@ func deploy2(ctx context.Context, cccid *ccprovider.CCContext, chaincodeDeployme
 
 // Invoke a chaincode.
 func invoke(ctx context.Context, chainID string, spec *pb.ChaincodeSpec, blockNumber uint64) (ccevt *pb.ChaincodeEvent, uuid string, retval []byte, err error) {
-	return invokeWithVersion(ctx, chainID, "0", spec, blockNumber)
+	return invokeWithVersion(ctx, chainID, spec.GetChaincodeId().Version, spec, blockNumber)
 }
 
 // Invoke a chaincode with version (needed for upgrade)
@@ -569,13 +570,13 @@ func checkFinalState(cccid *ccprovider.CCContext) error {
 }
 
 // Invoke chaincode_example02
-func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContext, cID *pb.ChaincodeID, args []string, destroyImage bool) error {
+func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContext, cID *pb.ChaincodeID, chaincodeType pb.ChaincodeSpec_Type, args []string, destroyImage bool) error {
 
 	var nextBlockNumber uint64
 
 	f := "init"
 	argsDeploy := util.ToChaincodeArgs(f, "a", "100", "b", "200")
-	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: argsDeploy}}
+	spec := &pb.ChaincodeSpec{Type: chaincodeType, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: argsDeploy}}
 	_, err := deploy(ctxt, cccid, spec, nextBlockNumber)
 	nextBlockNumber++
 	ccID := spec.ChaincodeId.Name
@@ -598,7 +599,7 @@ func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContex
 
 	f = "invoke"
 	invokeArgs := append([]string{f}, args...)
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
+	spec = &pb.ChaincodeSpec{ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs(invokeArgs...)}}
 	_, uuid, _, err := invoke(ctxt, cccid.ChainID, spec, nextBlockNumber)
 	nextBlockNumber++
 	if err != nil {
@@ -614,7 +615,7 @@ func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContex
 	// Test for delete state
 	f = "delete"
 	delArgs := util.ToChaincodeArgs(f, "a")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: delArgs}}
+	spec = &pb.ChaincodeSpec{ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: delArgs}}
 	_, _, _, err = invoke(ctxt, cccid.ChainID, spec, nextBlockNumber)
 	if err != nil {
 		return fmt.Errorf("Error deleting state in <%s>: %s", cccid.Name, err)
@@ -623,34 +624,56 @@ func invokeExample02Transaction(ctxt context.Context, cccid *ccprovider.CCContex
 	return nil
 }
 
+const (
+	chaincodeExample02GolangPath = "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
+	chaincodeExample02JavaPath   = "../../examples/chaincode/java/chaincode_example02"
+	chaincodeExample06JavaPath   = "../../examples/chaincode/java/chaincode_example06"
+)
+
 func TestExecuteInvokeTransaction(t *testing.T) {
-	chainID := util.GetTestChainID()
 
-	lis, err := initPeer(chainID)
-	if err != nil {
-		t.Fail()
-		t.Logf("Error creating peer: %s", err)
+	testCases := []struct {
+		chaincodeType pb.ChaincodeSpec_Type
+		chaincodePath string
+	}{
+		{pb.ChaincodeSpec_GOLANG, chaincodeExample02GolangPath},
+		{pb.ChaincodeSpec_JAVA, chaincodeExample02JavaPath},
 	}
 
-	defer finitPeer(lis, chainID)
+	for _, tc := range testCases {
+		t.Run(tc.chaincodeType.String(), func(t *testing.T) {
 
-	var ctxt = context.Background()
+			chainID := util.GetTestChainID()
 
-	cccid := ccprovider.NewCCContext(chainID, "example02", "0", "", false, nil, nil)
-	url := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02"
-	ccID := &pb.ChaincodeID{Name: "example02", Path: url, Version: "0"}
+			lis, err := initPeer(chainID)
+			if err != nil {
+				t.Fail()
+				t.Logf("Error creating peer: %s", err)
+			}
 
-	args := []string{"a", "b", "10"}
-	err = invokeExample02Transaction(ctxt, cccid, ccID, args, true)
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking transaction: %s", err)
-	} else {
-		fmt.Print("Invoke test passed\n")
-		t.Log("Invoke test passed")
+			defer finitPeer(lis, chainID)
+
+			var ctxt = context.Background()
+			chaincodeName := generateChaincodeName(tc.chaincodeType)
+			chaincodeVersion := "1.0.0.0"
+			cccid := ccprovider.NewCCContext(chainID, chaincodeName, chaincodeVersion, "", false, nil, nil)
+			ccID := &pb.ChaincodeID{Name: chaincodeName, Path: tc.chaincodePath, Version: chaincodeVersion}
+
+			args := []string{"a", "b", "10"}
+			err = invokeExample02Transaction(ctxt, cccid, ccID, tc.chaincodeType, args, true)
+			if err != nil {
+				t.Fail()
+				t.Logf("Error invoking transaction: %s", err)
+			} else {
+				fmt.Print("Invoke test passed\n")
+				t.Log("Invoke test passed")
+			}
+
+			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccID}})
+
+		})
 	}
 
-	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{ChaincodeId: ccID}})
 }
 
 // Test the execution of an invalid transaction.
@@ -674,7 +697,7 @@ func TestExecuteInvokeInvalidTransaction(t *testing.T) {
 
 	//FAIL, FAIL!
 	args := []string{"x", "-1"}
-	err = invokeExample02Transaction(ctxt, cccid, ccID, args, false)
+	err = invokeExample02Transaction(ctxt, cccid, ccID, pb.ChaincodeSpec_GOLANG, args, false)
 
 	//this HAS to fail with expectedDeltaStringPrefix
 	if err != nil {
@@ -1509,6 +1532,76 @@ func TestChaincodeInvokesSystemChaincode(t *testing.T) {
 	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 }
 
+func TestChaincodeInitializeInitError(t *testing.T) {
+	testCases := []struct {
+		name          string
+		chaincodeType pb.ChaincodeSpec_Type
+		chaincodePath string
+		args          []string
+	}{
+		{"NotSuccessResponse", pb.ChaincodeSpec_GOLANG, chaincodeExample02GolangPath, []string{"init", "not", "enough", "args"}},
+		{"NotSuccessResponse", pb.ChaincodeSpec_JAVA, chaincodeExample02JavaPath, []string{"init", "not", "enough", "args"}},
+		{"RuntimeException", pb.ChaincodeSpec_JAVA, chaincodeExample06JavaPath, []string{"runtimeException"}},
+	}
+
+	channelID := util.GetTestChainID()
+
+	for _, tc := range testCases {
+		t.Run(tc.name+"_"+tc.chaincodeType.String(), func(t *testing.T) {
+
+			// initialize peer
+			if listener, err := initPeer(channelID); err != nil {
+				t.Errorf("Error creating peer: %s", err)
+			} else {
+				defer finitPeer(listener, channelID)
+			}
+
+			var nextBlockNumber uint64
+
+			// the chaincode to install and instanciate
+			chaincodeName := generateChaincodeName(tc.chaincodeType)
+			chaincodePath := tc.chaincodePath
+			chaincodeVersion := "1.0.0.0"
+			chaincodeType := tc.chaincodeType
+			chaincodeDeployArgs := util.ArrayToChaincodeArgs(tc.args)
+
+			// new chaincode context for passing around parameters
+			chaincodeCtx := ccprovider.NewCCContext(channelID, chaincodeName, chaincodeVersion, "", false, nil, nil)
+
+			// attempt to deploy chaincode
+			_, err := deployChaincode(context.Background(), chaincodeCtx, chaincodeType, chaincodePath, chaincodeDeployArgs, nextBlockNumber)
+
+			// deploy should of failed
+			if err == nil {
+				t.Fatal("Deployment should have failed.")
+			}
+			t.Log(err)
+
+		})
+	}
+}
+
+func deployChaincode(ctx context.Context, chaincodeCtx *ccprovider.CCContext, chaincodeType pb.ChaincodeSpec_Type, path string, args [][]byte, nextBlockNumber uint64) ([]byte, error) {
+
+	chaincodeSpec := &pb.ChaincodeSpec{
+		ChaincodeId: &pb.ChaincodeID{
+			Name:    chaincodeCtx.Name,
+			Version: chaincodeCtx.Version,
+			Path:    path,
+		},
+		Type: chaincodeType,
+		Input: &pb.ChaincodeInput{
+			Args: args,
+		},
+	}
+
+	result, err := deploy(ctx, chaincodeCtx, chaincodeSpec, nextBlockNumber)
+	if err != nil {
+		return nil, fmt.Errorf("Error deploying <%s:%s>: %s", chaincodeSpec.ChaincodeId.Name, chaincodeSpec.ChaincodeId.Version, err)
+	}
+	return result, nil
+}
+
 var signer msp.SigningIdentity
 
 func TestMain(m *testing.M) {
@@ -1526,4 +1619,19 @@ func TestMain(m *testing.M) {
 
 	SetupTestConfig()
 	os.Exit(m.Run())
+}
+
+var rng *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func generateChaincodeName(chaincodeType pb.ChaincodeSpec_Type) string {
+	prefix := "cc_"
+	switch chaincodeType {
+	case pb.ChaincodeSpec_GOLANG:
+		prefix = "cc_go_"
+	case pb.ChaincodeSpec_JAVA:
+		prefix = "cc_java_"
+	case pb.ChaincodeSpec_NODE:
+		prefix = "cc_js_"
+	}
+	return fmt.Sprintf("%s%06d", prefix, rng.Intn(999999))
 }

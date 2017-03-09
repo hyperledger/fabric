@@ -139,8 +139,8 @@ logging:
     status:    warning
     stop:      warning
     login:     warning
-    vm:        warning
-    chaincode: warning
+    vm:        debug
+    chaincode: debug
 
 
 ###############################################################################
@@ -331,7 +331,7 @@ vm:
                 file: /path/to/ca.pem
             key:
                 file: /path/to/server-key.pem
-
+        attachStdout: true
 ###############################################################################
 #
 #    Chaincode section
@@ -361,9 +361,23 @@ chaincode:
         # of platforms are expanded.  For now, we can just use baseos
         runtime: $(BASE_DOCKER_NS)/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
+    java:
+        # This is an image based on java:openjdk-8 with addition compiler
+        # tools added for java shim layer packaging.
+        # This image is packed with shim layer libraries that are necessary
+        # for Java chaincode runtime.
+        Dockerfile:  |
+            from $(DOCKER_NS)/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
     startuptimeout: 1000
+
+    # timeout in millisecs for invokes and initialize commands
+    # this timeout is used by all chaincodes in all the channels including
+    # system chaincodes. Default is 30000ms (30 seconds)
+    executetimeout: 30000
+
 
     #timeout in millisecs for deploying chaincode from a remote repository.
     deploytimeout: 60000
@@ -392,6 +406,8 @@ chaincode:
         lccc: enable
         escc: enable
         vscc: enable
+
+    logLevel: debug
 
 ###############################################################################
 #

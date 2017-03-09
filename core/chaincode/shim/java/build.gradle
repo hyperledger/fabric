@@ -89,16 +89,21 @@ task copyToLib(type: Copy) {
 
 
 task copyProtos(type:Copy){
-
- from ("${rootDir}/protos/peer"){
-     include '**/chaincode_event.proto'
-     include '**/chaincode.proto'
-     include '**/chaincode_shim.proto'
-     include '**/proposal.proto'
-     include '**/proposal_response.proto'
- }
-    into "${projectDir}/src/main/proto/peer"
-
+    into "peer", {
+        from ("${rootDir}/protos/peer"){
+            include 'chaincode_event.proto'
+            include 'chaincode.proto'
+            include 'chaincode_shim.proto'
+            include 'proposal.proto'
+            include 'proposal_response.proto'
+        }
+    }
+    into "common", {
+        from ("${rootDir}/protos/common"){
+            include 'common.proto'
+        }
+    }
+    into "${projectDir}/src/main/proto"
 }
 
 tasks['build'].mustRunAfter tasks['copyProtos']
@@ -108,6 +113,7 @@ build.finalizedBy(publishToMavenLocal)
 
 dependencies {
     compile 'com.google.protobuf:protobuf-java:3.0.0'
+    compile 'com.google.protobuf:protobuf-java-util:3.0.0'
     compile 'io.grpc:grpc-all:0.13.2'
     compile 'commons-cli:commons-cli:1.3.1'
     compile 'io.netty:netty-tcnative-boringssl-static:1.1.33.Fork21:' + tcnative_classifier
