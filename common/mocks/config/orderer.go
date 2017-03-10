@@ -14,13 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sharedconfig
+package config
 
-import ab "github.com/hyperledger/fabric/protos/orderer"
-import "time"
+import (
+	"time"
 
-// SharedConfig is a mock implementation of sharedconfig.SharedConfig
-type SharedConfig struct {
+	ab "github.com/hyperledger/fabric/protos/orderer"
+)
+
+// Orderer is a mock implementation of config.Orderer
+type Orderer struct {
 	// ConsensusTypeVal is returned as the result of ConsensusType()
 	ConsensusTypeVal string
 	// BatchSizeVal is returned as the result of BatchSize()
@@ -34,26 +37,26 @@ type SharedConfig struct {
 }
 
 // ConsensusType returns the ConsensusTypeVal
-func (scm *SharedConfig) ConsensusType() string {
+func (scm *Orderer) ConsensusType() string {
 	return scm.ConsensusTypeVal
 }
 
 // BatchSize returns the BatchSizeVal
-func (scm *SharedConfig) BatchSize() *ab.BatchSize {
+func (scm *Orderer) BatchSize() *ab.BatchSize {
 	return scm.BatchSizeVal
 }
 
 // BatchTimeout returns the BatchTimeoutVal
-func (scm *SharedConfig) BatchTimeout() time.Duration {
+func (scm *Orderer) BatchTimeout() time.Duration {
 	return scm.BatchTimeoutVal
 }
 
 // KafkaBrokers returns the KafkaBrokersVal
-func (scm *SharedConfig) KafkaBrokers() []string {
+func (scm *Orderer) KafkaBrokers() []string {
 	return scm.KafkaBrokersVal
 }
 
 // MaxChannelsCount returns the MaxChannelsCountVal
-func (scm *SharedConfig) MaxChannelsCount() uint64 {
+func (scm *Orderer) MaxChannelsCount() uint64 {
 	return scm.MaxChannelsCountVal
 }

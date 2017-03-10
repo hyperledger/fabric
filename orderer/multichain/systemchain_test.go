@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
+	mockconfig "github.com/hyperledger/fabric/common/mocks/config"
 	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
-	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	"github.com/hyperledger/fabric/orderer/common/filter"
 	cb "github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
@@ -33,12 +33,12 @@ import (
 )
 
 type mockSupport struct {
-	msc *mockconfigvaluesorderer.SharedConfig
+	msc *mockconfig.Orderer
 }
 
 func newMockSupport() *mockSupport {
 	return &mockSupport{
-		msc: &mockconfigvaluesorderer.SharedConfig{},
+		msc: &mockconfig.Orderer{},
 	}
 }
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sharedconfig
+package config
 
 import (
 	"testing"
@@ -22,6 +22,6 @@ import (
 	"github.com/hyperledger/fabric/common/config"
 )
 
-func TestSharedConfigInterface(t *testing.T) {
-	_ = config.Orderer(&SharedConfig{})
+func TestOrdererConfigInterface(t *testing.T) {
+	_ = config.Orderer(&Orderer{})
 }
