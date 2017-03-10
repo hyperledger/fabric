@@ -130,7 +130,7 @@ func finitPeer(lis net.Listener, chainIDs ...string) {
 		requestTimeout := viper.GetDuration("ledger.state.couchDBConfig.requestTimeout")
 
 		couchInstance, _ := couchdb.CreateCouchInstance(connectURL, username, password, maxRetries, maxRetriesOnStartup, requestTimeout)
-		db, _ := couchdb.CreateCouchDatabase(*couchInstance, chainID)
+		db := couchdb.CouchDatabase{CouchInstance: *couchInstance, DBName: chainID}
 		//drop the test database
 		db.DropDatabase()
 
