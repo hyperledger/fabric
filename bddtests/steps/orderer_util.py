@@ -17,11 +17,13 @@
 import time
 import datetime
 import Queue
-from orderer import ab_pb2
+from orderer import ab_pb2, ab_pb2_grpc
 from common import common_pb2
 
 import bdd_test_util
 import bootstrap_util
+import bdd_grpc_util
+
 
 from grpc.beta import implementations
 from grpc.framework.interfaces.face.face import AbortionError
@@ -161,11 +163,12 @@ class UserRegistration:
         for compose_service, deliverStreamHelper in self.abDeliversStreamHelperDict.iteritems():
             deliverStreamHelper.sendQueue.put(None)
 
-    def connectToDeliverFunction(self, context, composeService, cert, nodeAdminTuple, timeout=1):
+    def connectToDeliverFunction(self, context, composeService, certAlias, nodeAdminTuple, timeout=1):
         'Connect to the deliver function and drain messages to associated orderer queue'
         assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
         streamHelper = DeliverStreamHelper(directory=self.directory,
-                                           ordererStub=self.getABStubForComposeService(context, composeService),
+                                           ordererStub=self.getABStubForComposeService(context=context,
+                                                                                       composeService=composeService),
                                            entity=self, nodeAdminTuple=nodeAdminTuple)
         self.abDeliversStreamHelperDict[composeService] = streamHelper
         return streamHelper
@@ -195,8 +198,13 @@ class UserRegistration:
         if composeService in self.atomicBroadcastStubsDict:
             return self.atomicBroadcastStubsDict[composeService]
         # Get the IP address of the server that the user registered on
-        channel = getGRPCChannel(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
-        newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
+        root_certificates = self.directory.getTrustedRootsForOrdererNetworkAsPEM()
+        # ipAddress = "{0}:{1}".format(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
+        ipAddress = bdd_test_util.ipFromContainerNamePart(composeService, context.compose_containers)
+        print("ipAddress in getABStubForComposeService == {0}".format(ipAddress))
+        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=7050, root_certificates=root_certificates, ssl_target_name_override=composeService)
+        # channel = getGRPCChannel(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
+        newABStub = ab_pb2_grpc.AtomicBroadcastStub(channel)
         self.atomicBroadcastStubsDict[composeService] = newABStub
         return newABStub
 
@@ -263,9 +271,3 @@ def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 3, timeTo
     for msg in messages:
         yield msg
     time.sleep(timeToHoldOpen)
-
-
-def getGRPCChannel(host='localhost', port=7050):
-    channel = implementations.insecure_channel(host, port)
-    print("Returning GRPC for address: {0}:{1}".format(host,port))
-    return channel

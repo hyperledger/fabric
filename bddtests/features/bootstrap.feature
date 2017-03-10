@@ -11,7 +11,7 @@ Feature: Bootstrap
   As a blockchain entrepreneur
   I want to bootstrap a new blockchain network
 
-    #@doNotDecompose
+    @doNotDecompose
     @generateDocs
   Scenario Outline: Bootstrap a development network with 4 peers (2 orgs)  and 1 orderer (1 org), each having a single independent root of trust (No fabric-ca, just openssl)
     #creates 1 self-signed key/cert pair per orderer organization
@@ -118,7 +118,7 @@ Feature: Bootstrap
 
     And the user "dev0Org0" creates a ConfigUpdate Tx "configUpdateTx1" using cert alias "dev0Org0App1" using signed ConfigUpdateEnvelope "createChannelConfigUpdate1"
 
-    And the user "dev0Org0" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "orderer0" to create channel "com.acme.blockchain.jdoe.Channel1"
+    And the user "dev0Org0" using cert alias "dev0Org0App1" broadcasts ConfigUpdate Tx "configUpdateTx1" to orderer "orderer0" to create channel "com.acme.blockchain.jdoe.Channel1"
 
     # Sleep as the deliver takes a bit to have the first block ready
     And I wait "2" seconds
@@ -161,7 +161,7 @@ Feature: Bootstrap
     # Under the covers, create a deployment spec, etc.
     And user "dev0Org0" using cert alias "dev0Org0App1" creates a install proposal "installProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
 
-    And user "dev0Org0" sends proposal "installProposal1" to endorsers with timeout of "30" seconds with proposal responses "installProposalResponses":
+    And user "dev0Org0" using cert alias "dev0Org0App1" sends proposal "installProposal1" to endorsers with timeout of "30" seconds with proposal responses "installProposalResponses":
         | Endorser |
         | peer0    |
         | peer2    |
@@ -174,7 +174,7 @@ Feature: Bootstrap
     # Under the covers, create a deployment spec, etc.
     When user "dev0Org0" using cert alias "dev0Org0App1" creates a instantiate proposal "instantiateProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "cc_spec"
 
-    And user "dev0Org0" sends proposal "instantiateProposal1" to endorsers with timeout of "90" seconds with proposal responses "instantiateProposalResponses":
+    And user "dev0Org0" using cert alias "dev0Org0App1" sends proposal "instantiateProposal1" to endorsers with timeout of "30" seconds with proposal responses "instantiateProposalResponses":
       | Endorser |
       | peer0    |
       | peer2    |
@@ -215,7 +215,7 @@ Feature: Bootstrap
     # Under the covers, create a deployment spec, etc.
     And user "dev0Org0" using cert alias "dev0Org0App1" creates a proposal "queryProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "querySpec1"
 
-    And user "dev0Org0" sends proposal "queryProposal1" to endorsers with timeout of "30" seconds with proposal responses "queryProposal1Responses":
+    And user "dev0Org0" using cert alias "dev0Org0App1" sends proposal "queryProposal1" to endorsers with timeout of "30" seconds with proposal responses "queryProposal1Responses":
         | Endorser |
         | peer0    |
         | peer2    |
@@ -239,7 +239,7 @@ Feature: Bootstrap
     # Under the covers, create a deployment spec, etc.
       And user "dev0Org0" using cert alias "dev0Org0App1" creates a proposal "invokeProposal1" for channel "com.acme.blockchain.jdoe.Channel1" using chaincode spec "invocationSpec1"
 
-      And user "dev0Org0" sends proposal "invokeProposal1" to endorsers with timeout of "30" seconds with proposal responses "invokeProposal1Responses":
+      And user "dev0Org0" using cert alias "dev0Org0App1" sends proposal "invokeProposal1" to endorsers with timeout of "30" seconds with proposal responses "invokeProposal1Responses":
         | Endorser |
         | peer0    |
         | peer2    |

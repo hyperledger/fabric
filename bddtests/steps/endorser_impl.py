@@ -106,8 +106,8 @@ def step_impl(context, userName, certAlias, proposalAlias, channelName, ccSpecAl
 
 
 
-@when(u'user "{userName}" sends proposal "{proposalAlias}" to endorsers with timeout of "{timeout}" seconds with proposal responses "{proposalResponsesAlias}"')
-def step_impl(context, userName, proposalAlias, timeout, proposalResponsesAlias):
+@when(u'user "{userName}" using cert alias "{certAlias}" sends proposal "{proposalAlias}" to endorsers with timeout of "{timeout}" seconds with proposal responses "{proposalResponsesAlias}"')
+def step_impl(context, userName, certAlias, proposalAlias, timeout, proposalResponsesAlias):
     assert 'table' in context, "Expected table of endorsers"
     directory = bootstrap_util.getDirectory(context=context)
     user = directory.getUser(userName=userName)
@@ -117,7 +117,9 @@ def step_impl(context, userName, proposalAlias, timeout, proposalResponsesAlias)
 
     # Send proposal to each specified endorser, waiting 'timeout' seconds for response/error
     endorsers = [row['Endorser'] for row in context.table.rows]
-    endorserStubs = endorser_util.getEndorserStubs(context, endorsers)
+    nodeAdminTuple = user.tags[certAlias]
+
+    endorserStubs = endorser_util.getEndorserStubs(context, composeServices=endorsers, directory=directory, nodeAdminTuple=nodeAdminTuple)
     proposalResponseFutures = [endorserStub.ProcessProposal.future(signedProposal, int(timeout)) for endorserStub in endorserStubs]
     resultsDict =  dict(zip(endorsers, [respFuture.result() for respFuture in proposalResponseFutures]))
     user.setTagValue(proposalResponsesAlias, resultsDict)

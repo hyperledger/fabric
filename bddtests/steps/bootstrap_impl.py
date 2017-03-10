@@ -14,9 +14,7 @@
 #
 
 from behave import *
-import bdd_grpc_util
 import endorser_util
-import bdd_test_util
 import bootstrap_util
 import orderer_util
 import compose
@@ -204,19 +202,19 @@ def step_impl(context, userName, certAlias, configUpdateTxName, createChannelSig
                                                                      typeAsString="CONFIG_UPDATE")
     user.setTagValue(configUpdateTxName, envelope_for_config_update)
 
-@given(u'the user "{userName}" broadcasts ConfigUpdate Tx "{configTxName}" to orderer "{orderer}" to create channel "{channelId}"')
-def step_impl(context, userName, configTxName, orderer, channelId):
+@given(u'the user "{userName}" using cert alias "{certAlias}" broadcasts ConfigUpdate Tx "{configTxName}" to orderer "{orderer}" to create channel "{channelId}"')
+def step_impl(context, userName, certAlias, configTxName, orderer, channelId):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
     configTxEnvelope = user.tags[configTxName]
-    bootstrap_util.broadcastCreateChannelConfigTx(context=context, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=configTxEnvelope)
+    bootstrap_util.broadcastCreateChannelConfigTx(context=context,certAlias=certAlias, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=configTxEnvelope)
 
 @when(u'the user "{userName}" broadcasts transaction "{transactionAlias}" to orderer "{orderer}" on channel "{channelId}"')
 def step_impl(context, userName, transactionAlias, orderer, channelId):
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName=userName)
     transaction = user.tags[transactionAlias]
-    bootstrap_util.broadcastCreateChannelConfigTx(context=context, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=transaction)
+    bootstrap_util.broadcastCreateChannelConfigTx(context=context, certAlias=None, composeService=orderer, chainId=channelId, user=user, configTxEnvelope=transaction)
 
 
 @when(u'user "{userName}" using cert alias "{certAlias}" connects to deliver function on orderer "{composeService}"')
@@ -225,7 +223,7 @@ def step_impl(context, userName, certAlias, composeService):
     user = directory.getUser(userName=userName)
     nodeAdminTuple = user.tags[certAlias]
     cert = directory.findCertForNodeAdminTuple(nodeAdminTuple)
-    user.connectToDeliverFunction(context, composeService, cert, nodeAdminTuple=nodeAdminTuple)
+    user.connectToDeliverFunction(context, composeService, certAlias, nodeAdminTuple=nodeAdminTuple)
 
 @when(u'user "{userName}" sends deliver a seek request on orderer "{composeService}" with properties')
 def step_impl(context, userName, composeService):
@@ -256,8 +254,9 @@ def step_impl(context, userName, certAlias, genisisBlockName, joinChannelResult)
     timeout = 10
     directory = bootstrap_util.getDirectory(context)
     user = directory.getUser(userName)
+    nodeAdminTuple = user.tags[certAlias]
     # Find the cert using the cert tuple information saved for the user under certAlias
-    signersCert = directory.findCertForNodeAdminTuple(user.tags[certAlias])
+    signersCert = directory.findCertForNodeAdminTuple(nodeAdminTuple)
 
     # Retrieve the genesis block from the returned value of deliver (Will be list with first block as genesis block)
     genesisBlock = user.tags[genisisBlockName][0]
@@ -267,7 +266,7 @@ def step_impl(context, userName, certAlias, genisisBlockName, joinChannelResult)
 
     # Send proposal to each specified endorser, waiting 'timeout' seconds for response/error
     endorsers = [row['Peer'] for row in context.table.rows]
-    proposalResponseFutures = [endorserStub.ProcessProposal.future(signedProposal, int(timeout)) for endorserStub in endorser_util.getEndorserStubs(context, endorsers)]
+    proposalResponseFutures = [endorserStub.ProcessProposal.future(signedProposal, int(timeout)) for endorserStub in endorser_util.getEndorserStubs(context,composeServices=endorsers, directory=directory, nodeAdminTuple=nodeAdminTuple)]
     resultsDict =  dict(zip(endorsers, [respFuture.result() for respFuture in proposalResponseFutures]))
     user.setTagValue(joinChannelResult, resultsDict)
 

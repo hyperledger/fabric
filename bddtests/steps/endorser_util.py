@@ -133,11 +133,18 @@ def createInstallChaincodeSpecForBDD(ccDeploymentSpec, chainID):
                                          args=['install', ccDeploymentSpec.SerializeToString()])
     return lc_chaincode_spec
 
-def getEndorserStubs(context, composeServices):
+def getEndorserStubs(context, composeServices, directory, nodeAdminTuple):
     stubs = []
+    user = directory.getUser(nodeAdminTuple.user)
+    signingOrg = directory.getOrganization(nodeAdminTuple.organization)
+
     for composeService in composeServices:
         ipAddress = bdd_test_util.ipFromContainerNamePart(composeService, context.compose_containers)
-        channel = bdd_grpc_util.getGRPCChannel(ipAddress)
+        # natForPeerSigner = directory.findNodeAdminTuple(userName="{0}Signer".format(composeService), contextName=composeService, orgName="peerOrg0")
+        # signerCert = directory.getCertAsPEM(natForPeerSigner)
+        root_certificates = directory.getTrustedRootsForPeerNetworkAsPEM()
+        channel = bdd_grpc_util.getGRPCChannel(ipAddress=ipAddress, port=7051, root_certificates=root_certificates,
+                                               ssl_target_name_override=composeService)
         newEndorserStub = peer_pb2_grpc.EndorserStub(channel)
         stubs.append(newEndorserStub)
     return stubs
