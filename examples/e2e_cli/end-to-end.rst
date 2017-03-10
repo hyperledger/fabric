@@ -442,7 +442,7 @@ Install the sample go code onto one of the four peer nodes
 
 .. code:: bash
 
-    peer chaincode install -o orderer:7050 -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
+    peer chaincode install -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02
 
 Instantiate chaincode and define the endorsement policy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -476,7 +476,7 @@ Query chaincode
 
 .. code:: bash
 
-    peer chaincode query -o orderer:7050 -C mychannel -n mycc -c '{"Args":["query","a"]}'
+    peer chaincode query -C mychannel -n mycc -c '{"Args":["query","a"]}'
 
 The result of the above command should be as below:
 

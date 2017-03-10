@@ -214,7 +214,7 @@ type ChaincodeCmdFactory struct {
 }
 
 // InitCmdFactory init the ChaincodeCmdFactory with default clients
-func InitCmdFactory() (*ChaincodeCmdFactory, error) {
+func InitCmdFactory(isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
 	endorserClient, err := common.GetEndorserClient()
 	if err != nil {
 		return nil, fmt.Errorf("Error getting endorser client %s: %s", chainFuncName, err)
@@ -225,11 +225,14 @@ func InitCmdFactory() (*ChaincodeCmdFactory, error) {
 		return nil, fmt.Errorf("Error getting default signer: %s", err)
 	}
 
-	broadcastClient, err := common.GetBroadcastClient(orderingEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting broadcast client: %s", err)
-	}
+	var broadcastClient common.BroadcastClient
+	if isOrdererRequired {
+		broadcastClient, err = common.GetBroadcastClient(orderingEndpoint)
 
+		if err != nil {
+			return nil, fmt.Errorf("Error getting broadcast client: %s", err)
+		}
+	}
 	return &ChaincodeCmdFactory{
 		EndorserClient:  endorserClient,
 		Signer:          signer,
