@@ -53,6 +53,16 @@ func (msp *noopmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	return id, nil
 }
 
+// GetRootCerts returns the root certificates for this MSP
+func (msp *noopmsp) GetRootCerts() []Identity {
+	return nil
+}
+
+// GetIntermediateCerts returns the intermediate root certificates for this MSP
+func (msp *noopmsp) GetIntermediateCerts() []Identity {
+	return nil
+}
+
 func (msp *noopmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	mspLogger.Infof("Obtaining identity for %s", string(serializedID))
 	id, _ := newNoopIdentity()

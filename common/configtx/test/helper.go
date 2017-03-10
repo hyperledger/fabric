@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/genesis"
 	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
 
 	logging "github.com/op/go-logging"
 )
@@ -76,6 +77,15 @@ func init() {
 // MakeGenesisBlock creates a genesis block using the test templates for the given chainID
 func MakeGenesisBlock(chainID string) (*cb.Block, error) {
 	return genesis.NewFactoryImpl(CompositeTemplate()).Block(chainID)
+}
+
+// MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given chainID
+func MakeGenesisBlockFromMSPs(chainID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig,
+	appOrgID, ordererOrgID string) (*cb.Block, error) {
+	appOrgTemplate := configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.ApplicationGroupKey, appOrgID}, appMSPConf))
+	ordererOrgTemplate := configtx.NewSimpleTemplate(configtxmsp.TemplateGroupMSP([]string{config.OrdererGroupKey, ordererOrgID}, ordererMSPConf))
+	composite := configtx.NewCompositeTemplate(OrdererTemplate(), appOrgTemplate, ApplicationOrgTemplate(), ordererOrgTemplate)
+	return genesis.NewFactoryImpl(composite).Block(chainID)
 }
 
 // OrderererTemplate returns the test orderer template

@@ -198,6 +198,7 @@ func genCertificateAuthorityECDSA(name string) (*ecdsa.PrivateKey, *x509.Certifi
 	subject.CommonName = name
 
 	template.Subject = subject
+	template.SubjectKeyId = []byte{1, 2, 3, 4}
 
 	x509Cert, err := genCertificateECDSA(name, &template, &template, &key.PublicKey, key)
 

@@ -18,7 +18,6 @@ package node
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -91,35 +90,6 @@ func initSysCCs() {
 	logger.Infof("Deployed system chaincodess")
 }
 
-// load the TLS config for the server(s)
-func loadTLSConfig() comm.SecureServerConfig {
-
-	secureConfig := comm.SecureServerConfig{
-		UseTLS: viper.GetBool("peer.tls.enabled"),
-	}
-
-	if secureConfig.UseTLS {
-		// get the certs from the file system
-		serverKey, err := ioutil.ReadFile(viper.GetString("peer.tls.key.file"))
-		serverCert, err := ioutil.ReadFile(viper.GetString("peer.tls.cert.file"))
-		// must have both key and cert file
-		if err != nil {
-			logger.Fatalf("Error loading TLS key and/or certificate (%s)", err)
-		}
-		secureConfig.ServerCertificate = serverCert
-		secureConfig.ServerKey = serverKey
-		// check for root cert
-		if viper.GetString("peer.tls.rootcert.file") != "" {
-			rootCert, err := ioutil.ReadFile(viper.GetString("peer.tls.rootcert.file"))
-			if err != nil {
-				logger.Fatalf("Error loading TLS root certificate (%s)", err)
-			}
-			secureConfig.ServerRootCAs = [][]byte{rootCert}
-		}
-	}
-	return secureConfig
-}
-
 func serve(args []string) error {
 	ledgermgmt.Initialize()
 	// Parameter overrides must be processed before any paramaters are
@@ -144,33 +114,17 @@ func serve(args []string) error {
 
 	listenAddr := viper.GetString("peer.listenAddress")
 
-	/**  TODO remove
-	if "" == listenAddr {
-		logger.Debug("Listen address not specified, using peer endpoint address")
-		listenAddr = peerEndpoint.Address
-	}
-
-	lis, err := net.Listen("tcp", listenAddr)
+	secureConfig, err := peer.GetSecureConfig()
 	if err != nil {
-		grpclog.Fatalf("Failed to listen: %v", err)
+		logger.Fatalf("Error loading secure config for peer (%s)", err)
 	}
-
-	logger.Infof("Security enabled status: %t", core.SecurityEnabled())
-
-	//Create GRPC server - return if an error occurs
-	secureConfig := comm.SecureServerConfig{
-		UseTLS: viper.GetBool("peer.tls.enabled"),
-	}
-	grpcServer, err := comm.NewGRPCServerFromListener(lis, secureConfig)
-	if err != nil {
-		fmt.Println("Failed to return new GRPC server: ", err)
-		return err
-	}
-	*/
-	secureConfig := loadTLSConfig()
 	peerServer, err := peer.CreatePeerServer(listenAddr, secureConfig)
 	if err != nil {
 		logger.Fatalf("Failed to create peer server (%s)", err)
+	}
+
+	if secureConfig.UseTLS {
+		logger.Info("Starting peer with TLS enabled")
 	}
 
 	//TODO - do we need different SSL material for events ?

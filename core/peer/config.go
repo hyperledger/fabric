@@ -31,10 +31,12 @@ package peer
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 
 	"github.com/spf13/viper"
 
+	"github.com/hyperledger/fabric/core/comm"
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
@@ -175,4 +177,32 @@ func SecurityEnabled() bool {
 		cacheConfiguration()
 	}
 	return securityEnabled
+}
+
+// GetSecureConfig returns the secure server configuration for the peer
+func GetSecureConfig() (comm.SecureServerConfig, error) {
+	secureConfig := comm.SecureServerConfig{
+		UseTLS: viper.GetBool("peer.tls.enabled"),
+	}
+	if secureConfig.UseTLS {
+		// get the certs from the file system
+		serverKey, err := ioutil.ReadFile(viper.GetString("peer.tls.key.file"))
+		serverCert, err := ioutil.ReadFile(viper.GetString("peer.tls.cert.file"))
+		// must have both key and cert file
+		if err != nil {
+			return secureConfig, fmt.Errorf("Error loading TLS key and/or certificate (%s)", err)
+		}
+		secureConfig.ServerCertificate = serverCert
+		secureConfig.ServerKey = serverKey
+		// check for root cert
+		if viper.GetString("peer.tls.rootcert.file") != "" {
+			rootCert, err := ioutil.ReadFile(viper.GetString("peer.tls.rootcert.file"))
+			if err != nil {
+				return secureConfig, fmt.Errorf("Error loading TLS root certificate (%s)", err)
+			}
+			secureConfig.ServerRootCAs = [][]byte{rootCert}
+		}
+		return secureConfig, nil
+	}
+	return secureConfig, nil
 }
