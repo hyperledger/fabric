@@ -109,7 +109,7 @@ func NewDeliverService(gossip blocksprovider.GossipServiceAdapter, endpoints []s
 	for _, idx := range indices {
 		logger.Infof("Creating delivery service to get blocks from the ordering service, %s", endpoints[idx])
 
-		dialOpts := []grpc.DialOption{grpc.WithInsecure(), grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
+		dialOpts := []grpc.DialOption{grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
 
 		if comm.TLSEnabled() {
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.InitTLSForPeer()))
