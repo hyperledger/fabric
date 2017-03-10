@@ -247,6 +247,68 @@ func TestPEMBlocksFromFile(t *testing.T) {
 	}
 }
 
+func TestPEMBlocksFromFileEnv(t *testing.T) {
+
+	// create temp file
+	file, err := ioutil.TempFile(os.TempDir(), "test")
+	if err != nil {
+		t.Fatalf("Unable to create temp file.")
+	}
+	defer os.Remove(file.Name())
+
+	numberOfCertificates := 3
+	var pems []byte
+	for i := 0; i < numberOfCertificates; i++ {
+		publicKeyCert, _, err := util.GenerateMockPublicPrivateKeyPairPEM(true)
+		if err != nil {
+			t.Fatalf("Enable to generate a signer certificate: %v", err)
+		}
+		pems = append(pems, publicKeyCert...)
+	}
+
+	// write temp file
+	if err := ioutil.WriteFile(file.Name(), pems, 0666); err != nil {
+		t.Fatalf("Unable to write to temp file: %v", err)
+	}
+
+	testCases := []struct {
+		name string
+		data string
+	}{
+		{"Override", "---\nInner:\n  Multiple:\n    File: wrong_file"},
+		{"NoFileElement", "---\nInner:\n  Multiple:\n"},
+		// {"NoElementAtAll", "---\nInner:\n"}, test case for another time
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			envVar := "VIPERUTIL_INNER_MULTIPLE_FILE"
+			envVal := file.Name()
+			os.Setenv(envVar, envVal)
+			defer os.Unsetenv(envVar)
+			config := viper.New()
+			config.SetEnvPrefix(Prefix)
+			config.AutomaticEnv()
+			replacer := strings.NewReplacer(".", "_")
+			config.SetEnvKeyReplacer(replacer)
+			config.SetConfigType("yaml")
+
+			if err := config.ReadConfig(bytes.NewReader([]byte(tc.data))); err != nil {
+				t.Fatalf("Error reading config: %v", err)
+			}
+			var uconf stringFromFileConfig
+			if err := EnhancedExactUnmarshal(config, &uconf); err != nil {
+				t.Fatalf("Failed to unmarshall: %v", err)
+			}
+
+			if len(uconf.Inner.Multiple) != 3 {
+				t.Fatalf(`Expected: "%v", Actual: "%v"`, numberOfCertificates, len(uconf.Inner.Multiple))
+			}
+		})
+	}
+}
+
 func TestStringFromFileNotSpecified(t *testing.T) {
 
 	yaml := fmt.Sprintf("---\nInner:\n  Single:\n    File:\n")
@@ -280,33 +342,45 @@ func TestStringFromFileEnv(t *testing.T) {
 		t.Fatalf("Unable to write to temp file.")
 	}
 
-	envVar := "VIPERUTIL_INNER_SINGLE_FILE"
-	envVal := file.Name()
-	os.Setenv(envVar, envVal)
-	defer os.Unsetenv(envVar)
-	config := viper.New()
-	config.SetEnvPrefix(Prefix)
-	config.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	config.SetEnvKeyReplacer(replacer)
-	config.SetConfigType("yaml")
-
-	data := "---\nInner:\n  Single:\n    File: wrong_file"
-
-	if err = config.ReadConfig(bytes.NewReader([]byte(data))); err != nil {
-		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
+	testCases := []struct {
+		name string
+		data string
+	}{
+		{"Override", "---\nInner:\n  Single:\n    File: wrong_file"},
+		{"NoFileElement", "---\nInner:\n  Single:\n"},
+		// {"NoElementAtAll", "---\nInner:\n"}, test case for another time
 	}
 
-	var uconf stringFromFileConfig
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			envVar := "VIPERUTIL_INNER_SINGLE_FILE"
+			envVal := file.Name()
+			os.Setenv(envVar, envVal)
+			defer os.Unsetenv(envVar)
+			config := viper.New()
+			config.SetEnvPrefix(Prefix)
+			config.AutomaticEnv()
+			replacer := strings.NewReplacer(".", "_")
+			config.SetEnvKeyReplacer(replacer)
+			config.SetConfigType("yaml")
 
-	err = EnhancedExactUnmarshal(config, &uconf)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal with: %s", err)
+			if err = config.ReadConfig(bytes.NewReader([]byte(tc.data))); err != nil {
+				t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
+			}
+
+			var uconf stringFromFileConfig
+
+			err = EnhancedExactUnmarshal(config, &uconf)
+			if err != nil {
+				t.Fatalf("Failed to unmarshal with: %s", err)
+			}
+
+			t.Log(uconf.Inner.Single)
+
+			if !reflect.DeepEqual(uconf.Inner.Single, expectedValue) {
+				t.Fatalf(`Expected: "%v",  Actual: "%v"`, expectedValue, uconf.Inner.Single)
+			}
+		})
 	}
 
-	t.Log(uconf.Inner.Single)
-
-	if !reflect.DeepEqual(uconf.Inner.Single, expectedValue) {
-		t.Fatalf(`Expected: "%v",  Actual: "%v"`, expectedValue, uconf.Inner.Single)
-	}
 }
