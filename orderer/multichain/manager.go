@@ -109,7 +109,7 @@ func NewManagerImpl(ledgerFactory ledger.Factory, consenters map[string]Consente
 		ledgerResources := ml.newLedgerResources(configTx)
 		chainID := ledgerResources.ChainID()
 
-		if ledgerResources.SharedConfig().ChainCreationPolicyNames() != nil {
+		if ledgerResources.ConsortiumsConfig() != nil {
 			if ml.systemChannelID != "" {
 				logger.Fatalf("There appear to be two system chains %s and %s", ml.systemChannelID, chainID)
 			}

@@ -27,14 +27,8 @@ type SharedConfig struct {
 	BatchSizeVal *ab.BatchSize
 	// BatchTimeoutVal is returned as the result of BatchTimeout()
 	BatchTimeoutVal time.Duration
-	// ChainCreationPolicyNamesVal is returned as the result of ChainCreationPolicyNames()
-	ChainCreationPolicyNamesVal []string
 	// KafkaBrokersVal is returned as the result of KafkaBrokers()
 	KafkaBrokersVal []string
-	// IngressPolicyNamesVal is returned as the result of IngressPolicyNames()
-	IngressPolicyNamesVal []string
-	// EgressPolicyNamesVal is returned as the result of EgressPolicyNames()
-	EgressPolicyNamesVal []string
 	// MaxChannelsCountVal is returns as the result of MaxChannelsCount()
 	MaxChannelsCountVal uint64
 }
@@ -54,11 +48,6 @@ func (scm *SharedConfig) BatchTimeout() time.Duration {
 	return scm.BatchTimeoutVal
 }
 
-// ChainCreationPolicyNames returns the ChainCreationPolicyNamesVal
-func (scm *SharedConfig) ChainCreationPolicyNames() []string {
-	return scm.ChainCreationPolicyNamesVal
-}
-
 // KafkaBrokers returns the KafkaBrokersVal
 func (scm *SharedConfig) KafkaBrokers() []string {
 	return scm.KafkaBrokersVal
@@ -67,14 +56,4 @@ func (scm *SharedConfig) KafkaBrokers() []string {
 // MaxChannelsCount returns the MaxChannelsCountVal
 func (scm *SharedConfig) MaxChannelsCount() uint64 {
 	return scm.MaxChannelsCountVal
-}
-
-// IngressPolicyNames returns the IngressPolicyNamesVal
-func (scm *SharedConfig) IngressPolicyNames() []string {
-	return scm.IngressPolicyNamesVal
-}
-
-// EgressPolicyNames returns the EgressPolicyNamesVal
-func (scm *SharedConfig) EgressPolicyNames() []string {
-	return scm.EgressPolicyNamesVal
 }

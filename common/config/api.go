@@ -86,10 +86,6 @@ type Orderer interface {
 	// BatchTimeout returns the amount of time to wait before creating a batch
 	BatchTimeout() time.Duration
 
-	// ChainCreationPolicyNames returns the policy names which are allowed for chain creation
-	// This field is only set for the system ordering chain
-	ChainCreationPolicyNames() []string
-
 	// MaxChannelsCount returns the maximum count of channels to allow for an ordering network
 	MaxChannelsCount() uint64
 

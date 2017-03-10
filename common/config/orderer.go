@@ -42,9 +42,6 @@ const (
 	// BatchTimeoutKey is the cb.ConfigItem type key name for the BatchTimeout message
 	BatchTimeoutKey = "BatchTimeout"
 
-	// ChainCreationPolicyNamesKey is the cb.ConfigItem type key name for the ChainCreationPolicyNames message
-	ChainCreationPolicyNamesKey = "ChainCreationPolicyNames"
-
 	// ChannelRestrictions is the key name for the ChannelRestrictions message
 	ChannelRestrictionsKey = "ChannelRestrictions"
 
@@ -54,13 +51,11 @@ const (
 
 // OrdererProtos is used as the source of the OrdererConfig
 type OrdererProtos struct {
-	ConsensusType            *ab.ConsensusType
-	BatchSize                *ab.BatchSize
-	BatchTimeout             *ab.BatchTimeout
-	ChainCreationPolicyNames *ab.ChainCreationPolicyNames
-	KafkaBrokers             *ab.KafkaBrokers
-	CreationPolicy           *ab.CreationPolicy
-	ChannelRestrictions      *ab.ChannelRestrictions
+	ConsensusType       *ab.ConsensusType
+	BatchSize           *ab.BatchSize
+	BatchTimeout        *ab.BatchTimeout
+	KafkaBrokers        *ab.KafkaBrokers
+	ChannelRestrictions *ab.ChannelRestrictions
 }
 
 // Config is stores the orderer component configuration
@@ -131,12 +126,6 @@ func (oc *OrdererConfig) BatchSize() *ab.BatchSize {
 // BatchTimeout returns the amount of time to wait before creating a batch
 func (oc *OrdererConfig) BatchTimeout() time.Duration {
 	return oc.batchTimeout
-}
-
-// ChainCreationPolicyNames returns the policy names which are allowed for chain creation
-// This field is only set for the system ordering chain
-func (oc *OrdererConfig) ChainCreationPolicyNames() []string {
-	return oc.protos.ChainCreationPolicyNames.Names
 }
 
 // KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"

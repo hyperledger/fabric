@@ -50,26 +50,6 @@ message BatchTimeout {
     string timeout = 1;
 }
 
-// When submitting a new chain configuration transaction to create a new chain,
-// the first configuration item must be of type Orderer with Key CreationPolicy
-// and contents of a Marshaled CreationPolicy. The policy should be set to the
-// policy which was supplied by the ordering service for the client's chain
-// creation. The digest should be the hash of the concatenation of the remaining
-// ConfigurationItem bytes. The signatures of the configuration item should
-// satisfy the policy for chain creation.
-message CreationPolicy {
-    // The name of the policy which should be used to validate the creation of
-    // this chain
-    string policy = 1;
-}
-
-// ChainCreationPolicyNames is the set of policies which may be invoked for chain creation
-message ChainCreationPolicyNames {
-    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
-    // because implementing referential policies in a general way is difficult, and dangerous
-    repeated string names = 1;
-}
-
 // Carries a list of bootstrap brokers, i.e. this is not the exclusive set of
 // brokers an ordering service
 message KafkaBrokers {

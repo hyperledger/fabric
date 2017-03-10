@@ -19,7 +19,6 @@ package provisional
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/config"
 	configvaluesmsp "github.com/hyperledger/fabric/common/config/msp"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -73,22 +72,15 @@ const (
 	// does not exist.
 	TestChainID = "testchainid"
 
-	// AcceptAllPolicyKey is the key of the AcceptAllPolicy.
-	AcceptAllPolicyKey = "AcceptAllPolicy"
-
 	// BlockValidationPolicyKey TODO
 	BlockValidationPolicyKey = "BlockValidation"
 )
 
-// DefaultChainCreationPolicyNames is the default value of ChainCreatorsKey.
-var DefaultChainCreationPolicyNames = []string{AcceptAllPolicyKey}
-
 type bootstrapper struct {
-	channelGroups              []*cb.ConfigGroup
-	ordererGroups              []*cb.ConfigGroup
-	applicationGroups          []*cb.ConfigGroup
-	ordererSystemChannelGroups []*cb.ConfigGroup
-	consortiumsGroups          []*cb.ConfigGroup
+	channelGroups     []*cb.ConfigGroup
+	ordererGroups     []*cb.ConfigGroup
+	applicationGroups []*cb.ConfigGroup
+	consortiumsGroups []*cb.ConfigGroup
 }
 
 // New returns a new provisional bootstrap helper.
@@ -104,9 +96,6 @@ func New(conf *genesisconfig.Profile) Generator {
 			policies.TemplateImplicitMetaAnyPolicy([]string{}, configvaluesmsp.ReadersPolicyKey),
 			policies.TemplateImplicitMetaAnyPolicy([]string{}, configvaluesmsp.WritersPolicyKey),
 			policies.TemplateImplicitMetaMajorityPolicy([]string{}, configvaluesmsp.AdminsPolicyKey),
-
-			// Temporary AcceptAllPolicy XXX, remove
-			cauthdsl.TemplatePolicy(AcceptAllPolicyKey, cauthdsl.AcceptAllPolicy),
 		},
 	}
 
@@ -147,11 +136,6 @@ func New(conf *genesisconfig.Profile) Generator {
 			bs.ordererGroups = append(bs.ordererGroups, config.TemplateKafkaBrokers(conf.Orderer.Kafka.Brokers))
 		default:
 			panic(fmt.Errorf("Wrong consenter type value given: %s", conf.Orderer.OrdererType))
-		}
-
-		bs.ordererSystemChannelGroups = []*cb.ConfigGroup{
-			// Policies
-			config.TemplateChainCreationPolicyNames(DefaultChainCreationPolicyNames),
 		}
 	}
 
@@ -234,7 +218,6 @@ func (bs *bootstrapper) GenesisBlock() *cb.Block {
 		configtx.NewModPolicySettingTemplate(
 			configvaluesmsp.AdminsPolicyKey,
 			configtx.NewCompositeTemplate(
-				configtx.NewSimpleTemplate(bs.ordererSystemChannelGroups...),
 				configtx.NewSimpleTemplate(bs.consortiumsGroups...),
 				bs.ChannelTemplate(),
 			),
@@ -253,7 +236,6 @@ func (bs *bootstrapper) GenesisBlockForChannel(channelID string) *cb.Block {
 		configtx.NewModPolicySettingTemplate(
 			configvaluesmsp.AdminsPolicyKey,
 			configtx.NewCompositeTemplate(
-				configtx.NewSimpleTemplate(bs.ordererSystemChannelGroups...),
 				configtx.NewSimpleTemplate(bs.consortiumsGroups...),
 				bs.ChannelTemplate(),
 			),
