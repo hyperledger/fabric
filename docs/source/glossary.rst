@@ -1,19 +1,23 @@
-Fabric Glossary
+*Needs Review*
+
+Glossary
 ===========================
 
-Terminology is important, so that all Fabric users and developers agree on what 
-we mean by each specific term. What is chaincode, for example. So we'll point you 
-there, whenever you want to reassure yourself. Of course, feel free to read the 
-entire thing in one sitting if you like, it's pretty enlightening! 
+Terminology is important, so that all Fabric users and developers agree on what
+we mean by each specific term. What is chaincode, for example. So we'll point you
+there, whenever you want to reassure yourself. Of course, feel free to read the
+entire thing in one sitting if you like, it's pretty enlightening!
 
 .. _Anchor-Peer:
 
 Anchor Peer
 -----------
 
-The peer node that anchors a cluster of one, or more, peer nodes belonging to a 
-Member_ participating in a Channel_.  Anchor peers are defined in the channel's 
-configuration and serve as a routing apparatus for gossip protocol.
+A peer node on a channel that all other peers can discover and communicate with.
+Each Member_ on a channel has an anchor peer (or multiple anchor peers to prevent
+single point of failure), allowing for peers belonging to different Members to
+discover all existing peers on a channel.
+
 
 .. _Block:
 
@@ -21,7 +25,7 @@ Block
 -----
 
 An ordered set of transactions that is cryptographically linked to the
-preceding block(s) on a channel. 
+preceding block(s) on a channel.
 
 .. _Chain:
 
@@ -39,19 +43,19 @@ file system.
 Chaincode
 ---------
 
-Chaincode is software that encodes key value pairs or text-based data (JSON) and
-transaction instructions for modifying this information.
+Chaincode is software, running on a ledger, to encode assets and the transaction
+instructions (business logic) for modifying the assets.
 
 .. _Channel:
 
 Channel
 -------
 
-A channel is a private blockchain overlay on a consortia blockchain network,
-allowing for data isolation and confidentiality. A channel-specific ledger is
-shared across the peer nodes, and transacting parties must be properly authenticated to
-a channel in order to interact with the ledger.  Channels are defined by a
-Configuration_Block_.
+A channel is a private blockchain overlay on a Fabric network, allowing for data
+isolation and confidentiality. A channel-specific ledger is shared across the
+peers in the channel, and transacting parties must be properly authenticated to
+a channel in order to interact with it.  Channels are defined by a
+Configuration-Block_.
 
 .. _Commitment:
 
@@ -82,9 +86,9 @@ Configuration Block
 -------------------
 
 Contains the configuration data defining members and policies for a system
-chain (ordering service) or channel. Any configuration modifications to a 
-channel or overall network (e.g. a member leaving or joining) will result 
-in a new configuration block being appended to the appropriate chain. This 
+chain (ordering service) or channel. Any configuration modifications to a
+channel or overall network (e.g. a member leaving or joining) will result
+in a new configuration block being appended to the appropriate chain. This
 block will contain the contents of the genesis block, plus the delta.
 
 .. Consensus
@@ -92,8 +96,8 @@ block will contain the contents of the genesis block, plus the delta.
 Consensus
 ---------
 
-A broader term overarching the entire transactional flow, which serves to generate 
-an agreement on the order and to confirm the correctness of the set of transactions 
+A broader term overarching the entire transactional flow, which serves to generate
+an agreement on the order and to confirm the correctness of the set of transactions
 constituting a block.
 
 .. _Current-State:
@@ -114,8 +118,8 @@ Dynamic Membership
 ------------------
 
 Fabric supports the addition/removal of members, peers, and ordering service
-nodes, without compromising the operationality of the overall network. Dynamic 
-membership is critical when business relationships adjust and entities need to 
+nodes, without compromising the operationality of the overall network. Dynamic
+membership is critical when business relationships adjust and entities need to
 be added/removed for various reasons.
 
 .. _Endorsement:
@@ -124,8 +128,8 @@ Endorsement
 -----------
 
 Refers to the process where specific peer nodes execute a transaction and return
-a `YES/NO` response to the client application that generated the transaction proposal.
-Chaincode applications have corresponding endorsement policies, in which the endorsing 
+a ``YES/NO`` response to the client application that generated the transaction proposal.
+Chaincode applications have corresponding endorsement policies, in which the endorsing
 peers are specified.
 
 .. _Endorsement-policy:
@@ -134,7 +138,7 @@ Endorsement policy
 ------------------
 
 Defines the peer nodes on a channel that must execute transactions attached to a
-specific chaincode application, and the required combination of responses (endorsements).  
+specific chaincode application, and the required combination of responses (endorsements).
 A policy could require that a transaction be endorsed by a minimum number of
 endorsing peers, a minimum percentage of endorsing peers, or by all endorsing
 peers that are assigned to a specific chaincode application. Policies can be
@@ -159,24 +163,24 @@ The gossip data dissemination protocol performs three functions:
 1) manages peer discovery and channel membership;
 2) disseminates ledger data across all peers on the channel;
 3) syncs ledger state across all peers on the channel.
-Refer to the :doc:`gossip` topic for more details.
+Refer to the :doc:`Gossip <gossip>` topic for more details.
 
 .. _Initialize:
 
 Initialize
 ----------
 
-A method to initialize a chaincode application prior to it being instantiated.
+A method to initialize a chaincode application.
 
 Install
 -------
 
-The process of placing a chaincode on a peer's file system
+The process of placing a chaincode on a peer's file system.
 
 Instantiate
 -----------
 
-The process of starting a chaincode container
+The process of starting a chaincode container.
 
 .. _Invoke:
 
@@ -193,7 +197,7 @@ arguments.
 Leading Peer
 ------------
 
-Each Member_ can own multiple peers on each channel that 
+Each Member_ can own multiple peers on each channel that
 it subscribes to. One of these peers is serves as the leading peer for the channel,
 in order to communicate with the network ordering service on behalf of the
 member. The ordering service "delivers" blocks to the leading peer(s) on a
@@ -212,8 +216,8 @@ peer on the channel.
 Member
 ------
 
-A legally separate entity that owns a unique root certificate for the network.  
-Network components such as peer nodes and application clients will be linked to a member. 
+A legally separate entity that owns a unique root certificate for the network.
+Network components such as peer nodes and application clients will be linked to a member.
 
 .. _MSP:
 
@@ -241,7 +245,7 @@ and orderers both authenticates and authorizes blockchain operations.  It is a
 PKI-based implementation of the Membership Services Provider (MSP) abstraction.
 
 The ``fabric-ca`` component is an implementation of membership services to manage
-identities. In particular, it handles the issuance and revocation of enrollment 
+identities. In particular, it handles the issuance and revocation of enrollment
 certificates and transaction certificates.
 
 An enrollment certificate is a long-term identity credential; a transaction
@@ -252,9 +256,9 @@ certificate is a short-term identity credential which is both anonymous and un-l
 Ordering Service
 ----------------
 
-A defined collective of nodes that orders transactions into a block.  The ordering 
-service exists independent of the peer processes and orders transactions on a 
-first-come-first-serve basis for all channel's on the network.  The ordering service is 
+A defined collective of nodes that orders transactions into a block.  The ordering
+service exists independent of the peer processes and orders transactions on a
+first-come-first-serve basis for all channel's on the network.  The ordering service is
 designed to support pluggable implementations beyond the out-of-the-box SOLO and Kafka varieties.
 The ordering service is a common binding for the overall network; it contains the cryptographic
 identity material tied to each Member_.
@@ -275,12 +279,12 @@ Policy
 There are policies for endorsement, validation, block committal, chaincode
 management and network/channel management.
 
-.. _Proposal: 
+.. _Proposal:
 
 Proposal
 --------
 
-A request for endorsement that is aimed at specific peers on a channel. Each 
+A request for endorsement that is aimed at specific peers on a channel. Each
 proposal is either an instantiate or an invoke (read/write) request.
 
 .. _Query:
@@ -319,9 +323,9 @@ System Chain
 
 Contains a configuration block defining the network at a system level. The
 system chain lives within the ordering service, and similar to a channel, has
-an initial configuration containing information such as: MSP information, policies, 
-and configuration details.  Any change to the overall network (e.g. a new org 
-joining or a new ordering node being added) will result in a new configuration block 
+an initial configuration containing information such as: MSP information, policies,
+and configuration details.  Any change to the overall network (e.g. a new org
+joining or a new ordering node being added) will result in a new configuration block
 being added to the system chain.
 
 The system chain can be thought of as the common binding for a channel or group
@@ -334,5 +338,5 @@ channels relative to their aligned and varying business agendas.
 Transaction
 -----------
 
-An invoke or instantiate operation.  Invokes are requests to read/write data from 
-the ledger.  Instantiate is a request to start a chaincode container on a peer.  
+An invoke or instantiate operation.  Invokes are requests to read/write data from
+the ledger.  Instantiate is a request to start a chaincode container on a peer.
