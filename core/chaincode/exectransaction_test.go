@@ -1386,6 +1386,71 @@ func TestChaincodeQueryChaincodeUsingInvoke(t *testing.T) {
 	theChaincodeSupport.Stop(ctxt, cccid2, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec2})
 }
 
+// Test the execution of a chaincode that invokes system chaincode
+// uses the "pthru" chaincode to query "lccc" for the "pthru" chaincode
+func TestChaincodeInvokesSystemChaincode(t *testing.T) {
+	chainID := util.GetTestChainID()
+
+	lis, err := initPeer(chainID)
+	if err != nil {
+		t.Fail()
+		t.Logf("Error creating peer: %s", err)
+	}
+
+	defer finitPeer(lis, chainID)
+
+	var ctxt = context.Background()
+
+	var nextBlockNumber uint64
+
+	// Deploy second chaincode
+	url := "github.com/hyperledger/fabric/examples/chaincode/go/passthru"
+
+	cID := &pb.ChaincodeID{Name: "pthru", Path: url, Version: "0"}
+	f := "init"
+	args := util.ToChaincodeArgs(f)
+
+	spec := &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+
+	cccid := ccprovider.NewCCContext(chainID, "pthru", "0", "", false, nil, nil)
+
+	_, err = deploy(ctxt, cccid, spec, nextBlockNumber)
+	nextBlockNumber++
+	ccID := spec.ChaincodeId.Name
+	if err != nil {
+		t.Fail()
+		t.Logf("Error initializing chaincode %s(%s)", ccID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	time.Sleep(time.Second)
+
+	//send an invoke to pass thru to query "lccc" system chaincode on chainID to get
+	//information about "pthru"
+	args = util.ToChaincodeArgs("lccc/"+chainID, "getid", chainID, "pthru")
+
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	// Invoke chaincode
+	_, _, retval, err := invoke(ctxt, chainID, spec, nextBlockNumber)
+
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	if string(retval) != "pthru" {
+		t.Fail()
+		t.Logf("Expected to get back \"pthru\" from lccc but got back %s", string(retval))
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+}
+
 var signer msp.SigningIdentity
 
 func TestMain(m *testing.M) {

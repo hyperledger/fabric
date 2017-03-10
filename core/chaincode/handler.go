@@ -27,6 +27,7 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
@@ -1314,15 +1315,27 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 			}
 
 			//Call LCCC to get the called chaincode artifacts
+
+			//is the chaincode a system chaincode ?
+			isscc := sysccprovider.GetSystemChaincodeProvider().IsSysCC(calledCcParts.name)
+
 			var cd *ccprovider.ChaincodeData
-			cd, err = GetChaincodeDataFromLCCC(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcParts.suffix, calledCcParts.name)
-			if err != nil {
-				payload := []byte(err.Error())
-				chaincodeLogger.Debugf("[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s",
-					shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
-				triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
-				return
+			if !isscc {
+				//if its a user chaincode, get the details from LCCC
+				//Call LCCC to get the called chaincode artifacts
+				cd, err = GetChaincodeDataFromLCCC(ctxt, msg.Txid, txContext.signedProp, txContext.proposal, calledCcParts.suffix, calledCcParts.name)
+				if err != nil {
+					payload := []byte(err.Error())
+					chaincodeLogger.Debugf("[%s]Failed to get chaincoed data (%s) for invoked chaincode. Sending %s",
+						shorttxid(msg.Txid), err, pb.ChaincodeMessage_ERROR)
+					triggerNextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+					return
+				}
+			} else {
+				//this is a system cc, just call it directly
+				cd = &ccprovider.ChaincodeData{Name: calledCcParts.name, Version: util.GetSysCCVersion()}
 			}
+
 			cccid := ccprovider.NewCCContext(calledCcParts.suffix, calledCcParts.name, cd.Version, msg.Txid, false, txContext.signedProp, txContext.proposal)
 
 			// Launch the new chaincode if not already running
