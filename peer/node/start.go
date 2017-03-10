@@ -18,6 +18,7 @@ package node
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -90,6 +91,35 @@ func initSysCCs() {
 	logger.Infof("Deployed system chaincodess")
 }
 
+// load the TLS config for the server(s)
+func loadTLSConfig() comm.SecureServerConfig {
+
+	secureConfig := comm.SecureServerConfig{
+		UseTLS: viper.GetBool("peer.tls.enabled"),
+	}
+
+	if secureConfig.UseTLS {
+		// get the certs from the file system
+		serverKey, err := ioutil.ReadFile(viper.GetString("peer.tls.key.file"))
+		serverCert, err := ioutil.ReadFile(viper.GetString("peer.tls.cert.file"))
+		// must have both key and cert file
+		if err != nil {
+			logger.Fatalf("Error loading TLS key and/or certificate (%s)", err)
+		}
+		secureConfig.ServerCertificate = serverCert
+		secureConfig.ServerKey = serverKey
+		// check for root cert
+		if viper.GetString("peer.tls.rootcert.file") != "" {
+			rootCert, err := ioutil.ReadFile(viper.GetString("peer.tls.rootcert.file"))
+			if err != nil {
+				logger.Fatalf("Error loading TLS root certificate (%s)", err)
+			}
+			secureConfig.ServerRootCAs = [][]byte{rootCert}
+		}
+	}
+	return secureConfig
+}
+
 func serve(args []string) error {
 	ledgermgmt.Initialize()
 	// Parameter overrides must be processed before any paramaters are
@@ -114,6 +144,7 @@ func serve(args []string) error {
 
 	listenAddr := viper.GetString("peer.listenAddress")
 
+	/**  TODO remove
 	if "" == listenAddr {
 		logger.Debug("Listen address not specified, using peer endpoint address")
 		listenAddr = peerEndpoint.Address
@@ -135,6 +166,12 @@ func serve(args []string) error {
 		fmt.Println("Failed to return new GRPC server: ", err)
 		return err
 	}
+	*/
+	secureConfig := loadTLSConfig()
+	peerServer, err := peer.CreatePeerServer(listenAddr, secureConfig)
+	if err != nil {
+		logger.Fatalf("Failed to create peer server (%s)", err)
+	}
 
 	//TODO - do we need different SSL material for events ?
 	ehubGrpcServer, err := createEventHubServer(secureConfig)
@@ -142,16 +179,16 @@ func serve(args []string) error {
 		grpclog.Fatalf("Failed to create ehub server: %v", err)
 	}
 
-	registerChaincodeSupport(grpcServer.Server())
+	registerChaincodeSupport(peerServer.Server())
 
 	logger.Debugf("Running peer")
 
 	// Register the Admin server
-	pb.RegisterAdminServer(grpcServer.Server(), core.NewAdminServer())
+	pb.RegisterAdminServer(peerServer.Server(), core.NewAdminServer())
 
 	// Register the Endorser server
 	serverEndorser := endorser.NewEndorserServer()
-	pb.RegisterEndorserServer(grpcServer.Server(), serverEndorser)
+	pb.RegisterEndorserServer(peerServer.Server(), serverEndorser)
 
 	// Initialize gossip component
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
@@ -165,7 +202,7 @@ func serve(args []string) error {
 		peer.NewChannelPolicyManagerGetter(),
 		localmsp.NewSigner(),
 		mgmt.NewDeserializersManager())
-	service.InitGossipService(serializedIdentity, peerEndpoint.Address, grpcServer.Server(), messageCryptoService, bootstrap...)
+	service.InitGossipService(serializedIdentity, peerEndpoint.Address, peerServer.Server(), messageCryptoService, bootstrap...)
 	defer service.GetGossipService().Stop()
 
 	//initialize system chaincodes
@@ -233,10 +270,10 @@ func serve(args []string) error {
 
 	go func() {
 		var grpcErr error
-		if grpcErr = grpcServer.Start(); grpcErr != nil {
+		if grpcErr = peerServer.Start(); grpcErr != nil {
 			grpcErr = fmt.Errorf("grpc server exited with error: %s", grpcErr)
 		} else {
-			logger.Info("grpc server exited")
+			logger.Info("peer server exited")
 		}
 		serve <- grpcErr
 	}()
