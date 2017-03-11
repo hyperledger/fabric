@@ -59,8 +59,17 @@ func getKeysRecursively(base string, v *viper.Viper, nodeKeys map[string]interfa
 			logger.Debugf("Found real value for %s setting to map[string]string %v", fqKey, m)
 			result[key] = m
 		} else {
+			if val == nil {
+				fileSubKey := fqKey + ".File"
+				fileVal := v.Get(fileSubKey)
+				if fileVal != nil {
+					result[key] = map[string]interface{}{"File": fileVal}
+					continue
+				}
+			}
 			logger.Debugf("Found real value for %s setting to %T %v", fqKey, val, val)
 			result[key] = val
+
 		}
 	}
 	return result

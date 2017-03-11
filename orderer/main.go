@@ -70,9 +70,24 @@ func main() {
 		return
 	}
 
+	serverRootCAs := make([][]byte, len(conf.General.TLS.RootCAs))
+	for i, cert := range conf.General.TLS.RootCAs {
+		serverRootCAs[i] = []byte(cert)
+	}
+
+	clientRootCAs := make([][]byte, len(conf.General.TLS.ClientRootCAs))
+	for i, cert := range conf.General.TLS.ClientRootCAs {
+		clientRootCAs[i] = []byte(cert)
+	}
+
 	// Create GRPC server - return if an error occurs
 	secureConfig := comm.SecureServerConfig{
-		UseTLS: conf.General.TLS.Enabled,
+		UseTLS:            conf.General.TLS.Enabled,
+		ServerCertificate: []byte(conf.General.TLS.Certificate),
+		ServerKey:         []byte(conf.General.TLS.PrivateKey),
+		ServerRootCAs:     serverRootCAs,
+		RequireClientCert: conf.General.TLS.ClientAuthEnabled,
+		ClientRootCAs:     clientRootCAs,
 	}
 	grpcServer, err := comm.NewGRPCServerFromListener(lis, secureConfig)
 	if err != nil {
