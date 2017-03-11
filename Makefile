@@ -21,6 +21,7 @@
 #   - peer - builds a native fabric peer binary
 #   - orderer - builds a native fabric orderer binary
 #   - unit-test - runs the go-test based unit tests
+#   - test-cmd - generates a "go test" string suitable for manual customization
 #   - behave - runs the behave test
 #   - behave-deps - ensures pre-requisites are availble for running behave manually
 #   - gotools - installs go tools like golint
@@ -117,6 +118,10 @@ unit-test: peer-docker testenv couchdb
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
+
+# Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
+test-cmd:
+	@echo "go test -ldflags \"$(GO_LDFLAGS)\""
 
 docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer
