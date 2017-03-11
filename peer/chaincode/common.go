@@ -227,7 +227,7 @@ func InitCmdFactory(isOrdererRequired bool) (*ChaincodeCmdFactory, error) {
 
 	var broadcastClient common.BroadcastClient
 	if isOrdererRequired {
-		broadcastClient, err = common.GetBroadcastClient(orderingEndpoint)
+		broadcastClient, err = common.GetBroadcastClient(orderingEndpoint, tls, caFile)
 
 		if err != nil {
 			return nil, fmt.Errorf("Error getting broadcast client: %s", err)

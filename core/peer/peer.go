@@ -50,14 +50,8 @@ var peerLogger = logging.MustGetLogger("peer")
 
 var peerServer comm.GRPCServer
 
-var rootCASupport = struct {
-	sync.RWMutex
-	appRootCAsByChain     map[string][][]byte
-	ordererRootCAsByChain map[string][][]byte
-}{
-	appRootCAsByChain:     make(map[string][][]byte),
-	ordererRootCAsByChain: make(map[string][][]byte),
-}
+// singleton instance to manage CAs for the peer across channel config changes
+var rootCASupport = comm.GetCASupport()
 
 type chainSupport struct {
 	configtxapi.Manager
@@ -317,7 +311,7 @@ func GetCurrConfigBlock(cid string) *common.Block {
 // updates the trusted roots for the peer based on updates to channels
 func updateTrustedRoots(cm configtxapi.Manager) {
 	// this is triggered on per channel basis so first update the roots for the channel
-
+	peerLogger.Debugf("Updating trusted root authorities for channel %s", cm.ChainID())
 	var secureConfig comm.SecureServerConfig
 	var err error
 	// only run is TLS is enabled
@@ -329,7 +323,7 @@ func updateTrustedRoots(cm configtxapi.Manager) {
 		trustedRoots := [][]byte{}
 		rootCASupport.RLock()
 		defer rootCASupport.RUnlock()
-		for _, roots := range rootCASupport.appRootCAsByChain {
+		for _, roots := range rootCASupport.AppRootCAsByChain {
 			trustedRoots = append(trustedRoots, roots...)
 		}
 		// also need to append statically configured root certs
@@ -395,39 +389,9 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 		}
 		// TODO: separate app and orderer CAs
 		ordererRootCAs = appRootCAs
-		rootCASupport.appRootCAsByChain[cid] = appRootCAs
-		rootCASupport.ordererRootCAsByChain[cid] = ordererRootCAs
+		rootCASupport.AppRootCAsByChain[cid] = appRootCAs
+		rootCASupport.OrdererRootCAsByChain[cid] = ordererRootCAs
 	}
-}
-
-// GetRootCAs returns the PEM-encoded root certificates for all of the
-// application and orderer organizations defined for all chains
-func GetRootCAs() (appRootCAs, ordererRootCAs [][]byte) {
-	rootCASupport.RLock()
-	defer rootCASupport.RUnlock()
-
-	appRootCAs = [][]byte{}
-	ordererRootCAs = [][]byte{}
-
-	for _, appRootCA := range rootCASupport.appRootCAsByChain {
-		appRootCAs = append(appRootCAs, appRootCA...)
-	}
-	// also need to append statically configured root certs
-	secureConfig, err := GetSecureConfig()
-	if err == nil {
-		if len(secureConfig.ClientRootCAs) > 0 {
-			appRootCAs = append(appRootCAs, secureConfig.ClientRootCAs...)
-		}
-		if len(secureConfig.ServerRootCAs) > 0 {
-			appRootCAs = append(appRootCAs, secureConfig.ServerRootCAs...)
-		}
-	}
-
-	for _, ordererRootCA := range rootCASupport.appRootCAsByChain {
-		ordererRootCAs = append(ordererRootCAs, ordererRootCA...)
-	}
-
-	return appRootCAs, ordererRootCAs
 }
 
 // GetMSPIDs returns the ID of each application MSP defined on this chain

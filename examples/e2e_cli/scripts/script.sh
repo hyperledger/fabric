@@ -20,6 +20,7 @@ CHANNEL_NAME="$1"
 : ${TIMEOUT:="60"}
 COUNTER=0
 MAX_RETRY=5
+ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig/cacerts/ordererOrg0.pem
 
 echo "Channel name : "$CHANNEL_NAME
 
@@ -33,19 +34,26 @@ verifyResult () {
 }
 
 setGlobals () {
+
 	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer$1/localMspConfig
 	CORE_PEER_ADDRESS=peer$1:7051
+
+
+
 	if [ $1 -eq 0 -o $1 -eq 1 ] ; then
 		CORE_PEER_LOCALMSPID="Org0MSP"
+		CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer$1/localMspConfig/cacerts/peerOrg0.pem
 	else
 		CORE_PEER_LOCALMSPID="Org1MSP"
+		CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer$1/localMspConfig/cacerts/peerOrg1.pem
 	fi
+	env |grep CORE
 }
 
 createChannel() {
 	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig
 	CORE_PEER_LOCALMSPID="OrdererMSP"
-	peer channel create -o $ORDERER_IP:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx >&log.txt
+	peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
 	res=$?
 	cat log.txt
 	verifyResult $res "Channel creation failed"
@@ -93,7 +101,7 @@ installChaincode () {
 instantiateChaincode () {
 	PEER=$1
 	setGlobals $PEER
-	peer chaincode instantiate -o $ORDERER_IP:7050 -C $CHANNEL_NAME -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org0MSP.member','Org1MSP.member')" >&log.txt
+	peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org0MSP.member','Org1MSP.member')" >&log.txt
 	res=$?
 	cat log.txt
 	verifyResult $res "Chaincode instantiation on PEER$PEER on channel '$CHANNEL_NAME' failed"
@@ -131,7 +139,7 @@ chaincodeQuery () {
 
 chaincodeInvoke () {
         PEER=$1
-	peer chaincode invoke -o $ORDERER_IP:7050  -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
+	peer chaincode invoke -o orderer0:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
 	res=$?
 	cat log.txt
 	verifyResult $res "Invoke execution on PEER$PEER failed "

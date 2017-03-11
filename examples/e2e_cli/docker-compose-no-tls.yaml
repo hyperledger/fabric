@@ -12,11 +12,6 @@ services:
       - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.block
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/localMspConfig
-      # enabled TLS
-      - ORDERER_GENERAL_TLS_ENABLED=true
-      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/localMspConfig/keystore/ordererSigner.pem
-      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/localMspConfig/signcerts/orderer0Signer.pem
-      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/localMspConfig/cacerts/ordererOrg0.pem]
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     command: orderer
     volumes:
@@ -27,18 +22,13 @@ services:
   peer0:
     container_name: peer0
     extends:
-      file: peer-base/peer-base.yaml
+      file: peer-base/peer-base-no-tls.yaml
       service: peer-base
     environment:
       - CORE_PEER_ID=peer0
-      - CORE_PEER_ADDRESS=peer0:7051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_LOCALMSPID=Org0MSP
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer0Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer0Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg0.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0
+      - CORE_PEER_GOSSIP_ORGLEADER=true
     volumes:
         - /var/run/:/host/var/run/
         - ./crypto/peer/peer0/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
@@ -51,19 +41,14 @@ services:
   peer1:
     container_name: peer1
     extends:
-      file: peer-base/peer-base.yaml
+      file: peer-base/peer-base-no-tls.yaml
       service: peer-base
     environment:
       - CORE_PEER_ID=peer1
-      - CORE_PEER_ADDRESS=peer1:7051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_LOCALMSPID=Org0MSP
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer1Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer1Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg0.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer1
+      - CORE_PEER_GOSSIP_ORGLEADER=false
     volumes:
         - /var/run/:/host/var/run/
         - ./crypto/peer/peer1/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
@@ -77,19 +62,14 @@ services:
   peer2:
     container_name: peer2
     extends:
-      file: peer-base/peer-base.yaml
+      file: peer-base/peer-base-no-tls.yaml
       service: peer-base
     environment:
       - CORE_PEER_ID=peer2
-      - CORE_PEER_ADDRESS=peer2:7051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer2:7051
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer2:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer2Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer2Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/admincerts/peerOrg1.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer2
+      - CORE_PEER_GOSSIP_ORGLEADER=true
     volumes:
         - /var/run/:/host/var/run/
         - ./crypto/peer/peer2/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
@@ -104,19 +84,14 @@ services:
   peer3:
     container_name: peer3
     extends:
-      file: peer-base/peer-base.yaml
+      file: peer-base/peer-base-no-tls.yaml
       service: peer-base
     environment:
       - CORE_PEER_ID=peer3
-      - CORE_PEER_ADDRESS=peer3:7051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer3:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer3Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer3Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg1.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer3
+      - CORE_PEER_GOSSIP_ORGLEADER=false
     volumes:
         - /var/run/:/host/var/run/
         - ./crypto/peer/peer3/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
@@ -141,20 +116,12 @@ services:
       - CORE_NEXT=true
       - CORE_PEER_ID=cli
       - CORE_PEER_ENDORSER_ENABLED=true
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer:7050
       - CORE_PEER_ADDRESS=peer0:7051
       - CORE_PEER_GOSSIP_IGNORESECURITY=true
       - CORE_PEER_LOCALMSPID=Org0MSP
-      - CORE_PEER_TLS_ENABLED=true
-      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig/signcerts/peer0Signer.pem
-      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig/keystore/peer0Signer.pem
-      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig/cacerts/peerOrg0.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0
-      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig
-
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: /bin/bash -c './scripts/script.sh ${CHANNEL_NAME}; '
-    #command: /bin/bash
     volumes:
         - /var/run/:/host/var/run/
         - ./examples/:/opt/gopath/src/github.com/hyperledger/fabric/examples/

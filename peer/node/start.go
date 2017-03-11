@@ -125,6 +125,9 @@ func serve(args []string) error {
 
 	if secureConfig.UseTLS {
 		logger.Info("Starting peer with TLS enabled")
+		// set up CA support
+		caSupport := comm.GetCASupport()
+		caSupport.ServerRootCAs = secureConfig.ServerRootCAs
 	}
 
 	//TODO - do we need different SSL material for events ?
