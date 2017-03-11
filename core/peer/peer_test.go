@@ -65,6 +65,12 @@ func (*mockDeliveryClientFactory) Service(g service.GossipService, endpoints []s
 	return &mockDeliveryClient{}, nil
 }
 
+func TestGetRootCAsNoChains(t *testing.T) {
+	appRootCAs, ordererRootCAs := GetRootCAs()
+	assert.Equal(t, len(appRootCAs), 0, "Expected zero appRootCAs")
+	assert.Equal(t, len(ordererRootCAs), 0, "Expected zero ordererRootCAs")
+}
+
 func TestInitialize(t *testing.T) {
 	viper.Set("peer.fileSystemPath", "/var/hyperledger/test/")
 

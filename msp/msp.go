@@ -87,6 +87,12 @@ type MSP interface {
 	// GetDefaultSigningIdentity returns the default signing identity
 	GetDefaultSigningIdentity() (SigningIdentity, error)
 
+	// GetRootCerts returns the root certificates for this MSP
+	GetRootCerts() []Identity
+
+	// GetIntermediateCerts returns the intermediate root certificates for this MSP
+	GetIntermediateCerts() []Identity
+
 	// Validate checks whether the supplied identity is valid
 	Validate(id Identity) error
 

@@ -341,6 +341,16 @@ func (msp *bccspmsp) GetIdentifier() (string, error) {
 	return msp.name, nil
 }
 
+// GetRootCerts returns the root certificates for this MSP
+func (msp *bccspmsp) GetRootCerts() []Identity {
+	return msp.rootCerts
+}
+
+// GetIntermediateCerts returns the intermediate root certificates for this MSP
+func (msp *bccspmsp) GetIntermediateCerts() []Identity {
+	return msp.intermediateCerts
+}
+
 // GetDefaultSigningIdentity returns the
 // default signing identity for this MSP (if any)
 func (msp *bccspmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {

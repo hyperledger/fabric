@@ -23,6 +23,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/configtx"
 	configtxapi "github.com/hyperledger/fabric/common/configtx/api"
@@ -35,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/gossip/service"
+	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -47,6 +49,15 @@ import (
 var peerLogger = logging.MustGetLogger("peer")
 
 var peerServer comm.GRPCServer
+
+var rootCASupport = struct {
+	sync.RWMutex
+	appRootCAsByChain     map[string][][]byte
+	ordererRootCAsByChain map[string][][]byte
+}{
+	appRootCAsByChain:     make(map[string][][]byte),
+	ordererRootCAsByChain: make(map[string][][]byte),
+}
 
 type chainSupport struct {
 	configtxapi.Manager
@@ -183,10 +194,14 @@ func createChain(cid string, ledger ledger.PeerLedger, cb *common.Block) error {
 		})
 	}
 
+	trustedRootsCallbackWrapper := func(cm configtxapi.Manager) {
+		updateTrustedRoots(cm)
+	}
+
 	configtxManager, err := configtx.NewManagerImpl(
 		envelopeConfig,
 		configtxInitializer,
-		[]func(cm configtxapi.Manager){gossipCallbackWrapper},
+		[]func(cm configtxapi.Manager){gossipCallbackWrapper, trustedRootsCallbackWrapper},
 	)
 	if err != nil {
 		return err
@@ -297,6 +312,122 @@ func GetCurrConfigBlock(cid string) *common.Block {
 		return c.cb
 	}
 	return nil
+}
+
+// updates the trusted roots for the peer based on updates to channels
+func updateTrustedRoots(cm configtxapi.Manager) {
+	// this is triggered on per channel basis so first update the roots for the channel
+
+	var secureConfig comm.SecureServerConfig
+	var err error
+	// only run is TLS is enabled
+	secureConfig, err = GetSecureConfig()
+	if err == nil && secureConfig.UseTLS {
+		buildTrustedRootsForChain(cm)
+
+		// now iterate over all roots for all app and orderer chains
+		trustedRoots := [][]byte{}
+		rootCASupport.RLock()
+		defer rootCASupport.RUnlock()
+		for _, roots := range rootCASupport.appRootCAsByChain {
+			trustedRoots = append(trustedRoots, roots...)
+		}
+		// also need to append statically configured root certs
+		if len(secureConfig.ClientRootCAs) > 0 {
+			trustedRoots = append(trustedRoots, secureConfig.ClientRootCAs...)
+		}
+		if len(secureConfig.ServerRootCAs) > 0 {
+			trustedRoots = append(trustedRoots, secureConfig.ServerRootCAs...)
+		}
+
+		server := GetPeerServer()
+		// now update the client roots for the peerServer
+		if server != nil {
+			err := server.SetClientRootCAs(trustedRoots)
+			if err != nil {
+				msg := "Failed to update trusted roots for peer from latest config " +
+					"block.  This peer may not be able to communicate " +
+					"with members of channel %s (%s)"
+				peerLogger.Warningf(msg, cm.ChainID(), err)
+			}
+		}
+	}
+}
+
+// populates the appRootCAs and orderRootCAs maps by getting the
+// root and intermediate certs for all msps assocaited with the MSPManager
+func buildTrustedRootsForChain(cm configtxapi.Manager) {
+	rootCASupport.Lock()
+	defer rootCASupport.Unlock()
+
+	appRootCAs := [][]byte{}
+	ordererRootCAs := [][]byte{}
+	cid := cm.ChainID()
+	msps, err := cm.MSPManager().GetMSPs()
+	if err != nil {
+		peerLogger.Errorf("Error getting getting root CA for channel %s (%s)", cid, err)
+	}
+	if err == nil {
+		for _, v := range msps {
+			// check to see if this is a FABRIC MSP
+			if v.GetType() == msp.FABRIC {
+				for _, root := range v.GetRootCerts() {
+					sid, err := root.Serialize()
+					if err == nil {
+						id := &msp.SerializedIdentity{}
+						err = proto.Unmarshal(sid, id)
+						if err == nil {
+							appRootCAs = append(appRootCAs, id.IdBytes)
+						}
+					}
+				}
+				for _, intermediate := range v.GetIntermediateCerts() {
+					sid, err := intermediate.Serialize()
+					if err == nil {
+						id := &msp.SerializedIdentity{}
+						err = proto.Unmarshal(sid, id)
+						if err == nil {
+							appRootCAs = append(appRootCAs, id.IdBytes)
+						}
+					}
+				}
+			}
+		}
+		// TODO: separate app and orderer CAs
+		ordererRootCAs = appRootCAs
+		rootCASupport.appRootCAsByChain[cid] = appRootCAs
+		rootCASupport.ordererRootCAsByChain[cid] = ordererRootCAs
+	}
+}
+
+// GetRootCAs returns the PEM-encoded root certificates for all of the
+// application and orderer organizations defined for all chains
+func GetRootCAs() (appRootCAs, ordererRootCAs [][]byte) {
+	rootCASupport.RLock()
+	defer rootCASupport.RUnlock()
+
+	appRootCAs = [][]byte{}
+	ordererRootCAs = [][]byte{}
+
+	for _, appRootCA := range rootCASupport.appRootCAsByChain {
+		appRootCAs = append(appRootCAs, appRootCA...)
+	}
+	// also need to append statically configured root certs
+	secureConfig, err := GetSecureConfig()
+	if err == nil {
+		if len(secureConfig.ClientRootCAs) > 0 {
+			appRootCAs = append(appRootCAs, secureConfig.ClientRootCAs...)
+		}
+		if len(secureConfig.ServerRootCAs) > 0 {
+			appRootCAs = append(appRootCAs, secureConfig.ServerRootCAs...)
+		}
+	}
+
+	for _, ordererRootCA := range rootCASupport.appRootCAsByChain {
+		ordererRootCAs = append(ordererRootCAs, ordererRootCA...)
+	}
+
+	return appRootCAs, ordererRootCAs
 }
 
 // GetMSPIDs returns the ID of each application MSP defined on this chain
