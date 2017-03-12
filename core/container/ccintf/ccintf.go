@@ -23,7 +23,7 @@ package ccintf
 import (
 	"encoding/hex"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"golang.org/x/net/context"
 )
@@ -60,14 +60,14 @@ func (ccid *CCID) GetName() string {
 		panic("nil chaincode spec")
 	}
 
-	name := ccid.ChaincodeSpec.ChaincodeID.Name
+	name := ccid.ChaincodeSpec.ChaincodeId.Name
 	if ccid.Version != "" {
 		name = name + "-" + ccid.Version
 	}
 
 	//this better be chainless system chaincode!
 	if ccid.ChainID != "" {
-		hash := util.ComputeCryptoHash([]byte(ccid.ChainID))
+		hash := util.ComputeSHA256([]byte(ccid.ChainID))
 		hexstr := hex.EncodeToString(hash[:])
 		name = name + "-" + hexstr
 	}

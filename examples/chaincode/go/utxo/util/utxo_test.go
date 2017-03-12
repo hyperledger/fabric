@@ -31,8 +31,7 @@ import (
 
 // func TestMain(m *testing.M) {
 // 	// viper.Set("ledger.blockchain.deploy-system-chaincode", "false")
-// 	// viper.Set("peer.validator.validity-period.verification", "false")
-
+//
 // 	os.Exit(m.Run())
 // }
 

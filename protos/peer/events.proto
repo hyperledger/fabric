@@ -18,7 +18,7 @@ syntax = "proto3";
 
 import "common/common.proto";
 import "peer/chaincodeevent.proto";
-import "peer/fabric_transaction.proto";
+import "peer/transaction.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/peer";
 
@@ -37,19 +37,20 @@ enum EventType {
 //ChaincodeReg is used for registering chaincode Interests
 //when EventType is CHAINCODE
 message ChaincodeReg {
-    string chaincodeID = 1;
-    string eventName = 2;
+    string chaincode_id = 1;
+    string event_name = 2;
 }
 
 message Interest {
-    EventType eventType = 1;
+    EventType event_type = 1;
     //Ideally we should just have the following oneof for different
     //Reg types and get rid of EventType. But this is an API change
     //Additional Reg types may add messages specific to their type
     //to the oneof.
     oneof RegInfo {
-        ChaincodeReg chaincodeRegInfo = 2;
+        ChaincodeReg chaincode_reg_info = 2;
     }
+    string chainID = 3;
 }
 
 //---------- consumer events ---------
@@ -63,12 +64,20 @@ message Register {
 //string type - "rejection"
 message Rejection {
     Transaction tx = 1;
-    string errorMsg = 2;
+    string error_msg = 2;
 }
 
 //---------- producer events ---------
 message Unregister {
     repeated Interest events = 1;
+}
+
+// SignedEvent is used for any communication between consumer and producer
+message SignedEvent {
+    // Signature over the event bytes
+    bytes signature = 1;
+    // Marshal of Event object
+    bytes eventBytes = 2;
 }
 
 //Event is used by
@@ -83,12 +92,14 @@ message Event {
 
         //producer events
         common.Block block = 2;
-        ChaincodeEvent chaincodeEvent = 3;
+        ChaincodeEvent chaincode_event = 3;
         Rejection rejection = 4;
 
         //Unregister consumer sent events
         Unregister unregister = 5;
     }
+    // Creator of the event, specified as a certificate chain
+    bytes creator = 6;
 }
 
 // Interface exported by the events server

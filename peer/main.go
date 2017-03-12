@@ -28,9 +28,10 @@ import (
 
 	_ "net/http/pprof"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core"
-	"github.com/hyperledger/fabric/core/flogging"
 	"github.com/hyperledger/fabric/peer/chaincode"
+	"github.com/hyperledger/fabric/peer/channel"
 	"github.com/hyperledger/fabric/peer/clilogging"
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/hyperledger/fabric/peer/node"
@@ -38,6 +39,7 @@ import (
 )
 
 var logger = logging.MustGetLogger("main")
+var logOutput = os.Stderr
 
 // Constants go here.
 const cmdRoot = "core"
@@ -48,7 +50,7 @@ var mainCmd = &cobra.Command{
 	Use: "peer",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		peerCommand := getPeerCommandFromCobraCommand(cmd)
-		flogging.LoggingInit(peerCommand)
+		flogging.InitFromViper(peerCommand)
 
 		return core.CacheConfiguration()
 	},
@@ -90,22 +92,17 @@ func main() {
 	mainCmd.AddCommand(node.Cmd())
 	mainCmd.AddCommand(chaincode.Cmd(nil))
 	mainCmd.AddCommand(clilogging.Cmd())
+	mainCmd.AddCommand(channel.Cmd(nil))
 
 	runtime.GOMAXPROCS(viper.GetInt("peer.gomaxprocs"))
 
-	// Init the MSP
-	// TODO: determine the location of this config file
-	var mspMgrConfigDir string
-	var alternativeCfgPath = os.Getenv("PEER_CFG_PATH")
-	if alternativeCfgPath != "" {
-		mspMgrConfigDir = alternativeCfgPath + "/msp/sampleconfig/"
-	} else if _, err := os.Stat("./msp/sampleconfig/"); err == nil {
-		mspMgrConfigDir = "./msp/sampleconfig/"
-	} else {
-		mspMgrConfigDir = os.Getenv("GOPATH") + "/src/github.com/hyperledger/fabric/msp/sampleconfig/"
-	}
+	// initialize logging format from core.yaml
+	flogging.SetLoggingFormat(viper.GetString("logging.format"), logOutput)
 
-	err = common.InitCrypto(mspMgrConfigDir)
+	// Init the MSP
+	var mspMgrConfigDir = viper.GetString("peer.mspConfigPath")
+	var mspID = viper.GetString("peer.localMspId")
+	err = common.InitCrypto(mspMgrConfigDir, mspID)
 	if err != nil { // Handle errors reading the config file
 		panic(err.Error())
 	}

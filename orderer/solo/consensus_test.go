@@ -20,11 +20,17 @@ import (
 	"testing"
 	"time"
 
+	mockconfigvaluesorderer "github.com/hyperledger/fabric/common/mocks/configvalues/channel/orderer"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/blockcutter"
 	mockmultichain "github.com/hyperledger/fabric/orderer/mocks/multichain"
-	mocksharedconfig "github.com/hyperledger/fabric/orderer/mocks/sharedconfig"
 	cb "github.com/hyperledger/fabric/protos/common"
+
+	logging "github.com/op/go-logging"
 )
+
+func init() {
+	logging.SetLevel(logging.DEBUG, "")
+}
 
 var testMessage = &cb.Envelope{Payload: []byte("TEST_MESSAGE")}
 
@@ -53,7 +59,7 @@ func TestEmptyBatch(t *testing.T) {
 	support := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -74,7 +80,7 @@ func TestBatchTimer(t *testing.T) {
 	support := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)
@@ -109,7 +115,7 @@ func TestBatchTimerHaltOnFilledBatch(t *testing.T) {
 	support := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 
@@ -152,7 +158,7 @@ func TestConfigStyleMultiBatch(t *testing.T) {
 	support := &mockmultichain.ConsenterSupport{
 		Batches:         make(chan []*cb.Envelope),
 		BlockCutterVal:  mockblockcutter.NewReceiver(),
-		SharedConfigVal: &mocksharedconfig.Manager{BatchTimeoutVal: batchTimeout},
+		SharedConfigVal: &mockconfigvaluesorderer.SharedConfig{BatchTimeoutVal: batchTimeout},
 	}
 	defer close(support.BlockCutterVal.Block)
 	bs := newChain(support)

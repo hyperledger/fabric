@@ -18,10 +18,10 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
 // This chaincode implements a simple map that is stored in the state.
@@ -38,19 +38,19 @@ type SimpleChaincode struct {
 }
 
 // Init is a no-op
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) ([]byte, error) {
-	return nil, nil
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
+	return shim.Success(nil)
 }
 
 // Invoke has two functions
 // put - takes two arguements, a key and value, and stores them in the state
 // remove - takes one argument, a key, and removes if from the state
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, error) {
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	switch function {
 	case "put":
 		if len(args) < 2 {
-			return nil, errors.New("put operation must include two arguments, a key and value")
+			return shim.Error("put operation must include two arguments, a key and value")
 		}
 		key := args[0]
 		value := args[1]
@@ -58,37 +58,43 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 		err := stub.PutState(key, []byte(value))
 		if err != nil {
 			fmt.Printf("Error putting state %s", err)
-			return nil, fmt.Errorf("put operation failed. Error updating state: %s", err)
+			return shim.Error(fmt.Sprintf("put operation failed. Error updating state: %s", err))
 		}
-		return nil, nil
+		return shim.Success(nil)
 
 	case "remove":
 		if len(args) < 1 {
-			return nil, errors.New("remove operation must include one argument, a key")
+			return shim.Error("remove operation must include one argument, a key")
 		}
 		key := args[0]
 
 		err := stub.DelState(key)
 		if err != nil {
-			return nil, fmt.Errorf("remove operation failed. Error updating state: %s", err)
+			return shim.Error(fmt.Sprintf("remove operation failed. Error updating state: %s", err))
 		}
-		return nil, nil
+		return shim.Success(nil)
 
 	case "get":
 		if len(args) < 1 {
-			return nil, errors.New("get operation must include one argument, a key")
+			return shim.Error("get operation must include one argument, a key")
 		}
 		key := args[0]
 		value, err := stub.GetState(key)
 		if err != nil {
-			return nil, fmt.Errorf("get operation failed. Error accessing state: %s", err)
+			return shim.Error(fmt.Sprintf("get operation failed. Error accessing state: %s", err))
 		}
-		return value, nil
+		return shim.Success(value)
 
 	case "keys":
-		keysIter, err := stub.RangeQueryState("", "")
+		if len(args) < 2 {
+			return shim.Error("put operation must include two arguments, a key and value")
+		}
+		startKey := args[0]
+		endKey := args[1]
+
+		keysIter, err := stub.GetStateByRange(startKey, endKey)
 		if err != nil {
-			return nil, fmt.Errorf("keys operation failed. Error accessing state: %s", err)
+			return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
 		}
 		defer keysIter.Close()
 
@@ -96,20 +102,43 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) ([]byte, erro
 		for keysIter.HasNext() {
 			key, _, iterErr := keysIter.Next()
 			if iterErr != nil {
-				return nil, fmt.Errorf("keys operation failed. Error accessing state: %s", err)
+				return shim.Error(fmt.Sprintf("keys operation failed. Error accessing state: %s", err))
 			}
 			keys = append(keys, key)
 		}
 
 		jsonKeys, err := json.Marshal(keys)
 		if err != nil {
-			return nil, fmt.Errorf("keys operation failed. Error marshaling JSON: %s", err)
+			return shim.Error(fmt.Sprintf("keys operation failed. Error marshaling JSON: %s", err))
 		}
 
-		return jsonKeys, nil
+		return shim.Success(jsonKeys)
+	case "query":
+		query := args[0]
+		keysIter, err := stub.GetQueryResult(query)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+		}
+		defer keysIter.Close()
+
+		var keys []string
+		for keysIter.HasNext() {
+			key, _, iterErr := keysIter.Next()
+			if iterErr != nil {
+				return shim.Error(fmt.Sprintf("query operation failed. Error accessing state: %s", err))
+			}
+			keys = append(keys, key)
+		}
+
+		jsonKeys, err := json.Marshal(keys)
+		if err != nil {
+			return shim.Error(fmt.Sprintf("query operation failed. Error marshaling JSON: %s", err))
+		}
+
+		return shim.Success(jsonKeys)
 
 	default:
-		return nil, errors.New("Unsupported operation")
+		return shim.Success([]byte("Unsupported operation"))
 	}
 }
 

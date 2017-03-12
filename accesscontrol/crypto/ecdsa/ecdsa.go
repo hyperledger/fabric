@@ -21,7 +21,7 @@ import (
 	"encoding/asn1"
 	"math/big"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto"
+	"github.com/hyperledger/fabric/accesscontrol/crypto"
 )
 
 type x509ECDSASignatureVerifierImpl struct {

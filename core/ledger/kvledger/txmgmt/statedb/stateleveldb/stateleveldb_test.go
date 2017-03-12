@@ -17,31 +17,43 @@ limitations under the License.
 package stateleveldb
 
 import (
+	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/spf13/viper"
 )
 
-var testDBPath = "/tmp/fabric/core/ledger/versioneddb/levelimpl"
+func TestMain(m *testing.M) {
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger/txmgmt/statedb/stateleveldb")
+	os.Exit(m.Run())
+}
 
 func TestBasicRW(t *testing.T) {
-	env := NewTestVDBEnv(t, testDBPath)
+	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestBasicRW(t, env.DB)
+	commontests.TestBasicRW(t, env.DBProvider)
+}
+
+func TestMultiDBBasicRW(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestMultiDBBasicRW(t, env.DBProvider)
 }
 
 func TestDeletes(t *testing.T) {
-	env := NewTestVDBEnv(t, testDBPath)
+	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestDeletes(t, env.DB)
+	commontests.TestDeletes(t, env.DBProvider)
 }
 
 func TestIterator(t *testing.T) {
-	env := NewTestVDBEnv(t, testDBPath)
+	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestIterator(t, env.DB)
+	commontests.TestIterator(t, env.DBProvider)
 }
 
 func TestEncodeDecodeValueAndVersion(t *testing.T) {
@@ -50,18 +62,18 @@ func TestEncodeDecodeValueAndVersion(t *testing.T) {
 }
 
 func testValueAndVersionEncodeing(t *testing.T, value []byte, version *version.Height) {
-	encodedValue := encodeValue(value, version)
-	val, ver := decodeValue(encodedValue)
+	encodedValue := statedb.EncodeValue(value, version)
+	val, ver := statedb.DecodeValue(encodedValue)
 	testutil.AssertEquals(t, val, value)
 	testutil.AssertEquals(t, ver, version)
 }
 
 func TestCompositeKey(t *testing.T) {
-	testCompositeKey(t, "ns", "key")
-	testCompositeKey(t, "ns", "")
+	testCompositeKey(t, "ledger1", "ns", "key")
+	testCompositeKey(t, "ledger2", "ns", "")
 }
 
-func testCompositeKey(t *testing.T, ns string, key string) {
+func testCompositeKey(t *testing.T, dbName string, ns string, key string) {
 	compositeKey := constructCompositeKey(ns, key)
 	t.Logf("compositeKey=%#v", compositeKey)
 	ns1, key1 := splitCompositeKey(compositeKey)

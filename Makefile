@@ -1,19 +1,17 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
+# Copyright IBM Corp All Rights Reserved.
+# Copyright London Stock Exchange Group All Rights Reserved.
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # -------------------------------------------------------------
 # This makefile defines the following targets
@@ -23,6 +21,7 @@
 #   - peer - builds a native fabric peer binary
 #   - orderer - builds a native fabric orderer binary
 #   - unit-test - runs the go-test based unit tests
+#   - test-cmd - generates a "go test" string suitable for manual customization
 #   - behave - runs the behave test
 #   - behave-deps - ensures pre-requisites are availble for running behave manually
 #   - gotools - installs go tools like golint
@@ -47,11 +46,19 @@ PROJECT_VERSION=$(BASE_VERSION)
 endif
 
 PKGNAME = github.com/$(PROJECT_NAME)
-GO_LDFLAGS = -X $(PKGNAME)/common/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" "
 ARCH=$(shell uname -m)
-CHAINTOOL_RELEASE=v0.10.0
+CHAINTOOL_RELEASE=v0.10.3
 BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
+
+# defined in common/metadata/metadata.go
+METADATA_VAR = Version=$(PROJECT_VERSION)
+METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
+METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
+
+GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
+
+CHAINTOOL_URL ?= https://github.com/hyperledger/fabric-chaintool/releases/download/$(CHAINTOOL_RELEASE)/chaintool
 
 export GO_LDFLAGS
 
@@ -59,13 +66,14 @@ EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
 	$(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH: Check dependencies")))
 
-GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim | sort | uniq)
+GOSHIM_DEPS = $(shell ./scripts/goListFiles.sh $(PKGNAME)/core/chaincode/shim)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROTOS = $(shell git ls-files *.proto | grep -v vendor)
-MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*.pem)
+MSP_SAMPLECONFIG = $(shell git ls-files msp/sampleconfig/*)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = peer orderer ccenv javaenv testenv runtime
+IMAGES = peer orderer ccenv javaenv buildenv testenv zookeeper kafka couchdb
 
+pkgmap.configtxgen    := $(PKGNAME)/common/configtx/tool/configtxgen
 pkgmap.peer           := $(PKGNAME)/peer
 pkgmap.orderer        := $(PKGNAME)/orderer
 pkgmap.block-listener := $(PKGNAME)/examples/events/block-listener
@@ -96,35 +104,51 @@ peer-docker: build/image/peer/$(DUMMY)
 orderer: build/bin/orderer
 orderer-docker: build/image/orderer/$(DUMMY)
 
+.PHONY: configtxgen
+configtxgen: build/bin/configtxgen
+
+buildenv: build/image/buildenv/$(DUMMY)
+
+build/image/testenv/$(DUMMY): build/image/buildenv/$(DUMMY)
 testenv: build/image/testenv/$(DUMMY)
 
-unit-test: peer-docker testenv
+couchdb: build/image/couchdb/$(DUMMY)
+
+unit-test: peer-docker testenv couchdb
 	cd unit-test && docker-compose up --abort-on-container-exit --force-recreate && docker-compose down
 
 unit-tests: unit-test
 
+# Generates a string to the terminal suitable for manual augmentation / re-issue, useful for running tests by hand
+test-cmd:
+	@echo "go test -ldflags \"$(GO_LDFLAGS)\""
+
 docker: $(patsubst %,build/image/%/$(DUMMY), $(IMAGES))
 native: peer orderer
 
-BEHAVE_ENVIRONMENTS = kafka orderer-1-kafka-1 orderer-1-kafka-3
-.PHONY: behave-environments $(BEHAVE_ENVIRONMENTS)
-behave-environments: $(BEHAVE_ENVIRONMENTS)
-$(BEHAVE_ENVIRONMENTS):
-	@docker-compose --file bddtests/environments/$@/docker-compose.yml build
+BEHAVE_ENVIRONMENTS = kafka orderer orderer-1-kafka-1 orderer-1-kafka-3
+BEHAVE_ENVIRONMENT_TARGETS = $(patsubst %,bddtests/environments/%, $(BEHAVE_ENVIRONMENTS))
+.PHONY: behave-environments $(BEHAVE_ENVIRONMENT_TARGETS)
+behave-environments: $(BEHAVE_ENVIRONMENT_TARGETS)
+$(BEHAVE_ENVIRONMENT_TARGETS):
+	@docker-compose --file $@/docker-compose.yml build
 
 behave-deps: docker peer build/bin/block-listener behave-environments
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
 
-linter: testenv
+behave-peer-chaincode: build/bin/peer peer-docker orderer-docker
+	@cd peer/chaincode && behave
+
+linter: buildenv
 	@echo "LINT: Running code checks.."
-	@$(DRUN) hyperledger/fabric-testenv:$(DOCKER_TAG) ./scripts/golinter.sh
+	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
 
 %/chaintool: Makefile
 	@echo "Installing chaintool"
 	@mkdir -p $(@D)
-	curl -L https://github.com/hyperledger/fabric-chaintool/releases/download/$(CHAINTOOL_RELEASE)/chaintool > $@
+	curl -L $(CHAINTOOL_URL) > $@
 	chmod +x $@
 
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
@@ -153,18 +177,9 @@ build/docker/gotools: gotools/Makefile
 		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		make install BINDIR=/opt/gotools/bin OBJDIR=/opt/gotools/obj
 
-build/docker/busybox:
-	@$(DRUN) \
-		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
-		make -f busybox/Makefile install BINDIR=$(@D)
-
 # Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
 build/bin/peer: build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMMY)
 build/image/peer/$(DUMMY): build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMMY)
-
-# Both peer-docker and orderer-docker depend on the runtime image
-build/image/peer/$(DUMMY): build/image/runtime/$(DUMMY)
-build/image/orderer/$(DUMMY): build/image/runtime/$(DUMMY)
 
 build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
@@ -182,23 +197,45 @@ build/image/javaenv/payload:    build/javashim.tar.bz2 \
 				settings.gradle
 build/image/peer/payload:       build/docker/bin/peer \
 				peer/core.yaml \
-				build/msp-sampleconfig.tar.bz2
+				build/msp-sampleconfig.tar.bz2 \
+				common/configtx/tool/configtx.yaml
 build/image/orderer/payload:    build/docker/bin/orderer \
-				orderer/orderer.yaml
-build/image/testenv/payload:    build/gotools.tar.bz2
-build/image/runtime/payload:    build/docker/busybox
+				build/msp-sampleconfig.tar.bz2 \
+				orderer/orderer.yaml \
+				common/configtx/tool/configtx.yaml
+build/image/buildenv/payload:   build/gotools.tar.bz2 \
+				build/docker/gotools/bin/protoc-gen-go
+build/image/testenv/payload:    build/docker/bin/orderer \
+				orderer/orderer.yaml \
+				common/configtx/tool/configtx.yaml \
+				build/docker/bin/peer \
+				peer/core.yaml \
+				build/msp-sampleconfig.tar.bz2 \
+				images/testenv/install-softhsm2.sh
+build/image/zookeeper/payload:  images/zookeeper/docker-entrypoint.sh
+build/image/kafka/payload:      images/kafka/docker-entrypoint.sh \
+				images/kafka/kafka-run-class.sh
+build/image/couchdb/payload:	images/couchdb/docker-entrypoint.sh \
+				images/couchdb/local.ini \
+				images/couchdb/vm.args
 
 build/image/%/payload:
 	mkdir -p $@
 	cp $^ $@
 
-build/image/%/$(DUMMY): Makefile build/image/%/payload
-	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
-	@echo "Building docker $(TARGET)-image"
-	@cat images/$(TARGET)/Dockerfile.in \
+.PRECIOUS: build/image/%/Dockerfile
+
+build/image/%/Dockerfile: images/%/Dockerfile.in
+	@cat $< \
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
-		> $(@D)/Dockerfile
+		> $@
+	@echo LABEL $(BASE_DOCKER_LABEL).version=$(PROJECT_VERSION) \\>>$@
+	@echo "     " $(BASE_DOCKER_LABEL).base.version=$(BASEIMAGE_RELEASE)>>$@
+
+build/image/%/$(DUMMY): Makefile build/image/%/payload build/image/%/Dockerfile
+	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
+	@echo "Building docker $(TARGET)-image"
 	$(DBUILD) -t $(PROJECT_NAME)-$(TARGET) $(@D)
 	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
 	@touch $@
@@ -219,8 +256,8 @@ build/%.tar.bz2:
 	@tar -jc $^ > $@
 
 .PHONY: protos
-protos: testenv
-	@$(DRUN) hyperledger/fabric-testenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
+protos: buildenv
+	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})

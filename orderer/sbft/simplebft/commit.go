@@ -29,7 +29,7 @@ func (s *SBFT) maybeSendCommit() {
 func (s *SBFT) sendCommit() {
 	s.cur.prepared = true
 	c := s.cur.subject
-	s.sys.Persist(prepared, &c)
+	s.sys.Persist(s.chainId, prepared, &c)
 	s.broadcast(&Msg{&Msg_Commit{&c}})
 }
 
@@ -58,7 +58,7 @@ func (s *SBFT) handleCommit(c *Subject, src uint64) {
 	s.cur.committed = true
 	log.Noticef("replica %d: executing %v %x", s.id, s.cur.subject.Seq, s.cur.subject.Digest)
 
-	s.sys.Persist(committed, &s.cur.subject)
+	s.sys.Persist(s.chainId, committed, &s.cur.subject)
 
 	s.sendCheckpoint()
 	s.processBacklog()

@@ -17,25 +17,7 @@ limitations under the License.
 package kafka
 
 import (
-	"os"
-	"strings"
-
 	logging "github.com/op/go-logging"
 )
 
-var logger *logging.Logger
-
-func init() {
-	backend := logging.NewLogBackend(os.Stderr, "", 0)
-	logging.SetBackend(backend)
-	formatter := logging.MustStringFormatter("[%{time:15:04:05.000}] %{shortfile:18s}: %{color}[%{level:-5s}]%{color:reset} %{message}")
-	logging.SetFormatter(formatter)
-	logger = logging.MustGetLogger("orderer/kafka")
-	logging.SetLevel(logging.INFO, "") // Silence debug-level outputs when testing
-}
-
-// SetLogLevel sets the package logging level
-func SetLogLevel(level string) {
-	logLevel, _ := logging.LogLevel(strings.ToUpper(level)) // TODO Validate input
-	logging.SetLevel(logLevel, logger.Module)
-}
+var logger = logging.MustGetLogger("orderer/kafka")

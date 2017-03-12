@@ -54,7 +54,7 @@ func (s *SBFT) recordBacklogMsg(m *Msg, src uint64) {
 	if len(s.replicaState[src].backLog) > maxBacklogSeq*msgPerSeq {
 		log.Debugf("replica %d: backlog for %d full, discarding and reconnecting", s.id, src)
 		s.discardBacklog(src)
-		s.sys.Reconnect(src)
+		s.sys.Reconnect(s.chainId, src)
 	}
 }
 

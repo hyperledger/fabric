@@ -84,6 +84,27 @@ def ipFromContainerNamePart(namePart, containerDataList):
 
     return containerData.ipAddress
 
+def getPortHostMapping(compose_container_data, compose_service_name, port, protocol='tcp'):
+    """returns (host_ip, host_port)
+    Returns the host IP address port and port that maps to a container's exposed port.
+    If the port is not mapped, then the actual container IP address is returned.
+    """
+    container = containerDataFromNamePart(compose_service_name, compose_container_data)
+    if container:
+        port_protocol = '%s/%s' % (port, protocol)
+        if port_protocol in container.ports:
+            port_mapping = container.ports[port_protocol]
+            host_ip = port_mapping[0]['HostIp']
+            host_port = int(port_mapping[0]['HostPort'])
+            return host_ip, host_port
+        else:
+            print('WARNING: Could not find port mapping for port {0}'.format(port_protocol))
+            # TODO so we don't break existing docker-compose tests on Vagrant just yet
+            print('WARNING: Returning the actual container IP address, which might not be routable from the host.')
+            return container.ipAddress, port
+    else:
+        raise Exception("Could not find container for service '{0}'".format(compose_service_name))
+
 def fullNameFromContainerNamePart(namePart, containerDataList):
     containerData = containerDataFromNamePart(namePart, containerDataList)
 

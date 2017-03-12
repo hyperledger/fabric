@@ -62,11 +62,10 @@ func mockNewProducer(t *testing.T, cp ChainPartition, offset int64, disk chan *a
 func (mp *mockProducerImpl) Send(cp ChainPartition, payload []byte) error {
 	mp.producer.ExpectSendMessageWithCheckerFunctionAndSucceed(mp.checker)
 	mp.producedOffset++ // This is the offset that will be assigned to the sent message
-	_, ofs, err := mp.producer.SendMessage(newProducerMessage(cp, payload))
-	// We do NOT check the assigned partition because the mock
-	// producer always posts to partition 0 no matter what.
-	// This is a deficiency of the Kafka library that we use.
-	if err != nil || ofs != mp.producedOffset {
+	if _, ofs, err := mp.producer.SendMessage(newProducerMessage(cp, payload)); err != nil || ofs != mp.producedOffset {
+		// We do NOT check the assigned partition because the mock
+		// producer always posts to partition 0 no matter what.
+		// This is a deficiency of the Kafka library that we use.
 		mp.t.Fatal("Mock producer not functioning as expected")
 	}
 	msg := new(ab.KafkaMessage)
@@ -74,7 +73,7 @@ func (mp *mockProducerImpl) Send(cp ChainPartition, payload []byte) error {
 		mp.t.Fatalf("Failed to unmarshal message that reached producer's disk: %s", err)
 	}
 	mp.disk <- msg // Reaches the cluster's disk for that chain partition
-	return err
+	return nil
 }
 
 func (mp *mockProducerImpl) Close() error {

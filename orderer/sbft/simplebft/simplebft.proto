@@ -28,6 +28,11 @@ message Config {
         uint64 request_timeout_nsec = 5;
 };
 
+message MultiChainMsg {
+    string chainID = 1;
+    Msg msg = 2;
+}
+
 message Msg {
         oneof type {
                 Request request = 1;

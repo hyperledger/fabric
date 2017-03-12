@@ -29,9 +29,9 @@ import (
 )
 
 func init() {
-	requestWaitTime = time.Duration(200) * time.Millisecond
-	digestWaitTime = time.Duration(100) * time.Millisecond
-	responseWaitTime = time.Duration(200) * time.Millisecond
+	SetDigestWaitTime(time.Duration(100) * time.Millisecond)
+	SetRequestWaitTime(time.Duration(200) * time.Millisecond)
+	SetResponseWaitTime(time.Duration(200) * time.Millisecond)
 }
 
 type messageHook func(interface{})

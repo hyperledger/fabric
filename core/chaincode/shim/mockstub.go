@@ -21,10 +21,11 @@ package shim
 import (
 	"container/list"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/op/go-logging"
 )
 
@@ -106,21 +107,21 @@ func (stub *MockStub) MockPeerChaincode(invokableChaincodeName string, otherStub
 }
 
 // Initialise this chaincode,  also starts and ends a transaction.
-func (stub *MockStub) MockInit(uuid string, args [][]byte) ([]byte, error) {
+func (stub *MockStub) MockInit(uuid string, args [][]byte) pb.Response {
 	stub.args = args
 	stub.MockTransactionStart(uuid)
-	bytes, err := stub.cc.Init(stub)
+	res := stub.cc.Init(stub)
 	stub.MockTransactionEnd(uuid)
-	return bytes, err
+	return res
 }
 
 // Invoke this chaincode, also starts and ends a transaction.
-func (stub *MockStub) MockInvoke(uuid string, args [][]byte) ([]byte, error) {
+func (stub *MockStub) MockInvoke(uuid string, args [][]byte) pb.Response {
 	stub.args = args
 	stub.MockTransactionStart(uuid)
-	bytes, err := stub.cc.Invoke(stub)
+	res := stub.cc.Invoke(stub)
 	stub.MockTransactionEnd(uuid)
-	return bytes, err
+	return res
 }
 
 // GetState retrieves the value for a given key from the ledger
@@ -187,107 +188,75 @@ func (stub *MockStub) DelState(key string) error {
 	return nil
 }
 
-func (stub *MockStub) RangeQueryState(startKey, endKey string) (StateRangeQueryIteratorInterface, error) {
+func (stub *MockStub) GetStateByRange(startKey, endKey string) (StateQueryIteratorInterface, error) {
 	return NewMockStateRangeQueryIterator(stub, startKey, endKey), nil
 }
 
-// CreateTable creates a new table given the table name and column definitions
-func (stub *MockStub) CreateTable(name string, columnDefinitions []*ColumnDefinition) error {
-	return createTableInternal(stub, name, columnDefinitions)
+// GetQueryResult function can be invoked by a chaincode to perform a
+// rich query against state database.  Only supported by state database implementations
+// that support rich query.  The query string is in the syntax of the underlying
+// state database. An iterator is returned which can be used to iterate (next) over
+// the query result set
+func (stub *MockStub) GetQueryResult(query string) (StateQueryIteratorInterface, error) {
+	// Not implemented since the mock engine does not have a query engine.
+	// However, a very simple query engine that supports string matching
+	// could be implemented to test that the framework supports queries
+	return nil, errors.New("Not Implemented")
 }
 
-// GetTable returns the table for the specified table name or ErrTableNotFound
-// if the table does not exist.
-func (stub *MockStub) GetTable(tableName string) (*Table, error) {
-	return getTable(stub, tableName)
+// GetHistoryForKey function can be invoked by a chaincode to return a history of
+// key values across time. GetHistoryForKey is intended to be used for read-only queries.
+func (stub *MockStub) GetHistoryForKey(key string) (StateQueryIteratorInterface, error) {
+	return nil, errors.New("Not Implemented")
 }
 
-// DeleteTable deletes an entire table and all associated rows.
-func (stub *MockStub) DeleteTable(tableName string) error {
-	return deleteTableInternal(stub, tableName)
+//GetStateByPartialCompositeKey function can be invoked by a chaincode to query the
+//state based on a given partial composite key. This function returns an
+//iterator which can be used to iterate over all composite keys whose prefix
+//matches the given partial composite key. This function should be used only for
+//a partial composite key. For a full composite key, an iter with empty response
+//would be returned.
+func (stub *MockStub) GetStateByPartialCompositeKey(objectType string, attributes []string) (StateQueryIteratorInterface, error) {
+	return getStateByPartialCompositeKey(stub, objectType, attributes)
 }
 
-// InsertRow inserts a new row into the specified table.
-// Returns -
-// true and no error if the row is successfully inserted.
-// false and no error if a row already exists for the given key.
-// false and a TableNotFoundError if the specified table name does not exist.
-// false and an error if there is an unexpected error condition.
-func (stub *MockStub) InsertRow(tableName string, row Row) (bool, error) {
-	return insertRowInternal(stub, tableName, row, false)
+// CreateCompositeKey combines the list of attributes
+//to form a composite key.
+func (stub *MockStub) CreateCompositeKey(objectType string, attributes []string) (string, error) {
+	return createCompositeKey(objectType, attributes)
 }
 
-// ReplaceRow updates the row in the specified table.
-// Returns -
-// true and no error if the row is successfully updated.
-// false and no error if a row does not exist the given key.
-// flase and a TableNotFoundError if the specified table name does not exist.
-// false and an error if there is an unexpected error condition.
-func (stub *MockStub) ReplaceRow(tableName string, row Row) (bool, error) {
-	return insertRowInternal(stub, tableName, row, true)
+// SplitCompositeKey splits the composite key into attributes
+// on which the composite key was formed.
+func (stub *MockStub) SplitCompositeKey(compositeKey string) (string, []string, error) {
+	return splitCompositeKey(compositeKey)
 }
 
-// GetRow fetches a row from the specified table for the given key.
-func (stub *MockStub) GetRow(tableName string, key []Column) (Row, error) {
-	return getRowInternal(stub, tableName, key)
-}
-
-// GetRows returns multiple rows based on a partial key. For example, given table
-// | A | B | C | D |
-// where A, C and D are keys, GetRows can be called with [A, C] to return
-// all rows that have A, C and any value for D as their key. GetRows could
-// also be called with A only to return all rows that have A and any value
-// for C and D as their key.
-func (stub *MockStub) GetRows(tableName string, key []Column) (<-chan Row, error) {
-	return getRowsInternal(stub, tableName, key)
-}
-
-// DeleteRow deletes the row for the given key from the specified table.
-func (stub *MockStub) DeleteRow(tableName string, key []Column) error {
-	return deleteRowInternal(stub, tableName, key)
-}
-
-// Invokes a peered chaincode.
-// E.g. stub1.InvokeChaincode("stub2Hash", funcArgs)
+// InvokeChaincode calls a peered chaincode.
+// E.g. stub1.InvokeChaincode("stub2Hash", funcArgs, channel)
 // Before calling this make sure to create another MockStub stub2, call stub2.MockInit(uuid, func, args)
 // and register it with stub1 by calling stub1.MockPeerChaincode("stub2Hash", stub2)
-func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
+func (stub *MockStub) InvokeChaincode(chaincodeName string, args [][]byte, channel string) pb.Response {
+	// Internally we use chaincode name as a composite name
+	if channel != "" {
+		chaincodeName = chaincodeName + "/" + channel
+	}
 	// TODO "args" here should possibly be a serialized pb.ChaincodeInput
 	otherStub := stub.Invokables[chaincodeName]
 	mockLogger.Debug("MockStub", stub.Name, "Invoking peer chaincode", otherStub.Name, args)
 	//	function, strings := getFuncArgs(args)
-	bytes, err := otherStub.MockInvoke(stub.TxID, args)
-	mockLogger.Debug("MockStub", stub.Name, "Invoked peer chaincode", otherStub.Name, "got", bytes, err)
-	return bytes, err
+	res := otherStub.MockInvoke(stub.TxID, args)
+	mockLogger.Debug("MockStub", stub.Name, "Invoked peer chaincode", otherStub.Name, "got", fmt.Sprintf("%+v", res))
+	return res
 }
 
 // Not implemented
-func (stub *MockStub) ReadCertAttribute(attributeName string) ([]byte, error) {
+func (stub *MockStub) GetCreator() ([]byte, error) {
 	return nil, nil
 }
 
 // Not implemented
-func (stub *MockStub) VerifyAttribute(attributeName string, attributeValue []byte) (bool, error) {
-	return false, nil
-}
-
-// Not implemented
-func (stub *MockStub) VerifyAttributes(attrs ...*attr.Attribute) (bool, error) {
-	return false, nil
-}
-
-// Not implemented
-func (stub *MockStub) VerifySignature(certificate, signature, message []byte) (bool, error) {
-	return false, nil
-}
-
-// Not implemented
-func (stub *MockStub) GetCallerCertificate() ([]byte, error) {
-	return nil, nil
-}
-
-// Not implemented
-func (stub *MockStub) GetCallerMetadata() ([]byte, error) {
+func (stub *MockStub) GetTransient() (map[string][]byte, error) {
 	return nil, nil
 }
 
@@ -297,7 +266,7 @@ func (stub *MockStub) GetBinding() ([]byte, error) {
 }
 
 // Not implemented
-func (stub *MockStub) GetPayload() ([]byte, error) {
+func (stub *MockStub) GetArgsSlice() ([]byte, error) {
 	return nil, nil
 }
 
@@ -350,20 +319,30 @@ func (iter *MockStateRangeQueryIterator) HasNext() bool {
 		return false
 	}
 
-	if iter.Current.Next() == nil {
-		// we've reached the end of the underlying values
-		mockLogger.Debug("HasNext() but no next")
-		return false
+	current := iter.Current
+	for current != nil {
+		// if this is an open-ended query for all keys, return true
+		if iter.StartKey == "" && iter.EndKey == "" {
+			return true
+		}
+		comp1 := strings.Compare(current.Value.(string), iter.StartKey)
+		comp2 := strings.Compare(current.Value.(string), iter.EndKey)
+		if comp1 >= 0 {
+			if comp2 <= 0 {
+				mockLogger.Debug("HasNext() got next")
+				return true
+			} else {
+				mockLogger.Debug("HasNext() but no next")
+				return false
+
+			}
+		}
+		current = current.Next()
 	}
 
-	if iter.EndKey == iter.Current.Value {
-		// we've reached the end of the specified range
-		mockLogger.Debug("HasNext() at end of specified range")
-		return false
-	}
-
-	mockLogger.Debug("HasNext() got next")
-	return true
+	// we've reached the end of the underlying values
+	mockLogger.Debug("HasNext() but no next")
+	return false
 }
 
 // Next returns the next key and value in the range query iterator.
@@ -378,15 +357,21 @@ func (iter *MockStateRangeQueryIterator) Next() (string, []byte, error) {
 		return "", nil, errors.New("MockStateRangeQueryIterator.Next() called when it does not HaveNext()")
 	}
 
-	iter.Current = iter.Current.Next()
-
-	if iter.Current == nil {
-		mockLogger.Error("MockStateRangeQueryIterator.Next() went past end of range")
-		return "", nil, errors.New("MockStateRangeQueryIterator.Next() went past end of range")
+	for iter.Current != nil {
+		comp1 := strings.Compare(iter.Current.Value.(string), iter.StartKey)
+		comp2 := strings.Compare(iter.Current.Value.(string), iter.EndKey)
+		// compare to start and end keys. or, if this is an open-ended query for
+		// all keys, it should always return the key and value
+		if (comp1 >= 0 && comp2 <= 0) || (iter.StartKey == "" && iter.EndKey == "") {
+			key := iter.Current.Value.(string)
+			value, err := iter.Stub.GetState(key)
+			iter.Current = iter.Current.Next()
+			return key, value, err
+		}
+		iter.Current = iter.Current.Next()
 	}
-	key := iter.Current.Value.(string)
-	value, err := iter.Stub.GetState(key)
-	return key, value, err
+	mockLogger.Error("MockStateRangeQueryIterator.Next() went past end of range")
+	return "", nil, errors.New("MockStateRangeQueryIterator.Next() went past end of range")
 }
 
 // Close closes the range query iterator. This should be called when done

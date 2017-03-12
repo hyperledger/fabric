@@ -16,13 +16,20 @@ limitations under the License.
 
 package ledgerconfig
 
-import "github.com/spf13/viper"
+import (
+	"path/filepath"
 
+	"github.com/spf13/viper"
+)
+
+// TODO remove all these config variables, they are never used as defaults
 var stateDatabase = "goleveldb"
 var couchDBAddress = "127.0.0.1:5984"
 var username = ""
 var password = ""
 var historyDatabase = true
+
+var maxBlockFileSize = 0
 
 // CouchDBDef contains parameters
 type CouchDBDef struct {
@@ -40,6 +47,38 @@ func IsCouchDBEnabled() bool {
 	return false
 }
 
+// GetRootPath returns the filesystem path.
+// All ledger related contents are expected to be stored under this path
+func GetRootPath() string {
+	sysPath := viper.GetString("peer.fileSystemPath")
+	return filepath.Join(sysPath, "ledgersData")
+}
+
+// GetLedgerProviderPath returns the filesystem path for stroing ledger ledgerProvider contents
+func GetLedgerProviderPath() string {
+	return filepath.Join(GetRootPath(), "ledgerProvider")
+}
+
+// GetStateLevelDBPath returns the filesystem path that is used to maintain the state level db
+func GetStateLevelDBPath() string {
+	return filepath.Join(GetRootPath(), "stateLeveldb")
+}
+
+// GetHistoryLevelDBPath returns the filesystem path that is used to maintain the history level db
+func GetHistoryLevelDBPath() string {
+	return filepath.Join(GetRootPath(), "historyLeveldb")
+}
+
+// GetBlockStorePath returns the filesystem path that is used for the chain block stores
+func GetBlockStorePath() string {
+	return filepath.Join(GetRootPath(), "chains")
+}
+
+// GetMaxBlockfileSize returns maximum size of the block file
+func GetMaxBlockfileSize() int {
+	return 64 * 1024 * 1024
+}
+
 //GetCouchDBDefinition exposes the useCouchDB variable
 func GetCouchDBDefinition() *CouchDBDef {
 
@@ -50,14 +89,25 @@ func GetCouchDBDefinition() *CouchDBDef {
 	return &CouchDBDef{couchDBAddress, username, password}
 }
 
+//GetQueryLimit exposes the queryLimit variable
+func GetQueryLimit() int {
+	return viper.GetInt("ledger.state.queryLimit")
+}
+
 //IsHistoryDBEnabled exposes the historyDatabase variable
-//History database can only be enabled if couchDb is enabled
-//as it the history stored in the same couchDB instance.
-//TODO put History DB in it's own instance
 func IsHistoryDBEnabled() bool {
-	historyDatabase = viper.GetBool("ledger.state.historyDatabase")
-	if IsCouchDBEnabled() && historyDatabase {
-		return historyDatabase
-	}
-	return false
+	return viper.GetBool("ledger.state.historyDatabase")
+}
+
+// IsQueryReadsHashingEnabled enables or disables computing of hash
+// of range query results for phantom item validation
+func IsQueryReadsHashingEnabled() bool {
+	return true
+}
+
+// GetMaxDegreeQueryReadsHashing return the maximum degree of the merkle tree for hashes of
+// of range query results for phantom item validation
+// For more details - see description in kvledger/txmgmt/rwset/query_results_helper.go
+func GetMaxDegreeQueryReadsHashing() int {
+	return 50
 }

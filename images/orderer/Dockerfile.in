@@ -1,7 +1,11 @@
-FROM hyperledger/fabric-runtime:_TAG_
+FROM hyperledger/fabric-baseos:_BASE_TAG_
 ENV ORDERER_CFG_PATH /etc/hyperledger/fabric
-RUN mkdir -p /var/hyperledger/db /etc/hyperledger/fabric
+ENV ORDERER_GENERAL_LOCALMSPDIR $ORDERER_CFG_PATH/msp/sampleconfig
+ENV ORDERER_GENERAL_GENESISPROFILE=SampleInsecureSolo
+RUN mkdir -p /var/hyperledger/production $ORDERER_CFG_PATH
 COPY payload/orderer /usr/local/bin
-COPY payload/orderer.yaml $ORDERER_CFG_PATH
+COPY payload/configtx.yaml $ORDERER_CFG_PATH/
+COPY payload/orderer.yaml $ORDERER_CFG_PATH/
+ADD payload/msp-sampleconfig.tar.bz2 $ORDERER_CFG_PATH/
 EXPOSE 7050
-CMD orderer
+CMD ["orderer"]

@@ -33,15 +33,15 @@ type NewKeyPerInvoke struct {
 //---------- implements ShadowCCIntf functions -------
 
 //InitShadowCC initializes CC
-func (t *NewKeyPerInvoke) InitShadowCC() {
+func (t *NewKeyPerInvoke) InitShadowCC(initArgs []string) {
 	t.state = make(map[string][]byte)
 }
 
-//setState sets the state
-func (t *NewKeyPerInvoke) setState(key []byte, val []byte) {
+//invokeSuccessful sets the state and increments succefull invokes counter
+func (t *NewKeyPerInvoke) invokeSuccessful(key []byte, val []byte) {
 	t.Lock()
+	defer t.Unlock()
 	t.state[string(key)] = val
-	t.Unlock()
 }
 
 //getState gets the state
@@ -50,6 +50,18 @@ func (t *NewKeyPerInvoke) getState(key []byte) ([]byte, bool) {
 	defer t.Unlock()
 	v, ok := t.state[string(key)]
 	return v, ok
+}
+
+//OverrideNumInvokes returns the number of invokes shadow wants
+//accept users request, no override
+func (t *NewKeyPerInvoke) OverrideNumInvokes(numInvokesPlanned int) int {
+	return numInvokesPlanned
+}
+
+//GetNumQueries returns the number of queries shadow wants ccchecked to do.
+//For our purpose, just do as many queries as there were invokes for.
+func (t *NewKeyPerInvoke) GetNumQueries(numInvokesCompletedSuccessfully int) int {
+	return numInvokesCompletedSuccessfully
 }
 
 //GetInvokeArgs get args for invoke based on chaincode ID and iteration num
@@ -77,7 +89,7 @@ func (t *NewKeyPerInvoke) PostInvoke(args [][]byte, resp []byte) error {
 		return fmt.Errorf("invalid response %s", string(resp))
 	}
 
-	t.setState(args[1], args[2])
+	t.invokeSuccessful(args[1], args[2])
 
 	return nil
 }

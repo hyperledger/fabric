@@ -29,7 +29,7 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 	chaincodeInvokeCmd = &cobra.Command{
 		Use:       "invoke",
 		Short:     fmt.Sprintf("Invoke the specified %s.", chainFuncName),
-		Long:      fmt.Sprintf(`Invoke the specified %s. It will try to commit the endorsed transaction to the network.`, chainFuncName),
+		Long:      fmt.Sprintf("Invoke the specified %s. It will try to commit the endorsed transaction to the network.", chainFuncName),
 		ValidArgs: []string{"1"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return chaincodeInvoke(cmd, args, cf)
@@ -42,7 +42,7 @@ func invokeCmd(cf *ChaincodeCmdFactory) *cobra.Command {
 func chaincodeInvoke(cmd *cobra.Command, args []string, cf *ChaincodeCmdFactory) error {
 	var err error
 	if cf == nil {
-		cf, err = InitCmdFactory()
+		cf, err = InitCmdFactory(true)
 		if err != nil {
 			return err
 		}

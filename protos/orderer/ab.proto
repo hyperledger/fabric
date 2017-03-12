@@ -55,10 +55,9 @@ message SeekInfo {
         BLOCK_UNTIL_READY = 0;
         FAIL_IF_NOT_READY = 1;
     }
-    string chainID = 1;        // The chain to seek within
-    SeekPosition start = 2;    // The position to start the deliver from
-    SeekPosition stop = 3;     // The position to stop the deliver
-    SeekBehavior behavior = 4; // The behavior when a missing block is encountered
+    SeekPosition start = 1;    // The position to start the deliver from
+    SeekPosition stop = 2;     // The position to stop the deliver
+    SeekBehavior behavior = 3; // The behavior when a missing block is encountered
 }
 
 message DeliverResponse {
@@ -72,6 +71,6 @@ service AtomicBroadcast {
     // broadcast receives a reply of Acknowledgement for each common.Envelope in order, indicating success or type of failure
     rpc Broadcast(stream common.Envelope) returns (stream BroadcastResponse) {}
 
-    // deliver first requires an update containing a seek message, then a stream of block replies is received.
-    rpc Deliver(stream SeekInfo) returns (stream DeliverResponse) {}
+    // deliver first requires an Envelope of type DELIVER_SEEK_INFO with Payload data as a mashaled SeekInfo message, then a stream of block replies is received.
+    rpc Deliver(stream common.Envelope) returns (stream DeliverResponse) {}
 }

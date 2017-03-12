@@ -40,8 +40,8 @@ type chaincodeStubMock struct {
 	*/
 }
 
-// GetCallerCertificate returns caller certificate
-func (shim *chaincodeStubMock) GetCallerCertificate() ([]byte, error) {
+// GetCreator returns caller certificate
+func (shim *chaincodeStubMock) GetCreator() ([]byte, error) {
 	return shim.callerCert, nil
 }
 
@@ -60,9 +60,9 @@ type certErrorMock struct {
 	*/
 }
 
-// GetCallerCertificate returns caller certificate
-func (shim *certErrorMock) GetCallerCertificate() ([]byte, error) {
-	return nil, errors.New("GetCallerCertificate error")
+// GetCreator returns caller certificate
+func (shim *certErrorMock) GetCreator() ([]byte, error) {
+	return nil, errors.New("GetCreator error")
 }
 
 /*
@@ -76,8 +76,8 @@ type metadataErrorMock struct {
 	callerCert []byte
 }
 
-// GetCallerCertificate returns caller certificate
-func (shim *metadataErrorMock) GetCallerCertificate() ([]byte, error) {
+// GetCreator returns caller certificate
+func (shim *metadataErrorMock) GetCreator() ([]byte, error) {
 	return shim.callerCert, nil
 }
 
@@ -85,7 +85,7 @@ func (shim *metadataErrorMock) GetCallerCertificate() ([]byte, error) {
 	TODO: ##attributes-keys-pending This code have be redefined to avoid use of metadata field.
 // GetCallerMetadata returns caller metadata
 func (shim *metadataErrorMock) GetCallerMetadata() ([]byte, error) {
-	return nil, errors.New("GetCallerCertificate error")
+	return nil, errors.New("GetCreator error")
 }*/
 
 func TestVerifyAttribute(t *testing.T) {

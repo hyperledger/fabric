@@ -24,10 +24,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric/events/consumer"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/hyperledger/fabric/protos/common"
 	ehpb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -47,8 +49,8 @@ var obcEHClient *consumer.EventsClient
 func (a *Adapter) GetInterestedEvents() ([]*ehpb.Interest, error) {
 	return []*ehpb.Interest{
 		&ehpb.Interest{EventType: ehpb.EventType_BLOCK},
-		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: "event1"}}},
-		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: "event2"}}},
+		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event1"}}},
+		&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event2"}}},
 	}, nil
 	//return []*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_BLOCK}}, nil
 }
@@ -81,15 +83,67 @@ func (a *Adapter) Disconnected(err error) {
 	}
 }
 
-func createTestBlock() *common.Block {
+func createTestBlock(t *testing.T) *common.Block {
+	chdr := &common.ChannelHeader{
+		Type:    int32(common.HeaderType_ENDORSER_TRANSACTION),
+		Version: 1,
+		Timestamp: &timestamp.Timestamp{
+			Seconds: time.Now().Unix(),
+			Nanos:   0,
+		},
+		ChannelId: "test"}
+	hdr := &common.Header{ChannelHeader: utils.MarshalOrPanic(chdr)}
+	payload := &common.Payload{Header: hdr}
+	cea := &ehpb.ChaincodeEndorsedAction{}
+	ccaPayload := &ehpb.ChaincodeActionPayload{Action: cea}
+	env := &common.Envelope{}
+	taa := &ehpb.TransactionAction{}
+	taas := make([]*ehpb.TransactionAction, 1)
+	taas[0] = taa
+	tx := &ehpb.Transaction{Actions: taas}
+
+	events := &ehpb.ChaincodeEvent{
+		ChaincodeId: "ccid",
+		EventName:   "EventName",
+		Payload:     []byte("EventPayload"),
+		TxId:        "TxID"}
+
+	pHashBytes := []byte("proposal_hash")
+	pResponse := &ehpb.Response{Status: 200}
+	results := []byte("results")
+	eventBytes, err := utils.GetBytesChaincodeEvent(events)
+	if err != nil {
+		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
+	}
+	ccaPayload.Action.ProposalResponsePayload, err = utils.GetBytesProposalResponsePayload(pHashBytes, pResponse, results, eventBytes)
+	if err != nil {
+		t.Fatalf("Failure while marshalling the ProposalResponsePayload")
+	}
+	tx.Actions[0].Payload, err = utils.GetBytesChaincodeActionPayload(ccaPayload)
+	if err != nil {
+		t.Fatalf("Error marshalling tx action payload for block event: %s", err)
+	}
+	payload.Data, err = utils.GetBytesTransaction(tx)
+	if err != nil {
+		t.Fatalf("Failure while marshalling payload for block event: %s", err)
+	}
+	env.Payload, err = utils.GetBytesPayload(payload)
+	if err != nil {
+		t.Fatalf("Failure while marshalling tx envelope for block event: %s", err)
+	}
+	ebytes, err := utils.GetBytesEnvelope(env)
+	if err != nil {
+		t.Fatalf("Failure while marshalling transaction %s", err)
+	}
+
 	block := common.NewBlock(1, []byte{})
-	block.Data.Data = [][]byte{[]byte("tx1"), []byte("tx2")}
+	block.Data.Data = append(block.Data.Data, ebytes)
 	block.Header.DataHash = block.Data.Hash()
 	return block
 }
 
 func createTestChaincodeEvent(tid string, typ string) *ehpb.Event {
-	emsg := producer.CreateChaincodeEvent(&ehpb.ChaincodeEvent{ChaincodeID: tid, EventName: typ})
+	emsg := producer.CreateChaincodeEvent(&ehpb.ChaincodeEvent{ChaincodeId: tid, EventName: typ})
 	return emsg
 }
 
@@ -121,7 +175,7 @@ func TestReceiveAnyMessage(t *testing.T) {
 	var err error
 
 	adapter.count = 1
-	block := createTestBlock()
+	block := createTestBlock(t)
 	if err = producer.SendProducerBlockEvent(block); err != nil {
 		t.Fail()
 		t.Logf("Error sending message %s", err)
@@ -147,7 +201,7 @@ func TestReceiveCCWildcard(t *testing.T) {
 	var err error
 
 	adapter.count = 1
-	obcEHClient.RegisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: ""}}}})
+	obcEHClient.RegisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}})
 
 	select {
 	case <-adapter.notfy:
@@ -170,7 +224,7 @@ func TestReceiveCCWildcard(t *testing.T) {
 		t.Logf("timed out on messge")
 	}
 	adapter.count = 1
-	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: ""}}}})
+	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: ""}}}})
 
 	select {
 	case <-adapter.notfy:
@@ -200,7 +254,7 @@ func TestFailReceive(t *testing.T) {
 
 func TestUnregister(t *testing.T) {
 	var err error
-	obcEHClient.RegisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: "event10"}}}})
+	obcEHClient.RegisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event10"}}}})
 
 	adapter.count = 1
 	select {
@@ -223,7 +277,7 @@ func TestUnregister(t *testing.T) {
 		t.Fail()
 		t.Logf("timed out on messge")
 	}
-	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeID: "0xffffffff", EventName: "event10"}}}})
+	obcEHClient.UnregisterAsync([]*ehpb.Interest{&ehpb.Interest{EventType: ehpb.EventType_CHAINCODE, RegInfo: &ehpb.Interest_ChaincodeRegInfo{ChaincodeRegInfo: &ehpb.ChaincodeReg{ChaincodeId: "0xffffffff", EventName: "event10"}}}})
 	adapter.count = 1
 	select {
 	case <-adapter.notfy:

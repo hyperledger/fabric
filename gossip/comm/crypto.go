@@ -20,15 +20,15 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"math/big"
-	"os"
-
-	"crypto/tls"
 	"net"
+	"os"
 	"time"
 
+	"github.com/hyperledger/fabric/common/util"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -71,8 +71,15 @@ func generateCertificates(privKeyFile string, certKeyFile string) error {
 	return err
 }
 
-// ExtractTLSUnique extracts the TLS-Unique from the stream
-func ExtractTLSUnique(ctx context.Context) []byte {
+func certHashFromRawCert(rawCert []byte) []byte {
+	if len(rawCert) == 0 {
+		return nil
+	}
+	return util.ComputeSHA256(rawCert)
+}
+
+// ExtractCertificateHash extracts the hash of the certificate from the stream
+func extractCertificateHashFromContext(ctx context.Context) []byte {
 	pr, extracted := peer.FromContext(ctx)
 	if !extracted {
 		return nil
@@ -87,7 +94,12 @@ func ExtractTLSUnique(ctx context.Context) []byte {
 	if !isTLSConn {
 		return nil
 	}
-	return tlsInfo.State.TLSUnique
+	certs := tlsInfo.State.PeerCertificates
+	if len(certs) == 0 {
+		return nil
+	}
+	raw := certs[0].Raw
+	return certHashFromRawCert(raw)
 }
 
 type authCreds struct {

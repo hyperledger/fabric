@@ -17,15 +17,15 @@ limitations under the License.
 package config
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"reflect"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/viperutil"
+
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGoodConfig(t *testing.T) {
@@ -48,48 +48,9 @@ func TestBadConfig(t *testing.T) {
 
 	var uconf struct{}
 
-	err = ExactWithDateUnmarshal(config, &uconf)
+	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err == nil {
 		t.Fatalf("Should have failed to unmarshal")
-	}
-}
-
-type testSlice struct {
-	Inner struct {
-		Slice []string
-	}
-}
-
-func TestEnvSlice(t *testing.T) {
-	envVar := "ORDERER_INNER_SLICE"
-	envVal := "[a, b, c]"
-	os.Setenv(envVar, envVal)
-	defer os.Unsetenv(envVar)
-	config := viper.New()
-	config.SetEnvPrefix(Prefix)
-	config.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	config.SetEnvKeyReplacer(replacer)
-	config.SetConfigType("yaml")
-
-	data := "---\nInner:\n    Slice: [d,e,f]"
-
-	err := config.ReadConfig(bytes.NewReader([]byte(data)))
-
-	if err != nil {
-		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
-	}
-
-	var uconf testSlice
-
-	err = ExactWithDateUnmarshal(config, &uconf)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal with: %s", err)
-	}
-
-	expected := []string{"a", "b", "c"}
-	if !reflect.DeepEqual(uconf.Inner.Slice, expected) {
-		t.Fatalf("Did not get back the right slice, expeced: %v got %v", expected, uconf.Inner.Slice)
 	}
 }
 
@@ -118,5 +79,28 @@ func TestEnvInnerVar(t *testing.T) {
 	v2, _ := time.ParseDuration(envVal2)
 	if config.Kafka.Retry.Period != v2 {
 		t.Fatalf("Environmental override of inner config test 2 did not work")
+	}
+}
+
+func TestKafkaTLSConfig(t *testing.T) {
+	testCases := []struct {
+		name        string
+		tls         TLS
+		shouldPanic bool
+	}{
+		{"Disabled", TLS{Enabled: false}, false},
+		{"EnabledNoPrivateKey", TLS{Enabled: true, Certificate: "public.key"}, true},
+		{"EnabledNoPublicKey", TLS{Enabled: true, PrivateKey: "private.key"}, true},
+		{"EnabledNoTrustedRoots", TLS{Enabled: true, PrivateKey: "private.key", Certificate: "public.key"}, true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uconf := &TopLevel{Kafka: Kafka{TLS: tc.tls}}
+			if tc.shouldPanic {
+				assert.Panics(t, func() { uconf.completeInitialization() }, "should panic")
+			} else {
+				assert.NotPanics(t, func() { uconf.completeInitialization() }, "should not panic")
+			}
+		})
 	}
 }

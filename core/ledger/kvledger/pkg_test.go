@@ -19,26 +19,23 @@ package kvledger
 import (
 	"os"
 	"testing"
+
+	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
+	"github.com/spf13/viper"
 )
 
 type testEnv struct {
-	conf *Conf
-	t    testing.TB
+	t testing.TB
 }
 
 func newTestEnv(t testing.TB) *testEnv {
-	conf := NewConf("/tmp/tests/ledger/", 0)
-	os.RemoveAll(conf.blockStorageDir)
-	os.RemoveAll(conf.txMgrDBPath)
-	return &testEnv{conf, t}
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/ledgertests/kvledger")
+	env := &testEnv{t}
+	env.cleanup()
+	return env
 }
 
 func (env *testEnv) cleanup() {
-	os.RemoveAll(env.conf.blockStorageDir)
-	os.RemoveAll(env.conf.txMgrDBPath)
-}
-
-type testLedgerWrapper struct {
-	ledger *KVLedger
-	t      *testing.T
+	path := ledgerconfig.GetRootPath()
+	os.RemoveAll(path)
 }

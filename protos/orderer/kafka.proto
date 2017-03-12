@@ -20,6 +20,8 @@ option go_package = "github.com/hyperledger/fabric/protos/orderer";
 
 package orderer;
 
+// KafkaMessage is a wrapper type for the messages
+// that the Kafka-based orderer deals with.
 message KafkaMessage {
     oneof Type {
         KafkaMessageRegular regular = 1;
@@ -28,14 +30,28 @@ message KafkaMessage {
     }
 }
 
+// KafkaMessageRegular wraps a marshalled envelope.
 message KafkaMessageRegular {
     bytes payload = 1;
 }
 
+// KafkaMessageTimeToCut is used to signal to the orderers
+// that it is time to cut block <block_number>.
 message KafkaMessageTimeToCut {
     uint64 block_number = 1;
 }
 
+// KafkaMessageConnect is posted by an orderer upon booting up.
+// It is used to prevent the panic that would be caused if we
+// were to consume an empty partition. It is ignored by all
+// orderers when processing the partition.
 message KafkaMessageConnect {
     bytes payload = 1;
+}
+
+// LastOffsetPersisted is the encoded value for the Metadata message
+// which is encoded in the ORDERER block metadata index for the case
+// of the Kafka-based orderer.
+message KafkaMetadata {
+	int64 last_offset_persisted  = 1;
 }

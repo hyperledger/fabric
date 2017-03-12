@@ -17,9 +17,14 @@ public class EventDesc {
 		/** The destination state that the FSM will be in if the transition succeeds */
 		String dst;
 		
-		public EventDesc(String name, String dst, String... src) {
+		public EventDesc(String name, String[] src, String dst) {
 			this.name = name;
 			this.src = src;
+			this.dst = dst;
+		}
+		public EventDesc(String name, String src, String dst) {
+			this.name = name;
+			this.src = new String[] { src };
 			this.dst = dst;
 		}
 }

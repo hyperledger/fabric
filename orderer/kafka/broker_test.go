@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama"
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 )
 
 func TestBrokerGetOffset(t *testing.T) {

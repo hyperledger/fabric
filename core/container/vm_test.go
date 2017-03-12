@@ -17,15 +17,11 @@ limitations under the License.
 package container
 
 import (
-	"archive/tar"
-	"bytes"
 	"flag"
-	"io/ioutil"
 	"os"
 	"testing"
 
-	cutil "github.com/hyperledger/fabric/core/container/util"
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"golang.org/x/net/context"
 )
@@ -51,20 +47,6 @@ func TestVM_ListImages(t *testing.T) {
 	}
 }
 
-func TestVM_BuildImage_WritingGopathSource(t *testing.T) {
-	t.Skip("This can be re-enabled if testing GOPATH writing to tar image.")
-	inputbuf := bytes.NewBuffer(nil)
-	tw := tar.NewWriter(inputbuf)
-
-	err := cutil.WriteGopathSrc(tw, "")
-	if err != nil {
-		t.Fail()
-		t.Logf("Error writing gopath src: %s", err)
-	}
-	ioutil.WriteFile("/tmp/chaincode_deployment.tar", inputbuf.Bytes(), 0644)
-
-}
-
 func TestVM_BuildImage_ChaincodeLocal(t *testing.T) {
 	vm, err := NewVM()
 	if err != nil {
@@ -74,8 +56,8 @@ func TestVM_BuildImage_ChaincodeLocal(t *testing.T) {
 	}
 	// Build the spec
 	chaincodePath := "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example01"
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath}, CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
-	if _, err := vm.BuildChaincodeContainer(spec); err != nil {
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "ex01", Path: chaincodePath}, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
+	if err := vm.BuildChaincodeContainer(spec); err != nil {
 		t.Fail()
 		t.Log(err)
 	}
@@ -91,8 +73,8 @@ func TestVM_BuildImage_ChaincodeRemote(t *testing.T) {
 	}
 	// Build the spec
 	chaincodePath := "https://github.com/prjayach/chaincode_examples/chaincode_example02"
-	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeID: &pb.ChaincodeID{Name: "ex02", Path: chaincodePath}, CtorMsg: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
-	if _, err := vm.BuildChaincodeContainer(spec); err != nil {
+	spec := &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "ex02", Path: chaincodePath}, Input: &pb.ChaincodeInput{Args: util.ToChaincodeArgs("f")}}
+	if err := vm.BuildChaincodeContainer(spec); err != nil {
 		t.Fail()
 		t.Log(err)
 	}

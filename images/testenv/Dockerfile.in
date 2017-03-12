@@ -1,3 +1,29 @@
-FROM hyperledger/fabric-baseimage:_BASE_TAG_
-ADD payload/gotools.tar.bz2 /usr/local/bin/
+FROM hyperledger/fabric-buildenv:_TAG_
+
+# fabric configuration locations
+ENV PEER_CFG_PATH /etc/hyperledger/fabric
+ENV ORDERER_CFG_PATH /etc/hyperledger/fabric
+ENV CORE_PEER_MSPCONFIGPATH $PEER_CFG_PATH/msp/sampleconfig
+ENV ORDERER_GENERAL_LOCALMSPDIR $ORDERER_CFG_PATH/msp/sampleconfig
+
+# create needed directories
+RUN mkdir -p \
+  $PEER_CFG_PATH \
+  /var/hyperledger/production
+
+# fabric configuration files
+COPY payload/orderer.yaml $ORDERER_CFG_PATH
+COPY payload/configtx.yaml $ORDERER_CFG_PATH
+COPY payload/core.yaml $PEER_CFG_PATH
+ADD payload/msp-sampleconfig.tar.bz2 $PEER_CFG_PATH
+
+# fabric binaries
+COPY payload/orderer /usr/local/bin
+COPY payload/peer /usr/local/bin
+
+# softhsm2
+COPY payload/install-softhsm2.sh /tmp
+RUN bash /tmp/install-softhsm2.sh && rm -f install-softhsm2.sh
+
+# typically, this is mapped to a developer's dev environment
 WORKDIR /opt/gopath/src/github.com/hyperledger/fabric

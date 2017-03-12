@@ -23,15 +23,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hyperledger/fabric/common/viperutil"
+
 	"github.com/Shopify/sarama"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+
+	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 )
 
 var logger = logging.MustGetLogger("orderer/config")
 
 func init() {
-	logging.SetLevel(logging.DEBUG, "")
+	logging.SetLevel(logging.ERROR, "")
 }
 
 // Prefix is the default config prefix for the orderer
@@ -39,21 +43,38 @@ const Prefix string = "ORDERER"
 
 // General contains config which should be common among all orderer types
 type General struct {
-	OrdererType   string
-	LedgerType    string
-	BatchTimeout  time.Duration
-	QueueSize     uint32
-	MaxWindowSize uint32
-	ListenAddress string
-	ListenPort    uint16
-	GenesisMethod string
-	BatchSize     BatchSize
-	Profile       Profile
+	LedgerType     string
+	ListenAddress  string
+	ListenPort     uint16
+	TLS            TLS
+	GenesisMethod  string
+	GenesisProfile string
+	GenesisFile    string
+	Profile        Profile
+	LogLevel       string
+	LocalMSPDir    string
+	LocalMSPID     string
+	BCCSP          *bccsp.FactoryOpts
 }
 
-// BatchSize contains configuration affecting the size of batches
-type BatchSize struct {
-	MaxMessageCount uint32
+//TLS contains config used to configure TLS
+type TLS struct {
+	Enabled           bool
+	PrivateKey        string
+	Certificate       string
+	RootCAs           []string
+	ClientAuthEnabled bool
+	ClientRootCAs     []string
+}
+
+// Genesis is a deprecated structure which was used to put
+// values into the genesis block, but this is now handled elsewhere
+// SBFT did not reference these values via the genesis block however
+// so it is being left here for backwards compatibility purposes
+type Genesis struct {
+	DeprecatedBatchTimeout time.Duration
+	DeprecatedBatchSize    uint32
+	SbftShared             SbftShared
 }
 
 // Profile contains configuration for Go pprof profiling
@@ -75,16 +96,37 @@ type FileLedger struct {
 
 // Kafka contains config for the Kafka orderer
 type Kafka struct {
-	Brokers []string // TODO This should be deprecated and this information should be stored in the config block
 	Retry   Retry
 	Verbose bool
 	Version sarama.KafkaVersion
+	TLS     TLS
+}
+
+// SbftLocal contains config for the SBFT peer/replica
+type SbftLocal struct {
+	PeerCommAddr string
+	CertFile     string
+	KeyFile      string
+	DataDir      string
+}
+
+// SbftShared contains config for the SBFT network
+type SbftShared struct {
+	N                  uint64
+	F                  uint64
+	RequestTimeoutNsec uint64
+	Peers              map[string]string // Address to Cert mapping
 }
 
 // Retry contains config for the reconnection attempts to the Kafka brokers
 type Retry struct {
 	Period time.Duration
 	Stop   time.Duration
+}
+
+type RuntimeAndGenesis struct {
+	runtime *TopLevel
+	genesis *Genesis
 }
 
 // TopLevel directly corresponds to the orderer config yaml
@@ -97,41 +139,58 @@ type TopLevel struct {
 	RAMLedger  RAMLedger
 	FileLedger FileLedger
 	Kafka      Kafka
+	Genesis    Genesis
+	SbftLocal  SbftLocal
 }
 
 var defaults = TopLevel{
 	General: General{
-		OrdererType:   "solo",
-		LedgerType:    "ram",
-		BatchTimeout:  10 * time.Second,
-		QueueSize:     1000,
-		MaxWindowSize: 1000,
-		ListenAddress: "127.0.0.1",
-		ListenPort:    7050,
-		GenesisMethod: "provisional",
-		BatchSize: BatchSize{
-			MaxMessageCount: 10,
-		},
+		LedgerType:     "ram",
+		ListenAddress:  "127.0.0.1",
+		ListenPort:     7050,
+		GenesisMethod:  "provisional",
+		GenesisProfile: "SampleSingleMSPSolo",
+		GenesisFile:    "./genesisblock",
 		Profile: Profile{
 			Enabled: false,
 			Address: "0.0.0.0:6060",
 		},
+		LogLevel:    "INFO",
+		LocalMSPDir: "../msp/sampleconfig/",
+		LocalMSPID:  "DEFAULT",
+		BCCSP:       &bccsp.DefaultOpts,
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,
 	},
 	FileLedger: FileLedger{
 		Location: "",
-		Prefix:   "hyperledger-fabric-rawledger",
+		Prefix:   "hyperledger-fabric-ordererledger",
 	},
 	Kafka: Kafka{
-		Brokers: []string{"127.0.0.1:9092"},
 		Retry: Retry{
 			Period: 3 * time.Second,
 			Stop:   60 * time.Second,
 		},
 		Verbose: false,
 		Version: sarama.V0_9_0_1,
+		TLS: TLS{
+			Enabled: false,
+		},
+	},
+	Genesis: Genesis{
+		SbftShared: SbftShared{
+			N:                  1,
+			F:                  0,
+			RequestTimeoutNsec: uint64(time.Second.Nanoseconds()),
+			Peers:              map[string]string{":6101": "sbft/testdata/cert1.pem"},
+		},
+	},
+	SbftLocal: SbftLocal{
+		PeerCommAddr: ":6101",
+		CertFile:     "sbft/testdata/cert1.pem",
+		KeyFile:      "sbft/testdata/key.pem",
+		DataDir:      "/tmp",
 	},
 }
 
@@ -140,41 +199,45 @@ func (c *TopLevel) completeInitialization() {
 
 	for {
 		switch {
-		case c.General.OrdererType == "":
-			logger.Infof("General.OrdererType unset, setting to %s", defaults.General.OrdererType)
-			c.General.OrdererType = defaults.General.OrdererType
 		case c.General.LedgerType == "":
 			logger.Infof("General.LedgerType unset, setting to %s", defaults.General.LedgerType)
 			c.General.LedgerType = defaults.General.LedgerType
-		case c.General.BatchTimeout == 0:
-			logger.Infof("General.BatchTimeout unset, setting to %s", defaults.General.BatchTimeout)
-			c.General.BatchTimeout = defaults.General.BatchTimeout
-		case c.General.BatchSize.MaxMessageCount == 0:
-			logger.Infof("General.BatchSize.MaxMessageCount unset, setting to %s", defaults.General.BatchSize.MaxMessageCount)
-			c.General.BatchSize.MaxMessageCount = defaults.General.BatchSize.MaxMessageCount
-		case c.General.QueueSize == 0:
-			logger.Infof("General.QueueSize unset, setting to %s", defaults.General.QueueSize)
-			c.General.QueueSize = defaults.General.QueueSize
-		case c.General.MaxWindowSize == 0:
-			logger.Infof("General.MaxWindowSize unset, setting to %s", defaults.General.MaxWindowSize)
-			c.General.MaxWindowSize = defaults.General.MaxWindowSize
 		case c.General.ListenAddress == "":
 			logger.Infof("General.ListenAddress unset, setting to %s", defaults.General.ListenAddress)
 			c.General.ListenAddress = defaults.General.ListenAddress
 		case c.General.ListenPort == 0:
 			logger.Infof("General.ListenPort unset, setting to %s", defaults.General.ListenPort)
 			c.General.ListenPort = defaults.General.ListenPort
+		case c.General.LogLevel == "":
+			logger.Infof("General.LogLevel unset, setting to %s", defaults.General.LogLevel)
+			c.General.LogLevel = defaults.General.LogLevel
 		case c.General.GenesisMethod == "":
 			c.General.GenesisMethod = defaults.General.GenesisMethod
+		case c.General.GenesisFile == "":
+			c.General.GenesisFile = defaults.General.GenesisFile
+		case c.General.GenesisProfile == "":
+			c.General.GenesisProfile = defaults.General.GenesisProfile
+		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
+			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
+		case c.Kafka.TLS.Enabled && c.Kafka.TLS.PrivateKey == "":
+			logger.Panicf("General.Kafka.TLS.PrivateKey must be set if General.Kafka.TLS.Enabled is set to true.")
+		case c.Kafka.TLS.Enabled && c.Kafka.TLS.RootCAs == nil:
+			logger.Panicf("General.Kafka.TLS.CertificatePool must be set if General.Kafka.TLS.Enabled is set to true.")
 		case c.General.Profile.Enabled && (c.General.Profile.Address == ""):
 			logger.Infof("Profiling enabled and General.Profile.Address unset, setting to %s", defaults.General.Profile.Address)
 			c.General.Profile.Address = defaults.General.Profile.Address
+		case c.General.LocalMSPDir == "":
+			logger.Infof("General.LocalMSPDir unset, setting to %s", defaults.General.LocalMSPDir)
+			// Note, this is a bit of a weird one, the orderer may set the ORDERER_CFG_PATH after
+			// the file is initialized, so we cannot initialize this in the structure, so we
+			// deference the env portion here
+			c.General.LocalMSPDir = filepath.Join(os.Getenv("ORDERER_CFG_PATH"), defaults.General.LocalMSPDir)
+		case c.General.LocalMSPID == "":
+			logger.Infof("General.LocalMSPID unset, setting to %s", defaults.General.LocalMSPID)
+			c.General.LocalMSPID = defaults.General.LocalMSPID
 		case c.FileLedger.Prefix == "":
 			logger.Infof("FileLedger.Prefix unset, setting to %s", defaults.FileLedger.Prefix)
 			c.FileLedger.Prefix = defaults.FileLedger.Prefix
-		case c.Kafka.Brokers == nil:
-			logger.Infof("Kafka.Brokers unset, setting to %v", defaults.Kafka.Brokers)
-			c.Kafka.Brokers = defaults.Kafka.Brokers
 		case c.Kafka.Retry.Period == 0*time.Second:
 			logger.Infof("Kafka.Retry.Period unset, setting to %v", defaults.Kafka.Retry.Period)
 			c.Kafka.Retry.Period = defaults.Kafka.Retry.Period
@@ -195,22 +258,26 @@ func Load() *TopLevel {
 	config := viper.New()
 
 	config.SetConfigName("orderer")
-	alternativeCfgPath := os.Getenv("ORDERER_CFG_PATH")
-	if alternativeCfgPath != "" {
-		logger.Infof("User defined config file path: %s", alternativeCfgPath)
-		config.AddConfigPath(alternativeCfgPath) // Path to look for the config file in
-	} else {
-		config.AddConfigPath("./")
-		config.AddConfigPath("../../.")
-		config.AddConfigPath("../orderer/")
-		config.AddConfigPath("../../orderer/")
+	cfgPath := os.Getenv("ORDERER_CFG_PATH")
+	if cfgPath == "" {
+		logger.Infof("No orderer cfg path set, assuming development environment, deriving from go path")
 		// Path to look for the config file in based on GOPATH
 		gopath := os.Getenv("GOPATH")
 		for _, p := range filepath.SplitList(gopath) {
 			ordererPath := filepath.Join(p, "src/github.com/hyperledger/fabric/orderer/")
-			config.AddConfigPath(ordererPath)
+			if _, err := os.Stat(filepath.Join(ordererPath, "orderer.yaml")); err != nil {
+				// The yaml file does not exist in this component of the go src
+				continue
+			}
+			cfgPath = ordererPath
 		}
+		if cfgPath == "" {
+			logger.Fatalf("Could not find orderer.yaml, try setting ORDERER_CFG_PATH or GOPATH correctly")
+		}
+		logger.Infof("Setting ORDERER_CFG_PATH to: %s", cfgPath)
+		os.Setenv("ORDERER_CFG_PATH", cfgPath)
 	}
+	config.AddConfigPath(cfgPath) // Path to look for the config file in
 
 	// for environment variables
 	config.SetEnvPrefix(Prefix)
@@ -225,7 +292,7 @@ func Load() *TopLevel {
 
 	var uconf TopLevel
 
-	err = ExactWithDateUnmarshal(config, &uconf)
+	err = viperutil.EnhancedExactUnmarshal(config, &uconf)
 	if err != nil {
 		panic(fmt.Errorf("Error unmarshaling into structure: %s", err))
 	}

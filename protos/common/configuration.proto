@@ -16,91 +16,27 @@ limitations under the License.
 
 syntax = "proto3";
 
-import "common/common.proto";
-
 option go_package = "github.com/hyperledger/fabric/protos/common";
 
 package common;
 
-// ConfigurationEnvelope is designed to contain _all_ configuration for a chain with no dependency
-// on previous configuration transactions.
-//
-// It is generated with the following scheme:
-//   1. Retrieve the existing configuration
-//   2. Note the highest configuration sequence number, store it and increment it by one
-//   3. Modify desired ConfigurationItems, setting each LastModified to the stored and incremented sequence number
-//     a) Note that the ConfigurationItem has a ChainHeader header attached to it, who's type is set to CONFIGURATION_ITEM
-//   4. Update SignedConfigurationItem with appropriate signatures over the modified ConfigurationItem
-//     a) Each signature is of type ConfigurationSignature
-//     b) The ConfigurationSignature signature is over the concatenation of signatureHeader and the ConfigurationItem bytes (which includes a ChainHeader)
-//   5. Submit new Configuration for ordering in Envelope signed by submitter
-//     a) The Envelope Payload has data set to the marshaled ConfigurationEnvelope
-//     b) The Envelope Payload has a header of type Header.Type.CONFIGURATION_TRANSACTION
-//
-// The configuration manager will verify:
-//   1. All configuration items and the envelope refer to the correct chain
-//   2. Some configuration item has been added or modified
-//   3. No existing configuration item has been ommitted
-//   4. All configuration changes have a LastModification of one more than the last configuration's highest LastModification number
-//   5. All configuration changes satisfy the corresponding modification policy
-message ConfigurationEnvelope {
-    repeated SignedConfigurationItem Items = 1;
+// HashingAlgorithm is encoded into the configuration transaction as  a configuration item of type Chain
+// with a Key of "HashingAlgorithm" and a Value of  HashingAlgorithm as marshaled protobuf bytes
+message HashingAlgorithm {
+    // Currently supported algorithms are: SHAKE256
+    string name = 1;
 }
 
-// This message may change slightly depending on the finalization of signature schemes for transactions
-message SignedConfigurationItem {
-    bytes ConfigurationItem = 1;
-    repeated ConfigurationSignature Signatures = 2; // Signatures over the hash of ConfigurationItem
+// BlockDataHashingStructure is encoded into the configuration transaction as a configuration item of
+// type Chain with a Key of "BlockDataHashingStructure" and a Value of HashingAlgorithm as marshaled protobuf bytes
+message BlockDataHashingStructure {
+    // width specifies the width of the Merkle tree to use when computing the BlockDataHash
+    // in order to replicate flat hashing, set this width to MAX_UINT32
+    uint32 width  = 1;
 }
 
-message ConfigurationItem {
-    enum ConfigurationType {
-        Policy = 0;   // Implies that the Value is a marshaled Policy message, and may be referred to by Key as a ModificationPolicy
-        Chain = 1;    // Marshaled format for this type is yet to be determined
-        Orderer = 2;  // Marshaled format for this type is yet to be determined
-        Fabric = 3;   // Marshaled format for this type is yet to be determined
-    }
-    ChainHeader Header = 1;  // The header which ties this configuration to a particular chain
-    ConfigurationType Type = 2;     // The type of configuration this is.
-    uint64 LastModified = 3;        // The Sequence number in the ConfigurationEnvelope this item was last modified
-    string ModificationPolicy = 4;  // What policy to check before allowing modification
-    string Key = 5;                 // A unique ID, unique scoped by Type, to reference the value by
-    bytes Value = 6;                // The byte representation of this configuration, usually a marshaled message
-}
-
-message ConfigurationSignature {
-    bytes signatureHeader = 1;
-    bytes signature = 2; // Signature over the concatenation of configurationItem bytes and signatureHeader bytes
-}
-
-// Policy expresses a policy which the orderer can evaluate, because there has been some desire expressed to support
-// multiple policy engines, this is typed as a oneof for now
-message Policy {
-    oneof Type {
-        SignaturePolicyEnvelope SignaturePolicy = 1;
-    }
-}
-
-// SignaturePolicyEnvelope wraps a SignaturePolicy and includes a version for future enhancements
-message SignaturePolicyEnvelope {
-    int32 Version = 1;
-    SignaturePolicy Policy = 2;
-    repeated bytes Identities = 3;
-}
-
-// SignaturePolicy is a recursive message structure which defines a featherweight DSL for describing
-// policies which are more complicated than 'exactly this signature'.  The NOutOf operator is sufficent
-// to express AND as well as OR, as well as of course N out of the following M policies
-// SignedBy implies that the signature is from a valid certificate which is signed by the trusted
-// authority specified in the bytes.  This will be the certificate itself for a self-signed certificate
-// and will be the CA for more traditional certificates
-message SignaturePolicy {
-    message NOutOf {
-        int32 N = 1;
-        repeated SignaturePolicy Policies = 2;
-    }
-    oneof Type {
-        int32 SignedBy = 1;
-        NOutOf From = 2;
-    }
+// OrdererAddresses is encoded into the configuration transaction as a configuration item of type Chain
+// with a Key of "OrdererAddresses" and a Value of OrdererAddresses as marshaled protobuf bytes
+message OrdererAddresses {
+    repeated string addresses = 1;
 }

@@ -27,6 +27,12 @@
 			"revisionTime": "2016-08-07T16:35:39Z"
 		},
 		{
+			"checksumSHA1": "BG0cnhTKUG9+WsLTySEeV6eiNyo=",
+			"path": "github.com/Knetic/govaluate",
+			"revision": "3cc7c7de92e74a87c657e957e003600723db32f6",
+			"revisionTime": "2016-12-26T20:32:30Z"
+		},
+		{
 			"checksumSHA1": "a/iaWA9b8WJcVD1sN4fHUDRf0Uk=",
 			"path": "github.com/Shopify/sarama",
 			"revision": "af0513c4d97979eb876d201391fac6475ec08268",
@@ -279,6 +285,12 @@
 			"path": "github.com/mattn/go-sqlite3",
 			"revision": "5651a9d9d49ec25811d08220ee972080378d52ea",
 			"revisionTime": "2015-11-06T23:54:04+09:00"
+		},
+		{
+			"checksumSHA1": "yOED17cgEIwsqkhg16Y0xiTHiZ0=",
+			"path": "github.com/miekg/pkcs11",
+			"revision": "2c6cdd29253e84b5f0f1bec7d77cce36f12d15bd",
+			"revisionTime": "2016-12-07T19:14:20Z"
 		},
 		{
 			"path": "github.com/mitchellh/mapstructure",

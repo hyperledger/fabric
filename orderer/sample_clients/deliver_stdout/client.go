@@ -21,11 +21,19 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 	"github.com/hyperledger/fabric/orderer/localconfig"
+	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+)
+
+var (
+	oldest  = &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}}
+	newest  = &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}}
+	maxStop = &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}}
 )
 
 type deliverClient struct {
@@ -37,31 +45,36 @@ func newDeliverClient(client ab.AtomicBroadcast_DeliverClient, chainID string) *
 	return &deliverClient{client: client, chainID: chainID}
 }
 
+func seekHelper(chainID string, start *ab.SeekPosition, stop *ab.SeekPosition) *cb.Envelope {
+	return &cb.Envelope{
+		Payload: utils.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: utils.MarshalOrPanic(&cb.ChannelHeader{
+					ChannelId: chainID,
+				}),
+				SignatureHeader: utils.MarshalOrPanic(&cb.SignatureHeader{}),
+			},
+
+			Data: utils.MarshalOrPanic(&ab.SeekInfo{
+				Start:    start,
+				Stop:     stop,
+				Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			}),
+		}),
+	}
+}
+
 func (r *deliverClient) seekOldest() error {
-	return r.client.Send(&ab.SeekInfo{
-		ChainID:  r.chainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Oldest{Oldest: &ab.SeekOldest{}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
-	})
+	return r.client.Send(seekHelper(r.chainID, oldest, maxStop))
 }
 
 func (r *deliverClient) seekNewest() error {
-	return r.client.Send(&ab.SeekInfo{
-		ChainID:  r.chainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
-	})
+	return r.client.Send(seekHelper(r.chainID, newest, maxStop))
 }
 
-func (r *deliverClient) seek(blockNumber uint64) error {
-	return r.client.Send(&ab.SeekInfo{
-		ChainID:  r.chainID,
-		Start:    &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}},
-		Stop:     &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: math.MaxUint64}}},
-		Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
-	})
+func (r *deliverClient) seekSingle(blockNumber uint64) error {
+	specific := &ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: blockNumber}}}
+	return r.client.Send(seekHelper(r.chainID, specific, specific))
 }
 
 func (r *deliverClient) readUntilClose() {
@@ -87,10 +100,20 @@ func main() {
 
 	var chainID string
 	var serverAddr string
+	var seek int
 
 	flag.StringVar(&serverAddr, "server", fmt.Sprintf("%s:%d", config.General.ListenAddress, config.General.ListenPort), "The RPC server to connect to.")
 	flag.StringVar(&chainID, "chainID", provisional.TestChainID, "The chain ID to deliver from.")
+	flag.IntVar(&seek, "seek", -2, "Specify the range of requested blocks."+
+		"Acceptable values:"+
+		"-2 (or -1) to start from oldest (or newest) and keep at it indefinitely."+
+		"N >= 0 to fetch block N only.")
 	flag.Parse()
+
+	if seek < -2 {
+		fmt.Println("Wrong seek value.")
+		flag.PrintDefaults()
+	}
 
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
@@ -104,7 +127,15 @@ func main() {
 	}
 
 	s := newDeliverClient(client, chainID)
-	err = s.seekOldest()
+	switch seek {
+	case -2:
+		err = s.seekOldest()
+	case -1:
+		err = s.seekNewest()
+	default:
+		err = s.seekSingle(uint64(seek))
+	}
+
 	if err != nil {
 		fmt.Println("Received error:", err)
 	}

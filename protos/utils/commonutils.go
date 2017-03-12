@@ -23,8 +23,11 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	cb "github.com/hyperledger/fabric/protos/common"
 
+	"errors"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/hyperledger/fabric/common/crypto"
 )
 
 // MarshalOrPanic serializes a protobuf message and panics if this operation fails.
@@ -98,16 +101,39 @@ func UnmarshalEnvelope(encoded []byte) (*cb.Envelope, error) {
 	return envelope, err
 }
 
+// UnmarshalEnvelopeOfType unmarshals an envelope of the specified type, including
+// the unmarshaling the payload data
+func UnmarshalEnvelopeOfType(envelope *cb.Envelope, headerType cb.HeaderType, message proto.Message) (*cb.ChannelHeader, error) {
+	payload, err := UnmarshalPayload(envelope.Payload)
+	if err != nil {
+		return nil, err
+	}
+
+	if payload.Header == nil {
+		return nil, fmt.Errorf("Envelope must have a Header")
+	}
+
+	chdr, err := UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid ChannelHeader")
+	}
+
+	if chdr.Type != int32(headerType) {
+		return nil, fmt.Errorf("Not a tx of type %v", headerType)
+	}
+
+	if err = proto.Unmarshal(payload.Data, message); err != nil {
+		return nil, fmt.Errorf("Error unmarshaling message for type %v: %s", headerType, err)
+	}
+
+	return chdr, nil
+}
+
 // ExtractEnvelopeOrPanic retrieves the requested envelope from a given block and unmarshals it -- it panics if either of these operation fail.
 func ExtractEnvelopeOrPanic(block *cb.Block, index int) *cb.Envelope {
-	envelopeCount := len(block.Data.Data)
-	if index < 0 || index >= envelopeCount {
-		panic("Envelope index out of bounds")
-	}
-	marshaledEnvelope := block.Data.Data[index]
-	envelope := &cb.Envelope{}
-	if err := proto.Unmarshal(marshaledEnvelope, envelope); err != nil {
-		panic(fmt.Errorf("Block data does not carry an envelope at index %d: %s", index, err))
+	envelope, err := ExtractEnvelope(block, index)
+	if err != nil {
+		panic(err)
 	}
 	return envelope
 }
@@ -119,8 +145,8 @@ func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
 		return nil, fmt.Errorf("Envelope index out of bounds")
 	}
 	marshaledEnvelope := block.Data.Data[index]
-	envelope := &cb.Envelope{}
-	if err := proto.Unmarshal(marshaledEnvelope, envelope); err != nil {
+	envelope, err := GetEnvelopeFromBlock(marshaledEnvelope)
+	if err != nil {
 		return nil, fmt.Errorf("Block data does not carry an envelope at index %d: %s", index, err)
 	}
 	return envelope, nil
@@ -128,9 +154,9 @@ func ExtractEnvelope(block *cb.Block, index int) (*cb.Envelope, error) {
 
 // ExtractPayloadOrPanic retrieves the payload of a given envelope and unmarshals it -- it panics if either of these operations fail.
 func ExtractPayloadOrPanic(envelope *cb.Envelope) *cb.Payload {
-	payload := &cb.Payload{}
-	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
-		panic(fmt.Errorf("Envelope does not carry a Payload: %s", err))
+	payload, err := ExtractPayload(envelope)
+	if err != nil {
+		panic(err)
 	}
 	return payload
 }
@@ -144,17 +170,17 @@ func ExtractPayload(envelope *cb.Envelope) (*cb.Payload, error) {
 	return payload, nil
 }
 
-// MakeChainHeader creates a ChainHeader.
-func MakeChainHeader(headerType cb.HeaderType, version int32, chainID string, epoch uint64) *cb.ChainHeader {
-	return &cb.ChainHeader{
+// MakeChannelHeader creates a ChannelHeader.
+func MakeChannelHeader(headerType cb.HeaderType, version int32, chainID string, epoch uint64) *cb.ChannelHeader {
+	return &cb.ChannelHeader{
 		Type:    int32(headerType),
 		Version: version,
 		Timestamp: &timestamp.Timestamp{
 			Seconds: time.Now().Unix(),
 			Nanos:   0,
 		},
-		ChainID: chainID,
-		Epoch:   epoch,
+		ChannelId: chainID,
+		Epoch:     epoch,
 	}
 }
 
@@ -166,10 +192,59 @@ func MakeSignatureHeader(serializedCreatorCertChain []byte, nonce []byte) *cb.Si
 	}
 }
 
-// MakePayloadHeader creates a Payload Header.
-func MakePayloadHeader(ch *cb.ChainHeader, sh *cb.SignatureHeader) *cb.Header {
-	return &cb.Header{
-		ChainHeader:     ch,
-		SignatureHeader: sh,
+func SetTxID(channelHeader *cb.ChannelHeader, signatureHeader *cb.SignatureHeader) error {
+	txid, err := ComputeProposalTxID(
+		signatureHeader.Nonce,
+		signatureHeader.Creator,
+	)
+	if err != nil {
+		return err
 	}
+	channelHeader.TxId = txid
+	return nil
+}
+
+// MakePayloadHeader creates a Payload Header.
+func MakePayloadHeader(ch *cb.ChannelHeader, sh *cb.SignatureHeader) *cb.Header {
+	return &cb.Header{
+		ChannelHeader:   MarshalOrPanic(ch),
+		SignatureHeader: MarshalOrPanic(sh),
+	}
+}
+
+// NewSignatureHeaderOrPanic returns a signature header and panics on error.
+func NewSignatureHeaderOrPanic(signer crypto.LocalSigner) *cb.SignatureHeader {
+	if signer == nil {
+		panic(errors.New("Invalid signer. Must be different from nil."))
+	}
+
+	signatureHeader, err := signer.NewSignatureHeader()
+	if err != nil {
+		panic(fmt.Errorf("Failed generating a new SignatureHeader [%s]", err))
+	}
+	return signatureHeader
+}
+
+// SignOrPanic signs a message and panics on error.
+func SignOrPanic(signer crypto.LocalSigner, msg []byte) []byte {
+	if signer == nil {
+		panic(errors.New("Invalid signer. Must be different from nil."))
+	}
+
+	sigma, err := signer.Sign(msg)
+	if err != nil {
+		panic(fmt.Errorf("Failed generting signature [%s]", err))
+	}
+	return sigma
+}
+
+// UnmarshalChannelHeader returns a ChannelHeader from bytes
+func UnmarshalChannelHeader(bytes []byte) (*cb.ChannelHeader, error) {
+	chdr := &cb.ChannelHeader{}
+	err := proto.Unmarshal(bytes, chdr)
+	if err != nil {
+		return nil, fmt.Errorf("UnmarshalChannelHeader failed, err %s", err)
+	}
+
+	return chdr, nil
 }

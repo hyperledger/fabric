@@ -20,29 +20,34 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+	mockconfigtx "github.com/hyperledger/fabric/common/mocks/configtx"
 	"github.com/hyperledger/fabric/orderer/common/filter"
-	"github.com/hyperledger/fabric/orderer/rawledger"
+	"github.com/hyperledger/fabric/orderer/ledger"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/utils"
 )
 
 type mockLedgerReadWriter struct {
-	data     []*cb.Envelope
+	data     [][]byte
 	metadata [][]byte
+	height   uint64
 }
 
-func (mlw *mockLedgerReadWriter) Append(data []*cb.Envelope, metadata [][]byte) *cb.Block {
-	mlw.data = data
-	mlw.metadata = metadata
+func (mlw *mockLedgerReadWriter) Append(block *cb.Block) error {
+	mlw.data = block.Data.Data
+	mlw.metadata = block.Metadata.Metadata
+	mlw.height++
 	return nil
 }
 
-func (mlw *mockLedgerReadWriter) Iterator(startType *ab.SeekPosition) (rawledger.Iterator, uint64) {
+func (mlw *mockLedgerReadWriter) Iterator(startType *ab.SeekPosition) (ledger.Iterator, uint64) {
 	panic("Unimplemented")
 }
 
 func (mlw *mockLedgerReadWriter) Height() uint64 {
-	panic("Unimplemented")
+	return mlw.height
 }
 
 type mockCommitter struct {
@@ -59,18 +64,20 @@ func (mc *mockCommitter) Commit() {
 
 func TestCommitConfig(t *testing.T) {
 	ml := &mockLedgerReadWriter{}
-	cs := &chainSupport{ledger: ml}
+	cm := &mockconfigtx.Manager{}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
 	txs := []*cb.Envelope{makeNormalTx("foo", 0), makeNormalTx("bar", 1)}
-	md := [][]byte{[]byte("foometa"), []byte("barmeta")}
 	committers := []filter.Committer{&mockCommitter{}, &mockCommitter{}}
-	cs.WriteBlock(txs, md, committers)
+	block := cs.CreateNextBlock(txs)
+	cs.WriteBlock(block, committers, nil)
 
-	if !reflect.DeepEqual(ml.data, txs) {
-		t.Errorf("Should have written input data to ledger but did not")
+	blockTXs := make([]*cb.Envelope, len(ml.data))
+	for i := range ml.data {
+		blockTXs[i] = utils.UnmarshalEnvelopeOrPanic(ml.data[i])
 	}
 
-	if !reflect.DeepEqual(ml.metadata, md) {
-		t.Errorf("Should have written input metadata to ledger but did not")
+	if !reflect.DeepEqual(blockTXs, txs) {
+		t.Errorf("Should have written input data to ledger but did not")
 	}
 
 	for _, c := range committers {
@@ -78,4 +85,59 @@ func TestCommitConfig(t *testing.T) {
 			t.Errorf("Expected exactly 1 commits but got %d", c.(*mockCommitter).committed)
 		}
 	}
+}
+
+func TestWriteBlockSignatures(t *testing.T) {
+	ml := &mockLedgerReadWriter{}
+	cm := &mockconfigtx.Manager{}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+
+	if utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil), cb.BlockMetadataIndex_SIGNATURES) == nil {
+		t.Fatalf("Block should have block signature")
+	}
+}
+
+func TestWriteBlockOrdererMetadata(t *testing.T) {
+	ml := &mockLedgerReadWriter{}
+	cm := &mockconfigtx.Manager{}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+
+	value := []byte("foo")
+	expected := &cb.Metadata{Value: value}
+	actual := utils.GetMetadataFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, value), cb.BlockMetadataIndex_ORDERER)
+
+	if actual == nil {
+		t.Fatalf("Block should have orderer metadata written")
+	}
+	if !proto.Equal(expected, actual) {
+		t.Fatalf("Orderer metadata not written to block correctly")
+	}
+
+}
+
+func TestWriteLastConfig(t *testing.T) {
+	ml := &mockLedgerReadWriter{}
+	cm := &mockconfigtx.Manager{}
+	cs := &chainSupport{ledgerResources: &ledgerResources{configResources: &configResources{Manager: cm}, ledger: ml}, signer: mockCrypto()}
+
+	expected := uint64(0)
+
+	if lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(0, nil), nil, nil)); lc != expected {
+		t.Fatalf("First block should have config block index of %d, but got %d", expected, lc)
+	}
+	if lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(1, nil), nil, nil)); lc != expected {
+		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
+	}
+
+	cm.SequenceVal = 1
+	expected = uint64(2)
+
+	if lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(2, nil), nil, nil)); lc != expected {
+		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
+	}
+
+	if lc := utils.GetLastConfigIndexFromBlockOrPanic(cs.WriteBlock(cb.NewBlock(3, nil), nil, nil)); lc != expected {
+		t.Fatalf("Second block should have config block index of %d, but got %d", expected, lc)
+	}
+
 }

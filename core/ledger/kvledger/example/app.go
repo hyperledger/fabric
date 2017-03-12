@@ -22,19 +22,20 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger"
 
-	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/protos/common"
+	pb "github.com/hyperledger/fabric/protos/peer"
 	ptestutils "github.com/hyperledger/fabric/protos/testutils"
 )
 
 // App - a sample fund transfer app
 type App struct {
 	name   string
-	ledger ledger.ValidatedLedger
+	ledger ledger.PeerLedger
 }
 
 // ConstructAppInstance constructs an instance of an app
-func ConstructAppInstance(ledger ledger.ValidatedLedger) *App {
+func ConstructAppInstance(ledger ledger.PeerLedger) *App {
 	return &App{"PaymentApp", ledger}
 }
 
@@ -114,7 +115,8 @@ func (app *App) QueryBalances(accounts []string) ([]int, error) {
 }
 
 func constructTransaction(simulationResults []byte) *common.Envelope {
-	txEnv, _ := ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GenerateUUID(), util.GetTestChainID(), "foo", simulationResults, nil, nil)
+	response := &pb.Response{Status: 200}
+	txEnv, _, _ := ptestutils.ConstructSingedTxEnvWithDefaultSigner(util.GetTestChainID(), "foo", response, simulationResults, nil, nil)
 	return txEnv
 }
 

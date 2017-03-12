@@ -18,7 +18,9 @@ package gossip
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"math/rand"
 	"runtime"
 	"strconv"
 	"strings"
@@ -27,28 +29,33 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/gossip/api"
+	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
-	"github.com/hyperledger/fabric/gossip/proto"
+	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/util"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 )
 
-var individualTimeout = time.Second * time.Duration(60)
-var perTestTimeout = time.Second * time.Duration(180)
+var timeout = time.Second * time.Duration(180)
+
+var testWG = sync.WaitGroup{}
 
 func init() {
 	aliveTimeInterval := time.Duration(1000) * time.Millisecond
-	discovery.SetAliveTimeInternal(aliveTimeInterval)
+	discovery.SetAliveTimeInterval(aliveTimeInterval)
 	discovery.SetAliveExpirationCheckInterval(aliveTimeInterval)
-	discovery.SetExpirationTimeout(aliveTimeInterval * 10)
-	discovery.SetReconnectInterval(aliveTimeInterval * 5)
+	discovery.SetAliveExpirationTimeout(aliveTimeInterval * 10)
+	discovery.SetReconnectInterval(aliveTimeInterval)
+	testWG.Add(7)
+	factory.InitFactories(nil)
 }
 
-var portPrefix = 5610
-var testLock = sync.RWMutex{}
+var orgInChannelA = api.OrgIdentityType("ORG1")
 
 func acceptData(m interface{}) bool {
 	if dataMsg := m.(*proto.GossipMessage).GetDataMsg(); dataMsg != nil {
@@ -57,7 +64,60 @@ func acceptData(m interface{}) bool {
 	return false
 }
 
+func acceptLeadershp(message interface{}) bool {
+	validMsg := message.(*proto.GossipMessage).Tag == proto.GossipMessage_CHAN_AND_ORG &&
+		message.(*proto.GossipMessage).IsLeadershipMsg()
+
+	return validMsg
+}
+
+type joinChanMsg struct {
+	anchorPeers []api.AnchorPeer
+}
+
+// SequenceNumber returns the sequence number of the block this joinChanMsg
+// is derived from
+func (*joinChanMsg) SequenceNumber() uint64 {
+	return uint64(time.Now().UnixNano())
+}
+
+// AnchorPeers returns all the anchor peers that are in the channel
+func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
+	if len(jcm.anchorPeers) == 0 {
+		return []api.AnchorPeer{{OrgID: orgInChannelA}}
+	}
+	return jcm.anchorPeers
+}
+
 type naiveCryptoService struct {
+	allowedPkiIDS map[string]struct{}
+}
+
+type orgCryptoService struct {
+}
+
+// OrgByPeerIdentity returns the OrgIdentityType
+// of a given peer identity
+func (*orgCryptoService) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
+	return orgInChannelA
+}
+
+// Verify verifies a JoinChanMessage, returns nil on success,
+// and an error on failure
+func (*orgCryptoService) Verify(joinChanMsg api.JoinChannelMessage) error {
+	return nil
+}
+
+// VerifyByChannel verifies a peer's signature on a message in the context
+// of a specific channel
+func (cs *naiveCryptoService) VerifyByChannel(_ common.ChainID, identity api.PeerIdentityType, _, _ []byte) error {
+	if cs.allowedPkiIDS == nil {
+		return nil
+	}
+	if _, allowed := cs.allowedPkiIDS[string(identity)]; allowed {
+		return nil
+	}
+	return errors.New("Forbidden")
 }
 
 func (*naiveCryptoService) ValidateIdentity(peerIdentity api.PeerIdentityType) error {
@@ -71,14 +131,16 @@ func (*naiveCryptoService) GetPKIidOfCert(peerIdentity api.PeerIdentityType) com
 
 // VerifyBlock returns nil if the block is properly signed,
 // else returns error
-func (*naiveCryptoService) VerifyBlock(signedBlock api.SignedBlock) error {
+func (*naiveCryptoService) VerifyBlock(chainID common.ChainID, signedBlock []byte) error {
 	return nil
 }
 
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (*naiveCryptoService) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
+	sig := make([]byte, len(msg))
+	copy(sig, msg)
+	return sig, nil
 }
 
 // Verify checks that signature is a valid signature of message under a peer's verification key.
@@ -92,7 +154,7 @@ func (*naiveCryptoService) Verify(peerIdentity api.PeerIdentityType, signature, 
 	return nil
 }
 
-func bootPeers(ids ...int) []string {
+func bootPeers(portPrefix int, ids ...int) []string {
 	peers := []string{}
 	for _, id := range ids {
 		peers = append(peers, fmt.Sprintf("localhost:%d", (id+portPrefix)))
@@ -100,55 +162,74 @@ func bootPeers(ids ...int) []string {
 	return peers
 }
 
-func newGossipInstance(id int, maxMsgCount int, boot ...int) Gossip {
+func newGossipInstanceWithCustomMCS(portPrefix int, id int, maxMsgCount int, mcs api.MessageCryptoService, boot ...int) Gossip {
 	port := id + portPrefix
 	conf := &Config{
-		BindPort:       port,
-		BootstrapPeers: bootPeers(boot...),
-		ID:             fmt.Sprintf("p%d", id),
-		MaxMessageCountToStore:     maxMsgCount,
-		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
-		MaxPropagationBurstSize:    10,
+		BindPort:                   port,
+		BootstrapPeers:             bootPeers(portPrefix, boot...),
+		ID:                         fmt.Sprintf("p%d", id),
+		MaxBlockCountToStore:       maxMsgCount,
+		MaxPropagationBurstLatency: time.Duration(500) * time.Millisecond,
+		MaxPropagationBurstSize:    20,
 		PropagateIterations:        1,
 		PropagatePeerNum:           3,
-		PullInterval:               time.Duration(4) * time.Second,
+		PullInterval:               time.Duration(2) * time.Second,
 		PullPeerNum:                5,
-		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
+		InternalEndpoint:           fmt.Sprintf("localhost:%d", port),
+		ExternalEndpoint:           fmt.Sprintf("1.2.3.4:%d", port),
 		PublishCertPeriod:          time.Duration(4) * time.Second,
+		PublishStateInfoInterval:   time.Duration(1) * time.Second,
+		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
-	return NewGossipServiceWithServer(conf, &naiveCryptoService{}, api.PeerIdentityType(conf.SelfEndpoint))
+
+	idMapper := identity.NewIdentityMapper(mcs)
+	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, mcs, idMapper, api.PeerIdentityType(conf.InternalEndpoint))
+
+	return g
 }
 
-func newGossipInstanceWithOnlyPull(id int, maxMsgCount int, boot ...int) Gossip {
+func newGossipInstance(portPrefix int, id int, maxMsgCount int, boot ...int) Gossip {
+	return newGossipInstanceWithCustomMCS(portPrefix, id, maxMsgCount, &naiveCryptoService{}, boot...)
+}
+
+func newGossipInstanceWithOnlyPull(portPrefix int, id int, maxMsgCount int, boot ...int) Gossip {
 	port := id + portPrefix
 	conf := &Config{
-		BindPort:       port,
-		BootstrapPeers: bootPeers(boot...),
-		ID:             fmt.Sprintf("p%d", id),
-		MaxMessageCountToStore:     maxMsgCount,
-		MaxPropagationBurstLatency: time.Duration(10) * time.Millisecond,
+		BindPort:                   port,
+		BootstrapPeers:             bootPeers(portPrefix, boot...),
+		ID:                         fmt.Sprintf("p%d", id),
+		MaxBlockCountToStore:       maxMsgCount,
+		MaxPropagationBurstLatency: time.Duration(1000) * time.Millisecond,
 		MaxPropagationBurstSize:    10,
 		PropagateIterations:        0,
 		PropagatePeerNum:           0,
 		PullInterval:               time.Duration(1000) * time.Millisecond,
 		PullPeerNum:                20,
-		SelfEndpoint:               fmt.Sprintf("localhost:%d", port),
+		InternalEndpoint:           fmt.Sprintf("localhost:%d", port),
+		ExternalEndpoint:           fmt.Sprintf("1.2.3.4:%d", port),
 		PublishCertPeriod:          time.Duration(0) * time.Second,
+		PublishStateInfoInterval:   time.Duration(1) * time.Second,
+		RequestStateInfoInterval:   time.Duration(1) * time.Second,
 	}
-	return NewGossipServiceWithServer(conf, &naiveCryptoService{}, api.PeerIdentityType(conf.SelfEndpoint))
+
+	cryptoService := &naiveCryptoService{}
+	idMapper := identity.NewIdentityMapper(cryptoService)
+
+	g := NewGossipServiceWithServer(conf, &orgCryptoService{}, cryptoService, idMapper, api.PeerIdentityType(conf.InternalEndpoint))
+	return g
 }
 
 func TestPull(t *testing.T) {
+	t.Parallel()
+
+	portPrefix := 5610
 	t1 := time.Now()
 	// Scenario: Turn off forwarding and use only pull-based gossip.
 	// First phase: Ensure full membership view for all nodes
 	// Second phase: Disseminate 10 messages and ensure all nodes got them
 
-	testLock.Lock()
-	defer testLock.Unlock()
-
-	shortenedWaitTime := time.Duration(500) * time.Millisecond
-	algo.SetDigestWaitTime(shortenedWaitTime / 5)
+	shortenedWaitTime := time.Duration(200) * time.Millisecond
+	algo.SetDigestWaitTime(shortenedWaitTime)
 	algo.SetRequestWaitTime(shortenedWaitTime)
 	algo.SetResponseWaitTime(shortenedWaitTime)
 
@@ -163,22 +244,30 @@ func TestPull(t *testing.T) {
 
 	n := 5
 	msgsCount2Send := 10
-	boot := newGossipInstanceWithOnlyPull(0, 100)
+
 	peers := make([]Gossip, n)
 	wg := sync.WaitGroup{}
+	wg.Add(n)
 	for i := 1; i <= n; i++ {
-		wg.Add(1)
 		go func(i int) {
-			pI := newGossipInstanceWithOnlyPull(i, 100, 0)
+			defer wg.Done()
+			pI := newGossipInstanceWithOnlyPull(portPrefix, i, 100, 0)
+			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+			pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
 			peers[i-1] = pI
-			wg.Done()
 		}(i)
 	}
 	wg.Wait()
 
+	time.Sleep(time.Second)
+
+	boot := newGossipInstanceWithOnlyPull(portPrefix, 0, 100)
+	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	boot.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+
 	knowAll := func() bool {
 		for i := 1; i <= n; i++ {
-			neighborCount := len(peers[i-1].GetPeers())
+			neighborCount := len(peers[i-1].Peers())
 			if n != neighborCount {
 				return false
 			}
@@ -186,15 +275,13 @@ func TestPull(t *testing.T) {
 		return true
 	}
 
-	waitUntilOrFail(t, knowAll)
-
 	receivedMessages := make([]int, n)
 	wg = sync.WaitGroup{}
+	wg.Add(n)
 	for i := 1; i <= n; i++ {
 		go func(i int) {
 			acceptChan, _ := peers[i-1].Accept(acceptData, false)
 			go func(index int, ch <-chan *proto.GossipMessage) {
-				wg.Add(1)
 				defer wg.Done()
 				for j := 0; j < msgsCount2Send; j++ {
 					<-ch
@@ -205,10 +292,10 @@ func TestPull(t *testing.T) {
 	}
 
 	for i := 1; i <= msgsCount2Send; i++ {
-		boot.Gossip(createDataMsg(uint64(i), []byte{}, ""))
+		boot.Gossip(createDataMsg(uint64(i), []byte{}, "", common.ChainID("A")))
 	}
-	time.Sleep(time.Duration(3) * time.Second)
 
+	waitUntilOrFail(t, knowAll)
 	waitUntilOrFailBlocking(t, wg.Wait)
 
 	receivedAll := func() bool {
@@ -227,42 +314,117 @@ func TestPull(t *testing.T) {
 
 	waitUntilOrFailBlocking(t, stop)
 
-	fmt.Println("Took", time.Since(t1))
+	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
-	ensureGoroutineExit(t)
+	fmt.Println("<<<TestPull>>>")
+	testWG.Done()
 }
 
-func TestMembership(t *testing.T) {
-	t1 := time.Now()
-	// Scenario: spawn 20 nodes and a single bootstrap node and then:
-	// 1) Check full membership views for all nodes but the bootstrap node.
-	// 2) Update metadata of last peer and ensure it propagates to all peers
-	testLock.Lock()
-	defer testLock.Unlock()
+func TestConnectToAnchorPeers(t *testing.T) {
+	t.Parallel()
+	// Scenario: spawn 10 peers, and have them join a channel
+	// of 3 anchor peers that don't exist yet.
+	// Wait 5 seconds, and then spawn a random anchor peer out of the 3.
+	// Ensure that all peers successfully see each other in the channel
 
+	portPrefix := 8610
+	// Scenario: Spawn 5 peers, and make each of them connect to
+	// the other 2 using join channel.
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
+	n := 10
+	anchorPeercount := 3
 
-	n := 20
-	var lastPeer = fmt.Sprintf("localhost:%d", (n + portPrefix))
-	boot := newGossipInstance(0, 100)
+	jcm := &joinChanMsg{anchorPeers: []api.AnchorPeer{}}
+	for i := 0; i < anchorPeercount; i++ {
+		ap := api.AnchorPeer{
+			Port:  portPrefix + i,
+			Host:  "localhost",
+			OrgID: orgInChannelA,
+		}
+		jcm.anchorPeers = append(jcm.anchorPeers, ap)
+	}
 
 	peers := make([]Gossip, n)
 	wg := sync.WaitGroup{}
-	for i := 1; i <= n; i++ {
+	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
-			pI := newGossipInstance(i, 100, 0)
-			peers[i-1] = pI
+			peers[i] = newGossipInstance(portPrefix, i+anchorPeercount, 100)
+			peers[i].JoinChan(jcm, common.ChainID("A"))
+			peers[i].UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
 			wg.Done()
 		}(i)
 	}
 
 	waitUntilOrFailBlocking(t, wg.Wait)
 
+	time.Sleep(time.Second * 5)
+
+	// Now start a random anchor peer
+	anchorPeer := newGossipInstance(portPrefix, rand.Intn(anchorPeercount), 100)
+	anchorPeer.JoinChan(jcm, common.ChainID("A"))
+	anchorPeer.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+
+	defer anchorPeer.Stop()
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
+
+	channelMembership := func() bool {
+		for _, peer := range peers {
+			if len(peer.PeersOfChannel(common.ChainID("A"))) != n {
+				return false
+			}
+		}
+		return true
+	}
+	waitUntilOrFail(t, channelMembership)
+
+	stop := func() {
+		stopPeers(peers)
+	}
+	waitUntilOrFailBlocking(t, stop)
+
+	fmt.Println("<<<TestConnectToAnchorPeers>>>")
+	atomic.StoreInt32(&stopped, int32(1))
+	testWG.Done()
+}
+
+func TestMembership(t *testing.T) {
+	t.Parallel()
+	portPrefix := 4610
+	t1 := time.Now()
+	// Scenario: spawn 20 nodes and a single bootstrap node and then:
+	// 1) Check full membership views for all nodes but the bootstrap node.
+	// 2) Update metadata of last peer and ensure it propagates to all peers
+
+	stopped := int32(0)
+	go waitForTestCompletion(&stopped, t)
+
+	n := 10
+	var lastPeer = fmt.Sprintf("localhost:%d", (n + portPrefix))
+	boot := newGossipInstance(portPrefix, 0, 100)
+	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	boot.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+
+	peers := make([]Gossip, n)
+	wg := sync.WaitGroup{}
+	wg.Add(n)
+	for i := 1; i <= n; i++ {
+		go func(i int) {
+			defer wg.Done()
+			pI := newGossipInstance(portPrefix, i, 100, 0)
+			peers[i-1] = pI
+			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+			pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+		}(i)
+	}
+
+	waitUntilOrFailBlocking(t, wg.Wait)
+	t.Log("Peers started")
+
 	seeAllNeighbors := func() bool {
 		for i := 1; i <= n; i++ {
-			neighborCount := len(peers[i-1].GetPeers())
+			neighborCount := len(peers[i-1].Peers())
 			if neighborCount != n {
 				return false
 			}
@@ -270,62 +432,70 @@ func TestMembership(t *testing.T) {
 		return true
 	}
 
+	membershipEstablishTime := time.Now()
 	waitUntilOrFail(t, seeAllNeighbors)
+	t.Log("membership established in", time.Since(membershipEstablishTime))
 
-	fmt.Println("Updating metadata...")
-
+	t.Log("Updating metadata...")
 	// Change metadata in last node
 	peers[len(peers)-1].UpdateMetadata([]byte("bla bla"))
 
 	metaDataUpdated := func() bool {
-		if "bla bla" != string(metadataOfPeer(boot.GetPeers(), lastPeer)) {
+		if "bla bla" != string(metadataOfPeer(boot.Peers(), lastPeer)) {
 			return false
 		}
 		for i := 0; i < n-1; i++ {
-			if "bla bla" != string(metadataOfPeer(peers[i].GetPeers(), lastPeer)) {
+			if "bla bla" != string(metadataOfPeer(peers[i].Peers(), lastPeer)) {
 				return false
 			}
 		}
 		return true
 	}
-
+	metadataDisseminationTime := time.Now()
 	waitUntilOrFail(t, metaDataUpdated)
+	fmt.Println("Metadata updated")
+	t.Log("Metadata dissemination took", time.Since(metadataDisseminationTime))
 
 	stop := func() {
 		stopPeers(append(peers, boot))
 	}
 
+	stopTime := time.Now()
 	waitUntilOrFailBlocking(t, stop)
+	t.Log("Stop took", time.Since(stopTime))
 
-	fmt.Println("Took", time.Since(t1))
+	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
-
-	ensureGoroutineExit(t)
+	fmt.Println("<<<TestMembership>>>")
+	testWG.Done()
 }
 
 func TestDissemination(t *testing.T) {
+	t.Parallel()
+	portPrefix := 3610
 	t1 := time.Now()
 	// Scenario: 20 nodes and a bootstrap node.
 	// The bootstrap node sends 10 messages and we count
 	// that each node got 10 messages after a few seconds
-	testLock.Lock()
-	defer testLock.Unlock()
 
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
 
 	n := 10
 	msgsCount2Send := 10
-	boot := newGossipInstance(0, 100)
+	boot := newGossipInstance(portPrefix, 0, 100)
+	boot.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+	boot.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
 
 	peers := make([]Gossip, n)
 	receivedMessages := make([]int, n)
 	wg := sync.WaitGroup{}
-
+	wg.Add(n)
 	for i := 1; i <= n; i++ {
-		pI := newGossipInstance(i, 100, 0)
+		pI := newGossipInstance(portPrefix, i, 100, 0)
 		peers[i-1] = pI
-		wg.Add(1)
+		pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+		pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
 		acceptChan, _ := pI.Accept(acceptData, false)
 		go func(index int, ch <-chan *proto.GossipMessage) {
 			defer wg.Done()
@@ -334,33 +504,90 @@ func TestDissemination(t *testing.T) {
 				receivedMessages[index]++
 			}
 		}(i-1, acceptChan)
+		// Change metadata in last node
+		if i == n {
+			pI.UpdateChannelMetadata([]byte("bla bla"), common.ChainID("A"))
+		}
+	}
+	var lastPeer = fmt.Sprintf("localhost:%d", (n + portPrefix))
+	metaDataUpdated := func() bool {
+		if "bla bla" != string(metadataOfPeer(boot.PeersOfChannel(common.ChainID("A")), lastPeer)) {
+			return false
+		}
+		for i := 0; i < n-1; i++ {
+			if "bla bla" != string(metadataOfPeer(peers[i].PeersOfChannel(common.ChainID("A")), lastPeer)) {
+				return false
+			}
+		}
+		return true
 	}
 
-	waitUntilOrFail(t, checkPeersMembership(peers, n))
+	membershipTime := time.Now()
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n))
+	t.Log("Membership establishment took", time.Since(membershipTime))
 
 	for i := 1; i <= msgsCount2Send; i++ {
-		boot.Gossip(createDataMsg(uint64(i), []byte{}, ""))
+		boot.Gossip(createDataMsg(uint64(i), []byte{}, "", common.ChainID("A")))
 	}
 
+	t2 := time.Now()
 	waitUntilOrFailBlocking(t, wg.Wait)
+	t.Log("Block dissemination took", time.Since(t2))
+	t2 = time.Now()
+	waitUntilOrFail(t, metaDataUpdated)
+	t.Log("Metadata dissemination took", time.Since(t2))
 
 	for i := 0; i < n; i++ {
 		assert.Equal(t, msgsCount2Send, receivedMessages[i])
 	}
-	fmt.Println("Stopping peers")
+
+	//Sending leadership messages
+	receivedLeadershipMessages := make([]int, n)
+	wgLeadership := sync.WaitGroup{}
+	wgLeadership.Add(n)
+	for i := 1; i <= n; i++ {
+		leadershipChan, _ := peers[i-1].Accept(acceptLeadershp, false)
+		go func(index int, ch <-chan *proto.GossipMessage) {
+			defer wgLeadership.Done()
+			msg := <-ch
+			if bytes.Equal(msg.Channel, common.ChainID("A")) {
+				receivedLeadershipMessages[index]++
+			}
+		}(i-1, leadershipChan)
+	}
+
+	seqNum := 0
+	incTime := uint64(time.Now().UnixNano())
+	t3 := time.Now()
+
+	leadershipMsg := createLeadershipMsg(true, common.ChainID("A"), incTime, uint64(seqNum), boot.(*gossipServiceImpl).conf.InternalEndpoint, boot.(*gossipServiceImpl).comm.GetPKIid())
+	boot.Gossip(leadershipMsg)
+
+	waitUntilOrFailBlocking(t, wgLeadership.Wait)
+	t.Log("Leadership message dissemination took", time.Since(t3))
+
+	for i := 0; i < n; i++ {
+		assert.Equal(t, 1, receivedLeadershipMessages[i])
+	}
+
+	t.Log("Stopping peers")
 
 	stop := func() {
 		stopPeers(append(peers, boot))
 	}
 
+	stopTime := time.Now()
 	waitUntilOrFailBlocking(t, stop)
-
-	fmt.Println("Took", time.Since(t1))
+	t.Log("Stop took", time.Since(stopTime))
+	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
-	ensureGoroutineExit(t)
+	fmt.Println("<<<TestDissemination>>>")
+	testWG.Done()
 }
 
 func TestMembershipConvergence(t *testing.T) {
+	t.Parallel()
+	portPrefix := 2610
 	// Scenario: Spawn 12 nodes and 3 bootstrap peers
 	// but assign each node to its bootstrap peer group modulo 3.
 	// Then:
@@ -371,37 +598,35 @@ func TestMembershipConvergence(t *testing.T) {
 	// 4)a) Ensure all nodes consider it as dead
 	// 4)b) Ensure all node still know each other
 
-	testLock.Lock()
-	defer testLock.Unlock()
-
 	t1 := time.Now()
 
 	stopped := int32(0)
 	go waitForTestCompletion(&stopped, t)
-	boot0 := newGossipInstance(0, 100)
-	boot1 := newGossipInstance(1, 100)
-	boot2 := newGossipInstance(2, 100)
+	boot0 := newGossipInstance(portPrefix, 0, 100)
+	boot1 := newGossipInstance(portPrefix, 1, 100)
+	boot2 := newGossipInstance(portPrefix, 2, 100)
 
 	peers := []Gossip{boot0, boot1, boot2}
 	// 0: {3, 6, 9, 12}
 	// 1: {4, 7, 10, 13}
 	// 2: {5, 8, 11, 14}
 	for i := 3; i < 15; i++ {
-		pI := newGossipInstance(i, 100, i%3)
+		pI := newGossipInstance(portPrefix, i, 100, i%3)
 		peers = append(peers, pI)
 	}
 
-	waitUntilOrFail(t, checkPeersMembership(peers, 4))
+	waitUntilOrFail(t, checkPeersMembership(t, peers, 4))
+	t.Log("Sets of peers connected successfully")
 
-	connectorPeer := newGossipInstance(15, 100, 0, 1, 2)
+	connectorPeer := newGossipInstance(portPrefix, 15, 100, 0, 1, 2)
 	connectorPeer.UpdateMetadata([]byte("Connector"))
 
 	fullKnowledge := func() bool {
 		for i := 0; i < 15; i++ {
-			if 15 != len(peers[i].GetPeers()) {
+			if 15 != len(peers[i].Peers()) {
 				return false
 			}
-			if "Connector" != string(metadataOfPeer(peers[i].GetPeers(), "localhost:5625")) {
+			if "Connector" != string(metadataOfPeer(peers[i].Peers(), "localhost:2625")) {
 				return false
 			}
 		}
@@ -410,14 +635,14 @@ func TestMembershipConvergence(t *testing.T) {
 
 	waitUntilOrFail(t, fullKnowledge)
 
-	fmt.Println("Stopping connector...")
+	t.Log("Stopping connector...")
 	waitUntilOrFailBlocking(t, connectorPeer.Stop)
-	fmt.Println("Stopped")
+	t.Log("Stopped")
 	time.Sleep(time.Duration(15) * time.Second)
 
 	ensureForget := func() bool {
 		for i := 0; i < 15; i++ {
-			if 14 != len(peers[i].GetPeers()) {
+			if 14 != len(peers[i].Peers()) {
 				return false
 			}
 		}
@@ -426,16 +651,16 @@ func TestMembershipConvergence(t *testing.T) {
 
 	waitUntilOrFail(t, ensureForget)
 
-	connectorPeer = newGossipInstance(15, 100)
-	connectorPeer.UpdateMetadata([]byte("Connector"))
-	fmt.Println("Started connector")
+	connectorPeer = newGossipInstance(portPrefix, 15, 100)
+	connectorPeer.UpdateMetadata([]byte("Connector2"))
+	t.Log("Started connector")
 
 	ensureResync := func() bool {
 		for i := 0; i < 15; i++ {
-			if 15 != len(peers[i].GetPeers()) {
+			if 15 != len(peers[i].Peers()) {
 				return false
 			}
-			if "Connector" != string(metadataOfPeer(peers[i].GetPeers(), "localhost:5625")) {
+			if "Connector2" != string(metadataOfPeer(peers[i].Peers(), "localhost:2625")) {
 				return false
 			}
 		}
@@ -446,21 +671,296 @@ func TestMembershipConvergence(t *testing.T) {
 
 	waitUntilOrFailBlocking(t, connectorPeer.Stop)
 
-	fmt.Println("Stopping peers")
+	t.Log("Stopping peers")
 	stop := func() {
 		stopPeers(peers)
 	}
 
 	waitUntilOrFailBlocking(t, stop)
 	atomic.StoreInt32(&stopped, int32(1))
-	fmt.Println("Took", time.Since(t1))
+	t.Log("Took", time.Since(t1))
+	fmt.Println("<<<TestMembershipConvergence>>>")
+	testWG.Done()
+}
+
+func TestMembershipRequestSpoofing(t *testing.T) {
+	t.Parallel()
+	// Scenario: g1, g2, g3 are peers, and g2 is malicious, and wants
+	// to impersonate g3 when sending a membership request to g1.
+	// Expected output: g1 should *NOT* respond to g2,
+	// However, g1 should respond to g3 when it sends the message itself.
+
+	portPrefix := 2000
+	g1 := newGossipInstance(portPrefix, 0, 100)
+	g2 := newGossipInstance(portPrefix, 1, 100, 2)
+	g3 := newGossipInstance(portPrefix, 2, 100, 1)
+	defer g1.Stop()
+	defer g2.Stop()
+	defer g3.Stop()
+
+	// Wait for g2 and g3 to know about each other
+	waitUntilOrFail(t, checkPeersMembership(t, []Gossip{g2, g3}, 1))
+	// Obtain an alive message from p3
+	_, aliveMsgChan := g2.Accept(func(o interface{}) bool {
+		msg := o.(proto.ReceivedMessage).GetGossipMessage()
+		// Make sure we get an AliveMessage and it's about g3
+		return msg.IsAliveMsg() && bytes.Equal(msg.GetAliveMsg().Membership.PkiId, []byte("localhost:2002"))
+	}, true)
+	aliveMsg := <-aliveMsgChan
+
+	// Obtain channel for messages from g1 to g2
+	_, g1ToG2 := g2.Accept(func(o interface{}) bool {
+		connInfo := o.(proto.ReceivedMessage).GetConnectionInfo()
+		return bytes.Equal([]byte("localhost:2000"), connInfo.ID)
+	}, true)
+
+	// Obtain channel for messages from g1 to g3
+	_, g1ToG3 := g3.Accept(func(o interface{}) bool {
+		connInfo := o.(proto.ReceivedMessage).GetConnectionInfo()
+		return bytes.Equal([]byte("localhost:2000"), connInfo.ID)
+	}, true)
+
+	// Now, create a membership request message
+	memRequestSpoofFactory := func(aliveMsgEnv *proto.Envelope) *proto.SignedGossipMessage {
+		return (&proto.GossipMessage{
+			Tag:   proto.GossipMessage_EMPTY,
+			Nonce: uint64(0),
+			Content: &proto.GossipMessage_MemReq{
+				MemReq: &proto.MembershipRequest{
+					SelfInformation: aliveMsgEnv,
+					Known:           [][]byte{},
+				},
+			},
+		}).NoopSign()
+	}
+	spoofedMemReq := memRequestSpoofFactory(aliveMsg.GetSourceEnvelope())
+	g2.Send(spoofedMemReq.GossipMessage, &comm.RemotePeer{Endpoint: "localhost:2000", PKIID: common.PKIidType("localhost:2000")})
+	select {
+	case <-time.After(time.Second):
+		break
+	case <-g1ToG2:
+		assert.Fail(t, "Received response from g1 but shouldn't have")
+	}
+
+	// Now send the same message from g3 to g1
+	g3.Send(spoofedMemReq.GossipMessage, &comm.RemotePeer{Endpoint: "localhost:2000", PKIID: common.PKIidType("localhost:2000")})
+	select {
+	case <-time.After(time.Second):
+		assert.Fail(t, "Didn't receive a message back from g1 on time")
+	case <-g1ToG3:
+		break
+	}
+}
+
+func TestDataLeakage(t *testing.T) {
+	t.Parallel()
+	portPrefix := 1610
+	// Scenario: spawn some nodes and let them all
+	// establish full membership.
+	// Then, have half be in channel A and half be in channel B.
+	// However, make it so that only the first 3 from each channel
+	// are eligible to obtain blocks from the channels they're in.
+	// Ensure nodes only get messages of their channels and in case they
+	// are eligible for the channels.
+
+	totalPeers := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9} // THIS MUST BE EVEN AND NOT ODD
+	// Peer0 and Peer5 disseminate blocks
+	// only 1,2 and 6,7 should get blocks.
+
+	mcs := &naiveCryptoService{
+		allowedPkiIDS: map[string]struct{}{
+			// Channel A
+			"localhost:1610": {},
+			"localhost:1611": {},
+			"localhost:1612": {},
+			// Channel B
+			"localhost:1615": {},
+			"localhost:1616": {},
+			"localhost:1617": {},
+		},
+	}
+
+	stopped := int32(0)
+	go waitForTestCompletion(&stopped, t)
+
+	n := len(totalPeers)
+	peers := make([]Gossip, n)
+	wg := sync.WaitGroup{}
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			totPeers := append([]int(nil), totalPeers[:i]...)
+			bootPeers := append(totPeers, totalPeers[i+1:]...)
+			peers[i] = newGossipInstanceWithCustomMCS(portPrefix, i, 100, mcs, bootPeers...)
+			wg.Done()
+		}(i)
+	}
+
+	waitUntilOrFailBlocking(t, wg.Wait)
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1))
+
+	channels := []common.ChainID{common.ChainID("A"), common.ChainID("B")}
+
+	channelAmetadata := []byte("some metadata of channel A")
+	channelBmetadata := []byte("some metadata on channel B")
+
+	for i, channel := range channels {
+		for j := 0; j < (n / 2); j++ {
+			instanceIndex := (n/2)*i + j
+			peers[instanceIndex].JoinChan(&joinChanMsg{}, channel)
+			var metadata []byte
+			if i == 0 {
+				metadata = channelAmetadata
+			} else {
+				metadata = channelBmetadata
+			}
+			peers[instanceIndex].UpdateChannelMetadata(metadata, channel)
+			t.Log(instanceIndex, "joined", string(channel))
+		}
+	}
+
+	// Wait until all peers have other peers in the per-channel view
+	seeChannelMetadata := func() bool {
+		for i, channel := range channels {
+			for j := 0; j < 3; j++ {
+				instanceIndex := (n/2)*i + j
+				if len(peers[instanceIndex].PeersOfChannel(channel)) < 2 {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	t1 := time.Now()
+	waitUntilOrFail(t, seeChannelMetadata)
+
+	t.Log("Metadata sync took", time.Since(t1))
+	for i, channel := range channels {
+		for j := 0; j < 3; j++ {
+			instanceIndex := (n/2)*i + j
+			assert.Len(t, peers[instanceIndex].PeersOfChannel(channel), 2)
+			if i == 0 {
+				assert.Equal(t, channelAmetadata, peers[instanceIndex].PeersOfChannel(channel)[0].Metadata)
+			} else {
+				assert.Equal(t, channelBmetadata, peers[instanceIndex].PeersOfChannel(channel)[0].Metadata)
+			}
+		}
+	}
+
+	gotMessages := func() {
+		var wg sync.WaitGroup
+		wg.Add(4)
+		for i, channel := range channels {
+			for j := 1; j < 3; j++ {
+				instanceIndex := (n/2)*i + j
+				go func(instanceIndex int, channel common.ChainID) {
+					incMsgChan, _ := peers[instanceIndex].Accept(acceptData, false)
+					msg := <-incMsgChan
+					assert.Equal(t, []byte(channel), []byte(msg.Channel))
+					wg.Done()
+				}(instanceIndex, channel)
+			}
+		}
+		wg.Wait()
+	}
+
+	t1 = time.Now()
+	peers[0].Gossip(createDataMsg(1, []byte{}, "", channels[0]))
+	peers[n/2].Gossip(createDataMsg(2, []byte{}, "", channels[1]))
+	waitUntilOrFailBlocking(t, gotMessages)
+	t.Log("Dissemination took", time.Since(t1))
+	stop := func() {
+		stopPeers(peers)
+	}
+	stopTime := time.Now()
+	waitUntilOrFailBlocking(t, stop)
+	t.Log("Stop took", time.Since(stopTime))
+	atomic.StoreInt32(&stopped, int32(1))
+	fmt.Println("<<<TestDataLeakage>>>")
+	testWG.Done()
+}
+
+func TestDisseminateAll2All(t *testing.T) {
+	// Scenario: spawn some nodes, have each node
+	// disseminate a block to all nodes.
+	// Ensure all blocks are received
+
+	t.Parallel()
+	portPrefix := 6610
+	stopped := int32(0)
+	go waitForTestCompletion(&stopped, t)
+
+	totalPeers := []int{0, 1, 2, 3, 4, 5, 6}
+	n := len(totalPeers)
+	peers := make([]Gossip, n)
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			totPeers := append([]int(nil), totalPeers[:i]...)
+			bootPeers := append(totPeers, totalPeers[i+1:]...)
+			pI := newGossipInstance(portPrefix, i, 100, bootPeers...)
+			pI.JoinChan(&joinChanMsg{}, common.ChainID("A"))
+			pI.UpdateChannelMetadata([]byte{}, common.ChainID("A"))
+			peers[i] = pI
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	waitUntilOrFail(t, checkPeersMembership(t, peers, n-1))
+
+	bMutex := sync.WaitGroup{}
+	bMutex.Add(10 * n * (n - 1))
+
+	wg = sync.WaitGroup{}
+	wg.Add(n)
+
+	reader := func(msgChan <-chan *proto.GossipMessage, i int) {
+		wg.Done()
+		for range msgChan {
+			bMutex.Done()
+		}
+	}
+
+	for i := 0; i < n; i++ {
+		msgChan, _ := peers[i].Accept(acceptData, false)
+		go reader(msgChan, i)
+	}
+
+	wg.Wait()
+
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			blockStartIndex := i * 10
+			for j := 0; j < 10; j++ {
+				blockSeq := uint64(j + blockStartIndex)
+				peers[i].Gossip(createDataMsg(blockSeq, []byte{}, "", common.ChainID("A")))
+			}
+		}(i)
+	}
+	waitUntilOrFailBlocking(t, bMutex.Wait)
+
+	stop := func() {
+		stopPeers(peers)
+	}
+	waitUntilOrFailBlocking(t, stop)
+	atomic.StoreInt32(&stopped, int32(1))
+	fmt.Println("<<<TestDisseminateAll2All>>>")
+	testWG.Done()
+}
+
+func TestEndedGoroutines(t *testing.T) {
+	t.Parallel()
+	testWG.Wait()
 	ensureGoroutineExit(t)
 }
 
-func createDataMsg(seqnum uint64, data []byte, hash string) *proto.GossipMessage {
+func createDataMsg(seqnum uint64, data []byte, hash string, channel common.ChainID) *proto.GossipMessage {
 	return &proto.GossipMessage{
-		Nonce: 0,
-		Tag:   proto.GossipMessage_EMPTY,
+		Channel: []byte(channel),
+		Nonce:   0,
+		Tag:     proto.GossipMessage_CHAN_AND_ORG,
 		Content: &proto.GossipMessage_DataMsg{
 			DataMsg: &proto.DataMessage{
 				Payload: &proto.Payload{
@@ -473,12 +973,42 @@ func createDataMsg(seqnum uint64, data []byte, hash string) *proto.GossipMessage
 	}
 }
 
+func createLeadershipMsg(isDeclaration bool, channel common.ChainID, incTime uint64, seqNum uint64, endpoint string, pkiid []byte) *proto.GossipMessage {
+
+	leadershipMsg := &proto.LeadershipMessage{
+		IsDeclaration: isDeclaration,
+		PkiId:         pkiid,
+		Timestamp: &proto.PeerTime{
+			IncNumber: incTime,
+			SeqNum:    seqNum,
+		},
+	}
+
+	msg := &proto.GossipMessage{
+		Nonce:   0,
+		Tag:     proto.GossipMessage_CHAN_AND_ORG,
+		Content: &proto.GossipMessage_LeadershipMsg{LeadershipMsg: leadershipMsg},
+		Channel: channel,
+	}
+	return msg
+}
+
+type goroutinePredicate func(g goroutine) bool
+
+var connectionLeak = func(g goroutine) bool {
+	return searchInStackTrace("comm.(*connection).writeToStream", g.stack)
+}
+
 var runTests = func(g goroutine) bool {
 	return searchInStackTrace("testing.RunTests", g.stack)
 }
 
 var waitForTestCompl = func(g goroutine) bool {
 	return searchInStackTrace("waitForTestCompletion", g.stack)
+}
+
+var gossipTest = func(g goroutine) bool {
+	return searchInStackTrace("gossip_test.go", g.stack)
 }
 
 var goExit = func(g goroutine) bool {
@@ -493,8 +1023,19 @@ var testingg = func(g goroutine) bool {
 	return strings.Index(g.stack[len(g.stack)-1], "testing.go") != -1
 }
 
+func anyOfPredicates(predicates ...goroutinePredicate) goroutinePredicate {
+	return func(g goroutine) bool {
+		for _, pred := range predicates {
+			if pred(g) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 func shouldNotBeRunningAtEnd(gr goroutine) bool {
-	return !runTests(gr) && !goExit(gr) && !testingg(gr) && !clientConn(gr) && !waitForTestCompl(gr)
+	return !anyOfPredicates(runTests, goExit, testingg, waitForTestCompl, gossipTest, clientConn, connectionLeak)(gr)
 }
 
 func ensureGoroutineExit(t *testing.T) {
@@ -504,17 +1045,11 @@ func ensureGoroutineExit(t *testing.T) {
 		for _, gr := range getGoRoutines() {
 			if shouldNotBeRunningAtEnd(gr) {
 				allEnded = false
-				continue
 			}
 
 			if shouldNotBeRunningAtEnd(gr) && i == 20 {
 				assert.Fail(t, "Goroutine(s) haven't ended:", fmt.Sprintf("%v", gr.stack))
-				for _, gr2 := range getGoRoutines() {
-					for _, ste := range gr2.stack {
-						t.Log(ste)
-					}
-					t.Log("")
-				}
+				util.PrintStackTrace()
 				break
 			}
 		}
@@ -527,7 +1062,7 @@ func ensureGoroutineExit(t *testing.T) {
 
 func metadataOfPeer(members []discovery.NetworkMember, endpoint string) []byte {
 	for _, member := range members {
-		if member.Endpoint == endpoint {
+		if member.InternalEndpoint == endpoint {
 			return member.Metadata
 		}
 	}
@@ -535,7 +1070,7 @@ func metadataOfPeer(members []discovery.NetworkMember, endpoint string) []byte {
 }
 
 func waitForTestCompletion(stopFlag *int32, t *testing.T) {
-	time.Sleep(perTestTimeout)
+	time.Sleep(timeout)
 	if atomic.LoadInt32(stopFlag) == int32(1) {
 		return
 	}
@@ -545,8 +1080,8 @@ func waitForTestCompletion(stopFlag *int32, t *testing.T) {
 
 func stopPeers(peers []Gossip) {
 	stoppingWg := sync.WaitGroup{}
+	stoppingWg.Add(len(peers))
 	for i, pI := range peers {
-		stoppingWg.Add(1)
 		go func(i int, p_i Gossip) {
 			defer stoppingWg.Done()
 			p_i.Stop()
@@ -592,12 +1127,12 @@ type goroutine struct {
 
 func waitUntilOrFail(t *testing.T, pred func() bool) {
 	start := time.Now()
-	limit := start.UnixNano() + individualTimeout.Nanoseconds()
+	limit := start.UnixNano() + timeout.Nanoseconds()
 	for time.Now().UnixNano() < limit {
 		if pred() {
 			return
 		}
-		time.Sleep(individualTimeout / 60)
+		time.Sleep(timeout / 60)
 	}
 	util.PrintStackTrace()
 	assert.Fail(t, "Timeout expired!")
@@ -610,7 +1145,7 @@ func waitUntilOrFailBlocking(t *testing.T, f func()) {
 		successChan <- struct{}{}
 	}()
 	select {
-	case <-time.NewTimer(individualTimeout).C:
+	case <-time.NewTimer(timeout).C:
 		break
 	case <-successChan:
 		return
@@ -628,11 +1163,15 @@ func searchInStackTrace(searchTerm string, stack []string) bool {
 	return false
 }
 
-func checkPeersMembership(peers []Gossip, n int) func() bool {
+func checkPeersMembership(t *testing.T, peers []Gossip, n int) func() bool {
 	return func() bool {
 		for _, peer := range peers {
-			if len(peer.GetPeers()) != n {
+			if len(peer.Peers()) != n {
 				return false
+			}
+			for _, p := range peer.Peers() {
+				assert.NotNil(t, p.InternalEndpoint)
+				assert.NotEmpty(t, p.Endpoint)
 			}
 		}
 		return true

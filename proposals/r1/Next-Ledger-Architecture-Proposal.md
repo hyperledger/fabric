@@ -133,53 +133,58 @@ type ResultsIterator interface {
 	Close()
 }
 
-// Ledger represents the 'final ledger'. In addition to implement the methods inherited from the BasicLedger,
-// it provides the handle to objects for querying the chaincode state and executing chaincode transactions.
-type ValidatedLedger interface {
+// OrdererLedger implements methods required by 'orderer ledger'
+type OrdererLedger interface {
 	Ledger
-	// NewTxSimulator gives handle to a transaction simulator for given chaincode and given fork (represented by blockHash)
-	// A client can obtain more than one 'TxSimulator's for parallel execution. Any synchronization should be performed at the
-	// implementation level if required
-	NewTxSimulator(chaincodeID string, blockHash string) (TxSimulator, error)
-
-	// NewQueryExecuter gives handle to a query executer for given chaincode and given fork (represented by blockHash)
-	// A client can obtain more than one 'QueryExecutor's for parallel execution. Any synchronization should be performed at the
-	// implementation level if required
-	NewQueryExecuter(chaincodeID string, blockHash string) (QueryExecutor, error)
-
-	// CheckpointPerformed is expected to be invoked by the consensus algorithm when it completes a checkpoint across peers
-	// On the invoke of this method, the block in the 'RawLedger' between the 'corresponding to the block currently checkpointed' and
-	// 'corresponding to the block checkpointed last time' can be pruned.
-	// (Pruning the raw blocks would need an additional time based factor as well, if forks are to be supported in the raw ledger.)
-	// (Does raw ledger in the case of a consensus that allow forks (e.g., PoW) make sense at all? Or practically, these consensus
-	// would always produce the final blocks that contains validated transactions).
-	CheckpointPerformed(blockHash string)
-
-	RemoveInvalidTransactions(block *protos.Block) (*protos.Block, error)
+	// CommitBlock adds a new block
+	CommitBlock(block *common.Block) error
 }
 
-// RawLedger implements methods required by 'raw ledger'
-// CommitBlock() of RawLedger is expected to be invoked by the consensus algorithm when a new block is constructed.
-// Upon receiving the new block, it is expected to be 'processed' by the ledger - the processing includes -
-// preserving the raw block, validating each transaction in the block, discarding the invalid transactions,
-// preparing the final block with the rmaining (i.e. valid) transactions and committing the final block (including updating the state).
-// The raw block should not be deleted as yet - until the corresponding 'final block' is included in one of the following checkpoint performed by the consensus.
-type RawLedger interface {
+// PeerLedger differs from the OrdererLedger in that PeerLedger locally maintain a bitmask
+// that tells apart valid transactions from invalid ones
+type PeerLedger interface {
 	Ledger
-}
-
-//Ledger captures the methods that are common across the 'raw ledger' and the 'final ledger'
-type Ledger interface {
-	//GetTopBlockHashes returns the hashes of the top most block in each fork.
-	GetTopBlockHashes() []string
-	//CommitBlock adds a new block
-	CommitBlock(block *protos.Block) error
-	//GetTransactionByID retrieves a transaction by id
-	GetTransactionByID(txID string) (*protos.Transaction, error)
-	//GetBlockChain returns an instance of chain that starts at the
-	GetBlockChain(topBlockHash string) (BlockChain, error)
+	// GetTransactionByID retrieves a transaction by id
+	GetTransactionByID(txID string) (*pb.Transaction, error)
+	// GetBlockByHash returns a block given it's hash
+	GetBlockByHash(blockHash []byte) (*common.Block, error)
+	// NewTxSimulator gives handle to a transaction simulator.
+	// A client can obtain more than one 'TxSimulator's for parallel execution.
+	// Any snapshoting/synchronization should be performed at the implementation level if required
+	NewTxSimulator() (TxSimulator, error)
+	// NewQueryExecutor gives handle to a query executor.
+	// A client can obtain more than one 'QueryExecutor's for parallel execution.
+	// Any synchronization should be performed at the implementation level if required
+	NewQueryExecutor() (QueryExecutor, error)
+	// NewHistoryQueryExecutor gives handle to a history query executor.
+	// A client can obtain more than one 'HistoryQueryExecutor's for parallel execution.
+	// Any synchronization should be performed at the implementation level if required
+	NewHistoryQueryExecutor() (HistoryQueryExecutor, error)
+	// Commits block into the ledger
+	Commit(block *common.Block) error
 	//Prune prunes the blocks/transactions that satisfy the given policy
 	Prune(policy PrunePolicy) error
+}
+
+// ValidatedLedger represents the 'final ledger' after filtering out invalid transactions from PeerLedger.
+// Post-v1
+type ValidatedLedger interface {
+	Ledger
+}
+
+// Ledger captures the methods that are common across the 'PeerLedger', 'OrdererLedger', and 'ValidatedLedger'
+type Ledger interface {
+	// GetBlockchainInfo returns basic info about blockchain
+	GetBlockchainInfo() (*pb.BlockchainInfo, error)
+	// GetBlockByNumber returns block at a given height
+	// blockNumber of  math.MaxUint64 will return last block
+	GetBlockByNumber(blockNumber uint64) (*common.Block, error)
+	// GetBlocksIterator returns an iterator that starts from `startBlockNumber`(inclusive).
+	// The iterator is a blocking iterator i.e., it blocks till the next block gets available in the ledger
+	// ResultsIterator contains type BlockHolder
+	GetBlocksIterator(startBlockNumber uint64) (ResultsIterator, error)
+	// Close closes the ledger
+	Close()
 }
 
 //BlockChain represents an instance of a block chain. In the case of a consensus algorithm that could cause a fork, an instance of BlockChain

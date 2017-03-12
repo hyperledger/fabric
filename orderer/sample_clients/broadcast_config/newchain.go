@@ -17,17 +17,27 @@ limitations under the License.
 package main
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx"
+	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	//"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/msp"
 	cb "github.com/hyperledger/fabric/protos/common"
-	"github.com/hyperledger/fabric/protos/utils"
 )
 
-func newChainRequest(consensusType, creationPolicy, newChainID string) *cb.Envelope {
-	conf.General.OrdererType = consensusType
-	genesisBlock := provisional.New(conf).GenesisBlock()
-	oldGenesisTx := utils.ExtractEnvelopeOrPanic(genesisBlock, 0)
-	oldGenesisTxPayload := utils.ExtractPayloadOrPanic(oldGenesisTx)
-	oldConfigEnv := utils.UnmarshalConfigurationEnvelopeOrPanic(oldGenesisTxPayload.Data)
+func newChainRequest(consensusType, creationPolicy, newChannelId string) *cb.Envelope {
+	//genConf.Orderer.OrdererType = consensusType
+	//generator := provisional.New(genConf)
+	//channelTemplate := generator.ChannelTemplate()
+	channelTemplate := configtxtest.CompositeTemplate()
 
-	return utils.ChainCreationConfigurationTransaction(provisional.AcceptAllPolicyKey, newChainID, oldConfigEnv)
+	signer, err := msp.NewNoopMsp().GetDefaultSigningIdentity()
+	if err != nil {
+		panic(err)
+	}
+
+	env, err := configtx.MakeChainCreationTransaction(creationPolicy, newChannelId, signer, channelTemplate)
+	if err != nil {
+		panic(err)
+	}
+	return env
 }

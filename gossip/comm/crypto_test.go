@@ -17,7 +17,6 @@ limitations under the License.
 package comm
 
 import (
-	"bytes"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -26,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/gossip/proto"
+	proto "github.com/hyperledger/fabric/protos/gossip"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -34,75 +33,76 @@ import (
 )
 
 type gossipTestServer struct {
-	lock      sync.Mutex
-	msgChan   chan uint64
-	tlsUnique []byte
+	lock           sync.Mutex
+	remoteCertHash []byte
+	selfCertHash   []byte
+	ll             net.Listener
+	s              *grpc.Server
+}
+
+func createTestServer(t *testing.T, cert *tls.Certificate) *gossipTestServer {
+	tlsConf := &tls.Config{
+		Certificates:       []tls.Certificate{*cert},
+		ClientAuth:         tls.RequestClientCert,
+		InsecureSkipVerify: true,
+	}
+	s := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConf)))
+	ll, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5611))
+	assert.NoError(t, err, "%v", err)
+
+	srv := &gossipTestServer{s: s, ll: ll, selfCertHash: certHashFromRawCert(cert.Certificate[0])}
+	proto.RegisterGossipServer(s, srv)
+	go s.Serve(ll)
+	return srv
+}
+
+func (s *gossipTestServer) stop() {
+	s.s.Stop()
+	s.ll.Close()
 }
 
 func (s *gossipTestServer) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	s.lock.Lock()
-	s.tlsUnique = ExtractTLSUnique(stream.Context())
-	s.lock.Unlock()
-	m, err := stream.Recv()
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		s.msgChan <- m.Nonce
-	}
-
+	defer s.lock.Unlock()
+	s.remoteCertHash = extractCertificateHashFromContext(stream.Context())
 	return nil
 }
 
-func (s *gossipTestServer) getTLSUnique() []byte {
+func (s *gossipTestServer) getClientCertHash() []byte {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	return s.tlsUnique
+	return s.remoteCertHash
 }
 
 func (s *gossipTestServer) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
 	return &proto.Empty{}, nil
 }
 
-func TestCertificateGeneration(t *testing.T) {
+func TestCertificateExtraction(t *testing.T) {
 	err := generateCertificates("key.pem", "cert.pem")
-	assert.NoError(t, err, "%v", err)
-	if err != nil {
-		return
-	}
 	defer os.Remove("cert.pem")
 	defer os.Remove("key.pem")
-	var ll net.Listener
-	creds, err := credentials.NewServerTLSFromFile("cert.pem", "key.pem")
 	assert.NoError(t, err, "%v", err)
-	if err != nil {
-		return
-	}
-	s := grpc.NewServer(grpc.Creds(creds))
-	ll, err = net.Listen("tcp", fmt.Sprintf("%s:%d", "", 5511))
+	serverCert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 	assert.NoError(t, err, "%v", err)
-	if err != nil {
-		return
-	}
-	srv := &gossipTestServer{msgChan: make(chan uint64)}
-	proto.RegisterGossipServer(s, srv)
-	go s.Serve(ll)
-	defer func() {
-		s.Stop()
-		ll.Close()
-	}()
-	time.Sleep(time.Second * time.Duration(2))
+
+	srv := createTestServer(t, &serverCert)
+	defer srv.stop()
+
+	generateCertificates("key2.pem", "cert2.pem")
+	defer os.Remove("cert2.pem")
+	defer os.Remove("key2.pem")
+	clientCert, err := tls.LoadX509KeyPair("cert2.pem", "key2.pem")
+	clientCertHash := certHashFromRawCert(clientCert.Certificate[0])
+	assert.NoError(t, err)
 	ta := credentials.NewTLS(&tls.Config{
+		Certificates:       []tls.Certificate{clientCert},
 		InsecureSkipVerify: true,
 	})
 	assert.NoError(t, err, "%v", err)
-	if err != nil {
-		return
-	}
-	conn, err := grpc.Dial("localhost:5511", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
+	conn, err := grpc.Dial("localhost:5611", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
 	assert.NoError(t, err, "%v", err)
-	if err != nil {
-		return
-	}
+
 	cl := proto.NewGossipClient(conn)
 	stream, err := cl.GossipStream(context.Background())
 	assert.NoError(t, err, "%v", err)
@@ -110,23 +110,16 @@ func TestCertificateGeneration(t *testing.T) {
 		return
 	}
 
-	time.Sleep(time.Duration(1) * time.Second)
+	time.Sleep(time.Second)
+	clientSideCertHash := extractCertificateHashFromContext(stream.Context())
+	serverSideCertHash := srv.getClientCertHash()
 
-	clientTLSUnique := ExtractTLSUnique(stream.Context())
-	serverTLSUnique := srv.getTLSUnique()
+	assert.NotNil(t, clientSideCertHash)
+	assert.NotNil(t, serverSideCertHash)
 
-	assert.NotNil(t, clientTLSUnique)
-	assert.NotNil(t, serverTLSUnique)
+	assert.Equal(t, 32, len(clientSideCertHash), "client side cert hash is %v", clientSideCertHash)
+	assert.Equal(t, 32, len(serverSideCertHash), "server side cert hash is %v", serverSideCertHash)
 
-	assert.True(t, bytes.Equal(clientTLSUnique, serverTLSUnique), "Client and server TLSUnique are not equal")
-
-	msg := createGossipMsg()
-	stream.Send(msg)
-	select {
-	case nonce := <-srv.msgChan:
-		assert.Equal(t, msg.Nonce, nonce)
-		break
-	case <-time.NewTicker(time.Second).C:
-		assert.Fail(t, "Timed out reading from stream")
-	}
+	assert.Equal(t, clientSideCertHash, srv.selfCertHash, "Server self hash isn't equal to client side hash")
+	assert.Equal(t, clientCertHash, srv.remoteCertHash, "Server side and client hash aren't equal")
 }

@@ -16,8 +16,6 @@ limitations under the License.
 
 syntax = "proto3";
 
-import "common/common.proto";
-
 option go_package = "github.com/hyperledger/fabric/protos/orderer";
 
 package orderer;
@@ -37,6 +35,12 @@ message BatchSize {
     // Simply specified as number of messages for now, in the future
     // we may want to allow this to be specified by size in bytes
     uint32 maxMessageCount = 1;
+    // The byte count of the serialized messages in a batch cannot
+    // exceed this value.
+    uint32 absoluteMaxBytes = 2;
+    // The byte count of the serialized messages in a batch should not
+    // exceed this value.
+    uint32 preferredMaxBytes = 3;
 }
 
 message BatchTimeout {
@@ -56,15 +60,13 @@ message CreationPolicy {
     // The name of the policy which should be used to validate the creation of
     // this chain
     string policy = 1;
-
-    // The hash of the concatenation of remaining configuration item bytes
-    bytes digest = 2;
 }
 
-message ChainCreators {
-    // A list of policies, any of which may be specified as the chain creation
-    // policy in a chain creation request
-    repeated string policies = 1;
+// ChainCreationPolicyNames is the set of policies which may be invoked for chain creation
+message ChainCreationPolicyNames {
+    // A list of policies, in evaluation these are 'or'-ed, note this is not a proper policy
+    // because implementing referential policies in a general way is difficult, and dangerous
+    repeated string names = 1;
 }
 
 // Carries a list of bootstrap brokers, i.e. this is not the exclusive set of

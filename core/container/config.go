@@ -24,6 +24,9 @@ import (
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+
+	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/msp"
 )
 
 // Config the config wrapper structure
@@ -73,4 +76,17 @@ func SetupTestConfig() {
 	var numProcsDesired = viper.GetInt("peer.gomaxprocs")
 	vmLogger.Debugf("setting Number of procs to %d, was %d\n", numProcsDesired, runtime.GOMAXPROCS(2))
 
+	// Init the BCCSP
+	var bccspConfig *factory.FactoryOpts
+	err = viper.UnmarshalKey("peer.BCCSP", &bccspConfig)
+	if err != nil {
+		bccspConfig = nil
+	}
+
+	msp.SetupBCCSPKeystoreConfig(bccspConfig, viper.GetString("peer.mspConfigPath")+"/keystore")
+
+	err = factory.InitFactories(bccspConfig)
+	if err != nil {
+		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
+	}
 }

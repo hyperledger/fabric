@@ -40,7 +40,7 @@ public class MapExample extends ChaincodeBase {
 	public String query(ChaincodeStub stub, String function, String[] args) {
 //		if ("range".equals(function)) {
 //			String build = "";
-//			HashMap<String, String> range = stub.rangeQueryState(args[0], args[1], 10);
+//			HashMap<String, String> range = stub.getStateByRange(args[0], args[1], 10);
 //			for (String s : range.keySet()) {
 //				build += s + ":" + range.get(s) + " ";
 //			}

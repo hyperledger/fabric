@@ -14,10 +14,14 @@ tags
 *~
 *#
 .#*
+# Vim file artifacts
+.*.sw*
 # bddtest log files
 *.log
 # bddtest coverage files
 bddtests/coverage
+# bddtest Dockerfile
+bddtests/environments/kafka/Dockerfile
 *.cov
 # Makefile dummy artifacts
 .*-dummy

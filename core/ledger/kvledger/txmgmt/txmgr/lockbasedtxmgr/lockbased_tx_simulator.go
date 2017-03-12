@@ -19,8 +19,8 @@ package lockbasedtxmgr
 import (
 	"errors"
 
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwset"
-	"github.com/hyperledger/fabric/core/util"
 )
 
 // LockBasedTxSimulator is a transaction simulator used in `LockBasedTxMgr`
@@ -39,12 +39,6 @@ func newLockBasedTxSimulator(txmgr *LockBasedTxMgr) *lockBasedTxSimulator {
 
 // GetState implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetState(ns string, key string) ([]byte, error) {
-	// Remove RYWs when table APIs are removed
-	logger.Debugf("s.rwset=%s", s.rwset)
-	value, ok := s.rwset.GetFromWriteSet(ns, key)
-	if ok {
-		return value, nil
-	}
 	return s.helper.getState(ns, key)
 }
 
@@ -73,6 +67,10 @@ func (s *lockBasedTxSimulator) SetStateMultipleKeys(namespace string, kvs map[st
 // GetTxSimulationResults implements method in interface `ledger.TxSimulator`
 func (s *lockBasedTxSimulator) GetTxSimulationResults() ([]byte, error) {
 	logger.Debugf("Simulation completed, getting simulation results")
+	s.Done()
+	if s.helper.err != nil {
+		return nil, s.helper.err
+	}
 	return s.rwset.GetTxReadWriteSet().Marshal()
 }
 

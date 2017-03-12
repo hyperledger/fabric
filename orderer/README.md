@@ -6,23 +6,23 @@ The atomic broadcast ordering protocol for hyperledger fabric is described in `h
 
 ## Service types
 * Solo Orderer:
-The solo orderer is intended to be an extremely easy to deploy, non-production orderer.  It consists of a single process which serves all clients, so no `consensus' is required as there is a single central authority.  There is correspondingly no high availability or scalability.  This makes solo ideal for development and testing, but not deployment.  The Solo orderer depends on a backing raw ledger.
+The solo orderer is intended to be an extremely easy to deploy, non-production orderer.  It consists of a single process which serves all clients, so no `consensus' is required as there is a single central authority.  There is correspondingly no high availability or scalability.  This makes solo ideal for development and testing, but not deployment.  The Solo orderer depends on a backing orderer ledger.
 
 * Kafka Orderer (pending):
-The Kafka orderer leverages the Kafka pubsub system to perform the ordering, but wraps this in the familiar `ab.proto` definition so that the peer orderer client code does not to be written specifically for Kafka.  In real world deployments, it would be expected that the Kafka proto service would bound locally in process, as Kafka has its own robust wire protocol.  However, for testing or novel deployment scenarios, the Kafka orderer may be deployed as a network service.  Kafka is anticipated to be the preferred choice production deployments which demand high throughput and high availability but do not require byzantine fault tolerance.  The Kafka orderer does not utilize a backing raw ledger because this is handled by the Kafka brokers.
+The Kafka orderer leverages the Kafka pubsub system to perform the ordering, but wraps this in the familiar `ab.proto` definition so that the peer orderer client code does not to be written specifically for Kafka.  In real world deployments, it would be expected that the Kafka proto service would bound locally in process, as Kafka has its own robust wire protocol.  However, for testing or novel deployment scenarios, the Kafka orderer may be deployed as a network service.  Kafka is anticipated to be the preferred choice production deployments which demand high throughput and high availability but do not require byzantine fault tolerance.  The Kafka orderer does not utilize a backing orderer ledger because this is handled by the Kafka brokers.
 
 * PBFT Orderer (pending):
-The PBFT orderer uses the hyperledger fabric PBFT implementation to order messages in a byzantine fault tolerant way.  Because the implementation is being developed expressly for the hyperledger fabric, the `ab.proto` is used for wireline communication to the PBFT orderer.  Therefore it is unusual to bind the PBFT orderer into the peer process, though might be desirable for some deployments.  The PBFT orderer depends on a backing raw ledger.
+The PBFT orderer uses the hyperledger fabric PBFT implementation to order messages in a byzantine fault tolerant way.  Because the implementation is being developed expressly for the hyperledger fabric, the `ab.proto` is used for wireline communication to the PBFT orderer.  Therefore it is unusual to bind the PBFT orderer into the peer process, though might be desirable for some deployments.  The PBFT orderer depends on a backing orderer ledger.
 
-## Raw Ledger Types
-Because the ordering service must allow clients to seek within the ordered batch stream, orderers must maintain a local copy of past batches.  The length of time batches are retained may be configurable (or all batches may be retained indefinitely). Not all ledgers are crash fault tolerant, so care should be used when selecting a ledger for an application.  Because the raw leger interface is abstracted, the ledger type for a particular orderer may be selected at runtime.  Not all orderers require (or can utilize) a backing raw ledger (for instance Kafka, does not).
+## Orderer Ledger Types
+Because the ordering service must allow clients to seek within the ordered batch stream, orderers must maintain a local copy of past batches.  The length of time batches are retained may be configurable (or all batches may be retained indefinitely). Not all ledgers are crash fault tolerant, so care should be used when selecting a ledger for an application.  Because the orderer leger interface is abstracted, the ledger type for a particular orderer may be selected at runtime.  Not all orderers require (or can utilize) a backing orderer ledger (for instance Kafka, does not).
 
 * RAM Ledger
 The RAM ledger implementation is a simple development oriented ledger which stores batches purely in RAM, with a configurable history size for retention.  This ledger is not crash fault tolerant, restarting the process will reset the ledger to the genesis block.  This is the default ledger.
 * File Ledger
 The file ledger implementation is a simple development oriented ledger which stores batches as JSON encoded files on the filesystem.  This is intended to make inspecting the ledger easy and to allow for crash fault tolerance.  This ledger is not intended to be performant, but is intended to be simple and easy to deploy and understand.  This ledger may be enabled before executing the `orderer` binary by setting `ORDERER_LEDGER_TYPE=file` (note: this is a temporary hack and may not persist into the future).
 * Other Ledgers
-There are currently no other raw ledgers available, although it is anticipated that some high performance database or other log based storage system will eventually be adapter for production deployments.
+There are currently no other orderer ledgers available, although it is anticipated that some high performance database or other log based storage system will eventually be adapter for production deployments.
 
 ## Experimenting with the orderer service
 

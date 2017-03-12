@@ -17,15 +17,6 @@ server:
         # TLS certificate and key file paths
         tls:
 
-security:
-    # Can be 256 or 384
-    # Must be the same as in core.yaml
-    level: 256
-
-    # Can be SHA2 or SHA3
-    # Must be the same as in core.yaml
-    hashAlgorithm: SHA3
-
 # Enabling/disabling different logging levels of the CA.
 #
 logging:
@@ -322,6 +313,21 @@ peer:
         enabled:     false
         listenAddress: 0.0.0.0:6060
 
+    mspConfigPath: ../../msp/sampleconfig
+    
+    # BCCSP (Blockchain crypto provider): Select which crypto implementation or
+    # library to use
+    BCCSP:
+        Default: SW
+        SW:
+            # TODO: The default Hash and Security level needs refactoring to be
+            # fully configurable. Changing these defaults requires coordination
+            # SHA2 is hardcoded in several places, not only BCCSP
+            Hash: SHA2
+            Security: 256
+            FileKeyStore: 
+                KeyStore:
+            
 ###############################################################################
 #
 #    VM section
@@ -363,21 +369,17 @@ chaincode:
         path:
         name:
 
-    golang:
+    # Generic builder environment, suitable for most chaincode types
+    builder: hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
-        # This is the basis for the Golang Dockerfile.  Additional commands will
-        # be appended depedendent upon the chaincode specification.
-        Dockerfile:  |
-          FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
-          COPY src $GOPATH/src
-          WORKDIR $GOPATH
+    golang:
+        # golang will never need more than baseos
+        runtime: hyperledger/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
     car:
-
-        # This is the basis for the CAR Dockerfile.  Additional commands will
-        # be appended depedendent upon the chaincode specification.
-        Dockerfile:  |
-            FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
+        # car may need more facilities (JVM, etc) in the future as the catalog
+        # of platforms are expanded.  For now, we can just use baseos
+        runtime: hyperledger/fabric-baseos:$(ARCH)-$(BASE_VERSION)
 
     java:
         # This is an image based on java:openjdk-8 with addition compiler
@@ -385,7 +387,7 @@ chaincode:
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
         Dockerfile:  |
-            from hyperledger/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
+            FROM hyperledger/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
@@ -467,46 +469,6 @@ ledger:
 
         # configurations for 'trie'
         # 'tire' has no additional configurations exposed as yet
-
-
-###############################################################################
-#
-#    Security section - Applied to all entities (client, NVP, VP)
-#
-###############################################################################
-security:
-    # Enable security will force every entity on the network to enroll with obc-ca
-    # and maintain a valid set of certificates in order to communicate with
-    # other peers
-    enabled: false
-    # To enroll NVP or VP with membersrvc. These parameters are for 1 time use.
-    # They will not be valid on subsequent times without un-enroll first.
-    # The values come from off-line registration with obc-ca. For testing, make
-    # sure the values are in membersrvc/membersrvc.yaml file eca.users
-    enrollID: vp
-    enrollSecret: f3489fy98ghf
-    # To enable privacy of transactions (requires security to be enabled). This
-    # encrypts the transaction content during transit and at rest. The state
-    # data is also encrypted
-    privacy: false
-
-    # Can be 256 or 384. If you change here, you have to change also
-    # the same property in membersrvc.yaml to the same value
-    level: 256
-
-    # Can be SHA2 or SHA3. If you change here, you have to change also
-    # the same property in membersrvc.yaml to the same value
-    hashAlgorithm: SHA3
-
-    # TCerts related configuration
-    tcert:
-      batch:
-        # The size of the batch of TCerts
-        size:  200
-      attributes:
-        company: IBM
-        position: "Software Engineer"
-
 
 ################################################################################
 #

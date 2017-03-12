@@ -17,31 +17,32 @@ limitations under the License.
 package committer
 
 import (
-	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/mocks/validator"
+	"github.com/hyperledger/fabric/protos/common"
 )
 
 func TestKVLedgerBlockStorage(t *testing.T) {
-	conf := kvledger.NewConf("/tmp/tests/ledger/", 0)
-	defer os.RemoveAll("/tmp/tests/ledger/")
-
-	ledger, _ := kvledger.NewKVLedger(conf)
+	viper.Set("peer.fileSystemPath", "/tmp/fabric/committertest")
+	ledgermgmt.InitializeTestEnv()
+	defer ledgermgmt.CleanupTestEnv()
+	ledger, err := ledgermgmt.CreateLedger("TestLedger")
+	assert.NoError(t, err, "Error while creating ledger: %s", err)
 	defer ledger.Close()
 
-	committer := NewLedgerCommitter(ledger)
-
+	committer := NewLedgerCommitter(ledger, &validator.MockValidator{})
 	height, err := committer.LedgerHeight()
 	assert.Equal(t, uint64(0), height)
 	assert.NoError(t, err)
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 0, CurrentBlockHash: nil, PreviousBlockHash: nil})
 
 	simulator, _ := ledger.NewTxSimulator()
@@ -51,21 +52,21 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 	simulator.Done()
 
 	simRes, _ := simulator.GetTxSimulationResults()
-	block1 := testutil.ConstructBlock(t, [][]byte{simRes}, true)
+	block0 := testutil.ConstructBlock(t, [][]byte{simRes}, true)
 
-	err = committer.CommitBlock(block1)
+	err = committer.Commit(block0)
 	assert.NoError(t, err)
 
 	height, err = committer.LedgerHeight()
 	assert.Equal(t, uint64(1), height)
 	assert.NoError(t, err)
 
-	blocks := committer.GetBlocks([]uint64{1})
+	blocks := committer.GetBlocks([]uint64{0})
 	assert.Equal(t, 1, len(blocks))
 	assert.NoError(t, err)
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := block1.Header.Hash()
-	testutil.AssertEquals(t, bcInfo, &pb.BlockchainInfo{
+	block1Hash := block0.Header.Hash()
+	testutil.AssertEquals(t, bcInfo, &common.BlockchainInfo{
 		Height: 1, CurrentBlockHash: block1Hash, PreviousBlockHash: []byte{}})
 }

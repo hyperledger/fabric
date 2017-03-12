@@ -18,6 +18,7 @@ package state
 
 import (
 	"testing"
+
 	"github.com/docker/docker/pkg/testutil/assert"
 )
 

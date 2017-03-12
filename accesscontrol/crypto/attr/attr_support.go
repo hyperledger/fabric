@@ -28,8 +28,8 @@ import (
 
 // chaincodeHolder is the struct that hold the certificate and the metadata. An implementation is ChaincodeStub
 type chaincodeHolder interface {
-	// GetCallerCertificate returns caller certificate
-	GetCallerCertificate() ([]byte, error)
+	// GetCreator returns caller certificate
+	GetCreator() ([]byte, error)
 
 	// GetCallerMetadata returns caller metadata
 	/*
@@ -82,8 +82,8 @@ type chaincodeHolderImpl struct {
 	Certificate []byte
 }
 
-// GetCallerCertificate returns caller certificate
-func (holderImpl *chaincodeHolderImpl) GetCallerCertificate() ([]byte, error) {
+// GetCreator returns caller certificate
+func (holderImpl *chaincodeHolderImpl) GetCreator() ([]byte, error) {
 	return holderImpl.Certificate, nil
 }
 
@@ -99,7 +99,7 @@ func GetValueFrom(attributeName string, cert []byte) ([]byte, error) {
 //NewAttributesHandlerImpl creates a new AttributesHandlerImpl from a pb.ChaincodeSecurityContext object.
 func NewAttributesHandlerImpl(holder chaincodeHolder) (*AttributesHandlerImpl, error) {
 	// Getting certificate
-	certRaw, err := holder.GetCallerCertificate()
+	certRaw, err := holder.GetCreator()
 	if err != nil {
 		return nil, err
 	}

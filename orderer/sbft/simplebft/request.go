@@ -16,10 +16,13 @@ limitations under the License.
 
 package simplebft
 
-import "time"
+import (
+	"time"
+)
 
 // Request proposes a new request to the BFT network.
 func (s *SBFT) Request(req []byte) {
+	log.Debugf("replica %d: broadcasting a request", s.id)
 	s.broadcast(&Msg{&Msg_Request{&Request{req}}})
 }
 
@@ -28,11 +31,19 @@ func (s *SBFT) handleRequest(req *Request, src uint64) {
 	log.Infof("replica %d: inserting %x into pending", s.id, key)
 	s.pending[key] = req
 	if s.isPrimary() && s.activeView {
-		s.batch = append(s.batch, req)
-		if s.batchSize() >= s.config.BatchSizeBytes {
-			s.maybeSendNextBatch()
-		} else {
+		batches, committers, valid := s.sys.Validate(s.chainId, req)
+		if !valid {
+			// this one is problematic, lets skip it
+			delete(s.pending, key)
+			return
+		}
+		s.validated[key] = valid
+		if len(batches) == 0 {
 			s.startBatchTimer()
+		} else {
+			s.batches = append(s.batches, batches...)
+			s.primarycommitters = append(s.primarycommitters, committers...)
+			s.maybeSendNextBatch()
 		}
 	}
 }
@@ -41,13 +52,23 @@ func (s *SBFT) handleRequest(req *Request, src uint64) {
 
 func (s *SBFT) startBatchTimer() {
 	if s.batchTimer == nil {
-		s.batchTimer = s.sys.Timer(time.Duration(s.config.BatchDurationNsec), s.maybeSendNextBatch)
+		s.batchTimer = s.sys.Timer(time.Duration(s.config.BatchDurationNsec), s.cutAndMaybeSend)
 	}
+}
+
+func (s *SBFT) cutAndMaybeSend() {
+	batch, committers := s.sys.Cut(s.chainId)
+	s.batches = append(s.batches, batch)
+	s.primarycommitters = append(s.primarycommitters, committers)
+	s.maybeSendNextBatch()
 }
 
 func (s *SBFT) batchSize() uint64 {
 	size := uint64(0)
-	for _, req := range s.batch {
+	if len(s.batches) == 0 {
+		return size
+	}
+	for _, req := range s.batches[0] {
 		size += uint64(len(req.Payload))
 	}
 	return size
@@ -67,16 +88,37 @@ func (s *SBFT) maybeSendNextBatch() {
 		return
 	}
 
-	if len(s.batch) == 0 {
-		for _, req := range s.pending {
-			s.batch = append(s.batch, req)
+	if len(s.batches) == 0 {
+		hasPending := len(s.pending) != 0
+		for k, req := range s.pending {
+			if s.validated[k] == false {
+				batches, committers, valid := s.sys.Validate(s.chainId, req)
+				s.batches = append(s.batches, batches...)
+				s.primarycommitters = append(s.primarycommitters, committers...)
+				if !valid {
+					log.Panicf("Replica %d: one of our own pending requests is erroneous.", s.id)
+					delete(s.pending, k)
+					continue
+				}
+				s.validated[k] = true
+			}
 		}
-		if len(s.batch) == 0 {
-			return
+		if len(s.batches) == 0 {
+			// if we have no pending, every req was included in batches
+			if !hasPending {
+				return
+			}
+			// we have pending reqs that were just sent for validation or
+			// were already sent (they are in s.validated)
+			batch, committers := s.sys.Cut(s.chainId)
+			s.batches = append(s.batches, batch)
+			s.primarycommitters = append(s.primarycommitters, committers)
 		}
 	}
 
-	batch := s.batch
-	s.batch = nil
-	s.sendPreprepare(batch)
+	batch := s.batches[0]
+	s.batches = s.batches[1:]
+	committers := s.primarycommitters[0]
+	s.primarycommitters = s.primarycommitters[1:]
+	s.sendPreprepare(batch, committers)
 }

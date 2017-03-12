@@ -19,8 +19,9 @@ package main
 import (
 	"errors"
 
+	"github.com/hyperledger/fabric/accesscontrol/crypto/attr"
+	"github.com/hyperledger/fabric/accesscontrol/impl"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/chaincode/shim/crypto/attr"
 )
 
 // consts associated with TCert
@@ -43,7 +44,7 @@ func NewCertHandler() *certHandler {
 // requiredRole: required role; this function will return true if invoker has this role
 func (t *certHandler) isAuthorized(stub shim.ChaincodeStubInterface, requiredRole string) (bool, error) {
 	//read transaction invoker's role, and verify that is the same as the required role passed in
-	return stub.VerifyAttribute(role, []byte(requiredRole))
+	return impl.NewAccessControlShim(stub).VerifyAttribute(role, []byte(requiredRole))
 }
 
 // getContactInfo retrieves the contact info stored as an attribute in a Tcert

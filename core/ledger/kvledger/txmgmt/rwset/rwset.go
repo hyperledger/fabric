@@ -54,16 +54,61 @@ func (w *KVWrite) SetValue(value []byte) {
 	w.IsDelete = value == nil
 }
 
+// RangeQueryInfo captures a range query executed by a transaction
+// and the tuples <key,version> that are read by the transaction
+// This it to be used to perform a phantom-read validation during commit
+type RangeQueryInfo struct {
+	StartKey     string
+	EndKey       string
+	ItrExhausted bool
+	Results      []*KVRead
+	ResultHash   *MerkleSummary
+}
+
+// MerkleTreeLevel used for representing a level of the merkle tree
+type MerkleTreeLevel int
+
+// Hash represents bytes of a hash
+type Hash []byte
+
+// MerkleSummary encloses the summary of the merkle tree that consists of the hashes of the results of a range query.
+// This allows to reduce the size of RWSet in the presence of range query results
+// by storing certain hashes instead of actual results.
+type MerkleSummary struct {
+	MaxDegree      int
+	MaxLevel       MerkleTreeLevel
+	MaxLevelHashes []Hash
+}
+
 // NsReadWriteSet - a collection of all the reads and writes that belong to a common namespace
 type NsReadWriteSet struct {
-	NameSpace string
-	Reads     []*KVRead
-	Writes    []*KVWrite
+	NameSpace        string
+	Reads            []*KVRead
+	Writes           []*KVWrite
+	RangeQueriesInfo []*RangeQueryInfo
 }
 
 // TxReadWriteSet - a collection of all the reads and writes collected as a result of a transaction simulation
 type TxReadWriteSet struct {
 	NsRWs []*NsReadWriteSet
+}
+
+// Equal verifies whether the give MerkleSummary is equals to this
+func (ms *MerkleSummary) Equal(anotherMS *MerkleSummary) bool {
+	if anotherMS == nil {
+		return false
+	}
+	if ms.MaxDegree != anotherMS.MaxDegree ||
+		ms.MaxLevel != anotherMS.MaxLevel ||
+		len(ms.MaxLevelHashes) != len(anotherMS.MaxLevelHashes) {
+		return false
+	}
+	for i := 0; i < len(ms.MaxLevelHashes); i++ {
+		if !bytes.Equal(ms.MaxLevelHashes[i], anotherMS.MaxLevelHashes[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // Marshal serializes a `KVRead`
@@ -93,6 +138,141 @@ func (r *KVRead) Unmarshal(buf *proto.Buffer) error {
 	}
 	if len(versionBytes) > 0 {
 		r.Version, _ = version.NewHeightFromBytes(versionBytes)
+	}
+	return nil
+}
+
+// Marshal serializes a `RangeQueryInfo`
+func (rqi *RangeQueryInfo) Marshal(buf *proto.Buffer) error {
+	if err := buf.EncodeStringBytes(rqi.StartKey); err != nil {
+		return err
+	}
+	if err := buf.EncodeStringBytes(rqi.EndKey); err != nil {
+		return err
+	}
+
+	itrExhausedMarker := 0 // iterator did not get exhausted
+	if rqi.ItrExhausted {
+		itrExhausedMarker = 1
+	}
+	if err := buf.EncodeVarint(uint64(itrExhausedMarker)); err != nil {
+		return err
+	}
+
+	if err := buf.EncodeVarint(uint64(len(rqi.Results))); err != nil {
+		return err
+	}
+	for i := 0; i < len(rqi.Results); i++ {
+		if err := rqi.Results[i].Marshal(buf); err != nil {
+			return err
+		}
+	}
+	hashPresentMarker := 0
+	if rqi.ResultHash != nil {
+		hashPresentMarker = 1
+	}
+	if err := buf.EncodeVarint(uint64(hashPresentMarker)); err != nil {
+		return err
+	}
+	if rqi.ResultHash != nil {
+		if err := rqi.ResultHash.Marshal(buf); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Unmarshal deserializes a `RangeQueryInfo`
+func (rqi *RangeQueryInfo) Unmarshal(buf *proto.Buffer) error {
+	var err error
+	var numResults uint64
+	var itrExhaustedMarker uint64
+	var hashPresentMarker uint64
+
+	if rqi.StartKey, err = buf.DecodeStringBytes(); err != nil {
+		return err
+	}
+	if rqi.EndKey, err = buf.DecodeStringBytes(); err != nil {
+		return err
+	}
+	if itrExhaustedMarker, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	if itrExhaustedMarker == 1 {
+		rqi.ItrExhausted = true
+	} else {
+		rqi.ItrExhausted = false
+	}
+	if numResults, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	if numResults > 0 {
+		rqi.Results = make([]*KVRead, int(numResults))
+	}
+	for i := 0; i < int(numResults); i++ {
+		kvRead := &KVRead{}
+		if err := kvRead.Unmarshal(buf); err != nil {
+			return err
+		}
+		rqi.Results[i] = kvRead
+	}
+	if hashPresentMarker, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	if hashPresentMarker == 0 {
+		return nil
+	}
+	resultHash := &MerkleSummary{}
+	if err := resultHash.Unmarshal(buf); err != nil {
+		return err
+	}
+	rqi.ResultHash = resultHash
+	return nil
+}
+
+// Marshal serializes a `QueryResultHash`
+func (ms *MerkleSummary) Marshal(buf *proto.Buffer) error {
+	if err := buf.EncodeVarint(uint64(ms.MaxDegree)); err != nil {
+		return err
+	}
+	if err := buf.EncodeVarint(uint64(ms.MaxLevel)); err != nil {
+		return err
+	}
+	if err := buf.EncodeVarint(uint64(len(ms.MaxLevelHashes))); err != nil {
+		return err
+	}
+	for i := 0; i < len(ms.MaxLevelHashes); i++ {
+		if err := buf.EncodeRawBytes(ms.MaxLevelHashes[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Unmarshal deserializes a `QueryResultHash`
+func (ms *MerkleSummary) Unmarshal(buf *proto.Buffer) error {
+	var err error
+	var maxDegree uint64
+	var level uint64
+	var numHashes uint64
+	var hash []byte
+
+	if maxDegree, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	if level, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	if numHashes, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	ms.MaxDegree = int(maxDegree)
+	ms.MaxLevel = MerkleTreeLevel(int(level))
+	for i := 0; i < int(numHashes); i++ {
+		if hash, err = buf.DecodeRawBytes(false); err != nil {
+			return err
+		}
+		ms.MaxLevelHashes = append(ms.MaxLevelHashes, hash)
 	}
 	return nil
 }
@@ -148,13 +328,25 @@ func (nsRW *NsReadWriteSet) Marshal(buf *proto.Buffer) error {
 		return err
 	}
 	for i := 0; i < len(nsRW.Reads); i++ {
-		nsRW.Reads[i].Marshal(buf)
+		if err = nsRW.Reads[i].Marshal(buf); err != nil {
+			return err
+		}
 	}
 	if err = buf.EncodeVarint(uint64(len(nsRW.Writes))); err != nil {
 		return err
 	}
 	for i := 0; i < len(nsRW.Writes); i++ {
-		nsRW.Writes[i].Marshal(buf)
+		if err = nsRW.Writes[i].Marshal(buf); err != nil {
+			return err
+		}
+	}
+	if err = buf.EncodeVarint(uint64(len(nsRW.RangeQueriesInfo))); err != nil {
+		return err
+	}
+	for i := 0; i < len(nsRW.RangeQueriesInfo); i++ {
+		if err = nsRW.RangeQueriesInfo[i].Marshal(buf); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -187,6 +379,18 @@ func (nsRW *NsReadWriteSet) Unmarshal(buf *proto.Buffer) error {
 			return err
 		}
 		nsRW.Writes = append(nsRW.Writes, w)
+	}
+
+	var numRangeQueriesInfo uint64
+	if numRangeQueriesInfo, err = buf.DecodeVarint(); err != nil {
+		return err
+	}
+	for i := 0; i < int(numRangeQueriesInfo); i++ {
+		rqInfo := &RangeQueryInfo{}
+		if err = rqInfo.Unmarshal(buf); err != nil {
+			return err
+		}
+		nsRW.RangeQueriesInfo = append(nsRW.RangeQueriesInfo, rqInfo)
 	}
 	return nil
 }
@@ -234,18 +438,32 @@ func (w *KVWrite) String() string {
 	return fmt.Sprintf("%s=[%#v]", w.Key, w.Value)
 }
 
+// String prints a range query info
+func (rqi *RangeQueryInfo) String() string {
+	return fmt.Sprintf("StartKey=%s, EndKey=%s, ItrExhausted=%t, Results=%#v, Hash=%#v",
+		rqi.StartKey, rqi.EndKey, rqi.ItrExhausted, rqi.Results, rqi.ResultHash)
+}
+
 // String prints a `NsReadWriteSet`
 func (nsRW *NsReadWriteSet) String() string {
 	var buffer bytes.Buffer
-	buffer.WriteString("ReadSet~")
+	buffer.WriteString("ReadSet=\n")
 	for _, r := range nsRW.Reads {
+		buffer.WriteString("\t")
 		buffer.WriteString(r.String())
-		buffer.WriteString(",")
+		buffer.WriteString("\n")
 	}
-	buffer.WriteString("WriteSet~")
+	buffer.WriteString("WriteSet=\n")
 	for _, w := range nsRW.Writes {
+		buffer.WriteString("\t")
 		buffer.WriteString(w.String())
-		buffer.WriteString(",")
+		buffer.WriteString("\n")
+	}
+	buffer.WriteString("RangeQueriesInfo=\n")
+	for _, rqi := range nsRW.RangeQueriesInfo {
+		buffer.WriteString("\t")
+		buffer.WriteString(rqi.String())
+		buffer.WriteString("\n")
 	}
 	return buffer.String()
 }

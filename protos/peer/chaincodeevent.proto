@@ -22,8 +22,8 @@ option go_package = "github.com/hyperledger/fabric/protos/peer";
 //ChaincodeEvent is used for events and registrations that are specific to chaincode
 //string type - "chaincode"
 message ChaincodeEvent {
-      string chaincodeID = 1;
-      string txID = 2;
-      string eventName = 3;
+      string chaincode_id = 1;
+      string tx_id = 2;
+      string event_name = 3;
       bytes payload = 4;
 }

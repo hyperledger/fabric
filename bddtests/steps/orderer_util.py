@@ -14,29 +14,38 @@
 # limitations under the License.
 #
 
-import os
-import re
 import time
 import datetime
 import Queue
-import subprocess
-import devops_pb2
-import fabric_pb2
-import chaincode_pb2
 from orderer import ab_pb2
 from common import common_pb2
 
 import bdd_test_util
-import bdd_grpc_util
+import bootstrap_util
 
 from grpc.beta import implementations
-from grpc.framework.interfaces.face.face import NetworkError
 from grpc.framework.interfaces.face.face import AbortionError
 from grpc.beta.interfaces import StatusCode
-from common.common_pb2 import Payload
 
 # The default chain ID when the system is statically bootstrapped for testing
-TEST_CHAIN_ID = "**TEST_CHAINID**"
+TEST_CHAIN_ID = "testchainid"
+
+def _defaultDataFunction(index):
+    payload = common_pb2.Payload(
+        header = common_pb2.Header(
+            chainHeader = common_pb2.ChainHeader(
+                chainID = TEST_CHAIN_ID,
+                type = common_pb2.ENDORSER_TRANSACTION,
+            ),
+            signatureHeader = common_pb2.SignatureHeader(),
+        ),
+        data = str("BDD test: {0}".format(datetime.datetime.utcnow())),
+    )
+    envelope = common_pb2.Envelope(
+        payload = payload.SerializeToString()
+    )
+    return envelope
+
 
 class StreamHelper:
 
@@ -73,7 +82,7 @@ class StreamHelper:
         try:
             for reply in self.replyGenerator:
                 counter += 1
-                print("received reply: {0}, counter = {1}".format(reply, counter))
+                #print("received reply: {0}, counter = {1}".format(reply, counter))
                 msgsReceived.append(reply)
                 if counter == int(expectedCount):
                     break
@@ -92,14 +101,29 @@ class StreamHelper:
 
 class DeliverStreamHelper(StreamHelper):
 
-    def __init__(self, ordererStub, timeout = 1):
+    def __init__(self, ordererStub, entity, directory, nodeAdminTuple, timeout = 110):
         StreamHelper.__init__(self)
+        self.nodeAdminTuple = nodeAdminTuple
+        self.directory = directory
+        self.entity = entity
         # Set the UpdateMessage and start the stream
         sendGenerator = self.createSendGenerator(timeout)
         self.replyGenerator = ordererStub.Deliver(sendGenerator, timeout + 1)
 
+    def createSeekInfo(self, chainID, start = 'Oldest', end = 'Newest',  behavior = 'FAIL_IF_NOT_READY'):
+        seekInfo = ab_pb2.SeekInfo(
+            start = seekPosition(start),
+            stop = seekPosition(end),
+            behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
+        )
+        print("SeekInfo = {0}".format(seekInfo))
+        print("")
+        return seekInfo
+
     def seekToRange(self, chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest'):
-        self.sendQueue.put(createSeekInfo(start = start))
+        seekInfo = self.createSeekInfo(start = start, end = end, chainID = chainID)
+        envelope = bootstrap_util.createEnvelopeForMsg(directory=self.directory, chainId=chainID, msg=seekInfo, typeAsString="DELIVER_SEEK_INFO", nodeAdminTuple=self.nodeAdminTuple)
+        self.sendQueue.put(envelope)
 
     def getBlocks(self):
         blocks = []
@@ -108,7 +132,7 @@ class DeliverStreamHelper(StreamHelper):
                 reply = self.readMessage()
                 if reply.HasField("block"):
                     blocks.append(reply.block)
-                    print("received reply: {0}, len(blocks) = {1}".format(reply, len(blocks)))
+                    #print("received reply: {0}, len(blocks) = {1}".format(reply, len(blocks)))
                 else:
                     if reply.status != common_pb2.SUCCESS:
                         print("Got error: {0}".format(reply.status))
@@ -121,10 +145,9 @@ class DeliverStreamHelper(StreamHelper):
 
 class UserRegistration:
 
-    def __init__(self, secretMsg, composeService):
-        self.enrollId = secretMsg['enrollId']
-        self.secretMsg = secretMsg
-        self.composeService = composeService
+    def __init__(self, userName, directory):
+        self.userName= userName
+        self.directory = directory
         self.tags = {}
         # Dictionary of composeService->atomic broadcast grpc Stub
         self.atomicBroadcastStubsDict = {}
@@ -132,49 +155,51 @@ class UserRegistration:
         self.abDeliversStreamHelperDict = {}
 
     def getUserName(self):
-        return self.secretMsg['enrollId']
+        return self.userName
 
+    def closeStreams(self):
+        for compose_service, deliverStreamHelper in self.abDeliversStreamHelperDict.iteritems():
+            deliverStreamHelper.sendQueue.put(None)
 
-    def connectToDeliverFunction(self, context, composeService):
+    def connectToDeliverFunction(self, context, composeService, cert, nodeAdminTuple, timeout=1):
         'Connect to the deliver function and drain messages to associated orderer queue'
         assert not composeService in self.abDeliversStreamHelperDict, "Already connected to deliver stream on {0}".format(composeService)
-        streamHelper = DeliverStreamHelper(self.getABStubForComposeService(context, composeService))
+        streamHelper = DeliverStreamHelper(directory=self.directory,
+                                           ordererStub=self.getABStubForComposeService(context, composeService),
+                                           entity=self, nodeAdminTuple=nodeAdminTuple)
         self.abDeliversStreamHelperDict[composeService] = streamHelper
         return streamHelper
-
 
     def getDelivererStreamHelper(self, context, composeService):
         assert composeService in self.abDeliversStreamHelperDict, "NOT connected to deliver stream on {0}".format(composeService)
         return self.abDeliversStreamHelperDict[composeService]
 
-
-
-    def broadcastMessages(self, context, numMsgsToBroadcast, composeService):
-		abStub = self.getABStubForComposeService(context, composeService)
-		replyGenerator = abStub.Broadcast(generateBroadcastMessages(numToGenerate = int(numMsgsToBroadcast)), 2)
-		counter = 0
-		try:
-			for reply in replyGenerator:
-				counter += 1
-				print("{0} received reply: {1}, counter = {2}".format(self.enrollId, reply, counter))
-				if counter == int(numMsgsToBroadcast):
-					break
-		except Exception as e:
-			print("Got error: {0}".format(e) )
-			print("Got error")
-		print("Done")
-		assert counter == int(numMsgsToBroadcast), "counter = {0}, expected {1}".format(counter, numMsgsToBroadcast)
+    def broadcastMessages(self, context, numMsgsToBroadcast, composeService, chainID=TEST_CHAIN_ID, dataFunc=_defaultDataFunction):
+        abStub = self.getABStubForComposeService(context, composeService)
+        replyGenerator = abStub.Broadcast(generateBroadcastMessages(chainID=chainID, numToGenerate = int(numMsgsToBroadcast), dataFunc=dataFunc), 2)
+        counter = 0
+        try:
+            for reply in replyGenerator:
+                counter += 1
+                print("{0} received reply: {1}, counter = {2}".format(self.getUserName(), reply, counter))
+                if counter == int(numMsgsToBroadcast):
+                    break
+        except Exception as e:
+            print("Got error: {0}".format(e) )
+            print("Got error")
+        print("Done")
+        assert counter == int(numMsgsToBroadcast), "counter = {0}, expected {1}".format(counter, numMsgsToBroadcast)
 
     def getABStubForComposeService(self, context, composeService):
-		'Return a Stub for the supplied composeService, will cache'
-		if composeService in self.atomicBroadcastStubsDict:
-			return self.atomicBroadcastStubsDict[composeService]
-		# Get the IP address of the server that the user registered on
-		ipAddress = bdd_test_util.ipFromContainerNamePart(composeService, context.compose_containers)
-		channel = getGRPCChannel(ipAddress)
-		newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
-		self.atomicBroadcastStubsDict[composeService] = newABStub
-		return newABStub
+        'Return a Stub for the supplied composeService, will cache'
+        if composeService in self.atomicBroadcastStubsDict:
+            return self.atomicBroadcastStubsDict[composeService]
+        # Get the IP address of the server that the user registered on
+        channel = getGRPCChannel(*bdd_test_util.getPortHostMapping(context.compose_containers, composeService, 7050))
+        newABStub = ab_pb2.beta_create_AtomicBroadcast_stub(channel)
+        self.atomicBroadcastStubsDict[composeService] = newABStub
+        return newABStub
+
 
 # Registerses a user on a specific composeService
 def registerUser(context, secretMsg, composeService):
@@ -185,7 +210,7 @@ def registerUser(context, secretMsg, composeService):
         context.ordererUsers = {}
     if userName in context.ordererUsers:
         raise Exception("Orderer user already registered: {0}".format(userName))
-    userRegistration = UserRegistration(secretMsg, composeService)
+    userRegistration = UserRegistration(secretMsg)
     context.ordererUsers[userName] = userRegistration
     return userRegistration
 
@@ -209,36 +234,38 @@ def seekPosition(position):
     else:
         return ab_pb2.SeekPosition(specified = ab_pb2.SeekSpecified(number = position))
 
-def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  behavior = 'FAIL_IF_NOT_READY'):
-    return ab_pb2.SeekInfo(
-        chainID = chainID,
-        start = seekPosition(start),
-        stop = seekPosition(end),
-        behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
-    )
+def convertSeek(utfString):
+    try:
+        return int(utfString)
+    except ValueError:
+        return str(utfString)
 
-def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 1, timeToHoldOpen = 1):
-    messages = []
-    for i in range(0, numToGenerate):
+def createSeekInfo(chainID = TEST_CHAIN_ID, start = 'Oldest', end = 'Newest',  behavior = 'FAIL_IF_NOT_READY'):
+    return common_pb2.Envelope(
         payload = common_pb2.Payload(
             header = common_pb2.Header(
-                chainHeader = common_pb2.ChainHeader(
-                    chainID = chainID,
-                    type = common_pb2.ENDORSER_TRANSACTION,
-                )
+                channel_header = common_pb2.ChannelHeader( channel_id = chainID ).SerializeToString(),
+                signature_header = common_pb2.SignatureHeader().SerializeToString(),
             ),
-            data = str("BDD test: {0}".format(datetime.datetime.utcnow())),
-        )
-        envelope = common_pb2.Envelope(
-            payload = payload.SerializeToString()
-        )
-        messages.append(envelope)
+            data = ab_pb2.SeekInfo(
+                start = seekPosition(start),
+                stop = seekPosition(end),
+                behavior = ab_pb2.SeekInfo.SeekBehavior.Value(behavior),
+            ).SerializeToString(),
+        ).SerializeToString(),
+    )
+
+
+def generateBroadcastMessages(chainID = TEST_CHAIN_ID, numToGenerate = 3, timeToHoldOpen = 1, dataFunc =_defaultDataFunction):
+    messages = []
+    for i in range(0, numToGenerate):
+        messages.append(dataFunc(i))
     for msg in messages:
         yield msg
     time.sleep(timeToHoldOpen)
 
 
-def getGRPCChannel(ipAddress):
-    channel = implementations.insecure_channel(ipAddress, 7050)
-    print("Returning GRPC for address: {0}".format(ipAddress))
+def getGRPCChannel(host='localhost', port=7050):
+    channel = implementations.insecure_channel(host, port)
+    print("Returning GRPC for address: {0}:{1}".format(host,port))
     return channel

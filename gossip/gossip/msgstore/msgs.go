@@ -27,6 +27,8 @@ import (
 // then the invalidation trigger on 0 was called when 1 was added.
 type invalidationTrigger func(message interface{})
 
+// NewMessageStore returns a new MessageStore with the message replacing
+// policy and invalidation trigger passed.
 func NewMessageStore(pol common.MessageReplacingPolicy, trigger invalidationTrigger) MessageStore {
 	return &messageStoreImpl{pol: pol, lock: &sync.RWMutex{}, messages: make([]*msg, 0), invTrigger: trigger}
 }
@@ -34,8 +36,8 @@ func NewMessageStore(pol common.MessageReplacingPolicy, trigger invalidationTrig
 // MessageStore adds messages to an internal buffer.
 // When a message is received, it might:
 // 	- Be added to the buffer
-//	- Discarded because of some message already in the buffer (invalidated)
-//	- Make a message already in the buffer to be discarded (invalidates)
+// 	- Discarded because of some message already in the buffer (invalidated)
+// 	- Make a message already in the buffer to be discarded (invalidates)
 // When a message is invalidated, the invalidationTrigger is invoked on that message.
 type MessageStore interface {
 	// add adds a message to the store

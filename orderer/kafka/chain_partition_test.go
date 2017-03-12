@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/common/bootstrap/provisional"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
 )
 
 func TestChainPartition(t *testing.T) {

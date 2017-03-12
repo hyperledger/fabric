@@ -34,10 +34,10 @@ type producerImpl struct {
 	producer sarama.SyncProducer
 }
 
-func newProducer(brokers []string, kafkaVersion sarama.KafkaVersion, retryOptions config.Retry) Producer {
+func newProducer(brokers []string, kafkaVersion sarama.KafkaVersion, retryOptions config.Retry, tls config.TLS) Producer {
 	var p sarama.SyncProducer
 	var err error
-	brokerConfig := newBrokerConfig(kafkaVersion, rawPartition)
+	brokerConfig := newBrokerConfig(kafkaVersion, rawPartition, tls)
 
 	repeatTick := time.NewTicker(retryOptions.Period)
 	panicTick := time.NewTicker(retryOptions.Stop)

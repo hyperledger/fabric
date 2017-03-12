@@ -18,8 +18,9 @@ package identity
 
 import (
 	"bytes"
-	"fmt"
 	"sync"
+
+	"errors"
 
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -54,7 +55,7 @@ type identityMapperImpl struct {
 	sync.RWMutex
 }
 
-// NewIdentityStore method, all we need is a reference to a MessageCryptoService
+// NewIdentityMapper method, all we need is a reference to a MessageCryptoService
 func NewIdentityMapper(mcs api.MessageCryptoService) Mapper {
 	return &identityMapperImpl{
 		mcs:        mcs,
@@ -66,10 +67,10 @@ func NewIdentityMapper(mcs api.MessageCryptoService) Mapper {
 // in case the given pkiID doesn't match the identity
 func (is *identityMapperImpl) Put(pkiID common.PKIidType, identity api.PeerIdentityType) error {
 	if pkiID == nil {
-		return fmt.Errorf("pkiID is nil")
+		return errors.New("PkiID is nil")
 	}
 	if identity == nil {
-		return fmt.Errorf("identity is nil")
+		return errors.New("Identity is nil")
 	}
 
 	if err := is.mcs.ValidateIdentity(identity); err != nil {
@@ -78,7 +79,7 @@ func (is *identityMapperImpl) Put(pkiID common.PKIidType, identity api.PeerIdent
 
 	id := is.mcs.GetPKIidOfCert(identity)
 	if !bytes.Equal(pkiID, id) {
-		return fmt.Errorf("Identity doesn't match the computed pkiID")
+		return errors.New("Identity doesn't match the computed pkiID")
 	}
 
 	is.Lock()
@@ -94,7 +95,7 @@ func (is *identityMapperImpl) Get(pkiID common.PKIidType) (api.PeerIdentityType,
 	defer is.RUnlock()
 	identity, exists := is.pkiID2Cert[string(pkiID)]
 	if !exists {
-		return nil, fmt.Errorf("pkiID wasn't found")
+		return nil, errors.New("PkiID wasn't found")
 	}
 	return identity, nil
 }

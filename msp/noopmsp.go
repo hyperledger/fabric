@@ -16,7 +16,10 @@ limitations under the License.
 
 package msp
 
-import "github.com/hyperledger/fabric/protos/msp"
+import (
+	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
+)
 
 type noopmsp struct {
 }
@@ -50,6 +53,16 @@ func (msp *noopmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	return id, nil
 }
 
+// GetRootCerts returns the root certificates for this MSP
+func (msp *noopmsp) GetRootCerts() []Identity {
+	return nil
+}
+
+// GetIntermediateCerts returns the intermediate root certificates for this MSP
+func (msp *noopmsp) GetIntermediateCerts() []Identity {
+	return nil
+}
+
 func (msp *noopmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	mspLogger.Infof("Obtaining identity for %s", string(serializedID))
 	id, _ := newNoopIdentity()
@@ -60,12 +73,20 @@ func (msp *noopmsp) Validate(id Identity) error {
 	return nil
 }
 
+func (msp *noopmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error {
+	return nil
+}
+
 type noopidentity struct {
 }
 
 func newNoopIdentity() (Identity, error) {
 	mspLogger.Infof("Creating no-op identity instance")
 	return &noopidentity{}, nil
+}
+
+func (id *noopidentity) SatisfiesPrincipal(*common.MSPPrincipal) error {
+	return nil
 }
 
 func (id *noopidentity) GetIdentifier() *IdentityIdentifier {
@@ -81,8 +102,8 @@ func (id *noopidentity) Validate() error {
 	return nil
 }
 
-func (id *noopidentity) GetOrganizationUnits() string {
-	return "dunno"
+func (id *noopidentity) GetOrganizationalUnits() []string {
+	return []string{"dunno"}
 }
 
 func (id *noopidentity) Verify(msg []byte, sig []byte) error {
@@ -94,7 +115,7 @@ func (id *noopidentity) VerifyOpts(msg []byte, sig []byte, opts SignatureOpts) e
 	return nil
 }
 
-func (id *noopidentity) VerifyAttributes(proof [][]byte, spec *AttributeProofSpec) error {
+func (id *noopidentity) VerifyAttributes(proof []byte, spec *AttributeProofSpec) error {
 	return nil
 }
 

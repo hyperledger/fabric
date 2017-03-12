@@ -65,19 +65,8 @@ export PATH=$HOME/go/bin:$PATH
 rm -rf $HOME/go-linux-s390x-bootstrap 
 
 ################
-#ROCKSDB BUILD
-
-cd /tmp
-yum install -y gcc-c++ snappy snappy-devel zlib zlib-devel bzip2 bzip2-devel
-git clone https://github.com/facebook/rocksdb.git
-cd  rocksdb
-git checkout tags/v4.1
-echo There were some bugs in 4.1 for x/p, dev stream has the fix, living dangereously, fixing in place
-sed -i -e "s/-march=native/-march=zEC12/" build_tools/build_detect_platform
-sed -i -e "s/-momit-leaf-frame-pointer/-DDUMBDUMMY/" Makefile
-make shared_lib && INSTALL_PATH=/usr make install-shared && ldconfig
-cd /tmp
-rm -rf /tmp/rocksdb
+#Install Basic build essential packages
+yum install -y gcc-c++ python-devel device-mapper libtool-ltdl-devel libffi-devel openssl-devel
 
 ################
 # PIP
@@ -103,7 +92,11 @@ cd ../..
 GRPC_PYTHON_BUILD_WITH_CYTHON=1 pip install .
 
 # updater-server, update-engine, and update-service-common dependencies (for running locally)
-pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3
+pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3 pyOpenSSL==16.2.0 pysha3==1.0b1
+
+#PIP packages required for some behave tests
+pip install urllib3 ndg-httpsclient pyasn1 ecdsa python-slugify grpcio-tools jinja2 b3j0f.aop
+
 cat >> ~/.bashrc <<HEREDOC
       export PATH=$HOME/go/bin:$PATH
       export GOROOT=$HOME/go

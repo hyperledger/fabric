@@ -33,7 +33,7 @@ fi
 # Install pre-requisite OS packages #
 #####################################
 apt-get update
-apt-get -y install software-properties-common curl git sudo wget
+apt-get -y install software-properties-common curl git sudo wget "build-essential" zlib1g-dev libbz2-dev
 
 #####################################
 # Install and setup Docker services #
@@ -50,40 +50,27 @@ systemctl restart docker
 ####################################
 # Golang binaries for ppc64le are publicly available from Unicamp and is recommended as it includes certain platform specific tuning/optimization.
 # Alternativley package part of Ubuntu disto repo can also be used.
-wget ftp://ftp.unicamp.br/pub/linuxpatch/toolchain/at/ubuntu/dists/trusty/at9.0/binary-ppc64el/advance-toolchain-at9.0-golang_9.0-3_ppc64el.deb
-dpkg -i advance-toolchain-at9.0-golang_9.0-3_ppc64el.deb
-rm -f advance-toolchain-at9.0-golang_9.0-3_ppc64el.deb
+wget ftp://ftp.unicamp.br/pub/linuxpatch/toolchain/at/ubuntu/dists/xenial/at10.0/binary-ppc64el/advance-toolchain-golang-at_10.0-2_ppc64el.deb
+dpkg -i advance-toolchain-golang-at_10.0-2_ppc64el.deb
+rm -f advance-toolchain-golang-at_10.0-2_ppc64el.deb
 
 # Create links under /usr/bin using update-alternatives
-update-alternatives --install /usr/bin/go go /usr/local/go/bin/go 9
-update-alternatives --install /usr/bin/gofmt gofmt /usr/local/go/bin/gofmt 9
+update-alternatives --install /usr/bin/go go /usr/local/go/bin/go 10
+update-alternatives --install /usr/bin/gofmt gofmt /usr/local/go/bin/gofmt 10
 
 # Set the GOROOT env variable
-export GOROOT="/usr/local/go"
-
-####################################
-# Build and install RocksDB        #
-####################################
-
-apt-get -y install libsnappy-dev zlib1g-dev libbz2-dev "build-essential"
-
-cd /tmp
-git clone https://github.com/facebook/rocksdb.git
-cd rocksdb
-git checkout tags/v4.1
-echo There were some bugs in 4.1. This was fixed in dev stream and newer releases like 4.5.1.
-sed -ibak 's/ifneq ($(MACHINE),ppc64)/ifeq (,$(findstring ppc64,$(MACHINE)))/g' Makefile
-PORTABLE=1 make shared_lib
-INSTALL_PATH=/usr/local make install-shared
-ldconfig
-cd - ; rm -rf /tmp/rocksdb
+export GOROOT="/opt/go"
+ln -s /usr/local/go $GOROOT
 
 ################################################
 # Install PIP tools, behave and docker-compose #
 ################################################
 
-apt-get -y install python-pip
+apt-get -y install python-pip libssl-dev libffi-dev libltdl-dev
 pip install --upgrade pip
 pip install behave nose docker-compose
 
-pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3 grpcio==0.13.1
+pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3 grpcio==1.0.4 pyOpenSSL==16.2.0 pysha3==1.0b1
+
+#PIP packages required for some behave tests
+pip install urllib3 ndg-httpsclient pyasn1 ecdsa python-slugify grpcio-tools jinja2 b3j0f.aop six
