@@ -155,30 +155,30 @@ func main() {
 			fmt.Println("Received block")
 			fmt.Println("--------------")
 			txsFltr := util.TxValidationFlags(b.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-
 			for i, r := range b.Block.Data.Data {
-				if txsFltr.IsInvalid(i) {
-					tx, _ := getTxPayload(r)
-					if tx != nil {
-						chdr, err := utils.UnmarshalChannelHeader(tx.Header.ChannelHeader)
-						if err != nil {
-							fmt.Print("Error extracting channel header\n")
-							return
-						}
-
+				tx, _ := getTxPayload(r)
+				if tx != nil {
+					chdr, err := utils.UnmarshalChannelHeader(tx.Header.ChannelHeader)
+					if err != nil {
+						fmt.Print("Error extracting channel header\n")
+						return
+					}
+					if txsFltr.IsInvalid(i) {
 						fmt.Println("")
 						fmt.Println("")
-						fmt.Println("Received invalid transaction")
+						fmt.Printf("Received invalid transaction from channel %s\n", chdr.ChannelId)
 						fmt.Println("--------------")
 						fmt.Printf("Transaction invalid: TxID: %s\n", chdr.TxId)
-					}
-				} else {
-					fmt.Printf("Transaction:\n\t[%v]\n", r)
-					if event, err := getChainCodeEvents(r); err == nil {
-						if len(chaincodeID) != 0 && event.ChaincodeId == chaincodeID {
-							fmt.Println("Received chaincode event")
-							fmt.Println("------------------------")
-							fmt.Printf("Chaincode Event:%+v\n", event)
+					} else {
+						fmt.Printf("Received transaction from channel %s: \n\t[%v]\n", chdr.ChannelId, tx)
+						if event, err := getChainCodeEvents(r); err == nil {
+							if len(chaincodeID) != 0 && event.ChaincodeId == chaincodeID {
+								fmt.Println("")
+								fmt.Println("")
+								fmt.Printf("Received chaincode event from channel %s\n", chdr.ChannelId)
+								fmt.Println("------------------------")
+								fmt.Printf("Chaincode Event:%+v\n", event)
+							}
 						}
 					}
 				}
