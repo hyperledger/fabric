@@ -152,7 +152,7 @@ func TestCreatePeerServer(t *testing.T) {
 			t.Fatalf("Failed to create config block (%s)", err)
 		}
 		t.Logf("Channel %s MSPIDs: (%s)", cid, peer.GetMSPIDs(cid))
-		appCAs, orgCAs := peer.GetRootCAs()
+		appCAs, orgCAs := comm.GetCASupport().GetClientRootCAs()
 		t.Logf("appCAs after update for channel %s: %d", cid, len(appCAs))
 		t.Logf("orgCAs after update for channel %s: %d", cid, len(orgCAs))
 	}

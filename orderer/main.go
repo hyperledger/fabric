@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -70,25 +71,51 @@ func main() {
 		return
 	}
 
-	serverRootCAs := make([][]byte, len(conf.General.TLS.RootCAs))
-	for i, cert := range conf.General.TLS.RootCAs {
-		serverRootCAs[i] = []byte(cert)
+	// secure server config
+	secureConfig := comm.SecureServerConfig{
+		UseTLS:            conf.General.TLS.Enabled,
+		RequireClientCert: conf.General.TLS.ClientAuthEnabled,
 	}
-
-	clientRootCAs := make([][]byte, len(conf.General.TLS.ClientRootCAs))
-	for i, cert := range conf.General.TLS.ClientRootCAs {
-		clientRootCAs[i] = []byte(cert)
+	// check to see if TLS is enabled
+	if secureConfig.UseTLS {
+		logger.Info("Starting orderer with TLS enabled")
+		// load crypto material from files
+		serverCertificate, err := ioutil.ReadFile(conf.General.TLS.Certificate)
+		if err != nil {
+			logger.Fatalf("Failed to load ServerCertificate file '%s' (%s)",
+				conf.General.TLS.Certificate, err)
+		}
+		serverKey, err := ioutil.ReadFile(conf.General.TLS.PrivateKey)
+		if err != nil {
+			logger.Fatalf("Failed to load PrivateKey file '%s' (%s)",
+				conf.General.TLS.PrivateKey, err)
+		}
+		var serverRootCAs, clientRootCAs [][]byte
+		for _, serverRoot := range conf.General.TLS.RootCAs {
+			root, err := ioutil.ReadFile(serverRoot)
+			if err != nil {
+				logger.Fatalf("Failed to load ServerRootCAs file '%s' (%s)",
+					err, serverRoot)
+			}
+			serverRootCAs = append(serverRootCAs, root)
+		}
+		if secureConfig.RequireClientCert {
+			for _, clientRoot := range conf.General.TLS.ClientRootCAs {
+				root, err := ioutil.ReadFile(clientRoot)
+				if err != nil {
+					logger.Fatalf("Failed to load ClientRootCAs file '%s' (%s)",
+						err, clientRoot)
+				}
+				clientRootCAs = append(clientRootCAs, root)
+			}
+		}
+		secureConfig.ServerKey = serverKey
+		secureConfig.ServerCertificate = serverCertificate
+		secureConfig.ServerRootCAs = serverRootCAs
+		secureConfig.ClientRootCAs = clientRootCAs
 	}
 
 	// Create GRPC server - return if an error occurs
-	secureConfig := comm.SecureServerConfig{
-		UseTLS:            conf.General.TLS.Enabled,
-		ServerCertificate: []byte(conf.General.TLS.Certificate),
-		ServerKey:         []byte(conf.General.TLS.PrivateKey),
-		ServerRootCAs:     serverRootCAs,
-		RequireClientCert: conf.General.TLS.ClientAuthEnabled,
-		ClientRootCAs:     clientRootCAs,
-	}
 	grpcServer, err := comm.NewGRPCServerFromListener(lis, secureConfig)
 	if err != nil {
 		logger.Error("Failed to return new GRPC server:", err)

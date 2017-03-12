@@ -196,7 +196,7 @@ peer:
     # this is sent to client to validate the recived certificate from server when
     # establishing TLS connection
         rootcert:
-            file:
+            file: testdata/server1.pem
         # The server name use to verify the hostname returned by TLS handshake
         serverhostoverride:
 

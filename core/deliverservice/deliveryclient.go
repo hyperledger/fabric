@@ -112,11 +112,11 @@ func NewDeliverService(gossip blocksprovider.GossipServiceAdapter, endpoints []s
 		dialOpts := []grpc.DialOption{grpc.WithTimeout(3 * time.Second), grpc.WithBlock()}
 
 		if comm.TLSEnabled() {
-			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.InitTLSForPeer()))
+			dialOpts = append(dialOpts, grpc.WithTransportCredentials(comm.GetCASupport().GetDeliverServiceCredentials()))
 		} else {
 			dialOpts = append(dialOpts, grpc.WithInsecure())
 		}
-
+		grpc.EnableTracing = true
 		conn, err := grpc.Dial(endpoints[idx], dialOpts...)
 		if err != nil {
 			logger.Errorf("Cannot dial to %s, because of %s", endpoints[idx], err)
