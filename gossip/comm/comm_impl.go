@@ -115,6 +115,10 @@ func NewCommInstanceWithServer(port int, idMapper identity.Mapper, peerIdentity 
 		proto.RegisterGossipServer(s, commInst)
 	}
 
+	if viper.GetBool("peer.gossip.skipHandshake") {
+		commInst.skipHandshake = true
+	}
+
 	return commInst, nil
 }
 
@@ -140,6 +144,7 @@ func NewCommInstance(s *grpc.Server, cert *tls.Certificate, idStore identity.Map
 }
 
 type commImpl struct {
+	skipHandshake     bool
 	selfCertHash      []byte
 	peerIdentity      api.PeerIdentityType
 	idMapper          identity.Mapper
@@ -424,7 +429,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 
 	// If TLS is detected, sign the hash of our cert to bind our TLS cert
 	// to the gRPC session
-	if remoteCertHash != nil && c.selfCertHash != nil {
+	if remoteCertHash != nil && c.selfCertHash != nil && !c.skipHandshake {
 		signer = func(msg []byte) ([]byte, error) {
 			return c.idMapper.Sign(msg)
 		}
@@ -472,8 +477,8 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 		Identity: receivedMsg.Cert,
 	}
 
-	// if TLS is detected, verify remote peer
-	if remoteCertHash != nil && c.selfCertHash != nil {
+	// if TLS is enabled and detected, verify remote peer
+	if remoteCertHash != nil && c.selfCertHash != nil && !c.skipHandshake {
 		if !bytes.Equal(remoteCertHash, receivedMsg.Hash) {
 			return nil, fmt.Errorf("Expected %v in remote hash, but got %v", remoteCertHash, receivedMsg.Hash)
 		}
@@ -490,6 +495,13 @@ func (c *commImpl) authenticateRemotePeer(stream stream) (*proto.ConnectionInfo,
 			Signature:  m.Signature,
 			SignedData: m.Payload,
 		}
+	}
+
+	// TLS enabled but not detected on other side, and we're not configured to skip handshake verification
+	if remoteCertHash == nil && c.selfCertHash != nil && !c.skipHandshake {
+		err = fmt.Errorf("Remote peer %s didn't send TLS certificate", remoteAddress)
+		c.logger.Warning(err)
+		return nil, err
 	}
 
 	c.logger.Debug("Authenticated", remoteAddress)

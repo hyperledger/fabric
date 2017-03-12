@@ -18,6 +18,8 @@ package comm
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/tls"
 	"fmt"
 	"math/rand"
@@ -49,7 +51,10 @@ func acceptAll(msg interface{}) bool {
 	return true
 }
 
-var naiveSec = &naiveSecProvider{}
+var (
+	naiveSec = &naiveSecProvider{}
+	hmacKey  = []byte{0, 0, 0}
+)
 
 type naiveSecProvider struct {
 }
@@ -72,15 +77,19 @@ func (*naiveSecProvider) VerifyBlock(chainID common.ChainID, signedBlock []byte)
 // Sign signs msg with this peer's signing key and outputs
 // the signature if no error occurred.
 func (*naiveSecProvider) Sign(msg []byte) ([]byte, error) {
-	return msg, nil
+	mac := hmac.New(sha256.New, hmacKey)
+	mac.Write(msg)
+	return mac.Sum(nil), nil
 }
 
 // Verify checks that signature is a valid signature of message under a peer's verification key.
 // If the verification succeeded, Verify returns nil meaning no error occurred.
 // If peerCert is nil, then the signature is verified against this peer's verification key.
 func (*naiveSecProvider) Verify(peerIdentity api.PeerIdentityType, signature, message []byte) error {
-	equal := bytes.Equal(signature, message)
-	if !equal {
+	mac := hmac.New(sha256.New, hmacKey)
+	mac.Write(message)
+	expected := mac.Sum(nil)
+	if !bytes.Equal(signature, expected) {
 		return fmt.Errorf("Wrong certificate:%v, %v", signature, message)
 	}
 	return nil
@@ -98,16 +107,22 @@ func newCommInstance(port int, sec api.MessageCryptoService) (Comm, error) {
 	return inst, err
 }
 
-func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte) <-chan proto.ReceivedMessage {
+func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte) []byte, pkiIDmutator func([]byte) []byte, mutualTLS bool) <-chan proto.ReceivedMessage {
 	c := &commImpl{}
 	err := generateCertificates("key.pem", "cert.pem")
 	defer os.Remove("cert.pem")
 	defer os.Remove("key.pem")
 	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
-	ta := credentials.NewTLS(&tls.Config{
+	tlsCfg := &tls.Config{
 		InsecureSkipVerify: true,
-		Certificates:       []tls.Certificate{cert},
-	})
+	}
+
+	if mutualTLS {
+		tlsCfg.Certificates = []tls.Certificate{cert}
+	}
+
+	ta := credentials.NewTLS(tlsCfg)
+
 	acceptChan := comm.Accept(acceptAll)
 	conn, err := grpc.Dial("localhost:9611", grpc.WithTransportCredentials(&authCreds{tlsCreds: ta}), grpc.WithBlock(), grpc.WithTimeout(time.Second))
 	assert.NoError(t, err, "%v", err)
@@ -119,8 +134,12 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	assert.NoError(t, err, "%v", err)
 	if err != nil {
 		return nil
+	} // cert.Certificate[0]
+
+	var clientCertHash []byte
+	if mutualTLS {
+		clientCertHash = certHashFromRawCert(tlsCfg.Certificates[0].Certificate[0])
 	}
-	clientCertHash := certHashFromRawCert(cert.Certificate[0])
 
 	pkiID := common.PKIidType(endpoint)
 	if pkiIDmutator != nil {
@@ -128,7 +147,12 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	}
 	assert.NoError(t, err, "%v", err)
 	msg := c.createConnectionMsg(pkiID, clientCertHash, []byte(endpoint), func(msg []byte) ([]byte, error) {
-		return msg, nil
+		if !mutualTLS {
+			return msg, nil
+		}
+		mac := hmac.New(sha256.New, hmacKey)
+		mac.Write(msg)
+		return mac.Sum(nil), nil
 	})
 
 	if sigMutator != nil {
@@ -143,9 +167,14 @@ func handshaker(endpoint string, comm Comm, t *testing.T, sigMutator func([]byte
 	if sigMutator == nil {
 		hash := extractCertificateHashFromContext(stream.Context())
 		expectedMsg := c.createConnectionMsg(common.PKIidType("localhost:9611"), hash, []byte("localhost:9611"), func(msg []byte) ([]byte, error) {
-			return msg, nil
+			mac := hmac.New(sha256.New, hmacKey)
+			mac.Write(msg)
+			return mac.Sum(nil), nil
 		})
-		assert.Equal(t, expectedMsg.Envelope.Signature, msg.Envelope.Signature)
+		if mutualTLS {
+			assert.Equal(t, expectedMsg.Envelope.Signature, msg.Envelope.Signature)
+		}
+
 	}
 	assert.Equal(t, []byte("localhost:9611"), msg.GetConn().PkiId)
 	msg2Send := createGossipMsg()
@@ -177,7 +206,7 @@ func TestHandshake(t *testing.T) {
 	comm, _ := newCommInstance(9611, naiveSec)
 	defer comm.Stop()
 
-	acceptChan := handshaker("localhost:9610", comm, t, nil, nil)
+	acceptChan := handshaker("localhost:9610", comm, t, nil, nil, true)
 	time.Sleep(2 * time.Second)
 	assert.Equal(t, 1, len(acceptChan))
 	msg := <-acceptChan
@@ -186,7 +215,8 @@ func TestHandshake(t *testing.T) {
 	assert.Equal(t, api.PeerIdentityType("localhost:9610"), msg.GetConnectionInfo().Identity)
 	assert.NotNil(t, msg.GetConnectionInfo().Auth)
 	assert.True(t, msg.GetConnectionInfo().IsAuthenticated())
-	assert.Equal(t, msg.GetConnectionInfo().Auth.Signature, msg.GetConnectionInfo().Auth.SignedData)
+	sig, _ := (&naiveSecProvider{}).Sign(msg.GetConnectionInfo().Auth.SignedData)
+	assert.Equal(t, sig, msg.GetConnectionInfo().Auth.Signature)
 	// negative path, nothing should be read from the channel because the signature is wrong
 	mutateSig := func(b []byte) []byte {
 		if b[0] == 0 {
@@ -196,7 +226,7 @@ func TestHandshake(t *testing.T) {
 		}
 		return b
 	}
-	acceptChan = handshaker("localhost:9612", comm, t, mutateSig, nil)
+	acceptChan = handshaker("localhost:9612", comm, t, mutateSig, nil, true)
 	time.Sleep(time.Second)
 	assert.Equal(t, 0, len(acceptChan))
 
@@ -204,9 +234,28 @@ func TestHandshake(t *testing.T) {
 	mutatePKIID := func(b []byte) []byte {
 		return []byte("localhost:9650")
 	}
-	acceptChan = handshaker("localhost:9613", comm, t, nil, mutatePKIID)
+	acceptChan = handshaker("localhost:9613", comm, t, nil, mutatePKIID, true)
 	time.Sleep(time.Second)
 	assert.Equal(t, 0, len(acceptChan))
+
+	// Now we test for a handshake without mutual TLS
+	// The first time should fail
+	acceptChan = handshaker("localhost:9614", comm, t, nil, nil, false)
+	select {
+	case <-acceptChan:
+		assert.Fail(t, "Should not have successfully authenticated to remote peer")
+	case <-time.After(time.Second):
+	}
+
+	// And the second time should succeed
+	comm.(*commImpl).skipHandshake = true
+	acceptChan = handshaker("localhost:9615", comm, t, nil, nil, false)
+	select {
+	case <-acceptChan:
+	case <-time.After(time.Second * 10):
+		assert.Fail(t, "skipHandshake flag should have authorized the authentication")
+	}
+
 }
 
 func TestBasic(t *testing.T) {
