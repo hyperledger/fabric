@@ -9,7 +9,10 @@ services:
       - CORE_LOGGING_LEVEL=ERROR
       #- CORE_LOGGING_LEVEL=DEBUG
       - CORE_NEXT=true
+      - CORE_PEER_TLS_ENABLED=false
       - CORE_PEER_ENDORSER_ENABLED=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
       - CORE_PEER_PROFILE_ENABLED=true
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start --peer-defaultchain=false

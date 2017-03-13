@@ -1,20 +1,5 @@
 #!/bin/bash
 
-# find address of orderer and peers in your network
-ORDERER0_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("orderer0")); print "$a\n";'`
-PEER0_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("peer0")); print "$a\n";'`
-PEER1_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("peer1")); print "$a\n";'`
-PEER2_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("peer2")); print "$a\n";'`
-PEER3_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("peer2")); print "$a\n";'`
-
-echo "-----------------------------------------"
-echo "Orderer0 IP $ORDERER0_IP"
-echo "PEER0 IP $PEER0_IP"
-echo "PEER1 IP $PEER1_IP"
-echo "PEER2 IP $PEER2_IP"
-echo "PEER3 IP $PEER3_IP"
-echo "-----------------------------------------"
-
 CHANNEL_NAME="$1"
 : ${CHANNEL_NAME:="mychannel"}
 : ${TIMEOUT:="60"}
@@ -38,8 +23,6 @@ setGlobals () {
 	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer$1/localMspConfig
 	CORE_PEER_ADDRESS=peer$1:7051
 
-
-
 	if [ $1 -eq 0 -o $1 -eq 1 ] ; then
 		CORE_PEER_LOCALMSPID="Org0MSP"
 		CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer$1/localMspConfig/cacerts/peerOrg0.pem
@@ -53,7 +36,12 @@ setGlobals () {
 createChannel() {
 	CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/localMspConfig
 	CORE_PEER_LOCALMSPID="OrdererMSP"
-	peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
+
+        if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
+		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx >&log.txt
+	else
+		peer channel create -o orderer0:7050 -c $CHANNEL_NAME -f crypto/orderer/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA >&log.txt
+	fi
 	res=$?
 	cat log.txt
 	verifyResult $res "Channel creation failed"
@@ -101,7 +89,11 @@ installChaincode () {
 instantiateChaincode () {
 	PEER=$1
 	setGlobals $PEER
-	peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org0MSP.member','Org1MSP.member')" >&log.txt
+        if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
+		peer chaincode instantiate -o orderer0:7050 -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org0MSP.member','Org1MSP.member')" >&log.txt
+	else
+		peer chaincode instantiate -o orderer0:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -v 1.0 -c '{"Args":["init","a","100","b","200"]}' -P "OR	('Org0MSP.member','Org1MSP.member')" >&log.txt
+	fi
 	res=$?
 	cat log.txt
 	verifyResult $res "Chaincode instantiation on PEER$PEER on channel '$CHANNEL_NAME' failed"
@@ -139,7 +131,11 @@ chaincodeQuery () {
 
 chaincodeInvoke () {
         PEER=$1
-	peer chaincode invoke -o orderer0:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
+        if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
+		peer chaincode invoke -o orderer0:7050 -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
+	else
+		peer chaincode invoke -o orderer0:7050  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n mycc -c '{"Args":["invoke","a","b","10"]}' >&log.txt
+	fi
 	res=$?
 	cat log.txt
 	verifyResult $res "Invoke execution on PEER$PEER failed "
