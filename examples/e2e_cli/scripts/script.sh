@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # find address of orderer and peers in your network
-ORDERER_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("orderer")); print "$a\n";'`
+ORDERER0_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("orderer0")); print "$a\n";'`
 PEER0_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("peer0")); print "$a\n";'`
 PEER1_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("peer1")); print "$a\n";'`
 PEER2_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("peer2")); print "$a\n";'`
 PEER3_IP=`perl -e 'use Socket; $a = inet_ntoa(inet_aton("peer2")); print "$a\n";'`
 
 echo "-----------------------------------------"
-echo "Orderer IP $ORDERER_IP"
+echo "Orderer0 IP $ORDERER0_IP"
 echo "PEER0 IP $PEER0_IP"
 echo "PEER1 IP $PEER1_IP"
 echo "PEER2 IP $PEER2_IP"
