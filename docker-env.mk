@@ -53,8 +53,11 @@ DRUN = docker run -i --rm $(DOCKER_RUN_FLAGS) \
 
 DBUILD = docker build $(DOCKER_BUILD_FLAGS)
 
-DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
+BASE_DOCKER_NS ?= hyperledger
 BASE_DOCKER_TAG=$(ARCH)-$(BASEIMAGE_RELEASE)
+
+DOCKER_NS ?= hyperledger
+DOCKER_TAG=$(ARCH)-$(PROJECT_VERSION)
 
 BASE_DOCKER_LABEL=org.hyperledger.fabric
 

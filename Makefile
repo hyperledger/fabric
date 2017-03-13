@@ -56,6 +56,8 @@ BASEIMAGE_RELEASE=$(shell cat ./.baseimage-release)
 METADATA_VAR = Version=$(PROJECT_VERSION)
 METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
+METADATA_VAR += DockerNamespace=$(DOCKER_NS)
+METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
 
@@ -144,7 +146,7 @@ behave-peer-chaincode: build/bin/peer peer-docker orderer-docker
 
 linter: buildenv
 	@echo "LINT: Running code checks.."
-	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
+	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/golinter.sh
 
 %/chaintool: Makefile
 	@echo "Installing chaintool"
@@ -161,7 +163,7 @@ build/docker/bin/%: $(PROJECT_FILES)
 	@$(DRUN) \
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/$(TARGET)/pkg):/opt/gopath/pkg \
-		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
+		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		go install -ldflags "$(DOCKER_GO_LDFLAGS)" $(pkgmap.$(@F))
 	@touch $@
 
@@ -175,7 +177,7 @@ build/docker/gotools: gotools/Makefile
 	@$(DRUN) \
 		-v $(abspath $@):/opt/gotools \
 		-w /opt/gopath/src/$(PKGNAME)/gotools \
-		hyperledger/fabric-baseimage:$(BASE_DOCKER_TAG) \
+		$(BASE_DOCKER_NS)/fabric-baseimage:$(BASE_DOCKER_TAG) \
 		make install BINDIR=/opt/gotools/bin OBJDIR=/opt/gotools/obj
 
 # Both peer and peer-docker depend on ccenv and javaenv (all docker env images it supports).
@@ -228,6 +230,8 @@ build/image/%/payload:
 
 build/image/%/Dockerfile: images/%/Dockerfile.in
 	@cat $< \
+		| sed -e 's/_BASE_NS_/$(BASE_DOCKER_NS)/g' \
+		| sed -e 's/_NS_/$(DOCKER_NS)/g' \
 		| sed -e 's/_BASE_TAG_/$(BASE_DOCKER_TAG)/g' \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $@
@@ -237,8 +241,8 @@ build/image/%/Dockerfile: images/%/Dockerfile.in
 build/image/%/$(DUMMY): Makefile build/image/%/payload build/image/%/Dockerfile
 	$(eval TARGET = ${patsubst build/image/%/$(DUMMY),%,${@}})
 	@echo "Building docker $(TARGET)-image"
-	$(DBUILD) -t $(PROJECT_NAME)-$(TARGET) $(@D)
-	docker tag $(PROJECT_NAME)-$(TARGET) $(PROJECT_NAME)-$(TARGET):$(DOCKER_TAG)
+	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) $(@D)
+	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	@touch $@
 
 build/gotools.tar.bz2: build/docker/gotools
@@ -258,11 +262,11 @@ build/%.tar.bz2:
 
 .PHONY: protos
 protos: buildenv
-	@$(DRUN) hyperledger/fabric-buildenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
+	@$(DRUN) $(DOCKER_NS)/fabric-buildenv:$(DOCKER_TAG) ./scripts/compile_protos.sh
 
 %-docker-clean:
 	$(eval TARGET = ${patsubst %-docker-clean,%,${@}})
-	-docker images -q $(PROJECT_NAME)-$(TARGET) | xargs -I '{}' docker rmi -f '{}'
+	-docker images -q $(DOCKER_NS)/fabric-$(TARGET) | xargs -I '{}' docker rmi -f '{}'
 	-@rm -rf build/image/$(TARGET) ||:
 
 docker-clean: $(patsubst %,%-docker-clean, $(IMAGES))
