@@ -65,9 +65,14 @@ func (*joinChanMsg) SequenceNumber() uint64 {
 	return uint64(time.Now().UnixNano())
 }
 
-// AnchorPeers returns all the anchor peers that are in the channel
-func (*joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	return []api.AnchorPeer{{OrgID: orgID}}
+// Members returns the organizations of the channel
+func (jcm *joinChanMsg) Members() []api.OrgIdentityType {
+	return []api.OrgIdentityType{orgID}
+}
+
+// AnchorPeersOf returns the anchor peers of the given organization
+func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
+	return []api.AnchorPeer{}
 }
 
 type orgCryptoService struct {
