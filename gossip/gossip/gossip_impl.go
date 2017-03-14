@@ -315,7 +315,7 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 				}
 			}
 			if !g.toDie() {
-				g.logger.Warning("No such channel", msg.Channel, "discarding message", msg)
+				g.logger.Debug("No such channel", msg.Channel, "discarding message", msg)
 			}
 		} else {
 			if m.GetGossipMessage().IsLeadershipMsg() {
@@ -600,7 +600,7 @@ func (g *gossipServiceImpl) Peers() []discovery.NetworkMember {
 func (g *gossipServiceImpl) PeersOfChannel(channel common.ChainID) []discovery.NetworkMember {
 	gc := g.chanState.getGossipChannelByChainID(channel)
 	if gc == nil {
-		g.logger.Warning("No such channel", channel)
+		g.logger.Debug("No such channel", channel)
 		return nil
 	}
 
@@ -640,7 +640,7 @@ func (g *gossipServiceImpl) UpdateMetadata(md []byte) {
 func (g *gossipServiceImpl) UpdateChannelMetadata(md []byte, chainID common.ChainID) {
 	gc := g.chanState.getGossipChannelByChainID(chainID)
 	if gc == nil {
-		g.logger.Warning("No such channel", chainID)
+		g.logger.Debug("No such channel", chainID)
 		return
 	}
 	stateInfMsg, err := g.createStateInfoMsg(md, chainID)
