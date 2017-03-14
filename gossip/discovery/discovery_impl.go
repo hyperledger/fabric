@@ -35,6 +35,7 @@ import (
 )
 
 const defaultHelloInterval = time.Duration(5) * time.Second
+const msgExpirationFactor = 20
 
 var aliveExpirationCheckInterval time.Duration
 var maxConnectionAttempts = 120
@@ -105,7 +106,6 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		id2Member:        make(map[string]*NetworkMember),
 		aliveMembership:  util.NewMembershipStore(),
 		deadMembership:   util.NewMembershipStore(),
-		msgStore:         msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {}),
 		crypt:            crypt,
 		comm:             comm,
 		lock:             &sync.RWMutex{},
@@ -114,6 +114,26 @@ func NewDiscoveryService(bootstrapPeers []string, self NetworkMember, comm CommS
 		logger:           util.GetLogger(util.LoggingDiscoveryModule, self.InternalEndpoint),
 		disclosurePolicy: disPol,
 	}
+
+	policy := proto.NewGossipMessageComparator(0)
+	trigger := func(m interface{}) {}
+	aliveMsgTTL := getAliveExpirationTimeout() * msgExpirationFactor
+	externalLock := func() { d.lock.Lock() }
+	externalUnlock := func() { d.lock.Unlock() }
+	callback := func(m interface{}) {
+		msg := m.(*proto.SignedGossipMessage)
+		if !msg.IsAliveMsg() {
+			return
+		}
+		id := msg.GetAliveMsg().Membership.PkiId
+		d.aliveMembership.Remove(id)
+		d.deadMembership.Remove(id)
+		delete(d.id2Member, string(id))
+		delete(d.deadLastTS, string(id))
+		delete(d.aliveLastTS, string(id))
+	}
+
+	d.msgStore = msgstore.NewMessageStoreExpirable(policy, trigger, aliveMsgTTL, externalLock, externalUnlock, callback)
 
 	go d.periodicalSendAlive()
 	go d.periodicalCheckAlive()
@@ -308,7 +328,9 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 			return
 		}
 
-		d.handleAliveMessage(selfInfoGossipMsg)
+		if d.msgStore.CheckValid(m) {
+			d.handleAliveMessage(selfInfoGossipMsg)
+		}
 
 		var internalEndpoint string
 		if m.Envelope.SecretEnvelope != nil {
@@ -323,13 +345,13 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 	}
 
 	if m.IsAliveMsg() {
-		added := d.msgStore.Add(m)
-		if !added {
+
+		if !d.msgStore.Add(m) {
 			return
 		}
-		d.comm.Gossip(m)
-
 		d.handleAliveMessage(m)
+
+		d.comm.Gossip(m)
 		return
 	}
 
@@ -345,7 +367,10 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 				return
 			}
 
-			d.handleAliveMessage(am)
+			if d.msgStore.CheckValid(m) {
+				d.handleAliveMessage(am)
+			}
+
 		}
 
 		for _, env := range memResp.Dead {
@@ -357,6 +382,11 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(m *proto.SignedGossipMessage) {
 			if !d.crypt.ValidateAliveMsg(dm) {
 				d.logger.Warningf("Alive message isn't authentic, someone spoofed %s's identity", dm.GetAliveMsg().Membership)
 				continue
+			}
+
+			if !d.msgStore.CheckValid(m) {
+				//Newer alive message exist
+				return
 			}
 
 			newDeadMembers := []*proto.SignedGossipMessage{}
@@ -902,6 +932,7 @@ func (d *gossipDiscoveryImpl) Stop() {
 	defer d.logger.Info("Stopped")
 	d.logger.Info("Stopping")
 	atomic.StoreInt32(&d.toDieFlag, int32(1))
+	d.msgStore.Stop()
 	d.toDieChan <- struct{}{}
 }
 
