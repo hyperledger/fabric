@@ -77,6 +77,9 @@ type Orderer interface {
 	// This field is only set for the system ordering chain
 	ChainCreationPolicyNames() []string
 
+	// MaxChannelsCount returns the maximum count of channels to allow for an ordering network
+	MaxChannelsCount() uint64
+
 	// KafkaBrokers returns the addresses (IP:port notation) of a set of "bootstrap"
 	// Kafka brokers, i.e. this is not necessarily the entire set of Kafka brokers
 	// used for ordering

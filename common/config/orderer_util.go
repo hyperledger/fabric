@@ -51,6 +51,11 @@ func TemplateChainCreationPolicyNames(names []string) *cb.ConfigGroup {
 	return ordererConfigGroup(ChainCreationPolicyNamesKey, utils.MarshalOrPanic(&ab.ChainCreationPolicyNames{Names: names}))
 }
 
+// TemplateChannelRestrictions creates a config group with ChannelRestrictions specified
+func TemplateChannelRestrictions(maxChannels uint64) *cb.ConfigGroup {
+	return ordererConfigGroup(ChannelRestrictionsKey, utils.MarshalOrPanic(&ab.ChannelRestrictions{MaxCount: maxChannels}))
+}
+
 // TemplateKafkaBrokers creates a headerless config item representing the kafka brokers
 func TemplateKafkaBrokers(brokers []string) *cb.ConfigGroup {
 	return ordererConfigGroup(KafkaBrokersKey, utils.MarshalOrPanic(&ab.KafkaBrokers{Brokers: brokers}))

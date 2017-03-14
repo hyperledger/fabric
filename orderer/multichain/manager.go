@@ -178,3 +178,7 @@ func (ml *multiLedger) newChain(configtx *cb.Envelope) {
 
 	ml.chains = newChains
 }
+
+func (ml *multiLedger) channelsCount() int {
+	return len(ml.chains)
+}

@@ -76,3 +76,8 @@ message KafkaBrokers {
     // e.g. 127.0.0.1:7050, or localhost:7050 are valid entries
     repeated string brokers = 1;
 }
+
+// ChannelRestrictions is the mssage which conveys restrictions on channel creation for an orderer
+message ChannelRestrictions {
+    uint64 max_count = 1; // The max count of channels to allow to be created, a value of 0 indicates no limit
+}

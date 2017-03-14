@@ -141,6 +141,7 @@ func New(conf *genesisconfig.Profile) Generator {
 				PreferredMaxBytes: conf.Orderer.BatchSize.PreferredMaxBytes,
 			}),
 			config.TemplateBatchTimeout(conf.Orderer.BatchTimeout.String()),
+			config.TemplateChannelRestrictions(conf.Orderer.MaxChannels),
 
 			// Initialize the default Reader/Writer/Admins orderer policies, as well as block validation policy
 			policies.TemplateImplicitMetaPolicyWithSubPolicy([]string{config.OrdererGroupKey}, BlockValidationPolicyKey, configvaluesmsp.WritersPolicyKey, cb.ImplicitMetaPolicy_ANY),

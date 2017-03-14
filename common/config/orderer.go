@@ -45,6 +45,9 @@ const (
 	// ChainCreationPolicyNamesKey is the cb.ConfigItem type key name for the ChainCreationPolicyNames message
 	ChainCreationPolicyNamesKey = "ChainCreationPolicyNames"
 
+	// ChannelRestrictions is the key name for the ChannelRestrictions message
+	ChannelRestrictionsKey = "ChannelRestrictions"
+
 	// KafkaBrokersKey is the cb.ConfigItem type key name for the KafkaBrokers message
 	KafkaBrokersKey = "KafkaBrokers"
 )
@@ -57,6 +60,7 @@ type OrdererProtos struct {
 	ChainCreationPolicyNames *ab.ChainCreationPolicyNames
 	KafkaBrokers             *ab.KafkaBrokers
 	CreationPolicy           *ab.CreationPolicy
+	ChannelRestrictions      *ab.ChannelRestrictions
 }
 
 // Config is stores the orderer component configuration
@@ -140,6 +144,11 @@ func (oc *OrdererConfig) ChainCreationPolicyNames() []string {
 // used for ordering
 func (oc *OrdererConfig) KafkaBrokers() []string {
 	return oc.protos.KafkaBrokers.Brokers
+}
+
+// MaxChannelsCount returns the maximum count of channels this orderer supports
+func (oc *OrdererConfig) MaxChannelsCount() uint64 {
+	return oc.protos.ChannelRestrictions.MaxCount
 }
 
 func (oc *OrdererConfig) Validate(tx interface{}, groups map[string]ValueProposer) error {

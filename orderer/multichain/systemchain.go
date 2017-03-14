@@ -34,6 +34,7 @@ import (
 // Define some internal interfaces for easier mocking
 type chainCreator interface {
 	newChain(configTx *cb.Envelope)
+	channelsCount() int
 }
 
 type limitedSupport interface {
@@ -85,6 +86,15 @@ func (scf *systemChainFilter) Apply(env *cb.Envelope) (filter.Action, filter.Com
 
 	if chdr.Type != int32(cb.HeaderType_ORDERER_TRANSACTION) {
 		return filter.Forward, nil
+	}
+
+	maxChannels := scf.support.SharedConfig().MaxChannelsCount()
+	if maxChannels > 0 {
+		// We check for strictly greater than to accomodate the system channel
+		if uint64(scf.cc.channelsCount()) > maxChannels {
+			logger.Warningf("Rejecting channel creation because the orderer has reached the maximum number of channels, %d", maxChannels)
+			return filter.Reject, nil
+		}
 	}
 
 	configTx := &cb.Envelope{}

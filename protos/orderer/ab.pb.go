@@ -24,6 +24,7 @@ It has these top-level messages:
 	CreationPolicy
 	ChainCreationPolicyNames
 	KafkaBrokers
+	ChannelRestrictions
 	KafkaMessage
 	KafkaMessageRegular
 	KafkaMessageTimeToCut

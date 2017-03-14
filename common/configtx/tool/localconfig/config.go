@@ -92,6 +92,7 @@ type Orderer struct {
 	BatchSize     BatchSize       `yaml:"BatchSize"`
 	Kafka         Kafka           `yaml:"Kafka"`
 	Organizations []*Organization `yaml:"Organizations"`
+	MaxChannels   uint64          `yaml:"MaxChannels"`
 }
 
 // BatchSize contains configuration affecting the size of batches
