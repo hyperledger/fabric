@@ -42,8 +42,9 @@ const (
 	MSPKey = "MSP"
 )
 
-// TemplateGroupMSP creates an MSP ConfigValue at the given configPath
-func TemplateGroupMSP(configPath []string, mspConfig *mspprotos.MSPConfig) *cb.ConfigGroup {
+// TemplateGroupMSPWithAdminRolePrincipal creates an MSP ConfigValue at the given configPath with Admin policy
+// of role type ADMIN if admin==true or MEMBER otherwise
+func TemplateGroupMSPWithAdminRolePrincipal(configPath []string, mspConfig *mspprotos.MSPConfig, admin bool) *cb.ConfigGroup {
 	// check that the type for that MSP is supported
 	if mspConfig.Type != int32(msp.FABRIC) {
 		logger.Panicf("Setup error: unsupported msp type %d", mspConfig.Type)
@@ -74,10 +75,17 @@ func TemplateGroupMSP(configPath []string, mspConfig *mspprotos.MSPConfig) *cb.C
 		},
 	}
 
+	var adminSigPolicy []byte
+	if admin {
+		adminSigPolicy = utils.MarshalOrPanic(cauthdsl.SignedByMspAdmin(mspID))
+	} else {
+		adminSigPolicy = utils.MarshalOrPanic(cauthdsl.SignedByMspMember(mspID))
+	}
+
 	adminPolicy := &cb.ConfigPolicy{
 		Policy: &cb.Policy{
 			Type:   int32(cb.Policy_SIGNATURE),
-			Policy: utils.MarshalOrPanic(cauthdsl.SignedByMspAdmin(mspID)),
+			Policy: adminSigPolicy,
 		},
 	}
 
@@ -95,4 +103,9 @@ func TemplateGroupMSP(configPath []string, mspConfig *mspprotos.MSPConfig) *cb.C
 	intermediate.Policies[ReadersPolicyKey] = memberPolicy
 	intermediate.Policies[WritersPolicyKey] = memberPolicy
 	return result
+}
+
+// TemplateGroupMSP creates an MSP ConfigValue at the given configPath
+func TemplateGroupMSP(configPath []string, mspConfig *mspprotos.MSPConfig) *cb.ConfigGroup {
+	return TemplateGroupMSPWithAdminRolePrincipal(configPath, mspConfig, true)
 }

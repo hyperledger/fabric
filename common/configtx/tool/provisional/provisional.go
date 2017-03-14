@@ -134,7 +134,11 @@ func New(conf *genesisconfig.Profile) Generator {
 			if err != nil {
 				logger.Panicf("1 - Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
-			bs.ordererGroups = append(bs.ordererGroups, configvaluesmsp.TemplateGroupMSP([]string{config.OrdererGroupKey, org.Name}, mspConfig))
+			bs.ordererGroups = append(bs.ordererGroups,
+				configvaluesmsp.TemplateGroupMSPWithAdminRolePrincipal([]string{config.OrdererGroupKey, org.Name},
+					mspConfig, org.AdminPrincipal == genesisconfig.AdminRoleAdminPrincipal,
+				),
+			)
 		}
 
 		switch conf.Orderer.OrdererType {
@@ -165,7 +169,11 @@ func New(conf *genesisconfig.Profile) Generator {
 				logger.Panicf("2- Error loading MSP configuration for org %s: %s", org.Name, err)
 			}
 
-			bs.applicationGroups = append(bs.applicationGroups, configvaluesmsp.TemplateGroupMSP([]string{config.ApplicationGroupKey, org.Name}, mspConfig))
+			bs.applicationGroups = append(bs.applicationGroups,
+				configvaluesmsp.TemplateGroupMSPWithAdminRolePrincipal([]string{config.ApplicationGroupKey, org.Name},
+					mspConfig, org.AdminPrincipal == genesisconfig.AdminRoleAdminPrincipal,
+				),
+			)
 			var anchorProtos []*pb.AnchorPeer
 			for _, anchorPeer := range org.AnchorPeers {
 				anchorProtos = append(anchorProtos, &pb.AnchorPeer{
@@ -195,7 +203,12 @@ func New(conf *genesisconfig.Profile) Generator {
 				if err != nil {
 					logger.Panicf("3 - Error loading MSP configuration for org %s: %s", org.Name, err)
 				}
-				bs.consortiumsGroups = append(bs.consortiumsGroups, configvaluesmsp.TemplateGroupMSP([]string{config.ConsortiumsGroupKey, consortiumName, org.Name}, mspConfig))
+				bs.consortiumsGroups = append(bs.consortiumsGroups,
+					configvaluesmsp.TemplateGroupMSPWithAdminRolePrincipal(
+						[]string{config.ConsortiumsGroupKey, consortiumName, org.Name},
+						mspConfig, org.AdminPrincipal == genesisconfig.AdminRoleAdminPrincipal,
+					),
+				)
 			}
 		}
 	}

@@ -61,6 +61,11 @@ const (
 	SampleSingleMSPSoloProfile = "SampleSingleMSPSolo"
 	// SampleConsortiumName is the sample consortium from the sample configtx.yaml
 	SampleConsortiumName = "SampleConsortium"
+
+	// AdminRoleAdminPrincipal is set as AdminRole to cause the MSP role of type Admin to be used as the admin principal default
+	AdminRoleAdminPrincipal = "Role.ADMIN"
+	// MemberRoleAdminPrincipal is set as AdminRole to cause the MSP role of type Member to be used as the admin principal default
+	MemberRoleAdminPrincipal = "Role.MEMBER"
 )
 
 // TopLevel consists of the structs used by the configtxgen tool.
@@ -73,6 +78,7 @@ type TopLevel struct {
 
 // Profile encodes orderer/application configuration combinations for the configtxgen tool.
 type Profile struct {
+	Consortium  string                 `yaml:"Consortium"`
 	Application *Application           `yaml:"Application"`
 	Orderer     *Orderer               `yaml:"Orderer"`
 	Consortiums map[string]*Consortium `yaml:"Consortiums"`
@@ -90,10 +96,11 @@ type Application struct {
 
 // Organization encodes the organization-level configuration needed in config transactions.
 type Organization struct {
-	Name   string             `yaml:"Name"`
-	ID     string             `yaml:"ID"`
-	MSPDir string             `yaml:"MSPDir"`
-	BCCSP  *bccsp.FactoryOpts `yaml:"BCCSP"`
+	Name           string             `yaml:"Name"`
+	ID             string             `yaml:"ID"`
+	MSPDir         string             `yaml:"MSPDir"`
+	AdminPrincipal string             `yaml:"AdminPrincipal"`
+	BCCSP          *bccsp.FactoryOpts `yaml:"BCCSP"`
 
 	// Note: Viper deserialization does not seem to care for
 	// embedding of types, so we use one organization struct
@@ -212,6 +219,37 @@ func (p *Profile) completeInitialization(configDir string) {
 }
 
 func (p *Profile) initDefaults() {
+	if p.Orderer != nil {
+		for _, org := range p.Orderer.Organizations {
+			if org.AdminPrincipal == "" {
+				org.AdminPrincipal = AdminRoleAdminPrincipal
+			}
+		}
+	}
+
+	if p.Application != nil {
+		for _, org := range p.Application.Organizations {
+			if org.AdminPrincipal == "" {
+				org.AdminPrincipal = AdminRoleAdminPrincipal
+			}
+		}
+	}
+
+	if p.Consortiums != nil {
+		for _, consortium := range p.Consortiums {
+			for _, org := range consortium.Organizations {
+				if org.AdminPrincipal == "" {
+					org.AdminPrincipal = AdminRoleAdminPrincipal
+				}
+			}
+		}
+	}
+
+	// Some profiles will not define orderer parameters
+	if p.Orderer == nil {
+		return
+	}
+
 	for {
 		switch {
 		case p.Orderer.OrdererType == "":
