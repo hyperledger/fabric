@@ -139,6 +139,12 @@ func (handler *Handler) deleteIsTransaction(txid string) {
 	handler.Unlock()
 }
 
+func (handler *Handler) checkIsTransaction(txid string) bool{
+	handler.RLock()
+	defer handler.RUnlock()
+	return handler.isTransaction[txid]
+}
+
 // NewChaincodeHandler returns a new instance of the shim side handler.
 func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode) *Handler {
 	v := &Handler{
@@ -270,6 +276,12 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 		send := true
 
 		defer func() {
+			panicErr := recover()
+			if(panicErr != nil){
+				chaincodeLogger.Infof("invoke panic err:%s\n",panicErr)
+				payload := []byte(panicErr.(string))
+				nextStateMsg = & pb.ChaincodeMessage{Type:pb.ChaincodeMessage_ERROR, Payload:payload, Txid:msg.Txid}
+			}
 			handler.triggerNextState(nextStateMsg, send)
 		}()
 
@@ -318,6 +330,13 @@ func (handler *Handler) handleQuery(msg *pb.ChaincodeMessage) {
 		var serialSendMsg *pb.ChaincodeMessage
 
 		defer func() {
+
+			panicErr := recover()
+			if(panicErr != nil){
+				chaincodeLogger.Infof("query panic err:%s\n",panicErr)
+				payload := []byte(panicErr.(string))
+				serialSendMsg = & pb.ChaincodeMessage{Type:pb.ChaincodeMessage_QUERY_ERROR, Payload:payload, Txid:msg.Txid}
+			}
 			handler.serialSend(serialSendMsg)
 		}()
 
@@ -480,8 +499,9 @@ func (handler *Handler) handleGetState(key string, txid string) ([]byte, error) 
 // handlePutState communicates with the validator to put state information into the ledger.
 func (handler *Handler) handlePutState(key string, value []byte, txid string) error {
 	// Check if this is a transaction
-	chaincodeLogger.Debugf("[%s]Inside putstate, isTransaction = %t", shorttxid(txid), handler.isTransaction[txid])
-	if !handler.isTransaction[txid] {
+	isTransaction := handler.checkIsTransaction(txid)
+	chaincodeLogger.Debugf("[%s]Inside putstate, isTransaction = %t", shorttxid(txid), isTransaction)
+	if !isTransaction {
 		return errors.New("Cannot put state in query context")
 	}
 
@@ -535,7 +555,7 @@ func (handler *Handler) handlePutState(key string, value []byte, txid string) er
 // handleDelState communicates with the validator to delete a key from the state in the ledger.
 func (handler *Handler) handleDelState(key string, txid string) error {
 	// Check if this is a transaction
-	if !handler.isTransaction[txid] {
+	if !handler.checkIsTransaction(txid) {
 		return errors.New("Cannot del state in query context")
 	}
 
@@ -745,7 +765,7 @@ func (handler *Handler) handleRangeQueryStateClose(id, txid string) (*pb.RangeQu
 // handleInvokeChaincode communicates with the validator to invoke another chaincode.
 func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, txid string) ([]byte, error) {
 	// Check if this is a transaction
-	if !handler.isTransaction[txid] {
+	if !handler.checkIsTransaction(txid) {
 		return nil, errors.New("Cannot invoke chaincode in query context")
 	}
 
