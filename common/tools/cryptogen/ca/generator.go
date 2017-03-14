@@ -64,7 +64,7 @@ func NewCA(baseDir, name string) (*CA, error) {
 	//this is a CA
 	template.IsCA = true
 	template.KeyUsage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
+	template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny, x509.ExtKeyUsageServerAuth}
 
 	//set the organization for the subject
 	subject := subjectTemplate()

@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -28,8 +29,10 @@ import (
 const (
 	peerOrgBaseName  = "peerOrg"
 	peerBaseName     = "Peer"
+	userBaseName     = "User"
+	adminBaseName    = "Admin"
 	orderOrgBaseName = "ordererOrg"
-	ordererBaseName  = "orderer"
+	ordererBaseName  = "Orderer"
 )
 
 //command line flags
@@ -38,6 +41,8 @@ var (
 		"number of unique organizations with peers")
 	numPeers = flag.Int("peersPerOrg", 1,
 		"number of peers per organization")
+	numPeerOrgUsers = flag.Int("peerOrgUsers", 1,
+		"number of users per peer organization")
 	numOrderers = flag.Int("ordererNodes", 1,
 		"number of ordering service nodes")
 	baseDir = flag.String("baseDir", ".",
@@ -87,6 +92,8 @@ func generatePeerOrgs(baseDir string, orgNames []string) {
 		caDir := filepath.Join(orgDir, "ca")
 		mspDir := filepath.Join(orgDir, "msp")
 		peersDir := filepath.Join(orgDir, "peers")
+		usersDir := filepath.Join(orgDir, "users")
+		adminCertsDir := filepath.Join(mspDir, "admincerts")
 		rootCA, err := ca.NewCA(caDir, orgName)
 		if err != nil {
 			fmt.Printf("Error generating CA for org %s:\n%v\n", orgName, err)
@@ -106,7 +113,50 @@ func generatePeerOrgs(baseDir string, orgNames []string) {
 				orgName, peerBaseName, i))
 		}
 		generateNodes(peersDir, peerNames, rootCA)
+
+		// TODO: add ability to specify usernames
+		usernames := []string{}
+		for j := 1; j <= *numPeerOrgUsers; j++ {
+			usernames = append(usernames, fmt.Sprintf("%s%s%d",
+				orgName, userBaseName, j))
+		}
+		// add an admin user
+		usernames = append(usernames, fmt.Sprintf("%s%s",
+			orgName, adminBaseName))
+		generateNodes(usersDir, usernames, rootCA)
+
+		// copy the admin cert to the org's MSP admincerts
+		adminUserName := fmt.Sprintf("%s%s",
+			orgName, adminBaseName)
+		err = copyAdminCert(usersDir, adminCertsDir, adminUserName)
+		if err != nil {
+			fmt.Printf("Error copying admin cert for org %s:\n%v\n",
+				orgName, err)
+			os.Exit(1)
+		}
+
 	}
+}
+
+func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
+	// delete the contents of admincerts
+	err := os.RemoveAll(adminCertsDir)
+	if err != nil {
+		return err
+	}
+	// recreate the admincerts directory
+	err = os.MkdirAll(adminCertsDir, 0755)
+	if err != nil {
+		return err
+	}
+	err = copyFile(filepath.Join(usersDir, adminUserName, "signcerts",
+		adminUserName+"-cert.pem"), filepath.Join(adminCertsDir,
+		adminUserName+"-cert.pem"))
+	if err != nil {
+		return err
+	}
+	return nil
+
 }
 
 func generateNodes(baseDir string, nodeNames []string, rootCA *ca.CA) {
@@ -129,6 +179,8 @@ func generateOrdererOrg(baseDir, orgName string) {
 	caDir := filepath.Join(orgDir, "ca")
 	mspDir := filepath.Join(orgDir, "msp")
 	orderersDir := filepath.Join(orgDir, "orderers")
+	usersDir := filepath.Join(orgDir, "users")
+	adminCertsDir := filepath.Join(mspDir, "admincerts")
 	rootCA, err := ca.NewCA(caDir, orgName)
 	if err != nil {
 		fmt.Printf("Error generating CA for org %s:\n%v\n", orgName, err)
@@ -149,4 +201,40 @@ func generateOrdererOrg(baseDir, orgName string) {
 	}
 	generateNodes(orderersDir, ordererNames, rootCA)
 
+	// generate an admin for the orderer org
+	usernames := []string{}
+	// add an admin user
+	usernames = append(usernames, fmt.Sprintf("%s%s",
+		orgName, adminBaseName))
+	generateNodes(usersDir, usernames, rootCA)
+
+	// copy the admin cert to the org's MSP admincerts
+	adminUserName := fmt.Sprintf("%s%s",
+		orgName, adminBaseName)
+	err = copyAdminCert(usersDir, adminCertsDir, adminUserName)
+	if err != nil {
+		fmt.Printf("Error copying admin cert for org %s:\n%v\n",
+			orgName, err)
+		os.Exit(1)
+	}
+
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, in)
+	cerr := out.Close()
+	if err != nil {
+		return err
+	}
+	return cerr
 }
