@@ -168,6 +168,17 @@ func NewChaincodeSupport(getPeerEndpoint func() (*pb.PeerEndpoint, error), userr
 		theChaincodeSupport.keepalive = time.Duration(t) * time.Second
 	}
 
+	//default chaincode execute timeout is 30000ms (30 secs)
+	execto := 30000
+	if eto := viper.GetInt("chaincode.executetimeout"); eto <= 1000 {
+		chaincodeLogger.Errorf("Invalid execute timeout value %d (should be at least 1000ms) defaulting to %d ms", eto, execto)
+	} else {
+		chaincodeLogger.Debugf("Setting execute timeout value to %d ms", eto)
+		execto = eto
+	}
+
+	theChaincodeSupport.executetimeout = time.Duration(execto) * time.Millisecond
+
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
@@ -208,6 +219,7 @@ type ChaincodeSupport struct {
 	keepalive         time.Duration
 	chaincodeLogLevel string
 	logFormat         string
+	executetimeout    time.Duration
 }
 
 // DuplicateChaincodeHandlerError returned if attempt to register same chaincodeID while a stream already exists.
