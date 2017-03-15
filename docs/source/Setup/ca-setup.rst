@@ -88,6 +88,17 @@ Prerequisites
 
 -  Go 1.7+ installation or later
 -  **GOPATH** environment variable is set correctly
+- libtool and libtdhl-dev packages are installed
+
+The following installs the libtool dependencies.
+
+::
+
+   # sudo apt install libtool libltdl-dev
+
+For more information on libtool, see https://www.gnu.org/software/libtool.
+
+For more information on libtdhr-dev, see https://www.gnu.org/software/libtool/manual/html_node/Using-libltdl.html.
 
 Install
 ~~~~~~~
