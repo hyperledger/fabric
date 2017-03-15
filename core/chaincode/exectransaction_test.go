@@ -138,8 +138,13 @@ func startTxSimulation(ctxt context.Context, chainID string) (context.Context, l
 	if err != nil {
 		return nil, nil, err
 	}
+	historyQueryExecutor, err := lgr.NewHistoryQueryExecutor()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	ctxt = context.WithValue(ctxt, TXSimulatorKey, txsim)
+	ctxt = context.WithValue(ctxt, HistoryQueryExecutorKey, historyQueryExecutor)
 	return ctxt, txsim, nil
 }
 
@@ -1136,6 +1141,59 @@ func TestQueries(t *testing.T) {
 
 	//Reset the query limit to default
 	viper.Set("ledger.state.queryLimit", 10000)
+
+	if ledgerconfig.IsHistoryDBEnabled() == true {
+
+		f = "put"
+		args = util.ToChaincodeArgs(f, "marble12", "{\"docType\":\"marble\",\"name\":\"marble12\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
+		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber)
+		nextBlockNumber++
+		if err != nil {
+			t.Fail()
+			t.Logf("Error invoking <%s>: %s", ccID, err)
+			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			return
+		}
+
+		f = "put"
+		args = util.ToChaincodeArgs(f, "marble12", "{\"docType\":\"marble\",\"name\":\"marble12\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
+		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber)
+		nextBlockNumber++
+		if err != nil {
+			t.Fail()
+			t.Logf("Error invoking <%s>: %s", ccID, err)
+			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			return
+		}
+
+		//The following history query for "marble12" should return 3 records
+		f = "history"
+		args = util.ToChaincodeArgs(f, "marble12")
+
+		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+		_, _, retval, err := invoke(ctxt, chainID, spec, nextBlockNumber)
+		nextBlockNumber++
+		if err != nil {
+			t.Fail()
+			t.Logf("Error invoking <%s>: %s", ccID, err)
+			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			return
+		}
+
+		var history []interface{}
+		err = json.Unmarshal(retval, &history)
+
+		//default query limit of 10000 is used, query should return all records that meet the criteria
+		if len(history) != 3 {
+			t.Fail()
+			t.Logf("Error detected with the history query, should have returned 3 but returned %v", len(keys))
+			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			return
+		}
+
+	}
 
 	if ledgerconfig.IsCouchDBEnabled() == true {
 

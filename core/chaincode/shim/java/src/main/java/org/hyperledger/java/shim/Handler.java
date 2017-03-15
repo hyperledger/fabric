@@ -600,6 +600,8 @@ public class Handler {
 		}
 	}
 
+    //TODO: Uncomment and fix range query with new proto type
+/*
 	public QueryStateResponse handleGetStateByRange(String startKey, String endKey, String uuid) {
 		// Create the channel on which to communicate the response from validating peer
 		Channel<ChaincodeMessage> responseChannel;
@@ -673,7 +675,7 @@ public class Handler {
 			deleteChannel(uuid);
 		}
 	}
-
+*/
 	public ByteString handleInvokeChaincode(String chaincodeName, String function, List<ByteString> args, String uuid) {
 		// Check if this is a transaction
 		if (!isTransaction.containsKey(uuid)) {

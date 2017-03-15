@@ -87,13 +87,12 @@ message QueryStateClose {
     string id = 1;
 }
 
-message QueryStateKeyValue {
-    string key = 1;
-    bytes value = 2;
+message QueryResultBytes {
+    bytes resultBytes = 1;
 }
 
-message QueryStateResponse {
-    repeated QueryStateKeyValue keys_and_values = 1;
+message QueryResponse {
+    repeated QueryResultBytes results = 1;
     bool has_more = 2;
     string id = 3;
 }

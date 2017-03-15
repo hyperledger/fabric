@@ -17,6 +17,7 @@ limitations under the License.
 package ledger
 
 import (
+	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/peer"
@@ -132,14 +133,8 @@ type KV struct {
 
 // KeyModification - QueryResult for History.
 type KeyModification struct {
-	TxID  string
-	Value []byte
-}
-
-// QueryRecord - Result structure for query records. Holds a namespace, key and record.
-// Only used for state databases that support query
-type QueryRecord struct {
-	Namespace string
-	Key       string
-	Record    []byte
+	TxID      string
+	Value     []byte
+	Timestamp *google_protobuf.Timestamp
+	IsDelete  bool
 }

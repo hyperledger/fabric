@@ -43,14 +43,14 @@ func TestMockStateRangeQueryIterator(t *testing.T) {
 
 	fmt.Println("Running loop")
 	for i := 0; i < 2; i++ {
-		key, value, err := rqi.Next()
-		fmt.Println("Loop", i, "got", key, value, err)
-		if expectKeys[i] != key {
-			fmt.Println("Expected key", expectKeys[i], "got", key)
+		response, err := rqi.Next()
+		fmt.Println("Loop", i, "got", response.Key, response.Value, err)
+		if expectKeys[i] != response.Key {
+			fmt.Println("Expected key", expectKeys[i], "got", response.Key)
 			t.FailNow()
 		}
-		if expectValues[i][0] != value[0] {
-			fmt.Println("Expected value", expectValues[i], "got", value)
+		if expectValues[i][0] != response.Value[0] {
+			fmt.Println("Expected value", expectValues[i], "got", response.Value)
 		}
 	}
 }
@@ -165,13 +165,13 @@ func TestGetStateByPartialCompositeKey(t *testing.T) {
 	rqi, _ := stub.GetStateByPartialCompositeKey("marble", []string{"set-1"})
 	fmt.Println("Running loop")
 	for i := 0; i < 2; i++ {
-		key, value, err := rqi.Next()
-		fmt.Println("Loop", i, "got", key, value, err)
-		if expectKeys[i] != key {
-			fmt.Println("Expected key", expectKeys[i], "got", key)
+		response, err := rqi.Next()
+		fmt.Println("Loop", i, "got", response.Key, response.Value, err)
+		if expectKeys[i] != response.Key {
+			fmt.Println("Expected key", expectKeys[i], "got", response.Key)
 			t.FailNow()
 		}
-		objectType, attributes, _ := stub.SplitCompositeKey(key)
+		objectType, attributes, _ := stub.SplitCompositeKey(response.Key)
 		if objectType != "marble" {
 			fmt.Println("Expected objectType", "marble", "got", objectType)
 			t.FailNow()
@@ -183,8 +183,8 @@ func TestGetStateByPartialCompositeKey(t *testing.T) {
 				t.FailNow()
 			}
 		}
-		if jsonBytesEqual(expectValues[i], value) != true {
-			fmt.Println("Expected value", expectValues[i], "got", value)
+		if jsonBytesEqual(expectValues[i], response.Value) != true {
+			fmt.Println("Expected value", expectValues[i], "got", response.Value)
 			t.FailNow()
 		}
 	}
@@ -210,8 +210,8 @@ func TestGetStateByPartialCompositeKeyCollision(t *testing.T) {
 	fmt.Println("Running loop")
 	for rqi.HasNext() {
 		i++
-		key, value, err := rqi.Next()
-		fmt.Println("Loop", i, "got", key, value, err)
+		response, err := rqi.Next()
+		fmt.Println("Loop", i, "got", response.Key, response.Value, err)
 	}
 	// Only the single "Vehicle" object should be returned, not the "VehicleListing" object
 	if i != 1 {
