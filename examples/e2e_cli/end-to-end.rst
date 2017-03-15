@@ -649,6 +649,165 @@ run!
 
     rm -rf /var/hyperledger/*
 
+Using CouchDB
+-------------
+
+The state database can be switched from the default (goleveldb) to CouchDB.
+The same chaincode functions are available with CouchDB, however, there is the
+added ability to perform rich and complex queries against the state database
+data content contingent upon the chaincode data being modeled as JSON.
+
+To use CouchDB instead of the default database (goleveldb), follow the same
+procedure in the **Prerequisites** section, and additionally perform the
+following two steps to enable the CouchDB containers and associate each peer
+container with a CouchDB container:
+
+-  Make the CouchDB image.
+
+   .. code:: bash
+
+       # make sure you are in the /fabric directory
+       make couchdb
+
+-  Open the ``fabric/examples/e2e_cli/docker-compose.yaml`` and un-comment
+   all commented statements relating to CouchDB containers and peer container
+   use of CouchDB. These instructions are are also outlined in the
+   same ``docker-compose.yaml`` file. Search the file for 'couchdb' (case insensitive) references.
+
+*chaincode_example02* should now work using CouchDB underneath.
+
+***Note***: If you choose to implement mapping of the fabric-couchdb container
+port to a host port, please make sure you are aware of the security
+implications. Mapping of the port in a development environment allows the
+visualization of the database via the CouchDB web interface (Fauxton).
+Production environments would likely refrain from implementing port mapping in
+order to restrict outside access to the CouchDB containers.
+
+You can use *chaincode_example02* chaincode against the CouchDB state database
+using the steps outlined above, however in order to exercise the query
+capabilities you will need to use a chaincode that has data modeled as JSON,
+(e.g. *marbles02*). You can locate the *marbles02* chaincode in the
+``fabric/examples/chaincode/go`` directory.
+
+Install, instantiate, invoke, and query *marbles02* chaincode by following the
+same general steps outlined above for *chaincode_example02* in the **Manually
+create the channel and join peers through CLI** section . After the **Join
+channel** step, use the following steps to interact with the *marbles02*
+chaincode:
+
+-  Install and instantiate the chaincode in ``peer0`` (replace ``$ORDERER_IP``
+   with the IP address of the orderer. One way to find the address is with the
+   command ``docker inspect orderer | grep \"IPAddress\"``):
+
+   .. code:: bash
+
+       peer chaincode install -o $ORDERER_IP:7050 -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02
+       peer chaincode instantiate -o $ORDERER_IP:7050 -C $mychannel -n marbles -v 1.0 -p github.com/hyperledger/fabric/examples/chaincode/go/marbles02 -c '{"Args":["init"]}' -P "OR      ('Org0MSP.member','Org1MSP.member')"
+
+-  Create some marbles and move them around:
+
+   .. code:: bash
+
+        peer chaincode invoke -o $ORDERER_IP:7050  -C mychannel -n marbles -c '{"Args":["initMarble","marble1","blue","35","tom"]}'
+        peer chaincode invoke -o $ORDERER_IP:7050  -C mychannel -n marbles -c '{"Args":["initMarble","marble2","red","50","tom"]}'
+        peer chaincode invoke -o $ORDERER_IP:7050  -C mychannel -n marbles -c '{"Args":["initMarble","marble3","blue","70","tom"]}'
+        peer chaincode invoke -o $ORDERER_IP:7050  -C mychannel -n marbles -c '{"Args":["transferMarble","marble2","jerry"]}'
+        peer chaincode invoke -o $ORDERER_IP:7050  -C mychannel -n marbles -c '{"Args":["transferMarblesBasedOnColor","blue","jerry"]}'
+        peer chaincode invoke -o $ORDERER_IP:7050  -C mychannel -n marbles -c '{"Args":["delete","marble1"]}'
+
+
+
+-  If you chose to activate port mapping, you can now view the state database
+   through the CouchDB web interface (Fauxton) by opening a browser and
+   navigating to one of the two URLs below.
+
+   For containers running in a vagrant environment:
+
+   ```http://localhost:15984/_utils```
+
+   For non-vagrant environment, use the port address that was mapped in CouchDB
+   container specification:
+
+   ```http://localhost:5984/_utils```
+
+   You should see a database named ``mychannel`` and the documents
+   inside it.
+
+-  You can run regular queries from the `cli` (e.g. reading ``marble2``):
+
+   .. code:: bash
+
+      peer chaincode query -o $ORDERER_IP:7050 -C mychannel -n marbles -c '{"Args":["readMarble","marble2"]}'
+
+
+   You should see the details of ``marble2``:
+
+   .. code:: bash
+
+       Query Result: {"color":"red","docType":"marble","name":"marble2","owner":"jerry","size":50}
+
+
+   Retrieve the history of ``marble1``:
+
+   .. code:: bash
+
+      peer chaincode query -o $ORDERER_IP:7050 -C mychannel -n marbles -c '{"Args":["getHistoryForMarble","marble1"]}'
+
+   You should see the transactions on ``marble1``:
+
+   .. code:: bash
+
+      Query Result: [{"TxId":"1c3d3caf124c89f91a4c0f353723ac736c58155325f02890adebaa15e16e6464", "Value":{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}},{"TxId":"755d55c281889eaeebf405586f9e25d71d36eb3d35420af833a20a2f53a3eefd", "Value":{"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"jerry"}},{"TxId":"819451032d813dde6247f85e56a89262555e04f14788ee33e28b232eef36d98f", "Value":}]
+
+
+
+-  You can also perform rich queries on the data content, such as querying marble fields by owner ``jerry``:
+
+   .. code:: bash
+
+      peer chaincode query -o $ORDERER_IP:7050 -C myc1 -n marbles -c '{"Args":["queryMarblesByOwner","jerry"]}'
+
+   The output should display the two marbles owned by ``jerry``:
+
+   .. code:: bash
+
+       Query Result: [{"Key":"marble2", "Record":{"color":"red","docType":"marble","name":"marble2","owner":"jerry","size":50}},{"Key":"marble3", "Record":{"color":"blue","docType":"marble","name":"marble3","owner":"jerry","size":70}}]
+
+   Query by field ``owner`` where the value is ``jerry``:
+
+   .. code:: bash
+
+      peer chaincode query -o $ORDERER_IP:7050 -C myc1 -n marbles -c '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"jerry\"}}"]}'
+
+   The output should display:
+
+   .. code:: bash
+
+       Query Result: [{"Key":"marble2", "Record":{"color":"red","docType":"marble","name":"marble2","owner":"jerry","size":50}},{"Key":"marble3", "Record":{"color":"blue","docType":"marble","name":"marble3","owner":"jerry","size":70}}]
+
+A Note on Data Persistence
+--------------------------
+
+If data persistence is desired on the peer container or the CouchDB container,
+one option is to mount a directory in the docker-host into a relevant directory
+in the container. For example, you may add the following two lines in
+the peer container specification in the ``docker-compose.yaml`` file:
+
+   .. code:: bash
+
+       volumes:
+        - /var/hyperledger/peer0:/var/hyperledger/production
+
+
+For the CouchDB container, you may add the following two lines in the CouchDB
+container specification:
+
+   .. code:: bash
+
+       volumes:
+        - /var/hyperledger/couchdb0:/opt/couchdb/data
+
+
 Troubleshooting
 ---------------
 

@@ -24,6 +24,20 @@ services:
     ports:
       - 7050:7050
 
+## To enable CouchDB as state database, uncomment the following sections of this file:
+## 1) couchdb containers
+## 2) peer environment variables CORE_LEDGER_STATE_STATEDATABASE and
+##    CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS
+## 3) couch container names in "depends_on" section
+
+#  couchdb0:
+#    container_name: couchdb0
+#    image: hyperledger/fabric-couchdb
+##   Uncomment the port mapping if you want to expose the CouchDB service,
+##   for example to utilize Fauxton User Interface in dev environments.
+#    ports:
+#      - "5984:5984"
+
   peer0:
     container_name: peer0
     extends:
@@ -33,12 +47,14 @@ services:
       - CORE_PEER_ID=peer0
       - CORE_PEER_ADDRESS=peer0:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      # - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_LOCALMSPID=Org0MSP
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer0Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer0Signer.pem
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg0.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0
+      # - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0
+      # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
     volumes:
         - /var/run/:/host/var/run/
         - ./crypto/peer/peer0/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
@@ -47,6 +63,15 @@ services:
       - 7053:7053
     depends_on:
       - orderer0
+      # - couchdb0
+
+#  couchdb1:
+#    container_name: couchdb1
+#    image: hyperledger/fabric-couchdb
+##   Uncomment the port mapping if you want to expose the CouchDB service,
+##   for example to utilize Fauxton User Interface in dev environments.
+#    ports:
+#      - "6984:5984"
 
   peer1:
     container_name: peer1
@@ -58,12 +83,14 @@ services:
       - CORE_PEER_ADDRESS=peer1:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      # - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_LOCALMSPID=Org0MSP
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer1Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer1Signer.pem
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg0.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer1
+      # - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer1
+      # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb1:5984
     volumes:
         - /var/run/:/host/var/run/
         - ./crypto/peer/peer1/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
@@ -73,6 +100,15 @@ services:
     depends_on:
       - orderer0
       - peer0
+      # - couchdb1
+
+#  couchdb2:
+#    container_name: couchdb2
+#    image: hyperledger/fabric-couchdb
+##   Uncomment the port mapping if you want to expose the CouchDB service,
+##   for example to utilize Fauxton User Interface in dev environments.
+#    ports:
+#      - "7984:5984"
 
   peer2:
     container_name: peer2
@@ -90,6 +126,8 @@ services:
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer2Signer.pem
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/admincerts/peerOrg1.pem
       #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer2
+      # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb2:5984
     volumes:
         - /var/run/:/host/var/run/
         - ./crypto/peer/peer2/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
@@ -100,6 +138,15 @@ services:
       - orderer0
       - peer0
       - peer1
+      # - couchdb2
+
+#  couchdb3:
+#    container_name: couchdb3
+#    image: hyperledger/fabric-couchdb
+##   Uncomment the port mapping if you want to expose the CouchDB service,
+##   for example to utilize Fauxton User Interface in dev environments.
+#    ports:
+#      - "8984:5984"
 
   peer3:
     container_name: peer3
@@ -111,12 +158,14 @@ services:
       - CORE_PEER_ADDRESS=peer3:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer3:7051
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0:7051
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      # - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/signcerts/peer3Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/msp/sampleconfig/keystore/peer3Signer.pem
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/msp/sampleconfig/cacerts/peerOrg1.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer3
+      # - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer3
+      # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb3:5984
     volumes:
         - /var/run/:/host/var/run/
         - ./crypto/peer/peer3/localMspConfig:/etc/hyperledger/fabric/msp/sampleconfig
@@ -128,6 +177,7 @@ services:
       - peer0
       - peer1
       - peer2
+      # - couchdb3
 
   cli:
     container_name: cli
@@ -141,7 +191,7 @@ services:
       - CORE_NEXT=true
       - CORE_PEER_ID=cli
       - CORE_PEER_ENDORSER_ENABLED=true
-      #- CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
+      # - CORE_PEER_COMMITTER_LEDGER_ORDERER=orderer0:7050
       - CORE_PEER_ADDRESS=peer0:7051
       - CORE_PEER_GOSSIP_IGNORESECURITY=true
       - CORE_PEER_LOCALMSPID=Org0MSP
@@ -149,7 +199,7 @@ services:
       - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig/signcerts/peer0Signer.pem
       - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig/keystore/peer0Signer.pem
       - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig/cacerts/peerOrg0.pem
-      #- CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0
+      # - CORE_PEER_TLS_SERVERHOSTOVERRIDE=peer0
       - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peer/peer0/localMspConfig
 
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
@@ -158,6 +208,7 @@ services:
     volumes:
         - /var/run/:/host/var/run/
         - ./examples/:/opt/gopath/src/github.com/hyperledger/fabric/examples/
+        - ../chaincode/go/:/opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode/go
         - ./crypto:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
         - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/
     depends_on:
