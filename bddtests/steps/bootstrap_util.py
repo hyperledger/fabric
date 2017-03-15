@@ -392,6 +392,7 @@ class AuthDSLHelper:
 
 class BootstrapHelper:
     KEY_CONSENSUS_TYPE = "ConsensusType"
+    KEY_ORDERER_KAFKA_BROKERS = "KafkaBrokers"
     KEY_CHAIN_CREATION_POLICY_NAMES = "ChainCreationPolicyNames"
     KEY_ACCEPT_ALL_POLICY = "AcceptAllPolicy"
     KEY_HASHING_ALGORITHM = "HashingAlgorithm"
@@ -515,13 +516,6 @@ class BootstrapHelper:
             commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("ORDERER"),
             key=BootstrapHelper.KEY_BATCH_TIMEOUT,
             value=orderer_dot_configuration_pb2.BatchTimeout(timeout=self.batchTimeout).SerializeToString())
-        return self.signConfigItem(configItem)
-
-    def encodeConsensusType(self):
-        configItem = self.getConfigItem(
-            commonConfigType=common_dot_configtx_pb2.ConfigItem.ConfigType.Value("ORDERER"),
-            key=BootstrapHelper.KEY_CONSENSUS_TYPE,
-            value=orderer_dot_configuration_pb2.ConsensusType(type=self.consensusType).SerializeToString())
         return self.signConfigItem(configItem)
 
     def encodeChainCreators(self, ciValue=orderer_dot_configuration_pb2.ChainCreationPolicyNames(
@@ -655,9 +649,11 @@ def getMspConfigItemsForPolicyNames(context, policyNames):
     return getSignedMSPConfigItems(context=context, orgNames=orgNamesReferenced)
 
 
-def createSignedConfigItems(directory, configGroups=[]):
+def createSignedConfigItems(directory, consensus_type, configGroups=[]):
 
-    channelConfig = createChannelConfigGroup(directory)
+    channelConfig = createChannelConfigGroup(directory=directory, consensusType=consensus_type)
+    #TODO: Once jyellicks latest updates come through, will NOT need base orderer config
+    # channelConfig = common_dot_configtx_pb2.ConfigGroup()
     for configGroup in configGroups:
         mergeConfigGroups(channelConfig, configGroup)
     return channelConfig
@@ -726,6 +722,13 @@ def createChannelConfigGroup(directory, hashingAlgoName="SHA256", consensusType=
     for ordererOrg in [org for org in directory.getOrganizations().values() if Network.Orderer in org.networks]:
         channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
             ordererOrg.getMSPConfig())
+
+    # #Kafka specific
+    # matchingNATs = [nat for nat in directory.getNamedCtxTuples() if (("orderer" in nat.user) and ("Signer" in nat.user) and ((compose_service in nat.nodeName)))]
+    # for broker in [org for org in directory.getOrganizations().values() if Network.Orderer in org.networks]:
+    #     channel.groups[OrdererGroup].groups[ordererOrg.name].values[BootstrapHelper.KEY_MSP_INFO].value = toValue(
+    #         ordererOrg.getMSPConfig())
+    channel.groups[OrdererGroup].values[BootstrapHelper.KEY_ORDERER_KAFKA_BROKERS].value = toValue(orderer_dot_configuration_pb2.KafkaBrokers(brokers=["kafka0:9092"]))
 
 
 
@@ -820,7 +823,7 @@ def createGenesisBlock(context, chainId, consensusType, nodeAdminTuple, signedCo
     directory = getDirectory(context)
     assert len(directory.ordererAdminTuples) > 0, "No orderer admin tuples defined!!!"
 
-    channelConfig = createChannelConfigGroup(directory)
+    channelConfig = createChannelConfigGroup(directory=directory, consensusType=consensusType)
     for configGroup in signedConfigItems:
         mergeConfigGroups(channelConfig, configGroup)
 
