@@ -148,9 +148,8 @@ func TestGetModuleLevelDefault(t *testing.T) {
 	level, _ := flogging.GetModuleLevel("peer")
 
 	// peer should be using the default log level at this point
-	if level != "INFO" {
-		t.FailNow()
-	}
+	assertEquals(t, logging.INFO.String(), level)
+
 }
 
 func TestGetModuleLevelDebug(t *testing.T) {
@@ -158,9 +157,7 @@ func TestGetModuleLevelDebug(t *testing.T) {
 	level, _ := flogging.GetModuleLevel("peer")
 
 	// ensure that the log level has changed to debug
-	if level != "DEBUG" {
-		t.FailNow()
-	}
+	assertEquals(t, logging.DEBUG.String(), level)
 }
 
 func TestGetModuleLevelInvalid(t *testing.T) {
@@ -168,9 +165,7 @@ func TestGetModuleLevelInvalid(t *testing.T) {
 	level, _ := flogging.GetModuleLevel("peer")
 
 	// ensure that the log level didn't change after invalid log level specified
-	if level != "DEBUG" {
-		t.FailNow()
-	}
+	assertEquals(t, logging.DEBUG.String(), level)
 }
 
 func TestSetModuleLevel(t *testing.T) {
@@ -215,6 +210,145 @@ func ExampleSetLoggingFormat_second() {
 
 	// Output:
 	// 00:00:00.000 [floggingTest] ExampleSetLoggingFormat_second -> INFO 001 test
+}
+
+// TestSetModuleLevel_moduleWithSubmodule and the following tests use the new
+// flogging.MustGetLogger to initialize their loggers. flogging.MustGetLogger
+// adds a modules map to track which module names have been defined and their
+// current log level
+func TestSetModuleLevel_moduleWithSubmodule(t *testing.T) {
+	// enable setting the level by regular expressions
+	// TODO - remove this once all modules have been updated to use
+	// flogging.MustGetLogger
+	flogging.IsSetLevelByRegExpEnabled = true
+
+	flogging.MustGetLogger("module")
+	flogging.MustGetLogger("module/subcomponent")
+	flogging.MustGetLogger("sub")
+
+	// ensure that the log level is the default level, INFO
+	assertModuleLevel(t, "module", logging.INFO)
+	assertModuleLevel(t, "module/subcomponent", logging.INFO)
+	assertModuleLevel(t, "sub", logging.INFO)
+
+	// set level for modules that contain 'module'
+	flogging.SetModuleLevel("module", "warning")
+
+	// ensure that the log level has changed to WARNING for the modules
+	// that match the regular expression
+	assertModuleLevel(t, "module", logging.WARNING)
+	assertModuleLevel(t, "module/subcomponent", logging.WARNING)
+	assertModuleLevel(t, "sub", logging.INFO)
+
+	flogging.IsSetLevelByRegExpEnabled = false
+}
+
+func TestSetModuleLevel_regExpOr(t *testing.T) {
+	flogging.IsSetLevelByRegExpEnabled = true
+
+	flogging.MustGetLogger("module2")
+	flogging.MustGetLogger("module2/subcomponent")
+	flogging.MustGetLogger("sub2")
+	flogging.MustGetLogger("randomLogger2")
+
+	// ensure that the log level is the default level, INFO
+	assertModuleLevel(t, "module2", logging.INFO)
+	assertModuleLevel(t, "module2/subcomponent", logging.INFO)
+	assertModuleLevel(t, "sub2", logging.INFO)
+	assertModuleLevel(t, "randomLogger2", logging.INFO)
+
+	// set level for modules that contain 'mod' OR 'sub'
+	flogging.SetModuleLevel("mod|sub", "DEBUG")
+
+	// ensure that the log level has changed to DEBUG for the modules that match
+	// the regular expression
+	assertModuleLevel(t, "module2", logging.DEBUG)
+	assertModuleLevel(t, "module2/subcomponent", logging.DEBUG)
+	assertModuleLevel(t, "sub2", logging.DEBUG)
+	assertModuleLevel(t, "randomLogger2", logging.INFO)
+
+	flogging.IsSetLevelByRegExpEnabled = false
+}
+
+func TestSetModuleLevel_regExpSuffix(t *testing.T) {
+	flogging.IsSetLevelByRegExpEnabled = true
+
+	flogging.MustGetLogger("module3")
+	flogging.MustGetLogger("module3/subcomponent")
+	flogging.MustGetLogger("sub3")
+	flogging.MustGetLogger("sub3/subcomponent")
+	flogging.MustGetLogger("randomLogger3")
+
+	// ensure that the log level is the default level, INFO
+	assertModuleLevel(t, "module3", logging.INFO)
+	assertModuleLevel(t, "module3/subcomponent", logging.INFO)
+	assertModuleLevel(t, "sub3", logging.INFO)
+	assertModuleLevel(t, "sub3/subcomponent", logging.INFO)
+	assertModuleLevel(t, "randomLogger3", logging.INFO)
+
+	// set level for modules that contain component
+	flogging.SetModuleLevel("component$", "ERROR")
+
+	// ensure that the log level has changed to ERROR for the modules that match
+	// the regular expression
+	assertModuleLevel(t, "module3", logging.INFO)
+	assertModuleLevel(t, "module3/subcomponent", logging.ERROR)
+	assertModuleLevel(t, "sub3", logging.INFO)
+	assertModuleLevel(t, "sub3/subcomponent", logging.ERROR)
+	assertModuleLevel(t, "randomLogger3", logging.INFO)
+
+	flogging.IsSetLevelByRegExpEnabled = false
+}
+
+func TestSetModuleLevel_regExpComplex(t *testing.T) {
+	flogging.IsSetLevelByRegExpEnabled = true
+
+	flogging.MustGetLogger("gossip/util")
+	flogging.MustGetLogger("orderer/util")
+	flogging.MustGetLogger("gossip/gossip#0.0.0.0:7051")
+	flogging.MustGetLogger("gossip/conn#-1")
+	flogging.MustGetLogger("orderer/conn#0.0.0.0:7051")
+
+	// ensure that the log level is the default level, INFO
+	assertModuleLevel(t, "gossip/util", logging.INFO)
+	assertModuleLevel(t, "orderer/util", logging.INFO)
+	assertModuleLevel(t, "gossip/gossip#0.0.0.0:7051", logging.INFO)
+	assertModuleLevel(t, "gossip/conn#-1", logging.INFO)
+	assertModuleLevel(t, "orderer/conn#0.0.0.0:7051", logging.INFO)
+
+	// set level for modules that match the regular rexpression
+	flogging.SetModuleLevel("^[a-z]+\\/[a-z]+#.+$", "WARNING")
+
+	// ensure that the log level has changed to WARNING for the modules that match
+	// the regular expression
+	assertModuleLevel(t, "gossip/util", logging.INFO)
+	assertModuleLevel(t, "orderer/util", logging.INFO)
+	assertModuleLevel(t, "gossip/gossip#0.0.0.0:7051", logging.WARNING)
+	assertModuleLevel(t, "gossip/conn#-1", logging.WARNING)
+	assertModuleLevel(t, "orderer/conn#0.0.0.0:7051", logging.WARNING)
+
+	flogging.IsSetLevelByRegExpEnabled = false
+}
+
+func TestSetModuleLevel_invalidRegExp(t *testing.T) {
+	flogging.IsSetLevelByRegExpEnabled = true
+
+	flogging.MustGetLogger("(module")
+
+	// ensure that the log level is the default level, INFO
+	assertModuleLevel(t, "(module", logging.INFO)
+
+	level, err := flogging.SetModuleLevel("(", "info")
+
+	assertEquals(t, "", level)
+	if err == nil {
+		t.FailNow()
+	}
+
+	// ensure that the log level hasn't changed
+	assertModuleLevel(t, "(module", logging.INFO)
+
+	flogging.IsSetLevelByRegExpEnabled = false
 }
 
 func assertDefaultLevel(t *testing.T, expectedLevel logging.Level) {

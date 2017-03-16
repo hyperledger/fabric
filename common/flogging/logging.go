@@ -19,7 +19,9 @@ package flogging
 import (
 	"io"
 	"os"
+	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
@@ -35,7 +37,22 @@ var defaultOutput = os.Stderr
 // case of configuration errors.
 var fallbackDefaultLevel = logging.INFO
 
-// LoggingInitFromViper is a 'hook' called at the beginning of command processing to
+var lock = sync.Mutex{}
+
+// modules holds the map of all modules and the current log level
+var modules map[string]string
+
+// IsSetLevelByRegExpEnabled disables the code that will allow setting log
+// levels using a regular expression instead of one module/submodule at a time.
+// TODO - remove once peer code has switched over to using
+// flogging.MustGetLogger in place of logging.MustGetLogger
+var IsSetLevelByRegExpEnabled = false
+
+func init() {
+	modules = make(map[string]string)
+}
+
+// InitFromViper is a 'hook' called at the beginning of command processing to
 // parse logging-related options specified either on the command-line or in
 // config files.  Command-line options take precedence over config file
 // options, and can also be passed as suitably-named environment variables. To
@@ -53,7 +70,7 @@ func InitFromViper(command string) {
 	logger.Debugf("Setting default logging level to %s for command '%s'", defaultLevel, command)
 }
 
-// LoggingInit initializes the logging based on the supplied spec, it is exposed externally
+// InitFromSpec initializes the logging based on the supplied spec, it is exposed externally
 // so that consumers of the flogging package who do not wish to use the default config structure
 // may parse their own logging specification
 func InitFromSpec(spec string) logging.Level {
@@ -136,20 +153,57 @@ func GetModuleLevel(module string) (string, error) {
 	return level, nil
 }
 
-// SetModuleLevel sets the logging level for the specified module. This is
-// currently only called from admin.go but can be called from anywhere in the
-// code on a running peer to dynamically change the log level for the module.
-func SetModuleLevel(module string, logLevel string) (string, error) {
+// SetModuleLevel sets the logging level for the modules that match the
+// supplied regular expression. This is can be called from anywhere in the
+// code on a running peer to dynamically change log levels.
+func SetModuleLevel(moduleRegExp string, logLevel string) (string, error) {
 	level, err := logging.LogLevel(logLevel)
 
 	if err != nil {
 		logger.Warningf("Invalid logging level: %s - ignored", logLevel)
 	} else {
-		logging.SetLevel(logging.Level(level), module)
-		logger.Debugf("Module '%s' logger enabled for log level: %s", module, level)
+		// TODO - this check is in here temporarily until all modules have been
+		// converted to using flogging.MustGetLogger. until that point, this flag
+		// keeps the previous behavior in place.
+		if !IsSetLevelByRegExpEnabled {
+			logging.SetLevel(logging.Level(level), moduleRegExp)
+			logger.Infof("Module '%s' logger enabled for log level: %s", moduleRegExp, level)
+		} else {
+			re, err := regexp.Compile(moduleRegExp)
+			if err != nil {
+				logger.Warningf("Invalid regular expression for module: %s", moduleRegExp)
+				return "", err
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+			for module := range modules {
+				if re.MatchString(module) {
+					logging.SetLevel(logging.Level(level), module)
+					modules[module] = logLevel
+					logger.Infof("Module '%s' logger enabled for log level: %s", module, level)
+				}
+			}
+		}
 	}
 
 	logLevelString := level.String()
 
 	return logLevelString, err
+}
+
+// MustGetLogger is used in place of logging.MustGetLogger to allow us to store
+// a map of all modules and submodules that have loggers in the system
+func MustGetLogger(module string) *logging.Logger {
+	logger := logging.MustGetLogger(module)
+
+	// retrieve the current log level for the logger
+	level := logging.GetLevel(module).String()
+
+	// store the module's name as well as the current log level for the logger
+	lock.Lock()
+	defer lock.Unlock()
+	modules[module] = level
+
+	return logger
 }
