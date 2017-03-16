@@ -32,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/ledgerconfig"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -701,7 +700,7 @@ func (handler *Handler) afterGetStateByRange(e *fsm.Event, state string) {
 
 	// Query ledger for state
 	handler.handleGetStateByRange(msg)
-	chaincodeLogger.Debug("Exiting GET_STATE")
+	chaincodeLogger.Debug("Exiting GET_STATE_BY_RANGE")
 }
 
 // Handles query to ledger to rage query state
@@ -757,7 +756,6 @@ func (handler *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 		handler.putQueryIterator(txContext, iterID, rangeIter)
 		var payload *pb.QueryResponse
 		payload, err = getQueryResponse(handler, txContext, rangeIter, iterID)
-
 		if err != nil {
 			rangeIter.Close()
 			handler.deleteQueryIterator(txContext, iterID)
@@ -770,36 +768,35 @@ func (handler *Handler) handleGetStateByRange(msg *pb.ChaincodeMessage) {
 		var payloadBytes []byte
 		payloadBytes, err = proto.Marshal(payload)
 		if err != nil {
+			// Send error msg back to chaincode. GetState will not trigger event
 			rangeIter.Close()
 			handler.deleteQueryIterator(txContext, iterID)
-
-			// Send error msg back to chaincode. GetState will not trigger event
 			payload := []byte(err.Error())
-			chaincodeLogger.Errorf("Failed marshall resopnse. Sending %s", pb.ChaincodeMessage_ERROR)
+			chaincodeLogger.Errorf("Failed to marshal response. Sending %s", pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}
-
 		chaincodeLogger.Debugf("Got keys and values. Sending %s", pb.ChaincodeMessage_RESPONSE)
 		serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid}
 
 	}()
 }
 
+const maxResultLimit = 100
+
 //getQueryResponse takes an iterator and fetch state to construct QueryResponse
 func getQueryResponse(handler *Handler, txContext *transactionContext, iter commonledger.ResultsIterator,
 	iterID string) (*pb.QueryResponse, error) {
 
-	var i = 0
 	var err error
-	var queryLimit = ledgerconfig.GetQueryLimit()
 	var queryResult commonledger.QueryResult
 	var queryResultsBytes []*pb.QueryResultBytes
 
-	for ; i < queryLimit; i++ {
+	for i := 0; i < maxResultLimit; i++ {
 		queryResult, err = iter.Next()
 		if err != nil {
-			return nil, err
+			chaincodeLogger.Errorf("Failed to get query result from iterator")
+			break
 		}
 		if queryResult == nil {
 			break
@@ -807,27 +804,22 @@ func getQueryResponse(handler *Handler, txContext *transactionContext, iter comm
 		var resultBytes []byte
 		resultBytes, err = proto.Marshal(queryResult.(proto.Message))
 		if err != nil {
-			return nil, err
+			chaincodeLogger.Errorf("Failed to get encode query result as bytes")
+			break
 		}
 
 		qresultBytes := pb.QueryResultBytes{ResultBytes: resultBytes}
 		queryResultsBytes = append(queryResultsBytes, &qresultBytes)
 	}
 
-	if queryResult == nil {
+	if queryResult == nil || err != nil {
 		iter.Close()
 		handler.deleteQueryIterator(txContext, iterID)
-	} else {
-		//TODO: remove this else part completely when paging design is implemented
-		//FAB-2462 - Re-introduce paging for range queries and rich queries
-		chaincodeLogger.Warningf("Query limit of %v was exceeded.  Not all values meeting the criteria were returned.", queryLimit)
-		iter.Close()
-		handler.deleteQueryIterator(txContext, iterID)
+		if err != nil {
+			return nil, err
+		}
 	}
-	//TODO - HasMore is set to false until the requery issue for the peer is resolved
-	//FAB-2462 - Re-introduce paging for range queries and rich queries
-	//payload := &pb.QueryResponse{Data: data, HasMore: qresult != nil, Id: iterID}
-	return &pb.QueryResponse{Results: queryResultsBytes, HasMore: false, Id: iterID}, nil
+	return &pb.QueryResponse{Results: queryResultsBytes, HasMore: queryResult != nil, Id: iterID}, nil
 }
 
 // afterQueryStateNext handles a QUERY_STATE_NEXT request from the chaincode.
@@ -837,7 +829,7 @@ func (handler *Handler) afterQueryStateNext(e *fsm.Event, state string) {
 		e.Cancel(fmt.Errorf("Received unexpected message type"))
 		return
 	}
-	chaincodeLogger.Debugf("Received %s, invoking get state from ledger", pb.ChaincodeMessage_GET_STATE_BY_RANGE)
+	chaincodeLogger.Debugf("Received %s, invoking query state next from ledger", pb.ChaincodeMessage_QUERY_STATE_NEXT)
 
 	// Query ledger for state
 	handler.handleQueryStateNext(msg)
@@ -862,7 +854,7 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 
 		defer func() {
 			handler.deleteTXIDEntry(msg.Txid)
-			chaincodeLogger.Debugf("[%s]handleGetStateByRange serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
+			chaincodeLogger.Debugf("[%s]handleQueryStateNext serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
 			handler.serialSendAsync(serialSendMsg, nil)
 		}()
 
@@ -886,7 +878,6 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 		}
 
 		payload, err := getQueryResponse(handler, txContext, queryIter, queryStateNext.Id)
-
 		if err != nil {
 			queryIter.Close()
 			handler.deleteQueryIterator(txContext, queryStateNext.Id)
@@ -895,33 +886,29 @@ func (handler *Handler) handleQueryStateNext(msg *pb.ChaincodeMessage) {
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}
-
 		payloadBytes, err := proto.Marshal(payload)
 		if err != nil {
 			queryIter.Close()
 			handler.deleteQueryIterator(txContext, queryStateNext.Id)
-
-			// Send error msg back to chaincode. GetState will not trigger event
 			payload := []byte(err.Error())
-			chaincodeLogger.Errorf("Failed marshall resopnse. Sending %s", pb.ChaincodeMessage_ERROR)
+			chaincodeLogger.Errorf("Failed to marshal response. Sending %s", pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}
-
 		chaincodeLogger.Debugf("Got keys and values. Sending %s", pb.ChaincodeMessage_RESPONSE)
 		serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_RESPONSE, Payload: payloadBytes, Txid: msg.Txid}
 
 	}()
 }
 
-// afterGetStateByRange handles a QUERY_STATE_CLOSE request from the chaincode.
+// afterQueryStateClose handles a QUERY_STATE_CLOSE request from the chaincode.
 func (handler *Handler) afterQueryStateClose(e *fsm.Event, state string) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
 		e.Cancel(fmt.Errorf("Received unexpected message type"))
 		return
 	}
-	chaincodeLogger.Debugf("Received %s, invoking get state from ledger", pb.ChaincodeMessage_GET_STATE_BY_RANGE)
+	chaincodeLogger.Debugf("Received %s, invoking query state close from ledger", pb.ChaincodeMessage_QUERY_STATE_CLOSE)
 
 	// Query ledger for state
 	handler.handleQueryStateClose(msg)
@@ -946,7 +933,7 @@ func (handler *Handler) handleQueryStateClose(msg *pb.ChaincodeMessage) {
 
 		defer func() {
 			handler.deleteTXIDEntry(msg.Txid)
-			chaincodeLogger.Debugf("[%s]handleGetStateByRange serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
+			chaincodeLogger.Debugf("[%s]handleQueryStateClose serial send %s", shorttxid(serialSendMsg.Txid), serialSendMsg.Type)
 			handler.serialSendAsync(serialSendMsg, nil)
 		}()
 
@@ -1051,7 +1038,6 @@ func (handler *Handler) handleGetQueryResult(msg *pb.ChaincodeMessage) {
 		handler.putQueryIterator(txContext, iterID, executeIter)
 		var payload *pb.QueryResponse
 		payload, err = getQueryResponse(handler, txContext, executeIter, iterID)
-
 		if err != nil {
 			executeIter.Close()
 			handler.deleteQueryIterator(txContext, iterID)
@@ -1166,7 +1152,7 @@ func (handler *Handler) handleGetHistoryForKey(msg *pb.ChaincodeMessage) {
 
 			// Send error msg back to chaincode. GetState will not trigger event
 			payload := []byte(err.Error())
-			chaincodeLogger.Errorf("Failed marshall resopnse. Sending %s", pb.ChaincodeMessage_ERROR)
+			chaincodeLogger.Errorf("Failed marshal response. Sending %s", pb.ChaincodeMessage_ERROR)
 			serialSendMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
 			return
 		}

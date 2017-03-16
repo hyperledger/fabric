@@ -491,7 +491,7 @@ func getStateByPartialCompositeKey(stub ChaincodeStubInterface, objectType strin
 }
 
 func (iter *StateQueryIterator) Next() (*queryresult.KV, error) {
-	result, err := next(iter.CommonIterator, STATE_QUERY_RESULT)
+	result, err := iter.nextResult(STATE_QUERY_RESULT)
 	if err != nil {
 		return nil, err
 	}
@@ -499,7 +499,7 @@ func (iter *StateQueryIterator) Next() (*queryresult.KV, error) {
 }
 
 func (iter *HistoryQueryIterator) Next() (*queryresult.KeyModification, error) {
-	result, err := next(iter.CommonIterator, HISTORY_QUERY_RESULT)
+	result, err := iter.nextResult(HISTORY_QUERY_RESULT)
 	if err != nil {
 		return nil, err
 	}
@@ -519,7 +519,7 @@ func (iter *CommonIterator) HasNext() bool {
 // or KeyModification depending on the result type (i.e., state (range/execute)
 // query, history query). Note that commonledger.QueryResult is an empty golang
 // interface that can hold values of any type.
-func getResultFromBytes(queryResultBytes *pb.QueryResultBytes, iter *CommonIterator,
+func (iter *CommonIterator) getResultFromBytes(queryResultBytes *pb.QueryResultBytes,
 	rType resultType) (commonledger.QueryResult, error) {
 
 	if rType == STATE_QUERY_RESULT {
@@ -527,7 +527,6 @@ func getResultFromBytes(queryResultBytes *pb.QueryResultBytes, iter *CommonItera
 		if err := proto.Unmarshal(queryResultBytes.ResultBytes, stateQueryResult); err != nil {
 			return nil, err
 		}
-		iter.currentLoc++
 		return stateQueryResult, nil
 
 	} else if rType == HISTORY_QUERY_RESULT {
@@ -535,14 +534,12 @@ func getResultFromBytes(queryResultBytes *pb.QueryResultBytes, iter *CommonItera
 		if err := proto.Unmarshal(queryResultBytes.ResultBytes, historyQueryResult); err != nil {
 			return nil, err
 		}
-		iter.currentLoc++
 		return historyQueryResult, nil
-
 	}
 	return nil, errors.New("Wrong result type")
 }
 
-func fetchRemainingQueryResult(iter *CommonIterator) error {
+func (iter *CommonIterator) fetchNextQueryResult() error {
 	response, err := iter.handler.handleQueryStateNext(iter.response.Id, iter.uuid)
 
 	if err != nil {
@@ -554,21 +551,36 @@ func fetchRemainingQueryResult(iter *CommonIterator) error {
 	return nil
 }
 
-// next returns the next QueryResult (i.e., either a KV struct or KeyModificationin)
+// nextResult returns the next QueryResult (i.e., either a KV struct or KeyModification)
 // from the state or history query iterator. Note that commonledger.QueryResult is an
 // empty golang interface that can hold values of any type.
-func next(iter *CommonIterator, rType resultType) (commonledger.QueryResult, error) {
-
+func (iter *CommonIterator) nextResult(rType resultType) (commonledger.QueryResult, error) {
 	if iter.currentLoc < len(iter.response.Results) {
-		return getResultFromBytes(iter.response.Results[iter.currentLoc], iter, rType)
+		// On valid access of an element from cached results
+		queryResult, err := iter.getResultFromBytes(iter.response.Results[iter.currentLoc], rType)
+		if err != nil {
+			chaincodeLogger.Errorf("Failed to decode query results [%s]", err)
+			return nil, err
+		}
+		iter.currentLoc++
+
+		if iter.currentLoc == len(iter.response.Results) && iter.response.HasMore {
+			// On access of last item, pre-fetch to update HasMore flag
+			if err = iter.fetchNextQueryResult(); err != nil {
+				chaincodeLogger.Errorf("Failed to fetch next results [%s]", err)
+				return nil, err
+			}
+		}
+
+		return queryResult, err
 	} else if !iter.response.HasMore {
+		// On call to Next() without check of HasMore
 		return nil, errors.New("No such key")
 	}
-	if err := fetchRemainingQueryResult(iter); err != nil {
-		return nil, err
-	}
-	return getResultFromBytes(iter.response.Results[iter.currentLoc], iter, rType)
 
+	// should not fall through here
+	// case: no cached results but HasMore is true.
+	return nil, errors.New("Invalid iterator state")
 }
 
 // Close closes the range query iterator. This should be called when done

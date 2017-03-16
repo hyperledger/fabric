@@ -1055,160 +1055,41 @@ func TestQueries(t *testing.T) {
 		return
 	}
 
-	// Add 12 marbles for testing range queries and rich queries (for capable ledgers)
+	// Add 101 marbles for testing range queries and rich queries (for capable ledgers)
 	// The tests will test both range and rich queries and queries with query limits
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble01", "{\"docType\":\"marble\",\"name\":\"marble01\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
+	for i := 1; i <= 101; i++ {
+		f = "put"
 
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
+		// 51 owned by tom, 50 by jerry
+		owner := "tom"
+		if i%2 == 0 {
+			owner = "jerry"
+		}
+
+		// one marble color is red, 100 are blue
+		color := "blue"
+		if i == 12 {
+			color = "red"
+		}
+
+		key := fmt.Sprintf("marble%03d", i)
+		argsString := fmt.Sprintf("{\"docType\":\"marble\",\"name\":\"%s\",\"color\":\"%s\",\"size\":35,\"owner\":\"%s\"}", key, color, owner)
+		args = util.ToChaincodeArgs(f, key, argsString)
+		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
+		nextBlockNumber++
+
+		if err != nil {
+			t.Fail()
+			t.Logf("Error invoking <%s>: %s", ccID, err)
+			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+			return
+		}
 	}
 
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble02", "{\"docType\":\"marble\",\"name\":\"marble02\",\"color\":\"red\",\"size\":25,\"owner\":\"tom\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble03", "{\"docType\":\"marble\",\"name\":\"marble03\",\"color\":\"green\",\"size\":15,\"owner\":\"tom\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble04", "{\"docType\":\"marble\",\"name\":\"marble04\",\"color\":\"green\",\"size\":20,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble05", "{\"docType\":\"marble\",\"name\":\"marble05\",\"color\":\"red\",\"size\":25,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble06", "{\"docType\":\"marble\",\"name\":\"marble06\",\"color\":\"blue\",\"size\":35,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble07", "{\"docType\":\"marble\",\"name\":\"marble07\",\"color\":\"yellow\",\"size\":20,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble08", "{\"docType\":\"marble\",\"name\":\"marble08\",\"color\":\"green\",\"size\":40,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble09", "{\"docType\":\"marble\",\"name\":\"marble09\",\"color\":\"yellow\",\"size\":10,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble10", "{\"docType\":\"marble\",\"name\":\"marble10\",\"color\":\"red\",\"size\":20,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble11", "{\"docType\":\"marble\",\"name\":\"marble11\",\"color\":\"green\",\"size\":40,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	f = "put"
-	args = util.ToChaincodeArgs(f, "marble12", "{\"docType\":\"marble\",\"name\":\"marble12\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
-	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-	nextBlockNumber++
-	if err != nil {
-		t.Fail()
-		t.Logf("Error invoking <%s>: %s", ccID, err)
-		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
-		return
-	}
-
-	//TODO - the following query tests for queryLimits may change due to future designs
-	//       for batch "paging"
-
-	//The following range query for "marble01" to "marble11" should return 10 marbles
+	//The following range query for "marble001" to "marble011" should return 10 marbles
 	f = "keys"
-	args = util.ToChaincodeArgs(f, "marble01", "marble11")
+	args = util.ToChaincodeArgs(f, "marble001", "marble011")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 	_, _, retval, err := invoke(ctxt, chainID, spec, nextBlockNumber, nil)
@@ -1222,8 +1103,6 @@ func TestQueries(t *testing.T) {
 
 	var keys []interface{}
 	err = json.Unmarshal(retval, &keys)
-
-	//default query limit of 10000 is used, query should return all records that meet the criteria
 	if len(keys) != 10 {
 		t.Fail()
 		t.Logf("Error detected with the range query, should have returned 10 but returned %v", len(keys))
@@ -1231,16 +1110,14 @@ func TestQueries(t *testing.T) {
 		return
 	}
 
-	//Reset the query limit to 5
-	viper.Set("ledger.state.queryLimit", 5)
-
-	//The following range query for "marble01" to "marble11" should return 5 marbles due to the queryLimit
+	// querying for all marbles will return 101 marbles
+	// this query should return exactly 101 results (one call to Next())
+	//The following range query for "marble001" to "marble102" should return 101 marbles
 	f = "keys"
-	args = util.ToChaincodeArgs(f, "marble01", "marble11")
+	args = util.ToChaincodeArgs(f, "marble001", "marble102")
 
 	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-
 	nextBlockNumber++
 	if err != nil {
 		t.Fail()
@@ -1252,24 +1129,28 @@ func TestQueries(t *testing.T) {
 	//unmarshal the results
 	err = json.Unmarshal(retval, &keys)
 
-	//check to see if there are 5 values
-	if len(keys) != 5 {
+	//check to see if there are 101 values
+	//default query limit of 10000 is used, this query is effectively unlimited
+	if len(keys) != 101 {
 		t.Fail()
-		t.Logf("Error detected with the range query, should have returned 5 but returned %v", len(keys))
+		t.Logf("Error detected with the range query, should have returned 101 but returned %v", len(keys))
 		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 		return
 	}
 
-	//Reset the query limit to default
-	viper.Set("ledger.state.queryLimit", 10000)
+	// ExecuteQuery supported only for CouchDB and
+	// query limits apply for CouchDB range and rich queries only
+	if ledgerconfig.IsCouchDBEnabled() == true {
 
-	if ledgerconfig.IsHistoryDBEnabled() == true {
+		// corner cases for shim batching. currnt shim batch size is 100
+		// this query should return exactly 100 results (no call to Next())
+		f = "query"
+		args = util.ToChaincodeArgs(f, "{\"selector\":{\"color\":\"blue\"}}")
 
-		f = "put"
-		args = util.ToChaincodeArgs(f, "marble12", "{\"docType\":\"marble\",\"name\":\"marble12\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
 		nextBlockNumber++
+
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking <%s>: %s", ccID, err)
@@ -1277,21 +1158,23 @@ func TestQueries(t *testing.T) {
 			return
 		}
 
-		f = "put"
-		args = util.ToChaincodeArgs(f, "marble12", "{\"docType\":\"marble\",\"name\":\"marble12\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
-		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
-		_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-		nextBlockNumber++
-		if err != nil {
+		//unmarshal the results
+		err = json.Unmarshal(retval, &keys)
+
+		//check to see if there are 100 values
+		if len(keys) != 100 {
 			t.Fail()
-			t.Logf("Error invoking <%s>: %s", ccID, err)
+			t.Logf("Error detected with the rich query, should have returned 100 but returned %v %s", len(keys), keys)
 			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
-		//The following history query for "marble12" should return 3 records
-		f = "history"
-		args = util.ToChaincodeArgs(f, "marble12")
+		//Reset the query limit to 5
+		viper.Set("ledger.state.queryLimit", 5)
+
+		//The following range query for "marble01" to "marble11" should return 5 marbles due to the queryLimit
+		f = "keys"
+		args = util.ToChaincodeArgs(f, "marble001", "marble011")
 
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 		_, _, retval, err := invoke(ctxt, chainID, spec, nextBlockNumber, nil)
@@ -1303,22 +1186,21 @@ func TestQueries(t *testing.T) {
 			return
 		}
 
-		var history []interface{}
-		err = json.Unmarshal(retval, &history)
+		//unmarshal the results
+		err = json.Unmarshal(retval, &keys)
 
-		//default query limit of 10000 is used, query should return all records that meet the criteria
-		if len(history) != 3 {
+		//check to see if there are 5 values
+		if len(keys) != 5 {
 			t.Fail()
-			t.Logf("Error detected with the history query, should have returned 3 but returned %v", len(keys))
+			t.Logf("Error detected with the range query, should have returned 5 but returned %v", len(keys))
 			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
 			return
 		}
 
-	}
+		//Reset the query limit to 10000
+		viper.Set("ledger.state.queryLimit", 10000)
 
-	if ledgerconfig.IsCouchDBEnabled() == true {
-
-		//The following rich query for should return 9 marbles
+		//The following rich query for should return 50 marbles
 		f = "query"
 		args = util.ToChaincodeArgs(f, "{\"selector\":{\"owner\":\"jerry\"}}")
 
@@ -1336,9 +1218,9 @@ func TestQueries(t *testing.T) {
 		//unmarshal the results
 		err = json.Unmarshal(retval, &keys)
 
-		//check to see if there are 9 values
+		//check to see if there are 50 values
 		//default query limit of 10000 is used, this query is effectively unlimited
-		if len(keys) != 9 {
+		if len(keys) != 50 {
 			t.Fail()
 			t.Logf("Error detected with the rich query, should have returned 9 but returned %v", len(keys))
 			theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
@@ -1354,7 +1236,7 @@ func TestQueries(t *testing.T) {
 
 		spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
 		_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
-
+		nextBlockNumber++
 		if err != nil {
 			t.Fail()
 			t.Logf("Error invoking <%s>: %s", ccID, err)
@@ -1373,6 +1255,53 @@ func TestQueries(t *testing.T) {
 			return
 		}
 
+	}
+
+	// modifications for history query
+	f = "put"
+	args = util.ToChaincodeArgs(f, "marble012", "{\"docType\":\"marble\",\"name\":\"marble012\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
+	nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	f = "put"
+	args = util.ToChaincodeArgs(f, "marble012", "{\"docType\":\"marble\",\"name\":\"marble012\",\"color\":\"red\",\"size\":30,\"owner\":\"jerry\"}")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, _, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
+	nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	//The following history query for "marble12" should return 3 records
+	f = "history"
+	args = util.ToChaincodeArgs(f, "marble012")
+	spec = &pb.ChaincodeSpec{Type: 1, ChaincodeId: cID, Input: &pb.ChaincodeInput{Args: args}}
+	_, _, retval, err = invoke(ctxt, chainID, spec, nextBlockNumber, nil)
+	nextBlockNumber++
+	if err != nil {
+		t.Fail()
+		t.Logf("Error invoking <%s>: %s", ccID, err)
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
+	}
+
+	var history []interface{}
+	err = json.Unmarshal(retval, &history)
+	if len(history) != 3 {
+		t.Fail()
+		t.Logf("Error detected with the history query, should have returned 3 but returned %v", len(keys))
+		theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
+		return
 	}
 
 	theChaincodeSupport.Stop(ctxt, cccid, &pb.ChaincodeDeploymentSpec{ChaincodeSpec: spec})
