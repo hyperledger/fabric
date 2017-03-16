@@ -35,8 +35,8 @@
 #   - dist-clean - superset of 'clean' that also removes persistent state
 
 PROJECT_NAME   = hyperledger/fabric
-BASE_VERSION   = 1.0.0-alpha
-IS_RELEASE     = true
+BASE_VERSION   = 1.0.0
+IS_RELEASE     = false
 
 ifneq ($(IS_RELEASE),true)
 EXTRA_VERSION ?= snapshot-$(shell git rev-parse --short HEAD)
