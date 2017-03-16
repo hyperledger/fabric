@@ -143,8 +143,19 @@ A policy could require that a transaction be endorsed by a minimum number of
 endorsing peers, a minimum percentage of endorsing peers, or by all endorsing
 peers that are assigned to a specific chaincode application. Policies can be
 curated based on the application and the desired level of resilience against
-misbehavior (deliberate or not) by the endorsing peers.  A distinct endorsement
-policy for deploy transactions, which install new chaincode, is also required.
+misbehavior (deliberate or not) by the endorsing peers. A distinct endorsement
+policy for install and instantiate transactions is also required.
+
+.. _Fabric-ca:
+
+Fabric-ca
+-------------
+
+Fabric-ca is the default Certificate Authority component, which issues PKI-based
+certificates to network member organizations and their users. The CA issues one
+root certificate (rootCert) to each member, one enrollment certificate (eCert)
+to each authorized user, and a number of transaction certificates (tCerts) for
+each eCert.
 
 .. _Genesis-Block:
 
