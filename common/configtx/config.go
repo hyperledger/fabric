@@ -40,6 +40,7 @@ func NewConfigResult(config *cb.ConfigGroup, proposer api.Proposer) (ConfigResul
 type configResult struct {
 	tx                   interface{}
 	groupName            string
+	groupKey             string
 	group                *cb.ConfigGroup
 	valueHandler         config.ValueProposer
 	policyHandler        policies.Proposer
@@ -51,7 +52,7 @@ type configResult struct {
 func (cr *configResult) JSON() string {
 	var buffer bytes.Buffer
 	buffer.WriteString("{")
-	cr.bufferJSON(&buffer)
+	cr.subResults[0].bufferJSON(&buffer)
 	buffer.WriteString("}")
 	return buffer.String()
 
@@ -70,7 +71,7 @@ func (cr *configResult) bufferJSON(buffer *bytes.Buffer) {
 
 	// "GroupName": {
 	buffer.WriteString("\"")
-	buffer.WriteString(cr.groupName)
+	buffer.WriteString(cr.groupKey)
 	buffer.WriteString("\": {")
 
 	//    "Values": {
@@ -229,6 +230,7 @@ func proposeGroup(result *configResult) error {
 	for i, subGroup := range subGroups {
 		result.subResults = append(result.subResults, &configResult{
 			tx:                   result.tx,
+			groupKey:             subGroup,
 			groupName:            result.groupName + "/" + subGroup,
 			group:                result.group.Groups[subGroup],
 			valueHandler:         subValueHandlers[i],
@@ -241,12 +243,6 @@ func proposeGroup(result *configResult) error {
 			result.rollback()
 			return err
 		}
-	}
-
-	err = result.preCommit()
-	if err != nil {
-		result.rollback()
-		return err
 	}
 
 	return nil
@@ -271,5 +267,16 @@ func processConfig(channelGroup *cb.ConfigGroup, proposer api.Proposer) (*config
 
 func (cm *configManager) processConfig(channelGroup *cb.ConfigGroup) (*configResult, error) {
 	logger.Debugf("Beginning new config for channel %s", cm.current.channelID)
-	return processConfig(channelGroup, cm.initializer)
+	configResult, err := processConfig(channelGroup, cm.initializer)
+	if err != nil {
+		return nil, err
+	}
+
+	err = configResult.preCommit()
+	if err != nil {
+		configResult.rollback()
+		return nil, err
+	}
+
+	return configResult, nil
 }

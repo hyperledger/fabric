@@ -102,7 +102,7 @@ func NewManagerImpl(envConfig *cb.Envelope, initializer api.Initializer, callOnU
 		return nil, fmt.Errorf("Bad channel id: %s", err)
 	}
 
-	configMap, err := mapConfig(configEnv.Config.ChannelGroup)
+	configMap, err := MapConfig(configEnv.Config.ChannelGroup)
 	if err != nil {
 		return nil, fmt.Errorf("Error converting config to map: %s", err)
 	}

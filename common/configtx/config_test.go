@@ -31,7 +31,7 @@ import (
 
 func TestJSON(t *testing.T) {
 	cr := &configResult{
-		groupName: "rootGroup",
+		groupKey: "rootGroup",
 		group: &cb.ConfigGroup{
 			Values: map[string]*cb.ConfigValue{
 				"outer": &cb.ConfigValue{Version: 1, ModPolicy: "mod1"},
@@ -39,7 +39,7 @@ func TestJSON(t *testing.T) {
 		},
 		subResults: []*configResult{
 			&configResult{
-				groupName: "innerGroup1",
+				groupKey: "innerGroup1",
 				group: &cb.ConfigGroup{
 					Values: map[string]*cb.ConfigValue{
 						"inner1": &cb.ConfigValue{ModPolicy: "mod3"},
@@ -56,7 +56,7 @@ func TestJSON(t *testing.T) {
 				},
 			},
 			&configResult{
-				groupName: "innerGroup2",
+				groupKey: "innerGroup2",
 				group: &cb.ConfigGroup{
 					Values: map[string]*cb.ConfigValue{
 						"inner2": &cb.ConfigValue{ModPolicy: "mod3"},
@@ -78,8 +78,10 @@ func TestJSON(t *testing.T) {
 		},
 	}
 
+	crWrapper := &configResult{subResults: []*configResult{cr}}
+
 	buffer := &bytes.Buffer{}
-	assert.NoError(t, json.Indent(buffer, []byte(cr.JSON()), "", ""), "JSON should parse nicely")
+	assert.NoError(t, json.Indent(buffer, []byte(crWrapper.JSON()), "", ""), "JSON should parse nicely")
 
 	expected := "{\"rootGroup\":{\"Values\":{\"outer\":{\"Version\":\"1\",\"ModPolicy\":\"mod1\",\"Value\":{\"type\":\"outer\"}}},\"Policies\":{},\"Groups\":{\"innerGroup1\":{\"Values\":{\"inner1\":{\"Version\":\"0\",\"ModPolicy\":\"mod3\",\"Value\":{\"type\":\"inner1\"}}},\"Policies\":{\"policy1\":{\"Version\":\"0\",\"ModPolicy\":\"mod1\",\"Policy\":{\"PolicyType\":\"0\",\"Policy\":{\"type\":\"policy1\"}}}},\"Groups\":{}},\"innerGroup2\":{\"Values\":{\"inner2\":{\"Version\":\"0\",\"ModPolicy\":\"mod3\",\"Value\":{\"type\":\"inner2\"}}},\"Policies\":{\"policy2\":{\"Version\":\"0\",\"ModPolicy\":\"mod2\",\"Policy\":{\"PolicyType\":\"1\",\"Policy\":{\"type\":\"policy2\"}}}},\"Groups\":{}}}}}"
 

@@ -38,7 +38,7 @@ func TestConfigMap(t *testing.T) {
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = cb.NewConfigGroup()
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"] = &cb.ConfigValue{}
 
-	confMap, err := mapConfig(config)
+	confMap, err := MapConfig(config)
 	assert.NoError(t, err, "Should not have errored building map")
 
 	assert.Len(t, confMap, 7, "There should be 7 entries in the config map")
@@ -68,7 +68,7 @@ func TestMapConfigBack(t *testing.T) {
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"] = cb.NewConfigGroup()
 	config.Groups["0DeepGroup"].Groups["1DeepGroup"].Values["2DeepValue"] = &cb.ConfigValue{}
 
-	confMap, err := mapConfig(config)
+	confMap, err := MapConfig(config)
 	assert.NoError(t, err, "Should not have errored building map")
 
 	newConfig, err := configMapToConfig(confMap)

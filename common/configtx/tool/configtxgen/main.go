@@ -195,21 +195,29 @@ func doInspectBlock(inspectBlock string) error {
 		return fmt.Errorf("ConfigEnvelope contained no config")
 	}
 
-	configResult, err := configtx.NewConfigResult(configEnvelope.Config.ChannelGroup, configtx.NewInitializer())
+	configAsJSON, err := configGroupAsJSON(configEnvelope.Config.ChannelGroup)
 	if err != nil {
-		return fmt.Errorf("Error parsing configuration: %s", err)
+		return err
+	}
+
+	fmt.Printf("Config for channel: %s at sequence %d\n", header.ChannelId, configEnvelope.Config.Sequence)
+	fmt.Println(configAsJSON)
+
+	return nil
+}
+
+func configGroupAsJSON(group *cb.ConfigGroup) (string, error) {
+	configResult, err := configtx.NewConfigResult(group, configtx.NewInitializer())
+	if err != nil {
+		return "", fmt.Errorf("Error parsing config: %s", err)
 	}
 
 	buffer := &bytes.Buffer{}
 	err = json.Indent(buffer, []byte(configResult.JSON()), "", "    ")
 	if err != nil {
-		return fmt.Errorf("Error in output JSON (usually a programming bug): %s", err)
+		return "", fmt.Errorf("Error in output JSON (usually a programming bug): %s", err)
 	}
-
-	fmt.Printf("Config for channel: %s at sequence %d\n", header.ChannelId, configEnvelope.Config.Sequence)
-
-	fmt.Println(buffer.String())
-	return nil
+	return buffer.String(), nil
 }
 
 func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
@@ -253,21 +261,48 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 		return fmt.Errorf("ConfigUpdateEnvelope was for different channel than envelope: %s vs %s", configUpdate.ChannelId, header.ChannelId)
 	}
 
+	fmt.Printf("\nChannel creation for channel: %s\n", header.ChannelId)
+	fmt.Println()
+
+	if configUpdate.ReadSet == nil {
+		fmt.Println("Read Set: empty")
+	} else {
+		fmt.Println("Read Set:")
+		readSetAsJSON, err := configGroupAsJSON(configUpdate.ReadSet)
+		if err != nil {
+			return err
+		}
+		fmt.Println(readSetAsJSON)
+	}
+	fmt.Println()
+
 	if configUpdate.WriteSet == nil {
 		return fmt.Errorf("Empty WriteSet")
 	}
 
-	if configUpdate.WriteSet.Groups[config.ApplicationGroupKey] == nil {
-		return fmt.Errorf("Empty Application group")
+	fmt.Println("Write Set:")
+	writeSetAsJSON, err := configGroupAsJSON(configUpdate.WriteSet)
+	if err != nil {
+		return err
+	}
+	fmt.Println(writeSetAsJSON)
+	fmt.Println()
+
+	readSetMap, err := configtx.MapConfig(configUpdate.ReadSet)
+	if err != nil {
+		return fmt.Errorf("Error mapping read set: %s", err)
+	}
+	writeSetMap, err := configtx.MapConfig(configUpdate.WriteSet)
+	if err != nil {
+		return fmt.Errorf("Error mapping write set: %s", err)
 	}
 
-	var orgs []string
-
-	for name := range configUpdate.WriteSet.Groups[config.ApplicationGroupKey].Groups {
-		orgs = append(orgs, name)
+	fmt.Println("Delta Set:")
+	deltaSet := configtx.ComputeDeltaSet(readSetMap, writeSetMap)
+	for key := range deltaSet {
+		fmt.Println(key)
 	}
-
-	fmt.Printf("\nChannel creation for channel: %s with orgs %v\n\n", header.ChannelId, orgs)
+	fmt.Println()
 
 	return nil
 }

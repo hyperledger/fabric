@@ -33,9 +33,9 @@ const (
 	PathSeparator = "/"
 )
 
-// mapConfig is intended to be called outside this file
+// MapConfig is intended to be called outside this file
 // it takes a ConfigGroup and generates a map of fqPath to comparables (or error on invalid keys)
-func mapConfig(channelGroup *cb.ConfigGroup) (map[string]comparable, error) {
+func MapConfig(channelGroup *cb.ConfigGroup) (map[string]comparable, error) {
 	result := make(map[string]comparable)
 	if channelGroup != nil {
 		err := recurseConfig(result, []string{RootGroupKey}, channelGroup)
@@ -46,7 +46,7 @@ func mapConfig(channelGroup *cb.ConfigGroup) (map[string]comparable, error) {
 	return result, nil
 }
 
-// addToMap is used only internally by mapConfig
+// addToMap is used only internally by MapConfig
 func addToMap(cg comparable, result map[string]comparable) error {
 	var fqPath string
 
@@ -77,7 +77,7 @@ func addToMap(cg comparable, result map[string]comparable) error {
 	return nil
 }
 
-// recurseConfig is used only internally by mapConfig
+// recurseConfig is used only internally by MapConfig
 func recurseConfig(result map[string]comparable, path []string, group *cb.ConfigGroup) error {
 	if err := addToMap(comparable{key: path[len(path)-1], path: path[:len(path)-1], ConfigGroup: group}, result); err != nil {
 		return err
