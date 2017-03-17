@@ -102,7 +102,7 @@ Orderer: &OrdererDefaults
         - 127.0.0.1:7050
 
     # Batch Timeout: The amount of time to wait before creating a batch.
-    BatchTimeout: 10s
+    BatchTimeout: 2s
 
     # Batch Size: Controls the number of messages batched into a block.
     BatchSize:
