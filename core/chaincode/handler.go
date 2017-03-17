@@ -480,6 +480,23 @@ func (handler *Handler) notifyDuringStartup(val bool) {
 		handler.readyNotify <- val
 	} else {
 		chaincodeLogger.Debug("nothing to notify (dev mode ?)")
+		//In theory, we don't even need a devmode flag in the peer anymore
+		//as the chaincode is brought up without any context (ledger context
+		//in particular). What this means is we can have - in theory - a nondev
+		//environment where we can attach a chaincode manually. This could be
+		//useful .... but for now lets just be conservative and allow manual
+		//chaincode only in dev mode (ie, peer started with --peer-chaincodedev=true)
+		if handler.chaincodeSupport.userRunsCC {
+			if val {
+				chaincodeLogger.Debug("sending READY")
+				ccMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY}
+				go handler.triggerNextState(ccMsg, true)
+			} else {
+				chaincodeLogger.Errorf("Error during startup .. not sending READY")
+			}
+		} else {
+			chaincodeLogger.Warningf("trying to manually run chaincode when not in devmode ?")
+		}
 	}
 }
 
