@@ -20,8 +20,14 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
+	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
+	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/peer/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,4 +128,48 @@ func TestCheckInvalidJSON(t *testing.T) {
 		t.Logf("Bar argument error should have been caught: %s", invalidJSON)
 		return
 	}
+}
+
+func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
+	initMSP()
+
+	signer, err := common.GetDefaultSigner()
+	assert.NoError(t, err)
+
+	mockchain := "mockchain"
+	factory.InitFactories(nil)
+	config := genesisconfig.Load(genesisconfig.SampleInsecureProfile)
+	pgen := provisional.New(config)
+	genesisBlock := pgen.GenesisBlockForChannel(mockchain)
+
+	mockResponse := &pb.ProposalResponse{
+		Response:    &pb.Response{Status: 200, Payload: utils.MarshalOrPanic(genesisBlock)},
+		Endorsement: &pb.Endorsement{},
+	}
+	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
+
+	ordererEndpoints, err := common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient)
+	assert.NoError(t, err, "GetOrdererEndpointOfChain from genesis block")
+
+	assert.Equal(t, len(ordererEndpoints), 1)
+	assert.Equal(t, ordererEndpoints[0], "127.0.0.1:7050")
+}
+
+func TestGetOrdererEndpointFail(t *testing.T) {
+	initMSP()
+
+	signer, err := common.GetDefaultSigner()
+	assert.NoError(t, err)
+
+	mockchain := "mockchain"
+	factory.InitFactories(nil)
+
+	mockResponse := &pb.ProposalResponse{
+		Response:    &pb.Response{Status: 404, Payload: []byte{}},
+		Endorsement: &pb.Endorsement{},
+	}
+	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
+
+	_, err = common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient)
+	assert.Error(t, err, "GetOrdererEndpointOfChain from invalid response")
 }
