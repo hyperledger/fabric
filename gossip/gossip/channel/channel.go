@@ -44,7 +44,6 @@ type Config struct {
 	PullPeerNum              int
 	PullInterval             time.Duration
 	RequestStateInfoInterval time.Duration
-	Identity                 api.PeerIdentityType
 }
 
 // GossipChannel defines an object that deals with all channel-related messages
@@ -102,9 +101,6 @@ type Adapter interface {
 	// ValidateStateInfoMessage returns an error if a message
 	// hasn't been signed correctly, nil otherwise.
 	ValidateStateInfoMessage(message *proto.SignedGossipMessage) error
-
-	// OrgByPeerIdentity returns the organization ID of a given peer identity
-	OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType
 
 	// GetOrgOfPeer returns the organization ID of a given peer PKI-ID
 	GetOrgOfPeer(pkiID common.PKIidType) api.OrgIdentityType
@@ -328,6 +324,11 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 	gc.Lock()
 	defer gc.Unlock()
 
+	if len(joinMsg.Members()) == 0 {
+		gc.logger.Warning("Received join channel message with empty set of members")
+		return
+	}
+
 	if gc.joinMsg == nil {
 		gc.joinMsg = joinMsg
 	}
@@ -337,22 +338,7 @@ func (gc *gossipChannel) ConfigureChannel(joinMsg api.JoinChannelMessage) {
 		return
 	}
 
-	var orgs []api.OrgIdentityType
-	existingOrgInJoinChanMsg := make(map[string]struct{})
-	// We are in the channel if the joinMsg contains an empty set of anchor peers
-	selfOrg := gc.OrgByPeerIdentity(gc.GetConf().Identity)
-	if len(joinMsg.AnchorPeers()) == 0 {
-		orgs = []api.OrgIdentityType{selfOrg}
-	}
-	for _, anchorPeer := range joinMsg.AnchorPeers() {
-		orgID := anchorPeer.OrgID
-		if _, exists := existingOrgInJoinChanMsg[string(orgID)]; !exists {
-			orgs = append(orgs, orgID)
-			existingOrgInJoinChanMsg[string(orgID)] = struct{}{}
-		}
-	}
-
-	gc.orgs = orgs
+	gc.orgs = joinMsg.Members()
 	gc.joinMsg = joinMsg
 }
 

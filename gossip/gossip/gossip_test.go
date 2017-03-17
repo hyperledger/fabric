@@ -72,7 +72,7 @@ func acceptLeadershp(message interface{}) bool {
 }
 
 type joinChanMsg struct {
-	anchorPeers []api.AnchorPeer
+	members2AnchorPeers map[string][]api.AnchorPeer
 }
 
 // SequenceNumber returns the sequence number of the block this joinChanMsg
@@ -81,12 +81,26 @@ func (*joinChanMsg) SequenceNumber() uint64 {
 	return uint64(time.Now().UnixNano())
 }
 
-// AnchorPeers returns all the anchor peers that are in the channel
-func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	if len(jcm.anchorPeers) == 0 {
-		return []api.AnchorPeer{{OrgID: orgInChannelA}}
+// Members returns the organizations of the channel
+func (jcm *joinChanMsg) Members() []api.OrgIdentityType {
+	if jcm.members2AnchorPeers == nil {
+		return []api.OrgIdentityType{orgInChannelA}
 	}
-	return jcm.anchorPeers
+	members := make([]api.OrgIdentityType, len(jcm.members2AnchorPeers))
+	i := 0
+	for org := range jcm.members2AnchorPeers {
+		members[i] = api.OrgIdentityType(org)
+		i++
+	}
+	return members
+}
+
+// AnchorPeersOf returns the anchor peers of the given organization
+func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
+	if jcm.members2AnchorPeers == nil {
+		return []api.AnchorPeer{}
+	}
+	return jcm.members2AnchorPeers[string(org)]
 }
 
 type naiveCryptoService struct {
@@ -335,14 +349,13 @@ func TestConnectToAnchorPeers(t *testing.T) {
 	n := 10
 	anchorPeercount := 3
 
-	jcm := &joinChanMsg{anchorPeers: []api.AnchorPeer{}}
+	jcm := &joinChanMsg{members2AnchorPeers: map[string][]api.AnchorPeer{string(orgInChannelA): {}}}
 	for i := 0; i < anchorPeercount; i++ {
 		ap := api.AnchorPeer{
-			Port:  portPrefix + i,
-			Host:  "localhost",
-			OrgID: orgInChannelA,
+			Port: portPrefix + i,
+			Host: "localhost",
 		}
-		jcm.anchorPeers = append(jcm.anchorPeers, ap)
+		jcm.members2AnchorPeers[string(orgInChannelA)] = append(jcm.members2AnchorPeers[string(orgInChannelA)], ap)
 	}
 
 	peers := make([]Gossip, n)

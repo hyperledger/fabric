@@ -44,7 +44,6 @@ var conf = Config{
 	PullPeerNum:              3,
 	PullInterval:             time.Second,
 	RequestStateInfoInterval: time.Millisecond * 100,
-	Identity:                 api.PeerIdentityType("pkiIDInOrg1"),
 }
 
 func init() {
@@ -66,8 +65,8 @@ var (
 )
 
 type joinChanMsg struct {
-	getTS       func() time.Time
-	anchorPeers func() []api.AnchorPeer
+	getTS               func() time.Time
+	members2AnchorPeers map[string][]api.AnchorPeer
 }
 
 // SequenceNumber returns the sequence number of the block
@@ -80,12 +79,26 @@ func (jcm *joinChanMsg) SequenceNumber() uint64 {
 	return uint64(time.Now().UnixNano())
 }
 
-// AnchorPeers returns all the anchor peers that are in the channel
-func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	if jcm.anchorPeers != nil {
-		return jcm.anchorPeers()
+// Members returns the organizations of the channel
+func (jcm *joinChanMsg) Members() []api.OrgIdentityType {
+	if jcm.members2AnchorPeers == nil {
+		return []api.OrgIdentityType{orgInChannelA}
 	}
-	return []api.AnchorPeer{{OrgID: orgInChannelA}}
+	members := make([]api.OrgIdentityType, len(jcm.members2AnchorPeers))
+	i := 0
+	for org := range jcm.members2AnchorPeers {
+		members[i] = api.OrgIdentityType(org)
+		i++
+	}
+	return members
+}
+
+// AnchorPeersOf returns the anchor peers of the given organization
+func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
+	if jcm.members2AnchorPeers == nil {
+		return []api.AnchorPeer{}
+	}
+	return jcm.members2AnchorPeers[string(org)]
 }
 
 type cryptoService struct {
@@ -195,10 +208,6 @@ func (ga *gossipAdapterMock) ValidateStateInfoMessage(msg *proto.SignedGossipMes
 		return nil
 	}
 	return args.Get(0).(error)
-}
-
-func (ga *gossipAdapterMock) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
-	return ga.GetOrgOfPeer(common.PKIidType(identity))
 }
 
 func (ga *gossipAdapterMock) GetOrgOfPeer(PKIIID common.PKIidType) api.OrgIdentityType {
@@ -743,29 +752,29 @@ func TestChannelReconfigureChannel(t *testing.T) {
 	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
 
 	outdatedJoinChanMsg := &joinChanMsg{
-		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{OrgID: orgNotInChannelA}}
-		},
 		getTS: func() time.Time {
 			return time.Now()
+		},
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgNotInChannelA): {},
 		},
 	}
 
 	newJoinChanMsg := &joinChanMsg{
-		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{OrgID: orgInChannelA}}
-		},
 		getTS: func() time.Time {
 			return time.Now().Add(time.Millisecond * 100)
+		},
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgInChannelA): {},
 		},
 	}
 
 	updatedJoinChanMsg := &joinChanMsg{
-		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{{OrgID: orgNotInChannelA}}
-		},
 		getTS: func() time.Time {
 			return time.Now().Add(time.Millisecond * 200)
+		},
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgNotInChannelA): {},
 		},
 	}
 
@@ -832,11 +841,8 @@ func TestChannelNoAnchorPeers(t *testing.T) {
 	adapter.On("GetOrgOfPeer", pkiIDinOrg2).Return(orgNotInChannelA)
 
 	jcm := &joinChanMsg{
-		anchorPeers: func() []api.AnchorPeer {
-			return []api.AnchorPeer{}
-		},
-		getTS: func() time.Time {
-			return time.Now().Add(time.Millisecond * 100)
+		members2AnchorPeers: map[string][]api.AnchorPeer{
+			string(orgInChannelA): {},
 		},
 	}
 

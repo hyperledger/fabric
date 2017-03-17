@@ -87,16 +87,28 @@ type gossipServiceImpl struct {
 
 // This is an implementation of api.JoinChannelMessage.
 type joinChannelMessage struct {
-	seqNum      uint64
-	anchorPeers []api.AnchorPeer
+	seqNum              uint64
+	members2AnchorPeers map[string][]api.AnchorPeer
 }
 
 func (jcm *joinChannelMessage) SequenceNumber() uint64 {
 	return jcm.seqNum
 }
 
-func (jcm *joinChannelMessage) AnchorPeers() []api.AnchorPeer {
-	return jcm.anchorPeers
+// Members returns the organizations of the channel
+func (jcm *joinChannelMessage) Members() []api.OrgIdentityType {
+	members := make([]api.OrgIdentityType, len(jcm.members2AnchorPeers))
+	i := 0
+	for org := range jcm.members2AnchorPeers {
+		members[i] = api.OrgIdentityType(org)
+		i++
+	}
+	return members
+}
+
+// AnchorPeersOf returns the anchor peers of the given organization
+func (jcm *joinChannelMessage) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
+	return jcm.members2AnchorPeers[string(org)]
 }
 
 var logger = util.GetLogger(util.LoggingServiceModule, "")
@@ -209,15 +221,14 @@ func (g *gossipServiceImpl) configUpdated(config Config) {
 			"among the orgs of the channel:", orgListFromConfig(config), ", aborting.")
 		return
 	}
-	jcm := &joinChannelMessage{seqNum: config.Sequence(), anchorPeers: []api.AnchorPeer{}}
+	jcm := &joinChannelMessage{seqNum: config.Sequence(), members2AnchorPeers: map[string][]api.AnchorPeer{}}
 	for orgID, appOrg := range config.Organizations() {
 		for _, ap := range appOrg.AnchorPeers() {
 			anchorPeer := api.AnchorPeer{
-				Host:  ap.Host,
-				Port:  int(ap.Port),
-				OrgID: api.OrgIdentityType(orgID),
+				Host: ap.Host,
+				Port: int(ap.Port),
 			}
-			jcm.anchorPeers = append(jcm.anchorPeers, anchorPeer)
+			jcm.members2AnchorPeers[orgID] = append(jcm.members2AnchorPeers[orgID], anchorPeer)
 		}
 	}
 

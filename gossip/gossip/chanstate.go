@@ -86,7 +86,6 @@ func (ga *gossipAdapterImpl) GetConf() channel.Config {
 		PullInterval:             ga.conf.PullInterval,
 		PullPeerNum:              ga.conf.PullPeerNum,
 		RequestStateInfoInterval: ga.conf.RequestStateInfoInterval,
-		Identity:                 ga.selfIdentity,
 	}
 }
 
@@ -103,11 +102,6 @@ func (ga *gossipAdapterImpl) Send(msg *proto.SignedGossipMessage, peers ...*comm
 // nil otherwise
 func (ga *gossipAdapterImpl) ValidateStateInfoMessage(msg *proto.SignedGossipMessage) error {
 	return ga.gossipServiceImpl.validateStateInfoMsg(msg)
-}
-
-// OrgByPeerIdentity extracts the organization identifier from a peer's identity
-func (ga *gossipAdapterImpl) OrgByPeerIdentity(identity api.PeerIdentityType) api.OrgIdentityType {
-	return ga.gossipServiceImpl.secAdvisor.OrgByPeerIdentity(identity)
 }
 
 // GetOrgOfPeer returns the organization identifier of a certain peer

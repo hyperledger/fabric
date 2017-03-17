@@ -440,7 +440,6 @@ func (es *electionService) callback(isLeader bool) {
 }
 
 type joinChanMsg struct {
-	anchorPeers []api.AnchorPeer
 }
 
 // SequenceNumber returns the sequence number of the block this joinChanMsg
@@ -449,12 +448,14 @@ func (jmc *joinChanMsg) SequenceNumber() uint64 {
 	return uint64(time.Now().UnixNano())
 }
 
-// AnchorPeers returns all the anchor peers that are in the channel
-func (jcm *joinChanMsg) AnchorPeers() []api.AnchorPeer {
-	if len(jcm.anchorPeers) == 0 {
-		return []api.AnchorPeer{{OrgID: orgInChannelA}}
-	}
-	return jcm.anchorPeers
+// Members returns the organizations of the channel
+func (jcm *joinChanMsg) Members() []api.OrgIdentityType {
+	return []api.OrgIdentityType{orgInChannelA}
+}
+
+// AnchorPeersOf returns the anchor peers of the given organization
+func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
+	return []api.AnchorPeer{}
 }
 
 func waitForFullMembership(t *testing.T, gossips []GossipService, peersNum int, timeout time.Duration, testPollInterval time.Duration) bool {
