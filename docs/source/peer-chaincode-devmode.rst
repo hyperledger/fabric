@@ -29,8 +29,10 @@ Start the peer in dev mode
     peer node start --peer-defaultchain=false --peer-chaincodedev=true
 
 The above command starts the peer using the default ``msp/sampleconfig``
-MSP. The ``--peer-chaincodedev=true`` puts it in “dev” mode. ##Create
-channels ch1 and ch2
+MSP. The ``--peer-chaincodedev=true`` puts it in “dev” mode.
+
+Create channels ch1 and ch2
+---------------------------
 
 ::
 
@@ -77,9 +79,9 @@ committed.
     peer chaincode invoke -n mycc -c '{"Args":["invoke","a","b","10"]}' -o 127.0.0.1:7050 -C ch1
     peer chaincode invoke -n mycc -c '{"Args":["invoke","a","b","10"]}' -o 127.0.0.1:7050 -C ch2
 
-The above invokes the chaincode using the two channels.
+The above invoke the chaincode over the two channels.
 
 ::
 
     peer chaincode query -n mycc -c '{"Args":["query","a"]}' -o 127.0.0.1:7050 -C ch1
-    peer chaincode invoke -n mycc -c '{"Args":["query","a"]}' -o 127.0.0.1:7050 -C ch2
+    peer chaincode query -n mycc -c '{"Args":["query","a"]}' -o 127.0.0.1:7050 -C ch2
