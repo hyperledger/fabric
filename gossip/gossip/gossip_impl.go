@@ -70,7 +70,6 @@ type gossipServiceImpl struct {
 	chanState         *channelState
 	disSecAdap        *discoverySecurityAdapter
 	mcs               api.MessageCryptoService
-	aliveMsgStore     msgstore.MessageStore
 	stateInfoMsgStore msgstore.MessageStore
 }
 
@@ -109,8 +108,6 @@ func NewGossipService(conf *Config, s *grpc.Server, secAdvisor api.SecurityAdvis
 		stopSignal:            &sync.WaitGroup{},
 		includeIdentityPeriod: time.Now().Add(conf.PublishCertPeriod),
 	}
-
-	g.aliveMsgStore = msgstore.NewMessageStore(proto.NewGossipMessageComparator(0), func(m interface{}) {})
 
 	g.chanState = newChannelState(g)
 	g.emitter = newBatchingEmitter(conf.PropagateIterations,
@@ -301,14 +298,6 @@ func (g *gossipServiceImpl) handleMessage(m proto.ReceivedMessage) {
 	if !g.validateMsg(m) {
 		g.logger.Warning("Message", msg, "isn't valid")
 		return
-	}
-
-	if msg.IsAliveMsg() {
-		added := g.aliveMsgStore.Add(msg)
-		if !added {
-			return
-		}
-		g.emitter.Add(msg)
 	}
 
 	if msg.IsChannelRestricted() {
