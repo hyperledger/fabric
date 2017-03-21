@@ -34,8 +34,12 @@ case "$1" in
           --publish 5984:5984    `# publish port`   \
           --detach               `# run as daemon`  \
           --name couchdb         `# name container` \
-          `# map database dir to a host dir`        \
-          klaemo/couchdb:2.0.0
+          hyperledger/fabric-couchdb
+        rc=$?
+        if [[ $rc != 0 ]]
+          then
+            echo "Run 'make couchdb' from 'fabric' directory to build fabric-couchdb docker image locally."
+        fi
         ;;
     esac
     ;;
