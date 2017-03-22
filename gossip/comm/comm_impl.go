@@ -197,6 +197,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 			if expectedPKIID != nil && !bytes.Equal(pkiID, expectedPKIID) {
 				// PKIID is nil when we don't know the remote PKI id's
 				c.logger.Warning("Remote endpoint claims to be a different peer, expected", expectedPKIID, "but got", pkiID)
+				cc.Close()
 				return nil, errors.New("Authentication failure")
 			}
 			conn := newConnection(cl, cc, stream, nil)
