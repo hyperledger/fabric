@@ -77,6 +77,7 @@ def step_impl(context, certAlias, ordererGenesisBlockName, ordererSystemChainIdN
                                                                  nodeAdminTuple=nodeAdminTuple,
                                                                  signedConfigItems=configGroups)
     ordererBootstrapAdmin.setTagValue(ordererGenesisBlockName, genesisBlock)
+    ordererBootstrapAdmin.setTagValue("ConsensusType", consensusType)
     bootstrap_util.OrdererGensisBlockCompositionCallback(context, genesisBlock)
     bootstrap_util.PeerCompositionCallback(context)
 
@@ -151,7 +152,10 @@ def step_impl(context, userName, createChannelSignedConfigEnvelope):
     signedAnchorsConfigItems = user.tags[anchorSignedConfigItemsName]
 
     # Intermediate step until template tool is ready
-    channel_config_groups = bootstrap_util.createSignedConfigItems(directory, configGroups=signedMspConfigItems + signedAnchorsConfigItems)
+    consensus_type = ordererBootstrapAdmin.tags["ConsensusType"]
+    channel_config_groups = bootstrap_util.createSignedConfigItems(directory=directory,
+                                                                   consensus_type=consensus_type,
+                                                                   configGroups=signedMspConfigItems + signedAnchorsConfigItems)
 
     # bootstrap_util.setMetaPolicy(channelId=channelID, channgel_config_groups=channgel_config_groups)
 
