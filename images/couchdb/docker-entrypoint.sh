@@ -50,7 +50,7 @@ if [ "$1" = '/opt/couchdb/bin/couchdb' ]; then
 		EOWARN
 	fi
 
-
+	sleep 1
 	exec su-exec couchdb "$@"
 fi
 
