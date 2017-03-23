@@ -54,6 +54,7 @@ func Cmd(cf *ChannelCmdFactory) *cobra.Command {
 	channelCmd.AddCommand(joinCmd(cf))
 	channelCmd.AddCommand(createCmd(cf))
 	channelCmd.AddCommand(fetchCmd(cf))
+	channelCmd.AddCommand(listCmd(cf))
 
 	return channelCmd
 }
