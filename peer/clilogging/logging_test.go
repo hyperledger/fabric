@@ -39,7 +39,7 @@ func TestGetLevel(t *testing.T) {
 	err := checkLoggingCmdParams(getLevelCmd(), args)
 
 	if err != nil {
-		t.FailNow()
+		t.Fatal(err)
 	}
 }
 
@@ -93,6 +93,31 @@ func TestSetLevel(t *testing.T) {
 	err := checkLoggingCmdParams(setLevelCmd(), args)
 
 	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestRevertLevels tests the parameter checking for revertlevels, which
+// should return a nil error when zero parameters are provided
+func TestRevertLevels(t *testing.T) {
+	var args []string
+
+	err := checkLoggingCmdParams(revertLevelsCmd(), args)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestRevertLevels_extraParameter tests the parameter checking for setlevel, which
+// should return an error when any amount of parameters are provided
+func TestRevertLevels_extraParameter(t *testing.T) {
+	args := make([]string, 1)
+	args[0] = "extraparameter"
+
+	err := checkLoggingCmdParams(revertLevelsCmd(), args)
+
+	if err == nil {
 		t.FailNow()
 	}
 }

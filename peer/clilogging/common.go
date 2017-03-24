@@ -25,11 +25,17 @@ import (
 
 func checkLoggingCmdParams(cmd *cobra.Command, args []string) error {
 	var err error
-
-	// check that at least one parameter is passed in
-	if len(args) == 0 {
-		err = errors.ErrorWithCallstack("Logging", "NoParameters", "No parameters provided.")
-		return err
+	if cmd.Name() == "revertlevels" {
+		if len(args) > 0 {
+			err = errors.ErrorWithCallstack("Logging", "ExtraParameters", "More parameters than necessary were provided. Expected 0, received %d.", len(args))
+			return err
+		}
+	} else {
+		// check that at least one parameter is passed in
+		if len(args) == 0 {
+			err = errors.ErrorWithCallstack("Logging", "NoParameters", "No parameters provided.")
+			return err
+		}
 	}
 
 	if cmd.Name() == "setlevel" {

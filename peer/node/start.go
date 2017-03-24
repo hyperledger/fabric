@@ -30,6 +30,7 @@ import (
 
 	genesisconfig "github.com/hyperledger/fabric/common/configtx/tool/localconfig"
 	"github.com/hyperledger/fabric/common/configtx/tool/provisional"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/localmsp"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core"
@@ -263,6 +264,13 @@ func serve(args []string) error {
 	// "peer logging setlevel <module-name> <log-level>"
 	common.SetLogLevelFromViper("error")
 	common.SetLogLevelFromViper("msp")
+
+	// TODO This check is here to preserve the old functionality until all
+	// other packages switch to `flogging.MustGetLogger` (from
+	// `logging.MustGetLogger`).
+	if flogging.IsSetLevelByRegExpEnabled {
+		flogging.SetPeerStartupModulesMap()
+	}
 
 	// Block until grpc server exits
 	return <-serve
