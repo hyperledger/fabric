@@ -17,7 +17,6 @@ limitations under the License.
 package msp
 
 import (
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 )
 
@@ -73,7 +72,7 @@ func (msp *noopmsp) Validate(id Identity) error {
 	return nil
 }
 
-func (msp *noopmsp) SatisfiesPrincipal(id Identity, principal *common.MSPPrincipal) error {
+func (msp *noopmsp) SatisfiesPrincipal(id Identity, principal *msp.MSPPrincipal) error {
 	return nil
 }
 
@@ -85,7 +84,7 @@ func newNoopIdentity() (Identity, error) {
 	return &noopidentity{}, nil
 }
 
-func (id *noopidentity) SatisfiesPrincipal(*common.MSPPrincipal) error {
+func (id *noopidentity) SatisfiesPrincipal(*msp.MSPPrincipal) error {
 	return nil
 }
 

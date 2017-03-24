@@ -7,10 +7,14 @@ Package msp is a generated protocol buffer package.
 
 It is generated from these files:
 	msp/identities.proto
+	msp/msp_principal.proto
 	msp/mspconfig.proto
 
 It has these top-level messages:
 	SerializedIdentity
+	MSPPrincipal
+	OrganizationUnit
+	MSPRole
 	MSPConfig
 	FabricMSPConfig
 	SigningIdentityInfo

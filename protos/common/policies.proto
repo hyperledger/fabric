@@ -16,7 +16,7 @@ limitations under the License.
 
 syntax = "proto3";
 
-import "common/msp_principal.proto";
+import "msp/msp_principal.proto";
 
 option go_package = "github.com/hyperledger/fabric/protos/common";
 

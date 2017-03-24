@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
 )
 
 type mockChannelPolicyManagerGetter struct {
@@ -91,7 +92,7 @@ type mockIdentity struct {
 	msg      []byte
 }
 
-func (id *mockIdentity) SatisfiesPrincipal(p *common.MSPPrincipal) error {
+func (id *mockIdentity) SatisfiesPrincipal(p *mspproto.MSPPrincipal) error {
 	if !bytes.Equal(id.identity, p.Principal) {
 		return fmt.Errorf("Different identities [% x]!=[% x]", id.identity, p.Principal)
 	}
@@ -141,6 +142,6 @@ type mockMSPPrincipalGetter struct {
 	Principal []byte
 }
 
-func (m *mockMSPPrincipalGetter) Get(role string) (*common.MSPPrincipal, error) {
-	return &common.MSPPrincipal{Principal: m.Principal}, nil
+func (m *mockMSPPrincipalGetter) Get(role string) (*mspproto.MSPPrincipal, error) {
+	return &mspproto.MSPPrincipal{Principal: m.Principal}, nil
 }

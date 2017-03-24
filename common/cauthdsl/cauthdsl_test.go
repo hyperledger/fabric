@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric/protos/common"
+	mb "github.com/hyperledger/fabric/protos/msp"
 )
 
 var invalidSignature = []byte("badsigned")
@@ -33,7 +34,7 @@ type mockIdentity struct {
 	idBytes []byte
 }
 
-func (id *mockIdentity) SatisfiesPrincipal(p *cb.MSPPrincipal) error {
+func (id *mockIdentity) SatisfiesPrincipal(p *mb.MSPPrincipal) error {
 	if bytes.Compare(id.idBytes, p.Principal) == 0 {
 		return nil
 	} else {

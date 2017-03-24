@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protos/common"
+	mspproto "github.com/hyperledger/fabric/protos/msp"
 )
 
 type MockChannelPolicyManagerGetter struct{}
@@ -114,7 +115,7 @@ type mockIdentity struct {
 	msg []byte
 }
 
-func (id *mockIdentity) SatisfiesPrincipal(*common.MSPPrincipal) error {
+func (id *mockIdentity) SatisfiesPrincipal(*mspproto.MSPPrincipal) error {
 	return nil
 }
 

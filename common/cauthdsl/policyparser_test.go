@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/protos/common"
+	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,15 +30,15 @@ func TestAnd(t *testing.T) {
 	p1, err := FromString("AND('A.member', 'B.member')")
 	assert.NoError(t, err)
 
-	principals := make([]*common.MSPPrincipal, 0)
+	principals := make([]*msp.MSPPrincipal, 0)
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "A"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "A"})})
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "B"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "B"})})
 
 	p2 := &common.SignaturePolicyEnvelope{
 		Version:    0,
@@ -52,15 +53,15 @@ func TestOr(t *testing.T) {
 	p1, err := FromString("OR('A.member', 'B.member')")
 	assert.NoError(t, err)
 
-	principals := make([]*common.MSPPrincipal, 0)
+	principals := make([]*msp.MSPPrincipal, 0)
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "A"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "A"})})
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "B"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "B"})})
 
 	p2 := &common.SignaturePolicyEnvelope{
 		Version:    0,
@@ -75,19 +76,19 @@ func TestComplex1(t *testing.T) {
 	p1, err := FromString("OR('A.member', AND('B.member', 'C.member'))")
 	assert.NoError(t, err)
 
-	principals := make([]*common.MSPPrincipal, 0)
+	principals := make([]*msp.MSPPrincipal, 0)
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "B"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "B"})})
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "C"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "C"})})
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "A"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "A"})})
 
 	p2 := &common.SignaturePolicyEnvelope{
 		Version:    0,
@@ -102,23 +103,23 @@ func TestComplex2(t *testing.T) {
 	p1, err := FromString("OR(AND('A.member', 'B.member'), OR('C.admin', 'D.member'))")
 	assert.NoError(t, err)
 
-	principals := make([]*common.MSPPrincipal, 0)
+	principals := make([]*msp.MSPPrincipal, 0)
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "A"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "A"})})
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "B"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "B"})})
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_ADMIN, MspIdentifier: "C"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: "C"})})
 
-	principals = append(principals, &common.MSPPrincipal{
-		PrincipalClassification: common.MSPPrincipal_ROLE,
-		Principal:               utils.MarshalOrPanic(&common.MSPRole{Role: common.MSPRole_MEMBER, MspIdentifier: "D"})})
+	principals = append(principals, &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               utils.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "D"})})
 
 	p2 := &common.SignaturePolicyEnvelope{
 		Version:    0,

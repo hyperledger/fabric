@@ -27,7 +27,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
-	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/op/go-logging"
 )
@@ -52,7 +51,7 @@ func newIdentity(id *IdentityIdentifier, cert *x509.Certificate, pk bccsp.Key, m
 }
 
 // SatisfiesPrincipal returns null if this instance matches the supplied principal or an error otherwise
-func (id *identity) SatisfiesPrincipal(principal *common.MSPPrincipal) error {
+func (id *identity) SatisfiesPrincipal(principal *msp.MSPPrincipal) error {
 	return id.msp.SatisfiesPrincipal(id, principal)
 }
 
