@@ -219,7 +219,7 @@ func pemBlocksFromFileDecodeHook() mapstructure.DecodeHookFunc {
 				var fileI interface{}
 				fileI, ok = d["File"]
 				if !ok {
-					fileI, ok = d["file"]
+					fileI, _ = d["file"]
 				}
 				fileName, ok = fileI.(string)
 			}
@@ -259,7 +259,7 @@ func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 	baseKeys := v.AllSettings() // AllKeys doesn't actually return all keys, it only returns the base ones
 	leafKeys := getKeysRecursively("", v, baseKeys)
 
-	logger.Infof("%+v", leafKeys)
+	logger.Debugf("%+v", leafKeys)
 	config := &mapstructure.DecoderConfig{
 		ErrorUnused:      true,
 		Metadata:         nil,
