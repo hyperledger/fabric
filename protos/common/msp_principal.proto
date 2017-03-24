@@ -112,7 +112,7 @@ message MSPRole {
 
     // MSPRoleType defines which of the available, pre-defined MSP-roles
     // an identiy should posess inside the MSP with identifier MSPidentifier
-    MSPRoleType Role = 2;
+    MSPRoleType role = 2;
 
 }
 
