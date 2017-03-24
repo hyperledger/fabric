@@ -39,6 +39,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protos/common"
+	mspprotos "github.com/hyperledger/fabric/protos/msp"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/op/go-logging"
@@ -368,7 +369,7 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 				for _, root := range v.GetRootCerts() {
 					sid, err := root.Serialize()
 					if err == nil {
-						id := &msp.SerializedIdentity{}
+						id := &mspprotos.SerializedIdentity{}
 						err = proto.Unmarshal(sid, id)
 						if err == nil {
 							appRootCAs = append(appRootCAs, id.IdBytes)
@@ -378,7 +379,7 @@ func buildTrustedRootsForChain(cm configtxapi.Manager) {
 				for _, intermediate := range v.GetIntermediateCerts() {
 					sid, err := intermediate.Serialize()
 					if err == nil {
-						id := &msp.SerializedIdentity{}
+						id := &mspprotos.SerializedIdentity{}
 						err = proto.Unmarshal(sid, id)
 						if err == nil {
 							appRootCAs = append(appRootCAs, id.IdBytes)

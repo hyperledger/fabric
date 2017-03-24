@@ -2,19 +2,6 @@
 // source: msp/mspconfig.proto
 // DO NOT EDIT!
 
-/*
-Package msp is a generated protocol buffer package.
-
-It is generated from these files:
-	msp/mspconfig.proto
-
-It has these top-level messages:
-	MSPConfig
-	FabricMSPConfig
-	SigningIdentityInfo
-	KeyInfo
-	FabricOUIdentifier
-*/
 package msp
 
 import proto "github.com/golang/protobuf/proto"
@@ -25,12 +12,6 @@ import math "math"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // MSPConfig collects all the configuration information for
 // an MSP. The Config field should be unmarshalled in a way
@@ -46,7 +27,7 @@ type MSPConfig struct {
 func (m *MSPConfig) Reset()                    { *m = MSPConfig{} }
 func (m *MSPConfig) String() string            { return proto.CompactTextString(m) }
 func (*MSPConfig) ProtoMessage()               {}
-func (*MSPConfig) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*MSPConfig) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
 // FabricMSPConfig collects all the configuration information for
 // a Fabric MSP.
@@ -93,7 +74,7 @@ type FabricMSPConfig struct {
 func (m *FabricMSPConfig) Reset()                    { *m = FabricMSPConfig{} }
 func (m *FabricMSPConfig) String() string            { return proto.CompactTextString(m) }
 func (*FabricMSPConfig) ProtoMessage()               {}
-func (*FabricMSPConfig) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*FabricMSPConfig) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
 
 func (m *FabricMSPConfig) GetSigningIdentity() *SigningIdentityInfo {
 	if m != nil {
@@ -125,7 +106,7 @@ type SigningIdentityInfo struct {
 func (m *SigningIdentityInfo) Reset()                    { *m = SigningIdentityInfo{} }
 func (m *SigningIdentityInfo) String() string            { return proto.CompactTextString(m) }
 func (*SigningIdentityInfo) ProtoMessage()               {}
-func (*SigningIdentityInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*SigningIdentityInfo) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
 
 func (m *SigningIdentityInfo) GetPrivateSigner() *KeyInfo {
 	if m != nil {
@@ -151,7 +132,7 @@ type KeyInfo struct {
 func (m *KeyInfo) Reset()                    { *m = KeyInfo{} }
 func (m *KeyInfo) String() string            { return proto.CompactTextString(m) }
 func (*KeyInfo) ProtoMessage()               {}
-func (*KeyInfo) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*KeyInfo) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
 
 // FabricOUIdentifier represents an organizazional unit and
 // its related chain of trust identifier.
@@ -167,7 +148,7 @@ type FabricOUIdentifier struct {
 func (m *FabricOUIdentifier) Reset()                    { *m = FabricOUIdentifier{} }
 func (m *FabricOUIdentifier) String() string            { return proto.CompactTextString(m) }
 func (*FabricOUIdentifier) ProtoMessage()               {}
-func (*FabricOUIdentifier) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*FabricOUIdentifier) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
 
 func init() {
 	proto.RegisterType((*MSPConfig)(nil), "msp.MSPConfig")
@@ -177,9 +158,9 @@ func init() {
 	proto.RegisterType((*FabricOUIdentifier)(nil), "msp.FabricOUIdentifier")
 }
 
-func init() { proto.RegisterFile("msp/mspconfig.proto", fileDescriptor0) }
+func init() { proto.RegisterFile("msp/mspconfig.proto", fileDescriptor1) }
 
-var fileDescriptor0 = []byte{
+var fileDescriptor1 = []byte{
 	// 458 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x7c, 0x53, 0xdd, 0x6e, 0xd3, 0x30,
 	0x14, 0x56, 0xda, 0xad, 0x53, 0x4f, 0xd3, 0x16, 0x3c, 0x18, 0xb9, 0x60, 0x10, 0x82, 0x10, 0x11,

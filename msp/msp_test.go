@@ -130,7 +130,7 @@ func TestSerializeIdentitiesWithWrongMSP(t *testing.T) {
 		return
 	}
 
-	sid := &SerializedIdentity{}
+	sid := &msp.SerializedIdentity{}
 	err = proto.Unmarshal(serializedID, sid)
 	assert.NoError(t, err)
 
@@ -159,7 +159,7 @@ func TestSerializeIdentitiesWithMSPManager(t *testing.T) {
 	_, err = mspMgr.DeserializeIdentity(serializedID)
 	assert.NoError(t, err)
 
-	sid := &SerializedIdentity{}
+	sid := &msp.SerializedIdentity{}
 	err = proto.Unmarshal(serializedID, sid)
 	assert.NoError(t, err)
 
