@@ -18,6 +18,7 @@
 #
 #   - all (default) - builds all targets and runs all tests/checks
 #   - checks - runs all tests/checks
+#   - configtxgen - builds a native configtxgen binary
 #   - peer - builds a native fabric peer binary
 #   - orderer - builds a native fabric orderer binary
 #   - unit-test - runs the go-test based unit tests
@@ -57,6 +58,8 @@ METADATA_VAR += BaseVersion=$(BASEIMAGE_RELEASE)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 
 GO_LDFLAGS = $(patsubst %,-X $(PKGNAME)/common/metadata.%,$(METADATA_VAR))
+
+GO_TAGS ?=
 
 CHAINTOOL_URL ?= https://github.com/hyperledger/fabric-chaintool/releases/download/$(CHAINTOOL_RELEASE)/chaintool
 
@@ -105,6 +108,7 @@ orderer: build/bin/orderer
 orderer-docker: build/image/orderer/$(DUMMY)
 
 .PHONY: configtxgen
+configtxgen: GO_TAGS+= nopkcs11
 configtxgen: build/bin/configtxgen
 
 buildenv: build/image/buildenv/$(DUMMY)
@@ -184,7 +188,7 @@ build/image/peer/$(DUMMY): build/image/ccenv/$(DUMMY) build/image/javaenv/$(DUMM
 build/bin/%: $(PROJECT_FILES)
 	@mkdir -p $(@D)
 	@echo "$@"
-	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
+	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install -tags "$(GO_TAGS)" -ldflags "$(GO_LDFLAGS)" $(pkgmap.$(@F))
 	@echo "Binary available as $@"
 	@touch $@
 
