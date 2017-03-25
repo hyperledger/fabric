@@ -33,10 +33,10 @@
 			"revisionTime": "2016-12-26T20:32:30Z"
 		},
 		{
-			"checksumSHA1": "a/iaWA9b8WJcVD1sN4fHUDRf0Uk=",
+			"checksumSHA1": "lMwkVVL8s9jMaeUXb/4FaIpUfAk=",
 			"path": "github.com/Shopify/sarama",
-			"revision": "af0513c4d97979eb876d201391fac6475ec08268",
-			"revisionTime": "2016-09-21T18:20:11Z",
+			"revision": "3efb95dad8fbcd194d3c06f7b9c40eabeb719b36",
+			"revisionTime": "2017-03-12T22:14:04Z",
 			"tree": true
 		},
 		{
@@ -313,6 +313,18 @@
 			"path": "github.com/opencontainers/runc/libcontainer/user",
 			"revision": "8033a839758ab9a4ed4fb590d1bb005a1c5a164e",
 			"revisionTime": "2016-07-26T03:30:17Z"
+		},
+		{
+			"checksumSHA1": "WmrPO1ovmQ7t7hs9yZGbr2SAoM4=",
+			"path": "github.com/pierrec/lz4",
+			"revision": "90290f74b1b4d9c097f0a3b3c7eba2ef3875c699",
+			"revisionTime": "2017-02-26T14:26:21Z"
+		},
+		{
+			"checksumSHA1": "IT4sX58d+e8osXHV5U6YCSdB/uE=",
+			"path": "github.com/pierrec/xxHash/xxHash32",
+			"revision": "5a004441f897722c627870a981d02b29924215fa",
+			"revisionTime": "2016-01-12T16:53:51Z"
 		},
 		{
 			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
